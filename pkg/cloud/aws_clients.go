@@ -1,0 +1,188 @@
+package cloud
+
+import (
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/aws/aws-sdk-go/service/ecs"
+	"github.com/aws/aws-sdk-go/service/ecs/ecsiface"
+	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
+	"github.com/aws/aws-sdk-go/service/servicediscovery"
+	"github.com/aws/aws-sdk-go/service/servicediscovery/servicediscoveryiface"
+	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
+	"net/http"
+	"sync"
+	"time"
+)
+
+/* Configuration Template for AWS Clients */
+var ConfigTemplate = &aws.Config{
+	CredentialsChainVerboseErrors: aws.Bool(true),
+	Region:                        aws.String(endpoints.EuCentral1RegionID),
+	//LogLevel: aws.LogLevel(aws.LogDebug | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors | aws.LogDebugWithHTTPBody),
+	HTTPClient: &http.Client{
+		Timeout: 1 * time.Minute,
+	},
+}
+
+/* Kinesis client */
+var kcl = struct {
+	sync.Mutex
+	client      kinesisiface.KinesisAPI
+	initialized bool
+}{}
+
+func GetKinesisClient(config cfg.Config, logger mon.Logger) kinesisiface.KinesisAPI {
+	kcl.Lock()
+	defer kcl.Unlock()
+
+	if kcl.initialized {
+		return kcl.client
+	}
+
+	endpoint := config.GetString("aws_kinesis_endpoint")
+	maxRetries := config.GetInt("aws_sdk_retries")
+
+	awsConfig := ConfigTemplate
+	awsConfig.WithEndpoint(endpoint)
+	awsConfig.WithMaxRetries(maxRetries)
+	awsConfig.WithLogger(PrefixedLogger(logger, "kinesis"))
+
+	sess := session.Must(session.NewSession(awsConfig))
+
+	client := kinesis.New(sess)
+
+	kcl.client = client
+	kcl.initialized = true
+
+	return kcl.client
+}
+
+/* DynamoDB client */
+var ddbcl = struct {
+	sync.Mutex
+	client      dynamodbiface.DynamoDBAPI
+	initialized bool
+}{}
+
+func GetDynamoDbClient(config cfg.Config, logger mon.Logger) dynamodbiface.DynamoDBAPI {
+	ddbcl.Lock()
+	defer ddbcl.Unlock()
+
+	if ddbcl.initialized {
+		return ddbcl.client
+	}
+
+	endpoint := config.GetString("aws_dynamoDb_endpoint")
+	maxRetries := config.GetInt("aws_sdk_retries")
+
+	awsConfig := ConfigTemplate
+	awsConfig.WithEndpoint(endpoint)
+	awsConfig.WithMaxRetries(maxRetries)
+	awsConfig.WithLogger(PrefixedLogger(logger, "dynamo_db"))
+
+	sess := session.Must(session.NewSession(awsConfig.WithEndpoint(endpoint)))
+
+	client := dynamodb.New(sess)
+
+	ddbcl.client = client
+	ddbcl.initialized = true
+
+	return ddbcl.client
+}
+
+/* ECS Client */
+var ecscl = struct {
+	sync.Mutex
+	client      ecsiface.ECSAPI
+	initialized bool
+}{}
+
+func GetEcsClient(logger mon.Logger) ecsiface.ECSAPI {
+	ecscl.Lock()
+	defer ecscl.Unlock()
+
+	if ecscl.initialized {
+		return ecscl.client
+	}
+
+	awsConfig := ConfigTemplate
+	awsConfig.WithLogger(PrefixedLogger(logger, "ecs"))
+
+	sess := session.Must(session.NewSession(awsConfig))
+
+	ecscl.client = ecs.New(sess)
+	ecscl.initialized = true
+
+	return ecscl.client
+}
+
+/* ServiceDiscovery Client */
+var sdcl = struct {
+	sync.Mutex
+	client      servicediscoveryiface.ServiceDiscoveryAPI
+	initialized bool
+}{}
+
+func GetServiceDiscoveryClient(logger mon.Logger, endpoint string) servicediscoveryiface.ServiceDiscoveryAPI {
+	sdcl.Lock()
+	defer sdcl.Unlock()
+
+	if sdcl.initialized {
+		return sdcl.client
+	}
+
+	awsConfig := ConfigTemplate
+	awsConfig.WithEndpoint(endpoint)
+	awsConfig.WithLogger(PrefixedLogger(logger, "service_discovery"))
+	sess := session.Must(session.NewSession(awsConfig))
+
+	sdcl.client = servicediscovery.New(sess)
+	sdcl.initialized = true
+
+	return sdcl.client
+}
+
+/* SimpleSystemsManager Client */
+var ssmClient = struct {
+	sync.Mutex
+	client      ssmiface.SSMAPI
+	initialized bool
+}{}
+
+func GetSystemsManagerClient(config cfg.Config, logger mon.Logger) ssmiface.SSMAPI {
+	ssmClient.Lock()
+	defer ssmClient.Unlock()
+
+	if sdcl.initialized {
+		return ssmClient.client
+	}
+
+	endpoint := config.GetString("aws_ssm_endpoint")
+	maxRetries := config.GetInt("aws_sdk_retries")
+
+	awsConfig := ConfigTemplate
+	awsConfig.WithEndpoint(endpoint)
+	awsConfig.WithMaxRetries(maxRetries)
+	awsConfig.WithLogger(PrefixedLogger(logger, "systems_manager"))
+	sess := session.Must(session.NewSession(awsConfig))
+
+	ssmClient.client = ssm.New(sess)
+	ssmClient.initialized = true
+
+	return ssmClient.client
+}
+
+func PrefixedLogger(logger mon.Logger, service string) aws.LoggerFunc {
+	return aws.LoggerFunc(func(args ...interface{}) {
+		logger.WithFields(mon.Fields{
+			"aws_service": service,
+		}).Warn(args...)
+	})
+}
