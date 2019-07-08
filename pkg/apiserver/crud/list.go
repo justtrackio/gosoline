@@ -3,36 +3,9 @@ package crud
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/apiserver"
+	"github.com/applike/gosoline/pkg/apiserver/sql"
 	"github.com/gin-gonic/gin"
 )
-
-type Order struct {
-	Field     string `json:"field"`
-	Direction string `json:"direction"`
-}
-
-type Page struct {
-	Offset int `json:"offset"`
-	Limit  int `json:"limit"`
-}
-
-type Filter struct {
-	Matches []FilterMatch `json:"matches"`
-	Groups  []Filter      `json:"groups"`
-	Bool    string        `json:"bool"`
-}
-
-type FilterMatch struct {
-	Dimension string        `json:"dimension"`
-	Operator  string        `json:"operator"`
-	Values    []interface{} `json:"values"`
-}
-
-type Input struct {
-	Filter Filter  `json:"filter"`
-	Order  []Order `json:"order"`
-	Page   *Page   `json:"page"`
-}
 
 type Output struct {
 	Total   int         `json:"total"`
@@ -52,18 +25,16 @@ func NewListHandler(transformer Handler) gin.HandlerFunc {
 }
 
 func (lh listHandler) GetInput() interface{} {
-	return &Input{
-		Order: make([]Order, 0),
-	}
+	return sql.NewInput()
 }
 
 func (lh listHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
-	inp := request.Body.(*Input)
+	inp := request.Body.(*sql.Input)
 
 	repo := lh.transformer.GetRepository()
 	metadata := repo.GetMetadata()
 
-	lqb := NewListQueryBuilder(metadata)
+	lqb := sql.NewOrmQueryBuilder(metadata)
 	qb, err := lqb.Build(inp)
 
 	if err != nil {

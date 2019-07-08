@@ -8,12 +8,17 @@ import (
 	"os"
 )
 
-type fileOutput struct {
-	logger   mon.Logger
-	settings FileSettings
+type FileOutputSettings struct {
+	Filename string `mapstructure:"filename"`
+	Append   bool   `mapstructure:"append"`
 }
 
-func NewFileOutput(config cfg.Config, logger mon.Logger, settings FileSettings) Output {
+type fileOutput struct {
+	logger   mon.Logger
+	settings *FileOutputSettings
+}
+
+func NewFileOutput(_ cfg.Config, logger mon.Logger, settings *FileOutputSettings) Output {
 	return &fileOutput{
 		logger:   logger,
 		settings: settings,
@@ -25,7 +30,12 @@ func (o *fileOutput) WriteOne(ctx context.Context, msg *Message) error {
 }
 
 func (o *fileOutput) Write(ctx context.Context, batch []*Message) error {
-	file, err := os.OpenFile(o.settings.Filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	flags := os.O_CREATE | os.O_WRONLY
+	if o.settings.Append {
+		flags = flags | os.O_APPEND
+	}
+
+	file, err := os.OpenFile(o.settings.Filename, flags, 0644)
 
 	if err != nil {
 		return err

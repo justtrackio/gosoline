@@ -10,6 +10,7 @@ import (
 
 type FileSettings struct {
 	Filename string `mapstructure:"filename"`
+	Blocking bool
 }
 
 type fileInput struct {
@@ -20,7 +21,11 @@ type fileInput struct {
 	stopped bool
 }
 
-func NewFileInput(config cfg.Config, logger mon.Logger, settings FileSettings) Input {
+func NewFileInput(_ cfg.Config, logger mon.Logger, settings FileSettings) Input {
+	return NewFileInputWithInterfaces(logger, settings)
+}
+
+func NewFileInputWithInterfaces(logger mon.Logger, settings FileSettings) Input {
 	return &fileInput{
 		logger:   logger,
 		settings: settings,
@@ -33,6 +38,12 @@ func (i *fileInput) Data() chan *Message {
 }
 
 func (i *fileInput) Run() error {
+	defer func() {
+		if !i.settings.Blocking {
+			close(i.channel)
+		}
+	}()
+
 	file, err := os.Open(i.settings.Filename)
 
 	if err != nil {
@@ -58,8 +69,6 @@ func (i *fileInput) Run() error {
 
 		i.channel <- &msg
 	}
-
-	close(i.channel)
 
 	return nil
 }

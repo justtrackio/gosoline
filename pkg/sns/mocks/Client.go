@@ -3,8 +3,8 @@
 package mocks
 
 import context "context"
-
 import mock "github.com/stretchr/testify/mock"
+
 import request "github.com/aws/aws-sdk-go/aws/request"
 import sns "github.com/aws/aws-sdk-go/service/sns"
 

@@ -109,6 +109,22 @@ func (_m *Viper) GetString(_a0 string) string {
 	return r0
 }
 
+// GetStringMapString provides a mock function with given fields: key
+func (_m *Viper) GetStringMapString(key string) map[string]string {
+	ret := _m.Called(key)
+
+	var r0 map[string]string
+	if rf, ok := ret.Get(0).(func(string) map[string]string); ok {
+		r0 = rf(key)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]string)
+		}
+	}
+
+	return r0
+}
+
 // GetStringSlice provides a mock function with given fields: key
 func (_m *Viper) GetStringSlice(key string) []string {
 	ret := _m.Called(key)

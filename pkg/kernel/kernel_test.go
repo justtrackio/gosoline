@@ -35,7 +35,7 @@ func TestRunSuccess(t *testing.T) {
 	module.On("Run", mock.Anything).Return(nil)
 
 	assert.NotPanics(t, func() {
-		k := kernel.New(config, logger)
+		k := kernel.NewWithInterfaces(config, logger)
 		k.Add("module", module)
 		k.Run()
 	})
@@ -59,7 +59,7 @@ func TestBootFailure(t *testing.T) {
 	}).Return(nil)
 
 	assert.NotPanics(t, func() {
-		k := kernel.New(config, logger)
+		k := kernel.NewWithInterfaces(config, logger)
 		k.Add("module", module)
 		k.Run()
 	})
@@ -79,7 +79,7 @@ func TestRunFailure(t *testing.T) {
 	})
 
 	assert.NotPanics(t, func() {
-		k := kernel.New(config, logger)
+		k := kernel.NewWithInterfaces(config, logger)
 		k.Add("module", module)
 		k.Run()
 	})
@@ -90,7 +90,7 @@ func TestRunFailure(t *testing.T) {
 
 func TestStop(t *testing.T) {
 	config, logger, module := createMocks()
-	k := kernel.New(config, logger)
+	k := kernel.NewWithInterfaces(config, logger)
 
 	module.On("GetType").Return(kernel.TypeForeground)
 	module.On("Boot", config, logger).Return(nil)
@@ -110,7 +110,7 @@ func TestStop(t *testing.T) {
 
 func TestRunningType(t *testing.T) {
 	config, logger, _ := createMocks()
-	k := kernel.New(config, logger)
+	k := kernel.NewWithInterfaces(config, logger)
 
 	mf := new(kernelMocks.Module)
 	mf.On("GetType").Return(kernel.TypeForeground)

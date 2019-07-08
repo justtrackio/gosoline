@@ -6,7 +6,19 @@ import (
 	"os"
 )
 
-func New(config cfg.Config, logger mon.Logger) *kernel {
+func New(application string) *kernel {
+	config := cfg.NewWithDefaultClients(application)
+
+	tags := mon.Tags{
+		"application": config.GetString("app_name"),
+	}
+
+	logger := mon.NewLogger(config, tags)
+
+	return NewWithInterfaces(config, logger)
+}
+
+func NewWithInterfaces(config cfg.Config, logger mon.Logger) *kernel {
 	return &kernel{
 		sig: make(chan os.Signal, 1),
 
@@ -15,16 +27,4 @@ func New(config cfg.Config, logger mon.Logger) *kernel {
 
 		factories: make([]ModuleFactory, 0),
 	}
-}
-
-func NewWithDefault(application string, tagsFromConfig mon.TagsFromConfig) *kernel {
-	config := cfg.NewWithDefaultClients(application)
-
-	tags := mon.Tags{
-		"application": config.GetString("app_name"),
-	}
-
-	logger := mon.NewLogger(config, tags, tagsFromConfig)
-
-	return New(config, logger)
 }

@@ -9,20 +9,6 @@ type Kinsumer struct {
 	mock.Mock
 }
 
-// CreateRequiredTables provides a mock function with given fields:
-func (_m *Kinsumer) CreateRequiredTables() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // Next provides a mock function with given fields:
 func (_m *Kinsumer) Next() ([]byte, error) {
 	ret := _m.Called()

@@ -241,12 +241,14 @@ func TestListHandler_Handle(t *testing.T) {
 	handler := crud.NewListHandler(transformer)
 
 	qb := db_repo.NewQueryBuilder()
+	qb.Table("footable")
 	qb.Where("(((name = ?)))", "foobar")
 	qb.GroupBy("id")
 	qb.OrderBy("name", "ASC")
 	qb.Page(0, 2)
 
 	transformer.Repo.On("GetMetadata").Return(db_repo.Metadata{
+		TableName: "footable",
 		PrimaryKey: "id",
 		Mappings: db_repo.FieldMappings{
 			"id":   db_repo.NewSimpleFieldMapping("id"),

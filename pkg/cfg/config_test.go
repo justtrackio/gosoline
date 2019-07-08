@@ -21,7 +21,6 @@ func TestNew(t *testing.T) {
 	viper := getViper()
 
 	_ = ioutil.WriteFile("./config.dist.yml", nil, 0777)
-
 	_ = cfg.New(nil, viper, "app")
 
 	viper.AssertExpectations(t)
@@ -152,6 +151,7 @@ func getViper() *cfgMocks.Viper {
 	viper := new(cfgMocks.Viper)
 	viper.On("SetEnvPrefix", "app")
 	viper.On("AutomaticEnv")
+	viper.On("GetString", "env").Return("test")
 
 	return viper
 }

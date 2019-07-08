@@ -1,6 +1,9 @@
 package db_repo
 
-import "github.com/thoas/go-funk"
+import (
+	"github.com/applike/gosoline/pkg/db"
+	"github.com/thoas/go-funk"
+)
 
 type page struct {
 	offset int
@@ -30,32 +33,32 @@ func NewQueryBuilder() *QueryBuilder {
 	}
 }
 
-func (qb *QueryBuilder) Table(table string) *QueryBuilder {
+func (qb *QueryBuilder) Table(table string) db.QueryBuilder {
 	qb.table = table
 
 	return qb
 }
 
-func (qb *QueryBuilder) Joins(joins []string) *QueryBuilder {
+func (qb *QueryBuilder) Joins(joins []string) db.QueryBuilder {
 	qb.joins = funk.UniqString(joins)
 
 	return qb
 }
 
-func (qb *QueryBuilder) Where(query interface{}, args ...interface{}) *QueryBuilder {
+func (qb *QueryBuilder) Where(query interface{}, args ...interface{}) db.QueryBuilder {
 	qb.where = query
 	qb.args = args
 
 	return qb
 }
 
-func (qb *QueryBuilder) GroupBy(field ...string) *QueryBuilder {
+func (qb *QueryBuilder) GroupBy(field ...string) db.QueryBuilder {
 	qb.groupBy = append(qb.groupBy, field...)
 
 	return qb
 }
 
-func (qb *QueryBuilder) OrderBy(field string, direction string) *QueryBuilder {
+func (qb *QueryBuilder) OrderBy(field string, direction string) db.QueryBuilder {
 	order := order{
 		field:     field,
 		direction: direction,
@@ -66,7 +69,7 @@ func (qb *QueryBuilder) OrderBy(field string, direction string) *QueryBuilder {
 	return qb
 }
 
-func (qb *QueryBuilder) Page(offset int, size int) *QueryBuilder {
+func (qb *QueryBuilder) Page(offset int, size int) db.QueryBuilder {
 	qb.page = &page{
 		offset: offset,
 		limit:  size,

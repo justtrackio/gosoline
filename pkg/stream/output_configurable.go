@@ -29,8 +29,8 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Ou
 
 func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
 	key := getConfigurableOutputKey(name)
-	settings := FileSettings{}
-	config.Unmarshal(key, &settings)
+	settings := &FileOutputSettings{}
+	config.Unmarshal(key, settings)
 
 	return NewFileOutput(config, logger, settings)
 }

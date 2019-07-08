@@ -37,6 +37,7 @@ type Config interface {
 	GetDuration(string) time.Duration
 	GetInt(string) int
 	GetString(string) string
+	GetStringMapString(key string) map[string]string
 	GetStringSlice(key string) []string
 	GetBool(key string) bool
 	Unmarshal(key string, val interface{})
@@ -60,6 +61,7 @@ type Viper interface {
 	GetDuration(string) time.Duration
 	GetInt(string) int
 	GetString(string) string
+	GetStringMapString(key string) map[string]string
 	GetStringSlice(key string) []string
 	IsSet(string) bool
 	ReadInConfig() error
@@ -172,7 +174,23 @@ func (c *config) GetString(key string) string {
 	defer c.lck.Unlock()
 
 	c.keyCheck(key)
-	return c.client.GetString(key)
+	str := c.client.GetString(key)
+
+	return c.unsafeAugmentString(str)
+}
+
+func (c *config) GetStringMapString(key string) map[string]string {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	c.keyCheck(key)
+	configMap := c.client.GetStringMapString(key)
+
+	for k, v := range configMap {
+		configMap[k] = c.unsafeAugmentString(v)
+	}
+
+	return configMap
 }
 
 func (c *config) GetStringSlice(key string) []string {
@@ -180,7 +198,13 @@ func (c *config) GetStringSlice(key string) []string {
 	defer c.lck.Unlock()
 
 	c.keyCheck(key)
-	return c.client.GetStringSlice(key)
+
+	strs := c.client.GetStringSlice(key)
+	for i := 0; i < len(strs); i++ {
+		strs[i] = c.unsafeAugmentString(strs[i])
+	}
+
+	return strs
 }
 
 func (c *config) GetBool(key string) bool {
@@ -204,11 +228,18 @@ func (c *config) Unmarshal(key string, val interface{}) {
 }
 
 func (c *config) AugmentString(str string) string {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	return c.unsafeAugmentString(str)
+}
+
+func (c *config) unsafeAugmentString(str string) string {
 	rp := regexp.MustCompile("{([\\w]+)}")
 	matches := rp.FindAllStringSubmatch(str, -1)
 
 	for _, m := range matches {
-		replace := fmt.Sprint(c.Get(m[1]))
+		replace := fmt.Sprint(c.client.Get(m[1]))
 		str = strings.Replace(str, m[0], replace, -1)
 	}
 
@@ -228,6 +259,10 @@ func (c *config) configure() {
 	if err != nil {
 		c.sentry.CaptureErrorAndWait(err, nil)
 		os.Exit(1)
+	}
+
+	if c.client.GetString("env") == "test" {
+		return
 	}
 
 	flags := flag.NewFlagSet("cfg", flag.ContinueOnError)

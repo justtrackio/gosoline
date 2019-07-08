@@ -8,9 +8,10 @@ import (
 	"sync"
 )
 
-func NewLogger(config cfg.Config, tags Tags, tagsFromConfig TagsFromConfig) Logger {
+func NewLogger(config cfg.Config, tags Tags) Logger {
 	level := config.GetString("log_level")
 	format := config.GetString("log_format")
+	configTags := config.GetStringMapString("log_tags")
 
 	if len(level) == 0 {
 		level = Info
@@ -20,8 +21,8 @@ func NewLogger(config cfg.Config, tags Tags, tagsFromConfig TagsFromConfig) Logg
 		format = FormatGelf
 	}
 
-	for tagKey, configKey := range tagsFromConfig {
-		tags[tagKey] = config.GetString(configKey)
+	for k, v := range configTags {
+		tags[k] = v
 	}
 
 	configValues := ConfigValues{}

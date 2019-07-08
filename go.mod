@@ -15,6 +15,7 @@ require (
 	github.com/cenkalti/backoff v2.1.1+incompatible
 	github.com/certifi/gocertifi v0.0.0-20180118203423-deb3ae2ef261 // indirect
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 // indirect
+	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20190313032549-041949b8d268 // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/fatih/color v1.7.0
@@ -39,6 +40,8 @@ require (
 	github.com/myesui/uuid v1.0.0 // indirect
 	github.com/olivere/elastic v6.2.19+incompatible
 	github.com/olivere/elastic/v7 v7.0.1
+	github.com/opencontainers/runc v0.1.1 // indirect
+	github.com/ory/dockertest v3.3.4+incompatible
 	github.com/ory/ladon v1.0.1
 	github.com/pkg/errors v0.8.1
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
@@ -46,6 +49,7 @@ require (
 	github.com/spf13/viper v1.3.1
 	github.com/stretchr/testify v1.3.0
 	github.com/thoas/go-funk v0.0.0-20181020164546-fbae87fb5b5c
+	github.com/tidwall/gjson v1.3.0
 	github.com/twinj/uuid v1.0.0
 	github.com/twitchscience/kinsumer v0.0.0-20190125174422-b6682f9326f7
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
