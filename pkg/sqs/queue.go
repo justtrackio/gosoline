@@ -44,14 +44,23 @@ type queue struct {
 }
 
 func New(config cfg.Config, logger mon.Logger, s Settings) *queue {
+	var err error
+
+	name := namingStrategy(s.AppId, s.QueueId)
 	c := GetClient(config, logger)
 
 	s.PadFromConfig(config)
 	s.AutoCreate = config.GetBool("aws_sqs_autoCreate")
 
 	CreateQueue(logger, c, s)
-	s.Url = GetUrl(logger, c, s)
-	s.Arn = GetArn(logger, c, s)
+
+	if s.Url, err = GetUrl(logger, c, s); err != nil {
+		logger.Fatalf(err, "could not get url of queue %s", name)
+	}
+
+	if s.Arn, err = GetArn(logger, c, s); err != nil {
+		logger.Fatalf(err, "could not get arn of queue %s", name)
+	}
 
 	return NewWithInterfaces(logger, c, s)
 }

@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const MetricNamePipelineProcessedCount = "PipelineProcessedCount"
+
 type PipelineCallback interface {
 	Boot(config cfg.Config, logger mon.Logger) error
 	Process(ctx context.Context, messages []*Message) ([]*Message, error)
@@ -24,6 +26,7 @@ type Pipeline struct {
 	kernel.ForegroundModule
 
 	logger   mon.Logger
+	metric   mon.MetricWriter
 	tmb      tomb.Tomb
 	lck      sync.Mutex
 	input    Input
@@ -47,6 +50,9 @@ func (p *Pipeline) Boot(config cfg.Config, logger mon.Logger) error {
 		return err
 	}
 
+	defaults := getDefaultPipelineMetrics()
+	metric := mon.NewMetricDaemonWriter(defaults...)
+
 	input := NewConfigurableInput(config, logger, "pipeline")
 	output := NewConfigurableOutput(config, logger, "pipeline")
 
@@ -55,11 +61,12 @@ func (p *Pipeline) Boot(config cfg.Config, logger mon.Logger) error {
 		BatchSize: config.GetInt("pipeline_batch_size"),
 	}
 
-	return p.BootWithInterfaces(logger, input, output, settings)
+	return p.BootWithInterfaces(logger, metric, input, output, settings)
 }
 
-func (p *Pipeline) BootWithInterfaces(logger mon.Logger, input Input, output Output, settings *PipelineSettings) error {
+func (p *Pipeline) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter, input Input, output Output, settings *PipelineSettings) error {
 	p.logger = logger
+	p.metric = metric
 	p.input = input
 	p.output = output
 	p.ticker = time.NewTicker(settings.Interval)
@@ -114,6 +121,7 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 	batchSize := len(p.batch)
 
 	if batchSize == 0 {
+		p.logger.Info("pipeline has nothing to do")
 		return
 	}
 
@@ -138,5 +146,23 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 
 	if err != nil {
 		p.logger.Error(err, "could not write messages to output")
+		return
+	}
+
+	p.logger.Infof("pipeline processed %d messages", batchSize)
+	p.metric.WriteOne(&mon.MetricDatum{
+		MetricName: MetricNamePipelineProcessedCount,
+		Value:      float64(batchSize),
+	})
+}
+
+func getDefaultPipelineMetrics() mon.MetricData {
+	return mon.MetricData{
+		{
+			Priority:   mon.PriorityHigh,
+			MetricName: MetricNamePipelineProcessedCount,
+			Unit:       mon.UnitCount,
+			Value:      0.0,
+		},
 	}
 }

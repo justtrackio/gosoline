@@ -135,6 +135,32 @@ func TestConfig_GetBool(t *testing.T) {
 	viper.AssertExpectations(t)
 }
 
+func TestConfig_Unmarshal(t *testing.T) {
+	type configMap struct {
+		Foo string `mapstructure:"foo"`
+		Bla string `mapstructure:"bla"`
+	}
+
+	config, viper := getNewConfig()
+
+	viper.On("IsSet", "env").Return(true)
+	viper.On("Get", "env").Return("test")
+
+	viper.On("IsSet", "key").Return(true)
+	viper.On("Get", "key").Return(map[string]interface{}{
+		"foo": "bar",
+		"bla": "{env}",
+	})
+
+	cm := configMap{}
+	config.Unmarshal("key", &cm)
+
+	assert.Equal(t, "bar", cm.Foo)
+	assert.Equal(t, "test", cm.Bla)
+
+	viper.AssertExpectations(t)
+}
+
 func TestConfig_AugmentString(t *testing.T) {
 	config, viper := getNewConfig()
 

@@ -30,11 +30,14 @@ func TestGoogleService_GetAuthRefresh(t *testing.T) {
 		"refresh_token": googleAuthRequest.RefreshToken,
 	}
 	httpResponse, err := json.Marshal(expectedGoogleAuthResponse)
+	response := &http.Response{
+		Body: httpResponse,
+	}
 
 	assert.NoError(t, err)
 
 	httpClient := new(httpMocks.Client)
-	httpClient.On("Post", httpRequest).Return(httpResponse, nil)
+	httpClient.On("Post", httpRequest).Return(response, nil)
 
 	service := NewGoogleServiceWithInterfaces(httpClient)
 	googleAuthResponse, err := service.GetAuthRefresh(googleAuthRequest)

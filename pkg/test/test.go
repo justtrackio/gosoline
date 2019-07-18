@@ -1,7 +1,6 @@
 package test
 
 import (
-	"errors"
 	"fmt"
 	"github.com/ory/dockertest"
 	"log"
@@ -29,22 +28,10 @@ func logErr(err error, msg string) {
 }
 
 func Boot() {
-	var ok bool
-	var name string
-	var config configMap
+	config := readConfig()
 
-	configs := readConfig()
-
-	for n, c := range configs {
-		if name, ok = n.(string); !ok {
-			logErr(errors.New("invalid type assert"), "name of the component should be string")
-		}
-
-		if config, ok = c.(configMap); !ok {
-			logErr(errors.New("invalid type assert"), "type of the component config should be map")
-		}
-
-		bootComponent(name, config)
+	for name, mockConfig := range config.Mocks {
+		bootComponent(name, mockConfig)
 	}
 
 	wait.Wait()
@@ -53,16 +40,16 @@ func Boot() {
 	fmt.Println()
 }
 
-func bootComponent(name string, config configMap) {
-	component := configString(config, "main", "component")
+func bootComponent(name string, mockConfig configInput) {
+	component := mockConfig["component"]
 
 	switch component {
 	case "dynamodb":
-		runDynamoDb(name, config)
+		runDynamoDb(name, mockConfig)
 	case "wiremock":
-		runWiremock(name, config)
+		runWiremock(name, mockConfig)
 	case "elasticsearch":
-		runElasticsearch(name, config)
+		runElasticsearch(name, mockConfig)
 	default:
 		err := fmt.Errorf("unknown component '%s'", component)
 		logErr(err, err.Error())

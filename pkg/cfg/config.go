@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/getsentry/raven-go"
+	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -153,6 +155,11 @@ func (c *config) Get(key string) interface{} {
 	return c.client.Get(key)
 }
 
+func (c *config) unsafeGet(key string) interface{} {
+	c.keyCheck(key)
+	return c.client.Get(key)
+}
+
 func (c *config) GetDuration(key string) time.Duration {
 	c.lck.Lock()
 	defer c.lck.Unlock()
@@ -215,15 +222,36 @@ func (c *config) GetBool(key string) bool {
 	return c.client.GetBool(key)
 }
 
-func (c *config) Unmarshal(key string, val interface{}) {
+func (c *config) Unmarshal(key string, output interface{}) {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
 	c.keyCheck(key)
-	err := c.client.UnmarshalKey(key, val)
+
+	decoderConfig := &mapstructure.DecoderConfig{
+		Metadata:         nil,
+		Result:           output,
+		WeaklyTypedInput: true,
+		DecodeHook: mapstructure.ComposeDecodeHookFunc(
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+			c.decodeAugmentHook(),
+		),
+	}
+
+	decoder, err := mapstructure.NewDecoder(decoderConfig)
 
 	if err != nil {
-		panic(err)
+		c.err(err, "could not initialize decoder to unmarshal key: %s", key)
+		return
+	}
+
+	values := c.unsafeGet(key)
+	err = decoder.Decode(values)
+
+	if err != nil {
+		c.err(err, "could not decode key: %s", key)
+		return
 	}
 }
 
@@ -239,7 +267,7 @@ func (c *config) unsafeAugmentString(str string) string {
 	matches := rp.FindAllStringSubmatch(str, -1)
 
 	for _, m := range matches {
-		replace := fmt.Sprint(c.client.Get(m[1]))
+		replace := fmt.Sprint(c.unsafeGet(m[1]))
 		str = strings.Replace(str, m[0], replace, -1)
 	}
 
@@ -257,8 +285,8 @@ func (c *config) configure() {
 	err = c.readConfigDefault()
 
 	if err != nil {
-		c.sentry.CaptureErrorAndWait(err, nil)
-		os.Exit(1)
+		c.err(err, "could not read default config file './config.dist.yml")
+		return
 	}
 
 	if c.client.GetString("env") == "test" {
@@ -276,9 +304,8 @@ func (c *config) configure() {
 	err = c.readConfigFile(configFile)
 
 	if err != nil {
-		fmt.Printf("could not read the provided config file: %s\n", err.Error())
-		c.sentry.CaptureErrorAndWait(err, nil)
-		os.Exit(1)
+		c.err(err, "could not read the provided config file: %s", *configFile)
+		return
 	}
 
 	for k, v := range configFlags {
@@ -290,7 +317,6 @@ func (c *config) readConfigDefault() error {
 	data, err := ioutil.ReadFile("./config.dist.yml")
 
 	if err != nil {
-		fmt.Printf("could not read default config file './config.dist.yml: %s\n'", err.Error())
 		return err
 	}
 
@@ -322,4 +348,25 @@ func (c *config) readConfigFile(configFile *string) error {
 	err := c.client.ReadInConfig() // Find and read the config file
 
 	return err
+}
+
+func (c *config) err(err error, msg string, args ...interface{}) {
+	err = errors.Wrapf(err, msg, args...)
+
+	c.sentry.CaptureErrorAndWait(err, nil)
+	panic(err)
+}
+
+func (c *config) decodeAugmentHook() interface{} {
+	return func(
+		f reflect.Kind,
+		t reflect.Kind,
+		data interface{}) (interface{}, error) {
+		if f != reflect.String || t != reflect.String {
+			return data, nil
+		}
+
+		raw := data.(string)
+		return c.unsafeAugmentString(raw), nil
+	}
 }

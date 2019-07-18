@@ -12,15 +12,15 @@ type Client struct {
 }
 
 // Get provides a mock function with given fields: request
-func (_m *Client) Get(request *http.Request) ([]byte, error) {
+func (_m *Client) Get(request *http.Request) (*http.Response, error) {
 	ret := _m.Called(request)
 
-	var r0 []byte
-	if rf, ok := ret.Get(0).(func(*http.Request) []byte); ok {
+	var r0 *http.Response
+	if rf, ok := ret.Get(0).(func(*http.Request) *http.Response); ok {
 		r0 = rf(request)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]byte)
+			r0 = ret.Get(0).(*http.Response)
 		}
 	}
 
@@ -35,15 +35,15 @@ func (_m *Client) Get(request *http.Request) ([]byte, error) {
 }
 
 // Post provides a mock function with given fields: request
-func (_m *Client) Post(request *http.Request) ([]byte, error) {
+func (_m *Client) Post(request *http.Request) (*http.Response, error) {
 	ret := _m.Called(request)
 
-	var r0 []byte
-	if rf, ok := ret.Get(0).(func(*http.Request) []byte); ok {
+	var r0 *http.Response
+	if rf, ok := ret.Get(0).(func(*http.Request) *http.Response); ok {
 		r0 = rf(request)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]byte)
+			r0 = ret.Get(0).(*http.Response)
 		}
 	}
 

@@ -16,8 +16,8 @@ const metricRequestFailure = "HttpClientRequestFailure"
 
 //go:generate mockery -name Client
 type Client interface {
-	Get(request *Request) (responseBody []byte, err error)
-	Post(request *Request) (responseBody []byte, err error)
+	Get(request *Request) (*Response, error)
+	Post(request *Request) (*Response, error)
 	SetTimeout(timeout time.Duration)
 	SetUserAgent(ua string)
 }
@@ -56,7 +56,7 @@ func (c *client) SetUserAgent(ua string) {
 	c.defaultHeaders[HdrUserAgent] = ua
 }
 
-func (c *client) Get(request *Request) (responseBody []byte, err error) {
+func (c *client) Get(request *Request) (*Response, error) {
 	if !request.Headers.Has("Accept") {
 		request.Headers.Set("Accept", "application/json")
 	}
@@ -64,7 +64,7 @@ func (c *client) Get(request *Request) (responseBody []byte, err error) {
 	return c.do(GetRequest, request)
 }
 
-func (c *client) Post(request *Request) (responseBody []byte, err error) {
+func (c *client) Post(request *Request) (*Response, error) {
 	if !request.Headers.Has("Content-Type") {
 		request.Headers.Set("Content-Type", "application/json")
 	}
@@ -72,7 +72,7 @@ func (c *client) Post(request *Request) (responseBody []byte, err error) {
 	return c.do(PostRequest, request)
 }
 
-func (c *client) do(method string, request *Request) (responseBody []byte, err error) {
+func (c *client) do(method string, request *Request) (*Response, error) {
 	req := c.buildRawRequest(request)
 	url, err := request.GetUrl()
 
@@ -111,7 +111,12 @@ func (c *client) do(method string, request *Request) (responseBody []byte, err e
 
 	c.writeMetric(metricRequestFailure+responseStatusCodeString, method)
 
-	return resp.Body(), err
+	response := &Response{
+		Body:       resp.Body(),
+		StatusCode: resp.StatusCode(),
+	}
+
+	return response, err
 }
 
 func (c client) buildRawRequest(request *Request) *resty.Request {

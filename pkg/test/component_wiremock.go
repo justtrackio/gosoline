@@ -7,12 +7,16 @@ import (
 	"net/http"
 )
 
-func runWiremock(name string, config configMap) {
+type wiremockConfig struct {
+	Mocks string `mapstructure:"mocks"`
+}
+
+func runWiremock(name string, config configInput) {
 	wait.Add(1)
 	go doRunWiremock(name, config)
 }
 
-func doRunWiremock(name string, config configMap) {
+func doRunWiremock(name string, configMap configInput) {
 	defer wait.Done()
 	defer log.Printf("%s component of type %s is ready", name, "wiremock")
 
@@ -28,8 +32,10 @@ func doRunWiremock(name string, config configMap) {
 		},
 	})
 
-	mocksPath := configString(config, name, "mocks")
-	jsonStr, err := ioutil.ReadFile(mocksPath)
+	config := &wiremockConfig{}
+	unmarshalConfig(configMap, config)
+
+	jsonStr, err := ioutil.ReadFile(config.Mocks)
 
 	if err != nil {
 		logErr(err, "could not read http mock configuration")

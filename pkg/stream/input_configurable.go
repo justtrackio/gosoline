@@ -51,8 +51,8 @@ func newKinesisInputFromConfig(config cfg.Config, logger mon.Logger, name string
 	config.Unmarshal(key, &settings)
 
 	readerSettings := KinsumerSettings{
-		StreamName:      config.AugmentString(settings.StreamName),
-		ApplicationName: config.AugmentString(settings.ApplicationName),
+		StreamName:      settings.StreamName,
+		ApplicationName: settings.ApplicationName,
 	}
 
 	return NewKinsumerInput(config, logger, NewKinsumer, readerSettings)

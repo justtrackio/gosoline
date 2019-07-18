@@ -17,23 +17,27 @@ import (
 
 const kinesisBatchSizeMax = 500
 
-type kinesisOutput struct {
-	client     kinesisiface.KinesisAPI
-	streamName string
-	logger     mon.Logger
+type KinesisOutputSettings struct {
+	StreamName string
 }
 
-func NewKinesisOutput(config cfg.Config, logger mon.Logger, streamName string) Output {
+type kinesisOutput struct {
+	logger   mon.Logger
+	client   kinesisiface.KinesisAPI
+	settings *KinesisOutputSettings
+}
+
+func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOutputSettings) Output {
 	client := cloud.GetKinesisClient(config, logger)
 
-	return NewKinesisOutputWithInterfaces(logger, client, streamName)
+	return NewKinesisOutputWithInterfaces(logger, client, settings)
 }
 
-func NewKinesisOutputWithInterfaces(logger mon.Logger, client kinesisiface.KinesisAPI, streamName string) Output {
+func NewKinesisOutputWithInterfaces(logger mon.Logger, client kinesisiface.KinesisAPI, settings *KinesisOutputSettings) Output {
 	return &kinesisOutput{
-		client:     client,
-		streamName: streamName,
-		logger:     logger,
+		client:   client,
+		settings: settings,
+		logger:   logger,
 	}
 }
 
@@ -65,7 +69,7 @@ func (o *kinesisOutput) Write(ctx context.Context, batch []*Message) error {
 		return nil
 	}
 
-	return errors.Wrap(errs[0], fmt.Sprintf("there were %v write errors to %v", len(errs), o.streamName))
+	return errors.Wrap(errs[0], fmt.Sprintf("there were %v write errors to %v", len(errs), o.settings.StreamName))
 }
 
 func (o *kinesisOutput) writeBatch(batch [][]byte) error {
@@ -99,7 +103,7 @@ func (o *kinesisOutput) writeBatch(batch [][]byte) error {
 func (o *kinesisOutput) putRecordsAndCollectFailed(records []*kinesis.PutRecordsRequestEntry) ([]*kinesis.PutRecordsRequestEntry, error) {
 	input := kinesis.PutRecordsInput{
 		Records:    records,
-		StreamName: aws.String(o.streamName),
+		StreamName: aws.String(o.settings.StreamName),
 	}
 
 	putRecordsOutput, err := o.client.PutRecords(&input)

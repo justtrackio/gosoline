@@ -7,6 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/sqs/mocks"
 	"github.com/aws/aws-sdk-go/aws"
 	awsSqs "github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/pkg/errors"
 	"testing"
 )
 
@@ -14,13 +15,10 @@ func TestCreateQueue(t *testing.T) {
 	logger := monMocks.NewLoggerMockedAll()
 	client := new(mocks.SQSAPI)
 
-	inputList := &awsSqs.ListQueuesInput{
-		QueueNamePrefix: aws.String("project-env-family-app-my-test-queue"),
+	inputList := &awsSqs.GetQueueUrlInput{
+		QueueName: aws.String("project-env-family-app-my-test-queue"),
 	}
-	outputList := &awsSqs.ListQueuesOutput{
-		QueueUrls: []*string{},
-	}
-	client.On("ListQueues", inputList).Return(outputList, nil)
+	client.On("GetQueueUrl", inputList).Return(nil, errors.New("blah"))
 
 	inputCreate := &awsSqs.CreateQueueInput{
 		QueueName: aws.String("project-env-family-app-my-test-queue"),

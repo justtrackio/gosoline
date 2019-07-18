@@ -72,7 +72,7 @@ func (service *UpdaterService) EnsureRecentExchangeRates() error {
 	}
 
 	exchangeRateResult := ExchangeResponse{}
-	err = xml.Unmarshal([]byte(response), &exchangeRateResult)
+	err = xml.Unmarshal(response.Body, &exchangeRateResult)
 
 	if err != nil {
 		service.logger.Error(err, "CurrencyUpdaterService: Error while unmarshalling exchange rates")

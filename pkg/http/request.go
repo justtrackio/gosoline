@@ -14,6 +14,9 @@ func (h Headers) Has(s string) bool {
 }
 
 func (h Headers) Set(key string, val string) {
+	if h == nil {
+		h = Headers{}
+	}
 	h[key] = val
 }
 
@@ -23,6 +26,11 @@ type Request struct {
 	QueryParams   QueryParams
 	Headers       Headers
 	Body          interface{}
+}
+
+type Response struct {
+	Body       []byte
+	StatusCode int
 }
 
 // use NewRequest to create a request, don't create the object inline!

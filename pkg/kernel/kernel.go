@@ -145,6 +145,8 @@ func (k *kernel) Stop(reason string) {
 }
 
 func (k *kernel) runFactories() error {
+	defer k.recover("error running module factories")
+
 	for _, f := range k.factories {
 		modules, err := f(k.config, k.logger)
 

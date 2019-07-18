@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	OutputTypeFile  = "file"
-	OutputTypeRedis = "redis"
+	OutputTypeFile    = "file"
+	OutputTypeKinesis = "kinesis"
+	OutputTypeRedis   = "redis"
 )
 
 func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Output {
@@ -18,6 +19,8 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Ou
 	switch t {
 	case OutputTypeFile:
 		return newFileOutputFromConfig(config, logger, name)
+	case OutputTypeKinesis:
+		return newKinesisOutputFromConfig(config, logger, name)
 	case OutputTypeRedis:
 		return newRedisListOutputFromConfig(config, logger, name)
 	default:
@@ -33,6 +36,20 @@ func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 	config.Unmarshal(key, settings)
 
 	return NewFileOutput(config, logger, settings)
+}
+
+type kinesisOutputConfiguration struct {
+	StreamName string `mapstructure:"streamName"`
+}
+
+func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
+	key := getConfigurableOutputKey(name)
+	settings := &kinesisOutputConfiguration{}
+	config.Unmarshal(key, settings)
+
+	return NewKinesisOutput(config, logger, &KinesisOutputSettings{
+		StreamName: settings.StreamName,
+	})
 }
 
 type redisListOutputConfiguration struct {

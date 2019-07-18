@@ -28,6 +28,8 @@ func (c *callback) Process(ctx context.Context, messages []*stream.Message) ([]*
 
 func runPipelineWithSettings(t *testing.T, settings *stream.PipelineSettings, ctx context.Context) {
 	logger := mocks.NewLoggerMockedAll()
+	metric := mocks.NewMetricWriterMockedAll()
+
 	input := stream.NewFileInputWithInterfaces(logger, stream.FileSettings{
 		Filename: "testdata/file_input.json",
 	})
@@ -36,7 +38,7 @@ func runPipelineWithSettings(t *testing.T, settings *stream.PipelineSettings, ct
 	callback := &callback{}
 	pipe := stream.NewPipeline(callback)
 
-	err := pipe.BootWithInterfaces(logger, input, output, settings)
+	err := pipe.BootWithInterfaces(logger, metric, input, output, settings)
 	assert.NoError(t, err, "the pipeline should boot without an error")
 
 	err = pipe.Run(ctx)

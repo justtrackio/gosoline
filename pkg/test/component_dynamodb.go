@@ -2,6 +2,7 @@ package test
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -17,24 +18,30 @@ const dynamoDbContainerName = "gosoline_test_dynamoDb"
 
 var dynamoDbClient *dynamodb.DynamoDB
 
+type dynamoDbConfig struct {
+	Fixtures string `mapstructure:"fixtures"`
+	Port     int    `mapstructure:"port"`
+}
+
 type DynamoDbFixtures struct {
 	Table *dynamodb.CreateTableInput
 	Items []map[string]interface{}
 }
 
-func runDynamoDb(name string, config configMap) {
+func runDynamoDb(name string, config configInput) {
 	wait.Add(1)
 	go doRunDynamoDb(name, config)
 }
 
-func doRunDynamoDb(name string, config configMap) {
+func doRunDynamoDb(name string, configMap configInput) {
 	defer wait.Done()
 	defer log.Printf("%s component of type %s is ready", name, "dynamodb")
 
-	fixturePath := configString(config, name, "fixtures")
+	config := &dynamoDbConfig{}
+	unmarshalConfig(configMap, config)
 
-	runDynamoDbContainer()
-	jsonStr, err := ioutil.ReadFile(fixturePath)
+	runDynamoDbContainer(config.Port)
+	jsonStr, err := ioutil.ReadFile(config.Fixtures)
 
 	if err != nil {
 		logErr(err, "could not read dynamodb fixtures")
@@ -48,18 +55,18 @@ func doRunDynamoDb(name string, config configMap) {
 	}
 
 	for name, fixture := range fixtures {
-		createDynamoDbTable(name, fixture)
+		createDynamoDbTable(config.Port, name, fixture)
 	}
 }
 
-func runDynamoDbContainer() {
-	client := getDynamoDbClient()
+func runDynamoDbContainer(port int) {
+	client := getDynamoDbClient(port)
 
 	runContainer(dynamoDbContainerName, ContainerConfig{
 		Repository: "amazon/dynamodb-local",
 		Tag:        "latest",
 		PortBindings: PortBinding{
-			"8000/tcp": "4569",
+			"8000/tcp": fmt.Sprint(port),
 		},
 		HealthCheck: func() error {
 			_, err := client.ListTables(&dynamodb.ListTablesInput{})
@@ -68,7 +75,7 @@ func runDynamoDbContainer() {
 	})
 }
 
-func createDynamoDbTable(table string, fixtures *DynamoDbFixtures) {
+func createDynamoDbTable(port int, table string, fixtures *DynamoDbFixtures) {
 	input := fixtures.Table
 	input.TableName = aws.String(table)
 	input.ProvisionedThroughput = &dynamodb.ProvisionedThroughput{
@@ -76,7 +83,7 @@ func createDynamoDbTable(table string, fixtures *DynamoDbFixtures) {
 		WriteCapacityUnits: aws.Int64(1),
 	}
 
-	client := getDynamoDbClient()
+	client := getDynamoDbClient(port)
 	_, err := client.CreateTable(input)
 
 	if err != nil {
@@ -84,11 +91,11 @@ func createDynamoDbTable(table string, fixtures *DynamoDbFixtures) {
 	}
 
 	for _, item := range fixtures.Items {
-		putDynamoDbItem(table, item)
+		putDynamoDbItem(port, table, item)
 	}
 }
 
-func putDynamoDbItem(table string, item map[string]interface{}) {
+func putDynamoDbItem(port int, table string, item map[string]interface{}) {
 	attributes, err := dynamodbattribute.MarshalMap(item)
 
 	if err != nil {
@@ -100,7 +107,7 @@ func putDynamoDbItem(table string, item map[string]interface{}) {
 		Item:      attributes,
 	}
 
-	client := getDynamoDbClient()
+	client := getDynamoDbClient(port)
 	_, err = client.PutItem(input)
 
 	if err != nil {
@@ -108,14 +115,16 @@ func putDynamoDbItem(table string, item map[string]interface{}) {
 	}
 }
 
-func getDynamoDbClient() *dynamodb.DynamoDB {
+func getDynamoDbClient(port int) *dynamodb.DynamoDB {
 	if dynamoDbClient != nil {
 		return dynamoDbClient
 	}
 
+	host := fmt.Sprintf("http://localhost:%d", port)
+
 	config := &aws.Config{
 		Region:   aws.String(endpoints.EuCentral1RegionID),
-		Endpoint: aws.String("http://localhost:4569"),
+		Endpoint: aws.String(host),
 		HTTPClient: &http.Client{
 			Timeout: 1 * time.Minute,
 		},

@@ -5,20 +5,25 @@ import (
 	"net/http"
 )
 
-func runElasticsearch(name string, config configMap) {
+type elasticsearchConfig struct {
+	Version string `mapstructure:"version"`
+}
+
+func runElasticsearch(name string, config configInput) {
 	wait.Add(1)
 	go doRunElasticsearch(name, config)
 }
 
-func doRunElasticsearch(name string, config configMap) {
+func doRunElasticsearch(name string, configMap configInput) {
 	defer wait.Done()
 	defer log.Printf("%s component of type %s is ready", name, "elasticsearch")
 
-	version := configString(config, name, "version")
+	config := &elasticsearchConfig{}
+	unmarshalConfig(configMap, config)
 
 	runContainer("gosoline_test_elasticsearch", ContainerConfig{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
-		Tag:        version,
+		Tag:        config.Version,
 		Env: []string{
 			"discovery.type=single-node",
 		},

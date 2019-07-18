@@ -15,13 +15,13 @@ func TestQueueExists(t *testing.T) {
 	logger := monMocks.NewLoggerMockedAll()
 	client := new(mocks.SQSAPI)
 
-	inputList := &awsSqs.ListQueuesInput{
-		QueueNamePrefix: aws.String("project-env-family-app-my-test-queue"),
+	inputList := &awsSqs.GetQueueUrlInput{
+		QueueName: aws.String("project-env-family-app-my-test-queue"),
 	}
-	outputList := &awsSqs.ListQueuesOutput{
-		QueueUrls: []*string{},
+	outputList := &awsSqs.GetQueueUrlOutput{
+		QueueUrl: aws.String(""),
 	}
-	client.On("ListQueues", inputList).Return(outputList, nil)
+	client.On("GetQueueUrl", inputList).Return(outputList, nil)
 
 	sqs.QueueExists(logger, client, sqs.Settings{
 		AppId: cfg.AppId{
@@ -49,7 +49,7 @@ func TestGetUrl(t *testing.T) {
 	}
 	client.On("GetQueueUrl", input).Return(output, nil)
 
-	url := sqs.GetUrl(logger, client, sqs.Settings{
+	url, err := sqs.GetUrl(logger, client, sqs.Settings{
 		AppId: cfg.AppId{
 			Project:     "project",
 			Environment: "env",
@@ -60,6 +60,7 @@ func TestGetUrl(t *testing.T) {
 		AutoCreate: true,
 	})
 
+	assert.NoError(t, err)
 	assert.Equal(t, "my-returned-queue-url", url, "the urls should match")
 	client.AssertExpectations(t)
 }
@@ -77,7 +78,7 @@ func TestGetArn(t *testing.T) {
 	}
 	client.On("GetQueueAttributes", input).Return(output, nil)
 
-	arn := sqs.GetArn(logger, client, sqs.Settings{
+	arn, err := sqs.GetArn(logger, client, sqs.Settings{
 		AppId: cfg.AppId{
 			Project:     "project",
 			Environment: "env",
@@ -89,6 +90,7 @@ func TestGetArn(t *testing.T) {
 		Url:        "my-returned-queue-url",
 	})
 
+	assert.NoError(t, err)
 	assert.Equal(t, "my-returned-queue-arn", arn, "the arns should match")
 	client.AssertExpectations(t)
 }

@@ -16,7 +16,9 @@ func TestWriter_WriteEvents(t *testing.T) {
 	kinesisClient := new(cloudMocks.KinesisAPI)
 
 	logger := monMocks.NewLoggerMockedAll()
-	writer := stream.NewKinesisOutputWithInterfaces(logger, kinesisClient, "streamName")
+	writer := stream.NewKinesisOutputWithInterfaces(logger, kinesisClient, &stream.KinesisOutputSettings{
+		StreamName: "streamName",
+	})
 
 	batch := []*stream.Message{{Body: "1"}, {Body: "2"}, {Body: "3"}}
 

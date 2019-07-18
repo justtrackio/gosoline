@@ -58,7 +58,7 @@ func (service *GoogleService) GetAuthRefresh(authRequest *GoogleAuthRequest) (*G
 	}
 
 	authResponse := &GoogleAuthResponse{}
-	err = json.Unmarshal(response, authResponse)
+	err = json.Unmarshal(response.Body, authResponse)
 
 	return authResponse, err
 }

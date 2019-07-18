@@ -9,11 +9,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 )
 
+type NamingFactory func(appId cfg.AppId, queueId string) string
+
 var namingStrategy = func(appId cfg.AppId, queueId string) string {
 	return fmt.Sprintf("%v-%v-%v-%v-%v", appId.Project, appId.Environment, appId.Family, appId.Application, queueId)
 }
 
-func WithNamingStrategy(strategy func(appId cfg.AppId, queueId string) string) {
+func WithNamingStrategy(strategy NamingFactory) {
 	namingStrategy = strategy
 }
 
@@ -21,24 +23,22 @@ func QueueExists(logger mon.Logger, client sqsiface.SQSAPI, s Settings) bool {
 	name := namingStrategy(s.AppId, s.QueueId)
 	logger.WithFields(mon.Fields{
 		"name": name,
-	}).Info("checking the existens of sqs queue")
+	}).Info("checking the existence of sqs queue")
 
-	input := &sqs.ListQueuesInput{
-		QueueNamePrefix: aws.String(name),
-	}
-
-	out, err := client.ListQueues(input)
+	url, err := GetUrl(logger, client, s)
 
 	if err != nil {
-		logger.Fatal(err, "could not get the list of sqs queues")
+		logger.Warn(err, "could not get the list of sqs queues")
+
+		return false
 	}
 
-	logger.Info(fmt.Sprintf("found %v queues", len(out.QueueUrls)))
+	logger.Info(fmt.Sprintf("found queue %s with url %s", name, url))
 
-	return len(out.QueueUrls) == 1
+	return len(url) > 0
 }
 
-func GetUrl(logger mon.Logger, client sqsiface.SQSAPI, s Settings) string {
+func GetUrl(logger mon.Logger, client sqsiface.SQSAPI, s Settings) (string, error) {
 	name := namingStrategy(s.AppId, s.QueueId)
 	logger.WithFields(mon.Fields{
 		"name": name,
@@ -53,7 +53,9 @@ func GetUrl(logger mon.Logger, client sqsiface.SQSAPI, s Settings) string {
 	if err != nil {
 		logger.WithFields(mon.Fields{
 			"name": name,
-		}).Fatal(err, "could not get url of sqs queue")
+		}).Warn(err, "could not get url of sqs queue")
+
+		return "", err
 	}
 
 	logger.WithFields(mon.Fields{
@@ -61,10 +63,10 @@ func GetUrl(logger mon.Logger, client sqsiface.SQSAPI, s Settings) string {
 		"url":  *out.QueueUrl,
 	}).Info("found url of sqs queue")
 
-	return *out.QueueUrl
+	return *out.QueueUrl, nil
 }
 
-func GetArn(logger mon.Logger, client sqsiface.SQSAPI, s Settings) string {
+func GetArn(logger mon.Logger, client sqsiface.SQSAPI, s Settings) (string, error) {
 	name := namingStrategy(s.AppId, s.QueueId)
 	logger.WithFields(mon.Fields{
 		"name": name,
@@ -80,7 +82,7 @@ func GetArn(logger mon.Logger, client sqsiface.SQSAPI, s Settings) string {
 	if err != nil {
 		logger.WithFields(mon.Fields{
 			"name": name,
-		}).Fatal(err, "could not get arn of sqs queue")
+		}).Warn(err, "could not get arn of sqs queue")
 	}
 
 	arn := *(out.Attributes["QueueArn"])
@@ -89,5 +91,5 @@ func GetArn(logger mon.Logger, client sqsiface.SQSAPI, s Settings) string {
 		"arn":  arn,
 	}).Info("found arn of sqs queue")
 
-	return arn
+	return arn, nil
 }
