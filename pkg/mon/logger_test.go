@@ -73,6 +73,26 @@ func TestClient_WithFields(t *testing.T) {
 	assert.JSONEq(t, expected, out.String(), "output should match")
 }
 
+func TestClient_WithContext_FieldRewrite(t *testing.T) {
+	logger, out := getLogger()
+	_ = logger.Option(mon.WithContextFieldsResolver(mon.ContextLoggerFieldsResolver))
+
+	ctx := mon.AppendLoggerContextField(context.Background(), mon.Fields{
+		"foo": "bar",
+		"faz": 1337,
+	})
+
+	ctx = mon.AppendLoggerContextField(ctx, mon.Fields{
+		"foo": "foobar",
+		"bar": "foo",
+	})
+
+	logger.WithContext(ctx).Info("foobar")
+
+	expected := `{"fields":{},"context":{"faz":1337,"foo":"foobar","bar":"foo"},"channel": "default", "level":2,"level_name":"info","message":"foobar","timestamp":449884800}`
+	assert.JSONEq(t, expected, out.String(), "output should match")
+}
+
 func TestClient_Info(t *testing.T) {
 	logger, out := getLogger()
 

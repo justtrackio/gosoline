@@ -76,6 +76,54 @@ func TestRedisSet(t *testing.T) {
 	assert.Nil(t, err, "there should be no error on Set with expiration date")
 }
 
+func TestRedisIncr(t *testing.T) {
+	_, c := buildClient()
+
+	val, err := c.Incr("key")
+	assert.Nil(t, err, "there should be no error on Incr")
+	assert.Equal(t, int64(1), val)
+
+	val, err = c.Incr("key")
+	assert.Nil(t, err, "there should be no error on Incr")
+	assert.Equal(t, int64(2), val)
+
+	val, err = c.IncrBy("key", int64(3))
+	assert.Nil(t, err, "there should be no error on IncrBy")
+	assert.Equal(t, int64(5), val)
+}
+
+func TestRedisDecr(t *testing.T) {
+	_, c := buildClient()
+
+	err := c.Set("key", 10, time.Minute*10)
+
+	val, err := c.Decr("key")
+	assert.Nil(t, err, "there should be no error on Decr")
+	assert.Equal(t, int64(9), val)
+
+	val, err = c.Decr("key")
+	assert.Nil(t, err, "there should be no error on Decr")
+	assert.Equal(t, int64(8), val)
+
+	val, err = c.DecrBy("key", int64(5))
+	assert.Nil(t, err, "there should be no error on DecrBy")
+	assert.Equal(t, int64(3), val)
+}
+
+func TestRedisExpire(t *testing.T) {
+	_, c := buildClient()
+
+	_, _ = c.Incr("key")
+
+	result, err := c.Expire("key", time.Nanosecond)
+	assert.Nil(t, err, "there should be no error on Expire")
+	assert.True(t, result)
+
+	amount, err := c.Exists("key")
+	assert.Equal(t, int64(0), amount)
+	assert.Nil(t, err, "there should be no error on Exists")
+}
+
 func TestRedisSetWithOOM(t *testing.T) {
 	var ttl time.Duration
 

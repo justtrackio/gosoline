@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
+//go:generate mockery -name SimpleRepository
 type SimpleRepository interface {
 	DeleteItem(ctx context.Context, result interface{}) (*DeleteItemResult, error)
 	GetItem(ctx context.Context, result interface{}) (*GetItemResult, error)
