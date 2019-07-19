@@ -42,6 +42,48 @@ func (_m *Client) BLPop(timeout time.Duration, keys ...string) ([]string, error)
 	return r0, r1
 }
 
+// Decr provides a mock function with given fields: key
+func (_m *Client) Decr(key string) (int64, error) {
+	ret := _m.Called(key)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(string) int64); ok {
+		r0 = rf(key)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DecrBy provides a mock function with given fields: key, amount
+func (_m *Client) DecrBy(key string, amount int64) (int64, error) {
+	ret := _m.Called(key, amount)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(string, int64) int64); ok {
+		r0 = rf(key, amount)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, int64) error); ok {
+		r1 = rf(key, amount)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Del provides a mock function with given fields: key
 func (_m *Client) Del(key string) (int64, error) {
 	ret := _m.Called(key)
@@ -83,6 +125,27 @@ func (_m *Client) Exists(keys ...string) (int64, error) {
 	var r1 error
 	if rf, ok := ret.Get(1).(func(...string) error); ok {
 		r1 = rf(keys...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Expire provides a mock function with given fields: key, ttl
+func (_m *Client) Expire(key string, ttl time.Duration) (bool, error) {
+	ret := _m.Called(key, ttl)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string, time.Duration) bool); ok {
+		r0 = rf(key, ttl)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, time.Duration) error); ok {
+		r1 = rf(key, ttl)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -144,6 +207,48 @@ func (_m *Client) HSet(key string, field string, value interface{}) error {
 	}
 
 	return r0
+}
+
+// Incr provides a mock function with given fields: key
+func (_m *Client) Incr(key string) (int64, error) {
+	ret := _m.Called(key)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(string) int64); ok {
+		r0 = rf(key)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// IncrBy provides a mock function with given fields: key, amount
+func (_m *Client) IncrBy(key string, amount int64) (int64, error) {
+	ret := _m.Called(key, amount)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(string, int64) int64); ok {
+		r0 = rf(key, amount)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, int64) error); ok {
+		r1 = rf(key, amount)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // IsAlive provides a mock function with given fields:

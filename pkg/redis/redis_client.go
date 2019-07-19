@@ -23,7 +23,6 @@ func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
 
 //go:generate mockery -name Client
 type Client interface {
-	Exists(keys ...string) (int64, error)
 	Set(key string, value interface{}, expiration time.Duration) error
 	Get(key string) (string, error)
 	Del(key string) (int64, error)
@@ -34,6 +33,14 @@ type Client interface {
 
 	HGet(key, field string) (string, error)
 	HSet(key, field string, value interface{}) error
+
+	Incr(key string) (int64, error)
+	IncrBy(key string, amount int64) (int64, error)
+	Decr(key string) (int64, error)
+	DecrBy(key string, amount int64) (int64, error)
+
+	Exists(keys ...string) (int64, error)
+	Expire(key string, ttl time.Duration) (bool, error)
 
 	IsAlive() bool
 
@@ -168,6 +175,26 @@ func (c *redisClient) HSet(key, field string, value interface{}) error {
 	})
 
 	return res.(*baseRedis.BoolCmd).Err()
+}
+
+func (c *redisClient) Incr(key string) (int64, error) {
+	return c.base.Incr(key).Result()
+}
+
+func (c *redisClient) IncrBy(key string, amount int64) (int64, error) {
+	return c.base.IncrBy(key, amount).Result()
+}
+
+func (c *redisClient) Decr(key string) (int64, error) {
+	return c.base.Decr(key).Result()
+}
+
+func (c *redisClient) DecrBy(key string, amount int64) (int64, error) {
+	return c.base.DecrBy(key, amount).Result()
+}
+
+func (c *redisClient) Expire(key string, ttl time.Duration) (bool, error) {
+	return c.base.Expire(key, ttl).Result()
 }
 
 func (c *redisClient) IsAlive() bool {
