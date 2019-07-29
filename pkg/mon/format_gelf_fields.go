@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func formatterGelfFields(clock clockwork.Clock, channel string, level string, msg string, logErr error, fields Fields) ([]byte, error) {
+func formatterGelfFields(clock clockwork.Clock, channel string, level string, msg string, logErr error, fields Fields, contextFields ContextFields) ([]byte, error) {
 	data := make(Fields, 8)
 
 	if logErr != nil {
@@ -19,6 +19,12 @@ func formatterGelfFields(clock clockwork.Clock, channel string, level string, ms
 		return nil, fmt.Errorf("failed to marshal fields to JSON, %v", err)
 	}
 	data["_fields"] = string(jsonFields)
+
+	jsonContextFields, err := json.Marshal(contextFields)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal context fields to JSON, %v", err)
+	}
+	data["_context"] = string(jsonContextFields)
 
 	data["version"] = "1.1"
 	data["short_message"] = msg

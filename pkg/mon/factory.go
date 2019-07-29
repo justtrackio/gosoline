@@ -47,19 +47,20 @@ func NewLoggerWithInterfaces(clock clockwork.Clock, out io.Writer, level string,
 	}
 
 	logger := &logger{
-		clock:        clock,
-		output:       out,
-		outputLck:    &sync.Mutex{},
-		hooks:        make([]LoggerHook, 0),
-		level:        levelPrio(level),
-		format:       format,
-		tags:         tags,
-		configValues: configValues,
-		channel:      ChannelDefault,
-		fields:       fields,
-		ecsLck:       &sync.Mutex{},
-		ecsAvailable: false,
-		ecsMetadata:  make(EcsMetadata),
+		clock:         clock,
+		output:        out,
+		outputLck:     &sync.Mutex{},
+		hooks:         make([]LoggerHook, 0),
+		level:         levelPrio(level),
+		format:        format,
+		tags:          tags,
+		configValues:  configValues,
+		channel:       ChannelDefault,
+		fields:        fields,
+		contextFields: ContextFields{},
+		ecsLck:        &sync.Mutex{},
+		ecsAvailable:  false,
+		ecsMetadata:   make(EcsMetadata),
 	}
 
 	logger.checkEcsMetadataAvailability()

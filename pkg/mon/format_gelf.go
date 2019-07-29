@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func formatterGelf(clock clockwork.Clock, channel string, level string, msg string, logErr error, fields Fields) ([]byte, error) {
+func formatterGelf(clock clockwork.Clock, channel string, level string, msg string, logErr error, fields Fields, contextFields ContextFields) ([]byte, error) {
 	data := make(Fields, 8)
 
 	if logErr != nil {
@@ -16,6 +16,10 @@ func formatterGelf(clock clockwork.Clock, channel string, level string, msg stri
 
 	for k, v := range fields {
 		data["_"+k] = v
+	}
+
+	for k, v := range contextFields {
+		data["_context_"+k] = v
 	}
 
 	data["version"] = "1.1"

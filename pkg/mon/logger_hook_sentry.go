@@ -22,7 +22,7 @@ func NewSentryHook(config cfg.Config) *sentryHook {
 	}
 }
 
-func (h sentryHook) Fire(level string, msg string, err error, fields Fields, tags Tags, configValues ConfigValues, context context.Context, ecsMetadata EcsMetadata) error {
+func (h sentryHook) Fire(level string, msg string, err error, fields Fields, contextFields ContextFields, tags Tags, configValues ConfigValues, context context.Context, ecsMetadata EcsMetadata) error {
 	if err == nil {
 		return nil
 	}
@@ -34,6 +34,7 @@ func (h sentryHook) Fire(level string, msg string, err error, fields Fields, tag
 	extra := raven.Extra{
 		//"config": configValues,
 		"fields":       fields,
+		"context":      contextFields,
 		"ecs_metadata": ecsMetadata,
 	}
 

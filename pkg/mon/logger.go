@@ -53,7 +53,7 @@ type ConfigValues map[string]interface{}
 type Fields map[string]interface{}
 type EcsMetadata map[string]interface{}
 
-type formatter func(clock clockwork.Clock, channel string, level string, msg string, logErr error, fields Fields) ([]byte, error)
+type formatter func(clock clockwork.Clock, channel string, level string, msg string, logErr error, fields Fields, contextFields ContextFields) ([]byte, error)
 
 var formatters = map[string]formatter{
 	FormatConsole:    formatterConsole,
@@ -95,11 +95,12 @@ type logger struct {
 	format string
 	level  int
 
-	tags         Tags
-	configValues ConfigValues
-	channel      string
-	fields       Fields
-	context      context.Context
+	tags          Tags
+	configValues  ConfigValues
+	channel       string
+	fields        Fields
+	contextFields ContextFields
+	context       context.Context
 
 	ecsLck       *sync.Mutex
 	ecsAvailable bool
@@ -108,20 +109,21 @@ type logger struct {
 
 func (l *logger) copy() *logger {
 	return &logger{
-		clock:        l.clock,
-		outputLck:    l.outputLck,
-		output:       l.output,
-		hooks:        l.hooks,
-		level:        l.level,
-		format:       l.format,
-		tags:         l.tags,
-		configValues: l.configValues,
-		channel:      l.channel,
-		fields:       l.fields,
-		context:      l.context,
-		ecsLck:       l.ecsLck,
-		ecsAvailable: l.ecsAvailable,
-		ecsMetadata:  l.ecsMetadata,
+		clock:         l.clock,
+		outputLck:     l.outputLck,
+		output:        l.output,
+		hooks:         l.hooks,
+		level:         l.level,
+		format:        l.format,
+		tags:          l.tags,
+		configValues:  l.configValues,
+		channel:       l.channel,
+		fields:        l.fields,
+		contextFields: l.contextFields,
+		context:       l.context,
+		ecsLck:        l.ecsLck,
+		ecsAvailable:  l.ecsAvailable,
+		ecsMetadata:   l.ecsMetadata,
 	}
 }
 
@@ -145,6 +147,7 @@ func (l *logger) WithContext(ctx context.Context) Logger {
 
 	cpy := l.copy()
 	cpy.context = ctx
+	cpy.contextFields = fromLoggerContext(ctx)
 
 	return cpy.WithFields(Fields{
 		"trace_id": span.GetTrace().GetTraceId(),
@@ -262,12 +265,12 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 	ecsMetadata := l.readEcsMetadata()
 
 	for _, h := range l.hooks {
-		if err := h.Fire(level, msg, logErr, fields, l.tags, l.configValues, l.context, ecsMetadata); err != nil {
+		if err := h.Fire(level, msg, logErr, fields, l.contextFields, l.tags, l.configValues, l.context, ecsMetadata); err != nil {
 			l.err(err)
 		}
 	}
 
-	buffer, err := formatters[l.format](l.clock, l.channel, level, msg, logErr, fields)
+	buffer, err := formatters[l.format](l.clock, l.channel, level, msg, logErr, fields, l.contextFields)
 
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
@@ -277,7 +280,7 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 }
 
 func (l *logger) err(err error) {
-	buffer, err := formatters[l.format](l.clock, l.channel, Error, err.Error(), err, Fields{})
+	buffer, err := formatters[l.format](l.clock, l.channel, Error, err.Error(), err, Fields{}, ContextFields{})
 
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
