@@ -1,54 +1,61 @@
 package es
 
 import (
-	"context"
+	"bytes"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/aws/signer/v4"
-	"github.com/olivere/elastic"
+	elasticsearch6 "github.com/elastic/go-elasticsearch/v6"
 	"github.com/sha1sum/aws_signing_client"
 	"io/ioutil"
 	"net/http"
 	"time"
 )
 
-var eclV6 = map[string]*elastic.Client{}
+type ClientV6 struct {
+	elasticsearch6.Client
+}
 
-type clientBuilderV6 func(logger Logger, url string) (*elastic.Client, error)
+var eclV6 = map[string]*ClientV6{}
+
+type clientBuilderV6 func(logger Logger, url string) (*ClientV6, error)
 
 var factoryV6 = map[string]clientBuilderV6{
-	"default": func(logger Logger, url string) (*elastic.Client, error) {
-		client, err := elastic.NewClient(
-			elastic.SetURL(url),
-			elastic.SetSniff(false),
-		)
+	"default": func(logger Logger, url string) (*ClientV6, error) {
+		cfg := elasticsearch6.Config{
+			Addresses: []string{
+				url,
+			},
+		}
 
+		elasticClient, err := elasticsearch6.NewClient(cfg)
+		if err != nil {
+			logger.Fatal(err, "can't create ES client V6")
+			return nil, err
+		}
+
+		client := &ClientV6{*elasticClient}
 		return client, err
 	},
 
-	"aws": func(logger Logger, url string) (*elastic.Client, error) {
+	"aws": func(logger Logger, url string) (*ClientV6, error) {
 		client, err := GetAwsClientV6(logger, url)
 
 		return client, err
 	},
 }
 
-func NewClientV6(config cfg.Config, logger Logger, name string) *elastic.Client {
+func NewClientV6(config cfg.Config, logger Logger, name string) *ClientV6 {
 	clientTypeKey := fmt.Sprintf("es_%s_type", name)
 	clientType := config.GetString(clientTypeKey)
 
 	urlKey := fmt.Sprintf("es_%s_endpoint", name)
 	url := config.GetString(urlKey)
 
-	logger.Info("creating client ", clientType, " for host ", url)
-	client, err := factoryV6[clientType](logger, url)
-
-	if err != nil {
-		logger.Fatal(err, "error creating the client")
-	}
+	client := NewSimpleClientV6(logger, url, clientType)
 
 	templateKey := fmt.Sprintf("es_%s_templates", name)
 	templatePath := config.GetStringSlice(templateKey)
@@ -57,7 +64,19 @@ func NewClientV6(config cfg.Config, logger Logger, name string) *elastic.Client 
 	return client
 }
 
-func ProvideClientV6(config cfg.Config, logger Logger, name string) *elastic.Client {
+func NewSimpleClientV6(logger Logger, url string, clientType string) *ClientV6 {
+	logger.Info("creating client ", clientType, " for host ", url)
+
+	client, err := factoryV6[clientType](logger, url)
+
+	if err != nil {
+		logger.Fatal(err, "error creating the client")
+	}
+
+	return client
+}
+
+func ProvideClientV6(config cfg.Config, logger Logger, name string) *ClientV6 {
 	mtx.Lock()
 	defer mtx.Unlock()
 
@@ -70,7 +89,7 @@ func ProvideClientV6(config cfg.Config, logger Logger, name string) *elastic.Cli
 	return eclV6[name]
 }
 
-func GetAwsClientV6(logger Logger, url string) (*elastic.Client, error) {
+func GetAwsClientV6(logger Logger, url string) (*ClientV6, error) {
 	configTemplate := &aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(true),
 		Region:                        aws.String(endpoints.EuCentral1RegionID),
@@ -93,21 +112,21 @@ func GetAwsClientV6(logger Logger, url string) (*elastic.Client, error) {
 		logger.Fatal(err, "error creating the elastic aws client")
 	}
 
-	client, err := elastic.NewClient(
-		elastic.SetURL(url),
-		elastic.SetScheme("https"),
-		elastic.SetHttpClient(awsClient),
-		elastic.SetSniff(false),
-	)
+	configES := elasticsearch6.Config{
+		Addresses: []string{url},
+		Transport: awsClient.Transport,
+	}
 
+	elasticClient, err := elasticsearch6.NewClient(configES)
+	client := &ClientV6{*elasticClient}
 	return client, err
 }
 
-func putTemplatesV6(logger Logger, client *elastic.Client, name string, paths []string) {
+func putTemplatesV6(logger Logger, client *ClientV6, name string, paths []string) {
 	files := getTemplateFiles(logger, paths)
 
 	for _, file := range files {
-		bytes, err := ioutil.ReadFile(file)
+		buf, err := ioutil.ReadFile(file)
 
 		if err != nil {
 			msg := fmt.Sprintf("could not read es-templates file. "+
@@ -116,15 +135,29 @@ func putTemplatesV6(logger Logger, client *elastic.Client, name string, paths []
 			logger.Fatal(fmt.Errorf(msg), msg)
 		}
 
-		svc := elastic.NewIndicesPutTemplateService(client)
-		svc.Name(name)
-		svc.BodyString(string(bytes))
-
-		_, err = svc.Do(context.TODO())
+		// Create template
+		res, err := client.Indices.PutTemplate(
+			name,
+			bytes.NewReader(buf),
+		)
 
 		if err != nil {
 			msg := fmt.Sprintf("could not put the es-template in file %s for es client %s", file, name)
 			logger.Fatal(err, msg)
+		}
+
+		defer func() {
+			closeError := res.Body.Close()
+			if closeError != nil {
+				msg := "could not close response reader for PutTemplatesV6"
+				logger.Info(msg)
+			}
+		}()
+
+		if res.IsError() {
+			msg := fmt.Sprintf("could not put template from file %s"+
+				"Got error from ES: %s, %s", file, res.Status(), res.String())
+			logger.Fatal(fmt.Errorf(msg), msg)
 		}
 	}
 }

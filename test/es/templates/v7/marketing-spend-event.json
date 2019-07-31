@@ -1,0 +1,21 @@
+{
+  "index_patterns": "marketing-spend-event-*",
+  "mappings": {
+    "properties": {
+      "data": {
+        "properties": {
+          "spending": {
+            "properties": {
+              "value": {
+                "type": "float"
+              },
+              "valueEur": {
+                "type": "float"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

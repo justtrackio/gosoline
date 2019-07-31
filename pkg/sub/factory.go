@@ -10,10 +10,11 @@ import (
 )
 
 type Subscription struct {
-	Input  string            `mapstructure:"input"`
-	Output string            `mapstructure:"output"`
-	Redis  string            `mapstructure:"redis"`
-	Model  SubscriptionModel `mapstructure:"model"`
+	Input       string            `mapstructure:"input"`
+	Output      string            `mapstructure:"output"`
+	Redis       string            `mapstructure:"redis"`
+	SourceModel SubscriptionModel `mapstructure:"source"`
+	TargetModel SubscriptionModel `mapstructure:"target"`
 }
 
 type SubscriptionModel struct {
@@ -41,19 +42,31 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 	config.Unmarshal("subscriptions", &subscriptions)
 
 	for _, s := range subscriptions {
-		mId := mdl.ModelId{
-			Family:      s.Model.Family,
-			Application: s.Model.Application,
-			Name:        s.Model.Name,
+		sourceModelId := mdl.ModelId{
+			Family:      s.SourceModel.Family,
+			Application: s.SourceModel.Application,
+			Name:        s.SourceModel.Name,
 		}
-		mId.PadFromConfig(config)
+		sourceModelId.PadFromConfig(config)
+
+		targetModelId := sourceModelId
+		if s.TargetModel.Family != "" {
+			targetModelId.Family = s.TargetModel.Family
+		}
+		if s.TargetModel.Application != "" {
+			targetModelId.Application = s.TargetModel.Application
+		}
+		if s.TargetModel.Name != "" {
+			targetModelId.Name = s.TargetModel.Name
+		}
 
 		settings := Settings{
-			Type:    s.Output,
-			ModelId: mId,
+			Type:          s.Output,
+			SourceModelId: sourceModelId,
+			TargetModelId: targetModelId,
 		}
 
-		input, err := getInputByType(config, logger, s.Input, mId)
+		input, err := getInputByType(config, logger, s.Input, sourceModelId)
 		if err != nil {
 			logger.Error(err, "could not build subscribers")
 			return modules, err
@@ -65,7 +78,7 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 			return modules, err
 		}
 
-		modelId := mId.String()
+		modelId := sourceModelId.String()
 		if _, ok := transformerMapType[modelId]; !ok {
 			err := fmt.Errorf("there is no transformer for modelId %s", modelId)
 			logger.Errorf(err, "missing transformer for SubscriberFactory of type %s", s.Output)
@@ -74,9 +87,9 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 		}
 		transformerMapVersion := transformerMapType[modelId]
 
-		subscriber := NewSubscriber(input, output, transformerMapVersion, settings)
+		subscriber := NewSubscriber(logger, input, output, transformerMapVersion, settings)
 
-		name := fmt.Sprintf("sub_%s_%s_%s_%s", s.Output, mId.Family, mId.Application, mId.Name)
+		name := fmt.Sprintf("sub_%s_%s_%s_%s", s.Output, sourceModelId.Family, sourceModelId.Application, sourceModelId.Name)
 		modules[name] = subscriber
 	}
 
@@ -116,6 +129,8 @@ func getOutputByType(outType string) (Output, error) {
 		return &subOutDb{}, nil
 	case "ddb":
 		return &subOutDdb{}, nil
+	case "kvstore":
+		return &subOutKvstore{}, nil
 	}
 
 	return nil, fmt.Errorf("there is no output defined of type %s", outType)

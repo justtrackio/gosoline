@@ -17,7 +17,7 @@ type subOutBlob struct {
 func (p *subOutBlob) Boot(config cfg.Config, logger mon.Logger, settings Settings) error {
 	p.logger = logger
 	p.store = blob.NewStore(config, logger, blob.Settings{
-		Prefix: settings.ModelId.String(),
+		Prefix: settings.TargetModelId.String(),
 	})
 
 	return nil

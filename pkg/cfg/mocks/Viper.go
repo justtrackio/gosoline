@@ -81,6 +81,20 @@ func (_m *Viper) GetDuration(_a0 string) time.Duration {
 	return r0
 }
 
+// GetFloat64 provides a mock function with given fields: _a0
+func (_m *Viper) GetFloat64(_a0 string) float64 {
+	ret := _m.Called(_a0)
+
+	var r0 float64
+	if rf, ok := ret.Get(0).(func(string) float64); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(float64)
+	}
+
+	return r0
+}
+
 // GetInt provides a mock function with given fields: _a0
 func (_m *Viper) GetInt(_a0 string) int {
 	ret := _m.Called(_a0)

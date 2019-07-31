@@ -89,6 +89,20 @@ func (_m *Config) GetDuration(_a0 string) time.Duration {
 	return r0
 }
 
+// GetFloat64 provides a mock function with given fields: _a0
+func (_m *Config) GetFloat64(_a0 string) float64 {
+	ret := _m.Called(_a0)
+
+	var r0 float64
+	if rf, ok := ret.Get(0).(func(string) float64); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(float64)
+	}
+
+	return r0
+}
+
 // GetInt provides a mock function with given fields: _a0
 func (_m *Config) GetInt(_a0 string) int {
 	ret := _m.Called(_a0)
@@ -144,6 +158,20 @@ func (_m *Config) GetStringSlice(key string) []string {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
 		}
+	}
+
+	return r0
+}
+
+// IsSet provides a mock function with given fields: _a0
+func (_m *Config) IsSet(_a0 string) bool {
+	ret := _m.Called(_a0)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
 	}
 
 	return r0

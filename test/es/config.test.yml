@@ -1,0 +1,10 @@
+mocks:
+  metrics_v6:
+    component: elasticsearch
+    version: 6.8.1
+    port: 9226
+
+  metrics_v7:
+    component: elasticsearch
+    version: 7.1.1
+    port: 9227

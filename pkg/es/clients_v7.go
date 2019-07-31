@@ -1,14 +1,14 @@
 package es
 
 import (
-	"context"
+	"bytes"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/aws/signer/v4"
-	"github.com/olivere/elastic/v7"
+	elasticsearch7 "github.com/elastic/go-elasticsearch/v7"
 	"github.com/sha1sum/aws_signing_client"
 	"io/ioutil"
 	"net/http"
@@ -24,29 +24,51 @@ type Logger interface {
 	Info(args ...interface{})
 }
 
-var mtx sync.Mutex
-var ecl = map[string]*elastic.Client{}
+type ClientV7 struct {
+	elasticsearch7.Client
+}
 
-type clientBuilder func(logger Logger, url string) (*elastic.Client, error)
+var mtx sync.Mutex
+var ecl = map[string]*ClientV7{}
+
+type clientBuilder func(logger Logger, url string) (*ClientV7, error)
 
 var factory = map[string]clientBuilder{
-	"default": func(logger Logger, url string) (*elastic.Client, error) {
-		client, err := elastic.NewClient(
-			elastic.SetURL(url),
-			elastic.SetSniff(false),
-		)
+	"default": func(logger Logger, url string) (*ClientV7, error) {
+		cfg := elasticsearch7.Config{
+			Addresses: []string{
+				url,
+			},
+		}
 
+		elasticClient, err := elasticsearch7.NewClient(cfg)
+		if err != nil {
+			logger.Fatal(err, "can't create ES client V7")
+			return nil, err
+		}
+
+		client := &ClientV7{*elasticClient}
 		return client, err
 	},
 
-	"aws": func(logger Logger, url string) (*elastic.Client, error) {
+	"aws": func(logger Logger, url string) (*ClientV7, error) {
 		client, err := GetAwsClient(logger, url)
 
 		return client, err
 	},
 }
 
-func NewClient(config cfg.Config, logger Logger, name string) *elastic.Client {
+func NewClient(config cfg.Config, logger Logger, name string) *ClientV7 {
+	client := NewSimpleClient(config, logger, name)
+
+	templateKey := fmt.Sprintf("es_%s_templates", name)
+	templatePath := config.GetStringSlice(templateKey)
+	putTemplates(logger, client, name, templatePath)
+
+	return client
+}
+
+func NewSimpleClient(config cfg.Config, logger Logger, name string) *ClientV7 {
 	clientTypeKey := fmt.Sprintf("es_%s_type", name)
 	clientType := config.GetString(clientTypeKey)
 
@@ -60,14 +82,10 @@ func NewClient(config cfg.Config, logger Logger, name string) *elastic.Client {
 		logger.Fatal(err, "error creating the client")
 	}
 
-	templateKey := fmt.Sprintf("es_%s_templates", name)
-	templatePath := config.GetStringSlice(templateKey)
-	putTemplates(logger, client, name, templatePath)
-
 	return client
 }
 
-func ProvideClient(config cfg.Config, logger Logger, name string) *elastic.Client {
+func ProvideClient(config cfg.Config, logger Logger, name string) *ClientV7 {
 	mtx.Lock()
 	defer mtx.Unlock()
 
@@ -80,7 +98,7 @@ func ProvideClient(config cfg.Config, logger Logger, name string) *elastic.Clien
 	return ecl[name]
 }
 
-func GetAwsClient(logger Logger, url string) (*elastic.Client, error) {
+func GetAwsClient(logger Logger, url string) (*ClientV7, error) {
 	configTemplate := &aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(true),
 		Region:                        aws.String(endpoints.EuCentral1RegionID),
@@ -103,21 +121,22 @@ func GetAwsClient(logger Logger, url string) (*elastic.Client, error) {
 		logger.Fatal(err, "error creating the elastic aws client")
 	}
 
-	client, err := elastic.NewClient(
-		elastic.SetURL(url),
-		elastic.SetScheme("https"),
-		elastic.SetHttpClient(awsClient),
-		elastic.SetSniff(false),
-	)
+	configES := elasticsearch7.Config{
+		Addresses: []string{url},
+		Transport: awsClient.Transport,
+	}
+
+	elasticClient, err := elasticsearch7.NewClient(configES)
+	client := &ClientV7{*elasticClient}
 
 	return client, err
 }
 
-func putTemplates(logger Logger, client *elastic.Client, name string, paths []string) {
+func putTemplates(logger Logger, client *ClientV7, name string, paths []string) {
 	files := getTemplateFiles(logger, paths)
 
 	for _, file := range files {
-		bytes, err := ioutil.ReadFile(file)
+		buf, err := ioutil.ReadFile(file)
 
 		if err != nil {
 			msg := fmt.Sprintf("could not read es-templates file. "+
@@ -126,15 +145,29 @@ func putTemplates(logger Logger, client *elastic.Client, name string, paths []st
 			logger.Fatal(fmt.Errorf(msg), msg)
 		}
 
-		svc := elastic.NewIndicesPutTemplateService(client)
-		svc.Name(name)
-		svc.BodyString(string(bytes))
-
-		_, err = svc.Do(context.TODO())
+		// Create template
+		res, err := client.Indices.PutTemplate(
+			name,
+			bytes.NewReader(buf),
+		)
 
 		if err != nil {
 			msg := fmt.Sprintf("could not put the es-template in file %s for es client %s", file, name)
 			logger.Fatal(err, msg)
+		}
+
+		defer func() {
+			closeError := res.Body.Close()
+			if closeError != nil {
+				msg := "could not close response reader for PutTemplates"
+				logger.Info(msg)
+			}
+		}()
+
+		if res.IsError() {
+			msg := fmt.Sprintf("could not put template from file %s"+
+				"Got error from ES: %s, %s", file, res.Status(), res.String())
+			logger.Fatal(fmt.Errorf(msg), msg)
 		}
 	}
 }

@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"net/http"
+	"time"
 )
 
 type QueryParams map[string][]interface{}
@@ -29,8 +30,9 @@ type Request struct {
 }
 
 type Response struct {
-	Body       []byte
-	StatusCode int
+	Body            []byte
+	StatusCode      int
+	RequestDuration time.Duration
 }
 
 // use NewRequest to create a request, don't create the object inline!

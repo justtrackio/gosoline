@@ -4,6 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/applike/gosoline/pkg/tracing"
+	"github.com/hashicorp/go-multierror"
+)
+
+const (
+	AttributeSqsDelaySeconds  = "sqsDelaySeconds"
+	AttributeSqsReceiptHandle = "sqsReceiptHandle"
 )
 
 type Message struct {
@@ -60,4 +66,65 @@ func CreateMessageFromContext(ctx context.Context) *Message {
 		Trace:      span.GetTrace(),
 		Attributes: make(map[string]interface{}),
 	}
+}
+
+type MessageBuilder struct {
+	error error
+
+	trace      *tracing.Trace
+	attributes map[string]interface{}
+	body       string
+}
+
+func NewMessageBuilder() *MessageBuilder {
+	return &MessageBuilder{
+		attributes: make(map[string]interface{}),
+	}
+}
+func (b *MessageBuilder) FromMessage(msg *Message) *MessageBuilder {
+	b.trace = msg.Trace
+	b.attributes = msg.Attributes
+	b.body = msg.Body
+
+	return b
+}
+
+func (b *MessageBuilder) WithContext(ctx context.Context) *MessageBuilder {
+	span := tracing.GetSpan(ctx)
+	b.trace = span.GetTrace()
+
+	return b
+}
+
+func (b *MessageBuilder) WithBody(body interface{}) *MessageBuilder {
+	serialized, err := json.Marshal(body)
+
+	if err != nil {
+		b.error = multierror.Append(b.error, err)
+		return b
+	}
+
+	b.body = string(serialized)
+
+	return b
+}
+
+func (b *MessageBuilder) WithSqsDelaySeconds(seconds int64) *MessageBuilder {
+	b.attributes[AttributeSqsDelaySeconds] = seconds
+
+	return b
+}
+
+func (b *MessageBuilder) GetMessage() (*Message, error) {
+	if b.error != nil {
+		return nil, b.error
+	}
+
+	msg := &Message{
+		Trace:      b.trace,
+		Attributes: b.attributes,
+		Body:       b.body,
+	}
+
+	return msg, nil
 }

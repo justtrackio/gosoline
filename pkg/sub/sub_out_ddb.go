@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 )
 
@@ -20,13 +19,8 @@ func (p *subOutDdb) GetType() string {
 func (p *subOutDdb) Boot(config cfg.Config, logger mon.Logger, settings Settings) error {
 	p.logger = logger
 
-	modelId := mdl.ModelId{
-		Name: settings.ModelId.Name,
-	}
-	modelId.PadFromConfig(config)
-
 	repo := ddb.New(config, logger, ddb.Settings{
-		ModelId:            modelId,
+		ModelId:            settings.TargetModelId,
 		ReadCapacityUnits:  5,
 		WriteCapacityUnits: 5,
 	})

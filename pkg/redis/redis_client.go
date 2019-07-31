@@ -15,6 +15,7 @@ func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
 
 //go:generate mockery -name Client
 type Client interface {
+	Exists(keys ...string) (int64, error)
 	Set(key string, value interface{}, expiration time.Duration) error
 	Get(key string) (string, error)
 	Del(key string) (int64, error)
@@ -40,7 +41,12 @@ func NewRedisClient(client *baseRedis.Client) Client {
 }
 
 func (c *redisClient) GetBaseClient() *baseRedis.Client {
+	c.base.Exists()
+
 	return c.base
+}
+func (c *redisClient) Exists(keys ...string) (int64, error) {
+	return c.base.Exists(keys...).Result()
 }
 
 func (c *redisClient) Set(key string, value interface{}, expiration time.Duration) error {

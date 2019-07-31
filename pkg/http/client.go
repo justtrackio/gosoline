@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"gopkg.in/resty.v1"
 	"net/http"
@@ -13,6 +14,7 @@ const PostRequest = "POST"
 const HdrUserAgent = "User-Agent"
 const metricRequest = "HttpClientRequest"
 const metricRequestFailure = "HttpClientRequestFailure"
+const metricRequestDuration = "HttpRequestDuration"
 
 //go:generate mockery -name Client
 type Client interface {
@@ -27,15 +29,16 @@ type client struct {
 	logger         mon.Logger
 	http           *resty.Client
 	defaultHeaders Headers
+	config         cfg.Config
 }
 
-func NewHttpClient(logger mon.Logger) Client {
+func NewHttpClient(config cfg.Config, logger mon.Logger) Client {
 	mo := mon.NewMetricDaemonWriter()
 
-	return NewHttpClientWithInterfaces(logger, mo)
+	return NewHttpClientWithInterfaces(config, logger, mo)
 }
 
-func NewHttpClientWithInterfaces(logger mon.Logger, mo mon.MetricWriter) Client {
+func NewHttpClientWithInterfaces(config cfg.Config, logger mon.Logger, mo mon.MetricWriter) Client {
 	httpClient := resty.New()
 	httpClient.SetRetryCount(5)             //TODO: make it configurable
 	httpClient.SetTimeout(time.Second * 30) //TODO: make it configurable
@@ -45,6 +48,7 @@ func NewHttpClientWithInterfaces(logger mon.Logger, mo mon.MetricWriter) Client 
 		logger:         logger,
 		http:           httpClient,
 		defaultHeaders: map[string]string{},
+		config:         config,
 	}
 }
 
@@ -87,7 +91,7 @@ func (c *client) do(method string, request *Request) (*Response, error) {
 		"method": method,
 	}).Debug("Requesting URL")
 
-	c.writeMetric(metricRequest, method)
+	c.writeMetric(metricRequest, method, mon.UnitCount, 1.0)
 
 	resp, err := req.Execute(method, url)
 
@@ -96,7 +100,7 @@ func (c *client) do(method string, request *Request) (*Response, error) {
 			"err": err,
 		}).Errorf(err, "error while requesting url: %s", req.URL)
 
-		c.writeMetric(metricRequestFailure, method)
+		c.writeMetric(metricRequestFailure, method, mon.UnitCount, 1.0)
 	}
 
 	responseStatusCode := resp.StatusCode()
@@ -109,12 +113,16 @@ func (c *client) do(method string, request *Request) (*Response, error) {
 		}).Warn("got unexpected response")
 	}
 
-	c.writeMetric(metricRequestFailure+responseStatusCodeString, method)
+	c.writeMetric(metricRequestFailure+responseStatusCodeString, method, mon.UnitCount, 1.0)
 
 	response := &Response{
-		Body:       resp.Body(),
-		StatusCode: resp.StatusCode(),
+		Body:            resp.Body(),
+		StatusCode:      resp.StatusCode(),
+		RequestDuration: resp.Time(),
 	}
+
+	requestDurationMs := float64(response.RequestDuration / time.Millisecond)
+	c.writeMetric(metricRequestDuration, method, mon.UnitMilliseconds, requestDurationMs)
 
 	return response, err
 }
@@ -142,14 +150,15 @@ func (c client) buildRawRequest(request *Request) *resty.Request {
 	return req
 }
 
-func (c *client) writeMetric(metricName string, dimensionType string) {
+func (c *client) writeMetric(metricName string, dimensionType string, unit string, value float64) {
 	c.mo.WriteOne(&mon.MetricDatum{
 		Timestamp:  time.Now(),
 		MetricName: metricName,
 		Dimensions: mon.MetricDimensions{
-			"Type": dimensionType,
+			"Type":        dimensionType,
+			"Application": c.config.GetString("app_name"),
 		},
-		Unit:  mon.UnitCount,
-		Value: 1.0,
+		Unit:  unit,
+		Value: value,
 	})
 }

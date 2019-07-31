@@ -4,13 +4,16 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sns"
+	"github.com/applike/gosoline/pkg/sqs"
 )
 
 type SnsInputSettings struct {
 	cfg.AppId
-	AutoSubscribe bool
-	QueueId       string
-	WaitTime      int64
+	AutoSubscribe     bool
+	QueueId           string
+	WaitTime          int64
+	RedrivePolicy     sqs.RedrivePolicy `mapstructure:"redrive_policy"`
+	VisibilityTimeout int               `mapstructure:"visibility_timeout"`
 }
 
 type SnsInputTarget struct {
@@ -19,19 +22,19 @@ type SnsInputTarget struct {
 }
 
 type snsInput struct {
-	logger   mon.Logger
-	sqsInput *sqsInput
-	settings SnsInputSettings
+	*sqsInput
 }
 
-func NewSnsInput(config cfg.Config, logger mon.Logger, s SnsInputSettings, targets []SnsInputTarget) Input {
+func NewSnsInput(config cfg.Config, logger mon.Logger, s SnsInputSettings, targets []SnsInputTarget) *snsInput {
 	s.PadFromConfig(config)
 	s.AutoSubscribe = config.GetBool("aws_sns_autoSubscribe")
 
 	sqsInput := NewSqsInput(config, logger, SqsInputSettings{
-		AppId:    s.AppId,
-		QueueId:  s.QueueId,
-		WaitTime: s.WaitTime,
+		AppId:             s.AppId,
+		QueueId:           s.QueueId,
+		WaitTime:          s.WaitTime,
+		RedrivePolicy:     s.RedrivePolicy,
+		VisibilityTimeout: s.VisibilityTimeout,
 	})
 	sqsInput.SetUnmarshaler(SnsUnmarshaler)
 
@@ -54,25 +57,11 @@ func NewSnsInput(config cfg.Config, logger mon.Logger, s SnsInputSettings, targe
 		}
 	}
 
-	return NewSnsInputWithInterfaces(logger, sqsInput, s)
+	return NewSnsInputWithInterfaces(sqsInput)
 }
 
-func NewSnsInputWithInterfaces(logger mon.Logger, sqsInput *sqsInput, s SnsInputSettings) Input {
+func NewSnsInputWithInterfaces(sqsInput *sqsInput) *snsInput {
 	return &snsInput{
-		logger:   logger,
-		sqsInput: sqsInput,
-		settings: s,
+		sqsInput,
 	}
-}
-
-func (i *snsInput) Data() chan *Message {
-	return i.sqsInput.Data()
-}
-
-func (i *snsInput) Run() error {
-	return i.sqsInput.Run()
-}
-
-func (i *snsInput) Stop() {
-	i.sqsInput.Stop()
 }

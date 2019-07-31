@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/twinj/uuid"
-	"sync"
 )
 
 //go:generate mockery -name Queue
@@ -17,104 +16,113 @@ type Queue interface {
 	GetUrl() string
 	GetArn() string
 
-	DeleteMessage(msg *sqs.Message) error
+	DeleteMessage(receiptHandle string) error
 	Receive(waitTime int64) ([]*sqs.Message, error)
-	Send(ctx context.Context, value string) error
-	SendBatch(ctx context.Context, values []string) error
+	Send(ctx context.Context, msg *Message) error
+	SendBatch(ctx context.Context, messages []*Message) error
+}
+
+type Message struct {
+	DelaySeconds *int64
+	Body         *string
+}
+
+type RedrivePolicy struct {
+	Enabled         bool   `mapstructure:"enabled"`
+	MaxReceiveCount int    `mapstructure:"max_receive_count"`
+	QueueName       string `mapstructure:"queue_name"`
+}
+
+type Properties struct {
+	Name string
+	Url  string
+	Arn  string
 }
 
 type Settings struct {
 	cfg.AppId
-	QueueId string
-
-	AutoCreate bool
-	Url        string
-	Arn        string
+	QueueId           string
+	VisibilityTimeout int
+	RedrivePolicy     RedrivePolicy
 }
 
 type queue struct {
-	m sync.Mutex
-
-	logger mon.Logger
-	client sqsiface.SQSAPI
-
-	name string
-	url  string
-	arn  string
+	logger     mon.Logger
+	client     sqsiface.SQSAPI
+	properties *Properties
 }
 
 func New(config cfg.Config, logger mon.Logger, s Settings) *queue {
-	var err error
-
-	name := namingStrategy(s.AppId, s.QueueId)
-	c := GetClient(config, logger)
-
 	s.PadFromConfig(config)
-	s.AutoCreate = config.GetBool("aws_sqs_autoCreate")
+	name := namingStrategy(s.AppId, s.QueueId)
 
-	CreateQueue(logger, c, s)
+	c := GetClient(config, logger)
+	srv := NewService(config, logger)
 
-	if s.Url, err = GetUrl(logger, c, s); err != nil {
-		logger.Fatalf(err, "could not get url of queue %s", name)
+	props, err := srv.CreateQueue(&CreateQueueInput{
+		Name:              name,
+		VisibilityTimeout: s.VisibilityTimeout,
+		RedrivePolicy:     s.RedrivePolicy,
+	})
+
+	if err != nil {
+		logger.Fatalf(err, "could not create or get properties of queue %s", name)
 	}
 
-	if s.Arn, err = GetArn(logger, c, s); err != nil {
-		logger.Fatalf(err, "could not get arn of queue %s", name)
-	}
-
-	return NewWithInterfaces(logger, c, s)
+	return NewWithInterfaces(logger, c, props)
 }
 
-func NewWithInterfaces(logger mon.Logger, c sqsiface.SQSAPI, s Settings) *queue {
-	name := namingStrategy(s.AppId, s.QueueId)
-
+func NewWithInterfaces(logger mon.Logger, c sqsiface.SQSAPI, p *Properties) *queue {
 	q := &queue{
-		logger: logger,
-		client: c,
-		name:   name,
-		url:    s.Url,
-		arn:    s.Arn,
+		logger:     logger,
+		client:     c,
+		properties: p,
 	}
 
 	return q
 }
 
-func (q *queue) Send(ctx context.Context, value string) error {
+func (q *queue) Send(ctx context.Context, msg *Message) error {
 	input := &sqs.SendMessageInput{
-		QueueUrl:    aws.String(q.url),
-		MessageBody: aws.String(value),
+		QueueUrl:     aws.String(q.properties.Url),
+		DelaySeconds: msg.DelaySeconds,
+		MessageBody:  msg.Body,
 	}
 
 	_, err := q.client.SendMessageWithContext(ctx, input)
 
 	if err != nil {
-		q.logger.WithContext(ctx).Error(err, "could not send value to sqs queue")
+		q.logger.WithContext(ctx).Errorf(err, "could not send value to sqs queue %s", q.properties.Name)
 	}
 
 	return err
 }
 
-func (q *queue) SendBatch(ctx context.Context, values []string) error {
-	entries := make([]*sqs.SendMessageBatchRequestEntry, len(values))
+func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
+	if len(messages) == 0 {
+		return nil
+	}
 
-	for i := 0; i < len(values); i++ {
+	entries := make([]*sqs.SendMessageBatchRequestEntry, len(messages))
+
+	for i := 0; i < len(messages); i++ {
 		id := uuid.NewV4().String()
 
 		entries[i] = &sqs.SendMessageBatchRequestEntry{
 			Id:          aws.String(id),
-			MessageBody: aws.String(values[i]),
+			MessageBody: messages[i].Body,
 		}
 	}
 
 	input := &sqs.SendMessageBatchInput{
-		QueueUrl: aws.String(q.url),
+		QueueUrl: aws.String(q.properties.Url),
 		Entries:  entries,
 	}
 
 	_, err := q.client.SendMessageBatchWithContext(ctx, input)
 
 	if err != nil {
-		q.logger.WithContext(ctx).Error(err, "could not send batch to sqs queue")
+		q.logger.WithContext(ctx).Errorf(err, "could not send batch to sqs queue %s", q.properties.Name)
 	}
 
 	return err
@@ -124,30 +132,30 @@ func (q *queue) Receive(waitTime int64) ([]*sqs.Message, error) {
 	input := &sqs.ReceiveMessageInput{
 		MessageAttributeNames: []*string{aws.String("ALL")},
 		MaxNumberOfMessages:   aws.Int64(1),
-		QueueUrl:              aws.String(q.url),
+		QueueUrl:              aws.String(q.properties.Url),
 		WaitTimeSeconds:       aws.Int64(waitTime),
 	}
 
 	out, err := q.client.ReceiveMessage(input)
 
 	if err != nil {
-		q.logger.Error(err, "could not receive value from sqs queue")
+		q.logger.Errorf(err, "could not receive value from sqs queue %s", q.properties.Name)
 		return nil, err
 	}
 
 	return out.Messages, nil
 }
 
-func (q *queue) DeleteMessage(msg *sqs.Message) error {
+func (q *queue) DeleteMessage(receiptHandle string) error {
 	input := &sqs.DeleteMessageInput{
-		QueueUrl:      aws.String(q.url),
-		ReceiptHandle: msg.ReceiptHandle,
+		QueueUrl:      aws.String(q.properties.Url),
+		ReceiptHandle: aws.String(receiptHandle),
 	}
 
 	_, err := q.client.DeleteMessage(input)
 
 	if err != nil {
-		q.logger.Error(err, "could not delete message from sqs queue")
+		q.logger.Errorf(err, "could not delete message from sqs queue %s", q.properties.Name)
 		return err
 	}
 
@@ -155,13 +163,13 @@ func (q *queue) DeleteMessage(msg *sqs.Message) error {
 }
 
 func (q *queue) GetName() string {
-	return q.name
+	return q.properties.Name
 }
 
 func (q *queue) GetUrl() string {
-	return q.url
+	return q.properties.Url
 }
 
 func (q *queue) GetArn() string {
-	return q.arn
+	return q.properties.Arn
 }

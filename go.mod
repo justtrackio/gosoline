@@ -2,7 +2,6 @@ module github.com/applike/gosoline
 
 require (
 	cloud.google.com/go v0.36.0 // indirect
-	git.apache.org/thrift.git v0.12.0 // indirect
 	github.com/DATA-DOG/go-sqlmock v1.3.0
 	github.com/Masterminds/squirrel v1.1.0
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
@@ -17,6 +16,9 @@ require (
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 // indirect
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20190313032549-041949b8d268 // indirect
+	github.com/elastic/go-elasticsearch/v6 v6.8.3-0.20190714143207-256a620be07d
+	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
+
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/fatih/color v1.7.0
 	github.com/getsentry/raven-go v0.2.0
@@ -28,6 +30,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.2.5
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
 	github.com/guregu/dynamo v1.2.1
+	github.com/hashicorp/go-multierror v1.0.0
 	github.com/jinzhu/gorm v1.9.2
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a
 	github.com/jinzhu/now v0.0.0-20181116074157-8ec929ed50c3 // indirect
@@ -39,8 +42,6 @@ require (
 	github.com/mattn/go-colorable v0.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/myesui/uuid v1.0.0 // indirect
-	github.com/olivere/elastic v6.2.19+incompatible
-	github.com/olivere/elastic/v7 v7.0.1
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/ory/dockertest v3.3.4+incompatible
 	github.com/ory/ladon v1.0.1

@@ -1,12 +1,12 @@
 package mon
 
 import (
-	"context"
+	"bytes"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/es"
 	"github.com/jonboulle/clockwork"
-	"github.com/olivere/elastic/v7"
 )
 
 type esMetricDatum struct {
@@ -17,7 +17,7 @@ type esMetricDatum struct {
 type esWriter struct {
 	logger    Logger
 	clock     clockwork.Clock
-	client    *elastic.Client
+	client    *es.ClientV7
 	namespace string
 }
 
@@ -31,7 +31,7 @@ func NewMetricEsWriter(config cfg.Config, logger Logger) *esWriter {
 	return NewMetricEsWriterWithInterfaces(logger, client, clock, namespace)
 }
 
-func NewMetricEsWriterWithInterfaces(logger Logger, client *elastic.Client, clock clockwork.Clock, namespace string) *esWriter {
+func NewMetricEsWriterWithInterfaces(logger Logger, client *es.ClientV7, clock clockwork.Clock, namespace string) *esWriter {
 	return &esWriter{
 		logger:    logger.WithChannel("metrics"),
 		clock:     clock,
@@ -44,8 +44,29 @@ func (w esWriter) GetPriority() int {
 	return PriorityLow
 }
 
+func (w esWriter) bulkWriteToES(buf bytes.Buffer) {
+	batchReader := bytes.NewReader(buf.Bytes())
+
+	res, err := w.client.Bulk(batchReader)
+	if err != nil {
+		w.logger.Error(err, "could not write metric data to es")
+		return
+	}
+
+	if res.IsError() {
+		// A successful response might still contain errors for particular documents
+		w.logger.WithFields(Fields{
+			"status_code": res.StatusCode,
+		}).Error(err, "not all metrics have been written to es")
+	}
+}
+
 func (w esWriter) Write(batch MetricData) {
-	svc := elastic.NewBulkService(w.client)
+	var buf bytes.Buffer
+
+	if len(batch) == 0 {
+		return
+	}
 
 	for i := range batch {
 		if batch[i].Timestamp.IsZero() {
@@ -57,21 +78,23 @@ func (w esWriter) Write(batch MetricData) {
 			Namespace:   w.namespace,
 		}
 
-		index := fmt.Sprintf("metrics-%s", m.Timestamp.Format("20060102"))
+		data, err := json.Marshal(m)
+		if err != nil {
+			w.logger.Error(err, "could not marshal metric data and write to es")
+			continue
+		}
 
-		req := elastic.NewBulkIndexRequest().
-			Index(index).
-			Doc(m)
+		index := m.Timestamp.Format("20060102")
 
-		svc.Add(req)
+		buf.Write([]byte(
+			fmt.Sprintf(`{ "index" : { "_index" : "metrics-%s", "_type" : "_doc" } }%s`, index, "\n"),
+		))
+
+		buf.Write(data)
+		buf.Write([]byte{10})
 	}
 
-	_, err := svc.Do(context.TODO())
-
-	if err != nil {
-		w.logger.Error(err, "could not write metric data to es")
-		return
-	}
+	w.bulkWriteToES(buf)
 
 	w.logger.Debugf("written %d metric data sets to elasticsearch", len(batch))
 }

@@ -2,6 +2,7 @@ package oauth2
 
 import (
 	"encoding/json"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/http"
 	"github.com/applike/gosoline/pkg/mon"
 )
@@ -30,8 +31,8 @@ type GoogleService struct {
 	httpClient http.Client
 }
 
-func NewGoogleService(logger mon.Logger) *GoogleService {
-	httpClient := http.NewHttpClient(logger)
+func NewGoogleService(config cfg.Config, logger mon.Logger) *GoogleService {
+	httpClient := http.NewHttpClient(config, logger)
 
 	return NewGoogleServiceWithInterfaces(httpClient)
 }

@@ -6,3 +6,7 @@ type Input interface {
 	Stop()
 	Data() chan *Message
 }
+
+type AcknowledgeableInput interface {
+	Ack(msg *Message) error
+}

@@ -17,7 +17,7 @@ type UpdaterService struct {
 
 func NewUpdater(config cfg.Config, logger mon.Logger) *UpdaterService {
 	redisClient := redis.GetClient(config, logger, redis.DefaultClientName)
-	httpClient := http.NewHttpClient(logger)
+	httpClient := http.NewHttpClient(config, logger)
 
 	return NewUpdaterWithInterfaces(logger, redisClient, httpClient)
 }

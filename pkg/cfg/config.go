@@ -38,10 +38,12 @@ type Config interface {
 	Get(string) interface{}
 	GetDuration(string) time.Duration
 	GetInt(string) int
+	GetFloat64(string) float64
 	GetString(string) string
 	GetStringMapString(key string) map[string]string
 	GetStringSlice(key string) []string
 	GetBool(key string) bool
+	IsSet(string) bool
 	Unmarshal(key string, val interface{})
 	AugmentString(str string) string
 }
@@ -62,6 +64,7 @@ type Viper interface {
 	GetBool(key string) bool
 	GetDuration(string) time.Duration
 	GetInt(string) int
+	GetFloat64(string) float64
 	GetString(string) string
 	GetStringMapString(key string) map[string]string
 	GetStringSlice(key string) []string
@@ -140,11 +143,18 @@ func (c *config) Bind(obj interface{}) {
 		case "int":
 			value := c.GetInt(key)
 			valueField.Set(reflect.ValueOf(value))
+		case "float64":
+			value := c.GetFloat64(key)
+			valueField.Set(reflect.ValueOf(value))
 		default:
 			value := c.Get(key)
 			valueField.Set(reflect.ValueOf(value))
 		}
 	}
+}
+
+func (c *config) IsSet(key string) bool {
+	return c.client.IsSet(key)
 }
 
 func (c *config) Get(key string) interface{} {
@@ -174,6 +184,14 @@ func (c *config) GetInt(key string) int {
 
 	c.keyCheck(key)
 	return c.client.GetInt(key)
+}
+
+func (c *config) GetFloat64(key string) float64 {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	c.keyCheck(key)
+	return c.client.GetFloat64(key)
 }
 
 func (c *config) GetString(key string) string {

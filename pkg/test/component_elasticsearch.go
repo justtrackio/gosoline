@@ -1,12 +1,14 @@
 package test
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 )
 
 type elasticsearchConfig struct {
 	Version string `mapstructure:"version"`
+	Port    int    `mapstructure:"port"`
 }
 
 func runElasticsearch(name string, config configInput) {
@@ -21,17 +23,18 @@ func doRunElasticsearch(name string, configMap configInput) {
 	config := &elasticsearchConfig{}
 	unmarshalConfig(configMap, config)
 
-	runContainer("gosoline_test_elasticsearch", ContainerConfig{
+	containerName := fmt.Sprintf("gosoline_test_%s_elasticsearch", name)
+	runContainer(containerName, ContainerConfig{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
 		Tag:        config.Version,
 		Env: []string{
 			"discovery.type=single-node",
 		},
 		PortBindings: PortBinding{
-			"9200/tcp": "9222",
+			"9200/tcp": fmt.Sprint(config.Port),
 		},
 		HealthCheck: func() error {
-			_, err := http.Get("http://localhost:9222/_cluster/health")
+			_, err := http.Get(fmt.Sprintf("http://localhost:%d/_cluster/health", config.Port))
 			return err
 		},
 	})

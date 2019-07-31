@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 )
@@ -19,7 +20,7 @@ func runContainer(name string, config ContainerConfig) {
 	err := dockerPool.RemoveContainerByName(name)
 
 	if err != nil {
-		logErr(err, "could not remove existing dynamoDb container")
+		logErr(err, fmt.Sprintf("could not remove existing %s container", name))
 	}
 
 	bindings := make(map[docker.Port][]docker.PortBinding)
@@ -40,7 +41,7 @@ func runContainer(name string, config ContainerConfig) {
 	})
 
 	if err != nil {
-		logErr(err, "could not start dynamoDb container")
+		logErr(err, fmt.Sprintf("could not start %s container", name))
 	}
 
 	err = resource.Expire(60 * 60)
@@ -52,7 +53,7 @@ func runContainer(name string, config ContainerConfig) {
 	err = dockerPool.Retry(config.HealthCheck)
 
 	if err != nil {
-		logErr(err, "could not bring up dynamoDb container")
+		logErr(err, fmt.Sprintf("could not bring up %s container", name))
 	}
 
 	dockerResources = append(dockerResources, resource)

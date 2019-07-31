@@ -4,16 +4,21 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/applike/gosoline/pkg/tracing"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+	"github.com/thoas/go-funk"
 )
 
 const sqsOutputBatchSize = 10
 
 type SqsOutputSettings struct {
 	cfg.AppId
-	QueueId string
+	QueueId       string
+	RedrivePolicy sqs.RedrivePolicy
 }
 
 type sqsOutput struct {
@@ -27,8 +32,9 @@ func NewSqsOutput(config cfg.Config, logger mon.Logger, s SqsOutputSettings) Out
 	s.PadFromConfig(config)
 
 	queue := sqs.New(config, logger, sqs.Settings{
-		AppId:   s.AppId,
-		QueueId: s.QueueId,
+		AppId:         s.AppId,
+		QueueId:       s.QueueId,
+		RedrivePolicy: s.RedrivePolicy,
 	})
 
 	tracer := tracing.NewAwsTracer(config)
@@ -63,26 +69,81 @@ func (o *sqsOutput) Write(ctx context.Context, batch []*Message) error {
 }
 
 func (o *sqsOutput) sendToQueue(ctx context.Context, batch []*Message) error {
-	chunks, err := BuildChunks(batch, sqsOutputBatchSize)
+	chunks, ok := funk.Chunk(batch, sqsOutputBatchSize).([][]*Message)
 
-	if err != nil {
-		o.logger.Error(err, "could not batch all messages")
+	if !ok {
+		err := fmt.Errorf("can not chunk messages for sending to sqs")
+		o.logger.Error(err, "can not chunk messages for sending to sqs")
+
+		return err
 	}
 
-	errors := make([]error, 0)
+	var result error
 
 	for _, chunk := range chunks {
-		strings := ByteChunkToStrings(chunk)
-		err = o.queue.SendBatch(ctx, strings)
+		messages, err := o.buildSqsMessages(chunk)
 
 		if err != nil {
-			errors = append(errors, err)
+			result = multierror.Append(result, err)
+		}
+
+		if len(messages) == 0 {
+			continue
+		}
+
+		err = o.queue.SendBatch(ctx, messages)
+
+		if err != nil {
+			result = multierror.Append(result, err)
 		}
 	}
 
-	if len(errors) > 0 {
-		return fmt.Errorf("there were %v errors on writing to the sqs stream", len(errors))
+	if result != nil {
+		return errors.Wrap(result, "there were errors on writing to the sqs stream")
 	}
 
 	return nil
+}
+
+func (o *sqsOutput) buildSqsMessages(messages []*Message) ([]*sqs.Message, error) {
+	var result error
+	sqsMessages := make([]*sqs.Message, 0)
+
+	for _, msg := range messages {
+		sqsMessage, err := o.buildSqsMessage(msg)
+
+		if err != nil {
+			result = multierror.Append(result, err)
+			continue
+		}
+
+		sqsMessages = append(sqsMessages, sqsMessage)
+	}
+
+	return sqsMessages, result
+}
+
+func (o *sqsOutput) buildSqsMessage(msg *Message) (*sqs.Message, error) {
+	var delay *int64
+
+	if d, ok := msg.Attributes[AttributeSqsDelaySeconds]; ok {
+		if dInt64, ok := d.(int64); ok {
+			delay = mdl.Int64(dInt64)
+		} else {
+			return nil, fmt.Errorf("the type of the %s attribute should be int64 but instead is %T", AttributeSqsDelaySeconds, d)
+		}
+	}
+
+	body, err := msg.MarshalToString()
+
+	if err != nil {
+		return nil, err
+	}
+
+	sqsMessage := &sqs.Message{
+		DelaySeconds: delay,
+		Body:         mdl.String(body),
+	}
+
+	return sqsMessage, nil
 }

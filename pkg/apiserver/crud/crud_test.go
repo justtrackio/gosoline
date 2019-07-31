@@ -248,7 +248,7 @@ func TestListHandler_Handle(t *testing.T) {
 	qb.Page(0, 2)
 
 	transformer.Repo.On("GetMetadata").Return(db_repo.Metadata{
-		TableName: "footable",
+		TableName:  "footable",
 		PrimaryKey: "id",
 		Mappings: db_repo.FieldMappings{
 			"id":   db_repo.NewSimpleFieldMapping("id"),

@@ -24,8 +24,9 @@ type Output interface {
 }
 
 type Settings struct {
-	Type    string
-	ModelId mdl.ModelId
+	Type          string
+	SourceModelId mdl.ModelId
+	TargetModelId mdl.ModelId
 }
 
 type Subscriber interface {
@@ -34,17 +35,22 @@ type Subscriber interface {
 	Run(ctx context.Context) error
 }
 
-func NewSubscriber(input stream.Input, output Output, transformerFactories TransformerMapVersionFactories, s Settings) Subscriber {
+func NewSubscriber(logger mon.Logger, input stream.Input, output Output, transformerFactories TransformerMapVersionFactories, s Settings) Subscriber {
+	consumerAck := stream.NewConsumerAcknowledgeWithInterfaces(logger, input)
+
 	return &subscriber{
-		input:     input,
-		output:    output,
-		factories: transformerFactories,
-		settings:  s,
+		ConsumerAcknowledge: consumerAck,
+		logger:              logger,
+		input:               input,
+		output:              output,
+		factories:           transformerFactories,
+		settings:            s,
 	}
 }
 
 type subscriber struct {
 	kernel.ForegroundModule
+	stream.ConsumerAcknowledge
 
 	logger mon.Logger
 	tracer tracing.Tracer
@@ -68,9 +74,9 @@ func (s *subscriber) Boot(config cfg.Config, logger mon.Logger) error {
 	s.tracer = tracing.NewAwsTracer(config)
 
 	s.appId.PadFromConfig(config)
-	s.settings.ModelId.PadFromConfig(config)
+	s.settings.SourceModelId.PadFromConfig(config)
 
-	mId := s.settings.ModelId
+	mId := s.settings.SourceModelId
 	outType := s.settings.Type
 
 	s.modelId = mId
@@ -129,6 +135,7 @@ func (s *subscriber) consume() error {
 func (s *subscriber) persist(msg *stream.Message) error {
 	ctx, trans := s.tracer.StartSpanFromTraceAble(msg, s.name)
 	defer trans.Finish()
+	defer s.Acknowledge(ctx, msg)
 
 	logger := s.logger.WithContext(ctx)
 	modelMsg, err := stream.CreateModelMsg(msg)

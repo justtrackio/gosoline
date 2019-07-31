@@ -63,6 +63,33 @@ func (_m *Client) Del(key string) (int64, error) {
 	return r0, r1
 }
 
+// Exists provides a mock function with given fields: keys
+func (_m *Client) Exists(keys ...string) (int64, error) {
+	_va := make([]interface{}, len(keys))
+	for _i := range keys {
+		_va[_i] = keys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(...string) int64); ok {
+		r0 = rf(keys...)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(...string) error); ok {
+		r1 = rf(keys...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Get provides a mock function with given fields: key
 func (_m *Client) Get(key string) (string, error) {
 	ret := _m.Called(key)
