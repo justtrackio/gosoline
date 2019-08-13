@@ -15,12 +15,6 @@ import (
 
 const DefaultVisibilityTimeout = "30"
 
-type CreateQueueInput struct {
-	Name              string
-	RedrivePolicy     RedrivePolicy
-	VisibilityTimeout int
-}
-
 type ServiceSettings struct {
 	AutoCreate bool
 }
@@ -49,37 +43,46 @@ func NewServiceWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, setting
 	}
 }
 
-func (s service) CreateQueue(input *CreateQueueInput) (*Properties, error) {
+func (s service) CreateQueue(settings Settings) (*Properties, error) {
 	s.lck.Lock()
 	defer s.lck.Unlock()
 
-	exists, err := s.QueueExists(input.Name)
+	name := generateName(settings)
+	exists, err := s.QueueExists(name)
 
 	if err != nil {
 		return nil, err
 	}
 
 	if exists {
-		return s.GetProperties(input.Name)
+		return s.GetProperties(name)
 	}
 
 	if !exists && !s.settings.AutoCreate {
-		return nil, fmt.Errorf("sqs queue with name %s does not exist", input.Name)
+		return nil, fmt.Errorf("sqs queue with name %s does not exist", name)
 	}
 
-	attributes, err := s.createDeadLetterQueue(input.Name, input.RedrivePolicy)
+	attributes, err := s.createDeadLetterQueue(settings)
 
 	if err != nil {
 		return nil, err
 	}
 
 	sqsInput := &sqs.CreateQueueInput{
-		QueueName:  aws.String(input.Name),
+		QueueName:  aws.String(name),
 		Attributes: make(map[string]*string),
 	}
 
 	for k, v := range attributes {
 		sqsInput.Attributes[k] = v
+	}
+
+	if settings.Fifo.Enabled {
+		sqsInput.Attributes[sqs.QueueAttributeNameFifoQueue] = aws.String("true")
+	}
+
+	if settings.Fifo.Enabled && settings.Fifo.ContentBasedDeduplication {
+		sqsInput.Attributes[sqs.QueueAttributeNameContentBasedDeduplication] = aws.String("true")
 	}
 
 	props, err := s.doCreateQueue(sqsInput)
@@ -89,8 +92,8 @@ func (s service) CreateQueue(input *CreateQueueInput) (*Properties, error) {
 	}
 
 	visibilityTimeout := DefaultVisibilityTimeout
-	if input.VisibilityTimeout > 0 {
-		visibilityTimeout = strconv.Itoa(input.VisibilityTimeout)
+	if settings.VisibilityTimeout > 0 {
+		visibilityTimeout = strconv.Itoa(settings.VisibilityTimeout)
 	}
 
 	_, err = s.client.SetQueueAttributes(&sqs.SetQueueAttributesInput{
@@ -103,14 +106,16 @@ func (s service) CreateQueue(input *CreateQueueInput) (*Properties, error) {
 	return props, err
 }
 
-func (s service) createDeadLetterQueue(queueName string, redrivePolicy RedrivePolicy) (map[string]*string, error) {
+func (s service) createDeadLetterQueue(settings Settings) (map[string]*string, error) {
 	attributes := make(map[string]*string)
 
-	if !redrivePolicy.Enabled {
+	if !settings.RedrivePolicy.Enabled {
 		return attributes, nil
 	}
 
-	deadLetterName := fmt.Sprintf("%s-dead", queueName)
+	queueName := namingStrategy(settings.AppId, settings.QueueId)
+
+	deadLetterName := deadLetterNamingStrategy(settings.AppId, settings.QueueId)
 	deadLetterInput := &sqs.CreateQueueInput{
 		QueueName: aws.String(deadLetterName),
 	}
@@ -124,13 +129,13 @@ func (s service) createDeadLetterQueue(queueName string, redrivePolicy RedrivePo
 
 	policy := map[string]string{
 		"deadLetterTargetArn": props.Arn,
-		"maxReceiveCount":     strconv.Itoa(redrivePolicy.MaxReceiveCount),
+		"maxReceiveCount":     strconv.Itoa(settings.RedrivePolicy.MaxReceiveCount),
 	}
 
 	b, err := json.Marshal(policy)
 
 	if err != nil {
-		s.logger.Fatalf(err, "could not get marshal redrive policy for sqs queue %v", queueName)
+		s.logger.Fatalf(err, "could not marshal redrive policy for sqs queue %v", queueName)
 		return attributes, err
 	}
 

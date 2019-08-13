@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	AttributeSqsDelaySeconds  = "sqsDelaySeconds"
-	AttributeSqsReceiptHandle = "sqsReceiptHandle"
+	AttributeSqsDelaySeconds   = "sqsDelaySeconds"
+	AttributeSqsReceiptHandle  = "sqsReceiptHandle"
+	AttributeSqsMessageGroupId = "sqsMessageGroupId"
 )
 
 type Message struct {
@@ -111,6 +112,12 @@ func (b *MessageBuilder) WithBody(body interface{}) *MessageBuilder {
 
 func (b *MessageBuilder) WithSqsDelaySeconds(seconds int64) *MessageBuilder {
 	b.attributes[AttributeSqsDelaySeconds] = seconds
+
+	return b
+}
+
+func (b *MessageBuilder) WithSqsMessageGroupId(groupId string) *MessageBuilder {
+	b.attributes[AttributeSqsMessageGroupId] = groupId
 
 	return b
 }

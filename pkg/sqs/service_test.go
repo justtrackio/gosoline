@@ -1,6 +1,7 @@
 package sqs_test
 
 import (
+	"github.com/applike/gosoline/pkg/cfg"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/applike/gosoline/pkg/sqs/mocks"
@@ -16,33 +17,33 @@ func TestService_CreateQueue(t *testing.T) {
 	client := new(mocks.SQSAPI)
 
 	client.On("GetQueueUrl", &awsSqs.GetQueueUrlInput{
-		QueueName: aws.String("my-queue-url"),
+		QueueName: aws.String("applike-test-gosoline-sqs-my-queue"),
 	}).Return(nil, awserr.New(awsSqs.ErrCodeQueueDoesNotExist, "", nil)).Once()
 
 	client.On("CreateQueue", &awsSqs.CreateQueueInput{
-		QueueName: aws.String("my-queue-url"),
+		QueueName: aws.String("applike-test-gosoline-sqs-my-queue"),
 		Attributes: map[string]*string{
-			"RedrivePolicy": aws.String("{\"deadLetterTargetArn\":\"my-queue-url-dead.arn\",\"maxReceiveCount\":\"3\"}"),
+			"RedrivePolicy": aws.String("{\"deadLetterTargetArn\":\"applike-test-gosoline-sqs-my-queue-dead.arn\",\"maxReceiveCount\":\"3\"}"),
 		},
 	}).Return(nil, nil)
 
 	client.On("GetQueueUrl", &awsSqs.GetQueueUrlInput{
-		QueueName: aws.String("my-queue-url"),
+		QueueName: aws.String("applike-test-gosoline-sqs-my-queue"),
 	}).Return(&awsSqs.GetQueueUrlOutput{
-		QueueUrl: aws.String("my-queue-url.url"),
+		QueueUrl: aws.String("applike-test-gosoline-sqs-my-queue.url"),
 	}, nil)
 
 	client.On("GetQueueAttributes", &awsSqs.GetQueueAttributesInput{
 		AttributeNames: []*string{aws.String("QueueArn")},
-		QueueUrl:       aws.String("my-queue-url.url"),
+		QueueUrl:       aws.String("applike-test-gosoline-sqs-my-queue.url"),
 	}).Return(&awsSqs.GetQueueAttributesOutput{
 		Attributes: map[string]*string{
-			"QueueArn": aws.String("my-queue-url.arn"),
+			"QueueArn": aws.String("applike-test-gosoline-sqs-my-queue.arn"),
 		},
 	}, nil)
 
 	client.On("SetQueueAttributes", &awsSqs.SetQueueAttributesInput{
-		QueueUrl: aws.String("my-queue-url.url"),
+		QueueUrl: aws.String("applike-test-gosoline-sqs-my-queue.url"),
 		Attributes: map[string]*string{
 			"VisibilityTimeout": aws.String("30"),
 		},
@@ -50,21 +51,21 @@ func TestService_CreateQueue(t *testing.T) {
 
 	// dead letter queue
 	client.On("CreateQueue", &awsSqs.CreateQueueInput{
-		QueueName: aws.String("my-queue-url-dead"),
+		QueueName: aws.String("applike-test-gosoline-sqs-my-queue-dead"),
 	}).Return(nil, nil)
 
 	client.On("GetQueueUrl", &awsSqs.GetQueueUrlInput{
-		QueueName: aws.String("my-queue-url-dead"),
+		QueueName: aws.String("applike-test-gosoline-sqs-my-queue-dead"),
 	}).Return(&awsSqs.GetQueueUrlOutput{
-		QueueUrl: aws.String("my-queue-url-dead.url"),
+		QueueUrl: aws.String("applike-test-gosoline-sqs-my-queue-dead.url"),
 	}, nil)
 
 	client.On("GetQueueAttributes", &awsSqs.GetQueueAttributesInput{
 		AttributeNames: []*string{aws.String("QueueArn")},
-		QueueUrl:       aws.String("my-queue-url-dead.url"),
+		QueueUrl:       aws.String("applike-test-gosoline-sqs-my-queue-dead.url"),
 	}).Return(&awsSqs.GetQueueAttributesOutput{
 		Attributes: map[string]*string{
-			"QueueArn": aws.String("my-queue-url-dead.arn"),
+			"QueueArn": aws.String("applike-test-gosoline-sqs-my-queue-dead.arn"),
 		},
 	}, nil)
 
@@ -72,8 +73,14 @@ func TestService_CreateQueue(t *testing.T) {
 		AutoCreate: true,
 	})
 
-	props, err := srv.CreateQueue(&sqs.CreateQueueInput{
-		Name: "my-queue-url",
+	props, err := srv.CreateQueue(sqs.Settings{
+		AppId: cfg.AppId{
+			Project:     "applike",
+			Environment: "test",
+			Family:      "gosoline",
+			Application: "sqs",
+		},
+		QueueId: "my-queue",
 		RedrivePolicy: sqs.RedrivePolicy{
 			Enabled:         true,
 			MaxReceiveCount: 3,
@@ -81,7 +88,7 @@ func TestService_CreateQueue(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, "my-queue-url.url", props.Url)
-	assert.Equal(t, "my-queue-url.arn", props.Arn)
+	assert.Equal(t, "applike-test-gosoline-sqs-my-queue.url", props.Url)
+	assert.Equal(t, "applike-test-gosoline-sqs-my-queue.arn", props.Arn)
 	client.AssertExpectations(t)
 }
