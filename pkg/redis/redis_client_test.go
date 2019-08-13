@@ -1,21 +1,20 @@
 package redis_test
 
 import (
+	"errors"
 	"github.com/alicebob/miniredis"
 	"github.com/applike/gosoline/pkg/redis"
+	"github.com/elliotchance/redismock"
+	baseRedis "github.com/go-redis/redis"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
-var err error
-var s *miniredis.Miniredis
-var c redis.Client
-
 func TestRedisBLPop(t *testing.T) {
-	buildClient()
+	r, c := buildClient()
 
-	if _, err := s.Lpush("list", "value"); err != nil {
+	if _, err := r.Lpush("list", "value"); err != nil {
 		panic(err)
 	}
 
@@ -26,7 +25,7 @@ func TestRedisBLPop(t *testing.T) {
 }
 
 func TestRedisDel(t *testing.T) {
-	buildClient()
+	_, c := buildClient()
 
 	count, err := c.Del("test")
 	assert.Nil(t, err, "there should be no error on Del")
@@ -42,7 +41,7 @@ func TestRedisDel(t *testing.T) {
 }
 
 func TestRedisLLen(t *testing.T) {
-	buildClient()
+	s, c := buildClient()
 
 	for i := 0; i < 3; i++ {
 		if _, err := s.Lpush("list", "value"); err != nil {
@@ -57,7 +56,7 @@ func TestRedisLLen(t *testing.T) {
 }
 
 func TestRedisRPush(t *testing.T) {
-	buildClient()
+	_, c := buildClient()
 
 	count, err := c.RPush("list", "v1", "v2", "v3")
 	assert.Nil(t, err, "there should be no error on RPush")
@@ -65,7 +64,7 @@ func TestRedisRPush(t *testing.T) {
 }
 
 func TestRedisSet(t *testing.T) {
-	buildClient()
+	_, c := buildClient()
 
 	var ttl time.Duration
 	err := c.Set("key", "value", ttl)
@@ -76,18 +75,45 @@ func TestRedisSet(t *testing.T) {
 	assert.Nil(t, err, "there should be no error on Set with expiration date")
 }
 
-func buildClient() (*miniredis.Miniredis, redis.Client) {
-	if s != nil {
-		s.FlushAll()
-		return s, c
-	}
+func TestRedisSetWithOOM(t *testing.T) {
+	var ttl time.Duration
 
-	s, err = miniredis.Run()
+	m := redismock.NewMock()
+
+	m.On("Set").Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
+	m.On("Set").Return(baseRedis.NewStatusResult("", nil)).Once()
+
+	c := redis.NewRedisClient(m, "")
+
+	err := c.Set("key", "value", ttl)
+
+	assert.Nil(t, err, "there should be no error on Set with backoff")
+	m.AssertExpectations(t)
+}
+
+func TestRedisSetWithError(t *testing.T) {
+	var ttl time.Duration
+
+	m := redismock.NewMock()
+
+	m.On("Set").Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
+	m.On("Set").Return(baseRedis.NewStatusResult("", nil)).Times(0)
+
+	c := redis.NewRedisClient(m, "")
+
+	err := c.Set("key", "value", ttl)
+
+	assert.NotNil(t, err, "there should be an error on Set")
+	m.AssertExpectations(t)
+}
+
+func buildClient() (*miniredis.Miniredis, redis.Client) {
+	s, err := miniredis.Run()
 	if err != nil {
 		panic(err)
 	}
 
-	c = redis.GetClientWithAddress(s.Addr())
+	c := redis.GetClientWithAddress(s.Addr(), "")
 
 	return s, c
 }
