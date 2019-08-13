@@ -139,6 +139,7 @@ type sqsInputConfiguration struct {
 	Family            string            `mapstructure:"target_family"`
 	Application       string            `mapstructure:"target_application"`
 	QueueId           string            `mapstructure:"target_queue_id"`
+	Fifo              sqs.FifoSettings  `mapstructure:"fifo"`
 	WaitTime          int64             `mapstructure:"wait_time"`
 	VisibilityTimeout int               `mapstructure:"visibility_timeout"`
 	RedrivePolicy     sqs.RedrivePolicy `mapstructure:"redrive_policy"`
@@ -156,6 +157,7 @@ func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 			Application: configuration.Application,
 		},
 		QueueId:           configuration.QueueId,
+		Fifo:              configuration.Fifo,
 		WaitTime:          configuration.WaitTime,
 		VisibilityTimeout: configuration.VisibilityTimeout,
 		RedrivePolicy:     configuration.RedrivePolicy,

@@ -10,6 +10,7 @@ import (
 type SqsInputSettings struct {
 	cfg.AppId
 	QueueId           string            `mapstructure:"queue_id"`
+	Fifo              sqs.FifoSettings  `mapstructure:"fifo"`
 	WaitTime          int64             `mapstructure:"wait_time"`
 	RedrivePolicy     sqs.RedrivePolicy `mapstructure:"redrive_policy"`
 	VisibilityTimeout int               `mapstructure:"visibility_timeout"`
@@ -29,6 +30,7 @@ func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) *sqsI
 	queue := sqs.New(config, logger, sqs.Settings{
 		AppId:             s.AppId,
 		QueueId:           s.QueueId,
+		Fifo:              s.Fifo,
 		RedrivePolicy:     s.RedrivePolicy,
 		VisibilityTimeout: s.VisibilityTimeout,
 	})

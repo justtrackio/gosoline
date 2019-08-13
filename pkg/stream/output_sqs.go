@@ -125,10 +125,19 @@ func (o *sqsOutput) buildSqsMessages(messages []*Message) ([]*sqs.Message, error
 
 func (o *sqsOutput) buildSqsMessage(msg *Message) (*sqs.Message, error) {
 	var delay *int64
+	var messageGroupId *string
 
 	if d, ok := msg.Attributes[AttributeSqsDelaySeconds]; ok {
 		if dInt64, ok := d.(int64); ok {
 			delay = mdl.Int64(dInt64)
+		} else {
+			return nil, fmt.Errorf("the type of the %s attribute should be int64 but instead is %T", AttributeSqsDelaySeconds, d)
+		}
+	}
+
+	if d, ok := msg.Attributes[AttributeSqsMessageGroupId]; ok {
+		if groupIdString, ok := d.(string); ok {
+			messageGroupId = mdl.String(groupIdString)
 		} else {
 			return nil, fmt.Errorf("the type of the %s attribute should be int64 but instead is %T", AttributeSqsDelaySeconds, d)
 		}
@@ -141,8 +150,9 @@ func (o *sqsOutput) buildSqsMessage(msg *Message) (*sqs.Message, error) {
 	}
 
 	sqsMessage := &sqs.Message{
-		DelaySeconds: delay,
-		Body:         mdl.String(body),
+		DelaySeconds:   delay,
+		MessageGroupId: messageGroupId,
+		Body:           mdl.String(body),
 	}
 
 	return sqsMessage, nil

@@ -23,8 +23,14 @@ type Queue interface {
 }
 
 type Message struct {
-	DelaySeconds *int64
-	Body         *string
+	DelaySeconds   *int64
+	MessageGroupId *string
+	Body           *string
+}
+
+type FifoSettings struct {
+	Enabled                   bool `mapstructure:"enabled"`
+	ContentBasedDeduplication bool `mapstructure:"contentBasedDeduplication"`
 }
 
 type RedrivePolicy struct {
@@ -42,6 +48,7 @@ type Properties struct {
 type Settings struct {
 	cfg.AppId
 	QueueId           string
+	Fifo              FifoSettings
 	VisibilityTimeout int
 	RedrivePolicy     RedrivePolicy
 }
@@ -54,16 +61,12 @@ type queue struct {
 
 func New(config cfg.Config, logger mon.Logger, s Settings) *queue {
 	s.PadFromConfig(config)
-	name := namingStrategy(s.AppId, s.QueueId)
+	name := generateName(s)
 
 	c := GetClient(config, logger)
 	srv := NewService(config, logger)
 
-	props, err := srv.CreateQueue(&CreateQueueInput{
-		Name:              name,
-		VisibilityTimeout: s.VisibilityTimeout,
-		RedrivePolicy:     s.RedrivePolicy,
-	})
+	props, err := srv.CreateQueue(s)
 
 	if err != nil {
 		logger.Fatalf(err, "could not create or get properties of queue %s", name)
@@ -84,9 +87,10 @@ func NewWithInterfaces(logger mon.Logger, c sqsiface.SQSAPI, p *Properties) *que
 
 func (q *queue) Send(ctx context.Context, msg *Message) error {
 	input := &sqs.SendMessageInput{
-		QueueUrl:     aws.String(q.properties.Url),
-		DelaySeconds: msg.DelaySeconds,
-		MessageBody:  msg.Body,
+		QueueUrl:       aws.String(q.properties.Url),
+		DelaySeconds:   msg.DelaySeconds,
+		MessageGroupId: msg.MessageGroupId,
+		MessageBody:    msg.Body,
 	}
 
 	_, err := q.client.SendMessageWithContext(ctx, input)
@@ -109,8 +113,10 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 		id := uuid.NewV4().String()
 
 		entries[i] = &sqs.SendMessageBatchRequestEntry{
-			Id:          aws.String(id),
-			MessageBody: messages[i].Body,
+			Id:             aws.String(id),
+			DelaySeconds:   messages[i].DelaySeconds,
+			MessageGroupId: messages[i].MessageGroupId,
+			MessageBody:    messages[i].Body,
 		}
 	}
 
