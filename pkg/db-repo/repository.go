@@ -112,7 +112,7 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	modelId := r.GetModelId()
 	logger := r.logger.WithContext(ctx)
 
-	ctx, span := r.startSubSpan(ctx, "Update")
+	ctx, span := r.startSubSpan(ctx, "UpdateItem")
 	defer span.Finish()
 
 	now := r.clock.Now()

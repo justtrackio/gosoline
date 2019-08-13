@@ -4,7 +4,6 @@ package mocks
 
 import context "context"
 import ddb "github.com/applike/gosoline/pkg/ddb"
-import djoemo "github.com/adjoeio/djoemo"
 import mdl "github.com/applike/gosoline/pkg/mdl"
 import mock "github.com/stretchr/testify/mock"
 
@@ -13,33 +12,145 @@ type Repository struct {
 	mock.Mock
 }
 
-// CreateTable provides a mock function with given fields: model
-func (_m *Repository) CreateTable(model interface{}) error {
-	ret := _m.Called(model)
+// BatchDeleteItems provides a mock function with given fields: ctx, value
+func (_m *Repository) BatchDeleteItems(ctx context.Context, value interface{}) (*ddb.OperationResult, error) {
+	ret := _m.Called(ctx, value)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
-		r0 = rf(model)
+	var r0 *ddb.OperationResult
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}) *ddb.OperationResult); ok {
+		r0 = rf(ctx, value)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ddb.OperationResult)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, interface{}) error); ok {
+		r1 = rf(ctx, value)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// BatchGetItems provides a mock function with given fields: ctx, qb, result
+func (_m *Repository) BatchGetItems(ctx context.Context, qb ddb.BatchGetItemsBuilder, result interface{}) (*ddb.OperationResult, error) {
+	ret := _m.Called(ctx, qb, result)
+
+	var r0 *ddb.OperationResult
+	if rf, ok := ret.Get(0).(func(context.Context, ddb.BatchGetItemsBuilder, interface{}) *ddb.OperationResult); ok {
+		r0 = rf(ctx, qb, result)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ddb.OperationResult)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ddb.BatchGetItemsBuilder, interface{}) error); ok {
+		r1 = rf(ctx, qb, result)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// BatchGetItemsBuilder provides a mock function with given fields:
+func (_m *Repository) BatchGetItemsBuilder() ddb.BatchGetItemsBuilder {
+	ret := _m.Called()
+
+	var r0 ddb.BatchGetItemsBuilder
+	if rf, ok := ret.Get(0).(func() ddb.BatchGetItemsBuilder); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.BatchGetItemsBuilder)
+		}
+	}
+
+	return r0
+}
+
+// BatchPutItems provides a mock function with given fields: ctx, items
+func (_m *Repository) BatchPutItems(ctx context.Context, items interface{}) (*ddb.OperationResult, error) {
+	ret := _m.Called(ctx, items)
+
+	var r0 *ddb.OperationResult
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}) *ddb.OperationResult); ok {
+		r0 = rf(ctx, items)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ddb.OperationResult)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, interface{}) error); ok {
+		r1 = rf(ctx, items)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DeleteItem provides a mock function with given fields: ctx, db, item
+func (_m *Repository) DeleteItem(ctx context.Context, db ddb.DeleteItemBuilder, item interface{}) (*ddb.DeleteItemResult, error) {
+	ret := _m.Called(ctx, db, item)
+
+	var r0 *ddb.DeleteItemResult
+	if rf, ok := ret.Get(0).(func(context.Context, ddb.DeleteItemBuilder, interface{}) *ddb.DeleteItemResult); ok {
+		r0 = rf(ctx, db, item)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ddb.DeleteItemResult)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ddb.DeleteItemBuilder, interface{}) error); ok {
+		r1 = rf(ctx, db, item)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// DeleteItemBuilder provides a mock function with given fields:
+func (_m *Repository) DeleteItemBuilder() ddb.DeleteItemBuilder {
+	ret := _m.Called()
+
+	var r0 ddb.DeleteItemBuilder
+	if rf, ok := ret.Get(0).(func() ddb.DeleteItemBuilder); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.DeleteItemBuilder)
+		}
 	}
 
 	return r0
 }
 
 // GetItem provides a mock function with given fields: ctx, qb, result
-func (_m *Repository) GetItem(ctx context.Context, qb ddb.QueryBuilder, result interface{}) (bool, error) {
+func (_m *Repository) GetItem(ctx context.Context, qb ddb.GetItemBuilder, result interface{}) (*ddb.GetItemResult, error) {
 	ret := _m.Called(ctx, qb, result)
 
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(context.Context, ddb.QueryBuilder, interface{}) bool); ok {
+	var r0 *ddb.GetItemResult
+	if rf, ok := ret.Get(0).(func(context.Context, ddb.GetItemBuilder, interface{}) *ddb.GetItemResult); ok {
 		r0 = rf(ctx, qb, result)
 	} else {
-		r0 = ret.Get(0).(bool)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ddb.GetItemResult)
+		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ddb.QueryBuilder, interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, ddb.GetItemBuilder, interface{}) error); ok {
 		r1 = rf(ctx, qb, result)
 	} else {
 		r1 = ret.Error(1)
@@ -48,25 +159,20 @@ func (_m *Repository) GetItem(ctx context.Context, qb ddb.QueryBuilder, result i
 	return r0, r1
 }
 
-// GetItems provides a mock function with given fields: ctx, qb, result
-func (_m *Repository) GetItems(ctx context.Context, qb ddb.QueryBuilder, result interface{}) (bool, error) {
-	ret := _m.Called(ctx, qb, result)
+// GetItemBuilder provides a mock function with given fields:
+func (_m *Repository) GetItemBuilder() ddb.GetItemBuilder {
+	ret := _m.Called()
 
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(context.Context, ddb.QueryBuilder, interface{}) bool); ok {
-		r0 = rf(ctx, qb, result)
+	var r0 ddb.GetItemBuilder
+	if rf, ok := ret.Get(0).(func() ddb.GetItemBuilder); ok {
+		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(bool)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.GetItemBuilder)
+		}
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ddb.QueryBuilder, interface{}) error); ok {
-		r1 = rf(ctx, qb, result)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // GetModelId provides a mock function with given fields:
@@ -83,18 +189,66 @@ func (_m *Repository) GetModelId() mdl.ModelId {
 	return r0
 }
 
-// Query provides a mock function with given fields: ctx, qb, result
-func (_m *Repository) Query(ctx context.Context, qb ddb.QueryBuilder, result interface{}) error {
-	ret := _m.Called(ctx, qb, result)
+// PutItem provides a mock function with given fields: ctx, qb, item
+func (_m *Repository) PutItem(ctx context.Context, qb ddb.PutItemBuilder, item interface{}) (*ddb.PutItemResult, error) {
+	ret := _m.Called(ctx, qb, item)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, ddb.QueryBuilder, interface{}) error); ok {
-		r0 = rf(ctx, qb, result)
+	var r0 *ddb.PutItemResult
+	if rf, ok := ret.Get(0).(func(context.Context, ddb.PutItemBuilder, interface{}) *ddb.PutItemResult); ok {
+		r0 = rf(ctx, qb, item)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ddb.PutItemResult)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ddb.PutItemBuilder, interface{}) error); ok {
+		r1 = rf(ctx, qb, item)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PutItemBuilder provides a mock function with given fields:
+func (_m *Repository) PutItemBuilder() ddb.PutItemBuilder {
+	ret := _m.Called()
+
+	var r0 ddb.PutItemBuilder
+	if rf, ok := ret.Get(0).(func() ddb.PutItemBuilder); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.PutItemBuilder)
+		}
 	}
 
 	return r0
+}
+
+// Query provides a mock function with given fields: ctx, qb, result
+func (_m *Repository) Query(ctx context.Context, qb ddb.QueryBuilder, result interface{}) (*ddb.QueryResult, error) {
+	ret := _m.Called(ctx, qb, result)
+
+	var r0 *ddb.QueryResult
+	if rf, ok := ret.Get(0).(func(context.Context, ddb.QueryBuilder, interface{}) *ddb.QueryResult); ok {
+		r0 = rf(ctx, qb, result)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ddb.QueryResult)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ddb.QueryBuilder, interface{}) error); ok {
+		r1 = rf(ctx, qb, result)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // QueryBuilder provides a mock function with given fields:
@@ -113,29 +267,79 @@ func (_m *Repository) QueryBuilder() ddb.QueryBuilder {
 	return r0
 }
 
-// Save provides a mock function with given fields: ctx, item
-func (_m *Repository) Save(ctx context.Context, item interface{}) error {
-	ret := _m.Called(ctx, item)
+// Scan provides a mock function with given fields: ctx, sb, result
+func (_m *Repository) Scan(ctx context.Context, sb ddb.ScanBuilder, result interface{}) (*ddb.ScanResult, error) {
+	ret := _m.Called(ctx, sb, result)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}) error); ok {
-		r0 = rf(ctx, item)
+	var r0 *ddb.ScanResult
+	if rf, ok := ret.Get(0).(func(context.Context, ddb.ScanBuilder, interface{}) *ddb.ScanResult); ok {
+		r0 = rf(ctx, sb, result)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ddb.ScanResult)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ddb.ScanBuilder, interface{}) error); ok {
+		r1 = rf(ctx, sb, result)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ScanBuilder provides a mock function with given fields:
+func (_m *Repository) ScanBuilder() ddb.ScanBuilder {
+	ret := _m.Called()
+
+	var r0 ddb.ScanBuilder
+	if rf, ok := ret.Get(0).(func() ddb.ScanBuilder); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.ScanBuilder)
+		}
 	}
 
 	return r0
 }
 
-// Update provides a mock function with given fields: ctx, exp, qb, values
-func (_m *Repository) Update(ctx context.Context, exp djoemo.UpdateExpression, qb ddb.QueryBuilder, values map[string]interface{}) error {
-	ret := _m.Called(ctx, exp, qb, values)
+// UpdateItem provides a mock function with given fields: ctx, ub, item
+func (_m *Repository) UpdateItem(ctx context.Context, ub ddb.UpdateItemBuilder, item interface{}) (*ddb.UpdateItemResult, error) {
+	ret := _m.Called(ctx, ub, item)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, djoemo.UpdateExpression, ddb.QueryBuilder, map[string]interface{}) error); ok {
-		r0 = rf(ctx, exp, qb, values)
+	var r0 *ddb.UpdateItemResult
+	if rf, ok := ret.Get(0).(func(context.Context, ddb.UpdateItemBuilder, interface{}) *ddb.UpdateItemResult); ok {
+		r0 = rf(ctx, ub, item)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ddb.UpdateItemResult)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ddb.UpdateItemBuilder, interface{}) error); ok {
+		r1 = rf(ctx, ub, item)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UpdateItemBuilder provides a mock function with given fields:
+func (_m *Repository) UpdateItemBuilder() ddb.UpdateItemBuilder {
+	ret := _m.Called()
+
+	var r0 ddb.UpdateItemBuilder
+	if rf, ok := ret.Get(0).(func() ddb.UpdateItemBuilder); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.UpdateItemBuilder)
+		}
 	}
 
 	return r0

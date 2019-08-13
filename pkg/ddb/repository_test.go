@@ -2,11 +2,8 @@ package ddb_test
 
 import (
 	"context"
-	"errors"
-	"github.com/adjoeio/djoemo"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/ddb/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -14,190 +11,541 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"strconv"
 	"testing"
 )
 
 type model struct {
-	Id  int    `dynamo:"id,hash"`
-	Foo string `dynamo:"foo"`
+	Id  int    `json:"id" ddb:"key=hash"`
+	Rev string `json:"rev" ddb:"key=range"`
+	Foo string `json:"foo"`
 }
 
-func TestRepository_CreateTable(t *testing.T) {
-	dyn, r, _ := getMocks()
-
-	input := &dynamodb.DescribeTableInput{
-		TableName: aws.String("test-test-test-test-test"),
-	}
-	dyn.On("DescribeTable", input).Return(nil, errors.New(dynamodb.ErrCodeResourceNotFoundException))
-
-	bla := &dynamodb.CreateTableInput{
-		AttributeDefinitions: []*dynamodb.AttributeDefinition{{
-			AttributeName: aws.String("id"),
-			AttributeType: aws.String(dynamodb.ScalarAttributeTypeN),
-		}},
-		KeySchema: []*dynamodb.KeySchemaElement{{
-			AttributeName: aws.String("id"),
-			KeyType:       aws.String(dynamodb.KeyTypeHash),
-		}},
-		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  aws.Int64(1),
-			WriteCapacityUnits: aws.Int64(2),
-		},
-		TableName: aws.String("test-test-test-test-test"),
-	}
-	dyn.On("CreateTableWithContext", mock.Anything, bla).Return(nil, nil)
-
-	err := r.CreateTable(model{})
-
-	dyn.AssertExpectations(t)
-	assert.Nil(t, err, "there should be no error")
+type projection struct {
+	Id int `json:"id"`
 }
 
 func TestRepository_GetItem(t *testing.T) {
-	dyn, r, dj := getMocks()
+	client, repo := getMocks()
 
-	var item interface{}
-	qb := ddb.NewQueryBuilder("test-test-test-test-test")
+	item := model{}
+	input := &dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String("1"),
+			},
+			"rev": {
+				S: aws.String("0"),
+			},
+		},
+		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
+	}
+	output := &dynamodb.GetItemOutput{
+		ConsumedCapacity: nil,
+		Item: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String(strconv.Itoa(1)),
+			},
+			"rev": {
+				S: aws.String("0"),
+			},
+			"foo": {
+				S: aws.String("bar"),
+			},
+		},
+	}
 
-	dj.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), qb.Build(), &item).Return(true, nil)
+	client.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
 
-	ok, err := r.GetItem(context.TODO(), qb, &item)
+	qb := repo.GetItemBuilder().WithHash(1).WithRange("0")
+	res, err := repo.GetItem(context.Background(), qb, &item)
+
+	expected := model{
+		Id:  1,
+		Rev: "0",
+		Foo: "bar",
+	}
 
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.True(t, res.IsFound)
+	assert.EqualValues(t, expected, item)
 
-	dyn.AssertExpectations(t)
-	dj.AssertExpectations(t)
+	client.AssertExpectations(t)
+}
+
+func TestRepository_GetItem_FromItem(t *testing.T) {
+	client, repo := getMocks()
+
+	input := &dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String("5"),
+			},
+			"rev": {
+				S: aws.String("abc"),
+			},
+		},
+		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
+	}
+	output := &dynamodb.GetItemOutput{
+		ConsumedCapacity: nil,
+		Item: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String("5"),
+			},
+			"rev": {
+				S: aws.String("abc"),
+			},
+			"foo": {
+				S: aws.String("baz"),
+			},
+		},
+	}
+	client.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	item := model{
+		Id:  5,
+		Rev: "abc",
+	}
+
+	qb := repo.GetItemBuilder().WithHash(5).WithRange("abc")
+	res, err := repo.GetItem(context.Background(), qb, &item)
+
+	expected := model{
+		Id:  5,
+		Rev: "abc",
+		Foo: "baz",
+	}
+
+	assert.NoError(t, err)
+	assert.True(t, res.IsFound)
+	assert.EqualValues(t, expected, item)
 }
 
 func TestRepository_GetItemNotFound(t *testing.T) {
-	dyn, r, dj := getMocks()
-	var item interface{}
-	qb := ddb.NewQueryBuilder("test-test-test-test-test")
+	client, repo := getMocks()
+	item := model{}
 
-	dj.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), qb.Build(), &item).Return(false, nil)
+	input := &dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String(strconv.Itoa(1)),
+			},
+			"rev": {
+				S: aws.String("0"),
+			},
+		},
+		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
+	}
+	output := &dynamodb.GetItemOutput{}
+	client.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
 
-	ok, err := r.GetItem(context.TODO(), qb, &item)
-
-	assert.NoError(t, err)
-	assert.False(t, ok)
-
-	dyn.AssertExpectations(t)
-	dj.AssertExpectations(t)
-}
-
-func TestRepository_GetItems(t *testing.T) {
-	dyn, r, dj := getMocks()
-
-	var item []interface{}
-	qb := ddb.NewQueryBuilder("test-test-test-test-test")
-
-	dj.On("GetItemsWithContext", mock.AnythingOfType("*context.emptyCtx"), qb.Build(), &item).Return(true, nil)
-
-	found, err := r.GetItems(context.TODO(), qb, &item)
+	qb := repo.GetItemBuilder().WithHash(1).WithRange("0")
+	res, err := repo.GetItem(context.Background(), qb, &item)
 
 	assert.NoError(t, err)
-	assert.False(t, found)
+	assert.False(t, res.IsFound)
 
-	dyn.AssertExpectations(t)
-	dj.AssertExpectations(t)
+	client.AssertExpectations(t)
 }
 
-func TestRepository_GetItemsInvalidInput(t *testing.T) {
-	dyn, r, dj := getMocks()
+func TestRepository_GetItemProjection(t *testing.T) {
+	client, repo := getMocks()
 
-	var item []interface{}
-	qb := ddb.NewQueryBuilder("test-test-test-test-test")
+	input := &dynamodb.GetItemInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#0": aws.String("id"),
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String(strconv.Itoa(1)),
+			},
+			"rev": {
+				S: aws.String("0"),
+			},
+		},
+		ProjectionExpression: aws.String("#0"),
+		TableName:            aws.String("applike-test-gosoline-ddb-myModel"),
+	}
+	output := &dynamodb.GetItemOutput{
+		ConsumedCapacity: nil,
+		Item: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String(strconv.Itoa(1)),
+			},
+		},
+	}
+	client.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
 
-	dj.On("GetItemsWithContext", mock.AnythingOfType("*context.emptyCtx"), qb.Build(), item).Return(true, nil)
+	item := projection{}
 
-	found, err := r.GetItems(context.TODO(), qb, item)
+	qb := repo.GetItemBuilder().WithHash(1).WithRange("0").WithProjection(item)
+	res, err := repo.GetItem(context.Background(), qb, &item)
 
-	assert.Error(t, err)
-	assert.False(t, found)
-
-	dyn.AssertExpectations(t)
-	dj.AssertExpectations(t)
-}
-
-func TestRepository_GIndex(t *testing.T) {
-	dyn, r, dj := getMocks()
-	var item interface{}
-
-	qb := ddb.NewQueryBuilder("test-test-test-test-test")
-
-	idx := "idx"
-
-	qbMock := &mocks.QueryBuilder{}
-	qbMock.On("Index").Return(&idx)
-	qbMock.On("Build").Return(qb.Build())
-
-	dj.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), qb.Build(), &item).Return(false, nil)
-	dj.On("GIndex", idx).Return(dj)
-
-	ok, err := r.GetItem(context.TODO(), qbMock, &item)
+	expected := projection{
+		Id: 1,
+	}
 
 	assert.NoError(t, err)
-	assert.False(t, ok)
+	assert.True(t, res.IsFound)
+	assert.EqualValues(t, expected, item)
 
-	dyn.AssertExpectations(t)
-	dj.AssertExpectations(t)
+	client.AssertExpectations(t)
 }
 
-func TestRepository_Save(t *testing.T) {
-	dyn, r, dj := getMocks()
+func TestRepository_Query(t *testing.T) {
+	client, repo := getMocks()
 
-	var item interface{}
+	input := &dynamodb.QueryInput{
+		ExpressionAttributeNames: map[string]*string{
+			"#0": aws.String("id"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":0": {
+				N: aws.String("1"),
+			},
+		},
+		KeyConditionExpression: aws.String("#0 = :0"),
+		TableName:              aws.String("applike-test-gosoline-ddb-myModel"),
+	}
+	output := &dynamodb.QueryOutput{
+		Count:        aws.Int64(2),
+		ScannedCount: aws.Int64(2),
+		Items: []map[string]*dynamodb.AttributeValue{
+			{
+				"id": {
+					N: aws.String("1"),
+				},
+				"rev": {
+					S: aws.String("0"),
+				},
+				"foo": {
+					S: aws.String("bar"),
+				},
+			},
+			{
+				"id": {
+					N: aws.String("1"),
+				},
+				"rev": {
+					S: aws.String("1"),
+				},
+				"foo": {
+					S: aws.String("baz"),
+				},
+			},
+		},
+	}
 
-	dj.On("SaveItemWithContext", mock.AnythingOfType("*context.emptyCtx"), r.QueryBuilder().WithHash("", "").Build(), item).Return(nil)
+	client.On("QueryWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
 
-	err := r.Save(context.TODO(), item)
+	result := make([]model, 0)
+	expected := []model{
+		{
+			Id:  1,
+			Rev: "0",
+			Foo: "bar",
+		},
+		{
+			Id:  1,
+			Rev: "1",
+			Foo: "baz",
+		},
+	}
+
+	qb := repo.QueryBuilder().WithHash(1)
+	_, err := repo.Query(context.Background(), qb, &result)
 
 	assert.NoError(t, err)
+	assert.Len(t, result, 2)
+	assert.EqualValues(t, expected, result)
 
-	dyn.AssertExpectations(t)
-	dj.AssertExpectations(t)
+	client.AssertExpectations(t)
+}
+
+func TestRepository_BatchGetItems(t *testing.T) {
+	client, repo := getMocks()
+
+	input := &dynamodb.BatchGetItemInput{
+		RequestItems: map[string]*dynamodb.KeysAndAttributes{
+			"applike-test-gosoline-ddb-myModel": {
+				Keys: []map[string]*dynamodb.AttributeValue{
+					{
+						"id":  {N: aws.String("1")},
+						"rev": {S: aws.String("0")},
+					},
+					{
+						"id":  {N: aws.String("2")},
+						"rev": {S: aws.String("0")},
+					},
+				},
+			},
+		},
+	}
+	output := &dynamodb.BatchGetItemOutput{
+		Responses: map[string][]map[string]*dynamodb.AttributeValue{
+			"applike-test-gosoline-ddb-myModel": {
+				{
+					"id":  {N: aws.String("1")},
+					"rev": {S: aws.String("0")},
+					"foo": {S: aws.String("foo")},
+				},
+				{
+					"id":  {N: aws.String("2")},
+					"rev": {S: aws.String("0")},
+					"foo": {S: aws.String("bar")},
+				},
+			},
+		},
+		UnprocessedKeys: map[string]*dynamodb.KeysAndAttributes{},
+	}
+	client.On("BatchGetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	result := make([]model, 0)
+	expected := []model{
+		{
+			Id:  1,
+			Rev: "0",
+			Foo: "foo",
+		},
+		{
+			Id:  2,
+			Rev: "0",
+			Foo: "bar",
+		},
+	}
+
+	qb := repo.BatchGetItemsBuilder().WithKeys(1, "0").WithKeys(2, "0")
+	_, err := repo.BatchGetItems(context.Background(), qb, &result)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expected, result)
+
+	client.AssertExpectations(t)
+}
+
+func TestRepository_BatchWriteItem(t *testing.T) {
+	items := []model{
+		{
+			Id:  1,
+			Rev: "0",
+			Foo: "foo",
+		},
+		{
+			Id:  2,
+			Rev: "0",
+			Foo: "bar",
+		},
+	}
+
+	client, repo := getMocks()
+
+	input := &dynamodb.BatchWriteItemInput{
+		RequestItems: map[string][]*dynamodb.WriteRequest{
+			"applike-test-gosoline-ddb-myModel": {
+				{
+					PutRequest: &dynamodb.PutRequest{
+						Item: map[string]*dynamodb.AttributeValue{
+							"id":  {N: aws.String("1")},
+							"rev": {S: aws.String("0")},
+							"foo": {S: aws.String("foo")},
+						},
+					},
+				},
+				{
+					PutRequest: &dynamodb.PutRequest{
+						Item: map[string]*dynamodb.AttributeValue{
+							"id":  {N: aws.String("2")},
+							"rev": {S: aws.String("0")},
+							"foo": {S: aws.String("bar")},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	output := &dynamodb.BatchWriteItemOutput{
+		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
+	}
+
+	client.On("BatchWriteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	_, err := repo.BatchPutItems(context.Background(), items)
+
+	assert.NoError(t, err)
+	client.AssertExpectations(t)
+}
+
+func TestRepository_PutItem(t *testing.T) {
+	client, r := getMocks()
+
+	item := model{
+		Id:  1,
+		Rev: "0",
+		Foo: "foo",
+	}
+
+	input := &dynamodb.PutItemInput{
+		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
+		Item: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String("1"),
+			},
+			"rev": {
+				S: aws.String("0"),
+			},
+			"foo": {
+				S: aws.String("foo"),
+			},
+		},
+	}
+	output := &dynamodb.PutItemOutput{}
+	client.On("PutItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	res, err := r.PutItem(context.Background(), nil, item)
+
+	assert.NoError(t, err)
+	assert.False(t, res.ConditionalCheckFailed)
+	client.AssertExpectations(t)
 }
 
 func TestRepository_Update(t *testing.T) {
-	dyn, r, dj := getMocks()
+	client, repo := getMocks()
 
-	qb := r.QueryBuilder().WithHash("", "")
-	dj.On("UpdateWithContext", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("djoemo.UpdateExpression"), qb.Build(), mock.Anything).Run(func(args mock.Arguments) {
-		assert.IsType(t, map[string]interface{}{}, args.Get(3))
-	}).Return(nil)
+	input := &dynamodb.UpdateItemInput{
+		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String("1"),
+			},
+			"rev": {
+				S: aws.String("0"),
+			},
+		},
+		ExpressionAttributeNames: map[string]*string{
+			"#0": aws.String("foo"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":0": {
+				S: aws.String("bar"),
+			},
+		},
+		UpdateExpression: aws.String("SET #0 = :0\n"),
+		ReturnValues:     aws.String(dynamodb.ReturnValueAllNew),
+	}
+	output := &dynamodb.UpdateItemOutput{
+		Attributes: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String("1"),
+			},
+			"rev": {
+				S: aws.String("0"),
+			},
+			"foo": {
+				S: aws.String("bar"),
+			},
+		},
+	}
+	client.On("UpdateItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
 
-	err := r.Update(context.TODO(), djoemo.SetExpr, qb, map[string]interface{}{
-		"'value' = 'value' + ?": []interface{}{42},
-	})
+	updatedItem := &model{
+		Id:  1,
+		Rev: "0",
+	}
+	ub := repo.UpdateItemBuilder().Set("foo", "bar").ReturnAllNew()
+	res, err := repo.UpdateItem(context.Background(), ub, updatedItem)
+
+	expectedItem := &model{
+		Id:  1,
+		Rev: "0",
+		Foo: "bar",
+	}
+
 	assert.NoError(t, err)
-
-	err = r.Update(context.TODO(), djoemo.Set, qb, map[string]interface{}{
-		"value": 42,
-	})
-	assert.NoError(t, err)
-	dyn.AssertExpectations(t)
-	dj.AssertExpectations(t)
+	assert.False(t, res.ConditionalCheckFailed)
+	assert.EqualValues(t, expectedItem, updatedItem)
+	client.AssertExpectations(t)
 }
 
-func getMocks() (*cloudMocks.DynamoDBAPI, ddb.Repository, *mocks.DjoemoeRepository) {
+func TestRepository_DeleteItem(t *testing.T) {
+	client, repo := getMocks()
+
+	input := &dynamodb.DeleteItemInput{
+		ConditionExpression: aws.String("#0 = :0"),
+		ExpressionAttributeNames: map[string]*string{
+			"#0": aws.String("foo"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":0": {
+				S: aws.String("bar"),
+			},
+		},
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String("1"),
+			},
+			"rev": {
+				S: aws.String("0"),
+			},
+		},
+		ReturnValues: aws.String(dynamodb.ReturnValueAllOld),
+		TableName:    aws.String("applike-test-gosoline-ddb-myModel"),
+	}
+	output := &dynamodb.DeleteItemOutput{
+		Attributes: map[string]*dynamodb.AttributeValue{
+			"id": {
+				N: aws.String("1"),
+			},
+			"rev": {
+				S: aws.String("0"),
+			},
+			"foo": {
+				S: aws.String("bar"),
+			},
+		},
+	}
+
+	client.On("DeleteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	item := model{
+		Id:  1,
+		Rev: "0",
+		Foo: "baz",
+	}
+
+	expected := model{
+		Id:  1,
+		Rev: "0",
+		Foo: "bar",
+	}
+
+	db := repo.DeleteItemBuilder().WithCondition(ddb.Eq("foo", "bar")).ReturnAllOld()
+	res, err := repo.DeleteItem(context.Background(), db, &item)
+
+	assert.NoError(t, err)
+	assert.False(t, res.ConditionalCheckFailed)
+	assert.Equal(t, expected, item)
+	client.AssertExpectations(t)
+}
+
+func getMocks() (*cloudMocks.DynamoDBAPI, ddb.Repository) {
 	logger := monMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
-	dyn := new(cloudMocks.DynamoDBAPI)
-	dj := new(mocks.DjoemoeRepository)
+	client := new(cloudMocks.DynamoDBAPI)
 
-	r := ddb.NewFromInterfaces(logger, tracer, dyn, ddb.Settings{
+	repo := ddb.NewWithInterfaces(logger, tracer, client, &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Project:     "test",
+			Project:     "applike",
 			Environment: "test",
-			Family:      "test",
-			Application: "test",
-			Name:        "test",
+			Family:      "gosoline",
+			Application: "ddb",
+			Name:        "myModel",
 		},
-		AutoCreate:         true,
-		ReadCapacityUnits:  1,
-		WriteCapacityUnits: 2,
-	}, dj)
+		Main: ddb.MainSettings{
+			Model: model{},
+		},
+	})
 
-	return dyn, r, dj
+	return client, repo
 }

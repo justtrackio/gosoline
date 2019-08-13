@@ -4,7 +4,6 @@ package mocks
 
 import go_redisredis "github.com/go-redis/redis"
 import mock "github.com/stretchr/testify/mock"
-import mon "github.com/applike/gosoline/pkg/mon"
 
 import time "time"
 
@@ -220,9 +219,4 @@ func (_m *Client) Set(key string, value interface{}, expiration time.Duration) e
 	}
 
 	return r0
-}
-
-// SetLogger provides a mock function with given fields: logger
-func (_m *Client) SetLogger(logger mon.Logger) {
-	_m.Called(logger)
 }

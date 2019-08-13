@@ -7,9 +7,24 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
+func repoInit(config cfg.Config, logger mon.Logger, settings Settings) func(model interface{}) ddb.Repository {
+	return func(model interface{}) ddb.Repository {
+		repo := ddb.NewRepository(config, logger, &ddb.Settings{
+			ModelId: settings.TargetModelId,
+			Main: ddb.MainSettings{
+				Model:              model,
+				ReadCapacityUnits:  5,
+				WriteCapacityUnits: 5,
+			},
+		})
+
+		return ddb.NewMetricRepository(config, logger, repo)
+	}
+}
+
 type subOutDdb struct {
-	logger mon.Logger
-	repo   ddb.Repository
+	repoInit func(model interface{}) ddb.Repository
+	repo     ddb.Repository
 }
 
 func (p *subOutDdb) GetType() string {
@@ -17,28 +32,17 @@ func (p *subOutDdb) GetType() string {
 }
 
 func (p *subOutDdb) Boot(config cfg.Config, logger mon.Logger, settings Settings) error {
-	p.logger = logger
-
-	repo := ddb.New(config, logger, ddb.Settings{
-		ModelId:            settings.TargetModelId,
-		ReadCapacityUnits:  5,
-		WriteCapacityUnits: 5,
-	})
-	p.repo = ddb.NewMetricRepository(config, logger, repo)
+	p.repoInit = repoInit(config, logger, settings)
 
 	return nil
 }
 
 func (p *subOutDdb) Persist(ctx context.Context, model Model, op string) error {
-	logger := p.logger.WithContext(ctx)
-	err := p.repo.CreateTable(model)
-
-	if err != nil {
-		logger.Error(err, "could not create ddb table for model")
-		return err
+	if p.repo == nil {
+		p.repo = p.repoInit(model)
 	}
 
-	err = p.repo.Save(ctx, model)
+	_, err := p.repo.PutItem(ctx, nil, model)
 
 	return err
 }

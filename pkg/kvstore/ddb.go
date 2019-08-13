@@ -21,27 +21,22 @@ type DdbKvStore struct {
 
 func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvStore {
 	settings.PadFromConfig(config)
-
 	name := strings.Join([]string{"kvstore", settings.Name}, "-")
-	modelId := mdl.ModelId{
-		Project:     settings.Project,
-		Environment: settings.Environment,
-		Family:      settings.Family,
-		Application: settings.Application,
-		Name:        name,
-	}
 
-	repository := ddb.New(config, logger, ddb.Settings{
-		ModelId:            modelId,
-		ReadCapacityUnits:  5,
-		WriteCapacityUnits: 5,
+	repository := ddb.NewRepository(config, logger, &ddb.Settings{
+		ModelId: mdl.ModelId{
+			Project:     settings.Project,
+			Environment: settings.Environment,
+			Family:      settings.Family,
+			Application: settings.Application,
+			Name:        name,
+		},
+		Main: ddb.MainSettings{
+			Model:              ddbItem{},
+			ReadCapacityUnits:  5,
+			WriteCapacityUnits: 5,
+		},
 	})
-
-	err := repository.CreateTable(ddbItem{})
-
-	if err != nil {
-		panic(err)
-	}
 
 	return NewDdbKvStoreWithInterfaces(repository, settings)
 }
@@ -60,17 +55,15 @@ func (s *DdbKvStore) Contains(ctx context.Context, key interface{}) (bool, error
 		return false, err
 	}
 
-	qb := s.repository.QueryBuilder()
-	qb.WithHash("key", keyStr)
-
 	item := &ddbItem{}
-	exists, err := s.repository.GetItem(ctx, qb, &item)
+	qb := s.repository.GetItemBuilder().WithHash(keyStr)
+	res, err := s.repository.GetItem(ctx, qb, &item)
 
 	if err != nil {
 		return false, err
 	}
 
-	return exists, nil
+	return res.IsFound, nil
 }
 
 func (s *DdbKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
@@ -91,7 +84,7 @@ func (s *DdbKvStore) Put(ctx context.Context, key interface{}, value interface{}
 		Value: string(bytes),
 	}
 
-	err = s.repository.Save(ctx, item)
+	_, err = s.repository.PutItem(ctx, nil, item)
 
 	return err
 }
@@ -103,17 +96,16 @@ func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}
 		return false, err
 	}
 
-	qb := s.repository.QueryBuilder()
-	qb.WithHash("key", keyStr)
+	qb := s.repository.GetItemBuilder().WithHash(keyStr)
 
 	item := &ddbItem{}
-	exists, err := s.repository.GetItem(ctx, qb, &item)
+	res, err := s.repository.GetItem(ctx, qb, &item)
 
 	if err != nil {
 		return false, err
 	}
 
-	if !exists {
+	if !res.IsFound {
 		return false, nil
 	}
 
