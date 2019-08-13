@@ -42,6 +42,20 @@ func (h JsonHandler) Handle(ctx context.Context, request *apiserver.Request) (*a
 	return apiserver.NewJsonResponse(out), nil
 }
 
+type RedirectHandler struct {
+}
+
+func (h RedirectHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+	return apiserver.NewRedirectResponse("https://example.com"), nil
+}
+
+type NotModifiedHandler struct {
+}
+
+func (h NotModifiedHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+	return apiserver.NewStatusResponse(http.StatusNotModified), nil
+}
+
 func TestHtmlHandler(t *testing.T) {
 	handler := apiserver.CreateRawHandler(HtmlHandler{})
 	response := apiserver.HttpTest("PUT", "/action", "/action", `foobar`, handler)
@@ -65,4 +79,24 @@ func TestCreateIoHandler(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	assert.Equal(t, `{"text":"foobar"}`, response.Body.String())
+}
+
+func TestRedirectHandler(t *testing.T) {
+	handler := apiserver.CreateRawHandler(RedirectHandler{})
+	response := apiserver.HttpTest("GET", "/redirect", "/redirect", "", handler)
+
+	assert.Equal(t, http.StatusFound, response.Code)
+	assert.Equal(t, "", response.Header().Get("Content-Type"))
+	assert.Equal(t, "https://example.com", response.Header().Get("Location"))
+	assert.Equal(t, "", response.Body.String())
+}
+
+func TestNotModifiedHandler(t *testing.T) {
+	handler := apiserver.CreateRawHandler(NotModifiedHandler{})
+	response := apiserver.HttpTest("GET", "/", "/", "", handler)
+
+	assert.Equal(t, http.StatusNotModified, response.Code)
+	assert.Equal(t, "", response.Header().Get("Content-Type"))
+	assert.Equal(t, "", response.Header().Get("Location"))
+	assert.Equal(t, "", response.Body.String())
 }

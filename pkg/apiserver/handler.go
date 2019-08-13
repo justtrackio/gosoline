@@ -2,8 +2,11 @@ package apiserver
 
 import (
 	"context"
+	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+	"github.com/pkg/errors"
+	"github.com/spf13/cast"
 	"io/ioutil"
 	"net/http"
 )
@@ -21,17 +24,27 @@ type Request struct {
 	ClientIp string
 }
 
+// Don't create a response directly, use New*Response instead
 type Response struct {
 	StatusCode  int
-	ContentType string
+	ContentType *string // might be nil
 	Header      http.Header
 	Body        interface{}
+}
+
+type emptyRenderer struct{}
+
+func (e emptyRenderer) Render(http.ResponseWriter) error {
+	return nil
+}
+
+func (e emptyRenderer) WriteContentType(w http.ResponseWriter) {
 }
 
 func NewHtmlResponse(body interface{}) *Response {
 	return &Response{
 		StatusCode:  http.StatusOK,
-		ContentType: ContentTypeHtml,
+		ContentType: mdl.String(ContentTypeHtml),
 		Body:        body,
 		Header:      make(http.Header),
 	}
@@ -40,8 +53,29 @@ func NewHtmlResponse(body interface{}) *Response {
 func NewJsonResponse(body interface{}) *Response {
 	return &Response{
 		StatusCode:  http.StatusOK,
-		ContentType: ContentTypeJson,
+		ContentType: mdl.String(ContentTypeJson),
 		Body:        body,
+		Header:      make(http.Header),
+	}
+}
+
+func NewRedirectResponse(url string) *Response {
+	header := make(http.Header)
+	header.Set("Location", url)
+
+	return &Response{
+		StatusCode:  http.StatusFound,
+		ContentType: nil,
+		Body:        nil,
+		Header:      header,
+	}
+}
+
+func NewStatusResponse(statusCode int) *Response {
+	return &Response{
+		StatusCode:  statusCode,
+		ContentType: nil,
+		Body:        nil,
 		Header:      make(http.Header),
 	}
 }
@@ -102,8 +136,10 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 
 		reqCtx := ginCtx.Request.Context()
 		request := &Request{
-			Params: ginCtx.Params,
-			Body:   input,
+			Header:   ginCtx.Request.Header,
+			Params:   ginCtx.Params,
+			Body:     input,
+			ClientIp: ginCtx.ClientIP(),
 		}
 
 		err = handler.Handle(ginCtx, reqCtx, request)
@@ -159,13 +195,27 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, requestBody interf
 		return
 	}
 
+	writer, err := mkResponseBodyWriter(resp)
+
+	if err != nil {
+		writeErrorResponse(ginCtx, errHandler, http.StatusInternalServerError, err)
+		return
+	}
+
 	writeResponseHeaders(ginCtx, resp)
-	writeResponseBody(ginCtx, resp)
+	writer(ginCtx)
 }
 
 func writeErrorResponse(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, err error) {
 	resp := errHandler(statusCode, err)
-	writeResponseBody(ginCtx, resp)
+
+	writer, err := mkResponseBodyWriter(resp)
+
+	if err != nil {
+		panic(errors.WithMessage(err, "Error creating writer for error handler"))
+	}
+
+	writer(ginCtx)
 }
 
 func writeResponseHeaders(ginCtx *gin.Context, resp *Response) {
@@ -176,18 +226,32 @@ func writeResponseHeaders(ginCtx *gin.Context, resp *Response) {
 	}
 }
 
-func writeResponseBody(ginCtx *gin.Context, resp *Response) {
-	switch resp.ContentType {
-	case ContentTypeHtml:
-		switch b := resp.Body.(type) {
-		case string:
-			ginCtx.Data(resp.StatusCode, resp.ContentType, []byte(b))
-		case []byte:
-			ginCtx.Data(resp.StatusCode, resp.ContentType, b)
-		}
-
-	case ContentTypeJson:
-		ginCtx.JSON(resp.StatusCode, resp.Body)
-		break
+func mkResponseBodyWriter(resp *Response) (func(ginCtx *gin.Context), error) {
+	if resp.ContentType == nil {
+		return func(ginCtx *gin.Context) {
+			ginCtx.Render(resp.StatusCode, emptyRenderer{})
+		}, nil
 	}
+
+	if *resp.ContentType == ContentTypeJson {
+		return func(ginCtx *gin.Context) {
+			ginCtx.JSON(resp.StatusCode, resp.Body)
+		}, nil
+	}
+
+	if b, ok := resp.Body.([]byte); ok {
+		return func(ginCtx *gin.Context) {
+			ginCtx.Data(resp.StatusCode, *resp.ContentType, b)
+		}, nil
+	}
+
+	data, err := cast.ToStringE(resp.Body)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ginCtx *gin.Context) {
+		ginCtx.Data(resp.StatusCode, *resp.ContentType, []byte(data))
+	}, nil
 }

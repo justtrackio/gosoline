@@ -1,6 +1,7 @@
 package oauth2
 
 import (
+	"context"
 	"errors"
 	"github.com/applike/gosoline/pkg/http"
 	httpMocks "github.com/applike/gosoline/pkg/http/mocks"
@@ -22,13 +23,14 @@ func TestGoogleService_GetAuthRefresh(t *testing.T) {
 		ExpiresIn:   1,
 		TokenType:   "grizzly",
 	}
-	httpRequest := http.NewRequest("https://accounts.google.com/o/oauth2/token")
-	httpRequest.Body = map[string]string{
-		"client_id":     googleAuthRequest.ClientId,
-		"client_secret": googleAuthRequest.ClientSecret,
-		"grant_type":    googleAuthRequest.GrantType,
-		"refresh_token": googleAuthRequest.RefreshToken,
-	}
+	httpRequest := http.NewRequest().
+		WithUrl("https://accounts.google.com/o/oauth2/token").
+		WithBody(map[string]string{
+			"client_id":     googleAuthRequest.ClientId,
+			"client_secret": googleAuthRequest.ClientSecret,
+			"grant_type":    googleAuthRequest.GrantType,
+			"refresh_token": googleAuthRequest.RefreshToken,
+		})
 	httpResponse, err := json.Marshal(expectedGoogleAuthResponse)
 	response := &http.Response{
 		Body: httpResponse,
@@ -37,10 +39,10 @@ func TestGoogleService_GetAuthRefresh(t *testing.T) {
 	assert.NoError(t, err)
 
 	httpClient := new(httpMocks.Client)
-	httpClient.On("Post", httpRequest).Return(response, nil)
+	httpClient.On("Post", context.TODO(), httpRequest).Return(response, nil)
 
 	service := NewGoogleServiceWithInterfaces(httpClient)
-	googleAuthResponse, err := service.GetAuthRefresh(googleAuthRequest)
+	googleAuthResponse, err := service.GetAuthRefresh(context.TODO(), googleAuthRequest)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedGoogleAuthResponse.AccessToken, googleAuthResponse.AccessToken)
@@ -59,10 +61,10 @@ func TestGoogleService_GetAuthRefresh_Error(t *testing.T) {
 	}
 
 	httpClient := new(httpMocks.Client)
-	httpClient.On("Post", mock.Anything).Return(nil, errors.New("test"))
+	httpClient.On("Post", context.TODO(), mock.Anything).Return(nil, errors.New("test"))
 
 	service := NewGoogleServiceWithInterfaces(httpClient)
-	_, err := service.GetAuthRefresh(googleAuthRequest)
+	_, err := service.GetAuthRefresh(context.TODO(), googleAuthRequest)
 
 	assert.Error(t, err)
 }

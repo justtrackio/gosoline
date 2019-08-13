@@ -1,6 +1,7 @@
 package currency
 
 import (
+	"context"
 	"encoding/xml"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/http"
@@ -30,7 +31,7 @@ func NewUpdaterWithInterfaces(logger mon.Logger, redisClient redis.Client, httpC
 	}
 }
 
-func (service *UpdaterService) EnsureRecentExchangeRates() error {
+func (service *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 	dateString, err := service.redis.Get(ExchangeRateDateKey)
 
 	needsRefresh := false
@@ -63,8 +64,9 @@ func (service *UpdaterService) EnsureRecentExchangeRates() error {
 	}
 
 	service.logger.Info("CurrencyUpdaterService: Requesting exchange rates")
-	request := http.NewRequest(ExchangeRateUrl)
-	response, err := service.http.Get(request)
+	request := http.NewRequest().WithUrl(ExchangeRateUrl)
+
+	response, err := service.http.Get(ctx, request)
 
 	if err != nil {
 		service.logger.Error(err, "CurrencyUpdaterService: Error while requesting exchange rates")

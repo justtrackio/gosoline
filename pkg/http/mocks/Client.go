@@ -2,6 +2,7 @@
 
 package mocks
 
+import context "context"
 import http "github.com/applike/gosoline/pkg/http"
 import mock "github.com/stretchr/testify/mock"
 import time "time"
@@ -11,13 +12,13 @@ type Client struct {
 	mock.Mock
 }
 
-// Get provides a mock function with given fields: request
-func (_m *Client) Get(request *http.Request) (*http.Response, error) {
-	ret := _m.Called(request)
+// Get provides a mock function with given fields: ctx, request
+func (_m *Client) Get(ctx context.Context, request *http.Request) (*http.Response, error) {
+	ret := _m.Called(ctx, request)
 
 	var r0 *http.Response
-	if rf, ok := ret.Get(0).(func(*http.Request) *http.Response); ok {
-		r0 = rf(request)
+	if rf, ok := ret.Get(0).(func(context.Context, *http.Request) *http.Response); ok {
+		r0 = rf(ctx, request)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*http.Response)
@@ -25,8 +26,8 @@ func (_m *Client) Get(request *http.Request) (*http.Response, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*http.Request) error); ok {
-		r1 = rf(request)
+	if rf, ok := ret.Get(1).(func(context.Context, *http.Request) error); ok {
+		r1 = rf(ctx, request)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -34,13 +35,13 @@ func (_m *Client) Get(request *http.Request) (*http.Response, error) {
 	return r0, r1
 }
 
-// Post provides a mock function with given fields: request
-func (_m *Client) Post(request *http.Request) (*http.Response, error) {
-	ret := _m.Called(request)
+// Post provides a mock function with given fields: ctx, request
+func (_m *Client) Post(ctx context.Context, request *http.Request) (*http.Response, error) {
+	ret := _m.Called(ctx, request)
 
 	var r0 *http.Response
-	if rf, ok := ret.Get(0).(func(*http.Request) *http.Response); ok {
-		r0 = rf(request)
+	if rf, ok := ret.Get(0).(func(context.Context, *http.Request) *http.Response); ok {
+		r0 = rf(ctx, request)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*http.Response)
@@ -48,8 +49,8 @@ func (_m *Client) Post(request *http.Request) (*http.Response, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*http.Request) error); ok {
-		r1 = rf(request)
+	if rf, ok := ret.Get(1).(func(context.Context, *http.Request) error); ok {
+		r1 = rf(ctx, request)
 	} else {
 		r1 = ret.Error(1)
 	}

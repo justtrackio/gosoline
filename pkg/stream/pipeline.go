@@ -10,8 +10,10 @@ import (
 	"time"
 )
 
+const MetricNamePipelineReceivedCount = "PipelineReceivedCount"
 const MetricNamePipelineProcessedCount = "PipelineProcessedCount"
 
+//go:generate mockery -name PipelineCallback
 type PipelineCallback interface {
 	Boot(config cfg.Config, logger mon.Logger) error
 	Process(ctx context.Context, messages []*Message) ([]*Message, error)
@@ -94,23 +96,29 @@ func (p *Pipeline) Run(ctx context.Context) error {
 		case <-p.tmb.Dead():
 			p.input.Stop()
 			return p.tmb.Err()
-
-		case <-p.ticker.C:
-			p.process(ctx, true)
 		}
 	}
 }
 
 func (p *Pipeline) read(ctx context.Context) error {
 	for {
-		msg, ok := <-p.input.Data()
+		force := false
 
-		if !ok {
-			return nil
+		select {
+		case msg, ok := <-p.input.Data():
+			if !ok {
+				return nil
+			}
+
+			p.batch = append(p.batch, msg)
+
+		case <-p.ticker.C:
+			force = true
 		}
 
-		p.batch = append(p.batch, msg)
-		p.process(ctx, false)
+		if len(p.batch) >= p.settings.BatchSize || force {
+			p.process(ctx, force)
+		}
 	}
 }
 
@@ -128,6 +136,11 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 	if batchSize < p.settings.BatchSize && !force {
 		return
 	}
+
+	p.metric.WriteOne(&mon.MetricDatum{
+		MetricName: MetricNamePipelineReceivedCount,
+		Value:      float64(batchSize),
+	})
 
 	defer func() {
 		p.ticker = time.NewTicker(p.settings.Interval)
@@ -149,16 +162,23 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 		return
 	}
 
-	p.logger.Infof("pipeline processed %d messages", batchSize)
+	messageCount := len(messages)
+
+	p.logger.Infof("pipeline processed %d of %d messages", messageCount, batchSize)
 	p.metric.WriteOne(&mon.MetricDatum{
 		MetricName: MetricNamePipelineProcessedCount,
-		Value:      float64(batchSize),
+		Value:      float64(messageCount),
 	})
 }
 
 func getDefaultPipelineMetrics() mon.MetricData {
 	return mon.MetricData{
 		{
+			Priority:   mon.PriorityHigh,
+			MetricName: MetricNamePipelineReceivedCount,
+			Unit:       mon.UnitCount,
+			Value:      0.0,
+		}, {
 			Priority:   mon.PriorityHigh,
 			MetricName: MetricNamePipelineProcessedCount,
 			Unit:       mon.UnitCount,

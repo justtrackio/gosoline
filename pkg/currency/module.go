@@ -23,20 +23,20 @@ func (module *Module) Boot(config cfg.Config, logger mon.Logger) error {
 
 func (module *Module) Run(ctx context.Context) error {
 	ticker := time.NewTicker(time.Duration(1) * time.Hour)
-	module.refresh()
+	module.refresh(ctx)
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 
 		case <-ticker.C:
-			module.refresh()
+			module.refresh(ctx)
 		}
 	}
 }
 
-func (module *Module) refresh() {
-	err := module.updaterService.EnsureRecentExchangeRates()
+func (module *Module) refresh(ctx context.Context) {
+	err := module.updaterService.EnsureRecentExchangeRates(ctx)
 	if err != nil {
 		module.logger.Error(err, "failed to refresh currency exchange rates")
 	}

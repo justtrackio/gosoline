@@ -46,10 +46,12 @@ func bootComponent(name string, mockConfig configInput) {
 	switch component {
 	case "dynamodb":
 		runDynamoDb(name, mockConfig)
-	case "wiremock":
-		runWiremock(name, mockConfig)
 	case "elasticsearch":
 		runElasticsearch(name, mockConfig)
+	case "redis":
+		runRedis(name, mockConfig)
+	case "wiremock":
+		runWiremock(name, mockConfig)
 	default:
 		err := fmt.Errorf("unknown component '%s'", component)
 		logErr(err, err.Error())

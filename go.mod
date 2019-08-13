@@ -10,7 +10,6 @@ require (
 	github.com/alicebob/miniredis v2.4.6+incompatible
 	github.com/aws/aws-sdk-go v1.19.6
 	github.com/aws/aws-xray-sdk-go v0.9.4
-	github.com/bsm/redis-lock v8.0.0+incompatible
 	github.com/cenkalti/backoff v2.1.1+incompatible
 	github.com/certifi/gocertifi v0.0.0-20180118203423-deb3ae2ef261 // indirect
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 // indirect
@@ -29,6 +28,8 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/golang-migrate/migrate/v4 v4.2.5
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
+	github.com/google/go-querystring v1.0.0
+	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/guregu/dynamo v1.2.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/jinzhu/gorm v1.9.2
@@ -48,6 +49,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
 	github.com/spf13/afero v1.2.1 // indirect
+	github.com/spf13/cast v1.3.0
 	github.com/spf13/viper v1.3.1
 	github.com/stretchr/testify v1.3.0
 	github.com/thoas/go-funk v0.0.0-20181020164546-fbae87fb5b5c
@@ -58,6 +60,7 @@ require (
 	github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20190206043414-8bfc7677f583 // indirect
 	google.golang.org/api v0.2.0
+	gopkg.in/go-playground/validator.v8 v8.18.2
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637

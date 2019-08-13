@@ -22,17 +22,17 @@ func NewSentryHook(config cfg.Config) *sentryHook {
 	}
 }
 
-func (h sentryHook) Fire(level string, msg string, err error, fields Fields, tags Tags, configValues ConfigValues, context context.Context, ecsMetadata EcsMetadata) {
+func (h sentryHook) Fire(level string, msg string, err error, fields Fields, tags Tags, configValues ConfigValues, context context.Context, ecsMetadata EcsMetadata) error {
 	if err == nil {
-		return
+		return nil
 	}
 
 	cause := errors.Cause(err)
-	trace := raven.GetOrNewStacktrace(err, 4, 3, []string{})
+	trace := raven.GetOrNewStacktrace(err, 5, 3, []string{})
 	exception := raven.NewException(cause, trace)
 
 	extra := raven.Extra{
-		"config":       configValues,
+		//"config": configValues,
 		"fields":       fields,
 		"ecs_metadata": ecsMetadata,
 	}
@@ -40,7 +40,9 @@ func (h sentryHook) Fire(level string, msg string, err error, fields Fields, tag
 	packet := raven.NewPacketWithExtra(err.Error(), extra, exception)
 
 	_, res := h.sentry.Capture(packet, tags)
-	<-res
+	err = <-res
 
 	fields["sentry_event_id"] = packet.EventID
+
+	return err
 }

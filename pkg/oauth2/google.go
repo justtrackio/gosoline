@@ -1,6 +1,7 @@
 package oauth2
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/http"
@@ -24,7 +25,7 @@ type GoogleAuthRequest struct {
 
 //go:generate mockery -name Service
 type Service interface {
-	GetAuthRefresh(refreshToken string) *GoogleAuthResponse
+	GetAuthRefresh(ctx context.Context, refreshToken string) *GoogleAuthResponse
 }
 
 type GoogleService struct {
@@ -43,16 +44,17 @@ func NewGoogleServiceWithInterfaces(httpClient http.Client) *GoogleService {
 	}
 }
 
-func (service *GoogleService) GetAuthRefresh(authRequest *GoogleAuthRequest) (*GoogleAuthResponse, error) {
-	request := http.NewRequest(AuthTokenUrl)
-	request.Body = map[string]string{
-		"client_id":     authRequest.ClientId,
-		"client_secret": authRequest.ClientSecret,
-		"grant_type":    authRequest.GrantType,
-		"refresh_token": authRequest.RefreshToken,
-	}
+func (service *GoogleService) GetAuthRefresh(ctx context.Context, authRequest *GoogleAuthRequest) (*GoogleAuthResponse, error) {
+	request := http.NewRequest().
+		WithUrl(AuthTokenUrl).
+		WithBody(map[string]string{
+			"client_id":     authRequest.ClientId,
+			"client_secret": authRequest.ClientSecret,
+			"grant_type":    authRequest.GrantType,
+			"refresh_token": authRequest.RefreshToken,
+		})
 
-	response, err := service.httpClient.Post(request)
+	response, err := service.httpClient.Post(ctx, request)
 
 	if err != nil {
 		return nil, err

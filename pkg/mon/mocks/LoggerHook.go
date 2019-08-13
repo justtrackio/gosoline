@@ -12,6 +12,15 @@ type LoggerHook struct {
 }
 
 // Fire provides a mock function with given fields: level, msg, logErr, fields, tags, configValues, _a6, ecsMetadata
-func (_m *LoggerHook) Fire(level string, msg string, logErr error, fields mon.Fields, tags mon.Tags, configValues mon.ConfigValues, _a6 context.Context, ecsMetadata mon.EcsMetadata) {
-	_m.Called(level, msg, logErr, fields, tags, configValues, _a6, ecsMetadata)
+func (_m *LoggerHook) Fire(level string, msg string, logErr error, fields mon.Fields, tags mon.Tags, configValues mon.ConfigValues, _a6 context.Context, ecsMetadata mon.EcsMetadata) error {
+	ret := _m.Called(level, msg, logErr, fields, tags, configValues, _a6, ecsMetadata)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, error, mon.Fields, mon.Tags, mon.ConfigValues, context.Context, mon.EcsMetadata) error); ok {
+		r0 = rf(level, msg, logErr, fields, tags, configValues, _a6, ecsMetadata)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }

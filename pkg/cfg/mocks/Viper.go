@@ -2,6 +2,7 @@
 
 package mocks
 
+import io "io"
 import mock "github.com/stretchr/testify/mock"
 import time "time"
 import viper "github.com/spf13/viper"
@@ -169,13 +170,13 @@ func (_m *Viper) IsSet(_a0 string) bool {
 	return r0
 }
 
-// ReadInConfig provides a mock function with given fields:
-func (_m *Viper) ReadInConfig() error {
-	ret := _m.Called()
+// MergeConfig provides a mock function with given fields: in
+func (_m *Viper) MergeConfig(in io.Reader) error {
+	ret := _m.Called(in)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(io.Reader) error); ok {
+		r0 = rf(in)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -188,9 +189,9 @@ func (_m *Viper) Set(key string, value interface{}) {
 	_m.Called(key, value)
 }
 
-// SetConfigName provides a mock function with given fields: _a0
-func (_m *Viper) SetConfigName(_a0 string) {
-	_m.Called(_a0)
+// SetConfigType provides a mock function with given fields: in
+func (_m *Viper) SetConfigType(in string) {
+	_m.Called(in)
 }
 
 // SetDefault provides a mock function with given fields: _a0, _a1

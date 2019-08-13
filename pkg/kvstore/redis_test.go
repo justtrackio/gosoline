@@ -2,6 +2,7 @@ package kvstore_test
 
 import (
 	"context"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/redis/mocks"
 	"github.com/stretchr/testify/assert"
@@ -10,10 +11,16 @@ import (
 
 func TestRedisKvStore_Contains(t *testing.T) {
 	client := new(mocks.Client)
-	client.On("Exists", "foo").Return(int64(0), nil)
-	client.On("Exists", "bar").Return(int64(1), nil)
+	client.On("Exists", "applike-gosoline-kvstore-kvstore-test-foo").Return(int64(0), nil)
+	client.On("Exists", "applike-gosoline-kvstore-kvstore-test-bar").Return(int64(1), nil)
 
-	store := kvstore.NewRedisKvStoreWithInterfaces(client, kvstore.KeyToString, &kvstore.Settings{
+	store := kvstore.NewRedisKvStoreWithInterfaces(client, &kvstore.Settings{
+		AppId: cfg.AppId{
+			Project:     "applike",
+			Environment: "test",
+			Family:      "gosoline",
+			Application: "kvstore",
+		},
 		Name: "test",
 	})
 

@@ -2,6 +2,7 @@
 
 package mocks
 
+import context "context"
 import mock "github.com/stretchr/testify/mock"
 import oauth2 "github.com/applike/gosoline/pkg/oauth2"
 
@@ -10,13 +11,13 @@ type Service struct {
 	mock.Mock
 }
 
-// GetAuthRefresh provides a mock function with given fields: refreshToken
-func (_m *Service) GetAuthRefresh(refreshToken string) *oauth2.GoogleAuthResponse {
-	ret := _m.Called(refreshToken)
+// GetAuthRefresh provides a mock function with given fields: ctx, refreshToken
+func (_m *Service) GetAuthRefresh(ctx context.Context, refreshToken string) *oauth2.GoogleAuthResponse {
+	ret := _m.Called(ctx, refreshToken)
 
 	var r0 *oauth2.GoogleAuthResponse
-	if rf, ok := ret.Get(0).(func(string) *oauth2.GoogleAuthResponse); ok {
-		r0 = rf(refreshToken)
+	if rf, ok := ret.Get(0).(func(context.Context, string) *oauth2.GoogleAuthResponse); ok {
+		r0 = rf(ctx, refreshToken)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*oauth2.GoogleAuthResponse)

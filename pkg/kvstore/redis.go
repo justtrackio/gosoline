@@ -2,36 +2,41 @@ package kvstore
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/encoding/msgpack"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/redis"
 	"strings"
 )
 
 type RedisKvStore struct {
-	client     redis.Client
-	keyBuilder func(key interface{}) string
-	settings   *Settings
+	client   redis.Client
+	settings *Settings
 }
 
 func NewRedisKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvStore {
-	client := redis.GetClient(config, logger, "kvstore")
-	keyBuilder := redisKeyBuilder(config, settings)
+	settings.PadFromConfig(config)
 
-	return NewRedisKvStoreWithInterfaces(client, keyBuilder, settings)
+	redisName := fmt.Sprintf("kvstore_%s", settings.Name)
+	client := redis.GetClient(config, logger, redisName)
+
+	return NewRedisKvStoreWithInterfaces(client, settings)
 }
 
-func NewRedisKvStoreWithInterfaces(client redis.Client, keyBuilder func(key interface{}) string, settings *Settings) *RedisKvStore {
+func NewRedisKvStoreWithInterfaces(client redis.Client, settings *Settings) *RedisKvStore {
 	return &RedisKvStore{
-		client:     client,
-		settings:   settings,
-		keyBuilder: keyBuilder,
+		client:   client,
+		settings: settings,
 	}
 }
 
 func (s *RedisKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
-	keyStr := s.keyBuilder(key)
+	keyStr, err := s.key(key)
+
+	if err != nil {
+		return false, err
+	}
+
 	count, err := s.client.Exists(keyStr)
 
 	if err != nil {
@@ -42,20 +47,30 @@ func (s *RedisKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 }
 
 func (s *RedisKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
-	bytes, err := msgpack.Marshal(value)
+	bytes, err := Marshal(value)
 
 	if err != nil {
 		return err
 	}
 
-	keyStr := s.keyBuilder(key)
+	keyStr, err := s.key(key)
+
+	if err != nil {
+		return err
+	}
+
 	err = s.client.Set(keyStr, bytes, s.settings.Ttl)
 
 	return err
 }
 
 func (s *RedisKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
-	keyStr := s.keyBuilder(key)
+	keyStr, err := s.key(key)
+
+	if err != nil {
+		return false, err
+	}
+
 	data, err := s.client.Get(keyStr)
 
 	if err == redis.Nil {
@@ -66,24 +81,26 @@ func (s *RedisKvStore) Get(ctx context.Context, key interface{}, value interface
 		return false, err
 	}
 
-	err = msgpack.Unmarshal([]byte(data), value)
+	err = Unmarshal([]byte(data), value)
 
 	return true, err
 }
 
-func redisKeyBuilder(config cfg.Config, settings *Settings) func(key interface{}) string {
-	appId := cfg.GetAppIdFromConfig(config)
+func (s *RedisKvStore) key(key interface{}) (string, error) {
+	keyStr, err := KeyToString(key)
 
-	return func(key interface{}) string {
-		keyStr := KeyToString(key)
-
-		return strings.Join([]string{
-			appId.Project,
-			appId.Family,
-			appId.Application,
-			"kvstore",
-			settings.Name,
-			keyStr,
-		}, "-")
+	if err != nil {
+		return "", err
 	}
+
+	keyStr = strings.Join([]string{
+		s.settings.Project,
+		s.settings.Family,
+		s.settings.Application,
+		"kvstore",
+		s.settings.Name,
+		keyStr,
+	}, "-")
+
+	return keyStr, nil
 }

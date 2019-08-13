@@ -2,14 +2,16 @@ package kvstore
 
 import (
 	"context"
-	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mon"
-	"strconv"
+	"github.com/pkg/errors"
+	"github.com/spf13/cast"
 	"time"
 )
 
 type Settings struct {
+	cfg.AppId
 	Name string
 	Ttl  time.Duration
 }
@@ -28,15 +30,20 @@ type KvStore interface {
 	Put(ctx context.Context, key interface{}, value interface{}) error
 }
 
-func KeyToString(key interface{}) string {
-	switch v := key.(type) {
-	case int:
-		return strconv.Itoa(v)
-	case uint:
-		return strconv.FormatUint(uint64(v), 10)
-	case string:
-		return v
+func KeyToString(key interface{}) (string, error) {
+	str, err := cast.ToStringE(key)
+
+	if err == nil {
+		return str, nil
 	}
 
-	panic(fmt.Errorf("unknown type [%T] for kvstore key", key))
+	return "", errors.Wrapf(err, "unknown type [%T] for kvstore key", key)
+}
+
+func Marshal(v interface{}) ([]byte, error) {
+	return json.Marshal(v)
+}
+
+func Unmarshal(data []byte, v interface{}) error {
+	return json.Unmarshal(data, v)
 }

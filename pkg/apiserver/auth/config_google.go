@@ -9,6 +9,7 @@ import (
 	"google.golang.org/api/oauth2/v2"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 const ByGoogle = "google"
@@ -28,10 +29,11 @@ func (p *GoogleTokenProvider) GetTokenInfo(idToken string) (*oauth2.Tokeninfo, e
 
 type configGoogleAuthenticator struct {
 	logger        mon.Logger
-	validAudience string
-	hostedDomain  string
 	tokenCache    map[string]*oauth2.Tokeninfo
 	tokenProvider TokenInfoProvider
+	mutex         sync.Mutex
+	validAudience string
+	hostedDomain  string
 }
 
 func NewConfigGoogleHandler(config cfg.Config, logger mon.Logger) gin.HandlerFunc {
@@ -89,6 +91,9 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 
 	reqCtx := ginCtx.Request.Context()
 	logger := a.logger.WithContext(reqCtx)
+
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
 	if tokenInfo, ok := a.tokenCache[idToken]; ok && tokenInfo == nil {
 		logger.Debug("token was in cache but invalid")

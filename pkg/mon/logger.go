@@ -249,12 +249,6 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 		return
 	}
 
-	ecsMetadata := l.readEcsMetadata()
-
-	for _, h := range l.hooks {
-		h.Fire(level, msg, logErr, l.fields, l.tags, l.configValues, l.context, ecsMetadata)
-	}
-
 	for k, v := range l.fields {
 		switch v := v.(type) {
 		case error:
@@ -265,7 +259,25 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 		}
 	}
 
+	ecsMetadata := l.readEcsMetadata()
+
+	for _, h := range l.hooks {
+		if err := h.Fire(level, msg, logErr, fields, l.tags, l.configValues, l.context, ecsMetadata); err != nil {
+			l.err(err)
+		}
+	}
+
 	buffer, err := formatters[l.format](l.clock, l.channel, level, msg, logErr, fields)
+
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
+	}
+
+	l.write(buffer)
+}
+
+func (l *logger) err(err error) {
+	buffer, err := formatters[l.format](l.clock, l.channel, Error, err.Error(), err, Fields{})
 
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)

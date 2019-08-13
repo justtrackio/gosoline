@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/encoding/msgpack"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"strings"
@@ -12,7 +11,7 @@ import (
 
 type ddbItem struct {
 	Key   string `dynamo:"key,hash"`
-	Value []byte `dynamo:"value"`
+	Value string `dynamo:"value"`
 }
 
 type DdbKvStore struct {
@@ -21,12 +20,19 @@ type DdbKvStore struct {
 }
 
 func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvStore {
+	settings.PadFromConfig(config)
+
 	name := strings.Join([]string{"kvstore", settings.Name}, "-")
+	modelId := mdl.ModelId{
+		Project:     settings.Project,
+		Environment: settings.Environment,
+		Family:      settings.Family,
+		Application: settings.Application,
+		Name:        name,
+	}
 
 	repository := ddb.New(config, logger, ddb.Settings{
-		ModelId: mdl.ModelId{
-			Name: name,
-		},
+		ModelId:            modelId,
 		ReadCapacityUnits:  5,
 		WriteCapacityUnits: 5,
 	})
@@ -48,7 +54,11 @@ func NewDdbKvStoreWithInterfaces(repository ddb.Repository, settings *Settings) 
 }
 
 func (s *DdbKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
-	keyStr := KeyToString(key)
+	keyStr, err := KeyToString(key)
+
+	if err != nil {
+		return false, err
+	}
 
 	qb := s.repository.QueryBuilder()
 	qb.WithHash("key", keyStr)
@@ -64,16 +74,21 @@ func (s *DdbKvStore) Contains(ctx context.Context, key interface{}) (bool, error
 }
 
 func (s *DdbKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
-	bytes, err := msgpack.Marshal(value)
+	bytes, err := Marshal(value)
 
 	if err != nil {
 		return err
 	}
 
-	keyStr := KeyToString(key)
+	keyStr, err := KeyToString(key)
+
+	if err != nil {
+		return err
+	}
+
 	item := &ddbItem{
 		Key:   keyStr,
-		Value: bytes,
+		Value: string(bytes),
 	}
 
 	err = s.repository.Save(ctx, item)
@@ -82,7 +97,11 @@ func (s *DdbKvStore) Put(ctx context.Context, key interface{}, value interface{}
 }
 
 func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
-	keyStr := KeyToString(key)
+	keyStr, err := KeyToString(key)
+
+	if err != nil {
+		return false, err
+	}
 
 	qb := s.repository.QueryBuilder()
 	qb.WithHash("key", keyStr)
@@ -98,7 +117,8 @@ func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}
 		return false, nil
 	}
 
-	err = msgpack.Unmarshal(item.Value, value)
+	bytes := []byte(item.Value)
+	err = Unmarshal(bytes, value)
 
 	return true, err
 }

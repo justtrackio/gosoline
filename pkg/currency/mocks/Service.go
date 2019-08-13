@@ -10,7 +10,7 @@ type Service struct {
 }
 
 // ToEur provides a mock function with given fields: value, from
-func (_m *Service) ToEur(value float64, from string) float64 {
+func (_m *Service) ToEur(value float64, from string) (float64, error) {
 	ret := _m.Called(value, from)
 
 	var r0 float64
@@ -20,5 +20,12 @@ func (_m *Service) ToEur(value float64, from string) float64 {
 		r0 = ret.Get(0).(float64)
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(float64, string) error); ok {
+		r1 = rf(value, from)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }

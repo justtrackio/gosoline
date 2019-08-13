@@ -14,8 +14,17 @@ type ConsumerCallback struct {
 }
 
 // Boot provides a mock function with given fields: config, logger
-func (_m *ConsumerCallback) Boot(config cfg.Config, logger mon.Logger) {
-	_m.Called(config, logger)
+func (_m *ConsumerCallback) Boot(config cfg.Config, logger mon.Logger) error {
+	ret := _m.Called(config, logger)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(cfg.Config, mon.Logger) error); ok {
+		r0 = rf(config, logger)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // Consume provides a mock function with given fields: ctx, msg

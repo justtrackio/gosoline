@@ -4,6 +4,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"io/ioutil"
 	"math"
 	"testing"
@@ -205,6 +206,8 @@ func getViper() *cfgMocks.Viper {
 	viper := new(cfgMocks.Viper)
 	viper.On("SetEnvPrefix", "app")
 	viper.On("AutomaticEnv")
+	viper.On("SetConfigType", "yml")
+	viper.On("MergeConfig", mock.AnythingOfType("*os.File")).Return(nil)
 	viper.On("GetString", "env").Return("test")
 
 	return viper

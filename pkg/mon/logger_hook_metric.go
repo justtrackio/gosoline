@@ -18,9 +18,9 @@ func NewMetricHook() *metricHook {
 	}
 }
 
-func (h metricHook) Fire(level string, msg string, err error, fields Fields, tags Tags, configValues ConfigValues, context context.Context, ecsMetadata EcsMetadata) {
+func (h metricHook) Fire(level string, msg string, err error, fields Fields, tags Tags, configValues ConfigValues, context context.Context, ecsMetadata EcsMetadata) error {
 	if level != Warn && level != Error {
-		return
+		return nil
 	}
 
 	h.writer.WriteOne(&MetricDatum{
@@ -29,6 +29,8 @@ func (h metricHook) Fire(level string, msg string, err error, fields Fields, tag
 		Unit:       UnitCount,
 		Value:      1.0,
 	})
+
+	return nil
 }
 
 func getDefaultMetrics() MetricData {

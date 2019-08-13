@@ -7,8 +7,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
+	"io"
 	"os"
 	"reflect"
 	"regexp"
@@ -69,8 +68,8 @@ type Viper interface {
 	GetStringMapString(key string) map[string]string
 	GetStringSlice(key string) []string
 	IsSet(string) bool
-	ReadInConfig() error
-	SetConfigName(string)
+	SetConfigType(in string)
+	MergeConfig(in io.Reader) error
 	SetDefault(string, interface{})
 	SetEnvPrefix(string)
 	UnmarshalKey(string, interface{}, ...viper.DecoderConfigOption) error
@@ -299,8 +298,9 @@ func (c *config) configure() {
 
 	c.client.SetEnvPrefix(prefix)
 	c.client.AutomaticEnv()
+	c.client.SetConfigType("yml")
 
-	err = c.readConfigDefault()
+	err = c.readConfigFile("./config.dist.yml")
 
 	if err != nil {
 		c.err(err, "could not read default config file './config.dist.yml")
@@ -319,7 +319,7 @@ func (c *config) configure() {
 	flags.Var(&configFlags, "c", "cli flags")
 	_ = flags.Parse(os.Args[1:])
 
-	err = c.readConfigFile(configFile)
+	err = c.readConfigFile(*configFile)
 
 	if err != nil {
 		c.err(err, "could not read the provided config file: %s", *configFile)
@@ -331,39 +331,18 @@ func (c *config) configure() {
 	}
 }
 
-func (c *config) readConfigDefault() error {
-	data, err := ioutil.ReadFile("./config.dist.yml")
-
-	if err != nil {
-		return err
-	}
-
-	defaultMap := make(map[string]interface{})
-	err = yaml.Unmarshal(data, &defaultMap)
-
-	if err != nil {
-		return err
-	}
-
-	for key, value := range defaultMap {
-		c.client.SetDefault(key, value)
-	}
-
-	return nil
-}
-
-func (c *config) readConfigFile(configFile *string) error {
-	if len(*configFile) == 0 {
+func (c *config) readConfigFile(configFile string) error {
+	if configFile == "" {
 		return nil
 	}
 
-	configName := *configFile
-	index := strings.LastIndexAny(configName, ".")
+	file, err := os.Open(configFile)
 
-	c.client.SetConfigName(configName[0:index]) // name of config file (without extension)
-	c.client.AddConfigPath(".")                 // optionally look for config in the working directory
+	if err != nil {
+		return err
+	}
 
-	err := c.client.ReadInConfig() // Find and read the config file
+	err = c.client.MergeConfig(file)
 
 	return err
 }

@@ -7,6 +7,7 @@ type Input interface {
 	Data() chan *Message
 }
 
+//go:generate mockery -name AcknowledgeableInput
 type AcknowledgeableInput interface {
 	Ack(msg *Message) error
 }
