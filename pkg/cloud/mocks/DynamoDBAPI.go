@@ -13,7 +13,7 @@ type DynamoDBAPI struct {
 	mock.Mock
 }
 
-// BatchGetItem provides a mock function with given fields: _a0
+// BatchGetItems provides a mock function with given fields: _a0
 func (_m *DynamoDBAPI) BatchGetItem(_a0 *dynamodb.BatchGetItemInput) (*dynamodb.BatchGetItemOutput, error) {
 	ret := _m.Called(_a0)
 

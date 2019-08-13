@@ -82,7 +82,7 @@ func (_m *SqlQueryBuilder) Page(offset int, size int) db.QueryBuilder {
 	return r0
 }
 
-// Table provides a mock function with given fields: table
+// Main provides a mock function with given fields: table
 func (_m *SqlQueryBuilder) Table(table string) db.QueryBuilder {
 	ret := _m.Called(table)
 

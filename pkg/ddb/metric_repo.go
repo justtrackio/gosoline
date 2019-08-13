@@ -23,12 +23,12 @@ func NewMetricRepository(_ cfg.Config, _ mon.Logger, repo Repository) *metricRep
 	}
 }
 
-func (r metricRepository) Save(ctx context.Context, item interface{}) error {
+func (r metricRepository) PutItem(ctx context.Context, qb PutItemBuilder, item interface{}) (*PutItemResult, error) {
 	start := time.Time{}
-	err := r.Repository.Save(ctx, item)
+	saved, err := r.Repository.PutItem(ctx, nil, item)
 	r.writeMetric(OpSave, err, start)
 
-	return err
+	return saved, err
 }
 
 func (r metricRepository) writeMetric(op string, err error, start time.Time) {
