@@ -17,6 +17,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.0.0-20190313032549-041949b8d268 // indirect
 	github.com/elastic/go-elasticsearch/v6 v6.8.3-0.20190714143207-256a620be07d
 	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
+	github.com/elliotchance/redismock v1.4.0
 
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/fatih/color v1.7.0

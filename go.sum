@@ -98,6 +98,8 @@ github.com/elastic/go-elasticsearch/v6 v6.8.3-0.20190714143207-256a620be07d h1:6
 github.com/elastic/go-elasticsearch/v6 v6.8.3-0.20190714143207-256a620be07d/go.mod h1:UwaDJsD3rWLM5rKNFzv9hgox93HoX8utj1kxD9aFUcI=
 github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4 h1:TfN8NpHqvtY2/V2Yqpy0mTj8afjV7oEWq3JKGv12Iuk=
 github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4/go.mod h1:OJ4wdbtDNk5g503kvlHLyErCgQwwzmDtaFC4XyOxXA4=
+github.com/elliotchance/redismock v1.4.0 h1:x9aQqrARt7tEtPmAEi+4Kkt7eGovSf0o4fL0lnqZRhY=
+github.com/elliotchance/redismock v1.4.0/go.mod h1:8FFsGWghPUyP7nqj/UYXr2xqd6U2iNMxS4S5+Xadl5A=
 github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 h1:Yzb9+7DPaBjB8zlTR87/ElzFsnQfuHnVUVqpZZIcV5Y=
 github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5/go.mod h1:a2zkGnVExMxdzMo3M0Hi/3sEU+cWnZpSni0O6/Yb/P0=
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
