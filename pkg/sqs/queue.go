@@ -137,7 +137,7 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 func (q *queue) Receive(waitTime int64) ([]*sqs.Message, error) {
 	input := &sqs.ReceiveMessageInput{
 		MessageAttributeNames: []*string{aws.String("ALL")},
-		MaxNumberOfMessages:   aws.Int64(1),
+		MaxNumberOfMessages:   aws.Int64(10),
 		QueueUrl:              aws.String(q.properties.Url),
 		WaitTimeSeconds:       aws.Int64(waitTime),
 	}

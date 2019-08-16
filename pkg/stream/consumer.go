@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const metricNameConsumerProcessedCount = "ConsumerProcessedCount"
+
 //go:generate mockery -name=ConsumerCallback
 type ConsumerCallback interface {
 	Boot(config cfg.Config, logger mon.Logger) error
@@ -22,6 +24,7 @@ type Consumer struct {
 	ConsumerAcknowledge
 
 	logger mon.Logger
+	mw     mon.MetricWriter
 	tracer tracing.Tracer
 	tmb    tomb.Tomb
 	ticker *time.Ticker
@@ -49,6 +52,9 @@ func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
 
 	c.logger = logger
 	c.tracer = tracing.NewAwsTracer(config)
+
+	defaultMetrics := getConsumerDefaultMetrics()
+	c.mw = mon.NewMetricDaemonWriter(defaultMetrics...)
 
 	idleTimeout := config.GetDuration("consumer_idle_timeout")
 	c.ticker = time.NewTicker(idleTimeout * time.Second)
@@ -79,7 +85,13 @@ func (c *Consumer) Run(ctx context.Context) error {
 			return c.tmb.Err()
 
 		case <-c.ticker.C:
-			c.logger.Info(fmt.Sprintf("processed %v messages", c.processed))
+			c.logger.Infof("processed %v messages", c.processed)
+
+			c.mw.WriteOne(&mon.MetricDatum{
+				MetricName: metricNameConsumerProcessedCount,
+				Value:      float64(c.processed),
+			})
+
 			c.processed = 0
 		}
 	}
@@ -113,4 +125,15 @@ func (c *Consumer) doCallback(msg *Message) {
 	}
 
 	c.Acknowledge(ctx, msg)
+}
+
+func getConsumerDefaultMetrics() mon.MetricData {
+	return mon.MetricData{
+		{
+			Priority:   mon.PriorityHigh,
+			MetricName: metricNameConsumerProcessedCount,
+			Unit:       mon.UnitCount,
+			Value:      0.0,
+		},
+	}
 }
