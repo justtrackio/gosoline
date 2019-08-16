@@ -75,7 +75,7 @@ func GetClientFromDiscovery(logger mon.Logger, sel *selection) Client {
 	addr = fmt.Sprintf("%v:%v", srvs[0].Target, srvs[0].Port)
 	logger.Infof("found redis server %s with address %s", sel.name, addr)
 
-	return GetClientWithAddress(sel.addr, sel.name)
+	return GetClientWithAddress(addr, sel.name)
 }
 
 func GetClientWithAddress(address, name string) Client {
