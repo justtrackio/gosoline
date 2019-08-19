@@ -28,9 +28,10 @@ type Settings struct {
 	RetryDelay         time.Duration `cfg:"db_retry_wait"`
 	ConnectionLifetime time.Duration `cfg:"db_max_connection_lifetime"`
 
-	ParseTime      bool `cfg:"db_parse_time"`
-	AutoMigrate    bool `cfg:"db_auto_migrate"`
-	PrefixedTables bool `cfg:"db_table_prefixed"`
+	ParseTime      bool   `cfg:"db_parse_time"`
+	AutoMigrate    bool   `cfg:"db_auto_migrate"`
+	MigrationsPath string `cfg:"db_migrations_path"`
+	PrefixedTables bool   `cfg:"db_table_prefixed"`
 }
 
 type Connection struct {

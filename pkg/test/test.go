@@ -48,6 +48,8 @@ func bootComponent(name string, mockConfig configInput) {
 		runDynamoDb(name, mockConfig)
 	case "elasticsearch":
 		runElasticsearch(name, mockConfig)
+	case "mysql":
+		runMysql(name, mockConfig)
 	case "redis":
 		runRedis(name, mockConfig)
 	case "wiremock":

@@ -30,8 +30,7 @@ func (c *Connection) runMigrations() {
 		c.logger.Panic(err, "could not initialize driver for db migrations")
 	}
 
-	path := fmt.Sprintf("file://../../build/migrations/%s", c.settings.Application)
-	m, err := migrate.NewWithDatabaseInstance(path, c.settings.DriverName, driver)
+	m, err := migrate.NewWithDatabaseInstance(c.settings.MigrationsPath, c.settings.DriverName, driver)
 
 	if err != nil {
 		c.logger.Panic(err, "could not initialize migrator for db migrations")
