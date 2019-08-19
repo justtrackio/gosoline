@@ -21,6 +21,7 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 		log := chLogger.WithContext(ctx)
 
 		path := req.URL.Path
+		query := req.URL.RawQuery
 		pathRaw := getPathRaw(ginCtx)
 
 		method := ginCtx.Request.Method
@@ -34,6 +35,7 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 			"protocol":         req.Proto,
 			"request_method":   method,
 			"request_path":     path,
+			"request_query":    query,
 			"request_path_raw": pathRaw,
 			"request_time":     requestTimeSecond,
 			"scheme":           req.URL.Scheme,
