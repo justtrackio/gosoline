@@ -103,8 +103,11 @@ func (s *subscriber) Boot(config cfg.Config, logger mon.Logger) error {
 func (s *subscriber) Run(ctx context.Context) error {
 	defer s.logger.Infof("leaving subscriber %s", s.name)
 
+	for i := 0; i < 10; i++ {
+		s.tmb.Go(s.consume)
+	}
+
 	s.tmb.Go(s.input.Run)
-	s.tmb.Go(s.consume)
 
 	for {
 		select {
