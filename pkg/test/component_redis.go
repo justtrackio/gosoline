@@ -27,9 +27,6 @@ func doRunRedis(name string, configMap configInput) {
 	runContainer(containerName, ContainerConfig{
 		Repository: "redis",
 		Tag:        "5-alpine",
-		Env: []string{
-			"discovery.type=single-node",
-		},
 		PortBindings: PortBinding{
 			"6379/tcp": fmt.Sprint(config.Port),
 		},
