@@ -57,7 +57,7 @@ func (t *topic) Publish(ctx context.Context, msg *string) error {
 		Message:  msg,
 	}
 
-	_, err := t.client.PublishWithContext(ctx, input)
+	_, err := t.client.Publish(input)
 
 	if err != nil {
 		t.logger.WithFields(mon.Fields{

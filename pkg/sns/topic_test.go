@@ -17,10 +17,8 @@ import (
 func TestTopic_Publish(t *testing.T) {
 	logger := mocks.NewLoggerMockedAll()
 
-	ctx := context.TODO()
-
 	client := new(snsMocks.Client)
-	client.On("PublishWithContext", ctx, &awsSns.PublishInput{
+	client.On("Publish", &awsSns.PublishInput{
 		TopicArn: aws.String("arn"),
 		Message:  aws.String("test"),
 	}).Return(nil, nil)
@@ -37,7 +35,7 @@ func TestTopic_Publish(t *testing.T) {
 	}
 
 	topic := sns.NewTopicWithInterfaces(logger, client, s)
-	err := topic.Publish(ctx, aws.String("test"))
+	err := topic.Publish(context.Background(), aws.String("test"))
 
 	assert.NoError(t, err)
 
@@ -47,10 +45,8 @@ func TestTopic_Publish(t *testing.T) {
 func TestTopic_PublishError(t *testing.T) {
 	logger := mocks.NewLoggerMockedAll()
 
-	ctx := context.TODO()
-
 	client := new(snsMocks.Client)
-	client.On("PublishWithContext", ctx, &awsSns.PublishInput{
+	client.On("Publish", &awsSns.PublishInput{
 		TopicArn: aws.String("arn"),
 		Message:  aws.String("test"),
 	}).Return(nil, errors.New("error"))
@@ -67,7 +63,7 @@ func TestTopic_PublishError(t *testing.T) {
 	}
 
 	topic := sns.NewTopicWithInterfaces(logger, client, s)
-	err := topic.Publish(ctx, aws.String("test"))
+	err := topic.Publish(context.Background(), aws.String("test"))
 
 	assert.Error(t, err)
 
