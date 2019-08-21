@@ -135,6 +135,7 @@ func (c *redisClient) preventOOMByBackoff(wrappedCmd func() (interface{}, error)
 	backoffConfig.MaxInterval = 30 * time.Second
 	backoffConfig.Multiplier = 3
 	backoffConfig.RandomizationFactor = 0.2
+	backoffConfig.MaxElapsedTime = 0
 
 	var res interface{}
 	var err error
