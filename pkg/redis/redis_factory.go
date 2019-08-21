@@ -46,7 +46,7 @@ func GetClient(config cfg.Config, logger mon.Logger, name string) Client {
 	switch sel.mode {
 	case redisModeLocal:
 		logger.Infof("using local redis %s with address %s", name, sel.addr)
-		return GetClientWithAddress(sel.addr, sel.name)
+		return GetClientWithAddress(logger, sel.addr, sel.name)
 	case redisModeDiscover:
 		return GetClientFromDiscovery(logger, sel)
 	}
@@ -75,10 +75,10 @@ func GetClientFromDiscovery(logger mon.Logger, sel *selection) Client {
 	addr = fmt.Sprintf("%v:%v", srvs[0].Target, srvs[0].Port)
 	logger.Infof("found redis server %s with address %s", sel.name, addr)
 
-	return GetClientWithAddress(addr, sel.name)
+	return GetClientWithAddress(logger, addr, sel.name)
 }
 
-func GetClientWithAddress(address, name string) Client {
+func GetClientWithAddress(logger mon.Logger, address, name string) Client {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -91,7 +91,7 @@ func GetClientWithAddress(address, name string) Client {
 		Addr:    address,
 	})
 
-	clients[address] = NewRedisClient(baseClient, name)
+	clients[address] = NewRedisClient(logger, baseClient, name)
 
 	return clients[address]
 }

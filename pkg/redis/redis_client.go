@@ -38,12 +38,13 @@ type Client interface {
 
 type redisClient struct {
 	base   baseRedis.Cmdable
+	logger mon.Logger
 	metric mon.MetricWriter
 
 	name string
 }
 
-func NewRedisClient(client baseRedis.Cmdable, name string) Client {
+func NewRedisClient(logger mon.Logger, client baseRedis.Cmdable, name string) Client {
 	defaults := mon.MetricData{
 		{
 			Priority:   mon.PriorityHigh,
@@ -57,9 +58,13 @@ func NewRedisClient(client baseRedis.Cmdable, name string) Client {
 	}
 
 	metric := mon.NewMetricDaemonWriter(defaults...)
+	logger = logger.WithFields(mon.Fields{
+		"redis": name,
+	})
 
 	return &redisClient{
 		base:   client,
+		logger: logger,
 		metric: metric,
 		name:   name,
 	}
@@ -131,7 +136,7 @@ func (c *redisClient) Pipeline() baseRedis.Pipeliner {
 
 func (c *redisClient) preventOOMByBackoff(wrappedCmd func() (interface{}, error)) interface{} {
 	backoffConfig := backoff.NewExponentialBackOff()
-	backoffConfig.InitialInterval = 200 * time.Millisecond
+	backoffConfig.InitialInterval = 1 * time.Second
 	backoffConfig.MaxInterval = 30 * time.Second
 	backoffConfig.Multiplier = 3
 	backoffConfig.RandomizationFactor = 0.2
@@ -141,6 +146,7 @@ func (c *redisClient) preventOOMByBackoff(wrappedCmd func() (interface{}, error)
 	var err error
 
 	notify := func(error, time.Duration) {
+		c.logger.Infof("redis %s is blocking due to server being out of memory", c.name)
 		c.metric.WriteOne(&mon.MetricDatum{
 			MetricName: metricClientBackoffCount,
 			Value:      1.0,

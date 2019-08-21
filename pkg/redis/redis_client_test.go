@@ -3,6 +3,7 @@ package redis_test
 import (
 	"errors"
 	"github.com/alicebob/miniredis"
+	"github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/redis"
 	"github.com/elliotchance/redismock"
 	baseRedis "github.com/go-redis/redis"
@@ -83,7 +84,8 @@ func TestRedisSetWithOOM(t *testing.T) {
 	m.On("Set").Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
 	m.On("Set").Return(baseRedis.NewStatusResult("", nil)).Once()
 
-	c := redis.NewRedisClient(m, "")
+	logger := mocks.NewLoggerMockedAll()
+	c := redis.NewRedisClient(logger, m, "")
 
 	err := c.Set("key", "value", ttl)
 
@@ -99,7 +101,8 @@ func TestRedisSetWithError(t *testing.T) {
 	m.On("Set").Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
 	m.On("Set").Return(baseRedis.NewStatusResult("", nil)).Times(0)
 
-	c := redis.NewRedisClient(m, "")
+	logger := mocks.NewLoggerMockedAll()
+	c := redis.NewRedisClient(logger, m, "")
 
 	err := c.Set("key", "value", ttl)
 
@@ -113,7 +116,8 @@ func buildClient() (*miniredis.Miniredis, redis.Client) {
 		panic(err)
 	}
 
-	c := redis.GetClientWithAddress(s.Addr(), "")
+	logger := mocks.NewLoggerMockedAll()
+	c := redis.GetClientWithAddress(logger, s.Addr(), "")
 
 	return s, c
 }
