@@ -155,6 +155,11 @@ func (s *subscriber) persist(msg *stream.Message) error {
 		return err
 	}
 
+	if model == nil {
+		logger.Infof("skipping %s op for subscription for modelId %s and version %d with id %v", modelMsg.CrudType, modelMsg.ModelId, modelMsg.Version, model.GetId())
+		return nil
+	}
+
 	err = s.output.Persist(ctx, model, modelMsg.CrudType)
 
 	if err != nil {
