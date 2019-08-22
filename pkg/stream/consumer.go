@@ -94,11 +94,6 @@ func (c *Consumer) Run(ctx context.Context) error {
 			c.logger.WithFields(mon.Fields{
 				"count": processed,
 			}).Infof("processed %v messages", processed)
-
-			c.mw.WriteOne(&mon.MetricDatum{
-				MetricName: metricNameConsumerProcessedCount,
-				Value:      float64(processed),
-			})
 		}
 	}
 }
@@ -111,8 +106,13 @@ func (c *Consumer) consume() error {
 			return nil
 		}
 
-		atomic.AddInt32(&c.processed, 1)
 		c.doCallback(msg)
+
+		atomic.AddInt32(&c.processed, 1)
+		c.mw.WriteOne(&mon.MetricDatum{
+			MetricName: metricNameConsumerProcessedCount,
+			Value:      1.0,
+		})
 	}
 }
 
