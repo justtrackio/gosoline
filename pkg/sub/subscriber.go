@@ -130,16 +130,20 @@ func (s *subscriber) consume() error {
 			return nil
 		}
 
-		err := s.persist(msg)
+		ctx, trans := s.tracer.StartSpanFromTraceAble(msg, s.name)
+		err := s.persist(ctx, msg)
+
 		s.writeMetric(err)
+
+		if err == nil {
+			s.Acknowledge(ctx, msg)
+		}
+
+		trans.Finish()
 	}
 }
 
-func (s *subscriber) persist(msg *stream.Message) error {
-	ctx, trans := s.tracer.StartSpanFromTraceAble(msg, s.name)
-	defer trans.Finish()
-	defer s.Acknowledge(ctx, msg)
-
+func (s *subscriber) persist(ctx context.Context, msg *stream.Message) error {
 	logger := s.logger.WithContext(ctx)
 	modelMsg, err := stream.CreateModelMsg(msg)
 
