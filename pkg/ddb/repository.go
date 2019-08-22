@@ -57,8 +57,8 @@ type repository struct {
 	tracer tracing.Tracer
 	client dynamodbiface.DynamoDBAPI
 
-	settings *Settings
 	metadata *Metadata
+	settings *Settings
 }
 
 func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) *repository {
@@ -97,6 +97,7 @@ func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodb
 		tracer:   tracer,
 		client:   client,
 		metadata: metadata,
+		settings: settings,
 	}
 }
 

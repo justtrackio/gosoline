@@ -226,8 +226,12 @@ func (f *metadataFactory) getTimeToLive(attributes Attributes) (metadataTtl, err
 }
 
 func (f *metadataFactory) readAttributes(model interface{}) (Attributes, error) {
-	t := reflect.TypeOf(model)
+	t := findBaseType(model)
 	attributes := make(Attributes)
+
+	if t.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("can't read attributes from model as it is not a struct but instead is %T", model)
+	}
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -311,20 +315,10 @@ func (f *metadataFactory) getAttributeType(field reflect.StructField) string {
 }
 
 func metadataReadFields(model interface{}) ([]string, error) {
-	t := reflect.TypeOf(model)
+	t := findBaseType(model)
 	fields := make([]string, 0)
 
-	for {
-		if t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
-			t = t.Elem()
-			continue
-		}
-
-		break
-	}
-
 	if t.Kind() != reflect.Struct {
-		fmt.Println(t.Kind())
 		return nil, fmt.Errorf("can't read fields from model as it is not a struct but instead is %T", model)
 	}
 

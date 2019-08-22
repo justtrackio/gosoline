@@ -23,13 +23,21 @@ func isStruct(value interface{}) bool {
 		return false
 	}
 
-	t := reflect.TypeOf(value)
-
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
+	t := findBaseType(value)
 
 	return t.Kind() == reflect.Struct
+}
+
+func findBaseType(value interface{}) reflect.Type {
+	t := reflect.TypeOf(value)
+
+	for {
+		if t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
+			t = t.Elem()
+		} else {
+			return t
+		}
+	}
 }
 
 func isResultCallback(value interface{}) (func(ctx context.Context, result interface{}) (bool, error), bool) {
