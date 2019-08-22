@@ -8,6 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
 	"gopkg.in/tomb.v2"
+	"sync/atomic"
 	"time"
 )
 
@@ -31,7 +32,7 @@ type Consumer struct {
 
 	name      string
 	callback  ConsumerCallback
-	processed int
+	processed int32
 }
 
 func NewConsumer(callback ConsumerCallback) *Consumer {
@@ -72,7 +73,10 @@ func (c *Consumer) Run(ctx context.Context) error {
 	defer c.logger.Info("leaving consumer ", c.name)
 
 	c.tmb.Go(c.input.Run)
-	c.tmb.Go(c.consume)
+
+	for i := 0; i < 10; i++ {
+		c.tmb.Go(c.consume)
+	}
 
 	for {
 		select {
@@ -80,19 +84,21 @@ func (c *Consumer) Run(ctx context.Context) error {
 			c.input.Stop()
 			return c.tmb.Wait()
 
-		case <-c.tmb.Dead():
+		case <-c.tmb.Dying():
 			c.input.Stop()
-			return c.tmb.Err()
+			return c.tmb.Wait()
 
 		case <-c.ticker.C:
-			c.logger.Infof("processed %v messages", c.processed)
+			processed := atomic.SwapInt32(&c.processed, 0)
+
+			c.logger.WithFields(mon.Fields{
+				"count": processed,
+			}).Infof("processed %v messages", processed)
 
 			c.mw.WriteOne(&mon.MetricDatum{
 				MetricName: metricNameConsumerProcessedCount,
-				Value:      float64(c.processed),
+				Value:      float64(processed),
 			})
-
-			c.processed = 0
 		}
 	}
 }
@@ -105,7 +111,7 @@ func (c *Consumer) consume() error {
 			return nil
 		}
 
-		c.processed++
+		atomic.AddInt32(&c.processed, 1)
 		c.doCallback(msg)
 	}
 }
