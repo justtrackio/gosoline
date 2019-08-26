@@ -93,6 +93,11 @@ type HandlerWithInput interface {
 	GetInput() interface{}
 }
 
+type HandlerWithMultipleBindings interface {
+	HandlerWithInput
+	GetBindings() []binding.Binding
+}
+
 type HandlerWithStream interface {
 	Handle(ginContext *gin.Context, requestContext context.Context, request *Request) (error error)
 	GetInput() interface{}
@@ -108,6 +113,10 @@ func CreateRawHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 
 func CreateJsonHandler(handler HandlerWithInput) gin.HandlerFunc {
 	return handleWithInput(handler, binding.JSON, defaultErrorHandler)
+}
+
+func CreateMultipleBindingsHandler(handler HandlerWithMultipleBindings) gin.HandlerFunc {
+	return handleWithMultipleBindings(handler, defaultErrorHandler)
 }
 
 func CreateStreamHandler(handler HandlerWithStream) gin.HandlerFunc {
@@ -165,6 +174,25 @@ func handleWithInput(handler HandlerWithInput, binding binding.Binding, errHandl
 	}
 }
 
+func handleWithMultipleBindings(handler HandlerWithMultipleBindings, errHandler ErrorHandler) gin.HandlerFunc {
+	return func(ginCtx *gin.Context) {
+		input := handler.GetInput()
+		bindings := handler.GetBindings()
+
+		for i := 0; i < len(bindings); i++ {
+			err := bindings[i].Bind(ginCtx.Request, input)
+
+			if err != nil {
+				writeErrorResponse(ginCtx, errHandler, http.StatusBadRequest, err)
+				return
+			}
+
+		}
+
+		handle(ginCtx, handler, input, errHandler)
+	}
+}
+
 func handleRaw(handler HandlerWithoutInput, errHandler ErrorHandler) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		body, err := ioutil.ReadAll(ginCtx.Request.Body)
@@ -178,13 +206,13 @@ func handleRaw(handler HandlerWithoutInput, errHandler ErrorHandler) gin.Handler
 	}
 }
 
-func handle(ginCtx *gin.Context, handler HandlerWithoutInput, requestBody interface{}, errHandler ErrorHandler) {
+func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{}, errHandler ErrorHandler) {
 	reqCtx := ginCtx.Request.Context()
 
 	request := &Request{
 		Header:   ginCtx.Request.Header,
 		Params:   ginCtx.Params,
-		Body:     requestBody,
+		Body:     input,
 		ClientIp: ginCtx.ClientIP(),
 	}
 
