@@ -110,6 +110,7 @@ func TestListQueryBuilder_Build_ComplexFilter(t *testing.T) {
 		Mappings: db_repo.FieldMappings{
 			"id":     db_repo.NewSimpleFieldMapping("id"),
 			"bla":    db_repo.NewSimpleFieldMapping("foo"),
+			"void":   db_repo.NewSimpleFieldMapping("void"),
 			"fieldA": db_repo.NewSimpleFieldMapping("fieldA"),
 			"fieldB": db_repo.NewSimpleFieldMapping("fieldB"),
 		},
@@ -127,6 +128,11 @@ func TestListQueryBuilder_Build_ComplexFilter(t *testing.T) {
 					Dimension: "fieldA",
 					Operator:  "!=",
 					Values:    []interface{}{1},
+				},
+				{
+					Dimension: "void",
+					Operator:  "is",
+					Values:    []interface{}{"null"},
 				},
 			},
 			Groups: []sql.Filter{
@@ -157,7 +163,7 @@ func TestListQueryBuilder_Build_ComplexFilter(t *testing.T) {
 
 	expected := db_repo.NewQueryBuilder()
 	expected.Table("tablename")
-	expected.Where("(((foo IN (?,?))) and ((fieldA != ?)) and (((fieldB LIKE ?)) or ((fieldB = ?))))", "blub", "blubber", 1, "%foo%", "bar")
+	expected.Where("(((foo IN (?,?))) and ((fieldA != ?)) and ((void IS null)) and (((fieldB LIKE ?)) or ((fieldB = ?))))", "blub", "blubber", 1, "%foo%", "bar")
 	expected.GroupBy("id")
 
 	assert.Equal(t, expected, qb)
