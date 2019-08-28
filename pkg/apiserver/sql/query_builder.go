@@ -275,24 +275,32 @@ func (qb baseQueryBuilder) buildFilterValues(match FilterMatch) (string, []inter
 func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column string) (string, []interface{}) {
 	if match.Operator == "=" && len(match.Values) > 1 {
 		placeholders := make([]string, 0, len(match.Values))
-		for _ = range match.Values {
+
+		for range match.Values {
 			placeholders = append(placeholders, "?")
 		}
+
 		return fmt.Sprintf("(%s IN (%s))", column, strings.Join(placeholders, ",")), match.Values
 	}
 
-	stmts := make([]string, len(match.Values))
-	args := make([]interface{}, len(match.Values))
+	stmts := make([]string, 0, len(match.Values))
+	args := make([]interface{}, 0, len(match.Values))
 
-	for i, v := range match.Values {
-		switch match.Operator {
-		case "~":
-			stmts[i] = fmt.Sprintf("%s LIKE ?", column)
-			args[i] = fmt.Sprintf("%%%v%%", v)
+	for _, v := range match.Values {
+		switch true {
+		case strings.EqualFold("is", match.Operator):
+			stmts = append(stmts, fmt.Sprintf("%s IS %s", column, v))
+
+		case strings.EqualFold("is not", match.Operator):
+			stmts = append(stmts, fmt.Sprintf("%s IS NOT %s", column, v))
+
+		case "~" == match.Operator:
+			stmts = append(stmts, fmt.Sprintf("%s LIKE ?", column))
+			args = append(args, fmt.Sprintf("%%%v%%", v))
 
 		default:
-			stmts[i] = fmt.Sprintf("%s %s ?", column, match.Operator)
-			args[i] = v
+			stmts = append(stmts, fmt.Sprintf("%s %s ?", column, match.Operator))
+			args = append(args, v)
 		}
 	}
 
