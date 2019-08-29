@@ -42,7 +42,7 @@ func NewUncheckedKeyAuthenticatorWithInterfaces(logger mon.Logger) Authenticator
 }
 
 func (a *uncheckedKeyAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
-	apiKey := ginCtx.GetHeader(headerApiKey)
+	apiKey := ginCtx.GetHeader(HeaderApiKey)
 
 	if apiKey == "" {
 		return false, fmt.Errorf("no api key provided")
