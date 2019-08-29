@@ -83,6 +83,28 @@ func (_m *UpdateItemBuilder) Remove(path string) ddb.UpdateItemBuilder {
 	return r0
 }
 
+// RemoveMultiple provides a mock function with given fields: paths
+func (_m *UpdateItemBuilder) RemoveMultiple(paths ...string) ddb.UpdateItemBuilder {
+	_va := make([]interface{}, len(paths))
+	for _i := range paths {
+		_va[_i] = paths[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 ddb.UpdateItemBuilder
+	if rf, ok := ret.Get(0).(func(...string) ddb.UpdateItemBuilder); ok {
+		r0 = rf(paths...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.UpdateItemBuilder)
+		}
+	}
+
+	return r0
+}
+
 // ReturnAllNew provides a mock function with given fields:
 func (_m *UpdateItemBuilder) ReturnAllNew() ddb.UpdateItemBuilder {
 	ret := _m.Called()
@@ -186,6 +208,22 @@ func (_m *UpdateItemBuilder) SetIfNotExist(path string, value interface{}) ddb.U
 	var r0 ddb.UpdateItemBuilder
 	if rf, ok := ret.Get(0).(func(string, interface{}) ddb.UpdateItemBuilder); ok {
 		r0 = rf(path, value)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.UpdateItemBuilder)
+		}
+	}
+
+	return r0
+}
+
+// SetMap provides a mock function with given fields: values
+func (_m *UpdateItemBuilder) SetMap(values map[string]interface{}) ddb.UpdateItemBuilder {
+	ret := _m.Called(values)
+
+	var r0 ddb.UpdateItemBuilder
+	if rf, ok := ret.Get(0).(func(map[string]interface{}) ddb.UpdateItemBuilder); ok {
+		r0 = rf(values)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ddb.UpdateItemBuilder)
