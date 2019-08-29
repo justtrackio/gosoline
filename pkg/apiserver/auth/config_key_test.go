@@ -1,16 +1,18 @@
 package auth_test
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver/auth"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"net/url"
 	"testing"
 )
 
-func getKeyMocks(idToken string) (mon.Logger, *gin.Context) {
+func getHeaderKeyMocks(idToken string) (mon.Logger, *gin.Context) {
 	logger := mocks.NewLoggerMockedAll()
 
 	header := http.Header{}
@@ -28,10 +30,28 @@ func getKeyMocks(idToken string) (mon.Logger, *gin.Context) {
 	return logger, ginCtx
 }
 
-func TestAuthKey_Authenticate_InvalidKeyError(t *testing.T) {
-	logger, ginCtx := getKeyMocks("t")
+func getQueryKeyMocks(idToken string) (mon.Logger, *gin.Context) {
+	logger := mocks.NewLoggerMockedAll()
 
-	a := auth.NewConfigKeyAuthenticatorWithInterfaces(logger, []string{"a"})
+	request := &http.Request{
+		URL: &url.URL{
+			RawQuery: fmt.Sprintf("apiKey=%s", idToken),
+		},
+	}
+
+	ginCtx := &gin.Context{
+		Request: request,
+	}
+
+	ginCtx.Request = request
+
+	return logger, ginCtx
+}
+
+func TestAuthKeyInHeader_Authenticate_InvalidKeyError(t *testing.T) {
+	logger, ginCtx := getHeaderKeyMocks("t")
+
+	a := auth.NewConfigKeyAuthenticatorWithInterfaces(logger, []string{"a"}, auth.ProvideValueFromHeader(auth.HeaderApiKey))
 	_, err := a.IsValid(ginCtx)
 
 	if assert.Error(t, err) {
@@ -39,10 +59,30 @@ func TestAuthKey_Authenticate_InvalidKeyError(t *testing.T) {
 	}
 }
 
-func TestAuthKey_Authenticate_ValidKey(t *testing.T) {
-	logger, ginCtx := getKeyMocks("t")
+func TestAuthKeyInHeader_Authenticate_ValidKey(t *testing.T) {
+	logger, ginCtx := getHeaderKeyMocks("t")
 
-	a := auth.NewConfigKeyAuthenticatorWithInterfaces(logger, []string{"t"})
+	a := auth.NewConfigKeyAuthenticatorWithInterfaces(logger, []string{"t"}, auth.ProvideValueFromHeader(auth.HeaderApiKey))
+	_, err := a.IsValid(ginCtx)
+
+	assert.Equal(t, nil, err)
+}
+
+func TestAuthKeyInQueryParam_Authenticate_InvalidKeyError(t *testing.T) {
+	logger, ginCtx := getQueryKeyMocks("t")
+
+	a := auth.NewConfigKeyAuthenticatorWithInterfaces(logger, []string{"a"}, auth.ProvideValueFromQueryParam(auth.ByApiKey))
+	_, err := a.IsValid(ginCtx)
+
+	if assert.Error(t, err) {
+		assert.Equal(t, "api key does not match", err.Error())
+	}
+}
+
+func TestAuthKeyInQueryParam_Authenticate_ValidKey(t *testing.T) {
+	logger, ginCtx := getQueryKeyMocks("t")
+
+	a := auth.NewConfigKeyAuthenticatorWithInterfaces(logger, []string{"t"}, auth.ProvideValueFromQueryParam(auth.ByApiKey))
 	_, err := a.IsValid(ginCtx)
 
 	assert.Equal(t, nil, err)

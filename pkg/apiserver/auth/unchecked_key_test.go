@@ -7,7 +7,7 @@ import (
 )
 
 func TestUncheckedKey_Authenticate_InvalidKeyError(t *testing.T) {
-	logger, ginCtx := getKeyMocks("")
+	logger, ginCtx := getHeaderKeyMocks("")
 
 	a := auth.NewUncheckedKeyAuthenticatorWithInterfaces(logger)
 	_, err := a.IsValid(ginCtx)
@@ -18,7 +18,7 @@ func TestUncheckedKey_Authenticate_InvalidKeyError(t *testing.T) {
 }
 
 func TestUncheckedKey_Authenticate_ValidKey(t *testing.T) {
-	logger, ginCtx := getKeyMocks("t")
+	logger, ginCtx := getHeaderKeyMocks("t")
 
 	a := auth.NewUncheckedKeyAuthenticatorWithInterfaces(logger)
 	_, err := a.IsValid(ginCtx)

@@ -10,20 +10,22 @@ import (
 )
 
 const (
-	ByApiKey = "apiKey"
-
-	headerApiKey    = "X-API-KEY"
+	ByApiKey        = "apiKey"
+	HeaderApiKey    = "X-API-KEY"
 	configApiKeys   = "api_auth_keys"
 	AttributeApiKey = "apiKey"
 )
 
 type configKeyAuthenticator struct {
-	logger mon.Logger
-	keys   []string
+	logger   mon.Logger
+	keys     []string
+	provider ApiKeyProvider
 }
 
-func NewConfigKeyHandler(config cfg.Config, logger mon.Logger) gin.HandlerFunc {
-	auth := NewConfigKeyAuthenticator(config, logger)
+type ApiKeyProvider func(ginCtx *gin.Context) string
+
+func NewConfigKeyHandler(config cfg.Config, logger mon.Logger, provider ApiKeyProvider) gin.HandlerFunc {
+	auth := NewConfigKeyAuthenticator(config, logger, provider)
 
 	return func(ginCtx *gin.Context) {
 		valid, err := auth.IsValid(ginCtx)
@@ -41,24 +43,25 @@ func NewConfigKeyHandler(config cfg.Config, logger mon.Logger) gin.HandlerFunc {
 	}
 }
 
-func NewConfigKeyAuthenticator(config cfg.Config, logger mon.Logger) Authenticator {
+func NewConfigKeyAuthenticator(config cfg.Config, logger mon.Logger, provider ApiKeyProvider) Authenticator {
 	keys := config.GetStringSlice(configApiKeys)
 	keys = funk.FilterString(keys, func(key string) bool {
 		return key != ""
 	})
 
-	return NewConfigKeyAuthenticatorWithInterfaces(logger, keys)
+	return NewConfigKeyAuthenticatorWithInterfaces(logger, keys, provider)
 }
 
-func NewConfigKeyAuthenticatorWithInterfaces(logger mon.Logger, keys []string) Authenticator {
+func NewConfigKeyAuthenticatorWithInterfaces(logger mon.Logger, keys []string, provider ApiKeyProvider) Authenticator {
 	return &configKeyAuthenticator{
-		logger: logger,
-		keys:   keys,
+		logger:   logger,
+		keys:     keys,
+		provider: provider,
 	}
 }
 
 func (a *configKeyAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
-	apiKey := ginCtx.GetHeader(headerApiKey)
+	apiKey := a.provider(ginCtx)
 
 	if apiKey == "" {
 		return false, fmt.Errorf("no api key provided")
@@ -84,4 +87,22 @@ func (a *configKeyAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	RequestWithSubject(ginCtx, user)
 
 	return true, nil
+}
+
+func ProvideValueFromQueryParam(queryParam string) ApiKeyProvider {
+	return func(ginCtx *gin.Context) string {
+		return ginCtx.Query(queryParam)
+	}
+}
+
+func ProvideValueFromHeader(header string) ApiKeyProvider {
+	return func(ginCtx *gin.Context) string {
+		return ginCtx.GetHeader(header)
+	}
+}
+
+func ProvideValueFromUriPath(param string) ApiKeyProvider {
+	return func(ginCtx *gin.Context) string {
+		return ginCtx.Param(param)
+	}
 }
