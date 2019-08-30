@@ -160,7 +160,7 @@ func (s *subscriber) persist(ctx context.Context, msg *stream.Message) error {
 	}
 
 	if model == nil {
-		logger.Infof("skipping %s op for subscription for modelId %s and version %d with id %v", modelMsg.CrudType, modelMsg.ModelId, modelMsg.Version, model.GetId())
+		logger.Infof("skipping %s op for subscription for modelId %s and version %d", modelMsg.CrudType, modelMsg.ModelId, modelMsg.Version)
 		return nil
 	}
 
