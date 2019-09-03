@@ -8,7 +8,7 @@ import (
 )
 
 func getTypeName(value interface{}) string {
-	t := reflect.TypeOf(value)
+	t := findBaseType(value)
 	name := t.Name()
 
 	return strings.ToLower(string(name[0])) + name[1:]
