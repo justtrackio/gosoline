@@ -10,8 +10,8 @@ import (
 )
 
 type ddbItem struct {
-	Key   string `dynamo:"key,hash"`
-	Value string `dynamo:"value"`
+	Key   string `ddb:"key=hash"`
+	Value string
 }
 
 type DdbKvStore struct {
