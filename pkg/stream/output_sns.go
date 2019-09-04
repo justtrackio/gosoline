@@ -7,6 +7,8 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sns"
 	"github.com/applike/gosoline/pkg/tracing"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 )
 
 type SnsOutputSettings struct {
@@ -62,26 +64,28 @@ func (o *snsOutput) Write(ctx context.Context, batch []*Message) error {
 }
 
 func (o *snsOutput) publishToTopic(ctx context.Context, batch []*Message) error {
-	errors := make([]error, 0)
+	var result error
 
 	for _, msg := range batch {
 		body, err := msg.MarshalToString()
 
 		if err != nil {
-			errors = append(errors, err)
+			result = multierror.Append(result, err)
+
 			continue
 		}
 
 		err = o.topic.Publish(ctx, &body)
 
 		if err != nil {
-			errors = append(errors, err)
+			result = multierror.Append(result, err)
+
 			continue
 		}
 	}
 
-	if len(errors) > 0 {
-		return fmt.Errorf("there were %v errors during publishing to the topic", len(errors))
+	if result != nil {
+		return errors.Wrap(result, "there were errors during publishing to the topic")
 	}
 
 	return nil
