@@ -2,6 +2,7 @@ package mdl
 
 import (
 	"fmt"
+	"strings"
 )
 
 type ConfigProvider interface {
@@ -53,6 +54,10 @@ func WithIdentifier(id *uint) *Identifier {
 }
 
 func UuidWithDashes(uuid *string) *string {
+	if strings.Contains(*uuid, "-") {
+		return uuid
+	}
+
 	dashed := fmt.Sprintf("%s-%s-%s-%s-%s", (*uuid)[0:8], (*uuid)[8:12], (*uuid)[12:16], (*uuid)[16:20], (*uuid)[20:32])
 
 	return &dashed
