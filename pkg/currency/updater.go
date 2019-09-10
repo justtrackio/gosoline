@@ -64,7 +64,8 @@ func (service *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) er
 	}
 
 	service.logger.Info("CurrencyUpdaterService: Requesting exchange rates")
-	request := http.NewRequest().WithUrl(ExchangeRateUrl)
+	request := service.http.NewRequest().
+		WithUrl(ExchangeRateUrl)
 
 	response, err := service.http.Get(ctx, request)
 

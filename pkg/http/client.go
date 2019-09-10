@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"gopkg.in/resty.v1"
 	"net/http"
+	netUrl "net/url"
 	"strconv"
 	"time"
 )
@@ -22,6 +23,7 @@ type Client interface {
 	Post(ctx context.Context, request *Request) (*Response, error)
 	SetTimeout(timeout time.Duration)
 	SetUserAgent(ua string)
+	NewRequest() *Request
 }
 
 type Response struct {
@@ -80,6 +82,14 @@ func (c *client) Post(ctx context.Context, request *Request) (*Response, error) 
 	return c.do(ctx, PostRequest, request)
 }
 
+func (c *client) NewRequest() *Request {
+	return &Request{
+		resty:       c.http.NewRequest(),
+		url:         &netUrl.URL{},
+		queryParams: netUrl.Values{},
+	}
+}
+
 func (c *client) do(ctx context.Context, method string, request *Request) (*Response, error) {
 	req, url, err := request.build()
 	logger := c.logger.
@@ -109,15 +119,28 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	})
 
 	if err != nil {
-		logger.Error(err, "error while requesting url")
+		if netErr, ok := err.(*netUrl.Error); ok && netErr.Unwrap() == context.Canceled {
+			// Unwrap the error so our callers can simply check if the request was canceled and
+			// react accordingly. The caller can not check for this upfront as the request could
+			// be canceled while we wait for an answer of the server, causing this error to get
+			// thrown.
+			err = context.Canceled
+		} else {
+			// Only log an error if the error was not caused by a canceled context
+			// Otherwise a user might spam our error logs by just canceling a lot of requests
+			// (or many users spam us because sometimes they cancel requests)
+			logger.Error(err, "error while requesting url")
 
-		c.writeMetric(metricRequestFailure, method, mon.UnitCount, 1.0)
+			c.writeMetric(metricRequestFailure, method, mon.UnitCount, 1.0)
+		}
 	}
 
 	responseStatusCode := resp.StatusCode()
 	responseStatusCodeString := strconv.Itoa(responseStatusCode)
 
-	if responseStatusCode < http.StatusOK || responseStatusCode >= http.StatusMultipleChoices {
+	if err == nil && (responseStatusCode < http.StatusOK || responseStatusCode >= http.StatusMultipleChoices) {
+		// We should not log this if we got an error - in that case the response status code could be 0
+		// and that does not make for a good log message
 		logger.WithFields(mon.Fields{
 			"statusCode": responseStatusCodeString,
 		}).Warn("got unexpected response")
@@ -131,8 +154,14 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 		RequestDuration: resp.Time(),
 	}
 
-	requestDurationMs := float64(response.RequestDuration / time.Millisecond)
-	c.writeMetric(metricRequestDuration, method, mon.UnitMilliseconds, requestDurationMs)
+	if err == nil {
+		// Only log the duration if we did not get an error.
+		// If we get an error, we might not actually have send anything,
+		// so the duration will be very low. If we get back an error (e.g., status 500),
+		// we log the duration as this is just a valid http response.
+		requestDurationMs := float64(response.RequestDuration / time.Millisecond)
+		c.writeMetric(metricRequestDuration, method, mon.UnitMilliseconds, requestDurationMs)
+	}
 
 	return response, err
 }

@@ -35,6 +35,22 @@ func (_m *Client) Get(ctx context.Context, request *http.Request) (*http.Respons
 	return r0, r1
 }
 
+// NewRequest provides a mock function with given fields:
+func (_m *Client) NewRequest() *http.Request {
+	ret := _m.Called()
+
+	var r0 *http.Request
+	if rf, ok := ret.Get(0).(func() *http.Request); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*http.Request)
+		}
+	}
+
+	return r0
+}
+
 // Post provides a mock function with given fields: ctx, request
 func (_m *Client) Post(ctx context.Context, request *http.Request) (*http.Response, error) {
 	ret := _m.Called(ctx, request)

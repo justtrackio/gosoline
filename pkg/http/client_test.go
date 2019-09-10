@@ -1,0 +1,131 @@
+package http_test
+
+import (
+	"context"
+	"fmt"
+	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
+	"github.com/applike/gosoline/pkg/http"
+	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/stretchr/testify/assert"
+	netHttp "net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
+
+// A copy of context.emptyCtx
+type myContext int
+
+func (m *myContext) Deadline() (deadline time.Time, ok bool) {
+	return
+}
+
+func (m *myContext) Done() <-chan struct{} {
+	return nil
+}
+
+func (m *myContext) Err() error {
+	return nil
+}
+
+func (m *myContext) Value(key interface{}) interface{} {
+	return nil
+}
+
+func runTestServer(t *testing.T, method string, status int, delay time.Duration, test func(host string)) {
+	testServer := httptest.NewServer(netHttp.HandlerFunc(func(res netHttp.ResponseWriter, req *netHttp.Request) {
+		assert.Equal(t, method, req.Method)
+
+		time.Sleep(delay)
+
+		res.WriteHeader(status)
+	}))
+	defer func() { testServer.Close() }()
+
+	test(testServer.Listener.Addr().String())
+}
+
+func getConfig(retries int, timeout int) *cfgMocks.Config {
+	config := new(cfgMocks.Config)
+	config.On("GetInt", "http_client_retry_count").Return(retries)
+	config.On("GetDuration", "http_client_request_timeout").Return(time.Duration(timeout))
+	config.On("GetString", "app_name").Return("test")
+
+	return config
+}
+
+func TestClient_Get(t *testing.T) {
+	config := getConfig(1, 1)
+	logger := monMocks.NewLoggerMockedAll()
+
+	runTestServer(t, "GET", 200, 0, func(host string) {
+		client := http.NewHttpClient(config, logger)
+		request := client.NewRequest().
+			WithUrl(fmt.Sprintf("http://%s", host))
+		response, err := client.Get(context.TODO(), request)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 200, response.StatusCode)
+	})
+
+	config.AssertExpectations(t)
+}
+
+func TestClient_GetTimeout(t *testing.T) {
+	config := getConfig(1, 1)
+	logger := monMocks.NewLoggerMockedAll()
+
+	runTestServer(t, "GET", 200, 2*time.Second, func(host string) {
+		client := http.NewHttpClient(config, logger)
+		request := client.NewRequest().
+			WithUrl(fmt.Sprintf("http://%s", host))
+		response, err := client.Get(context.TODO(), request)
+
+		assert.Error(t, err)
+		assert.NotEqual(t, 200, response.StatusCode)
+	})
+
+	config.AssertExpectations(t)
+}
+
+func TestClient_GetCanceled(t *testing.T) {
+	config := getConfig(1, 5)
+	logger := monMocks.NewLoggerMockedAll()
+
+	baseCtx := myContext(0)
+	ctx, cancel := context.WithCancel(&baseCtx)
+
+	runTestServer(t, "GET", 200, 2*time.Second, func(host string) {
+		client := http.NewHttpClient(config, logger)
+		request := client.NewRequest().
+			WithUrl(fmt.Sprintf("http://%s", host))
+		go func() {
+			time.Sleep(time.Second)
+			cancel()
+		}()
+		response, err := client.Get(ctx, request)
+
+		assert.Error(t, err)
+		assert.Equal(t, context.Canceled, err)
+		assert.NotEqual(t, 200, response.StatusCode)
+	})
+
+	config.AssertExpectations(t)
+}
+
+func TestClient_Post(t *testing.T) {
+	config := getConfig(1, 1)
+	logger := monMocks.NewLoggerMockedAll()
+
+	runTestServer(t, "POST", 200, 0, func(host string) {
+		client := http.NewHttpClient(config, logger)
+		request := client.NewRequest().
+			WithUrl(fmt.Sprintf("http://%s", host))
+		response, err := client.Post(context.TODO(), request)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 200, response.StatusCode)
+	})
+
+	config.AssertExpectations(t)
+}

@@ -45,7 +45,7 @@ func NewGoogleServiceWithInterfaces(httpClient http.Client) *GoogleService {
 }
 
 func (service *GoogleService) GetAuthRefresh(ctx context.Context, authRequest *GoogleAuthRequest) (*GoogleAuthResponse, error) {
-	request := http.NewRequest().
+	request := service.httpClient.NewRequest().
 		WithUrl(AuthTokenUrl).
 		WithBody(map[string]string{
 			"client_id":     authRequest.ClientId,

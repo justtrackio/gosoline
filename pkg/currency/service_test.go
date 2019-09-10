@@ -3,7 +3,7 @@ package currency_test
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/currency"
-	http2 "github.com/applike/gosoline/pkg/http"
+	"github.com/applike/gosoline/pkg/http"
 	httpMock "github.com/applike/gosoline/pkg/http/mocks"
 	loggerMock "github.com/applike/gosoline/pkg/mon/mocks"
 	redisMock "github.com/applike/gosoline/pkg/redis/mocks"
@@ -78,24 +78,25 @@ func TestCurrencyService_ToEur_Calculation(t *testing.T) {
 func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
 	logger := loggerMock.NewLoggerMockedAll()
 	redis := new(redisMock.Client)
-	http := new(httpMock.Client)
+	client := new(httpMock.Client)
 
 	redis.On("Get", currency.ExchangeRateDateKey).Return(time.Now().AddDate(-1, 0, 0).Format(currency.ExchangeRateDateFormat), nil)
 	redis.On("HSet", currency.ExchangeRateDataKey, mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Return(nil)
 	redis.On("Set", currency.ExchangeRateDateKey, mock.AnythingOfType("string"), mock.AnythingOfType("time.Duration")).Return(nil)
 
-	r := &http2.Response{
+	r := &http.Response{
 		Body: []byte(response),
 	}
 
-	http.On("Get", context.TODO(), mock.AnythingOfType("*http.Request")).Return(r, nil)
+	client.On("NewRequest").Return(http.NewRequest(nil))
+	client.On("Get", context.TODO(), mock.AnythingOfType("*http.Request")).Return(r, nil)
 
-	service := currency.NewUpdaterWithInterfaces(logger, redis, http)
+	service := currency.NewUpdaterWithInterfaces(logger, redis, client)
 
 	err := service.EnsureRecentExchangeRates(context.TODO())
 
 	assert.NoError(t, err)
 
 	redis.AssertExpectations(t)
-	http.AssertExpectations(t)
+	client.AssertExpectations(t)
 }
