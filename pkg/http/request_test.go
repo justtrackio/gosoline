@@ -8,7 +8,7 @@ import (
 )
 
 func TestRequest_WithAll(t *testing.T) {
-	request := http.NewRequest().
+	request := http.NewRequest(nil).
 		WithUrl("example.com/foo?some=key").
 		WithQueryParam("key", "value").
 		WithQueryMap(map[string]string{
@@ -73,7 +73,7 @@ func TestRequest_WithQueryObject(t *testing.T) {
 		},
 	}
 
-	request := http.NewRequest().
+	request := http.NewRequest(nil).
 		WithQueryObject(data)
 
 	err := request.GetError()
@@ -106,7 +106,7 @@ func TestRequest_WithQueryObject(t *testing.T) {
 }
 
 func TestRequest_GetUrl(t *testing.T) {
-	request := http.NewRequest().
+	request := http.NewRequest(nil).
 		WithUrl("https://applike.info?test999=1").
 		WithQueryParam("test", "test1", "test2").
 		WithQueryParam("test2", 1, 2.2, "test")

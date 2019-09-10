@@ -23,7 +23,7 @@ func TestGoogleService_GetAuthRefresh(t *testing.T) {
 		ExpiresIn:   1,
 		TokenType:   "grizzly",
 	}
-	httpRequest := http.NewRequest().
+	httpRequest := http.NewRequest(nil).
 		WithUrl("https://accounts.google.com/o/oauth2/token").
 		WithBody(map[string]string{
 			"client_id":     googleAuthRequest.ClientId,
@@ -39,6 +39,7 @@ func TestGoogleService_GetAuthRefresh(t *testing.T) {
 	assert.NoError(t, err)
 
 	httpClient := new(httpMocks.Client)
+	httpClient.On("NewRequest").Return(http.NewRequest(nil))
 	httpClient.On("Post", context.TODO(), httpRequest).Return(response, nil)
 
 	service := NewGoogleServiceWithInterfaces(httpClient)
@@ -61,6 +62,7 @@ func TestGoogleService_GetAuthRefresh_Error(t *testing.T) {
 	}
 
 	httpClient := new(httpMocks.Client)
+	httpClient.On("NewRequest").Return(http.NewRequest(nil))
 	httpClient.On("Post", context.TODO(), mock.Anything).Return(nil, errors.New("test"))
 
 	service := NewGoogleServiceWithInterfaces(httpClient)

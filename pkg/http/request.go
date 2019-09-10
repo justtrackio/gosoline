@@ -23,24 +23,28 @@ type Request struct {
 	queryParams url.Values
 }
 
-// use NewRequest to create a request, don't create the object inline!
-func NewRequest() *Request {
-	return &Request{
-		resty:       resty.NewRequest(),
-		url:         &url.URL{},
-		queryParams: url.Values{},
+// use NewRequest(client) or client.NewRequest() to create a request, don't create the object inline!
+func NewRequest(client Client) *Request {
+	if client == nil {
+		return &Request{
+			resty:       resty.NewRequest(),
+			url:         &url.URL{},
+			queryParams: url.Values{},
+		}
 	}
+
+	return client.NewRequest()
 }
 
 // use NewJsonRequest to create a request that already contains the application/json content-type, don't create the object inline!
-func NewJsonRequest() *Request {
-	return NewRequest().
+func NewJsonRequest(client Client) *Request {
+	return NewRequest(client).
 		WithHeader(HdrAccept, ContentTypeApplicationJson)
 }
 
 // use NewXmlRequest to create a request that already contains the application/xml content-type, don't create the object inline!
-func NewXmlRequest() *Request {
-	return NewRequest().
+func NewXmlRequest(client Client) *Request {
+	return NewRequest(client).
 		WithHeader(HdrAccept, ContentTypeApplicationXml)
 }
 
