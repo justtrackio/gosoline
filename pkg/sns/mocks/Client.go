@@ -1635,6 +1635,84 @@ func (_m *Client) ListSubscriptionsWithContext(_a0 context.Context, _a1 *sns.Lis
 	return r0, r1
 }
 
+// ListTagsForResource provides a mock function with given fields: _a0
+func (_m *Client) ListTagsForResource(_a0 *sns.ListTagsForResourceInput) (*sns.ListTagsForResourceOutput, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *sns.ListTagsForResourceOutput
+	if rf, ok := ret.Get(0).(func(*sns.ListTagsForResourceInput) *sns.ListTagsForResourceOutput); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sns.ListTagsForResourceOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*sns.ListTagsForResourceInput) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListTagsForResourceRequest provides a mock function with given fields: _a0
+func (_m *Client) ListTagsForResourceRequest(_a0 *sns.ListTagsForResourceInput) (*request.Request, *sns.ListTagsForResourceOutput) {
+	ret := _m.Called(_a0)
+
+	var r0 *request.Request
+	if rf, ok := ret.Get(0).(func(*sns.ListTagsForResourceInput) *request.Request); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*request.Request)
+		}
+	}
+
+	var r1 *sns.ListTagsForResourceOutput
+	if rf, ok := ret.Get(1).(func(*sns.ListTagsForResourceInput) *sns.ListTagsForResourceOutput); ok {
+		r1 = rf(_a0)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*sns.ListTagsForResourceOutput)
+		}
+	}
+
+	return r0, r1
+}
+
+// ListTagsForResourceWithContext provides a mock function with given fields: _a0, _a1, _a2
+func (_m *Client) ListTagsForResourceWithContext(_a0 context.Context, _a1 *sns.ListTagsForResourceInput, _a2 ...request.Option) (*sns.ListTagsForResourceOutput, error) {
+	_va := make([]interface{}, len(_a2))
+	for _i := range _a2 {
+		_va[_i] = _a2[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _a0, _a1)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *sns.ListTagsForResourceOutput
+	if rf, ok := ret.Get(0).(func(context.Context, *sns.ListTagsForResourceInput, ...request.Option) *sns.ListTagsForResourceOutput); ok {
+		r0 = rf(_a0, _a1, _a2...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sns.ListTagsForResourceOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *sns.ListTagsForResourceInput, ...request.Option) error); ok {
+		r1 = rf(_a0, _a1, _a2...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ListTopics provides a mock function with given fields: _a0
 func (_m *Client) ListTopics(_a0 *sns.ListTopicsInput) (*sns.ListTopicsOutput, error) {
 	ret := _m.Called(_a0)
@@ -2450,6 +2528,84 @@ func (_m *Client) SubscribeWithContext(_a0 context.Context, _a1 *sns.SubscribeIn
 	return r0, r1
 }
 
+// TagResource provides a mock function with given fields: _a0
+func (_m *Client) TagResource(_a0 *sns.TagResourceInput) (*sns.TagResourceOutput, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *sns.TagResourceOutput
+	if rf, ok := ret.Get(0).(func(*sns.TagResourceInput) *sns.TagResourceOutput); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sns.TagResourceOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*sns.TagResourceInput) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// TagResourceRequest provides a mock function with given fields: _a0
+func (_m *Client) TagResourceRequest(_a0 *sns.TagResourceInput) (*request.Request, *sns.TagResourceOutput) {
+	ret := _m.Called(_a0)
+
+	var r0 *request.Request
+	if rf, ok := ret.Get(0).(func(*sns.TagResourceInput) *request.Request); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*request.Request)
+		}
+	}
+
+	var r1 *sns.TagResourceOutput
+	if rf, ok := ret.Get(1).(func(*sns.TagResourceInput) *sns.TagResourceOutput); ok {
+		r1 = rf(_a0)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*sns.TagResourceOutput)
+		}
+	}
+
+	return r0, r1
+}
+
+// TagResourceWithContext provides a mock function with given fields: _a0, _a1, _a2
+func (_m *Client) TagResourceWithContext(_a0 context.Context, _a1 *sns.TagResourceInput, _a2 ...request.Option) (*sns.TagResourceOutput, error) {
+	_va := make([]interface{}, len(_a2))
+	for _i := range _a2 {
+		_va[_i] = _a2[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _a0, _a1)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *sns.TagResourceOutput
+	if rf, ok := ret.Get(0).(func(context.Context, *sns.TagResourceInput, ...request.Option) *sns.TagResourceOutput); ok {
+		r0 = rf(_a0, _a1, _a2...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sns.TagResourceOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *sns.TagResourceInput, ...request.Option) error); ok {
+		r1 = rf(_a0, _a1, _a2...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Unsubscribe provides a mock function with given fields: _a0
 func (_m *Client) Unsubscribe(_a0 *sns.UnsubscribeInput) (*sns.UnsubscribeOutput, error) {
 	ret := _m.Called(_a0)
@@ -2520,6 +2676,84 @@ func (_m *Client) UnsubscribeWithContext(_a0 context.Context, _a1 *sns.Unsubscri
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, *sns.UnsubscribeInput, ...request.Option) error); ok {
+		r1 = rf(_a0, _a1, _a2...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UntagResource provides a mock function with given fields: _a0
+func (_m *Client) UntagResource(_a0 *sns.UntagResourceInput) (*sns.UntagResourceOutput, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *sns.UntagResourceOutput
+	if rf, ok := ret.Get(0).(func(*sns.UntagResourceInput) *sns.UntagResourceOutput); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sns.UntagResourceOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*sns.UntagResourceInput) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UntagResourceRequest provides a mock function with given fields: _a0
+func (_m *Client) UntagResourceRequest(_a0 *sns.UntagResourceInput) (*request.Request, *sns.UntagResourceOutput) {
+	ret := _m.Called(_a0)
+
+	var r0 *request.Request
+	if rf, ok := ret.Get(0).(func(*sns.UntagResourceInput) *request.Request); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*request.Request)
+		}
+	}
+
+	var r1 *sns.UntagResourceOutput
+	if rf, ok := ret.Get(1).(func(*sns.UntagResourceInput) *sns.UntagResourceOutput); ok {
+		r1 = rf(_a0)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*sns.UntagResourceOutput)
+		}
+	}
+
+	return r0, r1
+}
+
+// UntagResourceWithContext provides a mock function with given fields: _a0, _a1, _a2
+func (_m *Client) UntagResourceWithContext(_a0 context.Context, _a1 *sns.UntagResourceInput, _a2 ...request.Option) (*sns.UntagResourceOutput, error) {
+	_va := make([]interface{}, len(_a2))
+	for _i := range _a2 {
+		_va[_i] = _a2[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _a0, _a1)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *sns.UntagResourceOutput
+	if rf, ok := ret.Get(0).(func(context.Context, *sns.UntagResourceInput, ...request.Option) *sns.UntagResourceOutput); ok {
+		r0 = rf(_a0, _a1, _a2...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sns.UntagResourceOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *sns.UntagResourceInput, ...request.Option) error); ok {
 		r1 = rf(_a0, _a1, _a2...)
 	} else {
 		r1 = ret.Error(1)

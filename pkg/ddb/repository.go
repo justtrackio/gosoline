@@ -616,7 +616,7 @@ func (r *repository) readCallback(ctx context.Context, items interface{}, callba
 
 		cont, err := callback(ctx, result)
 
-		if err != nil && !cont {
+		if err == nil && !cont {
 			return err
 		}
 

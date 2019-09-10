@@ -26,20 +26,8 @@ func ProvideS3Client(config cfg.Config) s3iface.S3API {
 		return s3cl.client
 	}
 
-	endpoint := config.GetString("aws_s3_endpoint")
-	maxRetries := config.GetInt("aws_sdk_retries")
-
-	awsConfig := &aws.Config{
-		CredentialsChainVerboseErrors: aws.Bool(true),
-		Region:                        aws.String(endpoints.EuCentral1RegionID),
-		HTTPClient: &http.Client{
-			Timeout: 1 * time.Minute,
-		},
-	}
-	awsConfig.WithEndpoint(endpoint)
-	awsConfig.WithMaxRetries(maxRetries)
-
-	sess := session.Must(session.NewSession(awsConfig.WithEndpoint(endpoint)))
+	awsConfig := GetS3ClientConfig(config)
+	sess := session.Must(session.NewSession(awsConfig))
 
 	client := s3.New(sess)
 
@@ -47,4 +35,19 @@ func ProvideS3Client(config cfg.Config) s3iface.S3API {
 	s3cl.initialized = true
 
 	return s3cl.client
+}
+
+func GetS3ClientConfig(config cfg.Config) *aws.Config {
+	endpoint := config.GetString("aws_s3_endpoint")
+	maxRetries := config.GetInt("aws_sdk_retries")
+
+	return &aws.Config{
+		CredentialsChainVerboseErrors: aws.Bool(true),
+		Endpoint:                      aws.String(endpoint),
+		Region:                        aws.String(endpoints.EuCentral1RegionID),
+		HTTPClient: &http.Client{
+			Timeout: 1 * time.Minute,
+		},
+		MaxRetries: aws.Int(maxRetries),
+	}
 }
