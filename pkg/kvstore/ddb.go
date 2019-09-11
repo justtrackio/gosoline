@@ -10,8 +10,8 @@ import (
 )
 
 type ddbItem struct {
-	Key   string `ddb:"key=hash"`
-	Value string
+	Key   string `json:"key" ddb:"key=hash"`
+	Value string `json:"value"`
 }
 
 type DdbKvStore struct {
