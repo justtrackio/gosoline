@@ -72,10 +72,10 @@ func TestClient_Get(t *testing.T) {
 }
 
 func TestClient_GetTimeout(t *testing.T) {
-	config := getConfig(1, 1)
+	config := getConfig(0, 1)
 	logger := monMocks.NewLoggerMockedAll()
 
-	runTestServer(t, "GET", 200, 2*time.Second, func(host string) {
+	runTestServer(t, "GET", 200, 1100*time.Millisecond, func(host string) {
 		client := http.NewHttpClient(config, logger)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
@@ -89,18 +89,18 @@ func TestClient_GetTimeout(t *testing.T) {
 }
 
 func TestClient_GetCanceled(t *testing.T) {
-	config := getConfig(1, 5)
+	config := getConfig(1, 1)
 	logger := monMocks.NewLoggerMockedAll()
 
 	baseCtx := myContext(0)
 	ctx, cancel := context.WithCancel(&baseCtx)
 
-	runTestServer(t, "GET", 200, 2*time.Second, func(host string) {
+	runTestServer(t, "GET", 200, 200*time.Millisecond, func(host string) {
 		client := http.NewHttpClient(config, logger)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
 		go func() {
-			time.Sleep(time.Second)
+			time.Sleep(100 * time.Millisecond)
 			cancel()
 		}()
 		response, err := client.Get(ctx, request)
