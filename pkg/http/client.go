@@ -119,7 +119,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	})
 
 	if err != nil {
-		if netErr, ok := err.(*netUrl.Error); ok && netErr.Unwrap() == context.Canceled {
+		if netErr, ok := err.(*netUrl.Error); ok && netErr.Err == context.Canceled {
 			// Unwrap the error so our callers can simply check if the request was canceled and
 			// react accordingly. The caller can not check for this upfront as the request could
 			// be canceled while we wait for an answer of the server, causing this error to get
