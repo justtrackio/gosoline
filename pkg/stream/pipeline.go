@@ -3,9 +3,9 @@ package stream
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
-	"gopkg.in/tomb.v2"
 	"sync"
 	"time"
 )
@@ -25,11 +25,11 @@ type PipelineSettings struct {
 }
 
 type Pipeline struct {
-	kernel.ForegroundModule
+	kernel.EssentialModule
 
 	logger   mon.Logger
 	metric   mon.MetricWriter
-	tmb      tomb.Tomb
+	cfn      coffin.Coffin
 	lck      sync.Mutex
 	input    Input
 	output   Output
@@ -42,6 +42,7 @@ type Pipeline struct {
 func NewPipeline(callback PipelineCallback) *Pipeline {
 	return &Pipeline{
 		callback: callback,
+		cfn:      coffin.New(),
 	}
 }
 
@@ -82,20 +83,20 @@ func (p *Pipeline) Run(ctx context.Context) error {
 	defer p.logger.Info("leaving pipeline")
 	defer p.process(ctx, true)
 
-	p.tmb.Go(p.input.Run)
-	p.tmb.Go(func() error {
+	p.cfn.Gof(p.input.Run, "panic during run of the consumer input")
+	p.cfn.Gof(func() error {
 		return p.read(ctx)
-	})
+	}, "panic during consuming")
 
 	for {
 		select {
 		case <-ctx.Done():
 			p.input.Stop()
-			return p.tmb.Wait()
+			return p.cfn.Wait()
 
-		case <-p.tmb.Dead():
+		case <-p.cfn.Dead():
 			p.input.Stop()
-			return p.tmb.Err()
+			return p.cfn.Err()
 		}
 	}
 }

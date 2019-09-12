@@ -22,7 +22,7 @@ type Settings struct {
 }
 
 type ApiServer struct {
-	kernel.ForegroundModule
+	kernel.EssentialModule
 
 	logger       mon.Logger
 	server       *http.Server

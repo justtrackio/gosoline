@@ -7,9 +7,14 @@ import (
 )
 
 const (
+	TypeEssential  = "essential"
 	TypeForeground = "foreground"
 	TypeBackground = "background"
 )
+
+func isForegroundModule(m Module) bool {
+	return m.GetType() != TypeBackground
+}
 
 type ModuleState struct {
 	Module    Module
@@ -25,6 +30,13 @@ type Module interface {
 }
 
 type ModuleFactory func(config cfg.Config, logger mon.Logger) (map[string]Module, error)
+
+type EssentialModule struct {
+}
+
+func (m EssentialModule) GetType() string {
+	return TypeEssential
+}
 
 type ForegroundModule struct {
 }

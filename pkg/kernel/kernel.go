@@ -5,11 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/mon"
-	"gopkg.in/tomb.v2"
 	"os"
 	"os/signal"
-	"reflect"
 	"sort"
 	"sync"
 	"syscall"
@@ -17,7 +16,7 @@ import (
 )
 
 type kernel struct {
-	t   *tomb.Tomb
+	cfn coffin.Coffin
 	sig chan os.Signal
 	lck sync.Mutex
 	wg  sync.WaitGroup
@@ -68,27 +67,17 @@ func (k *kernel) Run() {
 	signal.Notify(k.sig, syscall.SIGTERM)
 	signal.Notify(k.sig, syscall.SIGINT)
 
-	bootTomb := tomb.Tomb{}
+	bootCoffin := coffin.New()
 
 	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
-		bootTomb.Go(func() error {
-			booted, err := k.bootModule(name.(string))
-
-			if err != nil {
-				return err
-			}
-
-			if booted != true {
-				return errors.New("could not boot module due to a panic")
-			}
-
-			return nil
-		})
+		bootCoffin.Gof(func() error {
+			return k.bootModule(name.(string))
+		}, "panic during boot of module %s", name)
 
 		return true
 	})
 
-	bootErr := bootTomb.Wait()
+	bootErr := bootCoffin.Wait()
 
 	if bootErr != nil {
 		k.logger.Error(bootErr, "error during the boot process of the kernel")
@@ -96,20 +85,21 @@ func (k *kernel) Run() {
 	}
 
 	var ctx context.Context
-	k.t, ctx = tomb.WithContext(context.Background())
+	k.cfn, ctx = coffin.WithContext(context.Background())
 	k.wg.Add(k.moduleCount)
 
 	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
-		k.t.Go(func() error {
+		k.cfn.Gof(func() error {
 			err := k.runModule(name.(string), ctx)
-			k.hasRunningForegroundModules()
+			k.checkRunningForegroundModules()
 
 			return err
-		})
+		}, "panic during running of module %s", name)
 
 		return true
 	})
 
+	k.checkRunningEssentialModules()
 	k.isRunning = true
 	k.logger.Info("kernel up and running")
 
@@ -131,7 +121,7 @@ func (k *kernel) Run() {
 		os.Exit(1)
 	}()
 
-	err = k.t.Wait()
+	err = k.cfn.Wait()
 
 	if err != nil {
 		k.logger.Error(err, "error during the execution of the kernel")
@@ -141,7 +131,7 @@ func (k *kernel) Run() {
 func (k *kernel) Stop(reason string) {
 	k.isRunning = false
 	k.logger.Infof("stopping kernel due to: %s", reason)
-	k.t.Kill(nil)
+	k.cfn.Kill(nil)
 }
 
 func (k *kernel) runFactories() error {
@@ -162,9 +152,7 @@ func (k *kernel) runFactories() error {
 	return nil
 }
 
-func (k *kernel) bootModule(name string) (bool, error) {
-	defer k.recover("error booting module " + name)
-
+func (k *kernel) bootModule(name string) error {
 	k.logger.Infof("booting module %s", name)
 	ms := k.getModuleState(name)
 
@@ -174,11 +162,10 @@ func (k *kernel) bootModule(name string) (bool, error) {
 
 	k.logger.Infof("booted module %s", name)
 
-	return true, err
+	return err
 }
 
 func (k *kernel) runModule(name string, ctx context.Context) error {
-	defer k.recover("error running module " + name)
 	defer k.logger.Info("stopped module " + name)
 
 	k.logger.Info("running module " + name)
@@ -205,9 +192,8 @@ func (k *kernel) hasForegroundModules() bool {
 
 	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
 		ms := moduleState.(*ModuleState)
-		rt := ms.Module.GetType()
 
-		if rt == TypeForeground {
+		if isForegroundModule(ms.Module) {
 			hasForegroundModule = true
 			return false
 		}
@@ -218,7 +204,46 @@ func (k *kernel) hasForegroundModules() bool {
 	return hasForegroundModule
 }
 
-func (k *kernel) hasRunningForegroundModules() {
+func (k *kernel) checkRunningEssentialModules() {
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			k.doCheckRunningEssentialModules()
+		}
+	}()
+}
+
+func (k *kernel) doCheckRunningEssentialModules() {
+	if !k.isRunning {
+		return
+	}
+
+	k.wg.Wait()
+
+	var reason string
+	hasEssentialModuleStopped := false
+
+	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
+		ms := moduleState.(*ModuleState)
+		rt := ms.Module.GetType()
+
+		if !ms.IsRunning && rt == TypeEssential {
+			reason = fmt.Sprintf("the essential module [%s] has stopped running", name)
+			hasEssentialModuleStopped = true
+			return false
+		}
+
+		return true
+	})
+
+	if !hasEssentialModuleStopped {
+		return
+	}
+
+	k.Stop(reason)
+}
+
+func (k *kernel) checkRunningForegroundModules() {
 	if !k.isRunning {
 		return
 	}
@@ -232,9 +257,8 @@ func (k *kernel) hasRunningForegroundModules() {
 
 	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
 		ms := moduleState.(*ModuleState)
-		rt := ms.Module.GetType()
 
-		if ms.IsRunning && rt == TypeForeground {
+		if ms.IsRunning && isForegroundModule(ms.Module) {
 			hasForegroundModuleRunning = true
 			return false
 		}
@@ -250,17 +274,10 @@ func (k *kernel) hasRunningForegroundModules() {
 }
 
 func (k *kernel) recover(msg string) {
-	err := recover()
+	err := coffin.ResolveRecovery(recover())
 
-	switch rval := err.(type) {
-	case nil:
-		return
-	case error:
-		k.logger.Error(rval, msg)
-	case string:
-		k.logger.Error(errors.New(err.(string)), msg)
-	default:
-		k.logger.Error(errors.New(fmt.Sprintf("unhandled error type %s", reflect.TypeOf(rval))), msg)
+	if err != nil {
+		k.logger.Error(err.(error), msg)
 	}
 }
 
