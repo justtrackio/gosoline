@@ -2,6 +2,7 @@ package ddb_test
 
 import (
 	"context"
+	"fmt"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -370,6 +371,78 @@ func TestRepository_BatchWriteItem(t *testing.T) {
 	}
 
 	client.On("BatchWriteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	_, err := repo.BatchPutItems(context.Background(), items)
+
+	assert.NoError(t, err)
+	client.AssertExpectations(t)
+}
+
+func TestRepository_BatchWriteItem_Retry(t *testing.T) {
+	makeItem := func(id int) model {
+		return model{
+			Id:  id,
+			Rev: fmt.Sprintf("rev %d", id),
+			Foo: "data",
+		}
+	}
+	makePutRequest := func(id int) *dynamodb.PutRequest {
+		return &dynamodb.PutRequest{
+			Item: map[string]*dynamodb.AttributeValue{
+				"id":  {N: aws.String(fmt.Sprintf("%d", id))},
+				"rev": {S: aws.String(fmt.Sprintf("rev %d", id))},
+				"foo": {S: aws.String("data")},
+			},
+		}
+	}
+
+	totalItems := 20
+	firstBatchItems := 10
+
+	items := make([]model, 0, totalItems)
+	firstInputData := make([]*dynamodb.WriteRequest, 0, totalItems)
+	firstOutputData := make([]*dynamodb.WriteRequest, 0, firstBatchItems)
+	secondInputData := make([]*dynamodb.WriteRequest, 0, firstBatchItems)
+	for i := 0; i < totalItems; i++ {
+		items = append(items, makeItem(i))
+		firstInputData = append(firstInputData, &dynamodb.WriteRequest{
+			PutRequest: makePutRequest(i),
+		})
+		if i < firstBatchItems {
+			secondInputData = append(secondInputData, &dynamodb.WriteRequest{
+				PutRequest: makePutRequest(i),
+			})
+			firstOutputData = append(firstOutputData, &dynamodb.WriteRequest{
+				PutRequest: makePutRequest(i),
+			})
+		}
+	}
+
+	client, repo := getMocks()
+
+	firstInput := &dynamodb.BatchWriteItemInput{
+		RequestItems: map[string][]*dynamodb.WriteRequest{
+			"applike-test-gosoline-ddb-myModel": firstInputData,
+		},
+	}
+	secondInput := &dynamodb.BatchWriteItemInput{
+		RequestItems: map[string][]*dynamodb.WriteRequest{
+			"applike-test-gosoline-ddb-myModel": secondInputData,
+		},
+	}
+
+	firstOutput := &dynamodb.BatchWriteItemOutput{
+		UnprocessedItems: map[string][]*dynamodb.WriteRequest{
+			"applike-test-gosoline-ddb-myModel": firstOutputData,
+		},
+	}
+	secondOutput := &dynamodb.BatchWriteItemOutput{
+		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
+	}
+
+	client.On("BatchWriteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), firstInput).Return(firstOutput, nil).Once()
+	client.On("BatchWriteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), secondInput).Return(firstOutput, nil).Once()
+	client.On("BatchWriteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), secondInput).Return(secondOutput, nil).Once()
 
 	_, err := repo.BatchPutItems(context.Background(), items)
 

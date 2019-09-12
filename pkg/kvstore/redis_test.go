@@ -4,17 +4,20 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
+	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/redis/mocks"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestRedisKvStore_Contains(t *testing.T) {
+	logger := monMocks.NewLoggerMockedAll()
+
 	client := new(mocks.Client)
 	client.On("Exists", "applike-gosoline-kvstore-kvstore-test-foo").Return(int64(0), nil)
 	client.On("Exists", "applike-gosoline-kvstore-kvstore-test-bar").Return(int64(1), nil)
 
-	store := kvstore.NewRedisKvStoreWithInterfaces(client, &kvstore.Settings{
+	store := kvstore.NewRedisKvStoreWithInterfaces(logger, client, &kvstore.Settings{
 		AppId: cfg.AppId{
 			Project:     "applike",
 			Environment: "test",
