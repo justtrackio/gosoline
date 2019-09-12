@@ -12,8 +12,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"time"
 )
 
 const (
@@ -181,6 +183,7 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 		return nil, errors.Wrapf(err, "no slice of items provided for batchWriteItem operation on table %s", r.metadata.TableName)
 	}
 
+	// DynamoDB limits the number of operations per batch request to 25
 	chunks := chunk(items, 25)
 	result := newOperationResult()
 
@@ -206,7 +209,7 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 		err = r.chunkWriteItem(ctx, input, result)
 
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "could not write chunk for batchWriteItem operation on table %s", r.metadata.TableName)
 		}
 	}
 
@@ -214,12 +217,17 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 }
 
 func (r *repository) chunkWriteItem(ctx context.Context, input *dynamodb.BatchWriteItemInput, result *OperationResult) error {
-	// try up to 3 times to write the chunk
-	for i := 0; i < 3; i++ {
+	backoffConfig := backoff.NewExponentialBackOff()
+	backoffConfig.MaxElapsedTime = time.Minute
+	backoffConfig.InitialInterval = 100 * time.Millisecond
+
+	finalErr := fmt.Errorf("could not write unprocessed items in chunkWriteItem on table %s", r.metadata.TableName)
+
+	return backoff.Retry(func() error {
 		out, err := r.client.BatchWriteItemWithContext(ctx, input)
 
 		if err != nil {
-			return errors.Wrapf(err, "could not execute item for batchWriteItemWithContext operation on table %s", r.metadata.TableName)
+			return backoff.Permanent(errors.Wrapf(err, "could not execute item for batchWriteItemWithContext operation on table %s", r.metadata.TableName))
 		}
 
 		result.ConsumedCapacity.addSlice(out.ConsumedCapacity)
@@ -228,10 +236,31 @@ func (r *repository) chunkWriteItem(ctx context.Context, input *dynamodb.BatchWr
 			return nil
 		}
 
+		processedItems := totalItemCount(input.RequestItems) - totalItemCount(out.UnprocessedItems)
+
 		input.RequestItems = out.UnprocessedItems
+
+		// If we made any process, we try again and reset our backoff. As long as we are making process we can try again
+		// and will eventually finish
+		if processedItems > 0 {
+			backoffConfig.Reset()
+		}
+
+		// If we made any progress, this will sleep for a short amount of time and then retry
+		// If we did not make any progress, we will sleep for increasingly longer times until
+		// we will finally return this error
+		return finalErr
+	}, backoff.WithContext(backoffConfig, ctx))
+}
+
+func totalItemCount(requests map[string][]*dynamodb.WriteRequest) int {
+	result := 0
+
+	for _, item := range requests {
+		result += len(item)
 	}
 
-	return fmt.Errorf("could not write unprocessed items in chunkWriteItem on table %s", r.metadata.TableName)
+	return result
 }
 
 func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item interface{}) (*DeleteItemResult, error) {

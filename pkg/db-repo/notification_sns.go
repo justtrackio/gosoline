@@ -10,6 +10,12 @@ import (
 func NewSnsNotifier(config cfg.Config, logger mon.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *baseNotifier {
 	output := stream.NewSnsOutput(config, logger, stream.SnsOutputSettings{
 		TopicId: modelId.Name,
+		AppId: cfg.AppId{
+			Project:     modelId.Project,
+			Environment: modelId.Environment,
+			Family:      modelId.Family,
+			Application: modelId.Application,
+		},
 	})
 
 	defaults := getDefaultNotifierMetrics(modelId)
