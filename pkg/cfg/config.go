@@ -70,11 +70,14 @@ type Viper interface {
 	GetStringMapString(key string) map[string]string
 	GetStringSlice(key string) []string
 	IsSet(string) bool
-	SetConfigType(in string)
 	MergeConfig(in io.Reader) error
-	SetDefault(string, interface{})
-	SetEnvPrefix(string)
 	Set(key string, value interface{})
+	SetConfigType(in string)
+	SetDefault(string, interface{})
+	SetEnvKeyReplacer(replacer *strings.Replacer)
+	SetEnvPrefix(string)
+	Unmarshal(rawVal interface{}, opts ...viper.DecoderConfigOption) error
+	UnmarshalKey(string, interface{}, ...viper.DecoderConfigOption) error
 }
 
 func New(application string) *config {
@@ -102,6 +105,10 @@ func (c *config) keyCheck(key string) {
 	}
 }
 
+func (c *config) SetEnvReplacer(replacer *strings.Replacer) {
+	c.client.SetEnvKeyReplacer(replacer)
+}
+
 func (c *config) AllKeys() []string {
 	c.lck.Lock()
 	defer c.lck.Unlock()
@@ -117,13 +124,7 @@ func (c *config) Get(key string) interface{} {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
-	return c.client.Get(key)
-}
-
-func (c *config) unsafeGet(key string) interface{} {
-	c.keyCheck(key)
-	return c.client.Get(key)
+	return c.get(key)
 }
 
 func (c *config) GetDuration(key string) time.Duration {
@@ -292,6 +293,7 @@ func (c *config) configure() {
 
 	c.client.SetEnvPrefix(prefix)
 	c.client.AutomaticEnv()
+	c.client.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	c.client.SetConfigType("yml")
 
 	err = c.readConfigFile("./config.dist.yml")
@@ -325,6 +327,31 @@ func (c *config) configure() {
 	}
 }
 
+func (c *config) get(key string) interface{} {
+	c.keyCheck(key)
+	value := c.client.Get(key)
+
+	// update nested values
+	values, isMap := value.(map[string]interface{})
+
+	if !isMap {
+		return value
+	}
+
+	for nestedKeys := range values {
+		values[nestedKeys] = c.get(fmt.Sprintf("%s.%s", key, nestedKeys))
+	}
+
+	return values
+}
+
+func (c *config) err(err error, msg string, args ...interface{}) {
+	err = errors.Wrapf(err, msg, args...)
+
+	c.sentry.CaptureErrorAndWait(err, nil)
+	panic(err)
+}
+
 func (c *config) readConfigFile(configFile string) error {
 	if configFile == "" {
 		return nil
@@ -341,9 +368,6 @@ func (c *config) readConfigFile(configFile string) error {
 	return err
 }
 
-func (c *config) err(err error, msg string, args ...interface{}) {
-	err = errors.Wrapf(err, msg, args...)
-
-	c.sentry.CaptureErrorAndWait(err, nil)
-	panic(err)
+func (c *config) unsafeGet(key string) interface{} {
+	return c.get(key)
 }
