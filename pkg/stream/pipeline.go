@@ -35,22 +35,24 @@ type Pipeline struct {
 	output   Output
 	ticker   *time.Ticker
 	batch    []*Message
-	callback PipelineCallback
+	stages   []PipelineCallback
 	settings *PipelineSettings
 }
 
-func NewPipeline(callback PipelineCallback) *Pipeline {
+func NewPipeline(stages ...PipelineCallback) *Pipeline {
 	return &Pipeline{
-		callback: callback,
-		cfn:      coffin.New(),
+		cfn:    coffin.New(),
+		stages: stages,
 	}
 }
 
 func (p *Pipeline) Boot(config cfg.Config, logger mon.Logger) error {
-	err := p.callback.Boot(config, logger)
+	for _, stage := range p.stages {
+		err := stage.Boot(config, logger)
 
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	defaults := getDefaultPipelineMetrics()
@@ -149,11 +151,17 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 	}()
 
 	p.ticker.Stop()
-	messages, err := p.callback.Process(ctx, p.batch)
 
-	if err != nil {
-		p.logger.Error(err, "could not process the batch")
-		return
+	var err error
+	var messages = p.batch
+
+	for _, stage := range p.stages {
+		messages, err = stage.Process(ctx, messages)
+
+		if err != nil {
+			p.logger.Error(err, "could not process the batch")
+			return
+		}
 	}
 
 	err = p.output.Write(ctx, messages)

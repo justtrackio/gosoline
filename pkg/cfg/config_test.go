@@ -180,10 +180,16 @@ func TestConfig_UnmarshalKey(t *testing.T) {
 		"bla": "{env}",
 	})
 
+	viper.On("IsSet", "key.foo").Return(true)
+	viper.On("Get", "key.foo").Return("zorg")
+
+	viper.On("IsSet", "key.bla").Return(true)
+	viper.On("Get", "key.bla").Return("{env}")
+
 	cm := configMap{}
 	config.UnmarshalKey("key", &cm)
 
-	assert.Equal(t, "bar", cm.Foo)
+	assert.Equal(t, "zorg", cm.Foo)
 	assert.Equal(t, "test", cm.Bla)
 
 	viper.AssertExpectations(t)
@@ -205,6 +211,7 @@ func getViper() *cfgMocks.Viper {
 	viper := new(cfgMocks.Viper)
 	viper.On("SetEnvPrefix", "app")
 	viper.On("AutomaticEnv")
+	viper.On("SetEnvKeyReplacer", mock.AnythingOfType("*strings.Replacer"))
 	viper.On("SetConfigType", "yml")
 	viper.On("MergeConfig", mock.AnythingOfType("*os.File")).Return(nil)
 	viper.On("GetString", "env").Return("test")
