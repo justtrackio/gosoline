@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
-	"gopkg.in/tomb.v2"
 	"sync"
 	"time"
 )
@@ -19,13 +19,13 @@ type BatchConsumerCallback interface {
 }
 
 type baseBatchConsumer struct {
-	kernel.ForegroundModule
+	kernel.EssentialModule
 
 	logger mon.Logger
 	tracer tracing.Tracer
 
 	input  Input
-	tmb    tomb.Tomb
+	cfn    coffin.Coffin
 	ticker *time.Ticker
 
 	name     string
@@ -41,6 +41,7 @@ type baseBatchConsumer struct {
 func (c *baseBatchConsumer) Boot(config cfg.Config, logger mon.Logger) error {
 	c.logger = logger
 	c.tracer = tracing.NewAwsTracer(config)
+	c.cfn = coffin.New()
 
 	idleTimeout := config.GetDuration("consumer_idle_timeout")
 	c.ticker = time.NewTicker(idleTimeout * time.Second)
@@ -56,17 +57,17 @@ func (c *baseBatchConsumer) Boot(config cfg.Config, logger mon.Logger) error {
 func (c *baseBatchConsumer) Run(ctx context.Context) error {
 	defer c.logger.Info("leaving consumer ", c.name)
 
-	c.tmb.Go(c.input.Run)
-	c.tmb.Go(c.consume)
+	c.cfn.Gof(c.input.Run, "panic during run of the consumer input")
+	c.cfn.Gof(c.consume, "panic during consuming")
 
 	for {
 		select {
 		case <-ctx.Done():
 			c.input.Stop()
-			return c.tmb.Wait()
+			return c.cfn.Wait()
 
-		case <-c.tmb.Dead():
-			return c.tmb.Err()
+		case <-c.cfn.Dead():
+			return c.cfn.Err()
 
 		case <-c.ticker.C:
 			c.consumeBatch()

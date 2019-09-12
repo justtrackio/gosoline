@@ -2,11 +2,11 @@ package kernel_test
 
 import (
 	"context"
-	"errors"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/kernel"
 	kernelMocks "github.com/applike/gosoline/pkg/kernel/mocks"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -47,15 +47,11 @@ func TestRunSuccess(t *testing.T) {
 func TestBootFailure(t *testing.T) {
 	config, logger, module := createMocks()
 
-	failure1 := errors.New("error booting module module")
-	failure2 := errors.New("could not boot module due to a panic")
-
 	logger.On("Info", mock.Anything)
-	logger.On("Error", failure1, "error booting module module")
-	logger.On("Error", failure2, "error during the boot process of the kernel")
+	logger.On("Error", mock.Anything, "error during the boot process of the kernel")
 
 	module.On("Boot", config, logger).Run(func(args mock.Arguments) {
-		panic(failure1)
+		panic(errors.New("panic"))
 	}).Return(nil)
 
 	assert.NotPanics(t, func() {
@@ -68,14 +64,13 @@ func TestBootFailure(t *testing.T) {
 }
 
 func TestRunFailure(t *testing.T) {
-	failure := errors.New("panic in run")
 	config, logger, module := createMocks()
-	logger.On("Error", failure, "error running module module")
-	logger.On("Error", errors.New("error running module module"), "error during the execution of the kernel")
+
+	logger.On("Error", mock.Anything, "error during the execution of the kernel")
 
 	module.On("Boot", config, logger).Return(nil)
 	module.On("Run", mock.Anything).Run(func(args mock.Arguments) {
-		panic(failure)
+		panic("panic")
 	})
 
 	assert.NotPanics(t, func() {

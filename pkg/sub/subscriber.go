@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/tracing"
-	"gopkg.in/tomb.v2"
 	"time"
 )
 
@@ -49,12 +49,12 @@ func NewSubscriber(logger mon.Logger, input stream.Input, output Output, transfo
 }
 
 type subscriber struct {
-	kernel.ForegroundModule
+	kernel.EssentialModule
 	stream.ConsumerAcknowledge
 
 	logger mon.Logger
 	tracer tracing.Tracer
-	tmb    tomb.Tomb
+	cfn    coffin.Coffin
 	metric mon.MetricWriter
 
 	settings Settings
@@ -72,6 +72,7 @@ type subscriber struct {
 func (s *subscriber) Boot(config cfg.Config, logger mon.Logger) error {
 	s.logger = logger
 	s.tracer = tracing.NewAwsTracer(config)
+	s.cfn = coffin.New()
 
 	s.appId.PadFromConfig(config)
 	s.settings.SourceModelId.PadFromConfig(config)
@@ -104,20 +105,20 @@ func (s *subscriber) Run(ctx context.Context) error {
 	defer s.logger.Infof("leaving subscriber %s", s.name)
 
 	for i := 0; i < 10; i++ {
-		s.tmb.Go(s.consume)
+		s.cfn.Gof(s.consume, "panic during consuming the subscription")
 	}
 
-	s.tmb.Go(s.input.Run)
+	s.cfn.Gof(s.input.Run, "panic during run of the subscription input")
 
 	for {
 		select {
 		case <-ctx.Done():
 			s.input.Stop()
-			return s.tmb.Wait()
+			return s.cfn.Wait()
 
-		case <-s.tmb.Dead():
+		case <-s.cfn.Dead():
 			s.input.Stop()
-			return s.tmb.Err()
+			return s.cfn.Err()
 		}
 	}
 }

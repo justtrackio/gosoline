@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
-	"gopkg.in/tomb.v2"
 	"sync/atomic"
 	"time"
 )
@@ -21,13 +21,13 @@ type ConsumerCallback interface {
 }
 
 type Consumer struct {
-	kernel.ForegroundModule
+	kernel.EssentialModule
 	ConsumerAcknowledge
 
 	logger mon.Logger
 	mw     mon.MetricWriter
 	tracer tracing.Tracer
-	tmb    tomb.Tomb
+	cfn    coffin.Coffin
 	ticker *time.Ticker
 
 	name      string
@@ -37,6 +37,7 @@ type Consumer struct {
 
 func NewConsumer(callback ConsumerCallback) *Consumer {
 	return &Consumer{
+		cfn:      coffin.New(),
 		callback: callback,
 	}
 }
@@ -72,21 +73,21 @@ func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
 func (c *Consumer) Run(ctx context.Context) error {
 	defer c.logger.Info("leaving consumer ", c.name)
 
-	c.tmb.Go(c.input.Run)
+	c.cfn.Gof(c.input.Run, "panic during run of the consumer input")
 
 	for i := 0; i < 10; i++ {
-		c.tmb.Go(c.consume)
+		c.cfn.Gof(c.consume, "panic during consuming")
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			c.input.Stop()
-			return c.tmb.Wait()
+			return c.cfn.Wait()
 
-		case <-c.tmb.Dying():
+		case <-c.cfn.Dying():
 			c.input.Stop()
-			return c.tmb.Wait()
+			return c.cfn.Wait()
 
 		case <-c.ticker.C:
 			processed := atomic.SwapInt32(&c.processed, 0)
