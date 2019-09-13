@@ -153,30 +153,28 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 	p.ticker.Stop()
 
 	var err error
-	var messages = p.batch
 
 	for _, stage := range p.stages {
-		messages, err = stage.Process(ctx, messages)
+		p.batch, err = stage.Process(ctx, p.batch)
 
 		if err != nil {
 			p.logger.Error(err, "could not process the batch")
-			return
 		}
 	}
 
-	err = p.output.Write(ctx, messages)
+	err = p.output.Write(ctx, p.batch)
 
 	if err != nil {
 		p.logger.Error(err, "could not write messages to output")
 		return
 	}
 
-	messageCount := len(messages)
+	processedCount := len(p.batch)
 
-	p.logger.Infof("pipeline processed %d of %d messages", messageCount, batchSize)
+	p.logger.Infof("pipeline processed %d of %d messages", processedCount, batchSize)
 	p.metric.WriteOne(&mon.MetricDatum{
 		MetricName: MetricNamePipelineProcessedCount,
-		Value:      float64(messageCount),
+		Value:      float64(processedCount),
 	})
 }
 
