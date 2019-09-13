@@ -39,9 +39,9 @@ type Config interface {
 	GetInt(string) int
 	GetFloat64(string) float64
 	GetString(string) string
-	GetStringMapString(key string) map[string]string
-	GetStringSlice(key string) []string
-	GetBool(key string) bool
+	GetStringMapString(string) map[string]string
+	GetStringSlice(string) []string
+	GetBool(string) bool
 	IsSet(string) bool
 	Unmarshal(output interface{}, opts ...DecoderConfigOption)
 	UnmarshalKey(key string, val interface{}, opts ...DecoderConfigOption)
@@ -62,21 +62,21 @@ type Viper interface {
 	AllSettings() map[string]interface{}
 	AutomaticEnv()
 	Get(string) interface{}
-	GetBool(key string) bool
+	GetBool(string) bool
 	GetDuration(string) time.Duration
 	GetInt(string) int
 	GetFloat64(string) float64
 	GetString(string) string
-	GetStringMapString(key string) map[string]string
-	GetStringSlice(key string) []string
+	GetStringMapString(string) map[string]string
+	GetStringSlice(string) []string
 	IsSet(string) bool
-	MergeConfig(in io.Reader) error
-	Set(key string, value interface{})
-	SetConfigType(in string)
+	MergeConfig(io.Reader) error
+	Set(string, interface{})
+	SetConfigType(string)
 	SetDefault(string, interface{})
-	SetEnvKeyReplacer(replacer *strings.Replacer)
+	SetEnvKeyReplacer(*strings.Replacer)
 	SetEnvPrefix(string)
-	Unmarshal(rawVal interface{}, opts ...viper.DecoderConfigOption) error
+	Unmarshal(interface{}, ...viper.DecoderConfigOption) error
 	UnmarshalKey(string, interface{}, ...viper.DecoderConfigOption) error
 }
 
@@ -103,10 +103,6 @@ func (c *config) keyCheck(key string) {
 	if !c.client.IsSet(key) {
 		panic(fmt.Errorf("there is no value configured for key '%v'", key))
 	}
-}
-
-func (c *config) SetEnvReplacer(replacer *strings.Replacer) {
-	c.client.SetEnvKeyReplacer(replacer)
 }
 
 func (c *config) AllKeys() []string {

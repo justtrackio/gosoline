@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -19,6 +20,17 @@ type ServiceSettings struct {
 	AutoCreate bool
 }
 
+//go:generate mockery -name Service
+type Service interface {
+	CreateQueue(Settings) (*Properties, error)
+	QueueExists(string) (bool, error)
+	GetPropertiesByName(string) (*Properties, error)
+	GetPropertiesByArn(string) (*Properties, error)
+	GetUrl(string) (string, error)
+	GetArn(string) (string, error)
+	Purge(string) error
+}
+
 type service struct {
 	lck      sync.Mutex
 	logger   mon.Logger
@@ -26,7 +38,7 @@ type service struct {
 	settings *ServiceSettings
 }
 
-func NewService(config cfg.Config, logger mon.Logger) *service {
+func NewService(config cfg.Config, logger mon.Logger) Service {
 	client := GetClient(config, logger)
 	settings := &ServiceSettings{
 		AutoCreate: config.GetBool("aws_sqs_autoCreate"),
@@ -35,7 +47,7 @@ func NewService(config cfg.Config, logger mon.Logger) *service {
 	return NewServiceWithInterfaces(logger, client, settings)
 }
 
-func NewServiceWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, settings *ServiceSettings) *service {
+func NewServiceWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, settings *ServiceSettings) Service {
 	return &service{
 		logger:   logger,
 		client:   client,
@@ -43,7 +55,7 @@ func NewServiceWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, setting
 	}
 }
 
-func (s service) CreateQueue(settings Settings) (*Properties, error) {
+func (s *service) CreateQueue(settings Settings) (*Properties, error) {
 	s.lck.Lock()
 	defer s.lck.Unlock()
 
@@ -55,7 +67,7 @@ func (s service) CreateQueue(settings Settings) (*Properties, error) {
 	}
 
 	if exists {
-		return s.GetProperties(name)
+		return s.GetPropertiesByName(name)
 	}
 
 	if !exists && !s.settings.AutoCreate {
@@ -106,7 +118,112 @@ func (s service) CreateQueue(settings Settings) (*Properties, error) {
 	return props, err
 }
 
-func (s service) createDeadLetterQueue(settings Settings) (map[string]*string, error) {
+func (s *service) QueueExists(name string) (bool, error) {
+	s.logger.WithFields(mon.Fields{
+		"name": name,
+	}).Info("checking the existence of sqs queue")
+
+	url, err := s.GetUrl(name)
+
+	if err != nil {
+		return false, err
+	}
+
+	if len(url) > 0 {
+		s.logger.Infof("found queue %s with url %s", name, url)
+		return true, nil
+	}
+
+	s.logger.WithFields(mon.Fields{
+		"name": name,
+	}).Info("could not found queue")
+
+	return false, nil
+}
+
+func (s *service) GetPropertiesByArn(arn string) (*Properties, error) {
+	i := strings.LastIndex(arn, ":")
+	name := arn[i+1:]
+
+	url, err := s.GetUrl(name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Properties{
+		Name: name,
+		Url:  url,
+		Arn:  arn,
+	}, nil
+}
+
+func (s *service) GetPropertiesByName(name string) (*Properties, error) {
+	url, err := s.GetUrl(name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	arn, err := s.GetArn(url)
+
+	if err != nil {
+		return nil, err
+	}
+
+	properties := &Properties{
+		Name: name,
+		Url:  url,
+		Arn:  arn,
+	}
+
+	return properties, nil
+}
+
+func (s *service) GetUrl(name string) (string, error) {
+	input := &sqs.GetQueueUrlInput{
+		QueueName: aws.String(name),
+	}
+
+	out, err := s.client.GetQueueUrl(input)
+
+	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == sqs.ErrCodeQueueDoesNotExist {
+			return "", nil
+		}
+
+		return "", err
+	}
+
+	return *out.QueueUrl, nil
+}
+
+func (s *service) GetArn(url string) (string, error) {
+	input := &sqs.GetQueueAttributesInput{
+		AttributeNames: []*string{aws.String("QueueArn")},
+		QueueUrl:       aws.String(url),
+	}
+
+	out, err := s.client.GetQueueAttributes(input)
+
+	if err != nil {
+		return "", err
+	}
+
+	arn := *(out.Attributes["QueueArn"])
+
+	return arn, nil
+}
+
+func (s *service) Purge(url string) error {
+	_, err := s.client.PurgeQueue(&sqs.PurgeQueueInput{
+		QueueUrl: aws.String(url),
+	})
+
+	return err
+}
+
+func (s *service) createDeadLetterQueue(settings Settings) (map[string]*string, error) {
 	attributes := make(map[string]*string)
 
 	if !settings.RedrivePolicy.Enabled {
@@ -144,7 +261,7 @@ func (s service) createDeadLetterQueue(settings Settings) (map[string]*string, e
 	return attributes, nil
 }
 
-func (s service) doCreateQueue(input *sqs.CreateQueueInput) (*Properties, error) {
+func (s *service) doCreateQueue(input *sqs.CreateQueueInput) (*Properties, error) {
 	name := *input.QueueName
 
 	s.logger.Infof("trying to create sqs queue: %v", name)
@@ -157,85 +274,5 @@ func (s service) doCreateQueue(input *sqs.CreateQueueInput) (*Properties, error)
 
 	s.logger.Infof("created sqs queue %v", name)
 
-	return s.GetProperties(name)
-}
-
-func (s service) QueueExists(name string) (bool, error) {
-	s.logger.WithFields(mon.Fields{
-		"name": name,
-	}).Info("checking the existence of sqs queue")
-
-	url, err := s.GetUrl(name)
-
-	if err != nil {
-		return false, err
-	}
-
-	if len(url) > 0 {
-		s.logger.Infof("found queue %s with url %s", name, url)
-		return true, nil
-	}
-
-	s.logger.WithFields(mon.Fields{
-		"name": name,
-	}).Info("could not found queue")
-
-	return false, nil
-}
-
-func (s service) GetProperties(name string) (*Properties, error) {
-	url, err := s.GetUrl(name)
-
-	if err != nil {
-		return nil, err
-	}
-
-	arn, err := s.GetArn(url)
-
-	if err != nil {
-		return nil, err
-	}
-
-	properties := &Properties{
-		Name: name,
-		Url:  url,
-		Arn:  arn,
-	}
-
-	return properties, nil
-}
-
-func (s service) GetUrl(name string) (string, error) {
-	input := &sqs.GetQueueUrlInput{
-		QueueName: aws.String(name),
-	}
-
-	out, err := s.client.GetQueueUrl(input)
-
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == sqs.ErrCodeQueueDoesNotExist {
-			return "", nil
-		}
-
-		return "", err
-	}
-
-	return *out.QueueUrl, nil
-}
-
-func (s service) GetArn(url string) (string, error) {
-	input := &sqs.GetQueueAttributesInput{
-		AttributeNames: []*string{aws.String("QueueArn")},
-		QueueUrl:       aws.String(url),
-	}
-
-	out, err := s.client.GetQueueAttributes(input)
-
-	if err != nil {
-		return "", err
-	}
-
-	arn := *(out.Attributes["QueueArn"])
-
-	return arn, nil
+	return s.GetPropertiesByName(name)
 }

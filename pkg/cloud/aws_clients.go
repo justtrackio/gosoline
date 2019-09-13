@@ -52,7 +52,7 @@ func GetKinesisClient(config cfg.Config, logger mon.Logger) kinesisiface.Kinesis
 	awsConfig := ConfigTemplate
 	awsConfig.WithEndpoint(endpoint)
 	awsConfig.WithMaxRetries(maxRetries)
-	awsConfig.WithLogger(PrefixedLogger(logger, "kinesis"))
+	awsConfig.WithLogger(PrefixedLogger(logger, "aws_kinesis"))
 
 	sess := session.Must(session.NewSession(awsConfig))
 
@@ -85,7 +85,7 @@ func GetDynamoDbClient(config cfg.Config, logger mon.Logger) dynamodbiface.Dynam
 	awsConfig := ConfigTemplate
 	awsConfig.WithEndpoint(endpoint)
 	awsConfig.WithMaxRetries(maxRetries)
-	awsConfig.WithLogger(PrefixedLogger(logger, "dynamo_db"))
+	awsConfig.WithLogger(PrefixedLogger(logger, "aws_dynamo_db"))
 
 	sess := session.Must(session.NewSession(awsConfig.WithEndpoint(endpoint)))
 
@@ -113,7 +113,7 @@ func GetEcsClient(logger mon.Logger) ecsiface.ECSAPI {
 	}
 
 	awsConfig := ConfigTemplate
-	awsConfig.WithLogger(PrefixedLogger(logger, "ecs"))
+	awsConfig.WithLogger(PrefixedLogger(logger, "aws_ecs"))
 
 	sess := session.Must(session.NewSession(awsConfig))
 
@@ -140,7 +140,7 @@ func GetServiceDiscoveryClient(logger mon.Logger, endpoint string) servicediscov
 
 	awsConfig := ConfigTemplate
 	awsConfig.WithEndpoint(endpoint)
-	awsConfig.WithLogger(PrefixedLogger(logger, "service_discovery"))
+	awsConfig.WithLogger(PrefixedLogger(logger, "aws_service_discovery"))
 	sess := session.Must(session.NewSession(awsConfig))
 
 	sdcl.client = servicediscovery.New(sess)
@@ -160,7 +160,7 @@ func GetSystemsManagerClient(config cfg.Config, logger mon.Logger) ssmiface.SSMA
 	ssmClient.Lock()
 	defer ssmClient.Unlock()
 
-	if sdcl.initialized {
+	if ssmClient.initialized {
 		return ssmClient.client
 	}
 
@@ -170,7 +170,7 @@ func GetSystemsManagerClient(config cfg.Config, logger mon.Logger) ssmiface.SSMA
 	awsConfig := ConfigTemplate
 	awsConfig.WithEndpoint(endpoint)
 	awsConfig.WithMaxRetries(maxRetries)
-	awsConfig.WithLogger(PrefixedLogger(logger, "systems_manager"))
+	awsConfig.WithLogger(PrefixedLogger(logger, "aws_systems_manager"))
 	sess := session.Must(session.NewSession(awsConfig))
 
 	ssmClient.client = ssm.New(sess)
@@ -180,9 +180,9 @@ func GetSystemsManagerClient(config cfg.Config, logger mon.Logger) ssmiface.SSMA
 }
 
 func PrefixedLogger(logger mon.Logger, service string) aws.LoggerFunc {
-	return aws.LoggerFunc(func(args ...interface{}) {
+	return func(args ...interface{}) {
 		logger.WithFields(mon.Fields{
 			"aws_service": service,
 		}).Warn(args...)
-	})
+	}
 }

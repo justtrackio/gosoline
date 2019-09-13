@@ -26,12 +26,12 @@ type PipelineSettings struct {
 
 type Pipeline struct {
 	kernel.EssentialModule
+	ConsumerAcknowledge
 
 	logger   mon.Logger
 	metric   mon.MetricWriter
 	cfn      coffin.Coffin
 	lck      sync.Mutex
-	input    Input
 	output   Output
 	ticker   *time.Ticker
 	batch    []*Message
@@ -153,30 +153,37 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 	p.ticker.Stop()
 
 	var err error
-	var messages = p.batch
+
+	msg := p.batch
 
 	for _, stage := range p.stages {
-		messages, err = stage.Process(ctx, messages)
+		msg, err = stage.Process(ctx, msg)
 
 		if err != nil {
 			p.logger.Error(err, "could not process the batch")
+
 			return
 		}
 	}
 
-	err = p.output.Write(ctx, messages)
+	err = p.output.Write(ctx, msg)
 
 	if err != nil {
 		p.logger.Error(err, "could not write messages to output")
+
 		return
 	}
 
-	messageCount := len(messages)
+	processedCount := len(p.batch)
 
-	p.logger.Infof("pipeline processed %d of %d messages", messageCount, batchSize)
+	for _, msg := range p.batch {
+		p.Acknowledge(ctx, msg)
+	}
+
+	p.logger.Infof("pipeline processed %d of %d messages", processedCount, batchSize)
 	p.metric.WriteOne(&mon.MetricDatum{
 		MetricName: MetricNamePipelineProcessedCount,
-		Value:      float64(messageCount),
+		Value:      float64(processedCount),
 	})
 }
 
