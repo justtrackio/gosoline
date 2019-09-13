@@ -24,6 +24,8 @@ type Client interface {
 	SetTimeout(timeout time.Duration)
 	SetUserAgent(ua string)
 	NewRequest() *Request
+	NewJsonRequest() *Request
+	NewXmlRequest() *Request
 }
 
 type Response struct {
@@ -66,6 +68,22 @@ func NewHttpClientWithInterfaces(config cfg.Config, logger mon.Logger, mo mon.Me
 	}
 }
 
+func (c *client) NewRequest() *Request {
+	return &Request{
+		resty:       c.http.NewRequest(),
+		url:         &netUrl.URL{},
+		queryParams: netUrl.Values{},
+	}
+}
+
+func (c *client) NewJsonRequest() *Request {
+	return c.NewRequest().WithHeader(HdrAccept, ContentTypeApplicationJson)
+}
+
+func (c *client) NewXmlRequest() *Request {
+	return c.NewRequest().WithHeader(HdrAccept, ContentTypeApplicationXml)
+}
+
 func (c *client) SetTimeout(timeout time.Duration) {
 	c.http.SetTimeout(timeout)
 }
@@ -80,14 +98,6 @@ func (c *client) Get(ctx context.Context, request *Request) (*Response, error) {
 
 func (c *client) Post(ctx context.Context, request *Request) (*Response, error) {
 	return c.do(ctx, PostRequest, request)
-}
-
-func (c *client) NewRequest() *Request {
-	return &Request{
-		resty:       c.http.NewRequest(),
-		url:         &netUrl.URL{},
-		queryParams: netUrl.Values{},
-	}
 }
 
 func (c *client) do(ctx context.Context, method string, request *Request) (*Response, error) {

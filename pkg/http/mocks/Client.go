@@ -35,8 +35,40 @@ func (_m *Client) Get(ctx context.Context, request *http.Request) (*http.Respons
 	return r0, r1
 }
 
+// NewJsonRequest provides a mock function with given fields:
+func (_m *Client) NewJsonRequest() *http.Request {
+	ret := _m.Called()
+
+	var r0 *http.Request
+	if rf, ok := ret.Get(0).(func() *http.Request); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*http.Request)
+		}
+	}
+
+	return r0
+}
+
 // NewRequest provides a mock function with given fields:
 func (_m *Client) NewRequest() *http.Request {
+	ret := _m.Called()
+
+	var r0 *http.Request
+	if rf, ok := ret.Get(0).(func() *http.Request); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*http.Request)
+		}
+	}
+
+	return r0
+}
+
+// NewXmlRequest provides a mock function with given fields:
+func (_m *Client) NewXmlRequest() *http.Request {
 	ret := _m.Called()
 
 	var r0 *http.Request
