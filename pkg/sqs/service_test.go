@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	awsSqs "github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
@@ -90,5 +91,91 @@ func TestService_CreateQueue(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "applike-test-gosoline-sqs-my-queue.url", props.Url)
 	assert.Equal(t, "applike-test-gosoline-sqs-my-queue.arn", props.Arn)
+	client.AssertExpectations(t)
+}
+
+func TestService_GetPropertiesByName(t *testing.T) {
+	logger := monMocks.NewLoggerMockedAll()
+	client := new(mocks.SQSAPI)
+
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
+		AutoCreate: true,
+	})
+
+	client.On("GetQueueUrl", mock.AnythingOfType("*sqs.GetQueueUrlInput")).Return(
+		&awsSqs.GetQueueUrlOutput{
+			QueueUrl: aws.String("https://sqs.eu-central-1.amazonaws.com/accountId/applike-test-gosoline-queue-id"),
+		},
+		nil,
+	)
+
+	client.On("GetQueueAttributes", mock.AnythingOfType("*sqs.GetQueueAttributesInput")).Return(
+		&awsSqs.GetQueueAttributesOutput{
+			Attributes: map[string]*string{
+				"QueueArn": aws.String("arn:aws:sqs:region:accountId:applike-test-gosoline-queue-id"),
+			},
+		},
+		nil,
+	)
+
+	expected := &sqs.Properties{
+		Name: "applike-test-gosoline-queue-id",
+		Url:  "https://sqs.eu-central-1.amazonaws.com/accountId/applike-test-gosoline-queue-id",
+		Arn:  "arn:aws:sqs:region:accountId:applike-test-gosoline-queue-id",
+	}
+
+	props, err := srv.GetPropertiesByName("applike-test-gosoline-queue-id")
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, expected, props)
+
+	client.AssertExpectations(t)
+}
+
+func TestService_GetPropertiesByArn(t *testing.T) {
+	logger := monMocks.NewLoggerMockedAll()
+	client := new(mocks.SQSAPI)
+
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
+		AutoCreate: true,
+	})
+
+	client.On("GetQueueUrl", mock.AnythingOfType("*sqs.GetQueueUrlInput")).Return(
+		&awsSqs.GetQueueUrlOutput{
+			QueueUrl: aws.String("https://sqs.eu-central-1.amazonaws.com/accountId/applike-test-gosoline-queue-id"),
+		},
+		nil,
+	)
+
+	expected := &sqs.Properties{
+		Name: "applike-test-gosoline-queue-id",
+		Url:  "https://sqs.eu-central-1.amazonaws.com/accountId/applike-test-gosoline-queue-id",
+		Arn:  "arn:aws:sqs:region:accountId:applike-test-gosoline-queue-id",
+	}
+
+	props, err := srv.GetPropertiesByArn("arn:aws:sqs:region:accountId:applike-test-gosoline-queue-id")
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, expected, props)
+
+	client.AssertExpectations(t)
+}
+
+func TestService_Purge(t *testing.T) {
+	logger := monMocks.NewLoggerMockedAll()
+	client := new(mocks.SQSAPI)
+
+	url := "https://sqs.eu-central-1.amazonaws.com/accountId/applike-test-gosoline-queue-id"
+
+	client.On("PurgeQueue", mock.AnythingOfType("*sqs.PurgeQueueInput")).Return(&awsSqs.PurgeQueueOutput{}, nil)
+
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
+		AutoCreate: true,
+	})
+
+	err := srv.Purge(url)
+
+	assert.NoError(t, err)
+
 	client.AssertExpectations(t)
 }
