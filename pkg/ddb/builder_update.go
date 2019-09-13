@@ -140,7 +140,7 @@ func (b *updateItemBuilder) Build(item interface{}) (*dynamodb.UpdateItemInput, 
 		return nil, err
 	}
 
-	if b.returnType == nil && !isPointer(item) {
+	if b.returnType != nil && *b.returnType != dynamodb.ReturnValueNone && !isPointer(item) {
 		return nil, fmt.Errorf("value for returning the updated item is not a pointer")
 	}
 

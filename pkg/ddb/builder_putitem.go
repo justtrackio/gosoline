@@ -47,7 +47,7 @@ func (b *putItemBuilder) ReturnAllOld() PutItemBuilder {
 }
 
 func (b *putItemBuilder) Build(item interface{}) (*dynamodb.PutItemInput, error) {
-	if b.returnType != nil && b.returnType != aws.String(dynamodb.ReturnValueAllOld) && !isPointer(item) {
+	if b.returnType != nil && *b.returnType != dynamodb.ReturnValueNone && !isPointer(item) {
 		return nil, fmt.Errorf("the provided old value has to be a pointer")
 	}
 
