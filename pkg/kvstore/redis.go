@@ -10,6 +10,7 @@ import (
 )
 
 type RedisKvStore struct {
+	logger   mon.Logger
 	client   redis.Client
 	settings *Settings
 }
@@ -20,11 +21,12 @@ func NewRedisKvStore(config cfg.Config, logger mon.Logger, settings *Settings) K
 	redisName := fmt.Sprintf("kvstore_%s", settings.Name)
 	client := redis.GetClient(config, logger, redisName)
 
-	return NewRedisKvStoreWithInterfaces(client, settings)
+	return NewRedisKvStoreWithInterfaces(logger, client, settings)
 }
 
-func NewRedisKvStoreWithInterfaces(client redis.Client, settings *Settings) *RedisKvStore {
+func NewRedisKvStoreWithInterfaces(logger mon.Logger, client redis.Client, settings *Settings) *RedisKvStore {
 	return &RedisKvStore{
+		logger:   logger,
 		client:   client,
 		settings: settings,
 	}
@@ -40,6 +42,7 @@ func (s *RedisKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 	count, err := s.client.Exists(keyStr)
 
 	if err != nil {
+		s.logger.Error(err, "can not check existence in redis store")
 		return false, err
 	}
 
@@ -50,6 +53,7 @@ func (s *RedisKvStore) Put(ctx context.Context, key interface{}, value interface
 	bytes, err := Marshal(value)
 
 	if err != nil {
+		s.logger.Error(err, "can not marshal value")
 		return err
 	}
 
@@ -61,7 +65,12 @@ func (s *RedisKvStore) Put(ctx context.Context, key interface{}, value interface
 
 	err = s.client.Set(keyStr, bytes, s.settings.Ttl)
 
-	return err
+	if err != nil {
+		s.logger.Error(err, "can not set value in redis store")
+		return err
+	}
+
+	return nil
 }
 
 func (s *RedisKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
@@ -78,18 +87,25 @@ func (s *RedisKvStore) Get(ctx context.Context, key interface{}, value interface
 	}
 
 	if err != nil {
+		s.logger.Error(err, "can not get value from redis store")
 		return false, err
 	}
 
 	err = Unmarshal([]byte(data), value)
 
-	return true, err
+	if err != nil {
+		s.logger.Error(err, "can not unmarshal value")
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (s *RedisKvStore) key(key interface{}) (string, error) {
-	keyStr, err := KeyToString(key)
+	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
+		s.logger.Error(err, "can not cast key to string")
 		return "", err
 	}
 

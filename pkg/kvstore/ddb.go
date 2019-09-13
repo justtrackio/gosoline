@@ -15,6 +15,7 @@ type ddbItem struct {
 }
 
 type DdbKvStore struct {
+	logger     mon.Logger
 	repository ddb.Repository
 	settings   *Settings
 }
@@ -38,20 +39,22 @@ func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvS
 		},
 	})
 
-	return NewDdbKvStoreWithInterfaces(repository, settings)
+	return NewDdbKvStoreWithInterfaces(logger, repository, settings)
 }
 
-func NewDdbKvStoreWithInterfaces(repository ddb.Repository, settings *Settings) *DdbKvStore {
+func NewDdbKvStoreWithInterfaces(logger mon.Logger, repository ddb.Repository, settings *Settings) *DdbKvStore {
 	return &DdbKvStore{
+		logger:     logger,
 		repository: repository,
 		settings:   settings,
 	}
 }
 
 func (s *DdbKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
-	keyStr, err := KeyToString(key)
+	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
+		s.logger.Error(err, "can not cast key to string")
 		return false, err
 	}
 
@@ -60,6 +63,7 @@ func (s *DdbKvStore) Contains(ctx context.Context, key interface{}) (bool, error
 	res, err := s.repository.GetItem(ctx, qb, &item)
 
 	if err != nil {
+		s.logger.Error(err, "can not check if ddb store contains the key")
 		return false, err
 	}
 
@@ -70,12 +74,14 @@ func (s *DdbKvStore) Put(ctx context.Context, key interface{}, value interface{}
 	bytes, err := Marshal(value)
 
 	if err != nil {
+		s.logger.Error(err, "can not marshal value")
 		return err
 	}
 
-	keyStr, err := KeyToString(key)
+	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
+		s.logger.Error(err, "can not cast key to string")
 		return err
 	}
 
@@ -86,13 +92,19 @@ func (s *DdbKvStore) Put(ctx context.Context, key interface{}, value interface{}
 
 	_, err = s.repository.PutItem(ctx, nil, item)
 
-	return err
+	if err != nil {
+		s.logger.Error(err, "can not put value into ddb store")
+		return err
+	}
+
+	return nil
 }
 
 func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
-	keyStr, err := KeyToString(key)
+	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
+		s.logger.Error(err, "can not cast key to string")
 		return false, err
 	}
 
@@ -102,6 +114,7 @@ func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}
 	res, err := s.repository.GetItem(ctx, qb, &item)
 
 	if err != nil {
+		s.logger.Error(err, "can not get item from ddb store")
 		return false, err
 	}
 
@@ -112,5 +125,10 @@ func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}
 	bytes := []byte(item.Value)
 	err = Unmarshal(bytes, value)
 
-	return true, err
+	if err != nil {
+		s.logger.Error(err, "can not unmarshal value")
+		return false, err
+	}
+
+	return true, nil
 }

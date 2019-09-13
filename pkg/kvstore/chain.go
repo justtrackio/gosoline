@@ -27,10 +27,13 @@ func (s *ChainKvStore) Add(elementFactory Factory) {
 }
 
 func (s *ChainKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
-	for _, element := range s.chain {
+	lastElementIndex := len(s.chain) - 1
+
+	for i, element := range s.chain {
 		exists, err := element.Contains(ctx, key)
 
-		if err != nil {
+		// return error only if last element fails
+		if err != nil && i == lastElementIndex {
 			return false, err
 		}
 
@@ -43,10 +46,13 @@ func (s *ChainKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 }
 
 func (s *ChainKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
-	for _, element := range s.chain {
+	lastElementIndex := len(s.chain) - 1
+
+	for i, element := range s.chain {
 		err := element.Put(ctx, key, value)
 
-		if err != nil {
+		// return error only if last element fails
+		if err != nil && i == lastElementIndex {
 			return errors.Wrapf(err, "could not put %s to kvstore %T", key, element)
 		}
 	}
@@ -59,10 +65,13 @@ func (s *ChainKvStore) Get(ctx context.Context, key interface{}, value interface
 	var i int
 	var exists bool
 
+	lastElementIndex := len(s.chain) - 1
+
 	for i = 0; i < len(s.chain); i++ {
 		exists, err = s.chain[i].Get(ctx, key, value)
 
-		if err != nil {
+		// return error only if last element fails
+		if err != nil && i == lastElementIndex {
 			return false, errors.Wrapf(err, "could not get %s from kvstore %T", key, s.chain[i])
 		}
 
@@ -78,7 +87,8 @@ func (s *ChainKvStore) Get(ctx context.Context, key interface{}, value interface
 	for i--; i >= 0; i-- {
 		err = s.chain[i].Put(ctx, key, value)
 
-		if err != nil {
+		// return error only if last element fails
+		if err != nil && i == lastElementIndex {
 			return false, errors.Wrapf(err, "could not put %s to kvstore %T", key, s.chain[i])
 		}
 	}

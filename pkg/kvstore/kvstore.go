@@ -30,7 +30,7 @@ type KvStore interface {
 	Put(ctx context.Context, key interface{}, value interface{}) error
 }
 
-func KeyToString(key interface{}) (string, error) {
+func CastKeyToString(key interface{}) (string, error) {
 	str, err := cast.ToStringE(key)
 
 	if err == nil {
