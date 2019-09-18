@@ -8,7 +8,8 @@ import (
 )
 
 type redisConfig struct {
-	Port int `mapstructure:"port"`
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
 }
 
 func runRedis(name string, config configInput) {
@@ -53,7 +54,7 @@ func getRedisClient(config *redisConfig) *redis.Client {
 		return redisClient.instance
 	}
 
-	addr := fmt.Sprintf("localhost:%d", config.Port)
+	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,

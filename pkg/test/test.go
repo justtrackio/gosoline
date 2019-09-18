@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/ory/dockertest"
 	"log"
 	"sync"
@@ -10,7 +11,9 @@ import (
 var err error
 var wait sync.WaitGroup
 var dockerPool *dockertest.Pool
+
 var dockerResources []*dockertest.Resource
+var cfgFilename = "config.test.yml"
 
 func init() {
 	dockerPool, err = dockertest.NewPool("")
@@ -19,6 +22,7 @@ func init() {
 	if err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}
+
 }
 
 func logErr(err error, msg string) {
@@ -27,8 +31,12 @@ func logErr(err error, msg string) {
 	log.Fatal(err)
 }
 
-func Boot() {
-	config := readConfig()
+func Boot(configFilename *string) {
+	if len(mdl.EmptyStringIfNil(configFilename)) > 0 {
+		cfgFilename = *configFilename
+	}
+
+	config := readConfig(cfgFilename)
 
 	for name, mockConfig := range config.Mocks {
 		bootComponent(name, mockConfig)

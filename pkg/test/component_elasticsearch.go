@@ -8,6 +8,7 @@ import (
 
 type elasticsearchConfig struct {
 	Version string `mapstructure:"version"`
+	Host    string `mapstructure:"host"`
 	Port    int    `mapstructure:"port"`
 }
 
@@ -34,7 +35,7 @@ func doRunElasticsearch(name string, configMap configInput) {
 			"9200/tcp": fmt.Sprint(config.Port),
 		},
 		HealthCheck: func() error {
-			_, err := http.Get(fmt.Sprintf("http://localhost:%d/_cluster/health", config.Port))
+			_, err := http.Get(fmt.Sprintf("http://%s:%d/_cluster/health", config.Host, config.Port))
 			return err
 		},
 	})

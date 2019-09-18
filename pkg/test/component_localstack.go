@@ -49,7 +49,8 @@ func ProvideCloudwatchClient(name string) *cloudwatch.CloudWatch {
 		return cloudwatchClients[name]
 	}
 
-	sess, err := getSession(configs[name].CloudwatchPort)
+	// TODO: fix up ip with hostname
+	sess, err := getSession("127.0.0.1", configs[name].CloudwatchPort)
 
 	if err != nil {
 		logErr(err, "could not create cloudwatch client: %s")
@@ -69,7 +70,8 @@ func ProvideSnsClient(name string) *sns.SNS {
 		return snsClients[name]
 	}
 
-	sess, err := getSession(configs[name].SnsPort)
+	// TODO: fix up ip with hostname
+	sess, err := getSession("127.0.0.1", configs[name].SnsPort)
 
 	if err != nil {
 		logErr(err, "could not create sns client: %s")
@@ -80,12 +82,12 @@ func ProvideSnsClient(name string) *sns.SNS {
 	return snsClients[name]
 }
 
-func getSession(port int) (*session.Session, error) {
-	host := fmt.Sprintf("http://localhost:%d", port)
+func getSession(host string, port int) (*session.Session, error) {
+	endpoint := fmt.Sprintf("http://%s:%d", host, port)
 
 	config := &aws.Config{
 		Region:   aws.String(endpoints.EuCentral1RegionID),
-		Endpoint: aws.String(host),
+		Endpoint: aws.String(endpoint),
 		HTTPClient: &http.Client{
 			Timeout: 1 * time.Minute,
 		},
@@ -103,7 +105,8 @@ func ProvideSqsClient(name string) *sqs.SQS {
 		return sqsClients[name]
 	}
 
-	sess, err := getSession(configs[name].SqsPort)
+	// TODO: fix up ip with hostname
+	sess, err := getSession("127.0.0.1", configs[name].SqsPort)
 
 	if err != nil {
 		logErr(err, "could not create sqs client: %s")
@@ -123,7 +126,8 @@ func ProvideKinesisClient(name string) *kinesis.Kinesis {
 		return kinesisClients[name]
 	}
 
-	sess, err := getSession(configs[name].KinesisPort)
+	// TODO: fix up ip with hostname
+	sess, err := getSession("127.0.0.1", configs[name].KinesisPort)
 
 	if err != nil {
 		logErr(err, "could not create kinesis client: %s")

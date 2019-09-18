@@ -89,6 +89,7 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 
 	err := r.orm.Create(value).Error
 
+	// TODO: Check for duplicate error and return a local error type instead which applications can handle themselves
 	if err != nil {
 		logger.Errorf(err, "could not create model of type %v", modelId)
 		return err
