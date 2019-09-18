@@ -14,6 +14,7 @@ var IntegrationTestDb *sql.DB
 
 type mysqlConfig struct {
 	Version string `mapstructure:"version"`
+	Host    string `mapstructure:"host"`
 	Port    int    `mapstructure:"port"`
 	DbName  string `mapstructure:"dbName"`
 }
@@ -43,13 +44,12 @@ func doRunMysql(name string, configMap configInput) {
 
 	config := &mysqlConfig{}
 	unmarshalConfig(configMap, config)
-
-	runMysqlContainer(config.Version, config.Port, config.DbName)
+	runMysqlContainer(config)
 }
 
-func runMysqlContainer(version string, port int, dbName string) {
+func runMysqlContainer(config *mysqlConfig) {
 	env := []string{
-		fmt.Sprintf("MYSQL_DATABASE=%s", dbName),
+		fmt.Sprintf("MYSQL_DATABASE=%s", config.DbName),
 		"MYSQL_USER=gosoline",
 		"MYSQL_PASSWORD=gosoline",
 		"MYSQL_ROOT_PASSWORD=gosoline",
@@ -57,14 +57,14 @@ func runMysqlContainer(version string, port int, dbName string) {
 
 	runContainer(mysqlContainerName, ContainerConfig{
 		Repository: "mysql",
-		Tag:        version,
+		Tag:        config.Version,
 		Env:        env,
 		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION"},
 		PortBindings: PortBinding{
-			"3306/tcp": fmt.Sprint(port),
+			"3306/tcp": fmt.Sprint(config.Port),
 		},
 		HealthCheck: func() error {
-			dsn := fmt.Sprintf("%s:%s@(localhost:%d)/%s?parseTime=true", "gosoline", "gosoline", port, dbName)
+			dsn := fmt.Sprintf("%s:%s@(%s:%d)/%s?parseTime=true", "gosoline", "gosoline", config.Host, config.Port, config.DbName)
 			IntegrationTestDb, err = sql.Open("mysql", dsn)
 
 			if err != nil {

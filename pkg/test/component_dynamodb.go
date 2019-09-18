@@ -17,6 +17,7 @@ var dynamoDbConfigs map[string]*dynamoDbConfig
 
 type dynamoDbConfig struct {
 	Fixtures string `mapstructure:"fixtures"`
+	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
 }
 
@@ -39,7 +40,7 @@ func ProvideDynamoDbClient(name string) *dynamodb.DynamoDB {
 		return dynamoDbClients[name]
 	}
 
-	sess, err := getSession(dynamoDbConfigs[name].Port)
+	sess, err := getSession(dynamoDbConfigs[name].Host, dynamoDbConfigs[name].Port)
 
 	if err != nil {
 		logErr(err, "could not create dynamodb client: %s")
@@ -93,6 +94,7 @@ func runDynamoDbContainer(name string) {
 		},
 		HealthCheck: func() error {
 			_, err := client.ListTables(&dynamodb.ListTablesInput{})
+
 			return err
 		},
 	})

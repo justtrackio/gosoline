@@ -137,7 +137,7 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 	unmarshaller, err := NewUnmarshallerFromPtrSlice(items)
 
 	if err != nil {
-		return nil, fmt.Errorf("can not initializer unmarshaller for BatchGetItems operation on table %s: %w", r.metadata.TableName, err)
+		return nil, fmt.Errorf("can not initialize unmarshaller for BatchGetItems operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	input, err := qb.Build(items)
@@ -639,7 +639,7 @@ func (r *repository) readAll(items interface{}, read func() (*readResult, error)
 	unmarshaller, err := NewUnmarshallerFromPtrSlice(items)
 
 	if err != nil {
-		return fmt.Errorf("can not initializer unmarshaller for operation on table %s: %w", r.metadata.TableName, err)
+		return fmt.Errorf("can not initialize unmarshaller for operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	for {
@@ -671,7 +671,7 @@ func (r *repository) readCallback(ctx context.Context, items interface{}, callba
 	unmarshaller, err := NewUnmarshallerFromStruct(items)
 
 	if err != nil {
-		return fmt.Errorf("can not initializer unmarshaller for operation on table %s: %w", r.metadata.TableName, err)
+		return fmt.Errorf("can not initialize unmarshaller for operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	var callbackErrors error
