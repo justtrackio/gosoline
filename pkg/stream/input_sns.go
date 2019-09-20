@@ -12,8 +12,8 @@ type SnsInputSettings struct {
 	AutoSubscribe     bool
 	QueueId           string
 	WaitTime          int64
-	RedrivePolicy     sqs.RedrivePolicy `mapstructure:"redrive_policy"`
-	VisibilityTimeout int               `mapstructure:"visibility_timeout"`
+	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
+	VisibilityTimeout int               `cfg:"visibility_timeout"`
 }
 
 type SnsInputTarget struct {

@@ -9,11 +9,11 @@ import (
 
 type SqsInputSettings struct {
 	cfg.AppId
-	QueueId           string            `mapstructure:"queue_id"`
-	Fifo              sqs.FifoSettings  `mapstructure:"fifo"`
-	WaitTime          int64             `mapstructure:"wait_time"`
-	RedrivePolicy     sqs.RedrivePolicy `mapstructure:"redrive_policy"`
-	VisibilityTimeout int               `mapstructure:"visibility_timeout"`
+	QueueId           string            `cfg:"queue_id"`
+	Fifo              sqs.FifoSettings  `cfg:"fifo"`
+	WaitTime          int64             `cfg:"wait_time"`
+	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
+	VisibilityTimeout int               `cfg:"visibility_timeout"`
 }
 
 type sqsInput struct {

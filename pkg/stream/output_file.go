@@ -9,8 +9,8 @@ import (
 )
 
 type FileOutputSettings struct {
-	Filename string `mapstructure:"filename"`
-	Append   bool   `mapstructure:"append"`
+	Filename string `cfg:"filename"`
+	Append   bool   `cfg:"append"`
 }
 
 type fileOutput struct {

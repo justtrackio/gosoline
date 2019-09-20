@@ -18,20 +18,18 @@ import (
 type Settings struct {
 	Application string `cfg:"app_name"`
 
-	DriverName string `cfg:"db_drivername"`
-	Host       string `cfg:"db_hostname"`
-	Port       int    `cfg:"db_port"`
-	Database   string `cfg:"db_database"`
-	User       string `cfg:"db_username"`
-	Password   string `cfg:"db_password"`
-
+	DriverName         string        `cfg:"db_drivername"`
+	Host               string        `cfg:"db_hostname"`
+	Port               int           `cfg:"db_port"`
+	Database           string        `cfg:"db_database"`
+	User               string        `cfg:"db_username"`
+	Password           string        `cfg:"db_password"`
 	RetryDelay         time.Duration `cfg:"db_retry_wait"`
 	ConnectionLifetime time.Duration `cfg:"db_max_connection_lifetime"`
-
-	ParseTime      bool   `cfg:"db_parse_time"`
-	AutoMigrate    bool   `cfg:"db_auto_migrate"`
-	MigrationsPath string `cfg:"db_migrations_path"`
-	PrefixedTables bool   `cfg:"db_table_prefixed"`
+	ParseTime          bool          `cfg:"db_parse_time"`
+	AutoMigrate        bool          `cfg:"db_auto_migrate"`
+	MigrationsPath     string        `cfg:"db_migrations_path"`
+	PrefixedTables     bool          `cfg:"db_table_prefixed"`
 }
 
 type Connection struct {
@@ -61,7 +59,7 @@ func (c *Connection) Boot(config cfg.Config, logger mon.Logger) error {
 	defer barrier.Done()
 
 	settings := Settings{}
-	config.Bind(&settings)
+	config.Unmarshal(&settings)
 
 	return c.BootWithInterfaces(logger, settings)
 }

@@ -29,14 +29,14 @@ type Message struct {
 }
 
 type FifoSettings struct {
-	Enabled                   bool `mapstructure:"enabled"`
-	ContentBasedDeduplication bool `mapstructure:"contentBasedDeduplication"`
+	Enabled                   bool `cfg:"enabled"`
+	ContentBasedDeduplication bool `cfg:"contentBasedDeduplication"`
 }
 
 type RedrivePolicy struct {
-	Enabled         bool   `mapstructure:"enabled"`
-	MaxReceiveCount int    `mapstructure:"max_receive_count"`
-	QueueName       string `mapstructure:"queue_name"`
+	Enabled         bool   `cfg:"enabled"`
+	MaxReceiveCount int    `cfg:"max_receive_count"`
+	QueueName       string `cfg:"queue_name"`
 }
 
 type Properties struct {

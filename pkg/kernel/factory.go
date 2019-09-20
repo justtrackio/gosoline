@@ -7,7 +7,7 @@ import (
 )
 
 func New(application string) *kernel {
-	config := cfg.NewWithDefaultClients(application)
+	config := cfg.New(application)
 
 	tags := mon.Tags{
 		"application": config.GetString("app_name"),

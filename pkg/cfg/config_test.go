@@ -24,7 +24,7 @@ func TestNew(t *testing.T) {
 	viper := getViper()
 
 	_ = ioutil.WriteFile("./config.dist.yml", nil, 0777)
-	_ = cfg.New(nil, viper, "app")
+	_ = cfg.NewWithInterfaces(nil, viper, "app")
 
 	viper.AssertExpectations(t)
 }
@@ -38,34 +38,6 @@ func TestConfig_AllKeys(t *testing.T) {
 
 	assert.Len(t, keys, 2)
 
-	viper.AssertExpectations(t)
-}
-
-func TestConfig_Bind(t *testing.T) {
-	config, viper := getNewConfig()
-
-	viper.On("IsSet", "string").Return(true)
-	viper.On("IsSet", "bool").Return(true)
-	viper.On("IsSet", "int").Return(true)
-	viper.On("IsSet", "duration").Return(true)
-	viper.On("IsSet", "slice").Return(true)
-	viper.On("IsSet", "float64").Return(true)
-
-	viper.On("Get", "string").Return("string")
-	viper.On("GetString", "bool").Return("True")
-	viper.On("GetInt", "int").Return(1)
-	viper.On("GetFloat64", "float64").Return(math.Pi)
-	viper.On("GetDuration", "duration").Return(time.Duration(2))
-	viper.On("Get", "slice").Return([]string{"slice"})
-
-	obj := testType{}
-	config.Bind(&obj)
-	assert.Equal(t, "string", obj.String)
-	assert.Equal(t, true, obj.Bool)
-	assert.Equal(t, 1, obj.Int)
-	assert.Equal(t, time.Duration(2), obj.Duration)
-	assert.Equal(t, []string{"slice"}, obj.Slice)
-	assert.Equal(t, math.Pi, obj.Float64)
 	viper.AssertExpectations(t)
 }
 
@@ -166,8 +138,35 @@ func TestConfig_GetBool(t *testing.T) {
 
 func TestConfig_Unmarshal(t *testing.T) {
 	type configMap struct {
-		Foo string `mapstructure:"foo"`
-		Bla string `mapstructure:"bla"`
+		Foo       string `cfg:"foo"`
+		Bla       string `cfg:"bla"`
+		Augmented string `cfg:"augmented"`
+	}
+
+	config, viper := getNewConfig()
+
+	viper.On("IsSet", "foo").Return(true)
+	viper.On("Get", "foo").Return("bar")
+	viper.On("AllSettings").Return(map[string]interface{}{
+		"foo":       "bar",
+		"bla":       "test",
+		"augmented": "{foo}-baz",
+	})
+
+	cm := configMap{}
+	config.Unmarshal(&cm)
+
+	assert.Equal(t, "bar", cm.Foo)
+	assert.Equal(t, "test", cm.Bla)
+	assert.Equal(t, "bar-baz", cm.Augmented)
+
+	viper.AssertExpectations(t)
+}
+
+func TestConfig_UnmarshalKey(t *testing.T) {
+	type configMap struct {
+		Foo string `cfg:"foo"`
+		Bla string `cfg:"bla"`
 	}
 
 	config, viper := getNewConfig()
@@ -182,7 +181,7 @@ func TestConfig_Unmarshal(t *testing.T) {
 	})
 
 	cm := configMap{}
-	config.Unmarshal("key", &cm)
+	config.UnmarshalKey("key", &cm)
 
 	assert.Equal(t, "bar", cm.Foo)
 	assert.Equal(t, "test", cm.Bla)
@@ -218,7 +217,7 @@ func getNewConfig() (cfg.Config, *cfgMocks.Viper) {
 
 	_ = ioutil.WriteFile("./config.dist.yml", nil, 0777)
 
-	config := cfg.New(nil, viper, "app")
+	config := cfg.NewWithInterfaces(nil, viper, "app")
 
 	return config, viper
 }

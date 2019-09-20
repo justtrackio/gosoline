@@ -11,7 +11,6 @@ import (
 	"os"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -30,10 +29,11 @@ func (f *ConfigFlags) Set(value string) error {
 	return nil
 }
 
+type DecoderConfigOption func(*mapstructure.DecoderConfig)
+
 //go:generate mockery -name Config
 type Config interface {
 	AllKeys() []string
-	Bind(obj interface{})
 	Get(string) interface{}
 	GetDuration(string) time.Duration
 	GetInt(string) int
@@ -43,7 +43,8 @@ type Config interface {
 	GetStringSlice(key string) []string
 	GetBool(key string) bool
 	IsSet(string) bool
-	Unmarshal(key string, val interface{})
+	Unmarshal(output interface{}, opts ...DecoderConfigOption)
+	UnmarshalKey(key string, val interface{}, opts ...DecoderConfigOption)
 	AugmentString(str string) string
 }
 
@@ -58,6 +59,7 @@ type config struct {
 type Viper interface {
 	AddConfigPath(string)
 	AllKeys() []string
+	AllSettings() map[string]interface{}
 	AutomaticEnv()
 	Get(string) interface{}
 	GetBool(key string) bool
@@ -72,11 +74,17 @@ type Viper interface {
 	MergeConfig(in io.Reader) error
 	SetDefault(string, interface{})
 	SetEnvPrefix(string)
-	UnmarshalKey(string, interface{}, ...viper.DecoderConfigOption) error
 	Set(key string, value interface{})
 }
 
-func New(sentry *raven.Client, client Viper, application string) *config {
+func New(application string) *config {
+	sentry := raven.DefaultClient
+	client := viper.GetViper()
+
+	return NewWithInterfaces(sentry, client, application)
+}
+
+func NewWithInterfaces(sentry *raven.Client, client Viper, application string) *config {
 	c := &config{
 		application: application,
 		client:      client,
@@ -86,13 +94,6 @@ func New(sentry *raven.Client, client Viper, application string) *config {
 	c.configure()
 
 	return c
-}
-
-func NewWithDefaultClients(application string) *config {
-	sentry := raven.DefaultClient
-	client := viper.GetViper()
-
-	return New(sentry, client, application)
 }
 
 func (c *config) keyCheck(key string) {
@@ -106,50 +107,6 @@ func (c *config) AllKeys() []string {
 	defer c.lck.Unlock()
 
 	return c.client.AllKeys()
-}
-
-func (c *config) Bind(obj interface{}) {
-	r := reflect.ValueOf(obj).Elem()
-
-	for i := 0; i < r.NumField(); i++ {
-		valueField := r.Field(i)
-		typeField := r.Type().Field(i)
-
-		name := typeField.Name
-		key := typeField.Tag.Get("cfg")
-
-		if key == "" {
-			panic(fmt.Errorf("there is no 'cfg' tag set for config field '%v'", name))
-		}
-
-		c.lck.Lock()
-		c.keyCheck(key)
-		c.lck.Unlock()
-
-		switch typeField.Type.String() {
-		case "time.Duration":
-			value := c.GetDuration(key)
-			valueField.Set(reflect.ValueOf(value))
-		case "bool":
-			value := c.GetString(key)
-			boolValue, err := strconv.ParseBool(value)
-
-			if err != nil {
-				panic(err)
-			}
-
-			valueField.Set(reflect.ValueOf(boolValue))
-		case "int":
-			value := c.GetInt(key)
-			valueField.Set(reflect.ValueOf(value))
-		case "float64":
-			value := c.GetFloat64(key)
-			valueField.Set(reflect.ValueOf(value))
-		default:
-			value := c.Get(key)
-			valueField.Set(reflect.ValueOf(value))
-		}
-	}
 }
 
 func (c *config) IsSet(key string) bool {
@@ -239,16 +196,40 @@ func (c *config) GetBool(key string) bool {
 	return c.client.GetBool(key)
 }
 
-func (c *config) Unmarshal(key string, output interface{}) {
+func (c *config) Unmarshal(output interface{}, opts ...DecoderConfigOption) {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	input := c.client.AllSettings()
+	err := c.decode(input, output)
+
+	if err != nil {
+		c.err(err, "error unmarshalling")
+		return
+	}
+}
+
+func (c *config) UnmarshalKey(key string, output interface{}, opts ...DecoderConfigOption) {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
 	c.keyCheck(key)
+	input := c.unsafeGet(key)
 
+	err := c.decode(input, output)
+
+	if err != nil {
+		c.err(err, "error unmarshalling key: %s", key)
+		return
+	}
+}
+
+func (c *config) decode(input interface{}, output interface{}) error {
 	decoderConfig := &mapstructure.DecoderConfig{
 		Metadata:         nil,
 		Result:           output,
 		WeaklyTypedInput: true,
+		TagName:          "cfg",
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
@@ -259,16 +240,29 @@ func (c *config) Unmarshal(key string, output interface{}) {
 	decoder, err := mapstructure.NewDecoder(decoderConfig)
 
 	if err != nil {
-		c.err(err, "could not initialize decoder to unmarshal key: %s", key)
-		return
+		return errors.Wrap(err, "can not initialize decoder")
 	}
 
-	values := c.unsafeGet(key)
-	err = decoder.Decode(values)
+	err = decoder.Decode(input)
 
 	if err != nil {
-		c.err(err, "could not decode key: %s", key)
-		return
+		return errors.Wrap(err, "can not decode input")
+	}
+
+	return nil
+}
+
+func (c *config) decodeAugmentHook() interface{} {
+	return func(
+		f reflect.Kind,
+		t reflect.Kind,
+		data interface{}) (interface{}, error) {
+		if f != reflect.String || t != reflect.String {
+			return data, nil
+		}
+
+		raw := data.(string)
+		return c.unsafeAugmentString(raw), nil
 	}
 }
 
@@ -352,18 +346,4 @@ func (c *config) err(err error, msg string, args ...interface{}) {
 
 	c.sentry.CaptureErrorAndWait(err, nil)
 	panic(err)
-}
-
-func (c *config) decodeAugmentHook() interface{} {
-	return func(
-		f reflect.Kind,
-		t reflect.Kind,
-		data interface{}) (interface{}, error) {
-		if f != reflect.String || t != reflect.String {
-			return data, nil
-		}
-
-		raw := data.(string)
-		return c.unsafeAugmentString(raw), nil
-	}
 }

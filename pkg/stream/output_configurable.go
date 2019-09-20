@@ -33,19 +33,19 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Ou
 func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
 	key := getConfigurableOutputKey(name)
 	settings := &FileOutputSettings{}
-	config.Unmarshal(key, settings)
+	config.UnmarshalKey(key, settings)
 
 	return NewFileOutput(config, logger, settings)
 }
 
 type kinesisOutputConfiguration struct {
-	StreamName string `mapstructure:"streamName"`
+	StreamName string `cfg:"streamName"`
 }
 
 func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
 	key := getConfigurableOutputKey(name)
 	settings := &kinesisOutputConfiguration{}
-	config.Unmarshal(key, settings)
+	config.UnmarshalKey(key, settings)
 
 	return NewKinesisOutput(config, logger, &KinesisOutputSettings{
 		StreamName: settings.StreamName,
@@ -53,19 +53,19 @@ func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name strin
 }
 
 type redisListOutputConfiguration struct {
-	Project     string `mapstructure:"project"`
-	Family      string `mapstructure:"family"`
-	Application string `mapstructure:"application"`
-	ServerName  string `mapstructure:"serverName"`
-	Key         string `mapstructure:"key"`
-	BatchSize   int    `mapstructure:"batchSize"`
+	Project     string `cfg:"project"`
+	Family      string `cfg:"family"`
+	Application string `cfg:"application"`
+	ServerName  string `cfg:"serverName"`
+	Key         string `cfg:"key"`
+	BatchSize   int    `cfg:"batchSize"`
 }
 
 func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
 	key := getConfigurableOutputKey(name)
 
 	configuration := redisListOutputConfiguration{}
-	config.Unmarshal(key, &configuration)
+	config.UnmarshalKey(key, &configuration)
 
 	return NewRedisListOutput(config, logger, &RedisListOutputSettings{
 		AppId: cfg.AppId{

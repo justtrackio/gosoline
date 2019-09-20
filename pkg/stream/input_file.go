@@ -9,7 +9,7 @@ import (
 )
 
 type FileSettings struct {
-	Filename string `mapstructure:"filename"`
+	Filename string `cfg:"filename"`
 	Blocking bool
 }
 

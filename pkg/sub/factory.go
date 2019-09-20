@@ -10,17 +10,17 @@ import (
 )
 
 type Subscription struct {
-	Input       string            `mapstructure:"input"`
-	Output      string            `mapstructure:"output"`
-	Redis       string            `mapstructure:"redis"`
-	SourceModel SubscriptionModel `mapstructure:"source"`
-	TargetModel SubscriptionModel `mapstructure:"target"`
+	Input       string            `cfg:"input"`
+	Output      string            `cfg:"output"`
+	Redis       string            `cfg:"redis"`
+	SourceModel SubscriptionModel `cfg:"source"`
+	TargetModel SubscriptionModel `cfg:"target"`
 }
 
 type SubscriptionModel struct {
-	Family      string `mapstructure:"family"`
-	Application string `mapstructure:"application"`
-	Name        string `mapstructure:"name"`
+	Family      string `cfg:"family"`
+	Application string `cfg:"application"`
+	Name        string `cfg:"name"`
 }
 
 func NewGenericTransformer(transformer ModelTransformer) func(cfg.Config, mon.Logger) ModelTransformer {
@@ -39,7 +39,7 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 	modules := make(map[string]kernel.Module)
 	subscriptions := make([]Subscription, 0)
 
-	config.Unmarshal("subscriptions", &subscriptions)
+	config.UnmarshalKey("subscriptions", &subscriptions)
 
 	for _, s := range subscriptions {
 		sourceModelId := mdl.ModelId{

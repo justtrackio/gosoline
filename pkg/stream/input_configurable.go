@@ -41,21 +41,21 @@ func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) Inp
 func newFileInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
 	key := getConfigurableInputKey(name)
 	settings := FileSettings{}
-	config.Unmarshal(key, &settings)
+	config.UnmarshalKey(key, &settings)
 
 	return NewFileInput(config, logger, settings)
 }
 
 type kinesisInputConfiguration struct {
-	StreamName      string `mapstructure:"streamName"`
-	ApplicationName string `mapstructure:"applicationName"`
+	StreamName      string `cfg:"streamName"`
+	ApplicationName string `cfg:"applicationName"`
 }
 
 func newKinesisInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
 	key := getConfigurableInputKey(name)
 
 	settings := kinesisInputConfiguration{}
-	config.Unmarshal(key, &settings)
+	config.UnmarshalKey(key, &settings)
 
 	readerSettings := KinsumerSettings{
 		StreamName:      settings.StreamName,
@@ -66,19 +66,19 @@ func newKinesisInputFromConfig(config cfg.Config, logger mon.Logger, name string
 }
 
 type redisInputConfiguration struct {
-	Project     string        `mapstructure:"project"`
-	Family      string        `mapstructure:"family"`
-	Application string        `mapstructure:"application"`
-	ServerName  string        `mapstructure:"serverName"`
-	Key         string        `mapstructure:"key"`
-	WaitTime    time.Duration `mapstructure:"waitTime"`
+	Project     string        `cfg:"project"`
+	Family      string        `cfg:"family"`
+	Application string        `cfg:"application"`
+	ServerName  string        `cfg:"serverName"`
+	Key         string        `cfg:"key"`
+	WaitTime    time.Duration `cfg:"waitTime"`
 }
 
 func newRedisInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
 	key := getConfigurableInputKey(name)
 
 	configuration := redisInputConfiguration{}
-	config.Unmarshal(key, &configuration)
+	config.UnmarshalKey(key, &configuration)
 
 	settings := &RedisListInputSettings{
 		AppId: cfg.AppId{
@@ -95,24 +95,24 @@ func newRedisInputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 }
 
 type snsInputTarget struct {
-	Family      string `mapstructure:"family"`
-	Application string `mapstructure:"application"`
-	TopicId     string `mapstructure:"topic_id"`
+	Family      string `cfg:"family"`
+	Application string `cfg:"application"`
+	TopicId     string `cfg:"topic_id"`
 }
 
 type snsInputConfiguration struct {
-	ConsumerId        string            `mapstructure:"id"`
-	WaitTime          int64             `mapstructure:"wait_time"`
-	VisibilityTimeout int               `mapstructure:"visibility_timeout"`
-	RedrivePolicy     sqs.RedrivePolicy `mapstructure:"redrive_policy"`
-	Targets           []snsInputTarget  `mapstructure:"targets"`
+	ConsumerId        string            `cfg:"id"`
+	WaitTime          int64             `cfg:"wait_time"`
+	VisibilityTimeout int               `cfg:"visibility_timeout"`
+	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
+	Targets           []snsInputTarget  `cfg:"targets"`
 }
 
 func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
 	key := getConfigurableInputKey(name)
 
 	configuration := snsInputConfiguration{}
-	config.Unmarshal(key, &configuration)
+	config.UnmarshalKey(key, &configuration)
 
 	settings := SnsInputSettings{
 		QueueId:           configuration.ConsumerId,
@@ -136,20 +136,20 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 }
 
 type sqsInputConfiguration struct {
-	Family            string            `mapstructure:"target_family"`
-	Application       string            `mapstructure:"target_application"`
-	QueueId           string            `mapstructure:"target_queue_id"`
-	Fifo              sqs.FifoSettings  `mapstructure:"fifo"`
-	WaitTime          int64             `mapstructure:"wait_time"`
-	VisibilityTimeout int               `mapstructure:"visibility_timeout"`
-	RedrivePolicy     sqs.RedrivePolicy `mapstructure:"redrive_policy"`
+	Family            string            `cfg:"target_family"`
+	Application       string            `cfg:"target_application"`
+	QueueId           string            `cfg:"target_queue_id"`
+	Fifo              sqs.FifoSettings  `cfg:"fifo"`
+	WaitTime          int64             `cfg:"wait_time"`
+	VisibilityTimeout int               `cfg:"visibility_timeout"`
+	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
 }
 
 func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
 	key := getConfigurableInputKey(name)
 
 	configuration := sqsInputConfiguration{}
-	config.Unmarshal(key, &configuration)
+	config.UnmarshalKey(key, &configuration)
 
 	settings := SqsInputSettings{
 		AppId: cfg.AppId{

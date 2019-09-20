@@ -2,6 +2,7 @@
 
 package mocks
 
+import cfg "github.com/applike/gosoline/pkg/cfg"
 import mock "github.com/stretchr/testify/mock"
 import time "time"
 
@@ -38,11 +39,6 @@ func (_m *Config) AugmentString(str string) string {
 	}
 
 	return r0
-}
-
-// Bind provides a mock function with given fields: obj
-func (_m *Config) Bind(obj interface{}) {
-	_m.Called(obj)
 }
 
 // Get provides a mock function with given fields: _a0
@@ -177,7 +173,26 @@ func (_m *Config) IsSet(_a0 string) bool {
 	return r0
 }
 
-// Unmarshal provides a mock function with given fields: key, val
-func (_m *Config) Unmarshal(key string, val interface{}) {
-	_m.Called(key, val)
+// Unmarshal provides a mock function with given fields: output, opts
+func (_m *Config) Unmarshal(output interface{}, opts ...cfg.DecoderConfigOption) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, output)
+	_ca = append(_ca, _va...)
+	_m.Called(_ca...)
+}
+
+// UnmarshalKey provides a mock function with given fields: key, val, opts
+func (_m *Config) UnmarshalKey(key string, val interface{}, opts ...cfg.DecoderConfigOption) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, key, val)
+	_ca = append(_ca, _va...)
+	_m.Called(_ca...)
 }

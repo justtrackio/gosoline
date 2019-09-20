@@ -15,7 +15,7 @@ import (
 )
 
 func getMocks() (cfg.Config, mon.Logger) {
-	config := cfg.NewWithDefaultClients("es_test")
+	config := cfg.New("es_test")
 
 	logger := new(monMocks.Logger)
 
