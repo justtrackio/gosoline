@@ -105,6 +105,7 @@ type snsInputConfiguration struct {
 	WaitTime          int64             `cfg:"wait_time"`
 	VisibilityTimeout int               `cfg:"visibility_timeout"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
+	RunnerCount       int               `cfg:"runner_count"`
 	Targets           []snsInputTarget  `cfg:"targets"`
 }
 
@@ -119,6 +120,7 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 		WaitTime:          configuration.WaitTime,
 		RedrivePolicy:     configuration.RedrivePolicy,
 		VisibilityTimeout: configuration.VisibilityTimeout,
+		RunnerCount:       configuration.RunnerCount,
 	}
 
 	targets := make([]SnsInputTarget, len(configuration.Targets))
@@ -143,6 +145,7 @@ type sqsInputConfiguration struct {
 	WaitTime          int64             `cfg:"wait_time"`
 	VisibilityTimeout int               `cfg:"visibility_timeout"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
+	RunnerCount       int               `cfg:"runner_count"`
 }
 
 func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -161,6 +164,7 @@ func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 		WaitTime:          configuration.WaitTime,
 		VisibilityTimeout: configuration.VisibilityTimeout,
 		RedrivePolicy:     configuration.RedrivePolicy,
+		RunnerCount:       configuration.RunnerCount,
 	}
 
 	return NewSqsInput(config, logger, settings)

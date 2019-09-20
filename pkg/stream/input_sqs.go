@@ -3,6 +3,7 @@ package stream
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
 )
@@ -14,6 +15,7 @@ type SqsInputSettings struct {
 	WaitTime          int64             `cfg:"wait_time"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
 	VisibilityTimeout int               `cfg:"visibility_timeout"`
+	RunnerCount       int               `cfg:"runner_count"`
 }
 
 type sqsInput struct {
@@ -22,6 +24,7 @@ type sqsInput struct {
 	settings    SqsInputSettings
 	unmarshaler MessageUnmarshaler
 
+	cfn     coffin.Coffin
 	channel chan *Message
 	stopped bool
 }
@@ -39,11 +42,16 @@ func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) *sqsI
 }
 
 func NewSqsInputWithInterfaces(logger mon.Logger, queue sqs.Queue, s SqsInputSettings) *sqsInput {
+	if s.RunnerCount <= 0 {
+		s.RunnerCount = 1
+	}
+
 	return &sqsInput{
 		logger:      logger,
 		queue:       queue,
 		settings:    s,
 		unmarshaler: BasicUnmarshaler,
+		cfn:         coffin.New(),
 		channel:     make(chan *Message),
 	}
 }
@@ -55,6 +63,18 @@ func (i *sqsInput) Data() chan *Message {
 func (i *sqsInput) Run() error {
 	defer close(i.channel)
 	defer i.logger.Info("leaving sqs input")
+
+	i.logger.Infof("starting sqs input with %d runners", i.settings.RunnerCount)
+
+	for j := 0; j < i.settings.RunnerCount; j++ {
+		i.cfn.Gof(i.doRun, "panic in sqs input runner")
+	}
+
+	return i.cfn.Wait()
+}
+
+func (i *sqsInput) doRun() error {
+	defer i.logger.Info("leaving sqs input runner")
 
 	for {
 		if i.stopped {

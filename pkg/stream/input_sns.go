@@ -10,10 +10,11 @@ import (
 type SnsInputSettings struct {
 	cfg.AppId
 	AutoSubscribe     bool
-	QueueId           string
-	WaitTime          int64
+	QueueId           string            `cfg:"queue_id"`
+	WaitTime          int64             `cfg:"wait_time"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
 	VisibilityTimeout int               `cfg:"visibility_timeout"`
+	RunnerCount       int               `cfg:"runner_count"`
 }
 
 type SnsInputTarget struct {
@@ -35,6 +36,7 @@ func NewSnsInput(config cfg.Config, logger mon.Logger, s SnsInputSettings, targe
 		WaitTime:          s.WaitTime,
 		RedrivePolicy:     s.RedrivePolicy,
 		VisibilityTimeout: s.VisibilityTimeout,
+		RunnerCount:       s.RunnerCount,
 	})
 	sqsInput.SetUnmarshaler(SnsUnmarshaler)
 
