@@ -2,20 +2,22 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"gopkg.in/resty.v1"
-	"net/http"
 	netUrl "net/url"
-	"strconv"
 	"time"
 )
 
-const GetRequest = "GET"
-const PostRequest = "POST"
-const metricRequest = "HttpClientRequest"
-const metricRequestFailure = "HttpClientRequestFailure"
-const metricRequestDuration = "HttpRequestDuration"
+const (
+	GetRequest            = "GET"
+	PostRequest           = "POST"
+	metricRequest         = "HttpClientRequest"
+	metricError           = "HttpClientError"
+	metricResponseCode    = "HttpClientResponseCode"
+	metricRequestDuration = "HttpRequestDuration"
+)
 
 //go:generate mockery -name Client
 type Client interface {
@@ -102,60 +104,41 @@ func (c *client) Post(ctx context.Context, request *Request) (*Response, error) 
 
 func (c *client) do(ctx context.Context, method string, request *Request) (*Response, error) {
 	req, url, err := request.build()
-	logger := c.logger.
-		WithContext(ctx).
-		WithFields(mon.Fields{
-			"url":    url,
-			"method": method,
-		})
+	logger := c.logger.WithContext(ctx).WithFields(mon.Fields{
+		"url":    url,
+		"method": method,
+	})
 
 	if err != nil {
 		logger.Error(err, "failed to assemble request")
-
 		return nil, err
 	}
 
 	req.SetContext(ctx)
 	req.SetHeaders(c.defaultHeaders)
 
-	logger.Debug("Requesting URL")
-
 	c.writeMetric(metricRequest, method, mon.UnitCount, 1.0)
-
 	resp, err := req.Execute(method, url)
 
-	logger = logger.WithFields(mon.Fields{
-		"url": req.URL,
-	})
+	// Unwrap the error so our callers can simply check if the request was canceled and
+	// react accordingly. The caller can not check for this upfront as the request could
+	// be canceled while we wait for an answer of the server, causing this error to get
+	// thrown.
+	err, canceled := isContextCanceled(ctx, err)
+
+	metricName := fmt.Sprintf("%s%dXX", metricResponseCode, resp.StatusCode()/100)
+	c.writeMetric(metricName, method, mon.UnitCount, 1.0)
 
 	if err != nil {
-		if netErr, ok := err.(*netUrl.Error); ok && netErr.Err == context.Canceled {
-			// Unwrap the error so our callers can simply check if the request was canceled and
-			// react accordingly. The caller can not check for this upfront as the request could
-			// be canceled while we wait for an answer of the server, causing this error to get
-			// thrown.
-			err = context.Canceled
-		} else {
+		if !canceled {
 			// Only log an error if the error was not caused by a canceled context
 			// Otherwise a user might spam our error logs by just canceling a lot of requests
 			// (or many users spam us because sometimes they cancel requests)
+			c.writeMetric(metricError, method, mon.UnitCount, 1.0)
 			logger.Error(err, "error while requesting url")
-
-			c.writeMetric(metricRequestFailure, method, mon.UnitCount, 1.0)
 		}
-	}
 
-	responseStatusCode := resp.StatusCode()
-	responseStatusCodeString := strconv.Itoa(responseStatusCode)
-
-	if err == nil && (responseStatusCode < http.StatusOK || responseStatusCode >= http.StatusMultipleChoices) {
-		// We should not log this if we got an error - in that case the response status code could be 0
-		// and that does not make for a good log message
-		logger.WithFields(mon.Fields{
-			"statusCode": responseStatusCodeString,
-		}).Warn("got unexpected response")
-
-		c.writeMetric(metricRequestFailure+responseStatusCodeString, method, mon.UnitCount, 1.0)
+		return nil, err
 	}
 
 	response := &Response{
@@ -164,28 +147,41 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 		RequestDuration: resp.Time(),
 	}
 
-	if err == nil {
-		// Only log the duration if we did not get an error.
-		// If we get an error, we might not actually have send anything,
-		// so the duration will be very low. If we get back an error (e.g., status 500),
-		// we log the duration as this is just a valid http response.
-		requestDurationMs := float64(response.RequestDuration / time.Millisecond)
-		c.writeMetric(metricRequestDuration, method, mon.UnitMilliseconds, requestDurationMs)
-	}
+	// Only log the duration if we did not get an error.
+	// If we get an error, we might not actually have send anything,
+	// so the duration will be very low. If we get back an error (e.g., status 500),
+	// we log the duration as this is just a valid http response.
+	requestDurationMs := float64(resp.Time() / time.Millisecond)
+	c.writeMetric(metricRequestDuration, method, mon.UnitMilliseconds, requestDurationMs)
 
 	return response, err
 }
 
-func (c *client) writeMetric(metricName string, dimensionType string, unit string, value float64) {
+func (c *client) writeMetric(metricName string, method string, unit string, value float64) {
 	c.mo.WriteOne(&mon.MetricDatum{
 		Priority:   mon.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,
 		Dimensions: mon.MetricDimensions{
-			"Type":        dimensionType,
-			"Application": c.config.GetString("app_name"),
+			"Method": method,
 		},
 		Unit:  unit,
 		Value: value,
 	})
+}
+
+func isContextCanceled(ctx context.Context, err error) (error, bool) {
+	if err == nil {
+		return err, false
+	}
+
+	// TODO: with go 1.13, we could check for errors.Is(err, context.Canceled),
+	// doing all the unwrapping for us. For now we can not really safely and in
+	// a nice way unwrap the error, so lets just check the context - if it is
+	// canceled, we most likely also hit that error and can just pretend we did.
+	if ctx.Err() == context.Canceled {
+		return context.Canceled, true
+	}
+
+	return err, false
 }

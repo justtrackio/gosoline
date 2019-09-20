@@ -49,7 +49,6 @@ func getConfig(retries int, timeout int) *cfgMocks.Config {
 	config := new(cfgMocks.Config)
 	config.On("GetInt", "http_client_retry_count").Return(retries)
 	config.On("GetDuration", "http_client_request_timeout").Return(time.Duration(timeout))
-	config.On("GetString", "app_name").Return("test")
 
 	return config
 }
@@ -82,7 +81,7 @@ func TestClient_GetTimeout(t *testing.T) {
 		response, err := client.Get(context.TODO(), request)
 
 		assert.Error(t, err)
-		assert.NotEqual(t, 200, response.StatusCode)
+		assert.Nil(t, response)
 	})
 
 	config.AssertExpectations(t)
@@ -107,7 +106,7 @@ func TestClient_GetCanceled(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Equal(t, context.Canceled, err)
-		assert.NotEqual(t, 200, response.StatusCode)
+		assert.Nil(t, response)
 	})
 
 	config.AssertExpectations(t)
