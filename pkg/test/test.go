@@ -46,6 +46,8 @@ func bootComponent(name string, mockConfig configInput) {
 	switch component {
 	case "dynamodb":
 		runDynamoDb(name, mockConfig)
+	case "localstack":
+		runLocalstackContainer(name, mockConfig)
 	case "elasticsearch":
 		runElasticsearch(name, mockConfig)
 	case "mysql":
