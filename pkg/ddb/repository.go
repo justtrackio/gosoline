@@ -237,7 +237,6 @@ func (r *repository) chunkWriteItem(ctx context.Context, input *dynamodb.BatchWr
 		}
 
 		processedItems := totalItemCount(input.RequestItems) - totalItemCount(out.UnprocessedItems)
-
 		input.RequestItems = out.UnprocessedItems
 
 		// If we made any process, we try again and reset our backoff. As long as we are making process we can try again
