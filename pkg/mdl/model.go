@@ -53,14 +53,22 @@ func WithIdentifier(id *uint) *Identifier {
 	}
 }
 
-func UuidWithDashes(uuid *string) *string {
+func UuidWithDashes(uuid *string) (*string, error) {
+	if uuid == nil {
+		return uuid, fmt.Errorf("the uuid should not be nil")
+	}
+
 	if strings.Contains(*uuid, "-") {
-		return uuid
+		return uuid, nil
+	}
+
+	if len(*uuid) != 32 {
+		return uuid, fmt.Errorf("the uuid should be exactly 32 bytes long, but was: %d", len(*uuid))
 	}
 
 	dashed := fmt.Sprintf("%s-%s-%s-%s-%s", (*uuid)[0:8], (*uuid)[8:12], (*uuid)[12:16], (*uuid)[16:20], (*uuid)[20:32])
 
-	return &dashed
+	return &dashed, nil
 }
 
 type Resource interface {
