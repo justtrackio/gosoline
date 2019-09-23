@@ -16,10 +16,12 @@ import (
 )
 
 type kernel struct {
-	cfn coffin.Coffin
-	sig chan os.Signal
-	lck sync.Mutex
-	wg  sync.WaitGroup
+	cfn     coffin.Coffin
+	sig     chan os.Signal
+	booted  chan struct{}
+	running chan struct{}
+	lck     sync.Mutex
+	wg      sync.WaitGroup
 
 	config cfg.Config
 	logger mon.Logger
@@ -42,6 +44,16 @@ func (k *kernel) Add(name string, module Module) {
 
 func (k *kernel) AddFactory(factory ModuleFactory) {
 	k.factories = append(k.factories, factory)
+}
+
+// Booted channel will be closed as soon as all modules Boot functions were executed
+func (k *kernel) Booted() <-chan struct{} {
+	return k.booted
+}
+
+// Running channel will be closed as soon as all modules Run functions were invoked
+func (k *kernel) Running() <-chan struct{} {
+	return k.running
 }
 
 func (k *kernel) Run() {
@@ -84,6 +96,9 @@ func (k *kernel) Run() {
 		return
 	}
 
+	k.logger.Info("all modules booted")
+	close(k.booted)
+
 	var ctx context.Context
 	k.cfn, ctx = coffin.WithContext(context.Background())
 	k.wg.Add(k.moduleCount)
@@ -102,6 +117,7 @@ func (k *kernel) Run() {
 	k.checkRunningEssentialModules()
 	k.isRunning = true
 	k.logger.Info("kernel up and running")
+	close(k.running)
 
 	select {
 	case <-ctx.Done():
