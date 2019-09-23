@@ -22,6 +22,9 @@ func NewWithInterfaces(config cfg.Config, logger mon.Logger) *kernel {
 	return &kernel{
 		sig: make(chan os.Signal, 1),
 
+		booted:  make(chan struct{}),
+		running: make(chan struct{}),
+
 		config: config,
 		logger: logger.WithChannel("kernel"),
 
