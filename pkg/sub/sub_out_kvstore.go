@@ -21,6 +21,7 @@ func (p *subOutKvstore) Boot(config cfg.Config, logger mon.Logger, settings Sett
 
 	store := kvstore.NewChainKvStore(config, logger, &kvstore.Settings{
 		Name: settings.TargetModelId.Name,
+		Ttl:  settings.Ttl,
 	})
 	store.Add(kvstore.NewRedisKvStore)
 	store.Add(kvstore.NewDdbKvStore)

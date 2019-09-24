@@ -7,12 +7,13 @@ import (
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
+	"time"
 )
 
 type Subscription struct {
 	Input       string            `cfg:"input"`
 	Output      string            `cfg:"output"`
-	Redis       string            `cfg:"redis"`
+	Ttl         time.Duration     `cfg:"ttl"`
 	SourceModel SubscriptionModel `cfg:"source"`
 	TargetModel SubscriptionModel `cfg:"target"`
 }
@@ -62,6 +63,7 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 
 		settings := Settings{
 			Type:          s.Output,
+			Ttl:           s.Ttl,
 			SourceModelId: sourceModelId,
 			TargetModelId: targetModelId,
 		}

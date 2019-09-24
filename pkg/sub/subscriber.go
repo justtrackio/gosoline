@@ -25,6 +25,7 @@ type Output interface {
 
 type Settings struct {
 	Type          string
+	Ttl           time.Duration
 	SourceModelId mdl.ModelId
 	TargetModelId mdl.ModelId
 }
