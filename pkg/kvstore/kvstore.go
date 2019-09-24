@@ -24,6 +24,7 @@ func buildFactory(config cfg.Config, logger mon.Logger) func(factory Factory, se
 	}
 }
 
+//go:generate mockery -name KvStore
 type KvStore interface {
 	Contains(ctx context.Context, key interface{}) (bool, error)
 	Get(ctx context.Context, key interface{}, value interface{}) (bool, error)

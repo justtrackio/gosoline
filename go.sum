@@ -27,6 +27,7 @@ github.com/alicebob/miniredis v2.4.6+incompatible h1:Tp5vx8ZYCSi67EISiLQmR2ey2YN
 github.com/alicebob/miniredis v2.4.6+incompatible/go.mod h1:8HZjEj4yU0dwhYHky+DxYx+6BMjkBbe5ONFIF1MXffk=
 github.com/apache/thrift v0.0.0-20181112125854-24918abba929 h1:ubPe2yRkS6A/X37s0TVGfuN42NV2h0BlzWj0X76RoUw=
 github.com/apache/thrift v0.0.0-20181112125854-24918abba929/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
+github.com/applike/parquet-go v1.3.1-0.20190920135643-dfdda67390b8 h1:QDKfYw0+puvUBJ0yJz3UlcPCfklTOAzCF2eljS/ZsGk=
 github.com/applike/parquet-go v1.3.1-0.20190920135643-dfdda67390b8/go.mod h1:afyTtIbzu0xLMz3Vb0SZXhlJB69UyNksW/Sve3fWHYk=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
 github.com/aws/aws-sdk-go v1.15.54/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZoCYDt7FT0=
