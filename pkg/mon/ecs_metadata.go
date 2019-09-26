@@ -2,48 +2,46 @@ package mon
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
+	"sync"
 	"time"
 )
 
 const ecsMetadataFileEnv = "ECS_CONTAINER_METADATA_FILE"
 
-func (l *logger) checkEcsMetadataAvailability() {
-	path, available := os.LookupEnv(ecsMetadataFileEnv)
+var ecsLck sync.Mutex
+var ecsMetadata EcsMetadata
 
-	l.ecsAvailable = available && len(path) > 0
-}
+func ReadEcsMetadata() (EcsMetadata, error) {
+	ecsLck.Lock()
+	defer ecsLck.Unlock()
 
-func (l *logger) readEcsMetadata() EcsMetadata {
-	l.ecsLck.Lock()
-	defer l.ecsLck.Unlock()
-
-	if l.ecsAvailable == false || len(l.ecsMetadata) > 0 {
-		return l.ecsMetadata
+	if ecsMetadata != nil {
+		return ecsMetadata, nil
 	}
 
-	var metadata EcsMetadata
-	path, _ := os.LookupEnv(ecsMetadataFileEnv)
+	path, ok := os.LookupEnv(ecsMetadataFileEnv)
+
+	if len(path) == 0 || !ok {
+		return nil, nil
+	}
+
+	metadata := make(EcsMetadata)
 
 	for {
 		data, err := ioutil.ReadFile(path)
 
 		if err != nil {
-			l.WithFields(Fields{
-				"err": err,
-			}).Warn("can not read ecs metadata file")
-			os.Exit(1)
+			return nil, errors.Wrap(err, "can not read ecs metadata file")
 		}
 
 		metadata = make(EcsMetadata)
 		err = json.Unmarshal(data, &metadata)
 
 		if err != nil {
-			l.WithFields(Fields{
-				"err": err,
-			}).Warn("can not unmarshal ecs metadata")
-			os.Exit(1)
+			return nil, errors.Wrap(err, "can not unmarshal ecs metadata")
 		}
 
 		if status, ok := metadata["MetadataFileStatus"]; ok {
@@ -52,11 +50,10 @@ func (l *logger) readEcsMetadata() EcsMetadata {
 			}
 		}
 
-		l.Info("waiting for ecs metadata being ready")
 		time.Sleep(1 * time.Second)
 	}
 
-	l.ecsMetadata = metadata
+	ecsMetadata = metadata
 
-	return metadata
+	return ecsMetadata, nil
 }

@@ -10,11 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
+	"time"
 )
 
 func createMocks() (*cfgMocks.Config, *monMocks.Logger, *kernelMocks.Module) {
 	config := new(cfgMocks.Config)
-	config.On("AllKeys").Return([]string{})
+	config.On("AllSettings").Return(map[string]interface{}{})
+	config.On("UnmarshalKey", "kernel", mock.AnythingOfType("*kernel.Settings")).Return(map[string]interface{}{})
 
 	logger := new(monMocks.Logger)
 	logger.On("WithChannel", mock.Anything).Return(logger)
@@ -35,7 +37,7 @@ func TestRunSuccess(t *testing.T) {
 	module.On("Run", mock.Anything).Return(nil)
 
 	assert.NotPanics(t, func() {
-		k := kernel.NewWithInterfaces(config, logger)
+		k := kernel.New(config, logger, &kernel.Settings{KillTimeout: time.Second})
 		k.Add("module", module)
 		k.Run()
 	})
@@ -55,7 +57,7 @@ func TestBootFailure(t *testing.T) {
 	}).Return(nil)
 
 	assert.NotPanics(t, func() {
-		k := kernel.NewWithInterfaces(config, logger)
+		k := kernel.New(config, logger, &kernel.Settings{KillTimeout: time.Second})
 		k.Add("module", module)
 		k.Run()
 	})
@@ -74,7 +76,7 @@ func TestRunFailure(t *testing.T) {
 	})
 
 	assert.NotPanics(t, func() {
-		k := kernel.NewWithInterfaces(config, logger)
+		k := kernel.New(config, logger, &kernel.Settings{KillTimeout: time.Second})
 		k.Add("module", module)
 		k.Run()
 	})
@@ -85,7 +87,7 @@ func TestRunFailure(t *testing.T) {
 
 func TestStop(t *testing.T) {
 	config, logger, module := createMocks()
-	k := kernel.NewWithInterfaces(config, logger)
+	k := kernel.New(config, logger, &kernel.Settings{KillTimeout: time.Second})
 
 	module.On("GetType").Return(kernel.TypeForeground)
 	module.On("Boot", config, logger).Return(nil)
@@ -105,7 +107,7 @@ func TestStop(t *testing.T) {
 
 func TestRunningType(t *testing.T) {
 	config, logger, _ := createMocks()
-	k := kernel.NewWithInterfaces(config, logger)
+	k := kernel.New(config, logger, &kernel.Settings{KillTimeout: time.Second})
 
 	mf := new(kernelMocks.Module)
 	mf.On("GetType").Return(kernel.TypeForeground)

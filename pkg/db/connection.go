@@ -56,8 +56,20 @@ type Connection struct {
 }
 
 func NewConnection(config cfg.Config, logger mon.Logger) (*sqlx.DB, error) {
-	settings := &Settings{}
-	config.Unmarshal(settings)
+	settings := &Settings{
+		Application:        config.GetString("app_name"),
+		DriverName:         config.GetString("db_drivername"),
+		Host:               config.GetString("db_hostname"),
+		Port:               config.GetInt("db_port"),
+		Database:           config.GetString("db_database"),
+		User:               config.GetString("db_username"),
+		Password:           config.GetString("db_password"),
+		ConnectionLifetime: config.GetDuration("db_max_connection_lifetime"),
+		ParseTime:          config.GetBool("db_parse_time"),
+		AutoMigrate:        config.GetBool("db_auto_migrate"),
+		MigrationsPath:     config.GetString("db_migrations_path"),
+		PrefixedTables:     config.GetBool("db_table_prefixed"),
+	}
 
 	connection, err := NewConnectionWithInterfaces(settings)
 

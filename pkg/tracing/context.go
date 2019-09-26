@@ -21,3 +21,15 @@ func GetSpan(ctx context.Context) Span {
 
 	return disabledSpan()
 }
+
+func ContextTraceFieldsResolver(ctx context.Context) map[string]interface{} {
+	span := GetSpan(ctx)
+
+	if span == nil {
+		return map[string]interface{}{}
+	}
+
+	return map[string]interface{}{
+		"trace_id": span.GetTrace().GetTraceId(),
+	}
+}

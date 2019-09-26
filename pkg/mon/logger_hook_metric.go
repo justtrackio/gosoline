@@ -1,9 +1,5 @@
 package mon
 
-import (
-	"context"
-)
-
 type metricHook struct {
 	writer      MetricWriter
 	application string
@@ -18,7 +14,7 @@ func NewMetricHook() *metricHook {
 	}
 }
 
-func (h metricHook) Fire(level string, msg string, err error, fields Fields, tags Tags, configValues ConfigValues, context context.Context, ecsMetadata EcsMetadata) error {
+func (h metricHook) Fire(level string, msg string, err error, data *Metadata) error {
 	if level != Warn && level != Error {
 		return nil
 	}

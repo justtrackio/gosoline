@@ -8,6 +8,7 @@ require (
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
 	github.com/alicebob/gopher-json v0.0.0-20180125190556-5a6b3ba71ee6 // indirect
 	github.com/alicebob/miniredis v2.4.6+incompatible
+	github.com/aws/aws-lambda-go v1.13.2
 	github.com/aws/aws-sdk-go v1.19.37
 	github.com/aws/aws-xray-sdk-go v0.9.4
 	github.com/cenkalti/backoff v2.1.1+incompatible
@@ -24,6 +25,8 @@ require (
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
 	github.com/gin-contrib/sse v0.0.0-20190125020943-a7658810eb74 // indirect
 	github.com/gin-gonic/gin v1.3.0
+	github.com/go-playground/locales v0.12.1 // indirect
+	github.com/go-playground/universal-translator v0.16.0 // indirect
 	github.com/go-redis/redis v6.15.1+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
@@ -32,6 +35,8 @@ require (
 	github.com/google/go-querystring v1.0.0
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/hashicorp/go-multierror v1.0.0
+	github.com/imdario/mergo v0.3.7
+	github.com/jeremywohl/flatten v0.0.0-20190921043622-d936035e55cf
 	github.com/jinzhu/gorm v1.9.2
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a
 	github.com/jinzhu/now v0.0.0-20181116074157-8ec929ed50c3 // indirect
@@ -39,6 +44,7 @@ require (
 	github.com/jonboulle/clockwork v0.1.0
 	github.com/karlseguin/ccache v0.0.0-20181227155450-692cd618b264
 	github.com/karlseguin/expect v1.0.1 // indirect
+	github.com/leodido/go-urn v1.1.0 // indirect
 	github.com/lib/pq v1.0.0
 	github.com/mattn/go-colorable v0.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
@@ -52,6 +58,7 @@ require (
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
 	github.com/spf13/cast v1.3.0
 	github.com/spf13/viper v1.3.1
+	github.com/stretchr/objx v0.2.0
 	github.com/stretchr/testify v1.4.0
 	github.com/thoas/go-funk v0.0.0-20181020164546-fbae87fb5b5c
 	github.com/tidwall/gjson v1.3.0
@@ -65,8 +72,10 @@ require (
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/api v0.5.0
 	gopkg.in/go-playground/validator.v8 v8.18.2
+	gopkg.in/go-playground/validator.v9 v9.30.0
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v3 v3.0.0-20190924164351-c8b7dadae555
 )

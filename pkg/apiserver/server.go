@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-const HealthRoute = "/health"
-
 type Settings struct {
 	Port         string
 	Mode         string
@@ -61,7 +59,7 @@ func (a *ApiServer) Boot(config cfg.Config, logger mon.Logger) error {
 func (a *ApiServer) BootWithInterfaces(config cfg.Config, logger mon.Logger, router *gin.Engine, tracer tracing.Tracer, s *Settings) error {
 	addProfilingEndpoints(router)
 
-	router.GET(HealthRoute, func(c *gin.Context) {
+	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{})
 	})
 

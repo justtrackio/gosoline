@@ -27,13 +27,6 @@ func getMocks() (*monMocks.Logger, *configMocks.Config, *gin.Engine, tracing.Tra
 	return loggingMock, configMock, router, tracer
 }
 
-func TestHealthRoute(t *testing.T) {
-	ginEngine := setup(t)
-	httpRecorder := httptest.NewRecorder()
-
-	assertRouteReturnsResponse(t, ginEngine, httpRecorder, apiserver.HealthRoute, http.StatusOK)
-}
-
 func TestBaseProfilingEndpoint(t *testing.T) {
 	ginEngine := setup(t)
 	httpRecorder := httptest.NewRecorder()

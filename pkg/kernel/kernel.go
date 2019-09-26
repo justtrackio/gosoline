@@ -7,6 +7,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/jeremywohl/flatten"
+	"github.com/thoas/go-funk"
 	"os"
 	"os/signal"
 	"sort"
@@ -15,7 +17,24 @@ import (
 	"time"
 )
 
+type Settings struct {
+	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
+}
+
+//go:generate mockery -name=Kernel
+type Kernel interface {
+	Add(name string, module Module)
+	AddFactory(factory ModuleFactory)
+	Booted() <-chan struct{}
+	Running() <-chan struct{}
+	Run()
+	Stop(reason string)
+}
+
 type kernel struct {
+	config cfg.Config
+	logger mon.Logger
+
 	cfn     coffin.Coffin
 	sig     chan os.Signal
 	booted  chan struct{}
@@ -23,13 +42,36 @@ type kernel struct {
 	lck     sync.Mutex
 	wg      sync.WaitGroup
 
-	config cfg.Config
-	logger mon.Logger
-
+	settings    *Settings
 	factories   []ModuleFactory
 	modules     sync.Map
 	moduleCount int
 	isRunning   bool
+}
+
+func New(config cfg.Config, logger mon.Logger, settings *Settings) Kernel {
+	return &kernel{
+		sig: make(chan os.Signal, 1),
+
+		booted:  make(chan struct{}),
+		running: make(chan struct{}),
+
+		config: config,
+		logger: logger.WithChannel("kernel"),
+
+		settings:  settings,
+		factories: make([]ModuleFactory, 0),
+	}
+}
+
+// Booted channel will be closed as soon as all modules Boot functions were executed
+func (k *kernel) Booted() <-chan struct{} {
+	return k.booted
+}
+
+// Running channel will be closed as soon as all modules Run functions were invoked
+func (k *kernel) Running() <-chan struct{} {
+	return k.running
 }
 
 func (k *kernel) Add(name string, module Module) {
@@ -46,19 +88,9 @@ func (k *kernel) AddFactory(factory ModuleFactory) {
 	k.factories = append(k.factories, factory)
 }
 
-// Booted channel will be closed as soon as all modules Boot functions were executed
-func (k *kernel) Booted() <-chan struct{} {
-	return k.booted
-}
-
-// Running channel will be closed as soon as all modules Run functions were invoked
-func (k *kernel) Running() <-chan struct{} {
-	return k.running
-}
-
 func (k *kernel) Run() {
 	defer k.logger.Info("leaving kernel")
-	k.debugConfig()
+	k.logger.Info("starting kernel")
 
 	err := k.runFactories()
 	if err != nil {
@@ -90,6 +122,12 @@ func (k *kernel) Run() {
 	})
 
 	bootErr := bootCoffin.Wait()
+	debugErr := k.debugConfig()
+
+	if debugErr != nil {
+		k.logger.Error(bootErr, "can not debug config")
+		return
+	}
 
 	if bootErr != nil {
 		k.logger.Error(bootErr, "error during the boot process of the kernel")
@@ -128,10 +166,10 @@ func (k *kernel) Run() {
 	}
 
 	go func() {
-		timer := time.NewTimer(10 * time.Second)
+		timer := time.NewTimer(k.settings.KillTimeout)
 		<-timer.C
 
-		err := errors.New("kernel was not able to shutdown in 10 seconds")
+		err := fmt.Errorf("kernel was not able to shutdown in %v", k.settings.KillTimeout)
 		k.logger.Error(err, "kernel shutdown seems to be blocking.. exiting...")
 
 		os.Exit(1)
@@ -307,11 +345,20 @@ func (k *kernel) getModuleState(name string) *ModuleState {
 	return ms.(*ModuleState)
 }
 
-func (k *kernel) debugConfig() {
-	keys := k.config.AllKeys()
+func (k *kernel) debugConfig() error {
+	settings := k.config.AllSettings()
+	flattened, err := flatten.Flatten(settings, "", flatten.DotStyle)
+
+	if err != nil {
+		return fmt.Errorf("can not flatten config settings")
+	}
+
+	keys := funk.Keys(flattened).([]string)
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		k.logger.Infof("cfg %v=%v", key, k.config.Get(key))
+		k.logger.Infof("cfg %v=%v", key, flattened[key])
 	}
+
+	return nil
 }

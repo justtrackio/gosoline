@@ -1,13 +1,16 @@
 package cfg
 
 import (
-	"flag"
 	"fmt"
-	"github.com/getsentry/raven-go"
+	"github.com/applike/gosoline/pkg/refl"
+	"github.com/hashicorp/go-multierror"
+	"github.com/imdario/mergo"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
-	"io"
+	"github.com/spf13/cast"
+	"github.com/stretchr/objx"
+	"github.com/thoas/go-funk"
+	"gopkg.in/go-playground/validator.v9"
 	"os"
 	"reflect"
 	"regexp"
@@ -16,111 +19,93 @@ import (
 	"time"
 )
 
-type ConfigFlags map[string]string
-
-func (f *ConfigFlags) String() string {
-	return "my string representation"
-}
-
-func (f *ConfigFlags) Set(value string) error {
-	parts := strings.Split(value, "=")
-	(*f)[parts[0]] = parts[1]
-
-	return nil
-}
-
 type DecoderConfigOption func(*mapstructure.DecoderConfig)
+type LookupEnv func(key string) (string, bool)
 
 //go:generate mockery -name Config
 type Config interface {
 	AllKeys() []string
+	AllSettings() map[string]interface{}
 	Get(string) interface{}
 	GetDuration(string) time.Duration
 	GetInt(string) int
 	GetFloat64(string) float64
 	GetString(string) string
+	GetStringMap(key string) map[string]interface{}
 	GetStringMapString(string) map[string]string
 	GetStringSlice(string) []string
 	GetBool(string) bool
 	IsSet(string) bool
-	Unmarshal(output interface{}, opts ...DecoderConfigOption)
 	UnmarshalKey(key string, val interface{}, opts ...DecoderConfigOption)
-	AugmentString(str string) string
+}
+
+//go:generate mockery -name GosoConf
+type GosoConf interface {
+	Config
+	Option(options ...Option) error
 }
 
 type config struct {
-	application string
-	client      Viper
-	sentry      *raven.Client
-	lck         sync.Mutex
+	lck            sync.Mutex
+	lookupEnv      LookupEnv
+	errorHandlers  []ErrorHandler
+	settings       objx.Map
+	envKeyPrefix   string
+	envKeyReplacer *strings.Replacer
 }
 
-//go:generate mockery -name Viper
-type Viper interface {
-	AddConfigPath(string)
-	AllKeys() []string
-	AllSettings() map[string]interface{}
-	AutomaticEnv()
-	Get(string) interface{}
-	GetBool(string) bool
-	GetDuration(string) time.Duration
-	GetInt(string) int
-	GetFloat64(string) float64
-	GetString(string) string
-	GetStringMapString(string) map[string]string
-	GetStringSlice(string) []string
-	IsSet(string) bool
-	MergeConfig(io.Reader) error
-	Set(string, interface{})
-	SetConfigType(string)
-	SetDefault(string, interface{})
-	SetEnvKeyReplacer(*strings.Replacer)
-	SetEnvPrefix(string)
-	Unmarshal(interface{}, ...viper.DecoderConfigOption) error
-	UnmarshalKey(string, interface{}, ...viper.DecoderConfigOption) error
+func New() *config {
+	return NewWithInterfaces(os.LookupEnv)
 }
 
-func New(application string) *config {
-	sentry := raven.DefaultClient
-	client := viper.GetViper()
-
-	return NewWithInterfaces(sentry, client, application)
-}
-
-func NewWithInterfaces(sentry *raven.Client, client Viper, application string) *config {
-	c := &config{
-		application: application,
-		client:      client,
-		sentry:      sentry,
+func NewWithInterfaces(lookupEnv LookupEnv) *config {
+	cfg := &config{
+		lookupEnv:     lookupEnv,
+		errorHandlers: []ErrorHandler{defaultErrorHandler},
+		settings:      objx.MSI(),
 	}
 
-	c.configure()
-
-	return c
-}
-
-func (c *config) keyCheck(key string) {
-	if !c.client.IsSet(key) {
-		panic(fmt.Errorf("there is no value configured for key '%v'", key))
-	}
+	return cfg
 }
 
 func (c *config) AllKeys() []string {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	return c.client.AllKeys()
+	return funk.Keys(c.settings).([]string)
 }
 
-func (c *config) IsSet(key string) bool {
-	return c.client.IsSet(key)
+func (c *config) AllSettings() map[string]interface{} {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	return c.settings
 }
 
 func (c *config) Get(key string) interface{} {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
+	c.keyCheck(key)
+
 	return c.get(key)
+}
+
+func (c *config) GetBool(key string) bool {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	c.keyCheck(key)
+
+	data := c.get(key)
+	b, err := cast.ToBoolE(data)
+
+	if err != nil {
+		c.err(err, "can not cast value %v[%T] of key %s to bool", data, data, key)
+		return false
+	}
+
+	return b
 }
 
 func (c *config) GetDuration(key string) time.Duration {
@@ -128,7 +113,16 @@ func (c *config) GetDuration(key string) time.Duration {
 	defer c.lck.Unlock()
 
 	c.keyCheck(key)
-	return c.client.GetDuration(key)
+
+	data := c.get(key)
+	duration, err := cast.ToDurationE(data)
+
+	if err != nil {
+		c.err(err, "can not cast value %v[%T] of key %s to duration", data, data, key)
+		return time.Duration(0)
+	}
+
+	return duration
 }
 
 func (c *config) GetInt(key string) int {
@@ -136,7 +130,16 @@ func (c *config) GetInt(key string) int {
 	defer c.lck.Unlock()
 
 	c.keyCheck(key)
-	return c.client.GetInt(key)
+
+	data := c.get(key)
+	i, err := cast.ToIntE(data)
+
+	if err != nil {
+		c.err(err, "can not cast value %v[%T] of key %s to int", data, data, key)
+		return 0
+	}
+
+	return i
 }
 
 func (c *config) GetFloat64(key string) float64 {
@@ -144,17 +147,40 @@ func (c *config) GetFloat64(key string) float64 {
 	defer c.lck.Unlock()
 
 	c.keyCheck(key)
-	return c.client.GetFloat64(key)
+
+	data := c.get(key)
+	i, err := cast.ToFloat64E(data)
+
+	if err != nil {
+		c.err(err, "can not cast value %v[%T] of key %s to float64", data, data, key)
+		return 0.0
+	}
+
+	return i
 }
 
 func (c *config) GetString(key string) string {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
-	str := c.client.GetString(key)
+	return c.getString(key)
+}
 
-	return c.unsafeAugmentString(str)
+func (c *config) GetStringMap(key string) map[string]interface{} {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	c.keyCheck(key)
+
+	data := c.get(key)
+	strMap, err := cast.ToStringMapE(data)
+
+	if err != nil {
+		c.err(err, "can not cast value %v[%T] of key %s to map[string]interface{}", data, data, key)
+		return nil
+	}
+
+	return strMap
 }
 
 func (c *config) GetStringMapString(key string) map[string]string {
@@ -162,13 +188,20 @@ func (c *config) GetStringMapString(key string) map[string]string {
 	defer c.lck.Unlock()
 
 	c.keyCheck(key)
-	configMap := c.client.GetStringMapString(key)
 
-	for k, v := range configMap {
-		configMap[k] = c.unsafeAugmentString(v)
+	data := c.get(key)
+	strMap, err := cast.ToStringMapStringE(data)
+
+	if err != nil {
+		c.err(err, "can not cast value %v[%T] of key %s to map[string]string", data, data, key)
+		return nil
 	}
 
-	return configMap
+	for k, v := range strMap {
+		strMap[k] = c.augmentString(v)
+	}
+
+	return strMap
 }
 
 func (c *config) GetStringSlice(key string) []string {
@@ -177,51 +210,137 @@ func (c *config) GetStringSlice(key string) []string {
 
 	c.keyCheck(key)
 
-	strs := c.client.GetStringSlice(key)
-	for i := 0; i < len(strs); i++ {
-		strs[i] = c.unsafeAugmentString(strs[i])
-	}
-
-	return strs
-}
-
-func (c *config) GetBool(key string) bool {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
-	c.keyCheck(key)
-	return c.client.GetBool(key)
-}
-
-func (c *config) Unmarshal(output interface{}, opts ...DecoderConfigOption) {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
-	input := c.client.AllSettings()
-	err := c.decode(input, output)
+	data := c.get(key)
+	strSlice, err := cast.ToStringSliceE(data)
 
 	if err != nil {
-		c.err(err, "error unmarshalling")
-		return
+		c.err(err, "can not cast value %v[%T] of key %s to []string", data, data, key)
+		return nil
 	}
+
+	for i := 0; i < len(strSlice); i++ {
+		strSlice[i] = c.augmentString(strSlice[i])
+	}
+
+	return strSlice
+}
+
+func (c *config) IsSet(key string) bool {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	return c.isSet(key)
+}
+
+func (c *config) Option(options ...Option) error {
+	for _, opt := range options {
+		if err := opt(c); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (c *config) UnmarshalKey(key string, output interface{}, opts ...DecoderConfigOption) {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
-	input := c.unsafeGet(key)
+	//c.keyCheck(key)
 
-	err := c.decode(input, output)
+	finalSettings := make(map[string]interface{})
+	zeroSettings, err := c.readZeroValuesFromStruct(output)
+
+	if err != nil {
+		c.err(err, "can not get zero values for key: %s", key)
+		return
+	}
+
+	if err := mergo.Merge(&finalSettings, zeroSettings, mergo.WithOverride); err != nil {
+		c.err(err, "can not merge zero settings for key: %s", key)
+		return
+	}
+
+	defaultSettings := c.readDefaultSettingsFromStruct(output)
+
+	if err := mergo.Merge(&finalSettings, defaultSettings, mergo.WithOverride); err != nil {
+		c.err(err, "can not merge default settings for key: %s", key)
+		return
+	}
+
+	if c.settings.Has(key) {
+		settings, ok := c.settings.Get(key).Data().(map[string]interface{})
+
+		if !ok {
+			c.err(errors.New("value is not of type map[string]interface{}"), "can not get settings for key: %s", key)
+			return
+		}
+
+		if err := mergo.Merge(&finalSettings, settings, mergo.WithOverride); err != nil {
+			c.err(err, "can not merge settings for key: %s", key)
+			return
+		}
+	}
+
+	environmentKey := c.resolveEnvKey(c.envKeyPrefix, key)
+	environmentSettings := c.readEnvironment(environmentKey, finalSettings)
+
+	if err := mergo.Merge(&finalSettings, environmentSettings, mergo.WithOverride); err != nil {
+		c.err(err, "can not merge zero settings for key: %s", key)
+		return
+	}
+
+	c.mergeSettingsWithKeyPrefix(key, finalSettings)
+	err = c.decode(finalSettings, output)
 
 	if err != nil {
 		c.err(err, "error unmarshalling key: %s", key)
 		return
 	}
+
+	validate := validator.New()
+	err = validate.Struct(output)
+
+	if err == nil {
+		return
+	}
+
+	if _, ok := err.(*validator.InvalidValidationError); ok {
+		c.err(err, "can not validate result of key: %s", key)
+		return
+	}
+
+	errs := &multierror.Error{}
+	for _, validationErr := range err.(validator.ValidationErrors) {
+		err := fmt.Errorf("the setting %s with value %v does not match its requirement", validationErr.Field(), validationErr.Value())
+		errs = multierror.Append(errs, err)
+	}
+
+	if errs != nil {
+		c.err(errs, "validation failed for key: %s", key)
+		return
+	}
 }
 
-func (c *config) decode(input interface{}, output interface{}) error {
+func (c *config) augmentString(str string) string {
+	rp := regexp.MustCompile("{([\\w.]+)}")
+	matches := rp.FindAllStringSubmatch(str, -1)
+
+	for _, m := range matches {
+		replace := fmt.Sprint(c.getString(m[1]))
+		str = strings.Replace(str, m[0], replace, -1)
+	}
+
+	return str
+}
+
+func (c *config) err(err error, msg string, args ...interface{}) {
+	for i := 0; i < len(c.errorHandlers); i++ {
+		c.errorHandlers[i](err, msg, args...)
+	}
+}
+
+func (c *config) decode(input map[string]interface{}, output interface{}) error {
 	decoderConfig := &mapstructure.DecoderConfig{
 		Metadata:         nil,
 		Result:           output,
@@ -259,111 +378,164 @@ func (c *config) decodeAugmentHook() interface{} {
 		}
 
 		raw := data.(string)
-		return c.unsafeAugmentString(raw), nil
-	}
-}
-
-func (c *config) AugmentString(str string) string {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
-	return c.unsafeAugmentString(str)
-}
-
-func (c *config) unsafeAugmentString(str string) string {
-	rp := regexp.MustCompile("{([\\w]+)}")
-	matches := rp.FindAllStringSubmatch(str, -1)
-
-	for _, m := range matches {
-		replace := fmt.Sprint(c.unsafeGet(m[1]))
-		str = strings.Replace(str, m[0], replace, -1)
-	}
-
-	return str
-}
-
-func (c *config) configure() {
-	var err error
-
-	prefix := strings.Replace(c.application, "-", "_", -1)
-
-	c.client.SetEnvPrefix(prefix)
-	c.client.AutomaticEnv()
-	c.client.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	c.client.SetConfigType("yml")
-
-	err = c.readConfigFile("./config.dist.yml")
-
-	if err != nil {
-		c.err(err, "could not read default config file './config.dist.yml")
-		return
-	}
-
-	if c.client.GetString("env") == "test" {
-		return
-	}
-
-	flags := flag.NewFlagSet("cfg", flag.ContinueOnError)
-
-	configFile := flags.String("config", "", "path to a config file")
-	configFlags := make(ConfigFlags, 0)
-
-	flags.Var(&configFlags, "c", "cli flags")
-	_ = flags.Parse(os.Args[1:])
-
-	err = c.readConfigFile(*configFile)
-
-	if err != nil {
-		c.err(err, "could not read the provided config file: %s", *configFile)
-		return
-	}
-
-	for k, v := range configFlags {
-		c.client.Set(k, v)
+		return c.augmentString(raw), nil
 	}
 }
 
 func (c *config) get(key string) interface{} {
-	c.keyCheck(key)
-	value := c.client.Get(key)
-
-	// update nested values
-	values, isMap := value.(map[string]interface{})
-
-	if !isMap {
-		return value
+	value := map[string]interface{}{
+		key: c.settings.Get(key).Data(),
 	}
 
-	for nestedKeys := range values {
-		values[nestedKeys] = c.get(fmt.Sprintf("%s.%s", key, nestedKeys))
-	}
+	environment := c.readEnvironment(c.envKeyPrefix, value)
+	err := mergo.Merge(&value, environment, mergo.WithOverride)
 
-	return values
-}
-
-func (c *config) err(err error, msg string, args ...interface{}) {
-	err = errors.Wrapf(err, msg, args...)
-
-	c.sentry.CaptureErrorAndWait(err, nil)
-	panic(err)
-}
-
-func (c *config) readConfigFile(configFile string) error {
-	if configFile == "" {
+	if err != nil {
+		c.err(err, "can not merge environment into result")
 		return nil
 	}
 
-	file, err := os.Open(configFile)
-
-	if err != nil {
-		return err
-	}
-
-	err = c.client.MergeConfig(file)
-
-	return err
+	return value[key]
 }
 
-func (c *config) unsafeGet(key string) interface{} {
-	return c.get(key)
+func (c *config) getString(key string) string {
+	c.keyCheck(key)
+
+	data := c.get(key)
+	str, err := cast.ToStringE(data)
+
+	if err != nil {
+		panic(fmt.Errorf("can not cast value %v of key %s to string", data, key))
+	}
+
+	augmented := c.augmentString(str)
+
+	return augmented
+}
+
+func (c *config) isSet(key string) bool {
+	envKey := c.resolveEnvKey(c.envKeyPrefix, key)
+	if _, ok := c.lookupEnv(envKey); ok {
+		return true
+	}
+
+	return c.settings.Has(key)
+}
+
+func (c *config) keyCheck(key string) {
+	if c.isSet(key) {
+		return
+	}
+
+	err := fmt.Errorf("there is no config setting for key '%v'", key)
+	c.err(err, "key check failed")
+}
+
+func (c *config) mergeSettings(settings map[string]interface{}) {
+	for k, v := range settings {
+		c.settings.Set(k, v)
+	}
+}
+
+func (c *config) mergeSettingsWithKeyPrefix(prefix string, settings map[string]interface{}) {
+	for k, v := range settings {
+		key := fmt.Sprintf("%s.%s", prefix, k)
+		c.settings.Set(key, v)
+	}
+}
+
+func (c *config) readDefaultSettingsFromStruct(input interface{}) map[string]interface{} {
+	defaults := make(map[string]interface{})
+
+	it := reflect.TypeOf(input)
+	iv := reflect.ValueOf(input)
+
+	for {
+		if it.Kind() != reflect.Ptr {
+			break
+		}
+
+		it = it.Elem()
+		iv = iv.Elem()
+	}
+
+	var cfg, val string
+	var ok bool
+
+	for i := 0; i < it.NumField(); i++ {
+		if cfg, ok = it.Field(i).Tag.Lookup("cfg"); !ok {
+			continue
+		}
+
+		if it.Field(i).Type.Kind() == reflect.Struct {
+			nestedStruct := iv.Field(i).Interface()
+			defaults[cfg] = c.readDefaultSettingsFromStruct(nestedStruct)
+			continue
+		}
+
+		if val, ok = it.Field(i).Tag.Lookup("default"); !ok {
+			continue
+		}
+
+		defaults[cfg] = val
+	}
+
+	return defaults
+}
+
+func (c *config) readZeroValuesFromStruct(input interface{}) (map[string]interface{}, error) {
+	if refl.IsSlice(input) {
+		return map[string]interface{}{}, nil
+	}
+
+	zeroValues := make(map[string]interface{})
+	decoderConfig := &mapstructure.DecoderConfig{
+		Result:  &zeroValues,
+		TagName: "cfg",
+	}
+
+	decoder, err := mapstructure.NewDecoder(decoderConfig)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "con not create decoder to get zero values")
+	}
+
+	err = decoder.Decode(input)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "con not decode zero values")
+	}
+
+	return zeroValues, nil
+}
+
+func (c *config) readEnvironment(prefix string, input map[string]interface{}) map[string]interface{} {
+	environment := make(map[string]interface{})
+
+	for k, v := range input {
+		key := c.resolveEnvKey(prefix, k)
+
+		if nested, ok := v.(map[string]interface{}); ok {
+			environment[k] = c.readEnvironment(key, nested)
+			continue
+		}
+
+		if envValue, ok := c.lookupEnv(key); ok {
+			environment[k] = envValue
+		}
+	}
+
+	return environment
+}
+
+func (c *config) resolveEnvKey(prefix string, key string) string {
+	if len(prefix) > 0 {
+		key = strings.Join([]string{prefix, key}, "_")
+	}
+
+	if c.envKeyReplacer != nil {
+		key = c.envKeyReplacer.Replace(key)
+	}
+
+	return strings.ToUpper(key)
 }

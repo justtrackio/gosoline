@@ -2,21 +2,74 @@ package mon_test
 
 import (
 	"bytes"
+	"context"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func TestClient_WithFields(t *testing.T) {
+func TestLogger_WithChannel(t *testing.T) {
+	gosoLog, out := getLogger()
+
+	gosoLog.Info("msg1")
+
+	expected := `{"fields":{},"context":{},"channel": "default", "level":2,"level_name":"info","message":"msg1","timestamp":449884800}`
+	assert.JSONEq(t, expected, out.String(), "output should match")
+
+	out.Reset()
+	logger := gosoLog.WithChannel("newChannel")
+	logger.Info("msg2")
+
+	expected = `{"fields":{},"context":{},"channel": "newChannel", "level":2,"level_name":"info","message":"msg2","timestamp":449884800}`
+	assert.JSONEq(t, expected, out.String(), "output should match")
+
+}
+
+func TestLogger_WithContext(t *testing.T) {
 	logger, out := getLogger()
+	_ = logger.Option(mon.WithContextFieldsResolver(mon.ContextLoggerFieldsResolver))
 
-	logger.WithFields(mon.Fields{
-		"foo": "bar",
-		"faz": 1337,
-	}).Info("foobar")
+	ctx := mon.NewLoggerContext(context.Background(), mon.Fields{
+		"field1": "a",
+		"field2": 1,
+	})
 
-	expected := `{"fields":{"faz":1337,"foo":"bar"},"channel": "default", "level":2,"level_name":"info","message":"foobar","timestamp":449884800}`
+	logger.WithContext(ctx).Info("msg")
+
+	expected := `{"fields":{},"context":{"field1":"a","field2":1},"channel": "default", "level":2,"level_name":"info","message":"msg","timestamp":449884800}`
+	assert.JSONEq(t, expected, out.String(), "output should match")
+}
+
+func TestClient_WithFields(t *testing.T) {
+	logger0, out := getLogger()
+
+	logger0.Info("test")
+	expected0 := `{"fields":{},"context":{},"channel": "default", "level":2,"level_name":"info","message":"test","timestamp":449884800}`
+	assert.JSONEq(t, expected0, out.String(), "output should match")
+
+	out.Reset()
+	logger1 := logger0.WithFields(mon.Fields{
+		"field1": "a",
+		"field2": 1,
+	})
+	logger1.Info("foobar")
+
+	expected := `{"fields":{"field1":"a","field2":1},"context":{},"channel": "default", "level":2,"level_name":"info","message":"foobar","timestamp":449884800}`
+	assert.JSONEq(t, expected, out.String(), "output should match")
+
+	out.Reset()
+	logger2 := logger1.WithFields(mon.Fields{
+		"field3": 0.3,
+	})
+	logger2.Info("msg2")
+
+	expected = `{"fields":{"field1":"a","field2":1, "field3":0.3},"context":{},"channel": "default", "level":2,"level_name":"info","message":"msg2","timestamp":449884800}`
+	assert.JSONEq(t, expected, out.String(), "output should match")
+
+	out.Reset()
+	logger0.Info("no fields")
+	expected = `{"fields":{},"context":{},"channel": "default", "level":2,"level_name":"info","message":"no fields","timestamp":449884800}`
 	assert.JSONEq(t, expected, out.String(), "output should match")
 }
 
@@ -25,7 +78,7 @@ func TestClient_Info(t *testing.T) {
 
 	logger.Info("bla")
 
-	expected := `{"fields":{},"channel": "default", "level":2,"level_name":"info","message":"bla","timestamp":449884800}`
+	expected := `{"fields":{},"context":{},"channel": "default", "level":2,"level_name":"info","message":"bla","timestamp":449884800}`
 	assert.JSONEq(t, expected, out.String(), "output should match")
 }
 
@@ -34,15 +87,20 @@ func TestClient_Infof(t *testing.T) {
 
 	logger.Infof("this is %s formatted %v with an integer of %d", "a", "string", 10)
 
-	expected := `{"fields":{},"channel": "default", "level":2,"level_name":"info","message":"this is a formatted string with an integer of 10","timestamp":449884800}`
+	expected := `{"fields":{},"context":{},"channel": "default", "level":2,"level_name":"info","message":"this is a formatted string with an integer of 10","timestamp":449884800}`
 	assert.JSONEq(t, expected, out.String(), "output should match")
 }
 
-func getLogger() (mon.Logger, *bytes.Buffer) {
+func getLogger() (mon.GosoLog, *bytes.Buffer) {
 	clock := clockwork.NewFakeClock()
 	out := bytes.NewBuffer([]byte{})
 
-	client := mon.NewLoggerWithInterfaces(clock, out, mon.Trace, mon.FormatJson, mon.Tags{}, mon.ConfigValues{})
+	client := mon.NewLoggerWithInterfaces(clock, out)
+	err := client.Option(mon.WithFormat(mon.FormatJson))
+
+	if err != nil {
+		panic(err)
+	}
 
 	return client, out
 }

@@ -35,7 +35,7 @@ var levels = map[string]int{
 	Panic: 6,
 }
 
-func levelPrio(level string) int {
+func levelPriority(level string) int {
 	return levels[level]
 }
 
@@ -47,13 +47,20 @@ const (
 	FormatJson       = "json"
 )
 
-type Tags map[string]string
-type TagsFromConfig map[string]string
+type Tags map[string]interface{}
 type ConfigValues map[string]interface{}
 type Fields map[string]interface{}
 type EcsMetadata map[string]interface{}
 
-type formatter func(clock clockwork.Clock, channel string, level string, msg string, logErr error, fields Fields) ([]byte, error)
+type Metadata struct {
+	channel       string
+	context       context.Context
+	contextFields Fields
+	fields        Fields
+	tags          Tags
+}
+
+type formatter func(clock clockwork.Clock, level string, msg string, err error, data *Metadata) ([]byte, error)
 
 var formatters = map[string]formatter{
 	FormatConsole:    formatterConsole,
@@ -67,103 +74,116 @@ type Sentry interface {
 	Capture(packet *raven.Packet, captureTags map[string]string) (eventID string, ch chan error)
 }
 
+type GosoLog interface {
+	Logger
+	Option(options ...Option) error
+}
+
 //go:generate mockery -name Logger
 type Logger interface {
-	WithChannel(channel string) Logger
-	WithContext(ctx context.Context) Logger
-	WithFields(fields map[string]interface{}) Logger
-	Info(args ...interface{})
-	Infof(msg string, args ...interface{})
 	Debug(args ...interface{})
 	Debugf(msg string, args ...interface{})
-	Warn(args ...interface{})
-	Warnf(msg string, args ...interface{})
 	Error(err error, msg string)
 	Errorf(err error, msg string, args ...interface{})
 	Fatal(err error, msg string)
 	Fatalf(err error, msg string, args ...interface{})
+	Info(args ...interface{})
+	Infof(msg string, args ...interface{})
 	Panic(err error, msg string)
 	Panicf(err error, msg string, args ...interface{})
+	Warn(args ...interface{})
+	Warnf(msg string, args ...interface{})
+	WithChannel(channel string) Logger
+	WithContext(ctx context.Context) Logger
+	WithFields(fields map[string]interface{}) Logger
 }
 
 type logger struct {
-	clock     clockwork.Clock
-	output    io.Writer
-	outputLck *sync.Mutex
-	hooks     []LoggerHook
+	clock       clockwork.Clock
+	output      io.Writer
+	outputLck   *sync.Mutex
+	ctxResolver []ContextFieldsResolver
+	hooks       []LoggerHook
 
 	format string
 	level  int
 
-	tags         Tags
-	configValues ConfigValues
-	channel      string
-	fields       Fields
-	context      context.Context
+	data Metadata
+}
 
-	ecsLck       *sync.Mutex
-	ecsAvailable bool
-	ecsMetadata  EcsMetadata
+func NewLogger() *logger {
+	return NewLoggerWithInterfaces(clockwork.NewRealClock(), os.Stdout)
+}
+
+func NewLoggerWithInterfaces(clock clockwork.Clock, out io.Writer) *logger {
+	logger := &logger{
+		clock:       clock,
+		output:      out,
+		outputLck:   &sync.Mutex{},
+		ctxResolver: make([]ContextFieldsResolver, 0),
+		hooks:       make([]LoggerHook, 0),
+		level:       levelPriority(Info),
+		format:      FormatConsole,
+		data: Metadata{
+			channel:       ChannelDefault,
+			contextFields: make(Fields),
+			fields:        make(Fields),
+			tags:          make(Tags),
+		},
+	}
+
+	return logger
 }
 
 func (l *logger) copy() *logger {
 	return &logger{
-		clock:        l.clock,
-		outputLck:    l.outputLck,
-		output:       l.output,
-		hooks:        l.hooks,
-		level:        l.level,
-		format:       l.format,
-		tags:         l.tags,
-		configValues: l.configValues,
-		channel:      l.channel,
-		fields:       l.fields,
-		context:      l.context,
-		ecsLck:       l.ecsLck,
-		ecsAvailable: l.ecsAvailable,
-		ecsMetadata:  l.ecsMetadata,
+		clock:       l.clock,
+		outputLck:   l.outputLck,
+		output:      l.output,
+		ctxResolver: l.ctxResolver,
+		hooks:       l.hooks,
+		level:       l.level,
+		format:      l.format,
+		data:        l.data,
 	}
 }
 
-func (l *logger) addHook(hook LoggerHook) {
-	l.hooks = append(l.hooks, hook)
+func (l *logger) Option(options ...Option) error {
+	for _, opt := range options {
+		if err := opt(l); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (l *logger) WithChannel(channel string) Logger {
 	cpy := l.copy()
-	cpy.channel = channel
+	cpy.data.channel = channel
 
 	return cpy
 }
 
 func (l *logger) WithContext(ctx context.Context) Logger {
-	span := tracing.GetSpan(ctx)
-
-	if span == nil {
+	if ctx == nil {
 		return l
 	}
 
 	cpy := l.copy()
-	cpy.context = ctx
+	cpy.data.context = ctx
 
-	return cpy.WithFields(Fields{
-		"trace_id": span.GetTrace().GetTraceId(),
-	})
+	for _, r := range l.ctxResolver {
+		newContextFields := r(ctx)
+		cpy.data.contextFields = mergeMapStringInterface(cpy.data.contextFields, newContextFields)
+	}
+
+	return cpy
 }
 
 func (l *logger) WithFields(fields map[string]interface{}) Logger {
-	newFields := make(Fields, len(l.fields)+len(fields))
-
-	for k, v := range l.fields {
-		newFields[k] = v
-	}
-
-	for k, v := range fields {
-		newFields[k] = v
-	}
-
 	cpy := l.copy()
-	cpy.fields = newFields
+	cpy.data.fields = mergeMapStringInterface(l.data.fields, fields)
 
 	return cpy
 }
@@ -229,8 +249,8 @@ func (l *logger) Panicf(err error, msg string, args ...interface{}) {
 }
 
 func (l *logger) logError(level string, err error, msg string) {
-	if l.context != nil {
-		span := tracing.GetSpan(l.context)
+	if l.data.context != nil {
+		span := tracing.GetSpan(l.data.context)
 
 		if span != nil {
 			span.AddError(err)
@@ -249,25 +269,15 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 		return
 	}
 
-	for k, v := range l.fields {
-		switch v := v.(type) {
-		case error:
-			// Otherwise errors are ignored by `encoding/json`
-			fields[k] = v.Error()
-		default:
-			fields[k] = v
-		}
-	}
-
-	ecsMetadata := l.readEcsMetadata()
+	fields = mergeMapStringInterface(l.data.fields, fields)
 
 	for _, h := range l.hooks {
-		if err := h.Fire(level, msg, logErr, fields, l.tags, l.configValues, l.context, ecsMetadata); err != nil {
+		if err := h.Fire(level, msg, logErr, &l.data); err != nil {
 			l.err(err)
 		}
 	}
 
-	buffer, err := formatters[l.format](l.clock, l.channel, level, msg, logErr, fields)
+	buffer, err := formatters[l.format](l.clock, level, msg, logErr, &l.data)
 
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
@@ -277,7 +287,7 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 }
 
 func (l *logger) err(err error) {
-	buffer, err := formatters[l.format](l.clock, l.channel, Error, err.Error(), err, Fields{})
+	buffer, err := formatters[l.format](l.clock, Error, err.Error(), err, &l.data)
 
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
@@ -335,4 +345,28 @@ func getStackTrace(depthSkip int) string {
 		strBuilder.WriteString(traces[i])
 	}
 	return strBuilder.String()
+}
+
+func mergeMapStringInterface(receiver map[string]interface{}, input map[string]interface{}) map[string]interface{} {
+	for k, v := range input {
+		switch v := v.(type) {
+		case error:
+			// Otherwise errors are ignored by `encoding/json`
+			input[k] = v.Error()
+		default:
+			input[k] = v
+		}
+	}
+
+	newMap := make(map[string]interface{}, len(receiver)+len(input))
+
+	for k, v := range receiver {
+		newMap[k] = v
+	}
+
+	for k, v := range input {
+		newMap[k] = v
+	}
+
+	return newMap
 }

@@ -27,15 +27,17 @@ func (_m *Config) AllKeys() []string {
 	return r0
 }
 
-// AugmentString provides a mock function with given fields: str
-func (_m *Config) AugmentString(str string) string {
-	ret := _m.Called(str)
+// AllSettings provides a mock function with given fields:
+func (_m *Config) AllSettings() map[string]interface{} {
+	ret := _m.Called()
 
-	var r0 string
-	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(str)
+	var r0 map[string]interface{}
+	if rf, ok := ret.Get(0).(func() map[string]interface{}); ok {
+		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]interface{})
+		}
 	}
 
 	return r0
@@ -127,6 +129,22 @@ func (_m *Config) GetString(_a0 string) string {
 	return r0
 }
 
+// GetStringMap provides a mock function with given fields: key
+func (_m *Config) GetStringMap(key string) map[string]interface{} {
+	ret := _m.Called(key)
+
+	var r0 map[string]interface{}
+	if rf, ok := ret.Get(0).(func(string) map[string]interface{}); ok {
+		r0 = rf(key)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]interface{})
+		}
+	}
+
+	return r0
+}
+
 // GetStringMapString provides a mock function with given fields: _a0
 func (_m *Config) GetStringMapString(_a0 string) map[string]string {
 	ret := _m.Called(_a0)
@@ -171,18 +189,6 @@ func (_m *Config) IsSet(_a0 string) bool {
 	}
 
 	return r0
-}
-
-// Unmarshal provides a mock function with given fields: output, opts
-func (_m *Config) Unmarshal(output interface{}, opts ...cfg.DecoderConfigOption) {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, output)
-	_ca = append(_ca, _va...)
-	_m.Called(_ca...)
 }
 
 // UnmarshalKey provides a mock function with given fields: key, val, opts

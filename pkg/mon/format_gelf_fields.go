@@ -7,28 +7,34 @@ import (
 	"os"
 )
 
-func formatterGelfFields(clock clockwork.Clock, channel string, level string, msg string, logErr error, fields Fields) ([]byte, error) {
-	data := make(Fields, 8)
+func formatterGelfFields(clock clockwork.Clock, level string, msg string, err error, data *Metadata) ([]byte, error) {
+	gelf := make(Fields, 8)
 
-	if logErr != nil {
-		data["_err"] = logErr.Error()
+	if err != nil {
+		gelf["_err"] = err.Error()
 	}
 
-	jsonFields, err := json.Marshal(fields)
+	jsonFields, err := json.Marshal(data.fields)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal fields to JSON, %v", err)
 	}
-	data["_fields"] = string(jsonFields)
+	gelf["_fields"] = string(jsonFields)
 
-	data["version"] = "1.1"
-	data["short_message"] = msg
-	data["timestamp"] = round((float64(clock.Now().UnixNano())/float64(1000000))/float64(1000), 4)
-	data["channel"] = channel
-	data["level"] = levels[level]
-	data["level_name"] = level
-	data["_pid"] = os.Getpid()
+	contextFields, err := json.Marshal(data.fields)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal fields to JSON, %v", err)
+	}
+	gelf["_context"] = string(contextFields)
 
-	serialized, err := json.Marshal(data)
+	gelf["version"] = "1.1"
+	gelf["short_message"] = msg
+	gelf["timestamp"] = round((float64(clock.Now().UnixNano())/float64(1000000))/float64(1000), 4)
+	gelf["channel"] = data.channel
+	gelf["level"] = levels[level]
+	gelf["level_name"] = level
+	gelf["_pid"] = os.Getpid()
+
+	serialized, err := json.Marshal(gelf)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal log message to JSON, %v", err)
 	}
