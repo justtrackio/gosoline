@@ -79,35 +79,39 @@ func TestRedisSet(t *testing.T) {
 func TestRedisSetWithOOM(t *testing.T) {
 	var ttl time.Duration
 
-	m := redismock.NewMock()
+	settings := redis.Settings{}
+	writer := mocks.NewMetricWriterMockedAll()
+	redisMock := redismock.NewMock()
 
-	m.On("Set").Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
-	m.On("Set").Return(baseRedis.NewStatusResult("", nil)).Once()
+	redisMock.On("Set").Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
+	redisMock.On("Set").Return(baseRedis.NewStatusResult("", nil)).Once()
 
 	logger := mocks.NewLoggerMockedAll()
-	c := redis.NewRedisClient(logger, m, "")
+	c := redis.NewRedisClientWithInterfaces(redisMock, logger, writer, &settings)
 
 	err := c.Set("key", "value", ttl)
 
 	assert.Nil(t, err, "there should be no error on Set with backoff")
-	m.AssertExpectations(t)
+	redisMock.AssertExpectations(t)
 }
 
 func TestRedisSetWithError(t *testing.T) {
 	var ttl time.Duration
 
-	m := redismock.NewMock()
+	settings := redis.Settings{}
+	writer := mocks.NewMetricWriterMockedAll()
+	redisMock := redismock.NewMock()
 
-	m.On("Set").Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
-	m.On("Set").Return(baseRedis.NewStatusResult("", nil)).Times(0)
+	redisMock.On("Set").Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
+	redisMock.On("Set").Return(baseRedis.NewStatusResult("", nil)).Times(0)
 
 	logger := mocks.NewLoggerMockedAll()
-	c := redis.NewRedisClient(logger, m, "")
+	c := redis.NewRedisClientWithInterfaces(redisMock, logger, writer, &settings)
 
 	err := c.Set("key", "value", ttl)
 
 	assert.NotNil(t, err, "there should be an error on Set")
-	m.AssertExpectations(t)
+	redisMock.AssertExpectations(t)
 }
 
 func buildClient() (*miniredis.Miniredis, redis.Client) {
@@ -116,8 +120,11 @@ func buildClient() (*miniredis.Miniredis, redis.Client) {
 		panic(err)
 	}
 
+	settings := redis.Settings{}
+	settings.Address = s.Addr()
+	settings.Mode = redis.RedisModeLocal
 	logger := mocks.NewLoggerMockedAll()
-	c := redis.GetClientWithAddress(logger, s.Addr(), "")
+	c := redis.GetClientFromSettings(logger, &settings)
 
 	return s, c
 }

@@ -1,11 +1,13 @@
 package redis
 
 import (
+	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/cenkalti/backoff"
 	baseRedis "github.com/go-redis/redis"
+	"net"
 	"strings"
 	"time"
 )
@@ -33,24 +35,41 @@ type Client interface {
 	HGet(key, field string) (string, error)
 	HSet(key, field string, value interface{}) error
 
+	IsAlive() bool
+
 	Pipeline() baseRedis.Pipeliner
 }
 
-type redisClient struct {
-	base   baseRedis.Cmdable
-	logger mon.Logger
-	metric mon.MetricWriter
-
-	name string
+type Settings struct {
+	cfg.AppId
+	Name            string
+	Mode            string
+	Address         string
+	BackoffSettings BackoffSettings
 }
 
-func NewRedisClient(logger mon.Logger, client baseRedis.Cmdable, name string) Client {
+type BackoffSettings struct {
+	InitialInterval     time.Duration `cfg:"initial_interval"`
+	RandomizationFactor float64       `cfg:"randomization_factor"`
+	Multiplier          float64       `cfg:"multiplier"`
+	MaxInterval         time.Duration `cfg:"max_interval"`
+	MaxElapsedTime      time.Duration `cfg:"max_elapsed_time"`
+}
+
+type redisClient struct {
+	base     baseRedis.Cmdable
+	logger   mon.Logger
+	metric   mon.MetricWriter
+	settings *Settings
+}
+
+func NewRedisClient(logger mon.Logger, redisSettings *Settings) Client {
 	defaults := mon.MetricData{
 		{
 			Priority:   mon.PriorityHigh,
 			MetricName: metricClientBackoffCount,
 			Dimensions: map[string]string{
-				"Redis": name,
+				"Redis": redisSettings.Name,
 			},
 			Unit:  mon.UnitCount,
 			Value: 0.0,
@@ -59,14 +78,35 @@ func NewRedisClient(logger mon.Logger, client baseRedis.Cmdable, name string) Cl
 
 	metric := mon.NewMetricDaemonWriter(defaults...)
 	logger = logger.WithFields(mon.Fields{
-		"redis": name,
+		"redis": redisSettings.Name,
 	})
 
+	dialer := dialerLocal(redisSettings)
+
+	if redisSettings.Mode == RedisModeDiscover {
+		dialer = dialerDiscovery(redisSettings)
+	}
+
+	baseClient := baseRedis.NewClient(&baseRedis.Options{
+		Dialer: dialer,
+	})
+
+	redisClient := &redisClient{
+		logger:   logger,
+		metric:   metric,
+		settings: redisSettings,
+		base:     baseClient,
+	}
+
+	return redisClient
+}
+
+func NewRedisClientWithInterfaces(baseRedis baseRedis.Cmdable, logger mon.Logger, writer mon.MetricWriter, settings *Settings) Client {
 	return &redisClient{
-		base:   client,
-		logger: logger,
-		metric: metric,
-		name:   name,
+		base:     baseRedis,
+		logger:   logger,
+		metric:   writer,
+		settings: settings,
 	}
 }
 
@@ -81,7 +121,7 @@ func (c *redisClient) Exists(keys ...string) (int64, error) {
 }
 
 func (c *redisClient) Set(key string, value interface{}, expiration time.Duration) error {
-	res := c.preventOOMByBackoff(func() (interface{}, error) {
+	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
 		cmd := c.base.Set(key, value, expiration)
 
 		return cmd, cmd.Err()
@@ -107,7 +147,7 @@ func (c *redisClient) LLen(key string) (int64, error) {
 }
 
 func (c *redisClient) RPush(key string, values ...interface{}) (int64, error) {
-	res := c.preventOOMByBackoff(func() (interface{}, error) {
+	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
 		cmd := c.base.RPush(key, values...)
 
 		return cmd, cmd.Err()
@@ -121,7 +161,7 @@ func (c *redisClient) HGet(key, field string) (string, error) {
 }
 
 func (c *redisClient) HSet(key, field string, value interface{}) error {
-	res := c.preventOOMByBackoff(func() (interface{}, error) {
+	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
 		cmd := c.base.HSet(key, field, value)
 
 		return cmd, cmd.Err()
@@ -130,44 +170,87 @@ func (c *redisClient) HSet(key, field string, value interface{}) error {
 	return res.(*baseRedis.BoolCmd).Err()
 }
 
+func (c *redisClient) IsAlive() bool {
+	return c.base.Ping().Err() == nil
+}
+
 func (c *redisClient) Pipeline() baseRedis.Pipeliner {
 	return c.base.Pipeline()
 }
 
-func (c *redisClient) preventOOMByBackoff(wrappedCmd func() (interface{}, error)) interface{} {
+func (c *redisClient) attemptPreventingFailuresByBackoff(wrappedCmd func() (interface{}, error)) interface{} {
+	backOffSettings := c.settings.BackoffSettings
+
 	backoffConfig := backoff.NewExponentialBackOff()
-	backoffConfig.InitialInterval = 1 * time.Second
-	backoffConfig.MaxInterval = 30 * time.Second
-	backoffConfig.Multiplier = 3
-	backoffConfig.RandomizationFactor = 0.2
-	backoffConfig.MaxElapsedTime = 0
+	backoffConfig.InitialInterval = backOffSettings.InitialInterval * time.Second
+	backoffConfig.MaxInterval = backOffSettings.MaxInterval * time.Second
+	backoffConfig.Multiplier = backOffSettings.Multiplier
+	backoffConfig.RandomizationFactor = backOffSettings.RandomizationFactor
+	backoffConfig.MaxElapsedTime = backOffSettings.MaxElapsedTime
 
 	var res interface{}
 	var err error
 
-	notify := func(error, time.Duration) {
-		c.logger.Infof("redis %s is blocking due to server being out of memory", c.name)
+	notify := func(err error, duration time.Duration) {
+		c.logger.WithFields(mon.Fields{
+			"name":     c.settings.Name,
+			"err":      err,
+			"duration": duration,
+		}).Infof("redis %s is blocking due to error %s", c.settings.Name, err.Error())
+
 		c.metric.WriteOne(&mon.MetricDatum{
 			MetricName: metricClientBackoffCount,
 			Value:      1.0,
 			Dimensions: map[string]string{
-				"Redis": c.name,
+				"Redis": c.settings.Name,
 			},
 		})
 	}
 
 	operation := func() error {
 		res, err = wrappedCmd()
-
-		if err != nil && !strings.HasPrefix(err.Error(), "OOM") {
-			err = backoff.Permanent(err)
+		if err == nil {
+			return nil
 		}
 
-		return err
+		if strings.HasPrefix(err.Error(), "OOM") {
+			return err
+		}
+
+		return backoff.Permanent(err)
 	}
 
-	// No further error handling as the wrapped redis error is handled elsewhere
 	err = backoff.RetryNotify(operation, backoffConfig, notify)
 
 	return res
+}
+
+func dialerDiscovery(settings *Settings) func() (net.Conn, error) {
+	return func() (net.Conn, error) {
+		address := settings.Address
+
+		if address == "" {
+			address = fmt.Sprintf("%s.redis.%s.%s", settings.Name, settings.Environment, settings.Family)
+		}
+
+		_, srvs, err := net.LookupSRV("", "", address)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if len(srvs) != 1 {
+			return nil, errors.New(fmt.Sprintf("redis instance count mismatch. there should be exactly one redis instance, found: %v", len(srvs)))
+		}
+
+		address = fmt.Sprintf("%v:%v", srvs[0].Target, srvs[0].Port)
+
+		return net.Dial("tcp", address)
+	}
+}
+
+func dialerLocal(settings *Settings) func() (net.Conn, error) {
+	return func() (net.Conn, error) {
+		return net.Dial("tcp", settings.Address)
+	}
 }
