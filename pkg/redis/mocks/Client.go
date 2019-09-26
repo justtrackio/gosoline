@@ -146,6 +146,20 @@ func (_m *Client) HSet(key string, field string, value interface{}) error {
 	return r0
 }
 
+// IsAlive provides a mock function with given fields:
+func (_m *Client) IsAlive() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // LLen provides a mock function with given fields: key
 func (_m *Client) LLen(key string) (int64, error) {
 	ret := _m.Called(key)

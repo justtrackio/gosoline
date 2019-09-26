@@ -1,97 +1,70 @@
 package redis
 
 import (
-	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/go-redis/redis"
-	"net"
 	"sync"
+	"time"
 )
 
 const (
-	redisModeLocal    = "local"
-	redisModeDiscover = "discover"
 	DefaultClientName = "default"
+	RedisModeDiscover = "discover"
+	RedisModeLocal    = "local"
 )
 
 var mutex sync.Mutex
 var clients = map[string]Client{}
 
-type selection struct {
-	cfg.AppId
-	name string
-	mode string
-	addr string
-}
-
-func readSelection(config cfg.Config, name string) *selection {
-	modeStr := fmt.Sprintf("redis_%s_mode", name)
-	addrStr := fmt.Sprintf("redis_%s_addr", name)
-
-	sel := &selection{}
-	sel.PadFromConfig(config)
-
-	sel.name = name
-	sel.mode = config.GetString(modeStr)
-	sel.addr = config.GetString(addrStr)
-
-	return sel
-}
-
 func GetClient(config cfg.Config, logger mon.Logger, name string) Client {
-	sel := readSelection(config, name)
+	settings := readSettings(config, name)
 
-	switch sel.mode {
-	case redisModeLocal:
-		logger.Infof("using local redis %s with address %s", name, sel.addr)
-		return GetClientWithAddress(logger, sel.addr, sel.name)
-	case redisModeDiscover:
-		return GetClientFromDiscovery(logger, sel)
-	}
-
-	return nil
+	return GetClientFromSettings(logger, settings)
 }
 
-func GetClientFromDiscovery(logger mon.Logger, sel *selection) Client {
-	addr := sel.addr
-
-	if addr == "" {
-		addr = fmt.Sprintf("%s.redis.%s.%s", sel.name, sel.Environment, sel.Family)
-	}
-
-	_, srvs, err := net.LookupSRV("", "", addr)
-
-	if err != nil {
-		logger.Fatal(err, "could not lookup the redis src dns record")
-	}
-
-	if len(srvs) != 1 {
-		msg := fmt.Sprintf("there should be exactly one redis instance, found: %v", len(srvs))
-		logger.Fatal(errors.New("redis instance count mismatch"), msg)
-	}
-
-	addr = fmt.Sprintf("%v:%v", srvs[0].Target, srvs[0].Port)
-	logger.Infof("found redis server %s with address %s", sel.name, addr)
-
-	return GetClientWithAddress(logger, addr, sel.name)
-}
-
-func GetClientWithAddress(logger mon.Logger, address, name string) Client {
+func GetClientFromSettings(logger mon.Logger, settings *Settings) Client {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if client, ok := clients[address]; ok {
+	if client, ok := clients[settings.Address]; ok {
 		return client
 	}
 
-	baseClient := redis.NewClient(&redis.Options{
-		Network: "tcp",
-		Addr:    address,
-	})
+	clients[settings.Address] = NewRedisClient(logger, settings)
 
-	clients[address] = NewRedisClient(logger, baseClient, name)
+	return clients[settings.Address]
+}
 
-	return clients[address]
+func readSettings(config cfg.Config, name string) *Settings {
+	modeStr := fmt.Sprintf("redis_%s_mode", name)
+	addrStr := fmt.Sprintf("redis_%s_addr", name)
+
+	settings := &Settings{}
+	settings.PadFromConfig(config)
+
+	settings.Name = name
+	settings.Mode = config.GetString(modeStr)
+	settings.Address = config.GetString(addrStr)
+	settings.BackoffSettings = readBackoffSettings(config, name)
+
+	return settings
+}
+
+func readBackoffSettings(config cfg.Config, name string) BackoffSettings {
+	backoffSettingsStr := fmt.Sprintf("redis_%s_backoff", name)
+
+	settings := BackoffSettings{
+		InitialInterval:     1 * time.Second,
+		RandomizationFactor: 0.2,
+		Multiplier:          3.0,
+		MaxInterval:         30 * time.Second,
+		MaxElapsedTime:      0 * time.Second,
+	}
+
+	if config.IsSet(backoffSettingsStr) {
+		config.UnmarshalKey(backoffSettingsStr, &settings)
+	}
+
+	return settings
 }
