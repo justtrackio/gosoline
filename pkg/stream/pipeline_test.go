@@ -34,11 +34,12 @@ func runPipelineWithSettings(t *testing.T, settings *stream.PipelineSettings, ct
 		Filename: "testdata/file_input.json",
 	})
 	output := stream.NewOutputMemory()
+	consumer := stream.NewConsumerAcknowledgeWithInterfaces(logger, input)
 
 	callback := &callback{}
 	pipe := stream.NewPipeline(callback)
 
-	err := pipe.BootWithInterfaces(logger, metric, input, output, settings)
+	err := pipe.BootWithInterfaces(logger, metric, consumer, output, settings)
 	assert.NoError(t, err, "the pipeline should boot without an error")
 
 	err = pipe.Run(ctx)

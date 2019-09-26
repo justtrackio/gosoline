@@ -31,7 +31,7 @@ type Pipeline struct {
 	metric   mon.MetricWriter
 	cfn      coffin.Coffin
 	lck      sync.Mutex
-	input    Input
+	consumer ConsumerAcknowledge
 	output   Output
 	ticker   *time.Ticker
 	batch    []*Message
@@ -61,18 +61,20 @@ func (p *Pipeline) Boot(config cfg.Config, logger mon.Logger) error {
 	input := NewConfigurableInput(config, logger, "pipeline")
 	output := NewConfigurableOutput(config, logger, "pipeline")
 
+	consumer := NewConsumerAcknowledgeWithInterfaces(logger, input)
+
 	settings := &PipelineSettings{
 		Interval:  config.GetDuration("pipeline_interval") * time.Second,
 		BatchSize: config.GetInt("pipeline_batch_size"),
 	}
 
-	return p.BootWithInterfaces(logger, metric, input, output, settings)
+	return p.BootWithInterfaces(logger, metric, consumer, output, settings)
 }
 
-func (p *Pipeline) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter, input Input, output Output, settings *PipelineSettings) error {
+func (p *Pipeline) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter, consumer ConsumerAcknowledge, output Output, settings *PipelineSettings) error {
 	p.logger = logger
 	p.metric = metric
-	p.input = input
+	p.consumer = consumer
 	p.output = output
 	p.ticker = time.NewTicker(settings.Interval)
 	p.batch = make([]*Message, 0, settings.BatchSize)
@@ -85,7 +87,7 @@ func (p *Pipeline) Run(ctx context.Context) error {
 	defer p.logger.Info("leaving pipeline")
 	defer p.process(ctx, true)
 
-	p.cfn.Gof(p.input.Run, "panic during run of the consumer input")
+	p.cfn.Gof(p.consumer.input.Run, "panic during run of the consumer input")
 	p.cfn.Gof(func() error {
 		return p.read(ctx)
 	}, "panic during consuming")
@@ -93,11 +95,11 @@ func (p *Pipeline) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			p.input.Stop()
+			p.consumer.input.Stop()
 			return p.cfn.Wait()
 
 		case <-p.cfn.Dead():
-			p.input.Stop()
+			p.consumer.input.Stop()
 			return p.cfn.Err()
 		}
 	}
@@ -108,7 +110,7 @@ func (p *Pipeline) read(ctx context.Context) error {
 		force := false
 
 		select {
-		case msg, ok := <-p.input.Data():
+		case msg, ok := <-p.consumer.input.Data():
 			if !ok {
 				return nil
 			}
@@ -154,22 +156,31 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 
 	var err error
 
+	msg := p.batch
+
 	for _, stage := range p.stages {
-		p.batch, err = stage.Process(ctx, p.batch)
+		msg, err = stage.Process(ctx, msg)
 
 		if err != nil {
 			p.logger.Error(err, "could not process the batch")
+
+			return
 		}
 	}
 
-	err = p.output.Write(ctx, p.batch)
+	err = p.output.Write(ctx, msg)
 
 	if err != nil {
 		p.logger.Error(err, "could not write messages to output")
+
 		return
 	}
 
 	processedCount := len(p.batch)
+
+	for _, msg := range p.batch {
+		p.consumer.Acknowledge(ctx, msg)
+	}
 
 	p.logger.Infof("pipeline processed %d of %d messages", processedCount, batchSize)
 	p.metric.WriteOne(&mon.MetricDatum{
