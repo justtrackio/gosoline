@@ -31,6 +31,15 @@ var sqsClients map[string]*sqs.SQS
 var configs map[string]*localstackConfig
 var lck sync.Mutex
 
+func init() {
+	configs = map[string]*localstackConfig{}
+
+	cloudwatchClients = map[string]*cloudwatch.CloudWatch{}
+	kinesisClients = map[string]*kinesis.Kinesis{}
+	snsClients = map[string]*sns.SNS{}
+	sqsClients = map[string]*sqs.SQS{}
+}
+
 func ProvideCloudwatchClient(name string) *cloudwatch.CloudWatch {
 	lck.Lock()
 	defer lck.Unlock()
