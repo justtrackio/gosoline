@@ -8,6 +8,7 @@ import (
 	"github.com/go-redis/redis"
 	"net"
 	"sync"
+	"time"
 )
 
 const (
@@ -19,25 +20,71 @@ const (
 var mutex sync.Mutex
 var clients = map[string]Client{}
 
-type selection struct {
+type Selection struct {
 	cfg.AppId
-	name string
-	mode string
-	addr string
+	Addr     string
+	Settings *Settings
+	mode     string
 }
 
-func readSelection(config cfg.Config, name string) *selection {
+func readSelection(config cfg.Config, name string) *Selection {
 	modeStr := fmt.Sprintf("redis_%s_mode", name)
 	addrStr := fmt.Sprintf("redis_%s_addr", name)
 
-	sel := &selection{}
+	sel := &Selection{}
 	sel.PadFromConfig(config)
 
-	sel.name = name
+	sel.Addr = config.GetString(addrStr)
 	sel.mode = config.GetString(modeStr)
-	sel.addr = config.GetString(addrStr)
+
+	sel.Settings = &Settings{
+		Name:    name,
+		Backoff: readBackoffConfig(config, name),
+	}
 
 	return sel
+}
+
+func readBackoffConfig(config cfg.Config, name string) SettingsBackoff {
+	initialIntervalStr := fmt.Sprintf("redis_%s_backoff_initial_interval", name)
+	randomizationFactorStr := fmt.Sprintf("redis_%s_backoff_randomization_factor", name)
+	multiplierStr := fmt.Sprintf("redis_%s_backoff_multiplier", name)
+	maxIntervalStr := fmt.Sprintf("redis_%s_backoff_max_interval", name)
+	maxElapsedTimeStr := fmt.Sprintf("redis_%s_backoff_max_elapsed_time", name)
+
+	initialInterval := 1 * time.Second
+	randomizationFactor := 0.2
+	multiplier := 3.0
+	maxInterval := 30 * time.Second
+	maxElapsedTime := 0 * time.Second
+
+	if config.IsSet(initialIntervalStr) {
+		initialInterval = config.GetDuration(initialIntervalStr) * time.Second
+	}
+
+	if config.IsSet(randomizationFactorStr) {
+		randomizationFactor = config.GetFloat64(randomizationFactorStr)
+	}
+
+	if config.IsSet(multiplierStr) {
+		multiplier = config.GetFloat64(multiplierStr)
+	}
+
+	if config.IsSet(maxIntervalStr) {
+		maxInterval = config.GetDuration(maxIntervalStr) * time.Second
+	}
+
+	if config.IsSet(maxElapsedTimeStr) {
+		maxElapsedTime = config.GetDuration(maxElapsedTimeStr) * time.Second
+	}
+
+	return SettingsBackoff{
+		InitialInterval:     initialInterval,
+		RandomizationFactor: randomizationFactor,
+		Multiplier:          multiplier,
+		MaxInterval:         maxInterval,
+		MaxElapsedTime:      maxElapsedTime,
+	}
 }
 
 func GetClient(config cfg.Config, logger mon.Logger, name string) Client {
@@ -45,8 +92,8 @@ func GetClient(config cfg.Config, logger mon.Logger, name string) Client {
 
 	switch sel.mode {
 	case redisModeLocal:
-		logger.Infof("using local redis %s with address %s", name, sel.addr)
-		return GetClientWithAddress(logger, sel.addr, sel.name)
+		logger.Infof("using local redis %s with address %s", name, sel.Addr)
+		return GetClientWithAddress(logger, sel)
 	case redisModeDiscover:
 		return GetClientFromDiscovery(logger, sel)
 	}
@@ -54,11 +101,11 @@ func GetClient(config cfg.Config, logger mon.Logger, name string) Client {
 	return nil
 }
 
-func GetClientFromDiscovery(logger mon.Logger, sel *selection) Client {
-	addr := sel.addr
+func GetClientFromDiscovery(logger mon.Logger, sel *Selection) Client {
+	addr := sel.Addr
 
 	if addr == "" {
-		addr = fmt.Sprintf("%s.redis.%s.%s", sel.name, sel.Environment, sel.Family)
+		addr = fmt.Sprintf("%s.redis.%s.%s", sel.Settings.Name, sel.Environment, sel.Family)
 	}
 
 	_, srvs, err := net.LookupSRV("", "", addr)
@@ -73,25 +120,25 @@ func GetClientFromDiscovery(logger mon.Logger, sel *selection) Client {
 	}
 
 	addr = fmt.Sprintf("%v:%v", srvs[0].Target, srvs[0].Port)
-	logger.Infof("found redis server %s with address %s", sel.name, addr)
+	logger.Infof("found redis server %s with address %s", sel.Settings.Name, addr)
 
-	return GetClientWithAddress(logger, addr, sel.name)
+	return GetClientWithAddress(logger, sel)
 }
 
-func GetClientWithAddress(logger mon.Logger, address, name string) Client {
+func GetClientWithAddress(logger mon.Logger, sel *Selection) Client {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if client, ok := clients[address]; ok {
+	if client, ok := clients[sel.Addr]; ok {
 		return client
 	}
 
 	baseClient := redis.NewClient(&redis.Options{
 		Network: "tcp",
-		Addr:    address,
+		Addr:    sel.Addr,
 	})
 
-	clients[address] = NewRedisClient(logger, baseClient, name)
+	clients[sel.Addr] = NewRedisClient(logger, baseClient, *sel.Settings)
 
-	return clients[address]
+	return clients[sel.Addr]
 }

@@ -84,8 +84,10 @@ func TestRedisSetWithOOM(t *testing.T) {
 	m.On("Set").Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
 	m.On("Set").Return(baseRedis.NewStatusResult("", nil)).Once()
 
+	settings := redis.Settings{}
+
 	logger := mocks.NewLoggerMockedAll()
-	c := redis.NewRedisClient(logger, m, "")
+	c := redis.NewRedisClient(logger, m, settings)
 
 	err := c.Set("key", "value", ttl)
 
@@ -101,8 +103,10 @@ func TestRedisSetWithError(t *testing.T) {
 	m.On("Set").Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
 	m.On("Set").Return(baseRedis.NewStatusResult("", nil)).Times(0)
 
+	settings := redis.Settings{}
+
 	logger := mocks.NewLoggerMockedAll()
-	c := redis.NewRedisClient(logger, m, "")
+	c := redis.NewRedisClient(logger, m, settings)
 
 	err := c.Set("key", "value", ttl)
 
@@ -117,7 +121,15 @@ func buildClient() (*miniredis.Miniredis, redis.Client) {
 	}
 
 	logger := mocks.NewLoggerMockedAll()
-	c := redis.GetClientWithAddress(logger, s.Addr(), "")
+
+	selection := &redis.Selection{}
+	selection.Addr = s.Addr()
+	selection.Settings = &redis.Settings{
+		Name:    "my-mini-redis",
+		Backoff: redis.SettingsBackoff{},
+	}
+
+	c := redis.GetClientWithAddress(logger, selection)
 
 	return s, c
 }

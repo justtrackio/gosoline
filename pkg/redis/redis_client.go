@@ -36,21 +36,34 @@ type Client interface {
 	Pipeline() baseRedis.Pipeliner
 }
 
+type Settings struct {
+	Name    string
+	Backoff SettingsBackoff
+}
+
+type SettingsBackoff struct {
+	InitialInterval     time.Duration
+	RandomizationFactor float64
+	Multiplier          float64
+	MaxInterval         time.Duration
+	MaxElapsedTime      time.Duration
+}
+
 type redisClient struct {
 	base   baseRedis.Cmdable
 	logger mon.Logger
 	metric mon.MetricWriter
 
-	name string
+	settings Settings
 }
 
-func NewRedisClient(logger mon.Logger, client baseRedis.Cmdable, name string) Client {
+func NewRedisClient(logger mon.Logger, client baseRedis.Cmdable, settings Settings) Client {
 	defaults := mon.MetricData{
 		{
 			Priority:   mon.PriorityHigh,
 			MetricName: metricClientBackoffCount,
 			Dimensions: map[string]string{
-				"Redis": name,
+				"Redis": settings.Name,
 			},
 			Unit:  mon.UnitCount,
 			Value: 0.0,
@@ -59,14 +72,14 @@ func NewRedisClient(logger mon.Logger, client baseRedis.Cmdable, name string) Cl
 
 	metric := mon.NewMetricDaemonWriter(defaults...)
 	logger = logger.WithFields(mon.Fields{
-		"redis": name,
+		"redis": settings.Name,
 	})
 
 	return &redisClient{
-		base:   client,
-		logger: logger,
-		metric: metric,
-		name:   name,
+		base:     client,
+		logger:   logger,
+		metric:   metric,
+		settings: settings,
 	}
 }
 
@@ -135,23 +148,25 @@ func (c *redisClient) Pipeline() baseRedis.Pipeliner {
 }
 
 func (c *redisClient) preventOOMByBackoff(wrappedCmd func() (interface{}, error)) interface{} {
+	backOffSettings := c.settings.Backoff
+
 	backoffConfig := backoff.NewExponentialBackOff()
-	backoffConfig.InitialInterval = 1 * time.Second
-	backoffConfig.MaxInterval = 30 * time.Second
-	backoffConfig.Multiplier = 3
-	backoffConfig.RandomizationFactor = 0.2
-	backoffConfig.MaxElapsedTime = 0
+	backoffConfig.InitialInterval = backOffSettings.InitialInterval * time.Second
+	backoffConfig.MaxInterval = backOffSettings.MaxInterval * time.Second
+	backoffConfig.Multiplier = backOffSettings.Multiplier
+	backoffConfig.RandomizationFactor = backOffSettings.RandomizationFactor
+	backoffConfig.MaxElapsedTime = backOffSettings.MaxElapsedTime
 
 	var res interface{}
 	var err error
 
 	notify := func(error, time.Duration) {
-		c.logger.Infof("redis %s is blocking due to server being out of memory", c.name)
+		c.logger.Infof("redis %s is blocking due to server being out of memory", c.settings.Name)
 		c.metric.WriteOne(&mon.MetricDatum{
 			MetricName: metricClientBackoffCount,
 			Value:      1.0,
 			Dimensions: map[string]string{
-				"Redis": c.name,
+				"Redis": c.settings.Name,
 			},
 		})
 	}
