@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/sqs"
 )
 
 const (
 	OutputTypeFile    = "file"
 	OutputTypeKinesis = "kinesis"
 	OutputTypeRedis   = "redis"
+	OutputTypeSns     = "sns"
+	OutputTypeSqs     = "sqs"
 )
 
 func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Output {
@@ -23,6 +26,10 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Ou
 		return newKinesisOutputFromConfig(config, logger, name)
 	case OutputTypeRedis:
 		return newRedisListOutputFromConfig(config, logger, name)
+	case OutputTypeSns:
+		return newSnsOutputFromConfig(config, logger, name)
+	case OutputTypeSqs:
+		return newSqsOutputFromConfig(config, logger, name)
 	default:
 		logger.Fatalf(fmt.Errorf("invalid input %s of type %s", name, t), "invalid input %s of type %s", name, t)
 	}
@@ -76,6 +83,56 @@ func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name str
 		ServerName: configuration.ServerName,
 		Key:        configuration.Key,
 		BatchSize:  configuration.BatchSize,
+	})
+}
+
+type snsOutputConfiguration struct {
+	Project     string `cfg:"project"`
+	Family      string `cfg:"family"`
+	Application string `cfg:"application"`
+	TopicId     string `cfg:"topic_id"`
+}
+
+func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
+	key := getConfigurableOutputKey(name)
+
+	configuration := snsOutputConfiguration{}
+	config.UnmarshalKey(key, &configuration)
+
+	return NewSnsOutput(config, logger, SnsOutputSettings{
+		AppId: cfg.AppId{
+			Project:     configuration.Project,
+			Family:      configuration.Family,
+			Application: configuration.Application,
+		},
+		TopicId: configuration.TopicId,
+	})
+}
+
+type sqsOutputConfiguration struct {
+	Project           string            `cfg:"project"`
+	Family            string            `cfg:"family"`
+	Application       string            `cfg:"application"`
+	QueueId           string            `cfg:"queue_id"`
+	VisibilityTimeout int               `cfg:"visibility_timeout"`
+	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
+}
+
+func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
+	key := getConfigurableOutputKey(name)
+
+	configuration := sqsOutputConfiguration{}
+	config.UnmarshalKey(key, &configuration)
+
+	return NewSqsOutput(config, logger, SqsOutputSettings{
+		AppId: cfg.AppId{
+			Project:     configuration.Project,
+			Family:      configuration.Family,
+			Application: configuration.Application,
+		},
+		QueueId:           configuration.QueueId,
+		VisibilityTimeout: configuration.VisibilityTimeout,
+		RedrivePolicy:     configuration.RedrivePolicy,
 	})
 }
 

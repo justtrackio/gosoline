@@ -17,8 +17,9 @@ const sqsOutputBatchSize = 10
 
 type SqsOutputSettings struct {
 	cfg.AppId
-	QueueId       string
-	RedrivePolicy sqs.RedrivePolicy
+	QueueId           string
+	VisibilityTimeout int
+	RedrivePolicy     sqs.RedrivePolicy
 }
 
 type sqsOutput struct {
@@ -32,9 +33,10 @@ func NewSqsOutput(config cfg.Config, logger mon.Logger, s SqsOutputSettings) Out
 	s.PadFromConfig(config)
 
 	queue := sqs.New(config, logger, sqs.Settings{
-		AppId:         s.AppId,
-		QueueId:       s.QueueId,
-		RedrivePolicy: s.RedrivePolicy,
+		AppId:             s.AppId,
+		QueueId:           s.QueueId,
+		VisibilityTimeout: s.VisibilityTimeout,
+		RedrivePolicy:     s.RedrivePolicy,
 	})
 
 	tracer := tracing.NewAwsTracer(config)
