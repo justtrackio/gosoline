@@ -61,11 +61,11 @@ func TestCurrencyService_ToEur_Calculation(t *testing.T) {
 	redis := new(redisMock.Client)
 
 	redis.On("Get", currency.ExchangeRateDateKey).Return(time.Now().Format(currency.ExchangeRateDateFormat), nil)
-	redis.On("HGet", currency.ExchangeRateDataKey, "USD").Return("1.24", nil)
+	redis.On("HGet", currency.ExchangeRateDataKey, "USD").Return("1.09", nil)
 
 	service := currency.NewWithInterfaces(redis)
 
-	valueUsd := 1.24
+	valueUsd := 1.09
 	valueEur := 1.0
 	from := "USD"
 
@@ -73,6 +73,24 @@ func TestCurrencyService_ToEur_Calculation(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, valueEur, converted)
+}
+
+func TestCurrencyService_ToUsd_Calculation(t *testing.T) {
+	redis := new(redisMock.Client)
+
+	redis.On("Get", currency.ExchangeRateDateKey).Return(time.Now().Format(currency.ExchangeRateDateFormat), nil)
+	redis.On("HGet", currency.ExchangeRateDataKey, "USD").Return("1.09", nil)
+
+	service := currency.NewWithInterfaces(redis)
+
+	valueUsd := 1.09
+	valueEur := 1.0
+	from := "EUR"
+
+	converted, err := service.ToUsd(valueEur, from)
+
+	assert.NoError(t, err)
+	assert.Equal(t, valueUsd, converted)
 }
 
 func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
