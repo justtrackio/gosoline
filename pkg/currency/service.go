@@ -17,7 +17,9 @@ const ExchangeRateDateFormat = time.RFC3339
 
 //go:generate mockery -name Service
 type Service interface {
-	ToEur(value float64, from string) (float64, error)
+	ToEur(float64, string) (float64, error)
+	ToUsd(float64, string) (float64, error)
+	ToCurrency(string, float64, string) (float64, error)
 }
 
 type CurrencyService struct {
@@ -41,17 +43,50 @@ func (service *CurrencyService) ToEur(value float64, from string) (float64, erro
 		return value, nil
 	}
 
-	exchangeRateString, err := service.redis.HGet(ExchangeRateDataKey, from)
-
-	if err != nil {
-		return 0, errors.WithMessage(err, "CurrencyService: error getting exchange rate")
-	}
-
-	exchangeRate, err := strconv.ParseFloat(exchangeRateString, 64)
+	exchangeRate, err := service.getExchangeRate(from)
 
 	if err != nil {
 		return 0, errors.WithMessage(err, "CurrencyService: error parsing exchange rate")
 	}
 
 	return value / exchangeRate, nil
+}
+
+func (service *CurrencyService) ToUsd(value float64, from string) (float64, error) {
+	if from == Usd {
+		return value, nil
+	}
+
+	return service.ToCurrency(Usd, value, from)
+}
+
+func (service *CurrencyService) ToCurrency(to string, value float64, from string) (float64, error) {
+	if from == to {
+		return value, nil
+	}
+
+	exchangeRate, err := service.getExchangeRate(to)
+
+	if err != nil {
+		return 0, errors.WithMessage(err, "CurrencyService: error parsing exchange rate")
+	}
+
+	eur, err := service.ToEur(value, from)
+
+	if err != nil {
+		return 0, errors.WithMessage(err, "CurrencyService: error converting to eur")
+	}
+
+	return eur * exchangeRate, nil
+}
+
+func (service *CurrencyService) getExchangeRate(to string) (float64, error) {
+	exchangeRateString, err := service.redis.HGet(ExchangeRateDataKey, to)
+
+	if err != nil {
+		return 0, errors.WithMessage(err, "CurrencyService: error getting exchange rate")
+	}
+
+	return strconv.ParseFloat(exchangeRateString, 64)
+
 }

@@ -9,20 +9,62 @@ type Service struct {
 	mock.Mock
 }
 
-// ToEur provides a mock function with given fields: value, from
-func (_m *Service) ToEur(value float64, from string) (float64, error) {
-	ret := _m.Called(value, from)
+// ToCurrency provides a mock function with given fields: _a0, _a1, _a2
+func (_m *Service) ToCurrency(_a0 string, _a1 float64, _a2 string) (float64, error) {
+	ret := _m.Called(_a0, _a1, _a2)
+
+	var r0 float64
+	if rf, ok := ret.Get(0).(func(string, float64, string) float64); ok {
+		r0 = rf(_a0, _a1, _a2)
+	} else {
+		r0 = ret.Get(0).(float64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, float64, string) error); ok {
+		r1 = rf(_a0, _a1, _a2)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ToEur provides a mock function with given fields: _a0, _a1
+func (_m *Service) ToEur(_a0 float64, _a1 string) (float64, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 float64
 	if rf, ok := ret.Get(0).(func(float64, string) float64); ok {
-		r0 = rf(value, from)
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(float64)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(float64, string) error); ok {
-		r1 = rf(value, from)
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ToUsd provides a mock function with given fields: _a0, _a1
+func (_m *Service) ToUsd(_a0 float64, _a1 string) (float64, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 float64
+	if rf, ok := ret.Get(0).(func(float64, string) float64); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		r0 = ret.Get(0).(float64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(float64, string) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
