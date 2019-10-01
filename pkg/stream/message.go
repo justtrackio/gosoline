@@ -2,7 +2,7 @@ package stream
 
 import (
 	"context"
-	"encoding/json"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/hashicorp/go-multierror"
 )
@@ -42,9 +42,7 @@ func (m *Message) UnmarshalFromBytes(data []byte) error {
 }
 
 func (m *Message) UnmarshalFromString(data string) error {
-	bytes := []byte(data)
-
-	return json.Unmarshal(bytes, m)
+	return m.UnmarshalFromBytes([]byte(data))
 }
 
 func CreateMessage(ctx context.Context, body interface{}) (*Message, error) {

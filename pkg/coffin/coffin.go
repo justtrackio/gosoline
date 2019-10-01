@@ -30,7 +30,11 @@ func New() Coffin {
 func (c *coffin) Go(f func() error) {
 	c.Tomb.Go(func() (err error) {
 		defer func() {
-			err = ResolveRecovery(recover())
+			panicErr := ResolveRecovery(recover())
+
+			if panicErr != nil {
+				err = panicErr
+			}
 		}()
 
 		return f()
@@ -40,11 +44,15 @@ func (c *coffin) Go(f func() error) {
 func (c *coffin) Gof(f func() error, msg string, args ...interface{}) {
 	c.Tomb.Go(func() (err error) {
 		defer func() {
-			err = ResolveRecovery(recover())
-			err = errors.Wrapf(err, msg, args...)
+			panicErr := ResolveRecovery(recover())
+
+			if panicErr != nil {
+				err = errors.Wrapf(panicErr, msg, args...)
+			}
 		}()
 
-		return f()
+		err = f()
+		return
 	})
 }
 

@@ -67,13 +67,16 @@ func (i *sqsInput) Run() error {
 	i.logger.Infof("starting sqs input with %d runners", i.settings.RunnerCount)
 
 	for j := 0; j < i.settings.RunnerCount; j++ {
-		i.cfn.Gof(i.doRun, "panic in sqs input runner")
+		i.cfn.Gof(i.runLoop, "panic in sqs input runner")
 	}
+
+	<-i.cfn.Dying()
+	i.Stop()
 
 	return i.cfn.Wait()
 }
 
-func (i *sqsInput) doRun() error {
+func (i *sqsInput) runLoop() error {
 	defer i.logger.Info("leaving sqs input runner")
 
 	for {
@@ -85,8 +88,7 @@ func (i *sqsInput) doRun() error {
 
 		if err != nil {
 			i.logger.Error(err, "could not get messages from sqs")
-			i.stopped = true
-			return err
+			continue
 		}
 
 		for _, sqsMessage := range sqsMessages {
@@ -95,6 +97,10 @@ func (i *sqsInput) doRun() error {
 			if err != nil {
 				i.logger.Error(err, "could not unmarshal message")
 				continue
+			}
+
+			if msg.Attributes == nil {
+				msg.Attributes = make(map[string]interface{})
 			}
 
 			msg.Attributes[AttributeSqsReceiptHandle] = *sqsMessage.ReceiptHandle
