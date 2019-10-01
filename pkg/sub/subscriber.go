@@ -116,7 +116,7 @@ func (s *subscriber) Run(ctx context.Context) error {
 			s.input.Stop()
 			return s.cfn.Wait()
 
-		case <-s.cfn.Dead():
+		case <-s.cfn.Dying():
 			s.input.Stop()
 			return s.cfn.Err()
 		}
@@ -131,16 +131,21 @@ func (s *subscriber) consume() error {
 			return nil
 		}
 
-		ctx, trans := s.tracer.StartSpanFromTraceAble(msg, s.name)
-		err := s.persist(ctx, msg)
+		s.handleMessage(msg)
+	}
+}
 
-		s.writeMetric(err)
+func (s *subscriber) handleMessage(msg *stream.Message) {
+	ctx, trans := s.tracer.StartSpanFromTraceAble(msg, s.name)
 
-		if err == nil {
-			s.Acknowledge(ctx, msg)
-		}
+	defer s.recover(ctx, msg)
+	defer trans.Finish()
 
-		trans.Finish()
+	err := s.persist(ctx, msg)
+	s.writeMetric(err)
+
+	if err == nil {
+		s.Acknowledge(ctx, msg)
 	}
 }
 
@@ -175,6 +180,18 @@ func (s *subscriber) persist(ctx context.Context, msg *stream.Message) error {
 	logger.Infof("persisted %s op for subscription for modelId %s and version %d with id %v", modelMsg.CrudType, modelMsg.ModelId, modelMsg.Version, model.GetId())
 
 	return nil
+}
+
+func (s *subscriber) recover(ctx context.Context, msg *stream.Message) {
+	err := coffin.ResolveRecovery(recover())
+
+	if err == nil {
+		return
+	}
+
+	s.logger.WithContext(ctx).WithFields(mon.Fields{
+		"body": msg.Body,
+	}).Errorf(err, "can not persist model")
 }
 
 func (s *subscriber) writeMetric(err error) {
