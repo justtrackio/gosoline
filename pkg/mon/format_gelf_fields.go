@@ -11,7 +11,7 @@ func formatterGelfFields(clock clockwork.Clock, channel string, level string, ms
 	data := make(Fields, 8)
 
 	if logErr != nil {
-		data["_err"] = logErr.Error()
+		fields["err"] = logErr.Error()
 	}
 
 	jsonFields, err := json.Marshal(fields)
@@ -26,7 +26,7 @@ func formatterGelfFields(clock clockwork.Clock, channel string, level string, ms
 	data["channel"] = channel
 	data["level"] = levels[level]
 	data["level_name"] = level
-	data["_pid"] = os.Getpid()
+	data["pid"] = os.Getpid()
 
 	serialized, err := json.Marshal(data)
 	if err != nil {
