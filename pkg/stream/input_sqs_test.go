@@ -61,7 +61,6 @@ func TestSqsInput_Run(t *testing.T) {
 	<-waitRunDone
 
 	assert.Equal(t, "foobar", msg.Body)
-	queue.AssertNumberOfCalls(t, "Receive", 4)
 }
 
 func TestSqsInput_Run_Failure(t *testing.T) {
