@@ -15,7 +15,7 @@ type OrmSettings struct {
 }
 
 func NewOrm(config cfg.Config, logger mon.Logger) *gorm.DB {
-	dbClient := db.NewClientWithDefault(logger)
+	dbClient := db.NewClient(config, logger)
 
 	prefixed := config.GetBool("db_table_prefixed")
 	application := config.GetString("app_name")

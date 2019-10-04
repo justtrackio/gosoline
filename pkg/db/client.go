@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/VividCortex/mysqlerr"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/cenkalti/backoff"
 	"github.com/go-sql-driver/mysql"
@@ -39,14 +40,24 @@ type ClientSqlx struct {
 	db     *sqlx.DB
 }
 
-func NewClientWithDefault(logger mon.Logger) Client {
-	barrier.Wait()
-	logger = logger.WithChannel("sql")
+func NewClient(config cfg.Config, logger mon.Logger) Client {
+	db, err := ProvideDefaultConnection(config, logger)
 
-	return NewClient(logger, DefaultConnection)
+	if err != nil {
+		logger.Fatal(errors.New("db not booted yet"), "can not connect to sql database")
+	}
+
+	return NewClientWithInterfaces(logger, db)
 }
 
-func NewClient(logger mon.Logger, db *sqlx.DB) Client {
+//func NewClientWithDefault(logger mon.Logger) Client {
+//	logger = logger.WithChannel("sql")
+//	db, err := ProvideDefaultConnection()
+//
+//	return NewClient(logger, DefaultConnection)
+//}
+
+func NewClientWithInterfaces(logger mon.Logger, db *sqlx.DB) Client {
 	if db == nil {
 		logger.Fatal(errors.New("db not booted yet"), "db not booted yet")
 	}

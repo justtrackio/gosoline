@@ -71,13 +71,13 @@ func (_m *Viper) Get(_a0 string) interface{} {
 	return r0
 }
 
-// GetBool provides a mock function with given fields: key
-func (_m *Viper) GetBool(key string) bool {
-	ret := _m.Called(key)
+// GetBool provides a mock function with given fields: _a0
+func (_m *Viper) GetBool(_a0 string) bool {
+	ret := _m.Called(_a0)
 
 	var r0 bool
 	if rf, ok := ret.Get(0).(func(string) bool); ok {
-		r0 = rf(key)
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
@@ -141,13 +141,13 @@ func (_m *Viper) GetString(_a0 string) string {
 	return r0
 }
 
-// GetStringMapString provides a mock function with given fields: key
-func (_m *Viper) GetStringMapString(key string) map[string]string {
-	ret := _m.Called(key)
+// GetStringMapString provides a mock function with given fields: _a0
+func (_m *Viper) GetStringMapString(_a0 string) map[string]string {
+	ret := _m.Called(_a0)
 
 	var r0 map[string]string
 	if rf, ok := ret.Get(0).(func(string) map[string]string); ok {
-		r0 = rf(key)
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(map[string]string)
@@ -157,13 +157,13 @@ func (_m *Viper) GetStringMapString(key string) map[string]string {
 	return r0
 }
 
-// GetStringSlice provides a mock function with given fields: key
-func (_m *Viper) GetStringSlice(key string) []string {
-	ret := _m.Called(key)
+// GetStringSlice provides a mock function with given fields: _a0
+func (_m *Viper) GetStringSlice(_a0 string) []string {
+	ret := _m.Called(_a0)
 
 	var r0 []string
 	if rf, ok := ret.Get(0).(func(string) []string); ok {
-		r0 = rf(key)
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
@@ -187,13 +187,13 @@ func (_m *Viper) IsSet(_a0 string) bool {
 	return r0
 }
 
-// MergeConfig provides a mock function with given fields: in
-func (_m *Viper) MergeConfig(in io.Reader) error {
-	ret := _m.Called(in)
+// MergeConfig provides a mock function with given fields: _a0
+func (_m *Viper) MergeConfig(_a0 io.Reader) error {
+	ret := _m.Called(_a0)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(io.Reader) error); ok {
-		r0 = rf(in)
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -201,14 +201,14 @@ func (_m *Viper) MergeConfig(in io.Reader) error {
 	return r0
 }
 
-// Set provides a mock function with given fields: key, value
-func (_m *Viper) Set(key string, value interface{}) {
-	_m.Called(key, value)
+// Set provides a mock function with given fields: _a0, _a1
+func (_m *Viper) Set(_a0 string, _a1 interface{}) {
+	_m.Called(_a0, _a1)
 }
 
-// SetConfigType provides a mock function with given fields: in
-func (_m *Viper) SetConfigType(in string) {
-	_m.Called(in)
+// SetConfigType provides a mock function with given fields: _a0
+func (_m *Viper) SetConfigType(_a0 string) {
+	_m.Called(_a0)
 }
 
 // SetDefault provides a mock function with given fields: _a0, _a1
@@ -216,9 +216,9 @@ func (_m *Viper) SetDefault(_a0 string, _a1 interface{}) {
 	_m.Called(_a0, _a1)
 }
 
-// SetEnvKeyReplacer provides a mock function with given fields: replacer
-func (_m *Viper) SetEnvKeyReplacer(replacer *strings.Replacer) {
-	_m.Called(replacer)
+// SetEnvKeyReplacer provides a mock function with given fields: _a0
+func (_m *Viper) SetEnvKeyReplacer(_a0 *strings.Replacer) {
+	_m.Called(_a0)
 }
 
 // SetEnvPrefix provides a mock function with given fields: _a0
@@ -226,20 +226,20 @@ func (_m *Viper) SetEnvPrefix(_a0 string) {
 	_m.Called(_a0)
 }
 
-// Unmarshal provides a mock function with given fields: rawVal, opts
-func (_m *Viper) Unmarshal(rawVal interface{}, opts ...viper.DecoderConfigOption) error {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
+// Unmarshal provides a mock function with given fields: _a0, _a1
+func (_m *Viper) Unmarshal(_a0 interface{}, _a1 ...viper.DecoderConfigOption) error {
+	_va := make([]interface{}, len(_a1))
+	for _i := range _a1 {
+		_va[_i] = _a1[_i]
 	}
 	var _ca []interface{}
-	_ca = append(_ca, rawVal)
+	_ca = append(_ca, _a0)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(interface{}, ...viper.DecoderConfigOption) error); ok {
-		r0 = rf(rawVal, opts...)
+		r0 = rf(_a0, _a1...)
 	} else {
 		r0 = ret.Error(0)
 	}

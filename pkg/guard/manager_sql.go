@@ -23,8 +23,8 @@ type SqlManager struct {
 	dbClient db.Client
 }
 
-func NewSqlManager(_ cfg.Config, logger mon.Logger) *SqlManager {
-	dbClient := db.NewClientWithDefault(logger)
+func NewSqlManager(config cfg.Config, logger mon.Logger) *SqlManager {
+	dbClient := db.NewClient(config, logger)
 
 	return &SqlManager{
 		logger:   logger,
