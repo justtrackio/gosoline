@@ -125,7 +125,7 @@ func getMocks() (db.Client, goSqlMock.Sqlmock) {
 	loggerMock := monMocks.NewLoggerMockedAll()
 	sqlxDB := sqlx.NewDb(dbMock, "sqlmock")
 
-	client := db.NewClient(loggerMock, sqlxDB)
+	client := db.NewClientWithInterfaces(loggerMock, sqlxDB)
 
 	return client, sqlMock
 }

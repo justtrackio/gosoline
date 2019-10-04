@@ -1,12 +1,9 @@
 package db
 
 import (
-	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/cenkalti/backoff"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"net/url"
@@ -16,8 +13,7 @@ import (
 )
 
 type Settings struct {
-	Application string `cfg:"app_name"`
-
+	Application        string        `cfg:"app_name"`
 	DriverName         string        `cfg:"db_drivername"`
 	Host               string        `cfg:"db_hostname"`
 	Port               int           `cfg:"db_port"`
@@ -32,103 +28,79 @@ type Settings struct {
 	PrefixedTables     bool          `cfg:"db_table_prefixed"`
 }
 
-type Connection struct {
-	kernel.BackgroundModule
+var defaultConnection = struct {
+	lck      sync.Mutex
+	instance *sqlx.DB
+	err      error
+}{}
 
-	logger   mon.Logger
-	settings Settings
-	db       *sqlx.DB
+func ProvideDefaultConnection(config cfg.Config, logger mon.Logger) (*sqlx.DB, error) {
+	defaultConnection.lck.Lock()
+	defer defaultConnection.lck.Unlock()
 
-	stop chan struct{}
-}
-
-var barrier = sync.WaitGroup{}
-var DefaultConnection *sqlx.DB = nil
-
-func NewConnection() *Connection {
-	barrier.Add(1)
-
-	connection := Connection{
-		stop: make(chan struct{}),
+	if defaultConnection.err != nil {
+		return nil, defaultConnection.err
 	}
 
-	return &connection
+	if defaultConnection.instance != nil {
+		return defaultConnection.instance, nil
+	}
+
+	defaultConnection.instance, defaultConnection.err = NewConnection(config, logger)
+
+	return defaultConnection.instance, defaultConnection.err
 }
 
-func (c *Connection) Boot(config cfg.Config, logger mon.Logger) error {
-	defer barrier.Done()
-
-	settings := Settings{}
-	config.Unmarshal(&settings)
-
-	return c.BootWithInterfaces(logger, settings)
+type Connection struct {
+	settings *Settings
+	db       *sqlx.DB
 }
 
-func (c *Connection) BootWithInterfaces(logger mon.Logger, settings Settings) error {
-	c.logger = logger
-	c.settings = settings
+func NewConnection(config cfg.Config, logger mon.Logger) (*sqlx.DB, error) {
+	settings := &Settings{}
+	config.Unmarshal(settings)
 
-	err := backoff.Retry(func() error {
-		err := c.connect()
-
-		if err != nil {
-			c.logger.Error(err, "db.init returned error. retrying...")
-		}
-
-		return err
-	}, backoff.NewConstantBackOff(c.settings.RetryDelay*time.Second))
+	connection, err := NewConnectionWithInterfaces(settings)
 
 	if err != nil {
-		c.logger.Fatal(err, "db.init returned error")
+		return nil, err
 	}
 
-	c.db.SetConnMaxLifetime(c.settings.ConnectionLifetime * time.Second)
-	DefaultConnection = c.db
+	runMigrations(logger, connection, settings)
 
-	c.runMigrations()
-
-	return nil
+	return connection, nil
 }
 
-func (c *Connection) Run(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		}
-	}
-}
-
-func (c *Connection) connect() error {
+func NewConnectionWithInterfaces(settings *Settings) (*sqlx.DB, error) {
 	var err error
 
 	dsn := url.URL{
-		User: url.UserPassword(c.settings.User, c.settings.Password),
-		Host: fmt.Sprintf("tcp(%s:%v)", c.settings.Host, c.settings.Port),
-		Path: c.settings.Database,
+		User: url.UserPassword(settings.User, settings.Password),
+		Host: fmt.Sprintf("tcp(%s:%v)", settings.Host, settings.Port),
+		Path: settings.Database,
 	}
 
 	qry := dsn.Query()
 	qry.Set("multiStatements", "true")
-	qry.Set("parseTime", strconv.FormatBool(c.settings.ParseTime))
+	qry.Set("parseTime", strconv.FormatBool(settings.ParseTime))
 	qry.Set("charset", "utf8mb4")
 	dsn.RawQuery = qry.Encode()
 
-	db, err := sqlx.Open(c.settings.DriverName, dsn.String()[2:])
+	db, err := sqlx.Open(settings.DriverName, dsn.String()[2:])
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = db.Ping()
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	c.db = db
+	db.SetConnMaxLifetime(settings.ConnectionLifetime * time.Second)
 
-	return nil
+	return db, nil
 }
 
 func GenerateVersionedTableName(table string, version int) string {

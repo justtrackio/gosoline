@@ -57,13 +57,13 @@ func (_m *Config) Get(_a0 string) interface{} {
 	return r0
 }
 
-// GetBool provides a mock function with given fields: key
-func (_m *Config) GetBool(key string) bool {
-	ret := _m.Called(key)
+// GetBool provides a mock function with given fields: _a0
+func (_m *Config) GetBool(_a0 string) bool {
+	ret := _m.Called(_a0)
 
 	var r0 bool
 	if rf, ok := ret.Get(0).(func(string) bool); ok {
-		r0 = rf(key)
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
@@ -127,13 +127,13 @@ func (_m *Config) GetString(_a0 string) string {
 	return r0
 }
 
-// GetStringMapString provides a mock function with given fields: key
-func (_m *Config) GetStringMapString(key string) map[string]string {
-	ret := _m.Called(key)
+// GetStringMapString provides a mock function with given fields: _a0
+func (_m *Config) GetStringMapString(_a0 string) map[string]string {
+	ret := _m.Called(_a0)
 
 	var r0 map[string]string
 	if rf, ok := ret.Get(0).(func(string) map[string]string); ok {
-		r0 = rf(key)
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(map[string]string)
@@ -143,13 +143,13 @@ func (_m *Config) GetStringMapString(key string) map[string]string {
 	return r0
 }
 
-// GetStringSlice provides a mock function with given fields: key
-func (_m *Config) GetStringSlice(key string) []string {
-	ret := _m.Called(key)
+// GetStringSlice provides a mock function with given fields: _a0
+func (_m *Config) GetStringSlice(_a0 string) []string {
+	ret := _m.Called(_a0)
 
 	var r0 []string
 	if rf, ok := ret.Get(0).(func(string) []string); ok {
-		r0 = rf(key)
+		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
