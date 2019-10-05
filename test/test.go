@@ -11,7 +11,6 @@ import (
 var err error
 var wait sync.WaitGroup
 var dockerPool *dockertest.Pool
-
 var dockerResources []*dockertest.Resource
 var cfgFilename = "config.test.yml"
 
@@ -22,7 +21,6 @@ func init() {
 	if err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}
-
 }
 
 func logErr(err error, msg string) {
@@ -52,16 +50,22 @@ func bootComponent(name string, mockConfig configInput) {
 	component := mockConfig["component"]
 
 	switch component {
+	case "cloudwatch":
+		runCloudwatch(name, mockConfig)
 	case "dynamodb":
 		runDynamoDb(name, mockConfig)
-	case "localstack":
-		runLocalstackContainer(name, mockConfig)
 	case "elasticsearch":
 		runElasticsearch(name, mockConfig)
+	case "kinesis":
+		runKinesis(name, mockConfig)
 	case "mysql":
 		runMysql(name, mockConfig)
 	case "redis":
 		runRedis(name, mockConfig)
+	case "sns":
+		runSns(name, mockConfig)
+	case "sqs":
+		runSqs(name, mockConfig)
 	case "wiremock":
 		runWiremock(name, mockConfig)
 	default:
@@ -76,4 +80,6 @@ func Shutdown() {
 			log.Fatalf("Could not purge resource: %s", err)
 		}
 	}
+
+	dockerResources = make([]*dockertest.Resource, 0)
 }
