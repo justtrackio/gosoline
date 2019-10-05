@@ -1,0 +1,4 @@
+mocks:
+  sns:
+    component: sns
+    port: 9873

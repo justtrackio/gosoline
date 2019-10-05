@@ -1,0 +1,8 @@
+mocks:
+  sns:
+    component: sns
+    sqs_endpoint: 'http://gosoline-test-sqs:4576'
+    port: 9872
+  sqs:
+    component: sqs
+    port: 9871

@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -12,18 +13,18 @@ type testConfig struct {
 	Mocks map[string]configInput `mapstructure:"mocks"`
 }
 
-func readConfig() *testConfig {
-	bytes, err := ioutil.ReadFile("config.test.yml")
+func readConfig(configFilename string) *testConfig {
+	bytes, err := ioutil.ReadFile(configFilename)
 
 	if err != nil {
-		logErr(err, "could not read config.test.yml")
+		logErr(err, fmt.Sprintf("could not read %s", configFilename))
 	}
 
 	input := make(configInput)
 	err = yaml.Unmarshal(bytes, &input)
 
 	if err != nil {
-		logErr(err, "could not unmarshal config.test.yml")
+		logErr(err, fmt.Sprintf("could not unmarshal %s", configFilename))
 	}
 
 	config := &testConfig{}

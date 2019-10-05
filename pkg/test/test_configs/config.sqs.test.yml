@@ -1,0 +1,4 @@
+mocks:
+  sqs:
+    component: sqs
+    port: 9874

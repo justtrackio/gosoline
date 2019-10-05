@@ -1,0 +1,4 @@
+mocks:
+  kinesis:
+    component: kinesis
+    port: 9875

@@ -40,6 +40,7 @@ func runContainer(name string, config ContainerConfig) {
 		Env:          config.Env,
 		Cmd:          config.Cmd,
 		PortBindings: bindings,
+		NetworkID:    dockerNetwork.ID,
 	})
 
 	if err != nil {

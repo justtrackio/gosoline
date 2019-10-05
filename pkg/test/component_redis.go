@@ -23,7 +23,7 @@ func doRunRedis(name string, configMap configInput) {
 	config := &redisConfig{}
 	unmarshalConfig(configMap, config)
 
-	containerName := fmt.Sprintf("gosoline_test_%s_redis", name)
+	containerName := fmt.Sprintf("gosoline-test-%s-redis", name)
 	runContainer(containerName, ContainerConfig{
 		Repository: "redis",
 		Tag:        "5-alpine",

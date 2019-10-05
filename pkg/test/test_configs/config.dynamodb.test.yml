@@ -1,0 +1,5 @@
+mocks:
+  dynamodb:
+    component: dynamodb
+    fixtures: 'test_fixtures/ddb_fixtures.json'
+    port: 9875

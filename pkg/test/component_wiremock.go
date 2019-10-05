@@ -20,7 +20,7 @@ func doRunWiremock(name string, configMap configInput) {
 	defer wait.Done()
 	defer log.Printf("%s component of type %s is ready", name, "wiremock")
 
-	runContainer("gosoline_test_wiremock", ContainerConfig{
+	runContainer("gosoline-test-wiremock", ContainerConfig{
 		Repository: "rodolpheche/wiremock",
 		Tag:        "latest",
 		PortBindings: PortBinding{

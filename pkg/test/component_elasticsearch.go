@@ -23,7 +23,7 @@ func doRunElasticsearch(name string, configMap configInput) {
 	config := &elasticsearchConfig{}
 	unmarshalConfig(configMap, config)
 
-	containerName := fmt.Sprintf("gosoline_test_%s_elasticsearch", name)
+	containerName := fmt.Sprintf("gosoline-test-%s-elasticsearch", name)
 	runContainer(containerName, ContainerConfig{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
 		Tag:        config.Version,

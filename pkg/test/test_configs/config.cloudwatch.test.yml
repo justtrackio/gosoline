@@ -1,0 +1,4 @@
+mocks:
+  cloudwatch:
+    component: cloudwatch
+    port: 9876

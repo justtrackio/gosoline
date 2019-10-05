@@ -8,7 +8,7 @@ import (
 	"log"
 )
 
-const mysqlContainerName = "gosoline_test_mysql"
+const mysqlContainerName = "gosoline-test-mysql"
 
 var IntegrationTestDb *sql.DB
 

@@ -8,12 +8,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"io/ioutil"
 	"log"
+	"sync"
 )
 
-const dynamoDbContainerName = "gosoline_test_dynamoDb"
+const dynamoDbContainerName = "gosoline-test-dynamoDb"
 
 var dynamoDbClients map[string]*dynamodb.DynamoDB
 var dynamoDbConfigs map[string]*dynamoDbConfig
+var dynamoDbLck sync.Mutex
 
 type dynamoDbConfig struct {
 	Fixtures string `mapstructure:"fixtures"`
@@ -31,8 +33,8 @@ func init() {
 }
 
 func ProvideDynamoDbClient(name string) *dynamodb.DynamoDB {
-	lck.Lock()
-	defer lck.Unlock()
+	dynamoDbLck.Lock()
+	defer dynamoDbLck.Unlock()
 
 	_, ok := dynamoDbClients[name]
 	if ok {
