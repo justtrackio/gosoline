@@ -28,21 +28,23 @@ type Pipeline struct {
 	kernel.EssentialModule
 	ConsumerAcknowledge
 
-	logger   mon.Logger
-	metric   mon.MetricWriter
-	cfn      coffin.Coffin
-	lck      sync.Mutex
-	output   Output
-	ticker   *time.Ticker
-	batch    []*Message
-	stages   []PipelineCallback
-	settings *PipelineSettings
+	logger         mon.Logger
+	metric         mon.MetricWriter
+	defaultMetrics mon.MetricData
+	cfn            coffin.Coffin
+	lck            sync.Mutex
+	output         Output
+	ticker         *time.Ticker
+	batch          []*Message
+	stages         []PipelineCallback
+	settings       *PipelineSettings
 }
 
 func NewPipeline(stages ...PipelineCallback) *Pipeline {
 	return &Pipeline{
-		cfn:    coffin.New(),
-		stages: stages,
+		cfn:            coffin.New(),
+		stages:         stages,
+		defaultMetrics: getDefaultPipelineMetrics(),
 	}
 }
 
@@ -55,8 +57,7 @@ func (p *Pipeline) Boot(config cfg.Config, logger mon.Logger) error {
 		}
 	}
 
-	defaults := getDefaultPipelineMetrics()
-	metric := mon.NewMetricDaemonWriter(defaults...)
+	metric := mon.NewMetricDaemonWriter(p.defaultMetrics...)
 
 	input := NewConfigurableInput(config, logger, "pipeline")
 	output := NewConfigurableOutput(config, logger, "pipeline")
@@ -79,6 +80,10 @@ func (p *Pipeline) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter
 	p.settings = settings
 
 	return nil
+}
+
+func (p *Pipeline) SetDefaultMetrics(defaultMetrics mon.MetricData) {
+	p.defaultMetrics = defaultMetrics
 }
 
 func (p *Pipeline) Run(ctx context.Context) error {
