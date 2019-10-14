@@ -44,7 +44,7 @@ func NewClient(config cfg.Config, logger mon.Logger) Client {
 	db, err := ProvideDefaultConnection(config, logger)
 
 	if err != nil {
-		logger.Fatal(errors.New("db not booted yet"), "can not connect to sql database")
+		logger.Fatal(err, "can not connect to sql database")
 	}
 
 	return NewClientWithInterfaces(logger, db)

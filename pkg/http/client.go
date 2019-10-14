@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 	netUrl "net/url"
 	"time"
@@ -111,7 +112,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 
 	if err != nil {
 		logger.Error(err, "failed to assemble request")
-		return nil, err
+		return nil, errors.Wrap(err, "failed to assemble request")
 	}
 
 	req.SetContext(ctx)
@@ -135,7 +136,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 			// Otherwise a user might spam our error logs by just canceling a lot of requests
 			// (or many users spam us because sometimes they cancel requests)
 			c.writeMetric(metricError, method, mon.UnitCount, 1.0)
-			logger.Error(err, "error while requesting url")
+			return nil, errors.Wrapf(err, "failed to perform %s request to %s", request.resty.Method, request.url.String())
 		}
 
 		return nil, err
@@ -154,7 +155,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	requestDurationMs := float64(resp.Time() / time.Millisecond)
 	c.writeMetric(metricRequestDuration, method, mon.UnitMilliseconds, requestDurationMs)
 
-	return response, err
+	return response, nil
 }
 
 func (c *client) writeMetric(metricName string, method string, unit string, value float64) {
