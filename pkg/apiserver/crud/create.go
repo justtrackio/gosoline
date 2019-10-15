@@ -3,7 +3,9 @@ package crud
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/apiserver"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -12,12 +14,12 @@ type createHandler struct {
 	transformer Handler
 }
 
-func NewCreateHandler(transformer Handler) gin.HandlerFunc {
+func NewCreateHandler(transformer Handler, config cfg.Config, logger mon.Logger) gin.HandlerFunc {
 	ch := createHandler{
 		transformer: transformer,
 	}
 
-	return apiserver.CreateJsonHandler(ch)
+	return apiserver.CreateJsonHandler(ch, config, logger)
 }
 
 func (ch createHandler) GetInput() interface{} {

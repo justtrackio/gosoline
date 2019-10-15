@@ -5,8 +5,10 @@ import (
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/apiserver/crud"
 	"github.com/applike/gosoline/pkg/apiserver/crud/mocks"
+	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/mdl"
+	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"net/http"
@@ -121,8 +123,11 @@ func TestCreateHandler_Handle(t *testing.T) {
 		Name: mdl.String("foobar"),
 	}
 
+	config := new(cfgMocks.Config)
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
+	config.On("GetBool", mock.Anything).Return(false)
 	transformer.Repo.On("Create", mock.AnythingOfType("*context.emptyCtx"), model).Run(func(args mock.Arguments) {
 		model := args.Get(1).(*Model)
 		model.Id = mdl.Uint(1)
@@ -135,7 +140,7 @@ func TestCreateHandler_Handle(t *testing.T) {
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
 
-	handler := crud.NewCreateHandler(transformer)
+	handler := crud.NewCreateHandler(transformer, config, logger)
 
 	body := `{"name": "foobar"}`
 	response := apiserver.HttpTest("POST", "/create", "/create", body, handler)
@@ -181,8 +186,11 @@ func TestUpdateHandler_Handle(t *testing.T) {
 		Name: mdl.String("updated"),
 	}
 
+	config := new(cfgMocks.Config)
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
+	config.On("GetBool", mock.Anything).Return(false)
 	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(nil)
 	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), readModel).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
@@ -192,7 +200,7 @@ func TestUpdateHandler_Handle(t *testing.T) {
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
 
-	handler := crud.NewUpdateHandler(transformer)
+	handler := crud.NewUpdateHandler(transformer, config, logger)
 
 	body := `{"name": "updated"}`
 	response := apiserver.HttpTest("PUT", "/:id", "/1", body, handler)
@@ -237,8 +245,11 @@ func TestDeleteHandler_Handle(t *testing.T) {
 }
 
 func TestListHandler_Handle(t *testing.T) {
+	config := new(cfgMocks.Config)
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
-	handler := crud.NewListHandler(transformer)
+
+	handler := crud.NewListHandler(transformer, config, logger)
 
 	qb := db_repo.NewQueryBuilder()
 	qb.Table("footable")
@@ -247,6 +258,7 @@ func TestListHandler_Handle(t *testing.T) {
 	qb.OrderBy("name", "ASC")
 	qb.Page(0, 2)
 
+	config.On("GetBool", mock.Anything).Return(false)
 	transformer.Repo.On("GetMetadata").Return(db_repo.Metadata{
 		TableName:  "footable",
 		PrimaryKey: "id",

@@ -2,13 +2,16 @@ package apiserver
 
 import (
 	"context"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -111,8 +114,8 @@ func CreateRawHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 	return handleRaw(handler, defaultErrorHandler)
 }
 
-func CreateJsonHandler(handler HandlerWithInput) gin.HandlerFunc {
-	return handleWithInput(handler, binding.JSON, defaultErrorHandler)
+func CreateJsonHandler(handler HandlerWithInput, config cfg.Config, logger mon.Logger) gin.HandlerFunc {
+	return handleWithInput(handler, binding.JSON, defaultErrorHandler, config, logger)
 }
 
 func CreateMultipleBindingsHandler(handler HandlerWithMultipleBindings) gin.HandlerFunc {
@@ -123,8 +126,8 @@ func CreateStreamHandler(handler HandlerWithStream) gin.HandlerFunc {
 	return handleWithStream(handler, binding.JSON, defaultErrorHandler)
 }
 
-func CreateQueryHandler(handler HandlerWithInput) gin.HandlerFunc {
-	return handleWithInput(handler, binding.Query, defaultErrorHandler)
+func CreateQueryHandler(handler HandlerWithInput, config cfg.Config, logger mon.Logger) gin.HandlerFunc {
+	return handleWithInput(handler, binding.Query, defaultErrorHandler, config, logger)
 }
 
 func handleWithoutInput(handler HandlerWithoutInput, errHandler ErrorHandler) gin.HandlerFunc {
@@ -160,16 +163,28 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 	}
 }
 
-func handleWithInput(handler HandlerWithInput, binding binding.Binding, errHandler ErrorHandler) gin.HandlerFunc {
+func handleWithInput(handler HandlerWithInput, binding binding.Binding, errHandler ErrorHandler, config cfg.Config, logger mon.Logger) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		input := handler.GetInput()
 		err := binding.Bind(ginCtx.Request, input)
+		suppressBindingErrors := config.GetBool("suppress_binding_validation_errors")
 
-		if err != nil {
+		if err == nil {
+			handle(ginCtx, handler, input, errHandler)
+			return
+		}
+
+		if !strings.Contains(err.Error(), "invalid syntax") {
 			writeErrorResponse(ginCtx, errHandler, http.StatusBadRequest, err)
 			return
 		}
 
+		if !suppressBindingErrors {
+			writeErrorResponse(ginCtx, errHandler, http.StatusBadRequest, err)
+			return
+		}
+
+		logger.Errorf(err, "Invalid binding. Url: %s", ginCtx.Request.URL)
 		handle(ginCtx, handler, input, errHandler)
 	}
 }

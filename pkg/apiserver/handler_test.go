@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
+	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
+	"github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"net/http"
 	"testing"
 )
@@ -66,7 +69,11 @@ func TestHtmlHandler(t *testing.T) {
 }
 
 func TestCreateIoHandler_InputFailure(t *testing.T) {
-	handler := apiserver.CreateJsonHandler(JsonHandler{})
+	config := new(cfgMocks.Config)
+	logger := mocks.NewLoggerMockedAll()
+	handler := apiserver.CreateJsonHandler(JsonHandler{}, config, logger)
+
+	config.On("GetBool", mock.Anything).Return(false)
 	response := apiserver.HttpTest("PUT", "/action", "/action", `{}`, handler)
 
 	assert.Equal(t, http.StatusBadRequest, response.Code)
@@ -74,7 +81,11 @@ func TestCreateIoHandler_InputFailure(t *testing.T) {
 }
 
 func TestCreateIoHandler(t *testing.T) {
-	handler := apiserver.CreateJsonHandler(JsonHandler{})
+	config := new(cfgMocks.Config)
+	logger := mocks.NewLoggerMockedAll()
+	handler := apiserver.CreateJsonHandler(JsonHandler{}, config, logger)
+
+	config.On("GetBool", mock.Anything).Return(false)
 	response := apiserver.HttpTest("PUT", "/action", "/action", `{"text":"foobar"}`, handler)
 
 	assert.Equal(t, http.StatusOK, response.Code)

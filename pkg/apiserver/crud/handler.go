@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/jinzhu/inflection"
 	"net/http"
 )
@@ -34,18 +36,18 @@ type Handler interface {
 	List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out interface{}, err error)
 }
 
-func AddCrudHandlers(d *apiserver.Definitions, version int, basePath string, handler Handler) {
+func AddCrudHandlers(d *apiserver.Definitions, version int, basePath string, handler Handler, config cfg.Config, logger mon.Logger) {
 	path := fmt.Sprintf("/v%d/%s", version, basePath)
 	idPath := fmt.Sprintf("%s/:id", path)
 
-	d.POST(path, NewCreateHandler(handler))
+	d.POST(path, NewCreateHandler(handler, config, logger))
 	d.GET(idPath, NewReadHandler(handler))
-	d.PUT(idPath, NewUpdateHandler(handler))
+	d.PUT(idPath, NewUpdateHandler(handler, config, logger))
 	d.DELETE(idPath, NewDeleteHandler(handler))
 
 	plural := inflection.Plural(basePath)
 	path = fmt.Sprintf("/v%d/%s", version, plural)
-	d.POST(path, NewListHandler(handler))
+	d.POST(path, NewListHandler(handler, config, logger))
 }
 
 func getApiViewFromHeader(reqHeaders http.Header) string {

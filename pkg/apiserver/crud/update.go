@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -13,12 +15,12 @@ type updateHandler struct {
 	transformer Handler
 }
 
-func NewUpdateHandler(transformer Handler) gin.HandlerFunc {
+func NewUpdateHandler(transformer Handler, config cfg.Config, logger mon.Logger) gin.HandlerFunc {
 	uh := updateHandler{
 		transformer: transformer,
 	}
 
-	return apiserver.CreateJsonHandler(uh)
+	return apiserver.CreateJsonHandler(uh, config, logger)
 }
 
 func (uh updateHandler) GetInput() interface{} {

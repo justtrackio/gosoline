@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/apiserver/sql"
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,12 +18,12 @@ type listHandler struct {
 	transformer Handler
 }
 
-func NewListHandler(transformer Handler) gin.HandlerFunc {
+func NewListHandler(transformer Handler, config cfg.Config, logger mon.Logger) gin.HandlerFunc {
 	lh := listHandler{
 		transformer: transformer,
 	}
 
-	return apiserver.CreateJsonHandler(lh)
+	return apiserver.CreateJsonHandler(lh, config, logger)
 }
 
 func (lh listHandler) GetInput() interface{} {
