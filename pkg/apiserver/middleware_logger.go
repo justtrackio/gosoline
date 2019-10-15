@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/gin-gonic/gin"
+	"github.com/hashicorp/go-multierror"
 	"strings"
 	"time"
 )
@@ -28,7 +29,7 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 		requestTimeNano := time.Since(start)
 		requestTimeSecond := float64(requestTimeNano) / float64(time.Second)
 
-		log.WithFields(mon.Fields{
+		log = log.WithFields(mon.Fields{
 			"bytes":            ginCtx.Writer.Size(),
 			"client_ip":        ginCtx.ClientIP(),
 			"host":             req.Host,
@@ -40,7 +41,19 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 			"request_time":     requestTimeSecond,
 			"scheme":           req.URL.Scheme,
 			"status":           ginCtx.Writer.Status(),
-		}).Infof("%s %s %s", method, path, req.Proto)
+		})
+
+		if ginCtx.Errors == nil || len(ginCtx.Errors) == 0 {
+			log.Infof("%s %s %s", method, path, req.Proto)
+			return
+		}
+
+		var err *multierror.Error
+		for _, e := range ginCtx.Errors {
+			err = multierror.Append(err, e.Err)
+		}
+
+		log.Errorf(err, "%s %s %s", method, path, req.Proto)
 	}
 }
 func getPathRaw(ginCtx *gin.Context) string {
