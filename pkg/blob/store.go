@@ -10,9 +10,15 @@ import (
 	"sync"
 )
 
+const (
+	PrivateACL    = "private"
+	PublicReadACL = "public-read"
+)
+
 type Object struct {
 	Key    *string
 	Body   []byte
+	ACL    *string
 	Exists bool
 	Error  error
 
