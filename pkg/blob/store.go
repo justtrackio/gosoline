@@ -28,6 +28,7 @@ type Settings struct {
 	Prefix string
 }
 
+//go:generate mockery -name Store
 type Store interface {
 	Read(batch Batch)
 	ReadOne(obj *Object) error
