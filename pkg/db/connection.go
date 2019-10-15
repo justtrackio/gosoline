@@ -20,7 +20,6 @@ type Settings struct {
 	Database           string        `cfg:"db_database"`
 	User               string        `cfg:"db_username"`
 	Password           string        `cfg:"db_password"`
-	RetryDelay         time.Duration `cfg:"db_retry_wait"`
 	ConnectionLifetime time.Duration `cfg:"db_max_connection_lifetime"`
 	ParseTime          bool          `cfg:"db_parse_time"`
 	AutoMigrate        bool          `cfg:"db_auto_migrate"`
@@ -67,6 +66,7 @@ func NewConnection(config cfg.Config, logger mon.Logger) (*sqlx.DB, error) {
 	}
 
 	runMigrations(logger, connection, settings)
+	publishConnectionMetrics(connection)
 
 	return connection, nil
 }
@@ -86,7 +86,7 @@ func NewConnectionWithInterfaces(settings *Settings) (*sqlx.DB, error) {
 	qry.Set("charset", "utf8mb4")
 	dsn.RawQuery = qry.Encode()
 
-	db, err := sqlx.Open(settings.DriverName, dsn.String()[2:])
+	db, err := sqlx.Open("metricWrapper", dsn.String()[2:])
 
 	if err != nil {
 		return nil, err
