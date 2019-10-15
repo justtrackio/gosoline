@@ -107,6 +107,7 @@ func (r *BatchRunner) executeWrite() {
 		body := bytes.NewReader(object.Body)
 
 		input := &s3.PutObjectInput{
+			ACL:    object.ACL,
 			Body:   body,
 			Bucket: object.bucket,
 			Key:    aws.String(key),
