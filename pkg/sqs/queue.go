@@ -3,12 +3,16 @@ package sqs
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/hashicorp/go-multierror"
 	"github.com/twinj/uuid"
 )
+
+const sqsBatchSize = 10
 
 //go:generate mockery -name Queue
 type Queue interface {
@@ -17,6 +21,7 @@ type Queue interface {
 	GetArn() string
 
 	DeleteMessage(receiptHandle string) error
+	DeleteMessageBatch(receiptHandles []string) error
 	Receive(waitTime int64) ([]*sqs.Message, error)
 	Send(ctx context.Context, msg *Message) error
 	SendBatch(ctx context.Context, messages []*Message) error
@@ -166,6 +171,45 @@ func (q *queue) DeleteMessage(receiptHandle string) error {
 	}
 
 	return nil
+}
+
+func (q *queue) DeleteMessageBatch(receiptHandles []string) error {
+	input := &sqs.DeleteMessageBatchInput{
+		QueueUrl: aws.String(q.properties.Url),
+	}
+
+	entries := make([]*sqs.DeleteMessageBatchRequestEntry, len(receiptHandles))
+
+	for i, receiptHandle := range receiptHandles {
+		entry := &sqs.DeleteMessageBatchRequestEntry{
+			Id:            mdl.String(uuid.NewV4().String()),
+			ReceiptHandle: &receiptHandle,
+		}
+
+		entries[i] = entry
+	}
+
+	multiError := new(multierror.Error)
+
+	for i := 0; i < len(entries); i += sqsBatchSize {
+		j := i + sqsBatchSize
+
+		if j > len(entries) {
+			j = len(entries)
+		}
+
+		input.Entries = entries[i:j]
+
+		_, err := q.client.DeleteMessageBatch(input)
+
+		if err != nil {
+			q.logger.Errorf(err, "could not delete the messages from sqs queue %s", q.properties.Name)
+
+			multiError = multierror.Append(multiError, err)
+		}
+	}
+
+	return multiError.ErrorOrNil()
 }
 
 func (q *queue) GetName() string {

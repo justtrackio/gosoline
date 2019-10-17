@@ -31,3 +31,18 @@ func (c *ConsumerAcknowledge) Acknowledge(ctx context.Context, msg *Message) {
 		c.logger.WithContext(ctx).Error(err, "could not acknowledge the message")
 	}
 }
+
+func (c *ConsumerAcknowledge) AcknowledgeBatch(ctx context.Context, msg []*Message) {
+	var ok bool
+	var ackInput AcknowledgeableInput
+
+	if ackInput, ok = c.input.(AcknowledgeableInput); !ok {
+		return
+	}
+
+	err := ackInput.AckBatch(msg)
+
+	if err != nil {
+		c.logger.WithContext(ctx).Error(err, "could not acknowledge the messages")
+	}
+}

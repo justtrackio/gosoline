@@ -40,6 +40,11 @@ func MessageBodyJsonEqual(t *testing.T, m message, path string, expected interfa
 	assert.Equal(t, expected, actual.Value(), msg)
 }
 
+func MessageAttributesJsonEqual(t *testing.T, m message, name string, expected interface{}, msg string) {
+	attributes := m["attributes"].(map[string]interface{})
+	assert.Equal(t, expected, attributes[name], msg)
+}
+
 func readMessagesFromFile(path string) messages {
 	file, err := os.Open(path)
 	if err != nil {

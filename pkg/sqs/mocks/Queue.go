@@ -26,6 +26,20 @@ func (_m *Queue) DeleteMessage(receiptHandle string) error {
 	return r0
 }
 
+// DeleteMessageBatch provides a mock function with given fields: receiptHandles
+func (_m *Queue) DeleteMessageBatch(receiptHandles []string) error {
+	ret := _m.Called(receiptHandles)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(receiptHandles)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetArn provides a mock function with given fields:
 func (_m *Queue) GetArn() string {
 	ret := _m.Called()
