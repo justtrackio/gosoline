@@ -182,11 +182,11 @@ func (c *redisClient) attemptPreventingFailuresByBackoff(wrappedCmd func() (inte
 	backOffSettings := c.settings.BackoffSettings
 
 	backoffConfig := backoff.NewExponentialBackOff()
-	backoffConfig.InitialInterval = backOffSettings.InitialInterval * time.Second
-	backoffConfig.MaxInterval = backOffSettings.MaxInterval * time.Second
+	backoffConfig.InitialInterval = backOffSettings.InitialInterval
+	backoffConfig.MaxInterval = backOffSettings.MaxInterval
+	backoffConfig.MaxElapsedTime = backOffSettings.MaxElapsedTime
 	backoffConfig.Multiplier = backOffSettings.Multiplier
 	backoffConfig.RandomizationFactor = backOffSettings.RandomizationFactor
-	backoffConfig.MaxElapsedTime = backOffSettings.MaxElapsedTime
 
 	var res interface{}
 	var err error
