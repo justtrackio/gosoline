@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
+	"github.com/hashicorp/go-multierror"
 )
 
 type SqsInputSettings struct {
@@ -127,7 +128,52 @@ func (i *sqsInput) Ack(msg *Message) error {
 		return fmt.Errorf("the attribute %s of the message should be string but instead is %T", AttributeSqsReceiptHandle, receiptHandleInterface)
 	}
 
+	if receiptHandleString == "" {
+		return fmt.Errorf("the attribute %s of the message should not be empty", AttributeSqsReceiptHandle)
+	}
+
 	return i.queue.DeleteMessage(receiptHandleString)
+}
+
+func (i *sqsInput) AckBatch(msgs []*Message) error {
+	receiptHandles := make([]string, 0, len(msgs))
+	multiError := new(multierror.Error)
+
+	for _, msg := range msgs {
+		receiptHandleInterface, ok := msg.Attributes[AttributeSqsReceiptHandle]
+
+		if !ok {
+			multiError = multierror.Append(multiError, fmt.Errorf("the message has no attribute %s", AttributeSqsReceiptHandle))
+
+			continue
+		}
+
+		receiptHandleString, ok := receiptHandleInterface.(string)
+
+		if !ok {
+			multiError = multierror.Append(multiError, fmt.Errorf("the attribute %s of the message should be string but instead is %T", AttributeSqsReceiptHandle, receiptHandleInterface))
+
+			continue
+		}
+
+		if receiptHandleString == "" {
+			multiError = multierror.Append(multiError, fmt.Errorf("the attribute %s of the message must not be empty", AttributeSqsReceiptHandle))
+
+			continue
+		}
+
+		receiptHandles = append(receiptHandles, receiptHandleString)
+	}
+
+	if len(receiptHandles) == 0 {
+		return multiError.ErrorOrNil()
+	}
+
+	if err := i.queue.DeleteMessageBatch(receiptHandles); err != nil {
+		multiError = multierror.Append(multiError)
+	}
+
+	return multiError.ErrorOrNil()
 }
 
 func (i *sqsInput) SetUnmarshaler(unmarshaler MessageUnmarshaler) {
