@@ -183,7 +183,7 @@ func (q *queue) DeleteMessageBatch(receiptHandles []string) error {
 	for i, receiptHandle := range receiptHandles {
 		entry := &sqs.DeleteMessageBatchRequestEntry{
 			Id:            mdl.String(uuid.NewV4().String()),
-			ReceiptHandle: &receiptHandle,
+			ReceiptHandle: mdl.String(receiptHandle),
 		}
 
 		entries[i] = entry
