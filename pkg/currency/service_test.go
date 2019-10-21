@@ -118,3 +118,43 @@ func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
 	redis.AssertExpectations(t)
 	client.AssertExpectations(t)
 }
+
+func TestCurrencyService_Currencies(t *testing.T) {
+	redis := new(redisMock.Client)
+	expectedCurrencies := []string{
+		"EUR",
+		"USD",
+	}
+
+	redis.On("HKeys", currency.ExchangeRateDataKey).Return(expectedCurrencies, nil).Times(1)
+
+	service := currency.NewWithInterfaces(redis)
+
+	currencies, err := service.Currencies()
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedCurrencies, currencies)
+
+	// ask again, to ensure we used the applications cached currencies
+	currencies, err = service.Currencies()
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedCurrencies, currencies)
+
+	redis.AssertExpectations(t)
+}
+
+func TestCurrencyService_HasCurrency(t *testing.T) {
+	redis := new(redisMock.Client)
+
+	redis.On("HExists", currency.ExchangeRateDataKey, "USD").Return(true, nil).Times(1)
+
+	service := currency.NewWithInterfaces(redis)
+
+	hasCurrency, err := service.HasCurrency("USD")
+
+	assert.NoError(t, err)
+	assert.True(t, hasCurrency)
+
+	redis.AssertExpectations(t)
+}

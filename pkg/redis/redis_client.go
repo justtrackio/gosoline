@@ -23,17 +23,19 @@ func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
 
 //go:generate mockery -name Client
 type Client interface {
-	Exists(keys ...string) (int64, error)
-	Set(key string, value interface{}, expiration time.Duration) error
-	Get(key string) (string, error)
-	Del(key string) (int64, error)
+	Exists(...string) (int64, error)
+	Set(string, interface{}, time.Duration) error
+	Get(string) (string, error)
+	Del(string) (int64, error)
 
-	BLPop(timeout time.Duration, keys ...string) ([]string, error)
-	LLen(key string) (int64, error)
-	RPush(key string, values ...interface{}) (int64, error)
+	BLPop(time.Duration, ...string) ([]string, error)
+	LLen(string) (int64, error)
+	RPush(string, ...interface{}) (int64, error)
 
-	HGet(key, field string) (string, error)
-	HSet(key, field string, value interface{}) error
+	HExists(string, string) (bool, error)
+	HKeys(string) ([]string, error)
+	HGet(string, string) (string, error)
+	HSet(string, string, interface{}) error
 
 	IsAlive() bool
 
@@ -154,6 +156,14 @@ func (c *redisClient) RPush(key string, values ...interface{}) (int64, error) {
 	})
 
 	return res.(*baseRedis.IntCmd).Result()
+}
+
+func (c *redisClient) HExists(key, field string) (bool, error) {
+	return c.base.HExists(key, field).Result()
+}
+
+func (c *redisClient) HKeys(key string) ([]string, error) {
+	return c.base.HKeys(key).Result()
 }
 
 func (c *redisClient) HGet(key, field string) (string, error) {

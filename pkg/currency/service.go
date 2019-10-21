@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/redis"
 	"github.com/pkg/errors"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -17,13 +18,17 @@ const ExchangeRateDateFormat = time.RFC3339
 
 //go:generate mockery -name Service
 type Service interface {
+	Currencies() ([]string, error)
+	HasCurrency(currency string) (bool, error)
 	ToEur(float64, string) (float64, error)
 	ToUsd(float64, string) (float64, error)
 	ToCurrency(string, float64, string) (float64, error)
 }
 
 type CurrencyService struct {
-	redis redis.Client
+	redis      redis.Client
+	currencies []string
+	lck        sync.Mutex
 }
 
 func New(config cfg.Config, logger mon.Logger) *CurrencyService {
@@ -36,6 +41,29 @@ func NewWithInterfaces(redisClient redis.Client) *CurrencyService {
 	return &CurrencyService{
 		redis: redisClient,
 	}
+}
+
+func (service *CurrencyService) Currencies() ([]string, error) {
+	service.lck.Lock()
+	defer service.lck.Unlock()
+
+	if len(service.currencies) > 0 {
+		return service.currencies, nil
+	}
+
+	currencies, err := service.redis.HKeys(ExchangeRateDataKey)
+
+	if err != nil {
+		return nil, errors.WithMessage(err, "CurrencyService: error getting currency keys")
+	}
+
+	service.currencies = currencies
+
+	return service.currencies, nil
+}
+
+func (service *CurrencyService) HasCurrency(currency string) (bool, error) {
+	return service.redis.HExists(ExchangeRateDataKey, currency)
 }
 
 func (service *CurrencyService) ToEur(value float64, from string) (float64, error) {

@@ -12,20 +12,20 @@ type Client struct {
 	mock.Mock
 }
 
-// BLPop provides a mock function with given fields: timeout, keys
-func (_m *Client) BLPop(timeout time.Duration, keys ...string) ([]string, error) {
-	_va := make([]interface{}, len(keys))
-	for _i := range keys {
-		_va[_i] = keys[_i]
+// BLPop provides a mock function with given fields: _a0, _a1
+func (_m *Client) BLPop(_a0 time.Duration, _a1 ...string) ([]string, error) {
+	_va := make([]interface{}, len(_a1))
+	for _i := range _a1 {
+		_va[_i] = _a1[_i]
 	}
 	var _ca []interface{}
-	_ca = append(_ca, timeout)
+	_ca = append(_ca, _a0)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
 	var r0 []string
 	if rf, ok := ret.Get(0).(func(time.Duration, ...string) []string); ok {
-		r0 = rf(timeout, keys...)
+		r0 = rf(_a0, _a1...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
@@ -34,7 +34,7 @@ func (_m *Client) BLPop(timeout time.Duration, keys ...string) ([]string, error)
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(time.Duration, ...string) error); ok {
-		r1 = rf(timeout, keys...)
+		r1 = rf(_a0, _a1...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -42,20 +42,20 @@ func (_m *Client) BLPop(timeout time.Duration, keys ...string) ([]string, error)
 	return r0, r1
 }
 
-// Del provides a mock function with given fields: key
-func (_m *Client) Del(key string) (int64, error) {
-	ret := _m.Called(key)
+// Del provides a mock function with given fields: _a0
+func (_m *Client) Del(_a0 string) (int64, error) {
+	ret := _m.Called(_a0)
 
 	var r0 int64
 	if rf, ok := ret.Get(0).(func(string) int64); ok {
-		r0 = rf(key)
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(int64)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(key)
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -63,11 +63,11 @@ func (_m *Client) Del(key string) (int64, error) {
 	return r0, r1
 }
 
-// Exists provides a mock function with given fields: keys
-func (_m *Client) Exists(keys ...string) (int64, error) {
-	_va := make([]interface{}, len(keys))
-	for _i := range keys {
-		_va[_i] = keys[_i]
+// Exists provides a mock function with given fields: _a0
+func (_m *Client) Exists(_a0 ...string) (int64, error) {
+	_va := make([]interface{}, len(_a0))
+	for _i := range _a0 {
+		_va[_i] = _a0[_i]
 	}
 	var _ca []interface{}
 	_ca = append(_ca, _va...)
@@ -75,14 +75,14 @@ func (_m *Client) Exists(keys ...string) (int64, error) {
 
 	var r0 int64
 	if rf, ok := ret.Get(0).(func(...string) int64); ok {
-		r0 = rf(keys...)
+		r0 = rf(_a0...)
 	} else {
 		r0 = ret.Get(0).(int64)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(...string) error); ok {
-		r1 = rf(keys...)
+		r1 = rf(_a0...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -90,20 +90,20 @@ func (_m *Client) Exists(keys ...string) (int64, error) {
 	return r0, r1
 }
 
-// Get provides a mock function with given fields: key
-func (_m *Client) Get(key string) (string, error) {
-	ret := _m.Called(key)
+// Get provides a mock function with given fields: _a0
+func (_m *Client) Get(_a0 string) (string, error) {
+	ret := _m.Called(_a0)
 
 	var r0 string
 	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(key)
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(key)
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -111,20 +111,41 @@ func (_m *Client) Get(key string) (string, error) {
 	return r0, r1
 }
 
-// HGet provides a mock function with given fields: key, field
-func (_m *Client) HGet(key string, field string) (string, error) {
-	ret := _m.Called(key, field)
+// HExists provides a mock function with given fields: _a0, _a1
+func (_m *Client) HExists(_a0 string, _a1 string) (bool, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string, string) bool); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// HGet provides a mock function with given fields: _a0, _a1
+func (_m *Client) HGet(_a0 string, _a1 string) (string, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 string
 	if rf, ok := ret.Get(0).(func(string, string) string); ok {
-		r0 = rf(key, field)
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = rf(key, field)
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -132,13 +153,36 @@ func (_m *Client) HGet(key string, field string) (string, error) {
 	return r0, r1
 }
 
-// HSet provides a mock function with given fields: key, field, value
-func (_m *Client) HSet(key string, field string, value interface{}) error {
-	ret := _m.Called(key, field, value)
+// HKeys provides a mock function with given fields: _a0
+func (_m *Client) HKeys(_a0 string) ([]string, error) {
+	ret := _m.Called(_a0)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// HSet provides a mock function with given fields: _a0, _a1, _a2
+func (_m *Client) HSet(_a0 string, _a1 string, _a2 interface{}) error {
+	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, interface{}) error); ok {
-		r0 = rf(key, field, value)
+		r0 = rf(_a0, _a1, _a2)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -160,20 +204,20 @@ func (_m *Client) IsAlive() bool {
 	return r0
 }
 
-// LLen provides a mock function with given fields: key
-func (_m *Client) LLen(key string) (int64, error) {
-	ret := _m.Called(key)
+// LLen provides a mock function with given fields: _a0
+func (_m *Client) LLen(_a0 string) (int64, error) {
+	ret := _m.Called(_a0)
 
 	var r0 int64
 	if rf, ok := ret.Get(0).(func(string) int64); ok {
-		r0 = rf(key)
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(int64)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(key)
+		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -197,23 +241,23 @@ func (_m *Client) Pipeline() go_redisredis.Pipeliner {
 	return r0
 }
 
-// RPush provides a mock function with given fields: key, values
-func (_m *Client) RPush(key string, values ...interface{}) (int64, error) {
+// RPush provides a mock function with given fields: _a0, _a1
+func (_m *Client) RPush(_a0 string, _a1 ...interface{}) (int64, error) {
 	var _ca []interface{}
-	_ca = append(_ca, key)
-	_ca = append(_ca, values...)
+	_ca = append(_ca, _a0)
+	_ca = append(_ca, _a1...)
 	ret := _m.Called(_ca...)
 
 	var r0 int64
 	if rf, ok := ret.Get(0).(func(string, ...interface{}) int64); ok {
-		r0 = rf(key, values...)
+		r0 = rf(_a0, _a1...)
 	} else {
 		r0 = ret.Get(0).(int64)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(string, ...interface{}) error); ok {
-		r1 = rf(key, values...)
+		r1 = rf(_a0, _a1...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -221,13 +265,13 @@ func (_m *Client) RPush(key string, values ...interface{}) (int64, error) {
 	return r0, r1
 }
 
-// Set provides a mock function with given fields: key, value, expiration
-func (_m *Client) Set(key string, value interface{}, expiration time.Duration) error {
-	ret := _m.Called(key, value, expiration)
+// Set provides a mock function with given fields: _a0, _a1, _a2
+func (_m *Client) Set(_a0 string, _a1 interface{}, _a2 time.Duration) error {
+	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, interface{}, time.Duration) error); ok {
-		r0 = rf(key, value, expiration)
+		r0 = rf(_a0, _a1, _a2)
 	} else {
 		r0 = ret.Error(0)
 	}
