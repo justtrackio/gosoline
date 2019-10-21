@@ -298,7 +298,7 @@ func (f *metadataFactory) getAttributeType(field reflect.StructField) string {
 	switch t.Kind() {
 	case reflect.String:
 		attributeType = dynamodb.ScalarAttributeTypeS
-	case reflect.Int, reflect.Int64, reflect.Float32, reflect.Float64:
+	case reflect.Int, reflect.Int64, reflect.Uint, reflect.Uint64, reflect.Float32, reflect.Float64:
 		attributeType = dynamodb.ScalarAttributeTypeN
 	case reflect.Struct:
 		switch t.String() {
