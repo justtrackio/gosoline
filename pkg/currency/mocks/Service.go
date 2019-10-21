@@ -9,6 +9,50 @@ type Service struct {
 	mock.Mock
 }
 
+// Currencies provides a mock function with given fields:
+func (_m *Service) Currencies() ([]string, error) {
+	ret := _m.Called()
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func() []string); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// HasCurrency provides a mock function with given fields: _a0
+func (_m *Service) HasCurrency(_a0 string) (bool, error) {
+	ret := _m.Called(_a0)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ToCurrency provides a mock function with given fields: _a0, _a1, _a2
 func (_m *Service) ToCurrency(_a0 string, _a1 float64, _a2 string) (float64, error) {
 	ret := _m.Called(_a0, _a1, _a2)
