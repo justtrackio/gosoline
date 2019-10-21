@@ -5,6 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"sync"
@@ -87,7 +88,9 @@ func (s *s3Store) CreateBucket() {
 		Bucket: s.bucket,
 	})
 
-	if err != nil {
+	if isBucketAlreadyExistsError(err) {
+		s.logger.Infof("s3 bucket %s did already exist", *s.bucket)
+	} else if err != nil {
 		s.logger.Errorf(err, "could not create s3 bucket %s", *s.bucket)
 	} else {
 		s.logger.Infof("created s3 bucket %s", *s.bucket)
@@ -138,4 +141,16 @@ func (s *s3Store) Write(batch Batch) {
 	}
 
 	wg.Wait()
+}
+
+func isBucketAlreadyExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if aerr, ok := err.(awserr.Error); ok {
+		return aerr.Code() == s3.ErrCodeBucketAlreadyExists
+	}
+
+	return false
 }
