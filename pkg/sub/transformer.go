@@ -22,6 +22,7 @@ func (m ModelDb) GetId() interface{} {
 	return *m.Id
 }
 
+//go:generate mockery -name ModelTransformer
 type ModelTransformer interface {
 	GetInput() interface{}
 	Transform(ctx context.Context, inp interface{}) (out Model, err error)
