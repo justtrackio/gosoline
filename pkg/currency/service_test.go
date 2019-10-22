@@ -125,8 +125,11 @@ func TestCurrencyService_Currencies(t *testing.T) {
 		"EUR",
 		"USD",
 	}
+	returnedCurrencies := []string{
+		"USD",
+	}
 
-	redis.On("HKeys", currency.ExchangeRateDataKey).Return(expectedCurrencies, nil).Times(1)
+	redis.On("HKeys", currency.ExchangeRateDataKey).Return(returnedCurrencies, nil).Times(1)
 
 	service := currency.NewWithInterfaces(redis)
 
