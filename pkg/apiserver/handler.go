@@ -111,6 +111,10 @@ func CreateRawHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 	return handleRaw(handler, defaultErrorHandler)
 }
 
+func CreateReaderHandler(handler HandlerWithoutInput) gin.HandlerFunc {
+	return handleReader(handler, defaultErrorHandler)
+}
+
 func CreateJsonHandler(handler HandlerWithInput) gin.HandlerFunc {
 	return handleWithInput(handler, binding.JSON, defaultErrorHandler)
 }
@@ -203,6 +207,12 @@ func handleRaw(handler HandlerWithoutInput, errHandler ErrorHandler) gin.Handler
 		}
 
 		handle(ginCtx, handler, string(body), errHandler)
+	}
+}
+
+func handleReader(handler HandlerWithoutInput, errHandler ErrorHandler) gin.HandlerFunc {
+	return func(ginCtx *gin.Context) {
+		handle(ginCtx, handler, ginCtx.Request.Body, errHandler)
 	}
 }
 
