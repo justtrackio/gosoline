@@ -1,7 +1,6 @@
 package blob
 
 import (
-	"bytes"
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
@@ -10,7 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"io/ioutil"
+	"github.com/hashicorp/go-multierror"
+	"io"
 	"strings"
 	"sync"
 )
@@ -72,7 +72,7 @@ func (r *BatchRunner) Run(ctx context.Context) error {
 
 func (r *BatchRunner) executeRead() {
 	for object := range r.read {
-		var body []byte
+		var body io.ReadCloser
 		var err error
 
 		key := strings.Join([]string{*object.prefix, *object.Key}, "/")
@@ -91,10 +91,10 @@ func (r *BatchRunner) executeRead() {
 				err = nil
 			}
 		} else {
-			body, err = ioutil.ReadAll(out.Body)
+			body = out.Body
 		}
 
-		object.Body = body
+		object.Body = StreamReader(body)
 		object.Exists = exists
 		object.Error = err
 		object.wg.Done()
@@ -104,7 +104,7 @@ func (r *BatchRunner) executeRead() {
 func (r *BatchRunner) executeWrite() {
 	for object := range r.write {
 		key := strings.Join([]string{*object.prefix, *object.Key}, "/")
-		body := bytes.NewReader(object.Body)
+		body := CloseOnce(object.Body.AsReader())
 
 		input := &s3.PutObjectInput{
 			ACL:    object.ACL,
@@ -120,6 +120,10 @@ func (r *BatchRunner) executeWrite() {
 			object.Error = err
 		} else {
 			object.Exists = true
+		}
+
+		if err := body.Close(); err != nil {
+			object.Error = multierror.Append(object.Error, err)
 		}
 
 		object.wg.Done()
