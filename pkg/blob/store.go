@@ -18,7 +18,7 @@ const (
 
 type Object struct {
 	Key    *string
-	Body   []byte
+	Body   Stream
 	ACL    *string
 	Exists bool
 	Error  error

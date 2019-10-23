@@ -40,7 +40,7 @@ func (p *subOutBlob) Persist(ctx context.Context, model Model, op string) error 
 
 	obj := &blob.Object{
 		Key:  mdl.String(idString),
-		Body: bytes,
+		Body: blob.StreamBytes(bytes),
 	}
 
 	err = p.store.WriteOne(obj)
