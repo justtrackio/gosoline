@@ -136,7 +136,7 @@ func (s *service) QueueExists(name string) (bool, error) {
 
 	s.logger.WithFields(mon.Fields{
 		"name": name,
-	}).Info("could not found queue")
+	}).Info("could not find queue")
 
 	return false, nil
 }

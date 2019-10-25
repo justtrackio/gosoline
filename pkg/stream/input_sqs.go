@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
@@ -24,6 +25,7 @@ type sqsInput struct {
 	queue       sqs.Queue
 	settings    SqsInputSettings
 	unmarshaler MessageUnmarshaler
+	ctx         context.Context
 
 	cfn     coffin.Coffin
 	channel chan *Message
@@ -61,9 +63,11 @@ func (i *sqsInput) Data() chan *Message {
 	return i.channel
 }
 
-func (i *sqsInput) Run() error {
+func (i *sqsInput) Run(ctx context.Context) error {
 	defer close(i.channel)
 	defer i.logger.Info("leaving sqs input")
+
+	i.ctx = ctx
 
 	i.logger.Infof("starting sqs input with %d runners", i.settings.RunnerCount)
 
@@ -85,7 +89,7 @@ func (i *sqsInput) runLoop() error {
 			return nil
 		}
 
-		sqsMessages, err := i.queue.Receive(i.settings.WaitTime)
+		sqsMessages, err := i.queue.Receive(i.ctx, i.settings.WaitTime)
 
 		if err != nil {
 			i.logger.Error(err, "could not get messages from sqs")

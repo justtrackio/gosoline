@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
@@ -40,7 +41,7 @@ func (i *kinsumerInput) Data() chan *Message {
 	return i.channel
 }
 
-func (i *kinsumerInput) Run() error {
+func (i *kinsumerInput) Run(ctx context.Context) error {
 	defer i.wg.Done()
 
 	i.wg.Add(1)

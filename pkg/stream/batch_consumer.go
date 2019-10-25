@@ -57,7 +57,9 @@ func (c *baseBatchConsumer) Boot(config cfg.Config, logger mon.Logger) error {
 func (c *baseBatchConsumer) Run(ctx context.Context) error {
 	defer c.logger.Info("leaving consumer ", c.name)
 
-	c.cfn.Gof(c.input.Run, "panic during run of the consumer input")
+	c.cfn.Gof(func() error {
+		return c.input.Run(ctx)
+	}, "panic during run of the consumer input")
 	c.cfn.Gof(c.consume, "panic during consuming")
 
 	for {

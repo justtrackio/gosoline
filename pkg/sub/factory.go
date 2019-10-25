@@ -9,12 +9,15 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 )
 
+type inputSettings map[string]interface{}
+
 type Subscription struct {
-	Input       string            `cfg:"input"`
-	Output      string            `cfg:"output"`
-	Redis       string            `cfg:"redis"`
-	SourceModel SubscriptionModel `cfg:"source"`
-	TargetModel SubscriptionModel `cfg:"target"`
+	Input         string            `cfg:"input"`
+	InputSettings inputSettings     `cfg:"input_settings"`
+	Output        string            `cfg:"output"`
+	Redis         string            `cfg:"redis"`
+	SourceModel   SubscriptionModel `cfg:"source"`
+	TargetModel   SubscriptionModel `cfg:"target"`
 }
 
 type SubscriptionModel struct {
@@ -66,7 +69,7 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 			TargetModelId: targetModelId,
 		}
 
-		input, err := getInputByType(config, logger, s.Input, sourceModelId)
+		input, err := getInputByType(config, logger, s.Input, s.InputSettings, sourceModelId)
 		if err != nil {
 			logger.Error(err, "could not build subscribers")
 			return modules, err
@@ -96,12 +99,18 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 	return modules, nil
 }
 
-func getInputByType(config cfg.Config, logger mon.Logger, inType string, mId mdl.ModelId) (stream.Input, error) {
+func getInputByType(config cfg.Config, logger mon.Logger, inType string, sqsInputSettings inputSettings, mId mdl.ModelId) (stream.Input, error) {
 	switch inType {
 	case "sns":
-		inputSettings := stream.SnsInputSettings{
+		waitTime := int64(5)
+
+		if wt, ok := sqsInputSettings["wait_time"].(int); ok {
+			waitTime = int64(wt)
+		}
+
+		snsInputSettings := stream.SnsInputSettings{
 			QueueId:  mId.Name,
-			WaitTime: 5,
+			WaitTime: waitTime,
 		}
 		inputTargets := []stream.SnsInputTarget{
 			{
@@ -115,7 +124,7 @@ func getInputByType(config cfg.Config, logger mon.Logger, inType string, mId mdl
 			},
 		}
 
-		return stream.NewSnsInput(config, logger, inputSettings, inputTargets), nil
+		return stream.NewSnsInput(config, logger, snsInputSettings, inputTargets), nil
 	}
 
 	return nil, fmt.Errorf("there is no input defined of type %s", inType)

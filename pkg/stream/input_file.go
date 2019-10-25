@@ -2,6 +2,7 @@ package stream
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
@@ -37,7 +38,7 @@ func (i *fileInput) Data() chan *Message {
 	return i.channel
 }
 
-func (i *fileInput) Run() error {
+func (i *fileInput) Run(ctx context.Context) error {
 	defer func() {
 		if !i.settings.Blocking {
 			close(i.channel)

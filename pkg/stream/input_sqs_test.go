@@ -1,12 +1,14 @@
 package stream_test
 
 import (
+	"context"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	sqsMocks "github.com/applike/gosoline/pkg/sqs/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
@@ -21,7 +23,7 @@ func TestSqsInput_Run(t *testing.T) {
 	msg := &stream.Message{}
 
 	queue := new(sqsMocks.Queue)
-	queue.On("Receive", int64(3)).Return(func(wt int64) []*sqs.Message {
+	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int64(3)).Return(func(_ context.Context, wt int64) []*sqs.Message {
 		count++
 
 		if count > maxReceiveCount {
@@ -43,7 +45,7 @@ func TestSqsInput_Run(t *testing.T) {
 	})
 
 	go func() {
-		err := input.Run()
+		err := input.Run(context.TODO())
 		assert.NoError(t, err)
 
 		close(waitRunDone)
@@ -70,7 +72,7 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 	waitRunDone := make(chan struct{})
 
 	queue := new(sqsMocks.Queue)
-	queue.On("Receive", int64(3)).Return(func(wt int64) []*sqs.Message {
+	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int64(3)).Return(func(_ context.Context, wt int64) []*sqs.Message {
 		count++
 
 		if count == 1 {
@@ -91,7 +93,7 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 	})
 
 	go func() {
-		err := input.Run()
+		err := input.Run(context.TODO())
 		assert.Error(t, err)
 
 		close(waitRunDone)

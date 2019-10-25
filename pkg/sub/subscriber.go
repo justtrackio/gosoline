@@ -108,7 +108,9 @@ func (s *subscriber) Run(ctx context.Context) error {
 		s.cfn.Gof(s.consume, "panic during consuming the subscription")
 	}
 
-	s.cfn.Gof(s.input.Run, "panic during run of the subscription input")
+	s.cfn.Gof(func() error {
+		return s.input.Run(ctx)
+	}, "panic during run of the subscription input")
 
 	for {
 		select {

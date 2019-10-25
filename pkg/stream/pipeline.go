@@ -85,7 +85,9 @@ func (p *Pipeline) Run(ctx context.Context) error {
 	defer p.logger.Info("leaving pipeline")
 	defer p.process(ctx, true)
 
-	p.cfn.Gof(p.input.Run, "panic during run of the consumer input")
+	p.cfn.Gof(func() error {
+		return p.input.Run(ctx)
+	}, "panic during run of the consumer input")
 	p.cfn.Gof(func() error {
 		return p.read(ctx)
 	}, "panic during consuming")

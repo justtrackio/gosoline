@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	configMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestFileInput_Run(t *testing.T) {
 
 	var err error
 	go func() {
-		err = input.Run()
+		err = input.Run(context.TODO())
 	}()
 
 	msg := <-input.Data()
