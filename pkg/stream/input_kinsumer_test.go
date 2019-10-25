@@ -1,6 +1,7 @@
 package stream_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
@@ -45,7 +46,7 @@ func TestReaderLifeCycle(t *testing.T) {
 		reader := stream.NewKinsumerInput(configMock, loggerMock, factory, stream.KinsumerSettings{})
 
 		go func() {
-			err = reader.Run()
+			err = reader.Run(context.Background())
 		}()
 
 		out = <-reader.Data()
@@ -74,7 +75,7 @@ func TestReaderRunErrorInClientRun(t *testing.T) {
 		reader := stream.NewKinsumerInput(configMock, loggerMock, factory, stream.KinsumerSettings{})
 
 		assert.Panics(t, func() {
-			_ = reader.Run()
+			_ = reader.Run(context.TODO())
 		})
 	})
 
@@ -115,7 +116,7 @@ func TestReaderRestartTrigger(t *testing.T) {
 		reader := stream.NewKinsumerInput(configMock, loggerMock, factory, stream.KinsumerSettings{})
 
 		go func() {
-			err = reader.Run()
+			err = reader.Run(context.TODO())
 		}()
 
 		out = <-reader.Data()

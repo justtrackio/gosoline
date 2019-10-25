@@ -73,7 +73,7 @@ func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
 func (c *Consumer) Run(ctx context.Context) error {
 	defer c.logger.Info("leaving consumer ", c.name)
 
-	c.cfn.Gof(c.input.Run, "panic during run of the consumer input")
+	c.cfn.GoWithContextf(ctx, c.input.Run, "panic during run of the consumer input")
 
 	for i := 0; i < 10; i++ {
 		c.cfn.Gof(c.consume, "panic during consuming")

@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
@@ -63,14 +64,16 @@ func (i *sqsInput) Data() chan *Message {
 	return i.channel
 }
 
-func (i *sqsInput) Run() error {
+func (i *sqsInput) Run(ctx context.Context) error {
 	defer close(i.channel)
 	defer i.logger.Info("leaving sqs input")
 
 	i.logger.Infof("starting sqs input with %d runners", i.settings.RunnerCount)
 
 	for j := 0; j < i.settings.RunnerCount; j++ {
-		i.cfn.Gof(i.runLoop, "panic in sqs input runner")
+		i.cfn.Gof(func() error {
+			return i.runLoop(ctx)
+		}, "panic in sqs input runner")
 	}
 
 	<-i.cfn.Dying()
@@ -79,7 +82,7 @@ func (i *sqsInput) Run() error {
 	return i.cfn.Wait()
 }
 
-func (i *sqsInput) runLoop() error {
+func (i *sqsInput) runLoop(ctx context.Context) error {
 	defer i.logger.Info("leaving sqs input runner")
 
 	for {
@@ -87,7 +90,7 @@ func (i *sqsInput) runLoop() error {
 			return nil
 		}
 
-		sqsMessages, err := i.queue.Receive(i.settings.WaitTime)
+		sqsMessages, err := i.queue.Receive(ctx, i.settings.WaitTime)
 
 		if err != nil {
 			i.logger.Error(err, "could not get messages from sqs")

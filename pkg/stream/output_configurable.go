@@ -46,7 +46,7 @@ func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 }
 
 type kinesisOutputConfiguration struct {
-	StreamName string `cfg:"streamName"`
+	StreamName string `cfg:"stream_name"`
 }
 
 func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {

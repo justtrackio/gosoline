@@ -47,8 +47,8 @@ func newFileInputFromConfig(config cfg.Config, logger mon.Logger, name string) I
 }
 
 type kinesisInputConfiguration struct {
-	StreamName      string `cfg:"streamName" validate:"required"`
-	ApplicationName string `cfg:"applicationName" validate:"required"`
+	StreamName      string `cfg:"stream_name" validate:"required"`
+	ApplicationName string `cfg:"application_name" validate:"required"`
 }
 
 func newKinesisInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {

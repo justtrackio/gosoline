@@ -22,7 +22,7 @@ type Queue interface {
 
 	DeleteMessage(receiptHandle string) error
 	DeleteMessageBatch(receiptHandles []string) error
-	Receive(waitTime int64) ([]*sqs.Message, error)
+	Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, error)
 	Send(ctx context.Context, msg *Message) error
 	SendBatch(ctx context.Context, messages []*Message) error
 }
@@ -138,7 +138,7 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 	return err
 }
 
-func (q *queue) Receive(waitTime int64) ([]*sqs.Message, error) {
+func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, error) {
 	input := &sqs.ReceiveMessageInput{
 		MessageAttributeNames: []*string{aws.String("ALL")},
 		MaxNumberOfMessages:   aws.Int64(10),
@@ -146,7 +146,7 @@ func (q *queue) Receive(waitTime int64) ([]*sqs.Message, error) {
 		WaitTimeSeconds:       aws.Int64(waitTime),
 	}
 
-	out, err := q.client.ReceiveMessage(input)
+	out, err := q.client.ReceiveMessageWithContext(ctx, input)
 
 	if err != nil {
 		q.logger.Errorf(err, "could not receive value from sqs queue %s", q.properties.Name)

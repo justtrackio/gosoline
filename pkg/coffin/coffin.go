@@ -14,6 +14,8 @@ type Coffin interface {
 	Err() (reason error)
 	Go(f func() error)
 	Gof(f func() error, name string, args ...interface{})
+	GoWithContext(ctx context.Context, f func(ctx context.Context) error)
+	GoWithContextf(ctx context.Context, f func(ctx context.Context) error, msg string, args ...interface{})
 	Kill(reason error)
 	Killf(f string, a ...interface{}) error
 	Wait() error
@@ -54,6 +56,18 @@ func (c *coffin) Gof(f func() error, msg string, args ...interface{}) {
 		err = f()
 		return
 	})
+}
+
+func (c *coffin) GoWithContext(ctx context.Context, f func(ctx context.Context) error) {
+	c.Go(func() error {
+		return f(ctx)
+	})
+}
+
+func (c *coffin) GoWithContextf(ctx context.Context, f func(ctx context.Context) error, msg string, args ...interface{}) {
+	c.Gof(func() error {
+		return f(ctx)
+	}, msg, args...)
 }
 
 func WithContext(parent context.Context) (Coffin, context.Context) {

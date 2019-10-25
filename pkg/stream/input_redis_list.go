@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/applike/gosoline/pkg/cfg"
@@ -59,7 +60,7 @@ func (i *redisListInput) Data() chan *Message {
 	return i.channel
 }
 
-func (i *redisListInput) Run() error {
+func (i *redisListInput) Run(ctx context.Context) error {
 	defer close(i.channel)
 
 	if i.settings.WaitTime == 0 {

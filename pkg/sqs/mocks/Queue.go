@@ -82,13 +82,13 @@ func (_m *Queue) GetUrl() string {
 	return r0
 }
 
-// Receive provides a mock function with given fields: waitTime
-func (_m *Queue) Receive(waitTime int64) ([]*servicesqs.Message, error) {
-	ret := _m.Called(waitTime)
+// Receive provides a mock function with given fields: ctx, waitTime
+func (_m *Queue) Receive(ctx context.Context, waitTime int64) ([]*servicesqs.Message, error) {
+	ret := _m.Called(ctx, waitTime)
 
 	var r0 []*servicesqs.Message
-	if rf, ok := ret.Get(0).(func(int64) []*servicesqs.Message); ok {
-		r0 = rf(waitTime)
+	if rf, ok := ret.Get(0).(func(context.Context, int64) []*servicesqs.Message); ok {
+		r0 = rf(ctx, waitTime)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*servicesqs.Message)
@@ -96,8 +96,8 @@ func (_m *Queue) Receive(waitTime int64) ([]*servicesqs.Message, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(waitTime)
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, waitTime)
 	} else {
 		r1 = ret.Error(1)
 	}

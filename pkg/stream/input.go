@@ -1,8 +1,10 @@
 package stream
 
+import "context"
+
 //go:generate mockery -name Input
 type Input interface {
-	Run() error
+	Run(ctx context.Context) error
 	Stop()
 	Data() chan *Message
 }
