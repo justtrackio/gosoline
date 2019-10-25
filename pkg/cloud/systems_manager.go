@@ -11,6 +11,12 @@ import (
 
 type SsmParameters map[string]string
 
+//go:generate mockery -name SsmClient
+type SsmClient interface {
+	GetParameters(string) (SsmParameters, error)
+	GetParameter(string) (string, error)
+}
+
 type SimpleSystemsManager struct {
 	logger mon.Logger
 	client ssmiface.SSMAPI
@@ -45,4 +51,19 @@ func (ssm SimpleSystemsManager) GetParameters(path string) (SsmParameters, error
 	}
 
 	return params, nil
+}
+
+func (ssm SimpleSystemsManager) GetParameter(path string) (string, error) {
+	input := &ssm2.GetParameterInput{
+		Name:           aws.String(path),
+		WithDecryption: aws.Bool(true),
+	}
+
+	out, err := ssm.client.GetParameter(input)
+
+	if err != nil {
+		return "", err
+	}
+
+	return *out.Parameter.Value, nil
 }
