@@ -269,7 +269,18 @@ func (c *config) UnmarshalKey(key string, output interface{}, opts ...DecoderCon
 	}
 
 	if c.settings.Has(key) {
-		settings, ok := c.settings.Get(key).Data().(map[string]interface{})
+		data := c.settings.Get(key).Data()
+
+		if slice, ok := data.([]interface{}); ok {
+			if err := c.decode(slice, output); err != nil {
+				c.err(err, "can not decode config into slice of key: %s", key)
+				return
+			}
+
+			return
+		}
+
+		settings, ok := data.(map[string]interface{})
 
 		if !ok {
 			c.err(errors.New("value is not of type map[string]interface{}"), "can not get settings for key: %s", key)
@@ -340,7 +351,7 @@ func (c *config) err(err error, msg string, args ...interface{}) {
 	}
 }
 
-func (c *config) decode(input map[string]interface{}, output interface{}) error {
+func (c *config) decode(input interface{}, output interface{}) error {
 	decoderConfig := &mapstructure.DecoderConfig{
 		Metadata:         nil,
 		Result:           output,
@@ -445,6 +456,10 @@ func (c *config) mergeSettingsWithKeyPrefix(prefix string, settings map[string]i
 }
 
 func (c *config) readDefaultSettingsFromStruct(input interface{}) map[string]interface{} {
+	if refl.IsSlice(input) {
+		return map[string]interface{}{}
+	}
+
 	defaults := make(map[string]interface{})
 
 	it := reflect.TypeOf(input)
