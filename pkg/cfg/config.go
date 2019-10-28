@@ -180,6 +180,12 @@ func (c *config) GetStringMap(key string) map[string]interface{} {
 		return nil
 	}
 
+	for k, v := range strMap {
+		if str, ok := v.(string); ok {
+			strMap[k] = c.augmentString(str)
+		}
+	}
+
 	return strMap
 }
 
