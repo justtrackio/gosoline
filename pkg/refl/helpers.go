@@ -4,17 +4,26 @@ import (
 	"reflect"
 )
 
-func IsSlice(value interface{}) bool {
+func IsPointerToSlice(value interface{}) bool {
 	t := reflect.TypeOf(value)
 
-	for {
-		if t.Kind() == reflect.Ptr {
-			t = t.Elem()
-			continue
-		}
-
-		break
+	if t.Kind() != reflect.Ptr {
+		return false
 	}
 
+	t = t.Elem()
+
 	return t.Kind() == reflect.Slice
+}
+
+func IsPointerToStruct(value interface{}) bool {
+	t := reflect.TypeOf(value)
+
+	if t.Kind() != reflect.Ptr {
+		return false
+	}
+
+	t = t.Elem()
+
+	return t.Kind() == reflect.Struct
 }

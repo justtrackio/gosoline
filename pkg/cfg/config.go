@@ -252,91 +252,18 @@ func (c *config) UnmarshalKey(key string, output interface{}, opts ...DecoderCon
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	//c.keyCheck(key)
-
-	finalSettings := make(map[string]interface{})
-	zeroSettings, err := c.readZeroValuesFromStruct(output)
-
-	if err != nil {
-		c.err(err, "can not get zero values for key: %s", key)
+	if refl.IsPointerToStruct(output) {
+		c.unmarshalStruct(key, output, opts...)
 		return
 	}
 
-	if err := mergo.Merge(&finalSettings, zeroSettings, mergo.WithOverride); err != nil {
-		c.err(err, "can not merge zero settings for key: %s", key)
+	if refl.IsPointerToSlice(output) {
+		c.unmarshalSlice(key, output, opts...)
 		return
 	}
 
-	defaultSettings := c.readDefaultSettingsFromStruct(output)
-
-	if err := mergo.Merge(&finalSettings, defaultSettings, mergo.WithOverride); err != nil {
-		c.err(err, "can not merge default settings for key: %s", key)
-		return
-	}
-
-	if c.settings.Has(key) {
-		data := c.settings.Get(key).Data()
-
-		if slice, ok := data.([]interface{}); ok {
-			if err := c.decode(slice, output); err != nil {
-				c.err(err, "can not decode config into slice of key: %s", key)
-				return
-			}
-
-			return
-		}
-
-		settings, ok := data.(map[string]interface{})
-
-		if !ok {
-			c.err(errors.New("value is not of type map[string]interface{}"), "can not get settings for key: %s", key)
-			return
-		}
-
-		if err := mergo.Merge(&finalSettings, settings, mergo.WithOverride); err != nil {
-			c.err(err, "can not merge settings for key: %s", key)
-			return
-		}
-	}
-
-	environmentKey := c.resolveEnvKey(c.envKeyPrefix, key)
-	environmentSettings := c.readEnvironment(environmentKey, finalSettings)
-
-	if err := mergo.Merge(&finalSettings, environmentSettings, mergo.WithOverride); err != nil {
-		c.err(err, "can not merge zero settings for key: %s", key)
-		return
-	}
-
-	c.mergeSettingsWithKeyPrefix(key, finalSettings)
-	err = c.decode(finalSettings, output)
-
-	if err != nil {
-		c.err(err, "error unmarshalling key: %s", key)
-		return
-	}
-
-	validate := validator.New()
-	err = validate.Struct(output)
-
-	if err == nil {
-		return
-	}
-
-	if _, ok := err.(*validator.InvalidValidationError); ok {
-		c.err(err, "can not validate result of key: %s", key)
-		return
-	}
-
-	errs := &multierror.Error{}
-	for _, validationErr := range err.(validator.ValidationErrors) {
-		err := fmt.Errorf("the setting %s with value %v does not match its requirement", validationErr.Field(), validationErr.Value())
-		errs = multierror.Append(errs, err)
-	}
-
-	if errs != nil {
-		c.err(errs, "validation failed for key: %s", key)
-		return
-	}
+	err := fmt.Errorf("output should be a pointer to struct or slice but instead is %T", output)
+	c.err(err, "can not unmarshal key %s", key)
 }
 
 func (c *config) augmentString(str string) string {
@@ -462,7 +389,7 @@ func (c *config) mergeSettingsWithKeyPrefix(prefix string, settings map[string]i
 }
 
 func (c *config) readDefaultSettingsFromStruct(input interface{}) map[string]interface{} {
-	if refl.IsSlice(input) {
+	if refl.IsPointerToSlice(input) {
 		return map[string]interface{}{}
 	}
 
@@ -505,7 +432,7 @@ func (c *config) readDefaultSettingsFromStruct(input interface{}) map[string]int
 }
 
 func (c *config) readZeroValuesFromStruct(input interface{}) (map[string]interface{}, error) {
-	if refl.IsSlice(input) {
+	if refl.IsPointerToSlice(input) {
 		return map[string]interface{}{}, nil
 	}
 
@@ -551,7 +478,14 @@ func (c *config) readEnvironment(prefix string, input map[string]interface{}) ma
 
 func (c *config) resolveEnvKey(prefix string, key string) string {
 	if len(prefix) > 0 {
-		key = strings.Join([]string{prefix, key}, "_")
+		key = strings.Join([]string{prefix, key}, ".")
+	}
+
+	rp := regexp.MustCompile("\\[(\\d)\\]")
+	matches := rp.FindAllStringSubmatch(key, -1)
+
+	for _, m := range matches {
+		key = strings.Replace(key, m[0], fmt.Sprintf(".%s", m[1]), -1)
 	}
 
 	if c.envKeyReplacer != nil {
@@ -559,4 +493,111 @@ func (c *config) resolveEnvKey(prefix string, key string) string {
 	}
 
 	return strings.ToUpper(key)
+}
+
+func (c *config) unmarshalSlice(key string, output interface{}, opts ...DecoderConfigOption) {
+	data := c.settings.Get(key).Data()
+	interfaceSlice, ok := data.([]interface{})
+
+	if !ok {
+		err := fmt.Errorf("data for key %s should be of type []interface{} but instead is of type %T", key, data)
+		c.err(err, "can not unmarshal key %s", key)
+		return
+	}
+
+	slice, err := refl.SliceOf(output)
+
+	if err != nil {
+		c.err(err, "can not unmarshal key %s into slice", key)
+		return
+	}
+
+	for i := 0; i < len(interfaceSlice); i++ {
+		keyIndex := fmt.Sprintf("%s[%d]", key, i)
+		elem := slice.NewElement()
+
+		c.unmarshalStruct(keyIndex, elem, opts...)
+
+		if err := slice.Append(elem); err != nil {
+			c.err(err, "can not unmarshal key %s into slice", key)
+			return
+		}
+	}
+}
+
+func (c *config) unmarshalStruct(key string, output interface{}, opts ...DecoderConfigOption) {
+	finalSettings := make(map[string]interface{})
+	zeroSettings, err := c.readZeroValuesFromStruct(output)
+
+	if err != nil {
+		c.err(err, "can not get zero values for key: %s", key)
+		return
+	}
+
+	if err := mergo.Merge(&finalSettings, zeroSettings, mergo.WithOverride); err != nil {
+		c.err(err, "can not merge zero settings for key: %s", key)
+		return
+	}
+
+	defaultSettings := c.readDefaultSettingsFromStruct(output)
+
+	if err := mergo.Merge(&finalSettings, defaultSettings, mergo.WithOverride); err != nil {
+		c.err(err, "can not merge default settings for key: %s", key)
+		return
+	}
+
+	if c.settings.Has(key) {
+		data := c.settings.Get(key).Data()
+
+		settings, ok := data.(map[string]interface{})
+
+		if !ok {
+			c.err(errors.New("value is not of type map[string]interface{}"), "can not get settings for key: %s", key)
+			return
+		}
+
+		if err := mergo.Merge(&finalSettings, settings, mergo.WithOverride); err != nil {
+			c.err(err, "can not merge settings for key: %s", key)
+			return
+		}
+	}
+
+	environmentKey := c.resolveEnvKey(c.envKeyPrefix, key)
+	environmentSettings := c.readEnvironment(environmentKey, finalSettings)
+
+	if err := mergo.Merge(&finalSettings, environmentSettings, mergo.WithOverride); err != nil {
+		c.err(err, "can not merge zero settings for key: %s", key)
+		return
+	}
+
+	c.mergeSettingsWithKeyPrefix(key, finalSettings)
+	err = c.decode(finalSettings, output)
+
+	if err != nil {
+		c.err(err, "error unmarshalling key: %s", key)
+		return
+	}
+
+	validate := validator.New()
+	err = validate.Struct(output)
+
+	if err == nil {
+		return
+	}
+
+	if _, ok := err.(*validator.InvalidValidationError); ok {
+		c.err(err, "can not validate result of key: %s", key)
+		return
+	}
+
+	errs := &multierror.Error{}
+	for _, validationErr := range err.(validator.ValidationErrors) {
+		err := fmt.Errorf("the setting %s with value %v does not match its requirement", validationErr.Field(), validationErr.Value())
+		errs = multierror.Append(errs, err)
+	}
+
+	if errs != nil {
+		c.err(errs, "validation failed for key: %s", key)
+		return
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/stretchr/testify/assert"
 	"math"
+	"strings"
 	"testing"
 	"time"
 )
@@ -143,34 +144,7 @@ func TestConfig_EnvironmentPrefixed(t *testing.T) {
 	assert.Equal(t, expectedMap, config.Get("n"))
 }
 
-//func TestConfig_Unmarshal(t *testing.T) {
-//	type configMap struct {
-//		Foo       string `cfg:"foo"`
-//		Bla       string `cfg:"bla"`
-//		Augmented string `cfg:"augmented"`
-//	}
-//
-//	config, viper := getNewTestableConfig()
-//
-//	viper.On("IsSet", "foo").Return(true)
-//	viper.On("Get", "foo").Return("bar")
-//	viper.On("AllSettings").Return(map[string]interface{}{
-//		"foo":       "bar",
-//		"bla":       "test",
-//		"augmented": "{foo}-baz",
-//	})
-//
-//	cm := configMap{}
-//	config.Unmarshal(&cm)
-//
-//	assert.Equal(t, "bar", cm.Foo)
-//	assert.Equal(t, "test", cm.Bla)
-//	assert.Equal(t, "bar-baz", cm.Augmented)
-//
-//	viper.AssertExpectations(t)
-//}
-//
-func TestConfig_UnmarshalKey(t *testing.T) {
+func TestConfig_UnmarshalKey_Struct(t *testing.T) {
 	type configMap struct {
 		Foo    string `cfg:"foo"`
 		Bla    string `cfg:"bla"`
@@ -200,6 +174,41 @@ func TestConfig_UnmarshalKey(t *testing.T) {
 	assert.Equal(t, 1, cm.Def)
 	assert.Equal(t, time.Second, cm.Nested.A)
 	assert.Equal(t, "my-value", cm.Nested.Augmented)
+}
+
+func TestConfig_UnmarshalKey_Slice(t *testing.T) {
+	type configMap struct {
+		Foo string `cfg:"foo"`
+		Def int    `cfg:"def" default:"1"`
+	}
+
+	config := getNewTestableConfig(map[string]interface{}{
+		"key": []interface{}{
+			map[string]interface{}{
+				"foo": "bar",
+			},
+			map[string]interface{}{
+				"foo": "baz",
+				"def": 2,
+			},
+			map[string]interface{}{
+				"def": 3,
+			},
+		},
+	}, map[string]string{
+		"KEY_2_FOO": "env",
+	})
+
+	cm := make([]configMap, 0)
+	config.UnmarshalKey("key", &cm)
+
+	assert.Len(t, cm, 3)
+	assert.Equal(t, "bar", cm[0].Foo)
+	assert.Equal(t, 1, cm[0].Def)
+	assert.Equal(t, "baz", cm[1].Foo)
+	assert.Equal(t, 2, cm[1].Def)
+	assert.Equal(t, "env", cm[2].Foo)
+	assert.Equal(t, 3, cm[2].Def)
 }
 
 func TestConfig_UnmarshalKeyEnvironment(t *testing.T) {
@@ -257,6 +266,7 @@ func TestConfig_UnmarshalKeyValidation(t *testing.T) {
 func getNewTestableConfig(settings map[string]interface{}, environment map[string]string) cfg.GosoConf {
 	options := []cfg.Option{
 		cfg.WithErrorHandlers(cfg.PanicErrorHandler),
+		cfg.WithEnvKeyReplacer(strings.NewReplacer(".", "_")),
 	}
 
 	return getNewTestableConfigWithOptions(settings, environment, options...)
