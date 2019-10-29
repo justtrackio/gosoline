@@ -83,7 +83,7 @@ func (p *Pipeline) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter
 
 func (p *Pipeline) Run(ctx context.Context) error {
 	defer p.logger.Info("leaving pipeline")
-	defer p.process(ctx, true)
+	defer p.process(context.Background())
 
 	p.cfn.GoWithContextf(ctx, p.input.Run, "panic during run of the consumer input")
 	p.cfn.GoWithContextf(ctx, p.read, "panic during consuming")
@@ -118,12 +118,12 @@ func (p *Pipeline) read(ctx context.Context) error {
 		}
 
 		if len(p.batch) >= p.settings.BatchSize || force {
-			p.process(ctx, force)
+			p.process(ctx)
 		}
 	}
 }
 
-func (p *Pipeline) process(ctx context.Context, force bool) {
+func (p *Pipeline) process(ctx context.Context) {
 	p.lck.Lock()
 	defer p.lck.Unlock()
 
@@ -131,10 +131,6 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 
 	if batchSize == 0 {
 		p.logger.Info("pipeline has nothing to do")
-		return
-	}
-
-	if batchSize < p.settings.BatchSize && !force {
 		return
 	}
 

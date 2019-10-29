@@ -14,20 +14,38 @@ type BatchConsumerCallback struct {
 }
 
 // Boot provides a mock function with given fields: config, logger
-func (_m *BatchConsumerCallback) Boot(config cfg.Config, logger mon.Logger) {
-	_m.Called(config, logger)
-}
-
-// Consume provides a mock function with given fields: ctx, msg
-func (_m *BatchConsumerCallback) Consume(ctx context.Context, msg []*stream.Message) error {
-	ret := _m.Called(ctx, msg)
+func (_m *BatchConsumerCallback) Boot(config cfg.Config, logger mon.Logger) error {
+	ret := _m.Called(config, logger)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []*stream.Message) error); ok {
-		r0 = rf(ctx, msg)
+	if rf, ok := ret.Get(0).(func(cfg.Config, mon.Logger) error); ok {
+		r0 = rf(config, logger)
 	} else {
 		r0 = ret.Error(0)
 	}
 
 	return r0
+}
+
+// Process provides a mock function with given fields: ctx, messages
+func (_m *BatchConsumerCallback) Process(ctx context.Context, messages []*stream.Message) ([]*stream.Message, error) {
+	ret := _m.Called(ctx, messages)
+
+	var r0 []*stream.Message
+	if rf, ok := ret.Get(0).(func(context.Context, []*stream.Message) []*stream.Message); ok {
+		r0 = rf(ctx, messages)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*stream.Message)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, []*stream.Message) error); ok {
+		r1 = rf(ctx, messages)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }

@@ -14,68 +14,99 @@ import (
 
 const metricNameConsumerProcessedCount = "ConsumerProcessedCount"
 
-//go:generate mockery -name=ConsumerCallback
+//go:generate mockery -name Consumer
+type Consumer interface {
+	Boot(config cfg.Config, logger mon.Logger) error
+	Run(ctx context.Context) error
+	GetType() string
+}
+
+//go:generate mockery -name ConsumerCallback
 type ConsumerCallback interface {
 	Boot(config cfg.Config, logger mon.Logger) error
 	Consume(ctx context.Context, msg *Message) (bool, error)
 }
 
-type Consumer struct {
+type ConsumerSettings struct {
+	Name        string
+	Input       string        `cfg:"input" validate:"required"`
+	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
+	RunnerCount int           `cfg:"runner_count" default:"1" validate:"min=1"`
+}
+
+type consumer struct {
 	kernel.EssentialModule
 	ConsumerAcknowledge
 
-	logger mon.Logger
-	mw     mon.MetricWriter
+	metric mon.MetricWriter
 	tracer tracing.Tracer
 	cfn    coffin.Coffin
 	ticker *time.Ticker
 
-	name      string
-	callback  ConsumerCallback
+	settings *ConsumerSettings
+	callback ConsumerCallback
+
 	processed int32
 }
 
-func NewConsumer(callback ConsumerCallback) *Consumer {
-	return &Consumer{
+func NewConsumer(callback ConsumerCallback) Consumer {
+	return &consumer{
 		cfn:      coffin.New(),
 		callback: callback,
 	}
 }
 
-func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
+func NewConsumerWithInterfaces(callback ConsumerCallback, logger mon.Logger, tracer tracing.Tracer, input Input, metricWriter mon.MetricWriter, settings *ConsumerSettings) Consumer {
+	consumer := NewConsumer(callback).(*consumer)
+
+	consumer.bootWithInterfaces(logger, tracer, input, metricWriter, settings)
+
+	return consumer
+}
+
+func (c *consumer) Boot(config cfg.Config, logger mon.Logger) error {
 	err := c.callback.Boot(config, logger)
 
 	if err != nil {
 		return err
 	}
 
-	appId := cfg.GetAppIdFromConfig(config)
-	c.name = fmt.Sprintf("consumer-%v-%v", appId.Family, appId.Application)
-
-	c.logger = logger
-	c.tracer = tracing.NewAwsTracer(config)
+	tracer := tracing.NewAwsTracer(config)
 
 	defaultMetrics := getConsumerDefaultMetrics()
-	c.mw = mon.NewMetricDaemonWriter(defaultMetrics...)
+	mw := mon.NewMetricDaemonWriter(defaultMetrics...)
 
-	idleTimeout := config.GetDuration("consumer_idle_timeout")
-	c.ticker = time.NewTicker(idleTimeout * time.Second)
+	appId := cfg.GetAppIdFromConfig(config)
 
-	inputName := config.GetString("consumer_input")
-	input := NewConfigurableInput(config, logger, inputName)
+	settings := &ConsumerSettings{
+		Name: fmt.Sprintf("consumer-%s-%s", appId.Family, appId.Application),
+	}
 
-	c.input = input
-	c.ConsumerAcknowledge = NewConsumerAcknowledgeWithInterfaces(logger, input)
+	config.UnmarshalKey("consumer", settings)
+
+	input := NewConfigurableInput(config, logger, settings.Input)
+
+	c.bootWithInterfaces(logger, tracer, input, mw, settings)
 
 	return nil
 }
 
-func (c *Consumer) Run(ctx context.Context) error {
-	defer c.logger.Info("leaving consumer ", c.name)
+func (c *consumer) bootWithInterfaces(logger mon.Logger, tracer tracing.Tracer, input Input, metricWriter mon.MetricWriter, settings *ConsumerSettings) {
+	c.logger = logger
+	c.tracer = tracer
+	c.input = input
+	c.metric = metricWriter
+	c.settings = settings
+	c.ticker = time.NewTicker(settings.IdleTimeout)
+}
+
+func (c *consumer) Run(ctx context.Context) error {
+	defer c.logger.Info("leaving consumer ", c.settings.Name)
+	defer c.ticker.Stop()
 
 	c.cfn.GoWithContextf(ctx, c.input.Run, "panic during run of the consumer input")
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < c.settings.RunnerCount; i++ {
 		c.cfn.Gof(c.consume, "panic during consuming")
 	}
 
@@ -99,7 +130,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 	}
 }
 
-func (c *Consumer) consume() error {
+func (c *consumer) consume() error {
 	for {
 		msg, ok := <-c.input.Data()
 
@@ -110,15 +141,15 @@ func (c *Consumer) consume() error {
 		c.doCallback(msg)
 
 		atomic.AddInt32(&c.processed, 1)
-		c.mw.WriteOne(&mon.MetricDatum{
+		c.metric.WriteOne(&mon.MetricDatum{
 			MetricName: metricNameConsumerProcessedCount,
 			Value:      1.0,
 		})
 	}
 }
 
-func (c *Consumer) doCallback(msg *Message) {
-	ctx, trans := c.tracer.StartSpanFromTraceAble(msg, c.name)
+func (c *consumer) doCallback(msg *Message) {
+	ctx, trans := c.tracer.StartSpanFromTraceAble(msg, c.settings.Name)
 	defer trans.Finish()
 
 	ack, err := c.callback.Consume(ctx, msg)

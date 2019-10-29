@@ -12,53 +12,102 @@ import (
 	"time"
 )
 
-//go:generate mockery -name=BatchConsumerCallback
+const MetricNameConsumerReceivedCount = "ConsumerReceivedCount"
+const MetricNameConsumerProcessedCount = "ConsumerProcessedCount"
+
+//go:generate mockery -name BatchConsumerCallback
 type BatchConsumerCallback interface {
-	Boot(config cfg.Config, logger mon.Logger)
-	Consume(ctx context.Context, msg []*Message) error
+	Boot(config cfg.Config, logger mon.Logger) error
+	Process(ctx context.Context, messages []*Message) ([]*Message, error)
 }
 
-type baseBatchConsumer struct {
+type BatchConsumerSettings struct {
+	Name        string        `cfg:"name"`
+	Input       string        `cfg:"input" validate:"required"`
+	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
+	BatchSize   int           `cfg:"batch_size" default:"10" validate:"omitempty,min=1"`
+}
+
+type batchConsumer struct {
 	kernel.EssentialModule
+	ConsumerAcknowledge
 
 	logger mon.Logger
 	tracer tracing.Tracer
+	metric mon.MetricWriter
 
-	input  Input
 	cfn    coffin.Coffin
 	ticker *time.Ticker
 
 	name     string
 	callback BatchConsumerCallback
+	settings *BatchConsumerSettings
 
-	m         sync.Mutex
-	processed int
-	batchSize int
-	batch     []*Message
-	force     bool
+	lck   sync.Mutex
+	batch []*Message
 }
 
-func (c *baseBatchConsumer) Boot(config cfg.Config, logger mon.Logger) error {
-	c.logger = logger
-	c.tracer = tracing.NewAwsTracer(config)
-	c.cfn = coffin.New()
+func NewBatchConsumer(callback BatchConsumerCallback) Consumer {
+	return &batchConsumer{
+		cfn:      coffin.New(),
+		callback: callback,
+	}
+}
 
-	idleTimeout := config.GetDuration("consumer_idle_timeout")
-	c.ticker = time.NewTicker(idleTimeout * time.Second)
+func NewBatchConsumerWithInterfaces(callback BatchConsumerCallback, logger mon.Logger, tracer tracing.Tracer, input Input, metricWriter mon.MetricWriter, settings *BatchConsumerSettings) Consumer {
+	c := NewBatchConsumer(callback).(*batchConsumer)
 
-	c.batchSize = config.GetInt("consumer_batch_size")
-	c.batch = make([]*Message, 0, c.batchSize)
+	c.bootWithInterfaces(logger, tracer, input, metricWriter, settings)
 
-	c.callback.Boot(config, logger)
+	return c
+}
+
+func (c *batchConsumer) Boot(config cfg.Config, logger mon.Logger) error {
+	err := c.callback.Boot(config, logger)
+
+	if err != nil {
+		return err
+	}
+
+	tracer := tracing.NewAwsTracer(config)
+
+	defaultMetrics := getDefaultConsumerMetrics()
+	mw := mon.NewMetricDaemonWriter(defaultMetrics...)
+
+	appId := cfg.GetAppIdFromConfig(config)
+
+	settings := &BatchConsumerSettings{
+		Name: fmt.Sprintf("consumer-%s-%s", appId.Family, appId.Application),
+	}
+
+	config.UnmarshalKey("consumer", settings)
+
+	input := NewConfigurableInput(config, logger, settings.Input)
+
+	c.bootWithInterfaces(logger, tracer, input, mw, settings)
 
 	return nil
 }
 
-func (c *baseBatchConsumer) Run(ctx context.Context) error {
+func (c *batchConsumer) bootWithInterfaces(logger mon.Logger, tracer tracing.Tracer, input Input, metricWriter mon.MetricWriter, settings *BatchConsumerSettings) {
+	c.logger = logger
+	c.tracer = tracer
+	c.input = input
+	c.metric = metricWriter
+	c.settings = settings
+	c.ticker = time.NewTicker(settings.IdleTimeout)
+	c.batch = make([]*Message, 0, c.settings.BatchSize)
+}
+
+func (c *batchConsumer) Run(ctx context.Context) error {
 	defer c.logger.Info("leaving consumer ", c.name)
+	defer c.process(context.Background())
+	defer c.ticker.Stop()
 
 	c.cfn.GoWithContextf(ctx, c.input.Run, "panic during run of the consumer input")
-	c.cfn.Gof(c.consume, "panic during consuming")
+	c.cfn.Gof(func() error {
+		return c.consume(ctx)
+	}, "panic during consuming")
 
 	for {
 		select {
@@ -67,47 +116,87 @@ func (c *baseBatchConsumer) Run(ctx context.Context) error {
 			return c.cfn.Wait()
 
 		case <-c.cfn.Dead():
+			c.input.Stop()
 			return c.cfn.Err()
+		}
+	}
+}
+
+func (c *batchConsumer) consume(ctx context.Context) error {
+	for {
+		force := false
+
+		select {
+		case msg, ok := <-c.input.Data():
+			if !ok {
+				return nil
+			}
+
+			c.batch = append(c.batch, msg)
 
 		case <-c.ticker.C:
-			c.consumeBatch()
+			force = true
+		}
 
-			c.logger.Info(fmt.Sprintf("processed %v messages", c.processed))
-			c.processed = 0
+		if len(c.batch) >= c.settings.BatchSize || force {
+			c.process(ctx)
 		}
 	}
 }
 
-func (c *baseBatchConsumer) consume() error {
-	for {
-		msg, ok := <-c.input.Data()
+func (c *batchConsumer) process(ctx context.Context) {
+	c.lck.Lock()
+	defer c.lck.Unlock()
 
-		if !ok {
-			return nil
-		}
+	batchSize := len(c.batch)
 
-		c.m.Lock()
-		c.batch = append(c.batch, msg)
-		c.m.Unlock()
+	if batchSize == 0 {
+		c.logger.Info("consumer has nothing to do")
 
-		if len(c.batch) < c.batchSize {
-			continue
-		}
-
-		c.consumeBatch()
-	}
-}
-
-func (c *baseBatchConsumer) consumeBatch() {
-	if len(c.batch) == 0 {
 		return
 	}
 
-	c.m.Lock()
-	defer c.m.Unlock()
+	c.writeMetric(MetricNameConsumerReceivedCount, batchSize)
 
-	_ = c.callback.Consume(context.Background(), c.batch)
+	defer func() {
+		c.ticker = time.NewTicker(c.settings.IdleTimeout)
+		c.batch = make([]*Message, 0, c.settings.BatchSize)
+	}()
 
-	c.processed += len(c.batch)
-	c.batch = make([]*Message, 0, c.batchSize)
+	c.ticker.Stop()
+
+	msgs, err := c.callback.Process(ctx, c.batch)
+	if err != nil {
+		c.logger.Error(err, "could not consume batch messages")
+	}
+
+	c.AcknowledgeBatch(ctx, msgs)
+
+	consumedCount := len(msgs)
+
+	c.logger.Infof("consumer processed %d of %d messages", consumedCount, batchSize)
+	c.writeMetric(MetricNameConsumerProcessedCount, consumedCount)
+}
+
+func (c *batchConsumer) writeMetric(name string, value int) {
+	c.metric.WriteOne(&mon.MetricDatum{
+		MetricName: MetricNameConsumerReceivedCount,
+		Value:      float64(value),
+	})
+}
+
+func getDefaultConsumerMetrics() mon.MetricData {
+	return mon.MetricData{
+		{
+			Priority:   mon.PriorityHigh,
+			MetricName: MetricNamePipelineReceivedCount,
+			Unit:       mon.UnitCount,
+			Value:      0.0,
+		}, {
+			Priority:   mon.PriorityHigh,
+			MetricName: MetricNamePipelineProcessedCount,
+			Unit:       mon.UnitCount,
+			Value:      0.0,
+		},
+	}
 }

@@ -455,13 +455,13 @@ func (c *config) readZeroValuesFromStruct(input interface{}) (map[string]interfa
 	decoder, err := mapstructure.NewDecoder(decoderConfig)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "con not create decoder to get zero values")
+		return nil, errors.Wrap(err, "could not create decoder to get zero values")
 	}
 
 	err = decoder.Decode(input)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "con not decode zero values")
+		return nil, errors.Wrap(err, "could not decode zero values")
 	}
 
 	return zeroValues, nil

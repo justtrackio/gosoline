@@ -36,7 +36,7 @@ stream:
     my-sns-input:
       type: sns
       wait_time: 3
-      visibility_timeout: sns-producer
+      visibility_timeout: 30
       redrive_policy:
         enabled: true
         max_receive_count: 3
@@ -66,7 +66,7 @@ stream:
 ##runner_count
 **type**: `int`, **default**: `1` **validate**: `min=1`
 
-#SNS
+#SQS
 ```yaml
 stream:
   input:

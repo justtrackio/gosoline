@@ -21,6 +21,8 @@ type SqsInputSettings struct {
 }
 
 type sqsInput struct {
+	AcknowledgeableInput
+
 	logger      mon.Logger
 	queue       sqs.Queue
 	settings    SqsInputSettings
