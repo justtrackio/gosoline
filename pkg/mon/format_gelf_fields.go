@@ -20,7 +20,7 @@ func formatterGelfFields(clock clockwork.Clock, level string, msg string, err er
 	}
 	gelf["_fields"] = string(jsonFields)
 
-	contextFields, err := json.Marshal(data.fields)
+	contextFields, err := json.Marshal(data.contextFields)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal fields to JSON, %v", err)
 	}
