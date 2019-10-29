@@ -339,6 +339,8 @@ func (c *config) get(key string) interface{} {
 		return nil
 	}
 
+	c.mergeSettings(value)
+
 	return value[key]
 }
 
