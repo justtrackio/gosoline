@@ -99,12 +99,12 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 	return modules, nil
 }
 
-func getInputByType(config cfg.Config, logger mon.Logger, inType string, sqsInputSettings inputSettings, mId mdl.ModelId) (stream.Input, error) {
+func getInputByType(config cfg.Config, logger mon.Logger, inType string, inputSettings inputSettings, mId mdl.ModelId) (stream.Input, error) {
 	switch inType {
 	case "sns":
 		waitTime := int64(5)
 
-		if wt, ok := sqsInputSettings["wait_time"].(int); ok {
+		if wt, ok := inputSettings["wait_time"].(int); ok {
 			waitTime = int64(wt)
 		}
 

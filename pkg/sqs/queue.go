@@ -20,11 +20,11 @@ type Queue interface {
 	GetUrl() string
 	GetArn() string
 
-	DeleteMessage(string) error
-	DeleteMessageBatch([]string) error
-	Receive(context.Context, int64) ([]*sqs.Message, error)
-	Send(context.Context, *Message) error
-	SendBatch(context.Context, []*Message) error
+	DeleteMessage(receiptHandle string) error
+	DeleteMessageBatch(receiptHandles []string) error
+	Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, error)
+	Send(ctx context.Context, msg *Message) error
+	SendBatch(ctx context.Context, messages []*Message) error
 }
 
 type Message struct {

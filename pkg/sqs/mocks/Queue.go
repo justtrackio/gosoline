@@ -12,13 +12,13 @@ type Queue struct {
 	mock.Mock
 }
 
-// DeleteMessage provides a mock function with given fields: _a0
-func (_m *Queue) DeleteMessage(_a0 string) error {
-	ret := _m.Called(_a0)
+// DeleteMessage provides a mock function with given fields: receiptHandle
+func (_m *Queue) DeleteMessage(receiptHandle string) error {
+	ret := _m.Called(receiptHandle)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(_a0)
+		r0 = rf(receiptHandle)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -26,13 +26,13 @@ func (_m *Queue) DeleteMessage(_a0 string) error {
 	return r0
 }
 
-// DeleteMessageBatch provides a mock function with given fields: _a0
-func (_m *Queue) DeleteMessageBatch(_a0 []string) error {
-	ret := _m.Called(_a0)
+// DeleteMessageBatch provides a mock function with given fields: receiptHandles
+func (_m *Queue) DeleteMessageBatch(receiptHandles []string) error {
+	ret := _m.Called(receiptHandles)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]string) error); ok {
-		r0 = rf(_a0)
+		r0 = rf(receiptHandles)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -82,13 +82,13 @@ func (_m *Queue) GetUrl() string {
 	return r0
 }
 
-// Receive provides a mock function with given fields: _a0, _a1
-func (_m *Queue) Receive(_a0 context.Context, _a1 int64) ([]*servicesqs.Message, error) {
-	ret := _m.Called(_a0, _a1)
+// Receive provides a mock function with given fields: ctx, waitTime
+func (_m *Queue) Receive(ctx context.Context, waitTime int64) ([]*servicesqs.Message, error) {
+	ret := _m.Called(ctx, waitTime)
 
 	var r0 []*servicesqs.Message
 	if rf, ok := ret.Get(0).(func(context.Context, int64) []*servicesqs.Message); ok {
-		r0 = rf(_a0, _a1)
+		r0 = rf(ctx, waitTime)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*servicesqs.Message)
@@ -97,7 +97,7 @@ func (_m *Queue) Receive(_a0 context.Context, _a1 int64) ([]*servicesqs.Message,
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
-		r1 = rf(_a0, _a1)
+		r1 = rf(ctx, waitTime)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -105,13 +105,13 @@ func (_m *Queue) Receive(_a0 context.Context, _a1 int64) ([]*servicesqs.Message,
 	return r0, r1
 }
 
-// Send provides a mock function with given fields: _a0, _a1
-func (_m *Queue) Send(_a0 context.Context, _a1 *sqs.Message) error {
-	ret := _m.Called(_a0, _a1)
+// Send provides a mock function with given fields: ctx, msg
+func (_m *Queue) Send(ctx context.Context, msg *sqs.Message) error {
+	ret := _m.Called(ctx, msg)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *sqs.Message) error); ok {
-		r0 = rf(_a0, _a1)
+		r0 = rf(ctx, msg)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -119,13 +119,13 @@ func (_m *Queue) Send(_a0 context.Context, _a1 *sqs.Message) error {
 	return r0
 }
 
-// SendBatch provides a mock function with given fields: _a0, _a1
-func (_m *Queue) SendBatch(_a0 context.Context, _a1 []*sqs.Message) error {
-	ret := _m.Called(_a0, _a1)
+// SendBatch provides a mock function with given fields: ctx, messages
+func (_m *Queue) SendBatch(ctx context.Context, messages []*sqs.Message) error {
+	ret := _m.Called(ctx, messages)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, []*sqs.Message) error); ok {
-		r0 = rf(_a0, _a1)
+		r0 = rf(ctx, messages)
 	} else {
 		r0 = ret.Error(0)
 	}
