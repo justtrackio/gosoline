@@ -16,7 +16,7 @@ const (
 )
 
 func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Output {
-	key := fmt.Sprintf("output_%s_type", name)
+	key := fmt.Sprintf("%s.type", getConfigurableOutputKey(name))
 	t := config.GetString(key)
 
 	switch t {
@@ -63,9 +63,9 @@ type redisListOutputConfiguration struct {
 	Project     string `cfg:"project"`
 	Family      string `cfg:"family"`
 	Application string `cfg:"application"`
-	ServerName  string `cfg:"serverName"`
-	Key         string `cfg:"key"`
-	BatchSize   int    `cfg:"batchSize"`
+	ServerName  string `cfg:"server_name" default:"default" validate:"required,min=1"`
+	Key         string `cfg:"key" validate:"required,min=1"`
+	BatchSize   int    `cfg:"batch_size" default:"10"`
 }
 
 func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
@@ -90,7 +90,7 @@ type snsOutputConfiguration struct {
 	Project     string `cfg:"project"`
 	Family      string `cfg:"family"`
 	Application string `cfg:"application"`
-	TopicId     string `cfg:"topic_id"`
+	TopicId     string `cfg:"topic_id" validate:"required"`
 }
 
 func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
@@ -113,8 +113,8 @@ type sqsOutputConfiguration struct {
 	Project           string            `cfg:"project"`
 	Family            string            `cfg:"family"`
 	Application       string            `cfg:"application"`
-	QueueId           string            `cfg:"queue_id"`
-	VisibilityTimeout int               `cfg:"visibility_timeout"`
+	QueueId           string            `cfg:"queue_id" validate:"required"`
+	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
 }
 
@@ -137,5 +137,5 @@ func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) O
 }
 
 func getConfigurableOutputKey(name string) string {
-	return fmt.Sprintf("output_%s_settings", name)
+	return fmt.Sprintf("stream.output.%s", name)
 }

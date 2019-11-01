@@ -17,7 +17,7 @@ const (
 )
 
 func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) Input {
-	key := fmt.Sprintf("input_%s_type", name)
+	key := fmt.Sprintf("stream.input.%s.type", name)
 	t := config.GetString(key)
 
 	switch t {
@@ -47,8 +47,8 @@ func newFileInputFromConfig(config cfg.Config, logger mon.Logger, name string) I
 }
 
 type kinesisInputConfiguration struct {
-	StreamName      string `cfg:"streamName"`
-	ApplicationName string `cfg:"applicationName"`
+	StreamName      string `cfg:"streamName" validate:"required"`
+	ApplicationName string `cfg:"applicationName" validate:"required"`
 }
 
 func newKinesisInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -69,9 +69,9 @@ type redisInputConfiguration struct {
 	Project     string        `cfg:"project"`
 	Family      string        `cfg:"family"`
 	Application string        `cfg:"application"`
-	ServerName  string        `cfg:"serverName"`
-	Key         string        `cfg:"key"`
-	WaitTime    time.Duration `cfg:"waitTime"`
+	ServerName  string        `cfg:"server_name" default:"default" validate:"min=1"`
+	Key         string        `cfg:"key" validate:"required,min=1"`
+	WaitTime    time.Duration `cfg:"wait_time" default:"3s"`
 }
 
 func newRedisInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -88,7 +88,7 @@ func newRedisInputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 		},
 		ServerName: configuration.ServerName,
 		Key:        configuration.Key,
-		WaitTime:   configuration.WaitTime * time.Second,
+		WaitTime:   configuration.WaitTime,
 	}
 
 	return NewRedisListInput(config, logger, settings)
@@ -96,17 +96,17 @@ func newRedisInputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 
 type snsInputTarget struct {
 	Family      string `cfg:"family"`
-	Application string `cfg:"application"`
-	TopicId     string `cfg:"topic_id"`
+	Application string `cfg:"application" validate:"required"`
+	TopicId     string `cfg:"topic_id" validate:"required"`
 }
 
 type snsInputConfiguration struct {
-	ConsumerId        string            `cfg:"id"`
-	WaitTime          int64             `cfg:"wait_time"`
-	VisibilityTimeout int               `cfg:"visibility_timeout"`
+	ConsumerId        string            `cfg:"id" validate:"required"`
+	WaitTime          int64             `cfg:"wait_time" default:"3" validate:"min=1"`
+	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"min=1"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
-	RunnerCount       int               `cfg:"runner_count"`
-	Targets           []snsInputTarget  `cfg:"targets"`
+	Targets           []snsInputTarget  `cfg:"targets" validate:"min=1"`
+	RunnerCount       int               `cfg:"runner_count" default:"1" validate:"min=1"`
 }
 
 func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -140,12 +140,12 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 type sqsInputConfiguration struct {
 	Family            string            `cfg:"target_family"`
 	Application       string            `cfg:"target_application"`
-	QueueId           string            `cfg:"target_queue_id"`
+	QueueId           string            `cfg:"target_queue_id" validate:"min=1"`
+	WaitTime          int64             `cfg:"wait_time" default:"3" validate:"min=1"`
+	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"min=1"`
 	Fifo              sqs.FifoSettings  `cfg:"fifo"`
-	WaitTime          int64             `cfg:"wait_time"`
-	VisibilityTimeout int               `cfg:"visibility_timeout"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
-	RunnerCount       int               `cfg:"runner_count"`
+	RunnerCount       int               `cfg:"runner_count" default:"1" validate:"min=1"`
 }
 
 func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -171,5 +171,5 @@ func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 }
 
 func getConfigurableInputKey(name string) string {
-	return fmt.Sprintf("input_%s_settings", name)
+	return fmt.Sprintf("stream.input.%s", name)
 }

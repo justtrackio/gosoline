@@ -12,7 +12,6 @@ import (
 type Subscription struct {
 	Input       string            `cfg:"input"`
 	Output      string            `cfg:"output"`
-	Redis       string            `cfg:"redis"`
 	SourceModel SubscriptionModel `cfg:"source"`
 	TargetModel SubscriptionModel `cfg:"target"`
 }

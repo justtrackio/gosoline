@@ -34,14 +34,13 @@ type Message struct {
 }
 
 type FifoSettings struct {
-	Enabled                   bool `cfg:"enabled"`
-	ContentBasedDeduplication bool `cfg:"contentBasedDeduplication"`
+	Enabled                   bool `cfg:"enabled" default:"false"`
+	ContentBasedDeduplication bool `cfg:"content_based_deduplication" default:"false"`
 }
 
 type RedrivePolicy struct {
-	Enabled         bool   `cfg:"enabled"`
-	MaxReceiveCount int    `cfg:"max_receive_count"`
-	QueueName       string `cfg:"queue_name"`
+	Enabled         bool `cfg:"enabled" default:"true"`
+	MaxReceiveCount int  `cfg:"max_receive_count" default:"3"`
 }
 
 type Properties struct {
