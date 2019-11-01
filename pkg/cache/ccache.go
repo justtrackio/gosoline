@@ -4,7 +4,7 @@ import "time"
 import "github.com/karlseguin/ccache"
 
 type Cache struct {
-	*ccache.Cache
+	base *ccache.Cache
 	size int
 	ttl  time.Duration
 }
@@ -19,7 +19,7 @@ func New(maxSize int64, pruneCount uint32, ttl time.Duration) *Cache {
 	config.MaxSize(maxSize)
 	config.ItemsToPrune(pruneCount)
 
-	cache.Cache = ccache.New(config)
+	cache.base = ccache.New(config)
 
 	return cache
 }
@@ -29,23 +29,37 @@ func NewWithConfiguration(config ccache.Configuration, ttl time.Duration) *Cache
 		size: 0,
 		ttl:  ttl,
 	}
-	cache.Cache = ccache.New(&config)
+	cache.base = ccache.New(&config)
 
 	return cache
 }
 
 func (c *Cache) Set(key string, value interface{}) {
-	c.Cache.Set(key, value, c.ttl)
+	c.base.Set(key, value, c.ttl)
+}
+
+func (c *Cache) Get(key string) (interface{}, bool) {
+	item := c.base.Get(key)
+
+	if item == nil {
+		return nil, false
+	}
+
+	if item.Expired() {
+		return nil, false
+	}
+
+	return item.Value(), true
 }
 
 func (c *Cache) Contains(key string) bool {
-	item := c.Get(key)
+	_, ok := c.Get(key)
 
-	return item != nil && !item.Expired()
+	return ok
 }
 
 func (c *Cache) Expire(key string) bool {
-	item := c.Get(key)
+	item := c.base.Get(key)
 
 	if item == nil {
 		return false
