@@ -31,6 +31,8 @@ type sqsInput struct {
 }
 
 func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) *sqsInput {
+	s.AppId.PadFromConfig(config)
+
 	queue := sqs.New(config, logger, sqs.Settings{
 		AppId:             s.AppId,
 		QueueId:           s.QueueId,

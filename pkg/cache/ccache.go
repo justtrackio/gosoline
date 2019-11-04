@@ -38,6 +38,10 @@ func (c *Cache) Set(key string, value interface{}) {
 	c.base.Set(key, value, c.ttl)
 }
 
+func (c *Cache) SetX(key string, value interface{}, ttl time.Duration) {
+	c.base.Set(key, value, ttl)
+}
+
 func (c *Cache) Get(key string) (interface{}, bool) {
 	item := c.base.Get(key)
 
