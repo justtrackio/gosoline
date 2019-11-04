@@ -12,8 +12,7 @@ func WithConfigFile(filePath string, fileType string) Option {
 
 func WithConfigMap(settings map[string]interface{}) Option {
 	return func(cfg *config) error {
-		cfg.mergeSettings(settings)
-		return nil
+		return cfg.mergeSettings(settings)
 	}
 }
 

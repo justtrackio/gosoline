@@ -24,7 +24,5 @@ func readConfigFromFile(cfg *config, filePath string, fileType string) error {
 		return errors.Wrapf(err, "can not unmarshal config file %s", filePath)
 	}
 
-	cfg.mergeSettings(settings)
-
-	return nil
+	return cfg.mergeSettings(settings)
 }

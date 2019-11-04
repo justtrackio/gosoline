@@ -332,14 +332,16 @@ func (c *config) get(key string) interface{} {
 	}
 
 	environment := c.readEnvironment(c.envKeyPrefix, value)
-	err := mergo.Merge(&value, environment, mergo.WithOverride)
 
-	if err != nil {
+	if err := mergo.Merge(&value, environment, mergo.WithOverride); err != nil {
 		c.err(err, "can not merge environment into result")
 		return nil
 	}
 
-	c.mergeSettings(value)
+	if err := c.mergeSettings(value); err != nil {
+		c.err(err, "can not merge new settings into config")
+		return nil
+	}
 
 	return value[key]
 }
@@ -377,10 +379,16 @@ func (c *config) keyCheck(key string) {
 	c.err(err, "key check failed")
 }
 
-func (c *config) mergeSettings(settings map[string]interface{}) {
-	for k, v := range settings {
-		c.settings.Set(k, v)
+func (c *config) mergeSettings(settings map[string]interface{}) error {
+	current := c.settings.Value().MSI()
+
+	if err := mergo.Merge(&current, settings, mergo.WithOverride); err != nil {
+		return err
 	}
+
+	c.settings = objx.New(current)
+
+	return nil
 }
 
 func (c *config) mergeSettingsWithKeyPrefix(prefix string, settings map[string]interface{}) {
