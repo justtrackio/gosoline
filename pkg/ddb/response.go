@@ -47,6 +47,7 @@ func newGetItemResult() *GetItemResult {
 type PutItemResult struct {
 	ConditionalCheckFailed bool
 	ConsumedCapacity       *ConsumedCapacity
+	IsReturnEmpty          bool
 }
 
 func newPutItemResult() *PutItemResult {

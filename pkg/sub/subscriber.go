@@ -173,7 +173,7 @@ func (s *subscriber) persist(ctx context.Context, msg *stream.Message) error {
 	err = s.output.Persist(ctx, model, modelMsg.CrudType)
 
 	if err != nil {
-		logger.Errorf(err, "could not persist the model to ddb %s", modelMsg.ModelId)
+		logger.Errorf(err, "could not persist the model to db %s", modelMsg.ModelId)
 		return err
 	}
 
