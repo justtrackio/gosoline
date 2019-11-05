@@ -372,6 +372,8 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 	result.ConsumedCapacity.add(out.ConsumedCapacity)
 
 	if out.Attributes == nil {
+		result.IsReturnEmpty = true
+
 		return result, nil
 	}
 
