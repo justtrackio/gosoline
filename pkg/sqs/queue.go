@@ -6,6 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/hashicorp/go-multierror"
@@ -148,6 +150,10 @@ func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, er
 
 	out, err := q.client.ReceiveMessageWithContext(ctx, input)
 
+	if isError(err, request.CanceledErrorCode) {
+		return nil, nil
+	}
+
 	if err != nil {
 		q.logger.Errorf(err, "could not receive value from sqs queue %s", q.properties.Name)
 		return nil, err
@@ -221,4 +227,23 @@ func (q *queue) GetUrl() string {
 
 func (q *queue) GetArn() string {
 	return q.properties.Arn
+}
+
+func isError(err error, awsCode string) bool {
+	var ok bool
+	var aerr awserr.Error
+
+	if err == nil {
+		return false
+	}
+
+	if aerr, ok = err.(awserr.Error); !ok {
+		return false
+	}
+
+	if aerr.Code() == awsCode {
+		return true
+	}
+
+	return false
 }
