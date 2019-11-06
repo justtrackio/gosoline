@@ -2,6 +2,7 @@ package sub
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/mon"
@@ -42,7 +43,16 @@ func (p *subOutDdb) Persist(ctx context.Context, model Model, op string) error {
 		p.repo = p.repoInit(model)
 	}
 
-	_, err := p.repo.PutItem(ctx, nil, model)
+	var err error
+
+	switch op {
+	case ddb.Create, ddb.Update:
+		_, err = p.repo.PutItem(ctx, nil, model)
+	case ddb.Delete:
+		_, err = p.repo.DeleteItem(ctx, nil, model)
+	default:
+		err = fmt.Errorf("unknown operation %s in subOutDdb", op)
+	}
 
 	return err
 }

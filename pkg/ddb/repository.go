@@ -29,6 +29,10 @@ const (
 	StreamViewTypeOldImage        = dynamodb.StreamViewTypeOldImage
 	StreamViewTypeNewAndOldImages = dynamodb.StreamViewTypeNewAndOldImages
 	StreamViewTypeKeysOnly        = dynamodb.StreamViewTypeKeysOnly
+
+	Create = "create"
+	Update = "update"
+	Delete = "delete"
 )
 
 //go:generate mockery -name Repository
