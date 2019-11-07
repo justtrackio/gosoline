@@ -26,7 +26,7 @@ func (a *App) addLoggerOption(opt LoggerOption) {
 	a.loggerOptions = append(a.loggerOptions, opt)
 }
 
-func Default(options ...Option) kernel.Kernel {
+func ApiDefaultOptions(options ...Option) []Option {
 	defaults := []Option{
 		WithConfigErrorHandlers(defaultErrorHandler),
 		WithConfigFile("./config.dist.yml", "yml"),
@@ -39,13 +39,25 @@ func Default(options ...Option) kernel.Kernel {
 		WithLoggerContextFieldsResolver(mon.ContextLoggerFieldsResolver, tracing.ContextTraceFieldsResolver),
 		WithLoggerMetricHook,
 		WithLoggerSentryHook(mon.SentryExtraConfigProvider, mon.SentryExtraEcsMetadataProvider),
-		WithApiHealthCheck,
 		WithMetricDaemon,
 	}
 
-	options = append(defaults, options...)
+	return append(defaults, options...)
+}
 
-	return New(options...)
+func DefaultOptions(options ...Option) []Option {
+	return append(ApiDefaultOptions(options...), WithApiHealthCheck)
+}
+
+// Default options for the kernel if you define your own apiserver.
+// It does the same as Default, but does not include an health check.
+// Your apiserver will provide the health check instead.
+func ApiDefault(options ...Option) kernel.Kernel {
+	return New(ApiDefaultOptions(options...)...)
+}
+
+func Default(options ...Option) kernel.Kernel {
+	return New(DefaultOptions(options...)...)
 }
 
 func New(options ...Option) kernel.Kernel {

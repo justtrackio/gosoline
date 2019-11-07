@@ -191,7 +191,7 @@ func (s *subscriber) recover(ctx context.Context, msg *stream.Message) {
 
 	s.logger.WithContext(ctx).WithFields(mon.Fields{
 		"body": msg.Body,
-	}).Errorf(err, "can not persist model")
+	}).Error(err, "can not persist model")
 }
 
 func (s *subscriber) writeMetric(err error) {
