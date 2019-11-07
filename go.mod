@@ -57,7 +57,6 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
 	github.com/spf13/cast v1.3.0
-	github.com/spf13/viper v1.3.1
 	github.com/stretchr/objx v0.2.0
 	github.com/stretchr/testify v1.4.0
 	github.com/thoas/go-funk v0.0.0-20181020164546-fbae87fb5b5c
@@ -75,6 +74,7 @@ require (
 	gopkg.in/go-playground/validator.v9 v9.30.0
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
 	gopkg.in/resty.v1 v1.12.0
+	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.2.2
 	gopkg.in/yaml.v3 v3.0.0-20190924164351-c8b7dadae555
