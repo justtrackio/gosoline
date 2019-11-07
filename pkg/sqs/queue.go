@@ -5,6 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/timeutils"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -12,9 +13,19 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/hashicorp/go-multierror"
 	"github.com/twinj/uuid"
+	"net"
+	"net/url"
+	"os"
+	"syscall"
 )
 
-const sqsBatchSize = 10
+const (
+	sqsBatchSize                 = 10
+	MetricNameQueueReceivedCount = "QueueReceivedCount"
+	MetricNameQueueSentCount     = "QueueSentCount"
+	MetricNameQueueDeletedCount  = "QueueDeletedCount"
+	MetricNameQueueErrorCount    = "QueueErrorCount"
+)
 
 //go:generate mockery -name Queue
 type Queue interface {
@@ -63,6 +74,7 @@ type queue struct {
 	logger     mon.Logger
 	client     sqsiface.SQSAPI
 	properties *Properties
+	metric     mon.MetricWriter
 }
 
 func New(config cfg.Config, logger mon.Logger, s Settings) *queue {
@@ -78,14 +90,18 @@ func New(config cfg.Config, logger mon.Logger, s Settings) *queue {
 		logger.Fatalf(err, "could not create or get properties of queue %s", name)
 	}
 
-	return NewWithInterfaces(logger, c, props)
+	defaults := getDefaultQueueMetrics(props.Name)
+	metric := mon.NewMetricDaemonWriter(defaults...)
+
+	return NewWithInterfaces(logger, c, props, metric)
 }
 
-func NewWithInterfaces(logger mon.Logger, c sqsiface.SQSAPI, p *Properties) *queue {
+func NewWithInterfaces(logger mon.Logger, c sqsiface.SQSAPI, p *Properties, m mon.MetricWriter) *queue {
 	q := &queue{
 		logger:     logger,
 		client:     c,
 		properties: p,
+		metric:     m,
 	}
 
 	return q
@@ -102,10 +118,15 @@ func (q *queue) Send(ctx context.Context, msg *Message) error {
 	_, err := q.client.SendMessageWithContext(ctx, input)
 
 	if err != nil {
+		q.writeMetric(MetricNameQueueErrorCount, 1)
 		q.logger.WithContext(ctx).Errorf(err, "could not send value to sqs queue %s", q.properties.Name)
+
+		return err
 	}
 
-	return err
+	q.writeMetric(MetricNameQueueSentCount, 1)
+
+	return nil
 }
 
 func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
@@ -134,10 +155,15 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 	_, err := q.client.SendMessageBatchWithContext(ctx, input)
 
 	if err != nil {
+		q.writeMetric(MetricNameQueueErrorCount, 1)
 		q.logger.WithContext(ctx).Errorf(err, "could not send batch to sqs queue %s", q.properties.Name)
+
+		return err
 	}
 
-	return err
+	q.writeMetric(MetricNameQueueSentCount, len(messages))
+
+	return nil
 }
 
 func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, error) {
@@ -154,10 +180,21 @@ func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, er
 		return nil, nil
 	}
 
+	if isConnResetError(err) {
+		// write to cloud watch to keep track of these errors, but don't sound an alarm immediately
+		q.writeMetric(MetricNameQueueErrorCount, 1)
+
+		return nil, nil
+	}
+
 	if err != nil {
+		q.writeMetric(MetricNameQueueErrorCount, 1)
 		q.logger.Errorf(err, "could not receive value from sqs queue %s", q.properties.Name)
+
 		return nil, err
 	}
+
+	q.writeMetric(MetricNameQueueReceivedCount, len(out.Messages))
 
 	return out.Messages, nil
 }
@@ -171,9 +208,13 @@ func (q *queue) DeleteMessage(receiptHandle string) error {
 	_, err := q.client.DeleteMessage(input)
 
 	if err != nil {
+		q.writeMetric(MetricNameQueueErrorCount, 1)
 		q.logger.Errorf(err, "could not delete message from sqs queue %s", q.properties.Name)
+
 		return err
 	}
+
+	q.writeMetric(MetricNameQueueDeletedCount, 1)
 
 	return nil
 }
@@ -208,9 +249,12 @@ func (q *queue) DeleteMessageBatch(receiptHandles []string) error {
 		_, err := q.client.DeleteMessageBatch(input)
 
 		if err != nil {
+			q.writeMetric(MetricNameQueueErrorCount, 1)
 			q.logger.Errorf(err, "could not delete the messages from sqs queue %s", q.properties.Name)
 
 			multiError = multierror.Append(multiError, err)
+		} else {
+			q.writeMetric(MetricNameQueueDeletedCount, 1)
 		}
 	}
 
@@ -229,21 +273,94 @@ func (q *queue) GetArn() string {
 	return q.properties.Arn
 }
 
-func isError(err error, awsCode string) bool {
-	var ok bool
-	var aerr awserr.Error
+func (q *queue) writeMetric(metric string, count int) {
+	q.metric.WriteOne(&mon.MetricDatum{
+		Priority:   mon.PriorityHigh,
+		Timestamp:  timeutils.Now(),
+		MetricName: metric,
+		Dimensions: map[string]string{
+			"Queue": q.GetName(),
+		},
+		Value: float64(count),
+		Unit:  mon.UnitCount,
+	})
+}
 
+func isError(err error, awsCode string) bool {
 	if err == nil {
 		return false
 	}
 
-	if aerr, ok = err.(awserr.Error); !ok {
+	aerr, ok := err.(awserr.Error)
+
+	return ok && aerr.Code() == awsCode
+}
+
+func isConnResetError(err error) bool {
+	if err == nil {
 		return false
 	}
 
-	if aerr.Code() == awsCode {
-		return true
+	aerr, ok := err.(awserr.Error)
+
+	if !ok {
+		return false
 	}
 
-	return false
+	urlErr, ok := aerr.OrigErr().(*url.Error)
+
+	if !ok {
+		return false
+	}
+
+	opErr, ok := urlErr.Err.(*net.OpError)
+
+	if !ok {
+		return false
+	}
+	syscallErr, ok := opErr.Err.(*os.SyscallError)
+
+	if !ok {
+		return false
+	}
+
+	return syscallErr.Err == syscall.ECONNRESET
+}
+
+func getDefaultQueueMetrics(queueName string) mon.MetricData {
+	return mon.MetricData{
+		{
+			Priority:   mon.PriorityHigh,
+			MetricName: MetricNameQueueReceivedCount,
+			Dimensions: map[string]string{
+				"Queue": queueName,
+			},
+			Unit:  mon.UnitCount,
+			Value: 0.0,
+		}, {
+			Priority:   mon.PriorityHigh,
+			MetricName: MetricNameQueueSentCount,
+			Dimensions: map[string]string{
+				"Queue": queueName,
+			},
+			Unit:  mon.UnitCount,
+			Value: 0.0,
+		}, {
+			Priority:   mon.PriorityHigh,
+			MetricName: MetricNameQueueDeletedCount,
+			Dimensions: map[string]string{
+				"Queue": queueName,
+			},
+			Unit:  mon.UnitCount,
+			Value: 0.0,
+		}, {
+			Priority:   mon.PriorityHigh,
+			MetricName: MetricNameQueueErrorCount,
+			Dimensions: map[string]string{
+				"Queue": queueName,
+			},
+			Unit:  mon.UnitCount,
+			Value: 0.0,
+		},
+	}
 }
