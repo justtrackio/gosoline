@@ -7,12 +7,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
 	"github.com/jonboulle/clockwork"
+	"sort"
+	"strings"
 	"time"
 )
 
 const (
-	PriorityLow  = 0
-	PriorityHigh = 1
+	PriorityLow  = 1
+	PriorityHigh = 2
 
 	UnitCount        = cloudwatch.StandardUnitCount
 	UnitCountAverage = "UnitCountAverage"
@@ -34,6 +36,41 @@ type MetricDatum struct {
 	Value      float64          `json:"value"`
 	Unit       string           `json:"unit"`
 }
+
+func (d *MetricDatum) Id() string {
+	return fmt.Sprintf("%s:%s", d.MetricName, d.DimensionKey())
+}
+
+func (d *MetricDatum) DimensionKey() string {
+	dims := make([]string, 0)
+
+	for k, v := range d.Dimensions {
+		flat := fmt.Sprintf("%s:%s", k, v)
+		dims = append(dims, flat)
+	}
+
+	sort.Strings(dims)
+	dimKey := strings.Join(dims, "-")
+
+	return dimKey
+}
+
+func (d *MetricDatum) IsValid() error {
+	if d.MetricName == "" {
+		return fmt.Errorf("missing metric name")
+	}
+
+	if d.Priority == 0 {
+		return fmt.Errorf("metric %s has no priority", d.MetricName)
+	}
+
+	if d.Unit == "" {
+		return fmt.Errorf("metric %s has no unit", d.MetricName)
+	}
+
+	return nil
+}
+
 type MetricData []*MetricDatum
 
 type MetricSettings struct {

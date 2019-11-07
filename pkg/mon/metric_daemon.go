@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 )
@@ -36,7 +34,7 @@ type cwDaemon struct {
 	writers []MetricWriter
 
 	batch          map[string]*BatchedMetricDatum
-	defaults       []*MetricDatum
+	defaults       map[string]*MetricDatum
 	dataPointCount int
 }
 
@@ -55,7 +53,7 @@ func ProvideCwDaemon() *cwDaemon {
 
 	cwDaemonContainer.instance = &cwDaemon{
 		channel:  make(chan *MetricDatum, 100),
-		defaults: make([]*MetricDatum, 0),
+		defaults: make(map[string]*MetricDatum, 0),
 		writers:  make([]MetricWriter, 0),
 	}
 
@@ -118,25 +116,26 @@ func (d *cwDaemon) Run(ctx context.Context) error {
 }
 
 func (d *cwDaemon) AddDefault(datum *MetricDatum) {
-	d.defaults = append(d.defaults, datum)
+	id := datum.Id()
+	d.defaults[id] = datum
 }
 
 func (d *cwDaemon) append(datum *MetricDatum) {
 	d.dataPointCount++
-	dims := make([]string, 0)
 
-	for k, v := range datum.Dimensions {
-		flat := fmt.Sprintf("%s:%s", k, v)
-		dims = append(dims, flat)
-	}
-
-	sort.Strings(dims)
-	dimKey := strings.Join(dims, "-")
+	dimKey := datum.DimensionKey()
 	timeKey := datum.Timestamp.Format(defaultTimeFormat)
 
 	key := fmt.Sprintf("%s-%s-%s", datum.MetricName, dimKey, timeKey)
 
 	if _, ok := d.batch[key]; !ok {
+		d.amendFromDefault(datum)
+
+		if err := datum.IsValid(); err != nil {
+			d.logger.Warnf("invalid metric: %s", err.Error())
+			return
+		}
+
 		d.batch[key] = &BatchedMetricDatum{
 			Priority:   datum.Priority,
 			Timestamp:  datum.Timestamp,
@@ -150,6 +149,23 @@ func (d *cwDaemon) append(datum *MetricDatum) {
 
 	existing := d.batch[key]
 	existing.Values = append(existing.Values, datum.Value)
+}
+
+func (d *cwDaemon) amendFromDefault(datum *MetricDatum) {
+	defId := datum.Id()
+	def, ok := d.defaults[defId]
+
+	if !ok {
+		return
+	}
+
+	if datum.Priority == 0 {
+		datum.Priority = def.Priority
+	}
+
+	if datum.Unit == "" {
+		datum.Unit = def.Unit
+	}
 }
 
 func (d *cwDaemon) resetBatch() {
