@@ -15,6 +15,28 @@ func BasicUnmarshaler(data *string) (*Message, error) {
 	return &msg, err
 }
 
+func SnsMarshaller(msg *Message) (*string, error) {
+	bytes, err := json.Marshal(msg)
+
+	if err != nil {
+		return nil, err
+	}
+
+	snsMessage := sns.Message{
+		Type:    "Notification",
+		Message: string(bytes),
+	}
+
+	bytes, err = json.Marshal(snsMessage)
+
+	if err != nil {
+		return nil, err
+	}
+
+	data := string(bytes)
+	return &data, nil
+}
+
 func SnsUnmarshaler(data *string) (*Message, error) {
 	bytes := []byte(*data)
 

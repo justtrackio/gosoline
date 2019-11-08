@@ -10,11 +10,11 @@ type ConfigProvider interface {
 }
 
 type ModelId struct {
-	Project     string
-	Environment string
-	Family      string
-	Application string
-	Name        string
+	Project     string `cfg:"project"`
+	Environment string `cfg:"environment"`
+	Family      string `cfg:"family"`
+	Application string `cfg:"application"`
+	Name        string `cfg:"name"`
 }
 
 func (m *ModelId) String() string {
