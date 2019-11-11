@@ -116,6 +116,13 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 
 			msg.Attributes[AttributeSqsReceiptHandle] = *sqsMessage.ReceiptHandle
 
+			if msg.IsCompressed() {
+				err := msg.Decompress()
+				if err != nil {
+					return err
+				}
+			}
+
 			i.channel <- msg
 		}
 	}

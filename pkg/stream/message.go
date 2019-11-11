@@ -2,6 +2,8 @@ package stream
 
 import (
 	"context"
+	"github.com/applike/gosoline/pkg/compression"
+	"github.com/applike/gosoline/pkg/encoding/base64"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/hashicorp/go-multierror"
@@ -11,6 +13,7 @@ const (
 	AttributeSqsDelaySeconds   = "sqsDelaySeconds"
 	AttributeSqsReceiptHandle  = "sqsReceiptHandle"
 	AttributeSqsMessageGroupId = "sqsMessageGroupId"
+	AttributeCompressedMessage = "compressedMessage"
 )
 
 type Message struct {
@@ -38,6 +41,57 @@ func (m *Message) GetReceiptHandler() interface{} {
 	return receiptHandleInterface
 }
 
+func (m *Message) IsCompressed() bool {
+	var compressedMessageAttribute interface{}
+	var ok bool
+	var isCompressed bool
+
+	if compressedMessageAttribute, ok = m.Attributes[AttributeCompressedMessage]; !ok {
+		return false
+	}
+
+	if isCompressed, ok = compressedMessageAttribute.(bool); !ok {
+		return false
+	}
+
+	return isCompressed
+}
+
+func (m *Message) Compress() error {
+	if !m.IsCompressed() {
+		return nil
+	}
+
+	compressedBody, err := compression.GzipString(m.Body)
+	if err != nil {
+		return err
+	}
+
+	m.Body = base64.Encode(compressedBody)
+
+	return nil
+}
+
+func (m *Message) Decompress() error {
+	if !m.IsCompressed() {
+		return nil
+	}
+
+	body, err := base64.DecodeString(m.Body)
+	if err != nil {
+		return err
+	}
+
+	decompressedBody, err := compression.GunzipToString(body)
+	if err != nil {
+		return err
+	}
+
+	m.Body = decompressedBody
+
+	return nil
+}
+
 func (m *Message) MarshalToString() (string, error) {
 	bytes, err := json.Marshal(*m)
 
@@ -54,6 +108,14 @@ func (m *Message) UnmarshalFromBytes(data []byte) error {
 
 func (m *Message) UnmarshalFromString(data string) error {
 	return m.UnmarshalFromBytes([]byte(data))
+}
+
+func (m *Message) AddAttributes(attrs map[string]interface{}) *Message {
+	for key, val := range attrs {
+		m.Attributes[key] = val
+	}
+
+	return m
 }
 
 func CreateMessage(ctx context.Context, body interface{}) (*Message, error) {
@@ -127,6 +189,12 @@ func (b *MessageBuilder) WithSqsDelaySeconds(seconds int64) *MessageBuilder {
 
 func (b *MessageBuilder) WithSqsMessageGroupId(groupId string) *MessageBuilder {
 	b.attributes[AttributeSqsMessageGroupId] = groupId
+
+	return b
+}
+
+func (b *MessageBuilder) WithCompression() *MessageBuilder {
+	b.attributes[AttributeCompressedMessage] = true
 
 	return b
 }
