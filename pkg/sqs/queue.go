@@ -32,6 +32,7 @@ type Queue interface {
 type Message struct {
 	DelaySeconds   *int64
 	MessageGroupId *string
+	Compressed     *bool
 	Body           *string
 }
 
@@ -56,6 +57,7 @@ type Settings struct {
 	QueueId           string
 	Fifo              FifoSettings
 	VisibilityTimeout int
+	Compressed        bool `cfg:"compressed" default:"false"`
 	RedrivePolicy     RedrivePolicy
 }
 
