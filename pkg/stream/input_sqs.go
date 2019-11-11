@@ -6,6 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/coffin"
+	"github.com/applike/gosoline/pkg/compression"
+	"github.com/applike/gosoline/pkg/encoding/base64"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/hashicorp/go-multierror"
@@ -115,6 +117,20 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 			}
 
 			msg.Attributes[AttributeSqsReceiptHandle] = *sqsMessage.ReceiptHandle
+
+			if msg.IsCompressed() {
+				body, err := base64.DecodeString(msg.Body)
+				if err != nil {
+					return err
+				}
+
+				decompressedBody, err := compression.GunzipToString(body)
+				if err != nil {
+					return err
+				}
+
+				msg.Body = decompressedBody
+			}
 
 			i.channel <- msg
 		}

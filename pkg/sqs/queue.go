@@ -34,6 +34,7 @@ type Queue interface {
 type Message struct {
 	DelaySeconds   *int64
 	MessageGroupId *string
+	Compressed     *bool
 	Body           *string
 }
 
@@ -60,6 +61,7 @@ type Settings struct {
 	Fifo              FifoSettings
 	RedrivePolicy     RedrivePolicy
 	Client            cloud.ClientSettings
+	Compressed        bool `cfg:"compressed" default:"false"`
 	Backoff           cloud.BackoffSettings
 }
 
