@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/compression"
+	"github.com/applike/gosoline/pkg/encoding/base64"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
@@ -82,7 +84,7 @@ func (o *sqsOutput) sendToQueue(ctx context.Context, batch []*Message) error {
 
 	if !ok {
 		err := fmt.Errorf("can not chunk messages for sending to sqs")
-		o.logger.Error(err, "can not chunk messages for sending to sqs")
+		o.logger.Error(err, err.Error())
 
 		return err
 	}
@@ -152,6 +154,16 @@ func (o *sqsOutput) buildSqsMessage(msg *Message) (*sqs.Message, error) {
 		}
 	}
 
+	isCompressed := msg.IsCompressed()
+	if isCompressed {
+		compressedBody, err := compression.GzipString(msg.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		msg.Body = base64.Encode(compressedBody)
+	}
+
 	body, err := msg.MarshalToString()
 
 	if err != nil {
@@ -161,6 +173,7 @@ func (o *sqsOutput) buildSqsMessage(msg *Message) (*sqs.Message, error) {
 	sqsMessage := &sqs.Message{
 		DelaySeconds:   delay,
 		MessageGroupId: messageGroupId,
+		Compressed:     mdl.Bool(isCompressed),
 		Body:           mdl.String(body),
 	}
 
