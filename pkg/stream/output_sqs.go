@@ -82,7 +82,7 @@ func (o *sqsOutput) sendToQueue(ctx context.Context, batch []*Message) error {
 
 	if !ok {
 		err := fmt.Errorf("can not chunk messages for sending to sqs")
-		o.logger.Error(err, "can not chunk messages for sending to sqs")
+		o.logger.Error(err, err.Error())
 
 		return err
 	}
@@ -152,6 +152,14 @@ func (o *sqsOutput) buildSqsMessage(msg *Message) (*sqs.Message, error) {
 		}
 	}
 
+	isCompressed := msg.IsCompressed()
+	if isCompressed {
+		err := msg.Compress()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	body, err := msg.MarshalToString()
 
 	if err != nil {
@@ -161,6 +169,7 @@ func (o *sqsOutput) buildSqsMessage(msg *Message) (*sqs.Message, error) {
 	sqsMessage := &sqs.Message{
 		DelaySeconds:   delay,
 		MessageGroupId: messageGroupId,
+		Compressed:     mdl.Bool(isCompressed),
 		Body:           mdl.String(body),
 	}
 
