@@ -5,13 +5,13 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/applike/gosoline/pkg/timeutils"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/hashicorp/go-multierror"
+	"github.com/jonboulle/clockwork"
 	"github.com/twinj/uuid"
 	"net"
 	"net/url"
@@ -20,11 +20,8 @@ import (
 )
 
 const (
-	sqsBatchSize                 = 10
-	MetricNameQueueReceivedCount = "QueueReceivedCount"
-	MetricNameQueueSentCount     = "QueueSentCount"
-	MetricNameQueueDeletedCount  = "QueueDeletedCount"
-	MetricNameQueueErrorCount    = "QueueErrorCount"
+	sqsBatchSize              = 10
+	MetricNameQueueErrorCount = "QueueErrorCount"
 )
 
 //go:generate mockery -name Queue
@@ -75,6 +72,7 @@ type queue struct {
 	client     sqsiface.SQSAPI
 	properties *Properties
 	metric     mon.MetricWriter
+	clock      clockwork.Clock
 }
 
 func New(config cfg.Config, logger mon.Logger, s Settings) *queue {
@@ -93,15 +91,16 @@ func New(config cfg.Config, logger mon.Logger, s Settings) *queue {
 	defaults := getDefaultQueueMetrics(props.Name)
 	metric := mon.NewMetricDaemonWriter(defaults...)
 
-	return NewWithInterfaces(logger, c, props, metric)
+	return NewWithInterfaces(logger, c, props, metric, clockwork.NewRealClock())
 }
 
-func NewWithInterfaces(logger mon.Logger, c sqsiface.SQSAPI, p *Properties, m mon.MetricWriter) *queue {
+func NewWithInterfaces(logger mon.Logger, c sqsiface.SQSAPI, p *Properties, m mon.MetricWriter, cl clockwork.Clock) *queue {
 	q := &queue{
 		logger:     logger,
 		client:     c,
 		properties: p,
 		metric:     m,
+		clock:      cl,
 	}
 
 	return q
@@ -120,13 +119,9 @@ func (q *queue) Send(ctx context.Context, msg *Message) error {
 	if err != nil {
 		q.writeMetric(MetricNameQueueErrorCount, 1)
 		q.logger.WithContext(ctx).Errorf(err, "could not send value to sqs queue %s", q.properties.Name)
-
-		return err
 	}
 
-	q.writeMetric(MetricNameQueueSentCount, 1)
-
-	return nil
+	return err
 }
 
 func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
@@ -157,13 +152,9 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 	if err != nil {
 		q.writeMetric(MetricNameQueueErrorCount, 1)
 		q.logger.WithContext(ctx).Errorf(err, "could not send batch to sqs queue %s", q.properties.Name)
-
-		return err
 	}
 
-	q.writeMetric(MetricNameQueueSentCount, len(messages))
-
-	return nil
+	return err
 }
 
 func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, error) {
@@ -194,8 +185,6 @@ func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, er
 		return nil, err
 	}
 
-	q.writeMetric(MetricNameQueueReceivedCount, len(out.Messages))
-
 	return out.Messages, nil
 }
 
@@ -213,8 +202,6 @@ func (q *queue) DeleteMessage(receiptHandle string) error {
 
 		return err
 	}
-
-	q.writeMetric(MetricNameQueueDeletedCount, 1)
 
 	return nil
 }
@@ -253,8 +240,6 @@ func (q *queue) DeleteMessageBatch(receiptHandles []string) error {
 			q.logger.Errorf(err, "could not delete the messages from sqs queue %s", q.properties.Name)
 
 			multiError = multierror.Append(multiError, err)
-		} else {
-			q.writeMetric(MetricNameQueueDeletedCount, 1)
 		}
 	}
 
@@ -276,7 +261,7 @@ func (q *queue) GetArn() string {
 func (q *queue) writeMetric(metric string, count int) {
 	q.metric.WriteOne(&mon.MetricDatum{
 		Priority:   mon.PriorityHigh,
-		Timestamp:  timeutils.Now(),
+		Timestamp:  q.clock.Now(),
 		MetricName: metric,
 		Dimensions: map[string]string{
 			"Queue": q.GetName(),
@@ -318,42 +303,27 @@ func isConnResetError(err error) bool {
 	if !ok {
 		return false
 	}
+
+	for {
+		if nextOpErr, ok := opErr.Err.(*net.OpError); ok {
+			opErr = nextOpErr
+		} else {
+			break
+		}
+	}
+
 	syscallErr, ok := opErr.Err.(*os.SyscallError)
 
 	if !ok {
 		return false
 	}
 
-	return syscallErr.Err == syscall.ECONNRESET
+	return syscallErr.Err == syscall.ECONNRESET || syscallErr.Err == syscall.EPIPE
 }
 
 func getDefaultQueueMetrics(queueName string) mon.MetricData {
 	return mon.MetricData{
 		{
-			Priority:   mon.PriorityHigh,
-			MetricName: MetricNameQueueReceivedCount,
-			Dimensions: map[string]string{
-				"Queue": queueName,
-			},
-			Unit:  mon.UnitCount,
-			Value: 0.0,
-		}, {
-			Priority:   mon.PriorityHigh,
-			MetricName: MetricNameQueueSentCount,
-			Dimensions: map[string]string{
-				"Queue": queueName,
-			},
-			Unit:  mon.UnitCount,
-			Value: 0.0,
-		}, {
-			Priority:   mon.PriorityHigh,
-			MetricName: MetricNameQueueDeletedCount,
-			Dimensions: map[string]string{
-				"Queue": queueName,
-			},
-			Unit:  mon.UnitCount,
-			Value: 0.0,
-		}, {
 			Priority:   mon.PriorityHigh,
 			MetricName: MetricNameQueueErrorCount,
 			Dimensions: map[string]string{
