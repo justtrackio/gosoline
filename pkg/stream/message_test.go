@@ -29,3 +29,20 @@ func BuildSqsTestMessage() (*stream.Message, error) {
 
 	return builder.GetMessage()
 }
+
+func BuildSqsTestMessageWithCompression() (*stream.Message, error) {
+	type BodyStruct struct {
+		Foo string
+	}
+
+	body := BodyStruct{
+		Foo: "bar",
+	}
+
+	builder := stream.NewMessageBuilder()
+	builder.WithBody(body)
+	builder.WithSqsDelaySeconds(45)
+	builder.WithCompression()
+
+	return builder.GetMessage()
+}

@@ -71,6 +71,13 @@ func (o *snsOutput) publishToTopic(ctx context.Context, batch []*Message) error 
 	errors := make([]error, 0)
 
 	for _, msg := range batch {
+		if msg.IsCompressed() {
+			err := msg.Compress()
+			if err != nil {
+				return err
+			}
+		}
+
 		body, err := msg.MarshalToString()
 
 		if err != nil {

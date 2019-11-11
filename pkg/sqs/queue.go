@@ -34,6 +34,7 @@ type Queue interface {
 type Message struct {
 	DelaySeconds   *int64
 	MessageGroupId *string
+	Compressed     *bool
 	Body           *string
 }
 
