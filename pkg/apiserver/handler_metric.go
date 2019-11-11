@@ -27,6 +27,7 @@ func CreateMetricHandler(definition Definition) gin.HandlerFunc {
 		statusMetric := fmt.Sprintf("ApiStatus%dXX", status)
 
 		writer.WriteOne(&mon.MetricDatum{
+			Priority:   mon.PriorityLow,
 			MetricName: MetricApiRequestCount,
 			Dimensions: mon.MetricDimensions{
 				"path": definition.getAbsolutePath(),
@@ -36,6 +37,7 @@ func CreateMetricHandler(definition Definition) gin.HandlerFunc {
 		})
 
 		writer.WriteOne(&mon.MetricDatum{
+			Priority:   mon.PriorityLow,
 			MetricName: MetricApiRequestLatency,
 			Dimensions: mon.MetricDimensions{
 				"path": definition.getAbsolutePath(),
@@ -45,6 +47,7 @@ func CreateMetricHandler(definition Definition) gin.HandlerFunc {
 		})
 
 		writer.WriteOne(&mon.MetricDatum{
+			Priority:   mon.PriorityLow,
 			MetricName: statusMetric,
 			Dimensions: mon.MetricDimensions{
 				"path": definition.getAbsolutePath(),
@@ -59,6 +62,7 @@ func getMetricMiddlewareDefaults(definition Definition) mon.MetricData {
 	defaults := make(mon.MetricData, 0)
 
 	metric := &mon.MetricDatum{
+		Priority:   mon.PriorityLow,
 		MetricName: MetricApiRequestCount,
 		Dimensions: mon.MetricDimensions{
 			"path": definition.getAbsolutePath(),
@@ -69,6 +73,7 @@ func getMetricMiddlewareDefaults(definition Definition) mon.MetricData {
 	defaults = append(defaults, metric)
 
 	metric = &mon.MetricDatum{
+		Priority:   mon.PriorityLow,
 		MetricName: "ApiStatus2XX",
 		Dimensions: mon.MetricDimensions{
 			"path": definition.getAbsolutePath(),
@@ -79,6 +84,7 @@ func getMetricMiddlewareDefaults(definition Definition) mon.MetricData {
 	defaults = append(defaults, metric)
 
 	metric = &mon.MetricDatum{
+		Priority:   mon.PriorityLow,
 		MetricName: "ApiStatus3XX",
 		Dimensions: mon.MetricDimensions{
 			"path": definition.getAbsolutePath(),
@@ -89,6 +95,7 @@ func getMetricMiddlewareDefaults(definition Definition) mon.MetricData {
 	defaults = append(defaults, metric)
 
 	metric = &mon.MetricDatum{
+		Priority:   mon.PriorityLow,
 		MetricName: "ApiStatus4XX",
 		Dimensions: mon.MetricDimensions{
 			"path": definition.getAbsolutePath(),
@@ -99,6 +106,7 @@ func getMetricMiddlewareDefaults(definition Definition) mon.MetricData {
 	defaults = append(defaults, metric)
 
 	metric = &mon.MetricDatum{
+		Priority:   mon.PriorityLow,
 		MetricName: "ApiStatus5XX",
 		Dimensions: mon.MetricDimensions{
 			"path": definition.getAbsolutePath(),
