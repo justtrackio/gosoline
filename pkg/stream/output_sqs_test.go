@@ -2,6 +2,8 @@ package stream_test
 
 import (
 	"context"
+	"github.com/applike/gosoline/pkg/compression"
+	"github.com/applike/gosoline/pkg/encoding/base64"
 	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/sqs"
@@ -22,6 +24,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 		{
 			DelaySeconds: mdl.Int64(45),
 			Body:         mdl.String(expectedBody),
+			Compressed:   mdl.Bool(false),
 		},
 	}
 
@@ -29,6 +32,33 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 	queue.On("SendBatch", mock.AnythingOfType("*context.emptyCtx"), expectedSqsMessages).Return(nil)
 
 	msg, err := BuildSqsTestMessage()
+	assert.NoError(t, err)
+
+	output := stream.NewSqsOutputWithInterfaces(logger, tracer, queue, stream.SqsOutputSettings{})
+	err = output.WriteOne(context.Background(), msg)
+
+	assert.NoError(t, err)
+}
+
+func TestSqsOutput_WriteOne_Compressed(t *testing.T) {
+	logger := monMocks.NewLoggerMockedAll()
+	tracer := tracing.NewNoopTracer()
+
+	compressedBody, err := compression.GzipString("{\"Foo\":\"bar\"}")
+	assert.NoError(t, err)
+	expectedBody := `{"trace":{"traceId":"","id":"","parentId":"","sampled":false},"attributes":{"compressedMessage":true,"sqsDelaySeconds":45},"body":"` + base64.Encode(compressedBody) + `"}`
+	expectedSqsMessages := []*sqs.Message{
+		{
+			DelaySeconds: mdl.Int64(45),
+			Body:         mdl.String(expectedBody),
+			Compressed:   mdl.Bool(true),
+		},
+	}
+
+	queue := new(sqsMocks.Queue)
+	queue.On("SendBatch", mock.AnythingOfType("*context.emptyCtx"), expectedSqsMessages).Return(nil)
+
+	msg, err := BuildSqsTestMessageWithCompression()
 	assert.NoError(t, err)
 
 	output := stream.NewSqsOutputWithInterfaces(logger, tracer, queue, stream.SqsOutputSettings{})

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/compression"
+	"github.com/applike/gosoline/pkg/encoding/base64"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sns"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -71,6 +73,15 @@ func (o *snsOutput) publishToTopic(ctx context.Context, batch []*Message) error 
 	errors := make([]error, 0)
 
 	for _, msg := range batch {
+		if msg.IsCompressed() {
+			compressedBody, err := compression.GzipString(msg.Body)
+			if err != nil {
+				return err
+			}
+
+			msg.Body = base64.Encode(compressedBody)
+		}
+
 		body, err := msg.MarshalToString()
 
 		if err != nil {
