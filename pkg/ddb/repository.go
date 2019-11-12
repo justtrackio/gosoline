@@ -131,6 +131,10 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 	for {
 		out, err := r.client.BatchGetItemWithContext(ctx, input)
 
+		if cloud.IsRequestCanceled(err) {
+			return nil, cloud.NewRequestCanceledError(err)
+		}
+
 		if err != nil {
 			return nil, errors.Wrapf(err, "could not execute BatchGetItems operation for table %s", r.metadata.TableName)
 		}
@@ -283,6 +287,10 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 
 	out, err := r.client.DeleteItemWithContext(ctx, input)
 
+	if cloud.IsRequestCanceled(err) {
+		return nil, cloud.NewRequestCanceledError(err)
+	}
+
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
 		return nil, errors.Wrapf(err, "could not execute DeleteItem operation for table %s", r.metadata.TableName)
 	}
@@ -319,6 +327,10 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 	}
 
 	out, err := r.client.GetItemWithContext(ctx, input)
+
+	if cloud.IsRequestCanceled(err) {
+		return nil, cloud.NewRequestCanceledError(err)
+	}
 
 	if err != nil {
 		return nil, err
@@ -367,6 +379,10 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 	input.Item = marshaledItem
 	out, err := r.client.PutItemWithContext(ctx, input)
 	result := newPutItemResult()
+
+	if cloud.IsRequestCanceled(err) {
+		return nil, cloud.NewRequestCanceledError(err)
+	}
 
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
 		return nil, errors.Wrapf(err, "could not execute PutItem operation for table %s", r.metadata.TableName)
@@ -422,6 +438,10 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 
 	out, err := r.client.QueryWithContext(ctx, op.input)
 
+	if cloud.IsRequestCanceled(err) {
+		return nil, cloud.NewRequestCanceledError(err)
+	}
+
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not execute Query operation for table %s", r.metadata.TableName)
 	}
@@ -456,6 +476,10 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 
 	out, err := r.client.UpdateItemWithContext(ctx, input)
 	result := newUpdateItemResult()
+
+	if cloud.IsRequestCanceled(err) {
+		return nil, cloud.NewRequestCanceledError(err)
+	}
 
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
 		return nil, errors.Wrapf(err, "could not execute UpdateItem operation for table %s", r.metadata.TableName)
@@ -512,6 +536,10 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 	}
 
 	out, err := r.client.ScanWithContext(ctx, op.input)
+
+	if cloud.IsRequestCanceled(err) {
+		return nil, cloud.NewRequestCanceledError(err)
+	}
 
 	if err != nil {
 		return nil, err

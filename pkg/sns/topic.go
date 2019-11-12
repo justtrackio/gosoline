@@ -3,6 +3,7 @@ package sns
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
@@ -17,47 +18,58 @@ type Topic interface {
 type Settings struct {
 	cfg.AppId
 	TopicId string
-
-	Arn string
+	Arn     string
+	Client  cloud.ClientSettings
+	Backoff cloud.BackoffSettings
 }
 
-type topic struct {
-	logger mon.Logger
-	client snsiface.SNSAPI
-
-	settings Settings
+type snsTopic struct {
+	logger   mon.Logger
+	client   snsiface.SNSAPI
+	executor cloud.RequestExecutor
+	settings *Settings
 }
 
-func NewTopic(config cfg.Config, logger mon.Logger, s Settings) *topic {
+func NewTopic(config cfg.Config, logger mon.Logger, s *Settings) *snsTopic {
 	s.PadFromConfig(config)
 
-	client := GetClient(config, logger)
+	client := GetClient(config, logger, &s.Client)
+
 	arn, err := CreateTopic(logger, client, s)
 
 	if err != nil {
-		panic(err)
+		logger.Fatalf(err, "can not create sns topic %s", s.TopicId)
 	}
 
 	s.Arn = arn
 
-	return NewTopicWithInterfaces(logger, client, s)
+	res := &cloud.BackoffResource{
+		Type: "sns",
+		Name: namingStrategy(s.AppId, s.TopicId),
+	}
+	executor := cloud.NewBackoffExecutor(logger, res, &s.Backoff)
+
+	return NewTopicWithInterfaces(logger, client, executor, s)
 }
 
-func NewTopicWithInterfaces(logger mon.Logger, client snsiface.SNSAPI, s Settings) *topic {
-	return &topic{
+func NewTopicWithInterfaces(logger mon.Logger, client snsiface.SNSAPI, executor cloud.RequestExecutor, s *Settings) *snsTopic {
+	return &snsTopic{
 		logger:   logger,
 		client:   client,
+		executor: executor,
 		settings: s,
 	}
 }
 
-func (t *topic) Publish(ctx context.Context, msg *string) error {
+func (t *snsTopic) Publish(ctx context.Context, msg *string) error {
 	input := &sns.PublishInput{
 		TopicArn: aws.String(t.settings.Arn),
 		Message:  msg,
 	}
 
-	_, err := t.client.Publish(input)
+	_, err := t.executor.Execute(ctx, func(delayedCtx context.Context) (interface{}, error) {
+		return t.client.PublishWithContext(delayedCtx, input)
+	})
 
 	if err != nil {
 		t.logger.WithFields(mon.Fields{
@@ -68,7 +80,7 @@ func (t *topic) Publish(ctx context.Context, msg *string) error {
 	return err
 }
 
-func (t *topic) SubscribeSqs(queueArn string) error {
+func (t *snsTopic) SubscribeSqs(queueArn string) error {
 	exists, err := t.subscriptionExists(queueArn)
 
 	if err != nil {
@@ -112,7 +124,7 @@ func (t *topic) SubscribeSqs(queueArn string) error {
 	return err
 }
 
-func (t *topic) subscriptionExists(queueArn string) (bool, error) {
+func (t *snsTopic) subscriptionExists(queueArn string) (bool, error) {
 	subscriptions, err := t.listSubscriptions()
 
 	if err != nil {
@@ -128,7 +140,7 @@ func (t *topic) subscriptionExists(queueArn string) (bool, error) {
 	return false, nil
 }
 
-func (t *topic) listSubscriptions() ([]*sns.Subscription, error) {
+func (t *snsTopic) listSubscriptions() ([]*sns.Subscription, error) {
 	subscriptions := make([]*sns.Subscription, 0)
 
 	input := &sns.ListSubscriptionsByTopicInput{

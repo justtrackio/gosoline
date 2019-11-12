@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
@@ -19,7 +20,10 @@ type SqsOutputSettings struct {
 	cfg.AppId
 	QueueId           string
 	VisibilityTimeout int
+	Fifo              sqs.FifoSettings
 	RedrivePolicy     sqs.RedrivePolicy
+	Client            cloud.ClientSettings
+	Backoff           cloud.BackoffSettings
 }
 
 type sqsOutput struct {
@@ -32,11 +36,14 @@ type sqsOutput struct {
 func NewSqsOutput(config cfg.Config, logger mon.Logger, s SqsOutputSettings) Output {
 	s.PadFromConfig(config)
 
-	queue := sqs.New(config, logger, sqs.Settings{
+	queue := sqs.New(config, logger, &sqs.Settings{
 		AppId:             s.AppId,
 		QueueId:           s.QueueId,
 		VisibilityTimeout: s.VisibilityTimeout,
+		Fifo:              s.Fifo,
 		RedrivePolicy:     s.RedrivePolicy,
+		Client:            s.Client,
+		Backoff:           s.Backoff,
 	})
 
 	tracer := tracing.NewAwsTracer(config)

@@ -3,6 +3,7 @@ package stream
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
 )
@@ -87,10 +88,12 @@ func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name str
 }
 
 type snsOutputConfiguration struct {
-	Project     string `cfg:"project"`
-	Family      string `cfg:"family"`
-	Application string `cfg:"application"`
-	TopicId     string `cfg:"topic_id" validate:"required"`
+	Project     string                `cfg:"project"`
+	Family      string                `cfg:"family"`
+	Application string                `cfg:"application"`
+	TopicId     string                `cfg:"topic_id" validate:"required"`
+	Client      cloud.ClientSettings  `cfg:"client"`
+	Backoff     cloud.BackoffSettings `cfg:"backoff"`
 }
 
 func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
@@ -106,16 +109,20 @@ func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) O
 			Application: configuration.Application,
 		},
 		TopicId: configuration.TopicId,
+		Client:  configuration.Client,
+		Backoff: configuration.Backoff,
 	})
 }
 
 type sqsOutputConfiguration struct {
-	Project           string            `cfg:"project"`
-	Family            string            `cfg:"family"`
-	Application       string            `cfg:"application"`
-	QueueId           string            `cfg:"queue_id" validate:"required"`
-	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
-	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
+	Project           string                `cfg:"project"`
+	Family            string                `cfg:"family"`
+	Application       string                `cfg:"application"`
+	QueueId           string                `cfg:"queue_id" validate:"required"`
+	VisibilityTimeout int                   `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
+	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
+	Client            cloud.ClientSettings  `cfg:"client"`
+	Backoff           cloud.BackoffSettings `cfg:"backoff"`
 }
 
 func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
@@ -133,6 +140,8 @@ func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) O
 		QueueId:           configuration.QueueId,
 		VisibilityTimeout: configuration.VisibilityTimeout,
 		RedrivePolicy:     configuration.RedrivePolicy,
+		Client:            configuration.Client,
+		Backoff:           configuration.Backoff,
 	})
 }
 

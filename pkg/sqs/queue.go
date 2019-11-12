@@ -3,25 +3,18 @@ package sqs
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/hashicorp/go-multierror"
-	"github.com/jonboulle/clockwork"
 	"github.com/twinj/uuid"
-	"net"
-	"net/url"
-	"os"
-	"syscall"
 )
 
 const (
-	sqsBatchSize              = 10
-	MetricNameQueueErrorCount = "QueueErrorCount"
+	sqsBatchSize = 10
 )
 
 //go:generate mockery -name Queue
@@ -62,24 +55,25 @@ type Properties struct {
 type Settings struct {
 	cfg.AppId
 	QueueId           string
-	Fifo              FifoSettings
 	VisibilityTimeout int
+	Fifo              FifoSettings
 	RedrivePolicy     RedrivePolicy
+	Client            cloud.ClientSettings
+	Backoff           cloud.BackoffSettings
 }
 
 type queue struct {
 	logger     mon.Logger
 	client     sqsiface.SQSAPI
+	executor   cloud.RequestExecutor
 	properties *Properties
-	metric     mon.MetricWriter
-	clock      clockwork.Clock
 }
 
-func New(config cfg.Config, logger mon.Logger, s Settings) *queue {
+func New(config cfg.Config, logger mon.Logger, s *Settings) *queue {
 	s.PadFromConfig(config)
 	name := generateName(s)
 
-	c := GetClient(config, logger)
+	client := GetClient(config, logger, &s.Client)
 	srv := NewService(config, logger)
 
 	props, err := srv.CreateQueue(s)
@@ -88,19 +82,21 @@ func New(config cfg.Config, logger mon.Logger, s Settings) *queue {
 		logger.Fatalf(err, "could not create or get properties of queue %s", name)
 	}
 
-	defaults := getDefaultQueueMetrics(props.Name)
-	metric := mon.NewMetricDaemonWriter(defaults...)
+	res := &cloud.BackoffResource{
+		Type: "sns",
+		Name: name,
+	}
+	executor := cloud.NewBackoffExecutor(logger, res, &s.Backoff)
 
-	return NewWithInterfaces(logger, c, props, metric, clockwork.NewRealClock())
+	return NewWithInterfaces(logger, client, executor, props)
 }
 
-func NewWithInterfaces(logger mon.Logger, c sqsiface.SQSAPI, p *Properties, m mon.MetricWriter, cl clockwork.Clock) *queue {
+func NewWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, executor cloud.RequestExecutor, p *Properties) *queue {
 	q := &queue{
 		logger:     logger,
-		client:     c,
+		client:     client,
+		executor:   executor,
 		properties: p,
-		metric:     m,
-		clock:      cl,
 	}
 
 	return q
@@ -114,10 +110,11 @@ func (q *queue) Send(ctx context.Context, msg *Message) error {
 		MessageBody:    msg.Body,
 	}
 
-	_, err := q.client.SendMessageWithContext(ctx, input)
+	_, err := q.executor.Execute(ctx, func(delayedCtx context.Context) (interface{}, error) {
+		return q.client.SendMessageWithContext(delayedCtx, input)
+	})
 
 	if err != nil {
-		q.writeMetric(MetricNameQueueErrorCount, 1)
 		q.logger.WithContext(ctx).Errorf(err, "could not send value to sqs queue %s", q.properties.Name)
 	}
 
@@ -147,10 +144,11 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 		Entries:  entries,
 	}
 
-	_, err := q.client.SendMessageBatchWithContext(ctx, input)
+	_, err := q.executor.Execute(ctx, func(delayedCtx context.Context) (interface{}, error) {
+		return q.client.SendMessageBatchWithContext(delayedCtx, input)
+	})
 
 	if err != nil {
-		q.writeMetric(MetricNameQueueErrorCount, 1)
 		q.logger.WithContext(ctx).Errorf(err, "could not send batch to sqs queue %s", q.properties.Name)
 	}
 
@@ -158,6 +156,8 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 }
 
 func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, error) {
+	logger := q.logger.WithContext(ctx)
+
 	input := &sqs.ReceiveMessageInput{
 		MessageAttributeNames: []*string{aws.String("ALL")},
 		MaxNumberOfMessages:   aws.Int64(10),
@@ -165,25 +165,26 @@ func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, er
 		WaitTimeSeconds:       aws.Int64(waitTime),
 	}
 
-	out, err := q.client.ReceiveMessageWithContext(ctx, input)
+	res, err := q.executor.Execute(ctx, func(delayedCtx context.Context) (interface{}, error) {
+		return q.client.ReceiveMessageWithContext(delayedCtx, input)
+	})
 
-	if isError(err, request.CanceledErrorCode) {
+	if cloud.IsRequestCanceled(err) {
+		logger.Infof("canceled receive from sqs queue %s: %s", q.properties.Name, err.Error())
 		return nil, nil
 	}
 
-	if isConnResetError(err) {
-		// write to cloud watch to keep track of these errors, but don't sound an alarm immediately
-		q.writeMetric(MetricNameQueueErrorCount, 1)
-
+	if cloud.IsConnectionError(err) {
+		logger.Warnf("connection error during receive from sqs queue %s: %s", q.properties.Name, err.Error())
 		return nil, nil
 	}
 
 	if err != nil {
-		q.writeMetric(MetricNameQueueErrorCount, 1)
-		q.logger.Errorf(err, "could not receive value from sqs queue %s", q.properties.Name)
-
+		logger.Errorf(err, "could not receive value from sqs queue %s", q.properties.Name)
 		return nil, err
 	}
+
+	out := res.(*sqs.ReceiveMessageOutput)
 
 	return out.Messages, nil
 }
@@ -194,12 +195,12 @@ func (q *queue) DeleteMessage(receiptHandle string) error {
 		ReceiptHandle: aws.String(receiptHandle),
 	}
 
-	_, err := q.client.DeleteMessage(input)
+	_, err := q.executor.Execute(context.Background(), func(delayedCtx context.Context) (interface{}, error) {
+		return q.client.DeleteMessage(input)
+	})
 
 	if err != nil {
-		q.writeMetric(MetricNameQueueErrorCount, 1)
 		q.logger.Errorf(err, "could not delete message from sqs queue %s", q.properties.Name)
-
 		return err
 	}
 
@@ -233,17 +234,26 @@ func (q *queue) DeleteMessageBatch(receiptHandles []string) error {
 
 		input.Entries = entries[i:j]
 
-		_, err := q.client.DeleteMessageBatch(input)
+		err := q.doDeleteMessageBatch(input)
 
 		if err != nil {
-			q.writeMetric(MetricNameQueueErrorCount, 1)
-			q.logger.Errorf(err, "could not delete the messages from sqs queue %s", q.properties.Name)
-
 			multiError = multierror.Append(multiError, err)
 		}
 	}
 
 	return multiError.ErrorOrNil()
+}
+
+func (q *queue) doDeleteMessageBatch(input *sqs.DeleteMessageBatchInput) error {
+	_, err := q.executor.Execute(context.Background(), func(delayedCtx context.Context) (interface{}, error) {
+		return q.client.DeleteMessageBatch(input)
+	})
+
+	if err != nil {
+		q.logger.Errorf(err, "could not delete the messages from sqs queue %s", q.properties.Name)
+	}
+
+	return err
 }
 
 func (q *queue) GetName() string {
@@ -256,81 +266,4 @@ func (q *queue) GetUrl() string {
 
 func (q *queue) GetArn() string {
 	return q.properties.Arn
-}
-
-func (q *queue) writeMetric(metric string, count int) {
-	q.metric.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
-		Timestamp:  q.clock.Now(),
-		MetricName: metric,
-		Dimensions: map[string]string{
-			"Queue": q.GetName(),
-		},
-		Value: float64(count),
-		Unit:  mon.UnitCount,
-	})
-}
-
-func isError(err error, awsCode string) bool {
-	if err == nil {
-		return false
-	}
-
-	aerr, ok := err.(awserr.Error)
-
-	return ok && aerr.Code() == awsCode
-}
-
-func isConnResetError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	aerr, ok := err.(awserr.Error)
-
-	if !ok {
-		return false
-	}
-
-	urlErr, ok := aerr.OrigErr().(*url.Error)
-
-	if !ok {
-		return false
-	}
-
-	opErr, ok := urlErr.Err.(*net.OpError)
-
-	if !ok {
-		return false
-	}
-
-	for {
-		if nextOpErr, ok := opErr.Err.(*net.OpError); ok {
-			opErr = nextOpErr
-		} else {
-			break
-		}
-	}
-
-	syscallErr, ok := opErr.Err.(*os.SyscallError)
-
-	if !ok {
-		return false
-	}
-
-	return syscallErr.Err == syscall.ECONNRESET || syscallErr.Err == syscall.EPIPE
-}
-
-func getDefaultQueueMetrics(queueName string) mon.MetricData {
-	return mon.MetricData{
-		{
-			Priority:   mon.PriorityHigh,
-			MetricName: MetricNameQueueErrorCount,
-			Dimensions: map[string]string{
-				"Queue": queueName,
-			},
-			Unit:  mon.UnitCount,
-			Value: 0.0,
-		},
-	}
 }
