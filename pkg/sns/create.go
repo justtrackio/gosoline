@@ -17,7 +17,7 @@ func WithNamingStrategy(strategy func(appId cfg.AppId, topicId string) string) {
 	namingStrategy = strategy
 }
 
-func CreateTopic(logger mon.Logger, client snsiface.SNSAPI, s Settings) (string, error) {
+func CreateTopic(logger mon.Logger, client snsiface.SNSAPI, s *Settings) (string, error) {
 	name := namingStrategy(s.AppId, s.TopicId)
 
 	logger.WithFields(mon.Fields{

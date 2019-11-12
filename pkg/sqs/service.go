@@ -3,6 +3,7 @@ package sqs
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
@@ -22,7 +23,7 @@ type ServiceSettings struct {
 
 //go:generate mockery -name Service
 type Service interface {
-	CreateQueue(Settings) (*Properties, error)
+	CreateQueue(*Settings) (*Properties, error)
 	QueueExists(string) (bool, error)
 	GetPropertiesByName(string) (*Properties, error)
 	GetPropertiesByArn(string) (*Properties, error)
@@ -39,7 +40,7 @@ type service struct {
 }
 
 func NewService(config cfg.Config, logger mon.Logger) Service {
-	client := GetClient(config, logger)
+	client := GetClient(config, logger, &cloud.ClientSettings{})
 	settings := &ServiceSettings{
 		AutoCreate: config.GetBool("aws_sqs_autoCreate"),
 	}
@@ -55,7 +56,7 @@ func NewServiceWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, setting
 	}
 }
 
-func (s *service) CreateQueue(settings Settings) (*Properties, error) {
+func (s *service) CreateQueue(settings *Settings) (*Properties, error) {
 	s.lck.Lock()
 	defer s.lck.Unlock()
 
@@ -223,7 +224,7 @@ func (s *service) Purge(url string) error {
 	return err
 }
 
-func (s *service) createDeadLetterQueue(settings Settings) (map[string]*string, error) {
+func (s *service) createDeadLetterQueue(settings *Settings) (map[string]*string, error) {
 	attributes := make(map[string]*string)
 
 	if !settings.RedrivePolicy.Enabled {

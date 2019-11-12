@@ -74,7 +74,7 @@ func TestService_CreateQueue(t *testing.T) {
 		AutoCreate: true,
 	})
 
-	props, err := srv.CreateQueue(sqs.Settings{
+	props, err := srv.CreateQueue(&sqs.Settings{
 		AppId: cfg.AppId{
 			Project:     "applike",
 			Environment: "test",

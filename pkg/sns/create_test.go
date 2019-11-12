@@ -13,7 +13,7 @@ import (
 )
 
 func TestCreateTopic(t *testing.T) {
-	s := sns.Settings{
+	s := &sns.Settings{
 		AppId: cfg.AppId{
 			Project:     "mcoins",
 			Environment: "test",
@@ -41,7 +41,7 @@ func TestCreateTopic(t *testing.T) {
 }
 
 func TestCreateTopicFailing(t *testing.T) {
-	s := sns.Settings{
+	s := &sns.Settings{
 		AppId: cfg.AppId{
 			Project:     "mcoins",
 			Environment: "test",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
@@ -12,12 +13,14 @@ import (
 
 type SqsInputSettings struct {
 	cfg.AppId
-	QueueId           string            `cfg:"queue_id"`
-	Fifo              sqs.FifoSettings  `cfg:"fifo"`
-	WaitTime          int64             `cfg:"wait_time"`
-	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
-	VisibilityTimeout int               `cfg:"visibility_timeout"`
-	RunnerCount       int               `cfg:"runner_count"`
+	QueueId           string                `cfg:"queue_id"`
+	WaitTime          int64                 `cfg:"wait_time"`
+	VisibilityTimeout int                   `cfg:"visibility_timeout"`
+	RunnerCount       int                   `cfg:"runner_count"`
+	Fifo              sqs.FifoSettings      `cfg:"fifo"`
+	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
+	Client            cloud.ClientSettings  `cfg:"client"`
+	Backoff           cloud.BackoffSettings `cfg:"backoff"`
 }
 
 type sqsInput struct {
@@ -34,12 +37,14 @@ type sqsInput struct {
 func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) *sqsInput {
 	s.AppId.PadFromConfig(config)
 
-	queue := sqs.New(config, logger, sqs.Settings{
+	queue := sqs.New(config, logger, &sqs.Settings{
 		AppId:             s.AppId,
 		QueueId:           s.QueueId,
 		Fifo:              s.Fifo,
 		RedrivePolicy:     s.RedrivePolicy,
 		VisibilityTimeout: s.VisibilityTimeout,
+		Client:            s.Client,
+		Backoff:           s.Backoff,
 	})
 
 	return NewSqsInputWithInterfaces(logger, queue, s)

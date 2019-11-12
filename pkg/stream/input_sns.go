@@ -2,6 +2,7 @@ package stream
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sns"
 	"github.com/applike/gosoline/pkg/sqs"
@@ -10,11 +11,13 @@ import (
 type SnsInputSettings struct {
 	cfg.AppId
 	AutoSubscribe     bool
-	QueueId           string            `cfg:"queue_id"`
-	WaitTime          int64             `cfg:"wait_time"`
-	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
-	VisibilityTimeout int               `cfg:"visibility_timeout"`
-	RunnerCount       int               `cfg:"runner_count"`
+	QueueId           string                `cfg:"queue_id"`
+	WaitTime          int64                 `cfg:"wait_time"`
+	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
+	VisibilityTimeout int                   `cfg:"visibility_timeout"`
+	RunnerCount       int                   `cfg:"runner_count"`
+	Client            cloud.ClientSettings  `cfg:"client"`
+	Backoff           cloud.BackoffSettings `cfg:"backoff"`
 }
 
 type SnsInputTarget struct {
@@ -34,9 +37,11 @@ func NewSnsInput(config cfg.Config, logger mon.Logger, s SnsInputSettings, targe
 		AppId:             s.AppId,
 		QueueId:           s.QueueId,
 		WaitTime:          s.WaitTime,
-		RedrivePolicy:     s.RedrivePolicy,
 		VisibilityTimeout: s.VisibilityTimeout,
 		RunnerCount:       s.RunnerCount,
+		RedrivePolicy:     s.RedrivePolicy,
+		Client:            s.Client,
+		Backoff:           s.Backoff,
 	})
 	sqsInput.SetUnmarshaler(SnsUnmarshaler)
 
@@ -46,9 +51,11 @@ func NewSnsInput(config cfg.Config, logger mon.Logger, s SnsInputSettings, targe
 		for _, t := range targets {
 			t.PadFromConfig(config)
 
-			topic := sns.NewTopic(config, logger, sns.Settings{
+			topic := sns.NewTopic(config, logger, &sns.Settings{
 				AppId:   t.AppId,
 				TopicId: t.TopicId,
+				Client:  s.Client,
+				Backoff: s.Backoff,
 			})
 
 			err := topic.SubscribeSqs(queueArn)

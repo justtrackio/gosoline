@@ -2,6 +2,7 @@ package sns_test
 
 import (
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/sns"
 	"testing"
@@ -14,7 +15,7 @@ func TestGetClient(t *testing.T) {
 
 	logger := mocks.NewLoggerMockedAll()
 
-	sns.GetClient(config, logger)
+	sns.GetClient(config, logger, &cloud.ClientSettings{})
 
 	config.AssertExpectations(t)
 }

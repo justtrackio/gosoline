@@ -18,7 +18,7 @@ type client struct {
 
 var c = client{}
 
-func GetClient(config cfg.Config, logger mon.Logger) sqsiface.SQSAPI {
+func GetClient(config cfg.Config, logger mon.Logger, settings *cloud.ClientSettings) sqsiface.SQSAPI {
 	c.Lock()
 	defer c.Unlock()
 
@@ -26,21 +26,14 @@ func GetClient(config cfg.Config, logger mon.Logger) sqsiface.SQSAPI {
 		return c.client
 	}
 
-	c.client = buildClient(config, logger)
+	c.client = buildClient(config, logger, settings)
 	c.initialized = true
 
 	return c.client
 }
 
-func buildClient(config cfg.Config, logger mon.Logger) *sqs.SQS {
-	endpoint := config.GetString("aws_sqs_endpoint")
-	maxRetries := config.GetInt("aws_sdk_retries")
-
-	awsConfig := cloud.ConfigTemplate
-	awsConfig.WithEndpoint(endpoint)
-	awsConfig.WithMaxRetries(maxRetries)
-	awsConfig.WithLogger(cloud.PrefixedLogger(logger, "sqs"))
-
+func buildClient(config cfg.Config, logger mon.Logger, settings *cloud.ClientSettings) *sqs.SQS {
+	awsConfig := cloud.GetAwsConfig(config, logger, "sqs", settings)
 	sess := session.Must(session.NewSession(awsConfig))
 
 	return sqs.New(sess)

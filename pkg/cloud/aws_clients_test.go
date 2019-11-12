@@ -49,16 +49,16 @@ func TestPrefixedLogger(t *testing.T) {
 	l.On("WithFields", map[string]interface{}{
 		"aws_service": "myService",
 	}).Return(l)
-	l.On("Warn", "log")
+	l.On("Info", "log")
 
 	logger := cloud.PrefixedLogger(l, "myService")
 
-	l.AssertNotCalled(t, "Warn", "log")
+	l.AssertNotCalled(t, "Info", "log")
 
 	assert.NotPanics(t, func() {
 		logger("log")
 	})
 
-	l.AssertCalled(t, "Warn", "log")
+	l.AssertCalled(t, "Info", "log")
 	l.AssertExpectations(t)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sns"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -13,6 +14,8 @@ import (
 type SnsOutputSettings struct {
 	cfg.AppId
 	TopicId string
+	Client  cloud.ClientSettings
+	Backoff cloud.BackoffSettings
 }
 
 type snsOutput struct {
@@ -26,8 +29,10 @@ type snsOutput struct {
 func NewSnsOutput(config cfg.Config, logger mon.Logger, s SnsOutputSettings) Output {
 	s.PadFromConfig(config)
 
-	topic := sns.NewTopic(config, logger, sns.Settings{
+	topic := sns.NewTopic(config, logger, &sns.Settings{
 		AppId:   s.AppId,
+		Client:  s.Client,
+		Backoff: s.Backoff,
 		TopicId: s.TopicId,
 	})
 

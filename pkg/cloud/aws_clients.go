@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
@@ -20,6 +21,76 @@ import (
 	"sync"
 	"time"
 )
+
+const (
+	LogDebug                    = "debug"
+	LogDebugWithEventStreamBody = "debug_event_stream_body"
+	LogDebugWithHTTPBody        = "debug_http"
+	LogDebugWithRequestErrors   = "debug_request_errors"
+	LogDebugWithRequestRetries  = "debug_request_retries"
+	LogDebugWithSigning         = "debug_signing"
+	LogOff                      = "off"
+)
+
+func LogLevelStringToAwsLevel(level string) aws.LogLevelType {
+	switch level {
+	case LogDebug:
+		return aws.LogDebug
+	case LogDebugWithEventStreamBody:
+		return aws.LogDebugWithEventStreamBody
+	case LogDebugWithHTTPBody:
+		return aws.LogDebugWithHTTPBody
+	case LogDebugWithRequestErrors:
+		return aws.LogDebugWithRequestErrors
+	case LogDebugWithRequestRetries:
+		return aws.LogDebugWithRequestRetries
+	case LogDebugWithSigning:
+		return aws.LogDebugWithSigning
+	case LogOff:
+		return aws.LogOff
+	}
+
+	return aws.LogOff
+}
+
+type ClientSettings struct {
+	MaxRetries  int           `cfg:"max_retries"`
+	HttpTimeout time.Duration `cfg:"http_timeout" default:"1s"`
+	LogLevel    string        `cfg:"log_level"`
+}
+
+func GetAwsConfig(config cfg.Config, logger mon.Logger, service string, settings *ClientSettings) *aws.Config {
+	srvCfgKey := fmt.Sprintf("aws_%s_endpoint", service)
+
+	endpoint := config.GetString(srvCfgKey)
+	maxRetries := config.GetInt("aws_sdk_retries")
+	logLevel := aws.LogOff
+	httpTimeout := time.Minute
+
+	if settings.MaxRetries > 0 {
+		maxRetries = settings.MaxRetries
+	}
+
+	if settings.HttpTimeout > 0 {
+		httpTimeout = settings.HttpTimeout
+	}
+
+	if settings.LogLevel != "" {
+		logLevel = LogLevelStringToAwsLevel(settings.LogLevel)
+	}
+
+	return &aws.Config{
+		CredentialsChainVerboseErrors: aws.Bool(true),
+		Region:                        aws.String(endpoints.EuCentral1RegionID),
+		Endpoint:                      aws.String(endpoint),
+		MaxRetries:                    aws.Int(maxRetries),
+		HTTPClient: &http.Client{
+			Timeout: httpTimeout,
+		},
+		Logger:   PrefixedLogger(logger, service),
+		LogLevel: aws.LogLevel(logLevel),
+	}
+}
 
 /* Configuration Template for AWS Clients */
 var ConfigTemplate = &aws.Config{
@@ -183,6 +254,6 @@ func PrefixedLogger(logger mon.Logger, service string) aws.LoggerFunc {
 	return func(args ...interface{}) {
 		logger.WithFields(mon.Fields{
 			"aws_service": service,
-		}).Warn(args...)
+		}).Info(args...)
 	}
 }

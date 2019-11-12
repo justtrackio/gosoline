@@ -23,7 +23,7 @@ type client struct {
 
 var c = client{}
 
-func GetClient(config cfg.Config, logger mon.Logger) Client {
+func GetClient(config cfg.Config, logger mon.Logger, settings *cloud.ClientSettings) Client {
 	c.Lock()
 	defer c.Unlock()
 
@@ -31,21 +31,14 @@ func GetClient(config cfg.Config, logger mon.Logger) Client {
 		return c.client
 	}
 
-	c.client = buildClient(config, logger)
+	c.client = buildClient(config, logger, settings)
 	c.initialized = true
 
 	return c.client
 }
 
-func buildClient(config cfg.Config, logger mon.Logger) *sns.SNS {
-	endpoint := config.GetString("aws_sns_endpoint")
-	maxRetries := config.GetInt("aws_sdk_retries")
-
-	awsConfig := cloud.ConfigTemplate
-	awsConfig.WithEndpoint(endpoint)
-	awsConfig.WithMaxRetries(maxRetries)
-	awsConfig.WithLogger(cloud.PrefixedLogger(logger, "sns"))
-
+func buildClient(config cfg.Config, logger mon.Logger, settings *cloud.ClientSettings) *sns.SNS {
+	awsConfig := cloud.GetAwsConfig(config, logger, "sns", settings)
 	sess := session.Must(session.NewSession(awsConfig))
 
 	return sns.New(sess)
