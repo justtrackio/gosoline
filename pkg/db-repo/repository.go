@@ -285,7 +285,13 @@ func (r *repository) refreshAssociations(model interface{}, op string) error {
 			switch scopeField.Relationship.Kind {
 			case "has_many":
 				id := valueReflection.FieldByName("Id").Elem().Interface()
-				qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", scopeField.DBName, scopeField.Relationship.ForeignDBNames[0], id)
+				tableName := scopeField.DBName
+
+				if tags["assoc_update"] != "" {
+					tableName = tags["assoc_update"]
+				}
+
+				qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", tableName, scopeField.Relationship.ForeignDBNames[0], id)
 				err = r.orm.Exec(qry).Error
 
 			default:
