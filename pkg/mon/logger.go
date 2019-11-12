@@ -269,7 +269,7 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 		return
 	}
 
-	fields = mergeMapStringInterface(l.data.fields, fields)
+	l.data.fields = mergeMapStringInterface(l.data.fields, fields)
 
 	for _, h := range l.hooks {
 		if err := h.Fire(level, msg, logErr, &l.data); err != nil {
