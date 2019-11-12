@@ -269,15 +269,16 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 		return
 	}
 
-	fields = mergeMapStringInterface(l.data.fields, fields)
+	cpyData := l.data
+	cpyData.fields = mergeMapStringInterface(cpyData.fields, fields)
 
 	for _, h := range l.hooks {
-		if err := h.Fire(level, msg, logErr, &l.data); err != nil {
+		if err := h.Fire(level, msg, logErr, &cpyData); err != nil {
 			l.err(err)
 		}
 	}
 
-	buffer, err := formatters[l.format](l.clock, level, msg, logErr, &l.data)
+	buffer, err := formatters[l.format](l.clock, level, msg, logErr, &cpyData)
 
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
