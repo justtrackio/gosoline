@@ -48,7 +48,7 @@ func runTestServer(t *testing.T, method string, status int, delay time.Duration,
 func getConfig(retries int, timeout int) *cfgMocks.Config {
 	config := new(cfgMocks.Config)
 	config.On("GetInt", "http_client_retry_count").Return(retries)
-	config.On("GetDuration", "http_client_request_timeout").Return(time.Duration(timeout))
+	config.On("GetDuration", "http_client_request_timeout").Return(time.Duration(timeout) * time.Second)
 
 	return config
 }
