@@ -2,6 +2,7 @@ package parquet
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -15,8 +16,9 @@ import (
 )
 
 type WriterSettings struct {
-	ModelId  mdl.ModelId
-	Interval time.Duration
+	ModelId        mdl.ModelId
+	Interval       time.Duration
+	NamingStrategy string
 }
 
 type Writer interface {
@@ -27,6 +29,8 @@ type s3Writer struct {
 	logger mon.Logger
 	s3Cfg  *aws.Config
 
+	prefixNamingStrategy s3PrefixNamingStrategy
+
 	settings *WriterSettings
 }
 
@@ -34,14 +38,21 @@ func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *
 	s3Cfg := blob.GetS3ClientConfig(config)
 	settings.ModelId.PadFromConfig(config)
 
-	return NewWriterWithInterfaces(logger, s3Cfg, settings)
+	prefixNaming, exists := s3PrefixNamingStrategies[settings.NamingStrategy]
+
+	if !exists {
+		panic(fmt.Sprintf("Unknown prefix naming strategy '%s'", settings.NamingStrategy))
+	}
+
+	return NewWriterWithInterfaces(logger, s3Cfg, prefixNaming, settings)
 }
 
-func NewWriterWithInterfaces(logger mon.Logger, s3Cfg *aws.Config, settings *WriterSettings) *s3Writer {
+func NewWriterWithInterfaces(logger mon.Logger, s3Cfg *aws.Config, prefixNaming s3PrefixNamingStrategy, settings *WriterSettings) *s3Writer {
 	return &s3Writer{
-		logger:   logger,
-		s3Cfg:    s3Cfg,
-		settings: settings,
+		logger:               logger,
+		s3Cfg:                s3Cfg,
+		prefixNamingStrategy: prefixNaming,
+		settings:             settings,
 	}
 }
 
@@ -78,16 +89,16 @@ func (w *s3Writer) Write(ctx context.Context, items interface{}) error {
 
 func (w *s3Writer) writeBucket(ctx context.Context, datetime time.Time, rootItems interface{}, items []TimeStampable) error {
 	bucket := w.getBucketName()
-	key := s3KeyNamingStrategy(w.settings.ModelId, datetime)
+	key := s3KeyNamingStrategy(w.settings.ModelId, datetime, w.prefixNamingStrategy)
 
-	fw, err := parquetS3.NewS3FileWriter(ctx, bucket, key, []func(*s3manager.Uploader){})
+	fw, err := parquetS3.NewS3FileWriter(ctx, bucket, key, []func(*s3manager.Uploader){}, w.s3Cfg)
 
 	if err != nil {
 		return err
 	}
 
-	schemaTyp := findBaseType(rootItems)
-	schema := reflect.New(schemaTyp).Interface()
+	schemaType := findBaseType(rootItems)
+	schema := reflect.New(schemaType).Interface()
 
 	pw, err := writer.NewParquetWriter(fw, schema, 4)
 

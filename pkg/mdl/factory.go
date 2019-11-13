@@ -6,11 +6,19 @@ func Bool(v bool) *bool {
 	return &v
 }
 
+func Float32(v float32) *float32 {
+	return &v
+}
+
 func Float64(v float64) *float64 {
 	return &v
 }
 
 func Int(v int) *int {
+	return &v
+}
+
+func Int32(v int32) *int32 {
 	return &v
 }
 

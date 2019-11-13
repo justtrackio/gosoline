@@ -7,16 +7,21 @@ import (
 func findBaseType(value interface{}) reflect.Type {
 	t := reflect.TypeOf(value)
 
-	for {
-		if t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
-			t = t.Elem()
-			continue
-		}
-
-		break
+	if t.Kind() == reflect.Ptr {
+		return t.Elem()
 	}
 
-	return t
+	if t.Kind() != reflect.Slice {
+		return t
+	}
+
+	v, ok := value.([]interface{})
+
+	if !ok {
+		return t.Elem()
+	}
+
+	return findBaseType(v[0])
 }
 
 func createPointerToSliceOfTypeAndSize(value interface{}, size int) interface{} {
