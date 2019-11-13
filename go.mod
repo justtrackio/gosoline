@@ -1,13 +1,13 @@
 module github.com/applike/gosoline
 
-replace github.com/xitongsys/parquet-go => github.com/applike/parquet-go v1.3.1-0.20190920135643-dfdda67390b8
-
 require (
 	github.com/DATA-DOG/go-sqlmock v1.3.0
+	github.com/DataDog/zstd v1.4.4 // indirect
 	github.com/Masterminds/squirrel v1.1.0
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
 	github.com/alicebob/gopher-json v0.0.0-20180125190556-5a6b3ba71ee6 // indirect
 	github.com/alicebob/miniredis v2.4.6+incompatible
+	github.com/apache/thrift v0.13.0 // indirect
 	github.com/aws/aws-lambda-go v1.13.2
 	github.com/aws/aws-sdk-go v1.19.37
 	github.com/aws/aws-xray-sdk-go v0.9.4
@@ -66,7 +66,7 @@ require (
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 // indirect
 	github.com/xitongsys/parquet-go v1.4.0
-	github.com/xitongsys/parquet-go-source v0.0.0-20190902023021-473506c401f7
+	github.com/xitongsys/parquet-go-source v0.0.0-20191104003508-ecfa341356a6
 	github.com/yuin/gopher-lua v0.0.0-20190206043414-8bfc7677f583 // indirect
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/api v0.5.0
