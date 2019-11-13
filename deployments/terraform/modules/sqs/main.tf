@@ -1,5 +1,5 @@
 module "main" {
-  source = "queue"
+  source = "./queue"
 
   application = var.application
   environment = var.environment
@@ -19,13 +19,15 @@ module "main" {
 }
 
 module "dead" {
-  source = "queue"
+  source = "./queue"
 
   application = var.application
   environment = var.environment
   family      = var.family
   project     = var.project
   queueName   = "${var.queueName}-dead"
+
+  messageRetentionSeconds = var.messageRetentionSeconds
 
   alarm_create    = var.alarm_dead_create
   alarm_period    = var.alarm_dead_period

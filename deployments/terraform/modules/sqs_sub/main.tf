@@ -3,7 +3,7 @@ data "aws_sns_topic" "main" {
 }
 
 module "queue" {
-  source = "../sqs"
+  source = "./../sqs"
 
   project     = var.project
   environment = var.environment
