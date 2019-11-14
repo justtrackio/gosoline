@@ -122,6 +122,7 @@ func getDefaultRepositoryMetrics(modelId mdl.ModelId) []*mon.MetricDatum {
 		}
 
 		defaults = append(defaults, &mon.MetricDatum{
+			Priority:   mon.PriorityLow,
 			MetricName: MetricNameDbAccessLatency,
 			Dimensions: map[string]string{
 				"Operation": op,
