@@ -85,6 +85,7 @@ func getDefaultMetrics(mId mdl.ModelId) mon.MetricData {
 		}
 
 		defaults = append(defaults, &mon.MetricDatum{
+			Priority:   mon.PriorityLow,
 			MetricName: MetricNameAccessLatency,
 			Dimensions: map[string]string{
 				"Operation": op,
