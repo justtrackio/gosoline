@@ -47,6 +47,14 @@ type Identifier struct {
 	Id *uint `json:"id" binding:"required"`
 }
 
+func (i *Identifier) GetId() *uint {
+	if i == nil {
+		return nil
+	}
+
+	return i.Id
+}
+
 func WithIdentifier(id *uint) *Identifier {
 	return &Identifier{
 		Id: id,
