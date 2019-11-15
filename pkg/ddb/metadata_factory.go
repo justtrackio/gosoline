@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/pkg/errors"
 	"reflect"
 	"strings"
 	"time"
@@ -21,31 +20,31 @@ func (f *metadataFactory) GetMetadata(settings *Settings) (*Metadata, error) {
 	attributes, err := f.getAttributes(settings)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "can not get attributes for table %s", tableName)
+		return nil, fmt.Errorf("can not get attributes for table %s: %w", tableName, err)
 	}
 
 	ttl, err := f.getTimeToLive(attributes)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "can not get ttl for table %s", tableName)
+		return nil, fmt.Errorf("can not get ttl for table %s: %w", tableName, err)
 	}
 
 	mainFields, err := f.getFields(settings.Main.Model, tagKey, tagKey)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "can not get fields for main table %s", tableName)
+		return nil, fmt.Errorf("can not get fields for main table %s: %w", tableName, err)
 	}
 
 	local, err := f.getLocalSecondaryIndices(settings.Local)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "can not get fields for local secondary index on table %s", tableName)
+		return nil, fmt.Errorf("can not get fields for local secondary index on table %s: %w", tableName, err)
 	}
 
 	global, err := f.getGlobalSecondaryIndices(settings.Global)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "can not get fields for global secondary index on table %s", tableName)
+		return nil, fmt.Errorf("can not get fields for global secondary index on table %s: %w", tableName, err)
 	}
 
 	metadata := &Metadata{

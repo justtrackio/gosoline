@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 	"time"
 )
 
@@ -118,32 +117,32 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 	unmarshaller, err := NewUnmarshallerFromPtrSlice(items)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "can not initializer unmarshaller for BatchGetItems operation on table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("can not initializer unmarshaller for BatchGetItems operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	input, err := qb.Build(items)
 	result := newOperationResult()
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "can not build input for BatchGetItems operation on table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("can not build input for BatchGetItems operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	for {
 		out, err := r.client.BatchGetItemWithContext(ctx, input)
 
 		if cloud.IsRequestCanceled(err) {
-			return nil, cloud.NewRequestCanceledError(err)
+			return nil, cloud.RequestCanceledError
 		}
 
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not execute BatchGetItems operation for table %s", r.metadata.TableName)
+			return nil, fmt.Errorf("could not execute BatchGetItems operation for table %s: %w", r.metadata.TableName, err)
 		}
 
 		responses := out.Responses[r.metadata.TableName]
 		err = unmarshaller.Append(responses)
 
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not unmarshal items after BatchGetItems operation for table %s", r.metadata.TableName)
+			return nil, fmt.Errorf("could not unmarshal items after BatchGetItems operation for table %s: %w", r.metadata.TableName, err)
 		}
 
 		result.ConsumedCapacity.addSlice(out.ConsumedCapacity)
@@ -188,7 +187,7 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 	items, err := interfaceToSliceOfInterfaces(value)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "no slice of items provided for batchWriteItem operation on table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("no slice of items provided for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	// DynamoDB limits the number of operations per batch request to 25
@@ -202,7 +201,7 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 			marshalledItem, err := dynamodbattribute.MarshalMap(chunk[i])
 
 			if err != nil {
-				return nil, errors.Wrapf(err, "could not marshal item for batchWriteItem operation on table %s", r.metadata.TableName)
+				return nil, fmt.Errorf("could not marshal item for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
 			}
 
 			requests[i] = reqBuilder(marshalledItem)
@@ -217,7 +216,7 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 		err = r.chunkWriteItem(ctx, input, result)
 
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not write chunk for batchWriteItem operation on table %s", r.metadata.TableName)
+			return nil, fmt.Errorf("could not write chunk for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
 		}
 	}
 
@@ -235,7 +234,7 @@ func (r *repository) chunkWriteItem(ctx context.Context, input *dynamodb.BatchWr
 		out, err := r.client.BatchWriteItemWithContext(ctx, input)
 
 		if err != nil {
-			return backoff.Permanent(errors.Wrapf(err, "could not execute item for batchWriteItemWithContext operation on table %s", r.metadata.TableName))
+			return backoff.Permanent(fmt.Errorf("could not execute item for batchWriteItemWithContext operation on table %s: %w", r.metadata.TableName, err))
 		}
 
 		result.ConsumedCapacity.addSlice(out.ConsumedCapacity)
@@ -282,17 +281,17 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 	result := newDeleteItemResult()
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not build input for DeleteItem operation on table [%s]", r.metadata.TableName)
+		return nil, fmt.Errorf("could not build input for DeleteItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	out, err := r.client.DeleteItemWithContext(ctx, input)
 
 	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.NewRequestCanceledError(err)
+		return nil, cloud.RequestCanceledError
 	}
 
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
-		return nil, errors.Wrapf(err, "could not execute DeleteItem operation for table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("could not execute DeleteItem operation for table %s: %w", r.metadata.TableName, err)
 	}
 
 	result.ConditionalCheckFailed = isError(err, dynamodb.ErrCodeConditionalCheckFailedException)
@@ -305,7 +304,7 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 	err = dynamodbattribute.UnmarshalMap(out.Attributes, item)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not unmarshal old value after DeleteItem operation on table [%s]", r.metadata.TableName)
+		return nil, fmt.Errorf("could not unmarshal old value after DeleteItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	return result, nil
@@ -323,13 +322,13 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 	result := newGetItemResult()
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not build GetItem expression for table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("could not build GetItem expression for table %s: %w", r.metadata.TableName, err)
 	}
 
 	out, err := r.client.GetItemWithContext(ctx, input)
 
 	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.NewRequestCanceledError(err)
+		return nil, cloud.RequestCanceledError
 	}
 
 	if err != nil {
@@ -367,13 +366,13 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 	input, err := qb.Build(item)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not build input and expr for PutItem operation on table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("could not build input and expr for PutItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	marshaledItem, err := dynamodbattribute.MarshalMap(item)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not marshal item for PutItem operation on table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("could not marshal item for PutItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	input.Item = marshaledItem
@@ -381,11 +380,11 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 	result := newPutItemResult()
 
 	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.NewRequestCanceledError(err)
+		return nil, cloud.RequestCanceledError
 	}
 
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
-		return nil, errors.Wrapf(err, "could not execute PutItem operation for table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("could not execute PutItem operation for table %s: %w", r.metadata.TableName, err)
 	}
 
 	result.ConditionalCheckFailed = isError(err, dynamodb.ErrCodeConditionalCheckFailedException)
@@ -400,7 +399,7 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 	err = dynamodbattribute.UnmarshalMap(out.Attributes, item)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not unmarshal old value after PutItem operation on table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("could not unmarshal old value after PutItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	return result, nil
@@ -439,11 +438,11 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 	out, err := r.client.QueryWithContext(ctx, op.input)
 
 	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.NewRequestCanceledError(err)
+		return nil, cloud.RequestCanceledError
 	}
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not execute Query operation for table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("could not execute Query operation for table %s: %w", r.metadata.TableName, err)
 	}
 
 	op.result.RequestCount++
@@ -471,18 +470,18 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 	input, err := ub.Build(item)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not build input for UpdateItem operation on table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("could not build input for UpdateItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	out, err := r.client.UpdateItemWithContext(ctx, input)
 	result := newUpdateItemResult()
 
 	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.NewRequestCanceledError(err)
+		return nil, cloud.RequestCanceledError
 	}
 
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
-		return nil, errors.Wrapf(err, "could not execute UpdateItem operation for table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("could not execute UpdateItem operation for table %s: %w", r.metadata.TableName, err)
 	}
 
 	result.ConditionalCheckFailed = isError(err, dynamodb.ErrCodeConditionalCheckFailedException)
@@ -495,7 +494,7 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 	err = dynamodbattribute.UnmarshalMap(out.Attributes, item)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not unmarshal old value after UpdateItem operation on table %s", r.metadata.TableName)
+		return nil, fmt.Errorf("could not unmarshal old value after UpdateItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	return result, nil
@@ -538,7 +537,7 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 	out, err := r.client.ScanWithContext(ctx, op.input)
 
 	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.NewRequestCanceledError(err)
+		return nil, cloud.RequestCanceledError
 	}
 
 	if err != nil {
@@ -593,14 +592,14 @@ func (r *repository) readAll(items interface{}, read func() (*readResult, error)
 	unmarshaller, err := NewUnmarshallerFromPtrSlice(items)
 
 	if err != nil {
-		return errors.Wrapf(err, "can not initializer unmarshaller for operation on table %s", r.metadata.TableName)
+		return fmt.Errorf("can not initializer unmarshaller for operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	for {
 		out, err := read()
 
 		if err != nil {
-			return errors.Wrapf(err, "could not execute read operation for table %s", r.metadata.TableName)
+			return fmt.Errorf("could not execute read operation for table %s: %w", r.metadata.TableName, err)
 		}
 
 		if out.Items == nil {
@@ -610,7 +609,7 @@ func (r *repository) readAll(items interface{}, read func() (*readResult, error)
 		err = unmarshaller.Append(out.Items)
 
 		if err != nil {
-			return errors.Wrapf(err, "could not unmarshal items after Query operation for table %s", r.metadata.TableName)
+			return fmt.Errorf("could not unmarshal items after Query operation for table %s: %w", r.metadata.TableName, err)
 		}
 
 		if out.LastEvaluatedKey == nil {
@@ -625,7 +624,7 @@ func (r *repository) readCallback(ctx context.Context, items interface{}, callba
 	unmarshaller, err := NewUnmarshallerFromStruct(items)
 
 	if err != nil {
-		return errors.Wrapf(err, "can not initializer unmarshaller for operation on table %s", r.metadata.TableName)
+		return fmt.Errorf("can not initializer unmarshaller for operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	var callbackErrors error
@@ -634,7 +633,7 @@ func (r *repository) readCallback(ctx context.Context, items interface{}, callba
 		out, err := read()
 
 		if err != nil {
-			return errors.Wrapf(err, "could not execute read operation for table %s", r.metadata.TableName)
+			return fmt.Errorf("could not execute read operation for table %s: %w", r.metadata.TableName, err)
 		}
 
 		if out.Items == nil || len(out.Items) == 0 {
@@ -644,7 +643,7 @@ func (r *repository) readCallback(ctx context.Context, items interface{}, callba
 		result, err := unmarshaller.Unmarshal(out.Items)
 
 		if err != nil {
-			return errors.Wrapf(err, "could not unmarshal items after read operation for table %s", r.metadata.TableName)
+			return fmt.Errorf("could not unmarshal items after read operation for table %s: %w", r.metadata.TableName, err)
 		}
 
 		cont, err := callback(ctx, result)

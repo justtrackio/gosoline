@@ -109,20 +109,10 @@ func IsSyscallError(err error, syscallErrors ...syscall.Errno) bool {
 	return false
 }
 
-func NewRequestCanceledError(err error) error {
-	return &RequestCanceledError{
-		Err: err,
-	}
-}
+const RequestCanceledError = requestCanceledError("RequestCanceled")
 
-type RequestCanceledError struct {
-	Err error
-}
+type requestCanceledError string
 
-func (r RequestCanceledError) Error() string {
-	return r.Err.Error()
-}
-
-func (r RequestCanceledError) Unwrap() error {
-	return r.Err
+func (e requestCanceledError) Error() string {
+	return string(e)
 }

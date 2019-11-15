@@ -2,13 +2,17 @@ package ddb_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/applike/gosoline/pkg/cloud"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -260,6 +264,25 @@ func TestRepository_Query(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, result, 2)
 	assert.EqualValues(t, expected, result)
+
+	client.AssertExpectations(t)
+}
+
+func TestRepository_Query_Canceled(t *testing.T) {
+	client, repo := getMocks()
+
+	awsErr := awserr.New(request.CanceledErrorCode, "got canceled", nil)
+	client.On("QueryWithContext", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*dynamodb.QueryInput")).Return(nil, awsErr)
+
+	result := make([]model, 0)
+
+	qb := repo.QueryBuilder().WithHash(1)
+	_, err := repo.Query(context.Background(), qb, &result)
+
+	assert.Error(t, err)
+
+	isRequestCanceled := errors.Is(err, cloud.RequestCanceledError)
+	assert.True(t, isRequestCanceled)
 
 	client.AssertExpectations(t)
 }

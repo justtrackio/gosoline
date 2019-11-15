@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	"github.com/pkg/errors"
 	"github.com/thoas/go-funk"
 	"sort"
 	"time"
@@ -59,19 +58,19 @@ func (s *service) CreateTable(settings *Settings) (*Metadata, error) {
 	mainKeySchema, err := s.getKeySchema(metadata.Main)
 
 	if err != nil {
-		return metadata, errors.Wrapf(err, "can not create main key schema for table %s", tableName)
+		return metadata, fmt.Errorf("can not create main key schema for table %s: %w", tableName, err)
 	}
 
 	localIndices, err := s.getLocalSecondaryIndices(metadata)
 
 	if err != nil {
-		return metadata, errors.Wrapf(err, "can not create definitions for local secondary indices on table %s", tableName)
+		return metadata, fmt.Errorf("can not create definitions for local secondary indices on table %s: %w", tableName, err)
 	}
 
 	globalIndices, err := s.getGlobalSecondaryIndices(metadata)
 
 	if err != nil {
-		return metadata, errors.Wrapf(err, "can not create definitions for global secondary indices on table %s", tableName)
+		return metadata, fmt.Errorf("can not create definitions for global secondary indices on table %s: %w", tableName, err)
 	}
 
 	attributeDefinitions := s.getAttributeDefinitions(metadata)
@@ -125,7 +124,7 @@ func (s *service) updateTtlSpecification(metadata *Metadata) error {
 	ttlSpecification, err := s.getTimeToLiveSpecification(metadata)
 
 	if err != nil {
-		return errors.Wrapf(err, "can not create ttl specification for table %s", metadata.TableName)
+		return fmt.Errorf("can not create ttl specification for table %s: %w", metadata.TableName, err)
 	}
 
 	if ttlSpecification == nil {
@@ -146,7 +145,7 @@ func (s *service) updateTtlSpecification(metadata *Metadata) error {
 		}
 
 		if err != nil {
-			return errors.Wrapf(err, "could not update ttl specification for ddb table %s", metadata.TableName)
+			return fmt.Errorf("could not update ttl specification for ddb table %s: %w", metadata.TableName, err)
 		}
 
 		s.logger.Infof("updated ttl specification for ddb table %s", metadata.TableName)
