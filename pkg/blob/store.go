@@ -31,8 +31,12 @@ type Object struct {
 type Batch []*Object
 
 type Settings struct {
-	Bucket string
-	Prefix string
+	Project     string
+	Family      string
+	Environment string
+	Application string
+	Bucket      string
+	Prefix      string
 }
 
 //go:generate mockery -name Store
@@ -55,7 +59,13 @@ type s3Store struct {
 func NewStore(config cfg.Config, logger mon.Logger, settings Settings) *s3Store {
 	runner := ProvideBatchRunner()
 	client := ProvideS3Client(config)
-	appId := cfg.GetAppIdFromConfig(config)
+	appId := &cfg.AppId{
+		Project:     settings.Application,
+		Environment: settings.Environment,
+		Family:      settings.Family,
+		Application: settings.Application,
+	}
+	appId.PadFromConfig(config)
 
 	if settings.Bucket == "" {
 		settings.Bucket = fmt.Sprintf("%s-%s-%s", appId.Project, appId.Environment, appId.Family)
