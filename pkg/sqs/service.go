@@ -3,7 +3,6 @@ package sqs
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
@@ -40,7 +39,7 @@ type service struct {
 }
 
 func NewService(config cfg.Config, logger mon.Logger) Service {
-	client := GetClient(config, logger, &cloud.ClientSettings{})
+	client := ProvideClient(config, logger, &Settings{})
 	settings := &ServiceSettings{
 		AutoCreate: config.GetBool("aws_sqs_autoCreate"),
 	}

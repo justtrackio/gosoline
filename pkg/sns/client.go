@@ -15,30 +15,30 @@ type Client interface {
 	snsiface.SNSAPI
 }
 
-type client struct {
+var c = struct {
 	sync.Mutex
-	client      Client
-	initialized bool
-}
+	instance *sns.SNS
+}{}
 
-var c = client{}
-
-func GetClient(config cfg.Config, logger mon.Logger, settings *cloud.ClientSettings) Client {
+func ProvideClient(config cfg.Config, logger mon.Logger, settings *Settings) *sns.SNS {
 	c.Lock()
 	defer c.Unlock()
 
-	if c.initialized {
-		return c.client
+	if c.instance != nil {
+		return c.instance
 	}
 
-	c.client = buildClient(config, logger, settings)
-	c.initialized = true
+	c.instance = NewClient(config, logger, settings)
 
-	return c.client
+	return c.instance
 }
 
-func buildClient(config cfg.Config, logger mon.Logger, settings *cloud.ClientSettings) *sns.SNS {
-	awsConfig := cloud.GetAwsConfig(config, logger, "sns", settings)
+func NewClient(config cfg.Config, logger mon.Logger, settings *Settings) *sns.SNS {
+	if settings.Backoff.Enabled {
+		settings.Client.MaxRetries = 0
+	}
+
+	awsConfig := cloud.GetAwsConfig(config, logger, "sns", &settings.Client)
 	sess := session.Must(session.NewSession(awsConfig))
 
 	return sns.New(sess)

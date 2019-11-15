@@ -54,29 +54,21 @@ func LogLevelStringToAwsLevel(level string) aws.LogLevelType {
 }
 
 type ClientSettings struct {
-	MaxRetries  int           `cfg:"max_retries"`
-	HttpTimeout time.Duration `cfg:"http_timeout" default:"1s"`
-	LogLevel    string        `cfg:"log_level"`
+	MaxRetries  int           `cfg:"max_retries" default:"10"`
+	HttpTimeout time.Duration `cfg:"http_timeout" default:"1m"`
+	LogLevel    string        `cfg:"log_level" default:"off"`
 }
 
 func GetAwsConfig(config cfg.Config, logger mon.Logger, service string, settings *ClientSettings) *aws.Config {
 	srvCfgKey := fmt.Sprintf("aws_%s_endpoint", service)
 
 	endpoint := config.GetString(srvCfgKey)
-	maxRetries := config.GetInt("aws_sdk_retries")
-	logLevel := aws.LogOff
+	maxRetries := settings.MaxRetries
+	logLevel := LogLevelStringToAwsLevel(settings.LogLevel)
 	httpTimeout := time.Minute
-
-	if settings.MaxRetries > 0 {
-		maxRetries = settings.MaxRetries
-	}
 
 	if settings.HttpTimeout > 0 {
 		httpTimeout = settings.HttpTimeout
-	}
-
-	if settings.LogLevel != "" {
-		logLevel = LogLevelStringToAwsLevel(settings.LogLevel)
 	}
 
 	return &aws.Config{

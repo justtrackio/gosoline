@@ -30,26 +30,26 @@ type snsTopic struct {
 	settings *Settings
 }
 
-func NewTopic(config cfg.Config, logger mon.Logger, s *Settings) *snsTopic {
-	s.PadFromConfig(config)
+func NewTopic(config cfg.Config, logger mon.Logger, settings *Settings) *snsTopic {
+	settings.PadFromConfig(config)
 
-	client := GetClient(config, logger, &s.Client)
+	client := ProvideClient(config, logger, settings)
 
-	arn, err := CreateTopic(logger, client, s)
+	arn, err := CreateTopic(logger, client, settings)
 
 	if err != nil {
-		logger.Fatalf(err, "can not create sns topic %s", s.TopicId)
+		logger.Fatalf(err, "can not create sns topic %s", settings.TopicId)
 	}
 
-	s.Arn = arn
+	settings.Arn = arn
 
 	res := &cloud.BackoffResource{
 		Type: "sns",
-		Name: namingStrategy(s.AppId, s.TopicId),
+		Name: namingStrategy(settings.AppId, settings.TopicId),
 	}
-	executor := cloud.NewBackoffExecutor(logger, res, &s.Backoff)
+	executor := cloud.NewBackoffExecutor(logger, res, &settings.Backoff)
 
-	return NewTopicWithInterfaces(logger, client, executor, s)
+	return NewTopicWithInterfaces(logger, client, executor, settings)
 }
 
 func NewTopicWithInterfaces(logger mon.Logger, client snsiface.SNSAPI, executor cloud.RequestExecutor, s *Settings) *snsTopic {

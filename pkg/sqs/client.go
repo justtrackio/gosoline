@@ -6,34 +6,33 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"sync"
 )
 
-type client struct {
+var client = struct {
 	sync.Mutex
-	client      sqsiface.SQSAPI
-	initialized bool
-}
+	instance *sqs.SQS
+}{}
 
-var c = client{}
+func ProvideClient(config cfg.Config, logger mon.Logger, settings *Settings) *sqs.SQS {
+	client.Lock()
+	defer client.Unlock()
 
-func GetClient(config cfg.Config, logger mon.Logger, settings *cloud.ClientSettings) sqsiface.SQSAPI {
-	c.Lock()
-	defer c.Unlock()
-
-	if c.initialized {
-		return c.client
+	if client.instance != nil {
+		return client.instance
 	}
 
-	c.client = buildClient(config, logger, settings)
-	c.initialized = true
+	client.instance = NewClient(config, logger, settings)
 
-	return c.client
+	return client.instance
 }
 
-func buildClient(config cfg.Config, logger mon.Logger, settings *cloud.ClientSettings) *sqs.SQS {
-	awsConfig := cloud.GetAwsConfig(config, logger, "sqs", settings)
+func NewClient(config cfg.Config, logger mon.Logger, settings *Settings) *sqs.SQS {
+	if settings.Backoff.Enabled {
+		settings.Client.MaxRetries = 0
+	}
+
+	awsConfig := cloud.GetAwsConfig(config, logger, "sqs", &settings.Client)
 	sess := session.Must(session.NewSession(awsConfig))
 
 	return sqs.New(sess)

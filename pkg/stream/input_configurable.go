@@ -3,6 +3,7 @@ package stream
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
 	"time"
@@ -101,12 +102,14 @@ type snsInputTarget struct {
 }
 
 type snsInputConfiguration struct {
-	ConsumerId        string            `cfg:"id" validate:"required"`
-	WaitTime          int64             `cfg:"wait_time" default:"3" validate:"min=1"`
-	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"min=1"`
-	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
-	Targets           []snsInputTarget  `cfg:"targets" validate:"min=1"`
-	RunnerCount       int               `cfg:"runner_count" default:"1" validate:"min=1"`
+	ConsumerId        string                `cfg:"id" validate:"required"`
+	Targets           []snsInputTarget      `cfg:"targets" validate:"min=1"`
+	WaitTime          int64                 `cfg:"wait_time" default:"3" validate:"min=1"`
+	VisibilityTimeout int                   `cfg:"visibility_timeout" default:"30" validate:"min=1"`
+	RunnerCount       int                   `cfg:"runner_count" default:"1" validate:"min=1"`
+	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
+	Client            cloud.ClientSettings  `cfg:"client"`
+	Backoff           cloud.BackoffSettings `cfg:"backoff"`
 }
 
 func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -118,9 +121,11 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 	settings := SnsInputSettings{
 		QueueId:           configuration.ConsumerId,
 		WaitTime:          configuration.WaitTime,
-		RedrivePolicy:     configuration.RedrivePolicy,
 		VisibilityTimeout: configuration.VisibilityTimeout,
 		RunnerCount:       configuration.RunnerCount,
+		RedrivePolicy:     configuration.RedrivePolicy,
+		Client:            configuration.Client,
+		Backoff:           configuration.Backoff,
 	}
 
 	targets := make([]SnsInputTarget, len(configuration.Targets))
@@ -138,14 +143,16 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 }
 
 type sqsInputConfiguration struct {
-	Family            string            `cfg:"target_family"`
-	Application       string            `cfg:"target_application"`
-	QueueId           string            `cfg:"target_queue_id" validate:"min=1"`
-	WaitTime          int64             `cfg:"wait_time" default:"3" validate:"min=1"`
-	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"min=1"`
-	Fifo              sqs.FifoSettings  `cfg:"fifo"`
-	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
-	RunnerCount       int               `cfg:"runner_count" default:"1" validate:"min=1"`
+	Family            string                `cfg:"target_family"`
+	Application       string                `cfg:"target_application"`
+	QueueId           string                `cfg:"target_queue_id" validate:"min=1"`
+	WaitTime          int64                 `cfg:"wait_time" default:"3" validate:"min=1"`
+	VisibilityTimeout int                   `cfg:"visibility_timeout" default:"30" validate:"min=1"`
+	RunnerCount       int                   `cfg:"runner_count" default:"1" validate:"min=1"`
+	Fifo              sqs.FifoSettings      `cfg:"fifo"`
+	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
+	Client            cloud.ClientSettings  `cfg:"client"`
+	Backoff           cloud.BackoffSettings `cfg:"backoff"`
 }
 
 func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -160,11 +167,13 @@ func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 			Application: configuration.Application,
 		},
 		QueueId:           configuration.QueueId,
-		Fifo:              configuration.Fifo,
 		WaitTime:          configuration.WaitTime,
 		VisibilityTimeout: configuration.VisibilityTimeout,
-		RedrivePolicy:     configuration.RedrivePolicy,
 		RunnerCount:       configuration.RunnerCount,
+		Fifo:              configuration.Fifo,
+		RedrivePolicy:     configuration.RedrivePolicy,
+		Client:            configuration.Client,
+		Backoff:           configuration.Backoff,
 	}
 
 	return NewSqsInput(config, logger, settings)

@@ -55,7 +55,7 @@ type BackoffSettings struct {
 	Enabled             bool          `cfg:"enabled" default:"false"`
 	Blocking            bool          `cfg:"blocking" default:"false"`
 	CancelDelay         time.Duration `cfg:"cancel_delay" default:"1s"`
-	InitialInterval     time.Duration `cfg:"initial_interval" default:"500ms"`
+	InitialInterval     time.Duration `cfg:"initial_interval" default:"50ms"`
 	RandomizationFactor float64       `cfg:"randomization_factor" default:"0.5"`
 	Multiplier          float64       `cfg:"multiplier" default:"1.5"`
 	MaxInterval         time.Duration `cfg:"max_interval" default:"10s"`

@@ -69,14 +69,14 @@ type queue struct {
 	properties *Properties
 }
 
-func New(config cfg.Config, logger mon.Logger, s *Settings) *queue {
-	s.PadFromConfig(config)
-	name := generateName(s)
+func New(config cfg.Config, logger mon.Logger, settings *Settings) *queue {
+	settings.PadFromConfig(config)
+	name := generateName(settings)
 
-	client := GetClient(config, logger, &s.Client)
+	client := ProvideClient(config, logger, settings)
 	srv := NewService(config, logger)
 
-	props, err := srv.CreateQueue(s)
+	props, err := srv.CreateQueue(settings)
 
 	if err != nil {
 		logger.Fatalf(err, "could not create or get properties of queue %s", name)
@@ -86,7 +86,7 @@ func New(config cfg.Config, logger mon.Logger, s *Settings) *queue {
 		Type: "sns",
 		Name: name,
 	}
-	executor := cloud.NewBackoffExecutor(logger, res, &s.Backoff)
+	executor := cloud.NewBackoffExecutor(logger, res, &settings.Backoff)
 
 	return NewWithInterfaces(logger, client, executor, props)
 }
