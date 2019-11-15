@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
 type ScanOperation struct {
@@ -144,7 +143,7 @@ func (b *scanBuilder) buildExpression(result interface{}) (expression.Expression
 	}
 
 	if projectionExpr, err = buildProjectionExpression(b.selected, result); err != nil {
-		return expression.Expression{}, errors.Wrapf(err, "can not build projection for query")
+		return expression.Expression{}, fmt.Errorf("can not build projection for query: %w", err)
 	}
 
 	if projectionExpr != nil {

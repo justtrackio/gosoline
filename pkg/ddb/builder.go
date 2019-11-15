@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/pkg/errors"
 )
 
 type KeyValues map[string]*dynamodb.AttributeValue
@@ -39,7 +38,7 @@ func (b *keyBuilder) fromItem(item interface{}) (KeyValues, error) {
 	key, err := dynamodbattribute.MarshalMap(item)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "error marshalling the key attributes")
+		return nil, fmt.Errorf("error marshalling the key attributes: %w", err)
 	}
 
 	for f := range key {
@@ -93,7 +92,7 @@ func (b *keyBuilder) marshal(attributeValueMap map[string]interface{}) (KeyValue
 	attributeValues, err := dynamodbattribute.MarshalMap(attributeValueMap)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "can not marshal keys")
+		return nil, fmt.Errorf("can not marshal keys: %w", err)
 	}
 
 	return attributeValues, nil

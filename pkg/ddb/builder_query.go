@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -256,7 +255,7 @@ func (b *queryBuilder) Build(result interface{}) (*QueryOperation, error) {
 	targetType := resolveTargetType(b.selected, b.projection, result)
 
 	if projectionExpr, err = buildProjectionExpression(b.selected, targetType); err != nil {
-		return nil, errors.Wrapf(err, "can not build projection for query")
+		return nil, fmt.Errorf("can not build projection for query: %w", err)
 	}
 
 	if projectionExpr != nil {
