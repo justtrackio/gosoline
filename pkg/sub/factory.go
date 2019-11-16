@@ -3,10 +3,12 @@ package sub
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
+	"time"
 )
 
 type Subscription struct {
@@ -99,8 +101,14 @@ func getInputByType(config cfg.Config, logger mon.Logger, inType string, mId mdl
 	switch inType {
 	case "sns":
 		inputSettings := stream.SnsInputSettings{
-			QueueId:  mId.Name,
-			WaitTime: 5,
+			QueueId:     mId.Name,
+			WaitTime:    5,
+			RunnerCount: 10,
+			Backoff: cloud.BackoffSettings{
+				Enabled:     true,
+				Blocking:    true,
+				CancelDelay: time.Second * 6,
+			},
 		}
 		inputTargets := []stream.SnsInputTarget{
 			{

@@ -20,6 +20,12 @@ type ConsumerCallback interface {
 	Consume(ctx context.Context, msg *Message) (bool, error)
 }
 
+type ConsumerSettings struct {
+	Input       string        `cfg:"input" default:"consumer"`
+	RunnerCount int           `cfg:"runner_count" default:"10"`
+	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
+}
+
 type Consumer struct {
 	kernel.EssentialModule
 	ConsumerAcknowledge
@@ -30,14 +36,17 @@ type Consumer struct {
 	cfn    coffin.Coffin
 	ticker *time.Ticker
 
+	id        string
 	name      string
+	settings  *ConsumerSettings
 	callback  ConsumerCallback
 	processed int32
 }
 
-func NewConsumer(callback ConsumerCallback) *Consumer {
+func NewConsumer(name string, callback ConsumerCallback) *Consumer {
 	return &Consumer{
 		cfn:      coffin.New(),
+		name:     name,
 		callback: callback,
 	}
 }
@@ -49,8 +58,14 @@ func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
 		return err
 	}
 
+	settings := &ConsumerSettings{}
+	c.settings = settings
+
+	key := fmt.Sprintf("stream.consumer.%s", c.name)
+	config.UnmarshalKey(key, settings)
+
 	appId := cfg.GetAppIdFromConfig(config)
-	c.name = fmt.Sprintf("consumer-%v-%v", appId.Family, appId.Application)
+	c.id = fmt.Sprintf("consumer-%v-%v", appId.Family, appId.Application)
 
 	c.logger = logger
 	c.tracer = tracing.NewAwsTracer(config)
@@ -58,11 +73,9 @@ func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
 	defaultMetrics := getConsumerDefaultMetrics()
 	c.mw = mon.NewMetricDaemonWriter(defaultMetrics...)
 
-	idleTimeout := config.GetDuration("consumer_idle_timeout")
-	c.ticker = time.NewTicker(idleTimeout * time.Second)
+	c.ticker = time.NewTicker(settings.IdleTimeout)
 
-	inputName := config.GetString("consumer_input")
-	input := NewConfigurableInput(config, logger, inputName)
+	input := NewConfigurableInput(config, logger, settings.Input)
 
 	c.input = input
 	c.ConsumerAcknowledge = NewConsumerAcknowledgeWithInterfaces(logger, input)
@@ -71,11 +84,11 @@ func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
 }
 
 func (c *Consumer) Run(ctx context.Context) error {
-	defer c.logger.Info("leaving consumer ", c.name)
+	defer c.logger.Info("leaving consumer ", c.id)
 
 	c.cfn.GoWithContextf(ctx, c.input.Run, "panic during run of the consumer input")
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < c.settings.RunnerCount; i++ {
 		c.cfn.Gof(c.consume, "panic during consuming")
 	}
 
@@ -118,7 +131,7 @@ func (c *Consumer) consume() error {
 }
 
 func (c *Consumer) doCallback(msg *Message) {
-	ctx, trans := c.tracer.StartSpanFromTraceAble(msg, c.name)
+	ctx, trans := c.tracer.StartSpanFromTraceAble(msg, c.id)
 	defer trans.Finish()
 
 	ack, err := c.callback.Consume(ctx, msg)

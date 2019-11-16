@@ -1,8 +1,10 @@
 package cloud
 
 import (
+	"errors"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"io"
 	"net"
 	"net/url"
 	"os"
@@ -24,7 +26,41 @@ func IsRequestCanceled(err error) bool {
 }
 
 func IsConnectionError(err error) bool {
-	return IsSyscallError(err, syscall.ECONNREFUSED, syscall.ECONNRESET, syscall.EPIPE)
+	if IsUrlError(err, io.EOF) {
+		return true
+	}
+
+	if IsSyscallError(err, syscall.ECONNREFUSED, syscall.ECONNRESET, syscall.EPIPE) {
+		return true
+	}
+
+	return false
+}
+
+func IsUrlError(err error, targets ...error) bool {
+	if err == nil {
+		return false
+	}
+
+	aerr, ok := err.(awserr.Error)
+
+	if !ok {
+		return false
+	}
+
+	urlErr, ok := aerr.OrigErr().(*url.Error)
+
+	if !ok {
+		return false
+	}
+
+	for _, t := range targets {
+		if errors.Is(urlErr, t) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func IsSyscallError(err error, syscallErrors ...syscall.Errno) bool {
