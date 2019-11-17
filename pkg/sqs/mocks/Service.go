@@ -11,11 +11,11 @@ type Service struct {
 }
 
 // CreateQueue provides a mock function with given fields: _a0
-func (_m *Service) CreateQueue(_a0 sqs.Settings) (*sqs.Properties, error) {
+func (_m *Service) CreateQueue(_a0 *sqs.Settings) (*sqs.Properties, error) {
 	ret := _m.Called(_a0)
 
 	var r0 *sqs.Properties
-	if rf, ok := ret.Get(0).(func(sqs.Settings) *sqs.Properties); ok {
+	if rf, ok := ret.Get(0).(func(*sqs.Settings) *sqs.Properties); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
@@ -24,7 +24,7 @@ func (_m *Service) CreateQueue(_a0 sqs.Settings) (*sqs.Properties, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(sqs.Settings) error); ok {
+	if rf, ok := ret.Get(1).(func(*sqs.Settings) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)

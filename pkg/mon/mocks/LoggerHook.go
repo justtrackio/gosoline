@@ -2,7 +2,6 @@
 
 package mocks
 
-import context "context"
 import mock "github.com/stretchr/testify/mock"
 import mon "github.com/applike/gosoline/pkg/mon"
 
@@ -11,13 +10,13 @@ type LoggerHook struct {
 	mock.Mock
 }
 
-// Fire provides a mock function with given fields: level, msg, logErr, fields, tags, _a5
-func (_m *LoggerHook) Fire(level string, msg string, logErr error, fields mon.Fields, tags mon.Tags, _a5 context.Context) error {
-	ret := _m.Called(level, msg, logErr, fields, tags, _a5)
+// Fire provides a mock function with given fields: level, msg, err, data
+func (_m *LoggerHook) Fire(level string, msg string, err error, data *mon.Metadata) error {
+	ret := _m.Called(level, msg, err, data)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string, error, mon.Fields, mon.Tags, context.Context) error); ok {
-		r0 = rf(level, msg, logErr, fields, tags, _a5)
+	if rf, ok := ret.Get(0).(func(string, string, error, *mon.Metadata) error); ok {
+		r0 = rf(level, msg, err, data)
 	} else {
 		r0 = ret.Error(0)
 	}
