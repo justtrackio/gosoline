@@ -60,7 +60,7 @@ func NewStore(config cfg.Config, logger mon.Logger, settings Settings) *s3Store 
 	runner := ProvideBatchRunner()
 	client := ProvideS3Client(config)
 	appId := &cfg.AppId{
-		Project:     settings.Application,
+		Project:     settings.Project,
 		Environment: settings.Environment,
 		Family:      settings.Family,
 		Application: settings.Application,
