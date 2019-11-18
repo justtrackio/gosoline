@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cast"
 	"gopkg.in/resty.v1"
+	"io"
 	"net/url"
 )
 
@@ -130,6 +131,18 @@ func (r *Request) WithHeader(key string, value string) *Request {
 
 func (r *Request) WithBody(body interface{}) *Request {
 	r.resty.SetBody(body)
+
+	return r
+}
+
+func (r *Request) WithMultipartFile(param, fileName string, reader io.Reader) *Request {
+	r.resty.SetFileReader(param, fileName, reader)
+
+	return r
+}
+
+func (r *Request) WithMultipartFormData(params url.Values) *Request {
+	r.resty.SetMultiValueFormData(params)
 
 	return r
 }
