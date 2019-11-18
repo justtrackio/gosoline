@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/cenkalti/backoff"
 	"time"
 )
@@ -144,11 +145,19 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f AwsRequestFunction) (in
 	_ = backoff.RetryNotify(func() error {
 		out, err = f(delayedCtx)
 
-		if !IsConnectionError(err) {
+		if err == nil {
 			return nil
 		}
 
-		return err
+		if request.IsErrorRetryable(err) {
+			return err
+		}
+
+		if request.IsErrorThrottle(err) {
+			return err
+		}
+
+		return nil
 	}, backoffCtx, notify)
 
 	if err != nil {
