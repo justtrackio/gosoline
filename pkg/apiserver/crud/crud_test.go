@@ -251,8 +251,8 @@ func TestListHandler_Handle(t *testing.T) {
 		TableName:  "footable",
 		PrimaryKey: "id",
 		Mappings: db_repo.FieldMappings{
-			"id":   db_repo.NewSimpleFieldMapping("id"),
-			"name": db_repo.NewSimpleFieldMapping("name"),
+			"id":   db_repo.NewFieldMapping("id"),
+			"name": db_repo.NewFieldMapping("name"),
 		},
 	})
 	transformer.Repo.On("Count", mock.AnythingOfType("*context.emptyCtx"), qb, &Model{}).Return(1, nil)

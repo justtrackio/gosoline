@@ -54,10 +54,10 @@ func TestListQueryBuilder_Build(t *testing.T) {
 		TableName:  "tablename",
 		PrimaryKey: "id",
 		Mappings: db_repo.FieldMappings{
-			"id":     db_repo.NewSimpleFieldMapping("id"),
-			"bla":    db_repo.NewSimpleFieldMapping("foo"),
-			"fieldA": db_repo.NewSimpleFieldMapping("fieldA"),
-			"fieldB": db_repo.NewSimpleFieldMapping("fieldB"),
+			"id":     db_repo.NewFieldMapping("id"),
+			"bla":    db_repo.NewFieldMapping("foo"),
+			"fieldA": db_repo.NewFieldMapping("fieldA"),
+			"fieldB": db_repo.NewFieldMapping("fieldB"),
 		},
 	}
 
@@ -108,11 +108,11 @@ func TestListQueryBuilder_Build_ComplexFilter(t *testing.T) {
 		PrimaryKey: "id",
 		TableName:  "tablename",
 		Mappings: db_repo.FieldMappings{
-			"id":     db_repo.NewSimpleFieldMapping("id"),
-			"bla":    db_repo.NewSimpleFieldMapping("foo"),
-			"void":   db_repo.NewSimpleFieldMapping("void"),
-			"fieldA": db_repo.NewSimpleFieldMapping("fieldA"),
-			"fieldB": db_repo.NewSimpleFieldMapping("fieldB"),
+			"id":     db_repo.NewFieldMapping("id"),
+			"bla":    db_repo.NewFieldMapping("foo"),
+			"void":   db_repo.NewFieldMapping("void"),
+			"fieldA": db_repo.NewFieldMapping("fieldA"),
+			"fieldB": db_repo.NewFieldMapping("fieldB"),
 		},
 	}
 
@@ -163,7 +163,104 @@ func TestListQueryBuilder_Build_ComplexFilter(t *testing.T) {
 
 	expected := db_repo.NewQueryBuilder()
 	expected.Table("tablename")
-	expected.Where("(((foo IN (?,?))) and ((fieldA != ?)) and ((void IS null)) and (((fieldB LIKE ?)) or ((fieldB = ?))))", "blub", "blubber", 1, "%foo%", "bar")
+	expected.Where(
+		"(((foo  IN (?,?))) and ((fieldA != ?)) and ((void IS null)) and (((fieldB LIKE ?)) or ((fieldB = ?))))",
+		"blub",
+		"blubber",
+		1,
+		"%foo%",
+		"bar",
+	)
+	expected.GroupBy("id")
+
+	assert.Equal(t, expected, qb)
+}
+
+func TestListQueryBuilder_Build_NullFilter(t *testing.T) {
+	metadata := db_repo.Metadata{
+		PrimaryKey: "id",
+		TableName:  "tablename",
+		Mappings: db_repo.FieldMappings{
+			"id":   db_repo.NewFieldMapping("id"),
+			"sql1": db_repo.NewFieldMappingWithMode("sql1", db_repo.NullModeDefault),
+			"go1":  db_repo.NewFieldMappingWithMode("go1", db_repo.NullModeDistinct),
+			"sql2": db_repo.NewFieldMappingWithMode("sql2", db_repo.NullModeDefault),
+			"go2":  db_repo.NewFieldMappingWithMode("go2", db_repo.NullModeDistinct),
+			"sql3": db_repo.NewFieldMappingWithMode("sql3", db_repo.NullModeDefault),
+			"go3":  db_repo.NewFieldMappingWithMode("go3", db_repo.NullModeDistinct),
+			"sql4": db_repo.NewFieldMappingWithMode("sql4", db_repo.NullModeDefault),
+			"go4":  db_repo.NewFieldMappingWithMode("go4", db_repo.NullModeDistinct),
+		},
+	}
+
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Matches: []sql.FilterMatch{
+				{
+					Dimension: "sql1",
+					Operator:  "=",
+					Values:    []interface{}{"value1", nil},
+				},
+				{
+					Dimension: "go1",
+					Operator:  "=",
+					Values:    []interface{}{"value2", nil},
+				},
+				{
+					Dimension: "sql2",
+					Operator:  "=",
+					Values:    []interface{}{nil},
+				},
+				{
+					Dimension: "go2",
+					Operator:  "=",
+					Values:    []interface{}{nil},
+				},
+				{
+					Dimension: "sql3",
+					Operator:  "!=",
+					Values:    []interface{}{"value3", nil},
+				},
+				{
+					Dimension: "go3",
+					Operator:  "!=",
+					Values:    []interface{}{"value4", nil},
+				},
+				{
+					Dimension: "sql4",
+					Operator:  "!=",
+					Values:    []interface{}{nil},
+				},
+				{
+					Dimension: "go4",
+					Operator:  "!=",
+					Values:    []interface{}{nil},
+				},
+			},
+			Groups: []sql.Filter{},
+			Bool:   "and",
+		},
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	qb, err := lqb.Build(inp)
+
+	assert.NoError(t, err)
+
+	expected := db_repo.NewQueryBuilder()
+	expected.Table("tablename")
+	expected.Where(
+		"(((sql1  IN (?,?))) and ((go1  IN (?,?) OR go1 IS  NULL)) and ((sql2 = ?)) and ((go2 IS NULL)) and ((sql3 NOT IN (?,?))) and ((go3 NOT IN (?) AND go3 IS NOT NULL)) and ((sql4 != ?)) and ((go4 IS NOT NULL)))",
+		"value1",
+		nil,
+		"value2",
+		nil,
+		nil,
+		"value3",
+		nil,
+		"value4",
+		nil,
+	)
 	expected.GroupBy("id")
 
 	assert.Equal(t, expected, qb)
