@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
 )
@@ -47,7 +48,7 @@ func NewTopic(config cfg.Config, logger mon.Logger, settings *Settings) *snsTopi
 		Type: "sns",
 		Name: namingStrategy(settings.AppId, settings.TopicId),
 	}
-	executor := cloud.NewBackoffExecutor(logger, res, &settings.Backoff)
+	executor := cloud.NewExecutor(logger, res, &settings.Backoff)
 
 	return NewTopicWithInterfaces(logger, client, executor, settings)
 }
@@ -67,8 +68,8 @@ func (t *snsTopic) Publish(ctx context.Context, msg *string) error {
 		Message:  msg,
 	}
 
-	_, err := t.executor.Execute(ctx, func(delayedCtx context.Context) (interface{}, error) {
-		return t.client.PublishWithContext(delayedCtx, input)
+	_, err := t.executor.Execute(ctx, func() (*request.Request, interface{}) {
+		return t.client.PublishRequest(input)
 	})
 
 	if err != nil {

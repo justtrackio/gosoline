@@ -23,8 +23,10 @@ func TestTopic_Publish(t *testing.T) {
 		Message:  aws.String("test"),
 	}
 
+	exec := cloud.NewFixedExecutor(nil, nil)
+
 	client := new(snsMocks.Client)
-	client.On("PublishWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(nil, nil)
+	client.On("PublishRequest", input).Return(nil, nil)
 
 	s := &sns.Settings{
 		Arn: "arn",
@@ -37,7 +39,7 @@ func TestTopic_Publish(t *testing.T) {
 		TopicId: "topic",
 	}
 
-	topic := sns.NewTopicWithInterfaces(logger, client, new(cloud.DefaultExecutor), s)
+	topic := sns.NewTopicWithInterfaces(logger, client, exec, s)
 	err := topic.Publish(context.Background(), aws.String("test"))
 
 	assert.NoError(t, err)
@@ -53,8 +55,10 @@ func TestTopic_PublishError(t *testing.T) {
 		Message:  aws.String("test"),
 	}
 
+	exec := cloud.NewFixedExecutor(nil, errors.New("error"))
+
 	client := new(snsMocks.Client)
-	client.On("PublishWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(nil, errors.New("error"))
+	client.On("PublishRequest", input).Return(nil, nil)
 
 	s := &sns.Settings{
 		Arn: "arn",
@@ -67,7 +71,7 @@ func TestTopic_PublishError(t *testing.T) {
 		TopicId: "topic",
 	}
 
-	topic := sns.NewTopicWithInterfaces(logger, client, new(cloud.DefaultExecutor), s)
+	topic := sns.NewTopicWithInterfaces(logger, client, exec, s)
 	err := topic.Publish(context.Background(), aws.String("test"))
 
 	assert.Error(t, err)

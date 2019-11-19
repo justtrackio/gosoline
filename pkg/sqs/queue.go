@@ -7,6 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/hashicorp/go-multierror"
@@ -83,10 +84,10 @@ func New(config cfg.Config, logger mon.Logger, settings *Settings) *queue {
 	}
 
 	res := &cloud.BackoffResource{
-		Type: "sns",
+		Type: "sqs",
 		Name: name,
 	}
-	executor := cloud.NewBackoffExecutor(logger, res, &settings.Backoff)
+	executor := cloud.NewExecutor(logger, res, &settings.Backoff)
 
 	return NewWithInterfaces(logger, client, executor, props)
 }
@@ -110,8 +111,8 @@ func (q *queue) Send(ctx context.Context, msg *Message) error {
 		MessageBody:    msg.Body,
 	}
 
-	_, err := q.executor.Execute(ctx, func(delayedCtx context.Context) (interface{}, error) {
-		return q.client.SendMessageWithContext(delayedCtx, input)
+	_, err := q.executor.Execute(ctx, func() (*request.Request, interface{}) {
+		return q.client.SendMessageRequest(input)
 	})
 
 	if err != nil {
@@ -144,8 +145,8 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 		Entries:  entries,
 	}
 
-	_, err := q.executor.Execute(ctx, func(delayedCtx context.Context) (interface{}, error) {
-		return q.client.SendMessageBatchWithContext(delayedCtx, input)
+	_, err := q.executor.Execute(ctx, func() (*request.Request, interface{}) {
+		return q.client.SendMessageBatchRequest(input)
 	})
 
 	if err != nil {
@@ -165,8 +166,8 @@ func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, er
 		WaitTimeSeconds:       aws.Int64(waitTime),
 	}
 
-	res, err := q.executor.Execute(ctx, func(delayedCtx context.Context) (interface{}, error) {
-		return q.client.ReceiveMessageWithContext(delayedCtx, input)
+	res, err := q.executor.Execute(ctx, func() (*request.Request, interface{}) {
+		return q.client.ReceiveMessageRequest(input)
 	})
 
 	if cloud.IsRequestCanceled(err) {
@@ -195,8 +196,8 @@ func (q *queue) DeleteMessage(receiptHandle string) error {
 		ReceiptHandle: aws.String(receiptHandle),
 	}
 
-	_, err := q.executor.Execute(context.Background(), func(delayedCtx context.Context) (interface{}, error) {
-		return q.client.DeleteMessage(input)
+	_, err := q.executor.Execute(context.Background(), func() (*request.Request, interface{}) {
+		return q.client.DeleteMessageRequest(input)
 	})
 
 	if err != nil {
@@ -245,8 +246,8 @@ func (q *queue) DeleteMessageBatch(receiptHandles []string) error {
 }
 
 func (q *queue) doDeleteMessageBatch(input *sqs.DeleteMessageBatchInput) error {
-	_, err := q.executor.Execute(context.Background(), func(delayedCtx context.Context) (interface{}, error) {
-		return q.client.DeleteMessageBatch(input)
+	_, err := q.executor.Execute(context.Background(), func() (*request.Request, interface{}) {
+		return q.client.DeleteMessageBatchRequest(input)
 	})
 
 	if err != nil {

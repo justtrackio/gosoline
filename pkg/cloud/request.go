@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/cenkalti/backoff"
@@ -63,17 +64,48 @@ type BackoffSettings struct {
 	MaxElapsedTime      time.Duration `cfg:"max_elapsed_time" default:"15m"`
 }
 
-type AwsRequestFunction func(ctx context.Context) (interface{}, error)
+type RequestFunction func() (*request.Request, interface{})
 
 type RequestExecutor interface {
-	Execute(ctx context.Context, f AwsRequestFunction) (interface{}, error)
+	Execute(ctx context.Context, f RequestFunction) (interface{}, error)
+}
+
+func NewExecutor(logger mon.Logger, res *BackoffResource, settings *BackoffSettings) RequestExecutor {
+	if !settings.Enabled {
+		return new(DefaultExecutor)
+	}
+
+	return NewBackoffExecutor(logger, res, settings)
 }
 
 type DefaultExecutor struct {
 }
 
-func (e DefaultExecutor) Execute(ctx context.Context, f AwsRequestFunction) (interface{}, error) {
-	return f(ctx)
+func (e DefaultExecutor) Execute(ctx context.Context, f RequestFunction) (interface{}, error) {
+	req, out := f()
+
+	req.SetContext(ctx)
+	err := req.Send()
+
+	return out, err
+}
+
+type FixedExecutor struct {
+	out interface{}
+	err error
+}
+
+func NewFixedExecutor(out interface{}, err error) RequestExecutor {
+	return &FixedExecutor{
+		out: out,
+		err: err,
+	}
+}
+
+func (e FixedExecutor) Execute(ctx context.Context, f RequestFunction) (interface{}, error) {
+	f()
+
+	return e.out, e.err
 }
 
 type BackoffExecutor struct {
@@ -95,16 +127,13 @@ func NewBackoffExecutor(logger mon.Logger, res *BackoffResource, settings *Backo
 	}
 }
 
-func (e *BackoffExecutor) Execute(ctx context.Context, f AwsRequestFunction) (interface{}, error) {
-	if !e.settings.Enabled {
-		return f(ctx)
-	}
-
+func (e *BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (interface{}, error) {
 	logger := e.logger.WithContext(ctx)
 
 	delayedCtx := WithDelayedCancelContext(ctx, e.settings.CancelDelay)
 	defer delayedCtx.Stop()
 
+	var req *request.Request
 	var out interface{}
 	var err error
 
@@ -137,13 +166,26 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f AwsRequestFunction) (in
 	cancelCtx, _ := context.WithCancel(ctx)
 	backoffCtx := backoff.WithContext(backoffConfig, cancelCtx)
 
+	retries := 0
+	timespan := time.Duration(0)
+
 	notify := func(err error, duration time.Duration) {
 		logger.Warnf("retrying aws service %s %s after error: %s", e.res.Type, e.res.Name, err.Error())
 		e.writeMetric(metricNameRetryCount)
+
+		retries++
+		timespan += duration
 	}
 
 	_ = backoff.RetryNotify(func() error {
-		out, err = f(delayedCtx)
+		req, out = f()
+
+		req.SetContext(delayedCtx)
+		err = req.Send()
+
+		if req.HTTPResponse.StatusCode >= 500 && req.HTTPResponse.StatusCode != 501 {
+			return fmt.Errorf("http status code: %d", req.HTTPResponse.StatusCode)
+		}
 
 		if err == nil {
 			return nil
@@ -163,6 +205,10 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f AwsRequestFunction) (in
 	if err != nil {
 		logger.Warnf("error on requesting aws service %s %s: %s", e.res.Type, e.res.Name, err.Error())
 		e.writeMetric(metricNameErrorCount)
+	}
+
+	if err == nil && retries > 0 {
+		logger.Infof("sent request to aws service %s %s successful after %d retries in %s", e.res.Type, e.res.Name, retries, timespan)
 	}
 
 	return out, err
