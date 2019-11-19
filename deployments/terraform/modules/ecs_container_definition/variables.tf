@@ -36,7 +36,7 @@ variable "healthcheck" {
 
 variable "container_cpu" {
   description = "The number of cpu units to reserve for the container. This is optional for tasks using Fargate launch type and the total amount of container_cpu of all containers in a task will need to be lower than the task-level cpu value"
-  default     = 256
+  default     = 0
 }
 
 variable "essential" {
