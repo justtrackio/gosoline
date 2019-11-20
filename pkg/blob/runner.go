@@ -2,7 +2,6 @@ package blob
 
 import (
 	"context"
-	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
@@ -45,8 +44,7 @@ type BatchRunner struct {
 }
 
 func (r *BatchRunner) Boot(config cfg.Config, logger mon.Logger) error {
-	appId := cfg.GetAppIdFromConfig(config)
-	defaultMetrics := getDefaultRunnerMetrics(appId)
+	defaultMetrics := getDefaultRunnerMetrics()
 
 	r.logger = logger
 	r.client = ProvideS3Client(config)
@@ -131,8 +129,8 @@ func (r *BatchRunner) executeWrite() {
 	}
 }
 
-func getDefaultRunnerMetrics(appId cfg.AppId) []*mon.MetricDatum {
-	name := fmt.Sprintf("%s-%s", appId.String(), "blob-batch-runner")
+func getDefaultRunnerMetrics() []*mon.MetricDatum {
+	name := "blob-batch-runner"
 
 	return []*mon.MetricDatum{
 		{
