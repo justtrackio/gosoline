@@ -2,6 +2,7 @@ package blob
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
@@ -131,11 +132,12 @@ func (r *BatchRunner) executeWrite() {
 }
 
 func getDefaultRunnerMetrics(appId cfg.AppId) []*mon.MetricDatum {
-	name := appId.String()
+	name := fmt.Sprintf("%s-%s", appId.String(), "blob-batch-runner")
 
 	return []*mon.MetricDatum{
 		{
 			MetricName: name,
+			Priority:   mon.PriorityHigh,
 			Dimensions: map[string]string{
 				"Operation": "Read",
 			},
@@ -144,6 +146,7 @@ func getDefaultRunnerMetrics(appId cfg.AppId) []*mon.MetricDatum {
 		},
 		{
 			MetricName: name,
+			Priority:   mon.PriorityHigh,
 			Dimensions: map[string]string{
 				"Operation": "Write",
 			},
