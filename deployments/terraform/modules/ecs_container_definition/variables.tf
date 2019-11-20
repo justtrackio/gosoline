@@ -17,7 +17,7 @@ variable "container_memory" {
 variable "container_memory_reservation" {
   type        = number
   description = "The amount of memory (in MiB) to reserve for the container. If container needs to exceed this threshold, it can do so up to the set container_memory hard limit"
-  default     = 128
+  default     = null
 }
 
 variable "port_mappings" {
@@ -96,7 +96,7 @@ variable "secrets" {
 variable "readonly_root_filesystem" {
   type        = bool
   description = "Determines whether a container is given read-only access to its root filesystem. Due to how Terraform type casts booleans in json it is required to double quote this value"
-  default     = false
+  default     = null
 }
 
 # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_LogConfiguration.html
@@ -191,13 +191,13 @@ variable "docker_labels" {
 variable "start_timeout" {
   type        = number
   description = "Time duration (in seconds) to wait before giving up on resolving dependencies for a container"
-  default     = 30
+  default     = null
 }
 
 variable "stop_timeout" {
   type        = number
   description = "Time duration (in seconds) to wait before the container is forcefully killed if it doesn't exit normally on its own"
-  default     = 30
+  default     = null
 }
 
 variable "privileged" {
