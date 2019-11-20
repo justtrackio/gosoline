@@ -130,7 +130,7 @@ func (r *BatchRunner) executeWrite() {
 }
 
 func getDefaultRunnerMetrics() []*mon.MetricDatum {
-	name := "blob-batch-runner"
+	name := "BlobBatchRunner"
 
 	return []*mon.MetricDatum{
 		{
