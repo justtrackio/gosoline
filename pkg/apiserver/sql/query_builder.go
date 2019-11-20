@@ -325,23 +325,33 @@ func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column db_repo.F
 
 func (qb baseQueryBuilder) buildSetFilterColumn(match FilterMatch, column db_repo.FieldMappingColumn) (string, []interface{}) {
 	distinctNull := column.NullMode() == db_repo.NullModeDistinct
+	eq := match.Operator == OpEq
 
 	placeholders, filteredValues, hasNull := qb.buildSetPlaceholders(match, distinctNull)
 
-	not, boolOp := "", "OR"
-	if match.Operator == OpNeq {
-		not, boolOp = "NOT", "AND"
+	var filter string
+	if distinctNull {
+		if hasNull {
+			if eq {
+				filter = fmt.Sprintf("(%s IN (%s) OR %s IS NULL)", column.Name(), placeholders, column.Name())
+			} else {
+				filter = fmt.Sprintf("(%s NOT IN (%s) AND %s IS NOT NULL)", column.Name(), placeholders, column.Name())
+			}
+		} else if eq {
+			filter = fmt.Sprintf("(%s IN (%s))", column.Name(), placeholders)
+		} else {
+			filter = fmt.Sprintf("(%s NOT IN (%s) OR %s IS NULL)", column.Name(), placeholders, column.Name())
+		}
+	} else if eq {
+		filter = fmt.Sprintf("(%s IN (%s))", column.Name(), placeholders)
+	} else {
+		filter = fmt.Sprintf("(%s NOT IN (%s))", column.Name(), placeholders)
 	}
 
-	filter := fmt.Sprintf("%s %s IN (%s)", column.Name(), not, strings.Join(placeholders, ","))
-	if hasNull && distinctNull {
-		filter = fmt.Sprintf("%s %s %s IS %s NULL", filter, boolOp, column.Name(), not)
-	}
-
-	return fmt.Sprintf("(%s)", filter), filteredValues
+	return filter, filteredValues
 }
 
-func (qb baseQueryBuilder) buildSetPlaceholders(match FilterMatch, distinctNull bool) ([]string, []interface{}, bool) {
+func (qb baseQueryBuilder) buildSetPlaceholders(match FilterMatch, distinctNull bool) (string, []interface{}, bool) {
 	placeholders := make([]string, 0, len(match.Values))
 	filteredValues := make([]interface{}, 0, len(match.Values))
 
@@ -359,5 +369,5 @@ func (qb baseQueryBuilder) buildSetPlaceholders(match FilterMatch, distinctNull 
 		filteredValues = append(filteredValues, value)
 	}
 
-	return placeholders, filteredValues, hasNull
+	return strings.Join(placeholders, ","), filteredValues, hasNull
 }

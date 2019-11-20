@@ -164,7 +164,7 @@ func TestListQueryBuilder_Build_ComplexFilter(t *testing.T) {
 	expected := db_repo.NewQueryBuilder()
 	expected.Table("tablename")
 	expected.Where(
-		"(((foo  IN (?,?))) and ((fieldA != ?)) and ((void IS null)) and (((fieldB LIKE ?)) or ((fieldB = ?))))",
+		"(((foo IN (?,?))) and ((fieldA != ?)) and ((void IS null)) and (((fieldB LIKE ?)) or ((fieldB = ?))))",
 		"blub",
 		"blubber",
 		1,
@@ -190,6 +190,10 @@ func TestListQueryBuilder_Build_NullFilter(t *testing.T) {
 			"go3":  db_repo.NewFieldMappingWithMode("go3", db_repo.NullModeDistinct),
 			"sql4": db_repo.NewFieldMappingWithMode("sql4", db_repo.NullModeDefault),
 			"go4":  db_repo.NewFieldMappingWithMode("go4", db_repo.NullModeDistinct),
+			"sql5": db_repo.NewFieldMappingWithMode("sql5", db_repo.NullModeDefault),
+			"go5":  db_repo.NewFieldMappingWithMode("go5", db_repo.NullModeDistinct),
+			"sql6": db_repo.NewFieldMappingWithMode("sql6", db_repo.NullModeDefault),
+			"go6":  db_repo.NewFieldMappingWithMode("go6", db_repo.NullModeDistinct),
 		},
 	}
 
@@ -236,6 +240,26 @@ func TestListQueryBuilder_Build_NullFilter(t *testing.T) {
 					Operator:  "!=",
 					Values:    []interface{}{nil},
 				},
+				{
+					Dimension: "sql5",
+					Operator:  "=",
+					Values:    []interface{}{"value5", "value6"},
+				},
+				{
+					Dimension: "go5",
+					Operator:  "=",
+					Values:    []interface{}{"value7", "value8"},
+				},
+				{
+					Dimension: "sql6",
+					Operator:  "!=",
+					Values:    []interface{}{"value9", "value10"},
+				},
+				{
+					Dimension: "go6",
+					Operator:  "!=",
+					Values:    []interface{}{"value11", "value12"},
+				},
 			},
 			Groups: []sql.Filter{},
 			Bool:   "and",
@@ -250,7 +274,7 @@ func TestListQueryBuilder_Build_NullFilter(t *testing.T) {
 	expected := db_repo.NewQueryBuilder()
 	expected.Table("tablename")
 	expected.Where(
-		"(((sql1  IN (?,?))) and ((go1  IN (?,?) OR go1 IS  NULL)) and ((sql2 = ?)) and ((go2 IS NULL)) and ((sql3 NOT IN (?,?))) and ((go3 NOT IN (?) AND go3 IS NOT NULL)) and ((sql4 != ?)) and ((go4 IS NOT NULL)))",
+		"(((sql1 IN (?,?))) and ((go1 IN (?,?) OR go1 IS NULL)) and ((sql2 = ?)) and ((go2 IS NULL)) and ((sql3 NOT IN (?,?))) and ((go3 NOT IN (?) AND go3 IS NOT NULL)) and ((sql4 != ?)) and ((go4 IS NOT NULL)) and ((sql5 IN (?,?))) and ((go5 IN (?,?))) and ((sql6 NOT IN (?,?))) and ((go6 NOT IN (?,?) OR go6 IS NULL)))",
 		"value1",
 		nil,
 		"value2",
@@ -260,6 +284,14 @@ func TestListQueryBuilder_Build_NullFilter(t *testing.T) {
 		nil,
 		"value4",
 		nil,
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
 	)
 	expected.GroupBy("id")
 
