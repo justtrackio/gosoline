@@ -44,8 +44,7 @@ type BatchRunner struct {
 }
 
 func (r *BatchRunner) Boot(config cfg.Config, logger mon.Logger) error {
-	appId := cfg.GetAppIdFromConfig(config)
-	defaultMetrics := getDefaultRunnerMetrics(appId)
+	defaultMetrics := getDefaultRunnerMetrics()
 
 	r.logger = logger
 	r.client = ProvideS3Client(config)
@@ -130,12 +129,13 @@ func (r *BatchRunner) executeWrite() {
 	}
 }
 
-func getDefaultRunnerMetrics(appId cfg.AppId) []*mon.MetricDatum {
-	name := appId.String()
+func getDefaultRunnerMetrics() []*mon.MetricDatum {
+	name := "BlobBatchRunner"
 
 	return []*mon.MetricDatum{
 		{
 			MetricName: name,
+			Priority:   mon.PriorityHigh,
 			Dimensions: map[string]string{
 				"Operation": "Read",
 			},
@@ -144,6 +144,7 @@ func getDefaultRunnerMetrics(appId cfg.AppId) []*mon.MetricDatum {
 		},
 		{
 			MetricName: name,
+			Priority:   mon.PriorityHigh,
 			Dimensions: map[string]string{
 				"Operation": "Write",
 			},
