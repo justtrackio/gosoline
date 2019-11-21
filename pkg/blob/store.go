@@ -8,7 +8,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/twinj/uuid"
 	"sync"
+	"time"
 )
 
 const (
@@ -54,6 +56,29 @@ type s3Store struct {
 
 	bucket *string
 	prefix *string
+}
+
+type NamingFactory func() string
+
+var defaultNamingStrategy = func() string {
+	y, m, d := time.Now().Date()
+	generatedUuid := uuid.NewV4().String()
+
+	return fmt.Sprintf("%d/%02d/%02d/%s", y, m, d, generatedUuid)
+}
+
+var namingStrategy = defaultNamingStrategy
+
+func DefaultNamingStrategy() NamingFactory {
+	return defaultNamingStrategy
+}
+
+func WithNamingStrategy(strategy NamingFactory) {
+	namingStrategy = strategy
+}
+
+func CreateKey() string {
+	return namingStrategy()
 }
 
 func NewStore(config cfg.Config, logger mon.Logger, settings Settings) *s3Store {
@@ -151,6 +176,10 @@ func (s *s3Store) Write(batch Batch) {
 	}
 
 	wg.Wait()
+}
+
+func (o *Object) GetFullKey() string {
+	return fmt.Sprintf("/%s/%s", mdl.EmptyStringIfNil(o.prefix), mdl.EmptyStringIfNil(o.Key))
 }
 
 func isBucketAlreadyExistsError(err error) bool {

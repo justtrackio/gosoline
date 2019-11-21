@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/hashicorp/go-multierror"
 	"io"
-	"strings"
 	"sync"
 )
 
@@ -74,7 +73,7 @@ func (r *BatchRunner) executeRead() {
 		var body io.ReadCloser
 		var err error
 
-		key := strings.Join([]string{*object.prefix, *object.Key}, "/")
+		key := object.GetFullKey()
 		exists := true
 
 		input := &s3.GetObjectInput{
@@ -102,7 +101,7 @@ func (r *BatchRunner) executeRead() {
 
 func (r *BatchRunner) executeWrite() {
 	for object := range r.write {
-		key := strings.Join([]string{*object.prefix, *object.Key}, "/")
+		key := object.GetFullKey()
 		body := CloseOnce(object.Body.AsReader())
 
 		input := &s3.PutObjectInput{
