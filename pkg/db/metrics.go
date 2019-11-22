@@ -4,29 +4,33 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/twinj/uuid"
 	"time"
 )
-
-func init() {
-	sql.Register("metricWrapper", newMetricDriver())
-}
 
 const (
 	metricNameDbConnectionCount = "DbConnectionCount"
 )
 
 type metricDriver struct {
+	driver.Driver
+
 	metricWriter mon.MetricWriter
 }
 
-func newMetricDriver() *metricDriver {
+func newMetricDriver(driver driver.Driver) string {
 	mw := mon.NewMetricDaemonWriter()
 
-	return &metricDriver{
+	id := uuid.NewV4().String()
+	md := &metricDriver{
+		Driver:       driver,
 		metricWriter: mw,
 	}
+
+	sql.Register(id, md)
+
+	return id
 }
 
 func (m *metricDriver) Open(dsn string) (driver.Conn, error) {
@@ -40,7 +44,7 @@ func (m *metricDriver) Open(dsn string) (driver.Conn, error) {
 		Value: 1.0,
 	})
 
-	return mysql.MySQLDriver{}.Open(dsn)
+	return m.Driver.Open(dsn)
 }
 
 func publishConnectionMetrics(conn *sqlx.DB) {

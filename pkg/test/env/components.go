@@ -63,7 +63,8 @@ type ComponentAppOptionAware interface {
 }
 
 type baseComponent struct {
-	t *testing.T
+	t    *testing.T
+	name string
 }
 
 func (c *baseComponent) SetT(t *testing.T) {

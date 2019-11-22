@@ -17,12 +17,16 @@ type mysqlComponent struct {
 func (c *mysqlComponent) AppOptions() []application.Option {
 	return []application.Option{
 		application.WithConfigMap(map[string]interface{}{
-			"db_hostname":     c.binding.host,
-			"db_username":     c.credentials.UserName,
-			"db_password":     c.credentials.UserPassword,
-			"db_database":     c.credentials.DatabaseName,
-			"db_port":         c.binding.port,
-			"db_auto_migrate": true,
+			"db": map[string]interface{}{
+				c.name: map[string]interface{}{
+					"uri.host":           c.binding.host,
+					"uri.user":           c.credentials.UserName,
+					"uri.password":       c.credentials.UserPassword,
+					"uri.database":       c.credentials.DatabaseName,
+					"uri.port":           c.binding.port,
+					"migrations.enabled": true,
+				},
+			},
 		}),
 	}
 }

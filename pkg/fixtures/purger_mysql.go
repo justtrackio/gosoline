@@ -19,7 +19,7 @@ type mysqlPurger struct {
 }
 
 func newMysqlPurger(config cfg.Config, logger mon.Logger, tableName string) *mysqlPurger {
-	client := db.NewClient(config, logger)
+	client := db.NewClient(config, logger, "default")
 
 	return &mysqlPurger{client: client, logger: logger, tableName: tableName}
 }

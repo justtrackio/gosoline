@@ -1,30 +1,31 @@
 package db
 
 import (
+	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	"net/url"
-	"strconv"
 	"sync"
 	"time"
 )
 
+type Uri struct {
+	Host     string `cfg:"host" validation:"required"`
+	Port     int    `cfg:"port" validation:"required"`
+	User     string `cfg:"user" validation:"required"`
+	Password string `cfg:"password" validation:"required"`
+	Database string `cfg:"database" validation:"required"`
+}
+
 type Settings struct {
-	Application        string        `cfg:"app_name"`
-	DriverName         string        `cfg:"db_drivername"`
-	Host               string        `cfg:"db_hostname"`
-	Port               int           `cfg:"db_port"`
-	Database           string        `cfg:"db_database"`
-	User               string        `cfg:"db_username"`
-	Password           string        `cfg:"db_password"`
-	ConnectionLifetime time.Duration `cfg:"db_max_connection_lifetime"`
-	ParseTime          bool          `cfg:"db_parse_time"`
-	AutoMigrate        bool          `cfg:"db_auto_migrate"`
-	MigrationsPath     string        `cfg:"db_migrations_path"`
-	PrefixedTables     bool          `cfg:"db_table_prefixed"`
+	Driver             string        `cfg:"driver"`
+	ConnectionLifetime time.Duration `cfg:"connection_lifetime" default:"120s"`
+	ParseTime          bool          `cfg:"parse_time" default:"true"`
+
+	Uri        Uri               `cfg:"uri"`
+	Migrations MigrationSettings `cfg:"migrations"`
 }
 
 var defaultConnections = struct {
@@ -36,11 +37,11 @@ var defaultConnections = struct {
 	errors:    make(map[Settings]error),
 }
 
-func ProvideDefaultConnection(config cfg.Config, logger mon.Logger) (*sqlx.DB, error) {
+func ProvideConnection(config cfg.Config, logger mon.Logger, configKey string) (*sqlx.DB, error) {
 	defaultConnections.lck.Lock()
 	defer defaultConnections.lck.Unlock()
 
-	key := createSettings(config)
+	key := createSettings(config, configKey)
 
 	if err := defaultConnections.errors[key]; err != nil {
 		return nil, err
@@ -50,7 +51,7 @@ func ProvideDefaultConnection(config cfg.Config, logger mon.Logger) (*sqlx.DB, e
 		return instance, nil
 	}
 
-	instance, err := NewConnection(config, logger)
+	instance, err := NewConnectionFromSettings(logger, key)
 
 	defaultConnections.instances[key] = instance
 	defaultConnections.errors[key] = err
@@ -63,70 +64,71 @@ type Connection struct {
 	db       *sqlx.DB
 }
 
-func NewConnection(config cfg.Config, logger mon.Logger) (*sqlx.DB, error) {
-	settings := createSettings(config)
-
-	connection, err := NewConnectionWithInterfaces(&settings)
+func NewConnectionFromSettings(logger mon.Logger, settings Settings) (*sqlx.DB, error) {
+	connection, err := NewConnectionWithInterfaces(settings)
 
 	if err != nil {
 		return nil, err
 	}
 
-	runMigrations(logger, connection, &settings)
+	runMigrations(logger, settings, connection)
 	publishConnectionMetrics(connection)
 
 	return connection, nil
 }
 
-func createSettings(config cfg.Config) Settings {
-	return Settings{
-		Application:        config.GetString("app_name"),
-		DriverName:         config.GetString("db_drivername"),
-		Host:               config.GetString("db_hostname"),
-		Port:               config.GetInt("db_port"),
-		Database:           config.GetString("db_database"),
-		User:               config.GetString("db_username"),
-		Password:           config.GetString("db_password"),
-		ConnectionLifetime: config.GetDuration("db_max_connection_lifetime"),
-		ParseTime:          config.GetBool("db_parse_time"),
-		AutoMigrate:        config.GetBool("db_auto_migrate"),
-		MigrationsPath:     config.GetString("db_migrations_path"),
-		PrefixedTables:     config.GetBool("db_table_prefixed"),
-	}
-}
-
-func NewConnectionWithInterfaces(settings *Settings) (*sqlx.DB, error) {
-	var err error
-
-	dsn := url.URL{
-		User: url.UserPassword(settings.User, settings.Password),
-		Host: fmt.Sprintf("tcp(%s:%v)", settings.Host, settings.Port),
-		Path: settings.Database,
+func NewConnectionWithInterfaces(settings Settings) (*sqlx.DB, error) {
+	driverFactory, err := GetDriverFactory(settings.Driver)
+	if err != nil {
+		return nil, fmt.Errorf("could not get dsn provider for driver %s", settings.Driver)
 	}
 
-	qry := dsn.Query()
-	qry.Set("multiStatements", "true")
-	qry.Set("parseTime", strconv.FormatBool(settings.ParseTime))
-	qry.Set("charset", "utf8mb4")
-	dsn.RawQuery = qry.Encode()
+	dsn := driverFactory.GetDSN(settings)
 
-	db, err := sqlx.Open("metricWrapper", dsn.String()[2:])
+	genDriver, err := getGenericDriver(settings.Driver, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("could not get driver from %s connection factory: %w", settings.Driver, err)
+	}
+
+	metricDriverId := newMetricDriver(genDriver)
+
+	db, err := sqlx.Connect(metricDriverId, dsn)
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = db.Ping()
-
-	if err != nil {
-		return nil, err
-	}
-
-	db.SetConnMaxLifetime(settings.ConnectionLifetime * time.Second)
+	db.SetConnMaxLifetime(settings.ConnectionLifetime)
 
 	return db, nil
 }
 
 func GenerateVersionedTableName(table string, version int) string {
 	return fmt.Sprintf("V%v_%v", version, table)
+}
+
+func createSettings(config cfg.Config, key string) Settings {
+	settings := Settings{
+		Migrations: MigrationSettings{},
+	}
+
+	config.UnmarshalKey(fmt.Sprintf("db.%s", key), &settings)
+
+	return settings
+}
+
+func getGenericDriver(driverName, dsn string) (driver.Driver, error) {
+	initDb, err := sql.Open(driverName, dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	err = initDb.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	genDriver := initDb.Driver()
+
+	return genDriver, nil
 }

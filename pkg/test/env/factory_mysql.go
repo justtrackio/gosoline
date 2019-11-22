@@ -34,7 +34,7 @@ type mysqlFactory struct {
 }
 
 func (f mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
-	if !config.IsSet("db_hostname") {
+	if !config.IsSet("db") {
 		return nil
 	}
 
@@ -42,13 +42,24 @@ func (f mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManager
 		return nil
 	}
 
-	settings := &mysqlSettings{}
-	config.UnmarshalDefaults(settings)
+	components := config.GetStringMap("db")
 
-	settings.Type = componentMySql
+	for name := range components {
+		driver := config.Get(fmt.Sprintf("db.%s.driver", name))
 
-	if err := manager.Add(settings); err != nil {
-		return fmt.Errorf("can not add default mysql component: %w", err)
+		if driver != componentMySql {
+			continue
+		}
+
+		settings := &mysqlSettings{}
+		config.UnmarshalDefaults(settings)
+
+		settings.Type = componentMySql
+		settings.Name = name
+
+		if err := manager.Add(settings); err != nil {
+			return fmt.Errorf("can not add default mysql component: %w", err)
+		}
 	}
 
 	return nil
@@ -104,6 +115,9 @@ func (f mysqlFactory) Component(_ cfg.Config, _ mon.Logger, container *container
 	}
 
 	component := &mysqlComponent{
+		baseComponent: baseComponent{
+			name: s.Name,
+		},
 		client:      client,
 		credentials: s.Credentials,
 		binding:     binding,
