@@ -47,8 +47,8 @@ type ClientSqlx struct {
 	db     *sqlx.DB
 }
 
-func NewClient(config cfg.Config, logger mon.Logger) Client {
-	db, err := ProvideDefaultConnection(config, logger)
+func NewClient(config cfg.Config, logger mon.Logger, name string) Client {
+	db, err := ProvideConnection(config, logger, name)
 
 	if err != nil {
 		logger.Fatal(err, "can not connect to sql database")

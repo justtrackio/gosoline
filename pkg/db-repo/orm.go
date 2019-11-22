@@ -9,28 +9,34 @@ import (
 	"strings"
 )
 
+type OrmMigrationSetting struct {
+	TablePrefixed bool `cfg:"table_prefixed" default:"true"`
+}
+
 type OrmSettings struct {
-	prefixed    bool
-	application string
+	Migrations  OrmMigrationSetting `cfg:"migrations"`
+	Driver      string              `cfg:"driver" validation:"required"`
+	Application string              `cfg:"application" default:"{app_name}"`
 }
 
 func NewOrm(config cfg.Config, logger mon.Logger) *gorm.DB {
-	dbClient := db.NewClient(config, logger)
+	dbClient := db.NewClient(config, logger, "default")
 
-	prefixed := config.GetBool("db_table_prefixed")
-	application := config.GetString("app_name")
+	settings := OrmSettings{}
+	config.UnmarshalKey("db.default", &settings)
+
+	application := settings.Application
 
 	application = strings.ToLower(application)
 	application = strings.Replace(application, "-", "_", -1)
 
-	return NewOrmWithInterfaces(logger, dbClient, OrmSettings{
-		prefixed:    prefixed,
-		application: application,
-	})
+	settings.Application = application
+
+	return NewOrmWithInterfaces(logger, dbClient, settings)
 }
 
 func NewOrmWithInterfaces(logger mon.Logger, dbClient gorm.SQLCommon, settings OrmSettings) *gorm.DB {
-	orm, err := gorm.Open("mysql", dbClient)
+	orm, err := gorm.Open(settings.Driver, dbClient)
 
 	if err != nil {
 		logger.Panic(err, "could not create orm")
@@ -40,12 +46,12 @@ func NewOrmWithInterfaces(logger mon.Logger, dbClient gorm.SQLCommon, settings O
 	orm = orm.Set("gorm:auto_preload", true)
 	orm = orm.Set("gorm:save_associations", false)
 
-	if !settings.prefixed {
+	if !settings.Migrations.TablePrefixed {
 		return orm
 	}
 
 	gorm.DefaultTableNameHandler = func(db *gorm.DB, defaultTableName string) string {
-		return fmt.Sprintf("%s_%s", settings.application, defaultTableName)
+		return fmt.Sprintf("%s_%s", settings.Application, defaultTableName)
 	}
 
 	return orm

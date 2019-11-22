@@ -24,19 +24,21 @@ aws_sns_autoSubscribe: false
 aws_sqs_endpoint: http://localhost:4576
 aws_sqs_autoCreate: false
 
-db_drivername: "mysql"
-db_hostname: "127.0.0.1"
-db_port: 3306
-db_database: "examples"
-db_username: "root"
-db_password: "mcoins"
-db_retry_wait: 10
-db_health_check_delay: 30
-db_max_connection_lifetime: 120
-db_parse_time: true
-db_auto_migrate: true
-db_migrations_path: file://../../build/migrations/mysql-crud
-db_table_prefixed: true
+db:
+  default:
+    driver: mysql
+    max_connection_lifetime: 120
+    parse_time: true
+    uri:
+      host: 127.0.0.1
+      port: 3307
+      user: root
+      password: mcoins
+      database: examples
+    migrations:
+      enabled: true
+      table_prefixed: true
+      path: file://../../build/migrations/mysql-crud
 
 kvstore:
   currency:
