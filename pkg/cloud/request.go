@@ -163,8 +163,7 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (inter
 		backoffConfig.MaxElapsedTime = 0
 	}
 
-	cancelCtx, _ := context.WithCancel(ctx)
-	backoffCtx := backoff.WithContext(backoffConfig, cancelCtx)
+	backoffCtx := backoff.WithContext(backoffConfig, ctx)
 
 	retries := 0
 	timespan := time.Duration(0)
