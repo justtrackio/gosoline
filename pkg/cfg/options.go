@@ -39,3 +39,11 @@ func WithErrorHandlers(handlers ...ErrorHandler) Option {
 		return nil
 	}
 }
+
+func WithSanitizers(sanitizer ...Sanitizer) Option {
+	return func(cfg *config) error {
+		cfg.sanitizers = append(cfg.sanitizers, sanitizer...)
+
+		return nil
+	}
+}

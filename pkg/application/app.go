@@ -32,6 +32,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithConfigFile("./config.dist.yml", "yml"),
 		WithConfigFileFlag,
 		WithConfigEnvKeyReplacer(strings.NewReplacer(".", "_")),
+		WithConfigSanitizers(cfg.TimeSanitizer),
 		WithLoggerFormat(mon.FormatGelfFields),
 		WithLoggerApplicationTag,
 		WithLoggerTagsFromConfig,

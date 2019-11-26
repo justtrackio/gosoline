@@ -27,6 +27,7 @@ type Config interface {
 	AllKeys() []string
 	AllSettings() map[string]interface{}
 	Get(string) interface{}
+	GetBool(string) bool
 	GetDuration(string) time.Duration
 	GetInt(string) int
 	GetFloat64(string) float64
@@ -34,7 +35,7 @@ type Config interface {
 	GetStringMap(key string) map[string]interface{}
 	GetStringMapString(string) map[string]string
 	GetStringSlice(string) []string
-	GetBool(string) bool
+	GetTime(key string) time.Time
 	IsSet(string) bool
 	UnmarshalKey(key string, val interface{}, opts ...DecoderConfigOption)
 }
@@ -49,6 +50,7 @@ type config struct {
 	lck            sync.Mutex
 	lookupEnv      LookupEnv
 	errorHandlers  []ErrorHandler
+	sanitizers     []Sanitizer
 	settings       objx.Map
 	envKeyPrefix   string
 	envKeyReplacer *strings.Replacer
@@ -62,6 +64,7 @@ func NewWithInterfaces(lookupEnv LookupEnv) *config {
 	cfg := &config{
 		lookupEnv:     lookupEnv,
 		errorHandlers: []ErrorHandler{defaultErrorHandler},
+		sanitizers:    make([]Sanitizer, 0),
 		settings:      objx.MSI(),
 	}
 
@@ -231,6 +234,23 @@ func (c *config) GetStringSlice(key string) []string {
 	return strSlice
 }
 
+func (c *config) GetTime(key string) time.Time {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	c.keyCheck(key)
+
+	data := c.get(key)
+	tm, err := cast.ToTimeE(data)
+
+	if err != nil {
+		c.err(err, "can not cast value %v[%T] of key %s to time.Time", data, data, key)
+		return time.Time{}
+	}
+
+	return tm
+}
+
 func (c *config) IsSet(key string) bool {
 	c.lck.Lock()
 	defer c.lck.Unlock()
@@ -292,6 +312,7 @@ func (c *config) decode(input interface{}, output interface{}) error {
 		TagName:          "cfg",
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			mapstructure.StringToTimeDurationHookFunc(),
+			StringToTimeHookFunc,
 			mapstructure.StringToSliceHookFunc(","),
 			c.decodeAugmentHook(),
 		),
@@ -380,9 +401,15 @@ func (c *config) keyCheck(key string) {
 }
 
 func (c *config) mergeSettings(settings map[string]interface{}) error {
+	sanitized, err := Sanitize("root", settings, c.sanitizers)
+
+	if err != nil {
+		return fmt.Errorf("could not sanitize settings on merge: %w", err)
+	}
+
 	current := c.settings.Value().MSI()
 
-	if err := mergo.Merge(&current, settings, mergo.WithOverride); err != nil {
+	if err := mergo.Merge(&current, sanitized, mergo.WithOverride); err != nil {
 		return err
 	}
 

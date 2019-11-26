@@ -177,6 +177,20 @@ func (_m *Config) GetStringSlice(_a0 string) []string {
 	return r0
 }
 
+// GetTime provides a mock function with given fields: key
+func (_m *Config) GetTime(key string) time.Time {
+	ret := _m.Called(key)
+
+	var r0 time.Time
+	if rf, ok := ret.Get(0).(func(string) time.Time); ok {
+		r0 = rf(key)
+	} else {
+		r0 = ret.Get(0).(time.Time)
+	}
+
+	return r0
+}
+
 // IsSet provides a mock function with given fields: _a0
 func (_m *Config) IsSet(_a0 string) bool {
 	ret := _m.Called(_a0)
