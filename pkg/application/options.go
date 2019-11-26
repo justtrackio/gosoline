@@ -45,18 +45,18 @@ func WithConfigEnvKeyPrefix(prefix string) Option {
 	}
 }
 
-func WithConfigFile(filePath string, fileType string) Option {
-	return func(app *App) {
-		app.addConfigOption(func(config cfg.GosoConf) error {
-			return config.Option(cfg.WithConfigFile(filePath, fileType))
-		})
-	}
-}
-
 func WithConfigErrorHandlers(handlers ...cfg.ErrorHandler) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithErrorHandlers(handlers...))
+		})
+	}
+}
+
+func WithConfigFile(filePath string, fileType string) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithConfigFile(filePath, fileType))
 		})
 	}
 }
@@ -80,6 +80,14 @@ func WithConfigMap(configMap map[string]interface{}) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithConfigMap(configMap))
+		})
+	}
+}
+
+func WithConfigSanitizers(sanitizers ...cfg.Sanitizer) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithSanitizers(sanitizers...))
 		})
 	}
 }

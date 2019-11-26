@@ -263,10 +263,38 @@ func TestConfig_UnmarshalKeyValidation(t *testing.T) {
 	assert.EqualError(t, cfgErr, "2 errors occurred:\n\t* the setting Foo with value bar does not match its requirement\n\t* the setting A with value 0 does not match its requirement\n\n")
 }
 
+func TestConfig_GetTime(t *testing.T) {
+	data := map[string]interface{}{
+		"key": map[string]interface{}{
+			"foo":        "bar",
+			"date":       time.Date(2019, time.November, 26, 0, 0, 0, 0, time.UTC),
+			"stringDate": "2019-11-27",
+		},
+	}
+
+	config := getNewTestableConfig(data, map[string]string{})
+	tm := config.GetTime("key.date")
+
+	assert.Equal(t, "2019-11-26", tm.Format("2006-01-02"))
+
+	settings := struct {
+		Foo        string    `cfg:"foo"`
+		Date       time.Time `cfg:"date"`
+		StringDate time.Time `cfg:"stringDate"`
+	}{}
+
+	config.UnmarshalKey("key", &settings)
+
+	assert.Equal(t, "bar", settings.Foo)
+	assert.Equal(t, "2019-11-26", settings.Date.Format("2006-01-02"))
+	assert.Equal(t, "2019-11-27", settings.StringDate.Format("2006-01-02"))
+}
+
 func getNewTestableConfig(settings map[string]interface{}, environment map[string]string) cfg.GosoConf {
 	options := []cfg.Option{
 		cfg.WithErrorHandlers(cfg.PanicErrorHandler),
 		cfg.WithEnvKeyReplacer(strings.NewReplacer(".", "_")),
+		cfg.WithSanitizers(cfg.TimeSanitizer),
 	}
 
 	return getNewTestableConfigWithOptions(settings, environment, options...)

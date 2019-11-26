@@ -1,8 +1,8 @@
 package cfg
 
 import (
+	"github.com/applike/gosoline/pkg/encoding/yaml"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 )
 
