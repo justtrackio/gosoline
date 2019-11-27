@@ -13,9 +13,7 @@ func NewMetricDaemonWriter(defaults ...*MetricDatum) *daemonWriter {
 	clock := clockwork.NewRealClock()
 	daemon := ProvideCwDaemon()
 
-	for _, def := range defaults {
-		daemon.AddDefault(def)
-	}
+	daemon.AddDefaults(defaults...)
 
 	return NewMetricDaemonWriterWithInterfaces(clock, daemon)
 }

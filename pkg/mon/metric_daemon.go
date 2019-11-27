@@ -115,9 +115,14 @@ func (d *cwDaemon) Run(ctx context.Context) error {
 	}
 }
 
-func (d *cwDaemon) AddDefault(datum *MetricDatum) {
-	id := datum.Id()
-	d.defaults[id] = datum
+func (d *cwDaemon) AddDefaults(data ...*MetricDatum) {
+	d.Lock()
+	defer d.Unlock()
+
+	for _, datum := range data {
+		id := datum.Id()
+		d.defaults[id] = datum
+	}
 }
 
 func (d *cwDaemon) append(datum *MetricDatum) {
