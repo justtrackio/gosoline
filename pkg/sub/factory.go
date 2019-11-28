@@ -50,16 +50,17 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 		}
 		sourceModelId.PadFromConfig(config)
 
-		targetModelId := sourceModelId
-		if s.TargetModel.Family != "" {
-			targetModelId.Family = s.TargetModel.Family
+		targetModelId := mdl.ModelId{
+			Family:      s.TargetModel.Family,
+			Application: s.TargetModel.Application,
+			Name:        s.TargetModel.Name,
 		}
-		if s.TargetModel.Application != "" {
-			targetModelId.Application = s.TargetModel.Application
+
+		if targetModelId.Name == "" {
+			targetModelId.Name = s.SourceModel.Name
 		}
-		if s.TargetModel.Name != "" {
-			targetModelId.Name = s.TargetModel.Name
-		}
+
+		targetModelId.PadFromConfig(config)
 
 		settings := Settings{
 			Type:          s.Output,
