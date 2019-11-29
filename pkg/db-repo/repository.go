@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -54,6 +55,10 @@ type repository struct {
 func New(config cfg.Config, logger mon.Logger, s Settings) *repository {
 	tracer := tracing.NewAwsTracer(config)
 	orm := NewOrm(config, logger)
+	orm.Callback().
+		Update().
+		After("gorm:update_time_stamp").
+		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
 	clock := clockwork.NewRealClock()
 
 	s.PadFromConfig(config)
@@ -341,4 +346,28 @@ func readIdsFromReflectValue(values reflect.Value) []string {
 	}
 
 	return ids
+}
+
+func ignoreCreatedAtIfNeeded(scope *gorm.Scope) {
+	// if you perform an update and do not specify the CreatedAt field on your data, gorm will set it to time.Time{}
+	// (0000-00-00 00:00:00 in mysql). To avoid this, we mark the field as ignored if it is empty
+	if m, ok := getModel(scope.Value); ok && (m.GetCreatedAt() == nil || *m.GetCreatedAt() == time.Time{}) {
+		scope.Search.Omit("CreatedAt")
+	}
+}
+
+func getModel(value interface{}) (TimestampAware, bool) {
+	if value == nil {
+		return nil, false
+	}
+
+	if m, ok := value.(TimestampAware); ok {
+		return m, true
+	}
+
+	if val := reflect.ValueOf(value); val.Kind() == reflect.Ptr {
+		return getModel(val.Elem().Interface())
+	}
+
+	return nil, false
 }
