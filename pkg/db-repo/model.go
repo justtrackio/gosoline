@@ -24,6 +24,11 @@ type TimeStampable interface {
 	SetCreatedAt(createdAt *time.Time)
 }
 
+type TimestampAware interface {
+	GetCreatedAt() *time.Time
+	GetUpdatedAt() *time.Time
+}
+
 type Timestamps struct {
 	UpdatedAt *time.Time
 	CreatedAt *time.Time
@@ -35,6 +40,14 @@ func (m *Timestamps) SetUpdatedAt(updatedAt *time.Time) {
 
 func (m *Timestamps) SetCreatedAt(createdAt *time.Time) {
 	m.CreatedAt = createdAt
+}
+
+func (m *Timestamps) GetUpdatedAt() *time.Time {
+	return m.UpdatedAt
+}
+
+func (m *Timestamps) GetCreatedAt() *time.Time {
+	return m.CreatedAt
 }
 
 func EmptyTimestamps() Timestamps {
