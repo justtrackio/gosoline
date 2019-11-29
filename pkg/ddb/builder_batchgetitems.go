@@ -2,11 +2,13 @@ package ddb
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/refl"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/hashicorp/go-multierror"
 )
 
+//go:generate mockery -name=BatchGetItemsBuilder
 type BatchGetItemsBuilder interface {
 	WithKeys(values ...interface{}) BatchGetItemsBuilder
 	WithKeyPairs(pairs [][]interface{}) BatchGetItemsBuilder
@@ -46,7 +48,7 @@ func (b *batchGetItemsBuilder) WithKeyPairs(pairs [][]interface{}) BatchGetItems
 }
 
 func (b *batchGetItemsBuilder) WithHashKeys(hashKeys interface{}) BatchGetItemsBuilder {
-	slice, err := interfaceToSliceOfInterfaces(hashKeys)
+	slice, err := refl.InterfaceToInterfaceSlice(hashKeys)
 
 	if err != nil {
 		b.err = multierror.Append(b.err, err)

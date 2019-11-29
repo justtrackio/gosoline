@@ -7,6 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/refl"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -184,7 +185,7 @@ func (r *repository) BatchDeleteItems(ctx context.Context, value interface{}) (*
 }
 
 func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqBuilder func(map[string]*dynamodb.AttributeValue) *dynamodb.WriteRequest) (*OperationResult, error) {
-	items, err := interfaceToSliceOfInterfaces(value)
+	items, err := refl.InterfaceToInterfaceSlice(value)
 
 	if err != nil {
 		return nil, fmt.Errorf("no slice of items provided for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)

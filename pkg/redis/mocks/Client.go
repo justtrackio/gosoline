@@ -330,6 +330,51 @@ func (_m *Client) LLen(_a0 string) (int64, error) {
 	return r0, r1
 }
 
+// MGet provides a mock function with given fields: keys
+func (_m *Client) MGet(keys ...string) ([]interface{}, error) {
+	_va := make([]interface{}, len(keys))
+	for _i := range keys {
+		_va[_i] = keys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []interface{}
+	if rf, ok := ret.Get(0).(func(...string) []interface{}); ok {
+		r0 = rf(keys...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]interface{})
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(...string) error); ok {
+		r1 = rf(keys...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MSet provides a mock function with given fields: pairs
+func (_m *Client) MSet(pairs ...interface{}) error {
+	var _ca []interface{}
+	_ca = append(_ca, pairs...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(...interface{}) error); ok {
+		r0 = rf(pairs...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Pipeline provides a mock function with given fields:
 func (_m *Client) Pipeline() go_redisredis.Pipeliner {
 	ret := _m.Called()

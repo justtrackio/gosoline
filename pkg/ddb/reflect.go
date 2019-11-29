@@ -2,7 +2,6 @@ package ddb
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"strings"
 )
@@ -52,22 +51,6 @@ func isResultCallback(value interface{}) (func(ctx context.Context, result inter
 	}
 
 	return nil, false
-}
-
-func interfaceToSliceOfInterfaces(sliceOfItems interface{}) ([]interface{}, error) {
-	s := reflect.ValueOf(sliceOfItems)
-
-	if s.Kind() != reflect.Slice {
-		return nil, fmt.Errorf("value is not of type slice")
-	}
-
-	items := make([]interface{}, s.Len())
-
-	for i := 0; i < s.Len(); i++ {
-		items[i] = s.Index(i).Interface()
-	}
-
-	return items, nil
 }
 
 func chunk(batch []interface{}, size int) [][]interface{} {

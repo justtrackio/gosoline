@@ -12,8 +12,18 @@ import (
 
 type Settings struct {
 	cfg.AppId
-	Name string
-	Ttl  time.Duration
+	Name      string
+	Ttl       time.Duration
+	BatchSize int
+}
+
+//go:generate mockery -name KvStore
+type KvStore interface {
+	Contains(ctx context.Context, key interface{}) (bool, error)
+	Get(ctx context.Context, key interface{}, value interface{}) (bool, error)
+	GetBatch(ctx context.Context, keys interface{}, values interface{}) ([]interface{}, error)
+	Put(ctx context.Context, key interface{}, value interface{}) error
+	PutBatch(ctx context.Context, values interface{}) error
 }
 
 type Factory func(config cfg.Config, logger mon.Logger, settings *Settings) KvStore
@@ -22,13 +32,6 @@ func buildFactory(config cfg.Config, logger mon.Logger) func(factory Factory, se
 	return func(factory Factory, settings *Settings) KvStore {
 		return factory(config, logger, settings)
 	}
-}
-
-//go:generate mockery -name KvStore
-type KvStore interface {
-	Contains(ctx context.Context, key interface{}) (bool, error)
-	Get(ctx context.Context, key interface{}, value interface{}) (bool, error)
-	Put(ctx context.Context, key interface{}, value interface{}) error
 }
 
 func CastKeyToString(key interface{}) (string, error) {

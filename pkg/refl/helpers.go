@@ -38,6 +38,12 @@ func IsPointerToStruct(value interface{}) bool {
 	return t.Kind() == reflect.Struct
 }
 
+func IsSlice(value interface{}) bool {
+	t := reflect.TypeOf(value)
+
+	return t.Kind() == reflect.Slice
+}
+
 func FindBaseType(value interface{}) reflect.Type {
 	t := reflect.TypeOf(value)
 

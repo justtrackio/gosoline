@@ -26,7 +26,9 @@ type Client interface {
 	Exists(keys ...string) (int64, error)
 	Expire(key string, ttl time.Duration) (bool, error)
 	Set(string, interface{}, time.Duration) error
+	MSet(pairs ...interface{}) error
 	Get(string) (string, error)
+	MGet(keys ...string) ([]interface{}, error)
 	Del(string) (int64, error)
 
 	BLPop(time.Duration, ...string) ([]string, error)
@@ -138,8 +140,22 @@ func (c *redisClient) Set(key string, value interface{}, expiration time.Duratio
 	return res.(*baseRedis.StatusCmd).Err()
 }
 
+func (c *redisClient) MSet(pairs ...interface{}) error {
+	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
+		cmd := c.base.MSet(pairs...)
+
+		return cmd, cmd.Err()
+	})
+
+	return res.(*baseRedis.StatusCmd).Err()
+}
+
 func (c *redisClient) Get(key string) (string, error) {
 	return c.base.Get(key).Result()
+}
+
+func (c *redisClient) MGet(keys ...string) ([]interface{}, error) {
+	return c.base.MGet(keys...).Result()
 }
 
 func (c *redisClient) Del(key string) (int64, error) {

@@ -53,6 +53,29 @@ func (_m *KvStore) Get(ctx context.Context, key interface{}, value interface{}) 
 	return r0, r1
 }
 
+// GetBatch provides a mock function with given fields: ctx, keys, values
+func (_m *KvStore) GetBatch(ctx context.Context, keys interface{}, values interface{}) ([]interface{}, error) {
+	ret := _m.Called(ctx, keys, values)
+
+	var r0 []interface{}
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, interface{}) []interface{}); ok {
+		r0 = rf(ctx, keys, values)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]interface{})
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, interface{}, interface{}) error); ok {
+		r1 = rf(ctx, keys, values)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Put provides a mock function with given fields: ctx, key, value
 func (_m *KvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
 	ret := _m.Called(ctx, key, value)
@@ -60,6 +83,20 @@ func (_m *KvStore) Put(ctx context.Context, key interface{}, value interface{}) 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, interface{}, interface{}) error); ok {
 		r0 = rf(ctx, key, value)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// PutBatch provides a mock function with given fields: ctx, values
+func (_m *KvStore) PutBatch(ctx context.Context, values interface{}) error {
+	ret := _m.Called(ctx, values)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}) error); ok {
+		r0 = rf(ctx, values)
 	} else {
 		r0 = ret.Error(0)
 	}

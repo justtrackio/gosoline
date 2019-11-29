@@ -5,6 +5,22 @@ import (
 	"reflect"
 )
 
+func InterfaceToInterfaceSlice(in interface{}) ([]interface{}, error) {
+	val := reflect.ValueOf(in)
+
+	if val.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("input is not an slice but instead of type %T", in)
+	}
+
+	out := make([]interface{}, val.Len())
+
+	for i := 0; i < val.Len(); i++ {
+		out[i] = val.Index(i).Interface()
+	}
+
+	return out, nil
+}
+
 func SliceOf(slice interface{}) (*Slice, error) {
 	sliceType := reflect.TypeOf(slice)
 
