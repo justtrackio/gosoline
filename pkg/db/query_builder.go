@@ -1,6 +1,9 @@
 package db
 
-import "github.com/Masterminds/squirrel"
+import (
+	"github.com/Masterminds/squirrel"
+	"github.com/thoas/go-funk"
+)
 
 //go:generate mockery -name QueryBuilder
 type QueryBuilder interface {
@@ -29,7 +32,7 @@ func (b *RawQueryBuilder) Table(table string) QueryBuilder {
 }
 
 func (b *RawQueryBuilder) Joins(joins []string) QueryBuilder {
-	for _, join := range joins {
+	for _, join := range funk.UniqString(joins) {
 		b.Builder = b.Builder.JoinClause(join)
 	}
 

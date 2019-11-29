@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/twinj/uuid"
+	"strings"
 	"sync"
 	"time"
 )
@@ -30,7 +31,20 @@ type Object struct {
 	wg     *sync.WaitGroup
 }
 
+type CopyObject struct {
+	Key          *string
+	SourceKey    *string
+	SourceBucket *string
+	ACL          *string
+	Error        error
+
+	bucket *string
+	prefix *string
+	wg     *sync.WaitGroup
+}
+
 type Batch []*Object
+type CopyBatch []*CopyObject
 
 type Settings struct {
 	Project     string
@@ -47,6 +61,8 @@ type Store interface {
 	ReadOne(obj *Object) error
 	Write(batch Batch)
 	WriteOne(obj *Object) error
+	Copy(batch CopyBatch)
+	CopyOne(obj *CopyObject) error
 }
 
 type s3Store struct {
@@ -178,8 +194,53 @@ func (s *s3Store) Write(batch Batch) {
 	wg.Wait()
 }
 
+func (s *s3Store) CopyOne(obj *CopyObject) error {
+	s.Copy(CopyBatch{obj})
+
+	return obj.Error
+}
+
+func (s *s3Store) Copy(batch CopyBatch) {
+	wg := &sync.WaitGroup{}
+	wg.Add(len(batch))
+
+	for i := 0; i < len(batch); i++ {
+		batch[i].bucket = s.bucket
+		batch[i].prefix = s.prefix
+		batch[i].wg = wg
+	}
+
+	for i := 0; i < len(batch); i++ {
+		s.runner.copy <- batch[i]
+	}
+
+	wg.Wait()
+}
+
 func (o *Object) GetFullKey() string {
-	return fmt.Sprintf("/%s/%s", mdl.EmptyStringIfNil(o.prefix), mdl.EmptyStringIfNil(o.Key))
+	return getFullKey(o.prefix, o.Key)
+}
+
+func (o *CopyObject) GetFullKey() string {
+	return getFullKey(o.prefix, o.Key)
+}
+
+func getFullKey(prefix, key *string) string {
+	return fmt.Sprintf("/%s/%s", mdl.EmptyStringIfNil(prefix), mdl.EmptyStringIfNil(key))
+}
+
+func (o *CopyObject) getSource() string {
+	sourceKey := mdl.EmptyStringIfNil(o.SourceKey)
+	if o.SourceBucket == nil {
+		sourceKey = getFullKey(o.prefix, o.SourceKey)
+		o.SourceBucket = o.bucket
+	}
+	if !strings.HasPrefix(sourceKey, "/") {
+		// we have to avoid having bucket//key as the source as S3 does not find the object like that
+		sourceKey = "/" + sourceKey
+	}
+
+	return fmt.Sprintf("%s%s", mdl.EmptyStringIfNil(o.SourceBucket), sourceKey)
 }
 
 func isBucketAlreadyExistsError(err error) bool {

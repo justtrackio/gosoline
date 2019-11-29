@@ -41,7 +41,7 @@ func (lh listHandler) Handle(ctx context.Context, request *apiserver.Request) (*
 		return nil, err
 	}
 
-	apiView := getApiViewFromHeader(request.Header)
+	apiView := GetApiViewFromHeader(request.Header)
 	results, err := lh.transformer.List(ctx, qb, apiView)
 
 	if err != nil {
