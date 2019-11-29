@@ -48,7 +48,7 @@ func AddCrudHandlers(d *apiserver.Definitions, version int, basePath string, han
 	d.POST(path, NewListHandler(handler))
 }
 
-func getApiViewFromHeader(reqHeaders http.Header) string {
+func GetApiViewFromHeader(reqHeaders http.Header) string {
 	if apiView := reqHeaders.Get(apiserver.ApiViewKey); apiView != "" {
 		return apiView
 	}

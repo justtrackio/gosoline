@@ -14,6 +14,13 @@ import (
 	"sync"
 )
 
+const (
+	metricName     = "BlobBatchRunner"
+	operationRead  = "Read"
+	operationWrite = "Write"
+	operationCopy  = "Copy"
+)
+
 var br = struct {
 	sync.Mutex
 	instance *BatchRunner
@@ -36,31 +43,48 @@ type BatchRunner struct {
 	kernel.ForegroundModule
 
 	logger mon.Logger
+	config *BatchRunnerConfig
 	metric mon.MetricWriter
 	client s3iface.S3API
 	read   chan *Object
 	write  chan *Object
+	copy   chan *CopyObject
+}
+
+type BatchRunnerConfig struct {
+	ReaderRunnerCount int `cfg:"reader_runner_count" default:"100"`
+	WriterRunnerCount int `cfg:"writer_runner_count" default:"100"`
+	CopyRunnerCount   int `cfg:"copy_runner_count" default:"100"`
 }
 
 func (r *BatchRunner) Boot(config cfg.Config, logger mon.Logger) error {
 	defaultMetrics := getDefaultRunnerMetrics()
 
+	cc := &BatchRunnerConfig{}
+	config.UnmarshalKey("blob", cc)
+
 	r.logger = logger
+	r.config = cc
 	r.client = ProvideS3Client(config)
 	r.metric = mon.NewMetricDaemonWriter(defaultMetrics...)
-	r.read = make(chan *Object, 100)
-	r.write = make(chan *Object, 100)
+	r.read = make(chan *Object, cc.ReaderRunnerCount)
+	r.write = make(chan *Object, cc.WriterRunnerCount)
+	r.copy = make(chan *CopyObject, cc.CopyRunnerCount)
 
 	return nil
 }
 
 func (r *BatchRunner) Run(ctx context.Context) error {
-	for i := 0; i < 100; i++ {
+	for i := 0; i < r.config.ReaderRunnerCount; i++ {
 		go r.executeRead()
 	}
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < r.config.WriterRunnerCount; i++ {
 		go r.executeWrite()
+	}
+
+	for i := 0; i < r.config.CopyRunnerCount; i++ {
+		go r.executeCopy()
 	}
 
 	<-ctx.Done()
@@ -91,6 +115,8 @@ func (r *BatchRunner) executeRead() {
 		} else {
 			body = out.Body
 		}
+
+		r.writeMetric(operationRead)
 
 		object.Body = StreamReader(body)
 		object.Exists = exists
@@ -124,28 +150,73 @@ func (r *BatchRunner) executeWrite() {
 			object.Error = multierror.Append(object.Error, err)
 		}
 
+		r.writeMetric(operationWrite)
+
 		object.wg.Done()
 	}
 }
 
-func getDefaultRunnerMetrics() []*mon.MetricDatum {
-	name := "BlobBatchRunner"
+func (r *BatchRunner) executeCopy() {
+	for object := range r.copy {
+		key := object.GetFullKey()
+		source := object.getSource()
 
+		input := &s3.CopyObjectInput{
+			ACL:        object.ACL,
+			Bucket:     object.bucket,
+			Key:        aws.String(key),
+			CopySource: aws.String(source),
+		}
+
+		_, err := r.client.CopyObject(input)
+
+		if err != nil {
+			object.Error = err
+		}
+
+		r.writeMetric(operationCopy)
+
+		object.wg.Done()
+	}
+}
+
+func (r *BatchRunner) writeMetric(operation string) {
+	r.metric.WriteOne(&mon.MetricDatum{
+		MetricName: metricName,
+		Priority:   mon.PriorityHigh,
+		Dimensions: map[string]string{
+			"Operation": operation,
+		},
+		Unit:  mon.UnitCount,
+		Value: 1.0,
+	})
+}
+
+func getDefaultRunnerMetrics() []*mon.MetricDatum {
 	return []*mon.MetricDatum{
 		{
-			MetricName: name,
+			MetricName: metricName,
 			Priority:   mon.PriorityHigh,
 			Dimensions: map[string]string{
-				"Operation": "Read",
+				"Operation": operationRead,
 			},
 			Unit:  mon.UnitCount,
 			Value: 0.0,
 		},
 		{
-			MetricName: name,
+			MetricName: metricName,
 			Priority:   mon.PriorityHigh,
 			Dimensions: map[string]string{
-				"Operation": "Write",
+				"Operation": operationWrite,
+			},
+			Unit:  mon.UnitCount,
+			Value: 0.0,
+		},
+		{
+			MetricName: metricName,
+			Priority:   mon.PriorityHigh,
+			Dimensions: map[string]string{
+				"Operation": operationCopy,
 			},
 			Unit:  mon.UnitCount,
 			Value: 0.0,

@@ -36,7 +36,7 @@ func (rh readHandler) Handle(ctx context.Context, request *apiserver.Request) (*
 		return nil, err
 	}
 
-	apiView := getApiViewFromHeader(request.Header)
+	apiView := GetApiViewFromHeader(request.Header)
 	out, err := rh.transformer.TransformOutput(model, apiView)
 
 	if err != nil {
