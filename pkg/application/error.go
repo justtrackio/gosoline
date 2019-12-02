@@ -12,8 +12,12 @@ func WithDefaultErrorHandler(handler ErrorHandler) {
 
 var defaultErrorHandler = func(err error, msg string, args ...interface{}) {
 	logger := mon.NewLogger()
+	options := []mon.Option{
+		mon.WithFormat(mon.FormatGelf),
+		mon.WithHook(mon.NewMetricHook()),
+	}
 
-	if err := logger.Option(mon.WithFormat(mon.FormatGelf)); err != nil {
+	if err := logger.Option(options...); err != nil {
 		panic(err)
 	}
 
