@@ -10,10 +10,10 @@ import (
 var ErrNotFound = errors.New("model not found")
 
 type readHandler struct {
-	transformer Handler
+	transformer BaseHandler
 }
 
-func NewReadHandler(transformer Handler) gin.HandlerFunc {
+func NewReadHandler(transformer BaseHandler) gin.HandlerFunc {
 	rh := readHandler{
 		transformer: transformer,
 	}

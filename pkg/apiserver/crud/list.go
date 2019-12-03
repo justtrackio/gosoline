@@ -13,10 +13,10 @@ type Output struct {
 }
 
 type listHandler struct {
-	transformer Handler
+	transformer ListHandler
 }
 
-func NewListHandler(transformer Handler) gin.HandlerFunc {
+func NewListHandler(transformer ListHandler) gin.HandlerFunc {
 	lh := listHandler{
 		transformer: transformer,
 	}

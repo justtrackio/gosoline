@@ -8,10 +8,10 @@ import (
 )
 
 type deleteHandler struct {
-	transformer Handler
+	transformer BaseHandler
 }
 
-func NewDeleteHandler(transformer Handler) gin.HandlerFunc {
+func NewDeleteHandler(transformer BaseHandler) gin.HandlerFunc {
 	dh := deleteHandler{
 		transformer: transformer,
 	}
