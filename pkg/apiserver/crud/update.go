@@ -10,10 +10,10 @@ import (
 )
 
 type updateHandler struct {
-	transformer Handler
+	transformer UpdateHandler
 }
 
-func NewUpdateHandler(transformer Handler) gin.HandlerFunc {
+func NewUpdateHandler(transformer UpdateHandler) gin.HandlerFunc {
 	uh := updateHandler{
 		transformer: transformer,
 	}

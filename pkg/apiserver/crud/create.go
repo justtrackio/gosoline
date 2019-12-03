@@ -9,10 +9,10 @@ import (
 )
 
 type createHandler struct {
-	transformer Handler
+	transformer CreateHandler
 }
 
-func NewCreateHandler(transformer Handler) gin.HandlerFunc {
+func NewCreateHandler(transformer CreateHandler) gin.HandlerFunc {
 	ch := createHandler{
 		transformer: transformer,
 	}
