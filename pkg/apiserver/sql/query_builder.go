@@ -38,9 +38,10 @@ type FilterMatch struct {
 }
 
 type Input struct {
-	Filter Filter  `json:"filter"`
-	Order  []Order `json:"order"`
-	Page   *Page   `json:"page"`
+	Filter  Filter   `json:"filter"`
+	Order   []Order  `json:"order"`
+	GroupBy []string `json:"groupBy"`
+	Page    *Page    `json:"page"`
 }
 
 func NewInput() *Input {
@@ -116,10 +117,22 @@ func (qb baseQueryBuilder) build(inp *Input, dbQb db.QueryBuilder) error {
 		return fmt.Errorf("no primary key defined")
 	}
 
+	groupBy := []string{qb.metadata.PrimaryKey}
+
+	for _, g := range inp.GroupBy {
+		if _, ok := qb.mapping[g]; !ok {
+			return fmt.Errorf("no list mapping found for group by field %s", g)
+		}
+
+		field := qb.mapping[g]
+		groupBy = append(groupBy, field.ColumnNames()...)
+		joins = append(joins, field.Joins()...)
+	}
+
 	dbQb.Table(qb.metadata.TableName)
 	dbQb.Joins(joins)
 	dbQb.Where(query, args...)
-	dbQb.GroupBy(qb.metadata.PrimaryKey)
+	dbQb.GroupBy(groupBy...)
 
 	for _, o := range inp.Order {
 		if _, ok := qb.mapping[o.Field]; !ok {
@@ -182,10 +195,6 @@ func (qb baseQueryBuilder) getJoinsFromFilter(joins *[]string, filter Filter) er
 		}
 
 		*joins = append(*joins, qb.mapping[m.Dimension].Joins()...)
-	}
-
-	if filter.Groups == nil {
-		return nil
 	}
 
 	for _, g := range filter.Groups {

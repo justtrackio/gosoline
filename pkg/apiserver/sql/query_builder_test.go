@@ -81,6 +81,7 @@ func TestListQueryBuilder_Build(t *testing.T) {
 				Direction: "DESC",
 			},
 		},
+		GroupBy: []string{"bla"},
 		Page: &sql.Page{
 			Offset: 0,
 			Limit:  3,
@@ -95,10 +96,52 @@ func TestListQueryBuilder_Build(t *testing.T) {
 	expected := db_repo.NewQueryBuilder()
 	expected.Table("tablename")
 	expected.Where("(((foo = ?)))", "blub")
-	expected.GroupBy("id")
+	expected.GroupBy("id", "foo")
 	expected.OrderBy("fieldA", "ASC")
 	expected.OrderBy("fieldB", "DESC")
 	expected.Page(0, 3)
+
+	assert.Equal(t, expected, qb)
+}
+
+func TestListQueryBuilder_BuildWithJoin(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "tablename",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":     db_repo.NewFieldMapping("id"),
+			"bla":    db_repo.NewFieldMapping("foo").WithJoin("JOIN footable"),
+			"fieldA": db_repo.NewFieldMapping("fieldA"),
+			"fieldB": db_repo.NewFieldMapping("fieldB").WithJoin("JOIN fieldBTable"),
+		},
+	}
+
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Matches: []sql.FilterMatch{
+				{
+					Dimension: "bla",
+					Operator:  "=",
+					Values:    []interface{}{"blub"},
+				},
+			},
+		},
+		GroupBy: []string{"fieldB"},
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	qb, err := lqb.Build(inp)
+
+	assert.NoError(t, err)
+
+	expected := db_repo.NewQueryBuilder()
+	expected.Table("tablename")
+	expected.Where("(((foo = ?)))", "blub")
+	expected.GroupBy("id", "fieldB")
+	expected.Joins([]string{
+		"JOIN footable",
+		"JOIN fieldBTable",
+	})
 
 	assert.Equal(t, expected, qb)
 }
