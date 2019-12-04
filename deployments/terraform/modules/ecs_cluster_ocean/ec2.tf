@@ -16,7 +16,7 @@ echo ECS_NUM_IMAGES_DELETE_PER_CYCLE=50 >> /etc/ecs/ecs.config
 echo ECS_IMAGE_CLEANUP_INTERVAL=5m >> /etc/ecs/ecs.config
 echo ECS_UPDATES_ENABLED=true >> /etc/ecs/ecs.config
 echo ECS_RESERVED_MEMORY=1024 >> /etc/ecs/ecs.config
-echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"json-file\", \"none\", \"gelf\", \"awslogs\"] >> /etc/ecs/ecs.config
+echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"json-file\", \"none\", \"gelf\", \"awslogs\", \"fluentd\"] >> /etc/ecs/ecs.config
 echo ECS_ENABLE_CONTAINER_METADATA=true >> /etc/ecs/ecs.config
 cloud-init-per once docker_options echo 'OPTIONS="$${OPTIONS} --storage-opt dm.basesize=${var.ec2_block_device_size - 2}G"' >> /etc/sysconfig/docker
 
@@ -97,7 +97,7 @@ echo ECS_NUM_IMAGES_DELETE_PER_CYCLE=50 >> /etc/ecs/ecs.config
 echo ECS_IMAGE_CLEANUP_INTERVAL=5m >> /etc/ecs/ecs.config
 echo ECS_UPDATES_ENABLED=true >> /etc/ecs/ecs.config
 echo ECS_RESERVED_MEMORY=1024 >> /etc/ecs/ecs.config
-echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"json-file\", \"none\", \"gelf\", \"awslogs\"] >> /etc/ecs/ecs.config
+echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"json-file\", \"none\", \"gelf\", \"awslogs\", \"fluentd\"] >> /etc/ecs/ecs.config
 echo ECS_ENABLE_CONTAINER_METADATA=true >> /etc/ecs/ecs.config
 cloud-init-per once docker_options echo 'OPTIONS="$${OPTIONS} --storage-opt dm.basesize=${var.ec2_block_device_size - 2}G"' >> /etc/sysconfig/docker
 
