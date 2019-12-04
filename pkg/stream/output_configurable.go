@@ -50,7 +50,8 @@ func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 }
 
 type kinesisOutputConfiguration struct {
-	StreamName string `cfg:"stream_name"`
+	StreamName string                `cfg:"stream_name"`
+	Backoff    cloud.BackoffSettings `cfg:"backoff"`
 }
 
 func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
@@ -60,6 +61,7 @@ func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name strin
 
 	return NewKinesisOutput(config, logger, &KinesisOutputSettings{
 		StreamName: settings.StreamName,
+		Backoff:    settings.Backoff,
 	})
 }
 

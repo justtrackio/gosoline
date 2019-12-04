@@ -25,6 +25,16 @@ func IsRequestCanceled(err error) bool {
 	return IsAwsError(err, request.CanceledErrorCode)
 }
 
+func IsUsedClosedConnectionError(err error) bool {
+	opErr, ok := opError(err)
+
+	if !ok {
+		return false
+	}
+
+	return opErr.Err.Error() == "use of closed network connection"
+}
+
 func IsConnectionError(err error) bool {
 	if IsUrlError(err, io.EOF) {
 		return true
@@ -38,17 +48,7 @@ func IsConnectionError(err error) bool {
 }
 
 func IsUrlError(err error, targets ...error) bool {
-	if err == nil {
-		return false
-	}
-
-	aerr, ok := err.(awserr.Error)
-
-	if !ok {
-		return false
-	}
-
-	urlErr, ok := aerr.OrigErr().(*url.Error)
+	urlErr, ok := urlError(err)
 
 	if !ok {
 		return false
@@ -64,23 +64,7 @@ func IsUrlError(err error, targets ...error) bool {
 }
 
 func IsSyscallError(err error, syscallErrors ...syscall.Errno) bool {
-	if err == nil {
-		return false
-	}
-
-	aerr, ok := err.(awserr.Error)
-
-	if !ok {
-		return false
-	}
-
-	urlErr, ok := aerr.OrigErr().(*url.Error)
-
-	if !ok {
-		return false
-	}
-
-	opErr, ok := urlErr.Err.(*net.OpError)
+	opErr, ok := opError(err)
 
 	if !ok {
 		return false
@@ -107,6 +91,34 @@ func IsSyscallError(err error, syscallErrors ...syscall.Errno) bool {
 	}
 
 	return false
+}
+
+func urlError(err error) (*url.Error, bool) {
+	if err == nil {
+		return nil, false
+	}
+
+	aerr, ok := err.(awserr.Error)
+
+	if !ok {
+		return nil, false
+	}
+
+	urlErr, ok := aerr.OrigErr().(*url.Error)
+
+	return urlErr, ok
+}
+
+func opError(err error) (*net.OpError, bool) {
+	urlErr, ok := urlError(err)
+
+	if !ok {
+		return nil, false
+	}
+
+	opErr, ok := urlErr.Err.(*net.OpError)
+
+	return opErr, ok
 }
 
 const RequestCanceledError = requestCanceledError("RequestCanceled")
