@@ -35,6 +35,14 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 		return nil, err
 	}
 
+	if t, ok := dh.transformer.(DeleteHandler); ok {
+		err = t.TransformDelete(model)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	err = repo.Delete(ctx, model)
 
 	if err != nil {

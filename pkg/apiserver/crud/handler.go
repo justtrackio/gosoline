@@ -64,6 +64,12 @@ type ListHandler interface {
 	BaseListHandler
 }
 
+//go:generate mockery -name DeleteHandler
+type DeleteHandler interface {
+	BaseHandler
+	TransformDelete(model db_repo.ModelBased) (err error)
+}
+
 //go:generate mockery -name Handler
 type Handler interface {
 	BaseHandler
@@ -105,10 +111,8 @@ func AddDeleteHandler(d *apiserver.Definitions, version int, basePath string, ha
 }
 
 func AddListHandler(d *apiserver.Definitions, version int, basePath string, handler ListHandler) {
-	path, _ := getHandlerPaths(version, basePath)
-
 	plural := inflection.Plural(basePath)
-	path = fmt.Sprintf("/v%d/%s", version, plural)
+	path := fmt.Sprintf("/v%d/%s", version, plural)
 	d.POST(path, NewListHandler(handler))
 }
 
