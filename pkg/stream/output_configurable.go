@@ -130,6 +130,7 @@ type sqsOutputConfiguration struct {
 	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
 	Client            cloud.ClientSettings  `cfg:"client"`
 	Backoff           cloud.BackoffSettings `cfg:"backoff"`
+	Fifo              sqs.FifoSettings      `cfg:"fifo"`
 }
 
 func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
@@ -149,6 +150,7 @@ func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) O
 		RedrivePolicy:     configuration.RedrivePolicy,
 		Client:            configuration.Client,
 		Backoff:           configuration.Backoff,
+		Fifo:              configuration.Fifo,
 	})
 }
 
