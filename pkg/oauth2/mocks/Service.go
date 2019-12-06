@@ -11,18 +11,25 @@ type Service struct {
 	mock.Mock
 }
 
-// GetAuthRefresh provides a mock function with given fields: ctx, refreshToken
-func (_m *Service) GetAuthRefresh(ctx context.Context, refreshToken string) *oauth2.GoogleAuthResponse {
-	ret := _m.Called(ctx, refreshToken)
+// GetAuthRefresh provides a mock function with given fields: ctx, authRequest
+func (_m *Service) GetAuthRefresh(ctx context.Context, authRequest *oauth2.GoogleAuthRequest) (*oauth2.GoogleAuthResponse, error) {
+	ret := _m.Called(ctx, authRequest)
 
 	var r0 *oauth2.GoogleAuthResponse
-	if rf, ok := ret.Get(0).(func(context.Context, string) *oauth2.GoogleAuthResponse); ok {
-		r0 = rf(ctx, refreshToken)
+	if rf, ok := ret.Get(0).(func(context.Context, *oauth2.GoogleAuthRequest) *oauth2.GoogleAuthResponse); ok {
+		r0 = rf(ctx, authRequest)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*oauth2.GoogleAuthResponse)
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *oauth2.GoogleAuthRequest) error); ok {
+		r1 = rf(ctx, authRequest)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }

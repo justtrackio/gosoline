@@ -25,20 +25,20 @@ type GoogleAuthRequest struct {
 
 //go:generate mockery -name Service
 type Service interface {
-	GetAuthRefresh(ctx context.Context, refreshToken string) *GoogleAuthResponse
+	GetAuthRefresh(ctx context.Context, authRequest *GoogleAuthRequest) (*GoogleAuthResponse, error)
 }
 
 type GoogleService struct {
 	httpClient http.Client
 }
 
-func NewGoogleService(config cfg.Config, logger mon.Logger) *GoogleService {
+func NewGoogleService(config cfg.Config, logger mon.Logger) Service {
 	httpClient := http.NewHttpClient(config, logger)
 
 	return NewGoogleServiceWithInterfaces(httpClient)
 }
 
-func NewGoogleServiceWithInterfaces(httpClient http.Client) *GoogleService {
+func NewGoogleServiceWithInterfaces(httpClient http.Client) Service {
 	return &GoogleService{
 		httpClient: httpClient,
 	}
