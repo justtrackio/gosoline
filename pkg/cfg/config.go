@@ -30,6 +30,7 @@ type Config interface {
 	GetBool(string) bool
 	GetDuration(string) time.Duration
 	GetInt(string) int
+	GetIntSlice(string) []int
 	GetFloat64(string) float64
 	GetString(string) string
 	GetStringMap(key string) map[string]interface{}
@@ -143,6 +144,23 @@ func (c *config) GetInt(key string) int {
 	}
 
 	return i
+}
+
+func (c *config) GetIntSlice(key string) []int {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	c.keyCheck(key)
+
+	data := c.get(key)
+	intSlice, err := cast.ToIntSliceE(data)
+
+	if err != nil {
+		c.err(err, "can not cast value %v[%T] of key %s to []int", data, data, key)
+		return nil
+	}
+
+	return intSlice
 }
 
 func (c *config) GetFloat64(key string) float64 {

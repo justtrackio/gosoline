@@ -66,6 +66,19 @@ func TestConfig_GetInt(t *testing.T) {
 	assert.Equal(t, 1, config.GetInt("i"))
 }
 
+func TestConfig_GetIntSlice(t *testing.T) {
+	config := getNewTestableConfig(map[string]interface{}{
+		"slice": []int{30, 60, 120},
+	}, map[string]string{})
+
+	s := config.GetIntSlice("slice")
+
+	assert.Len(t, s, 3)
+	assert.Equal(t, 30, s[0])
+	assert.Equal(t, 60, s[1])
+	assert.Equal(t, 120, s[2])
+}
+
 func TestConfig_GetFloat64(t *testing.T) {
 	config := getNewTestableConfig(map[string]interface{}{
 		"pi": math.Pi,
