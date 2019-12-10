@@ -15,10 +15,11 @@ import (
 )
 
 const (
-	metricName     = "BlobBatchRunner"
-	operationRead  = "Read"
-	operationWrite = "Write"
-	operationCopy  = "Copy"
+	metricName      = "BlobBatchRunner"
+	operationRead   = "Read"
+	operationWrite  = "Write"
+	operationCopy   = "Copy"
+	operationDelete = "Delete"
 )
 
 var br = struct {
@@ -49,12 +50,14 @@ type BatchRunner struct {
 	read   chan *Object
 	write  chan *Object
 	copy   chan *CopyObject
+	delete chan *Object
 }
 
 type BatchRunnerConfig struct {
-	ReaderRunnerCount int `cfg:"reader_runner_count" default:"100"`
-	WriterRunnerCount int `cfg:"writer_runner_count" default:"100"`
-	CopyRunnerCount   int `cfg:"copy_runner_count" default:"100"`
+	ReaderRunnerCount int `cfg:"reader_runner_count" default:"10"`
+	WriterRunnerCount int `cfg:"writer_runner_count" default:"10"`
+	CopyRunnerCount   int `cfg:"copy_runner_count" default:"10"`
+	DeleteRunnerCount int `cfg:"delete_runner_count" default:"10"`
 }
 
 func (r *BatchRunner) Boot(config cfg.Config, logger mon.Logger) error {
@@ -70,6 +73,7 @@ func (r *BatchRunner) Boot(config cfg.Config, logger mon.Logger) error {
 	r.read = make(chan *Object, cc.ReaderRunnerCount)
 	r.write = make(chan *Object, cc.WriterRunnerCount)
 	r.copy = make(chan *CopyObject, cc.CopyRunnerCount)
+	r.delete = make(chan *Object, cc.DeleteRunnerCount)
 
 	return nil
 }
@@ -85,6 +89,10 @@ func (r *BatchRunner) Run(ctx context.Context) error {
 
 	for i := 0; i < r.config.CopyRunnerCount; i++ {
 		go r.executeCopy()
+	}
+
+	for i := 0; i < r.config.DeleteRunnerCount; i++ {
+		go r.executeDelete()
 	}
 
 	<-ctx.Done()
@@ -180,6 +188,27 @@ func (r *BatchRunner) executeCopy() {
 	}
 }
 
+func (r *BatchRunner) executeDelete() {
+	for object := range r.delete {
+		key := object.GetFullKey()
+
+		input := &s3.DeleteObjectInput{
+			Bucket: object.bucket,
+			Key:    aws.String(key),
+		}
+
+		_, err := r.client.DeleteObject(input)
+
+		if err != nil {
+			object.Error = err
+		}
+
+		r.writeMetric(operationDelete)
+
+		object.wg.Done()
+	}
+}
+
 func (r *BatchRunner) writeMetric(operation string) {
 	r.metric.WriteOne(&mon.MetricDatum{
 		MetricName: metricName,
@@ -217,6 +246,15 @@ func getDefaultRunnerMetrics() []*mon.MetricDatum {
 			Priority:   mon.PriorityHigh,
 			Dimensions: map[string]string{
 				"Operation": operationCopy,
+			},
+			Unit:  mon.UnitCount,
+			Value: 0.0,
+		},
+		{
+			MetricName: metricName,
+			Priority:   mon.PriorityHigh,
+			Dimensions: map[string]string{
+				"Operation": operationDelete,
 			},
 			Unit:  mon.UnitCount,
 			Value: 0.0,

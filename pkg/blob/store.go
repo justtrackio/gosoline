@@ -63,6 +63,8 @@ type Store interface {
 	WriteOne(obj *Object) error
 	Copy(batch CopyBatch)
 	CopyOne(obj *CopyObject) error
+	Delete(batch Batch)
+	DeleteOne(obj *Object) error
 }
 
 type s3Store struct {
@@ -212,6 +214,29 @@ func (s *s3Store) Copy(batch CopyBatch) {
 
 	for i := 0; i < len(batch); i++ {
 		s.runner.copy <- batch[i]
+	}
+
+	wg.Wait()
+}
+
+func (s *s3Store) DeleteOne(obj *Object) error {
+	s.Delete(Batch{obj})
+
+	return obj.Error
+}
+
+func (s *s3Store) Delete(batch Batch) {
+	wg := &sync.WaitGroup{}
+	wg.Add(len(batch))
+
+	for i := 0; i < len(batch); i++ {
+		batch[i].bucket = s.bucket
+		batch[i].prefix = s.prefix
+		batch[i].wg = wg
+	}
+
+	for i := 0; i < len(batch); i++ {
+		s.runner.delete <- batch[i]
 	}
 
 	wg.Wait()
