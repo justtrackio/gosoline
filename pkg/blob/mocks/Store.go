@@ -29,6 +29,25 @@ func (_m *Store) CopyOne(obj *blob.CopyObject) error {
 	return r0
 }
 
+// Delete provides a mock function with given fields: batch
+func (_m *Store) Delete(batch blob.Batch) {
+	_m.Called(batch)
+}
+
+// DeleteOne provides a mock function with given fields: obj
+func (_m *Store) DeleteOne(obj *blob.Object) error {
+	ret := _m.Called(obj)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*blob.Object) error); ok {
+		r0 = rf(obj)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Read provides a mock function with given fields: batch
 func (_m *Store) Read(batch blob.Batch) {
 	_m.Called(batch)
