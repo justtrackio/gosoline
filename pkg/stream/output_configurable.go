@@ -9,11 +9,12 @@ import (
 )
 
 const (
-	OutputTypeFile    = "file"
-	OutputTypeKinesis = "kinesis"
-	OutputTypeRedis   = "redis"
-	OutputTypeSns     = "sns"
-	OutputTypeSqs     = "sqs"
+	OutputTypeFile     = "file"
+	OutputTypeKinesis  = "kinesis"
+	OutputTypeMultiple = "multiple"
+	OutputTypeRedis    = "redis"
+	OutputTypeSns      = "sns"
+	OutputTypeSqs      = "sqs"
 )
 
 func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Output {
@@ -25,6 +26,8 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Ou
 		return newFileOutputFromConfig(config, logger, name)
 	case OutputTypeKinesis:
 		return newKinesisOutputFromConfig(config, logger, name)
+	case OutputTypeMultiple:
+		return newMultipleOutput(config, logger, name)
 	case OutputTypeRedis:
 		return newRedisListOutputFromConfig(config, logger, name)
 	case OutputTypeSns:
@@ -58,6 +61,10 @@ func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name strin
 	return NewKinesisOutput(config, logger, &KinesisOutputSettings{
 		StreamName: settings.StreamName,
 	})
+}
+
+func newMultipleOutput(config cfg.Config, logger mon.Logger, name string) Output {
+	return NewConfigurableMultiOutput(config, logger, name)
 }
 
 type redisListOutputConfiguration struct {
