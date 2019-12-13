@@ -146,6 +146,14 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 	defer func() {
 		p.ticker = time.NewTicker(p.settings.Interval)
 		p.batch = make([]*Message, 0, p.settings.BatchSize)
+
+		err := coffin.ResolveRecovery(recover())
+
+		if err == nil {
+			return
+		}
+
+		p.logger.Error(err, "panic when processing batch")
 	}()
 
 	p.ticker.Stop()
