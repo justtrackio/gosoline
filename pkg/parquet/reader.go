@@ -2,7 +2,6 @@ package parquet
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
@@ -259,8 +258,7 @@ func (r *s3Reader) decode(input interface{}, output interface{}) error {
 		WeaklyTypedInput: true,
 		TagName:          "parquet",
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			r.decodeTimeMillisHook(),      // used to decode firehose timestamps
-			r.decodeTimeMillisHookInt64(), // used to decode manually written timestamps
+			r.decodeTimeMillisHook(), // used to decode firehose parquet time millis (little endian int96)
 		),
 	}
 
@@ -279,57 +277,13 @@ func (r *s3Reader) decode(input interface{}, output interface{}) error {
 	return nil
 }
 
-func (r *s3Reader) decodeTimeMillisHookInt64() interface{} {
-	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
-		if f.Kind() != reflect.Int64 || t != reflect.TypeOf(time.Time{}) {
-			return data, nil
-		}
-
-		// when writing time stamps via parquet.writer the parquet package recommended writing it as int64
-		// unless we figure out how to write the firehose format,
-		// we need this to decode those manually written timestamps
-
-		parquetDate := data.(int64)
-		seconds := parquetDate / 1000
-		tm := time.Unix(seconds, 0)
-
-		return tm, nil
-	}
-}
-
 func (r *s3Reader) decodeTimeMillisHook() interface{} {
 	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
 		if f.Kind() != reflect.String || t != reflect.TypeOf(time.Time{}) {
 			return data, nil
 		}
 
-		// firehose stores timestamp_millis as nano + julian date int96 values
-		// the corresponding go type would be a 12 byte byte array, with
-		// - the first 8 bytes are the nanoseconds within the day
-		// - the following four bytes represent the julian date
-
-		parquetDate := []byte(data.(string))
-
-		nano := binary.LittleEndian.Uint64(parquetDate[:8])
-		dt := binary.LittleEndian.Uint32(parquetDate[8:])
-
-		// julian date to Y-m-d conversion based on https://github.com/carlosjhr64/jd/blob/master/jd.go#L24
-
-		l := dt + 68569
-		n := 4 * l / 146097
-		l = l - (146097*n+3)/4
-		i := 4000 * (l + 1) / 1461001
-		l = l - 1461*i/4 + 31
-		j := 80 * l / 2447
-		k := l - 2447*j/80
-		l = j / 11
-		j = j + 2 - 12*l
-		i = 100*(n-49) + i + l
-
-		tm := time.Date(int(i), time.Month(j), int(k), 0, 0, 0, 0, time.UTC)
-		tm = tm.Add(time.Duration(nano))
-
-		return tm, nil
+		return parseInt96Timestamp(data.(string)), nil
 	}
 }
 
