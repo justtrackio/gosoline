@@ -1,0 +1,19 @@
+api_auth_keys:
+  - changeMe
+api_auth_basic_users:
+  - admin:password
+api_port: 8088
+api_mode: debug
+api_timeout_read: 5
+api_timeout_write: 5
+api_timeout_idle: 5
+
+app_project: project
+app_family: family
+app_name: name
+
+env: dev
+
+tracing_addr_type: ''
+tracing_addr_value: ''
+tracing_enabled: false
