@@ -53,6 +53,23 @@ func getConfig(retries int, timeout int) *cfgMocks.Config {
 	return config
 }
 
+func TestClient_Delete(t *testing.T) {
+	config := getConfig(1, 1)
+	logger := monMocks.NewLoggerMockedAll()
+
+	runTestServer(t, "DELETE", 200, 0, func(host string) {
+		client := http.NewHttpClient(config, logger)
+		request := client.NewRequest().
+			WithUrl(fmt.Sprintf("http://%s", host))
+		response, err := client.Delete(context.TODO(), request)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 200, response.StatusCode)
+	})
+
+	config.AssertExpectations(t)
+}
+
 func TestClient_Get(t *testing.T) {
 	config := getConfig(1, 1)
 	logger := monMocks.NewLoggerMockedAll()

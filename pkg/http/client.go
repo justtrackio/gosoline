@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	DeleteRequest         = "DELETE"
 	GetRequest            = "GET"
 	PostRequest           = "POST"
 	metricRequest         = "HttpClientRequest"
@@ -22,6 +23,7 @@ const (
 
 //go:generate mockery -name Client
 type Client interface {
+	Delete(ctx context.Context, request *Request) (*Response, error)
 	Get(ctx context.Context, request *Request) (*Response, error)
 	Post(ctx context.Context, request *Request) (*Response, error)
 	SetTimeout(timeout time.Duration)
@@ -99,6 +101,10 @@ func (c *client) SetTimeout(timeout time.Duration) {
 
 func (c *client) SetUserAgent(ua string) {
 	c.defaultHeaders[HdrUserAgent] = ua
+}
+
+func (c *client) Delete(ctx context.Context, request *Request) (*Response, error) {
+	return c.do(ctx, DeleteRequest, request)
 }
 
 func (c *client) Get(ctx context.Context, request *Request) (*Response, error) {
