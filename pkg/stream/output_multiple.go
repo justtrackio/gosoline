@@ -7,15 +7,10 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-type MultipleOutputConfiguration struct {
-	Outputs []string `cfg:"outputs"`
-}
-
 type multiOutput struct {
 	Outputs []Output
 }
 
-// TODO: @j4k4: should we keep the unused constructor args because we want to be "interface compatible" (though we don't have one here)?
 func NewConfigurableMultiOutput(_ cfg.Config, _ mon.Logger, outputs []Output) Output {
 	return &multiOutput{
 		Outputs: outputs,

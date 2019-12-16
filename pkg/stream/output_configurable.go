@@ -62,6 +62,11 @@ func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name strin
 		StreamName: settings.StreamName,
 	})
 }
+
+type MultipleOutputConfiguration struct {
+	Outputs []string `cfg:"outputs"`
+}
+
 func newMultipleOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
 	key := getConfigurableOutputKey(name)
 	multipleOutputConfigurations := &MultipleOutputConfiguration{}
