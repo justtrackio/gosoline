@@ -13,9 +13,11 @@ module "main" {
   visibilityTimeout       = var.visibilityTimeout
   messageRetentionSeconds = var.messageRetentionSeconds
 
-  alarm_create    = var.alarm_main_create
-  alarm_period    = var.alarm_main_period
-  alarm_threshold = var.alarm_main_threshold
+  alarm_create        = var.alarm_main_create
+  alarm_period        = var.alarm_main_period
+  alarm_threshold     = var.alarm_main_threshold
+  evaluation_periods  = var.alarm_main_evaluation_periods
+  datapoints_to_alarm = var.alarm_main_datapoints_to_alarm
 }
 
 module "dead" {
@@ -29,7 +31,9 @@ module "dead" {
 
   messageRetentionSeconds = var.messageRetentionSeconds
 
-  alarm_create    = var.alarm_dead_create
-  alarm_period    = var.alarm_dead_period
-  alarm_threshold = var.alarm_dead_threshold
+  alarm_create        = var.alarm_dead_create
+  alarm_period        = var.alarm_dead_period
+  alarm_threshold     = var.alarm_dead_threshold
+  evaluation_periods  = var.alarm_dead_evaluation_periods
+  datapoints_to_alarm = var.alarm_dead_datapoints_to_alarm
 }

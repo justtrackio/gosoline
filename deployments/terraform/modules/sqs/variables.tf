@@ -32,6 +32,14 @@ variable "alarm_main_threshold" {
   default = 200
 }
 
+variable "alarm_main_evaluation_periods" {
+  default = 1
+}
+
+variable "alarm_main_datapoints_to_alarm" {
+  default = 1
+}
+
 variable "alarm_dead_create" {
   default = 1
 }
@@ -42,4 +50,12 @@ variable "alarm_dead_period" {
 
 variable "alarm_dead_threshold" {
   default = 200
+}
+
+variable "alarm_dead_evaluation_periods" {
+  default = 1
+}
+
+variable "alarm_dead_datapoints_to_alarm" {
+  default = 1
 }

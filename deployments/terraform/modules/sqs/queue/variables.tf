@@ -35,3 +35,11 @@ variable "alarm_period" {
 variable "alarm_threshold" {
   default = 200
 }
+
+variable "evaluation_periods" {
+  default = 1
+}
+
+variable "datapoints_to_alarm" {
+  default = 1
+}
