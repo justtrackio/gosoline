@@ -26,12 +26,12 @@ resource "aws_cloudwatch_metric_alarm" "number-of-visible-messages" {
   metric_name = "ApproximateNumberOfMessagesVisible"
 
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = "1"
+  evaluation_periods  = var.evaluation_periods
   period              = var.alarm_period
   statistic           = "Maximum"
   threshold           = var.alarm_threshold
   treat_missing_data  = "notBreaching"
-  datapoints_to_alarm = "1"
+  datapoints_to_alarm = var.datapoints_to_alarm
 
   dimensions = {
     QueueName = aws_sqs_queue.main.name
