@@ -1,6 +1,7 @@
 package cloud_test
 
 import (
+	"github.com/applike/gosoline/pkg/cfg"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/cloud"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
@@ -14,7 +15,10 @@ import (
 
 func TestGetStreamClientWithDefault(t *testing.T) {
 	config := new(cfgMocks.Config)
-	config.On("GetString", "env").Return("dev")
+	config.On("GetString", "env").Return("environment")
+	config.On("GetString", "app_project").Return("project")
+	config.On("GetString", "app_family").Return("family")
+	config.On("GetString", "app_name").Return("name")
 	config.On("GetString", "aws_dynamoDb_endpoint").Return("127.0.0.1")
 	config.On("GetString", "aws_kinesis_endpoint").Return("127.0.0.1")
 	config.On("GetInt", "aws_sdk_retries").Return(0)
@@ -29,7 +33,7 @@ func TestStreamClient_GetActiveShardCount(t *testing.T) {
 	logger := monMocks.NewLoggerMockedAll()
 	dyn := new(cloudMocks.DynamoDBAPI)
 	dyn.On("GetItem", &dynamodb.GetItemInput{
-		TableName: aws.String("mcoins-dev-analytics-test-event_metadata"),
+		TableName: aws.String("project-environment-family-application2-event_metadata"),
 		Key: map[string]*dynamodb.AttributeValue{
 			"Key": {
 				S: aws.String("ShardCache"),
@@ -47,8 +51,15 @@ func TestStreamClient_GetActiveShardCount(t *testing.T) {
 	}, nil)
 	kin := new(cloudMocks.KinesisAPI)
 
-	sc := cloud.GetStreamClientWithInterfaces(logger, dyn, kin, "dev")
-	count := sc.GetActiveShardCount("test", "event")
+	appId := &cfg.AppId{
+		Project:     "project",
+		Environment: "environment",
+		Family:      "family",
+		Application: "application",
+	}
+
+	sc := cloud.GetStreamClientWithInterfaces(logger, appId, dyn, kin, "environment")
+	count := sc.GetActiveShardCount("application2", "event")
 
 	assert.Equal(t, 2, count)
 }
@@ -64,7 +75,9 @@ func TestStreamClient_SetShardCount(t *testing.T) {
 		TargetShardCount: aws.Int64(2),
 	}).Return(&kinesis.UpdateShardCountOutput{}, nil)
 
-	sc := cloud.GetStreamClientWithInterfaces(logger, dyn, kin, "dev")
+	appId := &cfg.AppId{}
+
+	sc := cloud.GetStreamClientWithInterfaces(logger, appId, dyn, kin, "environment")
 
 	input := &cloud.ScaleStreamInput{
 		Streams: []string{
