@@ -27,14 +27,39 @@ func (_m *ServiceClient) ForceNewDeployment(filter *cloud.FilterServicesInput) e
 }
 
 // GetListingFromArn provides a mock function with given fields: arn
-func (_m *ServiceClient) GetListingFromArn(arn *string) cloud.ServiceListing {
+func (_m *ServiceClient) GetListingFromArn(arn *string) (*cloud.ServiceListing, error) {
 	ret := _m.Called(arn)
 
-	var r0 cloud.ServiceListing
-	if rf, ok := ret.Get(0).(func(*string) cloud.ServiceListing); ok {
+	var r0 *cloud.ServiceListing
+	if rf, ok := ret.Get(0).(func(*string) *cloud.ServiceListing); ok {
 		r0 = rf(arn)
 	} else {
-		r0 = ret.Get(0).(cloud.ServiceListing)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cloud.ServiceListing)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*string) error); ok {
+		r1 = rf(arn)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetListingFromService provides a mock function with given fields: svc
+func (_m *ServiceClient) GetListingFromService(svc *ecs.Service) *cloud.ServiceListing {
+	ret := _m.Called(svc)
+
+	var r0 *cloud.ServiceListing
+	if rf, ok := ret.Get(0).(func(*ecs.Service) *cloud.ServiceListing); ok {
+		r0 = rf(svc)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cloud.ServiceListing)
+		}
 	}
 
 	return r0
