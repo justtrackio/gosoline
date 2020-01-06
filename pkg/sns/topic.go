@@ -72,6 +72,14 @@ func (t *snsTopic) Publish(ctx context.Context, msg *string) error {
 		return t.client.PublishRequest(input)
 	})
 
+	if cloud.IsRequestCanceled(err) {
+		t.logger.WithFields(mon.Fields{
+			"arn": t.settings.Arn,
+		}).Info("request was canceled while publishing to topic")
+
+		return err
+	}
+
 	if err != nil {
 		t.logger.WithFields(mon.Fields{
 			"arn": t.settings.Arn,

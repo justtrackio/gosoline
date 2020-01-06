@@ -3,6 +3,7 @@ package db_repo
 import (
 	"context"
 	"encoding/json"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
@@ -48,6 +49,12 @@ func (n baseNotifier) Send(ctx context.Context, notificationType string, value M
 	msg.Body = string(body)
 
 	err = n.output.WriteOne(ctx, msg)
+
+	if cloud.IsRequestCanceled(err) {
+		logger.Infof("request canceled while executing notification on %s for model %s with id %d", notificationType, modelId, *value.GetId())
+		n.writeMetric(err)
+		return err
+	}
 
 	if err != nil {
 		logger.Errorf(err, "error executing notification on %s for model %s with id %d", notificationType, modelId, *value.GetId())
