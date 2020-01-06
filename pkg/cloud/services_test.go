@@ -1,10 +1,12 @@
 package cloud_test
 
 import (
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/cloud"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
+	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,17 +17,23 @@ func TestGetServiceClient(t *testing.T) {
 	assert.NotPanics(t, func() {
 		loggerMock := monMocks.NewLoggerMockedAll()
 		clientMock := new(cloudMocks.ECSAPI)
+		appId := &cfg.AppId{}
 
-		serviceClient := cloud.GetServiceClient(clientMock, loggerMock, "sandbox")
+		serviceClient := cloud.GetServiceClient(loggerMock, clientMock, appId)
 		assert.NotNil(t, serviceClient)
 	})
 }
 
 func TestGetServiceClientWithDefaultClient(t *testing.T) {
 	assert.NotPanics(t, func() {
+		config := new(mocks.Config)
+		config.On("GetString", "app_project").Return("")
+		config.On("GetString", "env").Return("")
+		config.On("GetString", "app_family").Return("")
+		config.On("GetString", "app_name").Return("")
 		loggerMock := monMocks.NewLoggerMockedAll()
 
-		serviceClient := cloud.GetServiceClientWithDefaultClient(loggerMock, "sandbox")
+		serviceClient := cloud.GetServiceClientWithDefaultClient(config, loggerMock)
 		assert.NotNil(t, serviceClient)
 	})
 }
@@ -34,11 +42,11 @@ func TestServiceClient_Stop(t *testing.T) {
 	loggerMock := monMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
 
-	serviceArn := "arn:aws:iam::12345678:role/mcoins-test-ec2"
+	serviceArn := "arn:aws:ecs:eu-central-1:123456789012:service/test-cluster/test-service"
 
 	clientMock.On("ListServices", mock.AnythingOfType("*ecs.ListServicesInput")).Return(
 		&ecs.ListServicesOutput{
-			ServiceArns: []*string{aws.String(serviceArn)},
+			ServiceArns: []*string{mdl.String(serviceArn)},
 		},
 		nil,
 	)
@@ -46,16 +54,30 @@ func TestServiceClient_Stop(t *testing.T) {
 	clientMock.On("DescribeServices", mock.AnythingOfType("*ecs.DescribeServicesInput")).Return(
 		&ecs.DescribeServicesOutput{
 			Services: []*ecs.Service{{
-				ServiceArn: aws.String(serviceArn),
+				ServiceArn:  mdl.String(serviceArn),
+				ServiceName: mdl.String("test-service"),
+				Tags: []*ecs.Tag{
+					{
+						Key:   mdl.String("foo"),
+						Value: mdl.String("bar"),
+					},
+				},
 			}},
 		},
 		nil,
-	).Twice()
+	)
 
 	clientMock.On("UpdateService", mock.AnythingOfType("*ecs.UpdateServiceInput")).Return(
 		&ecs.UpdateServiceOutput{
 			Service: &ecs.Service{
-				ServiceArn: &serviceArn,
+				ServiceArn:  &serviceArn,
+				ServiceName: mdl.String("test-service"),
+				Tags: []*ecs.Tag{
+					{
+						Key:   mdl.String("foo"),
+						Value: mdl.String("bar"),
+					},
+				},
 			},
 		},
 		nil,
@@ -64,12 +86,15 @@ func TestServiceClient_Stop(t *testing.T) {
 	clientMock.On("WaitUntilServicesStable", mock.Anything).Return(nil).Once()
 
 	filter := &cloud.FilterServicesInput{
-		Applications: []string{"mcoins"},
-		EventType:    []string{"test-ec2"},
+		Tags: map[string][]string{
+			"foo": {"bar"},
+		},
 	}
 
 	assert.NotPanics(t, func() {
-		serviceClient := cloud.GetServiceClient(clientMock, loggerMock, "sandbox")
+		appId := &cfg.AppId{}
+
+		serviceClient := cloud.GetServiceClient(loggerMock, clientMock, appId)
 		services, err := serviceClient.Stop(filter)
 
 		assert.NoError(t, err)
@@ -81,15 +106,16 @@ func TestServiceClient_Stop(t *testing.T) {
 func TestServiceClient_ScaleServices(t *testing.T) {
 	loggerMock := monMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
+	appId := &cfg.AppId{}
 
-	serviceClient := cloud.GetServiceClient(clientMock, loggerMock, "sandbox")
+	serviceClient := cloud.GetServiceClient(loggerMock, clientMock, appId)
 
-	serviceArn := "arn:aws:iam::12345678:role/mcoins-test-ec2"
+	serviceArn := "arn:aws:ecs:eu-central-1:123456789012:service/test-cluster/test-service"
 	count := 3
 
 	clientMock.On("ListServices", mock.AnythingOfType("*ecs.ListServicesInput")).Return(
 		&ecs.ListServicesOutput{
-			ServiceArns: []*string{aws.String(serviceArn)},
+			ServiceArns: []*string{mdl.String(serviceArn)},
 		},
 		nil,
 	)
@@ -98,7 +124,8 @@ func TestServiceClient_ScaleServices(t *testing.T) {
 		&ecs.DescribeServicesOutput{
 			Failures: nil,
 			Services: []*ecs.Service{{
-				ServiceArn: aws.String(serviceArn),
+				ServiceArn:  mdl.String(serviceArn),
+				ServiceName: mdl.String("test-service"),
 			}},
 		},
 		nil,
@@ -112,8 +139,9 @@ func TestServiceClient_ScaleServices(t *testing.T) {
 	).Once()
 
 	filter := &cloud.FilterServicesInput{
-		Applications: []string{"mcoins"},
-		EventType:    []string{"test-ec2"},
+		Tags: map[string][]string{
+			"foo": {"bar"},
+		},
 	}
 
 	assert.NotPanics(t, func() {
@@ -124,12 +152,13 @@ func TestServiceClient_ScaleServices(t *testing.T) {
 func TestServiceClient_ForceNewDeployment(t *testing.T) {
 	loggerMock := monMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
+	appId := &cfg.AppId{}
 
-	serviceArn := "arn:aws:iam::12345678:role/mcoins-test-ec2"
+	serviceArn := "arn:aws:ecs:eu-central-1:123456789012:service/test-cluster/test-service"
 
 	clientMock.On("ListServices", mock.AnythingOfType("*ecs.ListServicesInput")).Return(
 		&ecs.ListServicesOutput{
-			ServiceArns: []*string{aws.String(serviceArn)},
+			ServiceArns: []*string{mdl.String(serviceArn)},
 		},
 		nil,
 	)
@@ -138,7 +167,8 @@ func TestServiceClient_ForceNewDeployment(t *testing.T) {
 		&ecs.DescribeServicesOutput{
 			Failures: nil,
 			Services: []*ecs.Service{{
-				ServiceArn: aws.String(serviceArn),
+				ServiceArn:  mdl.String(serviceArn),
+				ServiceName: mdl.String("test-service"),
 			}},
 		},
 		nil,
@@ -147,19 +177,20 @@ func TestServiceClient_ForceNewDeployment(t *testing.T) {
 	clientMock.On("UpdateService", mock.AnythingOfType("*ecs.UpdateServiceInput")).Return(
 		&ecs.UpdateServiceOutput{
 			Service: &ecs.Service{
-				ServiceArn: aws.String(serviceArn),
+				ServiceArn: mdl.String(serviceArn),
 			},
 		},
 		nil,
 	).Once()
 
 	filter := &cloud.FilterServicesInput{
-		Applications: []string{"mcoins"},
-		EventType:    []string{"test-ec2"},
+		Tags: map[string][]string{
+			"foo": {"bar"},
+		},
 	}
 
 	assert.NotPanics(t, func() {
-		serviceClient := cloud.GetServiceClient(clientMock, loggerMock, "sandbox")
+		serviceClient := cloud.GetServiceClient(loggerMock, clientMock, appId)
 		err := serviceClient.ForceNewDeployment(filter)
 
 		assert.NoError(t, err)
@@ -170,13 +201,15 @@ func TestServiceClient_GetServices(t *testing.T) {
 	loggerMock := monMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
 
-	serviceClient := cloud.GetServiceClient(clientMock, loggerMock, "sandbox")
+	appId := &cfg.AppId{}
 
-	serviceArn := "arn:aws:iam::12345678:role/mcoins-test-ec2"
+	serviceClient := cloud.GetServiceClient(loggerMock, clientMock, appId)
+
+	serviceArn := "arn:aws:ecs:eu-central-1:123456789012:service/test-cluster/test-service"
 	clientMock.On("ListServices", mock.AnythingOfType("*ecs.ListServicesInput")).Return(
 		&ecs.ListServicesOutput{
 			ServiceArns: []*string{
-				aws.String(serviceArn),
+				mdl.String(serviceArn),
 			},
 		},
 		nil,
@@ -186,15 +219,16 @@ func TestServiceClient_GetServices(t *testing.T) {
 		&ecs.DescribeServicesOutput{
 			Failures: nil,
 			Services: []*ecs.Service{{
-				ServiceArn: aws.String(serviceArn),
+				ServiceArn:  mdl.String(serviceArn),
+				ServiceName: mdl.String("test-service"),
+				Tags:        []*ecs.Tag{},
 			}},
 		},
 		nil,
-	).Once()
+	).Twice()
 
 	filter := &cloud.FilterServicesInput{
-		Applications: []string{"mcoins"},
-		EventType:    []string{"test-ec2"},
+		Tags: map[string][]string{},
 	}
 
 	assert.NotPanics(t, func() {
@@ -210,14 +244,17 @@ func TestServiceClient_WaitUntilServiceIsStable(t *testing.T) {
 	loggerMock := monMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
 
-	serviceClient := cloud.GetServiceClient(clientMock, loggerMock, "sandbox")
+	appId := &cfg.AppId{}
+
+	serviceClient := cloud.GetServiceClient(loggerMock, clientMock, appId)
 
 	filter := &cloud.FilterServicesInput{
-		Applications: []string{"mcoins"},
-		EventType:    []string{"test-ec2"},
+		Tags: map[string][]string{
+			"foo": {"bar"},
+		},
 	}
 
-	myServiceArn := "arn:aws:iam::12345678:role/mcoins-test-ec2"
+	myServiceArn := "arn:aws:ecs:eu-central-1:123456789012:service/test-cluster/test-service"
 
 	myServicesStrings := make([]*string, 1)
 	myServicesStrings[0] = &myServiceArn
@@ -225,6 +262,22 @@ func TestServiceClient_WaitUntilServiceIsStable(t *testing.T) {
 	clientMock.On("ListServices", mock.AnythingOfType("*ecs.ListServicesInput")).Return(
 		&ecs.ListServicesOutput{
 			ServiceArns: myServicesStrings,
+		},
+		nil,
+	)
+
+	clientMock.On("DescribeServices", mock.AnythingOfType("*ecs.DescribeServicesInput")).Return(
+		&ecs.DescribeServicesOutput{
+			Services: []*ecs.Service{{
+				ServiceArn:  mdl.String(myServiceArn),
+				ServiceName: mdl.String("test-service"),
+				Tags: []*ecs.Tag{
+					{
+						Key:   mdl.String("foo"),
+						Value: mdl.String("bar"),
+					},
+				},
+			}},
 		},
 		nil,
 	)
@@ -240,18 +293,38 @@ func TestServiceClient_WaitUntilServiceIsStable(t *testing.T) {
 }
 
 func TestServiceClient_GetListingFromArn(t *testing.T) {
-	arn := "arn:aws:iam::12345678:role/mcoins-test-ec2"
+	arn := "arn:aws:ecs:eu-central-1:123456789012:service/test-cluster/test-service"
 
 	loggerMock := monMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
+	clientMock.On("DescribeServices", &ecs.DescribeServicesInput{
+		Cluster: mdl.String("my-test-cluster"),
+		Services: []*string{
+			mdl.String(arn),
+		},
+		Include: []*string{mdl.String(ecs.ServiceFieldTags)},
+	}).Return(&ecs.DescribeServicesOutput{
+		Services: []*ecs.Service{
+			{
+				ServiceArn:  mdl.String(arn),
+				ServiceName: mdl.String("test-service"),
+				Tags:        []*ecs.Tag{},
+			},
+		},
+	}, nil)
+
+	appId := &cfg.AppId{
+		Project:     "my",
+		Environment: "test",
+		Family:      "cluster",
+	}
 
 	assert.NotPanics(t, func() {
-		serviceClient := cloud.GetServiceClient(clientMock, loggerMock, "sandbox")
-		serviceListing := serviceClient.GetListingFromArn(aws.String(arn))
+		serviceClient := cloud.GetServiceClient(loggerMock, clientMock, appId)
+		serviceListing, err := serviceClient.GetListingFromArn(mdl.String(arn))
 
 		assert.Equal(t, arn, serviceListing.Arn)
-		assert.Equal(t, "mcoins-test-ec2", serviceListing.Name)
-		assert.Equal(t, "mcoins", serviceListing.Application)
-		assert.Equal(t, "test-ec2", serviceListing.EventType)
+		assert.Equal(t, "test-service", serviceListing.Name)
+		assert.NoError(t, err)
 	})
 }

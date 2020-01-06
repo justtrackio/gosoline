@@ -1,14 +1,15 @@
 package cloud
 
 import (
+	"errors"
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/ecs/ecsiface"
 	"github.com/thoas/go-funk"
-	"regexp"
-	"strings"
 )
 
 //go:generate mockery -name ServiceClient
@@ -21,34 +22,42 @@ type ServiceClient interface {
 	GetServices(filter *FilterServicesInput) ([]*ecs.Service, error)
 	WaitUntilServiceIsStable(filter *FilterServicesInput)
 	GetServiceList(filter *FilterServicesInput) []ServiceListing
-	GetListingFromArn(arn *string) ServiceListing
+	GetListingFromArn(arn *string) (*ServiceListing, error)
+	GetListingFromService(svc *ecs.Service) *ServiceListing
 }
 
 type AwsServiceClient struct {
-	client      ecsiface.ECSAPI
 	logger      mon.Logger
+	client      ecsiface.ECSAPI
 	clusterName string
 }
 
 type ServiceListing struct {
-	Arn         string
-	Name        string
-	Application string
-	EventType   string
+	Arn  string
+	Name string
+	Tags map[string]string
 }
 
-func GetServiceClient(client ecsiface.ECSAPI, logger mon.Logger, environment string) ServiceClient {
+func GetServiceClient(logger mon.Logger, client ecsiface.ECSAPI, appId *cfg.AppId) ServiceClient {
+	clusterName := fmt.Sprintf("%s-%s-%s", appId.Project, appId.Environment, appId.Family)
+	logger = logger.WithFields(mon.Fields{
+		"clusterName": clusterName,
+	})
+
 	return &AwsServiceClient{
-		client:      client,
 		logger:      logger,
-		clusterName: fmt.Sprintf("mcoins-%v-analytics", environment),
+		client:      client,
+		clusterName: clusterName,
 	}
 }
 
-func GetServiceClientWithDefaultClient(logger mon.Logger, environment string) ServiceClient {
+func GetServiceClientWithDefaultClient(config cfg.Config, logger mon.Logger) ServiceClient {
 	client := GetEcsClient(logger)
 
-	return GetServiceClient(client, logger, environment)
+	appId := &cfg.AppId{}
+	appId.PadFromConfig(config)
+
+	return GetServiceClient(logger, client, appId)
 }
 
 func (c *AwsServiceClient) SetClient(client ecsiface.ECSAPI) {
@@ -56,8 +65,7 @@ func (c *AwsServiceClient) SetClient(client ecsiface.ECSAPI) {
 }
 
 type FilterServicesInput struct {
-	Applications []string
-	EventType    []string
+	Tags map[string][]string
 }
 
 type ScaleServicesInput struct {
@@ -66,15 +74,6 @@ type ScaleServicesInput struct {
 }
 
 func (c *AwsServiceClient) Start(filter *FilterServicesInput, count int) ([]*ecs.Service, error) {
-	services := c.GetServiceList(filter)
-
-	for _, srv := range services {
-		c.logger.WithFields(mon.Fields{
-			"application": srv.Application,
-			"eventType":   srv.EventType,
-		}).Info("stopping service")
-	}
-
 	c.ScaleServices(filter, count)
 	c.WaitUntilServiceIsStable(filter)
 
@@ -82,15 +81,6 @@ func (c *AwsServiceClient) Start(filter *FilterServicesInput, count int) ([]*ecs
 }
 
 func (c *AwsServiceClient) Stop(filter *FilterServicesInput) ([]*ecs.Service, error) {
-	services := c.GetServiceList(filter)
-
-	for _, srv := range services {
-		c.logger.WithFields(mon.Fields{
-			"application": srv.Application,
-			"eventType":   srv.EventType,
-		}).Info("stopping service")
-	}
-
 	c.ScaleServices(filter, 0)
 	c.WaitUntilServiceIsStable(filter)
 
@@ -98,6 +88,7 @@ func (c *AwsServiceClient) Stop(filter *FilterServicesInput) ([]*ecs.Service, er
 }
 
 func (c *AwsServiceClient) ScaleServices(filter *FilterServicesInput, count int) {
+	logger := c.logger.WithFields(c.getLoggerFields(filter))
 	services, err := c.GetServices(filter)
 
 	if err != nil {
@@ -105,7 +96,6 @@ func (c *AwsServiceClient) ScaleServices(filter *FilterServicesInput, count int)
 	}
 
 	for _, srv := range services {
-		info := c.GetListingFromArn(srv.ServiceArn)
 		input := ecs.UpdateServiceInput{
 			Cluster:      srv.ClusterArn,
 			Service:      srv.ServiceName,
@@ -115,22 +105,19 @@ func (c *AwsServiceClient) ScaleServices(filter *FilterServicesInput, count int)
 		_, err := c.client.UpdateService(&input)
 
 		if err != nil {
-			c.logger.WithFields(mon.Fields{
-				"application": info.Application,
-				"eventType":   info.EventType,
-			}).Error(err, "could not scale service")
+			logger.Error(err, "could not scale service")
 
 			continue
 		}
 
-		c.logger.WithFields(mon.Fields{
-			"application": info.Application,
-			"eventType":   info.EventType,
+		logger.WithFields(mon.Fields{
+			"desired_count": count,
 		}).Info("scaling service")
 	}
 }
 
 func (c *AwsServiceClient) ForceNewDeployment(filter *FilterServicesInput) error {
+	logger := c.logger.WithFields(c.getLoggerFields(filter))
 	services, err := c.GetServices(filter)
 
 	if err != nil {
@@ -138,7 +125,6 @@ func (c *AwsServiceClient) ForceNewDeployment(filter *FilterServicesInput) error
 	}
 
 	for _, srv := range services {
-		info := c.GetListingFromArn(srv.ServiceArn)
 		input := ecs.UpdateServiceInput{
 			Cluster:            srv.ClusterArn,
 			Service:            srv.ServiceName,
@@ -148,18 +134,12 @@ func (c *AwsServiceClient) ForceNewDeployment(filter *FilterServicesInput) error
 		_, err := c.client.UpdateService(&input)
 
 		if err != nil {
-			c.logger.WithFields(mon.Fields{
-				"application": info.Application,
-				"eventType":   info.EventType,
-			}).Error(err, "could not force deploy the service")
+			logger.Error(err, "could not force deploy the service")
 
 			return err
 		}
 
-		c.logger.WithFields(mon.Fields{
-			"application": info.Application,
-			"eventType":   info.EventType,
-		}).Info("force deploying the service")
+		logger.Info("force deploying the service")
 	}
 
 	return nil
@@ -183,6 +163,7 @@ func (c *AwsServiceClient) GetServices(filter *FilterServicesInput) ([]*ecs.Serv
 
 		input := ecs.DescribeServicesInput{
 			Cluster:  aws.String(c.clusterName),
+			Include:  []*string{mdl.String(ecs.ServiceFieldTags)},
 			Services: arns,
 		}
 
@@ -201,10 +182,8 @@ func (c *AwsServiceClient) GetServices(filter *FilterServicesInput) ([]*ecs.Serv
 }
 
 func (c *AwsServiceClient) WaitUntilServiceIsStable(filter *FilterServicesInput) {
-	c.logger.WithFields(mon.Fields{
-		"application": strings.Join(filter.Applications, ","),
-		"eventType":   filter.EventType,
-	}).Info("waiting for service getting stable")
+	logger := c.logger.WithFields(c.getLoggerFields(filter))
+	logger.Info("waiting for service getting stable")
 
 	list := c.GetServiceList(filter)
 
@@ -228,15 +207,12 @@ func (c *AwsServiceClient) WaitUntilServiceIsStable(filter *FilterServicesInput)
 		err := c.client.WaitUntilServicesStable(&input)
 
 		if err != nil {
-			c.logger.Error(err, "could not wait until services are stable")
+			logger.Error(err, "could not wait until services are stable")
 			return
 		}
 	}
 
-	c.logger.WithFields(mon.Fields{
-		"application": strings.Join(filter.Applications, ","),
-		"eventType":   filter.EventType,
-	}).Info("services are stable")
+	logger.Info("services are stable")
 }
 
 func (c *AwsServiceClient) GetServiceList(filter *FilterServicesInput) []ServiceListing {
@@ -251,18 +227,26 @@ func (c *AwsServiceClient) GetServiceList(filter *FilterServicesInput) []Service
 
 		if err != nil {
 			c.logger.Error(err, "could not get the list of services")
+
 			break
 		}
 
 		for _, srv := range out.ServiceArns {
-			listing := c.GetListingFromArn(srv)
+			listing, err := c.GetListingFromArn(srv)
 
-			isApplication := len(filter.Applications) == 0 || funk.ContainsString(filter.Applications, listing.Application)
-			isEventType := len(filter.EventType) == 0 || funk.ContainsString(filter.EventType, listing.EventType)
+			if err != nil {
+				c.logger.Error(err, "failed to get listing for arn")
 
-			if isApplication && isEventType {
-				services = append(services, listing)
+				return nil
 			}
+
+			hasAllTags := c.hasTags(listing, filter.Tags)
+
+			if !hasAllTags {
+				continue
+			}
+
+			services = append(services, *listing)
 		}
 
 		if out.NextToken == nil {
@@ -275,21 +259,83 @@ func (c *AwsServiceClient) GetServiceList(filter *FilterServicesInput) []Service
 	return services
 }
 
-func (c *AwsServiceClient) GetListingFromArn(arn *string) ServiceListing {
-	r, err := regexp.Compile("([^\\/]*)\\/([^-]*)(-.*)?")
+func (c *AwsServiceClient) GetListingFromArn(arn *string) (*ServiceListing, error) {
+	svc, err := c.client.DescribeServices(&ecs.DescribeServicesInput{
+		Cluster: &c.clusterName,
+		Include: []*string{
+			mdl.String(ecs.ServiceFieldTags),
+		},
+		Services: []*string{
+			arn,
+		},
+	})
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	matches := r.FindStringSubmatch(*arn)
+	if len(svc.Services) > 1 {
+		return nil, errors.New("there is more than one service with the specified arn")
+	}
 
-	listing := ServiceListing{
-		Arn:         matches[0],
-		Name:        matches[2] + matches[3],
-		Application: matches[2],
-		EventType:   strings.TrimPrefix(matches[3], "-"),
+	if len(svc.Services) == 0 {
+		return nil, errors.New("there is no service with the specified arn")
+	}
+
+	return c.GetListingFromService(svc.Services[0]), nil
+}
+
+func (c *AwsServiceClient) GetListingFromService(svc *ecs.Service) *ServiceListing {
+	tags := map[string]string{}
+	funk.ForEach(svc.Tags, func(tag *ecs.Tag) {
+		tags[*tag.Key] = *tag.Value
+	})
+
+	listing := &ServiceListing{
+		Arn:  *svc.ServiceArn,
+		Name: *svc.ServiceName,
+		Tags: tags,
 	}
 
 	return listing
+}
+
+func (c *AwsServiceClient) getLoggerFields(filter *FilterServicesInput) mon.Fields {
+	fields := mon.Fields{}
+
+	for key, value := range filter.Tags {
+		fields[key] = value
+	}
+
+	return fields
+}
+
+func (c *AwsServiceClient) hasTags(listing *ServiceListing, tags map[string][]string) bool {
+	if listing == nil {
+		return false
+	}
+
+	for key, value := range tags {
+		v, ok := listing.Tags[key]
+
+		if !ok {
+			return false
+		}
+
+		foundValue := false
+
+		for _, subValue := range value {
+			if subValue == v {
+				foundValue = true
+
+				break
+			}
+		}
+
+		if !foundValue {
+			return false
+		}
+	}
+
+	return true
 }

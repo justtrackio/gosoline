@@ -27,6 +27,7 @@ type StreamClient interface {
 
 type AwsStreamClient struct {
 	logger         mon.Logger
+	appId          *cfg.AppId
 	environment    string
 	dynamoDbClient dynamodbiface.DynamoDBAPI
 	kinesisClient  kinesisiface.KinesisAPI
@@ -45,23 +46,27 @@ type ScaleStreamInput struct {
 func GetStreamClientWithDefault(config cfg.Config, logger mon.Logger) StreamClient {
 	env := config.GetString("env")
 
+	appId := &cfg.AppId{}
+	appId.PadFromConfig(config)
+
 	dyn := GetDynamoDbClient(config, logger)
 	kin := GetKinesisClient(config, logger)
 
-	return GetStreamClientWithInterfaces(logger, dyn, kin, env)
+	return GetStreamClientWithInterfaces(logger, appId, dyn, kin, env)
 }
 
-func GetStreamClientWithInterfaces(logger mon.Logger, dyn dynamodbiface.DynamoDBAPI, kin kinesisiface.KinesisAPI, env string) StreamClient {
+func GetStreamClientWithInterfaces(logger mon.Logger, appId *cfg.AppId, dyn dynamodbiface.DynamoDBAPI, kin kinesisiface.KinesisAPI, env string) StreamClient {
 	return &AwsStreamClient{
 		logger:         logger,
+		appId:          appId,
 		environment:    env,
 		dynamoDbClient: dyn,
 		kinesisClient:  kin,
 	}
 }
 
-func (sc *AwsStreamClient) GetActiveShardCount(application string, eventType string) int {
-	tableName := fmt.Sprintf("mcoins-%v-analytics-%v-%v_metadata", sc.environment, application, eventType)
+func (sc *AwsStreamClient) GetActiveShardCount(application, eventType string) int {
+	tableName := fmt.Sprintf("%s-%s-%s-%s-%s_metadata", sc.appId.Project, sc.appId.Environment, sc.appId.Family, application, eventType)
 
 	out, err := sc.dynamoDbClient.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(tableName),
