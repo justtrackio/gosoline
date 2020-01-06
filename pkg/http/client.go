@@ -2,10 +2,10 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 	netUrl "net/url"
 	"time"
@@ -124,7 +124,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 
 	if err != nil {
 		logger.Error(err, "failed to assemble request")
-		return nil, errors.Wrap(err, "failed to assemble request")
+		return nil, fmt.Errorf("failed to assemble request: %w", err)
 	}
 
 	req.SetContext(ctx)
@@ -133,26 +133,20 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	c.writeMetric(metricRequest, method, mon.UnitCount, 1.0)
 	resp, err := req.Execute(method, url)
 
-	// Unwrap the error so our callers can simply check if the request was canceled and
-	// react accordingly. The caller can not check for this upfront as the request could
-	// be canceled while we wait for an answer of the server, causing this error to get
-	// thrown.
-	err, canceled := isContextCanceled(ctx, err)
+	if errors.Is(err, context.Canceled) {
+		return nil, err
+	}
+
+	// Only log an error if the error was not caused by a canceled context
+	// Otherwise a user might spam our error logs by just canceling a lot of requests
+	// (or many users spam us because sometimes they cancel requests)
+	if err != nil {
+		c.writeMetric(metricError, method, mon.UnitCount, 1.0)
+		return nil, fmt.Errorf("failed to perform %s request to %s: %w", request.resty.Method, request.url.String(), err)
+	}
 
 	metricName := fmt.Sprintf("%s%dXX", metricResponseCode, resp.StatusCode()/100)
 	c.writeMetric(metricName, method, mon.UnitCount, 1.0)
-
-	if err != nil {
-		if !canceled {
-			// Only log an error if the error was not caused by a canceled context
-			// Otherwise a user might spam our error logs by just canceling a lot of requests
-			// (or many users spam us because sometimes they cancel requests)
-			c.writeMetric(metricError, method, mon.UnitCount, 1.0)
-			return nil, errors.Wrapf(err, "failed to perform %s request to %s", request.resty.Method, request.url.String())
-		}
-
-		return nil, err
-	}
 
 	response := &Response{
 		Body:            resp.Body(),
@@ -181,20 +175,4 @@ func (c *client) writeMetric(metricName string, method string, unit string, valu
 		Unit:  unit,
 		Value: value,
 	})
-}
-
-func isContextCanceled(ctx context.Context, err error) (error, bool) {
-	if err == nil {
-		return err, false
-	}
-
-	// TODO: with go 1.13, we could check for errors.Is(err, context.Canceled),
-	// doing all the unwrapping for us. For now we can not really safely and in
-	// a nice way unwrap the error, so lets just check the context - if it is
-	// canceled, we most likely also hit that error and can just pretend we did.
-	if ctx.Err() == context.Canceled {
-		return context.Canceled, true
-	}
-
-	return err, false
 }

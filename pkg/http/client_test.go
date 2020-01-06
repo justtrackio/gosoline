@@ -2,6 +2,7 @@ package http_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/http"
@@ -122,7 +123,7 @@ func TestClient_GetCanceled(t *testing.T) {
 		response, err := client.Get(ctx, request)
 
 		assert.Error(t, err)
-		assert.Equal(t, context.Canceled, err)
+		assert.True(t, errors.Is(err, context.Canceled))
 		assert.Nil(t, response)
 	})
 
