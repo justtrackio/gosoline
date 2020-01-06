@@ -25,6 +25,7 @@ type Output interface {
 
 type Settings struct {
 	Type          string
+	RunnerCount   int
 	SourceModelId mdl.ModelId
 	TargetModelId mdl.ModelId
 }
@@ -104,7 +105,7 @@ func (s *subscriber) Boot(config cfg.Config, logger mon.Logger) error {
 func (s *subscriber) Run(ctx context.Context) error {
 	defer s.logger.Infof("leaving subscriber %s", s.name)
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < s.settings.RunnerCount; i++ {
 		s.cfn.Gof(s.consume, "panic during consuming the subscription")
 	}
 

@@ -14,6 +14,7 @@ import (
 type Subscription struct {
 	Input       string            `cfg:"input"`
 	Output      string            `cfg:"output"`
+	RunnerCount int               `cfg:"runner_count" default:"10" validate:"min=1"`
 	SourceModel SubscriptionModel `cfg:"source"`
 	TargetModel SubscriptionModel `cfg:"target"`
 }
@@ -64,11 +65,12 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 
 		settings := Settings{
 			Type:          s.Output,
+			RunnerCount:   s.RunnerCount,
 			SourceModelId: sourceModelId,
 			TargetModelId: targetModelId,
 		}
 
-		input, err := getInputByType(config, logger, s.Input, sourceModelId)
+		input, err := getInputByType(config, logger, s, sourceModelId)
 		if err != nil {
 			logger.Error(err, "could not build subscribers")
 			return modules, err
@@ -98,13 +100,13 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 	return modules, nil
 }
 
-func getInputByType(config cfg.Config, logger mon.Logger, inType string, mId mdl.ModelId) (stream.Input, error) {
-	switch inType {
+func getInputByType(config cfg.Config, logger mon.Logger, sub Subscription, mId mdl.ModelId) (stream.Input, error) {
+	switch sub.Input {
 	case "sns":
 		inputSettings := stream.SnsInputSettings{
 			QueueId:     mId.Name,
 			WaitTime:    5,
-			RunnerCount: 10,
+			RunnerCount: sub.RunnerCount,
 			Backoff: cloud.BackoffSettings{
 				Enabled:     true,
 				Blocking:    true,
@@ -126,7 +128,7 @@ func getInputByType(config cfg.Config, logger mon.Logger, inType string, mId mdl
 		return stream.NewSnsInput(config, logger, inputSettings, inputTargets), nil
 	}
 
-	return nil, fmt.Errorf("there is no input defined of type %s", inType)
+	return nil, fmt.Errorf("there is no input defined of type %s", sub.Input)
 }
 
 func getOutputByType(outType string) (Output, error) {
