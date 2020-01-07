@@ -44,8 +44,7 @@ var schemaTypeMap = map[reflect.Type]string{
 }
 
 func mapFieldsToTags(value interface{}) (map[string]interface{}, error) {
-	rt := reflect.TypeOf(value)
-	rv := reflect.ValueOf(value)
+	rt, rv := refl.ResolveBaseTypeAndValue(value)
 
 	if rt.Kind() != reflect.Struct {
 		panic(fmt.Sprintf("Cannot map %T to struct tags", value))
@@ -95,7 +94,7 @@ func mapFieldsToTags(value interface{}) (map[string]interface{}, error) {
 }
 
 func parseSchema(items interface{}) (string, error) {
-	baseType := refl.FindBaseType(items)
+	baseType, _ := refl.ResolveBaseTypeAndValue(items)
 
 	rootTag := createTag(tagProps{
 		propName:       "parquet-go-root",

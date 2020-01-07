@@ -13,18 +13,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	parquetS3 "github.com/xitongsys/parquet-go-source/s3"
 	"github.com/xitongsys/parquet-go/writer"
-	"reflect"
 	"time"
 )
 
 type WriterSettings struct {
 	ModelId        mdl.ModelId
-	Interval       time.Duration
 	NamingStrategy string
 }
 
 type Writer interface {
-	Write(ctx context.Context, items interface{}) error
+	Write(ctx context.Context, datetime time.Time, items interface{}) error
 }
 
 type s3Writer struct {
@@ -58,44 +56,7 @@ func NewWriterWithInterfaces(logger mon.Logger, s3Cfg *aws.Config, prefixNaming 
 	}
 }
 
-func (w *s3Writer) Write(ctx context.Context, items interface{}) error {
-	if !refl.IsPointerToSlice(items) {
-		return fmt.Errorf("target needs to be a pointer to a slice, but is %T", items)
-	}
-
-	current := time.Time{}
-	buckets := make(map[time.Time]interface{})
-
-	val := refl.GetTypedValue(items)
-
-	for i := 0; i < val.Len(); i++ {
-		item := val.Index(i).Interface().(TimeStampable)
-
-		if current.IsZero() || item.GetCreatedAt().Sub(current) > w.settings.Interval {
-			current = item.GetCreatedAt()
-		}
-
-		if _, ok := buckets[current]; !ok {
-			buckets[current] = refl.CreatePointerToSliceOfTypeAndSize(items, 0)
-		}
-
-		t := reflect.ValueOf(buckets[current]).Elem()
-
-		t.Set(reflect.Append(t, val.Index(i)))
-	}
-
-	for i, bucket := range buckets {
-		err := w.writeBucket(ctx, i, bucket)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (w *s3Writer) writeBucket(ctx context.Context, datetime time.Time, items interface{}) error {
+func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interface{}) error {
 	bucket := w.getBucketName()
 	key := s3KeyNamingStrategy(w.settings.ModelId, datetime, w.prefixNamingStrategy)
 
@@ -141,12 +102,11 @@ func (w *s3Writer) parseItems(items interface{}) (string, []string, error) {
 		return "", nil, fmt.Errorf("could not parse schema: %w", err)
 	}
 
-	it := reflect.ValueOf(items).Elem()
+	it := refl.SliceInterfaceIterator(items)
+	converted := make([]string, 0, it.Len())
 
-	converted := make([]string, it.Len())
-
-	for i := 0; i < it.Len(); i++ {
-		item := it.Index(i).Interface()
+	for it.Next() {
+		item := it.Val()
 
 		m, err := mapFieldsToTags(item)
 
@@ -160,7 +120,7 @@ func (w *s3Writer) parseItems(items interface{}) (string, []string, error) {
 			return "", nil, fmt.Errorf("could not marshal mapped item: %w", err)
 		}
 
-		converted[i] = string(marshalled)
+		converted = append(converted, string(marshalled))
 	}
 
 	return schema, converted, nil

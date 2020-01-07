@@ -7,6 +7,20 @@ import (
 	"testing"
 )
 
+func TestSliceInterfaceIterator(t *testing.T) {
+	slice := []int{0, 1, 2, 3, 4}
+	actual := make([]int, 0)
+
+	it := refl.SliceInterfaceIterator(slice)
+
+	for it.Next() {
+		val := it.Val()
+		actual = append(actual, val.(int))
+	}
+
+	assert.Equal(t, slice, actual)
+}
+
 func TestSliceOf(t *testing.T) {
 	s0 := make([]int, 0)
 	_, err := refl.SliceOf(s0)
