@@ -8,7 +8,6 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/applike/gosoline/pkg/refl"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	parquetS3 "github.com/xitongsys/parquet-go-source/s3"
@@ -58,44 +57,7 @@ func NewWriterWithInterfaces(logger mon.Logger, s3Cfg *aws.Config, prefixNaming 
 	}
 }
 
-func (w *s3Writer) Write(ctx context.Context, items interface{}) error {
-	if !refl.IsPointerToSlice(items) {
-		return fmt.Errorf("target needs to be a pointer to a slice, but is %T", items)
-	}
-
-	current := time.Time{}
-	buckets := make(map[time.Time]interface{})
-
-	val := refl.GetTypedValue(items)
-
-	for i := 0; i < val.Len(); i++ {
-		item := val.Index(i).Interface().(TimeStampable)
-
-		if current.IsZero() || item.GetCreatedAt().Sub(current) > w.settings.Interval {
-			current = item.GetCreatedAt()
-		}
-
-		if _, ok := buckets[current]; !ok {
-			buckets[current] = refl.CreatePointerToSliceOfTypeAndSize(items, 0)
-		}
-
-		t := reflect.ValueOf(buckets[current]).Elem()
-
-		t.Set(reflect.Append(t, val.Index(i)))
-	}
-
-	for i, bucket := range buckets {
-		err := w.writeBucket(ctx, i, bucket)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (w *s3Writer) writeBucket(ctx context.Context, datetime time.Time, items interface{}) error {
+func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interface{}) error {
 	bucket := w.getBucketName()
 	key := s3KeyNamingStrategy(w.settings.ModelId, datetime, w.prefixNamingStrategy)
 

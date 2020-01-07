@@ -46,6 +46,6 @@ var s3KeyNamingStrategy = func(modelId mdl.ModelId, datetime time.Time, prefixCa
 	return fmt.Sprintf("%s/%s-%s-%s-%s-%s-%s.parquet", prefix, modelId.Project, modelId.Environment, modelId.Family, modelId.Name, timestamp, uuid)
 }
 
-type TimeStampable interface {
-	GetCreatedAt() time.Time
+type Partitionable interface {
+	GetPartitionTimestamp() time.Time
 }
