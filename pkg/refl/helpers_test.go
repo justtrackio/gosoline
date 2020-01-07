@@ -161,13 +161,13 @@ func TestFindBaseType(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := refl.FindBaseType(tt.Input)
+			result, _ := refl.ResolveBaseTypeAndValue(tt.Input)
 
 			assert.Equal(t, tt.Expected, result.Kind(), name)
 		})
 	}
 
-	result := refl.FindBaseType(nil)
+	result, _ := refl.ResolveBaseTypeAndValue(nil)
 	assert.Equal(t, nil, result, "nil")
 }
 

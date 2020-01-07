@@ -21,6 +21,37 @@ func InterfaceToInterfaceSlice(in interface{}) ([]interface{}, error) {
 	return out, nil
 }
 
+type sliceIterator struct {
+	current int
+	length  int
+	slice   reflect.Value
+}
+
+func (s *sliceIterator) Next() bool {
+	return s.current < s.length
+}
+
+func (s *sliceIterator) Len() int {
+	return s.length
+}
+
+func (s *sliceIterator) Val() interface{} {
+	c := s.current
+	s.current++
+
+	return s.slice.Index(c).Interface()
+}
+
+func SliceInterfaceIterator(slice interface{}) *sliceIterator {
+	_, sv := ResolveValueTo(slice, reflect.Slice)
+
+	return &sliceIterator{
+		current: 0,
+		length:  sv.Len(),
+		slice:   sv,
+	}
+}
+
 func SliceOf(slice interface{}) (*Slice, error) {
 	sliceType := reflect.TypeOf(slice)
 
