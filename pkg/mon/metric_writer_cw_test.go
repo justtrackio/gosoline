@@ -50,7 +50,7 @@ func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudMocks.Cl
 		}},
 	}).Return(nil, nil)
 
-	mo := mon.NewMetricCwWriterWithInterfaces(logger, clock, cwClient, mon.MetricSettings{
+	mo := mon.NewMetricCwWriterWithInterfaces(logger, clock, cwClient, &mon.MetricSettings{
 		AppId: cfg.AppId{
 			Project:     "my",
 			Environment: "test",

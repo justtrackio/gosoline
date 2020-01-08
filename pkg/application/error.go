@@ -12,7 +12,7 @@ func WithDefaultErrorHandler(handler ErrorHandler) {
 
 var defaultErrorHandler = func(err error, msg string, args ...interface{}) {
 	logger := mon.NewLogger()
-	options := []mon.Option{
+	options := []mon.LoggerOption{
 		mon.WithFormat(mon.FormatGelf),
 		mon.WithHook(mon.NewMetricHook()),
 	}

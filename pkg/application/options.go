@@ -158,30 +158,25 @@ func WithLoggerSentryHook(extraProvider ...mon.SentryExtraProvider) Option {
 
 func WithLoggerSettingsFromConfig(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		if !config.IsSet("log_level") {
-			return errors.New("need config key 'log_level' to set level on the logger")
+		settings := &mon.LoggerSettings{}
+		config.UnmarshalKey("mon.logger", settings)
+
+		loggerOptions := []mon.LoggerOption{
+			mon.WithLevel(settings.Level),
+			mon.WithFormat(settings.Format),
+			mon.WithTimestampFormat(settings.TimestampFormat),
 		}
 
-		if !config.IsSet("log_format") {
-			return errors.New("need config key 'log_format' to set format on the logger")
-		}
-
-		level := config.GetString("log_level")
-		format := config.GetString("log_format")
-
-		return logger.Option(mon.WithLevel(level), mon.WithFormat(format))
+		return logger.Option(loggerOptions...)
 	})
 }
 
 func WithLoggerTagsFromConfig(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		if !config.IsSet("log_tags") {
-			return errors.New("need config key 'log_tags' to set tags from the config on the logger")
-		}
+		settings := &mon.LoggerSettings{}
+		config.UnmarshalKey("mon.logger", settings)
 
-		tags := config.GetStringMap("log_tags")
-
-		return logger.Option(mon.WithTags(tags))
+		return logger.Option(mon.WithTags(settings.Tags))
 	})
 }
 

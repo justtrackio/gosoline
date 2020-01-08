@@ -122,3 +122,22 @@ func CopyPointerSlice(ptrA interface{}, ptrB interface{}) {
 
 	a.Set(b)
 }
+
+func InitializeMapsAndSlices(value interface{}) {
+	pv := reflect.ValueOf(value)
+
+	if pv.Kind() == reflect.Ptr {
+		pv = pv.Elem()
+	}
+
+	for i := 0; i < pv.NumField(); i++ {
+		field := pv.Field(i)
+
+		if field.Kind() == reflect.Map && field.IsNil() {
+			mapType := field.Type()
+			mapValue := reflect.MakeMap(mapType)
+
+			field.Set(mapValue)
+		}
+	}
+}

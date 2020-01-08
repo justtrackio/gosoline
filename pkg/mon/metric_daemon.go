@@ -10,9 +10,20 @@ import (
 
 const defaultTimeFormat = "2006-01-02T15:04Z07:00"
 
-type CwDaemonSettings struct {
-	Enabled bool
-	Timeout time.Duration
+type MetricSettings struct {
+	cfg.AppId
+	Enabled  bool          `cfg:"enabled" default:"false"`
+	Interval time.Duration `cfg:"interval" default:"60s"`
+	Writers  []string      `cfg:"writers"`
+}
+
+func getMetricSettings(config cfg.Config) *MetricSettings {
+	settings := &MetricSettings{}
+	config.UnmarshalKey("mon.metric", settings)
+
+	settings.PadFromConfig(config)
+
+	return settings
 }
 
 type BatchedMetricDatum struct {
@@ -27,7 +38,7 @@ type BatchedMetricDatum struct {
 type cwDaemon struct {
 	sync.Mutex
 	logger   Logger
-	settings CwDaemonSettings
+	settings *MetricSettings
 
 	channel chan *MetricDatum
 	ticker  *time.Ticker
@@ -54,6 +65,7 @@ func ProvideCwDaemon() *cwDaemon {
 	cwDaemonContainer.instance = &cwDaemon{
 		channel:  make(chan *MetricDatum, 100),
 		defaults: make(map[string]*MetricDatum, 0),
+		settings: &MetricSettings{},
 		writers:  make([]MetricWriter, 0),
 	}
 
@@ -65,27 +77,21 @@ func (d *cwDaemon) GetType() string {
 }
 
 func (d *cwDaemon) Boot(config cfg.Config, logger Logger) error {
-	types := config.GetStringSlice("metric_writers")
+	settings := getMetricSettings(config)
 
-	writers := make([]MetricWriter, len(types))
-	for i, t := range types {
+	writers := make([]MetricWriter, len(settings.Writers))
+	for i, t := range settings.Writers {
 		writers[i] = ProvideMetricWriterByType(config, logger, t)
 	}
 
-	enabled := config.GetBool("metric_enabled")
-	timeout := config.GetDuration("metric_daemon_timeout")
-
-	return d.BootWithInterfaces(logger, writers, CwDaemonSettings{
-		Enabled: enabled,
-		Timeout: timeout,
-	})
+	return d.BootWithInterfaces(logger, writers, settings)
 }
 
-func (d *cwDaemon) BootWithInterfaces(logger Logger, writers []MetricWriter, settings CwDaemonSettings) error {
+func (d *cwDaemon) BootWithInterfaces(logger Logger, writers []MetricWriter, settings *MetricSettings) error {
 	d.logger = logger.WithChannel("metrics")
 	d.settings = settings
 	d.writers = writers
-	d.ticker = time.NewTicker(settings.Timeout * time.Second)
+	d.ticker = time.NewTicker(settings.Interval)
 
 	return nil
 }
