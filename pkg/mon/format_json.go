@@ -3,10 +3,9 @@ package mon
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jonboulle/clockwork"
 )
 
-func formatterJson(clock clockwork.Clock, level string, msg string, err error, data *Metadata) ([]byte, error) {
+func formatterJson(timestamp string, level string, msg string, err error, data *Metadata) ([]byte, error) {
 	jsn := make(Fields, 8)
 
 	if err != nil {
@@ -16,7 +15,7 @@ func formatterJson(clock clockwork.Clock, level string, msg string, err error, d
 	jsn["channel"] = data.channel
 	jsn["level"] = levels[level]
 	jsn["level_name"] = level
-	jsn["timestamp"] = round((float64(clock.Now().UnixNano())/float64(1000000))/float64(1000), 4)
+	jsn["timestamp"] = timestamp
 	jsn["message"] = msg
 	jsn["fields"] = data.fields
 	jsn["context"] = data.contextFields

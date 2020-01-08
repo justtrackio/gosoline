@@ -7,7 +7,6 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/jonboulle/clockwork"
 	"io"
-	"math"
 	"os"
 	"runtime"
 	"strconv"
@@ -24,6 +23,13 @@ const (
 	Fatal = "fatal"
 	Panic = "panic"
 )
+
+type LoggerSettings struct {
+	Level           string                 `cfg:"level" default:"info" validate:"required"`
+	Format          string                 `cfg:"format" default:"console" validate:"required"`
+	TimestampFormat string                 `cfg:"timestamp_format" default:"15:04:05.000" validate:"required"`
+	Tags            map[string]interface{} `cfg:"tags"`
+}
 
 var levels = map[string]int{
 	Trace: 0,
@@ -60,7 +66,7 @@ type Metadata struct {
 	tags          Tags
 }
 
-type formatter func(clock clockwork.Clock, level string, msg string, err error, data *Metadata) ([]byte, error)
+type formatter func(timestamp string, level string, msg string, err error, data *Metadata) ([]byte, error)
 
 var formatters = map[string]formatter{
 	FormatConsole:    formatterConsole,
@@ -76,7 +82,7 @@ type Sentry interface {
 
 type GosoLog interface {
 	Logger
-	Option(options ...Option) error
+	Option(options ...LoggerOption) error
 }
 
 //go:generate mockery -name Logger
@@ -105,8 +111,9 @@ type logger struct {
 	ctxResolver []ContextFieldsResolver
 	hooks       []LoggerHook
 
-	format string
-	level  int
+	level           int
+	format          string
+	timestampFormat string
 
 	data Metadata
 }
@@ -137,18 +144,19 @@ func NewLoggerWithInterfaces(clock clockwork.Clock, out io.Writer) *logger {
 
 func (l *logger) copy() *logger {
 	return &logger{
-		clock:       l.clock,
-		outputLck:   l.outputLck,
-		output:      l.output,
-		ctxResolver: l.ctxResolver,
-		hooks:       l.hooks,
-		level:       l.level,
-		format:      l.format,
-		data:        l.data,
+		clock:           l.clock,
+		outputLck:       l.outputLck,
+		output:          l.output,
+		ctxResolver:     l.ctxResolver,
+		hooks:           l.hooks,
+		level:           l.level,
+		format:          l.format,
+		timestampFormat: l.timestampFormat,
+		data:            l.data,
 	}
 }
 
-func (l *logger) Option(options ...Option) error {
+func (l *logger) Option(options ...LoggerOption) error {
 	for _, opt := range options {
 		if err := opt(l); err != nil {
 			return err
@@ -278,7 +286,8 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 		}
 	}
 
-	buffer, err := formatters[l.format](l.clock, level, msg, logErr, &cpyData)
+	timestamp := l.clock.Now().Format(l.timestampFormat)
+	buffer, err := formatters[l.format](timestamp, level, msg, logErr, &cpyData)
 
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
@@ -288,7 +297,8 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 }
 
 func (l *logger) err(err error) {
-	buffer, err := formatters[l.format](l.clock, Error, err.Error(), err, &l.data)
+	timestamp := l.clock.Now().Format(l.timestampFormat)
+	buffer, err := formatters[l.format](timestamp, Error, err.Error(), err, &l.data)
 
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
@@ -306,11 +316,6 @@ func (l *logger) write(buffer []byte) {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
 	}
-}
-
-func round(val float64, places int) float64 {
-	shift := math.Pow(10, float64(places))
-	return math.Floor((val*shift)+.5) / shift
 }
 
 // getStackTrace constructs the current stacktrace. depthSkip defines how many steps of the

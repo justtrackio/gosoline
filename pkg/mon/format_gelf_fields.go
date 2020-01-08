@@ -3,11 +3,10 @@ package mon
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jonboulle/clockwork"
 	"os"
 )
 
-func formatterGelfFields(clock clockwork.Clock, level string, msg string, err error, data *Metadata) ([]byte, error) {
+func formatterGelfFields(timestamp string, level string, msg string, err error, data *Metadata) ([]byte, error) {
 	gelf := make(Fields, 8)
 
 	if err != nil {
@@ -28,7 +27,7 @@ func formatterGelfFields(clock clockwork.Clock, level string, msg string, err er
 
 	gelf["version"] = "1.1"
 	gelf["short_message"] = msg
-	gelf["timestamp"] = round((float64(clock.Now().UnixNano())/float64(1000000))/float64(1000), 4)
+	gelf["timestamp"] = timestamp
 	gelf["channel"] = data.channel
 	gelf["level"] = levels[level]
 	gelf["level_name"] = level

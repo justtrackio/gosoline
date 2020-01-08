@@ -73,11 +73,6 @@ func (d *MetricDatum) IsValid() error {
 
 type MetricData []*MetricDatum
 
-type MetricSettings struct {
-	cfg.AppId
-	Enabled bool
-}
-
 //go:generate mockery -name MetricWriter
 type MetricWriter interface {
 	GetPriority() int
@@ -89,13 +84,11 @@ type cwWriter struct {
 	logger   Logger
 	clock    clockwork.Clock
 	cw       cloudwatchiface.CloudWatchAPI
-	settings MetricSettings
+	settings *MetricSettings
 }
 
 func NewMetricCwWriter(config cfg.Config, logger Logger) *cwWriter {
-	settings := MetricSettings{}
-	settings.PadFromConfig(config)
-	settings.Enabled = config.GetBool("metric_enabled")
+	settings := getMetricSettings(config)
 
 	clock := clockwork.NewRealClock()
 	cw := ProvideCloudWatchClient(config)
@@ -103,7 +96,7 @@ func NewMetricCwWriter(config cfg.Config, logger Logger) *cwWriter {
 	return NewMetricCwWriterWithInterfaces(logger, clock, cw, settings)
 }
 
-func NewMetricCwWriterWithInterfaces(logger Logger, clock clockwork.Clock, cw cloudwatchiface.CloudWatchAPI, settings MetricSettings) *cwWriter {
+func NewMetricCwWriterWithInterfaces(logger Logger, clock clockwork.Clock, cw cloudwatchiface.CloudWatchAPI, settings *MetricSettings) *cwWriter {
 	return &cwWriter{
 		logger:   logger.WithChannel("metrics"),
 		clock:    clock,

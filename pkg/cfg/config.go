@@ -352,16 +352,25 @@ func (c *config) decode(input interface{}, output interface{}) error {
 }
 
 func (c *config) decodeAugmentHook() interface{} {
-	return func(
-		f reflect.Kind,
-		t reflect.Kind,
-		data interface{}) (interface{}, error) {
-		if f != reflect.String || t != reflect.String {
+	return func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+		if f == reflect.Map && t == reflect.Map {
+			if msi, ok := data.(map[string]interface{}); ok {
+				for k, v := range msi {
+					if str, ok := v.(string); ok {
+						msi[k] = c.augmentString(str)
+					}
+				}
+			}
+
 			return data, nil
 		}
 
-		raw := data.(string)
-		return c.augmentString(raw), nil
+		if f == reflect.String || t == reflect.String {
+			raw := data.(string)
+			return c.augmentString(raw), nil
+		}
+
+		return data, nil
 	}
 }
 
@@ -580,7 +589,9 @@ func (c *config) unmarshalSlice(key string, output interface{}, opts ...DecoderC
 	}
 }
 
-func (c *config) unmarshalStruct(key string, output interface{}, opts ...DecoderConfigOption) {
+func (c *config) unmarshalStruct(key string, output interface{}, _ ...DecoderConfigOption) {
+	refl.InitializeMapsAndSlices(output)
+
 	finalSettings := make(map[string]interface{})
 	zeroSettings, err := c.readZeroValuesFromStruct(output)
 
