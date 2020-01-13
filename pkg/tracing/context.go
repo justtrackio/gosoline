@@ -29,6 +29,12 @@ func ContextTraceFieldsResolver(ctx context.Context) map[string]interface{} {
 		return map[string]interface{}{}
 	}
 
+	traceId := span.GetTrace().GetTraceId()
+
+	if traceId == "" {
+		return map[string]interface{}{}
+	}
+
 	return map[string]interface{}{
 		"trace_id": span.GetTrace().GetTraceId(),
 	}

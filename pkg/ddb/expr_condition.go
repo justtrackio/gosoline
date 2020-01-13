@@ -37,3 +37,11 @@ func Lt(attribute string, value interface{}) expression.ConditionBuilder {
 func Lte(attribute string, value interface{}) expression.ConditionBuilder {
 	return expression.LessThanEqual(expression.Name(attribute), expression.Value(value))
 }
+
+func AttributeNotExists(attribute string) expression.ConditionBuilder {
+	return expression.AttributeNotExists(expression.Name(attribute))
+}
+
+func AttributeExists(attribute string) expression.ConditionBuilder {
+	return expression.AttributeExists(expression.Name(attribute))
+}
