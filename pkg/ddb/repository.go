@@ -10,6 +10,7 @@ import (
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
@@ -59,9 +60,10 @@ type Repository interface {
 }
 
 type repository struct {
-	logger mon.Logger
-	tracer tracing.Tracer
-	client dynamodbiface.DynamoDBAPI
+	logger   mon.Logger
+	tracer   tracing.Tracer
+	client   dynamodbiface.DynamoDBAPI
+	executor cloud.RequestExecutor
 
 	metadata *Metadata
 	settings *Settings
@@ -74,9 +76,25 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) *re
 
 	settings.ModelId.PadFromConfig(config)
 	settings.AutoCreate = config.GetBool("aws_dynamoDb_autoCreate")
+	settings.Client.MaxRetries = config.GetInt("aws_sdk_retries")
 
 	tracer := tracing.NewAwsTracer(config)
-	client := cloud.GetDynamoDbClient(config, logger)
+	client := ProvideClient(config, logger, settings)
+
+	res := &cloud.BackoffResource{
+		Type: "ddb",
+		Name: namingStrategy(settings.ModelId),
+		Handler: []cloud.CustomExecResultHandler{
+			func(err error) (error, bool) {
+				if isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
+					return err, true
+				}
+
+				return err, false
+			},
+		},
+	}
+	executor := cloud.NewExecutor(logger, res, &settings.Backoff)
 
 	svc := NewService(config, logger)
 	_, err := svc.CreateTable(settings)
@@ -86,10 +104,10 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) *re
 		logger.Fatalf(err, "could not create ddb table %s", name)
 	}
 
-	return NewWithInterfaces(logger, tracer, client, settings)
+	return NewWithInterfaces(logger, tracer, client, executor, settings)
 }
 
-func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, settings *Settings) *repository {
+func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor cloud.RequestExecutor, settings *Settings) *repository {
 	metadataFactory := NewMetadataFactory()
 	metadata, err := metadataFactory.GetMetadata(settings)
 
@@ -102,6 +120,7 @@ func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodb
 		logger:   logger,
 		tracer:   tracer,
 		client:   client,
+		executor: executor,
 		metadata: metadata,
 		settings: settings,
 	}
@@ -129,7 +148,9 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 	}
 
 	for {
-		out, err := r.client.BatchGetItemWithContext(ctx, input)
+		outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
+			return r.client.BatchGetItemRequest(input)
+		})
 
 		if cloud.IsRequestCanceled(err) {
 			return nil, cloud.RequestCanceledError
@@ -139,6 +160,7 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 			return nil, fmt.Errorf("could not execute BatchGetItems operation for table %s: %w", r.metadata.TableName, err)
 		}
 
+		out := outI.(*dynamodb.BatchGetItemOutput)
 		responses := out.Responses[r.metadata.TableName]
 		err = unmarshaller.Append(responses)
 
@@ -232,12 +254,15 @@ func (r *repository) chunkWriteItem(ctx context.Context, input *dynamodb.BatchWr
 	finalErr := fmt.Errorf("could not write unprocessed items in chunkWriteItem on table %s", r.metadata.TableName)
 
 	return backoff.Retry(func() error {
-		out, err := r.client.BatchWriteItemWithContext(ctx, input)
+		outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
+			return r.client.BatchWriteItemRequest(input)
+		})
 
 		if err != nil {
 			return backoff.Permanent(fmt.Errorf("could not execute item for batchWriteItemWithContext operation on table %s: %w", r.metadata.TableName, err))
 		}
 
+		out := outI.(*dynamodb.BatchWriteItemOutput)
 		result.ConsumedCapacity.addSlice(out.ConsumedCapacity)
 
 		if _, ok := out.UnprocessedItems[r.metadata.TableName]; !ok {
@@ -285,7 +310,9 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 		return nil, fmt.Errorf("could not build input for DeleteItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
-	out, err := r.client.DeleteItemWithContext(ctx, input)
+	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
+		return r.client.DeleteItemRequest(input)
+	})
 
 	if cloud.IsRequestCanceled(err) {
 		return nil, cloud.RequestCanceledError
@@ -295,6 +322,7 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 		return nil, fmt.Errorf("could not execute DeleteItem operation for table %s: %w", r.metadata.TableName, err)
 	}
 
+	out := outI.(*dynamodb.DeleteItemOutput)
 	result.ConditionalCheckFailed = isError(err, dynamodb.ErrCodeConditionalCheckFailedException)
 	result.ConsumedCapacity.add(out.ConsumedCapacity)
 
@@ -326,7 +354,9 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 		return nil, fmt.Errorf("could not build GetItem expression for table %s: %w", r.metadata.TableName, err)
 	}
 
-	out, err := r.client.GetItemWithContext(ctx, input)
+	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
+		return r.client.GetItemRequest(input)
+	})
 
 	if cloud.IsRequestCanceled(err) {
 		return nil, cloud.RequestCanceledError
@@ -336,6 +366,7 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 		return nil, err
 	}
 
+	out := outI.(*dynamodb.GetItemOutput)
 	result.ConsumedCapacity.add(out.ConsumedCapacity)
 
 	if out.Item == nil {
@@ -377,8 +408,11 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 	}
 
 	input.Item = marshaledItem
-	out, err := r.client.PutItemWithContext(ctx, input)
 	result := newPutItemResult()
+
+	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
+		return r.client.PutItemRequest(input)
+	})
 
 	if cloud.IsRequestCanceled(err) {
 		return nil, cloud.RequestCanceledError
@@ -388,6 +422,7 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 		return nil, fmt.Errorf("could not execute PutItem operation for table %s: %w", r.metadata.TableName, err)
 	}
 
+	out := outI.(*dynamodb.PutItemOutput)
 	result.ConditionalCheckFailed = isError(err, dynamodb.ErrCodeConditionalCheckFailedException)
 	result.ConsumedCapacity.add(out.ConsumedCapacity)
 
@@ -436,7 +471,9 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 		return &readResult{}, nil
 	}
 
-	out, err := r.client.QueryWithContext(ctx, op.input)
+	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
+		return r.client.QueryRequest(op.input)
+	})
 
 	if cloud.IsRequestCanceled(err) {
 		return nil, cloud.RequestCanceledError
@@ -446,6 +483,7 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 		return nil, fmt.Errorf("could not execute Query operation for table %s: %w", r.metadata.TableName, err)
 	}
 
+	out := outI.(*dynamodb.QueryOutput)
 	op.result.RequestCount++
 	op.result.ItemCount += *out.Count
 	op.result.ScannedCount += *out.ScannedCount
@@ -474,8 +512,10 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 		return nil, fmt.Errorf("could not build input for UpdateItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
-	out, err := r.client.UpdateItemWithContext(ctx, input)
 	result := newUpdateItemResult()
+	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
+		return r.client.UpdateItemRequest(input)
+	})
 
 	if cloud.IsRequestCanceled(err) {
 		return nil, cloud.RequestCanceledError
@@ -485,6 +525,7 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 		return nil, fmt.Errorf("could not execute UpdateItem operation for table %s: %w", r.metadata.TableName, err)
 	}
 
+	out := outI.(*dynamodb.UpdateItemOutput)
 	result.ConditionalCheckFailed = isError(err, dynamodb.ErrCodeConditionalCheckFailedException)
 	result.ConsumedCapacity.add(out.ConsumedCapacity)
 
@@ -535,7 +576,9 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 		return &readResult{}, nil
 	}
 
-	out, err := r.client.ScanWithContext(ctx, op.input)
+	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
+		return r.client.ScanRequest(op.input)
+	})
 
 	if cloud.IsRequestCanceled(err) {
 		return nil, cloud.RequestCanceledError
@@ -545,6 +588,7 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 		return nil, err
 	}
 
+	out := outI.(*dynamodb.ScanOutput)
 	op.result.RequestCount++
 	op.result.ItemCount += *out.Count
 	op.result.ScannedCount += *out.ScannedCount

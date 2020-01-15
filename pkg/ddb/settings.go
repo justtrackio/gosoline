@@ -1,12 +1,17 @@
 package ddb
 
-import "github.com/applike/gosoline/pkg/mdl"
+import (
+	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/mdl"
+)
 
 const defaultMaxWaitSeconds = 60
 
 type Settings struct {
 	ModelId    mdl.ModelId
 	AutoCreate bool
+	Client     cloud.ClientSettings
+	Backoff    cloud.BackoffSettings
 	Main       MainSettings
 	Local      []LocalSettings
 	Global     []GlobalSettings

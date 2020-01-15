@@ -31,8 +31,6 @@ type projection struct {
 }
 
 func TestRepository_GetItem(t *testing.T) {
-	client, repo := getMocks()
-
 	item := model{}
 	input := &dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -60,7 +58,8 @@ func TestRepository_GetItem(t *testing.T) {
 		},
 	}
 
-	client.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client.On("GetItemRequest", input).Return(nil, nil)
 
 	qb := repo.GetItemBuilder().WithHash(1).WithRange("0")
 	res, err := repo.GetItem(context.Background(), qb, &item)
@@ -79,8 +78,6 @@ func TestRepository_GetItem(t *testing.T) {
 }
 
 func TestRepository_GetItem_FromItem(t *testing.T) {
-	client, repo := getMocks()
-
 	input := &dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"id": {
@@ -106,7 +103,9 @@ func TestRepository_GetItem_FromItem(t *testing.T) {
 			},
 		},
 	}
-	client.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client.On("GetItemRequest", input).Return(nil, nil)
 
 	item := model{
 		Id:  5,
@@ -128,7 +127,6 @@ func TestRepository_GetItem_FromItem(t *testing.T) {
 }
 
 func TestRepository_GetItemNotFound(t *testing.T) {
-	client, repo := getMocks()
 	item := model{}
 
 	input := &dynamodb.GetItemInput{
@@ -143,7 +141,9 @@ func TestRepository_GetItemNotFound(t *testing.T) {
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
 	}
 	output := &dynamodb.GetItemOutput{}
-	client.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client.On("GetItemRequest", input).Return(nil, nil)
 
 	qb := repo.GetItemBuilder().WithHash(1).WithRange("0")
 	res, err := repo.GetItem(context.Background(), qb, &item)
@@ -155,8 +155,6 @@ func TestRepository_GetItemNotFound(t *testing.T) {
 }
 
 func TestRepository_GetItemProjection(t *testing.T) {
-	client, repo := getMocks()
-
 	input := &dynamodb.GetItemInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#0": aws.String("id"),
@@ -180,7 +178,9 @@ func TestRepository_GetItemProjection(t *testing.T) {
 			},
 		},
 	}
-	client.On("GetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client.On("GetItemRequest", input).Return(nil, nil)
 
 	item := projection{}
 
@@ -199,8 +199,6 @@ func TestRepository_GetItemProjection(t *testing.T) {
 }
 
 func TestRepository_Query(t *testing.T) {
-	client, repo := getMocks()
-
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#0": aws.String("id"),
@@ -242,7 +240,8 @@ func TestRepository_Query(t *testing.T) {
 		},
 	}
 
-	client.On("QueryWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client.On("QueryRequest", input).Return(nil, nil)
 
 	result := make([]model, 0)
 	expected := []model{
@@ -269,10 +268,10 @@ func TestRepository_Query(t *testing.T) {
 }
 
 func TestRepository_Query_Canceled(t *testing.T) {
-	client, repo := getMocks()
-
 	awsErr := awserr.New(request.CanceledErrorCode, "got canceled", nil)
-	client.On("QueryWithContext", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*dynamodb.QueryInput")).Return(nil, awsErr)
+
+	client, repo := getMocks([]cloud.TestExecution{{nil, awsErr}})
+	client.On("QueryRequest", mock.AnythingOfType("*dynamodb.QueryInput")).Return(nil, nil)
 
 	result := make([]model, 0)
 
@@ -288,8 +287,6 @@ func TestRepository_Query_Canceled(t *testing.T) {
 }
 
 func TestRepository_BatchGetItems(t *testing.T) {
-	client, repo := getMocks()
-
 	input := &dynamodb.BatchGetItemInput{
 		RequestItems: map[string]*dynamodb.KeysAndAttributes{
 			"applike-test-gosoline-ddb-myModel": {
@@ -323,7 +320,9 @@ func TestRepository_BatchGetItems(t *testing.T) {
 		},
 		UnprocessedKeys: map[string]*dynamodb.KeysAndAttributes{},
 	}
-	client.On("BatchGetItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client.On("BatchGetItemRequest", input).Return(nil, nil)
 
 	result := make([]model, 0)
 	expected := []model{
@@ -362,8 +361,6 @@ func TestRepository_BatchWriteItem(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks()
-
 	input := &dynamodb.BatchWriteItemInput{
 		RequestItems: map[string][]*dynamodb.WriteRequest{
 			"applike-test-gosoline-ddb-myModel": {
@@ -393,7 +390,8 @@ func TestRepository_BatchWriteItem(t *testing.T) {
 		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
 	}
 
-	client.On("BatchWriteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client.On("BatchWriteItemRequest", input).Return(nil, nil)
 
 	_, err := repo.BatchPutItems(context.Background(), items)
 
@@ -441,8 +439,6 @@ func TestRepository_BatchWriteItem_Retry(t *testing.T) {
 		}
 	}
 
-	client, repo := getMocks()
-
 	firstInput := &dynamodb.BatchWriteItemInput{
 		RequestItems: map[string][]*dynamodb.WriteRequest{
 			"applike-test-gosoline-ddb-myModel": firstInputData,
@@ -463,9 +459,15 @@ func TestRepository_BatchWriteItem_Retry(t *testing.T) {
 		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
 	}
 
-	client.On("BatchWriteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), firstInput).Return(firstOutput, nil).Once()
-	client.On("BatchWriteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), secondInput).Return(firstOutput, nil).Once()
-	client.On("BatchWriteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), secondInput).Return(secondOutput, nil).Once()
+	client, repo := getMocks([]cloud.TestExecution{
+		{firstOutput, nil},
+		{firstOutput, nil},
+		{secondOutput, nil},
+	})
+
+	client.On("BatchWriteItemRequest", firstInput).Return(nil, nil).Once()
+	client.On("BatchWriteItemRequest", secondInput).Return(nil, nil).Once()
+	client.On("BatchWriteItemRequest", secondInput).Return(nil, nil).Once()
 
 	_, err := repo.BatchPutItems(context.Background(), items)
 
@@ -474,8 +476,6 @@ func TestRepository_BatchWriteItem_Retry(t *testing.T) {
 }
 
 func TestRepository_PutItem(t *testing.T) {
-	client, r := getMocks()
-
 	item := model{
 		Id:  1,
 		Rev: "0",
@@ -497,9 +497,11 @@ func TestRepository_PutItem(t *testing.T) {
 		},
 	}
 	output := &dynamodb.PutItemOutput{}
-	client.On("PutItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
 
-	res, err := r.PutItem(context.Background(), nil, item)
+	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client.On("PutItemRequest", input).Return(nil, nil)
+
+	res, err := repo.PutItem(context.Background(), nil, item)
 
 	assert.NoError(t, err)
 	assert.False(t, res.ConditionalCheckFailed)
@@ -507,8 +509,6 @@ func TestRepository_PutItem(t *testing.T) {
 }
 
 func TestRepository_Update(t *testing.T) {
-	client, repo := getMocks()
-
 	input := &dynamodb.UpdateItemInput{
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -543,7 +543,9 @@ func TestRepository_Update(t *testing.T) {
 			},
 		},
 	}
-	client.On("UpdateItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+
+	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client.On("UpdateItemRequest", input).Return(nil, nil)
 
 	updatedItem := &model{
 		Id:  1,
@@ -565,8 +567,6 @@ func TestRepository_Update(t *testing.T) {
 }
 
 func TestRepository_DeleteItem(t *testing.T) {
-	client, repo := getMocks()
-
 	input := &dynamodb.DeleteItemInput{
 		ConditionExpression: aws.String("#0 = :0"),
 		ExpressionAttributeNames: map[string]*string{
@@ -602,7 +602,8 @@ func TestRepository_DeleteItem(t *testing.T) {
 		},
 	}
 
-	client.On("DeleteItemWithContext", mock.AnythingOfType("*context.emptyCtx"), input).Return(output, nil)
+	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client.On("DeleteItemRequest", input).Return(nil, nil)
 
 	item := model{
 		Id:  1,
@@ -625,12 +626,13 @@ func TestRepository_DeleteItem(t *testing.T) {
 	client.AssertExpectations(t)
 }
 
-func getMocks() (*cloudMocks.DynamoDBAPI, ddb.Repository) {
+func getMocks(executions []cloud.TestExecution) (*cloudMocks.DynamoDBAPI, ddb.Repository) {
 	logger := monMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 	client := new(cloudMocks.DynamoDBAPI)
+	executor := cloud.NewTestableExecutor(executions)
 
-	repo := ddb.NewWithInterfaces(logger, tracer, client, &ddb.Settings{
+	repo := ddb.NewWithInterfaces(logger, tracer, client, executor, &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     "applike",
 			Environment: "test",

@@ -49,9 +49,12 @@ func WithDelayedCancelContext(parentCtx context.Context, delay time.Duration) *d
 	}
 }
 
+type CustomExecResultHandler func(err error) (error, bool)
+
 type BackoffResource struct {
-	Type string
-	Name string
+	Type    string
+	Name    string
+	Handler []CustomExecResultHandler
 }
 
 type BackoffSettings struct {
@@ -91,6 +94,31 @@ func (e DefaultExecutor) Execute(ctx context.Context, f RequestFunction) (interf
 	return out, err
 }
 
+type TestExecution struct {
+	Output interface{}
+	Err    error
+}
+
+type TestableExecutor struct {
+	executions []TestExecution
+	current    int
+}
+
+func NewTestableExecutor(executions []TestExecution) *TestableExecutor {
+	return &TestableExecutor{
+		executions: executions,
+	}
+}
+
+func (t *TestableExecutor) Execute(_ context.Context, f RequestFunction) (interface{}, error) {
+	f()
+
+	c := t.current
+	t.current++
+
+	return t.executions[c].Output, t.executions[c].Err
+}
+
 type FixedExecutor struct {
 	out interface{}
 	err error
@@ -103,7 +131,7 @@ func NewFixedExecutor(out interface{}, err error) RequestExecutor {
 	}
 }
 
-func (e FixedExecutor) Execute(ctx context.Context, f RequestFunction) (interface{}, error) {
+func (e FixedExecutor) Execute(_ context.Context, f RequestFunction) (interface{}, error) {
 	f()
 
 	return e.out, e.err
@@ -170,7 +198,11 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (inter
 	timespan := time.Duration(0)
 
 	notify := func(err error, duration time.Duration) {
-		logger.Warnf("retrying aws service %s %s after error: %s", e.res.Type, e.res.Name, err.Error())
+		logger.WithFields(mon.Fields{
+			"resource_type": e.res.Type,
+			"resource_name": e.res.Name,
+		}).Warnf("retrying aws service %s %s after error: %s", e.res.Type, e.res.Name, err.Error())
+
 		e.writeMetric(metricNameRetryCount)
 
 		retries++
@@ -209,6 +241,12 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (inter
 
 		return nil
 	}, backoffCtx, notify)
+
+	for _, h := range e.res.Handler {
+		if err, ok := h(err); ok {
+			return out, err
+		}
+	}
 
 	if err != nil {
 		logger.Warnf("error on requesting aws service %s %s: %s", e.res.Type, e.res.Name, err.Error())
