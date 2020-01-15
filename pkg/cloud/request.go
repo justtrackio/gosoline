@@ -165,6 +165,7 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (inter
 	var req *request.Request
 	var out interface{}
 	var err error
+	var errOk = false
 
 	backoffConfig := backoff.NewExponentialBackOff()
 
@@ -243,17 +244,19 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (inter
 	}, backoffCtx, notify)
 
 	for _, h := range e.res.Handler {
-		if err, ok := h(err); ok {
-			return out, err
+		if err, errOk = h(err); errOk {
+			break
 		}
 	}
 
-	if err != nil {
+	if err != nil && !errOk {
 		logger.Warnf("error on requesting aws service %s %s: %s", e.res.Type, e.res.Name, err.Error())
 		e.writeMetric(metricNameErrorCount)
+
+		return out, err
 	}
 
-	if err == nil && retries > 0 {
+	if retries > 0 {
 		logger.Infof("sent request to aws service %s %s successful after %d retries in %s", e.res.Type, e.res.Name, retries, timespan)
 	}
 
