@@ -1,5 +1,9 @@
 package mon
 
+import (
+	"fmt"
+)
+
 type LoggerOption func(logger *logger) error
 
 func WithContextFieldsResolver(resolver ...ContextFieldsResolver) LoggerOption {
@@ -11,6 +15,10 @@ func WithContextFieldsResolver(resolver ...ContextFieldsResolver) LoggerOption {
 
 func WithFormat(format string) LoggerOption {
 	return func(logger *logger) error {
+		if _, ok := formatters[format]; !ok {
+			return fmt.Errorf("unknown logger format: %s", format)
+		}
+
 		logger.format = format
 		return nil
 	}
