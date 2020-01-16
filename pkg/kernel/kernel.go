@@ -188,8 +188,14 @@ func (k *kernel) Stop(reason string) {
 	k.cfn.Kill(nil)
 }
 
-func (k *kernel) runFactories() error {
-	defer k.recover("error running module factories")
+func (k *kernel) runFactories() (err error) {
+	defer func() {
+		err = coffin.ResolveRecovery(recover())
+
+		if err != nil {
+			k.logger.Error(err, "error running module factories")
+		}
+	}()
 
 	for _, f := range k.factories {
 		modules, err := f(k.config, k.logger)
@@ -203,7 +209,7 @@ func (k *kernel) runFactories() error {
 		}
 	}
 
-	return nil
+	return
 }
 
 func (k *kernel) bootModule(name string) error {
@@ -325,14 +331,6 @@ func (k *kernel) checkRunningForegroundModules() {
 	}
 
 	k.Stop("no more foreground modules in running state")
-}
-
-func (k *kernel) recover(msg string) {
-	err := coffin.ResolveRecovery(recover())
-
-	if err != nil {
-		k.logger.Error(err.(error), msg)
-	}
 }
 
 func (k *kernel) getModuleState(name string) *ModuleState {
