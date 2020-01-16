@@ -32,6 +32,12 @@ func getBatch(ctx context.Context, keys interface{}, result interface{}, getChun
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
 	}
 
+	keySlice, err = UniqKeys(keySlice)
+
+	if err != nil {
+		return nil, fmt.Errorf("can not deduplicate keys: %w", err)
+	}
+
 	resultMap, err := refl.MapOf(result)
 
 	if err != nil {
