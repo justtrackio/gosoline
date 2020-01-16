@@ -108,6 +108,41 @@ func TestDdbKvStore_GetBatch(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestDdbKvStore_GetBatch_WithDuplicateKeys(t *testing.T) {
+	store, repo := buildTestableDdbStore()
+
+	result := make(map[string]Item)
+
+	builder := new(ddbMocks.BatchGetItemsBuilder)
+	builder.On("WithHashKeys", []string{"foo", "fuu"}).Return(builder)
+
+	items := make([]kvstore.DdbItem, 0)
+
+	repo.On("BatchGetItemsBuilder").Return(builder)
+	repo.On("BatchGetItems", mock.AnythingOfType("*context.emptyCtx"), builder, &items).Run(func(args mock.Arguments) {
+		item := kvstore.DdbItem{
+			Key:   "foo",
+			Value: `{"id":"foo","body":"bar"}`,
+		}
+
+		items := args[2].(*[]kvstore.DdbItem)
+		*items = append(*items, item)
+	}).Return(nil, nil)
+
+	missing, err := store.GetBatch(context.Background(), []string{"foo", "fuu", "foo"}, result)
+
+	assert.NoError(t, err)
+	assert.Contains(t, result, "foo")
+	assert.Equal(t, "foo", result["foo"].Id)
+	assert.Equal(t, "bar", result["foo"].Body)
+
+	assert.Len(t, missing, 1)
+	assert.Contains(t, missing, "fuu")
+
+	builder.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
 func TestDdbKvStore_Put(t *testing.T) {
 	store, repo := buildTestableDdbStore()
 
