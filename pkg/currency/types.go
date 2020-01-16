@@ -2,14 +2,14 @@ package currency
 
 type Currency string
 
-type Rates struct {
+type Rate struct {
 	Currency string  `xml:"currency,attr"`
 	Rate     float64 `xml:"rate,attr"`
 }
 
 type Content struct {
-	Time  string  `xml:"time,attr"`
-	Rates []Rates `xml:"Cube"`
+	Time  string `xml:"time,attr"`
+	Rates []Rate `xml:"Cube"`
 }
 
 type Body struct {
