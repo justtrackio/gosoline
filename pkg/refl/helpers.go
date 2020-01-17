@@ -48,6 +48,43 @@ func ResolveBaseTypeAndValue(value interface{}) (reflect.Type, reflect.Value) {
 	return ResolveValueTo(value, reflect.Invalid)
 }
 
+func ResolveBaseType(value interface{}) reflect.Type {
+	t := reflect.TypeOf(value)
+
+	if t == nil {
+		return nil
+	}
+
+	if t.Kind() == reflect.Ptr {
+		v := reflect.ValueOf(value).Elem().Interface()
+
+		return ResolveBaseType(v)
+	}
+
+	if t.Kind() == reflect.Interface {
+		v := reflect.ValueOf(value).Elem().Interface()
+		t = reflect.TypeOf(v)
+	}
+
+	if t.Kind() != reflect.Slice {
+		return t
+	}
+
+	t = t.Elem()
+
+	if t.Kind() == reflect.Interface {
+		v := reflect.ValueOf(value).Index(0).Interface()
+		t = reflect.TypeOf(v)
+	}
+
+	ts := reflect.SliceOf(t)
+
+	slice := reflect.MakeSlice(ts, 1, 1).Interface()
+	v := reflect.ValueOf(slice)
+
+	return ResolveBaseType(v.Index(0).Interface())
+}
+
 func ResolveValueTo(value interface{}, kind reflect.Kind) (reflect.Type, reflect.Value) {
 	t := reflect.TypeOf(value)
 	v := reflect.ValueOf(value)
@@ -106,7 +143,7 @@ func GetTypedValue(value interface{}) reflect.Value {
 }
 
 func CreatePointerToSliceOfTypeAndSize(value interface{}, size int) interface{} {
-	baseType, _ := ResolveBaseTypeAndValue(value)
+	baseType := ResolveBaseType(value)
 
 	sliceType := reflect.SliceOf(baseType)
 	slice := reflect.MakeSlice(sliceType, size, size)

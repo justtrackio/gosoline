@@ -10,6 +10,11 @@ type Partitioner struct {
 	mock.Mock
 }
 
+// Flush provides a mock function with given fields:
+func (_m *Partitioner) Flush() {
+	_m.Called()
+}
+
 // Ingest provides a mock function with given fields: data
 func (_m *Partitioner) Ingest(data parquet.Partitionable) {
 	_m.Called(data)
@@ -25,22 +30,6 @@ func (_m *Partitioner) Out() <-chan *parquet.Partition {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(<-chan *parquet.Partition)
-		}
-	}
-
-	return r0
-}
-
-// PartitionKeys provides a mock function with given fields:
-func (_m *Partitioner) PartitionKeys() []float64 {
-	ret := _m.Called()
-
-	var r0 []float64
-	if rf, ok := ret.Get(0).(func() []float64); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]float64)
 		}
 	}
 

@@ -3,6 +3,7 @@ package parquet
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
@@ -10,6 +11,8 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	parquetS3 "github.com/xitongsys/parquet-go-source/s3"
 	"github.com/xitongsys/parquet-go/writer"
@@ -19,15 +22,18 @@ import (
 type WriterSettings struct {
 	ModelId        mdl.ModelId
 	NamingStrategy string
+	Tags           map[string]string
 }
 
+//go:generate mockery -name Writer
 type Writer interface {
 	Write(ctx context.Context, datetime time.Time, items interface{}) error
 }
 
 type s3Writer struct {
-	logger mon.Logger
-	s3Cfg  *aws.Config
+	logger   mon.Logger
+	s3Cfg    *aws.Config
+	s3Client s3iface.S3API
 
 	prefixNamingStrategy s3PrefixNamingStrategy
 
@@ -36,21 +42,23 @@ type s3Writer struct {
 
 func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *s3Writer {
 	s3Cfg := blob.GetS3ClientConfig(config)
+	s3Client := blob.ProvideS3Client(config)
 	settings.ModelId.PadFromConfig(config)
 
 	prefixNaming, exists := s3PrefixNamingStrategies[settings.NamingStrategy]
 
 	if !exists {
-		panic(fmt.Sprintf("Unknown prefix naming strategy '%s'", settings.NamingStrategy))
+		logger.Panic(errors.New("unknown naming strategy"), fmt.Sprintf("Unknown prefix naming strategy '%s'", settings.NamingStrategy))
 	}
 
-	return NewWriterWithInterfaces(logger, s3Cfg, prefixNaming, settings)
+	return NewWriterWithInterfaces(logger, s3Client, s3Cfg, prefixNaming, settings)
 }
 
-func NewWriterWithInterfaces(logger mon.Logger, s3Cfg *aws.Config, prefixNaming s3PrefixNamingStrategy, settings *WriterSettings) *s3Writer {
+func NewWriterWithInterfaces(logger mon.Logger, s3Client s3iface.S3API, s3Cfg *aws.Config, prefixNaming s3PrefixNamingStrategy, settings *WriterSettings) *s3Writer {
 	return &s3Writer{
 		logger:               logger,
 		s3Cfg:                s3Cfg,
+		s3Client:             s3Client,
 		prefixNamingStrategy: prefixNaming,
 		settings:             settings,
 	}
@@ -89,6 +97,22 @@ func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interfac
 	}
 
 	if err = fw.Close(); err != nil {
+		return err
+	}
+
+	tagset := makeTags(w.settings.Tags)
+
+	if len(tagset) == 0 {
+		return nil
+	}
+
+	tagInput := &s3.PutObjectTaggingInput{
+		Bucket:  &bucket,
+		Key:     &key,
+		Tagging: &s3.Tagging{TagSet: tagset},
+	}
+
+	if _, err := w.s3Client.PutObjectTaggingWithContext(ctx, tagInput); err != nil {
 		return err
 	}
 
@@ -133,4 +157,17 @@ func (w *s3Writer) getBucketName() string {
 		Family:      w.settings.ModelId.Family,
 		Application: w.settings.ModelId.Application,
 	})
+}
+
+func makeTags(tags map[string]string) []*s3.Tag {
+	s3Tags := make([]*s3.Tag, 0, len(tags))
+
+	for key, value := range tags {
+		s3Tags = append(s3Tags, &s3.Tag{
+			Key:   mdl.String(key),
+			Value: mdl.String(value),
+		})
+	}
+
+	return s3Tags
 }
