@@ -220,6 +220,24 @@ func TestCreatePointerToSliceOfTypeAndSize(t *testing.T) {
 	assert.Len(t, *casted, 10)
 }
 
+func TestCreatePointerToSliceOfTypeAndSizeWithEmptySlice(t *testing.T) {
+	type foobar struct {
+		Str string
+		Fl1 float64
+		Fl2 float32
+	}
+	input := make([]foobar, 0)
+
+	assert.NotPanics(t, func() {
+		result := refl.CreatePointerToSliceOfTypeAndSize(&input, 1)
+		casted, castable := result.(*[]foobar)
+
+		assert.True(t, castable)
+		assert.Len(t, *casted, 1)
+	})
+
+}
+
 func TestCopyPointerSlice(t *testing.T) {
 	target := make([]string, 0)
 	source := []string{"abc", "def"}

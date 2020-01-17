@@ -1,3 +1,6 @@
+locals {
+  model = var.model != "" ? var.model : var.targetModel
+}
 data "aws_sns_topic" "main" {
   name = "${var.project}-${var.environment}-${var.targetFamily}-${var.targetApplication}-${var.targetModel}"
 }
@@ -9,7 +12,7 @@ module "queue" {
   environment = var.environment
   family      = var.family
   application = var.application
-  queueName   = var.targetModel
+  queueName   = local.model
 
   messageDeliveryDelay    = var.messageDeliveryDelay
   visibilityTimeout       = var.visibilityTimeout

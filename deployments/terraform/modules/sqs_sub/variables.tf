@@ -2,6 +2,9 @@ variable "project" {}
 variable "environment" {}
 variable "family" {}
 variable "application" {}
+variable "model" {
+  default = ""
+}
 variable "targetFamily" {}
 variable "targetApplication" {}
 variable "targetModel" {}
