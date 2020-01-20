@@ -24,6 +24,8 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 		path := req.URL.Path
 		pathRaw := getPathRaw(ginCtx)
 
+		referer := req.Referer()
+
 		query := req.URL.Query()
 		queryRaw := req.URL.RawQuery
 		queryParameters := make(map[string]string)
@@ -46,6 +48,7 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 			"request_path_raw":         pathRaw,
 			"request_query":            queryRaw,
 			"request_query_parameters": queryParameters,
+			"request_referer":          referer,
 			"request_time":             requestTimeSecond,
 			"scheme":                   req.URL.Scheme,
 			"status":                   ginCtx.Writer.Status(),
