@@ -100,9 +100,9 @@ func (service *UpdaterService) needsRefresh(ctx context.Context) bool {
 		return true
 	}
 
-	comparisonDate := time.Now().Add(ExchangeRateRefresh)
+	comparisonDate := time.Now().Add(-ExchangeRateRefresh)
 
-	if date.After(comparisonDate) {
+	if date.Before(comparisonDate) {
 		service.logger.Info("comparison date was more than 8 hours ago")
 
 		return true
