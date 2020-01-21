@@ -11,10 +11,9 @@ import (
 )
 
 const (
-	ExchangeRateRefresh    = 8 * time.Hour
-	ExchangeRateUrl        = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
-	ExchangeRateDateKey    = "currency_exchange_last_refresh"
-	ExchangeRateDateFormat = time.RFC3339
+	ExchangeRateRefresh = 8 * time.Hour
+	ExchangeRateUrl     = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+	ExchangeRateDateKey = "currency_exchange_last_refresh"
 )
 
 type UpdaterService struct {
@@ -65,7 +64,7 @@ func (service *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) er
 		service.logger.Infof("currency: %s, rate: %f", rate.Currency, rate.Rate)
 	}
 
-	newTime := time.Now().Format(ExchangeRateDateFormat)
+	newTime := time.Now()
 	err = service.store.Put(ctx, ExchangeRateDateKey, newTime)
 	if err != nil {
 		service.logger.Error(err, "error setting refresh date")
@@ -77,8 +76,8 @@ func (service *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) er
 }
 
 func (service *UpdaterService) needsRefresh(ctx context.Context) bool {
-	var dateString string
-	exists, err := service.store.Get(ctx, ExchangeRateDateKey, &dateString)
+	var date time.Time
+	exists, err := service.store.Get(ctx, ExchangeRateDateKey, &date)
 
 	if err != nil {
 		service.logger.Info("error fetching date")
@@ -88,14 +87,6 @@ func (service *UpdaterService) needsRefresh(ctx context.Context) bool {
 
 	if !exists {
 		service.logger.Info("date doesn't exist")
-
-		return true
-	}
-
-	date, err := time.Parse(ExchangeRateDateFormat, dateString)
-
-	if err != nil {
-		service.logger.Info("error parsing date")
 
 		return true
 	}

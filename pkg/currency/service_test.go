@@ -60,9 +60,9 @@ var response = `<?xml version="1.0" encoding="UTF-8"?>
 func TestCurrencyService_ToEur_Calculation(t *testing.T) {
 	store := new(kvStoreMock.KvStore)
 
-	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("*string")).Run(func(args mock.Arguments) {
-		ptr := args.Get(2).(*string)
-		*ptr = time.Now().Format(currency.ExchangeRateDateFormat)
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("*time.Time")).Run(func(args mock.Arguments) {
+		ptr := args.Get(2).(*time.Time)
+		*ptr = time.Now()
 	}).Return(true, nil)
 	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), "USD", mock.AnythingOfType("*float64")).Run(func(args mock.Arguments) {
 		f := args.Get(2).(*float64)
@@ -84,9 +84,9 @@ func TestCurrencyService_ToEur_Calculation(t *testing.T) {
 func TestCurrencyService_ToUsd_Calculation(t *testing.T) {
 	store := new(kvStoreMock.KvStore)
 
-	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("*string")).Run(func(args mock.Arguments) {
-		ptr := args.Get(2).(*string)
-		*ptr = time.Now().Format(currency.ExchangeRateDateFormat)
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("*time.Time")).Run(func(args mock.Arguments) {
+		ptr := args.Get(2).(*time.Time)
+		*ptr = time.Now()
 	}).Return(true, nil)
 	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), "USD", mock.AnythingOfType("*float64")).Run(func(args mock.Arguments) {
 		ptr := args.Get(2).(*float64)
@@ -110,11 +110,11 @@ func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
 	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
 
-	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("*string")).Run(func(args mock.Arguments) {
-		ptr := args.Get(2).(*string)
-		*ptr = time.Now().AddDate(-1, 0, 0).Format(currency.ExchangeRateDateFormat)
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("*time.Time")).Run(func(args mock.Arguments) {
+		ptr := args.Get(2).(*time.Time)
+		*ptr = time.Now().AddDate(-1, 0, 0)
 	}).Return(true, nil)
-	store.On("Put", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("string")).Return(nil)
+	store.On("Put", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("time.Time")).Return(nil)
 	store.On("Put", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Return(nil)
 
 	r := &http.Response{
