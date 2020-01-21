@@ -5,8 +5,8 @@ import (
 	"github.com/applike/gosoline/pkg/currency"
 	"github.com/applike/gosoline/pkg/http"
 	httpMock "github.com/applike/gosoline/pkg/http/mocks"
+	kvStoreMock "github.com/applike/gosoline/pkg/kvstore/mocks"
 	loggerMock "github.com/applike/gosoline/pkg/mon/mocks"
-	redisMock "github.com/applike/gosoline/pkg/redis/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -58,36 +58,48 @@ var response = `<?xml version="1.0" encoding="UTF-8"?>
 </gesmes:Envelope>`
 
 func TestCurrencyService_ToEur_Calculation(t *testing.T) {
-	redis := new(redisMock.Client)
+	store := new(kvStoreMock.KvStore)
 
-	redis.On("Get", currency.ExchangeRateDateKey).Return(time.Now().Format(currency.ExchangeRateDateFormat), nil)
-	redis.On("HGet", currency.ExchangeRateDataKey, "USD").Return("1.09", nil)
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("*string")).Run(func(args mock.Arguments) {
+		ptr := args.Get(2).(*string)
+		*ptr = time.Now().Format(currency.ExchangeRateDateFormat)
+	}).Return(true, nil)
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), "USD", mock.AnythingOfType("*float64")).Run(func(args mock.Arguments) {
+		f := args.Get(2).(*float64)
+		*f = 1.09
+	}).Return(true, nil)
 
-	service := currency.NewWithInterfaces(redis)
+	service := currency.NewWithInterfaces(store)
 
 	valueUsd := 1.09
 	valueEur := 1.0
 	from := "USD"
 
-	converted, err := service.ToEur(valueUsd, from)
+	converted, err := service.ToEur(context.Background(), valueUsd, from)
 
 	assert.NoError(t, err)
 	assert.Equal(t, valueEur, converted)
 }
 
 func TestCurrencyService_ToUsd_Calculation(t *testing.T) {
-	redis := new(redisMock.Client)
+	store := new(kvStoreMock.KvStore)
 
-	redis.On("Get", currency.ExchangeRateDateKey).Return(time.Now().Format(currency.ExchangeRateDateFormat), nil)
-	redis.On("HGet", currency.ExchangeRateDataKey, "USD").Return("1.09", nil)
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("*string")).Run(func(args mock.Arguments) {
+		ptr := args.Get(2).(*string)
+		*ptr = time.Now().Format(currency.ExchangeRateDateFormat)
+	}).Return(true, nil)
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), "USD", mock.AnythingOfType("*float64")).Run(func(args mock.Arguments) {
+		ptr := args.Get(2).(*float64)
+		*ptr = 1.09
+	}).Return(true, nil)
 
-	service := currency.NewWithInterfaces(redis)
+	service := currency.NewWithInterfaces(store)
 
 	valueUsd := 1.09
 	valueEur := 1.0
 	from := "EUR"
 
-	converted, err := service.ToUsd(valueEur, from)
+	converted, err := service.ToUsd(context.Background(), valueEur, from)
 
 	assert.NoError(t, err)
 	assert.Equal(t, valueUsd, converted)
@@ -95,69 +107,44 @@ func TestCurrencyService_ToUsd_Calculation(t *testing.T) {
 
 func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
 	logger := loggerMock.NewLoggerMockedAll()
-	redis := new(redisMock.Client)
+	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
 
-	redis.On("Get", currency.ExchangeRateDateKey).Return(time.Now().AddDate(-1, 0, 0).Format(currency.ExchangeRateDateFormat), nil)
-	redis.On("HSet", currency.ExchangeRateDataKey, mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Return(nil)
-	redis.On("Set", currency.ExchangeRateDateKey, mock.AnythingOfType("string"), mock.AnythingOfType("time.Duration")).Return(nil)
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("*string")).Run(func(args mock.Arguments) {
+		ptr := args.Get(2).(*string)
+		*ptr = time.Now().AddDate(-1, 0, 0).Format(currency.ExchangeRateDateFormat)
+	}).Return(true, nil)
+	store.On("Put", mock.AnythingOfType("*context.emptyCtx"), currency.ExchangeRateDateKey, mock.AnythingOfType("string")).Return(nil)
+	store.On("Put", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Return(nil)
 
 	r := &http.Response{
 		Body: []byte(response),
 	}
 
 	client.On("NewRequest").Return(http.NewRequest(nil))
-	client.On("Get", context.TODO(), mock.AnythingOfType("*http.Request")).Return(r, nil)
+	client.On("Get", context.Background(), mock.AnythingOfType("*http.Request")).Return(r, nil)
 
-	service := currency.NewUpdaterWithInterfaces(logger, redis, client)
+	service := currency.NewUpdaterWithInterfaces(logger, store, client)
 
 	err := service.EnsureRecentExchangeRates(context.TODO())
 
 	assert.NoError(t, err)
 
-	redis.AssertExpectations(t)
+	store.AssertExpectations(t)
 	client.AssertExpectations(t)
 }
 
-func TestCurrencyService_Currencies(t *testing.T) {
-	redis := new(redisMock.Client)
-	expectedCurrencies := []string{
-		"EUR",
-		"USD",
-	}
-	returnedCurrencies := []string{
-		"USD",
-	}
-
-	redis.On("HKeys", currency.ExchangeRateDataKey).Return(returnedCurrencies, nil).Times(1)
-
-	service := currency.NewWithInterfaces(redis)
-
-	currencies, err := service.Currencies()
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCurrencies, currencies)
-
-	// ask again, to ensure we used the applications cached currencies
-	currencies, err = service.Currencies()
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCurrencies, currencies)
-
-	redis.AssertExpectations(t)
-}
-
 func TestCurrencyService_HasCurrency(t *testing.T) {
-	redis := new(redisMock.Client)
+	store := new(kvStoreMock.KvStore)
 
-	redis.On("HExists", currency.ExchangeRateDataKey, "USD").Return(true, nil).Times(1)
+	store.On("Contains", mock.AnythingOfType("*context.emptyCtx"), "USD").Return(true, nil).Times(1)
 
-	service := currency.NewWithInterfaces(redis)
+	service := currency.NewWithInterfaces(store)
 
-	hasCurrency, err := service.HasCurrency("USD")
+	hasCurrency, err := service.HasCurrency(context.Background(), "USD")
 
 	assert.NoError(t, err)
 	assert.True(t, hasCurrency)
 
-	redis.AssertExpectations(t)
+	store.AssertExpectations(t)
 }
