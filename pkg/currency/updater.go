@@ -86,8 +86,8 @@ func (service *UpdaterService) needsRefresh(ctx context.Context) bool {
 		return true
 	}
 
-	if !exists || dateString == "" {
-		service.logger.Info("date doesn't exist or is empty")
+	if !exists {
+		service.logger.Info("date doesn't exist")
 
 		return true
 	}
@@ -102,7 +102,7 @@ func (service *UpdaterService) needsRefresh(ctx context.Context) bool {
 
 	comparisonDate := time.Now().Add(ExchangeRateRefresh)
 
-	if err == nil && date.Before(comparisonDate) {
+	if date.After(comparisonDate) {
 		service.logger.Info("comparison date was more than 8 hours ago")
 
 		return true
