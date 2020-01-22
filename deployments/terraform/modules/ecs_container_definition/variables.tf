@@ -211,3 +211,9 @@ variable "system_controls" {
   description = "A list of namespaced kernel parameters to set in the container, mapping to the --sysctl option to docker run. This is a list of maps: { namespace = \"\", value = \"\"}"
   default     = null
 }
+
+variable "dns_search_domains" {
+  type        = list(string)
+  description = "Container search DNS servers. This is a list of strings specifying the addresses of the DNS servers"
+  default     = null
+}
