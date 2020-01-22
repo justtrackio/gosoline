@@ -7,6 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/http"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/tracing"
 	"time"
 )
 
@@ -18,75 +19,81 @@ const (
 
 type UpdaterService struct {
 	logger mon.Logger
+	tracer tracing.Tracer
 	http   http.Client
 	store  kvstore.KvStore
 }
 
 func NewUpdater(config cfg.Config, logger mon.Logger) *UpdaterService {
 	logger = logger.WithChannel("currency_updater_service")
+	tracer := tracing.NewAwsTracer(config)
 	store := kvstore.NewConfigurableKvStore(config, logger, "currency")
 	httpClient := http.NewHttpClient(config, logger)
 
-	return NewUpdaterWithInterfaces(logger, store, httpClient)
+	return NewUpdaterWithInterfaces(logger, tracer, store, httpClient)
 }
 
-func NewUpdaterWithInterfaces(logger mon.Logger, store kvstore.KvStore, httpClient http.Client) *UpdaterService {
+func NewUpdaterWithInterfaces(logger mon.Logger, tracer tracing.Tracer, store kvstore.KvStore, httpClient http.Client) *UpdaterService {
 	return &UpdaterService{
 		logger: logger,
+		tracer: tracer,
 		store:  store,
 		http:   httpClient,
 	}
 }
 
-func (service *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) error {
-	if !service.needsRefresh(ctx) {
+func (s *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) error {
+	ctx, span := s.tracer.StartSpanFromContext(ctx, "currency-update-service")
+	defer span.Finish()
+
+	if !s.needsRefresh(ctx) {
 		return nil
 	}
 
-	service.logger.Info("refetching exchange rates")
+	s.logger.Info("refetching exchange rates")
 
-	service.logger.Info("requesting exchange rates")
-	rates, err := service.getCurrencyRates(ctx)
+	s.logger.Info("requesting exchange rates")
+	rates, err := s.getCurrencyRates(ctx)
 
 	if err != nil {
-		service.logger.Error(err, "error getting currency exchange rates")
+		s.logger.Error(err, "error getting currency exchange rates")
 		return err
 	}
 
 	for _, rate := range rates {
-		err := service.store.Put(ctx, rate.Currency, rate.Rate)
+		err := s.store.Put(ctx, rate.Currency, rate.Rate)
 
 		if err != nil {
-			service.logger.Error(err, "error setting exchange rate")
+			s.logger.Error(err, "error setting exchange rate")
 			return err
 		}
 
-		service.logger.Infof("currency: %s, rate: %f", rate.Currency, rate.Rate)
+		s.logger.Infof("currency: %s, rate: %f", rate.Currency, rate.Rate)
 	}
 
 	newTime := time.Now()
-	err = service.store.Put(ctx, ExchangeRateDateKey, newTime)
+	err = s.store.Put(ctx, ExchangeRateDateKey, newTime)
 	if err != nil {
-		service.logger.Error(err, "error setting refresh date")
+		s.logger.Error(err, "error setting refresh date")
 	}
 
-	service.logger.Info("new exchange rates are set")
+	s.logger.Info("new exchange rates are set")
 
 	return nil
 }
 
-func (service *UpdaterService) needsRefresh(ctx context.Context) bool {
+func (s *UpdaterService) needsRefresh(ctx context.Context) bool {
 	var date time.Time
-	exists, err := service.store.Get(ctx, ExchangeRateDateKey, &date)
+	exists, err := s.store.Get(ctx, ExchangeRateDateKey, &date)
 
 	if err != nil {
-		service.logger.Info("error fetching date")
+		s.logger.Info("error fetching date")
 
 		return true
 	}
 
 	if !exists {
-		service.logger.Info("date doesn't exist")
+		s.logger.Info("date doesn't exist")
 
 		return true
 	}
@@ -94,7 +101,7 @@ func (service *UpdaterService) needsRefresh(ctx context.Context) bool {
 	comparisonDate := time.Now().Add(-ExchangeRateRefresh)
 
 	if date.Before(comparisonDate) {
-		service.logger.Info("comparison date was more than 8 hours ago")
+		s.logger.Info("comparison date was more than 8 hours ago")
 
 		return true
 	}
@@ -102,13 +109,13 @@ func (service *UpdaterService) needsRefresh(ctx context.Context) bool {
 	return false
 }
 
-func (service *UpdaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
-	request := service.http.NewRequest().WithUrl(ExchangeRateUrl)
+func (s *UpdaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
+	request := s.http.NewRequest().WithUrl(ExchangeRateUrl)
 
-	response, err := service.http.Get(ctx, request)
+	response, err := s.http.Get(ctx, request)
 
 	if err != nil {
-		service.logger.Error(err, "error requesting exchange rates")
+		s.logger.Error(err, "error requesting exchange rates")
 
 		return nil, err
 	}
@@ -117,7 +124,7 @@ func (service *UpdaterService) getCurrencyRates(ctx context.Context) ([]Rate, er
 	err = xml.Unmarshal(response.Body, &exchangeRateResult)
 
 	if err != nil {
-		service.logger.Error(err, "error unmarshalling exchange rates")
+		s.logger.Error(err, "error unmarshalling exchange rates")
 
 		return nil, err
 	}
