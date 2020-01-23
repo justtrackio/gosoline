@@ -36,21 +36,21 @@ func NewWithInterfaces(store kvstore.KvStore) *CurrencyService {
 }
 
 // returns whether we support converting a given currency or not and whether an error occurred or not
-func (service *CurrencyService) HasCurrency(ctx context.Context, currency string) (bool, error) {
+func (s *CurrencyService) HasCurrency(ctx context.Context, currency string) (bool, error) {
 	if currency == "EUR" {
 		return true, nil
 	}
 
-	return service.store.Contains(ctx, currency)
+	return s.store.Contains(ctx, currency)
 }
 
 // returns the euro value for a given value and currency and nil if not error occurred. returns 0 and an error object otherwise.
-func (service *CurrencyService) ToEur(ctx context.Context, value float64, from string) (float64, error) {
+func (s *CurrencyService) ToEur(ctx context.Context, value float64, from string) (float64, error) {
 	if from == Eur {
 		return value, nil
 	}
 
-	exchangeRate, err := service.getExchangeRate(ctx, from)
+	exchangeRate, err := s.getExchangeRate(ctx, from)
 
 	if err != nil {
 		return 0, errors.WithMessage(err, "CurrencyService: error parsing exchange rate")
@@ -60,27 +60,27 @@ func (service *CurrencyService) ToEur(ctx context.Context, value float64, from s
 }
 
 // returns the us dollar value for a given value and currency and nil if not error occurred. returns 0 and an error object otherwise.
-func (service *CurrencyService) ToUsd(ctx context.Context, value float64, from string) (float64, error) {
+func (s *CurrencyService) ToUsd(ctx context.Context, value float64, from string) (float64, error) {
 	if from == Usd {
 		return value, nil
 	}
 
-	return service.ToCurrency(ctx, Usd, value, from)
+	return s.ToCurrency(ctx, Usd, value, from)
 }
 
 // returns the value in the currency given in the to parameter for a given value and currency given in the from parameter and nil if not error occurred. returns 0 and an error object otherwise.
-func (service *CurrencyService) ToCurrency(ctx context.Context, to string, value float64, from string) (float64, error) {
+func (s *CurrencyService) ToCurrency(ctx context.Context, to string, value float64, from string) (float64, error) {
 	if from == to {
 		return value, nil
 	}
 
-	exchangeRate, err := service.getExchangeRate(ctx, to)
+	exchangeRate, err := s.getExchangeRate(ctx, to)
 
 	if err != nil {
 		return 0, errors.WithMessage(err, "CurrencyService: error parsing exchange rate")
 	}
 
-	eur, err := service.ToEur(ctx, value, from)
+	eur, err := s.ToEur(ctx, value, from)
 
 	if err != nil {
 		return 0, errors.WithMessage(err, "CurrencyService: error converting to eur")
@@ -89,9 +89,9 @@ func (service *CurrencyService) ToCurrency(ctx context.Context, to string, value
 	return eur * exchangeRate, nil
 }
 
-func (service *CurrencyService) getExchangeRate(ctx context.Context, to string) (float64, error) {
+func (s *CurrencyService) getExchangeRate(ctx context.Context, to string) (float64, error) {
 	var exchangeRate float64
-	exists, err := service.store.Get(ctx, to, &exchangeRate)
+	exists, err := s.store.Get(ctx, to, &exchangeRate)
 
 	if err != nil {
 		return 0, errors.WithMessage(err, "CurrencyService: error getting exchange rate")

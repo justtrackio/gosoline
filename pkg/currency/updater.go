@@ -50,8 +50,6 @@ func (s *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 		return nil
 	}
 
-	s.logger.Info("refetching exchange rates")
-
 	s.logger.Info("requesting exchange rates")
 	rates, err := s.getCurrencyRates(ctx)
 
@@ -73,12 +71,12 @@ func (s *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 
 	newTime := time.Now()
 	err = s.store.Put(ctx, ExchangeRateDateKey, newTime)
+
 	if err != nil {
 		s.logger.Error(err, "error setting refresh date")
 	}
 
 	s.logger.Info("new exchange rates are set")
-
 	return nil
 }
 

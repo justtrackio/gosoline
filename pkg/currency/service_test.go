@@ -7,6 +7,7 @@ import (
 	httpMock "github.com/applike/gosoline/pkg/http/mocks"
 	kvStoreMock "github.com/applike/gosoline/pkg/kvstore/mocks"
 	loggerMock "github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -107,6 +108,7 @@ func TestCurrencyService_ToUsd_Calculation(t *testing.T) {
 
 func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
 	logger := loggerMock.NewLoggerMockedAll()
+	tracer := tracing.NewNoopTracer()
 	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
 
@@ -124,7 +126,7 @@ func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
 	client.On("NewRequest").Return(http.NewRequest(nil))
 	client.On("Get", context.Background(), mock.AnythingOfType("*http.Request")).Return(r, nil)
 
-	service := currency.NewUpdaterWithInterfaces(logger, store, client)
+	service := currency.NewUpdaterWithInterfaces(logger, tracer, store, client)
 
 	err := service.EnsureRecentExchangeRates(context.TODO())
 
