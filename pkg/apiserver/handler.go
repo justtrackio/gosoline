@@ -143,7 +143,10 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 		err := binding.Bind(ginCtx.Request, input)
 
 		if err != nil {
-			handleError(ginCtx, errHandler, http.StatusBadRequest, err)
+			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+				Err:  err,
+				Type: gin.ErrorTypeBind,
+			})
 			return
 		}
 
@@ -158,7 +161,10 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 		err = handler.Handle(ginCtx, reqCtx, request)
 
 		if err != nil {
-			handleError(ginCtx, errHandler, http.StatusInternalServerError, err)
+			handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
+				Err:  err,
+				Type: gin.ErrorTypePrivate,
+			})
 			return
 		}
 	}
@@ -170,7 +176,10 @@ func handleWithInput(handler HandlerWithInput, binding binding.Binding, errHandl
 		err := binding.Bind(ginCtx.Request, input)
 
 		if err != nil {
-			handleError(ginCtx, errHandler, http.StatusBadRequest, err)
+			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+				Err:  err,
+				Type: gin.ErrorTypeBind,
+			})
 			return
 		}
 
@@ -187,7 +196,10 @@ func handleWithMultipleBindings(handler HandlerWithMultipleBindings, errHandler 
 			err := bindings[i].Bind(ginCtx.Request, input)
 
 			if err != nil {
-				handleError(ginCtx, errHandler, http.StatusBadRequest, err)
+				handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+					Err:  err,
+					Type: gin.ErrorTypeBind,
+				})
 				return
 			}
 
@@ -202,7 +214,10 @@ func handleRaw(handler HandlerWithoutInput, errHandler ErrorHandler) gin.Handler
 		body, err := ioutil.ReadAll(ginCtx.Request.Body)
 
 		if err != nil {
-			handleError(ginCtx, errHandler, http.StatusBadRequest, err)
+			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+				Err:  err,
+				Type: gin.ErrorTypeBind,
+			})
 			return
 		}
 
@@ -229,14 +244,20 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 	resp, err := handler.Handle(reqCtx, request)
 
 	if err != nil {
-		handleError(ginCtx, errHandler, http.StatusInternalServerError, err)
+		handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
+			Err:  err,
+			Type: gin.ErrorTypePrivate,
+		})
 		return
 	}
 
 	writer, err := mkResponseBodyWriter(resp)
 
 	if err != nil {
-		handleError(ginCtx, errHandler, http.StatusInternalServerError, err)
+		handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
+			Err:  err,
+			Type: gin.ErrorTypeRender,
+		})
 		return
 	}
 
@@ -244,9 +265,9 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 	writer(ginCtx)
 }
 
-func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, err error) {
-	_ = ginCtx.Error(err)
-	resp := errHandler(statusCode, err)
+func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, ginError gin.Error) {
+	_ = ginCtx.Error(&ginError)
+	resp := errHandler(statusCode, ginError.Err)
 
 	writer, err := mkResponseBodyWriter(resp)
 

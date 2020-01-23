@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/gin-gonic/gin"
-	"github.com/hashicorp/go-multierror"
 	"strings"
 	"time"
 )
@@ -54,17 +53,21 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 			"status":                   ginCtx.Writer.Status(),
 		})
 
-		if ginCtx.Errors == nil || len(ginCtx.Errors) == 0 {
+		if len(ginCtx.Errors) == 0 {
 			log.Infof("%s %s %s", method, path, req.Proto)
 			return
 		}
 
-		var err *multierror.Error
 		for _, e := range ginCtx.Errors {
-			err = multierror.Append(err, e.Err)
+			switch e.Type {
+			case gin.ErrorTypeBind:
+				log.Warnf("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)
+			case gin.ErrorTypeRender:
+				log.Warnf("%s %s %s - render error - %v", method, path, req.Proto, e.Err)
+			default:
+				log.Errorf(e.Err, "%s %s %s", method, path, req.Proto)
+			}
 		}
-
-		log.Errorf(err, "%s %s %s", method, path, req.Proto)
 	}
 }
 func getPathRaw(ginCtx *gin.Context) string {
