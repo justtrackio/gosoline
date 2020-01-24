@@ -28,11 +28,11 @@ func (_m *PipelineCallback) Boot(config cfg.Config, logger mon.Logger) error {
 }
 
 // Process provides a mock function with given fields: ctx, messages
-func (_m *PipelineCallback) Process(ctx context.Context, messages []*stream.Message) ([]*stream.Message, error) {
+func (_m *PipelineCallback) Process(ctx context.Context, messages []*stream.ConsumableMessage) ([]*stream.Message, error) {
 	ret := _m.Called(ctx, messages)
 
 	var r0 []*stream.Message
-	if rf, ok := ret.Get(0).(func(context.Context, []*stream.Message) []*stream.Message); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []*stream.ConsumableMessage) []*stream.Message); ok {
 		r0 = rf(ctx, messages)
 	} else {
 		if ret.Get(0) != nil {
@@ -41,7 +41,7 @@ func (_m *PipelineCallback) Process(ctx context.Context, messages []*stream.Mess
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, []*stream.Message) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, []*stream.ConsumableMessage) error); ok {
 		r1 = rf(ctx, messages)
 	} else {
 		r1 = ret.Error(1)

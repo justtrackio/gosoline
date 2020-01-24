@@ -13,6 +13,12 @@ const (
 	AttributeSqsMessageGroupId = "sqsMessageGroupId"
 )
 
+// ConsumableMessage adds a callback that has to be called whenever a consumer has consumed it successfully
+type ConsumableMessage struct {
+	Message
+	Consumed func()
+}
+
 type Message struct {
 	Trace      *tracing.Trace         `json:"trace"`
 	Attributes map[string]interface{} `json:"attributes"`

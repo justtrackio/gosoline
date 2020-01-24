@@ -16,7 +16,7 @@ const MetricNamePipelineProcessedCount = "PipelineProcessedCount"
 //go:generate mockery -name PipelineCallback
 type PipelineCallback interface {
 	Boot(config cfg.Config, logger mon.Logger) error
-	Process(ctx context.Context, messages []*Message) ([]*Message, error)
+	Process(ctx context.Context, messages []*ConsumableMessage) ([]*Message, error)
 }
 
 type PipelineSettings struct {
@@ -35,6 +35,7 @@ type Pipeline struct {
 	output   Output
 	ticker   *time.Ticker
 	batch    []*Message
+	consumed []*Message
 	stages   []PipelineCallback
 	settings *PipelineSettings
 }
@@ -76,6 +77,7 @@ func (p *Pipeline) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter
 	p.output = output
 	p.ticker = time.NewTicker(settings.Interval)
 	p.batch = make([]*Message, 0, settings.BatchSize)
+	p.consumed = make([]*Message, 0, settings.BatchSize)
 	p.settings = settings
 
 	return nil
@@ -112,6 +114,7 @@ func (p *Pipeline) read(ctx context.Context) error {
 			}
 
 			p.batch = append(p.batch, msg)
+			p.consumed = append(p.consumed, msg)
 
 		case <-p.ticker.C:
 			force = true
@@ -146,6 +149,7 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 	defer func() {
 		p.ticker = time.NewTicker(p.settings.Interval)
 		p.batch = make([]*Message, 0, p.settings.BatchSize)
+		p.consumed = make([]*Message, 0, p.settings.BatchSize)
 
 		err := coffin.ResolveRecovery(recover())
 
@@ -161,7 +165,11 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 	var err error
 
 	for _, stage := range p.stages {
-		p.batch, err = stage.Process(ctx, p.batch)
+		consumables := p.toConsumables(p.batch)
+
+		p.consumed = make([]*Message, 0, len(p.batch))
+
+		p.batch, err = stage.Process(ctx, consumables)
 
 		if err != nil {
 			p.logger.Error(err, "could not process the batch")
@@ -176,7 +184,7 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 		return
 	}
 
-	p.AcknowledgeBatch(ctx, p.batch)
+	p.AcknowledgeBatch(ctx, p.consumed)
 
 	processedCount := len(p.batch)
 
@@ -185,6 +193,21 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 		MetricName: MetricNamePipelineProcessedCount,
 		Value:      float64(processedCount),
 	})
+}
+
+func (p *Pipeline) toConsumables(messages []*Message) []*ConsumableMessage {
+	consumables := make([]*ConsumableMessage, len(messages))
+
+	for i, msg := range messages {
+		originalMsg := p.consumed[i] // keep track of the original msg using the anonymous function closure
+		consumables[i] = &ConsumableMessage{
+			Message: *msg,
+			Consumed: func() {
+				p.consumed = append(p.consumed, originalMsg)
+			},
+		}
+	}
+	return consumables
 }
 
 func getDefaultPipelineMetrics() mon.MetricData {

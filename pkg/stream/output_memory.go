@@ -34,3 +34,7 @@ func (o *OutputMemory) ContainsBody(body string) bool {
 
 	return false
 }
+
+func (o *OutputMemory) Messages() []*Message {
+	return o.messages
+}
