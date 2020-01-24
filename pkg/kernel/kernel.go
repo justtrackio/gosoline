@@ -172,6 +172,15 @@ func (k *kernel) Run() {
 		err := fmt.Errorf("kernel was not able to shutdown in %v", k.settings.KillTimeout)
 		k.logger.Error(err, "kernel shutdown seems to be blocking.. exiting...")
 
+		k.modules.Range(func(name interface{}, moduleState interface{}) bool {
+			ms := moduleState.(*ModuleState)
+			if ms.IsRunning {
+				k.logger.Infof("module blocking the shutdown: %s", name)
+			}
+
+			return true
+		})
+
 		os.Exit(1)
 	}()
 
