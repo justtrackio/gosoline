@@ -239,6 +239,50 @@ func (_m *Client) HKeys(_a0 string) ([]string, error) {
 	return r0, r1
 }
 
+// HMGet provides a mock function with given fields: key, fields
+func (_m *Client) HMGet(key string, fields ...string) ([]interface{}, error) {
+	_va := make([]interface{}, len(fields))
+	for _i := range fields {
+		_va[_i] = fields[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, key)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []interface{}
+	if rf, ok := ret.Get(0).(func(string, ...string) []interface{}); ok {
+		r0 = rf(key, fields...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]interface{})
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, ...string) error); ok {
+		r1 = rf(key, fields...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// HMSet provides a mock function with given fields: key, pairs
+func (_m *Client) HMSet(key string, pairs map[string]interface{}) error {
+	ret := _m.Called(key, pairs)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, map[string]interface{}) error); ok {
+		r0 = rf(key, pairs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // HSet provides a mock function with given fields: _a0, _a1, _a2
 func (_m *Client) HSet(_a0 string, _a1 string, _a2 interface{}) error {
 	ret := _m.Called(_a0, _a1, _a2)
@@ -251,6 +295,27 @@ func (_m *Client) HSet(_a0 string, _a1 string, _a2 interface{}) error {
 	}
 
 	return r0
+}
+
+// HSetNX provides a mock function with given fields: key, field, value
+func (_m *Client) HSetNX(key string, field string, value interface{}) (bool, error) {
+	ret := _m.Called(key, field, value)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string, string, interface{}) bool); ok {
+		r0 = rf(key, field, value)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string, interface{}) error); ok {
+		r1 = rf(key, field, value)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // Incr provides a mock function with given fields: key

@@ -66,6 +66,14 @@ func EmptyStringIfNil(s *string) string {
 	return *s
 }
 
+func EmptyTimeIfNil(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+
+	return *t
+}
+
 func EmptyUintIfNil(i *uint) uint {
 	if i == nil {
 		return 0
