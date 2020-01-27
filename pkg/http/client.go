@@ -7,6 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"gopkg.in/resty.v1"
+	"net/http"
 	netUrl "net/url"
 	"time"
 )
@@ -35,6 +36,7 @@ type Client interface {
 
 type Response struct {
 	Body            []byte
+	Header          http.Header
 	StatusCode      int
 	RequestDuration time.Duration
 }
@@ -150,6 +152,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 
 	response := &Response{
 		Body:            resp.Body(),
+		Header:          resp.Header(),
 		StatusCode:      resp.StatusCode(),
 		RequestDuration: resp.Time(),
 	}
