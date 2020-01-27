@@ -39,6 +39,9 @@ type Client interface {
 	HKeys(string) ([]string, error)
 	HGet(string, string) (string, error)
 	HSet(string, string, interface{}) error
+	HMGet(key string, fields ...string) ([]interface{}, error)
+	HMSet(key string, pairs map[string]interface{}) error
+	HSetNX(key string, field string, value interface{}) (bool, error)
 
 	Incr(key string) (int64, error)
 	IncrBy(key string, amount int64) (int64, error)
@@ -150,12 +153,26 @@ func (c *redisClient) MSet(pairs ...interface{}) error {
 	return res.(*baseRedis.StatusCmd).Err()
 }
 
+func (c *redisClient) HMSet(key string, pairs map[string]interface{}) error {
+	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
+		cmd := c.base.HMSet(key, pairs)
+
+		return cmd, cmd.Err()
+	})
+
+	return res.(*baseRedis.StatusCmd).Err()
+}
+
 func (c *redisClient) Get(key string) (string, error) {
 	return c.base.Get(key).Result()
 }
 
 func (c *redisClient) MGet(keys ...string) ([]interface{}, error) {
 	return c.base.MGet(keys...).Result()
+}
+
+func (c *redisClient) HMGet(key string, fields ...string) ([]interface{}, error) {
+	return c.base.HMGet(key, fields...).Result()
 }
 
 func (c *redisClient) Del(key string) (int64, error) {
@@ -200,6 +217,16 @@ func (c *redisClient) HSet(key, field string, value interface{}) error {
 	})
 
 	return res.(*baseRedis.BoolCmd).Err()
+}
+
+func (c *redisClient) HSetNX(key, field string, value interface{}) (bool, error) {
+	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
+		cmd := c.base.HSetNX(key, field, value)
+
+		return cmd, cmd.Err()
+	}).(*baseRedis.BoolCmd)
+
+	return res.Val(), res.Err()
 }
 
 func (c *redisClient) Incr(key string) (int64, error) {

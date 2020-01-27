@@ -76,6 +76,47 @@ func TestRedisSet(t *testing.T) {
 	assert.Nil(t, err, "there should be no error on Set with expiration date")
 }
 
+func TestRedisHSet(t *testing.T) {
+	_, c := buildClient()
+
+	err := c.HSet("key", "field", "value")
+	assert.Nil(t, err, "there should be no error on HSet")
+}
+
+func TestRedisHSetNX(t *testing.T) {
+	_, c := buildClient()
+
+	isNewlySet, err := c.HSetNX("key", "field", "value")
+	assert.True(t, isNewlySet, "the field should be set the first time")
+	assert.Nil(t, err, "there should be no error on HSet")
+
+	isNewlySet, err = c.HSetNX("key", "field", "value")
+	assert.False(t, isNewlySet, "the field should NOT be set the first time")
+	assert.Nil(t, err, "there should be no error on HSet")
+}
+
+func TestRedisHMSet(t *testing.T) {
+	_, c := buildClient()
+
+	err := c.HMSet("key", map[string]interface{}{"field": "value"})
+	assert.Nil(t, err, "there should be no error on HSet")
+}
+
+func TestRedisHMGet(t *testing.T) {
+	_, c := buildClient()
+
+	vals, err := c.HMGet("key", "field", "value")
+	assert.Nil(t, err, "there should be no error on HSet")
+	assert.Equal(t, []interface{}{nil, nil}, vals, "there should be no error on HSet")
+
+	err = c.HMSet("key", map[string]interface{}{"value": "1"})
+	assert.Nil(t, err, "there should be no error on HSet")
+
+	vals, err = c.HMGet("key", "field", "value")
+	assert.Nil(t, err, "there should be no error on HSet")
+	assert.Equal(t, []interface{}{nil, "1"}, vals, "there should be no error on HSet")
+}
+
 func TestRedisIncr(t *testing.T) {
 	_, c := buildClient()
 
