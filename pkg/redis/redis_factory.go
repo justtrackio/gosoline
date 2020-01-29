@@ -27,13 +27,13 @@ func GetClientFromSettings(logger mon.Logger, settings *Settings) Client {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if client, ok := clients[settings.Address]; ok {
+	if client, ok := clients[settings.Name]; ok {
 		return client
 	}
 
-	clients[settings.Address] = NewRedisClient(logger, settings)
+	clients[settings.Name] = NewRedisClient(logger, settings)
 
-	return clients[settings.Address]
+	return clients[settings.Name]
 }
 
 func readSettings(config cfg.Config, name string) *Settings {
