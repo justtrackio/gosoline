@@ -212,6 +212,7 @@ func buildClient() (*miniredis.Miniredis, redis.Client) {
 	settings := redis.Settings{}
 	settings.Address = s.Addr()
 	settings.Mode = redis.RedisModeLocal
+	settings.Name = s.Addr() // just for having a unique name
 	logger := mocks.NewLoggerMockedAll()
 	c := redis.GetClientFromSettings(logger, &settings)
 
