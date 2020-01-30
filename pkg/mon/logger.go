@@ -287,7 +287,7 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 		}
 	}
 
-	timestamp := l.clock.Now().Format(l.timestampFormat)
+	timestamp := FormatTime(l.clock.Now(), l.timestampFormat)
 	buffer, err := formatters[l.format](timestamp, level, msg, logErr, &cpyData)
 
 	if err != nil {
@@ -298,7 +298,7 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 }
 
 func (l *logger) err(err error) {
-	timestamp := l.clock.Now().Format(l.timestampFormat)
+	timestamp := FormatTime(l.clock.Now(), l.timestampFormat)
 	buffer, err := formatters[l.format](timestamp, Error, err.Error(), err, &l.data)
 
 	if err != nil {
