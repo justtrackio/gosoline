@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -287,7 +288,7 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 		}
 	}
 
-	timestamp := l.clock.Now().Format(l.timestampFormat)
+	timestamp := FormatTime(l.clock.Now(), l.timestampFormat)
 	buffer, err := formatters[l.format](timestamp, level, msg, logErr, &cpyData)
 
 	if err != nil {
@@ -298,7 +299,7 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 }
 
 func (l *logger) err(err error) {
-	timestamp := l.clock.Now().Format(l.timestampFormat)
+	timestamp := FormatTime(l.clock.Now(), l.timestampFormat)
 	buffer, err := formatters[l.format](timestamp, Error, err.Error(), err, &l.data)
 
 	if err != nil {
@@ -373,7 +374,8 @@ func prepareForLog(v interface{}) interface{} {
 	case error:
 		// Otherwise errors are ignored by `encoding/json`
 		return t.Error()
-
+	case time.Time:
+		return v
 	case map[string]interface{}:
 		// perform a deep copy of any maps contained in this map element
 		// to ensure we own the object completely
