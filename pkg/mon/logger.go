@@ -375,7 +375,7 @@ func prepareForLog(v interface{}) interface{} {
 		// Otherwise errors are ignored by `encoding/json`
 		return t.Error()
 	case time.Time:
-		return t.String()
+		return t.Format("2006-01-02T15:04:05.000")
 	case map[string]interface{}:
 		// perform a deep copy of any maps contained in this map element
 		// to ensure we own the object completely
