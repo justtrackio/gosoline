@@ -178,10 +178,11 @@ func TestClient_WithFields(t *testing.T) {
 	logger1 := logger0.WithFields(mon.Fields{
 		"field1": "a",
 		"field2": 1,
+		"time":   time.Unix(1580480991, 0),
 	})
 	logger1.Info("foobar")
 
-	expected := `{"fields":{"field1":"a","field2":1},"context":{},"channel": "default", "level":2,"level_name":"info","message":"foobar","timestamp":"1984-04-04T00:00:00Z"}`
+	expected := `{"fields":{"field1":"a","field2":1,"time":"2020-01-31T15:29:51+01:00"},"context":{},"channel": "default", "level":2,"level_name":"info","message":"foobar","timestamp":"1984-04-04T00:00:00Z"}`
 	assert.JSONEq(t, expected, out.String(), "output should match")
 
 	out.Reset()
@@ -190,7 +191,7 @@ func TestClient_WithFields(t *testing.T) {
 	})
 	logger2.Info("msg2")
 
-	expected = `{"fields":{"field1":"a","field2":1, "field3":0.3},"context":{},"channel": "default", "level":2,"level_name":"info","message":"msg2","timestamp":"1984-04-04T00:00:00Z"}`
+	expected = `{"fields":{"field1":"a","field2":1,"time":"2020-01-31T15:29:51+01:00","field3":0.3},"context":{},"channel": "default", "level":2,"level_name":"info","message":"msg2","timestamp":"1984-04-04T00:00:00Z"}`
 	assert.JSONEq(t, expected, out.String(), "output should match")
 
 	out.Reset()

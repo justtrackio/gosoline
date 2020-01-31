@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -373,7 +374,8 @@ func prepareForLog(v interface{}) interface{} {
 	case error:
 		// Otherwise errors are ignored by `encoding/json`
 		return t.Error()
-
+	case time.Time:
+		return v
 	case map[string]interface{}:
 		// perform a deep copy of any maps contained in this map element
 		// to ensure we own the object completely
