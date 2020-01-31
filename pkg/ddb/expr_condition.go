@@ -38,6 +38,10 @@ func Lte(attribute string, value interface{}) expression.ConditionBuilder {
 	return expression.LessThanEqual(expression.Name(attribute), expression.Value(value))
 }
 
+func Between(attribute string, lower interface{}, upper interface{}) expression.ConditionBuilder {
+	return expression.Between(expression.Name(attribute), expression.Value(lower), expression.Value(upper))
+}
+
 func AttributeNotExists(attribute string) expression.ConditionBuilder {
 	return expression.AttributeNotExists(expression.Name(attribute))
 }

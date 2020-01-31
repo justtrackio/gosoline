@@ -1,12 +1,31 @@
 package cfg
 
-import "strings"
+import (
+	"flag"
+	"os"
+	"strings"
+)
 
 type Option func(cfg *config) error
 
 func WithConfigFile(filePath string, fileType string) Option {
 	return func(cfg *config) error {
 		return readConfigFromFile(cfg, filePath, fileType)
+	}
+}
+
+func WithConfigFileFlag(flagName string) Option {
+	return func(cfg *config) error {
+		flags := flag.NewFlagSet("cfg", flag.ContinueOnError)
+
+		configFile := flags.String(flagName, "", "path to a config file")
+		err := flags.Parse(os.Args[1:])
+
+		if err != nil {
+			return err
+		}
+
+		return readConfigFromFile(cfg, *configFile, "yml")
 	}
 }
 

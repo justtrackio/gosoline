@@ -10,7 +10,7 @@ import (
 
 type ScanOperation struct {
 	input      *dynamodb.ScanInput
-	progress   *readProgress
+	iterator   *pageIterator
 	targetType interface{}
 	result     *ScanResult
 }
@@ -107,7 +107,7 @@ func (b *scanBuilder) Build(result interface{}) (*ScanOperation, error) {
 		return nil, err
 	}
 
-	progress := buildProgress(b.limit, b.pageSize)
+	progress := buildPageIterator(b.limit, b.pageSize)
 	input := &dynamodb.ScanInput{
 		TableName:                 aws.String(b.metadata.TableName),
 		IndexName:                 b.indexName,
@@ -122,7 +122,7 @@ func (b *scanBuilder) Build(result interface{}) (*ScanOperation, error) {
 
 	operation := &ScanOperation{
 		input:      input,
-		progress:   progress,
+		iterator:   progress,
 		targetType: targetType,
 		result:     newScanResult(),
 	}

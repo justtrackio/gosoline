@@ -5,11 +5,19 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
-type ResultCallback func(ctx context.Context, result interface{}) (bool, error)
+type ResultCallback func(ctx context.Context, items interface{}, progress Progress) (bool, error)
+
+type Progress interface {
+	GetRequestCount() int64
+	GetItemCount() int64
+	GetScannedCount() int64
+	GetConsumedCapacity() *ConsumedCapacity
+}
 
 type readResult struct {
 	Items            []map[string]*dynamodb.AttributeValue
 	LastEvaluatedKey map[string]*dynamodb.AttributeValue
+	Progress         Progress
 }
 
 type OperationResult struct {
@@ -63,6 +71,22 @@ type QueryResult struct {
 	ConsumedCapacity *ConsumedCapacity
 }
 
+func (q QueryResult) GetRequestCount() int64 {
+	return q.RequestCount
+}
+
+func (q QueryResult) GetItemCount() int64 {
+	return q.ItemCount
+}
+
+func (q QueryResult) GetScannedCount() int64 {
+	return q.ScannedCount
+}
+
+func (q QueryResult) GetConsumedCapacity() *ConsumedCapacity {
+	return q.ConsumedCapacity
+}
+
 func newQueryResult() *QueryResult {
 	return &QueryResult{
 		ConsumedCapacity: newConsumedCapacity(),
@@ -74,6 +98,22 @@ type ScanResult struct {
 	ItemCount        int64
 	ScannedCount     int64
 	ConsumedCapacity *ConsumedCapacity
+}
+
+func (s ScanResult) GetRequestCount() int64 {
+	return s.RequestCount
+}
+
+func (s ScanResult) GetItemCount() int64 {
+	return s.ItemCount
+}
+
+func (s ScanResult) GetScannedCount() int64 {
+	return s.ScannedCount
+}
+
+func (s ScanResult) GetConsumedCapacity() *ConsumedCapacity {
+	return s.ConsumedCapacity
 }
 
 func newScanResult() *ScanResult {

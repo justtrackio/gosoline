@@ -38,6 +38,7 @@ type s3Writer struct {
 	prefixNamingStrategy s3PrefixNamingStrategy
 
 	settings *WriterSettings
+	tags     map[string]string
 }
 
 func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *s3Writer {
@@ -55,12 +56,25 @@ func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *
 }
 
 func NewWriterWithInterfaces(logger mon.Logger, s3Client s3iface.S3API, s3Cfg *aws.Config, prefixNaming s3PrefixNamingStrategy, settings *WriterSettings) *s3Writer {
+	tags := map[string]string{
+		"Project":     settings.ModelId.Project,
+		"Environment": settings.ModelId.Environment,
+		"Family":      settings.ModelId.Family,
+		"Application": settings.ModelId.Application,
+		"Model":       settings.ModelId.Name,
+	}
+
+	for k, v := range settings.Tags {
+		tags[k] = v
+	}
+
 	return &s3Writer{
 		logger:               logger,
 		s3Cfg:                s3Cfg,
 		s3Client:             s3Client,
 		prefixNamingStrategy: prefixNaming,
 		settings:             settings,
+		tags:                 tags,
 	}
 }
 
@@ -100,16 +114,16 @@ func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interfac
 		return err
 	}
 
-	tagset := makeTags(w.settings.Tags)
+	tagSet := makeTags(w.tags)
 
-	if len(tagset) == 0 {
+	if len(tagSet) == 0 {
 		return nil
 	}
 
 	tagInput := &s3.PutObjectTaggingInput{
 		Bucket:  &bucket,
 		Key:     &key,
-		Tagging: &s3.Tagging{TagSet: tagset},
+		Tagging: &s3.Tagging{TagSet: tagSet},
 	}
 
 	if _, err := w.s3Client.PutObjectTaggingWithContext(ctx, tagInput); err != nil {

@@ -126,13 +126,14 @@ func NewLogger() *logger {
 
 func NewLoggerWithInterfaces(clock clockwork.Clock, out io.Writer) *logger {
 	logger := &logger{
-		clock:       clock,
-		output:      out,
-		outputLck:   &sync.Mutex{},
-		ctxResolver: make([]ContextFieldsResolver, 0),
-		hooks:       make([]LoggerHook, 0),
-		level:       levelPriority(Info),
-		format:      FormatConsole,
+		clock:           clock,
+		output:          out,
+		outputLck:       &sync.Mutex{},
+		ctxResolver:     make([]ContextFieldsResolver, 0),
+		hooks:           make([]LoggerHook, 0),
+		level:           levelPriority(Info),
+		format:          FormatConsole,
+		timestampFormat: "15:04:05.000",
 		data: Metadata{
 			channel:       ChannelDefault,
 			contextFields: make(Fields),

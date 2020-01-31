@@ -2,6 +2,7 @@ package mon
 
 import (
 	"fmt"
+	"io"
 )
 
 type LoggerOption func(logger *logger) error
@@ -34,6 +35,13 @@ func WithHook(hook LoggerHook) LoggerOption {
 func WithLevel(level string) LoggerOption {
 	return func(logger *logger) error {
 		logger.level = levelPriority(level)
+		return nil
+	}
+}
+
+func WithOutput(output io.Writer) LoggerOption {
+	return func(logger *logger) error {
+		logger.output = output
 		return nil
 	}
 }

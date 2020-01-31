@@ -20,7 +20,7 @@ const (
 
 type QueryOperation struct {
 	input      *dynamodb.QueryInput
-	progress   *readProgress
+	iterator   *pageIterator
 	targetType interface{}
 	result     *QueryResult
 }
@@ -268,7 +268,7 @@ func (b *queryBuilder) Build(result interface{}) (*QueryOperation, error) {
 		return nil, err
 	}
 
-	progress := buildProgress(b.limit, b.pageSize)
+	progress := buildPageIterator(b.limit, b.pageSize)
 	input := &dynamodb.QueryInput{
 		TableName:                 aws.String(b.metadata.TableName),
 		IndexName:                 b.indexName,
@@ -277,13 +277,13 @@ func (b *queryBuilder) Build(result interface{}) (*QueryOperation, error) {
 		KeyConditionExpression:    expr.KeyCondition(),
 		FilterExpression:          expr.Filter(),
 		ProjectionExpression:      expr.Projection(),
-		Limit:                     progress.pageSize,
+		Limit:                     progress.size,
 		ScanIndexForward:          b.scanIndexForward,
 	}
 
 	operation := &QueryOperation{
 		input:      input,
-		progress:   progress,
+		iterator:   progress,
 		targetType: targetType,
 		result:     newQueryResult(),
 	}

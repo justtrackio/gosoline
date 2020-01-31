@@ -467,7 +467,7 @@ func (r *repository) Query(ctx context.Context, qb QueryBuilder, items interface
 }
 
 func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResult, error) {
-	if op.progress.isDone() {
+	if op.iterator.isDone() {
 		return &readResult{}, nil
 	}
 
@@ -489,7 +489,7 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 	op.result.ScannedCount += *out.ScannedCount
 	op.result.ConsumedCapacity.add(out.ConsumedCapacity)
 
-	nextPageSize := op.progress.advance(out.Count)
+	nextPageSize := op.iterator.advance(out.Count)
 
 	op.input.Limit = nextPageSize
 	op.input.ExclusiveStartKey = out.LastEvaluatedKey
@@ -497,6 +497,7 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 	resp := &readResult{
 		Items:            out.Items,
 		LastEvaluatedKey: out.LastEvaluatedKey,
+		Progress:         op.result,
 	}
 
 	return resp, nil
@@ -553,7 +554,7 @@ func (r *repository) Scan(ctx context.Context, sb ScanBuilder, items interface{}
 	op, err := sb.Build(items)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can not build scan operation: %w", err)
 	}
 
 	if callback, ok := isResultCallback(items); ok {
@@ -572,7 +573,7 @@ func (r *repository) Scan(ctx context.Context, sb ScanBuilder, items interface{}
 }
 
 func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult, error) {
-	if op.progress.isDone() {
+	if op.iterator.isDone() {
 		return &readResult{}, nil
 	}
 
@@ -594,7 +595,7 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 	op.result.ScannedCount += *out.ScannedCount
 	op.result.ConsumedCapacity.add(out.ConsumedCapacity)
 
-	nextPageSize := op.progress.advance(out.Count)
+	nextPageSize := op.iterator.advance(out.Count)
 
 	op.input.Limit = nextPageSize
 	op.input.ExclusiveStartKey = out.LastEvaluatedKey
@@ -602,6 +603,7 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 	return &readResult{
 		Items:            out.Items,
 		LastEvaluatedKey: out.LastEvaluatedKey,
+		Progress:         op.result,
 	}, nil
 }
 
@@ -685,13 +687,13 @@ func (r *repository) readCallback(ctx context.Context, items interface{}, callba
 			return callbackErrors
 		}
 
-		result, err := unmarshaller.Unmarshal(out.Items)
+		items, err := unmarshaller.Unmarshal(out.Items)
 
 		if err != nil {
 			return fmt.Errorf("could not unmarshal items after read operation for table %s: %w", r.metadata.TableName, err)
 		}
 
-		cont, err := callback(ctx, result)
+		cont, err := callback(ctx, items, out.Progress)
 
 		if err == nil && !cont {
 			return err

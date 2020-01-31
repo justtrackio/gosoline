@@ -102,8 +102,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 		return fmt.Errorf("target needs to be a pointer to a slice, but is %T", target)
 	}
 
-	prefix := r.prefixNamingStrategy(r.settings.ModelId, datetime)
-	files, err := r.listFiles(prefix)
+	files, err := r.listFilesFromDate(datetime)
 
 	if err != nil {
 		return err
@@ -214,6 +213,17 @@ func (r *s3Reader) ReadFile(ctx context.Context, file string) (ReadResults, erro
 	}
 
 	return results, nil
+}
+
+func (r *s3Reader) listFilesFromDate(datetime time.Time) ([]string, error) {
+	prefix := r.prefixNamingStrategy(r.settings.ModelId, datetime)
+	files, err := r.listFiles(prefix)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return files, err
 }
 
 func (r *s3Reader) listFiles(prefix string) ([]string, error) {

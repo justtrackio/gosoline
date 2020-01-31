@@ -39,14 +39,14 @@ func findBaseType(value interface{}) reflect.Type {
 	}
 }
 
-func isResultCallback(value interface{}) (func(ctx context.Context, result interface{}) (bool, error), bool) {
+func isResultCallback(value interface{}) (func(ctx context.Context, items interface{}, progress Progress) (bool, error), bool) {
 	t := reflect.TypeOf(value)
 
 	if t.Kind() != reflect.Func {
 		return nil, false
 	}
 
-	if callback, ok := value.(func(ctx context.Context, result interface{}) (bool, error)); ok {
+	if callback, ok := value.(func(ctx context.Context, items interface{}, progress Progress) (bool, error)); ok {
 		return callback, true
 	}
 
