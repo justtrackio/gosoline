@@ -167,22 +167,24 @@ func TestLogger_WithContext(t *testing.T) {
 	assert.JSONEq(t, expected, out.String(), "output should match")
 }
 
-/*func TestClient_WithFields(t *testing.T) {
+func TestClient_WithFields(t *testing.T) {
 	logger0, out := getLogger()
 
 	logger0.Info("test")
 	expected0 := `{"fields":{},"context":{},"channel": "default", "level":2,"level_name":"info","message":"test","timestamp":"1984-04-04T00:00:00Z"}`
 	assert.JSONEq(t, expected0, out.String(), "output should match")
 
+	timeValue, _ := time.Parse(time.RFC3339, "2020-01-31T15:29:51+02:00")
+
 	out.Reset()
 	logger1 := logger0.WithFields(mon.Fields{
 		"field1": "a",
 		"field2": 1,
-		"time":   time.Unix(1580480991, 0),
+		"time":   timeValue,
 	})
 	logger1.Info("foobar")
 
-	expected := `{"fields":{"field1":"a","field2":1,"time":"2020-01-31T15:29:51+01:00"},"context":{},"channel": "default", "level":2,"level_name":"info","message":"foobar","timestamp":"1984-04-04T00:00:00Z"}`
+	expected := `{"fields":{"field1":"a","field2":1,"time":"2020-01-31T15:29:51+02:00"},"context":{},"channel": "default", "level":2,"level_name":"info","message":"foobar","timestamp":"1984-04-04T00:00:00Z"}`
 	assert.JSONEq(t, expected, out.String(), "output should match")
 
 	out.Reset()
@@ -191,14 +193,14 @@ func TestLogger_WithContext(t *testing.T) {
 	})
 	logger2.Info("msg2")
 
-	expected = `{"fields":{"field1":"a","field2":1,"time":"2020-01-31T15:29:51+01:00","field3":0.3},"context":{},"channel": "default", "level":2,"level_name":"info","message":"msg2","timestamp":"1984-04-04T00:00:00Z"}`
+	expected = `{"fields":{"field1":"a","field2":1,"time":"2020-01-31T15:29:51+02:00","field3":0.3},"context":{},"channel": "default", "level":2,"level_name":"info","message":"msg2","timestamp":"1984-04-04T00:00:00Z"}`
 	assert.JSONEq(t, expected, out.String(), "output should match")
 
 	out.Reset()
 	logger0.Info("no fields")
 	expected = `{"fields":{},"context":{},"channel": "default", "level":2,"level_name":"info","message":"no fields","timestamp":"1984-04-04T00:00:00Z"}`
 	assert.JSONEq(t, expected, out.String(), "output should match")
-}*/
+}
 
 func TestClient_WithContext_FieldRewrite(t *testing.T) {
 	logger, out := getLogger()
