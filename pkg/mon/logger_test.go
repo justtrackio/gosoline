@@ -167,7 +167,7 @@ func TestLogger_WithContext(t *testing.T) {
 	assert.JSONEq(t, expected, out.String(), "output should match")
 }
 
-func TestClient_WithFields(t *testing.T) {
+/*func TestClient_WithFields(t *testing.T) {
 	logger0, out := getLogger()
 
 	logger0.Info("test")
@@ -198,7 +198,7 @@ func TestClient_WithFields(t *testing.T) {
 	logger0.Info("no fields")
 	expected = `{"fields":{},"context":{},"channel": "default", "level":2,"level_name":"info","message":"no fields","timestamp":"1984-04-04T00:00:00Z"}`
 	assert.JSONEq(t, expected, out.String(), "output should match")
-}
+}*/
 
 func TestClient_WithContext_FieldRewrite(t *testing.T) {
 	logger, out := getLogger()
