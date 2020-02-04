@@ -29,7 +29,7 @@ variable "port_mappings" {
 
   description = "The port mappings to configure for the container. This is a list of maps. Each map should contain \"containerPort\", \"hostPort\", and \"protocol\", where \"protocol\" is one of \"tcp\" or \"udp\". If using containers in a task with the awsvpc or host network mode, the hostPort can either be left blank or set to the same value as the containerPort"
 
-  default = null
+  default = []
 }
 
 # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_HealthCheck.html
@@ -81,7 +81,7 @@ variable "environment" {
     value = string
   }))
   description = "The environment variables to pass to the container. This is a list of maps"
-  default     = null
+  default     = []
 }
 
 variable "secrets" {
@@ -90,7 +90,7 @@ variable "secrets" {
     valueFrom = string
   }))
   description = "The secrets to pass to the container. This is a list of maps"
-  default     = null
+  default     = []
 }
 
 variable "readonly_root_filesystem" {
@@ -130,7 +130,7 @@ variable "mount_points" {
   }))
 
   description = "Container mount points. This is a list of maps, where each map should contain a `containerPath` and `sourceVolume`"
-  default     = null
+  default     = []
 }
 
 variable "dns_servers" {
@@ -161,7 +161,7 @@ variable "volumes_from" {
     readOnly        = bool
   }))
   description = "A list of VolumesFrom maps which contain \"sourceContainer\" (name of the container that has the volumes to mount) and \"readOnly\" (whether the container can write to the volume)"
-  default     = null
+  default     = []
 }
 
 variable "links" {
@@ -173,7 +173,7 @@ variable "links" {
 variable "user" {
   type        = string
   description = "The user to run as inside the container. Can be any of these formats: user, user:group, uid, uid:gid, user:gid, uid:group"
-  default     = null
+  default     = "0"
 }
 
 variable "container_depends_on" {
