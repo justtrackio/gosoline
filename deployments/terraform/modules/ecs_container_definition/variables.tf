@@ -29,7 +29,7 @@ variable "port_mappings" {
 
   description = "The port mappings to configure for the container. This is a list of maps. Each map should contain \"containerPort\", \"hostPort\", and \"protocol\", where \"protocol\" is one of \"tcp\" or \"udp\". If using containers in a task with the awsvpc or host network mode, the hostPort can either be left blank or set to the same value as the containerPort"
 
-  default = null
+  default = []
 }
 
 # https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_HealthCheck.html
@@ -60,13 +60,13 @@ variable "essential" {
 variable "entrypoint" {
   type        = list(string)
   description = "The entry point that is passed to the container"
-  default     = null
+  default     = []
 }
 
 variable "command" {
   type        = list(string)
   description = "The command that is passed to the container"
-  default     = null
+  default     = []
 }
 
 variable "working_directory" {
@@ -81,7 +81,7 @@ variable "environment" {
     value = string
   }))
   description = "The environment variables to pass to the container. This is a list of maps"
-  default     = null
+  default     = []
 }
 
 variable "secrets" {
@@ -90,12 +90,38 @@ variable "secrets" {
     valueFrom = string
   }))
   description = "The secrets to pass to the container. This is a list of maps"
-  default     = null
+  default     = []
 }
 
 variable "readonly_root_filesystem" {
   type        = bool
   description = "Determines whether a container is given read-only access to its root filesystem. Due to how Terraform type casts booleans in json it is required to double quote this value"
+  default     = null
+}
+
+# https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_LinuxParameters.html
+variable "linux_parameters" {
+  type = object({
+    capabilities = object({
+      add  = list(string)
+      drop = list(string)
+    })
+    devices = list(object({
+      containerPath = string
+      hostPath      = string
+      permissions   = list(string)
+    }))
+    initProcessEnabled = bool
+    maxSwap            = number
+    sharedMemorySize   = number
+    swappiness         = number
+    tmpfs = list(object({
+      containerPath = string
+      mountOptions  = list(string)
+      size          = number
+    }))
+  })
+  description = "Linux-specific modifications that are applied to the container, such as Linux kernel capabilities. For more details, see https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_LinuxParameters.html"
   default     = null
 }
 
@@ -130,13 +156,13 @@ variable "mount_points" {
   }))
 
   description = "Container mount points. This is a list of maps, where each map should contain a `containerPath` and `sourceVolume`"
-  default     = null
+  default     = []
 }
 
 variable "dns_servers" {
   type        = list(string)
   description = "Container DNS servers. This is a list of strings specifying the IP addresses of the DNS servers"
-  default     = null
+  default     = []
 }
 
 variable "ulimits" {
@@ -146,7 +172,7 @@ variable "ulimits" {
     softLimit = number
   }))
   description = "Container ulimit settings. This is a list of maps, where each map should contain \"name\", \"hardLimit\" and \"softLimit\""
-  default     = null
+  default     = []
 }
 
 variable "repository_credentials" {
@@ -161,25 +187,28 @@ variable "volumes_from" {
     readOnly        = bool
   }))
   description = "A list of VolumesFrom maps which contain \"sourceContainer\" (name of the container that has the volumes to mount) and \"readOnly\" (whether the container can write to the volume)"
-  default     = null
+  default     = []
 }
 
 variable "links" {
   type        = list(string)
   description = "List of container names this container can communicate with without port mappings"
-  default     = null
+  default     = []
 }
 
 variable "user" {
   type        = string
   description = "The user to run as inside the container. Can be any of these formats: user, user:group, uid, uid:gid, user:gid, uid:group"
-  default     = null
+  default     = 0
 }
 
 variable "container_depends_on" {
-  type        = list(string)
-  description = "The dependencies defined for container startup and shutdown. A container can contain multiple dependencies. When a dependency is defined for container startup, for container shutdown it is reversed"
-  default     = null
+  type = list(object({
+    containerName = string
+    condition     = string
+  }))
+  description = "The dependencies defined for container startup and shutdown. A container can contain multiple dependencies. When a dependency is defined for container startup, for container shutdown it is reversed. The condition can be one of START, COMPLETE, SUCCESS or HEALTHY"
+  default     = []
 }
 
 variable "docker_labels" {
@@ -209,11 +238,11 @@ variable "privileged" {
 variable "system_controls" {
   type        = list(map(string))
   description = "A list of namespaced kernel parameters to set in the container, mapping to the --sysctl option to docker run. This is a list of maps: { namespace = \"\", value = \"\"}"
-  default     = null
+  default     = []
 }
 
 variable "dns_search_domains" {
   type        = list(string)
   description = "Container search DNS servers. This is a list of strings specifying the addresses of the DNS servers"
-  default     = null
+  default     = []
 }
