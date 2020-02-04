@@ -25,7 +25,11 @@ func TestWriter_WriteEvents(t *testing.T) {
 		StreamName: "streamName",
 	})
 
-	batch := []*stream.Message{{Body: "1"}, {Body: "2"}, {Body: "3"}}
+	batch := []*stream.Message{
+		stream.NewMessage("1"),
+		stream.NewMessage("2"),
+		stream.NewMessage("3"),
+	}
 
 	kinesisClient.On("PutRecordsRequest", mock.Anything).Return(&request.Request{}, &kinesis.PutRecordsOutput{
 		Records: []*kinesis.PutRecordsResultEntry{{

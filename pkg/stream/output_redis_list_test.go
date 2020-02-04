@@ -16,10 +16,8 @@ func TestRedisListOutput_WriteOne(t *testing.T) {
 	output, redisMock := setup(1)
 	redisMock.On("RPush", "mcoins-test-analytics-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Once()
 
-	record := stream.Message{
-		Body: "bla",
-	}
-	err := output.WriteOne(context.Background(), &record)
+	record := stream.NewMessage("bla")
+	err := output.WriteOne(context.Background(), record)
 
 	assert.Nil(t, err, "there should be no error")
 	redisMock.AssertExpectations(t)
@@ -30,8 +28,8 @@ func TestRedisListOutput_Write(t *testing.T) {
 	redisMock.On("RPush", "mcoins-test-analytics-app-my-list", mock.AnythingOfType("[]uint8"), mock.AnythingOfType("[]uint8")).Return(int64(2), nil).Once()
 
 	batch := []*stream.Message{
-		{Body: "foo"},
-		{Body: "bar"},
+		stream.NewMessage("foo"),
+		stream.NewMessage("bar"),
 	}
 	err := output.Write(context.Background(), batch)
 
@@ -44,8 +42,8 @@ func TestRedisListOutput_Write_Chunked(t *testing.T) {
 	redisMock.On("RPush", "mcoins-test-analytics-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Times(2)
 
 	batch := []*stream.Message{
-		{Body: "foo"},
-		{Body: "bar"},
+		stream.NewMessage("foo"),
+		stream.NewMessage("bar"),
 	}
 	err := output.Write(context.Background(), batch)
 

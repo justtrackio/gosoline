@@ -21,12 +21,9 @@ func TestReaderLifeCycle(t *testing.T) {
 	loggerMock := new(monMocks.Logger)
 	loggerMock.On("WithFields", mock.Anything).Return(loggerMock)
 
-	msg := stream.Message{
-		Attributes: map[string]interface{}{
-			"bla": "blub",
-		},
-		Body: "foobar",
-	}
+	msg := stream.NewMessageWithAttributes("foobar", map[string]interface{}{
+		"bla": "blub",
+	})
 	bytes, _ := json.Marshal(msg)
 
 	kinsumerMock := new(streamMocks.Kinsumer)
@@ -55,7 +52,7 @@ func TestReaderLifeCycle(t *testing.T) {
 	})
 
 	assert.Nil(t, err, "there should be no error")
-	assert.Equal(t, msg, *out, "the messages should match")
+	assert.Equal(t, msg, out, "the messages should match")
 	kinsumerMock.AssertExpectations(t)
 }
 
@@ -90,12 +87,9 @@ func TestReaderRestartTrigger(t *testing.T) {
 	loggerMock.On("Info", mock.Anything)
 	loggerMock.On("Warn", mock.Anything)
 
-	msg := stream.Message{
-		Attributes: map[string]interface{}{
-			"bla": "blub",
-		},
-		Body: "foobar",
-	}
+	msg := stream.NewMessageWithAttributes("foobar", map[string]interface{}{
+		"bla": "blub",
+	})
 	bytes, _ := json.Marshal(msg)
 
 	kinsumerMock := new(streamMocks.Kinsumer)
@@ -125,6 +119,6 @@ func TestReaderRestartTrigger(t *testing.T) {
 	})
 
 	assert.Nil(t, err, "there should be no error")
-	assert.Equal(t, msg, *out, "the messages should match")
+	assert.Equal(t, msg, out, "the messages should match")
 	kinsumerMock.AssertExpectations(t)
 }

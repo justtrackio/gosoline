@@ -8,15 +8,13 @@ import (
 )
 
 func TestBuildChunks_Single_1(t *testing.T) {
-	msg := stream.Message{
-		Attributes: map[string]interface{}{
-			"foo": "bar",
-			"num": 1,
-		},
-		Body: "bla",
-	}
+	msg := stream.NewMessageWithAttributes("bla", map[string]interface{}{
+		"foo": "bar",
+		"num": 1,
+	})
+
 	bytes, _ := json.Marshal(msg)
-	batch := []*stream.Message{&msg}
+	batch := []*stream.Message{msg}
 
 	chunks, err := stream.BuildChunks(batch, 1)
 
@@ -27,7 +25,7 @@ func TestBuildChunks_Single_1(t *testing.T) {
 }
 
 func TestBuildChunks_Single_2(t *testing.T) {
-	batch := []*stream.Message{{Body: "bla"}}
+	batch := []*stream.Message{stream.NewMessage("bla")}
 
 	chunks, err := stream.BuildChunks(batch, 500)
 
@@ -38,16 +36,16 @@ func TestBuildChunks_Single_2(t *testing.T) {
 
 func TestBuildChunks_Batch(t *testing.T) {
 	batch := []*stream.Message{
-		{Body: "bla"},
-		{Body: "bla"},
-		{Body: "bla"},
-		{Body: "bla"},
-		{Body: "bla"},
-		{Body: "bla"},
-		{Body: "bla"},
-		{Body: "bla"},
-		{Body: "bla"},
-		{Body: "bla"},
+		stream.NewMessage("bla"),
+		stream.NewMessage("bla"),
+		stream.NewMessage("bla"),
+		stream.NewMessage("bla"),
+		stream.NewMessage("bla"),
+		stream.NewMessage("bla"),
+		stream.NewMessage("bla"),
+		stream.NewMessage("bla"),
+		stream.NewMessage("bla"),
+		stream.NewMessage("bla"),
 	}
 
 	chunks, err := stream.BuildChunks(batch, 2)
@@ -58,7 +56,7 @@ func TestBuildChunks_Batch(t *testing.T) {
 }
 
 func TestByteChunkToInterfaces(t *testing.T) {
-	batch := []*stream.Message{{Body: "bla"}}
+	batch := []*stream.Message{stream.NewMessage("bla")}
 	chunks, _ := stream.BuildChunks(batch, 500)
 
 	interfaces := stream.ByteChunkToInterfaces(chunks[0])
@@ -67,7 +65,7 @@ func TestByteChunkToInterfaces(t *testing.T) {
 
 	bytes, ok := interfaces[0].([]byte)
 	assert.True(t, ok, "it should be a byte slice")
-	assert.Equal(t, []byte(`{"trace":null,"attributes":null,"body":"bla"}`), bytes, "the bytes should match")
+	assert.Equal(t, []byte(`{"trace":null,"attributes":{},"body":"bla"}`), bytes, "the bytes should match")
 }
 
 func TestByteChunkToStrings(t *testing.T) {
