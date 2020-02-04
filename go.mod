@@ -33,6 +33,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.2.5
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.0.0
+	github.com/google/uuid v1.0.0
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/imdario/mergo v0.3.7
