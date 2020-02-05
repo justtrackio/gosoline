@@ -64,6 +64,7 @@ func CreateMessage(ctx context.Context, body interface{}) (*Message, error) {
 		return nil, err
 	}
 
+	msg.Attributes[AttributeEncoding] = EncodingJson
 	msg.Body = string(serializedOutput)
 
 	return msg, nil

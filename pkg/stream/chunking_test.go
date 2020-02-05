@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuildChunks_Single_1(t *testing.T) {
-	msg := stream.NewMessageWithAttributes("bla", map[string]interface{}{
+	msg := stream.NewMessage("bla", map[string]interface{}{
 		"foo": "bar",
 		"num": 1,
 	})

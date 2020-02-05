@@ -2,25 +2,24 @@ package stream
 
 const AttributeEncoding = "encoding"
 
-func NewMessage(body string) *Message {
-	return &Message{
+func NewMessage(body string, attributes ...map[string]interface{}) *Message {
+	msg := &Message{
 		Attributes: map[string]interface{}{},
 		Body:       body,
 	}
+
+	for _, attrs := range attributes {
+		for k, v := range attrs {
+			msg.Attributes[k] = v
+		}
+	}
+
+	return msg
 }
 
-func NewMessageWithAttributes(body string, attributes map[string]interface{}) *Message {
-	return &Message{
-		Attributes: attributes,
-		Body:       body,
-	}
-}
+func NewJsonMessage(body string, attributes ...map[string]interface{}) *Message {
+	msg := NewMessage(body, attributes...)
+	msg.Attributes[AttributeEncoding] = EncodingJson
 
-func NewJsonMessage(body string) *Message {
-	return &Message{
-		Attributes: map[string]interface{}{
-			AttributeEncoding: EncodingJson,
-		},
-		Body: body,
-	}
+	return msg
 }

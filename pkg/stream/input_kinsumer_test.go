@@ -21,7 +21,7 @@ func TestReaderLifeCycle(t *testing.T) {
 	loggerMock := new(monMocks.Logger)
 	loggerMock.On("WithFields", mock.Anything).Return(loggerMock)
 
-	msg := stream.NewMessageWithAttributes("foobar", map[string]interface{}{
+	msg := stream.NewMessage("foobar", map[string]interface{}{
 		"bla": "blub",
 	})
 	bytes, _ := json.Marshal(msg)
@@ -87,7 +87,7 @@ func TestReaderRestartTrigger(t *testing.T) {
 	loggerMock.On("Info", mock.Anything)
 	loggerMock.On("Warn", mock.Anything)
 
-	msg := stream.NewMessageWithAttributes("foobar", map[string]interface{}{
+	msg := stream.NewMessage("foobar", map[string]interface{}{
 		"bla": "blub",
 	})
 	bytes, _ := json.Marshal(msg)
