@@ -10,7 +10,7 @@ import (
 
 type Module struct {
 	kernel.BackgroundModule
-	updaterService *UpdaterService
+	updaterService UpdaterService
 	logger         mon.Logger
 }
 

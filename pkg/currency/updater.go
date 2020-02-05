@@ -17,14 +17,19 @@ const (
 	ExchangeRateDateKey = "currency_exchange_last_refresh"
 )
 
-type UpdaterService struct {
+//go:generate mockery -name UpdaterService
+type UpdaterService interface {
+	EnsureRecentExchangeRates(ctx context.Context) error
+}
+
+type updaterService struct {
 	logger mon.Logger
 	tracer tracing.Tracer
 	http   http.Client
 	store  kvstore.KvStore
 }
 
-func NewUpdater(config cfg.Config, logger mon.Logger) *UpdaterService {
+func NewUpdater(config cfg.Config, logger mon.Logger) UpdaterService {
 	logger = logger.WithChannel("currency_updater_service")
 	tracer := tracing.NewAwsTracer(config)
 	store := kvstore.NewConfigurableKvStore(config, logger, "currency")
@@ -33,8 +38,8 @@ func NewUpdater(config cfg.Config, logger mon.Logger) *UpdaterService {
 	return NewUpdaterWithInterfaces(logger, tracer, store, httpClient)
 }
 
-func NewUpdaterWithInterfaces(logger mon.Logger, tracer tracing.Tracer, store kvstore.KvStore, httpClient http.Client) *UpdaterService {
-	return &UpdaterService{
+func NewUpdaterWithInterfaces(logger mon.Logger, tracer tracing.Tracer, store kvstore.KvStore, httpClient http.Client) UpdaterService {
+	return &updaterService{
 		logger: logger,
 		tracer: tracer,
 		store:  store,
@@ -42,7 +47,7 @@ func NewUpdaterWithInterfaces(logger mon.Logger, tracer tracing.Tracer, store kv
 	}
 }
 
-func (s *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) error {
+func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 	ctx, span := s.tracer.StartSpanFromContext(ctx, "currency-update-service")
 	defer span.Finish()
 
@@ -80,7 +85,7 @@ func (s *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 	return nil
 }
 
-func (s *UpdaterService) needsRefresh(ctx context.Context) bool {
+func (s *updaterService) needsRefresh(ctx context.Context) bool {
 	var date time.Time
 	exists, err := s.store.Get(ctx, ExchangeRateDateKey, &date)
 
@@ -107,7 +112,7 @@ func (s *UpdaterService) needsRefresh(ctx context.Context) bool {
 	return false
 }
 
-func (s *UpdaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
+func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
 	request := s.http.NewRequest().WithUrl(ExchangeRateUrl)
 
 	response, err := s.http.Get(ctx, request)
