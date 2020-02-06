@@ -49,8 +49,8 @@ func WithOutput(output io.Writer) LoggerOption {
 func WithTags(tags map[string]interface{}) LoggerOption {
 	return func(logger *logger) error {
 		for k, v := range tags {
-			logger.data.fields[k] = v
-			logger.data.tags[k] = v
+			logger.data.Fields[k] = v
+			logger.data.Tags[k] = v
 		}
 
 		return nil

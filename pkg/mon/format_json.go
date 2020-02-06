@@ -12,13 +12,13 @@ func formatterJson(timestamp string, level string, msg string, err error, data *
 		jsn["err"] = err.Error()
 	}
 
-	jsn["channel"] = data.channel
+	jsn["channel"] = data.Channel
 	jsn["level"] = levels[level]
 	jsn["level_name"] = level
 	jsn["timestamp"] = timestamp
 	jsn["message"] = msg
-	jsn["fields"] = data.fields
-	jsn["context"] = data.contextFields
+	jsn["fields"] = data.Fields
+	jsn["context"] = data.ContextFields
 
 	serialized, err := json.Marshal(jsn)
 	if err != nil {

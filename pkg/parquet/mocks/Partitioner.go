@@ -36,6 +36,20 @@ func (_m *Partitioner) Out() <-chan *parquet.Partition {
 	return r0
 }
 
+// Size provides a mock function with given fields:
+func (_m *Partitioner) Size() int {
+	ret := _m.Called()
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func() int); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	return r0
+}
+
 // Start provides a mock function with given fields:
 func (_m *Partitioner) Start() {
 	_m.Called()
@@ -44,4 +58,9 @@ func (_m *Partitioner) Start() {
 // Stop provides a mock function with given fields:
 func (_m *Partitioner) Stop() {
 	_m.Called()
+}
+
+// Trim provides a mock function with given fields: size
+func (_m *Partitioner) Trim(size int) {
+	_m.Called(size)
 }

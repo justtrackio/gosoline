@@ -33,7 +33,7 @@ type redisListOutput struct {
 func NewRedisListOutput(config cfg.Config, logger mon.Logger, settings *RedisListOutputSettings) Output {
 	settings.PadFromConfig(config)
 
-	tracer := tracing.NewAwsTracer(config)
+	tracer := tracing.ProviderTracer(config, logger)
 	client := redis.GetClient(config, logger, settings.ServerName)
 
 	defaultMetrics := getRedisListOutputDefaultMetrics(settings.AppId, settings.Key)

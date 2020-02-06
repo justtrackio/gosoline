@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
 	"strings"
 )
@@ -29,8 +30,8 @@ type validator struct {
 	rules  Group
 }
 
-func NewValidator(config cfg.Config) *validator {
-	tracer := tracing.NewAwsTracer(config)
+func NewValidator(config cfg.Config, logger mon.Logger) *validator {
+	tracer := tracing.ProviderTracer(config, logger)
 
 	return NewValidatorWithInterfaces(tracer)
 }

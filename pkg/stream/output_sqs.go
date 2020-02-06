@@ -46,7 +46,7 @@ func NewSqsOutput(config cfg.Config, logger mon.Logger, s SqsOutputSettings) Out
 		Backoff:           s.Backoff,
 	})
 
-	tracer := tracing.NewAwsTracer(config)
+	tracer := tracing.ProviderTracer(config, logger)
 
 	return NewSqsOutputWithInterfaces(logger, tracer, queue, s)
 }

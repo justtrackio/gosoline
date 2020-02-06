@@ -12,7 +12,7 @@ func NewNoopTracer() Tracer {
 }
 
 func (t *noopTracer) StartSubSpan(ctx context.Context, name string) (context.Context, Span) {
-	return context.Background(), disabledSpan()
+	return ctx, disabledSpan()
 }
 
 func (t *noopTracer) StartSpan(name string) (context.Context, Span) {
@@ -20,7 +20,7 @@ func (t *noopTracer) StartSpan(name string) (context.Context, Span) {
 }
 
 func (t *noopTracer) StartSpanFromContext(ctx context.Context, name string) (context.Context, Span) {
-	return context.Background(), disabledSpan()
+	return ctx, disabledSpan()
 }
 
 func (t *noopTracer) StartSpanFromTraceAble(obj TraceAble, name string) (context.Context, Span) {

@@ -30,13 +30,13 @@ func (h SentryHook) WithExtra(extra raven.Extra) *SentryHook {
 	}
 }
 
-func (h SentryHook) Fire(level string, msg string, err error, data *Metadata) error {
+func (h SentryHook) Fire(_ string, _ string, err error, data *Metadata) error {
 	if err == nil {
 		return nil
 	}
 
 	stringTags := make(map[string]string)
-	for k, v := range data.tags {
+	for k, v := range data.Tags {
 		stringTags[k] = fmt.Sprint(v)
 	}
 
@@ -44,14 +44,14 @@ func (h SentryHook) Fire(level string, msg string, err error, data *Metadata) er
 	trace := raven.GetOrNewStacktrace(err, 4, 3, []string{})
 	exception := raven.NewException(cause, trace)
 
-	extra := mergeMapStringInterface(h.extra, data.fields)
-	extra = mergeMapStringInterface(extra, data.contextFields)
+	extra := mergeMapStringInterface(h.extra, data.Fields)
+	extra = mergeMapStringInterface(extra, data.ContextFields)
 	packet := raven.NewPacketWithExtra(err.Error(), extra, exception)
 
 	_, res := h.sentry.Capture(packet, stringTags)
 	err = <-res
 
-	data.fields["sentry_event_id"] = packet.EventID
+	data.Fields["sentry_event_id"] = packet.EventID
 
 	return err
 }

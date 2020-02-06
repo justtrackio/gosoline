@@ -31,7 +31,7 @@ type updaterService struct {
 
 func NewUpdater(config cfg.Config, logger mon.Logger) UpdaterService {
 	logger = logger.WithChannel("currency_updater_service")
-	tracer := tracing.NewAwsTracer(config)
+	tracer := tracing.ProviderTracer(config, logger)
 	store := kvstore.NewConfigurableKvStore(config, logger, "currency")
 	httpClient := http.NewHttpClient(config, logger)
 

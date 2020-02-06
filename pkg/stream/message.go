@@ -71,12 +71,16 @@ func CreateMessage(ctx context.Context, body interface{}) (*Message, error) {
 }
 
 func CreateMessageFromContext(ctx context.Context) *Message {
-	span := tracing.GetSpan(ctx)
-
-	return &Message{
-		Trace:      span.GetTrace(),
+	msg := &Message{
+		Trace:      &tracing.Trace{},
 		Attributes: make(map[string]interface{}),
 	}
+
+	if span := tracing.GetSpanFromContext(ctx); span != nil {
+		msg.Trace = span.GetTrace()
+	}
+
+	return msg
 }
 
 type MessageBuilder struct {
@@ -89,6 +93,7 @@ type MessageBuilder struct {
 
 func NewMessageBuilder() *MessageBuilder {
 	return &MessageBuilder{
+		trace:      &tracing.Trace{},
 		attributes: make(map[string]interface{}),
 	}
 }
@@ -101,8 +106,9 @@ func (b *MessageBuilder) FromMessage(msg *Message) *MessageBuilder {
 }
 
 func (b *MessageBuilder) WithContext(ctx context.Context) *MessageBuilder {
-	span := tracing.GetSpan(ctx)
-	b.trace = span.GetTrace()
+	if span := tracing.GetSpanFromContext(ctx); span != nil {
+		b.trace = span.GetTrace()
+	}
 
 	return b
 }

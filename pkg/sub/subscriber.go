@@ -72,7 +72,7 @@ type subscriber struct {
 
 func (s *subscriber) Boot(config cfg.Config, logger mon.Logger) error {
 	s.logger = logger
-	s.tracer = tracing.NewAwsTracer(config)
+	s.tracer = tracing.ProviderTracer(config, logger)
 	s.cfn = coffin.New()
 
 	s.appId.PadFromConfig(config)

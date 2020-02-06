@@ -40,7 +40,7 @@ type baseBatchConsumer struct {
 
 func (c *baseBatchConsumer) Boot(config cfg.Config, logger mon.Logger) error {
 	c.logger = logger
-	c.tracer = tracing.NewAwsTracer(config)
+	c.tracer = tracing.ProviderTracer(config, logger)
 	c.cfn = coffin.New()
 
 	idleTimeout := config.GetDuration("consumer_idle_timeout")

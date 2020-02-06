@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/pkg/errors"
 	"os"
 	"strings"
@@ -128,6 +129,14 @@ func WithLoggerLevel(level string) Option {
 	}
 }
 
+func WithLoggerHook(hook mon.LoggerHook) Option {
+	return func(app *App) {
+		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+			return logger.Option(mon.WithHook(hook))
+		})
+	}
+}
+
 func WithLoggerMetricHook(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
 		metricHook := mon.NewMetricHook()
@@ -154,6 +163,13 @@ func WithLoggerSentryHook(extraProvider ...mon.SentryExtraProvider) Option {
 			return logger.Option(mon.WithHook(sentryHook))
 		})
 	}
+}
+
+func WithLoggerTracingHook(app *App) {
+	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+		tracingHook := tracing.NewLoggerErrorHook()
+		return logger.Option(mon.WithHook(tracingHook))
+	})
 }
 
 func WithLoggerSettingsFromConfig(app *App) {

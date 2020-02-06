@@ -36,7 +36,7 @@ func NewSnsOutput(config cfg.Config, logger mon.Logger, s SnsOutputSettings) Out
 		TopicId: s.TopicId,
 	})
 
-	tracer := tracing.NewAwsTracer(config)
+	tracer := tracing.ProviderTracer(config, logger)
 
 	return NewSnsOutputWithInterfaces(logger, tracer, topic, s)
 }

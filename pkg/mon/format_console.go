@@ -7,8 +7,8 @@ import (
 )
 
 func formatterConsole(timestamp string, level string, msg string, err error, data *Metadata) ([]byte, error) {
-	fieldString := getFieldsAsString(data.fields)
-	contextString := getFieldsAsString(data.contextFields)
+	fieldString := getFieldsAsString(data.Fields)
+	contextString := getFieldsAsString(data.ContextFields)
 
 	errStr := ""
 	if err != nil {
@@ -17,7 +17,7 @@ func formatterConsole(timestamp string, level string, msg string, err error, dat
 
 	//timestamp = fmt.Sprintf("%-15v", timestamp)
 	level = fmt.Sprintf("%-7v", level)
-	channel := fmt.Sprintf("%-7s", data.channel)
+	channel := fmt.Sprintf("%-7s", data.Channel)
 
 	output := fmt.Sprintf("%s %s %s %-50s %s %s %s",
 		color.YellowString(timestamp),

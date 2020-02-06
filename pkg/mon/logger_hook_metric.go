@@ -14,7 +14,7 @@ func NewMetricHook() *metricHook {
 	}
 }
 
-func (h metricHook) Fire(level string, msg string, err error, data *Metadata) error {
+func (h metricHook) Fire(level string, _ string, _ error, _ *Metadata) error {
 	if level != Warn && level != Error {
 		return nil
 	}

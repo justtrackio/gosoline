@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
+	"github.com/aws/aws-xray-sdk-go/strategy/ctxmissing"
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"net"
 	"net/http"
@@ -13,9 +15,10 @@ const (
 	dnsSrv = "srv"
 )
 
-type Settings struct {
-	Enabled bool
-	Addr    string
+type XRaySettings struct {
+	Enabled            bool
+	Address            string
+	CtxMissingStrategy ctxmissing.Strategy
 }
 
 type awsTracer struct {
@@ -23,28 +26,34 @@ type awsTracer struct {
 	enabled bool
 }
 
-func NewAwsTracer(config cfg.Config) *awsTracer {
+func NewAwsTracer(config cfg.Config, logger mon.Logger) Tracer {
 	appId := cfg.AppId{}
 	appId.PadFromConfig(config)
 
-	addr := lookupAddr(appId, config)
+	settings := &TracerSettings{}
+	config.UnmarshalKey("tracing", settings)
 
-	settings := Settings{
-		Enabled: config.GetBool("tracing_enabled"),
-		Addr:    addr,
+	addr := lookupAddr(appId, settings)
+	ctxMissingStrategy := NewContextMissingWarningLogStrategy(logger)
+
+	xRaySettings := &XRaySettings{
+		Enabled:            settings.Enabled,
+		Address:            addr,
+		CtxMissingStrategy: ctxMissingStrategy,
 	}
 
-	return NewAwsTracerWithInterfaces(appId, settings)
+	return NewAwsTracerWithInterfaces(logger, appId, xRaySettings)
 }
 
-func NewAwsTracerWithInterfaces(appId cfg.AppId, settings Settings) *awsTracer {
+func NewAwsTracerWithInterfaces(logger mon.Logger, appId cfg.AppId, settings *XRaySettings) *awsTracer {
 	err := xray.Configure(xray.Config{
-		LogLevel:   "warn",
-		DaemonAddr: settings.Addr,
+		LogLevel:               "warn",
+		DaemonAddr:             settings.Address,
+		ContextMissingStrategy: settings.CtxMissingStrategy,
 	})
 
 	if err != nil {
-		panic(err)
+		logger.Fatal(err, "can not configure xray tracer")
 	}
 
 	return &awsTracer{
@@ -58,10 +67,17 @@ func (t *awsTracer) StartSubSpan(ctx context.Context, name string) (context.Cont
 		return ctx, disabledSpan()
 	}
 
-	ctx, seg := xray.BeginSubsegment(ctx, name)
-	ctx, span := newSpan(ctx, seg, t.AppId)
+	var ctxWithSegment, ctxWithSpan context.Context
+	var segment *xray.Segment
+	var span Span
 
-	return ctx, span
+	if ctxWithSegment, segment = xray.BeginSubsegment(ctx, name); segment == nil {
+		return ctx, disabledSpan()
+	}
+
+	ctxWithSpan, span = newSpan(ctxWithSegment, segment, t.AppId)
+
+	return ctxWithSpan, span
 }
 
 func (t *awsTracer) StartSpan(name string) (context.Context, Span) {
@@ -77,17 +93,27 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 		return ctx, disabledSpan()
 	}
 
-	parentSpan := GetSpan(ctx)
+	parentSpan := GetSpanFromContext(ctx)
 	ctx, transaction := newRootSpan(ctx, name, t.AppId)
 
-	if parentSpan == nil {
+	if parentSpan != nil {
+		parentTrace := parentSpan.GetTrace()
+		transaction.awsSpan.segment.TraceID = parentTrace.TraceId
+		transaction.awsSpan.segment.ParentID = parentTrace.Id
+		transaction.awsSpan.segment.Sampled = parentTrace.Sampled
+
 		return ctx, transaction
 	}
 
-	parentTrace := parentSpan.GetTrace()
-	transaction.awsSpan.segment.TraceID = parentTrace.TraceId
-	transaction.awsSpan.segment.ParentID = parentTrace.Id
-	transaction.awsSpan.segment.Sampled = parentTrace.Sampled
+	trace := GetTraceFromContext(ctx)
+
+	if trace != nil {
+		transaction.awsSpan.segment.TraceID = trace.TraceId
+		transaction.awsSpan.segment.ParentID = trace.Id
+		transaction.awsSpan.segment.Sampled = trace.Sampled
+
+		return ctx, transaction
+	}
 
 	return ctx, transaction
 }
@@ -128,27 +154,26 @@ func (t *awsTracer) HttpHandler(h http.Handler) http.Handler {
 	return xray.Handler(xray.NewFixedSegmentNamer(name), handlerFunc)
 }
 
-func lookupAddr(appId cfg.AppId, config cfg.Config) string {
-	addrType := config.GetString("tracing_addr_type")
-	addrValue := config.GetString("tracing_addr_value")
+func lookupAddr(appId cfg.AppId, settings *TracerSettings) string {
+	addressValue := settings.AddressValue
 
-	switch addrType {
+	switch settings.AddressType {
 	case dnsSrv:
-		if addrValue == "" {
-			addrValue = fmt.Sprintf("xray.%v.%v", appId.Environment, appId.Family)
+		if addressValue == "" {
+			addressValue = fmt.Sprintf("xray.%v.%v", appId.Environment, appId.Family)
 		}
 
-		_, srvs, err := net.LookupSRV("", "", addrValue)
+		_, srvs, err := net.LookupSRV("", "", addressValue)
 
 		if err != nil {
 			panic(err)
 		}
 
 		for _, srv := range srvs {
-			addrValue = fmt.Sprintf("%v:%v", srv.Target, srv.Port)
+			addressValue = fmt.Sprintf("%v:%v", srv.Target, srv.Port)
 			break
 		}
 	}
 
-	return addrValue
+	return addressValue
 }

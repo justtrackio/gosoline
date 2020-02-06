@@ -51,7 +51,7 @@ func (a *ApiServer) Boot(config cfg.Config, logger mon.Logger) error {
 	gin.SetMode(settings.Mode)
 
 	r := gin.New()
-	tracer := tracing.NewAwsTracer(config)
+	tracer := tracing.ProviderTracer(config, logger)
 
 	return a.BootWithInterfaces(config, logger, r, tracer, settings)
 }

@@ -3,15 +3,11 @@ package mon
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/getsentry/raven-go"
 	"github.com/jonboulle/clockwork"
 	"io"
 	"os"
 	"reflect"
-	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -61,11 +57,11 @@ type Fields map[string]interface{}
 type EcsMetadata map[string]interface{}
 
 type Metadata struct {
-	channel       string
-	context       context.Context
-	contextFields Fields
-	fields        Fields
-	tags          Tags
+	Channel       string
+	Context       context.Context
+	ContextFields Fields
+	Fields        Fields
+	Tags          Tags
 }
 
 type formatter func(timestamp string, level string, msg string, err error, data *Metadata) ([]byte, error)
@@ -135,10 +131,10 @@ func NewLoggerWithInterfaces(clock clockwork.Clock, out io.Writer) *logger {
 		format:          FormatConsole,
 		timestampFormat: "15:04:05.000",
 		data: Metadata{
-			channel:       ChannelDefault,
-			contextFields: make(Fields),
-			fields:        make(Fields),
-			tags:          make(Tags),
+			Channel:       ChannelDefault,
+			ContextFields: make(Fields),
+			Fields:        make(Fields),
+			Tags:          make(Tags),
 		},
 	}
 
@@ -171,7 +167,7 @@ func (l *logger) Option(options ...LoggerOption) error {
 
 func (l *logger) WithChannel(channel string) Logger {
 	cpy := l.copy()
-	cpy.data.channel = channel
+	cpy.data.Channel = channel
 
 	return cpy
 }
@@ -182,11 +178,11 @@ func (l *logger) WithContext(ctx context.Context) Logger {
 	}
 
 	cpy := l.copy()
-	cpy.data.context = ctx
+	cpy.data.Context = ctx
 
 	for _, r := range l.ctxResolver {
 		newContextFields := r(ctx)
-		cpy.data.contextFields = mergeMapStringInterface(cpy.data.contextFields, newContextFields)
+		cpy.data.ContextFields = mergeMapStringInterface(cpy.data.ContextFields, newContextFields)
 	}
 
 	return cpy
@@ -194,7 +190,7 @@ func (l *logger) WithContext(ctx context.Context) Logger {
 
 func (l *logger) WithFields(fields map[string]interface{}) Logger {
 	cpy := l.copy()
-	cpy.data.fields = mergeMapStringInterface(l.data.fields, fields)
+	cpy.data.Fields = mergeMapStringInterface(l.data.Fields, fields)
 
 	return cpy
 }
@@ -260,16 +256,8 @@ func (l *logger) Panicf(err error, msg string, args ...interface{}) {
 }
 
 func (l *logger) logError(level string, err error, msg string) {
-	if l.data.context != nil {
-		span := tracing.GetSpan(l.data.context)
-
-		if span != nil {
-			span.AddError(err)
-		}
-	}
-
 	l.log(level, msg, err, Fields{
-		"stacktrace": getStackTrace(1),
+		"stacktrace": GetStackTrace(1),
 	})
 }
 
@@ -281,7 +269,7 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 	}
 
 	cpyData := l.data
-	cpyData.fields = mergeMapStringInterface(cpyData.fields, fields)
+	cpyData.Fields = mergeMapStringInterface(cpyData.Fields, fields)
 
 	for _, h := range l.hooks {
 		if err := h.Fire(level, msg, logErr, &cpyData); err != nil {
@@ -319,41 +307,6 @@ func (l *logger) write(buffer []byte) {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
 	}
-}
-
-// getStackTrace constructs the current stacktrace. depthSkip defines how many steps of the
-// stacktrace should be skipped. This is useful to not clutter the stacktrace with logging
-// function calls.
-func getStackTrace(depthSkip int) string {
-	depthSkip = depthSkip + 1 // Skip this function in stacktrace
-	maxDepth := 50
-	traces := make([]string, maxDepth)
-
-	// Get traces
-	var depth int
-	for depth = 0; depth < maxDepth; depth++ {
-		function, _, line, ok := runtime.Caller(depth)
-
-		if !ok {
-			break
-		}
-
-		var traceStrBuilder strings.Builder
-		traceStrBuilder.WriteString("\t")
-		traceStrBuilder.WriteString(runtime.FuncForPC(function).Name())
-		traceStrBuilder.WriteString(":")
-		traceStrBuilder.WriteString(strconv.Itoa(line))
-		traceStrBuilder.WriteString("\n")
-		traces[depth] = traceStrBuilder.String()
-	}
-
-	// Assemble stacktrace in reverse order
-	var strBuilder strings.Builder
-	strBuilder.WriteString("\n")
-	for i := depth; i > depthSkip; i-- {
-		strBuilder.WriteString(traces[i])
-	}
-	return strBuilder.String()
 }
 
 func mergeMapStringInterface(receiver map[string]interface{}, input map[string]interface{}) map[string]interface{} {

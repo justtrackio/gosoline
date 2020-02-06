@@ -78,7 +78,7 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) *re
 	settings.AutoCreate = config.GetBool("aws_dynamoDb_autoCreate")
 	settings.Client.MaxRetries = config.GetInt("aws_sdk_retries")
 
-	tracer := tracing.NewAwsTracer(config)
+	tracer := tracing.ProviderTracer(config, logger)
 	client := ProvideClient(config, logger, settings)
 
 	res := &cloud.BackoffResource{

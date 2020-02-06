@@ -40,6 +40,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithLoggerContextFieldsResolver(mon.ContextLoggerFieldsResolver, tracing.ContextTraceFieldsResolver),
 		WithLoggerMetricHook,
 		WithLoggerSentryHook(mon.SentryExtraConfigProvider, mon.SentryExtraEcsMetadataProvider),
+		WithLoggerTracingHook,
 		WithApiHealthCheck,
 		WithMetricDaemon,
 	}

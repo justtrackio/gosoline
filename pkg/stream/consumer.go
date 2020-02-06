@@ -68,7 +68,7 @@ func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
 	c.id = fmt.Sprintf("consumer-%v-%v", appId.Family, appId.Application)
 
 	c.logger = logger.WithChannel("consumer")
-	c.tracer = tracing.NewAwsTracer(config)
+	c.tracer = tracing.ProviderTracer(config, logger)
 
 	defaultMetrics := getConsumerDefaultMetrics()
 	c.mw = mon.NewMetricDaemonWriter(defaultMetrics...)

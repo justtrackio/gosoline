@@ -53,7 +53,7 @@ type repository struct {
 }
 
 func New(config cfg.Config, logger mon.Logger, s Settings) *repository {
-	tracer := tracing.NewAwsTracer(config)
+	tracer := tracing.ProviderTracer(config, logger)
 	orm := NewOrm(config, logger)
 	orm.Callback().
 		Update().
