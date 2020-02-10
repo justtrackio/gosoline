@@ -17,6 +17,8 @@ const (
 	ContentTypeHtml = "text/html; charset=utf-8"
 )
 
+var ErrTooManyResults = errors.New("too many results returned")
+
 type Request struct {
 	Header   http.Header
 	Params   gin.Params
@@ -141,6 +143,14 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 	return func(ginCtx *gin.Context) {
 		input := handler.GetInput()
 		err := binding.Bind(ginCtx.Request, input)
+
+		if err == ErrTooManyResults {
+			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+				Err:  err,
+				Type: gin.ErrorTypePrivate,
+			})
+			return
+		}
 
 		if err != nil {
 			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
