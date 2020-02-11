@@ -18,10 +18,6 @@ type LoggingSuite struct {
 	span *mocks.Span
 }
 
-func TestLoggingSuite(t *testing.T) {
-	suite.Run(t, new(LoggingSuite))
-}
-
 func (s *LoggingSuite) SetupTest() {
 	s.span = new(mocks.Span)
 
@@ -56,4 +52,8 @@ func (s *LoggingSuite) TestLoggerErrorHook() {
 
 	assert.NoError(s.T(), err)
 	s.span.AssertExpectations(s.T())
+}
+
+func TestLoggingSuite(t *testing.T) {
+	suite.Run(t, new(LoggingSuite))
 }

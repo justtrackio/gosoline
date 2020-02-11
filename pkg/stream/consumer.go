@@ -17,12 +17,14 @@ const metricNameConsumerProcessedCount = "ConsumerProcessedCount"
 //go:generate mockery -name=ConsumerCallback
 type ConsumerCallback interface {
 	Boot(config cfg.Config, logger mon.Logger) error
-	Consume(ctx context.Context, msg *Message) (bool, error)
+	GetModel() interface{}
+	Consume(ctx context.Context, model interface{}) (bool, error)
 }
 
 type ConsumerSettings struct {
-	Input       string        `cfg:"input" default:"consumer"`
-	RunnerCount int           `cfg:"runner_count" default:"10"`
+	Input       string        `cfg:"input" default:"consumer" validate:"required"`
+	RunnerCount int           `cfg:"runner_count" default:"10" validate:"min=1"`
+	Encoding    string        `cfg:"encoding"`
 	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
 }
 
@@ -30,11 +32,12 @@ type Consumer struct {
 	kernel.EssentialModule
 	ConsumerAcknowledge
 
-	logger mon.Logger
-	mw     mon.MetricWriter
-	tracer tracing.Tracer
-	cfn    coffin.Coffin
-	ticker *time.Ticker
+	logger  mon.Logger
+	encoder MessageEncoder
+	mw      mon.MetricWriter
+	tracer  tracing.Tracer
+	cfn     coffin.Coffin
+	ticker  *time.Ticker
 
 	id        string
 	name      string
@@ -69,16 +72,17 @@ func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
 
 	c.logger = logger.WithChannel("consumer")
 	c.tracer = tracing.ProviderTracer(config, logger)
+	c.ticker = time.NewTicker(settings.IdleTimeout)
 
 	defaultMetrics := getConsumerDefaultMetrics()
 	c.mw = mon.NewMetricDaemonWriter(defaultMetrics...)
 
-	c.ticker = time.NewTicker(settings.IdleTimeout)
+	c.input = NewConfigurableInput(config, logger, settings.Input)
+	c.ConsumerAcknowledge = NewConsumerAcknowledgeWithInterfaces(logger, c.input)
 
-	input := NewConfigurableInput(config, logger, settings.Input)
-
-	c.input = input
-	c.ConsumerAcknowledge = NewConsumerAcknowledgeWithInterfaces(logger, input)
+	c.encoder = NewMessageEncoder(&MessageEncoderSettings{
+		Encoding: settings.Encoding,
+	})
 
 	return nil
 }
@@ -131,13 +135,24 @@ func (c *Consumer) consume() error {
 }
 
 func (c *Consumer) doCallback(msg *Message) {
-	ctx, trans := c.tracer.StartSpanFromTraceAble(msg, c.id)
-	defer trans.Finish()
+	ctx := context.Background()
+	model := c.callback.GetModel()
 
-	ack, err := c.callback.Consume(ctx, msg)
+	ctx, _, err := c.encoder.Decode(ctx, msg, model)
+	logger := c.logger.WithContext(ctx)
 
 	if err != nil {
-		c.logger.WithContext(ctx).Error(err, "an error occurred during the consume operation")
+		logger.Error(err, "an error occurred during the consume operation")
+		return
+	}
+
+	ctx, trans := c.tracer.StartSpanFromContext(ctx, c.id)
+	defer trans.Finish()
+
+	ack, err := c.callback.Consume(ctx, model)
+
+	if err != nil {
+		logger.Error(err, "an error occurred during the consume operation")
 	}
 
 	if !ack {

@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
@@ -10,7 +11,7 @@ import (
 )
 
 type ApiHealthCheckSettings struct {
-	Port string `cfg:"port" default:"8090"`
+	Port int    `cfg:"port" default:"8090"`
 	Path string `cfg:"path" default:"/health"`
 }
 
@@ -44,8 +45,10 @@ func (a *ApiHealthCheck) BootWithInterfaces(logger mon.Logger, router *gin.Engin
 		c.JSON(http.StatusOK, gin.H{})
 	})
 
+	addr := fmt.Sprintf(":%d", s.Port)
+
 	a.server = &http.Server{
-		Addr:    ":" + s.Port,
+		Addr:    addr,
 		Handler: router,
 	}
 

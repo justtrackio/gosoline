@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/pkg/errors"
 	"os"
@@ -16,6 +17,7 @@ type Option func(app *App)
 type ConfigOption func(config cfg.GosoConf) error
 type LoggerOption func(config cfg.GosoConf, logger mon.GosoLog) error
 type KernelOption func(config cfg.GosoConf, kernel kernel.Kernel) error
+type TracingOption func(config cfg.GosoConf, logger mon.GosoLog) error
 
 func WithApiHealthCheck(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.Kernel) error {
@@ -165,13 +167,6 @@ func WithLoggerSentryHook(extraProvider ...mon.SentryExtraProvider) Option {
 	}
 }
 
-func WithLoggerTracingHook(app *App) {
-	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		tracingHook := tracing.NewLoggerErrorHook()
-		return logger.Option(mon.WithHook(tracingHook))
-	})
-}
-
 func WithLoggerSettingsFromConfig(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
 		settings := &mon.LoggerSettings{}
@@ -199,6 +194,26 @@ func WithLoggerTagsFromConfig(app *App) {
 func WithMetricDaemon(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.Kernel) error {
 		kernel.Add("metric", mon.ProvideCwDaemon())
+		return nil
+	})
+}
+
+func WithTracing(app *App) {
+	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+		tracingHook := tracing.NewLoggerErrorHook()
+
+		options := []mon.LoggerOption{
+			mon.WithHook(tracingHook),
+			mon.WithContextFieldsResolver(tracing.ContextTraceFieldsResolver),
+		}
+
+		return logger.Option(options...)
+	})
+
+	app.addTracingOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+		strategy := tracing.NewTraceIdErrorWarningStrategy(logger)
+		stream.AddDefaultEncodeHandler(tracing.NewMessageWithTraceEncoder(strategy))
+
 		return nil
 	})
 }

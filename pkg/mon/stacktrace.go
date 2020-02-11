@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+type StackTraceProvider func(depthSkip int) string
+
+func GetMockedStackTrace(depthSkip int) string {
+	return "mocked trace"
+}
+
 // GetStackTrace constructs the current stacktrace. depthSkip defines how many steps of the
 // stacktrace should be skipped. This is useful to not clutter the stacktrace with logging
 // function calls.

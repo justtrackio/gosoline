@@ -22,38 +22,3 @@ func TestContextWithTrace(t *testing.T) {
 	assert.NotNil(t, traceFromCtx)
 	assert.Equal(t, trace, traceFromCtx)
 }
-
-func TestMessageWithTraceEncoder_Encode(t *testing.T) {
-	tracer := getTracer()
-	encoder := tracing.NewMessageWithTraceEncoder()
-
-	ctx, span := tracer.StartSpan("test-span")
-	defer span.Finish()
-
-	attributes, err := encoder.Encode(ctx, map[string]interface{}{})
-
-	assert.NoError(t, err)
-	assert.Contains(t, attributes, "traceId")
-	assert.Regexp(t, "Root=[^;]+;Parent=[^;]+;Sampled=[01]", attributes["traceId"])
-}
-
-func TestMessageWithTraceEncoder_Decode(t *testing.T) {
-	ctx := context.Background()
-	attributes := map[string]interface{}{
-		"traceId": "Root=1-5e3d557d-d06c248cc50169bd71b44fec;Parent=af297a5da6453826;Sampled=1",
-	}
-
-	encoder := tracing.NewMessageWithTraceEncoder()
-	ctx, err := encoder.Decode(ctx, attributes)
-
-	trace := tracing.GetTraceFromContext(ctx)
-	expected := &tracing.Trace{
-		TraceId:  "1-5e3d557d-d06c248cc50169bd71b44fec",
-		Id:       "",
-		ParentId: "af297a5da6453826",
-		Sampled:  true,
-	}
-
-	assert.NoError(t, err)
-	assert.Equal(t, expected, trace)
-}

@@ -7,34 +7,53 @@ import (
 
 type EncodeHandler interface {
 	Encode(ctx context.Context, attributes map[string]interface{}) (context.Context, map[string]interface{}, error)
-	Decode(ctx context.Context, attributes map[string]interface{}) (context.Context, error)
+	Decode(ctx context.Context, attributes map[string]interface{}) (context.Context, map[string]interface{}, error)
 }
 
-type MessageEncoderConfig struct {
+var defaultEncodeHandlers = make([]EncodeHandler, 0)
+
+func AddDefaultEncodeHandler(handler EncodeHandler) {
+	defaultEncodeHandlers = append(defaultEncodeHandlers, handler)
+}
+
+type MessageEncoderSettings struct {
 	Encoding       string
 	Compression    string
 	EncodeHandlers []EncodeHandler
 }
 
-type MessageEncoder struct {
+type MessageEncoder interface {
+	Encode(ctx context.Context, data interface{}, attributeSets ...map[string]interface{}) (*Message, error)
+	Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]interface{}, error)
+}
+
+type messageEncoder struct {
 	encoding       string
 	compression    string
 	encodeHandlers []EncodeHandler
 }
 
-func NewMessageEncoder(config *MessageEncoderConfig) *MessageEncoder {
+func NewMessageEncoder(config *MessageEncoderSettings) *messageEncoder {
 	if config.Encoding == "" {
 		config.Encoding = defaultMessageBodyEncoding
 	}
 
-	return &MessageEncoder{
+	if config.Compression == "" {
+		config.Compression = "none"
+	}
+
+	if len(config.EncodeHandlers) == 0 {
+		config.EncodeHandlers = defaultEncodeHandlers
+	}
+
+	return &messageEncoder{
 		encoding:       config.Encoding,
 		compression:    config.Compression,
 		encodeHandlers: config.EncodeHandlers,
 	}
 }
 
-func (e *MessageEncoder) Encode(ctx context.Context, data interface{}, attributeSets ...map[string]interface{}) (*Message, error) {
+func (e *messageEncoder) Encode(ctx context.Context, data interface{}, attributeSets ...map[string]interface{}) (*Message, error) {
 	var err error
 	var msg *Message
 	var attributes map[string]interface{}
@@ -43,7 +62,7 @@ func (e *MessageEncoder) Encode(ctx context.Context, data interface{}, attribute
 		return nil, err
 	}
 
-	if attributes, err = e.flattenAttributes(attributeSets); err != nil {
+	if attributes, err = e.mergeAttributes(attributeSets); err != nil {
 		return nil, err
 	}
 
@@ -64,7 +83,7 @@ func (e *MessageEncoder) Encode(ctx context.Context, data interface{}, attribute
 	return msg, nil
 }
 
-func (e *MessageEncoder) encodeBody(data interface{}) (*Message, error) {
+func (e *messageEncoder) encodeBody(data interface{}) (*Message, error) {
 	if e.encoding == "" {
 		return nil, fmt.Errorf("no encoding provided to encode message")
 	}
@@ -91,7 +110,7 @@ func (e *MessageEncoder) encodeBody(data interface{}) (*Message, error) {
 	return msg, nil
 }
 
-func (e *MessageEncoder) flattenAttributes(attributeSets []map[string]interface{}) (map[string]interface{}, error) {
+func (e *messageEncoder) mergeAttributes(attributeSets []map[string]interface{}) (map[string]interface{}, error) {
 	attributes := make(map[string]interface{})
 
 	for _, set := range attributeSets {
@@ -107,6 +126,48 @@ func (e *MessageEncoder) flattenAttributes(attributeSets []map[string]interface{
 	return attributes, nil
 }
 
-func (e *MessageEncoder) Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]interface{}, error) {
-	return nil, nil, nil
+func (e *messageEncoder) Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]interface{}, error) {
+	var err error
+	var attributes map[string]interface{}
+
+	if attributes, err = e.decodeBody(msg, out); err != nil {
+		return ctx, attributes, fmt.Errorf("can not decode message body: %w", err)
+	}
+
+	for _, handler := range e.encodeHandlers {
+		if ctx, attributes, err = handler.Decode(ctx, attributes); err != nil {
+			return ctx, attributes, fmt.Errorf("can not apply encoding handler on message: %w", err)
+		}
+	}
+
+	return ctx, attributes, nil
+}
+
+func (e *messageEncoder) decodeBody(msg *Message, out interface{}) (map[string]interface{}, error) {
+	attributes := msg.Attributes
+	encoding := e.encoding
+
+	if attrEncoding, ok := attributes[AttributeEncoding]; ok {
+		if _, ok := attrEncoding.(string); !ok {
+			return attributes, fmt.Errorf("the encoding set in the message attributes should be of type string")
+		}
+
+		encoding = attrEncoding.(string)
+	}
+
+	encoder, ok := messageBodyEncoders[encoding]
+
+	if !ok {
+		return attributes, fmt.Errorf("there is no message body decoder available for encoding %s", encoding)
+	}
+
+	err := encoder.Decode(msg.Body, out)
+
+	if err != nil {
+		return attributes, fmt.Errorf("can not decode message body with encoding %s: %w", encoding, err)
+	}
+
+	delete(attributes, AttributeEncoding)
+
+	return attributes, nil
 }

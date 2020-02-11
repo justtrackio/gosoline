@@ -4,14 +4,14 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/applike/gosoline/pkg/tracing"
 	"strings"
 )
 
 type App struct {
-	configOptions []ConfigOption
-	kernelOptions []KernelOption
-	loggerOptions []LoggerOption
+	configOptions  []ConfigOption
+	kernelOptions  []KernelOption
+	loggerOptions  []LoggerOption
+	tracingOptions []TracingOption
 }
 
 func (a *App) addConfigOption(opt ConfigOption) {
@@ -26,6 +26,10 @@ func (a *App) addLoggerOption(opt LoggerOption) {
 	a.loggerOptions = append(a.loggerOptions, opt)
 }
 
+func (a *App) addTracingOption(opt TracingOption) {
+	a.tracingOptions = append(a.tracingOptions, opt)
+}
+
 func Default(options ...Option) kernel.Kernel {
 	defaults := []Option{
 		WithConfigErrorHandlers(defaultErrorHandler),
@@ -37,12 +41,12 @@ func Default(options ...Option) kernel.Kernel {
 		WithLoggerApplicationTag,
 		WithLoggerTagsFromConfig,
 		WithLoggerSettingsFromConfig,
-		WithLoggerContextFieldsResolver(mon.ContextLoggerFieldsResolver, tracing.ContextTraceFieldsResolver),
+		WithLoggerContextFieldsResolver(mon.ContextLoggerFieldsResolver),
 		WithLoggerMetricHook,
 		WithLoggerSentryHook(mon.SentryExtraConfigProvider, mon.SentryExtraEcsMetadataProvider),
-		WithLoggerTracingHook,
 		WithApiHealthCheck,
 		WithMetricDaemon,
+		WithTracing,
 	}
 
 	options = append(defaults, options...)
@@ -72,6 +76,12 @@ func New(options ...Option) kernel.Kernel {
 	for _, opt := range app.loggerOptions {
 		if err := opt(config, logger); err != nil {
 			defaultErrorHandler(err, "can not apply logger options on application")
+		}
+	}
+
+	for _, opt := range app.tracingOptions {
+		if err := opt(config, logger); err != nil {
+			defaultErrorHandler(err, "can not apply tracing options on application")
 		}
 	}
 

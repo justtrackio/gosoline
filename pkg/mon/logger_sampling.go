@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/jonboulle/clockwork"
-	"strings"
 	"sync"
 	"time"
 )
@@ -56,7 +55,7 @@ func (l *SamplingLogger) WithFields(fields map[string]interface{}) Logger {
 }
 
 func (l *SamplingLogger) Debug(args ...interface{}) {
-	if !l.shouldLog("", args...) {
+	if !l.shouldLog(fmt.Sprint(args...)) {
 		return
 	}
 
@@ -64,7 +63,7 @@ func (l *SamplingLogger) Debug(args ...interface{}) {
 }
 
 func (l *SamplingLogger) Debugf(msg string, args ...interface{}) {
-	if !l.shouldLog(msg, args...) {
+	if !l.shouldLog(msg) {
 		return
 	}
 
@@ -80,7 +79,7 @@ func (l *SamplingLogger) Error(err error, msg string) {
 }
 
 func (l *SamplingLogger) Errorf(err error, msg string, args ...interface{}) {
-	if !l.shouldLog(msg, args...) {
+	if !l.shouldLog(msg) {
 		return
 	}
 
@@ -96,7 +95,7 @@ func (l *SamplingLogger) Fatal(err error, msg string) {
 }
 
 func (l *SamplingLogger) Fatalf(err error, msg string, args ...interface{}) {
-	if !l.shouldLog(msg, args...) {
+	if !l.shouldLog(msg) {
 		return
 	}
 
@@ -104,7 +103,7 @@ func (l *SamplingLogger) Fatalf(err error, msg string, args ...interface{}) {
 }
 
 func (l *SamplingLogger) Info(args ...interface{}) {
-	if !l.shouldLog("", args...) {
+	if !l.shouldLog(fmt.Sprint(args...)) {
 		return
 	}
 
@@ -112,7 +111,7 @@ func (l *SamplingLogger) Info(args ...interface{}) {
 }
 
 func (l *SamplingLogger) Infof(msg string, args ...interface{}) {
-	if !l.shouldLog(msg, args...) {
+	if !l.shouldLog(msg) {
 		return
 	}
 
@@ -136,7 +135,7 @@ func (l *SamplingLogger) Panicf(err error, msg string, args ...interface{}) {
 }
 
 func (l *SamplingLogger) Warn(args ...interface{}) {
-	if !l.shouldLog("", args...) {
+	if !l.shouldLog(fmt.Sprint(args...)) {
 		return
 	}
 
@@ -144,20 +143,19 @@ func (l *SamplingLogger) Warn(args ...interface{}) {
 }
 
 func (l *SamplingLogger) Warnf(msg string, args ...interface{}) {
-	if !l.shouldLog(msg, args...) {
+	if !l.shouldLog(msg) {
 		return
 	}
 
 	l.Logger.Warnf(msg, args...)
 }
 
-func (l *SamplingLogger) shouldLog(msg string, args ...interface{}) bool {
-	key := strings.Join([]string{msg, fmt.Sprint(args...)}, ":")
-	value, ok := l.logs.Load(key)
+func (l *SamplingLogger) shouldLog(msg string) bool {
+	value, ok := l.logs.Load(msg)
 
 	if !ok {
 		lastLoggedAt := l.clock.Now()
-		l.logs.Store(key, &lastLoggedAt)
+		l.logs.Store(msg, &lastLoggedAt)
 
 		return true
 	}
@@ -170,7 +168,7 @@ func (l *SamplingLogger) shouldLog(msg string, args ...interface{}) bool {
 	}
 
 	newLastLoggedAt := l.clock.Now()
-	l.logs.Store(key, &newLastLoggedAt)
+	l.logs.Store(msg, &newLastLoggedAt)
 
 	return true
 }

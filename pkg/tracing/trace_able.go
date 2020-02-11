@@ -49,12 +49,12 @@ func StringToTrace(traceId string) (*Trace, error) {
 	parts := strings.Split(traceId, ";")
 
 	if len(parts) < 2 || len(parts) > 3 {
-		return trace, fmt.Errorf("the trace id [%s] should consist of at least 2 parts", traceId)
+		return nil, fmt.Errorf("the trace id [%s] should consist of at least 2 parts", traceId)
 	}
 
 	root := strings.Split(parts[0], "=")
 	if len(root) != 2 {
-		return trace, fmt.Errorf("the root part [%s] of the trace id seems malformed", parts[0])
+		return nil, fmt.Errorf("the root part [%s] of the trace id seems malformed", parts[0])
 	}
 	trace.TraceId = root[1]
 
