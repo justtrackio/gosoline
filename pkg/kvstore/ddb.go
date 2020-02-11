@@ -116,13 +116,17 @@ func (s *DdbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []i
 
 	missing := make([]interface{}, 0)
 	keyStrings := make([]string, len(keys))
+	keyMapToOriginal := make(map[string]interface{}, len(keys))
 
 	for i := 0; i < len(keyStrings); i++ {
-		keyStrings[i], err = CastKeyToString(keys[i])
+		keyStr, err := CastKeyToString(keys[i])
 
 		if err != nil {
 			return nil, fmt.Errorf("can not build string key: %w", err)
 		}
+
+		keyStrings[i] = keyStr
+		keyMapToOriginal[keyStr] = keys[i]
 	}
 
 	qb := s.repository.BatchGetItemsBuilder()
@@ -147,7 +151,8 @@ func (s *DdbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []i
 			return nil, fmt.Errorf("can not unmarshal item: %w", err)
 		}
 
-		if err := resultMap.Set(keys[i], element); err != nil {
+		keyOrig := keyMapToOriginal[items[i].Key]
+		if err := resultMap.Set(keyOrig, element); err != nil {
 			return nil, fmt.Errorf("can not set new element on result map: %w", err)
 		}
 	}
