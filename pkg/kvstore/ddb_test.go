@@ -89,7 +89,6 @@ func TestDdbKvStore_GetBatch(t *testing.T) {
 			Key:   "foo",
 			Value: `{"id":"foo","body":"bar"}`,
 		}
-
 		items := args[2].(*[]kvstore.DdbItem)
 		*items = append(*items, item)
 	}).Return(nil, nil)
@@ -103,6 +102,49 @@ func TestDdbKvStore_GetBatch(t *testing.T) {
 
 	assert.Len(t, missing, 1)
 	assert.Contains(t, missing, "fuu")
+
+	builder.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
+func TestDdbKvStore_GetBatch_ReturnedKeysInDifferentOrder(t *testing.T) {
+	store, repo := buildTestableDdbStore()
+
+	result := make(map[string]Item)
+
+	builder := new(ddbMocks.BatchGetItemsBuilder)
+	builder.On("WithHashKeys", []string{"foo", "fuu"}).Return(builder)
+
+	items := make([]kvstore.DdbItem, 0)
+
+	repo.On("BatchGetItemsBuilder").Return(builder)
+
+	// the order of the entries is not always the same as the order of the keys
+	repo.On("BatchGetItems", mock.AnythingOfType("*context.emptyCtx"), builder, &items).Run(func(args mock.Arguments) {
+		items := args[2].(*[]kvstore.DdbItem)
+		*items = append(*items, kvstore.DdbItem{
+			Key:   "fuu",
+			Value: `{"id":"fuu","body":"baz"}`,
+		})
+		*items = append(*items, kvstore.DdbItem{
+			Key:   "foo",
+			Value: `{"id":"foo","body":"bar"}`,
+		})
+	}).Return(nil, nil)
+
+	missing, err := store.GetBatch(context.Background(), []string{"foo", "fuu", "foo"}, result)
+
+	assert.NoError(t, err)
+
+	assert.Contains(t, result, "foo")
+	assert.Equal(t, "foo", result["foo"].Id)
+	assert.Equal(t, "bar", result["foo"].Body)
+
+	assert.Contains(t, result, "fuu")
+	assert.Equal(t, "fuu", result["fuu"].Id)
+	assert.Equal(t, "baz", result["fuu"].Body)
+
+	assert.Len(t, missing, 0)
 
 	builder.AssertExpectations(t)
 	repo.AssertExpectations(t)
