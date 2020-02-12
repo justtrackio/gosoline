@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"os"
+	"sync"
 )
 
 type FileOutputSettings struct {
@@ -14,6 +15,7 @@ type FileOutputSettings struct {
 }
 
 type fileOutput struct {
+	lck      sync.Mutex
 	logger   mon.Logger
 	settings *FileOutputSettings
 }
@@ -30,6 +32,9 @@ func (o *fileOutput) WriteOne(ctx context.Context, msg *Message) error {
 }
 
 func (o *fileOutput) Write(ctx context.Context, batch []*Message) error {
+	o.lck.Lock()
+	defer o.lck.Unlock()
+
 	flags := os.O_CREATE | os.O_WRONLY
 	if o.settings.Append {
 		flags = flags | os.O_APPEND
