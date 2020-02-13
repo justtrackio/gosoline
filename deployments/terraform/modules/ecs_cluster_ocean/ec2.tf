@@ -1,5 +1,4 @@
 resource "spotinst_ocean_ecs" "ocean" {
-  count        = var.spotinst_ocean
   name         = "${var.project}-${var.environment}-${var.family}"
   cluster_name = "${var.project}-${var.environment}-${var.family}"
   region       = "eu-central-1"
@@ -40,8 +39,8 @@ EOF
 
     headroom {
       cpu_per_unit    = 1000
-      memory_per_unit = 2000
-      num_of_units    = 1
+      memory_per_unit = 1000
+      num_of_units    = 2
     }
 
     down {
@@ -88,6 +87,40 @@ EOF
   }
 }
 
+locals {
+  ocean_id = spotinst_ocean_ecs.ocean.id
+}
+
+resource "spotinst_ocean_ecs_launch_spec" "ocean" {
+  name                 = "${var.project}-${var.environment}-${var.family}"
+  ocean_id             = local.ocean_id
+  image_id             = data.aws_ssm_parameter.ami.value
+  user_data            = <<EOF
+#!/bin/bash
+echo ECS_INSTANCE_ATTRIBUTES='{"lifecycle":"spot"}' >> /etc/ecs/ecs.config
+echo ECS_CLUSTER=${var.project}-${var.environment}-${var.family} >> /etc/ecs/ecs.config
+echo ECS_ENGINE_TASK_CLEANUP_WAIT_DURATION=1m >> /etc/ecs/ecs.config
+echo ECS_NUM_IMAGES_DELETE_PER_CYCLE=100 >> /etc/ecs/ecs.config
+echo ECS_IMAGE_CLEANUP_INTERVAL=10m >> /etc/ecs/ecs.config
+echo ECS_UPDATES_ENABLED=true >> /etc/ecs/ecs.config
+echo ECS_RESERVED_MEMORY=256 >> /etc/ecs/ecs.config
+echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"json-file\", \"none\", \"gelf\", \"awslogs\", \"fluentd\"] >> /etc/ecs/ecs.config
+echo ECS_ENABLE_CONTAINER_METADATA=true >> /etc/ecs/ecs.config
+echo ECS_IMAGE_PULL_BEHAVIOR=once >> /etc/ecs/ecs.config
+echo ECS_ENABLE_UNTRACKED_IMAGE_CLEANUP=true >> /etc/ecs/ecs.config
+echo ECS_ENABLE_SPOT_INSTANCE_DRAINING=true >> /etc/ecs/ecs.config
+echo ECS_CONTAINER_START_TIMEOUT=10m >> /etc/ecs/ecs.config
+
+EOF
+  iam_instance_profile = aws_iam_instance_profile.ec2.id
+  security_group_ids   = data.aws_security_groups.private.ids
+
+  attributes {
+    key   = "lifecycle"
+    value = "spot"
+  }
+}
+
 resource "spotinst_elastigroup_aws" "main" {
   count            = var.spotinst_elastigroup
   name             = "${var.project}-${var.environment}-${var.family}"
@@ -128,8 +161,8 @@ EOF
   lifetime_period         = "days"
   spot_percentage         = 0
   fallback_to_ondemand    = true
-  instance_types_ondemand = "m5.large"
-  instance_types_spot     = ["m5.large"]
+  instance_types_ondemand = var.ec2_instance_type
+  instance_types_spot     = [var.ec2_instance_type]
 
   network_interface {
     device_index                = 0
