@@ -2,10 +2,14 @@ variable "project" {}
 variable "environment" {}
 variable "family" {}
 
-variable "ec2_key_name" {}
-variable "ec2_instance_type" {}
-variable "ec2_ami" {}
-variable "ec2_block_device_size" {}
+variable "ec2_key_name" {
+  default = "ecs-temp"
+}
 
-variable "spotinst_ocean" {}
-variable "spotinst_elastigroup" {}
+variable "ec2_instance_type" {
+  default = "m5.large"
+}
+
+variable "spotinst_elastigroup" {
+  default = 0
+}
