@@ -83,6 +83,10 @@ func (d *Definitions) GET(relativePath string, handlers ...gin.HandlerFunc) {
 	d.Handle("GET", relativePath, handlers...)
 }
 
+func (d *Definitions) OPTIONS(relativePath string, handlers ...gin.HandlerFunc) {
+	d.Handle("OPTIONS", relativePath, handlers...)
+}
+
 func (d *Definitions) DELETE(relativePath string, handlers ...gin.HandlerFunc) {
 	d.Handle("DELETE", relativePath, handlers...)
 }
