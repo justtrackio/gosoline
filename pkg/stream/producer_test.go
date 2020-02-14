@@ -4,30 +4,93 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/stream/mocks"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
 
-func TestProducer_Write(t *testing.T) {
-	ctx := context.Background()
-	content := "this is a test"
+type testContent struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+}
 
-	encoder := stream.NewMessageEncoder(&stream.MessageEncoderSettings{
+type ProducerTestSuite struct {
+	suite.Suite
+
+	ctx      context.Context
+	encoder  stream.MessageEncoder
+	output   *mocks.Output
+	producer stream.Producer
+}
+
+func (s *ProducerTestSuite) SetupTest() {
+	s.ctx = context.Background()
+	s.encoder = stream.NewMessageEncoder(&stream.MessageEncoderSettings{
 		Encoding: stream.EncodingJson,
 	})
+	s.output = new(mocks.Output)
+	s.producer = stream.NewProducerWithInterfaces(s.encoder, s.output)
+}
+
+func (s *ProducerTestSuite) TestProducer_WriteOne() {
+	content := &testContent{
+		Id:   3,
+		Name: "foobar",
+	}
 
 	expectedMsg := &stream.Message{
 		Attributes: map[string]interface{}{
 			stream.AttributeEncoding: stream.EncodingJson,
 		},
-		Body: `"this is a test"`,
+		Body: `{"id":3,"name":"foobar"}`,
 	}
 
-	output := new(mocks.Output)
-	output.On("WriteOne", ctx, expectedMsg).Return(nil)
+	s.output.On("WriteOne", s.ctx, expectedMsg).Return(nil)
+	err := s.producer.WriteOne(s.ctx, content)
 
-	producer := stream.NewProducerWithInterfaces(encoder, output)
-	err := producer.WriteOne(ctx, content)
+	s.NoError(err)
+	s.output.AssertExpectations(s.T())
+}
 
-	assert.NoError(t, err)
+func (s *ProducerTestSuite) TestProducer_Write() {
+	content := []*testContent{
+		{
+			Id:   3,
+			Name: "foobar",
+		},
+		{
+			Id:   5,
+			Name: "foobaz",
+		},
+	}
+
+	expectedMsg := []*stream.Message{
+		{
+			Attributes: map[string]interface{}{
+				stream.AttributeEncoding: stream.EncodingJson,
+			},
+			Body: `{"id":3,"name":"foobar"}`,
+		},
+		{
+			Attributes: map[string]interface{}{
+				stream.AttributeEncoding: stream.EncodingJson,
+			},
+			Body: `{"id":5,"name":"foobaz"}`,
+		},
+	}
+
+	s.output.On("Write", s.ctx, expectedMsg).Return(nil)
+	err := s.producer.Write(s.ctx, content)
+
+	s.NoError(err)
+	s.output.AssertExpectations(s.T())
+}
+
+func (s *ProducerTestSuite) TestProducer_Write_SliceError() {
+	err := s.producer.Write(s.ctx, "string")
+
+	s.EqualError(err, "can not cast models interface to slice: input is not an slice but instead of type string")
+}
+
+func TestProducerTestSuite(t *testing.T) {
+	suite.Run(t, new(ProducerTestSuite))
 }

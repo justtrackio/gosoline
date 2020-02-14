@@ -8,6 +8,10 @@ import (
 func InterfaceToInterfaceSlice(in interface{}) ([]interface{}, error) {
 	val := reflect.ValueOf(in)
 
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+
 	if val.Kind() != reflect.Slice {
 		return nil, fmt.Errorf("input is not an slice but instead of type %T", in)
 	}

@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/refl"
 )
 
 type ProducerSettings struct {
-	Output   string `cfg:"output" default:"producer" validate:"required"`
+	Output   string `cfg:"output"`
 	Encoding string `cfg:"encoding"`
 }
 
 type Producer interface {
-	WriteOne(ctx context.Context, model interface{}) error
+	WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]interface{}) error
+	Write(ctx context.Context, models interface{}, attributeSets ...map[string]interface{}) error
 }
 
 type producer struct {
@@ -26,6 +28,10 @@ func NewProducer(config cfg.Config, logger mon.Logger, name string) *producer {
 
 	settings := &ProducerSettings{}
 	config.UnmarshalKey(key, settings)
+
+	if len(settings.Output) == 0 {
+		settings.Output = name
+	}
 
 	encoder := NewMessageEncoder(&MessageEncoderSettings{
 		Encoding: settings.Encoding,
@@ -42,8 +48,8 @@ func NewProducerWithInterfaces(encoder MessageEncoder, output Output) *producer 
 	}
 }
 
-func (p *producer) WriteOne(ctx context.Context, model interface{}) error {
-	msg, err := p.encoder.Encode(ctx, model)
+func (p *producer) WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]interface{}) error {
+	msg, err := p.encoder.Encode(ctx, model, attributeSets...)
 
 	if err != nil {
 		return fmt.Errorf("can not encode model into message: %w", err)
@@ -53,6 +59,33 @@ func (p *producer) WriteOne(ctx context.Context, model interface{}) error {
 
 	if err != nil {
 		return fmt.Errorf("can not write msg to output: %w", err)
+	}
+
+	return nil
+}
+
+func (p *producer) Write(ctx context.Context, models interface{}, attributeSets ...map[string]interface{}) error {
+	slice, err := refl.InterfaceToInterfaceSlice(models)
+
+	if err != nil {
+		return fmt.Errorf("can not cast models interface to slice: %w", err)
+	}
+
+	messages := make([]*Message, len(slice))
+	for i, model := range slice {
+		msg, err := p.encoder.Encode(ctx, model, attributeSets...)
+
+		if err != nil {
+			return fmt.Errorf("can not encode model into message: %w", err)
+		}
+
+		messages[i] = msg
+	}
+
+	err = p.output.Write(ctx, messages)
+
+	if err != nil {
+		return fmt.Errorf("can not write messages to output: %w", err)
 	}
 
 	return nil
