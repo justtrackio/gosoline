@@ -129,6 +129,11 @@ func (_m *Client) Post(ctx context.Context, request *http.Request) (*http.Respon
 	return r0, r1
 }
 
+// SetProxyUrl provides a mock function with given fields: p
+func (_m *Client) SetProxyUrl(p string) {
+	_m.Called(p)
+}
+
 // SetTimeout provides a mock function with given fields: timeout
 func (_m *Client) SetTimeout(timeout time.Duration) {
 	_m.Called(timeout)
