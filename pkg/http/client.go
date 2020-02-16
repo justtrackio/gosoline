@@ -28,6 +28,7 @@ type Client interface {
 	Post(ctx context.Context, request *Request) (*Response, error)
 	SetTimeout(timeout time.Duration)
 	SetUserAgent(ua string)
+	SetProxyUrl(p string)
 	NewRequest() *Request
 	NewJsonRequest() *Request
 	NewXmlRequest() *Request
@@ -101,6 +102,10 @@ func (c *client) SetTimeout(timeout time.Duration) {
 
 func (c *client) SetUserAgent(ua string) {
 	c.defaultHeaders[HdrUserAgent] = ua
+}
+
+func (c *client) SetProxyUrl(p string) {
+	c.http.SetProxy(p)
 }
 
 func (c *client) Delete(ctx context.Context, request *Request) (*Response, error) {
