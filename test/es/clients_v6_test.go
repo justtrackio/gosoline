@@ -3,36 +3,21 @@
 package es_test
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/es"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"testing"
-
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 )
-
-func getMocks() (cfg.Config, mon.Logger) {
-	config := cfg.New("es_test")
-
-	logger := new(monMocks.Logger)
-
-	logger.On("Fatal").Return(nil)
-	logger.On("Info", "creating client ", config.GetString("es_test_v6_type"), " for host ", config.GetString("es_test_v6_endpoint")).Return(nil)
-	logger.On("Info", "creating client ", config.GetString("es_test_v7_type"), " for host ", config.GetString("es_test_v7_endpoint")).Return(nil)
-	logger.On("WithFields", mock.AnythingOfType("map[string]interface {}")).Return(logger)
-
-	return config, logger
-}
 
 func TestNewClientV6(t *testing.T) {
 	defer test.Shutdown()
 
-	test.Boot()
+	configFilePath := "config-v6.test.yml"
 
-	config, logger := getMocks()
+	test.Boot(mdl.String(configFilePath))
+
+	config, logger := getMocks(configFilePath)
 
 	clientV6 := es.NewClientV6(config, logger, "test_v6")
 
@@ -43,7 +28,7 @@ func TestNewClientV6(t *testing.T) {
 }
 
 func TestGetAwsClientV6(t *testing.T) {
-	config, logger := getMocks()
+	config, logger := getMocks("config-v6.test.yml")
 
 	endpointKey := "es_test_v6_aws_endpoint"
 	if !config.IsSet(endpointKey) {

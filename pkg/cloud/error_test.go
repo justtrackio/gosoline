@@ -3,6 +3,7 @@ package cloud_test
 import (
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
@@ -22,8 +23,9 @@ func TestIsUsedClosedConnectionError(t *testing.T) {
 	}()
 
 	cfg := &aws.Config{
-		Region:   aws.String(endpoints.EuCentral1RegionID),
-		Endpoint: aws.String(ln.Addr().String()),
+		Region:      aws.String(endpoints.EuCentral1RegionID),
+		Endpoint:    aws.String(ln.Addr().String()),
+		Credentials: credentials.NewStaticCredentials("test", "a", "b"),
 		HTTPClient: &http.Client{
 			Transport: &http.Transport{
 				DialTLS: func(network, addr string) (net.Conn, error) {
@@ -33,6 +35,7 @@ func TestIsUsedClosedConnectionError(t *testing.T) {
 						return nil, err
 					}
 
+					// close the connection to reproduce the error
 					defer func() {
 						_ = conn.Close()
 					}()
@@ -50,5 +53,5 @@ func TestIsUsedClosedConnectionError(t *testing.T) {
 
 	isClosedErr := cloud.IsUsedClosedConnectionError(err)
 
-	assert.True(t, isClosedErr)
+	assert.True(t, isClosedErr, "error: %v", err)
 }
