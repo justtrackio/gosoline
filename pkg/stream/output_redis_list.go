@@ -62,7 +62,7 @@ func (o *redisListOutput) WriteOne(ctx context.Context, record *Message) error {
 func (o *redisListOutput) Write(ctx context.Context, batch []*Message) error {
 	spanName := fmt.Sprintf("redis-list-output-%v-%v-%v", o.settings.Family, o.settings.Application, o.settings.Key)
 
-	ctx, trans := o.tracer.StartSpanFromContext(ctx, spanName)
+	ctx, trans := o.tracer.StartSubSpan(ctx, spanName)
 	defer trans.Finish()
 
 	for _, msg := range batch {

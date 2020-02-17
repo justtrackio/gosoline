@@ -57,7 +57,7 @@ func (o *snsOutput) WriteOne(ctx context.Context, record *Message) error {
 func (o *snsOutput) Write(ctx context.Context, batch []*Message) error {
 	spanName := fmt.Sprintf("sns-output-%v-%v-%v", o.settings.Family, o.settings.Application, o.settings.TopicId)
 
-	ctx, trans := o.tracer.StartSpanFromContext(ctx, spanName)
+	ctx, trans := o.tracer.StartSubSpan(ctx, spanName)
 	defer trans.Finish()
 
 	for _, msg := range batch {

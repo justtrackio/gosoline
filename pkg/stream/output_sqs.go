@@ -67,7 +67,7 @@ func (o *sqsOutput) WriteOne(ctx context.Context, record *Message) error {
 func (o *sqsOutput) Write(ctx context.Context, batch []*Message) error {
 	spanName := fmt.Sprintf("sqs-output-%v-%v-%v", o.settings.Family, o.settings.Application, o.settings.QueueId)
 
-	ctx, trans := o.tracer.StartSpanFromContext(ctx, spanName)
+	ctx, trans := o.tracer.StartSubSpan(ctx, spanName)
 	defer trans.Finish()
 
 	for _, msg := range batch {
