@@ -78,31 +78,6 @@ func (_m *Tracer) StartSpanFromContext(ctx context.Context, name string) (contex
 	return r0, r1
 }
 
-// StartSpanFromTraceAble provides a mock function with given fields: obj, name
-func (_m *Tracer) StartSpanFromTraceAble(obj tracing.TraceAble, name string) (context.Context, tracing.Span) {
-	ret := _m.Called(obj, name)
-
-	var r0 context.Context
-	if rf, ok := ret.Get(0).(func(tracing.TraceAble, string) context.Context); ok {
-		r0 = rf(obj, name)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(context.Context)
-		}
-	}
-
-	var r1 tracing.Span
-	if rf, ok := ret.Get(1).(func(tracing.TraceAble, string) tracing.Span); ok {
-		r1 = rf(obj, name)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(tracing.Span)
-		}
-	}
-
-	return r0, r1
-}
-
 // StartSubSpan provides a mock function with given fields: ctx, name
 func (_m *Tracer) StartSubSpan(ctx context.Context, name string) (context.Context, tracing.Span) {
 	ret := _m.Called(ctx, name)

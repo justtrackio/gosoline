@@ -118,23 +118,6 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 	return ctx, transaction
 }
 
-func (t *awsTracer) StartSpanFromTraceAble(obj TraceAble, name string) (context.Context, Span) {
-	if !t.enabled {
-		return context.Background(), disabledSpan()
-	}
-
-	ctx, transaction := newRootSpan(context.Background(), name, t.AppId)
-
-	trace := obj.GetTrace()
-	if trace != nil {
-		transaction.awsSpan.segment.TraceID = trace.GetTraceId()
-		transaction.awsSpan.segment.ParentID = trace.GetId()
-		transaction.awsSpan.segment.Sampled = trace.GetSampled()
-	}
-
-	return ctx, transaction
-}
-
 func (t *awsTracer) HttpHandler(h http.Handler) http.Handler {
 	if !t.enabled {
 		return h

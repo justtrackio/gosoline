@@ -2,7 +2,6 @@ package sub
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
@@ -28,7 +27,7 @@ type ModelTransformer interface {
 	Transform(ctx context.Context, inp interface{}) (out Model, err error)
 }
 
-type ModelMsgTransformer func(ctx context.Context, msg *stream.ModelMsg) (out Model, err error)
+type ModelMsgTransformer func(ctx context.Context, spec *ModelSpecification, msg *stream.Message) (context.Context, Model, error)
 type TransformerMapVersion map[int]ModelTransformer
 type TransformerMapVersionFactories map[int]TransformerFactory
 type TransformerMapTypeVersionFactories map[string]TransformerMapVersionFactories
@@ -36,24 +35,74 @@ type TransformerMapTypeVersionFactories map[string]TransformerMapVersionFactorie
 type TransformerFactory func(config cfg.Config, logger mon.Logger) ModelTransformer
 
 func BuildTransformer(modelTransformer TransformerMapVersion) ModelMsgTransformer {
-	return func(ctx context.Context, msg *stream.ModelMsg) (Model, error) {
-		if _, ok := modelTransformer[msg.Version]; !ok {
-			return nil, fmt.Errorf("there is no transformer for modelId %s and version %d", msg.ModelId, msg.Version)
+	encoder := stream.NewMessageEncoder(&stream.MessageEncoderSettings{
+		Encoding: stream.EncodingJson,
+	})
+
+	return func(ctx context.Context, spec *ModelSpecification, msg *stream.Message) (context.Context, Model, error) {
+		if _, ok := modelTransformer[spec.Version]; !ok {
+			return ctx, nil, fmt.Errorf("there is no transformer for modelId %s and version %d", spec.ModelId, spec.Version)
 		}
 
-		input := modelTransformer[msg.Version].GetInput()
-		err := json.Unmarshal([]byte(msg.Body), input)
+		input := modelTransformer[spec.Version].GetInput()
+		ctx, _, err := encoder.Decode(ctx, msg, input)
 
 		if err != nil {
-			return nil, errors.Wrapf(err, "can not unmarshal body for modelId %s and version %d", msg.ModelId, msg.Version)
+			return ctx, nil, errors.Wrapf(err, "can not decode msg for modelId %s and version %d", spec.ModelId, spec.Version)
 		}
 
-		model, err := modelTransformer[msg.Version].Transform(ctx, input)
+		model, err := modelTransformer[spec.Version].Transform(ctx, input)
 
 		if err != nil {
-			return nil, errors.Wrapf(err, "can not transform body for modelId %s and version %d", msg.ModelId, msg.Version)
+			return ctx, nil, errors.Wrapf(err, "can not transform body for modelId %s and version %d", spec.ModelId, spec.Version)
 		}
 
-		return model, nil
+		return ctx, model, nil
 	}
+}
+
+type ModelSpecification struct {
+	CrudType string
+	Version  int
+	ModelId  string
+}
+
+func getModelSpecification(msg *stream.Message) (*ModelSpecification, error) {
+	if _, ok := msg.Attributes["type"]; !ok {
+		return nil, fmt.Errorf("the message has no attribute named 'type'")
+	}
+
+	crudType, ok := msg.Attributes["type"].(string)
+
+	if !ok {
+		return nil, fmt.Errorf("type is not a string: %v", msg.Attributes["type"])
+	}
+
+	if _, ok := msg.Attributes["version"]; !ok {
+		return nil, fmt.Errorf("the message has no attribute named 'version'")
+	}
+
+	versionFloat, ok := msg.Attributes["version"].(float64)
+
+	if !ok {
+		return nil, fmt.Errorf("version is not an int: %v", msg.Attributes["version"])
+	}
+
+	version := int(versionFloat)
+
+	if _, ok := msg.Attributes["modelId"]; !ok {
+		return nil, fmt.Errorf("the message has no attribute named 'modelId'")
+	}
+
+	modelId, ok := msg.Attributes["modelId"].(string)
+
+	if !ok {
+		return nil, fmt.Errorf("modelId is not a string: %v", msg.Attributes["modelId"])
+	}
+
+	return &ModelSpecification{
+		CrudType: crudType,
+		Version:  version,
+		ModelId:  modelId,
+	}, nil
 }

@@ -23,19 +23,5 @@ func NewSnsNotifier(config cfg.Config, logger mon.Logger, modelId mdl.ModelId, v
 		},
 	})
 
-	defaults := getDefaultNotifierMetrics(modelId)
-	mtr := mon.NewMetricDaemonWriter(defaults...)
-
-	return NewSnsNotifierWithInterfaces(logger, mtr, output, modelId, version, transformer)
-}
-
-func NewSnsNotifierWithInterfaces(logger mon.Logger, mtr mon.MetricWriter, output stream.Output, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *baseNotifier {
-	return &baseNotifier{
-		logger:      logger,
-		metric:      mtr,
-		output:      output,
-		modelId:     modelId,
-		version:     version,
-		transformer: transformer,
-	}
+	return NewBaseNotifier(logger, output, modelId, version, transformer)
 }

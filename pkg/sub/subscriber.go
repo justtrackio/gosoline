@@ -137,12 +137,19 @@ func (s *subscriber) consume() error {
 }
 
 func (s *subscriber) handleMessage(msg *stream.Message) {
-	ctx, trans := s.tracer.StartSpanFromTraceAble(msg, s.name)
+	ctx, model, spec, err := s.transformMessage(msg)
+
+	if err != nil {
+		s.logger.Errorf(err, "could not transform message")
+		return
+	}
+
+	ctx, trans := s.tracer.StartSpanFromContext(ctx, s.name)
 
 	defer s.recover(ctx, msg)
 	defer trans.Finish()
 
-	err := s.persist(ctx, msg)
+	err = s.persist(ctx, model, spec)
 	s.writeMetric(err)
 
 	if err == nil {
@@ -150,35 +157,35 @@ func (s *subscriber) handleMessage(msg *stream.Message) {
 	}
 }
 
-func (s *subscriber) persist(ctx context.Context, msg *stream.Message) error {
+func (s *subscriber) transformMessage(msg *stream.Message) (context.Context, Model, *ModelSpecification, error) {
+	ctx := context.Background()
+	spec, err := getModelSpecification(msg)
+
+	if err != nil {
+		return ctx, nil, nil, fmt.Errorf("can not retrieve model specification from message: %w", err)
+	}
+
+	ctx, model, err := s.transform(ctx, spec, msg)
+
+	return ctx, model, spec, err
+}
+
+func (s *subscriber) persist(ctx context.Context, model Model, spec *ModelSpecification) error {
 	logger := s.logger.WithContext(ctx)
-	modelMsg, err := stream.CreateModelMsg(msg)
-
-	if err != nil {
-		logger.Error(err, "the msg has invalid model information")
-		return err
-	}
-
-	model, err := s.transform(ctx, modelMsg)
-
-	if err != nil {
-		logger.Errorf(err, "could not transform the msg to a model %s", modelMsg.ModelId)
-		return err
-	}
 
 	if model == nil {
-		logger.Infof("skipping %s op for subscription for modelId %s and version %d", modelMsg.CrudType, modelMsg.ModelId, modelMsg.Version)
+		logger.Infof("skipping %s op for subscription for modelId %s and version %d", spec.CrudType, spec.ModelId, spec.Version)
 		return nil
 	}
 
-	err = s.output.Persist(ctx, model, modelMsg.CrudType)
+	err := s.output.Persist(ctx, model, spec.CrudType)
 
 	if err != nil {
-		logger.Errorf(err, "could not persist the model to db %s", modelMsg.ModelId)
+		logger.Errorf(err, "could not persist the model to db %s", spec.ModelId)
 		return err
 	}
 
-	logger.Infof("persisted %s op for subscription for modelId %s and version %d with id %v", modelMsg.CrudType, modelMsg.ModelId, modelMsg.Version, model.GetId())
+	logger.Infof("persisted %s op for subscription for modelId %s and version %d with id %v", spec.CrudType, spec.ModelId, spec.Version, model.GetId())
 
 	return nil
 }

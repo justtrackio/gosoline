@@ -23,10 +23,6 @@ func (t *noopTracer) StartSpanFromContext(ctx context.Context, name string) (con
 	return ctx, disabledSpan()
 }
 
-func (t *noopTracer) StartSpanFromTraceAble(obj TraceAble, name string) (context.Context, Span) {
-	return context.Background(), disabledSpan()
-}
-
 func (t *noopTracer) HttpHandler(h http.Handler) http.Handler {
 	return h
 }

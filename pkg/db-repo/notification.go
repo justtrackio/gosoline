@@ -2,7 +2,7 @@ package db_repo
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
@@ -25,10 +25,30 @@ type Notifier interface {
 type baseNotifier struct {
 	logger      mon.Logger
 	metric      mon.MetricWriter
+	encoder     stream.MessageEncoder
 	output      stream.Output
 	modelId     mdl.ModelId
 	version     int
 	transformer mdl.TransformerResolver
+}
+
+func NewBaseNotifier(logger mon.Logger, output stream.Output, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *baseNotifier {
+	defaults := getDefaultNotifierMetrics(modelId)
+	mtr := mon.NewMetricDaemonWriter(defaults...)
+
+	encoder := stream.NewMessageEncoder(&stream.MessageEncoderSettings{
+		Encoding: stream.EncodingJson,
+	})
+
+	return &baseNotifier{
+		logger:      logger,
+		metric:      mtr,
+		encoder:     encoder,
+		output:      output,
+		modelId:     modelId,
+		version:     version,
+		transformer: transformer,
+	}
 }
 
 func (n baseNotifier) Send(ctx context.Context, notificationType string, value ModelBased) error {
@@ -36,17 +56,16 @@ func (n baseNotifier) Send(ctx context.Context, notificationType string, value M
 	modelId := n.modelId.String()
 
 	out := n.transformer("api", n.version, value)
-	body, err := json.Marshal(out)
+
+	msg, err := n.encoder.Encode(ctx, out, map[string]interface{}{
+		"type":    notificationType,
+		"version": n.version,
+		"modelId": modelId,
+	})
 
 	if err != nil {
-		return err
+		return fmt.Errorf("can not encode notification message: %w", err)
 	}
-
-	msg := stream.CreateMessageFromContext(ctx)
-	msg.Attributes["type"] = notificationType
-	msg.Attributes["version"] = n.version
-	msg.Attributes["modelId"] = modelId
-	msg.Body = string(body)
 
 	err = n.output.WriteOne(ctx, msg)
 

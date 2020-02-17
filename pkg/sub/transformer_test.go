@@ -6,101 +6,120 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/sub"
 	"github.com/applike/gosoline/pkg/sub/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
 
+type testInput struct {
+	Content string
+}
+
 type testModel struct {
-	Bla string
+	Content string
 }
 
 func (*testModel) GetId() interface{} {
 	return ""
 }
 
-func Test_ModelMsgTransformer_MissingTransformerVersion(t *testing.T) {
-	tmv := sub.TransformerMapVersion{}
-	mmt := sub.BuildTransformer(tmv)
+type TransformerTestSuite struct {
+	suite.Suite
 
-	msg := &stream.ModelMsg{
-		Version: 0,
-	}
-
-	model, err := mmt(context.TODO(), msg)
-
-	assert.Nil(t, model)
-	assert.Error(t, err)
+	ctx                context.Context
+	input              *testInput
+	model              *testModel
+	modelSpecification *sub.ModelSpecification
+	modelTransformer   *mocks.ModelTransformer
+	transformerMap     sub.TransformerMapVersion
+	transformer        sub.ModelMsgTransformer
 }
 
-func Test_ModelMsgTransformer_ErrorUnmarshallingBody(t *testing.T) {
-	mt := new(mocks.ModelTransformer)
-	mt.On("GetInput").Return(&testModel{})
+func (s *TransformerTestSuite) SetupTest() {
+	s.ctx = context.Background()
+	s.input = &testInput{}
+	s.model = &testModel{}
 
-	tmv := sub.TransformerMapVersion{
-		0: mt,
-	}
-	mmt := sub.BuildTransformer(tmv)
-
-	msg := &stream.ModelMsg{
-		Version: 0,
-		Body:    "meh!",
+	s.modelSpecification = &sub.ModelSpecification{
+		CrudType: "create",
+		Version:  0,
+		ModelId:  "gosoline.test",
 	}
 
-	model, err := mmt(context.TODO(), msg)
+	s.modelTransformer = new(mocks.ModelTransformer)
+	s.modelTransformer.On("GetInput").Return(s.input)
 
-	assert.Nil(t, model)
-	assert.Error(t, err)
+	s.transformerMap = sub.TransformerMapVersion{
+		0: s.modelTransformer,
+	}
 
-	mt.AssertExpectations(t)
+	s.transformer = sub.BuildTransformer(s.transformerMap)
 }
 
-func Test_ModelMsgTransformer_TransformError(t *testing.T) {
-	recoverableError := errors.New("bla")
+func (s *TransformerTestSuite) Test_ModelMsgTransformer_MissingTransformerVersion() {
+	delete(s.transformerMap, 0)
+	s.modelTransformer = new(mocks.ModelTransformer)
 
-	mt := new(mocks.ModelTransformer)
-	mt.On("GetInput").Return(&testModel{})
-	mt.On("Transform", mock.AnythingOfType("*context.emptyCtx"), mock.Anything).Return(nil, recoverableError)
+	msg := &stream.Message{}
+	ctx, model, err := s.transformer(s.ctx, s.modelSpecification, msg)
 
-	tmv := sub.TransformerMapVersion{
-		0: mt,
-	}
-	mmt := sub.BuildTransformer(tmv)
+	s.Equal(s.ctx, ctx)
+	s.Nil(model)
+	s.EqualError(err, "there is no transformer for modelId gosoline.test and version 0")
 
-	msg := &stream.ModelMsg{
-		Version: 0,
-		Body:    "{}",
-	}
-
-	model, err := mmt(context.TODO(), msg)
-
-	assert.Nil(t, model)
-	assert.Error(t, err)
-
-	mt.AssertExpectations(t)
+	s.modelTransformer.AssertExpectations(s.T())
 }
 
-func Test_ModelMsgTransformer_TransformOk(t *testing.T) {
-	mt := new(mocks.ModelTransformer)
-	mt.On("GetInput").Return(&testModel{})
-	mt.On("Transform", mock.AnythingOfType("*context.emptyCtx"), mock.Anything).Return(&testModel{
-		Bla: "bla",
+func (s *TransformerTestSuite) Test_ModelMsgTransformer_ErrorUnmarshallingBody() {
+	msg := &stream.Message{
+		Body: "meh!",
+	}
+
+	ctx, model, err := s.transformer(s.ctx, s.modelSpecification, msg)
+
+	s.Equal(s.ctx, ctx)
+	s.Nil(model)
+	s.EqualError(err, "can not decode msg for modelId gosoline.test and version 0: can not decode message body: can not decode message body with encoding application/json: invalid character 'm' looking for beginning of value")
+
+	s.modelTransformer.AssertExpectations(s.T())
+}
+
+func (s *TransformerTestSuite) Test_ModelMsgTransformer_TransformError() {
+	recoverableError := errors.New("reason why transforming failed")
+	s.modelTransformer.On("Transform", s.ctx, s.input).Return(nil, recoverableError)
+
+	msg := &stream.Message{
+		Body: "{}",
+	}
+
+	ctx, model, err := s.transformer(s.ctx, s.modelSpecification, msg)
+
+	s.Equal(s.ctx, ctx)
+	s.Nil(model)
+	s.EqualError(err, "can not transform body for modelId gosoline.test and version 0: reason why transforming failed")
+
+	s.modelTransformer.AssertExpectations(s.T())
+}
+
+func (s *TransformerTestSuite) Test_ModelMsgTransformer_TransformOk() {
+	s.input.Content = "text"
+
+	s.modelTransformer.On("Transform", s.ctx, s.input).Return(&testModel{
+		Content: "bla",
 	}, nil)
 
-	tmv := sub.TransformerMapVersion{
-		0: mt,
-	}
-	mmt := sub.BuildTransformer(tmv)
-
-	msg := &stream.ModelMsg{
-		Version: 0,
-		Body:    "{}",
+	msg := &stream.Message{
+		Body: `{"Content": "text"}`,
 	}
 
-	model, err := mmt(context.TODO(), msg)
+	ctx, model, err := s.transformer(s.ctx, s.modelSpecification, msg)
 
-	assert.Equal(t, "bla", model.(*testModel).Bla)
-	assert.Nil(t, err)
+	s.Equal(s.ctx, ctx)
+	s.Equal("bla", model.(*testModel).Content)
+	s.NoError(err)
 
-	mt.AssertExpectations(t)
+	s.modelTransformer.AssertExpectations(s.T())
+}
+
+func TestTransformerTestSuite(t *testing.T) {
+	suite.Run(t, new(TransformerTestSuite))
 }
