@@ -46,6 +46,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithLoggerSentryHook(mon.SentryExtraConfigProvider, mon.SentryExtraEcsMetadataProvider),
 		WithApiHealthCheck,
 		WithMetricDaemon,
+		WithFixtureLoader,
 		WithTracing,
 	}
 

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
@@ -194,6 +195,14 @@ func WithLoggerTagsFromConfig(app *App) {
 func WithMetricDaemon(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.Kernel) error {
 		kernel.Add("metric", mon.ProvideCwDaemon())
+		return nil
+	})
+}
+
+
+func WithFixtureLoader(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.Kernel) error {
+		kernel.Add("fixtureLoader", fixtures.NewFixtureLoader())
 		return nil
 	})
 }
