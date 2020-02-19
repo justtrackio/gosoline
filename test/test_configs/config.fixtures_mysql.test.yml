@@ -1,0 +1,20 @@
+fixture_loader_enabled: true
+
+env: test
+app_project: gosoline
+app_family: integration-test
+app_name: fixture-loader
+
+db_drivername: "mysql"
+db_hostname: "172.17.0.1"
+db_port: 3333
+db_database: "myDbName"
+db_username: "root"
+db_password: "gosoline"
+db_retry_wait: 10
+db_health_check_delay: 30
+db_max_connection_lifetime: 120
+db_parse_time: true
+db_auto_migrate: true
+db_table_prefixed: false
+db_migrations_path: file://test_fixtures/migrations/
