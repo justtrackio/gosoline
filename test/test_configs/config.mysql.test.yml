@@ -1,0 +1,7 @@
+mocks:
+  mysql:
+    component: mysql
+    host: 172.17.0.1
+    port: 3333
+    dbName: myDbName
+    version: 8

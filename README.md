@@ -1,5 +1,7 @@
 ![Gosoline Logo](http://cdn.applike-services.info/public/2019/10/23/gosoline.svg)
 ------------------
+![Gosoline](https://github.com/applike/gosoline/workflows/Gosoline/badge.svg)
+------------------
 
 Gosoline is our framework which fuels all of our Golang applications. Internally,
 we're using a lot of established Go libraries like Viper, Gin, Gorm, etc. and 

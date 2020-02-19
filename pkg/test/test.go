@@ -2,7 +2,6 @@ package test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/ory/dockertest"
 	"log"
 	"sync"
@@ -29,21 +28,28 @@ func logErr(err error, msg string) {
 	log.Fatal(err)
 }
 
-func Boot(configFilename *string) {
-	if len(mdl.EmptyStringIfNil(configFilename)) > 0 {
-		cfgFilename = *configFilename
+func Boot(configFilenames ...string) {
+	if len(configFilenames) == 0 {
+		configFilenames = append(configFilenames, cfgFilename)
 	}
 
-	config := readConfig(cfgFilename)
-
-	for name, mockConfig := range config.Mocks {
-		bootComponent(name, mockConfig)
+	for _, filename := range configFilenames {
+		log.Println(fmt.Sprintf("booting configuration %s", filename))
+		bootFromFile(filename)
 	}
 
 	wait.Wait()
 
 	log.Println("test environment up and running")
 	fmt.Println()
+}
+
+func bootFromFile(filename string) {
+	config := readConfig(filename)
+
+	for name, mockConfig := range config.Mocks {
+		bootComponent(name, mockConfig)
+	}
 }
 
 func bootComponent(name string, mockConfig configInput) {

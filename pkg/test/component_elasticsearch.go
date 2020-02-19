@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -35,8 +36,18 @@ func doRunElasticsearch(name string, configMap configInput) {
 			"9200/tcp": fmt.Sprint(config.Port),
 		},
 		HealthCheck: func() error {
-			_, err := http.Get(fmt.Sprintf("http://%s:%d/_cluster/health", config.Host, config.Port))
-			return err
+			resp, err := http.Get(fmt.Sprintf("http://%s:%d/_cluster/health", config.Host, config.Port))
+
+			if err != nil {
+				return err
+			}
+
+			// elastic might not have completed its boot process yet
+			if resp.StatusCode > 200 {
+				return errors.New("not yet healthy")
+			}
+
+			return nil
 		},
 	})
 }
