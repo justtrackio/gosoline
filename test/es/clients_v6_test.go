@@ -10,11 +10,10 @@ import (
 )
 
 func TestNewClientV6(t *testing.T) {
-	defer test.Shutdown()
-
 	configFilePath := "config-v6.test.yml"
 
 	test.Boot(configFilePath)
+	defer test.Shutdown()
 
 	config, logger := getMocks(configFilePath)
 

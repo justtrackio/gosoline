@@ -10,13 +10,10 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
-	t.Skip("Skipping for now due to issues with multiple docker based tests")
-
 	configFilePath := "config-v7.test.yml"
 
-	defer test.Shutdown()
-
 	test.Boot(configFilePath)
+	defer test.Shutdown()
 
 	config, logger := getMocks(configFilePath)
 

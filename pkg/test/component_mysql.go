@@ -8,11 +8,10 @@ import (
 	"log"
 )
 
-const mysqlContainerName = "gosoline_test_mysql"
-
 var IntegrationTestDb *sql.DB
 
 type mysqlConfig struct {
+	Debug   bool   `mapstructure:"debug"`
 	Version string `mapstructure:"version"`
 	Host    string `mapstructure:"host"`
 	Port    int    `mapstructure:"port"`
@@ -44,10 +43,10 @@ func doRunMysql(name string, configMap configInput) {
 
 	config := &mysqlConfig{}
 	unmarshalConfig(configMap, config)
-	runMysqlContainer(config)
+	runMysqlContainer(name, config)
 }
 
-func runMysqlContainer(config *mysqlConfig) {
+func runMysqlContainer(name string, config *mysqlConfig) {
 	env := []string{
 		fmt.Sprintf("MYSQL_DATABASE=%s", config.DbName),
 		"MYSQL_USER=gosoline",
@@ -55,7 +54,9 @@ func runMysqlContainer(config *mysqlConfig) {
 		"MYSQL_ROOT_PASSWORD=gosoline",
 	}
 
-	runContainer(mysqlContainerName, ContainerConfig{
+	containerName := fmt.Sprintf("gosoline_test_mysql_%s", name)
+
+	runContainer(containerName, ContainerConfig{
 		Repository: "mysql",
 		Tag:        config.Version,
 		Env:        env,
@@ -79,5 +80,6 @@ func runMysqlContainer(config *mysqlConfig) {
 
 			return nil
 		},
+		PrintLogs: config.Debug,
 	})
 }

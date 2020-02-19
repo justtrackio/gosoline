@@ -1,5 +1,5 @@
 mocks:
-  wiremock:
+  - name: wiremock
     component: wiremock
     host: 172.17.0.1
     port: 12345

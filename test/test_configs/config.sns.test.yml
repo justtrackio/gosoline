@@ -1,5 +1,0 @@
-mocks:
-  sns:
-    component: sns
-    host: 172.17.0.1
-    port: 9873

@@ -4,41 +4,32 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"log"
-	"sync"
 )
 
 type cloudwatchConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
+	Debug bool   `mapstructure:"debug"`
+	Host  string `mapstructure:"host"`
+	Port  int    `mapstructure:"port"`
 }
 
 var cloudwatchConfigs map[string]*cloudwatchConfig
-var cloudwatchClients map[string]*cloudwatch.CloudWatch
-var cloudwatchLck sync.Mutex
+var cloudwatchClients simpleCache
 
 func init() {
 	cloudwatchConfigs = map[string]*cloudwatchConfig{}
-	cloudwatchClients = map[string]*cloudwatch.CloudWatch{}
+	cloudwatchClients = simpleCache{}
 }
 
 func ProvideCloudwatchClient(name string) *cloudwatch.CloudWatch {
-	cloudwatchLck.Lock()
-	defer cloudwatchLck.Unlock()
+	return cloudwatchClients.New(name, func() interface{} {
+		sess, err := getSession(cloudwatchConfigs[name].Host, cloudwatchConfigs[name].Port)
 
-	_, ok := cloudwatchClients[name]
-	if ok {
-		return cloudwatchClients[name]
-	}
+		if err != nil {
+			logErr(err, fmt.Sprintf("could not create cloudwatch client: %s", name))
+		}
 
-	sess, err := getSession(cloudwatchConfigs[name].Host, cloudwatchConfigs[name].Port)
-
-	if err != nil {
-		logErr(err, "could not create cloudwatch client: %s")
-	}
-
-	cloudwatchClients[name] = cloudwatch.New(sess)
-
-	return cloudwatchClients[name]
+		return cloudwatch.New(sess)
+	}).(*cloudwatch.CloudWatch)
 }
 
 func runCloudwatch(name string, config configInput) {
@@ -54,20 +45,18 @@ func doRunCloudwatch(name string, configMap configInput) {
 	unmarshalConfig(configMap, localConfig)
 	cloudwatchConfigs[name] = localConfig
 
-	runContainer("gosoline_test_cloudwatch", ContainerConfig{
+	containerName := fmt.Sprintf("gosoline_test_cloudwatch_%s", name)
+
+	runContainer(containerName, ContainerConfig{
 		Repository: "localstack/localstack",
-		Tag:        "0.10.3",
+		Tag:        "0.10.7",
 		Env: []string{
 			"SERVICES=cloudwatch",
 		},
 		PortBindings: PortBinding{
 			"4582/tcp": fmt.Sprint(localConfig.Port),
 		},
-		HealthCheck: func() error {
-			cloudwatchClient := ProvideCloudwatchClient(name)
-			_, err := cloudwatchClient.ListDashboards(&cloudwatch.ListDashboardsInput{})
-
-			return err
-		},
+		HealthCheck: localstackHealthCheck(containerName),
+		PrintLogs:   localConfig.Debug,
 	})
 }

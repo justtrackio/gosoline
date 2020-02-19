@@ -4,12 +4,20 @@ import (
 	"fmt"
 	"github.com/go-redis/redis"
 	"log"
-	"sync"
 )
 
 type redisConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
+	Debug bool   `mapstructure:"debug"`
+	Host  string `mapstructure:"host"`
+	Port  int    `mapstructure:"port"`
+}
+
+var redisConfigs map[string]*redisConfig
+var redisClients simpleCache
+
+func init() {
+	redisClients = simpleCache{}
+	redisConfigs = make(map[string]*redisConfig)
 }
 
 func runRedis(name string, config configInput) {
@@ -23,8 +31,10 @@ func doRunRedis(name string, configMap configInput) {
 
 	config := &redisConfig{}
 	unmarshalConfig(configMap, config)
+	redisConfigs[name] = config
 
-	containerName := fmt.Sprintf("gosoline_test_%s_redis", name)
+	containerName := fmt.Sprintf("gosoline_test_redis_%s", name)
+
 	runContainer(containerName, ContainerConfig{
 		Repository: "redis",
 		Tag:        "5-alpine",
@@ -33,36 +43,23 @@ func doRunRedis(name string, configMap configInput) {
 		},
 
 		HealthCheck: func() error {
-			client := getRedisClient(config)
+			client := ProvideRedisClient(name)
 			_, err := client.Ping().Result()
 
 			return err
 		},
+		PrintLogs: config.Debug,
 	})
 }
 
-var redisClient = struct {
-	sync.Mutex
-	instance *redis.Client
-}{}
+func ProvideRedisClient(name string) *redis.Client {
+	return redisClients.New(name, func() interface{} {
+		addr := fmt.Sprintf("%s:%d", redisConfigs[name].Host, redisConfigs[name].Port)
 
-func getRedisClient(config *redisConfig) *redis.Client {
-	redisClient.Lock()
-	defer redisClient.Unlock()
-
-	if redisClient.instance != nil {
-		return redisClient.instance
-	}
-
-	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
-
-	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-
-	redisClient.instance = client
-
-	return redisClient.instance
+		return redis.NewClient(&redis.Options{
+			Addr:     addr,
+			Password: "",
+			DB:       0, // use default DB
+		})
+	}).(*redis.Client)
 }

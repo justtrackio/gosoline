@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
+	"log"
+	"os"
 )
 
 type PortBinding map[string]string
@@ -15,6 +17,8 @@ type ContainerConfig struct {
 	Cmd          []string
 	PortBindings PortBinding
 	HealthCheck  func() error
+	OnDestroy    func()
+	PrintLogs    bool
 }
 
 func runContainer(name string, config ContainerConfig) {
@@ -33,6 +37,7 @@ func runContainer(name string, config ContainerConfig) {
 		}
 	}
 
+	log.Println(fmt.Sprintf("starting container %s", name))
 	resource, err := dockerPool.RunWithOptions(&dockertest.RunOptions{
 		Name:         name,
 		Repository:   config.Repository,
@@ -49,7 +54,7 @@ func runContainer(name string, config ContainerConfig) {
 	err = resource.Expire(60 * 60)
 
 	if err != nil {
-		logErr(err, "Could not expire resource")
+		logErr(err, fmt.Sprintf("could not expire container %s", name))
 	}
 
 	err = dockerPool.Retry(config.HealthCheck)
@@ -59,4 +64,24 @@ func runContainer(name string, config ContainerConfig) {
 	}
 
 	dockerResources = append(dockerResources, resource)
+	configs = append(configs, &config)
+
+	if config.PrintLogs {
+		printContainerLogs(resource)
+	}
+
+}
+
+func printContainerLogs(resource *dockertest.Resource) {
+	err := dockerPool.Client.Logs(docker.LogsOptions{
+		Container:    resource.Container.ID,
+		OutputStream: os.Stdout,
+		ErrorStream:  os.Stderr,
+		Stdout:       true,
+		Stderr:       true,
+	})
+
+	if err != nil {
+		logErr(err, fmt.Sprintf("could not print docker logs for container: %s", resource.Container.Name))
+	}
 }
