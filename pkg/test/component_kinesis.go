@@ -4,41 +4,34 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"log"
-	"sync"
 )
 
 type kinesisConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
+	Debug bool   `mapstructure:"debug"`
+	Host  string `mapstructure:"host"`
+	Port  int    `mapstructure:"port"`
 }
 
 var kinesisConfigs map[string]*kinesisConfig
-var kinesisClients map[string]*kinesis.Kinesis
-var kinesisLck sync.Mutex
+var kinesisClients simpleCache
 
 func init() {
 	kinesisConfigs = map[string]*kinesisConfig{}
-	kinesisClients = map[string]*kinesis.Kinesis{}
+	kinesisClients = simpleCache{}
 }
 
 func ProvideKinesisClient(name string) *kinesis.Kinesis {
-	kinesisLck.Lock()
-	defer kinesisLck.Unlock()
+	return kinesisClients.New(name, func() interface{} {
 
-	_, ok := kinesisClients[name]
-	if ok {
-		return kinesisClients[name]
-	}
+		sess, err := getSession(kinesisConfigs[name].Host, kinesisConfigs[name].Port)
 
-	sess, err := getSession(kinesisConfigs[name].Host, kinesisConfigs[name].Port)
+		if err != nil {
+			logErr(err, "could not create kinesis client: %s")
+		}
 
-	if err != nil {
-		logErr(err, "could not create kinesis client: %s")
-	}
+		return kinesis.New(sess)
 
-	kinesisClients[name] = kinesis.New(sess)
-
-	return kinesisClients[name]
+	}).(*kinesis.Kinesis)
 }
 
 func runKinesis(name string, config configInput) {
@@ -54,20 +47,18 @@ func doRunKinesis(name string, configMap configInput) {
 	unmarshalConfig(configMap, localConfig)
 	kinesisConfigs[name] = localConfig
 
-	runContainer("gosoline_test_kinesis", ContainerConfig{
+	containerName := fmt.Sprintf("gosoline_test_kinesis_%s", name)
+
+	runContainer(containerName, ContainerConfig{
 		Repository: "localstack/localstack",
-		Tag:        "0.10.3",
+		Tag:        "0.10.7",
 		Env: []string{
 			"SERVICES=kinesis",
 		},
 		PortBindings: PortBinding{
 			"4568/tcp": fmt.Sprint(localConfig.Port),
 		},
-		HealthCheck: func() error {
-			kinesisClient := ProvideKinesisClient(name)
-			_, err := kinesisClient.ListStreams(&kinesis.ListStreamsInput{})
-
-			return err
-		},
+		HealthCheck: localstackHealthCheck(containerName),
+		PrintLogs:   localConfig.Debug,
 	})
 }

@@ -8,6 +8,7 @@ import (
 )
 
 type elasticsearchConfig struct {
+	Debug   bool   `mapstructure:"debug"`
 	Version string `mapstructure:"version"`
 	Host    string `mapstructure:"host"`
 	Port    int    `mapstructure:"port"`
@@ -25,7 +26,8 @@ func doRunElasticsearch(name string, configMap configInput) {
 	config := &elasticsearchConfig{}
 	unmarshalConfig(configMap, config)
 
-	containerName := fmt.Sprintf("gosoline_test_%s_elasticsearch", name)
+	containerName := fmt.Sprintf("gosoline_test_elasticsearch_%s", name)
+
 	runContainer(containerName, ContainerConfig{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
 		Tag:        config.Version,
@@ -49,5 +51,6 @@ func doRunElasticsearch(name string, configMap configInput) {
 
 			return nil
 		},
+		PrintLogs: config.Debug,
 	})
 }

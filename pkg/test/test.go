@@ -5,16 +5,19 @@ import (
 	"github.com/ory/dockertest"
 	"log"
 	"sync"
+	"time"
 )
 
 var err error
 var wait sync.WaitGroup
 var dockerPool *dockertest.Pool
 var dockerResources []*dockertest.Resource
+var configs []*ContainerConfig
 var cfgFilename = "config.test.yml"
 
 func init() {
 	dockerPool, err = dockertest.NewPool("")
+	dockerPool.MaxWait = 2 * time.Minute
 	dockerResources = make([]*dockertest.Resource, 0)
 
 	if err != nil {
@@ -47,13 +50,14 @@ func Boot(configFilenames ...string) {
 func bootFromFile(filename string) {
 	config := readConfig(filename)
 
-	for name, mockConfig := range config.Mocks {
-		bootComponent(name, mockConfig)
+	for _, mockConfig := range config.Mocks {
+		bootComponent(mockConfig)
 	}
 }
 
-func bootComponent(name string, mockConfig configInput) {
+func bootComponent(mockConfig configInput) {
 	component := mockConfig["component"]
+	name := mockConfig["name"].(string)
 
 	switch component {
 	case "cloudwatch":
@@ -68,10 +72,8 @@ func bootComponent(name string, mockConfig configInput) {
 		runMysql(name, mockConfig)
 	case "redis":
 		runRedis(name, mockConfig)
-	case "sns":
-		runSns(name, mockConfig)
-	case "sqs":
-		runSqs(name, mockConfig)
+	case "sns_sqs":
+		runSnsSqs(name, mockConfig)
 	case "wiremock":
 		runWiremock(name, mockConfig)
 	default:
@@ -85,6 +87,12 @@ func Shutdown() {
 		if err := dockerPool.Purge(res); err != nil {
 			log.Fatalf("Could not purge resource: %s", err)
 		}
+	}
+	for _, cfg := range configs {
+		if cfg.OnDestroy == nil {
+			continue
+		}
+		cfg.OnDestroy()
 	}
 
 	dockerResources = make([]*dockertest.Resource, 0)

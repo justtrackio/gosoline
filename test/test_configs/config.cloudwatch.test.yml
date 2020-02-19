@@ -1,5 +1,6 @@
 mocks:
-  cloudwatch:
+  - name: cloudwatch
     component: cloudwatch
     host: 172.17.0.1
-    port: 9876
+    port: 4582
+    debug: true

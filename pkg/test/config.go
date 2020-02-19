@@ -10,7 +10,7 @@ import (
 type configInput map[string]interface{}
 
 type testConfig struct {
-	Mocks map[string]configInput `mapstructure:"mocks"`
+	Mocks []configInput `mapstructure:"mocks"`
 }
 
 func readConfig(configFilename string) *testConfig {

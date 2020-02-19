@@ -27,7 +27,9 @@ func doRunWiremock(name string, configMap configInput) {
 	unmarshalConfig(configMap, config)
 	url := fmt.Sprintf("http://%s:%d/__admin", config.Host, config.Port)
 
-	runContainer("gosoline_test_wiremock", ContainerConfig{
+	containerName := fmt.Sprintf("gosoline_test_wiremock_%s", name)
+
+	runContainer(containerName, ContainerConfig{
 		Repository: "rodolpheche/wiremock",
 		Tag:        "latest",
 		PortBindings: PortBinding{
