@@ -2,9 +2,11 @@ package test
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"log"
 	"sync"
+	"time"
 )
 
 type kinesisConfig struct {
@@ -65,9 +67,47 @@ func doRunKinesis(name string, configMap configInput) {
 		},
 		HealthCheck: func() error {
 			kinesisClient := ProvideKinesisClient(name)
-			_, err := kinesisClient.ListStreams(&kinesis.ListStreamsInput{})
+			streamName := "healthcheck"
 
-			return err
+			_, err := kinesisClient.CreateStream(&kinesis.CreateStreamInput{
+				ShardCount: mdl.Int64(1),
+				StreamName: mdl.String(streamName),
+			})
+
+			if err != nil {
+				return err
+			}
+
+			listStreams, err := kinesisClient.ListStreams(&kinesis.ListStreamsInput{})
+
+			if err != nil {
+				return err
+			}
+
+			if len(listStreams.StreamNames) != 1 {
+				return fmt.Errorf("stream list should contain exactly 1 entry, but contained %d", len(listStreams.StreamNames))
+			}
+
+			_, err = kinesisClient.DeleteStream(&kinesis.DeleteStreamInput{StreamName: mdl.String(streamName)})
+
+			if err != nil {
+				return err
+			}
+
+			// wait for stream to be really deleted (race condition)
+			for {
+				listStreams, err := kinesisClient.ListStreams(&kinesis.ListStreamsInput{})
+
+				if err != nil {
+					return err
+				}
+
+				if len(listStreams.StreamNames) == 0 {
+					return nil
+				}
+
+				time.Sleep(50 * time.Millisecond)
+			}
 		},
 	})
 }
