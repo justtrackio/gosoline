@@ -4,8 +4,7 @@ package es_test
 
 import (
 	"github.com/applike/gosoline/pkg/es"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/test"
+	"github.com/applike/gosoline/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -15,7 +14,7 @@ func TestNewClientV6(t *testing.T) {
 
 	configFilePath := "config-v6.test.yml"
 
-	test.Boot(mdl.String(configFilePath))
+	test.Boot(configFilePath)
 
 	config, logger := getMocks(configFilePath)
 

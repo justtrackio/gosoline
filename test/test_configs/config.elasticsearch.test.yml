@@ -1,0 +1,6 @@
+mocks:
+  elasticsearch:
+    component: elasticsearch
+    host: 172.17.0.1
+    port: 9201
+    version: 6.0.0

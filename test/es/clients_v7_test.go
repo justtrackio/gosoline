@@ -4,8 +4,7 @@ package es_test
 
 import (
 	"github.com/applike/gosoline/pkg/es"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/test"
+	"github.com/applike/gosoline/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -17,7 +16,7 @@ func TestNewClient(t *testing.T) {
 
 	defer test.Shutdown()
 
-	test.Boot(mdl.String(configFilePath))
+	test.Boot(configFilePath)
 
 	config, logger := getMocks(configFilePath)
 

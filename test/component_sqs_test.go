@@ -3,8 +3,7 @@
 package test_test
 
 import (
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/test"
+	pkgTest "github.com/applike/gosoline/pkg/test"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -13,10 +12,10 @@ import (
 func Test_sqs(t *testing.T) {
 	setup(t)
 
-	test.Boot(mdl.String("test_configs/config.sqs.test.yml"))
-	defer test.Shutdown()
+	pkgTest.Boot("test_configs/config.sqs.test.yml")
+	defer pkgTest.Shutdown()
 
-	sqsClient := test.ProvideSqsClient("sqs")
+	sqsClient := pkgTest.ProvideSqsClient("sqs")
 	o, err := sqsClient.ListQueues(&sqs.ListQueuesInput{})
 
 	assert.NoError(t, err)

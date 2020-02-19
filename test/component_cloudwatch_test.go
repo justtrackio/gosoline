@@ -3,8 +3,7 @@
 package test_test
 
 import (
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/test"
+	pkgTest "github.com/applike/gosoline/pkg/test"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -13,10 +12,10 @@ import (
 func Test_cloudwatch(t *testing.T) {
 	setup(t)
 
-	test.Boot(mdl.String("test_configs/config.cloudwatch.test.yml"))
-	defer test.Shutdown()
+	pkgTest.Boot("test_configs/config.cloudwatch.test.yml")
+	defer pkgTest.Shutdown()
 
-	cwClient := test.ProvideCloudwatchClient("cloudwatch")
+	cwClient := pkgTest.ProvideCloudwatchClient("cloudwatch")
 	o, err := cwClient.ListDashboards(&cloudwatch.ListDashboardsInput{})
 
 	assert.NoError(t, err)
