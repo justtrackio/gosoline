@@ -8,70 +8,53 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
-type FixtureLoader struct {
-	kernel.BackgroundModule
-	logger       mon.Logger
-	Writers []FixtureWriter
-	Settings []FixtureLoaderSettings `cfg:"fixture_loader"`
+type FixtureSet struct {
+	Enabled        bool
+	Writer         FixtureWriterFactory
+	WriterMetadata interface{}
+	Fixtures       []interface{}
 }
 
-func NewFixtureLoader() *FixtureLoader {
-	return &FixtureLoader{}
+type FixtureLoader struct {
+	kernel.BackgroundModule
+	Writers     []FixtureWriter
+	fixtureSets []*FixtureSet
+}
+
+func NewFixtureLoader(fixtureSets []*FixtureSet) *FixtureLoader {
+	return &FixtureLoader{
+		fixtureSets: fixtureSets,
+	}
 }
 
 func (f *FixtureLoader) Boot(config cfg.Config, logger mon.Logger) error {
-	f.logger = logger
-
-	if !config.IsSet("fixture_loader"){
-		f.logger.Info("fixture loader module not configured")
+	if !config.IsSet("fixture_loader_enabled") {
+		logger.Info("fixture loader is not configured")
 		return nil
 	}
 
-	var s []FixtureLoaderSettings
-	config.UnmarshalKey("fixture_loader", &s)
-	f.Settings = s
-
-	err := f.BootFixtureWriters(config, logger)
-
-	if err != nil {
-		return err
+	if !config.GetBool("fixture_loader_enabled") {
+		logger.Info("fixture loader is ot enabled")
+		return nil
 	}
 
-	for _, writer := range f.Writers {
-		err := writer.WriteFixtures()
+	for _, fs := range f.fixtureSets {
 
-		if err != nil {
-			f.logger.Error(err, "error occurred during fixture loading")
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (f *FixtureLoader) BootFixtureWriters(config cfg.Config, logger mon.Logger) error {
-	for _,s := range f.Settings {
-		if !s.Enable {
-			f.logger.Info(fmt.Sprintf("fixture writer for input %s and output %s not enabled", s.Input.Encoding, s.Output))
+		if !fs.Enabled {
+			logger.Info("skipping disabled fixture set")
 			continue
 		}
 
-		readerFactory, ok := fixtureReaders[s.Input.Encoding]
-
-		if !ok {
-			f.logger.Warn("no reader implemented for input encoding ", s.Input.Encoding)
-			return fmt.Errorf("no reader implemented for input encoding %s", s.Input.Encoding)
+		if fs.Writer == nil {
+			return fmt.Errorf("fixture set is missing a writer")
 		}
 
-		fixtureWriterFactory, ok := fixtureWriters[s.Output]
+		writer := fs.Writer(config, logger)
+		err := writer.WriteFixtures(fs)
 
-		if !ok {
-			f.logger.Warn("no writer existing for output type ", s.Output)
-			return fmt.Errorf("no writer existing for output type %s", s.Output)
+		if err != nil {
+			return fmt.Errorf("error during loading of fixture set: %w", err)
 		}
-
-		reader := readerFactory(config, logger)
-		f.Writers = append(f.Writers, fixtureWriterFactory(config, logger, reader))
 	}
 
 	return nil
@@ -81,4 +64,3 @@ func (f *FixtureLoader) Run(ctx context.Context) error {
 	// do nothing: fixtures are loaded during boot
 	return nil
 }
-
