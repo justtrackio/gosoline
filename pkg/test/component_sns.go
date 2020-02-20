@@ -85,7 +85,8 @@ func doRunSns(name string, configMap configInput) {
 		PortBindings: PortBinding{
 			"4575/tcp": fmt.Sprint(localConfig.Port),
 		},
-		HealthCheck: snsHealthcheck(name),
+		WaitBeforeHealthcheck: 20 * time.Second,
+		HealthCheck:           snsHealthcheck(name),
 	})
 }
 

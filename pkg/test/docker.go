@@ -4,17 +4,20 @@ import (
 	"fmt"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
+	"log"
+	"time"
 )
 
 type PortBinding map[string]string
 
 type ContainerConfig struct {
-	Repository   string
-	Tag          string
-	Env          []string
-	Cmd          []string
-	PortBindings PortBinding
-	HealthCheck  func() error
+	Repository            string
+	Tag                   string
+	Env                   []string
+	Cmd                   []string
+	PortBindings          PortBinding
+	WaitBeforeHealthcheck time.Duration
+	HealthCheck           func() error
 }
 
 func runContainer(name string, config ContainerConfig) {
@@ -51,6 +54,10 @@ func runContainer(name string, config ContainerConfig) {
 	if err != nil {
 		logErr(err, "Could not expire resource")
 	}
+
+	log.Println("waiting before healthcheck")
+	time.Sleep(config.WaitBeforeHealthcheck)
+	log.Println("waiting before healthcheck done")
 
 	err = dockerPool.Retry(config.HealthCheck)
 
