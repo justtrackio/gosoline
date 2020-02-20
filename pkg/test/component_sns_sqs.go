@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/aws/aws-sdk-go/service/sns"
+	"github.com/ory/dockertest/docker"
+	"github.com/thoas/go-funk"
 	"log"
 	"strings"
 	"sync"
@@ -74,6 +76,13 @@ func doRunSnsSqs(name string, configMap configInput) {
 			"4576/tcp": fmt.Sprint(localConfig.SqsPort),
 		},
 		HealthCheck: func() error {
+			c, _ := dockerPool.Client.InspectContainer("gosoline_test_sns_sqs")
+
+			funk.ForEach(c.NetworkSettings.Networks, func(_ string, elem docker.ContainerNetwork) {
+				localConfig.Host = elem.IPAddress
+				log.Println(fmt.Sprintf("set Host to %s", localConfig.Host))
+			})
+
 			err := snsHealthcheck(name)()
 
 			if err != nil {
@@ -82,6 +91,13 @@ func doRunSnsSqs(name string, configMap configInput) {
 
 			return sqsHealthcheck(name)()
 		},
+	})
+
+	c, _ := dockerPool.Client.InspectContainer("gosoline_test_sns_sqs")
+
+	funk.ForEach(c.NetworkSettings.Networks, func(_ string, elem docker.ContainerNetwork) {
+		localConfig.Host = elem.IPAddress
+		log.Println(fmt.Sprintf("set Host to %s", localConfig.Host))
 	})
 }
 
