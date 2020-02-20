@@ -9,7 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
+	"log"
+	"os"
 	"testing"
 	"time"
 )
@@ -19,6 +22,28 @@ func Test_sns_sqs(t *testing.T) {
 
 	pkgTest.Boot("test_configs/config.sns_sqs.test.yml")
 	defer pkgTest.Shutdown()
+	defer func() {
+		err := pkgTest.Pool().Client.Logs(docker.LogsOptions{
+			Container:    "gosoline_test_sns",
+			RawTerminal:  false,
+			Stdout:       true,
+			Stderr:       true,
+			Timestamps:   true,
+			OutputStream: os.Stdout,
+			ErrorStream:  os.Stdout,
+		})
+		log.Println(err)
+		err = pkgTest.Pool().Client.Logs(docker.LogsOptions{
+			Container:    "gosoline_test_sqs",
+			RawTerminal:  false,
+			Stdout:       true,
+			Stderr:       true,
+			Timestamps:   true,
+			OutputStream: os.Stdout,
+			ErrorStream:  os.Stdout,
+		})
+		log.Println(err)
+	}()
 
 	queueName := "my-queue"
 	topicName := "my-topic"

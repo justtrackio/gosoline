@@ -24,6 +24,10 @@ func init() {
 	}
 }
 
+func Pool() *dockertest.Pool {
+	return dockerPool
+}
+
 func logErr(err error, msg string) {
 	Shutdown()
 	log.Println(msg)
