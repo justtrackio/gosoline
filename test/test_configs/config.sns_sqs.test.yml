@@ -1,13 +1,6 @@
 mocks:
-  - name: sqs
-    component: sqs
+  - name: sns_sqs
+    component: sns_sqs
     host: 172.17.0.1
-    port: 4576
-
-  - name: sns
-    component: sns
-    sqs_endpoint: 'http://gosoline_test_sqs:4576'
-    host: 172.17.0.1
-    port: 4575
-    links:
-      - gosoline_test_sqs
+    sns_port: 4575
+    sqs_port: 4576

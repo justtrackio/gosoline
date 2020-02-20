@@ -75,10 +75,8 @@ func bootComponent(mockConfig configInput) {
 		runMysql(name, mockConfig)
 	case "redis":
 		runRedis(name, mockConfig)
-	case "sns":
-		runSns(name, mockConfig)
-	case "sqs":
-		runSqs(name, mockConfig)
+	case "sns_sqs":
+		runSnsSqs(name, mockConfig)
 	case "wiremock":
 		runWiremock(name, mockConfig)
 	default:

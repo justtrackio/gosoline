@@ -4,15 +4,11 @@ package test_test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/mdl"
 	pkgTest "github.com/applike/gosoline/pkg/test"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
-	"log"
-	"os"
 	"testing"
 	"time"
 )
@@ -22,30 +18,18 @@ func Test_sns_sqs(t *testing.T) {
 
 	pkgTest.Boot("test_configs/config.sns_sqs.test.yml")
 	defer pkgTest.Shutdown()
-	defer func() {
-		err := pkgTest.Pool().Client.Logs(docker.LogsOptions{
-			Container:    "gosoline_test_sns",
-			RawTerminal:  false,
-			Stdout:       true,
-			Stderr:       true,
-			Timestamps:   true,
-			OutputStream: os.Stdout,
-			ErrorStream:  os.Stdout,
-		})
-		log.Println(err)
-	}()
 
 	queueName := "my-queue"
 	topicName := "my-topic"
 
-	snsClient := pkgTest.ProvideSnsClient("sns")
+	snsClient := pkgTest.ProvideSnsClient("sns_sqs")
 	topicsOutput, err := snsClient.ListTopics(&sns.ListTopicsInput{})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, topicsOutput)
 	assert.Len(t, topicsOutput.Topics, 0)
 
-	sqsClient := pkgTest.ProvideSqsClient("sqs")
+	sqsClient := pkgTest.ProvideSqsClient("sns_sqs")
 
 	// create a queue
 	createQueueOutput, err := sqsClient.CreateQueue(&sqs.CreateQueueInput{
@@ -59,7 +43,7 @@ func Test_sns_sqs(t *testing.T) {
 
 	// create a topic
 	createTopicOutput, err := snsClient.CreateTopic(&sns.CreateTopicInput{
-		Name: mdl.String(topicName),
+		Name: aws.String(topicName),
 	})
 
 	assert.NoError(t, err)
@@ -94,7 +78,7 @@ func Test_sns_sqs(t *testing.T) {
 
 	// receive the message from sqs
 	receiveOutput, err := sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
-		QueueUrl: mdl.String(fmt.Sprintf("http://localhost:4576/queue/%s", queueName)),
+		QueueUrl: aws.String(fmt.Sprintf("http://localhost:4576/queue/%s", queueName)),
 	})
 
 	assert.NoError(t, err)

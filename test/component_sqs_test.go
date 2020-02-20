@@ -15,7 +15,7 @@ func Test_sqs(t *testing.T) {
 	pkgTest.Boot("test_configs/config.sqs.test.yml")
 	defer pkgTest.Shutdown()
 
-	sqsClient := pkgTest.ProvideSqsClient("sqs")
+	sqsClient := pkgTest.ProvideSqsClient("sns_sqs")
 	o, err := sqsClient.ListQueues(&sqs.ListQueuesInput{})
 
 	assert.NoError(t, err)

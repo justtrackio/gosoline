@@ -4,22 +4,14 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"log"
 	"sync"
 	"time"
 )
 
-type sqsConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
-}
-
-var sqsConfigs map[string]*sqsConfig
 var sqsClients map[string]*sqs.SQS
 var sqsLck sync.Mutex
 
 func init() {
-	sqsConfigs = map[string]*sqsConfig{}
 	sqsClients = map[string]*sqs.SQS{}
 }
 
@@ -32,7 +24,7 @@ func ProvideSqsClient(name string) *sqs.SQS {
 		return sqsClients[name]
 	}
 
-	sess, err := getSession(sqsConfigs[name].Host, sqsConfigs[name].Port)
+	sess, err := getSession(snsSqsConfigs[name].Host, snsSqsConfigs[name].SqsPort)
 
 	if err != nil {
 		logErr(err, "could not create sqs client: %s")
@@ -41,32 +33,6 @@ func ProvideSqsClient(name string) *sqs.SQS {
 	sqsClients[name] = sqs.New(sess)
 
 	return sqsClients[name]
-}
-
-func runSqs(name string, config configInput) {
-	wait.Add(1)
-	go doRunSqs(name, config)
-}
-
-func doRunSqs(name string, configMap configInput) {
-	defer wait.Done()
-	defer log.Printf("%s component of type %s is ready", name, "sqs")
-
-	localConfig := &sqsConfig{}
-	unmarshalConfig(configMap, localConfig)
-	sqsConfigs[name] = localConfig
-
-	runContainer("gosoline_test_sqs", ContainerConfig{
-		Repository: "localstack/localstack",
-		Tag:        "0.10.7",
-		Env: []string{
-			"SERVICES=sqs",
-		},
-		PortBindings: PortBinding{
-			"4576/tcp": fmt.Sprint(localConfig.Port),
-		},
-		HealthCheck: sqsHealthcheck(name),
-	})
 }
 
 func sqsHealthcheck(name string) func() error {

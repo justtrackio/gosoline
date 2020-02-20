@@ -14,7 +14,6 @@ type ContainerConfig struct {
 	Tag          string
 	Env          []string
 	Cmd          []string
-	Links        []string
 	PortBindings PortBinding
 	HealthCheck  func() error
 }
@@ -42,7 +41,6 @@ func runContainer(name string, config ContainerConfig) {
 		Tag:          config.Tag,
 		Env:          config.Env,
 		Cmd:          config.Cmd,
-		Links:        config.Links,
 		PortBindings: bindings,
 	})
 

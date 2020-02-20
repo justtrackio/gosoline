@@ -1,5 +1,6 @@
 mocks:
-  - name: sns
-    component: sns
+  - name: sns_sqs
+    component: sns_sqs
     host: 172.17.0.1
-    port: 4575
+    sns_port: 4575
+    sqs_port: 4576
