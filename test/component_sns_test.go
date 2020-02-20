@@ -50,24 +50,24 @@ func Test_sns_sqs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, createTopicOutput)
 	assert.NotNil(t, createTopicOutput.TopicArn)
-	assert.Equal(t, *createTopicOutput.TopicArn, fmt.Sprintf("arn:aws:sns:eu-central-1:000000000000:%s", topicName))
+	assert.Equal(t, *createTopicOutput.TopicArn, fmt.Sprintf("arn:aws:sns:us-east-1:000000000000:%s", topicName))
 
 	// create a topic subscription
 	subscriptionOutput, err := snsClient.Subscribe(&sns.SubscribeInput{
 		Protocol: aws.String("sqs"),
 		Endpoint: aws.String(fmt.Sprintf("http://localhost:9871/queue/%s", queueName)),
-		TopicArn: aws.String(fmt.Sprintf("arn:aws:sns:eu-central-1:000000000000:%s", topicName)),
+		TopicArn: aws.String(fmt.Sprintf("arn:aws:sns:us-east-1:000000000000:%s", topicName)),
 	})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, subscriptionOutput)
 	assert.NotNil(t, subscriptionOutput.SubscriptionArn)
-	assert.Contains(t, *subscriptionOutput.SubscriptionArn, fmt.Sprintf("arn:aws:sns:eu-central-1:000000000000:%s:", topicName))
+	assert.Contains(t, *subscriptionOutput.SubscriptionArn, fmt.Sprintf("arn:aws:sns:us-east-1:000000000000:%s:", topicName))
 
 	// send a message to a topic
 	publishOutput, err := snsClient.Publish(&sns.PublishInput{
 		Message:  aws.String("Hello there."),
-		TopicArn: aws.String(fmt.Sprintf("arn:aws:sns:eu-central-1:000000000000:%s", topicName)),
+		TopicArn: aws.String(fmt.Sprintf("arn:aws:sns:us-east-1:000000000000:%s", topicName)),
 	})
 
 	assert.NoError(t, err)
