@@ -55,9 +55,7 @@ func NewConsumer(name string, callback ConsumerCallback) *Consumer {
 }
 
 func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
-	err := c.callback.Boot(config, logger)
-
-	if err != nil {
+	if err := c.boolCallback(config, logger); err != nil {
 		return err
 	}
 
@@ -96,15 +94,25 @@ func (c *Consumer) Run(ctx context.Context) error {
 		c.cfn.Gof(c.consume, "panic during consuming")
 	}
 
+	run := true
+
 	for {
+		if !run {
+			break
+		}
+
 		select {
 		case <-ctx.Done():
-			c.input.Stop()
-			return c.cfn.Wait()
+			run = false
+			break
 
 		case <-c.cfn.Dying():
-			c.input.Stop()
-			return c.cfn.Wait()
+			run = false
+			break
+
+		case <-c.cfn.Dead():
+			run = false
+			break
 
 		case <-c.ticker.C:
 			processed := atomic.SwapInt32(&c.processed, 0)
@@ -114,6 +122,24 @@ func (c *Consumer) Run(ctx context.Context) error {
 			}).Infof("processed %v messages", processed)
 		}
 	}
+
+	c.input.Stop()
+	return c.cfn.Wait()
+}
+
+func (c *Consumer) boolCallback(config cfg.Config, logger mon.Logger) error {
+	loggerCallback := logger.WithChannel("callback")
+	contextEnforcingLogger := mon.NewContextEnforcingLogger(loggerCallback)
+
+	err := c.callback.Boot(config, contextEnforcingLogger)
+
+	if err != nil {
+		return fmt.Errorf("error during booting the consumer callback: %w", err)
+	}
+
+	contextEnforcingLogger.Enable()
+
+	return nil
 }
 
 func (c *Consumer) consume() error {

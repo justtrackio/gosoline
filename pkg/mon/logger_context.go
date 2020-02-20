@@ -40,8 +40,9 @@ func AppendLoggerContextField(ctx context.Context, fields map[string]interface{}
 // ContextLoggerFieldsResolver extracts the ContextFields from ctx, if not present returns empty ContextFields
 func ContextLoggerFieldsResolver(ctx context.Context) map[string]interface{} {
 	contextFields, ok := ctx.Value(contextFieldsKey).(map[string]interface{})
+
 	if !ok {
-		return nil
+		return map[string]interface{}{}
 	}
 
 	return contextFields

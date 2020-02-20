@@ -108,6 +108,15 @@ func WithLoggerApplicationTag(app *App) {
 	})
 }
 
+func WithLoggerContextFieldsMessageEncoder() Option {
+	return func(app *App) {
+		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+			stream.AddDefaultEncodeHandler(mon.NewMessageWithLoggingFieldsEncoder(config, logger))
+			return nil
+		})
+	}
+}
+
 func WithLoggerContextFieldsResolver(resolver ...mon.ContextFieldsResolver) Option {
 	return func(app *App) {
 		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
@@ -198,7 +207,6 @@ func WithMetricDaemon(app *App) {
 		return nil
 	})
 }
-
 
 func WithFixtureLoader(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.Kernel) error {
