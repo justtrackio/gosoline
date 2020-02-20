@@ -10,20 +10,18 @@ import (
 	"time"
 )
 
-type snsConfig struct {
-	SqsEndpoint    string   `mapstructure:"sqs_endpoint"`
-	LambdaEndpoint string   `mapstructure:"lambda_endpoint"`
-	Links          []string `mapstructure:"links"`
-	Host           string   `mapstructure:"host"`
-	Port           int      `mapstructure:"port"`
+type snsSqsConfig struct {
+	Host    string `mapstructure:"host"`
+	SnsPort int    `mapstructure:"sns_port"`
+	SqsPort int    `mapstructure:"sqs_port"`
 }
 
 var snsClients map[string]*sns.SNS
-var snsConfigs map[string]*snsConfig
+var snsSqsConfigs map[string]*snsSqsConfig
 var snsLck sync.Mutex
 
 func init() {
-	snsConfigs = map[string]*snsConfig{}
+	snsSqsConfigs = map[string]*snsSqsConfig{}
 	snsClients = map[string]*sns.SNS{}
 }
 
@@ -36,7 +34,7 @@ func ProvideSnsClient(name string) *sns.SNS {
 		return snsClients[name]
 	}
 
-	sess, err := getSession(snsConfigs[name].Host, snsConfigs[name].Port)
+	sess, err := getSession(snsSqsConfigs[name].Host, snsSqsConfigs[name].SnsPort)
 
 	if err != nil {
 		logErr(err, "could not create sns client: %s")
@@ -47,46 +45,43 @@ func ProvideSnsClient(name string) *sns.SNS {
 	return snsClients[name]
 }
 
-func runSns(name string, config configInput) {
+func runSnsSqs(name string, config configInput) {
 	wait.Add(1)
-	go doRunSns(name, config)
+	go doRunSnsSqs(name, config)
 }
 
-func doRunSns(name string, configMap configInput) {
+func doRunSnsSqs(name string, configMap configInput) {
 	defer wait.Done()
-	defer log.Printf("%s component of type %s is ready", name, "sns")
+	defer log.Printf("%s component of type %s is ready", name, "sns_sqs")
 
-	localConfig := &snsConfig{}
+	localConfig := &snsSqsConfig{}
 	unmarshalConfig(configMap, localConfig)
-	snsConfigs[name] = localConfig
+	snsSqsConfigs[name] = localConfig
 
 	services := []string{
 		"sns",
+		"sqs",
 	}
 
-	envVariables := make([]string, 0)
+	envVariables := "SERVICES=" + strings.Join(services, ",")
 
-	if len(localConfig.LambdaEndpoint) > 0 {
-		envVariables = append(envVariables, "LAMBDA_BACKEND="+localConfig.LambdaEndpoint)
-		services = append(services, "lambda")
-	}
-
-	if len(localConfig.SqsEndpoint) > 0 {
-		envVariables = append(envVariables, "SQS_BACKEND="+localConfig.SqsEndpoint)
-		services = append(services, "sqs")
-	}
-
-	envVariables = append(envVariables, "SERVICES="+strings.Join(services, ","))
-
-	runContainer("gosoline_test_sns", ContainerConfig{
+	runContainer("gosoline_test_sns_sqs", ContainerConfig{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.7",
-		Env:        envVariables,
+		Env:        []string{envVariables},
 		PortBindings: PortBinding{
-			"4575/tcp": fmt.Sprint(localConfig.Port),
+			"4575/tcp": fmt.Sprint(localConfig.SnsPort),
+			"4576/tcp": fmt.Sprint(localConfig.SqsPort),
 		},
-		HealthCheck: snsHealthcheck(name),
-		Links:       localConfig.Links,
+		HealthCheck: func() error {
+			err := snsHealthcheck(name)()
+
+			if err != nil {
+				return err
+			}
+
+			return sqsHealthcheck(name)()
+		},
 	})
 }
 
