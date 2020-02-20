@@ -2,4 +2,4 @@ mocks:
   kinesis:
     component: kinesis
     host: 172.17.0.1
-    port: 9875
+    port: 4568
