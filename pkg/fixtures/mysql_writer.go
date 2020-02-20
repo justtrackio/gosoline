@@ -44,7 +44,7 @@ func (m *mySqlFixtureWriter) WriteFixtures(fs *FixtureSet) error {
 			return fmt.Errorf("invalid fixture type: %s", reflect.TypeOf(item))
 		}
 
-		err := r.Create(ctx, model)
+		err := r.Update(ctx, model)
 
 		if err != nil {
 			return err
