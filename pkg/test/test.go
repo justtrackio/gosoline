@@ -5,6 +5,7 @@ import (
 	"github.com/ory/dockertest"
 	"log"
 	"sync"
+	"time"
 )
 
 var err error
@@ -15,6 +16,7 @@ var cfgFilename = "config.test.yml"
 
 func init() {
 	dockerPool, err = dockertest.NewPool("")
+	dockerPool.MaxWait = 2 * time.Minute
 	dockerResources = make([]*dockertest.Resource, 0)
 
 	if err != nil {
