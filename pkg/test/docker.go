@@ -16,6 +16,7 @@ type ContainerConfig struct {
 	Cmd          []string
 	PortBindings PortBinding
 	HealthCheck  func() error
+	OnDestroy    func()
 }
 
 func runContainer(name string, config ContainerConfig) {
@@ -61,4 +62,5 @@ func runContainer(name string, config ContainerConfig) {
 	}
 
 	dockerResources = append(dockerResources, resource)
+	configs = append(configs, &config)
 }

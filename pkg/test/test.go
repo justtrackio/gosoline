@@ -12,6 +12,7 @@ var err error
 var wait sync.WaitGroup
 var dockerPool *dockertest.Pool
 var dockerResources []*dockertest.Resource
+var configs []*ContainerConfig
 var cfgFilename = "config.test.yml"
 
 func init() {
@@ -90,6 +91,12 @@ func Shutdown() {
 		if err := dockerPool.Purge(res); err != nil {
 			log.Fatalf("Could not purge resource: %s", err)
 		}
+	}
+	for _, cfg := range configs {
+		if cfg.OnDestroy == nil {
+			continue
+		}
+		cfg.OnDestroy()
 	}
 
 	dockerResources = make([]*dockertest.Resource, 0)

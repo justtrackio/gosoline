@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/aws/aws-sdk-go/service/sns"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/ory/dockertest/docker"
 	"github.com/thoas/go-funk"
 	"log"
@@ -25,6 +26,12 @@ var snsLck sync.Mutex
 func init() {
 	snsSqsConfigs = map[string]*snsSqsConfig{}
 	snsClients = map[string]*sns.SNS{}
+}
+
+func onDestroy() {
+	snsSqsConfigs = map[string]*snsSqsConfig{}
+	snsClients = map[string]*sns.SNS{}
+	sqsClients = map[string]*sqs.SQS{}
 }
 
 func ProvideSnsClient(name string) *sns.SNS {
@@ -91,6 +98,7 @@ func doRunSnsSqs(name string, configMap configInput) {
 
 			return sqsHealthcheck(name)()
 		},
+		OnDestroy: onDestroy,
 	})
 
 	c, _ := dockerPool.Client.InspectContainer("gosoline_test_sns_sqs")
