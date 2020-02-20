@@ -1,11 +1,11 @@
 mocks:
   sns_with_sqs_forward:
     component: sns
-    sqs_endpoint: 'http://172.17.0.1:9871'
+    sqs_endpoint: 'http://172.17.0.1:4576'
     host: 172.17.0.1
-    port: 9872
+    port: 4575
 
   sqs_forward:
     component: sqs
     host: 172.17.0.1
-    port: 9871
+    port: 4576

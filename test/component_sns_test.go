@@ -33,16 +33,6 @@ func Test_sns_sqs(t *testing.T) {
 			ErrorStream:  os.Stdout,
 		})
 		log.Println(err)
-		err = pkgTest.Pool().Client.Logs(docker.LogsOptions{
-			Container:    "gosoline_test_sqs",
-			RawTerminal:  false,
-			Stdout:       true,
-			Stderr:       true,
-			Timestamps:   true,
-			OutputStream: os.Stdout,
-			ErrorStream:  os.Stdout,
-		})
-		log.Println(err)
 	}()
 
 	queueName := "my-queue"
@@ -65,7 +55,7 @@ func Test_sns_sqs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, createQueueOutput)
 	assert.NotNil(t, createQueueOutput.QueueUrl)
-	assert.Equal(t, *createQueueOutput.QueueUrl, fmt.Sprintf("http://localhost:9871/queue/%s", queueName))
+	assert.Equal(t, *createQueueOutput.QueueUrl, fmt.Sprintf("http://localhost:4576/queue/%s", queueName))
 
 	// create a topic
 	createTopicOutput, err := snsClient.CreateTopic(&sns.CreateTopicInput{
@@ -80,7 +70,7 @@ func Test_sns_sqs(t *testing.T) {
 	// create a topic subscription
 	subscriptionOutput, err := snsClient.Subscribe(&sns.SubscribeInput{
 		Protocol: aws.String("sqs"),
-		Endpoint: aws.String(fmt.Sprintf("http://localhost:9871/queue/%s", queueName)),
+		Endpoint: aws.String(fmt.Sprintf("http://localhost:4576/queue/%s", queueName)),
 		TopicArn: aws.String(fmt.Sprintf("arn:aws:sns:us-east-1:000000000000:%s", topicName)),
 	})
 
@@ -104,7 +94,7 @@ func Test_sns_sqs(t *testing.T) {
 
 	// receive the message from sqs
 	receiveOutput, err := sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
-		QueueUrl: mdl.String(fmt.Sprintf("http://localhost:9871/queue/%s", queueName)),
+		QueueUrl: mdl.String(fmt.Sprintf("http://localhost:4576/queue/%s", queueName)),
 	})
 
 	assert.NoError(t, err)
