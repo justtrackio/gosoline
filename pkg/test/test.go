@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/ory/dockertest"
 	"log"
+	"net"
 	"sync"
 	"time"
 )
@@ -35,6 +36,19 @@ func logErr(err error, msg string) {
 }
 
 func Boot(configFilenames ...string) {
+	fmt.Println("=== interfaces ===")
+
+	ifaces, _ := net.Interfaces()
+	for _, iface := range ifaces {
+		fmt.Println("net.Interface:", iface)
+
+		addrs, _ := iface.Addrs()
+		for _, addr := range addrs {
+			addrStr := addr.String()
+			fmt.Println("    net.Addr: ", addr.Network(), addrStr)
+		}
+	}
+
 	if len(configFilenames) == 0 {
 		configFilenames = append(configFilenames, cfgFilename)
 	}
