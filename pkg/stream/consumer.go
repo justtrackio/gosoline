@@ -18,7 +18,7 @@ const metricNameConsumerProcessedCount = "ConsumerProcessedCount"
 type ConsumerCallback interface {
 	Boot(config cfg.Config, logger mon.Logger) error
 	GetModel() interface{}
-	Consume(ctx context.Context, model interface{}) (bool, error)
+	Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error)
 }
 
 type ConsumerSettings struct {
@@ -164,7 +164,7 @@ func (c *Consumer) doCallback(msg *Message) {
 	ctx := context.Background()
 	model := c.callback.GetModel()
 
-	ctx, _, err := c.encoder.Decode(ctx, msg, model)
+	ctx, attributes, err := c.encoder.Decode(ctx, msg, model)
 	logger := c.logger.WithContext(ctx)
 
 	if err != nil {
@@ -175,7 +175,7 @@ func (c *Consumer) doCallback(msg *Message) {
 	ctx, trans := c.tracer.StartSpanFromContext(ctx, c.id)
 	defer trans.Finish()
 
-	ack, err := c.callback.Consume(ctx, model)
+	ack, err := c.callback.Consume(ctx, model, attributes)
 
 	if err != nil {
 		logger.Error(err, "an error occurred during the consume operation")
