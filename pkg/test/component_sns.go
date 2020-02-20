@@ -13,7 +13,7 @@ import (
 type snsConfig struct {
 	SqsEndpoint    string   `mapstructure:"sqs_endpoint"`
 	LambdaEndpoint string   `mapstructure:"lambda_endpoint"`
-	Services       []string `mapstructure:"services"`
+	Links          []string `mapstructure:"links"`
 	Host           string   `mapstructure:"host"`
 	Port           int      `mapstructure:"port"`
 }
@@ -85,8 +85,8 @@ func doRunSns(name string, configMap configInput) {
 		PortBindings: PortBinding{
 			"4575/tcp": fmt.Sprint(localConfig.Port),
 		},
-		WaitBeforeHealthcheck: 20 * time.Second,
-		HealthCheck:           snsHealthcheck(name),
+		HealthCheck: snsHealthcheck(name),
+		Links:       localConfig.Links,
 	})
 }
 

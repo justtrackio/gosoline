@@ -65,7 +65,6 @@ func doRunKinesis(name string, configMap configInput) {
 		PortBindings: PortBinding{
 			"4568/tcp": fmt.Sprint(localConfig.Port),
 		},
-		WaitBeforeHealthcheck: 20 * time.Second,
 		HealthCheck: func() error {
 			kinesisClient := ProvideKinesisClient(name)
 			streamName := "healthcheck"

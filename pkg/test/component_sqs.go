@@ -65,8 +65,7 @@ func doRunSqs(name string, configMap configInput) {
 		PortBindings: PortBinding{
 			"4576/tcp": fmt.Sprint(localConfig.Port),
 		},
-		WaitBeforeHealthcheck: 20 * time.Second,
-		HealthCheck:           sqsHealthcheck(name),
+		HealthCheck: sqsHealthcheck(name),
 	})
 }
 

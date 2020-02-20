@@ -38,14 +38,14 @@ func Test_sns_sqs(t *testing.T) {
 	queueName := "my-queue"
 	topicName := "my-topic"
 
-	snsClient := pkgTest.ProvideSnsClient("sns_with_sqs_forward")
+	snsClient := pkgTest.ProvideSnsClient("sns")
 	topicsOutput, err := snsClient.ListTopics(&sns.ListTopicsInput{})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, topicsOutput)
 	assert.Len(t, topicsOutput.Topics, 0)
 
-	sqsClient := pkgTest.ProvideSqsClient("sqs_forward")
+	sqsClient := pkgTest.ProvideSqsClient("sqs")
 
 	// create a queue
 	createQueueOutput, err := sqsClient.CreateQueue(&sqs.CreateQueueInput{

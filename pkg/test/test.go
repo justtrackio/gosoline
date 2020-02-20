@@ -58,8 +58,6 @@ func Boot(configFilenames ...string) {
 		bootFromFile(filename)
 	}
 
-	wait.Wait()
-
 	log.Println("test environment up and running")
 	fmt.Println()
 }
@@ -69,6 +67,8 @@ func bootFromFile(filename string) {
 
 	for name, mockConfig := range config.Mocks {
 		bootComponent(name, mockConfig)
+
+		wait.Wait()
 	}
 }
 
