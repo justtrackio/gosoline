@@ -58,7 +58,7 @@ func doRunSqs(name string, configMap configInput) {
 
 	runContainer("gosoline_test_sqs", ContainerConfig{
 		Repository: "localstack/localstack",
-		Tag:        "0.10.3",
+		Tag:        "0.10.7",
 		Env: []string{
 			"SERVICES=sqs",
 		},

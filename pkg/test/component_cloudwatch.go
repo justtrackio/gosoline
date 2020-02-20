@@ -56,7 +56,7 @@ func doRunCloudwatch(name string, configMap configInput) {
 
 	runContainer("gosoline_test_cloudwatch", ContainerConfig{
 		Repository: "localstack/localstack",
-		Tag:        "0.10.3",
+		Tag:        "0.10.7",
 		Env: []string{
 			"SERVICES=cloudwatch",
 		},

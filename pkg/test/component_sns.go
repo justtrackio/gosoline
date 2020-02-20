@@ -80,7 +80,7 @@ func doRunSns(name string, configMap configInput) {
 
 	runContainer("gosoline_test_sns", ContainerConfig{
 		Repository: "localstack/localstack",
-		Tag:        "0.10.3",
+		Tag:        "0.10.7",
 		Env:        envVariables,
 		PortBindings: PortBinding{
 			"4575/tcp": fmt.Sprint(localConfig.Port),
