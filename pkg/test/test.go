@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/ory/dockertest"
 	"log"
-	"net"
 	"sync"
 	"time"
 )
@@ -36,19 +35,6 @@ func logErr(err error, msg string) {
 }
 
 func Boot(configFilenames ...string) {
-	fmt.Println("=== interfaces ===")
-
-	ifaces, _ := net.Interfaces()
-	for _, iface := range ifaces {
-		fmt.Println("net.Interface:", iface)
-
-		addrs, _ := iface.Addrs()
-		for _, addr := range addrs {
-			addrStr := addr.String()
-			fmt.Println("    net.Addr: ", addr.Network(), addrStr)
-		}
-	}
-
 	if len(configFilenames) == 0 {
 		configFilenames = append(configFilenames, cfgFilename)
 	}
@@ -65,15 +51,16 @@ func Boot(configFilenames ...string) {
 func bootFromFile(filename string) {
 	config := readConfig(filename)
 
-	for name, mockConfig := range config.Mocks {
-		bootComponent(name, mockConfig)
+	for _, mockConfig := range config.Mocks {
+		bootComponent(mockConfig)
 
 		wait.Wait()
 	}
 }
 
-func bootComponent(name string, mockConfig configInput) {
+func bootComponent(mockConfig configInput) {
 	component := mockConfig["component"]
+	name := mockConfig["name"].(string)
 
 	switch component {
 	case "cloudwatch":

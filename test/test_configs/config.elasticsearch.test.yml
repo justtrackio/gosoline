@@ -1,5 +1,5 @@
 mocks:
-  elasticsearch:
+  - name: elasticsearch
     component: elasticsearch
     host: 172.17.0.1
     port: 9201
