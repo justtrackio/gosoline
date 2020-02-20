@@ -1,6 +1,6 @@
 fixture_loader_enabled: true
 
-aws_cloudwatch_endpoint: http://172.17.0.1:9875
-aws_dynamoDb_endpoint: http://172.17.0.1:9875
+aws_cloudwatch_endpoint: http://172.17.0.1:4582
+aws_dynamoDb_endpoint: http://172.17.0.1:4569
 aws_dynamoDb_autoCreate: true
 aws_sdk_retries: 30
