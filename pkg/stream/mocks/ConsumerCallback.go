@@ -26,20 +26,20 @@ func (_m *ConsumerCallback) Boot(config cfg.Config, logger mon.Logger) error {
 	return r0
 }
 
-// Consume provides a mock function with given fields: ctx, model
-func (_m *ConsumerCallback) Consume(ctx context.Context, model interface{}) (bool, error) {
-	ret := _m.Called(ctx, model)
+// Consume provides a mock function with given fields: ctx, model, attributes
+func (_m *ConsumerCallback) Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error) {
+	ret := _m.Called(ctx, model, attributes)
 
 	var r0 bool
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}) bool); ok {
-		r0 = rf(ctx, model)
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, map[string]interface{}) bool); ok {
+		r0 = rf(ctx, model, attributes)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, interface{}) error); ok {
-		r1 = rf(ctx, model)
+	if rf, ok := ret.Get(1).(func(context.Context, interface{}, map[string]interface{}) error); ok {
+		r1 = rf(ctx, model, attributes)
 	} else {
 		r1 = ret.Error(1)
 	}
