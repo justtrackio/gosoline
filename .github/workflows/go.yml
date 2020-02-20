@@ -34,3 +34,253 @@ jobs:
 
       - name: Integration tests
         run: go test -p 1 --tags=integration ./test/...
+
+  test-repeat-1:
+    name: Build + Test repeat 1
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Integration tests
+        run: go test -p 1 --tags=integration ./test/...
+
+  test-repeat-2:
+    name: Build + Test repeat 2
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Integration tests
+        run: go test -p 1 --tags=integration ./test/...
+
+  test-repeat-3:
+    name: Build + Test repeat 3
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Integration tests
+        run: go test -p 1 --tags=integration ./test/...
+
+  test-repeat-4:
+    name: Build + Test repeat 4
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Integration tests
+        run: go test -p 1 --tags=integration ./test/...
+
+  test-repeat-5:
+    name: Build + Test repeat 5
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Integration tests
+        run: go test -p 1 --tags=integration ./test/...
+
+  test-repeat-6:
+    name: Build + Test repeat 6
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Integration tests
+        run: go test -p 1 --tags=integration ./test/...
+
+  test-repeat-7:
+    name: Build + Test repeat 7
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Integration tests
+        run: go test -p 1 --tags=integration ./test/...
+
+  test-repeat-8:
+    name: Build + Test repeat 8
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Integration tests
+        run: go test -p 1 --tags=integration ./test/...
+
+  test-repeat-9:
+    name: Build + Test repeat 9
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Integration tests
+        run: go test -p 1 --tags=integration ./test/...
+
+  test-repeat-10:
+    name: Build + Test repeat 10
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Integration tests
+        run: go test -p 1 --tags=integration ./test/...
