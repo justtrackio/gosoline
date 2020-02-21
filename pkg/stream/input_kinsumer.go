@@ -24,6 +24,10 @@ type KinsumerSettings struct {
 	ApplicationName string
 }
 
+func (k *KinsumerSettings) GetResourceName() string {
+	return k.StreamName
+}
+
 func NewKinsumerInput(config cfg.Config, logger mon.Logger, factory KinsumerFactory, settings KinsumerSettings) Input {
 	client := factory(config, logger, settings)
 

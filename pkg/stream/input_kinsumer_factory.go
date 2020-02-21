@@ -21,6 +21,8 @@ func NewKinsumer(config cfg.Config, logger mon.Logger, settings KinsumerSettings
 	kinesisClient := cloud.GetKinesisClient(config, logger)
 	dynamoDbClient := cloud.GetDynamoDbClient(config, logger)
 
+	createKinesisStream(config, logger, kinesisClient, &settings)
+
 	clientName := uuid.NewV4().String()
 
 	logger.WithFields(mon.Fields{
