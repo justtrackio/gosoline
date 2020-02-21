@@ -6,6 +6,10 @@ go:
 services:
   - docker
 
+cache:
+  directories:
+    - $GOHOME
+
 env:
   - GO111MODULE=on
 
