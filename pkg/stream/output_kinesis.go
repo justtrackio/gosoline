@@ -23,6 +23,10 @@ type KinesisOutputSettings struct {
 	Backoff    cloud.BackoffSettings
 }
 
+func (k *KinesisOutputSettings) GetResourceName() string {
+	return k.StreamName
+}
+
 type kinesisOutput struct {
 	logger   mon.Logger
 	client   kinesisiface.KinesisAPI
@@ -32,6 +36,8 @@ type kinesisOutput struct {
 
 func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOutputSettings) Output {
 	client := cloud.GetKinesisClient(config, logger)
+
+	createKinesisStream(config, logger, client, settings)
 
 	res := &cloud.BackoffResource{
 		Type: "kinesis",
