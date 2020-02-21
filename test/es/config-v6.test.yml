@@ -1,5 +1,5 @@
 es_test_v6_type: default
-es_test_v6_endpoint: http://127.0.0.1:9226
+es_test_v6_endpoint: http://172.17.0.1:9226
 es_test_v6_templates: []
 
 mocks:
