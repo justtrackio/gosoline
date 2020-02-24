@@ -1,6 +1,9 @@
 package stream
 
-const AttributeEncoding = "encoding"
+const (
+	AttributeEncoding    = "encoding"
+	AttributeCompression = "compression"
+)
 
 func NewMessage(body string, attributes ...map[string]interface{}) *Message {
 	msg := &Message{

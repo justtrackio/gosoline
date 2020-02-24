@@ -68,6 +68,7 @@ stream:
   producer:
     default:
       encoding: application/json
+      compression: application/gzip
       output: sqs-out
 
   input:

@@ -1,13 +1,16 @@
 package stream
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/spf13/cast"
 )
 
-const EncodingJson = "application/json"
-const EncodingText = "text/plain"
+const (
+	EncodingJson = "application/json"
+	EncodingText = "text/plain"
+)
 
 var defaultMessageBodyEncoding = EncodingJson
 
@@ -16,8 +19,8 @@ func WithDefaultMessageBodyEncoding(encoding string) {
 }
 
 type MessageBodyEncoder interface {
-	Encode(data interface{}) (string, error)
-	Decode(data string, out interface{}) error
+	Encode(data interface{}) ([]byte, error)
+	Decode(data []byte, out interface{}) error
 }
 
 var messageBodyEncoders = map[string]MessageBodyEncoder{
@@ -25,33 +28,42 @@ var messageBodyEncoders = map[string]MessageBodyEncoder{
 	EncodingText: new(textEncoder),
 }
 
-type jsonEncoder struct{}
-
-func (e jsonEncoder) Encode(data interface{}) (string, error) {
-	bytes, err := json.Marshal(data)
-
-	return string(bytes), err
+func AddMessageBodyEncoder(encoding string, encoder MessageBodyEncoder) {
+	messageBodyEncoders[encoding] = encoder
 }
 
-func (e jsonEncoder) Decode(data string, out interface{}) error {
-	return json.Unmarshal([]byte(data), out)
+type jsonEncoder struct{}
+
+func (e jsonEncoder) Encode(data interface{}) ([]byte, error) {
+	return json.Marshal(data)
+}
+
+func (e jsonEncoder) Decode(data []byte, out interface{}) error {
+	return json.Unmarshal(data, out)
 }
 
 type textEncoder struct{}
 
-func (e textEncoder) Encode(data interface{}) (string, error) {
-	if str, ok := data.(string); ok {
-		return str, nil
+func (e textEncoder) Encode(data interface{}) ([]byte, error) {
+	if bts, ok := data.([]byte); ok {
+		return bts, nil
 	}
 
-	return cast.ToStringE(data)
+	str, err := cast.ToStringE(data)
+
+	return []byte(str), err
 }
 
-func (e textEncoder) Decode(data string, out interface{}) error {
-	if ptr, ok := out.(*string); ok {
-		*ptr = data
-		return nil
+func (e textEncoder) Decode(data []byte, out interface{}) error {
+	var ok bool
+	var bts []byte
+
+	if bts, ok = out.([]byte); !ok {
+		return fmt.Errorf("the out parameter of the text decode has to be a byte slice")
 	}
 
-	return fmt.Errorf("the out parameter of the text decode has to be a pointer to string")
+	buf := bytes.NewBuffer(bts)
+	_, err := buf.Write(bts)
+
+	return err
 }

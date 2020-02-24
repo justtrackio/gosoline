@@ -9,8 +9,9 @@ import (
 )
 
 type ProducerSettings struct {
-	Output   string `cfg:"output"`
-	Encoding string `cfg:"encoding"`
+	Output      string `cfg:"output"`
+	Encoding    string `cfg:"encoding"`
+	Compression string `cfg:"compression"`
 }
 
 type Producer interface {
@@ -34,7 +35,8 @@ func NewProducer(config cfg.Config, logger mon.Logger, name string) *producer {
 	}
 
 	encoder := NewMessageEncoder(&MessageEncoderSettings{
-		Encoding: settings.Encoding,
+		Encoding:    settings.Encoding,
+		Compression: settings.Compression,
 	})
 	output := NewConfigurableOutput(config, logger, settings.Output)
 

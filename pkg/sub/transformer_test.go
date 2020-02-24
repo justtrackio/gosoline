@@ -78,7 +78,7 @@ func (s *TransformerTestSuite) Test_ModelMsgTransformer_ErrorUnmarshallingBody()
 
 	s.Equal(s.ctx, ctx)
 	s.Nil(model)
-	s.EqualError(err, "can not decode msg for modelId gosoline.test and version 0: can not decode message body: can not decode message body with encoding application/json: invalid character 'm' looking for beginning of value")
+	s.EqualError(err, "can not decode msg for modelId gosoline.test and version 0: can not decode message body: can not decode message body with encoding 'application/json': invalid character 'm' looking for beginning of value")
 
 	s.modelTransformer.AssertExpectations(s.T())
 }
