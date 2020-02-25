@@ -16,22 +16,14 @@ type dynamoDbFixtureWriter struct {
 
 func DynamoDbFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
 	return func(cfg cfg.Config, logger mon.Logger) FixtureWriter {
-		writer := NewDynamoDbFixtureWriter(cfg, logger)
-		writer.WithModelId(modelId)
+		writer := &dynamoDbFixtureWriter{
+			config:  cfg,
+			logger:  logger,
+			modelId: modelId,
+		}
 
 		return writer
 	}
-}
-
-func NewDynamoDbFixtureWriter(cfg cfg.Config, logger mon.Logger) *dynamoDbFixtureWriter {
-	return &dynamoDbFixtureWriter{
-		config: cfg,
-		logger: logger,
-	}
-}
-
-func (d *dynamoDbFixtureWriter) WithModelId(modelId *mdl.ModelId) {
-	d.modelId = modelId
 }
 
 func (d *dynamoDbFixtureWriter) WriteFixtures(fs *FixtureSet) error {

@@ -16,23 +16,15 @@ type mySqlFixtureWriter struct {
 }
 
 func MySqlFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFactory {
-	return func(cfg cfg.Config, logger mon.Logger) FixtureWriter {
-		writer := newMySqlFixtureWriter(cfg, logger)
-		writer.WithMetadata(metadata)
+	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
+		writer := &mySqlFixtureWriter{
+			config:   config,
+			logger:   logger,
+			metadata: metadata,
+		}
 
 		return writer
 	}
-}
-
-func newMySqlFixtureWriter(config cfg.Config, logger mon.Logger) *mySqlFixtureWriter {
-	return &mySqlFixtureWriter{
-		config: config,
-		logger: logger,
-	}
-}
-
-func (m *mySqlFixtureWriter) WithMetadata(metadata *db_repo.Metadata) {
-	m.metadata = metadata
 }
 
 func (m *mySqlFixtureWriter) WriteFixtures(fs *FixtureSet) error {

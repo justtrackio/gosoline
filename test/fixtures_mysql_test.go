@@ -57,7 +57,7 @@ func Test_enabled_fixtures_mysql(t *testing.T) {
 	logger := mon.NewLogger()
 	config := configFromFiles("test_configs/config.mysql.test.yml", "test_configs/config.fixtures_mysql.test.yml")
 
-	err := loader.Boot(config, logger)
+	err := loader.Load(config, logger)
 	assert.NoError(t, err)
 
 	settings := db_repo.Settings{
