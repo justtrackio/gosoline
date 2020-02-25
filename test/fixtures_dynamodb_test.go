@@ -40,7 +40,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 
 	config := configFromFiles("test_configs/config.dynamodb.test.yml", "test_configs/config.fixtures_dynamodb.test.yml")
 
-	err := loader.Boot(config, s.logger)
+	err := loader.Load(config, s.logger)
 	assert.NoError(s.T(), err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
@@ -64,7 +64,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
 
 	config := configFromFiles("test_configs/config.dynamodb.test.yml", "test_configs/config.fixtures_dynamodb.test.yml")
 
-	err := loader.Boot(config, s.logger)
+	err := loader.Load(config, s.logger)
 	assert.NoError(s.T(), err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{

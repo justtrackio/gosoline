@@ -1,10 +1,8 @@
 package fixtures
 
 import (
-	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 )
 
@@ -15,8 +13,6 @@ type FixtureSet struct {
 }
 
 type FixtureLoader struct {
-	kernel.BackgroundModule
-	Writers     []FixtureWriter
 	fixtureSets []*FixtureSet
 }
 
@@ -26,7 +22,7 @@ func NewFixtureLoader(fixtureSets []*FixtureSet) *FixtureLoader {
 	}
 }
 
-func (f *FixtureLoader) Boot(config cfg.Config, logger mon.Logger) error {
+func (f *FixtureLoader) Load(config cfg.Config, logger mon.Logger) error {
 	logger = logger.WithChannel("fixture_loader")
 
 	if !config.IsSet("fixture_loader_enabled") {
@@ -35,7 +31,7 @@ func (f *FixtureLoader) Boot(config cfg.Config, logger mon.Logger) error {
 	}
 
 	if !config.GetBool("fixture_loader_enabled") {
-		logger.Info("fixture loader is ot enabled")
+		logger.Info("fixture loader is not enabled")
 		return nil
 	}
 
@@ -58,10 +54,5 @@ func (f *FixtureLoader) Boot(config cfg.Config, logger mon.Logger) error {
 		}
 	}
 
-	return nil
-}
-
-func (f *FixtureLoader) Run(ctx context.Context) error {
-	// do nothing: fixtures are loaded during boot
 	return nil
 }
