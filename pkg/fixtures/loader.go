@@ -9,10 +9,9 @@ import (
 )
 
 type FixtureSet struct {
-	Enabled        bool
-	Writer         FixtureWriterFactory
-	WriterMetadata interface{}
-	Fixtures       []interface{}
+	Enabled  bool
+	Writer   FixtureWriterFactory
+	Fixtures []interface{}
 }
 
 type FixtureLoader struct {
@@ -28,6 +27,8 @@ func NewFixtureLoader(fixtureSets []*FixtureSet) *FixtureLoader {
 }
 
 func (f *FixtureLoader) Boot(config cfg.Config, logger mon.Logger) error {
+	logger = logger.WithChannel("fixture_loader")
+
 	if !config.IsSet("fixture_loader_enabled") {
 		logger.Info("fixture loader is not configured")
 		return nil

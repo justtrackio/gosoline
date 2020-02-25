@@ -16,34 +16,40 @@ type KvstoreFixture struct {
 }
 
 type dynamoDbKeyValueFixtureWriter struct {
-	config cfg.Config
-	logger mon.Logger
+	config  cfg.Config
+	logger  mon.Logger
+	modelId *mdl.ModelId
 }
 
-func NewDynamoDbKvStoreFixtureWriter(cfg cfg.Config, logger mon.Logger) FixtureWriter {
-	return cachedWriters.New("dynamoDbKvStore", func() FixtureWriter {
-		return &dynamoDbKeyValueFixtureWriter{
-			config: cfg,
-			logger: logger,
-		}
-	})
+func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
+	return func(cfg cfg.Config, logger mon.Logger) FixtureWriter {
+		writer := newDynamoDbKvStoreFixtureWriter(cfg, logger)
+		writer.WithModelId(modelId)
+
+		return writer
+	}
+}
+
+func newDynamoDbKvStoreFixtureWriter(cfg cfg.Config, logger mon.Logger) *dynamoDbKeyValueFixtureWriter {
+	return &dynamoDbKeyValueFixtureWriter{
+		config: cfg,
+		logger: logger,
+	}
+}
+
+func (d *dynamoDbKeyValueFixtureWriter) WithModelId(modelId *mdl.ModelId) {
+	d.modelId = modelId
 }
 
 func (d *dynamoDbKeyValueFixtureWriter) WriteFixtures(fs *FixtureSet) error {
-	modelId, ok := fs.WriterMetadata.(mdl.ModelId)
-
-	if !ok {
-		return fmt.Errorf("invalid writer metadata type: %s", reflect.TypeOf(fs.WriterMetadata))
-	}
-
 	store := kvstore.NewDdbKvStore(d.config, d.logger, &kvstore.Settings{
 		AppId: cfg.AppId{
-			Project:     modelId.Project,
-			Environment: modelId.Environment,
-			Family:      modelId.Family,
-			Application: modelId.Application,
+			Project:     d.modelId.Project,
+			Environment: d.modelId.Environment,
+			Family:      d.modelId.Family,
+			Application: d.modelId.Application,
 		},
-		Name: modelId.Name,
+		Name: d.modelId.Name,
 	})
 
 	for _, item := range fs.Fixtures {

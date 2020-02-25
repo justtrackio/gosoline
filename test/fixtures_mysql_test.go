@@ -34,9 +34,8 @@ var TestModelMetadata = db_repo.Metadata{
 func mysqlTestFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
-			Enabled:        true,
-			Writer:         fixtures.NewMySqlFixtureWriter,
-			WriterMetadata: TestModelMetadata,
+			Enabled: true,
+			Writer:  fixtures.MySqlFixtureWriterFactory(&TestModelMetadata),
 			Fixtures: []interface{}{
 				&MysqlTestModel{
 					Name: mdl.String("testName"),
