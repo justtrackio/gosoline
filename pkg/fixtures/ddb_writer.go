@@ -2,42 +2,46 @@ package fixtures
 
 import (
 	"context"
-	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
-	"reflect"
 )
 
 type dynamoDbFixtureWriter struct {
-	config cfg.Config
-	logger mon.Logger
+	config  cfg.Config
+	logger  mon.Logger
+	modelId *mdl.ModelId
 }
 
-func NewDynamoDbFixtureWriter(cfg cfg.Config, logger mon.Logger) FixtureWriter {
-	return cachedWriters.New("dynamoDb", func() FixtureWriter {
-		return &dynamoDbFixtureWriter{
-			config: cfg,
-			logger: logger,
-		}
-	})
+func DynamoDbFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
+	return func(cfg cfg.Config, logger mon.Logger) FixtureWriter {
+		writer := NewDynamoDbFixtureWriter(cfg, logger)
+		writer.WithModelId(modelId)
+
+		return writer
+	}
+}
+
+func NewDynamoDbFixtureWriter(cfg cfg.Config, logger mon.Logger) *dynamoDbFixtureWriter {
+	return &dynamoDbFixtureWriter{
+		config: cfg,
+		logger: logger,
+	}
+}
+
+func (d *dynamoDbFixtureWriter) WithModelId(modelId *mdl.ModelId) {
+	d.modelId = modelId
 }
 
 func (d *dynamoDbFixtureWriter) WriteFixtures(fs *FixtureSet) error {
-	modelId, ok := fs.WriterMetadata.(mdl.ModelId)
-
-	if !ok {
-		return fmt.Errorf("invalid writer metadata type: %s", reflect.TypeOf(fs.WriterMetadata))
-	}
-
 	if len(fs.Fixtures) == 0 {
 		d.logger.Info("loaded 0 dynamo db fixtures")
 		return nil
 	}
 
 	repo := ddb.NewRepository(d.config, d.logger, &ddb.Settings{
-		ModelId: modelId,
+		ModelId: *d.modelId,
 		Main: ddb.MainSettings{
 			Model:              fs.Fixtures[0], // to extract the metadata only
 			ReadCapacityUnits:  1,

@@ -91,14 +91,13 @@ func dynamoDbKvStoreFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.NewDynamoDbKvStoreFixtureWriter,
-			WriterMetadata: mdl.ModelId{
+			Writer: fixtures.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
 				Application: "test-application",
 				Name:        "testModel",
-			},
+			}),
 			Fixtures: []interface{}{
 				&fixtures.KvstoreFixture{
 					Key:   "Ash",
@@ -113,14 +112,13 @@ func dynamoDbFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.NewDynamoDbFixtureWriter,
-			WriterMetadata: mdl.ModelId{
+			Writer: fixtures.DynamoDbFixtureWriterFactory(&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
 				Application: "test-application",
 				Name:        "testModel",
-			},
+			}),
 			Fixtures: []interface{}{
 				&DynamoDbTestModel{Name: "Ash", Age: 10},
 			},

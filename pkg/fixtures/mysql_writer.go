@@ -10,17 +10,29 @@ import (
 )
 
 type mySqlFixtureWriter struct {
-	config cfg.Config
-	logger mon.Logger
+	config   cfg.Config
+	logger   mon.Logger
+	metadata *db_repo.Metadata
 }
 
-func NewMySqlFixtureWriter(config cfg.Config, logger mon.Logger) FixtureWriter {
-	return cachedWriters.New("mysql", func() FixtureWriter {
-		return &mySqlFixtureWriter{
-			config: config,
-			logger: logger,
-		}
-	})
+func MySqlFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFactory {
+	return func(cfg cfg.Config, logger mon.Logger) FixtureWriter {
+		writer := newMySqlFixtureWriter(cfg, logger)
+		writer.WithMetadata(metadata)
+
+		return writer
+	}
+}
+
+func newMySqlFixtureWriter(config cfg.Config, logger mon.Logger) *mySqlFixtureWriter {
+	return &mySqlFixtureWriter{
+		config: config,
+		logger: logger,
+	}
+}
+
+func (m *mySqlFixtureWriter) WithMetadata(metadata *db_repo.Metadata) {
+	m.metadata = metadata
 }
 
 func (m *mySqlFixtureWriter) WriteFixtures(fs *FixtureSet) error {
@@ -31,8 +43,7 @@ func (m *mySqlFixtureWriter) WriteFixtures(fs *FixtureSet) error {
 	}
 
 	if r == nil {
-		metaData := fs.WriterMetadata.(db_repo.Metadata)
-		return fmt.Errorf("could not create repository for for model %s", metaData.ModelId.String())
+		return fmt.Errorf("could not create repository for for model %s", m.metadata.ModelId.String())
 	}
 
 	ctx := context.Background()
@@ -57,17 +68,11 @@ func (m *mySqlFixtureWriter) WriteFixtures(fs *FixtureSet) error {
 }
 
 func (m *mySqlFixtureWriter) GetRepository(fs *FixtureSet) (db_repo.Repository, error) {
-	metadata, ok := fs.WriterMetadata.(db_repo.Metadata)
-
-	if !ok {
-		return nil, fmt.Errorf("invalid writer metadata type: %s", reflect.TypeOf(fs.WriterMetadata))
-	}
-
-	metadata.ModelId.PadFromConfig(m.config)
+	m.metadata.ModelId.PadFromConfig(m.config)
 
 	settings := db_repo.Settings{
 		AppId:    cfg.GetAppIdFromConfig(m.config),
-		Metadata: metadata,
+		Metadata: *m.metadata,
 	}
 
 	return db_repo.New(m.config, m.logger, settings), nil
