@@ -116,7 +116,9 @@ func (t *snsTopic) SubscribeSqs(queueArn string) error {
 		Protocol: aws.String("sqs"),
 	}
 
-	_, err = t.client.Subscribe(input)
+	_, err = t.executor.Execute(context.Background(), func() (*request.Request, interface{}) {
+		return t.client.SubscribeRequest(input)
+	})
 
 	if err != nil {
 		t.logger.WithFields(mon.Fields{
@@ -157,11 +159,15 @@ func (t *snsTopic) listSubscriptions() ([]*sns.Subscription, error) {
 	}
 
 	for {
-		out, err := t.client.ListSubscriptionsByTopic(input)
+		outI, err := t.executor.Execute(context.Background(), func() (*request.Request, interface{}) {
+			return t.client.ListSubscriptionsByTopicRequest(input)
+		})
 
 		if err != nil {
 			return nil, err
 		}
+
+		out := outI.(*sns.ListSubscriptionsByTopicOutput)
 
 		subscriptions = append(subscriptions, out.Subscriptions...)
 
