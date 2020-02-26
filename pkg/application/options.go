@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
@@ -17,7 +18,7 @@ type Option func(app *App)
 type ConfigOption func(config cfg.GosoConf) error
 type LoggerOption func(config cfg.GosoConf, logger mon.GosoLog) error
 type KernelOption func(config cfg.GosoConf, kernel kernel.Kernel) error
-type TracingOption func(config cfg.GosoConf, logger mon.GosoLog) error
+type SetupOption func(config cfg.GosoConf, logger mon.GosoLog) error
 
 func WithApiHealthCheck(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.Kernel) error {
@@ -91,6 +92,15 @@ func WithConfigSanitizers(sanitizers ...cfg.Sanitizer) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithSanitizers(sanitizers...))
+		})
+	}
+}
+
+func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
+	return func(app *App) {
+		app.addSetupOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+			loader := fixtures.NewFixtureLoader(config, logger)
+			return loader.Load(fixtureSets)
 		})
 	}
 }
@@ -219,7 +229,7 @@ func WithTracing(app *App) {
 		return logger.Option(options...)
 	})
 
-	app.addTracingOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+	app.addSetupOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
 		strategy := tracing.NewTraceIdErrorWarningStrategy(logger)
 		stream.AddDefaultEncodeHandler(tracing.NewMessageWithTraceEncoder(strategy))
 
