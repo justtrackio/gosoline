@@ -36,11 +36,11 @@ func TestFixturesDynamoDbSuite(t *testing.T) {
 }
 
 func (s FixturesDynamoDbSuite) TestDynamoDb() {
-	loader := fixtures.NewFixtureLoader(dynamoDbFixtures())
-
 	config := configFromFiles("test_configs/config.dynamodb.test.yml", "test_configs/config.fixtures_dynamodb.test.yml")
 
-	err := loader.Load(config, s.logger)
+	loader := fixtures.NewFixtureLoader(config, s.logger)
+
+	err := loader.Load(dynamoDbFixtures())
 	assert.NoError(s.T(), err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
@@ -60,11 +60,11 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 }
 
 func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
-	loader := fixtures.NewFixtureLoader(dynamoDbKvStoreFixtures())
-
 	config := configFromFiles("test_configs/config.dynamodb.test.yml", "test_configs/config.fixtures_dynamodb.test.yml")
 
-	err := loader.Load(config, s.logger)
+	loader := fixtures.NewFixtureLoader(config, s.logger)
+
+	err := loader.Load(dynamoDbKvStoreFixtures())
 	assert.NoError(s.T(), err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{

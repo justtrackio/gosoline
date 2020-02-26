@@ -33,7 +33,7 @@ func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFact
 	}
 }
 
-func (d *dynamoDbKeyValueFixtureWriter) WriteFixtures(fs *FixtureSet) error {
+func (d *dynamoDbKeyValueFixtureWriter) Write(fs *FixtureSet) error {
 	store := kvstore.NewDdbKvStore(d.config, d.logger, &kvstore.Settings{
 		AppId: cfg.AppId{
 			Project:     d.modelId.Project,

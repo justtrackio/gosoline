@@ -26,7 +26,7 @@ func DynamoDbFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
 	}
 }
 
-func (d *dynamoDbFixtureWriter) WriteFixtures(fs *FixtureSet) error {
+func (d *dynamoDbFixtureWriter) Write(fs *FixtureSet) error {
 	if len(fs.Fixtures) == 0 {
 		d.logger.Info("loaded 0 dynamo db fixtures")
 		return nil

@@ -1,5 +1,3 @@
-fixture_loader_enabled: true
-
 env: test
 app_project: gosoline
 app_family: integration-test
@@ -18,3 +16,7 @@ db_parse_time: true
 db_auto_migrate: true
 db_table_prefixed: false
 db_migrations_path: file://test_fixtures/migrations/
+
+fixtures:
+  enabled: true
+
