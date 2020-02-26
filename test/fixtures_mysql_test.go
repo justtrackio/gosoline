@@ -53,11 +53,11 @@ func Test_enabled_fixtures_mysql(t *testing.T) {
 	test.Boot(configFile)
 	defer test.Shutdown()
 
-	loader := fixtures.NewFixtureLoader(mysqlTestFixtures())
 	logger := mon.NewLogger()
 	config := configFromFiles("test_configs/config.mysql.test.yml", "test_configs/config.fixtures_mysql.test.yml")
+	loader := fixtures.NewFixtureLoader(config, logger)
 
-	err := loader.Load(config, logger)
+	err := loader.Load(mysqlTestFixtures())
 	assert.NoError(t, err)
 
 	settings := db_repo.Settings{
@@ -71,5 +71,7 @@ func Test_enabled_fixtures_mysql(t *testing.T) {
 	_ = repo.Read(context.Background(), mdl.Uint(1), &result)
 
 	assert.NoError(t, err)
-	assert.Equal(t, "testName", *result.Name)
+	if assert.NotNil(t, result.Name) {
+		assert.Equal(t, "testName", *result.Name)
+	}
 }

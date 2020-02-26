@@ -27,7 +27,7 @@ func MySqlFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFactory 
 	}
 }
 
-func (m *mySqlFixtureWriter) WriteFixtures(fs *FixtureSet) error {
+func (m *mySqlFixtureWriter) Write(fs *FixtureSet) error {
 	r, err := m.GetRepository(fs)
 
 	if err != nil {

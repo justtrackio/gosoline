@@ -9,21 +9,18 @@ import (
 
 type FixtureLoaderModule struct {
 	kernel.BackgroundModule
-	loader *FixtureLoader
+	fixtureSets []*FixtureSet
 }
 
 func NewFixtureLoaderModule(fixtureSets []*FixtureSet) *FixtureLoaderModule {
-	loader := &FixtureLoader{
-		fixtureSets: fixtureSets,
-	}
-
 	return &FixtureLoaderModule{
-		loader: loader,
+		fixtureSets: fixtureSets,
 	}
 }
 
 func (m *FixtureLoaderModule) Boot(config cfg.Config, logger mon.Logger) error {
-	return m.loader.Load(config, logger)
+	loader := NewFixtureLoader(config, logger)
+	return loader.Load(m.fixtureSets)
 }
 
 func (m *FixtureLoaderModule) Run(ctx context.Context) error {
