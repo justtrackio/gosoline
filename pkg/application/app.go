@@ -8,10 +8,10 @@ import (
 )
 
 type App struct {
-	configOptions  []ConfigOption
-	kernelOptions  []KernelOption
-	loggerOptions  []LoggerOption
-	tracingOptions []TracingOption
+	configOptions []ConfigOption
+	kernelOptions []KernelOption
+	loggerOptions []LoggerOption
+	setupOptions  []SetupOption
 }
 
 func (a *App) addConfigOption(opt ConfigOption) {
@@ -26,8 +26,8 @@ func (a *App) addLoggerOption(opt LoggerOption) {
 	a.loggerOptions = append(a.loggerOptions, opt)
 }
 
-func (a *App) addTracingOption(opt TracingOption) {
-	a.tracingOptions = append(a.tracingOptions, opt)
+func (a *App) addSetupOption(opt SetupOption) {
+	a.setupOptions = append(a.setupOptions, opt)
 }
 
 func Default(options ...Option) kernel.Kernel {
@@ -80,9 +80,9 @@ func New(options ...Option) kernel.Kernel {
 		}
 	}
 
-	for _, opt := range app.tracingOptions {
+	for _, opt := range app.setupOptions {
 		if err := opt(config, logger); err != nil {
-			defaultErrorHandler(err, "can not apply tracing options on application")
+			defaultErrorHandler(err, "can not apply setup options on application")
 		}
 	}
 
