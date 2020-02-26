@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
 	"github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/sns"
 	snsMocks "github.com/applike/gosoline/pkg/sns/mocks"
@@ -83,10 +84,6 @@ func TestTopic_SubscribeSqs(t *testing.T) {
 	logger := mocks.NewLoggerMockedAll()
 
 	client := new(snsMocks.Client)
-	client.On("ListSubscriptionsByTopic", &awsSns.ListSubscriptionsByTopicInput{
-		TopicArn: aws.String("arn"),
-	}).Return(&awsSns.ListSubscriptionsByTopicOutput{}, nil)
-	client.On("Subscribe", mock.Anything).Return(nil, nil)
 
 	s := &sns.Settings{
 		Arn: "arn",
@@ -99,27 +96,21 @@ func TestTopic_SubscribeSqs(t *testing.T) {
 		TopicId: "topic",
 	}
 
-	topic := sns.NewTopicWithInterfaces(logger, client, new(cloud.DefaultExecutor), s)
+	executor := new(cloudMocks.RequestExecutor)
+	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("cloud.RequestFunction")).Return(&awsSns.ListSubscriptionsByTopicOutput{}, nil).Twice()
+
+	topic := sns.NewTopicWithInterfaces(logger, client, executor, s)
 	err := topic.SubscribeSqs("arn")
 
 	assert.NoError(t, err)
 
-	client.AssertExpectations(t)
+	executor.AssertExpectations(t)
 }
 
 func TestTopic_SubscribeSqsExists(t *testing.T) {
 	logger := mocks.NewLoggerMockedAll()
 
 	client := new(snsMocks.Client)
-	client.On("ListSubscriptionsByTopic", &awsSns.ListSubscriptionsByTopicInput{
-		TopicArn: aws.String("arn"),
-	}).Return(&awsSns.ListSubscriptionsByTopicOutput{
-		Subscriptions: []*awsSns.Subscription{
-			{
-				Endpoint: aws.String("arn"),
-			},
-		},
-	}, nil)
 
 	s := &sns.Settings{
 		Arn: "arn",
@@ -132,22 +123,31 @@ func TestTopic_SubscribeSqsExists(t *testing.T) {
 		TopicId: "topic",
 	}
 
-	topic := sns.NewTopicWithInterfaces(logger, client, new(cloud.DefaultExecutor), s)
+	executor := new(cloudMocks.RequestExecutor)
+	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("cloud.RequestFunction")).Return(&awsSns.ListSubscriptionsByTopicOutput{
+		Subscriptions: []*awsSns.Subscription{
+			{
+				Endpoint: aws.String("arn"),
+			},
+		},
+	}, nil).Once()
+
+	topic := sns.NewTopicWithInterfaces(logger, client, executor, s)
 	err := topic.SubscribeSqs("arn")
 
 	assert.NoError(t, err)
 
-	client.AssertExpectations(t)
+	executor.AssertExpectations(t)
 }
 
 func TestTopic_SubscribeSqsError(t *testing.T) {
 	logger := mocks.NewLoggerMockedAll()
 
 	client := new(snsMocks.Client)
-	client.On("ListSubscriptionsByTopic", &awsSns.ListSubscriptionsByTopicInput{
-		TopicArn: aws.String("arn"),
-	}).Return(&awsSns.ListSubscriptionsByTopicOutput{}, nil)
-	client.On("Subscribe", mock.Anything).Return(nil, errors.New("error"))
+
+	executor := new(cloudMocks.RequestExecutor)
+	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("cloud.RequestFunction")).Return(&awsSns.ListSubscriptionsByTopicOutput{}, nil).Once()
+	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("cloud.RequestFunction")).Return(nil, errors.New("error")).Once()
 
 	s := &sns.Settings{
 		Arn: "arn",
@@ -160,10 +160,10 @@ func TestTopic_SubscribeSqsError(t *testing.T) {
 		TopicId: "topic",
 	}
 
-	topic := sns.NewTopicWithInterfaces(logger, client, new(cloud.DefaultExecutor), s)
+	topic := sns.NewTopicWithInterfaces(logger, client, executor, s)
 	err := topic.SubscribeSqs("arn")
 
 	assert.Error(t, err)
 
-	client.AssertExpectations(t)
+	executor.AssertExpectations(t)
 }
