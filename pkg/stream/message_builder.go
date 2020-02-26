@@ -1,5 +1,10 @@
 package stream
 
+import (
+	"fmt"
+	"github.com/applike/gosoline/pkg/encoding/json"
+)
+
 const (
 	AttributeEncoding    = "encoding"
 	AttributeCompression = "compression"
@@ -25,4 +30,16 @@ func NewJsonMessage(body string, attributes ...map[string]interface{}) *Message 
 	msg.Attributes[AttributeEncoding] = EncodingJson
 
 	return msg
+}
+
+func MarshalJsonMessage(body interface{}, attributes ...map[string]interface{}) (*Message, error) {
+	data, err := json.Marshal(body)
+
+	if err != nil {
+		return nil, fmt.Errorf("can not marshal body to json: %w", err)
+	}
+
+	msg := NewJsonMessage(string(data), attributes...)
+
+	return msg, nil
 }

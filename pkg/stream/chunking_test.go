@@ -21,7 +21,7 @@ func TestBuildChunks_Single_1(t *testing.T) {
 	assert.Nil(t, err, "there should be no error")
 	assert.Len(t, chunks, 1, "there should be 1 chunk")
 	assert.Len(t, chunks[0], 1, "there the chunk should have a length of 1")
-	assert.Equal(t, []byte(`{"trace":null,"attributes":{"foo":"bar","num":1},"body":"bla"}`), bytes, "the bytes should match")
+	assert.Equal(t, []byte(`{"attributes":{"foo":"bar","num":1},"body":"bla"}`), bytes, "the bytes should match")
 }
 
 func TestBuildChunks_Single_2(t *testing.T) {
@@ -65,7 +65,7 @@ func TestByteChunkToInterfaces(t *testing.T) {
 
 	bytes, ok := interfaces[0].([]byte)
 	assert.True(t, ok, "it should be a byte slice")
-	assert.Equal(t, []byte(`{"trace":null,"attributes":{},"body":"bla"}`), bytes, "the bytes should match")
+	assert.Equal(t, []byte(`{"attributes":{},"body":"bla"}`), bytes, "the bytes should match")
 }
 
 func TestByteChunkToStrings(t *testing.T) {

@@ -14,10 +14,18 @@ import (
 )
 
 func TestSqsOutput_WriteOne(t *testing.T) {
+	type BodyStruct struct {
+		Foo string
+	}
+
+	body := BodyStruct{
+		Foo: "bar",
+	}
+
 	logger := monMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 
-	expectedBody := `{"trace":{"traceId":"","id":"","parentId":"","sampled":false},"attributes":{"sqsDelaySeconds":45},"body":"{\"Foo\":\"bar\"}"}`
+	expectedBody := `{"attributes":{"encoding":"application/json","sqsDelaySeconds":45},"body":"{\"Foo\":\"bar\"}"}`
 	expectedSqsMessages := []*sqs.Message{
 		{
 			DelaySeconds: mdl.Int64(45),
@@ -28,7 +36,9 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 	queue := new(sqsMocks.Queue)
 	queue.On("SendBatch", mock.AnythingOfType("*context.emptyCtx"), expectedSqsMessages).Return(nil)
 
-	msg, err := BuildSqsTestMessage()
+	msg, err := stream.MarshalJsonMessage(body, map[string]interface{}{
+		stream.AttributeSqsDelaySeconds: int64(45),
+	})
 	assert.NoError(t, err)
 
 	output := stream.NewSqsOutputWithInterfaces(logger, tracer, queue, stream.SqsOutputSettings{})

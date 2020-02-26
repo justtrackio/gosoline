@@ -54,13 +54,15 @@ mon:
     writers: [cw]
     interval: 60s
 
+redis_default_currency_mode: "discover"
+redis_default_currency_addr: ""
 redis_kvstore_currency_mode: "discover"
 redis_kvstore_currency_addr: ""
 
 stream:
   consumer:
     default:
-      input: consumer
+      input: consumer-sqs
       runner_count: 10
       idle_timeout: 5s
       encoding: application/json
@@ -72,7 +74,15 @@ stream:
       output: sqs-out
 
   input:
-    consumer:
+    consumer-redis:
+      type: redis      
+      family: example
+      application: stream-redis-producer
+      server_name: default
+      key: my-example-stream
+      wait_time: 1s
+
+    consumer-sqs:
       type: sqs
       target_queue_id: postbackTypeEvent
       wait_time: 5
@@ -88,6 +98,36 @@ stream:
         enabled: true
         blocking: true
         cancel_delay: 6s
+
+  output:
+    redis:
+      type: redis
+      project: gosoline
+      family: example
+      application: redis-producer
+      server_name: default
+      key: my-prefix
+      batch_size: 10
+
+    sns:
+      type: sns
+      project: gosoline
+      family: example
+      application: redis-producer
+      topic_id: foobar
+      client:
+        max_retries: 1
+        http_timeout: 3s
+        log_level: debug_request_errors
+      backoff:
+        enabled: true
+        blocking: false
+        cancel_delay: 1s
+        initial_interval: 500ms
+        randomization_factor: 0.5
+        multiplier: 1.5
+        max_interval: 3s
+        max_elapsed_time: 15m
 
 subscriptions:
   - input: sns

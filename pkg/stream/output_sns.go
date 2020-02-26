@@ -60,10 +60,6 @@ func (o *snsOutput) Write(ctx context.Context, batch []*Message) error {
 	ctx, trans := o.tracer.StartSubSpan(ctx, spanName)
 	defer trans.Finish()
 
-	for _, msg := range batch {
-		msg.Trace = trans.GetTrace()
-	}
-
 	return o.publishToTopic(ctx, batch)
 }
 
