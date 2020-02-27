@@ -10,6 +10,8 @@ func NewLoggerMock(methods ...string) *Logger {
 		logger.On(m, mock.Anything, mock.Anything).Return(logger)
 		logger.On(m, mock.Anything, mock.Anything, mock.Anything).Return(logger)
 		logger.On(m, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(logger)
+		logger.On(m, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(logger)
+		logger.On(m, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(logger)
 	}
 
 	return logger

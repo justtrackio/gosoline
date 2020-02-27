@@ -21,7 +21,7 @@ func NewContextEnforcingLoggerWithInterfaces(logger Logger, stacktraceProvider S
 	return &ContextEnforcingLogger{
 		Logger:             logger,
 		stacktraceProvider: stacktraceProvider,
-		notifier:           notifier,
+		notifier:           notifier.WithChannel("context_missing"),
 		enabled:            false,
 	}
 }
