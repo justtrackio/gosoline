@@ -4,22 +4,21 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 )
 
 type dynamoDbFixtureWriter struct {
-	config  cfg.Config
-	logger  mon.Logger
-	modelId *mdl.ModelId
+	config   cfg.Config
+	logger   mon.Logger
+	settings *ddb.Settings
 }
 
-func DynamoDbFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
+func DynamoDbFixtureWriterFactory(settings *ddb.Settings) FixtureWriterFactory {
 	return func(cfg cfg.Config, logger mon.Logger) FixtureWriter {
 		writer := &dynamoDbFixtureWriter{
-			config:  cfg,
-			logger:  logger,
-			modelId: modelId,
+			config:   cfg,
+			logger:   logger,
+			settings: settings,
 		}
 
 		return writer
@@ -33,12 +32,14 @@ func (d *dynamoDbFixtureWriter) Write(fs *FixtureSet) error {
 	}
 
 	repo := ddb.NewRepository(d.config, d.logger, &ddb.Settings{
-		ModelId: *d.modelId,
+		ModelId:    d.settings.ModelId,
+		AutoCreate: true,
 		Main: ddb.MainSettings{
-			Model:              fs.Fixtures[0], // to extract the metadata only
+			Model:              d.settings.Main.Model,
 			ReadCapacityUnits:  1,
 			WriteCapacityUnits: 1,
 		},
+		Global: d.settings.Global,
 	})
 
 	for _, fixture := range fs.Fixtures {
