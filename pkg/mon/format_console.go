@@ -28,6 +28,8 @@ func formatterConsole(timestamp string, level string, msg string, err error, dat
 		color.BlueString(fieldString),
 		color.RedString(errStr),
 	)
+
+	output = strings.TrimSpace(output)
 	serialized := []byte(output)
 
 	return append(serialized, '\n'), nil
