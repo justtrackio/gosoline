@@ -9,35 +9,34 @@ import (
 	"reflect"
 )
 
-type mySqlFixtureWriter struct {
-	config   cfg.Config
-	logger   mon.Logger
-	metadata *db_repo.Metadata
+type mysqlFixtureWriter struct {
+	logger mon.Logger
+	repo   db_repo.Repository
 }
 
-func MySqlFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFactory {
+func MysqlFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
-		writer := &mySqlFixtureWriter{
-			config:   config,
-			logger:   logger,
-			metadata: metadata,
+		metadata.ModelId.PadFromConfig(config)
+
+		settings := db_repo.Settings{
+			AppId:    cfg.GetAppIdFromConfig(config),
+			Metadata: *metadata,
 		}
 
-		return writer
+		repo := db_repo.New(config, logger, settings)
+
+		return NewMysqlFixtureWriterWithInterfaces(logger, repo)
 	}
 }
 
-func (m *mySqlFixtureWriter) Write(fs *FixtureSet) error {
-	r, err := m.GetRepository(fs)
-
-	if err != nil {
-		return err
+func NewMysqlFixtureWriterWithInterfaces(logger mon.Logger, repo db_repo.Repository) FixtureWriter {
+	return &mysqlFixtureWriter{
+		logger: logger,
+		repo:   repo,
 	}
+}
 
-	if r == nil {
-		return fmt.Errorf("could not create repository for for model %s", m.metadata.ModelId.String())
-	}
-
+func (m *mysqlFixtureWriter) Write(fs *FixtureSet) error {
 	ctx := context.Background()
 
 	for _, item := range fs.Fixtures {
@@ -47,7 +46,7 @@ func (m *mySqlFixtureWriter) Write(fs *FixtureSet) error {
 			return fmt.Errorf("invalid fixture type: %s", reflect.TypeOf(item))
 		}
 
-		err := r.Update(ctx, model)
+		err := m.repo.Update(ctx, model)
 
 		if err != nil {
 			return err
@@ -57,15 +56,4 @@ func (m *mySqlFixtureWriter) Write(fs *FixtureSet) error {
 	m.logger.Infof("loaded %d mysql fixtures", len(fs.Fixtures))
 
 	return nil
-}
-
-func (m *mySqlFixtureWriter) GetRepository(fs *FixtureSet) (db_repo.Repository, error) {
-	m.metadata.ModelId.PadFromConfig(m.config)
-
-	settings := db_repo.Settings{
-		AppId:    cfg.GetAppIdFromConfig(m.config),
-		Metadata: *m.metadata,
-	}
-
-	return db_repo.New(m.config, m.logger, settings), nil
 }
