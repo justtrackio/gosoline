@@ -8,29 +8,33 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
-func NewFixtureLoader(config cfg.Config, logger mon.Logger) FixtureLoader {
-	logger = logger.WithChannel("fixture_loader")
-
-	return &fixtureLoader{
-		config: config,
-		logger: logger,
-	}
-}
-
-type fixtureLoader struct {
-	config cfg.Config
-	logger mon.Logger
-}
-
 type fixtureLoaderSettings struct {
 	Enabled bool `cfg:"enabled" default:"false"`
 }
 
-func (f *fixtureLoader) Load(fixtureSets []*FixtureSet) error {
-	settings := fixtureLoaderSettings{}
-	f.config.UnmarshalKey("fixtures", &settings)
+type fixtureLoader struct {
+	logger        mon.Logger
+	settings      *fixtureLoaderSettings
+	writerFactory func(factory FixtureWriterFactory) FixtureWriter
+}
 
-	if !settings.Enabled {
+func NewFixtureLoader(config cfg.Config, logger mon.Logger) FixtureLoader {
+	logger = logger.WithChannel("fixture_loader")
+
+	settings := &fixtureLoaderSettings{}
+	config.UnmarshalKey("fixtures", settings)
+
+	return &fixtureLoader{
+		logger:   logger,
+		settings: settings,
+		writerFactory: func(factory FixtureWriterFactory) FixtureWriter {
+			return factory(config, logger)
+		},
+	}
+}
+
+func (f *fixtureLoader) Load(fixtureSets []*FixtureSet) error {
+	if !f.settings.Enabled {
 		f.logger.Info("fixture loader is not enabled")
 		return nil
 	}
@@ -46,7 +50,7 @@ func (f *fixtureLoader) Load(fixtureSets []*FixtureSet) error {
 			return fmt.Errorf("fixture set is missing a writer")
 		}
 
-		writer := fs.Writer(f.config, f.logger)
+		writer := f.writerFactory(fs.Writer)
 		err := writer.Write(fs)
 
 		if err != nil {

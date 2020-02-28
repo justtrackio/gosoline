@@ -10,48 +10,48 @@ import (
 	"reflect"
 )
 
-type KvstoreFixture struct {
+type KvStoreFixture struct {
 	Key   interface{}
 	Value interface{}
 }
 
-type dynamoDbKeyValueFixtureWriter struct {
-	config  cfg.Config
-	logger  mon.Logger
-	modelId *mdl.ModelId
+type dynamoDbKvStoreFixtureWriter struct {
+	logger mon.Logger
+	store  kvstore.KvStore
 }
 
 func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
-	return func(cfg cfg.Config, logger mon.Logger) FixtureWriter {
-		writer := &dynamoDbKeyValueFixtureWriter{
-			config:  cfg,
-			logger:  logger,
-			modelId: modelId,
-		}
+	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
+		store := kvstore.NewDdbKvStore(config, logger, &kvstore.Settings{
+			AppId: cfg.AppId{
+				Project:     modelId.Project,
+				Environment: modelId.Environment,
+				Family:      modelId.Family,
+				Application: modelId.Application,
+			},
+			Name: modelId.Name,
+		})
 
-		return writer
+		return NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger, store)
 	}
 }
 
-func (d *dynamoDbKeyValueFixtureWriter) Write(fs *FixtureSet) error {
-	store := kvstore.NewDdbKvStore(d.config, d.logger, &kvstore.Settings{
-		AppId: cfg.AppId{
-			Project:     d.modelId.Project,
-			Environment: d.modelId.Environment,
-			Family:      d.modelId.Family,
-			Application: d.modelId.Application,
-		},
-		Name: d.modelId.Name,
-	})
+func NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger mon.Logger, store kvstore.KvStore) FixtureWriter {
+	return &dynamoDbKvStoreFixtureWriter{
+		logger: logger,
+		store:  store,
+	}
+}
 
+func (d *dynamoDbKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
-		kvItem, ok := item.(*KvstoreFixture)
+		kvItem, ok := item.(*KvStoreFixture)
 
 		if !ok {
 			return fmt.Errorf("invalid fixture type: %s", reflect.TypeOf(item))
 		}
 
-		err := store.Put(context.Background(), kvItem.Key, kvItem.Value)
+		err := d.store.Put(context.Background(), kvItem.Key, kvItem.Value)
 
 		if err != nil {
 			return err

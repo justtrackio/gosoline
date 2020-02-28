@@ -35,7 +35,7 @@ func mysqlTestFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.MySqlFixtureWriterFactory(&TestModelMetadata),
+			Writer:  fixtures.MysqlFixtureWriterFactory(&TestModelMetadata),
 			Fixtures: []interface{}{
 				&MysqlTestModel{
 					Name: mdl.String("testName"),

@@ -8,42 +8,37 @@ import (
 )
 
 type dynamoDbFixtureWriter struct {
-	config   cfg.Config
-	logger   mon.Logger
-	settings *ddb.Settings
+	logger mon.Logger
+	repo   ddb.Repository
 }
 
 func DynamoDbFixtureWriterFactory(settings *ddb.Settings) FixtureWriterFactory {
-	return func(cfg cfg.Config, logger mon.Logger) FixtureWriter {
-		writer := &dynamoDbFixtureWriter{
-			config:   cfg,
-			logger:   logger,
-			settings: settings,
-		}
+	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
+		repo := ddb.NewRepository(config, logger, &ddb.Settings{
+			ModelId:    settings.ModelId,
+			AutoCreate: true,
+			Main: ddb.MainSettings{
+				Model:              settings.Main.Model,
+				ReadCapacityUnits:  1,
+				WriteCapacityUnits: 1,
+			},
+			Global: settings.Global,
+		})
 
-		return writer
+		return NewDynamoDbFixtureWriterWithInterfaces(logger, repo)
+	}
+}
+
+func NewDynamoDbFixtureWriterWithInterfaces(logger mon.Logger, repo ddb.Repository) FixtureWriter {
+	return &dynamoDbFixtureWriter{
+		logger: logger,
+		repo:   repo,
 	}
 }
 
 func (d *dynamoDbFixtureWriter) Write(fs *FixtureSet) error {
-	if len(fs.Fixtures) == 0 {
-		d.logger.Info("loaded 0 dynamo db fixtures")
-		return nil
-	}
-
-	repo := ddb.NewRepository(d.config, d.logger, &ddb.Settings{
-		ModelId:    d.settings.ModelId,
-		AutoCreate: true,
-		Main: ddb.MainSettings{
-			Model:              d.settings.Main.Model,
-			ReadCapacityUnits:  1,
-			WriteCapacityUnits: 1,
-		},
-		Global: d.settings.Global,
-	})
-
 	for _, fixture := range fs.Fixtures {
-		_, err := repo.PutItem(context.Background(), nil, fixture)
+		_, err := d.repo.PutItem(context.Background(), nil, fixture)
 
 		if err != nil {
 			return err

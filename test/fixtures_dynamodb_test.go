@@ -116,7 +116,7 @@ func dynamoDbKvStoreFixtures() []*fixtures.FixtureSet {
 				Name:        "testModel",
 			}),
 			Fixtures: []interface{}{
-				&fixtures.KvstoreFixture{
+				&fixtures.KvStoreFixture{
 					Key:   "Ash",
 					Value: &DynamoDbTestModel{Name: "Ash", Age: 10},
 				},
