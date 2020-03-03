@@ -12,8 +12,8 @@ import (
 func Test_elasticsearch(t *testing.T) {
 	setup(t)
 
-	pkgTest.Boot("test_configs/config.elasticsearch.test.yml")
-	defer pkgTest.Shutdown()
+	mocks := pkgTest.Boot("test_configs/config.elasticsearch.test.yml")
+	defer mocks.Shutdown()
 
 	resp, err := http.Get("http://172.17.0.1:9201")
 

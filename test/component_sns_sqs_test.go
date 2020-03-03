@@ -20,8 +20,8 @@ import (
 func Test_sns_sqs(t *testing.T) {
 	setup(t)
 
-	pkgTest.Boot("test_configs/config.sns_sqs.test.yml")
-	defer pkgTest.Shutdown()
+	mocks := pkgTest.Boot("test_configs/config.sns_sqs.test.yml")
+	defer mocks.Shutdown()
 
 	queueName := "my-queue"
 	topicName := "my-topic"
@@ -29,8 +29,8 @@ func Test_sns_sqs(t *testing.T) {
 	topicArn := fmt.Sprintf("arn:aws:sns:us-east-1:000000000000:%s", topicName)
 	queueUrl := fmt.Sprintf("http://localhost:4576/queue/%s", queueName)
 
-	snsClient := pkgTest.ProvideSnsClient("sns_sqs")
-	sqsClient := pkgTest.ProvideSqsClient("sns_sqs")
+	snsClient := mocks.ProvideClient("sns_sqs", "sns").(*sns.SNS)
+	sqsClient := mocks.ProvideClient("sns_sqs", "sqs").(*sqs.SQS)
 
 	logger := mon.NewLogger()
 	res := &cloud.BackoffResource{
@@ -45,8 +45,8 @@ func Test_sns_sqs(t *testing.T) {
 		InitialInterval:     time.Millisecond * 50,
 		RandomizationFactor: 0.5,
 		Multiplier:          1.5,
-		MaxInterval:         time.Second * 10,
-		MaxElapsedTime:      time.Minute * 2,
+		MaxInterval:         time.Second * 2,
+		MaxElapsedTime:      time.Second * 10,
 	})
 
 	// create a topic

@@ -3,13 +3,13 @@
 package test_test
 
 import (
-	"context"
-	"github.com/applike/gosoline/pkg/cfg"
+	"database/sql"
 	db_repo "github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/test"
+	gosoAssert "github.com/applike/gosoline/pkg/test/assert"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -50,8 +50,8 @@ func Test_enabled_fixtures_mysql(t *testing.T) {
 
 	configFile := "test_configs/config.mysql.test.yml"
 
-	test.Boot(configFile)
-	defer test.Shutdown()
+	mocks := test.Boot(configFile)
+	defer mocks.Shutdown()
 
 	logger := mon.NewLogger()
 	config := configFromFiles("test_configs/config.mysql.test.yml", "test_configs/config.fixtures_mysql.test.yml")
@@ -60,18 +60,8 @@ func Test_enabled_fixtures_mysql(t *testing.T) {
 	err := loader.Load(mysqlTestFixtures())
 	assert.NoError(t, err)
 
-	settings := db_repo.Settings{
-		AppId:    cfg.GetAppIdFromConfig(config),
-		Metadata: TestModelMetadata,
-	}
+	db := mocks.ProvideClient("mysql", "mysql").(*sql.DB)
 
-	repo := db_repo.New(config, logger, settings)
-
-	result := MysqlTestModel{}
-	_ = repo.Read(context.Background(), mdl.Uint(1), &result)
-
-	assert.NoError(t, err)
-	if assert.NotNil(t, result.Name) {
-		assert.Equal(t, "testName", *result.Name)
-	}
+	gosoAssert.SqlTableHasOneRowOnly(t, db, "mysql_test_models")
+	gosoAssert.SqlColumnHasSpecificValue(t, db, "mysql_test_models", "name", "testName")
 }

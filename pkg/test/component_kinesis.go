@@ -2,63 +2,65 @@ package test
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"log"
 )
 
-type kinesisConfig struct {
-	Debug bool   `mapstructure:"debug"`
-	Host  string `mapstructure:"host"`
-	Port  int    `mapstructure:"port"`
+type kinesisSettings struct {
+	*mockSettings
+	Port int `cfg:"port"`
 }
 
-var kinesisConfigs map[string]*kinesisConfig
-var kinesisClients simpleCache
-
-func init() {
-	kinesisConfigs = map[string]*kinesisConfig{}
-	kinesisClients = simpleCache{}
+type kinesisComponent struct {
+	name     string
+	settings *kinesisSettings
+	clients  *simpleCache
 }
 
-func ProvideKinesisClient(name string) *kinesis.Kinesis {
-	return kinesisClients.New(name, func() interface{} {
-
-		sess, err := getSession(kinesisConfigs[name].Host, kinesisConfigs[name].Port)
-
-		if err != nil {
-			logErr(err, "could not create kinesis client: %s")
-		}
-
-		return kinesis.New(sess)
-
-	}).(*kinesis.Kinesis)
+func (m *kinesisComponent) Boot(name string, config cfg.Config, settings *mockSettings) {
+	m.name = name
+	m.clients = &simpleCache{}
+	m.settings = &kinesisSettings{
+		mockSettings: settings,
+	}
+	key := fmt.Sprintf("mocks.%s", name)
+	config.UnmarshalKey(key, m.settings)
 }
 
-func runKinesis(name string, config configInput) {
-	wait.Add(1)
-	go doRunKinesis(name, config)
-}
+func (m *kinesisComponent) Run(runner *dockerRunner) {
+	defer log.Printf("%s component of type %s is ready", m.name, "kinesis")
 
-func doRunKinesis(name string, configMap configInput) {
-	defer wait.Done()
-	defer log.Printf("%s component of type %s is ready", name, "kinesis")
+	containerName := fmt.Sprintf("gosoline_test_kinesis_%s", m.name)
 
-	localConfig := &kinesisConfig{}
-	unmarshalConfig(configMap, localConfig)
-	kinesisConfigs[name] = localConfig
-
-	containerName := fmt.Sprintf("gosoline_test_kinesis_%s", name)
-
-	runContainer(containerName, ContainerConfig{
+	runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.7",
 		Env: []string{
 			"SERVICES=kinesis",
 		},
-		PortBindings: PortBinding{
-			"4568/tcp": fmt.Sprint(localConfig.Port),
+		PortBindings: portBinding{
+			"4568/tcp": fmt.Sprint(m.settings.Port),
 		},
-		HealthCheck: localstackHealthCheck(containerName),
-		PrintLogs:   localConfig.Debug,
+		HealthCheck: localstackHealthCheck(runner, containerName),
+		PrintLogs:   m.settings.Debug,
 	})
+}
+
+func (m *kinesisComponent) ProvideClient(string) interface{} {
+	return m.provideKinesisClient()
+}
+
+func (m *kinesisComponent) provideKinesisClient() *kinesis.Kinesis {
+	return m.clients.New("kinesis", func() interface{} {
+
+		sess, err := getAwsSession(m.settings.Host, m.settings.Port)
+
+		if err != nil {
+			panic(fmt.Errorf("could not create kinesis client %s: %w", m.name, err))
+		}
+
+		return kinesis.New(sess)
+
+	}).(*kinesis.Kinesis)
 }

@@ -1,6 +1,6 @@
 mocks:
-  - name: sns_sqs
-    debug: true
+  sns_sqs:
+    debug: false
     component: sns_sqs
     host: 172.17.0.1
     sns_port: 4575

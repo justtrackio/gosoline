@@ -10,7 +10,7 @@ import (
 func testConfig(filePath string) cfg.Config {
 	config := cfg.New()
 
-	err := cfg.WithConfigFile(filePath, "yml")(config)
+	err := config.Option(cfg.WithConfigFile(filePath, "yml"))
 
 	if err != nil {
 		panic(err)

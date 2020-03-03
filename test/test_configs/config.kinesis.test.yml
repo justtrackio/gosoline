@@ -1,6 +1,6 @@
 mocks:
-  - name: kinesis
+  kinesis:
     component: kinesis
     host: 172.17.0.1
     port: 4568
-    debug: true
+    debug: false
