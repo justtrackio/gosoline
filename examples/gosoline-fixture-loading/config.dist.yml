@@ -1,0 +1,25 @@
+env: dev
+app_project: "gosoline"
+app_family: "example"
+app_name: "fixture-loader"
+
+aws_dynamoDb_endpoint: "http://localhost:4569"
+aws_dynamoDb_autoCreate: true
+aws_sdk_retries: 30
+
+db_drivername: "mysql"
+db_hostname: "127.0.0.1"
+db_port: 3306
+db_database: "example"
+db_username: "root"
+db_password: "somepassword"
+db_retry_wait: 10
+db_health_check_delay: 30
+db_max_connection_lifetime: 120
+db_parse_time: true
+db_auto_migrate: true
+db_migrations_path: file://migrations
+db_table_prefixed: false
+
+fixtures:
+  enabled: true
