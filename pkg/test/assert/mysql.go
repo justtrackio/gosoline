@@ -3,13 +3,12 @@ package assert
 import (
 	"database/sql"
 	"fmt"
-	"github.com/applike/gosoline/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func SqlTableHasOneRowOnly(t *testing.T, tableName string) {
-	rows := test.IntegrationTestDb.QueryRow(fmt.Sprintf("select count(*) from %s", tableName))
+func SqlTableHasOneRowOnly(t *testing.T, db *sql.DB, tableName string) {
+	rows := db.QueryRow(fmt.Sprintf("select count(*) from %s", tableName))
 	count := "count(*)"
 	err := rows.Scan(&count)
 
@@ -26,9 +25,9 @@ func SqlTableHasOneRowOnly(t *testing.T, tableName string) {
 	assert.Equal(t, "1", count, "there is more than 1 row in the table")
 }
 
-func SqlColumnHasSpecificValue(t *testing.T, tableName string, column string, expectedValue interface{}) {
+func SqlColumnHasSpecificValue(t *testing.T, db *sql.DB, tableName string, column string, expectedValue interface{}) {
 	query := fmt.Sprintf("select %s from %s where %s = '%v'", column, tableName, column, expectedValue)
-	row := test.IntegrationTestDb.QueryRow(query)
+	row := db.QueryRow(query)
 	err := row.Scan(&column)
 
 	if err != nil && err != sql.ErrNoRows {

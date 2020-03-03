@@ -11,10 +11,10 @@ import (
 func Test_redis(t *testing.T) {
 	setup(t)
 
-	pkgTest.Boot("test_configs/config.redis.test.yml")
-	defer pkgTest.Shutdown()
+	mocks := pkgTest.Boot("test_configs/config.redis.test.yml")
+	defer mocks.Shutdown()
 
-	client := pkgTest.ProvideRedisClient("redis")
+	client := mocks.ProvideRedisClient("redis")
 	pong, err := client.Ping().Result()
 
 	assert.NoError(t, err)

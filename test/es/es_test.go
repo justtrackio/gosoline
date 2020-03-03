@@ -7,9 +7,20 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
-func getMocks(configFilePath string) (cfg.Config, mon.Logger) {
+func testConfig(filePath string) cfg.Config {
 	config := cfg.New()
-	config.Option(cfg.WithConfigFile(configFilePath, "yml"))
+
+	err := config.Option(cfg.WithConfigFile(filePath, "yml"))
+
+	if err != nil {
+		panic(err)
+	}
+
+	return config
+}
+
+func getMocks(configFilePath string) (cfg.Config, mon.Logger) {
+	config := testConfig(configFilePath)
 	logger := mon.NewLogger()
 
 	return config, logger

@@ -12,8 +12,8 @@ import (
 func TestNewClientV6(t *testing.T) {
 	configFilePath := "config-v6.test.yml"
 
-	test.Boot(configFilePath)
-	defer test.Shutdown()
+	mocks := test.Boot(configFilePath)
+	defer mocks.Shutdown()
 
 	config, logger := getMocks(configFilePath)
 

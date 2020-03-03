@@ -18,19 +18,20 @@ import (
 
 type FixturesDynamoDbSuite struct {
 	suite.Suite
-	db     *dynamodb.DynamoDB
 	logger mon.Logger
+	db     *dynamodb.DynamoDB
+	mocks  *test.Mocks
 }
 
 func (s *FixturesDynamoDbSuite) SetupSuite() {
 	setup(s.T())
-	test.Boot("test_configs/config.dynamodb.test.yml")
-	s.db = test.ProvideDynamoDbClient("dynamodb")
+	s.mocks = test.Boot("test_configs/config.dynamodb.test.yml")
+	s.db = s.mocks.ProvideDynamoDbClient("dynamodb")
 	s.logger = mon.NewLogger()
 }
 
 func (s *FixturesDynamoDbSuite) TearDownSuite() {
-	test.Shutdown()
+	s.mocks.Shutdown()
 }
 
 func TestFixturesDynamoDbSuite(t *testing.T) {

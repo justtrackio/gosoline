@@ -2,98 +2,117 @@ package test
 
 import (
 	"fmt"
-	"github.com/ory/dockertest"
-	"log"
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 	"sync"
-	"time"
 )
 
-var err error
-var wait sync.WaitGroup
-var dockerPool *dockertest.Pool
-var dockerResources []*dockertest.Resource
-var configs []*ContainerConfig
-var cfgFilename = "config.test.yml"
+type mockComponent interface {
+	Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string)
+	Start()
+}
 
-func init() {
-	dockerPool, err = dockertest.NewPool("")
-	dockerPool.MaxWait = 2 * time.Minute
-	dockerResources = make([]*dockertest.Resource, 0)
+type mockSettings struct {
+	Debug     bool   `cfg:"debug"`
+	Component string `cfg:"component"`
+	Host      string `cfg:"host"`
+}
 
-	if err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
+type Mocks struct {
+	waitGroup    sync.WaitGroup
+	dockerRunner *dockerRunner
+	components   map[string]mockComponent
+	logger       mon.Logger
+}
+
+func newMocks() *Mocks {
+	components := make(map[string]mockComponent)
+	dockerRunner := newDockerRunner()
+	logger := mon.NewLogger().WithChannel("mocks")
+
+	return &Mocks{
+		components:   components,
+		dockerRunner: dockerRunner,
+		logger:       logger,
 	}
 }
 
-func logErr(err error, msg string) {
-	Shutdown()
-	log.Println(msg)
-	log.Fatal(err)
+func (m *Mocks) Boot(config cfg.Config) {
+	m.bootFromConfig(config)
+
+	m.waitGroup.Wait()
+
+	m.logger.Info("test environment up and running")
 }
 
-func Boot(configFilenames ...string) {
+func (m *Mocks) bootFromConfig(config cfg.Config) {
+	mocks := config.GetStringMap("mocks")
+
+	for name, _ := range mocks {
+		settings := &mockSettings{}
+		key := fmt.Sprintf("mocks.%s", name)
+		config.UnmarshalKey(key, settings)
+
+		component := m.createComponent(settings.Component)
+
+		m.components[name] = component
+		component.Boot(config, m.dockerRunner, settings, name)
+		m.runComponent(component)
+	}
+}
+
+func (m *Mocks) createComponent(component string) mockComponent {
+	switch component {
+	case "mysql":
+		return &mysqlComponent{}
+	case "sns_sqs":
+		return &snsSqsComponent{}
+	case "cloudwatch":
+		return &cloudwatchComponent{}
+	case "dynamodb":
+		return &dynamoDbComponent{}
+	case "elasticsearch":
+		return &elasticsearchComponent{}
+	case "kinesis":
+		return &kinesisComponent{}
+	case "wiremock":
+		return &wiremockComponent{}
+	case "redis":
+		return &redisComponent{}
+	default:
+		panic(fmt.Errorf("unknown component type: %s", component))
+	}
+}
+
+func (m *Mocks) runComponent(component mockComponent) {
+	m.waitGroup.Add(1)
+	go func() {
+		defer m.waitGroup.Done()
+		component.Start()
+	}()
+}
+
+func (m *Mocks) Shutdown() {
+	m.dockerRunner.PurgeAllResources()
+}
+
+func Boot(configFilenames ...string) *Mocks {
 	if len(configFilenames) == 0 {
-		configFilenames = append(configFilenames, cfgFilename)
+		configFilenames = []string{"config.test.yml"}
 	}
+
+	config := cfg.New()
 
 	for _, filename := range configFilenames {
-		log.Println(fmt.Sprintf("booting configuration %s", filename))
-		bootFromFile(filename)
-	}
+		err := config.Option(cfg.WithConfigFile(filename, "yml"))
 
-	wait.Wait()
-
-	log.Println("test environment up and running")
-	fmt.Println()
-}
-
-func bootFromFile(filename string) {
-	config := readConfig(filename)
-
-	for _, mockConfig := range config.Mocks {
-		bootComponent(mockConfig)
-	}
-}
-
-func bootComponent(mockConfig configInput) {
-	component := mockConfig["component"]
-	name := mockConfig["name"].(string)
-
-	switch component {
-	case "cloudwatch":
-		runCloudwatch(name, mockConfig)
-	case "dynamodb":
-		runDynamoDb(name, mockConfig)
-	case "elasticsearch":
-		runElasticsearch(name, mockConfig)
-	case "kinesis":
-		runKinesis(name, mockConfig)
-	case "mysql":
-		runMysql(name, mockConfig)
-	case "redis":
-		runRedis(name, mockConfig)
-	case "sns_sqs":
-		runSnsSqs(name, mockConfig)
-	case "wiremock":
-		runWiremock(name, mockConfig)
-	default:
-		err := fmt.Errorf("unknown component '%s'", component)
-		logErr(err, err.Error())
-	}
-}
-
-func Shutdown() {
-	for _, res := range dockerResources {
-		if err := dockerPool.Purge(res); err != nil {
-			log.Fatalf("Could not purge resource: %s", err)
+		if err != nil {
+			panic(fmt.Errorf("failed to read config from file %s: %w", filename, err))
 		}
 	}
-	for _, cfg := range configs {
-		if cfg.OnDestroy == nil {
-			continue
-		}
-		cfg.OnDestroy()
-	}
 
-	dockerResources = make([]*dockertest.Resource, 0)
+	mocks := newMocks()
+	mocks.Boot(config)
+
+	return mocks
 }

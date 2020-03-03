@@ -25,17 +25,18 @@ type FixturesRedisSuite struct {
 	suite.Suite
 	client *redis.Client
 	logger mon.Logger
+	mocks  *test.Mocks
 }
 
 func (s *FixturesRedisSuite) SetupSuite() {
 	setup(s.T())
-	test.Boot("test_configs/config.redis.test.yml")
-	s.client = test.ProvideRedisClient("redis")
+	s.mocks = test.Boot("test_configs/config.redis.test.yml")
+	s.client = s.mocks.ProvideRedisClient("redis")
 	s.logger = mon.NewLogger()
 }
 
 func (s *FixturesRedisSuite) TearDownSuite() {
-	test.Shutdown()
+	s.mocks.Shutdown()
 }
 
 func TestFixturesRedisSuite(t *testing.T) {
