@@ -2,59 +2,56 @@ package test
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/go-redis/redis"
-	"log"
 )
 
-type redisConfig struct {
-	Debug bool   `mapstructure:"debug"`
-	Host  string `mapstructure:"host"`
-	Port  int    `mapstructure:"port"`
+type redisSettings struct {
+	*mockSettings
+	Port int `cfg:"port"`
 }
 
-var redisConfigs map[string]*redisConfig
-var redisClients simpleCache
-
-func init() {
-	redisClients = simpleCache{}
-	redisConfigs = make(map[string]*redisConfig)
+type redisComponent struct {
+	name     string
+	settings *redisSettings
+	clients  *simpleCache
+	runner   *dockerRunner
 }
 
-func runRedis(name string, config configInput) {
-	wait.Add(1)
-	go doRunRedis(name, config)
+func (r *redisComponent) Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string) {
+	r.name = name
+	r.runner = runner
+	r.settings = &redisSettings{
+		mockSettings: settings,
+	}
+	r.clients = &simpleCache{}
+	key := fmt.Sprintf("mocks.%s", name)
+	config.UnmarshalKey(key, r.settings)
 }
 
-func doRunRedis(name string, configMap configInput) {
-	defer wait.Done()
-	defer log.Printf("%s component of type redis is ready", name)
+func (r *redisComponent) Start() {
+	containerName := fmt.Sprintf("gosoline_test_redis_%s", r.name)
 
-	config := &redisConfig{}
-	unmarshalConfig(configMap, config)
-	redisConfigs[name] = config
-
-	containerName := fmt.Sprintf("gosoline_test_redis_%s", name)
-
-	runContainer(containerName, ContainerConfig{
+	r.runner.Run(containerName, containerConfig{
 		Repository: "redis",
 		Tag:        "5-alpine",
-		PortBindings: PortBinding{
-			"6379/tcp": fmt.Sprint(config.Port),
+		PortBindings: portBinding{
+			"6379/tcp": fmt.Sprint(r.settings.Port),
 		},
 
 		HealthCheck: func() error {
-			client := ProvideRedisClient(name)
+			client := r.provideRedisClient()
 			_, err := client.Ping().Result()
 
 			return err
 		},
-		PrintLogs: config.Debug,
+		PrintLogs: r.settings.Debug,
 	})
 }
 
-func ProvideRedisClient(name string) *redis.Client {
-	return redisClients.New(name, func() interface{} {
-		addr := fmt.Sprintf("%s:%d", redisConfigs[name].Host, redisConfigs[name].Port)
+func (r *redisComponent) provideRedisClient() *redis.Client {
+	return r.clients.New(r.name, func() interface{} {
+		addr := fmt.Sprintf("%s:%d", r.settings.Host, r.settings.Port)
 
 		return redis.NewClient(&redis.Options{
 			Addr:     addr,

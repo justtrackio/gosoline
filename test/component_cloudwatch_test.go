@@ -12,10 +12,10 @@ import (
 func Test_cloudwatch(t *testing.T) {
 	setup(t)
 
-	pkgTest.Boot("test_configs/config.cloudwatch.test.yml")
-	defer pkgTest.Shutdown()
+	mocks := pkgTest.Boot("test_configs/config.cloudwatch.test.yml")
+	defer mocks.Shutdown()
 
-	cwClient := pkgTest.ProvideCloudwatchClient("cloudwatch")
+	cwClient := mocks.ProvideCloudwatchClient("cloudwatch")
 	o, err := cwClient.ListDashboards(&cloudwatch.ListDashboardsInput{})
 
 	assert.NoError(t, err)

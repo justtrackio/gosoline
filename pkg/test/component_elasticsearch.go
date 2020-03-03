@@ -3,42 +3,46 @@ package test
 import (
 	"errors"
 	"fmt"
-	"log"
+	"github.com/applike/gosoline/pkg/cfg"
 	"net/http"
 )
 
-type elasticsearchConfig struct {
-	Debug   bool   `mapstructure:"debug"`
-	Version string `mapstructure:"version"`
-	Host    string `mapstructure:"host"`
-	Port    int    `mapstructure:"port"`
+type elasticsearchSettings struct {
+	*mockSettings
+	Port    int    `cfg:"port"`
+	Version string `cfg:"version"`
 }
 
-func runElasticsearch(name string, config configInput) {
-	wait.Add(1)
-	go doRunElasticsearch(name, config)
+type elasticsearchComponent struct {
+	name     string
+	settings *elasticsearchSettings
+	runner   *dockerRunner
 }
 
-func doRunElasticsearch(name string, configMap configInput) {
-	defer wait.Done()
-	defer log.Printf("%s component of type %s is ready", name, "elasticsearch")
+func (e *elasticsearchComponent) Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string) {
+	e.name = name
+	e.runner = runner
+	e.settings = &elasticsearchSettings{
+		mockSettings: settings,
+	}
+	key := fmt.Sprintf("mocks.%s", name)
+	config.UnmarshalKey(key, e.settings)
+}
 
-	config := &elasticsearchConfig{}
-	unmarshalConfig(configMap, config)
+func (e *elasticsearchComponent) Start() {
+	containerName := fmt.Sprintf("gosoline_test_elasticsearch_%s", e.name)
 
-	containerName := fmt.Sprintf("gosoline_test_elasticsearch_%s", name)
-
-	runContainer(containerName, ContainerConfig{
+	e.runner.Run(containerName, containerConfig{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
-		Tag:        config.Version,
+		Tag:        e.settings.Version,
 		Env: []string{
 			"discovery.type=single-node",
 		},
-		PortBindings: PortBinding{
-			"9200/tcp": fmt.Sprint(config.Port),
+		PortBindings: portBinding{
+			"9200/tcp": fmt.Sprint(e.settings.Port),
 		},
 		HealthCheck: func() error {
-			resp, err := http.Get(fmt.Sprintf("http://%s:%d/_cluster/health", config.Host, config.Port))
+			resp, err := http.Get(fmt.Sprintf("http://%s:%d/_cluster/health", e.settings.Host, e.settings.Port))
 
 			if err != nil {
 				return err
@@ -51,6 +55,6 @@ func doRunElasticsearch(name string, configMap configInput) {
 
 			return nil
 		},
-		PrintLogs: config.Debug,
+		PrintLogs: e.settings.Debug,
 	})
 }

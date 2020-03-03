@@ -1,9 +1,7 @@
 package test
 
 import (
-	"bytes"
 	"errors"
-	"github.com/ory/dockertest/docker"
 	"regexp"
 )
 
@@ -11,22 +9,15 @@ import (
 // it will be replaced with a proper health check http endpoint
 // once it has been released in localstack
 // see: https://github.com/localstack/localstack/pull/2080
-func localstackHealthCheck(containerName string) func() error {
+func localstackHealthCheck(runner *dockerRunner, containerName string) func() error {
 	return func() error {
-		logs := bytes.NewBufferString("")
-
-		err := dockerPool.Client.Logs(docker.LogsOptions{
-			Container:    containerName,
-			OutputStream: logs,
-			Stdout:       true,
-			Stderr:       true,
-		})
+		logs, err := runner.GetLogs(containerName)
 
 		if err != nil {
 			return err
 		}
 
-		ready, err := regexp.MatchString("Ready\\.", logs.String())
+		ready, err := regexp.MatchString("Ready\\.", logs)
 
 		if err != nil {
 			return err

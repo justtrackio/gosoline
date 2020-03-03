@@ -2,61 +2,54 @@ package test
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	"log"
 )
 
-type cloudwatchConfig struct {
-	Debug bool   `mapstructure:"debug"`
-	Host  string `mapstructure:"host"`
-	Port  int    `mapstructure:"port"`
+type cloudwatchSettings struct {
+	*mockSettings
+	Port int `cfg:"port"`
 }
 
-var cloudwatchConfigs map[string]*cloudwatchConfig
-var cloudwatchClients simpleCache
-
-func init() {
-	cloudwatchConfigs = map[string]*cloudwatchConfig{}
-	cloudwatchClients = simpleCache{}
+type cloudwatchComponent struct {
+	name     string
+	settings *cloudwatchSettings
+	clients  *simpleCache
+	runner   *dockerRunner
 }
 
-func ProvideCloudwatchClient(name string) *cloudwatch.CloudWatch {
-	return cloudwatchClients.New(name, func() interface{} {
-		sess, err := getSession(cloudwatchConfigs[name].Host, cloudwatchConfigs[name].Port)
-
-		if err != nil {
-			logErr(err, fmt.Sprintf("could not create cloudwatch client: %s", name))
-		}
-
-		return cloudwatch.New(sess)
-	}).(*cloudwatch.CloudWatch)
+func (c *cloudwatchComponent) Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string) {
+	c.name = name
+	c.runner = runner
+	c.settings = &cloudwatchSettings{
+		mockSettings: settings,
+	}
+	c.clients = &simpleCache{}
+	key := fmt.Sprintf("mocks.%s", name)
+	config.UnmarshalKey(key, c.settings)
 }
 
-func runCloudwatch(name string, config configInput) {
-	wait.Add(1)
-	go doRunCloudwatch(name, config)
-}
+func (c *cloudwatchComponent) Start() {
+	containerName := fmt.Sprintf("gosoline_test_cloudwatch_%s", c.name)
 
-func doRunCloudwatch(name string, configMap configInput) {
-	defer wait.Done()
-	defer log.Printf("%s component of type %s is ready", name, "cloudwatch")
-
-	localConfig := &cloudwatchConfig{}
-	unmarshalConfig(configMap, localConfig)
-	cloudwatchConfigs[name] = localConfig
-
-	containerName := fmt.Sprintf("gosoline_test_cloudwatch_%s", name)
-
-	runContainer(containerName, ContainerConfig{
+	c.runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.7",
 		Env: []string{
 			"SERVICES=cloudwatch",
 		},
-		PortBindings: PortBinding{
-			"4582/tcp": fmt.Sprint(localConfig.Port),
+		PortBindings: portBinding{
+			"4582/tcp": fmt.Sprint(c.settings.Port),
 		},
-		HealthCheck: localstackHealthCheck(containerName),
-		PrintLogs:   localConfig.Debug,
+		HealthCheck: localstackHealthCheck(c.runner, containerName),
+		PrintLogs:   c.settings.Debug,
 	})
+}
+
+func (c *cloudwatchComponent) provideCloudwatchClient() *cloudwatch.CloudWatch {
+	return c.clients.New(c.name, func() interface{} {
+		sess := getAwsSession(c.settings.Host, c.settings.Port)
+
+		return cloudwatch.New(sess)
+	}).(*cloudwatch.CloudWatch)
 }

@@ -12,10 +12,10 @@ import (
 func Test_dynamodb(t *testing.T) {
 	setup(t)
 
-	pkgTest.Boot("test_configs/config.dynamodb.test.yml")
-	defer pkgTest.Shutdown()
+	mocks := pkgTest.Boot("test_configs/config.dynamodb.test.yml")
+	defer mocks.Shutdown()
 
-	ddbClient := pkgTest.ProvideDynamoDbClient("dynamodb")
+	ddbClient := mocks.ProvideDynamoDbClient("dynamodb")
 	o, err := ddbClient.ListTables(&dynamodb.ListTablesInput{})
 
 	assert.NoError(t, err)

@@ -3,7 +3,7 @@ es_test_v7_endpoint: http://172.17.0.1:9227
 es_test_v7_templates: []
 
 mocks:
-  - name: metrics_v7
+  metrics_v7:
     component: elasticsearch
     version: 7.1.1
     host: 172.17.0.1

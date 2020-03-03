@@ -12,8 +12,8 @@ import (
 func Test_wiremock(t *testing.T) {
 	setup(t)
 
-	pkgTest.Boot("test_configs/config.wiremock.test.yml")
-	defer pkgTest.Shutdown()
+	mocks := pkgTest.Boot("test_configs/config.wiremock.test.yml")
+	defer mocks.Shutdown()
 
 	resp, err := http.Get("http://172.17.0.1:12345/__admin")
 

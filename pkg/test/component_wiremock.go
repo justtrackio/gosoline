@@ -2,38 +2,46 @@ package test
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
-type wiremockConfig struct {
-	Mocks string `mapstructure:"mocks"`
-	Host  string `mapstructure:"host"`
-	Port  int    `mapstructure:"port"`
+type wiremockSettings struct {
+	*mockSettings
+	Port  uint   `cfg:"port"`
+	Mocks string `cfg:"mocks"`
 }
 
-func runWiremock(name string, config configInput) {
-	wait.Add(1)
-	go doRunWiremock(name, config)
+type wiremockComponent struct {
+	name     string
+	db       *sql.DB
+	settings *wiremockSettings
+	runner   *dockerRunner
 }
 
-func doRunWiremock(name string, configMap configInput) {
-	defer wait.Done()
-	defer log.Printf("%s component of type %s is ready", name, "wiremock")
+func (w *wiremockComponent) Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string) {
+	w.name = name
+	w.runner = runner
+	w.settings = &wiremockSettings{
+		mockSettings: settings,
+	}
+	key := fmt.Sprintf("mocks.%s", name)
+	config.UnmarshalKey(key, w.settings)
+}
 
-	config := &wiremockConfig{}
-	unmarshalConfig(configMap, config)
-	url := fmt.Sprintf("http://%s:%d/__admin", config.Host, config.Port)
+func (w *wiremockComponent) Start() {
+	url := fmt.Sprintf("http://%s:%d/__admin", w.settings.Host, w.settings.Port)
 
-	containerName := fmt.Sprintf("gosoline_test_wiremock_%s", name)
+	containerName := fmt.Sprintf("gosoline_test_wiremock_%s", w.name)
 
-	runContainer(containerName, ContainerConfig{
+	w.runner.Run(containerName, containerConfig{
 		Repository: "rodolpheche/wiremock",
 		Tag:        "latest",
-		PortBindings: PortBinding{
-			"8080/tcp": fmt.Sprint(config.Port),
+		PortBindings: portBinding{
+			"8080/tcp": fmt.Sprint(w.settings.Port),
 		},
 		HealthCheck: func() error {
 			_, err := http.Get(url)
@@ -42,15 +50,15 @@ func doRunWiremock(name string, configMap configInput) {
 		},
 	})
 
-	jsonStr, err := ioutil.ReadFile(config.Mocks)
+	jsonStr, err := ioutil.ReadFile(w.settings.Mocks)
 
 	if err != nil {
-		logErr(err, "could not read http mock configuration")
+		panic(fmt.Errorf("could not read http mock configuration: %w", err))
 	}
 
 	_, err = http.Post(url+"/mappings/import", "application/json", bytes.NewBuffer(jsonStr))
 
 	if err != nil {
-		logErr(err, "could not send stubs to wiremock")
+		panic(fmt.Errorf("could not send stubs to wiremock: %w", err))
 	}
 }

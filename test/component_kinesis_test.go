@@ -12,10 +12,10 @@ import (
 func Test_kinesis(t *testing.T) {
 	setup(t)
 
-	pkgTest.Boot("test_configs/config.kinesis.test.yml")
-	defer pkgTest.Shutdown()
+	mocks := pkgTest.Boot("test_configs/config.kinesis.test.yml")
+	defer mocks.Shutdown()
 
-	kinClient := pkgTest.ProvideKinesisClient("kinesis")
+	kinClient := mocks.ProvideKinesisClient("kinesis")
 	o, err := kinClient.ListStreams(&kinesis.ListStreamsInput{})
 
 	assert.NoError(t, err)

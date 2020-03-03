@@ -1,8 +1,8 @@
 mocks:
-  - name: mysql
+  mysql:
     component: mysql
     host: 172.17.0.1
     port: 3333
+    debug: false
     dbName: myDbName
-    version: 8
-    debug: true
+    version: "8"
