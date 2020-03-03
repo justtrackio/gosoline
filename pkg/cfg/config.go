@@ -57,6 +57,8 @@ type config struct {
 	envKeyReplacer *strings.Replacer
 }
 
+var templateRegex = regexp.MustCompile("{([\\w.\\-]+)}")
+
 func New() *config {
 	return NewWithInterfaces(os.LookupEnv)
 }
@@ -305,8 +307,7 @@ func (c *config) UnmarshalKey(key string, output interface{}, opts ...DecoderCon
 }
 
 func (c *config) augmentString(str string) string {
-	rp := regexp.MustCompile("{([\\w.]+)}")
-	matches := rp.FindAllStringSubmatch(str, -1)
+	matches := templateRegex.FindAllStringSubmatch(str, -1)
 
 	for _, m := range matches {
 		replace := fmt.Sprint(c.getString(m[1]))
@@ -365,8 +366,7 @@ func (c *config) decodeAugmentHook() interface{} {
 			return data, nil
 		}
 
-		if f == reflect.String || t == reflect.String {
-			raw := data.(string)
+		if raw, ok := data.(string); ok {
 			return c.augmentString(raw), nil
 		}
 
