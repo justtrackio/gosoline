@@ -11,8 +11,44 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"testing"
 )
+
+type FixturesMysqlSuite struct {
+	suite.Suite
+	loader fixtures.FixtureLoader
+	logger mon.Logger
+	repo   db_repo.Repository
+}
+
+func (s *FixturesMysqlSuite) SetupSuite() {
+	setup(s.T())
+	test.Boot("test_configs/config.mysql.test.yml", "test_configs/config.fixtures_mysql.test.yml")
+
+	config := cfg.New()
+	config.Option(
+		cfg.WithConfigFile("test_configs/config.mysql.test.yml", "yml"),
+		cfg.WithConfigFile("test_configs/config.fixtures_mysql.test.yml", "yml"),
+	)
+
+	settings := db_repo.Settings{
+		AppId:    cfg.GetAppIdFromConfig(config),
+		Metadata: TestModelMetadata,
+	}
+
+	s.logger = mon.NewLogger()
+	s.loader = fixtures.NewFixtureLoader(config, s.logger)
+	s.repo = db_repo.New(config, s.logger, settings)
+}
+
+func (s *FixturesMysqlSuite) TearDownSuite() {
+	test.Shutdown()
+}
+
+func TestFixturesMysqlSuite(t *testing.T) {
+	suite.Run(t, new(FixturesMysqlSuite))
+}
 
 type MysqlTestModel struct {
 	db_repo.Model
@@ -31,11 +67,11 @@ var TestModelMetadata = db_repo.Metadata{
 	},
 }
 
-func mysqlTestFixtures() []*fixtures.FixtureSet {
+func ormMysqlTestFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.MysqlFixtureWriterFactory(&TestModelMetadata),
+			Writer:  fixtures.MysqlOrmFixtureWriterFactory(&TestModelMetadata),
 			Fixtures: []interface{}{
 				&MysqlTestModel{
 					Name: mdl.String("testName"),
@@ -45,38 +81,44 @@ func mysqlTestFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func Test_enabled_fixtures_mysql(t *testing.T) {
-	setup(t)
-
-	configFile := "test_configs/config.mysql.test.yml"
-
-	test.Boot(configFile)
-	defer test.Shutdown()
-
-	config := cfg.New()
-	config.Option(
-		cfg.WithConfigFile("test_configs/config.mysql.test.yml", "yml"),
-		cfg.WithConfigFile("test_configs/config.fixtures_mysql.test.yml", "yml"),
-	)
-
-	logger := mon.NewLogger()
-	loader := fixtures.NewFixtureLoader(config, logger)
-
-	err := loader.Load(mysqlTestFixtures())
-	assert.NoError(t, err)
-
-	settings := db_repo.Settings{
-		AppId:    cfg.GetAppIdFromConfig(config),
-		Metadata: TestModelMetadata,
+func plainMysqlTestFixtures() []*fixtures.FixtureSet {
+	return []*fixtures.FixtureSet{
+		{
+			Enabled: true,
+			Writer: fixtures.MysqlPlainFixtureWriterFactory(fixtures.MysqlPlainMetaData{
+				TableName: "mysql_test_models",
+				Columns:   []string{"id", "name"},
+			}),
+			Fixtures: []interface{}{
+				&fixtures.MysqlPlainFixtureValues{2, "testName2"},
+				&fixtures.MysqlPlainFixtureValues{2, "testName3"},
+			},
+		},
 	}
+}
 
-	repo := db_repo.New(config, logger, settings)
+func (s *FixturesMysqlSuite) TestOrmFixturesMysql() {
+	err := s.loader.Load(ormMysqlTestFixtures())
+	assert.NoError(s.T(), err)
 
 	result := MysqlTestModel{}
-	_ = repo.Read(context.Background(), mdl.Uint(1), &result)
+	_ = s.repo.Read(context.Background(), mdl.Uint(1), &result)
 
-	assert.NoError(t, err)
-	if assert.NotNil(t, result.Name) {
-		assert.Equal(t, "testName", *result.Name)
+	assert.NoError(s.T(), err)
+	if assert.NotNil(s.T(), result.Name) {
+		assert.Equal(s.T(), "testName", *result.Name)
+	}
+}
+
+func (s *FixturesMysqlSuite) TestPlainFixturesMysql() {
+	err := s.loader.Load(plainMysqlTestFixtures())
+	assert.NoError(s.T(), err)
+
+	result := MysqlTestModel{}
+	_ = s.repo.Read(context.Background(), mdl.Uint(2), &result)
+
+	assert.NoError(s.T(), err)
+	if assert.NotNil(s.T(), result.Name) {
+		assert.Equal(s.T(), "testName3", *result.Name)
 	}
 }

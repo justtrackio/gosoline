@@ -3,7 +3,7 @@ module github.com/applike/gosoline
 require (
 	github.com/DATA-DOG/go-sqlmock v1.3.0
 	github.com/DataDog/zstd v1.4.4 // indirect
-	github.com/Masterminds/squirrel v1.1.0
+	github.com/Masterminds/squirrel v1.2.0
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
 	github.com/alicebob/gopher-json v0.0.0-20180125190556-5a6b3ba71ee6 // indirect
 	github.com/alicebob/miniredis v2.4.6+incompatible
