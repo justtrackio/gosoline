@@ -11,16 +11,21 @@ import (
 	"time"
 )
 
-var sessions = simpleCache{}
+var (
+	awsSessions   simpleCache
+	awsHttpClient *http.Client
+)
 
-var httpClient = &http.Client{
-	Timeout: time.Minute,
+func init() {
+	awsHttpClient = &http.Client{
+		Timeout: time.Minute,
+	}
 }
 
-func getSession(host string, port int) (*session.Session, error) {
+func getAwsSession(host string, port int) (*session.Session, error) {
 	endpoint := fmt.Sprintf("http://%s:%d", host, port)
 
-	s := sessions.New(endpoint, func() interface{} {
+	s := awsSessions.New(endpoint, func() interface{} {
 		return createNewSession(endpoint)
 	})
 
@@ -35,7 +40,7 @@ func createNewSession(endpoint string) interface{} {
 		MaxRetries:                    mdl.Int(30),
 		Region:                        aws.String(endpoints.EuCentral1RegionID),
 		Endpoint:                      aws.String(endpoint),
-		HTTPClient:                    httpClient,
+		HTTPClient:                    awsHttpClient,
 	}
 
 	newSession, err := session.NewSession(config)

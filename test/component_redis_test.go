@@ -4,6 +4,7 @@ package test_test
 
 import (
 	pkgTest "github.com/applike/gosoline/pkg/test"
+	"github.com/go-redis/redis"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -11,10 +12,10 @@ import (
 func Test_redis(t *testing.T) {
 	setup(t)
 
-	pkgTest.Boot("test_configs/config.redis.test.yml")
-	defer pkgTest.Shutdown()
+	mocks := pkgTest.Boot("test_configs/config.redis.test.yml")
+	defer mocks.Shutdown()
 
-	client := pkgTest.ProvideRedisClient("redis")
+	client := mocks.ProvideClient("redis", "redis").(*redis.Client)
 	pong, err := client.Ping().Result()
 
 	assert.NoError(t, err)

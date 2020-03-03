@@ -2,98 +2,121 @@ package test
 
 import (
 	"fmt"
-	"github.com/ory/dockertest"
+	"github.com/applike/gosoline/pkg/cfg"
 	"log"
 	"sync"
-	"time"
 )
 
-var err error
-var wait sync.WaitGroup
-var dockerPool *dockertest.Pool
-var dockerResources []*dockertest.Resource
-var configs []*ContainerConfig
-var cfgFilename = "config.test.yml"
+type mockComponent interface {
+	Boot(name string, config cfg.Config, settings *mockSettings)
+	Run(runner *dockerRunner)
+	ProvideClient(clientType string) interface{}
+}
 
-func init() {
-	dockerPool, err = dockertest.NewPool("")
-	dockerPool.MaxWait = 2 * time.Minute
-	dockerResources = make([]*dockertest.Resource, 0)
+type mockSettings struct {
+	Debug     bool   `cfg:"debug"`
+	Component string `cfg:"component"`
+	Host      string `cfg:"host"`
+}
 
-	if err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
+type Mocks struct {
+	waitGroup    sync.WaitGroup
+	dockerRunner *dockerRunner
+	components   map[string]mockComponent
+}
+
+func newMocks() *Mocks {
+	components := make(map[string]mockComponent)
+	dockerRunner := newDockerRunner()
+
+	return &Mocks{
+		components:   components,
+		dockerRunner: dockerRunner,
 	}
 }
 
-func logErr(err error, msg string) {
-	Shutdown()
-	log.Println(msg)
-	log.Fatal(err)
-}
+func (t *Mocks) Boot(config cfg.Config) {
+	t.bootFromConfig(config)
 
-func Boot(configFilenames ...string) {
-	if len(configFilenames) == 0 {
-		configFilenames = append(configFilenames, cfgFilename)
-	}
-
-	for _, filename := range configFilenames {
-		log.Println(fmt.Sprintf("booting configuration %s", filename))
-		bootFromFile(filename)
-	}
-
-	wait.Wait()
+	t.waitGroup.Wait()
 
 	log.Println("test environment up and running")
-	fmt.Println()
+	log.Println()
 }
 
-func bootFromFile(filename string) {
-	config := readConfig(filename)
+func (t *Mocks) bootFromConfig(config cfg.Config) {
+	mocks := config.GetStringMap("mocks")
 
-	for _, mockConfig := range config.Mocks {
-		bootComponent(mockConfig)
+	for name, _ := range mocks {
+		settings := &mockSettings{}
+		key := fmt.Sprintf("mocks.%s", name)
+		config.UnmarshalKey(key, settings)
+
+		component := t.createComponent(settings.Component)
+
+		t.components[name] = component
+		component.Boot(name, config, settings)
+		t.runComponent(component)
 	}
 }
 
-func bootComponent(mockConfig configInput) {
-	component := mockConfig["component"]
-	name := mockConfig["name"].(string)
-
+func (t *Mocks) createComponent(component string) mockComponent {
 	switch component {
-	case "cloudwatch":
-		runCloudwatch(name, mockConfig)
-	case "dynamodb":
-		runDynamoDb(name, mockConfig)
-	case "elasticsearch":
-		runElasticsearch(name, mockConfig)
-	case "kinesis":
-		runKinesis(name, mockConfig)
 	case "mysql":
-		runMysql(name, mockConfig)
-	case "redis":
-		runRedis(name, mockConfig)
+		return &mysqlComponent{}
 	case "sns_sqs":
-		runSnsSqs(name, mockConfig)
+		return &snsSqsComponent{}
+	case "cloudwatch":
+		return &cloudwatchComponent{}
+	case "dynamodb":
+		return &dynamoDbComponent{}
+	case "elasticsearch":
+		return &elasticsearchComponent{}
+	case "kinesis":
+		return &kinesisComponent{}
 	case "wiremock":
-		runWiremock(name, mockConfig)
+		return &wiremockComponent{}
+	case "redis":
+		return &redisComponent{}
 	default:
-		err := fmt.Errorf("unknown component '%s'", component)
-		logErr(err, err.Error())
+		panic(fmt.Errorf("unknown component type: %s", component))
 	}
 }
 
-func Shutdown() {
-	for _, res := range dockerResources {
-		if err := dockerPool.Purge(res); err != nil {
-			log.Fatalf("Could not purge resource: %s", err)
-		}
-	}
-	for _, cfg := range configs {
-		if cfg.OnDestroy == nil {
-			continue
-		}
-		cfg.OnDestroy()
+func (t *Mocks) runComponent(component mockComponent) {
+	t.waitGroup.Add(1)
+	go func() {
+		defer t.waitGroup.Done()
+		component.Run(t.dockerRunner)
+	}()
+}
+
+func (t *Mocks) ProvideClient(name string, clientType string) interface{} {
+	component := t.components[name]
+	return component.ProvideClient(clientType)
+}
+
+func (t *Mocks) Shutdown() {
+	t.dockerRunner.PurgeAllResources()
+}
+
+func Boot(configFilenames ...string) *Mocks {
+	if len(configFilenames) == 0 {
+		configFilenames = append(configFilenames, "config.test.yml")
 	}
 
-	dockerResources = make([]*dockertest.Resource, 0)
+	config := cfg.New()
+
+	for _, filename := range configFilenames {
+		err := config.Option(cfg.WithConfigFile(filename, "yml"))
+
+		if err != nil {
+			panic(fmt.Errorf("failed to read config from file %s : %w", filename, err))
+		}
+	}
+
+	mocks := newMocks()
+	mocks.Boot(config)
+
+	return mocks
 }

@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"log"
@@ -10,63 +11,30 @@ import (
 	"time"
 )
 
-type snsSqsConfig struct {
-	Debug   bool   `mapstructure:"debug"`
-	Host    string `mapstructure:"host"`
-	SnsPort int    `mapstructure:"sns_port"`
-	SqsPort int    `mapstructure:"sqs_port"`
+type snsSqsSettings struct {
+	*mockSettings
+	SnsPort int `cfg:"sns_port"`
+	SqsPort int `cfg:"sqs_port"`
 }
 
-var snsSqsConfigs map[string]*snsSqsConfig
-
-var localstackClients = simpleCache{}
-
-func init() {
-	snsSqsConfigs = map[string]*snsSqsConfig{}
-	localstackClients = simpleCache{}
+type snsSqsComponent struct {
+	name     string
+	settings *snsSqsSettings
+	clients  *simpleCache
 }
 
-func onDestroy() {
-	snsSqsConfigs = map[string]*snsSqsConfig{}
-	localstackClients = simpleCache{}
+func (c *snsSqsComponent) Boot(name string, config cfg.Config, settings *mockSettings) {
+	c.name = name
+	c.clients = &simpleCache{}
+	c.settings = &snsSqsSettings{
+		mockSettings: settings,
+	}
+	key := fmt.Sprintf("mocks.%s", name)
+	config.UnmarshalKey(key, c.settings)
 }
 
-func ProvideSnsClient(name string) *sns.SNS {
-	return localstackClients.New("sns-"+name, func() interface{} {
-		sess, err := getSession(snsSqsConfigs[name].Host, snsSqsConfigs[name].SnsPort)
-
-		if err != nil {
-			logErr(err, "could not create sns client: %s")
-		}
-
-		return sns.New(sess)
-	}).(*sns.SNS)
-}
-
-func ProvideSqsClient(name string) *sqs.SQS {
-	return localstackClients.New("sqs-"+name, func() interface{} {
-		sess, err := getSession(snsSqsConfigs[name].Host, snsSqsConfigs[name].SqsPort)
-
-		if err != nil {
-			logErr(err, "could not create sqs client: %s")
-		}
-
-		return sqs.New(sess)
-	}).(*sqs.SQS)
-}
-
-func runSnsSqs(name string, config configInput) {
-	wait.Add(1)
-	go doRunSnsSqs(name, config)
-}
-
-func doRunSnsSqs(name string, configMap configInput) {
-	defer wait.Done()
-	defer log.Printf("%s component of type %s is ready", name, "sns_sqs")
-
-	localConfig := &snsSqsConfig{}
-	unmarshalConfig(configMap, localConfig)
-	snsSqsConfigs[name] = localConfig
+func (c *snsSqsComponent) Run(runner *dockerRunner) {
+	defer log.Printf("%s component of type %s is ready", c.name, "sns_sqs")
 
 	services := "SERVICES=" + strings.Join([]string{
 		"sns",
@@ -75,58 +43,81 @@ func doRunSnsSqs(name string, configMap configInput) {
 
 	env := []string{services}
 
-	if localConfig.Debug {
+	if c.settings.Debug {
 		env = append(env, "DEBUG=1")
 	}
 
-	containerName := fmt.Sprintf("gosoline_test_sns_sqs_%s", name)
+	containerName := fmt.Sprintf("gosoline_test_sns_sqs_%s", c.name)
 
-	runContainer(containerName, ContainerConfig{
+	runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.7",
 		Env:        env,
-		PortBindings: PortBinding{
-			"4575/tcp": fmt.Sprint(localConfig.SnsPort),
-			"4576/tcp": fmt.Sprint(localConfig.SqsPort),
+		PortBindings: portBinding{
+			"4575/tcp": fmt.Sprint(c.settings.SnsPort),
+			"4576/tcp": fmt.Sprint(c.settings.SqsPort),
 		},
-		HealthCheck: localstackHealthCheck(containerName),
-		OnDestroy:   onDestroy,
-		PrintLogs:   localConfig.Debug,
+		HealthCheck: localstackHealthCheck(runner, containerName),
+		PrintLogs:   c.settings.Debug,
 	})
 
-	c, err := dockerPool.Client.InspectContainer(containerName)
-
-	if err != nil {
-		logErr(err, "could not inspect container")
-	}
-
-	address := c.NetworkSettings.Networks["bridge"].IPAddress
+	address := runner.GetIpAddress(containerName)
 
 	if isReachable(address + ":4575") {
-		fmt.Println("overriding host", address)
-		snsSqsConfigs[name].Host = address
+		log.Println("overriding host", address)
+		c.settings.Host = address
 	}
 }
 
+func (c *snsSqsComponent) ProvideClient(clientType string) interface{} {
+	switch clientType {
+	case "sns":
+		return c.provideSnsClient()
+	case "sqs":
+		return c.provideSqsClient()
+	}
+	panic("unknown clientType " + clientType)
+}
+
+func (c *snsSqsComponent) provideSnsClient() *sns.SNS {
+	return c.clients.New(fmt.Sprintf("sns-%s", c.name), func() interface{} {
+		sess, err := getAwsSession(c.settings.Host, c.settings.SnsPort)
+
+		if err != nil {
+			panic(fmt.Errorf("could not create sns client: %s : %w", c.name, err))
+		}
+
+		return sns.New(sess)
+	}).(*sns.SNS)
+}
+
+func (c *snsSqsComponent) provideSqsClient() *sqs.SQS {
+	return c.clients.New(fmt.Sprintf("sqs-%s", c.name), func() interface{} {
+		sess, err := getAwsSession(c.settings.Host, c.settings.SqsPort)
+
+		if err != nil {
+			panic(fmt.Errorf("could not create sqs client %s : %w", c.name, err))
+		}
+
+		return sqs.New(sess)
+	}).(*sqs.SQS)
+}
+
 func isReachable(address string) bool {
-	timeout := time.Duration(5) * time.Second
+	timeout := time.Duration(1) * time.Second
 	conn, err := net.DialTimeout("tcp", address, timeout)
+
+	if err != nil {
+		return false
+	}
+
 	defer func() {
 		err := conn.Close()
 
 		if err != nil {
-			logErr(err, "failed to close connection")
+			panic(fmt.Errorf("failed to close connection : %w", err))
 		}
 	}()
-
-	if err != nil {
-		fmt.Println(err)
-		return false
-	}
-
-	fmt.Println("connection established between localhost and", address)
-	fmt.Println("remote address", conn.RemoteAddr().String())
-	fmt.Println("local address", conn.LocalAddr().String())
 
 	return true
 }

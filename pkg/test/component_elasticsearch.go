@@ -3,42 +3,47 @@ package test
 import (
 	"errors"
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"log"
 	"net/http"
 )
 
-type elasticsearchConfig struct {
-	Debug   bool   `mapstructure:"debug"`
-	Version string `mapstructure:"version"`
-	Host    string `mapstructure:"host"`
-	Port    int    `mapstructure:"port"`
+type elasticsearchSettings struct {
+	*mockSettings
+	Port    int    `cfg:"port"`
+	Version string `cfg:"version"`
 }
 
-func runElasticsearch(name string, config configInput) {
-	wait.Add(1)
-	go doRunElasticsearch(name, config)
+type elasticsearchComponent struct {
+	name     string
+	settings *elasticsearchSettings
 }
 
-func doRunElasticsearch(name string, configMap configInput) {
-	defer wait.Done()
-	defer log.Printf("%s component of type %s is ready", name, "elasticsearch")
+func (m *elasticsearchComponent) Boot(name string, config cfg.Config, settings *mockSettings) {
+	m.name = name
+	m.settings = &elasticsearchSettings{
+		mockSettings: settings,
+	}
+	key := fmt.Sprintf("mocks.%s", name)
+	config.UnmarshalKey(key, m.settings)
+}
 
-	config := &elasticsearchConfig{}
-	unmarshalConfig(configMap, config)
+func (m *elasticsearchComponent) Run(runner *dockerRunner) {
+	defer log.Printf("%s component of type %s is ready", m.name, "elasticsearch")
 
-	containerName := fmt.Sprintf("gosoline_test_elasticsearch_%s", name)
+	containerName := fmt.Sprintf("gosoline_test_elasticsearch_%s", m.name)
 
-	runContainer(containerName, ContainerConfig{
+	runner.Run(containerName, containerConfig{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
-		Tag:        config.Version,
+		Tag:        m.settings.Version,
 		Env: []string{
 			"discovery.type=single-node",
 		},
-		PortBindings: PortBinding{
-			"9200/tcp": fmt.Sprint(config.Port),
+		PortBindings: portBinding{
+			"9200/tcp": fmt.Sprint(m.settings.Port),
 		},
 		HealthCheck: func() error {
-			resp, err := http.Get(fmt.Sprintf("http://%s:%d/_cluster/health", config.Host, config.Port))
+			resp, err := http.Get(fmt.Sprintf("http://%s:%d/_cluster/health", m.settings.Host, m.settings.Port))
 
 			if err != nil {
 				return err
@@ -51,6 +56,10 @@ func doRunElasticsearch(name string, configMap configInput) {
 
 			return nil
 		},
-		PrintLogs: config.Debug,
+		PrintLogs: m.settings.Debug,
 	})
+}
+
+func (m *elasticsearchComponent) ProvideClient(string) interface{} {
+	return nil // no client needed for elasticsearch
 }

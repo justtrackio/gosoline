@@ -2,73 +2,66 @@ package test
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"log"
 )
 
-var dynamoDbConfigs map[string]*dynamoDbConfig
-var dynamoDbClients = simpleCache{}
-
-type dynamoDbConfig struct {
-	Debug bool   `mapstructure:"debug"`
-	Host  string `mapstructure:"host"`
-	Port  int    `mapstructure:"port"`
+type dynamoDbSettings struct {
+	*mockSettings
+	Port int `cfg:"port"`
 }
 
-type DynamoDbFixtures struct {
-	Table *dynamodb.CreateTableInput
-	Items []map[string]interface{}
+type dynamoDbComponent struct {
+	name     string
+	settings *dynamoDbSettings
+	clients  *simpleCache
 }
 
-func init() {
-	dynamoDbClients = simpleCache{}
-	dynamoDbConfigs = map[string]*dynamoDbConfig{}
+func (m *dynamoDbComponent) Boot(name string, config cfg.Config, settings *mockSettings) {
+	m.name = name
+	m.settings = &dynamoDbSettings{
+		mockSettings: settings,
+	}
+	m.clients = &simpleCache{}
+	key := fmt.Sprintf("mocks.%s", name)
+	config.UnmarshalKey(key, m.settings)
 }
 
-func ProvideDynamoDbClient(name string) *dynamodb.DynamoDB {
-	return dynamoDbClients.New(name, func() interface{} {
-		sess, err := getSession(dynamoDbConfigs[name].Host, dynamoDbConfigs[name].Port)
+func (m *dynamoDbComponent) Run(runner *dockerRunner) {
+	defer log.Printf("%s component of type %s is ready", m.name, "dynamodb")
 
-		if err != nil {
-			logErr(err, "could not create dynamodb client: %s")
-		}
+	containerName := fmt.Sprintf("gosoline_test_dynamodb_%s", m.name)
 
-		return dynamodb.New(sess)
-	}).(*dynamodb.DynamoDB)
-}
-
-func runDynamoDb(name string, config configInput) {
-	wait.Add(1)
-	go doRunDynamoDb(name, config)
-}
-
-func doRunDynamoDb(name string, configMap configInput) {
-	defer wait.Done()
-	defer log.Printf("%s component of type %s is ready", name, "dynamodb")
-
-	config := &dynamoDbConfig{}
-	unmarshalConfig(configMap, config)
-	dynamoDbConfigs[name] = config
-
-	runDynamoDbContainer(name, config.Debug)
-}
-
-func runDynamoDbContainer(name string, debug bool) {
-	client := ProvideDynamoDbClient(name)
-
-	containerName := fmt.Sprintf("gosoline_test_dynamodb_%s", name)
-
-	runContainer(containerName, ContainerConfig{
+	runner.Run(containerName, containerConfig{
 		Repository: "amazon/dynamodb-local",
 		Tag:        "latest",
-		PortBindings: PortBinding{
-			"8000/tcp": fmt.Sprint(dynamoDbConfigs[name].Port),
+		PortBindings: portBinding{
+			"8000/tcp": fmt.Sprint(m.settings.Port),
 		},
 		HealthCheck: func() error {
+			client := m.provideDynamoDbClient()
+
 			_, err := client.ListTables(&dynamodb.ListTablesInput{})
 
 			return err
 		},
-		PrintLogs: debug,
+		PrintLogs: m.settings.Debug,
 	})
+}
+
+func (m *dynamoDbComponent) ProvideClient(string) interface{} {
+	return m.provideDynamoDbClient()
+}
+
+func (m *dynamoDbComponent) provideDynamoDbClient() *dynamodb.DynamoDB {
+	return m.clients.New(m.name, func() interface{} {
+		sess, err := getAwsSession(m.settings.Host, m.settings.Port)
+
+		if err != nil {
+			panic(fmt.Errorf("could not create dynamodb client %s, %w", m.name, err))
+		}
+
+		return dynamodb.New(sess)
+	}).(*dynamodb.DynamoDB)
 }
