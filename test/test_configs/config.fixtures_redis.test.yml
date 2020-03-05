@@ -1,0 +1,13 @@
+app_project: prj
+app_family: fam
+app_name: app
+
+env: test
+
+redis_default_mode: local
+redis_default_addr: '172.17.0.1:6381'
+redis_kvstore_testModel_mode: local
+redis_kvstore_testModel_addr: '172.17.0.1:6381'
+
+fixtures:
+  enabled: true

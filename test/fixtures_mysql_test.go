@@ -53,8 +53,13 @@ func Test_enabled_fixtures_mysql(t *testing.T) {
 	test.Boot(configFile)
 	defer test.Shutdown()
 
+	config := cfg.New()
+	config.Option(
+		cfg.WithConfigFile("test_configs/config.mysql.test.yml", "yml"),
+		cfg.WithConfigFile("test_configs/config.fixtures_mysql.test.yml", "yml"),
+	)
+
 	logger := mon.NewLogger()
-	config := configFromFiles("test_configs/config.mysql.test.yml", "test_configs/config.fixtures_mysql.test.yml")
 	loader := fixtures.NewFixtureLoader(config, logger)
 
 	err := loader.Load(mysqlTestFixtures())

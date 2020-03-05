@@ -142,6 +142,7 @@ func (k *kernel) Run() {
 	k.wg.Add(k.moduleCount)
 
 	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
+		// TODO: gosoline#201 THIS IS EXECUTED ASYNCHRONOUSLY! MODULES ARE NOT YET RUNNING AFTER Range HAS EXECUTED!
 		k.cfn.Gof(func() error {
 			err := k.runModule(name.(string), ctx)
 			k.checkRunningForegroundModules()

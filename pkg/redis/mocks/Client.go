@@ -395,6 +395,27 @@ func (_m *Client) LLen(_a0 string) (int64, error) {
 	return r0, r1
 }
 
+// LPop provides a mock function with given fields: _a0
+func (_m *Client) LPop(_a0 string) (string, error) {
+	ret := _m.Called(_a0)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // MGet provides a mock function with given fields: keys
 func (_m *Client) MGet(keys ...string) ([]interface{}, error) {
 	_va := make([]interface{}, len(keys))

@@ -32,6 +32,7 @@ type Client interface {
 	Del(string) (int64, error)
 
 	BLPop(time.Duration, ...string) ([]string, error)
+	LPop(string) (string, error)
 	LLen(string) (int64, error)
 	RPush(string, ...interface{}) (int64, error)
 
@@ -181,6 +182,10 @@ func (c *redisClient) Del(key string) (int64, error) {
 
 func (c *redisClient) BLPop(timeout time.Duration, keys ...string) ([]string, error) {
 	return c.base.BLPop(timeout, keys...).Result()
+}
+
+func (c *redisClient) LPop(key string) (string, error) {
+	return c.base.LPop(key).Result()
 }
 
 func (c *redisClient) LLen(key string) (int64, error) {

@@ -45,7 +45,7 @@ func (d *dynamoDbFixtureWriter) Write(fs *FixtureSet) error {
 		}
 	}
 
-	d.logger.Infof("loaded %d dynamo db fixtures", len(fs.Fixtures))
+	d.logger.Infof("loaded %d dynamodb fixtures", len(fs.Fixtures))
 
 	return nil
 }
