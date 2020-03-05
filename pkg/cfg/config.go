@@ -59,11 +59,11 @@ type config struct {
 
 var templateRegex = regexp.MustCompile("{([\\w.\\-]+)}")
 
-func New() *config {
+func New() GosoConf {
 	return NewWithInterfaces(os.LookupEnv)
 }
 
-func NewWithInterfaces(lookupEnv LookupEnv) *config {
+func NewWithInterfaces(lookupEnv LookupEnv) GosoConf {
 	cfg := &config{
 		lookupEnv:     lookupEnv,
 		errorHandlers: []ErrorHandler{defaultErrorHandler},

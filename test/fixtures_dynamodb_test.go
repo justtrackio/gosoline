@@ -38,7 +38,11 @@ func TestFixturesDynamoDbSuite(t *testing.T) {
 }
 
 func (s FixturesDynamoDbSuite) TestDynamoDb() {
-	config := configFromFiles("test_configs/config.dynamodb.test.yml", "test_configs/config.fixtures_dynamodb.test.yml")
+	config := cfg.New()
+	config.Option(
+		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
+		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
+	)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
@@ -77,7 +81,11 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 }
 
 func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
-	config := configFromFiles("test_configs/config.dynamodb.test.yml", "test_configs/config.fixtures_dynamodb.test.yml")
+	config := cfg.New()
+	config.Option(
+		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
+		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
+	)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
@@ -154,18 +162,4 @@ func dynamoDbFixtures() []*fixtures.FixtureSet {
 			},
 		},
 	}
-}
-
-func configFromFiles(filePaths ...string) cfg.Config {
-	config := cfg.New()
-
-	for _, filePath := range filePaths {
-		err := cfg.WithConfigFile(filePath, "yml")(config)
-
-		if err != nil {
-			panic("could not find config file " + filePath)
-		}
-	}
-
-	return config
 }

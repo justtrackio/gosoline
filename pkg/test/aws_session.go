@@ -28,7 +28,7 @@ func getSession(host string, port int) (*session.Session, error) {
 }
 
 func createNewSession(endpoint string) interface{} {
-	log.Println("creating new aws session for endpoint : " + endpoint)
+	log.Println("creating new aws session for endpoint: " + endpoint)
 
 	config := &aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(true),

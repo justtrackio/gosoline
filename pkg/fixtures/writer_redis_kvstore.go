@@ -10,19 +10,14 @@ import (
 	"reflect"
 )
 
-type KvStoreFixture struct {
-	Key   interface{}
-	Value interface{}
-}
-
-type dynamoDbKvStoreFixtureWriter struct {
+type redisKvStoreFixtureWriter struct {
 	logger mon.Logger
 	store  kvstore.KvStore
 }
 
-func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
+func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
-		store := kvstore.NewDdbKvStore(config, logger, &kvstore.Settings{
+		store := kvstore.NewRedisKvStore(config, logger, &kvstore.Settings{
 			AppId: cfg.AppId{
 				Project:     modelId.Project,
 				Environment: modelId.Environment,
@@ -32,18 +27,18 @@ func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFact
 			Name: modelId.Name,
 		})
 
-		return NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger, store)
+		return NewRedisKvStoreFixtureWriterWithInterfaces(logger, store)
 	}
 }
 
-func NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger mon.Logger, store kvstore.KvStore) FixtureWriter {
-	return &dynamoDbKvStoreFixtureWriter{
+func NewRedisKvStoreFixtureWriterWithInterfaces(logger mon.Logger, store kvstore.KvStore) FixtureWriter {
+	return &redisKvStoreFixtureWriter{
 		logger: logger,
 		store:  store,
 	}
 }
 
-func (d *dynamoDbKvStoreFixtureWriter) Write(fs *FixtureSet) error {
+func (d *redisKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
 		kvItem, ok := item.(*KvStoreFixture)
 
@@ -58,7 +53,7 @@ func (d *dynamoDbKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 		}
 	}
 
-	d.logger.Infof("loaded %d dynamo db kv fixtures", len(fs.Fixtures))
+	d.logger.Infof("loaded %d redis kvstore fixtures", len(fs.Fixtures))
 
 	return nil
 }

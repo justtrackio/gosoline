@@ -33,7 +33,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.2.5
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.0.0
-	github.com/google/uuid v1.0.0
+	github.com/google/uuid v1.1.1
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/imdario/mergo v0.3.7
@@ -50,12 +50,10 @@ require (
 	github.com/mattn/go-colorable v0.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/myesui/uuid v1.0.0 // indirect
-	github.com/onsi/ginkgo v1.8.0 // indirect
-	github.com/onsi/gomega v1.5.0 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/ory/dockertest v3.3.4+incompatible
 	github.com/ory/ladon v1.0.1
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.0
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
 	github.com/spf13/cast v1.3.0
 	github.com/stretchr/objx v0.2.0
@@ -77,8 +75,9 @@ require (
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
-	gopkg.in/yaml.v2 v2.2.2
-	gopkg.in/yaml.v3 v3.0.0-20190924164351-c8b7dadae555
+	gopkg.in/yaml.v2 v2.2.7
+	gopkg.in/yaml.v3 v3.0.0-20191120175047-4206685974f2
+	sigs.k8s.io/kind v0.7.0 // indirect
 )
 
 go 1.13
