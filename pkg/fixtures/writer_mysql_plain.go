@@ -19,17 +19,17 @@ type MysqlPlainMetaData struct {
 type mysqlPlainFixtureWriter struct {
 	logger   mon.Logger
 	dbClient db.Client
-	metaData MysqlPlainMetaData
+	metaData *MysqlPlainMetaData
 }
 
-func MysqlPlainFixtureWriterFactory(metaData MysqlPlainMetaData) FixtureWriterFactory {
+func MysqlPlainFixtureWriterFactory(metaData *MysqlPlainMetaData) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
 		dbClient := db.NewClient(config, logger)
 		return NewMysqlPlainFixtureWriterWithInterfaces(logger, dbClient, metaData)
 	}
 }
 
-func NewMysqlPlainFixtureWriterWithInterfaces(logger mon.Logger, dbClient db.Client, metaData MysqlPlainMetaData) FixtureWriter {
+func NewMysqlPlainFixtureWriterWithInterfaces(logger mon.Logger, dbClient db.Client, metaData *MysqlPlainMetaData) FixtureWriter {
 	return &mysqlPlainFixtureWriter{
 		logger:   logger,
 		dbClient: dbClient,
