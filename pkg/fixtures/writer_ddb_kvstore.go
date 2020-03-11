@@ -2,12 +2,10 @@ package fixtures
 
 import (
 	"context"
-	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
-	"reflect"
 )
 
 type KvStoreFixture struct {
@@ -45,11 +43,7 @@ func NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger mon.Logger, store kvst
 
 func (d *dynamoDbKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
-		kvItem, ok := item.(*KvStoreFixture)
-
-		if !ok {
-			return fmt.Errorf("invalid fixture type: %s", reflect.TypeOf(item))
-		}
+		kvItem := item.(*KvStoreFixture)
 
 		err := d.store.Put(context.Background(), kvItem.Key, kvItem.Value)
 

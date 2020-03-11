@@ -6,7 +6,6 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
 	"github.com/applike/gosoline/pkg/mon"
-	"reflect"
 )
 
 type MysqlPlainFixtureValues []interface{}
@@ -39,11 +38,7 @@ func NewMysqlPlainFixtureWriterWithInterfaces(logger mon.Logger, dbClient db.Cli
 
 func (m *mysqlPlainFixtureWriter) Write(fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
-		fixture, ok := item.(*MysqlPlainFixtureValues)
-
-		if !ok {
-			return fmt.Errorf("invalid fixture type: %s", reflect.TypeOf(item))
-		}
+		fixture := item.(MysqlPlainFixtureValues)
 
 		sql, args, err := m.buildSql(fixture)
 
@@ -71,11 +66,11 @@ func (m *mysqlPlainFixtureWriter) Write(fs *FixtureSet) error {
 	return nil
 }
 
-func (m *mysqlPlainFixtureWriter) buildSql(values *MysqlPlainFixtureValues) (string, []interface{}, error) {
+func (m *mysqlPlainFixtureWriter) buildSql(values MysqlPlainFixtureValues) (string, []interface{}, error) {
 	insertBuilder := squirrel.Replace(m.metaData.TableName).
 		PlaceholderFormat(squirrel.Question).
 		Columns(m.metaData.Columns...).
-		Values(*values...)
+		Values(values...)
 
 	return insertBuilder.ToSql()
 }

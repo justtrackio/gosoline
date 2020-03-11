@@ -85,8 +85,8 @@ func plainMysqlTestFixtures() []*fixtures.FixtureSet {
 				Columns:   []string{"id", "name"},
 			}),
 			Fixtures: []interface{}{
-				&fixtures.MysqlPlainFixtureValues{2, "testName2"},
-				&fixtures.MysqlPlainFixtureValues{2, "testName3"},
+				fixtures.MysqlPlainFixtureValues{2, "testName2"},
+				fixtures.MysqlPlainFixtureValues{2, "testName3"},
 			},
 		},
 	}

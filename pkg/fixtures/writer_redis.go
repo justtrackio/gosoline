@@ -5,7 +5,6 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/redis"
-	"reflect"
 	"time"
 )
 
@@ -57,11 +56,7 @@ func NewRedisFixtureWriterWithInterfaces(logger mon.Logger, client redis.Client,
 
 func (d *redisFixtureWriter) Write(fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
-		redisFixture, ok := item.(*RedisFixture)
-
-		if !ok {
-			return fmt.Errorf("invalid fixture type: %s", reflect.TypeOf(item))
-		}
+		redisFixture := item.(*RedisFixture)
 
 		handler, ok := redisHandlers[d.operation]
 

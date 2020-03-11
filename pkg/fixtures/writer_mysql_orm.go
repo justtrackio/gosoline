@@ -2,11 +2,9 @@ package fixtures
 
 import (
 	"context"
-	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/mon"
-	"reflect"
 )
 
 type mysqlOrmFixtureWriter struct {
@@ -40,11 +38,7 @@ func (m *mysqlOrmFixtureWriter) Write(fs *FixtureSet) error {
 	ctx := context.Background()
 
 	for _, item := range fs.Fixtures {
-		model, ok := item.(db_repo.ModelBased)
-
-		if !ok {
-			return fmt.Errorf("invalid fixture type: %s", reflect.TypeOf(item))
-		}
+		model := item.(db_repo.ModelBased)
 
 		err := m.repo.Update(ctx, model)
 

@@ -50,8 +50,8 @@ func createFixtures() []*fixtures.FixtureSet {
 				Columns:   []string{"id", "name"},
 			}),
 			Fixtures: []interface{}{
-				&fixtures.MysqlPlainFixtureValues{1, "testName1"},
-				&fixtures.MysqlPlainFixtureValues{2, "testName2"},
+				fixtures.MysqlPlainFixtureValues{1, "testName1"},
+				fixtures.MysqlPlainFixtureValues{2, "testName2"},
 			},
 		},
 		{
