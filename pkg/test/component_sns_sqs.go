@@ -8,8 +8,12 @@ import (
 	"strings"
 )
 
+const componentSns = "sns"
+const componentSqs = "sqs"
+const componentSnsSqs = "sns_sqs"
+
 type snsSqsSettings struct {
-	*mockSettings
+	*healthcheckMockSettings
 	SnsPort int `cfg:"sns_port"`
 	SqsPort int `cfg:"sqs_port"`
 }
@@ -26,7 +30,10 @@ func (s *snsSqsComponent) Boot(config cfg.Config, runner *dockerRunner, settings
 	s.runner = runner
 	s.clients = &simpleCache{}
 	s.settings = &snsSqsSettings{
-		mockSettings: settings,
+		healthcheckMockSettings: &healthcheckMockSettings{
+			mockSettings: settings,
+			Healthcheck:  healthcheckSettings(config, name),
+		},
 	}
 	key := fmt.Sprintf("mocks.%s", name)
 	config.UnmarshalKey(key, s.settings)
@@ -34,8 +41,8 @@ func (s *snsSqsComponent) Boot(config cfg.Config, runner *dockerRunner, settings
 
 func (s *snsSqsComponent) Start() {
 	services := "SERVICES=" + strings.Join([]string{
-		"sns",
-		"sqs",
+		componentSns,
+		componentSqs,
 	}, ",")
 
 	env := []string{services}
@@ -48,19 +55,20 @@ func (s *snsSqsComponent) Start() {
 
 	s.runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
-		Tag:        "0.10.7",
+		Tag:        "0.10.8",
 		Env:        env,
 		PortBindings: portBinding{
 			"4575/tcp": fmt.Sprint(s.settings.SnsPort),
 			"4576/tcp": fmt.Sprint(s.settings.SqsPort),
+			"8080/tcp": fmt.Sprint(s.settings.Healthcheck.Port),
 		},
-		HealthCheck: localstackHealthCheck(s.runner, containerName),
+		HealthCheck: localstackHealthCheck(s.settings.healthcheckMockSettings, componentSns, componentSqs),
 		PrintLogs:   s.settings.Debug,
 	})
 }
 
 func (s *snsSqsComponent) provideSnsClient() *sns.SNS {
-	return s.clients.New(fmt.Sprintf("sns-%s", s.name), func() interface{} {
+	return s.clients.New(fmt.Sprintf("%s-%s", componentSns, s.name), func() interface{} {
 		sess := getAwsSession(s.settings.Host, s.settings.SnsPort)
 
 		return sns.New(sess)
@@ -68,7 +76,7 @@ func (s *snsSqsComponent) provideSnsClient() *sns.SNS {
 }
 
 func (s *snsSqsComponent) provideSqsClient() *sqs.SQS {
-	return s.clients.New(fmt.Sprintf("sqs-%s", s.name), func() interface{} {
+	return s.clients.New(fmt.Sprintf("%s-%s", componentSqs, s.name), func() interface{} {
 		sess := getAwsSession(s.settings.Host, s.settings.SqsPort)
 
 		return sqs.New(sess)
