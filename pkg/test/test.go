@@ -65,15 +65,15 @@ func (m *Mocks) createComponent(component string) mockComponent {
 	switch component {
 	case "mysql":
 		return &mysqlComponent{}
-	case "sns_sqs":
+	case componentSnsSqs:
 		return &snsSqsComponent{}
-	case "cloudwatch":
+	case componentCloudwatch:
 		return &cloudwatchComponent{}
 	case "dynamodb":
 		return &dynamoDbComponent{}
 	case "elasticsearch":
 		return &elasticsearchComponent{}
-	case "kinesis":
+	case componentKinesis:
 		return &kinesisComponent{}
 	case "wiremock":
 		return &wiremockComponent{}

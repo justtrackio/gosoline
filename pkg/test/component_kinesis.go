@@ -6,8 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 )
 
+const componentKinesis = "kinesis"
+
 type kinesisSettings struct {
-	*mockSettings
+	*healthcheckMockSettings
 	Port int `cfg:"port"`
 }
 
@@ -23,7 +25,10 @@ func (k *kinesisComponent) Boot(config cfg.Config, runner *dockerRunner, setting
 	k.runner = runner
 	k.clients = &simpleCache{}
 	k.settings = &kinesisSettings{
-		mockSettings: settings,
+		healthcheckMockSettings: &healthcheckMockSettings{
+			mockSettings: settings,
+			Healthcheck:  healthcheckSettings(config, name),
+		},
 	}
 	key := fmt.Sprintf("mocks.%s", name)
 	config.UnmarshalKey(key, k.settings)
@@ -34,14 +39,15 @@ func (k *kinesisComponent) Start() {
 
 	k.runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
-		Tag:        "0.10.7",
+		Tag:        "0.10.8",
 		Env: []string{
-			"SERVICES=kinesis",
+			fmt.Sprintf("SERVICES=%s", componentKinesis),
 		},
 		PortBindings: portBinding{
 			"4568/tcp": fmt.Sprint(k.settings.Port),
+			"8080/tcp": fmt.Sprint(k.settings.Healthcheck.Port),
 		},
-		HealthCheck: localstackHealthCheck(k.runner, containerName),
+		HealthCheck: localstackHealthCheck(k.settings.healthcheckMockSettings, componentKinesis),
 		PrintLogs:   k.settings.Debug,
 	})
 }
