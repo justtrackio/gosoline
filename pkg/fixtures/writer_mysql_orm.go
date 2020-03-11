@@ -8,8 +8,10 @@ import (
 )
 
 type mysqlOrmFixtureWriter struct {
-	logger mon.Logger
-	repo   db_repo.Repository
+	logger   mon.Logger
+	metadata *db_repo.Metadata
+	repo     db_repo.Repository
+	purger   *mysqlPurger
 }
 
 func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFactory {
@@ -22,19 +24,32 @@ func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFacto
 		}
 
 		repo := db_repo.New(config, logger, settings)
+		purger := newMysqlPurger(config, logger, metadata.TableName)
 
-		return NewMysqlFixtureWriterWithInterfaces(logger, repo)
+		return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo, purger)
 	}
 }
 
-func NewMysqlFixtureWriterWithInterfaces(logger mon.Logger, repo db_repo.Repository) FixtureWriter {
+func NewMysqlFixtureWriterWithInterfaces(logger mon.Logger, metadata *db_repo.Metadata, repo db_repo.Repository, purger *mysqlPurger) FixtureWriter {
 	return &mysqlOrmFixtureWriter{
-		logger: logger,
-		repo:   repo,
+		logger:   logger,
+		metadata: metadata,
+		repo:     repo,
+		purger:   purger,
 	}
 }
 
 func (m *mysqlOrmFixtureWriter) Purge() error {
+	err := m.purger.purgeMysql()
+
+	if err != nil {
+		m.logger.Errorf(err, "error occured during purging of table %s in plain mysql fixture loader", m.metadata.TableName)
+
+		return err
+	}
+
+	m.logger.Infof("purged table for orm mysql fixtures")
+
 	return nil
 }
 

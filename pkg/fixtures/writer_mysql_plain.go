@@ -17,26 +17,40 @@ type MysqlPlainMetaData struct {
 
 type mysqlPlainFixtureWriter struct {
 	logger   mon.Logger
-	dbClient db.Client
-	metaData *MysqlPlainMetaData
+	client   db.Client
+	metadata *MysqlPlainMetaData
+	purger   *mysqlPurger
 }
 
-func MysqlPlainFixtureWriterFactory(metaData *MysqlPlainMetaData) FixtureWriterFactory {
+func MysqlPlainFixtureWriterFactory(metadata *MysqlPlainMetaData) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
 		dbClient := db.NewClient(config, logger)
-		return NewMysqlPlainFixtureWriterWithInterfaces(logger, dbClient, metaData)
+		purger := newMysqlPurger(config, logger, metadata.TableName)
+
+		return NewMysqlPlainFixtureWriterWithInterfaces(logger, dbClient, metadata, purger)
 	}
 }
 
-func NewMysqlPlainFixtureWriterWithInterfaces(logger mon.Logger, dbClient db.Client, metaData *MysqlPlainMetaData) FixtureWriter {
+func NewMysqlPlainFixtureWriterWithInterfaces(logger mon.Logger, client db.Client, metadata *MysqlPlainMetaData, purger *mysqlPurger) FixtureWriter {
 	return &mysqlPlainFixtureWriter{
 		logger:   logger,
-		dbClient: dbClient,
-		metaData: metaData,
+		client:   client,
+		metadata: metadata,
+		purger:   purger,
 	}
 }
 
 func (m *mysqlPlainFixtureWriter) Purge() error {
+	err := m.purger.purgeMysql()
+
+	if err != nil {
+		m.logger.Errorf(err, "error occured during purging of table %s in plain mysql fixture loader", m.metadata.TableName)
+
+		return err
+	}
+
+	m.logger.Infof("purged table %s for plain mysql fixtures", m.metadata.TableName)
+
 	return nil
 }
 
@@ -50,7 +64,7 @@ func (m *mysqlPlainFixtureWriter) Write(fs *FixtureSet) error {
 			return err
 		}
 
-		res, err := m.dbClient.Exec(sql, args...)
+		res, err := m.client.Exec(sql, args...)
 
 		if err != nil {
 			return err
@@ -71,9 +85,9 @@ func (m *mysqlPlainFixtureWriter) Write(fs *FixtureSet) error {
 }
 
 func (m *mysqlPlainFixtureWriter) buildSql(values MysqlPlainFixtureValues) (string, []interface{}, error) {
-	insertBuilder := squirrel.Replace(m.metaData.TableName).
+	insertBuilder := squirrel.Replace(m.metadata.TableName).
 		PlaceholderFormat(squirrel.Question).
-		Columns(m.metaData.Columns...).
+		Columns(m.metadata.Columns...).
 		Values(values...)
 
 	return insertBuilder.ToSql()
