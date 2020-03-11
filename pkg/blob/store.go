@@ -274,7 +274,8 @@ func isBucketAlreadyExistsError(err error) bool {
 	}
 
 	if aerr, ok := err.(awserr.Error); ok {
-		return aerr.Code() == s3.ErrCodeBucketAlreadyExists
+		return aerr.Code() == s3.ErrCodeBucketAlreadyExists ||
+			aerr.Code() == s3.ErrCodeBucketAlreadyOwnedByYou
 	}
 
 	return false

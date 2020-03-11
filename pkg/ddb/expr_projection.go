@@ -10,7 +10,7 @@ func buildProjectionExpression(metadata FieldAware, model interface{}) (*express
 		return nil, nil
 	}
 
-	projectedFields, err := metadataReadFields(model)
+	projectedFields, err := MetadataReadFields(model)
 
 	if err != nil {
 		return nil, err
