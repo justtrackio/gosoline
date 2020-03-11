@@ -7,13 +7,17 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
-func NewFixtureLoader(config cfg.Config, logger mon.Logger) FixtureLoader {
-	return &noopFixtureLoader{}
+type noopFixtureLoader struct {
+	logger mon.Logger
 }
 
-type noopFixtureLoader struct {
+func NewFixtureLoader(config cfg.Config, logger mon.Logger) FixtureLoader {
+	return &noopFixtureLoader{
+		logger: logger.WithChannel("fixture_loader"),
+	}
 }
 
 func (n noopFixtureLoader) Load(fixtureSets []*FixtureSet) error {
-	return nil // do nothing
+	n.logger.Info("fixtures loading disabled, to enable it use the 'fixtures' build tag")
+	return nil
 }
