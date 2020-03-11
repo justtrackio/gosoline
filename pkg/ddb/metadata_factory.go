@@ -130,7 +130,7 @@ func (f *metadataFactory) getFields(model interface{}, hashTag string, rangeTag 
 		rangeKey = mdl.String(rangeAttribute.AttributeName)
 	}
 
-	if fields, err = metadataReadFields(model); err != nil {
+	if fields, err = MetadataReadFields(model); err != nil {
 		return metadataFields{}, err
 	}
 
@@ -313,7 +313,7 @@ func (f *metadataFactory) getAttributeType(field reflect.StructField) string {
 	return attributeType
 }
 
-func metadataReadFields(model interface{}) ([]string, error) {
+func MetadataReadFields(model interface{}) ([]string, error) {
 	t := findBaseType(model)
 	fields := make([]string, 0)
 
@@ -338,6 +338,12 @@ func metadataReadFields(model interface{}) ([]string, error) {
 
 		if tag == "-" {
 			continue
+		}
+
+		tag = strings.SplitN(tag, ",", 2)[0]
+
+		if len(tag) == 0 {
+			tag = field.Name
 		}
 
 		fields = append(fields, tag)
