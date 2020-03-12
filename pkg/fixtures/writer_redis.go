@@ -36,26 +36,30 @@ type redisFixtureWriter struct {
 	logger    mon.Logger
 	client    redis.Client
 	operation string
+	purger    *redisPurger
 }
 
 func RedisFixtureWriterFactory(name *string, operation *string) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
 		client := redis.GetClient(config, logger, *name)
 
-		return NewRedisFixtureWriterWithInterfaces(logger, client, operation)
+		purger := newRedisPurger(config, logger, name)
+
+		return NewRedisFixtureWriterWithInterfaces(logger, client, purger, operation)
 	}
 }
 
-func NewRedisFixtureWriterWithInterfaces(logger mon.Logger, client redis.Client, operation *string) FixtureWriter {
+func NewRedisFixtureWriterWithInterfaces(logger mon.Logger, client redis.Client, purger *redisPurger, operation *string) FixtureWriter {
 	return &redisFixtureWriter{
 		logger:    logger,
 		client:    client,
+		purger:    purger,
 		operation: *operation,
 	}
 }
 
 func (d *redisFixtureWriter) Purge() error {
-	return nil
+	return d.purger.purge()
 }
 
 func (d *redisFixtureWriter) Write(fs *FixtureSet) error {

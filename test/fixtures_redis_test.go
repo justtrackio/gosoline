@@ -50,9 +50,13 @@ func (s FixturesRedisSuite) TestRedis() {
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
 	)
 
+	// ensure clean start
+	_, err := s.client.FlushDB().Result()
+	assert.NoError(s.T(), err)
+
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
-	err := loader.Load(redisFixtures())
+	err = loader.Load(redisDisabledPurgeFixtures())
 	assert.NoError(s.T(), err)
 
 	setValue, err := s.client.Get("set_test").Result()
@@ -74,6 +78,51 @@ func (s FixturesRedisSuite) TestRedis() {
 	assert.Equal(s.T(), "baz", rpopValue)
 }
 
+func (s FixturesRedisSuite) TestRedisWithPurge() {
+	config := cfg.New()
+	config.Option(
+		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
+		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
+	)
+
+	// ensure clean start
+	_, err := s.client.FlushDB().Result()
+	assert.NoError(s.T(), err)
+
+	loader := fixtures.NewFixtureLoader(config, s.logger)
+
+	err = loader.Load(redisDisabledPurgeFixtures())
+	assert.NoError(s.T(), err)
+
+	setValue, err := s.client.Get("set_test").Result()
+
+	// should have created the item
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "bar", setValue)
+
+	keys, err := s.client.Keys("*").Result()
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), keys, 2)
+
+	err = loader.Load(redisEnabledPurgeFixtures())
+	assert.NoError(s.T(), err)
+
+	setValue, err = s.client.Get("set_test").Result()
+
+	// should have created the item
+	assert.Error(s.T(), err)
+
+	keys, err = s.client.Keys("*").Result()
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), keys, 1)
+
+	setValue, err = s.client.Get("set_test_purged").Result()
+
+	// should have created the item
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "bar", setValue)
+}
+
 func (s FixturesRedisSuite) TestRedisKvStore() {
 	config := cfg.New()
 	config.Option(
@@ -81,9 +130,13 @@ func (s FixturesRedisSuite) TestRedisKvStore() {
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
 	)
 
+	// ensure clean start
+	_, err := s.client.FlushDB().Result()
+	assert.NoError(s.T(), err)
+
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
-	err := loader.Load(redisKvstoreFixtures())
+	err = loader.Load(redisKvstoreDisabledPurgeFixtures())
 	assert.NoError(s.T(), err)
 
 	res, err := s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
@@ -93,7 +146,43 @@ func (s FixturesRedisSuite) TestRedisKvStore() {
 	assert.JSONEq(s.T(), `{"name":"foo","age":123}`, res)
 }
 
-func redisFixtures() []*fixtures.FixtureSet {
+func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
+	config := cfg.New()
+	config.Option(
+		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
+		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
+	)
+
+	// ensure clean start
+	_, err := s.client.FlushDB().Result()
+	assert.NoError(s.T(), err)
+
+	loader := fixtures.NewFixtureLoader(config, s.logger)
+
+	err = loader.Load(redisKvstoreDisabledPurgeFixtures())
+	assert.NoError(s.T(), err)
+
+	res, err := s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
+
+	// should have created the item
+	assert.NoError(s.T(), err)
+	assert.JSONEq(s.T(), `{"name":"foo","age":123}`, res)
+
+	err = loader.Load(redisKvstoreEnabledPurgeFixtures())
+	assert.NoError(s.T(), err)
+
+	res, err = s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
+
+	assert.Error(s.T(), err)
+
+	res, err = s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_2").Result()
+
+	// should have created the item
+	assert.NoError(s.T(), err)
+	assert.JSONEq(s.T(), `{"name":"foo","age":123}`, res)
+}
+
+func redisDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
@@ -122,7 +211,24 @@ func redisFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func redisKvstoreFixtures() []*fixtures.FixtureSet {
+func redisEnabledPurgeFixtures() []*fixtures.FixtureSet {
+	return []*fixtures.FixtureSet{
+		{
+			Enabled: true,
+			Purge:   true,
+			Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpSet)),
+			Fixtures: []interface{}{
+				&fixtures.RedisFixture{
+					Key:    "set_test_purged",
+					Value:  "bar",
+					Expiry: 1 * time.Hour,
+				},
+			},
+		},
+	}
+}
+
+func redisKvstoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
@@ -136,6 +242,31 @@ func redisKvstoreFixtures() []*fixtures.FixtureSet {
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key: "kvstore_entry_1",
+					Value: &RedisTestModel{
+						Name: "foo",
+						Age:  123,
+					},
+				},
+			},
+		},
+	}
+}
+
+func redisKvstoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
+	return []*fixtures.FixtureSet{
+		{
+			Enabled: true,
+			Purge:   true,
+			Writer: fixtures.RedisKvStoreFixtureWriterFactory(&mdl.ModelId{
+				Project:     "gosoline",
+				Environment: "test",
+				Family:      "integration-test",
+				Application: "test-application",
+				Name:        "testModel",
+			}),
+			Fixtures: []interface{}{
+				&fixtures.KvStoreFixture{
+					Key: "kvstore_entry_2",
 					Value: &RedisTestModel{
 						Name: "foo",
 						Age:  123,

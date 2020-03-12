@@ -16,10 +16,14 @@ type RedisKvStore struct {
 	settings *Settings
 }
 
+func RedisBasename(settings *Settings) string {
+	return fmt.Sprintf("kvstore_%s", settings.Name)
+}
+
 func NewRedisKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvStore {
 	settings.PadFromConfig(config)
 
-	redisName := fmt.Sprintf("kvstore_%s", settings.Name)
+	redisName := RedisBasename(settings)
 	client := redis.GetClient(config, logger, redisName)
 
 	return NewRedisKvStoreWithInterfaces(logger, client, settings)
