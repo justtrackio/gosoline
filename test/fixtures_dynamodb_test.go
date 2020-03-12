@@ -40,14 +40,16 @@ func TestFixturesDynamoDbSuite(t *testing.T) {
 
 func (s FixturesDynamoDbSuite) TestDynamoDb() {
 	config := cfg.New()
-	config.Option(
+	err := config.Option(
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
 	)
 
+	assert.NoError(s.T(), err)
+
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
-	err := loader.Load(dynamoDbFixtures())
+	err = loader.Load(dynamoDbDisabledPurgeFixtures())
 	assert.NoError(s.T(), err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
@@ -81,16 +83,94 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 	assert.Len(s.T(), qo.Items, 1, "1 item expected")
 }
 
-func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
+func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 	config := cfg.New()
-	config.Option(
+	err := config.Option(
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
 	)
 
+	assert.NoError(s.T(), err)
+
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
-	err := loader.Load(dynamoDbKvStoreFixtures())
+	err = loader.Load(dynamoDbDisabledPurgeFixtures())
+	assert.NoError(s.T(), err)
+
+	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"Name": {
+				S: aws.String("Ash"),
+			},
+		},
+		TableName: aws.String("gosoline-test-integration-test-test-application-testModel"),
+	})
+
+	// should have created the item
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), gio.Item, 2, "2 attributes expected")
+	assert.Equal(s.T(), "Ash", *(gio.Item["Name"].S))
+	assert.Equal(s.T(), "10", *(gio.Item["Age"].N))
+
+	err = loader.Load(dynamoDbEnabledPurgeFixtures())
+	assert.NoError(s.T(), err)
+
+	gio, err = s.db.GetItem(&dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"Name": {
+				S: aws.String("Bash"),
+			},
+		},
+		TableName: aws.String("gosoline-test-integration-test-test-application-testModel"),
+	})
+
+	// should have created the item
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), gio.Item, 2, "2 attributes expected")
+	assert.Equal(s.T(), "Bash", *(gio.Item["Name"].S))
+	assert.Equal(s.T(), "10", *(gio.Item["Age"].N))
+
+	gio, err = s.db.GetItem(&dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"Name": {
+				S: aws.String("Ash"),
+			},
+		},
+		TableName: aws.String("gosoline-test-integration-test-test-application-testModel"),
+	})
+
+	// should have created the item
+	assert.NoError(s.T(), err)
+	assert.Nil(s.T(), gio.Item)
+
+	qo, err := s.db.Query(&dynamodb.QueryInput{
+		TableName:              aws.String("gosoline-test-integration-test-test-application-testModel"),
+		IndexName:              aws.String("IDX_Age"),
+		KeyConditionExpression: aws.String("Age = :v_age"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":v_age": {
+				N: aws.String("10"),
+			},
+		},
+	})
+
+	// should have created global index
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), qo.Items, 1, "1 item expected")
+}
+
+func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
+	config := cfg.New()
+	err := config.Option(
+		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
+		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
+	)
+
+	assert.NoError(s.T(), err)
+
+	loader := fixtures.NewFixtureLoader(config, s.logger)
+
+	err = loader.Load(dynamoDbKvStoreDisabledPurgeFixtures())
 	assert.NoError(s.T(), err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
@@ -108,12 +188,70 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
 	assert.JSONEq(s.T(), `{"Name":"Ash","Age":10}`, *(gio.Item["value"].S))
 }
 
+func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
+	config := cfg.New()
+	err := config.Option(
+		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
+		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
+	)
+
+	assert.NoError(s.T(), err)
+
+	loader := fixtures.NewFixtureLoader(config, s.logger)
+
+	err = loader.Load(dynamoDbKvStoreDisabledPurgeFixtures())
+	assert.NoError(s.T(), err)
+
+	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"key": {
+				S: aws.String("Ash"),
+			},
+		},
+		TableName: aws.String("gosoline-test-integration-test-test-application-kvstore-testModel"),
+	})
+
+	// should have created the item
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), gio.Item, 2, "2 attributes expected")
+	assert.JSONEq(s.T(), `{"Name":"Ash","Age":10}`, *(gio.Item["value"].S))
+
+	err = loader.Load(dynamoDbKvStoreEnabledPurgeFixtures())
+	assert.NoError(s.T(), err)
+
+	gio, err = s.db.GetItem(&dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"key": {
+				S: aws.String("Bash"),
+			},
+		},
+		TableName: aws.String("gosoline-test-integration-test-test-application-kvstore-testModel"),
+	})
+
+	// should have created the item
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), gio.Item, 2, "2 attributes expected")
+	assert.JSONEq(s.T(), `{"Name":"Bash","Age":10}`, *(gio.Item["value"].S))
+
+	gio, err = s.db.GetItem(&dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"key": {
+				S: aws.String("Ash"),
+			},
+		},
+		TableName: aws.String("gosoline-test-integration-test-test-application-kvstore-testModel"),
+	})
+
+	assert.NoError(s.T(), err)
+	assert.Nil(s.T(), gio.Item, "no item expected")
+}
+
 type DynamoDbTestModel struct {
 	Name string `ddb:"key=hash"`
 	Age  uint   `ddb:"global=hash"`
 }
 
-func dynamoDbKvStoreFixtures() []*fixtures.FixtureSet {
+func dynamoDbKvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
@@ -134,7 +272,29 @@ func dynamoDbKvStoreFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func dynamoDbFixtures() []*fixtures.FixtureSet {
+func dynamoDbKvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
+	return []*fixtures.FixtureSet{
+		{
+			Enabled: true,
+			Purge:   true,
+			Writer: fixtures.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
+				Project:     "gosoline",
+				Environment: "test",
+				Family:      "integration-test",
+				Application: "test-application",
+				Name:        "testModel",
+			}),
+			Fixtures: []interface{}{
+				&fixtures.KvStoreFixture{
+					Key:   "Bash",
+					Value: &DynamoDbTestModel{Name: "Bash", Age: 10},
+				},
+			},
+		},
+	}
+}
+
+func dynamoDbDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
@@ -160,6 +320,38 @@ func dynamoDbFixtures() []*fixtures.FixtureSet {
 			}),
 			Fixtures: []interface{}{
 				&DynamoDbTestModel{Name: "Ash", Age: 10},
+			},
+		},
+	}
+}
+
+func dynamoDbEnabledPurgeFixtures() []*fixtures.FixtureSet {
+	return []*fixtures.FixtureSet{
+		{
+			Enabled: true,
+			Purge:   true,
+			Writer: fixtures.DynamoDbFixtureWriterFactory(&ddb.Settings{
+				ModelId: mdl.ModelId{
+					Project:     "gosoline",
+					Environment: "test",
+					Family:      "integration-test",
+					Application: "test-application",
+					Name:        "testModel",
+				},
+				Main: ddb.MainSettings{
+					Model: DynamoDbTestModel{},
+				},
+				Global: []ddb.GlobalSettings{
+					{
+						Name:               "IDX_Age",
+						Model:              DynamoDbTestModel{},
+						ReadCapacityUnits:  1,
+						WriteCapacityUnits: 1,
+					},
+				},
+			}),
+			Fixtures: []interface{}{
+				&DynamoDbTestModel{Name: "Bash", Age: 10},
 			},
 		},
 	}

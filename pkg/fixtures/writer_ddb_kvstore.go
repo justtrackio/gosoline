@@ -3,10 +3,13 @@ package fixtures
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 )
+
+type ddbKvstoreFactory func() kvstore.KvStore
 
 type KvStoreFixture struct {
 	Key   interface{}
@@ -14,13 +17,14 @@ type KvStoreFixture struct {
 }
 
 type dynamoDbKvStoreFixtureWriter struct {
-	logger mon.Logger
-	store  kvstore.KvStore
+	logger  mon.Logger
+	factory ddbKvstoreFactory
+	purger  *dynamodbPurger
 }
 
 func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
-		store := kvstore.NewDdbKvStore(config, logger, &kvstore.Settings{
+		settings := &kvstore.Settings{
 			AppId: cfg.AppId{
 				Project:     modelId.Project,
 				Environment: modelId.Environment,
@@ -28,24 +32,41 @@ func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFact
 				Application: modelId.Application,
 			},
 			Name: modelId.Name,
+		}
+		factory := func() kvstore.KvStore {
+			return kvstore.NewDdbKvStore(config, logger, settings)
+		}
+
+		kvstoreModel := *modelId
+		kvstoreModel.Name = kvstore.DdbBaseName(settings)
+
+		purger := newDynamodbPurger(config, logger, &ddb.Settings{
+			ModelId: kvstoreModel,
 		})
 
-		return NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger, store)
+		return NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger, factory, purger)
 	}
 }
 
-func NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger mon.Logger, store kvstore.KvStore) FixtureWriter {
+func NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger mon.Logger, factory ddbKvstoreFactory, purger *dynamodbPurger) FixtureWriter {
 	return &dynamoDbKvStoreFixtureWriter{
-		logger: logger,
-		store:  store,
+		logger:  logger,
+		factory: factory,
+		purger:  purger,
 	}
+}
+
+func (d *dynamoDbKvStoreFixtureWriter) Purge() error {
+	return d.purger.purgeDynamodb()
 }
 
 func (d *dynamoDbKvStoreFixtureWriter) Write(fs *FixtureSet) error {
+	store := d.factory()
+
 	for _, item := range fs.Fixtures {
 		kvItem := item.(*KvStoreFixture)
 
-		err := d.store.Put(context.Background(), kvItem.Key, kvItem.Value)
+		err := store.Put(context.Background(), kvItem.Key, kvItem.Value)
 
 		if err != nil {
 			return err

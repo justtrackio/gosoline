@@ -7,6 +7,7 @@ import (
 
 type FixtureSet struct {
 	Enabled  bool
+	Purge    bool
 	Writer   FixtureWriterFactory
 	Fixtures []interface{}
 }
@@ -16,6 +17,7 @@ type FixtureLoader interface {
 }
 
 type FixtureWriter interface {
+	Purge() error
 	Write(fixture *FixtureSet) error
 }
 

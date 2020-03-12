@@ -36,6 +36,10 @@ func NewRedisKvStoreFixtureWriterWithInterfaces(logger mon.Logger, store kvstore
 	}
 }
 
+func (d *redisKvStoreFixtureWriter) Purge() error {
+	return nil
+}
+
 func (d *redisKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
 		kvItem := item.(*KvStoreFixture)

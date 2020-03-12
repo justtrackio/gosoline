@@ -14,3 +14,7 @@ var namingStrategy = func(modelId mdl.ModelId) string {
 func WithNamingStrategy(strategy NamingFactory) {
 	namingStrategy = strategy
 }
+
+func TableName(modelId mdl.ModelId) string {
+	return namingStrategy(modelId)
+}
