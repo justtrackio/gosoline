@@ -25,6 +25,7 @@ func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
 type Client interface {
 	Exists(keys ...string) (int64, error)
 	Expire(key string, ttl time.Duration) (bool, error)
+	FlushDB() (string, error)
 	Set(string, interface{}, time.Duration) error
 	MSet(pairs ...interface{}) error
 	Get(string) (string, error)
@@ -132,6 +133,10 @@ func (c *redisClient) GetBaseClient() baseRedis.Cmdable {
 
 func (c *redisClient) Exists(keys ...string) (int64, error) {
 	return c.base.Exists(keys...).Result()
+}
+
+func (c *redisClient) FlushDB() (string, error) {
+	return c.base.FlushDB().Result()
 }
 
 func (c *redisClient) Set(key string, value interface{}, expiration time.Duration) error {

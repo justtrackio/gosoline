@@ -11,11 +11,12 @@ import (
 type redisKvStoreFixtureWriter struct {
 	logger mon.Logger
 	store  kvstore.KvStore
+	purger *redisPurger
 }
 
 func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
-		store := kvstore.NewRedisKvStore(config, logger, &kvstore.Settings{
+		settings := &kvstore.Settings{
 			AppId: cfg.AppId{
 				Project:     modelId.Project,
 				Environment: modelId.Environment,
@@ -23,21 +24,26 @@ func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory
 				Application: modelId.Application,
 			},
 			Name: modelId.Name,
-		})
+		}
+		store := kvstore.NewRedisKvStore(config, logger, settings)
 
-		return NewRedisKvStoreFixtureWriterWithInterfaces(logger, store)
+		name := kvstore.RedisBasename(settings)
+		purger := newRedisPurger(config, logger, &name)
+
+		return NewRedisKvStoreFixtureWriterWithInterfaces(logger, store, purger)
 	}
 }
 
-func NewRedisKvStoreFixtureWriterWithInterfaces(logger mon.Logger, store kvstore.KvStore) FixtureWriter {
+func NewRedisKvStoreFixtureWriterWithInterfaces(logger mon.Logger, store kvstore.KvStore, purger *redisPurger) FixtureWriter {
 	return &redisKvStoreFixtureWriter{
 		logger: logger,
 		store:  store,
+		purger: purger,
 	}
 }
 
 func (d *redisKvStoreFixtureWriter) Purge() error {
-	return nil
+	return d.purger.purge()
 }
 
 func (d *redisKvStoreFixtureWriter) Write(fs *FixtureSet) error {
