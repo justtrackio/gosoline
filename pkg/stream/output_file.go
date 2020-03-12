@@ -33,6 +33,8 @@ func (o *fileOutput) Write(ctx context.Context, batch []*Message) error {
 	flags := os.O_CREATE | os.O_WRONLY
 	if o.settings.Append {
 		flags = flags | os.O_APPEND
+	} else {
+		flags = flags | os.O_TRUNC
 	}
 
 	file, err := os.OpenFile(o.settings.Filename, flags, 0644)
