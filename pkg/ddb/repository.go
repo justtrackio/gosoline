@@ -69,7 +69,7 @@ type repository struct {
 	settings *Settings
 }
 
-func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) *repository {
+func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Repository {
 	if settings.ModelId.Name == "" {
 		settings.ModelId.Name = getTypeName(settings.Main.Model)
 	}
@@ -107,7 +107,7 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) *re
 	return NewWithInterfaces(logger, tracer, client, executor, settings)
 }
 
-func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor cloud.RequestExecutor, settings *Settings) *repository {
+func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor cloud.RequestExecutor, settings *Settings) Repository {
 	metadataFactory := NewMetadataFactory()
 	metadata, err := metadataFactory.GetMetadata(settings)
 

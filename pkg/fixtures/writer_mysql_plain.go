@@ -36,6 +36,10 @@ func NewMysqlPlainFixtureWriterWithInterfaces(logger mon.Logger, dbClient db.Cli
 	}
 }
 
+func (m *mysqlPlainFixtureWriter) Purge() error {
+	return nil
+}
+
 func (m *mysqlPlainFixtureWriter) Write(fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
 		fixture := item.(MysqlPlainFixtureValues)

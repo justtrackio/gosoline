@@ -54,6 +54,10 @@ func NewRedisFixtureWriterWithInterfaces(logger mon.Logger, client redis.Client,
 	}
 }
 
+func (d *redisFixtureWriter) Purge() error {
+	return nil
+}
+
 func (d *redisFixtureWriter) Write(fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
 		redisFixture := item.(*RedisFixture)

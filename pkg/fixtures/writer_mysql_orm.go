@@ -34,6 +34,10 @@ func NewMysqlFixtureWriterWithInterfaces(logger mon.Logger, repo db_repo.Reposit
 	}
 }
 
+func (m *mysqlOrmFixtureWriter) Purge() error {
+	return nil
+}
+
 func (m *mysqlOrmFixtureWriter) Write(fs *FixtureSet) error {
 	ctx := context.Background()
 

@@ -51,6 +51,15 @@ func (f *fixtureLoader) Load(fixtureSets []*FixtureSet) error {
 		}
 
 		writer := f.writerFactory(fs.Writer)
+
+		if fs.Purge {
+			err := writer.Purge()
+
+			if err != nil {
+				return fmt.Errorf("error during purging of fixture set: %w", err)
+			}
+		}
+
 		err := writer.Write(fs)
 
 		if err != nil {

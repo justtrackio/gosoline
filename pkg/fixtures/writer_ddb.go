@@ -7,14 +7,17 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
+type ddbRepoFactory func() ddb.Repository
+
 type dynamoDbFixtureWriter struct {
-	logger mon.Logger
-	repo   ddb.Repository
+	logger  mon.Logger
+	factory ddbRepoFactory
+	purger  *dynamodbPurger
 }
 
 func DynamoDbFixtureWriterFactory(settings *ddb.Settings) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
-		repo := ddb.NewRepository(config, logger, &ddb.Settings{
+		settings := &ddb.Settings{
 			ModelId:    settings.ModelId,
 			AutoCreate: true,
 			Main: ddb.MainSettings{
@@ -23,22 +26,35 @@ func DynamoDbFixtureWriterFactory(settings *ddb.Settings) FixtureWriterFactory {
 				WriteCapacityUnits: 1,
 			},
 			Global: settings.Global,
-		})
+		}
 
-		return NewDynamoDbFixtureWriterWithInterfaces(logger, repo)
+		factory := func() ddb.Repository {
+			return ddb.NewRepository(config, logger, settings)
+		}
+
+		purger := newDynamodbPurger(config, logger, settings)
+
+		return NewDynamoDbFixtureWriterWithInterfaces(logger, factory, purger)
 	}
 }
 
-func NewDynamoDbFixtureWriterWithInterfaces(logger mon.Logger, repo ddb.Repository) FixtureWriter {
+func NewDynamoDbFixtureWriterWithInterfaces(logger mon.Logger, factory ddbRepoFactory, purger *dynamodbPurger) FixtureWriter {
 	return &dynamoDbFixtureWriter{
-		logger: logger,
-		repo:   repo,
+		logger:  logger,
+		factory: factory,
+		purger:  purger,
 	}
+}
+
+func (d *dynamoDbFixtureWriter) Purge() error {
+	return d.purger.purgeDynamodb()
 }
 
 func (d *dynamoDbFixtureWriter) Write(fs *FixtureSet) error {
+	repo := d.factory()
+
 	for _, fixture := range fs.Fixtures {
-		_, err := d.repo.PutItem(context.Background(), nil, fixture)
+		_, err := repo.PutItem(context.Background(), nil, fixture)
 
 		if err != nil {
 			return err

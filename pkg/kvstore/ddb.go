@@ -24,9 +24,13 @@ type DdbKvStore struct {
 	settings   *Settings
 }
 
+func DdbBaseName(settings *Settings) string {
+	return strings.Join([]string{"kvstore", settings.Name}, "-")
+}
+
 func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvStore {
 	settings.PadFromConfig(config)
-	name := strings.Join([]string{"kvstore", settings.Name}, "-")
+	name := DdbBaseName(settings)
 
 	repository := ddb.NewRepository(config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{
