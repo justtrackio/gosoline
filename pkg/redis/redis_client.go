@@ -26,21 +26,22 @@ type Client interface {
 	Exists(keys ...string) (int64, error)
 	Expire(key string, ttl time.Duration) (bool, error)
 	FlushDB() (string, error)
-	Set(string, interface{}, time.Duration) error
+	Set(key string, value interface{}, ttl time.Duration) error
+	SetNX(key string, value interface{}, ttl time.Duration) (bool, error)
 	MSet(pairs ...interface{}) error
-	Get(string) (string, error)
+	Get(key string) (string, error)
 	MGet(keys ...string) ([]interface{}, error)
-	Del(string) (int64, error)
+	Del(key string) (int64, error)
 
-	BLPop(time.Duration, ...string) ([]string, error)
-	LPop(string) (string, error)
-	LLen(string) (int64, error)
-	RPush(string, ...interface{}) (int64, error)
+	BLPop(timeout time.Duration, keys ...string) ([]string, error)
+	LPop(key string) (string, error)
+	LLen(key string) (int64, error)
+	RPush(key string, values ...interface{}) (int64, error)
 
-	HExists(string, string) (bool, error)
-	HKeys(string) ([]string, error)
-	HGet(string, string) (string, error)
-	HSet(string, string, interface{}) error
+	HExists(key string, field string) (bool, error)
+	HKeys(key string) ([]string, error)
+	HGet(key string, field string) (string, error)
+	HSet(key string, field string, value interface{}) error
 	HMGet(key string, fields ...string) ([]interface{}, error)
 	HMSet(key string, pairs map[string]interface{}) error
 	HSetNX(key string, field string, value interface{}) (bool, error)
@@ -147,6 +148,16 @@ func (c *redisClient) Set(key string, value interface{}, expiration time.Duratio
 	})
 
 	return res.(*baseRedis.StatusCmd).Err()
+}
+
+func (c *redisClient) SetNX(key string, value interface{}, expiration time.Duration) (bool, error) {
+	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
+		cmd := c.base.SetNX(key, value, expiration)
+
+		return cmd, cmd.Err()
+	}).(*baseRedis.BoolCmd)
+
+	return res.Val(), res.Err()
 }
 
 func (c *redisClient) MSet(pairs ...interface{}) error {
