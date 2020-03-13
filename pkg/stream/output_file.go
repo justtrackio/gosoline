@@ -50,13 +50,7 @@ func (o *fileOutput) Write(ctx context.Context, batch []*Message) error {
 			return err
 		}
 
-		_, err = file.Write(data)
-
-		if err != nil {
-			return err
-		}
-
-		_, err = file.Write([]byte{'\n'})
+		_, err = file.Write(append(data, '\n'))
 
 		if err != nil {
 			return err

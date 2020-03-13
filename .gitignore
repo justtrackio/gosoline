@@ -5,3 +5,5 @@
 config.dist.yml
 !examples/gosoline-apiserver-simple-handlers/config.dist.yml
 /*.out
+
+*.output.txt
