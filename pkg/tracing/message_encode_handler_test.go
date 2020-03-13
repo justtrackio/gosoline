@@ -67,4 +67,6 @@ func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, decodedAttributes, "traceId")
 	assert.Nil(t, trace)
+
+	logger.AssertExpectations(t)
 }
