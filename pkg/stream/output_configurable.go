@@ -27,7 +27,7 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Ou
 	case OutputTypeKinesis:
 		return newKinesisOutputFromConfig(config, logger, name)
 	case OutputTypeMultiple:
-		return newMultipleOutput(config, logger, name)
+		return newMultipleOutputFromConfig(config, logger, name)
 	case OutputTypeRedis:
 		return newRedisListOutputFromConfig(config, logger, name)
 	case OutputTypeSns:
@@ -65,8 +65,23 @@ func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name strin
 	})
 }
 
-func newMultipleOutput(config cfg.Config, logger mon.Logger, name string) Output {
-	return NewConfigurableMultiOutput(config, logger, name)
+type MultipleOutputConfiguration struct {
+	Outputs []string `cfg:"outputs"`
+}
+
+func newMultipleOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
+	key := getConfigurableOutputKey(name)
+	multipleOutputConfigurations := &MultipleOutputConfiguration{}
+	config.UnmarshalKey(key, multipleOutputConfigurations)
+
+	outputs := make([]Output, 0)
+
+	for _, outputName := range multipleOutputConfigurations.Outputs {
+		o := NewConfigurableOutput(config, logger, outputName)
+		outputs = append(outputs, o)
+	}
+
+	return NewConfigurableMultiOutput(config, logger, outputs)
 }
 
 type redisListOutputConfiguration struct {
