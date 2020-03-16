@@ -5,9 +5,7 @@ import (
 )
 
 const (
-	AttributeSqsDelaySeconds   = "sqsDelaySeconds"
-	AttributeSqsReceiptHandle  = "sqsReceiptHandle"
-	AttributeSqsMessageGroupId = "sqsMessageGroupId"
+	AttributeSqsReceiptHandle = "sqsReceiptHandle"
 )
 
 type Message struct {

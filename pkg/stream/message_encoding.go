@@ -7,8 +7,8 @@ import (
 )
 
 type EncodeHandler interface {
-	Encode(ctx context.Context, attributes map[string]interface{}) (context.Context, map[string]interface{}, error)
-	Decode(ctx context.Context, attributes map[string]interface{}) (context.Context, map[string]interface{}, error)
+	Encode(ctx context.Context, data interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error)
+	Decode(ctx context.Context, data interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error)
 }
 
 var defaultEncodeHandlers = make([]EncodeHandler, 0)
@@ -72,7 +72,7 @@ func (e *messageEncoder) Encode(ctx context.Context, data interface{}, attribute
 	}
 
 	for _, handler := range e.encodeHandlers {
-		if ctx, attributes, err = handler.Encode(ctx, attributes); err != nil {
+		if ctx, attributes, err = handler.Encode(ctx, data, attributes); err != nil {
 			return nil, fmt.Errorf("can not apply encoding handler on message: %w", err)
 		}
 	}
@@ -160,7 +160,7 @@ func (e *messageEncoder) Decode(ctx context.Context, msg *Message, out interface
 	}
 
 	for _, handler := range e.encodeHandlers {
-		if ctx, attributes, err = handler.Decode(ctx, attributes); err != nil {
+		if ctx, attributes, err = handler.Decode(ctx, out, attributes); err != nil {
 			return ctx, attributes, fmt.Errorf("can not apply encoding handler on message: %w", err)
 		}
 	}

@@ -78,7 +78,7 @@ func (o *sqsOutput) sendToQueue(ctx context.Context, batch []*Message) error {
 
 	if !ok {
 		err := fmt.Errorf("can not chunk messages for sending to sqs")
-		o.logger.Error(err, "can not chunk messages for sending to sqs")
+		o.logger.WithContext(ctx).Error(err, "can not chunk messages for sending to sqs")
 
 		return err
 	}
@@ -86,7 +86,7 @@ func (o *sqsOutput) sendToQueue(ctx context.Context, batch []*Message) error {
 	var result error
 
 	for _, chunk := range chunks {
-		messages, err := o.buildSqsMessages(chunk)
+		messages, err := o.buildSqsMessages(ctx, chunk)
 
 		if err != nil {
 			result = multierror.Append(result, err)
@@ -110,12 +110,12 @@ func (o *sqsOutput) sendToQueue(ctx context.Context, batch []*Message) error {
 	return nil
 }
 
-func (o *sqsOutput) buildSqsMessages(messages []*Message) ([]*sqs.Message, error) {
+func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []*Message) ([]*sqs.Message, error) {
 	var result error
 	sqsMessages := make([]*sqs.Message, 0)
 
 	for _, msg := range messages {
-		sqsMessage, err := o.buildSqsMessage(msg)
+		sqsMessage, err := o.buildSqsMessage(ctx, msg)
 
 		if err != nil {
 			result = multierror.Append(result, err)
@@ -128,24 +128,39 @@ func (o *sqsOutput) buildSqsMessages(messages []*Message) ([]*sqs.Message, error
 	return sqsMessages, result
 }
 
-func (o *sqsOutput) buildSqsMessage(msg *Message) (*sqs.Message, error) {
+func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg *Message) (*sqs.Message, error) {
 	var delay *int64
 	var messageGroupId *string
+	var messageDeduplicationId *string
 
-	if d, ok := msg.Attributes[AttributeSqsDelaySeconds]; ok {
+	if d, ok := msg.Attributes[sqs.AttributeSqsDelaySeconds]; ok {
 		if dInt64, ok := d.(int64); ok {
 			delay = mdl.Int64(dInt64)
 		} else {
-			return nil, fmt.Errorf("the type of the %s attribute should be int64 but instead is %T", AttributeSqsDelaySeconds, d)
+			return nil, fmt.Errorf("the type of the %s attribute should be int64 but instead is %T", sqs.AttributeSqsDelaySeconds, d)
 		}
 	}
 
-	if d, ok := msg.Attributes[AttributeSqsMessageGroupId]; ok {
+	if d, ok := msg.Attributes[sqs.AttributeSqsMessageGroupId]; ok {
 		if groupIdString, ok := d.(string); ok {
 			messageGroupId = mdl.String(groupIdString)
 		} else {
-			return nil, fmt.Errorf("the type of the %s attribute should be int64 but instead is %T", AttributeSqsDelaySeconds, d)
+			return nil, fmt.Errorf("the type of the %s attribute should be string but instead is %T", sqs.AttributeSqsMessageGroupId, d)
 		}
+	}
+
+	if d, ok := msg.Attributes[sqs.AttributeSqsMessageDeduplicationId]; ok {
+		if deduplicationIdString, ok := d.(string); ok {
+			messageDeduplicationId = mdl.String(deduplicationIdString)
+		} else {
+			return nil, fmt.Errorf("the type of the %s attribute should be string but instead is %T", sqs.AttributeSqsMessageDeduplicationId, d)
+		}
+	}
+
+	if o.settings.Fifo.ContentBasedDeduplication && messageDeduplicationId == nil {
+		o.logger.WithContext(ctx).WithFields(mon.Fields{
+			"stacktrace": mon.GetStackTrace(0),
+		}).Warnf("writing message to queue %s (which is configured to use content based deduplication) without message deduplication id", o.queue.GetName())
 	}
 
 	body, err := msg.MarshalToString()
@@ -155,9 +170,10 @@ func (o *sqsOutput) buildSqsMessage(msg *Message) (*sqs.Message, error) {
 	}
 
 	sqsMessage := &sqs.Message{
-		DelaySeconds:   delay,
-		MessageGroupId: messageGroupId,
-		Body:           mdl.String(body),
+		DelaySeconds:           delay,
+		MessageGroupId:         messageGroupId,
+		MessageDeduplicationId: messageDeduplicationId,
+		Body:                   mdl.String(body),
 	}
 
 	return sqsMessage, nil

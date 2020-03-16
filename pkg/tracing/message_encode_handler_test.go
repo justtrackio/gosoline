@@ -16,7 +16,7 @@ func TestMessageWithTraceEncoder_Encode(t *testing.T) {
 	ctx, span := tracer.StartSpan("test-span")
 	defer span.Finish()
 
-	_, attributes, err := encoder.Encode(ctx, map[string]interface{}{})
+	_, attributes, err := encoder.Encode(ctx, nil, map[string]interface{}{})
 
 	assert.NoError(t, err)
 	assert.Contains(t, attributes, "traceId")
@@ -30,7 +30,7 @@ func TestMessageWithTraceEncoder_Decode(t *testing.T) {
 	}
 
 	encoder := tracing.NewMessageWithTraceEncoder(tracing.TraceIdErrorReturnStrategy{})
-	ctx, decodedAttributes, err := encoder.Decode(ctx, attributes)
+	ctx, decodedAttributes, err := encoder.Decode(ctx, nil, attributes)
 
 	trace := tracing.GetTraceFromContext(ctx)
 	expected := &tracing.Trace{
@@ -60,7 +60,7 @@ func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
 	strategy := tracing.NewTraceIdErrorWarningStrategyWithInterfaces(logger, mon.GetMockedStackTrace)
 
 	encoder := tracing.NewMessageWithTraceEncoder(strategy)
-	ctx, decodedAttributes, err := encoder.Decode(ctx, attributes)
+	ctx, decodedAttributes, err := encoder.Decode(ctx, nil, attributes)
 
 	trace := tracing.GetTraceFromContext(ctx)
 

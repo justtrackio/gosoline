@@ -32,9 +32,10 @@ type Queue interface {
 }
 
 type Message struct {
-	DelaySeconds   *int64
-	MessageGroupId *string
-	Body           *string
+	DelaySeconds           *int64
+	MessageGroupId         *string
+	MessageDeduplicationId *string
+	Body                   *string
 }
 
 type FifoSettings struct {
@@ -105,10 +106,11 @@ func NewWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, executor cloud
 
 func (q *queue) Send(ctx context.Context, msg *Message) error {
 	input := &sqs.SendMessageInput{
-		QueueUrl:       aws.String(q.properties.Url),
-		DelaySeconds:   msg.DelaySeconds,
-		MessageGroupId: msg.MessageGroupId,
-		MessageBody:    msg.Body,
+		QueueUrl:               aws.String(q.properties.Url),
+		DelaySeconds:           msg.DelaySeconds,
+		MessageGroupId:         msg.MessageGroupId,
+		MessageDeduplicationId: msg.MessageDeduplicationId,
+		MessageBody:            msg.Body,
 	}
 
 	_, err := q.executor.Execute(ctx, func() (*request.Request, interface{}) {
@@ -133,10 +135,11 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 		id := uuid.NewV4().String()
 
 		entries[i] = &sqs.SendMessageBatchRequestEntry{
-			Id:             aws.String(id),
-			DelaySeconds:   messages[i].DelaySeconds,
-			MessageGroupId: messages[i].MessageGroupId,
-			MessageBody:    messages[i].Body,
+			Id:                     aws.String(id),
+			DelaySeconds:           messages[i].DelaySeconds,
+			MessageGroupId:         messages[i].MessageGroupId,
+			MessageDeduplicationId: messages[i].MessageDeduplicationId,
+			MessageBody:            messages[i].Body,
 		}
 	}
 

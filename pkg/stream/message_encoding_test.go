@@ -19,11 +19,11 @@ type encodingTestStruct struct {
 type brokenEncodeHandler struct {
 }
 
-func (b brokenEncodeHandler) Encode(ctx context.Context, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (b brokenEncodeHandler) Encode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
 	return ctx, attributes, fmt.Errorf("encode handler encode error")
 }
 
-func (b brokenEncodeHandler) Decode(ctx context.Context, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (b brokenEncodeHandler) Decode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
 	return ctx, attributes, fmt.Errorf("encode handler decode error")
 }
 

@@ -24,7 +24,7 @@ type producer struct {
 	output  Output
 }
 
-func NewProducer(config cfg.Config, logger mon.Logger, name string) *producer {
+func NewProducer(config cfg.Config, logger mon.Logger, name string, handlers ...EncodeHandler) *producer {
 	key := fmt.Sprintf("stream.producer.%s", name)
 
 	settings := &ProducerSettings{}
@@ -34,9 +34,14 @@ func NewProducer(config cfg.Config, logger mon.Logger, name string) *producer {
 		settings.Output = name
 	}
 
+	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(handlers))
+	encodeHandlers = append(encodeHandlers, defaultEncodeHandlers...)
+	encodeHandlers = append(encodeHandlers, handlers...)
+
 	encoder := NewMessageEncoder(&MessageEncoderSettings{
-		Encoding:    settings.Encoding,
-		Compression: settings.Compression,
+		Encoding:       settings.Encoding,
+		Compression:    settings.Compression,
+		EncodeHandlers: encodeHandlers,
 	})
 	output := NewConfigurableOutput(config, logger, settings.Output)
 
