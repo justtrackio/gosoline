@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -59,11 +60,11 @@ func NewClient(config cfg.Config, logger mon.Logger) Client {
 
 func NewClientWithInterfaces(logger mon.Logger, db *sqlx.DB) Client {
 	if db == nil {
-		logger.Fatal(errors.New("db not booted yet"), "db not booted yet")
+		logger.WithContext(context.Background()).Fatal(errors.New("db not booted yet"), "db not booted yet")
 	}
 
 	return &ClientSqlx{
-		logger: logger,
+		logger: logger.WithContext(context.Background()), // TODO: this is not nice, but we don't (yet) have a context when logging in this module
 		db:     db,
 	}
 }

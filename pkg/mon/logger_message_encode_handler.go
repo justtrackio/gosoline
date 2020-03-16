@@ -26,7 +26,7 @@ func NewMessageWithLoggingFieldsEncoderWithInterfaces(logger Logger) *MessageWit
 	}
 }
 
-func (m MessageWithLoggingFieldsEncoder) Encode(ctx context.Context, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (m MessageWithLoggingFieldsEncoder) Encode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
 	fields := ContextLoggerFieldsResolver(ctx)
 
 	if len(fields) == 0 {
@@ -55,7 +55,7 @@ func (m MessageWithLoggingFieldsEncoder) Encode(ctx context.Context, attributes 
 	return ctx, attributes, nil
 }
 
-func (m MessageWithLoggingFieldsEncoder) Decode(ctx context.Context, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (m MessageWithLoggingFieldsEncoder) Decode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
 	var str string
 	var ok bool
 

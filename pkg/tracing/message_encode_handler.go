@@ -15,7 +15,7 @@ func NewMessageWithTraceEncoder(strategy TraceIdErrorStrategy) *MessageWithTrace
 	}
 }
 
-func (m MessageWithTraceEncoder) Encode(ctx context.Context, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (m MessageWithTraceEncoder) Encode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
 	var trace *Trace
 
 	if span := GetSpanFromContext(ctx); span != nil {
@@ -31,7 +31,7 @@ func (m MessageWithTraceEncoder) Encode(ctx context.Context, attributes map[stri
 	return ctx, attributes, nil
 }
 
-func (m MessageWithTraceEncoder) Decode(ctx context.Context, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (m MessageWithTraceEncoder) Decode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
 	var ok bool
 	var traceId string
 

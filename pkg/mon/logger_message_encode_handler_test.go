@@ -25,7 +25,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeEmpty() {
 	ctx := context.Background()
 	attributes := make(map[string]interface{})
 
-	_, attributes, err := s.encoder.Encode(ctx, attributes)
+	_, attributes, err := s.encoder.Encode(ctx, nil, attributes)
 
 	s.NoError(err)
 	s.Empty(attributes)
@@ -42,7 +42,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeSuccess() {
 	})
 
 	attributes := make(map[string]interface{})
-	_, attributes, err := s.encoder.Encode(ctx, attributes)
+	_, attributes, err := s.encoder.Encode(ctx, nil, attributes)
 
 	s.NoError(err)
 	s.Len(attributes, 1)
@@ -56,7 +56,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeEmpty() {
 	ctx := context.Background()
 	attributes := map[string]interface{}{}
 
-	ctx, attributes, err := s.encoder.Decode(ctx, attributes)
+	ctx, attributes, err := s.encoder.Decode(ctx, nil, attributes)
 
 	s.NoError(err)
 }
@@ -69,7 +69,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeTypeError() {
 		mon.MessageAttributeLoggerContext: 1,
 	}
 
-	ctx, attributes, err := s.encoder.Decode(ctx, attributes)
+	ctx, attributes, err := s.encoder.Decode(ctx, nil, attributes)
 
 	s.NoError(err)
 	s.logger.AssertExpectations(s.T())
@@ -83,7 +83,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeJsonError() {
 		mon.MessageAttributeLoggerContext: `broken`,
 	}
 
-	ctx, attributes, err := s.encoder.Decode(ctx, attributes)
+	ctx, attributes, err := s.encoder.Decode(ctx, nil, attributes)
 
 	s.NoError(err)
 	s.logger.AssertExpectations(s.T())
@@ -95,7 +95,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeSuccess() {
 		mon.MessageAttributeLoggerContext: `{"fieldA":"text","fieldB":1}`,
 	}
 
-	ctx, attributes, err := s.encoder.Decode(ctx, attributes)
+	ctx, attributes, err := s.encoder.Decode(ctx, nil, attributes)
 
 	s.NoError(err)
 	s.NotContains(attributes, mon.MessageAttributeLoggerContext)
