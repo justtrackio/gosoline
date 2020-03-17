@@ -6,6 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/mdl"
+	"github.com/aws/aws-sdk-go/aws"
+	"time"
 )
 
 type DynamoDbExampleModel struct {
@@ -67,6 +69,18 @@ func createFixtures() []*fixtures.FixtureSet {
 				&fixtures.KvStoreFixture{
 					Key:   "SomeKey",
 					Value: &DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
+				},
+			},
+		},
+		{
+			Enabled: true,
+			Purge:   true,
+			Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpSet)),
+			Fixtures: []interface{}{
+				&fixtures.RedisFixture{
+					Key:    "example-key",
+					Value:  "bar",
+					Expiry: 1 * time.Hour,
 				},
 			},
 		},
