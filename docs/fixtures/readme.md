@@ -16,6 +16,7 @@ For more details check the `/examples/gosoline-fixture-loading` Directory or rea
 ```
 type FixtureSet struct {
 	Enabled  bool
+	Purge    bool
 	Writer   FixtureWriterFactory
 	Fixtures []interface{}
 }
@@ -26,7 +27,9 @@ You can easily define multiple fixtures to different destinations in one file an
     * `DynamoDbFixtureWriterFactory`
     * `DynamoDbKvStoreFixtureWriterFactory` 
     * `MysqlOrmFixtureWriterFactory` 
-    * `MysqlPlainFixtureWriterFactory` 
+    * `MysqlPlainFixtureWriterFactory`
+    * `RedisFixtureWriterFactory`
+    * `RedisKvStoreFixtureWriterFactory` 
 
 ## Quick Usage
 * During the creation of your Application make sure to pass the `WithFixtures` option and provide fixtures as an argument of type `[]*fixtures.FixtureSet`
@@ -71,5 +74,6 @@ func main() {
 
 ## Further Information
 * Existing fixtures will be updated instead of created.
+* When purge is enabled only the destination of the fixtures will be purged, not everything. That means for example while loading MySQL Fixtures with purge only the tables will be purged not the whole database.  
 * If you want to use the `MysqlOrmFixtureWriterFactory` make sure that your fixture struct embeds `db_repo.Model`   
 * For example usage of all `FixtureWriterFactory` see the `/examples/gosoline-fixture-loading` directory
