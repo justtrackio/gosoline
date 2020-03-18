@@ -65,7 +65,8 @@ func (m *mysqlComponent) Start() {
 
 			return nil
 		},
-		PrintLogs: m.settings.Debug,
+		PrintLogs:   m.settings.Debug,
+		ExpireAfter: m.settings.ExpireAfter,
 	})
 }
 

@@ -45,7 +45,8 @@ func (r *redisComponent) Start() {
 
 			return err
 		},
-		PrintLogs: r.settings.Debug,
+		PrintLogs:   r.settings.Debug,
+		ExpireAfter: r.settings.ExpireAfter,
 	})
 }
 

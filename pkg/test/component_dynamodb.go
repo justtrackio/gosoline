@@ -45,7 +45,8 @@ func (d *dynamoDbComponent) Start() {
 
 			return err
 		},
-		PrintLogs: d.settings.Debug,
+		PrintLogs:   d.settings.Debug,
+		ExpireAfter: d.settings.ExpireAfter,
 	})
 }
 

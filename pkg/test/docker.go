@@ -23,6 +23,7 @@ type containerConfig struct {
 	PortBindings portBinding
 	HealthCheck  func() error
 	PrintLogs    bool
+	ExpireAfter  time.Duration
 }
 
 type dockerRunner struct {
@@ -60,6 +61,10 @@ func (d *dockerRunner) Run(name string, config containerConfig) {
 
 	containerName := d.getContainerName(name)
 
+	logger := d.logger.WithFields(map[string]interface{}{
+		"container": containerName,
+	})
+
 	bindings := make(map[docker.Port][]docker.PortBinding)
 	for containerPort, hostPort := range config.PortBindings {
 		bindings[docker.Port(containerPort)] = []docker.PortBinding{
@@ -69,7 +74,7 @@ func (d *dockerRunner) Run(name string, config containerConfig) {
 		}
 	}
 
-	d.logger.Info(fmt.Sprintf("starting container %s", containerName))
+	logger.Info("starting container")
 	resource, err := d.pool.RunWithOptions(&dockertest.RunOptions{
 		Name:         containerName,
 		Repository:   config.Repository,
@@ -83,11 +88,13 @@ func (d *dockerRunner) Run(name string, config containerConfig) {
 		panic(fmt.Errorf("could not start %s container: %w", containerName, err))
 	}
 
-	err = resource.Expire(60 * 60)
+	err = resource.Expire(uint(config.ExpireAfter.Seconds()))
 
 	if err != nil {
 		panic(fmt.Errorf("could not expire %s container: %w", containerName, err))
 	}
+
+	logger.Infof("container will expire after %s", config.ExpireAfter)
 
 	err = d.pool.Retry(config.HealthCheck)
 
@@ -103,7 +110,7 @@ func (d *dockerRunner) Run(name string, config containerConfig) {
 		d.printContainerLogs(resource)
 	}
 
-	d.logger.Info(fmt.Sprintf("container up and running %s", containerName))
+	logger.Info("container up and running")
 }
 
 func (d *dockerRunner) printContainerLogs(resource *dockertest.Resource) {
@@ -122,6 +129,9 @@ func (d *dockerRunner) printContainerLogs(resource *dockertest.Resource) {
 
 func (d *dockerRunner) PurgeAllResources() {
 	for _, res := range d.resources {
+		d.logger.WithFields(map[string]interface{}{
+			"container": res.Container.Name,
+		}).Infof("stopping container")
 		if err := d.pool.Purge(res); err != nil {
 			log.Fatalf("Could not purge resource: %s", err)
 		}
