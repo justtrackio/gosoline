@@ -94,7 +94,9 @@ func (d *dockerRunner) Run(name string, config containerConfig) {
 		panic(fmt.Errorf("could not expire %s container: %w", containerName, err))
 	}
 
-	logger.Infof("container will expire after %s", config.ExpireAfter)
+	logger.WithFields(map[string]interface{}{
+		"expire_after": config.ExpireAfter,
+	}).Info("set container expiry")
 
 	err = d.pool.Retry(config.HealthCheck)
 

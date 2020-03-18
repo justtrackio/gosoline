@@ -64,6 +64,7 @@ func (s *snsSqsComponent) Start() {
 		},
 		HealthCheck: localstackHealthCheck(s.settings.healthcheckMockSettings, componentSns, componentSqs),
 		PrintLogs:   s.settings.Debug,
+		ExpireAfter: s.settings.ExpireAfter,
 	})
 }
 
