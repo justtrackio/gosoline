@@ -49,6 +49,7 @@ func (k *kinesisComponent) Start() {
 		},
 		HealthCheck: localstackHealthCheck(k.settings.healthcheckMockSettings, componentKinesis),
 		PrintLogs:   k.settings.Debug,
+		ExpireAfter: k.settings.ExpireAfter,
 	})
 }
 

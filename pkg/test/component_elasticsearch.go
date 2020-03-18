@@ -55,6 +55,7 @@ func (e *elasticsearchComponent) Start() {
 
 			return nil
 		},
-		PrintLogs: e.settings.Debug,
+		PrintLogs:   e.settings.Debug,
+		ExpireAfter: e.settings.ExpireAfter,
 	})
 }

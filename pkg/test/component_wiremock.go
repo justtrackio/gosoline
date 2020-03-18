@@ -48,6 +48,8 @@ func (w *wiremockComponent) Start() {
 
 			return err
 		},
+		PrintLogs:   w.settings.Debug,
+		ExpireAfter: w.settings.ExpireAfter,
 	})
 
 	jsonStr, err := ioutil.ReadFile(w.settings.Mocks)

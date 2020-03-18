@@ -6,3 +6,4 @@ mocks:
     debug: false
     dbName: myDbName
     version: "8"
+    expire_after: 1m1s

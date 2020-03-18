@@ -5,6 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"sync"
+	"time"
 )
 
 type mockComponent interface {
@@ -13,9 +14,10 @@ type mockComponent interface {
 }
 
 type mockSettings struct {
-	Debug     bool   `cfg:"debug"`
-	Component string `cfg:"component"`
-	Host      string `cfg:"host"`
+	Debug       bool          `cfg:"debug"`
+	Component   string        `cfg:"component"`
+	Host        string        `cfg:"host"`
+	ExpireAfter time.Duration `cfg:"expire_after" default:"60s"`
 }
 
 type Mocks struct {

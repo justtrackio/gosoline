@@ -49,6 +49,7 @@ func (c *cloudwatchComponent) Start() {
 		},
 		HealthCheck: localstackHealthCheck(c.settings.healthcheckMockSettings, componentCloudwatch),
 		PrintLogs:   c.settings.Debug,
+		ExpireAfter: c.settings.ExpireAfter,
 	})
 }
 
