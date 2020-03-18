@@ -293,6 +293,7 @@ func (k *kernel) checkRunningEssentialModules() {
 }
 
 func (k *kernel) doCheckRunningEssentialModules() {
+	_ = <-k.running
 	if !k.isRunning {
 		return
 	}
@@ -323,6 +324,7 @@ func (k *kernel) doCheckRunningEssentialModules() {
 }
 
 func (k *kernel) checkRunningForegroundModules() {
+	_ = <-k.running
 	if !k.isRunning {
 		return
 	}
