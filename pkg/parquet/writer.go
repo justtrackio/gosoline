@@ -28,6 +28,8 @@ type WriterSettings struct {
 //go:generate mockery -name Writer
 type Writer interface {
 	Write(ctx context.Context, datetime time.Time, items interface{}) error
+	DeleteReadFiles(ctx context.Context) error
+	DeleteWrittenFiles(ctx context.Context) error
 }
 
 type s3Writer struct {
@@ -37,8 +39,9 @@ type s3Writer struct {
 
 	prefixNamingStrategy s3PrefixNamingStrategy
 
-	settings *WriterSettings
-	tags     map[string]string
+	settings     *WriterSettings
+	tags         map[string]string
+	writtenFiles []string
 }
 
 func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *s3Writer {
@@ -52,10 +55,12 @@ func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *
 		logger.Panic(errors.New("unknown naming strategy"), fmt.Sprintf("Unknown prefix naming strategy '%s'", settings.NamingStrategy))
 	}
 
-	return NewWriterWithInterfaces(logger, s3Client, s3Cfg, prefixNaming, settings)
+	var writtenFileKeys []string
+
+	return NewWriterWithInterfaces(logger, s3Client, s3Cfg, prefixNaming, settings, writtenFileKeys)
 }
 
-func NewWriterWithInterfaces(logger mon.Logger, s3Client s3iface.S3API, s3Cfg *aws.Config, prefixNaming s3PrefixNamingStrategy, settings *WriterSettings) *s3Writer {
+func NewWriterWithInterfaces(logger mon.Logger, s3Client s3iface.S3API, s3Cfg *aws.Config, prefixNaming s3PrefixNamingStrategy, settings *WriterSettings, writtenFileKeys []string) *s3Writer {
 	tags := map[string]string{
 		"Project":     settings.ModelId.Project,
 		"Environment": settings.ModelId.Environment,
@@ -75,6 +80,7 @@ func NewWriterWithInterfaces(logger mon.Logger, s3Client s3iface.S3API, s3Cfg *a
 		prefixNamingStrategy: prefixNaming,
 		settings:             settings,
 		tags:                 tags,
+		writtenFiles:         writtenFileKeys,
 	}
 }
 
@@ -113,6 +119,8 @@ func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interfac
 	if err = fw.Close(); err != nil {
 		return err
 	}
+
+	w.writtenFiles = append(w.writtenFiles, key)
 
 	tagSet := makeTags(w.tags)
 
@@ -184,4 +192,38 @@ func makeTags(tags map[string]string) []*s3.Tag {
 	}
 
 	return s3Tags
+}
+
+func (w *s3Writer) DeleteReadFiles(ctx context.Context) error {
+	bucket := w.getBucketName()
+
+	for _, file := range ReadS3Files {
+		deleteObjectInput := &s3.DeleteObjectInput{
+			Bucket: &bucket,
+			Key:    &file,
+		}
+
+		if _, err := w.s3Client.DeleteObjectWithContext(ctx, deleteObjectInput); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (w *s3Writer) DeleteWrittenFiles(ctx context.Context) error {
+	bucket := w.getBucketName()
+
+	for _, file := range w.writtenFiles {
+		deleteObjectInput := &s3.DeleteObjectInput{
+			Bucket: &bucket,
+			Key:    &file,
+		}
+
+		if _, err := w.s3Client.DeleteObjectWithContext(ctx, deleteObjectInput); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

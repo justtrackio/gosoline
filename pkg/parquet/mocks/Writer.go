@@ -12,6 +12,34 @@ type Writer struct {
 	mock.Mock
 }
 
+// DeleteReadFiles provides a mock function with given fields: ctx
+func (_m *Writer) DeleteReadFiles(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeleteWrittenFiles provides a mock function with given fields: ctx
+func (_m *Writer) DeleteWrittenFiles(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Write provides a mock function with given fields: ctx, datetime, items
 func (_m *Writer) Write(ctx context.Context, datetime time.Time, items interface{}) error {
 	ret := _m.Called(ctx, datetime, items)

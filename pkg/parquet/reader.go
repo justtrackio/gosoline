@@ -30,6 +30,8 @@ type ReadResult map[string]interface{}
 type ReadResults []ReadResult
 type ResultCallback func(progress Progress, results interface{}) (bool, error)
 
+var ReadS3Files []string
+
 //go:generate mockery -name Reader
 type Reader interface {
 	ReadDate(ctx context.Context, datetime time.Time, target interface{}) error
@@ -156,6 +158,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 				stop = true
 				return
 			}
+			ReadS3Files = append(ReadS3Files, file)
 		}(i, file)
 	}
 
