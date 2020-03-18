@@ -7,6 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/gin-gonic/gin"
+	"net"
 	"net/http"
 	"time"
 )
@@ -24,6 +25,7 @@ type ApiServer struct {
 
 	logger       mon.Logger
 	server       *http.Server
+	listener     net.Listener
 	defineRouter Define
 }
 
@@ -81,15 +83,30 @@ func (a *ApiServer) BootWithInterfaces(config cfg.Config, logger mon.Logger, rou
 		IdleTimeout:  s.TimeoutIdle * time.Second,
 	}
 
+	addr := a.server.Addr
+	if addr == "" {
+		addr = ":http"
+	}
+
+	// open a port for the server already in this step so we can already start accepting connections
+	// when this module is later run (see also issue #201)
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	a.listener = ln
+
 	return nil
 }
 
 func (a *ApiServer) Run(ctx context.Context) error {
 	go a.waitForStop(ctx)
-	err := a.server.ListenAndServe()
+	err := a.server.Serve(a.listener)
 
 	if err != http.ErrServerClosed {
 		a.logger.Error(err, "Server closed unexpected")
+
 		return err
 	}
 
