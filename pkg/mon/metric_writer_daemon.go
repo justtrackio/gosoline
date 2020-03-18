@@ -30,7 +30,7 @@ func (w daemonWriter) GetPriority() int {
 }
 
 func (w daemonWriter) Write(batch MetricData) {
-	if !w.daemon.settings.Enabled {
+	if !w.daemon.settings.Enabled || len(batch) == 0 {
 		return
 	}
 
@@ -38,9 +38,9 @@ func (w daemonWriter) Write(batch MetricData) {
 		if batch[i].Timestamp.IsZero() {
 			batch[i].Timestamp = w.clock.Now()
 		}
-
-		w.daemon.channel <- batch[i]
 	}
+
+	w.daemon.channel.write(batch)
 }
 
 func (w daemonWriter) WriteOne(data *MetricDatum) {

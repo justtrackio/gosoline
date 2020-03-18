@@ -40,13 +40,53 @@ type cwDaemon struct {
 	logger   Logger
 	settings *MetricSettings
 
-	channel chan *MetricDatum
+	channel *metricChannel
 	ticker  *time.Ticker
 	writers []MetricWriter
 
 	batch          map[string]*BatchedMetricDatum
 	defaults       map[string]*MetricDatum
 	dataPointCount int
+}
+
+type metricChannel struct {
+	logger Logger
+	c      chan MetricData
+	closed bool
+	lck    sync.RWMutex
+}
+
+func (c *metricChannel) write(batch MetricData) {
+	c.lck.RLock()
+	defer c.lck.RUnlock()
+
+	if c.closed {
+		c.logger.Warnf("refusing to write %d metric datums to metric channel: channel is closed", len(batch))
+
+		return
+	}
+
+	c.c <- batch
+}
+
+// Lock the channel metadata, close the channel and unlock it again.
+// Why do we need a RW lock for the channel? Multiple possible choices:
+//  - Just read until we get nothing more - does not work if a producer
+//    writes more messages after we read "everything" to the channel. If
+//    the producer writes enough messages, it could actually get stuck
+//    because there is no consumer left and we only buffer 100 items
+//  - Just add an (atomic) boolean flag: If we check whether we closed the
+//    channel and then write to it, if not, we have a time-of-check to
+//    time-of-use race condition. Between our check and writing to the
+//    channel someone could have closed the channel.
+//  - Just use recover when you get a panic: Would work, but this is really
+//    not pretty.
+func (c *metricChannel) close() {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	close(c.c)
+	c.closed = true
 }
 
 var cwDaemonContainer = struct {
@@ -63,7 +103,10 @@ func ProvideCwDaemon() *cwDaemon {
 	}
 
 	cwDaemonContainer.instance = &cwDaemon{
-		channel:  make(chan *MetricDatum, 100),
+		channel: &metricChannel{
+			c:      make(chan MetricData, 100),
+			closed: false,
+		},
 		defaults: make(map[string]*MetricDatum, 0),
 		settings: &MetricSettings{},
 		writers:  make([]MetricWriter, 0),
@@ -92,6 +135,7 @@ func (d *cwDaemon) BootWithInterfaces(logger Logger, writers []MetricWriter, set
 	d.settings = settings
 	d.writers = writers
 	d.ticker = time.NewTicker(settings.Interval)
+	d.channel.logger = logger.WithChannel("metrics-channel")
 
 	return nil
 }
@@ -109,11 +153,12 @@ func (d *cwDaemon) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			d.settings.Enabled = false
 			d.ticker.Stop()
+			d.emptyChannel()
 			d.publish()
 			return nil
 
-		case dat := <-d.channel:
-			d.append(dat)
+		case data := <-d.channel.c:
+			d.appendBatch(data)
 
 		case <-d.ticker.C:
 			d.publish()
@@ -128,6 +173,19 @@ func (d *cwDaemon) AddDefaults(data ...*MetricDatum) {
 	for _, datum := range data {
 		id := datum.Id()
 		d.defaults[id] = datum
+	}
+}
+
+func (d *cwDaemon) emptyChannel() {
+	d.channel.close()
+
+	for data := range d.channel.c {
+		d.appendBatch(data)
+	}
+}
+func (d *cwDaemon) appendBatch(data MetricData) {
+	for _, dat := range data {
+		d.append(dat)
 	}
 }
 
