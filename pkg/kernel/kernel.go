@@ -80,7 +80,16 @@ func (k *kernel) Add(name string, module Module) {
 		IsRunning: false,
 	}
 
-	k.modules.Store(name, state)
+	if _, didExist := k.modules.LoadOrStore(name, state); didExist {
+		// if we overwrite an existing module, the module count will be off and the application will hang while waiting
+		// until stage.moduleCount modules have booted.
+		k.logger.Panicf(
+			errors.New("module must not be redeclared"),
+			"failed to add new module %s: module exists",
+			name,
+		)
+	}
+
 	k.moduleCount++
 }
 
