@@ -1,3 +1,8 @@
+locals {
+  queueName           = var.fifo ? "${var.queueName}.fifo" : var.queueName
+  deadLetterQueueName = var.fifo ? "${var.queueName}-dead.fifo" : "${var.queueName}-dead"
+}
+
 module "main" {
   source = "./queue"
 
@@ -5,7 +10,8 @@ module "main" {
   environment = var.environment
   family      = var.family
   project     = var.project
-  queueName   = var.queueName
+  queueName   = local.queueName
+  fifo        = var.fifo
 
   maxReceiveCount         = var.maxReceiveCount
   messageDeliveryDelay    = var.messageDeliveryDelay
@@ -27,7 +33,8 @@ module "dead" {
   environment = var.environment
   family      = var.family
   project     = var.project
-  queueName   = "${var.queueName}-dead"
+  queueName   = local.deadLetterQueueName
+  fifo        = var.fifo
 
   messageRetentionSeconds = var.messageRetentionSeconds
 

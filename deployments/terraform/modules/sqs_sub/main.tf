@@ -1,6 +1,7 @@
 locals {
   model = var.model != "" ? var.model : var.targetModel
 }
+
 data "aws_sns_topic" "main" {
   name = "${var.project}-${var.environment}-${var.targetFamily}-${var.targetApplication}-${var.targetModel}"
 }

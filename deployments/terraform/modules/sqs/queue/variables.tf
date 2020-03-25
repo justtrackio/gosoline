@@ -4,6 +4,11 @@ variable "family" {}
 variable "application" {}
 variable "queueName" {}
 
+variable "fifo" {
+  type    = bool
+  default = false
+}
+
 variable "messageDeliveryDelay" {
   default = 0
 }

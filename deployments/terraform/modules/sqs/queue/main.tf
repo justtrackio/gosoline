@@ -1,10 +1,10 @@
 locals {
   redrivePolicy = "{\"deadLetterTargetArn\":\"${var.deadLetterArn}\",\"maxReceiveCount\":${var.maxReceiveCount}}"
 }
-
 resource "aws_sqs_queue" "main" {
   name = "${var.project}-${var.environment}-${var.family}-${var.application}-${var.queueName}"
 
+  fifo_queue                 = var.fifo
   delay_seconds              = var.messageDeliveryDelay
   visibility_timeout_seconds = var.visibilityTimeout
   message_retention_seconds  = var.messageRetentionSeconds
