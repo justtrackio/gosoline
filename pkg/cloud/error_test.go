@@ -1,17 +1,118 @@
 package cloud_test
 
 import (
+	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/redis"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"net"
 	"net/http"
 	"testing"
 )
+
+type awsErr struct {
+	error     string
+	code      string
+	message   string
+	origError error
+}
+
+func (a awsErr) Error() string {
+	return a.error
+}
+
+func (a awsErr) Code() string {
+	return a.code
+}
+
+func (a awsErr) Message() string {
+	return a.message
+}
+
+func (a awsErr) OrigErr() error {
+	return a.origError
+}
+
+func TestIsRequestCanceled(t *testing.T) {
+	for name, test := range map[string]struct {
+		err        error
+		isCanceled bool
+	}{
+		"none": {
+			err:        nil,
+			isCanceled: false,
+		},
+		"other error": {
+			err:        redis.Nil,
+			isCanceled: false,
+		},
+		"format error": {
+			err:        fmt.Errorf("error: %d", 42),
+			isCanceled: false,
+		},
+		"simple": {
+			err:        context.Canceled,
+			isCanceled: true,
+		},
+		"simple wrapped": {
+			err:        fmt.Errorf("error %w", context.Canceled),
+			isCanceled: true,
+		},
+		"cloud": {
+			err:        cloud.RequestCanceledError,
+			isCanceled: true,
+		},
+		"cloud wrapped": {
+			err:        fmt.Errorf("error %w", cloud.RequestCanceledError),
+			isCanceled: true,
+		},
+		"aws": {
+			err: awsErr{
+				code: request.CanceledErrorCode,
+			},
+			isCanceled: true,
+		},
+		"aws wrapped": {
+			err: fmt.Errorf("error %w", awsErr{
+				code: request.CanceledErrorCode,
+			}),
+			isCanceled: true,
+		},
+		"multierror empty": {
+			err:        multierror.Append(nil),
+			isCanceled: false,
+		},
+		"multierror single": {
+			err:        multierror.Append(nil, context.Canceled),
+			isCanceled: true,
+		},
+		"multierror single wrapped": {
+			err:        multierror.Append(nil, fmt.Errorf("error %w", context.Canceled)),
+			isCanceled: true,
+		},
+		"multierror multiple wrapped": {
+			err:        multierror.Append(nil, fmt.Errorf("error %w", context.Canceled), fmt.Errorf("error %w", cloud.RequestCanceledError)),
+			isCanceled: true,
+		},
+		"multierror mixed": {
+			err:        multierror.Append(nil, context.Canceled, redis.Nil),
+			isCanceled: false,
+		},
+	} {
+		test := test
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, test.isCanceled, cloud.IsRequestCanceled(test.err))
+		})
+	}
+}
 
 func TestIsUsedClosedConnectionError(t *testing.T) {
 	ln, err := net.Listen("tcp4", "127.0.0.1:0")

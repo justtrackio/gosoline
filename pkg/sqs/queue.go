@@ -152,7 +152,7 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 		return q.client.SendMessageBatchRequest(input)
 	})
 
-	if err != nil {
+	if err != nil && !cloud.IsRequestCanceled(err) {
 		q.logger.WithContext(ctx).Errorf(err, "could not send batch to sqs queue %s", q.properties.Name)
 	}
 
