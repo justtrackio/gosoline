@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -224,7 +223,7 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (inter
 			return nil
 		}
 
-		if IsRequestCanceled(err) || errors.Is(err, RequestCanceledError) {
+		if IsRequestCanceled(err) {
 			return backoff.Permanent(err)
 		}
 

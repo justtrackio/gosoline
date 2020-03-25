@@ -11,10 +11,10 @@ import (
 
 //go:generate mockery -name Service
 type Service interface {
-	HasCurrency(context.Context, string) (bool, error)
-	ToEur(context.Context, float64, string) (float64, error)
-	ToUsd(context.Context, float64, string) (float64, error)
-	ToCurrency(context.Context, string, float64, string) (float64, error)
+	HasCurrency(ctx context.Context, currency string) (bool, error)
+	ToEur(ctx context.Context, value float64, from string) (float64, error)
+	ToUsd(ctx context.Context, value float64, from string) (float64, error)
+	ToCurrency(ctx context.Context, to string, value float64, from string) (float64, error)
 }
 
 type CurrencyService struct {
