@@ -27,11 +27,11 @@ type containerConfig struct {
 }
 
 type dockerRunner struct {
-	pool           *dockertest.Pool
-	resources      []*dockertest.Resource
-	resourcesMutex sync.Mutex
-	id             string
-	logger         mon.Logger
+	pool            *dockertest.Pool
+	containers      []string
+	containersMutex sync.Mutex
+	id              string
+	logger          mon.Logger
 }
 
 func newDockerRunner() *dockerRunner {
@@ -43,23 +43,25 @@ func newDockerRunner() *dockerRunner {
 
 	pool.MaxWait = 2 * time.Minute
 
-	resources := make([]*dockertest.Resource, 0)
-
 	id := uuid.New().NewV4()
 
 	logger := mon.NewLogger().WithChannel("docker-runner")
 
+	containers := make([]string, 0)
+
 	return &dockerRunner{
-		pool:      pool,
-		resources: resources,
-		id:        id,
-		logger:    logger,
+		pool:       pool,
+		id:         id,
+		logger:     logger,
+		containers: containers,
 	}
 }
 
 func (d *dockerRunner) Run(name string, config containerConfig) {
 
 	containerName := d.getContainerName(name)
+
+	d.markForCleanup(containerName)
 
 	logger := d.logger.WithFields(map[string]interface{}{
 		"container": containerName,
@@ -104,15 +106,17 @@ func (d *dockerRunner) Run(name string, config containerConfig) {
 		panic(fmt.Errorf("could not bring up %s container: %w", containerName, err))
 	}
 
-	d.resourcesMutex.Lock()
-	d.resources = append(d.resources, resource)
-	defer d.resourcesMutex.Unlock()
-
 	if config.PrintLogs {
 		d.printContainerLogs(resource)
 	}
 
 	logger.Info("container up and running")
+}
+
+func (d *dockerRunner) markForCleanup(containerName string) {
+	d.containersMutex.Lock()
+	defer d.containersMutex.Unlock()
+	d.containers = append(d.containers, containerName)
 }
 
 func (d *dockerRunner) printContainerLogs(resource *dockertest.Resource) {
@@ -129,13 +133,13 @@ func (d *dockerRunner) printContainerLogs(resource *dockertest.Resource) {
 	}
 }
 
-func (d *dockerRunner) PurgeAllResources() {
-	for _, res := range d.resources {
+func (d *dockerRunner) RemoveAllContainers() {
+	for _, container := range d.containers {
 		d.logger.WithFields(map[string]interface{}{
-			"container": res.Container.Name,
+			"container": container,
 		}).Infof("stopping container")
-		if err := d.pool.Purge(res); err != nil {
-			log.Fatalf("Could not purge resource: %s", err)
+		if err := d.pool.RemoveContainerByName(container); err != nil {
+			d.logger.Warn("could not remove container %s: %w", container, err)
 		}
 	}
 }

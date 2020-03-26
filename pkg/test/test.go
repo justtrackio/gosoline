@@ -95,7 +95,7 @@ func (m *Mocks) runComponent(component mockComponent) {
 }
 
 func (m *Mocks) Shutdown() {
-	m.dockerRunner.PurgeAllResources()
+	m.dockerRunner.RemoveAllContainers()
 }
 
 func Boot(configFilenames ...string) *Mocks {
