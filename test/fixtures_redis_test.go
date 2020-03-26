@@ -3,6 +3,7 @@
 package test_test
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -30,7 +31,15 @@ type FixturesRedisSuite struct {
 
 func (s *FixturesRedisSuite) SetupSuite() {
 	setup(s.T())
-	s.mocks = test.Boot("test_configs/config.redis.test.yml")
+	mocks, err := test.Boot("test_configs/config.redis.test.yml")
+
+	if err != nil {
+		assert.Fail(s.T(), "failed to boot mocks")
+
+		return
+	}
+
+	s.mocks = mocks
 	s.client = s.mocks.ProvideRedisClient("redis")
 	s.logger = mon.NewLogger()
 }
@@ -48,6 +57,9 @@ func (s FixturesRedisSuite) TestRedis() {
 	config.Option(
 		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
+		cfg.WithConfigMap(map[string]interface{}{
+			"redis_default_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.Ports("redis")["redis"]),
+		}),
 	)
 
 	// ensure clean start
@@ -83,6 +95,9 @@ func (s FixturesRedisSuite) TestRedisWithPurge() {
 	config.Option(
 		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
+		cfg.WithConfigMap(map[string]interface{}{
+			"redis_default_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.Ports("redis")["redis"]),
+		}),
 	)
 
 	// ensure clean start
@@ -128,6 +143,9 @@ func (s FixturesRedisSuite) TestRedisKvStore() {
 	config.Option(
 		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
+		cfg.WithConfigMap(map[string]interface{}{
+			"redis_kvstore_testModel_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.Ports("redis")["redis"]),
+		}),
 	)
 
 	// ensure clean start
@@ -151,6 +169,9 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 	config.Option(
 		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
+		cfg.WithConfigMap(map[string]interface{}{
+			"redis_kvstore_testModel_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.Ports("redis")["redis"]),
+		}),
 	)
 
 	// ensure clean start

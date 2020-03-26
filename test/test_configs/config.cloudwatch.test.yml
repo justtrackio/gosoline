@@ -2,7 +2,4 @@ mocks:
   cloudwatch:
     component: cloudwatch
     host: 172.17.0.1
-    port: 4582
-    healthcheck:
-      port: 8081
     debug: true

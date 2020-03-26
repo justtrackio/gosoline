@@ -5,7 +5,6 @@ app_name: fixture-loader
 
 db_drivername: "mysql"
 db_hostname: "172.17.0.1"
-db_port: 3333
 db_database: "myDbName"
 db_username: "root"
 db_password: "gosoline"

@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"strings"
@@ -14,18 +15,17 @@ const componentSnsSqs = "sns_sqs"
 
 type snsSqsSettings struct {
 	*healthcheckMockSettings
-	SnsPort int `cfg:"sns_port"`
-	SqsPort int `cfg:"sqs_port"`
+	SnsPort int `cfg:"sns_port" default:"0"`
+	SqsPort int `cfg:"sqs_port" default:"0"`
 }
 
 type snsSqsComponent struct {
-	name     string
+	baseComponent
 	settings *snsSqsSettings
 	clients  *simpleCache
-	runner   *dockerRunner
 }
 
-func (s *snsSqsComponent) Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string) {
+func (s *snsSqsComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
 	s.name = name
 	s.runner = runner
 	s.clients = &simpleCache{}
@@ -39,7 +39,7 @@ func (s *snsSqsComponent) Boot(config cfg.Config, runner *dockerRunner, settings
 	config.UnmarshalKey(key, s.settings)
 }
 
-func (s *snsSqsComponent) Start() {
+func (s *snsSqsComponent) Start() error {
 	services := "SERVICES=" + strings.Join([]string{
 		componentSns,
 		componentSqs,
@@ -53,7 +53,7 @@ func (s *snsSqsComponent) Start() {
 
 	containerName := fmt.Sprintf("gosoline_test_sns_sqs_%s", s.name)
 
-	s.runner.Run(containerName, containerConfig{
+	res, err := s.runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.8",
 		Env:        env,
@@ -66,6 +66,33 @@ func (s *snsSqsComponent) Start() {
 		PrintLogs:   s.settings.Debug,
 		ExpireAfter: s.settings.ExpireAfter,
 	})
+
+	if err != nil {
+		return err
+	}
+
+	err = s.setPort(res, "4575/tcp", &s.settings.SnsPort)
+
+	if err != nil {
+		return err
+	}
+
+	err = s.setPort(res, "4576/tcp", &s.settings.SqsPort)
+
+	if err != nil {
+		return err
+	}
+
+	err = s.setPort(res, "8080/tcp", &s.settings.Healthcheck.Port)
+
+	return err
+}
+
+func (s *snsSqsComponent) Ports() map[string]int {
+	return map[string]int{
+		"sqs": s.settings.SqsPort,
+		"sns": s.settings.SnsPort,
+	}
 }
 
 func (s *snsSqsComponent) provideSnsClient() *sns.SNS {

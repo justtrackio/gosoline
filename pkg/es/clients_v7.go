@@ -59,7 +59,13 @@ var factory = map[string]clientBuilder{
 }
 
 func NewClient(config cfg.Config, logger Logger, name string) *ClientV7 {
-	client := NewSimpleClient(config, logger, name)
+	clientTypeKey := fmt.Sprintf("es_%s_type", name)
+	clientType := config.GetString(clientTypeKey)
+
+	urlKey := fmt.Sprintf("es_%s_endpoint", name)
+	url := config.GetString(urlKey)
+
+	client := NewSimpleClient(logger, url, clientType)
 
 	templateKey := fmt.Sprintf("es_%s_templates", name)
 	templatePath := config.GetStringSlice(templateKey)
@@ -68,16 +74,10 @@ func NewClient(config cfg.Config, logger Logger, name string) *ClientV7 {
 	return client
 }
 
-func NewSimpleClient(config cfg.Config, logger Logger, name string) *ClientV7 {
-	clientTypeKey := fmt.Sprintf("es_%s_type", name)
-	clientType := config.GetString(clientTypeKey)
-
-	urlKey := fmt.Sprintf("es_%s_endpoint", name)
-	url := config.GetString(urlKey)
-
+func NewSimpleClient(logger Logger, url string, clientType string) *ClientV7 {
 	logger.Info("creating client ", clientType, " for host ", url)
-	client, err := factory[clientType](logger, url)
 
+	client, err := factory[clientType](logger, url)
 	if err != nil {
 		logger.Fatal(err, "error creating the client")
 	}

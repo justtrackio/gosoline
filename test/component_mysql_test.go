@@ -11,11 +11,21 @@ import (
 func Test_mysql(t *testing.T) {
 	setup(t)
 
-	mocks := pkgTest.Boot("test_configs/config.mysql.test.yml")
-	defer mocks.Shutdown()
+	mocks, err := pkgTest.Boot("test_configs/config.mysql.test.yml")
+	defer func() {
+		if mocks != nil {
+			mocks.Shutdown()
+		}
+	}()
+
+	if err != nil {
+		assert.Fail(t, "failed to boot mocks")
+
+		return
+	}
 
 	db := mocks.ProvideMysqlClient("mysql")
 
-	err := db.Ping()
+	err = db.Ping()
 	assert.NoError(t, err)
 }

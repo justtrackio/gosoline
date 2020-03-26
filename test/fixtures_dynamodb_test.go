@@ -3,6 +3,7 @@
 package test_test
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/fixtures"
@@ -25,7 +26,15 @@ type FixturesDynamoDbSuite struct {
 
 func (s *FixturesDynamoDbSuite) SetupSuite() {
 	setup(s.T())
-	s.mocks = test.Boot("test_configs/config.dynamodb.test.yml")
+	mocks, err := test.Boot("test_configs/config.dynamodb.test.yml")
+
+	if err != nil {
+		assert.Fail(s.T(), "failed to boot mocks")
+
+		return
+	}
+
+	s.mocks = mocks
 	s.db = s.mocks.ProvideDynamoDbClient("dynamodb")
 	s.logger = mon.NewLogger()
 }
@@ -43,6 +52,9 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 	err := config.Option(
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
+		cfg.WithConfigMap(map[string]interface{}{
+			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.Ports("dynamodb")["dynamodb"]),
+		}),
 	)
 
 	assert.NoError(s.T(), err)
@@ -88,6 +100,9 @@ func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 	err := config.Option(
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
+		cfg.WithConfigMap(map[string]interface{}{
+			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.Ports("dynamodb")["dynamodb"]),
+		}),
 	)
 
 	assert.NoError(s.T(), err)
@@ -164,6 +179,9 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
 	err := config.Option(
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
+		cfg.WithConfigMap(map[string]interface{}{
+			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.Ports("dynamodb")["dynamodb"]),
+		}),
 	)
 
 	assert.NoError(s.T(), err)
@@ -193,6 +211,9 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 	err := config.Option(
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
+		cfg.WithConfigMap(map[string]interface{}{
+			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.Ports("dynamodb")["dynamodb"]),
+		}),
 	)
 
 	assert.NoError(s.T(), err)

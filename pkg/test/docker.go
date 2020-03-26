@@ -21,7 +21,7 @@ type containerConfig struct {
 	Env          []string
 	Cmd          []string
 	PortBindings portBinding
-	HealthCheck  func() error
+	HealthCheck  func(*dockertest.Resource) error
 	PrintLogs    bool
 	ExpireAfter  time.Duration
 }
@@ -57,8 +57,7 @@ func newDockerRunner() *dockerRunner {
 	}
 }
 
-func (d *dockerRunner) Run(name string, config containerConfig) {
-
+func (d *dockerRunner) Run(name string, config containerConfig) (*dockertest.Resource, error) {
 	containerName := d.getContainerName(name)
 
 	logger := d.logger.WithFields(map[string]interface{}{
@@ -85,23 +84,25 @@ func (d *dockerRunner) Run(name string, config containerConfig) {
 	})
 
 	if err != nil {
-		panic(fmt.Errorf("could not start %s container: %w", containerName, err))
+		return nil, fmt.Errorf("could not start %s container: %w", containerName, err)
 	}
 
 	err = resource.Expire(uint(config.ExpireAfter.Seconds()))
 
 	if err != nil {
-		panic(fmt.Errorf("could not expire %s container: %w", containerName, err))
+		return nil, fmt.Errorf("could not expire %s container: %w", containerName, err)
 	}
 
 	logger.WithFields(map[string]interface{}{
 		"expire_after": config.ExpireAfter,
 	}).Info("set container expiry")
 
-	err = d.pool.Retry(config.HealthCheck)
+	err = d.pool.Retry(func() error {
+		return config.HealthCheck(resource)
+	})
 
 	if err != nil {
-		panic(fmt.Errorf("could not bring up %s container: %w", containerName, err))
+		return nil, fmt.Errorf("could not bring up %s container: %w", containerName, err)
 	}
 
 	d.resourcesMutex.Lock()
@@ -113,6 +114,8 @@ func (d *dockerRunner) Run(name string, config containerConfig) {
 	}
 
 	logger.Info("container up and running")
+
+	return resource, nil
 }
 
 func (d *dockerRunner) printContainerLogs(resource *dockertest.Resource) {

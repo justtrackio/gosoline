@@ -2,7 +2,4 @@ mocks:
   kinesis:
     component: kinesis
     host: 172.17.0.1
-    port: 4568
-    healthcheck:
-      port: 8082
     debug: false

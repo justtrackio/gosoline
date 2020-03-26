@@ -11,8 +11,18 @@ import (
 func Test_redis(t *testing.T) {
 	setup(t)
 
-	mocks := pkgTest.Boot("test_configs/config.redis.test.yml")
-	defer mocks.Shutdown()
+	mocks, err := pkgTest.Boot("test_configs/config.redis.test.yml")
+	defer func() {
+		if mocks != nil {
+			mocks.Shutdown()
+		}
+	}()
+
+	if err != nil {
+		assert.Fail(t, "failed to boot mocks")
+
+		return
+	}
 
 	client := mocks.ProvideRedisClient("redis")
 	pong, err := client.Ping().Result()

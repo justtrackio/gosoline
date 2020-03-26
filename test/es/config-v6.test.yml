@@ -1,10 +1,5 @@
-es_test_v6_type: default
-es_test_v6_endpoint: http://172.17.0.1:9226
-es_test_v6_templates: []
-
 mocks:
   metrics_v6:
     component: elasticsearch
     version: 6.8.1
     host: 172.17.0.1
-    port: 9226

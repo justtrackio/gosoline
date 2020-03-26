@@ -5,24 +5,25 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
+	"github.com/ory/dockertest"
 	"io/ioutil"
 	"net/http"
 )
 
 type wiremockSettings struct {
 	*mockSettings
-	Port  uint   `cfg:"port"`
+	Port  int    `cfg:"port" default:"0"`
 	Mocks string `cfg:"mocks"`
 }
 
 type wiremockComponent struct {
-	name     string
+	baseComponent
 	db       *sql.DB
 	settings *wiremockSettings
-	runner   *dockerRunner
 }
 
-func (w *wiremockComponent) Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string) {
+func (w *wiremockComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
 	w.name = name
 	w.runner = runner
 	w.settings = &wiremockSettings{
@@ -32,19 +33,25 @@ func (w *wiremockComponent) Boot(config cfg.Config, runner *dockerRunner, settin
 	config.UnmarshalKey(key, w.settings)
 }
 
-func (w *wiremockComponent) Start() {
-	url := fmt.Sprintf("http://%s:%d/__admin", w.settings.Host, w.settings.Port)
-
+func (w *wiremockComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_wiremock_%s", w.name)
 
-	w.runner.Run(containerName, containerConfig{
+	_, err := w.runner.Run(containerName, containerConfig{
 		Repository: "rodolpheche/wiremock",
 		Tag:        "latest",
 		PortBindings: portBinding{
 			"8080/tcp": fmt.Sprint(w.settings.Port),
 		},
-		HealthCheck: func() error {
-			_, err := http.Get(url)
+		HealthCheck: func(res *dockertest.Resource) error {
+			err := w.setPort(res, "8080/tcp", &w.settings.Port)
+
+			if err != nil {
+				return err
+			}
+
+			url := w.getUrl()
+
+			_, err = http.Get(url)
 
 			return err
 		},
@@ -52,15 +59,32 @@ func (w *wiremockComponent) Start() {
 		ExpireAfter: w.settings.ExpireAfter,
 	})
 
+	if err != nil {
+		return err
+	}
+
 	jsonStr, err := ioutil.ReadFile(w.settings.Mocks)
 
 	if err != nil {
-		panic(fmt.Errorf("could not read http mock configuration: %w", err))
+		return fmt.Errorf("could not read http mock configuration: %w", err)
 	}
 
+	url := w.getUrl()
 	_, err = http.Post(url+"/mappings/import", "application/json", bytes.NewBuffer(jsonStr))
 
 	if err != nil {
-		panic(fmt.Errorf("could not send stubs to wiremock: %w", err))
+		return fmt.Errorf("could not send stubs to wiremock: %w", err)
 	}
+
+	return nil
+}
+
+func (w *wiremockComponent) Ports() map[string]int {
+	return map[string]int{
+		w.name: w.settings.Port,
+	}
+}
+
+func (w *wiremockComponent) getUrl() string {
+	return fmt.Sprintf("http://%s:%d/__admin", w.settings.Host, w.settings.Port)
 }

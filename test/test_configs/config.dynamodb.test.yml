@@ -2,5 +2,4 @@ mocks:
   dynamodb:
     component: dynamodb
     host: 172.17.0.1
-    port: 4569
     debug: true
