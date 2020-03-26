@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	parquetS3 "github.com/xitongsys/parquet-go-source/s3"
 	"github.com/xitongsys/parquet-go/writer"
+	"strings"
 	"time"
 )
 
@@ -88,13 +89,16 @@ func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interfac
 	bucket := w.getBucketName()
 	key := s3KeyNamingStrategy(w.settings.ModelId, datetime, w.prefixNamingStrategy)
 
+	//For now this is hacky. But we plan to run this with production data in sandbox, check the results, and then
+	//copy the files back. Please never merge me into master
+	prodKey := strings.Replace(key, "sandbox", "prod", -1)
 	schema, converted, err := w.parseItems(items)
 
 	if err != nil {
 		return err
 	}
 
-	fw, err := parquetS3.NewS3FileWriter(ctx, bucket, key, []func(*s3manager.Uploader){}, w.s3Cfg)
+	fw, err := parquetS3.NewS3FileWriter(ctx, bucket, prodKey, []func(*s3manager.Uploader){}, w.s3Cfg)
 
 	if err != nil {
 		return err
@@ -120,7 +124,7 @@ func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interfac
 		return err
 	}
 
-	w.writtenFiles = append(w.writtenFiles, key)
+	w.writtenFiles = append(w.writtenFiles, prodKey)
 
 	tagSet := makeTags(w.tags)
 
@@ -130,7 +134,7 @@ func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interfac
 
 	tagInput := &s3.PutObjectTaggingInput{
 		Bucket:  &bucket,
-		Key:     &key,
+		Key:     &prodKey,
 		Tagging: &s3.Tagging{TagSet: tagSet},
 	}
 
