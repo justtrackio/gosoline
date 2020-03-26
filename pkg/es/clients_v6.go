@@ -68,7 +68,6 @@ func NewSimpleClientV6(logger Logger, url string, clientType string) *ClientV6 {
 	logger.Info("creating client ", clientType, " for host ", url)
 
 	client, err := factoryV6[clientType](logger, url)
-
 	if err != nil {
 		logger.Fatal(err, "error creating the client")
 	}

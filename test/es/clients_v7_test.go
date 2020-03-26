@@ -12,12 +12,20 @@ import (
 func TestNewClient(t *testing.T) {
 	configFilePath := "config-v7.test.yml"
 
-	mocks := test.Boot(configFilePath)
-	defer mocks.Shutdown()
+	mocks, err := test.Boot(configFilePath)
+	defer func() {
+		if mocks != nil {
+			mocks.Shutdown()
+		}
+	}()
 
-	config, logger := getMocks(configFilePath)
+	if err != nil {
+		assert.Fail(t, "failed to boot mocks")
 
-	clientV7 := es.NewClient(config, logger, "test_v7")
+		return
+	}
+
+	clientV7 := mocks.ProvideElasticsearchV6Client("metrics_v7", "default")
 
 	res, err := clientV7.Info()
 

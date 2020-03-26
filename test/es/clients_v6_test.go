@@ -12,12 +12,20 @@ import (
 func TestNewClientV6(t *testing.T) {
 	configFilePath := "config-v6.test.yml"
 
-	mocks := test.Boot(configFilePath)
-	defer mocks.Shutdown()
+	mocks, err := test.Boot(configFilePath)
+	defer func() {
+		if mocks != nil {
+			mocks.Shutdown()
+		}
+	}()
 
-	config, logger := getMocks(configFilePath)
+	if err != nil {
+		assert.Fail(t, "failed to boot mocks")
 
-	clientV6 := es.NewClientV6(config, logger, "test_v6")
+		return
+	}
+
+	clientV6 := mocks.ProvideElasticsearchV6Client("metrics_v6", "default")
 
 	res, err := clientV6.Info()
 
@@ -28,7 +36,7 @@ func TestNewClientV6(t *testing.T) {
 func TestGetAwsClientV6(t *testing.T) {
 	config, logger := getMocks("config-v6.test.yml")
 
-	endpointKey := "es_test_v6_aws_endpoint"
+	endpointKey := "es_metrics_v6_aws_endpoint"
 	if !config.IsSet(endpointKey) {
 		t.Skipf("%s missed in config", endpointKey)
 		return

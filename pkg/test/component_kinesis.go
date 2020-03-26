@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 )
 
@@ -10,17 +11,16 @@ const componentKinesis = "kinesis"
 
 type kinesisSettings struct {
 	*healthcheckMockSettings
-	Port int `cfg:"port"`
+	Port int `cfg:"port" default:"0"`
 }
 
 type kinesisComponent struct {
-	name     string
+	baseComponent
 	settings *kinesisSettings
 	clients  *simpleCache
-	runner   *dockerRunner
 }
 
-func (k *kinesisComponent) Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string) {
+func (k *kinesisComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
 	k.name = name
 	k.runner = runner
 	k.clients = &simpleCache{}
@@ -34,10 +34,10 @@ func (k *kinesisComponent) Boot(config cfg.Config, runner *dockerRunner, setting
 	config.UnmarshalKey(key, k.settings)
 }
 
-func (k *kinesisComponent) Start() {
+func (k *kinesisComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_kinesis_%s", k.name)
 
-	k.runner.Run(containerName, containerConfig{
+	res, err := k.runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.8",
 		Env: []string{
@@ -51,6 +51,27 @@ func (k *kinesisComponent) Start() {
 		PrintLogs:   k.settings.Debug,
 		ExpireAfter: k.settings.ExpireAfter,
 	})
+
+	if err != nil {
+		return err
+	}
+
+	err = k.setPort(res, "4568/tcp", &k.settings.Port)
+
+	if err != nil {
+		return err
+	}
+
+	err = k.setPort(res, "8080/tcp", &k.settings.Healthcheck.Port)
+
+	return err
+}
+
+func (k *kinesisComponent) Ports() map[string]int {
+	return map[string]int{
+		k.name:   k.settings.Port,
+		"health": k.settings.Healthcheck.Port,
+	}
 }
 
 func (k *kinesisComponent) provideKinesisClient() *kinesis.Kinesis {

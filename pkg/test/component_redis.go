@@ -3,22 +3,23 @@ package test
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/go-redis/redis"
+	"github.com/ory/dockertest"
 )
 
 type redisSettings struct {
 	*mockSettings
-	Port int `cfg:"port"`
+	Port int `cfg:"port" default:"0"`
 }
 
 type redisComponent struct {
-	name     string
+	baseComponent
 	settings *redisSettings
 	clients  *simpleCache
-	runner   *dockerRunner
 }
 
-func (r *redisComponent) Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string) {
+func (r *redisComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
 	r.name = name
 	r.runner = runner
 	r.settings = &redisSettings{
@@ -29,25 +30,39 @@ func (r *redisComponent) Boot(config cfg.Config, runner *dockerRunner, settings 
 	config.UnmarshalKey(key, r.settings)
 }
 
-func (r *redisComponent) Start() {
+func (r *redisComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_redis_%s", r.name)
 
-	r.runner.Run(containerName, containerConfig{
+	_, err := r.runner.Run(containerName, containerConfig{
 		Repository: "redis",
 		Tag:        "5-alpine",
 		PortBindings: portBinding{
 			"6379/tcp": fmt.Sprint(r.settings.Port),
 		},
 
-		HealthCheck: func() error {
+		HealthCheck: func(res *dockertest.Resource) error {
+			err := r.setPort(res, "6379/tcp", &r.settings.Port)
+
+			if err != nil {
+				return err
+			}
+
 			client := r.provideRedisClient()
-			_, err := client.Ping().Result()
+			_, err = client.Ping().Result()
 
 			return err
 		},
 		PrintLogs:   r.settings.Debug,
 		ExpireAfter: r.settings.ExpireAfter,
 	})
+
+	return err
+}
+
+func (r *redisComponent) Ports() map[string]int {
+	return map[string]int{
+		r.name: r.settings.Port,
+	}
 }
 
 func (r *redisComponent) provideRedisClient() *redis.Client {

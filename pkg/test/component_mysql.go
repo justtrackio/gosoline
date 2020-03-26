@@ -4,25 +4,26 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/go-sql-driver/mysql"
+	"github.com/ory/dockertest"
 	"github.com/pkg/errors"
 )
 
 type mysqlSettings struct {
 	*mockSettings
-	Port    uint   `cfg:"port"`
+	Port    int    `cfg:"port" default:"0"`
 	Version string `cfg:"version"`
 	DbName  string `cfg:"dbName"`
 }
 
 type mysqlComponent struct {
-	name     string
+	baseComponent
 	settings *mysqlSettings
 	db       *sql.DB
-	runner   *dockerRunner
 }
 
-func (m *mysqlComponent) Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string) {
+func (m *mysqlComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
 	m.name = name
 	m.runner = runner
 	m.settings = &mysqlSettings{
@@ -32,7 +33,7 @@ func (m *mysqlComponent) Boot(config cfg.Config, runner *dockerRunner, settings 
 	config.UnmarshalKey(key, m.settings)
 }
 
-func (m *mysqlComponent) Start() {
+func (m *mysqlComponent) Start() error {
 	env := []string{
 		fmt.Sprintf("MYSQL_DATABASE=%s", m.settings.DbName),
 		"MYSQL_USER=gosoline",
@@ -42,7 +43,7 @@ func (m *mysqlComponent) Start() {
 
 	containerName := fmt.Sprintf("gosoline_test_mysql_%s", m.name)
 
-	m.runner.Run(containerName, containerConfig{
+	_, err := m.runner.Run(containerName, containerConfig{
 		Repository: "mysql",
 		Tag:        m.settings.Version,
 		Env:        env,
@@ -50,7 +51,13 @@ func (m *mysqlComponent) Start() {
 		PortBindings: portBinding{
 			"3306/tcp": fmt.Sprint(m.settings.Port),
 		},
-		HealthCheck: func() error {
+		HealthCheck: func(res *dockertest.Resource) error {
+			err := m.setPort(res, "3306/tcp", &m.settings.Port)
+
+			if err != nil {
+				return err
+			}
+
 			client, err := m.provideMysqlClient()
 
 			if err != nil {
@@ -68,6 +75,14 @@ func (m *mysqlComponent) Start() {
 		PrintLogs:   m.settings.Debug,
 		ExpireAfter: m.settings.ExpireAfter,
 	})
+
+	return err
+}
+
+func (m *mysqlComponent) Ports() map[string]int {
+	return map[string]int{
+		m.name: m.settings.Port,
+	}
 }
 
 type noopLogger struct {

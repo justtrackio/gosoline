@@ -4,16 +4,18 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
+	"github.com/ory/dockertest"
 	"io/ioutil"
 	"net/http"
 )
 
 type healthcheck struct {
-	Port int `cfg:"port"`
+	Port int `cfg:"port" default:"0"`
 }
+
 type healthcheckMockSettings struct {
 	*mockSettings
-	Healthcheck *healthcheck `cfg:"healthcheck"`
+	Healthcheck healthcheck `cfg:"healthcheck"`
 }
 
 type localstackHealthcheck struct {
@@ -27,9 +29,10 @@ type localstackHealthcheckServices struct {
 	SQS        string
 }
 
-func localstackHealthCheck(settings *healthcheckMockSettings, services ...string) func() error {
-	return func() error {
-		resp, err := http.Get(fmt.Sprintf("http://%s:%d/health", settings.Host, settings.Healthcheck.Port))
+func localstackHealthCheck(settings *healthcheckMockSettings, services ...string) func(*dockertest.Resource) error {
+	return func(resource *dockertest.Resource) error {
+		url := fmt.Sprintf("http://%s:%s/health", settings.Host, resource.GetPort("8080/tcp"))
+		resp, err := http.Get(url)
 
 		if err != nil {
 			return err
@@ -73,10 +76,10 @@ func localstackHealthCheck(settings *healthcheckMockSettings, services ...string
 	}
 }
 
-func healthcheckSettings(config cfg.Config, name string) *healthcheck {
-	healthcheck := &healthcheck{}
+func healthcheckSettings(config cfg.Config, name string) healthcheck {
+	healthcheck := healthcheck{}
 	key := fmt.Sprintf("mocks.%s.healthcheck", name)
-	config.UnmarshalKey(key, healthcheck)
+	config.UnmarshalKey(key, &healthcheck)
 
 	return healthcheck
 }

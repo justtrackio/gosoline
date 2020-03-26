@@ -41,12 +41,23 @@ var MysqlTestModelMetadata = db_repo.Metadata{
 
 func (s *FixturesMysqlSuite) SetupSuite() {
 	setup(s.T())
-	s.mocks = test.Boot("test_configs/config.mysql.test.yml", "test_configs/config.fixtures_mysql.test.yml")
+	mocks, err := test.Boot("test_configs/config.mysql.test.yml", "test_configs/config.fixtures_mysql.test.yml")
+
+	if err != nil {
+		assert.Fail(s.T(), "failed to boot mocks")
+
+		return
+	}
+
+	s.mocks = mocks
 
 	config := cfg.New()
 	config.Option(
 		cfg.WithConfigFile("test_configs/config.mysql.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_mysql.test.yml", "yml"),
+		cfg.WithConfigMap(map[string]interface{}{
+			"db_port": s.mocks.Ports("mysql")["mysql"],
+		}),
 	)
 
 	s.logger = mon.NewLogger()

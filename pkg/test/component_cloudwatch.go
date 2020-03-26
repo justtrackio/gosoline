@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 )
 
@@ -10,17 +11,16 @@ const componentCloudwatch = "cloudwatch"
 
 type cloudwatchSettings struct {
 	*healthcheckMockSettings
-	Port int `cfg:"port"`
+	Port int `cfg:"port" default:"0"`
 }
 
 type cloudwatchComponent struct {
-	name     string
+	baseComponent
 	settings *cloudwatchSettings
 	clients  *simpleCache
-	runner   *dockerRunner
 }
 
-func (c *cloudwatchComponent) Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string) {
+func (c *cloudwatchComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
 	c.name = name
 	c.runner = runner
 	c.clients = &simpleCache{}
@@ -34,10 +34,10 @@ func (c *cloudwatchComponent) Boot(config cfg.Config, runner *dockerRunner, sett
 	config.UnmarshalKey(key, c.settings)
 }
 
-func (c *cloudwatchComponent) Start() {
+func (c *cloudwatchComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_cloudwatch_%s", c.name)
 
-	c.runner.Run(containerName, containerConfig{
+	res, err := c.runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.8",
 		Env: []string{
@@ -51,6 +51,27 @@ func (c *cloudwatchComponent) Start() {
 		PrintLogs:   c.settings.Debug,
 		ExpireAfter: c.settings.ExpireAfter,
 	})
+
+	if err != nil {
+		return err
+	}
+
+	err = c.setPort(res, "4582/tcp", &c.settings.Port)
+
+	if err != nil {
+		return err
+	}
+
+	err = c.setPort(res, "8080/tcp", &c.settings.Healthcheck.Port)
+
+	return err
+}
+
+func (c *cloudwatchComponent) Ports() map[string]int {
+	return map[string]int{
+		c.name:   c.settings.Port,
+		"health": c.settings.Healthcheck.Port,
+	}
 }
 
 func (c *cloudwatchComponent) provideCloudwatchClient() *cloudwatch.CloudWatch {

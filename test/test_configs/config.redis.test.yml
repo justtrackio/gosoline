@@ -2,5 +2,4 @@ mocks:
   redis:
     component: redis
     host: 172.17.0.1
-    port: 6381
     debug: false

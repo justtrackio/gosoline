@@ -20,8 +20,18 @@ import (
 func Test_sns_sqs(t *testing.T) {
 	setup(t)
 
-	mocks := pkgTest.Boot("test_configs/config.sns_sqs.test.yml")
-	defer mocks.Shutdown()
+	mocks, err := pkgTest.Boot("test_configs/config.sns_sqs.test.yml")
+	defer func() {
+		if mocks != nil {
+			mocks.Shutdown()
+		}
+	}()
+
+	if err != nil {
+		assert.Fail(t, "failed to boot mocks")
+
+		return
+	}
 
 	queueName := "my-queue"
 	topicName := "my-topic"
@@ -50,7 +60,7 @@ func Test_sns_sqs(t *testing.T) {
 	})
 
 	// create a topic
-	_, err := executor.Execute(context.Background(), func() (*request.Request, interface{}) {
+	_, err = executor.Execute(context.Background(), func() (*request.Request, interface{}) {
 		return snsClient.CreateTopicRequest(&sns.CreateTopicInput{
 			Name: aws.String(topicName),
 		})

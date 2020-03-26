@@ -12,8 +12,18 @@ import (
 func Test_kinesis(t *testing.T) {
 	setup(t)
 
-	mocks := pkgTest.Boot("test_configs/config.kinesis.test.yml")
-	defer mocks.Shutdown()
+	mocks, err := pkgTest.Boot("test_configs/config.kinesis.test.yml")
+	defer func() {
+		if mocks != nil {
+			mocks.Shutdown()
+		}
+	}()
+
+	if err != nil {
+		assert.Fail(t, "failed to boot mocks")
+
+		return
+	}
 
 	kinClient := mocks.ProvideKinesisClient("kinesis")
 	o, err := kinClient.ListStreams(&kinesis.ListStreamsInput{})

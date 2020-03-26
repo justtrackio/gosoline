@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/ory/dockertest"
+	"github.com/ory/dockertest/docker"
+	"strconv"
 	"sync"
 	"time"
 )
 
 type mockComponent interface {
-	Boot(config cfg.Config, runner *dockerRunner, settings *mockSettings, name string)
-	Start()
+	Boot(config cfg.Config, logger mon.Logger, runner *dockerRunner, settings *mockSettings, name string)
+	Start() error
+	Ports() map[string]int
 }
 
 type mockSettings struct {
@@ -20,11 +24,20 @@ type mockSettings struct {
 	ExpireAfter time.Duration `cfg:"expire_after" default:"60s"`
 }
 
+type baseComponent struct {
+	logger mon.Logger
+	runner *dockerRunner
+	ports  map[string]int
+	name   string
+}
+
 type Mocks struct {
+	lck          sync.Mutex
 	waitGroup    sync.WaitGroup
 	dockerRunner *dockerRunner
 	components   map[string]mockComponent
 	logger       mon.Logger
+	bootFailed   bool
 }
 
 func newMocks() *Mocks {
@@ -39,12 +52,18 @@ func newMocks() *Mocks {
 	}
 }
 
-func (m *Mocks) Boot(config cfg.Config) {
+func (m *Mocks) Boot(config cfg.Config) error {
 	m.bootFromConfig(config)
 
 	m.waitGroup.Wait()
 
+	if m.bootFailed {
+		return fmt.Errorf("failed to boot at least one component")
+	}
+
 	m.logger.Info("test environment up and running")
+
+	return nil
 }
 
 func (m *Mocks) bootFromConfig(config cfg.Config) {
@@ -58,7 +77,8 @@ func (m *Mocks) bootFromConfig(config cfg.Config) {
 		component := m.createComponent(settings.Component)
 
 		m.components[name] = component
-		component.Boot(config, m.dockerRunner, settings, name)
+		component.Boot(config, m.logger, m.dockerRunner, settings, name)
+
 		m.runComponent(component)
 	}
 }
@@ -90,15 +110,25 @@ func (m *Mocks) runComponent(component mockComponent) {
 	m.waitGroup.Add(1)
 	go func() {
 		defer m.waitGroup.Done()
-		component.Start()
+
+		err := component.Start()
+		if err != nil {
+			m.lck.Lock()
+			defer m.lck.Unlock()
+			m.bootFailed = true
+		}
 	}()
+}
+
+func (m *Mocks) Ports(componentName string) map[string]int {
+	return m.components[componentName].Ports()
 }
 
 func (m *Mocks) Shutdown() {
 	m.dockerRunner.PurgeAllResources()
 }
 
-func Boot(configFilenames ...string) *Mocks {
+func Boot(configFilenames ...string) (*Mocks, error) {
 	if len(configFilenames) == 0 {
 		configFilenames = []string{"config.test.yml"}
 	}
@@ -109,12 +139,25 @@ func Boot(configFilenames ...string) *Mocks {
 		err := config.Option(cfg.WithConfigFile(filename, "yml"))
 
 		if err != nil {
-			panic(fmt.Errorf("failed to read config from file %s: %w", filename, err))
+			return nil, fmt.Errorf("failed to read config from file %s: %w", filename, err)
 		}
 	}
 
 	mocks := newMocks()
-	mocks.Boot(config)
+	err := mocks.Boot(config)
 
-	return mocks
+	return mocks, err
+}
+
+func (b *baseComponent) setPort(res *dockertest.Resource, containerPort string, set *int) error {
+	dockerPort := docker.Port(containerPort)
+
+	port, err := strconv.Atoi(res.Container.NetworkSettings.Ports[dockerPort][0].HostPort)
+	if err != nil {
+		return err
+	}
+
+	*set = port
+
+	return nil
 }

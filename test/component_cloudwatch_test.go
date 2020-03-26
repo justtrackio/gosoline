@@ -12,8 +12,18 @@ import (
 func Test_cloudwatch(t *testing.T) {
 	setup(t)
 
-	mocks := pkgTest.Boot("test_configs/config.cloudwatch.test.yml")
-	defer mocks.Shutdown()
+	mocks, err := pkgTest.Boot("test_configs/config.cloudwatch.test.yml")
+	defer func() {
+		if mocks != nil {
+			mocks.Shutdown()
+		}
+	}()
+
+	if err != nil {
+		assert.Fail(t, "failed to boot mocks")
+
+		return
+	}
 
 	cwClient := mocks.ProvideCloudwatchClient("cloudwatch")
 	o, err := cwClient.ListDashboards(&cloudwatch.ListDashboardsInput{})
