@@ -53,7 +53,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
 		cfg.WithConfigMap(map[string]interface{}{
-			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.Ports("dynamodb")["dynamodb"]),
+			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.ProvideDynamoDbPort("dynamodb")),
 		}),
 	)
 
@@ -101,7 +101,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
 		cfg.WithConfigMap(map[string]interface{}{
-			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.Ports("dynamodb")["dynamodb"]),
+			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.ProvideDynamoDbPort("dynamodb")),
 		}),
 	)
 
@@ -180,7 +180,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
 		cfg.WithConfigMap(map[string]interface{}{
-			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.Ports("dynamodb")["dynamodb"]),
+			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.ProvideDynamoDbPort("dynamodb")),
 		}),
 	)
 
@@ -212,7 +212,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
 		cfg.WithConfigMap(map[string]interface{}{
-			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.Ports("dynamodb")["dynamodb"]),
+			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.ProvideDynamoDbPort("dynamodb")),
 		}),
 	)
 

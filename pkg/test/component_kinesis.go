@@ -15,7 +15,7 @@ type kinesisSettings struct {
 }
 
 type kinesisComponent struct {
-	baseComponent
+	mockComponentBase
 	settings *kinesisSettings
 	clients  *simpleCache
 }
@@ -37,7 +37,7 @@ func (k *kinesisComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerR
 func (k *kinesisComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_kinesis_%s", k.name)
 
-	res, err := k.runner.Run(containerName, containerConfig{
+	return k.runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.8",
 		Env: []string{
@@ -47,31 +47,14 @@ func (k *kinesisComponent) Start() error {
 			"4568/tcp": fmt.Sprint(k.settings.Port),
 			"8080/tcp": fmt.Sprint(k.settings.Healthcheck.Port),
 		},
+		PortMappings: map[string]*int{
+			"4568/tcp": &k.settings.Port,
+			"8080/tcp": &k.settings.Healthcheck.Port,
+		},
 		HealthCheck: localstackHealthCheck(k.settings.healthcheckMockSettings, componentKinesis),
 		PrintLogs:   k.settings.Debug,
 		ExpireAfter: k.settings.ExpireAfter,
 	})
-
-	if err != nil {
-		return err
-	}
-
-	err = k.setPort(res, "4568/tcp", &k.settings.Port)
-
-	if err != nil {
-		return err
-	}
-
-	err = k.setPort(res, "8080/tcp", &k.settings.Healthcheck.Port)
-
-	return err
-}
-
-func (k *kinesisComponent) Ports() map[string]int {
-	return map[string]int{
-		k.name:   k.settings.Port,
-		"health": k.settings.Healthcheck.Port,
-	}
 }
 
 func (k *kinesisComponent) provideKinesisClient() *kinesis.Kinesis {

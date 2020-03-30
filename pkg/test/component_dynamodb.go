@@ -5,7 +5,6 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/ory/dockertest"
 )
 
 type dynamoDbSettings struct {
@@ -14,7 +13,7 @@ type dynamoDbSettings struct {
 }
 
 type dynamoDbComponent struct {
-	baseComponent
+	mockComponentBase
 	settings *dynamoDbSettings
 	clients  *simpleCache
 }
@@ -33,36 +32,25 @@ func (d *dynamoDbComponent) Boot(config cfg.Config, _ mon.Logger, runner *docker
 func (d *dynamoDbComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_dynamodb_%s", d.name)
 
-	_, err := d.runner.Run(containerName, containerConfig{
+	return d.runner.Run(containerName, containerConfig{
 		Repository: "amazon/dynamodb-local",
 		Tag:        "latest",
 		PortBindings: portBinding{
 			"8000/tcp": fmt.Sprint(d.settings.Port),
 		},
-		HealthCheck: func(res *dockertest.Resource) error {
-			err := d.setPort(res, "8000/tcp", &d.settings.Port)
-
-			if err != nil {
-				return err
-			}
-
+		PortMappings: map[string]*int{
+			"8000/tcp": &d.settings.Port,
+		},
+		HealthCheck: func() error {
 			client := d.provideDynamoDbClient()
 
-			_, err = client.ListTables(&dynamodb.ListTablesInput{})
+			_, err := client.ListTables(&dynamodb.ListTablesInput{})
 
 			return err
 		},
 		PrintLogs:   d.settings.Debug,
 		ExpireAfter: d.settings.ExpireAfter,
 	})
-
-	return err
-}
-
-func (d *dynamoDbComponent) Ports() map[string]int {
-	return map[string]int{
-		d.name: d.settings.Port,
-	}
 }
 
 func (d *dynamoDbComponent) provideDynamoDbClient() *dynamodb.DynamoDB {

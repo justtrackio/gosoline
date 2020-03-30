@@ -6,7 +6,6 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/es"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/ory/dockertest"
 	"net/http"
 )
 
@@ -17,7 +16,7 @@ type elasticsearchSettings struct {
 }
 
 type elasticsearchComponent struct {
-	baseComponent
+	mockComponentBase
 	settings *elasticsearchSettings
 	clients  *simpleCache
 }
@@ -37,7 +36,7 @@ func (e *elasticsearchComponent) Boot(config cfg.Config, logger mon.Logger, runn
 func (e *elasticsearchComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_elasticsearch_%s", e.name)
 
-	_, err := e.runner.Run(containerName, containerConfig{
+	return e.runner.Run(containerName, containerConfig{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
 		Tag:        e.settings.Version,
 		Env: []string{
@@ -46,13 +45,10 @@ func (e *elasticsearchComponent) Start() error {
 		PortBindings: portBinding{
 			"9200/tcp": fmt.Sprint(e.settings.Port),
 		},
-		HealthCheck: func(res *dockertest.Resource) error {
-			err := e.setPort(res, "9200/tcp", &e.settings.Port)
-
-			if err != nil {
-				return err
-			}
-
+		PortMappings: map[string]*int{
+			"9200/tcp": &e.settings.Port,
+		},
+		HealthCheck: func() error {
 			resp, err := http.Get(fmt.Sprintf("http://%s:%d/_cluster/health", e.settings.Host, e.settings.Port))
 
 			if err != nil {
@@ -69,8 +65,6 @@ func (e *elasticsearchComponent) Start() error {
 		PrintLogs:   e.settings.Debug,
 		ExpireAfter: e.settings.ExpireAfter,
 	})
-
-	return err
 }
 
 func (e *elasticsearchComponent) provideElasticsearchV6Client(clientType string) *es.ClientV6 {
@@ -89,10 +83,4 @@ func (e *elasticsearchComponent) provideElasticsearchV7Client(clientType string)
 
 		return client
 	}).(*es.ClientV7)
-}
-
-func (e *elasticsearchComponent) Ports() map[string]int {
-	return map[string]int{
-		e.name: e.settings.Port,
-	}
 }

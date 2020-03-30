@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/ory/dockertest"
-	"github.com/ory/dockertest/docker"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -14,7 +11,6 @@ import (
 type mockComponent interface {
 	Boot(config cfg.Config, logger mon.Logger, runner *dockerRunner, settings *mockSettings, name string)
 	Start() error
-	Ports() map[string]int
 }
 
 type mockSettings struct {
@@ -24,10 +20,9 @@ type mockSettings struct {
 	ExpireAfter time.Duration `cfg:"expire_after" default:"60s"`
 }
 
-type baseComponent struct {
+type mockComponentBase struct {
 	logger mon.Logger
 	runner *dockerRunner
-	ports  map[string]int
 	name   string
 }
 
@@ -74,7 +69,11 @@ func (m *Mocks) bootFromConfig(config cfg.Config) {
 		key := fmt.Sprintf("mocks.%s", name)
 		config.UnmarshalKey(key, settings)
 
-		component := m.createComponent(settings.Component)
+		component, err := m.createComponent(settings.Component)
+		if err != nil {
+			m.bootFailed = true
+			continue
+		}
 
 		m.components[name] = component
 		component.Boot(config, m.logger, m.dockerRunner, settings, name)
@@ -83,26 +82,26 @@ func (m *Mocks) bootFromConfig(config cfg.Config) {
 	}
 }
 
-func (m *Mocks) createComponent(component string) mockComponent {
+func (m *Mocks) createComponent(component string) (mockComponent, error) {
 	switch component {
 	case "mysql":
-		return &mysqlComponent{}
+		return &mysqlComponent{}, nil
 	case componentSnsSqs:
-		return &snsSqsComponent{}
+		return &snsSqsComponent{}, nil
 	case componentCloudwatch:
-		return &cloudwatchComponent{}
+		return &cloudwatchComponent{}, nil
 	case "dynamodb":
-		return &dynamoDbComponent{}
+		return &dynamoDbComponent{}, nil
 	case "elasticsearch":
-		return &elasticsearchComponent{}
+		return &elasticsearchComponent{}, nil
 	case componentKinesis:
-		return &kinesisComponent{}
+		return &kinesisComponent{}, nil
 	case "wiremock":
-		return &wiremockComponent{}
+		return &wiremockComponent{}, nil
 	case "redis":
-		return &redisComponent{}
+		return &redisComponent{}, nil
 	default:
-		panic(fmt.Errorf("unknown component type: %s", component))
+		return nil, fmt.Errorf("unknown component type: %s", component)
 	}
 }
 
@@ -120,12 +119,8 @@ func (m *Mocks) runComponent(component mockComponent) {
 	}()
 }
 
-func (m *Mocks) Ports(componentName string) map[string]int {
-	return m.components[componentName].Ports()
-}
-
 func (m *Mocks) Shutdown() {
-	m.dockerRunner.PurgeAllResources()
+	m.dockerRunner.RemoveAllContainers()
 }
 
 func Boot(configFilenames ...string) (*Mocks, error) {
@@ -147,17 +142,4 @@ func Boot(configFilenames ...string) (*Mocks, error) {
 	err := mocks.Boot(config)
 
 	return mocks, err
-}
-
-func (b *baseComponent) setPort(res *dockertest.Resource, containerPort string, set *int) error {
-	dockerPort := docker.Port(containerPort)
-
-	port, err := strconv.Atoi(res.Container.NetworkSettings.Ports[dockerPort][0].HostPort)
-	if err != nil {
-		return err
-	}
-
-	*set = port
-
-	return nil
 }

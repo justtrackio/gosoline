@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/ory/dockertest"
 	"io/ioutil"
 	"net/http"
 )
@@ -29,9 +28,9 @@ type localstackHealthcheckServices struct {
 	SQS        string
 }
 
-func localstackHealthCheck(settings *healthcheckMockSettings, services ...string) func(*dockertest.Resource) error {
-	return func(resource *dockertest.Resource) error {
-		url := fmt.Sprintf("http://%s:%s/health", settings.Host, resource.GetPort("8080/tcp"))
+func localstackHealthCheck(settings *healthcheckMockSettings, services ...string) func() error {
+	return func() error {
+		url := fmt.Sprintf("http://%s:%d/health", settings.Host, settings.Healthcheck.Port)
 		resp, err := http.Get(url)
 
 		if err != nil {
