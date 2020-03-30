@@ -20,7 +20,7 @@ type snsSqsSettings struct {
 }
 
 type snsSqsComponent struct {
-	baseComponent
+	mockComponentBase
 	settings *snsSqsSettings
 	clients  *simpleCache
 }
@@ -53,7 +53,7 @@ func (s *snsSqsComponent) Start() error {
 
 	containerName := fmt.Sprintf("gosoline_test_sns_sqs_%s", s.name)
 
-	res, err := s.runner.Run(containerName, containerConfig{
+	return s.runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.8",
 		Env:        env,
@@ -62,37 +62,15 @@ func (s *snsSqsComponent) Start() error {
 			"4576/tcp": fmt.Sprint(s.settings.SqsPort),
 			"8080/tcp": fmt.Sprint(s.settings.Healthcheck.Port),
 		},
+		PortMappings: portMapping{
+			"4575/tcp": &s.settings.SnsPort,
+			"4576/tcp": &s.settings.SqsPort,
+			"8080/tcp": &s.settings.Healthcheck.Port,
+		},
 		HealthCheck: localstackHealthCheck(s.settings.healthcheckMockSettings, componentSns, componentSqs),
 		PrintLogs:   s.settings.Debug,
 		ExpireAfter: s.settings.ExpireAfter,
 	})
-
-	if err != nil {
-		return err
-	}
-
-	err = s.setPort(res, "4575/tcp", &s.settings.SnsPort)
-
-	if err != nil {
-		return err
-	}
-
-	err = s.setPort(res, "4576/tcp", &s.settings.SqsPort)
-
-	if err != nil {
-		return err
-	}
-
-	err = s.setPort(res, "8080/tcp", &s.settings.Healthcheck.Port)
-
-	return err
-}
-
-func (s *snsSqsComponent) Ports() map[string]int {
-	return map[string]int{
-		"sqs": s.settings.SqsPort,
-		"sns": s.settings.SnsPort,
-	}
 }
 
 func (s *snsSqsComponent) provideSnsClient() *sns.SNS {

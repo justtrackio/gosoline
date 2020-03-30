@@ -6,7 +6,6 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/go-sql-driver/mysql"
-	"github.com/ory/dockertest"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +17,7 @@ type mysqlSettings struct {
 }
 
 type mysqlComponent struct {
-	baseComponent
+	mockComponentBase
 	settings *mysqlSettings
 	db       *sql.DB
 }
@@ -43,7 +42,7 @@ func (m *mysqlComponent) Start() error {
 
 	containerName := fmt.Sprintf("gosoline_test_mysql_%s", m.name)
 
-	_, err := m.runner.Run(containerName, containerConfig{
+	return m.runner.Run(containerName, containerConfig{
 		Repository: "mysql",
 		Tag:        m.settings.Version,
 		Env:        env,
@@ -51,13 +50,10 @@ func (m *mysqlComponent) Start() error {
 		PortBindings: portBinding{
 			"3306/tcp": fmt.Sprint(m.settings.Port),
 		},
-		HealthCheck: func(res *dockertest.Resource) error {
-			err := m.setPort(res, "3306/tcp", &m.settings.Port)
-
-			if err != nil {
-				return err
-			}
-
+		PortMappings: portMapping{
+			"3306/tcp": &m.settings.Port,
+		},
+		HealthCheck: func() error {
 			client, err := m.provideMysqlClient()
 
 			if err != nil {
@@ -75,14 +71,6 @@ func (m *mysqlComponent) Start() error {
 		PrintLogs:   m.settings.Debug,
 		ExpireAfter: m.settings.ExpireAfter,
 	})
-
-	return err
-}
-
-func (m *mysqlComponent) Ports() map[string]int {
-	return map[string]int{
-		m.name: m.settings.Port,
-	}
 }
 
 type noopLogger struct {

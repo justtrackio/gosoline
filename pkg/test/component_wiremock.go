@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/ory/dockertest"
 	"io/ioutil"
 	"net/http"
 )
@@ -18,7 +17,7 @@ type wiremockSettings struct {
 }
 
 type wiremockComponent struct {
-	baseComponent
+	mockComponentBase
 	db       *sql.DB
 	settings *wiremockSettings
 }
@@ -36,22 +35,19 @@ func (w *wiremockComponent) Boot(config cfg.Config, _ mon.Logger, runner *docker
 func (w *wiremockComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_wiremock_%s", w.name)
 
-	_, err := w.runner.Run(containerName, containerConfig{
+	err := w.runner.Run(containerName, containerConfig{
 		Repository: "rodolpheche/wiremock",
 		Tag:        "latest",
 		PortBindings: portBinding{
 			"8080/tcp": fmt.Sprint(w.settings.Port),
 		},
-		HealthCheck: func(res *dockertest.Resource) error {
-			err := w.setPort(res, "8080/tcp", &w.settings.Port)
-
-			if err != nil {
-				return err
-			}
-
+		PortMappings: portMapping{
+			"8080/tcp": &w.settings.Port,
+		},
+		HealthCheck: func() error {
 			url := w.getUrl()
 
-			_, err = http.Get(url)
+			_, err := http.Get(url)
 
 			return err
 		},
@@ -77,12 +73,6 @@ func (w *wiremockComponent) Start() error {
 	}
 
 	return nil
-}
-
-func (w *wiremockComponent) Ports() map[string]int {
-	return map[string]int{
-		w.name: w.settings.Port,
-	}
 }
 
 func (w *wiremockComponent) getUrl() string {

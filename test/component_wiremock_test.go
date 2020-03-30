@@ -26,8 +26,8 @@ func Test_wiremock(t *testing.T) {
 		return
 	}
 
-	ports := mocks.Ports("wiremock")
-	url := fmt.Sprintf("http://%s:%d%s", "172.17.0.1", ports["wiremock"], "/__admin")
+	port := mocks.ProvideWiremockPort("wiremock")
+	url := fmt.Sprintf("http://%s:%d%s", "172.17.0.1", port, "/__admin")
 	resp, err := http.Get(url)
 
 	assert.NoError(t, err)

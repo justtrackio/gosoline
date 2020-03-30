@@ -58,7 +58,7 @@ func (s FixturesRedisSuite) TestRedis() {
 		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
 		cfg.WithConfigMap(map[string]interface{}{
-			"redis_default_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.Ports("redis")["redis"]),
+			"redis_default_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.ProvideRedisPort("redis")),
 		}),
 	)
 
@@ -96,7 +96,7 @@ func (s FixturesRedisSuite) TestRedisWithPurge() {
 		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
 		cfg.WithConfigMap(map[string]interface{}{
-			"redis_default_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.Ports("redis")["redis"]),
+			"redis_default_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.ProvideRedisPort("redis")),
 		}),
 	)
 
@@ -144,7 +144,7 @@ func (s FixturesRedisSuite) TestRedisKvStore() {
 		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
 		cfg.WithConfigMap(map[string]interface{}{
-			"redis_kvstore_testModel_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.Ports("redis")["redis"]),
+			"redis_kvstore_testModel_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.ProvideRedisPort("redis")),
 		}),
 	)
 
@@ -170,7 +170,7 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
 		cfg.WithConfigMap(map[string]interface{}{
-			"redis_kvstore_testModel_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.Ports("redis")["redis"]),
+			"redis_kvstore_testModel_addr": fmt.Sprintf("%s:%d", "172.17.0.1", s.mocks.ProvideRedisPort("redis")),
 		}),
 	)
 

@@ -15,7 +15,7 @@ type cloudwatchSettings struct {
 }
 
 type cloudwatchComponent struct {
-	baseComponent
+	mockComponentBase
 	settings *cloudwatchSettings
 	clients  *simpleCache
 }
@@ -37,7 +37,7 @@ func (c *cloudwatchComponent) Boot(config cfg.Config, _ mon.Logger, runner *dock
 func (c *cloudwatchComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_cloudwatch_%s", c.name)
 
-	res, err := c.runner.Run(containerName, containerConfig{
+	return c.runner.Run(containerName, containerConfig{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.8",
 		Env: []string{
@@ -47,31 +47,14 @@ func (c *cloudwatchComponent) Start() error {
 			"4582/tcp": fmt.Sprint(c.settings.Port),
 			"8080/tcp": fmt.Sprint(c.settings.Healthcheck.Port),
 		},
+		PortMappings: portMapping{
+			"4582/tcp": &c.settings.Port,
+			"8080/tcp": &c.settings.Healthcheck.Port,
+		},
 		HealthCheck: localstackHealthCheck(c.settings.healthcheckMockSettings, componentCloudwatch),
 		PrintLogs:   c.settings.Debug,
 		ExpireAfter: c.settings.ExpireAfter,
 	})
-
-	if err != nil {
-		return err
-	}
-
-	err = c.setPort(res, "4582/tcp", &c.settings.Port)
-
-	if err != nil {
-		return err
-	}
-
-	err = c.setPort(res, "8080/tcp", &c.settings.Healthcheck.Port)
-
-	return err
-}
-
-func (c *cloudwatchComponent) Ports() map[string]int {
-	return map[string]int{
-		c.name:   c.settings.Port,
-		"health": c.settings.Healthcheck.Port,
-	}
 }
 
 func (c *cloudwatchComponent) provideCloudwatchClient() *cloudwatch.CloudWatch {
