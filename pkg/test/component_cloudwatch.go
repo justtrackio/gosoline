@@ -47,7 +47,7 @@ func (c *cloudwatchComponent) Start() error {
 			"4582/tcp": fmt.Sprint(c.settings.Port),
 			"8080/tcp": fmt.Sprint(c.settings.Healthcheck.Port),
 		},
-		PortMappings: map[string]*int{
+		PortMappings: portMapping{
 			"4582/tcp": &c.settings.Port,
 			"8080/tcp": &c.settings.Healthcheck.Port,
 		},

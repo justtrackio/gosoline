@@ -38,7 +38,7 @@ func (d *dynamoDbComponent) Start() error {
 		PortBindings: portBinding{
 			"8000/tcp": fmt.Sprint(d.settings.Port),
 		},
-		PortMappings: map[string]*int{
+		PortMappings: portMapping{
 			"8000/tcp": &d.settings.Port,
 		},
 		HealthCheck: func() error {

@@ -38,7 +38,7 @@ func (r *redisComponent) Start() error {
 		PortBindings: portBinding{
 			"6379/tcp": fmt.Sprint(r.settings.Port),
 		},
-		PortMappings: map[string]*int{
+		PortMappings: portMapping{
 			"6379/tcp": &r.settings.Port,
 		},
 		HealthCheck: func() error {

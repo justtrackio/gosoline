@@ -47,7 +47,7 @@ func (k *kinesisComponent) Start() error {
 			"4568/tcp": fmt.Sprint(k.settings.Port),
 			"8080/tcp": fmt.Sprint(k.settings.Healthcheck.Port),
 		},
-		PortMappings: map[string]*int{
+		PortMappings: portMapping{
 			"4568/tcp": &k.settings.Port,
 			"8080/tcp": &k.settings.Healthcheck.Port,
 		},

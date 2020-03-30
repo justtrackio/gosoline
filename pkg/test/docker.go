@@ -15,13 +15,15 @@ import (
 
 type portBinding map[string]string
 
+type portMapping map[string]*int
+
 type containerConfig struct {
 	Repository   string
 	Tag          string
 	Env          []string
 	Cmd          []string
 	PortBindings portBinding
-	PortMappings map[string]*int
+	PortMappings portMapping
 	HealthCheck  func() error
 	PrintLogs    bool
 	ExpireAfter  time.Duration
@@ -87,14 +89,18 @@ func (d *dockerRunner) Run(name string, config containerConfig) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("could not start %s container: %w", containerName, err)
+		return fmt.Errorf("could not start container %s: %w", containerName, err)
 	}
 
 	err = resource.Expire(uint(config.ExpireAfter.Seconds()))
 
 	if err != nil {
-		return fmt.Errorf("could not expire %s container: %w", containerName, err)
+		return fmt.Errorf("could not expire container %s: %w", containerName, err)
 	}
+
+	logger.WithFields(map[string]interface{}{
+		"expire_after": config.ExpireAfter,
+	}).Info("set container expiry")
 
 	for containerPort, hostPort := range config.PortMappings {
 		err = d.setPortMapping(resource, containerPort, hostPort)
@@ -102,10 +108,6 @@ func (d *dockerRunner) Run(name string, config containerConfig) error {
 			return err
 		}
 	}
-
-	logger.WithFields(map[string]interface{}{
-		"expire_after": config.ExpireAfter,
-	}).Info("set container expiry")
 
 	err = d.pool.Retry(func() error {
 		return config.HealthCheck()
@@ -127,10 +129,29 @@ func (d *dockerRunner) Run(name string, config containerConfig) error {
 	return nil
 }
 
+func (d *dockerRunner) getContainerName(name string) string {
+	return fmt.Sprintf("%s_%s", name, d.id)
+}
+
 func (d *dockerRunner) markForCleanup(containerName string) {
 	d.containersMutex.Lock()
 	defer d.containersMutex.Unlock()
 	d.containers = append(d.containers, containerName)
+}
+
+func (d *dockerRunner) setPortMapping(resource *dockertest.Resource, containerPort string, hostPort *int) error {
+	port, err := strconv.Atoi(resource.GetPort(containerPort))
+	if err != nil {
+		return err
+	}
+
+	d.logger.WithFields(map[string]interface{}{
+		"container": resource.Container.Name[1:],
+	}).Infof("set port mapping %s:%d", containerPort, port)
+
+	*hostPort = port
+
+	return nil
 }
 
 func (d *dockerRunner) printContainerLogs(resource *dockertest.Resource) error {
@@ -158,25 +179,4 @@ func (d *dockerRunner) RemoveAllContainers() {
 			d.logger.Warn("could not remove container %s: %w", containerName, err)
 		}
 	}
-}
-
-func (d *dockerRunner) getContainerName(name string) string {
-	return fmt.Sprintf("%s_%s", name, d.id)
-}
-
-func (d *dockerRunner) setPortMapping(resource *dockertest.Resource, containerPort string, hostPort *int) error {
-	dockerPort := docker.Port(containerPort)
-
-	port, err := strconv.Atoi(resource.Container.NetworkSettings.Ports[dockerPort][0].HostPort)
-	if err != nil {
-		return err
-	}
-
-	d.logger.WithFields(map[string]interface{}{
-		"container": resource.Container.Name[1:],
-	}).Infof("set port mapping %s:%d", containerPort, port)
-
-	*hostPort = port
-
-	return nil
 }

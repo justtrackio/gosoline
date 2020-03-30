@@ -62,7 +62,7 @@ func (s *snsSqsComponent) Start() error {
 			"4576/tcp": fmt.Sprint(s.settings.SqsPort),
 			"8080/tcp": fmt.Sprint(s.settings.Healthcheck.Port),
 		},
-		PortMappings: map[string]*int{
+		PortMappings: portMapping{
 			"4575/tcp": &s.settings.SnsPort,
 			"4576/tcp": &s.settings.SqsPort,
 			"8080/tcp": &s.settings.Healthcheck.Port,

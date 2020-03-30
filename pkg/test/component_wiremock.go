@@ -41,7 +41,7 @@ func (w *wiremockComponent) Start() error {
 		PortBindings: portBinding{
 			"8080/tcp": fmt.Sprint(w.settings.Port),
 		},
-		PortMappings: map[string]*int{
+		PortMappings: portMapping{
 			"8080/tcp": &w.settings.Port,
 		},
 		HealthCheck: func() error {

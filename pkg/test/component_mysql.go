@@ -50,7 +50,7 @@ func (m *mysqlComponent) Start() error {
 		PortBindings: portBinding{
 			"3306/tcp": fmt.Sprint(m.settings.Port),
 		},
-		PortMappings: map[string]*int{
+		PortMappings: portMapping{
 			"3306/tcp": &m.settings.Port,
 		},
 		HealthCheck: func() error {

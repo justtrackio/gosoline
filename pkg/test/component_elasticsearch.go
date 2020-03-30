@@ -45,7 +45,7 @@ func (e *elasticsearchComponent) Start() error {
 		PortBindings: portBinding{
 			"9200/tcp": fmt.Sprint(e.settings.Port),
 		},
-		PortMappings: map[string]*int{
+		PortMappings: portMapping{
 			"9200/tcp": &e.settings.Port,
 		},
 		HealthCheck: func() error {
