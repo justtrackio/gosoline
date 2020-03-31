@@ -10,14 +10,20 @@ import (
 
 type s3PrefixNamingStrategy func(modelId mdl.ModelId, datetime time.Time) string
 
+const (
+	NamingStrategyDtErrored   = "errors/yyyy/MM/dd"
+	NamingStrategyDtSeparated = "yyyy/MM/dd"
+)
+
 var s3PrefixNamingStrategies = map[string]s3PrefixNamingStrategy{
-	"errors/yyyy/MM/dd": dtErrored,
-	"yyyy/MM/dd":        dtSeparated,
+	NamingStrategyDtErrored:   dtErrored,
+	NamingStrategyDtSeparated: dtSeparated,
 }
 
 type ReaderSettings struct {
 	ModelId        mdl.ModelId
 	NamingStrategy string
+	Recorder       FileRecorder
 }
 
 type S3BucketNamingStrategy func(appId cfg.AppId) string
