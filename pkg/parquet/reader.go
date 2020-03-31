@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/aws/aws-sdk-go/aws"
@@ -42,9 +43,9 @@ type s3Reader struct {
 	s3Cfg    *aws.Config
 	s3Client s3iface.S3API
 
+	modelId              mdl.ModelId
 	prefixNamingStrategy s3PrefixNamingStrategy
-
-	settings *ReaderSettings
+	recorder             FileRecorder
 }
 
 func NewReader(config cfg.Config, logger mon.Logger, settings *ReaderSettings) *s3Reader {
@@ -57,16 +58,29 @@ func NewReader(config cfg.Config, logger mon.Logger, settings *ReaderSettings) *
 		panic(fmt.Sprintf("Unknown prefix naming strategy '%s'", settings.NamingStrategy))
 	}
 
-	return NewReaderWithInterfaces(logger, s3Cfg, s3Client, prefixNaming, settings)
+	recorder := settings.Recorder
+	if recorder == nil {
+		recorder = NewNopRecorder()
+	}
+
+	return NewReaderWithInterfaces(logger, s3Cfg, s3Client, settings.ModelId, prefixNaming, recorder)
 }
 
-func NewReaderWithInterfaces(logger mon.Logger, s3Cfg *aws.Config, s3Client s3iface.S3API, prefixNaming s3PrefixNamingStrategy, settings *ReaderSettings) *s3Reader {
+func NewReaderWithInterfaces(
+	logger mon.Logger,
+	s3Cfg *aws.Config,
+	s3Client s3iface.S3API,
+	modelId mdl.ModelId,
+	prefixNaming s3PrefixNamingStrategy,
+	recorder FileRecorder,
+) *s3Reader {
 	return &s3Reader{
 		logger:               logger,
 		s3Cfg:                s3Cfg,
 		s3Client:             s3Client,
+		modelId:              modelId,
 		prefixNamingStrategy: prefixNaming,
-		settings:             settings,
+		recorder:             recorder,
 	}
 }
 
@@ -136,6 +150,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 
 			if err != nil {
 				r.logger.Fatal(err, "can not read file")
+
 				return
 			}
 
@@ -144,6 +159,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 
 			if err != nil {
 				r.logger.Error(err, "could not decode results")
+
 				return
 			}
 
@@ -154,8 +170,11 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 
 			if !ok {
 				stop = true
+
 				return
 			}
+
+			r.recorder.RecordFile(r.getBucketName(), file)
 		}(i, file)
 	}
 
@@ -216,7 +235,7 @@ func (r *s3Reader) ReadFile(ctx context.Context, file string) (ReadResults, erro
 }
 
 func (r *s3Reader) listFilesFromDate(datetime time.Time) ([]string, error) {
-	prefix := r.prefixNamingStrategy(r.settings.ModelId, datetime)
+	prefix := r.prefixNamingStrategy(r.modelId, datetime)
 	files, err := r.listFiles(prefix)
 
 	if err != nil {
@@ -299,9 +318,9 @@ func (r *s3Reader) decodeTimeMillisHook() interface{} {
 
 func (r *s3Reader) getBucketName() string {
 	return s3BucketNamingStrategy(cfg.AppId{
-		Project:     r.settings.ModelId.Project,
-		Environment: r.settings.ModelId.Environment,
-		Family:      r.settings.ModelId.Family,
-		Application: r.settings.ModelId.Application,
+		Project:     r.modelId.Project,
+		Environment: r.modelId.Environment,
+		Family:      r.modelId.Family,
+		Application: r.modelId.Application,
 	})
 }

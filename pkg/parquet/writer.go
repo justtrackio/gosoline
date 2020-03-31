@@ -23,6 +23,7 @@ type WriterSettings struct {
 	ModelId        mdl.ModelId
 	NamingStrategy string
 	Tags           map[string]string
+	Recorder       FileRecorder
 }
 
 //go:generate mockery -name Writer
@@ -35,10 +36,10 @@ type s3Writer struct {
 	s3Cfg    *aws.Config
 	s3Client s3iface.S3API
 
+	modelId              mdl.ModelId
 	prefixNamingStrategy s3PrefixNamingStrategy
-
-	settings *WriterSettings
-	tags     map[string]string
+	tags                 map[string]string
+	recorder             FileRecorder
 }
 
 func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *s3Writer {
@@ -52,35 +53,49 @@ func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *
 		logger.Panic(errors.New("unknown naming strategy"), fmt.Sprintf("Unknown prefix naming strategy '%s'", settings.NamingStrategy))
 	}
 
-	return NewWriterWithInterfaces(logger, s3Client, s3Cfg, prefixNaming, settings)
-}
-
-func NewWriterWithInterfaces(logger mon.Logger, s3Client s3iface.S3API, s3Cfg *aws.Config, prefixNaming s3PrefixNamingStrategy, settings *WriterSettings) *s3Writer {
-	tags := map[string]string{
-		"Project":     settings.ModelId.Project,
-		"Environment": settings.ModelId.Environment,
-		"Family":      settings.ModelId.Family,
-		"Application": settings.ModelId.Application,
-		"Model":       settings.ModelId.Name,
+	recorder := settings.Recorder
+	if recorder == nil {
+		recorder = NewNopRecorder()
 	}
 
-	for k, v := range settings.Tags {
-		tags[k] = v
+	return NewWriterWithInterfaces(logger, s3Client, s3Cfg, settings.ModelId, prefixNaming, settings.Tags, recorder)
+}
+
+func NewWriterWithInterfaces(
+	logger mon.Logger,
+	s3Client s3iface.S3API,
+	s3Cfg *aws.Config,
+	modelId mdl.ModelId,
+	prefixNaming s3PrefixNamingStrategy,
+	tags map[string]string,
+	recorder FileRecorder,
+) *s3Writer {
+	combinedTags := map[string]string{
+		"Project":     modelId.Project,
+		"Environment": modelId.Environment,
+		"Family":      modelId.Family,
+		"Application": modelId.Application,
+		"Model":       modelId.Name,
+	}
+
+	for k, v := range tags {
+		combinedTags[k] = v
 	}
 
 	return &s3Writer{
 		logger:               logger,
 		s3Cfg:                s3Cfg,
 		s3Client:             s3Client,
+		modelId:              modelId,
 		prefixNamingStrategy: prefixNaming,
-		settings:             settings,
-		tags:                 tags,
+		tags:                 combinedTags,
+		recorder:             recorder,
 	}
 }
 
 func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interface{}) error {
 	bucket := w.getBucketName()
-	key := s3KeyNamingStrategy(w.settings.ModelId, datetime, w.prefixNamingStrategy)
+	key := s3KeyNamingStrategy(w.modelId, datetime, w.prefixNamingStrategy)
 
 	schema, converted, err := w.parseItems(items)
 
@@ -130,6 +145,8 @@ func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interfac
 		return err
 	}
 
+	w.recorder.RecordFile(bucket, key)
+
 	return nil
 }
 
@@ -166,10 +183,10 @@ func (w *s3Writer) parseItems(items interface{}) (string, []string, error) {
 
 func (w *s3Writer) getBucketName() string {
 	return s3BucketNamingStrategy(cfg.AppId{
-		Project:     w.settings.ModelId.Project,
-		Environment: w.settings.ModelId.Environment,
-		Family:      w.settings.ModelId.Family,
-		Application: w.settings.ModelId.Application,
+		Project:     w.modelId.Project,
+		Environment: w.modelId.Environment,
+		Family:      w.modelId.Family,
+		Application: w.modelId.Application,
 	})
 }
 

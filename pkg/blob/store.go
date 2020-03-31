@@ -55,6 +55,11 @@ type Settings struct {
 	Prefix      string
 }
 
+//go:generate mockery -name S3API
+type S3API interface {
+	s3iface.S3API
+}
+
 //go:generate mockery -name Store
 type Store interface {
 	Read(batch Batch)
