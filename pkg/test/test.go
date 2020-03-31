@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/hashicorp/go-multierror"
 	"sync"
 	"time"
 )
@@ -27,12 +28,12 @@ type mockComponentBase struct {
 }
 
 type Mocks struct {
-	lck          sync.Mutex
 	waitGroup    sync.WaitGroup
 	dockerRunner *dockerRunner
 	components   map[string]mockComponent
 	logger       mon.Logger
-	bootFailed   bool
+	errors       *multierror.Error
+	errorsLock   sync.Mutex
 }
 
 func newMocks() *Mocks {
@@ -52,8 +53,9 @@ func (m *Mocks) Boot(config cfg.Config) error {
 
 	m.waitGroup.Wait()
 
-	if m.bootFailed {
-		return fmt.Errorf("failed to boot at least one component")
+	err := m.errors.ErrorOrNil()
+	if err != nil {
+		return fmt.Errorf("failed to boot at least one test component: %w", err)
 	}
 
 	m.logger.Info("test environment up and running")
@@ -71,7 +73,9 @@ func (m *Mocks) bootFromConfig(config cfg.Config) {
 
 		component, err := m.createComponent(settings.Component)
 		if err != nil {
-			m.bootFailed = true
+			m.errorsLock.Lock()
+			m.errors = multierror.Append(m.errors, err)
+			m.errorsLock.Unlock()
 			continue
 		}
 
@@ -112,9 +116,9 @@ func (m *Mocks) runComponent(component mockComponent) {
 
 		err := component.Start()
 		if err != nil {
-			m.lck.Lock()
-			defer m.lck.Unlock()
-			m.bootFailed = true
+			m.errorsLock.Lock()
+			m.errors = multierror.Append(m.errors, err)
+			m.errorsLock.Unlock()
 		}
 	}()
 }
@@ -124,6 +128,8 @@ func (m *Mocks) Shutdown() {
 }
 
 func Boot(configFilenames ...string) (*Mocks, error) {
+	mocks := newMocks()
+
 	if len(configFilenames) == 0 {
 		configFilenames = []string{"config.test.yml"}
 	}
@@ -134,11 +140,10 @@ func Boot(configFilenames ...string) (*Mocks, error) {
 		err := config.Option(cfg.WithConfigFile(filename, "yml"))
 
 		if err != nil {
-			return nil, fmt.Errorf("failed to read config from file %s: %w", filename, err)
+			return mocks, fmt.Errorf("failed to read config from file %s: %w", filename, err)
 		}
 	}
 
-	mocks := newMocks()
 	err := mocks.Boot(config)
 
 	return mocks, err
