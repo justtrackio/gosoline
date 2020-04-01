@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	InputTypeFile    = "file"
-	InputTypeKinesis = "kinesis"
-	InputTypeRedis   = "redis"
-	InputTypeSns     = "sns"
-	InputTypeSqs     = "sqs"
+	InputTypeFile     = "file"
+	InputTypeInMemory = "in_memory"
+	InputTypeKinesis  = "kinesis"
+	InputTypeRedis    = "redis"
+	InputTypeSns      = "sns"
+	InputTypeSqs      = "sqs"
 )
 
 func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) Input {
@@ -24,6 +25,8 @@ func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) Inp
 	switch t {
 	case InputTypeFile:
 		return newFileInputFromConfig(config, logger, name)
+	case InputTypeInMemory:
+		return newInMemoryInputFromConfig(config, logger, name)
 	case InputTypeKinesis:
 		return newKinesisInputFromConfig(config, logger, name)
 	case InputTypeRedis:
