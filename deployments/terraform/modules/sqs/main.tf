@@ -6,7 +6,7 @@ module "main" {
   family      = var.family
   project     = var.project
   queueName   = var.queueName
-
+  fifoQueue   = var.fifoQueue
   maxReceiveCount         = var.maxReceiveCount
   messageDeliveryDelay    = var.messageDeliveryDelay
   deadLetterArn           = module.dead.arn
@@ -28,7 +28,7 @@ module "dead" {
   family      = var.family
   project     = var.project
   queueName   = "${var.queueName}-dead"
-
+  fifoQueue   = var.fifoQueue
   messageRetentionSeconds = var.messageRetentionSeconds
 
   alarm_create              = var.alarm_dead_create

@@ -9,6 +9,7 @@ resource "aws_sqs_queue" "main" {
   visibility_timeout_seconds = var.visibilityTimeout
   message_retention_seconds  = var.messageRetentionSeconds
   redrive_policy             = var.maxReceiveCount > 0 ? local.redrivePolicy : ""
+  fifo_queue                 = var.fifoQueue
 
   tags = {
     Project     = var.project

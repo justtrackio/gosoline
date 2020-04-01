@@ -3,6 +3,9 @@ variable "environment" {}
 variable "family" {}
 variable "application" {}
 variable "queueName" {}
+variable "fifoQueue" {
+  default = false
+}
 
 variable "messageDeliveryDelay" {
   default = 0
