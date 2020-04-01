@@ -2,6 +2,8 @@ package apiserver
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
@@ -9,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"net"
 	"net/http"
+	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -52,20 +56,14 @@ func (a *ApiServer) Boot(config cfg.Config, logger mon.Logger) error {
 
 	gin.SetMode(settings.Mode)
 
-	r := gin.New()
+	router := gin.New()
 	tracer := tracing.ProviderTracer(config, logger)
 
-	return a.BootWithInterfaces(config, logger, r, tracer, settings)
-}
-
-func (a *ApiServer) BootWithInterfaces(config cfg.Config, logger mon.Logger, router *gin.Engine, tracer tracing.Tracer, s *Settings) error {
 	addProfilingEndpoints(router)
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{})
 	})
-
-	a.logger = logger
 
 	definitions := &Definitions{}
 	a.defineRouter(config, logger, definitions)
@@ -74,6 +72,12 @@ func (a *ApiServer) BootWithInterfaces(config cfg.Config, logger mon.Logger, rou
 	router.Use(LoggingMiddleware(logger))
 
 	buildRouter(definitions, router)
+
+	return a.BootWithInterfaces(logger, router, tracer, settings)
+}
+
+func (a *ApiServer) BootWithInterfaces(logger mon.Logger, router *gin.Engine, tracer tracing.Tracer, s *Settings) error {
+	a.logger = logger
 
 	a.server = &http.Server{
 		Addr:         ":" + s.Port,
@@ -122,4 +126,25 @@ func (a *ApiServer) waitForStop(ctx context.Context) {
 	}
 
 	a.logger.Info("leaving api")
+}
+
+func (a *ApiServer) GetPort() (*int, error) {
+	if a.listener == nil {
+		return nil, errors.New("could not get port. module is not yet booted")
+	}
+
+	address := a.listener.Addr().String()
+	pattern := regexp.MustCompile(`.+:(\d+)$`)
+	matches := pattern.FindStringSubmatch(address)
+
+	if len(matches) != 2 {
+		return nil, fmt.Errorf("could not get port from address %s", address)
+	}
+
+	port, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return &port, nil
 }

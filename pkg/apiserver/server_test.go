@@ -2,68 +2,93 @@ package apiserver_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
-	configMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/mon"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
 	tracingMocks "github.com/applike/gosoline/pkg/tracing/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-func getMocks() (*monMocks.Logger, *configMocks.Config, *gin.Engine, tracing.Tracer) {
-	loggingMock := monMocks.NewLoggerMockedAll()
-	configMock := new(configMocks.Config)
-	router := gin.New()
+type ServerTestSuite struct {
+	suite.Suite
+	logger mon.Logger
+	router *gin.Engine
+	tracer tracing.Tracer
+	server *apiserver.ApiServer
+}
+
+func TestServerTestSuite(t *testing.T) {
+	suite.Run(t, new(ServerTestSuite))
+}
+
+func (s *ServerTestSuite) SetupTest() {
+	s.logger = monMocks.NewLoggerMockedAll()
+
+	gin.SetMode(gin.TestMode)
+	s.router = gin.New()
 
 	tracer := new(tracingMocks.Tracer)
-	tracer.On("HttpHandler", router).Return(router)
+	tracer.On("HttpHandler", s.router).Return(s.router)
+	s.tracer = tracer
 
-	return loggingMock, configMock, router, tracer
+	s.server = apiserver.New(func(_ cfg.Config, _ mon.Logger, _ *apiserver.Definitions) {})
 }
 
-func TestBaseProfilingEndpoint(t *testing.T) {
-	ginEngine := setup(t)
-	httpRecorder := httptest.NewRecorder()
-
-	assertRouteReturnsResponse(t, ginEngine, httpRecorder, apiserver.BaseProfiling+"/", http.StatusOK)
-}
-
-func TestApiServer_Lifecycle(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	loggingMock, configMock, router, tracer := getMocks()
-
+func (s *ServerTestSuite) TestLifecycle_Cancel() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	assert.NotPanics(t, func() {
-		a := apiserver.New(func(config cfg.Config, logger mon.Logger, definitions *apiserver.Definitions) {})
+	assert.NotPanics(s.T(), func() {
+		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
+		assert.NoError(s.T(), err)
 
-		a.BootWithInterfaces(configMock, loggingMock, router, tracer, &apiserver.Settings{})
-		a.Run(ctx)
+		err = s.server.Run(ctx)
+		assert.NoError(s.T(), err)
 	})
 }
 
-func setup(t *testing.T) (ginEngine *gin.Engine) {
-	gin.SetMode(gin.TestMode)
-	loggingMock, configMock, router, tracer := getMocks()
+func (s *ServerTestSuite) TestGetPort() {
+	assert.NotPanics(s.T(), func() {
+		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
+		assert.NoError(s.T(), err)
 
-	definer := func(configMock cfg.Config, logger mon.Logger, definitions *apiserver.Definitions) {
-		ginEngine = router
-	}
+		port, err := s.server.GetPort()
+		assert.NoError(s.T(), err)
+		assert.NotNil(s.T(), port)
 
-	a := apiserver.New(definer)
+		_, err = net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", *port))
+		assert.NoError(s.T(), err, "could not establish a connection with server")
+	})
+}
 
-	assert.NotPanics(t, func() {
-		a.BootWithInterfaces(configMock, loggingMock, router, tracer, &apiserver.Settings{})
+func (s *ServerTestSuite) TestGetPort_Error() {
+	assert.NotPanics(s.T(), func() {
+		port, err := s.server.GetPort()
+		assert.EqualError(s.T(), err, "could not get port. module is not yet booted")
+		assert.Nil(s.T(), port)
+	})
+}
+
+func (s *ServerTestSuite) TestBaseProfilingEndpoint() {
+	s.T().Skip("profiling routes are added in Boot, cannot be tested here")
+
+	assert.NotPanics(s.T(), func() {
+		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
+		assert.NoError(s.T(), err)
 	})
 
-	return ginEngine
+	httpRecorder := httptest.NewRecorder()
+
+	assertRouteReturnsResponse(s.T(), s.router, httpRecorder, apiserver.BaseProfiling+"/", http.StatusOK)
 }
 
 func assertRouteReturnsResponse(t *testing.T, router *gin.Engine, httpRecorder *httptest.ResponseRecorder, route string, responseCode int) {
