@@ -26,7 +26,7 @@ func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) Inp
 	case InputTypeFile:
 		return newFileInputFromConfig(config, logger, name)
 	case InputTypeInMemory:
-		return newInMemoryInputFromConfig(config, logger, name)
+		return newInMemoryInput(name)
 	case InputTypeKinesis:
 		return newKinesisInputFromConfig(config, logger, name)
 	case InputTypeRedis:

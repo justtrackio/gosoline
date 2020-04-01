@@ -2,8 +2,6 @@ package stream
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
 )
 
 var inMemoryInputMessages = make(map[string][]*Message)
@@ -20,6 +18,15 @@ type inMemoryInput struct {
 	stopped bool
 	name    string
 	channel chan *Message
+}
+
+func newInMemoryInput(name string) Input {
+	channel := make(chan *Message)
+
+	return &inMemoryInput{
+		name:    name,
+		channel: channel,
+	}
 }
 
 func (i *inMemoryInput) Run(ctx context.Context) error {
@@ -49,13 +56,4 @@ func (i *inMemoryInput) Stop() {
 
 func (i *inMemoryInput) Data() chan *Message {
 	return i.channel
-}
-
-func newInMemoryInputFromConfig(_ cfg.Config, _ mon.Logger, name string) Input {
-	channel := make(chan *Message)
-
-	return &inMemoryInput{
-		name:    name,
-		channel: channel,
-	}
 }
