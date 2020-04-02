@@ -1,7 +1,6 @@
 mocks:
   mysql:
     component: mysql
-    host: 172.17.0.1
     debug: false
     dbName: myDbName
     version: "8"

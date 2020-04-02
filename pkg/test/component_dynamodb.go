@@ -41,6 +41,10 @@ func (d *dynamoDbComponent) Start() error {
 		PortMappings: portMapping{
 			"8000/tcp": &d.settings.Port,
 		},
+		HostMapping: hostMapping{
+			dialPort: &d.settings.Port,
+			setHost:  &d.settings.Host,
+		},
 		HealthCheck: func() error {
 			client := d.provideDynamoDbClient()
 

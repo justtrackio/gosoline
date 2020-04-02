@@ -41,6 +41,10 @@ func (r *redisComponent) Start() error {
 		PortMappings: portMapping{
 			"6379/tcp": &r.settings.Port,
 		},
+		HostMapping: hostMapping{
+			dialPort: &r.settings.Port,
+			setHost:  &r.settings.Host,
+		},
 		HealthCheck: func() error {
 			client := r.provideRedisClient()
 			_, err := client.Ping().Result()

@@ -51,6 +51,10 @@ func (k *kinesisComponent) Start() error {
 			"4568/tcp": &k.settings.Port,
 			"8080/tcp": &k.settings.Healthcheck.Port,
 		},
+		HostMapping: hostMapping{
+			dialPort: &k.settings.Port,
+			setHost:  &k.settings.Host,
+		},
 		HealthCheck: localstackHealthCheck(k.settings.healthcheckMockSettings, componentKinesis),
 		PrintLogs:   k.settings.Debug,
 		ExpireAfter: k.settings.ExpireAfter,

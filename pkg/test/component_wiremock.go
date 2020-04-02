@@ -44,6 +44,10 @@ func (w *wiremockComponent) Start() error {
 		PortMappings: portMapping{
 			"8080/tcp": &w.settings.Port,
 		},
+		HostMapping: hostMapping{
+			dialPort: &w.settings.Port,
+			setHost:  &w.settings.Host,
+		},
 		HealthCheck: func() error {
 			url := w.getUrl()
 

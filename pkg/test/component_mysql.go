@@ -53,6 +53,10 @@ func (m *mysqlComponent) Start() error {
 		PortMappings: portMapping{
 			"3306/tcp": &m.settings.Port,
 		},
+		HostMapping: hostMapping{
+			dialPort: &m.settings.Port,
+			setHost:  &m.settings.Host,
+		},
 		HealthCheck: func() error {
 			client, err := m.provideMysqlClient()
 

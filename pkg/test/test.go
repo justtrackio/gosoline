@@ -15,9 +15,9 @@ type mockComponent interface {
 }
 
 type mockSettings struct {
+	Host        string
 	Debug       bool          `cfg:"debug"`
 	Component   string        `cfg:"component"`
-	Host        string        `cfg:"host"`
 	ExpireAfter time.Duration `cfg:"expire_after" default:"60s"`
 }
 
