@@ -13,6 +13,10 @@ type Nameable interface {
 }
 
 func NamedOutput(in interface{}) interface{} {
+	if IsNil(in) {
+		return &NamedOutputV0{}
+	}
+
 	rm := in.(Nameable)
 
 	return &NamedOutputV0{
