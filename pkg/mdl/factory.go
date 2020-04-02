@@ -1,6 +1,9 @@
 package mdl
 
-import "time"
+import (
+	"reflect"
+	"time"
+)
 
 func Bool(v bool) *bool {
 	return &v
@@ -84,4 +87,25 @@ func EmptyUintIfNil(i *uint) uint {
 
 func Time(t time.Time) *time.Time {
 	return &t
+}
+
+func IsNil(m interface{}) bool {
+	if m == nil {
+		return true
+	}
+
+	v := reflect.ValueOf(m)
+
+	switch v.Kind() {
+	case reflect.Chan,
+		reflect.Func,
+		reflect.Map,
+		reflect.Ptr,
+		reflect.UnsafePointer,
+		reflect.Interface,
+		reflect.Slice:
+		return v.IsNil()
+	default:
+		return false
+	}
 }
