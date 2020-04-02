@@ -13,74 +13,133 @@ import (
 	"os/signal"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
 
-type Settings struct {
-	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
-}
-
 //go:generate mockery -name=Kernel
 type Kernel interface {
-	Add(name string, module Module)
+	Add(name string, module Module, opts ...ModuleOption)
 	AddFactory(factory ModuleFactory)
-	Booted() <-chan struct{}
-	Running() <-chan struct{}
 	Run()
 	Stop(reason string)
+}
+
+type Option func(k *kernel) error
+
+type GosoKernel interface {
+	Kernel
+	Option(options ...Option) error
 }
 
 type kernel struct {
 	config cfg.Config
 	logger mon.Logger
 
-	cfn     coffin.Coffin
-	sig     chan os.Signal
-	booted  chan struct{}
-	running chan struct{}
-	lck     sync.Mutex
-	wg      sync.WaitGroup
+	stages            map[int]*stage
+	stagesLck         PoisonedLock
+	factories         []ModuleFactory
+	started           PoisonedLock
+	stopped           sync.Once
+	foregroundModules int32
 
-	settings    *Settings
-	factories   []ModuleFactory
-	modules     sync.Map
-	moduleCount int
-	isRunning   bool
+	killTimeout time.Duration
+	forceExit   func(code int)
 }
 
-func New(config cfg.Config, logger mon.Logger, settings *Settings) Kernel {
-	return &kernel{
-		sig: make(chan os.Signal, 1),
-
-		booted:  make(chan struct{}),
-		running: make(chan struct{}),
+func New(config cfg.Config, logger mon.Logger, options ...Option) *kernel {
+	k := &kernel{
+		stages:    make(map[int]*stage),
+		stagesLck: NewPoisonedLock(),
+		factories: make([]ModuleFactory, 0),
+		started:   NewPoisonedLock(),
 
 		config: config,
 		logger: logger.WithChannel("kernel"),
 
-		settings:  settings,
-		factories: make([]ModuleFactory, 0),
+		killTimeout: time.Second * 10,
+		forceExit:   os.Exit,
+	}
+
+	if err := k.Option(options...); err != nil {
+		logger.Panic(err, "failed to configure kernel")
+	}
+
+	return k
+}
+
+func KillTimeout(killTimeout time.Duration) Option {
+	return func(k *kernel) error {
+		k.killTimeout = killTimeout
+
+		return nil
 	}
 }
 
-// Booted channel will be closed as soon as all modules Boot functions were executed
-func (k *kernel) Booted() <-chan struct{} {
-	return k.booted
+func ForceExit(forceExit func(code int)) Option {
+	return func(k *kernel) error {
+		k.forceExit = forceExit
+
+		return nil
+	}
 }
 
-// Running channel will be closed as soon as all modules Run functions were invoked
-func (k *kernel) Running() <-chan struct{} {
-	return k.running
+func (k *kernel) newStage(index int) *stage {
+	s := newStage()
+	k.stages[index] = s
+
+	return s
 }
 
-func (k *kernel) Add(name string, module Module) {
-	state := &ModuleState{
+func (k *kernel) Option(options ...Option) error {
+	if err := k.started.TryLock(); err != nil {
+		return fmt.Errorf("kernel already running: %w", err)
+	}
+	defer k.started.Unlock()
+
+	for _, opt := range options {
+		if err := opt(k); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (k *kernel) Add(name string, module Module, opts ...ModuleOption) {
+	ms := &ModuleState{
 		Module:    module,
+		Config:    getModuleConfig(module),
 		IsRunning: false,
+		Err:       nil,
 	}
 
-	if _, didExist := k.modules.LoadOrStore(name, state); didExist {
+	MergeOptions(opts)(&ms.Config)
+
+	// lock the stagesLck even if we are just reading from the map
+	// we are not allowed to read and write a map concurrently
+	k.stagesLck.Lock()
+
+	stage, ok := k.stages[ms.Config.Stage]
+
+	// if the module specified a stage we do not yet have we have to add a new stage.
+	if !ok {
+		stage = k.newStage(ms.Config.Stage)
+	}
+
+	k.stagesLck.Unlock()
+
+	if err := stage.modules.lck.TryLock(); err != nil {
+		k.logger.Panicf(
+			err,
+			"Failed to add new module %s: kernel is already running. You have to add your modules before running the kernel",
+			name,
+		)
+	}
+	defer stage.modules.lck.Unlock()
+
+	if _, didExist := stage.modules.modules[name]; didExist {
 		// if we overwrite an existing module, the module count will be off and the application will hang while waiting
 		// until stage.moduleCount modules have booted.
 		k.logger.Panicf(
@@ -90,7 +149,7 @@ func (k *kernel) Add(name string, module Module) {
 		)
 	}
 
-	k.moduleCount++
+	stage.modules.modules[name] = ms
 }
 
 func (k *kernel) AddFactory(factory ModuleFactory) {
@@ -98,6 +157,9 @@ func (k *kernel) AddFactory(factory ModuleFactory) {
 }
 
 func (k *kernel) Run() {
+	// do not allow config changes anymore
+	k.started.Poison()
+
 	defer k.logger.Info("leaving kernel")
 	k.logger.Info("starting kernel")
 
@@ -107,104 +169,79 @@ func (k *kernel) Run() {
 		return
 	}
 
-	if k.moduleCount == 0 {
+	// poison our stages so any other thread trying to add a new stage will
+	// panic instead of hanging
+	k.stagesLck.Poison()
+
+	if !k.hasModules() {
 		k.logger.Info("nothing to run")
 		return
 	}
 
-	if !k.hasForegroundModules() {
+	k.foregroundModules = int32(k.countForegroundModules())
+	if k.foregroundModules == 0 {
 		k.logger.Info("no foreground modules")
 		return
 	}
 
-	signal.Notify(k.sig, syscall.SIGTERM)
-	signal.Notify(k.sig, syscall.SIGINT)
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM)
+	signal.Notify(sig, syscall.SIGINT)
 
-	bootCoffin := coffin.New()
-
-	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
-		bootCoffin.Gof(func() error {
-			return k.bootModule(name.(string))
-		}, "panic during boot of module %s", name)
-
-		return true
-	})
-
-	bootErr := bootCoffin.Wait()
-	debugErr := k.debugConfig()
-
-	if debugErr != nil {
-		k.logger.Error(bootErr, "can not debug config")
+	if !k.boot() {
 		return
 	}
 
-	if bootErr != nil {
-		k.logger.Error(bootErr, "error during the boot process of the kernel")
-		return
+	ctxArr := make([]context.Context, len(k.stages))
+	for ctxIndex, stageIndex := range k.getStageIndices() {
+		// make sure we have something we can use in a closure
+		ctxIndex := ctxIndex
+		stageIndex := stageIndex
+		stage := k.stages[stageIndex]
+		stage.cfn, ctxArr[ctxIndex] = coffin.WithContext(context.Background())
+
+		for name, m := range stage.modules.modules {
+			name := name
+			m := m
+			stage.cfn.Gof(func() error {
+				return k.runModule(name, m, ctxArr[ctxIndex])
+			}, "panic during running of module %s", name)
+		}
+
+		stage.running.Signal()
+		stage.isRunning = true
+		k.logger.Infof("stage %d up and running", stageIndex)
 	}
 
-	k.logger.Info("all modules booted")
-	close(k.booted)
-
-	var ctx context.Context
-	k.cfn, ctx = coffin.WithContext(context.Background())
-	k.wg.Add(k.moduleCount)
-
-	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
-		// TODO: gosoline#201 THIS IS EXECUTED ASYNCHRONOUSLY! MODULES ARE NOT YET RUNNING AFTER Range HAS EXECUTED!
-		k.cfn.Gof(func() error {
-			err := k.runModule(name.(string), ctx)
-			k.checkRunningForegroundModules()
-
-			return err
-		}, "panic during running of module %s", name)
-
-		return true
-	})
-
-	k.checkRunningEssentialModules()
-	k.isRunning = true
 	k.logger.Info("kernel up and running")
-	close(k.running)
 
 	select {
-	case <-ctx.Done():
+	case <-waitAllCtxDone(ctxArr).Channel():
 		k.Stop("context done")
-	case sig := <-k.sig:
+	case sig := <-sig:
 		reason := fmt.Sprintf("signal %s", sig.String())
 		k.Stop(reason)
 	}
 
-	go func() {
-		timer := time.NewTimer(k.settings.KillTimeout)
-		<-timer.C
-
-		err := fmt.Errorf("kernel was not able to shutdown in %v", k.settings.KillTimeout)
-		k.logger.Error(err, "kernel shutdown seems to be blocking.. exiting...")
-
-		k.modules.Range(func(name interface{}, moduleState interface{}) bool {
-			ms := moduleState.(*ModuleState)
-			if ms.IsRunning {
-				k.logger.Infof("module blocking the shutdown: %s", name)
-			}
-
-			return true
-		})
-
-		os.Exit(1)
-	}()
-
-	err = k.cfn.Wait()
-
-	if err != nil {
-		k.logger.Error(err, "error during the execution of the kernel")
-	}
+	k.waitStopped()
 }
 
 func (k *kernel) Stop(reason string) {
-	k.isRunning = false
-	k.logger.Infof("stopping kernel due to: %s", reason)
-	k.cfn.Kill(nil)
+	k.stopped.Do(func() {
+		go func() {
+			k.logger.Infof("stopping kernel due to: %s", reason)
+			indices := k.getStageIndices()
+			for i := len(indices) - 1; i >= 0; i-- {
+				stageIndex := indices[i]
+				k.logger.Infof("stopping stage %d", stageIndex)
+				// wait until the stage was at least booted. Otherwise we might kill a stage before
+				// it is fully initialized
+				<-k.stages[stageIndex].booted.Channel()
+				k.stages[stageIndex].stopWait(stageIndex, k.logger)
+				k.logger.Infof("stopped stage %d", stageIndex)
+			}
+		}()
+	})
 }
 
 func (k *kernel) runFactories() (err error) {
@@ -231,137 +268,63 @@ func (k *kernel) runFactories() (err error) {
 	return
 }
 
-func (k *kernel) bootModule(name string) error {
-	k.logger.Infof("booting module %s", name)
-	ms := k.getModuleState(name)
-
-	logger := k.logger.WithChannel("default")
-	err := ms.Module.Boot(k.config, logger)
-	ms.Err = err
-
-	k.logger.Infof("booted module %s", name)
-
-	return err
-}
-
-func (k *kernel) runModule(name string, ctx context.Context) error {
-	defer k.logger.Info("stopped module " + name)
-
-	k.logger.Info("running module " + name)
-
-	ms := k.getModuleState(name)
-	ms.IsRunning = true
-	k.wg.Done()
-
-	defer func(ms *ModuleState) {
-		ms.IsRunning = false
-	}(ms)
-	err := ms.Module.Run(ctx)
-
-	if err != nil {
-		k.logger.Error(err, "error running module "+name)
+func (k *kernel) hasModules() bool {
+	// no need to iterate in order as we are only checking
+	for _, stage := range k.stages {
+		if len(stage.modules.modules) > 0 {
+			return true
+		}
 	}
-	ms.Err = err
 
-	return err
+	return false
 }
 
-func (k *kernel) hasForegroundModules() bool {
-	hasForegroundModule := false
+func (k *kernel) countForegroundModules() int {
+	count := 0
 
-	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
-		ms := moduleState.(*ModuleState)
+	// no need to iterate in order as we are only counting
+	for _, stage := range k.stages {
+		for _, m := range stage.modules.modules {
+			if m.Config.Type != TypeBackground {
+				count++
+			}
+		}
+	}
 
-		if isForegroundModule(ms.Module) {
-			hasForegroundModule = true
-			return false
+	return count
+}
+
+func (k *kernel) boot() bool {
+	// boot all stages in ascending order, starting with the essential stage
+	var bootErr error
+	for _, stageIndex := range k.getStageIndices() {
+		stage := k.stages[stageIndex]
+		k.logger.Infof("booting stage %d", stageIndex)
+
+		if bootErr == nil {
+			bootCoffin := coffin.New()
+			stage.boot(k, bootCoffin)
+			bootErr = bootCoffin.Wait()
 		}
 
-		return true
-	})
-
-	return hasForegroundModule
-}
-
-func (k *kernel) checkRunningEssentialModules() {
-	go func() {
-		for {
-			time.Sleep(time.Second)
-			k.doCheckRunningEssentialModules()
-		}
-	}()
-}
-
-func (k *kernel) doCheckRunningEssentialModules() {
-	_ = <-k.running
-	if !k.isRunning {
-		return
+		stage.booted.Signal()
 	}
 
-	k.wg.Wait()
+	debugErr := k.debugConfig()
 
-	var reason string
-	hasEssentialModuleStopped := false
-
-	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
-		ms := moduleState.(*ModuleState)
-		rt := ms.Module.GetType()
-
-		if !ms.IsRunning && rt == TypeEssential {
-			reason = fmt.Sprintf("the essential module [%s] has stopped running", name)
-			hasEssentialModuleStopped = true
-			return false
-		}
-
-		return true
-	})
-
-	if !hasEssentialModuleStopped {
-		return
+	if debugErr != nil {
+		k.logger.Error(bootErr, "can not debug config")
+		return false
 	}
 
-	k.Stop(reason)
-}
-
-func (k *kernel) checkRunningForegroundModules() {
-	_ = <-k.running
-	if !k.isRunning {
-		return
+	if bootErr != nil {
+		k.logger.Error(bootErr, "error during the boot process of the kernel")
+		return false
 	}
 
-	k.wg.Wait()
+	k.logger.Info("all modules booted")
 
-	k.lck.Lock()
-	defer k.lck.Unlock()
-
-	hasForegroundModuleRunning := false
-
-	k.modules.Range(func(name interface{}, moduleState interface{}) bool {
-		ms := moduleState.(*ModuleState)
-
-		if ms.IsRunning && isForegroundModule(ms.Module) {
-			hasForegroundModuleRunning = true
-			return false
-		}
-
-		return true
-	})
-
-	if hasForegroundModuleRunning {
-		return
-	}
-
-	k.Stop("no more foreground modules in running state")
-}
-
-func (k *kernel) getModuleState(name string) *ModuleState {
-	ms, ok := k.modules.Load(name)
-
-	if !ok {
-		panic(errors.New(fmt.Sprintf("module %v not found", name)))
-	}
-
-	return ms.(*ModuleState)
+	return true
 }
 
 func (k *kernel) debugConfig() error {
@@ -380,4 +343,110 @@ func (k *kernel) debugConfig() error {
 	}
 
 	return nil
+}
+
+func (k *kernel) runModule(name string, ms *ModuleState, ctx context.Context) error {
+	defer k.logger.Infof("stopped %s module %s", ms.Config.Type, name)
+
+	k.logger.Infof("running %s module %s", ms.Config.Type, name)
+
+	ms.IsRunning = true
+
+	defer func(ms *ModuleState) {
+		ms.IsRunning = false
+		switch ms.Config.Type {
+		case TypeEssential:
+			k.essentialModuleExited(name)
+		case TypeForeground:
+			k.foregroundModuleExited()
+		}
+	}(ms)
+	ms.Err = ms.Module.Run(ctx)
+
+	if ms.Err != nil {
+		k.logger.Errorf(ms.Err, "error running %s module %s", ms.Config.Type, name)
+	}
+
+	return ms.Err
+}
+
+func (k *kernel) essentialModuleExited(name string) {
+	// actually we would need to decrement k.foregroundModules here, too
+	// however, as we are stopping in any case, we don't have to
+	reason := fmt.Sprintf("the essential module [%s] has stopped running", name)
+	k.Stop(reason)
+}
+
+func (k *kernel) foregroundModuleExited() {
+	remaining := atomic.AddInt32(&k.foregroundModules, -1)
+
+	if remaining == 0 {
+		k.Stop("no more foreground modules in running state")
+	}
+}
+
+func (k *kernel) waitStopped() {
+	done := NewSignalOnce()
+	defer done.Signal()
+
+	go func() {
+		timer := time.NewTimer(k.killTimeout)
+		defer timer.Stop()
+
+		select {
+		case <-timer.C:
+			err := fmt.Errorf("kernel was not able to shutdown in %v", k.killTimeout)
+			k.logger.Errorf(err, "kernel shutdown seems to be blocking.. exiting...")
+
+			// we don't need to iterate in order, but doing so is much nicer, so lets do it
+			for _, stageIndex := range k.getStageIndices() {
+				s := k.stages[stageIndex]
+				for name, ms := range s.modules.modules {
+					if ms.IsRunning {
+						k.logger.Infof("module in stage %d blocking the shutdown: %s", stageIndex, name)
+					}
+				}
+			}
+
+			k.forceExit(1)
+		case <-done.Channel():
+			return
+		}
+	}()
+
+	// we don't need to iterate in order, we just need to block until everything is done
+	for _, stage := range k.stages {
+		_ = <-stage.terminated.Channel()
+	}
+}
+
+func (k *kernel) getStageIndices() []int {
+	keys := make([]int, len(k.stages))
+	i := 0
+
+	for k := range k.stages {
+		keys[i] = k
+		i++
+	}
+
+	sort.Ints(keys)
+
+	return keys
+}
+
+func waitAllCtxDone(ctxArr []context.Context) SignalOnce {
+	s := NewSignalOnce()
+	wg := &sync.WaitGroup{}
+	wg.Add(len(ctxArr))
+
+	for _, ctx := range ctxArr {
+		go func(ctx context.Context) {
+			_ = <-ctx.Done()
+			wg.Done()
+			wg.Wait()
+			s.Signal()
+		}(ctx)
+	}
+
+	return s
 }

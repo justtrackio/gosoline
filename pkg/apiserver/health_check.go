@@ -17,6 +17,7 @@ type ApiHealthCheckSettings struct {
 
 type ApiHealthCheck struct {
 	kernel.BackgroundModule
+	kernel.ServiceStage
 
 	logger mon.Logger
 	server *http.Server

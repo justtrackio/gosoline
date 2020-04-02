@@ -20,6 +20,7 @@ type BatchConsumerCallback interface {
 
 type baseBatchConsumer struct {
 	kernel.EssentialModule
+	kernel.ApplicationStage
 
 	logger mon.Logger
 	tracer tracing.Tracer

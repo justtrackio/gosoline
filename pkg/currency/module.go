@@ -10,6 +10,7 @@ import (
 
 type Module struct {
 	kernel.BackgroundModule
+	kernel.ServiceStage
 	updaterService UpdaterService
 	logger         mon.Logger
 }

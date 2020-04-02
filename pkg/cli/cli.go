@@ -5,6 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
+	"time"
 )
 
 type Module interface {
@@ -14,7 +15,12 @@ type Module interface {
 
 type cliModule struct {
 	kernel.EssentialModule
+	kernel.ApplicationStage
 	Module
+}
+
+type kernelSettings struct {
+	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
 }
 
 func newCliModule(module Module) *cliModule {
@@ -44,10 +50,10 @@ func Run(module Module) {
 		defaultErrorHandler(err, "can not boot the module")
 	}
 
-	settings := &kernel.Settings{}
+	settings := &kernelSettings{}
 	config.UnmarshalKey("kernel", settings)
 
-	k := kernel.New(config, logger, settings)
+	k := kernel.New(config, logger, kernel.KillTimeout(settings.KillTimeout))
 	k.Add("cli", newCliModule(module))
 	k.Run()
 }

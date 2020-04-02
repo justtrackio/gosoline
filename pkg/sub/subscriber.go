@@ -31,9 +31,7 @@ type Settings struct {
 }
 
 type Subscriber interface {
-	GetType() string
-	Boot(config cfg.Config, logger mon.Logger) error
-	Run(ctx context.Context) error
+	kernel.Module
 }
 
 func NewSubscriber(logger mon.Logger, input stream.Input, output Output, transformerFactories TransformerMapVersionFactories, s Settings) Subscriber {
@@ -51,6 +49,7 @@ func NewSubscriber(logger mon.Logger, input stream.Input, output Output, transfo
 
 type subscriber struct {
 	kernel.EssentialModule
+	kernel.ServiceStage
 	stream.ConsumerAcknowledge
 
 	logger mon.Logger
