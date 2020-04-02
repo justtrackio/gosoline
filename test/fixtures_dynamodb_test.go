@@ -1,4 +1,4 @@
-//+build integration
+//+build integration,fixtures
 
 package test_test
 
@@ -52,9 +52,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 	err := config.Option(
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
-		cfg.WithConfigMap(map[string]interface{}{
-			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.ProvideDynamoDbPort("dynamodb")),
-		}),
+		cfg.WithConfigMap(s.dynamoDbConfig()),
 	)
 
 	assert.NoError(s.T(), err)
@@ -100,9 +98,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 	err := config.Option(
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
-		cfg.WithConfigMap(map[string]interface{}{
-			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.ProvideDynamoDbPort("dynamodb")),
-		}),
+		cfg.WithConfigMap(s.dynamoDbConfig()),
 	)
 
 	assert.NoError(s.T(), err)
@@ -179,9 +175,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
 	err := config.Option(
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
-		cfg.WithConfigMap(map[string]interface{}{
-			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.ProvideDynamoDbPort("dynamodb")),
-		}),
+		cfg.WithConfigMap(s.dynamoDbConfig()),
 	)
 
 	assert.NoError(s.T(), err)
@@ -208,12 +202,11 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
 
 func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 	config := cfg.New()
+
 	err := config.Option(
 		cfg.WithConfigFile("test_configs/config.dynamodb.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_dynamodb.test.yml", "yml"),
-		cfg.WithConfigMap(map[string]interface{}{
-			"aws_dynamoDb_endpoint": fmt.Sprintf("%s:%d", "http://172.17.0.1", s.mocks.ProvideDynamoDbPort("dynamodb")),
-		}),
+		cfg.WithConfigMap(s.dynamoDbConfig()),
 	)
 
 	assert.NoError(s.T(), err)
@@ -375,5 +368,12 @@ func dynamoDbEnabledPurgeFixtures() []*fixtures.FixtureSet {
 				&DynamoDbTestModel{Name: "Bash", Age: 10},
 			},
 		},
+	}
+}
+
+func (s FixturesDynamoDbSuite) dynamoDbConfig() map[string]interface{} {
+	dynamoDbEndpoint := fmt.Sprintf("http://%s:%d", s.mocks.ProvideDynamoDbHost("dynamodb"), s.mocks.ProvideDynamoDbPort("dynamodb"))
+	return map[string]interface{}{
+		"aws_dynamoDb_endpoint": dynamoDbEndpoint,
 	}
 }

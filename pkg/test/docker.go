@@ -7,6 +7,7 @@ import (
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"sync"
@@ -17,6 +18,11 @@ type portBinding map[string]string
 
 type portMapping map[string]*int
 
+type hostMapping struct {
+	dialPort *int
+	setHost  *string
+}
+
 type containerConfig struct {
 	Repository   string
 	Tag          string
@@ -24,6 +30,7 @@ type containerConfig struct {
 	Cmd          []string
 	PortBindings portBinding
 	PortMappings portMapping
+	HostMapping  hostMapping
 	HealthCheck  func() error
 	PrintLogs    bool
 	ExpireAfter  time.Duration
@@ -65,7 +72,7 @@ func (d *dockerRunner) Run(name string, config containerConfig) error {
 
 	d.markForCleanup(containerName)
 
-	logger := d.logger.WithFields(map[string]interface{}{
+	logger := d.logger.WithFields(mon.Fields{
 		"container": containerName,
 	})
 
@@ -98,7 +105,7 @@ func (d *dockerRunner) Run(name string, config containerConfig) error {
 		return fmt.Errorf("could not expire container %s: %w", containerName, err)
 	}
 
-	logger.WithFields(map[string]interface{}{
+	logger.WithFields(mon.Fields{
 		"expire_after": config.ExpireAfter,
 	}).Info("set container expiry")
 
@@ -110,11 +117,19 @@ func (d *dockerRunner) Run(name string, config containerConfig) error {
 	}
 
 	err = d.pool.Retry(func() error {
+		return d.setHostMapping(resource, config.HostMapping)
+	})
+
+	if err != nil {
+		return fmt.Errorf("could not set host mapping for container %s: %w", containerName, err)
+	}
+
+	err = d.pool.Retry(func() error {
 		return config.HealthCheck()
 	})
 
 	if err != nil {
-		return fmt.Errorf("could not bring up %s container: %w", containerName, err)
+		return fmt.Errorf("could not check health of container %s: %w", containerName, err)
 	}
 
 	if config.PrintLogs {
@@ -145,9 +160,10 @@ func (d *dockerRunner) setPortMapping(resource *dockertest.Resource, containerPo
 		return err
 	}
 
-	d.logger.WithFields(map[string]interface{}{
-		"container": resource.Container.Name[1:],
-	}).Infof("set port mapping %s:%d", containerPort, port)
+	d.logger.WithFields(mon.Fields{
+		"container":    resource.Container.Name[1:],
+		"port_mapping": fmt.Sprintf("%s:%d", containerPort, port),
+	}).Info("set port mapping")
 
 	*hostPort = port
 
@@ -172,11 +188,54 @@ func (d *dockerRunner) printContainerLogs(resource *dockertest.Resource) error {
 
 func (d *dockerRunner) RemoveAllContainers() {
 	for _, containerName := range d.containers {
-		d.logger.WithFields(map[string]interface{}{
+		d.logger.WithFields(mon.Fields{
 			"container": containerName,
 		}).Infof("stopping container")
 		if err := d.pool.RemoveContainerByName(containerName); err != nil {
 			d.logger.Warn("could not remove container %s: %w", containerName, err)
 		}
 	}
+}
+
+func (d *dockerRunner) setHostMapping(resource *dockertest.Resource, mapping hostMapping) error {
+	timeout := time.Duration(100) * time.Millisecond
+	gatewayIp := resource.Container.NetworkSettings.Networks["bridge"].Gateway
+
+	addresses := []string{gatewayIp, "127.0.0.1"}
+	for _, ip := range addresses {
+		address := fmt.Sprintf("%s:%d", ip, *mapping.dialPort)
+		if d.isReachable(address, timeout) {
+			d.logger.WithFields(mon.Fields{
+				"container": resource.Container.Name[1:],
+				"ip":        ip,
+			}).Info("set host mapping")
+
+			*mapping.setHost = ip
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("could not establish a connection with the container")
+}
+
+func (d *dockerRunner) isReachable(address string, timeout time.Duration) bool {
+	conn, err := net.DialTimeout("tcp", address, timeout)
+	defer func() {
+		if conn == nil {
+			return
+		}
+
+		err := conn.Close()
+
+		if err != nil {
+			d.logger.Errorf(err, "failed to close connection")
+		}
+	}()
+
+	if err != nil {
+		return false
+	}
+
+	return true
 }

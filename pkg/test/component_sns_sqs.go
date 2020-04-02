@@ -67,6 +67,10 @@ func (s *snsSqsComponent) Start() error {
 			"4576/tcp": &s.settings.SqsPort,
 			"8080/tcp": &s.settings.Healthcheck.Port,
 		},
+		HostMapping: hostMapping{
+			dialPort: &s.settings.SnsPort,
+			setHost:  &s.settings.Host,
+		},
 		HealthCheck: localstackHealthCheck(s.settings.healthcheckMockSettings, componentSns, componentSqs),
 		PrintLogs:   s.settings.Debug,
 		ExpireAfter: s.settings.ExpireAfter,

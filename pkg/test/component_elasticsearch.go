@@ -48,6 +48,10 @@ func (e *elasticsearchComponent) Start() error {
 		PortMappings: portMapping{
 			"9200/tcp": &e.settings.Port,
 		},
+		HostMapping: hostMapping{
+			dialPort: &e.settings.Port,
+			setHost:  &e.settings.Host,
+		},
 		HealthCheck: func() error {
 			resp, err := http.Get(fmt.Sprintf("http://%s:%d/_cluster/health", e.settings.Host, e.settings.Port))
 

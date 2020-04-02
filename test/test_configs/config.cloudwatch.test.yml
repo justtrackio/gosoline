@@ -1,5 +1,4 @@
 mocks:
   cloudwatch:
     component: cloudwatch
-    host: 172.17.0.1
     debug: true

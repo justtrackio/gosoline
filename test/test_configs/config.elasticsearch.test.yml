@@ -1,6 +1,5 @@
 mocks:
   elasticsearch:
     component: elasticsearch
-    host: 172.17.0.1
     version: 6.0.0
     debug: false

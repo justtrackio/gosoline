@@ -51,6 +51,10 @@ func (c *cloudwatchComponent) Start() error {
 			"4582/tcp": &c.settings.Port,
 			"8080/tcp": &c.settings.Healthcheck.Port,
 		},
+		HostMapping: hostMapping{
+			dialPort: &c.settings.Port,
+			setHost:  &c.settings.Host,
+		},
 		HealthCheck: localstackHealthCheck(c.settings.healthcheckMockSettings, componentCloudwatch),
 		PrintLogs:   c.settings.Debug,
 		ExpireAfter: c.settings.ExpireAfter,

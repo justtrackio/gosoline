@@ -2,4 +2,3 @@ mocks:
   sns_sqs:
     debug: false
     component: sns_sqs
-    host: 172.17.0.1

@@ -1,4 +1,4 @@
-//+build integration
+//+build integration,fixtures
 
 package test_test
 
@@ -56,7 +56,8 @@ func (s *FixturesMysqlSuite) SetupSuite() {
 		cfg.WithConfigFile("test_configs/config.mysql.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_mysql.test.yml", "yml"),
 		cfg.WithConfigMap(map[string]interface{}{
-			"db_port": s.mocks.ProvideMysqlPort("mysql"),
+			"db_port":     s.mocks.ProvideMysqlPort("mysql"),
+			"db_hostname": s.mocks.ProvideMysqlHost("mysql"),
 		}),
 	)
 

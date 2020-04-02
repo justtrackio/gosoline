@@ -2,4 +2,3 @@ mocks:
   metrics_v7:
     component: elasticsearch
     version: 7.1.1
-    host: 172.17.0.1
