@@ -26,6 +26,7 @@ type PipelineSettings struct {
 
 type Pipeline struct {
 	kernel.EssentialModule
+	kernel.ApplicationStage
 	ConsumerAcknowledge
 
 	logger   mon.Logger

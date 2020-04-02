@@ -12,16 +12,28 @@ import (
 	"github.com/pkg/errors"
 	"os"
 	"strings"
+	"time"
 )
 
 type Option func(app *App)
 type ConfigOption func(config cfg.GosoConf) error
 type LoggerOption func(config cfg.GosoConf, logger mon.GosoLog) error
-type KernelOption func(config cfg.GosoConf, kernel kernel.Kernel) error
+type KernelOption func(config cfg.GosoConf, kernel kernel.GosoKernel) error
 type SetupOption func(config cfg.GosoConf, logger mon.GosoLog) error
 
+type kernelSettings struct {
+	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
+}
+
+type loggerSettings struct {
+	Level           string                 `cfg:"level" default:"info" validate:"required"`
+	Format          string                 `cfg:"format" default:"console" validate:"required"`
+	TimestampFormat string                 `cfg:"timestamp_format" default:"15:04:05.000" validate:"required"`
+	Tags            map[string]interface{} `cfg:"tags"`
+}
+
 func WithApiHealthCheck(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.Kernel) error {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
 		kernel.Add("api-health-check", apiserver.NewApiHealthCheck())
 		return nil
 	})
@@ -103,6 +115,15 @@ func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 			return loader.Load(fixtureSets)
 		})
 	}
+}
+
+func WithKernelSettingsFromConfig(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf, k kernel.GosoKernel) error {
+		settings := &kernelSettings{}
+		config.UnmarshalKey("kernel", settings)
+
+		return k.Option(kernel.KillTimeout(settings.KillTimeout))
+	})
 }
 
 func WithLoggerApplicationTag(app *App) {
@@ -188,7 +209,7 @@ func WithLoggerSentryHook(extraProvider ...mon.SentryExtraProvider) Option {
 
 func WithLoggerSettingsFromConfig(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		settings := &mon.LoggerSettings{}
+		settings := &loggerSettings{}
 		config.UnmarshalKey("mon.logger", settings)
 
 		loggerOptions := []mon.LoggerOption{
@@ -203,7 +224,7 @@ func WithLoggerSettingsFromConfig(app *App) {
 
 func WithLoggerTagsFromConfig(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		settings := &mon.LoggerSettings{}
+		settings := &loggerSettings{}
 		config.UnmarshalKey("mon.logger", settings)
 
 		return logger.Option(mon.WithTags(settings.Tags))
@@ -211,7 +232,7 @@ func WithLoggerTagsFromConfig(app *App) {
 }
 
 func WithMetricDaemon(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.Kernel) error {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
 		kernel.Add("metric", mon.ProvideCwDaemon())
 		return nil
 	})

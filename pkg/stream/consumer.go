@@ -30,6 +30,7 @@ type ConsumerSettings struct {
 
 type Consumer struct {
 	kernel.EssentialModule
+	kernel.ServiceStage
 	ConsumerAcknowledge
 
 	logger  mon.Logger

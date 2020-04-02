@@ -2,6 +2,7 @@ package kernel_test
 
 import (
 	"context"
+	"fmt"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/kernel"
 	kernelMocks "github.com/applike/gosoline/pkg/kernel/mocks"
@@ -9,11 +10,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"sync"
 	"testing"
 	"time"
 )
 
-func createMocks() (*cfgMocks.Config, *monMocks.Logger, *kernelMocks.Module) {
+func createMocks() (*cfgMocks.Config, *monMocks.Logger, *kernelMocks.FullModule) {
 	config := new(cfgMocks.Config)
 	config.On("AllSettings").Return(map[string]interface{}{})
 	config.On("UnmarshalKey", "kernel", mock.AnythingOfType("*kernel.Settings")).Return(map[string]interface{}{})
@@ -22,9 +24,9 @@ func createMocks() (*cfgMocks.Config, *monMocks.Logger, *kernelMocks.Module) {
 	logger.On("WithChannel", mock.Anything).Return(logger)
 	logger.On("WithFields", mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything)
-	logger.On("Infof", mock.Anything, mock.Anything)
+	logger.On("Infof", mock.Anything, mock.Anything, mock.Anything)
 
-	module := new(kernelMocks.Module)
+	module := new(kernelMocks.FullModule)
 	module.On("GetType").Return(kernel.TypeForeground)
 
 	return config, logger, module
@@ -33,11 +35,12 @@ func createMocks() (*cfgMocks.Config, *monMocks.Logger, *kernelMocks.Module) {
 func TestRunSuccess(t *testing.T) {
 	config, logger, module := createMocks()
 
+	module.On("GetStage").Return(kernel.StageApplication)
 	module.On("Boot", config, logger).Return(nil)
 	module.On("Run", mock.Anything).Return(nil)
 
 	assert.NotPanics(t, func() {
-		k := kernel.New(config, logger, &kernel.Settings{KillTimeout: time.Second})
+		k := kernel.New(config, logger, kernel.KillTimeout(time.Second))
 		k.Add("module", module)
 		k.Run()
 	})
@@ -52,12 +55,13 @@ func TestBootFailure(t *testing.T) {
 	logger.On("Info", mock.Anything)
 	logger.On("Error", mock.Anything, "error during the boot process of the kernel")
 
+	module.On("GetStage").Return(kernel.StageApplication)
 	module.On("Boot", config, logger).Run(func(args mock.Arguments) {
 		panic(errors.New("panic"))
 	}).Return(nil)
 
 	assert.NotPanics(t, func() {
-		k := kernel.New(config, logger, &kernel.Settings{KillTimeout: time.Second})
+		k := kernel.New(config, logger, kernel.KillTimeout(time.Second))
 		k.Add("module", module)
 		k.Run()
 	})
@@ -68,15 +72,16 @@ func TestBootFailure(t *testing.T) {
 func TestRunFailure(t *testing.T) {
 	config, logger, module := createMocks()
 
-	logger.On("Error", mock.Anything, "error during the execution of the kernel")
+	logger.On("Errorf", mock.Anything, "error during the execution of stage %d", kernel.StageApplication)
 
+	module.On("GetStage").Return(kernel.StageApplication)
 	module.On("Boot", config, logger).Return(nil)
 	module.On("Run", mock.Anything).Run(func(args mock.Arguments) {
 		panic("panic")
 	})
 
 	assert.NotPanics(t, func() {
-		k := kernel.New(config, logger, &kernel.Settings{KillTimeout: time.Second})
+		k := kernel.New(config, logger, kernel.KillTimeout(time.Second))
 		k.Add("module", module)
 		k.Run()
 	})
@@ -87,9 +92,10 @@ func TestRunFailure(t *testing.T) {
 
 func TestStop(t *testing.T) {
 	config, logger, module := createMocks()
-	k := kernel.New(config, logger, &kernel.Settings{KillTimeout: time.Second})
+	k := kernel.New(config, logger, kernel.KillTimeout(time.Second))
 
 	module.On("GetType").Return(kernel.TypeForeground)
+	module.On("GetStage").Return(kernel.StageApplication)
 	module.On("Boot", config, logger).Return(nil)
 	module.On("Run", mock.Anything).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
@@ -107,15 +113,16 @@ func TestStop(t *testing.T) {
 
 func TestRunningType(t *testing.T) {
 	config, logger, _ := createMocks()
-	k := kernel.New(config, logger, &kernel.Settings{KillTimeout: time.Second})
+	k := kernel.New(config, logger, kernel.KillTimeout(time.Second))
 
 	mf := new(kernelMocks.Module)
-	mf.On("GetType").Return(kernel.TypeForeground)
+	// type = foreground & stage = application are the defaults for a module
 	mf.On("Boot", config, logger).Return(nil)
 	mf.On("Run", mock.Anything).Run(func(args mock.Arguments) {}).Return(nil)
 
-	mb := new(kernelMocks.Module)
+	mb := new(kernelMocks.FullModule)
 	mb.On("GetType").Return(kernel.TypeBackground)
+	mb.On("GetStage").Return(kernel.StageApplication)
 	mb.On("Boot", config, logger).Return(nil)
 	mb.On("Run", mock.Anything).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
@@ -129,4 +136,148 @@ func TestRunningType(t *testing.T) {
 
 	mf.AssertExpectations(t)
 	mb.AssertExpectations(t)
+}
+
+func TestMultipleStages(t *testing.T) {
+	config, logger, _ := createMocks()
+
+	k := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+	var allMocks []*kernelMocks.FullModule
+	var stageStatus []int
+
+	maxStage := 5
+	wg := &sync.WaitGroup{}
+	wg.Add(maxStage)
+
+	for stage := 0; stage < maxStage; stage++ {
+		thisStage := stage
+
+		m := new(kernelMocks.FullModule)
+		m.On("GetType").Return(kernel.TypeEssential)
+		m.On("GetStage").Return(thisStage)
+		m.On("Boot", config, logger).Return(nil)
+		m.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+			ctx := args.Get(0).(context.Context)
+
+			stageStatus[thisStage] = 1
+
+			wg.Done()
+			wg.Wait()
+			<-ctx.Done()
+
+			logger.Infof("stage %d: ctx done", thisStage)
+
+			for i := 0; i <= thisStage; i++ {
+				assert.GreaterOrEqual(t, stageStatus[i], 1, fmt.Sprintf("stage %d: expected stage %d to be at least running", thisStage, i))
+			}
+			for i := thisStage + 1; i < maxStage; i++ {
+				assert.Equal(t, 2, stageStatus[i], fmt.Sprintf("stage %d: expected stage %d to be done", thisStage, i))
+			}
+
+			stageStatus[thisStage] = 2
+		}).Return(nil)
+
+		allMocks = append(allMocks, m)
+		stageStatus = append(stageStatus, 0)
+
+		k.Add("m", m)
+	}
+
+	go func() {
+		time.Sleep(time.Millisecond * 300)
+		k.Stop("we are done testing")
+	}()
+	k.Run()
+
+	for _, m := range allMocks {
+		m.AssertExpectations(t)
+	}
+}
+
+func TestKernelForcedExit(t *testing.T) {
+	config, logger, _ := createMocks()
+	logger.On("Errorf", mock.Anything, mock.Anything)
+
+	mayStop := kernel.NewSignalOnce()
+	appStopped := kernel.NewSignalOnce()
+
+	k := kernel.New(config, logger, kernel.KillTimeout(200*time.Millisecond), kernel.ForceExit(func(code int) {
+		assert.Equal(t, 1, code)
+
+		mayStop.Signal()
+	}))
+
+	app := new(kernelMocks.FullModule)
+	app.On("GetType").Return(kernel.TypeBackground)
+	app.On("GetStage").Return(kernel.StageApplication)
+	app.On("Boot", config, logger).Return(nil)
+	app.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+
+		<-ctx.Done()
+		appStopped.Signal()
+	}).Return(nil)
+
+	m := new(kernelMocks.Module)
+	m.On("Boot", config, logger).Return(nil)
+	m.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+		<-mayStop.Channel()
+		assert.True(t, appStopped.Signaled())
+	}).Return(nil)
+
+	k.Add("m", m, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeForeground))
+	k.Add("app", app)
+	go func() {
+		time.Sleep(time.Millisecond * 300)
+		k.Stop("we are done testing")
+	}()
+	k.Run()
+
+	app.AssertExpectations(t)
+	m.AssertExpectations(t)
+}
+
+func TestKernelStageStopped(t *testing.T) {
+	config, logger, _ := createMocks()
+	logger.On("Errorf", mock.Anything, mock.Anything)
+
+	success := false
+	appStopped := kernel.NewSignalOnce()
+
+	k := kernel.New(config, logger, kernel.KillTimeout(200*time.Millisecond))
+
+	app := new(kernelMocks.FullModule)
+	app.On("GetType").Return(kernel.TypeForeground)
+	app.On("GetStage").Return(kernel.StageApplication)
+	app.On("Boot", config, logger).Return(nil)
+	app.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+		ctx := args.Get(0).(context.Context)
+
+		ticker := time.NewTicker(time.Millisecond * 300)
+		defer ticker.Stop()
+
+		select {
+		case <-ctx.Done():
+			t.Fatal("kernel stopped before 300ms")
+		case <-ticker.C:
+			success = true
+		}
+
+		appStopped.Signal()
+	}).Return(nil)
+
+	m := new(kernelMocks.FullModule)
+	m.On("GetType").Return(kernel.TypeBackground)
+	m.On("GetStage").Return(777)
+	m.On("Boot", config, logger).Return(nil)
+	m.On("Run", mock.Anything).Return(nil)
+
+	k.Add("m", m)
+	k.Add("app", app)
+	k.Run()
+
+	assert.True(t, success)
+
+	app.AssertExpectations(t)
+	m.AssertExpectations(t)
 }

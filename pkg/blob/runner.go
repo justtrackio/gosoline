@@ -42,6 +42,7 @@ func ProvideBatchRunner() *BatchRunner {
 
 type BatchRunner struct {
 	kernel.ForegroundModule
+	kernel.ServiceStage
 
 	logger mon.Logger
 	config *BatchRunnerConfig

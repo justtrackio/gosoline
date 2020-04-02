@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/kernel/common"
 	"sync"
 	"time"
 )
@@ -116,7 +117,11 @@ func ProvideCwDaemon() *cwDaemon {
 }
 
 func (d *cwDaemon) GetType() string {
-	return "background"
+	return common.TypeBackground
+}
+
+func (d *cwDaemon) GetStage() int {
+	return common.StageEssential
 }
 
 func (d *cwDaemon) Boot(config cfg.Config, logger Logger) error {

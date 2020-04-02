@@ -10,9 +10,16 @@ type Kernel struct {
 	mock.Mock
 }
 
-// Add provides a mock function with given fields: name, module
-func (_m *Kernel) Add(name string, module kernel.Module) {
-	_m.Called(name, module)
+// Add provides a mock function with given fields: name, module, opts
+func (_m *Kernel) Add(name string, module kernel.Module, opts ...kernel.ModuleOption) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, name, module)
+	_ca = append(_ca, _va...)
+	_m.Called(_ca...)
 }
 
 // AddFactory provides a mock function with given fields: factory
@@ -20,41 +27,9 @@ func (_m *Kernel) AddFactory(factory kernel.ModuleFactory) {
 	_m.Called(factory)
 }
 
-// Booted provides a mock function with given fields:
-func (_m *Kernel) Booted() <-chan struct{} {
-	ret := _m.Called()
-
-	var r0 <-chan struct{}
-	if rf, ok := ret.Get(0).(func() <-chan struct{}); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan struct{})
-		}
-	}
-
-	return r0
-}
-
 // Run provides a mock function with given fields:
 func (_m *Kernel) Run() {
 	_m.Called()
-}
-
-// Running provides a mock function with given fields:
-func (_m *Kernel) Running() <-chan struct{} {
-	ret := _m.Called()
-
-	var r0 <-chan struct{}
-	if rf, ok := ret.Get(0).(func() <-chan struct{}); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(<-chan struct{})
-		}
-	}
-
-	return r0
 }
 
 // Stop provides a mock function with given fields: reason

@@ -22,13 +22,6 @@ const (
 	Panic = "panic"
 )
 
-type LoggerSettings struct {
-	Level           string                 `cfg:"level" default:"info" validate:"required"`
-	Format          string                 `cfg:"format" default:"console" validate:"required"`
-	TimestampFormat string                 `cfg:"timestamp_format" default:"15:04:05.000" validate:"required"`
-	Tags            map[string]interface{} `cfg:"tags"`
-}
-
 var levels = map[string]int{
 	Trace: 0,
 	Debug: 1,

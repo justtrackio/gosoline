@@ -45,6 +45,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithLoggerContextFieldsResolver(mon.ContextLoggerFieldsResolver),
 		WithLoggerMetricHook,
 		WithLoggerSentryHook(mon.SentryExtraConfigProvider, mon.SentryExtraEcsMetadataProvider),
+		WithKernelSettingsFromConfig,
 		WithApiHealthCheck,
 		WithMetricDaemon,
 		WithTracing,
@@ -86,10 +87,8 @@ func New(options ...Option) kernel.Kernel {
 		}
 	}
 
-	settings := &kernel.Settings{}
-	config.UnmarshalKey("kernel", settings)
+	k := kernel.New(config, logger)
 
-	k := kernel.New(config, logger, settings)
 	for _, opt := range app.kernelOptions {
 		if err := opt(config, k); err != nil {
 			defaultErrorHandler(err, "can not apply kernel options on application")

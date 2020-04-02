@@ -26,6 +26,7 @@ type Settings struct {
 
 type ApiServer struct {
 	kernel.EssentialModule
+	kernel.ServiceStage
 
 	logger       mon.Logger
 	server       *http.Server
