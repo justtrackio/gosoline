@@ -10,6 +10,7 @@ import (
 
 const (
 	OutputTypeFile     = "file"
+	OutputTypeInMemory = "inMemory"
 	OutputTypeKinesis  = "kinesis"
 	OutputTypeMultiple = "multiple"
 	OutputTypeRedis    = "redis"
@@ -24,6 +25,8 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Ou
 	switch t {
 	case OutputTypeFile:
 		return newFileOutputFromConfig(config, logger, name)
+	case OutputTypeInMemory:
+		return ProvideInMemoryOutput(name)
 	case OutputTypeKinesis:
 		return newKinesisOutputFromConfig(config, logger, name)
 	case OutputTypeMultiple:
