@@ -22,6 +22,7 @@ import (
 type Kernel interface {
 	Add(name string, module Module, opts ...ModuleOption)
 	AddFactory(factory ModuleFactory)
+	Running() <-chan struct{}
 	Run()
 	Stop(reason string)
 }
@@ -41,6 +42,7 @@ type kernel struct {
 	stagesLck         PoisonedLock
 	factories         []ModuleFactory
 	started           PoisonedLock
+	running           chan struct{}
 	stopped           sync.Once
 	foregroundModules int32
 
@@ -53,6 +55,7 @@ func New(config cfg.Config, logger mon.Logger, options ...Option) *kernel {
 		stages:    make(map[int]*stage),
 		stagesLck: NewPoisonedLock(),
 		factories: make([]ModuleFactory, 0),
+		running:   make(chan struct{}),
 		started:   NewPoisonedLock(),
 
 		config: config,
@@ -156,6 +159,10 @@ func (k *kernel) AddFactory(factory ModuleFactory) {
 	k.factories = append(k.factories, factory)
 }
 
+func (k *kernel) Running() <-chan struct{} {
+	return k.running
+}
+
 func (k *kernel) Run() {
 	// do not allow config changes anymore
 	k.started.Poison()
@@ -214,6 +221,7 @@ func (k *kernel) Run() {
 	}
 
 	k.logger.Info("kernel up and running")
+	close(k.running)
 
 	select {
 	case <-waitAllCtxDone(ctxArr).Channel():
