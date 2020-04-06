@@ -20,12 +20,6 @@ var s3PrefixNamingStrategies = map[string]s3PrefixNamingStrategy{
 	NamingStrategyDtSeparated: dtSeparated,
 }
 
-type ReaderSettings struct {
-	ModelId        mdl.ModelId
-	NamingStrategy string
-	Recorder       FileRecorder
-}
-
 type S3BucketNamingStrategy func(appId cfg.AppId) string
 
 func WithS3BucketNamingStrategy(strategy S3BucketNamingStrategy) {

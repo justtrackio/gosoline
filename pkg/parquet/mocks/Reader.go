@@ -12,13 +12,13 @@ type Reader struct {
 	mock.Mock
 }
 
-// ReadDate provides a mock function with given fields: ctx, datetime, target
-func (_m *Reader) ReadDate(ctx context.Context, datetime time.Time, target interface{}) error {
-	ret := _m.Called(ctx, datetime, target)
+// ReadDates provides a mock function with given fields: ctx, dates, target
+func (_m *Reader) ReadDates(ctx context.Context, dates []time.Time, target interface{}) error {
+	ret := _m.Called(ctx, dates, target)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time, interface{}) error); ok {
-		r0 = rf(ctx, datetime, target)
+	if rf, ok := ret.Get(0).(func(context.Context, []time.Time, interface{}) error); ok {
+		r0 = rf(ctx, dates, target)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -26,13 +26,13 @@ func (_m *Reader) ReadDate(ctx context.Context, datetime time.Time, target inter
 	return r0
 }
 
-// ReadDateAsync provides a mock function with given fields: ctx, datetime, target, callback
-func (_m *Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target interface{}, callback parquet.ResultCallback) error {
-	ret := _m.Called(ctx, datetime, target, callback)
+// ReadDatesAsync provides a mock function with given fields: ctx, dates, target, callback
+func (_m *Reader) ReadDatesAsync(ctx context.Context, dates []time.Time, target interface{}, callback parquet.ResultCallback) error {
+	ret := _m.Called(ctx, dates, target, callback)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time, interface{}, parquet.ResultCallback) error); ok {
-		r0 = rf(ctx, datetime, target, callback)
+	if rf, ok := ret.Get(0).(func(context.Context, []time.Time, interface{}, parquet.ResultCallback) error); ok {
+		r0 = rf(ctx, dates, target, callback)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -40,25 +40,16 @@ func (_m *Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target 
 	return r0
 }
 
-// ReadFile provides a mock function with given fields: ctx, file
-func (_m *Reader) ReadFile(ctx context.Context, file string) (parquet.ReadResults, error) {
-	ret := _m.Called(ctx, file)
+// ReadFile provides a mock function with given fields: ctx, file, callback
+func (_m *Reader) ReadFile(ctx context.Context, file string, callback func(parquet.ReadResults, bool) error) error {
+	ret := _m.Called(ctx, file, callback)
 
-	var r0 parquet.ReadResults
-	if rf, ok := ret.Get(0).(func(context.Context, string) parquet.ReadResults); ok {
-		r0 = rf(ctx, file)
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, func(parquet.ReadResults, bool) error) error); ok {
+		r0 = rf(ctx, file, callback)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(parquet.ReadResults)
-		}
+		r0 = ret.Error(0)
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, file)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }

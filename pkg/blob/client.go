@@ -40,13 +40,17 @@ func ProvideS3Client(config cfg.Config) s3iface.S3API {
 func GetS3ClientConfig(config cfg.Config) *aws.Config {
 	endpoint := config.GetString("aws_s3_endpoint")
 	maxRetries := config.GetInt("aws_sdk_retries")
+	timeout := 1 * time.Minute
+	if config.IsSet("aws_s3_timeout") {
+		timeout = config.GetDuration("aws_s3_timeout")
+	}
 
 	return &aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(true),
 		Endpoint:                      aws.String(endpoint),
 		Region:                        aws.String(endpoints.EuCentral1RegionID),
 		HTTPClient: &http.Client{
-			Timeout: 1 * time.Minute,
+			Timeout: timeout,
 		},
 		MaxRetries: aws.Int(maxRetries),
 	}
