@@ -46,7 +46,7 @@ func (m *mysqlComponent) Start() error {
 		Repository: "mysql",
 		Tag:        m.settings.Version,
 		Env:        env,
-		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION"},
+		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE"},
 		PortBindings: portBinding{
 			"3306/tcp": fmt.Sprint(m.settings.Port),
 		},

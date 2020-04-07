@@ -27,27 +27,35 @@ type Settings struct {
 	PrefixedTables     bool          `cfg:"db_table_prefixed"`
 }
 
-var defaultConnection = struct {
-	lck      sync.Mutex
-	instance *sqlx.DB
-	err      error
-}{}
+var defaultConnections = struct {
+	lck       sync.Mutex
+	instances map[Settings]*sqlx.DB
+	errors    map[Settings]error
+}{
+	instances: make(map[Settings]*sqlx.DB),
+	errors:    make(map[Settings]error),
+}
 
 func ProvideDefaultConnection(config cfg.Config, logger mon.Logger) (*sqlx.DB, error) {
-	defaultConnection.lck.Lock()
-	defer defaultConnection.lck.Unlock()
+	defaultConnections.lck.Lock()
+	defer defaultConnections.lck.Unlock()
 
-	if defaultConnection.err != nil {
-		return nil, defaultConnection.err
+	key := createSettings(config)
+
+	if err := defaultConnections.errors[key]; err != nil {
+		return nil, err
 	}
 
-	if defaultConnection.instance != nil {
-		return defaultConnection.instance, nil
+	if instance := defaultConnections.instances[key]; instance != nil {
+		return instance, nil
 	}
 
-	defaultConnection.instance, defaultConnection.err = NewConnection(config, logger)
+	instance, err := NewConnection(config, logger)
 
-	return defaultConnection.instance, defaultConnection.err
+	defaultConnections.instances[key] = instance
+	defaultConnections.errors[key] = err
+
+	return defaultConnections.instances[key], defaultConnections.errors[key]
 }
 
 type Connection struct {
@@ -56,7 +64,22 @@ type Connection struct {
 }
 
 func NewConnection(config cfg.Config, logger mon.Logger) (*sqlx.DB, error) {
-	settings := &Settings{
+	settings := createSettings(config)
+
+	connection, err := NewConnectionWithInterfaces(&settings)
+
+	if err != nil {
+		return nil, err
+	}
+
+	runMigrations(logger, connection, &settings)
+	publishConnectionMetrics(connection)
+
+	return connection, nil
+}
+
+func createSettings(config cfg.Config) Settings {
+	return Settings{
 		Application:        config.GetString("app_name"),
 		DriverName:         config.GetString("db_drivername"),
 		Host:               config.GetString("db_hostname"),
@@ -70,17 +93,6 @@ func NewConnection(config cfg.Config, logger mon.Logger) (*sqlx.DB, error) {
 		MigrationsPath:     config.GetString("db_migrations_path"),
 		PrefixedTables:     config.GetBool("db_table_prefixed"),
 	}
-
-	connection, err := NewConnectionWithInterfaces(settings)
-
-	if err != nil {
-		return nil, err
-	}
-
-	runMigrations(logger, connection, settings)
-	publishConnectionMetrics(connection)
-
-	return connection, nil
 }
 
 func NewConnectionWithInterfaces(settings *Settings) (*sqlx.DB, error) {

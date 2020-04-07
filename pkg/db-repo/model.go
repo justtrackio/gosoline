@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const ColumnUpdatedAt = "updated_at"
+
 type ModelBased interface {
 	mdl.Identifiable
 	TimeStampable
