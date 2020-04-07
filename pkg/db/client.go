@@ -155,7 +155,7 @@ func (c *ClientSqlx) Query(query string, args ...interface{}) (*sql.Rows, error)
 }
 
 func (c *ClientSqlx) QueryRow(query string, args ...interface{}) *sql.Row {
-	return c.db.QueryRow(query, args)
+	return c.db.QueryRow(query, args...)
 }
 
 func (c *ClientSqlx) Queryx(query string, args ...interface{}) (*sqlx.Rows, error) {
