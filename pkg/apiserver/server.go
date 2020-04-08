@@ -60,7 +60,7 @@ func (a *ApiServer) Boot(config cfg.Config, logger mon.Logger) error {
 	router := gin.New()
 	tracer := tracing.ProviderTracer(config, logger)
 
-	addProfilingEndpoints(router)
+	AddProfilingEndpoints(router)
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{})

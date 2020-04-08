@@ -58,7 +58,10 @@ func TestRepository_GetItem(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: output,
+		Err:    nil,
+	}})
 	client.On("GetItemRequest", input).Return(nil, nil)
 
 	qb := repo.GetItemBuilder().WithHash(1).WithRange("0")
@@ -104,7 +107,10 @@ func TestRepository_GetItem_FromItem(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: output,
+		Err:    nil,
+	}})
 	client.On("GetItemRequest", input).Return(nil, nil)
 
 	item := model{
@@ -142,7 +148,10 @@ func TestRepository_GetItemNotFound(t *testing.T) {
 	}
 	output := &dynamodb.GetItemOutput{}
 
-	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: output,
+		Err:    nil,
+	}})
 	client.On("GetItemRequest", input).Return(nil, nil)
 
 	qb := repo.GetItemBuilder().WithHash(1).WithRange("0")
@@ -179,7 +188,10 @@ func TestRepository_GetItemProjection(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: output,
+		Err:    nil,
+	}})
 	client.On("GetItemRequest", input).Return(nil, nil)
 
 	item := projection{}
@@ -240,7 +252,10 @@ func TestRepository_Query(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: output,
+		Err:    nil,
+	}})
 	client.On("QueryRequest", input).Return(nil, nil)
 
 	result := make([]model, 0)
@@ -270,7 +285,10 @@ func TestRepository_Query(t *testing.T) {
 func TestRepository_Query_Canceled(t *testing.T) {
 	awsErr := awserr.New(request.CanceledErrorCode, "got canceled", nil)
 
-	client, repo := getMocks([]cloud.TestExecution{{nil, awsErr}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: nil,
+		Err:    awsErr,
+	}})
 	client.On("QueryRequest", mock.AnythingOfType("*dynamodb.QueryInput")).Return(nil, nil)
 
 	result := make([]model, 0)
@@ -321,7 +339,10 @@ func TestRepository_BatchGetItems(t *testing.T) {
 		UnprocessedKeys: map[string]*dynamodb.KeysAndAttributes{},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: output,
+		Err:    nil,
+	}})
 	client.On("BatchGetItemRequest", input).Return(nil, nil)
 
 	result := make([]model, 0)
@@ -390,7 +411,10 @@ func TestRepository_BatchWriteItem(t *testing.T) {
 		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: output,
+		Err:    nil,
+	}})
 	client.On("BatchWriteItemRequest", input).Return(nil, nil)
 
 	_, err := repo.BatchPutItems(context.Background(), items)
@@ -460,9 +484,18 @@ func TestRepository_BatchWriteItem_Retry(t *testing.T) {
 	}
 
 	client, repo := getMocks([]cloud.TestExecution{
-		{firstOutput, nil},
-		{firstOutput, nil},
-		{secondOutput, nil},
+		{
+			Output: firstOutput,
+			Err:    nil,
+		},
+		{
+			Output: firstOutput,
+			Err:    nil,
+		},
+		{
+			Output: secondOutput,
+			Err:    nil,
+		},
 	})
 
 	client.On("BatchWriteItemRequest", firstInput).Return(nil, nil).Once()
@@ -498,7 +531,10 @@ func TestRepository_PutItem(t *testing.T) {
 	}
 	output := &dynamodb.PutItemOutput{}
 
-	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: output,
+		Err:    nil,
+	}})
 	client.On("PutItemRequest", input).Return(nil, nil)
 
 	res, err := repo.PutItem(context.Background(), nil, item)
@@ -544,7 +580,10 @@ func TestRepository_Update(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: output,
+		Err:    nil,
+	}})
 	client.On("UpdateItemRequest", input).Return(nil, nil)
 
 	updatedItem := &model{
@@ -602,7 +641,10 @@ func TestRepository_DeleteItem(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{output, nil}})
+	client, repo := getMocks([]cloud.TestExecution{{
+		Output: output,
+		Err:    nil,
+	}})
 	client.On("DeleteItemRequest", input).Return(nil, nil)
 
 	item := model{
