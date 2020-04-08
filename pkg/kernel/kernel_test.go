@@ -3,14 +3,18 @@ package kernel_test
 import (
 	"context"
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
+	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
 	kernelMocks "github.com/applike/gosoline/pkg/kernel/mocks"
+	"github.com/applike/gosoline/pkg/mon"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -280,4 +284,82 @@ func TestKernelStageStopped(t *testing.T) {
 
 	app.AssertExpectations(t)
 	m.AssertExpectations(t)
+}
+
+type fakeModule struct {
+}
+
+func (m *fakeModule) Boot(_ cfg.Config, _ mon.Logger) error {
+	return nil
+}
+
+func (m *fakeModule) Run(_ context.Context) error {
+	return nil
+}
+
+type realModule struct {
+	t *testing.T
+}
+
+func (m *realModule) Boot(_ cfg.Config, _ mon.Logger) error {
+	return nil
+}
+
+func (m *realModule) Run(ctx context.Context) error {
+	cfn, cfnCtx := coffin.WithContext(ctx)
+
+	cfn.GoWithContext(cfnCtx, func(ctx context.Context) error {
+		ticker := time.NewTicker(time.Millisecond * 2)
+		defer ticker.Stop()
+
+		counter := 0
+
+		for {
+			select {
+			case <-ticker.C:
+				counter++
+				if counter == 3 {
+					err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+					assert.NoError(m.t, err)
+				}
+			case <-ctx.Done():
+				return nil
+			}
+		}
+	})
+
+	err := cfn.Wait()
+	if !errors.Is(err, context.Canceled) {
+		assert.NoError(m.t, err)
+	}
+	return err
+}
+
+func TestKernel_RunRealModule(t *testing.T) {
+	// test that we can run the kernel multiple times
+	// if this does not work, the next test does not make sense
+	for i := 0; i < 10; i++ {
+		t.Run(fmt.Sprintf("fake iteration %d", i), func(t *testing.T) {
+			config, logger, _ := createMocks()
+			assert.NotPanics(t, func() {
+				k := kernel.New(config, logger)
+				k.Add("main", &fakeModule{})
+				k.Run()
+			})
+		})
+	}
+	// test for a race condition on kernel shutdown
+	// in the past, this would panic in a close on closed channel in the tomb module
+	for i := 0; i < 10; i++ {
+		t.Run(fmt.Sprintf("real iteration %d", i), func(t *testing.T) {
+			config, logger, _ := createMocks()
+			assert.NotPanics(t, func() {
+				k := kernel.New(config, logger)
+				k.Add("main", &realModule{
+					t: t,
+				})
+				k.Run()
+			})
+		})
+	}
 }
