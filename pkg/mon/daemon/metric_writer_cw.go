@@ -1,119 +1,75 @@
-package mon
+package daemon
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
 	"github.com/jonboulle/clockwork"
-	"sort"
-	"strings"
 	"time"
 )
 
 const (
-	PriorityLow  = 1
-	PriorityHigh = 2
-
-	UnitCount        = cloudwatch.StandardUnitCount
-	UnitCountAverage = "UnitCountAverage"
-	UnitSeconds      = cloudwatch.StandardUnitSeconds
-	UnitMilliseconds = cloudwatch.StandardUnitMilliseconds
-
 	chunkSizeCloudWatch = 20
 	minusOneWeek        = -1 * 7 * 24 * time.Hour
 	plusOneHour         = 1 * time.Hour
 )
 
-type MetricDimensions map[string]string
-
-type MetricDatum struct {
-	Priority   int              `json:"-"`
-	Timestamp  time.Time        `json:"timestamp"`
-	MetricName string           `json:"metricName"`
-	Dimensions MetricDimensions `json:"dimensions"`
-	Value      float64          `json:"value"`
-	Unit       string           `json:"unit"`
-}
-
-func (d *MetricDatum) Id() string {
-	return fmt.Sprintf("%s:%s", d.MetricName, d.DimensionKey())
-}
-
-func (d *MetricDatum) DimensionKey() string {
-	dims := make([]string, 0)
-
-	for k, v := range d.Dimensions {
-		flat := fmt.Sprintf("%s:%s", k, v)
-		dims = append(dims, flat)
-	}
-
-	sort.Strings(dims)
-	dimKey := strings.Join(dims, "-")
-
-	return dimKey
-}
-
-func (d *MetricDatum) IsValid() error {
-	if d.MetricName == "" {
-		return fmt.Errorf("missing metric name")
-	}
-
-	if d.Priority == 0 {
-		return fmt.Errorf("metric %s has no priority", d.MetricName)
-	}
-
-	if d.Unit == "" {
-		return fmt.Errorf("metric %s has no unit", d.MetricName)
-	}
-
-	return nil
-}
-
-type MetricData []*MetricDatum
-
-//go:generate mockery -name MetricWriter
-type MetricWriter interface {
-	GetPriority() int
-	Write(batch MetricData)
-	WriteOne(data *MetricDatum)
-}
-
 type cwWriter struct {
-	logger   Logger
+	logger   mon.Logger
 	clock    clockwork.Clock
 	cw       cloudwatchiface.CloudWatchAPI
+	executor cloud.RequestExecutor
 	settings *MetricSettings
 }
 
-func NewMetricCwWriter(config cfg.Config, logger Logger) *cwWriter {
+func NewMetricCwWriter(config cfg.Config, logger mon.Logger) *cwWriter {
 	settings := getMetricSettings(config)
 
 	clock := clockwork.NewRealClock()
-	cw := ProvideCloudWatchClient(config)
+	cw := mon.ProvideCloudWatchClient(config)
+	executor := cloud.NewBackoffExecutor(logger, &cloud.BackoffResource{
+		Type: "cloud",
+		Name: "watch",
+	}, &cloud.BackoffSettings{
+		Enabled:             true,
+		Blocking:            false,
+		CancelDelay:         1 * time.Second,
+		InitialInterval:     50 * time.Millisecond,
+		RandomizationFactor: 0.5,
+		Multiplier:          1.5,
+		MaxInterval:         10 * time.Second,
+		MaxElapsedTime:      15 * time.Minute,
+		MetricEnabled:       false,
+	})
 
-	return NewMetricCwWriterWithInterfaces(logger, clock, cw, settings)
+	return NewMetricCwWriterWithInterfaces(logger, clock, cw, executor, settings)
 }
 
-func NewMetricCwWriterWithInterfaces(logger Logger, clock clockwork.Clock, cw cloudwatchiface.CloudWatchAPI, settings *MetricSettings) *cwWriter {
+func NewMetricCwWriterWithInterfaces(logger mon.Logger, clock clockwork.Clock, cw cloudwatchiface.CloudWatchAPI, executor cloud.RequestExecutor, settings *MetricSettings) *cwWriter {
 	return &cwWriter{
 		logger:   logger.WithChannel("metrics"),
 		clock:    clock,
 		cw:       cw,
+		executor: executor,
 		settings: settings,
 	}
 }
 
 func (w *cwWriter) GetPriority() int {
-	return PriorityHigh
+	return mon.PriorityHigh
 }
 
-func (w *cwWriter) WriteOne(data *MetricDatum) {
-	w.Write(MetricData{data})
+func (w *cwWriter) WriteOne(data *mon.MetricDatum) {
+	w.Write(mon.MetricData{data})
 }
 
-func (w *cwWriter) Write(batch MetricData) {
+func (w *cwWriter) Write(batch mon.MetricData) {
 	if !w.settings.Enabled || len(batch) == 0 {
 		return
 	}
@@ -122,7 +78,7 @@ func (w *cwWriter) Write(batch MetricData) {
 	namespace := fmt.Sprintf("%s/%s/%s/%s", w.settings.Project, w.settings.Environment, w.settings.Family, w.settings.Application)
 
 	if err != nil {
-		w.logger.WithFields(Fields{
+		w.logger.WithFields(mon.Fields{
 			"namespace": namespace,
 		}).Error(err, "could not write metric data")
 
@@ -141,7 +97,9 @@ func (w *cwWriter) Write(batch MetricData) {
 			Namespace:  aws.String(namespace),
 		}
 
-		_, err := w.cw.PutMetricData(&input)
+		_, err := w.executor.Execute(context.Background(), func() (request *request.Request, i interface{}) {
+			return w.cw.PutMetricDataRequest(&input)
+		})
 
 		if err != nil {
 			w.logger.Error(err, "could not write metric data")
@@ -152,7 +110,7 @@ func (w *cwWriter) Write(batch MetricData) {
 	w.logger.Debugf("written %d metric data sets to cloudwatch", len(metricData))
 }
 
-func (w *cwWriter) buildMetricData(batch MetricData) ([]*cloudwatch.MetricDatum, error) {
+func (w *cwWriter) buildMetricData(batch mon.MetricData) ([]*cloudwatch.MetricDatum, error) {
 	start := w.clock.Now().Add(minusOneWeek)
 	end := w.clock.Now().Add(plusOneHour)
 	metricData := make([]*cloudwatch.MetricDatum, 0, len(batch))

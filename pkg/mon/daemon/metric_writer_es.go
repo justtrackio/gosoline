@@ -1,4 +1,4 @@
-package mon
+package daemon
 
 import (
 	"bytes"
@@ -6,22 +6,23 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/es"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/jonboulle/clockwork"
 )
 
 type esMetricDatum struct {
-	*MetricDatum
+	*mon.MetricDatum
 	Namespace string `json:"namespace"`
 }
 
 type esWriter struct {
-	logger    Logger
+	logger    mon.Logger
 	clock     clockwork.Clock
 	client    *es.ClientV7
 	namespace string
 }
 
-func NewMetricEsWriter(config cfg.Config, logger Logger) *esWriter {
+func NewMetricEsWriter(config cfg.Config, logger mon.Logger) *esWriter {
 	client := es.ProvideClient(config, logger, "metric")
 	clock := clockwork.NewRealClock()
 
@@ -31,7 +32,7 @@ func NewMetricEsWriter(config cfg.Config, logger Logger) *esWriter {
 	return NewMetricEsWriterWithInterfaces(logger, client, clock, namespace)
 }
 
-func NewMetricEsWriterWithInterfaces(logger Logger, client *es.ClientV7, clock clockwork.Clock, namespace string) *esWriter {
+func NewMetricEsWriterWithInterfaces(logger mon.Logger, client *es.ClientV7, clock clockwork.Clock, namespace string) *esWriter {
 	return &esWriter{
 		logger:    logger.WithChannel("metrics"),
 		clock:     clock,
@@ -41,7 +42,7 @@ func NewMetricEsWriterWithInterfaces(logger Logger, client *es.ClientV7, clock c
 }
 
 func (w esWriter) GetPriority() int {
-	return PriorityLow
+	return mon.PriorityLow
 }
 
 func (w esWriter) bulkWriteToES(buf bytes.Buffer) {
@@ -55,13 +56,13 @@ func (w esWriter) bulkWriteToES(buf bytes.Buffer) {
 
 	if res.IsError() {
 		// A successful response might still contain errors for particular documents
-		w.logger.WithFields(Fields{
+		w.logger.WithFields(mon.Fields{
 			"status_code": res.StatusCode,
 		}).Error(err, "not all metrics have been written to es")
 	}
 }
 
-func (w esWriter) Write(batch MetricData) {
+func (w esWriter) Write(batch mon.MetricData) {
 	var buf bytes.Buffer
 
 	if len(batch) == 0 {
@@ -99,6 +100,6 @@ func (w esWriter) Write(batch MetricData) {
 	w.logger.Debugf("written %d metric data sets to elasticsearch", len(batch))
 }
 
-func (w esWriter) WriteOne(data *MetricDatum) {
-	w.Write(MetricData{data})
+func (w esWriter) WriteOne(data *mon.MetricDatum) {
+	w.Write(mon.MetricData{data})
 }

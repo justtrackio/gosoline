@@ -1,10 +1,11 @@
-package mon
+package daemon
 
 import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel/common"
+	"github.com/applike/gosoline/pkg/mon"
 	"sync"
 	"time"
 )
@@ -31,33 +32,33 @@ type BatchedMetricDatum struct {
 	Priority   int
 	Timestamp  time.Time
 	MetricName string
-	Dimensions MetricDimensions
+	Dimensions mon.MetricDimensions
 	Values     []float64
 	Unit       string
 }
 
 type cwDaemon struct {
 	sync.Mutex
-	logger   Logger
+	logger   mon.Logger
 	settings *MetricSettings
 
 	channel *metricChannel
 	ticker  *time.Ticker
-	writers []MetricWriter
+	writers []mon.MetricWriter
 
 	batch          map[string]*BatchedMetricDatum
-	defaults       map[string]*MetricDatum
+	defaults       map[string]*mon.MetricDatum
 	dataPointCount int
 }
 
 type metricChannel struct {
-	logger Logger
-	c      chan MetricData
+	logger mon.Logger
+	c      chan mon.MetricData
 	closed bool
 	lck    sync.RWMutex
 }
 
-func (c *metricChannel) write(batch MetricData) {
+func (c *metricChannel) write(batch mon.MetricData) {
 	c.lck.RLock()
 	defer c.lck.RUnlock()
 
@@ -105,13 +106,15 @@ func ProvideCwDaemon() *cwDaemon {
 
 	cwDaemonContainer.instance = &cwDaemon{
 		channel: &metricChannel{
-			c:      make(chan MetricData, 100),
+			c:      make(chan mon.MetricData, 100),
 			closed: false,
 		},
-		defaults: make(map[string]*MetricDatum, 0),
+		defaults: make(map[string]*mon.MetricDatum, 0),
 		settings: &MetricSettings{},
-		writers:  make([]MetricWriter, 0),
+		writers:  make([]mon.MetricWriter, 0),
 	}
+
+	mon.InitializeMetricDaemon(cwDaemonContainer.instance)
 
 	return cwDaemonContainer.instance
 }
@@ -124,10 +127,10 @@ func (d *cwDaemon) GetStage() int {
 	return common.StageEssential
 }
 
-func (d *cwDaemon) Boot(config cfg.Config, logger Logger) error {
+func (d *cwDaemon) Boot(config cfg.Config, logger mon.Logger) error {
 	settings := getMetricSettings(config)
 
-	writers := make([]MetricWriter, len(settings.Writers))
+	writers := make([]mon.MetricWriter, len(settings.Writers))
 	for i, t := range settings.Writers {
 		writers[i] = ProvideMetricWriterByType(config, logger, t)
 	}
@@ -135,7 +138,7 @@ func (d *cwDaemon) Boot(config cfg.Config, logger Logger) error {
 	return d.BootWithInterfaces(logger, writers, settings)
 }
 
-func (d *cwDaemon) BootWithInterfaces(logger Logger, writers []MetricWriter, settings *MetricSettings) error {
+func (d *cwDaemon) BootWithInterfaces(logger mon.Logger, writers []mon.MetricWriter, settings *MetricSettings) error {
 	d.logger = logger.WithChannel("metrics")
 	d.settings = settings
 	d.writers = writers
@@ -171,7 +174,11 @@ func (d *cwDaemon) Run(ctx context.Context) error {
 	}
 }
 
-func (d *cwDaemon) AddDefaults(data ...*MetricDatum) {
+func (d *cwDaemon) IsEnabled() bool {
+	return d.settings.Enabled
+}
+
+func (d *cwDaemon) AddDefaults(data ...*mon.MetricDatum) {
 	d.Lock()
 	defer d.Unlock()
 
@@ -181,6 +188,10 @@ func (d *cwDaemon) AddDefaults(data ...*MetricDatum) {
 	}
 }
 
+func (d *cwDaemon) Write(batch mon.MetricData) {
+	d.channel.write(batch)
+}
+
 func (d *cwDaemon) emptyChannel() {
 	d.channel.close()
 
@@ -188,13 +199,13 @@ func (d *cwDaemon) emptyChannel() {
 		d.appendBatch(data)
 	}
 }
-func (d *cwDaemon) appendBatch(data MetricData) {
+func (d *cwDaemon) appendBatch(data mon.MetricData) {
 	for _, dat := range data {
 		d.append(dat)
 	}
 }
 
-func (d *cwDaemon) append(datum *MetricDatum) {
+func (d *cwDaemon) append(datum *mon.MetricDatum) {
 	d.dataPointCount++
 
 	dimKey := datum.DimensionKey()
@@ -225,7 +236,7 @@ func (d *cwDaemon) append(datum *MetricDatum) {
 	existing.Values = append(existing.Values, datum.Value)
 }
 
-func (d *cwDaemon) amendFromDefault(datum *MetricDatum) {
+func (d *cwDaemon) amendFromDefault(datum *mon.MetricDatum) {
 	defId := datum.Id()
 	def, ok := d.defaults[defId]
 
@@ -271,13 +282,13 @@ func (d *cwDaemon) publish() {
 	d.resetBatch()
 }
 
-func (d *cwDaemon) buildMetricData() MetricData {
-	data := make([]*MetricDatum, 0)
+func (d *cwDaemon) buildMetricData() mon.MetricData {
+	data := make([]*mon.MetricDatum, 0)
 
 	for _, v := range d.batch {
 		unit, value := d.calcValue(v.Unit, v.Values)
 
-		datum := &MetricDatum{
+		datum := &mon.MetricDatum{
 			Priority:   v.Priority,
 			Timestamp:  v.Timestamp,
 			MetricName: v.MetricName,
@@ -296,12 +307,12 @@ func (d *cwDaemon) calcValue(unit string, values []float64) (string, float64) {
 	value := 0.0
 
 	switch unit {
-	case UnitCountAverage:
-		unit = UnitCount
+	case mon.UnitCountAverage:
+		unit = mon.UnitCount
 		value = average(values)
-	case UnitMilliseconds:
+	case mon.UnitMilliseconds:
 		value = average(values)
-	case UnitSeconds:
+	case mon.UnitSeconds:
 		value = average(values)
 	default:
 		value = sum(values)

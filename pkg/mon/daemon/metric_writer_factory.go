@@ -1,8 +1,9 @@
-package mon
+package daemon
 
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 )
 
 const (
@@ -10,7 +11,7 @@ const (
 	MetricWriterTypeES = "es"
 )
 
-func ProvideMetricWriterByType(config cfg.Config, logger Logger, typ string) MetricWriter {
+func ProvideMetricWriterByType(config cfg.Config, logger mon.Logger, typ string) mon.MetricWriter {
 	switch typ {
 	case MetricWriterTypeCw:
 		return NewMetricCwWriter(config, logger)

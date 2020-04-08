@@ -2,6 +2,7 @@ package application
 
 import (
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/mon/daemon"
 )
 
 type ErrorHandler func(err error, msg string, args ...interface{})
@@ -15,7 +16,7 @@ var defaultErrorHandler = func(err error, msg string, args ...interface{}) {
 	options := []mon.LoggerOption{
 		mon.WithFormat(mon.FormatJson),
 		mon.WithTimestampFormat("2006-01-02T15:04:05.999Z07:00"),
-		mon.WithHook(mon.NewMetricHook()),
+		mon.WithHook(daemon.NewMetricHook()),
 	}
 
 	if err := logger.Option(options...); err != nil {

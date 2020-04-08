@@ -7,6 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/mon/daemon"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/pkg/errors"
@@ -181,7 +182,7 @@ func WithLoggerHook(hook mon.LoggerHook) Option {
 
 func WithLoggerMetricHook(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		metricHook := mon.NewMetricHook()
+		metricHook := daemon.NewMetricHook()
 		return logger.Option(mon.WithHook(metricHook))
 	})
 }
@@ -233,7 +234,7 @@ func WithLoggerTagsFromConfig(app *App) {
 
 func WithMetricDaemon(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
-		kernel.Add("metric", mon.ProvideCwDaemon())
+		kernel.Add("metric", daemon.ProvideCwDaemon())
 		return nil
 	})
 }

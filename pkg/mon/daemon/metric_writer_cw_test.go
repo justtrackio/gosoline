@@ -1,11 +1,14 @@
-package mon_test
+package daemon_test
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/mon/daemon"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/jonboulle/clockwork"
 	"testing"
@@ -34,7 +37,7 @@ func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudMocks.Cl
 	logger := monMocks.NewLoggerMockedAll()
 	cwClient := new(cloudMocks.CloudWatchAPI)
 
-	cwClient.On("PutMetricData", &cloudwatch.PutMetricDataInput{
+	cwClient.On("PutMetricDataRequest", &cloudwatch.PutMetricDataInput{
 		Namespace: aws.String("my/test/namespace/app"),
 		MetricData: []*cloudwatch.MetricDatum{{
 			MetricName: aws.String("my-test-metric-name"),
@@ -48,9 +51,9 @@ func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudMocks.Cl
 			Value:     aws.Float64(3.4),
 			Unit:      aws.String(mon.UnitCount),
 		}},
-	}).Return(nil, nil)
+	}).Return(&request.Request{}, nil)
 
-	mo := mon.NewMetricCwWriterWithInterfaces(logger, clock, cwClient, &mon.MetricSettings{
+	mo := daemon.NewMetricCwWriterWithInterfaces(logger, clock, cwClient, cloud.NewTestableExecutor([]cloud.TestExecution{{}}), &daemon.MetricSettings{
 		AppId: cfg.AppId{
 			Project:     "my",
 			Environment: "test",

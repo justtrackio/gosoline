@@ -13,7 +13,7 @@ import (
 	"syscall"
 )
 
-func IsAwsError(err error, awsCode string) bool {
+func isAwsError(err error, awsCode string) bool {
 	var aerr awserr.Error
 	if errors.As(err, &aerr) {
 		return aerr.Code() == awsCode
@@ -25,7 +25,7 @@ func IsAwsError(err error, awsCode string) bool {
 // Check if the given error was (only) caused by a canceled context - if there is any other error contained in it, we
 // return false. Thus, if IsRequestCanceled returns true, you can (and should) ignore the error and stop processing instead.
 func IsRequestCanceled(err error) bool {
-	if errors.Is(err, context.Canceled) || errors.Is(err, RequestCanceledError) || IsAwsError(err, request.CanceledErrorCode) {
+	if errors.Is(err, context.Canceled) || errors.Is(err, RequestCanceledError) || isAwsError(err, request.CanceledErrorCode) {
 		return true
 	}
 
@@ -57,18 +57,18 @@ func IsUsedClosedConnectionError(err error) bool {
 }
 
 func IsConnectionError(err error) bool {
-	if IsUrlError(err, io.EOF) {
+	if isUrlError(err, io.EOF) {
 		return true
 	}
 
-	if IsSyscallError(err, syscall.ECONNREFUSED, syscall.ECONNRESET, syscall.EPIPE) {
+	if isSyscallError(err, syscall.ECONNREFUSED, syscall.ECONNRESET, syscall.EPIPE) {
 		return true
 	}
 
 	return false
 }
 
-func IsUrlError(err error, targets ...error) bool {
+func isUrlError(err error, targets ...error) bool {
 	urlErr, ok := urlError(err)
 
 	if !ok {
@@ -84,7 +84,7 @@ func IsUrlError(err error, targets ...error) bool {
 	return false
 }
 
-func IsSyscallError(err error, syscallErrors ...syscall.Errno) bool {
+func isSyscallError(err error, syscallErrors ...syscall.Errno) bool {
 	opErr, ok := opError(err)
 
 	if !ok {
