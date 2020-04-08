@@ -79,9 +79,8 @@ func (s *ServerTestSuite) TestGetPort_Error() {
 }
 
 func (s *ServerTestSuite) TestBaseProfilingEndpoint() {
-	s.T().Skip("profiling routes are added in Boot, cannot be tested here")
-
 	assert.NotPanics(s.T(), func() {
+		apiserver.AddProfilingEndpoints(s.router)
 		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
 		assert.NoError(s.T(), err)
 	})

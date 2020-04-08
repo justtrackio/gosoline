@@ -31,7 +31,7 @@ type OneOfMany struct {
 
 type HasMany struct {
 	db_repo.Model
-	Manies []*Ones `gorm:"association_autoupdate:true;association_autocreate:true;association_save_reference:true;"orm:"assoc_update"`
+	Manies []*Ones `gorm:"association_autoupdate:true;association_autocreate:true;association_save_reference:true;" orm:"assoc_update"`
 }
 
 type Ones struct {

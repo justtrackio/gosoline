@@ -38,6 +38,9 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      - name: Static code analysis
+        run: go vet ./...
+
       - name: Test
         run: go test ./...
 
