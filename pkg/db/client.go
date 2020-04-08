@@ -20,6 +20,12 @@ const (
 	mysqlDuplicateEntryErrorNumber = 1062
 )
 
+//go:generate mockery -name SqlResult
+type SqlResult interface {
+	LastInsertId() (int64, error)
+	RowsAffected() (int64, error)
+}
+
 type ResultRow map[string]string
 type Result []ResultRow
 
