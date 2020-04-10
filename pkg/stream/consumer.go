@@ -8,6 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -19,6 +20,17 @@ type ConsumerCallback interface {
 	Boot(config cfg.Config, logger mon.Logger) error
 	GetModel() interface{}
 	Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error)
+}
+
+//go:generate mockery -name=RunnableConsumerCallback
+type RunnableConsumerCallback interface {
+	Run(ctx context.Context) error
+}
+
+//go:generate mockery -name=FullConsumerCallback
+type FullConsumerCallback interface {
+	ConsumerCallback
+	RunnableConsumerCallback
 }
 
 type ConsumerSettings struct {
@@ -37,8 +49,9 @@ type Consumer struct {
 	encoder MessageEncoder
 	mw      mon.MetricWriter
 	tracer  tracing.Tracer
-	cfn     coffin.Coffin
-	ticker  *time.Ticker
+
+	wg     sync.WaitGroup
+	cancel context.CancelFunc
 
 	id        string
 	name      string
@@ -49,86 +62,84 @@ type Consumer struct {
 
 func NewConsumer(name string, callback ConsumerCallback) *Consumer {
 	return &Consumer{
-		cfn:      coffin.New(),
 		name:     name,
 		callback: callback,
 	}
 }
 
 func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
-	if err := c.boolCallback(config, logger); err != nil {
+	if err := c.bootCallback(config, logger); err != nil {
 		return err
 	}
 
 	settings := &ConsumerSettings{}
-	c.settings = settings
-
 	key := fmt.Sprintf("stream.consumer.%s", c.name)
 	config.UnmarshalKey(key, settings)
 
 	appId := cfg.GetAppIdFromConfig(config)
-	c.id = fmt.Sprintf("consumer-%v-%v", appId.Family, appId.Application)
+	c.id = fmt.Sprintf("consumer-%s-%s-%s", appId.Family, appId.Application, c.name)
 
-	c.logger = logger.WithChannel("consumer")
-	c.tracer = tracing.ProviderTracer(config, logger)
-	c.ticker = time.NewTicker(settings.IdleTimeout)
+	tracer := tracing.ProviderTracer(config, logger)
 
 	defaultMetrics := getConsumerDefaultMetrics()
-	c.mw = mon.NewMetricDaemonWriter(defaultMetrics...)
+	mw := mon.NewMetricDaemonWriter(defaultMetrics...)
 
-	c.input = NewConfigurableInput(config, logger, settings.Input)
-	c.ConsumerAcknowledge = NewConsumerAcknowledgeWithInterfaces(logger, c.input)
-
-	c.encoder = NewMessageEncoder(&MessageEncoderSettings{
+	input := NewConfigurableInput(config, logger, settings.Input)
+	encoder := NewMessageEncoder(&MessageEncoderSettings{
 		Encoding: settings.Encoding,
 	})
+
+	c.BootWithInterfaces(logger, tracer, mw, input, encoder, settings)
 
 	return nil
 }
 
-func (c *Consumer) Run(ctx context.Context) error {
-	defer c.logger.Info("leaving consumer ", c.id)
-
-	c.cfn.GoWithContextf(ctx, c.input.Run, "panic during run of the consumer input")
-
-	for i := 0; i < c.settings.RunnerCount; i++ {
-		c.cfn.Gof(c.consume, "panic during consuming")
-	}
-
-	run := true
-
-	for {
-		if !run {
-			break
-		}
-
-		select {
-		case <-ctx.Done():
-			run = false
-			break
-
-		case <-c.cfn.Dying():
-			run = false
-			break
-
-		case <-c.cfn.Dead():
-			run = false
-			break
-
-		case <-c.ticker.C:
-			processed := atomic.SwapInt32(&c.processed, 0)
-
-			c.logger.WithFields(mon.Fields{
-				"count": processed,
-			}).Infof("processed %v messages", processed)
-		}
-	}
-
-	c.input.Stop()
-	return c.cfn.Wait()
+func (c *Consumer) BootWithInterfaces(logger mon.Logger, tracer tracing.Tracer, mw mon.MetricWriter, input Input, encoder MessageEncoder, settings *ConsumerSettings) {
+	c.logger = logger.WithChannel("consumer")
+	c.tracer = tracer
+	c.mw = mw
+	c.input = input
+	c.ConsumerAcknowledge = NewConsumerAcknowledgeWithInterfaces(logger, c.input)
+	c.encoder = encoder
+	c.settings = settings
 }
 
-func (c *Consumer) boolCallback(config cfg.Config, logger mon.Logger) error {
+func (c *Consumer) Run(kernelCtx context.Context) error {
+	defer c.logger.Infof("leaving consumer %s", c.name)
+	c.logger.Infof("running consumer %s with input %s", c.name, c.settings.Input)
+
+	// create ctx whose done channel is closed on dying coffin
+	cfn, dyingCtx := coffin.WithContext(context.Background())
+
+	// create ctx whose done channel is closed on dying coffin and manual cancel
+	manualCtx := cfn.Context(context.Background())
+	manualCtx, c.cancel = context.WithCancel(manualCtx)
+
+	cfn.GoWithContextf(dyingCtx, c.input.Run, "panic during run of the consumer input")
+	cfn.GoWithContextf(manualCtx, c.logConsumeCounter, "panic during counter log")
+	cfn.GoWithContextf(manualCtx, c.runCallback, "panic during run of the callback")
+
+	c.wg.Add(c.settings.RunnerCount)
+	cfn.Go(c.stopConsuming)
+
+	for i := 0; i < c.settings.RunnerCount; i++ {
+		cfn.GoWithContextf(manualCtx, c.runConsuming, "panic during consuming")
+	}
+
+	// stop input on kernel cancel
+	go func() {
+		<-kernelCtx.Done()
+		c.input.Stop()
+	}()
+
+	if err := cfn.Wait(); err != nil {
+		return fmt.Errorf("error while waiting for all routines to stop: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Consumer) bootCallback(config cfg.Config, logger mon.Logger) error {
 	loggerCallback := logger.WithChannel("callback")
 	contextEnforcingLogger := mon.NewContextEnforcingLogger(loggerCallback)
 
@@ -143,15 +154,36 @@ func (c *Consumer) boolCallback(config cfg.Config, logger mon.Logger) error {
 	return nil
 }
 
-func (c *Consumer) consume() error {
+func (c *Consumer) runCallback(ctx context.Context) error {
+	defer c.logger.Debug("runCallback is ending")
+
+	if runnable, ok := c.callback.(RunnableConsumerCallback); ok {
+		return runnable.Run(ctx)
+	}
+
+	return nil
+}
+
+func (c *Consumer) runConsuming(ctx context.Context) error {
+	defer c.logger.Debug("runConsuming is ending")
+	defer c.wg.Done()
+
+	var ok bool
+	var msg *Message
+
 	for {
-		msg, ok := <-c.input.Data()
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("return from consuming as the coffin is dying")
+
+		case msg, ok = <-c.input.Data():
+		}
 
 		if !ok {
 			return nil
 		}
 
-		c.doCallback(msg)
+		c.doConsuming(msg)
 
 		atomic.AddInt32(&c.processed, 1)
 		c.mw.WriteOne(&mon.MetricDatum{
@@ -161,7 +193,7 @@ func (c *Consumer) consume() error {
 	}
 }
 
-func (c *Consumer) doCallback(msg *Message) {
+func (c *Consumer) doConsuming(msg *Message) {
 	ctx := context.Background()
 	model := c.callback.GetModel()
 
@@ -187,6 +219,36 @@ func (c *Consumer) doCallback(msg *Message) {
 	}
 
 	c.Acknowledge(ctx, msg)
+}
+
+func (c *Consumer) stopConsuming() error {
+	defer c.logger.Debug("stopConsuming is ending")
+
+	c.wg.Wait()
+	c.input.Stop()
+	c.cancel()
+
+	return nil
+}
+
+func (c *Consumer) logConsumeCounter(ctx context.Context) error {
+	defer c.logger.Debug("logConsumeCounter is ending")
+
+	ticker := time.NewTicker(c.settings.IdleTimeout)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			processed := atomic.SwapInt32(&c.processed, 0)
+
+			c.logger.WithFields(mon.Fields{
+				"count": processed,
+			}).Infof("processed %v messages", processed)
+		}
+	}
 }
 
 func getConsumerDefaultMetrics() mon.MetricData {

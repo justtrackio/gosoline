@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"sync"
 )
 
 var inMemoryInputs = make(map[string]*InMemoryInput)
@@ -12,6 +13,7 @@ type InMemorySettings struct {
 
 type InMemoryInput struct {
 	channel chan *Message
+	once    sync.Once
 }
 
 func ProvideInMemoryInput(name string, settings *InMemorySettings) *InMemoryInput {
@@ -37,7 +39,9 @@ func (i *InMemoryInput) Run(_ context.Context) error {
 }
 
 func (i *InMemoryInput) Stop() {
-	close(i.channel)
+	i.once.Do(func() {
+		close(i.channel)
+	})
 }
 
 func (i *InMemoryInput) Data() chan *Message {
