@@ -35,7 +35,10 @@ func TestGetKinesisClient(t *testing.T) {
 func TestGetEcsClient(t *testing.T) {
 	logger := monMocks.NewLoggerMockedAll()
 
-	_ = cloud.GetEcsClient(logger)
+	config := new(configMocks.Config)
+	config.On("GetString", "aws_ecs_endpoint").Return("127.0.0.1")
+
+	_ = cloud.GetEcsClient(config, logger)
 }
 
 func TestGetServiceDiscoveryClient(t *testing.T) {

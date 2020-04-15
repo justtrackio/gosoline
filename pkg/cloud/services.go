@@ -52,7 +52,7 @@ func GetServiceClient(logger mon.Logger, client ecsiface.ECSAPI, appId *cfg.AppI
 }
 
 func GetServiceClientWithDefaultClient(config cfg.Config, logger mon.Logger) ServiceClient {
-	client := GetEcsClient(logger)
+	client := GetEcsClient(config, logger)
 
 	appId := &cfg.AppId{}
 	appId.PadFromConfig(config)

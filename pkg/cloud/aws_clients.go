@@ -167,7 +167,7 @@ var ecscl = struct {
 	initialized bool
 }{}
 
-func GetEcsClient(logger mon.Logger) ecsiface.ECSAPI {
+func GetEcsClient(config cfg.Config, logger mon.Logger) ecsiface.ECSAPI {
 	ecscl.Lock()
 	defer ecscl.Unlock()
 
@@ -175,7 +175,10 @@ func GetEcsClient(logger mon.Logger) ecsiface.ECSAPI {
 		return ecscl.client
 	}
 
+	endpoint := config.GetString("aws_ecs_endpoint")
+
 	awsConfig := ConfigTemplate
+	awsConfig.WithEndpoint(endpoint)
 	awsConfig.WithLogger(PrefixedLogger(logger, "aws_ecs"))
 
 	sess := session.Must(session.NewSession(awsConfig))
