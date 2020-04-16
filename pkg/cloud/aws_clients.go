@@ -85,7 +85,7 @@ func GetAwsConfig(config cfg.Config, logger mon.Logger, service string, settings
 }
 
 /* Configuration Template for AWS Clients */
-var ConfigTemplate = &aws.Config{
+var ConfigTemplate = aws.Config{
 	CredentialsChainVerboseErrors: aws.Bool(true),
 	Region:                        aws.String(endpoints.EuCentral1RegionID),
 	//LogLevel: aws.LogLevel(aws.LogDebug | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors | aws.LogDebugWithHTTPBody),
@@ -117,7 +117,7 @@ func GetKinesisClient(config cfg.Config, logger mon.Logger) kinesisiface.Kinesis
 	awsConfig.WithMaxRetries(maxRetries)
 	awsConfig.WithLogger(PrefixedLogger(logger, "aws_kinesis"))
 
-	sess := session.Must(session.NewSession(awsConfig))
+	sess := session.Must(session.NewSession(&awsConfig))
 
 	client := kinesis.New(sess)
 
@@ -178,7 +178,7 @@ func GetEcsClient(logger mon.Logger) ecsiface.ECSAPI {
 	awsConfig := ConfigTemplate
 	awsConfig.WithLogger(PrefixedLogger(logger, "aws_ecs"))
 
-	sess := session.Must(session.NewSession(awsConfig))
+	sess := session.Must(session.NewSession(&awsConfig))
 
 	ecscl.client = ecs.New(sess)
 	ecscl.initialized = true
@@ -204,7 +204,7 @@ func GetServiceDiscoveryClient(logger mon.Logger, endpoint string) servicediscov
 	awsConfig := ConfigTemplate
 	awsConfig.WithEndpoint(endpoint)
 	awsConfig.WithLogger(PrefixedLogger(logger, "aws_service_discovery"))
-	sess := session.Must(session.NewSession(awsConfig))
+	sess := session.Must(session.NewSession(&awsConfig))
 
 	sdcl.client = servicediscovery.New(sess)
 	sdcl.initialized = true
@@ -234,7 +234,7 @@ func GetSystemsManagerClient(config cfg.Config, logger mon.Logger) ssmiface.SSMA
 	awsConfig.WithEndpoint(endpoint)
 	awsConfig.WithMaxRetries(maxRetries)
 	awsConfig.WithLogger(PrefixedLogger(logger, "aws_systems_manager"))
-	sess := session.Must(session.NewSession(awsConfig))
+	sess := session.Must(session.NewSession(&awsConfig))
 
 	ssmClient.client = ssm.New(sess)
 	ssmClient.initialized = true

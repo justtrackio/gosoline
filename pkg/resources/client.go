@@ -31,7 +31,7 @@ func GetClient(config cfg.Config, logger mon.Logger) resourcegroupstaggingapiifa
 	awsConfig.WithEndpoint(endpoint)
 	awsConfig.WithMaxRetries(maxRetries)
 	awsConfig.WithLogger(cloud.PrefixedLogger(logger, "aws_resources_manager"))
-	sess := session.Must(session.NewSession(awsConfig))
+	sess := session.Must(session.NewSession(&awsConfig))
 
 	rgtClient.client = resourcegroupstaggingapi.New(sess)
 	rgtClient.initialized = true
