@@ -239,6 +239,7 @@ func TestKernelForcedExit(t *testing.T) {
 
 	app.AssertExpectations(t)
 	m.AssertExpectations(t)
+	assert.True(t, mayStop.Signaled())
 }
 
 func TestKernelStageStopped(t *testing.T) {
