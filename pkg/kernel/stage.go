@@ -49,6 +49,14 @@ func (s *stage) boot(k *kernel, bootCoffin coffin.Coffin) {
 
 func (s *stage) stopWait(stageIndex int, logger mon.Logger) {
 	s.cfn.Kill(ErrKernelStopping)
+
+	// in case a complete stage is already not running anymore, we can't rely on s.cfn.Wait
+	if _, ok := <-s.running.Channel(); !ok {
+		logger.Infof("early stopped stage %d", stageIndex)
+		s.terminated.Signal()
+		return
+	}
+
 	err := s.cfn.Wait()
 
 	if err != nil && err != ErrKernelStopping {
