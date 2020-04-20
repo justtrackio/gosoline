@@ -15,6 +15,7 @@ const (
 	DeleteRequest         = "DELETE"
 	GetRequest            = "GET"
 	PostRequest           = "POST"
+	PutRequest            = "PUT"
 	PatchRequest          = "PATCH"
 	metricRequest         = "HttpClientRequest"
 	metricError           = "HttpClientError"
@@ -26,8 +27,9 @@ const (
 type Client interface {
 	Delete(ctx context.Context, request *Request) (*Response, error)
 	Get(ctx context.Context, request *Request) (*Response, error)
-	Post(ctx context.Context, request *Request) (*Response, error)
 	Patch(ctx context.Context, request *Request) (*Response, error)
+	Post(ctx context.Context, request *Request) (*Response, error)
+	Put(ctx context.Context, request *Request) (*Response, error)
 	SetTimeout(timeout time.Duration)
 	SetUserAgent(ua string)
 	SetProxyUrl(p string)
@@ -118,12 +120,16 @@ func (c *client) Get(ctx context.Context, request *Request) (*Response, error) {
 	return c.do(ctx, GetRequest, request)
 }
 
+func (c *client) Patch(ctx context.Context, request *Request) (*Response, error) {
+	return c.do(ctx, PatchRequest, request)
+}
+
 func (c *client) Post(ctx context.Context, request *Request) (*Response, error) {
 	return c.do(ctx, PostRequest, request)
 }
 
-func (c *client) Patch(ctx context.Context, request *Request) (*Response, error) {
-	return c.do(ctx, PatchRequest, request)
+func (c *client) Put(ctx context.Context, request *Request) (*Response, error) {
+	return c.do(ctx, PutRequest, request)
 }
 
 func (c *client) do(ctx context.Context, method string, request *Request) (*Response, error) {
