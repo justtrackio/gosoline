@@ -364,3 +364,41 @@ func TestKernel_RunRealModule(t *testing.T) {
 		})
 	}
 }
+
+type fastExitModule struct {
+	kernel.BackgroundModule
+}
+
+func (f *fastExitModule) Boot(_ cfg.Config, _ mon.Logger) error {
+	return nil
+}
+
+func (f *fastExitModule) Run(_ context.Context) error {
+	return nil
+}
+
+type slowExitModule struct {
+	fastExitModule
+	kernel.ForegroundModule
+	kernel kernel.Kernel
+}
+
+func (s *slowExitModule) Run(_ context.Context) error {
+	s.kernel.Stop("slowly")
+
+	return nil
+}
+
+func TestModuleFastShutdown(t *testing.T) {
+	config, logger, _ := createMocks()
+	assert.NotPanics(t, func() {
+		k := kernel.New(config, logger)
+		for s := 5; s < 10; s++ {
+			k.Add("exit-fast", &fastExitModule{}, kernel.ModuleStage(s))
+			k.Add("exit-slow", &slowExitModule{
+				kernel: k,
+			}, kernel.ModuleStage(s))
+		}
+		k.Run()
+	})
+}

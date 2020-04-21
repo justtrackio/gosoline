@@ -1,6 +1,7 @@
 package kernel
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/coffin"
@@ -11,13 +12,13 @@ var ErrKernelStopping = fmt.Errorf("stopping kernel")
 
 type stage struct {
 	cfn coffin.Coffin
+	ctx context.Context
 
 	booted     SignalOnce
 	running    SignalOnce
 	terminated SignalOnce
 
-	modules   modules
-	isRunning bool
+	modules modules
 }
 
 type modules struct {
@@ -25,26 +26,54 @@ type modules struct {
 	modules map[string]*ModuleState
 }
 
-func (s *stage) boot(k *kernel, bootCoffin coffin.Coffin) {
+func (s *stage) prepare() {
 	s.modules.lck.Poison()
+	s.cfn, s.ctx = coffin.WithContext(context.Background())
+}
 
+func (s *stage) boot(k *kernel) error {
 	if len(s.modules.modules) == 0 {
-		// if we have no modules to boot, we need to run a dummy module - otherwise
-		// our caller waits forever if the stage does not contain any module
-		// so instead we run a single function which always fails and hopefully
-		// alerts the caller that the stage is empty
-		bootCoffin.Go(func() error {
-			return errors.New("can not run empty stage")
-		})
+		return errors.New("can not run empty stage")
 	}
+
+	bootCoffin := coffin.New()
+	startBooting := NewSignalOnce()
 
 	for name, m := range s.modules.modules {
 		name := name
 		m := m
 		bootCoffin.Gof(func() error {
+			// wait until we scheduled all boot routines
+			// otherwise a fast booting module might violate the
+			// condition of tomb.Go that no new routine must be
+			// spawned after the last one exited
+			<-startBooting.Channel()
+
 			return bootModule(k, name, m)
 		}, "panic during boot of module %s", name)
 	}
+
+	startBooting.Signal()
+
+	return bootCoffin.Wait()
+}
+
+func (s *stage) run(k *kernel) {
+	for name, m := range s.modules.modules {
+		name := name
+		m := m
+		s.cfn.Gof(func() error {
+			// wait until every routine of the stage was spawned
+			// if a module exists too fast, we have a race condition
+			// regarding the precondition of tomb.Go (namely that no
+			// new routine may be added after the last one exited)
+			<-s.running.Channel()
+
+			return k.runModule(name, m, s.ctx)
+		}, "panic during running of module %s", name)
+	}
+
+	s.running.Signal()
 }
 
 func (s *stage) stopWait(stageIndex int, logger mon.Logger) {

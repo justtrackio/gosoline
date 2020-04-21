@@ -199,24 +199,8 @@ func (k *kernel) Run() {
 		return
 	}
 
-	ctxArr := make([]context.Context, len(k.stages))
-	for ctxIndex, stageIndex := range k.getStageIndices() {
-		// make sure we have something we can use in a closure
-		ctxIndex := ctxIndex
-		stageIndex := stageIndex
-		stage := k.stages[stageIndex]
-		stage.cfn, ctxArr[ctxIndex] = coffin.WithContext(context.Background())
-
-		for name, m := range stage.modules.modules {
-			name := name
-			m := m
-			stage.cfn.Gof(func() error {
-				return k.runModule(name, m, ctxArr[ctxIndex])
-			}, "panic during running of module %s", name)
-		}
-
-		stage.running.Signal()
-		stage.isRunning = true
+	for _, stageIndex := range k.getStageIndices() {
+		k.stages[stageIndex].run(k)
 		k.logger.Infof("stage %d up and running", stageIndex)
 	}
 
@@ -224,7 +208,7 @@ func (k *kernel) Run() {
 	close(k.running)
 
 	select {
-	case <-waitAllCtxDone(ctxArr).Channel():
+	case <-k.waitAllStagesDone().Channel():
 		k.Stop("context done")
 	case sig := <-sig:
 		reason := fmt.Sprintf("signal %s", sig.String())
@@ -307,12 +291,11 @@ func (k *kernel) boot() bool {
 	var bootErr error
 	for _, stageIndex := range k.getStageIndices() {
 		stage := k.stages[stageIndex]
+		stage.prepare()
 		k.logger.Infof("booting stage %d", stageIndex)
 
 		if bootErr == nil {
-			bootCoffin := coffin.New()
-			stage.boot(k, bootCoffin)
-			bootErr = bootCoffin.Wait()
+			bootErr = stage.boot(k)
 		}
 
 		stage.booted.Signal()
@@ -442,19 +425,19 @@ func (k *kernel) getStageIndices() []int {
 	return keys
 }
 
-func waitAllCtxDone(ctxArr []context.Context) SignalOnce {
-	s := NewSignalOnce()
+func (k *kernel) waitAllStagesDone() SignalOnce {
+	done := NewSignalOnce()
 	wg := &sync.WaitGroup{}
-	wg.Add(len(ctxArr))
+	wg.Add(len(k.stages))
 
-	for _, ctx := range ctxArr {
+	for _, s := range k.stages {
 		go func(ctx context.Context) {
 			_ = <-ctx.Done()
 			wg.Done()
 			wg.Wait()
-			s.Signal()
-		}(ctx)
+			done.Signal()
+		}(s.ctx)
 	}
 
-	return s
+	return done
 }
