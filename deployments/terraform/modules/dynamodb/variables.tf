@@ -42,13 +42,13 @@ variable "enabled_global_secondary_index" {
 
 variable "autoscale_write_target" {
   type        = number
-  default     = 50
+  default     = 75
   description = "The target value (in %) for DynamoDB write autoscaling"
 }
 
 variable "autoscale_read_target" {
   type        = number
-  default     = 50
+  default     = 75
   description = "The target value (in %) for DynamoDB read autoscaling"
 }
 
@@ -71,6 +71,30 @@ variable "autoscale_min_write_capacity" {
 }
 
 variable "autoscale_max_write_capacity" {
+  type        = number
+  default     = 1000
+  description = "DynamoDB autoscaling max write capacity"
+}
+
+variable "autoscale_min_read_capacity_global_secondary_index" {
+  type        = number
+  default     = 1
+  description = "DynamoDB autoscaling min read capacity"
+}
+
+variable "autoscale_max_read_capacity_global_secondary_index" {
+  type        = number
+  default     = 1000
+  description = "DynamoDB autoscaling max read capacity"
+}
+
+variable "autoscale_min_write_capacity_global_secondary_index" {
+  type        = number
+  default     = 1
+  description = "DynamoDB autoscaling min write capacity"
+}
+
+variable "autoscale_max_write_capacity_global_secondary_index" {
   type        = number
   default     = 1000
   description = "DynamoDB autoscaling max write capacity"

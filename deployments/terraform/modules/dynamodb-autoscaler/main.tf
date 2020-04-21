@@ -9,8 +9,8 @@ resource "aws_appautoscaling_target" "read_target" {
 
 resource "aws_appautoscaling_target" "read_target_index" {
   count              = var.enabled_global_secondary_index ? length(var.dynamodb_indexes) : 0
-  max_capacity       = var.autoscale_max_read_capacity
-  min_capacity       = var.autoscale_min_read_capacity
+  max_capacity       = var.autoscale_max_read_capacity_global_secondary_index
+  min_capacity       = var.autoscale_min_read_capacity_global_secondary_index
   resource_id        = "table/${var.dynamodb_table_name}/index/${element(var.dynamodb_indexes, count.index)}"
   scalable_dimension = "dynamodb:index:ReadCapacityUnits"
   service_namespace  = "dynamodb"
@@ -67,8 +67,8 @@ resource "aws_appautoscaling_target" "write_target" {
 
 resource "aws_appautoscaling_target" "write_target_index" {
   count              = var.enabled_global_secondary_index ? length(var.dynamodb_indexes) : 0
-  max_capacity       = var.autoscale_max_write_capacity
-  min_capacity       = var.autoscale_min_write_capacity
+  max_capacity       = var.autoscale_max_write_capacity_global_secondary_index
+  min_capacity       = var.autoscale_min_write_capacity_global_secondary_index
   resource_id        = "table/${var.dynamodb_table_name}/index/${element(var.dynamodb_indexes, count.index)}"
   scalable_dimension = "dynamodb:index:WriteCapacityUnits"
   service_namespace  = "dynamodb"
