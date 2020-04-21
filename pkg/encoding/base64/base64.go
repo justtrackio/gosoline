@@ -15,9 +15,9 @@ func EncodeToString(v []byte) string {
 
 func Decode(src []byte) ([]byte, error) {
 	buf := make([]byte, base64.StdEncoding.DecodedLen(len(src)))
-	_, err := base64.StdEncoding.Decode(buf, src)
+	n, err := base64.StdEncoding.Decode(buf, src)
 
-	return buf, err
+	return buf[0:n], err
 }
 
 func DecodeString(v string) ([]byte, error) {
