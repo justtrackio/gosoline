@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	TypeChain = "chain"
-	TypeDdb   = "ddb"
-	TypeRedis = "redis"
+	TypeChain    = "chain"
+	TypeDdb      = "ddb"
+	TypeInMemory = "inMemory"
+	TypeRedis    = "redis"
 )
 
 func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) KvStore {
@@ -57,6 +58,8 @@ func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string
 		switch element {
 		case TypeDdb:
 			store.Add(NewDdbKvStore)
+		case TypeInMemory:
+			store.Add(NewInMemoryKvStore)
 		case TypeRedis:
 			store.Add(NewRedisKvStore)
 		default:
