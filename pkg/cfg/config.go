@@ -5,7 +5,6 @@ import (
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/hashicorp/go-multierror"
 	"github.com/imdario/mergo"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 	"github.com/stretchr/objx"
@@ -19,7 +18,6 @@ import (
 	"time"
 )
 
-type DecoderConfigOption func(*mapstructure.DecoderConfig)
 type LookupEnv func(key string) (string, bool)
 
 //go:generate mockery -name Config
@@ -38,7 +36,7 @@ type Config interface {
 	GetStringSlice(string) []string
 	GetTime(key string) time.Time
 	IsSet(string) bool
-	UnmarshalKey(key string, val interface{}, opts ...DecoderConfigOption)
+	UnmarshalKey(key string, val interface{})
 }
 
 //go:generate mockery -name GosoConf
@@ -288,17 +286,17 @@ func (c *config) Option(options ...Option) error {
 	return nil
 }
 
-func (c *config) UnmarshalKey(key string, output interface{}, opts ...DecoderConfigOption) {
+func (c *config) UnmarshalKey(key string, output interface{}) {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
 	if refl.IsPointerToStruct(output) {
-		c.unmarshalStruct(key, output, opts...)
+		c.unmarshalStruct(key, output)
 		return
 	}
 
 	if refl.IsPointerToSlice(output) {
-		c.unmarshalSlice(key, output, opts...)
+		c.unmarshalSlice(key, output)
 		return
 	}
 
@@ -323,54 +321,13 @@ func (c *config) err(err error, msg string, args ...interface{}) {
 	}
 }
 
-func (c *config) decode(input interface{}, output interface{}) error {
-	decoderConfig := &mapstructure.DecoderConfig{
-		Metadata:         nil,
-		Result:           output,
-		WeaklyTypedInput: true,
-		TagName:          "cfg",
-		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			mapstructure.StringToTimeDurationHookFunc(),
-			StringToTimeHookFunc,
-			mapstructure.StringToSliceHookFunc(","),
-			c.decodeAugmentHook(),
-		),
-	}
-
-	decoder, err := mapstructure.NewDecoder(decoderConfig)
-
-	if err != nil {
-		return errors.Wrap(err, "can not initialize decoder")
-	}
-
-	err = decoder.Decode(input)
-
-	if err != nil {
-		return errors.Wrap(err, "can not decode input")
-	}
-
-	return nil
-}
-
-func (c *config) decodeAugmentHook() interface{} {
-	return func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
-		if f == reflect.Map && t == reflect.Map {
-			if msi, ok := data.(map[string]interface{}); ok {
-				for k, v := range msi {
-					if str, ok := v.(string); ok {
-						msi[k] = c.augmentString(str)
-					}
-				}
-			}
-
-			return data, nil
-		}
-
-		if raw, ok := data.(string); ok {
+func (c *config) decodeAugmentHook() MapStructDecoder {
+	return func(_ reflect.Type, val interface{}) (interface{}, error) {
+		if raw, ok := val.(string); ok {
 			return c.augmentString(raw), nil
 		}
 
-		return data, nil
+		return val, nil
 	}
 }
 
@@ -452,75 +409,6 @@ func (c *config) mergeSettingsWithKeyPrefix(prefix string, settings map[string]i
 	}
 }
 
-func (c *config) readDefaultSettingsFromStruct(input interface{}) map[string]interface{} {
-	if refl.IsPointerToSlice(input) {
-		return map[string]interface{}{}
-	}
-
-	defaults := make(map[string]interface{})
-
-	it := reflect.TypeOf(input)
-	iv := reflect.ValueOf(input)
-
-	for {
-		if it.Kind() != reflect.Ptr {
-			break
-		}
-
-		it = it.Elem()
-		iv = iv.Elem()
-	}
-
-	var cfg, val string
-	var ok bool
-
-	for i := 0; i < it.NumField(); i++ {
-		if cfg, ok = it.Field(i).Tag.Lookup("cfg"); !ok {
-			continue
-		}
-
-		if it.Field(i).Type.Kind() == reflect.Struct {
-			nestedStruct := iv.Field(i).Interface()
-			defaults[cfg] = c.readDefaultSettingsFromStruct(nestedStruct)
-			continue
-		}
-
-		if val, ok = it.Field(i).Tag.Lookup("default"); !ok {
-			continue
-		}
-
-		defaults[cfg] = val
-	}
-
-	return defaults
-}
-
-func (c *config) readZeroValuesFromStruct(input interface{}) (map[string]interface{}, error) {
-	if refl.IsPointerToSlice(input) {
-		return map[string]interface{}{}, nil
-	}
-
-	zeroValues := make(map[string]interface{})
-	decoderConfig := &mapstructure.DecoderConfig{
-		Result:  &zeroValues,
-		TagName: "cfg",
-	}
-
-	decoder, err := mapstructure.NewDecoder(decoderConfig)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "con not create decoder to get zero values")
-	}
-
-	err = decoder.Decode(input)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "con not decode zero values")
-	}
-
-	return zeroValues, nil
-}
-
 func (c *config) readEnvironment(prefix string, input map[string]interface{}) map[string]interface{} {
 	environment := make(map[string]interface{})
 
@@ -559,7 +447,7 @@ func (c *config) resolveEnvKey(prefix string, key string) string {
 	return strings.ToUpper(key)
 }
 
-func (c *config) unmarshalSlice(key string, output interface{}, opts ...DecoderConfigOption) {
+func (c *config) unmarshalSlice(key string, output interface{}) {
 	data := c.settings.Get(key).Data()
 	interfaceSlice, ok := data.([]interface{})
 
@@ -580,7 +468,7 @@ func (c *config) unmarshalSlice(key string, output interface{}, opts ...DecoderC
 		keyIndex := fmt.Sprintf("%s[%d]", key, i)
 		elem := slice.NewElement()
 
-		c.unmarshalStruct(keyIndex, elem, opts...)
+		c.unmarshalStruct(keyIndex, elem)
 
 		if err := slice.Append(elem); err != nil {
 			c.err(err, "can not unmarshal key %s into slice", key)
@@ -589,25 +477,38 @@ func (c *config) unmarshalSlice(key string, output interface{}, opts ...DecoderC
 	}
 }
 
-func (c *config) unmarshalStruct(key string, output interface{}, _ ...DecoderConfigOption) {
+func (c *config) unmarshalStruct(key string, output interface{}) {
 	refl.InitializeMapsAndSlices(output)
-
 	finalSettings := make(map[string]interface{})
-	zeroSettings, err := c.readZeroValuesFromStruct(output)
+
+	ms, err := NewMapStruct(output, &MapStructSettings{
+		FieldTag:   "cfg",
+		DefaultTag: "default",
+		Casters: []MapStructCaster{
+			MapStructDurationCaster,
+			MapStructTimeCaster,
+		},
+		Decoders: []MapStructDecoder{
+			c.decodeAugmentHook(),
+		},
+	})
 
 	if err != nil {
-		c.err(err, "can not get zero values for key: %s", key)
-		return
+		c.err(err, "can not create map struct io for key %s", key)
 	}
 
-	if err := mergo.Merge(&finalSettings, zeroSettings, mergo.WithOverride); err != nil {
+	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
+
+	if err != nil {
+		c.err(err, "can not read zeros and defaults for key %s", key)
+	}
+
+	if err := mergo.Merge(&finalSettings, zeroSettings.Value().MSI(), mergo.WithOverride); err != nil {
 		c.err(err, "can not merge zero settings for key: %s", key)
 		return
 	}
 
-	defaultSettings := c.readDefaultSettingsFromStruct(output)
-
-	if err := mergo.Merge(&finalSettings, defaultSettings, mergo.WithOverride); err != nil {
+	if err := mergo.Merge(&finalSettings, defaults.Value().MSI(), mergo.WithOverride); err != nil {
 		c.err(err, "can not merge default settings for key: %s", key)
 		return
 	}
@@ -637,7 +538,7 @@ func (c *config) unmarshalStruct(key string, output interface{}, _ ...DecoderCon
 	}
 
 	c.mergeSettingsWithKeyPrefix(key, finalSettings)
-	err = c.decode(finalSettings, output)
+	err = ms.Write(finalSettings)
 
 	if err != nil {
 		c.err(err, "error unmarshalling key: %s", key)

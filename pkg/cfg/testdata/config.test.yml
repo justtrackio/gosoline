@@ -1,0 +1,10 @@
+i: 1
+
+key:
+  d: 1m
+  i: 2
+  msi:
+    s: string
+    d: 1s
+  s1: [1, 2]
+  s2: [3, "s"]

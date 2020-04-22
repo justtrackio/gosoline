@@ -241,14 +241,7 @@ func (_m *GosoConf) Option(options ...cfg.Option) error {
 	return r0
 }
 
-// UnmarshalKey provides a mock function with given fields: key, val, opts
-func (_m *GosoConf) UnmarshalKey(key string, val interface{}, opts ...cfg.DecoderConfigOption) {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, key, val)
-	_ca = append(_ca, _va...)
-	_m.Called(_ca...)
+// UnmarshalKey provides a mock function with given fields: key, val
+func (_m *GosoConf) UnmarshalKey(key string, val interface{}) {
+	_m.Called(key, val)
 }

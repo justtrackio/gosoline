@@ -159,10 +159,12 @@ func TestConfig_EnvironmentPrefixed(t *testing.T) {
 
 func TestConfig_UnmarshalKey_Struct(t *testing.T) {
 	type configMap struct {
-		Foo    string `cfg:"foo"`
-		Bla    string `cfg:"bla"`
-		Def    int    `cfg:"def" default:"1"`
-		Nested struct {
+		Foo          string   `cfg:"foo"`
+		Bla          string   `cfg:"bla"`
+		Def          int      `cfg:"def" default:"1"`
+		Slice        []int    `cfg:"slice"`
+		SliceAugment []string `cfg:"slice_augment"`
+		Nested       struct {
 			A         time.Duration `cfg:"a" default:"1s"`
 			Augmented string        `cfg:"augmented"`
 		} `cfg:"nested"`
@@ -170,13 +172,16 @@ func TestConfig_UnmarshalKey_Struct(t *testing.T) {
 
 	config := getNewTestableConfig(map[string]interface{}{
 		"key": map[string]interface{}{
-			"foo": "zorg",
-			"bla": "test",
+			"foo":           "zorg",
+			"bla":           "test",
+			"slice":         []interface{}{1, 2},
+			"slice_augment": []interface{}{"a", "b-{key2}"},
 			"nested": map[string]interface{}{
-				"augmented": "my-{key2}",
+				"augmented": "my-{key3}",
 			},
 		},
-		"key2": "value",
+		"key2": "c",
+		"key3": "value",
 	}, map[string]string{})
 
 	cm := configMap{}
@@ -185,8 +190,34 @@ func TestConfig_UnmarshalKey_Struct(t *testing.T) {
 	assert.Equal(t, "zorg", cm.Foo)
 	assert.Equal(t, "test", cm.Bla)
 	assert.Equal(t, 1, cm.Def)
+	assert.Equal(t, []int{1, 2}, cm.Slice)
+	assert.Equal(t, []string{"a", "b-c"}, cm.SliceAugment)
 	assert.Equal(t, time.Second, cm.Nested.A)
 	assert.Equal(t, "my-value", cm.Nested.Augmented)
+}
+
+func TestConfig_UnmarshalKey_StructWithMap(t *testing.T) {
+	type configMap struct {
+		MSI map[string]interface{} `cfg:"msi"`
+	}
+
+	config := getNewTestableConfig(map[string]interface{}{
+		"key": map[string]interface{}{
+			"msi": map[string]interface{}{
+				"augmented": "my-{augment}",
+			},
+		},
+		"augment": "value",
+	}, map[string]string{})
+
+	expected := map[string]interface{}{
+		"augmented": "my-value",
+	}
+
+	cm := configMap{}
+	config.UnmarshalKey("key", &cm)
+
+	assert.Equal(t, expected, cm.MSI)
 }
 
 func TestConfig_UnmarshalKey_Slice(t *testing.T) {
@@ -248,6 +279,34 @@ func TestConfig_UnmarshalKeyEnvironment(t *testing.T) {
 	assert.Equal(t, 1, cm.Nested.A)
 }
 
+func TestConfig_UnmarshalKeyEmbedded(t *testing.T) {
+	type Embedded struct {
+		A int `cfg:"a"`
+		B int `cfg:"b" default:"2"`
+	}
+
+	type configMap struct {
+		Embedded
+		Foo string `cfg:"foo"`
+	}
+
+	config := getNewTestableConfig(map[string]interface{}{
+		"key": map[string]interface{}{
+			"foo": "bar",
+		},
+	}, map[string]string{
+		"KEY_FOO": "zorg",
+		"KEY_A":   "1",
+	})
+
+	cm := configMap{}
+	config.UnmarshalKey("key", &cm)
+
+	assert.Equal(t, "zorg", cm.Foo)
+	assert.Equal(t, 1, cm.A)
+	assert.Equal(t, 2, cm.B)
+}
+
 func TestConfig_UnmarshalKeyValidation(t *testing.T) {
 	type configMap struct {
 		Foo    string `cfg:"foo" validate:"oneof=baz"`
@@ -279,9 +338,10 @@ func TestConfig_UnmarshalKeyValidation(t *testing.T) {
 func TestConfig_GetTime(t *testing.T) {
 	data := map[string]interface{}{
 		"key": map[string]interface{}{
-			"foo":        "bar",
-			"date":       time.Date(2019, time.November, 26, 0, 0, 0, 0, time.UTC),
-			"stringDate": "2019-11-27",
+			"foo":            "bar",
+			"date":           time.Date(2019, time.November, 26, 0, 0, 0, 0, time.UTC),
+			"stringDate":     "2019-11-27",
+			"stringDateTime": "2020-04-22T07:17:13+02:00",
 		},
 	}
 
@@ -291,9 +351,10 @@ func TestConfig_GetTime(t *testing.T) {
 	assert.Equal(t, "2019-11-26", tm.Format("2006-01-02"))
 
 	settings := struct {
-		Foo        string    `cfg:"foo"`
-		Date       time.Time `cfg:"date"`
-		StringDate time.Time `cfg:"stringDate"`
+		Foo            string    `cfg:"foo"`
+		Date           time.Time `cfg:"date"`
+		StringDate     time.Time `cfg:"stringDate"`
+		StringDateTime time.Time `cfg:"stringDateTime"`
 	}{}
 
 	config.UnmarshalKey("key", &settings)
@@ -301,14 +362,44 @@ func TestConfig_GetTime(t *testing.T) {
 	assert.Equal(t, "bar", settings.Foo)
 	assert.Equal(t, "2019-11-26", settings.Date.Format("2006-01-02"))
 	assert.Equal(t, "2019-11-27", settings.StringDate.Format("2006-01-02"))
+	assert.Equal(t, "2020-04-22T07:17:13+02:00", settings.StringDateTime.Format(time.RFC3339))
 }
 
-func getNewTestableConfig(settings map[string]interface{}, environment map[string]string) cfg.GosoConf {
-	options := []cfg.Option{
+func TestConfig_FromYml(t *testing.T) {
+	type configMap struct {
+		D   time.Duration          `cfg:"d"`
+		I   int                    `cfg:"i"`
+		MSI map[string]interface{} `cfg:"msi"`
+		S1  []int                  `cfg:"s1"`
+		S2  []interface{}          `cfg:"s2"`
+	}
+
+	expected := configMap{
+		D: time.Minute,
+		I: 2,
+		MSI: map[string]interface{}{
+			"s": "string",
+			"d": "1s",
+		},
+		S1: []int{1, 2},
+		S2: []interface{}{3, "s"},
+	}
+
+	config := getNewTestableConfig(map[string]interface{}{}, map[string]string{}, cfg.WithConfigFile("./testdata/config.test.yml", "yml"))
+
+	cm := configMap{}
+	config.UnmarshalKey("key", &cm)
+
+	assert.Equal(t, 1, config.GetInt("i"))
+	assert.Equal(t, expected, cm)
+}
+
+func getNewTestableConfig(settings map[string]interface{}, environment map[string]string, options ...cfg.Option) cfg.GosoConf {
+	options = append(options, []cfg.Option{
 		cfg.WithErrorHandlers(cfg.PanicErrorHandler),
 		cfg.WithEnvKeyReplacer(strings.NewReplacer(".", "_")),
 		cfg.WithSanitizers(cfg.TimeSanitizer),
-	}
+	}...)
 
 	return getNewTestableConfigWithOptions(settings, environment, options...)
 }
