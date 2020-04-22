@@ -124,6 +124,14 @@ func (s *InMemoryKvStore) Put(_ context.Context, key interface{}, value interfac
 		return err
 	}
 
+	rv := reflect.ValueOf(value)
+
+	// make sure to store a copy, not a reference
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+		value = rv.Interface()
+	}
+
 	s.cache.Set(keyStr, value, time.Hour)
 
 	return nil

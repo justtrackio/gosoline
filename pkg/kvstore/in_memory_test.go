@@ -23,7 +23,28 @@ func (s *InMemoryKvStoreTestSuite) SetupTest() {
 	})
 }
 
-func (s *InMemoryKvStoreTestSuite) TestStore() {
+func (s *InMemoryKvStoreTestSuite) TestStoreBasic() {
+	ctx := context.Background()
+
+	err := s.store.Put(ctx, "key", 1.1)
+	s.NoError(err, "there should be no error on Put")
+
+	var v1 float64
+	ok, err := s.store.Get(ctx, "key", &v1)
+	s.NoError(err, "there should be no error on Get")
+	s.True(ok, "the item should be in the store")
+
+	var v2 = 1.2
+	err = s.store.Put(ctx, "key", &v2)
+	s.NoError(err, "there should be no error on Put")
+
+	var v3 float64
+	ok, err = s.store.Get(ctx, "key", &v3)
+	s.NoError(err, "there should be no error on Get")
+	s.True(ok, "the item should be in the store")
+}
+
+func (s *InMemoryKvStoreTestSuite) TestStoreStruct() {
 	ctx := context.Background()
 
 	type item struct {
@@ -64,7 +85,6 @@ func (s *InMemoryKvStoreTestSuite) TestStore() {
 	s.Equal(putBatch["c"], getBatch["c"])
 	s.Len(missing, 1, "there should be 1 missing element")
 	s.Equal("d", missing[0], "element d should be missing")
-
 }
 
 func TestInMemoryKvStoreTestSuite(t *testing.T) {
