@@ -3,6 +3,7 @@ package kvstore
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/pkg/errors"
@@ -15,6 +16,7 @@ type Settings struct {
 	Name      string
 	Ttl       time.Duration
 	BatchSize int
+	Backoff   cloud.BackoffSettings
 }
 
 //go:generate mockery -name KvStore

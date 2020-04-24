@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -28,6 +29,7 @@ type Settings struct {
 	RunnerCount   int
 	SourceModelId mdl.ModelId
 	TargetModelId mdl.ModelId
+	Backoff       cloud.BackoffSettings
 }
 
 type Subscriber interface {

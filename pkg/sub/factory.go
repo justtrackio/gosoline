@@ -12,11 +12,12 @@ import (
 )
 
 type Subscription struct {
-	Input       string            `cfg:"input"`
-	Output      string            `cfg:"output"`
-	RunnerCount int               `cfg:"runner_count" default:"10" validate:"min=1"`
-	SourceModel SubscriptionModel `cfg:"source"`
-	TargetModel SubscriptionModel `cfg:"target"`
+	Input       string                `cfg:"input"`
+	Output      string                `cfg:"output"`
+	RunnerCount int                   `cfg:"runner_count" default:"10" validate:"min=1"`
+	SourceModel SubscriptionModel     `cfg:"source"`
+	TargetModel SubscriptionModel     `cfg:"target"`
+	Backoff     cloud.BackoffSettings `cfg:"backoff"`
 }
 
 type SubscriptionModel struct {
@@ -68,6 +69,7 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerMapType 
 			RunnerCount:   s.RunnerCount,
 			SourceModelId: sourceModelId,
 			TargetModelId: targetModelId,
+			Backoff:       s.Backoff,
 		}
 
 		input, err := getInputByType(config, logger, s, sourceModelId)

@@ -45,6 +45,7 @@ func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvS
 			ReadCapacityUnits:  5,
 			WriteCapacityUnits: 5,
 		},
+		Backoff: settings.Backoff,
 	})
 
 	return NewDdbKvStoreWithInterfaces(logger, repository, settings)

@@ -17,6 +17,7 @@ func repoInit(config cfg.Config, logger mon.Logger, settings Settings) func(mode
 				ReadCapacityUnits:  5,
 				WriteCapacityUnits: 5,
 			},
+			Backoff: settings.Backoff,
 		})
 
 		return ddb.NewMetricRepository(config, logger, repo)

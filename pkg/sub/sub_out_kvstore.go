@@ -25,7 +25,8 @@ func (p *subOutKvstore) Boot(config cfg.Config, logger mon.Logger, settings Sett
 			Family:      settings.TargetModelId.Family,
 			Application: settings.TargetModelId.Application,
 		},
-		Name: settings.TargetModelId.Name,
+		Name:    settings.TargetModelId.Name,
+		Backoff: settings.Backoff,
 	})
 	store.Add(kvstore.NewRedisKvStore)
 	store.Add(kvstore.NewDdbKvStore)
