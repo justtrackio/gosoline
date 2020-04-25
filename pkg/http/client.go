@@ -54,25 +54,26 @@ type client struct {
 }
 
 type Settings struct {
-	RetryCount int
-	Timeout    time.Duration
+	RetryCount     int
+	Timeout        time.Duration
+	FollowRedirect bool `cfg:"follow_redirects"`
 }
 
 func NewHttpClient(config cfg.Config, logger mon.Logger) Client {
 	mo := mon.NewMetricDaemonWriter()
 
-	retryCount := config.GetInt("http_client_retry_count")
-	timeout := config.GetDuration("http_client_request_timeout")
+	settings := &Settings{}
+	config.UnmarshalKey("http_client", settings)
 
-	return NewHttpClientWithInterfaces(logger, mo, &Settings{
-		RetryCount: retryCount,
-		Timeout:    timeout,
-	})
+	settings.RetryCount = config.GetInt("http_client_retry_count")
+	settings.Timeout = config.GetDuration("http_client_request_timeout")
+
+	return NewHttpClientWithInterfaces(logger, mo, settings)
 }
 
 func NewHttpClientWithInterfaces(logger mon.Logger, mo mon.MetricWriter, settings *Settings) Client {
 	httpClient := resty.New()
-
+	httpClient.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
 	httpClient.SetRetryCount(settings.RetryCount)
 	httpClient.SetTimeout(settings.Timeout)
 

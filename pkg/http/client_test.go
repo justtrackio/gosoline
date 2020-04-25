@@ -8,6 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/http"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	netHttp "net/http"
 	"net/http/httptest"
 	"testing"
@@ -48,6 +49,7 @@ func runTestServer(t *testing.T, method string, status int, delay time.Duration,
 
 func getConfig(retries int, timeout int) *cfgMocks.Config {
 	config := new(cfgMocks.Config)
+	config.On("UnmarshalKey", mock.AnythingOfType("string"), mock.AnythingOfType("*http.Settings"))
 	config.On("GetInt", "http_client_retry_count").Return(retries)
 	config.On("GetDuration", "http_client_request_timeout").Return(time.Duration(timeout) * time.Second)
 
