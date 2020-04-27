@@ -78,12 +78,21 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 	settings.AutoCreate = config.GetBool("aws_dynamoDb_autoCreate")
 	settings.Client.MaxRetries = config.GetInt("aws_sdk_retries")
 
+	tableName := namingStrategy(settings.ModelId)
+
 	tracer := tracing.ProviderTracer(config, logger)
 	client := ProvideClient(config, logger, settings)
 
+	backoffSettings := &cloud.BackoffSettings{}
+	config.UnmarshalKey("ddb.backoff", backoffSettings)
+
+	if err := cfg.Merge(backoffSettings, settings.Backoff); err != nil {
+		logger.Panicf(err, "could not merge backoff settings for ddb table %s", tableName)
+	}
+
 	res := &cloud.BackoffResource{
 		Type: "ddb",
-		Name: namingStrategy(settings.ModelId),
+		Name: tableName,
 		Handler: []cloud.CustomExecResultHandler{
 			func(err error) (error, bool) {
 				if isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
@@ -100,8 +109,7 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 	_, err := svc.CreateTable(settings)
 
 	if err != nil {
-		name := namingStrategy(settings.ModelId)
-		logger.Fatalf(err, "could not create ddb table %s", name)
+		logger.Fatalf(err, "could not create ddb table %s", tableName)
 	}
 
 	return NewWithInterfaces(logger, tracer, client, executor, settings)

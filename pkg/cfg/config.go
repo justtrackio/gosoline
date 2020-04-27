@@ -20,26 +20,26 @@ import (
 
 type LookupEnv func(key string) (string, bool)
 
-//go:generate mockery -name Config
+// go:generate mockery -name Config
 type Config interface {
 	AllKeys() []string
 	AllSettings() map[string]interface{}
-	Get(string) interface{}
-	GetBool(string) bool
-	GetDuration(string) time.Duration
-	GetInt(string) int
-	GetIntSlice(string) []int
-	GetFloat64(string) float64
-	GetString(string) string
-	GetStringMap(key string) map[string]interface{}
-	GetStringMapString(string) map[string]string
-	GetStringSlice(string) []string
-	GetTime(key string) time.Time
+	Get(key string, optionalDefault ...interface{}) interface{}
+	GetBool(key string, optionalDefault ...bool) bool
+	GetDuration(key string, optionalDefault ...time.Duration) time.Duration
+	GetInt(key string, optionalDefault ...int) int
+	GetIntSlice(key string, optionalDefault ...[]int) []int
+	GetFloat64(key string, optionalDefault ...float64) float64
+	GetString(key string, optionalDefault ...string) string
+	GetStringMap(key string, optionalDefault ...map[string]interface{}) map[string]interface{}
+	GetStringMapString(key string, optionalDefault ...map[string]string) map[string]string
+	GetStringSlice(key string, optionalDefault ...[]string) []string
+	GetTime(key string, optionalDefault ...time.Time) time.Time
 	IsSet(string) bool
 	UnmarshalKey(key string, val interface{})
 }
 
-//go:generate mockery -name GosoConf
+//  go:generate mockery -name GosoConf
 type GosoConf interface {
 	Config
 	Option(options ...Option) error
@@ -86,20 +86,24 @@ func (c *config) AllSettings() map[string]interface{} {
 	return c.settings
 }
 
-func (c *config) Get(key string) interface{} {
+func (c *config) Get(key string, optionalDefault ...interface{}) interface{} {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
 
 	return c.get(key)
 }
 
-func (c *config) GetBool(key string) bool {
+func (c *config) GetBool(key string, optionalDefault ...bool) bool {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
 
 	data := c.get(key)
 	b, err := cast.ToBoolE(data)
@@ -112,11 +116,13 @@ func (c *config) GetBool(key string) bool {
 	return b
 }
 
-func (c *config) GetDuration(key string) time.Duration {
+func (c *config) GetDuration(key string, optionalDefault ...time.Duration) time.Duration {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
 
 	data := c.get(key)
 	duration, err := cast.ToDurationE(data)
@@ -129,11 +135,13 @@ func (c *config) GetDuration(key string) time.Duration {
 	return duration
 }
 
-func (c *config) GetInt(key string) int {
+func (c *config) GetInt(key string, optionalDefault ...int) int {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
 
 	data := c.get(key)
 	i, err := cast.ToIntE(data)
@@ -146,11 +154,13 @@ func (c *config) GetInt(key string) int {
 	return i
 }
 
-func (c *config) GetIntSlice(key string) []int {
+func (c *config) GetIntSlice(key string, optionalDefault ...[]int) []int {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
 
 	data := c.get(key)
 	intSlice, err := cast.ToIntSliceE(data)
@@ -163,11 +173,13 @@ func (c *config) GetIntSlice(key string) []int {
 	return intSlice
 }
 
-func (c *config) GetFloat64(key string) float64 {
+func (c *config) GetFloat64(key string, optionalDefault ...float64) float64 {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
 
 	data := c.get(key)
 	i, err := cast.ToFloat64E(data)
@@ -180,18 +192,20 @@ func (c *config) GetFloat64(key string) float64 {
 	return i
 }
 
-func (c *config) GetString(key string) string {
+func (c *config) GetString(key string, optionalDefault ...string) string {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	return c.getString(key)
+	return c.getString(key, optionalDefault...)
 }
 
-func (c *config) GetStringMap(key string) map[string]interface{} {
+func (c *config) GetStringMap(key string, optionalDefault ...map[string]interface{}) map[string]interface{} {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
 
 	data := c.get(key)
 	strMap, err := cast.ToStringMapE(data)
@@ -210,11 +224,13 @@ func (c *config) GetStringMap(key string) map[string]interface{} {
 	return strMap
 }
 
-func (c *config) GetStringMapString(key string) map[string]string {
+func (c *config) GetStringMapString(key string, optionalDefault ...map[string]string) map[string]string {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
 
 	data := c.get(key)
 	strMap, err := cast.ToStringMapStringE(data)
@@ -231,11 +247,13 @@ func (c *config) GetStringMapString(key string) map[string]string {
 	return strMap
 }
 
-func (c *config) GetStringSlice(key string) []string {
+func (c *config) GetStringSlice(key string, optionalDefault ...[]string) []string {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
 
 	data := c.get(key)
 	strSlice, err := cast.ToStringSliceE(data)
@@ -252,11 +270,13 @@ func (c *config) GetStringSlice(key string) []string {
 	return strSlice
 }
 
-func (c *config) GetTime(key string) time.Time {
+func (c *config) GetTime(key string, optionalDefault ...time.Time) time.Time {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	c.keyCheck(key)
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
 
 	data := c.get(key)
 	tm, err := cast.ToTimeE(data)
@@ -351,8 +371,10 @@ func (c *config) get(key string) interface{} {
 	return value[key]
 }
 
-func (c *config) getString(key string) string {
-	c.keyCheck(key)
+func (c *config) getString(key string, optionalDefault ...string) string {
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return c.augmentString(optionalDefault[0])
+	}
 
 	data := c.get(key)
 	str, err := cast.ToStringE(data)
@@ -375,13 +397,19 @@ func (c *config) isSet(key string) bool {
 	return c.settings.Has(key)
 }
 
-func (c *config) keyCheck(key string) {
+func (c *config) keyCheck(key string, defaults int) bool {
 	if c.isSet(key) {
-		return
+		return true
+	}
+
+	if defaults > 0 {
+		return false
 	}
 
 	err := fmt.Errorf("there is no config setting for key '%v'", key)
 	c.err(err, "key check failed")
+
+	return false
 }
 
 func (c *config) mergeSettings(settings map[string]interface{}) error {

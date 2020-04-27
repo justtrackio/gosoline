@@ -2,6 +2,7 @@ package cfg_test
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -164,6 +165,75 @@ func TestMapStructIO_ReadZeroAndDefaultValues_Unexported(t *testing.T) {
 	ms := setupMapStructIO(t, source)
 	_, _, err := ms.ReadZeroAndDefaultValues()
 	assert.NoError(t, err, "there should be no error during reading of zeros and defaults")
+}
+
+func TestMapStruct_ReadBasic(t *testing.T) {
+	fakeTime := clockwork.NewFakeClock().Now()
+
+	type sourceStruct struct {
+		B    bool          `cfg:"b"`
+		D    time.Duration `cfg:"d"`
+		I    int           `cfg:"i"`
+		I8   int8          `cfg:"i8"`
+		I16  int16         `cfg:"i16"`
+		I32  int32         `cfg:"i32"`
+		I64  int64         `cfg:"i64"`
+		F32  float32       `cfg:"f32"`
+		F64  float64       `cfg:"f64"`
+		S    string        `cfg:"s"`
+		T    time.Time     `cfg:"t"`
+		UI   uint          `cfg:"ui"`
+		UI8  uint8         `cfg:"ui8"`
+		UI16 uint16        `cfg:"ui16"`
+		UI32 uint32        `cfg:"ui32"`
+		UI64 uint64        `cfg:"ui64"`
+	}
+
+	source := &sourceStruct{
+		B:    true,
+		D:    time.Second,
+		I:    1,
+		I8:   2,
+		I16:  3,
+		I32:  4,
+		I64:  5,
+		F32:  1.1,
+		F64:  1.2,
+		S:    "string",
+		T:    fakeTime,
+		UI:   1,
+		UI8:  2,
+		UI16: 3,
+		UI32: 4,
+		UI64: 5,
+	}
+
+	expectedValues := map[string]interface{}{
+		"b":    true,
+		"d":    time.Second,
+		"i":    1,
+		"i8":   int8(2),
+		"i16":  int16(3),
+		"i32":  int32(4),
+		"i64":  int64(5),
+		"f32":  float32(1.1),
+		"f64":  1.2,
+		"s":    "string",
+		"t":    fakeTime,
+		"ui":   uint(1),
+		"ui8":  uint8(2),
+		"ui16": uint16(3),
+		"ui32": uint32(4),
+		"ui64": uint64(5),
+	}
+
+	ms := setupMapStructIO(t, source)
+	values, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+
+	msi := values.Value().MSI()
+	assert.Equal(t, expectedValues, msi)
 }
 
 func TestMapStructIO_WriteBasic(t *testing.T) {

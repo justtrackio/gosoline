@@ -1,163 +1,257 @@
 package cfg_test
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/stretchr/testify/assert"
+	"github.com/jonboulle/clockwork"
+	"github.com/stretchr/testify/suite"
 	"math"
 	"strings"
 	"testing"
 	"time"
 )
 
-var baseSettings = map[string]interface{}{
-	"a": 1,
-	"n": map[string]interface{}{
-		"c": 3,
-	},
+type ConfigTestSuite struct {
+	suite.Suite
+
+	config      cfg.GosoConf
+	environment map[string]string
 }
 
-func TestConfig_AllKeys(t *testing.T) {
-	config := getNewTestableConfig(baseSettings, map[string]string{})
-	keys := config.AllKeys()
+func (s *ConfigTestSuite) SetupTest() {
+	s.environment = map[string]string{}
 
-	assert.Len(t, keys, 2)
-}
-
-func TestConfig_IsSet(t *testing.T) {
-	config := getNewTestableConfig(baseSettings, map[string]string{})
-
-	assert.True(t, config.IsSet("a"))
-	assert.True(t, config.IsSet("n.c"))
-	assert.False(t, config.IsSet("b"))
-}
-
-func TestConfig_Get(t *testing.T) {
-	config := getNewTestableConfig(baseSettings, map[string]string{})
-
-	expectedMap := map[string]interface{}{
-		"c": 3,
+	options := []cfg.Option{
+		cfg.WithErrorHandlers(s.errorHandler),
+		cfg.WithEnvKeyReplacer(strings.NewReplacer(".", "_")),
+		cfg.WithSanitizers(cfg.TimeSanitizer),
 	}
 
-	assert.Equal(t, 1, config.Get("a"))
-	assert.Equal(t, expectedMap, config.Get("n"))
+	s.config = cfg.NewWithInterfaces(s.environmentMock)
+	s.applyOptions(options...)
 }
 
-func TestConfig_GetBool(t *testing.T) {
-	config := getNewTestableConfig(map[string]interface{}{
-		"b": true,
-	}, map[string]string{})
-
-	assert.True(t, config.GetBool("b"))
+func (s *ConfigTestSuite) applyOptions(options ...cfg.Option) {
+	if err := s.config.Option(options...); err != nil {
+		s.FailNow("con not apply config options", err.Error())
+	}
 }
 
-func TestConfig_GetDuration(t *testing.T) {
-	config := getNewTestableConfig(map[string]interface{}{
-		"d": time.Second,
-	}, map[string]string{})
-
-	assert.Equal(t, time.Second, config.GetDuration("d"))
+func (s *ConfigTestSuite) errorHandler(err error, msg string, args ...interface{}) {
+	s.FailNow(err.Error(), fmt.Sprintf(msg, args...))
 }
 
-func TestConfig_GetInt(t *testing.T) {
-	config := getNewTestableConfig(map[string]interface{}{
+func (s *ConfigTestSuite) environmentMock(key string) (string, bool) {
+	value, ok := s.environment[key]
+
+	return value, ok
+}
+
+func (s *ConfigTestSuite) setupConfigValues(values map[string]interface{}) {
+	if err := s.config.Option(cfg.WithConfigMap(values)); err != nil {
+		s.FailNow("can not setup config values", err.Error())
+	}
+}
+
+func (s *ConfigTestSuite) setupEnvironment(values map[string]string) {
+	s.environment = values
+}
+
+func (s *ConfigTestSuite) TestConfig_AllKeys() {
+	s.setupConfigValues(map[string]interface{}{
 		"i": 1,
-	}, map[string]string{})
+		"s": "string",
+	})
 
-	assert.Equal(t, 1, config.GetInt("i"))
+	keys := s.config.AllKeys()
+	s.Len(keys, 2)
 }
 
-func TestConfig_GetIntSlice(t *testing.T) {
-	config := getNewTestableConfig(map[string]interface{}{
+func (s *ConfigTestSuite) TestConfig_IsSet() {
+	s.setupConfigValues(map[string]interface{}{
+		"i": 1,
+		"ms": map[string]interface{}{
+			"b": true,
+		},
+	})
+
+	s.True(s.config.IsSet("i"))
+	s.True(s.config.IsSet("ms.b"))
+	s.False(s.config.IsSet("missing"))
+}
+
+func (s *ConfigTestSuite) TestConfig_Get() {
+	s.setupConfigValues(map[string]interface{}{
+		"i": 1,
+		"ms": map[string]interface{}{
+			"b": true,
+		},
+	})
+
+	expectedMap := map[string]interface{}{
+		"b": true,
+	}
+
+	s.Equal(1, s.config.Get("i"))
+	s.Equal(expectedMap, s.config.Get("ms"))
+	s.Equal(expectedMap, s.config.Get("ms"), map[string]interface{}{
+		"c": false,
+	})
+	s.Equal(true, s.config.Get("missing", true))
+}
+
+func (s *ConfigTestSuite) TestConfig_GetBool() {
+	s.setupConfigValues(map[string]interface{}{
+		"b": "true",
+	})
+
+	s.True(s.config.GetBool("b"))
+	s.True(s.config.GetBool("missing", true))
+}
+
+func (s *ConfigTestSuite) TestConfig_GetDuration() {
+	s.setupConfigValues(map[string]interface{}{
+		"d": "1s",
+	})
+
+	s.Equal(time.Second, s.config.GetDuration("d"))
+	s.Equal(time.Minute, s.config.GetDuration("missing", time.Minute))
+}
+
+func (s *ConfigTestSuite) TestConfig_GetInt() {
+	s.setupConfigValues(map[string]interface{}{
+		"i": "1",
+	})
+
+	s.Equal(1, s.config.GetInt("i"))
+	s.Equal(2, s.config.GetInt("missing", 2))
+}
+
+func (s *ConfigTestSuite) TestConfig_GetIntSlice() {
+	s.setupConfigValues(map[string]interface{}{
 		"slice": []int{30, 60, 120},
-	}, map[string]string{})
+	})
 
-	s := config.GetIntSlice("slice")
+	slice := s.config.GetIntSlice("slice")
+	missing := s.config.GetIntSlice("missing", []int{1, 2})
 
-	assert.Len(t, s, 3)
-	assert.Equal(t, 30, s[0])
-	assert.Equal(t, 60, s[1])
-	assert.Equal(t, 120, s[2])
+	s.Equal(slice, []int{30, 60, 120})
+	s.Equal(missing, []int{1, 2})
 }
 
-func TestConfig_GetFloat64(t *testing.T) {
-	config := getNewTestableConfig(map[string]interface{}{
-		"pi": math.Pi,
-	}, map[string]string{})
+func (s *ConfigTestSuite) TestConfig_GetFloat64() {
+	s.setupConfigValues(map[string]interface{}{
+		"f64": math.Pi,
+	})
 
-	assert.Equal(t, math.Pi, config.GetFloat64("pi"))
+	s.Equal(math.Pi, s.config.GetFloat64("f64"))
+	s.Equal(math.Phi, s.config.GetFloat64("missing", math.Phi))
 }
 
-func TestConfig_GetString(t *testing.T) {
-	config := getNewTestableConfig(map[string]interface{}{
+func (s *ConfigTestSuite) TestConfig_GetString() {
+	s.setupConfigValues(map[string]interface{}{
 		"s":      "foobar",
 		"a":      "this {is} augmented",
 		"is":     "is also {nested}",
 		"nested": "nested stuff",
-	}, map[string]string{})
+	})
 
-	assert.Equal(t, "foobar", config.GetString("s"))
-	assert.Equal(t, "this is also nested stuff augmented", config.GetString("a"))
+	s.Equal("foobar", s.config.GetString("s"))
+	s.Equal("this is also nested stuff augmented", s.config.GetString("a"))
+	s.Equal("default", s.config.GetString("missing", "default"))
 }
 
-func TestConfig_GetStringMapString(t *testing.T) {
-	config := getNewTestableConfig(map[string]interface{}{
+func (s *ConfigTestSuite) TestConfig_GetStringMapString() {
+	s.setupConfigValues(map[string]interface{}{
 		"map": map[string]interface{}{
 			"a":   "b",
 			"foo": "{bar}-{map.c}",
 			"c":   "d",
 		},
 		"bar": "baz",
-	}, map[string]string{})
+	})
 
-	strMap := config.GetStringMapString("map")
-	assert.Len(t, strMap, 3)
-	assert.Equal(t, "b", strMap["a"])
-	assert.Equal(t, "baz-d", strMap["foo"])
+	missingMap := map[string]string{
+		"s": "string",
+	}
+
+	strMap := s.config.GetStringMapString("map")
+
+	s.Len(strMap, 3)
+	s.Equal("b", strMap["a"])
+	s.Equal("baz-d", strMap["foo"])
+	s.Equal(missingMap, s.config.GetStringMapString("missing", missingMap))
 }
 
-func TestConfig_GetStringSlice(t *testing.T) {
-	config := getNewTestableConfig(map[string]interface{}{
+func (s *ConfigTestSuite) TestConfig_GetStringSlice() {
+	s.setupConfigValues(map[string]interface{}{
 		"slice": []string{"string", "a{b}"},
 		"b":     "bc",
-	}, map[string]string{})
-
-	s := config.GetStringSlice("slice")
-
-	assert.Len(t, s, 2)
-	assert.Equal(t, "string", s[0])
-	assert.Equal(t, "abc", s[1])
-}
-
-func TestConfig_Environment(t *testing.T) {
-	config := getNewTestableConfig(baseSettings, map[string]string{
-		"A":   "2",
-		"N_C": "4",
 	})
 
-	expectedMap := map[string]interface{}{
-		"c": "4",
-	}
+	missingSlice := []string{"a", "b"}
 
-	assert.Equal(t, 2, config.GetInt("a"))
-	assert.Equal(t, expectedMap, config.Get("n"))
+	ss := s.config.GetStringSlice("slice")
+
+	s.Len(ss, 2)
+	s.Equal("string", ss[0])
+	s.Equal("abc", ss[1])
+	s.Equal(missingSlice, s.config.GetStringSlice("missing", missingSlice))
 }
 
-func TestConfig_EnvironmentPrefixed(t *testing.T) {
-	config := getNewTestableConfig(baseSettings, map[string]string{
-		"PREFIX_A":   "2",
-		"PREFIX_N_C": "4",
+func (s *ConfigTestSuite) TestConfig_GetTime() {
+	s.setupConfigValues(map[string]interface{}{
+		"key": map[string]interface{}{
+			"foo":            "bar",
+			"date":           time.Date(2019, time.November, 26, 0, 0, 0, 0, time.UTC),
+			"stringDate":     "2019-11-27",
+			"stringDateTime": "2020-04-22T07:17:13+02:00",
+		},
 	})
-	_ = config.Option(cfg.WithEnvKeyPrefix("prefix"))
 
-	expectedMap := map[string]interface{}{
-		"c": "4",
-	}
+	tm := s.config.GetTime("key.date")
+	s.Equal("2019-11-26", tm.Format("2006-01-02"))
 
-	assert.Equal(t, 2, config.GetInt("a"))
-	assert.Equal(t, expectedMap, config.Get("n"))
+	settings := struct {
+		Foo            string    `cfg:"foo"`
+		Date           time.Time `cfg:"date"`
+		StringDate     time.Time `cfg:"stringDate"`
+		StringDateTime time.Time `cfg:"stringDateTime"`
+	}{}
+
+	s.config.UnmarshalKey("key", &settings)
+
+	s.Equal("bar", settings.Foo)
+	s.Equal("2019-11-26", settings.Date.Format("2006-01-02"))
+	s.Equal("2019-11-27", settings.StringDate.Format("2006-01-02"))
+	s.Equal("2020-04-22T07:17:13+02:00", settings.StringDateTime.Format(time.RFC3339))
+
+	fakeTime := clockwork.NewFakeClock().Now()
+	s.Equal(fakeTime, s.config.GetTime("missing", fakeTime))
 }
 
-func TestConfig_UnmarshalKey_Struct(t *testing.T) {
+func (s *ConfigTestSuite) TestConfig_Environment() {
+	s.setupEnvironment(map[string]string{
+		"I": "2",
+		"S": "string",
+	})
+
+	s.Equal(2, s.config.GetInt("i"))
+	s.Equal("string", s.config.GetString("s"))
+}
+
+func (s *ConfigTestSuite) TestConfig_EnvironmentPrefixed() {
+	s.applyOptions(cfg.WithEnvKeyPrefix("prefix"))
+	s.setupEnvironment(map[string]string{
+		"PREFIX_I": "2",
+		"PREFIX_S": "string",
+	})
+
+	s.Equal(2, s.config.GetInt("i"))
+	s.Equal("string", s.config.GetString("s"))
+}
+
+func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Struct() {
 	type configMap struct {
 		Foo          string   `cfg:"foo"`
 		Bla          string   `cfg:"bla"`
@@ -170,7 +264,7 @@ func TestConfig_UnmarshalKey_Struct(t *testing.T) {
 		} `cfg:"nested"`
 	}
 
-	config := getNewTestableConfig(map[string]interface{}{
+	s.setupConfigValues(map[string]interface{}{
 		"key": map[string]interface{}{
 			"foo":           "zorg",
 			"bla":           "test",
@@ -182,51 +276,51 @@ func TestConfig_UnmarshalKey_Struct(t *testing.T) {
 		},
 		"key2": "c",
 		"key3": "value",
-	}, map[string]string{})
+	})
 
 	cm := configMap{}
-	config.UnmarshalKey("key", &cm)
+	s.config.UnmarshalKey("key", &cm)
 
-	assert.Equal(t, "zorg", cm.Foo)
-	assert.Equal(t, "test", cm.Bla)
-	assert.Equal(t, 1, cm.Def)
-	assert.Equal(t, []int{1, 2}, cm.Slice)
-	assert.Equal(t, []string{"a", "b-c"}, cm.SliceAugment)
-	assert.Equal(t, time.Second, cm.Nested.A)
-	assert.Equal(t, "my-value", cm.Nested.Augmented)
+	s.Equal("zorg", cm.Foo)
+	s.Equal("test", cm.Bla)
+	s.Equal(1, cm.Def)
+	s.Equal([]int{1, 2}, cm.Slice)
+	s.Equal([]string{"a", "b-c"}, cm.SliceAugment)
+	s.Equal(time.Second, cm.Nested.A)
+	s.Equal("my-value", cm.Nested.Augmented)
 }
 
-func TestConfig_UnmarshalKey_StructWithMap(t *testing.T) {
+func (s *ConfigTestSuite) TestConfig_UnmarshalKey_StructWithMap() {
 	type configMap struct {
 		MSI map[string]interface{} `cfg:"msi"`
 	}
 
-	config := getNewTestableConfig(map[string]interface{}{
+	s.setupConfigValues(map[string]interface{}{
 		"key": map[string]interface{}{
 			"msi": map[string]interface{}{
 				"augmented": "my-{augment}",
 			},
 		},
 		"augment": "value",
-	}, map[string]string{})
+	})
 
 	expected := map[string]interface{}{
 		"augmented": "my-value",
 	}
 
 	cm := configMap{}
-	config.UnmarshalKey("key", &cm)
+	s.config.UnmarshalKey("key", &cm)
 
-	assert.Equal(t, expected, cm.MSI)
+	s.Equal(expected, cm.MSI)
 }
 
-func TestConfig_UnmarshalKey_Slice(t *testing.T) {
+func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Slice() {
 	type configMap struct {
 		Foo string `cfg:"foo"`
 		Def int    `cfg:"def" default:"1"`
 	}
 
-	config := getNewTestableConfig(map[string]interface{}{
+	s.setupConfigValues(map[string]interface{}{
 		"key": []interface{}{
 			map[string]interface{}{
 				"foo": "bar",
@@ -239,23 +333,24 @@ func TestConfig_UnmarshalKey_Slice(t *testing.T) {
 				"def": 3,
 			},
 		},
-	}, map[string]string{
+	})
+	s.setupEnvironment(map[string]string{
 		"KEY_2_FOO": "env",
 	})
 
 	cm := make([]configMap, 0)
-	config.UnmarshalKey("key", &cm)
+	s.config.UnmarshalKey("key", &cm)
 
-	assert.Len(t, cm, 3)
-	assert.Equal(t, "bar", cm[0].Foo)
-	assert.Equal(t, 1, cm[0].Def)
-	assert.Equal(t, "baz", cm[1].Foo)
-	assert.Equal(t, 2, cm[1].Def)
-	assert.Equal(t, "env", cm[2].Foo)
-	assert.Equal(t, 3, cm[2].Def)
+	s.Len(cm, 3)
+	s.Equal("bar", cm[0].Foo)
+	s.Equal(1, cm[0].Def)
+	s.Equal("baz", cm[1].Foo)
+	s.Equal(2, cm[1].Def)
+	s.Equal("env", cm[2].Foo)
+	s.Equal(3, cm[2].Def)
 }
 
-func TestConfig_UnmarshalKeyEnvironment(t *testing.T) {
+func (s *ConfigTestSuite) TestConfig_UnmarshalKeyEnvironment() {
 	type configMap struct {
 		Foo    string `cfg:"foo"`
 		Nested struct {
@@ -263,23 +358,24 @@ func TestConfig_UnmarshalKeyEnvironment(t *testing.T) {
 		} `cfg:"nested"`
 	}
 
-	config := getNewTestableConfig(map[string]interface{}{
+	s.setupConfigValues(map[string]interface{}{
 		"key": map[string]interface{}{
 			"foo": "bar",
 		},
-	}, map[string]string{
+	})
+	s.setupEnvironment(map[string]string{
 		"KEY_FOO":      "zorg",
 		"KEY_NESTED_A": "1",
 	})
 
 	cm := configMap{}
-	config.UnmarshalKey("key", &cm)
+	s.config.UnmarshalKey("key", &cm)
 
-	assert.Equal(t, "zorg", cm.Foo)
-	assert.Equal(t, 1, cm.Nested.A)
+	s.Equal("zorg", cm.Foo)
+	s.Equal(1, cm.Nested.A)
 }
 
-func TestConfig_UnmarshalKeyEmbedded(t *testing.T) {
+func (s *ConfigTestSuite) TestConfig_UnmarshalKeyEmbedded() {
 	type Embedded struct {
 		A int `cfg:"a"`
 		B int `cfg:"b" default:"2"`
@@ -290,24 +386,25 @@ func TestConfig_UnmarshalKeyEmbedded(t *testing.T) {
 		Foo string `cfg:"foo"`
 	}
 
-	config := getNewTestableConfig(map[string]interface{}{
+	s.setupConfigValues(map[string]interface{}{
 		"key": map[string]interface{}{
 			"foo": "bar",
 		},
-	}, map[string]string{
+	})
+	s.setupEnvironment(map[string]string{
 		"KEY_FOO": "zorg",
 		"KEY_A":   "1",
 	})
 
 	cm := configMap{}
-	config.UnmarshalKey("key", &cm)
+	s.config.UnmarshalKey("key", &cm)
 
-	assert.Equal(t, "zorg", cm.Foo)
-	assert.Equal(t, 1, cm.A)
-	assert.Equal(t, 2, cm.B)
+	s.Equal("zorg", cm.Foo)
+	s.Equal(1, cm.A)
+	s.Equal(2, cm.B)
 }
 
-func TestConfig_UnmarshalKeyValidation(t *testing.T) {
+func (s *ConfigTestSuite) TestConfig_UnmarshalKeyValidation() {
 	type configMap struct {
 		Foo    string `cfg:"foo" validate:"oneof=baz"`
 		Nested struct {
@@ -319,53 +416,24 @@ func TestConfig_UnmarshalKeyValidation(t *testing.T) {
 	errorHandler := func(err error, msg string, args ...interface{}) {
 		cfgErr = err
 	}
+	s.applyOptions(cfg.WithErrorHandlers(errorHandler))
 
-	config := getNewTestableConfigWithOptions(map[string]interface{}{
+	s.setupConfigValues(map[string]interface{}{
 		"key": map[string]interface{}{
 			"foo": "bar",
 			"nested": map[string]interface{}{
 				"augmented": 1,
 			},
 		},
-	}, map[string]string{}, cfg.WithErrorHandlers(errorHandler))
+	})
 
 	cm := configMap{}
-	config.UnmarshalKey("key", &cm)
+	s.config.UnmarshalKey("key", &cm)
 
-	assert.EqualError(t, cfgErr, "2 errors occurred:\n\t* the setting Foo with value bar does not match its requirement\n\t* the setting A with value 0 does not match its requirement\n\n")
+	s.EqualError(cfgErr, "2 errors occurred:\n\t* the setting Foo with value bar does not match its requirement\n\t* the setting A with value 0 does not match its requirement\n\n")
 }
 
-func TestConfig_GetTime(t *testing.T) {
-	data := map[string]interface{}{
-		"key": map[string]interface{}{
-			"foo":            "bar",
-			"date":           time.Date(2019, time.November, 26, 0, 0, 0, 0, time.UTC),
-			"stringDate":     "2019-11-27",
-			"stringDateTime": "2020-04-22T07:17:13+02:00",
-		},
-	}
-
-	config := getNewTestableConfig(data, map[string]string{})
-	tm := config.GetTime("key.date")
-
-	assert.Equal(t, "2019-11-26", tm.Format("2006-01-02"))
-
-	settings := struct {
-		Foo            string    `cfg:"foo"`
-		Date           time.Time `cfg:"date"`
-		StringDate     time.Time `cfg:"stringDate"`
-		StringDateTime time.Time `cfg:"stringDateTime"`
-	}{}
-
-	config.UnmarshalKey("key", &settings)
-
-	assert.Equal(t, "bar", settings.Foo)
-	assert.Equal(t, "2019-11-26", settings.Date.Format("2006-01-02"))
-	assert.Equal(t, "2019-11-27", settings.StringDate.Format("2006-01-02"))
-	assert.Equal(t, "2020-04-22T07:17:13+02:00", settings.StringDateTime.Format(time.RFC3339))
-}
-
-func TestConfig_FromYml(t *testing.T) {
+func (s *ConfigTestSuite) TestConfig_FromYml() {
 	type configMap struct {
 		D   time.Duration          `cfg:"d"`
 		I   int                    `cfg:"i"`
@@ -385,42 +453,15 @@ func TestConfig_FromYml(t *testing.T) {
 		S2: []interface{}{3, "s"},
 	}
 
-	config := getNewTestableConfig(map[string]interface{}{}, map[string]string{}, cfg.WithConfigFile("./testdata/config.test.yml", "yml"))
+	s.applyOptions(cfg.WithConfigFile("./testdata/config.test.yml", "yml"))
 
 	cm := configMap{}
-	config.UnmarshalKey("key", &cm)
+	s.config.UnmarshalKey("key", &cm)
 
-	assert.Equal(t, 1, config.GetInt("i"))
-	assert.Equal(t, expected, cm)
+	s.Equal(1, s.config.GetInt("i"))
+	s.Equal(expected, cm)
 }
 
-func getNewTestableConfig(settings map[string]interface{}, environment map[string]string, options ...cfg.Option) cfg.GosoConf {
-	options = append(options, []cfg.Option{
-		cfg.WithErrorHandlers(cfg.PanicErrorHandler),
-		cfg.WithEnvKeyReplacer(strings.NewReplacer(".", "_")),
-		cfg.WithSanitizers(cfg.TimeSanitizer),
-	}...)
-
-	return getNewTestableConfigWithOptions(settings, environment, options...)
-}
-
-func getNewTestableConfigWithOptions(settings map[string]interface{}, environment map[string]string, options ...cfg.Option) cfg.GosoConf {
-	envMock := func(key string) (string, bool) {
-		if value, ok := environment[key]; ok {
-			return value, true
-		}
-
-		return "", false
-	}
-
-	options = append(options, cfg.WithConfigMap(settings))
-
-	config := cfg.NewWithInterfaces(envMock)
-	err := config.Option(options...)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return config
+func TestConfigTestSuite(t *testing.T) {
+	suite.Run(t, new(ConfigTestSuite))
 }

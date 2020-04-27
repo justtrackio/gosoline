@@ -6,7 +6,7 @@ import (
 )
 
 type ConfigProvider interface {
-	GetString(string) string
+	GetString(key string, optionalDefault ...string) string
 }
 
 type ModelId struct {
