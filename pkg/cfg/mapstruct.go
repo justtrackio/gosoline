@@ -113,6 +113,39 @@ func (m *MapStruct) doReadZeroAndDefaultValues(target interface{}) (objx.Map, ob
 	return values, defaults, nil
 }
 
+func (m *MapStruct) Read() (objx.Map, error) {
+	tt := reflect.TypeOf(m.target).Elem()
+	tv := reflect.ValueOf(m.target).Elem()
+
+	return m.doRead(tt, tv)
+}
+
+func (m *MapStruct) doRead(targetType reflect.Type, targetValue reflect.Value) (objx.Map, error) {
+	mapValues := objx.MSI()
+
+	var cfg string
+	var ok bool
+
+	for i := 0; i < targetValue.NumField(); i++ {
+		fieldType := targetType.Field(i)
+		fieldValue := targetValue.Field(i)
+
+		// skip unexported fields
+		if len(fieldType.PkgPath) != 0 {
+			continue
+		}
+
+		// skip fields without tag
+		if cfg, ok = fieldType.Tag.Lookup(m.settings.FieldTag); !ok {
+			continue
+		}
+
+		mapValues.Set(cfg, fieldValue.Interface())
+	}
+
+	return mapValues, nil
+}
+
 func (m *MapStruct) Write(values map[string]interface{}) error {
 	return m.doWrite(m.target, values)
 }
