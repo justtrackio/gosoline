@@ -7,7 +7,6 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
-	"github.com/stretchr/objx"
 	"github.com/thoas/go-funk"
 	"gopkg.in/go-playground/validator.v9"
 	"os"
@@ -50,7 +49,7 @@ type config struct {
 	lookupEnv      LookupEnv
 	errorHandlers  []ErrorHandler
 	sanitizers     []Sanitizer
-	settings       objx.Map
+	settings       Map
 	envKeyPrefix   string
 	envKeyReplacer *strings.Replacer
 }
@@ -66,7 +65,7 @@ func NewWithInterfaces(lookupEnv LookupEnv) GosoConf {
 		lookupEnv:     lookupEnv,
 		errorHandlers: []ErrorHandler{defaultErrorHandler},
 		sanitizers:    make([]Sanitizer, 0),
-		settings:      objx.MSI(),
+		settings:      NewMap(),
 	}
 
 	return cfg
@@ -353,7 +352,7 @@ func (c *config) decodeAugmentHook() MapStructDecoder {
 
 func (c *config) get(key string) interface{} {
 	value := map[string]interface{}{
-		key: c.settings.Get(key).Data(),
+		key: c.settings.Get(key),
 	}
 
 	environment := c.readEnvironment(c.envKeyPrefix, value)
@@ -419,22 +418,28 @@ func (c *config) mergeSettings(settings map[string]interface{}) error {
 		return fmt.Errorf("could not sanitize settings on merge: %w", err)
 	}
 
-	current := c.settings.Value().MSI()
+	current := c.settings.Msi()
 
 	if err := mergo.Merge(&current, sanitized, mergo.WithOverride); err != nil {
 		return err
 	}
 
-	c.settings = objx.New(current)
+	c.settings = current
 
 	return nil
 }
 
-func (c *config) mergeSettingsWithKeyPrefix(prefix string, settings map[string]interface{}) {
-	for k, v := range settings {
-		key := fmt.Sprintf("%s.%s", prefix, k)
-		c.settings.Set(key, v)
+func (c *config) mergeSettingsWithKeyPrefix(prefix string, settings interface{}) {
+	switch s := settings.(type) {
+	case map[string]interface{}:
+		for k, v := range s {
+			key := fmt.Sprintf("%s.%s", prefix, k)
+			c.settings.Set(key, v)
+		}
+	default:
+		c.settings.Set(prefix, settings)
 	}
+
 }
 
 func (c *config) readEnvironment(prefix string, input map[string]interface{}) map[string]interface{} {
@@ -476,7 +481,7 @@ func (c *config) resolveEnvKey(prefix string, key string) string {
 }
 
 func (c *config) unmarshalSlice(key string, output interface{}) {
-	data := c.settings.Get(key).Data()
+	data := c.settings.Get(key)
 	interfaceSlice, ok := data.([]interface{})
 
 	if !ok {
@@ -542,7 +547,7 @@ func (c *config) unmarshalStruct(key string, output interface{}) {
 	}
 
 	if c.settings.Has(key) {
-		data := c.settings.Get(key).Data()
+		data := c.settings.Get(key)
 
 		settings, ok := data.(map[string]interface{})
 

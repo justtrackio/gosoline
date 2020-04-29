@@ -35,6 +35,13 @@ func WithConfigMap(settings map[string]interface{}) Option {
 	}
 }
 
+func WithConfigSetting(key string, settings interface{}) Option {
+	return func(cfg *config) error {
+		cfg.mergeSettingsWithKeyPrefix(key, settings)
+		return nil
+	}
+}
+
 func WithEnvKeyPrefix(prefix string) Option {
 	return func(cfg *config) error {
 		cfg.envKeyPrefix = prefix

@@ -13,5 +13,5 @@ func Merge(target interface{}, source interface{}) error {
 		return fmt.Errorf("target value has to be a pointer")
 	}
 
-	return mergo.Merge(target, source, mergo.WithOverride)
+	return mergo.Merge(target, source, mergo.WithOverride, mergo.WithAppendSlice)
 }
