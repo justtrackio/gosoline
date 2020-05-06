@@ -172,6 +172,25 @@ func (_m *GosoConf) GetIntSlice(key string, optionalDefault ...[]int) []int {
 	return r0
 }
 
+// GetMsiSlice provides a mock function with given fields: key, optionalDefault
+func (_m *GosoConf) GetMsiSlice(key string, optionalDefault ...[]map[string]interface{}) []map[string]interface{} {
+	var _ca []interface{}
+	_ca = append(_ca, key)
+	_ca = append(_ca, cast.ToSlice(optionalDefault)...)
+	ret := _m.Called(_ca...)
+
+	var r0 []map[string]interface{}
+	if rf, ok := ret.Get(0).(func(string, ...[]map[string]interface{}) []map[string]interface{}); ok {
+		r0 = rf(key, optionalDefault...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]map[string]interface{})
+		}
+	}
+
+	return r0
+}
+
 // GetString provides a mock function with given fields: key, optionalDefault
 func (_m *GosoConf) GetString(key string, optionalDefault ...string) string {
 	_va := make([]interface{}, len(optionalDefault))

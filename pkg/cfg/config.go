@@ -19,7 +19,7 @@ import (
 
 type LookupEnv func(key string) (string, bool)
 
-// go:generate mockery -name Config
+//go:generate mockery -name Config
 type Config interface {
 	AllKeys() []string
 	AllSettings() map[string]interface{}
@@ -29,6 +29,7 @@ type Config interface {
 	GetInt(key string, optionalDefault ...int) int
 	GetIntSlice(key string, optionalDefault ...[]int) []int
 	GetFloat64(key string, optionalDefault ...float64) float64
+	GetMsiSlice(key string, optionalDefault ...[]map[string]interface{}) []map[string]interface{}
 	GetString(key string, optionalDefault ...string) string
 	GetStringMap(key string, optionalDefault ...map[string]interface{}) map[string]interface{}
 	GetStringMapString(key string, optionalDefault ...map[string]string) map[string]string
@@ -38,7 +39,7 @@ type Config interface {
 	UnmarshalKey(key string, val interface{})
 }
 
-//  go:generate mockery -name GosoConf
+//go:generate mockery -name GosoConf
 type GosoConf interface {
 	Config
 	Option(options ...Option) error
@@ -189,6 +190,26 @@ func (c *config) GetFloat64(key string, optionalDefault ...float64) float64 {
 	}
 
 	return i
+}
+
+func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interface{}) []map[string]interface{} {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
+		return optionalDefault[0]
+	}
+
+	data := c.settings.Get(key)
+
+	if msiSlice, ok := data.([]map[string]interface{}); ok {
+		return msiSlice
+	}
+
+	err := fmt.Errorf("can not cast value %v[%T] of key %s to []map[string]interface{}", data, data, key)
+	c.err(err, err.Error())
+
+	return nil
 }
 
 func (c *config) GetString(key string, optionalDefault ...string) string {

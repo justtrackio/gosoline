@@ -21,7 +21,7 @@ type elasticsearchComponent struct {
 	clients  *simpleCache
 }
 
-func (e *elasticsearchComponent) Boot(config cfg.Config, logger mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
+func (e *elasticsearchComponent) Boot(config cfg.Config, logger mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	e.logger = logger
 	e.name = name
 	e.runner = runner
@@ -36,19 +36,19 @@ func (e *elasticsearchComponent) Boot(config cfg.Config, logger mon.Logger, runn
 func (e *elasticsearchComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_elasticsearch_%s", e.name)
 
-	return e.runner.Run(containerName, containerConfig{
+	return e.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
 		Tag:        e.settings.Version,
 		Env: []string{
 			"discovery.type=single-node",
 		},
-		PortBindings: portBinding{
+		PortBindings: portBindingLegacy{
 			"9200/tcp": fmt.Sprint(e.settings.Port),
 		},
-		PortMappings: portMapping{
+		PortMappings: portMappingLegacy{
 			"9200/tcp": &e.settings.Port,
 		},
-		HostMapping: hostMapping{
+		HostMapping: hostMappingLegacy{
 			dialPort: &e.settings.Port,
 			setHost:  &e.settings.Host,
 		},

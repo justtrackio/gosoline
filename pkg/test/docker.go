@@ -14,29 +14,29 @@ import (
 	"time"
 )
 
-type portBinding map[string]string
+type portBindingLegacy map[string]string
 
-type portMapping map[string]*int
+type portMappingLegacy map[string]*int
 
-type hostMapping struct {
+type hostMappingLegacy struct {
 	dialPort *int
 	setHost  *string
 }
 
-type containerConfig struct {
+type containerConfigLegacy struct {
 	Repository   string
 	Tag          string
 	Env          []string
 	Cmd          []string
-	PortBindings portBinding
-	PortMappings portMapping
-	HostMapping  hostMapping
+	PortBindings portBindingLegacy
+	PortMappings portMappingLegacy
+	HostMapping  hostMappingLegacy
 	HealthCheck  func() error
 	PrintLogs    bool
 	ExpireAfter  time.Duration
 }
 
-type dockerRunner struct {
+type dockerRunnerLegacy struct {
 	pool            *dockertest.Pool
 	containers      []string
 	containersMutex sync.Mutex
@@ -44,7 +44,7 @@ type dockerRunner struct {
 	logger          mon.Logger
 }
 
-func newDockerRunner() *dockerRunner {
+func NewDockerRunnerLegacy() *dockerRunnerLegacy {
 	pool, err := dockertest.NewPool("")
 
 	if err != nil {
@@ -59,7 +59,7 @@ func newDockerRunner() *dockerRunner {
 
 	logger := mon.NewLogger().WithChannel("docker-runner")
 
-	return &dockerRunner{
+	return &dockerRunnerLegacy{
 		pool:       pool,
 		id:         id,
 		logger:     logger,
@@ -67,7 +67,7 @@ func newDockerRunner() *dockerRunner {
 	}
 }
 
-func (d *dockerRunner) Run(name string, config containerConfig) error {
+func (d *dockerRunnerLegacy) Run(name string, config *containerConfigLegacy) error {
 	containerName := d.getContainerName(name)
 
 	d.markForCleanup(containerName)
@@ -144,17 +144,17 @@ func (d *dockerRunner) Run(name string, config containerConfig) error {
 	return nil
 }
 
-func (d *dockerRunner) getContainerName(name string) string {
+func (d *dockerRunnerLegacy) getContainerName(name string) string {
 	return fmt.Sprintf("%s_%s", name, d.id)
 }
 
-func (d *dockerRunner) markForCleanup(containerName string) {
+func (d *dockerRunnerLegacy) markForCleanup(containerName string) {
 	d.containersMutex.Lock()
 	defer d.containersMutex.Unlock()
 	d.containers = append(d.containers, containerName)
 }
 
-func (d *dockerRunner) setPortMapping(resource *dockertest.Resource, containerPort string, hostPort *int) error {
+func (d *dockerRunnerLegacy) setPortMapping(resource *dockertest.Resource, containerPort string, hostPort *int) error {
 	port, err := strconv.Atoi(resource.GetPort(containerPort))
 	if err != nil {
 		return err
@@ -170,7 +170,7 @@ func (d *dockerRunner) setPortMapping(resource *dockertest.Resource, containerPo
 	return nil
 }
 
-func (d *dockerRunner) printContainerLogs(resource *dockertest.Resource) error {
+func (d *dockerRunnerLegacy) printContainerLogs(resource *dockertest.Resource) error {
 	err := d.pool.Client.Logs(docker.LogsOptions{
 		Container:    resource.Container.ID,
 		OutputStream: os.Stdout,
@@ -186,7 +186,7 @@ func (d *dockerRunner) printContainerLogs(resource *dockertest.Resource) error {
 	return nil
 }
 
-func (d *dockerRunner) RemoveAllContainers() {
+func (d *dockerRunnerLegacy) RemoveAllContainers() {
 	for _, containerName := range d.containers {
 		d.logger.WithFields(mon.Fields{
 			"container": containerName,
@@ -197,7 +197,7 @@ func (d *dockerRunner) RemoveAllContainers() {
 	}
 }
 
-func (d *dockerRunner) setHostMapping(resource *dockertest.Resource, mapping hostMapping) error {
+func (d *dockerRunnerLegacy) setHostMapping(resource *dockertest.Resource, mapping hostMappingLegacy) error {
 	timeout := time.Duration(100) * time.Millisecond
 	gatewayIp := resource.Container.NetworkSettings.Networks["bridge"].Gateway
 
@@ -219,7 +219,7 @@ func (d *dockerRunner) setHostMapping(resource *dockertest.Resource, mapping hos
 	return fmt.Errorf("could not establish a connection with the container")
 }
 
-func (d *dockerRunner) isReachable(address string, timeout time.Duration) bool {
+func (d *dockerRunnerLegacy) isReachable(address string, timeout time.Duration) bool {
 	conn, err := net.DialTimeout("tcp", address, timeout)
 	defer func() {
 		if conn == nil {

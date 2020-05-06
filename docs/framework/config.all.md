@@ -139,4 +139,33 @@ tracing:
   enabled: true
   addr_type: local
   addr_value: ""
+
+test:
+  logger:
+    level: info
+    format: console
+    timestamp_format: 15:04:05.000
+
+  container_runner:
+    endpoint: ""
+    name_prefix: "goso"
+    health_check:
+      initial_interval: 1s
+      max_interval: 3s
+      max_elapsed_time: 1m
+
+  components:
+      - type: streamInput
+        name: consumer
+  
+      - type: mysql
+        name: default
+        expire_after: 2m
+        version: 8
+        port: 0
+        credentials:
+          database_name: gosoline
+          user_name: gosoline
+          user_password: gosoline
+          root_password: gosoline
 ```

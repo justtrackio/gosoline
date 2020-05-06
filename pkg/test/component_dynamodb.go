@@ -18,7 +18,7 @@ type dynamoDbComponent struct {
 	clients  *simpleCache
 }
 
-func (d *dynamoDbComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
+func (d *dynamoDbComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	d.name = name
 	d.runner = runner
 	d.settings = &dynamoDbSettings{
@@ -32,16 +32,16 @@ func (d *dynamoDbComponent) Boot(config cfg.Config, _ mon.Logger, runner *docker
 func (d *dynamoDbComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_dynamodb_%s", d.name)
 
-	return d.runner.Run(containerName, containerConfig{
+	return d.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "amazon/dynamodb-local",
 		Tag:        "latest",
-		PortBindings: portBinding{
+		PortBindings: portBindingLegacy{
 			"8000/tcp": fmt.Sprint(d.settings.Port),
 		},
-		PortMappings: portMapping{
+		PortMappings: portMappingLegacy{
 			"8000/tcp": &d.settings.Port,
 		},
-		HostMapping: hostMapping{
+		HostMapping: hostMappingLegacy{
 			dialPort: &d.settings.Port,
 			setHost:  &d.settings.Host,
 		},

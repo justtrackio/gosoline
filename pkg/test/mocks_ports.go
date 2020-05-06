@@ -31,7 +31,7 @@ func (m *Mocks) ProvideKinesisPort(name string) int {
 }
 
 func (m *Mocks) ProvideMysqlPort(name string) int {
-	component := m.components[name].(*mysqlComponent)
+	component := m.components[name].(*mysqlComponentLegacy)
 	return component.settings.Port
 }
 

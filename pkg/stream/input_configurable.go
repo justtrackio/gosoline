@@ -18,28 +18,44 @@ const (
 	InputTypeSqs      = "sqs"
 )
 
+type InputFactory func(config cfg.Config, logger mon.Logger, name string) Input
+
+var inputFactories = map[string]InputFactory{
+	InputTypeFile:     newFileInputFromConfig,
+	InputTypeInMemory: newInMemoryInputFromConfig,
+	InputTypeKinesis:  newKinesisInputFromConfig,
+	InputTypeRedis:    newRedisInputFromConfig,
+	InputTypeSns:      newSnsInputFromConfig,
+	InputTypeSqs:      newSqsInputFromConfig,
+}
+
+func SetInputFactory(typ string, factory InputFactory) {
+	inputFactories[typ] = factory
+}
+
+var inputs = map[string]Input{}
+
+func ProvideConfigurableInput(config cfg.Config, logger mon.Logger, name string) Input {
+	if input, ok := inputs[name]; ok {
+		return input
+	}
+
+	inputs[name] = NewConfigurableInput(config, logger, name)
+
+	return inputs[name]
+}
+
 func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) Input {
 	key := fmt.Sprintf("stream.input.%s.type", name)
 	t := config.GetString(key)
 
-	switch t {
-	case InputTypeFile:
-		return newFileInputFromConfig(config, logger, name)
-	case InputTypeInMemory:
-		return newInMemoryInputFromConfig(config, name)
-	case InputTypeKinesis:
-		return newKinesisInputFromConfig(config, logger, name)
-	case InputTypeRedis:
-		return newRedisInputFromConfig(config, logger, name)
-	case InputTypeSns:
-		return newSnsInputFromConfig(config, logger, name)
-	case InputTypeSqs:
-		return newSqsInputFromConfig(config, logger, name)
-	default:
+	factory, ok := inputFactories[t]
+
+	if !ok {
 		logger.Fatalf(fmt.Errorf("invalid input %s of type %s", name, t), "invalid input %s of type %s", name, t)
 	}
 
-	return nil
+	return factory(config, logger, name)
 }
 
 func newFileInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -50,7 +66,7 @@ func newFileInputFromConfig(config cfg.Config, logger mon.Logger, name string) I
 	return NewFileInput(config, logger, settings)
 }
 
-func newInMemoryInputFromConfig(config cfg.Config, name string) Input {
+func newInMemoryInputFromConfig(config cfg.Config, _ mon.Logger, name string) Input {
 	key := getConfigurableInputKey(name)
 	settings := &InMemorySettings{}
 	config.UnmarshalKey(key, settings)

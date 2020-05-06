@@ -31,7 +31,7 @@ func (m *Mocks) ProvideKinesisHost(name string) string {
 }
 
 func (m *Mocks) ProvideMysqlHost(name string) string {
-	component := m.components[name].(*mysqlComponent)
+	component := m.components[name].(*mysqlComponentLegacy)
 	return component.settings.Host
 }
 

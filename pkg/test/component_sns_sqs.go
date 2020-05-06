@@ -14,7 +14,7 @@ const componentSqs = "sqs"
 const componentSnsSqs = "sns_sqs"
 
 type snsSqsSettings struct {
-	*healthcheckMockSettings
+	*healthCheckMockSettings
 	SnsPort int `cfg:"sns_port" default:"0"`
 	SqsPort int `cfg:"sqs_port" default:"0"`
 }
@@ -25,14 +25,14 @@ type snsSqsComponent struct {
 	clients  *simpleCache
 }
 
-func (s *snsSqsComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
+func (s *snsSqsComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	s.name = name
 	s.runner = runner
 	s.clients = &simpleCache{}
 	s.settings = &snsSqsSettings{
-		healthcheckMockSettings: &healthcheckMockSettings{
+		healthCheckMockSettings: &healthCheckMockSettings{
 			mockSettings: settings,
-			Healthcheck:  healthcheckSettings(config, name),
+			Healthcheck:  healthCheckSettings(config, name),
 		},
 	}
 	key := fmt.Sprintf("mocks.%s", name)
@@ -53,25 +53,25 @@ func (s *snsSqsComponent) Start() error {
 
 	containerName := fmt.Sprintf("gosoline_test_sns_sqs_%s", s.name)
 
-	return s.runner.Run(containerName, containerConfig{
+	return s.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "localstack/localstack",
 		Tag:        "0.10.8",
 		Env:        env,
-		PortBindings: portBinding{
+		PortBindings: portBindingLegacy{
 			"4575/tcp": fmt.Sprint(s.settings.SnsPort),
 			"4576/tcp": fmt.Sprint(s.settings.SqsPort),
 			"8080/tcp": fmt.Sprint(s.settings.Healthcheck.Port),
 		},
-		PortMappings: portMapping{
+		PortMappings: portMappingLegacy{
 			"4575/tcp": &s.settings.SnsPort,
 			"4576/tcp": &s.settings.SqsPort,
 			"8080/tcp": &s.settings.Healthcheck.Port,
 		},
-		HostMapping: hostMapping{
+		HostMapping: hostMappingLegacy{
 			dialPort: &s.settings.SnsPort,
 			setHost:  &s.settings.Host,
 		},
-		HealthCheck: localstackHealthCheck(s.settings.healthcheckMockSettings, componentSns, componentSqs),
+		HealthCheck: localstackHealthCheck(s.settings.healthCheckMockSettings, componentSns, componentSqs),
 		PrintLogs:   s.settings.Debug,
 		ExpireAfter: s.settings.ExpireAfter,
 	})
