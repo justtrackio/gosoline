@@ -129,6 +129,40 @@ func (s *ConsumerTestSuite) TestCallbackRunError() {
 	s.input.AssertExpectations(s.T())
 }
 
+func (s *ConsumerTestSuite) TestCallbackRunPanic() {
+	s.input.On("Data").Return(s.data)
+	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
+		s.data <- stream.NewJsonMessage(`"foo"`)
+		s.data <- stream.NewJsonMessage(`"bar"`)
+		s.stop()
+	}).Return(nil)
+	s.input.On("Stop")
+
+	consumed := make([]*string, 0)
+
+	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.callback.On("Consume", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).Run(func(args mock.Arguments) {
+		ptr := args.Get(1).(*string)
+		consumed = append(consumed, ptr)
+
+		msg := *ptr
+		if msg == "foo" {
+			panic("foo")
+		}
+	}).Return(true, nil)
+	s.callback.On("GetModel").Return(func() interface{} {
+		model := ""
+		return &model
+	})
+
+	err := s.consumer.Run(context.Background())
+
+	s.Nil(err, "there should be no error returned on consume")
+	s.Len(consumed, 2)
+	s.input.AssertExpectations(s.T())
+	s.callback.AssertExpectations(s.T())
+}
+
 func TestConsumerTestSuite(t *testing.T) {
 	suite.Run(t, new(ConsumerTestSuite))
 }

@@ -194,6 +194,8 @@ func (c *Consumer) runConsuming(ctx context.Context) error {
 }
 
 func (c *Consumer) doConsuming(msg *Message) {
+	defer c.recover()
+
 	ctx := context.Background()
 	model := c.callback.GetModel()
 
@@ -205,8 +207,8 @@ func (c *Consumer) doConsuming(msg *Message) {
 		return
 	}
 
-	ctx, trans := c.tracer.StartSpanFromContext(ctx, c.id)
-	defer trans.Finish()
+	ctx, span := c.tracer.StartSpanFromContext(ctx, c.id)
+	defer span.Finish()
 
 	ack, err := c.callback.Consume(ctx, model, attributes)
 
@@ -219,6 +221,15 @@ func (c *Consumer) doConsuming(msg *Message) {
 	}
 
 	c.Acknowledge(ctx, msg)
+}
+
+func (c *Consumer) recover() {
+	err := coffin.ResolveRecovery(recover())
+	if err == nil {
+		return
+	}
+
+	c.logger.Error(err, err.Error())
 }
 
 func (c *Consumer) stopConsuming() error {
