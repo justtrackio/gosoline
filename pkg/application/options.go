@@ -108,6 +108,14 @@ func WithConfigSanitizers(sanitizers ...cfg.Sanitizer) Option {
 	}
 }
 
+func WithConfigSetting(key string, settings interface{}) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithConfigSetting(key, settings))
+		})
+	}
+}
+
 func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 	return func(app *App) {
 		app.addSetupOption(func(config cfg.GosoConf, logger mon.GosoLog) error {

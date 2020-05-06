@@ -47,7 +47,7 @@ func (m *Mocks) ProvideKinesisClient(name string) *kinesis.Kinesis {
 }
 
 func (m *Mocks) ProvideMysqlClient(name string) *sql.DB {
-	component := m.components[name].(*mysqlComponent)
+	component := m.components[name].(*mysqlComponentLegacy)
 	return component.db
 }
 

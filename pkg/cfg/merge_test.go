@@ -16,10 +16,11 @@ func (s *MergeTestSuite) TestMerge() {
 	}
 
 	type object struct {
-		Embedded
 		I  int
 		S1 string
 		S2 string
+		Embedded
+		Slice []int
 	}
 
 	a := object{
@@ -29,6 +30,7 @@ func (s *MergeTestSuite) TestMerge() {
 		Embedded: Embedded{
 			F32: 1.1,
 		},
+		Slice: []int{1, 2},
 	}
 	b := object{
 		I:  2,
@@ -37,6 +39,7 @@ func (s *MergeTestSuite) TestMerge() {
 		Embedded: Embedded{
 			F32: 1.2,
 		},
+		Slice: []int{3},
 	}
 
 	err := cfg.Merge(&a, b)
@@ -46,6 +49,7 @@ func (s *MergeTestSuite) TestMerge() {
 	s.Equal("string", a.S1)
 	s.Equal("bar", a.S2)
 	s.Equal(float32(1.2), a.F32)
+	s.Equal([]int{1, 2, 3}, a.Slice)
 }
 
 func TestMergeTestSuite(t *testing.T) {

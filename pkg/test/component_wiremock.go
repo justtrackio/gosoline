@@ -22,7 +22,7 @@ type wiremockComponent struct {
 	settings *wiremockSettings
 }
 
-func (w *wiremockComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
+func (w *wiremockComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	w.name = name
 	w.runner = runner
 	w.settings = &wiremockSettings{
@@ -35,16 +35,16 @@ func (w *wiremockComponent) Boot(config cfg.Config, _ mon.Logger, runner *docker
 func (w *wiremockComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_wiremock_%s", w.name)
 
-	err := w.runner.Run(containerName, containerConfig{
+	err := w.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "rodolpheche/wiremock",
 		Tag:        "latest",
-		PortBindings: portBinding{
+		PortBindings: portBindingLegacy{
 			"8080/tcp": fmt.Sprint(w.settings.Port),
 		},
-		PortMappings: portMapping{
+		PortMappings: portMappingLegacy{
 			"8080/tcp": &w.settings.Port,
 		},
-		HostMapping: hostMapping{
+		HostMapping: hostMappingLegacy{
 			dialPort: &w.settings.Port,
 			setHost:  &w.settings.Host,
 		},

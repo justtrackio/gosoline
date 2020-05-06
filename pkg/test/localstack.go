@@ -12,7 +12,7 @@ type healthcheck struct {
 	Port int `cfg:"port" default:"0"`
 }
 
-type healthcheckMockSettings struct {
+type healthCheckMockSettings struct {
 	*mockSettings
 	Healthcheck healthcheck `cfg:"healthcheck"`
 }
@@ -28,7 +28,7 @@ type localstackHealthcheckServices struct {
 	SQS        string
 }
 
-func localstackHealthCheck(settings *healthcheckMockSettings, services ...string) func() error {
+func localstackHealthCheck(settings *healthCheckMockSettings, services ...string) func() error {
 	return func() error {
 		url := fmt.Sprintf("http://%s:%d/health", settings.Host, settings.Healthcheck.Port)
 		resp, err := http.Get(url)
@@ -52,7 +52,7 @@ func localstackHealthCheck(settings *healthcheckMockSettings, services ...string
 
 		for _, service := range services {
 			switch service {
-			case componentCloudwatch:
+			case "cloudwatch":
 				if localstackHealthcheck.Services.Cloudwatch != "running" {
 					return fmt.Errorf("service cloudwatch is in state %s", localstackHealthcheck.Services.Cloudwatch)
 				}
@@ -75,7 +75,7 @@ func localstackHealthCheck(settings *healthcheckMockSettings, services ...string
 	}
 }
 
-func healthcheckSettings(config cfg.Config, name string) healthcheck {
+func healthCheckSettings(config cfg.Config, name string) healthcheck {
 	healthcheck := healthcheck{}
 	key := fmt.Sprintf("mocks.%s.healthcheck", name)
 	config.UnmarshalKey(key, &healthcheck)

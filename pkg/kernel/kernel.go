@@ -181,6 +181,7 @@ func (k *kernel) Run() {
 	k.stagesLck.Poison()
 
 	if !k.hasModules() {
+		close(k.running)
 		k.logger.Info("nothing to run")
 		return
 	}

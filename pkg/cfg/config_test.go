@@ -148,6 +148,26 @@ func (s *ConfigTestSuite) TestConfig_GetFloat64() {
 	s.Equal(math.Phi, s.config.GetFloat64("missing", math.Phi))
 }
 
+func (s *ConfigTestSuite) TestConfig_GetMsiSlice() {
+	s.setupConfigValues(map[string]interface{}{
+		"msi": []map[string]interface{}{
+			{
+				"i": 1,
+				"s": "string",
+			},
+		},
+	})
+
+	expected := []map[string]interface{}{
+		{
+			"i": 1,
+			"s": "string",
+		},
+	}
+
+	s.Equal(expected, s.config.GetMsiSlice("msi"))
+}
+
 func (s *ConfigTestSuite) TestConfig_GetString() {
 	s.setupConfigValues(map[string]interface{}{
 		"s":      "foobar",

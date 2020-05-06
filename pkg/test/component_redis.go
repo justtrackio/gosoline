@@ -18,7 +18,7 @@ type redisComponent struct {
 	clients  *simpleCache
 }
 
-func (r *redisComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunner, settings *mockSettings, name string) {
+func (r *redisComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	r.name = name
 	r.runner = runner
 	r.settings = &redisSettings{
@@ -32,16 +32,16 @@ func (r *redisComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRun
 func (r *redisComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_redis_%s", r.name)
 
-	return r.runner.Run(containerName, containerConfig{
+	return r.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "redis",
 		Tag:        "5-alpine",
-		PortBindings: portBinding{
+		PortBindings: portBindingLegacy{
 			"6379/tcp": fmt.Sprint(r.settings.Port),
 		},
-		PortMappings: portMapping{
+		PortMappings: portMappingLegacy{
 			"6379/tcp": &r.settings.Port,
 		},
-		HostMapping: hostMapping{
+		HostMapping: hostMappingLegacy{
 			dialPort: &r.settings.Port,
 			setHost:  &r.settings.Host,
 		},
