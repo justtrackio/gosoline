@@ -23,6 +23,10 @@ func NewInMemoryKvStore(_ cfg.Config, _ mon.Logger, settings *Settings) KvStore 
 func NewInMemoryKvStoreWithInterfaces(settings *Settings) *InMemoryKvStore {
 	cache := ccache.New(ccache.Configure())
 
+	if settings.Ttl.Nanoseconds() == 0 {
+		settings.Ttl = time.Hour
+	}
+
 	return &InMemoryKvStore{
 		cache:    cache,
 		settings: settings,
@@ -132,7 +136,7 @@ func (s *InMemoryKvStore) Put(_ context.Context, key interface{}, value interfac
 		value = rv.Interface()
 	}
 
-	s.cache.Set(keyStr, value, time.Hour)
+	s.cache.Set(keyStr, value, s.settings.Ttl)
 
 	return nil
 }
