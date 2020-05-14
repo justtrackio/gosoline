@@ -205,17 +205,26 @@ func (s *ConfigTestSuite) TestConfig_GetStringMapString() {
 
 func (s *ConfigTestSuite) TestConfig_GetStringSlice() {
 	s.setupConfigValues(map[string]interface{}{
-		"slice": []string{"string", "a{b}"},
-		"b":     "bc",
+		"slice":  []string{"string", "a{b}"},
+		"b":      "bc",
+		"single": "s",
+		"split":  "x,y,z",
+		"ints":   []interface{}{1, 2, 3},
 	})
 
 	missingSlice := []string{"a", "b"}
 
 	ss := s.config.GetStringSlice("slice")
+	single := s.config.GetStringSlice("single")
+	split := s.config.GetStringSlice("split")
+	ints := s.config.GetStringSlice("ints")
 
 	s.Len(ss, 2)
 	s.Equal("string", ss[0])
 	s.Equal("abc", ss[1])
+	s.Equal([]string{"s"}, single)
+	s.Equal([]string{"x", "y", "z"}, split)
+	s.Equal([]string{"1", "2", "3"}, ints)
 	s.Equal(missingSlice, s.config.GetStringSlice("missing", missingSlice))
 }
 

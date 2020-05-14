@@ -275,8 +275,17 @@ func (c *config) GetStringSlice(key string, optionalDefault ...[]string) []strin
 		return optionalDefault[0]
 	}
 
+	var err error
+	var strSlice []string
+
 	data := c.get(key)
-	strSlice, err := cast.ToStringSliceE(data)
+
+	switch d := data.(type) {
+	case string:
+		strSlice = strings.Split(d, ",")
+	default:
+		strSlice, err = cast.ToStringSliceE(data)
+	}
 
 	if err != nil {
 		c.err(err, "can not cast value %v[%T] of key %s to []string", data, data, key)
@@ -285,6 +294,7 @@ func (c *config) GetStringSlice(key string, optionalDefault ...[]string) []strin
 
 	for i := 0; i < len(strSlice); i++ {
 		strSlice[i] = c.augmentString(strSlice[i])
+		strSlice[i] = strings.TrimSpace(strSlice[i])
 	}
 
 	return strSlice
