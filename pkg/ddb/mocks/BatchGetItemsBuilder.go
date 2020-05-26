@@ -34,6 +34,22 @@ func (_m *BatchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetIte
 	return r0, r1
 }
 
+// WithConsistentRead provides a mock function with given fields: consistentRead
+func (_m *BatchGetItemsBuilder) WithConsistentRead(consistentRead bool) ddb.BatchGetItemsBuilder {
+	ret := _m.Called(consistentRead)
+
+	var r0 ddb.BatchGetItemsBuilder
+	if rf, ok := ret.Get(0).(func(bool) ddb.BatchGetItemsBuilder); ok {
+		r0 = rf(consistentRead)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.BatchGetItemsBuilder)
+		}
+	}
+
+	return r0
+}
+
 // WithHashKeys provides a mock function with given fields: hashKeys
 func (_m *BatchGetItemsBuilder) WithHashKeys(hashKeys interface{}) ddb.BatchGetItemsBuilder {
 	ret := _m.Called(hashKeys)

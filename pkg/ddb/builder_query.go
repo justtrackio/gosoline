@@ -45,6 +45,7 @@ type QueryBuilder interface {
 	WithLimit(limit int) QueryBuilder
 	WithPageSize(size int) QueryBuilder
 	WithDescendingOrder() QueryBuilder
+	WithConsistentRead(consistentRead bool) QueryBuilder
 	Build(result interface{}) (*QueryOperation, error)
 }
 
@@ -62,6 +63,7 @@ type queryBuilder struct {
 	limit            *int64
 	pageSize         *int64
 	scanIndexForward *bool
+	consistentRead   *bool
 }
 
 func NewQueryBuilder(metadata *Metadata) QueryBuilder {
@@ -231,6 +233,12 @@ func (b *queryBuilder) WithDescendingOrder() QueryBuilder {
 	return b
 }
 
+func (b *queryBuilder) WithConsistentRead(consistentRead bool) QueryBuilder {
+	b.consistentRead = &consistentRead
+
+	return b
+}
+
 func (b *queryBuilder) Build(result interface{}) (*QueryOperation, error) {
 	var err error
 	var keyCondition expression.KeyConditionBuilder
@@ -272,6 +280,7 @@ func (b *queryBuilder) Build(result interface{}) (*QueryOperation, error) {
 	input := &dynamodb.QueryInput{
 		TableName:                 aws.String(b.metadata.TableName),
 		IndexName:                 b.indexName,
+		ConsistentRead:            b.consistentRead,
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		KeyConditionExpression:    expr.KeyCondition(),

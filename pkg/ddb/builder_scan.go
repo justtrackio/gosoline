@@ -24,21 +24,23 @@ type ScanBuilder interface {
 	WithLimit(limit int) ScanBuilder
 	WithPageSize(size int) ScanBuilder
 	WithSegment(segment int, total int) ScanBuilder
+	WithConsistentRead(consistentRead bool) ScanBuilder
 	Build(result interface{}) (*ScanOperation, error)
 }
 
 type scanBuilder struct {
 	filterBuilder
 
-	err          error
-	metadata     *Metadata
-	indexName    *string
-	selected     FieldAware
-	projection   interface{}
-	limit        *int64
-	pageSize     *int64
-	segment      *int64
-	segmentTotal *int64
+	err            error
+	metadata       *Metadata
+	indexName      *string
+	selected       FieldAware
+	projection     interface{}
+	limit          *int64
+	pageSize       *int64
+	segment        *int64
+	segmentTotal   *int64
+	consistentRead *bool
 }
 
 func NewScanBuilder(metadata *Metadata) ScanBuilder {
@@ -99,6 +101,12 @@ func (b *scanBuilder) WithSegment(segment int, total int) ScanBuilder {
 	return b
 }
 
+func (b *scanBuilder) WithConsistentRead(consistentRead bool) ScanBuilder {
+	b.consistentRead = &consistentRead
+
+	return b
+}
+
 func (b *scanBuilder) Build(result interface{}) (*ScanOperation, error) {
 	targetType := resolveTargetType(b.selected, b.projection, result)
 	expr, err := b.buildExpression(targetType)
@@ -111,6 +119,7 @@ func (b *scanBuilder) Build(result interface{}) (*ScanOperation, error) {
 	input := &dynamodb.ScanInput{
 		TableName:                 aws.String(b.metadata.TableName),
 		IndexName:                 b.indexName,
+		ConsistentRead:            b.consistentRead,
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		FilterExpression:          expr.Filter(),

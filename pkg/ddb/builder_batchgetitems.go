@@ -14,15 +14,17 @@ type BatchGetItemsBuilder interface {
 	WithKeyPairs(pairs [][]interface{}) BatchGetItemsBuilder
 	WithHashKeys(hashKeys interface{}) BatchGetItemsBuilder
 	WithProjection(projection interface{}) BatchGetItemsBuilder
+	WithConsistentRead(consistentRead bool) BatchGetItemsBuilder
 	Build(result interface{}) (*dynamodb.BatchGetItemInput, error)
 }
 
 type batchGetItemsBuilder struct {
-	err        error
-	metadata   *Metadata
-	keyBuilder keyBuilder
-	keyPairs   [][]interface{}
-	projection interface{}
+	err            error
+	metadata       *Metadata
+	keyBuilder     keyBuilder
+	keyPairs       [][]interface{}
+	consistentRead *bool
+	projection     interface{}
 }
 
 func NewBatchGetItemsBuilder(metadata *Metadata) BatchGetItemsBuilder {
@@ -67,6 +69,12 @@ func (b *batchGetItemsBuilder) WithProjection(projection interface{}) BatchGetIt
 	return b
 }
 
+func (b *batchGetItemsBuilder) WithConsistentRead(consistentRead bool) BatchGetItemsBuilder {
+	b.consistentRead = &consistentRead
+
+	return b
+}
+
 func (b *batchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetItemInput, error) {
 	if b.projection == nil {
 		b.projection = result
@@ -102,6 +110,7 @@ func (b *batchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetItem
 		RequestItems: map[string]*dynamodb.KeysAndAttributes{
 			b.metadata.TableName: {
 				Keys:                     keyAttributes,
+				ConsistentRead:           b.consistentRead,
 				ExpressionAttributeNames: expr.Names(),
 				ProjectionExpression:     expr.Projection(),
 			},
