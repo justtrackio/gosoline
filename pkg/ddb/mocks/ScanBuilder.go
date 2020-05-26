@@ -50,6 +50,22 @@ func (_m *ScanBuilder) DisableTtlFilter() ddb.ScanBuilder {
 	return r0
 }
 
+// WithConsistentRead provides a mock function with given fields: consistentRead
+func (_m *ScanBuilder) WithConsistentRead(consistentRead bool) ddb.ScanBuilder {
+	ret := _m.Called(consistentRead)
+
+	var r0 ddb.ScanBuilder
+	if rf, ok := ret.Get(0).(func(bool) ddb.ScanBuilder); ok {
+		r0 = rf(consistentRead)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.ScanBuilder)
+		}
+	}
+
+	return r0
+}
+
 // WithFilter provides a mock function with given fields: filter
 func (_m *ScanBuilder) WithFilter(filter expression.ConditionBuilder) ddb.ScanBuilder {
 	ret := _m.Called(filter)

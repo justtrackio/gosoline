@@ -50,6 +50,22 @@ func (_m *QueryBuilder) DisableTtlFilter() ddb.QueryBuilder {
 	return r0
 }
 
+// WithConsistentRead provides a mock function with given fields: consistentRead
+func (_m *QueryBuilder) WithConsistentRead(consistentRead bool) ddb.QueryBuilder {
+	ret := _m.Called(consistentRead)
+
+	var r0 ddb.QueryBuilder
+	if rf, ok := ret.Get(0).(func(bool) ddb.QueryBuilder); ok {
+		r0 = rf(consistentRead)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.QueryBuilder)
+		}
+	}
+
+	return r0
+}
+
 // WithDescendingOrder provides a mock function with given fields:
 func (_m *QueryBuilder) WithDescendingOrder() ddb.QueryBuilder {
 	ret := _m.Called()

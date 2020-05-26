@@ -14,14 +14,16 @@ type GetItemBuilder interface {
 	WithRange(rangeValue interface{}) GetItemBuilder
 	WithKeys(keys ...interface{}) GetItemBuilder
 	WithProjection(rangeValue interface{}) GetItemBuilder
+	WithConsistentRead(consistentRead bool) GetItemBuilder
 	Build(result interface{}) (*dynamodb.GetItemInput, error)
 }
 
 type getItemBuilder struct {
-	err        error
-	metadata   *Metadata
-	keyBuilder keyBuilder
-	projection interface{}
+	err            error
+	metadata       *Metadata
+	keyBuilder     keyBuilder
+	consistentRead *bool
+	projection     interface{}
 }
 
 func NewGetItemBuilder(metadata *Metadata) GetItemBuilder {
@@ -68,6 +70,12 @@ func (b *getItemBuilder) WithProjection(projection interface{}) GetItemBuilder {
 	return b
 }
 
+func (b *getItemBuilder) WithConsistentRead(consistentRead bool) GetItemBuilder {
+	b.consistentRead = &consistentRead
+
+	return b
+}
+
 func (b *getItemBuilder) Build(result interface{}) (*dynamodb.GetItemInput, error) {
 	if b.err != nil {
 		return nil, b.err
@@ -92,6 +100,7 @@ func (b *getItemBuilder) Build(result interface{}) (*dynamodb.GetItemInput, erro
 	input := &dynamodb.GetItemInput{
 		TableName:                aws.String(b.metadata.TableName),
 		Key:                      keys,
+		ConsistentRead:           b.consistentRead,
 		ExpressionAttributeNames: expr.Names(),
 		ProjectionExpression:     expr.Projection(),
 	}

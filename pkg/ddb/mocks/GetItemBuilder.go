@@ -34,6 +34,22 @@ func (_m *GetItemBuilder) Build(result interface{}) (*dynamodb.GetItemInput, err
 	return r0, r1
 }
 
+// WithConsistentRead provides a mock function with given fields: consistentRead
+func (_m *GetItemBuilder) WithConsistentRead(consistentRead bool) ddb.GetItemBuilder {
+	ret := _m.Called(consistentRead)
+
+	var r0 ddb.GetItemBuilder
+	if rf, ok := ret.Get(0).(func(bool) ddb.GetItemBuilder); ok {
+		r0 = rf(consistentRead)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.GetItemBuilder)
+		}
+	}
+
+	return r0
+}
+
 // WithHash provides a mock function with given fields: hashValue
 func (_m *GetItemBuilder) WithHash(hashValue interface{}) ddb.GetItemBuilder {
 	ret := _m.Called(hashValue)
