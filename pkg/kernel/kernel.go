@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
+	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/jeremywohl/flatten"
 	"github.com/thoas/go-funk"
@@ -39,9 +40,9 @@ type kernel struct {
 	logger mon.Logger
 
 	stages            map[int]*stage
-	stagesLck         PoisonedLock
+	stagesLck         conc.PoisonedLock
 	factories         []ModuleFactory
-	started           PoisonedLock
+	started           conc.PoisonedLock
 	running           chan struct{}
 	stopped           sync.Once
 	foregroundModules int32
@@ -53,10 +54,10 @@ type kernel struct {
 func New(config cfg.Config, logger mon.Logger, options ...Option) *kernel {
 	k := &kernel{
 		stages:    make(map[int]*stage),
-		stagesLck: NewPoisonedLock(),
+		stagesLck: conc.NewPoisonedLock(),
 		factories: make([]ModuleFactory, 0),
 		running:   make(chan struct{}),
-		started:   NewPoisonedLock(),
+		started:   conc.NewPoisonedLock(),
 
 		config: config,
 		logger: logger.WithChannel("kernel"),
@@ -378,7 +379,7 @@ func (k *kernel) foregroundModuleExited() {
 }
 
 func (k *kernel) waitStopped() {
-	done := NewSignalOnce()
+	done := conc.NewSignalOnce()
 	defer done.Signal()
 
 	go func() {
@@ -426,8 +427,8 @@ func (k *kernel) getStageIndices() []int {
 	return keys
 }
 
-func (k *kernel) waitAllStagesDone() SignalOnce {
-	done := NewSignalOnce()
+func (k *kernel) waitAllStagesDone() conc.SignalOnce {
+	done := conc.NewSignalOnce()
 	wg := &sync.WaitGroup{}
 	wg.Add(len(k.stages))
 

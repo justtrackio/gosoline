@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/coffin"
+	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/mon"
 )
 
@@ -14,15 +15,15 @@ type stage struct {
 	cfn coffin.Coffin
 	ctx context.Context
 
-	booted     SignalOnce
-	running    SignalOnce
-	terminated SignalOnce
+	booted     conc.SignalOnce
+	running    conc.SignalOnce
+	terminated conc.SignalOnce
 
 	modules modules
 }
 
 type modules struct {
-	lck     PoisonedLock
+	lck     conc.PoisonedLock
 	modules map[string]*ModuleState
 }
 
@@ -37,7 +38,7 @@ func (s *stage) boot(k *kernel) error {
 	}
 
 	bootCoffin := coffin.New()
-	startBooting := NewSignalOnce()
+	startBooting := conc.NewSignalOnce()
 
 	for name, m := range s.modules.modules {
 		name := name
@@ -89,12 +90,12 @@ func (s *stage) stopWait(stageIndex int, logger mon.Logger) {
 
 func newStage() *stage {
 	return &stage{
-		booted:     NewSignalOnce(),
-		running:    NewSignalOnce(),
-		terminated: NewSignalOnce(),
+		booted:     conc.NewSignalOnce(),
+		running:    conc.NewSignalOnce(),
+		terminated: conc.NewSignalOnce(),
 
 		modules: modules{
-			lck:     NewPoisonedLock(),
+			lck:     conc.NewPoisonedLock(),
 			modules: make(map[string]*ModuleState),
 		},
 	}
