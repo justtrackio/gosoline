@@ -1,4 +1,4 @@
-package kernel
+package conc
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 
 var AlreadyPoisonedErr = errors.New("lock was already poisoned")
 
+//go:generate mockery -name=PoisonedLock
 type PoisonedLock interface {
 	Lock()
 	TryLock() error

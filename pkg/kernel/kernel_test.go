@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/coffin"
+	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/kernel"
 	kernelMocks "github.com/applike/gosoline/pkg/kernel/mocks"
 	"github.com/applike/gosoline/pkg/mon"
@@ -202,8 +203,8 @@ func TestKernelForcedExit(t *testing.T) {
 	config, logger, _ := createMocks()
 	logger.On("Errorf", mock.Anything, mock.Anything)
 
-	mayStop := kernel.NewSignalOnce()
-	appStopped := kernel.NewSignalOnce()
+	mayStop := conc.NewSignalOnce()
+	appStopped := conc.NewSignalOnce()
 
 	k := kernel.New(config, logger, kernel.KillTimeout(200*time.Millisecond), kernel.ForceExit(func(code int) {
 		assert.Equal(t, 1, code)
@@ -247,7 +248,7 @@ func TestKernelStageStopped(t *testing.T) {
 	logger.On("Errorf", mock.Anything, mock.Anything)
 
 	success := false
-	appStopped := kernel.NewSignalOnce()
+	appStopped := conc.NewSignalOnce()
 
 	k := kernel.New(config, logger, kernel.KillTimeout(200*time.Millisecond))
 

@@ -1,13 +1,13 @@
-package kernel_test
+package conc_test
 
 import (
-	"github.com/applike/gosoline/pkg/kernel"
+	"github.com/applike/gosoline/pkg/conc"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestPoisonedLock(t *testing.T) {
-	lck := kernel.NewPoisonedLock()
+	lck := conc.NewPoisonedLock()
 
 	// should work
 	lck.Lock()
@@ -29,7 +29,7 @@ func TestPoisonedLock(t *testing.T) {
 	{
 		err := lck.TryLock()
 
-		assert.Equal(t, kernel.AlreadyPoisonedErr, err)
+		assert.Equal(t, conc.AlreadyPoisonedErr, err)
 	}
 
 	var err error
@@ -42,7 +42,7 @@ func TestPoisonedLock(t *testing.T) {
 		lck.Lock()
 	}()
 
-	assert.Equal(t, kernel.AlreadyPoisonedErr, err)
+	assert.Equal(t, conc.AlreadyPoisonedErr, err)
 
 	// should still be okay and not cause our test to hang
 	lck.Poison()

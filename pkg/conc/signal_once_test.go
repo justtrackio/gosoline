@@ -1,13 +1,13 @@
-package kernel_test
+package conc_test
 
 import (
-	"github.com/applike/gosoline/pkg/kernel"
+	"github.com/applike/gosoline/pkg/conc"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestSignalOnce_Signal(t *testing.T) {
-	cond := kernel.NewSignalOnce()
+	cond := conc.NewSignalOnce()
 
 	// should not initially signal
 	select {
