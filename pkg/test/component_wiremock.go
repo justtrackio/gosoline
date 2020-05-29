@@ -37,7 +37,7 @@ func (w *wiremockComponent) Start() error {
 
 	err := w.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "rodolpheche/wiremock",
-		Tag:        "latest",
+		Tag:        "2.26.3-alpine",
 		PortBindings: portBindingLegacy{
 			"8080/tcp": fmt.Sprint(w.settings.Port),
 		},
