@@ -10,7 +10,6 @@ import (
 
 type SnsInputSettings struct {
 	cfg.AppId
-	AutoSubscribe     bool
 	QueueId           string                `cfg:"queue_id"`
 	WaitTime          int64                 `cfg:"wait_time"`
 	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
@@ -31,7 +30,7 @@ type snsInput struct {
 
 func NewSnsInput(config cfg.Config, logger mon.Logger, s SnsInputSettings, targets []SnsInputTarget) *snsInput {
 	s.PadFromConfig(config)
-	s.AutoSubscribe = config.GetBool("aws_sns_autoSubscribe")
+	autoSubscribe := config.GetBool("aws_sns_autoSubscribe")
 
 	sqsInput := NewSqsInput(config, logger, SqsInputSettings{
 		AppId:             s.AppId,
@@ -47,7 +46,7 @@ func NewSnsInput(config cfg.Config, logger mon.Logger, s SnsInputSettings, targe
 
 	queueArn := sqsInput.GetQueueArn()
 
-	if s.AutoSubscribe {
+	if autoSubscribe {
 		for _, t := range targets {
 			t.PadFromConfig(config)
 
