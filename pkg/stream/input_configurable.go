@@ -130,6 +130,8 @@ type snsInputTarget struct {
 
 type snsInputConfiguration struct {
 	ConsumerId        string                `cfg:"id" validate:"required"`
+	Family            string                `cfg:"family" default:""`
+	Application       string                `cfg:"application" default:""`
 	Targets           []snsInputTarget      `cfg:"targets" validate:"min=1"`
 	WaitTime          int64                 `cfg:"wait_time" default:"3" validate:"min=1"`
 	VisibilityTimeout int                   `cfg:"visibility_timeout" default:"30" validate:"min=1"`
@@ -146,6 +148,10 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 	config.UnmarshalKey(key, &configuration)
 
 	settings := SnsInputSettings{
+		AppId: cfg.AppId{
+			Family:      configuration.Family,
+			Application: configuration.Application,
+		},
 		QueueId:           configuration.ConsumerId,
 		WaitTime:          configuration.WaitTime,
 		VisibilityTimeout: configuration.VisibilityTimeout,
