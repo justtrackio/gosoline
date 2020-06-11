@@ -59,6 +59,20 @@ func New(config cfg.Config, logger mon.Logger, s Settings) *repository {
 		Update().
 		After("gorm:update_time_stamp").
 		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
+	orm.Callback().
+		Query().
+		Register("gosoline:parse_mysql_set_type", GormParseMysqlSetType)
+	orm.Callback().
+		RowQuery().
+		Register("gosoline:parse_mysql_set_type", GormParseMysqlSetType)
+	orm.Callback().
+		Create().
+		After("gorm:update_time_stamp").
+		Register("gosoline:set_mysql_set_type", GormSetMysqlSetType)
+	orm.Callback().
+		Update().
+		After("gorm:update_time_stamp").
+		Register("gosoline:set_mysql_set_type", GormSetMysqlSetType)
 	clock := clockwork.NewRealClock()
 
 	s.PadFromConfig(config)
@@ -354,6 +368,120 @@ func ignoreCreatedAtIfNeeded(scope *gorm.Scope) {
 	// (0000-00-00 00:00:00 in mysql). To avoid this, we mark the field as ignored if it is empty
 	if m, ok := getModel(scope.Value); ok && (m.GetCreatedAt() == nil || *m.GetCreatedAt() == time.Time{}) {
 		scope.Search.Omit("CreatedAt")
+	}
+}
+
+// parses the []uint8 (from mysql) for field x, if there is a field xSet with type []string
+func GormParseMysqlSetType(scope *gorm.Scope) {
+	vo := reflect.ValueOf(scope.Value)
+	if vo.Kind() == reflect.Invalid {
+		return
+	}
+	for vo.Kind() == reflect.Ptr {
+		vo = vo.Elem()
+	}
+	if vo.Kind() == reflect.Slice {
+		for i := 0; i < vo.Len(); i++ {
+			parseMysqlSetType(vo.Index(i))
+		}
+		return
+	}
+	parseMysqlSetType(vo)
+}
+
+func parseMysqlSetType(vo reflect.Value) {
+	if vo.Kind() != reflect.Struct {
+		return
+	}
+	vt := reflect.TypeOf(vo.Interface())
+
+	for i := 0; i < vt.NumField(); i++ {
+		vtf := vt.Field(i)
+		vof := vo.Field(i)
+		fn := vtf.Name
+
+		testType := reflect.TypeOf(make([]string, 0))
+		if !vof.Type().AssignableTo(testType) {
+			continue
+		}
+
+		if !strings.HasSuffix(fn, "Set") {
+			continue
+		}
+
+		srcFn := strings.TrimSuffix(fn, "Set")
+		src := vo.FieldByName(srcFn)
+		if !src.IsValid() {
+			continue
+		}
+
+		v := src.Interface()
+		uintSlice, ok := v.([]uint8)
+		if !ok || len(uintSlice) == 0 {
+			continue
+		}
+
+		stringVal := string(uintSlice)
+		s := reflect.ValueOf(strings.Split(stringVal, ","))
+		vof.Set(s)
+	}
+}
+
+// sets the []uint8 (for mysql) for field x, if there is a field xSet with type []string
+func GormSetMysqlSetType(scope *gorm.Scope) {
+	vo := reflect.ValueOf(scope.Value)
+	if vo.Kind() == reflect.Invalid {
+		return
+	}
+	for vo.Kind() == reflect.Ptr {
+		vo = vo.Elem()
+	}
+	if vo.Kind() == reflect.Slice {
+		for i := 0; i < vo.Len(); i++ {
+			setMysqlSetType(vo.Index(i))
+		}
+		return
+	}
+
+	setMysqlSetType(vo)
+}
+
+func setMysqlSetType(vo reflect.Value) {
+	if vo.Kind() != reflect.Struct {
+		return
+	}
+	vt := reflect.TypeOf(vo.Interface())
+
+	for i := 0; i < vt.NumField(); i++ {
+		vtf := vt.Field(i)
+		vof := vo.Field(i)
+		fn := vtf.Name
+
+		if !strings.HasSuffix(fn, "Set") {
+			continue
+		}
+
+		targetFn := strings.TrimSuffix(fn, "Set")
+		trgt := vo.FieldByName(targetFn)
+		if !trgt.IsValid() {
+			continue
+		}
+
+		testType := reflect.TypeOf(make([]uint8, 0))
+		if !trgt.Type().AssignableTo(testType) {
+			continue
+		}
+
+		val := vof.Interface()
+		strSlice, ok := val.([]string)
+		if !ok {
+			continue
+		}
+
+		str := strings.Join(strSlice, ",")
+		uintVal := []uint8(str)
+		s := reflect.ValueOf(uintVal)
+		trgt.Set(s)
 	}
 }
 

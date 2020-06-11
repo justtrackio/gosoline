@@ -8,6 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
+	"github.com/jinzhu/gorm"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -673,6 +674,111 @@ func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
 	}
 
 	assert.NoError(t, err)
+}
+
+type gormSetTypeValid struct {
+	T    []uint8
+	TSet []string
+}
+
+type gormSetTypeInvalid1 struct {
+	T    []uint8
+	TSet string
+}
+
+type gormSetTypeInvalid2 struct {
+	T    []string
+	TSet []string
+}
+
+type gormSetTypeInvalid3 struct {
+	TSet []string
+}
+
+func TestGormParseMysqlSetType(t *testing.T) {
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{}
+		db_repo.GormParseMysqlSetType(&scope)
+	}, "should not panic on nil")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeValid{
+				T:    []uint8{97, 44, 98, 44, 99},
+				TSet: make([]string, 0),
+			},
+		}
+		db_repo.GormParseMysqlSetType(&scope)
+		assert.Equal(t, []string{"a", "b", "c"}, scope.Value.(*gormSetTypeValid).TSet)
+	}, "should not panic on a,b,c in test struct")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeInvalid1{
+				T:    []uint8{97, 44, 98, 44, 99},
+				TSet: "",
+			},
+		}
+		db_repo.GormParseMysqlSetType(&scope)
+	}, "should not panic on wrong target type")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeInvalid2{
+				T:    make([]string, 0),
+				TSet: make([]string, 0),
+			},
+		}
+		db_repo.GormParseMysqlSetType(&scope)
+	}, "should not panic on wrong source type")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeInvalid3{
+				TSet: []string{""},
+			},
+		}
+		db_repo.GormParseMysqlSetType(&scope)
+	}, "should not panic on missing source col")
+}
+
+func TestGormSetMysqlSetType(t *testing.T) {
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{}
+		db_repo.GormSetMysqlSetType(&scope)
+	}, "should not panic on nil value")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeValid{
+				T:    []uint8{},
+				TSet: []string{"a", "b", "c"},
+			},
+		}
+		db_repo.GormSetMysqlSetType(&scope)
+		assert.Equal(t, []uint8{97, 44, 98, 44, 99}, scope.Value.(*gormSetTypeValid).T)
+	}, "should not panic on a,b,c in test struct")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeInvalid1{
+				T:    []uint8{97, 44, 98, 44, 99},
+				TSet: "",
+			},
+		}
+		db_repo.GormSetMysqlSetType(&scope)
+	}, "should not panic on wrong target type")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeInvalid2{
+				T:    make([]string, 0),
+				TSet: make([]string, 0),
+			},
+		}
+		db_repo.GormSetMysqlSetType(&scope)
+	}, "should not panic on wrong source type")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeInvalid3{
+				TSet: []string{""},
+			},
+		}
+		db_repo.GormSetMysqlSetType(&scope)
+	}, "should not panic on missing source col")
 }
 
 func getMocks() (goSqlMock.Sqlmock, db_repo.Repository) {
