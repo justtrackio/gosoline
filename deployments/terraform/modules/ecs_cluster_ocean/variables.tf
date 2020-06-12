@@ -13,3 +13,10 @@ variable "ec2_instance_type" {
 variable "spotinst_elastigroup" {
   default = 0
 }
+variable "max_size" {
+  default = 1000
+}
+
+variable "min_size" {
+  default = 1
+}

@@ -2,8 +2,8 @@ resource "spotinst_ocean_ecs" "ocean" {
   name         = "${var.project}-${var.environment}-${var.family}"
   cluster_name = "${var.project}-${var.environment}-${var.family}"
   region       = "eu-central-1"
-  max_size     = 1000
-  min_size     = 1
+  max_size     = var.max_size
+  min_size     = var.min_size
   subnet_ids   = data.aws_subnet_ids.private.ids
 
   user_data = <<EOF
@@ -123,8 +123,8 @@ resource "spotinst_elastigroup_aws" "main" {
   count            = var.spotinst_elastigroup
   name             = "${var.project}-${var.environment}-${var.family}"
   region           = "eu-central-1"
-  max_size         = 1000
-  min_size         = 1
+  max_size         = var.max_size
+  min_size         = var.min_size
   desired_capacity = 1
   subnet_ids       = data.aws_subnet_ids.private.ids
 
