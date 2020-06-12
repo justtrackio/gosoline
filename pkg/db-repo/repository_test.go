@@ -712,6 +712,26 @@ func TestGormParseMysqlSetType(t *testing.T) {
 	}, "should not panic on a,b,c in test struct")
 	assert.NotPanics(t, func() {
 		scope := gorm.Scope{
+			Value: &gormSetTypeValid{
+				T:    nil,
+				TSet: make([]string, 0),
+			},
+		}
+		db_repo.GormParseMysqlSetType(&scope)
+		assert.Equal(t, []string{}, scope.Value.(*gormSetTypeValid).TSet)
+	}, "should not panic on a,b,c in test struct")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeValid{
+				T:    nil,
+				TSet: nil,
+			},
+		}
+		db_repo.GormParseMysqlSetType(&scope)
+		assert.IsType(t, []string{}, scope.Value.(*gormSetTypeValid).TSet)
+	}, "should not panic on a,b,c in test struct")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
 			Value: &gormSetTypeInvalid1{
 				T:    []uint8{97, 44, 98, 44, 99},
 				TSet: "",
@@ -752,6 +772,26 @@ func TestGormSetMysqlSetType(t *testing.T) {
 		}
 		db_repo.GormSetMysqlSetType(&scope)
 		assert.Equal(t, []uint8{97, 44, 98, 44, 99}, scope.Value.(*gormSetTypeValid).T)
+	}, "should not panic on a,b,c in test struct")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeValid{
+				T:    nil,
+				TSet: []string{"a", "b", "c"},
+			},
+		}
+		db_repo.GormSetMysqlSetType(&scope)
+		assert.Equal(t, []uint8{97, 44, 98, 44, 99}, scope.Value.(*gormSetTypeValid).T)
+	}, "should not panic on a,b,c in test struct")
+	assert.NotPanics(t, func() {
+		scope := gorm.Scope{
+			Value: &gormSetTypeValid{
+				T:    nil,
+				TSet: nil,
+			},
+		}
+		db_repo.GormSetMysqlSetType(&scope)
+		assert.IsType(t, []uint8{}, scope.Value.(*gormSetTypeValid).T)
 	}, "should not panic on a,b,c in test struct")
 	assert.NotPanics(t, func() {
 		scope := gorm.Scope{

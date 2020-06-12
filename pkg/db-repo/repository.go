@@ -394,13 +394,16 @@ func parseMysqlSetType(vo reflect.Value) {
 		return
 	}
 	vt := reflect.TypeOf(vo.Interface())
+	if vt.NumField() == 0 {
+		return
+	}
 
+	testType := reflect.TypeOf(make([]string, 0))
 	for i := 0; i < vt.NumField(); i++ {
 		vtf := vt.Field(i)
 		vof := vo.Field(i)
 		fn := vtf.Name
 
-		testType := reflect.TypeOf(make([]string, 0))
 		if !vof.Type().AssignableTo(testType) {
 			continue
 		}
@@ -451,7 +454,11 @@ func setMysqlSetType(vo reflect.Value) {
 		return
 	}
 	vt := reflect.TypeOf(vo.Interface())
+	if vt.NumField() == 0 {
+		return
+	}
 
+	testType := reflect.TypeOf(make([]uint8, 0))
 	for i := 0; i < vt.NumField(); i++ {
 		vtf := vt.Field(i)
 		vof := vo.Field(i)
@@ -467,7 +474,6 @@ func setMysqlSetType(vo reflect.Value) {
 			continue
 		}
 
-		testType := reflect.TypeOf(make([]uint8, 0))
 		if !trgt.Type().AssignableTo(testType) {
 			continue
 		}
