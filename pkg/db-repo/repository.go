@@ -390,6 +390,9 @@ func GormParseMysqlSetType(scope *gorm.Scope) {
 }
 
 func parseMysqlSetType(vo reflect.Value) {
+	for vo.Kind() == reflect.Ptr {
+		vo = vo.Elem()
+	}
 	if vo.Kind() != reflect.Struct {
 		return
 	}
@@ -450,6 +453,9 @@ func GormSetMysqlSetType(scope *gorm.Scope) {
 }
 
 func setMysqlSetType(vo reflect.Value) {
+	for vo.Kind() == reflect.Ptr {
+		vo = vo.Elem()
+	}
 	if vo.Kind() != reflect.Struct {
 		return
 	}
