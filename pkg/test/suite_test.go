@@ -14,7 +14,7 @@ func (c *Case1) SetupSuite() []test.SuiteOption {
 	return nil
 }
 
-func (c *Case1) TestSomething(_ test.AppDone) {
+func (c *Case1) TestSomething(_ test.AppUnderTest) {
 	c.True(true, "assert")
 }
 

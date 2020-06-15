@@ -44,7 +44,7 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	env.runner = NewContainerRunner(config, logger)
 
 	var err error
-	var skeletons map[string]componentSkeleton
+	var skeletons []*componentSkeleton
 	var component Component
 	var containers = make(map[string]*container)
 	var components = NewComponentsContainer()
@@ -64,9 +64,11 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		return env, err
 	}
 
-	for name, skeleton := range skeletons {
-		if component, err = buildComponent(skeleton, containers[name]); err != nil {
-			return env, fmt.Errorf("can not build component %s: %w", name, err)
+	for _, skeleton := range skeletons {
+		container := containers[skeleton.id()]
+
+		if component, err = buildComponent(config, logger, skeleton, container); err != nil {
+			return env, fmt.Errorf("can not build component %s: %w", skeleton.id(), err)
 		}
 
 		component.SetT(t)

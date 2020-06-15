@@ -9,8 +9,6 @@ import (
 	"testing"
 )
 
-type AppDone func()
-
 func RunCase(t *testing.T, suite TestingSuite) {
 	suite.SetT(t)
 
@@ -78,6 +76,7 @@ func runCaseTest(t *testing.T, suite TestingSuite, method reflect.Method) {
 	appDone := func() {
 		<-done
 	}
+	appUnderTest := newAppUnderTest(app, appDone)
 
 	go func() {
 		app.Run()
@@ -86,7 +85,7 @@ func runCaseTest(t *testing.T, suite TestingSuite, method reflect.Method) {
 
 	<-app.Running()
 
-	method.Func.Call([]reflect.Value{reflect.ValueOf(suite), reflect.ValueOf(appDone)})
+	method.Func.Call([]reflect.Value{reflect.ValueOf(suite), reflect.ValueOf(appUnderTest)})
 
 	app.Stop("test done")
 }
@@ -97,21 +96,13 @@ func filterTestMethod(t *testing.T, method reflect.Method) bool {
 	}
 
 	if method.Func.Type().NumIn() != 2 {
-		assert.FailNow(t, "invalid test func signature", "test func %s has to have the signature func(wait test.AppDone)", method.Name)
+		assert.FailNow(t, "invalid test func signature", "test func %s has to have the signature func(app test.AppUnderTest)", method.Name)
 	}
 
 	arg1 := method.Func.Type().In(1)
 
-	if arg1.Kind() != reflect.Func {
-		assert.FailNow(t, "invalid test func signature", "test func %s has to have the signature func(wait test.AppDone)", method.Name)
-	}
-
-	if arg1.NumIn() > 0 {
-		assert.FailNow(t, "invalid test func signature", "test func %s has to have the signature func(wait test.AppDone)", method.Name)
-	}
-
-	if arg1.NumOut() > 0 {
-		assert.FailNow(t, "invalid test func signature", "test func %s has to have the signature func(wait test.AppDone)", method.Name)
+	if arg1 != reflect.TypeOf((*AppUnderTest)(nil)).Elem() {
+		assert.FailNow(t, "invalid test func signature", "test func %s has to have the signature func(app test.AppUnderTest)", method.Name)
 	}
 
 	return true

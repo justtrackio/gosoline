@@ -1,6 +1,13 @@
 package env
 
-import "github.com/applike/gosoline/pkg/cfg"
+import (
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
+)
+
+func init() {
+	componentFactories[componentCloudwatch] = new(cloudwatchFactory)
+}
 
 const componentCloudwatch = "cloudwatch"
 
@@ -13,7 +20,7 @@ type cloudwatchSettings struct {
 type cloudwatchFactory struct {
 }
 
-func (f *cloudwatchFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
+func (f *cloudwatchFactory) Detect(_ cfg.Config, _ *ComponentsConfigManager) error {
 	return nil
 }
 
@@ -38,10 +45,10 @@ func (f *cloudwatchFactory) ConfigureContainer(settings interface{}) *containerC
 	}
 }
 
-func (f *cloudwatchFactory) HealthCheck(settings interface{}) ComponentHealthCheck {
+func (f *cloudwatchFactory) HealthCheck(_ interface{}) ComponentHealthCheck {
 	return nil
 }
 
-func (f *cloudwatchFactory) Component(settings interface{}, container *container) (Component, error) {
+func (f *cloudwatchFactory) Component(_ cfg.Config, _ mon.Logger, _ *container, _ interface{}) (Component, error) {
 	return nil, nil
 }

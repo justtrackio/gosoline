@@ -3,8 +3,13 @@ package env
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
 )
+
+func init() {
+	componentFactories[componentStreamInput] = new(streamInputFactory)
+}
 
 const componentStreamInput = "streamInput"
 
@@ -39,7 +44,7 @@ func (f streamInputFactory) HealthCheck(_ interface{}) ComponentHealthCheck {
 	return nil
 }
 
-func (f streamInputFactory) Component(settings interface{}, _ *container) (Component, error) {
+func (f streamInputFactory) Component(_ cfg.Config, _ mon.Logger, _ *container, settings interface{}) (Component, error) {
 	s := settings.(*streamInputSettings)
 
 	component := &streamInputComponent{

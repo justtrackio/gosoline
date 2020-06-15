@@ -4,22 +4,19 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 	"testing"
 	"time"
 )
 
-var componentFactories = map[string]componentFactory{
-	componentCloudwatch:  new(cloudwatchFactory),
-	componentMySql:       new(mysqlFactory),
-	componentStreamInput: new(streamInputFactory),
-}
+var componentFactories = map[string]componentFactory{}
 
 type componentFactory interface {
 	Detect(config cfg.Config, manager *ComponentsConfigManager) error
 	GetSettingsSchema() ComponentBaseSettingsAware
 	ConfigureContainer(settings interface{}) *containerConfig
 	HealthCheck(settings interface{}) ComponentHealthCheck
-	Component(settings interface{}, container *container) (Component, error)
+	Component(config cfg.Config, logger mon.Logger, container *container, settings interface{}) (Component, error)
 }
 
 type ComponentHealthCheck func(container *container) error
@@ -80,10 +77,14 @@ type componentSkeleton struct {
 	healthCheck     func(container *container) error
 }
 
-func buildComponentSkeletons(manager *ComponentsConfigManager) (map[string]componentSkeleton, error) {
+func (s componentSkeleton) id() string {
+	return fmt.Sprintf("%s-%s", s.typ, s.name)
+}
+
+func buildComponentSkeletons(manager *ComponentsConfigManager) ([]*componentSkeleton, error) {
 	var err error
 	var allSettings []ComponentBaseSettingsAware
-	var skeletons = make(map[string]componentSkeleton)
+	var skeletons = make([]*componentSkeleton, 0)
 
 	if allSettings, err = manager.GetAllSettings(); err != nil {
 		return nil, fmt.Errorf("can not read settings for components: %w", err)
@@ -99,24 +100,26 @@ func buildComponentSkeletons(manager *ComponentsConfigManager) (map[string]compo
 		containerConfig := factory.ConfigureContainer(settings)
 		healthCheck := factory.HealthCheck(settings)
 
-		skeletons[settings.GetName()] = componentSkeleton{
+		skeleton := &componentSkeleton{
 			typ:             settings.GetType(),
 			name:            settings.GetName(),
 			settings:        settings,
 			containerConfig: containerConfig,
 			healthCheck:     healthCheck,
 		}
+
+		skeletons = append(skeletons, skeleton)
 	}
 
 	return skeletons, nil
 }
 
-func buildComponent(skeleton componentSkeleton, container *container) (Component, error) {
+func buildComponent(config cfg.Config, logger mon.Logger, skeleton *componentSkeleton, container *container) (Component, error) {
 	factory, ok := componentFactories[skeleton.typ]
 
 	if !ok {
-		return nil, fmt.Errorf("there is no component of type %s available", skeleton.typ)
+		return nil, fmt.Errorf("there is no component of type %s available", container.typ)
 	}
 
-	return factory.Component(skeleton.settings, container)
+	return factory.Component(config, logger, container, skeleton.settings)
 }
