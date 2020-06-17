@@ -178,8 +178,8 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 		db = db.Joins(j)
 	}
 
-	if qb.where != nil {
-		db = db.Where(qb.where, qb.args...)
+	for i := range qb.where {
+		db = db.Where(qb.where[i], qb.args[i]...)
 	}
 
 	for _, g := range qb.groupBy {
@@ -212,8 +212,8 @@ func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBas
 		db = db.Joins(j)
 	}
 
-	if qb.where != nil {
-		db = db.Where(qb.where, qb.args...)
+	for i := range qb.where {
+		db = db.Where(qb.where[i], qb.args[i]...)
 	}
 
 	scope := r.orm.NewScope(model)
