@@ -1,7 +1,6 @@
 package stream
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/spf13/cast"
@@ -55,15 +54,12 @@ func (e textEncoder) Encode(data interface{}) ([]byte, error) {
 }
 
 func (e textEncoder) Decode(data []byte, out interface{}) error {
-	var ok bool
-	var bts []byte
-
-	if bts, ok = out.([]byte); !ok {
-		return fmt.Errorf("the out parameter of the text decode has to be a byte slice")
+	bts, ok := out.(*[]byte)
+	if !ok {
+		return fmt.Errorf("the out parameter of the text decode has to be a pointer to byte slice")
 	}
 
-	buf := bytes.NewBuffer(bts)
-	_, err := buf.Write(bts)
+	*bts = append(*bts, data...)
 
-	return err
+	return nil
 }
