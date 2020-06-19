@@ -40,7 +40,6 @@ func (f *fixtureLoader) Load(fixtureSets []*FixtureSet) error {
 	}
 
 	for _, fs := range fixtureSets {
-
 		if !fs.Enabled {
 			f.logger.Info("skipping disabled fixture set")
 			continue

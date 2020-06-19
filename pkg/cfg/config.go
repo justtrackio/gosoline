@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -36,7 +35,8 @@ type Config interface {
 	GetStringSlice(key string, optionalDefault ...[]string) []string
 	GetTime(key string, optionalDefault ...time.Time) time.Time
 	IsSet(string) bool
-	UnmarshalKey(key string, val interface{})
+	UnmarshalDefaults(val interface{}, additionalDefaults ...UnmarshalDefaults)
+	UnmarshalKey(key string, val interface{}, additionalDefaults ...UnmarshalDefaults)
 }
 
 //go:generate mockery -name GosoConf
@@ -46,11 +46,10 @@ type GosoConf interface {
 }
 
 type config struct {
-	lck            sync.Mutex
 	lookupEnv      LookupEnv
 	errorHandlers  []ErrorHandler
 	sanitizers     []Sanitizer
-	settings       Map
+	settings       *Map
 	envKeyPrefix   string
 	envKeyReplacer *strings.Replacer
 }
@@ -73,23 +72,14 @@ func NewWithInterfaces(lookupEnv LookupEnv) GosoConf {
 }
 
 func (c *config) AllKeys() []string {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
-	return funk.Keys(c.settings).([]string)
+	return funk.Keys(c.settings.Msi()).([]string)
 }
 
 func (c *config) AllSettings() map[string]interface{} {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
-	return c.settings
+	return c.settings.Msi()
 }
 
 func (c *config) Get(key string, optionalDefault ...interface{}) interface{} {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -98,9 +88,6 @@ func (c *config) Get(key string, optionalDefault ...interface{}) interface{} {
 }
 
 func (c *config) GetBool(key string, optionalDefault ...bool) bool {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -117,9 +104,6 @@ func (c *config) GetBool(key string, optionalDefault ...bool) bool {
 }
 
 func (c *config) GetDuration(key string, optionalDefault ...time.Duration) time.Duration {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -136,9 +120,6 @@ func (c *config) GetDuration(key string, optionalDefault ...time.Duration) time.
 }
 
 func (c *config) GetInt(key string, optionalDefault ...int) int {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -155,9 +136,6 @@ func (c *config) GetInt(key string, optionalDefault ...int) int {
 }
 
 func (c *config) GetIntSlice(key string, optionalDefault ...[]int) []int {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -174,9 +152,6 @@ func (c *config) GetIntSlice(key string, optionalDefault ...[]int) []int {
 }
 
 func (c *config) GetFloat64(key string, optionalDefault ...float64) float64 {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -193,9 +168,6 @@ func (c *config) GetFloat64(key string, optionalDefault ...float64) float64 {
 }
 
 func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interface{}) []map[string]interface{} {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -213,16 +185,10 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interfa
 }
 
 func (c *config) GetString(key string, optionalDefault ...string) string {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	return c.getString(key, optionalDefault...)
 }
 
 func (c *config) GetStringMap(key string, optionalDefault ...map[string]interface{}) map[string]interface{} {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -245,9 +211,6 @@ func (c *config) GetStringMap(key string, optionalDefault ...map[string]interfac
 }
 
 func (c *config) GetStringMapString(key string, optionalDefault ...map[string]string) map[string]string {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -268,9 +231,6 @@ func (c *config) GetStringMapString(key string, optionalDefault ...map[string]st
 }
 
 func (c *config) GetStringSlice(key string, optionalDefault ...[]string) []string {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -301,9 +261,6 @@ func (c *config) GetStringSlice(key string, optionalDefault ...[]string) []strin
 }
 
 func (c *config) GetTime(key string, optionalDefault ...time.Time) time.Time {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -320,9 +277,6 @@ func (c *config) GetTime(key string, optionalDefault ...time.Time) time.Time {
 }
 
 func (c *config) IsSet(key string) bool {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
 	return c.isSet(key)
 }
 
@@ -336,17 +290,48 @@ func (c *config) Option(options ...Option) error {
 	return nil
 }
 
-func (c *config) UnmarshalKey(key string, output interface{}) {
-	c.lck.Lock()
-	defer c.lck.Unlock()
+func (c *config) UnmarshalDefaults(output interface{}, additionalDefaults ...UnmarshalDefaults) {
+	refl.InitializeMapsAndSlices(output)
+	finalSettings := make(map[string]interface{})
 
+	ms := c.buildMapStruct(output)
+	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
+
+	if err != nil {
+		c.err(err, "can not read zeros and defaults for struct %T", output)
+	}
+
+	if err := mergo.Merge(&finalSettings, zeroSettings.Value().MSI(), mergo.WithOverride); err != nil {
+		c.err(err, "can not merge zero settings for struct: %T", output)
+		return
+	}
+
+	if err := mergo.Merge(&finalSettings, defaults.Value().MSI(), mergo.WithOverride); err != nil {
+		c.err(err, "can not merge default settings for struct: %T", output)
+		return
+	}
+
+	for _, def := range additionalDefaults {
+		if err := def(c, &finalSettings); err != nil {
+			c.err(err, "can not merge additional default settings for struct: %T", output)
+			return
+		}
+	}
+
+	if err = ms.Write(finalSettings); err != nil {
+		c.err(err, "can not write defaults into struct %T", output)
+		return
+	}
+}
+
+func (c *config) UnmarshalKey(key string, output interface{}, defaults ...UnmarshalDefaults) {
 	if refl.IsPointerToStruct(output) {
-		c.unmarshalStruct(key, output)
+		c.unmarshalStruct(key, output, defaults)
 		return
 	}
 
 	if refl.IsPointerToSlice(output) {
-		c.unmarshalSlice(key, output)
+		c.unmarshalSlice(key, output, defaults)
 		return
 	}
 
@@ -371,6 +356,27 @@ func (c *config) err(err error, msg string, args ...interface{}) {
 	}
 }
 
+func (c *config) buildMapStruct(target interface{}) *MapStruct {
+	ms, err := NewMapStruct(target, &MapStructSettings{
+		FieldTag:   "cfg",
+		DefaultTag: "default",
+		Casters: []MapStructCaster{
+			MapStructDurationCaster,
+			MapStructTimeCaster,
+		},
+		Decoders: []MapStructDecoder{
+			c.decodeAugmentHook(),
+		},
+	})
+
+	if err != nil {
+		c.err(err, "can not create MapStruct for target %T", target)
+		return nil
+	}
+
+	return ms
+}
+
 func (c *config) decodeAugmentHook() MapStructDecoder {
 	return func(_ reflect.Type, val interface{}) (interface{}, error) {
 		if raw, ok := val.(string); ok {
@@ -393,7 +399,7 @@ func (c *config) get(key string) interface{} {
 		return nil
 	}
 
-	if err := c.mergeSettings(value); err != nil {
+	if err := c.mergeMsi(".", value); err != nil {
 		c.err(err, "can not merge new settings into config")
 		return nil
 	}
@@ -442,35 +448,81 @@ func (c *config) keyCheck(key string, defaults int) bool {
 	return false
 }
 
-func (c *config) mergeSettings(settings map[string]interface{}) error {
-	sanitized, err := Sanitize("root", settings, c.sanitizers)
+func (c *config) getMergoConfigs(mergeOptions []MergeOption) []func(*mergo.Config) {
+	mergoConfigs := make([]func(*mergo.Config), 0)
+
+	if len(mergeOptions) == 0 {
+		mergeOptions = append(mergeOptions, MergeWithOverride)
+	}
+
+	for _, opt := range mergeOptions {
+		opt(&mergoConfigs)
+	}
+
+	return mergoConfigs
+}
+
+func (c *config) merge(prefix string, setting interface{}, mergeOptions ...MergeOption) error {
+	if msi, ok := setting.(map[string]interface{}); ok {
+		return c.mergeMsi(prefix, msi, mergeOptions...)
+	}
+
+	if refl.IsStructOrPointerToStruct(setting) {
+		return c.mergeStruct(prefix, setting, mergeOptions...)
+	}
+
+	return c.mergeValue(prefix, setting)
+}
+
+func (c *config) mergeValue(prefix string, value interface{}) error {
+	sanitizedValue, err := Sanitize("root", value, c.sanitizers)
 
 	if err != nil {
 		return fmt.Errorf("could not sanitize settings on merge: %w", err)
 	}
 
-	current := c.settings.Msi()
-
-	if err := mergo.Merge(&current, sanitized, mergo.WithOverride); err != nil {
-		return err
-	}
-
-	c.settings = current
+	c.settings.Set(prefix, sanitizedValue)
 
 	return nil
 }
 
-func (c *config) mergeSettingsWithKeyPrefix(prefix string, settings interface{}) {
-	switch s := settings.(type) {
-	case map[string]interface{}:
-		for k, v := range s {
-			key := fmt.Sprintf("%s.%s", prefix, k)
-			c.settings.Set(key, v)
-		}
-	default:
-		c.settings.Set(prefix, settings)
+func (c *config) mergeMsi(prefix string, settings map[string]interface{}, mergeOptions ...MergeOption) error {
+	sanitizedSettings, err := Sanitize("root", settings, c.sanitizers)
+
+	if err != nil {
+		return fmt.Errorf("could not sanitize settings on merge: %w", err)
 	}
 
+	if !c.settings.Has(prefix) {
+		c.settings.Set(prefix, sanitizedSettings)
+		return nil
+	}
+
+	ms := NewMap()
+	ms.Set(prefix, sanitizedSettings)
+
+	newSettings := ms.Msi()
+	currentSettings := c.settings.Msi()
+	mergoConfigs := c.getMergoConfigs(mergeOptions)
+
+	if err := mergo.Merge(&currentSettings, newSettings, mergoConfigs...); err != nil {
+		return err
+	}
+
+	c.settings = NewMap(currentSettings)
+
+	return nil
+}
+
+func (c *config) mergeStruct(prefix string, settings interface{}, mergeOptions ...MergeOption) error {
+	ms := c.buildMapStruct(settings)
+	msi, err := ms.Read()
+
+	if err != nil {
+		return err
+	}
+
+	return c.mergeMsi(prefix, msi.Msi(), mergeOptions...)
 }
 
 func (c *config) readEnvironment(prefix string, input map[string]interface{}) map[string]interface{} {
@@ -511,11 +563,11 @@ func (c *config) resolveEnvKey(prefix string, key string) string {
 	return strings.ToUpper(key)
 }
 
-func (c *config) unmarshalSlice(key string, output interface{}) {
+func (c *config) unmarshalSlice(key string, output interface{}, defaults []UnmarshalDefaults) {
 	data := c.settings.Get(key)
-	interfaceSlice, ok := data.([]interface{})
+	rv := reflect.ValueOf(data)
 
-	if !ok {
+	if rv.Kind() != reflect.Slice {
 		err := fmt.Errorf("data for key %s should be of type []interface{} but instead is of type %T", key, data)
 		c.err(err, "can not unmarshal key %s", key)
 		return
@@ -528,11 +580,11 @@ func (c *config) unmarshalSlice(key string, output interface{}) {
 		return
 	}
 
-	for i := 0; i < len(interfaceSlice); i++ {
+	for i := 0; i < rv.Len(); i++ {
 		keyIndex := fmt.Sprintf("%s[%d]", key, i)
 		elem := slice.NewElement()
 
-		c.unmarshalStruct(keyIndex, elem)
+		c.unmarshalStruct(keyIndex, elem, defaults)
 
 		if err := slice.Append(elem); err != nil {
 			c.err(err, "can not unmarshal key %s into slice", key)
@@ -541,26 +593,11 @@ func (c *config) unmarshalSlice(key string, output interface{}) {
 	}
 }
 
-func (c *config) unmarshalStruct(key string, output interface{}) {
+func (c *config) unmarshalStruct(key string, output interface{}, additionalDefaults []UnmarshalDefaults) {
 	refl.InitializeMapsAndSlices(output)
 	finalSettings := make(map[string]interface{})
 
-	ms, err := NewMapStruct(output, &MapStructSettings{
-		FieldTag:   "cfg",
-		DefaultTag: "default",
-		Casters: []MapStructCaster{
-			MapStructDurationCaster,
-			MapStructTimeCaster,
-		},
-		Decoders: []MapStructDecoder{
-			c.decodeAugmentHook(),
-		},
-	})
-
-	if err != nil {
-		c.err(err, "can not create map struct io for key %s", key)
-	}
-
+	ms := c.buildMapStruct(output)
 	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
 
 	if err != nil {
@@ -575,6 +612,13 @@ func (c *config) unmarshalStruct(key string, output interface{}) {
 	if err := mergo.Merge(&finalSettings, defaults.Value().MSI(), mergo.WithOverride); err != nil {
 		c.err(err, "can not merge default settings for key: %s", key)
 		return
+	}
+
+	for _, def := range additionalDefaults {
+		if err := def(c, &finalSettings); err != nil {
+			c.err(err, "can not merge additional default settings for key: %s", key)
+			return
+		}
 	}
 
 	if c.settings.Has(key) {
@@ -601,10 +645,9 @@ func (c *config) unmarshalStruct(key string, output interface{}) {
 		return
 	}
 
-	c.mergeSettingsWithKeyPrefix(key, finalSettings)
-	err = ms.Write(finalSettings)
+	c.settings.Set(key, finalSettings)
 
-	if err != nil {
+	if err = ms.Write(finalSettings); err != nil {
 		c.err(err, "error unmarshalling key: %s", key)
 		return
 	}

@@ -100,6 +100,12 @@ func WithConfigMap(configMap map[string]interface{}) Option {
 	}
 }
 
+func WithConfigPostProcessor(processor cfg.PostProcessor) Option {
+	return func(app *App) {
+		app.configPostProcessors = append(app.configPostProcessors, processor)
+	}
+}
+
 func WithConfigSanitizers(sanitizers ...cfg.Sanitizer) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {

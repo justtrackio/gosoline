@@ -8,7 +8,7 @@ import (
 
 type MapTestSuite struct {
 	suite.Suite
-	m cfg.Map
+	m *cfg.Map
 }
 
 func (s *MapTestSuite) SetupTest() {
@@ -31,10 +31,10 @@ func (s *MapTestSuite) TestSet() {
 		"i": 1,
 		"a": map[string]interface{}{
 			"b": map[string]interface{}{
-				"sl1": []int{1, 2},
+				"sl1": []interface{}{1, 2},
 			},
 		},
-		"sl2": []int{3, 4, 0, 7, 0, 9},
+		"sl2": []interface{}{3, 4, 0, 7, 0, 9},
 		"sl3": []interface{}{
 			map[string]interface{}{},
 			map[string]interface{}{
@@ -44,6 +44,17 @@ func (s *MapTestSuite) TestSet() {
 		"m1": map[string]interface{}{
 			"b": true,
 		},
+	}
+
+	actual := s.m.Msi()
+	s.Equal(expected, actual)
+}
+
+func (s *MapTestSuite) TestSetSliceOffset() {
+	s.m.Set("sl[1]", 1)
+
+	expected := map[string]interface{}{
+		"sl": []interface{}{nil, 1},
 	}
 
 	actual := s.m.Msi()
@@ -65,9 +76,10 @@ func (s *MapTestSuite) TestGet() {
 		"sl1": []interface{}{1, 2},
 	}
 
-	msi := cfg.Map(data)
+	msi := cfg.NewMap(data)
 
 	s.Equal(1, msi.Get("i"))
+	s.Equal(1, msi.Get(".i"))
 	s.Equal("string", msi.Get("a.b.s"))
 
 	s.Equal(map[string]interface{}{

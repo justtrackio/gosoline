@@ -97,3 +97,7 @@ func (p *producer) Write(ctx context.Context, models interface{}, attributeSets 
 
 	return nil
 }
+
+func ConfigurableProducerKey(name string) string {
+	return fmt.Sprintf("stream.producer.%s", name)
+}

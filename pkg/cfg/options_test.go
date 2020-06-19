@@ -11,34 +11,65 @@ type OptionsTestSuite struct {
 	config cfg.GosoConf
 }
 
+func (s *OptionsTestSuite) apply(options ...cfg.Option) {
+	if err := s.config.Option(options...); err != nil {
+		s.FailNowf(err.Error(), "can not apply options")
+	}
+}
+
 func (s *OptionsTestSuite) SetupTest() {
 	s.config = cfg.New()
 }
 
+func (s *OptionsTestSuite) TestWithConfigMap() {
+	s.apply(cfg.WithConfigMap(map[string]interface{}{
+		"b": true,
+	}))
+
+	actual := s.config.Get("b")
+	s.Equal(true, actual)
+}
+
 func (s *OptionsTestSuite) TestWithConfigSetting() {
-	expected := cfg.Map(map[string]interface{}{
+	expected := cfg.NewMap(map[string]interface{}{
 		"b": map[string]interface{}{
 			"c1": map[string]interface{}{
 				"i": 1,
 				"s": "string",
 			},
+			"sl": []interface{}{
+				map[string]interface{}{
+					"b": true,
+				},
+				map[string]interface{}{
+					"b": false,
+				},
+			},
 		},
 	})
-	err := s.config.Option(cfg.WithConfigSetting("a.b.c1", map[string]interface{}{
+
+	s.apply(cfg.WithConfigSetting("a.b.c1", map[string]interface{}{
 		"i": 1,
 		"s": "string",
 	}))
-	s.NoError(err, "there should be no error")
+	s.apply(cfg.WithConfigSetting("a.b.sl[0]", map[string]interface{}{
+		"b": true,
+	}))
+	s.apply(cfg.WithConfigSetting("a.b.sl[1]", map[string]interface{}{
+		"b": false,
+	}))
+
 	actual := s.config.Get("a")
 	s.Equal(expected.Msi(), actual)
 
 	expected.Set("b.c2", map[string]interface{}{
 		"b": true,
 	})
-	err = s.config.Option(cfg.WithConfigSetting("a.b.c2", map[string]interface{}{
+
+	s.apply(cfg.WithConfigSetting("a.b.c2", map[string]interface{}{
 		"b": true,
 	}))
-	s.NoError(err, "there should be no error")
+
 	actual = s.config.Get("a")
 	s.Equal(expected.Msi(), actual)
 }

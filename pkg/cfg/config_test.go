@@ -462,6 +462,44 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyValidation() {
 	s.EqualError(cfgErr, "2 errors occurred:\n\t* the setting Foo with value bar does not match its requirement\n\t* the setting A with value 0 does not match its requirement\n\n")
 }
 
+func (s *ConfigTestSuite) TestConfig_UnmarshalKeyWithDefaultsFromKey() {
+	type ConfigNested struct {
+		I int  `cfg:"i" default:"1"`
+		B bool `cfg:"b"`
+	}
+
+	type configMap struct {
+		S      string       `cfg:"s"`
+		Nested ConfigNested `cfg:"nested"`
+	}
+
+	s.setupConfigValues(map[string]interface{}{
+		"key": map[string]interface{}{
+			"s": "string",
+			"nested": map[string]interface{}{
+				"i": 2,
+			},
+		},
+		"additionalDefaults": map[string]interface{}{
+			"i": 3,
+			"b": true,
+		},
+	})
+
+	expected := configMap{
+		S: "string",
+		Nested: ConfigNested{
+			I: 2,
+			B: true,
+		},
+	}
+
+	cm := configMap{}
+	s.config.UnmarshalKey("key", &cm, cfg.UnmarshalWithDefaultsFromKey("additionalDefaults", "nested"))
+
+	s.Equal(expected, cm)
+}
+
 func (s *ConfigTestSuite) TestConfig_FromYml() {
 	type configMap struct {
 		D   time.Duration          `cfg:"d"`

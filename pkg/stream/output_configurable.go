@@ -19,7 +19,7 @@ const (
 )
 
 func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Output {
-	key := fmt.Sprintf("%s.type", getConfigurableOutputKey(name))
+	key := fmt.Sprintf("%s.type", ConfigurableOutputKey(name))
 	t := config.GetString(key)
 
 	switch t {
@@ -45,7 +45,7 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Ou
 }
 
 func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
-	key := getConfigurableOutputKey(name)
+	key := ConfigurableOutputKey(name)
 	settings := &FileOutputSettings{}
 	config.UnmarshalKey(key, settings)
 
@@ -58,7 +58,7 @@ type kinesisOutputConfiguration struct {
 }
 
 func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
-	key := getConfigurableOutputKey(name)
+	key := ConfigurableOutputKey(name)
 	settings := &kinesisOutputConfiguration{}
 	config.UnmarshalKey(key, settings)
 
@@ -82,7 +82,7 @@ type redisListOutputConfiguration struct {
 }
 
 func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
-	key := getConfigurableOutputKey(name)
+	key := ConfigurableOutputKey(name)
 
 	configuration := redisListOutputConfiguration{}
 	config.UnmarshalKey(key, &configuration)
@@ -99,7 +99,8 @@ func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name str
 	})
 }
 
-type snsOutputConfiguration struct {
+type SnsOutputConfiguration struct {
+	Type        string                `cfg:"type"`
 	Project     string                `cfg:"project"`
 	Family      string                `cfg:"family"`
 	Application string                `cfg:"application"`
@@ -109,9 +110,9 @@ type snsOutputConfiguration struct {
 }
 
 func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
-	key := getConfigurableOutputKey(name)
+	key := ConfigurableOutputKey(name)
 
-	configuration := snsOutputConfiguration{}
+	configuration := SnsOutputConfiguration{}
 	config.UnmarshalKey(key, &configuration)
 
 	return NewSnsOutput(config, logger, SnsOutputSettings{
@@ -139,7 +140,7 @@ type sqsOutputConfiguration struct {
 }
 
 func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
-	key := getConfigurableOutputKey(name)
+	key := ConfigurableOutputKey(name)
 
 	configuration := sqsOutputConfiguration{}
 	config.UnmarshalKey(key, &configuration)
@@ -159,6 +160,6 @@ func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) O
 	})
 }
 
-func getConfigurableOutputKey(name string) string {
+func ConfigurableOutputKey(name string) string {
 	return fmt.Sprintf("stream.output.%s", name)
 }

@@ -2,6 +2,7 @@ package test
 
 import (
 	"github.com/applike/gosoline/pkg/application"
+	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/test/env"
 	"os"
@@ -44,6 +45,12 @@ func WithConfigFile(file string) SuiteOption {
 func WithEnvSetup(setups ...func()) SuiteOption {
 	return func(s *suiteOptions) {
 		s.envSetup = append(s.envSetup, setups...)
+	}
+}
+
+func WithFixtures(fixtureSets []*fixtures.FixtureSet) SuiteOption {
+	return func(s *suiteOptions) {
+		s.appOptions = append(s.appOptions, application.WithFixtures(fixtureSets))
 	}
 }
 

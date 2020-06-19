@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const PathSeparator = "."
@@ -12,29 +13,59 @@ const arrayAccessRegexString = `^(.+)\[([0-9]+)\]$`
 
 var arrayAccessRegex = regexp.MustCompile(arrayAccessRegexString)
 
-type Map map[string]interface{}
-
-func NewMap() Map {
-	return make(map[string]interface{})
+type Map struct {
+	lck sync.Mutex
+	msi map[string]interface{}
 }
 
-func (m Map) Msi() map[string]interface{} {
+func NewMap(msis ...map[string]interface{}) *Map {
+	m := &Map{
+		msi: make(map[string]interface{}),
+	}
+
+	if len(msis) > 0 {
+		m.msi = msis[0]
+	}
+
 	return m
 }
 
-func (m Map) Get(selector string) interface{} {
-	return m.access(m, selector, nil, false)
+func (m *Map) Msi() map[string]interface{} {
+	return m.msi
 }
 
-func (m Map) Has(selector string) bool {
-	if m == nil {
+func (m *Map) Get(selector string) interface{} {
+	m.lck.Lock()
+	defer m.lck.Unlock()
+
+	return m.access(m.msi, selector, nil, false)
+}
+
+func (m *Map) Has(selector string) bool {
+	m.lck.Lock()
+
+	if len(m.msi) == 0 {
+		m.lck.Unlock()
 		return false
 	}
+
+	m.lck.Unlock()
+
 	return m.Get(selector) != nil
 }
 
-func (m Map) Set(key string, value interface{}) {
-	m.access(m, key, value, true)
+func (m *Map) Set(key string, value interface{}) {
+	m.lck.Lock()
+	defer m.lck.Unlock()
+
+	if msi, ok := value.(map[string]interface{}); ok && key == "." {
+		for k, v := range msi {
+			m.msi[k] = v
+		}
+		return
+	}
+
+	m.access(m.msi, key, value, true)
 }
 
 // getIndex returns the index, which is hold in s by two braches.
@@ -55,8 +86,10 @@ func getIndex(s string) (int, string) {
 
 // access accesses the object using the selector and performs the
 // appropriate action.
-func (m Map) access(current interface{}, selector string, value interface{}, isSet bool) interface{} {
+func (m *Map) access(current interface{}, selector string, value interface{}, isSet bool) interface{} {
+	selector = strings.Trim(selector, ".")
 	selSegs := strings.SplitN(selector, PathSeparator, 2)
+
 	thisSel := selSegs[0]
 	index := -1
 
@@ -64,9 +97,6 @@ func (m Map) access(current interface{}, selector string, value interface{}, isS
 		index, thisSel = getIndex(thisSel)
 	}
 
-	if curMap, ok := current.(Map); ok {
-		current = map[string]interface{}(curMap)
-	}
 	// get the object in question
 	switch current.(type) {
 	case map[string]interface{}:
@@ -125,27 +155,29 @@ func (m Map) access(current interface{}, selector string, value interface{}, isS
 	return current
 }
 
-func (m Map) doSet(current map[string]interface{}, key string, index int, value interface{}) {
+func (m *Map) doSet(current map[string]interface{}, key string, index int, value interface{}) {
+	vv := reflect.ValueOf(value)
+
+	if index < 0 && vv.Kind() == reflect.Slice {
+		m.doSetSlice(current, key, vv)
+		return
+	}
+
 	if index < 0 {
 		current[key] = value
 		return
 	}
 
 	if _, ok := current[key]; !ok {
-		vt := reflect.TypeOf(value)
-		vv := reflect.ValueOf(value)
-		st := reflect.SliceOf(vt)
+		array := make([]interface{}, index+1)
+		array[index] = value
 
-		array := reflect.MakeSlice(st, 0, 4)
-		array = reflect.Append(array, vv)
-
-		current[key] = array.Interface()
+		current[key] = array
 		return
 	}
 
 	array := current[key]
 
-	vv := reflect.ValueOf(value)
 	sv := reflect.ValueOf(array)
 
 	if index < sv.Len() {
@@ -162,7 +194,17 @@ func (m Map) doSet(current map[string]interface{}, key string, index int, value 
 	return
 }
 
-func (m Map) fillSlice(array *[]interface{}, index int, segmentCount int, value interface{}) {
+func (m *Map) doSetSlice(current map[string]interface{}, key string, value reflect.Value) {
+	sl := make([]interface{}, value.Len())
+
+	for i := 0; i < value.Len(); i++ {
+		sl[i] = value.Index(i).Interface()
+	}
+
+	current[key] = sl
+}
+
+func (m *Map) fillSlice(array *[]interface{}, index int, segmentCount int, value interface{}) {
 	va := reflect.ValueOf(array).Elem()
 	vv := reflect.ValueOf(value)
 

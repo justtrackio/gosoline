@@ -8,10 +8,11 @@ import (
 )
 
 type App struct {
-	configOptions []ConfigOption
-	kernelOptions []KernelOption
-	loggerOptions []LoggerOption
-	setupOptions  []SetupOption
+	configOptions        []ConfigOption
+	configPostProcessors []cfg.PostProcessor
+	kernelOptions        []KernelOption
+	loggerOptions        []LoggerOption
+	setupOptions         []SetupOption
 }
 
 func (a *App) addConfigOption(opt ConfigOption) {
@@ -68,9 +69,16 @@ func New(options ...Option) kernel.Kernel {
 	}
 
 	config := cfg.New()
+
 	for _, opt := range app.configOptions {
 		if err := opt(config); err != nil {
 			defaultErrorHandler(err, "can not apply config options on application")
+		}
+	}
+
+	for _, processor := range app.configPostProcessors {
+		if err := processor(config); err != nil {
+			defaultErrorHandler(err, "can not apply post processor on config")
 		}
 	}
 

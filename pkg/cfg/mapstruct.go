@@ -113,18 +113,32 @@ func (m *MapStruct) doReadZeroAndDefaultValues(target interface{}) (objx.Map, ob
 	return values, defaults, nil
 }
 
-func (m *MapStruct) Read() (objx.Map, error) {
-	tt := reflect.TypeOf(m.target).Elem()
-	tv := reflect.ValueOf(m.target).Elem()
+func (m *MapStruct) Read() (*Map, error) {
+	mapValues := NewMap()
 
-	return m.doRead(tt, tv)
+	if err := m.doReadStruct("", mapValues, m.target); err != nil {
+		return nil, err
+	}
+
+	return mapValues, nil
 }
 
-func (m *MapStruct) doRead(targetType reflect.Type, targetValue reflect.Value) (objx.Map, error) {
-	mapValues := objx.MSI()
+func (m *MapStruct) doReadMap(path string, mapValues *Map, target map[string]interface{}) error {
+	return nil
+}
 
-	var cfg string
+func (m *MapStruct) doReadStruct(path string, mapValues *Map, target interface{}) error {
+	targetType := reflect.TypeOf(target)
+	targetValue := reflect.ValueOf(target)
+
+	if targetType.Kind() == reflect.Ptr {
+		targetType = targetType.Elem()
+		targetValue = targetValue.Elem()
+	}
+
 	var ok bool
+	var err error
+	var cfg, fieldPath string
 
 	for i := 0; i < targetValue.NumField(); i++ {
 		fieldType := targetType.Field(i)
@@ -135,15 +149,52 @@ func (m *MapStruct) doRead(targetType reflect.Type, targetValue reflect.Value) (
 			continue
 		}
 
+		if fieldType.Anonymous {
+			target = fieldValue.Interface()
+
+			if err = m.doReadStruct(path, mapValues, target); err != nil {
+				return err
+			}
+
+			continue
+		}
+
 		// skip fields without tag
 		if cfg, ok = fieldType.Tag.Lookup(m.settings.FieldTag); !ok {
 			continue
 		}
 
-		mapValues.Set(cfg, fieldValue.Interface())
+		fieldPath = fmt.Sprintf("%s.%s", path, cfg)
+
+		if fieldValue.Kind() == reflect.Map {
+			target = fieldValue.Interface()
+
+			if _, ok := target.(map[string]interface{}); !ok {
+				return fmt.Errorf("MSI fields are allowed only for path %s", fieldPath)
+			}
+
+			if err = m.doReadMap(fieldPath, mapValues, target.(map[string]interface{})); err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		if fieldType.Type.Kind() == reflect.Struct && fieldValue.Type() != reflect.TypeOf(time.Time{}) {
+			target = fieldValue.Interface()
+
+			if err = m.doReadStruct(fieldPath, mapValues, target); err != nil {
+				return fmt.Errorf("can not read nested struct values from path %s: %w", fieldPath, err)
+			}
+
+			continue
+		}
+
+		value := fieldValue.Interface()
+		mapValues.Set(fieldPath, value)
 	}
 
-	return mapValues, nil
+	return nil
 }
 
 func (m *MapStruct) Write(values map[string]interface{}) error {

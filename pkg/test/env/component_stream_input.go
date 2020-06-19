@@ -5,7 +5,6 @@ import (
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/stream"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 )
 
@@ -23,18 +22,34 @@ func (s *streamInputComponent) AppOptions() []application.Option {
 	}
 }
 
+func (s *streamInputComponent) Publish(body interface{}, attributes map[string]interface{}) {
+	bytes, err := json.Marshal(body)
+
+	if err != nil {
+		s.failNow(err.Error(), "can not marshal message body for publishing")
+	}
+
+	message := &stream.Message{
+		Attributes: attributes,
+		Body:       string(bytes),
+	}
+
+	s.input.Publish(message)
+	s.input.Stop()
+}
+
 func (s *streamInputComponent) PublishFromJsonFile(fileName string) {
 	bytes, err := ioutil.ReadFile(fileName)
 
 	if err != nil {
-		assert.FailNow(s.t, "can not open json file to publish messages", err.Error())
+		s.failNow(err.Error(), "can not open json file to publish messages")
 	}
 
 	messages := make([]*stream.Message, 0)
 	err = json.Unmarshal(bytes, &messages)
 
 	if err != nil {
-		assert.FailNow(s.t, "can not unmarshal messages from json file", err.Error())
+		s.failNow(err.Error(), "can not unmarshal messages from json file")
 	}
 
 	for _, msg := range messages {

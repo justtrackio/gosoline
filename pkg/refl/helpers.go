@@ -4,6 +4,16 @@ import (
 	"reflect"
 )
 
+func IsStructOrPointerToStruct(value interface{}) bool {
+	t := reflect.TypeOf(value)
+
+	if t.Kind() == reflect.Struct {
+		return true
+	}
+
+	return IsPointerToStruct(value)
+}
+
 func IsPointerToSlice(value interface{}) bool {
 	t := reflect.TypeOf(value)
 

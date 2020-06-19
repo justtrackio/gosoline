@@ -228,12 +228,70 @@ func TestMapStruct_ReadBasic(t *testing.T) {
 	}
 
 	ms := setupMapStructIO(t, source)
-	values, err := ms.Read()
+	msi, err := ms.Read()
 
 	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
 
-	msi := values.Value().MSI()
-	assert.Equal(t, expectedValues, msi)
+func TestMapStructIO_ReadNested(t *testing.T) {
+	type sourceStructNested struct {
+		B bool   `cfg:"b"`
+		S string `cfg:"s"`
+	}
+
+	type sourceStruct struct {
+		Nested sourceStructNested `cfg:"nested"`
+	}
+
+	source := &sourceStruct{
+		Nested: sourceStructNested{
+			B: true,
+			S: "string",
+		},
+	}
+
+	expectedValues := map[string]interface{}{
+		"nested": map[string]interface{}{
+			"b": true,
+			"s": "string",
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestMapStructIO_ReadAnonymous(t *testing.T) {
+	type SourceStructAnonymous struct {
+		B bool   `cfg:"b"`
+		S string `cfg:"s"`
+	}
+
+	type sourceStruct struct {
+		SourceStructAnonymous
+	}
+
+	source := &sourceStruct{
+		SourceStructAnonymous: SourceStructAnonymous{
+			B: true,
+			S: "string",
+		},
+	}
+
+	expectedValues := map[string]interface{}{
+		"b": true,
+		"s": "string",
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
 }
 
 func TestMapStructIO_WriteBasic(t *testing.T) {

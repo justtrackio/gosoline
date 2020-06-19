@@ -33,7 +33,7 @@ func (m *multiOutput) Write(ctx context.Context, batch []*Message) error {
 }
 
 func NewConfigurableMultiOutput(config cfg.Config, logger mon.Logger, base string) Output {
-	key := fmt.Sprintf("%s.types", getConfigurableOutputKey(base))
+	key := fmt.Sprintf("%s.types", ConfigurableOutputKey(base))
 	ts := config.Get(key).(map[string]interface{})
 	output := &multiOutput{
 		outputs: make([]Output, 0),

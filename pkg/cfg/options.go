@@ -29,16 +29,15 @@ func WithConfigFileFlag(flagName string) Option {
 	}
 }
 
-func WithConfigMap(settings map[string]interface{}) Option {
+func WithConfigMap(settings map[string]interface{}, mergeOptions ...MergeOption) Option {
 	return func(cfg *config) error {
-		return cfg.mergeSettings(settings)
+		return cfg.merge(".", settings, mergeOptions...)
 	}
 }
 
-func WithConfigSetting(key string, settings interface{}) Option {
+func WithConfigSetting(key string, settings interface{}, mergeOptions ...MergeOption) Option {
 	return func(cfg *config) error {
-		cfg.mergeSettingsWithKeyPrefix(key, settings)
-		return nil
+		return cfg.merge(key, settings, mergeOptions...)
 	}
 }
 

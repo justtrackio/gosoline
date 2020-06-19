@@ -5,6 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -67,6 +68,10 @@ type baseComponent struct {
 
 func (c *baseComponent) SetT(t *testing.T) {
 	c.t = t
+}
+
+func (c *baseComponent) failNow(failureMessage string, msgAndArgs ...interface{}) {
+	assert.FailNow(c.t, failureMessage, msgAndArgs...)
 }
 
 type componentSkeleton struct {

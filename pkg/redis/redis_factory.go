@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	DefaultClientName = "default"
 	RedisModeDiscover = "discover"
 	RedisModeLocal    = "local"
 )
