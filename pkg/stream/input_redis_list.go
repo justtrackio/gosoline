@@ -35,7 +35,7 @@ type redisListInput struct {
 
 func NewRedisListInput(config cfg.Config, logger mon.Logger, settings *RedisListInputSettings) Input {
 	settings.PadFromConfig(config)
-	client := redis.GetClient(config, logger, settings.ServerName)
+	client := redis.ProvideClient(config, logger, settings.ServerName)
 
 	defaultMetrics := getRedisListInputDefaultMetrics(settings.AppId, settings.Key)
 	mw := mon.NewMetricDaemonWriter(defaultMetrics...)

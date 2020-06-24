@@ -4,8 +4,5 @@ app_name: app
 
 env: test
 
-redis_default_mode: local
-redis_kvstore_testModel_mode: local
-
 fixtures:
   enabled: true

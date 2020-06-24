@@ -24,7 +24,7 @@ func NewRedisKvStore(config cfg.Config, logger mon.Logger, settings *Settings) K
 	settings.PadFromConfig(config)
 
 	redisName := RedisBasename(settings)
-	client := redis.GetClient(config, logger, redisName)
+	client := redis.ProvideClient(config, logger, redisName)
 
 	return NewRedisKvStoreWithInterfaces(logger, client, settings)
 }

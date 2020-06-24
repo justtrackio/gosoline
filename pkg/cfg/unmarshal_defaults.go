@@ -9,6 +9,10 @@ type UnmarshalDefaults func(config Config, finalSettings *map[string]interface{}
 
 func UnmarshalWithDefaultsFromKey(sourceKey string, targetKey string) UnmarshalDefaults {
 	return func(config Config, finalSettings *map[string]interface{}) error {
+		if !config.IsSet(sourceKey) {
+			return nil
+		}
+
 		sourceValues := config.Get(sourceKey)
 
 		if msi, ok := sourceValues.(map[string]interface{}); ok {

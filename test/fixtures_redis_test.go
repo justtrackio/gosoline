@@ -139,7 +139,7 @@ func (s FixturesRedisSuite) TestRedisKvStore() {
 	_ = config.Option(
 		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
-		cfg.WithConfigMap(s.redisKvStoreConfig()),
+		cfg.WithConfigMap(s.redisConfig()),
 	)
 
 	// ensure clean start
@@ -163,7 +163,7 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 	_ = config.Option(
 		cfg.WithConfigFile("test_configs/config.redis.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_redis.test.yml", "yml"),
-		cfg.WithConfigMap(s.redisKvStoreConfig()),
+		cfg.WithConfigMap(s.redisConfig()),
 	)
 
 	// ensure clean start
@@ -293,13 +293,10 @@ func redisKvstoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 func (s FixturesRedisSuite) redisConfig() map[string]interface{} {
 	redisAddress := fmt.Sprintf("%s:%d", s.mocks.ProvideRedisHost("redis"), s.mocks.ProvideRedisPort("redis"))
 	return map[string]interface{}{
-		"redis_default_addr": redisAddress,
-	}
-}
-
-func (s FixturesRedisSuite) redisKvStoreConfig() map[string]interface{} {
-	redisAddress := fmt.Sprintf("%s:%d", s.mocks.ProvideRedisHost("redis"), s.mocks.ProvideRedisPort("redis"))
-	return map[string]interface{}{
-		"redis_kvstore_testModel_addr": redisAddress,
+		"redis": map[string]interface{}{
+			"default": map[string]interface{}{
+				"address": redisAddress,
+			},
+		},
 	}
 }

@@ -19,7 +19,7 @@ func (s *PublisherTestSuite) SetupTest() {
 	logger := monMocks.NewLoggerMockedAll()
 	s.producer = new(streamMocks.Producer)
 
-	s.publisher = pubsub.NewPublisher(logger, s.producer, &pubsub.PublisherSettings{
+	s.publisher = pubsub.NewPublisherWithInterfaces(logger, s.producer, &pubsub.PublisherSettings{
 		Project:     "gosoline",
 		Family:      "test",
 		Application: "app",

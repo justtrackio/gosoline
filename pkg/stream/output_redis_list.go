@@ -34,7 +34,7 @@ func NewRedisListOutput(config cfg.Config, logger mon.Logger, settings *RedisLis
 	settings.PadFromConfig(config)
 
 	tracer := tracing.ProviderTracer(config, logger)
-	client := redis.GetClient(config, logger, settings.ServerName)
+	client := redis.ProvideClient(config, logger, settings.ServerName)
 
 	defaultMetrics := getRedisListOutputDefaultMetrics(settings.AppId, settings.Key)
 	mw := mon.NewMetricDaemonWriter(defaultMetrics...)

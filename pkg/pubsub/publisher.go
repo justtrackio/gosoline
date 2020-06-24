@@ -32,7 +32,7 @@ type publisher struct {
 	settings *PublisherSettings
 }
 
-func NewPublisherFromConfig(config cfg.Config, logger mon.Logger, name string) *publisher {
+func NewPublisher(config cfg.Config, logger mon.Logger, name string) *publisher {
 	var settings *PublisherSettings
 	var allSettings = readPublisherSettings(config)
 
@@ -50,10 +50,10 @@ func NewPublisherFromConfig(config cfg.Config, logger mon.Logger, name string) *
 
 	producer := stream.NewProducer(config, logger, settings.Producer)
 
-	return NewPublisher(logger, producer, settings)
+	return NewPublisherWithInterfaces(logger, producer, settings)
 }
 
-func NewPublisher(logger mon.Logger, producer stream.Producer, settings *PublisherSettings) *publisher {
+func NewPublisherWithInterfaces(logger mon.Logger, producer stream.Producer, settings *PublisherSettings) *publisher {
 	return &publisher{
 		logger:   logger,
 		producer: producer,

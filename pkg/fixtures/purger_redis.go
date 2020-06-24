@@ -13,7 +13,7 @@ type redisPurger struct {
 }
 
 func newRedisPurger(config cfg.Config, logger mon.Logger, name *string) *redisPurger {
-	client := redis.GetClient(config, logger, *name)
+	client := redis.ProvideClient(config, logger, *name)
 
 	return &redisPurger{
 		logger: logger,
