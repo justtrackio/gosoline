@@ -5,6 +5,7 @@ import (
 )
 
 const (
+	AttributeSqsMessageId     = "sqsMessageId"
 	AttributeSqsReceiptHandle = "sqsReceiptHandle"
 )
 
@@ -18,14 +19,11 @@ func (m *Message) MarshalToBytes() ([]byte, error) {
 }
 
 func (m *Message) GetReceiptHandler() interface{} {
-	var receiptHandleInterface interface{}
-	var ok bool
-
-	if receiptHandleInterface, ok = m.Attributes[AttributeSqsReceiptHandle]; !ok {
-		return nil
+	if receiptHandle, ok := m.Attributes[AttributeSqsReceiptHandle]; ok {
+		return receiptHandle
 	}
 
-	return receiptHandleInterface
+	return nil
 }
 
 func (m *Message) MarshalToString() (string, error) {

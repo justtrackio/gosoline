@@ -114,6 +114,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 				msg.Attributes = make(map[string]interface{})
 			}
 
+			msg.Attributes[AttributeSqsMessageId] = *sqsMessage.MessageId
 			msg.Attributes[AttributeSqsReceiptHandle] = *sqsMessage.ReceiptHandle
 
 			i.channel <- msg

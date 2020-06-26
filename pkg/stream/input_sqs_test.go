@@ -34,6 +34,7 @@ func TestSqsInput_Run(t *testing.T) {
 		return []*sqs.Message{
 			{
 				Body:          aws.String(`{"body": "foobar"}`),
+				MessageId:     aws.String(""),
 				ReceiptHandle: aws.String(""),
 			},
 		}
