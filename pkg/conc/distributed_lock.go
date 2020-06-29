@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/hashicorp/go-multierror"
 	"time"
 )
 
@@ -41,4 +42,75 @@ type DistributedLockSettings struct {
 	Backoff         cloud.BackoffSettings
 	DefaultLockTime time.Duration
 	Domain          string
+}
+
+type ReleaseFunc func() error
+
+// Start a new go routine which renews our distributed lock for us for lockTime every time lockTime/2 time passes.
+// Returns a function which has to be used to release the lock eventually and kill the go routine keeping the lock alive.
+// If the context gets canceled, the lock will also no longer be held alive, but it will not be released until you call
+// Release on the lock or the ReleaseFunc returned by this function.
+func HoldDistributedLock(ctx context.Context, lock DistributedLock, lockTime time.Duration) ReleaseFunc {
+	ch := make(chan struct{})
+	errCh := make(chan error)
+
+	go func() {
+		ticker := time.NewTimer(lockTime / 2)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				// do nothing, we won't release the lock from someone who might still need to do some cleanup
+
+				return
+			case <-ch:
+				// do nothing, the caller of the release func releases the lock
+
+				return
+			case <-ticker.C:
+				err := lock.Renew(ctx, lockTime)
+
+				if err != nil {
+					if !cloud.IsRequestCanceled(err) {
+						// we really can't handle the error here, so we move it to a channel we can read from later
+
+						errCh <- err
+					}
+
+					// we could retry again and again, but would risk only spinning forever, so we
+					// stop this here and let our caller deal with this eventually
+
+					return
+				}
+
+				ticker.Reset(lockTime / 2)
+			}
+		}
+	}()
+
+	return func() error {
+		close(ch)
+
+		// release the lock and combine any errors we might have gotten during the process
+
+		releaseErr := lock.Release()
+		var renewErr error
+
+		select {
+		case err := <-errCh:
+			renewErr = err
+		default:
+		}
+
+		if releaseErr != nil && renewErr != nil {
+			return multierror.Append(renewErr, releaseErr)
+		}
+
+		if releaseErr != nil {
+			return releaseErr
+		}
+
+		return renewErr
+	}
 }
