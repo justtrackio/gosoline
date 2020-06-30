@@ -14,6 +14,12 @@ type Message struct {
 	Body       string                 `json:"body"`
 }
 
+func (m *Message) WithGzipCompression() *Message {
+	m.Attributes[AttributeCompression] = messageBodyCompressors[CompressionGZip]
+
+	return m
+}
+
 func (m *Message) MarshalToBytes() ([]byte, error) {
 	return json.Marshal(*m)
 }
