@@ -38,6 +38,10 @@ func (e jsonEncoder) Encode(data interface{}) ([]byte, error) {
 }
 
 func (e jsonEncoder) Decode(data []byte, out interface{}) error {
+	if _, ok := out.(*[]byte); ok {
+		return messageBodyEncoders[EncodingText].Decode(data, out)
+	}
+
 	return json.Unmarshal(data, out)
 }
 
