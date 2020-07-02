@@ -64,6 +64,7 @@ func (r *notifyingRepository) doCallback(ctx context.Context, callbackType strin
 		return nil
 	}
 
+	logger := r.logger.WithContext(ctx)
 	errors := make([]error, 0)
 
 	for _, c := range r.notifiers[callbackType] {
@@ -71,12 +72,13 @@ func (r *notifyingRepository) doCallback(ctx context.Context, callbackType strin
 
 		if err != nil {
 			errors = append(errors, err)
+			logger.Warnf("%T notifier errored out with: %v", c, err)
 		}
 	}
 
 	if len(errors) > 0 {
 		err := fmt.Errorf("there were %v errors during execution of the callbacks for create", len(errors))
-		r.logger.WithContext(ctx).Error(err, err.Error())
+		logger.Error(err, err.Error())
 
 		return err
 	}
