@@ -50,6 +50,9 @@ func WithEnvSetup(setups ...func()) SuiteOption {
 
 func WithFixtures(fixtureSets []*fixtures.FixtureSet) SuiteOption {
 	return func(s *suiteOptions) {
+		s.appOptions = append(s.appOptions, application.WithConfigSetting("fixtures", map[string]interface{}{
+			"enabled": true,
+		}))
 		s.appOptions = append(s.appOptions, application.WithFixtures(fixtureSets))
 	}
 }

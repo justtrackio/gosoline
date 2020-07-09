@@ -41,6 +41,10 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		}
 	}
 
+	if err := cfg.ApplyPostProcessors(config, logger); err != nil {
+		return nil, fmt.Errorf("can not apply post processor on config: %w", err)
+	}
+
 	env.runner = NewContainerRunner(config, logger)
 
 	var err error
@@ -113,4 +117,8 @@ func (e *Environment) MySql(name string) *mysqlComponent {
 
 func (e *Environment) StreamInput(name string) *streamInputComponent {
 	return e.Component(componentStreamInput, name).(*streamInputComponent)
+}
+
+func (e *Environment) StreamOutput(name string) *streamOutputComponent {
+	return e.Component(componentStreamOutput, name).(*streamOutputComponent)
 }

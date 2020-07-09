@@ -25,7 +25,7 @@ func (o *InMemoryOutput) Len() int {
 }
 
 func (o *InMemoryOutput) Get(i int) (*Message, bool) {
-	if len(o.messages) < i {
+	if len(o.messages) <= i {
 		return nil, false
 	}
 

@@ -399,10 +399,7 @@ func (c *config) get(key string) interface{} {
 		return nil
 	}
 
-	if err := c.mergeMsi(".", value); err != nil {
-		c.err(err, "can not merge new settings into config")
-		return nil
-	}
+	c.settings.Set(key, value[key])
 
 	return value[key]
 }
@@ -537,7 +534,7 @@ func (c *config) readEnvironment(prefix string, input map[string]interface{}) ma
 		}
 
 		if envValue, ok := c.lookupEnv(key); ok {
-			environment[k] = envValue
+			environment[k] = c.augmentString(envValue)
 		}
 	}
 

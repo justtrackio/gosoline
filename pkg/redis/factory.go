@@ -44,9 +44,7 @@ func ReadSettings(config cfg.Config, name string) *Settings {
 	key := fmt.Sprintf("redis.%s", name)
 
 	settings := &Settings{}
-
 	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey("redis.default", "."))
-	settings.PadFromConfig(config)
 
 	if settings.Name == "" {
 		settings.Name = name

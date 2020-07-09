@@ -6,10 +6,21 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 )
 
-func ConfigPostProcessor(config cfg.GosoConf) error {
-	publisherSettings := readPublisherSettings(config)
+func init() {
+	cfg.AddPostProcessor(8, "gosoline.pubsub", ConfigPostProcessor)
+}
 
-	for i, settings := range publisherSettings {
+func ConfigPostProcessor(config cfg.GosoConf) error {
+	if !config.IsSet(ConfigKeyPubSubPublishers) {
+		return nil
+	}
+
+	publishers := config.GetStringMap(ConfigKeyPubSubPublishers)
+
+	for name := range publishers {
+		publisherKey := getPublisherConfigKey(name)
+		settings := readPublisherSetting(config, name)
+
 		outputSettings := &stream.SnsOutputConfiguration{}
 		config.UnmarshalDefaults(outputSettings, cfg.UnmarshalWithDefaultsFromKey(stream.ConfigKeyStreamBackoff, "backoff"))
 
@@ -39,7 +50,6 @@ func ConfigPostProcessor(config cfg.GosoConf) error {
 
 		producerKey := stream.ConfigurableProducerKey(producerName)
 		outputKey := stream.ConfigurableOutputKey(outputName)
-		publisherKey := fmt.Sprintf("%s[%d]", ConfigKeyPubSubPublishers, i)
 
 		configOptions := []cfg.Option{
 			cfg.WithConfigSetting(producerKey, producerSettings, cfg.MergeWithoutOverride),
@@ -55,9 +65,19 @@ func ConfigPostProcessor(config cfg.GosoConf) error {
 	return nil
 }
 
-func readPublisherSettings(config cfg.Config) []*PublisherSettings {
-	publisherSettings := make([]*PublisherSettings, 0)
-	config.UnmarshalKey(ConfigKeyPubSubPublishers, &publisherSettings)
+func getPublisherConfigKey(name string) string {
+	return fmt.Sprintf("%s.%s", ConfigKeyPubSubPublishers, name)
+}
 
-	return publisherSettings
+func readPublisherSetting(config cfg.Config, name string) *PublisherSettings {
+	publisherKey := getPublisherConfigKey(name)
+
+	settings := &PublisherSettings{}
+	config.UnmarshalKey(publisherKey, settings)
+
+	if settings.Name == "" {
+		settings.Name = name
+	}
+
+	return settings
 }

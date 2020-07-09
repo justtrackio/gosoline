@@ -38,6 +38,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithConfigFileFlag,
 		WithConfigEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
 		WithConfigSanitizers(cfg.TimeSanitizer),
+		WithConfigServer,
 		WithLoggerFormat(mon.FormatGelfFields),
 		WithLoggerApplicationTag,
 		WithLoggerTagsFromConfig,
@@ -76,17 +77,15 @@ func New(options ...Option) kernel.Kernel {
 		}
 	}
 
-	for _, processor := range app.configPostProcessors {
-		if err := processor(config); err != nil {
-			defaultErrorHandler(err, "can not apply post processor on config")
-		}
-	}
-
 	logger := mon.NewLogger()
 	for _, opt := range app.loggerOptions {
 		if err := opt(config, logger); err != nil {
 			defaultErrorHandler(err, "can not apply logger options on application")
 		}
+	}
+
+	if err := cfg.ApplyPostProcessors(config, logger); err != nil {
+		defaultErrorHandler(err, "can not apply post processor on config")
 	}
 
 	for _, opt := range app.setupOptions {

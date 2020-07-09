@@ -3,10 +3,10 @@ package cfg
 import "fmt"
 
 type AppId struct {
-	Project     string `cfg:"project"`
-	Environment string `cfg:"environment"`
-	Family      string `cfg:"family"`
-	Application string `cfg:"application"`
+	Project     string `cfg:"project" default:"{app_project}"`
+	Environment string `cfg:"environment" default:"{env}"`
+	Family      string `cfg:"family" default:"{app_family}"`
+	Application string `cfg:"application" default:"{app_name}"`
 }
 
 func GetAppIdFromConfig(config Config) AppId {

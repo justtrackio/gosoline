@@ -285,6 +285,7 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Struct() {
 		Foo          string   `cfg:"foo"`
 		Bla          string   `cfg:"bla"`
 		Def          int      `cfg:"def" default:"1"`
+		AugDef       string   `cfg:"aug_def" default:"{keyAD}"`
 		Slice        []int    `cfg:"slice"`
 		SliceAugment []string `cfg:"slice_augment"`
 		Nested       struct {
@@ -303,8 +304,9 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Struct() {
 				"augmented": "my-{key3}",
 			},
 		},
-		"key2": "c",
-		"key3": "value",
+		"key2":  "c",
+		"key3":  "value",
+		"keyAD": "augmented default",
 	})
 
 	cm := configMap{}
@@ -313,6 +315,7 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Struct() {
 	s.Equal("zorg", cm.Foo)
 	s.Equal("test", cm.Bla)
 	s.Equal(1, cm.Def)
+	s.Equal("augmented default", cm.AugDef)
 	s.Equal([]int{1, 2}, cm.Slice)
 	s.Equal([]string{"a", "b-c"}, cm.SliceAugment)
 	s.Equal(time.Second, cm.Nested.A)

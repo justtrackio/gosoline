@@ -100,6 +100,13 @@ func WithConfigMap(configMap map[string]interface{}) Option {
 	}
 }
 
+func WithConfigServer(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
+		kernel.Add("config-server", new(ConfigServer))
+		return nil
+	})
+}
+
 func WithConfigPostProcessor(processor cfg.PostProcessor) Option {
 	return func(app *App) {
 		app.configPostProcessors = append(app.configPostProcessors, processor)

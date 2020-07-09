@@ -13,15 +13,14 @@ const (
 )
 
 type PublisherSettings struct {
-	Producer    string `cfg:"producer" validate:"required_without=OutputType"`
-	OutputType  string `cfg:"output_type" validate:"required_without=Producer"`
-	Shared      bool   `cfg:"shared"`
-	Project     string `cfg:"project"`
-	Family      string `cfg:"family"`
-	Application string `cfg:"application"`
-	Name        string `cfg:"name" validate:"required"`
+	cfg.AppId
+	Producer   string `cfg:"producer" validate:"required_without=OutputType"`
+	OutputType string `cfg:"output_type" validate:"required_without=Producer"`
+	Shared     bool   `cfg:"shared"`
+	Name       string `cfg:"name"`
 }
 
+//go:generate mockery -name Publisher
 type Publisher interface {
 	Publish(ctx context.Context, typ string, version int, value interface{}) error
 }
@@ -33,21 +32,12 @@ type publisher struct {
 }
 
 func NewPublisher(config cfg.Config, logger mon.Logger, name string) *publisher {
-	var settings *PublisherSettings
-	var allSettings = readPublisherSettings(config)
+	settings := readPublisherSetting(config, name)
 
-	for _, s := range allSettings {
-		if s.Name == name {
-			settings = s
-		}
-	}
+	return NewPublisherWithSettings(config, logger, settings)
+}
 
-	if settings == nil {
-		err := fmt.Errorf("there is no publisher configured with name %s", name)
-		logger.Fatalf(err, err.Error())
-		return nil
-	}
-
+func NewPublisherWithSettings(config cfg.Config, logger mon.Logger, settings *PublisherSettings) *publisher {
 	producer := stream.NewProducer(config, logger, settings.Producer)
 
 	return NewPublisherWithInterfaces(logger, producer, settings)

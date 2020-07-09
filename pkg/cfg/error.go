@@ -10,10 +10,6 @@ type Sentry interface {
 	CaptureErrorAndWait(err error, tags map[string]string, interfaces ...raven.Interface) string
 }
 
-type Logger interface {
-	Errorf(err error, msg string, args ...interface{})
-}
-
 type ErrorHandler func(err error, msg string, args ...interface{})
 
 var defaultErrorHandler = PanicErrorHandler
