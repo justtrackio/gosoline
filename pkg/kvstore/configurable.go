@@ -14,6 +14,16 @@ const (
 	TypeRedis    = "redis"
 )
 
+type ChainConfiguration struct {
+	Project             string        `cfg:"project"`
+	Family              string        `cfg:"family"`
+	Application         string        `cfg:"application"`
+	Elements            []string      `cfg:"elements" validate:"min=1"`
+	Ttl                 time.Duration `cfg:"ttl"`
+	BatchSize           int           `cfg:"batch_size" default:"100" validate:"min=1"`
+	MissingCacheEnabled bool          `cfg:"missing_cache_enabled" default:"false"`
+}
+
 func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) KvStore {
 	key := fmt.Sprintf("kvstore.%s.type", name)
 	t := config.GetString(key)
@@ -28,22 +38,13 @@ func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) K
 	return nil
 }
 
-type ChainConfiguration struct {
-	Project     string        `cfg:"project"`
-	Family      string        `cfg:"family"`
-	Application string        `cfg:"application"`
-	Elements    []string      `cfg:"elements" validate:"min=1"`
-	Ttl         time.Duration `cfg:"ttl"`
-	BatchSize   int           `cfg:"batch_size" default:"100" validate:"min=1"`
-}
-
 func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string) KvStore {
 	key := GetConfigurableKey(name)
 
 	configuration := ChainConfiguration{}
 	config.UnmarshalKey(key, &configuration)
 
-	store := NewChainKvStore(config, logger, &Settings{
+	store := NewChainKvStore(config, logger, configuration.MissingCacheEnabled, &Settings{
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,

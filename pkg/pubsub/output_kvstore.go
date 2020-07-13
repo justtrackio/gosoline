@@ -27,7 +27,7 @@ type OutputKvstore struct {
 }
 
 func NewOutputKvstore(config cfg.Config, logger mon.Logger, settings *SubscriberSettings) *OutputKvstore {
-	store := kvstore.NewChainKvStore(config, logger, &kvstore.Settings{
+	store := kvstore.NewChainKvStore(config, logger, false, &kvstore.Settings{
 		AppId: cfg.AppId{
 			Project:     settings.TargetModel.Project,
 			Family:      settings.TargetModel.Family,

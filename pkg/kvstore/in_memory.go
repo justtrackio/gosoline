@@ -156,3 +156,30 @@ func (s *InMemoryKvStore) PutBatch(ctx context.Context, values interface{}) erro
 
 	return nil
 }
+
+func (s *InMemoryKvStore) Delete(_ context.Context, key interface{}) error {
+	keyStr, err := CastKeyToString(key)
+
+	if err != nil {
+		return err
+	}
+
+	s.cache.Delete(keyStr)
+
+	return nil
+}
+
+func (s *InMemoryKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
+	si, err := refl.InterfaceToInterfaceSlice(keys)
+	if err != nil {
+		return fmt.Errorf("could not convert keys to []interface{}")
+	}
+
+	for key := range si {
+		if err = s.Delete(ctx, key); err != nil {
+			return fmt.Errorf("can not remove value from in_memory store: %w", err)
+		}
+	}
+
+	return nil
+}
