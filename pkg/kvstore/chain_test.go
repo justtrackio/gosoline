@@ -13,7 +13,7 @@ import (
 
 func TestChainKvStore_Contains(t *testing.T) {
 	ctx := context.Background()
-	store, element0, element1 := buildTestableChainStore()
+	store, element0, element1 := buildTestableChainStore(false)
 
 	element0.On("Contains", ctx, "foo").Return(false, nil)
 	element1.On("Contains", ctx, "foo").Return(true, nil)
@@ -29,8 +29,9 @@ func TestChainKvStore_Contains(t *testing.T) {
 func TestChainKvStore_Get(t *testing.T) {
 	ctx := context.Background()
 	item := &Item{}
-	store, element0, element1 := buildTestableChainStore()
+	store, element0, element1 := buildTestableChainStore(false)
 
+	// missing
 	element0.On("Get", ctx, "foo", item).Return(false, nil).Once()
 	element1.On("Get", ctx, "foo", item).Return(false, nil).Once()
 
@@ -39,6 +40,7 @@ func TestChainKvStore_Get(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, found)
 
+	// available
 	element0.On("Get", ctx, "foo", item).Return(false, nil).Once()
 	element0.On("Put", ctx, "foo", item).Return(nil)
 
@@ -59,12 +61,48 @@ func TestChainKvStore_Get(t *testing.T) {
 	element1.AssertExpectations(t)
 }
 
+func TestChainKvStore_Get_CacheMissing(t *testing.T) {
+	ctx := context.Background()
+	item := &Item{}
+	store, element0, element1 := buildTestableChainStore(true)
+
+	// missing
+	element0.On("Get", ctx, "foo", item).Return(false, nil).Once()
+	element1.On("Get", ctx, "foo", item).Return(false, nil).Once()
+
+	found, err := store.Get(ctx, "foo", item)
+
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Empty(t, item.Id)
+
+	// available
+	element0.On("Get", ctx, "bar", item).Return(false, nil).Once()
+	element0.On("Put", ctx, "bar", item).Return(nil)
+
+	element1.On("Get", ctx, "bar", item).Run(func(args mock.Arguments) {
+		item := args[2].(*Item)
+		item.Id = "bar"
+		item.Body = "bar"
+	}).Return(true, nil).Once()
+
+	found, err = store.Get(ctx, "bar", item)
+
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "bar", item.Id)
+	assert.Equal(t, "bar", item.Body)
+
+	element0.AssertExpectations(t)
+	element1.AssertExpectations(t)
+}
+
 func TestChainKvStore_GetBatch(t *testing.T) {
 	ctx := context.Background()
 	keys := []interface{}{"foo", "fuu"}
 	result := make(map[string]Item)
 
-	store, element0, element1 := buildTestableChainStore()
+	store, element0, element1 := buildTestableChainStore(false)
 
 	// missing all
 	element0.On("GetBatch", ctx, keys, result).Return(keys, nil).Once()
@@ -74,7 +112,7 @@ func TestChainKvStore_GetBatch(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, missing, 2)
-	assert.Equal(t, missing, keys)
+	assert.Equal(t, keys, missing)
 
 	// missing one
 	existing := map[interface{}]interface{}{
@@ -137,6 +175,119 @@ func TestChainKvStore_GetBatch(t *testing.T) {
 	element1.AssertExpectations(t)
 }
 
+func TestChainKvStore_GetBatch_CacheMissing_All(t *testing.T) {
+	var expectedMissingKeys []interface{}
+	expectedMissingItem := Item{}
+
+	ctx := context.Background()
+	keys := []interface{}{"foo", "fuu"}
+	result := make(map[string]Item)
+
+	store, element0, element1 := buildTestableChainStore(true)
+
+	// missing all
+	element0.On("GetBatch", ctx, keys, result).Return(keys, nil).Once()
+	element1.On("GetBatch", ctx, keys, result).Return(keys, nil).Once()
+
+	missing, err := store.GetBatch(ctx, keys, result)
+
+	assert.NoError(t, err)
+	assert.Len(t, missing, 0)
+	assert.Equal(t, expectedMissingKeys, missing)
+
+	assert.Contains(t, result, "foo")
+	assert.Contains(t, result, "fuu")
+	assert.Equal(t, expectedMissingItem, result["foo"])
+	assert.Equal(t, expectedMissingItem, result["fuu"])
+
+	element0.AssertExpectations(t)
+	element1.AssertExpectations(t)
+}
+
+func TestChainKvStore_GetBatch_CacheMissing_None(t *testing.T) {
+	ctx := context.Background()
+	keys := []interface{}{"foo", "fuu"}
+	result := make(map[string]Item)
+
+	store, element0, element1 := buildTestableChainStore(true)
+
+	// missing none
+	element0.On("GetBatch", ctx, keys, result).Run(func(args mock.Arguments) {
+		items := args[2].(map[string]Item)
+
+		items["foo"] = Item{
+			Id:   "foo",
+			Body: "bar",
+		}
+
+		items["fuu"] = Item{
+			Id:   "fuu",
+			Body: "baz",
+		}
+	}).Return([]interface{}{}, nil).Once()
+
+	missing, err := store.GetBatch(ctx, keys, result)
+
+	assert.NoError(t, err)
+	assert.Len(t, missing, 0)
+
+	assert.Contains(t, result, "foo")
+	assert.Equal(t, "foo", result["foo"].Id)
+	assert.Equal(t, "bar", result["foo"].Body)
+	assert.Contains(t, result, "foo")
+	assert.Equal(t, "fuu", result["fuu"].Id)
+	assert.Equal(t, "baz", result["fuu"].Body)
+
+	element0.AssertExpectations(t)
+	element1.AssertExpectations(t)
+}
+
+func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
+	var expectedMissingKeys []interface{}
+	expectedMissingItem := Item{}
+
+	ctx := context.Background()
+	keys := []interface{}{"foo", "fuu"}
+	result := make(map[string]Item)
+
+	store, element0, element1 := buildTestableChainStore(true)
+
+	// missing one
+	existing := map[interface{}]interface{}{
+		"foo": Item{
+			Id:   "foo",
+			Body: "bar",
+		},
+	}
+
+	element0.On("GetBatch", ctx, keys, result).Return(keys, nil).Once()
+	element0.On("PutBatch", ctx, existing).Return(nil).Once()
+
+	element1.On("GetBatch", ctx, keys, result).Run(func(args mock.Arguments) {
+		items := args[2].(map[string]Item)
+
+		items["foo"] = Item{
+			Id:   "foo",
+			Body: "bar",
+		}
+	}).Return([]interface{}{"fuu"}, nil).Once()
+
+	missing, err := store.GetBatch(ctx, keys, result)
+
+	assert.NoError(t, err)
+	assert.Len(t, missing, 0)
+	assert.Equal(t, expectedMissingKeys, missing)
+
+	assert.Contains(t, result, "foo")
+	assert.Contains(t, result, "fuu")
+	assert.Equal(t, "foo", result["foo"].Id)
+	assert.Equal(t, "bar", result["foo"].Body)
+	assert.Equal(t, expectedMissingItem, result["fuu"])
+
+	element0.AssertExpectations(t)
+	element1.AssertExpectations(t)
+}
+
 func TestChainKvStore_Put(t *testing.T) {
 	ctx := context.Background()
 	item := Item{
@@ -144,7 +295,7 @@ func TestChainKvStore_Put(t *testing.T) {
 		Body: "bar",
 	}
 
-	store, element0, element1 := buildTestableChainStore()
+	store, element0, element1 := buildTestableChainStore(false)
 
 	element0.On("Put", ctx, "foo", item).Return(nil).Once()
 	element1.On("Put", ctx, "foo", item).Return(nil).Once()
@@ -169,7 +320,7 @@ func TestChainKvStore_PutBatch(t *testing.T) {
 		},
 	}
 
-	store, element0, element1 := buildTestableChainStore()
+	store, element0, element1 := buildTestableChainStore(false)
 
 	element0.On("PutBatch", ctx, items).Return(nil).Once()
 	element1.On("PutBatch", ctx, items).Return(nil).Once()
@@ -185,13 +336,13 @@ func nilFactory(_ kvstore.Factory, _ *kvstore.Settings) kvstore.KvStore {
 	return nil
 }
 
-func buildTestableChainStore() (*kvstore.ChainKvStore, *kvStoreMocks.KvStore, *kvStoreMocks.KvStore) {
+func buildTestableChainStore(missingCacheEnabled bool) (*kvstore.ChainKvStore, *kvStoreMocks.KvStore, *kvStoreMocks.KvStore) {
 	logger := monMocks.NewLoggerMockedAll()
 
 	element0 := new(kvStoreMocks.KvStore)
 	element1 := new(kvStoreMocks.KvStore)
 
-	store := kvstore.NewChainKvStoreWithInterfaces(logger, nilFactory, &kvstore.Settings{
+	settings := &kvstore.Settings{
 		AppId: cfg.AppId{
 			Project:     "applike",
 			Environment: "test",
@@ -200,7 +351,14 @@ func buildTestableChainStore() (*kvstore.ChainKvStore, *kvStoreMocks.KvStore, *k
 		},
 		Name:      "test",
 		BatchSize: 100,
-	})
+	}
+
+	var missingCache *kvstore.InMemoryKvStore
+	if missingCacheEnabled {
+		missingCache = kvstore.NewInMemoryKvStoreWithInterfaces(settings)
+	}
+
+	store := kvstore.NewChainKvStoreWithInterfaces(logger, nilFactory, missingCacheEnabled, missingCache, settings)
 
 	store.AddStore(element0)
 	store.AddStore(element1)

@@ -19,7 +19,7 @@ func (p *subOutKvstore) GetType() string {
 func (p *subOutKvstore) Boot(config cfg.Config, logger mon.Logger, settings Settings) error {
 	p.logger = logger
 
-	store := kvstore.NewChainKvStore(config, logger, &kvstore.Settings{
+	store := kvstore.NewChainKvStore(config, logger, false, &kvstore.Settings{
 		AppId: cfg.AppId{
 			Project:     settings.TargetModelId.Project,
 			Family:      settings.TargetModelId.Family,
@@ -27,6 +27,7 @@ func (p *subOutKvstore) Boot(config cfg.Config, logger mon.Logger, settings Sett
 		},
 		Name: settings.TargetModelId.Name,
 	})
+
 	store.Add(kvstore.NewRedisKvStore)
 	store.Add(kvstore.NewDdbKvStore)
 
