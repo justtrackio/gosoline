@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
@@ -277,4 +278,14 @@ func WithTracing(app *App) {
 
 		return nil
 	})
+}
+
+func WithUTCClock(useUTC bool) Option {
+	return func(app *App) {
+		app.addSetupOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+			clock.WithUseUTC(useUTC)
+
+			return nil
+		})
+	}
 }

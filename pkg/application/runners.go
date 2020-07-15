@@ -16,12 +16,11 @@ func RunConsumer(callback stream.ConsumerCallback, options ...Option) {
 	app.Run()
 }
 
-func RunSubscriber(transformers sub.TransformerMapTypeVersionFactories) {
-	app := Default()
-
+func RunSubscriber(transformers sub.TransformerMapTypeVersionFactories, options ...Option) {
 	subs := sub.NewSubscriberFactory(transformers)
-	app.AddFactory(subs)
 
+	app := Default(options...)
+	app.AddFactory(subs)
 	app.Run()
 }
 

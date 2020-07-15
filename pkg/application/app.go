@@ -33,6 +33,7 @@ func (a *App) addSetupOption(opt SetupOption) {
 
 func Default(options ...Option) kernel.Kernel {
 	defaults := []Option{
+		WithUTCClock(true),
 		WithConfigErrorHandlers(defaultErrorHandler),
 		WithConfigFile("./config.dist.yml", "yml"),
 		WithConfigFileFlag,
