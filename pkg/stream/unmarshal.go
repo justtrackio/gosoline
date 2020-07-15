@@ -6,13 +6,25 @@ import (
 	"github.com/applike/gosoline/pkg/sns"
 )
 
-type MessageUnmarshaler func(data *string) (*Message, error)
+const (
+	UnmarshallerMsg = "msg"
+	UnmarshallerRaw = "raw"
+	UnmarshallerSns = "sns"
+)
 
-func BasicUnmarshaler(data *string) (*Message, error) {
+type UnmarshallerFunc func(data *string) (*Message, error)
+
+func MessageUnmarshaller(data *string) (*Message, error) {
 	msg := Message{}
 	err := msg.UnmarshalFromString(*data)
 
 	return &msg, err
+}
+
+func RawUnmarshaller(data *string) (*Message, error) {
+	return &Message{
+		Body: *data,
+	}, nil
 }
 
 func SnsMarshaller(msg *Message) (*string, error) {
@@ -37,7 +49,7 @@ func SnsMarshaller(msg *Message) (*string, error) {
 	return &data, nil
 }
 
-func SnsUnmarshaler(data *string) (*Message, error) {
+func SnsUnmarshaller(data *string) (*Message, error) {
 	bytes := []byte(*data)
 
 	snsMessage := sns.Message{}

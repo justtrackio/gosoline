@@ -186,6 +186,7 @@ type sqsInputConfiguration struct {
 	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
 	Client            cloud.ClientSettings  `cfg:"client"`
 	Backoff           cloud.BackoffSettings `cfg:"backoff"`
+	Unmarshaller      string                `cfg:"unmarshaller" default:"msg"`
 }
 
 func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -207,6 +208,7 @@ func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 		RedrivePolicy:     configuration.RedrivePolicy,
 		Client:            configuration.Client,
 		Backoff:           configuration.Backoff,
+		Unmarshaller:      configuration.Unmarshaller,
 	}
 
 	return NewSqsInput(config, logger, settings)

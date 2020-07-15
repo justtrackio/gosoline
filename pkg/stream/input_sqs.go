@@ -21,13 +21,14 @@ type SqsInputSettings struct {
 	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
 	Client            cloud.ClientSettings  `cfg:"client"`
 	Backoff           cloud.BackoffSettings `cfg:"backoff"`
+	Unmarshaller      string                `cfg:"unmarshaller" default:"msg"`
 }
 
 type sqsInput struct {
 	logger      mon.Logger
 	queue       sqs.Queue
 	settings    SqsInputSettings
-	unmarshaler MessageUnmarshaler
+	unmarshaler UnmarshallerFunc
 
 	cfn     coffin.Coffin
 	channel chan *Message
@@ -47,10 +48,23 @@ func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) *sqsI
 		Backoff:           s.Backoff,
 	})
 
-	return NewSqsInputWithInterfaces(logger, queue, s)
+	var unmarshaller UnmarshallerFunc
+
+	switch s.Unmarshaller {
+	case UnmarshallerMsg:
+		unmarshaller = MessageUnmarshaller
+	case UnmarshallerRaw:
+		unmarshaller = RawUnmarshaller
+	case UnmarshallerSns:
+		unmarshaller = SnsUnmarshaller
+	default:
+		logger.Fatal(fmt.Errorf("unknown unmarshaller %s", s.Unmarshaller), "")
+	}
+
+	return NewSqsInputWithInterfaces(logger, queue, unmarshaller, s)
 }
 
-func NewSqsInputWithInterfaces(logger mon.Logger, queue sqs.Queue, s SqsInputSettings) *sqsInput {
+func NewSqsInputWithInterfaces(logger mon.Logger, queue sqs.Queue, unmarshaller UnmarshallerFunc, s SqsInputSettings) *sqsInput {
 	if s.RunnerCount <= 0 {
 		s.RunnerCount = 1
 	}
@@ -59,7 +73,7 @@ func NewSqsInputWithInterfaces(logger mon.Logger, queue sqs.Queue, s SqsInputSet
 		logger:      logger,
 		queue:       queue,
 		settings:    s,
-		unmarshaler: BasicUnmarshaler,
+		unmarshaler: unmarshaller,
 		cfn:         coffin.New(),
 		channel:     make(chan *Message),
 	}
@@ -187,7 +201,7 @@ func (i *sqsInput) AckBatch(msgs []*Message) error {
 	return multiError.ErrorOrNil()
 }
 
-func (i *sqsInput) SetUnmarshaler(unmarshaler MessageUnmarshaler) {
+func (i *sqsInput) SetUnmarshaler(unmarshaler UnmarshallerFunc) {
 	i.unmarshaler = unmarshaler
 }
 
