@@ -40,7 +40,7 @@ func TestSqsInput_Run(t *testing.T) {
 		}
 	}, nil)
 
-	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.SqsInputSettings{
+	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, stream.SqsInputSettings{
 		WaitTime:    int64(3),
 		RunnerCount: 3,
 	})
@@ -88,7 +88,7 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 		return []*sqs.Message{}
 	}, nil)
 
-	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.SqsInputSettings{
+	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, stream.SqsInputSettings{
 		WaitTime:    int64(3),
 		RunnerCount: 3,
 	})

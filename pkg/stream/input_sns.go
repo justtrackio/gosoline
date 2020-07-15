@@ -41,8 +41,8 @@ func NewSnsInput(config cfg.Config, logger mon.Logger, s SnsInputSettings, targe
 		RedrivePolicy:     s.RedrivePolicy,
 		Client:            s.Client,
 		Backoff:           s.Backoff,
+		Unmarshaller:      UnmarshallerSns,
 	})
-	sqsInput.SetUnmarshaler(SnsUnmarshaler)
 
 	queueArn := sqsInput.GetQueueArn()
 
