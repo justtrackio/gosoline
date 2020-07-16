@@ -14,6 +14,12 @@ const (
 
 type UnmarshallerFunc func(data *string) (*Message, error)
 
+var unmarshallers = map[string]UnmarshallerFunc{
+	UnmarshallerMsg: MessageUnmarshaller,
+	UnmarshallerRaw: RawUnmarshaller,
+	UnmarshallerSns: SnsUnmarshaller,
+}
+
 func MessageUnmarshaller(data *string) (*Message, error) {
 	msg := Message{}
 	err := msg.UnmarshalFromString(*data)

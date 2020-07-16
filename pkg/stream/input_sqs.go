@@ -48,16 +48,9 @@ func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) *sqsI
 		Backoff:           s.Backoff,
 	})
 
-	var unmarshaller UnmarshallerFunc
+	unmarshaller, ok := unmarshallers[s.Unmarshaller]
 
-	switch s.Unmarshaller {
-	case UnmarshallerMsg:
-		unmarshaller = MessageUnmarshaller
-	case UnmarshallerRaw:
-		unmarshaller = RawUnmarshaller
-	case UnmarshallerSns:
-		unmarshaller = SnsUnmarshaller
-	default:
+	if !ok {
 		logger.Fatal(fmt.Errorf("unknown unmarshaller %s", s.Unmarshaller), "")
 	}
 
