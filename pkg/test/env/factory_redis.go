@@ -31,8 +31,13 @@ func (f *redisFactory) Detect(config cfg.Config, manager *ComponentsConfigManage
 		return nil
 	}
 
-	if err := manager.Add(componentRedis, "default"); err != nil {
-		return fmt.Errorf("can not add default ddb component: %w", err)
+	settings := &redisSettings{}
+	config.UnmarshalDefaults(settings)
+
+	settings.Type = componentRedis
+
+	if err := manager.Add(settings); err != nil {
+		return fmt.Errorf("can not add default redis component: %w", err)
 	}
 
 	return nil

@@ -46,6 +46,7 @@ type containerRunnerSettings struct {
 	Endpoint    string              `cfg:"endpoint"`
 	NamePrefix  string              `cfg:"name_prefix" default:"goso"`
 	HealthCheck healthCheckSettings `cfg:"health_check"`
+	ExpireAfter time.Duration       `cfg:"expire_after"`
 }
 
 type containerRunner struct {
@@ -147,7 +148,7 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container,
 
 	r.resources[skeleton.id()] = resource
 
-	if err = resource.Expire(uint(config.ExpireAfter.Seconds())); err != nil {
+	if err = r.expireAfter(resource, config.ExpireAfter); err != nil {
 		return nil, fmt.Errorf("could not set expiry on container %s: %w", containerName, err)
 	}
 
@@ -168,6 +169,18 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container,
 	}
 
 	return container, err
+}
+
+func (r *containerRunner) expireAfter(resource *dockertest.Resource, expireAfter time.Duration) error {
+	if r.settings.ExpireAfter > 0 {
+		expireAfter = r.settings.ExpireAfter
+	}
+
+	if err := resource.Expire(uint(expireAfter.Seconds())); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *containerRunner) resolveBindings(resource *dockertest.Resource, bindings portBindings) (map[string]containerBinding, error) {

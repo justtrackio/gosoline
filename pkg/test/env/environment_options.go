@@ -3,6 +3,7 @@ package env
 import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
+	"time"
 )
 
 type Option func(env *Environment)
@@ -19,6 +20,14 @@ func WithConfigFile(file string) Option {
 	return func(env *Environment) {
 		env.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithConfigFile(file, "yml"))
+		})
+	}
+}
+
+func WithContainerExpireAfter(expireAfter time.Duration) Option {
+	return func(env *Environment) {
+		env.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithConfigSetting("test.container_runner.expire_after", expireAfter.String()))
 		})
 	}
 }

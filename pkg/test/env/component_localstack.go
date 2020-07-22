@@ -8,26 +8,30 @@ import (
 	"github.com/aws/aws-sdk-go/service/sns"
 )
 
-type snsComponent struct {
+type localstackComponent struct {
 	baseComponent
 	binding containerBinding
+	region  string
 }
 
-func (c *snsComponent) AppOptions() []application.Option {
+func (c *localstackComponent) AppOptions() []application.Option {
 	return []application.Option{
 		application.WithConfigMap(map[string]interface{}{
 			"aws_sns_endpoint":      c.Address(),
 			"aws_sns_autoSubscribe": true,
+			"aws_sqs_endpoint":      c.Address(),
+			"aws_sqs_autoCreate":    true,
 		}),
 	}
 }
 
-func (c *snsComponent) Address() string {
+func (c *localstackComponent) Address() string {
 	return fmt.Sprintf("http://%s:%s", c.binding.host, c.binding.port)
 }
 
-func (c *snsComponent) Client() *sns.SNS {
+func (c *localstackComponent) SnsClient() *sns.SNS {
 	sess := session.Must(session.NewSession(&aws.Config{
+		Region:     aws.String(c.region),
 		Endpoint:   aws.String(c.Address()),
 		MaxRetries: aws.Int(0),
 	}))

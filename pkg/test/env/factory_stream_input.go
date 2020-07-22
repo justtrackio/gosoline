@@ -24,7 +24,13 @@ func (f *streamInputFactory) Detect(config cfg.Config, manager *ComponentsConfig
 	inputs := config.GetStringMap("stream.input", map[string]interface{}{})
 
 	for inputName := range inputs {
-		if err := manager.Add(componentStreamInput, inputName); err != nil {
+		settings := &streamInputSettings{}
+		config.UnmarshalDefaults(settings)
+
+		settings.Name = inputName
+		settings.Type = componentStreamInput
+
+		if err := manager.Add(settings); err != nil {
 			return fmt.Errorf("could not add input %s: %w", inputName, err)
 		}
 	}

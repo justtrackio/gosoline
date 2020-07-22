@@ -2,6 +2,7 @@ package test
 
 import (
 	"github.com/applike/gosoline/pkg/application"
+	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
 	"reflect"
@@ -62,7 +63,11 @@ func runCaseTest(t *testing.T, suite TestingSuite, method reflect.Method) {
 		}),
 	}...)
 
-	app := application.New(appOptions...)
+	config := environment.Config()
+	logger := environment.Logger()
+	ker := kernel.New(config, logger)
+
+	app := application.NewWithInterfaces(config, logger, ker, appOptions...)
 
 	for name, module := range suiteOptions.appModules {
 		app.Add(name, module)

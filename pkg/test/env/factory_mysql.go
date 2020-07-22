@@ -42,7 +42,12 @@ func (f mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManager
 		return nil
 	}
 
-	if err := manager.Add(componentMySql, "default"); err != nil {
+	settings := &mysqlSettings{}
+	config.UnmarshalDefaults(settings)
+
+	settings.Type = componentMySql
+
+	if err := manager.Add(settings); err != nil {
 		return fmt.Errorf("can not add default mysql component: %w", err)
 	}
 

@@ -82,21 +82,23 @@ func (m *ComponentsConfigManager) HasType(typ string) bool {
 	return false
 }
 
-func (m *ComponentsConfigManager) Add(typ string, name string) error {
+func (m *ComponentsConfigManager) Add(settings interface{}) error {
 	m.lck.Lock()
 	defer m.lck.Unlock()
 
-	if m.Has(typ, name) {
+	componentSettings := settings.(ComponentBaseSettingsAware)
+
+	if m.Has(componentSettings.GetName(), componentSettings.GetType()) {
 		return nil
 	}
 
 	configured := m.List()
 	key := fmt.Sprintf("test.components[%d]", len(configured))
+	option := cfg.WithConfigSetting(key, componentSettings)
 
-	err := m.config.Option(cfg.WithConfigSetting(key, map[string]interface{}{
-		"type": typ,
-		"name": name,
-	}))
+	if err := m.config.Option(option); err != nil {
+		return fmt.Errorf("can not apply option onto config: %w", err)
+	}
 
-	return err
+	return nil
 }

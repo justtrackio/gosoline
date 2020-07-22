@@ -14,6 +14,8 @@ type Environment struct {
 	loggerOptions []LoggerOption
 
 	t          *testing.T
+	config     cfg.GosoConf
+	logger     mon.GosoLog
 	runner     *containerRunner
 	components *ComponentsContainer
 }
@@ -45,6 +47,8 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		return nil, fmt.Errorf("can not apply post processor on config: %w", err)
 	}
 
+	env.config = config
+	env.logger = logger
 	env.runner = NewContainerRunner(config, logger)
 
 	var err error
@@ -100,6 +104,14 @@ func (e *Environment) ApplicationOptions() []application.Option {
 	return e.components.GetApplicationOptions()
 }
 
+func (e *Environment) Config() cfg.GosoConf {
+	return e.config
+}
+
+func (e *Environment) Logger() mon.GosoLog {
+	return e.logger
+}
+
 func (e *Environment) Component(typ string, name string) Component {
 	var err error
 	var component Component
@@ -109,6 +121,10 @@ func (e *Environment) Component(typ string, name string) Component {
 	}
 
 	return component
+}
+
+func (e *Environment) Localstack(name string) *localstackComponent {
+	return e.Component(componentLocalstack, name).(*localstackComponent)
 }
 
 func (e *Environment) MySql(name string) *mysqlComponent {

@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/test/env"
 	"os"
+	"time"
 )
 
 type suiteOptions struct {
@@ -39,6 +40,12 @@ func WithConfigFile(file string) SuiteOption {
 	return func(s *suiteOptions) {
 		s.addEnvOption(env.WithConfigFile(file))
 		s.addAppOption(application.WithConfigFile(file, "yml"))
+	}
+}
+
+func WithContainerExpireAfter(expireAfter time.Duration) SuiteOption {
+	return func(s *suiteOptions) {
+		s.addEnvOption(env.WithContainerExpireAfter(expireAfter))
 	}
 }
 

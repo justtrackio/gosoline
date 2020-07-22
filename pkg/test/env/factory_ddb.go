@@ -33,7 +33,12 @@ func (f *ddbFactory) Detect(config cfg.Config, manager *ComponentsConfigManager)
 		return nil
 	}
 
-	if err := manager.Add(componentDdb, "default"); err != nil {
+	settings := &ddbSettings{}
+	config.UnmarshalDefaults(settings)
+
+	settings.Type = componentDdb
+
+	if err := manager.Add(settings); err != nil {
 		return fmt.Errorf("can not add default ddb component: %w", err)
 	}
 

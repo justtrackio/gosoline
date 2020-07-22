@@ -24,7 +24,13 @@ func (f *streamOutputFactory) Detect(config cfg.Config, manager *ComponentsConfi
 	outputs := config.GetStringMap("stream.output", map[string]interface{}{})
 
 	for outputName := range outputs {
-		if err := manager.Add(componentStreamOutput, outputName); err != nil {
+		settings := &streamOutputSettings{}
+		config.UnmarshalDefaults(settings)
+
+		settings.Name = outputName
+		settings.Type = componentStreamOutput
+
+		if err := manager.Add(settings); err != nil {
 			return fmt.Errorf("could not add output %s: %w", outputName, err)
 		}
 	}
