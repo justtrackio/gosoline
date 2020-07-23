@@ -61,12 +61,11 @@ func Default(options ...Option) kernel.Kernel {
 func New(options ...Option) kernel.Kernel {
 	config := cfg.New()
 	logger := mon.NewLogger()
-	ker := kernel.New(config, logger)
 
-	return NewWithInterfaces(config, logger, ker, options...)
+	return NewWithInterfaces(config, logger, options...)
 }
 
-func NewWithInterfaces(config cfg.GosoConf, logger mon.GosoLog, ker kernel.GosoKernel, options ...Option) kernel.Kernel {
+func NewWithInterfaces(config cfg.GosoConf, logger mon.GosoLog, options ...Option) kernel.Kernel {
 	app := &App{
 		configOptions: make([]ConfigOption, 0),
 		loggerOptions: make([]LoggerOption, 0),
@@ -98,6 +97,8 @@ func NewWithInterfaces(config cfg.GosoConf, logger mon.GosoLog, ker kernel.GosoK
 			defaultErrorHandler(err, "can not apply setup options on application")
 		}
 	}
+
+	ker := kernel.New(config, logger)
 
 	for _, opt := range app.kernelOptions {
 		if err := opt(config, ker); err != nil {
