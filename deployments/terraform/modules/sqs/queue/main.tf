@@ -20,7 +20,7 @@ resource "aws_sqs_queue" "main" {
 
 resource "aws_cloudwatch_metric_alarm" "number-of-visible-messages" {
   alarm_name = "${var.family}-${var.application}-${var.queueName}-number-of-visible-messages"
-  count      = var.alarm_create
+  count      = var.environment == "prod" ? 1 : 0
 
   namespace   = "AWS/SQS"
   metric_name = "ApproximateNumberOfMessagesVisible"
