@@ -18,7 +18,7 @@ const metricNameConsumerProcessedCount = "ConsumerProcessedCount"
 //go:generate mockery -name=ConsumerCallback
 type ConsumerCallback interface {
 	Boot(config cfg.Config, logger mon.Logger) error
-	GetModel() interface{}
+	GetModel(attributes map[string]interface{}) interface{}
 	Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error)
 }
 
@@ -197,7 +197,7 @@ func (c *Consumer) doConsuming(msg *Message) {
 	defer c.recover()
 
 	ctx := context.Background()
-	model := c.callback.GetModel()
+	model := c.callback.GetModel(msg.Attributes)
 
 	ctx, attributes, err := c.encoder.Decode(ctx, msg, model)
 	logger := c.logger.WithContext(ctx)

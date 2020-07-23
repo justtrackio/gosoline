@@ -48,7 +48,7 @@ func (_m *FullConsumerCallback) Consume(ctx context.Context, model interface{}, 
 }
 
 // GetModel provides a mock function with given fields:
-func (_m *FullConsumerCallback) GetModel() interface{} {
+func (_m *FullConsumerCallback) GetModel(map[string]interface{}) interface{} {
 	ret := _m.Called()
 
 	var r0 interface{}
