@@ -6,6 +6,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+//go:generate mockery -name Sentry
+type Sentry interface {
+	Capture(packet *raven.Packet, captureTags map[string]string) (eventID string, ch chan error)
+}
+
 type SentryHook struct {
 	sentry Sentry
 	extra  raven.Extra

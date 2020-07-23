@@ -36,7 +36,7 @@ type FullConsumerCallback interface {
 type ConsumerSettings struct {
 	Input       string        `cfg:"input" default:"consumer" validate:"required"`
 	RunnerCount int           `cfg:"runner_count" default:"10" validate:"min=1"`
-	Encoding    string        `cfg:"encoding"`
+	Encoding    string        `cfg:"encoding" default:"application/json"`
 	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
 }
 
@@ -73,8 +73,8 @@ func (c *Consumer) Boot(config cfg.Config, logger mon.Logger) error {
 	}
 
 	settings := &ConsumerSettings{}
-	key := fmt.Sprintf("stream.consumer.%s", c.name)
-	config.UnmarshalKey(key, settings)
+	key := ConfigurableConsumerKey(c.name)
+	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultForKey("encoding", defaultMessageBodyEncoding))
 
 	appId := cfg.GetAppIdFromConfig(config)
 	c.id = fmt.Sprintf("consumer-%s-%s-%s", appId.Family, appId.Application, c.name)
@@ -271,4 +271,8 @@ func getConsumerDefaultMetrics() mon.MetricData {
 			Value:      0.0,
 		},
 	}
+}
+
+func ConfigurableConsumerKey(name string) string {
+	return fmt.Sprintf("stream.consumer.%s", name)
 }

@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	TypeCreate = "create"
+	ConfigKeyPubSubPublishers = "pubsub.publishers"
+	TypeCreate                = "create"
 )
 
 type PublisherSettings struct {

@@ -37,21 +37,35 @@ func createMocks() (*cfgMocks.Config, *monMocks.Logger, *kernelMocks.FullModule)
 	return config, logger, module
 }
 
-func TestRunSuccess(t *testing.T) {
-	config, logger, module := createMocks()
+func TestRunFactoriesError(t *testing.T) {
+	config, logger, _ := createMocks()
 
-	module.On("GetStage").Return(kernel.StageApplication)
-	module.On("Boot", config, logger).Return(nil)
-	module.On("Run", mock.Anything).Return(nil)
+	err := fmt.Errorf("error in module factory")
+	logger.On("Error", err, "error building additional modules by factories")
 
 	assert.NotPanics(t, func() {
 		k := kernel.New(config, logger, kernel.KillTimeout(time.Second))
-		k.Add("module", module)
+		k.AddFactory(func(cfg.Config, mon.Logger) (map[string]kernel.Module, error) {
+			return nil, err
+		})
 		k.Run()
 	})
+}
 
-	module.AssertCalled(t, "Boot", mock.Anything, mock.Anything)
-	module.AssertCalled(t, "Run", mock.Anything)
+func TestRunFactoriesPanic(t *testing.T) {
+	config, logger, _ := createMocks()
+
+	err := fmt.Errorf("panic in module factory")
+	logger.On("Error", err, "error running module factories")
+	logger.On("Error", err, "error building additional modules by factories")
+
+	assert.NotPanics(t, func() {
+		k := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+		k.AddFactory(func(cfg.Config, mon.Logger) (map[string]kernel.Module, error) {
+			panic("panic in module factory")
+		})
+		k.Run()
+	})
 }
 
 func TestBootFailure(t *testing.T) {
@@ -72,6 +86,23 @@ func TestBootFailure(t *testing.T) {
 	})
 
 	module.AssertCalled(t, "Boot", mock.Anything, mock.Anything)
+}
+
+func TestRunSuccess(t *testing.T) {
+	config, logger, module := createMocks()
+
+	module.On("GetStage").Return(kernel.StageApplication)
+	module.On("Boot", config, logger).Return(nil)
+	module.On("Run", mock.Anything).Return(nil)
+
+	assert.NotPanics(t, func() {
+		k := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+		k.Add("module", module)
+		k.Run()
+	})
+
+	module.AssertCalled(t, "Boot", mock.Anything, mock.Anything)
+	module.AssertCalled(t, "Run", mock.Anything)
 }
 
 func TestRunFailure(t *testing.T) {

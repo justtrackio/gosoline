@@ -123,7 +123,49 @@ func (m *MapStruct) Read() (*Map, error) {
 	return mapValues, nil
 }
 
-func (m *MapStruct) doReadMap(path string, mapValues *Map, target map[string]interface{}) error {
+func (m *MapStruct) doReadMap(path string, mapValues *Map, msi map[string]interface{}) error {
+	for k, v := range msi {
+		elementPath := fmt.Sprintf("%s.%s", path, k)
+		mapValues.Set(elementPath, v)
+	}
+
+	return nil
+}
+
+func (m *MapStruct) doReadSlice(path string, mapValues *Map, slice reflect.Value) error {
+	sl := make([]interface{}, 0, slice.Len())
+	mapValues.Set(path, sl)
+
+	for i := 0; i < slice.Len(); i++ {
+		elementValue := slice.Index(i)
+		elementPath := fmt.Sprintf("%s[%d]", path, i)
+		element := elementValue.Interface()
+
+		if elementValue.Kind() == reflect.Map {
+			element = elementValue.Interface()
+
+			if _, ok := element.(map[string]interface{}); !ok {
+				return fmt.Errorf("MSI fields are allowed only for path %s", elementPath)
+			}
+
+			if err := m.doReadMap(elementPath, mapValues, element.(map[string]interface{})); err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		if elementValue.Kind() == reflect.Struct {
+			if err := m.doReadStruct(elementPath, mapValues, element); err != nil {
+				return fmt.Errorf("error on reading slice element on path %s", elementPath)
+			}
+
+			continue
+		}
+
+		mapValues.Set(elementPath, element)
+	}
+
 	return nil
 }
 
@@ -174,6 +216,14 @@ func (m *MapStruct) doReadStruct(path string, mapValues *Map, target interface{}
 			}
 
 			if err = m.doReadMap(fieldPath, mapValues, target.(map[string]interface{})); err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		if fieldValue.Kind() == reflect.Slice {
+			if err = m.doReadSlice(fieldPath, mapValues, fieldValue); err != nil {
 				return err
 			}
 

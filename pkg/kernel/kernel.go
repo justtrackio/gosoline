@@ -171,8 +171,7 @@ func (k *kernel) Run() {
 	defer k.logger.Info("leaving kernel")
 	k.logger.Info("starting kernel")
 
-	err := k.runFactories()
-	if err != nil {
+	if err := k.runFactories(); err != nil {
 		k.logger.Error(err, "error building additional modules by factories")
 		return
 	}
@@ -240,18 +239,20 @@ func (k *kernel) Stop(reason string) {
 
 func (k *kernel) runFactories() (err error) {
 	defer func() {
-		err = coffin.ResolveRecovery(recover())
-
 		if err != nil {
+			return
+		}
+
+		if err = coffin.ResolveRecovery(recover()); err != nil {
 			k.logger.Error(err, "error running module factories")
 		}
 	}()
 
-	for _, f := range k.factories {
-		modules, err := f(k.config, k.logger)
+	var modules map[string]Module
 
-		if err != nil {
-			return err
+	for _, factory := range k.factories {
+		if modules, err = factory(k.config, k.logger); err != nil {
+			return
 		}
 
 		for name, m := range modules {

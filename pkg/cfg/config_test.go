@@ -382,6 +382,42 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Slice() {
 	s.Equal(3, cm[2].Def)
 }
 
+func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Map() {
+	type configMap struct {
+		Foo string `cfg:"foo"`
+		Def int    `cfg:"def" default:"1"`
+	}
+
+	s.setupConfigValues(map[string]interface{}{
+		"key": map[string]interface{}{
+			"key1": map[string]interface{}{
+				"foo": "bar",
+			},
+			"key2": map[string]interface{}{
+				"foo": "baz",
+				"def": 2,
+			},
+			"key3": map[string]interface{}{
+				"def": 3,
+			},
+		},
+	})
+	s.setupEnvironment(map[string]string{
+		"KEY_KEY3_FOO": "env",
+	})
+
+	cm := make(map[string]configMap, 0)
+	s.config.UnmarshalKey("key", &cm)
+
+	s.Len(cm, 3)
+	s.Contains(cm, "key1")
+	s.Contains(cm, "key2")
+	s.Contains(cm, "key3")
+	s.Equal(configMap{Foo: "bar", Def: 1}, cm["key1"])
+	s.Equal(configMap{Foo: "baz", Def: 2}, cm["key2"])
+	s.Equal(configMap{Foo: "env", Def: 3}, cm["key3"])
+}
+
 func (s *ConfigTestSuite) TestConfig_UnmarshalKeyEnvironment() {
 	type configMap struct {
 		Foo    string `cfg:"foo"`

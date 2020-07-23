@@ -3,7 +3,6 @@ package mon
 import (
 	"context"
 	"fmt"
-	"github.com/getsentry/raven-go"
 	"github.com/jonboulle/clockwork"
 	"io"
 	"os"
@@ -64,11 +63,6 @@ var formatters = map[string]formatter{
 	FormatGelf:       formatterGelf,
 	FormatGelfFields: formatterGelfFields,
 	FormatJson:       formatterJson,
-}
-
-//go:generate mockery -name Sentry
-type Sentry interface {
-	Capture(packet *raven.Packet, captureTags map[string]string) (eventID string, ch chan error)
 }
 
 type GosoLog interface {

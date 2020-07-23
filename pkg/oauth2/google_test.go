@@ -3,9 +3,9 @@ package oauth2
 import (
 	"context"
 	"errors"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/http"
 	httpMocks "github.com/applike/gosoline/pkg/http/mocks"
-	"github.com/gin-gonic/gin/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"

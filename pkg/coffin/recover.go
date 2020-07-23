@@ -2,7 +2,6 @@ package coffin
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 )
 
 func ResolveRecovery(unknownErr interface{}) error {
@@ -14,7 +13,7 @@ func ResolveRecovery(unknownErr interface{}) error {
 		return rval
 
 	case string:
-		return errors.New(rval)
+		return fmt.Errorf(rval)
 
 	default:
 		return fmt.Errorf("unhandled error type %T", rval)

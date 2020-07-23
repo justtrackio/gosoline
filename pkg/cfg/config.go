@@ -335,6 +335,11 @@ func (c *config) UnmarshalKey(key string, output interface{}, defaults ...Unmars
 		return
 	}
 
+	if refl.IsPointerToMap(output) {
+		c.unmarshalMap(key, output, defaults)
+		return
+	}
+
 	err := fmt.Errorf("output should be a pointer to struct or slice but instead is %T", output)
 	c.err(err, "can not unmarshal key %s", key)
 }
@@ -558,6 +563,29 @@ func (c *config) resolveEnvKey(prefix string, key string) string {
 	}
 
 	return strings.ToUpper(key)
+}
+
+func (c *config) unmarshalMap(key string, output interface{}, defaults []UnmarshalDefaults) {
+	names := c.GetStringMap(key)
+	m, err := refl.MapOf(output)
+
+	if err != nil {
+		c.err(err, "can not unmarshal key %s", key)
+		return
+	}
+
+	for name := range names {
+		keyIndex := fmt.Sprintf("%s.%s", key, name)
+		item := m.NewElement()
+
+		c.unmarshalStruct(keyIndex, item, defaults)
+		err = m.Set(name, item)
+
+		if err != nil {
+			c.err(err, "can not unmarshal key %s", key)
+			return
+		}
+	}
 }
 
 func (c *config) unmarshalSlice(key string, output interface{}, defaults []UnmarshalDefaults) {

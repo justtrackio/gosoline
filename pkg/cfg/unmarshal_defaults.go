@@ -29,3 +29,11 @@ func UnmarshalWithDefaultsFromKey(sourceKey string, targetKey string) UnmarshalD
 		return fmt.Errorf("source values should be a msi")
 	}
 }
+
+func UnmarshalWithDefaultForKey(targetKey string, setting interface{}) UnmarshalDefaults {
+	return func(config Config, finalSettings *map[string]interface{}) error {
+		(*finalSettings)[targetKey] = setting
+
+		return nil
+	}
+}

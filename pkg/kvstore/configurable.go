@@ -28,7 +28,7 @@ func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) K
 	return nil
 }
 
-type chainConfiguration struct {
+type ChainConfiguration struct {
 	Project     string        `cfg:"project"`
 	Family      string        `cfg:"family"`
 	Application string        `cfg:"application"`
@@ -38,9 +38,9 @@ type chainConfiguration struct {
 }
 
 func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string) KvStore {
-	key := getConfigurableKey(name)
+	key := GetConfigurableKey(name)
 
-	configuration := chainConfiguration{}
+	configuration := ChainConfiguration{}
 	config.UnmarshalKey(key, &configuration)
 
 	store := NewChainKvStore(config, logger, &Settings{
@@ -72,6 +72,6 @@ func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string
 	return store
 }
 
-func getConfigurableKey(name string) string {
+func GetConfigurableKey(name string) string {
 	return fmt.Sprintf("kvstore.%s", name)
 }

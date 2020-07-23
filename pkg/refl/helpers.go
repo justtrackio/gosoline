@@ -14,6 +14,23 @@ func IsStructOrPointerToStruct(value interface{}) bool {
 	return IsPointerToStruct(value)
 }
 
+func IsPointerToMap(value interface{}) bool {
+	t := reflect.TypeOf(value)
+
+	if t == nil || t.Kind() != reflect.Ptr {
+		return false
+	}
+
+	t = t.Elem()
+
+	if t.Kind() == reflect.Interface {
+		v := reflect.ValueOf(value).Elem().Interface()
+		t = reflect.TypeOf(v)
+	}
+
+	return t.Kind() == reflect.Map
+}
+
 func IsPointerToSlice(value interface{}) bool {
 	t := reflect.TypeOf(value)
 
@@ -191,6 +208,13 @@ func InitializeMapsAndSlices(value interface{}) {
 			mapValue := reflect.MakeMap(mapType)
 
 			field.Set(mapValue)
+		}
+
+		if field.Kind() == reflect.Slice && field.IsNil() {
+			sliceType := field.Type()
+			sliceValue := reflect.MakeSlice(sliceType, 0, 4)
+
+			field.Set(sliceValue)
 		}
 	}
 }

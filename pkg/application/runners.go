@@ -1,6 +1,7 @@
 package application
 
 import (
+	"github.com/applike/gosoline/pkg/pubsub"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/sub"
 )
@@ -19,6 +20,15 @@ func RunSubscriber(transformers sub.TransformerMapTypeVersionFactories) {
 	app := Default()
 
 	subs := sub.NewSubscriberFactory(transformers)
+	app.AddFactory(subs)
+
+	app.Run()
+}
+
+func RunPubSubSubscriber(transformers pubsub.TransformerMapTypeVersionFactories) {
+	app := Default()
+
+	subs := pubsub.NewSubscriberFactory(transformers)
 	app.AddFactory(subs)
 
 	app.Run()

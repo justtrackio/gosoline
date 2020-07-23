@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-type PostProcessor func(cfg GosoConf) error
+type PostProcessor func(cfg GosoConf) (bool, error)
 
 type postProcessorEntity struct {
 	name      string
@@ -32,14 +32,21 @@ func AddPostProcessor(priority int, name string, processor PostProcessor) {
 func ApplyPostProcessors(config GosoConf, logger Logger) error {
 	sort.Ints(postProcessorPriorities)
 
+	var err error
+	var applied bool
+
 	for i := len(postProcessorPriorities) - 1; i >= 0; i-- {
 		priority := postProcessorPriorities[i]
 
 		for _, entity := range postProcessorEntities[priority] {
 			processor := entity.processor
 
-			if err := processor(config); err != nil {
+			if applied, err = processor(config); err != nil {
 				return fmt.Errorf("can not apply post processor '%s' on config: %w", entity.name, err)
+			}
+
+			if !applied {
+				continue
 			}
 
 			logger.Infof("applied config post processor '%s'", entity.name)

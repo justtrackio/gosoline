@@ -294,6 +294,107 @@ func TestMapStructIO_ReadAnonymous(t *testing.T) {
 	assert.Equal(t, expectedValues, msi.Msi())
 }
 
+func TestMapStructIO_ReadSliceStruct(t *testing.T) {
+	type SourceStructSlice struct {
+		B bool   `cfg:"b"`
+		S string `cfg:"s"`
+	}
+
+	type sourceStruct struct {
+		SL []SourceStructSlice `cfg:"sl"`
+	}
+
+	source := &sourceStruct{
+		SL: []SourceStructSlice{
+			{
+				B: false,
+				S: "s1",
+			},
+			{
+				B: true,
+				S: "s2",
+			},
+		},
+	}
+
+	expectedValues := map[string]interface{}{
+		"sl": []interface{}{
+			map[string]interface{}{
+				"b": false,
+				"s": "s1",
+			},
+			map[string]interface{}{
+				"b": true,
+				"s": "s2",
+			},
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestNewMapStructIO_ReadSliceMap(t *testing.T) {
+	type sourceStruct struct {
+		SL []map[string]interface{} `cfg:"sl"`
+	}
+
+	source := &sourceStruct{
+		SL: []map[string]interface{}{
+			{
+				"b": true,
+				"i": 3,
+			},
+			{
+				"s": "string",
+				"f": 1.2,
+			},
+		},
+	}
+
+	expectedValues := map[string]interface{}{
+		"sl": []interface{}{
+			map[string]interface{}{
+				"b": true,
+				"i": 3,
+			},
+			map[string]interface{}{
+				"s": "string",
+				"f": 1.2,
+			},
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
+func TestNewMapStructIO_ReadSliceBasic(t *testing.T) {
+	type sourceStruct struct {
+		SL []int `cfg:"sl"`
+	}
+
+	source := &sourceStruct{
+		SL: []int{1, 2, 3},
+	}
+
+	expectedValues := map[string]interface{}{
+		"sl": []interface{}{1, 2, 3},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
 func TestMapStructIO_WriteBasic(t *testing.T) {
 	type sourceStruct struct {
 		B    bool          `cfg:"b" default:"true"`
@@ -434,10 +535,10 @@ func TestMapStructIO_WriteSliceMap(t *testing.T) {
 	}
 
 	type sourceStruct struct {
-		MI map[string]int   `cfg:"mi"`
-		MS map[string]slice `cfg:"ms"`
-		SI []int            `cfg:"si"`
-		SS []slice          `cfg:"ss"`
+		MI  map[string]int   `cfg:"mi"`
+		MS1 map[string]slice `cfg:"ms1"`
+		SI  []int            `cfg:"si"`
+		SS  []slice          `cfg:"ss"`
 	}
 
 	values := map[string]interface{}{
@@ -445,7 +546,7 @@ func TestMapStructIO_WriteSliceMap(t *testing.T) {
 			"a": 1,
 			"b": 2,
 		},
-		"ms": map[string]interface{}{
+		"ms1": map[string]interface{}{
 			"a": map[string]interface{}{
 				"i": 1,
 			},
@@ -475,7 +576,7 @@ func TestMapStructIO_WriteSliceMap(t *testing.T) {
 			"a": 1,
 			"b": 2,
 		},
-		MS: map[string]slice{
+		MS1: map[string]slice{
 			"a": {
 				I: 1,
 			},

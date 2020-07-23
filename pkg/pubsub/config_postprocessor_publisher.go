@@ -7,12 +7,12 @@ import (
 )
 
 func init() {
-	cfg.AddPostProcessor(8, "gosoline.pubsub", ConfigPostProcessor)
+	cfg.AddPostProcessor(8, "gosoline.pubsub.publisher", PublisherConfigPostProcessor)
 }
 
-func ConfigPostProcessor(config cfg.GosoConf) error {
+func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	if !config.IsSet(ConfigKeyPubSubPublishers) {
-		return nil
+		return false, nil
 	}
 
 	publishers := config.GetStringMap(ConfigKeyPubSubPublishers)
@@ -58,11 +58,11 @@ func ConfigPostProcessor(config cfg.GosoConf) error {
 		}
 
 		if err := config.Option(configOptions...); err != nil {
-			return fmt.Errorf("can not apply config settings for publisher %s: %w", settings.Name, err)
+			return false, fmt.Errorf("can not apply config settings for publisher %s: %w", settings.Name, err)
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 func getPublisherConfigKey(name string) string {

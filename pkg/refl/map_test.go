@@ -50,3 +50,22 @@ func TestMapOf(t *testing.T) {
 	assert.Equal(t, "foo", items[3].Value)
 	assert.Equal(t, "bar", items[5].Value)
 }
+
+func TestMapOfPointer(t *testing.T) {
+	items := make(map[int]*Item)
+	m, err := refl.MapOf(items)
+
+	assert.NoError(t, err)
+
+	item := m.NewElement().(*Item)
+	item.Value = "foo"
+	m.Set(3, item)
+
+	item = m.NewElement().(*Item)
+	item.Value = "bar"
+	m.Set(5, item)
+
+	assert.Len(t, items, 2)
+	assert.Equal(t, "foo", items[3].Value)
+	assert.Equal(t, "bar", items[5].Value)
+}

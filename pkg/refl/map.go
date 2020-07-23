@@ -44,20 +44,28 @@ func MapOf(m interface{}) (*Map, error) {
 
 	keyType := mapType.Key()
 	elementType := mapType.Elem()
+	elementIsPointer := false
+
+	if elementType.Kind() == reflect.Ptr {
+		elementType = elementType.Elem()
+		elementIsPointer = true
+	}
 
 	return &Map{
-		mapType:     mapType,
-		mapValue:    mapValue,
-		keyType:     keyType,
-		elementType: elementType,
+		mapType:          mapType,
+		mapValue:         mapValue,
+		keyType:          keyType,
+		elementType:      elementType,
+		elementIsPointer: elementIsPointer,
 	}, nil
 }
 
 type Map struct {
-	mapType     reflect.Type
-	mapValue    reflect.Value
-	keyType     reflect.Type
-	elementType reflect.Type
+	mapType          reflect.Type
+	mapValue         reflect.Value
+	keyType          reflect.Type
+	elementType      reflect.Type
+	elementIsPointer bool
 }
 
 func (m *Map) NewElement() interface{} {
@@ -72,7 +80,10 @@ func (m *Map) Set(key interface{}, value interface{}) error {
 	}
 
 	valueValue := reflect.ValueOf(value)
-	valueValue = reflect.Indirect(valueValue)
+
+	if !m.elementIsPointer {
+		valueValue = reflect.Indirect(valueValue)
+	}
 
 	m.mapValue.SetMapIndex(keyValue, valueValue)
 
