@@ -46,10 +46,35 @@ func NewDdbLockProvider(config cfg.Config, logger mon.Logger, settings Distribut
 		},
 	})
 
+	backoffConfig := backoff.NewExponentialBackOff()
+	if settings.Backoff.InitialInterval > 0 {
+		backoffConfig.InitialInterval = settings.Backoff.InitialInterval
+	}
+
+	if settings.Backoff.RandomizationFactor > 0 {
+		backoffConfig.RandomizationFactor = settings.Backoff.RandomizationFactor
+	}
+
+	if settings.Backoff.Multiplier > 0 {
+		backoffConfig.Multiplier = settings.Backoff.Multiplier
+	}
+
+	if settings.Backoff.MaxInterval > 0 {
+		backoffConfig.MaxInterval = settings.Backoff.MaxInterval
+	}
+
+	if settings.Backoff.MaxElapsedTime > 0 {
+		backoffConfig.MaxElapsedTime = settings.Backoff.MaxElapsedTime
+	}
+
+	if settings.Backoff.Blocking {
+		backoffConfig.MaxElapsedTime = 0
+	}
+
 	return NewDdbLockProviderWithInterfaces(
 		logger,
 		repo,
-		backoff.NewExponentialBackOff(),
+		backoffConfig,
 		clockwork.NewRealClock(),
 		uuid.New(),
 		settings,
