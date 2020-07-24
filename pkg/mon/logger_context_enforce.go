@@ -1,11 +1,12 @@
 package mon
 
 import (
+	"context"
 	"time"
 )
 
 type ContextEnforcingLogger struct {
-	Logger
+	logger             Logger
 	stacktraceProvider StackTraceProvider
 	notifier           Logger
 	enabled            bool
@@ -19,7 +20,7 @@ func NewContextEnforcingLogger(logger Logger) *ContextEnforcingLogger {
 
 func NewContextEnforcingLoggerWithInterfaces(logger Logger, stacktraceProvider StackTraceProvider, notifier Logger) *ContextEnforcingLogger {
 	return &ContextEnforcingLogger{
-		Logger:             logger,
+		logger:             logger,
 		stacktraceProvider: stacktraceProvider,
 		notifier:           notifier.WithChannel("context_missing"),
 		enabled:            false,
@@ -32,62 +33,85 @@ func (l *ContextEnforcingLogger) Enable() {
 
 func (l *ContextEnforcingLogger) Debug(args ...interface{}) {
 	l.checkContext(Debug)
-	l.Logger.Debug(args...)
+	l.logger.Debug(args...)
 }
 
 func (l *ContextEnforcingLogger) Debugf(msg string, args ...interface{}) {
 	l.checkContext(Debug)
-	l.Logger.Debugf(msg, args...)
+	l.logger.Debugf(msg, args...)
 }
 
 func (l *ContextEnforcingLogger) Error(err error, msg string) {
 	l.checkContext(Error)
-	l.Logger.Error(err, msg)
+	l.logger.Error(err, msg)
 }
 
 func (l *ContextEnforcingLogger) Errorf(err error, msg string, args ...interface{}) {
 	l.checkContext(Error)
-	l.Logger.Errorf(err, msg, args...)
+	l.logger.Errorf(err, msg, args...)
 }
 
 func (l *ContextEnforcingLogger) Fatal(err error, msg string) {
 	l.checkContext(Fatal)
-	l.Logger.Fatal(err, msg)
+	l.logger.Fatal(err, msg)
 }
 
 func (l *ContextEnforcingLogger) Fatalf(err error, msg string, args ...interface{}) {
 	l.checkContext(Fatal)
-	l.Logger.Fatalf(err, msg, args...)
+	l.logger.Fatalf(err, msg, args...)
 }
 
 func (l *ContextEnforcingLogger) Info(args ...interface{}) {
 	l.checkContext(Info)
-	l.Logger.Info(args...)
+	l.logger.Info(args...)
 }
 
 func (l *ContextEnforcingLogger) Infof(msg string, args ...interface{}) {
 	l.checkContext(Info)
-	l.Logger.Infof(msg, args...)
+	l.logger.Infof(msg, args...)
 }
 
 func (l *ContextEnforcingLogger) Panic(err error, msg string) {
 	l.checkContext(Panic)
-	l.Logger.Panic(err, msg)
+	l.logger.Panic(err, msg)
 }
 
 func (l *ContextEnforcingLogger) Panicf(err error, msg string, args ...interface{}) {
 	l.checkContext(Panic)
-	l.Logger.Panicf(err, msg, args...)
+	l.logger.Panicf(err, msg, args...)
 }
 
 func (l *ContextEnforcingLogger) Warn(args ...interface{}) {
 	l.checkContext(Warn)
-	l.Logger.Warn(args...)
+	l.logger.Warn(args...)
 }
 
 func (l *ContextEnforcingLogger) Warnf(msg string, args ...interface{}) {
 	l.checkContext(Warn)
-	l.Logger.Warnf(msg, args...)
+	l.logger.Warnf(msg, args...)
+}
+
+func (l *ContextEnforcingLogger) WithChannel(channel string) Logger {
+	return &ContextEnforcingLogger{
+		logger:             l.logger.WithChannel(channel),
+		stacktraceProvider: l.stacktraceProvider,
+		notifier:           l.notifier,
+		enabled:            l.enabled,
+	}
+}
+
+func (l *ContextEnforcingLogger) WithContext(ctx context.Context) Logger {
+	// we can stop wrapping that logger, it now carries a context
+	return l.logger.WithContext(ctx)
+}
+
+func (l *ContextEnforcingLogger) WithFields(fields map[string]interface{}) Logger {
+	return &ContextEnforcingLogger{
+		logger:             l.logger.WithFields(fields),
+		stacktraceProvider: l.stacktraceProvider,
+		notifier:           l.notifier,
+		enabled:            l.enabled,
+	}
 }
 
 func (l *ContextEnforcingLogger) checkContext(level string) {
@@ -95,9 +119,11 @@ func (l *ContextEnforcingLogger) checkContext(level string) {
 		return
 	}
 
-	base, ok := l.Logger.(*logger)
+	base, ok := l.logger.(*logger)
 
 	if !ok {
+		l.notifier.Warnf("context enforcing logger wrapping something else than *mon.logger: %T", l.logger)
+
 		return
 	}
 
