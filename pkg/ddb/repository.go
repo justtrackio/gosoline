@@ -86,7 +86,7 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 	backoffSettings := &cloud.BackoffSettings{}
 	config.UnmarshalKey("ddb.backoff", backoffSettings)
 
-	if err := cfg.Merge(backoffSettings, settings.Backoff); err != nil {
+	if err := cfg.Merge(&settings.Backoff, *backoffSettings); err != nil {
 		logger.Panicf(err, "could not merge backoff settings for ddb table %s", tableName)
 	}
 
