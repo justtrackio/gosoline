@@ -43,6 +43,7 @@ func (s *DdbLockTestSuite) SetupSuite() {
 
 	s.mocks = mocks
 }
+
 func (s *DdbLockTestSuite) TearDownSuite() {
 	if s.mocks != nil {
 		s.mocks.Shutdown()
