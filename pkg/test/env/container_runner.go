@@ -50,11 +50,12 @@ type containerRunnerSettings struct {
 }
 
 type containerRunner struct {
-	logger    mon.Logger
-	pool      *dockertest.Pool
-	id        string
-	resources map[string]*dockertest.Resource
-	settings  *containerRunnerSettings
+	logger       mon.Logger
+	pool         *dockertest.Pool
+	id           string
+	resources    map[string]*dockertest.Resource
+	resourcesLck sync.Mutex
+	settings     *containerRunnerSettings
 }
 
 func NewContainerRunner(config cfg.Config, logger mon.Logger) *containerRunner {
@@ -71,11 +72,12 @@ func NewContainerRunner(config cfg.Config, logger mon.Logger) *containerRunner {
 	}
 
 	return &containerRunner{
-		logger:    logger,
-		pool:      pool,
-		id:        id,
-		resources: make(map[string]*dockertest.Resource),
-		settings:  settings,
+		logger:       logger,
+		pool:         pool,
+		id:           id,
+		resources:    make(map[string]*dockertest.Resource),
+		resourcesLck: sync.Mutex{},
+		settings:     settings,
 	}
 }
 
@@ -146,7 +148,9 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container,
 		return nil, fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
 	}
 
+	r.resourcesLck.Lock()
 	r.resources[skeleton.id()] = resource
+	r.resourcesLck.Unlock()
 
 	if err = r.expireAfter(resource, config.ExpireAfter); err != nil {
 		return nil, fmt.Errorf("could not set expiry on container %s: %w", containerName, err)
