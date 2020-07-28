@@ -139,6 +139,7 @@ func (m SqlManager) queryPolicies(where squirrel.Eq) (ladon.Policies, error) {
 	sel = sel.Join(fmt.Sprintf("%s AS r ON r.id = p.id", tableResources))
 	sel = sel.Join(fmt.Sprintf("%s AS a ON a.id = p.id", tableActions))
 	sel = sel.Where(where)
+	sel = sel.OrderBy("p.id")
 
 	sql, args, err := sel.ToSql()
 
