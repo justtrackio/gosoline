@@ -8,10 +8,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/sys/unix"
 	"io"
-	"net"
-	"net/url"
-	"os"
-	"syscall"
+	"strings"
 )
 
 func IsAwsError(err error, awsCode string) bool {
@@ -48,99 +45,20 @@ func IsRequestCanceled(err error) bool {
 }
 
 func IsUsedClosedConnectionError(err error) bool {
-	opErr, ok := opError(err)
-
-	if !ok {
-		return false
-	}
-
-	return opErr.Err.Error() == "use of closed network connection"
+	return strings.Contains(err.Error(), "use of closed network connection")
 }
 
 func IsConnectionError(err error) bool {
-	if IsUrlError(err, io.EOF) {
+	var aerr awserr.Error
+	if errors.As(err, &aerr) {
+		err = aerr.OrigErr()
+	}
+
+	if errors.Is(err, io.EOF) || errors.Is(err, unix.ECONNREFUSED) || errors.Is(err, unix.ECONNRESET) || errors.Is(err, unix.EPIPE) {
 		return true
 	}
 
-	if IsSyscallError(err, unix.ECONNREFUSED, unix.ECONNRESET, unix.EPIPE) {
-		return true
-	}
-
 	return false
-}
-
-func IsUrlError(err error, targets ...error) bool {
-	urlErr, ok := urlError(err)
-
-	if !ok {
-		return false
-	}
-
-	for _, t := range targets {
-		if errors.Is(urlErr, t) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func IsSyscallError(err error, syscallErrors ...syscall.Errno) bool {
-	opErr, ok := opError(err)
-
-	if !ok {
-		return false
-	}
-
-	for {
-		if nextOpErr, ok := opErr.Err.(*net.OpError); ok {
-			opErr = nextOpErr
-		} else {
-			break
-		}
-	}
-
-	syscallErr, ok := opErr.Err.(*os.SyscallError)
-
-	if !ok {
-		return false
-	}
-
-	for _, sysErr := range syscallErrors {
-		if syscallErr.Err == sysErr {
-			return true
-		}
-	}
-
-	return false
-}
-
-func urlError(err error) (*url.Error, bool) {
-	if err == nil {
-		return nil, false
-	}
-
-	aerr, ok := err.(awserr.Error)
-
-	if !ok {
-		return nil, false
-	}
-
-	urlErr, ok := aerr.OrigErr().(*url.Error)
-
-	return urlErr, ok
-}
-
-func opError(err error) (*net.OpError, bool) {
-	urlErr, ok := urlError(err)
-
-	if !ok {
-		return nil, false
-	}
-
-	opErr, ok := urlErr.Err.(*net.OpError)
-
-	return opErr, ok
 }
 
 const RequestCanceledError = requestCanceledError("RequestCanceled")

@@ -231,6 +231,10 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (inter
 			return err
 		}
 
+		if IsConnectionError(err) {
+			return err
+		}
+
 		if request.IsErrorRetryable(err) {
 			return err
 		}
