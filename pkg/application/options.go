@@ -11,6 +11,7 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/pkg/errors"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -40,6 +41,16 @@ func WithApiHealthCheck(app *App) {
 	})
 }
 
+func WithConfigEnvKeyPrefix(prefix string) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			prefix = strings.Replace(prefix, "-", "_", -1)
+
+			return config.Option(cfg.WithEnvKeyPrefix(prefix))
+		})
+	}
+}
+
 func WithConfigEnvKeyReplacer(replacer *strings.Replacer) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
@@ -48,16 +59,6 @@ func WithConfigEnvKeyReplacer(replacer *strings.Replacer) Option {
 			}
 
 			return nil
-		})
-	}
-}
-
-func WithConfigEnvKeyPrefix(prefix string) Option {
-	return func(app *App) {
-		app.addConfigOption(func(config cfg.GosoConf) error {
-			prefix = strings.Replace(prefix, "-", "_", -1)
-
-			return config.Option(cfg.WithEnvKeyPrefix(prefix))
 		})
 	}
 }
@@ -101,13 +102,6 @@ func WithConfigMap(configMap map[string]interface{}) Option {
 	}
 }
 
-func WithConfigServer(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
-		kernel.Add("config-server", new(ConfigServer))
-		return nil
-	})
-}
-
 func WithConfigPostProcessor(processor cfg.PostProcessor) Option {
 	return func(app *App) {
 		app.configPostProcessors = append(app.configPostProcessors, processor)
@@ -120,6 +114,13 @@ func WithConfigSanitizers(sanitizers ...cfg.Sanitizer) Option {
 			return config.Option(cfg.WithSanitizers(sanitizers...))
 		})
 	}
+}
+
+func WithConfigServer(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
+		kernel.Add("config-server", new(ConfigServer))
+		return nil
+	})
 }
 
 func WithConfigSetting(key string, settings interface{}) Option {
@@ -185,18 +186,18 @@ func WithLoggerFormat(format string) Option {
 	}
 }
 
-func WithLoggerLevel(level string) Option {
-	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-			return logger.Option(mon.WithLevel(level))
-		})
-	}
-}
-
 func WithLoggerHook(hook mon.LoggerHook) Option {
 	return func(app *App) {
 		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
 			return logger.Option(mon.WithHook(hook))
+		})
+	}
+}
+
+func WithLoggerLevel(level string) Option {
+	return func(app *App) {
+		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+			return logger.Option(mon.WithLevel(level))
 		})
 	}
 }
@@ -206,6 +207,14 @@ func WithLoggerMetricHook(app *App) {
 		metricHook := mon.NewMetricHook()
 		return logger.Option(mon.WithHook(metricHook))
 	})
+}
+
+func WithLoggerOutput(output io.Writer) Option {
+	return func(app *App) {
+		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+			return logger.Option(mon.WithOutput(output))
+		})
+	}
 }
 
 func WithLoggerSentryHook(extraProvider ...mon.SentryExtraProvider) Option {
