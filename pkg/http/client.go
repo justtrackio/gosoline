@@ -34,6 +34,7 @@ type Client interface {
 	SetTimeout(timeout time.Duration)
 	SetUserAgent(ua string)
 	SetProxyUrl(p string)
+	SetRedirectValidator(allowRequest func(request *http.Request) bool)
 	NewRequest() *Request
 	NewJsonRequest() *Request
 	NewXmlRequest() *Request
@@ -113,6 +114,19 @@ func (c *client) SetUserAgent(ua string) {
 
 func (c *client) SetProxyUrl(p string) {
 	c.http.SetProxy(p)
+}
+
+func (c *client) SetRedirectValidator(allowRequest func(request *http.Request) bool) {
+	c.http.SetRedirectPolicy(
+		resty.FlexibleRedirectPolicy(10),
+		resty.RedirectPolicyFunc(func(request *http.Request, _ []*http.Request) error {
+			if !allowRequest(request) {
+				return http.ErrUseLastResponse
+			}
+
+			return nil
+		}),
+	)
 }
 
 func (c *client) Delete(ctx context.Context, request *Request) (*Response, error) {
