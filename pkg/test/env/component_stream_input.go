@@ -35,7 +35,11 @@ func (s *streamInputComponent) Publish(body interface{}, attributes map[string]i
 	}
 
 	s.input.Publish(message)
-	s.input.Stop()
+}
+
+func (s *streamInputComponent) PublishAndStop(body interface{}, attributes map[string]interface{}) {
+	s.Publish(body, attributes)
+	s.Stop()
 }
 
 func (s *streamInputComponent) PublishFromJsonFile(fileName string) {
@@ -56,5 +60,9 @@ func (s *streamInputComponent) PublishFromJsonFile(fileName string) {
 		s.input.Publish(msg)
 	}
 
+	s.input.Stop()
+}
+
+func (s *streamInputComponent) Stop() {
 	s.input.Stop()
 }

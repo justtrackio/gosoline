@@ -172,16 +172,34 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interfa
 		return optionalDefault[0]
 	}
 
-	data := c.settings.Get(key)
+	var err error
+	var data = c.settings.Get(key)
+	var reflectValue = reflect.ValueOf(data)
 
-	if msiSlice, ok := data.([]map[string]interface{}); ok {
-		return msiSlice
+	if reflectValue.Kind() != reflect.Slice {
+		err = fmt.Errorf("can not cast value %v[%T] of key %s to []map[string]interface{}", data, data, key)
+		c.err(err, err.Error())
+		return nil
 	}
 
-	err := fmt.Errorf("can not cast value %v[%T] of key %s to []map[string]interface{}", data, data, key)
-	c.err(err, err.Error())
+	var ok bool
+	var element interface{}
+	var msi map[string]interface{}
+	var msiSlice = make([]map[string]interface{}, reflectValue.Len())
 
-	return nil
+	for i := 0; i < reflectValue.Len(); i++ {
+		element = reflectValue.Index(i).Interface()
+
+		if msi, ok = element.(map[string]interface{}); !ok {
+			err := fmt.Errorf("element of key %s should be a msi but instead is %T", key, element)
+			c.err(err, err.Error())
+			return nil
+		}
+
+		msiSlice[i] = msi
+	}
+
+	return msiSlice
 }
 
 func (c *config) GetString(key string, optionalDefault ...string) string {
@@ -450,73 +468,43 @@ func (c *config) keyCheck(key string, defaults int) bool {
 	return false
 }
 
-func (c *config) getMergoConfigs(mergeOptions []MergeOption) []func(*mergo.Config) {
-	mergoConfigs := make([]func(*mergo.Config), 0)
-
-	if len(mergeOptions) == 0 {
-		mergeOptions = append(mergeOptions, MergeWithOverride)
-	}
-
-	for _, opt := range mergeOptions {
-		opt(&mergoConfigs)
-	}
-
-	return mergoConfigs
-}
-
-func (c *config) merge(prefix string, setting interface{}, mergeOptions ...MergeOption) error {
+func (c *config) merge(prefix string, setting interface{}, options ...MapOption) error {
 	if msi, ok := setting.(map[string]interface{}); ok {
-		return c.mergeMsi(prefix, msi, mergeOptions...)
+		return c.mergeMsi(prefix, msi, options...)
 	}
 
 	if refl.IsStructOrPointerToStruct(setting) {
-		return c.mergeStruct(prefix, setting, mergeOptions...)
+		return c.mergeStruct(prefix, setting, options...)
 	}
 
-	return c.mergeValue(prefix, setting)
+	return c.mergeValue(prefix, setting, options...)
 }
 
-func (c *config) mergeValue(prefix string, value interface{}) error {
+func (c *config) mergeValue(prefix string, value interface{}, options ...MapOption) error {
 	sanitizedValue, err := Sanitize("root", value, c.sanitizers)
 
 	if err != nil {
 		return fmt.Errorf("could not sanitize settings on merge: %w", err)
 	}
 
-	c.settings.Set(prefix, sanitizedValue)
+	c.settings.Set(prefix, sanitizedValue, options...)
 
 	return nil
 }
 
-func (c *config) mergeMsi(prefix string, settings map[string]interface{}, mergeOptions ...MergeOption) error {
+func (c *config) mergeMsi(prefix string, settings map[string]interface{}, options ...MapOption) error {
 	sanitizedSettings, err := Sanitize("root", settings, c.sanitizers)
 
 	if err != nil {
 		return fmt.Errorf("could not sanitize settings on merge: %w", err)
 	}
 
-	if !c.settings.Has(prefix) {
-		c.settings.Set(prefix, sanitizedSettings)
-		return nil
-	}
-
-	ms := NewMap()
-	ms.Set(prefix, sanitizedSettings)
-
-	newSettings := ms.Msi()
-	currentSettings := c.settings.Msi()
-	mergoConfigs := c.getMergoConfigs(mergeOptions)
-
-	if err := mergo.Merge(&currentSettings, newSettings, mergoConfigs...); err != nil {
-		return err
-	}
-
-	c.settings = NewMap(currentSettings)
+	c.settings.Merge(prefix, sanitizedSettings, options...)
 
 	return nil
 }
 
-func (c *config) mergeStruct(prefix string, settings interface{}, mergeOptions ...MergeOption) error {
+func (c *config) mergeStruct(prefix string, settings interface{}, options ...MapOption) error {
 	ms := c.buildMapStruct(settings)
 	msi, err := ms.Read()
 
@@ -524,7 +512,7 @@ func (c *config) mergeStruct(prefix string, settings interface{}, mergeOptions .
 		return err
 	}
 
-	return c.mergeMsi(prefix, msi.Msi(), mergeOptions...)
+	return c.mergeMsi(prefix, msi.Msi(), options...)
 }
 
 func (c *config) readEnvironment(prefix string, input map[string]interface{}) map[string]interface{} {

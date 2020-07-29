@@ -32,7 +32,6 @@ func (s *suiteOptions) addOptionalTestConfig() {
 	}
 
 	s.addEnvOption(env.WithConfigFile("config.test.yml"))
-	s.addAppOption(application.WithConfigFile("config.test.yml", "yml"))
 }
 
 type SuiteOption func(s *suiteOptions)
@@ -40,7 +39,6 @@ type SuiteOption func(s *suiteOptions)
 func WithConfigFile(file string) SuiteOption {
 	return func(s *suiteOptions) {
 		s.addEnvOption(env.WithConfigFile(file))
-		s.addAppOption(application.WithConfigFile(file, "yml"))
 	}
 }
 
@@ -88,5 +86,11 @@ func WithModule(name string, module kernel.Module) SuiteOption {
 func WithModuleFactory(factory kernel.ModuleFactory) SuiteOption {
 	return func(s *suiteOptions) {
 		s.appFactories = append(s.appFactories, factory)
+	}
+}
+
+func WithoutAutoDetectedComponents(components ...string) SuiteOption {
+	return func(s *suiteOptions) {
+		s.addEnvOption(env.WithoutAutoDetectedComponents(components...))
 	}
 }

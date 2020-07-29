@@ -92,6 +92,45 @@ func (s *MapTestSuite) TestGet() {
 	s.Equal(nil, msi.Get("sl1[2]"))
 }
 
+func (s *MapTestSuite) TestMerge() {
+	s.m.Set("b", true)
+	s.m.Set("msi", map[string]interface{}{
+		"i":  1,
+		"s1": "string1",
+		"sl": []interface{}{1, 2, 3},
+	})
+	s.m.Set("sl", []interface{}{1, 2, 3})
+
+	s.m.Merge(".", map[string]interface{}{
+		"msi": map[string]interface{}{
+			"f": 1.1,
+		},
+	})
+	s.m.Merge("msi", map[string]interface{}{
+		"s2": "string2",
+	})
+	s.m.Merge("msi", map[string]interface{}{
+		"sl[3]": 4,
+	})
+	s.m.Merge("emptySl", []interface{}{})
+
+	expected := map[string]interface{}{
+		"b": true,
+		"msi": map[string]interface{}{
+			"i":  1,
+			"f":  1.1,
+			"s1": "string1",
+			"s2": "string2",
+			"sl": []interface{}{1, 2, 3, 4},
+		},
+		"sl":      []interface{}{1, 2, 3},
+		"emptySl": []interface{}{},
+	}
+
+	msi := s.m.Msi()
+	s.Equal(expected, msi)
+}
+
 func TestMapTestSuite(t *testing.T) {
 	suite.Run(t, new(MapTestSuite))
 }

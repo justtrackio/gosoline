@@ -53,23 +53,19 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 
 		consumerSettings.Input = getInputName(name)
 
-		if inputPostProcessor, ok = subscriberInputConfigPostProcessors[subscriberSettings.Input]; !ok {
-			return false, fmt.Errorf("there is no SubscriberInputConfigPostProcessor for input %s", subscriberSettings.Input)
-		}
-
-		inputOption := inputPostProcessor(config, name, subscriberSettings)
-
-		if outputPostProcessor, ok = subscriberOutputConfigPostProcessors[subscriberSettings.Output]; !ok {
-			return false, fmt.Errorf("there is no subscriberOutputConfigPostProcessors for output %s", subscriberSettings.Output)
-		}
-
-		outputOption := outputPostProcessor(config, name, subscriberSettings)
-
 		configOptions := []cfg.Option{
-			cfg.WithConfigSetting(consumerKey, consumerSettings, cfg.MergeWithoutOverride),
+			cfg.WithConfigSetting(consumerKey, consumerSettings, cfg.SkipExisting),
 			cfg.WithConfigSetting(subscriberKey, subscriberSettings),
-			inputOption,
-			outputOption,
+		}
+
+		if inputPostProcessor, ok = subscriberInputConfigPostProcessors[subscriberSettings.Input]; ok {
+			inputOption := inputPostProcessor(config, name, subscriberSettings)
+			configOptions = append(configOptions, inputOption)
+		}
+
+		if outputPostProcessor, ok = subscriberOutputConfigPostProcessors[subscriberSettings.Output]; ok {
+			outputOption := outputPostProcessor(config, name, subscriberSettings)
+			configOptions = append(configOptions, outputOption)
 		}
 
 		if err := config.Option(configOptions...); err != nil {
@@ -95,7 +91,7 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 		},
 	}
 
-	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.MergeWithoutOverride)
+	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)
 }
 
 func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
@@ -110,7 +106,7 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 	kvstoreSettings.Application = subscriberSettings.TargetModel.Application
 	kvstoreSettings.Elements = []string{kvstore.TypeRedis, kvstore.TypeDdb}
 
-	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.MergeWithoutOverride)
+	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.SkipExisting)
 }
 
 func getInputName(name string) string {

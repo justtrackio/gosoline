@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -38,7 +39,7 @@ func (m *Map) Get(selector string) interface{} {
 	m.lck.Lock()
 	defer m.lck.Unlock()
 
-	return m.access(m.msi, selector, nil, false)
+	return m.access(m.msi, selector, nil, &mapMode{})
 }
 
 func (m *Map) Has(selector string) bool {
@@ -54,39 +55,35 @@ func (m *Map) Has(selector string) bool {
 	return m.Get(selector) != nil
 }
 
-func (m *Map) Set(key string, value interface{}) {
+func (m *Map) Set(key string, value interface{}, options ...MapOption) {
 	m.lck.Lock()
 	defer m.lck.Unlock()
 
+	mode := &mapMode{
+		isSet: true,
+	}
+
+	for _, opt := range options {
+		opt(mode)
+	}
+
 	if msi, ok := value.(map[string]interface{}); ok && key == "." {
 		for k, v := range msi {
+			if _, ok := m.msi[k]; ok && mode.skipExisting {
+				continue
+			}
+
 			m.msi[k] = v
 		}
 		return
 	}
 
-	m.access(m.msi, key, value, true)
-}
-
-// getIndex returns the index, which is hold in s by two braches.
-// It also returns s withour the index part, e.g. name[1] will return (1, name).
-// If no index is found, -1 is returned
-func getIndex(s string) (int, string) {
-	arrayMatches := arrayAccessRegex.FindStringSubmatch(s)
-	if len(arrayMatches) > 0 {
-		// Get the key into the map
-		selector := arrayMatches[1]
-		// Get the index into the array at the key
-		// We know this cannt fail because arrayMatches[2] is an int for sure
-		index, _ := strconv.Atoi(arrayMatches[2])
-		return index, selector
-	}
-	return -1, s
+	m.access(m.msi, key, value, mode)
 }
 
 // access accesses the object using the selector and performs the
 // appropriate action.
-func (m *Map) access(current interface{}, selector string, value interface{}, isSet bool) interface{} {
+func (m *Map) access(current interface{}, selector string, value interface{}, mode *mapMode) interface{} {
 	selector = strings.Trim(selector, ".")
 	selSegs := strings.SplitN(selector, PathSeparator, 2)
 
@@ -101,25 +98,26 @@ func (m *Map) access(current interface{}, selector string, value interface{}, is
 	switch current.(type) {
 	case map[string]interface{}:
 		curMSI := current.(map[string]interface{})
-		if len(selSegs) <= 1 && isSet {
-			m.doSet(curMSI, thisSel, index, value)
+
+		if len(selSegs) <= 1 && mode.isSet {
+			m.doSet(curMSI, thisSel, index, value, mode)
 			return nil
 		}
 
 		_, ok := curMSI[thisSel].(map[string]interface{})
-		if (curMSI[thisSel] == nil || !ok) && index == -1 && isSet {
+		if (curMSI[thisSel] == nil || !ok) && index == -1 && mode.isSet {
 			curMSI[thisSel] = map[string]interface{}{}
 		}
 
 		// create new array if missing
-		if curMSI[thisSel] == nil && isSet && index > -1 {
+		if curMSI[thisSel] == nil && mode.isSet && index > -1 {
 			// type of interface{}
 			at := reflect.TypeOf((*interface{})(nil)).Elem()
 			st := reflect.SliceOf(at)
 			sv := reflect.MakeSlice(st, 0, 4)
 
 			array := sv.Interface().([]interface{})
-			if index >= len(array) && isSet {
+			if index >= len(array) && mode.isSet {
 				m.fillSlice(&array, index, len(selSegs), value)
 			}
 
@@ -127,7 +125,7 @@ func (m *Map) access(current interface{}, selector string, value interface{}, is
 		}
 
 		// expand existing array
-		if array, ok := curMSI[thisSel].([]interface{}); ok && isSet && index > -1 && index >= len(array) {
+		if array, ok := curMSI[thisSel].([]interface{}); ok && mode.isSet && index > -1 && index >= len(array) {
 			m.fillSlice(&array, index, len(selSegs), value)
 			curMSI[thisSel] = array
 		}
@@ -149,21 +147,29 @@ func (m *Map) access(current interface{}, selector string, value interface{}, is
 	}
 
 	if len(selSegs) > 1 {
-		current = m.access(current, selSegs[1], value, isSet)
+		current = m.access(current, selSegs[1], value, mode)
 	}
 
 	return current
 }
 
-func (m *Map) doSet(current map[string]interface{}, key string, index int, value interface{}) {
-	vv := reflect.ValueOf(value)
+func (m *Map) doSet(current map[string]interface{}, key string, index int, value interface{}, mode *mapMode) {
+	reflectValue := reflect.ValueOf(value)
 
-	if index < 0 && vv.Kind() == reflect.Slice {
-		m.doSetSlice(current, key, vv)
+	if index < 0 && reflectValue.Kind() == reflect.Slice {
+		if _, ok := current[key]; ok && mode.skipExisting {
+			return
+		}
+
+		m.doSetSlice(current, key, reflectValue)
 		return
 	}
 
 	if index < 0 {
+		if _, ok := current[key]; ok && mode.skipExisting {
+			return
+		}
+
 		current[key] = value
 		return
 	}
@@ -177,20 +183,23 @@ func (m *Map) doSet(current map[string]interface{}, key string, index int, value
 	}
 
 	array := current[key]
+	arrayValue := reflect.ValueOf(array)
 
-	sv := reflect.ValueOf(array)
+	if index < arrayValue.Len() {
+		if mode.skipExisting {
+			return
+		}
 
-	if index < sv.Len() {
-		sv.Index(index).Set(vv)
+		arrayValue.Index(index).Set(reflectValue)
 		return
 	}
 
-	for i := sv.Len(); i <= index; i++ {
-		sv = reflect.Append(sv, reflect.Zero(vv.Type()))
+	for i := arrayValue.Len(); i <= index; i++ {
+		arrayValue = reflect.Append(arrayValue, reflect.Zero(reflectValue.Type()))
 	}
 
-	sv.Index(index).Set(vv)
-	current[key] = sv.Interface()
+	arrayValue.Index(index).Set(reflectValue)
+	current[key] = arrayValue.Interface()
 	return
 }
 
@@ -225,4 +234,62 @@ func (m *Map) fillSlice(array *[]interface{}, index int, segmentCount int, value
 
 		va.Set(reflect.Append(va, nv))
 	}
+}
+
+func (m *Map) Merge(key string, source interface{}, options ...MapOption) {
+	sourceValue := reflect.ValueOf(source)
+
+	var mapIter *reflect.MapIter
+	var elementKey string
+	var elementValue interface{}
+
+	if sourceValue.Kind() == reflect.Map {
+		if !m.Has(key) {
+			m.Set(key, map[string]interface{}{}, options...)
+		}
+
+		mapIter = sourceValue.MapRange()
+
+		for mapIter.Next() {
+			elementKey = fmt.Sprintf("%s.%s", key, mapIter.Key())
+			elementValue = mapIter.Value().Interface()
+
+			m.Merge(elementKey, elementValue, options...)
+		}
+
+		return
+	}
+
+	if sourceValue.Kind() == reflect.Slice {
+		if !m.Has(key) {
+			m.Set(key, []interface{}{}, options...)
+		}
+
+		for i := 0; i < sourceValue.Len(); i++ {
+			elementKey = fmt.Sprintf("%s[%d]", key, i)
+			elementValue = sourceValue.Index(i).Interface()
+
+			m.Merge(elementKey, elementValue, options...)
+		}
+
+		return
+	}
+
+	m.Set(key, source, options...)
+}
+
+// getIndex returns the index, which is hold in s by two braches.
+// It also returns s withour the index part, e.g. name[1] will return (1, name).
+// If no index is found, -1 is returned
+func getIndex(s string) (int, string) {
+	arrayMatches := arrayAccessRegex.FindStringSubmatch(s)
+	if len(arrayMatches) > 0 {
+		// Get the key into the map
+		selector := arrayMatches[1]
+		// Get the index into the array at the key
+		// We know this cannt fail because arrayMatches[2] is an int for sure
+		index, _ := strconv.Atoi(arrayMatches[2])
+		return index, selector
+	}
+	return -1, s
 }

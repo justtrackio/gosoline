@@ -6,15 +6,39 @@ import (
 	"sync"
 )
 
+type AutoDetectSettings struct {
+	Enabled        bool     `cfg:"enabled" default:"true"`
+	SkipComponents []string `cfg:"skip_components"`
+}
+
 type ComponentsConfigManager struct {
 	lck    sync.Mutex
 	config cfg.GosoConf
+	detect *AutoDetectSettings
 }
 
 func NewComponentsConfigManager(config cfg.GosoConf) *ComponentsConfigManager {
+	autoDetectSettings := &AutoDetectSettings{}
+	config.UnmarshalKey("test.auto_detect", autoDetectSettings)
+
 	return &ComponentsConfigManager{
 		config: config,
+		detect: autoDetectSettings,
 	}
+}
+
+func (m *ComponentsConfigManager) ShouldAutoDetect(typ string) bool {
+	if !m.detect.Enabled {
+		return false
+	}
+
+	for _, component := range m.detect.SkipComponents {
+		if component == typ {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (m *ComponentsConfigManager) GetAllSettings() ([]ComponentBaseSettingsAware, error) {

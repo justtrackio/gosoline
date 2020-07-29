@@ -11,11 +11,11 @@ import (
 )
 
 func init() {
-	componentFactories[componentLocalstack] = new(localstackFactory)
+	componentFactories[ComponentLocalstack] = new(localstackFactory)
 }
 
 const (
-	componentLocalstack  = "localstack"
+	ComponentLocalstack  = "localstack"
 	localstackServiceSns = "sns"
 	localstackServiceSqs = "sqs"
 )
@@ -32,7 +32,11 @@ type localstackFactory struct {
 }
 
 func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
-	if manager.HasType(componentLocalstack) {
+	if manager.HasType(ComponentLocalstack) {
+		return nil
+	}
+
+	if !manager.ShouldAutoDetect(ComponentLocalstack) {
 		return nil
 	}
 
@@ -53,7 +57,7 @@ func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigM
 	settings := &localstackSettings{}
 	config.UnmarshalDefaults(settings)
 
-	settings.Type = componentLocalstack
+	settings.Type = ComponentLocalstack
 	settings.Services = services
 
 	if err := manager.Add(settings); err != nil {

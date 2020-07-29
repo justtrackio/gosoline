@@ -36,6 +36,9 @@ func runCaseTest(t *testing.T, suite TestingSuite, method reflect.Method) {
 		env.WithLoggerSettingsFromConfig,
 	}
 	envOptions = append(envOptions, suiteOptions.envOptions...)
+	envOptions = append(envOptions, env.WithConfigMap(map[string]interface{}{
+		"env": "test",
+	}))
 
 	environment, err := env.NewEnvironment(t, envOptions...)
 

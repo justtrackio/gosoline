@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
 )
@@ -14,11 +15,10 @@ const (
 )
 
 type PublisherSettings struct {
-	cfg.AppId
+	mdl.ModelId
 	Producer   string `cfg:"producer" validate:"required_without=OutputType"`
 	OutputType string `cfg:"output_type" validate:"required_without=Producer"`
 	Shared     bool   `cfg:"shared"`
-	Name       string `cfg:"name"`
 }
 
 //go:generate mockery -name Publisher
@@ -53,17 +53,19 @@ func NewPublisherWithInterfaces(logger mon.Logger, producer stream.Producer, set
 }
 
 func (p *publisher) Publish(ctx context.Context, typ string, version int, value interface{}) error {
-	modelId := fmt.Sprintf("%s.%s.%s.%s", p.settings.Project, p.settings.Family, p.settings.Application, p.settings.Name)
-
-	attributes := map[string]interface{}{
-		"type":    typ,
-		"version": version,
-		"modelId": modelId,
-	}
+	attributes := CreateMessageAttributes(p.settings.ModelId, typ, version)
 
 	if err := p.producer.WriteOne(ctx, value, attributes); err != nil {
-		return fmt.Errorf("can not publish %s with publisher %s: %w", modelId, p.settings.Name, err)
+		return fmt.Errorf("can not publish %s with publisher %s: %w", p.settings.ModelId.String(), p.settings.Name, err)
 	}
 
 	return nil
+}
+
+func CreateMessageAttributes(modelId mdl.ModelId, typ string, version int) map[string]interface{} {
+	return map[string]interface{}{
+		"type":    typ,
+		"version": version,
+		"modelId": modelId.String(),
+	}
 }

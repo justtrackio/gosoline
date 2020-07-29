@@ -173,6 +173,7 @@ func (k *kernel) Run() {
 
 	if err := k.runFactories(); err != nil {
 		k.logger.Error(err, "error building additional modules by factories")
+		close(k.running)
 		return
 	}
 

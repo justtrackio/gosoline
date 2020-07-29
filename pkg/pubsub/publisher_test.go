@@ -2,7 +2,7 @@ package pubsub_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/pubsub"
 	streamMocks "github.com/applike/gosoline/pkg/stream/mocks"
@@ -21,12 +21,12 @@ func (s *PublisherTestSuite) SetupTest() {
 	s.producer = new(streamMocks.Producer)
 
 	s.publisher = pubsub.NewPublisherWithInterfaces(logger, s.producer, &pubsub.PublisherSettings{
-		AppId: cfg.AppId{
+		ModelId: mdl.ModelId{
 			Project:     "gosoline",
 			Family:      "test",
 			Application: "app",
+			Name:        "event",
 		},
-		Name: "event",
 	})
 }
 

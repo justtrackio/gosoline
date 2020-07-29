@@ -24,6 +24,14 @@ func WithConfigFile(file string) Option {
 	}
 }
 
+func WithConfigMap(settings map[string]interface{}) Option {
+	return func(env *Environment) {
+		env.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithConfigMap(settings))
+		})
+	}
+}
+
 func WithContainerExpireAfter(expireAfter time.Duration) Option {
 	return func(env *Environment) {
 		env.addConfigOption(func(config cfg.GosoConf) error {
@@ -53,4 +61,12 @@ func WithLoggerSettingsFromConfig(env *Environment) {
 
 		return logger.Option(loggerOptions...)
 	})
+}
+
+func WithoutAutoDetectedComponents(components ...string) Option {
+	return func(env *Environment) {
+		env.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithConfigSetting("test.auto_detect.skip_components", components))
+		})
+	}
 }

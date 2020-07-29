@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -86,6 +87,7 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	}
 
 	env.components = components
+	clock.WithProvider(clock.NewFakeClock())
 
 	return env, nil
 }
@@ -114,6 +116,10 @@ func (e *Environment) Logger() mon.GosoLog {
 	return e.logger
 }
 
+func (e *Environment) Clock() clock.Clock {
+	return clock.Provider
+}
+
 func (e *Environment) Filesystem() *filesystem {
 	return e.filesystem
 }
@@ -130,7 +136,7 @@ func (e *Environment) Component(typ string, name string) Component {
 }
 
 func (e *Environment) Localstack(name string) *localstackComponent {
-	return e.Component(componentLocalstack, name).(*localstackComponent)
+	return e.Component(ComponentLocalstack, name).(*localstackComponent)
 }
 
 func (e *Environment) MySql(name string) *mysqlComponent {

@@ -52,8 +52,8 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		outputKey := stream.ConfigurableOutputKey(outputName)
 
 		configOptions := []cfg.Option{
-			cfg.WithConfigSetting(producerKey, producerSettings, cfg.MergeWithoutOverride),
-			cfg.WithConfigSetting(outputKey, outputSettings, cfg.MergeWithoutOverride),
+			cfg.WithConfigSetting(producerKey, producerSettings, cfg.SkipExisting),
+			cfg.WithConfigSetting(outputKey, outputSettings, cfg.SkipExisting),
 			cfg.WithConfigSetting(publisherKey, settings),
 		}
 
