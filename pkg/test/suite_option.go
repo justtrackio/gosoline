@@ -4,6 +4,7 @@ import (
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/kernel"
+	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
 	"os"
 	"time"
@@ -41,6 +42,10 @@ func WithConfigFile(file string) SuiteOption {
 		s.addEnvOption(env.WithConfigFile(file))
 		s.addAppOption(application.WithConfigFile(file, "yml"))
 	}
+}
+
+func WithConsumer(callback stream.ConsumerCallback) SuiteOption {
+	return WithModule("consumer-default", stream.NewConsumer("default", callback))
 }
 
 func WithContainerExpireAfter(expireAfter time.Duration) SuiteOption {
