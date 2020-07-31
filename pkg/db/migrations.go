@@ -12,7 +12,7 @@ import (
 )
 
 func runMigrations(logger mon.Logger, db *sqlx.DB, settings *Settings) {
-	if !settings.AutoMigrate {
+	if !settings.AutoMigrate || settings.MigrationsPath == "" {
 		return
 	}
 

@@ -262,6 +262,8 @@ func (r *containerRunner) Stop() error {
 		if err := r.pool.Purge(resource); err != nil {
 			return fmt.Errorf("could not stop container %s: %w", name, err)
 		}
+
+		r.logger.Infof("stopping container %s", name)
 	}
 
 	return nil

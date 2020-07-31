@@ -26,7 +26,7 @@ type mysqlSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
 	Port        int              `cfg:"port" default:"0"`
-	Version     string           `cfg:"version" default:"8"`
+	Version     string           `cfg:"version" default:"8.0"`
 	Credentials mysqlCredentials `cfg:"credentials"`
 }
 
@@ -69,7 +69,7 @@ func (f mysqlFactory) ConfigureContainer(settings interface{}) *containerConfig 
 	}
 
 	return &containerConfig{
-		Repository: "mysql",
+		Repository: "mysql/mysql-server",
 		Tag:        s.Version,
 		Env:        env,
 		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE"},

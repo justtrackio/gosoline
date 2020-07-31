@@ -16,6 +16,7 @@ type Environment struct {
 	t          *testing.T
 	config     cfg.GosoConf
 	logger     mon.GosoLog
+	filesystem *filesystem
 	runner     *containerRunner
 	components *ComponentsContainer
 }
@@ -49,6 +50,7 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 
 	env.config = config
 	env.logger = logger
+	env.filesystem = newFilesystem(t)
 	env.runner = NewContainerRunner(config, logger)
 
 	var err error
@@ -110,6 +112,10 @@ func (e *Environment) Config() cfg.GosoConf {
 
 func (e *Environment) Logger() mon.GosoLog {
 	return e.logger
+}
+
+func (e *Environment) Filesystem() *filesystem {
+	return e.filesystem
 }
 
 func (e *Environment) Component(typ string, name string) Component {
