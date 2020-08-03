@@ -71,7 +71,7 @@ func (f *metadataFactory) getAttributes(settings *Settings) (Attributes, error) 
 
 	allAttributes := make(Attributes)
 
-	if attributes, err = f.readAttributes(settings.Main.Model); err != nil {
+	if attributes, err = ReadAttributes(settings.Main.Model); err != nil {
 		return nil, err
 	}
 
@@ -80,7 +80,7 @@ func (f *metadataFactory) getAttributes(settings *Settings) (Attributes, error) 
 	}
 
 	for _, li := range settings.Local {
-		if attributes, err = f.readAttributes(li.Model); err != nil {
+		if attributes, err = ReadAttributes(li.Model); err != nil {
 			return nil, err
 		}
 
@@ -90,7 +90,7 @@ func (f *metadataFactory) getAttributes(settings *Settings) (Attributes, error) 
 	}
 
 	for _, gi := range settings.Global {
-		if attributes, err = f.readAttributes(gi.Model); err != nil {
+		if attributes, err = ReadAttributes(gi.Model); err != nil {
 			return nil, err
 		}
 
@@ -109,7 +109,7 @@ func (f *metadataFactory) getFields(model interface{}, hashTag string, rangeTag 
 	var hashKey, rangeKey *string
 	var fields []string
 
-	if attributes, err = f.readAttributes(model); err != nil {
+	if attributes, err = ReadAttributes(model); err != nil {
 		return metadataFields{}, err
 	}
 
@@ -224,7 +224,7 @@ func (f *metadataFactory) getTimeToLive(attributes Attributes) (metadataTtl, err
 	return data, nil
 }
 
-func (f *metadataFactory) readAttributes(model interface{}) (Attributes, error) {
+func ReadAttributes(model interface{}) (Attributes, error) {
 	t := findBaseType(model)
 	attributes := make(Attributes)
 
@@ -240,18 +240,29 @@ func (f *metadataFactory) readAttributes(model interface{}) (Attributes, error) 
 			continue
 		}
 
+		tag = strings.TrimSpace(tag)
+
 		if len(tag) == 0 {
 			return nil, fmt.Errorf("the ddb tag for field %s is empty", field.Name)
 		}
 
-		attributeName := f.getAttributeName(field)
-		attributeType := f.getAttributeType(field)
+		attributeNamePtr, err := getAttributeName(field)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if attributeNamePtr == nil {
+			return nil, fmt.Errorf("the json tag for field %s specifies the field should be dropped, but the field is required by ddb", field.Name)
+		}
+
+		attributeName := *attributeNamePtr
 
 		attributes[attributeName] = &Attribute{
 			FieldName:     field.Name,
 			AttributeName: attributeName,
 			Tags:          make(map[string]string),
-			Type:          attributeType,
+			Type:          getAttributeType(field),
 		}
 
 		parts := strings.Split(tag, ",")
@@ -275,17 +286,33 @@ func (f *metadataFactory) readAttributes(model interface{}) (Attributes, error) 
 	return attributes, nil
 }
 
-func (f *metadataFactory) getAttributeName(field reflect.StructField) string {
-	attributeName := field.Name
+func getAttributeName(field reflect.StructField) (*string, error) {
+	jsonTag, ok := field.Tag.Lookup("json")
 
-	if jsonTag, ok := field.Tag.Lookup("json"); ok {
-		attributeName = strings.TrimSpace(jsonTag)
+	if !ok {
+		return &field.Name, nil
 	}
 
-	return attributeName
+	jsonTag = strings.TrimSpace(jsonTag)
+
+	if len(jsonTag) == 0 {
+		return nil, fmt.Errorf("the json tag for field %s is empty", field.Name)
+	}
+
+	if jsonTag == "-" {
+		return nil, nil
+	}
+
+	jsonTag = strings.SplitN(jsonTag, ",", 2)[0]
+
+	if len(jsonTag) == 0 {
+		jsonTag = field.Name
+	}
+
+	return &jsonTag, nil
 }
 
-func (f *metadataFactory) getAttributeType(field reflect.StructField) string {
+func getAttributeType(field reflect.StructField) string {
 	attributeType := ""
 
 	t := field.Type
@@ -322,31 +349,18 @@ func MetadataReadFields(model interface{}) ([]string, error) {
 	}
 
 	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		tag, ok := field.Tag.Lookup("json")
+		fieldName, err := getAttributeName(t.Field(i))
 
-		if !ok {
-			fields = append(fields, field.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		if fieldName == nil {
+			// field was marked as skipped
 			continue
 		}
 
-		if len(tag) == 0 {
-			return nil, fmt.Errorf("the json tag for field %s is empty", field.Name)
-		}
-
-		tag = strings.TrimSpace(tag)
-
-		if tag == "-" {
-			continue
-		}
-
-		tag = strings.SplitN(tag, ",", 2)[0]
-
-		if len(tag) == 0 {
-			tag = field.Name
-		}
-
-		fields = append(fields, tag)
+		fields = append(fields, *fieldName)
 	}
 
 	return fields, nil
