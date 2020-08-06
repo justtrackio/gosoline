@@ -34,6 +34,8 @@ EOF
     is_enabled     = true
     is_auto_config = true
 
+    headroom {}
+
     down {
       max_scale_down_percentage = 25
     }
