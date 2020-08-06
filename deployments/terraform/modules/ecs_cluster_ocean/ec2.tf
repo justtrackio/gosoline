@@ -23,24 +23,16 @@ echo ECS_CONTAINER_START_TIMEOUT=10m >> /etc/ecs/ecs.config
 
 EOF
 
-  image_id                    = data.aws_ssm_parameter.ami.value
-  security_group_ids          = data.aws_security_groups.private.ids
-  key_pair                    = var.ec2_key_name
-  iam_instance_profile        = aws_iam_instance_profile.ec2.id
-  associate_public_ip_address = false
-  draining_timeout            = 600
-  monitoring                  = false
-  ebs_optimized               = true
+  image_id             = data.aws_ssm_parameter.ami.value
+  security_group_ids   = data.aws_security_groups.private.ids
+  key_pair             = var.ec2_key_name
+  iam_instance_profile = aws_iam_instance_profile.ec2.id
+  draining_timeout     = 300
+  ebs_optimized        = true
 
   autoscaler {
     is_enabled     = true
-    is_auto_config = false
-
-    headroom {
-      cpu_per_unit    = 1000
-      memory_per_unit = 1000
-      num_of_units    = 2
-    }
+    is_auto_config = true
 
     down {
       max_scale_down_percentage = 25
@@ -86,13 +78,9 @@ EOF
   }
 }
 
-locals {
-  ocean_id = spotinst_ocean_ecs.ocean.id
-}
-
 resource "spotinst_ocean_ecs_launch_spec" "ocean" {
   name                 = "${var.project}-${var.environment}-${var.family}"
-  ocean_id             = local.ocean_id
+  ocean_id             = spotinst_ocean_ecs.ocean.id
   image_id             = data.aws_ssm_parameter.ami.value
   user_data            = <<EOF
 #!/bin/bash
@@ -150,7 +138,6 @@ EOF
   key_name             = var.ec2_key_name
   iam_instance_profile = aws_iam_instance_profile.ec2.id
   draining_timeout     = 300
-  enable_monitoring    = false
   ebs_optimized        = true
 
   product                 = "Linux/UNIX"
@@ -170,7 +157,7 @@ EOF
   integration_ecs {
     cluster_name             = "${var.project}-${var.environment}-${var.family}"
     autoscale_is_enabled     = true
-    autoscale_cooldown       = 600
+    autoscale_cooldown       = 300
     autoscale_is_auto_config = true
   }
 
