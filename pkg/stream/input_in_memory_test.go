@@ -1,6 +1,7 @@
 package stream_test
 
 import (
+	"context"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -19,6 +20,11 @@ func (s *InMemoryInputTestSuite) SetupTest() {
 
 func (s *InMemoryInputTestSuite) TestRun() {
 	msg := stream.NewMessage("content")
+
+	go func() {
+		err := s.input.Run(context.Background())
+		s.NoError(err)
+	}()
 
 	s.input.Publish(msg)
 	s.input.Stop()

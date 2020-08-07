@@ -12,8 +12,9 @@ type InMemorySettings struct {
 }
 
 type InMemoryInput struct {
-	channel chan *Message
 	once    sync.Once
+	channel chan *Message
+	stopped chan struct{}
 }
 
 func ProvideInMemoryInput(name string, settings *InMemorySettings) *InMemoryInput {
@@ -23,6 +24,7 @@ func ProvideInMemoryInput(name string, settings *InMemorySettings) *InMemoryInpu
 
 	inMemoryInputs[name] = &InMemoryInput{
 		channel: make(chan *Message, settings.Size),
+		stopped: make(chan struct{}),
 	}
 
 	return inMemoryInputs[name]
@@ -34,13 +36,19 @@ func (i *InMemoryInput) Publish(messages ...*Message) {
 	}
 }
 
-func (i *InMemoryInput) Run(_ context.Context) error {
+func (i *InMemoryInput) Run(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+	case <-i.stopped:
+	}
+
+	close(i.channel)
 	return nil
 }
 
 func (i *InMemoryInput) Stop() {
 	i.once.Do(func() {
-		close(i.channel)
+		close(i.stopped)
 	})
 }
 
