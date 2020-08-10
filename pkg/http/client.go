@@ -35,10 +35,13 @@ type Client interface {
 	SetUserAgent(ua string)
 	SetProxyUrl(p string)
 	SetRedirectValidator(allowRequest func(request *http.Request) bool)
+	AddRetryCondition(f RetryConditionFunc)
 	NewRequest() *Request
 	NewJsonRequest() *Request
 	NewXmlRequest() *Request
 }
+
+type RetryConditionFunc func(*Response) (bool, error)
 
 type Response struct {
 	Body            []byte
@@ -57,9 +60,11 @@ type client struct {
 }
 
 type Settings struct {
-	RetryCount     int
-	Timeout        time.Duration
-	FollowRedirect bool `cfg:"follow_redirects"`
+	RetryCount       int
+	Timeout          time.Duration
+	RetryWaitTime    time.Duration `cfg:"retry_wait_time" default:"100ms"`
+	RetryMaxWaitTime time.Duration `cfg:"retry_max_wait_time" default:"2000ms"`
+	FollowRedirect   bool          `cfg:"follow_redirects"`
 }
 
 func NewHttpClient(config cfg.Config, logger mon.Logger) Client {
@@ -79,6 +84,8 @@ func NewHttpClientWithInterfaces(logger mon.Logger, mo mon.MetricWriter, setting
 	httpClient.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
 	httpClient.SetRetryCount(settings.RetryCount)
 	httpClient.SetTimeout(settings.Timeout)
+	httpClient.SetRetryWaitTime(settings.RetryWaitTime)
+	httpClient.SetRetryMaxWaitTime(settings.RetryMaxWaitTime)
 
 	return &client{
 		mo:             mo,
@@ -114,6 +121,12 @@ func (c *client) SetUserAgent(ua string) {
 
 func (c *client) SetProxyUrl(p string) {
 	c.http.SetProxy(p)
+}
+
+func (c *client) AddRetryCondition(f RetryConditionFunc) {
+	c.http.AddRetryCondition(func(r *resty.Response) (bool, error) {
+		return f(buildResponse(r))
+	})
 }
 
 func (c *client) SetRedirectValidator(allowRequest func(request *http.Request) bool) {
@@ -160,7 +173,6 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 		logger.Error(err, "failed to assemble request")
 		return nil, fmt.Errorf("failed to assemble request: %w", err)
 	}
-
 	req.SetContext(ctx)
 	req.SetHeaders(c.defaultHeaders)
 
@@ -182,12 +194,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	metricName := fmt.Sprintf("%s%dXX", metricResponseCode, resp.StatusCode()/100)
 	c.writeMetric(metricName, method, mon.UnitCount, 1.0)
 
-	response := &Response{
-		Body:            resp.Body(),
-		Header:          resp.Header(),
-		StatusCode:      resp.StatusCode(),
-		RequestDuration: resp.Time(),
-	}
+	response := buildResponse(resp)
 
 	// Only log the duration if we did not get an error.
 	// If we get an error, we might not actually have send anything,
@@ -210,4 +217,13 @@ func (c *client) writeMetric(metricName string, method string, unit string, valu
 		Unit:  unit,
 		Value: value,
 	})
+}
+
+func buildResponse(resp *resty.Response) *Response {
+	return &Response{
+		Body:            resp.Body(),
+		Header:          resp.Header(),
+		StatusCode:      resp.StatusCode(),
+		RequestDuration: resp.Time(),
+	}
 }

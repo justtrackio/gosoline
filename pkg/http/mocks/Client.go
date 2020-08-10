@@ -13,6 +13,11 @@ type Client struct {
 	mock.Mock
 }
 
+// AddRetryCondition provides a mock function with given fields: f
+func (_m *Client) AddRetryCondition(f http.RetryConditionFunc) {
+	_m.Called(f)
+}
+
 // Delete provides a mock function with given fields: ctx, request
 func (_m *Client) Delete(ctx context.Context, request *http.Request) (*http.Response, error) {
 	ret := _m.Called(ctx, request)
