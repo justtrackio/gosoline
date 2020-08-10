@@ -257,6 +257,7 @@ func (c *Consumer) logConsumeCounter(ctx context.Context) error {
 
 			c.logger.WithFields(mon.Fields{
 				"count": processed,
+				"name":  c.name,
 			}).Infof("processed %v messages", processed)
 		}
 	}
