@@ -78,7 +78,7 @@ type redisListOutputConfiguration struct {
 	Application string `cfg:"application"`
 	ServerName  string `cfg:"server_name" default:"default" validate:"required,min=1"`
 	Key         string `cfg:"key" validate:"required,min=1"`
-	BatchSize   int    `cfg:"batch_size" default:"10"`
+	BatchSize   int    `cfg:"batch_size" default:"100"`
 }
 
 func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {

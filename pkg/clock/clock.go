@@ -10,15 +10,19 @@ type Clock interface {
 	clockwork.Clock
 }
 
+type FakeClock interface {
+	clockwork.FakeClock
+}
+
 func NewRealClock() Clock {
 	return realClock{}
 }
 
-func NewFakeClock() Clock {
+func NewFakeClock() FakeClock {
 	return clockwork.NewFakeClock()
 }
 
-func NewFakeClockAt(t time.Time) Clock {
+func NewFakeClockAt(t time.Time) FakeClock {
 	return clockwork.NewFakeClockAt(t)
 }
 
