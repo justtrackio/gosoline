@@ -11,6 +11,7 @@ type Guard interface {
 	IsAllowed(request *ladon.Request) error
 	GetPolicesBySubject(subject string) (ladon.Policies, error)
 	CreatePolicy(pol ladon.Policy) error
+	UpdatePolicy(pol ladon.Policy) error
 	DeletePolicy(pol ladon.Policy) error
 }
 
@@ -51,6 +52,16 @@ func (g LadonGuard) CreatePolicy(pol ladon.Policy) error {
 
 	if err != nil {
 		g.logger.Error(err, "could not create policy")
+	}
+
+	return err
+}
+
+func (g LadonGuard) UpdatePolicy(pol ladon.Policy) error {
+	err := g.warden.Manager.Update(pol)
+
+	if err != nil {
+		g.logger.Error(err, "could not update policy")
 	}
 
 	return err

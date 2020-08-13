@@ -74,3 +74,17 @@ func (_m *Guard) IsAllowed(request *ladon.Request) error {
 
 	return r0
 }
+
+// UpdatePolicy provides a mock function with given fields: pol
+func (_m *Guard) UpdatePolicy(pol ladon.Policy) error {
+	ret := _m.Called(pol)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(ladon.Policy) error); ok {
+		r0 = rf(pol)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
