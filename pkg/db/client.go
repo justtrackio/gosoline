@@ -123,11 +123,11 @@ func (c *ClientSqlx) GetResult(query string, args ...interface{}) (*Result, erro
 
 			switch types[colName] {
 			case "string":
-				m[colName] = string((*val).(string))
+				m[colName] = (*val).(string)
 			case "[]uint8":
 				m[colName] = string((*val).([]uint8))
 			case "int":
-				m[colName] = string((*val).(int))
+				m[colName] = strconv.FormatInt(int64((*val).(int)), 10)
 			case "int64":
 				m[colName] = strconv.FormatInt((*val).(int64), 10)
 			case "float64":
