@@ -30,22 +30,14 @@ func isStruct(value interface{}) bool {
 func findBaseType(value interface{}) reflect.Type {
 	t := reflect.TypeOf(value)
 
-	for {
-		if t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
-			t = t.Elem()
-		} else {
-			return t
-		}
+	for t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
+		t = t.Elem()
 	}
+
+	return t
 }
 
 func isResultCallback(value interface{}) (func(ctx context.Context, items interface{}, progress Progress) (bool, error), bool) {
-	t := reflect.TypeOf(value)
-
-	if t.Kind() != reflect.Func {
-		return nil, false
-	}
-
 	if callback, ok := value.(func(ctx context.Context, items interface{}, progress Progress) (bool, error)); ok {
 		return callback, true
 	}
