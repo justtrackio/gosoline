@@ -21,7 +21,7 @@ locals {
 
 resource "aws_security_group" "all_worker_mgmt" {
   name   = "${var.cluster_name}_all_worker_management"
-  vpc_id = module.vpc.vpc_id
+  vpc_id = var.create_vpc == true ? module.vpc.vpc_id : var.vpc_id
 
   ingress {
     from_port = 22
@@ -69,7 +69,7 @@ resource "spotinst_ocean_aws" "this" {
   max_size                    = var.max_size
   min_size                    = var.min_size
   desired_capacity            = var.desired_capacity
-  subnet_ids                  = module.vpc.private_subnets
+  subnet_ids                  = var.create_vpc == true ? module.vpc.private_subnets : var.private_subnets
   image_id                    = var.ami_id != null ? var.ami_id : module.eks.workers_default_ami_id
   security_groups             = [aws_security_group.all_worker_mgmt.id, module.eks.worker_security_group_id]
   key_name                    = var.key_name
@@ -102,8 +102,9 @@ EOF
 }
 
 module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "2.47.0"
+  source     = "terraform-aws-modules/vpc/aws"
+  version    = "2.47.0"
+  create_vpc = var.create_vpc
 
   name               = local.cluster_name
   cidr               = var.cidr
@@ -126,7 +127,7 @@ module "eks" {
 
   cluster_name    = local.cluster_name
   cluster_version = var.cluster_version
-  subnets         = module.vpc.private_subnets
+  subnets         = var.create_vpc == true ? module.vpc.private_subnets : var.private_subnets
   tags            = local.tags
   vpc_id          = var.create_vpc == true ? module.vpc.vpc_id : var.vpc_id
   map_roles = [
@@ -139,9 +140,9 @@ module "eks" {
 
   map_users = [
     {
-      user_arn = "arn:aws:iam::164105964448:user/marco"
+      userarn  = "arn:aws:iam::164105964448:user/marco"
       username = "marco"
-      group    = "system:masters"
+      groups   = ["system:nodes"]
     },
   ]
 

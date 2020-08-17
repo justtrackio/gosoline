@@ -22,7 +22,7 @@ variable "cluster_name" {
 variable "cluster_version" {
   type        = string
   description = "Kubernetes supported version"
-  default     = "1.15"
+  default     = "1.17"
 }
 
 variable "region" {
@@ -61,6 +61,18 @@ variable "associate_public_ip_address" {
   type        = bool
   description = "Associate a public IP address to worker nodes"
   default     = false
+}
+
+variable "create_vpc" {
+  description = "Controls if VPC should be created (it affects almost all resources)"
+  type        = bool
+  default     = true
+}
+
+variable "vpc_id" {
+  description = "The ID of the VPC"
+  type        = string
+  default     = null
 }
 
 variable "cidr" {
