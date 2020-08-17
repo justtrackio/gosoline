@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/hashicorp/go-multierror"
+	"golang.org/x/sys/unix"
 	"io"
 	"net"
 	"net/url"
@@ -61,7 +62,7 @@ func IsConnectionError(err error) bool {
 		return true
 	}
 
-	if IsSyscallError(err, syscall.ECONNREFUSED, syscall.ECONNRESET, syscall.EPIPE) {
+	if IsSyscallError(err, unix.ECONNREFUSED, unix.ECONNRESET, unix.EPIPE) {
 		return true
 	}
 

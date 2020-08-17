@@ -14,8 +14,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/sys/unix"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -352,7 +352,7 @@ func (m *realModule) Run(ctx context.Context) error {
 			case <-ticker.C:
 				counter++
 				if counter == 3 {
-					err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+					err := unix.Kill(unix.Getpid(), unix.SIGTERM)
 					assert.NoError(m.t, err)
 				}
 			case <-ctx.Done():
