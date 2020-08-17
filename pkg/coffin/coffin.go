@@ -131,6 +131,9 @@ func (c *coffin) Gof(f func() error, msg string, args ...interface{}) {
 		}()
 
 		err = f()
+		if err != nil {
+			err = errors.Wrapf(err, msg, args...)
+		}
 		return
 	})
 }
