@@ -200,10 +200,9 @@ func (c *Consumer) doConsuming(msg *Message) {
 	model := c.callback.GetModel(msg.Attributes)
 
 	ctx, attributes, err := c.encoder.Decode(ctx, msg, model)
-	logger := c.logger.WithContext(ctx)
 
 	if err != nil {
-		logger.Error(err, "an error occurred during the consume operation")
+		c.logger.WithContext(ctx).Error(err, "an error occurred during the consume operation")
 		return
 	}
 
@@ -213,7 +212,10 @@ func (c *Consumer) doConsuming(msg *Message) {
 	ack, err := c.callback.Consume(ctx, model, attributes)
 
 	if err != nil {
-		logger.Error(err, "an error occurred during the consume operation")
+		// one could think that we should just initialize this logger once, but the ctx used
+		// in the other error case might be in fact different and if we use the wrong context,
+		// we miss a trace id in the logs later on
+		c.logger.WithContext(ctx).Error(err, "an error occurred during the consume operation")
 	}
 
 	if !ack {
