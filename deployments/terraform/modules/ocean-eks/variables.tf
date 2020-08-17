@@ -69,26 +69,32 @@ variable "create_vpc" {
   default     = true
 }
 
-variable "vpc_id" {
-  description = "The ID of the VPC"
-  type        = string
-  default     = null
-}
-
 variable "cidr" {
-  description = "The CIDR block for the VPC. Default value is a valid CIDR, but not acceptable by AWS and should be overridden"
+  description = "The CIDR block for the VPC. Default value is a valid CIDR, but not acceptable by AWS and should be overridden (only needed if new vpc is created)"
   type        = string
   default     = "0.0.0.0/0"
 }
 
 variable "private_subnets" {
-  description = "A list of private subnets inside the VPC"
+  description = "A list of private subnets inside the VPC (only needed if new vpc is created)"
   type        = list(string)
   default     = []
 }
 
 variable "public_subnets" {
-  description = "A list of public subnets inside the VPC"
+  description = "A list of public subnets inside the VPC (only needed if new vpc is created)"
+  type        = list(string)
+  default     = []
+}
+
+variable "vpc_id" {
+  description = "The ID of the VPC (only needed if no vpc is created)"
+  type        = string
+  default     = null
+}
+
+variable "private_subnet_ids" {
+  description = "A ID's of private subnets inside the VPC (only needed if no vpc is created)"
   type        = list(string)
   default     = []
 }

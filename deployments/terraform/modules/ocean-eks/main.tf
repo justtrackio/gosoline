@@ -69,7 +69,7 @@ resource "spotinst_ocean_aws" "this" {
   max_size                    = var.max_size
   min_size                    = var.min_size
   desired_capacity            = var.desired_capacity
-  subnet_ids                  = var.create_vpc == true ? module.vpc.private_subnets : var.private_subnets
+  subnet_ids                  = var.create_vpc == true ? module.vpc.private_subnets : var.private_subnet_ids
   image_id                    = var.ami_id != null ? var.ami_id : module.eks.workers_default_ami_id
   security_groups             = [aws_security_group.all_worker_mgmt.id, module.eks.worker_security_group_id]
   key_name                    = var.key_name
@@ -127,7 +127,7 @@ module "eks" {
 
   cluster_name    = local.cluster_name
   cluster_version = var.cluster_version
-  subnets         = var.create_vpc == true ? module.vpc.private_subnets : var.private_subnets
+  subnets         = var.create_vpc == true ? module.vpc.private_subnets : var.private_subnet_ids
   tags            = local.tags
   vpc_id          = var.create_vpc == true ? module.vpc.vpc_id : var.vpc_id
   map_roles = [
@@ -142,7 +142,7 @@ module "eks" {
     {
       userarn  = "arn:aws:iam::164105964448:user/marco"
       username = "marco"
-      groups   = ["system:nodes"]
+      groups   = ["system:masters"]
     },
   ]
 
