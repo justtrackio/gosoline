@@ -115,9 +115,11 @@ func (c *Consumer) Run(kernelCtx context.Context) error {
 	manualCtx := cfn.Context(context.Background())
 	manualCtx, c.cancel = context.WithCancel(manualCtx)
 
-	cfn.GoWithContextf(dyingCtx, c.input.Run, "panic during run of the consumer input")
 	cfn.GoWithContextf(manualCtx, c.logConsumeCounter, "panic during counter log")
 	cfn.GoWithContextf(manualCtx, c.runCallback, "panic during run of the callback")
+	// run the input after the counters are running to make sure our coffin does not immediately
+	// die just because Run() immediately returns
+	cfn.GoWithContextf(dyingCtx, c.input.Run, "panic during run of the consumer input")
 
 	c.wg.Add(c.settings.RunnerCount)
 	cfn.Go(c.stopConsuming)
