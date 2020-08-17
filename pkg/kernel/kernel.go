@@ -10,12 +10,12 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/jeremywohl/flatten"
 	"github.com/thoas/go-funk"
+	"golang.org/x/sys/unix"
 	"os"
 	"os/signal"
 	"sort"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
 )
 
@@ -194,8 +194,8 @@ func (k *kernel) Run() {
 	}
 
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGTERM)
-	signal.Notify(sig, syscall.SIGINT)
+	signal.Notify(sig, unix.SIGTERM)
+	signal.Notify(sig, unix.SIGINT)
 
 	if !k.boot() {
 		return
