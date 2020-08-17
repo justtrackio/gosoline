@@ -85,8 +85,44 @@ func (m SqlManager) createAssociations(pol ladon.Policy, table string, values []
 	return err
 }
 
-func (SqlManager) Update(policy ladon.Policy) error {
-	panic("implement me")
+func (m SqlManager) Update(pol ladon.Policy) error {
+	up := squirrel.Update(tablePolicies).Where("id = ?", pol.GetID()).SetMap(squirrel.Eq{
+		"description": pol.GetDescription(),
+		"effect":      pol.GetEffect(),
+		"updated_at":  time.Now().Format(db.FormatDateTime),
+	})
+
+	sql, args, err := up.ToSql()
+
+	if err != nil {
+		return err
+	}
+
+	_, err = m.dbClient.Exec(sql, args...)
+
+	if err != nil {
+		return err
+	}
+
+	if err = m.updateAssociations(pol, tableResources, pol.GetResources()); err != nil {
+		return err
+	}
+
+	if err = m.updateAssociations(pol, tableActions, pol.GetActions()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m SqlManager) updateAssociations(pol ladon.Policy, table string, values []string) error {
+	err := m.deleteByIdAndTable(pol.GetID(), table)
+
+	if err = m.createAssociations(pol, table, values); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (SqlManager) Get(id string) (ladon.Policy, error) {
@@ -97,20 +133,30 @@ func (m SqlManager) Delete(id string) error {
 	tables := []string{tablePolicies, tableSubjects, tableResources, tableActions}
 
 	for _, table := range tables {
-		del := squirrel.Delete(table).Where(squirrel.Eq{"id": id})
-		sql, args, err := del.ToSql()
+		err := m.deleteByIdAndTable(id, table)
 
 		if err != nil {
-			m.logger.Errorf(err, "can not delete from %s", table)
 			return err
 		}
+	}
 
-		_, err = m.dbClient.Exec(sql, args...)
+	return nil
+}
 
-		if err != nil {
-			m.logger.Errorf(err, "can not delete from %s", table)
-			return err
-		}
+func (m SqlManager) deleteByIdAndTable(id string, table string) error {
+	del := squirrel.Delete(table).Where(squirrel.Eq{"id": id})
+	sql, args, err := del.ToSql()
+
+	if err != nil {
+		m.logger.Errorf(err, "can not delete from %s", table)
+		return err
+	}
+
+	_, err = m.dbClient.Exec(sql, args...)
+
+	if err != nil {
+		m.logger.Errorf(err, "can not delete from %s", table)
+		return err
 	}
 
 	return nil
