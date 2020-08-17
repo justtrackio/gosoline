@@ -112,7 +112,7 @@ func (s *ConsumerTestSuite) TestInputRunError() {
 
 	err := s.consumer.Run(context.Background())
 
-	s.EqualError(err, "error while waiting for all routines to stop: read error")
+	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumer input: read error")
 	s.input.AssertExpectations(s.T())
 }
 
@@ -125,7 +125,7 @@ func (s *ConsumerTestSuite) TestCallbackRunError() {
 
 	err := s.consumer.Run(context.Background())
 
-	s.EqualError(err, "error while waiting for all routines to stop: callback run error")
+	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the callback: callback run error")
 	s.input.AssertExpectations(s.T())
 }
 
