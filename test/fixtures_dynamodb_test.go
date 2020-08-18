@@ -1,4 +1,4 @@
-//+build integration,fixtures
+//+build integration fixtures
 
 package test_test
 
@@ -12,7 +12,6 @@ import (
 	"github.com/applike/gosoline/pkg/test"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -29,7 +28,7 @@ func (s *FixturesDynamoDbSuite) SetupSuite() {
 	mocks, err := test.Boot("test_configs/config.dynamodb.test.yml")
 
 	if err != nil {
-		assert.Fail(s.T(), "failed to boot mocks")
+		s.Fail("failed to boot mocks: %s", err.Error())
 
 		return
 	}
@@ -55,12 +54,12 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 		cfg.WithConfigMap(s.dynamoDbConfig()),
 	)
 
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
 	err = loader.Load(dynamoDbDisabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -72,10 +71,10 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 	})
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), gio.Item, 2, "2 attributes expected")
-	assert.Equal(s.T(), "Ash", *(gio.Item["Name"].S))
-	assert.Equal(s.T(), "10", *(gio.Item["Age"].N))
+	s.NoError(err)
+	s.Len(gio.Item, 2, "2 attributes expected")
+	s.Equal("Ash", *(gio.Item["Name"].S))
+	s.Equal("10", *(gio.Item["Age"].N))
 
 	qo, err := s.db.Query(&dynamodb.QueryInput{
 		TableName:              aws.String("gosoline-test-integration-test-test-application-testModel"),
@@ -89,8 +88,8 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 	})
 
 	// should have created global index
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), qo.Items, 1, "1 item expected")
+	s.NoError(err)
+	s.Len(qo.Items, 1, "1 item expected")
 }
 
 func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
@@ -101,12 +100,12 @@ func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 		cfg.WithConfigMap(s.dynamoDbConfig()),
 	)
 
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
 	err = loader.Load(dynamoDbDisabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -118,13 +117,13 @@ func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 	})
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), gio.Item, 2, "2 attributes expected")
-	assert.Equal(s.T(), "Ash", *(gio.Item["Name"].S))
-	assert.Equal(s.T(), "10", *(gio.Item["Age"].N))
+	s.NoError(err)
+	s.Len(gio.Item, 2, "2 attributes expected")
+	s.Equal("Ash", *(gio.Item["Name"].S))
+	s.Equal("10", *(gio.Item["Age"].N))
 
 	err = loader.Load(dynamoDbEnabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	gio, err = s.db.GetItem(&dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -136,10 +135,10 @@ func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 	})
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), gio.Item, 2, "2 attributes expected")
-	assert.Equal(s.T(), "Bash", *(gio.Item["Name"].S))
-	assert.Equal(s.T(), "10", *(gio.Item["Age"].N))
+	s.NoError(err)
+	s.Len(gio.Item, 2, "2 attributes expected")
+	s.Equal("Bash", *(gio.Item["Name"].S))
+	s.Equal("10", *(gio.Item["Age"].N))
 
 	gio, err = s.db.GetItem(&dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -151,8 +150,8 @@ func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 	})
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Nil(s.T(), gio.Item)
+	s.NoError(err)
+	s.Nil(gio.Item)
 
 	qo, err := s.db.Query(&dynamodb.QueryInput{
 		TableName:              aws.String("gosoline-test-integration-test-test-application-testModel"),
@@ -166,8 +165,8 @@ func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 	})
 
 	// should have created global index
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), qo.Items, 1, "1 item expected")
+	s.NoError(err)
+	s.Len(qo.Items, 1, "1 item expected")
 }
 
 func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
@@ -178,12 +177,12 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
 		cfg.WithConfigMap(s.dynamoDbConfig()),
 	)
 
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
 	err = loader.Load(dynamoDbKvStoreDisabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -195,9 +194,9 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
 	})
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), gio.Item, 2, "2 attributes expected")
-	assert.JSONEq(s.T(), `{"Name":"Ash","Age":10}`, *(gio.Item["value"].S))
+	s.NoError(err)
+	s.Len(gio.Item, 2, "2 attributes expected")
+	s.JSONEq(`{"Name":"Ash","Age":10}`, *(gio.Item["value"].S))
 }
 
 func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
@@ -209,12 +208,12 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 		cfg.WithConfigMap(s.dynamoDbConfig()),
 	)
 
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
 	err = loader.Load(dynamoDbKvStoreDisabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -226,12 +225,12 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 	})
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), gio.Item, 2, "2 attributes expected")
-	assert.JSONEq(s.T(), `{"Name":"Ash","Age":10}`, *(gio.Item["value"].S))
+	s.NoError(err)
+	s.Len(gio.Item, 2, "2 attributes expected")
+	s.JSONEq(`{"Name":"Ash","Age":10}`, *(gio.Item["value"].S))
 
 	err = loader.Load(dynamoDbKvStoreEnabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	gio, err = s.db.GetItem(&dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -243,9 +242,9 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 	})
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), gio.Item, 2, "2 attributes expected")
-	assert.JSONEq(s.T(), `{"Name":"Bash","Age":10}`, *(gio.Item["value"].S))
+	s.NoError(err)
+	s.Len(gio.Item, 2, "2 attributes expected")
+	s.JSONEq(`{"Name":"Bash","Age":10}`, *(gio.Item["value"].S))
 
 	gio, err = s.db.GetItem(&dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -256,8 +255,8 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 		TableName: aws.String("gosoline-test-integration-test-test-application-kvstore-testModel"),
 	})
 
-	assert.NoError(s.T(), err)
-	assert.Nil(s.T(), gio.Item, "no item expected")
+	s.NoError(err)
+	s.Nil(gio.Item, "no item expected")
 }
 
 type DynamoDbTestModel struct {

@@ -1,4 +1,4 @@
-//+build integration,fixtures
+//+build integration fixtures
 
 package test_test
 
@@ -10,7 +10,6 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/test"
 	gosoAssert "github.com/applike/gosoline/pkg/test/assert"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -44,7 +43,7 @@ func (s *FixturesMysqlSuite) SetupSuite() {
 	mocks, err := test.Boot("test_configs/config.mysql.test.yml", "test_configs/config.fixtures_mysql.test.yml")
 
 	if err != nil {
-		assert.Fail(s.T(), "failed to boot mocks")
+		s.Fail("failed to boot mocks: %s", err.Error())
 
 		return
 	}
@@ -138,7 +137,7 @@ func plainMysqlTestFixturesWithPurge() []*fixtures.FixtureSet {
 
 func (s *FixturesMysqlSuite) TestOrmFixturesMysql() {
 	err := s.loader.Load(ormMysqlTestFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	db := s.mocks.ProvideMysqlClient("mysql")
 
@@ -148,7 +147,7 @@ func (s *FixturesMysqlSuite) TestOrmFixturesMysql() {
 
 func (s *FixturesMysqlSuite) TestPlainFixturesMysql() {
 	err := s.loader.Load(plainMysqlTestFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	db := s.mocks.ProvideMysqlClient("mysql")
 
@@ -158,26 +157,26 @@ func (s *FixturesMysqlSuite) TestPlainFixturesMysql() {
 
 func (s *FixturesMysqlSuite) TestPurgedOrmFixturesMysql() {
 	err := s.loader.Load(ormMysqlTestFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	db := s.mocks.ProvideMysqlClient("mysql")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), db, "mysql_test_models", "name", "testName")
 
 	err = s.loader.Load(ormMysqlTestFixturesWithPurge())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), db, "mysql_test_models")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), db, "mysql_test_models", "name", "purgedBefore")
 }
 
 func (s *FixturesMysqlSuite) TestPurgedPlainFixturesMysql() {
 	err := s.loader.Load(plainMysqlTestFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	db := s.mocks.ProvideMysqlClient("mysql")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), db, "mysql_plain_writer_test", "name", "testName3")
 
 	err = s.loader.Load(plainMysqlTestFixturesWithPurge())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), db, "mysql_plain_writer_test")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), db, "mysql_plain_writer_test", "name", "purgedBefore")
 }

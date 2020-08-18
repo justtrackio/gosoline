@@ -1,4 +1,4 @@
-//+build integration,fixtures
+//+build integration fixtures
 
 package test_test
 
@@ -11,7 +11,6 @@ import (
 	"github.com/applike/gosoline/pkg/test"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/go-redis/redis"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
@@ -34,7 +33,7 @@ func (s *FixturesRedisSuite) SetupSuite() {
 	mocks, err := test.Boot("test_configs/config.redis.test.yml")
 
 	if err != nil {
-		assert.Fail(s.T(), "failed to boot mocks")
+		s.Fail("failed to boot mocks: %s", err.Error())
 
 		return
 	}
@@ -62,30 +61,30 @@ func (s FixturesRedisSuite) TestRedis() {
 
 	// ensure clean start
 	_, err := s.client.FlushDB().Result()
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
 	err = loader.Load(redisDisabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	setValue, err := s.client.Get("set_test").Result()
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "bar", setValue)
+	s.NoError(err)
+	s.Equal("bar", setValue)
 
 	rpopValue, err := s.client.LPop("rpush_test").Result()
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "bar", rpopValue)
+	s.NoError(err)
+	s.Equal("bar", rpopValue)
 
 	rpopValue, err = s.client.LPop("rpush_test").Result()
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "baz", rpopValue)
+	s.NoError(err)
+	s.Equal("baz", rpopValue)
 }
 
 func (s FixturesRedisSuite) TestRedisWithPurge() {
@@ -98,40 +97,40 @@ func (s FixturesRedisSuite) TestRedisWithPurge() {
 
 	// ensure clean start
 	_, err := s.client.FlushDB().Result()
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
 	err = loader.Load(redisDisabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	setValue, err := s.client.Get("set_test").Result()
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "bar", setValue)
+	s.NoError(err)
+	s.Equal("bar", setValue)
 
 	keys, err := s.client.Keys("*").Result()
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), keys, 2)
+	s.NoError(err)
+	s.Len(keys, 2)
 
 	err = loader.Load(redisEnabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	setValue, err = s.client.Get("set_test").Result()
 
 	// should have created the item
-	assert.Error(s.T(), err)
+	s.Error(err)
 
 	keys, err = s.client.Keys("*").Result()
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), keys, 1)
+	s.NoError(err)
+	s.Len(keys, 1)
 
 	setValue, err = s.client.Get("set_test_purged").Result()
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "bar", setValue)
+	s.NoError(err)
+	s.Equal("bar", setValue)
 }
 
 func (s FixturesRedisSuite) TestRedisKvStore() {
@@ -144,18 +143,18 @@ func (s FixturesRedisSuite) TestRedisKvStore() {
 
 	// ensure clean start
 	_, err := s.client.FlushDB().Result()
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
 	err = loader.Load(redisKvstoreDisabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	res, err := s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.JSONEq(s.T(), `{"name":"foo","age":123}`, res)
+	s.NoError(err)
+	s.JSONEq(`{"name":"foo","age":123}`, res)
 }
 
 func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
@@ -168,31 +167,31 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 
 	// ensure clean start
 	_, err := s.client.FlushDB().Result()
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
 
 	err = loader.Load(redisKvstoreDisabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	res, err := s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.JSONEq(s.T(), `{"name":"foo","age":123}`, res)
+	s.NoError(err)
+	s.JSONEq(`{"name":"foo","age":123}`, res)
 
 	err = loader.Load(redisKvstoreEnabledPurgeFixtures())
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 
 	res, err = s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
 
-	assert.Error(s.T(), err)
+	s.Error(err)
 
 	res, err = s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_2").Result()
 
 	// should have created the item
-	assert.NoError(s.T(), err)
-	assert.JSONEq(s.T(), `{"name":"foo","age":123}`, res)
+	s.NoError(err)
+	s.JSONEq(`{"name":"foo","age":123}`, res)
 }
 
 func redisDisabledPurgeFixtures() []*fixtures.FixtureSet {

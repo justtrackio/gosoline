@@ -6,7 +6,6 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/applike/gosoline/pkg/tracing/mocks"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -36,8 +35,8 @@ func (s *LoggingSuite) TestContextTraceFieldsResolver() {
 
 	fields := tracing.ContextTraceFieldsResolver(s.ctx)
 
-	assert.Contains(s.T(), fields, "trace_id")
-	assert.Equal(s.T(), "1-5e3d5273-7f0bd984ad68e2d290caeb84", fields["trace_id"])
+	s.Contains(fields, "trace_id")
+	s.Equal("1-5e3d5273-7f0bd984ad68e2d290caeb84", fields["trace_id"])
 	s.span.AssertExpectations(s.T())
 }
 
@@ -50,7 +49,7 @@ func (s *LoggingSuite) TestLoggerErrorHook() {
 		Context: s.ctx,
 	})
 
-	assert.NoError(s.T(), err)
+	s.NoError(err)
 	s.span.AssertExpectations(s.T())
 }
 

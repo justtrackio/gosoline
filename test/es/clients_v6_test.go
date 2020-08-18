@@ -20,7 +20,7 @@ func TestNewClientV6(t *testing.T) {
 	}()
 
 	if err != nil {
-		assert.Fail(t, "failed to boot mocks")
+		assert.Fail(t, "failed to boot mocks: %s", err.Error())
 
 		return
 	}
