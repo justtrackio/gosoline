@@ -38,7 +38,7 @@ func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFact
 		}
 
 		kvstoreModel := *modelId
-		kvstoreModel.Name = kvstore.DdbBaseName(settings)
+		kvstoreModel.Name = kvstore.GetDdbBaseName()(settings)
 
 		purger := newDynamodbPurger(config, logger, &ddb.Settings{
 			ModelId: kvstoreModel,

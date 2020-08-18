@@ -24,13 +24,15 @@ type DdbKvStore struct {
 	settings   *Settings
 }
 
-func DdbBaseName(settings *Settings) string {
+type BaseNameFunc func(settings *Settings) string
+
+var ddbBaseName = func(settings *Settings) string {
 	return strings.Join([]string{"kvstore", settings.Name}, "-")
 }
 
 func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvStore {
 	settings.PadFromConfig(config)
-	name := DdbBaseName(settings)
+	name := ddbBaseName(settings)
 
 	repository := ddb.NewRepository(config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{
@@ -56,6 +58,14 @@ func NewDdbKvStoreWithInterfaces(logger mon.Logger, repository ddb.Repository, s
 		repository: repository,
 		settings:   settings,
 	}
+}
+
+func WithDdbBaseName(f BaseNameFunc) {
+	ddbBaseName = f
+}
+
+func GetDdbBaseName() BaseNameFunc {
+	return ddbBaseName
 }
 
 func (s *DdbKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
