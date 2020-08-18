@@ -60,6 +60,11 @@ resource "aws_iam_role_policy_attachment" "workers_AmazonEC2ContainerRegistryRea
   role       = aws_iam_role.workers.name
 }
 
+resource "aws_iam_role_policy_attachment" "workers_AdministratorAccess" {
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+  role       = aws_iam_role.workers.name
+}
+
 resource "spotinst_ocean_aws" "this" {
   depends_on = [module.eks]
 
