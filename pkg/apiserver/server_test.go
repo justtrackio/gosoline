@@ -47,42 +47,42 @@ func (s *ServerTestSuite) TestLifecycle_Cancel() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	assert.NotPanics(s.T(), func() {
+	s.NotPanics(func() {
 		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
-		assert.NoError(s.T(), err)
+		s.NoError(err)
 
 		err = s.server.Run(ctx)
-		assert.NoError(s.T(), err)
+		s.NoError(err)
 	})
 }
 
 func (s *ServerTestSuite) TestGetPort() {
-	assert.NotPanics(s.T(), func() {
+	s.NotPanics(func() {
 		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
-		assert.NoError(s.T(), err)
+		s.NoError(err)
 
 		port, err := s.server.GetPort()
-		assert.NoError(s.T(), err)
-		assert.NotNil(s.T(), port)
+		s.NoError(err)
+		s.NotNil(port)
 
 		_, err = net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", *port))
-		assert.NoError(s.T(), err, "could not establish a connection with server")
+		s.NoError(err, "could not establish a connection with server")
 	})
 }
 
 func (s *ServerTestSuite) TestGetPort_Error() {
-	assert.NotPanics(s.T(), func() {
+	s.NotPanics(func() {
 		port, err := s.server.GetPort()
-		assert.EqualError(s.T(), err, "could not get port. module is not yet booted")
-		assert.Nil(s.T(), port)
+		s.EqualError(err, "could not get port. module is not yet booted")
+		s.Nil(port)
 	})
 }
 
 func (s *ServerTestSuite) TestBaseProfilingEndpoint() {
-	assert.NotPanics(s.T(), func() {
+	s.NotPanics(func() {
 		apiserver.AddProfilingEndpoints(s.router)
 		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
-		assert.NoError(s.T(), err)
+		s.NoError(err)
 	})
 
 	httpRecorder := httptest.NewRecorder()

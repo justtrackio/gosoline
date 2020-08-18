@@ -42,7 +42,7 @@ func (s *DdbTestSuite) SetupSuite() {
 			mocks.Shutdown()
 		}
 
-		s.Fail("failed to boot mocks")
+		s.Fail("failed to boot mocks: %s", err.Error())
 
 		return
 	}
