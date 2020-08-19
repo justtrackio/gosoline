@@ -57,13 +57,6 @@ func NewClient(config cfg.Config, logger mon.Logger, name string) Client {
 	return NewClientWithInterfaces(logger, db)
 }
 
-//func NewClientWithDefault(logger mon.Logger) Client {
-//	logger = logger.WithChannel("sql")
-//	db, err := ProvideDefaultConnection()
-//
-//	return NewClient(logger, DefaultConnection)
-//}
-
 func NewClientWithInterfaces(logger mon.Logger, db *sqlx.DB) Client {
 	if db == nil {
 		logger.WithContext(context.Background()).Fatal(errors.New("db not booted yet"), "db not booted yet")
