@@ -46,11 +46,6 @@ variable "max_size" {
   description = "The upper limit of worker nodes the Ocean cluster can scale up to"
 }
 
-variable "desired_capacity" {
-  type        = number
-  description = "The number of worker nodes to launch and maintain in the Ocean cluster"
-}
-
 variable "key_name" {
   type        = string
   description = "The key pair to attach to the worker nodes launched by Ocean"
