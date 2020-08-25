@@ -6,7 +6,6 @@ import (
 	"github.com/applike/gosoline/pkg/ddb"
 	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
 	"github.com/applike/gosoline/pkg/kvstore"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -238,10 +237,9 @@ func TestDdbKvStore_PutBatch(t *testing.T) {
 }
 
 func buildTestableDdbStore() (*kvstore.DdbKvStore, *ddbMocks.Repository) {
-	logger := monMocks.NewLoggerMockedAll()
 	repository := new(ddbMocks.Repository)
 
-	store := kvstore.NewDdbKvStoreWithInterfaces(logger, repository, &kvstore.Settings{
+	store := kvstore.NewDdbKvStoreWithInterfaces(repository, &kvstore.Settings{
 		AppId: cfg.AppId{
 			Project:     "applike",
 			Environment: "test",

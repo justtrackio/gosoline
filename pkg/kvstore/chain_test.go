@@ -15,8 +15,34 @@ func TestChainKvStore_Contains(t *testing.T) {
 	ctx := context.Background()
 	store, element0, element1 := buildTestableChainStore(false)
 
-	element0.On("Contains", ctx, "foo").Return(false, nil)
-	element1.On("Contains", ctx, "foo").Return(true, nil)
+	// missing
+	element0.On("Contains", ctx, "foo").Return(false, nil).Once()
+	element1.On("Contains", ctx, "foo").Return(false, nil).Once()
+
+	exists, err := store.Contains(ctx, "foo")
+	assert.NoError(t, err)
+	assert.False(t, exists)
+
+	element0.AssertExpectations(t)
+	element1.AssertExpectations(t)
+
+	// available
+	element0.On("Contains", ctx, "foo").Return(false, nil).Once()
+	element1.On("Contains", ctx, "foo").Return(true, nil).Once()
+
+	exists, err = store.Contains(ctx, "foo")
+	assert.NoError(t, err)
+	assert.True(t, exists)
+
+	element0.AssertExpectations(t)
+	element1.AssertExpectations(t)
+}
+
+func TestChainKvStore_Contains_Early(t *testing.T) {
+	ctx := context.Background()
+	store, element0, element1 := buildTestableChainStore(false)
+
+	element0.On("Contains", ctx, "foo").Return(true, nil).Once()
 
 	exists, err := store.Contains(ctx, "foo")
 	assert.NoError(t, err)
@@ -24,6 +50,25 @@ func TestChainKvStore_Contains(t *testing.T) {
 
 	element0.AssertExpectations(t)
 	element1.AssertExpectations(t)
+}
+
+func TestChainKvStore_Contains_CacheMissing(t *testing.T) {
+	ctx := context.Background()
+	store, element0, element1 := buildTestableChainStore(true)
+
+	element0.On("Contains", ctx, "foo").Return(false, nil).Once()
+	element1.On("Contains", ctx, "foo").Return(false, nil).Once()
+
+	exists, err := store.Contains(ctx, "foo")
+	assert.NoError(t, err)
+	assert.False(t, exists)
+
+	element0.AssertExpectations(t)
+	element1.AssertExpectations(t)
+
+	exists, err = store.Contains(ctx, "foo")
+	assert.NoError(t, err)
+	assert.False(t, exists)
 }
 
 func TestChainKvStore_Get(t *testing.T) {
@@ -73,7 +118,7 @@ func TestChainKvStore_Get_CacheMissing(t *testing.T) {
 	found, err := store.Get(ctx, "foo", item)
 
 	assert.NoError(t, err)
-	assert.True(t, found)
+	assert.False(t, found)
 	assert.Empty(t, item.Id)
 
 	// available
@@ -176,8 +221,7 @@ func TestChainKvStore_GetBatch(t *testing.T) {
 }
 
 func TestChainKvStore_GetBatch_CacheMissing_All(t *testing.T) {
-	var expectedMissingKeys []interface{}
-	expectedMissingItem := Item{}
+	expectedMissingKeys := []interface{}{"foo", "fuu"}
 
 	ctx := context.Background()
 	keys := []interface{}{"foo", "fuu"}
@@ -192,13 +236,11 @@ func TestChainKvStore_GetBatch_CacheMissing_All(t *testing.T) {
 	missing, err := store.GetBatch(ctx, keys, result)
 
 	assert.NoError(t, err)
-	assert.Len(t, missing, 0)
+	assert.Len(t, missing, 2)
 	assert.Equal(t, expectedMissingKeys, missing)
 
-	assert.Contains(t, result, "foo")
-	assert.Contains(t, result, "fuu")
-	assert.Equal(t, expectedMissingItem, result["foo"])
-	assert.Equal(t, expectedMissingItem, result["fuu"])
+	assert.NotContains(t, result, "foo")
+	assert.NotContains(t, result, "fuu")
 
 	element0.AssertExpectations(t)
 	element1.AssertExpectations(t)
@@ -243,8 +285,7 @@ func TestChainKvStore_GetBatch_CacheMissing_None(t *testing.T) {
 }
 
 func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
-	var expectedMissingKeys []interface{}
-	expectedMissingItem := Item{}
+	expectedMissingKeys := []interface{}{"fuu"}
 
 	ctx := context.Background()
 	keys := []interface{}{"foo", "fuu"}
@@ -275,14 +316,13 @@ func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
 	missing, err := store.GetBatch(ctx, keys, result)
 
 	assert.NoError(t, err)
-	assert.Len(t, missing, 0)
+	assert.Len(t, missing, 1)
 	assert.Equal(t, expectedMissingKeys, missing)
 
 	assert.Contains(t, result, "foo")
-	assert.Contains(t, result, "fuu")
+	assert.NotContains(t, result, "fuu")
 	assert.Equal(t, "foo", result["foo"].Id)
 	assert.Equal(t, "bar", result["foo"].Body)
-	assert.Equal(t, expectedMissingItem, result["fuu"])
 
 	element0.AssertExpectations(t)
 	element1.AssertExpectations(t)

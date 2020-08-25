@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	redisMocks "github.com/applike/gosoline/pkg/redis/mocks"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -110,10 +109,9 @@ func TestRedisKvStore_PutBatch(t *testing.T) {
 }
 
 func buildTestableRedisStore() (*kvstore.RedisKvStore, *redisMocks.Client) {
-	logger := monMocks.NewLoggerMockedAll()
 	client := new(redisMocks.Client)
 
-	store := kvstore.NewRedisKvStoreWithInterfaces(logger, client, &kvstore.Settings{
+	store := kvstore.NewRedisKvStoreWithInterfaces(client, &kvstore.Settings{
 		AppId: cfg.AppId{
 			Project:     "applike",
 			Environment: "test",
