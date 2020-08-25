@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -23,6 +22,13 @@ const (
 
 type TokenBearer interface {
 	GetToken() string
+}
+
+type Getter interface {
+	// Retrieve a value from the store by the given key. If the value does
+	// not exist, false is returned and value is not modified.
+	// value should be a pointer to the model you want to retrieve.
+	Get(ctx context.Context, key interface{}, value interface{}) (bool, error)
 }
 
 type tokenBearerAuthenticator struct {
@@ -128,10 +134,10 @@ func (a *tokenBearerAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	return true, nil
 }
 
-func ProvideTokenBearerFromKVStore(store kvstore.KvStore, getModel ModelProvider) TokenBearerProvider {
+func ProvideTokenBearerFromGetter(getter Getter, getModel ModelProvider) TokenBearerProvider {
 	return func(ctx context.Context, key string) (TokenBearer, error) {
 		m := getModel()
-		found, err := store.Get(ctx, key, m)
+		found, err := getter.Get(ctx, key, m)
 
 		if err == nil && found {
 			return m, nil
