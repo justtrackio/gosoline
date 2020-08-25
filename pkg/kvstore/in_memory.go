@@ -37,7 +37,7 @@ func (s *InMemoryKvStore) Contains(_ context.Context, key interface{}) (bool, er
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("can not build string key %T %v: %w", key, key, err)
 	}
 
 	item := s.cache.Get(keyStr)
@@ -55,16 +55,12 @@ func (s *InMemoryKvStore) Get(_ context.Context, key interface{}, value interfac
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("can not build string key %T %v: %w", key, key, err)
 	}
 
 	item := s.cache.Get(keyStr)
 
-	if item == nil {
-		return false, nil
-	}
-
-	if item.Expired() {
+	if item == nil || item.Expired() {
 		return false, nil
 	}
 
@@ -73,7 +69,7 @@ func (s *InMemoryKvStore) Get(_ context.Context, key interface{}, value interfac
 	rv := reflect.ValueOf(value)
 
 	if rv.Kind() != reflect.Ptr {
-		return false, fmt.Errorf("the output value has to be a pointer")
+		return false, fmt.Errorf("the output value has to be a pointer, was %T", value)
 	}
 
 	rv = rv.Elem()
@@ -87,33 +83,29 @@ func (s *InMemoryKvStore) GetBatch(ctx context.Context, keys interface{}, values
 }
 
 func (s *InMemoryKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
-	var err error
-
 	missing := make([]interface{}, 0)
-	keyStrings := make([]string, len(keys))
 
-	for i := 0; i < len(keyStrings); i++ {
-		keyStrings[i], err = CastKeyToString(keys[i])
+	for _, key := range keys {
+		keyString, err := CastKeyToString(key)
 
 		if err != nil {
-			return nil, fmt.Errorf("can not build string key: %w", err)
+			return nil, fmt.Errorf("can not build string key %T %v: %w", key, key, err)
 		}
-	}
 
-	for _, key := range keyStrings {
 		element := resultMap.NewElement()
 		ok, err := s.Get(ctx, key, element)
 
 		if err != nil {
-			return nil, fmt.Errorf("can not get batch element for key %s: %w", key, err)
+			return nil, fmt.Errorf("can not get batch element for key %s: %w", keyString, err)
 		}
 
 		if !ok {
-			missing = append(missing, key)
+			missing = append(missing, keyString)
+
 			continue
 		}
 
-		if err := resultMap.Set(key, element); err != nil {
+		if err := resultMap.Set(keyString, element); err != nil {
 			return nil, fmt.Errorf("can not set new element on result map: %w", err)
 		}
 	}
@@ -125,7 +117,7 @@ func (s *InMemoryKvStore) Put(_ context.Context, key interface{}, value interfac
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("can not build string key %T %v: %w", key, key, err)
 	}
 
 	rv := reflect.ValueOf(value)
@@ -145,7 +137,7 @@ func (s *InMemoryKvStore) PutBatch(ctx context.Context, values interface{}) erro
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 
 	if err != nil {
-		return fmt.Errorf("could not convert values to map[interface{}]interface{}")
+		return fmt.Errorf("could not convert values from %T to map[interface{}]interface{}", values)
 	}
 
 	for k, v := range mii {
@@ -161,7 +153,7 @@ func (s *InMemoryKvStore) Delete(_ context.Context, key interface{}) error {
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("can not build string key %T %v: %w", key, key, err)
 	}
 
 	s.cache.Delete(keyStr)
@@ -172,7 +164,7 @@ func (s *InMemoryKvStore) Delete(_ context.Context, key interface{}) error {
 func (s *InMemoryKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
-		return fmt.Errorf("could not convert keys to []interface{}")
+		return fmt.Errorf("could not convert keys from %T to []interface{}", keys)
 	}
 
 	for key := range si {

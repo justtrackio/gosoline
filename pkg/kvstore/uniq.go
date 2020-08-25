@@ -13,7 +13,7 @@ func UniqKeys(keys []interface{}) ([]interface{}, error) {
 		keyString, err := CastKeyToString(keys[i])
 
 		if err != nil {
-			return nil, fmt.Errorf("can not build string key: %w", err)
+			return nil, fmt.Errorf("can not build string key from %T %v: %w", keys[i], keys[i], err)
 		}
 
 		if _, ok := seen[keyString]; ok {

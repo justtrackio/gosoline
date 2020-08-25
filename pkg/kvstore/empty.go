@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/refl"
 )
 
@@ -28,16 +29,16 @@ func (s *EmptyKvStore) GetBatch(_ context.Context, keys interface{}, _ interface
 	missing, err := refl.InterfaceToInterfaceSlice(keys)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not convert keys from %T to []interface{}", keys)
 	}
 
 	return missing, nil
 }
 
-func (s *EmptyKvStore) Put(_ context.Context, key interface{}, value interface{}) error {
+func (s *EmptyKvStore) Put(_ context.Context, _ interface{}, _ interface{}) error {
 	return nil
 }
 
-func (s *EmptyKvStore) PutBatch(ctx context.Context, values interface{}) error {
+func (s *EmptyKvStore) PutBatch(_ context.Context, _ interface{}) error {
 	return nil
 }

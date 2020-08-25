@@ -26,3 +26,14 @@ func TestUniqKeys_IntegerKeys(t *testing.T) {
 	assert.Contains(t, uniqKeys, 1)
 	assert.Contains(t, uniqKeys, 2)
 }
+
+func TestUniqKeys_MixedKeys(t *testing.T) {
+	keys := []interface{}{1, "2", "1"}
+
+	uniqKeys, err := UniqKeys(keys)
+
+	assert.NoError(t, err)
+	assert.Len(t, uniqKeys, 2)
+	assert.Contains(t, uniqKeys, 1)
+	assert.Contains(t, uniqKeys, "2")
+}

@@ -8,9 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
-	"github.com/thoas/go-funk"
 	"sort"
-	"strings"
 )
 
 type DdbItem struct {
@@ -19,13 +17,12 @@ type DdbItem struct {
 }
 
 type DdbKvStore struct {
-	logger     mon.Logger
 	repository ddb.Repository
 	settings   *Settings
 }
 
 func DdbBaseName(settings *Settings) string {
-	return strings.Join([]string{"kvstore", settings.Name}, "-")
+	return fmt.Sprintf("kvstore-%s", settings.Name)
 }
 
 func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvStore {
@@ -47,12 +44,11 @@ func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvS
 		},
 	})
 
-	return NewDdbKvStoreWithInterfaces(logger, repository, settings)
+	return NewDdbKvStoreWithInterfaces(repository, settings)
 }
 
-func NewDdbKvStoreWithInterfaces(logger mon.Logger, repository ddb.Repository, settings *Settings) *DdbKvStore {
+func NewDdbKvStoreWithInterfaces(repository ddb.Repository, settings *Settings) *DdbKvStore {
 	return &DdbKvStore{
-		logger:     logger,
 		repository: repository,
 		settings:   settings,
 	}
@@ -62,8 +58,7 @@ func (s *DdbKvStore) Contains(ctx context.Context, key interface{}) (bool, error
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
-		s.logger.Error(err, "can not cast key to string")
-		return false, err
+		return false, fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
 	}
 
 	item := &DdbItem{}
@@ -71,8 +66,7 @@ func (s *DdbKvStore) Contains(ctx context.Context, key interface{}) (bool, error
 	res, err := s.repository.GetItem(ctx, qb, item)
 
 	if err != nil {
-		s.logger.Error(err, "can not check if ddb store contains the key")
-		return false, err
+		return false, fmt.Errorf("can not check if ddb store contains the key %s: %w", keyStr, err)
 	}
 
 	return res.IsFound, nil
@@ -82,8 +76,7 @@ func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
-		s.logger.Error(err, "can not cast key to string")
-		return false, err
+		return false, fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
 	}
 
 	qb := s.repository.GetItemBuilder().WithHash(keyStr)
@@ -92,8 +85,7 @@ func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}
 	res, err := s.repository.GetItem(ctx, qb, item)
 
 	if err != nil {
-		s.logger.Error(err, "can not get item from ddb store")
-		return false, err
+		return false, fmt.Errorf("can not get item %s from ddb store: %w", keyStr, err)
 	}
 
 	if !res.IsFound {
@@ -104,8 +96,7 @@ func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}
 	err = Unmarshal(bytes, value)
 
 	if err != nil {
-		s.logger.Error(err, "can not unmarshal value")
-		return false, err
+		return false, fmt.Errorf("can not unmarshal value for item %s: %w", keyStr, err)
 	}
 
 	return true, nil
@@ -118,7 +109,6 @@ func (s *DdbKvStore) GetBatch(ctx context.Context, keys interface{}, result inte
 func (s *DdbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
 	var err error
 
-	missing := make([]interface{}, 0)
 	keyStrings := make([]string, len(keys))
 	keyMapToOriginal := make(map[string]interface{}, len(keys))
 
@@ -126,7 +116,7 @@ func (s *DdbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []i
 		keyStr, err := CastKeyToString(keys[i])
 
 		if err != nil {
-			return nil, fmt.Errorf("can not build string key: %w", err)
+			return nil, fmt.Errorf("can not cast key %T %v to string: %w", keys[i], keys[i], err)
 		}
 
 		keyStrings[i] = keyStr
@@ -135,8 +125,6 @@ func (s *DdbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []i
 
 	qb := s.repository.BatchGetItemsBuilder()
 	qb.WithHashKeys(keyStrings)
-
-	found := make([]string, 0)
 	items := make([]DdbItem, 0)
 
 	_, err = s.repository.BatchGetItems(ctx, qb, &items)
@@ -145,8 +133,10 @@ func (s *DdbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []i
 		return nil, fmt.Errorf("can not get items from ddb: %w", err)
 	}
 
+	found := make(map[string]bool)
+
 	for i := 0; i < len(items); i++ {
-		found = append(found, items[i].Key)
+		found[items[i].Key] = true
 
 		element := resultMap.NewElement()
 		err = Unmarshal([]byte(items[i].Value), element)
@@ -161,8 +151,10 @@ func (s *DdbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []i
 		}
 	}
 
+	missing := make([]interface{}, 0)
+
 	for i, key := range keyStrings {
-		if !funk.ContainsString(found, key) {
+		if !found[key] {
 			missing = append(missing, keys[i])
 		}
 	}
@@ -171,18 +163,16 @@ func (s *DdbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []i
 }
 
 func (s *DdbKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
-	bytes, err := Marshal(value)
-
-	if err != nil {
-		s.logger.Error(err, "can not marshal value")
-		return err
-	}
-
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
-		s.logger.Error(err, "can not cast key to string")
-		return err
+		return fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
+	}
+
+	bytes, err := Marshal(value)
+
+	if err != nil {
+		return fmt.Errorf("can not marshal value %s: %w", keyStr, err)
 	}
 
 	item := &DdbItem{
@@ -193,8 +183,7 @@ func (s *DdbKvStore) Put(ctx context.Context, key interface{}, value interface{}
 	_, err = s.repository.PutItem(ctx, nil, item)
 
 	if err != nil {
-		s.logger.Error(err, "can not put value into ddb store")
-		return err
+		return fmt.Errorf("can not put item %s into ddb store: %w", keyStr, err)
 	}
 
 	return nil
@@ -214,8 +203,7 @@ func (s *DdbKvStore) PutBatch(ctx context.Context, values interface{}) error {
 		keyStr, err := CastKeyToString(k)
 
 		if err != nil {
-			s.logger.Error(err, "can not cast key to string")
-			return err
+			return fmt.Errorf("can not cast key %T %v to string: %w", k, k, err)
 		}
 
 		keyStrings = append(keyStrings, keyStr)
@@ -232,8 +220,7 @@ func (s *DdbKvStore) PutBatch(ctx context.Context, values interface{}) error {
 		bytes, err := Marshal(value)
 
 		if err != nil {
-			s.logger.Error(err, "can not marshal value")
-			return err
+			return fmt.Errorf("can not marshal value %s: %w", keyStr, err)
 		}
 
 		item := DdbItem{

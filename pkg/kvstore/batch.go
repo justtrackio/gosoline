@@ -25,7 +25,6 @@ func keyChunks(keys []interface{}, size int) [][]interface{} {
 type chunkGetter func(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error)
 
 func getBatch(ctx context.Context, keys interface{}, result interface{}, getChunk chunkGetter, batchSize int) ([]interface{}, error) {
-	missing := make([]interface{}, 0)
 	keySlice, err := refl.InterfaceToInterfaceSlice(keys)
 
 	if err != nil {
@@ -49,6 +48,7 @@ func getBatch(ctx context.Context, keys interface{}, result interface{}, getChun
 	}
 
 	chunks := keyChunks(keySlice, batchSize)
+	missing := make([]interface{}, 0)
 
 	for _, chunk := range chunks {
 		miss, err := getChunk(ctx, resultMap, chunk)
