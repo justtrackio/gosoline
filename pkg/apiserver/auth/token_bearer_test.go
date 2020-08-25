@@ -42,7 +42,7 @@ func makeKvStoreProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, [
 	repo := new(kvStoreMocks.KvStore)
 
 	if test.bearerId != "" && test.token != "" {
-		repo.On("Get", context.TODO(), test.bearerId, &bearer{}).Run(func(args mock.Arguments) {
+		repo.On("Get", context.Background(), test.bearerId, &bearer{}).Run(func(args mock.Arguments) {
 			m := args.Get(2).(*bearer)
 
 			if test.bearer != nil {
@@ -51,7 +51,7 @@ func makeKvStoreProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, [
 		}).Return(test.bearer != nil, test.bearerErr).Once()
 	}
 
-	return auth.ProvideTokenBearerFromKVStore(repo, func() auth.TokenBearer {
+	return auth.ProvideTokenBearerFromGetter(repo, func() auth.TokenBearer {
 		return &bearer{}
 	}), []hasExpectations{repo}
 }
@@ -67,7 +67,7 @@ func makeDdbProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, []has
 
 		repo.On("GetItemBuilder").Return(builder).Once()
 
-		repo.On("GetItem", context.TODO(), builder, &bearer{}).Run(func(args mock.Arguments) {
+		repo.On("GetItem", context.Background(), builder, &bearer{}).Run(func(args mock.Arguments) {
 			m := args.Get(2).(*bearer)
 
 			if test.bearer != nil {
