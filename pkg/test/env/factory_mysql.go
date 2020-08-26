@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/spf13/cast"
 	"net/url"
 )
 
@@ -57,6 +58,13 @@ func (f mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManager
 		settings.Type = componentMySql
 		settings.Name = name
 
+		tmpfs, err := cast.ToStringMapStringE(settings.TmpfsIface)
+		if err != nil {
+			return err
+		}
+
+		settings.Tmpfs = tmpfs
+
 		if err := manager.Add(settings); err != nil {
 			return fmt.Errorf("can not add default mysql component: %w", err)
 		}
@@ -81,6 +89,7 @@ func (f mysqlFactory) ConfigureContainer(settings interface{}) *containerConfig 
 
 	return &containerConfig{
 		Repository: "mysql/mysql-server",
+		Tmpfs:      s.Tmpfs,
 		Tag:        s.Version,
 		Env:        env,
 		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE"},

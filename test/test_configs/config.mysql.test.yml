@@ -3,5 +3,7 @@ mocks:
     component: mysql
     debug: false
     dbName: myDbName
-    version: "8"
     expire_after: 1m1s
+    tmpfs:
+      /usr/share/elasticsearch/data: ''
+    version: '8'

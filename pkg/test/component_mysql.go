@@ -7,6 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
+	"github.com/spf13/cast"
 )
 
 type mysqlSettingsLegacy struct {
@@ -42,8 +43,14 @@ func (m *mysqlComponentLegacy) Start() error {
 
 	containerName := fmt.Sprintf("gosoline_test_mysql_%s", m.name)
 
+	tmpfs, err := cast.ToStringMapStringE(m.settings.Tmpfs)
+	if err != nil {
+		return err
+	}
+
 	return m.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "mysql",
+		Tmpfs:      tmpfs,
 		Tag:        m.settings.Version,
 		Env:        env,
 		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE"},

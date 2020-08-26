@@ -51,7 +51,9 @@ func (c *ComponentBaseSettings) SetType(typ string) {
 }
 
 type ComponentContainerSettings struct {
-	ExpireAfter time.Duration `cfg:"expire_after" default:"60s"`
+	ExpireAfter time.Duration          `cfg:"expire_after" default:"60s"`
+	TmpfsIface  map[string]interface{} `cfg:"tmpfs"`
+	Tmpfs       map[string]string
 }
 
 type Component interface {

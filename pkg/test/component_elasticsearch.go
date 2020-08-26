@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/es"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/spf13/cast"
 	"net/http"
 )
 
@@ -36,8 +37,14 @@ func (e *elasticsearchComponent) Boot(config cfg.Config, logger mon.Logger, runn
 func (e *elasticsearchComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_elasticsearch_%s", e.name)
 
+	tmpfs, err := cast.ToStringMapStringE(e.settings.Tmpfs)
+	if err != nil {
+		return err
+	}
+
 	return e.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
+		Tmpfs:      tmpfs,
 		Tag:        e.settings.Version,
 		Env: []string{
 			"discovery.type=single-node",

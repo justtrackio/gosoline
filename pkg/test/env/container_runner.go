@@ -16,6 +16,7 @@ import (
 
 type containerConfig struct {
 	Repository   string
+	Tmpfs        map[string]string
 	Tag          string
 	Env          []string
 	Cmd          []string
@@ -142,7 +143,9 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container,
 		PortBindings: bindings,
 	}
 
-	resource, err := r.pool.RunWithOptions(runOptions)
+	resource, err := r.pool.RunWithOptions(runOptions, func(hc *docker.HostConfig) {
+		hc.Tmpfs = config.Tmpfs
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("can not run container %s: %w", skeleton.id(), err)

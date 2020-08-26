@@ -25,6 +25,7 @@ type hostMappingLegacy struct {
 
 type containerConfigLegacy struct {
 	Repository   string
+	Tmpfs        map[string]string
 	Tag          string
 	Env          []string
 	Cmd          []string
@@ -93,6 +94,8 @@ func (d *dockerRunnerLegacy) Run(name string, config *containerConfigLegacy) err
 		Env:          config.Env,
 		Cmd:          config.Cmd,
 		PortBindings: bindings,
+	}, func(hc *docker.HostConfig) {
+		hc.Tmpfs = config.Tmpfs
 	})
 
 	if err != nil {
