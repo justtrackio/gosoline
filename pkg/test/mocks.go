@@ -15,10 +15,11 @@ type mockComponent interface {
 }
 
 type mockSettings struct {
-	Host        string
-	Debug       bool          `cfg:"debug"`
 	Component   string        `cfg:"component"`
+	Debug       bool          `cfg:"debug"`
 	ExpireAfter time.Duration `cfg:"expire_after" default:"60s"`
+	Host        string
+	Tmpfs       map[string]interface{} `cfg:"tmpfs"`
 }
 
 type mockComponentBase struct {

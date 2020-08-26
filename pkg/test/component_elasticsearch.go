@@ -38,6 +38,7 @@ func (e *elasticsearchComponent) Start() error {
 
 	return e.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "docker.elastic.co/elasticsearch/elasticsearch",
+		Tmpfs:      e.settings.Tmpfs,
 		Tag:        e.settings.Version,
 		Env: []string{
 			"discovery.type=single-node",

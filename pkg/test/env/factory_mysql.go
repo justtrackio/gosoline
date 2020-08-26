@@ -81,6 +81,7 @@ func (f mysqlFactory) ConfigureContainer(settings interface{}) *containerConfig 
 
 	return &containerConfig{
 		Repository: "mysql/mysql-server",
+		Tmpfs:      s.Tmpfs,
 		Tag:        s.Version,
 		Env:        env,
 		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE"},

@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
+	"github.com/spf13/cast"
 	"log"
 	"net"
 	"os"
@@ -25,6 +26,7 @@ type hostMappingLegacy struct {
 
 type containerConfigLegacy struct {
 	Repository   string
+	Tmpfs        map[string]interface{}
 	Tag          string
 	Env          []string
 	Cmd          []string
@@ -86,14 +88,30 @@ func (d *dockerRunnerLegacy) Run(name string, config *containerConfigLegacy) err
 	}
 
 	logger.Info("starting container")
-	resource, err := d.pool.RunWithOptions(&dockertest.RunOptions{
+
+	runOptions := &dockertest.RunOptions{
 		Name:         containerName,
 		Repository:   config.Repository,
 		Tag:          config.Tag,
 		Env:          config.Env,
 		Cmd:          config.Cmd,
 		PortBindings: bindings,
-	})
+	}
+	hostConfigs := make([]func(hc *docker.HostConfig), 0)
+
+	if len(config.Tmpfs) > 0 {
+		tmpfs, err := cast.ToStringMapStringE(config.Tmpfs)
+
+		if err != nil {
+			return fmt.Errorf("can not cast tmpfs config to map[string]string: %w", err)
+		}
+
+		hostConfigs = append(hostConfigs, func(hc *docker.HostConfig) {
+			hc.Tmpfs = tmpfs
+		})
+	}
+
+	resource, err := d.pool.RunWithOptions(runOptions, hostConfigs...)
 
 	if err != nil {
 		return fmt.Errorf("could not start container %s: %w", containerName, err)

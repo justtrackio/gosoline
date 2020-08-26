@@ -44,6 +44,7 @@ func (m *mysqlComponentLegacy) Start() error {
 
 	return m.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "mysql",
+		Tmpfs:      m.settings.Tmpfs,
 		Tag:        m.settings.Version,
 		Env:        env,
 		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE"},
