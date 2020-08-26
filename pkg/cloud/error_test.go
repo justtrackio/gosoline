@@ -156,3 +156,50 @@ func TestIsUsedClosedConnectionError(t *testing.T) {
 
 	assert.True(t, isClosedErr, "error: %v", err)
 }
+
+func TestIsConnectionResetError(t *testing.T) {
+	var err error
+	var conn net.Conn
+	var listener net.Listener
+	var waitListen = make(chan struct{})
+
+	go func() {
+		var err error
+		var conn net.Conn
+
+		if listener, err = net.Listen("tcp", "localhost:0"); err != nil {
+			assert.FailNow(t, err.Error(), "can not create listener")
+			return
+		}
+
+		close(waitListen)
+
+		if conn, err = listener.Accept(); err != nil {
+			assert.FailNow(t, err.Error(), "can not accept connection")
+			return
+		}
+
+		if err = conn.(*net.TCPConn).SetLinger(0); err != nil {
+			assert.FailNow(t, err.Error(), "can not set linger value")
+			return
+		}
+
+		if err = conn.Close(); err != nil {
+			assert.FailNow(t, err.Error(), "can not close connection")
+		}
+	}()
+
+	<-waitListen
+	addr := listener.Addr().String()
+
+	if conn, err = net.Dial("tcp", addr); err != nil {
+		assert.FailNow(t, err.Error(), "can not connect")
+		return
+	}
+	// Block until close.
+	buf := make([]byte, 1)
+	_, err = conn.Read(buf)
+
+	isConnErr := cloud.IsConnectionError(err)
+	assert.True(t, isConnErr, "error should be a connection error")
+}
