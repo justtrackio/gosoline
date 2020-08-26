@@ -9,6 +9,7 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
+	"github.com/spf13/cast"
 	"net"
 	"sync"
 	"time"
@@ -16,6 +17,7 @@ import (
 
 type containerConfig struct {
 	Repository   string
+	Tmpfs        map[string]interface{}
 	Tag          string
 	Env          []string
 	Cmd          []string
@@ -142,7 +144,21 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container,
 		PortBindings: bindings,
 	}
 
-	resource, err := r.pool.RunWithOptions(runOptions)
+	hostConfigs := make([]func(hc *docker.HostConfig), 0)
+
+	if len(config.Tmpfs) > 0 {
+		tmpfs, err := cast.ToStringMapStringE(config.Tmpfs)
+
+		if err != nil {
+			return nil, fmt.Errorf("can not cast tmpfs config to map[string]string: %w", err)
+		}
+
+		hostConfigs = append(hostConfigs, func(hc *docker.HostConfig) {
+			hc.Tmpfs = tmpfs
+		})
+	}
+
+	resource, err := r.pool.RunWithOptions(runOptions, hostConfigs...)
 
 	if err != nil {
 		return nil, fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
