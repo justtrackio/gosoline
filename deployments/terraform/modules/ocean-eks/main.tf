@@ -73,7 +73,6 @@ resource "spotinst_ocean_aws" "this" {
   region                      = var.region
   max_size                    = var.max_size
   min_size                    = var.min_size
-  desired_capacity            = var.desired_capacity
   subnet_ids                  = var.create_vpc == true ? module.vpc.private_subnets : var.private_subnet_ids
   image_id                    = var.ami_id != null ? var.ami_id : module.eks.workers_default_ami_id
   security_groups             = [aws_security_group.all_worker_mgmt.id, module.eks.worker_security_group_id]
