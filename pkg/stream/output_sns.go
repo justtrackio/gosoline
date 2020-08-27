@@ -75,7 +75,7 @@ func (o *snsOutput) publishToTopic(ctx context.Context, batch []*Message) error 
 			continue
 		}
 
-		err = o.topic.Publish(ctx, &body)
+		err = o.topic.Publish(ctx, &body, msg.Attributes)
 
 		if err != nil {
 			errors = append(errors, err)
