@@ -7,7 +7,6 @@ import (
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -16,12 +15,17 @@ import (
 
 func TestWriter_WriteEvents(t *testing.T) {
 	kinesisClient := new(cloudMocks.KinesisAPI)
+	exec := gosoAws.NewTestableExecutor(&kinesisClient.Mock)
+
+	failureRecordOutput := &kinesis.PutRecordsOutput{
+		Records: []*kinesis.PutRecordsResultEntry{{
+			ErrorCode: aws.String("error"),
+		}},
+	}
+	exec.ExpectExecution("PutRecordsRequest", mock.AnythingOfType("*kinesis.PutRecordsInput"), failureRecordOutput, nil)
 
 	successfulRecordOutput := &kinesis.PutRecordsOutput{Records: []*kinesis.PutRecordsResultEntry{}}
-	exec := gosoAws.NewTestableExecutor([]gosoAws.TestExecution{{
-		Output: successfulRecordOutput,
-		Err:    nil,
-	}})
+	exec.ExpectExecution("PutRecordsRequest", mock.AnythingOfType("*kinesis.PutRecordsInput"), successfulRecordOutput, nil)
 
 	logger := monMocks.NewLoggerMockedAll()
 	writer := stream.NewKinesisOutputWithInterfaces(logger, kinesisClient, exec, &stream.KinesisOutputSettings{
@@ -33,23 +37,6 @@ func TestWriter_WriteEvents(t *testing.T) {
 		stream.NewMessage("2"),
 		stream.NewMessage("3"),
 	}
-
-	kinesisClient.On("PutRecordsRequest", mock.Anything).Return(&request.Request{}, &kinesis.PutRecordsOutput{
-		Records: []*kinesis.PutRecordsResultEntry{{
-			ErrorCode: aws.String("error"),
-		}},
-	}).Once()
-
-	kinesisClient.On("PutRecordsRequest", mock.Anything).Return(
-		&request.Request{}, successfulRecordOutput).Once()
-
-	logger.On("WithFields", mock.Anything).Return(logger).Run(func(args mock.Arguments) {
-		assert.IsType(t, map[string]interface{}{}, args.Get(0))
-
-		fields, _ := args.Get(0).(map[string]interface{})
-
-		assert.Equal(t, 1, fields["total_records"].(int))
-	})
 
 	assert.NotPanics(t, func() {
 		err := writer.Write(context.Background(), batch)

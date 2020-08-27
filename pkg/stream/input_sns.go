@@ -23,44 +23,42 @@ type SnsInputSettings struct {
 
 type SnsInputTarget struct {
 	cfg.AppId
-	TopicId string
+	TopicId    string
+	Attributes map[string]interface{}
 }
 
 type snsInput struct {
 	*sqsInput
 }
 
-func NewSnsInput(config cfg.Config, logger mon.Logger, s SnsInputSettings, targets []SnsInputTarget) *snsInput {
-	s.PadFromConfig(config)
+func NewSnsInput(config cfg.Config, logger mon.Logger, settings SnsInputSettings, targets []SnsInputTarget) *snsInput {
 	autoSubscribe := config.GetBool("aws_sns_autoSubscribe")
 
 	sqsInput := NewSqsInput(config, logger, SqsInputSettings{
-		AppId:               s.AppId,
-		QueueId:             s.QueueId,
-		MaxNumberOfMessages: s.MaxNumberOfMessages,
-		WaitTime:            s.WaitTime,
-		VisibilityTimeout:   s.VisibilityTimeout,
-		RunnerCount:         s.RunnerCount,
-		RedrivePolicy:       s.RedrivePolicy,
-		Client:              s.Client,
-		Backoff:             s.Backoff,
+		AppId:               settings.AppId,
+		QueueId:             settings.QueueId,
+		MaxNumberOfMessages: settings.MaxNumberOfMessages,
+		WaitTime:            settings.WaitTime,
+		VisibilityTimeout:   settings.VisibilityTimeout,
+		RunnerCount:         settings.RunnerCount,
+		RedrivePolicy:       settings.RedrivePolicy,
+		Client:              settings.Client,
+		Backoff:             settings.Backoff,
 		Unmarshaller:        UnmarshallerSns,
 	})
 
 	queueArn := sqsInput.GetQueueArn()
 
 	if autoSubscribe {
-		for _, t := range targets {
-			t.PadFromConfig(config)
-
+		for _, target := range targets {
 			topic := sns.NewTopic(config, logger, &sns.Settings{
-				AppId:   t.AppId,
-				TopicId: t.TopicId,
-				Client:  s.Client,
-				Backoff: s.Backoff,
+				AppId:   target.AppId,
+				TopicId: target.TopicId,
+				Client:  settings.Client,
+				Backoff: settings.Backoff,
 			})
 
-			err := topic.SubscribeSqs(queueArn)
+			err := topic.SubscribeSqs(queueArn, target.Attributes)
 
 			if err != nil {
 				panic(err)

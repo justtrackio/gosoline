@@ -15,8 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 	"strconv"
 	"testing"
 )
@@ -31,7 +30,33 @@ type projection struct {
 	Id int `json:"id"`
 }
 
-func TestRepository_GetItem(t *testing.T) {
+type RepositoryTestSuite struct {
+	suite.Suite
+	executor *gosoAws.TestableExecutor
+	repo     ddb.Repository
+}
+
+func (s *RepositoryTestSuite) SetupTest() {
+	logger := monMocks.NewLoggerMockedAll()
+	tracer := tracing.NewNoopTracer()
+	client := new(cloudMocks.DynamoDBAPI)
+	s.executor = gosoAws.NewTestableExecutor(&client.Mock)
+
+	s.repo = ddb.NewWithInterfaces(logger, tracer, client, s.executor, &ddb.Settings{
+		ModelId: mdl.ModelId{
+			Project:     "applike",
+			Environment: "test",
+			Family:      "gosoline",
+			Application: "ddb",
+			Name:        "myModel",
+		},
+		Main: ddb.MainSettings{
+			Model: model{},
+		},
+	})
+}
+
+func (s *RepositoryTestSuite) TestGetItem() {
 	item := model{}
 	input := &dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
@@ -59,14 +84,10 @@ func TestRepository_GetItem(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: output,
-		Err:    nil,
-	}})
-	client.On("GetItemRequest", input).Return(nil, nil)
+	s.executor.ExpectExecution("GetItemRequest", input, output, nil)
 
-	qb := repo.GetItemBuilder().WithHash(1).WithRange("0")
-	res, err := repo.GetItem(context.Background(), qb, &item)
+	qb := s.repo.GetItemBuilder().WithHash(1).WithRange("0")
+	res, err := s.repo.GetItem(context.Background(), qb, &item)
 
 	expected := model{
 		Id:  1,
@@ -74,14 +95,14 @@ func TestRepository_GetItem(t *testing.T) {
 		Foo: "bar",
 	}
 
-	assert.NoError(t, err)
-	assert.True(t, res.IsFound)
-	assert.EqualValues(t, expected, item)
+	s.NoError(err)
+	s.True(res.IsFound)
+	s.EqualValues(expected, item)
 
-	client.AssertExpectations(t)
+	s.executor.AssertExpectations(s.T())
 }
 
-func TestRepository_GetItem_FromItem(t *testing.T) {
+func (s *RepositoryTestSuite) TestGetItem_FromItem() {
 	input := &dynamodb.GetItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"id": {
@@ -108,19 +129,15 @@ func TestRepository_GetItem_FromItem(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: output,
-		Err:    nil,
-	}})
-	client.On("GetItemRequest", input).Return(nil, nil)
+	s.executor.ExpectExecution("GetItemRequest", input, output, nil)
 
 	item := model{
 		Id:  5,
 		Rev: "abc",
 	}
 
-	qb := repo.GetItemBuilder().WithHash(5).WithRange("abc")
-	res, err := repo.GetItem(context.Background(), qb, &item)
+	qb := s.repo.GetItemBuilder().WithHash(5).WithRange("abc")
+	res, err := s.repo.GetItem(context.Background(), qb, &item)
 
 	expected := model{
 		Id:  5,
@@ -128,12 +145,12 @@ func TestRepository_GetItem_FromItem(t *testing.T) {
 		Foo: "baz",
 	}
 
-	assert.NoError(t, err)
-	assert.True(t, res.IsFound)
-	assert.EqualValues(t, expected, item)
+	s.NoError(err)
+	s.True(res.IsFound)
+	s.EqualValues(expected, item)
 }
 
-func TestRepository_GetItemNotFound(t *testing.T) {
+func (s *RepositoryTestSuite) TestGetItemNotFound() {
 	item := model{}
 
 	input := &dynamodb.GetItemInput{
@@ -149,22 +166,18 @@ func TestRepository_GetItemNotFound(t *testing.T) {
 	}
 	output := &dynamodb.GetItemOutput{}
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: output,
-		Err:    nil,
-	}})
-	client.On("GetItemRequest", input).Return(nil, nil)
+	s.executor.ExpectExecution("GetItemRequest", input, output, nil)
 
-	qb := repo.GetItemBuilder().WithHash(1).WithRange("0")
-	res, err := repo.GetItem(context.Background(), qb, &item)
+	qb := s.repo.GetItemBuilder().WithHash(1).WithRange("0")
+	res, err := s.repo.GetItem(context.Background(), qb, &item)
 
-	assert.NoError(t, err)
-	assert.False(t, res.IsFound)
+	s.NoError(err)
+	s.False(res.IsFound)
 
-	client.AssertExpectations(t)
+	s.executor.AssertExpectations(s.T())
 }
 
-func TestRepository_GetItemProjection(t *testing.T) {
+func (s *RepositoryTestSuite) TestGetItemProjection() {
 	input := &dynamodb.GetItemInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#0": aws.String("id"),
@@ -189,29 +202,25 @@ func TestRepository_GetItemProjection(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: output,
-		Err:    nil,
-	}})
-	client.On("GetItemRequest", input).Return(nil, nil)
+	s.executor.ExpectExecution("GetItemRequest", input, output, nil)
 
 	item := projection{}
 
-	qb := repo.GetItemBuilder().WithHash(1).WithRange("0").WithProjection(item)
-	res, err := repo.GetItem(context.Background(), qb, &item)
+	qb := s.repo.GetItemBuilder().WithHash(1).WithRange("0").WithProjection(item)
+	res, err := s.repo.GetItem(context.Background(), qb, &item)
 
 	expected := projection{
 		Id: 1,
 	}
 
-	assert.NoError(t, err)
-	assert.True(t, res.IsFound)
-	assert.EqualValues(t, expected, item)
+	s.NoError(err)
+	s.True(res.IsFound)
+	s.EqualValues(expected, item)
 
-	client.AssertExpectations(t)
+	s.executor.AssertExpectations(s.T())
 }
 
-func TestRepository_Query(t *testing.T) {
+func (s *RepositoryTestSuite) TestQuery() {
 	input := &dynamodb.QueryInput{
 		ExpressionAttributeNames: map[string]*string{
 			"#0": aws.String("id"),
@@ -253,11 +262,7 @@ func TestRepository_Query(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: output,
-		Err:    nil,
-	}})
-	client.On("QueryRequest", input).Return(nil, nil)
+	s.executor.ExpectExecution("QueryRequest", input, output, nil)
 
 	result := make([]model, 0)
 	expected := []model{
@@ -273,39 +278,47 @@ func TestRepository_Query(t *testing.T) {
 		},
 	}
 
-	qb := repo.QueryBuilder().WithHash(1)
-	_, err := repo.Query(context.Background(), qb, &result)
+	qb := s.repo.QueryBuilder().WithHash(1)
+	_, err := s.repo.Query(context.Background(), qb, &result)
 
-	assert.NoError(t, err)
-	assert.Len(t, result, 2)
-	assert.EqualValues(t, expected, result)
+	s.NoError(err)
+	s.Len(result, 2)
+	s.EqualValues(expected, result)
 
-	client.AssertExpectations(t)
+	s.executor.AssertExpectations(s.T())
 }
 
-func TestRepository_Query_Canceled(t *testing.T) {
+func (s *RepositoryTestSuite) TestQuery_Canceled() {
 	awsErr := awserr.New(request.CanceledErrorCode, "got canceled", nil)
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: nil,
-		Err:    awsErr,
-	}})
-	client.On("QueryRequest", mock.AnythingOfType("*dynamodb.QueryInput")).Return(nil, nil)
+	input := &dynamodb.QueryInput{
+		TableName:              aws.String("applike-test-gosoline-ddb-myModel"),
+		KeyConditionExpression: aws.String("#0 = :0"),
+		ExpressionAttributeNames: map[string]*string{
+			"#0": aws.String("id"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":0": {
+				N: aws.String("1"),
+			},
+		},
+	}
+	s.executor.ExpectExecution("QueryRequest", input, nil, awsErr)
 
 	result := make([]model, 0)
 
-	qb := repo.QueryBuilder().WithHash(1)
-	_, err := repo.Query(context.Background(), qb, &result)
+	qb := s.repo.QueryBuilder().WithHash(1)
+	_, err := s.repo.Query(context.Background(), qb, &result)
 
-	assert.Error(t, err)
+	s.Error(err)
 
 	isRequestCanceled := errors.Is(err, exec.RequestCanceledError)
-	assert.True(t, isRequestCanceled)
+	s.True(isRequestCanceled)
 
-	client.AssertExpectations(t)
+	s.executor.AssertExpectations(s.T())
 }
 
-func TestRepository_BatchGetItems(t *testing.T) {
+func (s *RepositoryTestSuite) TestBatchGetItems() {
 	input := &dynamodb.BatchGetItemInput{
 		RequestItems: map[string]*dynamodb.KeysAndAttributes{
 			"applike-test-gosoline-ddb-myModel": {
@@ -340,11 +353,7 @@ func TestRepository_BatchGetItems(t *testing.T) {
 		UnprocessedKeys: map[string]*dynamodb.KeysAndAttributes{},
 	}
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: output,
-		Err:    nil,
-	}})
-	client.On("BatchGetItemRequest", input).Return(nil, nil)
+	s.executor.ExpectExecution("BatchGetItemRequest", input, output, nil)
 
 	result := make([]model, 0)
 	expected := []model{
@@ -360,16 +369,16 @@ func TestRepository_BatchGetItems(t *testing.T) {
 		},
 	}
 
-	qb := repo.BatchGetItemsBuilder().WithKeys(1, "0").WithKeys(2, "0")
-	_, err := repo.BatchGetItems(context.Background(), qb, &result)
+	qb := s.repo.BatchGetItemsBuilder().WithKeys(1, "0").WithKeys(2, "0")
+	_, err := s.repo.BatchGetItems(context.Background(), qb, &result)
 
-	assert.NoError(t, err)
-	assert.Equal(t, expected, result)
+	s.NoError(err)
+	s.Equal(expected, result)
 
-	client.AssertExpectations(t)
+	s.executor.AssertExpectations(s.T())
 }
 
-func TestRepository_BatchWriteItem(t *testing.T) {
+func (s *RepositoryTestSuite) TestBatchWriteItem() {
 	items := []model{
 		{
 			Id:  1,
@@ -412,19 +421,15 @@ func TestRepository_BatchWriteItem(t *testing.T) {
 		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
 	}
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: output,
-		Err:    nil,
-	}})
-	client.On("BatchWriteItemRequest", input).Return(nil, nil)
+	s.executor.ExpectExecution("BatchWriteItemRequest", input, output, nil)
 
-	_, err := repo.BatchPutItems(context.Background(), items)
+	_, err := s.repo.BatchPutItems(context.Background(), items)
 
-	assert.NoError(t, err)
-	client.AssertExpectations(t)
+	s.NoError(err)
+	s.executor.AssertExpectations(s.T())
 }
 
-func TestRepository_BatchWriteItem_Retry(t *testing.T) {
+func (s *RepositoryTestSuite) TestBatchWriteItem_Retry() {
 	makeItem := func(id int) model {
 		return model{
 			Id:  id,
@@ -484,32 +489,17 @@ func TestRepository_BatchWriteItem_Retry(t *testing.T) {
 		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
 	}
 
-	client, repo := getMocks([]gosoAws.TestExecution{
-		{
-			Output: firstOutput,
-			Err:    nil,
-		},
-		{
-			Output: firstOutput,
-			Err:    nil,
-		},
-		{
-			Output: secondOutput,
-			Err:    nil,
-		},
-	})
+	s.executor.ExpectExecution("BatchWriteItemRequest", firstInput, firstOutput, nil)
+	s.executor.ExpectExecution("BatchWriteItemRequest", secondInput, firstOutput, nil)
+	s.executor.ExpectExecution("BatchWriteItemRequest", secondInput, secondOutput, nil)
 
-	client.On("BatchWriteItemRequest", firstInput).Return(nil, nil).Once()
-	client.On("BatchWriteItemRequest", secondInput).Return(nil, nil).Once()
-	client.On("BatchWriteItemRequest", secondInput).Return(nil, nil).Once()
+	_, err := s.repo.BatchPutItems(context.Background(), items)
 
-	_, err := repo.BatchPutItems(context.Background(), items)
-
-	assert.NoError(t, err)
-	client.AssertExpectations(t)
+	s.NoError(err)
+	s.executor.AssertExpectations(s.T())
 }
 
-func TestRepository_PutItem(t *testing.T) {
+func (s *RepositoryTestSuite) TestPutItem() {
 	item := model{
 		Id:  1,
 		Rev: "0",
@@ -532,20 +522,16 @@ func TestRepository_PutItem(t *testing.T) {
 	}
 	output := &dynamodb.PutItemOutput{}
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: output,
-		Err:    nil,
-	}})
-	client.On("PutItemRequest", input).Return(nil, nil)
+	s.executor.ExpectExecution("PutItemRequest", input, output, nil)
 
-	res, err := repo.PutItem(context.Background(), nil, item)
+	res, err := s.repo.PutItem(context.Background(), nil, item)
 
-	assert.NoError(t, err)
-	assert.False(t, res.ConditionalCheckFailed)
-	client.AssertExpectations(t)
+	s.NoError(err)
+	s.False(res.ConditionalCheckFailed)
+	s.executor.AssertExpectations(s.T())
 }
 
-func TestRepository_Update(t *testing.T) {
+func (s *RepositoryTestSuite) TestUpdate() {
 	input := &dynamodb.UpdateItemInput{
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -581,18 +567,14 @@ func TestRepository_Update(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: output,
-		Err:    nil,
-	}})
-	client.On("UpdateItemRequest", input).Return(nil, nil)
+	s.executor.ExpectExecution("UpdateItemRequest", input, output, nil)
 
 	updatedItem := &model{
 		Id:  1,
 		Rev: "0",
 	}
-	ub := repo.UpdateItemBuilder().Set("foo", "bar").ReturnAllNew()
-	res, err := repo.UpdateItem(context.Background(), ub, updatedItem)
+	ub := s.repo.UpdateItemBuilder().Set("foo", "bar").ReturnAllNew()
+	res, err := s.repo.UpdateItem(context.Background(), ub, updatedItem)
 
 	expectedItem := &model{
 		Id:  1,
@@ -600,13 +582,13 @@ func TestRepository_Update(t *testing.T) {
 		Foo: "bar",
 	}
 
-	assert.NoError(t, err)
-	assert.False(t, res.ConditionalCheckFailed)
-	assert.EqualValues(t, expectedItem, updatedItem)
-	client.AssertExpectations(t)
+	s.NoError(err)
+	s.False(res.ConditionalCheckFailed)
+	s.EqualValues(expectedItem, updatedItem)
+	s.executor.AssertExpectations(s.T())
 }
 
-func TestRepository_DeleteItem(t *testing.T) {
+func (s *RepositoryTestSuite) TestDeleteItem() {
 	input := &dynamodb.DeleteItemInput{
 		ConditionExpression: aws.String("#0 = :0"),
 		ExpressionAttributeNames: map[string]*string{
@@ -642,11 +624,7 @@ func TestRepository_DeleteItem(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]gosoAws.TestExecution{{
-		Output: output,
-		Err:    nil,
-	}})
-	client.On("DeleteItemRequest", input).Return(nil, nil)
+	s.executor.ExpectExecution("DeleteItemRequest", input, output, nil)
 
 	item := model{
 		Id:  1,
@@ -660,33 +638,15 @@ func TestRepository_DeleteItem(t *testing.T) {
 		Foo: "bar",
 	}
 
-	db := repo.DeleteItemBuilder().WithCondition(ddb.Eq("foo", "bar")).ReturnAllOld()
-	res, err := repo.DeleteItem(context.Background(), db, &item)
+	db := s.repo.DeleteItemBuilder().WithCondition(ddb.Eq("foo", "bar")).ReturnAllOld()
+	res, err := s.repo.DeleteItem(context.Background(), db, &item)
 
-	assert.NoError(t, err)
-	assert.False(t, res.ConditionalCheckFailed)
-	assert.Equal(t, expected, item)
-	client.AssertExpectations(t)
+	s.NoError(err)
+	s.False(res.ConditionalCheckFailed)
+	s.Equal(expected, item)
+	s.executor.AssertExpectations(s.T())
 }
 
-func getMocks(executions []gosoAws.TestExecution) (*cloudMocks.DynamoDBAPI, ddb.Repository) {
-	logger := monMocks.NewLoggerMockedAll()
-	tracer := tracing.NewNoopTracer()
-	client := new(cloudMocks.DynamoDBAPI)
-	executor := gosoAws.NewTestableExecutor(executions)
-
-	repo := ddb.NewWithInterfaces(logger, tracer, client, executor, &ddb.Settings{
-		ModelId: mdl.ModelId{
-			Project:     "applike",
-			Environment: "test",
-			Family:      "gosoline",
-			Application: "ddb",
-			Name:        "myModel",
-		},
-		Main: ddb.MainSettings{
-			Model: model{},
-		},
-	})
-
-	return client, repo
+func TestRepositoryTestSuite(t *testing.T) {
+	suite.Run(t, new(RepositoryTestSuite))
 }

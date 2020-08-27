@@ -15,3 +15,13 @@ come in the next weeks:
 * GoDoc
 * overall documentation
 
+## Roadmap
+* sns filter policies
+* rename pubsub
+* remove objx / mergo from config
+* test: tmpfs defaults
+* test: gateway case
+* cloud: bundle aws config
+* add error returns to constructors
+* modules: remove boot
+* stream: message stuffing
