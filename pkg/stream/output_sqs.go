@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
@@ -23,7 +24,7 @@ type SqsOutputSettings struct {
 	Fifo              sqs.FifoSettings
 	RedrivePolicy     sqs.RedrivePolicy
 	Client            cloud.ClientSettings
-	Backoff           cloud.BackoffSettings
+	Backoff           exec.BackoffSettings
 }
 
 type sqsOutput struct {

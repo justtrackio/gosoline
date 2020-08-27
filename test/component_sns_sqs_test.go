@@ -5,7 +5,8 @@ package test_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cloud"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	pkgTest "github.com/applike/gosoline/pkg/test"
 	"github.com/aws/aws-sdk-go/aws"
@@ -43,12 +44,12 @@ func Test_sns_sqs(t *testing.T) {
 	sqsClient := mocks.ProvideSqsClient("sns_sqs")
 
 	logger := mon.NewLogger()
-	res := &cloud.BackoffResource{
+	res := &exec.ExecutableResource{
 		Type: "sns",
 		Name: topicName,
 	}
 
-	var executor = cloud.NewBackoffExecutor(logger, res, &cloud.BackoffSettings{
+	var executor = gosoAws.NewBackoffExecutor(logger, res, &exec.BackoffSettings{
 		Enabled:             true,
 		Blocking:            true,
 		CancelDelay:         time.Second * 1,

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
 	"time"
@@ -139,7 +140,7 @@ type SnsInputConfiguration struct {
 	RunnerCount       int                           `cfg:"runner_count" default:"1" validate:"min=1"`
 	RedrivePolicy     sqs.RedrivePolicy             `cfg:"redrive_policy"`
 	Client            cloud.ClientSettings          `cfg:"client"`
-	Backoff           cloud.BackoffSettings         `cfg:"backoff"`
+	Backoff           exec.BackoffSettings          `cfg:"backoff"`
 }
 
 func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -177,17 +178,17 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 }
 
 type sqsInputConfiguration struct {
-	Family            string                `cfg:"target_family"`
-	Application       string                `cfg:"target_application"`
-	QueueId           string                `cfg:"target_queue_id" validate:"min=1"`
-	WaitTime          int64                 `cfg:"wait_time" default:"3" validate:"min=1"`
-	VisibilityTimeout int                   `cfg:"visibility_timeout" default:"30" validate:"min=1"`
-	RunnerCount       int                   `cfg:"runner_count" default:"1" validate:"min=1"`
-	Fifo              sqs.FifoSettings      `cfg:"fifo"`
-	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
-	Client            cloud.ClientSettings  `cfg:"client"`
-	Backoff           cloud.BackoffSettings `cfg:"backoff"`
-	Unmarshaller      string                `cfg:"unmarshaller" default:"msg"`
+	Family            string               `cfg:"target_family"`
+	Application       string               `cfg:"target_application"`
+	QueueId           string               `cfg:"target_queue_id" validate:"min=1"`
+	WaitTime          int64                `cfg:"wait_time" default:"3" validate:"min=1"`
+	VisibilityTimeout int                  `cfg:"visibility_timeout" default:"30" validate:"min=1"`
+	RunnerCount       int                  `cfg:"runner_count" default:"1" validate:"min=1"`
+	Fifo              sqs.FifoSettings     `cfg:"fifo"`
+	RedrivePolicy     sqs.RedrivePolicy    `cfg:"redrive_policy"`
+	Client            cloud.ClientSettings `cfg:"client"`
+	Backoff           exec.BackoffSettings `cfg:"backoff"`
+	Unmarshaller      string               `cfg:"unmarshaller" default:"msg"`
 }
 
 func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {

@@ -3,7 +3,7 @@ package sub
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
@@ -107,7 +107,7 @@ func getInputByType(config cfg.Config, logger mon.Logger, sub Subscription, mId 
 			QueueId:     mId.Name,
 			WaitTime:    5,
 			RunnerCount: sub.RunnerCount,
-			Backoff: cloud.BackoffSettings{
+			Backoff: exec.BackoffSettings{
 				Enabled:     true,
 				Blocking:    true,
 				CancelDelay: time.Second * 6,

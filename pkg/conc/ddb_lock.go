@@ -2,7 +2,7 @@ package conc
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"sync/atomic"
 	"time"
@@ -50,7 +50,7 @@ func (l *ddbLock) Release() error {
 	// stop the debug thread if needed
 	l.released.Signal()
 
-	ctx := cloud.WithDelayedCancelContext(l.ctx, time.Second*3)
+	ctx := exec.WithDelayedCancelContext(l.ctx, time.Second*3)
 	// stop the cancel context eventually to make sure we are not leaking
 	// a lot of go routines should our parent context get reused over and over
 	defer ctx.Stop()

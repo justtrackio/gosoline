@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -21,13 +23,13 @@ type Settings struct {
 	TopicId string
 	Arn     string
 	Client  cloud.ClientSettings
-	Backoff cloud.BackoffSettings
+	Backoff exec.BackoffSettings
 }
 
 type snsTopic struct {
 	logger   mon.Logger
 	client   snsiface.SNSAPI
-	executor cloud.RequestExecutor
+	executor gosoAws.Executor
 	settings *Settings
 }
 
@@ -44,16 +46,16 @@ func NewTopic(config cfg.Config, logger mon.Logger, settings *Settings) *snsTopi
 
 	settings.Arn = arn
 
-	res := &cloud.BackoffResource{
+	res := &exec.ExecutableResource{
 		Type: "sns",
 		Name: namingStrategy(settings.AppId, settings.TopicId),
 	}
-	executor := cloud.NewExecutor(logger, res, &settings.Backoff)
+	executor := gosoAws.NewExecutor(logger, res, &settings.Backoff)
 
 	return NewTopicWithInterfaces(logger, client, executor, settings)
 }
 
-func NewTopicWithInterfaces(logger mon.Logger, client snsiface.SNSAPI, executor cloud.RequestExecutor, s *Settings) *snsTopic {
+func NewTopicWithInterfaces(logger mon.Logger, client snsiface.SNSAPI, executor gosoAws.Executor, s *Settings) *snsTopic {
 	return &snsTopic{
 		logger:   logger,
 		client:   client,
@@ -72,7 +74,7 @@ func (t *snsTopic) Publish(ctx context.Context, msg *string) error {
 		return t.client.PublishRequest(input)
 	})
 
-	if cloud.IsRequestCanceled(err) {
+	if exec.IsRequestCanceled(err) {
 		t.logger.WithFields(mon.Fields{
 			"arn": t.settings.Arn,
 		}).Info("request was canceled while publishing to topic")

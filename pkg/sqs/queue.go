@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
@@ -61,13 +63,13 @@ type Settings struct {
 	Fifo              FifoSettings
 	RedrivePolicy     RedrivePolicy
 	Client            cloud.ClientSettings
-	Backoff           cloud.BackoffSettings
+	Backoff           exec.BackoffSettings
 }
 
 type queue struct {
 	logger     mon.Logger
 	client     sqsiface.SQSAPI
-	executor   cloud.RequestExecutor
+	executor   gosoAws.Executor
 	properties *Properties
 }
 
@@ -84,16 +86,16 @@ func New(config cfg.Config, logger mon.Logger, settings *Settings) *queue {
 		logger.Fatalf(err, "could not create or get properties of queue %s", name)
 	}
 
-	res := &cloud.BackoffResource{
+	res := &exec.ExecutableResource{
 		Type: "sqs",
 		Name: name,
 	}
-	executor := cloud.NewExecutor(logger, res, &settings.Backoff)
+	executor := gosoAws.NewExecutor(logger, res, &settings.Backoff)
 
 	return NewWithInterfaces(logger, client, executor, props)
 }
 
-func NewWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, executor cloud.RequestExecutor, p *Properties) *queue {
+func NewWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, executor gosoAws.Executor, p *Properties) *queue {
 	q := &queue{
 		logger:     logger,
 		client:     client,
@@ -152,7 +154,7 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 		return q.client.SendMessageBatchRequest(input)
 	})
 
-	if err != nil && !cloud.IsRequestCanceled(err) {
+	if err != nil && !exec.IsRequestCanceled(err) {
 		q.logger.WithContext(ctx).Errorf(err, "could not send batch to sqs queue %s", q.properties.Name)
 	}
 
@@ -173,13 +175,8 @@ func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, er
 		return q.client.ReceiveMessageRequest(input)
 	})
 
-	if cloud.IsRequestCanceled(err) {
-		logger.Infof("canceled receive from sqs queue %s: %s", q.properties.Name, err.Error())
-		return nil, nil
-	}
-
-	if cloud.IsConnectionError(err) {
-		logger.Warnf("connection error during receive from sqs queue %s: %s", q.properties.Name, err.Error())
+	if exec.IsRequestCanceled(err) {
+		logger.Warnf("canceled receive from sqs queue %s: %s", q.properties.Name, err.Error())
 		return nil, nil
 	}
 

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cloud"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
 	"github.com/applike/gosoline/pkg/ddb"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -58,7 +59,7 @@ func TestRepository_GetItem(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: output,
 		Err:    nil,
 	}})
@@ -107,7 +108,7 @@ func TestRepository_GetItem_FromItem(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: output,
 		Err:    nil,
 	}})
@@ -148,7 +149,7 @@ func TestRepository_GetItemNotFound(t *testing.T) {
 	}
 	output := &dynamodb.GetItemOutput{}
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: output,
 		Err:    nil,
 	}})
@@ -188,7 +189,7 @@ func TestRepository_GetItemProjection(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: output,
 		Err:    nil,
 	}})
@@ -252,7 +253,7 @@ func TestRepository_Query(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: output,
 		Err:    nil,
 	}})
@@ -285,7 +286,7 @@ func TestRepository_Query(t *testing.T) {
 func TestRepository_Query_Canceled(t *testing.T) {
 	awsErr := awserr.New(request.CanceledErrorCode, "got canceled", nil)
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: nil,
 		Err:    awsErr,
 	}})
@@ -298,7 +299,7 @@ func TestRepository_Query_Canceled(t *testing.T) {
 
 	assert.Error(t, err)
 
-	isRequestCanceled := errors.Is(err, cloud.RequestCanceledError)
+	isRequestCanceled := errors.Is(err, exec.RequestCanceledError)
 	assert.True(t, isRequestCanceled)
 
 	client.AssertExpectations(t)
@@ -339,7 +340,7 @@ func TestRepository_BatchGetItems(t *testing.T) {
 		UnprocessedKeys: map[string]*dynamodb.KeysAndAttributes{},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: output,
 		Err:    nil,
 	}})
@@ -411,7 +412,7 @@ func TestRepository_BatchWriteItem(t *testing.T) {
 		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: output,
 		Err:    nil,
 	}})
@@ -483,7 +484,7 @@ func TestRepository_BatchWriteItem_Retry(t *testing.T) {
 		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{
+	client, repo := getMocks([]gosoAws.TestExecution{
 		{
 			Output: firstOutput,
 			Err:    nil,
@@ -531,7 +532,7 @@ func TestRepository_PutItem(t *testing.T) {
 	}
 	output := &dynamodb.PutItemOutput{}
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: output,
 		Err:    nil,
 	}})
@@ -580,7 +581,7 @@ func TestRepository_Update(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: output,
 		Err:    nil,
 	}})
@@ -641,7 +642,7 @@ func TestRepository_DeleteItem(t *testing.T) {
 		},
 	}
 
-	client, repo := getMocks([]cloud.TestExecution{{
+	client, repo := getMocks([]gosoAws.TestExecution{{
 		Output: output,
 		Err:    nil,
 	}})
@@ -668,11 +669,11 @@ func TestRepository_DeleteItem(t *testing.T) {
 	client.AssertExpectations(t)
 }
 
-func getMocks(executions []cloud.TestExecution) (*cloudMocks.DynamoDBAPI, ddb.Repository) {
+func getMocks(executions []gosoAws.TestExecution) (*cloudMocks.DynamoDBAPI, ddb.Repository) {
 	logger := monMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 	client := new(cloudMocks.DynamoDBAPI)
-	executor := cloud.NewTestableExecutor(executions)
+	executor := gosoAws.NewTestableExecutor(executions)
 
 	repo := ddb.NewWithInterfaces(logger, tracer, client, executor, &ddb.Settings{
 		ModelId: mdl.ModelId{

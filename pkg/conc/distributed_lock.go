@@ -3,7 +3,7 @@ package conc
 import (
 	"context"
 	"errors"
-	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/exec"
 	"time"
 )
 
@@ -38,7 +38,7 @@ type DistributedLock interface {
 }
 
 type DistributedLockSettings struct {
-	Backoff         cloud.BackoffSettings
+	Backoff         exec.BackoffSettings
 	DefaultLockTime time.Duration
 	Domain          string
 }

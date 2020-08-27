@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/ddb"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/uuid"
@@ -96,7 +96,7 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (Distrib
 			Ttl:      expires,
 		})
 
-		if cloud.IsRequestCanceled(err) {
+		if exec.IsRequestCanceled(err) {
 			return backoff.Permanent(err)
 		}
 
@@ -134,7 +134,7 @@ func (m *ddbLockProvider) renew(ctx context.Context, lockTime time.Duration, res
 			Ttl:      m.clock.Now().Add(lockTime).Unix(),
 		})
 
-		if cloud.IsRequestCanceled(err) {
+		if exec.IsRequestCanceled(err) {
 			return backoff.Permanent(err)
 		}
 

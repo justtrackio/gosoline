@@ -3,6 +3,7 @@ package stream
 import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sns"
 	"github.com/applike/gosoline/pkg/sqs"
@@ -10,13 +11,13 @@ import (
 
 type SnsInputSettings struct {
 	cfg.AppId
-	QueueId           string                `cfg:"queue_id"`
-	WaitTime          int64                 `cfg:"wait_time"`
-	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
-	VisibilityTimeout int                   `cfg:"visibility_timeout"`
-	RunnerCount       int                   `cfg:"runner_count"`
-	Client            cloud.ClientSettings  `cfg:"client"`
-	Backoff           cloud.BackoffSettings `cfg:"backoff"`
+	QueueId           string               `cfg:"queue_id"`
+	WaitTime          int64                `cfg:"wait_time"`
+	RedrivePolicy     sqs.RedrivePolicy    `cfg:"redrive_policy"`
+	VisibilityTimeout int                  `cfg:"visibility_timeout"`
+	RunnerCount       int                  `cfg:"runner_count"`
+	Client            cloud.ClientSettings `cfg:"client"`
+	Backoff           exec.BackoffSettings `cfg:"backoff"`
 }
 
 type SnsInputTarget struct {

@@ -2,7 +2,7 @@ package stream_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cloud"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/stream"
@@ -18,7 +18,10 @@ func TestWriter_WriteEvents(t *testing.T) {
 	kinesisClient := new(cloudMocks.KinesisAPI)
 
 	successfulRecordOutput := &kinesis.PutRecordsOutput{Records: []*kinesis.PutRecordsResultEntry{}}
-	exec := cloud.NewFixedExecutor(successfulRecordOutput, nil)
+	exec := gosoAws.NewTestableExecutor([]gosoAws.TestExecution{{
+		Output: successfulRecordOutput,
+		Err:    nil,
+	}})
 
 	logger := monMocks.NewLoggerMockedAll()
 	writer := stream.NewKinesisOutputWithInterfaces(logger, kinesisClient, exec, &stream.KinesisOutputSettings{

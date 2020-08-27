@@ -2,7 +2,7 @@ package db_repo
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
@@ -17,7 +17,7 @@ func NewSnsNotifier(config cfg.Config, logger mon.Logger, modelId mdl.ModelId, v
 			Family:      modelId.Family,
 			Application: modelId.Application,
 		},
-		Backoff: cloud.BackoffSettings{
+		Backoff: exec.BackoffSettings{
 			Enabled:  true,
 			Blocking: true,
 		},
