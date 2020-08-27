@@ -6,8 +6,8 @@ import (
 	"context"
 	"fmt"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
-	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/conc"
+	"github.com/applike/gosoline/pkg/exec"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	pkgTest "github.com/applike/gosoline/pkg/test"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -59,7 +59,7 @@ func (s *DdbLockTestSuite) SetupTest() {
 	config.On("GetInt", "aws_sdk_retries").Return(3)
 	config.On("UnmarshalKey", "tracing", &tracing.TracerSettings{})
 	config.On("GetString", "aws_dynamoDb_endpoint").Return(ddbEndpoint)
-	config.On("UnmarshalKey", "ddb.backoff", &cloud.BackoffSettings{})
+	config.On("UnmarshalKey", "ddb.backoff", &exec.BackoffSettings{})
 	config.On("GetString", "app_project").Return("gosoline")
 	config.On("GetString", "env").Return("test")
 	config.On("GetString", "app_family").Return("test")
@@ -68,7 +68,7 @@ func (s *DdbLockTestSuite) SetupTest() {
 	logger := monMocks.NewLoggerMockedAll()
 
 	s.provider = conc.NewDdbLockProvider(config, logger, conc.DistributedLockSettings{
-		Backoff: cloud.BackoffSettings{
+		Backoff: exec.BackoffSettings{
 			Enabled:  true,
 			Blocking: true,
 		},
@@ -94,7 +94,7 @@ func (s *DdbLockTestSuite) TestAcquireTwiceFails() {
 	ctx2, _ := context.WithTimeout(context.Background(), time.Second)
 	_, err = s.provider.Acquire(ctx2, "a")
 	s.Error(err)
-	s.True(cloud.IsRequestCanceled(err))
+	s.True(exec.IsRequestCanceled(err))
 	err = l.Release()
 	s.NoError(err)
 }
@@ -111,7 +111,7 @@ func (s *DdbLockTestSuite) TestAcquireRenewWorks() {
 	ctx2, _ := context.WithTimeout(context.Background(), time.Second)
 	_, err = s.provider.Acquire(ctx2, "a")
 	s.Error(err)
-	s.True(cloud.IsRequestCanceled(err))
+	s.True(exec.IsRequestCanceled(err))
 	err = l.Release()
 	s.NoError(err)
 }

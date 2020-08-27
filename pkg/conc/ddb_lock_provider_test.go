@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/ddb"
 	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
+	"github.com/applike/gosoline/pkg/exec"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/uuid"
 	uuidMocks "github.com/applike/gosoline/pkg/uuid/mocks"
@@ -85,7 +85,7 @@ func (s *ddbLockProviderTestSuite) getReleaseQueryBuilder(result *ddb.DeleteItem
 	qb.On("WithCondition", ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
 
 	s.repo.On("DeleteItemBuilder").Return(qb).Once()
-	s.repo.On("DeleteItem", mock.AnythingOfType("*cloud.delayedCancelContext"), qb, &conc.DdbLockItem{
+	s.repo.On("DeleteItem", mock.AnythingOfType("*exec.delayedCancelContext"), qb, &conc.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 	}).Return(result, err)
@@ -137,13 +137,13 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireCanceled() {
 
 	qb := s.getAcquireQueryBuilder()
 	s.repo.On("PutItem", s.ctx, qb, lockItem).
-		Return(nil, cloud.RequestCanceledError).
+		Return(nil, exec.RequestCanceledError).
 		Once()
 
 	l, err := s.provider.Acquire(s.ctx, s.resource[5:])
 	s.Nil(l)
 	s.Error(err)
-	s.True(cloud.IsRequestCanceled(err))
+	s.True(exec.IsRequestCanceled(err))
 
 	// we should be able to try to renew and release the lock even if it fails
 	// (although that should always fail)
@@ -247,12 +247,12 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewCanceled(
 	}
 
 	s.repo.On("UpdateItem", s.ctx, qb, lockItem).
-		Return(nil, cloud.RequestCanceledError).
+		Return(nil, exec.RequestCanceledError).
 		Once()
 
 	err := l.Renew(s.ctx, time.Hour)
 	s.Error(err)
-	s.True(cloud.IsRequestCanceled(err))
+	s.True(exec.IsRequestCanceled(err))
 
 	qb.AssertExpectations(s.T())
 	s.repo.AssertExpectations(s.T())

@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/coffin"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/hashicorp/go-multierror"
@@ -13,15 +14,15 @@ import (
 
 type SqsInputSettings struct {
 	cfg.AppId
-	QueueId           string                `cfg:"queue_id"`
-	WaitTime          int64                 `cfg:"wait_time"`
-	VisibilityTimeout int                   `cfg:"visibility_timeout"`
-	RunnerCount       int                   `cfg:"runner_count"`
-	Fifo              sqs.FifoSettings      `cfg:"fifo"`
-	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
-	Client            cloud.ClientSettings  `cfg:"client"`
-	Backoff           cloud.BackoffSettings `cfg:"backoff"`
-	Unmarshaller      string                `cfg:"unmarshaller" default:"msg"`
+	QueueId           string               `cfg:"queue_id"`
+	WaitTime          int64                `cfg:"wait_time"`
+	VisibilityTimeout int                  `cfg:"visibility_timeout"`
+	RunnerCount       int                  `cfg:"runner_count"`
+	Fifo              sqs.FifoSettings     `cfg:"fifo"`
+	RedrivePolicy     sqs.RedrivePolicy    `cfg:"redrive_policy"`
+	Client            cloud.ClientSettings `cfg:"client"`
+	Backoff           exec.BackoffSettings `cfg:"backoff"`
+	Unmarshaller      string               `cfg:"unmarshaller" default:"msg"`
 }
 
 type sqsInput struct {

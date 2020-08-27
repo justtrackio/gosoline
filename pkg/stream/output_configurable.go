@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
 )
@@ -53,8 +54,8 @@ func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 }
 
 type kinesisOutputConfiguration struct {
-	StreamName string                `cfg:"stream_name"`
-	Backoff    cloud.BackoffSettings `cfg:"backoff"`
+	StreamName string               `cfg:"stream_name"`
+	Backoff    exec.BackoffSettings `cfg:"backoff"`
 }
 
 func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
@@ -100,13 +101,13 @@ func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name str
 }
 
 type SnsOutputConfiguration struct {
-	Type        string                `cfg:"type"`
-	Project     string                `cfg:"project"`
-	Family      string                `cfg:"family"`
-	Application string                `cfg:"application"`
-	TopicId     string                `cfg:"topic_id" validate:"required"`
-	Client      cloud.ClientSettings  `cfg:"client"`
-	Backoff     cloud.BackoffSettings `cfg:"backoff"`
+	Type        string               `cfg:"type"`
+	Project     string               `cfg:"project"`
+	Family      string               `cfg:"family"`
+	Application string               `cfg:"application"`
+	TopicId     string               `cfg:"topic_id" validate:"required"`
+	Client      cloud.ClientSettings `cfg:"client"`
+	Backoff     exec.BackoffSettings `cfg:"backoff"`
 }
 
 func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
@@ -128,15 +129,15 @@ func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) O
 }
 
 type sqsOutputConfiguration struct {
-	Project           string                `cfg:"project"`
-	Family            string                `cfg:"family"`
-	Application       string                `cfg:"application"`
-	QueueId           string                `cfg:"queue_id" validate:"required"`
-	VisibilityTimeout int                   `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
-	RedrivePolicy     sqs.RedrivePolicy     `cfg:"redrive_policy"`
-	Client            cloud.ClientSettings  `cfg:"client"`
-	Backoff           cloud.BackoffSettings `cfg:"backoff"`
-	Fifo              sqs.FifoSettings      `cfg:"fifo"`
+	Project           string               `cfg:"project"`
+	Family            string               `cfg:"family"`
+	Application       string               `cfg:"application"`
+	QueueId           string               `cfg:"queue_id" validate:"required"`
+	VisibilityTimeout int                  `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
+	RedrivePolicy     sqs.RedrivePolicy    `cfg:"redrive_policy"`
+	Client            cloud.ClientSettings `cfg:"client"`
+	Backoff           exec.BackoffSettings `cfg:"backoff"`
+	Fifo              sqs.FifoSettings     `cfg:"fifo"`
 }
 
 func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {

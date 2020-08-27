@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/cloud/aws"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
@@ -63,7 +64,7 @@ type repository struct {
 	logger   mon.Logger
 	tracer   tracing.Tracer
 	client   dynamodbiface.DynamoDBAPI
-	executor cloud.RequestExecutor
+	executor aws.Executor
 
 	metadata *Metadata
 	settings *Settings
@@ -83,27 +84,24 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 	tracer := tracing.ProviderTracer(config, logger)
 	client := ProvideClient(config, logger, settings)
 
-	backoffSettings := &cloud.BackoffSettings{}
+	backoffSettings := &exec.BackoffSettings{}
 	config.UnmarshalKey("ddb.backoff", backoffSettings)
 
 	if err := cfg.Merge(&settings.Backoff, *backoffSettings); err != nil {
 		logger.Panicf(err, "could not merge backoff settings for ddb table %s", tableName)
 	}
 
-	res := &cloud.BackoffResource{
+	res := &exec.ExecutableResource{
 		Type: "ddb",
 		Name: tableName,
-		Handler: []cloud.CustomExecResultHandler{
-			func(err error) (error, bool) {
-				if isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
-					return err, true
-				}
-
-				return err, false
-			},
-		},
 	}
-	executor := cloud.NewExecutor(logger, res, &settings.Backoff)
+	executor := aws.NewExecutor(logger, res, &settings.Backoff, func(result interface{}, err error) exec.ErrorType {
+		if isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
+			return exec.ErrorOk
+		}
+
+		return exec.ErrorUnknown
+	})
 
 	svc := NewService(config, logger)
 	_, err := svc.CreateTable(settings)
@@ -115,7 +113,7 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 	return NewWithInterfaces(logger, tracer, client, executor, settings)
 }
 
-func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor cloud.RequestExecutor, settings *Settings) Repository {
+func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor aws.Executor, settings *Settings) Repository {
 	metadataFactory := NewMetadataFactory()
 	metadata, err := metadataFactory.GetMetadata(settings)
 
@@ -160,8 +158,8 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 			return r.client.BatchGetItemRequest(input)
 		})
 
-		if cloud.IsRequestCanceled(err) {
-			return nil, cloud.RequestCanceledError
+		if exec.IsRequestCanceled(err) {
+			return nil, exec.RequestCanceledError
 		}
 
 		if err != nil {
@@ -322,8 +320,8 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 		return r.client.DeleteItemRequest(input)
 	})
 
-	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.RequestCanceledError
+	if exec.IsRequestCanceled(err) {
+		return nil, exec.RequestCanceledError
 	}
 
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
@@ -366,8 +364,8 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 		return r.client.GetItemRequest(input)
 	})
 
-	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.RequestCanceledError
+	if exec.IsRequestCanceled(err) {
+		return nil, exec.RequestCanceledError
 	}
 
 	if err != nil {
@@ -422,8 +420,8 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 		return r.client.PutItemRequest(input)
 	})
 
-	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.RequestCanceledError
+	if exec.IsRequestCanceled(err) {
+		return nil, exec.RequestCanceledError
 	}
 
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
@@ -483,8 +481,8 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 		return r.client.QueryRequest(op.input)
 	})
 
-	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.RequestCanceledError
+	if exec.IsRequestCanceled(err) {
+		return nil, exec.RequestCanceledError
 	}
 
 	if err != nil {
@@ -526,8 +524,8 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 		return r.client.UpdateItemRequest(input)
 	})
 
-	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.RequestCanceledError
+	if exec.IsRequestCanceled(err) {
+		return nil, exec.RequestCanceledError
 	}
 
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
@@ -589,8 +587,8 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 		return r.client.ScanRequest(op.input)
 	})
 
-	if cloud.IsRequestCanceled(err) {
-		return nil, cloud.RequestCanceledError
+	if exec.IsRequestCanceled(err) {
+		return nil, exec.RequestCanceledError
 	}
 
 	if err != nil {

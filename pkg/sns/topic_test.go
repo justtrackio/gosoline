@@ -3,9 +3,9 @@ package sns_test
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
-	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
+	gosoAwsMocks "github.com/applike/gosoline/pkg/cloud/aws/mocks"
+	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/sns"
 	snsMocks "github.com/applike/gosoline/pkg/sns/mocks"
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,14 +17,17 @@ import (
 )
 
 func TestTopic_Publish(t *testing.T) {
-	logger := mocks.NewLoggerMockedAll()
+	logger := monMocks.NewLoggerMockedAll()
 
 	input := &awsSns.PublishInput{
 		TopicArn: aws.String("arn"),
 		Message:  aws.String("test"),
 	}
 
-	exec := cloud.NewFixedExecutor(nil, nil)
+	exec := gosoAws.NewTestableExecutor([]gosoAws.TestExecution{{
+		Output: nil,
+		Err:    nil,
+	}})
 
 	client := new(snsMocks.Client)
 	client.On("PublishRequest", input).Return(nil, nil)
@@ -49,14 +52,17 @@ func TestTopic_Publish(t *testing.T) {
 }
 
 func TestTopic_PublishError(t *testing.T) {
-	logger := mocks.NewLoggerMockedAll()
+	logger := monMocks.NewLoggerMockedAll()
 
 	input := &awsSns.PublishInput{
 		TopicArn: aws.String("arn"),
 		Message:  aws.String("test"),
 	}
 
-	exec := cloud.NewFixedExecutor(nil, errors.New("error"))
+	exec := gosoAws.NewTestableExecutor([]gosoAws.TestExecution{{
+		Output: nil,
+		Err:    errors.New("error"),
+	}})
 
 	client := new(snsMocks.Client)
 	client.On("PublishRequest", input).Return(nil, nil)
@@ -81,7 +87,7 @@ func TestTopic_PublishError(t *testing.T) {
 }
 
 func TestTopic_SubscribeSqs(t *testing.T) {
-	logger := mocks.NewLoggerMockedAll()
+	logger := monMocks.NewLoggerMockedAll()
 
 	client := new(snsMocks.Client)
 
@@ -96,8 +102,8 @@ func TestTopic_SubscribeSqs(t *testing.T) {
 		TopicId: "topic",
 	}
 
-	executor := new(cloudMocks.RequestExecutor)
-	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("cloud.RequestFunction")).Return(&awsSns.ListSubscriptionsByTopicOutput{}, nil).Twice()
+	executor := new(gosoAwsMocks.Executor)
+	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("aws.RequestFunction")).Return(&awsSns.ListSubscriptionsByTopicOutput{}, nil).Twice()
 
 	topic := sns.NewTopicWithInterfaces(logger, client, executor, s)
 	err := topic.SubscribeSqs("arn")
@@ -108,7 +114,7 @@ func TestTopic_SubscribeSqs(t *testing.T) {
 }
 
 func TestTopic_SubscribeSqsExists(t *testing.T) {
-	logger := mocks.NewLoggerMockedAll()
+	logger := monMocks.NewLoggerMockedAll()
 
 	client := new(snsMocks.Client)
 
@@ -123,8 +129,8 @@ func TestTopic_SubscribeSqsExists(t *testing.T) {
 		TopicId: "topic",
 	}
 
-	executor := new(cloudMocks.RequestExecutor)
-	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("cloud.RequestFunction")).Return(&awsSns.ListSubscriptionsByTopicOutput{
+	executor := new(gosoAwsMocks.Executor)
+	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("aws.RequestFunction")).Return(&awsSns.ListSubscriptionsByTopicOutput{
 		Subscriptions: []*awsSns.Subscription{
 			{
 				Endpoint: aws.String("arn"),
@@ -141,13 +147,13 @@ func TestTopic_SubscribeSqsExists(t *testing.T) {
 }
 
 func TestTopic_SubscribeSqsError(t *testing.T) {
-	logger := mocks.NewLoggerMockedAll()
+	logger := monMocks.NewLoggerMockedAll()
 
 	client := new(snsMocks.Client)
 
-	executor := new(cloudMocks.RequestExecutor)
-	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("cloud.RequestFunction")).Return(&awsSns.ListSubscriptionsByTopicOutput{}, nil).Once()
-	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("cloud.RequestFunction")).Return(nil, errors.New("error")).Once()
+	executor := new(gosoAwsMocks.Executor)
+	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("aws.RequestFunction")).Return(&awsSns.ListSubscriptionsByTopicOutput{}, nil).Once()
+	executor.On("Execute", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("aws.RequestFunction")).Return(nil, errors.New("error")).Once()
 
 	s := &sns.Settings{
 		Arn: "arn",

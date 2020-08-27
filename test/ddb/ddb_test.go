@@ -5,8 +5,8 @@ package ddb_test
 import (
 	"fmt"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
-	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/ddb"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	pkgTest "github.com/applike/gosoline/pkg/test"
@@ -65,9 +65,9 @@ func (s *DdbTestSuite) SetupTest() {
 	config.On("GetInt", "aws_sdk_retries").Return(3)
 	config.On("UnmarshalKey", "tracing", &tracing.TracerSettings{})
 	config.On("GetString", "aws_dynamoDb_endpoint").Return(ddbEndpoint)
-	config.On("UnmarshalKey", "ddb.backoff", &cloud.BackoffSettings{}).Run(func(args mock.Arguments) {
-		backoffSettings := args.Get(1).(*cloud.BackoffSettings)
-		*backoffSettings = cloud.BackoffSettings{
+	config.On("UnmarshalKey", "ddb.backoff", &exec.BackoffSettings{}).Run(func(args mock.Arguments) {
+		backoffSettings := args.Get(1).(*exec.BackoffSettings)
+		*backoffSettings = exec.BackoffSettings{
 			Enabled:  true,
 			Blocking: true,
 		}

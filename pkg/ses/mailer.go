@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/encoding/json"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ses"
@@ -24,7 +25,7 @@ type TemplatedMailer interface {
 
 type Settings struct {
 	Client  cloud.ClientSettings
-	Backoff cloud.BackoffSettings
+	Backoff exec.BackoffSettings
 }
 
 type simpleMailer struct {
@@ -88,7 +89,7 @@ func (e *simpleMailer) Send(ctx context.Context, message Message) error {
 
 	_, err := e.client.SendEmailWithContext(ctx, input)
 
-	if cloud.IsRequestCanceled(err) {
+	if exec.IsRequestCanceled(err) {
 		e.logger.Info("request was canceled while sending email")
 
 		return err
@@ -129,7 +130,7 @@ func (e *templatedMailer) Send(ctx context.Context, message TemplatedMessage) er
 
 	_, err = e.client.SendTemplatedEmailWithContext(ctx, input)
 
-	if cloud.IsRequestCanceled(err) {
+	if exec.IsRequestCanceled(err) {
 		logger.Info("request was canceled while sending email")
 
 		return err

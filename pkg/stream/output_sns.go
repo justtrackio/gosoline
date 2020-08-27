@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sns"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -15,7 +16,7 @@ type SnsOutputSettings struct {
 	cfg.AppId
 	TopicId string
 	Client  cloud.ClientSettings
-	Backoff cloud.BackoffSettings
+	Backoff exec.BackoffSettings
 }
 
 type snsOutput struct {

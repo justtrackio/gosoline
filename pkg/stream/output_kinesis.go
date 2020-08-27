@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -20,7 +22,7 @@ const kinesisBatchSizeMax = 500
 
 type KinesisOutputSettings struct {
 	StreamName string
-	Backoff    cloud.BackoffSettings
+	Backoff    exec.BackoffSettings
 }
 
 func (k *KinesisOutputSettings) GetResourceName() string {
@@ -30,7 +32,7 @@ func (k *KinesisOutputSettings) GetResourceName() string {
 type kinesisOutput struct {
 	logger   mon.Logger
 	client   kinesisiface.KinesisAPI
-	executor cloud.RequestExecutor
+	executor gosoAws.Executor
 	settings *KinesisOutputSettings
 }
 
@@ -39,17 +41,17 @@ func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOut
 
 	createKinesisStream(config, logger, client, settings)
 
-	res := &cloud.BackoffResource{
+	res := &exec.ExecutableResource{
 		Type: "kinesis",
 		Name: settings.StreamName,
 	}
 
-	executor := cloud.NewExecutor(logger, res, &settings.Backoff)
+	executor := gosoAws.NewExecutor(logger, res, &settings.Backoff)
 
 	return NewKinesisOutputWithInterfaces(logger, client, executor, settings)
 }
 
-func NewKinesisOutputWithInterfaces(logger mon.Logger, client kinesisiface.KinesisAPI, executor cloud.RequestExecutor, settings *KinesisOutputSettings) Output {
+func NewKinesisOutputWithInterfaces(logger mon.Logger, client kinesisiface.KinesisAPI, executor gosoAws.Executor, settings *KinesisOutputSettings) Output {
 	return &kinesisOutput{
 		client:   client,
 		settings: settings,
