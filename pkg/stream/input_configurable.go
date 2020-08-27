@@ -130,17 +130,18 @@ type SnsInputTargetConfiguration struct {
 }
 
 type SnsInputConfiguration struct {
-	Type              string                        `cfg:"type" default:"sns"`
-	ConsumerId        string                        `cfg:"id" validate:"required"`
-	Family            string                        `cfg:"family" default:""`
-	Application       string                        `cfg:"application" default:""`
-	Targets           []SnsInputTargetConfiguration `cfg:"targets" validate:"min=1"`
-	WaitTime          int64                         `cfg:"wait_time" default:"3" validate:"min=1"`
-	VisibilityTimeout int                           `cfg:"visibility_timeout" default:"30" validate:"min=1"`
-	RunnerCount       int                           `cfg:"runner_count" default:"1" validate:"min=1"`
-	RedrivePolicy     sqs.RedrivePolicy             `cfg:"redrive_policy"`
-	Client            cloud.ClientSettings          `cfg:"client"`
-	Backoff           exec.BackoffSettings          `cfg:"backoff"`
+	Type                string                        `cfg:"type" default:"sns"`
+	ConsumerId          string                        `cfg:"id" validate:"required"`
+	Family              string                        `cfg:"family" default:""`
+	Application         string                        `cfg:"application" default:""`
+	Targets             []SnsInputTargetConfiguration `cfg:"targets" validate:"min=1"`
+	MaxNumberOfMessages int64                         `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int64                         `cfg:"wait_time" default:"3" validate:"min=1"`
+	VisibilityTimeout   int                           `cfg:"visibility_timeout" default:"30" validate:"min=1"`
+	RunnerCount         int                           `cfg:"runner_count" default:"1" validate:"min=1"`
+	RedrivePolicy       sqs.RedrivePolicy             `cfg:"redrive_policy"`
+	Client              cloud.ClientSettings          `cfg:"client"`
+	Backoff             exec.BackoffSettings          `cfg:"backoff"`
 }
 
 func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -154,13 +155,14 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 			Family:      configuration.Family,
 			Application: configuration.Application,
 		},
-		QueueId:           configuration.ConsumerId,
-		WaitTime:          configuration.WaitTime,
-		VisibilityTimeout: configuration.VisibilityTimeout,
-		RunnerCount:       configuration.RunnerCount,
-		RedrivePolicy:     configuration.RedrivePolicy,
-		Client:            configuration.Client,
-		Backoff:           configuration.Backoff,
+		QueueId:             configuration.ConsumerId,
+		MaxNumberOfMessages: configuration.MaxNumberOfMessages,
+		WaitTime:            configuration.WaitTime,
+		VisibilityTimeout:   configuration.VisibilityTimeout,
+		RunnerCount:         configuration.RunnerCount,
+		RedrivePolicy:       configuration.RedrivePolicy,
+		Client:              configuration.Client,
+		Backoff:             configuration.Backoff,
 	}
 
 	targets := make([]SnsInputTarget, len(configuration.Targets))
@@ -178,17 +180,18 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 }
 
 type sqsInputConfiguration struct {
-	Family            string               `cfg:"target_family"`
-	Application       string               `cfg:"target_application"`
-	QueueId           string               `cfg:"target_queue_id" validate:"min=1"`
-	WaitTime          int64                `cfg:"wait_time" default:"3" validate:"min=1"`
-	VisibilityTimeout int                  `cfg:"visibility_timeout" default:"30" validate:"min=1"`
-	RunnerCount       int                  `cfg:"runner_count" default:"1" validate:"min=1"`
-	Fifo              sqs.FifoSettings     `cfg:"fifo"`
-	RedrivePolicy     sqs.RedrivePolicy    `cfg:"redrive_policy"`
-	Client            cloud.ClientSettings `cfg:"client"`
-	Backoff           exec.BackoffSettings `cfg:"backoff"`
-	Unmarshaller      string               `cfg:"unmarshaller" default:"msg"`
+	Family              string               `cfg:"target_family"`
+	Application         string               `cfg:"target_application"`
+	QueueId             string               `cfg:"target_queue_id" validate:"min=1"`
+	MaxNumberOfMessages int64                `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int64                `cfg:"wait_time" default:"3" validate:"min=1"`
+	VisibilityTimeout   int                  `cfg:"visibility_timeout" default:"30" validate:"min=1"`
+	RunnerCount         int                  `cfg:"runner_count" default:"1" validate:"min=1"`
+	Fifo                sqs.FifoSettings     `cfg:"fifo"`
+	RedrivePolicy       sqs.RedrivePolicy    `cfg:"redrive_policy"`
+	Client              cloud.ClientSettings `cfg:"client"`
+	Backoff             exec.BackoffSettings `cfg:"backoff"`
+	Unmarshaller        string               `cfg:"unmarshaller" default:"msg"`
 }
 
 func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
@@ -202,15 +205,16 @@ func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 			Family:      configuration.Family,
 			Application: configuration.Application,
 		},
-		QueueId:           configuration.QueueId,
-		WaitTime:          configuration.WaitTime,
-		VisibilityTimeout: configuration.VisibilityTimeout,
-		RunnerCount:       configuration.RunnerCount,
-		Fifo:              configuration.Fifo,
-		RedrivePolicy:     configuration.RedrivePolicy,
-		Client:            configuration.Client,
-		Backoff:           configuration.Backoff,
-		Unmarshaller:      configuration.Unmarshaller,
+		QueueId:             configuration.QueueId,
+		MaxNumberOfMessages: configuration.MaxNumberOfMessages,
+		WaitTime:            configuration.WaitTime,
+		VisibilityTimeout:   configuration.VisibilityTimeout,
+		RunnerCount:         configuration.RunnerCount,
+		Fifo:                configuration.Fifo,
+		RedrivePolicy:       configuration.RedrivePolicy,
+		Client:              configuration.Client,
+		Backoff:             configuration.Backoff,
+		Unmarshaller:        configuration.Unmarshaller,
 	}
 
 	return NewSqsInput(config, logger, settings)

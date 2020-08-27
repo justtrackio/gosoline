@@ -28,7 +28,7 @@ type Queue interface {
 
 	DeleteMessage(receiptHandle string) error
 	DeleteMessageBatch(receiptHandles []string) error
-	Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, error)
+	Receive(ctx context.Context, maxNumberOfMessages int64, waitTime int64) ([]*sqs.Message, error)
 	Send(ctx context.Context, msg *Message) error
 	SendBatch(ctx context.Context, messages []*Message) error
 }
@@ -161,12 +161,12 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 	return err
 }
 
-func (q *queue) Receive(ctx context.Context, waitTime int64) ([]*sqs.Message, error) {
+func (q *queue) Receive(ctx context.Context, maxNumberOfMessages int64, waitTime int64) ([]*sqs.Message, error) {
 	logger := q.logger.WithContext(ctx)
 
 	input := &sqs.ReceiveMessageInput{
 		MessageAttributeNames: []*string{aws.String("ALL")},
-		MaxNumberOfMessages:   aws.Int64(10),
+		MaxNumberOfMessages:   aws.Int64(maxNumberOfMessages),
 		QueueUrl:              aws.String(q.properties.Url),
 		WaitTimeSeconds:       aws.Int64(waitTime),
 	}

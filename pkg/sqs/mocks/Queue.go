@@ -82,13 +82,13 @@ func (_m *Queue) GetUrl() string {
 	return r0
 }
 
-// Receive provides a mock function with given fields: ctx, waitTime
-func (_m *Queue) Receive(ctx context.Context, waitTime int64) ([]*servicesqs.Message, error) {
-	ret := _m.Called(ctx, waitTime)
+// Receive provides a mock function with given fields: ctx, maxNumberOfMessages, waitTime
+func (_m *Queue) Receive(ctx context.Context, maxNumberOfMessages int64, waitTime int64) ([]*servicesqs.Message, error) {
+	ret := _m.Called(ctx, maxNumberOfMessages, waitTime)
 
 	var r0 []*servicesqs.Message
-	if rf, ok := ret.Get(0).(func(context.Context, int64) []*servicesqs.Message); ok {
-		r0 = rf(ctx, waitTime)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64) []*servicesqs.Message); ok {
+		r0 = rf(ctx, maxNumberOfMessages, waitTime)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*servicesqs.Message)
@@ -96,8 +96,8 @@ func (_m *Queue) Receive(ctx context.Context, waitTime int64) ([]*servicesqs.Mes
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
-		r1 = rf(ctx, waitTime)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int64) error); ok {
+		r1 = rf(ctx, maxNumberOfMessages, waitTime)
 	} else {
 		r1 = ret.Error(1)
 	}

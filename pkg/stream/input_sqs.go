@@ -14,15 +14,16 @@ import (
 
 type SqsInputSettings struct {
 	cfg.AppId
-	QueueId           string               `cfg:"queue_id"`
-	WaitTime          int64                `cfg:"wait_time"`
-	VisibilityTimeout int                  `cfg:"visibility_timeout"`
-	RunnerCount       int                  `cfg:"runner_count"`
-	Fifo              sqs.FifoSettings     `cfg:"fifo"`
-	RedrivePolicy     sqs.RedrivePolicy    `cfg:"redrive_policy"`
-	Client            cloud.ClientSettings `cfg:"client"`
-	Backoff           exec.BackoffSettings `cfg:"backoff"`
-	Unmarshaller      string               `cfg:"unmarshaller" default:"msg"`
+	QueueId             string               `cfg:"queue_id"`
+	MaxNumberOfMessages int64                `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int64                `cfg:"wait_time"`
+	VisibilityTimeout   int                  `cfg:"visibility_timeout"`
+	RunnerCount         int                  `cfg:"runner_count"`
+	Fifo                sqs.FifoSettings     `cfg:"fifo"`
+	RedrivePolicy       sqs.RedrivePolicy    `cfg:"redrive_policy"`
+	Client              cloud.ClientSettings `cfg:"client"`
+	Backoff             exec.BackoffSettings `cfg:"backoff"`
+	Unmarshaller        string               `cfg:"unmarshaller" default:"msg"`
 }
 
 type sqsInput struct {
@@ -103,7 +104,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 			return nil
 		}
 
-		sqsMessages, err := i.queue.Receive(ctx, i.settings.WaitTime)
+		sqsMessages, err := i.queue.Receive(ctx, i.settings.MaxNumberOfMessages, i.settings.WaitTime)
 
 		if err != nil {
 			i.logger.Error(err, "could not get messages from sqs")

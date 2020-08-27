@@ -16,17 +16,16 @@ func TestSqsInput_Run(t *testing.T) {
 	logger := monMocks.NewLoggerMockedAll()
 
 	count := 0
-	maxReceiveCount := 1
 	waitReadDone := make(chan struct{})
 	waitStopDone := make(chan struct{})
 	waitRunDone := make(chan struct{})
 	msg := &stream.Message{}
 
 	queue := new(sqsMocks.Queue)
-	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int64(3)).Return(func(_ context.Context, wt int64) []*sqs.Message {
+	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int64(1), int64(3)).Return(func(_ context.Context, mrc int64, wt int64) []*sqs.Message {
 		count++
 
-		if count > maxReceiveCount {
+		if count > int(mrc) {
 			<-waitStopDone
 			return []*sqs.Message{}
 		}
@@ -41,8 +40,9 @@ func TestSqsInput_Run(t *testing.T) {
 	}, nil)
 
 	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, stream.SqsInputSettings{
-		WaitTime:    int64(3),
-		RunnerCount: 3,
+		MaxNumberOfMessages: int64(1),
+		WaitTime:            int64(3),
+		RunnerCount:         3,
 	})
 
 	go func() {
@@ -73,7 +73,7 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 	waitRunDone := make(chan struct{})
 
 	queue := new(sqsMocks.Queue)
-	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int64(3)).Return(func(_ context.Context, wt int64) []*sqs.Message {
+	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int64(10), int64(3)).Return(func(_ context.Context, mrc int64, wt int64) []*sqs.Message {
 		count++
 
 		if count == 1 {
