@@ -10,6 +10,7 @@ type LoggerOption func(logger *logger) error
 func WithContextFieldsResolver(resolver ...ContextFieldsResolver) LoggerOption {
 	return func(logger *logger) error {
 		logger.ctxResolver = append(logger.ctxResolver, resolver...)
+
 		return nil
 	}
 }
@@ -21,6 +22,7 @@ func WithFormat(format string) LoggerOption {
 		}
 
 		logger.format = format
+
 		return nil
 	}
 }
@@ -28,6 +30,7 @@ func WithFormat(format string) LoggerOption {
 func WithHook(hook LoggerHook) LoggerOption {
 	return func(logger *logger) error {
 		logger.hooks = append(logger.hooks, hook)
+
 		return nil
 	}
 }
@@ -35,6 +38,7 @@ func WithHook(hook LoggerHook) LoggerOption {
 func WithLevel(level string) LoggerOption {
 	return func(logger *logger) error {
 		logger.level = levelPriority(level)
+
 		return nil
 	}
 }
@@ -42,6 +46,7 @@ func WithLevel(level string) LoggerOption {
 func WithOutput(output io.Writer) LoggerOption {
 	return func(logger *logger) error {
 		logger.output = output
+
 		return nil
 	}
 }
@@ -60,6 +65,7 @@ func WithTags(tags map[string]interface{}) LoggerOption {
 func WithTimestampFormat(format string) LoggerOption {
 	return func(logger *logger) error {
 		logger.timestampFormat = format
+
 		return nil
 	}
 }

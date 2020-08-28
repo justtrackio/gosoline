@@ -15,7 +15,6 @@ func formatterConsole(timestamp string, level string, msg string, err error, dat
 		errStr = fmt.Sprintf("ERR: %s", err.Error())
 	}
 
-	//timestamp = fmt.Sprintf("%-15v", timestamp)
 	level = fmt.Sprintf("%-7v", level)
 	channel := fmt.Sprintf("%-7s", data.Channel)
 
