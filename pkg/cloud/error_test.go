@@ -162,6 +162,7 @@ func TestIsConnectionResetError(t *testing.T) {
 	var conn net.Conn
 	var listener net.Listener
 	var waitListen = make(chan struct{})
+	var waitClose = make(chan struct{})
 
 	go func() {
 		var err error
@@ -184,6 +185,8 @@ func TestIsConnectionResetError(t *testing.T) {
 			return
 		}
 
+		<-waitClose
+
 		if err = conn.Close(); err != nil {
 			assert.FailNow(t, err.Error(), "can not close connection")
 		}
@@ -196,6 +199,9 @@ func TestIsConnectionResetError(t *testing.T) {
 		assert.FailNow(t, err.Error(), "can not connect")
 		return
 	}
+
+	close(waitClose)
+
 	// Block until close.
 	buf := make([]byte, 1)
 	_, err = conn.Read(buf)
