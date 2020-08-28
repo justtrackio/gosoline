@@ -2,6 +2,7 @@ package aws_test
 
 import (
 	"fmt"
+	cloudAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -36,6 +37,38 @@ func (a awsErr) Message() string {
 
 func (a awsErr) OrigErr() error {
 	return a.origError
+}
+
+func TestInvalidStatusError(t *testing.T) {
+	for name, test := range map[string]struct {
+		err                  error
+		isInvalidStatusError bool
+		errorType            exec.ErrorType
+	}{
+		"invalid status": {
+			err: &cloudAws.InvalidStatusError{
+				Status: 400,
+			},
+			isInvalidStatusError: true,
+			errorType:            exec.ErrorRetryable,
+		},
+		"canceled": {
+			err:                  exec.RequestCanceledError,
+			isInvalidStatusError: false,
+			errorType:            exec.ErrorUnknown,
+		},
+		"nil": {
+			err:                  nil,
+			isInvalidStatusError: false,
+			errorType:            exec.ErrorUnknown,
+		},
+	} {
+		test := test
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, test.isInvalidStatusError, cloudAws.IsInvalidStatusError(test.err))
+			assert.Equal(t, test.errorType, cloudAws.CheckInvalidStatusError(nil, test.err))
+		})
+	}
 }
 
 func TestIsRequestCanceled(t *testing.T) {

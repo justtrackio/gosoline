@@ -2,7 +2,6 @@ package aws
 
 import (
 	"context"
-	"fmt"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -69,6 +68,7 @@ func NewBackoffExecutor(logger mon.Logger, res *exec.ExecutableResource, setting
 	checks = append(checks, []exec.ErrorChecker{
 		exec.CheckRequestCanceled,
 		exec.CheckUsedClosedConnectionError,
+		CheckInvalidStatusError,
 		CheckConnectionError,
 		CheckErrorRetryable,
 		CheckErrorThrottle,
@@ -87,7 +87,9 @@ func (b BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (interf
 		err := req.Send()
 
 		if req.HTTPResponse.StatusCode >= http.StatusInternalServerError && req.HTTPResponse.StatusCode != http.StatusNotImplemented {
-			return nil, fmt.Errorf("http status code: %d", req.HTTPResponse.StatusCode)
+			return nil, &InvalidStatusError{
+				Status: req.HTTPResponse.StatusCode,
+			}
 		}
 
 		return out, err
