@@ -8,8 +8,6 @@ import (
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/jeremywohl/flatten"
-	"github.com/thoas/go-funk"
 	"golang.org/x/sys/unix"
 	"os"
 	"os/signal"
@@ -305,7 +303,7 @@ func (k *kernel) boot() bool {
 		stage.booted.Signal()
 	}
 
-	debugErr := k.debugConfig()
+	debugErr := cfg.DebugConfig(k.config, k.logger)
 
 	if debugErr != nil {
 		k.logger.Error(bootErr, "can not debug config")
@@ -320,24 +318,6 @@ func (k *kernel) boot() bool {
 	k.logger.Info("all modules booted")
 
 	return true
-}
-
-func (k *kernel) debugConfig() error {
-	settings := k.config.AllSettings()
-	flattened, err := flatten.Flatten(settings, "", flatten.DotStyle)
-
-	if err != nil {
-		return fmt.Errorf("can not flatten config settings")
-	}
-
-	keys := funk.Keys(flattened).([]string)
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		k.logger.Infof("cfg %v=%v", key, flattened[key])
-	}
-
-	return nil
 }
 
 func (k *kernel) runModule(name string, ms *ModuleState, ctx context.Context) error {
