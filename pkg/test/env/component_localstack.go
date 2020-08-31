@@ -21,6 +21,8 @@ func (c *localstackComponent) AppOptions() []application.Option {
 			"aws_sns_autoSubscribe": true,
 			"aws_sqs_endpoint":      c.Address(),
 			"aws_sqs_autoCreate":    true,
+			"aws_s3_endpoint":       c.Address(),
+			"aws_s3_autoCreate":     true,
 		}),
 	}
 }

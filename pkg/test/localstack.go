@@ -24,6 +24,7 @@ type localstackHealthcheck struct {
 type localstackHealthcheckServices struct {
 	Cloudwatch string
 	Kinesis    string
+	S3         string
 	SNS        string
 	SQS        string
 }
@@ -59,6 +60,10 @@ func localstackHealthCheck(settings *healthCheckMockSettings, services ...string
 			case componentKinesis:
 				if localstackHealthcheck.Services.Kinesis != "running" {
 					return fmt.Errorf("service kinesis is in state %s", localstackHealthcheck.Services.Kinesis)
+				}
+			case componentS3:
+				if localstackHealthcheck.Services.S3 != "running" {
+					return fmt.Errorf("service s3 is in state %s", localstackHealthcheck.Services.S3)
 				}
 			case componentSns:
 				if localstackHealthcheck.Services.SNS != "running" {

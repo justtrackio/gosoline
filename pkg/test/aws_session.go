@@ -2,7 +2,6 @@ package test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -28,10 +27,11 @@ func getAwsSession(host string, port int) *session.Session {
 func createNewSession(endpoint string) interface{} {
 	config := &aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(true),
-		MaxRetries:                    mdl.Int(30),
+		MaxRetries:                    aws.Int(30),
 		Region:                        aws.String(endpoints.EuCentral1RegionID),
 		Endpoint:                      aws.String(endpoint),
 		HTTPClient:                    awsHttpClient,
+		S3ForcePathStyle:              aws.Bool(true),
 	}
 
 	newSession, err := session.NewSession(config)

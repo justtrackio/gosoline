@@ -30,6 +30,11 @@ func (m *Mocks) ProvideKinesisPort(name string) int {
 	return component.settings.Port
 }
 
+func (m *Mocks) ProvideS3Port(name string) int {
+	component := m.components[name].(*s3Component)
+	return component.settings.Port
+}
+
 func (m *Mocks) ProvideMysqlPort(name string) int {
 	component := m.components[name].(*mysqlComponentLegacy)
 	return component.settings.Port

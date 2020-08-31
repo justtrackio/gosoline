@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/go-redis/redis"
@@ -44,6 +45,11 @@ func (m *Mocks) ProvideElasticsearchV7Client(name string, clientType string) *es
 func (m *Mocks) ProvideKinesisClient(name string) *kinesis.Kinesis {
 	component := m.components[name].(*kinesisComponent)
 	return component.provideKinesisClient()
+}
+
+func (m *Mocks) ProvideS3Client(name string) *s3.S3 {
+	component := m.components[name].(*s3Component)
+	return component.provideS3Client()
 }
 
 func (m *Mocks) ProvideMysqlClient(name string) *sql.DB {
