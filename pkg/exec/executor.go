@@ -18,6 +18,10 @@ type Executor interface {
 type DefaultExecutor struct {
 }
 
+func NewDefaultExecutor() *DefaultExecutor {
+	return &DefaultExecutor{}
+}
+
 func (e DefaultExecutor) Execute(ctx context.Context, f Executable) (interface{}, error) {
 	return f(ctx)
 }

@@ -1,19 +1,22 @@
 package redis
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/cenkalti/backoff"
 	baseRedis "github.com/go-redis/redis"
-	"strings"
 	"time"
 )
 
 const (
-	Nil                      = baseRedis.Nil
-	metricClientBackoffCount = "RedisClientBackoffCount"
+	Nil = baseRedis.Nil
 )
+
+type ErrCmder interface {
+	Err() error
+}
 
 func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
 	return fmt.Sprintf("%v-%v-%v-%v-%v", appId.Project, appId.Environment, appId.Family, appId.Application, key)
@@ -57,19 +60,18 @@ type Client interface {
 type redisClient struct {
 	base     baseRedis.Cmdable
 	logger   mon.Logger
-	metric   mon.MetricWriter
+	executor exec.Executor
 	settings *Settings
 }
 
 func NewClient(config cfg.Config, logger mon.Logger, name string) Client {
 	settings := ReadSettings(config, name)
 
-	defaults := getMetricDefaults(name)
-	metric := mon.NewMetricDaemonWriter(defaults...)
-
 	logger = logger.WithFields(mon.Fields{
 		"redis": name,
 	})
+
+	executor := NewExecutor(logger, settings.BackoffSettings, name)
 
 	if _, ok := dialers[settings.Dialer]; !ok {
 		logger.Fatalf(fmt.Errorf("dialer not found"), "there is no redis dialer of type %s", settings.Dialer)
@@ -81,21 +83,14 @@ func NewClient(config cfg.Config, logger mon.Logger, name string) Client {
 		Dialer: dialer,
 	})
 
-	redisClient := &redisClient{
-		logger:   logger,
-		metric:   metric,
-		settings: settings,
-		base:     baseClient,
-	}
-
-	return redisClient
+	return NewClientWithInterfaces(logger, baseClient, executor, settings)
 }
 
-func NewClientWithInterfaces(logger mon.Logger, baseRedis baseRedis.Cmdable, writer mon.MetricWriter, settings *Settings) Client {
+func NewClientWithInterfaces(logger mon.Logger, baseRedis baseRedis.Cmdable, executor exec.Executor, settings *Settings) Client {
 	return &redisClient{
 		logger:   logger,
 		base:     baseRedis,
-		metric:   writer,
+		executor: executor,
 		settings: settings,
 	}
 }
@@ -107,208 +102,222 @@ func (c *redisClient) GetBaseClient() baseRedis.Cmdable {
 }
 
 func (c *redisClient) Exists(keys ...string) (int64, error) {
-	return c.base.Exists(keys...).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.Exists(keys...)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) FlushDB() (string, error) {
-	return c.base.FlushDB().Result()
+
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.FlushDB()
+	})
+
+	return cmd.(*baseRedis.StatusCmd).Val(), err
 }
 
 func (c *redisClient) Set(key string, value interface{}, expiration time.Duration) error {
-	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
-		cmd := c.base.Set(key, value, expiration)
-
-		return cmd, cmd.Err()
+	_, err := c.execute(func() ErrCmder {
+		return c.base.Set(key, value, expiration)
 	})
 
-	return res.(*baseRedis.StatusCmd).Err()
+	return err
 }
 
 func (c *redisClient) SetNX(key string, value interface{}, expiration time.Duration) (bool, error) {
-	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
-		cmd := c.base.SetNX(key, value, expiration)
+	res, err := c.execute(func() ErrCmder {
+		return c.base.SetNX(key, value, expiration)
+	})
 
-		return cmd, cmd.Err()
-	}).(*baseRedis.BoolCmd)
+	val := res.(*baseRedis.BoolCmd).Val()
 
-	return res.Val(), res.Err()
+	return val, err
 }
 
 func (c *redisClient) MSet(pairs ...interface{}) error {
-	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
-		cmd := c.base.MSet(pairs...)
-
-		return cmd, cmd.Err()
+	_, err := c.execute(func() ErrCmder {
+		return c.base.MSet(pairs...)
 	})
 
-	return res.(*baseRedis.StatusCmd).Err()
+	return err
 }
 
 func (c *redisClient) HMSet(key string, pairs map[string]interface{}) error {
-	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
-		cmd := c.base.HMSet(key, pairs)
-
-		return cmd, cmd.Err()
+	_, err := c.execute(func() ErrCmder {
+		return c.base.HMSet(key, pairs)
 	})
 
-	return res.(*baseRedis.StatusCmd).Err()
+	return err
 }
 
 func (c *redisClient) Get(key string) (string, error) {
-	return c.base.Get(key).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.Get(key)
+	})
+
+	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
 func (c *redisClient) MGet(keys ...string) ([]interface{}, error) {
-	return c.base.MGet(keys...).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.MGet(keys...)
+	})
+
+	return cmd.(*baseRedis.SliceCmd).Val(), err
 }
 
 func (c *redisClient) HMGet(key string, fields ...string) ([]interface{}, error) {
-	return c.base.HMGet(key, fields...).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.HMGet(key, fields...)
+	})
+
+	return cmd.(*baseRedis.SliceCmd).Val(), err
 }
 
 func (c *redisClient) Del(key string) (int64, error) {
-	return c.base.Del(key).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.Del(key)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) BLPop(timeout time.Duration, keys ...string) ([]string, error) {
-	return c.base.BLPop(timeout, keys...).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.BLPop(timeout, keys...)
+	})
+
+	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
 func (c *redisClient) LPop(key string) (string, error) {
-	return c.base.LPop(key).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.LPop(key)
+	})
+
+	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
 func (c *redisClient) LLen(key string) (int64, error) {
-	return c.base.LLen(key).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.LLen(key)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) RPush(key string, values ...interface{}) (int64, error) {
-	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
-		cmd := c.base.RPush(key, values...)
-
-		return cmd, cmd.Err()
+	res, err := c.execute(func() ErrCmder {
+		return c.base.RPush(key, values...)
 	})
 
-	return res.(*baseRedis.IntCmd).Result()
+	val := res.(*baseRedis.IntCmd).Val()
+
+	return val, err
 }
 
 func (c *redisClient) HExists(key, field string) (bool, error) {
-	return c.base.HExists(key, field).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.HExists(key, field)
+	})
+
+	return cmd.(*baseRedis.BoolCmd).Val(), err
 }
 
 func (c *redisClient) HKeys(key string) ([]string, error) {
-	return c.base.HKeys(key).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.HKeys(key)
+	})
+
+	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
 func (c *redisClient) HGet(key, field string) (string, error) {
-	return c.base.HGet(key, field).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.HGet(key, field)
+	})
+
+	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
 func (c *redisClient) HSet(key, field string, value interface{}) error {
-	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
-		cmd := c.base.HSet(key, field, value)
-
-		return cmd, cmd.Err()
+	_, err := c.execute(func() ErrCmder {
+		return c.base.HSet(key, field, value)
 	})
 
-	return res.(*baseRedis.BoolCmd).Err()
+	return err
 }
 
 func (c *redisClient) HSetNX(key, field string, value interface{}) (bool, error) {
-	res := c.attemptPreventingFailuresByBackoff(func() (interface{}, error) {
-		cmd := c.base.HSetNX(key, field, value)
+	res, err := c.execute(func() ErrCmder {
+		return c.base.HSetNX(key, field, value)
+	})
 
-		return cmd, cmd.Err()
-	}).(*baseRedis.BoolCmd)
+	val := res.(*baseRedis.BoolCmd).Val()
 
-	return res.Val(), res.Err()
+	return val, err
 }
 
 func (c *redisClient) Incr(key string) (int64, error) {
-	return c.base.Incr(key).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.Incr(key)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) IncrBy(key string, amount int64) (int64, error) {
-	return c.base.IncrBy(key, amount).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.IncrBy(key, amount)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) Decr(key string) (int64, error) {
-	return c.base.Decr(key).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.Decr(key)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) DecrBy(key string, amount int64) (int64, error) {
-	return c.base.DecrBy(key, amount).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.DecrBy(key, amount)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) Expire(key string, ttl time.Duration) (bool, error) {
-	return c.base.Expire(key, ttl).Result()
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.Expire(key, ttl)
+	})
+
+	return cmd.(*baseRedis.BoolCmd).Val(), err
 }
 
 func (c *redisClient) IsAlive() bool {
-	return c.base.Ping().Err() == nil
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.Ping()
+	})
+
+	alive := cmd.(*baseRedis.StatusCmd).Val() == "PONG"
+
+	return alive && err == nil
 }
 
 func (c *redisClient) Pipeline() baseRedis.Pipeliner {
 	return c.base.Pipeline()
 }
 
-func (c *redisClient) attemptPreventingFailuresByBackoff(wrappedCmd func() (interface{}, error)) interface{} {
-	backOffSettings := c.settings.BackoffSettings
+func (c *redisClient) execute(wrappedCmd func() ErrCmder) (interface{}, error) {
+	return c.executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+		cmder := wrappedCmd()
 
-	backoffConfig := backoff.NewExponentialBackOff()
-	backoffConfig.InitialInterval = backOffSettings.InitialInterval
-	backoffConfig.MaxInterval = backOffSettings.MaxInterval
-	backoffConfig.MaxElapsedTime = backOffSettings.MaxElapsedTime
-	backoffConfig.Multiplier = backOffSettings.Multiplier
-	backoffConfig.RandomizationFactor = backOffSettings.RandomizationFactor
-
-	var res interface{}
-	var err error
-
-	notify := func(err error, duration time.Duration) {
-		c.logger.WithFields(mon.Fields{
-			"name":     c.settings.Name,
-			"err":      err,
-			"duration": duration,
-		}).Infof("redis %s is blocking due to error %s", c.settings.Name, err.Error())
-
-		c.metric.WriteOne(&mon.MetricDatum{
-			MetricName: metricClientBackoffCount,
-			Value:      1.0,
-			Dimensions: map[string]string{
-				"Redis": c.settings.Name,
-			},
-		})
-	}
-
-	operation := func() error {
-		res, err = wrappedCmd()
-		if err == nil {
-			return nil
-		}
-
-		if strings.HasPrefix(err.Error(), "OOM") {
-			return err
-		}
-
-		return backoff.Permanent(err)
-	}
-
-	err = backoff.RetryNotify(operation, backoffConfig, notify)
-
-	return res
-}
-
-func getMetricDefaults(name string) []*mon.MetricDatum {
-	return []*mon.MetricDatum{
-		{
-			Priority:   mon.PriorityHigh,
-			MetricName: metricClientBackoffCount,
-			Dimensions: map[string]string{
-				"Redis": name,
-			},
-			Unit:  mon.UnitCount,
-			Value: 0.0,
-		},
-	}
+		return cmder, cmder.Err()
+	})
 }

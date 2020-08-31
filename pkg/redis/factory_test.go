@@ -2,6 +2,7 @@ package redis_test
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/redis"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -45,12 +46,15 @@ func (s *FactoryTestSuite) TestDefault() {
 		Name:    "default",
 		Dialer:  "tcp",
 		Address: "127.0.0.1:6379",
-		BackoffSettings: redis.BackoffSettings{
-			InitialInterval:     time.Second,
-			RandomizationFactor: 0.2,
-			Multiplier:          3.0,
-			MaxInterval:         time.Second * 30,
-			MaxElapsedTime:      0,
+		BackoffSettings: exec.BackoffSettings{
+			Enabled:             false,
+			Blocking:            false,
+			CancelDelay:         time.Second,
+			InitialInterval:     50 * time.Millisecond,
+			RandomizationFactor: 0.5,
+			Multiplier:          1.5,
+			MaxInterval:         time.Second * 10,
+			MaxElapsedTime:      time.Minute * 15,
 		},
 	}
 
@@ -82,11 +86,14 @@ func (s *FactoryTestSuite) TestDedicated() {
 		Name:    "dedicated",
 		Dialer:  "srv",
 		Address: "dedicated.address",
-		BackoffSettings: redis.BackoffSettings{
-			InitialInterval:     time.Second,
-			RandomizationFactor: 0.2,
-			Multiplier:          3.0,
-			MaxInterval:         time.Second * 30,
+		BackoffSettings: exec.BackoffSettings{
+			Enabled:             false,
+			Blocking:            false,
+			CancelDelay:         time.Second,
+			InitialInterval:     50 * time.Millisecond,
+			RandomizationFactor: 0.5,
+			Multiplier:          1.5,
+			MaxInterval:         time.Second * 10,
 			MaxElapsedTime:      time.Minute,
 		},
 	}
@@ -121,11 +128,14 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 		Name:    "partial",
 		Dialer:  "srv",
 		Address: "partial.address",
-		BackoffSettings: redis.BackoffSettings{
-			InitialInterval:     time.Second,
-			RandomizationFactor: 0.2,
-			Multiplier:          3.0,
-			MaxInterval:         time.Second * 30,
+		BackoffSettings: exec.BackoffSettings{
+			Enabled:             false,
+			Blocking:            false,
+			CancelDelay:         time.Second,
+			InitialInterval:     50 * time.Millisecond,
+			RandomizationFactor: 0.5,
+			Multiplier:          1.5,
+			MaxInterval:         time.Second * 10,
 			MaxElapsedTime:      time.Minute,
 		},
 	}

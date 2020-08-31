@@ -3,6 +3,7 @@ package redis_test
 import (
 	"errors"
 	"github.com/alicebob/miniredis"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/redis"
 	"github.com/elliotchance/redismock"
@@ -12,14 +13,14 @@ import (
 	"time"
 )
 
-type ClientTestSuite struct {
+type ClientWithMiniRedisTestSuite struct {
 	suite.Suite
 
 	server *miniredis.Miniredis
 	client redis.Client
 }
 
-func (s *ClientTestSuite) SetupTest() {
+func (s *ClientWithMiniRedisTestSuite) SetupTest() {
 	server, err := miniredis.Run()
 
 	if err != nil {
@@ -29,17 +30,17 @@ func (s *ClientTestSuite) SetupTest() {
 
 	settings := &redis.Settings{}
 	logger := mocks.NewLoggerMockedAll()
-	metric := mocks.NewMetricWriterMockedAll()
+	executor := exec.NewDefaultExecutor()
 
 	baseClient := baseRedis.NewClient(&baseRedis.Options{
 		Addr: server.Addr(),
 	})
 
 	s.server = server
-	s.client = redis.NewClientWithInterfaces(logger, baseClient, metric, settings)
+	s.client = redis.NewClientWithInterfaces(logger, baseClient, executor, settings)
 }
 
-func (s *ClientTestSuite) TestBLPop() {
+func (s *ClientWithMiniRedisTestSuite) TestBLPop() {
 	if _, err := s.server.Lpush("list", "value"); err != nil {
 		s.FailNow(err.Error(), "can not setup miniredis server")
 	}
@@ -50,7 +51,7 @@ func (s *ClientTestSuite) TestBLPop() {
 	s.Equal("value", res[1])
 }
 
-func (s *ClientTestSuite) TestDel() {
+func (s *ClientWithMiniRedisTestSuite) TestDel() {
 	count, err := s.client.Del("test")
 	s.NoError(err, "there should be no error on Del")
 	s.Equal(0, int(count))
@@ -64,7 +65,7 @@ func (s *ClientTestSuite) TestDel() {
 	s.Equal(1, int(count))
 }
 
-func (s *ClientTestSuite) TestLLen() {
+func (s *ClientWithMiniRedisTestSuite) TestLLen() {
 	for i := 0; i < 3; i++ {
 		if _, err := s.server.Lpush("list", "value"); err != nil {
 			s.FailNow(err.Error(), "can not setup miniredis server")
@@ -77,13 +78,13 @@ func (s *ClientTestSuite) TestLLen() {
 	s.Equal(int64(3), res)
 }
 
-func (s *ClientTestSuite) TestRPush() {
+func (s *ClientWithMiniRedisTestSuite) TestRPush() {
 	count, err := s.client.RPush("list", "v1", "v2", "v3")
 	s.NoError(err, "there should be no error on RPush")
 	s.Equal(int64(3), count)
 }
 
-func (s *ClientTestSuite) TestSet() {
+func (s *ClientWithMiniRedisTestSuite) TestSet() {
 	var ttl time.Duration
 	err := s.client.Set("key", "value", ttl)
 	s.NoError(err, "there should be no error on Set")
@@ -93,12 +94,12 @@ func (s *ClientTestSuite) TestSet() {
 	s.NoError(err, "there should be no error on Set with expiration date")
 }
 
-func (s *ClientTestSuite) TestHSet() {
+func (s *ClientWithMiniRedisTestSuite) TestHSet() {
 	err := s.client.HSet("key", "field", "value")
 	s.NoError(err, "there should be no error on HSet")
 }
 
-func (s *ClientTestSuite) TestHSetNX() {
+func (s *ClientWithMiniRedisTestSuite) TestHSetNX() {
 	isNewlySet, err := s.client.HSetNX("key", "field", "value")
 	s.True(isNewlySet, "the field should be set the first time")
 	s.NoError(err, "there should be no error on HSet")
@@ -108,12 +109,12 @@ func (s *ClientTestSuite) TestHSetNX() {
 	s.NoError(err, "there should be no error on HSet")
 }
 
-func (s *ClientTestSuite) TestHMSet() {
+func (s *ClientWithMiniRedisTestSuite) TestHMSet() {
 	err := s.client.HMSet("key", map[string]interface{}{"field": "value"})
 	s.NoError(err, "there should be no error on HSet")
 }
 
-func (s *ClientTestSuite) TestHMGet() {
+func (s *ClientWithMiniRedisTestSuite) TestHMGet() {
 	vals, err := s.client.HMGet("key", "field", "value")
 	s.NoError(err, "there should be no error on HSet")
 	s.Equal([]interface{}{nil, nil}, vals, "there should be no error on HSet")
@@ -126,7 +127,7 @@ func (s *ClientTestSuite) TestHMGet() {
 	s.Equal([]interface{}{nil, "1"}, vals, "there should be no error on HSet")
 }
 
-func (s *ClientTestSuite) TestIncr() {
+func (s *ClientWithMiniRedisTestSuite) TestIncr() {
 	val, err := s.client.Incr("key")
 	s.NoError(err, "there should be no error on Incr")
 	s.Equal(int64(1), val)
@@ -140,7 +141,7 @@ func (s *ClientTestSuite) TestIncr() {
 	s.Equal(int64(5), val)
 }
 
-func (s *ClientTestSuite) TestDecr() {
+func (s *ClientWithMiniRedisTestSuite) TestDecr() {
 	err := s.client.Set("key", 10, time.Minute*10)
 
 	val, err := s.client.Decr("key")
@@ -156,7 +157,7 @@ func (s *ClientTestSuite) TestDecr() {
 	s.Equal(int64(3), val)
 }
 
-func (s *ClientTestSuite) TestExpire() {
+func (s *ClientWithMiniRedisTestSuite) TestExpire() {
 	_, _ = s.client.Incr("key")
 
 	result, err := s.client.Expire("key", time.Nanosecond)
@@ -168,44 +169,50 @@ func (s *ClientTestSuite) TestExpire() {
 	s.NoError(err, "there should be no error on Exists")
 }
 
-func (s *ClientTestSuite) TestSetWithOOM() {
-	var ttl time.Duration
+func (s *ClientWithMiniRedisTestSuite) TestIsAlive() {
+	alive := s.client.IsAlive()
+	s.True(alive)
+}
 
-	settings := redis.Settings{}
-	writer := mocks.NewMetricWriterMockedAll()
-	redisMock := redismock.NewMock()
+func TestClientWithMiniRedisTestSuite(t *testing.T) {
+	suite.Run(t, new(ClientWithMiniRedisTestSuite))
+}
 
-	redisMock.On("Set").Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
-	redisMock.On("Set").Return(baseRedis.NewStatusResult("", nil)).Once()
+type ClientWithMockTestSuite struct {
+	suite.Suite
+	client    redis.Client
+	redisMock *redismock.ClientMock
+}
 
+func (s *ClientWithMockTestSuite) SetupTest() {
+	settings := &redis.Settings{}
 	logger := mocks.NewLoggerMockedAll()
-	client := redis.NewClientWithInterfaces(logger, redisMock, writer, &settings)
+	executor := redis.NewBackoffExecutor(logger, settings.BackoffSettings, "test")
 
-	err := client.Set("key", "value", ttl)
+	s.redisMock = redismock.NewMock()
+	s.client = redis.NewClientWithInterfaces(logger, s.redisMock, executor, settings)
+}
+
+func (s *ClientWithMockTestSuite) TestSetWithOOM() {
+	s.redisMock.On("Set").Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
+	s.redisMock.On("Set").Return(baseRedis.NewStatusResult("", nil)).Once()
+
+	err := s.client.Set("key", "value", time.Second)
 
 	s.NoError(err, "there should be no error on Set with backoff")
-	redisMock.AssertExpectations(s.T())
+	s.redisMock.AssertExpectations(s.T())
 }
 
-func (s *ClientTestSuite) TestSetWithError() {
-	var ttl time.Duration
+func (s *ClientWithMockTestSuite) TestSetWithError() {
+	s.redisMock.On("Set").Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
+	s.redisMock.On("Set").Return(baseRedis.NewStatusResult("", nil)).Times(0)
 
-	settings := redis.Settings{}
-	writer := mocks.NewMetricWriterMockedAll()
-	redisMock := redismock.NewMock()
-
-	redisMock.On("Set").Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
-	redisMock.On("Set").Return(baseRedis.NewStatusResult("", nil)).Times(0)
-
-	logger := mocks.NewLoggerMockedAll()
-	client := redis.NewClientWithInterfaces(logger, redisMock, writer, &settings)
-
-	err := client.Set("key", "value", ttl)
+	err := s.client.Set("key", "value", time.Second)
 
 	s.NotNil(err, "there should be an error on Set")
-	redisMock.AssertExpectations(s.T())
+	s.redisMock.AssertExpectations(s.T())
 }
 
-func TestClientTestSuite(t *testing.T) {
-	suite.Run(t, new(ClientTestSuite))
+func TestClientWithMockTestSuite(t *testing.T) {
+	suite.Run(t, new(ClientWithMockTestSuite))
 }
