@@ -16,6 +16,7 @@ func init() {
 
 const (
 	ComponentLocalstack  = "localstack"
+	localstackServiceS3  = "s3"
 	localstackServiceSns = "sns"
 	localstackServiceSqs = "sqs"
 )
@@ -41,6 +42,10 @@ func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigM
 	}
 
 	services := make([]string, 0)
+
+	if config.IsSet("aws_s3_endpoint") {
+		services = append(services, localstackServiceS3)
+	}
 
 	if config.IsSet("aws_sns_endpoint") {
 		services = append(services, localstackServiceSns)

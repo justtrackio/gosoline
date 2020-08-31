@@ -30,6 +30,11 @@ func (m *Mocks) ProvideKinesisHost(name string) string {
 	return component.settings.Host
 }
 
+func (m *Mocks) ProvideS3Host(name string) string {
+	component := m.components[name].(*s3Component)
+	return component.settings.Host
+}
+
 func (m *Mocks) ProvideMysqlHost(name string) string {
 	component := m.components[name].(*mysqlComponentLegacy)
 	return component.settings.Host

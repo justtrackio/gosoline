@@ -99,6 +99,8 @@ func (m *Mocks) createComponent(component string) (mockComponent, error) {
 		return &elasticsearchComponent{}, nil
 	case componentKinesis:
 		return &kinesisComponent{}, nil
+	case componentS3:
+		return &s3Component{}, nil
 	case "wiremock":
 		return &wiremockComponent{}, nil
 	case "redis":

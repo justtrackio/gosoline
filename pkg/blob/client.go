@@ -40,6 +40,7 @@ func ProvideS3Client(config cfg.Config) s3iface.S3API {
 func GetS3ClientConfig(config cfg.Config) *aws.Config {
 	endpoint := config.GetString("aws_s3_endpoint")
 	maxRetries := config.GetInt("aws_sdk_retries")
+	s3ForcePathStyle := config.GetBool("aws_s3_forcePathStyle", false)
 
 	return &aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(true),
@@ -48,6 +49,7 @@ func GetS3ClientConfig(config cfg.Config) *aws.Config {
 		HTTPClient: &http.Client{
 			Timeout: 1 * time.Minute,
 		},
-		MaxRetries: aws.Int(maxRetries),
+		MaxRetries:       aws.Int(maxRetries),
+		S3ForcePathStyle: aws.Bool(s3ForcePathStyle),
 	}
 }
