@@ -6,7 +6,6 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	"github.com/spf13/cast"
 	"net/url"
 )
 
@@ -57,13 +56,6 @@ func (f mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManager
 
 		settings.Type = componentMySql
 		settings.Name = name
-
-		tmpfs, err := cast.ToStringMapStringE(settings.TmpfsIface)
-		if err != nil {
-			return err
-		}
-
-		settings.Tmpfs = tmpfs
 
 		if err := manager.Add(settings); err != nil {
 			return fmt.Errorf("can not add default mysql component: %w", err)
