@@ -107,14 +107,6 @@ func CreateHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 	return handleWithoutInput(handler, defaultErrorHandler)
 }
 
-func CreateRawHandler(handler HandlerWithoutInput) gin.HandlerFunc {
-	return handleRaw(handler, defaultErrorHandler)
-}
-
-func CreateReaderHandler(handler HandlerWithoutInput) gin.HandlerFunc {
-	return handleReader(handler, defaultErrorHandler)
-}
-
 func CreateJsonHandler(handler HandlerWithInput) gin.HandlerFunc {
 	return handleWithInput(handler, binding.JSON, defaultErrorHandler)
 }
@@ -127,17 +119,63 @@ func CreateMultipleBindingsHandler(handler HandlerWithMultipleBindings) gin.Hand
 	return handleWithMultipleBindings(handler, defaultErrorHandler)
 }
 
-func CreateStreamHandler(handler HandlerWithStream) gin.HandlerFunc {
-	return handleWithStream(handler, binding.JSON, defaultErrorHandler)
+func CreateRawHandler(handler HandlerWithoutInput) gin.HandlerFunc {
+	return handleRaw(handler, defaultErrorHandler)
+}
+
+func CreateReaderHandler(handler HandlerWithoutInput) gin.HandlerFunc {
+	return handleReader(handler, defaultErrorHandler)
 }
 
 func CreateQueryHandler(handler HandlerWithInput) gin.HandlerFunc {
 	return handleWithInput(handler, binding.Query, defaultErrorHandler)
 }
 
+func CreateSseHandler(handler HandlerWithStream) gin.HandlerFunc {
+	return handleWithStream(handler, binding.Query, defaultErrorHandler)
+}
+
+func CreateStreamHandler(handler HandlerWithStream) gin.HandlerFunc {
+	return handleWithStream(handler, binding.JSON, defaultErrorHandler)
+}
+
+func handleWithInput(handler HandlerWithInput, binding binding.Binding, errHandler ErrorHandler) gin.HandlerFunc {
+	return func(ginCtx *gin.Context) {
+		input := handler.GetInput()
+		err := binding.Bind(ginCtx.Request, input)
+
+		if err != nil {
+			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+				Err:  err,
+				Type: gin.ErrorTypeBind,
+			})
+			return
+		}
+
+		handle(ginCtx, handler, input, errHandler)
+	}
+}
+
 func handleWithoutInput(handler HandlerWithoutInput, errHandler ErrorHandler) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		handle(ginCtx, handler, nil, errHandler)
+	}
+}
+
+func handleWithMultiPartFormInput(handler HandlerWithInput, errHandler ErrorHandler) gin.HandlerFunc {
+	return func(ginCtx *gin.Context) {
+		input := handler.GetInput()
+		err := binding.FormMultipart.Bind(ginCtx.Request, input)
+
+		if err != nil && !errors.Is(err, http.ErrMissingFile) {
+			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+				Err:  err,
+				Type: gin.ErrorTypeBind,
+			})
+			return
+		}
+
+		handle(ginCtx, handler, input, errHandler)
 	}
 }
 
@@ -171,40 +209,6 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 			})
 			return
 		}
-	}
-}
-
-func handleWithMultiPartFormInput(handler HandlerWithInput, errHandler ErrorHandler) gin.HandlerFunc {
-	return func(ginCtx *gin.Context) {
-		input := handler.GetInput()
-		err := binding.FormMultipart.Bind(ginCtx.Request, input)
-
-		if err != nil && !errors.Is(err, http.ErrMissingFile) {
-			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
-				Err:  err,
-				Type: gin.ErrorTypeBind,
-			})
-			return
-		}
-
-		handle(ginCtx, handler, input, errHandler)
-	}
-}
-
-func handleWithInput(handler HandlerWithInput, binding binding.Binding, errHandler ErrorHandler) gin.HandlerFunc {
-	return func(ginCtx *gin.Context) {
-		input := handler.GetInput()
-		err := binding.Bind(ginCtx.Request, input)
-
-		if err != nil {
-			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
-				Err:  err,
-				Type: gin.ErrorTypeBind,
-			})
-			return
-		}
-
-		handle(ginCtx, handler, input, errHandler)
 	}
 }
 

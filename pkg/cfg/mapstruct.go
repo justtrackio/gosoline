@@ -337,7 +337,7 @@ func (m *MapStruct) doWriteAnonymous(cfg string, targetValue reflect.Value, sour
 	elementInterface := element.Interface()
 
 	if err := m.doWrite(elementInterface, sourceValues); err != nil {
-		return fmt.Errorf("can not write anonymoud field %s: %w", cfg, err)
+		return fmt.Errorf("can not write anonymous field %s: %w", cfg, err)
 	}
 
 	indirect := reflect.Indirect(element)
