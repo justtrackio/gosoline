@@ -104,9 +104,10 @@ func getInputByType(config cfg.Config, logger mon.Logger, sub Subscription, mId 
 	switch sub.Input {
 	case "sns":
 		inputSettings := stream.SnsInputSettings{
-			QueueId:     mId.Name,
-			WaitTime:    5,
-			RunnerCount: sub.RunnerCount,
+			QueueId:             mId.Name,
+			MaxNumberOfMessages: 10,
+			WaitTime:            5,
+			RunnerCount:         sub.RunnerCount,
 			Backoff: exec.BackoffSettings{
 				Enabled:     true,
 				Blocking:    true,
