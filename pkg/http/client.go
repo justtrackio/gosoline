@@ -176,6 +176,10 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	req.SetContext(ctx)
 	req.SetHeaders(c.defaultHeaders)
 
+	if request.outputFile != nil {
+		req.SetOutput(*request.outputFile)
+	}
+
 	c.writeMetric(metricRequest, method, mon.UnitCount, 1.0)
 	resp, err := req.Execute(method, url)
 

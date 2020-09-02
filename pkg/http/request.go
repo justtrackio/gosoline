@@ -22,6 +22,7 @@ type Request struct {
 	resty       *resty.Request
 	url         *url.URL
 	queryParams url.Values
+	outputFile  *string
 }
 
 // use NewRequest(client) or client.NewRequest() to create a request, don't create the object inline!
@@ -143,6 +144,12 @@ func (r *Request) WithMultipartFile(param, fileName string, reader io.Reader) *R
 
 func (r *Request) WithMultipartFormData(params url.Values) *Request {
 	r.resty.SetMultiValueFormData(params)
+
+	return r
+}
+
+func (r *Request) WithOutputFile(path string) *Request {
+	r.outputFile = &path
 
 	return r
 }
