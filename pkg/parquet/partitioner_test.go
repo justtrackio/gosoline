@@ -19,7 +19,9 @@ func (t *testDataType) GetPartitionTimestamp() time.Time {
 func TestNewPartitioner(t *testing.T) {
 	assert.NotPanics(t, func() {
 		settings := &parquet.PartitionerSettings{
-			Interval: time.Duration(1) * time.Second,
+			PartitionInterval: time.Second,
+			BufferInterval:    time.Second,
+			MaxPartitionSize:  10,
 		}
 		parquet.NewPartitioner(settings)
 	})
@@ -28,7 +30,9 @@ func TestNewPartitioner(t *testing.T) {
 func TestMemoryPartitioner_Ingest(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Unix(1578500000, 0))
 	partitioner := parquet.NewPartitionerWithInterfaces(clock, &parquet.PartitionerSettings{
-		Interval: 2 * time.Second,
+		PartitionInterval: 2 * time.Second,
+		BufferInterval:    2 * time.Second,
+		MaxPartitionSize:  10,
 	})
 
 	// now creating a new partition
@@ -65,7 +69,9 @@ func TestMemoryPartitioner_Ingest(t *testing.T) {
 
 func TestMemoryPartitioner_StartStop(t *testing.T) {
 	settings := &parquet.PartitionerSettings{
-		Interval: time.Duration(1) * time.Second,
+		PartitionInterval: time.Second,
+		BufferInterval:    time.Second,
+		MaxPartitionSize:  10,
 	}
 	partitioner := parquet.NewPartitioner(settings)
 
@@ -84,7 +90,9 @@ func (t testEvent) GetPartitionTimestamp() time.Time {
 
 func TestMemoryPartitioner_ReceivesAll(t *testing.T) {
 	settings := &parquet.PartitionerSettings{
-		Interval: time.Millisecond * 10,
+		PartitionInterval: time.Millisecond * 10,
+		BufferInterval:    time.Millisecond * 10,
+		MaxPartitionSize:  10_000,
 	}
 	partitioner := parquet.NewPartitioner(settings)
 	partitioner.Start()
