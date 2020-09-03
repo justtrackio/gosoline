@@ -72,3 +72,57 @@ func TestMemoryPartitioner_StartStop(t *testing.T) {
 	partitioner.Start()
 	partitioner.Stop()
 }
+
+type testEvent struct {
+	id        int
+	createdAt time.Time
+}
+
+func (t testEvent) GetPartitionTimestamp() time.Time {
+	return t.createdAt
+}
+
+func TestMemoryPartitioner_ReceivesAll(t *testing.T) {
+	settings := &parquet.PartitionerSettings{
+		Interval: time.Millisecond * 10,
+	}
+	partitioner := parquet.NewPartitioner(settings)
+	partitioner.Start()
+
+	c := make(chan int)
+	seenEvents := make(map[int]struct{})
+
+	go func() {
+		elementCount := 0
+		partitionCount := 0
+
+		for batch := range partitioner.Out() {
+			elementCount += len(batch.Elements)
+			partitionCount++
+
+			for _, elem := range batch.Elements {
+				seenEvents[elem.(*testEvent).id] = struct{}{}
+			}
+		}
+
+		c <- elementCount
+		c <- partitionCount
+	}()
+
+	totalEvents := 100_000
+
+	for i := 0; i < totalEvents; i++ {
+		partitioner.Ingest(&testEvent{
+			id:        i,
+			createdAt: time.Now(),
+		})
+	}
+
+	partitioner.Stop()
+
+	partitionedElements := <-c
+	partitionCount := <-c
+	assert.Equal(t, totalEvents, partitionedElements, "expected every element to get returned")
+	assert.Less(t, partitionCount, 100, "expected less than 100 partitions")
+	assert.Equal(t, totalEvents, len(seenEvents), "expected each element to be returned exactly once")
+}
