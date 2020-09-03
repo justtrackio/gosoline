@@ -9,15 +9,15 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
-	"github.com/spf13/cast"
 	"net"
+	"strings"
 	"sync"
 	"time"
 )
 
 type containerConfig struct {
 	Repository   string
-	Tmpfs        map[string]interface{}
+	Tmpfs        []TmpfsSettings
 	Tag          string
 	Env          []string
 	Cmd          []string
@@ -144,21 +144,11 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container,
 		PortBindings: bindings,
 	}
 
-	hostConfigs := make([]func(hc *docker.HostConfig), 0)
+	tmpfsConfig := r.getTmpfsConfig(config.Tmpfs)
 
-	if len(config.Tmpfs) > 0 {
-		tmpfs, err := cast.ToStringMapStringE(config.Tmpfs)
-
-		if err != nil {
-			return nil, fmt.Errorf("can not cast tmpfs config to map[string]string: %w", err)
-		}
-
-		hostConfigs = append(hostConfigs, func(hc *docker.HostConfig) {
-			hc.Tmpfs = tmpfs
-		})
-	}
-
-	resource, err := r.pool.RunWithOptions(runOptions, hostConfigs...)
+	resource, err := r.pool.RunWithOptions(runOptions, func(hc *docker.HostConfig) {
+		hc.Tmpfs = tmpfsConfig
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
@@ -189,6 +179,26 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container,
 	}
 
 	return container, err
+}
+
+func (r *containerRunner) getTmpfsConfig(settings []TmpfsSettings) map[string]string {
+	config := make(map[string]string)
+
+	for _, setting := range settings {
+		params := make([]string, 0)
+
+		if setting.Size != "" {
+			params = append(params, fmt.Sprintf("size=%s", setting.Size))
+		}
+
+		if setting.Mode != "" {
+			params = append(params, fmt.Sprintf("mode=%s", setting.Mode))
+		}
+
+		config[setting.Path] = strings.Join(params, ",")
+	}
+
+	return config
 }
 
 func (r *containerRunner) expireAfter(resource *dockertest.Resource, expireAfter time.Duration) error {

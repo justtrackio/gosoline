@@ -79,6 +79,12 @@ func (f mysqlFactory) ConfigureContainer(settings interface{}) *containerConfig 
 		fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", s.Credentials.RootPassword),
 	}
 
+	if len(s.Tmpfs) == 0 {
+		s.Tmpfs = append(s.Tmpfs, TmpfsSettings{
+			Path: "/var/lib/mysql",
+		})
+	}
+
 	return &containerConfig{
 		Repository: "mysql/mysql-server",
 		Tmpfs:      s.Tmpfs,

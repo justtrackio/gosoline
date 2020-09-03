@@ -19,7 +19,6 @@ come in the next weeks:
 * sns filter policies
 * rename pubsub
 * remove objx / mergo from config
-* test: tmpfs defaults
 * test: gateway case
 * cloud: bundle aws config
 * add error returns to constructors
