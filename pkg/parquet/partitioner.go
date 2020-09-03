@@ -1,7 +1,7 @@
 package parquet
 
 import (
-	"github.com/jonboulle/clockwork"
+	"github.com/applike/gosoline/pkg/clock"
 	"math"
 	"sort"
 	"sync"
@@ -28,7 +28,7 @@ type Partitioner interface {
 
 type memoryPartitioner struct {
 	lck           sync.Mutex
-	clock         clockwork.Clock
+	clock         clock.Clock
 	outputChannel chan *Partition
 	ticker        *time.Ticker
 	stop          chan struct{}
@@ -43,12 +43,10 @@ type PartitionerSettings struct {
 }
 
 func NewPartitioner(settings *PartitionerSettings) Partitioner {
-	clock := clockwork.NewRealClock()
-
-	return NewPartitionerWithInterfaces(clock, settings)
+	return NewPartitionerWithInterfaces(clock.Provider, settings)
 }
 
-func NewPartitionerWithInterfaces(clock clockwork.Clock, settings *PartitionerSettings) Partitioner {
+func NewPartitionerWithInterfaces(clock clock.Clock, settings *PartitionerSettings) Partitioner {
 	return &memoryPartitioner{
 		clock:          clock,
 		ticker:         time.NewTicker(settings.Interval),
@@ -152,6 +150,9 @@ func (p *memoryPartitioner) Trim(size int) {
 }
 
 func (p *memoryPartitioner) flush(force bool) {
+	p.lck.Lock()
+	defer p.lck.Unlock()
+
 	now := p.clock.Now()
 
 	for key, part := range p.partitions {
