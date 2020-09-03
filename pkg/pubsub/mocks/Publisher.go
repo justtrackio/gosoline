@@ -10,13 +10,18 @@ type Publisher struct {
 	mock.Mock
 }
 
-// Publish provides a mock function with given fields: ctx, typ, version, value
-func (_m *Publisher) Publish(ctx context.Context, typ string, version int, value interface{}) error {
-	ret := _m.Called(ctx, typ, version, value)
+// Publish provides a mock function with given fields: ctx, typ, version, value, customAttributes
+func (_m *Publisher) Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]interface{}) error {
+	var _ca []interface{}
+	_ca = append(_ca, ctx, typ, version, value)
+	for _, attributes := range customAttributes {
+		_ca = append(_ca, attributes)
+	}
+	ret := _m.Called(_ca...)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, interface{}) error); ok {
-		r0 = rf(ctx, typ, version, value)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, interface{}, ...map[string]interface{}) error); ok {
+		r0 = rf(ctx, typ, version, value, customAttributes...)
 	} else {
 		r0 = ret.Error(0)
 	}
