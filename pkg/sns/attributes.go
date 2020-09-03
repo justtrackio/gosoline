@@ -6,6 +6,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/spf13/cast"
+	"regexp"
+	"strings"
 )
 
 func buildAttributes(attributes []map[string]interface{}) (map[string]*sns.MessageAttributeValue, error) {
@@ -17,6 +19,10 @@ func buildAttributes(attributes []map[string]interface{}) (map[string]*sns.Messa
 
 	for _, attrs := range attributes {
 		for key, val := range attrs {
+			if !IsValidAttributeName(key) {
+				continue
+			}
+
 			switch v := val.(type) {
 			case string:
 				snsAttributes[key] = &sns.MessageAttributeValue{
@@ -43,6 +49,30 @@ func buildAttributes(attributes []map[string]interface{}) (map[string]*sns.Messa
 	}
 
 	return snsAttributes, nil
+}
+
+var validAttributeRegex = regexp.MustCompile("^[a-z0-9_\\-]+(\\.[a-z0-9_\\-]+)*$")
+
+func IsValidAttributeName(name string) bool {
+	// https://docs.aws.amazon.com/sns/latest/dg/sns-message-attributes.html#SNSMessageAttributes.DataTypes:
+	//
+	// The message attribute name can contain the following characters: A-Z, a-z, 0-9, underscore(_), hyphen(-), and period (.).
+	// The name must not start or end with a period, and it should not have successive periods. The name is case-sensitive
+	// and must be unique among all attribute names for the message. The name can be up to 256 characters long. The name
+	// cannot start with "AWS." or "Amazon." (or any variations in casing) because these prefixes are reserved for use
+	// by Amazon Web Services.
+
+	name = strings.ToLower(name)
+
+	if strings.HasPrefix(name, "aws.") || strings.HasPrefix(name, "amazon.") {
+		return false
+	}
+
+	if len(name) > 256 {
+		return false
+	}
+
+	return validAttributeRegex.MatchString(name)
 }
 
 func buildFilterPolicy(attributes map[string]interface{}) (string, error) {
