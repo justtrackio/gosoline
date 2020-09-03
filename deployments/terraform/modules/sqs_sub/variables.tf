@@ -9,6 +9,10 @@ variable "targetFamily" {}
 variable "targetApplication" {}
 variable "targetModel" {}
 
+variable "filterPolicy" {
+  default = ""
+}
+
 variable "messageDeliveryDelay" {
   default = 0
 }

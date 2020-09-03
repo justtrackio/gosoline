@@ -39,6 +39,7 @@ resource "aws_sns_topic_subscription" "main" {
   endpoint_auto_confirms          = "false"
   protocol                        = "sqs"
   endpoint                        = module.queue.queue_arn
+  filter_policy                   = var.filterPolicy
 }
 
 resource "aws_sqs_queue_policy" "main" {
