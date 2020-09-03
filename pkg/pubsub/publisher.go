@@ -23,7 +23,7 @@ type PublisherSettings struct {
 
 //go:generate mockery -name Publisher
 type Publisher interface {
-	Publish(ctx context.Context, typ string, version int, value interface{}) error
+	Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]interface{}) error
 }
 
 type publisher struct {
@@ -52,10 +52,13 @@ func NewPublisherWithInterfaces(logger mon.Logger, producer stream.Producer, set
 	}
 }
 
-func (p *publisher) Publish(ctx context.Context, typ string, version int, value interface{}) error {
-	attributes := CreateMessageAttributes(p.settings.ModelId, typ, version)
+func (p *publisher) Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]interface{}) error {
+	attributes := []map[string]interface{}{
+		CreateMessageAttributes(p.settings.ModelId, typ, version),
+	}
+	attributes = append(attributes, customAttributes...)
 
-	if err := p.producer.WriteOne(ctx, value, attributes); err != nil {
+	if err := p.producer.WriteOne(ctx, value, attributes...); err != nil {
 		return fmt.Errorf("can not publish %s with publisher %s: %w", p.settings.ModelId.String(), p.settings.Name, err)
 	}
 
