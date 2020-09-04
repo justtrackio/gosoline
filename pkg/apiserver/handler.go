@@ -119,6 +119,10 @@ func CreateJsonHandler(handler HandlerWithInput) gin.HandlerFunc {
 	return handleWithInput(handler, binding.JSON, defaultErrorHandler)
 }
 
+func CreateMultiPartFormHandler(handler HandlerWithInput) gin.HandlerFunc {
+	return handleWithMultiPartFormInput(handler, defaultErrorHandler)
+}
+
 func CreateMultipleBindingsHandler(handler HandlerWithMultipleBindings) gin.HandlerFunc {
 	return handleWithMultipleBindings(handler, defaultErrorHandler)
 }
@@ -167,6 +171,23 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 			})
 			return
 		}
+	}
+}
+
+func handleWithMultiPartFormInput(handler HandlerWithInput, errHandler ErrorHandler) gin.HandlerFunc {
+	return func(ginCtx *gin.Context) {
+		input := handler.GetInput()
+		err := binding.FormMultipart.Bind(ginCtx.Request, input)
+
+		if err != nil && !errors.Is(err, http.ErrMissingFile) {
+			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+				Err:  err,
+				Type: gin.ErrorTypeBind,
+			})
+			return
+		}
+
+		handle(ginCtx, handler, input, errHandler)
 	}
 }
 
