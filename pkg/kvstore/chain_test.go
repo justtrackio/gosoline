@@ -289,6 +289,7 @@ func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
 
 	ctx := context.Background()
 	keys := []interface{}{"foo", "fuu"}
+	existingKeys := []interface{}{"foo"}
 	result := make(map[string]Item)
 
 	store, element0, element1 := buildTestableChainStore(true)
@@ -326,6 +327,28 @@ func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
 
 	element0.AssertExpectations(t)
 	element1.AssertExpectations(t)
+
+	element0.On("GetBatch", ctx, existingKeys, result).Run(func(args mock.Arguments) {
+		items := args[2].(map[string]Item)
+
+		items["foo"] = Item{
+			Id:   "foo",
+			Body: "bar",
+		}
+	}).Return(nil, nil).Once()
+
+	missing, err = store.GetBatch(ctx, keys, result)
+
+	assert.NoError(t, err)
+	assert.Len(t, missing, 1)
+	assert.Equal(t, expectedMissingKeys, missing)
+
+	assert.Contains(t, result, "foo")
+	assert.NotContains(t, result, "fuu")
+	assert.Equal(t, "foo", result["foo"].Id)
+	assert.Equal(t, "bar", result["foo"].Body)
+
+	element0.AssertExpectations(t)
 }
 
 func TestChainKvStore_Put(t *testing.T) {
