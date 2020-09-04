@@ -165,14 +165,14 @@ func (s *ChainKvStore) GetBatch(ctx context.Context, keys interface{}, values in
 	}
 
 	if s.missingCacheEnabled {
-		cachedMissingMap := make(map[interface{}]interface{})
+		cachedMissingMap := make(map[string]interface{})
 		todo, err = s.missingCache.GetBatch(ctx, todo, cachedMissingMap)
 
 		if err != nil {
 			s.logger.WithContext(ctx).Warnf("failed to read from missing value cache: %s", err.Error())
 		}
 
-		for k, _ := range cachedMissingMap {
+		for k := range cachedMissingMap {
 			cachedMissing = append(cachedMissing, k)
 		}
 	}
