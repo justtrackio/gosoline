@@ -12,6 +12,8 @@ import (
 const (
 	ConfigKeyPubSubPublishers = "pubsub.publishers"
 	TypeCreate                = "create"
+	TypeUpdate                = "update"
+	TypeDelete                = "delete"
 )
 
 type PublisherSettings struct {
