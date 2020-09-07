@@ -191,9 +191,8 @@ func (k *kernel) Run() {
 		return
 	}
 
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, unix.SIGTERM)
-	signal.Notify(sig, unix.SIGINT)
+	sig := make(chan os.Signal, 2)
+	signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
 
 	if !k.boot() {
 		return
@@ -320,7 +319,7 @@ func (k *kernel) boot() bool {
 	return true
 }
 
-func (k *kernel) runModule(name string, ms *ModuleState, ctx context.Context) error {
+func (k *kernel) runModule(name string, ms *ModuleState, ctx context.Context) (moduleErr error) {
 	defer k.logger.Infof("stopped %s module %s", ms.Config.Type, name)
 
 	k.logger.Infof("running %s module %s in stage %d", ms.Config.Type, name, ms.Config.Stage)
@@ -328,6 +327,19 @@ func (k *kernel) runModule(name string, ms *ModuleState, ctx context.Context) er
 	ms.IsRunning = true
 
 	defer func(ms *ModuleState) {
+		// recover any crash from the module - if we let the coffin handle this,
+		// this is already too late because we might have killed the kernel and
+		// swallowed the error
+		panicErr := coffin.ResolveRecovery(recover())
+
+		if panicErr != nil {
+			ms.Err = panicErr
+		}
+
+		if ms.Err != nil {
+			k.logger.Errorf(ms.Err, "error running %s module %s", ms.Config.Type, name)
+		}
+
 		ms.IsRunning = false
 		switch ms.Config.Type {
 		case TypeEssential:
@@ -335,12 +347,12 @@ func (k *kernel) runModule(name string, ms *ModuleState, ctx context.Context) er
 		case TypeForeground:
 			k.foregroundModuleExited()
 		}
-	}(ms)
-	ms.Err = ms.Module.Run(ctx)
 
-	if ms.Err != nil {
-		k.logger.Errorf(ms.Err, "error running %s module %s", ms.Config.Type, name)
-	}
+		// make sure we are returning the correct error to our caller
+		moduleErr = ms.Err
+	}(ms)
+
+	ms.Err = ms.Module.Run(ctx)
 
 	return ms.Err
 }

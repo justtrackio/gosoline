@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/sys/unix"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -55,9 +56,14 @@ func TestRunFactoriesError(t *testing.T) {
 func TestRunFactoriesPanic(t *testing.T) {
 	config, logger, _ := createMocks()
 
-	err := fmt.Errorf("panic in module factory")
-	logger.On("Error", err, "error running module factories")
-	logger.On("Error", err, "error building additional modules by factories")
+	logger.On("Error", mock.Anything, "error running module factories").Run(func(args mock.Arguments) {
+		err := args.Get(0).(error)
+		assert.True(t, strings.Contains(err.Error(), "panic in module factory"))
+	})
+	logger.On("Error", mock.Anything, "error building additional modules by factories").Run(func(args mock.Arguments) {
+		err := args.Get(0).(error)
+		assert.True(t, strings.Contains(err.Error(), "panic in module factory"))
+	})
 
 	assert.NotPanics(t, func() {
 		k := kernel.New(config, logger, kernel.KillTimeout(time.Second))
