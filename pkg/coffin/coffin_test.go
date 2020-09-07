@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/stretchr/testify/assert"
+	"strings"
 	"testing"
 	"time"
 )
@@ -21,7 +22,7 @@ func TestCoffin_New(t *testing.T) {
 	err := cfn.Wait()
 	assert.Error(t, err)
 	assert.True(t, errors.Is(err, myErr))
-	assert.Equal(t, "got this error: 42: my error", err.Error())
+	assert.True(t, strings.HasPrefix(err.Error(), "got this error: 42: my error"))
 }
 
 func TestCoffin_WithContext(t *testing.T) {
@@ -82,4 +83,22 @@ func TestCoffin_WithContext(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestCoffin_Gof(t *testing.T) {
+	cfn := coffin.New()
+	cfn.Gof(func() error {
+		var err error
+
+		// crash the function!
+		//goland:noinspection GoNilness
+		errString := err.Error()
+		assert.Failf(t, "got unexpected string back", errString)
+
+		return err
+	}, "crashing function")
+
+	err := cfn.Wait()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "crashing function: runtime error: invalid memory address or nil pointer dereference")
 }
