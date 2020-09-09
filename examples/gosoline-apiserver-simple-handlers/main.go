@@ -14,7 +14,7 @@ type myTestStruct struct {
 }
 
 func main() {
-	app := application.New(application.WithConfigFile("config.dist.yml", "yml"))
+	app := application.Default()
 	app.Add("api", apiserver.New(func(config cfg.Config, logger mon.Logger, definitions *apiserver.Definitions) {
 		definitions.GET("/json-from-map", apiserver.CreateHandler(&JsonResponseFromMapHandler{}))
 		definitions.GET("/json-from-struct", apiserver.CreateHandler(&JsonResponseFromStructHandler{}))

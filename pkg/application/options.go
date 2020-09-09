@@ -2,6 +2,7 @@ package application
 
 import (
 	"flag"
+	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
@@ -11,7 +12,6 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/pkg/errors"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -25,6 +25,10 @@ type SetupOption func(config cfg.GosoConf, logger mon.GosoLog) error
 
 type kernelSettings struct {
 	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
+}
+
+type loggerHandler struct {
+	Name string `cfg:"type"`
 }
 
 type loggerSettings struct {
@@ -178,14 +182,6 @@ func WithLoggerContextFieldsResolver(resolver ...mon.ContextFieldsResolver) Opti
 	}
 }
 
-func WithLoggerFormat(format string) Option {
-	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-			return logger.Option(mon.WithFormat(format))
-		})
-	}
-}
-
 func WithLoggerHook(hook mon.LoggerHook) Option {
 	return func(app *App) {
 		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
@@ -207,14 +203,6 @@ func WithLoggerMetricHook(app *App) {
 		metricHook := mon.NewMetricHook()
 		return logger.Option(mon.WithHook(metricHook))
 	})
-}
-
-func WithLoggerOutput(output io.Writer) Option {
-	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-			return logger.Option(mon.WithOutput(output))
-		})
-	}
 }
 
 func WithLoggerSentryHook(extraProvider ...mon.SentryExtraProvider) Option {
@@ -245,12 +233,67 @@ func WithLoggerSettingsFromConfig(app *App) {
 
 		loggerOptions := []mon.LoggerOption{
 			mon.WithLevel(settings.Level),
-			mon.WithFormat(settings.Format),
-			mon.WithTimestampFormat(settings.TimestampFormat),
+		}
+
+		loggerOptions, err := getLoggerHandlersFromConfigWithFallback(config, loggerOptions)
+		if err != nil {
+			return err
 		}
 
 		return logger.Option(loggerOptions...)
 	})
+}
+
+func getLoggerHandlersFromConfigWithFallback(config cfg.GosoConf, loggerOptions []mon.LoggerOption) ([]mon.LoggerOption, error) {
+	handlers, err := getLoggerHandlersWithDefaultStdout(config)
+	if err != nil {
+		return nil, err
+	}
+
+	for handlerName, handler := range handlers {
+		factory, ok := mon.HandlerFactories[handler.Name]
+		if !ok {
+			return nil, fmt.Errorf("unknown logger handler '%s'", handler.Name)
+		}
+
+		logHandler, err := factory(config, handlerName)
+		if err != nil {
+			return nil, err
+		}
+
+		loggerOptions = append(loggerOptions, mon.WithHandler(logHandler))
+	}
+
+	return loggerOptions, nil
+}
+
+func getLoggerHandlersWithDefaultStdout(config cfg.GosoConf) (map[string]loggerHandler, error) {
+	key := "mon.logger.handler"
+	if !config.IsSet(key) {
+		err := config.Option(cfg.WithConfigMap(map[string]interface{}{
+			"mon": map[string]interface{}{
+				"logger": map[string]interface{}{
+					"handler": map[string]interface{}{
+						"stdout": map[string]interface{}{
+							"type":            "stdout",
+							"levels":          []string{"info", "warn", "error", "fatal", "panic"},
+							"outputFormat":    mon.FormatConsole,
+							"timestampFormat": time.RFC3339,
+						},
+					},
+				},
+			},
+		}))
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	handlers := map[string]loggerHandler{}
+	config.UnmarshalKey(key, &handlers)
+
+	return handlers, nil
 }
 
 func WithLoggerTagsFromConfig(app *App) {

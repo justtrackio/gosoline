@@ -16,10 +16,9 @@ func Start(handler Handler, defaultConfig ...map[string]interface{}) {
 
 	// configure logger
 	loggerOptions := []mon.LoggerOption{
-		mon.WithFormat(mon.FormatConsole),
 		// logs for lambda functions already provide timestamps, so we don't need these
-		mon.WithTimestampFormat(""),
 		mon.WithContextFieldsResolver(mon.ContextLoggerFieldsResolver),
+		mon.WithStdoutOutput(mon.FormatConsole, mon.AllLogLevels()),
 	}
 
 	logger := mon.NewLogger()

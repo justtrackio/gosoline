@@ -93,7 +93,6 @@ func (m *MapStruct) doReadZeroAndDefaultValues(target interface{}) (objx.Map, ob
 
 		if targetField.Type.Kind() == reflect.Slice {
 			values[cfg] = reflect.MakeSlice(targetField.Type, 0, 4).Interface()
-			continue
 		}
 
 		if targetField.Type.Kind() == reflect.Map {
@@ -101,7 +100,9 @@ func (m *MapStruct) doReadZeroAndDefaultValues(target interface{}) (objx.Map, ob
 			continue
 		}
 
-		values[cfg] = reflect.Zero(targetField.Type).Interface()
+		if targetField.Type.Kind() != reflect.Slice {
+			values[cfg] = reflect.Zero(targetField.Type).Interface()
+		}
 
 		if val, ok = targetField.Tag.Lookup(m.settings.DefaultTag); !ok {
 			continue

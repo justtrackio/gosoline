@@ -55,9 +55,6 @@ func TestLogger_mergeMapStringInterface(t *testing.T) {
 	}))
 	assert.NoError(t, err)
 
-	err = logger.Option(mon.WithFormat(mon.FormatJson))
-	assert.NoError(t, err)
-
 	logger.
 		WithFields(mon.Fields{
 			"a field": map[string]map[string]interface{}{
@@ -244,12 +241,18 @@ func getLogger() (mon.GosoLog, *bytes.Buffer) {
 	clock := clockwork.NewFakeClock()
 	out := bytes.NewBuffer([]byte{})
 
-	client := mon.NewLoggerWithInterfaces(clock, out)
-	err := client.Option(mon.WithFormat(mon.FormatJson), mon.WithTimestampFormat(time.RFC3339))
+	logger := mon.NewLoggerWithInterfaces()
 
+	handler, err := mon.NewIowriterLoggerHandler(clock, mon.FormatJson, out, time.RFC3339, []string{mon.Info, mon.Warn})
 	if err != nil {
 		panic(err)
 	}
 
-	return client, out
+	opt := mon.WithHandler(handler)
+	err = opt(logger)
+	if err != nil {
+		panic(err)
+	}
+
+	return logger, out
 }

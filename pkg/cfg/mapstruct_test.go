@@ -677,6 +677,7 @@ func setupMapStructIO(t *testing.T, source interface{}) *cfg.MapStruct {
 		DefaultTag: "default",
 		Casters: []cfg.MapStructCaster{
 			cfg.MapStructDurationCaster,
+			cfg.MapStructSliceCaster,
 			cfg.MapStructTimeCaster,
 		},
 	})

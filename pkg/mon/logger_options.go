@@ -1,8 +1,9 @@
 package mon
 
 import (
-	"fmt"
-	"io"
+	"github.com/applike/gosoline/pkg/clock"
+	"os"
+	"time"
 )
 
 type LoggerOption func(logger *logger) error
@@ -10,18 +11,6 @@ type LoggerOption func(logger *logger) error
 func WithContextFieldsResolver(resolver ...ContextFieldsResolver) LoggerOption {
 	return func(logger *logger) error {
 		logger.ctxResolver = append(logger.ctxResolver, resolver...)
-
-		return nil
-	}
-}
-
-func WithFormat(format string) LoggerOption {
-	return func(logger *logger) error {
-		if _, ok := formatters[format]; !ok {
-			return fmt.Errorf("unknown logger format: %s", format)
-		}
-
-		logger.format = format
 
 		return nil
 	}
@@ -35,17 +24,30 @@ func WithHook(hook LoggerHook) LoggerOption {
 	}
 }
 
-func WithLevel(level string) LoggerOption {
+func WithHandler(handler Handler) LoggerOption {
 	return func(logger *logger) error {
-		logger.level = levelPriority(level)
+		logger.handlers = append(logger.handlers, handler)
 
 		return nil
 	}
 }
 
-func WithOutput(output io.Writer) LoggerOption {
+func WithStdoutOutput(format string, levels []string) LoggerOption {
 	return func(logger *logger) error {
-		logger.output = output
+		stdoutHandler, err := NewIowriterLoggerHandler(clock.NewRealClock(), FormatConsole, os.Stdout, time.RFC3339, levels)
+		if err != nil {
+			return err
+		}
+
+		logger.handlers = append(logger.handlers, stdoutHandler)
+
+		return nil
+	}
+}
+
+func WithLevel(level string) LoggerOption {
+	return func(logger *logger) error {
+		logger.level = levelPriority(level)
 
 		return nil
 	}
@@ -57,14 +59,6 @@ func WithTags(tags map[string]interface{}) LoggerOption {
 			logger.data.Fields[k] = v
 			logger.data.Tags[k] = v
 		}
-
-		return nil
-	}
-}
-
-func WithTimestampFormat(format string) LoggerOption {
-	return func(logger *logger) error {
-		logger.timestampFormat = format
 
 		return nil
 	}

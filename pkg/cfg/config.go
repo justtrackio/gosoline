@@ -385,6 +385,7 @@ func (c *config) buildMapStruct(target interface{}) *MapStruct {
 		DefaultTag: "default",
 		Casters: []MapStructCaster{
 			MapStructDurationCaster,
+			MapStructSliceCaster,
 			MapStructTimeCaster,
 		},
 		Decoders: []MapStructDecoder{

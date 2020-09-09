@@ -3,8 +3,7 @@ package mon
 import (
 	"context"
 	"fmt"
-	"github.com/jonboulle/clockwork"
-	"io"
+	"github.com/applike/gosoline/pkg/cfg"
 	"os"
 	"reflect"
 	"sync"
@@ -20,6 +19,18 @@ const (
 	Fatal = "fatal"
 	Panic = "panic"
 )
+
+func AllLogLevels() []string {
+	return []string{
+		Trace,
+		Debug,
+		Info,
+		Warn,
+		Error,
+		Fatal,
+		Panic,
+	}
+}
 
 var levels = map[string]int{
 	Trace: 0,
@@ -42,6 +53,14 @@ const (
 	FormatGelfFields = "gelf_fields"
 	FormatJson       = "json"
 )
+
+type HandlerFactory func(config cfg.Config, name string) (Handler, error)
+
+type Handler interface {
+	Write(level string, msg string, logErr error, metadata Metadata)
+}
+
+var HandlerFactories = map[string]HandlerFactory{}
 
 type Tags map[string]interface{}
 type ConfigValues map[string]interface{}
@@ -92,33 +111,27 @@ type Logger interface {
 }
 
 type logger struct {
-	clock       clockwork.Clock
-	output      io.Writer
 	outputLck   *sync.Mutex
 	ctxResolver []ContextFieldsResolver
+	handlers    []Handler
 	hooks       []LoggerHook
 
-	level           int
-	format          string
-	timestampFormat string
+	level int
 
 	data Metadata
 }
 
 func NewLogger() *logger {
-	return NewLoggerWithInterfaces(clockwork.NewRealClock(), os.Stdout)
+	return NewLoggerWithInterfaces()
 }
 
-func NewLoggerWithInterfaces(clock clockwork.Clock, out io.Writer) *logger {
+func NewLoggerWithInterfaces() *logger {
 	logger := &logger{
-		clock:           clock,
-		output:          out,
-		outputLck:       &sync.Mutex{},
-		ctxResolver:     make([]ContextFieldsResolver, 0),
-		hooks:           make([]LoggerHook, 0),
-		level:           levelPriority(Info),
-		format:          FormatConsole,
-		timestampFormat: "15:04:05.000",
+		outputLck:   &sync.Mutex{},
+		ctxResolver: make([]ContextFieldsResolver, 0),
+		handlers:    make([]Handler, 0),
+		hooks:       make([]LoggerHook, 0),
+		level:       levelPriority(Info),
 		data: Metadata{
 			Channel:       ChannelDefault,
 			ContextFields: make(Fields),
@@ -132,15 +145,12 @@ func NewLoggerWithInterfaces(clock clockwork.Clock, out io.Writer) *logger {
 
 func (l *logger) copy() *logger {
 	return &logger{
-		clock:           l.clock,
-		outputLck:       l.outputLck,
-		output:          l.output,
-		ctxResolver:     l.ctxResolver,
-		hooks:           l.hooks,
-		level:           l.level,
-		format:          l.format,
-		timestampFormat: l.timestampFormat,
-		data:            l.data,
+		outputLck:   l.outputLck,
+		ctxResolver: l.ctxResolver,
+		handlers:    l.handlers,
+		hooks:       l.hooks,
+		level:       l.level,
+		data:        l.data,
 	}
 }
 
@@ -266,35 +276,17 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 		}
 	}
 
-	timestamp := l.clock.Now().Format(l.timestampFormat)
-	buffer, err := formatters[l.format](timestamp, level, msg, logErr, &cpyData)
-
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
+	for _, handler := range l.handlers {
+		handler.Write(level, msg, logErr, cpyData)
 	}
-
-	l.write(buffer)
 }
 
 func (l *logger) err(err error) {
-	timestamp := l.clock.Now().Format(l.timestampFormat)
-	buffer, err := formatters[l.format](timestamp, Error, err.Error(), err, &l.data)
-
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
-	}
-
-	l.write(buffer)
-}
-
-func (l *logger) write(buffer []byte) {
 	l.outputLck.Lock()
 	defer l.outputLck.Unlock()
 
-	_, err := l.output.Write(buffer)
-
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Failed to write to log, %v\n", err)
+	for _, handler := range l.handlers {
+		handler.Write(Error, err.Error(), err, l.data)
 	}
 }
 

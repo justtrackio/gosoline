@@ -63,8 +63,7 @@ func WithLoggerSettingsFromConfig(env *Environment) {
 
 		loggerOptions := []mon.LoggerOption{
 			mon.WithLevel(settings.Level),
-			mon.WithFormat(settings.Format),
-			mon.WithTimestampFormat(settings.TimestampFormat),
+			mon.WithStdoutOutput(mon.FormatConsole, mon.AllLogLevels()),
 		}
 
 		return logger.Option(loggerOptions...)

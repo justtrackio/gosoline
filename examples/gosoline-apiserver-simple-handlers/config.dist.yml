@@ -8,6 +8,16 @@ api_timeout_read: 5
 api_timeout_write: 5
 api_timeout_idle: 5
 
+mon:
+  logger:
+    handler:
+      foo:
+        type: file
+        filename: output.log
+      bar:
+        type: stdout
+
+
 app_project: project
 app_family: family
 app_name: name

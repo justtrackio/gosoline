@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/jonboulle/clockwork"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -21,7 +22,16 @@ type ContextEnforcingLoggerTestSuite struct {
 func (s *ContextEnforcingLoggerTestSuite) SetupTest() {
 	s.clock = clockwork.NewFakeClock()
 	s.output = &bytes.Buffer{}
-	s.base = mon.NewLoggerWithInterfaces(s.clock, s.output)
+	logger := mon.NewLoggerWithInterfaces()
+
+	handler, err := mon.NewIowriterLoggerHandler(s.clock, mon.FormatConsole, s.output, "15:04:05.000", []string{mon.Info, mon.Warn})
+	require.Nil(s.T(), err)
+
+	opt := mon.WithHandler(handler)
+	err = opt(logger)
+	require.Nil(s.T(), err)
+
+	s.base = logger
 
 	s.logger = mon.NewContextEnforcingLoggerWithInterfaces(s.base, mon.GetMockedStackTrace, s.base)
 	s.logger.Enable()
@@ -52,7 +62,7 @@ func (s *ContextEnforcingLoggerTestSuite) TestInfoWithoutContextWithFields() {
 }
 
 func (s *ContextEnforcingLoggerTestSuite) TestDebugWithoutContext() {
-	s.logger.Debug("this is a info message")
+	s.logger.Debug("this is a debug message")
 	s.Empty(s.output.String())
 }
 
