@@ -14,6 +14,7 @@ type Guard interface {
 	CreatePolicy(pol ladon.Policy) error
 	UpdatePolicy(pol ladon.Policy) error
 	DeletePolicy(pol ladon.Policy) error
+	DeletePolicyById(id string) error
 }
 
 type LadonGuard struct {
@@ -71,6 +72,16 @@ func (g LadonGuard) DeletePolicy(pol ladon.Policy) error {
 
 	if err != nil {
 		return fmt.Errorf("could not delete policy: %w", err)
+	}
+
+	return nil
+}
+
+func (g LadonGuard) DeletePolicyById(id string) error {
+	err := g.warden.Manager.Delete(id)
+
+	if err != nil {
+		return fmt.Errorf("could not delete policy by id: %w", err)
 	}
 
 	return nil
