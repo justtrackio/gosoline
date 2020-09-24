@@ -9,15 +9,19 @@ import (
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/hashicorp/go-multierror"
+	"github.com/thoas/go-funk"
 	"github.com/twinj/uuid"
+	"math"
 )
 
 const (
-	sqsBatchSize = 10
+	sqsBatchSize      = 10
+	sqsMaxMessageSize = 256 * 1024
 )
 
 //go:generate mockery -name Queue
@@ -127,6 +131,7 @@ func (q *queue) Send(ctx context.Context, msg *Message) error {
 }
 
 func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
+	logger := q.logger.WithContext(ctx)
 	if len(messages) == 0 {
 		return nil
 	}
@@ -153,9 +158,26 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 	_, err := q.executor.Execute(ctx, func() (*request.Request, interface{}) {
 		return q.client.SendMessageBatchRequest(input)
 	})
+	if err != nil {
+		if err, ok := err.(awserr.Error); ok && err.Code() == sqs.ErrCodeBatchRequestTooLong {
+			logger.Info("messages were bigger than the allowed max, splitting them up")
+
+			half := float64(len(messages)) / 2
+			chunkSize := int(math.Ceil(half))
+			msgs := funk.Chunk(messages, chunkSize).([][]*Message)
+
+			for _, msgChunk := range msgs {
+				err := q.SendBatch(ctx, msgChunk)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}
 
 	if err != nil && !exec.IsRequestCanceled(err) {
-		q.logger.WithContext(ctx).Errorf(err, "could not send batch to sqs queue %s", q.properties.Name)
+		logger.Errorf(err, "could not send batch to sqs queue %s", q.properties.Name)
 	}
 
 	return err
