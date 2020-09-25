@@ -17,6 +17,9 @@ import (
 const (
 	PrivateACL    = "private"
 	PublicReadACL = "public-read"
+
+	ContentEncodingGzip = "gzip"
+	ContentTypeJson     = "application/json; charset=UTF-8"
 )
 
 type Object struct {
@@ -25,6 +28,9 @@ type Object struct {
 	ACL    *string
 	Exists bool
 	Error  error
+
+	ContentEncoding string
+	ContentType     string
 
 	bucket *string
 	prefix *string
