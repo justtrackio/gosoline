@@ -146,6 +146,14 @@ func (r *BatchRunner) executeWrite() {
 			Key:    aws.String(key),
 		}
 
+		if object.ContentEncoding != "" {
+			input.ContentEncoding = aws.String(object.ContentEncoding)
+		}
+
+		if object.ContentType != "" {
+			input.ContentType = aws.String(object.ContentType)
+		}
+
 		_, err := r.client.PutObject(input)
 
 		if err != nil {
