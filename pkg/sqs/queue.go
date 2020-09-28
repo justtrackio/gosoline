@@ -77,7 +77,7 @@ type queue struct {
 	properties *Properties
 }
 
-func New(config cfg.Config, logger mon.Logger, settings *Settings) *queue {
+func New(config cfg.Config, logger mon.Logger, settings *Settings) Queue {
 	settings.PadFromConfig(config)
 	name := generateName(settings)
 
@@ -99,7 +99,7 @@ func New(config cfg.Config, logger mon.Logger, settings *Settings) *queue {
 	return NewWithInterfaces(logger, client, executor, props)
 }
 
-func NewWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, executor gosoAws.Executor, p *Properties) *queue {
+func NewWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, executor gosoAws.Executor, p *Properties) Queue {
 	q := &queue{
 		logger:     logger,
 		client:     client,
@@ -159,7 +159,9 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 		return q.client.SendMessageBatchRequest(input)
 	})
 	if err != nil {
-		if err, ok := err.(awserr.Error); ok && err.Code() == sqs.ErrCodeBatchRequestTooLong {
+		if err, ok := err.(awserr.Error); ok &&
+			err.Code() == sqs.ErrCodeBatchRequestTooLong &&
+			len(messages) > 1 {
 			logger.Info("messages were bigger than the allowed max, splitting them up")
 
 			half := float64(len(messages)) / 2
