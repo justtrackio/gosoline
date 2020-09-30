@@ -72,7 +72,7 @@ func (h Handler) TransformUpdate(inp interface{}, model db_repo.ModelBased) (err
 	return nil
 }
 
-func (h Handler) TransformOutput(model db_repo.ModelBased, apiView string) (interface{}, error) {
+func (h Handler) TransformOutput(model db_repo.ModelBased, _ string) (interface{}, error) {
 	m := model.(*Model)
 
 	out := &Output{
@@ -85,7 +85,7 @@ func (h Handler) TransformOutput(model db_repo.ModelBased, apiView string) (inte
 	return out, nil
 }
 
-func (h Handler) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (interface{}, error) {
+func (h Handler) List(_ context.Context, _ *db_repo.QueryBuilder, _ string) (interface{}, error) {
 	date, err := time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
 
 	if err != nil {
