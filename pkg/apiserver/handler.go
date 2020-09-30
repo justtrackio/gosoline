@@ -2,6 +2,8 @@ package apiserver
 
 import (
 	"context"
+	"fmt"
+	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -38,7 +40,7 @@ func (e emptyRenderer) Render(http.ResponseWriter) error {
 	return nil
 }
 
-func (e emptyRenderer) WriteContentType(w http.ResponseWriter) {
+func (e emptyRenderer) WriteContentType(_ http.ResponseWriter) {
 }
 
 func NewHtmlResponse(body interface{}) *Response {
@@ -313,21 +315,21 @@ func writeResponseHeaders(ginCtx *gin.Context, resp *Response) {
 
 func mkResponseBodyWriter(resp *Response) (func(ginCtx *gin.Context), error) {
 	if resp.ContentType == nil {
-		return func(ginCtx *gin.Context) {
+		return withRecover(func(ginCtx *gin.Context) {
 			ginCtx.Render(resp.StatusCode, emptyRenderer{})
-		}, nil
+		}), nil
 	}
 
 	if *resp.ContentType == ContentTypeJson {
-		return func(ginCtx *gin.Context) {
+		return withRecover(func(ginCtx *gin.Context) {
 			ginCtx.JSON(resp.StatusCode, resp.Body)
-		}, nil
+		}), nil
 	}
 
 	if b, ok := resp.Body.([]byte); ok {
-		return func(ginCtx *gin.Context) {
+		return withRecover(func(ginCtx *gin.Context) {
 			ginCtx.Data(resp.StatusCode, *resp.ContentType, b)
-		}, nil
+		}), nil
 	}
 
 	data, err := cast.ToStringE(resp.Body)
@@ -336,7 +338,43 @@ func mkResponseBodyWriter(resp *Response) (func(ginCtx *gin.Context), error) {
 		return nil, err
 	}
 
-	return func(ginCtx *gin.Context) {
+	return withRecover(func(ginCtx *gin.Context) {
 		ginCtx.Data(resp.StatusCode, *resp.ContentType, []byte(data))
-	}, nil
+	}), nil
+}
+
+type ResponseBodyWriterError struct {
+	Err error
+}
+
+func (e ResponseBodyWriterError) Error() string {
+	return fmt.Sprintf("handler response body writer error: %s", e.Err.Error())
+}
+
+func (e ResponseBodyWriterError) Unwrap() error {
+	return e.Err
+}
+
+func (e ResponseBodyWriterError) Is(err error) bool {
+	_, ok := err.(ResponseBodyWriterError)
+
+	return ok
+}
+
+func withRecover(f func(ginCtx *gin.Context)) func(ginCtx *gin.Context) {
+	return func(ginCtx *gin.Context) {
+		defer func() {
+			err := coffin.ResolveRecovery(recover())
+
+			if err == nil {
+				return
+			}
+
+			// When building the response body, should there be an e.g. broken pipe error, we do not want to
+			// log an application error. Instead, RecoveryWithSentry within middleware_recover will log a warning instead
+			panic(ResponseBodyWriterError{Err: err})
+		}()
+
+		f(ginCtx)
+	}
 }
