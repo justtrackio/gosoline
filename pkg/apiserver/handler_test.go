@@ -20,7 +20,7 @@ type Output struct {
 type HtmlHandler struct {
 }
 
-func (h HtmlHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+func (h HtmlHandler) Handle(_ context.Context, request *apiserver.Request) (*apiserver.Response, error) {
 	out := fmt.Sprintf("<html><body>%s</body></html>", request.Body)
 
 	return apiserver.NewHtmlResponse(out), nil
@@ -33,7 +33,7 @@ func (h JsonHandler) GetInput() interface{} {
 	return &Input{}
 }
 
-func (h JsonHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+func (h JsonHandler) Handle(_ context.Context, request *apiserver.Request) (*apiserver.Response, error) {
 	inp := request.Body.(*Input)
 	out := Output{
 		Text: inp.Text,
@@ -45,14 +45,14 @@ func (h JsonHandler) Handle(ctx context.Context, request *apiserver.Request) (*a
 type RedirectHandler struct {
 }
 
-func (h RedirectHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+func (h RedirectHandler) Handle(_ context.Context, _ *apiserver.Request) (*apiserver.Response, error) {
 	return apiserver.NewRedirectResponse("https://example.com"), nil
 }
 
 type NotModifiedHandler struct {
 }
 
-func (h NotModifiedHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+func (h NotModifiedHandler) Handle(_ context.Context, _ *apiserver.Request) (*apiserver.Response, error) {
 	return apiserver.NewStatusResponse(http.StatusNotModified), nil
 }
 
