@@ -63,13 +63,15 @@ func (e *errorHook) Fire(_ string, _ string, err error, _ *mon.Metadata) error {
 }
 
 func newCliLogger() (mon.Logger, error) {
-	output := newFingersCrossedOutput(1024)
-	hook := newErrorHook(output)
+	outputFile, err := os.OpenFile("output.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+
+	if err != nil {
+		return nil, err
+	}
 
 	logger := mon.NewLogger()
 	options := []mon.LoggerOption{
-		mon.WithOutput(output),
-		mon.WithHook(hook),
+		mon.WithOutput(outputFile),
 	}
 
 	if err := logger.Option(options...); err != nil {
