@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-xray-sdk-go/strategy/ctxmissing"
+	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"net"
 	"net/http"
@@ -19,6 +21,7 @@ type XRaySettings struct {
 	Enabled            bool
 	Address            string
 	CtxMissingStrategy ctxmissing.Strategy
+	SamplingStrategy   sampling.Strategy
 }
 
 type awsTracer struct {
@@ -36,10 +39,16 @@ func NewAwsTracer(config cfg.Config, logger mon.Logger) Tracer {
 	addr := lookupAddr(appId, settings)
 	ctxMissingStrategy := NewContextMissingWarningLogStrategy(logger)
 
+	samplingStrategy, err := getSamplingStrategy(&settings.Sampling)
+	if err != nil {
+		logger.Fatal(err, "could not load sampling strategy, continue with the default")
+	}
+
 	xRaySettings := &XRaySettings{
 		Enabled:            settings.Enabled,
 		Address:            addr,
 		CtxMissingStrategy: ctxMissingStrategy,
+		SamplingStrategy:   samplingStrategy,
 	}
 
 	return NewAwsTracerWithInterfaces(logger, appId, xRaySettings)
@@ -50,6 +59,7 @@ func NewAwsTracerWithInterfaces(logger mon.Logger, appId cfg.AppId, settings *XR
 		LogLevel:               "warn",
 		DaemonAddr:             settings.Address,
 		ContextMissingStrategy: settings.CtxMissingStrategy,
+		SamplingStrategy:       settings.SamplingStrategy,
 	})
 
 	if err != nil {
@@ -159,4 +169,17 @@ func lookupAddr(appId cfg.AppId, settings *TracerSettings) string {
 	}
 
 	return addressValue
+}
+
+func getSamplingStrategy(samplingConfiguration *SamplingConfiguration) (sampling.Strategy, error) {
+	if samplingConfiguration == nil {
+		return nil, nil
+	}
+
+	samplingConfigurationBytes, err := json.Marshal(samplingConfiguration)
+	if err != nil {
+		return nil, err
+	}
+
+	return sampling.NewLocalizedStrategyFromJSONBytes(samplingConfigurationBytes)
 }
