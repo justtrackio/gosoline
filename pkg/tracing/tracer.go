@@ -18,10 +18,11 @@ type Tracer interface {
 }
 
 type TracerSettings struct {
-	Provider     string `cfg:"provider" default:"xray" validate:"required"`
-	Enabled      bool   `cfg:"enabled" default:"false"`
-	AddressType  string `cfg:"addr_type" default:"local" validate:"required"`
-	AddressValue string `cfg:"add_value" default:""`
+	Provider                 string `cfg:"provider" default:"xray" validate:"required"`
+	Enabled                  bool   `cfg:"enabled" default:"false"`
+	AddressType              string `cfg:"addr_type" default:"local" validate:"required"`
+	AddressValue             string `cfg:"add_value" default:""`
+	SamplingStrategyFilePath string `cfg:"sampling_strategy_file_path" default:""`
 }
 
 var tracerContainer = struct {
