@@ -141,6 +141,14 @@ tracing:
   enabled: true
   addr_type: local
   addr_value: ""
+  sampling:
+      version: 1
+      default:
+        description: default
+        fixed_target: 1
+        rate: 0.05
+      rules:
+        - { description: sample-service, service_name: "{app_project}-{env}-{app_family}-{app_name}", http_method: "*", url_path: "*", fixed_target: 0, rate: 0.05}
 
 test:
   logger:
