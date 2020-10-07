@@ -267,7 +267,9 @@ func (r *s3Reader) listFiles(prefix string) ([]string, error) {
 		}
 
 		for _, obj := range out.Contents {
-			files = append(files, *obj.Key)
+			if strings.HasSuffix(*obj.Key, ".parquet") {
+				files = append(files, *obj.Key)
+			}
 		}
 
 		if !*out.IsTruncated {
