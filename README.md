@@ -17,7 +17,6 @@ come in the next weeks:
 
 ## Roadmap
 * sns filter policies
-* rename pubsub
 * remove objx / mergo from config
 * test: gateway case
 * cloud: bundle aws config

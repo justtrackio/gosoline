@@ -1,10 +1,10 @@
-package pubsub_test
+package mdlsub_test
 
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/mdl"
+	"github.com/applike/gosoline/pkg/mdlsub"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
-	"github.com/applike/gosoline/pkg/pubsub"
 	streamMocks "github.com/applike/gosoline/pkg/stream/mocks"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -13,14 +13,14 @@ import (
 type PublisherTestSuite struct {
 	suite.Suite
 	producer  *streamMocks.Producer
-	publisher pubsub.Publisher
+	publisher mdlsub.Publisher
 }
 
 func (s *PublisherTestSuite) SetupTest() {
 	logger := monMocks.NewLoggerMockedAll()
 	s.producer = new(streamMocks.Producer)
 
-	s.publisher = pubsub.NewPublisherWithInterfaces(logger, s.producer, &pubsub.PublisherSettings{
+	s.publisher = mdlsub.NewPublisherWithInterfaces(logger, s.producer, &mdlsub.PublisherSettings{
 		ModelId: mdl.ModelId{
 			Project:     "gosoline",
 			Family:      "test",
@@ -43,14 +43,14 @@ func (s *PublisherTestSuite) TestPublish() {
 	}
 
 	expectedAttributes := map[string]interface{}{
-		"type":    pubsub.TypeCreate,
+		"type":    mdlsub.TypeCreate,
 		"version": 0,
 		"modelId": "gosoline.test.app.event",
 	}
 
 	s.producer.On("WriteOne", ctx, event, expectedAttributes).Return(nil)
 
-	err := s.publisher.Publish(ctx, pubsub.TypeCreate, 0, event)
+	err := s.publisher.Publish(ctx, mdlsub.TypeCreate, 0, event)
 	s.NoError(err)
 }
 

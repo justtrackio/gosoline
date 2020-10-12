@@ -1,4 +1,4 @@
-package pubsub
+package mdlsub
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ConfigKeyPubSubSubscribers = "pubsub.subscribers"
+	ConfigKeyMdlSubSubscribers = "mdlsub.subscribers"
 	MetricNameSuccess          = "ModelEventConsumeSuccess"
 	MetricNameFailure          = "ModelEventConsumeFailure"
 )

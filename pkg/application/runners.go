@@ -1,7 +1,7 @@
 package application
 
 import (
-	"github.com/applike/gosoline/pkg/pubsub"
+	"github.com/applike/gosoline/pkg/mdlsub"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/sub"
 )
@@ -24,10 +24,10 @@ func RunSubscriber(transformers sub.TransformerMapTypeVersionFactories, options 
 	app.Run()
 }
 
-func RunPubSubSubscriber(transformers pubsub.TransformerMapTypeVersionFactories) {
+func RunMdlSubscriber(transformers mdlsub.TransformerMapTypeVersionFactories) {
 	app := Default()
 
-	subs := pubsub.NewSubscriberFactory(transformers)
+	subs := mdlsub.NewSubscriberFactory(transformers)
 	app.AddFactory(subs)
 
 	app.Run()

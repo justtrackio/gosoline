@@ -1,4 +1,4 @@
-package pubsub_test
+package mdlsub_test
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package pubsub
+package mdlsub
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactori
 
 func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.Module, error) {
 	subscriberSettings := make(map[string]*SubscriberSettings)
-	config.UnmarshalKey(ConfigKeyPubSubSubscribers, &subscriberSettings)
+	config.UnmarshalKey(ConfigKeyMdlSubSubscribers, &subscriberSettings)
 
 	var err error
 	var transformers ModelTransformers

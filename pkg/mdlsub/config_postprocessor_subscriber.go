@@ -1,4 +1,4 @@
-package pubsub
+package mdlsub
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	cfg.AddPostProcessor(8, "gosoline.pubsub.subscriber", SubscriberConfigPostProcessor)
+	cfg.AddPostProcessor(8, "gosoline.mdlsub.subscriber", SubscriberConfigPostProcessor)
 }
 
 type SubscriberInputConfigPostProcessor func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option
@@ -23,7 +23,7 @@ var subscriberOutputConfigPostProcessors = map[string]SubscriberOutputConfigPost
 }
 
 func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
-	if !config.IsSet(ConfigKeyPubSubSubscribers) {
+	if !config.IsSet(ConfigKeyMdlSubSubscribers) {
 		return false, nil
 	}
 
@@ -32,7 +32,7 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	var outputPostProcessor SubscriberOutputConfigPostProcessor
 
 	subscriberSettingsMap := make(map[string]*SubscriberSettings)
-	config.UnmarshalKey(ConfigKeyPubSubSubscribers, &subscriberSettingsMap)
+	config.UnmarshalKey(ConfigKeyMdlSubSubscribers, &subscriberSettingsMap)
 
 	for name, subscriberSettings := range subscriberSettingsMap {
 		subscriberKey := getSubscriberConfigKey(name)
@@ -120,5 +120,5 @@ func getInputConfigKey(name string) string {
 }
 
 func getSubscriberConfigKey(name string) string {
-	return fmt.Sprintf("%s.%s", ConfigKeyPubSubSubscribers, name)
+	return fmt.Sprintf("%s.%s", ConfigKeyMdlSubSubscribers, name)
 }

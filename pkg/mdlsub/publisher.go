@@ -1,4 +1,4 @@
-package pubsub
+package mdlsub
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ConfigKeyPubSubPublishers = "pubsub.publishers"
+	ConfigKeyMdlSubPublishers = "mdlsub.publishers"
 	TypeCreate                = "create"
 	TypeUpdate                = "update"
 	TypeDelete                = "delete"

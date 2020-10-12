@@ -1,4 +1,4 @@
-package pubsub
+package mdlsub
 
 import (
 	"fmt"
@@ -7,15 +7,15 @@ import (
 )
 
 func init() {
-	cfg.AddPostProcessor(8, "gosoline.pubsub.publisher", PublisherConfigPostProcessor)
+	cfg.AddPostProcessor(8, "gosoline.mdlsub.publisher", PublisherConfigPostProcessor)
 }
 
 func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
-	if !config.IsSet(ConfigKeyPubSubPublishers) {
+	if !config.IsSet(ConfigKeyMdlSubPublishers) {
 		return false, nil
 	}
 
-	publishers := config.GetStringMap(ConfigKeyPubSubPublishers)
+	publishers := config.GetStringMap(ConfigKeyMdlSubPublishers)
 
 	for name := range publishers {
 		publisherKey := getPublisherConfigKey(name)
@@ -66,7 +66,7 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 }
 
 func getPublisherConfigKey(name string) string {
-	return fmt.Sprintf("%s.%s", ConfigKeyPubSubPublishers, name)
+	return fmt.Sprintf("%s.%s", ConfigKeyMdlSubPublishers, name)
 }
 
 func readPublisherSetting(config cfg.Config, name string) *PublisherSettings {
