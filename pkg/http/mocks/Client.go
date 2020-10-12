@@ -181,6 +181,16 @@ func (_m *Client) Put(ctx context.Context, request *http.Request) (*http.Respons
 	return r0, r1
 }
 
+// SetCookie provides a mock function with given fields: c
+func (_m *Client) SetCookie(c *nethttp.Cookie) {
+	_m.Called(c)
+}
+
+// SetCookies provides a mock function with given fields: cs
+func (_m *Client) SetCookies(cs []*nethttp.Cookie) {
+	_m.Called(cs)
+}
+
 // SetProxyUrl provides a mock function with given fields: p
 func (_m *Client) SetProxyUrl(p string) {
 	_m.Called(p)
