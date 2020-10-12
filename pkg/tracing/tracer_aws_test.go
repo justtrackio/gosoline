@@ -53,7 +53,7 @@ func TestAwsTracer_StartSpanFromContextWithTrace(t *testing.T) {
 	assert.Equal(t, trace.Sampled, transChild.GetTrace().Sampled, "the sample decision should match")
 	assert.NotEqual(t, trace.Id, transChild.GetTrace().Id, "the span ids should be different")
 	assert.NotEmpty(t, transChild.GetTrace().GetParentId(), "the parent id of the child transaction should not be empty")
-	assert.Equal(t, trace.Id, transChild.GetTrace().ParentId, "span id of root should match parent id of child")
+	assert.Equal(t, trace.ParentId, transChild.GetTrace().ParentId, "span id of root should match parent id of child")
 }
 
 func getTracer() tracing.Tracer {
