@@ -119,7 +119,7 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 
 	if trace != nil {
 		transaction.awsSpan.segment.TraceID = trace.TraceId
-		transaction.awsSpan.segment.ParentID = trace.Id
+		transaction.awsSpan.segment.ParentID = trace.ParentId
 		transaction.awsSpan.segment.Sampled = trace.Sampled
 
 		return ctx, transaction
