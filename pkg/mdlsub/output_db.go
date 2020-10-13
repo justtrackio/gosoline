@@ -9,8 +9,12 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+const (
+	OutputTypeDb = "db"
+)
+
 func init() {
-	outputFactories["db"] = outputDbFactory
+	outputFactories[OutputTypeDb] = outputDbFactory
 }
 
 func outputDbFactory(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) map[int]Output {

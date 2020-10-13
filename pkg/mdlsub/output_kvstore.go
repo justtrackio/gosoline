@@ -7,8 +7,12 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
+const (
+	OutputTypeKvstore = "kvstore"
+)
+
 func init() {
-	outputFactories["kvstore"] = outputKvstoreFactory
+	outputFactories[OutputTypeKvstore] = outputKvstoreFactory
 }
 
 func outputKvstoreFactory(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) map[int]Output {
@@ -27,16 +31,7 @@ type OutputKvstore struct {
 }
 
 func NewOutputKvstore(config cfg.Config, logger mon.Logger, settings *SubscriberSettings) *OutputKvstore {
-	store := kvstore.NewChainKvStore(config, logger, false, &kvstore.Settings{
-		AppId: cfg.AppId{
-			Project:     settings.TargetModel.Project,
-			Family:      settings.TargetModel.Family,
-			Application: settings.TargetModel.Application,
-		},
-		Name: settings.TargetModel.Name,
-	})
-	store.Add(kvstore.NewRedisKvStore)
-	store.Add(kvstore.NewDdbKvStore)
+	store := kvstore.NewConfigurableKvStore(config, logger, settings.TargetModel.Name)
 
 	return &OutputKvstore{
 		logger: logger,

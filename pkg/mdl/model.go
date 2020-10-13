@@ -39,6 +39,23 @@ func (m *ModelId) PadFromConfig(config ConfigProvider) {
 	}
 }
 
+func ModelIdFromString(str string) (ModelId, error) {
+	parts := strings.Split(str, ".")
+
+	if len(parts) != 4 {
+		return ModelId{}, fmt.Errorf("the model id (%s) should consist out of 4 parts", str)
+	}
+
+	modelId := ModelId{
+		Project:     parts[0],
+		Family:      parts[1],
+		Application: parts[2],
+		Name:        parts[3],
+	}
+
+	return modelId, nil
+}
+
 type Identifiable interface {
 	GetId() *uint
 }

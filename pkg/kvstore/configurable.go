@@ -18,6 +18,7 @@ type ChainConfiguration struct {
 	Project             string        `cfg:"project"`
 	Family              string        `cfg:"family"`
 	Application         string        `cfg:"application"`
+	Type                string        `cfg:"type" default:"chain" validate:"eq=chain"`
 	Elements            []string      `cfg:"elements" validate:"min=1"`
 	Ttl                 time.Duration `cfg:"ttl"`
 	BatchSize           int           `cfg:"batch_size" default:"100" validate:"min=1"`

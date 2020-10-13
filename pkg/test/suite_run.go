@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func RunCase(t *testing.T, suite TestingSuite) {
+func RunSuite(t *testing.T, suite TestingSuite) {
 	suite.SetT(t)
 
 	methodFinder := reflect.TypeOf(suite)
@@ -21,11 +21,31 @@ func RunCase(t *testing.T, suite TestingSuite) {
 			continue
 		}
 
-		runCaseTest(t, suite, method)
+		RunTestCase(t, suite, func(appUnderTest AppUnderTest) {
+			method.Func.Call([]reflect.Value{reflect.ValueOf(suite), reflect.ValueOf(appUnderTest)})
+		})
 	}
 }
 
-func runCaseTest(t *testing.T, suite TestingSuite, method reflect.Method) {
+func filterTestMethod(t *testing.T, method reflect.Method) bool {
+	if ok, _ := regexp.MatchString("^Test", method.Name); !ok {
+		return false
+	}
+
+	if method.Func.Type().NumIn() != 2 {
+		assert.FailNow(t, "invalid test func signature", "test func %s has to have the signature func(app test.AppUnderTest)", method.Name)
+	}
+
+	arg1 := method.Func.Type().In(1)
+
+	if arg1 != reflect.TypeOf((*AppUnderTest)(nil)).Elem() {
+		assert.FailNow(t, "invalid test func signature", "test func %s has to have the signature func(app test.AppUnderTest)", method.Name)
+	}
+
+	return true
+}
+
+func RunTestCase(t *testing.T, suite TestingSuite, testCase func(appUnderTest AppUnderTest)) {
 	suiteOptions := &suiteOptions{}
 
 	for _, opt := range suite.SetupSuite() {
@@ -91,26 +111,7 @@ func runCaseTest(t *testing.T, suite TestingSuite, method reflect.Method) {
 
 	<-app.Running()
 
-	method.Func.Call([]reflect.Value{reflect.ValueOf(suite), reflect.ValueOf(appUnderTest)})
+	testCase(appUnderTest)
 
 	app.Stop("test done")
-}
-
-func filterTestMethod(t *testing.T, method reflect.Method) bool {
-	if ok, _ := regexp.MatchString("^Test", method.Name); !ok {
-		return false
-	}
-
-	if method.Func.Type().NumIn() != 2 {
-		assert.FailNow(t, "invalid test func signature", "test func %s has to have the signature func(app test.AppUnderTest)", method.Name)
-	}
-
-	arg1 := method.Func.Type().In(1)
-
-	if arg1 != reflect.TypeOf((*AppUnderTest)(nil)).Elem() {
-		assert.FailNow(t, "invalid test func signature", "test func %s has to have the signature func(app test.AppUnderTest)", method.Name)
-	}
-
-	return true
-
 }

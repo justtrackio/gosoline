@@ -35,7 +35,7 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	config.UnmarshalKey(ConfigKeyMdlSubSubscribers, &subscriberSettingsMap)
 
 	for name, subscriberSettings := range subscriberSettingsMap {
-		subscriberKey := getSubscriberConfigKey(name)
+		subscriberKey := GetSubscriberConfigKey(name)
 
 		if subscriberSettings.SourceModel.Name == "" {
 			subscriberSettings.SourceModel.Name = name
@@ -95,8 +95,7 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 }
 
 func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
-	kvstoreName := fmt.Sprintf("subscriber-%s", name)
-	kvstoreKey := kvstore.GetConfigurableKey(kvstoreName)
+	kvstoreKey := kvstore.GetConfigurableKey(name)
 
 	kvstoreSettings := &kvstore.ChainConfiguration{}
 	config.UnmarshalDefaults(kvstoreSettings)
@@ -119,6 +118,10 @@ func getInputConfigKey(name string) string {
 	return stream.ConfigurableInputKey(inputName)
 }
 
-func getSubscriberConfigKey(name string) string {
+func GetSubscriberConfigKey(name string) string {
 	return fmt.Sprintf("%s.%s", ConfigKeyMdlSubSubscribers, name)
+}
+
+func GetSubscriberOutputConfigKey(name string) string {
+	return fmt.Sprintf("%s.output", GetSubscriberConfigKey(name))
 }

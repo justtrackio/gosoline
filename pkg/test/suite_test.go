@@ -19,5 +19,5 @@ func (c *Case1) TestSomething(_ test.AppUnderTest) {
 }
 
 func TestRunCase(t *testing.T) {
-	test.RunCase(t, new(Case1))
+	test.RunSuite(t, new(Case1))
 }
