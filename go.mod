@@ -1,7 +1,7 @@
 module github.com/applike/gosoline
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.3.0
+	github.com/DATA-DOG/go-sqlmock v1.4.1
 	github.com/DataDog/zstd v1.4.4 // indirect
 	github.com/Masterminds/squirrel v1.2.0
 	github.com/Microsoft/go-winio v0.4.14 // indirect
@@ -11,10 +11,9 @@ require (
 	github.com/apache/thrift v0.13.0 // indirect
 	github.com/aws/aws-lambda-go v1.13.2
 	github.com/aws/aws-sdk-go v1.19.37
-	github.com/aws/aws-xray-sdk-go v0.9.4
+	github.com/aws/aws-xray-sdk-go v1.1.0
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/certifi/gocertifi v0.0.0-20180118203423-deb3ae2ef261 // indirect
-	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 // indirect
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20190313032549-041949b8d268 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
