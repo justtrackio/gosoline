@@ -10,7 +10,7 @@ require (
 	github.com/alicebob/miniredis v2.4.6+incompatible
 	github.com/apache/thrift v0.13.0 // indirect
 	github.com/aws/aws-lambda-go v1.13.2
-	github.com/aws/aws-sdk-go v1.19.37
+	github.com/aws/aws-sdk-go v1.34.19
 	github.com/aws/aws-xray-sdk-go v1.1.0
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/certifi/gocertifi v0.0.0-20180118203423-deb3ae2ef261 // indirect
@@ -28,7 +28,7 @@ require (
 	github.com/go-playground/locales v0.12.1 // indirect
 	github.com/go-playground/universal-translator v0.16.0 // indirect
 	github.com/go-redis/redis v6.15.1+incompatible
-	github.com/go-sql-driver/mysql v1.4.1
+	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gogo/protobuf v1.2.2-0.20190723190241-65acae22fc9d // indirect
 	github.com/golang-migrate/migrate/v4 v4.2.5
 	github.com/golang/protobuf v1.3.2 // indirect
