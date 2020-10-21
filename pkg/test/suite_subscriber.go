@@ -193,7 +193,7 @@ func (s SubscriberTestSuite) KvstoreTestCase(testCase KvstoreSubscriberTestCase)
 		subscriberTestCase: subscriberTestCase{
 			Name:    testCase.Name,
 			ModelId: modelId,
-			Input:   testCase.Assert,
+			Input:   testCase.Input,
 		},
 		Assert: testCase.Assert,
 	}
