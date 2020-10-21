@@ -105,7 +105,7 @@ func (l *ContextEnforcingLogger) WithContext(ctx context.Context) Logger {
 	return l.logger.WithContext(ctx)
 }
 
-func (l *ContextEnforcingLogger) WithFields(fields map[string]interface{}) Logger {
+func (l *ContextEnforcingLogger) WithFields(fields Fields) Logger {
 	return &ContextEnforcingLogger{
 		logger:             l.logger.WithFields(fields),
 		stacktraceProvider: l.stacktraceProvider,

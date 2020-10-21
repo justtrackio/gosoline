@@ -3,6 +3,7 @@ package cloud_test
 import (
 	configMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/mon"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -46,7 +47,7 @@ func TestGetServiceDiscoveryClient(t *testing.T) {
 
 func TestPrefixedLogger(t *testing.T) {
 	l := monMocks.NewLoggerMock()
-	l.On("WithFields", map[string]interface{}{
+	l.On("WithFields", mon.Fields{
 		"aws_service": "myService",
 	}).Return(l)
 	l.On("Info", "log")

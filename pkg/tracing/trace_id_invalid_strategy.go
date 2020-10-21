@@ -37,7 +37,7 @@ func NewTraceIdErrorWarningStrategyWithInterfaces(logger mon.Logger, stacktraceP
 func (t TraceIdErrorWarningStrategy) TraceIdInvalid(err error) error {
 	stacktrace := t.stacktraceProvider(2)
 
-	t.logger.WithFields(map[string]interface{}{
+	t.logger.WithFields(mon.Fields{
 		"stacktrace": stacktrace,
 	}).Warnf("trace id is invalid: %s", err.Error())
 
