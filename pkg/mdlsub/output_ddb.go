@@ -8,8 +8,12 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
+const (
+	OutputTypeDdb = "ddb"
+)
+
 func init() {
-	outputFactories["ddb"] = outputDdbFactory
+	outputFactories[OutputTypeDdb] = outputDdbFactory
 }
 
 func repoInit(config cfg.Config, logger mon.Logger, settings *SubscriberSettings) func(model interface{}) ddb.Repository {
