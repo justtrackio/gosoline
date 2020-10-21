@@ -18,10 +18,10 @@ func (_m *Logger) Debug(args ...interface{}) {
 	_m.Called(_ca...)
 }
 
-// Debugf provides a mock function with given fields: msg, args
-func (_m *Logger) Debugf(msg string, args ...interface{}) {
+// Debugf provides a mock function with given fields: format, args
+func (_m *Logger) Debugf(format string, args ...interface{}) {
 	var _ca []interface{}
-	_ca = append(_ca, msg)
+	_ca = append(_ca, format)
 	_ca = append(_ca, args...)
 	_m.Called(_ca...)
 }
@@ -31,10 +31,10 @@ func (_m *Logger) Error(err error, msg string) {
 	_m.Called(err, msg)
 }
 
-// Errorf provides a mock function with given fields: err, msg, args
-func (_m *Logger) Errorf(err error, msg string, args ...interface{}) {
+// Errorf provides a mock function with given fields: err, format, args
+func (_m *Logger) Errorf(err error, format string, args ...interface{}) {
 	var _ca []interface{}
-	_ca = append(_ca, err, msg)
+	_ca = append(_ca, err, format)
 	_ca = append(_ca, args...)
 	_m.Called(_ca...)
 }
@@ -44,10 +44,10 @@ func (_m *Logger) Fatal(err error, msg string) {
 	_m.Called(err, msg)
 }
 
-// Fatalf provides a mock function with given fields: err, msg, args
-func (_m *Logger) Fatalf(err error, msg string, args ...interface{}) {
+// Fatalf provides a mock function with given fields: err, format, args
+func (_m *Logger) Fatalf(err error, format string, args ...interface{}) {
 	var _ca []interface{}
-	_ca = append(_ca, err, msg)
+	_ca = append(_ca, err, format)
 	_ca = append(_ca, args...)
 	_m.Called(_ca...)
 }
@@ -59,10 +59,10 @@ func (_m *Logger) Info(args ...interface{}) {
 	_m.Called(_ca...)
 }
 
-// Infof provides a mock function with given fields: msg, args
-func (_m *Logger) Infof(msg string, args ...interface{}) {
+// Infof provides a mock function with given fields: format, args
+func (_m *Logger) Infof(format string, args ...interface{}) {
 	var _ca []interface{}
-	_ca = append(_ca, msg)
+	_ca = append(_ca, format)
 	_ca = append(_ca, args...)
 	_m.Called(_ca...)
 }
@@ -72,10 +72,10 @@ func (_m *Logger) Panic(err error, msg string) {
 	_m.Called(err, msg)
 }
 
-// Panicf provides a mock function with given fields: err, msg, args
-func (_m *Logger) Panicf(err error, msg string, args ...interface{}) {
+// Panicf provides a mock function with given fields: err, format, args
+func (_m *Logger) Panicf(err error, format string, args ...interface{}) {
 	var _ca []interface{}
-	_ca = append(_ca, err, msg)
+	_ca = append(_ca, err, format)
 	_ca = append(_ca, args...)
 	_m.Called(_ca...)
 }
@@ -87,10 +87,10 @@ func (_m *Logger) Warn(args ...interface{}) {
 	_m.Called(_ca...)
 }
 
-// Warnf provides a mock function with given fields: msg, args
-func (_m *Logger) Warnf(msg string, args ...interface{}) {
+// Warnf provides a mock function with given fields: format, args
+func (_m *Logger) Warnf(format string, args ...interface{}) {
 	var _ca []interface{}
-	_ca = append(_ca, msg)
+	_ca = append(_ca, format)
 	_ca = append(_ca, args...)
 	_m.Called(_ca...)
 }
@@ -128,11 +128,11 @@ func (_m *Logger) WithContext(ctx context.Context) mon.Logger {
 }
 
 // WithFields provides a mock function with given fields: fields
-func (_m *Logger) WithFields(fields map[string]interface{}) mon.Logger {
+func (_m *Logger) WithFields(fields mon.Fields) mon.Logger {
 	ret := _m.Called(fields)
 
 	var r0 mon.Logger
-	if rf, ok := ret.Get(0).(func(map[string]interface{}) mon.Logger); ok {
+	if rf, ok := ret.Get(0).(func(mon.Fields) mon.Logger); ok {
 		r0 = rf(fields)
 	} else {
 		if ret.Get(0) != nil {

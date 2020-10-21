@@ -33,7 +33,7 @@ func NewContextMissingWarningLogStrategy(logger mon.Logger) *ContextMissingWarnS
 func (c ContextMissingWarnStrategy) ContextMissing(v interface{}) {
 	stacktrace := mon.GetStackTrace(2)
 
-	c.logger.WithFields(map[string]interface{}{
+	c.logger.WithFields(mon.Fields{
 		"stacktrace": stacktrace,
 	}).Warnf("can not trace the action: %s", v)
 }

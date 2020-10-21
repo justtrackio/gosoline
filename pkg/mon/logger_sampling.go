@@ -49,7 +49,7 @@ func (l *SamplingLogger) WithContext(ctx context.Context) Logger {
 	return l.copy(logger)
 }
 
-func (l *SamplingLogger) WithFields(fields map[string]interface{}) Logger {
+func (l *SamplingLogger) WithFields(fields Fields) Logger {
 	logger := l.Logger.WithFields(fields)
 	return l.copy(logger)
 }

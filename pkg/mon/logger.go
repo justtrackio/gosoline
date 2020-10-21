@@ -73,20 +73,22 @@ type GosoLog interface {
 //go:generate mockery -name Logger
 type Logger interface {
 	Debug(args ...interface{})
-	Debugf(msg string, args ...interface{})
-	Error(err error, msg string)
-	Errorf(err error, msg string, args ...interface{})
-	Fatal(err error, msg string)
-	Fatalf(err error, msg string, args ...interface{})
 	Info(args ...interface{})
-	Infof(msg string, args ...interface{})
-	Panic(err error, msg string)
-	Panicf(err error, msg string, args ...interface{})
 	Warn(args ...interface{})
-	Warnf(msg string, args ...interface{})
+	Error(err error, msg string)
+	Panic(err error, msg string)
+	Fatal(err error, msg string)
+
+	Debugf(format string, args ...interface{})
+	Infof(format string, args ...interface{})
+	Warnf(format string, args ...interface{})
+	Errorf(err error, format string, args ...interface{})
+	Panicf(err error, format string, args ...interface{})
+	Fatalf(err error, format string, args ...interface{})
+
 	WithChannel(channel string) Logger
 	WithContext(ctx context.Context) Logger
-	WithFields(fields map[string]interface{}) Logger
+	WithFields(fields Fields) Logger
 }
 
 type logger struct {
@@ -175,7 +177,7 @@ func (l *logger) WithContext(ctx context.Context) Logger {
 	return cpy
 }
 
-func (l *logger) WithFields(fields map[string]interface{}) Logger {
+func (l *logger) WithFields(fields Fields) Logger {
 	cpy := l.copy()
 	cpy.data.Fields = mergeMapStringInterface(l.data.Fields, fields)
 
