@@ -192,7 +192,7 @@ func (c *changeHistoryManager) rowUpdatedCondition() string {
 	columnNames := c.originalTable.columnNamesQuotedExcludingValue(c.settings.ChangeAuthorField, ColumnUpdatedAt)
 	var conditions []string
 	for _, columnName := range columnNames {
-		condition := fmt.Sprintf("OLD.%s != NEW.%s", columnName, columnName)
+		condition := fmt.Sprintf("NOT (OLD.%s <=> NEW.%s)", columnName, columnName)
 		conditions = append(conditions, condition)
 	}
 	return strings.Join(conditions, " OR ")
