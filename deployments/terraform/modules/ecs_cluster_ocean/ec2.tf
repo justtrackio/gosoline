@@ -77,10 +77,10 @@ EOF
 }
 
 resource "spotinst_ocean_ecs_launch_spec" "ocean" {
-  name                 = "${var.project}-${var.environment}-${var.family}"
-  ocean_id             = spotinst_ocean_ecs.ocean.id
-  image_id             = data.aws_ssm_parameter.ami.value
-  user_data            = <<EOF
+  name      = "${var.project}-${var.environment}-${var.family}"
+  ocean_id  = spotinst_ocean_ecs.ocean.id
+  image_id  = data.aws_ssm_parameter.ami.value
+  user_data = <<EOF
 #!/bin/bash
 echo ECS_INSTANCE_ATTRIBUTES='{"lifecycle":"spot"}' >> /etc/ecs/ecs.config
 echo ECS_CLUSTER=${var.project}-${var.environment}-${var.family} >> /etc/ecs/ecs.config
