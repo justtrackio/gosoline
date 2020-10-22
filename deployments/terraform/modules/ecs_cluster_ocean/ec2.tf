@@ -12,15 +12,11 @@ echo ECS_INSTANCE_ATTRIBUTES='{"lifecycle":"spot"}' >> /etc/ecs/ecs.config
 echo ECS_CLUSTER=${var.project}-${var.environment}-${var.family} >> /etc/ecs/ecs.config
 echo ECS_ENGINE_TASK_CLEANUP_WAIT_DURATION=1m >> /etc/ecs/ecs.config
 echo ECS_NUM_IMAGES_DELETE_PER_CYCLE=100 >> /etc/ecs/ecs.config
-echo ECS_IMAGE_CLEANUP_INTERVAL=10m >> /etc/ecs/ecs.config
-echo ECS_UPDATES_ENABLED=true >> /etc/ecs/ecs.config
-echo ECS_RESERVED_MEMORY=256 >> /etc/ecs/ecs.config
+echo ECS_RESERVED_MEMORY=512 >> /etc/ecs/ecs.config
 echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"json-file\", \"none\", \"gelf\", \"awslogs\", \"fluentd\"] >> /etc/ecs/ecs.config
 echo ECS_ENABLE_CONTAINER_METADATA=true >> /etc/ecs/ecs.config
 echo ECS_ENABLE_UNTRACKED_IMAGE_CLEANUP=true >> /etc/ecs/ecs.config
 echo ECS_ENABLE_SPOT_INSTANCE_DRAINING=true >> /etc/ecs/ecs.config
-echo ECS_CONTAINER_START_TIMEOUT=10m >> /etc/ecs/ecs.config
-
 EOF
 
   image_id             = data.aws_ssm_parameter.ami.value
@@ -90,16 +86,13 @@ echo ECS_INSTANCE_ATTRIBUTES='{"lifecycle":"spot"}' >> /etc/ecs/ecs.config
 echo ECS_CLUSTER=${var.project}-${var.environment}-${var.family} >> /etc/ecs/ecs.config
 echo ECS_ENGINE_TASK_CLEANUP_WAIT_DURATION=1m >> /etc/ecs/ecs.config
 echo ECS_NUM_IMAGES_DELETE_PER_CYCLE=100 >> /etc/ecs/ecs.config
-echo ECS_IMAGE_CLEANUP_INTERVAL=10m >> /etc/ecs/ecs.config
-echo ECS_UPDATES_ENABLED=true >> /etc/ecs/ecs.config
-echo ECS_RESERVED_MEMORY=256 >> /etc/ecs/ecs.config
+echo ECS_RESERVED_MEMORY=512 >> /etc/ecs/ecs.config
 echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"json-file\", \"none\", \"gelf\", \"awslogs\", \"fluentd\"] >> /etc/ecs/ecs.config
 echo ECS_ENABLE_CONTAINER_METADATA=true >> /etc/ecs/ecs.config
 echo ECS_ENABLE_UNTRACKED_IMAGE_CLEANUP=true >> /etc/ecs/ecs.config
 echo ECS_ENABLE_SPOT_INSTANCE_DRAINING=true >> /etc/ecs/ecs.config
-echo ECS_CONTAINER_START_TIMEOUT=10m >> /etc/ecs/ecs.config
-
 EOF
+
   iam_instance_profile = aws_iam_instance_profile.ec2.id
   security_group_ids   = data.aws_security_groups.private.ids
 
@@ -124,15 +117,11 @@ echo ECS_INSTANCE_ATTRIBUTES='{"lifecycle":"od"}' >> /etc/ecs/ecs.config
 echo ECS_CLUSTER=${var.project}-${var.environment}-${var.family} >> /etc/ecs/ecs.config
 echo ECS_ENGINE_TASK_CLEANUP_WAIT_DURATION=1m >> /etc/ecs/ecs.config
 echo ECS_NUM_IMAGES_DELETE_PER_CYCLE=100 >> /etc/ecs/ecs.config
-echo ECS_IMAGE_CLEANUP_INTERVAL=10m >> /etc/ecs/ecs.config
-echo ECS_UPDATES_ENABLED=true >> /etc/ecs/ecs.config
-echo ECS_RESERVED_MEMORY=256 >> /etc/ecs/ecs.config
+echo ECS_RESERVED_MEMORY=512 >> /etc/ecs/ecs.config
 echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"json-file\", \"none\", \"gelf\", \"awslogs\", \"fluentd\"] >> /etc/ecs/ecs.config
 echo ECS_ENABLE_CONTAINER_METADATA=true >> /etc/ecs/ecs.config
 echo ECS_ENABLE_UNTRACKED_IMAGE_CLEANUP=true >> /etc/ecs/ecs.config
 echo ECS_ENABLE_SPOT_INSTANCE_DRAINING=true >> /etc/ecs/ecs.config
-echo ECS_CONTAINER_START_TIMEOUT=10m >> /etc/ecs/ecs.config
-
 EOF
 
   image_id             = data.aws_ssm_parameter.ami.value
