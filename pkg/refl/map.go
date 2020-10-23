@@ -6,6 +6,10 @@ import (
 )
 
 func InterfaceToMapInterfaceInterface(m interface{}) (map[interface{}]interface{}, error) {
+	if mii, ok := m.(map[interface{}]interface{}); ok {
+		return mii, nil
+	}
+
 	mii := make(map[interface{}]interface{})
 
 	v := reflect.ValueOf(m)

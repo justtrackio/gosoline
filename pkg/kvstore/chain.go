@@ -8,64 +8,64 @@ import (
 	"github.com/applike/gosoline/pkg/refl"
 )
 
-type ChainKvStore struct {
+type chainKvStore struct {
 	logger   mon.Logger
 	factory  func(factory Factory, settings *Settings) KvStore
 	chain    []KvStore
 	settings *Settings
 
-	missingCacheEnabled bool
-	missingCache        *InMemoryKvStore
+	missingCache KvStore
 }
 
 var noValue = &struct{}{}
 
-func NewChainKvStore(config cfg.Config, logger mon.Logger, missingCacheEnabled bool, settings *Settings) *ChainKvStore {
+func NewChainKvStore(config cfg.Config, logger mon.Logger, missingCacheEnabled bool, settings *Settings) *chainKvStore {
 	settings.PadFromConfig(config)
 	factory := buildFactory(config, logger)
 
-	var missingCache *InMemoryKvStore
+	var missingCache KvStore
 	if missingCacheEnabled {
-		missingCache = NewInMemoryKvStore(config, logger, settings).(*InMemoryKvStore)
+		missingCacheSettings := *settings
+		missingCacheSettings.Name = fmt.Sprintf("%s-missingCache", settings.Name)
+		missingCache = NewInMemoryKvStore(config, logger, &missingCacheSettings)
+	} else {
+		missingCache = NewEmptyKvStore()
 	}
 
-	return NewChainKvStoreWithInterfaces(logger, factory, missingCacheEnabled, missingCache, settings)
+	return NewChainKvStoreWithInterfaces(logger, factory, missingCache, settings)
 }
 
-func NewChainKvStoreWithInterfaces(logger mon.Logger, factory func(Factory, *Settings) KvStore, missingCacheEnabled bool, missingCache *InMemoryKvStore, settings *Settings) *ChainKvStore {
-	return &ChainKvStore{
-		logger:              logger,
-		factory:             factory,
-		chain:               make([]KvStore, 0),
-		settings:            settings,
-		missingCache:        missingCache,
-		missingCacheEnabled: missingCacheEnabled,
+func NewChainKvStoreWithInterfaces(logger mon.Logger, factory func(Factory, *Settings) KvStore, missingCache KvStore, settings *Settings) *chainKvStore {
+	return &chainKvStore{
+		logger:       logger,
+		factory:      factory,
+		chain:        make([]KvStore, 0),
+		settings:     settings,
+		missingCache: missingCache,
 	}
 }
 
-func (s *ChainKvStore) Add(elementFactory Factory) {
+func (s *chainKvStore) Add(elementFactory Factory) {
 	store := s.factory(elementFactory, s.settings)
 	s.AddStore(store)
 }
 
-func (s *ChainKvStore) AddStore(store KvStore) {
+func (s *chainKvStore) AddStore(store KvStore) {
 	s.chain = append(s.chain, store)
 }
 
-func (s *ChainKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
+func (s *chainKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
 	lastElementIndex := len(s.chain) - 1
 
-	if s.missingCacheEnabled {
-		// check if we can short circuit the whole deal
-		exists, err := s.missingCache.Contains(ctx, key)
+	// check if we can short circuit the whole deal
+	exists, err := s.missingCache.Contains(ctx, key)
 
-		if err != nil {
-			s.logger.WithContext(ctx).Warnf("failed to read from missing value cache: %s", err.Error())
-		}
+	if err != nil {
+		s.logger.WithContext(ctx).Warnf("failed to read from missing value cache: %s", err.Error())
+	}
 
-		if exists {
-			return false, nil
-		}
+	if exists {
+		return false, nil
 	}
 
 	for i, element := range s.chain {
@@ -86,32 +86,27 @@ func (s *ChainKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 	}
 
 	// Cache empty value if no result was found
-	if s.missingCacheEnabled {
-		if err := s.missingCache.Put(ctx, key, noValue); err != nil {
-			s.logger.WithContext(ctx).Warnf("failed to write to missing value cache: %s", err.Error())
-		}
+	if err := s.missingCache.Put(ctx, key, noValue); err != nil {
+		s.logger.WithContext(ctx).Warnf("failed to write to missing value cache: %s", err.Error())
 	}
 
 	return false, nil
 }
 
-func (s *ChainKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
-	if s.missingCacheEnabled {
-		// check if we can short circuit the whole deal
-		exists, err := s.missingCache.Contains(ctx, key)
+func (s *chainKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
+	// check if we can short circuit the whole deal
+	exists, err := s.missingCache.Contains(ctx, key)
 
-		if err != nil {
-			s.logger.WithContext(ctx).Warnf("failed to read from missing value cache: %s", err.Error())
-		}
+	if err != nil {
+		s.logger.WithContext(ctx).Warnf("failed to read from missing value cache: %s", err.Error())
+	}
 
-		if exists {
-			return false, nil
-		}
+	if exists {
+		return false, nil
 	}
 
 	lastElementIndex := len(s.chain) - 1
 	foundInIndex := lastElementIndex + 1
-	var exists bool
 
 	for i, element := range s.chain {
 		var err error
@@ -134,13 +129,11 @@ func (s *ChainKvStore) Get(ctx context.Context, key interface{}, value interface
 	}
 
 	// Cache empty value if no result was found
-	if s.missingCacheEnabled && !exists {
+	if !exists {
 		if err := s.missingCache.Put(ctx, key, noValue); err != nil {
 			s.logger.WithContext(ctx).Warnf("failed to write to missing value cache: %s", err.Error())
 		}
-	}
 
-	if !exists {
 		return false, nil
 	}
 
@@ -156,7 +149,7 @@ func (s *ChainKvStore) Get(ctx context.Context, key interface{}, value interface
 	return true, nil
 }
 
-func (s *ChainKvStore) GetBatch(ctx context.Context, keys interface{}, values interface{}) ([]interface{}, error) {
+func (s *chainKvStore) GetBatch(ctx context.Context, keys interface{}, values interface{}) ([]interface{}, error) {
 	todo, err := refl.InterfaceToInterfaceSlice(keys)
 	var cachedMissing []interface{}
 
@@ -164,17 +157,15 @@ func (s *ChainKvStore) GetBatch(ctx context.Context, keys interface{}, values in
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
 	}
 
-	if s.missingCacheEnabled {
-		cachedMissingMap := make(map[string]interface{})
-		todo, err = s.missingCache.GetBatch(ctx, todo, cachedMissingMap)
+	cachedMissingMap := make(map[string]interface{})
+	todo, err = s.missingCache.GetBatch(ctx, todo, cachedMissingMap)
 
-		if err != nil {
-			s.logger.WithContext(ctx).Warnf("failed to read from missing value cache: %s", err.Error())
-		}
+	if err != nil {
+		s.logger.WithContext(ctx).Warnf("failed to read from missing value cache: %s", err.Error())
+	}
 
-		for k := range cachedMissingMap {
-			cachedMissing = append(cachedMissing, k)
-		}
+	for k := range cachedMissingMap {
+		cachedMissing = append(cachedMissing, k)
 	}
 
 	if len(todo) == 0 {
@@ -239,8 +230,8 @@ func (s *ChainKvStore) GetBatch(ctx context.Context, keys interface{}, values in
 		}
 	}
 
-	// store missing keys if enabled
-	if s.missingCacheEnabled && len(todo) > 0 {
+	// store missing keys
+	if len(todo) > 0 {
 		missingValues := make(map[interface{}]interface{}, len(todo))
 
 		for _, key := range todo {
@@ -261,7 +252,7 @@ func (s *ChainKvStore) GetBatch(ctx context.Context, keys interface{}, values in
 	return missing, nil
 }
 
-func (s *ChainKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
+func (s *chainKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
 	lastElementIndex := len(s.chain) - 1
 
 	for i := 0; i <= lastElementIndex; i++ {
@@ -280,20 +271,24 @@ func (s *ChainKvStore) Put(ctx context.Context, key interface{}, value interface
 	// remove the value from the missing value cache only after we persisted it
 	// otherwise, we might remove it, some other thread adds it again and then we insert
 	// it into the backing stores
-	if s.missingCacheEnabled {
-		if err := s.missingCache.Delete(ctx, key); err != nil {
-			s.logger.WithContext(ctx).Warnf("could not erase cached empty value for key %s: %s", key, err.Error())
-		}
+	if err := s.missingCache.Delete(ctx, key); err != nil {
+		s.logger.WithContext(ctx).Warnf("could not erase cached empty value for key %s: %s", key, err.Error())
 	}
 
 	return nil
 }
 
-func (s *ChainKvStore) PutBatch(ctx context.Context, values interface{}) error {
+func (s *chainKvStore) PutBatch(ctx context.Context, values interface{}) error {
+	mii, err := refl.InterfaceToMapInterfaceInterface(values)
+
+	if err != nil {
+		return fmt.Errorf("can not cast values from %T to map[interface{}]interface{}: %w", values, err)
+	}
+
 	lastElementIndex := len(s.chain) - 1
 
 	for i := 0; i <= lastElementIndex; i++ {
-		err := s.chain[i].PutBatch(ctx, values)
+		err := s.chain[i].PutBatch(ctx, mii)
 
 		if err != nil {
 			// return error only if last element fails
@@ -305,17 +300,39 @@ func (s *ChainKvStore) PutBatch(ctx context.Context, values interface{}) error {
 		}
 	}
 
-	if s.missingCacheEnabled {
-		mii, err := refl.InterfaceToMapInterfaceInterface(values)
+	for key := range mii {
+		if err := s.missingCache.Delete(ctx, key); err != nil {
+			s.logger.WithContext(ctx).Warnf("could not erase cached empty value for key %T %v: %s", key, key, err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (s *chainKvStore) Delete(ctx context.Context, key interface{}) error {
+	for _, store := range s.chain {
+		err := store.Delete(ctx, key)
 
 		if err != nil {
-			return fmt.Errorf("can not cast values from %T to map[interface{}]interface{}: %w", values, err)
-		}
+			// even if we do not fail at the last index, we can't leave something
+			// in a cache but not in the backend store
 
-		for key := range mii {
-			if err := s.missingCache.Delete(ctx, key); err != nil {
-				s.logger.WithContext(ctx).Warnf("could not erase cached empty value for key %T %v: %s", key, key, err.Error())
-			}
+			return fmt.Errorf("could not delete %s from kvstore %T: %w", key, store, err)
+		}
+	}
+
+	return nil
+}
+
+func (s *chainKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
+	for _, store := range s.chain {
+		err := store.DeleteBatch(ctx, keys)
+
+		if err != nil {
+			// even if we do not fail at the last index, we can't leave something
+			// in a cache but not in the backend store
+
+			return fmt.Errorf("could not batch delete from kvstore %T: %w", store, err)
 		}
 	}
 
