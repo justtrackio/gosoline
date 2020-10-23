@@ -4,33 +4,41 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/karlseguin/ccache"
 	"reflect"
+	"sync/atomic"
 	"time"
 )
 
 type InMemoryKvStore struct {
-	cache    *ccache.Cache
-	settings *Settings
+	cache     *ccache.Cache
+	settings  *Settings
+	cacheSize *int64
 }
 
 func NewInMemoryKvStore(_ cfg.Config, _ mon.Logger, settings *Settings) KvStore {
 	return NewInMemoryKvStoreWithInterfaces(settings)
 }
 
-func NewInMemoryKvStoreWithInterfaces(settings *Settings) *InMemoryKvStore {
-	cache := ccache.New(ccache.Configure())
+func NewInMemoryKvStoreWithInterfaces(settings *Settings) KvStore {
+	cacheSize := new(int64)
+	cache := ccache.New(ccache.Configure().OnDelete(func(item *ccache.Item) {
+		// track how many items are still in the cache
+		atomic.AddInt64(cacheSize, -1)
+	}))
 
 	if settings.Ttl.Nanoseconds() == 0 {
 		settings.Ttl = time.Hour
 	}
 
-	return &InMemoryKvStore{
-		cache:    cache,
-		settings: settings,
-	}
+	return NewMetricStoreWithInterfaces(&InMemoryKvStore{
+		cache:     cache,
+		settings:  settings,
+		cacheSize: cacheSize,
+	}, settings)
 }
 
 func (s *InMemoryKvStore) Contains(_ context.Context, key interface{}) (bool, error) {
@@ -130,6 +138,8 @@ func (s *InMemoryKvStore) Put(_ context.Context, key interface{}, value interfac
 
 	s.cache.Set(keyStr, value, s.settings.Ttl)
 
+	atomic.AddInt64(s.cacheSize, 1)
+
 	return nil
 }
 
@@ -149,6 +159,10 @@ func (s *InMemoryKvStore) PutBatch(ctx context.Context, values interface{}) erro
 	return nil
 }
 
+func (s *InMemoryKvStore) EstimateSize() *int64 {
+	return mdl.Int64(atomic.LoadInt64(s.cacheSize))
+}
+
 func (s *InMemoryKvStore) Delete(_ context.Context, key interface{}) error {
 	keyStr, err := CastKeyToString(key)
 
@@ -163,11 +177,12 @@ func (s *InMemoryKvStore) Delete(_ context.Context, key interface{}) error {
 
 func (s *InMemoryKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
+
 	if err != nil {
-		return fmt.Errorf("could not convert keys from %T to []interface{}", keys)
+		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
 	}
 
-	for key := range si {
+	for _, key := range si {
 		if err = s.Delete(ctx, key); err != nil {
 			return fmt.Errorf("can not remove value from in_memory store: %w", err)
 		}

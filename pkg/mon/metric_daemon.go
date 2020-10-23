@@ -188,6 +188,7 @@ func (d *cwDaemon) emptyChannel() {
 		d.appendBatch(data)
 	}
 }
+
 func (d *cwDaemon) appendBatch(data MetricData) {
 	for _, dat := range data {
 		d.append(dat)
