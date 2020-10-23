@@ -236,7 +236,42 @@ func TestDdbKvStore_PutBatch(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
-func buildTestableDdbStore() (*kvstore.DdbKvStore, *ddbMocks.Repository) {
+func TestDdbKvStore_Delete(t *testing.T) {
+	store, repo := buildTestableDdbStore()
+
+	ddbItem := &kvstore.DdbDeleteItem{
+		Key: "foo",
+	}
+	repo.On("DeleteItem", mock.AnythingOfType("*context.emptyCtx"), nil, ddbItem).Return(nil, nil)
+
+	err := store.Delete(context.Background(), "foo")
+
+	assert.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestDdbKvStore_DeleteBatch(t *testing.T) {
+	store, repo := buildTestableDdbStore()
+
+	ddbItems := []*kvstore.DdbDeleteItem{
+		{
+			Key: "foo",
+		},
+		{
+			Key: "fuu",
+		},
+	}
+	repo.On("BatchDeleteItems", mock.AnythingOfType("*context.emptyCtx"), ddbItems).Return(nil, nil)
+
+	items := []string{"foo", "fuu"}
+
+	err := store.DeleteBatch(context.Background(), items)
+
+	assert.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func buildTestableDdbStore() (kvstore.KvStore, *ddbMocks.Repository) {
 	repository := new(ddbMocks.Repository)
 
 	store := kvstore.NewDdbKvStoreWithInterfaces(repository, &kvstore.Settings{

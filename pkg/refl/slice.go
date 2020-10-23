@@ -6,6 +6,10 @@ import (
 )
 
 func InterfaceToInterfaceSlice(in interface{}) ([]interface{}, error) {
+	if si, ok := in.([]interface{}); ok {
+		return si, nil
+	}
+
 	val := reflect.ValueOf(in)
 
 	if val.Kind() == reflect.Ptr {

@@ -27,12 +27,13 @@ type Client interface {
 	Exists(keys ...string) (int64, error)
 	Expire(key string, ttl time.Duration) (bool, error)
 	FlushDB() (string, error)
+	DBSize() (int64, error)
 	Set(key string, value interface{}, ttl time.Duration) error
 	SetNX(key string, value interface{}, ttl time.Duration) (bool, error)
 	MSet(pairs ...interface{}) error
 	Get(key string) (string, error)
 	MGet(keys ...string) ([]interface{}, error)
-	Del(key string) (int64, error)
+	Del(keys ...string) (int64, error)
 
 	BLPop(timeout time.Duration, keys ...string) ([]string, error)
 	LPop(key string) (string, error)
@@ -118,6 +119,15 @@ func (c *redisClient) FlushDB() (string, error) {
 	return cmd.(*baseRedis.StatusCmd).Val(), err
 }
 
+func (c *redisClient) DBSize() (int64, error) {
+
+	cmd, err := c.execute(func() ErrCmder {
+		return c.base.DBSize()
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
 func (c *redisClient) Set(key string, value interface{}, expiration time.Duration) error {
 	_, err := c.execute(func() ErrCmder {
 		return c.base.Set(key, value, expiration)
@@ -176,9 +186,9 @@ func (c *redisClient) HMGet(key string, fields ...string) ([]interface{}, error)
 	return cmd.(*baseRedis.SliceCmd).Val(), err
 }
 
-func (c *redisClient) Del(key string) (int64, error) {
+func (c *redisClient) Del(keys ...string) (int64, error) {
 	cmd, err := c.execute(func() ErrCmder {
-		return c.base.Del(key)
+		return c.base.Del(keys...)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
