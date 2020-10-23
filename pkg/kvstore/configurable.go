@@ -23,6 +23,7 @@ type ChainConfiguration struct {
 	Ttl                 time.Duration `cfg:"ttl"`
 	BatchSize           int           `cfg:"batch_size" default:"100" validate:"min=1"`
 	MissingCacheEnabled bool          `cfg:"missing_cache_enabled" default:"false"`
+	MetricsEnabled      bool          `cfg:"metrics_enabled" default:"false"`
 }
 
 func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) KvStore {
@@ -51,9 +52,10 @@ func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string
 			Family:      configuration.Family,
 			Application: configuration.Application,
 		},
-		Name:      name,
-		Ttl:       configuration.Ttl,
-		BatchSize: configuration.BatchSize,
+		Name:           name,
+		Ttl:            configuration.Ttl,
+		BatchSize:      configuration.BatchSize,
+		MetricsEnabled: configuration.MetricsEnabled,
 	})
 
 	for _, element := range configuration.Elements {

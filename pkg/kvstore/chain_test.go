@@ -382,13 +382,48 @@ func TestChainKvStore_PutBatch(t *testing.T) {
 			Body: "bar",
 		},
 	}
+	itemsII := map[interface{}]interface{}{}
+	for k, v := range items {
+		itemsII[k] = v
+	}
 
 	store, element0, element1 := buildTestableChainStore(false)
 
-	element0.On("PutBatch", ctx, items).Return(nil).Once()
-	element1.On("PutBatch", ctx, items).Return(nil).Once()
+	element0.On("PutBatch", ctx, itemsII).Return(nil).Once()
+	element1.On("PutBatch", ctx, itemsII).Return(nil).Once()
 
 	err := store.PutBatch(ctx, items)
+
+	assert.NoError(t, err)
+	element0.AssertExpectations(t)
+	element1.AssertExpectations(t)
+}
+
+func TestChainKvStore_Delete(t *testing.T) {
+	ctx := context.Background()
+
+	store, element0, element1 := buildTestableChainStore(false)
+
+	element0.On("Delete", ctx, "foo").Return(nil).Once()
+	element1.On("Delete", ctx, "foo").Return(nil).Once()
+
+	err := store.Delete(ctx, "foo")
+
+	assert.NoError(t, err)
+	element0.AssertExpectations(t)
+	element1.AssertExpectations(t)
+}
+
+func TestChainKvStore_DeleteBatch(t *testing.T) {
+	ctx := context.Background()
+	items := []string{"fuu", "foo"}
+
+	store, element0, element1 := buildTestableChainStore(false)
+
+	element0.On("DeleteBatch", ctx, items).Return(nil).Once()
+	element1.On("DeleteBatch", ctx, items).Return(nil).Once()
+
+	err := store.DeleteBatch(ctx, items)
 
 	assert.NoError(t, err)
 	element0.AssertExpectations(t)
@@ -399,7 +434,7 @@ func nilFactory(_ kvstore.Factory, _ *kvstore.Settings) kvstore.KvStore {
 	return nil
 }
 
-func buildTestableChainStore(missingCacheEnabled bool) (*kvstore.ChainKvStore, *kvStoreMocks.KvStore, *kvStoreMocks.KvStore) {
+func buildTestableChainStore(missingCacheEnabled bool) (kvstore.KvStore, *kvStoreMocks.KvStore, *kvStoreMocks.KvStore) {
 	logger := monMocks.NewLoggerMockedAll()
 
 	element0 := new(kvStoreMocks.KvStore)
@@ -416,12 +451,14 @@ func buildTestableChainStore(missingCacheEnabled bool) (*kvstore.ChainKvStore, *
 		BatchSize: 100,
 	}
 
-	var missingCache *kvstore.InMemoryKvStore
+	var missingCache kvstore.KvStore
 	if missingCacheEnabled {
 		missingCache = kvstore.NewInMemoryKvStoreWithInterfaces(settings)
+	} else {
+		missingCache = kvstore.NewEmptyKvStore()
 	}
 
-	store := kvstore.NewChainKvStoreWithInterfaces(logger, nilFactory, missingCacheEnabled, missingCache, settings)
+	store := kvstore.NewChainKvStoreWithInterfaces(logger, nilFactory, missingCache, settings)
 
 	store.AddStore(element0)
 	store.AddStore(element1)

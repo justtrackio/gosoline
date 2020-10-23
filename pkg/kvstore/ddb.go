@@ -16,7 +16,11 @@ type DdbItem struct {
 	Value string `json:"value"`
 }
 
-type DdbKvStore struct {
+type DdbDeleteItem struct {
+	Key string `json:"key" ddb:"key=hash"`
+}
+
+type ddbKvStore struct {
 	repository ddb.Repository
 	settings   *Settings
 }
@@ -47,14 +51,14 @@ func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvS
 	return NewDdbKvStoreWithInterfaces(repository, settings)
 }
 
-func NewDdbKvStoreWithInterfaces(repository ddb.Repository, settings *Settings) *DdbKvStore {
-	return &DdbKvStore{
+func NewDdbKvStoreWithInterfaces(repository ddb.Repository, settings *Settings) KvStore {
+	return NewMetricStoreWithInterfaces(&ddbKvStore{
 		repository: repository,
 		settings:   settings,
-	}
+	}, settings)
 }
 
-func (s *DdbKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
+func (s *ddbKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
@@ -72,7 +76,7 @@ func (s *DdbKvStore) Contains(ctx context.Context, key interface{}) (bool, error
 	return res.IsFound, nil
 }
 
-func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
+func (s *ddbKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
@@ -102,11 +106,11 @@ func (s *DdbKvStore) Get(ctx context.Context, key interface{}, value interface{}
 	return true, nil
 }
 
-func (s *DdbKvStore) GetBatch(ctx context.Context, keys interface{}, result interface{}) ([]interface{}, error) {
+func (s *ddbKvStore) GetBatch(ctx context.Context, keys interface{}, result interface{}) ([]interface{}, error) {
 	return getBatch(ctx, keys, result, s.getChunk, s.settings.BatchSize)
 }
 
-func (s *DdbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
+func (s *ddbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
 	var err error
 
 	keyStrings := make([]string, len(keys))
@@ -162,7 +166,7 @@ func (s *DdbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []i
 	return missing, nil
 }
 
-func (s *DdbKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
+func (s *ddbKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
@@ -189,7 +193,7 @@ func (s *DdbKvStore) Put(ctx context.Context, key interface{}, value interface{}
 	return nil
 }
 
-func (s *DdbKvStore) PutBatch(ctx context.Context, values interface{}) error {
+func (s *ddbKvStore) PutBatch(ctx context.Context, values interface{}) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 
 	if err != nil {
@@ -235,6 +239,54 @@ func (s *DdbKvStore) PutBatch(ctx context.Context, values interface{}) error {
 
 	if err != nil {
 		return fmt.Errorf("not able to put values into ddb store: %w", err)
+	}
+
+	return nil
+}
+
+func (s *ddbKvStore) Delete(ctx context.Context, key interface{}) error {
+	keyStr, err := CastKeyToString(key)
+
+	if err != nil {
+		return fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
+	}
+
+	_, err = s.repository.DeleteItem(ctx, nil, &DdbDeleteItem{
+		Key: keyStr,
+	})
+
+	if err != nil {
+		return fmt.Errorf("can not delete item %s from ddb store: %w", keyStr, err)
+	}
+
+	return nil
+}
+
+func (s *ddbKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
+	si, err := refl.InterfaceToInterfaceSlice(keys)
+
+	if err != nil {
+		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
+	}
+
+	items := make([]*DdbDeleteItem, len(si))
+
+	for i, key := range si {
+		keyStr, err := CastKeyToString(key)
+
+		if err != nil {
+			return fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
+		}
+
+		items[i] = &DdbDeleteItem{
+			Key: keyStr,
+		}
+	}
+
+	_, err = s.repository.BatchDeleteItems(ctx, items)
+
+	if err != nil {
+		return fmt.Errorf("can not delete values from ddb store: %w", err)
 	}
 
 	return nil
