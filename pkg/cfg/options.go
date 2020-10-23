@@ -29,13 +29,13 @@ func WithConfigFileFlag(flagName string) Option {
 	}
 }
 
-func WithConfigMap(settings map[string]interface{}, mergeOptions ...MapOption) Option {
+func WithConfigMap(settings map[string]interface{}, mergeOptions ...MergeOption) Option {
 	return func(cfg *config) error {
 		return cfg.merge(".", settings, mergeOptions...)
 	}
 }
 
-func WithConfigSetting(key string, settings interface{}, mergeOptions ...MapOption) Option {
+func WithConfigSetting(key string, settings interface{}, mergeOptions ...MergeOption) Option {
 	return func(cfg *config) error {
 		return cfg.merge(key, settings, mergeOptions...)
 	}

@@ -1,89 +1,107 @@
-package cfg
+package mapx
 
 import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 )
 
-const PathSeparator = "."
-const arrayAccessRegexString = `^(.+)\[([0-9]+)\]$`
+const (
+	PathSeparator          = "."
+	arrayAccessRegexString = `^(.+)\[([0-9]+)\]$`
+)
+
+type Msier interface {
+	Msi() map[string]interface{}
+}
 
 var arrayAccessRegex = regexp.MustCompile(arrayAccessRegexString)
 
-type Map struct {
+type MapX struct {
 	lck sync.Mutex
-	msi map[string]interface{}
+	msn map[string]*MapXNode
 }
 
-func NewMap(msis ...map[string]interface{}) *Map {
-	m := &Map{
-		msi: make(map[string]interface{}),
+func NewMapX(msis ...map[string]interface{}) *MapX {
+	m := &MapX{
+		msn: make(map[string]*MapXNode),
 	}
 
 	if len(msis) > 0 {
-		m.msi = msis[0]
+		m.msn = msiToMsn(msis[0])
 	}
 
 	return m
 }
 
-func (m *Map) Msi() map[string]interface{} {
-	return m.msi
+func (m *MapX) Msi() map[string]interface{} {
+	return nodeMsnToMsi(m.msn)
 }
 
-func (m *Map) Get(selector string) interface{} {
+func (m *MapX) Keys() []string {
+	keys := make([]string, 0, len(m.msn))
+
+	for k := range m.msn {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
+}
+
+func (m *MapX) Get(selector string) *MapXNode {
 	m.lck.Lock()
 	defer m.lck.Unlock()
 
-	return m.access(m.msi, selector, nil, &mapMode{})
+	val := m.access(m.msn, selector, nil, &OpMode{})
+
+	return &MapXNode{value: val}
 }
 
-func (m *Map) Has(selector string) bool {
+func (m *MapX) Has(selector string) bool {
 	m.lck.Lock()
 
-	if len(m.msi) == 0 {
+	if len(m.msn) == 0 {
 		m.lck.Unlock()
 		return false
 	}
 
 	m.lck.Unlock()
 
-	return m.Get(selector) != nil
+	return m.Get(selector).value != nil
 }
 
-func (m *Map) Set(key string, value interface{}, options ...MapOption) {
+func (m *MapX) Set(key string, value interface{}, options ...MapOption) {
 	m.lck.Lock()
 	defer m.lck.Unlock()
 
-	mode := &mapMode{
-		isSet: true,
+	mode := &OpMode{
+		IsSet: true,
 	}
 
 	for _, opt := range options {
 		opt(mode)
 	}
 
-	if msi, ok := value.(map[string]interface{}); ok && key == "." {
-		for k, v := range msi {
-			if _, ok := m.msi[k]; ok && mode.skipExisting {
-				continue
-			}
-
-			m.msi[k] = v
-		}
-		return
+	switch msier := value.(type) {
+	case Msier:
+		msi := msier.Msi()
+		value = msiToMsn(msi)
+	case map[string]interface{}:
+		value = msiToMsn(msier)
 	}
 
-	m.access(m.msi, key, value, mode)
+	m.access(m.msn, key, value, mode)
 }
 
 // access accesses the object using the selector and performs the
 // appropriate action.
-func (m *Map) access(current interface{}, selector string, value interface{}, mode *mapMode) interface{} {
+func (m *MapX) access(current interface{}, selector string, value interface{}, mode *OpMode) interface{} {
 	selector = strings.Trim(selector, ".")
 	selSegs := strings.SplitN(selector, PathSeparator, 2)
 
@@ -96,41 +114,45 @@ func (m *Map) access(current interface{}, selector string, value interface{}, mo
 
 	// get the object in question
 	switch current.(type) {
-	case map[string]interface{}:
-		curMSI := current.(map[string]interface{})
+	case map[string]*MapXNode:
+		curMsn := current.(map[string]*MapXNode)
 
-		if len(selSegs) <= 1 && mode.isSet {
-			m.doSet(curMSI, thisSel, index, value, mode)
+		if len(selSegs) <= 1 && mode.IsSet {
+			m.doSet(curMsn, thisSel, index, value, mode)
 			return nil
 		}
 
-		_, ok := curMSI[thisSel].(map[string]interface{})
-		if (curMSI[thisSel] == nil || !ok) && index == -1 && mode.isSet {
-			curMSI[thisSel] = map[string]interface{}{}
+		// check if items exist on get
+		if curMsn[thisSel] == nil && !mode.IsSet {
+			return nil
+		}
+
+		if curMsn[thisSel] == nil && index == -1 && mode.IsSet {
+			curMsn[thisSel] = &MapXNode{value: make(map[string]*MapXNode)}
 		}
 
 		// create new array if missing
-		if curMSI[thisSel] == nil && mode.isSet && index > -1 {
+		if curMsn[thisSel] == nil && mode.IsSet && index > -1 {
 			// type of interface{}
 			at := reflect.TypeOf((*interface{})(nil)).Elem()
 			st := reflect.SliceOf(at)
 			sv := reflect.MakeSlice(st, 0, 4)
 
 			array := sv.Interface().([]interface{})
-			if index >= len(array) && mode.isSet {
+			if index >= len(array) && mode.IsSet {
 				m.fillSlice(&array, index, len(selSegs), value)
 			}
 
-			curMSI[thisSel] = array
+			curMsn[thisSel] = &MapXNode{value: array}
 		}
 
 		// expand existing array
-		if array, ok := curMSI[thisSel].([]interface{}); ok && mode.isSet && index > -1 && index >= len(array) {
+		if array, ok := curMsn[thisSel].value.([]interface{}); ok && mode.IsSet && index > -1 && index >= len(array) {
 			m.fillSlice(&array, index, len(selSegs), value)
-			curMSI[thisSel] = array
+			curMsn[thisSel] = &MapXNode{value: array}
 		}
 
-		current = curMSI[thisSel]
+		current = curMsn[thisSel].value
 	default:
 		current = nil
 	}
@@ -153,11 +175,11 @@ func (m *Map) access(current interface{}, selector string, value interface{}, mo
 	return current
 }
 
-func (m *Map) doSet(current map[string]interface{}, key string, index int, value interface{}, mode *mapMode) {
+func (m *MapX) doSet(current map[string]*MapXNode, key string, index int, value interface{}, mode *OpMode) {
 	reflectValue := reflect.ValueOf(value)
 
 	if index < 0 && reflectValue.Kind() == reflect.Slice {
-		if _, ok := current[key]; ok && mode.skipExisting {
+		if _, ok := current[key]; ok && mode.SkipExisting {
 			return
 		}
 
@@ -166,11 +188,11 @@ func (m *Map) doSet(current map[string]interface{}, key string, index int, value
 	}
 
 	if index < 0 {
-		if _, ok := current[key]; ok && mode.skipExisting {
+		if _, ok := current[key]; ok && mode.SkipExisting {
 			return
 		}
 
-		current[key] = value
+		current[key] = interfaceToMapNode(value)
 		return
 	}
 
@@ -178,15 +200,15 @@ func (m *Map) doSet(current map[string]interface{}, key string, index int, value
 		array := make([]interface{}, index+1)
 		array[index] = value
 
-		current[key] = array
+		current[key] = &MapXNode{value: array}
 		return
 	}
 
-	array := current[key]
+	array := current[key].value
 	arrayValue := reflect.ValueOf(array)
 
 	if index < arrayValue.Len() {
-		if mode.skipExisting {
+		if mode.SkipExisting {
 			return
 		}
 
@@ -199,26 +221,26 @@ func (m *Map) doSet(current map[string]interface{}, key string, index int, value
 	}
 
 	arrayValue.Index(index).Set(reflectValue)
-	current[key] = arrayValue.Interface()
+	current[key] = &MapXNode{value: arrayValue.Interface()}
 	return
 }
 
-func (m *Map) doSetSlice(current map[string]interface{}, key string, value reflect.Value) {
+func (m *MapX) doSetSlice(current map[string]*MapXNode, key string, value reflect.Value) {
 	sl := make([]interface{}, value.Len())
 
 	for i := 0; i < value.Len(); i++ {
 		sl[i] = value.Index(i).Interface()
 	}
 
-	current[key] = sl
+	current[key] = &MapXNode{value: sl}
 }
 
-func (m *Map) fillSlice(array *[]interface{}, index int, segmentCount int, value interface{}) {
+func (m *MapX) fillSlice(array *[]interface{}, index int, segmentCount int, value interface{}) {
 	va := reflect.ValueOf(array).Elem()
 	vv := reflect.ValueOf(value)
 
 	if segmentCount > 1 {
-		vv = reflect.ValueOf(map[string]interface{}{})
+		vv = reflect.ValueOf(map[string]*MapXNode{})
 	} else {
 		vv = reflect.Zero(vv.Type())
 	}
@@ -227,7 +249,7 @@ func (m *Map) fillSlice(array *[]interface{}, index int, segmentCount int, value
 		var nv reflect.Value
 
 		if segmentCount > 1 {
-			nv = reflect.ValueOf(map[string]interface{}{})
+			nv = reflect.ValueOf(map[string]*MapXNode{})
 		} else {
 			nv = reflect.Zero(vv.Type())
 		}
@@ -236,7 +258,11 @@ func (m *Map) fillSlice(array *[]interface{}, index int, segmentCount int, value
 	}
 }
 
-func (m *Map) Merge(key string, source interface{}, options ...MapOption) {
+func (m *MapX) Merge(key string, source interface{}, options ...MapOption) {
+	if msier, ok := source.(Msier); ok {
+		source = msier.Msi()
+	}
+
 	sourceValue := reflect.ValueOf(source)
 
 	var mapIter *reflect.MapIter
@@ -244,12 +270,12 @@ func (m *Map) Merge(key string, source interface{}, options ...MapOption) {
 	var elementValue interface{}
 
 	if sourceValue.Kind() == reflect.Map {
-		if !m.Has(key) {
+		if !m.Has(key) && sourceValue.Len() == 0 {
 			m.Set(key, map[string]interface{}{}, options...)
+			return
 		}
 
 		mapIter = sourceValue.MapRange()
-
 		for mapIter.Next() {
 			elementKey = fmt.Sprintf("%s.%s", key, mapIter.Key())
 			elementValue = mapIter.Value().Interface()

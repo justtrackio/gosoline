@@ -1,39 +1,22 @@
 package cfg
 
-import (
-	"fmt"
-	"github.com/imdario/mergo"
-)
+import "github.com/applike/gosoline/pkg/mapx"
 
-type UnmarshalDefaults func(config Config, finalSettings *map[string]interface{}) error
+type UnmarshalDefaults func(config Config, finalSettings *mapx.MapX)
 
 func UnmarshalWithDefaultsFromKey(sourceKey string, targetKey string) UnmarshalDefaults {
-	return func(config Config, finalSettings *map[string]interface{}) error {
+	return func(config Config, finalSettings *mapx.MapX) {
 		if !config.IsSet(sourceKey) {
-			return nil
+			return
 		}
 
 		sourceValues := config.Get(sourceKey)
-
-		if msi, ok := sourceValues.(map[string]interface{}); ok {
-			sourceMsi := NewMap()
-			sourceMsi.Set(targetKey, msi)
-
-			if err := mergo.Merge(finalSettings, sourceMsi.Msi(), mergo.WithOverride); err != nil {
-				return err
-			}
-
-			return nil
-		}
-
-		return fmt.Errorf("source values should be a msi")
+		finalSettings.Merge(targetKey, sourceValues)
 	}
 }
 
 func UnmarshalWithDefaultForKey(targetKey string, setting interface{}) UnmarshalDefaults {
-	return func(config Config, finalSettings *map[string]interface{}) error {
-		(*finalSettings)[targetKey] = setting
-
-		return nil
+	return func(config Config, finalSettings *mapx.MapX) {
+		finalSettings.Set(targetKey, setting)
 	}
 }

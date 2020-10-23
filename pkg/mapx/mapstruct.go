@@ -1,36 +1,35 @@
-package cfg
+package mapx
 
 import (
 	"fmt"
 	"github.com/spf13/cast"
-	"github.com/stretchr/objx"
 	"reflect"
 	"strings"
 	"time"
 )
 
-type MapStructSettings struct {
+type MapXStructSettings struct {
 	FieldTag   string
 	DefaultTag string
 	Casters    []MapStructCaster
 	Decoders   []MapStructDecoder
 }
 
-type MapStruct struct {
+type MapXStruct struct {
 	target   interface{}
 	casters  []MapStructCaster
 	decoders []MapStructDecoder
-	settings *MapStructSettings
+	settings *MapXStructSettings
 }
 
-func NewMapStruct(source interface{}, settings *MapStructSettings) (*MapStruct, error) {
+func NewMapStruct(source interface{}, settings *MapXStructSettings) (*MapXStruct, error) {
 	st := reflect.TypeOf(source)
 
 	if st.Kind() != reflect.Ptr {
 		return nil, fmt.Errorf("the target value has to be a pointer")
 	}
 
-	return &MapStruct{
+	return &MapXStruct{
 		target:   source,
 		casters:  append([]MapStructCaster{}, settings.Casters...),
 		decoders: append([]MapStructDecoder{}, settings.Decoders...),
@@ -38,20 +37,21 @@ func NewMapStruct(source interface{}, settings *MapStructSettings) (*MapStruct, 
 	}, nil
 }
 
-func (m *MapStruct) ReadZeroAndDefaultValues() (objx.Map, objx.Map, error) {
+func (m *MapXStruct) ReadZeroAndDefaultValues() (*MapX, *MapX, error) {
 	sv := reflect.ValueOf(m.target).Elem().Interface()
 
 	return m.doReadZeroAndDefaultValues(sv)
 }
 
-func (m *MapStruct) doReadZeroAndDefaultValues(target interface{}) (objx.Map, objx.Map, error) {
+func (m *MapXStruct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, error) {
 	st := reflect.TypeOf(target)
 	sv := reflect.ValueOf(target)
 
 	var err error
 	var cfg, val string
 	var ok bool
-	var values, defaults = objx.Map{}, objx.Map{}
+	var zeroValue, defValue interface{}
+	var values, defaults = NewMapX(), NewMapX()
 
 	for i := 0; i < st.NumField(); i++ {
 		targetField := st.Field(i)
@@ -69,8 +69,8 @@ func (m *MapStruct) doReadZeroAndDefaultValues(target interface{}) (objx.Map, ob
 				return nil, nil, fmt.Errorf("can not read from embedded field %s", targetField.Name)
 			}
 
-			values.MergeHere(embeddedZeros.Value().MSI())
-			defaults.MergeHere(embeddedDefaults.Value().MSI())
+			values.Merge(".", embeddedZeros.Msi())
+			defaults.Merge(".", embeddedDefaults.Msi())
 
 			continue
 		}
@@ -85,38 +85,44 @@ func (m *MapStruct) doReadZeroAndDefaultValues(target interface{}) (objx.Map, ob
 			if err != nil {
 				return nil, nil, fmt.Errorf("can not read from nested field %s", targetField.Name)
 			}
-			values[cfg] = v.Value().MSI()
-			defaults[cfg] = d.Value().MSI()
+
+			values.Set(cfg, v.Msi())
+			defaults.Set(cfg, d.Msi())
 
 			continue
 		}
 
 		if targetField.Type.Kind() == reflect.Slice {
-			values[cfg] = reflect.MakeSlice(targetField.Type, 0, 4).Interface()
+			zeroValue = reflect.MakeSlice(targetField.Type, 0, 4).Interface()
+			values.Set(cfg, zeroValue)
 			continue
 		}
 
 		if targetField.Type.Kind() == reflect.Map {
-			values[cfg] = reflect.MakeMap(targetField.Type).Interface()
+			zeroValue = reflect.MakeMap(targetField.Type).Interface()
+			values.Set(cfg, zeroValue)
 			continue
 		}
 
-		values[cfg] = reflect.Zero(targetField.Type).Interface()
+		zeroValue = reflect.Zero(targetField.Type).Interface()
+		values.Set(cfg, zeroValue)
 
 		if val, ok = targetField.Tag.Lookup(m.settings.DefaultTag); !ok {
 			continue
 		}
 
-		if defaults[cfg], err = m.cast(targetField.Type, val); err != nil {
+		if defValue, err = m.cast(targetField.Type, val); err != nil {
 			return nil, nil, fmt.Errorf("can not read default from field %s: %w", cfg, err)
 		}
+
+		defaults.Set(cfg, defValue)
 	}
 
 	return values, defaults, nil
 }
 
-func (m *MapStruct) Read() (*Map, error) {
-	mapValues := NewMap()
+func (m *MapXStruct) Read() (*MapX, error) {
+	mapValues := NewMapX()
 
 	if err := m.doReadStruct("", mapValues, m.target); err != nil {
 		return nil, err
@@ -125,7 +131,7 @@ func (m *MapStruct) Read() (*Map, error) {
 	return mapValues, nil
 }
 
-func (m *MapStruct) doReadMap(path string, mapValues *Map, mp interface{}) error {
+func (m *MapXStruct) doReadMap(path string, mapValues *MapX, mp interface{}) error {
 	if _, ok := mp.(map[string]interface{}); ok {
 		return m.doReadMsi(path, mapValues, mp.(map[string]interface{}))
 	}
@@ -153,7 +159,7 @@ func (m *MapStruct) doReadMap(path string, mapValues *Map, mp interface{}) error
 	return nil
 }
 
-func (m *MapStruct) doReadMsi(path string, mapValues *Map, msi map[string]interface{}) error {
+func (m *MapXStruct) doReadMsi(path string, mapValues *MapX, msi map[string]interface{}) error {
 	for k, v := range msi {
 		elementPath := fmt.Sprintf("%s.%s", path, k)
 		mapValues.Set(elementPath, v)
@@ -162,7 +168,7 @@ func (m *MapStruct) doReadMsi(path string, mapValues *Map, msi map[string]interf
 	return nil
 }
 
-func (m *MapStruct) doReadSlice(path string, mapValues *Map, slice reflect.Value) error {
+func (m *MapXStruct) doReadSlice(path string, mapValues *MapX, slice reflect.Value) error {
 	sl := make([]interface{}, 0, slice.Len())
 	mapValues.Set(path, sl)
 
@@ -199,7 +205,7 @@ func (m *MapStruct) doReadSlice(path string, mapValues *Map, slice reflect.Value
 	return nil
 }
 
-func (m *MapStruct) doReadStruct(path string, mapValues *Map, target interface{}) error {
+func (m *MapXStruct) doReadStruct(path string, mapValues *MapX, target interface{}) error {
 	targetType := reflect.TypeOf(target)
 	targetValue := reflect.ValueOf(target)
 
@@ -273,11 +279,11 @@ func (m *MapStruct) doReadStruct(path string, mapValues *Map, target interface{}
 	return nil
 }
 
-func (m *MapStruct) Write(values map[string]interface{}) error {
+func (m *MapXStruct) Write(values *MapX) error {
 	return m.doWrite(m.target, values)
 }
 
-func (m *MapStruct) doWrite(target interface{}, sourceValues objx.Map) error {
+func (m *MapXStruct) doWrite(target interface{}, sourceValues *MapX) error {
 	st := reflect.TypeOf(target)
 	sv := reflect.ValueOf(target)
 
@@ -358,7 +364,7 @@ func (m *MapStruct) doWrite(target interface{}, sourceValues objx.Map) error {
 	return nil
 }
 
-func (m *MapStruct) doWriteAnonymous(cfg string, targetValue reflect.Value, sourceValues objx.Map) error {
+func (m *MapXStruct) doWriteAnonymous(cfg string, targetValue reflect.Value, sourceValues *MapX) error {
 	element := reflect.New(targetValue.Type())
 	elementInterface := element.Interface()
 
@@ -372,49 +378,54 @@ func (m *MapStruct) doWriteAnonymous(cfg string, targetValue reflect.Value, sour
 	return nil
 }
 
-func (m *MapStruct) doWriteMap(cfg string, targetValue reflect.Value, sourceValues objx.Map) error {
+func (m *MapXStruct) doWriteMap(cfg string, targetValue reflect.Value, sourceMap *MapX) error {
 	var err error
+	var elementValue reflect.Value
+	var elementMap *MapX
 	var finalValue interface{}
-	var sourceValue = sourceValues.Get(cfg).Data()
+	var sourceData = sourceMap.Get(cfg).Data()
 
-	mlv := reflect.ValueOf(sourceValue)
+	sourceValue := reflect.ValueOf(sourceData)
 	targetValue.Set(reflect.MakeMap(targetValue.Type()))
 
-	if mlv.Kind() != reflect.Map {
-		return fmt.Errorf("value for field %s has to be a map but instead is %T", cfg, sourceValue)
+	if sourceValue.Kind() != reflect.Map {
+		return fmt.Errorf("value for field %s has to be a map but instead is %T", cfg, sourceData)
 	}
 
-	for _, key := range mlv.MapKeys() {
+	for _, key := range sourceValue.MapKeys() {
 		selector := fmt.Sprintf("%s.%s", cfg, key.String())
-		elementValueX := sourceValues.Get(selector)
+		elementData := sourceMap.Get(selector)
 
-		switch elementValueX.Data().(type) {
-		case map[string]interface{}:
-			element := reflect.New(targetValue.Type().Elem())
-			elementInterface := element.Interface()
+		if elementData.IsMap() {
+			elementValue = reflect.New(targetValue.Type().Elem())
+			elementInterface := elementValue.Interface()
 
-			if err = m.doWrite(elementInterface, elementValueX.MSI()); err != nil {
+			if elementMap, err = elementData.Map(); err != nil {
+				return fmt.Errorf("element of field %s is not of type map: %w", cfg, err)
+			}
+
+			if err = m.doWrite(elementInterface, elementMap); err != nil {
 				return fmt.Errorf("can not write map element of field %s: %w", cfg, err)
 			}
 
-			indirect := reflect.Indirect(element)
-			targetValue.SetMapIndex(key, indirect)
-		default:
-			targetMapElementType := targetValue.Type().Elem()
-			elementValue := elementValueX.Data()
-
-			if finalValue, err = m.decodeAndCastValue(targetMapElementType, elementValue); err != nil {
-				return fmt.Errorf("can not decode and cast value for key %s: %w", cfg, err)
-			}
-
-			targetValue.SetMapIndex(key, reflect.ValueOf(finalValue))
+			targetValue.SetMapIndex(key, elementValue.Elem())
+			continue
 		}
+
+		targetMapElementType := targetValue.Type().Elem()
+		elementValue := elementData.Data()
+
+		if finalValue, err = m.decodeAndCastValue(targetMapElementType, elementValue); err != nil {
+			return fmt.Errorf("can not decode and cast value for key %s: %w", cfg, err)
+		}
+
+		targetValue.SetMapIndex(key, reflect.ValueOf(finalValue))
 	}
 
 	return nil
 }
 
-func (m *MapStruct) doWriteSlice(cfg string, targetValue reflect.Value, sourceValues objx.Map) error {
+func (m *MapXStruct) doWriteSlice(cfg string, targetValue reflect.Value, sourceValues *MapX) error {
 	var err error
 	var finalValue interface{}
 	var interfaceSlice []interface{}
@@ -431,8 +442,9 @@ func (m *MapStruct) doWriteSlice(cfg string, targetValue reflect.Value, sourceVa
 		case map[string]interface{}:
 			element := reflect.New(targetSliceElementType)
 			elementInterface := element.Interface()
+			elementMap := NewMapX(elementValue)
 
-			if err := m.doWrite(elementInterface, elementValue); err != nil {
+			if err := m.doWrite(elementInterface, elementMap); err != nil {
 				return fmt.Errorf("can not write slice element of field %s: %w", cfg, err)
 			}
 
@@ -450,10 +462,10 @@ func (m *MapStruct) doWriteSlice(cfg string, targetValue reflect.Value, sourceVa
 	return nil
 }
 
-func (m *MapStruct) doWriteStruct(cfg string, targetValue reflect.Value, sourceValues objx.Map) error {
-	elementValues := sourceValues.Get(cfg).MSI()
+func (m *MapXStruct) doWriteStruct(cfg string, targetValue reflect.Value, sourceValues *MapX) error {
+	elementValues, err := sourceValues.Get(cfg).Map()
 
-	if elementValues == nil {
+	if err != nil {
 		return fmt.Errorf("value for field %s has to be a map but instead is %T", cfg, sourceValues.Get(cfg).Data())
 	}
 
@@ -470,7 +482,7 @@ func (m *MapStruct) doWriteStruct(cfg string, targetValue reflect.Value, sourceV
 	return nil
 }
 
-func (m *MapStruct) decodeAndCastValue(targetType reflect.Type, sourceValue interface{}) (interface{}, error) {
+func (m *MapXStruct) decodeAndCastValue(targetType reflect.Type, sourceValue interface{}) (interface{}, error) {
 	var err error
 
 	if sourceValue, err = m.cast(targetType, sourceValue); err != nil {
@@ -492,7 +504,7 @@ func (m *MapStruct) decodeAndCastValue(targetType reflect.Type, sourceValue inte
 	return sourceValue, nil
 }
 
-func (m *MapStruct) cast(targetType reflect.Type, value interface{}) (interface{}, error) {
+func (m *MapXStruct) cast(targetType reflect.Type, value interface{}) (interface{}, error) {
 	for _, caster := range m.casters {
 		casted, err := caster(targetType, value)
 
@@ -541,7 +553,7 @@ func (m *MapStruct) cast(targetType reflect.Type, value interface{}) (interface{
 	return nil, fmt.Errorf("value %s is not castable to %s", value, targetType.Kind().String())
 }
 
-func (m *MapStruct) trySlice(value interface{}) ([]interface{}, error) {
+func (m *MapXStruct) trySlice(value interface{}) ([]interface{}, error) {
 	var err error
 	var str string
 	var slice []interface{}

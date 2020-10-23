@@ -2,10 +2,9 @@ package cfg
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/mapx"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/hashicorp/go-multierror"
-	"github.com/imdario/mergo"
-	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 	"github.com/thoas/go-funk"
 	"gopkg.in/go-playground/validator.v9"
@@ -49,7 +48,7 @@ type config struct {
 	lookupEnv      LookupEnv
 	errorHandlers  []ErrorHandler
 	sanitizers     []Sanitizer
-	settings       *Map
+	settings       *mapx.MapX
 	envKeyPrefix   string
 	envKeyReplacer *strings.Replacer
 }
@@ -65,7 +64,7 @@ func NewWithInterfaces(lookupEnv LookupEnv) GosoConf {
 		lookupEnv:     lookupEnv,
 		errorHandlers: []ErrorHandler{defaultErrorHandler},
 		sanitizers:    make([]Sanitizer, 0),
-		settings:      NewMap(),
+		settings:      mapx.NewMapX(),
 	}
 
 	return cfg
@@ -173,7 +172,7 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interfa
 	}
 
 	var err error
-	var data = c.settings.Get(key)
+	var data = c.settings.Get(key).Data()
 	var reflectValue = reflect.ValueOf(data)
 
 	if reflectValue.Kind() != reflect.Slice {
@@ -310,7 +309,7 @@ func (c *config) Option(options ...Option) error {
 
 func (c *config) UnmarshalDefaults(output interface{}, additionalDefaults ...UnmarshalDefaults) {
 	refl.InitializeMapsAndSlices(output)
-	finalSettings := make(map[string]interface{})
+	finalSettings := mapx.NewMapX()
 
 	ms := c.buildMapStruct(output)
 	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
@@ -319,21 +318,11 @@ func (c *config) UnmarshalDefaults(output interface{}, additionalDefaults ...Unm
 		c.err(err, "can not read zeros and defaults for struct %T", output)
 	}
 
-	if err := mergo.Merge(&finalSettings, zeroSettings.Value().MSI(), mergo.WithOverride); err != nil {
-		c.err(err, "can not merge zero settings for struct: %T", output)
-		return
-	}
-
-	if err := mergo.Merge(&finalSettings, defaults.Value().MSI(), mergo.WithOverride); err != nil {
-		c.err(err, "can not merge default settings for struct: %T", output)
-		return
-	}
+	finalSettings.Merge(".", zeroSettings)
+	finalSettings.Merge(".", defaults)
 
 	for _, def := range additionalDefaults {
-		if err := def(c, &finalSettings); err != nil {
-			c.err(err, "can not merge additional default settings for struct: %T", output)
-			return
-		}
+		def(c, finalSettings)
 	}
 
 	if err = ms.Write(finalSettings); err != nil {
@@ -379,28 +368,28 @@ func (c *config) err(err error, msg string, args ...interface{}) {
 	}
 }
 
-func (c *config) buildMapStruct(target interface{}) *MapStruct {
-	ms, err := NewMapStruct(target, &MapStructSettings{
+func (c *config) buildMapStruct(target interface{}) *mapx.MapXStruct {
+	ms, err := mapx.NewMapStruct(target, &mapx.MapXStructSettings{
 		FieldTag:   "cfg",
 		DefaultTag: "default",
-		Casters: []MapStructCaster{
-			MapStructDurationCaster,
-			MapStructTimeCaster,
+		Casters: []mapx.MapStructCaster{
+			mapx.MapStructDurationCaster,
+			mapx.MapStructTimeCaster,
 		},
-		Decoders: []MapStructDecoder{
+		Decoders: []mapx.MapStructDecoder{
 			c.decodeAugmentHook(),
 		},
 	})
 
 	if err != nil {
-		c.err(err, "can not create MapStruct for target %T", target)
+		c.err(err, "can not create MapXStruct for target %T", target)
 		return nil
 	}
 
 	return ms
 }
 
-func (c *config) decodeAugmentHook() MapStructDecoder {
+func (c *config) decodeAugmentHook() mapx.MapStructDecoder {
 	return func(_ reflect.Type, val interface{}) (interface{}, error) {
 		if raw, ok := val.(string); ok {
 			return c.augmentString(raw), nil
@@ -411,20 +400,17 @@ func (c *config) decodeAugmentHook() MapStructDecoder {
 }
 
 func (c *config) get(key string) interface{} {
-	value := map[string]interface{}{
-		key: c.settings.Get(key),
-	}
+	data := c.settings.Get(key).Data()
 
-	environment := c.readEnvironment(c.envKeyPrefix, value)
+	dataMap := mapx.NewMapX()
+	dataMap.Set(key, data)
 
-	if err := mergo.Merge(&value, environment, mergo.WithOverride); err != nil {
-		c.err(err, "can not merge environment into result")
-		return nil
-	}
+	environment := c.readEnvironment(c.envKeyPrefix, dataMap)
+	dataMap.Merge(".", environment)
 
-	c.settings.Set(key, value[key])
+	c.settings.Merge(".", dataMap)
 
-	return value[key]
+	return dataMap.Get(key).Data()
 }
 
 func (c *config) getString(key string, optionalDefault ...string) string {
@@ -468,7 +454,7 @@ func (c *config) keyCheck(key string, defaults int) bool {
 	return false
 }
 
-func (c *config) merge(prefix string, setting interface{}, options ...MapOption) error {
+func (c *config) merge(prefix string, setting interface{}, options ...MergeOption) error {
 	if msi, ok := setting.(map[string]interface{}); ok {
 		return c.mergeMsi(prefix, msi, options...)
 	}
@@ -480,54 +466,61 @@ func (c *config) merge(prefix string, setting interface{}, options ...MapOption)
 	return c.mergeValue(prefix, setting, options...)
 }
 
-func (c *config) mergeValue(prefix string, value interface{}, options ...MapOption) error {
+func (c *config) mergeValue(prefix string, value interface{}, options ...MergeOption) error {
 	sanitizedValue, err := Sanitize("root", value, c.sanitizers)
 
 	if err != nil {
 		return fmt.Errorf("could not sanitize settings on merge: %w", err)
 	}
 
-	c.settings.Set(prefix, sanitizedValue, options...)
+	mapOptions := mergeToMapOptions(options)
+	c.settings.Set(prefix, sanitizedValue, mapOptions...)
 
 	return nil
 }
 
-func (c *config) mergeMsi(prefix string, settings map[string]interface{}, options ...MapOption) error {
+func (c *config) mergeMsi(prefix string, settings map[string]interface{}, options ...MergeOption) error {
 	sanitizedSettings, err := Sanitize("root", settings, c.sanitizers)
 
 	if err != nil {
 		return fmt.Errorf("could not sanitize settings on merge: %w", err)
 	}
 
-	c.settings.Merge(prefix, sanitizedSettings, options...)
+	mapOptions := mergeToMapOptions(options)
+	c.settings.Merge(prefix, sanitizedSettings, mapOptions...)
 
 	return nil
 }
 
-func (c *config) mergeStruct(prefix string, settings interface{}, options ...MapOption) error {
+func (c *config) mergeStruct(prefix string, settings interface{}, options ...MergeOption) error {
 	ms := c.buildMapStruct(settings)
-	msi, err := ms.Read()
+	nodeMap, err := ms.Read()
 
 	if err != nil {
 		return err
 	}
 
-	return c.mergeMsi(prefix, msi.Msi(), options...)
+	msi := nodeMap.Msi()
+
+	return c.mergeMsi(prefix, msi, options...)
 }
 
-func (c *config) readEnvironment(prefix string, input map[string]interface{}) map[string]interface{} {
-	environment := make(map[string]interface{})
+func (c *config) readEnvironment(prefix string, input *mapx.MapX) *mapx.MapX {
+	environment := mapx.NewMapX()
 
-	for k, v := range input {
+	for _, k := range input.Keys() {
 		key := c.resolveEnvKey(prefix, k)
+		val := input.Get(k)
 
-		if nested, ok := v.(map[string]interface{}); ok {
-			environment[k] = c.readEnvironment(key, nested)
+		if nestedMap, err := val.Map(); err == nil {
+			nestedValues := c.readEnvironment(key, nestedMap)
+			environment.Set(k, nestedValues)
 			continue
 		}
 
 		if envValue, ok := c.lookupEnv(key); ok {
-			environment[k] = c.augmentString(envValue)
+			augmentedString := c.augmentString(envValue)
+			environment.Set(k, augmentedString)
 		}
 	}
 
@@ -577,11 +570,9 @@ func (c *config) unmarshalMap(key string, output interface{}, defaults []Unmarsh
 }
 
 func (c *config) unmarshalSlice(key string, output interface{}, defaults []UnmarshalDefaults) {
-	data := c.settings.Get(key)
-	rv := reflect.ValueOf(data)
+	data, err := c.settings.Get(key).Slice()
 
-	if rv.Kind() != reflect.Slice {
-		err := fmt.Errorf("data for key %s should be of type []interface{} but instead is of type %T", key, data)
+	if err != nil {
 		c.err(err, "can not unmarshal key %s", key)
 		return
 	}
@@ -593,7 +584,7 @@ func (c *config) unmarshalSlice(key string, output interface{}, defaults []Unmar
 		return
 	}
 
-	for i := 0; i < rv.Len(); i++ {
+	for i := 0; i < len(data); i++ {
 		keyIndex := fmt.Sprintf("%s[%d]", key, i)
 		elem := slice.NewElement()
 
@@ -608,7 +599,7 @@ func (c *config) unmarshalSlice(key string, output interface{}, defaults []Unmar
 
 func (c *config) unmarshalStruct(key string, output interface{}, additionalDefaults []UnmarshalDefaults) {
 	refl.InitializeMapsAndSlices(output)
-	finalSettings := make(map[string]interface{})
+	finalSettings := mapx.NewMapX()
 
 	ms := c.buildMapStruct(output)
 	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
@@ -617,47 +608,28 @@ func (c *config) unmarshalStruct(key string, output interface{}, additionalDefau
 		c.err(err, "can not read zeros and defaults for key %s", key)
 	}
 
-	if err := mergo.Merge(&finalSettings, zeroSettings.Value().MSI(), mergo.WithOverride); err != nil {
-		c.err(err, "can not merge zero settings for key: %s", key)
-		return
-	}
-
-	if err := mergo.Merge(&finalSettings, defaults.Value().MSI(), mergo.WithOverride); err != nil {
-		c.err(err, "can not merge default settings for key: %s", key)
-		return
-	}
+	finalSettings.Merge(".", zeroSettings)
+	finalSettings.Merge(".", defaults)
 
 	for _, def := range additionalDefaults {
-		if err := def(c, &finalSettings); err != nil {
-			c.err(err, "can not merge additional default settings for key: %s", key)
-			return
-		}
+		def(c, finalSettings)
 	}
 
 	if c.settings.Has(key) {
-		data := c.settings.Get(key)
+		settings, err := c.settings.Get(key).Map()
 
-		settings, ok := data.(map[string]interface{})
-
-		if !ok {
-			c.err(errors.New("value is not of type map[string]interface{}"), "can not get settings for key: %s", key)
+		if err != nil {
+			c.err(fmt.Errorf("value is not of type map[string]interface{}: %w", err), "can not get settings for key: %s", key)
 			return
 		}
 
-		if err := mergo.Merge(&finalSettings, settings, mergo.WithOverride); err != nil {
-			c.err(err, "can not merge settings for key: %s", key)
-			return
-		}
+		finalSettings.Merge(".", settings)
 	}
 
 	environmentKey := c.resolveEnvKey(c.envKeyPrefix, key)
 	environmentSettings := c.readEnvironment(environmentKey, finalSettings)
 
-	if err := mergo.Merge(&finalSettings, environmentSettings, mergo.WithOverride); err != nil {
-		c.err(err, "can not merge zero settings for key: %s", key)
-		return
-	}
-
+	finalSettings.Merge(".", environmentSettings)
 	c.settings.Set(key, finalSettings)
 
 	if err = ms.Write(finalSettings); err != nil {

@@ -107,6 +107,12 @@ func (m *ComponentsConfigManager) HasType(typ string) bool {
 }
 
 func (m *ComponentsConfigManager) Add(settings interface{}) error {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(settings)
+		}
+	}()
+
 	m.lck.Lock()
 	defer m.lck.Unlock()
 

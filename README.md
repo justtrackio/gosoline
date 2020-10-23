@@ -16,8 +16,8 @@ come in the next weeks:
 * overall documentation
 
 ## Roadmap
-* sns filter policies
-* remove objx / mergo from config
+* cfg: change callbacks
+* cfg: proper default value merging
+* test: gateway case
 * cloud: bundle aws config
 * add error returns to constructors
-* proper default value merging

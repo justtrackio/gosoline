@@ -1,7 +1,7 @@
-package cfg_test
+package mapx_test
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mapx"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -12,7 +12,7 @@ func TestNewMapStructIONoPointer(t *testing.T) {
 	source := struct {
 	}{}
 
-	_, err := cfg.NewMapStruct(source, &cfg.MapStructSettings{})
+	_, err := mapx.NewMapStruct(source, &mapx.MapXStructSettings{})
 	assert.EqualError(t, err, "the target value has to be a pointer")
 }
 
@@ -42,38 +42,38 @@ func TestMapStructIO_ReadZeroAndDefaultValuesBasic(t *testing.T) {
 	zero, defaults, err := ms.ReadZeroAndDefaultValues()
 	assert.NoError(t, err, "there should be no error during reading of zeros and defaults")
 
-	assert.Equal(t, false, zero["b"])
-	assert.Equal(t, true, defaults["b"])
-	assert.Equal(t, time.Duration(0), zero["d"])
-	assert.Equal(t, time.Second, defaults["d"])
-	assert.Equal(t, 0, zero["i"])
-	assert.Equal(t, 1, defaults["i"])
-	assert.Equal(t, int8(0), zero["i8"])
-	assert.Equal(t, int8(2), defaults["i8"])
-	assert.Equal(t, int16(0), zero["i16"])
-	assert.Equal(t, int16(3), defaults["i16"])
-	assert.Equal(t, int32(0), zero["i32"])
-	assert.Equal(t, int32(4), defaults["i32"])
-	assert.Equal(t, int64(0), zero["i64"])
-	assert.Equal(t, int64(5), defaults["i64"])
-	assert.Equal(t, float32(0), zero["f32"])
-	assert.Equal(t, float32(1.1), defaults["f32"])
-	assert.Equal(t, float64(0), zero["f64"])
-	assert.Equal(t, 1.2, defaults["f64"])
-	assert.Equal(t, "", zero["s"])
-	assert.Equal(t, "string", defaults["s"])
-	assert.Equal(t, time.Time{}, zero["t"])
-	assert.Equal(t, time.Date(2020, time.April, 21, 0, 0, 0, 0, time.UTC), defaults["t"])
-	assert.Equal(t, uint(0), zero["ui"])
-	assert.Equal(t, uint(1), defaults["ui"])
-	assert.Equal(t, uint8(0), zero["ui8"])
-	assert.Equal(t, uint8(2), defaults["ui8"])
-	assert.Equal(t, uint16(0), zero["ui16"])
-	assert.Equal(t, uint16(3), defaults["ui16"])
-	assert.Equal(t, uint32(0), zero["ui32"])
-	assert.Equal(t, uint32(4), defaults["ui32"])
-	assert.Equal(t, uint64(0), zero["ui64"])
-	assert.Equal(t, uint64(5), defaults["ui64"])
+	assert.Equal(t, false, zero.Get("b").Data())
+	assert.Equal(t, true, defaults.Get("b").Data())
+	assert.Equal(t, time.Duration(0), zero.Get("d").Data())
+	assert.Equal(t, time.Second, defaults.Get("d").Data())
+	assert.Equal(t, 0, zero.Get("i").Data())
+	assert.Equal(t, 1, defaults.Get("i").Data())
+	assert.Equal(t, int8(0), zero.Get("i8").Data())
+	assert.Equal(t, int8(2), defaults.Get("i8").Data())
+	assert.Equal(t, int16(0), zero.Get("i16").Data())
+	assert.Equal(t, int16(3), defaults.Get("i16").Data())
+	assert.Equal(t, int32(0), zero.Get("i32").Data())
+	assert.Equal(t, int32(4), defaults.Get("i32").Data())
+	assert.Equal(t, int64(0), zero.Get("i64").Data())
+	assert.Equal(t, int64(5), defaults.Get("i64").Data())
+	assert.Equal(t, float32(0), zero.Get("f32").Data())
+	assert.Equal(t, float32(1.1), defaults.Get("f32").Data())
+	assert.Equal(t, float64(0), zero.Get("f64").Data())
+	assert.Equal(t, 1.2, defaults.Get("f64").Data())
+	assert.Equal(t, "", zero.Get("s").Data())
+	assert.Equal(t, "string", defaults.Get("s").Data())
+	assert.Equal(t, time.Time{}, zero.Get("t").Data())
+	assert.Equal(t, time.Date(2020, time.April, 21, 0, 0, 0, 0, time.UTC), defaults.Get("t").Data())
+	assert.Equal(t, uint(0), zero.Get("ui").Data())
+	assert.Equal(t, uint(1), defaults.Get("ui").Data())
+	assert.Equal(t, uint8(0), zero.Get("ui8").Data())
+	assert.Equal(t, uint8(2), defaults.Get("ui8").Data())
+	assert.Equal(t, uint16(0), zero.Get("ui16").Data())
+	assert.Equal(t, uint16(3), defaults.Get("ui16").Data())
+	assert.Equal(t, uint32(0), zero.Get("ui32").Data())
+	assert.Equal(t, uint32(4), defaults.Get("ui32").Data())
+	assert.Equal(t, uint64(0), zero.Get("ui64").Data())
+	assert.Equal(t, uint64(5), defaults.Get("ui64").Data())
 }
 
 func TestMapStructIO_ReadZeroAndDefaultValuesMapSlice(t *testing.T) {
@@ -88,10 +88,10 @@ func TestMapStructIO_ReadZeroAndDefaultValuesMapSlice(t *testing.T) {
 	zero, defaults, err := ms.ReadZeroAndDefaultValues()
 	assert.NoError(t, err, "there should be no error during reading of zeros and defaults")
 
-	assert.Equal(t, []string{}, zero["slice"])
-	assert.NotContains(t, defaults, "slice")
-	assert.Equal(t, map[int]float64{}, zero["map"])
-	assert.NotContains(t, defaults, "map")
+	assert.Equal(t, []interface{}{}, zero.Get("slice").Data())
+	assert.False(t, defaults.Has("slice"))
+	assert.Equal(t, map[int]float64{}, zero.Get("map").Data())
+	assert.False(t, defaults.Has("map"))
 }
 
 func TestMapStructIO_ReadZeroAndDefaultValuesNested(t *testing.T) {
@@ -115,8 +115,8 @@ func TestMapStructIO_ReadZeroAndDefaultValuesNested(t *testing.T) {
 	zero, defaults, err := ms.ReadZeroAndDefaultValues()
 	assert.NoError(t, err, "there should be no error during reading of zeros and defaults")
 
-	assert.Equal(t, "", zero["s"])
-	assert.Equal(t, "string", defaults["s"])
+	assert.Equal(t, "", zero.Get("s").Data())
+	assert.Equal(t, "string", defaults.Get("s").Data())
 	assert.Equal(t, false, zero.Get("nestedB.b").Data())
 	assert.Equal(t, true, defaults.Get("nestedB.b").Data())
 	assert.Equal(t, 0, zero.Get("nestedB.nestedA.i").Data())
@@ -143,12 +143,12 @@ func TestMapStructIO_ReadZeroValuesAndDefaultEmbedded(t *testing.T) {
 	zero, defaults, err := ms.ReadZeroAndDefaultValues()
 	assert.NoError(t, err, "there should be no error during reading of zeros and defaults")
 
-	assert.Equal(t, "", zero["s"])
-	assert.Equal(t, "string", defaults["s"])
-	assert.Equal(t, 0, zero["i"])
-	assert.Equal(t, 1, defaults["i"])
-	assert.Equal(t, false, zero["b"])
-	assert.Equal(t, true, defaults["b"])
+	assert.Equal(t, "", zero.Get("s").Data())
+	assert.Equal(t, "string", defaults.Get("s").Data())
+	assert.Equal(t, 0, zero.Get("i").Data())
+	assert.Equal(t, 1, defaults.Get("i").Data())
+	assert.Equal(t, false, zero.Get("b").Data())
+	assert.Equal(t, true, defaults.Get("b").Data())
 }
 
 func TestMapStructIO_ReadZeroAndDefaultValues_Unexported(t *testing.T) {
@@ -447,7 +447,7 @@ func TestMapStructIO_WriteBasic(t *testing.T) {
 		UI64 uint64        `cfg:"ui64" default:"5"`
 	}
 
-	values := map[string]interface{}{
+	values := mapx.NewMapX(map[string]interface{}{
 		"b":    true,
 		"d":    "1s",
 		"i":    1,
@@ -464,7 +464,7 @@ func TestMapStructIO_WriteBasic(t *testing.T) {
 		"ui16": 3,
 		"ui32": 4,
 		"ui64": 5,
-	}
+	})
 
 	expected := &sourceStruct{
 		B:    true,
@@ -504,11 +504,11 @@ func TestMapStructIO_WriteEmbedded(t *testing.T) {
 		EmbeddedStruct
 	}
 
-	values := map[string]interface{}{
+	values := mapx.NewMapX(map[string]interface{}{
 		"b": "true",
 		"i": 1,
 		"s": "string",
-	}
+	})
 
 	expected := &sourceStruct{
 		B: true,
@@ -537,13 +537,13 @@ func TestMapStructIO_WriteStructNested(t *testing.T) {
 		Nested nestedStruct `cfg:"nested"`
 	}
 
-	values := map[string]interface{}{
+	values := mapx.NewMapX(map[string]interface{}{
 		"b": "true",
 		"i": 1,
 		"nested": map[string]interface{}{
 			"s": "string",
 		},
-	}
+	})
 
 	expected := &sourceStruct{
 		B: true,
@@ -561,6 +561,27 @@ func TestMapStructIO_WriteStructNested(t *testing.T) {
 	assert.Equal(t, expected, source)
 }
 
+func TestMapStructIO_WriteZero(t *testing.T) {
+	type sourceStruct struct {
+		MSI map[string]interface{} `cfg:"msi"`
+	}
+
+	source := &sourceStruct{}
+	ms := setupMapStructIO(t, source)
+
+	zero, _, err := ms.ReadZeroAndDefaultValues()
+	assert.NoError(t, err, "there should be no error during reading zero and defaults")
+
+	err = ms.Write(zero)
+
+	expected := &sourceStruct{
+		MSI: map[string]interface{}{},
+	}
+
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
+}
+
 func TestMapStructIO_WriteSliceMap(t *testing.T) {
 	type slice struct {
 		I int `cfg:"i"`
@@ -573,7 +594,7 @@ func TestMapStructIO_WriteSliceMap(t *testing.T) {
 		SS  []slice          `cfg:"ss"`
 	}
 
-	values := map[string]interface{}{
+	values := mapx.NewMapX(map[string]interface{}{
 		"mi": map[string]interface{}{
 			"a": 1,
 			"b": 2,
@@ -595,13 +616,7 @@ func TestMapStructIO_WriteSliceMap(t *testing.T) {
 				"i": 2,
 			},
 		},
-		"sm": []interface{}{
-			map[string]interface{}{
-				"t": "true",
-				"f": "false",
-			},
-		},
-	}
+	})
 
 	expected := &sourceStruct{
 		MI: map[string]int{
@@ -625,14 +640,6 @@ func TestMapStructIO_WriteSliceMap(t *testing.T) {
 				I: 2,
 			},
 		},
-		//SM: []map[string]bool{
-		//	{
-		//		"t": true,
-		//	},
-		//	{
-		//		"f": true,
-		//	},
-		//},
 	}
 
 	source := &sourceStruct{}
@@ -651,11 +658,11 @@ func TestMapStruct_Write_Basic_To_Slice(t *testing.T) {
 		SS []string      `cfg:"ss"`
 	}
 
-	values := map[string]interface{}{
+	values := mapx.NewMapX(map[string]interface{}{
 		"s":  "1,a",
 		"si": 1,
 		"ss": "1 ,2, a",
-	}
+	})
 
 	expected := &sourceStruct{
 		S:  []interface{}{"1", "a"},
@@ -671,13 +678,13 @@ func TestMapStruct_Write_Basic_To_Slice(t *testing.T) {
 	assert.Equal(t, expected, source)
 }
 
-func setupMapStructIO(t *testing.T, source interface{}) *cfg.MapStruct {
-	ms, err := cfg.NewMapStruct(source, &cfg.MapStructSettings{
+func setupMapStructIO(t *testing.T, source interface{}) *mapx.MapXStruct {
+	ms, err := mapx.NewMapStruct(source, &mapx.MapXStructSettings{
 		FieldTag:   "cfg",
 		DefaultTag: "default",
-		Casters: []cfg.MapStructCaster{
-			cfg.MapStructDurationCaster,
-			cfg.MapStructTimeCaster,
+		Casters: []mapx.MapStructCaster{
+			mapx.MapStructDurationCaster,
+			mapx.MapStructTimeCaster,
 		},
 	})
 

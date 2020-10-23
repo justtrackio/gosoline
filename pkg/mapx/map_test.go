@@ -1,18 +1,27 @@
-package cfg_test
+package mapx_test
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mapx"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
 
 type MapTestSuite struct {
 	suite.Suite
-	m *cfg.Map
+	m *mapx.MapX
 }
 
 func (s *MapTestSuite) SetupTest() {
-	s.m = cfg.NewMap()
+	s.m = mapx.NewMapX()
+}
+
+func (s *MapTestSuite) TestHas() {
+	s.m.Set("a", 1)
+	actual := s.m.Has("a")
+	s.True(actual)
+
+	actual = s.m.Has("sl[1]")
+	s.False(actual)
 }
 
 func (s *MapTestSuite) TestSet() {
@@ -50,6 +59,34 @@ func (s *MapTestSuite) TestSet() {
 	s.Equal(expected, actual)
 }
 
+func (s *MapTestSuite) TestSetMap() {
+	msi := map[string]interface{}{
+		"a": 1,
+		"b": 2,
+	}
+	mapToSet := mapx.NewMapX(msi)
+
+	s.m.Set("c", mapToSet)
+	actual, err := s.m.Get("c").Msi()
+	s.NoError(err)
+	s.Equal(msi, actual)
+
+	s.m.Set("d[0]", mapToSet)
+	actual, err = s.m.Get("d[0]").Msi()
+	s.NoError(err)
+	s.Equal(msi, actual)
+
+	s.m.Set("d[0]", mapToSet)
+	actual, err = s.m.Get("d[0]").Msi()
+	s.NoError(err)
+	s.Equal(msi, actual)
+
+	s.m.Set("d[2]", mapToSet)
+	actual, err = s.m.Get("d[2]").Msi()
+	s.NoError(err)
+	s.Equal(msi, actual)
+}
+
 func (s *MapTestSuite) TestSetSliceOffset() {
 	s.m.Set("sl[1]", 1)
 
@@ -59,6 +96,16 @@ func (s *MapTestSuite) TestSetSliceOffset() {
 
 	actual := s.m.Msi()
 	s.Equal(expected, actual)
+}
+
+func (s *MapTestSuite) TestSkipExisting() {
+	s.m.Set("a", 1)
+	s.m.Set("a", 2, mapx.SkipExisting)
+	s.Equal(1, s.m.Get("a").Data())
+
+	s.m.Set("sl[2]", 3)
+	s.m.Set("sl[2]", 4, mapx.SkipExisting)
+	s.Equal(3, s.m.Get("sl[2]").Data())
 }
 
 func (s *MapTestSuite) TestGet() {
@@ -76,20 +123,22 @@ func (s *MapTestSuite) TestGet() {
 		"sl1": []interface{}{1, 2},
 	}
 
-	msi := cfg.NewMap(data)
+	msi := mapx.NewMapX(data)
 
-	s.Equal(1, msi.Get("i"))
-	s.Equal(1, msi.Get(".i"))
-	s.Equal("string", msi.Get("a.b.s"))
+	s.Equal(1, msi.Get("i").Data())
+	s.Equal(1, msi.Get(".i").Data())
+	s.Equal("string", msi.Get("a.b.s").Data())
 
+	act, err := msi.Get("msi").Msi()
+	s.NoError(err)
 	s.Equal(map[string]interface{}{
 		"b": true,
 		"s": "string",
-	}, msi.Get("msi"))
+	}, act)
 
-	s.Equal([]interface{}{1, 2}, msi.Get("sl1"))
-	s.Equal(2, msi.Get("sl1[1]"))
-	s.Equal(nil, msi.Get("sl1[2]"))
+	s.Equal([]interface{}{1, 2}, msi.Get("sl1").Data())
+	s.Equal(2, msi.Get("sl1[1]").Data())
+	s.Equal(nil, msi.Get("sl1[2]").Data())
 }
 
 func (s *MapTestSuite) TestMerge() {
@@ -129,6 +178,20 @@ func (s *MapTestSuite) TestMerge() {
 
 	msi := s.m.Msi()
 	s.Equal(expected, msi)
+}
+
+func (s *MapTestSuite) TestMergeMap() {
+	msi := map[string]interface{}{
+		"a":   1,
+		"b":   2,
+		"msi": map[string]interface{}{},
+	}
+	mapToMerge := mapx.NewMapX(msi)
+
+	s.m.Merge(".", mapToMerge)
+	actual := s.m.Msi()
+
+	s.Equal(msi, actual)
 }
 
 func TestMapTestSuite(t *testing.T) {

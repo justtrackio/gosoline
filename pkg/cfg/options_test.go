@@ -2,6 +2,7 @@ package cfg_test
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mapx"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -31,7 +32,7 @@ func (s *OptionsTestSuite) TestWithConfigMap() {
 }
 
 func (s *OptionsTestSuite) TestWithConfigSetting() {
-	expected := cfg.NewMap(map[string]interface{}{
+	expected := mapx.NewMapX(map[string]interface{}{
 		"b": map[string]interface{}{
 			"c1": map[string]interface{}{
 				"i": 1,
@@ -60,7 +61,8 @@ func (s *OptionsTestSuite) TestWithConfigSetting() {
 	}))
 
 	actual := s.config.Get("a")
-	s.Equal(expected.Msi(), actual)
+	expectedMsi := expected.Msi()
+	s.Equal(expectedMsi, actual)
 
 	expected.Set("b.c2", map[string]interface{}{
 		"b": true,
@@ -71,6 +73,7 @@ func (s *OptionsTestSuite) TestWithConfigSetting() {
 	}))
 
 	actual = s.config.Get("a")
+	expectedMsi = expected.Msi()
 	s.Equal(expected.Msi(), actual)
 }
 
