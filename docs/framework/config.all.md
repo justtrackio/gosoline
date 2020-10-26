@@ -62,6 +62,16 @@ redis_kvstore_currency_mode: "discover"
 redis_kvstore_currency_addr: ""
 
 stream:
+  backoff:
+    enabled: true
+    blocking: false
+    cancel_delay: 1s
+    initial_interval: 500ms
+    randomization_factor: 0.5
+    multiplier: 1.5
+    max_interval: 3s
+    max_elapsed_time: 15m
+
   consumer:
     default:
       input: consumer-sqs
