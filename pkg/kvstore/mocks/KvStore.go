@@ -32,34 +32,6 @@ func (_m *KvStore) Contains(ctx context.Context, key interface{}) (bool, error) 
 	return r0, r1
 }
 
-// Delete provides a mock function with given fields: ctx, key
-func (_m *KvStore) Delete(ctx context.Context, key interface{}) error {
-	ret := _m.Called(ctx, key)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}) error); ok {
-		r0 = rf(ctx, key)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// DeleteBatch provides a mock function with given fields: ctx, keys
-func (_m *KvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
-	ret := _m.Called(ctx, keys)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}) error); ok {
-		r0 = rf(ctx, keys)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // Get provides a mock function with given fields: ctx, key, value
 func (_m *KvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
 	ret := _m.Called(ctx, key, value)

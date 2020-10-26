@@ -12,10 +12,9 @@ import (
 
 type Settings struct {
 	cfg.AppId
-	Name           string
-	Ttl            time.Duration
-	BatchSize      int
-	MetricsEnabled bool
+	Name      string
+	Ttl       time.Duration
+	BatchSize int
 }
 
 //go:generate mockery -name KvStore
@@ -34,18 +33,6 @@ type KvStore interface {
 	// Write a batch of values to the store. Values should be something which
 	// can be converted to map[interface{}]interface{}.
 	PutBatch(ctx context.Context, values interface{}) error
-	// Remove the value with the given key from the store
-	Delete(ctx context.Context, key interface{}) error
-	// Remove all values with the given keys from the store
-	DeleteBatch(ctx context.Context, keys interface{}) error
-}
-
-//go:generate mockery -name SizedStore
-type SizedStore interface {
-	KvStore
-	// return an estimate about how many elements are currently in the store
-	// returns nil if no estimate could be returned
-	EstimateSize() *int64
 }
 
 type Factory func(config cfg.Config, logger mon.Logger, settings *Settings) KvStore

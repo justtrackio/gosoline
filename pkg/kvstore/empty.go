@@ -6,47 +6,39 @@ import (
 	"github.com/applike/gosoline/pkg/refl"
 )
 
-type emptyKvStore struct {
+type EmptyKvStore struct {
 }
 
 func NewEmptyKvStore() KvStore {
 	return NewEmptyKvStoreWithInterfaces()
 }
 
-func NewEmptyKvStoreWithInterfaces() KvStore {
-	return &emptyKvStore{}
+func NewEmptyKvStoreWithInterfaces() *EmptyKvStore {
+	return &EmptyKvStore{}
 }
 
-func (s *emptyKvStore) Contains(_ context.Context, _ interface{}) (bool, error) {
+func (s *EmptyKvStore) Contains(_ context.Context, _ interface{}) (bool, error) {
 	return false, nil
 }
 
-func (s *emptyKvStore) Get(_ context.Context, _ interface{}, _ interface{}) (bool, error) {
+func (s *EmptyKvStore) Get(_ context.Context, _ interface{}, _ interface{}) (bool, error) {
 	return false, nil
 }
 
-func (s *emptyKvStore) GetBatch(_ context.Context, keys interface{}, _ interface{}) ([]interface{}, error) {
+func (s *EmptyKvStore) GetBatch(_ context.Context, keys interface{}, _ interface{}) ([]interface{}, error) {
 	missing, err := refl.InterfaceToInterfaceSlice(keys)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
+		return nil, fmt.Errorf("could not convert keys from %T to []interface{}", keys)
 	}
 
 	return missing, nil
 }
 
-func (s *emptyKvStore) Put(_ context.Context, _ interface{}, _ interface{}) error {
+func (s *EmptyKvStore) Put(_ context.Context, _ interface{}, _ interface{}) error {
 	return nil
 }
 
-func (s *emptyKvStore) PutBatch(_ context.Context, _ interface{}) error {
-	return nil
-}
-
-func (s *emptyKvStore) Delete(_ context.Context, _ interface{}) error {
-	return nil
-}
-
-func (s *emptyKvStore) DeleteBatch(_ context.Context, _ interface{}) error {
+func (s *EmptyKvStore) PutBatch(_ context.Context, _ interface{}) error {
 	return nil
 }

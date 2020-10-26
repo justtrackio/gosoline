@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/applike/gosoline/pkg/mdl"
 	redisMocks "github.com/applike/gosoline/pkg/redis/mocks"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -109,39 +108,7 @@ func TestRedisKvStore_PutBatch(t *testing.T) {
 	client.AssertExpectations(t)
 }
 
-func TestRedisKvStore_EstimateSize(t *testing.T) {
-	store, client := buildTestableRedisStore()
-	client.On("DBSize").Return(int64(42), nil)
-
-	size := store.(kvstore.SizedStore).EstimateSize()
-
-	assert.Equal(t, mdl.Int64(42), size)
-	client.AssertExpectations(t)
-}
-
-func TestRedisKvStore_Delete(t *testing.T) {
-	store, client := buildTestableRedisStore()
-	client.On("Del", "applike-gosoline-kvstore-kvstore-test-foo").Return(int64(1), nil)
-
-	err := store.Delete(context.Background(), "foo")
-
-	assert.NoError(t, err)
-	client.AssertExpectations(t)
-}
-
-func TestRedisKvStore_DeleteBatch(t *testing.T) {
-	store, client := buildTestableRedisStore()
-	client.On("Del", "applike-gosoline-kvstore-kvstore-test-foo", "applike-gosoline-kvstore-kvstore-test-fuu").Return(int64(2), nil)
-
-	items := []string{"foo", "fuu"}
-
-	err := store.DeleteBatch(context.Background(), items)
-
-	assert.NoError(t, err)
-	client.AssertExpectations(t)
-}
-
-func buildTestableRedisStore() (kvstore.KvStore, *redisMocks.Client) {
+func buildTestableRedisStore() (*kvstore.RedisKvStore, *redisMocks.Client) {
 	client := new(redisMocks.Client)
 
 	store := kvstore.NewRedisKvStoreWithInterfaces(client, &kvstore.Settings{
@@ -151,9 +118,8 @@ func buildTestableRedisStore() (kvstore.KvStore, *redisMocks.Client) {
 			Family:      "gosoline",
 			Application: "kvstore",
 		},
-		Name:           "test",
-		BatchSize:      100,
-		MetricsEnabled: false,
+		Name:      "test",
+		BatchSize: 100,
 	})
 
 	return store, client

@@ -11,7 +11,7 @@ import (
 
 type InMemoryKvStoreTestSuite struct {
 	suite.Suite
-	store kvstore.KvStore
+	store *kvstore.InMemoryKvStore
 }
 
 func (s *InMemoryKvStoreTestSuite) SetupTest() {

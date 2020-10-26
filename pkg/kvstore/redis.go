@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type redisKvStore struct {
+type RedisKvStore struct {
 	client   redis.Client
 	settings *Settings
 }
@@ -28,14 +28,14 @@ func NewRedisKvStore(config cfg.Config, logger mon.Logger, settings *Settings) K
 	return NewRedisKvStoreWithInterfaces(client, settings)
 }
 
-func NewRedisKvStoreWithInterfaces(client redis.Client, settings *Settings) KvStore {
-	return NewMetricStoreWithInterfaces(&redisKvStore{
+func NewRedisKvStoreWithInterfaces(client redis.Client, settings *Settings) *RedisKvStore {
+	return &RedisKvStore{
 		client:   client,
 		settings: settings,
-	}, settings)
+	}
 }
 
-func (s *redisKvStore) Contains(_ context.Context, key interface{}) (bool, error) {
+func (s *RedisKvStore) Contains(_ context.Context, key interface{}) (bool, error) {
 	keyStr, err := s.key(key)
 
 	if err != nil {
@@ -51,7 +51,7 @@ func (s *redisKvStore) Contains(_ context.Context, key interface{}) (bool, error
 	return count > 0, nil
 }
 
-func (s *redisKvStore) Get(_ context.Context, key interface{}, value interface{}) (bool, error) {
+func (s *RedisKvStore) Get(_ context.Context, key interface{}, value interface{}) (bool, error) {
 	keyStr, err := s.key(key)
 
 	if err != nil {
@@ -77,11 +77,11 @@ func (s *redisKvStore) Get(_ context.Context, key interface{}, value interface{}
 	return true, nil
 }
 
-func (s *redisKvStore) GetBatch(ctx context.Context, keys interface{}, result interface{}) ([]interface{}, error) {
+func (s *RedisKvStore) GetBatch(ctx context.Context, keys interface{}, result interface{}) ([]interface{}, error) {
 	return getBatch(ctx, keys, result, s.getChunk, s.settings.BatchSize)
 }
 
-func (s *redisKvStore) getChunk(_ context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
+func (s *RedisKvStore) getChunk(_ context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
 	var err error
 
 	missing := make([]interface{}, 0)
@@ -130,7 +130,7 @@ func (s *redisKvStore) getChunk(_ context.Context, resultMap *refl.Map, keys []i
 	return missing, nil
 }
 
-func (s *redisKvStore) Put(_ context.Context, key interface{}, value interface{}) error {
+func (s *RedisKvStore) Put(_ context.Context, key interface{}, value interface{}) error {
 	bytes, err := Marshal(value)
 
 	if err != nil {
@@ -152,7 +152,7 @@ func (s *redisKvStore) Put(_ context.Context, key interface{}, value interface{}
 	return nil
 }
 
-func (s *redisKvStore) PutBatch(ctx context.Context, values interface{}) error {
+func (s *RedisKvStore) PutBatch(ctx context.Context, values interface{}) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 
 	if err != nil {
@@ -168,61 +168,7 @@ func (s *redisKvStore) PutBatch(ctx context.Context, values interface{}) error {
 	return nil
 }
 
-func (s *redisKvStore) EstimateSize() *int64 {
-	size, err := s.client.DBSize()
-
-	if err != nil {
-		return nil
-	}
-
-	return &size
-}
-
-func (s *redisKvStore) Delete(_ context.Context, key interface{}) error {
-	keyStr, err := s.key(key)
-
-	if err != nil {
-		return fmt.Errorf("can not get key to delete value from redis: %w", err)
-	}
-
-	_, err = s.client.Del(keyStr)
-
-	if err != nil {
-		return fmt.Errorf("can not delete value from redis store: %w", err)
-	}
-
-	return nil
-}
-
-func (s *redisKvStore) DeleteBatch(_ context.Context, keys interface{}) error {
-	si, err := refl.InterfaceToInterfaceSlice(keys)
-
-	if err != nil {
-		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
-	}
-
-	redisKeys := make([]string, len(si))
-
-	for i, key := range si {
-		keyStr, err := s.key(key)
-
-		if err != nil {
-			return fmt.Errorf("can not get key to delete value from redis: %w", err)
-		}
-
-		redisKeys[i] = keyStr
-	}
-
-	_, err = s.client.Del(redisKeys...)
-
-	if err != nil {
-		return fmt.Errorf("can not delete values from redis store: %w", err)
-	}
-
-	return nil
-}
-
-func (s *redisKvStore) key(key interface{}) (string, error) {
+func (s *RedisKvStore) key(key interface{}) (string, error) {
 	keyStr, err := CastKeyToString(key)
 
 	if err != nil {
