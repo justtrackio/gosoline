@@ -15,7 +15,9 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/certifi/gocertifi v0.0.0-20180118203423-deb3ae2ef261 // indirect
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
+	github.com/containerd/fifo v0.0.0-20201026212402-0724c46b320c // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20190313032549-041949b8d268 // indirect
+	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/elastic/go-elasticsearch/v6 v6.8.3-0.20190714143207-256a620be07d
 	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
@@ -31,7 +33,6 @@ require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gogo/protobuf v1.2.2-0.20190723190241-65acae22fc9d // indirect
 	github.com/golang-migrate/migrate/v4 v4.2.5
-	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
 	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/google/go-querystring v1.0.0
