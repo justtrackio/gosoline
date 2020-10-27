@@ -9,6 +9,7 @@ import (
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -159,6 +160,53 @@ func (s *ConsumerTestSuite) TestCallbackRunPanic() {
 
 	s.Nil(err, "there should be no error returned on consume")
 	s.Len(consumed, 2)
+	s.input.AssertExpectations(s.T())
+	s.callback.AssertExpectations(s.T())
+}
+
+func (s *ConsumerTestSuite) TestAggregate() {
+	message1 := stream.NewJsonMessage(`"foo"`, map[string]interface{}{
+		"attr1": "a",
+	})
+	message2 := stream.NewJsonMessage(`"bar"`, map[string]interface{}{
+		"attr1": "b",
+	})
+
+	aggregate, err := stream.BuildAggregateMessage(stream.MarshalJsonMessage, []stream.WritableMessage{message1, message2})
+	s.NoError(err)
+
+	s.input.On("Data").Return(s.data)
+	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
+		s.data <- aggregate.(*stream.Message)
+		s.stop()
+	}).Return(nil)
+	s.input.On("Stop")
+
+	consumed := make([]string, 0)
+	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+
+	expectedAttributes1 := map[string]interface{}{"attr1": "a"}
+	s.callback.On("Consume", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*string"), expectedAttributes1).Run(func(args mock.Arguments) {
+		ptr := args.Get(1).(*string)
+		consumed = append(consumed, *ptr)
+	}).Return(true, nil)
+
+	expectedAttributes2 := map[string]interface{}{"attr1": "b"}
+	s.callback.On("Consume", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*string"), expectedAttributes2).Run(func(args mock.Arguments) {
+		ptr := args.Get(1).(*string)
+		consumed = append(consumed, *ptr)
+	}).Return(true, nil)
+
+	s.callback.On("GetModel").Return(func() interface{} {
+		model := ""
+		return &model
+	})
+
+	err = s.consumer.Run(context.Background())
+
+	s.Nil(err, "there should be no error returned on consume")
+	s.Len(consumed, 2)
+	s.Equal("foobar", strings.Join(consumed, ""))
 	s.input.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }

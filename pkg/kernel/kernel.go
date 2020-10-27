@@ -323,7 +323,7 @@ func (k *kernel) boot() bool {
 func (k *kernel) runModule(name string, ms *ModuleState, ctx context.Context) error {
 	defer k.logger.Infof("stopped %s module %s", ms.Config.Type, name)
 
-	k.logger.Infof("running %s module %s", ms.Config.Type, name)
+	k.logger.Infof("running %s module %s in stage %d", ms.Config.Type, name, ms.Config.Stage)
 
 	ms.IsRunning = true
 

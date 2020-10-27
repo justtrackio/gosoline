@@ -9,9 +9,10 @@ import (
 )
 
 type ProducerSettings struct {
-	Output      string `cfg:"output"`
-	Encoding    string `cfg:"encoding"`
-	Compression string `cfg:"compression"`
+	Output      string                 `cfg:"output"`
+	Encoding    string                 `cfg:"encoding"`
+	Compression string                 `cfg:"compression"`
+	Daemon      ProducerDaemonSettings `cfg:"daemon"`
 }
 
 type Producer interface {
@@ -25,12 +26,12 @@ type producer struct {
 }
 
 func NewProducer(config cfg.Config, logger mon.Logger, name string, handlers ...EncodeHandler) *producer {
-	key := fmt.Sprintf("stream.producer.%s", name)
+	key := ConfigurableProducerKey(name)
 
 	settings := &ProducerSettings{}
 	config.UnmarshalKey(key, settings)
 
-	if len(settings.Output) == 0 {
+	if settings.Output == "" {
 		settings.Output = name
 	}
 
@@ -43,7 +44,14 @@ func NewProducer(config cfg.Config, logger mon.Logger, name string, handlers ...
 		Compression:    settings.Compression,
 		EncodeHandlers: encodeHandlers,
 	})
-	output := NewConfigurableOutput(config, logger, settings.Output)
+
+	var output Output
+
+	if !settings.Daemon.Enabled {
+		output = NewConfigurableOutput(config, logger, settings.Output)
+	} else {
+		output = ProvideProducerDaemon(config, logger, name)
+	}
 
 	return NewProducerWithInterfaces(encoder, output)
 }

@@ -29,7 +29,7 @@ func createMocks() (*cfgMocks.Config, *monMocks.Logger, *kernelMocks.FullModule)
 	logger.On("WithChannel", mock.Anything).Return(logger)
 	logger.On("WithFields", mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything)
-	logger.On("Infof", mock.Anything, mock.Anything, mock.Anything)
+	logger.On("Infof", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 	module := new(kernelMocks.FullModule)
 	module.On("GetType").Return(kernel.TypeForeground)
