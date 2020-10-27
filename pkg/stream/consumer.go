@@ -185,7 +185,7 @@ func (c *Consumer) runConsuming(ctx context.Context) error {
 			return nil
 		}
 
-		c.doConsuming(msg)
+		c.disaggregate(msg)
 
 		atomic.AddInt32(&c.processed, 1)
 		c.mw.WriteOne(&mon.MetricDatum{
@@ -195,7 +195,30 @@ func (c *Consumer) runConsuming(ctx context.Context) error {
 	}
 }
 
-func (c *Consumer) doConsuming(msg *Message) {
+func (c *Consumer) disaggregate(msg *Message) {
+	if _, ok := msg.Attributes[AttributeAggregate]; !ok {
+		c.doConsuming(msg, true)
+		return
+	}
+
+	ctx := context.Background()
+	batch := make([]*Message, 0)
+
+	ctx, _, err := c.encoder.Decode(ctx, msg, &batch)
+
+	if err != nil {
+		c.logger.WithContext(ctx).Error(err, "an error occurred during disaggregation of the message")
+		return
+	}
+
+	for _, m := range batch {
+		c.doConsuming(m, false)
+	}
+
+	c.Acknowledge(ctx, msg)
+}
+
+func (c *Consumer) doConsuming(msg *Message, doAck bool) {
 	defer c.recover()
 
 	ctx := context.Background()
@@ -220,7 +243,7 @@ func (c *Consumer) doConsuming(msg *Message) {
 		c.logger.WithContext(ctx).Error(err, "an error occurred during the consume operation")
 	}
 
-	if !ack {
+	if !ack || !doAck {
 		return
 	}
 

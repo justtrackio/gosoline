@@ -77,6 +77,10 @@ func New() Coffin {
 	}
 }
 
+// WithContext returns a new coffin that is killed when the provided parent
+// context is canceled, and a copy of parent with a replaced Done channel
+// that is closed when either the coffin is dying or the parent is canceled.
+// The returned context may also be obtained via the coffin's Context method.
 func WithContext(parent context.Context) (Coffin, context.Context) {
 	tmb, ctx := tomb.WithContext(parent)
 	cfn := &coffin{
@@ -150,6 +154,15 @@ func (c *coffin) GoWithContextf(ctx context.Context, f func(ctx context.Context)
 	}, msg, args...)
 }
 
+// Kill puts the coffin in a dying state for the given reason,
+// closes the Dying channel, and sets Alive to false.
+//
+// Althoguh Kill may be called multiple times, only the first
+// non-nil error is recorded as the death reason.
+//
+// If reason is ErrDying, the previous reason isn't replaced
+// even if nil. It's a runtime error to call Kill with ErrDying
+// if t is not in a dying state.
 func (c *coffin) Kill(reason error) {
 	c.tomb.Kill(reason)
 }

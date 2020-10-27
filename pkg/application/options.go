@@ -269,6 +269,13 @@ func WithMetricDaemon(app *App) {
 	})
 }
 
+func WithProducerDaemon(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
+		kernel.AddFactory(stream.ProducerDaemonFactory)
+		return nil
+	})
+}
+
 func WithTracing(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
 		tracingHook := tracing.NewLoggerErrorHook()

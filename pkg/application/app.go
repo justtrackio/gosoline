@@ -51,6 +51,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithKernelSettingsFromConfig,
 		WithApiHealthCheck,
 		WithMetricDaemon,
+		WithProducerDaemon,
 		WithTracing,
 	}
 

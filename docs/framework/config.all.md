@@ -84,6 +84,13 @@ stream:
       encoding: application/json
       compression: application/gzip
       output: sqs-out
+      daemon:
+        enabled: false
+        aggregation_size: 1
+        batch_size: 10
+        buffer_size: 10
+        interval: 1m0s
+        runner_count: 10
 
   input:
     consumer-redis:
