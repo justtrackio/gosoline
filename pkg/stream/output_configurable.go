@@ -12,6 +12,7 @@ import (
 const (
 	OutputTypeFile     = "file"
 	OutputTypeInMemory = "inMemory"
+	OutputTypeKafka    = "kafka"
 	OutputTypeKinesis  = "kinesis"
 	OutputTypeMultiple = "multiple"
 	OutputTypeRedis    = "redis"
@@ -51,6 +52,14 @@ func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 	config.UnmarshalKey(key, settings)
 
 	return NewFileOutput(config, logger, settings)
+}
+
+func newKafkaOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
+	key := ConfigurableOutputKey(name)
+	settings := &KafkaOutputSettings{}
+	config.UnmarshalKey(key, settings)
+
+	return NewKafkaOutput(logger, settings)
 }
 
 type kinesisOutputConfiguration struct {
