@@ -55,11 +55,11 @@ func NewRedisListOutputWithInterfaces(logger mon.Logger, mw mon.MetricWriter, tr
 	}
 }
 
-func (o *redisListOutput) WriteOne(ctx context.Context, record *Message) error {
-	return o.Write(ctx, []*Message{record})
+func (o *redisListOutput) WriteOne(ctx context.Context, record WritableMessage) error {
+	return o.Write(ctx, []WritableMessage{record})
 }
 
-func (o *redisListOutput) Write(ctx context.Context, batch []*Message) error {
+func (o *redisListOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	spanName := fmt.Sprintf("redis-list-output-%v-%v-%v", o.settings.Family, o.settings.Application, o.settings.Key)
 
 	ctx, trans := o.tracer.StartSubSpan(ctx, spanName)
@@ -68,7 +68,7 @@ func (o *redisListOutput) Write(ctx context.Context, batch []*Message) error {
 	return o.pushToList(batch)
 }
 
-func (o *redisListOutput) pushToList(batch []*Message) error {
+func (o *redisListOutput) pushToList(batch []WritableMessage) error {
 	chunks, err := BuildChunks(batch, o.settings.BatchSize)
 
 	if err != nil {

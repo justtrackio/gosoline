@@ -14,6 +14,10 @@ type Message struct {
 	Body       string                 `json:"body"`
 }
 
+func (m *Message) GetAttributes() map[string]interface{} {
+	return m.Attributes
+}
+
 func (m *Message) MarshalToBytes() ([]byte, error) {
 	return json.Marshal(*m)
 }

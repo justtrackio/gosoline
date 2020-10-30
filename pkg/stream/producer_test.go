@@ -63,14 +63,14 @@ func (s *ProducerTestSuite) TestProducer_Write() {
 		},
 	}
 
-	expectedMsg := []*stream.Message{
-		{
+	expectedMsg := []stream.WritableMessage{
+		&stream.Message{
 			Attributes: map[string]interface{}{
 				stream.AttributeEncoding: stream.EncodingJson,
 			},
 			Body: `{"id":3,"name":"foobar"}`,
 		},
-		{
+		&stream.Message{
 			Attributes: map[string]interface{}{
 				stream.AttributeEncoding: stream.EncodingJson,
 			},

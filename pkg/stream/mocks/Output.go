@@ -12,11 +12,11 @@ type Output struct {
 }
 
 // Write provides a mock function with given fields: ctx, batch
-func (_m *Output) Write(ctx context.Context, batch []*stream.Message) error {
+func (_m *Output) Write(ctx context.Context, batch []stream.WritableMessage) error {
 	ret := _m.Called(ctx, batch)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []*stream.Message) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []stream.WritableMessage) error); ok {
 		r0 = rf(ctx, batch)
 	} else {
 		r0 = ret.Error(0)
@@ -26,11 +26,11 @@ func (_m *Output) Write(ctx context.Context, batch []*stream.Message) error {
 }
 
 // WriteOne provides a mock function with given fields: ctx, msg
-func (_m *Output) WriteOne(ctx context.Context, msg *stream.Message) error {
+func (_m *Output) WriteOne(ctx context.Context, msg stream.WritableMessage) error {
 	ret := _m.Called(ctx, msg)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *stream.Message) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, stream.WritableMessage) error); ok {
 		r0 = rf(ctx, msg)
 	} else {
 		r0 = ret.Error(0)

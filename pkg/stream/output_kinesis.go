@@ -60,11 +60,11 @@ func NewKinesisOutputWithInterfaces(logger mon.Logger, client kinesisiface.Kines
 	}
 }
 
-func (o *kinesisOutput) WriteOne(ctx context.Context, record *Message) error {
-	return o.Write(ctx, []*Message{record})
+func (o *kinesisOutput) WriteOne(ctx context.Context, record WritableMessage) error {
+	return o.Write(ctx, []WritableMessage{record})
 }
 
-func (o *kinesisOutput) Write(ctx context.Context, batch []*Message) error {
+func (o *kinesisOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	if len(batch) == 0 {
 		return nil
 	}

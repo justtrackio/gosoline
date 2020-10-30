@@ -2,7 +2,6 @@ package stream
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"os"
@@ -25,11 +24,11 @@ func NewFileOutput(_ cfg.Config, logger mon.Logger, settings *FileOutputSettings
 	}
 }
 
-func (o *fileOutput) WriteOne(ctx context.Context, msg *Message) error {
-	return o.Write(ctx, []*Message{msg})
+func (o *fileOutput) WriteOne(ctx context.Context, msg WritableMessage) error {
+	return o.Write(ctx, []WritableMessage{msg})
 }
 
-func (o *fileOutput) Write(ctx context.Context, batch []*Message) error {
+func (o *fileOutput) Write(_ context.Context, batch []WritableMessage) error {
 	flags := os.O_CREATE | os.O_WRONLY
 	if o.settings.Append {
 		flags = flags | os.O_APPEND
@@ -44,7 +43,7 @@ func (o *fileOutput) Write(ctx context.Context, batch []*Message) error {
 	}
 
 	for _, msg := range batch {
-		data, err := json.Marshal(*msg)
+		data, err := msg.MarshalToBytes()
 
 		if err != nil {
 			return err

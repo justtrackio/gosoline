@@ -33,7 +33,7 @@ func runPipelineWithSettings(t *testing.T, settings *stream.PipelineSettings, ct
 	input := stream.NewFileInputWithInterfaces(logger, stream.FileSettings{
 		Filename: "testdata/file_input.json",
 	})
-	output := stream.NewOutputMemory()
+	output := stream.NewInMemoryOutput()
 
 	callback := &callback{}
 	pipe := stream.NewPipeline(callback)

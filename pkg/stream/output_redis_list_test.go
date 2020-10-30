@@ -27,7 +27,7 @@ func TestRedisListOutput_Write(t *testing.T) {
 	output, redisMock := setup(2)
 	redisMock.On("RPush", "mcoins-test-analytics-app-my-list", mock.AnythingOfType("[]uint8"), mock.AnythingOfType("[]uint8")).Return(int64(2), nil).Once()
 
-	batch := []*stream.Message{
+	batch := []stream.WritableMessage{
 		stream.NewMessage("foo"),
 		stream.NewMessage("bar"),
 	}
@@ -41,7 +41,7 @@ func TestRedisListOutput_Write_Chunked(t *testing.T) {
 	output, redisMock := setup(1)
 	redisMock.On("RPush", "mcoins-test-analytics-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Times(2)
 
-	batch := []*stream.Message{
+	batch := []stream.WritableMessage{
 		stream.NewMessage("foo"),
 		stream.NewMessage("bar"),
 	}

@@ -12,7 +12,7 @@ type multiOutput struct {
 	outputs []Output
 }
 
-func (m *multiOutput) WriteOne(ctx context.Context, msg *Message) error {
+func (m *multiOutput) WriteOne(ctx context.Context, msg WritableMessage) error {
 	err := &multierror.Error{}
 
 	for _, output := range m.outputs {
@@ -22,7 +22,7 @@ func (m *multiOutput) WriteOne(ctx context.Context, msg *Message) error {
 	return err.ErrorOrNil()
 }
 
-func (m *multiOutput) Write(ctx context.Context, batch []*Message) error {
+func (m *multiOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	err := &multierror.Error{}
 
 	for _, output := range m.outputs {
