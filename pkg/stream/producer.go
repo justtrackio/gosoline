@@ -78,7 +78,7 @@ func (p *producer) Write(ctx context.Context, models interface{}, attributeSets 
 		return fmt.Errorf("can not cast models interface to slice: %w", err)
 	}
 
-	messages := make([]*Message, len(slice))
+	messages := make([]WritableMessage, len(slice))
 	for i, model := range slice {
 		msg, err := p.encoder.Encode(ctx, model, attributeSets...)
 

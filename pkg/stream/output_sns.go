@@ -51,11 +51,11 @@ func NewSnsOutputWithInterfaces(logger mon.Logger, tracer tracing.Tracer, topic 
 	}
 }
 
-func (o *snsOutput) WriteOne(ctx context.Context, record *Message) error {
-	return o.Write(ctx, []*Message{record})
+func (o *snsOutput) WriteOne(ctx context.Context, record WritableMessage) error {
+	return o.Write(ctx, []WritableMessage{record})
 }
 
-func (o *snsOutput) Write(ctx context.Context, batch []*Message) error {
+func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	spanName := fmt.Sprintf("sns-output-%v-%v-%v", o.settings.Family, o.settings.Application, o.settings.TopicId)
 
 	ctx, trans := o.tracer.StartSubSpan(ctx, spanName)
@@ -64,7 +64,7 @@ func (o *snsOutput) Write(ctx context.Context, batch []*Message) error {
 	return o.publishToTopic(ctx, batch)
 }
 
-func (o *snsOutput) publishToTopic(ctx context.Context, batch []*Message) error {
+func (o *snsOutput) publishToTopic(ctx context.Context, batch []WritableMessage) error {
 	errors := make([]error, 0)
 
 	for _, msg := range batch {
@@ -75,7 +75,7 @@ func (o *snsOutput) publishToTopic(ctx context.Context, batch []*Message) error 
 			continue
 		}
 
-		err = o.topic.Publish(ctx, &body, msg.Attributes)
+		err = o.topic.Publish(ctx, &body, getAttributes(msg))
 
 		if err != nil {
 			errors = append(errors, err)

@@ -32,7 +32,7 @@ func TestWriter_WriteEvents(t *testing.T) {
 		StreamName: "streamName",
 	})
 
-	batch := []*stream.Message{
+	batch := []stream.WritableMessage{
 		stream.NewMessage("1"),
 		stream.NewMessage("2"),
 		stream.NewMessage("3"),

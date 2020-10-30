@@ -61,11 +61,11 @@ func NewSqsOutputWithInterfaces(logger mon.Logger, tracer tracing.Tracer, queue 
 	}
 }
 
-func (o *sqsOutput) WriteOne(ctx context.Context, record *Message) error {
-	return o.Write(ctx, []*Message{record})
+func (o *sqsOutput) WriteOne(ctx context.Context, record WritableMessage) error {
+	return o.Write(ctx, []WritableMessage{record})
 }
 
-func (o *sqsOutput) Write(ctx context.Context, batch []*Message) error {
+func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	spanName := fmt.Sprintf("sqs-output-%v-%v-%v", o.settings.Family, o.settings.Application, o.settings.QueueId)
 
 	ctx, trans := o.tracer.StartSubSpan(ctx, spanName)
@@ -74,8 +74,8 @@ func (o *sqsOutput) Write(ctx context.Context, batch []*Message) error {
 	return o.sendToQueue(ctx, batch)
 }
 
-func (o *sqsOutput) sendToQueue(ctx context.Context, batch []*Message) error {
-	chunks, ok := funk.Chunk(batch, sqsOutputBatchSize).([][]*Message)
+func (o *sqsOutput) sendToQueue(ctx context.Context, batch []WritableMessage) error {
+	chunks, ok := funk.Chunk(batch, sqsOutputBatchSize).([][]WritableMessage)
 
 	if !ok {
 		err := fmt.Errorf("can not chunk messages for sending to sqs")
@@ -111,7 +111,7 @@ func (o *sqsOutput) sendToQueue(ctx context.Context, batch []*Message) error {
 	return nil
 }
 
-func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []*Message) ([]*sqs.Message, error) {
+func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []WritableMessage) ([]*sqs.Message, error) {
 	var result error
 	sqsMessages := make([]*sqs.Message, 0)
 
@@ -129,12 +129,14 @@ func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []*Message) (
 	return sqsMessages, result
 }
 
-func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg *Message) (*sqs.Message, error) {
+func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg WritableMessage) (*sqs.Message, error) {
 	var delay *int64
 	var messageGroupId *string
 	var messageDeduplicationId *string
 
-	if d, ok := msg.Attributes[sqs.AttributeSqsDelaySeconds]; ok {
+	attributes := getAttributes(msg)
+
+	if d, ok := attributes[sqs.AttributeSqsDelaySeconds]; ok {
 		if dInt64, ok := d.(int64); ok {
 			delay = mdl.Int64(dInt64)
 		} else {
@@ -142,7 +144,7 @@ func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg *Message) (*sqs.Mes
 		}
 	}
 
-	if d, ok := msg.Attributes[sqs.AttributeSqsMessageGroupId]; ok {
+	if d, ok := attributes[sqs.AttributeSqsMessageGroupId]; ok {
 		if groupIdString, ok := d.(string); ok {
 			messageGroupId = mdl.String(groupIdString)
 		} else {
@@ -150,7 +152,7 @@ func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg *Message) (*sqs.Mes
 		}
 	}
 
-	if d, ok := msg.Attributes[sqs.AttributeSqsMessageDeduplicationId]; ok {
+	if d, ok := attributes[sqs.AttributeSqsMessageDeduplicationId]; ok {
 		if deduplicationIdString, ok := d.(string); ok {
 			messageDeduplicationId = mdl.String(deduplicationIdString)
 		} else {

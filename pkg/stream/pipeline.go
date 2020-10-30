@@ -169,7 +169,7 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 		}
 	}
 
-	err = p.output.Write(ctx, p.batch)
+	err = p.output.Write(ctx, MessagesToWritableMessages(p.batch))
 
 	if err != nil {
 		p.logger.Error(err, "could not write messages to output")

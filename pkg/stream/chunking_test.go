@@ -14,7 +14,7 @@ func TestBuildChunks_Single_1(t *testing.T) {
 	})
 
 	bytes, _ := json.Marshal(msg)
-	batch := []*stream.Message{msg}
+	batch := []stream.WritableMessage{msg}
 
 	chunks, err := stream.BuildChunks(batch, 1)
 
@@ -25,7 +25,7 @@ func TestBuildChunks_Single_1(t *testing.T) {
 }
 
 func TestBuildChunks_Single_2(t *testing.T) {
-	batch := []*stream.Message{stream.NewMessage("bla")}
+	batch := []stream.WritableMessage{stream.NewMessage("bla")}
 
 	chunks, err := stream.BuildChunks(batch, 500)
 
@@ -35,7 +35,7 @@ func TestBuildChunks_Single_2(t *testing.T) {
 }
 
 func TestBuildChunks_Batch(t *testing.T) {
-	batch := []*stream.Message{
+	batch := []stream.WritableMessage{
 		stream.NewMessage("bla"),
 		stream.NewMessage("bla"),
 		stream.NewMessage("bla"),
@@ -56,7 +56,7 @@ func TestBuildChunks_Batch(t *testing.T) {
 }
 
 func TestByteChunkToInterfaces(t *testing.T) {
-	batch := []*stream.Message{stream.NewMessage("bla")}
+	batch := []stream.WritableMessage{stream.NewMessage("bla")}
 	chunks, _ := stream.BuildChunks(batch, 500)
 
 	interfaces := stream.ByteChunkToInterfaces(chunks[0])

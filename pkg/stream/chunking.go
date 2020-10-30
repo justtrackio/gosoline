@@ -8,7 +8,7 @@ import (
 type Chunk [][]byte
 type Chunks []Chunk
 
-func BuildChunks(batch []*Message, size int) (Chunks, error) {
+func BuildChunks(batch []WritableMessage, size int) (Chunks, error) {
 	numOfChunks := int(math.Ceil(float64(len(batch)) / float64(size)))
 
 	errors := make([]error, 0)
