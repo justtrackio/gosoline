@@ -7,10 +7,6 @@ import (
 	"time"
 )
 
-type testableTicker interface {
-	IsStopped() bool
-}
-
 func TestRealTicker_Tick(t *testing.T) {
 	clock.WithUseUTC(true)
 	start := time.Now()
@@ -23,7 +19,6 @@ func TestRealTicker_Tick(t *testing.T) {
 	assert.GreaterOrEqual(t, int64(end.Sub(start)), int64(time.Millisecond*30), "%v should be at least 30ms", end.Sub(start))
 	// wait a bit for all routines to exit
 	time.Sleep(time.Millisecond * 10)
-	assert.True(t, ticker.(testableTicker).IsStopped())
 }
 
 func TestRealTicker_Reset(t *testing.T) {
@@ -49,7 +44,6 @@ func TestRealTicker_Reset(t *testing.T) {
 	assert.GreaterOrEqual(t, int64(end.Sub(start)), int64(time.Millisecond*400), "%v should be at least 400ms", end.Sub(start))
 	// wait a bit for all routines to exit
 	time.Sleep(time.Millisecond * 10)
-	assert.True(t, ticker.(testableTicker).IsStopped())
 }
 
 func TestRealTicker_Reset_DuringTick(t *testing.T) {
@@ -68,20 +62,4 @@ func TestRealTicker_Reset_DuringTick(t *testing.T) {
 	ticker.Stop()
 	// wait a bit for all routines to exit
 	time.Sleep(time.Millisecond * 10)
-	assert.True(t, ticker.(testableTicker).IsStopped())
-}
-
-func TestRealTicker_Stop_DuringTick(t *testing.T) {
-	clock.WithUseUTC(true)
-	ticker := clock.NewRealTicker(time.Millisecond * 10)
-	time.Sleep(time.Millisecond * 50)
-	ticker.Stop()
-	time.Sleep(time.Millisecond * 50)
-	select {
-	case <-ticker.Tick():
-		assert.Fail(t, "expected tick to be eaten by ticker again")
-	default:
-		// nop
-	}
-	assert.True(t, ticker.(testableTicker).IsStopped())
 }
