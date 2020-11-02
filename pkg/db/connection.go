@@ -20,11 +20,9 @@ type Uri struct {
 }
 
 type Settings struct {
-	ConnectionMaxLifetime time.Duration `cfg:"connection_max_lifetime" default:"120s"`
-	Driver                string        `cfg:"driver"`
-	MaxIdleConnections    int           `cfg:"max_idle_connections"` // 0=unlimited
-	MaxOpenConnections    int           `cfg:"max_open_connections"` // 0=unlimited
-	ParseTime             bool          `cfg:"parse_time" default:"true"`
+	Driver             string        `cfg:"driver"`
+	ConnectionLifetime time.Duration `cfg:"connection_lifetime" default:"120s"`
+	ParseTime          bool          `cfg:"parse_time" default:"true"`
 
 	Uri        Uri               `cfg:"uri"`
 	Migrations MigrationSettings `cfg:"migrations"`
@@ -100,9 +98,7 @@ func NewConnectionWithInterfaces(settings Settings) (*sqlx.DB, error) {
 		return nil, err
 	}
 
-	db.SetConnMaxLifetime(settings.ConnectionMaxLifetime)
-	db.SetMaxIdleConns(settings.MaxIdleConnections)
-	db.SetMaxOpenConns(settings.MaxOpenConnections)
+	db.SetConnMaxLifetime(settings.ConnectionLifetime)
 
 	return db, nil
 }
