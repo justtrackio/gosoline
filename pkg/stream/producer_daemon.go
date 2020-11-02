@@ -281,36 +281,30 @@ func (d *ProducerDaemon) outputLoop(ctx context.Context) error {
 
 func (d *ProducerDaemon) writeMetricMessageCount(count int) {
 	d.metric.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
 		MetricName: metricNameMessageCount,
 		Dimensions: map[string]string{
 			"ProducerDaemon": d.name,
 		},
-		Unit:  mon.UnitCount,
 		Value: float64(count),
 	})
 }
 
 func (d *ProducerDaemon) writeMetricBatchSize(size int) {
 	d.metric.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
 		MetricName: metricNameBatchSize,
 		Dimensions: map[string]string{
 			"ProducerDaemon": d.name,
 		},
-		Unit:  mon.UnitCount,
 		Value: float64(size),
 	})
 }
 
 func (d *ProducerDaemon) writeMetricAggregateSize(size int) {
 	d.metric.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
 		MetricName: metricNameAggregateSize,
 		Dimensions: map[string]string{
 			"ProducerDaemon": d.name,
 		},
-		Unit:  mon.UnitCount,
 		Value: float64(size),
 	})
 }
