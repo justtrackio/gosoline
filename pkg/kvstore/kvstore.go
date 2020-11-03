@@ -16,6 +16,16 @@ type Settings struct {
 	Ttl            time.Duration
 	BatchSize      int
 	MetricsEnabled bool
+	InMemorySettings
+}
+
+type InMemorySettings struct {
+	MaxSize        int64
+	Buckets        uint32
+	ItemsToPrune   uint32
+	DeleteBuffer   uint32
+	PromoteBuffer  uint32
+	GetsPerPromote int32
 }
 
 //go:generate mockery -name KvStore

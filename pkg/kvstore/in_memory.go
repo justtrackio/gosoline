@@ -8,6 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/karlseguin/ccache"
+	"math/bits"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -24,11 +25,49 @@ func NewInMemoryKvStore(_ cfg.Config, _ mon.Logger, settings *Settings) KvStore 
 }
 
 func NewInMemoryKvStoreWithInterfaces(settings *Settings) KvStore {
+	// make sure the config has some sensible values
+	if settings.MaxSize <= 0 {
+		settings.MaxSize = 5000
+	}
+	if settings.Buckets == 0 {
+		settings.Buckets = 16
+	} else if bits.OnesCount32(settings.Buckets) != 1 {
+		// buckets needs to be a power of two
+		exponent := 32 - bits.LeadingZeros32(settings.Buckets)
+		if exponent == 32 {
+			// user requested more than 2 billion buckets... hope the user knows what he is doing. give as many buckets as possible
+			exponent = 31
+		}
+		settings.Buckets = 1 << exponent
+	}
+	if settings.ItemsToPrune == 0 {
+		settings.ItemsToPrune = uint32(settings.MaxSize / 10)
+	}
+	if settings.DeleteBuffer == 0 {
+		settings.DeleteBuffer = 1024
+	}
+	if settings.PromoteBuffer == 0 {
+		settings.PromoteBuffer = 1024
+	}
+	if settings.GetsPerPromote <= 0 {
+		settings.GetsPerPromote = 3
+	}
+
 	cacheSize := new(int64)
-	cache := ccache.New(ccache.Configure().OnDelete(func(item *ccache.Item) {
+	trackDeletes := func(item *ccache.Item) {
 		// track how many items are still in the cache
 		atomic.AddInt64(cacheSize, -1)
-	}))
+	}
+
+	cacheConfig := ccache.Configure().
+		OnDelete(trackDeletes).
+		MaxSize(settings.MaxSize).
+		Buckets(settings.Buckets).
+		ItemsToPrune(settings.ItemsToPrune).
+		DeleteBuffer(settings.DeleteBuffer).
+		PromoteBuffer(settings.PromoteBuffer).
+		GetsPerPromote(settings.GetsPerPromote)
+	cache := ccache.New(cacheConfig)
 
 	if settings.Ttl.Nanoseconds() == 0 {
 		settings.Ttl = time.Hour

@@ -15,15 +15,25 @@ const (
 )
 
 type ChainConfiguration struct {
-	Project             string        `cfg:"project"`
-	Family              string        `cfg:"family"`
-	Application         string        `cfg:"application"`
-	Type                string        `cfg:"type" default:"chain" validate:"eq=chain"`
-	Elements            []string      `cfg:"elements" validate:"min=1"`
-	Ttl                 time.Duration `cfg:"ttl"`
-	BatchSize           int           `cfg:"batch_size" default:"100" validate:"min=1"`
-	MissingCacheEnabled bool          `cfg:"missing_cache_enabled" default:"false"`
-	MetricsEnabled      bool          `cfg:"metrics_enabled" default:"false"`
+	Project             string                `cfg:"project"`
+	Family              string                `cfg:"family"`
+	Application         string                `cfg:"application"`
+	Type                string                `cfg:"type" default:"chain" validate:"eq=chain"`
+	Elements            []string              `cfg:"elements" validate:"min=1"`
+	Ttl                 time.Duration         `cfg:"ttl"`
+	BatchSize           int                   `cfg:"batch_size" default:"100" validate:"min=1"`
+	MissingCacheEnabled bool                  `cfg:"missing_cache_enabled" default:"false"`
+	MetricsEnabled      bool                  `cfg:"metrics_enabled" default:"false"`
+	InMemory            InMemoryConfiguration `cfg:"in_memory"`
+}
+
+type InMemoryConfiguration struct {
+	MaxSize        int64  `cfg:"max_size" default:"5000"`
+	Buckets        uint32 `cfg:"buckets" default:"16"`
+	ItemsToPrune   uint32 `cfg:"items_to_prune" default:"500"`
+	DeleteBuffer   uint32 `cfg:"delete_buffer" default:"1024"`
+	PromoteBuffer  uint32 `cfg:"promote_buffer" default:"1024"`
+	GetsPerPromote int32  `cfg:"gets_per_promote" default:"3"`
 }
 
 func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) KvStore {
@@ -56,6 +66,14 @@ func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string
 		Ttl:            configuration.Ttl,
 		BatchSize:      configuration.BatchSize,
 		MetricsEnabled: configuration.MetricsEnabled,
+		InMemorySettings: InMemorySettings{
+			MaxSize:        configuration.InMemory.MaxSize,
+			Buckets:        configuration.InMemory.Buckets,
+			ItemsToPrune:   configuration.InMemory.ItemsToPrune,
+			DeleteBuffer:   configuration.InMemory.DeleteBuffer,
+			PromoteBuffer:  configuration.InMemory.PromoteBuffer,
+			GetsPerPromote: configuration.InMemory.GetsPerPromote,
+		},
 	})
 
 	for _, element := range configuration.Elements {
