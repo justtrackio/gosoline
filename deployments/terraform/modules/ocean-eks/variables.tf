@@ -1,11 +1,17 @@
 variable "spotinst_token" {
   type        = string
-  description = "Spotinst Personal Access token"
+  description = "Spot Personal Access token"
 }
 
 variable "spotinst_account" {
   type        = string
-  description = "Spotinst account ID"
+  description = "Spot account ID"
+}
+
+variable "region" {
+  type        = string
+  description = "The region the EKS cluster will be located"
+  default     = null
 }
 
 variable "cluster_identifier" {
@@ -17,17 +23,25 @@ variable "cluster_identifier" {
 variable "cluster_name" {
   type        = string
   description = "Cluster name"
+  default     = null
 }
 
 variable "cluster_version" {
   type        = string
   description = "Kubernetes supported version"
-  default     = "1.17"
+  default     = "1.18"
 }
 
-variable "region" {
+variable "subnets" {
+  type        = list(string)
+  description = "A list of subnets to place the EKS cluster and workers within"
+  default     = null
+}
+
+variable "vpc_id" {
   type        = string
-  description = "The region the EKS cluster will be located"
+  description = "VPC where the cluster and workers will be deployed"
+  default     = null
 }
 
 variable "ami_id" {
@@ -36,14 +50,22 @@ variable "ami_id" {
   default     = null
 }
 
+variable "tags" {
+  type        = map(string)
+  description = "A map of tags to add to all resources"
+  default     = {}
+}
+
 variable "min_size" {
   type        = number
   description = "The lower limit of worker nodes the Ocean cluster can scale down to"
+  default     = null
 }
 
 variable "max_size" {
   type        = number
   description = "The upper limit of worker nodes the Ocean cluster can scale up to"
+  default     = null
 }
 
 variable "key_name" {
@@ -80,12 +102,6 @@ variable "public_subnets" {
   description = "A list of public subnets inside the VPC (only needed if new vpc is created)"
   type        = list(string)
   default     = []
-}
-
-variable "vpc_id" {
-  description = "The ID of the VPC (only needed if no vpc is created)"
-  type        = string
-  default     = null
 }
 
 variable "private_subnet_ids" {
