@@ -4,7 +4,7 @@ provider "aws" {
 
 resource "aws_security_group" "all_worker_mgmt" {
   name   = "${var.cluster_name}_all_worker_management"
-  vpc_id      = local.vpc_id
+  vpc_id = local.vpc_id
 
   ingress {
     from_port = 22
@@ -51,8 +51,8 @@ resource "aws_iam_role_policy_attachment" "workers_AdministratorAccess" {
 data "aws_region" "current" {}
 
 module "vpc" {
-  source     = "terraform-aws-modules/vpc/aws"
-  version    = "2.63.0"
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "2.63.0"
 
   create_vpc         = var.vpc_id == null
   name               = local.cluster_name
