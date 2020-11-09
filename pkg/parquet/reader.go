@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
@@ -18,7 +19,6 @@ import (
 	"golang.org/x/sync/semaphore"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -126,8 +126,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 	stop := false
 
 	sem := semaphore.NewWeighted(int64(10))
-	wg := sync.WaitGroup{}
-	wg.Add(fileCount)
+	cfn := coffin.New()
 
 	for i, file := range files {
 		err := sem.Acquire(ctx, int64(1))
@@ -136,51 +135,47 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 			return err
 		}
 
-		go func(i int, file string) {
-			defer sem.Release(int64(1))
-			defer wg.Done()
+		cfn.GoWithContextf(ctx, func(i int, file string) func(ctx context.Context) error {
+			return func(ctx context.Context) error {
+				defer sem.Release(int64(1))
 
-			if stop {
-				return
+				if stop {
+					return nil
+				}
+
+				r.logger.Debugf("reading file %d of %d: %s", i, fileCount, file)
+				result, err := r.ReadFile(ctx, file)
+
+				if err != nil {
+					return fmt.Errorf("can not read file %s: %w", file, err)
+				}
+
+				decoded := refl.CreatePointerToSliceOfTypeAndSize(target, len(result))
+				err = r.decode(result, decoded)
+
+				if err != nil {
+					return fmt.Errorf("can not decode results in file %s: %w", file, err)
+				}
+
+				ok, err := callback(Progress{FileCount: fileCount, Current: i}, decoded)
+
+				if err != nil {
+					return fmt.Errorf("callback failed: %w", err)
+				}
+
+				if !ok {
+					stop = true
+					return nil
+				}
+
+				r.recorder.RecordFile(r.getBucketName(), file)
+
+				return nil
 			}
-
-			r.logger.Debugf("reading file %d of %d: %s", i, fileCount, file)
-
-			result, err := r.ReadFile(ctx, file)
-
-			if err != nil {
-				r.logger.Fatal(err, "can not read file")
-
-				return
-			}
-
-			decoded := refl.CreatePointerToSliceOfTypeAndSize(target, len(result))
-			err = r.decode(result, decoded)
-
-			if err != nil {
-				r.logger.Error(err, "could not decode results")
-
-				return
-			}
-
-			ok, err := callback(Progress{
-				FileCount: fileCount,
-				Current:   i,
-			}, decoded)
-
-			if !ok {
-				stop = true
-
-				return
-			}
-
-			r.recorder.RecordFile(r.getBucketName(), file)
-		}(i, file)
+		}(i, file), "panic during file read")
 	}
 
-	wg.Wait()
-
-	return nil
+	return cfn.Wait()
 }
 
 func (r *s3Reader) ReadFile(ctx context.Context, file string) (ReadResults, error) {

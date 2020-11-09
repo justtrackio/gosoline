@@ -11,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"net"
 	"net/http"
-	"regexp"
 	"strconv"
 	"time"
 )
@@ -101,6 +100,7 @@ func (a *ApiServer) BootWithInterfaces(logger mon.Logger, router *gin.Engine, tr
 	}
 
 	a.listener = ln
+	logger.Infof("serving api requests on address %s", ln.Addr().String())
 
 	return nil
 }
@@ -135,16 +135,16 @@ func (a *ApiServer) GetPort() (*int, error) {
 	}
 
 	address := a.listener.Addr().String()
-	pattern := regexp.MustCompile(`.+:(\d+)$`)
-	matches := pattern.FindStringSubmatch(address)
+	_, portStr, err := net.SplitHostPort(address)
 
-	if len(matches) != 2 {
-		return nil, fmt.Errorf("could not get port from address %s", address)
+	if err != nil {
+		return nil, fmt.Errorf("could not get port from address %s: %w", address, err)
 	}
 
-	port, err := strconv.Atoi(matches[1])
+	port, err := strconv.Atoi(portStr)
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can not convert port string to int: %w", err)
 	}
 
 	return &port, nil

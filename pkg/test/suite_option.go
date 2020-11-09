@@ -42,6 +42,12 @@ func WithConfigFile(file string) SuiteOption {
 	}
 }
 
+func WithConfigMap(settings map[string]interface{}) SuiteOption {
+	return func(s *suiteOptions) {
+		s.addEnvOption(env.WithConfigMap(settings))
+	}
+}
+
 func WithConsumer(callback stream.ConsumerCallback) SuiteOption {
 	return WithModule("consumer-default", stream.NewConsumer("default", callback))
 }

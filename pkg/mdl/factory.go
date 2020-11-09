@@ -45,6 +45,14 @@ func EmptyBoolIfNil(b *bool) bool {
 	return *b
 }
 
+func EmptyFloat32IfNil(v *float32) float32 {
+	if v == nil {
+		return 0.0
+	}
+
+	return *v
+}
+
 func EmptyFloat64IfNil(v *float64) float64 {
 	if v == nil {
 		return 0.0

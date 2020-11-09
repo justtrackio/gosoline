@@ -25,12 +25,13 @@ var producerDaemons = map[string]*ProducerDaemon{}
 type AggregateMarshaller func(body interface{}, attributes ...map[string]interface{}) (*Message, error)
 
 type ProducerDaemonSettings struct {
-	Enabled         bool          `cfg:"enabled" default:"false"`
-	Interval        time.Duration `cfg:"interval" default:"1m"`
-	BufferSize      int           `cfg:"buffer_size" default:"10" validate:"min=1"`
-	RunnerCount     int           `cfg:"runner_count" default:"10" validate:"min=1"`
-	BatchSize       int           `cfg:"batch_size" default:"10" validate:"min=1"`
-	AggregationSize int           `cfg:"aggregation_size" default:"1" validate:"min=1"`
+	Enabled           bool                   `cfg:"enabled" default:"false"`
+	Interval          time.Duration          `cfg:"interval" default:"1m"`
+	BufferSize        int                    `cfg:"buffer_size" default:"10" validate:"min=1"`
+	RunnerCount       int                    `cfg:"runner_count" default:"10" validate:"min=1"`
+	BatchSize         int                    `cfg:"batch_size" default:"10" validate:"min=1"`
+	AggregationSize   int                    `cfg:"aggregation_size" default:"1" validate:"min=1"`
+	MessageAttributes map[string]interface{} `cfg:"message_attributes"`
 }
 
 type ProducerDaemon struct {
@@ -213,7 +214,7 @@ func (d *ProducerDaemon) flushAggregate() ([]WritableMessage, error) {
 	readyAggregate, d.aggregate = d.aggregate[:size], d.aggregate[size:]
 
 	d.writeMetricAggregateSize(len(readyAggregate))
-	aggregateMessage, err := BuildAggregateMessage(d.marshaller, readyAggregate)
+	aggregateMessage, err := BuildAggregateMessage(d.marshaller, readyAggregate, d.settings.MessageAttributes)
 
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal aggregate: %w", err)
@@ -341,8 +342,10 @@ func getProducerDaemonDefaultMetrics(name string) mon.MetricData {
 	}
 }
 
-func BuildAggregateMessage(marshaller AggregateMarshaller, aggregate []WritableMessage) (WritableMessage, error) {
-	return marshaller(aggregate, map[string]interface{}{
+func BuildAggregateMessage(marshaller AggregateMarshaller, aggregate []WritableMessage, attributes ...map[string]interface{}) (WritableMessage, error) {
+	attributes = append(attributes, map[string]interface{}{
 		AttributeAggregate: true,
 	})
+
+	return marshaller(aggregate, attributes...)
 }
