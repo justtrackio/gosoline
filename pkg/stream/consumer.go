@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
@@ -13,7 +14,10 @@ import (
 	"time"
 )
 
-const metricNameConsumerProcessedCount = "ConsumerProcessedCount"
+const (
+	metricNameConsumerProcessedCount = "ConsumerProcessedCount"
+	metricNameConsumerDuration       = "ConsumerDuration"
+)
 
 //go:generate mockery -name=ConsumerCallback
 type ConsumerCallback interface {
@@ -49,6 +53,7 @@ type Consumer struct {
 	encoder MessageEncoder
 	mw      mon.MetricWriter
 	tracer  tracing.Tracer
+	clock   clock.Clock
 
 	wg     sync.WaitGroup
 	cancel context.CancelFunc
@@ -64,6 +69,7 @@ func NewConsumer(name string, callback ConsumerCallback) *Consumer {
 	return &Consumer{
 		name:     name,
 		callback: callback,
+		clock:    clock.Provider,
 	}
 }
 
@@ -172,6 +178,8 @@ func (c *Consumer) runConsuming(ctx context.Context) error {
 
 	var ok bool
 	var msg *Message
+	var start time.Time
+	var duration time.Duration
 
 	for {
 		select {
@@ -185,12 +193,19 @@ func (c *Consumer) runConsuming(ctx context.Context) error {
 			return nil
 		}
 
+		start = c.clock.Now()
 		c.disaggregate(msg)
 
 		atomic.AddInt32(&c.processed, 1)
 		c.mw.WriteOne(&mon.MetricDatum{
 			MetricName: metricNameConsumerProcessedCount,
 			Value:      1.0,
+		})
+
+		duration = c.clock.Now().Sub(start)
+		c.mw.WriteOne(&mon.MetricDatum{
+			MetricName: metricNameConsumerDuration,
+			Value:      float64(duration.Milliseconds()),
 		})
 	}
 }
@@ -296,6 +311,12 @@ func getConsumerDefaultMetrics() mon.MetricData {
 			Priority:   mon.PriorityHigh,
 			MetricName: metricNameConsumerProcessedCount,
 			Unit:       mon.UnitCount,
+			Value:      0.0,
+		},
+		{
+			Priority:   mon.PriorityHigh,
+			MetricName: metricNameConsumerDuration,
+			Unit:       mon.UnitMilliseconds,
 			Value:      0.0,
 		},
 	}
