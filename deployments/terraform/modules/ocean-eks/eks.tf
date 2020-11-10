@@ -52,7 +52,7 @@ data "aws_region" "current" {}
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "2.63.0"
+  version = "2.64.0"
 
   create_vpc         = var.vpc_id == null
   name               = local.cluster_name
@@ -72,7 +72,7 @@ module "vpc" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "13.1.0"
+  version = "13.2.0"
 
   cluster_version = var.cluster_version
   cluster_name    = local.cluster_name
@@ -90,11 +90,6 @@ module "eks" {
   map_users = [
     {
       userarn  = "arn:aws:iam::164105964448:user/marco"
-      username = "marco"
-      groups   = ["system:masters"]
-    },
-    {
-      userarn  = "arn:aws:iam::164105964448:user/jan"
       username = "marco"
       groups   = ["system:masters"]
     },
