@@ -267,10 +267,8 @@ func (d *ProducerDaemon) close() error {
 }
 
 func (d *ProducerDaemon) outputLoop(ctx context.Context) error {
-	var err error
-
 	for batch := range d.outCh {
-		if err = d.output.Write(ctx, batch); err != nil {
+		if err := d.output.Write(ctx, batch); err != nil {
 			d.logger.Errorf(err, "can not write messages to output in producer %s", d.name)
 		}
 

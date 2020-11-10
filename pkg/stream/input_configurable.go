@@ -149,7 +149,7 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 	key := ConfigurableInputKey(name)
 
 	configuration := &SnsInputConfiguration{}
-	config.UnmarshalKey(key, configuration)
+	config.UnmarshalKey(key, configuration, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
 
 	settings := SnsInputSettings{
 		AppId: cfg.AppId{
@@ -200,7 +200,7 @@ func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 	key := ConfigurableInputKey(name)
 
 	configuration := sqsInputConfiguration{}
-	config.UnmarshalKey(key, &configuration)
+	config.UnmarshalKey(key, &configuration, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
 
 	settings := SqsInputSettings{
 		AppId: cfg.AppId{
