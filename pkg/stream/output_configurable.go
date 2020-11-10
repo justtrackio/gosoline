@@ -61,7 +61,7 @@ type kinesisOutputConfiguration struct {
 func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
 	key := ConfigurableOutputKey(name)
 	settings := &kinesisOutputConfiguration{}
-	config.UnmarshalKey(key, settings)
+	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
 
 	return NewKinesisOutput(config, logger, &KinesisOutputSettings{
 		StreamName: settings.StreamName,
@@ -114,7 +114,7 @@ func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) O
 	key := ConfigurableOutputKey(name)
 
 	configuration := SnsOutputConfiguration{}
-	config.UnmarshalKey(key, &configuration)
+	config.UnmarshalKey(key, &configuration, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
 
 	return NewSnsOutput(config, logger, SnsOutputSettings{
 		AppId: cfg.AppId{
@@ -144,7 +144,7 @@ func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) O
 	key := ConfigurableOutputKey(name)
 
 	configuration := sqsOutputConfiguration{}
-	config.UnmarshalKey(key, &configuration)
+	config.UnmarshalKey(key, &configuration, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
 
 	return NewSqsOutput(config, logger, SqsOutputSettings{
 		AppId: cfg.AppId{

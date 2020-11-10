@@ -1,0 +1,37 @@
+env: test
+
+app_project: gosoline
+app_family: test
+app_name: producer-daemon-test
+
+aws_sdk_retries: 5
+aws_cloudwatch_endpoint: http://localhost:4566
+aws_kinesis_endpoint: http://localhost:4566
+aws_kinesis_autoCreate: true
+aws_sqs_endpoint: http://localhost:4566
+aws_sqs_autoCreate: true
+
+stream:
+  backoff:
+    enabled: true
+    cancel_delay: 3s
+    max_interval: 250ms
+    max_elapsed_time: 3s
+
+  producer:
+    testDataKinesis:
+      daemon:
+        enabled: true
+        aggregation_size: 7
+    testDataSqs:
+      daemon:
+        enabled: true
+        aggregation_size: 7
+
+  output:
+    testDataKinesis:
+      type: kinesis
+      stream_name: "{app_project}-{env}-{app_family}-{app_name}-testData"
+    testDataSqs:
+      type: sqs
+      queue_id: testData
