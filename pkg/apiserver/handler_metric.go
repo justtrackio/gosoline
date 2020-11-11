@@ -35,7 +35,7 @@ func CreateMetricHandler(definition Definition) gin.HandlerFunc {
 			Dimensions: mon.MetricDimensions{
 				"path": definition.getAbsolutePath(),
 			},
-			Unit:  mon.UnitMilliseconds,
+			Unit:  mon.UnitMillisecondsAverage,
 			Value: requestTimeMillisecond,
 		})
 

@@ -17,6 +17,7 @@ const (
 	metricNameMessageCount  = "MessageCount"
 	metricNameBatchSize     = "BatchSize"
 	metricNameAggregateSize = "AggregateSize"
+	metricNameIdleDuration  = "IdleDuration"
 )
 
 var producerDaemonLock = sync.Mutex{}
@@ -267,15 +268,22 @@ func (d *ProducerDaemon) close() error {
 }
 
 func (d *ProducerDaemon) outputLoop(ctx context.Context) error {
-	for batch := range d.outCh {
+	for {
+		start := time.Now()
+		batch, ok := <-d.outCh
+		idleDuration := time.Since(start)
+
+		if !ok {
+			return nil
+		}
+
 		if err := d.output.Write(ctx, batch); err != nil {
 			d.logger.Errorf(err, "can not write messages to output in producer %s", d.name)
 		}
 
 		d.writeMetricBatchSize(len(batch))
+		d.writeMetricIdleDuration(idleDuration)
 	}
-
-	return nil
 }
 
 func (d *ProducerDaemon) writeMetricMessageCount(count int) {
@@ -305,6 +313,22 @@ func (d *ProducerDaemon) writeMetricAggregateSize(size int) {
 			"ProducerDaemon": d.name,
 		},
 		Value: float64(size),
+	})
+}
+
+func (d *ProducerDaemon) writeMetricIdleDuration(idleDuration time.Duration) {
+	if idleDuration > d.settings.Interval {
+		idleDuration = d.settings.Interval
+	}
+
+	d.metric.WriteOne(&mon.MetricDatum{
+		Priority:   mon.PriorityHigh,
+		MetricName: metricNameIdleDuration,
+		Dimensions: map[string]string{
+			"ProducerDaemon": d.name,
+		},
+		Unit:  mon.UnitMillisecondsAverage,
+		Value: float64(idleDuration.Milliseconds()),
 	})
 }
 

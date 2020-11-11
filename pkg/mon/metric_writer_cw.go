@@ -16,10 +16,12 @@ const (
 	PriorityLow  = 1
 	PriorityHigh = 2
 
-	UnitCount        = cloudwatch.StandardUnitCount
-	UnitCountAverage = "UnitCountAverage"
-	UnitSeconds      = cloudwatch.StandardUnitSeconds
-	UnitMilliseconds = cloudwatch.StandardUnitMilliseconds
+	UnitCount               = cloudwatch.StandardUnitCount
+	UnitCountAverage        = "UnitCountAverage"
+	UnitSeconds             = cloudwatch.StandardUnitSeconds
+	UnitSecondsAverage      = "UnitSecondsAverage"
+	UnitMilliseconds        = cloudwatch.StandardUnitMilliseconds
+	UnitMillisecondsAverage = "UnitMillisecondsAverage"
 
 	chunkSizeCloudWatch = 20
 	minusOneWeek        = -1 * 7 * 24 * time.Hour

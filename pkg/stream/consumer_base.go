@@ -138,7 +138,7 @@ func getConsumerDefaultMetrics() mon.MetricData {
 		{
 			Priority:   mon.PriorityHigh,
 			MetricName: metricNameConsumerDuration,
-			Unit:       mon.UnitMilliseconds,
+			Unit:       mon.UnitMillisecondsAverage,
 			Value:      0.0,
 		},
 	}
