@@ -99,7 +99,7 @@ func (r metricRepository) writeMetric(op string, err error, start time.Time) {
 			"Operation": op,
 			"ModelId":   r.GetModelId(),
 		},
-		Unit:  mon.UnitMilliseconds,
+		Unit:  mon.UnitMillisecondsAverage,
 		Value: latencyMillisecond,
 	})
 }
@@ -128,7 +128,7 @@ func getDefaultRepositoryMetrics(modelId mdl.ModelId) []*mon.MetricDatum {
 				"Operation": op,
 				"ModelId":   modelId.String(),
 			},
-			Unit:  mon.UnitMilliseconds,
+			Unit:  mon.UnitMillisecondsAverage,
 			Value: 0.0,
 		})
 	}

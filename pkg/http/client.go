@@ -205,7 +205,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	// so the duration will be very low. If we get back an error (e.g., status 500),
 	// we log the duration as this is just a valid http response.
 	requestDurationMs := float64(resp.Time() / time.Millisecond)
-	c.writeMetric(metricRequestDuration, method, mon.UnitMilliseconds, requestDurationMs)
+	c.writeMetric(metricRequestDuration, method, mon.UnitMillisecondsAverage, requestDurationMs)
 
 	return response, nil
 }
