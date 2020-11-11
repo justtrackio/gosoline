@@ -4,6 +4,14 @@ app_project: gosoline
 app_family: test
 app_name: producer-daemon-test
 
+cfg:
+  server:
+    port: 0
+
+api:
+  health:
+    port: 0
+
 aws_sdk_retries: 5
 aws_cloudwatch_endpoint: http://localhost:4566
 aws_kinesis_endpoint: http://localhost:4566
