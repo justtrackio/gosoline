@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -12,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -27,21 +29,17 @@ type ApiServer struct {
 	kernel.EssentialModule
 	kernel.ServiceStage
 
-	logger       mon.Logger
-	server       *http.Server
-	listener     net.Listener
-	defineRouter Define
+	logger                mon.Logger
+	metric                mon.MetricWriter
+	server                *http.Server
+	listener              net.Listener
+	defineRouter          Define
+	activeConnectionCount int32
 }
 
 func New(definer Define) *ApiServer {
 	return &ApiServer{
 		defineRouter: definer,
-	}
-}
-
-func NewOnlyHealthRoute() *ApiServer {
-	return &ApiServer{
-		defineRouter: func(_ cfg.Config, _ mon.Logger, _ *Definitions) {},
 	}
 }
 
@@ -55,6 +53,9 @@ func (a *ApiServer) Boot(config cfg.Config, logger mon.Logger) error {
 	}
 
 	gin.SetMode(settings.Mode)
+
+	defaults := getApiServerMetricDefaults()
+	metric := mon.NewMetricDaemonWriter(defaults...)
 
 	router := gin.New()
 	tracer := tracing.ProviderTracer(config, logger)
@@ -73,15 +74,18 @@ func (a *ApiServer) Boot(config cfg.Config, logger mon.Logger) error {
 
 	buildRouter(definitions, router)
 
-	return a.BootWithInterfaces(logger, router, tracer, settings)
+	return a.BootWithInterfaces(logger, metric, router, tracer, settings)
 }
 
-func (a *ApiServer) BootWithInterfaces(logger mon.Logger, router *gin.Engine, tracer tracing.Tracer, s *Settings) error {
+func (a *ApiServer) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter, router *gin.Engine, tracer tracing.Tracer, s *Settings) error {
 	a.logger = logger
+	a.metric = metric
+	atomic.StoreInt32(&a.activeConnectionCount, 0)
 
 	a.server = &http.Server{
 		Addr:         ":" + s.Port,
 		Handler:      tracer.HttpHandler(router),
+		ConnState:    a.stateHandler,
 		ReadTimeout:  s.TimeoutRead * time.Second,
 		WriteTimeout: s.TimeoutWrite * time.Second,
 		IdleTimeout:  s.TimeoutIdle * time.Second,
@@ -107,6 +111,8 @@ func (a *ApiServer) BootWithInterfaces(logger mon.Logger, router *gin.Engine, tr
 
 func (a *ApiServer) Run(ctx context.Context) error {
 	go a.waitForStop(ctx)
+	go a.trackActiveConnectionCount(ctx)
+
 	err := a.server.Serve(a.listener)
 
 	if err != http.ErrServerClosed {
@@ -148,4 +154,43 @@ func (a *ApiServer) GetPort() (*int, error) {
 	}
 
 	return &port, nil
+}
+
+func (a *ApiServer) stateHandler(_ net.Conn, state http.ConnState) {
+	switch state {
+	case http.StateNew:
+		atomic.AddInt32(&a.activeConnectionCount, 1)
+	case http.StateClosed:
+		atomic.AddInt32(&a.activeConnectionCount, -1)
+	}
+}
+
+func (a *ApiServer) trackActiveConnectionCount(ctx context.Context) {
+	ticker := clock.NewRealTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.Tick():
+			count := atomic.LoadInt32(&a.activeConnectionCount)
+
+			a.metric.WriteOne(&mon.MetricDatum{
+				MetricName: MetricApiRequestConcurrent,
+				Value:      float64(count),
+			})
+		}
+	}
+}
+
+func getApiServerMetricDefaults() mon.MetricData {
+	return mon.MetricData{
+		{
+			Priority:   mon.PriorityHigh,
+			MetricName: MetricApiRequestConcurrent,
+			Unit:       mon.UnitCountAverage,
+			Value:      0.0,
+		},
+	}
 }
