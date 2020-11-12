@@ -21,7 +21,6 @@ import (
 type ServerTestSuite struct {
 	suite.Suite
 	logger mon.Logger
-	metric mon.MetricWriter
 	router *gin.Engine
 	tracer tracing.Tracer
 	server *apiserver.ApiServer
@@ -33,7 +32,6 @@ func TestServerTestSuite(t *testing.T) {
 
 func (s *ServerTestSuite) SetupTest() {
 	s.logger = monMocks.NewLoggerMockedAll()
-	s.metric = monMocks.NewMetricWriterMockedAll()
 
 	gin.SetMode(gin.TestMode)
 	s.router = gin.New()
@@ -50,7 +48,7 @@ func (s *ServerTestSuite) TestLifecycle_Cancel() {
 	cancel()
 
 	s.NotPanics(func() {
-		err := s.server.BootWithInterfaces(s.logger, s.metric, s.router, s.tracer, &apiserver.Settings{})
+		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
 		s.NoError(err)
 
 		err = s.server.Run(ctx)
@@ -60,7 +58,7 @@ func (s *ServerTestSuite) TestLifecycle_Cancel() {
 
 func (s *ServerTestSuite) TestGetPort() {
 	s.NotPanics(func() {
-		err := s.server.BootWithInterfaces(s.logger, s.metric, s.router, s.tracer, &apiserver.Settings{})
+		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
 		s.NoError(err)
 
 		port, err := s.server.GetPort()
@@ -83,7 +81,7 @@ func (s *ServerTestSuite) TestGetPort_Error() {
 func (s *ServerTestSuite) TestBaseProfilingEndpoint() {
 	s.NotPanics(func() {
 		apiserver.AddProfilingEndpoints(s.router)
-		err := s.server.BootWithInterfaces(s.logger, s.metric, s.router, s.tracer, &apiserver.Settings{})
+		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
 		s.NoError(err)
 	})
 
