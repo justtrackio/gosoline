@@ -13,7 +13,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
@@ -29,12 +29,15 @@ type ApiServer struct {
 	kernel.EssentialModule
 	kernel.ServiceStage
 
-	logger                mon.Logger
-	metric                mon.MetricWriter
-	server                *http.Server
-	listener              net.Listener
-	defineRouter          Define
-	activeConnectionCount int32
+	logger       mon.Logger
+	metric       mon.MetricWriter
+	server       *http.Server
+	listener     net.Listener
+	defineRouter Define
+
+	lck                    sync.Mutex
+	currentConnectionCount int
+	activeConnectionCounts []int
 }
 
 func New(definer Define) *ApiServer {
@@ -80,7 +83,9 @@ func (a *ApiServer) Boot(config cfg.Config, logger mon.Logger) error {
 func (a *ApiServer) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter, router *gin.Engine, tracer tracing.Tracer, s *Settings) error {
 	a.logger = logger
 	a.metric = metric
-	atomic.StoreInt32(&a.activeConnectionCount, 0)
+
+	a.currentConnectionCount = 0
+	a.activeConnectionCounts = make([]int, 0, 1000)
 
 	a.server = &http.Server{
 		Addr:         ":" + s.Port,
@@ -157,11 +162,15 @@ func (a *ApiServer) GetPort() (*int, error) {
 }
 
 func (a *ApiServer) stateHandler(_ net.Conn, state http.ConnState) {
+	a.lck.Lock()
+	defer a.lck.Unlock()
+
 	switch state {
 	case http.StateNew:
-		atomic.AddInt32(&a.activeConnectionCount, 1)
+		a.currentConnectionCount++
+		a.activeConnectionCounts = append(a.activeConnectionCounts, a.currentConnectionCount)
 	case http.StateClosed:
-		atomic.AddInt32(&a.activeConnectionCount, -1)
+		a.currentConnectionCount--
 	}
 }
 
@@ -174,11 +183,21 @@ func (a *ApiServer) trackActiveConnectionCount(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.Tick():
-			count := atomic.LoadInt32(&a.activeConnectionCount)
+			a.lck.Lock()
+			sum := 0
+
+			for _, c := range a.activeConnectionCounts {
+				sum += c
+			}
+
+			avg := float64(sum) / float64(len(a.activeConnectionCounts))
+
+			a.activeConnectionCounts = make([]int, 0, 1000)
+			a.lck.Unlock()
 
 			a.metric.WriteOne(&mon.MetricDatum{
 				MetricName: MetricApiRequestConcurrent,
-				Value:      float64(count),
+				Value:      avg,
 			})
 		}
 	}
