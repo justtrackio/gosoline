@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cast"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
 const (
@@ -22,6 +23,7 @@ const (
 type Request struct {
 	Header   http.Header
 	Params   gin.Params
+	Url      *url.URL
 	Body     interface{}
 	ClientIp string
 }
@@ -198,6 +200,7 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 		request := &Request{
 			Header:   ginCtx.Request.Header,
 			Params:   ginCtx.Params,
+			Url:      ginCtx.Request.URL,
 			Body:     input,
 			ClientIp: ginCtx.ClientIP(),
 		}
@@ -264,6 +267,7 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 	request := &Request{
 		Header:   ginCtx.Request.Header,
 		Params:   ginCtx.Params,
+		Url:      ginCtx.Request.URL,
 		Body:     input,
 		ClientIp: ginCtx.ClientIP(),
 	}
