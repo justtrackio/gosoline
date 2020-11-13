@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"github.com/hashicorp/go-multierror"
-	"golang.org/x/sys/unix"
 	"io"
 	"strings"
+	"syscall"
 )
 
 type ErrorType int
@@ -95,7 +95,7 @@ func CheckConnectionError(_ interface{}, err error) ErrorType {
 }
 
 func IsConnectionError(err error) bool {
-	if errors.Is(err, io.EOF) || errors.Is(err, unix.ECONNREFUSED) || errors.Is(err, unix.ECONNRESET) || errors.Is(err, unix.EPIPE) {
+	if errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNREFUSED) || errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {
 		return true
 	}
 

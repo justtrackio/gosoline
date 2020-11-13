@@ -6,9 +6,9 @@ import (
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/sys/unix"
 	"net/http"
 	"net/http/httptest"
+	"syscall"
 	"testing"
 )
 
@@ -64,7 +64,7 @@ func TestRecoveryWithSentryCaseResponseBodyWriterAndConnectionErrors(t *testing.
 	r := gin.New()
 	r.Use(apiserver.RecoveryWithSentry(loggerMock))
 	r.Use(func(c *gin.Context) {
-		err := apiserver.ResponseBodyWriterError{Err: unix.EPIPE}
+		err := apiserver.ResponseBodyWriterError{Err: syscall.EPIPE}
 		panic(err)
 	})
 

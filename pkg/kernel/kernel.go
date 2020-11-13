@@ -8,12 +8,12 @@ import (
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/mon"
-	"golang.org/x/sys/unix"
 	"os"
 	"os/signal"
 	"sort"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -192,8 +192,8 @@ func (k *kernel) Run() {
 	}
 
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, unix.SIGTERM)
-	signal.Notify(sig, unix.SIGINT)
+	signal.Notify(sig, syscall.SIGTERM)
+	signal.Notify(sig, syscall.SIGINT)
 
 	if !k.boot() {
 		return
