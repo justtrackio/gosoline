@@ -102,3 +102,10 @@ func TestCoffin_Gof(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "crashing function: runtime error: invalid memory address or nil pointer dereference")
 }
+
+func TestCoffin_Wait_Empty(t *testing.T) {
+	cfn := coffin.New()
+	// check waiting on an empty coffin does not block forever
+	err := cfn.Wait()
+	assert.NoError(t, err)
+}

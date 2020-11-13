@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"gopkg.in/tomb.v2"
+	"sync/atomic"
 )
 
 type Coffin interface {
@@ -62,18 +63,33 @@ type Coffin interface {
 	Killf(f string, a ...interface{}) error
 	// Wait blocks until all goroutines have finished running, and
 	// then returns the reason for their death.
+	//
+	// If you never spawned a task using one of the Go function, Wait
+	// returns nil.
 	Wait() error
+	// Returns the number of started go routines in this coffin.
+	Started() int
+	// Returns the number of currently running go routines in this coffin.
+	Running() int
+	// Returns the number of go routines which have already returned in this coffin.
+	Terminated() int
 }
 
 type coffin struct {
 	// we MUST represent this as a ptr as tomb.Tomb contains a mutex which
 	// we are not allowed to copy!
 	tomb *tomb.Tomb
+	// number of started go routines
+	started int32
+	// number of terminated go routines
+	terminated int32
 }
 
 func New() Coffin {
 	return &coffin{
-		tomb: new(tomb.Tomb),
+		tomb:       new(tomb.Tomb),
+		started:    0,
+		terminated: 0,
 	}
 }
 
@@ -84,7 +100,9 @@ func New() Coffin {
 func WithContext(parent context.Context) (Coffin, context.Context) {
 	tmb, ctx := tomb.WithContext(parent)
 	cfn := &coffin{
-		tomb: tmb,
+		tomb:       tmb,
+		started:    0,
+		terminated: 0,
 	}
 
 	return cfn, ctx
@@ -111,7 +129,9 @@ func (c *coffin) Err() (reason error) {
 }
 
 func (c *coffin) Go(f func() error) {
+	atomic.AddInt32(&c.started, 1)
 	c.tomb.Go(func() (err error) {
+		defer atomic.AddInt32(&c.terminated, 1)
 		defer func() {
 			panicErr := ResolveRecovery(recover())
 
@@ -125,7 +145,9 @@ func (c *coffin) Go(f func() error) {
 }
 
 func (c *coffin) Gof(f func() error, msg string, args ...interface{}) {
+	atomic.AddInt32(&c.started, 1)
 	c.tomb.Go(func() (err error) {
+		defer atomic.AddInt32(&c.terminated, 1)
 		defer func() {
 			panicErr := ResolveRecovery(recover())
 
@@ -157,7 +179,7 @@ func (c *coffin) GoWithContextf(ctx context.Context, f func(ctx context.Context)
 // Kill puts the coffin in a dying state for the given reason,
 // closes the Dying channel, and sets Alive to false.
 //
-// Althoguh Kill may be called multiple times, only the first
+// Although Kill may be called multiple times, only the first
 // non-nil error is recorded as the death reason.
 //
 // If reason is ErrDying, the previous reason isn't replaced
@@ -172,5 +194,21 @@ func (c *coffin) Killf(f string, a ...interface{}) error {
 }
 
 func (c *coffin) Wait() error {
+	if atomic.LoadInt32(&c.started) == 0 {
+		return nil
+	}
+
 	return c.tomb.Wait()
+}
+
+func (c *coffin) Started() int {
+	return int(atomic.LoadInt32(&c.started))
+}
+
+func (c *coffin) Running() int {
+	return c.Started() - c.Terminated()
+}
+
+func (c *coffin) Terminated() int {
+	return int(atomic.LoadInt32(&c.terminated))
 }
