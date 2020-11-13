@@ -42,6 +42,10 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 
 	err = uh.transformer.TransformUpdate(request.Body, model)
 
+	if modelNotChanged(err) {
+		return apiserver.NewStatusResponse(http.StatusNotModified), nil
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -73,4 +77,8 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	}
 
 	return apiserver.NewJsonResponse(out), nil
+}
+
+func modelNotChanged(err error) bool {
+	return errors.Is(err, ErrModelNotChanged)
 }
