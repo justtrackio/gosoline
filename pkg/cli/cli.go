@@ -5,6 +5,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -30,9 +32,12 @@ func newCliModule(module Module) *cliModule {
 }
 
 func Run(module Module) {
+	ex, _ := os.Executable()
+	configFilePath := filepath.Join(filepath.Dir(ex), "config.dist.yml")
+
 	configOptions := []cfg.Option{
 		cfg.WithErrorHandlers(defaultErrorHandler),
-		cfg.WithConfigFile("./config.dist.yml", "yml"),
+		cfg.WithConfigFile(configFilePath, "yml"),
 		cfg.WithConfigFileFlag("config"),
 	}
 

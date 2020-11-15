@@ -4,6 +4,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -32,10 +34,13 @@ func (a *App) addSetupOption(opt SetupOption) {
 }
 
 func Default(options ...Option) kernel.Kernel {
+	ex, _ := os.Executable()
+	configFilePath := filepath.Join(filepath.Dir(ex), "config.dist.yml")
+
 	defaults := []Option{
 		WithUTCClock(true),
 		WithConfigErrorHandlers(defaultErrorHandler),
-		WithConfigFile("./config.dist.yml", "yml"),
+		WithConfigFile(configFilePath, "yml"),
 		WithConfigFileFlag,
 		WithConfigEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
 		WithConfigSanitizers(cfg.TimeSanitizer),
