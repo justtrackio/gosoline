@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/spf13/cast"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -40,6 +41,12 @@ func buildAttributes(attributes []map[string]interface{}) (map[string]*sns.Messa
 				snsAttributes[key] = &sns.MessageAttributeValue{
 					DataType:    aws.String("Number"),
 					StringValue: aws.String(strVal),
+				}
+
+			case bool:
+				snsAttributes[key] = &sns.MessageAttributeValue{
+					DataType:    aws.String("String"),
+					StringValue: aws.String(strconv.FormatBool(v)),
 				}
 
 			default:
