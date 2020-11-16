@@ -23,6 +23,7 @@ type MessageEncoderSettings struct {
 	EncodeHandlers []EncodeHandler
 }
 
+//go:generate mockery -name MessageEncoder
 type MessageEncoder interface {
 	Encode(ctx context.Context, data interface{}, attributeSets ...map[string]interface{}) (*Message, error)
 	Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]interface{}, error)
