@@ -22,14 +22,6 @@ func (m *Message) MarshalToBytes() ([]byte, error) {
 	return json.Marshal(*m)
 }
 
-func (m *Message) GetReceiptHandler() interface{} {
-	if receiptHandle, ok := m.Attributes[AttributeSqsReceiptHandle]; ok {
-		return receiptHandle
-	}
-
-	return nil
-}
-
 func (m *Message) MarshalToString() (string, error) {
 	bytes, err := json.Marshal(*m)
 

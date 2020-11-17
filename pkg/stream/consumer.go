@@ -124,6 +124,12 @@ func (c *Consumer) process(ctx context.Context, msg *Message) bool {
 
 	model := c.callback.GetModel(msg.Attributes)
 
+	if model == nil {
+		err := fmt.Errorf("can not get model for message attributes %v", msg.Attributes)
+		c.logger.Error(err, "an error occurred during the consume operation")
+		return false
+	}
+
 	ctx, attributes, err := c.encoder.Decode(ctx, msg, model)
 
 	if err != nil {

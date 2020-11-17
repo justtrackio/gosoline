@@ -29,11 +29,13 @@ func (c *callback) Process(ctx context.Context, messages []*stream.Message) ([]*
 func runPipelineWithSettings(t *testing.T, settings *stream.PipelineSettings, ctx context.Context) {
 	logger := mocks.NewLoggerMockedAll()
 	metric := mocks.NewMetricWriterMockedAll()
-
-	input := stream.NewFileInputWithInterfaces(logger, stream.FileSettings{
-		Filename: "testdata/file_input.json",
-	})
 	output := stream.NewInMemoryOutput()
+
+	input := stream.NewInMemoryInput(&stream.InMemorySettings{Size: 1})
+	input.Publish(&stream.Message{
+		Body: "foobar",
+	})
+	input.Stop()
 
 	callback := &callback{}
 	pipe := stream.NewPipeline(callback)

@@ -55,6 +55,28 @@ func (s *ConsumerTestSuite) SetupTest() {
 	s.consumer.BootWithInterfaces(logger, tracer, mw, s.input, me, settings)
 }
 
+func (s *ConsumerTestSuite) TestGetModelNil() {
+	s.input.On("Data").Return(s.data)
+	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
+		s.data <- stream.NewJsonMessage(`"foo"`, map[string]interface{}{
+			"bla": "blub",
+		})
+		s.stop()
+	}).Return(nil)
+	s.input.On("Stop")
+
+	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).Return(func(_ map[string]interface{}) interface{} {
+		return nil
+	})
+	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+
+	err := s.consumer.Run(context.Background())
+
+	s.NoError(err, "there should be no error during run")
+	s.input.AssertExpectations(s.T())
+	s.callback.AssertExpectations(s.T())
+}
+
 func (s *ConsumerTestSuite) TestRun() {
 	s.input.On("Data").Return(s.data)
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
@@ -76,8 +98,7 @@ func (s *ConsumerTestSuite) TestRun() {
 			return mdl.String("")
 		})
 
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Return(nil)
+	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
 	err := s.consumer.Run(context.Background())
 

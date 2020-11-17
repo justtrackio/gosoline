@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
@@ -33,6 +34,7 @@ type Pipeline struct {
 	metric   mon.MetricWriter
 	cfn      coffin.Coffin
 	lck      sync.Mutex
+	encoder  MessageEncoder
 	output   Output
 	ticker   *time.Ticker
 	batch    []*Message
@@ -75,6 +77,7 @@ func (p *Pipeline) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter
 	p.metric = metric
 	p.input = input
 	p.output = output
+	p.encoder = NewMessageEncoder(&MessageEncoderSettings{})
 	p.ticker = time.NewTicker(settings.Interval)
 	p.batch = make([]*Message, 0, settings.BatchSize)
 	p.settings = settings
@@ -112,7 +115,15 @@ func (p *Pipeline) read(ctx context.Context) error {
 				return nil
 			}
 
-			p.batch = append(p.batch, msg)
+			disaggregated, err := p.disaggregateMessage(ctx, msg)
+
+			if err != nil {
+				p.logger.Errorf(err, "can not disaggregate the message")
+				continue
+			}
+
+			p.batch = append(p.batch, disaggregated...)
+			p.Acknowledge(ctx, msg)
 
 		case <-p.ticker.C:
 			force = true
@@ -122,6 +133,21 @@ func (p *Pipeline) read(ctx context.Context) error {
 			p.process(ctx, force)
 		}
 	}
+}
+
+func (p *Pipeline) disaggregateMessage(ctx context.Context, msg *Message) ([]*Message, error) {
+	if _, ok := msg.Attributes[AttributeAggregate]; !ok {
+		return []*Message{msg}, nil
+	}
+
+	batch := make([]*Message, 0)
+	_, _, err := p.encoder.Decode(ctx, msg, &batch)
+
+	if err != nil {
+		return nil, fmt.Errorf("can not decode message: %w", err)
+	}
+
+	return batch, nil
 }
 
 func (p *Pipeline) process(ctx context.Context, force bool) {
@@ -176,8 +202,6 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 
 		return
 	}
-
-	p.AcknowledgeBatch(ctx, p.batch)
 
 	processedCount := len(p.batch)
 

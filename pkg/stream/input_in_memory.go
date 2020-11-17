@@ -22,12 +22,16 @@ func ProvideInMemoryInput(name string, settings *InMemorySettings) *InMemoryInpu
 		return input
 	}
 
-	inMemoryInputs[name] = &InMemoryInput{
+	inMemoryInputs[name] = NewInMemoryInput(settings)
+
+	return inMemoryInputs[name]
+}
+
+func NewInMemoryInput(settings *InMemorySettings) *InMemoryInput {
+	return &InMemoryInput{
 		channel: make(chan *Message, settings.Size),
 		stopped: make(chan struct{}),
 	}
-
-	return inMemoryInputs[name]
 }
 
 func (i *InMemoryInput) Publish(messages ...*Message) {
