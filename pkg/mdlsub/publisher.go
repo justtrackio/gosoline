@@ -10,6 +10,9 @@ import (
 )
 
 const (
+	AttributeModelId          = "modelId"
+	AttributeType             = "type"
+	AttributeVersion          = "version"
 	ConfigKeyMdlSubPublishers = "mdlsub.publishers"
 	TypeCreate                = "create"
 	TypeUpdate                = "update"
@@ -69,8 +72,8 @@ func (p *publisher) Publish(ctx context.Context, typ string, version int, value 
 
 func CreateMessageAttributes(modelId mdl.ModelId, typ string, version int) map[string]interface{} {
 	return map[string]interface{}{
-		"type":    typ,
-		"version": version,
-		"modelId": modelId.String(),
+		AttributeType:    typ,
+		AttributeVersion: version,
+		AttributeModelId: modelId.String(),
 	}
 }

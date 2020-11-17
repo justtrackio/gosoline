@@ -2,11 +2,9 @@ package stream
 
 import (
 	"context"
-	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/redis"
-	"github.com/applike/gosoline/pkg/tracing"
 	"time"
 )
 
@@ -24,7 +22,6 @@ type RedisListOutputSettings struct {
 type redisListOutput struct {
 	logger            mon.Logger
 	metricWriter      mon.MetricWriter
-	tracer            tracing.Tracer
 	client            redis.Client
 	settings          *RedisListOutputSettings
 	fullyQualifiedKey string
@@ -32,23 +29,20 @@ type redisListOutput struct {
 
 func NewRedisListOutput(config cfg.Config, logger mon.Logger, settings *RedisListOutputSettings) Output {
 	settings.PadFromConfig(config)
-
-	tracer := tracing.ProviderTracer(config, logger)
 	client := redis.ProvideClient(config, logger, settings.ServerName)
 
 	defaultMetrics := getRedisListOutputDefaultMetrics(settings.AppId, settings.Key)
 	mw := mon.NewMetricDaemonWriter(defaultMetrics...)
 
-	return NewRedisListOutputWithInterfaces(logger, mw, tracer, client, settings)
+	return NewRedisListOutputWithInterfaces(logger, mw, client, settings)
 }
 
-func NewRedisListOutputWithInterfaces(logger mon.Logger, mw mon.MetricWriter, tracer tracing.Tracer, client redis.Client, settings *RedisListOutputSettings) Output {
+func NewRedisListOutputWithInterfaces(logger mon.Logger, mw mon.MetricWriter, client redis.Client, settings *RedisListOutputSettings) Output {
 	fullyQualifiedKey := redis.GetFullyQualifiedKey(settings.AppId, settings.Key)
 
 	return &redisListOutput{
 		logger:            logger,
 		metricWriter:      mw,
-		tracer:            tracer,
 		client:            client,
 		settings:          settings,
 		fullyQualifiedKey: fullyQualifiedKey,
@@ -59,16 +53,7 @@ func (o *redisListOutput) WriteOne(ctx context.Context, record WritableMessage) 
 	return o.Write(ctx, []WritableMessage{record})
 }
 
-func (o *redisListOutput) Write(ctx context.Context, batch []WritableMessage) error {
-	spanName := fmt.Sprintf("redis-list-output-%v-%v-%v", o.settings.Family, o.settings.Application, o.settings.Key)
-
-	ctx, trans := o.tracer.StartSubSpan(ctx, spanName)
-	defer trans.Finish()
-
-	return o.pushToList(batch)
-}
-
-func (o *redisListOutput) pushToList(batch []WritableMessage) error {
+func (o *redisListOutput) Write(_ context.Context, batch []WritableMessage) error {
 	chunks, err := BuildChunks(batch, o.settings.BatchSize)
 
 	if err != nil {

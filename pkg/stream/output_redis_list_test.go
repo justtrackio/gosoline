@@ -6,7 +6,6 @@ import (
 	"github.com/applike/gosoline/pkg/mon/mocks"
 	redisMocks "github.com/applike/gosoline/pkg/redis/mocks"
 	"github.com/applike/gosoline/pkg/stream"
-	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -54,10 +53,9 @@ func TestRedisListOutput_Write_Chunked(t *testing.T) {
 func setup(batchSize int) (stream.Output, *redisMocks.Client) {
 	loggerMock := mocks.NewLoggerMockedAll()
 	mw := mocks.NewMetricWriterMockedAll()
-	tracer := tracing.NewNoopTracer()
 
 	redisMock := new(redisMocks.Client)
-	output := stream.NewRedisListOutputWithInterfaces(loggerMock, mw, tracer, redisMock, getSettings(batchSize))
+	output := stream.NewRedisListOutputWithInterfaces(loggerMock, mw, redisMock, getSettings(batchSize))
 
 	return output, redisMock
 }

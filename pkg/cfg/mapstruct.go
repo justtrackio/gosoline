@@ -71,6 +71,8 @@ func (m *MapStruct) doReadZeroAndDefaultValues(target interface{}) (objx.Map, ob
 
 			values.MergeHere(embeddedZeros.Value().MSI())
 			defaults.MergeHere(embeddedDefaults.Value().MSI())
+
+			continue
 		}
 
 		if cfg, ok = targetField.Tag.Lookup(m.settings.FieldTag); !ok {

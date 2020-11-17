@@ -19,34 +19,35 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 
 	for name := range publishers {
 		publisherKey := getPublisherConfigKey(name)
-		settings := readPublisherSetting(config, name)
+		publisherSettings := readPublisherSetting(config, name)
 
 		outputSettings := &stream.SnsOutputConfiguration{}
 		config.UnmarshalDefaults(outputSettings, cfg.UnmarshalWithDefaultsFromKey(stream.ConfigKeyStreamBackoff, "backoff"))
 
-		outputSettings.Type = settings.OutputType
-		outputSettings.Project = settings.Project
-		outputSettings.Family = settings.Family
-		outputSettings.Application = settings.Application
-		outputSettings.TopicId = settings.Name
+		outputSettings.Type = publisherSettings.OutputType
+		outputSettings.Project = publisherSettings.Project
+		outputSettings.Family = publisherSettings.Family
+		outputSettings.Application = publisherSettings.Application
+		outputSettings.TopicId = publisherSettings.Name
 
-		if settings.Shared {
+		if publisherSettings.Shared {
 			outputSettings.TopicId = "publisher"
 		}
 
-		producerName := fmt.Sprintf("publisher-%s", settings.Name)
-		outputName := fmt.Sprintf("publisher-%s", settings.Name)
+		producerName := fmt.Sprintf("publisher-%s", publisherSettings.Name)
+		outputName := fmt.Sprintf("publisher-%s", publisherSettings.Name)
 
-		if len(settings.Producer) != 0 {
-			producerName = settings.Producer
+		if len(publisherSettings.Producer) != 0 {
+			producerName = publisherSettings.Producer
 		} else {
-			settings.Producer = producerName
+			publisherSettings.Producer = producerName
 		}
 
 		producerSettings := &stream.ProducerSettings{}
 		config.UnmarshalDefaults(producerSettings)
 
 		producerSettings.Output = outputName
+		producerSettings.Daemon.MessageAttributes[AttributeModelId] = publisherSettings.ModelId.String()
 
 		producerKey := stream.ConfigurableProducerKey(producerName)
 		outputKey := stream.ConfigurableOutputKey(outputName)
@@ -54,11 +55,11 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		configOptions := []cfg.Option{
 			cfg.WithConfigSetting(producerKey, producerSettings, cfg.SkipExisting),
 			cfg.WithConfigSetting(outputKey, outputSettings, cfg.SkipExisting),
-			cfg.WithConfigSetting(publisherKey, settings),
+			cfg.WithConfigSetting(publisherKey, publisherSettings),
 		}
 
 		if err := config.Option(configOptions...); err != nil {
-			return false, fmt.Errorf("can not apply config settings for publisher %s: %w", settings.Name, err)
+			return false, fmt.Errorf("can not apply config settings for publisher %s: %w", publisherSettings.Name, err)
 		}
 	}
 

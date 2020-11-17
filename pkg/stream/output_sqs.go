@@ -9,7 +9,6 @@ import (
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
-	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/thoas/go-funk"
@@ -29,7 +28,6 @@ type SqsOutputSettings struct {
 
 type sqsOutput struct {
 	logger   mon.Logger
-	tracer   tracing.Tracer
 	queue    sqs.Queue
 	settings SqsOutputSettings
 }
@@ -47,15 +45,12 @@ func NewSqsOutput(config cfg.Config, logger mon.Logger, s SqsOutputSettings) Out
 		Backoff:           s.Backoff,
 	})
 
-	tracer := tracing.ProviderTracer(config, logger)
-
-	return NewSqsOutputWithInterfaces(logger, tracer, queue, s)
+	return NewSqsOutputWithInterfaces(logger, queue, s)
 }
 
-func NewSqsOutputWithInterfaces(logger mon.Logger, tracer tracing.Tracer, queue sqs.Queue, s SqsOutputSettings) Output {
+func NewSqsOutputWithInterfaces(logger mon.Logger, queue sqs.Queue, s SqsOutputSettings) Output {
 	return &sqsOutput{
 		logger:   logger,
-		tracer:   tracer,
 		queue:    queue,
 		settings: s,
 	}
@@ -66,15 +61,6 @@ func (o *sqsOutput) WriteOne(ctx context.Context, record WritableMessage) error 
 }
 
 func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
-	spanName := fmt.Sprintf("sqs-output-%v-%v-%v", o.settings.Family, o.settings.Application, o.settings.QueueId)
-
-	ctx, trans := o.tracer.StartSubSpan(ctx, spanName)
-	defer trans.Finish()
-
-	return o.sendToQueue(ctx, batch)
-}
-
-func (o *sqsOutput) sendToQueue(ctx context.Context, batch []WritableMessage) error {
 	chunks, ok := funk.Chunk(batch, sqsOutputBatchSize).([][]WritableMessage)
 
 	if !ok {

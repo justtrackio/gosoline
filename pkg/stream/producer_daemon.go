@@ -66,18 +66,11 @@ func ProvideProducerDaemon(config cfg.Config, logger mon.Logger, name string) *P
 }
 
 func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) *ProducerDaemon {
-	key := ConfigurableProducerKey(name)
-	settings := &ProducerSettings{}
-	config.UnmarshalKey(key, settings)
+	settings := readProducerSettings(config, name)
+	output := NewConfigurableOutput(config, logger, settings.Output)
 
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
 	metric := mon.NewMetricDaemonWriter(defaultMetrics...)
-
-	if settings.Output == "" {
-		settings.Output = name
-	}
-
-	output := NewConfigurableOutput(config, logger, settings.Output)
 
 	return &ProducerDaemon{
 		name:          name,

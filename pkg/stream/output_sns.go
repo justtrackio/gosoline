@@ -2,13 +2,11 @@ package stream
 
 import (
 	"context"
-	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sns"
-	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -20,9 +18,7 @@ type SnsOutputSettings struct {
 }
 
 type snsOutput struct {
-	logger mon.Logger
-	tracer tracing.Tracer
-
+	logger   mon.Logger
 	topic    sns.Topic
 	settings SnsOutputSettings
 }
@@ -37,15 +33,12 @@ func NewSnsOutput(config cfg.Config, logger mon.Logger, s SnsOutputSettings) Out
 		TopicId: s.TopicId,
 	})
 
-	tracer := tracing.ProviderTracer(config, logger)
-
-	return NewSnsOutputWithInterfaces(logger, tracer, topic, s)
+	return NewSnsOutputWithInterfaces(logger, topic, s)
 }
 
-func NewSnsOutputWithInterfaces(logger mon.Logger, tracer tracing.Tracer, topic sns.Topic, s SnsOutputSettings) Output {
+func NewSnsOutputWithInterfaces(logger mon.Logger, topic sns.Topic, s SnsOutputSettings) Output {
 	return &snsOutput{
 		logger:   logger,
-		tracer:   tracer,
 		topic:    topic,
 		settings: s,
 	}
@@ -56,15 +49,6 @@ func (o *snsOutput) WriteOne(ctx context.Context, record WritableMessage) error 
 }
 
 func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
-	spanName := fmt.Sprintf("sns-output-%v-%v-%v", o.settings.Family, o.settings.Application, o.settings.TopicId)
-
-	ctx, trans := o.tracer.StartSubSpan(ctx, spanName)
-	defer trans.Finish()
-
-	return o.publishToTopic(ctx, batch)
-}
-
-func (o *snsOutput) publishToTopic(ctx context.Context, batch []WritableMessage) error {
 	errors := make([]error, 0)
 
 	for _, msg := range batch {

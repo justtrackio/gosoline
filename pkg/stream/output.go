@@ -2,6 +2,8 @@ package stream
 
 import (
 	"context"
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/mon"
 )
 
 type WritableMessage interface {
@@ -14,6 +16,8 @@ type Output interface {
 	WriteOne(ctx context.Context, msg WritableMessage) error
 	Write(ctx context.Context, batch []WritableMessage) error
 }
+
+type OutputFactory func(config cfg.Config, logger mon.Logger, name string) Output
 
 func MessagesToWritableMessages(batch []*Message) []WritableMessage {
 	writableBatch := make([]WritableMessage, len(batch))

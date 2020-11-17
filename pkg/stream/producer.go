@@ -26,14 +26,7 @@ type producer struct {
 }
 
 func NewProducer(config cfg.Config, logger mon.Logger, name string, handlers ...EncodeHandler) *producer {
-	key := ConfigurableProducerKey(name)
-
-	settings := &ProducerSettings{}
-	config.UnmarshalKey(key, settings)
-
-	if settings.Output == "" {
-		settings.Output = name
-	}
+	settings := readProducerSettings(config, name)
 
 	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(handlers))
 	encodeHandlers = append(encodeHandlers, defaultEncodeHandlers...)
@@ -108,4 +101,34 @@ func (p *producer) Write(ctx context.Context, models interface{}, attributeSets 
 
 func ConfigurableProducerKey(name string) string {
 	return fmt.Sprintf("stream.producer.%s", name)
+}
+
+func readProducerSettings(config cfg.Config, name string) *ProducerSettings {
+	key := ConfigurableProducerKey(name)
+
+	settings := &ProducerSettings{}
+	config.UnmarshalKey(key, settings)
+
+	if settings.Output == "" {
+		settings.Output = name
+	}
+
+	return settings
+}
+
+func readAllProducerDaemonSettings(config cfg.Config) map[string]*ProducerSettings {
+	producerSettings := make(map[string]*ProducerSettings)
+	producerMap := config.GetStringMap("stream.producer", map[string]interface{}{})
+
+	for name := range producerMap {
+		settings := readProducerSettings(config, name)
+
+		if !settings.Daemon.Enabled {
+			continue
+		}
+
+		producerSettings[name] = settings
+	}
+
+	return producerSettings
 }

@@ -19,30 +19,39 @@ const (
 	OutputTypeSqs      = "sqs"
 )
 
-func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Output {
-	key := fmt.Sprintf("%s.type", ConfigurableOutputKey(name))
-	t := config.GetString(key)
+type BaseOutputSettings struct {
+	Backoff exec.BackoffSettings `cfg:"backoff"`
+	Tracing struct {
+		Enabled bool `cfg:"enabled" default:"true"`
+	} `cfg:"tracing"`
+}
 
-	switch t {
-	case OutputTypeFile:
-		return newFileOutputFromConfig(config, logger, name)
-	case OutputTypeInMemory:
-		return ProvideInMemoryOutput(name)
-	case OutputTypeKinesis:
-		return newKinesisOutputFromConfig(config, logger, name)
-	case OutputTypeMultiple:
-		return newMultipleOutput(config, logger, name)
-	case OutputTypeRedis:
-		return newRedisListOutputFromConfig(config, logger, name)
-	case OutputTypeSns:
-		return newSnsOutputFromConfig(config, logger, name)
-	case OutputTypeSqs:
-		return newSqsOutputFromConfig(config, logger, name)
-	default:
-		logger.Fatalf(fmt.Errorf("invalid input %s of type %s", name, t), "invalid input %s of type %s", name, t)
+func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) Output {
+	var outputFactories = map[string]OutputFactory{
+		OutputTypeFile:     newFileOutputFromConfig,
+		OutputTypeInMemory: newInMemoryOutputFromConfig,
+		OutputTypeKinesis:  newKinesisOutputFromConfig,
+		OutputTypeMultiple: NewConfigurableMultiOutput,
+		OutputTypeRedis:    newRedisListOutputFromConfig,
+		OutputTypeSns:      newSnsOutputFromConfig,
+		OutputTypeSqs:      newSqsOutputFromConfig,
 	}
 
-	return nil
+	key := fmt.Sprintf("%s.type", ConfigurableOutputKey(name))
+	typ := config.GetString(key)
+
+	var ok bool
+	var factory OutputFactory
+	var output Output
+
+	if factory, ok = outputFactories[typ]; !ok {
+		logger.Fatalf(fmt.Errorf("invalid input %s of type %s", name, typ), "invalid input %s of type %s", name, typ)
+	}
+
+	output = factory(config, logger, name)
+	output = NewOutputTracer(config, logger, output, name)
+
+	return output
 }
 
 func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
@@ -51,6 +60,10 @@ func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 	config.UnmarshalKey(key, settings)
 
 	return NewFileOutput(config, logger, settings)
+}
+
+func newInMemoryOutputFromConfig(_ cfg.Config, _ mon.Logger, name string) Output {
+	return ProvideInMemoryOutput(name)
 }
 
 type kinesisOutputConfiguration struct {
@@ -67,10 +80,6 @@ func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name strin
 		StreamName: settings.StreamName,
 		Backoff:    settings.Backoff,
 	})
-}
-
-func newMultipleOutput(config cfg.Config, logger mon.Logger, name string) Output {
-	return NewConfigurableMultiOutput(config, logger, name)
 }
 
 type redisListOutputConfiguration struct {
@@ -101,13 +110,13 @@ func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name str
 }
 
 type SnsOutputConfiguration struct {
+	BaseOutputSettings
 	Type        string               `cfg:"type"`
 	Project     string               `cfg:"project"`
 	Family      string               `cfg:"family"`
 	Application string               `cfg:"application"`
 	TopicId     string               `cfg:"topic_id" validate:"required"`
 	Client      cloud.ClientSettings `cfg:"client"`
-	Backoff     exec.BackoffSettings `cfg:"backoff"`
 }
 
 func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) Output {
@@ -129,6 +138,7 @@ func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) O
 }
 
 type sqsOutputConfiguration struct {
+	BaseOutputSettings
 	Project           string               `cfg:"project"`
 	Family            string               `cfg:"family"`
 	Application       string               `cfg:"application"`
@@ -136,7 +146,6 @@ type sqsOutputConfiguration struct {
 	VisibilityTimeout int                  `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
 	RedrivePolicy     sqs.RedrivePolicy    `cfg:"redrive_policy"`
 	Client            cloud.ClientSettings `cfg:"client"`
-	Backoff           exec.BackoffSettings `cfg:"backoff"`
 	Fifo              sqs.FifoSettings     `cfg:"fifo"`
 }
 

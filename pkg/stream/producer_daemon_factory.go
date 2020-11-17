@@ -9,13 +9,9 @@ import (
 
 func ProducerDaemonFactory(config cfg.Config, logger mon.Logger) (map[string]kernel.Module, error) {
 	modules := map[string]kernel.Module{}
-	producerMap := config.GetStringMap("stream.producer", map[string]interface{}{})
+	producerDaemonSettings := readAllProducerDaemonSettings(config)
 
-	for name := range producerMap {
-		key := ConfigurableProducerKey(name)
-		settings := &ProducerSettings{}
-		config.UnmarshalKey(key, settings)
-
+	for name, settings := range producerDaemonSettings {
 		if !settings.Daemon.Enabled {
 			continue
 		}

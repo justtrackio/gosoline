@@ -66,6 +66,9 @@ func NewAwsTracerWithInterfaces(logger mon.Logger, appId cfg.AppId, settings *XR
 		logger.Fatal(err, "can not configure xray tracer")
 	}
 
+	xrayLogger := newXrayLogger(logger)
+	xray.SetLogger(xrayLogger)
+
 	return &awsTracer{
 		AppId:   appId,
 		enabled: settings.Enabled,

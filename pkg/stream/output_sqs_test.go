@@ -7,7 +7,6 @@ import (
 	"github.com/applike/gosoline/pkg/sqs"
 	sqsMocks "github.com/applike/gosoline/pkg/sqs/mocks"
 	"github.com/applike/gosoline/pkg/stream"
-	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -89,7 +88,6 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 		data := data
 		t.Run(test, func(t *testing.T) {
 			logger := monMocks.NewLoggerMockedAll()
-			tracer := tracing.NewNoopTracer()
 
 			queue := new(sqsMocks.Queue)
 			queue.On("SendBatch", context.Background(), []*sqs.Message{
@@ -99,7 +97,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 			msg, err := stream.MarshalJsonMessage(data.body, data.attributes)
 			assert.NoError(t, err)
 
-			output := stream.NewSqsOutputWithInterfaces(logger, tracer, queue, stream.SqsOutputSettings{})
+			output := stream.NewSqsOutputWithInterfaces(logger, queue, stream.SqsOutputSettings{})
 			err = output.WriteOne(context.Background(), msg)
 
 			assert.NoError(t, err)
