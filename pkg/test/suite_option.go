@@ -1,8 +1,10 @@
 package test
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/fixtures"
+	"github.com/applike/gosoline/pkg/ipread"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
@@ -76,6 +78,19 @@ func WithFixtures(fixtureSets []*fixtures.FixtureSet) SuiteOption {
 func WithLogLevel(level string) SuiteOption {
 	return func(s *suiteOptions) {
 		s.addEnvOption(env.WithLoggerLevel(level))
+	}
+}
+
+func WithIpReadFromMemory(name string, records map[string]ipread.MemoryRecord) SuiteOption {
+	provider := ipread.ProvideMemoryProvider(name)
+
+	for ip, record := range records {
+		provider.AddRecord(ip, record.CountryIso, record.CityName)
+	}
+
+	return func(s *suiteOptions) {
+		key := fmt.Sprintf("ipread.%s.provider", name)
+		s.addEnvOption(env.WithConfigSetting(key, "memory"))
 	}
 }
 

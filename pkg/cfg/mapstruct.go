@@ -125,7 +125,35 @@ func (m *MapStruct) Read() (*Map, error) {
 	return mapValues, nil
 }
 
-func (m *MapStruct) doReadMap(path string, mapValues *Map, msi map[string]interface{}) error {
+func (m *MapStruct) doReadMap(path string, mapValues *Map, mp interface{}) error {
+	if _, ok := mp.(map[string]interface{}); ok {
+		return m.doReadMsi(path, mapValues, mp.(map[string]interface{}))
+	}
+
+	valueType := reflect.TypeOf(mp).Elem()
+
+	if valueType.Kind() != reflect.Struct {
+		return fmt.Errorf("MSI fields or a map of structs are allowed only for path %s", path)
+	}
+
+	mapValue := reflect.ValueOf(mp)
+	for _, key := range mapValue.MapKeys() {
+		if key.Kind() != reflect.String {
+			return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+		}
+
+		element := mapValue.MapIndex(key).Interface()
+		elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+		if err := m.doReadStruct(elementPath, mapValues, element); err != nil {
+			return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+		}
+	}
+
+	return nil
+}
+
+func (m *MapStruct) doReadMsi(path string, mapValues *Map, msi map[string]interface{}) error {
 	for k, v := range msi {
 		elementPath := fmt.Sprintf("%s.%s", path, k)
 		mapValues.Set(elementPath, v)
@@ -150,7 +178,7 @@ func (m *MapStruct) doReadSlice(path string, mapValues *Map, slice reflect.Value
 				return fmt.Errorf("MSI fields are allowed only for path %s", elementPath)
 			}
 
-			if err := m.doReadMap(elementPath, mapValues, element.(map[string]interface{})); err != nil {
+			if err := m.doReadMsi(elementPath, mapValues, element.(map[string]interface{})); err != nil {
 				return err
 			}
 
@@ -213,11 +241,7 @@ func (m *MapStruct) doReadStruct(path string, mapValues *Map, target interface{}
 		if fieldValue.Kind() == reflect.Map {
 			target = fieldValue.Interface()
 
-			if _, ok := target.(map[string]interface{}); !ok {
-				return fmt.Errorf("MSI fields are allowed only for path %s", fieldPath)
-			}
-
-			if err = m.doReadMap(fieldPath, mapValues, target.(map[string]interface{})); err != nil {
+			if err = m.doReadMap(fieldPath, mapValues, target); err != nil {
 				return err
 			}
 

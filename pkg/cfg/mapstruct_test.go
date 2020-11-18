@@ -294,6 +294,38 @@ func TestMapStructIO_ReadAnonymous(t *testing.T) {
 	assert.Equal(t, expectedValues, msi.Msi())
 }
 
+func TestMapStructIO_ReadMapStruct(t *testing.T) {
+	type SourceMapStruct struct {
+		S string `cfg:"s"`
+	}
+
+	type sourceStruct struct {
+		M map[string]SourceMapStruct `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: map[string]SourceMapStruct{
+			"a": {
+				S: "string",
+			},
+		},
+	}
+
+	expectedValues := map[string]interface{}{
+		"m": map[string]interface{}{
+			"a": map[string]interface{}{
+				"s": "string",
+			},
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
 func TestMapStructIO_ReadSliceStruct(t *testing.T) {
 	type SourceStructSlice struct {
 		B bool   `cfg:"b"`
