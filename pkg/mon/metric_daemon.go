@@ -297,8 +297,14 @@ func (d *cwDaemon) calcValue(unit string, values []float64) (string, float64) {
 	value := 0.0
 
 	switch unit {
-	case UnitCountAverage, UnitMillisecondsAverage, UnitSecondsAverage:
+	case UnitCountAverage:
 		unit = UnitCount
+		value = average(values)
+	case UnitMillisecondsAverage:
+		unit = UnitMilliseconds
+		value = average(values)
+	case UnitSecondsAverage:
+		unit = UnitSeconds
 		value = average(values)
 	default:
 		value = sum(values)

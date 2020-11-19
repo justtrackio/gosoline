@@ -13,7 +13,7 @@ resource "aws_ecr_lifecycle_policy" "main" {
             "description": "Keep only 10 master images",
             "selection": {
                 "tagStatus": "tagged",
-                "tagPrefixList": ["master"],
+                "tagPrefixList": ["${var.primary_tag}"],
                 "countType": "imageCountMoreThan",
                 "countNumber": 10
             },
