@@ -18,6 +18,7 @@ type StreamTestCaseOutput struct {
 type StreamTestCase struct {
 	Input  map[string][]StreamTestCaseInput
 	Output map[string][]StreamTestCaseOutput
+	Assert func()
 }
 
 type TestingSuiteStream interface {
@@ -41,7 +42,7 @@ type StreamTestSuite struct {
 	Suite
 }
 
-func (s StreamTestSuite) TestStreamCase(app AppUnderTest, testCase StreamTestCase) {
+func (s *StreamTestSuite) TestStreamCase(app AppUnderTest, testCase StreamTestCase) {
 	for inputName, data := range testCase.Input {
 		input := s.Env().StreamInput(inputName)
 
@@ -64,5 +65,9 @@ func (s StreamTestSuite) TestStreamCase(app AppUnderTest, testCase StreamTestCas
 			s.Equal(d.ExpectedAttributes, attrs, "attributes do not match")
 			s.Equal(d.ExpectedBody, model, "body does not match")
 		}
+	}
+
+	if testCase.Assert != nil {
+		testCase.Assert()
 	}
 }
