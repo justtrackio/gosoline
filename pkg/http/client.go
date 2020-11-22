@@ -56,10 +56,11 @@ type Response struct {
 type headers map[string]string
 
 type client struct {
-	mo             mon.MetricWriter
-	logger         mon.Logger
-	http           *resty.Client
-	defaultHeaders headers
+	mo              mon.MetricWriter
+	logger          mon.Logger
+	http            *resty.Client
+	defaultHeaders  headers
+	followRedirects bool
 }
 
 type Settings struct {
@@ -97,10 +98,11 @@ func NewHttpClientWithInterfaces(logger mon.Logger, mo mon.MetricWriter, setting
 	httpClient.SetRetryMaxWaitTime(settings.RetryMaxWaitTime)
 
 	return &client{
-		mo:             mo,
-		logger:         logger,
-		http:           httpClient,
-		defaultHeaders: make(headers),
+		mo:              mo,
+		logger:          logger,
+		http:            httpClient,
+		defaultHeaders:  make(headers),
+		followRedirects: settings.FollowRedirect,
 	}
 }
 
@@ -205,10 +207,16 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 		return nil, err
 	}
 
+	// when we receive an error due to disabled auto redirect and follow redirects on the client is disabled in general
+	// then this is actually no error
+	if (!c.followRedirects && err.Error() == "auto redirect is disabled") {
+		err = nil
+	}
+
 	// Only log an error if the error was not caused by a canceled context
 	// Otherwise a user might spam our error logs by just canceling a lot of requests
 	// (or many users spam us because sometimes they cancel requests)
-	if err != nil {
+	if err != nil && (c.followRedirects) {
 		c.writeMetric(metricError, method, mon.UnitCount, 1.0)
 		return nil, fmt.Errorf("failed to perform %s request to %s: %w", request.resty.Method, request.url.String(), err)
 	}
