@@ -67,7 +67,7 @@ type Settings struct {
 	Timeout          time.Duration
 	RetryWaitTime    time.Duration `cfg:"retry_wait_time" default:"100ms"`
 	RetryMaxWaitTime time.Duration `cfg:"retry_max_wait_time" default:"2000ms"`
-	FollowRedirect   bool          `cfg:"follow_redirects"`
+	FollowRedirect   bool          `cfg:"follow_redirects" default:"true"`
 }
 
 func NewHttpClient(config cfg.Config, logger mon.Logger) Client {
@@ -84,7 +84,13 @@ func NewHttpClient(config cfg.Config, logger mon.Logger) Client {
 
 func NewHttpClientWithInterfaces(logger mon.Logger, mo mon.MetricWriter, settings *Settings) Client {
 	httpClient := resty.New()
-	httpClient.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
+
+	if settings.FollowRedirect {
+		httpClient.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
+	} else {
+		httpClient.SetRedirectPolicy(resty.NoRedirectPolicy())
+	}
+
 	httpClient.SetRetryCount(settings.RetryCount)
 	httpClient.SetTimeout(settings.Timeout)
 	httpClient.SetRetryWaitTime(settings.RetryWaitTime)
