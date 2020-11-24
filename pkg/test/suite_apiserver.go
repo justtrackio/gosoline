@@ -8,14 +8,14 @@ import (
 )
 
 type ApiServerTestCase struct {
-	Method     string
-	Url        string
-	Headers    map[string]string
-	Body       interface{}
-	StatusCode int
-	Result     interface{}
-	Err        error
-	Assert     func()
+	Method             string
+	Url                string
+	Headers            map[string]string
+	Body               interface{}
+	ExpectedStatusCode int
+	ExpectedResult     interface{}
+	ExpectedErr        error
+	Assert             func() error
 }
 
 func (c ApiServerTestCase) request(client *resty.Client) (*resty.Response, error) {
@@ -29,8 +29,8 @@ func (c ApiServerTestCase) request(client *resty.Client) (*resty.Response, error
 		req.SetBody(c.Body)
 	}
 
-	if c.Result != nil {
-		req.SetResult(c.Result)
+	if c.ExpectedResult != nil {
+		req.SetResult(c.ExpectedResult)
 	}
 
 	return req.Execute(c.Method, c.Url)
@@ -81,10 +81,12 @@ func (s *ApiServerTestSuite) TestApiServer(app AppUnderTest, server *apiserver.A
 	for i, tc := range testCases {
 		responses[i], err = tc.request(client)
 
-		if tc.Err == nil {
+		s.Equal(tc.ExpectedStatusCode, responses[i].StatusCode(), "response status code should match")
+
+		if tc.ExpectedErr == nil {
 			s.NoError(err)
 		} else {
-			s.EqualError(err, tc.Err.Error())
+			s.EqualError(err, tc.ExpectedErr.Error())
 		}
 	}
 
@@ -92,6 +94,10 @@ func (s *ApiServerTestSuite) TestApiServer(app AppUnderTest, server *apiserver.A
 	app.WaitDone()
 
 	for _, tc := range testCases {
-		tc.Assert()
+		if tc.Assert != nil {
+			if err := tc.Assert(); err != nil {
+				s.FailNowf(err.Error(), "there should be no error on assert")
+			}
+		}
 	}
 }
