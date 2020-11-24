@@ -27,8 +27,13 @@ type kernelSettings struct {
 	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
 }
 
+type loggerOutput struct {
+	File string `cfg:"file" default:"/dev/stdout"`
+}
+
 type loggerSettings struct {
 	Level           string                 `cfg:"level" default:"info" validate:"required"`
+	Output          loggerOutput           `cfg:"output"`
 	Format          string                 `cfg:"format" default:"console" validate:"required"`
 	TimestampFormat string                 `cfg:"timestamp_format" default:"15:04:05.000" validate:"required"`
 	Tags            map[string]interface{} `cfg:"tags"`
@@ -243,8 +248,14 @@ func WithLoggerSettingsFromConfig(app *App) {
 		settings := &loggerSettings{}
 		config.UnmarshalKey("mon.logger", settings)
 
+		outputFile, err := os.OpenFile(settings.Output.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
+
 		loggerOptions := []mon.LoggerOption{
 			mon.WithLevel(settings.Level),
+			mon.WithOutput(outputFile),
 			mon.WithFormat(settings.Format),
 			mon.WithTimestampFormat(settings.TimestampFormat),
 		}
