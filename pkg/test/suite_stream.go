@@ -18,7 +18,7 @@ type StreamTestCaseOutput struct {
 type StreamTestCase struct {
 	Input  map[string][]StreamTestCaseInput
 	Output map[string][]StreamTestCaseOutput
-	Assert func()
+	Assert func() error
 }
 
 type TestingSuiteStream interface {
@@ -68,6 +68,8 @@ func (s *StreamTestSuite) TestStreamCase(app AppUnderTest, testCase StreamTestCa
 	}
 
 	if testCase.Assert != nil {
-		testCase.Assert()
+		if err := testCase.Assert(); err != nil {
+			s.NoError(err, "there should be no error happening on assert")
+		}
 	}
 }

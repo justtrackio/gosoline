@@ -2,6 +2,7 @@ package test
 
 import (
 	"github.com/applike/gosoline/pkg/application"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
 	"reflect"
@@ -48,7 +49,10 @@ func filterTestMethod(t *testing.T, method reflect.Method) bool {
 func RunTestCase(t *testing.T, suite TestingSuite, testCase func(appUnderTest AppUnderTest), extraOptions ...SuiteOption) {
 	suiteOptions := &suiteOptions{}
 
-	setupOptions := suite.SetupSuite()
+	setupOptions := []SuiteOption{
+		WithClockProvider(clock.NewFakeClock()),
+	}
+	setupOptions = append(setupOptions, suite.SetupSuite()...)
 	setupOptions = append(setupOptions, extraOptions...)
 
 	for _, opt := range setupOptions {
@@ -77,7 +81,9 @@ func RunTestCase(t *testing.T, suite TestingSuite, testCase func(appUnderTest Ap
 
 	suite.SetEnv(environment)
 	for _, envSetup := range suiteOptions.envSetup {
-		envSetup()
+		if err = envSetup(); err != nil {
+			assert.FailNow(t, "failed to execute additional environment setup", err.Error())
+		}
 	}
 
 	appOptions := environment.ApplicationOptions()

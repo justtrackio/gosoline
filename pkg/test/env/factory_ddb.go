@@ -71,8 +71,9 @@ func (f *ddbFactory) HealthCheck(_ interface{}) ComponentHealthCheck {
 	}
 }
 
-func (f *ddbFactory) Component(_ cfg.Config, _ mon.Logger, container *container, _ interface{}) (Component, error) {
+func (f *ddbFactory) Component(_ cfg.Config, logger mon.Logger, container *container, _ interface{}) (Component, error) {
 	component := &ddbComponent{
+		logger:  logger,
 		binding: container.bindings["8000/tcp"],
 	}
 

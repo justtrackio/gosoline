@@ -87,7 +87,6 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	}
 
 	env.components = components
-	clock.WithProvider(clock.NewFakeClock())
 
 	return env, nil
 }
@@ -133,6 +132,10 @@ func (e *Environment) Component(typ string, name string) Component {
 	}
 
 	return component
+}
+
+func (e *Environment) DynamoDb(name string) *ddbComponent {
+	return e.Component(componentDdb, name).(*ddbComponent)
 }
 
 func (e *Environment) Localstack(name string) *localstackComponent {

@@ -3,18 +3,20 @@ package test
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/application"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/ipread"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
+	"github.com/spf13/cast"
 	"os"
 	"time"
 )
 
 type suiteOptions struct {
 	envOptions   []env.Option
-	envSetup     []func()
+	envSetup     []func() error
 	appOptions   []application.Option
 	appModules   map[string]kernel.Module
 	appFactories []kernel.ModuleFactory
@@ -38,6 +40,32 @@ func (s *suiteOptions) addOptionalTestConfig() {
 
 type SuiteOption func(s *suiteOptions)
 
+func WithClockProvider(clk clock.Clock) SuiteOption {
+	return func(s *suiteOptions) {
+		s.envSetup = append(s.envSetup, func() error {
+			clock.Provider = clk
+			return nil
+		})
+	}
+}
+
+func WithClockProviderAt(datetime string) SuiteOption {
+	return func(s *suiteOptions) {
+		s.envSetup = append(s.envSetup, func() error {
+			var err error
+			var dt time.Time
+
+			if dt, err = cast.ToTimeE(datetime); err != nil {
+				return fmt.Errorf("can not cast provided fake clock datetime %s: %w", datetime, err)
+			}
+
+			clock.Provider = clock.NewFakeClockAt(dt)
+
+			return nil
+		})
+	}
+}
+
 func WithConfigFile(file string) SuiteOption {
 	return func(s *suiteOptions) {
 		s.addEnvOption(env.WithConfigFile(file))
@@ -60,7 +88,7 @@ func WithContainerExpireAfter(expireAfter time.Duration) SuiteOption {
 	}
 }
 
-func WithEnvSetup(setups ...func()) SuiteOption {
+func WithEnvSetup(setups ...func() error) SuiteOption {
 	return func(s *suiteOptions) {
 		s.envSetup = append(s.envSetup, setups...)
 	}
