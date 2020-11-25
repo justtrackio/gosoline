@@ -63,14 +63,6 @@ EOF
       batch_size_percentage = 33
     }
   }
-
-  scheduled_task {
-    tasks {
-      is_enabled      = true
-      cron_expression = "0 3 * * *"
-      task_type       = "clusterRoll"
-    }
-  }
 }
 
 resource "spotinst_ocean_ecs_launch_spec" "ocean" {
