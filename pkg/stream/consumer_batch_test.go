@@ -3,6 +3,7 @@ package stream_test
 import (
 	"context"
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/stream"
@@ -15,7 +16,7 @@ import (
 	"time"
 )
 
-type acknowledgableInput struct {
+type acknowledgeableInput struct {
 	mocks.AcknowledgeableInput
 	mocks.Input
 }
@@ -27,7 +28,7 @@ type BatchConsumerTestSuite struct {
 	once sync.Once
 	stop func()
 
-	input *acknowledgableInput
+	input *acknowledgeableInput
 
 	callback      *mocks.RunnableBatchConsumerCallback
 	batchConsumer *stream.BatchConsumer
@@ -46,13 +47,14 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 		})
 	}
 
-	s.input = new(acknowledgableInput)
+	s.input = new(acknowledgeableInput)
 	s.callback = new(mocks.RunnableBatchConsumerCallback)
 
 	logger := monMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 	mw := monMocks.NewMetricWriterMockedAll()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
+	ticker := time.NewTicker(time.Second)
 	settings := &stream.ConsumerSettings{
 		Input:       "test",
 		RunnerCount: 1,
@@ -63,8 +65,8 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 		BatchSize:   5,
 	}
 
-	s.batchConsumer = stream.NewBatchConsumer("test", s.callback)
-	s.batchConsumer.BootWithInterfaces(logger, tracer, mw, s.input, me, settings, batchSettings)
+	baseConsumer := stream.NewBaseConsumerWithInterfaces(logger, mw, tracer, s.input, me, s.callback, settings, "test", cfg.AppId{})
+	s.batchConsumer = stream.NewBatchConsumerWithInterfaces(baseConsumer, s.callback, ticker, batchSettings)
 }
 
 func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {

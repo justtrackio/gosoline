@@ -3,6 +3,7 @@ package stream_test
 import (
 	"context"
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/stream"
@@ -51,8 +52,8 @@ func (s *ConsumerTestSuite) SetupTest() {
 		IdleTimeout: time.Second,
 	}
 
-	s.consumer = stream.NewConsumer("test", s.callback)
-	s.consumer.BootWithInterfaces(logger, tracer, mw, s.input, me, settings)
+	baseConsumer := stream.NewBaseConsumerWithInterfaces(logger, mw, tracer, s.input, me, s.callback, settings, "test", cfg.AppId{})
+	s.consumer = stream.NewConsumerWithInterfaces(baseConsumer, s.callback)
 }
 
 func (s *ConsumerTestSuite) TestGetModelNil() {

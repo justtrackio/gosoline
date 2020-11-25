@@ -18,9 +18,7 @@ come in the next weeks:
 ## Roadmap
 * sns filter policies
 * remove objx / mergo from config
-* test: consumer case
-* test: abstract/mock geoip
 * cloud: bundle aws config
 * add error returns to constructors
-* modules: remove boot
 * proper default value merging
+* utilization metrics

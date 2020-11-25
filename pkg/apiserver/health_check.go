@@ -23,37 +23,37 @@ type ApiHealthCheck struct {
 	server *http.Server
 }
 
-func NewApiHealthCheck() *ApiHealthCheck {
-	return &ApiHealthCheck{}
+func NewApiHealthCheck() kernel.ModuleFactory {
+	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		settings := &ApiHealthCheckSettings{}
+		config.UnmarshalKey("api.health", settings)
+
+		gin.SetMode(gin.ReleaseMode)
+		router := gin.New()
+
+		healthCheck := NewApiHealthCheckWithInterfaces(logger, router, settings)
+
+		return healthCheck, nil
+	}
 }
 
-func (a *ApiHealthCheck) Boot(config cfg.Config, logger mon.Logger) error {
-	settings := &ApiHealthCheckSettings{}
-	config.UnmarshalKey("api.health", settings)
-
-	gin.SetMode(gin.ReleaseMode)
-
-	r := gin.New()
-
-	return a.BootWithInterfaces(logger, r, settings)
-}
-
-func (a *ApiHealthCheck) BootWithInterfaces(logger mon.Logger, router *gin.Engine, s *ApiHealthCheckSettings) error {
-	a.logger = logger
-
+func NewApiHealthCheckWithInterfaces(logger mon.Logger, router *gin.Engine, settings *ApiHealthCheckSettings) *ApiHealthCheck {
 	router.Use(LoggingMiddleware(logger))
-	router.GET(s.Path, func(c *gin.Context) {
+	router.GET(settings.Path, func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{})
 	})
 
-	addr := fmt.Sprintf(":%d", s.Port)
+	addr := fmt.Sprintf(":%d", settings.Port)
 
-	a.server = &http.Server{
+	server := &http.Server{
 		Addr:    addr,
 		Handler: router,
 	}
 
-	return nil
+	return &ApiHealthCheck{
+		logger: logger,
+		server: server,
+	}
 }
 
 func (a *ApiHealthCheck) Run(ctx context.Context) error {

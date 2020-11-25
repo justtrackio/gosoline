@@ -15,11 +15,15 @@ type Module struct {
 	logger         mon.Logger
 }
 
-func (module *Module) Boot(config cfg.Config, logger mon.Logger) error {
-	module.updaterService = NewUpdater(config, logger)
-	module.logger = logger
+func NewCurrencyModule() kernel.ModuleFactory {
+	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		module := &Module{
+			logger:         logger,
+			updaterService: NewUpdater(config, logger),
+		}
 
-	return nil
+		return module, nil
+	}
 }
 
 func (module *Module) Run(ctx context.Context) error {
@@ -41,8 +45,4 @@ func (module *Module) refresh(ctx context.Context) {
 	if err != nil {
 		module.logger.Error(err, "failed to refresh currency exchange rates")
 	}
-}
-
-func NewCurrencyModule() *Module {
-	return &Module{}
 }

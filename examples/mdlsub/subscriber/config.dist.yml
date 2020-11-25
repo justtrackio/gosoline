@@ -1,0 +1,32 @@
+env: dev
+app_project: gosoline
+app_family: example
+app_name: mdlsub-publisher
+
+cfg:
+  server:
+    port: 0
+
+api:
+  health:
+    port: 0
+
+aws_sdk_retries: 1
+aws_dynamoDb_endpoint: http://localhost:4566
+aws_dynamoDb_autoCreate: true
+aws_sns_endpoint: http://localhost:4566
+aws_sns_autoSubscribe: true
+aws_sqs_endpoint: http://localhost:4566
+aws_sqs_autoCreate: true
+
+mdlsub:
+  subscribers:
+    random-number:
+      output: kvstore
+
+stream:
+  input:
+    subscriber-random-number:
+      backoff:
+        blocking: true
+        enabled: true

@@ -25,6 +25,15 @@ const (
 	StageApplication = common.StageApplication
 )
 
+type ModuleFactory func(ctx context.Context, config cfg.Config, logger mon.Logger) (Module, error)
+type MultiModuleFactory func(config cfg.Config, logger mon.Logger) (map[string]ModuleFactory, error)
+
+type moduleSetupContainer struct {
+	name    string
+	factory ModuleFactory
+	opts    []ModuleOption
+}
+
 func getModuleType(m Module) string {
 	if tm, ok := m.(TypedModule); ok {
 		return tm.GetType()
@@ -49,6 +58,7 @@ func getModuleConfig(m Module) ModuleConfig {
 }
 
 type ModuleState struct {
+	Factory   ModuleFactory
 	Module    Module
 	Config    ModuleConfig
 	IsRunning bool
@@ -60,53 +70,12 @@ type ModuleConfig struct {
 	Stage int
 }
 
-type ModuleOption func(ms *ModuleConfig)
-
-// Overwrite the type a module specifies by something else.
-// E.g., if you have a background module you completely depend
-// on, you can do
-//
-// k.Add("your module", NewYourModule(), kernel.ModuleType(kernel.TypeEssential))
-//
-// to declare the module as essential. Now if the module quits the
-// kernel will shut down instead of continuing to run.
-func ModuleType(moduleType string) ModuleOption {
-	return func(ms *ModuleConfig) {
-		ms.Type = moduleType
-	}
-}
-
-// Overwrite the stage of a module. Using this, you can move a module
-// of yours (or someone else) to a different stage, e.g. to make sure it
-// shuts down after another module (because it is the consumer of another
-// module and you need the other module to stop producing before you can
-// stop consuming).
-func ModuleStage(moduleStage int) ModuleOption {
-	return func(ms *ModuleConfig) {
-		ms.Stage = moduleStage
-	}
-}
-
-// Combine a list of options by applying them in order.
-func MergeOptions(options []ModuleOption) ModuleOption {
-	return func(ms *ModuleConfig) {
-		for _, opt := range options {
-			opt(ms)
-		}
-	}
-}
-
 // A module provides a single function or service for your application.
 // For example, an HTTP server would be a single module (see "apiserver")
 // while a daemon writing metrics in the background would be a separate
 // module (see "mon").
 //go:generate mockery -name=Module
 type Module interface {
-	// Boot the module and prepare it to run. The module is provided with
-	// a logger to store (so you can write logs) and the current runtime
-	// configuration.
-	// If Boot returns an error, we abort kernel boot and shut down again.
-	Boot(config cfg.Config, logger mon.Logger) error
 	// Execute the module. If the provided context is canceled you have a
 	// few seconds (configurable with kernel.killTimeout) until your module
 	// is killed (via exit(1)). If you return from Run, it is assumed that
@@ -143,8 +112,6 @@ type FullModule interface {
 	TypedModule
 	StagedModule
 }
-
-type ModuleFactory func(config cfg.Config, logger mon.Logger) (map[string]Module, error)
 
 // An essential module will cause the application to exit as soon as the first essential module stops running.
 // For example, if you have a web server with a database and API as essential modules the application would exit

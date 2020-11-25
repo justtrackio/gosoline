@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
 	"sync/atomic"
 	"time"
 )
+
+type BatchConsumerCallbackFactory func(config cfg.Config, logger mon.Logger) (BatchConsumerCallback, error)
 
 //go:generate mockery -name=BatchConsumerCallback
 type BatchConsumerCallback interface {
@@ -35,38 +38,44 @@ type BatchConsumer struct {
 	settings *BatchConsumerSettings
 }
 
-func NewBatchConsumer(name string, callback BatchConsumerCallback) *BatchConsumer {
-	batchConsumer := &BatchConsumer{
-		callback: callback,
+func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory) func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		loggerCallback := logger.WithChannel("consumerCallback")
+		contextEnforcingLogger := mon.NewContextEnforcingLogger(loggerCallback)
+
+		callback, err := callbackFactory(config, contextEnforcingLogger)
+
+		if err != nil {
+			return nil, fmt.Errorf("can not initiate callback for consumer %s: %w", name, err)
+		}
+
+		contextEnforcingLogger.Enable()
+
+		settings := &BatchConsumerSettings{}
+		key := ConfigurableConsumerKey(name)
+		config.UnmarshalKey(key, settings)
+
+		ticker := time.NewTicker(settings.IdleTimeout)
+		baseConsumer := NewBaseConsumer(config, logger, name, callback)
+		batchConsumer := NewBatchConsumerWithInterfaces(baseConsumer, callback, ticker, settings)
+
+		return batchConsumer, nil
 	}
-
-	baseConsumer := newBaseConsumer(name, callback, batchConsumer)
-
-	batchConsumer.baseConsumer = baseConsumer
-
-	return batchConsumer
 }
 
-func (c *BatchConsumer) Boot(config cfg.Config, logger mon.Logger) error {
-	if err := c.baseConsumer.Boot(config, logger); err != nil {
-		return err
+func NewBatchConsumerWithInterfaces(base *baseConsumer, callback BatchConsumerCallback, ticker *time.Ticker, settings *BatchConsumerSettings) *BatchConsumer {
+	consumer := &BatchConsumer{
+		baseConsumer: base,
+		callback:     callback,
+		ticker:       ticker,
+		settings:     settings,
 	}
 
-	settings := &BatchConsumerSettings{}
-	key := ConfigurableConsumerKey(c.name)
-	config.UnmarshalKey(key, settings)
-
-	c.ticker = time.NewTicker(settings.IdleTimeout)
-	c.settings = settings
-
-	return nil
+	return consumer
 }
 
-func (c *BatchConsumer) BootWithInterfaces(logger mon.Logger, tracer tracing.Tracer, mw mon.MetricWriter, input Input, encoder MessageEncoder, settings *ConsumerSettings, batchSettings *BatchConsumerSettings) {
-	c.baseConsumer.BootWithInterfaces(logger, tracer, mw, input, encoder, settings)
-
-	c.ticker = time.NewTicker(settings.IdleTimeout)
-	c.settings = batchSettings
+func (c *BatchConsumer) Run(kernelCtx context.Context) error {
+	return c.baseConsumer.run(kernelCtx, c.run)
 }
 
 func (c *BatchConsumer) run(ctx context.Context) error {
@@ -178,7 +187,7 @@ func (c *BatchConsumer) consumeBatch(kernelCtx context.Context, batch []*Message
 	duration := c.clock.Now().Sub(start)
 
 	atomic.AddInt32(&c.processed, int32(len(ackMessages)))
-	c.mw.Write(mon.MetricData{
+	c.metricWriter.Write(mon.MetricData{
 		&mon.MetricDatum{
 			MetricName: metricNameConsumerProcessedCount,
 			Value:      float64(len(batch)),

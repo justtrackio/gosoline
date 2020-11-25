@@ -22,77 +22,76 @@ const (
 	operationDelete = "Delete"
 )
 
-var br = struct {
-	sync.Mutex
-	instance *BatchRunner
-}{}
-
-func ProvideBatchRunner() *BatchRunner {
-	br.Lock()
-	defer br.Unlock()
-
-	if br.instance != nil {
-		return br.instance
-	}
-
-	br.instance = &BatchRunner{}
-
-	return br.instance
-}
-
-type BatchRunner struct {
-	kernel.ForegroundModule
-	kernel.ServiceStage
-
-	logger mon.Logger
-	config *BatchRunnerConfig
-	metric mon.MetricWriter
-	client s3iface.S3API
-	read   chan *Object
-	write  chan *Object
-	copy   chan *CopyObject
-	delete chan *Object
-}
-
-type BatchRunnerConfig struct {
+type BatchRunnerSettings struct {
 	ReaderRunnerCount int `cfg:"reader_runner_count" default:"10"`
 	WriterRunnerCount int `cfg:"writer_runner_count" default:"10"`
 	CopyRunnerCount   int `cfg:"copy_runner_count" default:"10"`
 	DeleteRunnerCount int `cfg:"delete_runner_count" default:"10"`
 }
 
-func (r *BatchRunner) Boot(config cfg.Config, logger mon.Logger) error {
+var br = struct {
+	sync.Mutex
+	instance *BatchRunner
+}{}
+
+func ProvideBatchRunner() kernel.ModuleFactory {
+	br.Lock()
+	defer br.Unlock()
+
+	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		if br.instance != nil {
+			return br.instance, nil
+		}
+
+		br.instance = NewBatchRunner(config, logger)
+
+		return br.instance, nil
+	}
+}
+
+type BatchRunner struct {
+	kernel.ForegroundModule
+	kernel.ServiceStage
+
+	logger   mon.Logger
+	metric   mon.MetricWriter
+	client   s3iface.S3API
+	channels *BatchRunnerChannels
+	settings *BatchRunnerSettings
+}
+
+func NewBatchRunner(config cfg.Config, logger mon.Logger) *BatchRunner {
+	settings := &BatchRunnerSettings{}
+	config.UnmarshalKey("blob", settings)
+
 	defaultMetrics := getDefaultRunnerMetrics()
+	metricWriter := mon.NewMetricDaemonWriter(defaultMetrics...)
 
-	cc := &BatchRunnerConfig{}
-	config.UnmarshalKey("blob", cc)
+	runner := &BatchRunner{
+		logger:   logger,
+		metric:   metricWriter,
+		client:   ProvideS3Client(config),
+		channels: ProvideBatchRunnerChannels(config),
+		settings: settings,
+	}
 
-	r.logger = logger
-	r.config = cc
-	r.client = ProvideS3Client(config)
-	r.metric = mon.NewMetricDaemonWriter(defaultMetrics...)
-	r.read = make(chan *Object, cc.ReaderRunnerCount)
-	r.write = make(chan *Object, cc.WriterRunnerCount)
-	r.copy = make(chan *CopyObject, cc.CopyRunnerCount)
-	r.delete = make(chan *Object, cc.DeleteRunnerCount)
-
-	return nil
+	return runner
 }
 
 func (r *BatchRunner) Run(ctx context.Context) error {
-	for i := 0; i < r.config.ReaderRunnerCount; i++ {
+	for i := 0; i < r.settings.ReaderRunnerCount; i++ {
 		go r.executeRead()
 	}
 
-	for i := 0; i < r.config.WriterRunnerCount; i++ {
+	for i := 0; i < r.settings.WriterRunnerCount; i++ {
 		go r.executeWrite()
 	}
 
-	for i := 0; i < r.config.CopyRunnerCount; i++ {
+	for i := 0; i < r.settings.CopyRunnerCount; i++ {
 		go r.executeCopy()
 	}
 
-	for i := 0; i < r.config.DeleteRunnerCount; i++ {
+	for i := 0; i < r.settings.DeleteRunnerCount; i++ {
 		go r.executeDelete()
 	}
 
@@ -102,7 +101,7 @@ func (r *BatchRunner) Run(ctx context.Context) error {
 }
 
 func (r *BatchRunner) executeRead() {
-	for object := range r.read {
+	for object := range r.channels.read {
 		var body io.ReadCloser
 		var err error
 
@@ -135,7 +134,7 @@ func (r *BatchRunner) executeRead() {
 }
 
 func (r *BatchRunner) executeWrite() {
-	for object := range r.write {
+	for object := range r.channels.write {
 		key := object.GetFullKey()
 		body := CloseOnce(object.Body.AsReader())
 
@@ -166,7 +165,7 @@ func (r *BatchRunner) executeWrite() {
 }
 
 func (r *BatchRunner) executeCopy() {
-	for object := range r.copy {
+	for object := range r.channels.copy {
 		key := object.GetFullKey()
 		source := object.getSource()
 
@@ -190,7 +189,7 @@ func (r *BatchRunner) executeCopy() {
 }
 
 func (r *BatchRunner) executeDelete() {
-	for object := range r.delete {
+	for object := range r.channels.delete {
 		key := object.GetFullKey()
 
 		input := &s3.DeleteObjectInput{

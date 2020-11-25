@@ -2,8 +2,6 @@ package stream_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
@@ -12,10 +10,6 @@ import (
 )
 
 type callback struct {
-}
-
-func (c *callback) Boot(config cfg.Config, logger mon.Logger) error {
-	return nil
 }
 
 func (c *callback) Process(ctx context.Context, messages []*stream.Message) ([]*stream.Message, error) {
@@ -38,10 +32,9 @@ func runPipelineWithSettings(t *testing.T, settings *stream.PipelineSettings, ct
 	input.Stop()
 
 	callback := &callback{}
-	pipe := stream.NewPipeline(callback)
 
-	err := pipe.BootWithInterfaces(logger, metric, input, output, settings)
-	assert.NoError(t, err, "the pipeline should boot without an error")
+	pipe, err := stream.NewPipelineWithInterfaces(logger, metric, input, output, settings, callback)
+	assert.NoError(t, err)
 
 	err = pipe.Run(ctx)
 	assert.NoError(t, err, "the pipeline should run without an error")

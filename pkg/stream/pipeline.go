@@ -16,9 +16,10 @@ const MetricNamePipelineProcessedCount = "PipelineProcessedCount"
 
 //go:generate mockery -name PipelineCallback
 type PipelineCallback interface {
-	Boot(config cfg.Config, logger mon.Logger) error
 	Process(ctx context.Context, messages []*Message) ([]*Message, error)
 }
+
+type PipelineCallbackFactory func(ctx context.Context, config cfg.Config, logger mon.Logger) (PipelineCallback, error)
 
 type PipelineSettings struct {
 	Interval  time.Duration
@@ -41,47 +42,49 @@ type Pipeline struct {
 	settings *PipelineSettings
 }
 
-func NewPipeline(stages ...PipelineCallback) *Pipeline {
-	return &Pipeline{
-		cfn:    coffin.New(),
-		stages: stages,
-	}
-}
+func NewPipeline(stageFactories ...PipelineCallbackFactory) kernel.ModuleFactory {
+	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		var err error
+		var stages = make([]PipelineCallback, len(stageFactories))
 
-func (p *Pipeline) Boot(config cfg.Config, logger mon.Logger) error {
-	for _, stage := range p.stages {
-		err := stage.Boot(config, logger)
-
-		if err != nil {
-			return err
+		for i, factory := range stageFactories {
+			if stages[i], err = factory(ctx, config, logger); err != nil {
+				return nil, fmt.Errorf("can't build stage of type %T: %w", factory, err)
+			}
 		}
+
+		defaults := getDefaultPipelineMetrics()
+		metric := mon.NewMetricDaemonWriter(defaults...)
+
+		input := NewConfigurableInput(config, logger, "pipeline")
+		output := NewConfigurableOutput(config, logger, "pipeline")
+
+		settings := &PipelineSettings{
+			Interval:  config.GetDuration("pipeline_interval") * time.Second,
+			BatchSize: config.GetInt("pipeline_batch_size"),
+		}
+
+		return NewPipelineWithInterfaces(logger, metric, input, output, settings, stages...)
 	}
-
-	defaults := getDefaultPipelineMetrics()
-	metric := mon.NewMetricDaemonWriter(defaults...)
-
-	input := NewConfigurableInput(config, logger, "pipeline")
-	output := NewConfigurableOutput(config, logger, "pipeline")
-
-	settings := &PipelineSettings{
-		Interval:  config.GetDuration("pipeline_interval") * time.Second,
-		BatchSize: config.GetInt("pipeline_batch_size"),
-	}
-
-	return p.BootWithInterfaces(logger, metric, input, output, settings)
 }
 
-func (p *Pipeline) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter, input Input, output Output, settings *PipelineSettings) error {
-	p.logger = logger
-	p.metric = metric
-	p.input = input
-	p.output = output
-	p.encoder = NewMessageEncoder(&MessageEncoderSettings{})
-	p.ticker = time.NewTicker(settings.Interval)
-	p.batch = make([]*Message, 0, settings.BatchSize)
-	p.settings = settings
+func NewPipelineWithInterfaces(logger mon.Logger, metric mon.MetricWriter, input Input, output Output, settings *PipelineSettings, stages ...PipelineCallback) (*Pipeline, error) {
+	pipeline := &Pipeline{
+		cfn: coffin.New(),
+		ConsumerAcknowledge: ConsumerAcknowledge{
+			logger: logger,
+			input:  input,
+		},
+		metric:   metric,
+		output:   output,
+		encoder:  NewMessageEncoder(&MessageEncoderSettings{}),
+		ticker:   time.NewTicker(settings.Interval),
+		batch:    make([]*Message, 0, settings.BatchSize),
+		settings: settings,
+		stages:   stages,
+	}
 
-	return nil
+	return pipeline, nil
 }
 
 func (p *Pipeline) Run(ctx context.Context) error {

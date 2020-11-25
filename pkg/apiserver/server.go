@@ -33,47 +33,41 @@ type ApiServer struct {
 	defineRouter Define
 }
 
-func New(definer Define) *ApiServer {
-	return &ApiServer{
-		defineRouter: definer,
+func New(definer Define) kernel.ModuleFactory {
+	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		settings := &Settings{
+			Port:         config.GetString("api_port"),
+			Mode:         config.GetString("api_mode"),
+			TimeoutRead:  config.GetDuration("api_timeout_read"),
+			TimeoutWrite: config.GetDuration("api_timeout_write"),
+			TimeoutIdle:  config.GetDuration("api_timeout_idle"),
+		}
+
+		gin.SetMode(settings.Mode)
+
+		router := gin.New()
+		tracer := tracing.ProviderTracer(config, logger)
+
+		AddProfilingEndpoints(router)
+
+		router.GET("/health", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{})
+		})
+
+		definitions := &Definitions{}
+		definer(config, logger, definitions)
+
+		router.Use(RecoveryWithSentry(logger))
+		router.Use(LoggingMiddleware(logger))
+
+		buildRouter(definitions, router)
+
+		return NewWithInterfaces(logger, router, tracer, settings)
 	}
 }
 
-func (a *ApiServer) Boot(config cfg.Config, logger mon.Logger) error {
-	settings := &Settings{
-		Port:         config.GetString("api_port"),
-		Mode:         config.GetString("api_mode"),
-		TimeoutRead:  config.GetDuration("api_timeout_read"),
-		TimeoutWrite: config.GetDuration("api_timeout_write"),
-		TimeoutIdle:  config.GetDuration("api_timeout_idle"),
-	}
-
-	gin.SetMode(settings.Mode)
-
-	router := gin.New()
-	tracer := tracing.ProviderTracer(config, logger)
-
-	AddProfilingEndpoints(router)
-
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{})
-	})
-
-	definitions := &Definitions{}
-	a.defineRouter(config, logger, definitions)
-
-	router.Use(RecoveryWithSentry(logger))
-	router.Use(LoggingMiddleware(logger))
-
-	buildRouter(definitions, router)
-
-	return a.BootWithInterfaces(logger, router, tracer, settings)
-}
-
-func (a *ApiServer) BootWithInterfaces(logger mon.Logger, router *gin.Engine, tracer tracing.Tracer, s *Settings) error {
-	a.logger = logger
-
-	a.server = &http.Server{
+func NewWithInterfaces(logger mon.Logger, router *gin.Engine, tracer tracing.Tracer, s *Settings) (*ApiServer, error) {
+	server := &http.Server{
 		Addr:         ":" + s.Port,
 		Handler:      tracer.HttpHandler(router),
 		ReadTimeout:  s.TimeoutRead * time.Second,
@@ -81,22 +75,29 @@ func (a *ApiServer) BootWithInterfaces(logger mon.Logger, router *gin.Engine, tr
 		IdleTimeout:  s.TimeoutIdle * time.Second,
 	}
 
-	addr := a.server.Addr
-	if addr == "" {
-		addr = ":http"
+	var err error
+	var address = server.Addr
+	var listener net.Listener
+
+	if address == "" {
+		address = ":http"
 	}
 
 	// open a port for the server already in this step so we can already start accepting connections
 	// when this module is later run (see also issue #201)
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return err
+	if listener, err = net.Listen("tcp", address); err != nil {
+		return nil, err
 	}
 
-	a.listener = ln
-	logger.Infof("serving api requests on address %s", ln.Addr().String())
+	logger.Infof("serving api requests on address %s", listener.Addr().String())
 
-	return nil
+	apiServer := &ApiServer{
+		logger:   logger,
+		server:   server,
+		listener: listener,
+	}
+
+	return apiServer, nil
 }
 
 func (a *ApiServer) Run(ctx context.Context) error {

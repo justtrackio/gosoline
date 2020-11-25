@@ -72,7 +72,7 @@ func (s *ProducerDaemonTestSuite) TestWriteData() {
 	}()
 
 	app := application.Default(application.WithLoggerHook(s))
-	app.Add("testModule", &testModule{})
+	app.Add("testModule", newTestModule)
 	app.Run()
 }
 
@@ -90,11 +90,13 @@ type testModule struct {
 	producerSqs     stream.Producer
 }
 
-func (m *testModule) Boot(config cfg.Config, logger mon.Logger) error {
-	m.producerKinesis = stream.NewProducer(config, logger, "testDataKinesis")
-	m.producerSqs = stream.NewProducer(config, logger, "testDataSqs")
+func newTestModule(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	module := &testModule{
+		producerKinesis: stream.NewProducer(config, logger, "testDataKinesis"),
+		producerSqs:     stream.NewProducer(config, logger, "testDataSqs"),
+	}
 
-	return nil
+	return module, nil
 }
 
 func (m *testModule) Run(ctx context.Context) error {

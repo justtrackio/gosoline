@@ -1,12 +1,13 @@
 package application
 
 import (
+	"context"
 	"flag"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/fixtures"
-	"github.com/applike/gosoline/pkg/kernel"
+	kernelPkg "github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -20,7 +21,7 @@ import (
 type Option func(app *App)
 type ConfigOption func(config cfg.GosoConf) error
 type LoggerOption func(config cfg.GosoConf, logger mon.GosoLog) error
-type KernelOption func(config cfg.GosoConf, kernel kernel.GosoKernel) error
+type KernelOption func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error
 type SetupOption func(config cfg.GosoConf, logger mon.GosoLog) error
 
 type kernelSettings struct {
@@ -35,7 +36,7 @@ type loggerSettings struct {
 }
 
 func WithApiHealthCheck(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
 		kernel.Add("api-health-check", apiserver.NewApiHealthCheck())
 		return nil
 	})
@@ -117,8 +118,8 @@ func WithConfigSanitizers(sanitizers ...cfg.Sanitizer) Option {
 }
 
 func WithConfigServer(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
-		kernel.Add("config-server", new(ConfigServer))
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
+		kernel.Add("config-server", NewConfigServer())
 		return nil
 	})
 }
@@ -141,11 +142,11 @@ func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 }
 
 func WithKernelSettingsFromConfig(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, k kernel.GosoKernel) error {
+	app.addKernelOption(func(config cfg.GosoConf, k kernelPkg.GosoKernel) error {
 		settings := &kernelSettings{}
 		config.UnmarshalKey("kernel", settings)
 
-		return k.Option(kernel.KillTimeout(settings.KillTimeout))
+		return k.Option(kernelPkg.KillTimeout(settings.KillTimeout))
 	})
 }
 
@@ -263,14 +264,17 @@ func WithLoggerTagsFromConfig(app *App) {
 }
 
 func WithMetricDaemon(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
-		kernel.Add("metric", mon.ProvideCwDaemon())
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
+		kernel.Add("metric", func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernelPkg.Module, error) {
+			return mon.NewMetricDaemon(config, logger)
+		})
+
 		return nil
 	})
 }
 
 func WithProducerDaemon(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernel.GosoKernel) error {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
 		kernel.AddFactory(stream.ProducerDaemonFactory)
 		return nil
 	})
