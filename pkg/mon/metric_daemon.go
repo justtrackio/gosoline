@@ -36,7 +36,7 @@ type BatchedMetricDatum struct {
 	Unit       string
 }
 
-type cwDaemon struct {
+type MetricDaemon struct {
 	sync.Mutex
 	logger   Logger
 	settings *MetricSettings
@@ -46,106 +46,45 @@ type cwDaemon struct {
 	writers []MetricWriter
 
 	batch          map[string]*BatchedMetricDatum
-	defaults       map[string]*MetricDatum
 	dataPointCount int
 }
 
-type metricChannel struct {
-	logger Logger
-	c      chan MetricData
-	closed bool
-	lck    sync.RWMutex
-}
-
-func (c *metricChannel) write(batch MetricData) {
-	c.lck.RLock()
-	defer c.lck.RUnlock()
-
-	if c.closed {
-		c.logger.Warnf("refusing to write %d metric datums to metric channel: channel is closed", len(batch))
-
-		return
-	}
-
-	c.c <- batch
-}
-
-// Lock the channel metadata, close the channel and unlock it again.
-// Why do we need a RW lock for the channel? Multiple possible choices:
-//  - Just read until we get nothing more - does not work if a producer
-//    writes more messages after we read "everything" to the channel. If
-//    the producer writes enough messages, it could actually get stuck
-//    because there is no consumer left and we only buffer 100 items
-//  - Just add an (atomic) boolean flag: If we check whether we closed the
-//    channel and then write to it, if not, we have a time-of-check to
-//    time-of-use race condition. Between our check and writing to the
-//    channel someone could have closed the channel.
-//  - Just use recover when you get a panic: Would work, but this is really
-//    not pretty.
-func (c *metricChannel) close() {
-	c.lck.Lock()
-	defer c.lck.Unlock()
-
-	close(c.c)
-	c.closed = true
-}
-
-var cwDaemonContainer = struct {
-	sync.Mutex
-	instance *cwDaemon
-}{}
-
-func ProvideCwDaemon() *cwDaemon {
-	cwDaemonContainer.Lock()
-	defer cwDaemonContainer.Unlock()
-
-	if cwDaemonContainer.instance != nil {
-		return cwDaemonContainer.instance
-	}
-
-	cwDaemonContainer.instance = &cwDaemon{
-		channel: &metricChannel{
-			c:      make(chan MetricData, 100),
-			closed: false,
-		},
-		defaults: make(map[string]*MetricDatum, 0),
-		settings: &MetricSettings{},
-		writers:  make([]MetricWriter, 0),
-	}
-
-	return cwDaemonContainer.instance
-}
-
-func (d *cwDaemon) GetType() string {
-	return common.TypeBackground
-}
-
-func (d *cwDaemon) GetStage() int {
-	return common.StageEssential
-}
-
-func (d *cwDaemon) Boot(config cfg.Config, logger Logger) error {
+func NewMetricDaemon(config cfg.Config, logger Logger) (*MetricDaemon, error) {
 	settings := getMetricSettings(config)
+
+	channel := ProviderMetricChannel()
+	channel.enabled = settings.Enabled
+	channel.logger = logger.WithChannel("metrics")
 
 	writers := make([]MetricWriter, len(settings.Writers))
 	for i, t := range settings.Writers {
 		writers[i] = ProvideMetricWriterByType(config, logger, t)
 	}
 
-	return d.BootWithInterfaces(logger, writers, settings)
+	return NewMetricDaemonWithInterfaces(logger, channel, writers, settings)
 }
 
-func (d *cwDaemon) BootWithInterfaces(logger Logger, writers []MetricWriter, settings *MetricSettings) error {
-	d.logger = logger.WithChannel("metrics")
-	d.settings = settings
-	d.writers = writers
-	d.ticker = time.NewTicker(settings.Interval)
-	d.channel.logger = logger.WithChannel("metrics-channel")
-
-	return nil
+func NewMetricDaemonWithInterfaces(logger Logger, channel *metricChannel, writers []MetricWriter, settings *MetricSettings) (*MetricDaemon, error) {
+	return &MetricDaemon{
+		logger:         logger.WithChannel("metrics"),
+		settings:       settings,
+		channel:        channel,
+		ticker:         time.NewTicker(settings.Interval),
+		writers:        writers,
+		batch:          make(map[string]*BatchedMetricDatum),
+		dataPointCount: 0,
+	}, nil
 }
 
-func (d *cwDaemon) Run(ctx context.Context) error {
+func (d *MetricDaemon) GetType() string {
+	return common.TypeBackground
+}
+
+func (d *MetricDaemon) GetStage() int {
+	return common.StageEssential
+}
+
+func (d *MetricDaemon) Run(ctx context.Context) error {
 	if !d.settings.Enabled {
 		d.logger.Info("metrics not enabled..")
 		return nil
@@ -171,17 +110,7 @@ func (d *cwDaemon) Run(ctx context.Context) error {
 	}
 }
 
-func (d *cwDaemon) AddDefaults(data ...*MetricDatum) {
-	d.Lock()
-	defer d.Unlock()
-
-	for _, datum := range data {
-		id := datum.Id()
-		d.defaults[id] = datum
-	}
-}
-
-func (d *cwDaemon) emptyChannel() {
+func (d *MetricDaemon) emptyChannel() {
 	d.channel.close()
 
 	for data := range d.channel.c {
@@ -189,13 +118,13 @@ func (d *cwDaemon) emptyChannel() {
 	}
 }
 
-func (d *cwDaemon) appendBatch(data MetricData) {
+func (d *MetricDaemon) appendBatch(data MetricData) {
 	for _, dat := range data {
 		d.append(dat)
 	}
 }
 
-func (d *cwDaemon) append(datum *MetricDatum) {
+func (d *MetricDaemon) append(datum *MetricDatum) {
 	d.dataPointCount++
 
 	dimKey := datum.DimensionKey()
@@ -226,9 +155,9 @@ func (d *cwDaemon) append(datum *MetricDatum) {
 	existing.Values = append(existing.Values, datum.Value)
 }
 
-func (d *cwDaemon) amendFromDefault(datum *MetricDatum) {
+func (d *MetricDaemon) amendFromDefault(datum *MetricDatum) {
 	defId := datum.Id()
-	def, ok := d.defaults[defId]
+	def, ok := metricDefaults[defId]
 
 	if !ok {
 		return
@@ -243,11 +172,11 @@ func (d *cwDaemon) amendFromDefault(datum *MetricDatum) {
 	}
 }
 
-func (d *cwDaemon) resetBatch() {
+func (d *MetricDaemon) resetBatch() {
 	d.batch = make(map[string]*BatchedMetricDatum)
 	d.dataPointCount = 0
 
-	for _, def := range d.defaults {
+	for _, def := range metricDefaults {
 		cpy := *def
 		cpy.Timestamp = time.Now()
 
@@ -255,7 +184,7 @@ func (d *cwDaemon) resetBatch() {
 	}
 }
 
-func (d *cwDaemon) publish() {
+func (d *MetricDaemon) publish() {
 	size := len(d.batch)
 
 	if size == 0 {
@@ -272,7 +201,7 @@ func (d *cwDaemon) publish() {
 	d.resetBatch()
 }
 
-func (d *cwDaemon) buildMetricData() MetricData {
+func (d *MetricDaemon) buildMetricData() MetricData {
 	data := make([]*MetricDatum, 0)
 
 	for _, v := range d.batch {
@@ -293,7 +222,7 @@ func (d *cwDaemon) buildMetricData() MetricData {
 	return data
 }
 
-func (d *cwDaemon) calcValue(unit string, values []float64) (string, float64) {
+func (d *MetricDaemon) calcValue(unit string, values []float64) (string, float64) {
 	value := 0.0
 
 	switch unit {

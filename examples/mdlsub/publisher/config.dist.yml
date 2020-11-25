@@ -1,0 +1,18 @@
+env: dev
+app_project: gosoline
+app_family: example
+app_name: mdlsub-publisher
+
+cfg:
+  server:
+    port: 0
+
+api:
+  health:
+    port: 0
+
+aws_sns_endpoint: http://localhost:4566
+
+mdlsub:
+  publishers:
+    random-number: { output_type: sns }

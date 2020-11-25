@@ -39,8 +39,10 @@ func TestDefaultConfigParser(t *testing.T) {
 
 	runTestApp(t, func() {
 		app := application.Default()
-		app.Add("test", testModule{
-			t: t,
+		app.Add("test", func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+			return testModule{
+				t: t,
+			}, nil
 		})
 		app.Run()
 	})

@@ -8,13 +8,13 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 )
 
-func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactories) kernel.ModuleFactory {
-	return func(config cfg.Config, logger mon.Logger) (map[string]kernel.Module, error) {
+func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactories) kernel.MultiModuleFactory {
+	return func(config cfg.Config, logger mon.Logger) (map[string]kernel.ModuleFactory, error) {
 		return SubscriberFactory(config, logger, transformerFactoryMap)
 	}
 }
 
-func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.Module, error) {
+func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.ModuleFactory, error) {
 	subscriberSettings := make(map[string]*SubscriberSettings)
 	config.UnmarshalKey(ConfigKeyMdlSubSubscribers, &subscriberSettings)
 
@@ -30,14 +30,14 @@ func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerFactorie
 		return nil, fmt.Errorf("can not create subscribers: %w", err)
 	}
 
-	var modules = make(map[string]kernel.Module)
+	var modules = make(map[string]kernel.ModuleFactory)
 
 	for name := range subscriberSettings {
 		moduleName := fmt.Sprintf("subscriber-%s", name)
 		consumerName := fmt.Sprintf("subscriber-%s", name)
-		callback := NewSubscriberCallback(transformers, outputs)
+		callbackFactory := NewSubscriberCallbackFactory(transformers, outputs)
 
-		modules[moduleName] = stream.NewConsumer(consumerName, callback)
+		modules[moduleName] = stream.NewConsumer(consumerName, callbackFactory)
 	}
 
 	return modules, nil

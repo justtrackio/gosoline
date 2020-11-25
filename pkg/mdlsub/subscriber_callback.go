@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/stream"
 	"time"
 )
 
@@ -36,22 +37,21 @@ type SubscriberCallback struct {
 	outputs      Outputs
 }
 
-func NewSubscriberCallback(transformers ModelTransformers, outputs Outputs) *SubscriberCallback {
-	return &SubscriberCallback{
-		transformers: transformers,
-		outputs:      outputs,
+func NewSubscriberCallbackFactory(transformers ModelTransformers, outputs Outputs) stream.ConsumerCallbackFactory {
+	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (stream.ConsumerCallback, error) {
+		application := config.GetString("app_name")
+		defaultMetrics := getSubscriberCallbackDefaultMetrics(application, transformers)
+		metricWriter := mon.NewMetricDaemonWriter(defaultMetrics...)
+
+		callback := &SubscriberCallback{
+			logger:       logger,
+			metric:       metricWriter,
+			transformers: transformers,
+			outputs:      outputs,
+		}
+
+		return callback, nil
 	}
-}
-
-func (s *SubscriberCallback) Boot(config cfg.Config, logger mon.Logger) error {
-	application := config.GetString("app_name")
-	defaultMetrics := s.getDefaultMetrics(application)
-
-	s.logger = logger
-	s.metric = mon.NewMetricDaemonWriter(defaultMetrics...)
-	s.application = application
-
-	return nil
 }
 
 func (s *SubscriberCallback) GetModel(attributes map[string]interface{}) interface{} {
@@ -164,10 +164,10 @@ func (s *SubscriberCallback) writeMetric(err error, spec *ModelSpecification) {
 	})
 }
 
-func (s *SubscriberCallback) getDefaultMetrics(application string) []*mon.MetricDatum {
+func getSubscriberCallbackDefaultMetrics(application string, transformers ModelTransformers) []*mon.MetricDatum {
 	defaults := make([]*mon.MetricDatum, 0)
 
-	for modelId := range s.transformers {
+	for modelId := range transformers {
 		success := &mon.MetricDatum{
 			Priority:   mon.PriorityHigh,
 			MetricName: MetricNameSuccess,

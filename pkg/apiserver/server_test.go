@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -40,7 +39,10 @@ func (s *ServerTestSuite) SetupTest() {
 	tracer.On("HttpHandler", s.router).Return(s.router)
 	s.tracer = tracer
 
-	s.server = apiserver.New(func(_ cfg.Config, _ mon.Logger, _ *apiserver.Definitions) {})
+	server, err := apiserver.NewWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
+	s.NoError(err)
+
+	s.server = server
 }
 
 func (s *ServerTestSuite) TestLifecycle_Cancel() {
@@ -48,19 +50,13 @@ func (s *ServerTestSuite) TestLifecycle_Cancel() {
 	cancel()
 
 	s.NotPanics(func() {
-		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
-		s.NoError(err)
-
-		err = s.server.Run(ctx)
+		err := s.server.Run(ctx)
 		s.NoError(err)
 	})
 }
 
 func (s *ServerTestSuite) TestGetPort() {
 	s.NotPanics(func() {
-		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
-		s.NoError(err)
-
 		port, err := s.server.GetPort()
 		s.NoError(err)
 		s.NotNil(port)
@@ -70,23 +66,12 @@ func (s *ServerTestSuite) TestGetPort() {
 	})
 }
 
-func (s *ServerTestSuite) TestGetPort_Error() {
-	s.NotPanics(func() {
-		port, err := s.server.GetPort()
-		s.EqualError(err, "could not get port. module is not yet booted")
-		s.Nil(port)
-	})
-}
-
 func (s *ServerTestSuite) TestBaseProfilingEndpoint() {
 	s.NotPanics(func() {
 		apiserver.AddProfilingEndpoints(s.router)
-		err := s.server.BootWithInterfaces(s.logger, s.router, s.tracer, &apiserver.Settings{})
-		s.NoError(err)
 	})
 
 	httpRecorder := httptest.NewRecorder()
-
 	assertRouteReturnsResponse(s.T(), s.router, httpRecorder, apiserver.BaseProfiling+"/", http.StatusOK)
 }
 

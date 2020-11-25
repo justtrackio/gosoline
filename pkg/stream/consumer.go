@@ -3,9 +3,13 @@ package stream
 import (
 	"context"
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"sync/atomic"
 )
+
+type ConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger mon.Logger) (ConsumerCallback, error)
 
 //go:generate mockery -name=ConsumerCallback
 type ConsumerCallback interface {
@@ -24,16 +28,37 @@ type Consumer struct {
 	callback ConsumerCallback
 }
 
-func NewConsumer(name string, callback ConsumerCallback) *Consumer {
+func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		loggerCallback := logger.WithChannel("consumerCallback")
+		contextEnforcingLogger := mon.NewContextEnforcingLogger(loggerCallback)
+
+		callback, err := callbackFactory(ctx, config, contextEnforcingLogger)
+
+		if err != nil {
+			return nil, fmt.Errorf("can not initiate callback for consumer %s: %w", name, err)
+		}
+
+		contextEnforcingLogger.Enable()
+
+		baseConsumer := NewBaseConsumer(config, logger, name, callback)
+		consumer := NewConsumerWithInterfaces(baseConsumer, callback)
+
+		return consumer, nil
+	}
+}
+
+func NewConsumerWithInterfaces(base *baseConsumer, callback ConsumerCallback) *Consumer {
 	consumer := &Consumer{
-		callback: callback,
+		baseConsumer: base,
+		callback:     callback,
 	}
 
-	baseConsumer := newBaseConsumer(name, callback, consumer)
-
-	consumer.baseConsumer = baseConsumer
-
 	return consumer
+}
+
+func (c *Consumer) Run(kernelCtx context.Context) error {
+	return c.baseConsumer.run(kernelCtx, c.run)
 }
 
 func (c *Consumer) run(ctx context.Context) error {
@@ -81,7 +106,7 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message) {
 	duration := c.clock.Now().Sub(start)
 
 	atomic.AddInt32(&c.processed, int32(len(batch)))
-	c.mw.Write(mon.MetricData{
+	c.metricWriter.Write(mon.MetricData{
 		&mon.MetricDatum{
 			MetricName: metricNameConsumerProcessedCount,
 			Value:      float64(len(batch)),
@@ -107,7 +132,7 @@ func (c *Consumer) processSingleMessage(ctx context.Context, msg *Message) {
 	duration := c.clock.Now().Sub(start)
 
 	atomic.AddInt32(&c.processed, 1)
-	c.mw.Write(mon.MetricData{
+	c.metricWriter.Write(mon.MetricData{
 		&mon.MetricDatum{
 			MetricName: metricNameConsumerProcessedCount,
 			Value:      1.0,

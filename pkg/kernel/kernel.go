@@ -19,8 +19,8 @@ import (
 
 //go:generate mockery -name=Kernel
 type Kernel interface {
-	Add(name string, module Module, opts ...ModuleOption)
-	AddFactory(factory ModuleFactory)
+	Add(name string, moduleFactory ModuleFactory, opts ...ModuleOption)
+	AddFactory(factory MultiModuleFactory)
 	Running() <-chan struct{}
 	Run()
 	Stop(reason string)
@@ -37,9 +37,11 @@ type kernel struct {
 	config cfg.Config
 	logger mon.Logger
 
+	moduleSetupContainers []moduleSetupContainer
+	multiFactories        []MultiModuleFactory
+
 	stages            map[int]*stage
 	stagesLck         conc.PoisonedLock
-	factories         []ModuleFactory
 	started           conc.PoisonedLock
 	running           chan struct{}
 	stopped           sync.Once
@@ -51,9 +53,11 @@ type kernel struct {
 
 func New(config cfg.Config, logger mon.Logger, options ...Option) *kernel {
 	k := &kernel{
+		moduleSetupContainers: make([]moduleSetupContainer, 0),
+		multiFactories:        make([]MultiModuleFactory, 0),
+
 		stages:    make(map[int]*stage),
 		stagesLck: conc.NewPoisonedLock(),
-		factories: make([]ModuleFactory, 0),
 		running:   make(chan struct{}),
 		started:   conc.NewPoisonedLock(),
 
@@ -87,13 +91,6 @@ func ForceExit(forceExit func(code int)) Option {
 	}
 }
 
-func (k *kernel) newStage(index int) *stage {
-	s := newStage()
-	k.stages[index] = s
-
-	return s
-}
-
 func (k *kernel) Option(options ...Option) error {
 	if err := k.started.TryLock(); err != nil {
 		return fmt.Errorf("kernel already running: %w", err)
@@ -109,7 +106,168 @@ func (k *kernel) Option(options ...Option) error {
 	return nil
 }
 
-func (k *kernel) Add(name string, module Module, opts ...ModuleOption) {
+func (k *kernel) Add(name string, moduleFactory ModuleFactory, opts ...ModuleOption) {
+	container := moduleSetupContainer{
+		name:    name,
+		factory: moduleFactory,
+		opts:    opts,
+	}
+
+	k.moduleSetupContainers = append(k.moduleSetupContainers, container)
+}
+
+func (k *kernel) AddFactory(factory MultiModuleFactory) {
+	k.multiFactories = append(k.multiFactories, factory)
+}
+
+func (k *kernel) Running() <-chan struct{} {
+	return k.running
+}
+
+func (k *kernel) Run() {
+	// do not allow config changes anymore
+	k.started.Poison()
+
+	defer k.logger.Info("leaving kernel")
+	k.logger.Info("starting kernel")
+
+	if err := k.runMultiFactories(); err != nil {
+		k.logger.Error(err, "error building additional modules by multiFactories")
+		close(k.running)
+		return
+	}
+
+	if len(k.moduleSetupContainers) == 0 {
+		k.logger.Warn("nothing to run")
+		close(k.running)
+		return
+	}
+
+	if err := k.runFactories(); err != nil {
+		k.logger.Error(err, "error building modules")
+		close(k.running)
+		return
+	}
+
+	k.logger.Info("all modules created")
+
+	// poison our stages so any other thread trying to add a new stage will
+	// panic instead of hanging
+	k.stagesLck.Poison()
+
+	if !k.hasModules() {
+		close(k.running)
+		k.logger.Info("nothing to run")
+		return
+	}
+
+	k.foregroundModules = int32(k.countForegroundModules())
+	if k.foregroundModules == 0 {
+		k.logger.Info("no foreground modules")
+		return
+	}
+
+	sig := make(chan os.Signal, 2)
+	signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
+
+	k.debugConfig()
+
+	for _, stageIndex := range k.getStageIndices() {
+		k.stages[stageIndex].run(k)
+		k.logger.Infof("stage %d up and running", stageIndex)
+	}
+
+	k.logger.Info("kernel up and running")
+	close(k.running)
+
+	select {
+	case <-k.waitAllStagesDone().Channel():
+		k.Stop("context done")
+	case sig := <-sig:
+		reason := fmt.Sprintf("signal %s", sig.String())
+		k.Stop(reason)
+	}
+
+	k.waitStopped()
+}
+
+func (k *kernel) Stop(reason string) {
+	k.stopped.Do(func() {
+		go func() {
+			k.logger.Infof("stopping kernel due to: %s", reason)
+			indices := k.getStageIndices()
+
+			for i := len(indices) - 1; i >= 0; i-- {
+				stageIndex := indices[i]
+				k.logger.Infof("stopping stage %d", stageIndex)
+				k.stages[stageIndex].stopWait(stageIndex, k.logger)
+				k.logger.Infof("stopped stage %d", stageIndex)
+			}
+		}()
+	})
+}
+
+func (k *kernel) runMultiFactories() (err error) {
+	defer func() {
+		if err != nil {
+			return
+		}
+
+		err = coffin.ResolveRecovery(recover())
+	}()
+
+	var moduleFactories map[string]ModuleFactory
+
+	for _, factory := range k.multiFactories {
+		if moduleFactories, err = factory(k.config, k.logger); err != nil {
+			return err
+		}
+
+		for name, m := range moduleFactories {
+			k.Add(name, m)
+		}
+	}
+
+	return
+}
+
+func (k *kernel) runFactories() error {
+	ctx := context.Background()
+
+	bootCoffin := coffin.New()
+	startBooting := conc.NewSignalOnce()
+	bookLck := sync.Mutex{}
+
+	for _, container := range k.moduleSetupContainers {
+		bootCoffin.GoWithContextf(ctx, func(container moduleSetupContainer) func(ctx context.Context) error {
+			return func(ctx context.Context) error {
+				// wait until we scheduled all boot routines
+				// otherwise a fast booting module might violate the
+				// condition of tomb.Go that no new routine must be
+				// spawned after the last one exited
+				<-startBooting.Channel()
+
+				module, err := container.factory(ctx, k.config, k.logger)
+
+				if err != nil {
+					return fmt.Errorf("can not build module %s: %w", container.name, err)
+				}
+
+				bookLck.Lock()
+				k.addModuleToStage(container.name, module, container.opts)
+				bookLck.Unlock()
+
+				return nil
+			}
+		}(container), "panic during boot of module %s", container.name)
+	}
+
+	startBooting.Signal()
+
+	return bootCoffin.Wait()
+}
+
+func (k *kernel) addModuleToStage(name string, module Module, opts []ModuleOption) {
 	ms := &ModuleState{
 		Module:    module,
 		Config:    getModuleConfig(module),
@@ -154,111 +312,11 @@ func (k *kernel) Add(name string, module Module, opts ...ModuleOption) {
 	stage.modules.modules[name] = ms
 }
 
-func (k *kernel) AddFactory(factory ModuleFactory) {
-	k.factories = append(k.factories, factory)
-}
+func (k *kernel) newStage(index int) *stage {
+	s := newStage()
+	k.stages[index] = s
 
-func (k *kernel) Running() <-chan struct{} {
-	return k.running
-}
-
-func (k *kernel) Run() {
-	// do not allow config changes anymore
-	k.started.Poison()
-
-	defer k.logger.Info("leaving kernel")
-	k.logger.Info("starting kernel")
-
-	if err := k.runFactories(); err != nil {
-		k.logger.Error(err, "error building additional modules by factories")
-		close(k.running)
-		return
-	}
-
-	// poison our stages so any other thread trying to add a new stage will
-	// panic instead of hanging
-	k.stagesLck.Poison()
-
-	if !k.hasModules() {
-		close(k.running)
-		k.logger.Info("nothing to run")
-		return
-	}
-
-	k.foregroundModules = int32(k.countForegroundModules())
-	if k.foregroundModules == 0 {
-		k.logger.Info("no foreground modules")
-		return
-	}
-
-	sig := make(chan os.Signal, 2)
-	signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
-
-	if !k.boot() {
-		return
-	}
-
-	for _, stageIndex := range k.getStageIndices() {
-		k.stages[stageIndex].run(k)
-		k.logger.Infof("stage %d up and running", stageIndex)
-	}
-
-	k.logger.Info("kernel up and running")
-	close(k.running)
-
-	select {
-	case <-k.waitAllStagesDone().Channel():
-		k.Stop("context done")
-	case sig := <-sig:
-		reason := fmt.Sprintf("signal %s", sig.String())
-		k.Stop(reason)
-	}
-
-	k.waitStopped()
-}
-
-func (k *kernel) Stop(reason string) {
-	k.stopped.Do(func() {
-		go func() {
-			k.logger.Infof("stopping kernel due to: %s", reason)
-			indices := k.getStageIndices()
-			for i := len(indices) - 1; i >= 0; i-- {
-				stageIndex := indices[i]
-				k.logger.Infof("stopping stage %d", stageIndex)
-				// wait until the stage was at least booted. Otherwise we might kill a stage before
-				// it is fully initialized
-				<-k.stages[stageIndex].booted.Channel()
-				k.stages[stageIndex].stopWait(stageIndex, k.logger)
-				k.logger.Infof("stopped stage %d", stageIndex)
-			}
-		}()
-	})
-}
-
-func (k *kernel) runFactories() (err error) {
-	defer func() {
-		if err != nil {
-			return
-		}
-
-		if err = coffin.ResolveRecovery(recover()); err != nil {
-			k.logger.Error(err, "error running module factories")
-		}
-	}()
-
-	var modules map[string]Module
-
-	for _, factory := range k.factories {
-		if modules, err = factory(k.config, k.logger); err != nil {
-			return
-		}
-
-		for name, m := range modules {
-			k.Add(name, m)
-		}
-	}
-
-	return
+	return s
 }
 
 func (k *kernel) hasModules() bool {
@@ -287,39 +345,15 @@ func (k *kernel) countForegroundModules() int {
 	return count
 }
 
-func (k *kernel) boot() bool {
-	// boot all stages in ascending order, starting with the essential stage
-	var bootErr error
-	for _, stageIndex := range k.getStageIndices() {
-		stage := k.stages[stageIndex]
-		stage.prepare()
-		k.logger.Infof("booting stage %d", stageIndex)
-
-		if bootErr == nil {
-			bootErr = stage.boot(k)
-		}
-
-		stage.booted.Signal()
-	}
-
+func (k *kernel) debugConfig() {
 	debugErr := cfg.DebugConfig(k.config, k.logger)
 
 	if debugErr != nil {
-		k.logger.Error(bootErr, "can not debug config")
-		return false
+		k.logger.Error(debugErr, "can not debug config")
 	}
-
-	if bootErr != nil {
-		k.logger.Error(bootErr, "error during the boot process of the kernel")
-		return false
-	}
-
-	k.logger.Info("all modules booted")
-
-	return true
 }
 
-func (k *kernel) runModule(name string, ms *ModuleState, ctx context.Context) (moduleErr error) {
+func (k *kernel) runModule(ctx context.Context, name string, ms *ModuleState) (moduleErr error) {
 	defer k.logger.Infof("stopped %s module %s", ms.Config.Type, name)
 
 	k.logger.Infof("running %s module %s in stage %d", ms.Config.Type, name, ms.Config.Stage)
@@ -427,12 +461,14 @@ func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 	wg.Add(len(k.stages))
 
 	for _, s := range k.stages {
-		go func(ctx context.Context) {
-			_ = <-ctx.Done()
+		go func(s *stage) {
+			<-s.ctx.Done()
+
 			wg.Done()
 			wg.Wait()
+
 			done.Signal()
-		}(s.ctx)
+		}(s)
 	}
 
 	return done

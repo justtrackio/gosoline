@@ -1,8 +1,12 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/kernel"
+	"github.com/applike/gosoline/pkg/mon"
 	"gopkg.in/resty.v1"
 	"testing"
 )
@@ -46,14 +50,25 @@ type TestingSuiteApiServer interface {
 func RunApiServerTestSuite(t *testing.T, suite TestingSuiteApiServer) {
 	suite.SetT(t)
 
-	server := apiserver.New(suite.SetupApiDefinitions())
+	var server *apiserver.ApiServer
+
 	testcase := func(appUnderTest AppUnderTest) {
 		testCases := suite.SetupTestCases()
 		suite.TestApiServer(appUnderTest, server, testCases)
 	}
 
 	extraOptions := []SuiteOption{
-		WithModule("api", server),
+		WithModule("api", func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+			module, err := apiserver.New(suite.SetupApiDefinitions())(ctx, config, logger)
+
+			if err != nil {
+				return nil, err
+			}
+
+			server = module.(*apiserver.ApiServer)
+
+			return server, err
+		}),
 		WithConfigMap(map[string]interface{}{
 			"api_port": 0,
 		}),

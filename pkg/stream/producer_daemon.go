@@ -104,10 +104,6 @@ func (d *ProducerDaemon) GetStage() int {
 	return 512
 }
 
-func (d *ProducerDaemon) Boot(_ cfg.Config, _ mon.Logger) error {
-	return nil
-}
-
 func (d *ProducerDaemon) Run(kernelCtx context.Context) error {
 	d.ticker = d.tickerFactory(d.settings.Interval)
 

@@ -26,16 +26,20 @@ type ConfigServer struct {
 	settings *ConfigServerSettings
 }
 
-func (s *ConfigServer) Boot(config cfg.Config, logger mon.Logger) error {
-	settings := &ConfigServerSettings{}
-	config.UnmarshalKey("cfg.server", settings)
+func NewConfigServer() kernel.ModuleFactory {
+	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		settings := &ConfigServerSettings{}
+		config.UnmarshalKey("cfg.server", settings)
 
-	s.config = config
-	s.logger = logger.WithChannel("config-server")
-	s.server = &http.Server{}
-	s.settings = settings
+		server := &ConfigServer{
+			config:   config,
+			logger:   logger.WithChannel("config-server"),
+			server:   &http.Server{},
+			settings: settings,
+		}
 
-	return nil
+		return server, nil
+	}
 }
 
 func (s *ConfigServer) Run(ctx context.Context) error {

@@ -1,35 +1,16 @@
 package cli
 
 import (
-	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
 	"time"
 )
-
-type Module interface {
-	Boot(config cfg.Config, logger mon.Logger) error
-	Run(ctx context.Context) error
-}
-
-type cliModule struct {
-	kernel.EssentialModule
-	kernel.ApplicationStage
-	Module
-}
 
 type kernelSettings struct {
 	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
 }
 
-func newCliModule(module Module) *cliModule {
-	return &cliModule{
-		Module: module,
-	}
-}
-
-func Run(module Module) {
+func Run(module kernel.ModuleFactory) {
 	configOptions := []cfg.Option{
 		cfg.WithErrorHandlers(defaultErrorHandler),
 		cfg.WithConfigFile("./config.dist.yml", "yml"),
@@ -46,14 +27,10 @@ func Run(module Module) {
 		defaultErrorHandler(err, "can not initialize the logger")
 	}
 
-	if err := module.Boot(config, logger); err != nil {
-		defaultErrorHandler(err, "can not boot the module")
-	}
-
 	settings := &kernelSettings{}
 	config.UnmarshalKey("kernel", settings)
 
 	k := kernel.New(config, logger, kernel.KillTimeout(settings.KillTimeout))
-	k.Add("cli", newCliModule(module))
+	k.Add("cli", module, kernel.ModuleType(kernel.TypeEssential), kernel.ModuleStage(kernel.StageApplication))
 	k.Run()
 }

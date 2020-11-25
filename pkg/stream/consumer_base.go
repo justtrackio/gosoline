@@ -19,17 +19,12 @@ const (
 	metricNameConsumerDuration       = "ConsumerDuration"
 )
 
-type InputCallback interface {
-	run(ctx context.Context) error
-}
-
 //go:generate mockery -name=RunnableCallback
 type RunnableCallback interface {
 	Run(ctx context.Context) error
 }
 
 type BaseConsumerCallback interface {
-	Boot(config cfg.Config, logger mon.Logger) error
 	GetModel(attributes map[string]interface{}) interface{}
 }
 
@@ -45,10 +40,11 @@ type baseConsumer struct {
 	kernel.ApplicationStage
 	ConsumerAcknowledge
 
-	encoder MessageEncoder
-	mw      mon.MetricWriter
-	tracer  tracing.Tracer
-	clock   clock.Clock
+	clock        clock.Clock
+	logger       mon.Logger
+	metricWriter mon.MetricWriter
+	tracer       tracing.Tracer
+	encoder      MessageEncoder
 
 	wg     sync.WaitGroup
 	cancel context.CancelFunc
@@ -57,93 +53,56 @@ type baseConsumer struct {
 	name             string
 	settings         *ConsumerSettings
 	consumerCallback interface{}
-	inputCallback    InputCallback
 	processed        int32
 }
 
-func newBaseConsumer(name string, consumerCallback BaseConsumerCallback, inputCallback InputCallback) *baseConsumer {
-	return &baseConsumer{
-		name:             name,
-		consumerCallback: consumerCallback,
-		inputCallback:    inputCallback,
-		clock:            clock.Provider,
-	}
-}
-
-func (c *baseConsumer) Boot(config cfg.Config, logger mon.Logger) error {
-	if err := c.bootCallback(config, logger); err != nil {
-		return err
-	}
-
+func NewBaseConsumer(config cfg.Config, logger mon.Logger, name string, consumerCallback BaseConsumerCallback) *baseConsumer {
 	settings := &ConsumerSettings{}
-	key := ConfigurableConsumerKey(c.name)
+	key := ConfigurableConsumerKey(name)
 	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultForKey("encoding", defaultMessageBodyEncoding))
 
 	appId := cfg.GetAppIdFromConfig(config)
-	c.id = fmt.Sprintf("consumer-%s-%s-%s", appId.Family, appId.Application, c.name)
-
 	tracer := tracing.ProviderTracer(config, logger)
 
 	defaultMetrics := getConsumerDefaultMetrics()
-	mw := mon.NewMetricDaemonWriter(defaultMetrics...)
+	metricWriter := mon.NewMetricDaemonWriter(defaultMetrics...)
 
 	input := NewConfigurableInput(config, logger, settings.Input)
 	encoder := NewMessageEncoder(&MessageEncoderSettings{
 		Encoding: settings.Encoding,
 	})
 
-	c.BootWithInterfaces(logger, tracer, mw, input, encoder, settings)
-
-	return nil
+	return NewBaseConsumerWithInterfaces(logger, metricWriter, tracer, input, encoder, consumerCallback, settings, name, appId)
 }
 
-func (c *baseConsumer) BootWithInterfaces(logger mon.Logger, tracer tracing.Tracer, mw mon.MetricWriter, input Input, encoder MessageEncoder, settings *ConsumerSettings) {
-	c.logger = logger.WithChannel("consumer")
-	c.tracer = tracer
-	c.mw = mw
-	c.input = input
-	c.ConsumerAcknowledge = NewConsumerAcknowledgeWithInterfaces(logger, c.input)
-	c.encoder = encoder
-	c.settings = settings
-}
+func NewBaseConsumerWithInterfaces(
+	logger mon.Logger,
+	metricWriter mon.MetricWriter,
+	tracer tracing.Tracer,
+	input Input,
+	encoder MessageEncoder,
+	consumerCallback interface{},
+	settings *ConsumerSettings,
+	name string,
+	appId cfg.AppId,
+) *baseConsumer {
+	logger = logger.WithChannel("consumer")
 
-func (c *baseConsumer) bootCallback(config cfg.Config, logger mon.Logger) error {
-	loggerCallback := logger.WithChannel("consumerCallback")
-	contextEnforcingLogger := mon.NewContextEnforcingLogger(loggerCallback)
-
-	err := c.consumerCallback.(BaseConsumerCallback).Boot(config, contextEnforcingLogger)
-
-	if err != nil {
-		return fmt.Errorf("error during booting the consumer consumerCallback: %w", err)
-	}
-
-	contextEnforcingLogger.Enable()
-
-	return nil
-}
-
-func ConfigurableConsumerKey(name string) string {
-	return fmt.Sprintf("stream.consumer.%s", name)
-}
-
-func getConsumerDefaultMetrics() mon.MetricData {
-	return mon.MetricData{
-		{
-			Priority:   mon.PriorityHigh,
-			MetricName: metricNameConsumerProcessedCount,
-			Unit:       mon.UnitCount,
-			Value:      0.0,
-		},
-		{
-			Priority:   mon.PriorityHigh,
-			MetricName: metricNameConsumerDuration,
-			Unit:       mon.UnitMillisecondsAverage,
-			Value:      0.0,
-		},
+	return &baseConsumer{
+		name:                name,
+		id:                  fmt.Sprintf("consumer-%s-%s-%s", appId.Family, appId.Application, name),
+		logger:              logger,
+		metricWriter:        metricWriter,
+		tracer:              tracer,
+		ConsumerAcknowledge: NewConsumerAcknowledgeWithInterfaces(logger, input),
+		encoder:             encoder,
+		settings:            settings,
+		consumerCallback:    consumerCallback,
+		clock:               clock.Provider,
 	}
 }
 
-func (c *baseConsumer) Run(kernelCtx context.Context) error {
+func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx context.Context) error) error {
 	defer c.logger.Infof("leaving consumer %s", c.name)
 	c.logger.Infof("running consumer %s with input %s", c.name, c.settings.Input)
 
@@ -164,7 +123,7 @@ func (c *baseConsumer) Run(kernelCtx context.Context) error {
 	cfn.Go(c.stopConsuming)
 
 	for i := 0; i < c.settings.RunnerCount; i++ {
-		cfn.GoWithContextf(manualCtx, c.inputCallback.run, "panic during consuming")
+		cfn.GoWithContextf(manualCtx, inputRunner, "panic during consuming")
 	}
 
 	// stop input on kernel cancel
@@ -230,4 +189,25 @@ func (c *baseConsumer) recover() {
 	}
 
 	c.logger.Error(err, err.Error())
+}
+
+func getConsumerDefaultMetrics() mon.MetricData {
+	return mon.MetricData{
+		{
+			Priority:   mon.PriorityHigh,
+			MetricName: metricNameConsumerProcessedCount,
+			Unit:       mon.UnitCount,
+			Value:      0.0,
+		},
+		{
+			Priority:   mon.PriorityHigh,
+			MetricName: metricNameConsumerDuration,
+			Unit:       mon.UnitMillisecondsAverage,
+			Value:      0.0,
+		},
+	}
+}
+
+func ConfigurableConsumerKey(name string) string {
+	return fmt.Sprintf("stream.consumer.%s", name)
 }

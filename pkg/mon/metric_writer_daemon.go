@@ -5,23 +5,23 @@ import (
 )
 
 type daemonWriter struct {
-	clock  clockwork.Clock
-	daemon *cwDaemon
+	clock   clockwork.Clock
+	channel *metricChannel
 }
 
 func NewMetricDaemonWriter(defaults ...*MetricDatum) *daemonWriter {
 	clock := clockwork.NewRealClock()
-	daemon := ProvideCwDaemon()
+	channel := ProviderMetricChannel()
 
-	daemon.AddDefaults(defaults...)
+	addMetricDefaults(defaults...)
 
-	return NewMetricDaemonWriterWithInterfaces(clock, daemon)
+	return NewMetricDaemonWriterWithInterfaces(clock, channel)
 }
 
-func NewMetricDaemonWriterWithInterfaces(clock clockwork.Clock, daemon *cwDaemon) *daemonWriter {
+func NewMetricDaemonWriterWithInterfaces(clock clockwork.Clock, channel *metricChannel) *daemonWriter {
 	return &daemonWriter{
-		clock:  clock,
-		daemon: daemon,
+		clock:   clock,
+		channel: channel,
 	}
 }
 
@@ -30,7 +30,7 @@ func (w daemonWriter) GetPriority() int {
 }
 
 func (w daemonWriter) Write(batch MetricData) {
-	if !w.daemon.settings.Enabled || len(batch) == 0 {
+	if !w.channel.enabled || len(batch) == 0 {
 		return
 	}
 
@@ -40,7 +40,7 @@ func (w daemonWriter) Write(batch MetricData) {
 		}
 	}
 
-	w.daemon.channel.write(batch)
+	w.channel.write(batch)
 }
 
 func (w daemonWriter) WriteOne(data *MetricDatum) {

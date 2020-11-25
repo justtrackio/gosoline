@@ -43,6 +43,10 @@ func (o *InMemoryOutput) Get(i int) (*Message, bool) {
 	return o.messages[i], true
 }
 
+func (o *InMemoryOutput) Clear() {
+	o.messages = make([]*Message, 0)
+}
+
 func (o *InMemoryOutput) WriteOne(ctx context.Context, msg WritableMessage) error {
 	return o.Write(ctx, []WritableMessage{msg})
 }

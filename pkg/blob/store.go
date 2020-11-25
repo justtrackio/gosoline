@@ -71,9 +71,9 @@ type Store interface {
 }
 
 type s3Store struct {
-	logger mon.Logger
-	runner *BatchRunner
-	client s3iface.S3API
+	logger   mon.Logger
+	channels *BatchRunnerChannels
+	client   s3iface.S3API
 
 	bucket *string
 	prefix *string
@@ -103,7 +103,7 @@ func CreateKey() string {
 }
 
 func NewStore(config cfg.Config, logger mon.Logger, name string) *s3Store {
-	runner := ProvideBatchRunner()
+	channels := ProvideBatchRunnerChannels(config)
 	client := ProvideS3Client(config)
 
 	var settings Settings
@@ -115,7 +115,7 @@ func NewStore(config cfg.Config, logger mon.Logger, name string) *s3Store {
 		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
 	}
 
-	store := NewStoreWithInterfaces(logger, runner, client, settings)
+	store := NewStoreWithInterfaces(logger, channels, client, settings)
 
 	autoCreate := config.GetBool("aws_s3_autoCreate")
 	if autoCreate {
@@ -125,13 +125,13 @@ func NewStore(config cfg.Config, logger mon.Logger, name string) *s3Store {
 	return store
 }
 
-func NewStoreWithInterfaces(logger mon.Logger, runner *BatchRunner, client s3iface.S3API, settings Settings) *s3Store {
+func NewStoreWithInterfaces(logger mon.Logger, channels *BatchRunnerChannels, client s3iface.S3API, settings Settings) *s3Store {
 	return &s3Store{
-		logger: logger,
-		runner: runner,
-		client: client,
-		bucket: mdl.String(settings.Bucket),
-		prefix: mdl.String(settings.Prefix),
+		logger:   logger,
+		channels: channels,
+		client:   client,
+		bucket:   mdl.String(settings.Bucket),
+		prefix:   mdl.String(settings.Prefix),
 	}
 }
 
@@ -170,7 +170,7 @@ func (s *s3Store) Read(batch Batch) {
 	}
 
 	for i := 0; i < len(batch); i++ {
-		s.runner.read <- batch[i]
+		s.channels.read <- batch[i]
 	}
 
 	wg.Wait()
@@ -193,7 +193,7 @@ func (s *s3Store) Write(batch Batch) {
 	}
 
 	for i := 0; i < len(batch); i++ {
-		s.runner.write <- batch[i]
+		s.channels.write <- batch[i]
 	}
 
 	wg.Wait()
@@ -216,7 +216,7 @@ func (s *s3Store) Copy(batch CopyBatch) {
 	}
 
 	for i := 0; i < len(batch); i++ {
-		s.runner.copy <- batch[i]
+		s.channels.copy <- batch[i]
 	}
 
 	wg.Wait()
@@ -239,7 +239,7 @@ func (s *s3Store) Delete(batch Batch) {
 	}
 
 	for i := 0; i < len(batch); i++ {
-		s.runner.delete <- batch[i]
+		s.channels.delete <- batch[i]
 	}
 
 	wg.Wait()

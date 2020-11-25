@@ -18,8 +18,8 @@ type suiteOptions struct {
 	envOptions   []env.Option
 	envSetup     []func() error
 	appOptions   []application.Option
-	appModules   map[string]kernel.Module
-	appFactories []kernel.ModuleFactory
+	appModules   map[string]kernel.ModuleFactory
+	appFactories []kernel.MultiModuleFactory
 }
 
 func (s *suiteOptions) addEnvOption(opt env.Option) {
@@ -78,7 +78,7 @@ func WithConfigMap(settings map[string]interface{}) SuiteOption {
 	}
 }
 
-func WithConsumer(callback stream.ConsumerCallback) SuiteOption {
+func WithConsumer(callback stream.ConsumerCallbackFactory) SuiteOption {
 	return WithModule("consumer-default", stream.NewConsumer("default", callback))
 }
 
@@ -122,17 +122,17 @@ func WithIpReadFromMemory(name string, records map[string]ipread.MemoryRecord) S
 	}
 }
 
-func WithModule(name string, module kernel.Module) SuiteOption {
+func WithModule(name string, module kernel.ModuleFactory) SuiteOption {
 	return func(s *suiteOptions) {
 		if s.appModules == nil {
-			s.appModules = make(map[string]kernel.Module)
+			s.appModules = make(map[string]kernel.ModuleFactory)
 		}
 
 		s.appModules[name] = module
 	}
 }
 
-func WithModuleFactory(factory kernel.ModuleFactory) SuiteOption {
+func WithModuleFactory(factory kernel.MultiModuleFactory) SuiteOption {
 	return func(s *suiteOptions) {
 		s.appFactories = append(s.appFactories, factory)
 	}
