@@ -117,12 +117,15 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 	}
 
 	files, err := r.listFilesFromDate(datetime)
-
 	if err != nil {
 		return err
 	}
 
 	fileCount := len(files)
+	if fileCount == 0 {
+		return nil
+	}
+
 	stop := false
 
 	sem := semaphore.NewWeighted(int64(10))
