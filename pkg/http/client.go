@@ -34,6 +34,8 @@ type Client interface {
 	SetTimeout(timeout time.Duration)
 	SetUserAgent(ua string)
 	SetProxyUrl(p string)
+	SetCookies(cs []*http.Cookie)
+	SetCookie(c *http.Cookie)
 	SetRedirectValidator(allowRequest func(request *http.Request) bool)
 	AddRetryCondition(f RetryConditionFunc)
 	NewRequest() *Request
@@ -46,6 +48,7 @@ type RetryConditionFunc func(*Response) (bool, error)
 type Response struct {
 	Body            []byte
 	Header          http.Header
+	Cookies         []*http.Cookie
 	StatusCode      int
 	RequestDuration time.Duration
 }
@@ -111,6 +114,14 @@ func (c *client) NewXmlRequest() *Request {
 	return c.NewRequest().WithHeader(HdrAccept, ContentTypeApplicationXml)
 }
 
+func (c *client) SetCookie(hc *http.Cookie) {
+	c.http.SetCookie(hc)
+}
+
+func (c *client) SetCookies(cs []*http.Cookie) {
+	c.http.SetCookies(cs)
+}
+
 func (c *client) SetTimeout(timeout time.Duration) {
 	c.http.SetTimeout(timeout)
 }
@@ -173,6 +184,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 		logger.Error(err, "failed to assemble request")
 		return nil, fmt.Errorf("failed to assemble request: %w", err)
 	}
+
 	req.SetContext(ctx)
 	req.SetHeaders(c.defaultHeaders)
 
@@ -226,6 +238,7 @@ func (c *client) writeMetric(metricName string, method string, unit string, valu
 func buildResponse(resp *resty.Response) *Response {
 	return &Response{
 		Body:            resp.Body(),
+		Cookies:         resp.Cookies(),
 		Header:          resp.Header(),
 		StatusCode:      resp.StatusCode(),
 		RequestDuration: resp.Time(),
