@@ -44,7 +44,7 @@ type s3Reader struct {
 	s3Client s3iface.S3API
 
 	modelId              mdl.ModelId
-	prefixNamingStrategy s3PrefixNamingStrategy
+	prefixNamingStrategy S3PrefixNamingStrategy
 	recorder             FileRecorder
 }
 
@@ -71,7 +71,7 @@ func NewReaderWithInterfaces(
 	s3Cfg *aws.Config,
 	s3Client s3iface.S3API,
 	modelId mdl.ModelId,
-	prefixNaming s3PrefixNamingStrategy,
+	prefixNaming S3PrefixNamingStrategy,
 	recorder FileRecorder,
 ) *s3Reader {
 	return &s3Reader{

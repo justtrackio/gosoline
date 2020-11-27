@@ -37,7 +37,7 @@ type s3Writer struct {
 	s3Client s3iface.S3API
 
 	modelId              mdl.ModelId
-	prefixNamingStrategy s3PrefixNamingStrategy
+	prefixNamingStrategy S3PrefixNamingStrategy
 	tags                 map[string]string
 	recorder             FileRecorder
 }
@@ -66,7 +66,7 @@ func NewWriterWithInterfaces(
 	s3Client s3iface.S3API,
 	s3Cfg *aws.Config,
 	modelId mdl.ModelId,
-	prefixNaming s3PrefixNamingStrategy,
+	prefixNaming S3PrefixNamingStrategy,
 	tags map[string]string,
 	recorder FileRecorder,
 ) *s3Writer {

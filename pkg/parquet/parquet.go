@@ -8,15 +8,15 @@ import (
 	"time"
 )
 
-type s3PrefixNamingStrategy func(modelId mdl.ModelId, datetime time.Time) string
-type S3KeyNamingStrategy func(modelId mdl.ModelId, datetime time.Time, prefixCallback s3PrefixNamingStrategy) string
+type S3PrefixNamingStrategy func(modelId mdl.ModelId, datetime time.Time) string
+type S3KeyNamingStrategy func(modelId mdl.ModelId, datetime time.Time, prefixCallback S3PrefixNamingStrategy) string
 
 const (
 	NamingStrategyDtErrored   = "errors/yyyy/MM/dd"
 	NamingStrategyDtSeparated = "yyyy/MM/dd"
 )
 
-var s3PrefixNamingStrategies = map[string]s3PrefixNamingStrategy{
+var s3PrefixNamingStrategies = map[string]S3PrefixNamingStrategy{
 	NamingStrategyDtErrored:   dtErrored,
 	NamingStrategyDtSeparated: dtSeparated,
 }
@@ -45,7 +45,7 @@ func dtErrored(modelId mdl.ModelId, datetime time.Time) string {
 	return fmt.Sprintf("datalake-errors/%s/result=format-conversion-failed/year=%s/month=%s/day=%s", modelId.Name, datetime.Format("2006"), datetime.Format("01"), datetime.Format("02"))
 }
 
-var DefaultS3KeyNamingStrategy = func(modelId mdl.ModelId, datetime time.Time, prefixCallback s3PrefixNamingStrategy) string {
+var DefaultS3KeyNamingStrategy = func(modelId mdl.ModelId, datetime time.Time, prefixCallback S3PrefixNamingStrategy) string {
 	prefix := prefixCallback(modelId, datetime)
 	timestamp := datetime.Format("2006-01-02-15-04-05")
 	uuid := uuid.NewV4().String()
