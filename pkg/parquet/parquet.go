@@ -9,6 +9,7 @@ import (
 )
 
 type s3PrefixNamingStrategy func(modelId mdl.ModelId, datetime time.Time) string
+type S3KeyNamingStrategy func(modelId mdl.ModelId, datetime time.Time, prefixCallback s3PrefixNamingStrategy) string
 
 const (
 	NamingStrategyDtErrored   = "errors/yyyy/MM/dd"
@@ -44,12 +45,18 @@ func dtErrored(modelId mdl.ModelId, datetime time.Time) string {
 	return fmt.Sprintf("datalake-errors/%s/result=format-conversion-failed/year=%s/month=%s/day=%s", modelId.Name, datetime.Format("2006"), datetime.Format("01"), datetime.Format("02"))
 }
 
-var s3KeyNamingStrategy = func(modelId mdl.ModelId, datetime time.Time, prefixCallback s3PrefixNamingStrategy) string {
+var DefaultS3KeyNamingStrategy = func(modelId mdl.ModelId, datetime time.Time, prefixCallback s3PrefixNamingStrategy) string {
 	prefix := prefixCallback(modelId, datetime)
 	timestamp := datetime.Format("2006-01-02-15-04-05")
 	uuid := uuid.NewV4().String()
 
 	return fmt.Sprintf("%s/%s-%s-%s-%s-%s-%s.parquet", prefix, modelId.Project, modelId.Environment, modelId.Family, modelId.Name, timestamp, uuid)
+}
+
+var s3KeyNamingStrategy = DefaultS3KeyNamingStrategy
+
+func WithKeyNamingStrategy(strategy S3KeyNamingStrategy) {
+	s3KeyNamingStrategy = strategy
 }
 
 type Partitionable interface {
