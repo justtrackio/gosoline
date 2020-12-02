@@ -20,6 +20,8 @@ const (
 	ContentTypeHtml = "text/html; charset=utf-8"
 )
 
+var ErrAccessForbidden = errors.New("cant access resource")
+
 type Request struct {
 	Header   http.Header
 	Params   gin.Params
@@ -274,6 +276,14 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 
 	resp, err := handler.Handle(reqCtx, request)
 
+	if errors.Is(err, ErrAccessForbidden) {
+		handleForbidden(ginCtx, errHandler, http.StatusForbidden, gin.Error{
+			Err:  err,
+			Type: gin.ErrorTypePrivate,
+		})
+		return
+	}
+
 	if err != nil {
 		handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
 			Err:  err,
@@ -298,6 +308,18 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 
 func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, ginError gin.Error) {
 	_ = ginCtx.Error(&ginError)
+	resp := errHandler(statusCode, ginError.Err)
+
+	writer, err := mkResponseBodyWriter(resp)
+
+	if err != nil {
+		panic(errors.WithMessage(err, "Error creating writer for error handler"))
+	}
+
+	writer(ginCtx)
+}
+
+func handleForbidden(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, ginError gin.Error) {
 	resp := errHandler(statusCode, ginError.Err)
 
 	writer, err := mkResponseBodyWriter(resp)
