@@ -9,9 +9,9 @@ import (
 )
 
 func setup(t *testing.T) {
-	err := os.Setenv("AWS_ACCESS_KEY_ID", "a")
+	err := os.Setenv("AWS_ACCESS_KEY_ID", "gosoline")
 	assert.NoError(t, err)
 
-	err = os.Setenv("AWS_SECRET_ACCESS_KEY", "b")
+	err = os.Setenv("AWS_SECRET_ACCESS_KEY", "gosoline")
 	assert.NoError(t, err)
 }

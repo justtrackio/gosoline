@@ -10,7 +10,7 @@ import (
 const componentS3 = "s3"
 
 type s3Settings struct {
-	*healthCheckMockSettings
+	*mockSettings
 	Port int `cfg:"port" default:"0"`
 }
 
@@ -20,15 +20,13 @@ type s3Component struct {
 	clients  *simpleCache
 }
 
-func (k *s3Component) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
+func (k *s3Component) Boot(config cfg.Config, logger mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
+	k.logger = logger
 	k.name = name
 	k.runner = runner
 	k.clients = &simpleCache{}
 	k.settings = &s3Settings{
-		healthCheckMockSettings: &healthCheckMockSettings{
-			mockSettings: settings,
-			Healthcheck:  healthCheckSettings(config, name),
-		},
+		mockSettings: settings,
 	}
 	key := fmt.Sprintf("mocks.%s", name)
 	config.UnmarshalKey(key, k.settings)
@@ -38,24 +36,31 @@ func (k *s3Component) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_s3_%s", k.name)
 
 	return k.runner.Run(containerName, &containerConfigLegacy{
-		Repository: "localstack/localstack",
-		Tag:        "0.10.8",
+		Repository: "minio/minio",
+		Cmd: []string{
+			"server",
+			"/data",
+		},
+		Tag: "RELEASE.2020-12-03T05-49-24Z",
 		Env: []string{
-			fmt.Sprintf("SERVICES=%s", componentS3),
+			"MINIO_ACCESS_KEY=gosoline",
+			"MINIO_SECRET_KEY=gosoline",
 		},
 		PortBindings: portBindingLegacy{
-			"4572/tcp": fmt.Sprint(k.settings.Port),
-			"8080/tcp": fmt.Sprint(k.settings.Healthcheck.Port),
+			"9000/tcp": fmt.Sprint(k.settings.Port),
 		},
 		PortMappings: portMappingLegacy{
-			"4572/tcp": &k.settings.Port,
-			"8080/tcp": &k.settings.Healthcheck.Port,
+			"9000/tcp": &k.settings.Port,
 		},
 		HostMapping: hostMappingLegacy{
 			dialPort: &k.settings.Port,
 			setHost:  &k.settings.Host,
 		},
-		HealthCheck: localstackHealthCheck(k.settings.healthCheckMockSettings, componentS3),
+		HealthCheck: func() error {
+			_, err := k.provideS3Client().ListBuckets(&s3.ListBucketsInput{})
+
+			return err
+		},
 		PrintLogs:   k.settings.Debug,
 		ExpireAfter: k.settings.ExpireAfter,
 	})
