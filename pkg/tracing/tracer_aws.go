@@ -14,14 +14,16 @@ import (
 )
 
 const (
-	dnsSrv = "srv"
+	dnsSrv                        = "srv"
+	xrayDefaultMaxSubsegmentCount = 20
 )
 
 type XRaySettings struct {
-	Enabled            bool
-	Address            string
-	CtxMissingStrategy ctxmissing.Strategy
-	SamplingStrategy   sampling.Strategy
+	Enabled                     bool
+	Address                     string
+	CtxMissingStrategy          ctxmissing.Strategy
+	SamplingStrategy            sampling.Strategy
+	StreamingMaxSubsegmentCount int
 }
 
 type awsTracer struct {
@@ -45,21 +47,33 @@ func NewAwsTracer(config cfg.Config, logger mon.Logger) Tracer {
 	}
 
 	xRaySettings := &XRaySettings{
-		Enabled:            settings.Enabled,
-		Address:            addr,
-		CtxMissingStrategy: ctxMissingStrategy,
-		SamplingStrategy:   samplingStrategy,
+		Enabled:                     settings.Enabled,
+		Address:                     addr,
+		CtxMissingStrategy:          ctxMissingStrategy,
+		SamplingStrategy:            samplingStrategy,
+		StreamingMaxSubsegmentCount: settings.StreamingMaxSubsegmentCount,
 	}
 
 	return NewAwsTracerWithInterfaces(logger, appId, xRaySettings)
 }
 
 func NewAwsTracerWithInterfaces(logger mon.Logger, appId cfg.AppId, settings *XRaySettings) *awsTracer {
-	err := xray.Configure(xray.Config{
+	if settings.StreamingMaxSubsegmentCount == 0 {
+		settings.StreamingMaxSubsegmentCount = xrayDefaultMaxSubsegmentCount
+	}
+
+	streamingStrategy, err := xray.NewDefaultStreamingStrategyWithMaxSubsegmentCount(settings.StreamingMaxSubsegmentCount)
+
+	if err != nil {
+		logger.Fatal(err, "can not create default xray streaming strategy")
+	}
+
+	err = xray.Configure(xray.Config{
 		LogLevel:               "warn",
 		DaemonAddr:             settings.Address,
 		ContextMissingStrategy: settings.CtxMissingStrategy,
 		SamplingStrategy:       settings.SamplingStrategy,
+		StreamingStrategy:      streamingStrategy,
 	})
 
 	if err != nil {
