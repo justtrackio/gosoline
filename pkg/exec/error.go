@@ -94,11 +94,7 @@ func CheckTimeoutError(_ interface{}, err error) ErrorType {
 }
 
 func IsTimeoutError(err error) bool {
-	if errors.Is(err, unix.ETIMEDOUT) {
-		return true
-	}
-
-	return false
+	return errors.Is(err, unix.ETIMEDOUT)
 }
 
 func CheckClientAwaitHeaderTimeoutError(_ interface{}, err error) ErrorType {
@@ -110,11 +106,7 @@ func CheckClientAwaitHeaderTimeoutError(_ interface{}, err error) ErrorType {
 }
 
 func IsClientAwaitHeadersTimeoutError(err error) bool {
-	if strings.Contains(err.Error(), "(Client.Timeout exceeded while awaiting headers)") {
-		return true
-	}
-
-	return false
+	return strings.Contains(err.Error(), "(Client.Timeout exceeded while awaiting headers)")
 }
 
 func CheckTlsHandshakeTimeoutError(_ interface{}, err error) ErrorType {
@@ -126,9 +118,5 @@ func CheckTlsHandshakeTimeoutError(_ interface{}, err error) ErrorType {
 }
 
 func IsTlsHandshakeTimeoutError(err error) bool {
-	if strings.Contains(err.Error(), "net/http: TLS handshake timeout") {
-		return true
-	}
-
-	return false
+	return strings.Contains(err.Error(), "net/http: TLS handshake timeout")
 }

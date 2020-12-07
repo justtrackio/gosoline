@@ -108,11 +108,11 @@ func (s *Slice) NewElement() interface{} {
 func (s *Slice) Append(elem interface{}) error {
 	ev := reflect.ValueOf(elem)
 
-	if s.elementPtr == true && ev.Kind() != reflect.Ptr {
+	if s.elementPtr && ev.Kind() != reflect.Ptr {
 		return fmt.Errorf("the value which you try to append to the slice has to be addressable")
 	}
 
-	if s.elementPtr == false && ev.Kind() == reflect.Ptr {
+	if !s.elementPtr && ev.Kind() == reflect.Ptr {
 		ev = reflect.Indirect(ev)
 	}
 

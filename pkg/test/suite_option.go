@@ -10,7 +10,6 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/spf13/cast"
-	"os"
 	"time"
 )
 
@@ -24,18 +23,6 @@ type suiteOptions struct {
 
 func (s *suiteOptions) addEnvOption(opt env.Option) {
 	s.envOptions = append(s.envOptions, opt)
-}
-
-func (s *suiteOptions) addAppOption(opt application.Option) {
-	s.appOptions = append(s.appOptions, opt)
-}
-
-func (s *suiteOptions) addOptionalTestConfig() {
-	if _, err := os.Stat("config.test.yml"); os.IsNotExist(err) {
-		return
-	}
-
-	s.addEnvOption(env.WithConfigFile("config.test.yml"))
 }
 
 type SuiteOption func(s *suiteOptions)

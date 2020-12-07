@@ -64,7 +64,7 @@ func newMocks(config cfg.Config, logger mon.Logger) (*Mocks, error) {
 func (m *Mocks) bootFromConfig(config cfg.Config) {
 	mocks := config.GetStringMap("mocks")
 
-	for name, _ := range mocks {
+	for name := range mocks {
 		settings := &mockSettings{}
 		key := fmt.Sprintf("mocks.%s", name)
 		config.UnmarshalKey(key, settings)

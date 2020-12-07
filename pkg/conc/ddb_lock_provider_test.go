@@ -149,11 +149,11 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireCanceled() {
 	// (although that should always fail)
 	err = l.Renew(s.ctx, time.Hour)
 	s.Error(err)
-	s.Equal(conc.NotOwnedError, err)
+	s.Equal(conc.ErrNotOwned, err)
 
 	err = l.Release()
 	s.Error(err)
-	s.Equal(conc.NotOwnedError, err)
+	s.Equal(conc.ErrNotOwned, err)
 
 	qb.AssertExpectations(s.T())
 	s.repo.AssertExpectations(s.T())
@@ -180,7 +180,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireFails() {
 	l, err := s.provider.Acquire(s.ctx, s.resource[5:])
 	s.Nil(l)
 	s.Error(err)
-	s.Equal(conc.OwnedLockError, err)
+	s.Equal(conc.ErrOwnedLock, err)
 
 	qb.AssertExpectations(s.T())
 	s.repo.AssertExpectations(s.T())
@@ -202,7 +202,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenReleaseTooLate
 
 	err := l.Release()
 	s.Error(err)
-	s.Equal(conc.NotOwnedError, err)
+	s.Equal(conc.ErrNotOwned, err)
 
 	qb.AssertExpectations(s.T())
 	s.repo.AssertExpectations(s.T())
@@ -274,7 +274,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewFails() {
 
 	err := l.Renew(s.ctx, time.Hour)
 	s.Error(err)
-	s.Equal(conc.NotOwnedError, err)
+	s.Equal(conc.ErrNotOwned, err)
 
 	qb.AssertExpectations(s.T())
 	s.repo.AssertExpectations(s.T())

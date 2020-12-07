@@ -7,7 +7,6 @@ import (
 
 type Case1 struct {
 	test.Suite
-	foo string
 }
 
 func (c *Case1) SetupSuite() []test.SuiteOption {

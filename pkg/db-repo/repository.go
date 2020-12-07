@@ -116,7 +116,7 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 
 func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
 	modelId := r.GetModelId()
-	ctx, span := r.startSubSpan(ctx, "Get")
+	_, span := r.startSubSpan(ctx, "Get")
 	defer span.Finish()
 
 	err := r.orm.First(out, *id).Error
@@ -168,7 +168,7 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	modelId := r.GetModelId()
 	logger := r.logger.WithContext(ctx)
 
-	ctx, span := r.startSubSpan(ctx, "Delete")
+	_, span := r.startSubSpan(ctx, "Delete")
 	defer span.Finish()
 
 	err := r.refreshAssociations(value, Delete)
@@ -190,7 +190,7 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 }
 
 func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
-	ctx, span := r.startSubSpan(ctx, "Query")
+	_, span := r.startSubSpan(ctx, "Query")
 	defer span.Finish()
 
 	db := r.orm.New()
@@ -226,7 +226,7 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 }
 
 func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBased) (int, error) {
-	ctx, span := r.startSubSpan(ctx, "Count")
+	_, span := r.startSubSpan(ctx, "Count")
 	defer span.Finish()
 
 	var result = struct {

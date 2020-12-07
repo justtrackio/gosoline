@@ -222,7 +222,6 @@ func (m *MapX) doSet(current map[string]*MapXNode, key string, index int, value 
 
 	arrayValue.Index(index).Set(reflectValue)
 	current[key] = &MapXNode{value: arrayValue.Interface()}
-	return
 }
 
 func (m *MapX) doSetSlice(current map[string]*MapXNode, key string, value reflect.Value) {

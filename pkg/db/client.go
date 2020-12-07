@@ -5,11 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/VividCortex/mysqlerr"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/cenkalti/backoff"
-	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"reflect"
 	"strconv"
@@ -172,26 +169,4 @@ func (c *ClientSqlx) Get(dest interface{}, query string, args ...interface{}) er
 	c.logger.Debugf("> %s %q", query, args)
 
 	return c.db.Get(dest, query, args...)
-}
-
-func (c *ClientSqlx) execWithBackoff(query string, args ...interface{}) (res sql.Result, err error) {
-	backoffConfig := backoff.NewExponentialBackOff()
-
-	err = backoff.Retry(func() error {
-		res, err = c.db.Exec(query, args...)
-
-		mysqlE, ok := err.(*mysql.MySQLError)
-
-		if ok && mysqlE.Number != mysqlerr.ER_LOCK_DEADLOCK {
-			return nil
-		}
-
-		return err
-	}, backoffConfig)
-
-	if err != nil {
-		c.logger.Error(err, "could not execute query with backoff")
-	}
-
-	return
 }

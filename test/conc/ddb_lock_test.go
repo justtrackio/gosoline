@@ -125,7 +125,7 @@ func (s *DdbLockTestSuite) TestReleaseTwiceFails() {
 	s.NoError(err)
 	err = l.Release()
 	s.Error(err)
-	s.Equal(conc.NotOwnedError, err)
+	s.Equal(conc.ErrNotOwned, err)
 }
 
 func (s *DdbLockTestSuite) TestRenewAfterReleaseFails() {
@@ -137,7 +137,7 @@ func (s *DdbLockTestSuite) TestRenewAfterReleaseFails() {
 	s.NoError(err)
 	err = l.Renew(ctx, time.Minute)
 	s.Error(err)
-	s.Equal(conc.NotOwnedError, err)
+	s.Equal(conc.ErrNotOwned, err)
 }
 
 func (s *DdbLockTestSuite) TestAcquireDifferentResources() {

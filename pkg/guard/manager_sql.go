@@ -117,6 +117,9 @@ func (m SqlManager) Update(pol ladon.Policy) error {
 
 func (m SqlManager) updateAssociations(pol ladon.Policy, table string, values []string) error {
 	err := m.deleteByIdAndTable(pol.GetID(), table)
+	if err != nil {
+		return err
+	}
 
 	if err = m.createAssociations(pol, table, values); err != nil {
 		return err
@@ -199,7 +202,7 @@ func (m SqlManager) queryPolicies(where squirrel.Eq) (ladon.Policies, error) {
 		return nil, err
 	}
 
-	policies := make(map[string]*ladon.DefaultPolicy, 0)
+	policies := map[string]*ladon.DefaultPolicy{}
 	for _, row := range *res {
 		if _, ok := policies[row["id"]]; !ok {
 			policies[row["id"]] = &ladon.DefaultPolicy{

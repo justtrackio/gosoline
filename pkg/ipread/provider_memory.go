@@ -38,7 +38,7 @@ func (p memoryProvider) City(ipAddress net.IP) (*geoip2.City, error) {
 	ipString := ipAddress.String()
 
 	if _, ok := p.records[ipString]; !ok {
-		return nil, IpNotFoundError
+		return nil, ErrIpNotFound
 	}
 
 	return p.records[ipString], nil

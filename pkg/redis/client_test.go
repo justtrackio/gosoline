@@ -171,6 +171,7 @@ func (s *ClientWithMiniRedisTestSuite) TestIncr() {
 
 func (s *ClientWithMiniRedisTestSuite) TestDecr() {
 	err := s.client.Set("key", 10, time.Minute*10)
+	s.NoError(err, "there should be no error on Set")
 
 	val, err := s.client.Decr("key")
 	s.NoError(err, "there should be no error on Decr")

@@ -57,7 +57,7 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	var err error
 	var skeletons []*componentSkeleton
 	var component Component
-	var containers = make(map[string]*container)
+	var containers map[string]*container
 	var components = NewComponentsContainer()
 	var componentConfigManger = NewComponentsConfigManager(config)
 

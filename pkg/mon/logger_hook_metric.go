@@ -1,8 +1,7 @@
 package mon
 
 type metricHook struct {
-	writer      MetricWriter
-	application string
+	writer MetricWriter
 }
 
 func NewMetricHook() *metricHook {

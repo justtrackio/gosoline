@@ -74,7 +74,7 @@ func (s *OptionsTestSuite) TestWithConfigSetting() {
 
 	actual = s.config.Get("a")
 	expectedMsi = expected.Msi()
-	s.Equal(expected.Msi(), actual)
+	s.Equal(expectedMsi, actual)
 }
 
 func TestOptionsTestSuite(t *testing.T) {

@@ -437,7 +437,7 @@ func (k *kernel) waitStopped() {
 
 	// we don't need to iterate in order, we just need to block until everything is done
 	for _, stage := range k.stages {
-		_ = <-stage.terminated.Channel()
+		<-stage.terminated.Channel()
 	}
 }
 

@@ -18,7 +18,6 @@ type DeleteItemBuilder interface {
 }
 
 type deleteItemBuilder struct {
-	err        error
 	metadata   *Metadata
 	keyBuilder keyBuilder
 	condition  *expression.ConditionBuilder
