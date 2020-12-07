@@ -58,7 +58,7 @@ func (i InvalidTokenErr) As(target interface{}) bool {
 	return ok
 }
 
-type TokenBearerProvider func(ctx context.Context, key string) (TokenBearer, error)
+type TokenBearerProvider func(ctx context.Context, key string, token string) (TokenBearer, error)
 type ModelProvider func() TokenBearer
 
 func NewTokenBearerHandler(config cfg.Config, logger mon.Logger, provider TokenBearerProvider) gin.HandlerFunc {
@@ -104,7 +104,7 @@ func (a *tokenBearerAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		return false, InvalidTokenErr{}
 	}
 
-	bearer, err := a.provider(ginCtx.Request.Context(), bearerId)
+	bearer, err := a.provider(ginCtx.Request.Context(), bearerId, token)
 
 	if err != nil {
 		return false, InvalidTokenErr{}
@@ -135,7 +135,7 @@ func (a *tokenBearerAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 }
 
 func ProvideTokenBearerFromGetter(getter Getter, getModel ModelProvider) TokenBearerProvider {
-	return func(ctx context.Context, key string) (TokenBearer, error) {
+	return func(ctx context.Context, key string, _ string) (TokenBearer, error) {
 		m := getModel()
 		found, err := getter.Get(ctx, key, m)
 
@@ -148,7 +148,7 @@ func ProvideTokenBearerFromGetter(getter Getter, getModel ModelProvider) TokenBe
 }
 
 func ProvideTokenBearerFromDdb(repo ddb.Repository, getModel ModelProvider) TokenBearerProvider {
-	return func(ctx context.Context, key string) (TokenBearer, error) {
+	return func(ctx context.Context, key string, _ string) (TokenBearer, error) {
 		m := getModel()
 		result, err := repo.GetItem(ctx, repo.GetItemBuilder().WithHash(key), m)
 
