@@ -16,8 +16,7 @@ const (
 
 type metricRepository struct {
 	Repository
-	modelId string
-	output  mon.MetricWriter
+	output mon.MetricWriter
 }
 
 func NewMetricRepository(_ cfg.Config, _ mon.Logger, repo Repository) *metricRepository {

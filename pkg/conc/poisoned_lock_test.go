@@ -11,6 +11,7 @@ func TestPoisonedLock(t *testing.T) {
 
 	// should work
 	lck.Lock()
+	//nolint:golint,staticcheck
 	lck.Unlock()
 
 	// should also work
@@ -29,7 +30,7 @@ func TestPoisonedLock(t *testing.T) {
 	{
 		err := lck.TryLock()
 
-		assert.Equal(t, conc.AlreadyPoisonedErr, err)
+		assert.Equal(t, conc.ErrAlreadyPoisoned, err)
 	}
 
 	var err error
@@ -42,7 +43,7 @@ func TestPoisonedLock(t *testing.T) {
 		lck.Lock()
 	}()
 
-	assert.Equal(t, conc.AlreadyPoisonedErr, err)
+	assert.Equal(t, conc.ErrAlreadyPoisoned, err)
 
 	// should still be okay and not cause our test to hang
 	lck.Poison()

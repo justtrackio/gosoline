@@ -2,7 +2,6 @@ package test
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
@@ -19,7 +18,6 @@ type wiremockSettings struct {
 
 type wiremockComponent struct {
 	mockComponentBase
-	db       *sql.DB
 	settings *wiremockSettings
 }
 

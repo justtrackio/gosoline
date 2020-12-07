@@ -6,7 +6,6 @@ import (
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/pkg/errors"
-	"sync"
 )
 
 //go:generate mockery -name Service
@@ -17,26 +16,24 @@ type Service interface {
 	ToCurrency(ctx context.Context, to string, value float64, from string) (float64, error)
 }
 
-type CurrencyService struct {
-	store      kvstore.KvStore
-	currencies []string
-	lck        sync.Mutex
+type currencyService struct {
+	store kvstore.KvStore
 }
 
-func New(config cfg.Config, logger mon.Logger) *CurrencyService {
+func New(config cfg.Config, logger mon.Logger) *currencyService {
 	store := kvstore.NewConfigurableKvStore(config, logger, "currency")
 
 	return NewWithInterfaces(store)
 }
 
-func NewWithInterfaces(store kvstore.KvStore) *CurrencyService {
-	return &CurrencyService{
+func NewWithInterfaces(store kvstore.KvStore) *currencyService {
+	return &currencyService{
 		store: store,
 	}
 }
 
 // returns whether we support converting a given currency or not and whether an error occurred or not
-func (s *CurrencyService) HasCurrency(ctx context.Context, currency string) (bool, error) {
+func (s *currencyService) HasCurrency(ctx context.Context, currency string) (bool, error) {
 	if currency == "EUR" {
 		return true, nil
 	}
@@ -45,7 +42,7 @@ func (s *CurrencyService) HasCurrency(ctx context.Context, currency string) (boo
 }
 
 // returns the euro value for a given value and currency and nil if not error occurred. returns 0 and an error object otherwise.
-func (s *CurrencyService) ToEur(ctx context.Context, value float64, from string) (float64, error) {
+func (s *currencyService) ToEur(ctx context.Context, value float64, from string) (float64, error) {
 	if from == Eur {
 		return value, nil
 	}
@@ -60,7 +57,7 @@ func (s *CurrencyService) ToEur(ctx context.Context, value float64, from string)
 }
 
 // returns the us dollar value for a given value and currency and nil if not error occurred. returns 0 and an error object otherwise.
-func (s *CurrencyService) ToUsd(ctx context.Context, value float64, from string) (float64, error) {
+func (s *currencyService) ToUsd(ctx context.Context, value float64, from string) (float64, error) {
 	if from == Usd {
 		return value, nil
 	}
@@ -69,7 +66,7 @@ func (s *CurrencyService) ToUsd(ctx context.Context, value float64, from string)
 }
 
 // returns the value in the currency given in the to parameter for a given value and currency given in the from parameter and nil if not error occurred. returns 0 and an error object otherwise.
-func (s *CurrencyService) ToCurrency(ctx context.Context, to string, value float64, from string) (float64, error) {
+func (s *currencyService) ToCurrency(ctx context.Context, to string, value float64, from string) (float64, error) {
 	if from == to {
 		return value, nil
 	}
@@ -89,7 +86,7 @@ func (s *CurrencyService) ToCurrency(ctx context.Context, to string, value float
 	return eur * exchangeRate, nil
 }
 
-func (s *CurrencyService) getExchangeRate(ctx context.Context, to string) (float64, error) {
+func (s *currencyService) getExchangeRate(ctx context.Context, to string) (float64, error) {
 	var exchangeRate float64
 	exists, err := s.store.Get(ctx, to, &exchangeRate)
 

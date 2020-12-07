@@ -106,10 +106,8 @@ func AddDeleteHandler(logger mon.Logger, d *apiserver.Definitions, version int, 
 }
 
 func AddListHandler(logger mon.Logger, d *apiserver.Definitions, version int, basePath string, handler ListHandler) {
-	path, _ := getHandlerPaths(version, basePath)
-
 	plural := inflection.Plural(basePath)
-	path = fmt.Sprintf("/v%d/%s", version, plural)
+	path := fmt.Sprintf("/v%d/%s", version, plural)
 	d.POST(path, NewListHandler(logger, handler))
 }
 

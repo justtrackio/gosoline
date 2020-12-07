@@ -20,8 +20,7 @@ import (
 )
 
 const (
-	sqsBatchSize      = 10
-	sqsMaxMessageSize = 256 * 1024
+	sqsBatchSize = 10
 )
 
 //go:generate mockery -name Queue

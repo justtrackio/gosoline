@@ -75,7 +75,7 @@ func TestStreamBytes(t *testing.T) {
 
 	reader := stream.AsReader()
 
-	buf := make([]byte, 1, 1)
+	buf := make([]byte, 1)
 	n, err := reader.Read(buf)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, n)
@@ -103,9 +103,7 @@ func TestStreamReaderWithSeek(t *testing.T) {
 
 		assert.GreaterOrEqual(t, len(buffer), len(data))
 
-		for i, b := range data {
-			buffer[i] = b
-		}
+		copy(buffer, data)
 
 		reader.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	}).Return(len(data), nil).Once()
@@ -124,7 +122,7 @@ func TestStreamReaderWithoutSeek(t *testing.T) {
 	stream := blob.StreamReader(reader)
 	streamReader := stream.AsReader()
 
-	buffer := make([]byte, 1, 1)
+	buffer := make([]byte, 1)
 
 	reader.On("Read", buffer).Return(1, nil)
 	n, err := streamReader.Read(buffer)
@@ -150,9 +148,7 @@ func TestStreamReaderWithoutSeek(t *testing.T) {
 
 		assert.GreaterOrEqual(t, len(buffer), len(data))
 
-		for i, b := range data {
-			buffer[i] = b
-		}
+		copy(buffer, data)
 
 		reader.On("Read", mock.Anything).Return(0, io.EOF).Once()
 	}).Return(len(data), nil).Once()

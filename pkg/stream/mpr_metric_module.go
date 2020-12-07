@@ -19,18 +19,6 @@ const (
 	metricNameStreamMprMessagesPerRunner = "StreamMprMessagesPerRunner"
 )
 
-type mprMetricPerConsumer map[string]float64
-
-func (d mprMetricPerConsumer) Sum() float64 {
-	sum := 0.0
-
-	for _, v := range d {
-		sum += v
-	}
-
-	return sum
-}
-
 type MessagesPerRunnerMetricWriterSettings struct {
 	ConsumerSpecs      []*ConsumerSpec
 	UpdatePeriod       time.Duration
@@ -48,7 +36,7 @@ func MessagesPerRunnerMetricWriterFactory(config cfg.Config, logger mon.Logger) 
 		return modules, nil
 	}
 
-	moduleName := fmt.Sprintf("stream-metric-messages-per-runner")
+	moduleName := "stream-metric-messages-per-runner"
 	modules[moduleName] = NewMessagesPerRunnerMetricWriter(settings)
 
 	return modules, nil

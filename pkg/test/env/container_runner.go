@@ -237,7 +237,7 @@ func (r *containerRunner) resolveBindings(resource *dockertest.Resource, binding
 
 	for containerPort := range bindings {
 		if resolvedAddresses[containerPort], err = r.resolveBinding(resource, containerPort); err != nil {
-
+			return nil, fmt.Errorf("failed to resolve binding: %w", err)
 		}
 	}
 

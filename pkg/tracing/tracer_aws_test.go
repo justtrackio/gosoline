@@ -13,7 +13,7 @@ func TestAwsTracer_StartSubSpan(t *testing.T) {
 	tracer := getTracer()
 
 	ctx, trans := tracer.StartSpan("test_trans")
-	ctx, span := tracer.StartSubSpan(ctx, "test_span")
+	_, span := tracer.StartSubSpan(ctx, "test_span")
 
 	assert.Equal(t, trans.GetTrace().TraceId, span.GetTrace().TraceId, "the trace ids should match")
 	assert.Equal(t, trans.GetTrace().Sampled, span.GetTrace().Sampled, "the sample decision should match")
@@ -26,7 +26,7 @@ func TestAwsTracer_StartSpanFromContextWithSpan(t *testing.T) {
 	tracer := getTracer()
 
 	ctx, transRoot := tracer.StartSpan("test_trans")
-	ctx, transChild := tracer.StartSpanFromContext(ctx, "another_trace")
+	_, transChild := tracer.StartSpanFromContext(ctx, "another_trace")
 
 	assert.Equal(t, transRoot.GetTrace().TraceId, transChild.GetTrace().TraceId, "the trace ids should match")
 	assert.Equal(t, transRoot.GetTrace().Sampled, transChild.GetTrace().Sampled, "the sample decision should match")
@@ -47,7 +47,7 @@ func TestAwsTracer_StartSpanFromContextWithTrace(t *testing.T) {
 	}
 
 	ctx := tracing.ContextWithTrace(context.Background(), trace)
-	ctx, transChild := tracer.StartSpanFromContext(ctx, "another_trace")
+	_, transChild := tracer.StartSpanFromContext(ctx, "another_trace")
 
 	assert.Equal(t, trace.TraceId, transChild.GetTrace().TraceId, "the trace ids should match")
 	assert.Equal(t, trace.Sampled, transChild.GetTrace().Sampled, "the sample decision should match")

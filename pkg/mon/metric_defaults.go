@@ -3,7 +3,7 @@ package mon
 import "sync"
 
 var metricDefaultsLock = sync.Mutex{}
-var metricDefaults = make(map[string]*MetricDatum, 0)
+var metricDefaults = map[string]*MetricDatum{}
 
 func addMetricDefaults(data ...*MetricDatum) {
 	metricDefaultsLock.Lock()

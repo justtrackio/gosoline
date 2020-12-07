@@ -27,10 +27,9 @@ type ApiServer struct {
 	kernel.EssentialModule
 	kernel.ServiceStage
 
-	logger       mon.Logger
-	server       *http.Server
-	listener     net.Listener
-	defineRouter Definer
+	logger   mon.Logger
+	server   *http.Server
+	listener net.Listener
 }
 
 func New(definer Definer) kernel.ModuleFactory {

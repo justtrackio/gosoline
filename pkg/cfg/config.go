@@ -53,7 +53,7 @@ type config struct {
 	envKeyReplacer *strings.Replacer
 }
 
-var templateRegex = regexp.MustCompile("{([\\w.\\-]+)}")
+var templateRegex = regexp.MustCompile(`{([\w.\-]+)}`)
 
 func New() GosoConf {
 	return NewWithInterfaces(os.LookupEnv)
@@ -532,7 +532,7 @@ func (c *config) resolveEnvKey(prefix string, key string) string {
 		key = strings.Join([]string{prefix, key}, ".")
 	}
 
-	rp := regexp.MustCompile("\\[(\\d)\\]")
+	rp := regexp.MustCompile(`\[(\d)\]`)
 	matches := rp.FindAllStringSubmatch(key, -1)
 
 	for _, m := range matches {

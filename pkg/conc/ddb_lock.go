@@ -30,7 +30,7 @@ func newDdbLock(manager *ddbLockProvider, ctx context.Context, resource string, 
 
 func (l *ddbLock) Renew(ctx context.Context, lockTime time.Duration) error {
 	if l == nil {
-		return NotOwnedError
+		return ErrNotOwned
 	}
 
 	err := l.manager.renew(ctx, lockTime, l.resource, l.token)
@@ -44,7 +44,7 @@ func (l *ddbLock) Renew(ctx context.Context, lockTime time.Duration) error {
 
 func (l *ddbLock) Release() error {
 	if l == nil {
-		return NotOwnedError
+		return ErrNotOwned
 	}
 
 	// stop the debug thread if needed

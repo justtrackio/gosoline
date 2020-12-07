@@ -40,11 +40,13 @@ func TestMapOf(t *testing.T) {
 
 	item := m.NewElement().(*Item)
 	item.Value = "foo"
-	m.Set(3, item)
+	err = m.Set(3, item)
+	assert.NoError(t, err)
 
 	item = m.NewElement().(*Item)
 	item.Value = "bar"
-	m.Set(5, item)
+	err = m.Set(5, item)
+	assert.NoError(t, err)
 
 	assert.Len(t, items, 2)
 	assert.Equal(t, "foo", items[3].Value)
@@ -59,11 +61,13 @@ func TestMapOfPointer(t *testing.T) {
 
 	item := m.NewElement().(*Item)
 	item.Value = "foo"
-	m.Set(3, item)
+	err = m.Set(3, item)
+	assert.NoError(t, err)
 
 	item = m.NewElement().(*Item)
 	item.Value = "bar"
-	m.Set(5, item)
+	err = m.Set(5, item)
+	assert.NoError(t, err)
 
 	assert.Len(t, items, 2)
 	assert.Equal(t, "foo", items[3].Value)

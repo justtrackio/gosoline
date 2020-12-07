@@ -10,7 +10,7 @@ on:
 
 jobs:
   terraform-fmt:
-    name: Terraform fmt
+    name: terraform fmt
     runs-on: ubuntu-20.04
     steps:
       - name: Check out code into the Go module directory
@@ -20,7 +20,7 @@ jobs:
         run: terraform fmt -check -recursive .
 
   go-fmt:
-    name: Go fmt
+    name: go fmt
     runs-on: ubuntu-20.04
     steps:
       - name: Check out code into the Go module directory
@@ -33,11 +33,11 @@ jobs:
         run: test -z $(gofmt -l .)
 
   build:
-    name: Go build
+    name: go build
     runs-on: ubuntu-20.04
     steps:
       - name: Set up Go 1.15
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: 1.15
 
@@ -51,11 +51,11 @@ jobs:
         run: go build -v ./...
 
   go-vet:
-    name: Go vet
+    name: static code analysis (go vet)
     runs-on: ubuntu-20.04
     steps:
       - name: Set up Go 1.15
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: 1.15
 
@@ -68,12 +68,29 @@ jobs:
       - name: Static code analysis
         run: go vet ./...
 
-  go-test:
-    name: Go test
+  golangci-lint:
+    name: static code analysis (golangci-lint)
     runs-on: ubuntu-20.04
     steps:
       - name: Set up Go 1.15
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Static code analysis (golangci-lint)
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.29
+          args: --timeout 5m --print-issued-lines --print-linter-name --out-format=colored-line-number --disable structcheck
+  go-test:
+    name: go test
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Set up Go 1.15
+        uses: actions/setup-go@v2
         with:
           go-version: 1.15
 
@@ -87,11 +104,11 @@ jobs:
         run: go test ./...
 
   go-test-integration:
-    name: Go test integration
+    name: go test (integration)
     runs-on: ubuntu-20.04
     steps:
       - name: Set up Go 1.15
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: 1.15
 

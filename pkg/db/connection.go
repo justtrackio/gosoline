@@ -61,11 +61,6 @@ func ProvideConnection(config cfg.Config, logger mon.Logger, configKey string) (
 	return defaultConnections.instances[key], defaultConnections.errors[key]
 }
 
-type Connection struct {
-	settings *Settings
-	db       *sqlx.DB
-}
-
 func NewConnectionFromSettings(logger mon.Logger, settings Settings) (*sqlx.DB, error) {
 	connection, err := NewConnectionWithInterfaces(settings)
 
@@ -105,10 +100,6 @@ func NewConnectionWithInterfaces(settings Settings) (*sqlx.DB, error) {
 	db.SetMaxOpenConns(settings.MaxOpenConnections)
 
 	return db, nil
-}
-
-func GenerateVersionedTableName(table string, version int) string {
-	return fmt.Sprintf("V%v_%v", version, table)
 }
 
 func createSettings(config cfg.Config, key string) Settings {

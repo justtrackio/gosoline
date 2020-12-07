@@ -22,7 +22,6 @@ func (d *Definition) getAbsolutePath() string {
 	groupPath := d.group.getAbsolutePath()
 
 	absolutePath := fmt.Sprintf("%s/%s", groupPath, d.relativePath)
-	absolutePath = fmt.Sprintf("%s/%s", groupPath, d.relativePath)
 	absolutePath = strings.TrimRight(absolutePath, "/")
 
 	return removeDuplicates(absolutePath)

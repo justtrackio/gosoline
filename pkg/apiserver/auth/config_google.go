@@ -1,12 +1,14 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"google.golang.org/api/oauth2/v2"
+	"google.golang.org/api/option"
 	"net/http"
 	"regexp"
 	"sync"
@@ -56,8 +58,11 @@ func NewConfigGoogleHandler(config cfg.Config, logger mon.Logger) gin.HandlerFun
 }
 
 func NewConfigGoogleAuthenticator(config cfg.Config, logger mon.Logger) Authenticator {
-	oauth2Service, err := oauth2.New(http.DefaultClient)
+	// it will never be used, because we specify an http client here already
+	ctx := context.Background()
+	clientOption := option.WithHTTPClient(http.DefaultClient)
 
+	oauth2Service, err := oauth2.NewService(ctx, clientOption)
 	if err != nil {
 		logger.Panic(err, "failed creating google oauth2 client")
 	}

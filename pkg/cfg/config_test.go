@@ -406,7 +406,7 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Map() {
 		"KEY_KEY3_FOO": "env",
 	})
 
-	cm := make(map[string]configMap, 0)
+	cm := map[string]configMap{}
 	s.config.UnmarshalKey("key", &cm)
 
 	s.Len(cm, 3)

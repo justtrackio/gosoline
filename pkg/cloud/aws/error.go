@@ -59,11 +59,7 @@ func IsAwsError(err error, awsCode string) bool {
 }
 
 func IsAwsErrorCodeRequestCanceled(err error) bool {
-	if IsAwsError(err, request.CanceledErrorCode) {
-		return true
-	}
-
-	return false
+	return IsAwsError(err, request.CanceledErrorCode)
 }
 
 func CheckConnectionError(_ interface{}, err error) exec.ErrorType {
@@ -77,9 +73,7 @@ func CheckConnectionError(_ interface{}, err error) exec.ErrorType {
 func IsConnectionError(err error) bool {
 	var awsErr awserr.Error
 
-	if errors.As(err, &awsErr) {
-		err = awsErr.OrigErr()
-	}
+	errors.As(err, &awsErr)
 
 	return exec.IsConnectionError(awsErr)
 }

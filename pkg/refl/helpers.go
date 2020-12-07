@@ -126,14 +126,12 @@ func ResolveValueTo(value interface{}, kind reflect.Kind) (reflect.Type, reflect
 
 	if t.Kind() == reflect.Interface {
 		v = v.Elem()
-		t = v.Type()
 
 		value = v.Interface()
 		return ResolveBaseTypeAndValue(value)
 	}
 
 	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
 		v = v.Elem()
 
 		value = v.Interface()
@@ -141,7 +139,6 @@ func ResolveValueTo(value interface{}, kind reflect.Kind) (reflect.Type, reflect
 	}
 
 	if t.Kind() == reflect.Slice {
-		t = t.Elem()
 		v = v.Index(0)
 
 		value = v.Interface()

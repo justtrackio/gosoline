@@ -69,7 +69,7 @@ func (c *Cache) Expire(key string) bool {
 		return false
 	}
 
-	remaining := item.Expires().Sub(time.Now())
+	remaining := time.Until(item.Expires())
 	item.Extend(-1 * remaining)
 
 	return true

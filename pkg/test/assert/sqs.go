@@ -29,6 +29,7 @@ func SqsQueueContainsMessages(t *testing.T, client *sqs.SQS, queueName string, c
 		QueueUrl:            queueUrlOutput.QueueUrl,
 	})
 
+	assert.Nil(t, err)
 	assert.NotNil(t, messages)
 	assert.Len(t, messages.Messages, count)
 

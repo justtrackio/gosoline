@@ -275,9 +275,5 @@ func (d *dockerRunnerLegacy) isReachable(address string, timeout time.Duration) 
 		}
 	}()
 
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }

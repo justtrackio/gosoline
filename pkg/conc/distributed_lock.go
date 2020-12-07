@@ -8,11 +8,11 @@ import (
 )
 
 // you failed to acquire a lock before the operation timed out
-var OwnedLockError = errors.New("lock owned")
+var ErrOwnedLock = errors.New("lock owned")
 
 // you tried to release a lock which you (no longer) own. Make sure
 // you are not releasing a lock twice and are releasing a lock in a timely manner.
-var NotOwnedError = errors.New("the lock was not (no longer) owned by you")
+var ErrNotOwned = errors.New("the lock was not (no longer) owned by you")
 
 //go:generate mockery -name DistributedLockProvider
 type DistributedLockProvider interface {
@@ -29,10 +29,10 @@ type DistributedLock interface {
 	// now + 5 seconds).
 	// Aborts the operation if the context gets canceled before
 	// the operation finishes.
-	// Might fail with NotOwnedError if you are no longer the
+	// Might fail with ErrNotOwned if you are no longer the
 	// owner of the lock.
 	Renew(ctx context.Context, lockTime time.Duration) error
-	// Release a lock. Might fail with NotOwnedError if you are
+	// Release a lock. Might fail with ErrNotOwned if you are
 	// releasing a lock too late.
 	Release() error
 }

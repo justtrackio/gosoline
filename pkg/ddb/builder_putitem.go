@@ -17,7 +17,6 @@ type PutItemBuilder interface {
 }
 
 type putItemBuilder struct {
-	err        error
 	metadata   *Metadata
 	condition  *expression.ConditionBuilder
 	returnType *string

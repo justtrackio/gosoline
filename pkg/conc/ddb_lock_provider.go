@@ -105,7 +105,7 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (Distrib
 		}
 
 		if result.ConditionalCheckFailed {
-			return OwnedLockError
+			return ErrOwnedLock
 		}
 
 		m.logger.WithContext(ctx).WithFields(mon.Fields{
@@ -143,7 +143,7 @@ func (m *ddbLockProvider) renew(ctx context.Context, lockTime time.Duration, res
 		}
 
 		if result.ConditionalCheckFailed {
-			return backoff.Permanent(NotOwnedError)
+			return backoff.Permanent(ErrNotOwned)
 		}
 
 		m.logger.WithContext(ctx).WithFields(mon.Fields{
@@ -170,7 +170,7 @@ func (m *ddbLockProvider) release(ctx context.Context, resource string, token st
 	}
 
 	if result.ConditionalCheckFailed {
-		return NotOwnedError
+		return ErrNotOwned
 	}
 
 	m.logger.WithContext(ctx).WithFields(mon.Fields{

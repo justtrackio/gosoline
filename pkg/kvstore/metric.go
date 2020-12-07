@@ -155,7 +155,7 @@ func (s *MetricStore) DeleteBatch(ctx context.Context, keys interface{}) error {
 func (s *MetricStore) recordSize(sizedStore SizedStore) {
 	ticker := time.NewTicker(time.Minute)
 
-	for _ = range ticker.C {
+	for range ticker.C {
 		size := sizedStore.EstimateSize()
 
 		if size != nil {

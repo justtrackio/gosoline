@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	IpParseError    = errors.New("failed to parse geo ip")
-	IpNotFoundError = errors.New("ip not found")
+	ErrIpParseFailed = errors.New("failed to parse geo ip")
+	ErrIpNotFound    = errors.New("ip not found")
 )
 
 type GeoCity struct {
@@ -61,7 +61,7 @@ func (r reader) City(ipString string) (*GeoCity, error) {
 	ip := net.ParseIP(ipString)
 
 	if ip == nil {
-		return nil, IpParseError
+		return nil, ErrIpParseFailed
 	}
 
 	record, err := r.provider.City(ip)

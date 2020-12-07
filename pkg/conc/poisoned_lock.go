@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-var AlreadyPoisonedErr = errors.New("lock was already poisoned")
+var ErrAlreadyPoisoned = errors.New("lock was already poisoned")
 
 //go:generate mockery -name=PoisonedLock
 type PoisonedLock interface {
@@ -26,7 +26,7 @@ func (p *poisonedLock) TryLock() error {
 	if p.poisoned {
 		p.lck.Unlock()
 
-		return AlreadyPoisonedErr
+		return ErrAlreadyPoisoned
 	}
 
 	return nil
