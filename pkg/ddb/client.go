@@ -17,20 +17,25 @@ type Client interface {
 
 var c = struct {
 	sync.Mutex
-	instance *dynamodb.DynamoDB
+	instance map[string]dynamodbiface.DynamoDBAPI
 }{}
 
-func ProvideClient(config cfg.Config, logger mon.Logger, settings *Settings) *dynamodb.DynamoDB {
+func ProvideClient(config cfg.Config, logger mon.Logger, settings *Settings) dynamodbiface.DynamoDBAPI {
 	c.Lock()
 	defer c.Unlock()
 
-	if c.instance != nil {
-		return c.instance
+	if c.instance == nil {
+		c.instance = map[string]dynamodbiface.DynamoDBAPI{}
 	}
 
-	c.instance = NewClient(config, logger, settings)
+	endpoint := config.GetString("aws_dynamoDb_endpoint")
+	if c.instance[endpoint] != nil {
+		return c.instance[endpoint]
+	}
 
-	return c.instance
+	c.instance[endpoint] = NewClient(config, logger, settings)
+
+	return c.instance[endpoint]
 }
 
 func NewClient(config cfg.Config, logger mon.Logger, settings *Settings) *dynamodb.DynamoDB {
