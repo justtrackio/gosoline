@@ -204,3 +204,43 @@ variable "regex_replace_chars" {
   default     = "/[^a-zA-Z0-9-]/"
   description = "Regex to replace chars with empty string in `namespace`, `environment`, `stage` and `name`. By default only hyphens, letters and digits are allowed, all other chars are removed"
 }
+
+variable "autoscaling_schedule_table_read_start" {
+  type = list(object({
+    cron         = string,
+    min_capacity = number,
+    max_capacity = number,
+  }))
+
+  default = []
+}
+
+variable "autoscaling_schedule_table_read_stop" {
+  type = list(object({
+    cron         = string,
+    min_capacity = number,
+    max_capacity = number,
+  }))
+
+  default = []
+}
+
+variable "autoscaling_schedule_table_write_start" {
+  type = list(object({
+    cron         = string,
+    min_capacity = number,
+    max_capacity = number,
+  }))
+
+  default = []
+}
+
+variable "autoscaling_schedule_table_write_stop" {
+  type = list(object({
+    cron         = string,
+    min_capacity = number,
+    max_capacity = number,
+  }))
+
+  default = []
+}

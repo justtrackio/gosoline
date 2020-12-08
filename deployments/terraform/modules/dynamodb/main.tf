@@ -125,4 +125,9 @@ module "dynamodb_autoscaler" {
   autoscale_max_read_capacity    = var.autoscale_max_read_capacity
   autoscale_min_write_capacity   = var.autoscale_min_write_capacity
   autoscale_max_write_capacity   = var.autoscale_max_write_capacity
+
+  autoscaling_schedule_table_read_start  = var.autoscaling_schedule_table_read_start
+  autoscaling_schedule_table_read_stop   = var.autoscaling_schedule_table_read_stop
+  autoscaling_schedule_table_write_start = var.autoscaling_schedule_table_write_start
+  autoscaling_schedule_table_write_stop  = var.autoscaling_schedule_table_write_stop
 }

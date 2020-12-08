@@ -85,3 +85,35 @@ variable "autoscale_max_write_capacity_global_secondary_index" {
   default     = 1000
   description = "DynamoDB autoscaling max write capacity"
 }
+
+variable "autoscaling_schedule_table_read_start" {
+  type = list(object({
+    cron         = string,
+    min_capacity = number,
+    max_capacity = number,
+  }))
+}
+
+variable "autoscaling_schedule_table_read_stop" {
+  type = list(object({
+    cron         = string,
+    min_capacity = number,
+    max_capacity = number,
+  }))
+}
+
+variable "autoscaling_schedule_table_write_start" {
+  type = list(object({
+    cron         = string,
+    min_capacity = number,
+    max_capacity = number,
+  }))
+}
+
+variable "autoscaling_schedule_table_write_stop" {
+  type = list(object({
+    cron         = string,
+    min_capacity = number,
+    max_capacity = number,
+  }))
+}
