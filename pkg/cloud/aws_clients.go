@@ -88,7 +88,7 @@ func GetAwsConfig(config cfg.Config, logger mon.Logger, service string, settings
 var ConfigTemplate = aws.Config{
 	CredentialsChainVerboseErrors: aws.Bool(true),
 	Region:                        aws.String(endpoints.EuCentral1RegionID),
-	//LogLevel: aws.LogLevel(aws.LogDebug | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors | aws.LogDebugWithHTTPBody),
+	// LogLevel: aws.LogLevel(aws.LogDebug | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors | aws.LogDebugWithHTTPBody),
 	HTTPClient: &http.Client{
 		Timeout: 1 * time.Minute,
 	},
@@ -130,19 +130,23 @@ func GetKinesisClient(config cfg.Config, logger mon.Logger) kinesisiface.Kinesis
 /* DynamoDB client */
 var ddbcl = struct {
 	sync.Mutex
-	client      dynamodbiface.DynamoDBAPI
-	initialized bool
+	client map[string]dynamodbiface.DynamoDBAPI
 }{}
 
 func GetDynamoDbClient(config cfg.Config, logger mon.Logger) dynamodbiface.DynamoDBAPI {
 	ddbcl.Lock()
 	defer ddbcl.Unlock()
 
-	if ddbcl.initialized {
-		return ddbcl.client
+	if ddbcl.client == nil {
+		ddbcl.client = map[string]dynamodbiface.DynamoDBAPI{}
 	}
 
 	endpoint := config.GetString("aws_dynamoDb_endpoint")
+
+	if ddbcl.client[endpoint] != nil {
+		return ddbcl.client[endpoint]
+	}
+
 	maxRetries := config.GetInt("aws_sdk_retries")
 
 	awsConfig := ConfigTemplate
@@ -154,10 +158,9 @@ func GetDynamoDbClient(config cfg.Config, logger mon.Logger) dynamodbiface.Dynam
 
 	client := dynamodb.New(sess)
 
-	ddbcl.client = client
-	ddbcl.initialized = true
+	ddbcl.client[endpoint] = client
 
-	return ddbcl.client
+	return ddbcl.client[endpoint]
 }
 
 /* ECS Client */

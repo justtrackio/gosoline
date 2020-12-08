@@ -6,12 +6,13 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 )
 
 type dynamodbPurger struct {
 	logger   mon.Logger
 	settings *ddb.Settings
-	client   *dynamodb.DynamoDB
+	client   dynamodbiface.DynamoDBAPI
 }
 
 func newDynamodbPurger(config cfg.Config, logger mon.Logger, settings *ddb.Settings) *dynamodbPurger {
