@@ -157,6 +157,7 @@ func (i *sqsInput) Ack(msg *Message) error {
 
 func (i *sqsInput) AckBatch(msgs []*Message) error {
 	receiptHandles := make([]string, 0, len(msgs))
+	seenHandles := make(map[string]bool)
 	multiError := new(multierror.Error)
 
 	for _, msg := range msgs {
@@ -182,7 +183,13 @@ func (i *sqsInput) AckBatch(msgs []*Message) error {
 			continue
 		}
 
+		// disaggregating messages produces duplicates, so we filter them again here
+		if seenHandles[receiptHandleString] {
+			continue
+		}
+
 		receiptHandles = append(receiptHandles, receiptHandleString)
+		seenHandles[receiptHandleString] = true
 	}
 
 	if len(receiptHandles) == 0 {
@@ -190,7 +197,7 @@ func (i *sqsInput) AckBatch(msgs []*Message) error {
 	}
 
 	if err := i.queue.DeleteMessageBatch(receiptHandles); err != nil {
-		multiError = multierror.Append(multiError)
+		multiError = multierror.Append(multiError, err)
 	}
 
 	return multiError.ErrorOrNil()

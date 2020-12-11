@@ -17,7 +17,28 @@ const MetricNamePipelineProcessedCount = "PipelineProcessedCount"
 //go:generate mockery -name PipelineCallback
 type PipelineCallback interface {
 	Boot(config cfg.Config, logger mon.Logger) error
-	Process(ctx context.Context, messages []*Message) ([]*Message, error)
+	Process(ctx context.Context, messages []PipelineInput) ([]PipelineOutput, error)
+}
+
+type PipelineInput struct {
+	attributes map[string]interface{}
+	Messages   []*Message
+}
+
+// Use this function to transform each of your input batches to an output batch.
+// This function ensures we can trace each message through the pipeline and finally
+// acknowledge the original message should it produce any (even an empty) set of messages.
+// To retry a message later, simply do not include it as a PipelineOutput in your result.
+func (i *PipelineInput) CreateOutput(messages []*Message) PipelineOutput {
+	return PipelineOutput{
+		attributes: i.attributes,
+		messages:   messages,
+	}
+}
+
+type PipelineOutput struct {
+	attributes map[string]interface{}
+	messages   []*Message
 }
 
 type PipelineSettings struct {
@@ -30,14 +51,13 @@ type Pipeline struct {
 	kernel.ApplicationStage
 	ConsumerAcknowledge
 
-	logger   mon.Logger
 	metric   mon.MetricWriter
 	cfn      coffin.Coffin
 	lck      sync.Mutex
 	encoder  MessageEncoder
 	output   Output
 	ticker   *time.Ticker
-	batch    []*Message
+	batch    []PipelineInput
 	stages   []PipelineCallback
 	settings *PipelineSettings
 }
@@ -79,7 +99,7 @@ func (p *Pipeline) BootWithInterfaces(logger mon.Logger, metric mon.MetricWriter
 	p.output = output
 	p.encoder = NewMessageEncoder(&MessageEncoderSettings{})
 	p.ticker = time.NewTicker(settings.Interval)
-	p.batch = make([]*Message, 0, settings.BatchSize)
+	p.batch = make([]PipelineInput, 0, settings.BatchSize)
 	p.settings = settings
 
 	return nil
@@ -122,8 +142,10 @@ func (p *Pipeline) read(ctx context.Context) error {
 				continue
 			}
 
-			p.batch = append(p.batch, disaggregated...)
-			p.Acknowledge(ctx, msg)
+			p.batch = append(p.batch, PipelineInput{
+				attributes: msg.Attributes,
+				Messages:   disaggregated,
+			})
 
 		case <-p.ticker.C:
 			force = true
@@ -172,7 +194,7 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 
 	defer func() {
 		p.ticker = time.NewTicker(p.settings.Interval)
-		p.batch = make([]*Message, 0, p.settings.BatchSize)
+		p.batch = make([]PipelineInput, 0, p.settings.BatchSize)
 
 		err := coffin.ResolveRecovery(recover())
 
@@ -185,17 +207,43 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 
 	p.ticker.Stop()
 
-	var err error
+	input := p.batch
 
-	for _, stage := range p.stages {
-		p.batch, err = stage.Process(ctx, p.batch)
+	var err error
+	var output []PipelineOutput
+
+	for i, stage := range p.stages {
+		output, err = stage.Process(ctx, input)
 
 		if err != nil {
 			p.logger.Error(err, "could not process the batch")
 		}
+
+		if i != len(p.stages)-1 {
+			input = make([]PipelineInput, len(output))
+
+			for j, outputBatch := range output {
+				input[j] = PipelineInput{
+					attributes: outputBatch.attributes,
+					Messages:   outputBatch.messages,
+				}
+			}
+		}
 	}
 
-	err = p.output.Write(ctx, MessagesToWritableMessages(p.batch))
+	writableBatch := make([]WritableMessage, 0, len(output))
+	acknowledgeableBatch := make([]*Message, len(output))
+
+	for i, records := range output {
+		for _, record := range records.messages {
+			writableBatch = append(writableBatch, record)
+		}
+		acknowledgeableBatch[i] = &Message{
+			Attributes: records.attributes,
+		}
+	}
+
+	err = p.output.Write(ctx, writableBatch)
 
 	if err != nil {
 		p.logger.Error(err, "could not write messages to output")
@@ -203,7 +251,9 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 		return
 	}
 
-	processedCount := len(p.batch)
+	p.AcknowledgeBatch(ctx, acknowledgeableBatch)
+
+	processedCount := len(output)
 
 	p.logger.Infof("pipeline processed %d of %d messages", processedCount, batchSize)
 	p.metric.WriteOne(&mon.MetricDatum{

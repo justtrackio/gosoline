@@ -45,7 +45,6 @@ type baseConsumer struct {
 	kernel.ApplicationStage
 	ConsumerAcknowledge
 
-	logger  mon.Logger
 	encoder MessageEncoder
 	mw      mon.MetricWriter
 	tracer  tracing.Tracer
