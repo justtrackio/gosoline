@@ -30,7 +30,6 @@ type Pipeline struct {
 	kernel.ApplicationStage
 	ConsumerAcknowledge
 
-	logger   mon.Logger
 	metric   mon.MetricWriter
 	cfn      coffin.Coffin
 	lck      sync.Mutex

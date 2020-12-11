@@ -190,7 +190,7 @@ func (i *sqsInput) AckBatch(msgs []*Message) error {
 	}
 
 	if err := i.queue.DeleteMessageBatch(receiptHandles); err != nil {
-		multiError = multierror.Append(multiError)
+		multiError = multierror.Append(multiError, err)
 	}
 
 	return multiError.ErrorOrNil()
