@@ -1,6 +1,7 @@
 package redis_test
 
 import (
+	"context"
 	"errors"
 	"github.com/alicebob/miniredis"
 	"github.com/applike/gosoline/pkg/exec"
@@ -16,8 +17,10 @@ import (
 type ClientWithMiniRedisTestSuite struct {
 	suite.Suite
 
-	server *miniredis.Miniredis
-	client redis.Client
+	settings   *redis.Settings
+	server     *miniredis.Miniredis
+	baseClient *baseRedis.Client
+	client     redis.Client
 }
 
 func (s *ClientWithMiniRedisTestSuite) SetupTest() {
@@ -28,16 +31,39 @@ func (s *ClientWithMiniRedisTestSuite) SetupTest() {
 		return
 	}
 
-	settings := &redis.Settings{}
+	s.settings = &redis.Settings{}
 	logger := mocks.NewLoggerMockedAll()
 	executor := exec.NewDefaultExecutor()
 
-	baseClient := baseRedis.NewClient(&baseRedis.Options{
+	s.baseClient = baseRedis.NewClient(&baseRedis.Options{
 		Addr: server.Addr(),
 	})
 
 	s.server = server
-	s.client = redis.NewClientWithInterfaces(logger, baseClient, executor, settings)
+	s.client = redis.NewClientWithInterfaces(logger, s.baseClient, executor, s.settings)
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestGetNotFound() {
+	// the logger should fail the test as soon as any logger.Warn or anything gets called
+	// because we want to test the executor not doing that
+	logger := new(mocks.Logger)
+	logger.On("WithContext", context.Background()).Return(logger).Once()
+	executor := redis.NewBackoffExecutor(logger, exec.BackoffSettings{
+		Enabled:             true,
+		Blocking:            true,
+		CancelDelay:         time.Second,
+		InitialInterval:     time.Millisecond,
+		RandomizationFactor: 1.5,
+		Multiplier:          2,
+		MaxInterval:         time.Second * 3,
+		MaxElapsedTime:      time.Second * 5,
+	}, "test")
+	s.client = redis.NewClientWithInterfaces(logger, s.baseClient, executor, s.settings)
+
+	res, err := s.client.Get("missing")
+
+	s.Equal(redis.Nil, err)
+	s.Equal("", res)
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestBLPop() {

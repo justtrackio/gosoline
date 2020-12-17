@@ -12,9 +12,16 @@ import (
 type ErrorType int
 
 const (
+	// We don't know yet, let the other error checkers decide about this error. If the error is
+	// not marked retryable by another checker, we will not retry it.
 	ErrorUnknown ErrorType = iota
+	// Stop retrying, the error was actually a "success" and needs to be propagated to the caller
+	// ("success" meaning something e.g. was not found, but will not magically appear just because
+	// we retry a few more times)
 	ErrorOk
+	// Immediately stop retrying and return this error to the caller
 	ErrorPermanent
+	// Retry the execution of the action
 	ErrorRetryable
 )
 

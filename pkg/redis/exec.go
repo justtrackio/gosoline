@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"errors"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"io"
@@ -25,9 +26,18 @@ func NewBackoffExecutor(logger mon.Logger, settings exec.BackoffSettings, name s
 	checks := []exec.ErrorChecker{
 		RetryableErrorChecker,
 		OOMChecker,
+		NilChecker,
 	}
 
 	return exec.NewBackoffExecutor(logger, executableResource, &settings, checks...)
+}
+
+func NilChecker(_ interface{}, err error) exec.ErrorType {
+	if errors.Is(err, Nil) {
+		return exec.ErrorOk
+	}
+
+	return exec.ErrorUnknown
 }
 
 func OOMChecker(_ interface{}, err error) exec.ErrorType {
