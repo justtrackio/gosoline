@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	FormatDateTime                 = "2006-01-02 15:04:05"
-	mysqlDuplicateEntryErrorNumber = 1062
+	FormatDateTime = "2006-01-02 15:04:05"
 )
 
 //go:generate mockery -name SqlResult
@@ -195,14 +194,4 @@ func (c *ClientSqlx) execWithBackoff(query string, args ...interface{}) (res sql
 	}
 
 	return
-}
-
-func IsDuplicateEntryError(err error) bool {
-	if err != nil {
-		mysqlErr, ok := err.(*mysql.MySQLError)
-
-		return ok && mysqlErr.Number == mysqlDuplicateEntryErrorNumber
-	}
-
-	return false
 }
