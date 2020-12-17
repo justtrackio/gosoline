@@ -61,7 +61,7 @@ func (b BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (interf
 		req.SetContext(ctx)
 		err := req.Send()
 
-		if req.HTTPResponse.StatusCode >= http.StatusInternalServerError && req.HTTPResponse.StatusCode != http.StatusNotImplemented {
+		if err == nil && req.HTTPResponse.StatusCode >= http.StatusInternalServerError && req.HTTPResponse.StatusCode != http.StatusNotImplemented {
 			return nil, &InvalidStatusError{
 				Status: req.HTTPResponse.StatusCode,
 			}
