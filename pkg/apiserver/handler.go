@@ -311,15 +311,7 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 
 func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, ginError gin.Error) {
 	_ = ginCtx.Error(&ginError)
-	resp := errHandler(statusCode, ginError.Err)
-
-	writer, err := mkResponseBodyWriter(resp)
-
-	if err != nil {
-		panic(errors.WithMessage(err, "Error creating writer for error handler"))
-	}
-
-	writer(ginCtx)
+	handleUserError(ginCtx, errHandler, statusCode, ginError.Err)
 }
 
 func handleUserError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, err error) {
