@@ -2,6 +2,7 @@ package db_repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
@@ -24,6 +25,26 @@ const (
 
 var operations = []string{Create, Read, Update, Delete, Query}
 var RecordNotFound = gorm.ErrRecordNotFound
+
+func IsRecordNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if err == RecordNotFound {
+		return true
+	}
+
+	if errs, ok := err.(gorm.Errors); ok {
+		for _, err := range errs {
+			if IsRecordNotFoundError(err) {
+				return true
+			}
+		}
+	}
+
+	return IsRecordNotFoundError(errors.Unwrap(err))
+}
 
 type Settings struct {
 	cfg.AppId

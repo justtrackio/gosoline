@@ -21,6 +21,7 @@ const (
 )
 
 var ErrAccessForbidden = errors.New("cant access resource")
+var ErrRecordNotFound = errors.New("record not found")
 
 type Request struct {
 	Header   http.Header
@@ -277,10 +278,12 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 	resp, err := handler.Handle(reqCtx, request)
 
 	if errors.Is(err, ErrAccessForbidden) {
-		handleForbidden(ginCtx, errHandler, http.StatusForbidden, gin.Error{
-			Err:  err,
-			Type: gin.ErrorTypePrivate,
-		})
+		handleUserError(ginCtx, errHandler, http.StatusForbidden, err)
+		return
+	}
+
+	if errors.Is(err, ErrRecordNotFound) {
+		handleUserError(ginCtx, errHandler, http.StatusNotFound, err)
 		return
 	}
 
@@ -319,8 +322,8 @@ func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, g
 	writer(ginCtx)
 }
 
-func handleForbidden(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, ginError gin.Error) {
-	resp := errHandler(statusCode, ginError.Err)
+func handleUserError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, err error) {
+	resp := errHandler(statusCode, err)
 
 	writer, err := mkResponseBodyWriter(resp)
 

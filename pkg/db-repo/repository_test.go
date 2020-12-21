@@ -3,11 +3,14 @@ package db_repo_test
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
+	"fmt"
 	goSqlMock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
+	"github.com/jinzhu/gorm"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -706,4 +709,31 @@ func getTimedMocks(t time.Time) (goSqlMock.Sqlmock, db_repo.Repository) {
 	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, db_repo.Settings{})
 
 	return clientMock, repo
+}
+
+func TestIsRecordNotFoundError(t *testing.T) {
+	valid := []error{
+		gorm.ErrRecordNotFound,
+		db_repo.RecordNotFound,
+		gorm.Errors{nil, gorm.ErrRecordNotFound, fmt.Errorf("abc")},
+		gorm.Errors{nil, gorm.Errors{gorm.ErrRecordNotFound, fmt.Errorf("abc")}},
+		fmt.Errorf("wrapping error: %w", db_repo.RecordNotFound),
+		fmt.Errorf("wrapping again: %w", fmt.Errorf("wrapping error: %w", db_repo.RecordNotFound)),
+		fmt.Errorf("wrapping again: %w", gorm.Errors{fmt.Errorf("wrapping error: %w", db_repo.RecordNotFound)}),
+	}
+	invalid := []error{
+		nil,
+		gorm.Errors{},
+		gorm.Errors{nil, errors.New("foo")},
+		fmt.Errorf("record not found"),
+		errors.New(db_repo.RecordNotFound.Error()),
+		fmt.Errorf("%s", db_repo.RecordNotFound.Error()),
+	}
+
+	for _, validErr := range valid {
+		assert.True(t, db_repo.IsRecordNotFoundError(validErr))
+	}
+	for _, invalidErr := range invalid {
+		assert.False(t, db_repo.IsRecordNotFoundError(invalidErr))
+	}
 }

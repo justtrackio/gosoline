@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/db"
+	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -35,6 +36,10 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	repo := uh.transformer.GetRepository()
 	model := uh.transformer.GetModel()
 	err := repo.Read(ctx, id, model)
+
+	if db_repo.IsRecordNotFoundError(err) {
+		return nil, apiserver.ErrRecordNotFound
+	}
 
 	if err != nil {
 		return nil, err

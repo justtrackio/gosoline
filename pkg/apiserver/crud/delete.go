@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
+	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/gin-gonic/gin"
 )
 
@@ -30,6 +31,10 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	model := dh.transformer.GetModel()
 
 	err := repo.Read(ctx, id, model)
+
+	if db_repo.IsRecordNotFoundError(err) {
+		return nil, apiserver.ErrRecordNotFound
+	}
 
 	if err != nil {
 		return nil, err

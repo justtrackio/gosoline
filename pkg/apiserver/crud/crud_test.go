@@ -123,11 +123,11 @@ func TestCreateHandler_Handle(t *testing.T) {
 
 	transformer := NewTransformer()
 
-	transformer.Repo.On("Create", mock.AnythingOfType("*context.emptyCtx"), model).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Create", context.Background(), model).Run(func(args mock.Arguments) {
 		model := args.Get(1).(*Model)
 		model.Id = mdl.Uint(1)
 	}).Return(nil)
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), &Model{}).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", context.Background(), mdl.Uint(1), &Model{}).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
 		model.Id = mdl.Uint(1)
 		model.Name = mdl.String("foobar")
@@ -150,7 +150,7 @@ func TestReadHandler_Handle(t *testing.T) {
 	model := &Model{}
 
 	transformer := NewTransformer()
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), model).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", context.Background(), mdl.Uint(1), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
 		model.Id = mdl.Uint(1)
 		model.Name = mdl.String("foobar")
@@ -164,6 +164,22 @@ func TestReadHandler_Handle(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	assert.JSONEq(t, `{"id":1,"updatedAt":"0001-01-01T00:00:00Z","createdAt":"0001-01-01T00:00:00Z","name":"foobar"}`, response.Body.String())
+
+	transformer.Repo.AssertExpectations(t)
+}
+
+func TestReadHandler_Handle_NotFound(t *testing.T) {
+	model := &Model{}
+
+	transformer := NewTransformer()
+	transformer.Repo.On("Read", context.Background(), mdl.Uint(1), model).Return(db_repo.RecordNotFound)
+
+	handler := crud.NewReadHandler(transformer)
+
+	response := apiserver.HttpTest("GET", "/:id", "/1", "", handler)
+
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.JSONEq(t, `{"err":"record not found"}`, response.Body.String())
 
 	transformer.Repo.AssertExpectations(t)
 }
@@ -183,8 +199,8 @@ func TestUpdateHandler_Handle(t *testing.T) {
 
 	transformer := NewTransformer()
 
-	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(nil)
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), readModel).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Update", context.Background(), updateModel).Return(nil)
+	transformer.Repo.On("Read", context.Background(), mdl.Uint(1), readModel).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
 		model.Id = mdl.Uint(1)
 		model.Name = mdl.String("updated")
@@ -203,6 +219,24 @@ func TestUpdateHandler_Handle(t *testing.T) {
 	transformer.Repo.AssertExpectations(t)
 }
 
+func TestUpdateHandler_Handle_NotFound(t *testing.T) {
+	readModel := &Model{}
+
+	transformer := NewTransformer()
+
+	transformer.Repo.On("Read", context.Background(), mdl.Uint(1), readModel).Return(db_repo.RecordNotFound)
+
+	handler := crud.NewUpdateHandler(transformer)
+
+	body := `{"name": "updated"}`
+	response := apiserver.HttpTest("PUT", "/:id", "/1", body, handler)
+
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.JSONEq(t, `{"err":"record not found"}`, response.Body.String())
+
+	transformer.Repo.AssertExpectations(t)
+}
+
 func TestDeleteHandler_Handle(t *testing.T) {
 	model := &Model{}
 	deleteModel := &Model{
@@ -217,14 +251,14 @@ func TestDeleteHandler_Handle(t *testing.T) {
 	}
 
 	transformer := NewTransformer()
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", context.Background(), mdl.Uint(1), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
 		model.Id = id1
 		model.Name = mdl.String("foobar")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
-	transformer.Repo.On("Delete", mock.AnythingOfType("*context.emptyCtx"), deleteModel).Return(nil)
+	transformer.Repo.On("Delete", context.Background(), deleteModel).Return(nil)
 
 	handler := crud.NewDeleteHandler(transformer)
 
@@ -232,6 +266,22 @@ func TestDeleteHandler_Handle(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	assert.JSONEq(t, `{"id":1,"updatedAt":"0001-01-01T00:00:00Z","createdAt":"0001-01-01T00:00:00Z","name":"foobar"}`, response.Body.String())
+
+	transformer.Repo.AssertExpectations(t)
+}
+
+func TestDeleteHandler_Handle_NotFound(t *testing.T) {
+	model := &Model{}
+
+	transformer := NewTransformer()
+	transformer.Repo.On("Read", context.Background(), mdl.Uint(1), model).Return(db_repo.RecordNotFound)
+
+	handler := crud.NewDeleteHandler(transformer)
+
+	response := apiserver.HttpTest("DELETE", "/:id", "/1", "", handler)
+
+	assert.Equal(t, http.StatusNotFound, response.Code)
+	assert.JSONEq(t, `{"err":"record not found"}`, response.Body.String())
 
 	transformer.Repo.AssertExpectations(t)
 }
@@ -255,7 +305,7 @@ func TestListHandler_Handle(t *testing.T) {
 			"name": db_repo.NewFieldMapping("name"),
 		},
 	})
-	transformer.Repo.On("Count", mock.AnythingOfType("*context.emptyCtx"), qb, &Model{}).Return(1, nil)
+	transformer.Repo.On("Count", context.Background(), qb, &Model{}).Return(1, nil)
 
 	body := `{"filter":{"matches":[{"values":["foobar"],"dimension":"name","operator":"="}],"bool":"and"},"order":[{"field":"name","direction":"ASC"}],"page":{"offset":0,"limit":2}}`
 	response := apiserver.HttpTest("PUT", "/:id", "/1", body, handler)
