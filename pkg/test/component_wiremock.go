@@ -8,6 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 )
 
 type wiremockSettings struct {
@@ -49,9 +50,13 @@ func (w *wiremockComponent) Start() error {
 			setHost:  &w.settings.Host,
 		},
 		HealthCheck: func() error {
-			url := w.getUrl()
+			url := fmt.Sprintf("%s/", w.getUrl())
 
-			_, err := http.Get(url)
+			resp, err := http.Get(url)
+
+			if err == nil && resp.StatusCode >= 399 {
+				err = fmt.Errorf("wiremock did return status '%s'", resp.Status)
+			}
 
 			return err
 		},
@@ -66,14 +71,25 @@ func (w *wiremockComponent) Start() error {
 	jsonStr, err := ioutil.ReadFile(w.settings.Mocks)
 
 	if err != nil {
-		return fmt.Errorf("could not read http mock configuration: %w", err)
+		filename := w.settings.Mocks
+
+		absolutePath, err := filepath.Abs(filename)
+		if err == nil {
+			filename = absolutePath
+		}
+
+		return fmt.Errorf("could not read http mock configuration '%s': %w", filename, err)
 	}
 
 	url := w.getUrl()
-	_, err = http.Post(url+"/mappings/import", "application/json", bytes.NewBuffer(jsonStr))
+	resp, err := http.Post(url+"/mappings/import", "application/json", bytes.NewBuffer(jsonStr))
 
 	if err != nil {
 		return fmt.Errorf("could not send stubs to wiremock: %w", err)
+	}
+
+	if resp.StatusCode > 399 {
+		return fmt.Errorf("could not import mocks")
 	}
 
 	return nil

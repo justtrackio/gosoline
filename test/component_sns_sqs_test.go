@@ -19,6 +19,7 @@ import (
 )
 
 func Test_sns_sqs(t *testing.T) {
+	t.Parallel()
 	setup(t)
 
 	mocks, err := pkgTest.Boot("test_configs/config.sns_sqs.test.yml")

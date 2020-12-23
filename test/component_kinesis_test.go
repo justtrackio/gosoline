@@ -10,6 +10,7 @@ import (
 )
 
 func Test_kinesis(t *testing.T) {
+	t.Parallel()
 	setup(t)
 
 	mocks, err := pkgTest.Boot("test_configs/config.kinesis.test.yml")

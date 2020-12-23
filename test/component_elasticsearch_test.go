@@ -9,6 +9,7 @@ import (
 )
 
 func Test_elasticsearch(t *testing.T) {
+	t.Parallel()
 	setup(t)
 
 	mocks, err := pkgTest.Boot("test_configs/config.elasticsearch.test.yml")

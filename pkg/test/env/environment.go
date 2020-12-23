@@ -146,6 +146,10 @@ func (e *Environment) MySql(name string) *mysqlComponent {
 	return e.Component(componentMySql, name).(*mysqlComponent)
 }
 
+func (e *Environment) Wiremock(name string) *wiremockComponent {
+	return e.Component(componentWiremock, name).(*wiremockComponent)
+}
+
 func (e *Environment) StreamInput(name string) *streamInputComponent {
 	return e.Component(componentStreamInput, name).(*streamInputComponent)
 }
