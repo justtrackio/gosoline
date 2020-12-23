@@ -61,16 +61,21 @@ func (d *dynamoDbKvStoreFixtureWriter) Purge() error {
 }
 
 func (d *dynamoDbKvStoreFixtureWriter) Write(fs *FixtureSet) error {
+	if len(fs.Fixtures) == 0 {
+		return nil
+	}
+
 	store := d.factory()
+	m := map[interface{}]interface{}{}
 
 	for _, item := range fs.Fixtures {
 		kvItem := item.(*KvStoreFixture)
+		m[kvItem.Key] = kvItem.Value
+	}
 
-		err := store.Put(context.Background(), kvItem.Key, kvItem.Value)
-
-		if err != nil {
-			return err
-		}
+	err := store.PutBatch(context.Background(), m)
+	if err != nil {
+		return err
 	}
 
 	d.logger.Infof("loaded %d dynamodb kvstore fixtures", len(fs.Fixtures))
