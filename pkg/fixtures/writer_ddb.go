@@ -51,14 +51,15 @@ func (d *dynamoDbFixtureWriter) Purge() error {
 }
 
 func (d *dynamoDbFixtureWriter) Write(fs *FixtureSet) error {
+	if len(fs.Fixtures) == 0 {
+		return nil
+	}
+
 	repo := d.factory()
 
-	for _, fixture := range fs.Fixtures {
-		_, err := repo.PutItem(context.Background(), nil, fixture)
-
-		if err != nil {
-			return err
-		}
+	_, err := repo.BatchPutItems(context.Background(), fs.Fixtures)
+	if err != nil {
+		return err
 	}
 
 	d.logger.Infof("loaded %d dynamodb fixtures", len(fs.Fixtures))
