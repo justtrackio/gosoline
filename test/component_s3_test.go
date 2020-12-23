@@ -12,6 +12,7 @@ import (
 )
 
 func Test_s3(t *testing.T) {
+	t.Parallel()
 	setup(t)
 
 	mocks, err := pkgTest.Boot("test_configs/config.s3.test.yml")

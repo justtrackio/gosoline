@@ -10,6 +10,7 @@ import (
 )
 
 func Test_dynamodb(t *testing.T) {
+	t.Parallel()
 	setup(t)
 
 	mocks, err := pkgTest.Boot("test_configs/config.dynamodb.test.yml")

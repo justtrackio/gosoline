@@ -9,6 +9,7 @@ import (
 )
 
 func Test_mysql(t *testing.T) {
+	t.Parallel()
 	setup(t)
 
 	mocks, err := pkgTest.Boot("test_configs/config.mysql.test.yml")

@@ -40,6 +40,10 @@ func (m *mysqlComponentLegacy) Start() error {
 		"MYSQL_ROOT_PASSWORD=gosoline",
 	}
 
+	if len(m.settings.Tmpfs) == 0 {
+		m.settings.Tmpfs["/var/lib/mysql"] = ""
+	}
+
 	containerName := fmt.Sprintf("gosoline_test_mysql_%s", m.name)
 
 	return m.runner.Run(containerName, &containerConfigLegacy{
