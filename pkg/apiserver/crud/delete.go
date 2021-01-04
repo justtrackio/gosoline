@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
+	"github.com/applike/gosoline/pkg/validation"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type deleteHandler struct {
@@ -36,6 +38,10 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	}
 
 	err = repo.Delete(ctx, model)
+
+	if errors.Is(err, &validation.Error{}) {
+		return apiserver.GetErrorHandler()(http.StatusBadRequest, err), nil
+	}
 
 	if err != nil {
 		return nil, err
