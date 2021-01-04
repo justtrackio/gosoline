@@ -2,11 +2,13 @@ package crud_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/apiserver/crud"
 	"github.com/applike/gosoline/pkg/apiserver/crud/mocks"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/mdl"
+	"github.com/applike/gosoline/pkg/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"net/http"
@@ -146,6 +148,28 @@ func TestCreateHandler_Handle(t *testing.T) {
 	transformer.Repo.AssertExpectations(t)
 }
 
+func TestCreateHandler_Handle_ValidationError(t *testing.T) {
+	model := &Model{
+		Name: mdl.String("foobar"),
+	}
+
+	transformer := NewTransformer()
+
+	transformer.Repo.On("Create", mock.AnythingOfType("*context.emptyCtx"), model).Return(&validation.Error{
+		Errors: []error{fmt.Errorf("invalid foobar")},
+	})
+
+	handler := crud.NewCreateHandler(transformer)
+
+	body := `{"name": "foobar"}`
+	response := apiserver.HttpTest("POST", "/create", "/create", body, handler)
+
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	assert.JSONEq(t, `{"err":"validation: invalid foobar"}`, response.Body.String())
+
+	transformer.Repo.AssertExpectations(t)
+}
+
 func TestReadHandler_Handle(t *testing.T) {
 	model := &Model{}
 
@@ -203,6 +227,43 @@ func TestUpdateHandler_Handle(t *testing.T) {
 	transformer.Repo.AssertExpectations(t)
 }
 
+func TestUpdateHandler_Handle_ValidationError(t *testing.T) {
+	readModel := &Model{}
+	updateModel := &Model{
+		Model: db_repo.Model{
+			Id: mdl.Uint(1),
+			Timestamps: db_repo.Timestamps{
+				UpdatedAt: &time.Time{},
+				CreatedAt: &time.Time{},
+			},
+		},
+		Name: mdl.String("updated"),
+	}
+
+	transformer := NewTransformer()
+
+	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(&validation.Error{
+		Errors: []error{fmt.Errorf("invalid foobar")},
+	})
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), readModel).Run(func(args mock.Arguments) {
+		model := args.Get(2).(*Model)
+		model.Id = mdl.Uint(1)
+		model.Name = mdl.String("updated")
+		model.UpdatedAt = &time.Time{}
+		model.CreatedAt = &time.Time{}
+	}).Return(nil)
+
+	handler := crud.NewUpdateHandler(transformer)
+
+	body := `{"name": "updated"}`
+	response := apiserver.HttpTest("PUT", "/:id", "/1", body, handler)
+
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	assert.JSONEq(t, `{"err":"validation: invalid foobar"}`, response.Body.String())
+
+	transformer.Repo.AssertExpectations(t)
+}
+
 func TestDeleteHandler_Handle(t *testing.T) {
 	model := &Model{}
 	deleteModel := &Model{
@@ -232,6 +293,41 @@ func TestDeleteHandler_Handle(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	assert.JSONEq(t, `{"id":1,"updatedAt":"0001-01-01T00:00:00Z","createdAt":"0001-01-01T00:00:00Z","name":"foobar"}`, response.Body.String())
+
+	transformer.Repo.AssertExpectations(t)
+}
+
+func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
+	model := &Model{}
+	deleteModel := &Model{
+		Model: db_repo.Model{
+			Id: id1,
+			Timestamps: db_repo.Timestamps{
+				UpdatedAt: &time.Time{},
+				CreatedAt: &time.Time{},
+			},
+		},
+		Name: mdl.String("foobar"),
+	}
+
+	transformer := NewTransformer()
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
+		model := args.Get(2).(*Model)
+		model.Id = id1
+		model.Name = mdl.String("foobar")
+		model.UpdatedAt = &time.Time{}
+		model.CreatedAt = &time.Time{}
+	}).Return(nil)
+	transformer.Repo.On("Delete", mock.AnythingOfType("*context.emptyCtx"), deleteModel).Return(&validation.Error{
+		Errors: []error{fmt.Errorf("invalid foobar")},
+	})
+
+	handler := crud.NewDeleteHandler(transformer)
+
+	response := apiserver.HttpTest("DELETE", "/:id", "/1", "", handler)
+
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	assert.JSONEq(t, `{"err":"validation: invalid foobar"}`, response.Body.String())
 
 	transformer.Repo.AssertExpectations(t)
 }
