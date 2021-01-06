@@ -35,11 +35,22 @@ func (e DefaultExecutor) Execute(ctx context.Context, f RequestFunction) (interf
 	return out, err
 }
 
+type Sender func(req *request.Request) (*http.Response, error)
+
 type BackoffExecutor struct {
 	executor exec.Executor
+	sender   Sender
 }
 
 func NewBackoffExecutor(logger mon.Logger, res *exec.ExecutableResource, settings *exec.BackoffSettings, checks ...exec.ErrorChecker) Executor {
+	return NewBackoffExecutorWithSender(logger, res, settings, func(req *request.Request) (*http.Response, error) {
+		err := req.Send()
+
+		return req.HTTPResponse, err
+	}, checks...)
+}
+
+func NewBackoffExecutorWithSender(logger mon.Logger, res *exec.ExecutableResource, settings *exec.BackoffSettings, sender Sender, checks ...exec.ErrorChecker) Executor {
 	checks = append(checks, []exec.ErrorChecker{
 		exec.CheckRequestCanceled,
 		exec.CheckUsedClosedConnectionError,
@@ -51,6 +62,7 @@ func NewBackoffExecutor(logger mon.Logger, res *exec.ExecutableResource, setting
 
 	return &BackoffExecutor{
 		executor: exec.NewBackoffExecutor(logger, res, settings, checks...),
+		sender:   sender,
 	}
 }
 
@@ -59,11 +71,12 @@ func (b BackoffExecutor) Execute(ctx context.Context, f RequestFunction) (interf
 		req, out := f()
 
 		req.SetContext(ctx)
-		err := req.Send()
+		res, err := b.sender(req)
 
-		if err == nil && req.HTTPResponse.StatusCode >= http.StatusInternalServerError && req.HTTPResponse.StatusCode != http.StatusNotImplemented {
+		// ignore the error should we get a http internal server back, otherwise we do not retry correctly
+		if res != nil && res.StatusCode >= http.StatusInternalServerError && res.StatusCode != http.StatusNotImplemented {
 			return nil, &InvalidStatusError{
-				Status: req.HTTPResponse.StatusCode,
+				Status: res.StatusCode,
 			}
 		}
 
