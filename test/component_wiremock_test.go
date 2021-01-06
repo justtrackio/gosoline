@@ -11,6 +11,7 @@ import (
 )
 
 func Test_wiremock(t *testing.T) {
+	t.Parallel()
 	setup(t)
 
 	mocks, err := pkgTest.Boot("test_configs/config.wiremock.test.yml")

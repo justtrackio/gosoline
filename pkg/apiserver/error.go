@@ -19,4 +19,8 @@ func WithErrorHandler(handler ErrorHandler) {
 	defaultErrorHandler = handler
 }
 
+func GetErrorHandler() ErrorHandler {
+	return defaultErrorHandler
+}
+
 var defaultErrorHandler = errorHandlerJson

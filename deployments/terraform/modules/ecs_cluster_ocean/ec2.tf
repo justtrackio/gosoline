@@ -11,6 +11,7 @@ resource "spotinst_ocean_ecs" "ocean" {
 echo ECS_INSTANCE_ATTRIBUTES='{"lifecycle":"spot"}' >> /etc/ecs/ecs.config
 echo ECS_CLUSTER=${var.project}-${var.environment}-${var.family} >> /etc/ecs/ecs.config
 echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"none\", \"awslogs\", \"fluentd\"] >> /etc/ecs/ecs.config
+echo ECS_CONTAINER_STOP_TIMEOUT=3m
 EOF
 
   image_id             = data.aws_ssm_parameter.ami.value

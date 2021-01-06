@@ -47,14 +47,20 @@ func (d *redisKvStoreFixtureWriter) Purge() error {
 }
 
 func (d *redisKvStoreFixtureWriter) Write(fs *FixtureSet) error {
+	if len(fs.Fixtures) == 0 {
+		return nil
+	}
+
+	m := map[interface{}]interface{}{}
+
 	for _, item := range fs.Fixtures {
 		kvItem := item.(*KvStoreFixture)
+		m[kvItem.Key] = kvItem.Value
+	}
 
-		err := d.store.Put(context.Background(), kvItem.Key, kvItem.Value)
-
-		if err != nil {
-			return err
-		}
+	err := d.store.PutBatch(context.Background(), m)
+	if err != nil {
+		return err
 	}
 
 	d.logger.Infof("loaded %d redis kvstore fixtures", len(fs.Fixtures))

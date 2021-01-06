@@ -2,12 +2,9 @@ package validation
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
-	"strings"
 )
 
 const (
@@ -57,7 +54,7 @@ func (v *validator) AddRule(rule Rule, groups ...string) {
 	}
 }
 
-func (v validator) IsValid(ctx context.Context, model interface{}, groups ...string) error {
+func (v *validator) IsValid(ctx context.Context, model interface{}, groups ...string) error {
 	ctx, span := v.tracer.StartSubSpan(ctx, "validator")
 	defer span.Finish()
 
@@ -76,17 +73,12 @@ func (v validator) IsValid(ctx context.Context, model interface{}, groups ...str
 		return nil
 	}
 
-	messages := make([]string, len(errs))
-	for i := 0; i < len(errs); i++ {
-		messages[i] = errs[i].Error()
+	return &Error{
+		Errors: errs,
 	}
-
-	msg := fmt.Sprintf("validation: %s", strings.Join(messages, "; "))
-
-	return errors.New(msg)
 }
 
-func (v validator) validateGroup(ctx context.Context, model interface{}, group string) []error {
+func (v *validator) validateGroup(ctx context.Context, model interface{}, group string) []error {
 	errs := make([]error, 0)
 
 	if _, ok := v.rules[group]; !ok {

@@ -2,8 +2,10 @@ package crud
 
 import (
 	"context"
+	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/db"
+	"github.com/applike/gosoline/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -35,10 +37,12 @@ func (ch createHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	repo := ch.transformer.GetRepository()
 	err = repo.Create(ctx, model)
 
-	exists := db.IsDuplicateEntryError(err)
-
-	if exists {
+	if db.IsDuplicateEntryError(err) {
 		return apiserver.NewStatusResponse(http.StatusConflict), nil
+	}
+
+	if errors.Is(err, &validation.Error{}) {
+		return apiserver.GetErrorHandler()(http.StatusBadRequest, err), nil
 	}
 
 	if err != nil {

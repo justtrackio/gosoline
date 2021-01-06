@@ -18,20 +18,20 @@ const ContentTypeApplicationXml = "application/xml"
 const ContentTypeApplicationFormUrlencoded = "application/x-www-form-urlencoded"
 
 type Request struct {
-	errs        error
-	resty       *resty.Request
-	url         *url.URL
-	queryParams url.Values
-	outputFile  *string
+	errs         error
+	outputFile   *string
+	queryParams  url.Values
+	restyRequest *resty.Request
+	url          *url.URL
 }
 
 // use NewRequest(client) or client.NewRequest() to create a request, don't create the object inline!
 func NewRequest(client Client) *Request {
 	if client == nil {
 		return &Request{
-			resty:       resty.NewRequest(),
-			url:         &url.URL{},
-			queryParams: url.Values{},
+			restyRequest: resty.NewRequest(),
+			url:          &url.URL{},
+			queryParams:  url.Values{},
 		}
 	}
 
@@ -113,37 +113,37 @@ func (r *Request) WithQueryMap(values interface{}) *Request {
 }
 
 func (r *Request) WithBasicAuth(username string, password string) *Request {
-	r.resty.SetBasicAuth(username, password)
+	r.restyRequest.SetBasicAuth(username, password)
 
 	return r
 }
 
 func (r *Request) WithAuthToken(token string) *Request {
-	r.resty.SetAuthToken(token)
+	r.restyRequest.SetAuthToken(token)
 
 	return r
 }
 
 func (r *Request) WithHeader(key string, value string) *Request {
-	r.resty.SetHeader(key, value)
+	r.restyRequest.SetHeader(key, value)
 
 	return r
 }
 
 func (r *Request) WithBody(body interface{}) *Request {
-	r.resty.SetBody(body)
+	r.restyRequest.SetBody(body)
 
 	return r
 }
 
 func (r *Request) WithMultipartFile(param, fileName string, reader io.Reader) *Request {
-	r.resty.SetFileReader(param, fileName, reader)
+	r.restyRequest.SetFileReader(param, fileName, reader)
 
 	return r
 }
 
 func (r *Request) WithMultipartFormData(params url.Values) *Request {
-	r.resty.SetMultiValueFormData(params)
+	r.restyRequest.SetMultiValueFormData(params)
 
 	return r
 }
@@ -164,7 +164,7 @@ func (r *Request) GetHeader() Header {
 
 	// make a copy of our headers to prevent a caller
 	// from modifying them
-	for key, values := range r.resty.Header {
+	for key, values := range r.restyRequest.Header {
 		header[key] = append(make([]string, 0, len(values)), values...)
 	}
 
@@ -172,11 +172,11 @@ func (r *Request) GetHeader() Header {
 }
 
 func (r *Request) GetBody() interface{} {
-	return r.resty.Body
+	return r.restyRequest.Body
 }
 
 func (r *Request) GetToken() string {
-	return r.resty.Token
+	return r.restyRequest.Token
 }
 
 func (r *Request) GetUrl() string {
@@ -197,7 +197,7 @@ func (r *Request) build() (*resty.Request, string, error) {
 	r.url.RawQuery = r.queryParams.Encode()
 	urlString := r.url.String()
 
-	return r.resty, urlString, nil
+	return r.restyRequest, urlString, nil
 }
 
 func (r *Request) addQueryValues(parts url.Values) {

@@ -9,6 +9,7 @@ import (
 )
 
 func Test_redis(t *testing.T) {
+	t.Parallel()
 	setup(t)
 
 	mocks, err := pkgTest.Boot("test_configs/config.redis.test.yml")

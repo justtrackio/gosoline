@@ -56,10 +56,10 @@ type Response struct {
 type headers map[string]string
 
 type client struct {
-	mo             mon.MetricWriter
 	logger         mon.Logger
-	http           *resty.Client
 	defaultHeaders headers
+	http           restyClient
+	mo             mon.MetricWriter
 }
 
 type Settings struct {
@@ -79,10 +79,6 @@ func NewHttpClient(config cfg.Config, logger mon.Logger) Client {
 	settings.RetryCount = config.GetInt("http_client_retry_count")
 	settings.Timeout = config.GetDuration("http_client_request_timeout")
 
-	return NewHttpClientWithInterfaces(logger, mo, settings)
-}
-
-func NewHttpClientWithInterfaces(logger mon.Logger, mo mon.MetricWriter, settings *Settings) Client {
 	httpClient := resty.New()
 	httpClient.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
 	httpClient.SetRetryCount(settings.RetryCount)
@@ -90,19 +86,23 @@ func NewHttpClientWithInterfaces(logger mon.Logger, mo mon.MetricWriter, setting
 	httpClient.SetRetryWaitTime(settings.RetryWaitTime)
 	httpClient.SetRetryMaxWaitTime(settings.RetryMaxWaitTime)
 
+	return NewHttpClientWithInterfaces(logger, mo, httpClient)
+}
+
+func NewHttpClientWithInterfaces(logger mon.Logger, mo mon.MetricWriter, httpClient restyClient) Client {
 	return &client{
-		mo:             mo,
 		logger:         logger,
-		http:           httpClient,
 		defaultHeaders: make(headers),
+		http:           httpClient,
+		mo:             mo,
 	}
 }
 
 func (c *client) NewRequest() *Request {
 	return &Request{
-		resty:       c.http.NewRequest(),
-		url:         &netUrl.URL{},
-		queryParams: netUrl.Values{},
+		queryParams:  netUrl.Values{},
+		restyRequest: c.http.NewRequest(),
+		url:          &netUrl.URL{},
 	}
 }
 
@@ -204,7 +204,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	// (or many users spam us because sometimes they cancel requests)
 	if err != nil {
 		c.writeMetric(metricError, method, mon.UnitCount, 1.0)
-		return nil, fmt.Errorf("failed to perform %s request to %s: %w", request.resty.Method, request.url.String(), err)
+		return nil, fmt.Errorf("failed to perform %s request to %s: %w", request.restyRequest.Method, request.url.String(), err)
 	}
 
 	metricName := fmt.Sprintf("%s%dXX", metricResponseCode, resp.StatusCode()/100)
