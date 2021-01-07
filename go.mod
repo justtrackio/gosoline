@@ -22,7 +22,7 @@ require (
 	github.com/elliotchance/redismock v1.4.0
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/fatih/color v1.7.0
-	github.com/getsentry/raven-go v0.2.0
+	github.com/getsentry/sentry-go v0.9.0
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
 	github.com/gin-gonic/gin v1.4.0
 	github.com/go-playground/locales v0.12.1 // indirect
@@ -47,7 +47,6 @@ require (
 	github.com/jinzhu/now v0.0.0-20181116074157-8ec929ed50c3 // indirect
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/jonboulle/clockwork v0.1.0
-	github.com/json-iterator/go v1.1.8 // indirect
 	github.com/karlseguin/ccache v0.0.0-20181227155450-692cd618b264
 	github.com/karlseguin/expect v1.0.1 // indirect
 	github.com/leodido/go-urn v1.1.0 // indirect
