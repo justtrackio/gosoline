@@ -106,5 +106,25 @@ func IsConnectionError(err error) bool {
 		return true
 	}
 
+	if strings.Contains(err.Error(), "read: connection reset") {
+		return true
+	}
+
+	return false
+}
+
+func CheckTimeOutError(_ interface{}, err error) ErrorType {
+	if IsTimeOutError(err) {
+		return ErrorRetryable
+	}
+
+	return ErrorUnknown
+}
+
+func IsTimeOutError(err error) bool {
+	if errors.Is(err, unix.ETIMEDOUT) {
+		return true
+	}
+
 	return false
 }
