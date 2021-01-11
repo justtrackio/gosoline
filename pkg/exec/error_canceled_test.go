@@ -51,6 +51,10 @@ func TestIsRequestCanceled(t *testing.T) {
 			err:        multierror.Append(nil, context.Canceled),
 			isCanceled: true,
 		},
+		"multierror single with nil": {
+			err:        multierror.Append(nil, context.Canceled, nil),
+			isCanceled: true,
+		},
 		"multierror single wrapped": {
 			err:        multierror.Append(nil, fmt.Errorf("error %w", context.Canceled)),
 			isCanceled: true,
