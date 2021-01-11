@@ -32,7 +32,7 @@ func (b *keyBuilder) buildKey(item interface{}) (KeyValues, error) {
 
 func (b *keyBuilder) fromItem(item interface{}) (KeyValues, error) {
 	if item == nil {
-		return nil, fmt.Errorf("can not build key attributes from nil item")
+		return nil, fmt.Errorf("can not build key attributes from nil Item")
 	}
 
 	key, err := dynamodbattribute.MarshalMap(item)

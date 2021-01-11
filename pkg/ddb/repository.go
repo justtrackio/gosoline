@@ -421,13 +421,6 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 		return nil, fmt.Errorf("could not build input and expr for PutItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
-	marshaledItem, err := dynamodbattribute.MarshalMap(item)
-
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal item for PutItem operation on table %s: %w", r.metadata.TableName, err)
-	}
-
-	input.Item = marshaledItem
 	result := newPutItemResult()
 
 	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {

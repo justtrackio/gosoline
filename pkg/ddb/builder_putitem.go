@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 )
 
@@ -59,7 +60,7 @@ func (b *putItemBuilder) Build(item interface{}) (*dynamodb.PutItemInput, error)
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not build condition: %w", err)
 	}
 
 	input := &dynamodb.PutItemInput{
@@ -69,6 +70,13 @@ func (b *putItemBuilder) Build(item interface{}) (*dynamodb.PutItemInput, error)
 		ConditionExpression:       expr.Condition(),
 		ReturnValues:              b.returnType,
 	}
+
+	marshalled, err := dynamodbattribute.MarshalMap(item)
+	if err != nil {
+		return nil, err
+	}
+
+	input.Item = marshalled
 
 	return input, err
 }
