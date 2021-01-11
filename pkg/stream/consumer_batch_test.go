@@ -291,7 +291,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 			msgs := args[0].([]*stream.Message)
 			processed = len(msgs)
 		}).
-		Return()
+		Return(nil)
 
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Return(nil)
