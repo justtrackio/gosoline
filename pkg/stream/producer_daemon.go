@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/coffin"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"sync"
@@ -111,11 +112,13 @@ func (d *ProducerDaemon) Run(kernelCtx context.Context) error {
 	d.ticker = d.tickerFactory(d.settings.Interval)
 
 	cfn := coffin.New()
-	cfn.GoWithContextf(kernelCtx, d.tickerLoop, "panic during running the ticker loop")
-
+	// start the output loops before the ticker look - the output loop can't terminate until
+	// we call close, while the ticker can if the context is already canceled
 	for i := 0; i < d.settings.RunnerCount; i++ {
 		cfn.GoWithContextf(kernelCtx, d.outputLoop, "panic during running the ticker loop")
 	}
+
+	cfn.GoWithContextf(kernelCtx, d.tickerLoop, "panic during running the ticker loop")
 
 	select {
 	case <-cfn.Dying():
@@ -270,8 +273,15 @@ func (d *ProducerDaemon) outputLoop(ctx context.Context) error {
 			return nil
 		}
 
+		// no need to have some delayed cancel context or so here - if you need this, your output should've already provided that
 		if err := d.output.Write(ctx, batch); err != nil {
-			d.logger.Errorf(err, "can not write messages to output in producer %s", d.name)
+			if exec.IsRequestCanceled(err) {
+				// we were not fast enough to write all messages and have just lost some messages.
+				// however, if this would be a problem, you shouldn't be using the producer daemon at all.
+				d.logger.Warnf("can not write messages to output in producer %s because of canceled context", d.name)
+			} else {
+				d.logger.Errorf(err, "can not write messages to output in producer %s", d.name)
+			}
 		}
 
 		d.writeMetricBatchSize(len(batch))
