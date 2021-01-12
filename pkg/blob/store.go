@@ -62,14 +62,15 @@ type S3API interface {
 
 //go:generate mockery -name Store
 type Store interface {
-	Read(batch Batch)
-	ReadOne(obj *Object) error
-	Write(batch Batch)
-	WriteOne(obj *Object) error
+	BucketName() string
 	Copy(batch CopyBatch)
 	CopyOne(obj *CopyObject) error
 	Delete(batch Batch)
 	DeleteOne(obj *Object) error
+	Read(batch Batch)
+	ReadOne(obj *Object) error
+	Write(batch Batch)
+	WriteOne(obj *Object) error
 }
 
 type s3Store struct {
@@ -139,6 +140,10 @@ func NewStoreWithInterfaces(logger mon.Logger, runner *BatchRunner, client s3ifa
 		bucket: mdl.String(settings.Bucket),
 		prefix: mdl.String(settings.Prefix),
 	}
+}
+
+func (s *s3Store) BucketName() string {
+	return *s.bucket
 }
 
 func (s *s3Store) CreateBucket() {
