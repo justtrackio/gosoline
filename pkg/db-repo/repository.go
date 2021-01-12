@@ -27,6 +27,28 @@ const (
 var operations = []string{Create, Read, Update, Delete, Query}
 var RecordNotFound = gorm.ErrRecordNotFound
 
+type RecordNotFoundError struct {
+	Id      uint
+	ModelId string
+	Err     error
+}
+
+func NewRecordNotFoundError(id uint, modelId string, err error) RecordNotFoundError {
+	return RecordNotFoundError{
+		Id:      id,
+		ModelId: modelId,
+		Err:     err,
+	}
+}
+
+func (e RecordNotFoundError) Error() string {
+	return fmt.Sprintf("could not find model of type %s with id %d", e.ModelId, e.Id)
+}
+
+func (e RecordNotFoundError) Unwrap() error {
+	return e.Err
+}
+
 type Settings struct {
 	cfg.AppId
 	Metadata Metadata
@@ -116,10 +138,17 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 }
 
 func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
+	modelId := r.GetModelId()
 	ctx, span := r.startSubSpan(ctx, "Get")
 	defer span.Finish()
 
-	return r.orm.First(out, *id).Error
+	err := r.orm.First(out, *id).Error
+
+	if gorm.IsRecordNotFoundError(err) {
+		return NewRecordNotFoundError(*id, modelId, err)
+	}
+
+	return err
 }
 
 func (r *repository) Update(ctx context.Context, value ModelBased) error {

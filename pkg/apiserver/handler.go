@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/coffin"
+	db_repo "github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -278,6 +279,15 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 
 	if errors.Is(err, ErrAccessForbidden) {
 		handleForbidden(ginCtx, errHandler, http.StatusForbidden, gin.Error{
+			Err:  err,
+			Type: gin.ErrorTypePrivate,
+		})
+		return
+	}
+
+	var notFound db_repo.RecordNotFoundError
+	if errors.As(err, &notFound) {
+		handleError(ginCtx, errHandler, http.StatusNoContent, gin.Error{
 			Err:  err,
 			Type: gin.ErrorTypePrivate,
 		})
