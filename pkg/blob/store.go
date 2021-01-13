@@ -47,12 +47,9 @@ type Batch []*Object
 type CopyBatch []*CopyObject
 
 type Settings struct {
-	Project     string
-	Family      string
-	Environment string
-	Application string
-	Bucket      string
-	Prefix      string
+	cfg.AppId
+	Bucket string `cfg:"bucket"`
+	Prefix string `cfg:"prefix"`
 }
 
 //go:generate mockery -name S3API
@@ -105,22 +102,18 @@ func CreateKey() string {
 	return namingStrategy()
 }
 
-func NewStore(config cfg.Config, logger mon.Logger, settings Settings) *s3Store {
+func NewStore(config cfg.Config, logger mon.Logger, name string) *s3Store {
 	runner := ProvideBatchRunner()
 	client := ProvideS3Client(config)
-	appId := &cfg.AppId{
-		Project:     settings.Project,
-		Environment: settings.Environment,
-		Family:      settings.Family,
-		Application: settings.Application,
-	}
-	appId.PadFromConfig(config)
+
+	var settings Settings
+	key := fmt.Sprintf("blobstore.%s", name)
+	config.UnmarshalKey(key, &settings)
+	settings.AppId.PadFromConfig(config)
 
 	if settings.Bucket == "" {
-		settings.Bucket = fmt.Sprintf("%s-%s-%s", appId.Project, appId.Environment, appId.Family)
+		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
 	}
-
-	settings.Prefix = fmt.Sprintf("%s/%s", appId.Application, settings.Prefix)
 
 	store := NewStoreWithInterfaces(logger, runner, client, settings)
 
