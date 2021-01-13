@@ -1,9 +1,7 @@
 package apiserver
 
 import (
-	"errors"
 	"fmt"
-	db_repo "github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/gin-gonic/gin"
 	"strings"
@@ -61,11 +59,6 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 		}
 
 		for _, e := range ginCtx.Errors {
-			var notFound db_repo.RecordNotFoundError
-			if errors.As(e, &notFound) {
-				log.Warnf("%s %s %s: %s", method, path, req.Proto, e)
-				continue
-			}
 			switch e.Type {
 			case gin.ErrorTypeBind:
 				log.Warnf("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)

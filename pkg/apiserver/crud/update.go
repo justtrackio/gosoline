@@ -5,6 +5,8 @@ import (
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/db"
+	db_repo "github.com/applike/gosoline/pkg/db-repo"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -27,6 +29,7 @@ func (uh updateHandler) GetInput() interface{} {
 }
 
 func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+	logger := mon.NewLogger()
 	id, valid := apiserver.GetUintFromRequest(request, "id")
 
 	if !valid {
@@ -36,6 +39,12 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	repo := uh.transformer.GetRepository()
 	model := uh.transformer.GetModel()
 	err := repo.Read(ctx, id, model)
+
+	var notFound db_repo.RecordNotFoundError
+	if errors.As(err, &notFound) {
+		logger.Warnf("failed to update model: %s", err)
+		return apiserver.NewStatusResponse(http.StatusNoContent), nil
+	}
 
 	if err != nil {
 		return nil, err

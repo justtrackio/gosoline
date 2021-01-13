@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
+	db_repo "github.com/applike/gosoline/pkg/db-repo"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -22,6 +24,7 @@ func NewDeleteHandler(transformer BaseHandler) gin.HandlerFunc {
 }
 
 func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+	logger := mon.NewLogger()
 	id, valid := apiserver.GetUintFromRequest(request, "id")
 
 	if !valid {
@@ -32,6 +35,12 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	model := dh.transformer.GetModel()
 
 	err := repo.Read(ctx, id, model)
+
+	var notFound db_repo.RecordNotFoundError
+	if errors.As(err, &notFound) {
+		logger.Warnf("failed to delete model: %s", err)
+		return apiserver.NewStatusResponse(http.StatusNoContent), nil
+	}
 
 	if err != nil {
 		return nil, err

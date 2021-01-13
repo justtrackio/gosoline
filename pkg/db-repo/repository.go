@@ -25,7 +25,6 @@ const (
 )
 
 var operations = []string{Create, Read, Update, Delete, Query}
-var RecordNotFound = gorm.ErrRecordNotFound
 
 type RecordNotFoundError struct {
 	Id      uint
@@ -42,7 +41,7 @@ func NewRecordNotFoundError(id uint, modelId string, err error) RecordNotFoundEr
 }
 
 func (e RecordNotFoundError) Error() string {
-	return fmt.Sprintf("could not find model of type %s with id %d", e.ModelId, e.Id)
+	return fmt.Sprintf("could not find model of type %s with id %d: %s", e.ModelId, e.Id, e.Err)
 }
 
 func (e RecordNotFoundError) Unwrap() error {
