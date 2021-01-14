@@ -13,18 +13,19 @@ import (
 
 type deleteHandler struct {
 	transformer BaseHandler
+	logger      mon.Logger
 }
 
-func NewDeleteHandler(transformer BaseHandler) gin.HandlerFunc {
+func NewDeleteHandler(logger mon.Logger, transformer BaseHandler) gin.HandlerFunc {
 	dh := deleteHandler{
 		transformer: transformer,
+		logger:      logger,
 	}
 
 	return apiserver.CreateHandler(dh)
 }
 
 func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
-	logger := mon.NewLogger()
 	id, valid := apiserver.GetUintFromRequest(request, "id")
 
 	if !valid {
@@ -38,7 +39,7 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {
-		logger.Warnf("failed to delete model: %s", err)
+		dh.logger.Warnf("failed to delete model: %s", err)
 		return apiserver.NewStatusResponse(http.StatusNoContent), nil
 	}
 

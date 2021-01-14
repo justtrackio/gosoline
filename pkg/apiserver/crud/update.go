@@ -14,11 +14,13 @@ import (
 
 type updateHandler struct {
 	transformer UpdateHandler
+	logger      mon.Logger
 }
 
-func NewUpdateHandler(transformer UpdateHandler) gin.HandlerFunc {
+func NewUpdateHandler(logger mon.Logger, transformer UpdateHandler) gin.HandlerFunc {
 	uh := updateHandler{
 		transformer: transformer,
+		logger:      logger,
 	}
 
 	return apiserver.CreateJsonHandler(uh)
@@ -29,7 +31,6 @@ func (uh updateHandler) GetInput() interface{} {
 }
 
 func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
-	logger := mon.NewLogger()
 	id, valid := apiserver.GetUintFromRequest(request, "id")
 
 	if !valid {
@@ -42,7 +43,7 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {
-		logger.Warnf("failed to update model: %s", err)
+		uh.logger.Warnf("failed to update model: %s", err)
 		return apiserver.NewStatusResponse(http.StatusNoContent), nil
 	}
 

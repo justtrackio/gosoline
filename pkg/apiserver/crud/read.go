@@ -12,18 +12,19 @@ import (
 
 type readHandler struct {
 	transformer BaseHandler
+	logger      mon.Logger
 }
 
-func NewReadHandler(transformer BaseHandler) gin.HandlerFunc {
+func NewReadHandler(logger mon.Logger, transformer BaseHandler) gin.HandlerFunc {
 	rh := readHandler{
 		transformer: transformer,
+		logger:      logger,
 	}
 
 	return apiserver.CreateHandler(rh)
 }
 
 func (rh readHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
-	logger := mon.NewLogger()
 	id, valid := apiserver.GetUintFromRequest(request, "id")
 
 	if !valid {
@@ -36,7 +37,7 @@ func (rh readHandler) Handle(ctx context.Context, request *apiserver.Request) (*
 
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {
-		logger.Warnf("failed to read model:%s", err)
+		rh.logger.Warnf("failed to read model:%s", err)
 		return apiserver.NewStatusResponse(http.StatusNoContent), nil
 	}
 
