@@ -1,6 +1,7 @@
-package stream
+package kinesis
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
@@ -8,14 +9,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 )
 
+//go:generate mockery -name ResourceNameGetter
 type ResourceNameGetter interface {
 	GetResourceName() string
 }
 
-func createKinesisStream(config cfg.Config, logger mon.Logger, client kinesisiface.KinesisAPI, settings ResourceNameGetter) {
+// Ensure a kinesis stream exists if autoCreate for kinesis is set to true.
+func CreateKinesisStream(config cfg.Config, logger mon.Logger, client kinesisiface.KinesisAPI, settings ResourceNameGetter) error {
 	autoCreate := config.GetBool("aws_kinesis_autoCreate")
 	if !autoCreate {
-		return
+		return nil
 	}
 
 	streamName := settings.GetResourceName()
@@ -23,11 +26,7 @@ func createKinesisStream(config cfg.Config, logger mon.Logger, client kinesisifa
 
 	streams, err := client.ListStreams(&kinesis.ListStreamsInput{})
 	if err != nil {
-		logger.WithFields(mon.Fields{
-			"stream_name": streamName,
-		}).Error(err, "failed to list kinesis streams")
-
-		return
+		return fmt.Errorf("failed to list kinesis streams: %w", err)
 	}
 
 	for _, awsStreamName := range streams.StreamNames {
@@ -37,7 +36,7 @@ func createKinesisStream(config cfg.Config, logger mon.Logger, client kinesisifa
 
 		logger.Infof("found kinesis stream: %s", streamName)
 
-		return
+		return nil
 	}
 
 	logger.Infof("trying to create kinesis stream: %s", streamName)
@@ -47,12 +46,10 @@ func createKinesisStream(config cfg.Config, logger mon.Logger, client kinesisifa
 	})
 
 	if err != nil {
-		logger.WithFields(mon.Fields{
-			"stream_name": streamName,
-		}).Errorf(err, "failed to create kinesis stream: %s", streamName)
-
-		return
+		return fmt.Errorf("failed to create kinesis stream %s: %w", streamName, err)
 	}
 
 	logger.Infof("created kinesis stream: %s", streamName)
+
+	return nil
 }

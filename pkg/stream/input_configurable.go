@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
@@ -19,7 +20,7 @@ const (
 	InputTypeSqs      = "sqs"
 )
 
-type InputFactory func(config cfg.Config, logger mon.Logger, name string) Input
+type InputFactory func(config cfg.Config, logger mon.Logger, name string) (Input, error)
 
 var inputFactories = map[string]InputFactory{
 	InputTypeFile:     newFileInputFromConfig,
@@ -56,23 +57,29 @@ func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) Inp
 		logger.Fatalf(fmt.Errorf("invalid input %s of type %s", name, t), "invalid input %s of type %s", name, t)
 	}
 
-	return factory(config, logger, name)
+	input, err := factory(config, logger, name)
+
+	if err != nil {
+		logger.Panic(err, "failed to create input")
+	}
+
+	return input
 }
 
-func newFileInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
+func newFileInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 	settings := FileSettings{}
 	config.UnmarshalKey(key, &settings)
 
-	return NewFileInput(config, logger, settings)
+	return NewFileInput(config, logger, settings), nil
 }
 
-func newInMemoryInputFromConfig(config cfg.Config, _ mon.Logger, name string) Input {
+func newInMemoryInputFromConfig(config cfg.Config, _ mon.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 	settings := &InMemorySettings{}
 	config.UnmarshalKey(key, settings)
 
-	return ProvideInMemoryInput(name, settings)
+	return ProvideInMemoryInput(name, settings), nil
 }
 
 type kinesisInputConfiguration struct {
@@ -80,18 +87,18 @@ type kinesisInputConfiguration struct {
 	ApplicationName string `cfg:"application_name" validate:"required"`
 }
 
-func newKinesisInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
+func newKinesisInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
 	settings := kinesisInputConfiguration{}
 	config.UnmarshalKey(key, &settings)
 
-	readerSettings := KinsumerSettings{
+	readerSettings := kinesis.KinsumerSettings{
 		StreamName:      settings.StreamName,
 		ApplicationName: settings.ApplicationName,
 	}
 
-	return NewKinsumerInput(config, logger, NewKinsumer, readerSettings)
+	return NewKinesisInput(config, logger, kinesis.NewKinsumer, readerSettings)
 }
 
 type redisInputConfiguration struct {
@@ -103,7 +110,7 @@ type redisInputConfiguration struct {
 	WaitTime    time.Duration `cfg:"wait_time" default:"3s"`
 }
 
-func newRedisInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
+func newRedisInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
 	configuration := redisInputConfiguration{}
@@ -120,7 +127,7 @@ func newRedisInputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 		WaitTime:   configuration.WaitTime,
 	}
 
-	return NewRedisListInput(config, logger, settings)
+	return NewRedisListInput(config, logger, settings), nil
 }
 
 type SnsInputTargetConfiguration struct {
@@ -145,7 +152,7 @@ type SnsInputConfiguration struct {
 	Backoff             exec.BackoffSettings          `cfg:"backoff"`
 }
 
-func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
+func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
 	configuration := &SnsInputConfiguration{}
@@ -178,7 +185,7 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 		}
 	}
 
-	return NewSnsInput(config, logger, settings, targets)
+	return NewSnsInput(config, logger, settings, targets), nil
 }
 
 type sqsInputConfiguration struct {
@@ -196,7 +203,7 @@ type sqsInputConfiguration struct {
 	Unmarshaller        string               `cfg:"unmarshaller" default:"msg"`
 }
 
-func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) Input {
+func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
 	configuration := sqsInputConfiguration{}
@@ -219,7 +226,7 @@ func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) In
 		Unmarshaller:        configuration.Unmarshaller,
 	}
 
-	return NewSqsInput(config, logger, settings)
+	return NewSqsInput(config, logger, settings), nil
 }
 
 func ConfigurableInputKey(name string) string {

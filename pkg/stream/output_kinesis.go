@@ -6,6 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
+	gosoKinesis "github.com/applike/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
@@ -39,7 +40,11 @@ type kinesisOutput struct {
 func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOutputSettings) Output {
 	client := cloud.GetKinesisClient(config, logger)
 
-	createKinesisStream(config, logger, client, settings)
+	err := gosoKinesis.CreateKinesisStream(config, logger, client, settings)
+
+	if err != nil {
+		logger.Panic(err, "failed to create kinesis stream")
+	}
 
 	res := &exec.ExecutableResource{
 		Type: "kinesis",
