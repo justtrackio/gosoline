@@ -39,7 +39,7 @@ resource "aws_cloudwatch_metric_alarm" "firehose-write-bytes-high" {
   statistic           = "Sum"
   threshold           = var.shard_count * var.alarm_period_seconds * var.alarm_limit_threshold_percentage / 100 * 1024 * 1024
   datapoints_to_alarm = "2"
-  treat_missing_data  = "breaching"
+  treat_missing_data  = "notBreaching"
 
   alarm_description = "This metric monitors kinesis write bytes utilization"
 
@@ -69,7 +69,7 @@ resource "aws_cloudwatch_metric_alarm" "firehose-write-records-high" {
   statistic           = "Sum"
   threshold           = var.shard_count * var.alarm_period_seconds * var.alarm_limit_threshold_percentage / 100 * 1000
   datapoints_to_alarm = "2"
-  treat_missing_data  = "breaching"
+  treat_missing_data  = "notBreaching"
 
   alarm_description = "This metric monitors kinesis write records utilization"
 
