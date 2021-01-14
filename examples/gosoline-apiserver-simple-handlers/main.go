@@ -28,7 +28,7 @@ func main() {
 		}))
 		group.GET("/authenticated", apiserver.CreateHandler(&AdminAuthenticatedHandler{}))
 
-		crud.AddCrudHandlers(definitions, 0, "/myEntity", &MyEntityHandler{
+		crud.AddCrudHandlers(logger, definitions, 0, "/myEntity", &MyEntityHandler{
 			repo: &MyEntityRepository{},
 		})
 	}))

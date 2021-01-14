@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/db-repo"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/jinzhu/inflection"
 	"net/http"
 )
@@ -72,44 +73,44 @@ type Handler interface {
 	BaseListHandler
 }
 
-func AddCrudHandlers(d *apiserver.Definitions, version int, basePath string, handler Handler) {
-	AddCreateHandler(d, version, basePath, handler)
-	AddReadHandler(d, version, basePath, handler)
-	AddUpdateHandler(d, version, basePath, handler)
-	AddDeleteHandler(d, version, basePath, handler)
-	AddListHandler(d, version, basePath, handler)
+func AddCrudHandlers(logger mon.Logger, d *apiserver.Definitions, version int, basePath string, handler Handler) {
+	AddCreateHandler(logger, d, version, basePath, handler)
+	AddReadHandler(logger, d, version, basePath, handler)
+	AddUpdateHandler(logger, d, version, basePath, handler)
+	AddDeleteHandler(logger, d, version, basePath, handler)
+	AddListHandler(logger, d, version, basePath, handler)
 }
 
-func AddCreateHandler(d *apiserver.Definitions, version int, basePath string, handler CreateHandler) {
+func AddCreateHandler(logger mon.Logger, d *apiserver.Definitions, version int, basePath string, handler CreateHandler) {
 	path, _ := getHandlerPaths(version, basePath)
 
-	d.POST(path, NewCreateHandler(handler))
+	d.POST(path, NewCreateHandler(logger, handler))
 }
 
-func AddReadHandler(d *apiserver.Definitions, version int, basePath string, handler BaseHandler) {
+func AddReadHandler(logger mon.Logger, d *apiserver.Definitions, version int, basePath string, handler BaseHandler) {
 	_, idPath := getHandlerPaths(version, basePath)
 
-	d.GET(idPath, NewReadHandler(handler))
+	d.GET(idPath, NewReadHandler(logger, handler))
 }
 
-func AddUpdateHandler(d *apiserver.Definitions, version int, basePath string, handler UpdateHandler) {
+func AddUpdateHandler(logger mon.Logger, d *apiserver.Definitions, version int, basePath string, handler UpdateHandler) {
 	_, idPath := getHandlerPaths(version, basePath)
 
-	d.PUT(idPath, NewUpdateHandler(handler))
+	d.PUT(idPath, NewUpdateHandler(logger, handler))
 }
 
-func AddDeleteHandler(d *apiserver.Definitions, version int, basePath string, handler BaseHandler) {
+func AddDeleteHandler(logger mon.Logger, d *apiserver.Definitions, version int, basePath string, handler BaseHandler) {
 	_, idPath := getHandlerPaths(version, basePath)
 
-	d.DELETE(idPath, NewDeleteHandler(handler))
+	d.DELETE(idPath, NewDeleteHandler(logger, handler))
 }
 
-func AddListHandler(d *apiserver.Definitions, version int, basePath string, handler ListHandler) {
+func AddListHandler(logger mon.Logger, d *apiserver.Definitions, version int, basePath string, handler ListHandler) {
 	path, _ := getHandlerPaths(version, basePath)
 
 	plural := inflection.Plural(basePath)
 	path = fmt.Sprintf("/v%d/%s", version, plural)
-	d.POST(path, NewListHandler(handler))
+	d.POST(path, NewListHandler(logger, handler))
 }
 
 func getHandlerPaths(version int, basePath string) (path string, idPath string) {

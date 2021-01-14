@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
+	db_repo "github.com/applike/gosoline/pkg/db-repo"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -11,11 +13,13 @@ import (
 
 type deleteHandler struct {
 	transformer BaseHandler
+	logger      mon.Logger
 }
 
-func NewDeleteHandler(transformer BaseHandler) gin.HandlerFunc {
+func NewDeleteHandler(logger mon.Logger, transformer BaseHandler) gin.HandlerFunc {
 	dh := deleteHandler{
 		transformer: transformer,
+		logger:      logger,
 	}
 
 	return apiserver.CreateHandler(dh)
@@ -32,6 +36,12 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	model := dh.transformer.GetModel()
 
 	err := repo.Read(ctx, id, model)
+
+	var notFound db_repo.RecordNotFoundError
+	if errors.As(err, &notFound) {
+		dh.logger.WithContext(ctx).Warnf("failed to delete model: %s", err)
+		return apiserver.NewStatusResponse(http.StatusNoContent), nil
+	}
 
 	if err != nil {
 		return nil, err

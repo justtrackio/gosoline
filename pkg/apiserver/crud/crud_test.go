@@ -8,6 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/apiserver/crud/mocks"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/mdl"
+	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -123,6 +124,7 @@ func TestCreateHandler_Handle(t *testing.T) {
 		Name: mdl.String("foobar"),
 	}
 
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Create", mock.AnythingOfType("*context.emptyCtx"), model).Run(func(args mock.Arguments) {
@@ -137,7 +139,7 @@ func TestCreateHandler_Handle(t *testing.T) {
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
 
-	handler := crud.NewCreateHandler(transformer)
+	handler := crud.NewCreateHandler(logger, transformer)
 
 	body := `{"name": "foobar"}`
 	response := apiserver.HttpTest("POST", "/create", "/create", body, handler)
@@ -153,13 +155,14 @@ func TestCreateHandler_Handle_ValidationError(t *testing.T) {
 		Name: mdl.String("foobar"),
 	}
 
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Create", mock.AnythingOfType("*context.emptyCtx"), model).Return(&validation.Error{
 		Errors: []error{fmt.Errorf("invalid foobar")},
 	})
 
-	handler := crud.NewCreateHandler(transformer)
+	handler := crud.NewCreateHandler(logger, transformer)
 
 	body := `{"name": "foobar"}`
 	response := apiserver.HttpTest("POST", "/create", "/create", body, handler)
@@ -173,6 +176,7 @@ func TestCreateHandler_Handle_ValidationError(t *testing.T) {
 func TestReadHandler_Handle(t *testing.T) {
 	model := &Model{}
 
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
@@ -182,7 +186,7 @@ func TestReadHandler_Handle(t *testing.T) {
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
 
-	handler := crud.NewReadHandler(transformer)
+	handler := crud.NewReadHandler(logger, transformer)
 
 	response := apiserver.HttpTest("GET", "/:id", "/1", "", handler)
 
@@ -205,6 +209,7 @@ func TestUpdateHandler_Handle(t *testing.T) {
 		Name: mdl.String("updated"),
 	}
 
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(nil)
@@ -216,7 +221,7 @@ func TestUpdateHandler_Handle(t *testing.T) {
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
 
-	handler := crud.NewUpdateHandler(transformer)
+	handler := crud.NewUpdateHandler(logger, transformer)
 
 	body := `{"name": "updated"}`
 	response := apiserver.HttpTest("PUT", "/:id", "/1", body, handler)
@@ -240,6 +245,7 @@ func TestUpdateHandler_Handle_ValidationError(t *testing.T) {
 		Name: mdl.String("updated"),
 	}
 
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(&validation.Error{
@@ -253,7 +259,7 @@ func TestUpdateHandler_Handle_ValidationError(t *testing.T) {
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
 
-	handler := crud.NewUpdateHandler(transformer)
+	handler := crud.NewUpdateHandler(logger, transformer)
 
 	body := `{"name": "updated"}`
 	response := apiserver.HttpTest("PUT", "/:id", "/1", body, handler)
@@ -277,6 +283,7 @@ func TestDeleteHandler_Handle(t *testing.T) {
 		Name: mdl.String("foobar"),
 	}
 
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
@@ -287,7 +294,7 @@ func TestDeleteHandler_Handle(t *testing.T) {
 	}).Return(nil)
 	transformer.Repo.On("Delete", mock.AnythingOfType("*context.emptyCtx"), deleteModel).Return(nil)
 
-	handler := crud.NewDeleteHandler(transformer)
+	handler := crud.NewDeleteHandler(logger, transformer)
 
 	response := apiserver.HttpTest("DELETE", "/:id", "/1", "", handler)
 
@@ -310,6 +317,7 @@ func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
 		Name: mdl.String("foobar"),
 	}
 
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
@@ -322,7 +330,7 @@ func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
 		Errors: []error{fmt.Errorf("invalid foobar")},
 	})
 
-	handler := crud.NewDeleteHandler(transformer)
+	handler := crud.NewDeleteHandler(logger, transformer)
 
 	response := apiserver.HttpTest("DELETE", "/:id", "/1", "", handler)
 
@@ -333,8 +341,9 @@ func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
 }
 
 func TestListHandler_Handle(t *testing.T) {
+	logger := monMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
-	handler := crud.NewListHandler(transformer)
+	handler := crud.NewListHandler(logger, transformer)
 
 	qb := db_repo.NewQueryBuilder()
 	qb.Table("footable")

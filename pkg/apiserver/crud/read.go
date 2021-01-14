@@ -3,19 +3,22 @@ package crud
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/apiserver"
+	db_repo "github.com/applike/gosoline/pkg/db-repo"
+	"github.com/applike/gosoline/pkg/mon"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
+	"net/http"
 )
-
-var ErrNotFound = errors.New("model not found")
 
 type readHandler struct {
 	transformer BaseHandler
+	logger      mon.Logger
 }
 
-func NewReadHandler(transformer BaseHandler) gin.HandlerFunc {
+func NewReadHandler(logger mon.Logger, transformer BaseHandler) gin.HandlerFunc {
 	rh := readHandler{
 		transformer: transformer,
+		logger:      logger,
 	}
 
 	return apiserver.CreateHandler(rh)
@@ -31,6 +34,12 @@ func (rh readHandler) Handle(ctx context.Context, request *apiserver.Request) (*
 	repo := rh.transformer.GetRepository()
 	model := rh.transformer.GetModel()
 	err := repo.Read(ctx, id, model)
+
+	var notFound db_repo.RecordNotFoundError
+	if errors.As(err, &notFound) {
+		rh.logger.WithContext(ctx).Warnf("failed to read model: %s", err)
+		return apiserver.NewStatusResponse(http.StatusNoContent), nil
+	}
 
 	if err != nil {
 		return nil, err
