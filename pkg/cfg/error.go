@@ -1,13 +1,13 @@
 package cfg
 
 import (
-	"github.com/getsentry/raven-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/pkg/errors"
 )
 
 //go:generate mockery -name Sentry
 type Sentry interface {
-	CaptureErrorAndWait(err error, tags map[string]string, interfaces ...raven.Interface) string
+	CaptureException(exception error, hint *sentry.EventHint, scope sentry.EventModifier) *sentry.EventID
 }
 
 type ErrorHandler func(err error, msg string, args ...interface{})
@@ -32,6 +32,6 @@ func LoggerErrorHandler(logger Logger) ErrorHandler {
 func SentryErrorHandler(sentry Sentry) ErrorHandler {
 	return func(err error, msg string, args ...interface{}) {
 		err = errors.Wrapf(err, msg, args...)
-		sentry.CaptureErrorAndWait(err, nil)
+		sentry.CaptureException(err, nil, nil)
 	}
 }
