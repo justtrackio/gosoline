@@ -1,6 +1,7 @@
-package stream
+package kinesis
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mon"
@@ -9,27 +10,48 @@ import (
 	"time"
 )
 
+//go:generate mockery -name Kinsumer
 type Kinsumer interface {
 	Run() error
 	Next() (data []byte, err error)
 	Stop()
 }
 
-type KinsumerFactory func(config cfg.Config, logger mon.Logger, settings KinsumerSettings) Kinsumer
+type kinsumerLogger struct {
+	logger mon.Logger
+}
 
-func NewKinsumer(config cfg.Config, logger mon.Logger, settings KinsumerSettings) Kinsumer {
+func (k kinsumerLogger) Log(format string, args ...interface{}) {
+	k.logger.Infof(format, args...)
+}
+
+type KinsumerSettings struct {
+	StreamName      string
+	ApplicationName string
+}
+
+func (k *KinsumerSettings) GetResourceName() string {
+	return k.StreamName
+}
+
+func NewKinsumer(config cfg.Config, logger mon.Logger, settings KinsumerSettings) (Kinsumer, error) {
 	kinesisClient := cloud.GetKinesisClient(config, logger)
 	dynamoDbClient := cloud.GetDynamoDbClient(config, logger)
 
-	createKinesisStream(config, logger, kinesisClient, &settings)
-
 	clientName := uuid.NewV4().String()
 
-	logger.WithFields(mon.Fields{
+	logger = logger.WithFields(mon.Fields{
 		"applicationName":  settings.ApplicationName,
 		"clientIdentifier": clientName,
 		"inputStream":      settings.StreamName,
-	}).Info("starting stream reader")
+	}).WithChannel("kinsumer")
+
+	err := CreateKinesisStream(config, logger, kinesisClient, &settings)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kinesis stream: %w", err)
+	}
+	logger.Info("starting stream reader")
 
 	shardCheckFreq := config.GetDuration("aws_kinesis_shard_check_freq") * time.Second
 	leaderActionFreq := config.GetDuration("aws_kinesis_leader_action_freq") * time.Second
@@ -37,18 +59,21 @@ func NewKinsumer(config cfg.Config, logger mon.Logger, settings KinsumerSettings
 	kinsumerConfig := kinsumer.NewConfig()
 	kinsumerConfig.WithShardCheckFrequency(shardCheckFreq)
 	kinsumerConfig.WithLeaderActionFrequency(leaderActionFreq)
+	kinsumerConfig.WithLogger(kinsumerLogger{
+		logger: logger,
+	})
 
 	client, err := kinsumer.NewWithInterfaces(kinesisClient, dynamoDbClient, settings.StreamName, settings.ApplicationName, clientName, kinsumerConfig)
 
 	if err != nil {
-		logger.Fatal(err, "Error creating kinsumer")
+		return nil, fmt.Errorf("error creating kinsumer: %w", err)
 	}
 
 	err = client.CreateRequiredTables()
 
 	if err != nil {
-		logger.Fatal(err, "Error creating kinsumer dynamo db tables")
+		return nil, fmt.Errorf("error creating kinsumer dynamo db tables: %w", err)
 	}
 
-	return client
+	return client, nil
 }
