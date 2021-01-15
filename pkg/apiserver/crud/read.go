@@ -38,7 +38,7 @@ func (rh readHandler) Handle(ctx context.Context, request *apiserver.Request) (*
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {
 		rh.logger.WithContext(ctx).Warnf("failed to read model: %s", err)
-		return apiserver.NewStatusResponse(http.StatusNoContent), nil
+		return apiserver.NewStatusResponse(http.StatusNotFound), nil
 	}
 
 	if err != nil {
