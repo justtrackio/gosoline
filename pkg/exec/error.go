@@ -128,3 +128,19 @@ func IsTimeOutError(err error) bool {
 
 	return false
 }
+
+func CheckEOFError(_ interface{}, err error) ErrorType {
+	if IsEOFError(err) {
+		return ErrorRetryable
+	}
+
+	return ErrorUnknown
+}
+
+func IsEOFError(err error) bool {
+	if strings.Contains(err.Error(), "EOF") {
+		return true
+	}
+
+	return false
+}

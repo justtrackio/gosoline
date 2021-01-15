@@ -55,6 +55,7 @@ func NewBackoffExecutorWithSender(logger mon.Logger, res *exec.ExecutableResourc
 		exec.CheckRequestCanceled,
 		exec.CheckUsedClosedConnectionError,
 		exec.CheckTimeOutError,
+		exec.CheckEOFError,
 		CheckInvalidStatusError,
 		CheckConnectionError,
 		CheckErrorRetryable,
