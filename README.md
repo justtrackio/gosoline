@@ -23,3 +23,4 @@ come in the next weeks:
 * cloud: bundle aws config
 * add error returns to constructors
 * modules: remove boot
+* proper default value merging

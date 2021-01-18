@@ -1,75 +1,21 @@
 package exec_test
 
 import (
-	"context"
-	"fmt"
+	"errors"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
-	"io"
 	"net"
 	"testing"
+	"time"
 )
 
-func TestIsRequestCanceled(t *testing.T) {
-	for name, test := range map[string]struct {
-		err        error
-		isCanceled bool
-	}{
-		"none": {
-			err:        nil,
-			isCanceled: false,
-		},
-		"other error": {
-			err:        io.EOF,
-			isCanceled: false,
-		},
-		"format error": {
-			err:        fmt.Errorf("error: %d", 42),
-			isCanceled: false,
-		},
-		"simple": {
-			err:        context.Canceled,
-			isCanceled: true,
-		},
-		"simple wrapped": {
-			err:        fmt.Errorf("error %w", context.Canceled),
-			isCanceled: true,
-		},
-		"exec": {
-			err:        exec.RequestCanceledError,
-			isCanceled: true,
-		},
-		"exec wrapped": {
-			err:        fmt.Errorf("error %w", exec.RequestCanceledError),
-			isCanceled: true,
-		},
-		"multierror empty": {
-			err:        multierror.Append(nil),
-			isCanceled: false,
-		},
-		"multierror single": {
-			err:        multierror.Append(nil, context.Canceled),
-			isCanceled: true,
-		},
-		"multierror single wrapped": {
-			err:        multierror.Append(nil, fmt.Errorf("error %w", context.Canceled)),
-			isCanceled: true,
-		},
-		"multierror multiple wrapped": {
-			err:        multierror.Append(nil, fmt.Errorf("error %w", context.Canceled), fmt.Errorf("error %w", exec.RequestCanceledError)),
-			isCanceled: true,
-		},
-		"multierror mixed": {
-			err:        multierror.Append(nil, context.Canceled, io.EOF),
-			isCanceled: false,
-		},
-	} {
-		test := test
-		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, test.isCanceled, exec.IsRequestCanceled(test.err))
-		})
-	}
+func TestIsMaxElapsedTimeError(t *testing.T) {
+	err := exec.NewMaxElapsedTimeError(time.Second, time.Minute, errors.New("something went sideways"))
+
+	assert.True(t, exec.IsMaxElapsedTimeError(err))
+	assert.Equal(t, "can not retry as the elapsed time 1m0s is greater than the configured max of 1s: something went sideways", err.Error())
+	assert.False(t, exec.IsMaxElapsedTimeError(err.Unwrap()))
+	assert.EqualError(t, err.Unwrap(), "something went sideways")
 }
 
 func TestIsConnectionResetError(t *testing.T) {

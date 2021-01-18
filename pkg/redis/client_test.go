@@ -9,6 +9,7 @@ import (
 	"github.com/applike/gosoline/pkg/redis"
 	"github.com/elliotchance/redismock"
 	baseRedis "github.com/go-redis/redis"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
@@ -47,6 +48,7 @@ func (s *ClientWithMiniRedisTestSuite) TestGetNotFound() {
 	// the logger should fail the test as soon as any logger.Warn or anything gets called
 	// because we want to test the executor not doing that
 	logger := new(mocks.Logger)
+	logger.On("WithFields", mock.Anything).Return(logger).Once()
 	logger.On("WithContext", context.Background()).Return(logger).Once()
 	executor := redis.NewBackoffExecutor(logger, exec.BackoffSettings{
 		Enabled:             true,

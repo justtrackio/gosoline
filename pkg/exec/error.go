@@ -1,12 +1,12 @@
 package exec
 
 import (
-	"context"
 	"errors"
-	"github.com/hashicorp/go-multierror"
+	"fmt"
 	"golang.org/x/sys/unix"
 	"io"
 	"strings"
+	"time"
 )
 
 type ErrorType int
@@ -14,79 +14,51 @@ type ErrorType int
 const (
 	// We don't know yet, let the other error checkers decide about this error. If the error is
 	// not marked retryable by another checker, we will not retry it.
-	ErrorUnknown ErrorType = iota
+	ErrorTypeUnknown ErrorType = iota
 	// Stop retrying, the error was actually a "success" and needs to be propagated to the caller
 	// ("success" meaning something e.g. was not found, but will not magically appear just because
 	// we retry a few more times)
-	ErrorOk
+	ErrorTypeOk
 	// Immediately stop retrying and return this error to the caller
-	ErrorPermanent
+	ErrorTypePermanent
 	// Retry the execution of the action
-	ErrorRetryable
+	ErrorTypeRetryable
 )
-
-const RequestCanceledError = requestCanceledError("RequestCanceled")
-
-type requestCanceledError string
-
-func (e requestCanceledError) Error() string {
-	return string(e)
-}
 
 type ErrorChecker func(result interface{}, err error) ErrorType
 
-func CheckRequestCanceled(_ interface{}, err error) ErrorType {
-	if IsRequestCanceled(err) {
-		return ErrorPermanent
-	}
-
-	return ErrorUnknown
+type MaxElapsedTimeError struct {
+	maxTime     time.Duration
+	elapsedTime time.Duration
+	err         error
 }
 
-type RequestCanceledChek func(err error) bool
-
-var requestCancelChecks = make([]RequestCanceledChek, 0)
-
-func AddRequestCancelCheck(check RequestCanceledChek) {
-	requestCancelChecks = append(requestCancelChecks, check)
+func NewMaxElapsedTimeError(maxTime time.Duration, elapsedTime time.Duration, err error) MaxElapsedTimeError {
+	return MaxElapsedTimeError{
+		maxTime:     maxTime,
+		elapsedTime: elapsedTime,
+		err:         err,
+	}
 }
 
-// Check if the given error was (only) caused by a canceled context - if there is any other error contained in it, we
-// return false. Thus, if IsRequestCanceled returns true, you can (and should) ignore the error and stop processing instead.
-func IsRequestCanceled(err error) bool {
-	if errors.Is(err, context.Canceled) || errors.Is(err, RequestCanceledError) {
-		return true
-	}
+func (e MaxElapsedTimeError) Error() string {
+	return fmt.Sprintf("can not retry as the elapsed time %s is greater than the configured max of %s: %s", e.elapsedTime, e.maxTime, e.err)
+}
 
-	for _, check := range requestCancelChecks {
-		if check(err) {
-			return true
-		}
-	}
+func (e MaxElapsedTimeError) Unwrap() error {
+	return e.err
+}
 
-	// some functions (like a batched Write) return a multierror which does not properly unwrap
-	// so we check if all these requests failed. If there is any other error, we return false to
-	// trigger normal error handling
-	var multiErr *multierror.Error
-	if errors.As(err, &multiErr) && multiErr != nil {
-		for _, err := range multiErr.Errors {
-			if !IsRequestCanceled(err) {
-				return false
-			}
-		}
-
-		return len(multiErr.Errors) > 0
-	}
-
-	return false
+func IsMaxElapsedTimeError(err error) bool {
+	return errors.As(err, &MaxElapsedTimeError{})
 }
 
 func CheckUsedClosedConnectionError(_ interface{}, err error) ErrorType {
 	if IsUsedClosedConnectionError(err) {
-		return ErrorRetryable
+		return ErrorTypeRetryable
 	}
 
-	return ErrorUnknown
+	return ErrorTypeUnknown
 }
 
 func IsUsedClosedConnectionError(err error) bool {
@@ -95,10 +67,10 @@ func IsUsedClosedConnectionError(err error) bool {
 
 func CheckConnectionError(_ interface{}, err error) ErrorType {
 	if IsConnectionError(err) {
-		return ErrorRetryable
+		return ErrorTypeRetryable
 	}
 
-	return ErrorUnknown
+	return ErrorTypeUnknown
 }
 
 func IsConnectionError(err error) bool {
@@ -113,16 +85,48 @@ func IsConnectionError(err error) bool {
 	return false
 }
 
-func CheckTimeOutError(_ interface{}, err error) ErrorType {
-	if IsTimeOutError(err) {
-		return ErrorRetryable
+func CheckTimeoutError(_ interface{}, err error) ErrorType {
+	if IsTimeoutError(err) {
+		return ErrorTypeRetryable
 	}
 
-	return ErrorUnknown
+	return ErrorTypeUnknown
 }
 
-func IsTimeOutError(err error) bool {
+func IsTimeoutError(err error) bool {
 	if errors.Is(err, unix.ETIMEDOUT) {
+		return true
+	}
+
+	return false
+}
+
+func CheckClientAwaitHeaderTimeoutError(_ interface{}, err error) ErrorType {
+	if IsClientAwaitHeadersTimeoutError(err) {
+		return ErrorTypeRetryable
+	}
+
+	return ErrorTypeUnknown
+}
+
+func IsClientAwaitHeadersTimeoutError(err error) bool {
+	if strings.Contains(err.Error(), "(Client.Timeout exceeded while awaiting headers)") {
+		return true
+	}
+
+	return false
+}
+
+func CheckTlsHandshakeTimeoutError(_ interface{}, err error) ErrorType {
+	if IsTlsHandshakeTimeoutError(err) {
+		return ErrorTypeRetryable
+	}
+
+	return ErrorTypeUnknown
+}
+
+func IsTlsHandshakeTimeoutError(err error) bool {
+	if strings.Contains(err.Error(), "net/http: TLS handshake timeout") {
 		return true
 	}
 

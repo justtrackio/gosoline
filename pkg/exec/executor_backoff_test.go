@@ -2,10 +2,13 @@ package exec_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/sys/unix"
+	"io"
 	"testing"
 	"time"
 )
@@ -27,8 +30,8 @@ func (s *ExecutorBackoffTestSuite) SetupTest() {
 			Blocking:        false,
 			CancelDelay:     0,
 			InitialInterval: time.Millisecond,
-			MaxInterval:     time.Second,
-			MaxElapsedTime:  time.Second,
+			MaxInterval:     time.Millisecond * 2,
+			MaxElapsedTime:  time.Millisecond * 20,
 		}
 
 		logger := mocks.NewLoggerMockedAll()
@@ -42,7 +45,7 @@ func (s *ExecutorBackoffTestSuite) TestPermanent() {
 	permanentError := fmt.Errorf("permanent error")
 
 	checker := func(result interface{}, err error) exec.ErrorType {
-		return exec.ErrorPermanent
+		return exec.ErrorTypePermanent
 	}
 
 	executor := s.buildExecutor(checker)
@@ -60,7 +63,7 @@ func (s *ExecutorBackoffTestSuite) TestOk() {
 	okError := fmt.Errorf("ok error")
 
 	checker := func(result interface{}, err error) exec.ErrorType {
-		return exec.ErrorOk
+		return exec.ErrorTypeOk
 	}
 
 	executor := s.buildExecutor(checker)
@@ -78,7 +81,7 @@ func (s *ExecutorBackoffTestSuite) TestRetryable() {
 	retryableError := fmt.Errorf("ok retryable")
 
 	checker := func(result interface{}, err error) exec.ErrorType {
-		return exec.ErrorRetryable
+		return exec.ErrorTypeRetryable
 	}
 
 	executor := s.buildExecutor(checker)
@@ -101,7 +104,7 @@ func (s *ExecutorBackoffTestSuite) TestUnknown() {
 	unknownError := fmt.Errorf("unknown error")
 
 	checker := func(result interface{}, err error) exec.ErrorType {
-		return exec.ErrorUnknown
+		return exec.ErrorTypeUnknown
 	}
 
 	executor := s.buildExecutor(checker)
@@ -112,6 +115,119 @@ func (s *ExecutorBackoffTestSuite) TestUnknown() {
 
 	s.EqualError(err, unknownError.Error())
 	s.Equal(1, tries)
+}
+
+func (s *ExecutorBackoffTestSuite) TestMaxElapsedTimeReached() {
+	tries := 0
+	longTakingErr := fmt.Errorf("this error occured after reaching max elapsed time")
+
+	checker := func(result interface{}, err error) exec.ErrorType {
+		return exec.ErrorTypeRetryable
+	}
+
+	executor := s.buildExecutor(checker)
+	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+		time.Sleep(time.Millisecond * 30)
+		tries++
+
+		return nil, longTakingErr
+	})
+
+	s.True(exec.IsMaxElapsedTimeError(err))
+	s.EqualError(errors.Unwrap(err), longTakingErr.Error())
+	s.Equal(1, tries)
+}
+
+func (s *ExecutorBackoffTestSuite) TestUsedClosedConnection() {
+	tries := 0
+	client := exec.NewTestHttpClient(time.Minute, exec.Trips{
+		exec.DoTrip(time.Millisecond, errors.New("use of closed network connection")),
+		exec.DoTrip(time.Millisecond, errors.New("use of closed network connection")),
+		exec.DoTrip(time.Millisecond, nil),
+	})
+
+	executor := s.buildExecutor(exec.CheckUsedClosedConnectionError)
+	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+		tries++
+		return client.Get("http://test.url")
+	})
+
+	s.NoError(err)
+	s.Equal(3, tries)
+}
+
+func (s *ExecutorBackoffTestSuite) TestConnectionError() {
+	tries := 0
+	client := exec.NewTestHttpClient(time.Minute, exec.Trips{
+		exec.DoTrip(time.Millisecond, io.EOF),
+		exec.DoTrip(time.Millisecond, unix.ECONNREFUSED),
+		exec.DoTrip(time.Millisecond, unix.ECONNRESET),
+		exec.DoTrip(time.Millisecond, unix.EPIPE),
+		exec.DoTrip(time.Millisecond, nil),
+	})
+
+	executor := s.buildExecutor(exec.CheckConnectionError)
+	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+		tries++
+		return client.Get("http://test.url")
+	})
+
+	s.NoError(err)
+	s.Equal(5, tries)
+}
+
+func (s *ExecutorBackoffTestSuite) TestTimeOutError() {
+	tries := 0
+	client := exec.NewTestHttpClient(time.Minute, exec.Trips{
+		exec.DoTrip(time.Millisecond, unix.ETIMEDOUT),
+		exec.DoTrip(time.Millisecond, unix.ETIMEDOUT),
+		exec.DoTrip(time.Millisecond, nil),
+	})
+
+	executor := s.buildExecutor(exec.CheckTimeoutError)
+	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+		tries++
+		return client.Get("http://test.url")
+	})
+
+	s.NoError(err)
+	s.Equal(3, tries)
+}
+
+func (s *ExecutorBackoffTestSuite) TestClientTimeoutError() {
+	tries := 0
+	client := exec.NewTestHttpClient(time.Minute, exec.Trips{
+		exec.DoTrip(time.Millisecond, errors.New("(Client.Timeout exceeded while awaiting headers)")),
+		exec.DoTrip(time.Millisecond, errors.New("(Client.Timeout exceeded while awaiting headers)")),
+		exec.DoTrip(time.Millisecond, nil),
+	})
+
+	executor := s.buildExecutor(exec.CheckClientAwaitHeaderTimeoutError)
+	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+		tries++
+		return client.Get("http://test.url")
+	})
+
+	s.NoError(err)
+	s.Equal(3, tries)
+}
+
+func (s *ExecutorBackoffTestSuite) TestTlsHandshakeTimeoutError() {
+	tries := 0
+	client := exec.NewTestHttpClient(time.Minute, exec.Trips{
+		exec.DoTrip(time.Millisecond, errors.New("net/http: TLS handshake timeout")),
+		exec.DoTrip(time.Millisecond, errors.New("net/http: TLS handshake timeout")),
+		exec.DoTrip(time.Millisecond, nil),
+	})
+
+	executor := s.buildExecutor(exec.CheckTlsHandshakeTimeoutError)
+	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+		tries++
+		return client.Get("http://test.url")
+	})
+
+	s.NoError(err)
+	s.Equal(3, tries)
 }
 
 func TestExecutorBackoffTestSuite(t *testing.T) {
