@@ -42,10 +42,10 @@ func IsInvalidStatusError(err error) bool {
 
 func CheckInvalidStatusError(_ interface{}, err error) exec.ErrorType {
 	if IsInvalidStatusError(err) {
-		return exec.ErrorRetryable
+		return exec.ErrorTypeRetryable
 	}
 
-	return exec.ErrorUnknown
+	return exec.ErrorTypeUnknown
 }
 
 func IsAwsError(err error, awsCode string) bool {
@@ -68,10 +68,10 @@ func IsAwsErrorCodeRequestCanceled(err error) bool {
 
 func CheckConnectionError(_ interface{}, err error) exec.ErrorType {
 	if IsConnectionError(err) {
-		return exec.ErrorRetryable
+		return exec.ErrorTypeRetryable
 	}
 
-	return exec.ErrorUnknown
+	return exec.ErrorTypeUnknown
 }
 
 func IsConnectionError(err error) bool {
@@ -86,16 +86,16 @@ func IsConnectionError(err error) bool {
 
 func CheckErrorRetryable(_ interface{}, err error) exec.ErrorType {
 	if request.IsErrorRetryable(err) {
-		return exec.ErrorRetryable
+		return exec.ErrorTypeRetryable
 	}
 
-	return exec.ErrorUnknown
+	return exec.ErrorTypeUnknown
 }
 
 func CheckErrorThrottle(_ interface{}, err error) exec.ErrorType {
 	if request.IsErrorThrottle(err) {
-		return exec.ErrorRetryable
+		return exec.ErrorTypeRetryable
 	}
 
-	return exec.ErrorUnknown
+	return exec.ErrorTypeUnknown
 }

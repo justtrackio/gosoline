@@ -50,17 +50,17 @@ func TestInvalidStatusError(t *testing.T) {
 				Status: 400,
 			},
 			isInvalidStatusError: true,
-			errorType:            exec.ErrorRetryable,
+			errorType:            exec.ErrorTypeRetryable,
 		},
 		"canceled": {
 			err:                  exec.RequestCanceledError,
 			isInvalidStatusError: false,
-			errorType:            exec.ErrorUnknown,
+			errorType:            exec.ErrorTypeUnknown,
 		},
 		"nil": {
 			err:                  nil,
 			isInvalidStatusError: false,
-			errorType:            exec.ErrorUnknown,
+			errorType:            exec.ErrorTypeUnknown,
 		},
 	} {
 		test := test

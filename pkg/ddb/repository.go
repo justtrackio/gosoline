@@ -98,10 +98,10 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 	}
 	executor := aws.NewExecutor(logger, res, &settings.Backoff, func(result interface{}, err error) exec.ErrorType {
 		if isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
-			return exec.ErrorOk
+			return exec.ErrorTypeOk
 		}
 
-		return exec.ErrorUnknown
+		return exec.ErrorTypeUnknown
 	})
 
 	svc := NewService(config, logger)

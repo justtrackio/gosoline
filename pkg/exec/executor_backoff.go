@@ -3,6 +3,7 @@ package exec
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/cenkalti/backoff"
 	"time"
 )
@@ -20,7 +21,8 @@ type BackoffSettings struct {
 
 type BackoffExecutor struct {
 	logger   mon.Logger
-	res      *ExecutableResource
+	uuidGen  uuid.Uuid
+	resource *ExecutableResource
 	checks   []ErrorChecker
 	settings *BackoffSettings
 }
@@ -28,14 +30,19 @@ type BackoffExecutor struct {
 func NewBackoffExecutor(logger mon.Logger, res *ExecutableResource, settings *BackoffSettings, checks ...ErrorChecker) *BackoffExecutor {
 	return &BackoffExecutor{
 		logger:   logger,
-		res:      res,
+		uuidGen:  uuid.New(),
+		resource: res,
 		checks:   checks,
 		settings: settings,
 	}
 }
 
 func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{}, error) {
-	logger := e.logger.WithContext(ctx)
+	logger := e.logger.WithContext(ctx).WithFields(mon.Fields{
+		"exec_id":            e.uuidGen.NewV4(),
+		"exec_resource_type": e.resource.Type,
+		"exec_resource_name": e.resource.Name,
+	})
 
 	delayedCtx := WithDelayedCancelContext(ctx, e.settings.CancelDelay)
 	defer delayedCtx.Stop()
@@ -58,16 +65,11 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 	backoffCtx := backoff.WithContext(backoffConfig, ctx)
 
 	retries := 0
-	timespan := time.Duration(0)
+	start := time.Now()
 
-	notify := func(err error, duration time.Duration) {
-		logger.WithFields(mon.Fields{
-			"resource_type": e.res.Type,
-			"resource_name": e.res.Name,
-		}).Warnf("retrying resource %s %s after error: %s", e.res.Type, e.res.Name, err.Error())
-
+	notify := func(err error, _ time.Duration) {
+		logger.Warnf("retrying resource %s %s after error: %s", e.resource.Type, e.resource.Name, err.Error())
 		retries++
-		timespan += duration
 	}
 
 	_ = backoff.RetryNotify(func() error {
@@ -81,11 +83,11 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 			errType = check(res, err)
 
 			switch errType {
-			case ErrorOk:
+			case ErrorTypeOk:
 				return nil
-			case ErrorRetryable:
+			case ErrorTypeRetryable:
 				return err
-			case ErrorPermanent:
+			case ErrorTypePermanent:
 				return backoff.Permanent(err)
 			}
 		}
@@ -93,14 +95,24 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 		return backoff.Permanent(err)
 	}, backoffCtx, notify)
 
-	if err != nil && errType != ErrorOk {
-		logger.Warnf("error on requesting resource %s %s: %s", e.res.Type, e.res.Name, err.Error())
+	duration := time.Since(start)
+
+	// we're having an error after reaching the MaxElapsedTime and the error isn't good-natured
+	if err != nil && errType != ErrorTypeOk && e.settings.MaxElapsedTime > 0 && duration > e.settings.MaxElapsedTime {
+		logger.Warnf("crossed max elapsed time with an error on requesting resource %s %s after %d retries in %s: %s", e.resource.Type, e.resource.Name, retries, duration, err.Error())
+
+		return res, NewMaxElapsedTimeError(e.settings.MaxElapsedTime, duration, err)
+	}
+
+	// we're still having an error and the error isn't good-natured
+	if err != nil && errType != ErrorTypeOk {
+		logger.Warnf("error on requesting resource %s %s after %d retries in %s: %s", e.resource.Type, e.resource.Name, retries, duration, err.Error())
 
 		return res, err
 	}
 
 	if retries > 0 {
-		logger.Infof("sent request to resource %s %s successful after %d retries in %s", e.res.Type, e.res.Name, retries, timespan)
+		logger.Infof("sent request to resource %s %s successful after %d retries in %s", e.resource.Type, e.resource.Name, retries, duration)
 	}
 
 	return res, err

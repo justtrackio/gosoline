@@ -34,26 +34,26 @@ func NewBackoffExecutor(logger mon.Logger, settings exec.BackoffSettings, name s
 
 func NilChecker(_ interface{}, err error) exec.ErrorType {
 	if errors.Is(err, Nil) {
-		return exec.ErrorOk
+		return exec.ErrorTypeOk
 	}
 
-	return exec.ErrorUnknown
+	return exec.ErrorTypeUnknown
 }
 
 func OOMChecker(_ interface{}, err error) exec.ErrorType {
 	if strings.HasPrefix(err.Error(), "OOM") {
-		return exec.ErrorRetryable
+		return exec.ErrorTypeRetryable
 	}
 
-	return exec.ErrorUnknown
+	return exec.ErrorTypeUnknown
 }
 
 func RetryableErrorChecker(_ interface{}, err error) exec.ErrorType {
 	if IsRetryableError(err) {
-		return exec.ErrorRetryable
+		return exec.ErrorTypeRetryable
 	}
 
-	return exec.ErrorUnknown
+	return exec.ErrorTypeUnknown
 }
 
 func IsRetryableError(err error) bool {
