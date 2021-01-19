@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
@@ -9,14 +10,12 @@ import (
 	gosoKinesis "github.com/applike/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
-	"github.com/cenkalti/backoff"
-	"github.com/pkg/errors"
-	"github.com/twinj/uuid"
-	"time"
+	"github.com/hashicorp/go-multierror"
 )
 
 const kinesisBatchSizeMax = 500
@@ -31,15 +30,16 @@ func (k *KinesisOutputSettings) GetResourceName() string {
 }
 
 type kinesisOutput struct {
-	logger   mon.Logger
-	client   kinesisiface.KinesisAPI
-	executor gosoAws.Executor
-	settings *KinesisOutputSettings
+	logger      mon.Logger
+	uuidGen     uuid.Uuid
+	client      kinesisiface.KinesisAPI
+	batchExec   exec.Executor
+	requestExec gosoAws.Executor
+	settings    *KinesisOutputSettings
 }
 
 func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOutputSettings) Output {
 	client := cloud.GetKinesisClient(config, logger)
-
 	err := gosoKinesis.CreateKinesisStream(config, logger, client, settings)
 
 	if err != nil {
@@ -47,21 +47,30 @@ func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOut
 	}
 
 	res := &exec.ExecutableResource{
-		Type: "kinesis",
+		Type: "kinesis.request",
 		Name: settings.StreamName,
 	}
+	requestExec := gosoAws.NewExecutor(logger, res, &settings.Backoff)
 
-	executor := gosoAws.NewExecutor(logger, res, &settings.Backoff)
-
-	return NewKinesisOutputWithInterfaces(logger, client, executor, settings)
+	return NewKinesisOutputWithInterfaces(logger, client, requestExec, settings)
 }
 
-func NewKinesisOutputWithInterfaces(logger mon.Logger, client kinesisiface.KinesisAPI, executor gosoAws.Executor, settings *KinesisOutputSettings) Output {
+func NewKinesisOutputWithInterfaces(logger mon.Logger, client kinesisiface.KinesisAPI, requestExec gosoAws.Executor, settings *KinesisOutputSettings) Output {
+	uuidGen := uuid.New()
+
+	res := &exec.ExecutableResource{
+		Type: "kinesis.batch",
+		Name: settings.StreamName,
+	}
+	batchExec := exec.NewBackoffExecutor(logger, res, &settings.Backoff, CheckRecordsFailedError)
+
 	return &kinesisOutput{
-		client:   client,
-		settings: settings,
-		executor: executor,
-		logger:   logger,
+		logger:      logger,
+		uuidGen:     uuidGen,
+		client:      client,
+		batchExec:   batchExec,
+		requestExec: requestExec,
+		settings:    settings,
 	}
 }
 
@@ -74,54 +83,53 @@ func (o *kinesisOutput) Write(ctx context.Context, batch []WritableMessage) erro
 		return nil
 	}
 
-	errs := make([]error, 0)
-	chunks, err := BuildChunks(batch, kinesisBatchSizeMax)
+	ctx = mon.AppendLoggerContextField(ctx, mon.Fields{
+		"kinesis_write_request_id": o.uuidGen.NewV4(),
+	})
 
-	if err != nil {
-		o.logger.Error(err, "could not batch all messages")
+	var err, errs error
+	var chunks Chunks
+
+	if chunks, err = BuildChunks(batch, kinesisBatchSizeMax); err != nil {
+		return fmt.Errorf("could not build batch for messages: %w", err)
 	}
 
 	for _, chunk := range chunks {
-		err := o.writeBatch(ctx, chunk)
-
-		if err != nil {
-			errs = append(errs, err)
+		if err = o.writeBatch(ctx, chunk); err != nil {
+			errs = multierror.Append(errs, err)
 		}
 	}
 
-	if len(errs) == 0 {
-		return nil
+	if errs != nil {
+		return fmt.Errorf("can not put messages to stream %s: %w", o.settings.StreamName, errs)
 	}
 
-	return errors.Wrap(errs[0], fmt.Sprintf("there were %v write errors to %v", len(errs), o.settings.StreamName))
+	return nil
 }
 
 func (o *kinesisOutput) writeBatch(ctx context.Context, batch [][]byte) error {
-	records := make([]*kinesis.PutRecordsRequestEntry, 0, len(batch))
+	var err error
+	var records = make([]*kinesis.PutRecordsRequestEntry, 0, len(batch))
 
 	for _, data := range batch {
 		req := &kinesis.PutRecordsRequestEntry{
 			Data:         data,
-			PartitionKey: aws.String(uuid.NewV4().String()),
+			PartitionKey: aws.String(o.uuidGen.NewV4()),
 		}
 
 		records = append(records, req)
 	}
 
-	backoffConfig := backoff.NewExponentialBackOff()
-	backoffConfig.MaxElapsedTime = 15 * time.Minute
-
-	err := backoff.Retry(func() (err error) {
+	_, err = o.batchExec.Execute(ctx, func(ctx context.Context) (interface{}, error) {
 		records, err = o.putRecordsAndCollectFailed(ctx, records)
-
-		return err
-	}, backoffConfig)
+		return records, err
+	})
 
 	if err != nil {
-		o.logger.Error(err, "Error putting records")
+		return fmt.Errorf("can not write batch to stream %s: %w", o.settings.StreamName, err)
 	}
 
-	return err
+	return nil
 }
 
 func (o *kinesisOutput) putRecordsAndCollectFailed(ctx context.Context, records []*kinesis.PutRecordsRequestEntry) ([]*kinesis.PutRecordsRequestEntry, error) {
@@ -130,33 +138,54 @@ func (o *kinesisOutput) putRecordsAndCollectFailed(ctx context.Context, records 
 		StreamName: aws.String(o.settings.StreamName),
 	}
 
-	output, err := o.executor.Execute(ctx, func() (*request.Request, interface{}) {
+	output, err := o.requestExec.Execute(ctx, func() (*request.Request, interface{}) {
 		return o.client.PutRecordsRequest(&input)
 	})
 
 	if err != nil {
-		o.logger.Error(err, "Error putting records")
-
-		return records, err
+		return records, fmt.Errorf("can execute PutRecordsRequest: %w", err)
 	}
 
+	putRecordsOutput := output.(*kinesis.PutRecordsOutput)
 	failedRecords := make([]*kinesis.PutRecordsRequestEntry, 0, len(records))
 
-	putRecordsOutput := output.(*kinesis.PutRecordsOutput)
 	for i, outputRecord := range putRecordsOutput.Records {
 		if outputRecord.ErrorCode != nil {
 			failedRecords = append(failedRecords, records[i])
 		}
 	}
 
-	o.logger.WithFields(mon.Fields{
-		"failed_records": len(failedRecords),
-		"total_records":  len(records),
-	}).Debug("put records to stream")
-
 	if len(failedRecords) > 0 {
-		return failedRecords, errors.New("some records failed")
+		return failedRecords, NewRecordsFailedError(records, failedRecords)
 	}
 
 	return nil, nil
+}
+
+type RecordsFailedError struct {
+	total  []*kinesis.PutRecordsRequestEntry
+	failed []*kinesis.PutRecordsRequestEntry
+}
+
+func NewRecordsFailedError(total []*kinesis.PutRecordsRequestEntry, failed []*kinesis.PutRecordsRequestEntry) RecordsFailedError {
+	return RecordsFailedError{
+		total:  total,
+		failed: failed,
+	}
+}
+
+func (r RecordsFailedError) Error() string {
+	return fmt.Sprintf("%d out of %d  records failed", len(r.failed), len(r.total))
+}
+
+func IsRecordsFailedError(err error) bool {
+	return errors.As(err, &RecordsFailedError{})
+}
+
+func CheckRecordsFailedError(_ interface{}, err error) exec.ErrorType {
+	if IsRecordsFailedError(err) {
+		return exec.ErrorTypeRetryable
+	}
+
+	return exec.ErrorTypeUnknown
 }
