@@ -27,7 +27,10 @@ func TestWriter_WriteEvents(t *testing.T) {
 	successfulRecordOutput := &kinesis.PutRecordsOutput{Records: []*kinesis.PutRecordsResultEntry{}}
 	exec.ExpectExecution("PutRecordsRequest", mock.AnythingOfType("*kinesis.PutRecordsInput"), successfulRecordOutput, nil)
 
-	logger := monMocks.NewLoggerMockedAll()
+	logger := monMocks.NewLoggerMock()
+	logger.On("Warnf", "retrying resource %s %s after error: %s", "kinesis.batch", "streamName", "1 out of 3  records failed")
+	logger.On("Infof", "sent request to resource %s %s successful after %d retries in %s", "kinesis.batch", "streamName", 1, mock.AnythingOfType("time.Duration"))
+
 	writer := stream.NewKinesisOutputWithInterfaces(logger, kinesisClient, exec, &stream.KinesisOutputSettings{
 		StreamName: "streamName",
 	})
