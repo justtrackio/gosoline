@@ -26,28 +26,6 @@ const (
 
 var operations = []string{Create, Read, Update, Delete, Query}
 
-type RecordNotFoundError struct {
-	Id      uint
-	ModelId string
-	Err     error
-}
-
-func NewRecordNotFoundError(id uint, modelId string, err error) RecordNotFoundError {
-	return RecordNotFoundError{
-		Id:      id,
-		ModelId: modelId,
-		Err:     err,
-	}
-}
-
-func (e RecordNotFoundError) Error() string {
-	return fmt.Sprintf("could not find model of type %s with id %d: %s", e.ModelId, e.Id, e.Err)
-}
-
-func (e RecordNotFoundError) Unwrap() error {
-	return e.Err
-}
-
 type Settings struct {
 	cfg.AppId
 	Metadata Metadata
@@ -238,7 +216,13 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 		db = db.Limit(qb.page.limit)
 	}
 
-	return db.Find(result).Error
+	err := db.Find(result).Error
+
+	if gorm.IsRecordNotFoundError(err) {
+		return NewNoQueryResultsError(r.GetModelId(), err)
+	}
+
+	return err
 }
 
 func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBased) (int, error) {
