@@ -88,8 +88,8 @@ func (p *Pipeline) Run(ctx context.Context) error {
 	defer p.logger.Info("leaving pipeline")
 	defer p.process(ctx, true)
 
-	p.cfn.GoWithContextf(ctx, p.input.Run, "panic during run of the consumer input")
 	p.cfn.GoWithContextf(ctx, p.read, "panic during consuming")
+	p.cfn.GoWithContextf(ctx, p.input.Run, "panic during run of the consumer input")
 
 	for {
 		select {
