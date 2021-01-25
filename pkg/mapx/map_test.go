@@ -35,6 +35,9 @@ func (s *MapTestSuite) TestSet() {
 	s.m.Set("m1", map[string]interface{}{
 		"b": true,
 	})
+	s.m.Set("m2.subM", nil)
+	s.m.Set("m3.subM", nil)
+	s.m.Set("m3.subM.i", 8)
 
 	expected := map[string]interface{}{
 		"i": 1,
@@ -52,6 +55,14 @@ func (s *MapTestSuite) TestSet() {
 		},
 		"m1": map[string]interface{}{
 			"b": true,
+		},
+		"m2": map[string]interface{}{
+			"subM": nil,
+		},
+		"m3": map[string]interface{}{
+			"subM": map[string]interface{}{
+				"i": 8,
+			},
 		},
 	}
 

@@ -1,0 +1,18 @@
+cloud:
+  aws:
+    dynamodb:
+      clients:
+        http_timeout:
+          http_client:
+            timeout: 100ms
+
+        max_elapsed_time_exceeded:
+          retry:
+            max_elapsed_time: 100ms
+
+
+test:
+  components:
+    - name: default
+      type: ddb
+      toxiproxy_enabled: true

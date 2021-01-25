@@ -22,6 +22,7 @@ type containerConfig struct {
 	Env          []string
 	Cmd          []string
 	PortBindings portBindings
+	ExposedPorts []string
 	ExpireAfter  time.Duration
 }
 
@@ -30,6 +31,10 @@ type portBindings map[string]int
 type containerBinding struct {
 	host string
 	port string
+}
+
+func (b containerBinding) getAddress() string {
+	return fmt.Sprintf("%s:%s", b.host, b.port)
 }
 
 type container struct {
@@ -100,48 +105,46 @@ func NewContainerRunner(config cfg.Config, logger mon.Logger) (*containerRunner,
 	}, nil
 }
 
-func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) (map[string]*container, error) {
-	containers := make(map[string]*container)
-
+func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 	if len(skeletons) == 0 {
-		return containers, nil
+		return nil
 	}
 
 	cfn := coffin.New()
 	lck := new(sync.Mutex)
 
 	for i := range skeletons {
-		if skeletons[i].containerConfig == nil {
-			continue
-		}
+		for name, description := range skeletons[i].containerDescriptions {
+			name := name
+			description := description
+			skeleton := skeletons[i]
 
-		cfn.Gof(func(skeleton *componentSkeleton) func() error {
-			return func() error {
+			cfn.Gof(func() error {
 				var err error
 				var container *container
 
-				if container, err = r.RunContainer(skeleton); err != nil {
+				if container, err = r.RunContainer(skeleton, name, description); err != nil {
 					return fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
 				}
 
 				lck.Lock()
 				defer lck.Unlock()
 
-				containers[skeleton.id()] = container
+				skeleton.containers[name] = container
 
 				return nil
-			}
-		}(skeletons[i]), "can not run container %s", skeletons[i].id())
+			}, "can not run container %s", skeleton.id())
+		}
 	}
 
-	return containers, cfn.Wait()
+	return cfn.Wait()
 }
 
-func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container, error) {
-	containerName := fmt.Sprintf("%s-%s-%s", r.settings.NamePrefix, r.id, skeleton.id())
-	r.logger.Infof("run container %s %s", skeleton.typ, containerName)
+func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string, description *componentContainerDescription) (*container, error) {
+	containerName := fmt.Sprintf("%s-%s-%s-%s", r.settings.NamePrefix, r.id, skeleton.id(), name)
+	r.logger.Debugf("run container %s %s", skeleton.typ, containerName)
 
-	config := skeleton.containerConfig
+	config := description.containerConfig
 	bindings := make(map[docker.Port][]docker.PortBinding)
 
 	for containerPort, hostPort := range config.PortBindings {
@@ -159,12 +162,14 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container,
 		Env:          config.Env,
 		Cmd:          config.Cmd,
 		PortBindings: bindings,
+		ExposedPorts: config.ExposedPorts,
 		Auth:         r.settings.Auth.GetAuthConfig(),
 	}
 
 	tmpfsConfig := r.getTmpfsConfig(config.Tmpfs)
 
 	resource, err := r.pool.RunWithOptions(runOptions, func(hc *docker.HostConfig) {
+		hc.AutoRemove = true
 		hc.Tmpfs = tmpfsConfig
 	})
 
@@ -172,8 +177,9 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container,
 		return nil, fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
 	}
 
+	resourceId := fmt.Sprintf("%s-%s", skeleton.id(), name)
 	r.resourcesLck.Lock()
-	r.resources[skeleton.id()] = resource
+	r.resources[resourceId] = resource
 	r.resourcesLck.Unlock()
 
 	if err = r.expireAfter(resource, config.ExpireAfter); err != nil {
@@ -192,7 +198,7 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton) (*container,
 		bindings: resolvedBindings,
 	}
 
-	if err = r.waitUntilHealthy(container, skeleton.healthCheck); err != nil {
+	if err = r.waitUntilHealthy(container, description.healthCheck); err != nil {
 		return nil, fmt.Errorf("healthcheck failed on container for component %s: %w", skeleton.id(), err)
 	}
 
@@ -296,7 +302,7 @@ func (r *containerRunner) waitUntilHealthy(container *container, healthCheck Com
 		return err
 	}
 
-	r.logger.Infof("%s %s got healthy after %s", typ, name, time.Since(start))
+	r.logger.Debugf("%s %s got healthy after %s", typ, name, time.Since(start))
 
 	return nil
 }
@@ -307,7 +313,7 @@ func (r *containerRunner) Stop() error {
 			return fmt.Errorf("could not stop container %s: %w", name, err)
 		}
 
-		r.logger.Infof("stopping container %s", name)
+		r.logger.Debugf("stopping container %s", name)
 	}
 
 	return nil

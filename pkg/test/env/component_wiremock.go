@@ -2,7 +2,7 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/application"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/http"
 	"github.com/applike/gosoline/pkg/mon"
 )
@@ -14,8 +14,8 @@ type wiremockComponent struct {
 	client  http.Client
 }
 
-func (c *wiremockComponent) AppOptions() []application.Option {
-	return []application.Option{}
+func (c *wiremockComponent) CfgOptions() []cfg.Option {
+	return []cfg.Option{}
 }
 
 func (c *wiremockComponent) Address() string {

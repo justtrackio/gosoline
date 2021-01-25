@@ -7,14 +7,21 @@ import (
 
 var inMemoryInputs = make(map[string]*InMemoryInput)
 
+func ResetInMemoryInputs() {
+	for _, inp := range inMemoryInputs {
+		inp.Reset()
+	}
+}
+
 type InMemorySettings struct {
 	Size int `cfg:"size" default:"1"`
 }
 
 type InMemoryInput struct {
-	once    sync.Once
-	channel chan *Message
-	stopped chan struct{}
+	once     sync.Once
+	channel  chan *Message
+	stopped  chan struct{}
+	settings *InMemorySettings
 }
 
 func ProvideInMemoryInput(name string, settings *InMemorySettings) *InMemoryInput {
@@ -29,9 +36,16 @@ func ProvideInMemoryInput(name string, settings *InMemorySettings) *InMemoryInpu
 
 func NewInMemoryInput(settings *InMemorySettings) *InMemoryInput {
 	return &InMemoryInput{
-		channel: make(chan *Message, settings.Size),
-		stopped: make(chan struct{}),
+		channel:  make(chan *Message, settings.Size),
+		stopped:  make(chan struct{}),
+		settings: settings,
 	}
+}
+
+func (i *InMemoryInput) Reset() {
+	i.once = sync.Once{}
+	i.channel = make(chan *Message, i.settings.Size)
+	i.stopped = make(chan struct{})
 }
 
 func (i *InMemoryInput) Publish(messages ...*Message) {

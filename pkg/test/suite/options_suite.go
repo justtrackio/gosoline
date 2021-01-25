@@ -1,4 +1,4 @@
-package test
+package suite
 
 import (
 	"fmt"
@@ -10,25 +10,40 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/spf13/cast"
-	"strings"
 	"time"
 )
 
 type suiteOptions struct {
-	envOptions   []env.Option
-	envSetup     []func() error
+	envOptions  []env.Option
+	envSetup    []func() error
+	envIsShared bool
+
 	appOptions   []application.Option
 	appModules   map[string]kernel.ModuleFactory
 	appFactories []kernel.MultiModuleFactory
+}
+
+func newSuiteOptions() *suiteOptions {
+	return &suiteOptions{
+		envOptions:   make([]env.Option, 0),
+		envSetup:     make([]func() error, 0),
+		appOptions:   make([]application.Option, 0),
+		appModules:   make(map[string]kernel.ModuleFactory),
+		appFactories: make([]kernel.MultiModuleFactory, 0),
+	}
+}
+
+func (s *suiteOptions) addAppOption(opt application.Option) {
+	s.appOptions = append(s.appOptions, opt)
 }
 
 func (s *suiteOptions) addEnvOption(opt env.Option) {
 	s.envOptions = append(s.envOptions, opt)
 }
 
-type SuiteOption func(s *suiteOptions)
+type Option func(s *suiteOptions)
 
-func WithClockProvider(clk clock.Clock) SuiteOption {
+func WithClockProvider(clk clock.Clock) Option {
 	return func(s *suiteOptions) {
 		s.envSetup = append(s.envSetup, func() error {
 			clock.Provider = clk
@@ -37,7 +52,7 @@ func WithClockProvider(clk clock.Clock) SuiteOption {
 	}
 }
 
-func WithClockProviderAt(datetime string) SuiteOption {
+func WithClockProviderAt(datetime string) Option {
 	return func(s *suiteOptions) {
 		s.envSetup = append(s.envSetup, func() error {
 			var err error
@@ -54,41 +69,41 @@ func WithClockProviderAt(datetime string) SuiteOption {
 	}
 }
 
-func WithConfigFile(file string) SuiteOption {
+func WithComponent(settings env.ComponentBaseSettingsAware) Option {
+	return func(s *suiteOptions) {
+		s.addEnvOption(env.WithComponent(settings))
+	}
+}
+
+func WithConfigFile(file string) Option {
 	return func(s *suiteOptions) {
 		s.addEnvOption(env.WithConfigFile(file))
 	}
 }
 
-func WithConfigEnvKeyReplacer(replacer *strings.Replacer) SuiteOption {
-	return func(s *suiteOptions) {
-		s.addEnvOption(env.WithConfigEnvKeyReplacer(replacer))
-	}
-}
-
-func WithConfigMap(settings map[string]interface{}) SuiteOption {
+func WithConfigMap(settings map[string]interface{}) Option {
 	return func(s *suiteOptions) {
 		s.addEnvOption(env.WithConfigMap(settings))
 	}
 }
 
-func WithConsumer(callback stream.ConsumerCallbackFactory) SuiteOption {
-	return WithModule("consumer-default", stream.NewConsumer("default", callback))
-}
-
-func WithContainerExpireAfter(expireAfter time.Duration) SuiteOption {
+func WithContainerExpireAfter(expireAfter time.Duration) Option {
 	return func(s *suiteOptions) {
 		s.addEnvOption(env.WithContainerExpireAfter(expireAfter))
 	}
 }
 
-func WithEnvSetup(setups ...func() error) SuiteOption {
+func WithConsumer(callback stream.ConsumerCallbackFactory) Option {
+	return WithModule("consumer-default", stream.NewConsumer("default", callback))
+}
+
+func WithEnvSetup(setups ...func() error) Option {
 	return func(s *suiteOptions) {
 		s.envSetup = append(s.envSetup, setups...)
 	}
 }
 
-func WithFixtures(fixtureSets []*fixtures.FixtureSet) SuiteOption {
+func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 	return func(s *suiteOptions) {
 		s.appOptions = append(s.appOptions, application.WithConfigSetting("fixtures", map[string]interface{}{
 			"enabled": true,
@@ -97,13 +112,13 @@ func WithFixtures(fixtureSets []*fixtures.FixtureSet) SuiteOption {
 	}
 }
 
-func WithLogLevel(level string) SuiteOption {
+func WithLogLevel(level string) Option {
 	return func(s *suiteOptions) {
 		s.addEnvOption(env.WithLoggerLevel(level))
 	}
 }
 
-func WithIpReadFromMemory(name string, records map[string]ipread.MemoryRecord) SuiteOption {
+func WithIpReadFromMemory(name string, records map[string]ipread.MemoryRecord) Option {
 	provider := ipread.ProvideMemoryProvider(name)
 
 	for ip, record := range records {
@@ -116,23 +131,25 @@ func WithIpReadFromMemory(name string, records map[string]ipread.MemoryRecord) S
 	}
 }
 
-func WithModule(name string, module kernel.ModuleFactory) SuiteOption {
+func WithModule(name string, module kernel.ModuleFactory) Option {
 	return func(s *suiteOptions) {
-		if s.appModules == nil {
-			s.appModules = make(map[string]kernel.ModuleFactory)
-		}
-
 		s.appModules[name] = module
 	}
 }
 
-func WithModuleFactory(factory kernel.MultiModuleFactory) SuiteOption {
+func WithModuleFactory(factory kernel.MultiModuleFactory) Option {
 	return func(s *suiteOptions) {
 		s.appFactories = append(s.appFactories, factory)
 	}
 }
 
-func WithoutAutoDetectedComponents(components ...string) SuiteOption {
+func WithSharedEnvironment() Option {
+	return func(s *suiteOptions) {
+		s.envIsShared = true
+	}
+}
+
+func WithoutAutoDetectedComponents(components ...string) Option {
 	return func(s *suiteOptions) {
 		s.addEnvOption(env.WithoutAutoDetectedComponents(components...))
 	}

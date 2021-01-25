@@ -1,7 +1,7 @@
 package env
 
 import (
-	"github.com/applike/gosoline/pkg/application"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/go-redis/redis"
 )
 
@@ -11,9 +11,9 @@ type redisComponent struct {
 	client  *redis.Client
 }
 
-func (c *redisComponent) AppOptions() []application.Option {
-	return []application.Option{
-		application.WithConfigSetting("redis", map[string]interface{}{
+func (c *redisComponent) CfgOptions() []cfg.Option {
+	return []cfg.Option{
+		cfg.WithConfigSetting("redis", map[string]interface{}{
 			"default": map[string]interface{}{
 				"dialer":  "tcp",
 				"address": c.address,

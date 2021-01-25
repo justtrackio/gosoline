@@ -34,7 +34,16 @@ func (f *wiremockFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &wiremockSettings{}
 }
 
-func (f *wiremockFactory) ConfigureContainer(settings interface{}) *containerConfig {
+func (f *wiremockFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+	return componentContainerDescriptions{
+		"main": {
+			containerConfig: f.configureContainer(settings),
+			healthCheck:     f.healthCheck(),
+		},
+	}
+}
+
+func (f *wiremockFactory) configureContainer(settings interface{}) *containerConfig {
 	s := settings.(*wiremockSettings)
 
 	return &containerConfig{
@@ -47,7 +56,7 @@ func (f *wiremockFactory) ConfigureContainer(settings interface{}) *containerCon
 	}
 }
 
-func (f *wiremockFactory) HealthCheck(_ interface{}) ComponentHealthCheck {
+func (f *wiremockFactory) healthCheck() ComponentHealthCheck {
 	return func(container *container) error {
 		binding := container.bindings["8080/tcp"]
 		url := fmt.Sprintf("%s/", f.getUrl(binding))
@@ -62,10 +71,10 @@ func (f *wiremockFactory) HealthCheck(_ interface{}) ComponentHealthCheck {
 	}
 }
 
-func (f *wiremockFactory) Component(_ cfg.Config, logger mon.Logger, container *container, settings interface{}) (Component, error) {
+func (f *wiremockFactory) Component(_ cfg.Config, logger mon.Logger, containers map[string]*container, settings interface{}) (Component, error) {
 	component := &wiremockComponent{
 		logger:  logger,
-		binding: container.bindings["8080/tcp"],
+		binding: containers["main"].bindings["8080/tcp"],
 	}
 
 	s := settings.(*wiremockSettings)
@@ -82,7 +91,7 @@ func (f *wiremockFactory) Component(_ cfg.Config, logger mon.Logger, container *
 		return nil, fmt.Errorf("could not read http mock configuration '%s': %w", filename, err)
 	}
 
-	url := f.getUrl(container.bindings["8080/tcp"])
+	url := f.getUrl(containers["main"].bindings["8080/tcp"])
 	resp, err := http.Post(url+"/mappings/import", "application/json", bytes.NewBuffer(jsonStr))
 
 	if err != nil {

@@ -1,4 +1,4 @@
-package test
+package suite
 
 import (
 	"github.com/applike/gosoline/pkg/test/env"
@@ -12,7 +12,19 @@ type TestingSuite interface {
 	SetEnv(environment *env.Environment)
 	SetT(t *testing.T)
 	T() *testing.T
-	SetupSuite() []SuiteOption
+	SetupSuite() []Option
+}
+
+type TestingSuiteSetupTestAware interface {
+	SetupTest() error
+}
+
+type TestingSuiteTearDownTestAware interface {
+	TearDownTest() error
+}
+
+type TestingSuiteApplicationAware interface {
+	SetupApplication() error
 }
 
 type Suite struct {

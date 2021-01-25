@@ -5,18 +5,24 @@ require (
 	github.com/DataDog/zstd v1.4.4 // indirect
 	github.com/Masterminds/squirrel v1.2.0
 	github.com/Microsoft/go-winio v0.4.14 // indirect
+	github.com/Shopify/toxiproxy v2.1.4+incompatible
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
 	github.com/alicebob/gopher-json v0.0.0-20180125190556-5a6b3ba71ee6 // indirect
 	github.com/alicebob/miniredis v2.4.6+incompatible
 	github.com/apache/thrift v0.13.0 // indirect
 	github.com/aws/aws-lambda-go v1.13.2
 	github.com/aws/aws-sdk-go v1.34.19
+	github.com/aws/aws-sdk-go-v2 v1.3.0
+	github.com/aws/aws-sdk-go-v2/config v1.1.3
+	github.com/aws/aws-sdk-go-v2/credentials v1.1.3
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.2.0
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.2.0
 	github.com/aws/aws-xray-sdk-go v1.1.0
+	github.com/aws/smithy-go v1.2.0
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20190313032549-041949b8d268 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/elastic/go-elasticsearch/v6 v6.8.3-0.20190714143207-256a620be07d
 	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
 	github.com/elliotchance/redismock v1.4.0
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
@@ -81,7 +87,6 @@ require (
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
-	gopkg.in/yaml.v2 v2.2.7 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20191120175047-4206685974f2
 )
 
