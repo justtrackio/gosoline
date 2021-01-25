@@ -2,7 +2,7 @@ package env
 
 import (
 	"github.com/Masterminds/squirrel"
-	"github.com/applike/gosoline/pkg/application"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,9 +14,9 @@ type mysqlComponent struct {
 	binding     containerBinding
 }
 
-func (c *mysqlComponent) AppOptions() []application.Option {
-	return []application.Option{
-		application.WithConfigMap(map[string]interface{}{
+func (c *mysqlComponent) CfgOptions() []cfg.Option {
+	return []cfg.Option{
+		cfg.WithConfigMap(map[string]interface{}{
 			"db": map[string]interface{}{
 				c.name: map[string]interface{}{
 					"uri.host":           c.binding.host,

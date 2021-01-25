@@ -42,15 +42,11 @@ func (f streamOutputFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &streamOutputSettings{}
 }
 
-func (f streamOutputFactory) ConfigureContainer(_ interface{}) *containerConfig {
+func (f streamOutputFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
 	return nil
 }
 
-func (f streamOutputFactory) HealthCheck(_ interface{}) ComponentHealthCheck {
-	return nil
-}
-
-func (f streamOutputFactory) Component(_ cfg.Config, _ mon.Logger, _ *container, settings interface{}) (Component, error) {
+func (f streamOutputFactory) Component(_ cfg.Config, _ mon.Logger, _ map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*streamOutputSettings)
 
 	component := &streamOutputComponent{

@@ -2,7 +2,6 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/stretchr/testify/assert"
@@ -12,12 +11,18 @@ import (
 
 var componentFactories = map[string]componentFactory{}
 
+type componentContainerDescription struct {
+	containerConfig *containerConfig
+	healthCheck     ComponentHealthCheck
+}
+
+type componentContainerDescriptions map[string]*componentContainerDescription
+
 type componentFactory interface {
 	Detect(config cfg.Config, manager *ComponentsConfigManager) error
 	GetSettingsSchema() ComponentBaseSettingsAware
-	ConfigureContainer(settings interface{}) *containerConfig
-	HealthCheck(settings interface{}) ComponentHealthCheck
-	Component(config cfg.Config, logger mon.Logger, container *container, settings interface{}) (Component, error)
+	DescribeContainers(settings interface{}) componentContainerDescriptions
+	Component(config cfg.Config, logger mon.Logger, container map[string]*container, settings interface{}) (Component, error)
 }
 
 type ComponentHealthCheck func(container *container) error
@@ -65,8 +70,12 @@ type Component interface {
 	SetT(t *testing.T)
 }
 
-type ComponentAppOptionAware interface {
-	AppOptions() []application.Option
+type ComponentAddressAware interface {
+	Address() string
+}
+
+type ComponentCfgOptionAware interface {
+	CfgOptions() []cfg.Option
 }
 
 type baseComponent struct {
@@ -83,11 +92,11 @@ func (c *baseComponent) failNow(failureMessage string, msgAndArgs ...interface{}
 }
 
 type componentSkeleton struct {
-	typ             string
-	name            string
-	settings        interface{}
-	containerConfig *containerConfig
-	healthCheck     func(container *container) error
+	typ                   string
+	name                  string
+	settings              interface{}
+	containerDescriptions componentContainerDescriptions
+	containers            map[string]*container
 }
 
 func (s componentSkeleton) id() string {
@@ -110,15 +119,14 @@ func buildComponentSkeletons(manager *ComponentsConfigManager) ([]*componentSkel
 			return nil, fmt.Errorf("there is no component of type %s available", settings.GetType())
 		}
 
-		containerConfig := factory.ConfigureContainer(settings)
-		healthCheck := factory.HealthCheck(settings)
+		containerConfigs := factory.DescribeContainers(settings)
 
 		skeleton := &componentSkeleton{
-			typ:             settings.GetType(),
-			name:            settings.GetName(),
-			settings:        settings,
-			containerConfig: containerConfig,
-			healthCheck:     healthCheck,
+			typ:                   settings.GetType(),
+			name:                  settings.GetName(),
+			settings:              settings,
+			containerDescriptions: containerConfigs,
+			containers:            make(map[string]*container),
 		}
 
 		skeletons = append(skeletons, skeleton)
@@ -127,12 +135,12 @@ func buildComponentSkeletons(manager *ComponentsConfigManager) ([]*componentSkel
 	return skeletons, nil
 }
 
-func buildComponent(config cfg.Config, logger mon.Logger, skeleton *componentSkeleton, container *container) (Component, error) {
+func buildComponent(config cfg.Config, logger mon.Logger, skeleton *componentSkeleton) (Component, error) {
 	factory, ok := componentFactories[skeleton.typ]
 
 	if !ok {
-		return nil, fmt.Errorf("there is no component of type %s available", container.typ)
+		return nil, fmt.Errorf("there is no component of type %s available", skeleton.typ)
 	}
 
-	return factory.Component(config, logger, container, skeleton.settings)
+	return factory.Component(config, logger, skeleton.containers, skeleton.settings)
 }

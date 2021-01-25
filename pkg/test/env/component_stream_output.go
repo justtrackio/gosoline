@@ -2,7 +2,7 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/application"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/stream"
 )
@@ -13,11 +13,11 @@ type streamOutputComponent struct {
 	output *stream.InMemoryOutput
 }
 
-func (s *streamOutputComponent) AppOptions() []application.Option {
+func (s *streamOutputComponent) CfgOptions() []cfg.Option {
 	key := fmt.Sprintf("stream.output.%s.type", s.name)
 
-	return []application.Option{
-		application.WithConfigSetting(key, stream.OutputTypeInMemory),
+	return []cfg.Option{
+		cfg.WithConfigSetting(key, stream.OutputTypeInMemory),
 	}
 }
 

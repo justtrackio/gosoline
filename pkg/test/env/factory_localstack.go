@@ -15,10 +15,11 @@ func init() {
 }
 
 const (
-	ComponentLocalstack  = "localstack"
-	localstackServiceS3  = "s3"
-	localstackServiceSns = "sns"
-	localstackServiceSqs = "sqs"
+	ComponentLocalstack         = "localstack"
+	localstackServiceCloudWatch = "cloudwatch"
+	localstackServiceS3         = "s3"
+	localstackServiceSns        = "sns"
+	localstackServiceSqs        = "sqs"
 )
 
 type localstackSettings struct {
@@ -42,6 +43,10 @@ func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigM
 	}
 
 	services := make([]string, 0)
+
+	if config.IsSet("cloud.aws.cloudwatch") {
+		services = append(services, localstackServiceCloudWatch)
+	}
 
 	if config.IsSet("aws_s3_endpoint") {
 		services = append(services, localstackServiceS3)
@@ -76,13 +81,22 @@ func (f *localstackFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &localstackSettings{}
 }
 
-func (f *localstackFactory) ConfigureContainer(settings interface{}) *containerConfig {
+func (f *localstackFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+	return componentContainerDescriptions{
+		"main": {
+			containerConfig: f.configureContainer(settings),
+			healthCheck:     f.healthCheck(settings),
+		},
+	}
+}
+
+func (f *localstackFactory) configureContainer(settings interface{}) *containerConfig {
 	s := settings.(*localstackSettings)
 	services := strings.Join(s.Services, ",")
 
 	return &containerConfig{
 		Repository: "localstack/localstack",
-		Tag:        "0.11.3",
+		Tag:        "0.12.5",
 		Env: []string{
 			fmt.Sprintf("SERVICES=%s", services),
 			fmt.Sprintf("DEFAULT_REGION=%s", s.Region),
@@ -95,7 +109,7 @@ func (f *localstackFactory) ConfigureContainer(settings interface{}) *containerC
 	}
 }
 
-func (f *localstackFactory) HealthCheck(settings interface{}) ComponentHealthCheck {
+func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthCheck {
 	s := settings.(*localstackSettings)
 
 	return func(container *container) error {
@@ -137,12 +151,13 @@ func (f *localstackFactory) HealthCheck(settings interface{}) ComponentHealthChe
 	}
 }
 
-func (f *localstackFactory) Component(config cfg.Config, logger mon.Logger, container *container, settings interface{}) (Component, error) {
+func (f *localstackFactory) Component(config cfg.Config, logger mon.Logger, containers map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*localstackSettings)
 
 	component := &localstackComponent{
-		binding: container.bindings["4566/tcp"],
-		region:  s.Region,
+		services: s.Services,
+		binding:  containers["main"].bindings["4566/tcp"],
+		region:   s.Region,
 	}
 
 	return component, nil

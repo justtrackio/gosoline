@@ -47,7 +47,16 @@ func (f *redisFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &redisSettings{}
 }
 
-func (f *redisFactory) ConfigureContainer(settings interface{}) *containerConfig {
+func (f *redisFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+	return componentContainerDescriptions{
+		"main": {
+			containerConfig: f.configureContainer(settings),
+			healthCheck:     f.healthCheck(),
+		},
+	}
+}
+
+func (f *redisFactory) configureContainer(settings interface{}) *containerConfig {
 	s := settings.(*redisSettings)
 
 	return &containerConfig{
@@ -60,7 +69,7 @@ func (f *redisFactory) ConfigureContainer(settings interface{}) *containerConfig
 	}
 }
 
-func (f *redisFactory) HealthCheck(_ interface{}) ComponentHealthCheck {
+func (f *redisFactory) healthCheck() ComponentHealthCheck {
 	return func(container *container) error {
 		client := f.client(container)
 		err := client.Ping().Err()
@@ -69,10 +78,10 @@ func (f *redisFactory) HealthCheck(_ interface{}) ComponentHealthCheck {
 	}
 }
 
-func (f *redisFactory) Component(_ cfg.Config, _ mon.Logger, container *container, _ interface{}) (Component, error) {
+func (f *redisFactory) Component(_ cfg.Config, _ mon.Logger, containers map[string]*container, _ interface{}) (Component, error) {
 	component := &redisComponent{
-		address: f.address(container),
-		client:  f.client(container),
+		address: f.address(containers["main"]),
+		client:  f.client(containers["main"]),
 	}
 
 	return component, nil

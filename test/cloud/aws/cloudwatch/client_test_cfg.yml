@@ -1,0 +1,8 @@
+cloud:
+  aws:
+    defaults:
+      region: bla
+
+    cloudwatch:
+      clients:
+        default: ~

@@ -116,7 +116,11 @@ func (m *ComponentsConfigManager) Add(settings interface{}) error {
 	m.lck.Lock()
 	defer m.lck.Unlock()
 
-	componentSettings := settings.(ComponentBaseSettingsAware)
+	componentSettings, ok := settings.(ComponentBaseSettingsAware)
+
+	if !ok {
+		return fmt.Errorf("the component settings has to implement the interface ComponentBaseSettingsAware")
+	}
 
 	if m.Has(componentSettings.GetName(), componentSettings.GetType()) {
 		return nil

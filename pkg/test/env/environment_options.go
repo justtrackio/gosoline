@@ -8,6 +8,7 @@ import (
 )
 
 type Option func(env *Environment)
+type ComponentOption func(componentConfigManger *ComponentsConfigManager) error
 type ConfigOption func(config cfg.GosoConf) error
 type LoggerOption func(config cfg.GosoConf, logger mon.GosoLog) error
 
@@ -15,6 +16,14 @@ type loggerSettings struct {
 	Level           string `cfg:"level" default:"info" validate:"required"`
 	Format          string `cfg:"format" default:"console" validate:"required"`
 	TimestampFormat string `cfg:"timestamp_format" default:"15:04:05.000" validate:"required"`
+}
+
+func WithComponent(settings ComponentBaseSettingsAware) Option {
+	return func(env *Environment) {
+		env.addComponentOption(func(componentConfigManger *ComponentsConfigManager) error {
+			return componentConfigManger.Add(settings)
+		})
+	}
 }
 
 func WithConfigFile(file string) Option {

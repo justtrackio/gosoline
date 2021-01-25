@@ -69,7 +69,16 @@ func (f mysqlFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &mysqlSettings{}
 }
 
-func (f mysqlFactory) ConfigureContainer(settings interface{}) *containerConfig {
+func (f mysqlFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+	return componentContainerDescriptions{
+		"main": {
+			containerConfig: f.configureContainer(settings),
+			healthCheck:     f.healthCheck(settings),
+		},
+	}
+}
+
+func (f mysqlFactory) configureContainer(settings interface{}) *containerConfig {
 	s := settings.(*mysqlSettings)
 
 	env := []string{
@@ -98,7 +107,7 @@ func (f mysqlFactory) ConfigureContainer(settings interface{}) *containerConfig 
 	}
 }
 
-func (f mysqlFactory) HealthCheck(settings interface{}) ComponentHealthCheck {
+func (f mysqlFactory) healthCheck(settings interface{}) ComponentHealthCheck {
 	return func(container *container) error {
 		s := settings.(*mysqlSettings)
 		binding := container.bindings["3306/tcp"]
@@ -112,9 +121,9 @@ func (f mysqlFactory) HealthCheck(settings interface{}) ComponentHealthCheck {
 	}
 }
 
-func (f mysqlFactory) Component(_ cfg.Config, _ mon.Logger, container *container, settings interface{}) (Component, error) {
+func (f mysqlFactory) Component(_ cfg.Config, _ mon.Logger, containers map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*mysqlSettings)
-	binding := container.bindings["3306/tcp"]
+	binding := containers["main"].bindings["3306/tcp"]
 	client, err := f.connection(s, binding)
 
 	if err != nil {

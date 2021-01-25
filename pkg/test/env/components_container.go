@@ -2,7 +2,7 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/application"
+	"github.com/applike/gosoline/pkg/cfg"
 )
 
 type ComponentsContainer struct {
@@ -47,18 +47,18 @@ func (c *ComponentsContainer) GetAll() []Component {
 	return all
 }
 
-func (c *ComponentsContainer) GetApplicationOptions() []application.Option {
+func (c *ComponentsContainer) GetCfgOptions() []cfg.Option {
 	var ok bool
-	var appOptionAware ComponentAppOptionAware
-	var appOptions = make([]application.Option, 0)
+	var cfgOptionAware ComponentCfgOptionAware
+	var cfgOptions = make([]cfg.Option, 0)
 
 	for _, component := range c.GetAll() {
-		if appOptionAware, ok = component.(ComponentAppOptionAware); !ok {
+		if cfgOptionAware, ok = component.(ComponentCfgOptionAware); !ok {
 			continue
 		}
 
-		appOptions = append(appOptions, appOptionAware.AppOptions()...)
+		cfgOptions = append(cfgOptions, cfgOptionAware.CfgOptions()...)
 	}
 
-	return appOptions
+	return cfgOptions
 }

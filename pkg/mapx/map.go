@@ -152,6 +152,11 @@ func (m *MapX) access(current interface{}, selector string, value interface{}, m
 			curMsn[thisSel] = &MapXNode{value: array}
 		}
 
+		// initialize empty value
+		if curMsn[thisSel].value == nil && len(selSegs) > 1 {
+			curMsn[thisSel].value = map[string]*MapXNode{}
+		}
+
 		current = curMsn[thisSel].value
 	default:
 		current = nil
