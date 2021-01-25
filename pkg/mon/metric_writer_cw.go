@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
+	"github.com/hashicorp/go-multierror"
 	"github.com/jonboulle/clockwork"
 	"sort"
 	"strings"
@@ -174,11 +175,21 @@ func (w *cwWriter) buildMetricData(batch MetricData) ([]*cloudwatch.MetricDatum,
 
 		dimensions := make([]*cloudwatch.Dimension, 0)
 
+		var err error
 		for n, v := range data.Dimensions {
+			if n == "" || v == "" {
+				err = multierror.Append(err, fmt.Errorf("invalid dimension '%s' = '%s' for metric %s, this will later be rejected", n, v, data.MetricName))
+			}
+
 			dimensions = append(dimensions, &cloudwatch.Dimension{
 				Name:  aws.String(n),
 				Value: aws.String(v),
 			})
+		}
+
+		if err != nil {
+			w.logger.Error(err, "invalid metric dimension")
+			continue
 		}
 
 		datum := &cloudwatch.MetricDatum{
