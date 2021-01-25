@@ -32,15 +32,13 @@ type SubscriberModel struct {
 type SubscriberCallback struct {
 	logger       mon.Logger
 	metric       mon.MetricWriter
-	application  string
 	transformers ModelTransformers
 	outputs      Outputs
 }
 
 func NewSubscriberCallbackFactory(transformers ModelTransformers, outputs Outputs) stream.ConsumerCallbackFactory {
 	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (stream.ConsumerCallback, error) {
-		application := config.GetString("app_name")
-		defaultMetrics := getSubscriberCallbackDefaultMetrics(application, transformers)
+		defaultMetrics := getSubscriberCallbackDefaultMetrics(transformers)
 		metricWriter := mon.NewMetricDaemonWriter(defaultMetrics...)
 
 		callback := &SubscriberCallback{
@@ -156,15 +154,14 @@ func (s *SubscriberCallback) writeMetric(err error, spec *ModelSpecification) {
 		Timestamp:  time.Now(),
 		MetricName: metricName,
 		Dimensions: map[string]string{
-			"Application": s.application,
-			"ModelId":     spec.ModelId,
+			"ModelId": spec.ModelId,
 		},
 		Unit:  mon.UnitCount,
 		Value: 1.0,
 	})
 }
 
-func getSubscriberCallbackDefaultMetrics(application string, transformers ModelTransformers) []*mon.MetricDatum {
+func getSubscriberCallbackDefaultMetrics(transformers ModelTransformers) []*mon.MetricDatum {
 	defaults := make([]*mon.MetricDatum, 0)
 
 	for modelId := range transformers {
@@ -172,8 +169,7 @@ func getSubscriberCallbackDefaultMetrics(application string, transformers ModelT
 			Priority:   mon.PriorityHigh,
 			MetricName: MetricNameSuccess,
 			Dimensions: map[string]string{
-				"Application": application,
-				"ModelId":     modelId,
+				"ModelId": modelId,
 			},
 			Unit:  mon.UnitCount,
 			Value: 0.0,
@@ -183,8 +179,7 @@ func getSubscriberCallbackDefaultMetrics(application string, transformers ModelT
 			Priority:   mon.PriorityHigh,
 			MetricName: MetricNameFailure,
 			Dimensions: map[string]string{
-				"Application": application,
-				"ModelId":     modelId,
+				"ModelId": modelId,
 			},
 			Unit:  mon.UnitCount,
 			Value: 0.0,
