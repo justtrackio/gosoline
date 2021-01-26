@@ -42,7 +42,7 @@ func (c ApiServerTestCase) request(client *resty.Client) (*resty.Response, error
 
 type TestingSuiteApiServer interface {
 	TestingSuite
-	SetupApiDefinitions() apiserver.Define
+	SetupApiDefinitions() apiserver.Definer
 	SetupTestCases() []ApiServerTestCase
 	TestApiServer(app AppUnderTest, server *apiserver.ApiServer, testCases []ApiServerTestCase)
 }

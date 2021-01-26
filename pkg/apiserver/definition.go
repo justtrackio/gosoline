@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
@@ -8,7 +9,7 @@ import (
 	"strings"
 )
 
-type Define func(config cfg.Config, logger mon.Logger, definitions *Definitions)
+type Definer func(ctx context.Context, config cfg.Config, logger mon.Logger) (*Definitions, error)
 
 type Definition struct {
 	group        *Definitions
