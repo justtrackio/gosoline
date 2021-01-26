@@ -30,10 +30,10 @@ type ApiServer struct {
 	logger       mon.Logger
 	server       *http.Server
 	listener     net.Listener
-	defineRouter Define
+	defineRouter Definer
 }
 
-func New(definer Define) kernel.ModuleFactory {
+func New(definer Definer) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
 		settings := &Settings{
 			Port:         config.GetString("api_port"),
@@ -54,8 +54,10 @@ func New(definer Define) kernel.ModuleFactory {
 			c.JSON(http.StatusOK, gin.H{})
 		})
 
-		definitions := &Definitions{}
-		definer(config, logger, definitions)
+		definitions, err := definer(ctx, config, logger)
+		if err != nil {
+			return nil, fmt.Errorf("could not define routes: %w", err)
+		}
 
 		router.Use(RecoveryWithSentry(logger))
 		router.Use(LoggingMiddleware(logger))
