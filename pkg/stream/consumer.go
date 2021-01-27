@@ -85,63 +85,39 @@ func (c *Consumer) run(ctx context.Context) error {
 }
 
 func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message) {
-	batch := make([]*Message, 0)
 	var err error
+	var start = c.clock.Now()
+	var batch = make([]*Message, 0)
 
-	start := c.clock.Now()
-
-	ctx, _, err = c.encoder.Decode(ctx, msg, &batch)
-
-	if err != nil {
+	if ctx, _, err = c.encoder.Decode(ctx, msg, &batch); err != nil {
 		c.logger.WithContext(ctx).Error(err, "an error occurred during disaggregation of the message")
 		return
 	}
+
+	c.Acknowledge(ctx, msg)
 
 	for _, m := range batch {
 		c.process(ctx, m)
 	}
 
-	c.Acknowledge(ctx, msg)
-
 	duration := c.clock.Now().Sub(start)
-
 	atomic.AddInt32(&c.processed, int32(len(batch)))
-	c.metricWriter.Write(mon.MetricData{
-		&mon.MetricDatum{
-			MetricName: metricNameConsumerProcessedCount,
-			Value:      float64(len(batch)),
-		},
-		&mon.MetricDatum{
-			MetricName: metricNameConsumerDuration,
-			Value:      float64(duration.Milliseconds()),
-		},
-	})
+
+	c.writeMetrics(duration, len(batch))
 }
 
 func (c *Consumer) processSingleMessage(ctx context.Context, msg *Message) {
 	start := c.clock.Now()
-
 	ack := c.process(ctx, msg)
 
-	if !ack {
-		return
+	if ack {
+		c.Acknowledge(ctx, msg)
 	}
 
-	c.Acknowledge(ctx, msg)
-
 	duration := c.clock.Now().Sub(start)
-
 	atomic.AddInt32(&c.processed, 1)
-	c.metricWriter.Write(mon.MetricData{
-		&mon.MetricDatum{
-			MetricName: metricNameConsumerProcessedCount,
-			Value:      1.0,
-		},
-		&mon.MetricDatum{
-			MetricName: metricNameConsumerDuration,
-			Value:      float64(duration.Milliseconds()),
-		},
-	})
+
+	c.writeMetrics(duration, 1)
 }
 
 func (c *Consumer) process(ctx context.Context, msg *Message) bool {

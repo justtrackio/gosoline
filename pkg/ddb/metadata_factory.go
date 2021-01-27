@@ -16,7 +16,7 @@ func NewMetadataFactory() *metadataFactory {
 }
 
 func (f *metadataFactory) GetMetadata(settings *Settings) (*Metadata, error) {
-	tableName := namingStrategy(settings.ModelId)
+	tableName := TableName(settings)
 	attributes, err := f.getAttributes(settings)
 
 	if err != nil {

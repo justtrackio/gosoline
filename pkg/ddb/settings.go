@@ -9,13 +9,14 @@ import (
 const defaultMaxWaitSeconds = 60
 
 type Settings struct {
-	ModelId    mdl.ModelId
-	AutoCreate bool
-	Client     cloud.ClientSettings
-	Backoff    exec.BackoffSettings
-	Main       MainSettings
-	Local      []LocalSettings
-	Global     []GlobalSettings
+	ModelId        mdl.ModelId
+	NamingStrategy NamingFactory
+	AutoCreate     bool
+	Client         cloud.ClientSettings
+	Backoff        exec.BackoffSettings
+	Main           MainSettings
+	Local          []LocalSettings
+	Global         []GlobalSettings
 }
 
 type MainSettings struct {

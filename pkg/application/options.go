@@ -132,6 +132,13 @@ func WithConfigSetting(key string, settings interface{}) Option {
 	}
 }
 
+func WithConsumerBacklogMetrics(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
+		kernel.AddFactory(stream.BacklogMetricWriterFactory)
+		return nil
+	})
+}
+
 func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 	return func(app *App) {
 		app.addSetupOption(func(config cfg.GosoConf, logger mon.GosoLog) error {

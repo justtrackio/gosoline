@@ -185,18 +185,9 @@ func (c *BatchConsumer) consumeBatch(kernelCtx context.Context, batch []*Message
 	c.AcknowledgeBatch(batchCtx, ackMessages)
 
 	duration := c.clock.Now().Sub(start)
-
 	atomic.AddInt32(&c.processed, int32(len(ackMessages)))
-	c.metricWriter.Write(mon.MetricData{
-		&mon.MetricDatum{
-			MetricName: metricNameConsumerProcessedCount,
-			Value:      float64(len(batch)),
-		},
-		&mon.MetricDatum{
-			MetricName: metricNameConsumerDuration,
-			Value:      float64(duration.Milliseconds()),
-		},
-	})
+
+	c.writeMetrics(duration, len(batch))
 }
 
 func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*Message) ([]*Message, []interface{}, []map[string]interface{}, []tracing.Span) {

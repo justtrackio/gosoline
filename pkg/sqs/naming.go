@@ -25,10 +25,16 @@ func WithDeadLetterNamingStrategy(strategy NamingFactory) {
 	deadLetterNamingStrategy = strategy
 }
 
-func generateName(s *Settings) string {
-	name := namingStrategy(s.AppId, s.QueueId)
+type QueueNameSettings interface {
+	GetAppid() cfg.AppId
+	GetQueueId() string
+	IsFifoEnabled() bool
+}
 
-	if s.Fifo.Enabled {
+func QueueName(settings QueueNameSettings) string {
+	name := namingStrategy(settings.GetAppid(), settings.GetQueueId())
+
+	if settings.IsFifoEnabled() {
 		name = name + fifoSuffix
 	}
 
