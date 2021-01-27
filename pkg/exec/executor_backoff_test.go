@@ -31,7 +31,7 @@ func (s *ExecutorBackoffTestSuite) SetupTest() {
 			CancelDelay:     0,
 			InitialInterval: time.Millisecond,
 			MaxInterval:     time.Millisecond * 2,
-			MaxElapsedTime:  time.Millisecond * 20,
+			MaxElapsedTime:  time.Millisecond * 25,
 		}
 
 		logger := mocks.NewLoggerMockedAll()

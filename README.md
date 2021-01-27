@@ -21,4 +21,3 @@ come in the next weeks:
 * cloud: bundle aws config
 * add error returns to constructors
 * proper default value merging
-* utilization metrics

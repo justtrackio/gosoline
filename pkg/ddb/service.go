@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -39,8 +38,8 @@ func NewServiceWithInterfaces(logger mon.Logger, client dynamodbiface.DynamoDBAP
 	}
 }
 
-func (s *Service) DescribeTable(model mdl.ModelId) (*TableDescription, error) {
-	tableName := namingStrategy(model)
+func (s *Service) DescribeTable(settings *Settings) (*TableDescription, error) {
+	tableName := TableName(settings)
 	input := &dynamodb.DescribeTableInput{
 		TableName: aws.String(tableName),
 	}
@@ -60,7 +59,7 @@ func (s *Service) DescribeTable(model mdl.ModelId) (*TableDescription, error) {
 }
 
 func (s *Service) CreateTable(settings *Settings) (*Metadata, error) {
-	tableName := namingStrategy(settings.ModelId)
+	tableName := TableName(settings)
 	metadata, err := s.metadataFactory.GetMetadata(settings)
 
 	if err != nil {

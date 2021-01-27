@@ -59,7 +59,7 @@ func (s *service) CreateQueue(settings *Settings) (*Properties, error) {
 	s.lck.Lock()
 	defer s.lck.Unlock()
 
-	name := generateName(settings)
+	name := QueueName(settings)
 	exists, err := s.QueueExists(name)
 
 	if err != nil {

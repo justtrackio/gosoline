@@ -80,8 +80,7 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 	settings.AutoCreate = config.GetBool("aws_dynamoDb_autoCreate")
 	settings.Client.MaxRetries = config.GetInt("aws_sdk_retries")
 
-	tableName := namingStrategy(settings.ModelId)
-
+	tableName := TableName(settings)
 	tracer := tracing.ProviderTracer(config, logger)
 	client := ProvideClient(config, logger, settings)
 
@@ -119,7 +118,7 @@ func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodb
 	metadata, err := metadataFactory.GetMetadata(settings)
 
 	if err != nil {
-		name := namingStrategy(settings.ModelId)
+		name := TableName(settings)
 		logger.Fatalf(err, "could not factor metadata for ddb table %s", name)
 	}
 

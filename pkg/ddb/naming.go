@@ -15,6 +15,12 @@ func WithNamingStrategy(strategy NamingFactory) {
 	namingStrategy = strategy
 }
 
-func TableName(modelId mdl.ModelId) string {
-	return namingStrategy(modelId)
+func TableName(settings *Settings) string {
+	tableName := namingStrategy(settings.ModelId)
+
+	if settings.NamingStrategy != nil {
+		tableName = settings.NamingStrategy(settings.ModelId)
+	}
+
+	return tableName
 }

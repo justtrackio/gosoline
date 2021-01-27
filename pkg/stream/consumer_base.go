@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	metricNameConsumerProcessedCount = "ConsumerProcessedCount"
-	metricNameConsumerDuration       = "ConsumerDuration"
+	metricNameConsumerBacklog        = "Backlog"
+	metricNameConsumerDuration       = "Duration"
+	metricNameConsumerProcessedCount = "ProcessedCount"
+	metricNameConsumerRunnerCount    = "RunnerCount"
 )
 
 //go:generate mockery -name=RunnableCallback
@@ -29,10 +31,11 @@ type BaseConsumerCallback interface {
 }
 
 type ConsumerSettings struct {
-	Input       string        `cfg:"input" default:"consumer" validate:"required"`
-	RunnerCount int           `cfg:"runner_count" default:"10" validate:"min=1"`
-	Encoding    string        `cfg:"encoding" default:"application/json"`
-	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
+	Input         string                      `cfg:"input" default:"consumer" validate:"required"`
+	RunnerCount   int                         `cfg:"runner_count" default:"10" validate:"min=1"`
+	Encoding      string                      `cfg:"encoding" default:"application/json"`
+	IdleTimeout   time.Duration               `cfg:"idle_timeout" default:"10s"`
+	BacklogMetric BacklogMetricWriterSettings `cfg:"backlog_metric"`
 }
 
 type baseConsumer struct {
@@ -64,7 +67,7 @@ func NewBaseConsumer(config cfg.Config, logger mon.Logger, name string, consumer
 	appId := cfg.GetAppIdFromConfig(config)
 	tracer := tracing.ProviderTracer(config, logger)
 
-	defaultMetrics := getConsumerDefaultMetrics()
+	defaultMetrics := getConsumerDefaultMetrics(name, settings.RunnerCount)
 	metricWriter := mon.NewMetricDaemonWriter(defaultMetrics...)
 
 	input := NewConfigurableInput(config, logger, settings.Input)
@@ -191,23 +194,60 @@ func (c *baseConsumer) recover() {
 	c.logger.Error(err, err.Error())
 }
 
-func getConsumerDefaultMetrics() mon.MetricData {
+func (c *baseConsumer) writeMetrics(duration time.Duration, processedCount int) {
+	c.metricWriter.Write(mon.MetricData{
+		&mon.MetricDatum{
+			Priority:   mon.PriorityHigh,
+			MetricName: metricNameConsumerDuration,
+			Dimensions: map[string]string{
+				"Consumer": c.name,
+			},
+			Unit:  mon.UnitMillisecondsAverage,
+			Value: float64(duration.Milliseconds()),
+		},
+		&mon.MetricDatum{
+			MetricName: metricNameConsumerProcessedCount,
+			Dimensions: map[string]string{
+				"Consumer": c.name,
+			},
+			Value: float64(processedCount),
+		},
+	})
+}
+
+func getConsumerDefaultMetrics(name string, runnerCount int) mon.MetricData {
 	return mon.MetricData{
 		{
 			Priority:   mon.PriorityHigh,
 			MetricName: metricNameConsumerProcessedCount,
-			Unit:       mon.UnitCount,
-			Value:      0.0,
-		},
-		{
-			Priority:   mon.PriorityHigh,
-			MetricName: metricNameConsumerDuration,
-			Unit:       mon.UnitMillisecondsAverage,
-			Value:      0.0,
+			Dimensions: map[string]string{
+				"Consumer": name,
+			},
+			Unit:  mon.UnitCount,
+			Value: 0.0,
 		},
 	}
 }
 
 func ConfigurableConsumerKey(name string) string {
 	return fmt.Sprintf("stream.consumer.%s", name)
+}
+
+func readConsumerSettings(config cfg.Config, name string) *ConsumerSettings {
+	settings := &ConsumerSettings{}
+	key := ConfigurableConsumerKey(name)
+	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultForKey("encoding", defaultMessageBodyEncoding))
+
+	return settings
+}
+
+func readAllConsumerSettings(config cfg.Config) map[string]*ConsumerSettings {
+	consumerSettings := make(map[string]*ConsumerSettings)
+	producerMap := config.GetStringMap("stream.consumer", map[string]interface{}{})
+
+	for name := range producerMap {
+		consumerSettings[name] = readConsumerSettings(config, name)
+	}
+
+	return consumerSettings
 }

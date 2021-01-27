@@ -26,6 +26,18 @@ type SqsInputSettings struct {
 	Unmarshaller        string               `cfg:"unmarshaller" default:"msg"`
 }
 
+func (s SqsInputSettings) GetAppid() cfg.AppId {
+	return s.AppId
+}
+
+func (s SqsInputSettings) GetQueueId() string {
+	return s.QueueId
+}
+
+func (s SqsInputSettings) IsFifoEnabled() bool {
+	return s.Fifo.Enabled
+}
+
 type sqsInput struct {
 	logger      mon.Logger
 	queue       sqs.Queue

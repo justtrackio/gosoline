@@ -70,6 +70,18 @@ type Settings struct {
 	Backoff           exec.BackoffSettings
 }
 
+func (s Settings) GetAppid() cfg.AppId {
+	return s.AppId
+}
+
+func (s Settings) GetQueueId() string {
+	return s.QueueId
+}
+
+func (s Settings) IsFifoEnabled() bool {
+	return s.Fifo.Enabled
+}
+
 type queue struct {
 	logger     mon.Logger
 	client     sqsiface.SQSAPI
@@ -79,7 +91,7 @@ type queue struct {
 
 func New(config cfg.Config, logger mon.Logger, settings *Settings) Queue {
 	settings.PadFromConfig(config)
-	name := generateName(settings)
+	name := QueueName(settings)
 
 	client := ProvideClient(config, logger, settings)
 	srv := NewService(config, logger)

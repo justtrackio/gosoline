@@ -33,13 +33,15 @@ func (a *App) addSetupOption(opt SetupOption) {
 
 func Default(options ...Option) kernel.Kernel {
 	defaults := []Option{
-		WithUTCClock(true),
+		WithApiHealthCheck,
 		WithConfigErrorHandlers(defaultErrorHandler),
 		WithConfigFile("./config.dist.yml", "yml"),
 		WithConfigFileFlag,
 		WithConfigEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
 		WithConfigSanitizers(cfg.TimeSanitizer),
 		WithConfigServer,
+		WithConsumerBacklogMetrics,
+		WithKernelSettingsFromConfig,
 		WithLoggerFormat(mon.FormatGelfFields),
 		WithLoggerApplicationTag,
 		WithLoggerTagsFromConfig,
@@ -48,11 +50,10 @@ func Default(options ...Option) kernel.Kernel {
 		WithLoggerContextFieldsResolver(mon.ContextLoggerFieldsResolver),
 		WithLoggerMetricHook,
 		WithLoggerSentryHook(mon.SentryExtraConfigProvider, mon.SentryExtraEcsMetadataProvider),
-		WithKernelSettingsFromConfig,
-		WithApiHealthCheck,
 		WithMetricDaemon,
 		WithProducerDaemon,
 		WithTracing,
+		WithUTCClock(true),
 	}
 
 	options = append(defaults, options...)

@@ -48,8 +48,7 @@ func ProvideConfigurableInput(config cfg.Config, logger mon.Logger, name string)
 }
 
 func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) Input {
-	key := fmt.Sprintf("stream.input.%s.type", name)
-	t := config.GetString(key)
+	t := readInputType(config, name)
 
 	factory, ok := inputFactories[t]
 
@@ -203,7 +202,7 @@ type sqsInputConfiguration struct {
 	Unmarshaller        string               `cfg:"unmarshaller" default:"msg"`
 }
 
-func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
+func readSqsInputSettings(config cfg.Config, name string) SqsInputSettings {
 	key := ConfigurableInputKey(name)
 
 	configuration := sqsInputConfiguration{}
@@ -226,9 +225,24 @@ func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (I
 		Unmarshaller:        configuration.Unmarshaller,
 	}
 
+	settings.PadFromConfig(config)
+
+	return settings
+}
+
+func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
+	settings := readSqsInputSettings(config, name)
+
 	return NewSqsInput(config, logger, settings), nil
 }
 
 func ConfigurableInputKey(name string) string {
 	return fmt.Sprintf("stream.input.%s", name)
+}
+
+func readInputType(config cfg.Config, name string) string {
+	key := fmt.Sprintf("%s.type", ConfigurableInputKey(name))
+	t := config.GetString(key)
+
+	return t
 }

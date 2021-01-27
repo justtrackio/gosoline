@@ -1,4 +1,6 @@
 locals {
+  table_name = length(var.table_name) > 0 ? var.table_name : "${var.project}-${var.environment}-${var.family}-${var.application}-${var.model}"
+
   attributes = concat(
     [
       {
@@ -43,7 +45,7 @@ resource "null_resource" "local_secondary_index_names" {
 
 resource "aws_dynamodb_table" "default" {
   count            = var.enabled ? 1 : 0
-  name             = "${var.project}-${var.environment}-${var.family}-${var.application}-${var.model}"
+  name             = local.table_name
   billing_mode     = var.billing_mode
   read_capacity    = var.autoscale_min_read_capacity
   write_capacity   = var.autoscale_min_write_capacity
