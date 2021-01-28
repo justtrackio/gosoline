@@ -15,7 +15,7 @@ type dynamoDbFixtureWriter struct {
 	purger  *dynamodbPurger
 }
 
-func DynamoDbFixtureWriterFactory(settings *ddb.Settings) FixtureWriterFactory {
+func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOption) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
 		settings := &ddb.Settings{
 			ModelId:    settings.ModelId,
@@ -26,6 +26,10 @@ func DynamoDbFixtureWriterFactory(settings *ddb.Settings) FixtureWriterFactory {
 				WriteCapacityUnits: 1,
 			},
 			Global: settings.Global,
+		}
+
+		for _, opt := range options {
+			opt(settings)
 		}
 
 		factory := func() ddb.Repository {
