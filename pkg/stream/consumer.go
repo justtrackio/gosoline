@@ -90,7 +90,7 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message) {
 	var batch = make([]*Message, 0)
 
 	if ctx, _, err = c.encoder.Decode(ctx, msg, &batch); err != nil {
-		c.logger.WithContext(ctx).Error(err, "an error occurred during disaggregation of the message")
+		c.handleError(ctx, err, "an error occurred during disaggregation of the message")
 		return
 	}
 
@@ -123,31 +123,27 @@ func (c *Consumer) processSingleMessage(ctx context.Context, msg *Message) {
 func (c *Consumer) process(ctx context.Context, msg *Message) bool {
 	defer c.recover()
 
-	model := c.callback.GetModel(msg.Attributes)
+	var err error
+	var ack bool
+	var model interface{}
+	var attributes map[string]interface{}
 
-	if model == nil {
+	if model = c.callback.GetModel(msg.Attributes); model == nil {
 		err := fmt.Errorf("can not get model for message attributes %v", msg.Attributes)
-		c.logger.Error(err, "an error occurred during the consume operation")
+		c.handleError(ctx, err, "an error occurred during the consume operation")
 		return false
 	}
 
-	ctx, attributes, err := c.encoder.Decode(ctx, msg, model)
-
-	if err != nil {
-		c.logger.WithContext(ctx).Error(err, "an error occurred during the consume operation")
+	if ctx, attributes, err = c.encoder.Decode(ctx, msg, model); err != nil {
+		c.handleError(ctx, err, "an error occurred during the consume operation")
 		return false
 	}
 
 	ctx, span := c.tracer.StartSpanFromContext(ctx, c.id)
 	defer span.Finish()
 
-	ack, err := c.callback.Consume(ctx, model, attributes)
-
-	if err != nil {
-		// one could think that we should just initialize this logger once, but the ctx used
-		// in the other error case might be in fact different and if we use the wrong context,
-		// we miss a trace id in the logs later on
-		c.logger.WithContext(ctx).Error(err, "an error occurred during the consume operation")
+	if ack, err = c.callback.Consume(ctx, model, attributes); err != nil {
+		c.handleError(ctx, err, "an error occurred during the consume operation")
 	}
 
 	return ack
