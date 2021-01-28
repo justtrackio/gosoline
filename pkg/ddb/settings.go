@@ -19,6 +19,12 @@ type Settings struct {
 	Global         []GlobalSettings
 }
 
+func (s *Settings) WithModelId(modelId mdl.ModelId) *Settings {
+	s.ModelId = modelId
+
+	return s
+}
+
 type MainSettings struct {
 	Model              interface{}
 	StreamView         string

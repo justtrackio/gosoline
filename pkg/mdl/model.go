@@ -39,6 +39,12 @@ func (m *ModelId) PadFromConfig(config ConfigProvider) {
 	}
 }
 
+func (m ModelId) WithApplication(application string) ModelId {
+	m.Application = application
+
+	return m
+}
+
 func ModelIdFromString(str string) (ModelId, error) {
 	parts := strings.Split(str, ".")
 
