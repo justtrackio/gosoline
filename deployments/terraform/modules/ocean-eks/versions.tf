@@ -4,7 +4,7 @@ terraform {
       source = "hashicorp/aws"
     }
     spotinst = {
-      source = "terraform-providers/spotinst"
+      source = "spotinst/spotinst"
     }
   }
   required_version = ">= 0.13"
