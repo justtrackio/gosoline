@@ -37,3 +37,9 @@ variable "period" {
   default     = 300
   description = "The period in seconds over which the specified statistic is applied"
 }
+
+variable "consumer" {
+  type        = string
+  default     = null
+  description = "Name of the consumer"
+}

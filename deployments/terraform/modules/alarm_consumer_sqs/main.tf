@@ -27,13 +27,13 @@ resource "aws_cloudwatch_metric_alarm" "success-rate" {
     return_data = false
 
     metric {
+      metric_name = "Error"
       dimensions = {
-        "reason" = "Error"
+        Consumer = var.consumer
       }
-      metric_name = "error"
-      namespace   = "${var.project}/${var.environment}/${var.family}/${var.application}"
-      period      = var.period
-      stat        = "Sum"
+      namespace = "${var.project}/${var.environment}/${var.family}/${var.application}"
+      period    = var.period
+      stat      = "Sum"
     }
   }
 

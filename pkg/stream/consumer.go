@@ -91,6 +91,7 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message) {
 
 	if ctx, _, err = c.encoder.Decode(ctx, msg, &batch); err != nil {
 		c.logger.WithContext(ctx).Error(err, "an error occurred during disaggregation of the message")
+		c.writeErrorMetric(float64(len(batch)))
 		return
 	}
 
@@ -120,8 +121,14 @@ func (c *Consumer) processSingleMessage(ctx context.Context, msg *Message) {
 	c.writeMetrics(duration, 1)
 }
 
-func (c *Consumer) process(ctx context.Context, msg *Message) bool {
+func (c *Consumer) process(ctx context.Context, msg *Message) (ok bool) {
 	defer c.recover()
+
+	defer func() {
+		if !ok {
+			c.writeErrorMetric(1.0)
+		}
+	}()
 
 	model := c.callback.GetModel(msg.Attributes)
 

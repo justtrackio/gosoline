@@ -17,6 +17,7 @@ import (
 const (
 	metricNameConsumerTraffic        = "Traffic"
 	metricNameConsumerDuration       = "Duration"
+	metricNameConsumerError          = "Error"
 	metricNameConsumerProcessedCount = "ProcessedCount"
 	metricNameConsumerRunnerCount    = "RunnerCount"
 )
@@ -215,11 +216,32 @@ func (c *baseConsumer) writeMetrics(duration time.Duration, processedCount int) 
 	})
 }
 
+func (c *Consumer) writeErrorMetric(value float64) {
+	c.metricWriter.Write(mon.MetricData{
+		&mon.MetricDatum{
+			MetricName: metricNameConsumerError,
+			Dimensions: map[string]string{
+				"Consumer": c.name,
+			},
+			Value: value,
+		},
+	})
+}
+
 func getConsumerDefaultMetrics(name string, runnerCount int) mon.MetricData {
 	return mon.MetricData{
 		{
 			Priority:   mon.PriorityHigh,
 			MetricName: metricNameConsumerProcessedCount,
+			Dimensions: map[string]string{
+				"Consumer": name,
+			},
+			Unit:  mon.UnitCount,
+			Value: 0.0,
+		},
+		{
+			Priority:   mon.PriorityHigh,
+			MetricName: metricNameConsumerError,
 			Dimensions: map[string]string{
 				"Consumer": name,
 			},
