@@ -175,7 +175,7 @@ func NewRecordsFailedError(total []*kinesis.PutRecordsRequestEntry, failed []*ki
 }
 
 func (r RecordsFailedError) Error() string {
-	return fmt.Sprintf("%d out of %d  records failed", len(r.failed), len(r.total))
+	return fmt.Sprintf("%d out of %d records failed", len(r.failed), len(r.total))
 }
 
 func IsRecordsFailedError(err error) bool {
