@@ -195,6 +195,20 @@ func (c *baseConsumer) recover() {
 	c.logger.Error(err, err.Error())
 }
 
+func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
+	c.logger.WithContext(ctx).Error(err, "an error occurred during disaggregation of the message")
+
+	c.metricWriter.Write(mon.MetricData{
+		&mon.MetricDatum{
+			MetricName: metricNameConsumerError,
+			Dimensions: map[string]string{
+				"Consumer": c.name,
+			},
+			Value: 1.0,
+		},
+	})
+}
+
 func (c *baseConsumer) writeMetrics(duration time.Duration, processedCount int) {
 	c.metricWriter.Write(mon.MetricData{
 		&mon.MetricDatum{
@@ -212,18 +226,6 @@ func (c *baseConsumer) writeMetrics(duration time.Duration, processedCount int) 
 				"Consumer": c.name,
 			},
 			Value: float64(processedCount),
-		},
-	})
-}
-
-func (c *Consumer) writeErrorMetric(value float64) {
-	c.metricWriter.Write(mon.MetricData{
-		&mon.MetricDatum{
-			MetricName: metricNameConsumerError,
-			Dimensions: map[string]string{
-				"Consumer": c.name,
-			},
-			Value: value,
 		},
 	})
 }
