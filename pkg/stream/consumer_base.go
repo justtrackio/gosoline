@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	metricNameConsumerBacklog        = "Backlog"
+	metricNameConsumerTraffic        = "Traffic"
 	metricNameConsumerDuration       = "Duration"
 	metricNameConsumerProcessedCount = "ProcessedCount"
 	metricNameConsumerRunnerCount    = "RunnerCount"
@@ -35,7 +35,7 @@ type ConsumerSettings struct {
 	RunnerCount   int                         `cfg:"runner_count" default:"10" validate:"min=1"`
 	Encoding      string                      `cfg:"encoding" default:"application/json"`
 	IdleTimeout   time.Duration               `cfg:"idle_timeout" default:"10s"`
-	BacklogMetric BacklogMetricWriterSettings `cfg:"backlog_metric"`
+	TrafficMetric TrafficMetricWriterSettings `cfg:"traffic_metric"`
 }
 
 type baseConsumer struct {

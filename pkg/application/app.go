@@ -40,7 +40,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithConfigEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
 		WithConfigSanitizers(cfg.TimeSanitizer),
 		WithConfigServer,
-		WithConsumerBacklogMetrics,
+		WithConsumerTrafficMetrics,
 		WithKernelSettingsFromConfig,
 		WithLoggerFormat(mon.FormatGelfFields),
 		WithLoggerApplicationTag,
