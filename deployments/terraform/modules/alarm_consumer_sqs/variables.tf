@@ -38,8 +38,8 @@ variable "period" {
   description = "The period in seconds over which the specified statistic is applied"
 }
 
-variable "consumer" {
-  type        = string
+variable "consumers" {
+  type        = set(string)
   default     = null
-  description = "Name of the consumer"
+  description = "Set of the consumers"
 }
