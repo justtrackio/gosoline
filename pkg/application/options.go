@@ -132,9 +132,9 @@ func WithConfigSetting(key string, settings interface{}) Option {
 	}
 }
 
-func WithConsumerTrafficMetrics(app *App) {
+func WithConsumerMessagesPerRunnerMetrics(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-		kernel.AddFactory(stream.TrafficMetricWriterFactory)
+		kernel.AddFactory(stream.MessagesPerRunnerMetricWriterFactory)
 		return nil
 	})
 }

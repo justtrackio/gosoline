@@ -15,11 +15,9 @@ import (
 )
 
 const (
-	metricNameConsumerTraffic        = "Traffic"
 	metricNameConsumerDuration       = "Duration"
 	metricNameConsumerError          = "Error"
 	metricNameConsumerProcessedCount = "ProcessedCount"
-	metricNameConsumerRunnerCount    = "RunnerCount"
 )
 
 //go:generate mockery -name=RunnableCallback
@@ -32,11 +30,11 @@ type BaseConsumerCallback interface {
 }
 
 type ConsumerSettings struct {
-	Input         string                      `cfg:"input" default:"consumer" validate:"required"`
-	RunnerCount   int                         `cfg:"runner_count" default:"10" validate:"min=1"`
-	Encoding      string                      `cfg:"encoding" default:"application/json"`
-	IdleTimeout   time.Duration               `cfg:"idle_timeout" default:"10s"`
-	TrafficMetric TrafficMetricWriterSettings `cfg:"traffic_metric"`
+	Input                   string                                `cfg:"input" default:"consumer" validate:"required"`
+	RunnerCount             int                                   `cfg:"runner_count" default:"10" validate:"min=1"`
+	Encoding                string                                `cfg:"encoding" default:"application/json"`
+	IdleTimeout             time.Duration                         `cfg:"idle_timeout" default:"10s"`
+	MessagesPerRunnerMetric MessagesPerRunnerMetricWriterSettings `cfg:"messages_per_runner_metric"`
 }
 
 type baseConsumer struct {
