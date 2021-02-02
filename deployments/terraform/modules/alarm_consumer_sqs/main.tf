@@ -1,6 +1,6 @@
 resource "aws_cloudwatch_metric_alarm" "success-rate" {
-  alarm_name          = "${var.family}-${var.application}-success-rate"
-  count               = var.create ? 1 : 0
+  for_each            = var.consumers
+  alarm_name          = "${var.family}-${var.application}-${each.value}-success-rate"
   datapoints_to_alarm = var.datapoints_to_alarm
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = var.evaluation_periods
@@ -27,13 +27,13 @@ resource "aws_cloudwatch_metric_alarm" "success-rate" {
     return_data = false
 
     metric {
+      metric_name = "Error"
       dimensions = {
-        "reason" = "Error"
+        Consumer = each.value
       }
-      metric_name = "error"
-      namespace   = "${var.project}/${var.environment}/${var.family}/${var.application}"
-      period      = var.period
-      stat        = "Sum"
+      namespace = "${var.project}/${var.environment}/${var.family}/${var.application}"
+      period    = var.period
+      stat      = "Sum"
     }
   }
 

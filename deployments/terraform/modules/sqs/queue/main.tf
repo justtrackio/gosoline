@@ -41,22 +41,65 @@ resource "aws_cloudwatch_metric_alarm" "number-of-visible-messages" {
   ok_actions    = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
 }
 
-resource "aws_cloudwatch_metric_alarm" "messages_too_old" {
-  alarm_name = "${var.family}-${var.application}-${var.queueName}-messages-too-old"
-  count      = var.alarm_messages_age_create
+resource "aws_cloudwatch_metric_alarm" "backlog" {
+  alarm_name = "${var.family}-${var.application}-${var.queueName}-backlog"
+  count      = var.alarm_backlog_create
 
-  namespace   = "AWS/SQS"
-  metric_name = "ApproximateAgeOfOldestMessage"
-
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = var.alarm_evaluation_periods
-  period              = var.alarm_period
-  statistic           = "Maximum"
-  threshold           = var.alarm_messages_age_threshold_seconds
+  datapoints_to_alarm = var.alarm_backlog_datapoints_to_alarm
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = var.alarm_backlog_evaluation_periods
+  threshold           = var.alarm_backlog_threshold
   treat_missing_data  = "notBreaching"
-  datapoints_to_alarm = var.alarm_datapoints_to_alarm
 
-  dimensions = {
-    QueueName = aws_sqs_queue.main.name
+  metric_query {
+    id          = "visible"
+    return_data = false
+
+    metric {
+      dimensions = {
+        QueueName = "${var.project}-${var.environment}-${var.family}-${var.application}-${var.queueName}"
+      }
+      metric_name = "ApproximateNumberOfMessagesVisible"
+      namespace   = "AWS/SQS"
+      period      = var.alarm_backlog_period
+      stat        = "Sum"
+    }
+  }
+
+  metric_query {
+    id          = "incoming"
+    return_data = false
+
+    metric {
+      dimensions = {
+        QueueName = "${var.project}-${var.environment}-${var.family}-${var.application}-${var.queueName}"
+      }
+      metric_name = "NumberOfMessagesReceived"
+      namespace   = "AWS/SQS"
+      period      = var.alarm_backlog_period
+      stat        = "Sum"
+    }
+  }
+
+  metric_query {
+    id          = "deleted"
+    return_data = false
+
+    metric {
+      dimensions = {
+        QueueName = "${var.project}-${var.environment}-${var.family}-${var.application}-${var.queueName}"
+      }
+      metric_name = "NumberOfMessagesDeleted"
+      namespace   = "AWS/SQS"
+      period      = var.alarm_backlog_period
+      stat        = "Sum"
+    }
+  }
+
+  metric_query {
+    expression  = "visible + incoming - (deleted * ${var.alarm_backlog_period} + 1)"
+    id          = "backlog"
+    label       = "visible + incoming - (deleted * ${var.alarm_backlog_period} + 1)"
+    return_data = true
   }
 }

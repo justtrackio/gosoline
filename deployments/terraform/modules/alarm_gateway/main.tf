@@ -14,13 +14,13 @@ module "metric_label" {
   delimiter = "/"
 }
 
-resource "aws_cloudwatch_metric_alarm" "success-rate" {
-  alarm_name          = "${module.label.family}-${module.label.application}-success-rate"
+resource "aws_cloudwatch_metric_alarm" "elb-success-rate" {
+  alarm_name          = "${module.label.family}-${module.label.application}-elb-success-rate"
   count               = var.create ? 1 : 0
-  datapoints_to_alarm = var.datapoints_to_alarm
+  datapoints_to_alarm = var.elb_datapoints_to_alarm
   comparison_operator = "LessThanThreshold"
-  evaluation_periods  = var.evaluation_periods
-  threshold           = var.success_rate_threshold
+  evaluation_periods  = var.elb_evaluation_periods
+  threshold           = var.elb_success_rate_threshold
   treat_missing_data  = "notBreaching"
 
   metric_query {
@@ -34,7 +34,7 @@ resource "aws_cloudwatch_metric_alarm" "success-rate" {
       dimensions = {
         "LoadBalancer" = data.aws_lb.default.arn_suffix
       }
-      period = var.period
+      period = var.elb_period
       stat   = "Sum"
     }
   }
@@ -44,13 +44,57 @@ resource "aws_cloudwatch_metric_alarm" "success-rate" {
     return_data = false
 
     metric {
-      dimensions = {
-        "reason" = "Error"
-      }
       metric_name = "error"
       namespace   = module.metric_label.id
-      period      = var.period
+      period      = var.elb_period
       stat        = "Sum"
+    }
+  }
+
+  metric_query {
+    expression  = "100-100*(errors/requests)"
+    id          = "e1"
+    label       = "100-100*(errors/requests)"
+    return_data = true
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "path-success-rate" {
+  for_each            = var.paths
+  alarm_name          = "${module.label.family}-${module.label.application}-${each.value}-success-rate"
+  datapoints_to_alarm = var.path_datapoints_to_alarm
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = var.path_evaluation_periods
+  threshold           = var.path_success_rate_threshold
+  treat_missing_data  = "notBreaching"
+
+  metric_query {
+    id          = "requests"
+    return_data = false
+
+    metric {
+      metric_name = "ApiRequestCount"
+      namespace   = "${var.project}/${var.environment}/${var.family}/${var.application}-gateway"
+      dimensions = {
+        "path" = each.value
+      }
+      period = var.path_period
+      stat   = "Sum"
+    }
+  }
+
+  metric_query {
+    id          = "errors"
+    return_data = false
+
+    metric {
+      metric_name = "ApiStatus5XX"
+      namespace   = "${var.project}/${var.environment}/${var.family}/${var.application}-gateway"
+      dimensions = {
+        "path" = each.value
+      }
+      period = var.path_period
+      stat   = "Sum"
     }
   }
 
