@@ -32,12 +32,20 @@ func newXrayLogger(logger mon.Logger) *xrayLogger {
 func (x xrayLogger) Log(level xraylog.LogLevel, msg fmt.Stringer) {
 	switch level {
 	case xraylog.LogLevelDebug:
-		x.logger.Debug(msg)
+		x.logger.WithFields(mon.Fields{
+			"xrayLogLevel": "debug",
+		}).Debug(msg)
 	case xraylog.LogLevelInfo:
-		x.logger.Info(msg)
+		x.logger.WithFields(mon.Fields{
+			"xrayLogLevel": "info",
+		}).Info(msg)
 	case xraylog.LogLevelWarn:
-		x.logger.Warn(msg)
+		x.logger.WithFields(mon.Fields{
+			"xrayLogLevel": "warn",
+		}).Warn(msg)
 	case xraylog.LogLevelError:
-		x.logger.Error(fmt.Errorf(msg.String()), msg.String())
+		x.logger.WithFields(mon.Fields{
+			"xrayLogLevel": "error",
+		}).Warn(msg.String()) // TODO we set error to warn level to prevent triggering alarm when message too long appears
 	}
 }
