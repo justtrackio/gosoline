@@ -43,7 +43,7 @@ resource "aws_cloudwatch_metric_alarm" "number-of-visible-messages" {
 
 resource "aws_cloudwatch_metric_alarm" "backlog" {
   alarm_name = "${var.family}-${var.application}-${var.queueName}-backlog"
-  count      = var.alarm_backlog_create
+  count      = var.environment == "prod" ? 1 : 0
 
   datapoints_to_alarm = var.alarm_backlog_datapoints_to_alarm
   comparison_operator = "GreaterThanThreshold"
@@ -61,7 +61,7 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
       }
       metric_name = "ApproximateNumberOfMessagesVisible"
       namespace   = "AWS/SQS"
-      period      = var.alarm_backlog_period
+      period      = var.alarm_backlog_period_seconds
       stat        = "Sum"
     }
   }
@@ -76,7 +76,7 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
       }
       metric_name = "NumberOfMessagesReceived"
       namespace   = "AWS/SQS"
-      period      = var.alarm_backlog_period
+      period      = var.alarm_backlog_period_seconds
       stat        = "Sum"
     }
   }
@@ -91,15 +91,15 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
       }
       metric_name = "NumberOfMessagesDeleted"
       namespace   = "AWS/SQS"
-      period      = var.alarm_backlog_period
+      period      = var.alarm_backlog_period_seconds
       stat        = "Sum"
     }
   }
 
   metric_query {
-    expression  = "visible + incoming - (deleted * ${var.alarm_backlog_period} + 1)"
+    expression  = "visible + incoming - (deleted * ${var.alarm_backlog_minutes} + 1)"
     id          = "backlog"
-    label       = "visible + incoming - (deleted * ${var.alarm_backlog_period} + 1)"
+    label       = "visible + incoming - (deleted * ${var.alarm_backlog_minutes} + 1)"
     return_data = true
   }
 }

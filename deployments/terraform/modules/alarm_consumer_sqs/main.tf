@@ -13,7 +13,7 @@ resource "aws_cloudwatch_metric_alarm" "success-rate" {
 
     metric {
       dimensions = {
-        QueueName = "${var.project}-${var.environment}-${var.family}-${var.application}-${var.model}"
+        QueueName = var.queue_name
       }
       metric_name = "NumberOfMessagesReceived"
       namespace   = "AWS/SQS"

@@ -43,3 +43,9 @@ variable "consumers" {
   default     = null
   description = "Set of the consumers"
 }
+
+variable "queue_name" {
+  type        = string
+  default     = null
+  description = "Queue name"
+}
