@@ -35,6 +35,13 @@ func NewTransactionRepository(config cfg.Config, logger mon.Logger) *transaction
 
 	settings.Client.MaxRetries = config.GetInt("aws_sdk_retries")
 
+	backoffSettings := &exec.BackoffSettings{}
+	config.UnmarshalKey("ddb.backoff", backoffSettings)
+
+	if err := cfg.Merge(&settings.Backoff, *backoffSettings); err != nil {
+		logger.Panicf(err, "could not merge backoff settings for transactions")
+	}
+
 	tracer := tracing.ProviderTracer(config, logger)
 	client := ProvideClient(config, logger, settings)
 
