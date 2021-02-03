@@ -29,7 +29,7 @@ func (e errorTransactionConflict) Error() string {
 
 func checkTransactionConflict(_ interface{}, err error) exec.ErrorType {
 	if isTransactionCanceledException(err, ErrorTransactionConflict) {
-		return exec.ErrorTypePermanent
+		return exec.ErrorTypeRetryable
 	}
 
 	return exec.ErrorTypeUnknown
