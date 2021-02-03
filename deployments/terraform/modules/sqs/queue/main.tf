@@ -61,7 +61,7 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
       }
       metric_name = "ApproximateNumberOfMessagesVisible"
       namespace   = "AWS/SQS"
-      period      = var.alarm_backlog_period_seconds
+      period      = 60
       stat        = "Sum"
     }
   }
@@ -76,7 +76,7 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
       }
       metric_name = "NumberOfMessagesReceived"
       namespace   = "AWS/SQS"
-      period      = var.alarm_backlog_period_seconds
+      period      = 60
       stat        = "Sum"
     }
   }
@@ -91,7 +91,7 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
       }
       metric_name = "NumberOfMessagesDeleted"
       namespace   = "AWS/SQS"
-      period      = var.alarm_backlog_period_seconds
+      period      = 60
       stat        = "Sum"
     }
   }

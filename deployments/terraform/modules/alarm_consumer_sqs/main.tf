@@ -1,6 +1,6 @@
 resource "aws_cloudwatch_metric_alarm" "success-rate" {
-  for_each            = var.consumers
-  alarm_name          = "${var.family}-${var.application}-${each.value}-success-rate"
+  for_each            = { for consumer in var.consumers : consumer.name => consumer }
+  alarm_name          = "${var.family}-${var.application}-${each.value.name}-success-rate"
   datapoints_to_alarm = var.datapoints_to_alarm
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = var.evaluation_periods
@@ -13,7 +13,7 @@ resource "aws_cloudwatch_metric_alarm" "success-rate" {
 
     metric {
       dimensions = {
-        QueueName = var.queue_name
+        QueueName = "${var.project}-${var.environment}-${var.family}-${var.application}-${each.value.queue_id}"
       }
       metric_name = "NumberOfMessagesReceived"
       namespace   = "AWS/SQS"
@@ -29,7 +29,7 @@ resource "aws_cloudwatch_metric_alarm" "success-rate" {
     metric {
       metric_name = "Error"
       dimensions = {
-        Consumer = each.value
+        Consumer = each.value.name
       }
       namespace = "${var.project}/${var.environment}/${var.family}/${var.application}"
       period    = var.period
