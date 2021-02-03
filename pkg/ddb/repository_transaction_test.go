@@ -46,6 +46,13 @@ func (s *RepositoryTransactionTestSuite) SetupTest() {
 	s.repository = ddb.NewTransactionRepositoryWithInterfaces(s.logger, s.client, s.executor, s.tracer)
 }
 
+func (s *RepositoryTransactionTestSuite) TearDownTest() {
+	s.span.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
+	s.executor.AssertExpectations(s.T())
+	s.tracer.AssertExpectations(s.T())
+}
+
 func (s *RepositoryTransactionTestSuite) TestTransactGetItems() {
 	ctx := context.Background()
 
@@ -157,11 +164,6 @@ func (s *RepositoryTransactionTestSuite) TestTransactGetItems() {
 
 	assert.Equal(s.T(), expectedResult, result)
 	assert.Equal(s.T(), expectedModels, models)
-
-	s.client.AssertExpectations(s.T())
-	s.executor.AssertExpectations(s.T())
-	s.tracer.AssertExpectations(s.T())
-	s.span.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTransactionTestSuite) TestTransactWriteItems_ConditionCheckFailed() {
@@ -355,11 +357,6 @@ func (s *RepositoryTransactionTestSuite) TestTransactWriteItems() {
 	}}
 
 	assert.Equal(s.T(), expected, result)
-
-	s.client.AssertExpectations(s.T())
-	s.executor.AssertExpectations(s.T())
-	s.tracer.AssertExpectations(s.T())
-	s.span.AssertExpectations(s.T())
 }
 
 func buildTransactGetItemBuilder(item *model) ddb.TransactGetItemBuilder {
