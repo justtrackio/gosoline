@@ -61,10 +61,6 @@ variable "alarm_backlog_create" {
   default = 1
 }
 
-variable "alarm_backlog_period" {
-  default = 60
-}
-
 variable "alarm_backlog_datapoints_to_alarm" {
   default = 3
 }
@@ -75,4 +71,8 @@ variable "alarm_backlog_evaluation_periods" {
 
 variable "alarm_backlog_threshold" {
   default = 0
+}
+
+variable "alarm_backlog_minutes" {
+  default = 3
 }

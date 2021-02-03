@@ -74,7 +74,7 @@ resource "aws_cloudwatch_metric_alarm" "path-success-rate" {
 
     metric {
       metric_name = "ApiRequestCount"
-      namespace   = "${var.project}/${var.environment}/${var.family}/${var.application}-gateway"
+      namespace   = "${var.project}/${var.environment}/${var.family}/${var.application}"
       dimensions = {
         "path" = each.value
       }
@@ -89,7 +89,7 @@ resource "aws_cloudwatch_metric_alarm" "path-success-rate" {
 
     metric {
       metric_name = "ApiStatus5XX"
-      namespace   = "${var.project}/${var.environment}/${var.family}/${var.application}-gateway"
+      namespace   = "${var.project}/${var.environment}/${var.family}/${var.application}"
       dimensions = {
         "path" = each.value
       }
