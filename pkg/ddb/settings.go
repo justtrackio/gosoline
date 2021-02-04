@@ -12,6 +12,7 @@ type Settings struct {
 	ModelId        mdl.ModelId
 	NamingStrategy NamingFactory
 	AutoCreate     bool
+	DisableTracing bool
 	Client         cloud.ClientSettings
 	Backoff        exec.BackoffSettings
 	Main           MainSettings

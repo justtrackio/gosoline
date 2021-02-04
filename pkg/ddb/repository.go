@@ -81,7 +81,6 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 	settings.Client.MaxRetries = config.GetInt("aws_sdk_retries")
 
 	tableName := TableName(settings)
-	tracer := tracing.ProviderTracer(config, logger)
 	client := ProvideClient(config, logger, settings)
 
 	backoffSettings := &exec.BackoffSettings{}
@@ -108,6 +107,11 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 
 	if err != nil {
 		logger.Fatalf(err, "could not create ddb table %s", tableName)
+	}
+
+	tracer := tracing.NewNoopTracer()
+	if !settings.DisableTracing {
+		tracer = tracing.ProviderTracer(config, logger)
 	}
 
 	return NewWithInterfaces(logger, tracer, client, executor, settings)
@@ -165,6 +169,10 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 
 		if exec.IsRequestCanceled(err) {
 			return nil, exec.RequestCanceledError
+		}
+
+		if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+			return nil, NewTableNotFoundError(r.metadata.TableName, err)
 		}
 
 		if err != nil {
@@ -338,6 +346,10 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 		return nil, exec.RequestCanceledError
 	}
 
+	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+		return nil, NewTableNotFoundError(r.metadata.TableName, err)
+	}
+
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
 		return nil, fmt.Errorf("could not execute DeleteItem operation for table %s: %w", r.metadata.TableName, err)
 	}
@@ -380,6 +392,10 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
+	}
+
+	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+		return nil, NewTableNotFoundError(r.metadata.TableName, err)
 	}
 
 	if err != nil {
@@ -429,6 +445,10 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
+	}
+
+	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+		return nil, NewTableNotFoundError(r.metadata.TableName, err)
 	}
 
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
@@ -492,6 +512,10 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 		return nil, exec.RequestCanceledError
 	}
 
+	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+		return nil, NewTableNotFoundError(r.metadata.TableName, err)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("could not execute Query operation for table %s: %w", r.metadata.TableName, err)
 	}
@@ -533,6 +557,10 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
+	}
+
+	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+		return nil, NewTableNotFoundError(r.metadata.TableName, err)
 	}
 
 	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
@@ -596,6 +624,10 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
+	}
+
+	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+		return nil, NewTableNotFoundError(r.metadata.TableName, err)
 	}
 
 	if err != nil {
