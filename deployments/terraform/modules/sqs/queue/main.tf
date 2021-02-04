@@ -74,7 +74,7 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
       dimensions = {
         QueueName = "${var.project}-${var.environment}-${var.family}-${var.application}-${var.queueName}"
       }
-      metric_name = "NumberOfMessagesReceived"
+      metric_name = "NumberOfMessagesSent"
       namespace   = "AWS/SQS"
       period      = 60
       stat        = "Sum"
@@ -97,9 +97,9 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
   }
 
   metric_query {
-    expression  = "visible + incoming - (deleted * ${var.alarm_backlog_minutes} + 1)"
+    expression  = "visible + incoming - (deleted * ${var.alarm_backlog_minutes})"
     id          = "backlog"
-    label       = "visible + incoming - (deleted * ${var.alarm_backlog_minutes} + 1)"
+    label       = "visible + incoming - (deleted * ${var.alarm_backlog_minutes})"
     return_data = true
   }
 }
