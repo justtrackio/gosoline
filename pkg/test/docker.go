@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/ory/dockertest"
@@ -38,15 +39,32 @@ type containerConfigLegacy struct {
 	ExpireAfter  time.Duration
 }
 
+type authSettingsLegacy struct {
+	Username      string `cfg:"username" default:""`
+	Password      string `cfg:"password" default:""`
+	Email         string `cfg:"email" default:""`
+	ServerAddress string `cfg:"server_address" default:""`
+}
+
+func (a authSettingsLegacy) GetAuthConfig() docker.AuthConfiguration {
+	return docker.AuthConfiguration{
+		Username:      a.Username,
+		Password:      a.Password,
+		Email:         a.Email,
+		ServerAddress: a.ServerAddress,
+	}
+}
+
 type dockerRunnerLegacy struct {
 	pool            *dockertest.Pool
 	containers      []string
 	containersMutex sync.Mutex
 	id              string
 	logger          mon.Logger
+	auth            *authSettingsLegacy
 }
 
-func NewDockerRunnerLegacy() *dockerRunnerLegacy {
+func NewDockerRunnerLegacy(config cfg.Config) *dockerRunnerLegacy {
 	pool, err := dockertest.NewPool("")
 
 	if err != nil {
@@ -61,11 +79,16 @@ func NewDockerRunnerLegacy() *dockerRunnerLegacy {
 
 	logger := mon.NewLogger().WithChannel("docker-runner")
 
+	auth := &authSettingsLegacy{}
+	// take the auth config from the new container runner so we don't have to specify it twice
+	config.UnmarshalKey("test.container_runner.auth", auth)
+
 	return &dockerRunnerLegacy{
 		pool:       pool,
 		id:         id,
 		logger:     logger,
 		containers: containers,
+		auth:       auth,
 	}
 }
 
@@ -96,6 +119,7 @@ func (d *dockerRunnerLegacy) Run(name string, config *containerConfigLegacy) err
 		Env:          config.Env,
 		Cmd:          config.Cmd,
 		PortBindings: bindings,
+		Auth:         d.auth.GetAuthConfig(),
 	}
 	hostConfigs := make([]func(hc *docker.HostConfig), 0)
 

@@ -22,8 +22,5 @@ func Boot(configFilenames ...string) (*Mocks, error) {
 		}
 	}
 
-	mocks := newMocks(logger)
-	err := mocks.Boot(config)
-
-	return mocks, err
+	return newMocks(config, logger)
 }

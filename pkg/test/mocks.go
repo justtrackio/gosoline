@@ -37,30 +37,28 @@ type Mocks struct {
 	errorsLock   sync.Mutex
 }
 
-func newMocks(logger mon.Logger) *Mocks {
-	dockerRunner := NewDockerRunnerLegacy()
+func newMocks(config cfg.Config, logger mon.Logger) (*Mocks, error) {
+	dockerRunner := NewDockerRunnerLegacy(config)
 	logger = logger.WithChannel("mocks")
 
-	return &Mocks{
+	m := &Mocks{
 		components:   make(map[string]mockComponent),
 		dockerRunner: dockerRunner,
 		logger:       logger,
 	}
-}
 
-func (m *Mocks) Boot(config cfg.Config) error {
 	m.bootFromConfig(config)
 
 	m.waitGroup.Wait()
 
 	err := m.errors.ErrorOrNil()
 	if err != nil {
-		return fmt.Errorf("failed to boot at least one test component: %w", err)
+		return nil, fmt.Errorf("failed to boot at least one test component: %w", err)
 	}
 
 	m.logger.Info("test environment up and running")
 
-	return nil
+	return m, nil
 }
 
 func (m *Mocks) bootFromConfig(config cfg.Config) {
