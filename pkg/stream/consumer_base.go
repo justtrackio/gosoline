@@ -265,11 +265,22 @@ func readConsumerSettings(config cfg.Config, name string) *ConsumerSettings {
 
 func readAllConsumerSettings(config cfg.Config) map[string]*ConsumerSettings {
 	consumerSettings := make(map[string]*ConsumerSettings)
-	producerMap := config.GetStringMap("stream.consumer", map[string]interface{}{})
+	consumers := readAllConsumerNames(config)
 
-	for name := range producerMap {
+	for _, name := range consumers {
 		consumerSettings[name] = readConsumerSettings(config, name)
 	}
 
 	return consumerSettings
+}
+
+func readAllConsumerNames(config cfg.Config) []string {
+	consumerMap := config.GetStringMap("stream.consumer", map[string]interface{}{})
+	consumers := make([]string, 0, len(consumerMap))
+
+	for name := range consumerMap {
+		consumers = append(consumers, name)
+	}
+
+	return consumers
 }

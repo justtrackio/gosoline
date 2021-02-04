@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -18,17 +19,27 @@ type DdbLeaderElectionItem struct {
 }
 
 type DdbLeaderElectionSettings struct {
-	TableName     string
-	GroupId       string
-	LeaseDuration time.Duration
+	TableName     string        `cfg:"table_name" default:"{app_project}-{env}-{app_family}-leader-elections"`
+	GroupId       string        `cfg:"group_id" default:"{app_name}"`
+	LeaseDuration time.Duration `cfg:"lease_duration" default:"1m"`
 }
 
 type DdbLeaderElection struct {
+	logger     mon.Logger
+	clock      clock.Clock
 	repository ddb.Repository
 	settings   *DdbLeaderElectionSettings
 }
 
-func NewDdbLeaderElection(config cfg.Config, logger mon.Logger, settings *DdbLeaderElectionSettings) (*DdbLeaderElection, error) {
+func NewDdbLeaderElection(config cfg.Config, logger mon.Logger, name string) (LeaderElection, error) {
+	key := GetLeaderElectionConfigKey(name)
+	settings := &DdbLeaderElectionSettings{}
+	config.UnmarshalKey(key, settings)
+
+	return NewDdbLeaderElectionWithSettings(config, logger, settings)
+}
+
+func NewDdbLeaderElectionWithSettings(config cfg.Config, logger mon.Logger, settings *DdbLeaderElectionSettings) (LeaderElection, error) {
 	namingFactory := func(_ mdl.ModelId) string {
 		return settings.TableName
 	}
@@ -46,6 +57,7 @@ func NewDdbLeaderElection(config cfg.Config, logger mon.Logger, settings *DdbLea
 			MaxInterval:         time.Second * 10,
 			MaxElapsedTime:      time.Minute,
 		},
+		DisableTracing: true,
 		Main: ddb.MainSettings{
 			Model:              DdbLeaderElectionItem{},
 			ReadCapacityUnits:  3,
@@ -53,11 +65,13 @@ func NewDdbLeaderElection(config cfg.Config, logger mon.Logger, settings *DdbLea
 		},
 	})
 
-	return NewDdbLeaderElectionWithInterfaces(repository, settings)
+	return NewDdbLeaderElectionWithInterfaces(logger, clock.Provider, repository, settings)
 }
 
-func NewDdbLeaderElectionWithInterfaces(repository ddb.Repository, settings *DdbLeaderElectionSettings) (*DdbLeaderElection, error) {
+func NewDdbLeaderElectionWithInterfaces(logger mon.Logger, clock clock.Clock, repository ddb.Repository, settings *DdbLeaderElectionSettings) (*DdbLeaderElection, error) {
 	election := &DdbLeaderElection{
+		logger:     logger,
+		clock:      clock,
 		repository: repository,
 		settings:   settings,
 	}
@@ -66,7 +80,7 @@ func NewDdbLeaderElectionWithInterfaces(repository ddb.Repository, settings *Ddb
 }
 
 func (e *DdbLeaderElection) IsLeader(ctx context.Context, memberId string) (bool, error) {
-	now := time.Now()
+	now := e.clock.Now()
 	leadingUntil := now.Add(e.settings.LeaseDuration).Unix()
 
 	item := &DdbLeaderElectionItem{
@@ -84,9 +98,36 @@ func (e *DdbLeaderElection) IsLeader(ctx context.Context, memberId string) (bool
 	qb := e.repository.PutItemBuilder().WithCondition(condition)
 	res, err := e.repository.PutItem(ctx, qb, item)
 
+	if err == nil {
+		return !res.ConditionalCheckFailed, nil
+	}
+
+	if ddb.IsTableNotFoundError(err) {
+		return false, NewLeaderElectionFatalError(err)
+	}
+
 	if err != nil {
-		return false, fmt.Errorf("can not determine current leader: %w", err)
+		return false, NewLeaderElectionTransientError(err)
 	}
 
 	return !res.ConditionalCheckFailed, nil
+}
+
+func (e *DdbLeaderElection) Resign(ctx context.Context, memberId string) error {
+	conditionCurrentLeader := ddb.Eq("memberId", memberId)
+
+	qb := e.repository.DeleteItemBuilder().WithCondition(conditionCurrentLeader)
+	res, err := e.repository.DeleteItem(ctx, qb, DdbLeaderElectionItem{
+		GroupId: e.settings.GroupId,
+	})
+
+	if err != nil {
+		return fmt.Errorf("can not resign as current leader: %w", err)
+	}
+
+	if res.ConditionalCheckFailed {
+		e.logger.Warnf("not not resign as leader as we're not the current one")
+	}
+
+	return nil
 }

@@ -7,8 +7,11 @@ import (
 )
 
 type MessagesPerRunnerMetricSettings struct {
-	Consumers []string      `cfg:"consumers"`
-	Period    time.Duration `cfg:"period" default:"1m"`
+	LeaderElection     string        `cfg:"leader_election" default:"streamMprMetrics"`
+	Consumers          []string      `cfg:"consumers"`
+	Period             time.Duration `cfg:"period" default:"1m"`
+	MaxIncreasePercent float64       `cfg:"max_increase_percent" default:"200"`
+	MaxIncreasePeriod  time.Duration `cfg:"max_increase_period" default:"5m"`
 }
 
 func readAllMessagesPerRunnerMetricSettings(config cfg.Config) map[string]*MessagesPerRunnerMetricSettings {
