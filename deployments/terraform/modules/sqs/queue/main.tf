@@ -43,7 +43,7 @@ resource "aws_cloudwatch_metric_alarm" "number-of-visible-messages" {
 
 resource "aws_cloudwatch_metric_alarm" "backlog" {
   alarm_name = "${var.family}-${var.application}-${var.queueName}-backlog"
-  count      = var.environment == "prod" ? 1 : 0
+  count      = var.environment == "prod" && var.alarm_backlog_create == 1 ? 1 : 0
 
   datapoints_to_alarm = var.alarm_backlog_datapoints_to_alarm
   comparison_operator = "GreaterThanThreshold"
