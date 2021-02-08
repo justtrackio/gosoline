@@ -1,10 +1,12 @@
 package cfg
 
 import (
+	"crypto/md5"
 	"fmt"
 	"github.com/jeremywohl/flatten"
 	"github.com/thoas/go-funk"
 	"sort"
+	"strings"
 )
 
 func DebugConfig(config Config, logger Logger) error {
@@ -15,12 +17,19 @@ func DebugConfig(config Config, logger Logger) error {
 		return fmt.Errorf("can not flatten config settings")
 	}
 
+	hashValues := make([]string, len(flattened))
 	keys := funk.Keys(flattened).([]string)
 	sort.Strings(keys)
 
-	for _, key := range keys {
-		logger.Infof("cfg %v=%v", key, flattened[key])
+	for i, key := range keys {
+		hashValues[i] = fmt.Sprintf("%v=%v", key, flattened[key])
+		logger.Infof("cfg %s", hashValues[i])
 	}
+
+	hashString := strings.Join(hashValues, ";")
+	hashBytes := md5.Sum([]byte(hashString))
+
+	logger.Infof("cfg fingerprint: %x", hashBytes)
 
 	return nil
 }
