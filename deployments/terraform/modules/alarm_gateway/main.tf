@@ -60,7 +60,7 @@ resource "aws_cloudwatch_metric_alarm" "elb-success-rate" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "path-success-rate" {
-  for_each            = var.paths
+  for_each            = var.create ? var.paths : []
   alarm_name          = "${module.label.family}-${module.label.application}-${each.value}-success-rate"
   datapoints_to_alarm = var.path_datapoints_to_alarm
   comparison_operator = "LessThanThreshold"

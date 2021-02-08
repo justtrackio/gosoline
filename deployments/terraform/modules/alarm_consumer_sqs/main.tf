@@ -1,5 +1,5 @@
 resource "aws_cloudwatch_metric_alarm" "success-rate" {
-  for_each            = { for consumer in var.consumers : consumer.name => consumer }
+  for_each            = var.create ? { for consumer in var.consumers : consumer.name => consumer } : {}
   alarm_name          = "${var.family}-${var.application}-${each.value.name}-success-rate"
   datapoints_to_alarm = var.datapoints_to_alarm
   comparison_operator = "LessThanThreshold"
