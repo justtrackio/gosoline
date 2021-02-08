@@ -151,7 +151,7 @@ type SnsInputConfiguration struct {
 	Backoff             exec.BackoffSettings          `cfg:"backoff"`
 }
 
-func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
+func readSnsInputSettings(config cfg.Config, name string) (SnsInputSettings, []SnsInputTarget) {
 	key := ConfigurableInputKey(name)
 
 	configuration := &SnsInputConfiguration{}
@@ -172,6 +172,8 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (I
 		Backoff:             configuration.Backoff,
 	}
 
+	settings.PadFromConfig(config)
+
 	targets := make([]SnsInputTarget, len(configuration.Targets))
 	for i, t := range configuration.Targets {
 		targets[i] = SnsInputTarget{
@@ -183,6 +185,12 @@ func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (I
 			Attributes: t.Attributes,
 		}
 	}
+
+	return settings, targets
+}
+
+func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
+	settings, targets := readSnsInputSettings(config, name)
 
 	return NewSnsInput(config, logger, settings, targets), nil
 }

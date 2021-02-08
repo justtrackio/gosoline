@@ -21,6 +21,18 @@ type SnsInputSettings struct {
 	Backoff             exec.BackoffSettings `cfg:"backoff"`
 }
 
+func (s SnsInputSettings) GetAppid() cfg.AppId {
+	return s.AppId
+}
+
+func (s SnsInputSettings) GetQueueId() string {
+	return s.QueueId
+}
+
+func (s SnsInputSettings) IsFifoEnabled() bool {
+	return false
+}
+
 type SnsInputTarget struct {
 	cfg.AppId
 	TopicId    string

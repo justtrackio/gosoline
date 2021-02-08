@@ -7,6 +7,13 @@ import (
 	"regexp"
 )
 
+type queueNameReader func(config cfg.Config, input string) string
+
+var queueNameReaders = map[string]queueNameReader{
+	InputTypeSqs: queueNameReaderSqs,
+	InputTypeSns: queueNameReaderSns,
+}
+
 type ConsumerSpec struct {
 	ConsumerName string
 	QueueName    string
@@ -45,17 +52,32 @@ func GetConsumerSpec(config cfg.Config, consumer string) (*ConsumerSpec, error) 
 	consumerSettings := readConsumerSettings(config, consumer)
 	inputType := readInputType(config, consumerSettings.Input)
 
-	if inputType != InputTypeSqs {
-		return nil, fmt.Errorf("input type is not SQS")
+	var ok bool
+	var reader queueNameReader
+
+	if reader, ok = queueNameReaders[inputType]; !ok {
+		return nil, fmt.Errorf("input type should be SNS/SQS")
 	}
 
-	inputSettings := readSqsInputSettings(config, consumerSettings.Input)
+	queueName := reader(config, consumerSettings.Input)
 
 	spec := &ConsumerSpec{
 		ConsumerName: consumer,
-		QueueName:    sqs.QueueName(inputSettings),
+		QueueName:    queueName,
 		RunnerCount:  consumerSettings.RunnerCount,
 	}
 
 	return spec, nil
+}
+
+func queueNameReaderSns(config cfg.Config, input string) string {
+	inputSettings, _ := readSnsInputSettings(config, input)
+
+	return sqs.QueueName(inputSettings)
+}
+
+func queueNameReaderSqs(config cfg.Config, input string) string {
+	inputSettings := readSqsInputSettings(config, input)
+
+	return sqs.QueueName(inputSettings)
 }
