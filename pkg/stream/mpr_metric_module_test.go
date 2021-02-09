@@ -30,7 +30,6 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.cancel()
 		},
 		setupMocks: func(s *MprMetricModuleTestSuite) {
-			s.mockMetricWriteRunnerCount()
 			s.mockLeaderElection(false, nil)
 			s.logger.On("Infof", "not leading: do nothing")
 		},
@@ -40,14 +39,12 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.cancel()
 		},
 		setupMocks: func(s *MprMetricModuleTestSuite) {
-			s.mockMetricWriteRunnerCount()
-
 			err := fmt.Errorf("unknown leader election error")
 			s.mockLeaderElection(false, err)
 			s.logger.On("Warnf", "will assume leader role as election failed: %s", err)
 			s.mockGetMetricMessagesSent(1000, nil)
 			s.mockGetMetricMessagesVisible(0, nil)
-			s.mockGetMetricRunnerCount(2, nil)
+			s.mockGetMetricEcs("DesiredTaskCount", cloudwatch.StatisticMaximum, 2, nil)
 			s.mockGetMetricMessagesPerRunner(499, nil)
 
 			s.mockSuccessLogger(1000, 0, 2, 500)
@@ -59,11 +56,10 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.cancel()
 		},
 		setupMocks: func(s *MprMetricModuleTestSuite) {
-			s.mockMetricWriteRunnerCount()
 			s.mockLeaderElection(true, nil)
 			s.mockGetMetricMessagesSent(1000, nil)
 			s.mockGetMetricMessagesVisible(0, nil)
-			s.mockGetMetricRunnerCount(2, nil)
+			s.mockGetMetricEcs("DesiredTaskCount", cloudwatch.StatisticMaximum, 2, nil)
 			s.mockGetMetricMessagesPerRunner(499, nil)
 
 			s.mockSuccessLogger(1000, 0, 2, 500)
@@ -75,7 +71,6 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.cancel()
 		},
 		setupMocks: func(s *MprMetricModuleTestSuite) {
-			s.mockMetricWriteRunnerCount()
 			s.mockLeaderElection(true, nil)
 
 			err := fmt.Errorf("unknown error")
@@ -90,7 +85,6 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.cancel()
 		},
 		setupMocks: func(s *MprMetricModuleTestSuite) {
-			s.mockMetricWriteRunnerCount()
 			s.mockLeaderElection(true, nil)
 			s.mockGetMetricMessagesSent(1000, nil)
 
@@ -106,13 +100,12 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.cancel()
 		},
 		setupMocks: func(s *MprMetricModuleTestSuite) {
-			s.mockMetricWriteRunnerCount()
 			s.mockLeaderElection(true, nil)
 			s.mockGetMetricMessagesSent(1000, nil)
 			s.mockGetMetricMessagesVisible(0, nil)
 
 			err := fmt.Errorf("unknown error")
-			s.mockGetMetricRunnerCount(2, err)
+			s.mockGetMetricEcs("DesiredTaskCount", cloudwatch.StatisticMaximum, 2, err)
 			s.logger.On("Warnf", "can not calculate messages per runner: %s", mock.AnythingOfType("*fmt.wrapError")).Run(func(args mock.Arguments) {
 				s.EqualError(args[1].(error), "can not get runner count: can not get metric: unknown error")
 			})
@@ -123,12 +116,11 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.cancel()
 		},
 		setupMocks: func(s *MprMetricModuleTestSuite) {
-			s.mockMetricWriteRunnerCount()
 			s.mockLeaderElection(true, nil)
 			s.mockGetMetricMessagesSent(1000, nil)
 			s.mockGetMetricMessagesVisible(0, nil)
 
-			s.mockGetMetricRunnerCount(0, nil)
+			s.mockGetMetricEcs("DesiredTaskCount", cloudwatch.StatisticMaximum, 0, nil)
 			s.logger.On("Warnf", "can not calculate messages per runner: %s", mock.Anything).Run(func(args mock.Arguments) {
 				s.EqualError(args[1].(error), "runner count is zero")
 			})
@@ -139,11 +131,10 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.cancel()
 		},
 		setupMocks: func(s *MprMetricModuleTestSuite) {
-			s.mockMetricWriteRunnerCount()
 			s.mockLeaderElection(true, nil)
 			s.mockGetMetricMessagesSent(1000, nil)
 			s.mockGetMetricMessagesVisible(0, nil)
-			s.mockGetMetricRunnerCount(2, nil)
+			s.mockGetMetricEcs("DesiredTaskCount", cloudwatch.StatisticMaximum, 2, nil)
 
 			err := fmt.Errorf("unknown error")
 			s.mockGetMetricMessagesPerRunner(500, err)
@@ -158,11 +149,10 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.cancel()
 		},
 		setupMocks: func(s *MprMetricModuleTestSuite) {
-			s.mockMetricWriteRunnerCount()
 			s.mockLeaderElection(true, nil)
 			s.mockGetMetricMessagesSent(2000, nil)
 			s.mockGetMetricMessagesVisible(0, nil)
-			s.mockGetMetricRunnerCount(2, nil)
+			s.mockGetMetricEcs("DesiredTaskCount", cloudwatch.StatisticMaximum, 2, nil)
 			s.mockGetMetricMessagesPerRunner(499, nil)
 
 			s.logger.On("Warnf", "newMpr of %f is higher than configured maxMpr of %f: falling back to max", 1000.0, 998.0)
@@ -200,12 +190,10 @@ func (s *MprMetricModuleTestSuite) SetupTestCase() {
 	s.ticker = clock.NewFakeTicker()
 
 	s.settings = &stream.MessagesPerRunnerMetricWriterSettings{
-		Name: "default",
 		ConsumerSpecs: []*stream.ConsumerSpec{
 			{
 				ConsumerName: "consumerName",
 				QueueName:    "queueName",
-				RunnerCount:  3,
 			},
 		},
 		UpdatePeriod:       time.Minute,
@@ -249,29 +237,13 @@ func (s *MprMetricModuleTestSuite) TestModule() {
 	}
 }
 
-func (s *MprMetricModuleTestSuite) mockMetricWriteRunnerCount() {
-	s.metricWriter.On("WriteOne", &mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
-		Timestamp:  s.clock.Now(),
-		MetricName: "StreamMprRunnerCount",
-		Dimensions: mon.MetricDimensions{
-			"Name": "default",
-		},
-		Value: 3,
-		Unit:  mon.UnitCount,
-	})
-}
-
 func (s *MprMetricModuleTestSuite) mockMetricWriteMessagesPerRunner(value float64) {
 	s.metricWriter.On("WriteOne", &mon.MetricDatum{
 		Priority:   mon.PriorityHigh,
 		Timestamp:  s.clock.Now(),
 		MetricName: "StreamMprMessagesPerRunner",
-		Dimensions: mon.MetricDimensions{
-			"Name": "default",
-		},
-		Value: value,
-		Unit:  mon.UnitCountAverage,
+		Value:      value,
+		Unit:       mon.UnitCountAverage,
 	})
 }
 
@@ -289,9 +261,8 @@ func (s *MprMetricModuleTestSuite) mockGetMetricMessagesVisible(value float64, e
 
 func (s *MprMetricModuleTestSuite) mockGetMetricMessages(metric string, stat string, value float64, err error) {
 	input := &cloudwatch.GetMetricDataInput{
-		StartTime:     aws.Time(s.clock.Now().Add(-1 * s.settings.UpdatePeriod * 5)),
-		EndTime:       aws.Time(s.clock.Now().Add(-1 * s.settings.UpdatePeriod)),
-		MaxDatapoints: aws.Int64(1),
+		StartTime: aws.Time(s.clock.Now().Add(-1 * s.settings.UpdatePeriod * 5)),
+		EndTime:   aws.Time(s.clock.Now().Add(-1 * s.settings.UpdatePeriod)),
 		MetricDataQueries: []*cloudwatch.MetricDataQuery{
 			{
 				Id: aws.String("m0"),
@@ -326,10 +297,6 @@ func (s *MprMetricModuleTestSuite) mockGetMetricMessages(metric string, stat str
 	s.cwClient.On("GetMetricData", input).Return(output, err)
 }
 
-func (s *MprMetricModuleTestSuite) mockGetMetricRunnerCount(value float64, err error) {
-	s.mockGetMetricMpr("StreamMprRunnerCount", cloudwatch.StatisticSum, value, err)
-}
-
 func (s *MprMetricModuleTestSuite) mockGetMetricMessagesPerRunner(value float64, err error) {
 	s.mockGetMetricMpr("StreamMprMessagesPerRunner", cloudwatch.StatisticAverage, value, err)
 }
@@ -346,10 +313,47 @@ func (s *MprMetricModuleTestSuite) mockGetMetricMpr(metric string, stat string, 
 					Metric: &cloudwatch.Metric{
 						Namespace:  aws.String("gosoline/test/stream/mprMetric"),
 						MetricName: aws.String(metric),
+					},
+					Period: aws.Int64(60),
+					Stat:   aws.String(stat),
+					Unit:   aws.String(cloudwatch.StandardUnitCount),
+				},
+			},
+		},
+	}
+	output := &cloudwatch.GetMetricDataOutput{
+		MetricDataResults: []*cloudwatch.MetricDataResult{
+			{
+				Values: []*float64{
+					aws.Float64(value),
+				},
+			},
+		},
+	}
+
+	s.cwClient.On("GetMetricData", input).Return(output, err)
+}
+
+func (s *MprMetricModuleTestSuite) mockGetMetricEcs(metric string, stat string, value float64, err error) {
+	input := &cloudwatch.GetMetricDataInput{
+		StartTime:     aws.Time(s.clock.Now().Add(-1 * s.settings.UpdatePeriod * 5)),
+		EndTime:       aws.Time(s.clock.Now().Add(-1 * s.settings.UpdatePeriod)),
+		MaxDatapoints: aws.Int64(1),
+		MetricDataQueries: []*cloudwatch.MetricDataQuery{
+			{
+				Id: aws.String("m1"),
+				MetricStat: &cloudwatch.MetricStat{
+					Metric: &cloudwatch.Metric{
+						Namespace:  aws.String("ECS/ContainerInsights"),
+						MetricName: aws.String(metric),
 						Dimensions: []*cloudwatch.Dimension{
 							{
-								Name:  aws.String("Name"),
-								Value: aws.String("default"),
+								Name:  aws.String("ClusterName"),
+								Value: aws.String("gosoline-test-stream"),
+							},
+							{
+								Name:  aws.String("ServiceName"),
+								Value: aws.String("mprMetric"),
 							},
 						},
 					},

@@ -16,12 +16,22 @@ import (
 )
 
 const (
-	metricNameStreamMprRunnerCount       = "StreamMprRunnerCount"
 	metricNameStreamMprMessagesPerRunner = "StreamMprMessagesPerRunner"
 )
 
+type mprMetricPerConsumer map[string]float64
+
+func (d mprMetricPerConsumer) Sum() float64 {
+	sum := 0.0
+
+	for _, v := range d {
+		sum += v
+	}
+
+	return sum
+}
+
 type MessagesPerRunnerMetricWriterSettings struct {
-	Name               string
 	ConsumerSpecs      []*ConsumerSpec
 	UpdatePeriod       time.Duration
 	MaxIncreasePercent float64
@@ -31,15 +41,15 @@ type MessagesPerRunnerMetricWriterSettings struct {
 }
 
 func MessagesPerRunnerMetricWriterFactory(config cfg.Config, logger mon.Logger) (map[string]kernel.ModuleFactory, error) {
+	settings := readMessagesPerRunnerMetricSettings(config)
 	modules := map[string]kernel.ModuleFactory{}
-	mprSettings := readAllMessagesPerRunnerMetricSettings(config)
 
-	for mprName := range mprSettings {
-		settings := mprSettings[mprName]
-
-		moduleName := fmt.Sprintf("stream-metric-messages-per-runner-%s", mprName)
-		modules[moduleName] = NewMessagesPerRunnerMetricWriter(mprName, settings)
+	if !settings.Enabled {
+		return modules, nil
 	}
+
+	moduleName := fmt.Sprintf("stream-metric-messages-per-runner")
+	modules[moduleName] = NewMessagesPerRunnerMetricWriter(settings)
 
 	return modules, nil
 }
@@ -57,21 +67,19 @@ type MessagesPerRunnerMetricWriter struct {
 	settings       *MessagesPerRunnerMetricWriterSettings
 }
 
-func NewMessagesPerRunnerMetricWriter(mprName string, settings *MessagesPerRunnerMetricSettings) kernel.ModuleFactory {
+func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
 		var err error
 		var consumerSpecs []*ConsumerSpec
 		var leaderElection conc.LeaderElection
 
-		channelName := fmt.Sprintf("stream-metric-messages-per-runner-%s", mprName)
-		logger = logger.WithChannel(channelName)
+		logger = logger.WithChannel("stream-metric-messages-per-runner")
 
-		if consumerSpecs, err = GetConsumerSpecs(config, settings.Consumers); err != nil {
-			return nil, fmt.Errorf("can't create stream-metric-messages-per-runner-%s: %w", mprName, err)
+		if consumerSpecs, err = GetConsumerSpecs(config); err != nil {
+			return nil, fmt.Errorf("can't create stream-metric-messages-per-runner: %w", err)
 		}
 
 		writerSettings := &MessagesPerRunnerMetricWriterSettings{
-			Name:               mprName,
 			ConsumerSpecs:      consumerSpecs,
 			UpdatePeriod:       settings.Period,
 			MaxIncreasePercent: settings.MaxIncreasePercent,
@@ -82,7 +90,7 @@ func NewMessagesPerRunnerMetricWriter(mprName string, settings *MessagesPerRunne
 		writerSettings.AppId.PadFromConfig(config)
 
 		if leaderElection, err = conc.NewLeaderElection(config, logger, settings.LeaderElection); err != nil {
-			return nil, fmt.Errorf("can not create leader election for stream-metric-messages-per-runner writer %s: %w", mprName, err)
+			return nil, fmt.Errorf("can not create leader election for stream-metric-messages-per-runner writer: %w", err)
 		}
 
 		cwClient := mon.ProvideCloudWatchClient(config)
@@ -108,8 +116,8 @@ func NewMessagesPerRunnerMetricWriterWithInterfaces(logger mon.Logger, leaderEle
 }
 
 func (u *MessagesPerRunnerMetricWriter) Run(ctx context.Context) error {
-	if err := u.write(ctx); err != nil {
-		return err
+	if err := u.writeMessagesPerRunnerMetric(ctx); err != nil {
+		return fmt.Errorf("can not write message per runner metric: %w", err)
 	}
 
 	for {
@@ -117,40 +125,11 @@ func (u *MessagesPerRunnerMetricWriter) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-u.ticker.Tick():
-			if err := u.write(ctx); err != nil {
-				return err
+			if err := u.writeMessagesPerRunnerMetric(ctx); err != nil {
+				return fmt.Errorf("can not write message per runner metric: %w", err)
 			}
 		}
 	}
-}
-
-func (u *MessagesPerRunnerMetricWriter) write(ctx context.Context) error {
-	u.writeRunnerCountMetric(ctx)
-
-	if err := u.writeMessagesPerRunnerMetric(ctx); err != nil {
-		return fmt.Errorf("can not write message per runner metric %s: %w", u.settings.Name, err)
-	}
-
-	return nil
-}
-
-func (u *MessagesPerRunnerMetricWriter) writeRunnerCountMetric(ctx context.Context) {
-	runnerCount := 0
-
-	for _, spec := range u.settings.ConsumerSpecs {
-		runnerCount += spec.RunnerCount
-	}
-
-	u.metricWriter.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
-		Timestamp:  u.clock.Now(),
-		MetricName: metricNameStreamMprRunnerCount,
-		Dimensions: map[string]string{
-			"Name": u.settings.Name,
-		},
-		Unit:  mon.UnitCount,
-		Value: float64(runnerCount),
-	})
 }
 
 func (u *MessagesPerRunnerMetricWriter) writeMessagesPerRunnerMetric(ctx context.Context) error {
@@ -181,11 +160,8 @@ func (u *MessagesPerRunnerMetricWriter) writeMessagesPerRunnerMetric(ctx context
 		Priority:   mon.PriorityHigh,
 		Timestamp:  u.clock.Now(),
 		MetricName: metricNameStreamMprMessagesPerRunner,
-		Dimensions: map[string]string{
-			"Name": u.settings.Name,
-		},
-		Unit:  mon.UnitCountAverage,
-		Value: messagesPerRunner,
+		Unit:       mon.UnitCountAverage,
+		Value:      messagesPerRunner,
 	})
 
 	return nil
@@ -203,7 +179,7 @@ func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner() (float64, e
 		return 0, fmt.Errorf("can not get number of messages visible: %w", err)
 	}
 
-	if runnerCount, err = u.getStreamMprMetric(metricNameStreamMprRunnerCount, cloudwatch.StatisticSum, u.settings.UpdatePeriod); err != nil {
+	if runnerCount, err = u.getEcsMetric("DesiredTaskCount", cloudwatch.StatisticMaximum, u.settings.UpdatePeriod); err != nil {
 		return 0, fmt.Errorf("can not get runner count: %w", err)
 	}
 
@@ -270,7 +246,6 @@ func (u *MessagesPerRunnerMetricWriter) getQueueMetrics(metric string, stat stri
 		StartTime:         aws.Time(startTime),
 		EndTime:           aws.Time(endTime),
 		MetricDataQueries: queries,
-		MaxDatapoints:     aws.Int64(1),
 	}
 
 	out, err := u.cwClient.GetMetricData(input)
@@ -309,10 +284,61 @@ func (u *MessagesPerRunnerMetricWriter) getStreamMprMetric(name string, stat str
 					Metric: &cloudwatch.Metric{
 						Namespace:  aws.String(namespace),
 						MetricName: aws.String(name),
+					},
+					Period: aws.Int64(periodSeconds),
+					Stat:   aws.String(stat),
+					Unit:   aws.String(cloudwatch.StandardUnitCount),
+				},
+			},
+		},
+		MaxDatapoints: aws.Int64(1),
+	}
+
+	out, err := u.cwClient.GetMetricData(input)
+
+	if err != nil {
+		return 0, fmt.Errorf("can not get metric: %w", err)
+	}
+
+	if len(out.MetricDataResults) == 0 {
+		return 0, fmt.Errorf("no metric results")
+	}
+
+	if len(out.MetricDataResults[0].Values) == 0 {
+		return 0, fmt.Errorf("no metric values")
+	}
+
+	value := *out.MetricDataResults[0].Values[0]
+
+	return value, nil
+}
+
+func (u *MessagesPerRunnerMetricWriter) getEcsMetric(name string, stat string, period time.Duration) (float64, error) {
+	appId := u.settings.AppId
+	clusterName := fmt.Sprintf("%s-%s-%s", appId.Project, appId.Environment, appId.Family)
+
+	startTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod * 5)
+	endTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod)
+	periodSeconds := int64(u.settings.UpdatePeriod.Seconds())
+
+	input := &cloudwatch.GetMetricDataInput{
+		StartTime: aws.Time(startTime),
+		EndTime:   aws.Time(endTime),
+		MetricDataQueries: []*cloudwatch.MetricDataQuery{
+			{
+				Id: aws.String("m1"),
+				MetricStat: &cloudwatch.MetricStat{
+					Metric: &cloudwatch.Metric{
+						Namespace:  aws.String("ECS/ContainerInsights"),
+						MetricName: aws.String(name),
 						Dimensions: []*cloudwatch.Dimension{
 							{
-								Name:  aws.String("Name"),
-								Value: aws.String(u.settings.Name),
+								Name:  aws.String("ClusterName"),
+								Value: aws.String(clusterName),
+							},
+							{
+								Name:  aws.String("ServiceName"),
+								Value: aws.String(appId.Application),
 							},
 						},
 					},
