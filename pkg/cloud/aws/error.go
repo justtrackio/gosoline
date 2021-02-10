@@ -73,9 +73,11 @@ func CheckConnectionError(_ interface{}, err error) exec.ErrorType {
 func IsConnectionError(err error) bool {
 	var awsErr awserr.Error
 
-	errors.As(err, &awsErr)
+	if errors.As(err, &awsErr) {
+		err = awsErr.OrigErr()
+	}
 
-	return exec.IsConnectionError(awsErr)
+	return exec.IsConnectionError(err)
 }
 
 func CheckErrorRetryable(_ interface{}, err error) exec.ErrorType {

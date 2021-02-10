@@ -185,7 +185,7 @@ func transformTransactionCanceledError(tcErr *dynamodb.TransactionCanceledExcept
 		err := dynamodbattribute.UnmarshalMap(reason.Item, itemBuilders[i].GetItem())
 		if err != nil {
 			unmarshalErr := fmt.Errorf("could not unmarshal partial response: %w", err)
-			_ = multierror.Append(multiErr, unmarshalErr)
+			multiErr = multierror.Append(multiErr, unmarshalErr)
 		}
 	}
 
