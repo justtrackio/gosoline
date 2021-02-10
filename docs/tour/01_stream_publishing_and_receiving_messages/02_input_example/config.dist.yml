@@ -1,0 +1,11 @@
+env: test
+
+app_project: gosoline
+app_family: stream-example
+app_name: input-example
+
+stream:
+  input:
+    exampleInput:
+      type: inMemory
+      size: 1
