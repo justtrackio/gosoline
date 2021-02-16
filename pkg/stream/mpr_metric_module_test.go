@@ -190,12 +190,7 @@ func (s *MprMetricModuleTestSuite) SetupTestCase() {
 	s.ticker = clock.NewFakeTicker()
 
 	s.settings = &stream.MessagesPerRunnerMetricWriterSettings{
-		ConsumerSpecs: []*stream.ConsumerSpec{
-			{
-				ConsumerName: "consumerName",
-				QueueName:    "queueName",
-			},
-		},
+		QueueNames:         []string{"queueName"},
 		UpdatePeriod:       time.Minute,
 		MaxIncreasePercent: 200,
 		MaxIncreasePeriod:  time.Minute * 5,
@@ -273,7 +268,7 @@ func (s *MprMetricModuleTestSuite) mockGetMetricMessages(metric string, stat str
 						Dimensions: []*cloudwatch.Dimension{
 							{
 								Name:  aws.String("QueueName"),
-								Value: aws.String(s.settings.ConsumerSpecs[0].QueueName),
+								Value: aws.String(s.settings.QueueNames[0]),
 							},
 						},
 					},

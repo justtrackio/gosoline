@@ -20,7 +20,7 @@ const (
 )
 
 type MessagesPerRunnerMetricWriterSettings struct {
-	ConsumerSpecs      []*ConsumerSpec
+	QueueNames         []string
 	UpdatePeriod       time.Duration
 	MaxIncreasePercent float64
 	MaxIncreasePeriod  time.Duration
@@ -58,17 +58,17 @@ type MessagesPerRunnerMetricWriter struct {
 func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
 		var err error
-		var consumerSpecs []*ConsumerSpec
+		var queueNames []string
 		var leaderElection conc.LeaderElection
 
 		logger = logger.WithChannel("stream-metric-messages-per-runner")
 
-		if consumerSpecs, err = GetConsumerSpecs(config); err != nil {
+		if queueNames, err = getQueueNames(config); err != nil {
 			return nil, fmt.Errorf("can't create stream-metric-messages-per-runner: %w", err)
 		}
 
 		writerSettings := &MessagesPerRunnerMetricWriterSettings{
-			ConsumerSpecs:      consumerSpecs,
+			QueueNames:         queueNames,
 			UpdatePeriod:       settings.Period,
 			MaxIncreasePercent: settings.MaxIncreasePercent,
 			MaxIncreasePeriod:  settings.MaxIncreasePeriod,
@@ -207,9 +207,9 @@ func (u *MessagesPerRunnerMetricWriter) getQueueMetrics(metric string, stat stri
 	startTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod * 5)
 	endTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod)
 	period := int64(u.settings.UpdatePeriod.Seconds())
-	queries := make([]*cloudwatch.MetricDataQuery, len(u.settings.ConsumerSpecs))
+	queries := make([]*cloudwatch.MetricDataQuery, len(u.settings.QueueNames))
 
-	for i, spec := range u.settings.ConsumerSpecs {
+	for i, queueName := range u.settings.QueueNames {
 		queries[i] = &cloudwatch.MetricDataQuery{
 			Id: aws.String(fmt.Sprintf("m%d", i)),
 			MetricStat: &cloudwatch.MetricStat{
@@ -219,7 +219,7 @@ func (u *MessagesPerRunnerMetricWriter) getQueueMetrics(metric string, stat stri
 					Dimensions: []*cloudwatch.Dimension{
 						{
 							Name:  aws.String("QueueName"),
-							Value: aws.String(spec.QueueName),
+							Value: aws.String(queueName),
 						},
 					},
 				},

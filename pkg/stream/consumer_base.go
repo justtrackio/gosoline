@@ -58,10 +58,7 @@ type baseConsumer struct {
 }
 
 func NewBaseConsumer(config cfg.Config, logger mon.Logger, name string, consumerCallback BaseConsumerCallback) *baseConsumer {
-	settings := &ConsumerSettings{}
-	key := ConfigurableConsumerKey(name)
-	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultForKey("encoding", defaultMessageBodyEncoding))
-
+	settings := readConsumerSettings(config, name)
 	appId := cfg.GetAppIdFromConfig(config)
 	tracer := tracing.ProviderTracer(config, logger)
 
@@ -260,15 +257,4 @@ func readConsumerSettings(config cfg.Config, name string) *ConsumerSettings {
 	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultForKey("encoding", defaultMessageBodyEncoding))
 
 	return settings
-}
-
-func readAllConsumerNames(config cfg.Config) []string {
-	consumerMap := config.GetStringMap("stream.consumer", map[string]interface{}{})
-	consumers := make([]string, 0, len(consumerMap))
-
-	for name := range consumerMap {
-		consumers = append(consumers, name)
-	}
-
-	return consumers
 }

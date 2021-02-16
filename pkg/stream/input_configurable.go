@@ -254,3 +254,14 @@ func readInputType(config cfg.Config, name string) string {
 
 	return t
 }
+
+func readAllInputTypes(config cfg.Config) map[string]string {
+	inputMap := config.GetStringMap("stream.input", map[string]interface{}{})
+	inputsTypes := make(map[string]string, len(inputMap))
+
+	for name := range inputMap {
+		inputsTypes[name] = readInputType(config, name)
+	}
+
+	return inputsTypes
+}
