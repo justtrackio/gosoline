@@ -3,6 +3,7 @@ package currency
 import (
 	"context"
 	"encoding/xml"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/http"
 	"github.com/applike/gosoline/pkg/kvstore"
@@ -29,13 +30,18 @@ type updaterService struct {
 	store  kvstore.KvStore
 }
 
-func NewUpdater(config cfg.Config, logger mon.Logger) UpdaterService {
+func NewUpdater(config cfg.Config, logger mon.Logger) (UpdaterService, error) {
 	logger = logger.WithChannel("currency_updater_service")
 	tracer := tracing.ProviderTracer(config, logger)
-	store := kvstore.NewConfigurableKvStore(config, logger, "currency")
+
+	store, err := kvstore.NewConfigurableKvStore(config, logger, "currency")
+	if err != nil {
+		return nil, fmt.Errorf("can not create kvStore: %w", err)
+	}
+
 	httpClient := http.NewHttpClient(config, logger)
 
-	return NewUpdaterWithInterfaces(logger, tracer, store, httpClient)
+	return NewUpdaterWithInterfaces(logger, tracer, store, httpClient), nil
 }
 
 func NewUpdaterWithInterfaces(logger mon.Logger, tracer tracing.Tracer, store kvstore.KvStore, httpClient http.Client) UpdaterService {

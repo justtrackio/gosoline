@@ -29,12 +29,13 @@ type ModelTransformer interface {
 type ModelTransformers map[string]VersionedModelTransformers
 type VersionedModelTransformers map[int]ModelTransformer
 
-type TransformerFactory func(config cfg.Config, logger mon.Logger) ModelTransformer
+type TransformerFactory func(config cfg.Config, logger mon.Logger) (ModelTransformer, error)
 type TransformerMapVersionFactories map[int]TransformerFactory
 type TransformerMapTypeVersionFactories map[string]TransformerMapVersionFactories
 
 func initTransformers(config cfg.Config, logger mon.Logger, subscriberSettings map[string]*SubscriberSettings, transformerFactories TransformerMapTypeVersionFactories) (ModelTransformers, error) {
-	transformers := make(ModelTransformers)
+	var err error
+	var transformers = make(ModelTransformers)
 
 	for name, settings := range subscriberSettings {
 		modelId := settings.SourceModel.String()
@@ -48,16 +49,18 @@ func initTransformers(config cfg.Config, logger mon.Logger, subscriberSettings m
 		transformers[modelId] = make(map[int]ModelTransformer)
 
 		for version, factory := range versionedFactories {
-			transformers[modelId][version] = factory(config, logger)
+			if transformers[modelId][version], err = factory(config, logger); err != nil {
+				return nil, fmt.Errorf("can not create transformer for modelId %s in version %d: %w", modelId, version, err)
+			}
 		}
 	}
 
 	return transformers, nil
 }
 
-func NewGenericTransformer(transformer ModelTransformer) func(cfg.Config, mon.Logger) ModelTransformer {
-	return func(_ cfg.Config, _ mon.Logger) ModelTransformer {
-		return transformer
+func NewGenericTransformer(transformer ModelTransformer) func(cfg.Config, mon.Logger) (ModelTransformer, error) {
+	return func(_ cfg.Config, _ mon.Logger) (ModelTransformer, error) {
+		return transformer, nil
 	}
 }
 

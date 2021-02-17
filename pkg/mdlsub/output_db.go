@@ -17,14 +17,14 @@ func init() {
 	outputFactories[OutputTypeDb] = outputDbFactory
 }
 
-func outputDbFactory(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) map[int]Output {
+func outputDbFactory(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
 	outputs := make(map[int]Output)
 
 	for version := range transformers {
 		outputs[version] = NewOutputDb(config, logger)
 	}
 
-	return outputs
+	return outputs, nil
 }
 
 type OutputDb struct {

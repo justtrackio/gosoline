@@ -15,7 +15,7 @@ type mysqlOrmFixtureWriter struct {
 }
 
 func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
+	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
 		metadata.ModelId.PadFromConfig(config)
 
 		settings := db_repo.Settings{
@@ -26,7 +26,7 @@ func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFacto
 		repo := db_repo.New(config, logger, settings)
 		purger := newMysqlPurger(config, logger, metadata.TableName)
 
-		return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo, purger)
+		return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo, purger), nil
 	}
 }
 

@@ -58,7 +58,8 @@ func (s *DdbTestSuite) TearDownSuite() {
 }
 
 func (s *DdbTestSuite) SetupTest() {
-	ddbEndpoint := fmt.Sprintf("http://%s:%d", s.mocks.ProvideDynamoDbHost("dynamodb"), s.mocks.ProvideDynamoDbPort("dynamodb"))
+	var err error
+	var ddbEndpoint = fmt.Sprintf("http://%s:%d", s.mocks.ProvideDynamoDbHost("dynamodb"), s.mocks.ProvideDynamoDbPort("dynamodb"))
 
 	config := new(cfgMocks.Config)
 	config.On("GetBool", "aws_dynamoDb_autoCreate").Return(true)
@@ -89,7 +90,8 @@ func (s *DdbTestSuite) SetupTest() {
 			WriteCapacityUnits: 1,
 		},
 	}
-	s.repo = ddb.NewRepository(config, logger, &s.ddbConfig)
+	s.repo, err = ddb.NewRepository(config, logger, &s.ddbConfig)
+	s.NoError(err)
 }
 
 func (s *DdbTestSuite) TestSetValidBackoffConfig() {

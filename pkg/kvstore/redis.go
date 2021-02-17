@@ -19,13 +19,13 @@ func RedisBasename(settings *Settings) string {
 	return fmt.Sprintf("kvstore_%s", settings.Name)
 }
 
-func NewRedisKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvStore {
+func NewRedisKvStore(config cfg.Config, logger mon.Logger, settings *Settings) (KvStore, error) {
 	settings.PadFromConfig(config)
 
 	redisName := RedisBasename(settings)
 	client := redis.ProvideClient(config, logger, redisName)
 
-	return NewRedisKvStoreWithInterfaces(client, settings)
+	return NewRedisKvStoreWithInterfaces(client, settings), nil
 }
 
 func NewRedisKvStoreWithInterfaces(client redis.Client, settings *Settings) KvStore {

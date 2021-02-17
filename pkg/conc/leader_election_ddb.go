@@ -44,7 +44,7 @@ func NewDdbLeaderElectionWithSettings(config cfg.Config, logger mon.Logger, sett
 		return settings.TableName
 	}
 
-	repository := ddb.NewRepository(config, logger, &ddb.Settings{
+	repository, err := ddb.NewRepository(config, logger, &ddb.Settings{
 		ModelId:        mdl.ModelId{},
 		NamingStrategy: namingFactory,
 		Backoff: exec.BackoffSettings{
@@ -64,6 +64,9 @@ func NewDdbLeaderElectionWithSettings(config cfg.Config, logger mon.Logger, sett
 			WriteCapacityUnits: 3,
 		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("can not create ddb repository: %w", err)
+	}
 
 	return NewDdbLeaderElectionWithInterfaces(logger, clock.Provider, repository, settings)
 }

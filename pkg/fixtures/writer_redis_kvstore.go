@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -15,7 +16,7 @@ type redisKvStoreFixtureWriter struct {
 }
 
 func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
+	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
 		settings := &kvstore.Settings{
 			AppId: cfg.AppId{
 				Project:     modelId.Project,
@@ -25,12 +26,16 @@ func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory
 			},
 			Name: modelId.Name,
 		}
-		store := kvstore.NewRedisKvStore(config, logger, settings)
+
+		store, err := kvstore.NewRedisKvStore(config, logger, settings)
+		if err != nil {
+			return nil, fmt.Errorf("can not create redis store: %w", err)
+		}
 
 		name := kvstore.RedisBasename(settings)
 		purger := newRedisPurger(config, logger, &name)
 
-		return NewRedisKvStoreFixtureWriterWithInterfaces(logger, store, purger)
+		return NewRedisKvStoreFixtureWriterWithInterfaces(logger, store, purger), nil
 	}
 }
 

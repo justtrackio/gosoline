@@ -19,7 +19,7 @@ type simpleRepository struct {
 	base Repository
 }
 
-func NewSimpleRepository(config cfg.Config, logger mon.Logger, settings *SimpleSettings) *simpleRepository {
+func NewSimpleRepository(config cfg.Config, logger mon.Logger, settings *SimpleSettings) (*simpleRepository, error) {
 	baseSettings := &Settings{
 		ModelId: settings.ModelId,
 		Main: MainSettings{
@@ -30,9 +30,12 @@ func NewSimpleRepository(config cfg.Config, logger mon.Logger, settings *SimpleS
 		},
 	}
 
-	base := NewRepository(config, logger, baseSettings)
+	base, err := NewRepository(config, logger, baseSettings)
+	if err != nil {
+		return nil, err
+	}
 
-	return NewSimpleRepositoryWithInterfaces(base)
+	return NewSimpleRepositoryWithInterfaces(base), nil
 }
 
 func NewSimpleRepositoryWithInterfaces(base Repository) *simpleRepository {

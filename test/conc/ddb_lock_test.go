@@ -67,7 +67,7 @@ func (s *DdbLockTestSuite) SetupTest() {
 
 	logger := monMocks.NewLoggerMockedAll()
 
-	s.provider = conc.NewDdbLockProvider(config, logger, conc.DistributedLockSettings{
+	provider, err := conc.NewDdbLockProvider(config, logger, conc.DistributedLockSettings{
 		Backoff: exec.BackoffSettings{
 			Enabled:  true,
 			Blocking: true,
@@ -75,6 +75,9 @@ func (s *DdbLockTestSuite) SetupTest() {
 		DefaultLockTime: time.Second * 3,
 		Domain:          fmt.Sprintf("test%d", time.Now().Unix()),
 	})
+	s.NoError(err)
+
+	s.provider = provider
 }
 
 func (s *DdbLockTestSuite) TestLockAndRelease() {

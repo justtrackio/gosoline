@@ -40,12 +40,12 @@ type redisFixtureWriter struct {
 }
 
 func RedisFixtureWriterFactory(name *string, operation *string) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
+	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
 		client := redis.ProvideClient(config, logger, *name)
 
 		purger := newRedisPurger(config, logger, name)
 
-		return NewRedisFixtureWriterWithInterfaces(logger, client, purger, operation)
+		return NewRedisFixtureWriterWithInterfaces(logger, client, purger, operation), nil
 	}
 }
 

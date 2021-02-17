@@ -16,9 +16,9 @@ func init() {
 	outputFactories[OutputTypeDdb] = outputDdbFactory
 }
 
-func repoInit(config cfg.Config, logger mon.Logger, settings *SubscriberSettings) func(model interface{}) ddb.Repository {
-	return func(model interface{}) ddb.Repository {
-		repo := ddb.NewRepository(config, logger, &ddb.Settings{
+func repoInit(config cfg.Config, logger mon.Logger, settings *SubscriberSettings) func(model interface{}) (ddb.Repository, error) {
+	return func(model interface{}) (ddb.Repository, error) {
+		repo, err := ddb.NewRepository(config, logger, &ddb.Settings{
 			ModelId: settings.TargetModel,
 			Main: ddb.MainSettings{
 				Model:              model,
@@ -26,23 +26,26 @@ func repoInit(config cfg.Config, logger mon.Logger, settings *SubscriberSettings
 				WriteCapacityUnits: 5,
 			},
 		})
+		if err != nil {
+			return nil, fmt.Errorf("can not create ddb repository: %w", err)
+		}
 
-		return ddb.NewMetricRepository(config, logger, repo)
+		return ddb.NewMetricRepository(config, logger, repo), nil
 	}
 }
 
-func outputDdbFactory(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) map[int]Output {
+func outputDdbFactory(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
 	outputs := make(map[int]Output)
 
 	for version := range transformers {
 		outputs[version] = NewOutputDdb(config, logger, settings)
 	}
 
-	return outputs
+	return outputs, nil
 }
 
 type OutputDdb struct {
-	repoInit func(model interface{}) ddb.Repository
+	repoInit func(model interface{}) (ddb.Repository, error)
 	repo     ddb.Repository
 }
 
@@ -57,11 +60,13 @@ func (p *OutputDdb) GetType() string {
 }
 
 func (p *OutputDdb) Persist(ctx context.Context, model Model, op string) error {
-	if p.repo == nil {
-		p.repo = p.repoInit(model)
-	}
-
 	var err error
+
+	if p.repo == nil {
+		if p.repo, err = p.repoInit(model); err != nil {
+			return fmt.Errorf("can not initialize ddb repository: %w", err)
+		}
+	}
 
 	switch op {
 	case ddb.Create, ddb.Update:

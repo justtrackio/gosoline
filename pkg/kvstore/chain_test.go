@@ -430,8 +430,8 @@ func TestChainKvStore_DeleteBatch(t *testing.T) {
 	element1.AssertExpectations(t)
 }
 
-func nilFactory(_ kvstore.Factory, _ *kvstore.Settings) kvstore.KvStore {
-	return nil
+func nilFactory(_ kvstore.Factory, _ *kvstore.Settings) (kvstore.KvStore, error) {
+	return nil, nil
 }
 
 func buildTestableChainStore(missingCacheEnabled bool) (kvstore.KvStore, *kvStoreMocks.KvStore, *kvStoreMocks.KvStore) {

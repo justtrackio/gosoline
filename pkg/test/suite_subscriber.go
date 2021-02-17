@@ -100,7 +100,7 @@ func (s *SubscriberTestSuite) TestSubscriber(app AppUnderTest, testCases []Subsc
 
 			fetcher := &DdbSubscriberFetcher{
 				t: s.T(),
-				repo: func(model interface{}) ddb.Repository {
+				repo: func(model interface{}) (ddb.Repository, error) {
 					return ddb.NewRepository(config, logger, &ddb.Settings{
 						ModelId: ddbSub.ModelIdTarget,
 						Main: ddb.MainSettings{
@@ -123,7 +123,11 @@ func (s *SubscriberTestSuite) TestSubscriber(app AppUnderTest, testCases []Subsc
 				return
 			}
 
-			store := kvstore.NewConfigurableKvStore(config, logger, sub.GetName())
+			store, err := kvstore.NewConfigurableKvStore(config, logger, sub.GetName())
+			if err != nil {
+				s.FailNow("can't initialize kvStore", "the test case for the subscription of %s can't be initialized", sub.GetName())
+			}
+
 			fetcher := &KvstoreSubscriberFetcher{
 				t:     s.T(),
 				store: store,
@@ -242,16 +246,18 @@ type DdbSubscriberAssertion func(t *testing.T, fetcher *DdbSubscriberFetcher)
 
 type DdbSubscriberFetcher struct {
 	t    *testing.T
-	repo func(model interface{}) ddb.Repository
+	repo func(model interface{}) (ddb.Repository, error)
 	name string
 }
 
 func (f DdbSubscriberFetcher) ByHash(hash interface{}, model interface{}) {
-	repo := f.repo(model)
+	repo, err := f.repo(model)
+	assert.NoErrorf(f.t, err, "unexpected error on fetching ddb subscription %s", f.name)
+
 	qb := repo.GetItemBuilder().WithHash(hash)
 	res, err := repo.GetItem(context.Background(), qb, model)
 
-	assert.NoErrorf(f.t, err, "unexpected error on fetching db subscription %s", f.name)
+	assert.NoErrorf(f.t, err, "unexpected error on fetching ddb subscription %s", f.name)
 
 	if err != nil {
 		return
@@ -261,11 +267,13 @@ func (f DdbSubscriberFetcher) ByHash(hash interface{}, model interface{}) {
 }
 
 func (f DdbSubscriberFetcher) ByHashAndRange(hash interface{}, rangeValue interface{}, model interface{}) {
-	repo := f.repo(model)
+	repo, err := f.repo(model)
+	assert.NoErrorf(f.t, err, "unexpected error on fetching ddb subscription %s", f.name)
+
 	qb := repo.GetItemBuilder().WithHash(hash).WithRange(rangeValue)
 	res, err := repo.GetItem(context.Background(), qb, model)
 
-	assert.NoErrorf(f.t, err, "unexpected error on fetching db subscription %s", f.name)
+	assert.NoErrorf(f.t, err, "unexpected error on fetching ddb subscription %s", f.name)
 
 	if err != nil {
 		return

@@ -29,11 +29,11 @@ func DdbBaseName(settings *Settings) string {
 	return fmt.Sprintf("kvstore-%s", settings.Name)
 }
 
-func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvStore {
+func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) (KvStore, error) {
 	settings.PadFromConfig(config)
 	name := DdbBaseName(settings)
 
-	repository := ddb.NewRepository(config, logger, &ddb.Settings{
+	repository, err := ddb.NewRepository(config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     settings.Project,
 			Environment: settings.Environment,
@@ -47,8 +47,11 @@ func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) KvS
 			WriteCapacityUnits: 5,
 		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("can not create ddb repository: %w", err)
+	}
 
-	return NewDdbKvStoreWithInterfaces(repository, settings)
+	return NewDdbKvStoreWithInterfaces(repository, settings), nil
 }
 
 func NewDdbKvStoreWithInterfaces(repository ddb.Repository, settings *Settings) KvStore {

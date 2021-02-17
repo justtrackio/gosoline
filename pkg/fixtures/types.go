@@ -21,4 +21,4 @@ type FixtureWriter interface {
 	Write(fixture *FixtureSet) error
 }
 
-type FixtureWriterFactory func(config cfg.Config, logger mon.Logger) FixtureWriter
+type FixtureWriterFactory func(config cfg.Config, logger mon.Logger) (FixtureWriter, error)

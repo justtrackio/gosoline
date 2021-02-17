@@ -16,15 +16,15 @@ type MigrationSettings struct {
 	Enabled        bool   `cfg:"enabled" default:"false"`
 }
 
-func runMigrations(logger mon.Logger, settings Settings, db *sqlx.DB) {
+func runMigrations(logger mon.Logger, settings Settings, db *sqlx.DB) error {
 	if !settings.Migrations.Enabled || settings.Migrations.Path == "" {
-		return
+		return nil
 	}
 
 	driverFactory, err := GetDriverFactory(settings.Driver)
 
 	if err != nil {
-		logger.Panicf(err, "could not get driver factory for %s", settings.Driver)
+		return fmt.Errorf("could not get driver factory for %s: %w", settings.Driver, err)
 	}
 
 	migrationsTable := "schema_migrations"
@@ -38,7 +38,7 @@ func runMigrations(logger mon.Logger, settings Settings, db *sqlx.DB) {
 	driver, err := driverFactory.GetMigrationDriver(db.DB, settings.Uri.Database, migrationsTable)
 
 	if err != nil {
-		logger.Panic(err, "could not get migration driver")
+		return fmt.Errorf("could not get migration driver: %w", err)
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(settings.Migrations.Path, settings.Driver, driver)
@@ -51,10 +51,12 @@ func runMigrations(logger mon.Logger, settings Settings, db *sqlx.DB) {
 
 	if err == migrate.ErrNoChange {
 		logger.Info("no db migrations to run")
-		return
+		return nil
 	}
 
 	if err != nil {
-		logger.Panic(err, "could not run db migrations")
+		return fmt.Errorf("could not run db migrations: %w", err)
 	}
+
+	return nil
 }

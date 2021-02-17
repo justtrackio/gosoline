@@ -58,10 +58,10 @@ type SizedStore interface {
 	EstimateSize() *int64
 }
 
-type Factory func(config cfg.Config, logger mon.Logger, settings *Settings) KvStore
+type Factory func(config cfg.Config, logger mon.Logger, settings *Settings) (KvStore, error)
 
-func buildFactory(config cfg.Config, logger mon.Logger) func(factory Factory, settings *Settings) KvStore {
-	return func(factory Factory, settings *Settings) KvStore {
+func buildFactory(config cfg.Config, logger mon.Logger) func(factory Factory, settings *Settings) (KvStore, error) {
+	return func(factory Factory, settings *Settings) (KvStore, error) {
 		return factory(config, logger, settings)
 	}
 }
