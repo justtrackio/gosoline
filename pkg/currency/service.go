@@ -2,6 +2,7 @@ package currency
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/mon"
@@ -20,10 +21,13 @@ type currencyService struct {
 	store kvstore.KvStore
 }
 
-func New(config cfg.Config, logger mon.Logger) *currencyService {
-	store := kvstore.NewConfigurableKvStore(config, logger, "currency")
+func New(config cfg.Config, logger mon.Logger) (*currencyService, error) {
+	store, err := kvstore.NewConfigurableKvStore(config, logger, "currency")
+	if err != nil {
+		return nil, fmt.Errorf("can not create kvStore: %w", err)
+	}
 
-	return NewWithInterfaces(store)
+	return NewWithInterfaces(store), nil
 }
 
 func NewWithInterfaces(store kvstore.KvStore) *currencyService {

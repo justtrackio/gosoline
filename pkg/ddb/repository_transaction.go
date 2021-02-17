@@ -30,7 +30,7 @@ type transactionRepository struct {
 	tracer   tracing.Tracer
 }
 
-func NewTransactionRepository(config cfg.Config, logger mon.Logger) *transactionRepository {
+func NewTransactionRepository(config cfg.Config, logger mon.Logger) (*transactionRepository, error) {
 	settings := &Settings{}
 
 	settings.Client.MaxRetries = config.GetInt("aws_sdk_retries")
@@ -39,7 +39,7 @@ func NewTransactionRepository(config cfg.Config, logger mon.Logger) *transaction
 	config.UnmarshalKey("ddb.backoff", backoffSettings)
 
 	if err := cfg.Merge(&settings.Backoff, *backoffSettings); err != nil {
-		logger.Panicf(err, "could not merge backoff settings for transactions")
+		return nil, fmt.Errorf("could not merge backoff settings for transactions: %w", err)
 	}
 
 	tracer := tracing.ProviderTracer(config, logger)
@@ -57,7 +57,7 @@ func NewTransactionRepository(config cfg.Config, logger mon.Logger) *transaction
 
 	executor := aws.NewExecutor(logger, res, &settings.Backoff, checks...)
 
-	return NewTransactionRepositoryWithInterfaces(logger, client, executor, tracer)
+	return NewTransactionRepositoryWithInterfaces(logger, client, executor, tracer), nil
 }
 
 func NewTransactionRepositoryWithInterfaces(logger mon.Logger, client dynamodbiface.DynamoDBAPI, executor aws.Executor, tracer tracing.Tracer) *transactionRepository {

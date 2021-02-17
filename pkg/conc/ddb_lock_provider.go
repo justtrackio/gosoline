@@ -33,8 +33,8 @@ type ddbLockProvider struct {
 	domain          string
 }
 
-func NewDdbLockProvider(config cfg.Config, logger mon.Logger, settings DistributedLockSettings) DistributedLockProvider {
-	repo := ddb.NewRepository(config, logger, &ddb.Settings{
+func NewDdbLockProvider(config cfg.Config, logger mon.Logger, settings DistributedLockSettings) (DistributedLockProvider, error) {
+	repo, err := ddb.NewRepository(config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Name: "locks",
 		},
@@ -45,6 +45,9 @@ func NewDdbLockProvider(config cfg.Config, logger mon.Logger, settings Distribut
 			WriteCapacityUnits: 1,
 		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("can not create ddb repository: %w", err)
+	}
 
 	return NewDdbLockProviderWithInterfaces(
 		logger,
@@ -53,7 +56,7 @@ func NewDdbLockProvider(config cfg.Config, logger mon.Logger, settings Distribut
 		clockwork.NewRealClock(),
 		uuid.New(),
 		settings,
-	)
+	), nil
 }
 
 func NewDdbLockProviderWithInterfaces(

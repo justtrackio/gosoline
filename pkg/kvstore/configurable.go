@@ -36,27 +36,25 @@ type InMemoryConfiguration struct {
 	GetsPerPromote int32  `cfg:"gets_per_promote" default:"3"`
 }
 
-func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) KvStore {
+func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) (KvStore, error) {
 	key := fmt.Sprintf("kvstore.%s.type", name)
 	t := config.GetString(key)
 
 	switch t {
 	case TypeChain:
 		return newKvStoreChainFromConfig(config, logger, name)
-	default:
-		logger.Fatalf(fmt.Errorf("invalid kvstore %s of type %s", name, t), "invalid kvstore %s of type %s", name, t)
 	}
 
-	return nil
+	return nil, fmt.Errorf("invalid kvstore %s of type %s", name, t)
 }
 
-func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string) KvStore {
+func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string) (KvStore, error) {
 	key := GetConfigurableKey(name)
 
 	configuration := ChainConfiguration{}
 	config.UnmarshalKey(key, &configuration)
 
-	store := NewChainKvStore(config, logger, configuration.MissingCacheEnabled, &Settings{
+	store, err := NewChainKvStore(config, logger, configuration.MissingCacheEnabled, &Settings{
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
@@ -75,23 +73,31 @@ func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string
 			GetsPerPromote: configuration.InMemory.GetsPerPromote,
 		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("can not create chain store: %w", err)
+	}
 
 	for _, element := range configuration.Elements {
 		switch element {
 		case TypeDdb:
-			store.Add(NewDdbKvStore)
+			if err := store.Add(NewDdbKvStore); err != nil {
+				return nil, fmt.Errorf("can not add ddb store: %w", err)
+			}
 		case TypeInMemory:
-			store.Add(NewInMemoryKvStore)
+			if err := store.Add(NewInMemoryKvStore); err != nil {
+				return nil, fmt.Errorf("can not add inMemory store: %w", err)
+			}
 		case TypeRedis:
-			store.Add(NewRedisKvStore)
+			if err := store.Add(NewRedisKvStore); err != nil {
+				return nil, fmt.Errorf("can not add redis store: %w", err)
+			}
 		default:
-			err := fmt.Errorf("invalid element type %s for kvstore chain", element)
-			logger.Fatalf(err, err.Error())
+			return nil, fmt.Errorf("invalid element type %s for kvstore chain", element)
 		}
 
 	}
 
-	return store
+	return store, nil
 }
 
 func GetConfigurableKey(name string) string {

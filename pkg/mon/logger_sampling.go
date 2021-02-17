@@ -126,14 +126,6 @@ func (l *SamplingLogger) Panic(err error, msg string) {
 	l.Logger.Panic(err, msg)
 }
 
-func (l *SamplingLogger) Panicf(err error, msg string, args ...interface{}) {
-	if !l.shouldLog(msg) {
-		return
-	}
-
-	l.Logger.Panicf(err, msg, args...)
-}
-
 func (l *SamplingLogger) Warn(args ...interface{}) {
 	if !l.shouldLog(fmt.Sprint(args...)) {
 		return

@@ -20,8 +20,8 @@ type InMemoryKvStore struct {
 	cacheSize *int64
 }
 
-func NewInMemoryKvStore(_ cfg.Config, _ mon.Logger, settings *Settings) KvStore {
-	return NewInMemoryKvStoreWithInterfaces(settings)
+func NewInMemoryKvStore(_ cfg.Config, _ mon.Logger, settings *Settings) (KvStore, error) {
+	return NewInMemoryKvStoreWithInterfaces(settings), nil
 }
 
 func NewInMemoryKvStoreWithInterfaces(settings *Settings) KvStore {

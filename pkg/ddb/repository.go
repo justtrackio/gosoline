@@ -71,7 +71,7 @@ type repository struct {
 	settings   *Settings
 }
 
-func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Repository {
+func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) (Repository, error) {
 	if settings.ModelId.Name == "" {
 		settings.ModelId.Name = getTypeName(settings.Main.Model)
 	}
@@ -87,7 +87,7 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 	config.UnmarshalKey("ddb.backoff", backoffSettings)
 
 	if err := cfg.Merge(&settings.Backoff, *backoffSettings); err != nil {
-		logger.Panicf(err, "could not merge backoff settings for ddb table %s", tableName)
+		return nil, fmt.Errorf("could not merge backoff settings for ddb table %s: %w", tableName, err)
 	}
 
 	res := &exec.ExecutableResource{
@@ -114,7 +114,7 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) Rep
 		tracer = tracing.ProviderTracer(config, logger)
 	}
 
-	return NewWithInterfaces(logger, tracer, client, executor, settings)
+	return NewWithInterfaces(logger, tracer, client, executor, settings), nil
 }
 
 func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor aws.Executor, settings *Settings) Repository {

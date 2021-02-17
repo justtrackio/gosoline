@@ -62,13 +62,17 @@ func ProvideConnection(config cfg.Config, logger mon.Logger, configKey string) (
 }
 
 func NewConnectionFromSettings(logger mon.Logger, settings Settings) (*sqlx.DB, error) {
-	connection, err := NewConnectionWithInterfaces(settings)
+	var err error
+	var connection *sqlx.DB
 
-	if err != nil {
-		return nil, err
+	if connection, err = NewConnectionWithInterfaces(settings); err != nil {
+		return nil, fmt.Errorf("can not create connection: %w", err)
 	}
 
-	runMigrations(logger, settings, connection)
+	if err = runMigrations(logger, settings, connection); err != nil {
+		return nil, fmt.Errorf("can not run migrations: %w", err)
+	}
+
 	publishConnectionMetrics(connection)
 
 	return connection, nil
@@ -92,7 +96,7 @@ func NewConnectionWithInterfaces(settings Settings) (*sqlx.DB, error) {
 	db, err := sqlx.Connect(metricDriverId, dsn)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can not connect: %w", err)
 	}
 
 	db.SetConnMaxLifetime(settings.ConnectionMaxLifetime)

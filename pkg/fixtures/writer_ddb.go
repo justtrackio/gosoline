@@ -2,12 +2,13 @@ package fixtures
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/mon"
 )
 
-type ddbRepoFactory func() ddb.Repository
+type ddbRepoFactory func() (ddb.Repository, error)
 
 type dynamoDbFixtureWriter struct {
 	logger  mon.Logger
@@ -16,7 +17,7 @@ type dynamoDbFixtureWriter struct {
 }
 
 func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOption) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
+	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
 		settings := &ddb.Settings{
 			ModelId:    settings.ModelId,
 			AutoCreate: true,
@@ -32,13 +33,13 @@ func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOp
 			opt(settings)
 		}
 
-		factory := func() ddb.Repository {
+		factory := func() (ddb.Repository, error) {
 			return ddb.NewRepository(config, logger, settings)
 		}
 
 		purger := newDynamodbPurger(config, logger, settings)
 
-		return NewDynamoDbFixtureWriterWithInterfaces(logger, factory, purger)
+		return NewDynamoDbFixtureWriterWithInterfaces(logger, factory, purger), nil
 	}
 }
 
@@ -59,10 +60,12 @@ func (d *dynamoDbFixtureWriter) Write(fs *FixtureSet) error {
 		return nil
 	}
 
-	repo := d.factory()
-
-	_, err := repo.BatchPutItems(context.Background(), fs.Fixtures)
+	repo, err := d.factory()
 	if err != nil {
+		return fmt.Errorf("can not create ddb repository: %w", err)
+	}
+
+	if _, err = repo.BatchPutItems(context.Background(), fs.Fixtures); err != nil {
 		return err
 	}
 

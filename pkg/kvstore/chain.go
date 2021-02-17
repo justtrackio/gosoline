@@ -10,7 +10,7 @@ import (
 
 type chainKvStore struct {
 	logger   mon.Logger
-	factory  func(factory Factory, settings *Settings) KvStore
+	factory  func(factory Factory, settings *Settings) (KvStore, error)
 	chain    []KvStore
 	settings *Settings
 
@@ -19,23 +19,28 @@ type chainKvStore struct {
 
 var noValue = &struct{}{}
 
-func NewChainKvStore(config cfg.Config, logger mon.Logger, missingCacheEnabled bool, settings *Settings) *chainKvStore {
+func NewChainKvStore(config cfg.Config, logger mon.Logger, missingCacheEnabled bool, settings *Settings) (*chainKvStore, error) {
 	settings.PadFromConfig(config)
 	factory := buildFactory(config, logger)
 
+	var err error
 	var missingCache KvStore
+
 	if missingCacheEnabled {
 		missingCacheSettings := *settings
 		missingCacheSettings.Name = fmt.Sprintf("%s-missingCache", settings.Name)
-		missingCache = NewInMemoryKvStore(config, logger, &missingCacheSettings)
+
+		if missingCache, err = NewInMemoryKvStore(config, logger, &missingCacheSettings); err != nil {
+			return nil, fmt.Errorf("can not create missing cache: %w", err)
+		}
 	} else {
 		missingCache = NewEmptyKvStore()
 	}
 
-	return NewChainKvStoreWithInterfaces(logger, factory, missingCache, settings)
+	return NewChainKvStoreWithInterfaces(logger, factory, missingCache, settings), nil
 }
 
-func NewChainKvStoreWithInterfaces(logger mon.Logger, factory func(Factory, *Settings) KvStore, missingCache KvStore, settings *Settings) *chainKvStore {
+func NewChainKvStoreWithInterfaces(logger mon.Logger, factory func(Factory, *Settings) (KvStore, error), missingCache KvStore, settings *Settings) *chainKvStore {
 	return &chainKvStore{
 		logger:       logger,
 		factory:      factory,
@@ -45,9 +50,15 @@ func NewChainKvStoreWithInterfaces(logger mon.Logger, factory func(Factory, *Set
 	}
 }
 
-func (s *chainKvStore) Add(elementFactory Factory) {
-	store := s.factory(elementFactory, s.settings)
+func (s *chainKvStore) Add(elementFactory Factory) error {
+	store, err := s.factory(elementFactory, s.settings)
+	if err != nil {
+		return fmt.Errorf("can not create store: %w", err)
+	}
+
 	s.AddStore(store)
+
+	return nil
 }
 
 func (s *chainKvStore) AddStore(store KvStore) {

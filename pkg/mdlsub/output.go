@@ -12,12 +12,13 @@ type Output interface {
 }
 
 type Outputs map[string]map[int]Output
-type OutputFactory func(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) map[int]Output
+type OutputFactory func(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error)
 
 var outputFactories = map[string]OutputFactory{}
 
 func initOutputs(config cfg.Config, logger mon.Logger, subscriberSettings map[string]*SubscriberSettings, transformers ModelTransformers) (Outputs, error) {
 	var ok bool
+	var err error
 	var modelId string
 	var outputs = make(Outputs)
 	var outputFactory OutputFactory
@@ -35,7 +36,10 @@ func initOutputs(config cfg.Config, logger mon.Logger, subscriberSettings map[st
 		}
 
 		modelId := settings.SourceModel.String()
-		outputs[modelId] = outputFactory(config, logger, settings, versionedModelTransformers)
+
+		if outputs[modelId], err = outputFactory(config, logger, settings, versionedModelTransformers); err != nil {
+			return nil, fmt.Errorf("can not create output for subscriber %s with modelId %s", name, modelId)
+		}
 	}
 
 	return outputs, nil

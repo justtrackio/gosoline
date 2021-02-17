@@ -2,7 +2,6 @@ package kernel
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
@@ -254,8 +253,11 @@ func (k *kernel) runFactories() error {
 				}
 
 				bookLck.Lock()
-				k.addModuleToStage(container.name, module, container.opts)
-				bookLck.Unlock()
+				defer bookLck.Unlock()
+
+				if err = k.addModuleToStage(container.name, module, container.opts); err != nil {
+					return fmt.Errorf("can not add module to stage: %w", err)
+				}
 
 				return nil
 			}
@@ -267,7 +269,7 @@ func (k *kernel) runFactories() error {
 	return bootCoffin.Wait()
 }
 
-func (k *kernel) addModuleToStage(name string, module Module, opts []ModuleOption) {
+func (k *kernel) addModuleToStage(name string, module Module, opts []ModuleOption) error {
 	ms := &ModuleState{
 		Module:    module,
 		Config:    getModuleConfig(module),
@@ -291,25 +293,19 @@ func (k *kernel) addModuleToStage(name string, module Module, opts []ModuleOptio
 	k.stagesLck.Unlock()
 
 	if err := stage.modules.lck.TryLock(); err != nil {
-		k.logger.Panicf(
-			err,
-			"Failed to add new module %s: kernel is already running. You have to add your modules before running the kernel",
-			name,
-		)
+		return fmt.Errorf("failed to add new module %s: kernel is already running. You have to add your modules before running the kernel: %w", name, err)
 	}
 	defer stage.modules.lck.Unlock()
 
 	if _, didExist := stage.modules.modules[name]; didExist {
 		// if we overwrite an existing module, the module count will be off and the application will hang while waiting
 		// until stage.moduleCount modules have booted.
-		k.logger.Panicf(
-			errors.New("module must not be redeclared"),
-			"failed to add new module %s: module exists",
-			name,
-		)
+		return fmt.Errorf("failed to add new module %s: module exists", name)
 	}
 
 	stage.modules.modules[name] = ms
+
+	return nil
 }
 
 func (k *kernel) newStage(index int) *stage {

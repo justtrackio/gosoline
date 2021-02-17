@@ -15,7 +15,7 @@ type fixtureLoaderSettings struct {
 type fixtureLoader struct {
 	logger        mon.Logger
 	settings      *fixtureLoaderSettings
-	writerFactory func(factory FixtureWriterFactory) FixtureWriter
+	writerFactory func(factory FixtureWriterFactory) (FixtureWriter, error)
 }
 
 func NewFixtureLoader(config cfg.Config, logger mon.Logger) FixtureLoader {
@@ -27,7 +27,7 @@ func NewFixtureLoader(config cfg.Config, logger mon.Logger) FixtureLoader {
 	return &fixtureLoader{
 		logger:   logger,
 		settings: settings,
-		writerFactory: func(factory FixtureWriterFactory) FixtureWriter {
+		writerFactory: func(factory FixtureWriterFactory) (FixtureWriter, error) {
 			return factory(config, logger)
 		},
 	}
@@ -49,7 +49,10 @@ func (f *fixtureLoader) Load(fixtureSets []*FixtureSet) error {
 			return fmt.Errorf("fixture set is missing a writer")
 		}
 
-		writer := f.writerFactory(fs.Writer)
+		writer, err := f.writerFactory(fs.Writer)
+		if err != nil {
+			return fmt.Errorf("can not create writer: %w", err)
+		}
 
 		if fs.Purge {
 			err := writer.Purge()
@@ -59,9 +62,7 @@ func (f *fixtureLoader) Load(fixtureSets []*FixtureSet) error {
 			}
 		}
 
-		err := writer.Write(fs)
-
-		if err != nil {
+		if err = writer.Write(fs); err != nil {
 			return fmt.Errorf("error during loading of fixture set: %w", err)
 		}
 	}

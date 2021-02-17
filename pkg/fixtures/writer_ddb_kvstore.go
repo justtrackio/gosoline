@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/kvstore"
@@ -9,7 +10,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
-type ddbKvstoreFactory func() kvstore.KvStore
+type ddbKvstoreFactory func() (kvstore.KvStore, error)
 
 type KvStoreFixture struct {
 	Key   interface{}
@@ -23,7 +24,7 @@ type dynamoDbKvStoreFixtureWriter struct {
 }
 
 func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) FixtureWriter {
+	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
 		settings := &kvstore.Settings{
 			AppId: cfg.AppId{
 				Project:     modelId.Project,
@@ -33,7 +34,8 @@ func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFact
 			},
 			Name: modelId.Name,
 		}
-		factory := func() kvstore.KvStore {
+
+		factory := func() (kvstore.KvStore, error) {
 			return kvstore.NewDdbKvStore(config, logger, settings)
 		}
 
@@ -44,7 +46,7 @@ func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFact
 			ModelId: kvstoreModel,
 		})
 
-		return NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger, factory, purger)
+		return NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger, factory, purger), nil
 	}
 }
 
@@ -65,7 +67,11 @@ func (d *dynamoDbKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 		return nil
 	}
 
-	store := d.factory()
+	store, err := d.factory()
+	if err != nil {
+		return fmt.Errorf("can not create store: %w", err)
+	}
+
 	m := map[interface{}]interface{}{}
 
 	for _, item := range fs.Fixtures {
@@ -73,8 +79,7 @@ func (d *dynamoDbKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 		m[kvItem.Key] = kvItem.Value
 	}
 
-	err := store.PutBatch(context.Background(), m)
-	if err != nil {
+	if err = store.PutBatch(context.Background(), m); err != nil {
 		return err
 	}
 
