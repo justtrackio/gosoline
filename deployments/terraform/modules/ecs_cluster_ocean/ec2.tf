@@ -56,6 +56,11 @@ EOF
     value = var.project
   }
 
+  tags {
+    key   = "Family"
+    value = var.family
+  }
+
   update_policy {
     should_roll = true
 
@@ -147,6 +152,11 @@ EOF
   tags {
     key   = "Project"
     value = var.project
+  }
+
+  tags {
+    key   = "Family"
+    value = var.family
   }
 
   update_policy {
