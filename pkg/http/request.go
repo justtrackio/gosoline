@@ -1,12 +1,13 @@
 package http
 
 import (
+	"github.com/go-resty/resty/v2"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cast"
-	"gopkg.in/resty.v1"
 	"io"
 	"net/url"
+	"sync"
 )
 
 const HdrAccept = "Accept"
@@ -25,11 +26,23 @@ type Request struct {
 	url          *url.URL
 }
 
+var r struct {
+	instance *resty.Client
+	lck      sync.Mutex
+}
+
 // use NewRequest(client) or client.NewRequest() to create a request, don't create the object inline!
 func NewRequest(client Client) *Request {
+	r.lck.Lock()
+	defer r.lck.Unlock()
+
+	if r.instance == nil {
+		r.instance = resty.New()
+	}
+
 	if client == nil {
 		return &Request{
-			restyRequest: resty.NewRequest(),
+			restyRequest: r.instance.NewRequest(),
 			url:          &url.URL{},
 			queryParams:  url.Values{},
 		}
@@ -143,7 +156,7 @@ func (r *Request) WithMultipartFile(param, fileName string, reader io.Reader) *R
 }
 
 func (r *Request) WithMultipartFormData(params url.Values) *Request {
-	r.restyRequest.SetMultiValueFormData(params)
+	r.restyRequest.SetFormDataFromValues(params)
 
 	return r
 }

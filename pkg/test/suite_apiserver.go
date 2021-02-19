@@ -7,7 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
-	"gopkg.in/resty.v1"
+	"github.com/go-resty/resty/v2"
 	"testing"
 )
 

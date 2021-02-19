@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/mon"
-	"gopkg.in/resty.v1"
+	"github.com/go-resty/resty/v2"
 	"net/http"
 	netUrl "net/url"
 	"time"
@@ -43,7 +44,7 @@ type Client interface {
 	NewXmlRequest() *Request
 }
 
-type RetryConditionFunc func(*Response) (bool, error)
+type RetryConditionFunc func(*Response, error) bool
 
 type Response struct {
 	Body            []byte
@@ -51,12 +52,14 @@ type Response struct {
 	Cookies         []*http.Cookie
 	StatusCode      int
 	RequestDuration time.Duration
+	TotalDuration   *time.Duration
 }
 
 type headers map[string]string
 
 type client struct {
 	logger         mon.Logger
+	clock          clock.Clock
 	defaultHeaders headers
 	http           restyClient
 	mo             mon.MetricWriter
@@ -71,6 +74,8 @@ type Settings struct {
 }
 
 func NewHttpClient(config cfg.Config, logger mon.Logger) Client {
+	c := clock.NewRealClock()
+
 	mo := mon.NewMetricDaemonWriter()
 
 	settings := &Settings{}
@@ -86,12 +91,13 @@ func NewHttpClient(config cfg.Config, logger mon.Logger) Client {
 	httpClient.SetRetryWaitTime(settings.RetryWaitTime)
 	httpClient.SetRetryMaxWaitTime(settings.RetryMaxWaitTime)
 
-	return NewHttpClientWithInterfaces(logger, mo, httpClient)
+	return NewHttpClientWithInterfaces(logger, c, mo, httpClient)
 }
 
-func NewHttpClientWithInterfaces(logger mon.Logger, mo mon.MetricWriter, httpClient restyClient) Client {
+func NewHttpClientWithInterfaces(logger mon.Logger, c clock.Clock, mo mon.MetricWriter, httpClient restyClient) Client {
 	return &client{
 		logger:         logger,
+		clock:          c,
 		defaultHeaders: make(headers),
 		http:           httpClient,
 		mo:             mo,
@@ -135,8 +141,8 @@ func (c *client) SetProxyUrl(p string) {
 }
 
 func (c *client) AddRetryCondition(f RetryConditionFunc) {
-	c.http.AddRetryCondition(func(r *resty.Response) (bool, error) {
-		return f(buildResponse(r))
+	c.http.AddRetryCondition(func(r *resty.Response, e error) bool {
+		return f(buildResponse(r, nil), e)
 	})
 }
 
@@ -193,11 +199,14 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	}
 
 	c.writeMetric(metricRequest, method, mon.UnitCount, 1.0)
+	start := c.clock.Now()
 	resp, err := req.Execute(method, url)
 
 	if errors.Is(err, context.Canceled) {
 		return nil, err
 	}
+
+	totalDuration := c.clock.Now().Sub(start)
 
 	// Only log an error if the error was not caused by a canceled context
 	// Otherwise a user might spam our error logs by just canceling a lot of requests
@@ -210,7 +219,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	metricName := fmt.Sprintf("%s%dXX", metricResponseCode, resp.StatusCode()/100)
 	c.writeMetric(metricName, method, mon.UnitCount, 1.0)
 
-	response := buildResponse(resp)
+	response := buildResponse(resp, &totalDuration)
 
 	// Only log the duration if we did not get an error.
 	// If we get an error, we might not actually have send anything,
@@ -235,7 +244,7 @@ func (c *client) writeMetric(metricName string, method string, unit string, valu
 	})
 }
 
-func buildResponse(resp *resty.Response) *Response {
+func buildResponse(resp *resty.Response, totalDuration *time.Duration) *Response {
 	if resp == nil {
 		return nil
 	}
@@ -244,7 +253,8 @@ func buildResponse(resp *resty.Response) *Response {
 		Body:            resp.Body(),
 		Cookies:         resp.Cookies(),
 		Header:          resp.Header(),
-		StatusCode:      resp.StatusCode(),
 		RequestDuration: resp.Time(),
+		StatusCode:      resp.StatusCode(),
+		TotalDuration:   totalDuration,
 	}
 }
