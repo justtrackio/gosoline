@@ -1,7 +1,7 @@
 package http
 
 import (
-	"gopkg.in/resty.v1"
+	"github.com/go-resty/resty/v2"
 	"net/http"
 	"time"
 )

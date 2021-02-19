@@ -27,6 +27,7 @@ require (
 	github.com/go-playground/locales v0.12.1 // indirect
 	github.com/go-playground/universal-translator v0.16.0 // indirect
 	github.com/go-redis/redis v6.15.1+incompatible
+	github.com/go-resty/resty/v2 v2.5.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gogo/protobuf v1.2.2-0.20190723190241-65acae22fc9d // indirect
 	github.com/golang-migrate/migrate/v4 v4.2.5
@@ -72,14 +73,12 @@ require (
 	github.com/xitongsys/parquet-go v1.4.0
 	github.com/xitongsys/parquet-go-source v0.0.0-20191104003508-ecfa341356a6
 	github.com/yuin/gopher-lua v0.0.0-20190206043414-8bfc7677f583 // indirect
-	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20200413165638-669c56c373c4
+	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
 	google.golang.org/api v0.5.0
 	gopkg.in/go-playground/validator.v8 v8.18.2
 	gopkg.in/go-playground/validator.v9 v9.30.0
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
-	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.2.7 // indirect
