@@ -2,6 +2,7 @@ package test
 
 import (
 	"github.com/applike/gosoline/pkg/application"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
@@ -60,6 +61,7 @@ func RunTestCase(t *testing.T, suite TestingSuite, testCase func(appUnderTest Ap
 	}
 
 	envOptions := []env.Option{
+		env.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		env.WithLoggerSettingsFromConfig,
 	}
 	envOptions = append(envOptions, suiteOptions.envOptions...)

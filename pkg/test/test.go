@@ -22,5 +22,10 @@ func Boot(configFilenames ...string) (*Mocks, error) {
 		}
 	}
 
+	err := config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	if err != nil {
+		return nil, fmt.Errorf("failed to set env key replacer: %w", err)
+	}
+
 	return newMocks(config, logger)
 }

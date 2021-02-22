@@ -4,7 +4,6 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
-	"strings"
 )
 
 type App struct {
@@ -37,7 +36,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithConfigErrorHandlers(defaultErrorHandler),
 		WithConfigFile("./config.dist.yml", "yml"),
 		WithConfigFileFlag,
-		WithConfigEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
+		WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		WithConfigSanitizers(cfg.TimeSanitizer),
 		WithConfigServer,
 		WithConsumerMessagesPerRunnerMetrics,
