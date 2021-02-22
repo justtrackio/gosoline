@@ -6,7 +6,6 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/suite"
 	"math"
-	"strings"
 	"testing"
 	"time"
 )
@@ -23,7 +22,7 @@ func (s *ConfigTestSuite) SetupTest() {
 
 	options := []cfg.Option{
 		cfg.WithErrorHandlers(s.errorHandler),
-		cfg.WithEnvKeyReplacer(strings.NewReplacer(".", "_")),
+		cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		cfg.WithSanitizers(cfg.TimeSanitizer),
 	}
 

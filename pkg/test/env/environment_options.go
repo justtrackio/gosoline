@@ -3,6 +3,7 @@ package env
 import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,14 @@ func WithConfigFile(file string) Option {
 	return func(env *Environment) {
 		env.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithConfigFile(file, "yml"))
+		})
+	}
+}
+
+func WithConfigEnvKeyReplacer(replacer *strings.Replacer) Option {
+	return func(env *Environment) {
+		env.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithEnvKeyReplacer(replacer))
 		})
 	}
 }

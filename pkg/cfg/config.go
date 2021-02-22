@@ -53,6 +53,7 @@ type config struct {
 	envKeyReplacer *strings.Replacer
 }
 
+var DefaultEnvKeyReplacer = strings.NewReplacer(".", "_", "-", "_")
 var templateRegex = regexp.MustCompile(`{([\w.\-]+)}`)
 
 func New() GosoConf {

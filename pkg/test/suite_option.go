@@ -10,6 +10,7 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/spf13/cast"
+	"strings"
 	"time"
 )
 
@@ -56,6 +57,12 @@ func WithClockProviderAt(datetime string) SuiteOption {
 func WithConfigFile(file string) SuiteOption {
 	return func(s *suiteOptions) {
 		s.addEnvOption(env.WithConfigFile(file))
+	}
+}
+
+func WithConfigEnvKeyReplacer(replacer *strings.Replacer) SuiteOption {
+	return func(s *suiteOptions) {
+		s.addEnvOption(env.WithConfigEnvKeyReplacer(replacer))
 	}
 }
 
