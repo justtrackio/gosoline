@@ -1,0 +1,9 @@
+{
+  "attributes": {
+    "encoding": "application/json",
+    "modelId": "gosoline.stream-example.producer-example.exampleEvent",
+    "type": "create",
+    "version": 0
+  },
+  "body": "{\"greeting\":\"hello, world\"}"
+}

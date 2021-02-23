@@ -56,13 +56,13 @@ func sameContent(a string, b string) bool {
 
 func parseText(lines []string) map[string]string {
 	inCodeBlock := false
-	var currentFile *string
+	var currentFiles []string
 	result := map[string]string{}
 
 	for _, line := range lines {
 		references := isSetReferenceLine(line)
-		if !inCodeBlock && references != nil {
-			currentFile = references
+		if !inCodeBlock && len(references) > 0 {
+			currentFiles = references
 			continue
 		}
 
@@ -71,11 +71,13 @@ func parseText(lines []string) map[string]string {
 			continue
 		}
 
-		if inCodeBlock && currentFile != nil {
-			if acc, ok := result[*currentFile]; ok {
-				result[*currentFile] = acc + "\n" + line
-			} else {
-				result[*currentFile] = line
+		if inCodeBlock {
+			for _, currentFile := range currentFiles {
+				if acc, ok := result[currentFile]; ok {
+					result[currentFile] = acc + "\n" + line
+				} else {
+					result[currentFile] = line
+				}
 			}
 		}
 	}
@@ -88,11 +90,11 @@ const (
 	referenceSuffix = ")"
 )
 
-func isSetReferenceLine(line string) *string {
+func isSetReferenceLine(line string) []string {
 	if strings.HasPrefix(line, referencePrefix) && strings.HasSuffix(line, referenceSuffix) {
 		s := line[len(referencePrefix) : len(line)-len(referenceSuffix)]
 
-		return &s
+		return strings.Split(s, ",")
 	}
 
 	return nil
