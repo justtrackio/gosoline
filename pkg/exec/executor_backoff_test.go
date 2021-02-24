@@ -31,7 +31,7 @@ func (s *ExecutorBackoffTestSuite) SetupTest() {
 			CancelDelay:     0,
 			InitialInterval: time.Millisecond,
 			MaxInterval:     time.Millisecond * 2,
-			MaxElapsedTime:  time.Millisecond * 25,
+			MaxElapsedTime:  time.Millisecond * 50,
 		}
 
 		logger := mocks.NewLoggerMockedAll()
@@ -127,7 +127,7 @@ func (s *ExecutorBackoffTestSuite) TestMaxElapsedTimeReached() {
 
 	executor := s.buildExecutor(checker)
 	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
-		time.Sleep(time.Millisecond * 30)
+		time.Sleep(time.Millisecond * 60)
 		tries++
 
 		return nil, longTakingErr
