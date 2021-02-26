@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/mon"
@@ -23,7 +24,11 @@ func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFacto
 			Metadata: *metadata,
 		}
 
-		repo := db_repo.New(config, logger, settings)
+		repo, err := db_repo.New(config, logger, settings)
+		if err != nil {
+			return nil, fmt.Errorf("can not create repo: %w", err)
+		}
+
 		purger := newMysqlPurger(config, logger, metadata.TableName)
 
 		return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo, purger), nil

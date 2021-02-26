@@ -1,6 +1,7 @@
 package db_repo
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"time"
@@ -30,12 +31,17 @@ func (c *ChangeHistoryModel) GetHistoryRevision() int {
 	return c.ChangeHistoryRevision
 }
 
-func MigrateChangeHistory(config cfg.Config, logger mon.Logger, models ...ModelBased) {
+func MigrateChangeHistory(config cfg.Config, logger mon.Logger, models ...ModelBased) error {
 	for _, model := range models {
-		manager := newChangeHistoryManager(config, logger, model)
-		err := manager.runMigration()
+		manager, err := newChangeHistoryManager(config, logger, model)
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("can not create change history manager: %w", err)
+		}
+
+		if err = manager.runMigration(); err != nil {
+			return fmt.Errorf("can not run migrations: %w", err)
 		}
 	}
+
+	return nil
 }

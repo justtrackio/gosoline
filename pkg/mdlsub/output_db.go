@@ -18,10 +18,13 @@ func init() {
 }
 
 func outputDbFactory(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
-	outputs := make(map[int]Output)
+	var err error
+	var outputs = make(map[int]Output)
 
 	for version := range transformers {
-		outputs[version] = NewOutputDb(config, logger)
+		if outputs[version], err = NewOutputDb(config, logger); err != nil {
+			return nil, fmt.Errorf("can not create outputDb: %w", err)
+		}
 	}
 
 	return outputs, nil
@@ -32,13 +35,16 @@ type OutputDb struct {
 	orm    *gorm.DB
 }
 
-func NewOutputDb(config cfg.Config, logger mon.Logger) *OutputDb {
-	orm := db_repo.NewOrm(config, logger)
+func NewOutputDb(config cfg.Config, logger mon.Logger) (*OutputDb, error) {
+	orm, err := db_repo.NewOrm(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create orm: %w", err)
+	}
 
 	return &OutputDb{
 		logger: logger,
 		orm:    orm,
-	}
+	}, nil
 }
 
 func (p *OutputDb) Persist(ctx context.Context, model Model, op string) error {

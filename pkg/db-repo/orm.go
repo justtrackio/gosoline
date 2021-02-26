@@ -19,7 +19,7 @@ type OrmSettings struct {
 	Application string              `cfg:"application" default:"{app_name}"`
 }
 
-func NewOrm(config cfg.Config, logger mon.Logger) *gorm.DB {
+func NewOrm(config cfg.Config, logger mon.Logger) (*gorm.DB, error) {
 	dbClient := db.NewClient(config, logger, "default")
 
 	settings := OrmSettings{}
@@ -35,11 +35,11 @@ func NewOrm(config cfg.Config, logger mon.Logger) *gorm.DB {
 	return NewOrmWithInterfaces(logger, dbClient, settings)
 }
 
-func NewOrmWithInterfaces(logger mon.Logger, dbClient gorm.SQLCommon, settings OrmSettings) *gorm.DB {
+func NewOrmWithInterfaces(logger mon.Logger, dbClient gorm.SQLCommon, settings OrmSettings) (*gorm.DB, error) {
 	orm, err := gorm.Open(settings.Driver, dbClient)
 
 	if err != nil {
-		logger.Panic(err, "could not create orm")
+		return nil, fmt.Errorf("could not create gorm: %w", err)
 	}
 
 	orm.LogMode(false)
@@ -47,12 +47,12 @@ func NewOrmWithInterfaces(logger mon.Logger, dbClient gorm.SQLCommon, settings O
 	orm = orm.Set("gorm:save_associations", false)
 
 	if !settings.Migrations.TablePrefixed {
-		return orm
+		return orm, nil
 	}
 
 	gorm.DefaultTableNameHandler = func(db *gorm.DB, defaultTableName string) string {
 		return fmt.Sprintf("%s_%s", settings.Application, defaultTableName)
 	}
 
-	return orm
+	return orm, nil
 }

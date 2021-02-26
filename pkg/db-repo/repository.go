@@ -53,9 +53,14 @@ type repository struct {
 	settings Settings
 }
 
-func New(config cfg.Config, logger mon.Logger, s Settings) *repository {
+func New(config cfg.Config, logger mon.Logger, s Settings) (*repository, error) {
 	tracer := tracing.ProviderTracer(config, logger)
-	orm := NewOrm(config, logger)
+
+	orm, err := NewOrm(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create orm: %w", err)
+	}
+
 	orm.Callback().
 		Update().
 		After("gorm:update_time_stamp").
@@ -64,7 +69,7 @@ func New(config cfg.Config, logger mon.Logger, s Settings) *repository {
 
 	s.PadFromConfig(config)
 
-	return NewWithInterfaces(logger, tracer, orm, clock, s)
+	return NewWithInterfaces(logger, tracer, orm, clock, s), nil
 }
 
 func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clockwork.Clock, settings Settings) *repository {

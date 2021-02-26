@@ -44,7 +44,7 @@ func runMigrations(logger mon.Logger, settings Settings, db *sqlx.DB) error {
 	m, err := migrate.NewWithDatabaseInstance(settings.Migrations.Path, settings.Driver, driver)
 
 	if err != nil {
-		logger.Panic(err, "could not initialize migrator for db migrations")
+		return fmt.Errorf("could not initialize migrator for db migrations: %w", err)
 	}
 
 	err = m.Up()
