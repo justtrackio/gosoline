@@ -52,7 +52,7 @@ var id24 = mdl.Uint(24)
 
 func TestRepository_Create(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(now)
+	dbc, repo := getTimedMocks(t, now)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`id`,`updated_at`,`created_at`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(id1, &now, &now).WillReturnResult(result)
@@ -79,7 +79,7 @@ func TestRepository_Create(t *testing.T) {
 
 func TestRepository_CreateManyToManyNoRelation(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(now)
+	dbc, repo := getTimedMocks(t, now)
 
 	result := goSqlMock.NewResult(0, 1)
 	delRes := goSqlMock.NewResult(0, 0)
@@ -110,7 +110,7 @@ func TestRepository_CreateManyToManyNoRelation(t *testing.T) {
 
 func TestRepository_CreateManyToMany(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(now)
+	dbc, repo := getTimedMocks(t, now)
 
 	result := goSqlMock.NewResult(0, 1)
 	delRes := goSqlMock.NewResult(0, 0)
@@ -153,7 +153,7 @@ func TestRepository_CreateManyToMany(t *testing.T) {
 
 func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(now)
+	dbc, repo := getTimedMocks(t, now)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`id`,`updated_at`,`created_at`,`my_test_model_id`\\) VALUES \\(\\?,\\?,\\?,\\?\\)").WithArgs(id1, &now, &now, (*uint)(nil)).WillReturnResult(result)
@@ -180,7 +180,7 @@ func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 
 func TestRepository_CreateManyToOne(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(now)
+	dbc, repo := getTimedMocks(t, now)
 
 	result := goSqlMock.NewResult(0, 1)
 
@@ -215,7 +215,7 @@ func TestRepository_CreateManyToOne(t *testing.T) {
 
 func TestRepository_CreateHasManyNoRelation(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(now)
+	dbc, repo := getTimedMocks(t, now)
 
 	result := goSqlMock.NewResult(0, 1)
 	delResult := goSqlMock.NewResult(0, 0)
@@ -246,7 +246,7 @@ func TestRepository_CreateHasManyNoRelation(t *testing.T) {
 
 func TestRepository_CreateHasMany(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(now)
+	dbc, repo := getTimedMocks(t, now)
 
 	result := goSqlMock.NewResult(0, 1)
 	delResult := goSqlMock.NewResult(0, 0)
@@ -280,7 +280,7 @@ func TestRepository_CreateHasMany(t *testing.T) {
 }
 
 func TestRepository_Update(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -306,7 +306,7 @@ func TestRepository_Update(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -333,7 +333,7 @@ func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToMany(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -372,7 +372,7 @@ func TestRepository_UpdateManyToMany(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -399,7 +399,7 @@ func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToOne(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -431,7 +431,7 @@ func TestRepository_UpdateManyToOne(t *testing.T) {
 }
 
 func TestRepository_UpdateHasMany(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -465,7 +465,7 @@ func TestRepository_UpdateHasMany(t *testing.T) {
 }
 
 func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -495,7 +495,7 @@ func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
 }
 
 func TestRepository_Delete(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("DELETE FROM `my_test_models`  WHERE `my_test_models`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
@@ -516,7 +516,7 @@ func TestRepository_Delete(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(result)
@@ -538,7 +538,7 @@ func TestRepository_DeleteManyToManyNoRelation(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToMany(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(result)
@@ -567,7 +567,7 @@ func TestRepository_DeleteManyToMany(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToOneNoRelation(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("DELETE FROM `one_of_manies`  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
@@ -588,7 +588,7 @@ func TestRepository_DeleteManyToOneNoRelation(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToOne(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("DELETE FROM `one_of_manies`  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
@@ -615,7 +615,7 @@ func TestRepository_DeleteManyToOne(t *testing.T) {
 }
 
 func TestRepository_DeleteHasMany(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 
 	childResult := goSqlMock.NewResult(0, 0)
 	parentResult := goSqlMock.NewResult(0, 1)
@@ -651,7 +651,7 @@ func TestRepository_DeleteHasMany(t *testing.T) {
 }
 
 func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks()
+	dbc, repo := getMocks(t)
 
 	childResult := goSqlMock.NewResult(0, 0)
 	parentResult := goSqlMock.NewResult(0, 1)
@@ -675,14 +675,17 @@ func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func getMocks() (goSqlMock.Sqlmock, db_repo.Repository) {
+func getMocks(t *testing.T) (goSqlMock.Sqlmock, db_repo.Repository) {
 	logger := monMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 
 	db, clientMock, _ := goSqlMock.New()
-	orm := db_repo.NewOrmWithInterfaces(logger, db, db_repo.OrmSettings{
+	orm, err := db_repo.NewOrmWithInterfaces(logger, db, db_repo.OrmSettings{
 		Driver: "mysql",
 	})
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
 
 	clock := clockwork.NewFakeClock()
 
@@ -691,17 +694,20 @@ func getMocks() (goSqlMock.Sqlmock, db_repo.Repository) {
 	return clientMock, repo
 }
 
-func getTimedMocks(t time.Time) (goSqlMock.Sqlmock, db_repo.Repository) {
+func getTimedMocks(t *testing.T, time time.Time) (goSqlMock.Sqlmock, db_repo.Repository) {
 	logger := monMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 
 	db, clientMock, _ := goSqlMock.New()
 
-	orm := db_repo.NewOrmWithInterfaces(logger, db, db_repo.OrmSettings{
+	orm, err := db_repo.NewOrmWithInterfaces(logger, db, db_repo.OrmSettings{
 		Driver: "mysql",
 	})
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
 
-	clock := clockwork.NewFakeClockAt(t)
+	clock := clockwork.NewFakeClockAt(time)
 
 	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, db_repo.Settings{})
 

@@ -47,7 +47,9 @@ func (s *DbRepoChangeHistoryTestSuite) SetupSuite() {
 
 	s.config = config
 	s.logger = mon.NewLogger()
-	s.repo = db_repo.New(s.config, s.logger, db_repo.Settings{})
+
+	s.repo, err = db_repo.New(s.config, s.logger, db_repo.Settings{})
+	s.NoError(err)
 }
 
 func (s *DbRepoChangeHistoryTestSuite) TearDownSuite() {
@@ -66,15 +68,14 @@ func (s *DbRepoChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_Create
 		TestModel1
 	}
 
-	s.NotPanics(func() {
-		db_repo.MigrateChangeHistory(s.config, s.logger, &TestModel1{})
-	})
+	err := db_repo.MigrateChangeHistory(s.config, s.logger, &TestModel1{})
+	s.NoError(err)
 
 	model := &TestModel1{
 		Name: mdl.String("name1"),
 	}
 
-	err := s.repo.Create(context.Background(), model)
+	err = s.repo.Create(context.Background(), model)
 	s.NoError(err)
 
 	model.Name = mdl.String("name2")
@@ -116,9 +117,8 @@ func (s *DbRepoChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_Update
 		TestModel2
 	}
 
-	s.NotPanics(func() {
-		db_repo.MigrateChangeHistory(s.config, s.logger, &TestModel2{})
-	})
+	err := db_repo.MigrateChangeHistory(s.config, s.logger, &TestModel2{})
+	s.NoError(err)
 
 	model := &TestModel2{
 		Name:         mdl.String("name1"),
@@ -126,7 +126,7 @@ func (s *DbRepoChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_Update
 		ChangeAuthor: mdl.String("john@example.com"),
 	}
 
-	err := s.repo.Create(context.Background(), model)
+	err = s.repo.Create(context.Background(), model)
 	s.NoError(err)
 
 	model.Foo = mdl.String("foo2")

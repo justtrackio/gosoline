@@ -24,13 +24,16 @@ type changeHistoryManager struct {
 	statements    []string
 }
 
-func newChangeHistoryManager(config cfg.Config, logger mon.Logger, model ModelBased) *changeHistoryManager {
-	orm := NewOrm(config, logger)
+func newChangeHistoryManager(config cfg.Config, logger mon.Logger, model ModelBased) (*changeHistoryManager, error) {
+	orm, err := NewOrm(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create orm: %w", err)
+	}
 
 	settings := &changeHistoryManagerSettings{}
 	config.UnmarshalKey("change_history", settings)
 
-	return newChangeHistoryManagerWithInterfaces(logger, orm, model, settings)
+	return newChangeHistoryManagerWithInterfaces(logger, orm, model, settings), nil
 }
 
 func newChangeHistoryManagerWithInterfaces(logger mon.Logger, orm *gorm.DB, model ModelBased, settings *changeHistoryManagerSettings) *changeHistoryManager {

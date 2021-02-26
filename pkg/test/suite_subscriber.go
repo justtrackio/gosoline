@@ -81,7 +81,11 @@ func (s *SubscriberTestSuite) TestSubscriber(app AppUnderTest, testCases []Subsc
 				return
 			}
 
-			orm := db_repo.NewOrm(config, logger)
+			orm, err := db_repo.NewOrm(config, logger)
+			if err != nil {
+				s.FailNow("can't initialize orm", "the test case for the subscription of %s can't be initialized", sub.GetName())
+			}
+
 			fetcher := &DbSubscriberFetcher{
 				t:    s.T(),
 				orm:  orm,
