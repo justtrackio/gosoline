@@ -82,3 +82,8 @@ output "ocean_controller_id" {
   description = "The ID of the Ocean controller"
   value       = spotinst_ocean_aws.this.controller_id
 }
+
+output "vpc_id" {
+  description = "The ID of the VPC"
+  value       = module.vpc.vpc_id
+}

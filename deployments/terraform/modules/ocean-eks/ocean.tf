@@ -4,7 +4,6 @@ provider "spotinst" {
 }
 
 provider "kubernetes" {
-  load_config_file       = false
   host                   = data.aws_eks_cluster.cluster.endpoint
   token                  = data.aws_eks_cluster_auth.cluster.token
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
@@ -13,7 +12,7 @@ provider "kubernetes" {
 resource "spotinst_ocean_aws" "this" {
   depends_on = [module.eks]
 
-  name                        = local.cluster_name
+  name                        = module.default_label.id
   controller_id               = local.cluster_identifier
   region                      = data.aws_region.current.id
   max_size                    = var.max_size
@@ -28,20 +27,32 @@ resource "spotinst_ocean_aws" "this" {
   user_data = <<-EOF
     #!/bin/bash
     set -o xtrace
-    /etc/eks/bootstrap.sh ${local.cluster_name}
+    /etc/eks/bootstrap.sh ${module.default_label.id}
 EOF
 
   tags {
     key   = "Name"
-    value = "${local.cluster_name}-node"
+    value = "${module.application_label.id}-node"
   }
+
   tags {
-    key   = "kubernetes.io/cluster/${local.cluster_name}"
+    key   = "Project"
+    value = module.application_label.project
+  }
+
+  tags {
+    key   = "Environment"
+    value = module.application_label.environment
+  }
+
+  tags {
+    key   = "Application"
+    value = module.application_label.application
+  }
+
+  tags {
+    key   = "kubernetes.io/cluster/${module.default_label.id}"
     value = "owned"
-  }
-  tags {
-    key   = "create-alarms"
-    value = "false"
   }
 
   autoscaler {
@@ -50,9 +61,8 @@ EOF
   }
 }
 
-module "ocean-controller" {
+module "ocean_controller" {
   source            = "spotinst/ocean-controller/spotinst"
-  version           = ">=0.9.0"
   module_depends_on = [module.eks] # maintains backward compatibility with terraform v0.12
 
   # Credentials.
