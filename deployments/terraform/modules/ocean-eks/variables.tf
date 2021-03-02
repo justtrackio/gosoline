@@ -1,3 +1,21 @@
+variable "project" {
+  type        = string
+  default     = null
+  description = "Project, which could be your organization name or abbreviation, e.g. 'eg' or 'cp'"
+}
+
+variable "environment" {
+  type        = string
+  default     = null
+  description = "Environment, e.g. 'uw2', 'us-west-2', OR 'prod', 'staging', 'dev', 'UAT'"
+}
+
+variable "application" {
+  type        = string
+  default     = null
+  description = "Solution application, e.g. 'app' or 'jenkins'"
+}
+
 variable "spotinst_token" {
   type        = string
   description = "Spot Personal Access token"
@@ -11,18 +29,12 @@ variable "spotinst_account" {
 variable "region" {
   type        = string
   description = "The region the EKS cluster will be located"
-  default     = null
+  default     = "eu-central-1"
 }
 
 variable "cluster_identifier" {
   type        = string
   description = "Cluster identifier"
-  default     = null
-}
-
-variable "cluster_name" {
-  type        = string
-  description = "Cluster name"
   default     = null
 }
 
@@ -50,28 +62,22 @@ variable "ami_id" {
   default     = null
 }
 
-variable "tags" {
-  type        = map(string)
-  description = "A map of tags to add to all resources"
-  default     = {}
-}
-
 variable "min_size" {
   type        = number
   description = "The lower limit of worker nodes the Ocean cluster can scale down to"
-  default     = null
+  default     = 1
 }
 
 variable "max_size" {
   type        = number
   description = "The upper limit of worker nodes the Ocean cluster can scale up to"
-  default     = null
+  default     = 1000
 }
 
 variable "key_name" {
   type        = string
   description = "The key pair to attach to the worker nodes launched by Ocean"
-  default     = null
+  default     = "admin"
 }
 
 variable "associate_public_ip_address" {
