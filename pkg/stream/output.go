@@ -17,7 +17,7 @@ type Output interface {
 	Write(ctx context.Context, batch []WritableMessage) error
 }
 
-type OutputFactory func(config cfg.Config, logger mon.Logger, name string) Output
+type OutputFactory func(config cfg.Config, logger mon.Logger, name string) (Output, error)
 
 func MessagesToWritableMessages(batch []*Message) []WritableMessage {
 	writableBatch := make([]WritableMessage, len(batch))

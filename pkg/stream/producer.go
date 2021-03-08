@@ -25,7 +25,7 @@ type producer struct {
 	output  Output
 }
 
-func NewProducer(config cfg.Config, logger mon.Logger, name string, handlers ...EncodeHandler) *producer {
+func NewProducer(config cfg.Config, logger mon.Logger, name string, handlers ...EncodeHandler) (*producer, error) {
 	settings := readProducerSettings(config, name)
 
 	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(handlers))
@@ -38,15 +38,20 @@ func NewProducer(config cfg.Config, logger mon.Logger, name string, handlers ...
 		EncodeHandlers: encodeHandlers,
 	})
 
+	var err error
 	var output Output
 
 	if !settings.Daemon.Enabled {
-		output = NewConfigurableOutput(config, logger, settings.Output)
+		if output, err = NewConfigurableOutput(config, logger, settings.Output); err != nil {
+			return nil, fmt.Errorf("can not create output %s: %w", settings.Output, err)
+		}
 	} else {
-		output = ProvideProducerDaemon(config, logger, name)
+		if output, err = ProvideProducerDaemon(config, logger, name); err != nil {
+			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
+		}
 	}
 
-	return NewProducerWithInterfaces(encoder, output)
+	return NewProducerWithInterfaces(encoder, output), nil
 }
 
 func NewProducerWithInterfaces(encoder MessageEncoder, output Output) *producer {

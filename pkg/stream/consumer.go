@@ -34,14 +34,17 @@ func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(ctx 
 		contextEnforcingLogger := mon.NewContextEnforcingLogger(loggerCallback)
 
 		callback, err := callbackFactory(ctx, config, contextEnforcingLogger)
-
 		if err != nil {
 			return nil, fmt.Errorf("can not initiate callback for consumer %s: %w", name, err)
 		}
 
 		contextEnforcingLogger.Enable()
 
-		baseConsumer := NewBaseConsumer(config, logger, name, callback)
+		baseConsumer, err := NewBaseConsumer(config, logger, name, callback)
+		if err != nil {
+			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
+		}
+
 		consumer := NewConsumerWithInterfaces(baseConsumer, callback)
 
 		return consumer, nil

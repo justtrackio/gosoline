@@ -9,19 +9,21 @@ import (
 )
 
 func ProducerDaemonFactory(config cfg.Config, logger mon.Logger) (map[string]kernel.ModuleFactory, error) {
-	modules := map[string]kernel.ModuleFactory{}
-	producerDaemonSettings := readAllProducerDaemonSettings(config)
+	var modules = map[string]kernel.ModuleFactory{}
+	var producerDaemonSettings = readAllProducerDaemonSettings(config)
 
 	for name, settings := range producerDaemonSettings {
-		producerName := name
-
 		if !settings.Daemon.Enabled {
 			continue
 		}
 
-		moduleName := fmt.Sprintf("producer-daemon-%s", producerName)
-		modules[moduleName] = func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
-			return ProvideProducerDaemon(config, logger, producerName), nil
+		if daemon, err := ProvideProducerDaemon(config, logger, name); err != nil {
+			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
+		} else {
+			moduleName := fmt.Sprintf("producer-daemon-%s", name)
+			modules[moduleName] = func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+				return daemon, nil
+			}
 		}
 	}
 

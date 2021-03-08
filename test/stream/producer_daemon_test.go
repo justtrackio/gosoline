@@ -91,9 +91,20 @@ type testModule struct {
 }
 
 func newTestModule(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	var err error
+	var kinesisProducer, sqsProducer stream.Producer
+
+	if kinesisProducer, err = stream.NewProducer(config, logger, "testDataKinesis"); err != nil {
+		return nil, err
+	}
+
+	if sqsProducer, err = stream.NewProducer(config, logger, "testDataSqs"); err != nil {
+		return nil, err
+	}
+
 	module := &testModule{
-		producerKinesis: stream.NewProducer(config, logger, "testDataKinesis"),
-		producerSqs:     stream.NewProducer(config, logger, "testDataSqs"),
+		producerKinesis: kinesisProducer,
+		producerSqs:     sqsProducer,
 	}
 
 	return module, nil

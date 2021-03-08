@@ -25,7 +25,12 @@ type publisherModule struct {
 }
 
 func newPublisherModule(_ context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
-	publisher := mdlsub.NewPublisher(config, logger, "random-number")
+	var err error
+	var publisher mdlsub.Publisher
+
+	if publisher, err = mdlsub.NewPublisher(config, logger, "random-number"); err != nil {
+		return nil, fmt.Errorf("can not create publisher random-number: %w", err)
+	}
 
 	module := &publisherModule{
 		logger:    logger,
