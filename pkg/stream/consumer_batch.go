@@ -56,7 +56,12 @@ func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory)
 		config.UnmarshalKey(key, settings)
 
 		ticker := time.NewTicker(settings.IdleTimeout)
-		baseConsumer := NewBaseConsumer(config, logger, name, callback)
+
+		baseConsumer, err := NewBaseConsumer(config, logger, name, callback)
+		if err != nil {
+			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
+		}
+
 		batchConsumer := NewBatchConsumerWithInterfaces(baseConsumer, callback, ticker, settings)
 
 		return batchConsumer, nil

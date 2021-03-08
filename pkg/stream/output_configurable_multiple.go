@@ -32,18 +32,23 @@ func (m *multiOutput) Write(ctx context.Context, batch []WritableMessage) error 
 	return err.ErrorOrNil()
 }
 
-func NewConfigurableMultiOutput(config cfg.Config, logger mon.Logger, base string) Output {
-	key := fmt.Sprintf("%s.types", ConfigurableOutputKey(base))
-	ts := config.Get(key).(map[string]interface{})
-	output := &multiOutput{
+func NewConfigurableMultiOutput(config cfg.Config, logger mon.Logger, base string) (Output, error) {
+	var key = fmt.Sprintf("%s.types", ConfigurableOutputKey(base))
+	var ts = config.Get(key).(map[string]interface{})
+
+	multiOutput := &multiOutput{
 		outputs: make([]Output, 0),
 	}
 
 	for outputName := range ts {
 		name := fmt.Sprintf("%s.types.%s", base, outputName)
-		o := NewConfigurableOutput(config, logger, name)
-		output.outputs = append(output.outputs, o)
+
+		if output, err := NewConfigurableOutput(config, logger, name); err != nil {
+			return nil, fmt.Errorf("can not create multi output %s: %w", base, err)
+		} else {
+			multiOutput.outputs = append(multiOutput.outputs, output)
+		}
 	}
 
-	return output
+	return multiOutput, nil
 }

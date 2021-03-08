@@ -56,8 +56,15 @@ func NewPipeline(stageFactories ...PipelineCallbackFactory) kernel.ModuleFactory
 		defaults := getDefaultPipelineMetrics()
 		metric := mon.NewMetricDaemonWriter(defaults...)
 
-		input := NewConfigurableInput(config, logger, "pipeline")
-		output := NewConfigurableOutput(config, logger, "pipeline")
+		input, err := NewConfigurableInput(config, logger, "pipeline")
+		if err != nil {
+			return nil, fmt.Errorf("can not create configurable input: %w", err)
+		}
+
+		output, err := NewConfigurableOutput(config, logger, "pipeline")
+		if err != nil {
+			return nil, fmt.Errorf("can not create configurable output: %w", err)
+		}
 
 		settings := &PipelineSettings{
 			Interval:  config.GetDuration("pipeline_interval") * time.Second,

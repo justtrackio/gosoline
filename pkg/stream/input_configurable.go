@@ -37,17 +37,23 @@ func SetInputFactory(typ string, factory InputFactory) {
 
 var inputs = map[string]Input{}
 
-func ProvideConfigurableInput(config cfg.Config, logger mon.Logger, name string) Input {
-	if input, ok := inputs[name]; ok {
-		return input
+func ProvideConfigurableInput(config cfg.Config, logger mon.Logger, name string) (Input, error) {
+	var ok bool
+	var err error
+	var input Input
+
+	if input, ok = inputs[name]; ok {
+		return input, nil
 	}
 
-	inputs[name] = NewConfigurableInput(config, logger, name)
+	if inputs[name], err = NewConfigurableInput(config, logger, name); err != nil {
+		return nil, err
+	}
 
-	return inputs[name]
+	return inputs[name], nil
 }
 
-func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) Input {
+func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) (Input, error) {
 	t := readInputType(config, name)
 
 	factory, ok := inputFactories[t]
@@ -59,10 +65,10 @@ func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) Inp
 	input, err := factory(config, logger, name)
 
 	if err != nil {
-		logger.Panic(err, "failed to create input")
+		return nil, fmt.Errorf("failed to create input: %w", err)
 	}
 
-	return input
+	return input, nil
 }
 
 func newFileInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {

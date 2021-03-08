@@ -37,16 +37,21 @@ type publisher struct {
 	settings *PublisherSettings
 }
 
-func NewPublisher(config cfg.Config, logger mon.Logger, name string) *publisher {
+func NewPublisher(config cfg.Config, logger mon.Logger, name string) (*publisher, error) {
 	settings := readPublisherSetting(config, name)
 
 	return NewPublisherWithSettings(config, logger, settings)
 }
 
-func NewPublisherWithSettings(config cfg.Config, logger mon.Logger, settings *PublisherSettings) *publisher {
-	producer := stream.NewProducer(config, logger, settings.Producer)
+func NewPublisherWithSettings(config cfg.Config, logger mon.Logger, settings *PublisherSettings) (*publisher, error) {
+	var err error
+	var producer stream.Producer
 
-	return NewPublisherWithInterfaces(logger, producer, settings)
+	if producer, err = stream.NewProducer(config, logger, settings.Producer); err != nil {
+		return nil, fmt.Errorf("can not create producer %s: %w", settings.Producer, err)
+	}
+
+	return NewPublisherWithInterfaces(logger, producer, settings), nil
 }
 
 func NewPublisherWithInterfaces(logger mon.Logger, producer stream.Producer, settings *PublisherSettings) *publisher {

@@ -53,22 +53,31 @@ type ProducerDaemon struct {
 	settings      ProducerDaemonSettings
 }
 
-func ProvideProducerDaemon(config cfg.Config, logger mon.Logger, name string) *ProducerDaemon {
+func ProvideProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*ProducerDaemon, error) {
 	producerDaemonLock.Lock()
 	defer producerDaemonLock.Unlock()
 
 	if _, ok := producerDaemons[name]; ok {
-		return producerDaemons[name]
+		return producerDaemons[name], nil
 	}
 
-	producerDaemons[name] = NewProducerDaemon(config, logger, name)
+	var err error
+	producerDaemons[name], err = NewProducerDaemon(config, logger, name)
 
-	return producerDaemons[name]
+	if err != nil {
+		return nil, err
+	}
+
+	return producerDaemons[name], nil
 }
 
-func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) *ProducerDaemon {
+func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*ProducerDaemon, error) {
 	settings := readProducerSettings(config, name)
-	output := NewConfigurableOutput(config, logger, settings.Output)
+
+	output, err := NewConfigurableOutput(config, logger, settings.Output)
+	if err != nil {
+		return nil, fmt.Errorf("can not create output for producer daemon %s: %w", name, err)
+	}
 
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
 	metric := mon.NewMetricDaemonWriter(defaultMetrics...)
@@ -83,7 +92,7 @@ func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) *Produ
 		tickerFactory: clock.NewRealTicker,
 		marshaller:    MarshalJsonMessage,
 		settings:      settings.Daemon,
-	}
+	}, nil
 }
 
 func NewProducerDaemonWithInterfaces(logger mon.Logger, metric mon.MetricWriter, output Output, tickerFactory clock.TickerFactory, marshaller AggregateMarshaller, name string, settings ProducerDaemonSettings) *ProducerDaemon {
