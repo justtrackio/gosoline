@@ -10,7 +10,7 @@ type kernelSettings struct {
 	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
 }
 
-func Run(module kernel.ModuleFactory) {
+func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.ModuleFactory) {
 	configOptions := []cfg.Option{
 		cfg.WithErrorHandlers(defaultErrorHandler),
 		cfg.WithConfigFile("./config.dist.yml", "yml"),
@@ -32,5 +32,10 @@ func Run(module kernel.ModuleFactory) {
 
 	k := kernel.New(config, logger, kernel.KillTimeout(settings.KillTimeout))
 	k.Add("cli", module, kernel.ModuleType(kernel.TypeEssential), kernel.ModuleStage(kernel.StageApplication))
+	for _, otherModuleMap := range otherModuleMaps {
+		for name, otherModule := range otherModuleMap {
+			k.Add(name, otherModule)
+		}
+	}
 	k.Run()
 }
