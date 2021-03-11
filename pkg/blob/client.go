@@ -12,18 +12,20 @@ import (
 	"time"
 )
 
-var s3cl = struct {
+var s3Clients = struct {
 	sync.Mutex
-	client      s3iface.S3API
-	initialized bool
-}{}
+	clients map[string]s3iface.S3API
+}{
+	clients: map[string]s3iface.S3API{},
+}
 
 func ProvideS3Client(config cfg.Config) s3iface.S3API {
-	s3cl.Lock()
-	defer s3cl.Unlock()
+	currentEndpoint := config.GetString("aws_s3_endpoint")
+	s3Clients.Lock()
+	defer s3Clients.Unlock()
 
-	if s3cl.initialized {
-		return s3cl.client
+	if client, ok := s3Clients.clients[currentEndpoint]; ok {
+		return client
 	}
 
 	awsConfig := GetS3ClientConfig(config)
@@ -31,10 +33,9 @@ func ProvideS3Client(config cfg.Config) s3iface.S3API {
 
 	client := s3.New(sess)
 
-	s3cl.client = client
-	s3cl.initialized = true
+	s3Clients.clients[currentEndpoint] = client
 
-	return s3cl.client
+	return client
 }
 
 func GetS3ClientConfig(config cfg.Config) *aws.Config {

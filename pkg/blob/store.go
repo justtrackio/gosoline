@@ -57,12 +57,14 @@ type S3API interface {
 	s3iface.S3API
 }
 
-//go:generate mockery -name Store
+//go:generate mockery --name Store
 type Store interface {
 	BucketName() string
 	Copy(batch CopyBatch)
 	CopyOne(obj *CopyObject) error
+	CreateBucket()
 	Delete(batch Batch)
+	DeleteBucket() error
 	DeleteOne(obj *Object) error
 	Read(batch Batch)
 	ReadOne(obj *Object) error
@@ -243,6 +245,33 @@ func (s *s3Store) Delete(batch Batch) {
 	}
 
 	wg.Wait()
+}
+
+func (s *s3Store) DeleteBucket() error {
+	s.logger.Infof("purging bucket %s", *s.bucket)
+
+	result, err := s.client.ListObjects(&s3.ListObjectsInput{Bucket: s.bucket})
+	if err != nil {
+		return err
+	}
+
+	var batch Batch
+	for _, object := range result.Contents {
+		batch = append(batch, &Object{
+			Key: object.Key,
+		})
+	}
+
+	s.Delete(batch)
+
+	_, err = s.client.DeleteBucket(&s3.DeleteBucketInput{Bucket: s.bucket})
+	if err != nil {
+		return err
+	}
+
+	s.logger.Infof("purging bucket %s done", *s.bucket)
+
+	return nil
 }
 
 func (o *Object) GetFullKey() string {

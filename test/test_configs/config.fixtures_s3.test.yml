@@ -1,0 +1,17 @@
+env: test
+
+app_project: prj
+app_family: fam
+app_name: app
+
+aws_s3_autoCreate: true
+aws_s3_endpoint: http://localhost:4566
+aws_s3_forcePathStyle: true
+aws_sdk_retries: 30
+
+blobstore:
+  test:
+    bucket: s3-fixtures-test-bucket
+
+fixtures:
+  enabled: true

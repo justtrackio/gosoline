@@ -23,13 +23,14 @@ type FixtureSet struct {
 ```
 You can easily define multiple fixtures to different destinations in one file and enable or disable them for each FixtureWriter.
 
-* Currently there are 4 different FixtureWriterFactories implemented to load fixtures. 
+* Currently there are 7 different FixtureWriterFactories implemented to load fixtures. 
     * `DynamoDbFixtureWriterFactory`
     * `DynamoDbKvStoreFixtureWriterFactory` 
     * `MysqlOrmFixtureWriterFactory` 
     * `MysqlPlainFixtureWriterFactory`
     * `RedisFixtureWriterFactory`
     * `RedisKvStoreFixtureWriterFactory` 
+    * `BlobFixtureWriterFactory` 
 
 ## Quick Usage
 * During the creation of your Application make sure to pass the `WithFixtures` option and provide fixtures as an argument of type `[]*fixtures.FixtureSet`
@@ -65,6 +66,40 @@ func main() {
 						Name: mdl.String("example"),
 					},
 				},
+			},
+		},))
+
+	app.Run()
+}
+```
+or for example when using the `BlobFixtureWriterFactory`:
+
+```yaml
+blobstore:
+  blobconfig:
+    bucket: s3-fixtures-bucket
+```
+
+```
+//+build fixtures
+
+package main
+
+import...
+
+func main() {
+	app := application.Default(application.WithFixtures(
+		[]*fixtures.FixtureSet{
+			{
+				Enabled: true,
+				Purge: false, // true if purging is needed.
+				Writer: fixtures.BlobFixtureWriterFactory(
+					&fixtures.BlobFixturesSettings{
+						ConfigName: "blobconfig",
+						BasePath:   "PATH-TO-FOLDER-TO-UPLOAD",
+					},
+				),
+				Fixtures: nil,
 			},
 		},))
 

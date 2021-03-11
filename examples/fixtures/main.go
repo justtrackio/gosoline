@@ -110,5 +110,14 @@ func createFixtures() []*fixtures.FixtureSet {
 				&DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
 			},
 		},
+		{
+			Enabled: true,
+			Purge:   false,
+			Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
+				ConfigName: "test",
+				BasePath:   "../../test/test_data/s3_fixtures_test_data",
+			}),
+			Fixtures: nil,
+		},
 	}
 }
