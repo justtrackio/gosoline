@@ -7,3 +7,6 @@
 3. Message attributes, subscribers, and the producer daemon
 4. Different input and output types and backoff settings
 5. Testing with streams
+
+## TODO:
+ - explain why creating inputs and outputs can return an error

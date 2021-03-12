@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
@@ -18,7 +19,11 @@ func main() {
 }
 
 func NewInputModule(_ context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
-	input := stream.NewConfigurableInput(config, logger, "exampleInput")
+	input, err := stream.NewConfigurableInput(config, logger, "exampleInput")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create example input: %w", err)
+	}
 
 	go provideFakeData()
 

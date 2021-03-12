@@ -26,6 +26,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
@@ -47,7 +48,11 @@ Finally, we package everything up in a module the kernel can run:
 
 ```go
 func NewOutputModule(_ context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
-	output := stream.NewConfigurableOutput(config, logger, "exampleOutput")
+	output, err := stream.NewConfigurableInput(config, logger, "exampleOutput")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create example output: %w", err)
+	}
 
 	return outputModule{
 		output: output,
@@ -111,6 +116,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
@@ -138,7 +144,11 @@ You could also use it to receive messages from many sources and distinguish them
  
 ```go
 func NewInputModule(_ context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
-	input := stream.NewConfigurableInput(config, logger, "exampleInput")
+	input, err := stream.NewConfigurableInput(config, logger, "exampleInput")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create example input: %w", err)
+	}
 
 	go provideFakeData()
 

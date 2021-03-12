@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
@@ -22,7 +23,11 @@ func NewProducerModule(_ context.Context, config cfg.Config, logger mon.Logger) 
 		Name: "exampleEvent",
 	}
 	modelId.PadFromConfig(config)
-	producer := stream.NewProducer(config, logger, "exampleProducer")
+	producer, err := stream.NewProducer(config, logger, "exampleProducer")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create example producer: %w", err)
+	}
 
 	return producerModule{
 		modelId:  modelId,
