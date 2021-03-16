@@ -11,6 +11,7 @@ resource "spotinst_ocean_ecs" "ocean" {
 echo ECS_INSTANCE_ATTRIBUTES='{"lifecycle":"spot"}' >> /etc/ecs/ecs.config
 echo ECS_CLUSTER=${var.project}-${var.environment}-${var.family} >> /etc/ecs/ecs.config
 echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"none\", \"awslogs\", \"fluentd\"] >> /etc/ecs/ecs.config
+echo ECS_POLL_METRICS=true >> /etc/ecs/ecs.config
 EOF
 
   image_id             = data.aws_ssm_parameter.ami.value
@@ -79,6 +80,7 @@ resource "spotinst_ocean_ecs_launch_spec" "ocean" {
 echo ECS_INSTANCE_ATTRIBUTES='{"lifecycle":"spot"}' >> /etc/ecs/ecs.config
 echo ECS_CLUSTER=${var.project}-${var.environment}-${var.family} >> /etc/ecs/ecs.config
 echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"none\", \"awslogs\", \"fluentd\"] >> /etc/ecs/ecs.config
+echo ECS_POLL_METRICS=true >> /etc/ecs/ecs.config
 EOF
 
   iam_instance_profile = aws_iam_instance_profile.ec2.id
@@ -104,6 +106,7 @@ resource "spotinst_elastigroup_aws" "main" {
 echo ECS_INSTANCE_ATTRIBUTES='{"lifecycle":"spot"}' >> /etc/ecs/ecs.config
 echo ECS_CLUSTER=${var.project}-${var.environment}-${var.family} >> /etc/ecs/ecs.config
 echo ECS_AVAILABLE_LOGGING_DRIVERS=[\"none\", \"awslogs\", \"fluentd\"] >> /etc/ecs/ecs.config
+echo ECS_POLL_METRICS=true >> /etc/ecs/ecs.config
 EOF
 
   image_id             = data.aws_ssm_parameter.ami.value
