@@ -56,9 +56,13 @@ func NewMetricDaemon(config cfg.Config, logger Logger) (*MetricDaemon, error) {
 	channel.enabled = settings.Enabled
 	channel.logger = logger.WithChannel("metrics")
 
-	writers := make([]MetricWriter, len(settings.Writers))
+	var err error
+	var writers = make([]MetricWriter, len(settings.Writers))
+
 	for i, t := range settings.Writers {
-		writers[i] = ProvideMetricWriterByType(config, logger, t)
+		if writers[i], err = ProvideMetricWriterByType(config, logger, t); err != nil {
+			return nil, fmt.Errorf("can not create metric writer of type %s: %w", t, err)
+		}
 	}
 
 	return NewMetricDaemonWithInterfaces(logger, channel, writers, settings)

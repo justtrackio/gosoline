@@ -42,7 +42,8 @@ func (s *RepositoryTestSuite) SetupTest() {
 	client := new(cloudMocks.DynamoDBAPI)
 	s.executor = gosoAws.NewTestableExecutor(&client.Mock)
 
-	s.repo = ddb.NewWithInterfaces(logger, tracer, client, s.executor, &ddb.Settings{
+	var err error
+	s.repo, err = ddb.NewWithInterfaces(logger, tracer, client, s.executor, &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     "applike",
 			Environment: "test",
@@ -54,6 +55,7 @@ func (s *RepositoryTestSuite) SetupTest() {
 			Model: model{},
 		},
 	})
+	s.NoError(err)
 }
 
 func (s *RepositoryTestSuite) TestGetItem() {

@@ -38,8 +38,11 @@ type configGoogleAuthenticator struct {
 	allowedAddresses []string
 }
 
-func NewConfigGoogleHandler(config cfg.Config, logger mon.Logger) gin.HandlerFunc {
-	auth := NewConfigGoogleAuthenticator(config, logger)
+func NewConfigGoogleHandler(config cfg.Config, logger mon.Logger) (gin.HandlerFunc, error) {
+	auth, err := NewConfigGoogleAuthenticator(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create configGoogleAuthenticator: %w", err)
+	}
 
 	return func(ginCtx *gin.Context) {
 		valid, err := auth.IsValid(ginCtx)
@@ -54,17 +57,17 @@ func NewConfigGoogleHandler(config cfg.Config, logger mon.Logger) gin.HandlerFun
 
 		ginCtx.JSON(http.StatusUnauthorized, gin.H{"err": err.Error()})
 		ginCtx.Abort()
-	}
+	}, nil
 }
 
-func NewConfigGoogleAuthenticator(config cfg.Config, logger mon.Logger) Authenticator {
+func NewConfigGoogleAuthenticator(config cfg.Config, logger mon.Logger) (Authenticator, error) {
 	// it will never be used, because we specify an http client here already
 	ctx := context.Background()
 	clientOption := option.WithHTTPClient(http.DefaultClient)
 
 	oauth2Service, err := oauth2.NewService(ctx, clientOption)
 	if err != nil {
-		logger.Panic(err, "failed creating google oauth2 client")
+		return nil, fmt.Errorf("failed creating google oauth2 client: %w", err)
 	}
 
 	tokenProvider := &GoogleTokenProvider{
@@ -74,7 +77,7 @@ func NewConfigGoogleAuthenticator(config cfg.Config, logger mon.Logger) Authenti
 	clientId := config.GetString("api_auth_google_client_id")
 	allowedAddresses := config.GetStringSlice("api_auth_google_allowed_addresses")
 
-	return NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, clientId, allowedAddresses)
+	return NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, clientId, allowedAddresses), nil
 }
 
 func NewConfigGoogleAuthenticatorWithInterfaces(logger mon.Logger, tokenProvider TokenInfoProvider, clientId string, allowedAddresses []string) Authenticator {

@@ -21,14 +21,18 @@ type esWriter struct {
 	namespace string
 }
 
-func NewMetricEsWriter(config cfg.Config, logger Logger) *esWriter {
-	client := es.ProvideClient(config, logger, "metric")
+func NewMetricEsWriter(config cfg.Config, logger Logger) (*esWriter, error) {
+	client, err := es.ProvideClient(config, logger, "metric")
+	if err != nil {
+		return nil, fmt.Errorf("can not create es client: %w", err)
+	}
+
 	clock := clockwork.NewRealClock()
 
 	appId := cfg.GetAppIdFromConfig(config)
 	namespace := fmt.Sprintf("%s/%s/%s/%s", appId.Project, appId.Environment, appId.Family, appId.Application)
 
-	return NewMetricEsWriterWithInterfaces(logger, client, clock, namespace)
+	return NewMetricEsWriterWithInterfaces(logger, client, clock, namespace), nil
 }
 
 func NewMetricEsWriterWithInterfaces(logger Logger, client *es.ClientV7, clock clockwork.Clock, namespace string) *esWriter {

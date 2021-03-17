@@ -32,7 +32,11 @@ type updaterService struct {
 
 func NewUpdater(config cfg.Config, logger mon.Logger) (UpdaterService, error) {
 	logger = logger.WithChannel("currency_updater_service")
-	tracer := tracing.ProviderTracer(config, logger)
+
+	tracer, err := tracing.ProvideTracer(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create tracer: %w", err)
+	}
 
 	store, err := kvstore.NewConfigurableKvStore(config, logger, "currency")
 	if err != nil {

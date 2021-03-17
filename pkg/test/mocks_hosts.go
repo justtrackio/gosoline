@@ -20,11 +20,6 @@ func (m *Mocks) ProvideDynamoDbHost(name string) string {
 	return component.settings.Host
 }
 
-func (m *Mocks) ProvideElasticsearchHost(name string) string {
-	component := m.components[name].(*elasticsearchComponent)
-	return component.settings.Host
-}
-
 func (m *Mocks) ProvideKinesisHost(name string) string {
 	component := m.components[name].(*kinesisComponent)
 	return component.settings.Host

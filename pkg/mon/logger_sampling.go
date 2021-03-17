@@ -86,22 +86,6 @@ func (l *SamplingLogger) Errorf(err error, msg string, args ...interface{}) {
 	l.Logger.Errorf(err, msg, args...)
 }
 
-func (l *SamplingLogger) Fatal(err error, msg string) {
-	if !l.shouldLog(msg) {
-		return
-	}
-
-	l.Logger.Fatal(err, msg)
-}
-
-func (l *SamplingLogger) Fatalf(err error, msg string, args ...interface{}) {
-	if !l.shouldLog(msg) {
-		return
-	}
-
-	l.Logger.Fatalf(err, msg, args...)
-}
-
 func (l *SamplingLogger) Info(args ...interface{}) {
 	if !l.shouldLog(fmt.Sprint(args...)) {
 		return
@@ -116,14 +100,6 @@ func (l *SamplingLogger) Infof(msg string, args ...interface{}) {
 	}
 
 	l.Logger.Infof(msg, args...)
-}
-
-func (l *SamplingLogger) Panic(err error, msg string) {
-	if !l.shouldLog(msg) {
-		return
-	}
-
-	l.Logger.Panic(err, msg)
 }
 
 func (l *SamplingLogger) Warn(args ...interface{}) {

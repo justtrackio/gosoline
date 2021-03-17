@@ -60,7 +60,11 @@ type baseConsumer struct {
 func NewBaseConsumer(config cfg.Config, logger mon.Logger, name string, consumerCallback BaseConsumerCallback) (*baseConsumer, error) {
 	settings := readConsumerSettings(config, name)
 	appId := cfg.GetAppIdFromConfig(config)
-	tracer := tracing.ProviderTracer(config, logger)
+
+	tracer, err := tracing.ProvideTracer(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create tracer: %w", err)
+	}
 
 	defaultMetrics := getConsumerDefaultMetrics(name, settings.RunnerCount)
 	metricWriter := mon.NewMetricDaemonWriter(defaultMetrics...)

@@ -3,7 +3,6 @@ package parquet
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
@@ -42,7 +41,7 @@ type s3Writer struct {
 	recorder             FileRecorder
 }
 
-func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *s3Writer {
+func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) (*s3Writer, error) {
 	s3Cfg := blob.GetS3ClientConfig(config)
 	s3Client := blob.ProvideS3Client(config)
 	settings.ModelId.PadFromConfig(config)
@@ -50,7 +49,7 @@ func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *
 	prefixNaming, exists := s3PrefixNamingStrategies[settings.NamingStrategy]
 
 	if !exists {
-		logger.Panic(errors.New("unknown naming strategy"), fmt.Sprintf("Unknown prefix naming strategy '%s'", settings.NamingStrategy))
+		return nil, fmt.Errorf("unknown prefix naming strategy: %s", settings.NamingStrategy)
 	}
 
 	recorder := settings.Recorder
@@ -58,7 +57,7 @@ func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) *
 		recorder = NewNopRecorder()
 	}
 
-	return NewWriterWithInterfaces(logger, s3Client, s3Cfg, settings.ModelId, prefixNaming, settings.Tags, recorder)
+	return NewWriterWithInterfaces(logger, s3Client, s3Cfg, settings.ModelId, prefixNaming, settings.Tags, recorder), nil
 }
 
 func NewWriterWithInterfaces(

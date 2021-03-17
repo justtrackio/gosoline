@@ -2,7 +2,6 @@ package test
 
 import (
 	"database/sql"
-	"github.com/applike/gosoline/pkg/es"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/kinesis"
@@ -30,16 +29,6 @@ func (m *Mocks) ProvideCloudwatchClient(name string) *cloudwatch.CloudWatch {
 func (m *Mocks) ProvideDynamoDbClient(name string) *dynamodb.DynamoDB {
 	component := m.components[name].(*dynamoDbComponent)
 	return component.provideDynamoDbClient()
-}
-
-func (m *Mocks) ProvideElasticsearchV6Client(name string, clientType string) *es.ClientV6 {
-	component := m.components[name].(*elasticsearchComponent)
-	return component.provideElasticsearchV6Client(clientType)
-}
-
-func (m *Mocks) ProvideElasticsearchV7Client(name string, clientType string) *es.ClientV7 {
-	component := m.components[name].(*elasticsearchComponent)
-	return component.provideElasticsearchV7Client(clientType)
 }
 
 func (m *Mocks) ProvideKinesisClient(name string) *kinesis.Kinesis {

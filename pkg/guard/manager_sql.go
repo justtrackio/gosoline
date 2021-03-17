@@ -23,13 +23,16 @@ type SqlManager struct {
 	dbClient db.Client
 }
 
-func NewSqlManager(config cfg.Config, logger mon.Logger) *SqlManager {
-	dbClient := db.NewClient(config, logger, "default")
+func NewSqlManager(config cfg.Config, logger mon.Logger) (*SqlManager, error) {
+	dbClient, err := db.NewClient(config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create dbClient: %w", err)
+	}
 
 	return &SqlManager{
 		logger:   logger,
 		dbClient: dbClient,
-	}
+	}, nil
 }
 
 func (m SqlManager) Create(pol ladon.Policy) error {

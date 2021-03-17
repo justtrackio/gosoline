@@ -31,7 +31,7 @@ type awsTracer struct {
 	enabled bool
 }
 
-func NewAwsTracer(config cfg.Config, logger mon.Logger) Tracer {
+func NewAwsTracer(config cfg.Config, logger mon.Logger) (Tracer, error) {
 	appId := cfg.AppId{}
 	appId.PadFromConfig(config)
 
@@ -43,7 +43,7 @@ func NewAwsTracer(config cfg.Config, logger mon.Logger) Tracer {
 
 	samplingStrategy, err := getSamplingStrategy(&settings.Sampling)
 	if err != nil {
-		logger.Fatal(err, "could not load sampling strategy, continue with the default")
+		return nil, fmt.Errorf("could not load sampling strategy: %w", err)
 	}
 
 	xRaySettings := &XRaySettings{
@@ -57,7 +57,7 @@ func NewAwsTracer(config cfg.Config, logger mon.Logger) Tracer {
 	return NewAwsTracerWithInterfaces(logger, appId, xRaySettings)
 }
 
-func NewAwsTracerWithInterfaces(logger mon.Logger, appId cfg.AppId, settings *XRaySettings) *awsTracer {
+func NewAwsTracerWithInterfaces(logger mon.Logger, appId cfg.AppId, settings *XRaySettings) (*awsTracer, error) {
 	if settings.StreamingMaxSubsegmentCount == 0 {
 		settings.StreamingMaxSubsegmentCount = xrayDefaultMaxSubsegmentCount
 	}
@@ -65,7 +65,7 @@ func NewAwsTracerWithInterfaces(logger mon.Logger, appId cfg.AppId, settings *XR
 	streamingStrategy, err := xray.NewDefaultStreamingStrategyWithMaxSubsegmentCount(settings.StreamingMaxSubsegmentCount)
 
 	if err != nil {
-		logger.Fatal(err, "can not create default xray streaming strategy")
+		return nil, fmt.Errorf("can not create default xray streaming strategy: %w", err)
 	}
 
 	err = xray.Configure(xray.Config{
@@ -77,7 +77,7 @@ func NewAwsTracerWithInterfaces(logger mon.Logger, appId cfg.AppId, settings *XR
 	})
 
 	if err != nil {
-		logger.Fatal(err, "can not configure xray tracer")
+		return nil, fmt.Errorf("can not configure xray tracer: %w", err)
 	}
 
 	xrayLogger := newXrayLogger(logger)
@@ -86,7 +86,7 @@ func NewAwsTracerWithInterfaces(logger mon.Logger, appId cfg.AppId, settings *XR
 	return &awsTracer{
 		AppId:   appId,
 		enabled: settings.Enabled,
-	}
+	}, nil
 }
 
 func (t *awsTracer) StartSubSpan(ctx context.Context, name string) (context.Context, Span) {

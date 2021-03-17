@@ -49,17 +49,20 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		return nil, fmt.Errorf("can not apply post processor on config: %w", err)
 	}
 
-	env.config = config
-	env.logger = logger
-	env.filesystem = newFilesystem(t)
-	env.runner = NewContainerRunner(config, logger)
-
 	var err error
 	var skeletons []*componentSkeleton
 	var component Component
 	var containers map[string]*container
 	var components = NewComponentsContainer()
 	var componentConfigManger = NewComponentsConfigManager(config)
+
+	env.config = config
+	env.logger = logger
+	env.filesystem = newFilesystem(t)
+
+	if env.runner, err = NewContainerRunner(config, logger); err != nil {
+		return env, fmt.Errorf("can not create container runner: %w", err)
+	}
 
 	for typ, factory := range componentFactories {
 		if err = factory.Detect(config, componentConfigManger); err != nil {

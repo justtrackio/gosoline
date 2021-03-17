@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/exec"
@@ -43,10 +44,10 @@ type snsInput struct {
 	*sqsInput
 }
 
-func NewSnsInput(config cfg.Config, logger mon.Logger, settings SnsInputSettings, targets []SnsInputTarget) *snsInput {
+func NewSnsInput(config cfg.Config, logger mon.Logger, settings SnsInputSettings, targets []SnsInputTarget) (*snsInput, error) {
 	autoSubscribe := config.GetBool("aws_sns_autoSubscribe")
 
-	sqsInput := NewSqsInput(config, logger, SqsInputSettings{
+	sqsInput, err := NewSqsInput(config, logger, SqsInputSettings{
 		AppId:               settings.AppId,
 		QueueId:             settings.QueueId,
 		MaxNumberOfMessages: settings.MaxNumberOfMessages,
@@ -58,27 +59,32 @@ func NewSnsInput(config cfg.Config, logger mon.Logger, settings SnsInputSettings
 		Backoff:             settings.Backoff,
 		Unmarshaller:        UnmarshallerSns,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("can not create sqsInput: %w", err)
+	}
 
 	queueArn := sqsInput.GetQueueArn()
 
 	if autoSubscribe {
 		for _, target := range targets {
-			topic := sns.NewTopic(config, logger, &sns.Settings{
+			topic, err := sns.NewTopic(config, logger, &sns.Settings{
 				AppId:   target.AppId,
 				TopicId: target.TopicId,
 				Client:  settings.Client,
 				Backoff: settings.Backoff,
 			})
-
-			err := topic.SubscribeSqs(queueArn, target.Attributes)
-
 			if err != nil {
-				panic(err)
+				return nil, fmt.Errorf("can not create topic: %w", err)
+			}
+
+			err = topic.SubscribeSqs(queueArn, target.Attributes)
+			if err != nil {
+				return nil, fmt.Errorf("can not subscribe to queue: %w", err)
 			}
 		}
 	}
 
-	return NewSnsInputWithInterfaces(sqsInput)
+	return NewSnsInputWithInterfaces(sqsInput), nil
 }
 
 func NewSnsInputWithInterfaces(sqsInput *sqsInput) *snsInput {

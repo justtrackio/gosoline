@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/redis"
@@ -12,14 +13,17 @@ type redisPurger struct {
 	name   *string
 }
 
-func newRedisPurger(config cfg.Config, logger mon.Logger, name *string) *redisPurger {
-	client := redis.ProvideClient(config, logger, *name)
+func newRedisPurger(config cfg.Config, logger mon.Logger, name *string) (*redisPurger, error) {
+	client, err := redis.ProvideClient(config, logger, *name)
+	if err != nil {
+		return nil, fmt.Errorf("can not create redis client: %w", err)
+	}
 
 	return &redisPurger{
 		logger: logger,
 		name:   name,
 		client: client,
-	}
+	}, nil
 }
 
 func (p *redisPurger) purge() error {

@@ -252,8 +252,7 @@ func (s *service) createDeadLetterQueue(settings *Settings) (map[string]*string,
 	b, err := json.Marshal(policy)
 
 	if err != nil {
-		s.logger.Fatalf(err, "could not marshal redrive policy for sqs queue %v", queueName)
-		return attributes, err
+		return attributes, fmt.Errorf("could not marshal redrive policy for sqs queue %v: %w", queueName, err)
 	}
 
 	attributes[sqs.QueueAttributeNameRedrivePolicy] = aws.String(string(b))

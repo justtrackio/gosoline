@@ -41,9 +41,15 @@ type redisFixtureWriter struct {
 
 func RedisFixtureWriterFactory(name *string, operation *string) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
-		client := redis.ProvideClient(config, logger, *name)
+		client, err := redis.ProvideClient(config, logger, *name)
+		if err != nil {
+			return nil, fmt.Errorf("can not create redis client: %w", err)
+		}
 
-		purger := newRedisPurger(config, logger, name)
+		purger, err := newRedisPurger(config, logger, name)
+		if err != nil {
+			return nil, fmt.Errorf("can not create redis purger: %w", err)
+		}
 
 		return NewRedisFixtureWriterWithInterfaces(logger, client, purger, operation), nil
 	}

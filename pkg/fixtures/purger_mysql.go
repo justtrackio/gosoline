@@ -18,10 +18,13 @@ type mysqlPurger struct {
 	tableName string
 }
 
-func newMysqlPurger(config cfg.Config, logger mon.Logger, tableName string) *mysqlPurger {
-	client := db.NewClient(config, logger, "default")
+func newMysqlPurger(config cfg.Config, logger mon.Logger, tableName string) (*mysqlPurger, error) {
+	client, err := db.NewClient(config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create db client: %w", err)
+	}
 
-	return &mysqlPurger{client: client, logger: logger, tableName: tableName}
+	return &mysqlPurger{client: client, logger: logger, tableName: tableName}, nil
 }
 
 func (p *mysqlPurger) purgeMysql() error {

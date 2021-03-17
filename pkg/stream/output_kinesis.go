@@ -38,12 +38,12 @@ type kinesisOutput struct {
 	settings    *KinesisOutputSettings
 }
 
-func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOutputSettings) Output {
+func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOutputSettings) (Output, error) {
 	client := cloud.GetKinesisClient(config, logger)
 	err := gosoKinesis.CreateKinesisStream(config, logger, client, settings)
 
 	if err != nil {
-		logger.Panic(err, "failed to create kinesis stream")
+		return nil, fmt.Errorf("failed to create kinesis stream: %w", err)
 	}
 
 	res := &exec.ExecutableResource{
@@ -52,7 +52,7 @@ func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOut
 	}
 	requestExec := gosoAws.NewExecutor(logger, res, &settings.Backoff)
 
-	return NewKinesisOutputWithInterfaces(logger, client, requestExec, settings)
+	return NewKinesisOutputWithInterfaces(logger, client, requestExec, settings), nil
 }
 
 func NewKinesisOutputWithInterfaces(logger mon.Logger, client kinesisiface.KinesisAPI, requestExec gosoAws.Executor, settings *KinesisOutputSettings) Output {

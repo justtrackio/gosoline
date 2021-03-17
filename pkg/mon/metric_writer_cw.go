@@ -90,13 +90,13 @@ type cwWriter struct {
 	settings *MetricSettings
 }
 
-func NewMetricCwWriter(config cfg.Config, logger Logger) *cwWriter {
+func NewMetricCwWriter(config cfg.Config, logger Logger) (*cwWriter, error) {
 	settings := getMetricSettings(config)
 
 	clock := clockwork.NewRealClock()
 	cw := ProvideCloudWatchClient(config)
 
-	return NewMetricCwWriterWithInterfaces(logger, clock, cw, settings)
+	return NewMetricCwWriterWithInterfaces(logger, clock, cw, settings), nil
 }
 
 func NewMetricCwWriterWithInterfaces(logger Logger, clock clockwork.Clock, cw cloudwatchiface.CloudWatchAPI, settings *MetricSettings) *cwWriter {

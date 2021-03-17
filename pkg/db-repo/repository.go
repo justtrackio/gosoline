@@ -54,7 +54,10 @@ type repository struct {
 }
 
 func New(config cfg.Config, logger mon.Logger, s Settings) (*repository, error) {
-	tracer := tracing.ProviderTracer(config, logger)
+	tracer, err := tracing.ProvideTracer(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create tracer: %w", err)
+	}
 
 	orm, err := NewOrm(config, logger)
 	if err != nil {

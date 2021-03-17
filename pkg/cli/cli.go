@@ -30,7 +30,11 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 	settings := &kernelSettings{}
 	config.UnmarshalKey("kernel", settings)
 
-	k := kernel.New(config, logger, kernel.KillTimeout(settings.KillTimeout))
+	k, err := kernel.New(config, logger, kernel.KillTimeout(settings.KillTimeout))
+	if err != nil {
+		defaultErrorHandler(err, "can not initialize the kernel")
+	}
+
 	k.Add("cli", module, kernel.ModuleType(kernel.TypeEssential), kernel.ModuleStage(kernel.StageApplication))
 	for _, otherModuleMap := range otherModuleMaps {
 		for name, otherModule := range otherModuleMap {

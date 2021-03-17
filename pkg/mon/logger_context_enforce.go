@@ -51,16 +51,6 @@ func (l *ContextEnforcingLogger) Errorf(err error, msg string, args ...interface
 	l.logger.Errorf(err, msg, args...)
 }
 
-func (l *ContextEnforcingLogger) Fatal(err error, msg string) {
-	l.checkContext(Fatal)
-	l.logger.Fatal(err, msg)
-}
-
-func (l *ContextEnforcingLogger) Fatalf(err error, msg string, args ...interface{}) {
-	l.checkContext(Fatal)
-	l.logger.Fatalf(err, msg, args...)
-}
-
 func (l *ContextEnforcingLogger) Info(args ...interface{}) {
 	l.checkContext(Info)
 	l.logger.Info(args...)
@@ -69,16 +59,6 @@ func (l *ContextEnforcingLogger) Info(args ...interface{}) {
 func (l *ContextEnforcingLogger) Infof(msg string, args ...interface{}) {
 	l.checkContext(Info)
 	l.logger.Infof(msg, args...)
-}
-
-func (l *ContextEnforcingLogger) Panic(err error, msg string) {
-	l.checkContext(Panic)
-	l.logger.Panic(err, msg)
-}
-
-func (l *ContextEnforcingLogger) Panicf(err error, msg string, args ...interface{}) {
-	l.checkContext(Panic)
-	l.logger.Panicf(err, msg, args...)
 }
 
 func (l *ContextEnforcingLogger) Warn(args ...interface{}) {

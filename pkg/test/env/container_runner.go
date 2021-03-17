@@ -77,7 +77,7 @@ type containerRunner struct {
 	settings     *containerRunnerSettings
 }
 
-func NewContainerRunner(config cfg.Config, logger mon.Logger) *containerRunner {
+func NewContainerRunner(config cfg.Config, logger mon.Logger) (*containerRunner, error) {
 	id := uuid.New().NewV4()
 	logger = logger.WithChannel("container-runner")
 
@@ -87,7 +87,7 @@ func NewContainerRunner(config cfg.Config, logger mon.Logger) *containerRunner {
 	pool, err := dockertest.NewPool(settings.Endpoint)
 
 	if err != nil {
-		logger.Fatalf(err, "can not create container runner")
+		return nil, fmt.Errorf("can not create docker pool: %w", err)
 	}
 
 	return &containerRunner{
@@ -97,7 +97,7 @@ func NewContainerRunner(config cfg.Config, logger mon.Logger) *containerRunner {
 		resources:    make(map[string]*dockertest.Resource),
 		resourcesLck: sync.Mutex{},
 		settings:     settings,
-	}
+	}, nil
 }
 
 func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) (map[string]*container, error) {

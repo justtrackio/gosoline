@@ -10,7 +10,7 @@ import (
 )
 
 func TestAwsTracer_StartSubSpan(t *testing.T) {
-	tracer := getTracer()
+	tracer := getTracer(t)
 
 	ctx, trans := tracer.StartSpan("test_trans")
 	_, span := tracer.StartSubSpan(ctx, "test_span")
@@ -23,7 +23,7 @@ func TestAwsTracer_StartSubSpan(t *testing.T) {
 }
 
 func TestAwsTracer_StartSpanFromContextWithSpan(t *testing.T) {
-	tracer := getTracer()
+	tracer := getTracer(t)
 
 	ctx, transRoot := tracer.StartSpan("test_trans")
 	_, transChild := tracer.StartSpanFromContext(ctx, "another_trace")
@@ -37,7 +37,7 @@ func TestAwsTracer_StartSpanFromContextWithSpan(t *testing.T) {
 }
 
 func TestAwsTracer_StartSpanFromContextWithTrace(t *testing.T) {
-	tracer := getTracer()
+	tracer := getTracer(t)
 
 	trace := &tracing.Trace{
 		TraceId:  "1-5759e988-bd862e3fe1be46a994272793",
@@ -56,13 +56,16 @@ func TestAwsTracer_StartSpanFromContextWithTrace(t *testing.T) {
 	assert.Equal(t, trace.ParentId, transChild.GetTrace().ParentId, "span id of root should match parent id of child")
 }
 
-func getTracer() tracing.Tracer {
+func getTracer(t *testing.T) tracing.Tracer {
 	logger := mocks.NewLoggerMockedAll()
-
-	return tracing.NewAwsTracerWithInterfaces(logger, cfg.AppId{
+	tracer, err := tracing.NewAwsTracerWithInterfaces(logger, cfg.AppId{
 		Project:     "test_project",
 		Environment: "test_env",
 		Family:      "test_family",
 		Application: "test_name",
 	}, &tracing.XRaySettings{Enabled: true})
+
+	assert.NoError(t, err, "we should be able to get a tracer")
+
+	return tracer
 }
