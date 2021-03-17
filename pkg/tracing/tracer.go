@@ -31,30 +31,34 @@ var tracerContainer = struct {
 	instance Tracer
 }{}
 
-func ProviderTracer(config cfg.Config, logger mon.Logger) Tracer {
+func ProvideTracer(config cfg.Config, logger mon.Logger) (Tracer, error) {
 	tracerContainer.Lock()
 	defer tracerContainer.Unlock()
 
 	if tracerContainer.instance != nil {
-		return tracerContainer.instance
+		return tracerContainer.instance, nil
 	}
 
-	tracerContainer.instance = NewTracer(config, logger)
+	instance, err := NewTracer(config, logger)
+	if err != nil {
+		return nil, err
+	}
 
-	return tracerContainer.instance
+	tracerContainer.instance = instance
+
+	return tracerContainer.instance, nil
 }
 
-func NewTracer(config cfg.Config, logger mon.Logger) Tracer {
+func NewTracer(config cfg.Config, logger mon.Logger) (Tracer, error) {
 	settings := &TracerSettings{}
 	config.UnmarshalKey("tracing", settings)
 
 	if !settings.Enabled {
-		return NewNoopTracer()
+		return NewNoopTracer(), nil
 	}
 
 	if _, ok := providers[settings.Provider]; !ok {
-		err := fmt.Errorf("no tracing provider found for name %s", settings.Provider)
-		logger.Fatalf(err, err.Error())
+		return nil, fmt.Errorf("no tracing provider found for name %s", settings.Provider)
 	}
 
 	provider := providers[settings.Provider]

@@ -100,7 +100,11 @@ func RunTestCase(t *testing.T, suite TestingSuite, testCase func(appUnderTest Ap
 	config := environment.Config()
 	logger := environment.Logger()
 
-	app := application.NewWithInterfaces(config, logger, appOptions...)
+	app, err := application.NewWithInterfaces(config, logger, appOptions...)
+
+	if err != nil {
+		assert.FailNow(t, "failed to create application under test", err.Error())
+	}
 
 	for name, module := range suiteOptions.appModules {
 		app.Add(name, module)

@@ -10,7 +10,7 @@ const (
 	MetricWriterTypeES = "es"
 )
 
-func ProvideMetricWriterByType(config cfg.Config, logger Logger, typ string) MetricWriter {
+func ProvideMetricWriterByType(config cfg.Config, logger Logger, typ string) (MetricWriter, error) {
 	switch typ {
 	case MetricWriterTypeCw:
 		return NewMetricCwWriter(config, logger)
@@ -18,7 +18,5 @@ func ProvideMetricWriterByType(config cfg.Config, logger Logger, typ string) Met
 		return NewMetricEsWriter(config, logger)
 	}
 
-	logger.Fatalf(fmt.Errorf("unknown metric writer type"), "metric writer type of %s not found", typ)
-
-	return nil
+	return nil, fmt.Errorf("metric writer type of %s not found", typ)
 }

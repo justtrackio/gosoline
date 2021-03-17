@@ -20,7 +20,10 @@ type OrmSettings struct {
 }
 
 func NewOrm(config cfg.Config, logger mon.Logger) (*gorm.DB, error) {
-	dbClient := db.NewClient(config, logger, "default")
+	dbClient, err := db.NewClient(config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create dbClient: %w", err)
+	}
 
 	settings := OrmSettings{}
 	config.UnmarshalKey("db.default", &settings)

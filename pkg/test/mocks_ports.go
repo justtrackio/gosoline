@@ -20,11 +20,6 @@ func (m *Mocks) ProvideDynamoDbPort(name string) int {
 	return component.settings.Port
 }
 
-func (m *Mocks) ProvideElasticsearchPort(name string) int {
-	component := m.components[name].(*elasticsearchComponent)
-	return component.settings.Port
-}
-
 func (m *Mocks) ProvideKinesisPort(name string) int {
 	component := m.components[name].(*kinesisComponent)
 	return component.settings.Port

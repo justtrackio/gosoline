@@ -177,7 +177,8 @@ func (c *BatchConsumer) consumeBatch(kernelCtx context.Context, batch []*Message
 	}
 
 	if len(messages) != len(acks) {
-		logger.Panic(err, "number of acks does not match number of messages in batch")
+		err = fmt.Errorf("number of acks does not match number of messages in batch: %d != %d", len(acks), len(messages))
+		logger.Error(err, err.Error())
 	}
 
 	ackMessages := make([]*Message, 0, len(messages))

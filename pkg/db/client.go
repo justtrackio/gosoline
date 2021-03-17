@@ -43,21 +43,17 @@ type ClientSqlx struct {
 	db     *sqlx.DB
 }
 
-func NewClient(config cfg.Config, logger mon.Logger, name string) Client {
+func NewClient(config cfg.Config, logger mon.Logger, name string) (Client, error) {
 	db, err := ProvideConnection(config, logger, name)
 
 	if err != nil {
-		logger.Fatal(err, "can not connect to sql database")
+		return nil, fmt.Errorf("can not connect to sql database: %w", err)
 	}
 
-	return NewClientWithInterfaces(logger, db)
+	return NewClientWithInterfaces(logger, db), nil
 }
 
 func NewClientWithInterfaces(logger mon.Logger, db *sqlx.DB) Client {
-	if db == nil {
-		logger.WithContext(context.Background()).Fatal(errors.New("db not booted yet"), "db not booted yet")
-	}
-
 	return &ClientSqlx{
 		logger: logger.WithContext(context.Background()), // TODO: this is not nice, but we don't (yet) have a context when logging in this module
 		db:     db,

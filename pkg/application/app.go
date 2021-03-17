@@ -1,6 +1,7 @@
 package application
 
 import (
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
@@ -61,13 +62,22 @@ func Default(options ...Option) kernel.Kernel {
 }
 
 func New(options ...Option) kernel.Kernel {
-	config := cfg.New()
-	logger := mon.NewLogger()
+	var err error
+	var config = cfg.New()
+	var logger = mon.NewLogger()
+	var ker kernel.Kernel
 
-	return NewWithInterfaces(config, logger, options...)
+	if ker, err = NewWithInterfaces(config, logger, options...); err != nil {
+		defaultErrorHandler(err, "can initialize the app")
+	}
+
+	return ker
 }
 
-func NewWithInterfaces(config cfg.GosoConf, logger mon.GosoLog, options ...Option) kernel.Kernel {
+func NewWithInterfaces(config cfg.GosoConf, logger mon.GosoLog, options ...Option) (kernel.Kernel, error) {
+	var err error
+	var ker kernel.GosoKernel
+
 	app := &App{
 		configOptions: make([]ConfigOption, 0),
 		loggerOptions: make([]LoggerOption, 0),
@@ -79,34 +89,36 @@ func NewWithInterfaces(config cfg.GosoConf, logger mon.GosoLog, options ...Optio
 	}
 
 	for _, opt := range app.configOptions {
-		if err := opt(config); err != nil {
-			defaultErrorHandler(err, "can not apply config options on application")
+		if err = opt(config); err != nil {
+			return nil, fmt.Errorf("can not apply config options on application: %w", err)
 		}
 	}
 
 	for _, opt := range app.loggerOptions {
-		if err := opt(config, logger); err != nil {
-			defaultErrorHandler(err, "can not apply logger options on application")
+		if err = opt(config, logger); err != nil {
+			return nil, fmt.Errorf("can not apply logger options on application: %w", err)
 		}
 	}
 
-	if err := cfg.ApplyPostProcessors(config, logger); err != nil {
-		defaultErrorHandler(err, "can not apply post processor on config")
+	if err = cfg.ApplyPostProcessors(config, logger); err != nil {
+		return nil, fmt.Errorf("can not apply post processor on config: %w", err)
 	}
 
 	for _, opt := range app.setupOptions {
-		if err := opt(config, logger); err != nil {
-			defaultErrorHandler(err, "can not apply setup options on application")
+		if err = opt(config, logger); err != nil {
+			return nil, fmt.Errorf("can not apply setup options on application: %w", err)
 		}
 	}
 
-	ker := kernel.New(config, logger)
+	if ker, err = kernel.New(config, logger); err != nil {
+		return nil, fmt.Errorf("can not create kernel: %w", err)
+	}
 
 	for _, opt := range app.kernelOptions {
 		if err := opt(config, ker); err != nil {
-			defaultErrorHandler(err, "can not apply kernel options on application")
+			return nil, fmt.Errorf("can not apply kernel options on application: %w", err)
 		}
 	}
 
-	return ker
+	return ker, nil
 }

@@ -32,10 +32,10 @@ type sqsOutput struct {
 	settings SqsOutputSettings
 }
 
-func NewSqsOutput(config cfg.Config, logger mon.Logger, s SqsOutputSettings) Output {
+func NewSqsOutput(config cfg.Config, logger mon.Logger, s SqsOutputSettings) (Output, error) {
 	s.PadFromConfig(config)
 
-	queue := sqs.New(config, logger, &sqs.Settings{
+	queue, err := sqs.New(config, logger, &sqs.Settings{
 		AppId:             s.AppId,
 		QueueId:           s.QueueId,
 		VisibilityTimeout: s.VisibilityTimeout,
@@ -44,8 +44,11 @@ func NewSqsOutput(config cfg.Config, logger mon.Logger, s SqsOutputSettings) Out
 		Client:            s.Client,
 		Backoff:           s.Backoff,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("can not create queue: %w", err)
+	}
 
-	return NewSqsOutputWithInterfaces(logger, queue, s)
+	return NewSqsOutputWithInterfaces(logger, queue, s), nil
 }
 
 func NewSqsOutputWithInterfaces(logger mon.Logger, queue sqs.Queue, s SqsOutputSettings) Output {

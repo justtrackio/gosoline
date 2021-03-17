@@ -5,7 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 )
 
-type Provider func(config cfg.Config, logger mon.Logger) Tracer
+type Provider func(config cfg.Config, logger mon.Logger) (Tracer, error)
 
 func AddProvider(name string, provider Provider) {
 	providers[name] = provider

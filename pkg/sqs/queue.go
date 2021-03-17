@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
@@ -88,7 +89,7 @@ type queue struct {
 	properties *Properties
 }
 
-func New(config cfg.Config, logger mon.Logger, settings *Settings) Queue {
+func New(config cfg.Config, logger mon.Logger, settings *Settings) (Queue, error) {
 	settings.PadFromConfig(config)
 	name := QueueName(settings)
 
@@ -98,7 +99,7 @@ func New(config cfg.Config, logger mon.Logger, settings *Settings) Queue {
 	props, err := srv.CreateQueue(settings)
 
 	if err != nil {
-		logger.Fatalf(err, "could not create or get properties of queue %s", name)
+		return nil, fmt.Errorf("could not create or get properties of queue %s: %w", name, err)
 	}
 
 	res := &exec.ExecutableResource{
@@ -107,7 +108,7 @@ func New(config cfg.Config, logger mon.Logger, settings *Settings) Queue {
 	}
 	executor := gosoAws.NewExecutor(logger, res, &settings.Backoff)
 
-	return NewWithInterfaces(logger, client, executor, props)
+	return NewWithInterfaces(logger, client, executor, props), nil
 }
 
 func NewWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, executor gosoAws.Executor, p *Properties) Queue {

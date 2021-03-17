@@ -14,19 +14,22 @@ type outputTracer struct {
 	name   string
 }
 
-func NewOutputTracer(config cfg.Config, logger mon.Logger, base Output, name string) *outputTracer {
+func NewOutputTracer(config cfg.Config, logger mon.Logger, base Output, name string) (*outputTracer, error) {
 	key := ConfigurableOutputKey(name)
 
 	settings := &BaseOutputSettings{}
 	config.UnmarshalKey(key, settings)
 
-	tracer := tracing.NewNoopTracer()
+	var err error
+	var tracer = tracing.NewNoopTracer()
 
 	if settings.Tracing.Enabled {
-		tracer = tracing.ProviderTracer(config, logger)
+		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
+			return nil, fmt.Errorf("can not create tracer: %w", err)
+		}
 	}
 
-	return NewOutputTracerWithInterfaces(tracer, base, name)
+	return NewOutputTracerWithInterfaces(tracer, base, name), nil
 }
 
 func NewOutputTracerWithInterfaces(tracer tracing.Tracer, base Output, name string) *outputTracer {

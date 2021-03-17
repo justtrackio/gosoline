@@ -106,24 +106,28 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) (Re
 	_, err := svc.CreateTable(settings)
 
 	if err != nil {
-		logger.Fatalf(err, "could not create ddb table %s", tableName)
+		return nil, fmt.Errorf("could not create ddb table %s: %w", tableName, err)
 	}
 
 	tracer := tracing.NewNoopTracer()
+
 	if !settings.DisableTracing {
-		tracer = tracing.ProviderTracer(config, logger)
+		tracer, err = tracing.ProvideTracer(config, logger)
+		if err != nil {
+			return nil, fmt.Errorf("can not create tracer: %w", err)
+		}
 	}
 
-	return NewWithInterfaces(logger, tracer, client, executor, settings), nil
+	return NewWithInterfaces(logger, tracer, client, executor, settings)
 }
 
-func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor aws.Executor, settings *Settings) Repository {
+func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor aws.Executor, settings *Settings) (Repository, error) {
 	metadataFactory := NewMetadataFactory()
 	metadata, err := metadataFactory.GetMetadata(settings)
 
 	if err != nil {
 		name := TableName(settings)
-		logger.Fatalf(err, "could not factor metadata for ddb table %s", name)
+		return nil, fmt.Errorf("could not factor metadata for ddb table %s: %w", name, err)
 	}
 
 	keyBuilder := keyBuilder{
@@ -138,7 +142,7 @@ func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodb
 		keyBuilder: keyBuilder,
 		metadata:   metadata,
 		settings:   settings,
-	}
+	}, nil
 }
 
 func (r *repository) GetModelId() mdl.ModelId {

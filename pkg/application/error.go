@@ -2,6 +2,7 @@ package application
 
 import (
 	"github.com/applike/gosoline/pkg/mon"
+	"os"
 )
 
 type ErrorHandler func(err error, msg string, args ...interface{})
@@ -19,8 +20,10 @@ var defaultErrorHandler = func(err error, msg string, args ...interface{}) {
 	}
 
 	if err := logger.Option(options...); err != nil {
-		panic(err)
+		logger.Errorf(err, "can not create logger for default error handler")
+		os.Exit(1)
 	}
 
-	logger.Fatalf(err, msg, args...)
+	logger.Errorf(err, msg, args...)
+	os.Exit(1)
 }

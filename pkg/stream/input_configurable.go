@@ -59,7 +59,7 @@ func NewConfigurableInput(config cfg.Config, logger mon.Logger, name string) (In
 	factory, ok := inputFactories[t]
 
 	if !ok {
-		logger.Fatalf(fmt.Errorf("invalid input %s of type %s", name, t), "invalid input %s of type %s", name, t)
+		return nil, fmt.Errorf("invalid input %s of type %s", name, t)
 	}
 
 	input, err := factory(config, logger, name)
@@ -132,7 +132,7 @@ func newRedisInputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 		WaitTime:   configuration.WaitTime,
 	}
 
-	return NewRedisListInput(config, logger, settings), nil
+	return NewRedisListInput(config, logger, settings)
 }
 
 type SnsInputTargetConfiguration struct {
@@ -198,7 +198,7 @@ func readSnsInputSettings(config cfg.Config, name string) (SnsInputSettings, []S
 func newSnsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
 	settings, targets := readSnsInputSettings(config, name)
 
-	return NewSnsInput(config, logger, settings, targets), nil
+	return NewSnsInput(config, logger, settings, targets)
 }
 
 type sqsInputConfiguration struct {
@@ -247,7 +247,7 @@ func readSqsInputSettings(config cfg.Config, name string) SqsInputSettings {
 func newSqsInputFromConfig(config cfg.Config, logger mon.Logger, name string) (Input, error) {
 	settings := readSqsInputSettings(config, name)
 
-	return NewSqsInput(config, logger, settings), nil
+	return NewSqsInput(config, logger, settings)
 }
 
 func ConfigurableInputKey(name string) string {

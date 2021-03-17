@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/exec"
@@ -23,17 +24,20 @@ type snsOutput struct {
 	settings SnsOutputSettings
 }
 
-func NewSnsOutput(config cfg.Config, logger mon.Logger, s SnsOutputSettings) Output {
+func NewSnsOutput(config cfg.Config, logger mon.Logger, s SnsOutputSettings) (Output, error) {
 	s.PadFromConfig(config)
 
-	topic := sns.NewTopic(config, logger, &sns.Settings{
+	topic, err := sns.NewTopic(config, logger, &sns.Settings{
 		AppId:   s.AppId,
 		Client:  s.Client,
 		Backoff: s.Backoff,
 		TopicId: s.TopicId,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("can not create topic: %w", err)
+	}
 
-	return NewSnsOutputWithInterfaces(logger, topic, s)
+	return NewSnsOutputWithInterfaces(logger, topic, s), nil
 }
 
 func NewSnsOutputWithInterfaces(logger mon.Logger, topic sns.Topic, s SnsOutputSettings) Output {

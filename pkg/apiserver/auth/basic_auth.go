@@ -23,8 +23,11 @@ type basicAuthAuthenticator struct {
 	users  map[string]string
 }
 
-func NewBasicAuthHandler(config cfg.Config, logger mon.Logger) gin.HandlerFunc {
-	auth := NewBasicAuthAuthenticator(config, logger)
+func NewBasicAuthHandler(config cfg.Config, logger mon.Logger) (gin.HandlerFunc, error) {
+	auth, err := NewBasicAuthAuthenticator(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create basicAuthAuthenticator: %w", err)
+	}
 
 	appName := config.GetString("app_name")
 
@@ -42,10 +45,10 @@ func NewBasicAuthHandler(config cfg.Config, logger mon.Logger) gin.HandlerFunc {
 		ginCtx.Header("www-authenticate", fmt.Sprintf("Basic realm=\"%s\"", appName))
 		ginCtx.JSON(http.StatusUnauthorized, gin.H{"err": err.Error()})
 		ginCtx.Abort()
-	}
+	}, nil
 }
 
-func NewBasicAuthAuthenticator(config cfg.Config, logger mon.Logger) Authenticator {
+func NewBasicAuthAuthenticator(config cfg.Config, logger mon.Logger) (Authenticator, error) {
 	userEntries := config.GetStringSlice(configBasicAuth)
 
 	users := make(map[string]string)
@@ -57,16 +60,13 @@ func NewBasicAuthAuthenticator(config cfg.Config, logger mon.Logger) Authenticat
 
 		split := strings.SplitN(user, ":", 2)
 		if len(split) != 2 {
-			logger.Panic(
-				fmt.Errorf("invalid basic auth credentials: %s", user),
-				"basic auth credentials have to be in the form user:password",
-			)
+			return nil, fmt.Errorf("invalid basic auth credentials: %s", user)
 		}
 
 		users[split[0]] = split[1]
 	}
 
-	return NewBasicAuthAuthenticatorWithInterfaces(logger, users)
+	return NewBasicAuthAuthenticatorWithInterfaces(logger, users), nil
 }
 
 func NewBasicAuthAuthenticatorWithInterfaces(logger mon.Logger, users map[string]string) Authenticator {

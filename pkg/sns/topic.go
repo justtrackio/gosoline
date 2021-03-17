@@ -37,15 +37,14 @@ type snsTopic struct {
 	settings *Settings
 }
 
-func NewTopic(config cfg.Config, logger mon.Logger, settings *Settings) *snsTopic {
+func NewTopic(config cfg.Config, logger mon.Logger, settings *Settings) (*snsTopic, error) {
 	settings.PadFromConfig(config)
 
 	client := ProvideClient(config, logger, settings)
-
 	arn, err := CreateTopic(logger, client, settings)
 
 	if err != nil {
-		logger.Fatalf(err, "can not create sns topic %s", settings.TopicId)
+		return nil, fmt.Errorf("can not create sns topic %s: %w", settings.TopicId, err)
 	}
 
 	settings.Arn = arn
@@ -56,7 +55,7 @@ func NewTopic(config cfg.Config, logger mon.Logger, settings *Settings) *snsTopi
 	}
 	executor := gosoAws.NewExecutor(logger, res, &settings.Backoff)
 
-	return NewTopicWithInterfaces(logger, client, executor, settings)
+	return NewTopicWithInterfaces(logger, client, executor, settings), nil
 }
 
 func NewTopicWithInterfaces(logger mon.Logger, client snsiface.SNSAPI, executor gosoAws.Executor, s *Settings) *snsTopic {

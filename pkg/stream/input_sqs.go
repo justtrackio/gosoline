@@ -49,10 +49,10 @@ type sqsInput struct {
 	stopped bool
 }
 
-func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) *sqsInput {
+func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) (*sqsInput, error) {
 	s.AppId.PadFromConfig(config)
 
-	queue := sqs.New(config, logger, &sqs.Settings{
+	queue, err := sqs.New(config, logger, &sqs.Settings{
 		AppId:             s.AppId,
 		QueueId:           s.QueueId,
 		Fifo:              s.Fifo,
@@ -61,14 +61,17 @@ func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) *sqsI
 		Client:            s.Client,
 		Backoff:           s.Backoff,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("can not create queue: %w", err)
+	}
 
 	unmarshaller, ok := unmarshallers[s.Unmarshaller]
 
 	if !ok {
-		logger.Fatal(fmt.Errorf("unknown unmarshaller %s", s.Unmarshaller), "")
+		return nil, fmt.Errorf("unknown unmarshaller %s", s.Unmarshaller)
 	}
 
-	return NewSqsInputWithInterfaces(logger, queue, unmarshaller, s)
+	return NewSqsInputWithInterfaces(logger, queue, unmarshaller, s), nil
 }
 
 func NewSqsInputWithInterfaces(logger mon.Logger, queue sqs.Queue, unmarshaller UnmarshallerFunc, s SqsInputSettings) *sqsInput {

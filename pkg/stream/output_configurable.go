@@ -53,9 +53,7 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) (O
 		return nil, fmt.Errorf("can not create output %s: %w", name, err)
 	}
 
-	output = NewOutputTracer(config, logger, output, name)
-
-	return output, nil
+	return NewOutputTracer(config, logger, output, name)
 }
 
 func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) (Output, error) {
@@ -83,7 +81,7 @@ func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name strin
 	return NewKinesisOutput(config, logger, &KinesisOutputSettings{
 		StreamName: settings.StreamName,
 		Backoff:    settings.Backoff,
-	}), nil
+	})
 }
 
 type redisListOutputConfiguration struct {
@@ -110,7 +108,7 @@ func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name str
 		ServerName: configuration.ServerName,
 		Key:        configuration.Key,
 		BatchSize:  configuration.BatchSize,
-	}), nil
+	})
 }
 
 type SnsOutputConfiguration struct {
@@ -138,7 +136,7 @@ func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) (
 		TopicId: configuration.TopicId,
 		Client:  configuration.Client,
 		Backoff: configuration.Backoff,
-	}), nil
+	})
 }
 
 type sqsOutputConfiguration struct {
@@ -171,7 +169,7 @@ func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) (
 		Client:            configuration.Client,
 		Backoff:           configuration.Backoff,
 		Fifo:              configuration.Fifo,
-	}), nil
+	})
 }
 
 func ConfigurableOutputKey(name string) string {

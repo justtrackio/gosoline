@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/apiserver/auth"
 	"github.com/applike/gosoline/pkg/apiserver/crud"
@@ -22,10 +23,15 @@ func apiDefiner(ctx context.Context, config cfg.Config, logger mon.Logger) (*api
 
 	definitions.POST("/json-handler", apiserver.CreateJsonHandler(&JsonInputHandler{}))
 
+	basicAuth, err := auth.NewBasicAuthAuthenticator(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create basicAuth: %w", err)
+	}
+
 	group := definitions.Group("/admin")
 	group.Use(auth.NewChainHandler(map[string]auth.Authenticator{
 		"api-key":    auth.NewConfigKeyAuthenticator(config, logger, auth.ProvideValueFromHeader("X-API-KEY")),
-		"basic-auth": auth.NewBasicAuthAuthenticator(config, logger),
+		"basic-auth": basicAuth,
 	}))
 
 	group.GET("/authenticated", apiserver.CreateHandler(&AdminAuthenticatedHandler{}))

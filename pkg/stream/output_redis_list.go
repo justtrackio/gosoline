@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/redis"
@@ -27,14 +28,18 @@ type redisListOutput struct {
 	fullyQualifiedKey string
 }
 
-func NewRedisListOutput(config cfg.Config, logger mon.Logger, settings *RedisListOutputSettings) Output {
+func NewRedisListOutput(config cfg.Config, logger mon.Logger, settings *RedisListOutputSettings) (Output, error) {
 	settings.PadFromConfig(config)
-	client := redis.ProvideClient(config, logger, settings.ServerName)
+
+	client, err := redis.ProvideClient(config, logger, settings.ServerName)
+	if err != nil {
+		return nil, fmt.Errorf("can not create redis client: %w", err)
+	}
 
 	defaultMetrics := getRedisListOutputDefaultMetrics(settings.AppId, settings.Key)
 	mw := mon.NewMetricDaemonWriter(defaultMetrics...)
 
-	return NewRedisListOutputWithInterfaces(logger, mw, client, settings)
+	return NewRedisListOutputWithInterfaces(logger, mw, client, settings), nil
 }
 
 func NewRedisListOutputWithInterfaces(logger mon.Logger, mw mon.MetricWriter, client redis.Client, settings *RedisListOutputSettings) Output {

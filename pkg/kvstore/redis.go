@@ -21,9 +21,12 @@ func RedisBasename(settings *Settings) string {
 
 func NewRedisKvStore(config cfg.Config, logger mon.Logger, settings *Settings) (KvStore, error) {
 	settings.PadFromConfig(config)
-
 	redisName := RedisBasename(settings)
-	client := redis.ProvideClient(config, logger, redisName)
+
+	client, err := redis.ProvideClient(config, logger, redisName)
+	if err != nil {
+		return nil, fmt.Errorf("can not create redis client: %w", err)
+	}
 
 	return NewRedisKvStoreWithInterfaces(client, settings), nil
 }

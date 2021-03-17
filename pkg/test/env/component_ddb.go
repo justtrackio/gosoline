@@ -42,6 +42,6 @@ func (c *ddbComponent) Client() *dynamodb.DynamoDB {
 	return dynamodb.New(sess)
 }
 
-func (c *ddbComponent) Repository(settings *ddb.Settings) ddb.Repository {
+func (c *ddbComponent) Repository(settings *ddb.Settings) (ddb.Repository, error) {
 	return ddb.NewWithInterfaces(c.logger, tracing.NewNoopTracer(), c.Client(), awsExec.DefaultExecutor{}, settings)
 }

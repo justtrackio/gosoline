@@ -1,4 +1,0 @@
-mocks:
-  metrics_v7:
-    component: elasticsearch
-    version: 7.1.1

@@ -50,7 +50,7 @@ type kernel struct {
 	forceExit   func(code int)
 }
 
-func New(config cfg.Config, logger mon.Logger, options ...Option) *kernel {
+func New(config cfg.Config, logger mon.Logger, options ...Option) (*kernel, error) {
 	k := &kernel{
 		moduleSetupContainers: make([]moduleSetupContainer, 0),
 		multiFactories:        make([]MultiModuleFactory, 0),
@@ -68,10 +68,10 @@ func New(config cfg.Config, logger mon.Logger, options ...Option) *kernel {
 	}
 
 	if err := k.Option(options...); err != nil {
-		logger.Panic(err, "failed to configure kernel")
+		return nil, fmt.Errorf("failed to configure kernel: %w", err)
 	}
 
-	return k
+	return k, nil
 }
 
 func KillTimeout(killTimeout time.Duration) Option {

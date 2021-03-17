@@ -24,8 +24,15 @@ type mysqlPlainFixtureWriter struct {
 
 func MysqlPlainFixtureWriterFactory(metadata *MysqlPlainMetaData) FixtureWriterFactory {
 	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
-		dbClient := db.NewClient(config, logger, "default")
-		purger := newMysqlPurger(config, logger, metadata.TableName)
+		dbClient, err := db.NewClient(config, logger, "default")
+		if err != nil {
+			return nil, fmt.Errorf("can not create dbClient: %w", err)
+		}
+
+		purger, err := newMysqlPurger(config, logger, metadata.TableName)
+		if err != nil {
+			return nil, fmt.Errorf("can not create purger: %w", err)
+		}
 
 		return NewMysqlPlainFixtureWriterWithInterfaces(logger, dbClient, metadata, purger), nil
 	}

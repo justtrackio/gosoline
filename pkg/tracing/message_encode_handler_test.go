@@ -10,7 +10,7 @@ import (
 )
 
 func TestMessageWithTraceEncoder_Encode(t *testing.T) {
-	tracer := getTracer()
+	tracer := getTracer(t)
 	encoder := tracing.NewMessageWithTraceEncoder(tracing.TraceIdErrorReturnStrategy{})
 
 	ctx, span := tracer.StartSpan("test-span")

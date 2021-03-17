@@ -20,7 +20,6 @@ import (
 
 type Logger interface {
 	Debug(args ...interface{})
-	Fatal(err error, msg string)
 	Info(args ...interface{})
 }
 
@@ -43,8 +42,7 @@ var factory = map[string]clientBuilder{
 
 		elasticClient, err := elasticsearch7.NewClient(cfg)
 		if err != nil {
-			logger.Fatal(err, "can't create ES client V7")
-			return nil, err
+			return nil, fmt.Errorf("can't create ES client v7: %w", err)
 		}
 
 		client := &ClientV7{*elasticClient}
@@ -58,44 +56,53 @@ var factory = map[string]clientBuilder{
 	},
 }
 
-func NewClient(config cfg.Config, logger Logger, name string) *ClientV7 {
+func NewClient(config cfg.Config, logger Logger, name string) (*ClientV7, error) {
 	clientTypeKey := fmt.Sprintf("es_%s_type", name)
 	clientType := config.GetString(clientTypeKey)
 
 	urlKey := fmt.Sprintf("es_%s_endpoint", name)
 	url := config.GetString(urlKey)
 
-	client := NewSimpleClient(logger, url, clientType)
+	client, err := NewSimpleClient(logger, url, clientType)
+	if err != nil {
+		return nil, fmt.Errorf("can not create the client: %w", err)
+	}
 
 	templateKey := fmt.Sprintf("es_%s_templates", name)
 	templatePath := config.GetStringSlice(templateKey)
-	putTemplates(logger, client, name, templatePath)
 
-	return client
+	if err = putTemplates(logger, client, name, templatePath); err != nil {
+		return nil, fmt.Errorf("can not put templates: %w", err)
+	}
+
+	return client, nil
 }
 
-func NewSimpleClient(logger Logger, url string, clientType string) *ClientV7 {
+func NewSimpleClient(logger Logger, url string, clientType string) (*ClientV7, error) {
 	logger.Info("creating client ", clientType, " for host ", url)
 
 	client, err := factory[clientType](logger, url)
 	if err != nil {
-		logger.Fatal(err, "error creating the client")
+		return nil, fmt.Errorf("error creating the client: %w", err)
 	}
 
-	return client
+	return client, nil
 }
 
-func ProvideClient(config cfg.Config, logger Logger, name string) *ClientV7 {
+func ProvideClient(config cfg.Config, logger Logger, name string) (*ClientV7, error) {
 	mtx.Lock()
 	defer mtx.Unlock()
 
 	if client, ok := ecl[name]; ok {
-		return client
+		return client, nil
 	}
 
-	ecl[name] = NewClient(config, logger, name)
+	var err error
+	if ecl[name], err = NewClient(config, logger, name); err != nil {
+		return nil, err
+	}
 
-	return ecl[name]
+	return ecl[name], nil
 }
 
 func GetAwsClient(logger Logger, url string) (*ClientV7, error) {
@@ -118,7 +125,7 @@ func GetAwsClient(logger Logger, url string) (*ClientV7, error) {
 	awsClient, err := aws_signing_client.New(signer, nil, "es", endpoints.EuCentral1RegionID)
 
 	if err != nil {
-		logger.Fatal(err, "error creating the elastic aws client")
+		return nil, fmt.Errorf("error creating the elastic aws client: %w", err)
 	}
 
 	configES := elasticsearch7.Config{
@@ -132,17 +139,17 @@ func GetAwsClient(logger Logger, url string) (*ClientV7, error) {
 	return client, err
 }
 
-func putTemplates(logger Logger, client *ClientV7, name string, paths []string) {
-	files := getTemplateFiles(logger, paths)
+func putTemplates(logger Logger, client *ClientV7, name string, paths []string) error {
+	files, err := getTemplateFiles(logger, paths)
+	if err != nil {
+		return fmt.Errorf("could not get template files: %w", err)
+	}
 
 	for _, file := range files {
 		buf, err := ioutil.ReadFile(file)
 
 		if err != nil {
-			msg := fmt.Sprintf("could not read es-templates file. "+
-				"I tried reading %s, but it failed. "+
-				"Create the template or set the correct path using es_metric_template", file)
-			logger.Fatal(fmt.Errorf(msg), msg)
+			return fmt.Errorf("could not read es-templates file %s: %w", file, err)
 		}
 
 		// Create template
@@ -152,8 +159,7 @@ func putTemplates(logger Logger, client *ClientV7, name string, paths []string) 
 		)
 
 		if err != nil {
-			msg := fmt.Sprintf("could not put the es-template in file %s for es client %s", file, name)
-			logger.Fatal(err, msg)
+			return fmt.Errorf("could not put the es-template in file %s for es client %s: %w", file, name, err)
 		}
 
 		defer func() {
@@ -165,22 +171,21 @@ func putTemplates(logger Logger, client *ClientV7, name string, paths []string) 
 		}()
 
 		if res.IsError() {
-			msg := fmt.Sprintf("could not put template from file %s"+
-				"Got error from ES: %s, %s", file, res.Status(), res.String())
-			logger.Fatal(fmt.Errorf(msg), msg)
+			return fmt.Errorf("could not put template from file %s: got error from ES: %s, %s", file, res.Status(), res.String())
 		}
 	}
+
+	return nil
 }
 
-func getTemplateFiles(logger Logger, paths []string) []string {
+func getTemplateFiles(logger Logger, paths []string) ([]string, error) {
 	files := make([]string, 0)
 
 	for _, p := range paths {
 		fileInfo, err := os.Stat(p)
 
 		if err != nil {
-			msg := fmt.Sprintf("there was an error with the es-tempates path %s. Does it exist?", p)
-			logger.Fatal(err, msg)
+			return nil, fmt.Errorf("there was an error with the es-tempates path %s. Does it exist?: %w", p, err)
 		}
 
 		if fileInfo.Mode().IsRegular() {
@@ -189,24 +194,26 @@ func getTemplateFiles(logger Logger, paths []string) []string {
 		}
 
 		if !fileInfo.Mode().IsDir() {
-			msg := fmt.Sprintf("the es-tempates path %s is neither a file or a directory", p)
-			logger.Fatal(err, msg)
+			return nil, fmt.Errorf("the es-tempates path %s is neither a file or a directory: %w", p, err)
 		}
 
 		fileInfos, err := ioutil.ReadDir(p)
 
 		if err != nil {
-			msg := fmt.Sprintf("could not scan the the es-tempates path %s", p)
-			logger.Fatal(err, msg)
+			return nil, fmt.Errorf("could not scan the the es-tempates path %s: %w", p, err)
 		}
 
 		for _, fileInfo := range fileInfos {
 			filename := filepath.Join(p, fileInfo.Name())
-			scan := getTemplateFiles(logger, []string{filename})
+
+			scan, err := getTemplateFiles(logger, []string{filename})
+			if err != nil {
+				return nil, fmt.Errorf("could not get template files: %w", err)
+			}
 
 			files = append(files, scan...)
 		}
 	}
 
-	return files
+	return files, nil
 }

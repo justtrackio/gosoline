@@ -17,8 +17,6 @@ const (
 	Info  = "info"
 	Warn  = "warn"
 	Error = "error"
-	Fatal = "fatal"
-	Panic = "panic"
 )
 
 var levels = map[string]int{
@@ -27,8 +25,6 @@ var levels = map[string]int{
 	Info:  2,
 	Warn:  3,
 	Error: 4,
-	Fatal: 5,
-	Panic: 6,
 }
 
 func levelPriority(level string) int {
@@ -76,15 +72,11 @@ type Logger interface {
 	Info(args ...interface{})
 	Warn(args ...interface{})
 	Error(err error, msg string)
-	Panic(err error, msg string)
-	Fatal(err error, msg string)
 
 	Debugf(format string, args ...interface{})
 	Infof(format string, args ...interface{})
 	Warnf(format string, args ...interface{})
 	Errorf(err error, format string, args ...interface{})
-	Panicf(err error, format string, args ...interface{})
-	Fatalf(err error, format string, args ...interface{})
 
 	WithChannel(channel string) Logger
 	WithContext(ctx context.Context) Logger
@@ -222,26 +214,6 @@ func (l *logger) Error(err error, msg string) {
 
 func (l *logger) Errorf(err error, msg string, args ...interface{}) {
 	l.logError(Error, err, fmt.Sprintf(msg, args...))
-}
-
-func (l *logger) Fatal(err error, msg string) {
-	l.logError(Fatal, err, msg)
-	os.Exit(1)
-}
-
-func (l *logger) Fatalf(err error, msg string, args ...interface{}) {
-	l.logError(Fatal, err, fmt.Sprintf(msg, args...))
-	os.Exit(1)
-}
-
-func (l *logger) Panic(err error, msg string) {
-	l.logError(Panic, err, msg)
-	panic(err)
-}
-
-func (l *logger) Panicf(err error, msg string, args ...interface{}) {
-	l.logError(Panic, err, fmt.Sprintf(msg, args...))
-	panic(err)
 }
 
 func (l *logger) logError(level string, err error, msg string) {

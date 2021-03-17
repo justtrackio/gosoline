@@ -44,9 +44,12 @@ func New(definer Definer) kernel.ModuleFactory {
 
 		gin.SetMode(settings.Mode)
 
-		router := gin.New()
-		tracer := tracing.ProviderTracer(config, logger)
+		tracer, err := tracing.ProvideTracer(config, logger)
+		if err != nil {
+			return nil, fmt.Errorf("can not create tracer: %w", err)
+		}
 
+		router := gin.New()
 		AddProfilingEndpoints(router)
 
 		router.GET("/health", func(c *gin.Context) {

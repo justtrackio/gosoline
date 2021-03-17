@@ -65,7 +65,7 @@ type redisClient struct {
 	settings *Settings
 }
 
-func NewClient(config cfg.Config, logger mon.Logger, name string) Client {
+func NewClient(config cfg.Config, logger mon.Logger, name string) (Client, error) {
 	settings := ReadSettings(config, name)
 
 	logger = logger.WithFields(mon.Fields{
@@ -75,8 +75,7 @@ func NewClient(config cfg.Config, logger mon.Logger, name string) Client {
 	executor := NewExecutor(logger, settings.BackoffSettings, name)
 
 	if _, ok := dialers[settings.Dialer]; !ok {
-		logger.Fatalf(fmt.Errorf("dialer not found"), "there is no redis dialer of type %s", settings.Dialer)
-		return nil
+		return nil, fmt.Errorf("there is no redis dialer of type %s", settings.Dialer)
 	}
 
 	dialer := dialers[settings.Dialer](logger, settings)
@@ -84,7 +83,7 @@ func NewClient(config cfg.Config, logger mon.Logger, name string) Client {
 		Dialer: dialer,
 	})
 
-	return NewClientWithInterfaces(logger, baseClient, executor, settings)
+	return NewClientWithInterfaces(logger, baseClient, executor, settings), nil
 }
 
 func NewClientWithInterfaces(logger mon.Logger, baseRedis baseRedis.Cmdable, executor exec.Executor, settings *Settings) Client {

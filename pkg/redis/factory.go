@@ -19,17 +19,20 @@ type Settings struct {
 var mutex sync.Mutex
 var clients = map[string]Client{}
 
-func ProvideClient(config cfg.Config, logger mon.Logger, name string) Client {
+func ProvideClient(config cfg.Config, logger mon.Logger, name string) (Client, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	if client, ok := clients[name]; ok {
-		return client
+		return client, nil
 	}
 
-	clients[name] = NewClient(config, logger, name)
+	var err error
+	if clients[name], err = NewClient(config, logger, name); err != nil {
+		return nil, err
+	}
 
-	return clients[name]
+	return clients[name], nil
 }
 
 func ReadSettings(config cfg.Config, name string) *Settings {

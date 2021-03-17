@@ -17,7 +17,7 @@ func NewLoggerMock() *Logger {
 }
 
 func NewLoggerMockedAll() *Logger {
-	return NewLoggerMockedUntilLevel(mon.Panic)
+	return NewLoggerMockedUntilLevel(mon.Error)
 }
 
 // return a logger mocked up to the given log level. All other calls will cause an error and fail the test.
@@ -30,8 +30,6 @@ func NewLoggerMockedUntilLevel(level string) *Logger {
 		mon.Info:  2,
 		mon.Warn:  3,
 		mon.Error: 4,
-		mon.Fatal: 5,
-		mon.Panic: 6,
 	}
 
 	levelIndex, ok := levelMap[level]
@@ -44,26 +42,12 @@ func NewLoggerMockedUntilLevel(level string) *Logger {
 	mockLoggerMethod(logger, "Info", "Infof", mon.Info, levelIndex >= levelMap[mon.Info])
 	mockLoggerMethod(logger, "Warn", "Warnf", mon.Warn, levelIndex >= levelMap[mon.Warn])
 	mockLoggerMethod(logger, "Error", "Errorf", mon.Error, levelIndex >= levelMap[mon.Error])
-	mockLoggerMethod(logger, "Fatal", "Fatalf", mon.Fatal, levelIndex >= levelMap[mon.Fatal])
-	mockLoggerMethod(logger, "Panic", "Panicf", mon.Panic, levelIndex >= levelMap[mon.Panic])
 
 	return logger
 }
 
 func inspectLogFunction(level string, withFormat bool, allowed bool) func(args mock.Arguments) {
 	return func(args mock.Arguments) {
-		if level == mon.Panic || level == mon.Fatal {
-			err := args.Get(0).(error)
-			var msg string
-			if withFormat {
-				msg = fmt.Sprintf(args.Get(1).(string), args[2:]...)
-			} else {
-				msg = fmt.Sprint(args[1:])
-			}
-			// we have to stop the test, these methods never return
-			panic(fmt.Errorf("panic or fatal logging method called with error '%w' and message '%s'", err, msg))
-		}
-
 		// ensure we use formatting markers exactly when using a method with formatting
 		var msg string
 		if level == mon.Error {

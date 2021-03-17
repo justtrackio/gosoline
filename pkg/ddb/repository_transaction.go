@@ -42,7 +42,11 @@ func NewTransactionRepository(config cfg.Config, logger mon.Logger) (*transactio
 		return nil, fmt.Errorf("could not merge backoff settings for transactions: %w", err)
 	}
 
-	tracer := tracing.ProviderTracer(config, logger)
+	tracer, err := tracing.ProvideTracer(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create tracer: %w", err)
+	}
+
 	client := ProvideClient(config, logger, settings)
 
 	res := &exec.ExecutableResource{

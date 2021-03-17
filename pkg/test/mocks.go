@@ -94,8 +94,6 @@ func (m *Mocks) createComponent(component string) (mockComponent, error) {
 		return &cloudwatchComponent{}, nil
 	case "dynamodb":
 		return &dynamoDbComponent{}, nil
-	case "elasticsearch":
-		return &elasticsearchComponent{}, nil
 	case componentKinesis:
 		return &kinesisComponent{}, nil
 	case componentS3:

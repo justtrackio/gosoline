@@ -11,7 +11,9 @@ import (
 func TestContext(t *testing.T) {
 	logger := mocks.NewLoggerMockedAll()
 
-	tracer := tracing.NewAwsTracerWithInterfaces(logger, cfg.AppId{}, &tracing.XRaySettings{Enabled: true})
+	tracer, err := tracing.NewAwsTracerWithInterfaces(logger, cfg.AppId{}, &tracing.XRaySettings{Enabled: true})
+	assert.NoError(t, err, "we should be able to get a tracer")
+
 	ctx, span := tracer.StartSpan("test")
 
 	spanFromCtx := tracing.GetSpanFromContext(ctx)

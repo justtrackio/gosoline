@@ -33,7 +33,11 @@ func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory
 		}
 
 		name := kvstore.RedisBasename(settings)
-		purger := newRedisPurger(config, logger, &name)
+
+		purger, err := newRedisPurger(config, logger, &name)
+		if err != nil {
+			return nil, fmt.Errorf("can not create redis purger: %w", err)
+		}
 
 		return NewRedisKvStoreFixtureWriterWithInterfaces(logger, store, purger), nil
 	}

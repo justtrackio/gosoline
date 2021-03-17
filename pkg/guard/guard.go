@@ -20,16 +20,19 @@ type LadonGuard struct {
 	warden *ladon.Ladon
 }
 
-func NewGuard(config cfg.Config, logger mon.Logger) *LadonGuard {
-	m := NewSqlManager(config, logger)
+func NewGuard(config cfg.Config, logger mon.Logger) (*LadonGuard, error) {
+	sqlManager, err := NewSqlManager(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create sqlManager: %w", err)
+	}
 
 	warden := &ladon.Ladon{
-		Manager: m,
+		Manager: sqlManager,
 	}
 
 	return &LadonGuard{
 		warden: warden,
-	}
+	}, nil
 }
 
 func (g LadonGuard) IsAllowed(request *ladon.Request) error {
