@@ -57,6 +57,16 @@ resource "aws_cloudwatch_metric_alarm" "elb-success-rate" {
     label       = "100-100*(errors/requests)"
     return_data = true
   }
+
+  alarm_actions = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
+  ok_actions    = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project
+    Family      = var.family
+    Application = var.application
+  }
 }
 
 resource "aws_cloudwatch_metric_alarm" "path-success-rate" {
@@ -103,5 +113,15 @@ resource "aws_cloudwatch_metric_alarm" "path-success-rate" {
     id          = "e1"
     label       = "100-100*(errors/requests)"
     return_data = true
+  }
+
+  alarm_actions = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
+  ok_actions    = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project
+    Family      = var.family
+    Application = var.application
   }
 }

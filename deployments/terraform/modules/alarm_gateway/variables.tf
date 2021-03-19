@@ -54,7 +54,7 @@ variable "elb_period" {
 
 variable "elb_success_rate_threshold" {
   type        = number
-  default     = 95
+  default     = 99
   description = "Required percentage of successful requests"
 }
 
@@ -84,6 +84,6 @@ variable "path_period" {
 
 variable "path_success_rate_threshold" {
   type        = number
-  default     = 95
+  default     = 99
   description = "Required percentage of successful requests"
 }
