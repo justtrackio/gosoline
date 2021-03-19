@@ -49,6 +49,10 @@ variable "alarm_main_backlog_create" {
   default = 1
 }
 
+variable "alarm_main_backlog_minutes" {
+  default = 3
+}
+
 variable "alarm_dead_create" {
   default = 1
 }
