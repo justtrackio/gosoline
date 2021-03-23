@@ -236,6 +236,10 @@ func (c *client) writeMetric(metricName string, method string, unit string, valu
 }
 
 func buildResponse(resp *resty.Response) *Response {
+	if resp == nil {
+		return nil
+	}
+
 	return &Response{
 		Body:            resp.Body(),
 		Cookies:         resp.Cookies(),
