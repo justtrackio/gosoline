@@ -198,7 +198,7 @@ func (c *baseConsumer) recover() {
 }
 
 func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
-	c.logger.WithContext(ctx).Error(err, "an error occurred during disaggregation of the message")
+	c.logger.WithContext(ctx).Error(err, msg)
 
 	c.metricWriter.Write(mon.MetricData{
 		&mon.MetricDatum{
