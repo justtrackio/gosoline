@@ -11,7 +11,7 @@ require (
 	github.com/alicebob/miniredis v2.4.6+incompatible
 	github.com/apache/thrift v0.13.0 // indirect
 	github.com/aws/aws-lambda-go v1.13.2
-	github.com/aws/aws-sdk-go v1.34.19
+	github.com/aws/aws-sdk-go v1.38.7
 	github.com/aws/aws-sdk-go-v2 v1.3.0
 	github.com/aws/aws-sdk-go-v2/config v1.1.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.1.3
