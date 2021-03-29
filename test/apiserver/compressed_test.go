@@ -10,6 +10,7 @@ import (
 	netHttp "net/http"
 	"testing"
 
+	httpHeaders "github.com/go-http-utils/headers"
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -66,21 +67,21 @@ func (s *CompressedTestSuite) TestCompressed() []*suite.ApiServerTestCase {
 			Method: netHttp.MethodPost,
 			Url:    route,
 			Headers: map[string]string{
-				http.HdrContentType:     http.ContentTypeApplicationJson,
-				http.HdrContentEncoding: http.ContentEncodingGzip,
-				http.HdrAcceptEncoding:  http.ContentEncodingGzip,
+				httpHeaders.ContentType:     http.MimeTypeApplicationJson,
+				httpHeaders.ContentEncoding: http.ContentEncodingGzip,
+				httpHeaders.AcceptEncoding:  http.ContentEncodingGzip,
 			},
 			Body:               buffer.Bytes(), // all routes should accept compressed requests
 			ExpectedStatusCode: netHttp.StatusOK,
 			Assert: func(res *resty.Response) error {
 				// only first route should be compressed
 				if i == 0 {
-					s.Equal([]string{http.ContentEncodingGzip}, res.Header()[http.HdrContentEncoding])
+					s.Equal([]string{http.ContentEncodingGzip}, res.Header()[httpHeaders.ContentEncoding])
 				} else {
-					s.Equal([]string(nil), res.Header()[http.HdrContentEncoding])
+					s.Equal([]string(nil), res.Header()[httpHeaders.ContentEncoding])
 				}
 
-				s.Equal([]string{apiserver.ContentTypeJson}, res.Header()[http.HdrContentType])
+				s.Equal([]string{apiserver.ContentTypeJson}, res.Header()[httpHeaders.ContentType])
 				s.Equal(expectedBody, string(res.Body()))
 
 				return nil

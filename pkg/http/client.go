@@ -8,6 +8,7 @@ import (
 	netUrl "net/url"
 	"time"
 
+	httpHeaders "github.com/go-http-utils/headers"
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -128,11 +129,11 @@ func (c *client) NewRequest() *Request {
 }
 
 func (c *client) NewJsonRequest() *Request {
-	return c.NewRequest().WithHeader(HdrAccept, ContentTypeApplicationJson)
+	return c.NewRequest().WithHeader(httpHeaders.Accept, MimeTypeApplicationJson)
 }
 
 func (c *client) NewXmlRequest() *Request {
-	return c.NewRequest().WithHeader(HdrAccept, ContentTypeApplicationXml)
+	return c.NewRequest().WithHeader(httpHeaders.Accept, MimeTypeApplicationXml)
 }
 
 func (c *client) SetCookie(hc *http.Cookie) {
@@ -148,7 +149,7 @@ func (c *client) SetTimeout(timeout time.Duration) {
 }
 
 func (c *client) SetUserAgent(ua string) {
-	c.defaultHeaders[HdrUserAgent] = ua
+	c.defaultHeaders[httpHeaders.UserAgent] = ua
 }
 
 func (c *client) SetProxyUrl(p string) {

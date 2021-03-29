@@ -34,6 +34,7 @@ require (
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.6.3
+	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
 	github.com/go-playground/validator/v10 v10.2.0
 	github.com/go-redis/redis/v8 v8.8.0
 	github.com/go-resty/resty/v2 v2.6.0

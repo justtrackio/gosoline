@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	httpHeaders "github.com/go-http-utils/headers"
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -80,7 +81,7 @@ func (s *EofBindTestSuite) TestEofBind() *suite.ApiServerTestCase {
 		Method: netHttp.MethodPost,
 		Url:    "/bind",
 		Headers: map[string]string{
-			http.HdrContentType: http.ContentTypeApplicationJson,
+			httpHeaders.ContentType: http.MimeTypeApplicationJson,
 		},
 		Body:               []byte{},
 		ExpectedStatusCode: netHttp.StatusBadRequest,
@@ -105,7 +106,7 @@ func (s *EofBindTestSuite) TestUnexpectedEofBind() *suite.ApiServerTestCase {
 		Method: netHttp.MethodPost,
 		Url:    "/bind",
 		Headers: map[string]string{
-			http.HdrContentType: http.ContentTypeApplicationJson,
+			httpHeaders.ContentType: http.MimeTypeApplicationJson,
 		},
 		Body:               []byte{'{'},
 		ExpectedStatusCode: netHttp.StatusBadRequest,

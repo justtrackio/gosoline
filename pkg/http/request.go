@@ -5,24 +5,11 @@ import (
 	"net/url"
 	"sync"
 
+	httpHeaders "github.com/go-http-utils/headers"
 	"github.com/go-resty/resty/v2"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cast"
-)
-
-const (
-	HdrAccept          = "Accept"
-	HdrAcceptEncoding  = "Accept-Encoding"
-	HdrContentType     = "Content-Type"
-	HdrContentEncoding = "Content-Encoding"
-	HdrUserAgent       = "User-Agent"
-
-	ContentTypeApplicationJson           = "application/json"
-	ContentTypeApplicationXml            = "application/xml"
-	ContentTypeApplicationFormUrlencoded = "application/x-www-form-urlencoded"
-
-	ContentEncodingGzip = "gzip"
 )
 
 type Request struct {
@@ -38,7 +25,7 @@ var r struct {
 	lck      sync.Mutex
 }
 
-// use NewRequest(client) or client.NewRequest() to create a request, don't create the object inline!
+// NewRequest or client.NewRequest() creates a request, don't create the object inline!
 func NewRequest(client Client) *Request {
 	r.lck.Lock()
 	defer r.lck.Unlock()
@@ -58,16 +45,16 @@ func NewRequest(client Client) *Request {
 	return client.NewRequest()
 }
 
-// use NewJsonRequest to create a request that already contains the application/json content-type, don't create the object inline!
+// NewJsonRequest creates a request that already contains the application/json content-type, don't create the object inline!
 func NewJsonRequest(client Client) *Request {
 	return NewRequest(client).
-		WithHeader(HdrAccept, ContentTypeApplicationJson)
+		WithHeader(httpHeaders.Accept, MimeTypeApplicationJson)
 }
 
-// use NewXmlRequest to create a request that already contains the application/xml content-type, don't create the object inline!
+// NewXmlRequest creates a request that already contains the application/xml content-type, don't create the object inline!
 func NewXmlRequest(client Client) *Request {
 	return NewRequest(client).
-		WithHeader(HdrAccept, ContentTypeApplicationXml)
+		WithHeader(httpHeaders.Accept, MimeTypeApplicationXml)
 }
 
 func (r *Request) WithUrl(rawUrl string) *Request {
