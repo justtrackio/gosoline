@@ -1,10 +1,11 @@
 package env
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 )
 
 func init() {
@@ -72,7 +73,7 @@ func (f *redisFactory) configureContainer(settings interface{}) *containerConfig
 func (f *redisFactory) healthCheck() ComponentHealthCheck {
 	return func(container *container) error {
 		client := f.client(container)
-		err := client.Ping().Err()
+		err := client.Ping(context.Background()).Err()
 
 		return err
 	}

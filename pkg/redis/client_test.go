@@ -7,8 +7,8 @@ import (
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/redis"
-	"github.com/elliotchance/redismock"
-	baseRedis "github.com/go-redis/redis"
+	"github.com/elliotchance/redismock/v8"
+	baseRedis "github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -62,7 +62,7 @@ func (s *ClientWithMiniRedisTestSuite) TestGetNotFound() {
 	}, "test")
 	s.client = redis.NewClientWithInterfaces(logger, s.baseClient, executor, s.settings)
 
-	res, err := s.client.Get("missing")
+	res, err := s.client.Get(context.Background(), "missing")
 
 	s.Equal(redis.Nil, err)
 	s.Equal("", res)
@@ -73,22 +73,22 @@ func (s *ClientWithMiniRedisTestSuite) TestBLPop() {
 		s.FailNow(err.Error(), "can not setup miniredis server")
 	}
 
-	res, err := s.client.BLPop(1*time.Second, "list")
+	res, err := s.client.BLPop(context.Background(), 1*time.Second, "list")
 
 	s.NoError(err, "there should be no error on blpop")
 	s.Equal("value", res[1])
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestDel() {
-	count, err := s.client.Del("test")
+	count, err := s.client.Del(context.Background(), "test")
 	s.NoError(err, "there should be no error on Del")
 	s.Equal(0, int(count))
 
 	var ttl time.Duration
-	err = s.client.Set("key", "value", ttl)
+	err = s.client.Set(context.Background(), "key", "value", ttl)
 	s.NoError(err, "there should be no error on Del")
 
-	count, err = s.client.Del("key")
+	count, err = s.client.Del(context.Background(), "key")
 	s.NoError(err, "there should be no error on Del")
 	s.Equal(1, int(count))
 }
@@ -100,106 +100,108 @@ func (s *ClientWithMiniRedisTestSuite) TestLLen() {
 		}
 	}
 
-	res, err := s.client.LLen("list")
+	res, err := s.client.LLen(context.Background(), "list")
 
 	s.NoError(err, "there should be no error on LLen")
 	s.Equal(int64(3), res)
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestRPush() {
-	count, err := s.client.RPush("list", "v1", "v2", "v3")
+	count, err := s.client.RPush(context.Background(), "list", "v1", "v2", "v3")
 	s.NoError(err, "there should be no error on RPush")
 	s.Equal(int64(3), count)
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestSet() {
 	var ttl time.Duration
-	err := s.client.Set("key", "value", ttl)
+	err := s.client.Set(context.Background(), "key", "value", ttl)
 	s.NoError(err, "there should be no error on Set")
 
 	ttl, _ = time.ParseDuration("1m")
-	err = s.client.Set("key", "value", ttl)
+	err = s.client.Set(context.Background(), "key", "value", ttl)
 	s.NoError(err, "there should be no error on Set with expiration date")
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestHSet() {
-	err := s.client.HSet("key", "field", "value")
+	err := s.client.HSet(context.Background(), "key", "field", "value")
 	s.NoError(err, "there should be no error on HSet")
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestHSetNX() {
-	isNewlySet, err := s.client.HSetNX("key", "field", "value")
+	isNewlySet, err := s.client.HSetNX(context.Background(), "key", "field", "value")
 	s.True(isNewlySet, "the field should be set the first time")
 	s.NoError(err, "there should be no error on HSet")
 
-	isNewlySet, err = s.client.HSetNX("key", "field", "value")
+	isNewlySet, err = s.client.HSetNX(context.Background(), "key", "field", "value")
 	s.False(isNewlySet, "the field should NOT be set the first time")
 	s.NoError(err, "there should be no error on HSet")
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestHMSet() {
-	err := s.client.HMSet("key", map[string]interface{}{"field": "value"})
+	err := s.client.HMSet(context.Background(), "key", map[string]interface{}{"field": "value"})
 	s.NoError(err, "there should be no error on HSet")
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestHMGet() {
-	vals, err := s.client.HMGet("key", "field", "value")
+	vals, err := s.client.HMGet(context.Background(), "key", "field", "value")
 	s.NoError(err, "there should be no error on HSet")
 	s.Equal([]interface{}{nil, nil}, vals, "there should be no error on HSet")
 
-	err = s.client.HMSet("key", map[string]interface{}{"value": "1"})
+	err = s.client.HMSet(context.Background(), "key", map[string]interface{}{"value": "1"})
 	s.NoError(err, "there should be no error on HSet")
 
-	vals, err = s.client.HMGet("key", "field", "value")
+	vals, err = s.client.HMGet(context.Background(), "key", "field", "value")
 	s.NoError(err, "there should be no error on HSet")
 	s.Equal([]interface{}{nil, "1"}, vals, "there should be no error on HSet")
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestIncr() {
-	val, err := s.client.Incr("key")
+	val, err := s.client.Incr(context.Background(), "key")
 	s.NoError(err, "there should be no error on Incr")
 	s.Equal(int64(1), val)
 
-	val, err = s.client.Incr("key")
+	val, err = s.client.Incr(context.Background(), "key")
 	s.NoError(err, "there should be no error on Incr")
 	s.Equal(int64(2), val)
 
-	val, err = s.client.IncrBy("key", int64(3))
+	val, err = s.client.IncrBy(context.Background(), "key", int64(3))
 	s.NoError(err, "there should be no error on IncrBy")
 	s.Equal(int64(5), val)
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestDecr() {
-	err := s.client.Set("key", 10, time.Minute*10)
+	err := s.client.Set(context.Background(), "key", 10, time.Minute*10)
 	s.NoError(err, "there should be no error on Set")
 
-	val, err := s.client.Decr("key")
+	val, err := s.client.Decr(context.Background(), "key")
 	s.NoError(err, "there should be no error on Decr")
 	s.Equal(int64(9), val)
 
-	val, err = s.client.Decr("key")
+	val, err = s.client.Decr(context.Background(), "key")
 	s.NoError(err, "there should be no error on Decr")
 	s.Equal(int64(8), val)
 
-	val, err = s.client.DecrBy("key", int64(5))
+	val, err = s.client.DecrBy(context.Background(), "key", int64(5))
 	s.NoError(err, "there should be no error on DecrBy")
 	s.Equal(int64(3), val)
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestExpire() {
-	_, _ = s.client.Incr("key")
+	_, _ = s.client.Incr(context.Background(), "key")
 
-	result, err := s.client.Expire("key", time.Nanosecond)
+	result, err := s.client.Expire(context.Background(), "key", time.Second)
 	s.NoError(err, "there should be no error on Expire")
 	s.True(result)
 
-	amount, err := s.client.Exists("key")
+	s.server.FastForward(time.Second)
+
+	amount, err := s.client.Exists(context.Background(), "key")
 	s.Equal(int64(0), amount)
 	s.NoError(err, "there should be no error on Exists")
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestIsAlive() {
-	alive := s.client.IsAlive()
+	alive := s.client.IsAlive(context.Background())
 	s.True(alive)
 }
 
@@ -223,20 +225,20 @@ func (s *ClientWithMockTestSuite) SetupTest() {
 }
 
 func (s *ClientWithMockTestSuite) TestSetWithOOM() {
-	s.redisMock.On("Set").Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
-	s.redisMock.On("Set").Return(baseRedis.NewStatusResult("", nil)).Once()
+	s.redisMock.On("Set", mock.AnythingOfType("*context.emptyCtx"), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
+	s.redisMock.On("Set", mock.AnythingOfType("*context.emptyCtx"), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", nil)).Once()
 
-	err := s.client.Set("key", "value", time.Second)
+	err := s.client.Set(context.Background(), "key", "value", time.Second)
 
 	s.NoError(err, "there should be no error on Set with backoff")
 	s.redisMock.AssertExpectations(s.T())
 }
 
 func (s *ClientWithMockTestSuite) TestSetWithError() {
-	s.redisMock.On("Set").Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
-	s.redisMock.On("Set").Return(baseRedis.NewStatusResult("", nil)).Times(0)
+	s.redisMock.On("Set", mock.AnythingOfType("*context.emptyCtx"), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
+	s.redisMock.On("Set", mock.AnythingOfType("*context.emptyCtx"), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", nil)).Times(0)
 
-	err := s.client.Set("key", "value", time.Second)
+	err := s.client.Set(context.Background(), "key", "value", time.Second)
 
 	s.NotNil(err, "there should be an error on Set")
 	s.redisMock.AssertExpectations(s.T())

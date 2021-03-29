@@ -72,14 +72,14 @@ func (i *redisListInput) Run(ctx context.Context) error {
 		return errors.New("wait time should be bigger than 0")
 	}
 
-	go i.runMetricLoop()
+	go i.runMetricLoop(ctx)
 
 	for {
 		if i.stopped {
 			return nil
 		}
 
-		rawMessage, err := i.client.BLPop(i.settings.WaitTime, i.fullyQualifiedKey)
+		rawMessage, err := i.client.BLPop(ctx, i.settings.WaitTime, i.fullyQualifiedKey)
 
 		if err != nil && err.Error() != redis.Nil.Error() {
 			i.logger.Error(err, "could not BLPop from redis")
@@ -108,17 +108,17 @@ func (i *redisListInput) Stop() {
 	i.stopped = true
 }
 
-func (i *redisListInput) runMetricLoop() {
+func (i *redisListInput) runMetricLoop(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
 
 	for {
-		i.writeListLengthMetric()
+		i.writeListLengthMetric(ctx)
 		<-ticker.C
 	}
 }
 
-func (i *redisListInput) writeListLengthMetric() {
-	llen, err := i.client.LLen(i.fullyQualifiedKey)
+func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
+	llen, err := i.client.LLen(ctx, i.fullyQualifiedKey)
 
 	if err != nil {
 		i.logger.Error(err, "can not publish stream list metric data")

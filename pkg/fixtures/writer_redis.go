@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
@@ -23,10 +24,10 @@ type redisOpHandler func(client redis.Client, fixture *RedisFixture) error
 
 var redisHandlers = map[string]redisOpHandler{
 	RedisOpSet: func(client redis.Client, fixture *RedisFixture) error {
-		return client.Set(fixture.Key, fixture.Value, fixture.Expiry)
+		return client.Set(context.Background(), fixture.Key, fixture.Value, fixture.Expiry)
 	},
 	RedisOpRpush: func(client redis.Client, fixture *RedisFixture) error {
-		_, err := client.RPush(fixture.Key, fixture.Value.([]interface{})...)
+		_, err := client.RPush(context.Background(), fixture.Key, fixture.Value.([]interface{})...)
 
 		return err
 	},

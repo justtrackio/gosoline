@@ -38,14 +38,14 @@ func NewRedisKvStoreWithInterfaces(client redis.Client, settings *Settings) KvSt
 	}, settings)
 }
 
-func (s *redisKvStore) Contains(_ context.Context, key interface{}) (bool, error) {
+func (s *redisKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
 	keyStr, err := s.key(key)
 
 	if err != nil {
 		return false, fmt.Errorf("can not get key to check value in redis: %w", err)
 	}
 
-	count, err := s.client.Exists(keyStr)
+	count, err := s.client.Exists(ctx, keyStr)
 
 	if err != nil {
 		return false, fmt.Errorf("can not check existence in redis store: %w", err)
@@ -54,14 +54,14 @@ func (s *redisKvStore) Contains(_ context.Context, key interface{}) (bool, error
 	return count > 0, nil
 }
 
-func (s *redisKvStore) Get(_ context.Context, key interface{}, value interface{}) (bool, error) {
+func (s *redisKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
 	keyStr, err := s.key(key)
 
 	if err != nil {
 		return false, fmt.Errorf("can not get key to read value from redis: %w", err)
 	}
 
-	data, err := s.client.Get(keyStr)
+	data, err := s.client.Get(ctx, keyStr)
 
 	if err == redis.Nil {
 		return false, nil
@@ -84,7 +84,7 @@ func (s *redisKvStore) GetBatch(ctx context.Context, keys interface{}, result in
 	return getBatch(ctx, keys, result, s.getChunk, s.settings.BatchSize)
 }
 
-func (s *redisKvStore) getChunk(_ context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
+func (s *redisKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
 	var err error
 
 	missing := make([]interface{}, 0)
@@ -98,7 +98,7 @@ func (s *redisKvStore) getChunk(_ context.Context, resultMap *refl.Map, keys []i
 		}
 	}
 
-	items, err := s.client.MGet(keyStrings...)
+	items, err := s.client.MGet(ctx, keyStrings...)
 
 	if err != nil {
 		return nil, fmt.Errorf("can not get batch from redis: %w", err)
@@ -133,7 +133,7 @@ func (s *redisKvStore) getChunk(_ context.Context, resultMap *refl.Map, keys []i
 	return missing, nil
 }
 
-func (s *redisKvStore) Put(_ context.Context, key interface{}, value interface{}) error {
+func (s *redisKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
 	bytes, err := Marshal(value)
 
 	if err != nil {
@@ -146,7 +146,7 @@ func (s *redisKvStore) Put(_ context.Context, key interface{}, value interface{}
 		return fmt.Errorf("can not get key to write value to redis: %w", err)
 	}
 
-	err = s.client.Set(keyStr, bytes, s.settings.Ttl)
+	err = s.client.Set(ctx, keyStr, bytes, s.settings.Ttl)
 
 	if err != nil {
 		return fmt.Errorf("can not set value in redis store: %w", err)
@@ -172,7 +172,7 @@ func (s *redisKvStore) PutBatch(ctx context.Context, values interface{}) error {
 }
 
 func (s *redisKvStore) EstimateSize() *int64 {
-	size, err := s.client.DBSize()
+	size, err := s.client.DBSize(context.Background())
 
 	if err != nil {
 		return nil
@@ -181,14 +181,14 @@ func (s *redisKvStore) EstimateSize() *int64 {
 	return &size
 }
 
-func (s *redisKvStore) Delete(_ context.Context, key interface{}) error {
+func (s *redisKvStore) Delete(ctx context.Context, key interface{}) error {
 	keyStr, err := s.key(key)
 
 	if err != nil {
 		return fmt.Errorf("can not get key to delete value from redis: %w", err)
 	}
 
-	_, err = s.client.Del(keyStr)
+	_, err = s.client.Del(ctx, keyStr)
 
 	if err != nil {
 		return fmt.Errorf("can not delete value from redis store: %w", err)
@@ -197,7 +197,7 @@ func (s *redisKvStore) Delete(_ context.Context, key interface{}) error {
 	return nil
 }
 
-func (s *redisKvStore) DeleteBatch(_ context.Context, keys interface{}) error {
+func (s *redisKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
 
 	if err != nil {
@@ -216,7 +216,7 @@ func (s *redisKvStore) DeleteBatch(_ context.Context, keys interface{}) error {
 		redisKeys[i] = keyStr
 	}
 
-	_, err = s.client.Del(redisKeys...)
+	_, err = s.client.Del(ctx, redisKeys...)
 
 	if err != nil {
 		return fmt.Errorf("can not delete values from redis store: %w", err)

@@ -1,10 +1,11 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 )
 
 type redisSettings struct {
@@ -47,7 +48,7 @@ func (r *redisComponent) Start() error {
 		},
 		HealthCheck: func() error {
 			client := r.provideRedisClient()
-			_, err := client.Ping().Result()
+			_, err := client.Ping(context.Background()).Result()
 
 			return err
 		},
