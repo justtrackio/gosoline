@@ -144,7 +144,7 @@ func (d *MetricDaemon) append(datum *MetricDatum) {
 		d.amendFromDefault(datum)
 
 		if err := datum.IsValid(); err != nil {
-			d.logger.Warnf("invalid metric: %s", err.Error())
+			d.logger.Warn("invalid metric: %s", err.Error())
 			return
 		}
 
@@ -205,7 +205,7 @@ func (d *MetricDaemon) publish() {
 		w.Write(data)
 	}
 
-	d.logger.Infof("published %d data points in %d metrics", d.dataPointCount, size)
+	d.logger.Info("published %d data points in %d metrics", d.dataPointCount, size)
 	d.resetBatch()
 }
 

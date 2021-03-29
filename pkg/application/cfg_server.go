@@ -51,7 +51,7 @@ func (s *ConfigServer) Run(ctx context.Context) error {
 		return fmt.Errorf("can not listen on address %s: %w", addr, err)
 	}
 
-	s.logger.Infof("serving config on address %s", listener.Addr())
+	s.logger.Info("serving config on address %s", listener.Addr())
 
 	handler := http.NewServeMux()
 	handler.HandleFunc("/", s.handleRead)
@@ -80,13 +80,13 @@ func (s *ConfigServer) handleRead(writer http.ResponseWriter, request *http.Requ
 	}
 
 	if bytes, err = marshaller(settings); err != nil {
-		s.logger.Warnf("can not marshal config %s", err.Error())
+		s.logger.Warn("can not marshal config %s", err.Error())
 		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	if _, err = writer.Write(bytes); err != nil {
-		s.logger.Warnf("can not write config %s", err.Error())
+		s.logger.Warn("can not write config %s", err.Error())
 	}
 }
 

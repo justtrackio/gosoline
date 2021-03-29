@@ -100,7 +100,7 @@ func (w esWriter) Write(batch MetricData) {
 
 	w.bulkWriteToES(buf)
 
-	w.logger.Debugf("written %d metric data sets to elasticsearch", len(batch))
+	w.logger.Debug("written %d metric data sets to elasticsearch", len(batch))
 }
 
 func (w esWriter) WriteOne(data *MetricDatum) {

@@ -70,18 +70,18 @@ func (n baseNotifier) Send(ctx context.Context, notificationType string, value M
 	err = n.output.WriteOne(ctx, msg)
 
 	if exec.IsRequestCanceled(err) {
-		logger.Infof("request canceled while executing notification on %s for model %s with id %d", notificationType, modelId, *value.GetId())
+		logger.Info("request canceled while executing notification on %s for model %s with id %d", notificationType, modelId, *value.GetId())
 		n.writeMetric(err)
 		return err
 	}
 
 	if err != nil {
-		logger.Errorf(err, "error executing notification on %s for model %s with id %d", notificationType, modelId, *value.GetId())
+		logger.Error(err, "error executing notification on %s for model %s with id %d", notificationType, modelId, *value.GetId())
 		n.writeMetric(err)
 		return err
 	}
 
-	logger.Infof("sent on %s successful for model %s with id %d", notificationType, modelId, *value.GetId())
+	logger.Info("sent on %s successful for model %s with id %d", notificationType, modelId, *value.GetId())
 	n.writeMetric(nil)
 
 	return nil

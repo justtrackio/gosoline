@@ -147,11 +147,11 @@ func (s *s3Store) CreateBucket() {
 	})
 
 	if isBucketAlreadyExistsError(err) {
-		s.logger.Infof("s3 bucket %s did already exist", *s.bucket)
+		s.logger.Info("s3 bucket %s did already exist", *s.bucket)
 	} else if err != nil {
-		s.logger.Errorf(err, "could not create s3 bucket %s", *s.bucket)
+		s.logger.Error(err, "could not create s3 bucket %s", *s.bucket)
 	} else {
-		s.logger.Infof("created s3 bucket %s", *s.bucket)
+		s.logger.Info("created s3 bucket %s", *s.bucket)
 	}
 }
 
@@ -248,7 +248,7 @@ func (s *s3Store) Delete(batch Batch) {
 }
 
 func (s *s3Store) DeleteBucket() error {
-	s.logger.Infof("purging bucket %s", *s.bucket)
+	s.logger.Info("purging bucket %s", *s.bucket)
 
 	result, err := s.client.ListObjects(&s3.ListObjectsInput{Bucket: s.bucket})
 	if err != nil {
@@ -269,7 +269,7 @@ func (s *s3Store) DeleteBucket() error {
 		return err
 	}
 
-	s.logger.Infof("purging bucket %s done", *s.bucket)
+	s.logger.Info("purging bucket %s done", *s.bucket)
 
 	return nil
 }

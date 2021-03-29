@@ -30,7 +30,7 @@ func createMocks() (*cfgMocks.Config, *monMocks.Logger, *kernelMocks.FullModule)
 	logger.On("WithChannel", mock.Anything).Return(logger)
 	logger.On("WithFields", mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything)
-	logger.On("Infof", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	logger.On("Info", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 	module := new(kernelMocks.FullModule)
 	module.On("IsEssential").Return(false)
@@ -128,7 +128,7 @@ func TestRunSuccess(t *testing.T) {
 func TestRunFailure(t *testing.T) {
 	config, logger, module := createMocks()
 
-	logger.On("Errorf", mock.Anything, "error during the execution of stage %d", kernel.StageApplication)
+	logger.On("Error", mock.Anything, "error during the execution of stage %d", kernel.StageApplication)
 
 	module.On("GetStage").Return(kernel.StageApplication)
 	module.On("Run", mock.Anything).Run(func(args mock.Arguments) {
@@ -231,7 +231,7 @@ func TestMultipleStages(t *testing.T) {
 			wg.Wait()
 			<-ctx.Done()
 
-			logger.Infof("stage %d: ctx done", thisStage)
+			logger.Info("stage %d: ctx done", thisStage)
 
 			for i := 0; i <= thisStage; i++ {
 				assert.GreaterOrEqual(t, stageStatus[i], 1, fmt.Sprintf("stage %d: expected stage %d to be at least running", thisStage, i))
@@ -264,7 +264,7 @@ func TestMultipleStages(t *testing.T) {
 
 func TestKernelForcedExit(t *testing.T) {
 	config, logger, _ := createMocks()
-	logger.On("Errorf", mock.Anything, mock.Anything)
+	logger.On("Error", mock.Anything, mock.Anything)
 
 	mayStop := conc.NewSignalOnce()
 	appStopped := conc.NewSignalOnce()

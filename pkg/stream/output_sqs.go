@@ -152,7 +152,7 @@ func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg WritableMessage) (*
 	if o.settings.Fifo.ContentBasedDeduplication && messageDeduplicationId == nil {
 		o.logger.WithContext(ctx).WithFields(mon.Fields{
 			"stacktrace": mon.GetStackTrace(0),
-		}).Warnf("writing message to queue %s (which is configured to use content based deduplication) without message deduplication id", o.queue.GetName())
+		}).Warn("writing message to queue %s (which is configured to use content based deduplication) without message deduplication id", o.queue.GetName())
 	}
 
 	body, err := msg.MarshalToString()

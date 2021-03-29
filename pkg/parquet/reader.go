@@ -146,7 +146,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 					return nil
 				}
 
-				r.logger.Debugf("reading file %d of %d: %s", i, fileCount, file)
+				r.logger.Debug("reading file %d of %d: %s", i, fileCount, file)
 				result, err := r.ReadFile(ctx, file)
 
 				if err != nil {

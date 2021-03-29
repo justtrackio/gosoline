@@ -72,7 +72,7 @@ func (r *notifyingRepository) doCallback(ctx context.Context, callbackType strin
 
 		if err != nil {
 			errors = append(errors, err)
-			logger.Warnf("%T notifier errored out with: %v", c, err)
+			logger.Warn("%T notifier errored out with: %v", c, err)
 		}
 	}
 

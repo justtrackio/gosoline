@@ -244,9 +244,9 @@ func (m *testCompressionModule) Run(ctx context.Context) error {
 					continue
 				}
 
-				m.logger.Infof("Message attributes: %v", msg.Attributes)
-				m.logger.Infof("Message encoded body: %s", msg.Body)
-				m.logger.Infof("Message decoded body: %s", string(body))
+				m.logger.Info("Message attributes: %v", msg.Attributes)
+				m.logger.Info("Message encoded body: %s", msg.Body)
+				m.logger.Info("Message decoded body: %s", string(body))
 			case <-ctx.Done():
 				return multiErr
 			}

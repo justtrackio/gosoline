@@ -31,7 +31,7 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 		},
 		setupMocks: func(s *MprMetricModuleTestSuite) {
 			s.mockLeaderElection(false, nil)
-			s.logger.On("Infof", "not leading: do nothing")
+			s.logger.On("Info", "not leading: do nothing")
 		},
 	},
 	"leader_failed": {
@@ -41,7 +41,7 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 		setupMocks: func(s *MprMetricModuleTestSuite) {
 			err := fmt.Errorf("unknown leader election error")
 			s.mockLeaderElection(false, err)
-			s.logger.On("Warnf", "will assume leader role as election failed: %s", err)
+			s.logger.On("Warn", "will assume leader role as election failed: %s", err)
 			s.mockGetMetricMessagesSent(1000, nil)
 			s.mockGetMetricMessagesVisible(0, nil)
 			s.mockGetMetricEcs("DesiredTaskCount", cloudwatch.StatisticMaximum, 2, nil)
@@ -75,7 +75,7 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 
 			err := fmt.Errorf("unknown error")
 			s.mockGetMetricMessagesSent(1000, err)
-			s.logger.On("Warnf", "can not calculate messages per runner: %s", mock.AnythingOfType("*fmt.wrapError")).Run(func(args mock.Arguments) {
+			s.logger.On("Warn", "can not calculate messages per runner: %s", mock.AnythingOfType("*fmt.wrapError")).Run(func(args mock.Arguments) {
 				s.EqualError(args[1].(error), "can not get number of messages sent: can not get metric data: unknown error")
 			})
 		},
@@ -90,7 +90,7 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 
 			err := fmt.Errorf("unknown error")
 			s.mockGetMetricMessagesVisible(1000, err)
-			s.logger.On("Warnf", "can not calculate messages per runner: %s", mock.AnythingOfType("*fmt.wrapError")).Run(func(args mock.Arguments) {
+			s.logger.On("Warn", "can not calculate messages per runner: %s", mock.AnythingOfType("*fmt.wrapError")).Run(func(args mock.Arguments) {
 				s.EqualError(args[1].(error), "can not get number of messages visible: can not get metric data: unknown error")
 			})
 		},
@@ -106,7 +106,7 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 
 			err := fmt.Errorf("unknown error")
 			s.mockGetMetricEcs("DesiredTaskCount", cloudwatch.StatisticMaximum, 2, err)
-			s.logger.On("Warnf", "can not calculate messages per runner: %s", mock.AnythingOfType("*fmt.wrapError")).Run(func(args mock.Arguments) {
+			s.logger.On("Warn", "can not calculate messages per runner: %s", mock.AnythingOfType("*fmt.wrapError")).Run(func(args mock.Arguments) {
 				s.EqualError(args[1].(error), "can not get runner count: can not get metric: unknown error")
 			})
 		},
@@ -121,7 +121,7 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.mockGetMetricMessagesVisible(0, nil)
 
 			s.mockGetMetricEcs("DesiredTaskCount", cloudwatch.StatisticMaximum, 0, nil)
-			s.logger.On("Warnf", "can not calculate messages per runner: %s", mock.Anything).Run(func(args mock.Arguments) {
+			s.logger.On("Warn", "can not calculate messages per runner: %s", mock.Anything).Run(func(args mock.Arguments) {
 				s.EqualError(args[1].(error), "runner count is zero")
 			})
 		},
@@ -138,7 +138,7 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 
 			err := fmt.Errorf("unknown error")
 			s.mockGetMetricMessagesPerRunner(500, err)
-			s.logger.On("Warnf", "can not get current messages per runner metric: defaulting to 0")
+			s.logger.On("Warn", "can not get current messages per runner metric: defaulting to 0")
 
 			s.mockSuccessLogger(1000, 0, 2, 500)
 			s.mockMetricWriteMessagesPerRunner(500)
@@ -155,7 +155,7 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 			s.mockGetMetricEcs("DesiredTaskCount", cloudwatch.StatisticMaximum, 2, nil)
 			s.mockGetMetricMessagesPerRunner(499, nil)
 
-			s.logger.On("Warnf", "newMpr of %f is higher than configured maxMpr of %f: falling back to max", 1000.0, 998.0)
+			s.logger.On("Warn", "newMpr of %f is higher than configured maxMpr of %f: falling back to max", 1000.0, 998.0)
 
 			s.mockSuccessLogger(2000, 0, 2, 998)
 			s.mockMetricWriteMessagesPerRunner(998)
@@ -379,7 +379,7 @@ func (s *MprMetricModuleTestSuite) mockSuccessLogger(sent, visible, runnerCount,
 		"runnerCount":       runnerCount,
 		"messagesPerRunner": mpr,
 	}).Return(s.logger)
-	s.logger.On("Infof", "%f messages per runner", mpr)
+	s.logger.On("Info", "%f messages per runner", mpr)
 }
 
 func TestMprMetricModuleTestSuite(t *testing.T) {

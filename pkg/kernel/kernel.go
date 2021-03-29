@@ -173,7 +173,7 @@ func (k *kernel) Run() {
 
 	for _, stageIndex := range k.getStageIndices() {
 		k.stages[stageIndex].run(k)
-		k.logger.Infof("stage %d up and running", stageIndex)
+		k.logger.Info("stage %d up and running", stageIndex)
 	}
 
 	k.logger.Info("kernel up and running")
@@ -193,14 +193,14 @@ func (k *kernel) Run() {
 func (k *kernel) Stop(reason string) {
 	k.stopped.Do(func() {
 		go func() {
-			k.logger.Infof("stopping kernel due to: %s", reason)
+			k.logger.Info("stopping kernel due to: %s", reason)
 			indices := k.getStageIndices()
 
 			for i := len(indices) - 1; i >= 0; i-- {
 				stageIndex := indices[i]
-				k.logger.Infof("stopping stage %d", stageIndex)
+				k.logger.Info("stopping stage %d", stageIndex)
 				k.stages[stageIndex].stopWait(stageIndex, k.logger)
-				k.logger.Infof("stopped stage %d", stageIndex)
+				k.logger.Info("stopped stage %d", stageIndex)
 			}
 		}()
 	})
@@ -350,9 +350,9 @@ func (k *kernel) debugConfig() {
 }
 
 func (k *kernel) runModule(ctx context.Context, name string, ms *ModuleState) (moduleErr error) {
-	defer k.logger.Infof("stopped %s module %s", ms.Config.GetType(), name)
+	defer k.logger.Info("stopped %s module %s", ms.Config.GetType(), name)
 
-	k.logger.Infof("running %s module %s in stage %d", ms.Config.GetType(), name, ms.Config.Stage)
+	k.logger.Info("running %s module %s in stage %d", ms.Config.GetType(), name, ms.Config.Stage)
 
 	ms.IsRunning = true
 
@@ -367,7 +367,7 @@ func (k *kernel) runModule(ctx context.Context, name string, ms *ModuleState) (m
 		}
 
 		if ms.Err != nil {
-			k.logger.Errorf(ms.Err, "error running %s module %s", ms.Config.GetType(), name)
+			k.logger.Error(ms.Err, "error running %s module %s", ms.Config.GetType(), name)
 		}
 
 		ms.IsRunning = false
@@ -412,14 +412,14 @@ func (k *kernel) waitStopped() {
 		select {
 		case <-timer.C:
 			err := fmt.Errorf("kernel was not able to shutdown in %v", k.killTimeout)
-			k.logger.Errorf(err, "kernel shutdown seems to be blocking.. exiting...")
+			k.logger.Error(err, "kernel shutdown seems to be blocking.. exiting...")
 
 			// we don't need to iterate in order, but doing so is much nicer, so lets do it
 			for _, stageIndex := range k.getStageIndices() {
 				s := k.stages[stageIndex]
 				for name, ms := range s.modules.modules {
 					if ms.IsRunning {
-						k.logger.Infof("module in stage %d blocking the shutdown: %s", stageIndex, name)
+						k.logger.Info("module in stage %d blocking the shutdown: %s", stageIndex, name)
 					}
 				}
 			}

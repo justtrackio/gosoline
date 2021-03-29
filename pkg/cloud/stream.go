@@ -80,7 +80,7 @@ func (sc *AwsStreamClient) GetActiveShardCount(application, eventType string) in
 	if err != nil {
 		sc.logger.WithFields(mon.Fields{
 			"tableName": tableName,
-		}).Warn(err)
+		}).Warn(err.Error())
 
 		return 1
 	}
@@ -92,7 +92,7 @@ func (sc *AwsStreamClient) GetActiveShardCount(application, eventType string) in
 	if err != nil {
 		sc.logger.WithFields(mon.Fields{
 			"tableName": tableName,
-		}).Warn(err, "Error unmarshalling dynamodbattribute map")
+		}).Warn("Error unmarshalling dynamodbattribute map: %s", err)
 
 		return 1
 	}
@@ -113,7 +113,7 @@ func (sc *AwsStreamClient) SetShardCount(input *ScaleStreamInput) []*kinesis.Upd
 		out, err := sc.kinesisClient.UpdateShardCount(&input)
 
 		if err != nil {
-			sc.logger.Warn(err)
+			sc.logger.Warn(err.Error())
 			continue
 		}
 

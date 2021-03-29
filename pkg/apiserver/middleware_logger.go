@@ -54,18 +54,18 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 		})
 
 		if len(ginCtx.Errors) == 0 {
-			log.Infof("%s %s %s", method, path, req.Proto)
+			log.Info("%s %s %s", method, path, req.Proto)
 			return
 		}
 
 		for _, e := range ginCtx.Errors {
 			switch e.Type {
 			case gin.ErrorTypeBind:
-				log.Warnf("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)
+				log.Warn("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)
 			case gin.ErrorTypeRender:
-				log.Warnf("%s %s %s - render error - %v", method, path, req.Proto, e.Err)
+				log.Warn("%s %s %s - render error - %v", method, path, req.Proto, e.Err)
 			default:
-				log.Errorf(e.Err, "%s %s %s", method, path, req.Proto)
+				log.Error(e.Err, "%s %s %s", method, path, req.Proto)
 			}
 		}
 	}

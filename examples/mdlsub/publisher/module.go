@@ -59,7 +59,7 @@ func (p publisherModule) Run(ctx context.Context) error {
 				return fmt.Errorf("can not publish random number %d: %w", number.Number, err)
 			}
 
-			p.logger.Infof("published number %d", number.Number)
+			p.logger.Info("published number %d", number.Number)
 		}
 	}
 }

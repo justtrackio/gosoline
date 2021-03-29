@@ -34,7 +34,7 @@ func Start(handler Handler, defaultConfig ...map[string]interface{}) {
 		cfg.WithEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
 		cfg.WithSanitizers(cfg.TimeSanitizer),
 		cfg.WithErrorHandlers(func(err error, msg string, args ...interface{}) {
-			logger.Errorf(err, msg, args...)
+			logger.Error(err, msg, args...)
 			os.Exit(1)
 		}),
 	}

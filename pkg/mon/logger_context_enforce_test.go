@@ -38,17 +38,17 @@ func (s *ContextEnforcingLoggerTestSuite) TestInfoWithContext() {
 
 func (s *ContextEnforcingLoggerTestSuite) TestInfoWithoutContext() {
 	s.logger.Info("this is a info message")
-	s.Equal("00:00:00.000 context_missing warn    you should add the context to your logger:mocked trace\n00:00:00.000 default info    this is a info message\n", s.output.String())
+	s.Equal("00:00:00.000 context_missing warn    you should add the context to your logger: mocked trace\n00:00:00.000 default info    this is a info message\n", s.output.String())
 }
 
 func (s *ContextEnforcingLoggerTestSuite) TestInfoWithoutContextWithChannel() {
 	s.logger.WithChannel("channel").Info("this is a info message")
-	s.Equal("00:00:00.000 context_missing warn    you should add the context to your logger:mocked trace\n00:00:00.000 channel info    this is a info message\n", s.output.String())
+	s.Equal("00:00:00.000 context_missing warn    you should add the context to your logger: mocked trace\n00:00:00.000 channel info    this is a info message\n", s.output.String())
 }
 
 func (s *ContextEnforcingLoggerTestSuite) TestInfoWithoutContextWithFields() {
 	s.logger.WithFields(mon.Fields{}).Info("this is a info message")
-	s.Equal("00:00:00.000 context_missing warn    you should add the context to your logger:mocked trace\n00:00:00.000 default info    this is a info message\n", s.output.String())
+	s.Equal("00:00:00.000 context_missing warn    you should add the context to your logger: mocked trace\n00:00:00.000 default info    this is a info message\n", s.output.String())
 }
 
 func (s *ContextEnforcingLoggerTestSuite) TestDebugWithoutContext() {

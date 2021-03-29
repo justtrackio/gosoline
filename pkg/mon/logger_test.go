@@ -225,16 +225,7 @@ func TestClient_WithContext_FieldRewrite(t *testing.T) {
 func TestClient_Info(t *testing.T) {
 	logger, out := getLogger()
 
-	logger.Info("bla")
-
-	expected := `{"fields":{},"context":{},"channel": "default", "level":2,"level_name":"info","message":"bla","timestamp":"1984-04-04T00:00:00Z"}`
-	assert.JSONEq(t, expected, out.String(), "output should match")
-}
-
-func TestClient_Infof(t *testing.T) {
-	logger, out := getLogger()
-
-	logger.Infof("this is %s formatted %v with an integer of %d", "a", "string", 10)
+	logger.Info("this is %s formatted %v with an integer of %d", "a", "string", 10)
 
 	expected := `{"fields":{},"context":{},"channel": "default", "level":2,"level_name":"info","message":"this is a formatted string with an integer of 10","timestamp":"1984-04-04T00:00:00Z"}`
 	assert.JSONEq(t, expected, out.String(), "output should match")

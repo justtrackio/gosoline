@@ -19,10 +19,10 @@ var defaultErrorHandler = func(err error, msg string, args ...interface{}) {
 	}
 
 	if err := logger.Option(options...); err != nil {
-		logger.Errorf(err, "can not create logger for default error handler")
+		logger.Error(err, "can not create logger for default error handler")
 		os.Exit(1)
 	}
 
-	logger.Errorf(err, msg, args...)
+	logger.Error(err, msg, args...)
 	os.Exit(1)
 }

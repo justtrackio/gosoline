@@ -129,7 +129,7 @@ func (e *DdbLeaderElection) Resign(ctx context.Context, memberId string) error {
 	}
 
 	if res.ConditionalCheckFailed {
-		e.logger.Warnf("not not resign as leader as we're not the current one")
+		e.logger.Warn("not not resign as leader as we're not the current one")
 	}
 
 	return nil

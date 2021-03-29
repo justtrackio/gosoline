@@ -28,7 +28,7 @@ func TestRecoveryWithSentryCaseNil(t *testing.T) {
 	assert.NotPanics(t, func() {
 		r.ServeHTTP(httpRecorder, req)
 	})
-	loggerMock.AssertNumberOfCalls(t, "Warnf", 0)
+	loggerMock.AssertNumberOfCalls(t, "Warn", 0)
 	loggerMock.AssertNumberOfCalls(t, "Error", 0)
 }
 
@@ -52,7 +52,7 @@ func TestRecoveryWithSentryCaseError(t *testing.T) {
 	assert.NotPanics(t, func() {
 		r.ServeHTTP(httpRecorder, req)
 	})
-	loggerMock.AssertNumberOfCalls(t, "Warnf", 0)
+	loggerMock.AssertNumberOfCalls(t, "Warn", 0)
 	loggerMock.AssertNumberOfCalls(t, "Error", 1)
 }
 
@@ -76,7 +76,7 @@ func TestRecoveryWithSentryCaseResponseBodyWriterAndConnectionErrors(t *testing.
 	assert.NotPanics(t, func() {
 		r.ServeHTTP(httpRecorder, req)
 	})
-	loggerMock.AssertNumberOfCalls(t, "Warnf", 1)
+	loggerMock.AssertNumberOfCalls(t, "Warn", 1)
 	loggerMock.AssertNumberOfCalls(t, "Error", 0)
 }
 
@@ -100,7 +100,7 @@ func TestRecoveryWithSentryCaseResponseBodyWriterErrorButNotConnectionError(t *t
 	assert.NotPanics(t, func() {
 		r.ServeHTTP(httpRecorder, req)
 	})
-	loggerMock.AssertNumberOfCalls(t, "Warnf", 0)
+	loggerMock.AssertNumberOfCalls(t, "Warn", 0)
 	loggerMock.AssertNumberOfCalls(t, "Error", 1)
 }
 
@@ -123,6 +123,6 @@ func TestRecoveryWithSentryCaseString(t *testing.T) {
 	assert.NotPanics(t, func() {
 		r.ServeHTTP(httpRecorder, req)
 	})
-	loggerMock.AssertNumberOfCalls(t, "Warnf", 0)
+	loggerMock.AssertNumberOfCalls(t, "Warn", 0)
 	loggerMock.AssertNumberOfCalls(t, "Error", 1)
 }

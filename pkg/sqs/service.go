@@ -130,7 +130,7 @@ func (s *service) QueueExists(name string) (bool, error) {
 	}
 
 	if len(url) > 0 {
-		s.logger.Infof("found queue %s with url %s", name, url)
+		s.logger.Info("found queue %s with url %s", name, url)
 		return true, nil
 	}
 
@@ -240,7 +240,7 @@ func (s *service) createDeadLetterQueue(settings *Settings) (map[string]*string,
 	props, err := s.doCreateQueue(deadLetterInput)
 
 	if err != nil {
-		s.logger.Errorf(err, "could not get arn of dead letter sqs queue %v", deadLetterName)
+		s.logger.Error(err, "could not get arn of dead letter sqs queue %v", deadLetterName)
 		return attributes, err
 	}
 
@@ -263,15 +263,15 @@ func (s *service) createDeadLetterQueue(settings *Settings) (map[string]*string,
 func (s *service) doCreateQueue(input *sqs.CreateQueueInput) (*Properties, error) {
 	name := *input.QueueName
 
-	s.logger.Infof("trying to create sqs queue: %v", name)
+	s.logger.Info("trying to create sqs queue: %v", name)
 	_, err := s.client.CreateQueue(input)
 
 	if err != nil {
-		s.logger.Errorf(err, "could not create sqs queue %v", name)
+		s.logger.Error(err, "could not create sqs queue %v", name)
 		return nil, err
 	}
 
-	s.logger.Infof("created sqs queue %v", name)
+	s.logger.Info("created sqs queue %v", name)
 
 	return s.GetPropertiesByName(name)
 }

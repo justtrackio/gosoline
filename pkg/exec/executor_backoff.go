@@ -68,7 +68,7 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 	start := time.Now()
 
 	notify := func(err error, _ time.Duration) {
-		logger.Warnf("retrying resource %s %s after error: %s", e.resource.Type, e.resource.Name, err.Error())
+		logger.Warn("retrying resource %s %s after error: %s", e.resource.Type, e.resource.Name, err.Error())
 		retries++
 	}
 
@@ -99,20 +99,20 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 
 	// we're having an error after reaching the MaxElapsedTime and the error isn't good-natured
 	if err != nil && errType != ErrorTypeOk && e.settings.MaxElapsedTime > 0 && duration > e.settings.MaxElapsedTime {
-		logger.Warnf("crossed max elapsed time with an error on requesting resource %s %s after %d retries in %s: %s", e.resource.Type, e.resource.Name, retries, duration, err.Error())
+		logger.Warn("crossed max elapsed time with an error on requesting resource %s %s after %d retries in %s: %s", e.resource.Type, e.resource.Name, retries, duration, err.Error())
 
 		return res, NewMaxElapsedTimeError(e.settings.MaxElapsedTime, duration, err)
 	}
 
 	// we're still having an error and the error isn't good-natured
 	if err != nil && errType != ErrorTypeOk {
-		logger.Warnf("error on requesting resource %s %s after %d retries in %s: %s", e.resource.Type, e.resource.Name, retries, duration, err.Error())
+		logger.Warn("error on requesting resource %s %s after %d retries in %s: %s", e.resource.Type, e.resource.Name, retries, duration, err.Error())
 
 		return res, err
 	}
 
 	if retries > 0 {
-		logger.Infof("sent request to resource %s %s successful after %d retries in %s", e.resource.Type, e.resource.Name, retries, duration)
+		logger.Info("sent request to resource %s %s successful after %d retries in %s", e.resource.Type, e.resource.Name, retries, duration)
 	}
 
 	return res, err

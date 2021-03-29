@@ -251,6 +251,6 @@ func PrefixedLogger(logger mon.Logger, service string) aws.LoggerFunc {
 	return func(args ...interface{}) {
 		logger.WithFields(mon.Fields{
 			"aws_service": service,
-		}).Info(args...)
+		}).Info(fmt.Sprint(args...))
 	}
 }

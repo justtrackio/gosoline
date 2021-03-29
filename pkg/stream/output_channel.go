@@ -39,7 +39,7 @@ func (c *outputChannel) Write(msg []WritableMessage) {
 		// this can happen if we still get some traffic while everything is already shutting down.
 		// this is okay as far as the producer daemon is concerned, if your data can't handle this,
 		// you can't use the producer daemon anyway
-		c.logger.Warnf("dropped batch of %d messages: channel is already closed", len(msg))
+		c.logger.Warn("dropped batch of %d messages: channel is already closed", len(msg))
 
 		return
 	}

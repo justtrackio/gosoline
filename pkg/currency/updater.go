@@ -74,7 +74,7 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 			return fmt.Errorf("error setting exchange rate: %w", err)
 		}
 
-		s.logger.Infof("currency: %s, rate: %f", rate.Currency, rate.Rate)
+		s.logger.Info("currency: %s, rate: %f", rate.Currency, rate.Rate)
 
 		historicalRateKey := historicalRateKey(now, rate.Currency)
 		err = s.store.Put(ctx, historicalRateKey, rate.Rate)
@@ -190,7 +190,7 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 		return fmt.Errorf("error setting historical refresh date %w", err)
 	}
 
-	s.logger.Infof("stored %d day-currency combinations of historical exchange rates", len(keyValues))
+	s.logger.Info("stored %d day-currency combinations of historical exchange rates", len(keyValues))
 	return nil
 }
 

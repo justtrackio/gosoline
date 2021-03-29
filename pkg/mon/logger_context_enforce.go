@@ -31,44 +31,24 @@ func (l *ContextEnforcingLogger) Enable() {
 	l.enabled = true
 }
 
-func (l *ContextEnforcingLogger) Debug(args ...interface{}) {
+func (l *ContextEnforcingLogger) Debug(msg string, args ...interface{}) {
 	l.checkContext(Debug)
-	l.logger.Debug(args...)
+	l.logger.Debug(msg, args...)
 }
 
-func (l *ContextEnforcingLogger) Debugf(msg string, args ...interface{}) {
-	l.checkContext(Debug)
-	l.logger.Debugf(msg, args...)
-}
-
-func (l *ContextEnforcingLogger) Error(err error, msg string) {
+func (l *ContextEnforcingLogger) Error(err error, msg string, args ...interface{}) {
 	l.checkContext(Error)
-	l.logger.Error(err, msg)
+	l.logger.Error(err, msg, args...)
 }
 
-func (l *ContextEnforcingLogger) Errorf(err error, msg string, args ...interface{}) {
-	l.checkContext(Error)
-	l.logger.Errorf(err, msg, args...)
-}
-
-func (l *ContextEnforcingLogger) Info(args ...interface{}) {
+func (l *ContextEnforcingLogger) Info(msg string, args ...interface{}) {
 	l.checkContext(Info)
-	l.logger.Info(args...)
+	l.logger.Info(msg, args...)
 }
 
-func (l *ContextEnforcingLogger) Infof(msg string, args ...interface{}) {
-	l.checkContext(Info)
-	l.logger.Infof(msg, args...)
-}
-
-func (l *ContextEnforcingLogger) Warn(args ...interface{}) {
+func (l *ContextEnforcingLogger) Warn(msg string, args ...interface{}) {
 	l.checkContext(Warn)
-	l.logger.Warn(args...)
-}
-
-func (l *ContextEnforcingLogger) Warnf(msg string, args ...interface{}) {
-	l.checkContext(Warn)
-	l.logger.Warnf(msg, args...)
+	l.logger.Warn(msg, args...)
 }
 
 func (l *ContextEnforcingLogger) WithChannel(channel string) Logger {
@@ -102,7 +82,7 @@ func (l *ContextEnforcingLogger) checkContext(level string) {
 	base, ok := l.logger.(*logger)
 
 	if !ok {
-		l.notifier.Warnf("context enforcing logger wrapping something else than *mon.logger: %T", l.logger)
+		l.notifier.Warn("context enforcing logger wrapping something else than *mon.logger: %T", l.logger)
 
 		return
 	}
@@ -119,5 +99,5 @@ func (l *ContextEnforcingLogger) checkContext(level string) {
 
 	stacktrace := l.stacktraceProvider(1)
 
-	l.notifier.Warn("you should add the context to your logger:", stacktrace)
+	l.notifier.Warn("you should add the context to your logger: %s", stacktrace)
 }

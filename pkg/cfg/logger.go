@@ -1,6 +1,6 @@
 package cfg
 
 type Logger interface {
-	Infof(msg string, args ...interface{})
-	Errorf(err error, msg string, args ...interface{})
+	Info(format string, args ...interface{})
+	Error(err error, format string, args ...interface{})
 }

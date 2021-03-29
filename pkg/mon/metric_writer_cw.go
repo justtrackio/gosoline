@@ -152,7 +152,7 @@ func (w *cwWriter) Write(batch MetricData) {
 		}
 	}
 
-	w.logger.Debugf("written %d metric data sets to cloudwatch", len(metricData))
+	w.logger.Debug("written %d metric data sets to cloudwatch", len(metricData))
 }
 
 func (w *cwWriter) buildMetricData(batch MetricData) ([]*cloudwatch.MetricDatum, error) {

@@ -53,7 +53,7 @@ func (c *configurableKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 		return err
 	}
 
-	c.logger.Infof("loaded %d configurable kvstore fixtures", len(fs.Fixtures))
+	c.logger.Info("loaded %d configurable kvstore fixtures", len(fs.Fixtures))
 
 	return nil
 }

@@ -138,7 +138,7 @@ func (s *Service) CreateTable(settings *Settings) (*Metadata, error) {
 		return nil, err
 	}
 
-	s.logger.Infof("created ddb table %s", tableName)
+	s.logger.Info("created ddb table %s", tableName)
 
 	err = s.updateTtlSpecification(metadata)
 
@@ -173,7 +173,7 @@ func (s *Service) updateTtlSpecification(metadata *Metadata) error {
 			return fmt.Errorf("could not update ttl specification for ddb table %s: %w", metadata.TableName, err)
 		}
 
-		s.logger.Infof("updated ttl specification for ddb table %s", metadata.TableName)
+		s.logger.Info("updated ttl specification for ddb table %s", metadata.TableName)
 
 		return nil
 	}
@@ -385,7 +385,7 @@ func (s *Service) getTimeToLiveSpecification(metadata *Metadata) (*dynamodb.Time
 }
 
 func (s *Service) waitForTableGettingAvailable(name string) error {
-	s.logger.Infof("waiting for ddb table %s getting available", name)
+	s.logger.Info("waiting for ddb table %s getting available", name)
 
 	for i := 0; i < defaultMaxWaitSeconds; i++ {
 		exists, err := s.checkExists(name)
@@ -405,7 +405,7 @@ func (s *Service) waitForTableGettingAvailable(name string) error {
 }
 
 func (s *Service) tableExists(name string) (bool, error) {
-	s.logger.Infof("looking for ddb table %v", name)
+	s.logger.Info("looking for ddb table %v", name)
 
 	exists, err := s.checkExists(name)
 
@@ -417,7 +417,7 @@ func (s *Service) tableExists(name string) (bool, error) {
 		return false, nil
 	}
 
-	s.logger.Infof("found ddb table %s", name)
+	s.logger.Info("found ddb table %s", name)
 
 	return true, nil
 }

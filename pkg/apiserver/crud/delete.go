@@ -39,7 +39,7 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {
-		dh.logger.WithContext(ctx).Warnf("failed to delete model: %s", err)
+		dh.logger.WithContext(ctx).Warn("failed to delete model: %s", err)
 		return apiserver.NewStatusResponse(http.StatusNotFound), nil
 	}
 

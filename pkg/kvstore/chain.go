@@ -72,7 +72,7 @@ func (s *chainKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 	exists, err := s.missingCache.Contains(ctx, key)
 
 	if err != nil {
-		s.logger.WithContext(ctx).Warnf("failed to read from missing value cache: %s", err.Error())
+		s.logger.WithContext(ctx).Warn("failed to read from missing value cache: %s", err.Error())
 	}
 
 	if exists {
@@ -88,7 +88,7 @@ func (s *chainKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 				return false, fmt.Errorf("could not check existence of %s from kvstore %T: %w", key, element, err)
 			}
 
-			s.logger.WithContext(ctx).Warnf("could not check existence of %s from kvstore %T: %s", key, element, err.Error())
+			s.logger.WithContext(ctx).Warn("could not check existence of %s from kvstore %T: %s", key, element, err.Error())
 		}
 
 		if exists {
@@ -98,7 +98,7 @@ func (s *chainKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 
 	// Cache empty value if no result was found
 	if err := s.missingCache.Put(ctx, key, noValue); err != nil {
-		s.logger.WithContext(ctx).Warnf("failed to write to missing value cache: %s", err.Error())
+		s.logger.WithContext(ctx).Warn("failed to write to missing value cache: %s", err.Error())
 	}
 
 	return false, nil
@@ -109,7 +109,7 @@ func (s *chainKvStore) Get(ctx context.Context, key interface{}, value interface
 	exists, err := s.missingCache.Contains(ctx, key)
 
 	if err != nil {
-		s.logger.WithContext(ctx).Warnf("failed to read from missing value cache: %s", err.Error())
+		s.logger.WithContext(ctx).Warn("failed to read from missing value cache: %s", err.Error())
 	}
 
 	if exists {
@@ -129,7 +129,7 @@ func (s *chainKvStore) Get(ctx context.Context, key interface{}, value interface
 				return false, fmt.Errorf("could not get %s from kvstore %T: %w", key, element, err)
 			}
 
-			s.logger.WithContext(ctx).Warnf("could not get %s from kvstore %T: %s", key, element, err.Error())
+			s.logger.WithContext(ctx).Warn("could not get %s from kvstore %T: %s", key, element, err.Error())
 		}
 
 		if exists {
@@ -142,7 +142,7 @@ func (s *chainKvStore) Get(ctx context.Context, key interface{}, value interface
 	// Cache empty value if no result was found
 	if !exists {
 		if err := s.missingCache.Put(ctx, key, noValue); err != nil {
-			s.logger.WithContext(ctx).Warnf("failed to write to missing value cache: %s", err.Error())
+			s.logger.WithContext(ctx).Warn("failed to write to missing value cache: %s", err.Error())
 		}
 
 		return false, nil
@@ -153,7 +153,7 @@ func (s *chainKvStore) Get(ctx context.Context, key interface{}, value interface
 		err := s.chain[i].Put(ctx, key, value)
 
 		if err != nil {
-			s.logger.WithContext(ctx).Warnf("could not put %s to kvstore %T: %s", key, s.chain[i], err.Error())
+			s.logger.WithContext(ctx).Warn("could not put %s to kvstore %T: %s", key, s.chain[i], err.Error())
 		}
 	}
 
@@ -172,7 +172,7 @@ func (s *chainKvStore) GetBatch(ctx context.Context, keys interface{}, values in
 	todo, err = s.missingCache.GetBatch(ctx, todo, cachedMissingMap)
 
 	if err != nil {
-		s.logger.WithContext(ctx).Warnf("failed to read from missing value cache: %s", err.Error())
+		s.logger.WithContext(ctx).Warn("failed to read from missing value cache: %s", err.Error())
 	}
 
 	for k := range cachedMissingMap {
@@ -197,7 +197,7 @@ func (s *chainKvStore) GetBatch(ctx context.Context, keys interface{}, values in
 				return nil, fmt.Errorf("could not get batch from kvstore %T: %w", element, err)
 			}
 
-			s.logger.WithContext(ctx).Warnf("could not get batch from kvstore %T: %s", element, err.Error())
+			s.logger.WithContext(ctx).Warn("could not get batch from kvstore %T: %s", element, err.Error())
 			refill[i] = todo
 		}
 
@@ -237,7 +237,7 @@ func (s *chainKvStore) GetBatch(ctx context.Context, keys interface{}, values in
 		err = s.chain[i].PutBatch(ctx, missingInElement)
 
 		if err != nil {
-			s.logger.WithContext(ctx).Warnf("could not put batch to kvstore %T: %s", s.chain[i], err.Error())
+			s.logger.WithContext(ctx).Warn("could not put batch to kvstore %T: %s", s.chain[i], err.Error())
 		}
 	}
 
@@ -252,7 +252,7 @@ func (s *chainKvStore) GetBatch(ctx context.Context, keys interface{}, values in
 		err = s.missingCache.PutBatch(ctx, missingValues)
 
 		if err != nil {
-			s.logger.WithContext(ctx).Warnf("could not put batch to empty value cache: %w", err.Error())
+			s.logger.WithContext(ctx).Warn("could not put batch to empty value cache: %w", err.Error())
 		}
 	}
 
@@ -275,7 +275,7 @@ func (s *chainKvStore) Put(ctx context.Context, key interface{}, value interface
 				return fmt.Errorf("could not put %s to kvstore %T: %w", key, s.chain[i], err)
 			}
 
-			s.logger.WithContext(ctx).Warnf("could not put %s to kvstore %T: %s", key, s.chain[i], err.Error())
+			s.logger.WithContext(ctx).Warn("could not put %s to kvstore %T: %s", key, s.chain[i], err.Error())
 		}
 	}
 
@@ -283,7 +283,7 @@ func (s *chainKvStore) Put(ctx context.Context, key interface{}, value interface
 	// otherwise, we might remove it, some other thread adds it again and then we insert
 	// it into the backing stores
 	if err := s.missingCache.Delete(ctx, key); err != nil {
-		s.logger.WithContext(ctx).Warnf("could not erase cached empty value for key %s: %s", key, err.Error())
+		s.logger.WithContext(ctx).Warn("could not erase cached empty value for key %s: %s", key, err.Error())
 	}
 
 	return nil
@@ -307,13 +307,13 @@ func (s *chainKvStore) PutBatch(ctx context.Context, values interface{}) error {
 				return fmt.Errorf("could not put batch to kvstore %T: %w", s.chain[i], err)
 			}
 
-			s.logger.WithContext(ctx).Warnf("could not put batch to kvstore %T: %s", s.chain[i], err.Error())
+			s.logger.WithContext(ctx).Warn("could not put batch to kvstore %T: %s", s.chain[i], err.Error())
 		}
 	}
 
 	for key := range mii {
 		if err := s.missingCache.Delete(ctx, key); err != nil {
-			s.logger.WithContext(ctx).Warnf("could not erase cached empty value for key %T %v: %s", key, key, err.Error())
+			s.logger.WithContext(ctx).Warn("could not erase cached empty value for key %T %v: %s", key, key, err.Error())
 		}
 	}
 

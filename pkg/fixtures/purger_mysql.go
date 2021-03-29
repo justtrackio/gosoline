@@ -47,7 +47,7 @@ func (p *mysqlPurger) purgeMysql() error {
 	_, err = p.client.Exec(fmt.Sprintf(truncateTableStatement, p.tableName))
 
 	if err != nil {
-		p.logger.Errorf(err, "error truncating table %s", p.tableName)
+		p.logger.Error(err, "error truncating table %s", p.tableName)
 		return err
 	}
 
