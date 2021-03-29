@@ -58,7 +58,7 @@ func (o *redisListOutput) WriteOne(ctx context.Context, record WritableMessage) 
 	return o.Write(ctx, []WritableMessage{record})
 }
 
-func (o *redisListOutput) Write(_ context.Context, batch []WritableMessage) error {
+func (o *redisListOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	chunks, err := BuildChunks(batch, o.settings.BatchSize)
 
 	if err != nil {
@@ -67,7 +67,7 @@ func (o *redisListOutput) Write(_ context.Context, batch []WritableMessage) erro
 
 	for _, chunk := range chunks {
 		interfaces := ByteChunkToInterfaces(chunk)
-		_, err := o.client.RPush(o.fullyQualifiedKey, interfaces...)
+		_, err := o.client.RPush(ctx, o.fullyQualifiedKey, interfaces...)
 
 		if err != nil {
 			return err

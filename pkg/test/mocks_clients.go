@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 )
 
 func (m *Mocks) ProvideSqsClient(name string) *sqs.SQS {

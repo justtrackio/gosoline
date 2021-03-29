@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
@@ -17,15 +18,15 @@ var dialers = map[string]Dialer{
 	DialerTcp: dialerTcp,
 }
 
-type Dialer func(logger mon.Logger, settings *Settings) func() (net.Conn, error)
+type Dialer func(logger mon.Logger, settings *Settings) func(context.Context, string, string) (net.Conn, error)
 type SrvNamingFactory func(appId cfg.AppId, name string) string
 
 var srvNamingStrategy = func(appId cfg.AppId, name string) string {
 	return fmt.Sprintf("%s.%s.redis.%s.%s", name, appId.Application, appId.Environment, appId.Family)
 }
 
-func dialerSrv(logger mon.Logger, settings *Settings) func() (net.Conn, error) {
-	return func() (net.Conn, error) {
+func dialerSrv(logger mon.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {
+	return func(ctx context.Context, _ string, _ string) (net.Conn, error) {
 		address := settings.Address
 
 		if address == "" {
@@ -46,12 +47,13 @@ func dialerSrv(logger mon.Logger, settings *Settings) func() (net.Conn, error) {
 		address = fmt.Sprintf("%v:%v", srvs[0].Target, srvs[0].Port)
 		logger.Infof("using address %s for redis %s", address, settings.Name)
 
-		return net.Dial("tcp", address)
+		var d net.Dialer
+		return d.DialContext(ctx, "tcp", address)
 	}
 }
 
-func dialerTcp(logger mon.Logger, settings *Settings) func() (net.Conn, error) {
-	return func() (net.Conn, error) {
+func dialerTcp(logger mon.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {
+	return func(_ context.Context, _ string, _ string) (net.Conn, error) {
 		logger.Infof("using address %s for redis %s", settings.Address, settings.Name)
 
 		return net.Dial("tcp", settings.Address)

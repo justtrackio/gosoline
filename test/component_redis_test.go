@@ -3,6 +3,7 @@
 package test_test
 
 import (
+	"context"
 	pkgTest "github.com/applike/gosoline/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -26,7 +27,7 @@ func Test_redis(t *testing.T) {
 	}
 
 	client := mocks.ProvideRedisClient("redis")
-	pong, err := client.Ping().Result()
+	pong, err := client.Ping(context.Background()).Result()
 
 	assert.NoError(t, err)
 	assert.Equal(t, "PONG", pong)

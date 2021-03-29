@@ -7,6 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/mdl"
 	redisMocks "github.com/applike/gosoline/pkg/redis/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 )
@@ -19,8 +20,8 @@ type Item struct {
 func TestRedisKvStore_Contains(t *testing.T) {
 	store, client := buildTestableRedisStore()
 
-	client.On("Exists", "applike-gosoline-kvstore-kvstore-test-foo").Return(int64(0), nil)
-	client.On("Exists", "applike-gosoline-kvstore-kvstore-test-bar").Return(int64(1), nil)
+	client.On("Exists", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo").Return(int64(0), nil)
+	client.On("Exists", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-bar").Return(int64(1), nil)
 
 	exists, err := store.Contains(context.Background(), "foo")
 	assert.NoError(t, err)
@@ -35,7 +36,7 @@ func TestRedisKvStore_Contains(t *testing.T) {
 
 func TestRedisKvStore_Get(t *testing.T) {
 	store, client := buildTestableRedisStore()
-	client.On("Get", "applike-gosoline-kvstore-kvstore-test-foo").Return(`{"id":"foo","body":"bar"}`, nil)
+	client.On("Get", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo").Return(`{"id":"foo","body":"bar"}`, nil)
 
 	item := &Item{}
 	found, err := store.Get(context.Background(), "foo", item)
@@ -51,7 +52,7 @@ func TestRedisKvStore_Get(t *testing.T) {
 func TestRedisKvStore_GetBatch(t *testing.T) {
 	store, client := buildTestableRedisStore()
 
-	args := []interface{}{"applike-gosoline-kvstore-kvstore-test-foo", "applike-gosoline-kvstore-kvstore-test-fuu"}
+	args := []interface{}{mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo", "applike-gosoline-kvstore-kvstore-test-fuu"}
 	returns := []interface{}{`{"id":"foo","body":"bar"}`, nil}
 
 	client.On("MGet", args...).Return(returns, nil)
@@ -74,7 +75,7 @@ func TestRedisKvStore_GetBatch(t *testing.T) {
 
 func TestRedisKvStore_Put(t *testing.T) {
 	store, client := buildTestableRedisStore()
-	client.On("Set", "applike-gosoline-kvstore-kvstore-test-foo", []byte(`{"id":"foo","body":"bar"}`), time.Duration(0)).Return(nil)
+	client.On("Set", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo", []byte(`{"id":"foo","body":"bar"}`), time.Duration(0)).Return(nil)
 
 	item := &Item{
 		Id:   "foo",
@@ -89,8 +90,8 @@ func TestRedisKvStore_Put(t *testing.T) {
 
 func TestRedisKvStore_PutBatch(t *testing.T) {
 	store, client := buildTestableRedisStore()
-	client.On("Set", "applike-gosoline-kvstore-kvstore-test-foo", []byte(`{"id":"foo","body":"bar"}`), time.Duration(0)).Return(nil)
-	client.On("Set", "applike-gosoline-kvstore-kvstore-test-fuu", []byte(`{"id":"fuu","body":"baz"}`), time.Duration(0)).Return(nil)
+	client.On("Set", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo", []byte(`{"id":"foo","body":"bar"}`), time.Duration(0)).Return(nil)
+	client.On("Set", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-fuu", []byte(`{"id":"fuu","body":"baz"}`), time.Duration(0)).Return(nil)
 
 	items := map[string]Item{
 		"foo": {
@@ -111,7 +112,7 @@ func TestRedisKvStore_PutBatch(t *testing.T) {
 
 func TestRedisKvStore_EstimateSize(t *testing.T) {
 	store, client := buildTestableRedisStore()
-	client.On("DBSize").Return(int64(42), nil)
+	client.On("DBSize", mock.AnythingOfType("*context.emptyCtx")).Return(int64(42), nil)
 
 	size := store.(kvstore.SizedStore).EstimateSize()
 
@@ -121,7 +122,7 @@ func TestRedisKvStore_EstimateSize(t *testing.T) {
 
 func TestRedisKvStore_Delete(t *testing.T) {
 	store, client := buildTestableRedisStore()
-	client.On("Del", "applike-gosoline-kvstore-kvstore-test-foo").Return(int64(1), nil)
+	client.On("Del", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo").Return(int64(1), nil)
 
 	err := store.Delete(context.Background(), "foo")
 
@@ -131,7 +132,7 @@ func TestRedisKvStore_Delete(t *testing.T) {
 
 func TestRedisKvStore_DeleteBatch(t *testing.T) {
 	store, client := buildTestableRedisStore()
-	client.On("Del", "applike-gosoline-kvstore-kvstore-test-foo", "applike-gosoline-kvstore-kvstore-test-fuu").Return(int64(2), nil)
+	client.On("Del", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo", "applike-gosoline-kvstore-kvstore-test-fuu").Return(int64(2), nil)
 
 	items := []string{"foo", "fuu"}
 

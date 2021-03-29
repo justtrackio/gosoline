@@ -6,7 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mon"
-	baseRedis "github.com/go-redis/redis"
+	baseRedis "github.com/go-redis/redis/v8"
 	"time"
 )
 
@@ -24,36 +24,36 @@ func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
 
 //go:generate mockery -name Client
 type Client interface {
-	Exists(keys ...string) (int64, error)
-	Expire(key string, ttl time.Duration) (bool, error)
-	FlushDB() (string, error)
-	DBSize() (int64, error)
-	Set(key string, value interface{}, ttl time.Duration) error
-	SetNX(key string, value interface{}, ttl time.Duration) (bool, error)
-	MSet(pairs ...interface{}) error
-	Get(key string) (string, error)
-	MGet(keys ...string) ([]interface{}, error)
-	Del(keys ...string) (int64, error)
+	Exists(ctx context.Context, keys ...string) (int64, error)
+	Expire(ctx context.Context, key string, ttl time.Duration) (bool, error)
+	FlushDB(ctx context.Context) (string, error)
+	DBSize(ctx context.Context) (int64, error)
+	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+	SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error)
+	MSet(ctx context.Context, pairs ...interface{}) error
+	Get(ctx context.Context, key string) (string, error)
+	MGet(ctx context.Context, keys ...string) ([]interface{}, error)
+	Del(ctx context.Context, keys ...string) (int64, error)
 
-	BLPop(timeout time.Duration, keys ...string) ([]string, error)
-	LPop(key string) (string, error)
-	LLen(key string) (int64, error)
-	RPush(key string, values ...interface{}) (int64, error)
+	BLPop(ctx context.Context, timeout time.Duration, keys ...string) ([]string, error)
+	LPop(ctx context.Context, key string) (string, error)
+	LLen(ctx context.Context, key string) (int64, error)
+	RPush(ctx context.Context, key string, values ...interface{}) (int64, error)
 
-	HExists(key string, field string) (bool, error)
-	HKeys(key string) ([]string, error)
-	HGet(key string, field string) (string, error)
-	HSet(key string, field string, value interface{}) error
-	HMGet(key string, fields ...string) ([]interface{}, error)
-	HMSet(key string, pairs map[string]interface{}) error
-	HSetNX(key string, field string, value interface{}) (bool, error)
+	HExists(ctx context.Context, key string, field string) (bool, error)
+	HKeys(ctx context.Context, key string) ([]string, error)
+	HGet(ctx context.Context, key string, field string) (string, error)
+	HSet(ctx context.Context, key string, field string, value interface{}) error
+	HMGet(ctx context.Context, key string, fields ...string) ([]interface{}, error)
+	HMSet(ctx context.Context, key string, pairs map[string]interface{}) error
+	HSetNX(ctx context.Context, key string, field string, value interface{}) (bool, error)
 
-	Incr(key string) (int64, error)
-	IncrBy(key string, amount int64) (int64, error)
-	Decr(key string) (int64, error)
-	DecrBy(key string, amount int64) (int64, error)
+	Incr(ctx context.Context, key string) (int64, error)
+	IncrBy(ctx context.Context, key string, amount int64) (int64, error)
+	Decr(ctx context.Context, key string) (int64, error)
+	DecrBy(ctx context.Context, key string, amount int64) (int64, error)
 
-	IsAlive() bool
+	IsAlive(ctx context.Context) bool
 
 	Pipeline() baseRedis.Pipeliner
 }
@@ -95,49 +95,49 @@ func NewClientWithInterfaces(logger mon.Logger, baseRedis baseRedis.Cmdable, exe
 	}
 }
 
-func (c *redisClient) GetBaseClient() baseRedis.Cmdable {
-	c.base.Exists()
+func (c *redisClient) GetBaseClient(ctx context.Context) baseRedis.Cmdable {
+	c.base.Exists(ctx)
 
 	return c.base
 }
 
-func (c *redisClient) Exists(keys ...string) (int64, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.Exists(keys...)
+func (c *redisClient) Exists(ctx context.Context, keys ...string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.Exists(ctx, keys...)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) FlushDB() (string, error) {
+func (c *redisClient) FlushDB(ctx context.Context) (string, error) {
 
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.FlushDB()
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.FlushDB(ctx)
 	})
 
 	return cmd.(*baseRedis.StatusCmd).Val(), err
 }
 
-func (c *redisClient) DBSize() (int64, error) {
+func (c *redisClient) DBSize(ctx context.Context) (int64, error) {
 
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.DBSize()
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.DBSize(ctx)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) Set(key string, value interface{}, expiration time.Duration) error {
-	_, err := c.execute(func() ErrCmder {
-		return c.base.Set(key, value, expiration)
+func (c *redisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+	_, err := c.execute(ctx, func() ErrCmder {
+		return c.base.Set(ctx, key, value, expiration)
 	})
 
 	return err
 }
 
-func (c *redisClient) SetNX(key string, value interface{}, expiration time.Duration) (bool, error) {
-	res, err := c.execute(func() ErrCmder {
-		return c.base.SetNX(key, value, expiration)
+func (c *redisClient) SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) (bool, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SetNX(ctx, key, value, expiration)
 	})
 
 	val := res.(*baseRedis.BoolCmd).Val()
@@ -145,81 +145,81 @@ func (c *redisClient) SetNX(key string, value interface{}, expiration time.Durat
 	return val, err
 }
 
-func (c *redisClient) MSet(pairs ...interface{}) error {
-	_, err := c.execute(func() ErrCmder {
-		return c.base.MSet(pairs...)
+func (c *redisClient) MSet(ctx context.Context, pairs ...interface{}) error {
+	_, err := c.execute(ctx, func() ErrCmder {
+		return c.base.MSet(ctx, pairs...)
 	})
 
 	return err
 }
 
-func (c *redisClient) HMSet(key string, pairs map[string]interface{}) error {
-	_, err := c.execute(func() ErrCmder {
-		return c.base.HMSet(key, pairs)
+func (c *redisClient) HMSet(ctx context.Context, key string, pairs map[string]interface{}) error {
+	_, err := c.execute(ctx, func() ErrCmder {
+		return c.base.HMSet(ctx, key, pairs)
 	})
 
 	return err
 }
 
-func (c *redisClient) Get(key string) (string, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.Get(key)
+func (c *redisClient) Get(ctx context.Context, key string) (string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.Get(ctx, key)
 	})
 
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
-func (c *redisClient) MGet(keys ...string) ([]interface{}, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.MGet(keys...)
+func (c *redisClient) MGet(ctx context.Context, keys ...string) ([]interface{}, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.MGet(ctx, keys...)
 	})
 
 	return cmd.(*baseRedis.SliceCmd).Val(), err
 }
 
-func (c *redisClient) HMGet(key string, fields ...string) ([]interface{}, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.HMGet(key, fields...)
+func (c *redisClient) HMGet(ctx context.Context, key string, fields ...string) ([]interface{}, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.HMGet(ctx, key, fields...)
 	})
 
 	return cmd.(*baseRedis.SliceCmd).Val(), err
 }
 
-func (c *redisClient) Del(keys ...string) (int64, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.Del(keys...)
+func (c *redisClient) Del(ctx context.Context, keys ...string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.Del(ctx, keys...)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) BLPop(timeout time.Duration, keys ...string) ([]string, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.BLPop(timeout, keys...)
+func (c *redisClient) BLPop(ctx context.Context, timeout time.Duration, keys ...string) ([]string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.BLPop(ctx, timeout, keys...)
 	})
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
-func (c *redisClient) LPop(key string) (string, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.LPop(key)
+func (c *redisClient) LPop(ctx context.Context, key string) (string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.LPop(ctx, key)
 	})
 
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
-func (c *redisClient) LLen(key string) (int64, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.LLen(key)
+func (c *redisClient) LLen(ctx context.Context, key string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.LLen(ctx, key)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) RPush(key string, values ...interface{}) (int64, error) {
-	res, err := c.execute(func() ErrCmder {
-		return c.base.RPush(key, values...)
+func (c *redisClient) RPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.RPush(ctx, key, values...)
 	})
 
 	val := res.(*baseRedis.IntCmd).Val()
@@ -227,41 +227,41 @@ func (c *redisClient) RPush(key string, values ...interface{}) (int64, error) {
 	return val, err
 }
 
-func (c *redisClient) HExists(key, field string) (bool, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.HExists(key, field)
+func (c *redisClient) HExists(ctx context.Context, key, field string) (bool, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.HExists(ctx, key, field)
 	})
 
 	return cmd.(*baseRedis.BoolCmd).Val(), err
 }
 
-func (c *redisClient) HKeys(key string) ([]string, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.HKeys(key)
+func (c *redisClient) HKeys(ctx context.Context, key string) ([]string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.HKeys(ctx, key)
 	})
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
-func (c *redisClient) HGet(key, field string) (string, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.HGet(key, field)
+func (c *redisClient) HGet(ctx context.Context, key, field string) (string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.HGet(ctx, key, field)
 	})
 
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
-func (c *redisClient) HSet(key, field string, value interface{}) error {
-	_, err := c.execute(func() ErrCmder {
-		return c.base.HSet(key, field, value)
+func (c *redisClient) HSet(ctx context.Context, key, field string, value interface{}) error {
+	_, err := c.execute(ctx, func() ErrCmder {
+		return c.base.HSet(ctx, key, field, value)
 	})
 
 	return err
 }
 
-func (c *redisClient) HSetNX(key, field string, value interface{}) (bool, error) {
-	res, err := c.execute(func() ErrCmder {
-		return c.base.HSetNX(key, field, value)
+func (c *redisClient) HSetNX(ctx context.Context, key, field string, value interface{}) (bool, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.HSetNX(ctx, key, field, value)
 	})
 
 	val := res.(*baseRedis.BoolCmd).Val()
@@ -269,49 +269,49 @@ func (c *redisClient) HSetNX(key, field string, value interface{}) (bool, error)
 	return val, err
 }
 
-func (c *redisClient) Incr(key string) (int64, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.Incr(key)
+func (c *redisClient) Incr(ctx context.Context, key string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.Incr(ctx, key)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) IncrBy(key string, amount int64) (int64, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.IncrBy(key, amount)
+func (c *redisClient) IncrBy(ctx context.Context, key string, amount int64) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.IncrBy(ctx, key, amount)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) Decr(key string) (int64, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.Decr(key)
+func (c *redisClient) Decr(ctx context.Context, key string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.Decr(ctx, key)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) DecrBy(key string, amount int64) (int64, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.DecrBy(key, amount)
+func (c *redisClient) DecrBy(ctx context.Context, key string, amount int64) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.DecrBy(ctx, key, amount)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) Expire(key string, ttl time.Duration) (bool, error) {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.Expire(key, ttl)
+func (c *redisClient) Expire(ctx context.Context, key string, ttl time.Duration) (bool, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.Expire(ctx, key, ttl)
 	})
 
 	return cmd.(*baseRedis.BoolCmd).Val(), err
 }
 
-func (c *redisClient) IsAlive() bool {
-	cmd, err := c.execute(func() ErrCmder {
-		return c.base.Ping()
+func (c *redisClient) IsAlive(ctx context.Context) bool {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.Ping(ctx)
 	})
 
 	alive := cmd.(*baseRedis.StatusCmd).Val() == "PONG"
@@ -323,8 +323,8 @@ func (c *redisClient) Pipeline() baseRedis.Pipeliner {
 	return c.base.Pipeline()
 }
 
-func (c *redisClient) execute(wrappedCmd func() ErrCmder) (interface{}, error) {
-	return c.executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+func (c *redisClient) execute(ctx context.Context, wrappedCmd func() ErrCmder) (interface{}, error) {
+	return c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
 		cmder := wrappedCmd()
 
 		return cmder, cmder.Err()

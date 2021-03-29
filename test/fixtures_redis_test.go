@@ -3,6 +3,7 @@
 package test_test
 
 import (
+	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/fixtures"
@@ -10,7 +11,7 @@ import (
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/test"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
@@ -60,7 +61,7 @@ func (s FixturesRedisSuite) TestRedis() {
 	)
 
 	// ensure clean start
-	_, err := s.client.FlushDB().Result()
+	_, err := s.client.FlushDB(context.Background()).Result()
 	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
@@ -68,19 +69,19 @@ func (s FixturesRedisSuite) TestRedis() {
 	err = loader.Load(redisDisabledPurgeFixtures())
 	s.NoError(err)
 
-	setValue, err := s.client.Get("set_test").Result()
+	setValue, err := s.client.Get(context.Background(), "set_test").Result()
 
 	// should have created the item
 	s.NoError(err)
 	s.Equal("bar", setValue)
 
-	rpopValue, err := s.client.LPop("rpush_test").Result()
+	rpopValue, err := s.client.LPop(context.Background(), "rpush_test").Result()
 
 	// should have created the item
 	s.NoError(err)
 	s.Equal("bar", rpopValue)
 
-	rpopValue, err = s.client.LPop("rpush_test").Result()
+	rpopValue, err = s.client.LPop(context.Background(), "rpush_test").Result()
 
 	// should have created the item
 	s.NoError(err)
@@ -96,7 +97,7 @@ func (s FixturesRedisSuite) TestRedisWithPurge() {
 	)
 
 	// ensure clean start
-	_, err := s.client.FlushDB().Result()
+	_, err := s.client.FlushDB(context.Background()).Result()
 	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
@@ -104,29 +105,29 @@ func (s FixturesRedisSuite) TestRedisWithPurge() {
 	err = loader.Load(redisDisabledPurgeFixtures())
 	s.NoError(err)
 
-	setValue, err := s.client.Get("set_test").Result()
+	setValue, err := s.client.Get(context.Background(), "set_test").Result()
 
 	// should have created the item
 	s.NoError(err)
 	s.Equal("bar", setValue)
 
-	keys, err := s.client.Keys("*").Result()
+	keys, err := s.client.Keys(context.Background(), "*").Result()
 	s.NoError(err)
 	s.Len(keys, 2)
 
 	err = loader.Load(redisEnabledPurgeFixtures())
 	s.NoError(err)
 
-	setValue, err = s.client.Get("set_test").Result()
+	setValue, err = s.client.Get(context.Background(), "set_test").Result()
 
 	// should have created the item
 	s.Error(err)
 
-	keys, err = s.client.Keys("*").Result()
+	keys, err = s.client.Keys(context.Background(), "*").Result()
 	s.NoError(err)
 	s.Len(keys, 1)
 
-	setValue, err = s.client.Get("set_test_purged").Result()
+	setValue, err = s.client.Get(context.Background(), "set_test_purged").Result()
 
 	// should have created the item
 	s.NoError(err)
@@ -142,7 +143,7 @@ func (s FixturesRedisSuite) TestRedisKvStore() {
 	)
 
 	// ensure clean start
-	_, err := s.client.FlushDB().Result()
+	_, err := s.client.FlushDB(context.Background()).Result()
 	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
@@ -150,7 +151,7 @@ func (s FixturesRedisSuite) TestRedisKvStore() {
 	err = loader.Load(redisKvstoreDisabledPurgeFixtures())
 	s.NoError(err)
 
-	res, err := s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
+	res, err := s.client.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
 
 	// should have created the item
 	s.NoError(err)
@@ -166,7 +167,7 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 	)
 
 	// ensure clean start
-	_, err := s.client.FlushDB().Result()
+	_, err := s.client.FlushDB(context.Background()).Result()
 	s.NoError(err)
 
 	loader := fixtures.NewFixtureLoader(config, s.logger)
@@ -174,7 +175,7 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 	err = loader.Load(redisKvstoreDisabledPurgeFixtures())
 	s.NoError(err)
 
-	res, err := s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
+	res, err := s.client.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
 
 	// should have created the item
 	s.NoError(err)
@@ -183,11 +184,11 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 	err = loader.Load(redisKvstoreEnabledPurgeFixtures())
 	s.NoError(err)
 
-	res, err = s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
+	res, err = s.client.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
 
 	s.Error(err)
 
-	res, err = s.client.Get("gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_2").Result()
+	res, err = s.client.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_2").Result()
 
 	// should have created the item
 	s.NoError(err)

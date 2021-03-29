@@ -2,7 +2,7 @@ package env
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 )
 
 type redisComponent struct {
