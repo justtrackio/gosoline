@@ -8,23 +8,23 @@ import (
 	"time"
 )
 
-func TestSamplingLogger_Infof(t *testing.T) {
+func TestSamplingLogger_Info(t *testing.T) {
 	mock := new(mocks.Logger)
 	mock.On("Info", "this should be logged").Once()
-	mock.On("Infof", "log msg", "a", 4).Twice()
+	mock.On("Info", "log msg", "a", 4).Twice()
 
 	clock := clockwork.NewFakeClock()
 	logger := mon.NewSamplingLoggerWithInterfaces(mock, clock, time.Minute)
 
-	logger.Infof("log msg", "a", 4)
-	logger.Infof("log msg", "a", 4)
+	logger.Info("log msg", "a", 4)
+	logger.Info("log msg", "a", 4)
 	logger.Info("this should be logged")
 
 	clock.Advance(time.Second)
-	logger.Infof("log msg", "a", 4)
+	logger.Info("log msg", "a", 4)
 
 	clock.Advance(time.Hour)
-	logger.Infof("log msg", "a", 4)
+	logger.Info("log msg", "a", 4)
 
 	mock.AssertExpectations(t)
 }

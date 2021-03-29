@@ -72,7 +72,7 @@ func (d *redisKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 		return err
 	}
 
-	d.logger.Infof("loaded %d redis kvstore fixtures", len(fs.Fixtures))
+	d.logger.Info("loaded %d redis kvstore fixtures", len(fs.Fixtures))
 
 	return nil
 }

@@ -132,17 +132,17 @@ func (u *MessagesPerRunnerMetricWriter) writeMessagesPerRunnerMetric(ctx context
 			return fmt.Errorf("can not decide on leader: %w", err)
 		}
 
-		u.logger.Warnf("will assume leader role as election failed: %s", err)
+		u.logger.Warn("will assume leader role as election failed: %s", err)
 		isLeader = true
 	}
 
 	if !isLeader {
-		u.logger.Infof("not leading: do nothing")
+		u.logger.Info("not leading: do nothing")
 		return nil
 	}
 
 	if messagesPerRunner, err = u.calculateMessagesPerRunner(); err != nil {
-		u.logger.Warnf("can not calculate messages per runner: %s", err)
+		u.logger.Warn("can not calculate messages per runner: %s", err)
 		return nil
 	}
 
@@ -178,7 +178,7 @@ func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner() (float64, e
 	}
 
 	if currentMpr, err = u.getStreamMprMetric(metricNameStreamMprMessagesPerRunner, cloudwatch.StatisticAverage, u.settings.MaxIncreasePeriod); err != nil {
-		u.logger.Warnf("can not get current messages per runner metric: defaulting to 0")
+		u.logger.Warn("can not get current messages per runner metric: defaulting to 0")
 		currentMpr = 0
 	}
 
@@ -195,7 +195,7 @@ func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner() (float64, e
 	}
 
 	if newMpr > maxMpr {
-		u.logger.Warnf("newMpr of %f is higher than configured maxMpr of %f: falling back to max", newMpr, maxMpr)
+		u.logger.Warn("newMpr of %f is higher than configured maxMpr of %f: falling back to max", newMpr, maxMpr)
 		newMpr = maxMpr
 	}
 
@@ -204,7 +204,7 @@ func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner() (float64, e
 		"messagesVisible":   messagesVisible,
 		"runnerCount":       runnerCount,
 		"messagesPerRunner": newMpr,
-	}).Infof("%f messages per runner", newMpr)
+	}).Info("%f messages per runner", newMpr)
 
 	return newMpr, nil
 }

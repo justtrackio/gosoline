@@ -25,7 +25,7 @@ func PanicErrorHandler(err error, msg string, args ...interface{}) {
 
 func LoggerErrorHandler(logger Logger) ErrorHandler {
 	return func(err error, msg string, args ...interface{}) {
-		logger.Errorf(err, msg, args...)
+		logger.Error(err, msg, args...)
 	}
 }
 

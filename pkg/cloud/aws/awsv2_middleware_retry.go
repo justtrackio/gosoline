@@ -150,7 +150,7 @@ func AttemptLoggerInitMiddleware(logger mon.Logger, clock clock.Clock, maxElapse
 		}
 
 		if info.count > 1 && err == nil {
-			logger.WithContext(ctx).Infof("sent request to resource %s successful after %d retries in %s", info.resouceName, info.count, durationTook)
+			logger.WithContext(ctx).Info("sent request to resource %s successful after %d retries in %s", info.resouceName, info.count, durationTook)
 		}
 
 		return output, metadata, err
@@ -167,7 +167,7 @@ func AttemptLoggerRetryMiddleware(logger mon.Logger, clock clock.Clock) smithyMi
 
 		if info.count > 1 {
 			duration := clock.Now().Sub(info.start)
-			logger.WithContext(ctx).Warnf("attempt number %d to request resource %s after %s cause of error %s", info.count, info.resouceName, duration, info.lastErr)
+			logger.WithContext(ctx).Warn("attempt number %d to request resource %s after %s cause of error %s", info.count, info.resouceName, duration, info.lastErr)
 		}
 
 		output, metadata, info.lastErr = next.HandleFinalize(ctx, input)

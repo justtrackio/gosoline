@@ -127,7 +127,7 @@ func (p *Pipeline) read(ctx context.Context) error {
 			disaggregated, err := p.disaggregateMessage(ctx, msg)
 
 			if err != nil {
-				p.logger.Errorf(err, "can not disaggregate the message")
+				p.logger.Error(err, "can not disaggregate the message")
 				continue
 			}
 
@@ -214,7 +214,7 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 
 	processedCount := len(p.batch)
 
-	p.logger.Infof("pipeline processed %d of %d messages", processedCount, batchSize)
+	p.logger.Info("pipeline processed %d of %d messages", processedCount, batchSize)
 	p.metric.WriteOne(&mon.MetricDatum{
 		MetricName: MetricNamePipelineProcessedCount,
 		Value:      float64(processedCount),

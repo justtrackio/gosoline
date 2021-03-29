@@ -22,7 +22,7 @@ func CreateKinesisStream(config cfg.Config, logger mon.Logger, client kinesisifa
 	}
 
 	streamName := settings.GetResourceName()
-	logger.Infof("looking for kinesis stream: %s", streamName)
+	logger.Info("looking for kinesis stream: %s", streamName)
 
 	streams, err := client.ListStreams(&kinesis.ListStreamsInput{})
 	if err != nil {
@@ -34,12 +34,12 @@ func CreateKinesisStream(config cfg.Config, logger mon.Logger, client kinesisifa
 			continue
 		}
 
-		logger.Infof("found kinesis stream: %s", streamName)
+		logger.Info("found kinesis stream: %s", streamName)
 
 		return nil
 	}
 
-	logger.Infof("trying to create kinesis stream: %s", streamName)
+	logger.Info("trying to create kinesis stream: %s", streamName)
 	_, err = client.CreateStream(&kinesis.CreateStreamInput{
 		ShardCount: aws.Int64(1),
 		StreamName: aws.String(streamName),
@@ -49,7 +49,7 @@ func CreateKinesisStream(config cfg.Config, logger mon.Logger, client kinesisifa
 		return fmt.Errorf("failed to create kinesis stream %s: %w", streamName, err)
 	}
 
-	logger.Infof("created kinesis stream: %s", streamName)
+	logger.Info("created kinesis stream: %s", streamName)
 
 	return nil
 }

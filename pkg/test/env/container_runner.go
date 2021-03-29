@@ -142,7 +142,7 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 
 func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string, description *componentContainerDescription) (*container, error) {
 	containerName := fmt.Sprintf("%s-%s-%s-%s", r.settings.NamePrefix, r.id, skeleton.id(), name)
-	r.logger.Debugf("run container %s %s", skeleton.typ, containerName)
+	r.logger.Debug("run container %s %s", skeleton.typ, containerName)
 
 	config := description.containerConfig
 	bindings := make(map[docker.Port][]docker.PortBinding)
@@ -291,7 +291,7 @@ func (r *containerRunner) waitUntilHealthy(container *container, healthCheck Com
 	name := container.name
 
 	notify := func(err error, _ time.Duration) {
-		r.logger.Debugf("%s %s is still unhealthy since %v: %s", typ, name, time.Since(start), err)
+		r.logger.Debug("%s %s is still unhealthy since %v: %s", typ, name, time.Since(start), err)
 	}
 
 	err := backoff.RetryNotify(func() error {
@@ -302,7 +302,7 @@ func (r *containerRunner) waitUntilHealthy(container *container, healthCheck Com
 		return err
 	}
 
-	r.logger.Debugf("%s %s got healthy after %s", typ, name, time.Since(start))
+	r.logger.Debug("%s %s got healthy after %s", typ, name, time.Since(start))
 
 	return nil
 }
@@ -313,7 +313,7 @@ func (r *containerRunner) Stop() error {
 			return fmt.Errorf("could not stop container %s: %w", name, err)
 		}
 
-		r.logger.Debugf("stopping container %s", name)
+		r.logger.Debug("stopping container %s", name)
 	}
 
 	return nil

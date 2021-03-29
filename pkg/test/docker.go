@@ -232,7 +232,7 @@ func (d *dockerRunnerLegacy) RemoveAllContainers() {
 	for _, containerName := range d.containers {
 		d.logger.WithFields(mon.Fields{
 			"container": containerName,
-		}).Infof("stopping container")
+		}).Info("stopping container")
 		if err := d.pool.RemoveContainerByName(containerName); err != nil {
 			d.logger.Warn("could not remove container %s: %w", containerName, err)
 		}
@@ -271,7 +271,7 @@ func (d *dockerRunnerLegacy) isReachable(address string, timeout time.Duration) 
 		err := conn.Close()
 
 		if err != nil {
-			d.logger.Errorf(err, "failed to close connection")
+			d.logger.Error(err, "failed to close connection")
 		}
 	}()
 

@@ -94,7 +94,7 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input interface{}, att
 	})
 
 	if model == nil {
-		logger.Infof("skipping %s op for subscription for modelId %s and version %d", spec.CrudType, spec.ModelId, spec.Version)
+		logger.Info("skipping %s op for subscription for modelId %s and version %d", spec.CrudType, spec.ModelId, spec.Version)
 		return true, nil
 	}
 
@@ -109,7 +109,7 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input interface{}, att
 		return false, fmt.Errorf("can not persist subscription of model %s and version %d: %w", spec.ModelId, spec.Version, err)
 	}
 
-	logger.Infof("persisted %s op for subscription for modelId %s and version %d with id %v", spec.CrudType, spec.ModelId, spec.Version, model.GetId())
+	logger.Info("persisted %s op for subscription for modelId %s and version %d with id %v", spec.CrudType, spec.ModelId, spec.Version, model.GetId())
 
 	return true, nil
 }

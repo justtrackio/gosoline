@@ -2,7 +2,6 @@ package mon
 
 import (
 	"context"
-	"fmt"
 	"github.com/jonboulle/clockwork"
 	"sync"
 	"time"
@@ -54,68 +53,36 @@ func (l *SamplingLogger) WithFields(fields Fields) Logger {
 	return l.copy(logger)
 }
 
-func (l *SamplingLogger) Debug(args ...interface{}) {
-	if !l.shouldLog(fmt.Sprint(args...)) {
-		return
-	}
-
-	l.Logger.Debug(args...)
-}
-
-func (l *SamplingLogger) Debugf(msg string, args ...interface{}) {
+func (l *SamplingLogger) Debug(msg string, args ...interface{}) {
 	if !l.shouldLog(msg) {
 		return
 	}
 
-	l.Logger.Debugf(msg, args...)
+	l.Logger.Debug(msg, args...)
 }
 
-func (l *SamplingLogger) Error(err error, msg string) {
+func (l *SamplingLogger) Error(err error, msg string, args ...interface{}) {
 	if !l.shouldLog(msg) {
 		return
 	}
 
-	l.Logger.Error(err, msg)
+	l.Logger.Error(err, msg, args...)
 }
 
-func (l *SamplingLogger) Errorf(err error, msg string, args ...interface{}) {
+func (l *SamplingLogger) Info(msg string, args ...interface{}) {
 	if !l.shouldLog(msg) {
 		return
 	}
 
-	l.Logger.Errorf(err, msg, args...)
+	l.Logger.Info(msg, args...)
 }
 
-func (l *SamplingLogger) Info(args ...interface{}) {
-	if !l.shouldLog(fmt.Sprint(args...)) {
-		return
-	}
-
-	l.Logger.Info(args...)
-}
-
-func (l *SamplingLogger) Infof(msg string, args ...interface{}) {
+func (l *SamplingLogger) Warn(msg string, args ...interface{}) {
 	if !l.shouldLog(msg) {
 		return
 	}
 
-	l.Logger.Infof(msg, args...)
-}
-
-func (l *SamplingLogger) Warn(args ...interface{}) {
-	if !l.shouldLog(fmt.Sprint(args...)) {
-		return
-	}
-
-	l.Logger.Warn(args...)
-}
-
-func (l *SamplingLogger) Warnf(msg string, args ...interface{}) {
-	if !l.shouldLog(msg) {
-		return
-	}
-
-	l.Logger.Warnf(msg, args...)
+	l.Logger.Warn(msg, args...)
 }
 
 func (l *SamplingLogger) shouldLog(msg string) bool {

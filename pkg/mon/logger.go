@@ -68,15 +68,10 @@ type GosoLog interface {
 
 //go:generate mockery -name Logger
 type Logger interface {
-	Debug(args ...interface{})
-	Info(args ...interface{})
-	Warn(args ...interface{})
-	Error(err error, msg string)
-
-	Debugf(format string, args ...interface{})
-	Infof(format string, args ...interface{})
-	Warnf(format string, args ...interface{})
-	Errorf(err error, format string, args ...interface{})
+	Debug(format string, args ...interface{})
+	Info(format string, args ...interface{})
+	Warn(format string, args ...interface{})
+	Error(err error, format string, args ...interface{})
 
 	WithChannel(channel string) Logger
 	WithContext(ctx context.Context) Logger
@@ -176,53 +171,33 @@ func (l *logger) WithFields(fields Fields) Logger {
 	return cpy
 }
 
-func (l *logger) Info(args ...interface{}) {
-	l.log(Info, fmt.Sprint(args...), nil, Fields{})
+func (l *logger) Info(msg string, args ...interface{}) {
+	l.log(Info, msg, args, nil, Fields{})
 }
 
-func (l *logger) Infof(msg string, args ...interface{}) {
-	l.log(Info, fmt.Sprintf(msg, args...), nil, Fields{})
-}
-
-func (l *logger) Debug(args ...interface{}) {
+func (l *logger) Debug(msg string, args ...interface{}) {
 	if l.level > levels[Debug] {
 		return
 	}
 
-	l.log(Debug, fmt.Sprint(args...), nil, Fields{})
+	l.log(Debug, msg, args, nil, Fields{})
 }
 
-func (l *logger) Debugf(msg string, args ...interface{}) {
-	if l.level > levels[Debug] {
-		return
-	}
-
-	l.log(Debug, fmt.Sprintf(msg, args...), nil, Fields{})
+func (l *logger) Warn(msg string, args ...interface{}) {
+	l.log(Warn, msg, args, nil, Fields{})
 }
 
-func (l *logger) Warn(args ...interface{}) {
-	l.log(Warn, fmt.Sprint(args...), nil, Fields{})
+func (l *logger) Error(err error, msg string, args ...interface{}) {
+	l.logError(Error, err, msg, args)
 }
 
-func (l *logger) Warnf(msg string, args ...interface{}) {
-	l.log(Warn, fmt.Sprintf(msg, args...), nil, Fields{})
-}
-
-func (l *logger) Error(err error, msg string) {
-	l.logError(Error, err, msg)
-}
-
-func (l *logger) Errorf(err error, msg string, args ...interface{}) {
-	l.logError(Error, err, fmt.Sprintf(msg, args...))
-}
-
-func (l *logger) logError(level string, err error, msg string) {
-	l.log(level, msg, err, Fields{
+func (l *logger) logError(level string, err error, msg string, args []interface{}) {
+	l.log(level, msg, args, err, Fields{
 		"stacktrace": GetStackTrace(1),
 	})
 }
 
-func (l *logger) log(level string, msg string, logErr error, fields Fields) {
+func (l *logger) log(level string, msg string, args []interface{}, logErr error, fields Fields) {
 	levelNo := levels[level]
 
 	if levelNo < l.level {
@@ -231,6 +206,10 @@ func (l *logger) log(level string, msg string, logErr error, fields Fields) {
 
 	cpyData := l.data
 	cpyData.Fields = mergeMapStringInterface(cpyData.Fields, fields)
+
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
 
 	for _, h := range l.hooks {
 		if err := h.Fire(level, msg, logErr, &cpyData); err != nil {

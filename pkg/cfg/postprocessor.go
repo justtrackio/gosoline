@@ -49,7 +49,7 @@ func ApplyPostProcessors(config GosoConf, logger Logger) error {
 				continue
 			}
 
-			logger.Infof("applied priority %d config post processor '%s'", priority, entity.name)
+			logger.Info("applied priority %d config post processor '%s'", priority, entity.name)
 		}
 	}
 

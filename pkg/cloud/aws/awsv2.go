@@ -106,9 +106,9 @@ func NewLogger(base mon.Logger) *Logger {
 func (l Logger) Logf(classification logging.Classification, format string, v ...interface{}) {
 	switch classification {
 	case logging.Warn:
-		l.base.Warnf(format, v...)
+		l.base.Warn(format, v...)
 	default:
-		l.base.Infof(format, v...)
+		l.base.Info(format, v...)
 	}
 }
 

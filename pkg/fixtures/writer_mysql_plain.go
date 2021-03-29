@@ -51,12 +51,12 @@ func (m *mysqlPlainFixtureWriter) Purge() error {
 	err := m.purger.purgeMysql()
 
 	if err != nil {
-		m.logger.Errorf(err, "error occured during purging of table %s in plain mysql fixture loader", m.metadata.TableName)
+		m.logger.Error(err, "error occured during purging of table %s in plain mysql fixture loader", m.metadata.TableName)
 
 		return err
 	}
 
-	m.logger.Infof("purged table %s for plain mysql fixtures", m.metadata.TableName)
+	m.logger.Info("purged table %s for plain mysql fixtures", m.metadata.TableName)
 
 	return nil
 }
@@ -86,7 +86,7 @@ func (m *mysqlPlainFixtureWriter) Write(fs *FixtureSet) error {
 		m.logger.Info(fmt.Sprintf("affected rows while fixture loading: %d", ar))
 	}
 
-	m.logger.Infof("loaded %d plain mysql fixtures", len(fs.Fixtures))
+	m.logger.Info("loaded %d plain mysql fixtures", len(fs.Fixtures))
 
 	return nil
 }

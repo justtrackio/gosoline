@@ -55,7 +55,7 @@ func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
 	logger.On("WithFields", mon.Fields{
 		"stacktrace": "mocked trace",
 	}).Return(logger).Once()
-	logger.On("Warnf", "trace id is invalid: %s", "the traceId attribute is invalid: the trace id [1-5e3d557d-d06c248cc50169bd71b44fec] should consist of at least 2 parts")
+	logger.On("Warn", "trace id is invalid: %s", "the traceId attribute is invalid: the trace id [1-5e3d557d-d06c248cc50169bd71b44fec] should consist of at least 2 parts")
 
 	strategy := tracing.NewTraceIdErrorWarningStrategyWithInterfaces(logger, mon.GetMockedStackTrace)
 

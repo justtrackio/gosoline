@@ -173,7 +173,7 @@ func (t *snsTopic) subscriptionExists(queueArn string, attributes map[string]int
 			"topicArn":        *subscription.TopicArn,
 			"subscriptionArt": *subscription.SubscriptionArn,
 			"queueArn":        queueArn,
-		}).Infof("found not matching subscription for queue %s, deleting %s", queueArn, *subscription.SubscriptionArn)
+		}).Info("found not matching subscription for queue %s, deleting %s", queueArn, *subscription.SubscriptionArn)
 
 		if err = t.deleteSubscription(subscription.SubscriptionArn); err != nil {
 			return false, fmt.Errorf("can not delete subscription: %w", err)

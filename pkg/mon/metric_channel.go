@@ -39,7 +39,7 @@ func (c *metricChannel) write(batch MetricData) {
 	}
 
 	if c.closed {
-		c.logger.Warnf("refusing to write %d metric datums to metric channel: channel is closed", len(batch))
+		c.logger.Warn("refusing to write %d metric datums to metric channel: channel is closed", len(batch))
 
 		return
 	}

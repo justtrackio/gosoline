@@ -18,7 +18,7 @@ func RecoveryWithSentry(logger mon.Logger) gin.HandlerFunc {
 				return
 			case error:
 				if errors.Is(rval, ResponseBodyWriterError{}) && exec.IsConnectionError(rval) {
-					logger.Warnf("connection error: %s", rval.Error())
+					logger.Warn("connection error: %s", rval.Error())
 					return
 				}
 

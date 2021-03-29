@@ -97,7 +97,7 @@ func (i *sqsInput) Run(ctx context.Context) error {
 	defer close(i.channel)
 	defer i.logger.Info("leaving sqs input")
 
-	i.logger.Infof("starting sqs input with %d runners", i.settings.RunnerCount)
+	i.logger.Info("starting sqs input with %d runners", i.settings.RunnerCount)
 
 	for j := 0; j < i.settings.RunnerCount; j++ {
 		i.cfn.Gof(func() error {

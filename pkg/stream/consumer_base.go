@@ -109,8 +109,8 @@ func NewBaseConsumerWithInterfaces(
 }
 
 func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx context.Context) error) error {
-	defer c.logger.Infof("leaving consumer %s", c.name)
-	c.logger.Infof("running consumer %s with input %s", c.name, c.settings.Input)
+	defer c.logger.Info("leaving consumer %s", c.name)
+	c.logger.Info("running consumer %s with input %s", c.name, c.settings.Input)
 
 	// create ctx whose done channel is closed on dying coffin
 	cfn, dyingCtx := coffin.WithContext(context.Background())
@@ -162,7 +162,7 @@ func (c *baseConsumer) logConsumeCounter(ctx context.Context) error {
 			logger.WithFields(mon.Fields{
 				"count": processed,
 				"name":  c.name,
-			}).Infof("processed %v messages", processed)
+			}).Info("processed %v messages", processed)
 		}
 	}
 }

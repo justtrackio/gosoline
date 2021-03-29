@@ -104,7 +104,7 @@ func (s *blobFixtureWriter) Write(_ *FixtureSet) error {
 	s.store.Write(batch)
 	cancel()
 
-	s.logger.Infof("loaded %d files", len(files))
+	s.logger.Info("loaded %d files", len(files))
 
 	return err
 }

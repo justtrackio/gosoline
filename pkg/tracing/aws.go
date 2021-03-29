@@ -34,15 +34,15 @@ func (x xrayLogger) Log(level xraylog.LogLevel, msg fmt.Stringer) {
 	case xraylog.LogLevelDebug:
 		x.logger.WithFields(mon.Fields{
 			"xrayLogLevel": "debug",
-		}).Debug(msg)
+		}).Debug(msg.String())
 	case xraylog.LogLevelInfo:
 		x.logger.WithFields(mon.Fields{
 			"xrayLogLevel": "info",
-		}).Info(msg)
+		}).Info(msg.String())
 	case xraylog.LogLevelWarn:
 		x.logger.WithFields(mon.Fields{
 			"xrayLogLevel": "warn",
-		}).Warn(msg)
+		}).Warn(msg.String())
 	case xraylog.LogLevelError:
 		x.logger.WithFields(mon.Fields{
 			"xrayLogLevel": "error",

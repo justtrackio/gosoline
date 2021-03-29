@@ -154,14 +154,14 @@ func (m SqlManager) deleteByIdAndTable(id string, table string) error {
 	sql, args, err := del.ToSql()
 
 	if err != nil {
-		m.logger.Errorf(err, "can not delete from %s", table)
+		m.logger.Error(err, "can not delete from %s", table)
 		return err
 	}
 
 	_, err = m.dbClient.Exec(sql, args...)
 
 	if err != nil {
-		m.logger.Errorf(err, "can not delete from %s", table)
+		m.logger.Error(err, "can not delete from %s", table)
 		return err
 	}
 

@@ -32,7 +32,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeEmpty() {
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeSuccess() {
-	s.logger.On("Warnf", "omitting logger context field %s of type %T during message encoding", "fieldC", mock.Anything)
+	s.logger.On("Warn", "omitting logger context field %s of type %T during message encoding", "fieldC", mock.Anything)
 
 	ctx := context.Background()
 	ctx = mon.AppendLoggerContextField(ctx, map[string]interface{}{
@@ -62,7 +62,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeEmpty() {
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeTypeError() {
-	s.logger.On("Warnf", "encoded logger context fields should be of type string but instead are of type %T", 1)
+	s.logger.On("Warn", "encoded logger context fields should be of type string but instead are of type %T", 1)
 
 	ctx := context.Background()
 	attributes := map[string]interface{}{
@@ -76,7 +76,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeTypeError() {
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeJsonError() {
-	s.logger.On("Warnf", "can not json unmarshal logger context fields during message decoding")
+	s.logger.On("Warn", "can not json unmarshal logger context fields during message decoding")
 
 	ctx := context.Background()
 	attributes := map[string]interface{}{

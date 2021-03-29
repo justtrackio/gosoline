@@ -102,7 +102,7 @@ func NewWithInterfaces(logger mon.Logger, router *gin.Engine, tracer tracing.Tra
 		return nil, err
 	}
 
-	logger.Infof("serving api requests on address %s", listener.Addr().String())
+	logger.Info("serving api requests on address %s", listener.Addr().String())
 
 	apiServer := &ApiServer{
 		logger:   logger,

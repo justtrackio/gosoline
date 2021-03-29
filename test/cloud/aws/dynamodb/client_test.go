@@ -97,8 +97,8 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 	ctx := context.Background()
 	loggerMock := new(mocks.Logger)
 	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
-	loggerMock.On("Warnf", "attempt number %d to request resource %s after %s cause of error %s", mock.AnythingOfType("int"), "DynamoDB/PutItem", mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
-	loggerMock.On("Infof", "sent request to resource %s successful after %d retries in %s", "DynamoDB/PutItem", 3, mock.AnythingOfType("time.Duration")).Once()
+	loggerMock.On("Warn", "attempt number %d to request resource %s after %s cause of error %s", mock.AnythingOfType("int"), "DynamoDB/PutItem", mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
+	loggerMock.On("Info", "sent request to resource %s successful after %d retries in %s", "DynamoDB/PutItem", 3, mock.AnythingOfType("time.Duration")).Once()
 
 	credentials := awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("AKID", "SECRET_KEY", "TOKEN"))
 	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "http_timeout", credentials)

@@ -301,9 +301,9 @@ func (d *ProducerDaemon) outputLoop(ctx context.Context) error {
 			if exec.IsRequestCanceled(err) {
 				// we were not fast enough to write all messages and have just lost some messages.
 				// however, if this would be a problem, you shouldn't be using the producer daemon at all.
-				d.logger.Warnf("can not write messages to output in producer %s because of canceled context", d.name)
+				d.logger.Warn("can not write messages to output in producer %s because of canceled context", d.name)
 			} else {
-				d.logger.Errorf(err, "can not write messages to output in producer %s", d.name)
+				d.logger.Error(err, "can not write messages to output in producer %s", d.name)
 			}
 		}
 

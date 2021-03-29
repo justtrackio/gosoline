@@ -19,8 +19,8 @@ import (
 )
 
 type Logger interface {
-	Debug(args ...interface{})
-	Info(args ...interface{})
+	Debug(format string, args ...interface{})
+	Info(format string, args ...interface{})
 }
 
 type ClientV7 struct {
@@ -111,7 +111,7 @@ func GetAwsClient(logger Logger, url string) (*ClientV7, error) {
 		Region:                        aws.String(endpoints.EuCentral1RegionID),
 		LogLevel:                      aws.LogLevel(aws.LogDebug | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors),
 		Logger: aws.LoggerFunc(func(args ...interface{}) {
-			logger.Debug(args...)
+			logger.Debug(fmt.Sprint(args...))
 		}),
 		HTTPClient: &http.Client{
 			Timeout: 1 * time.Minute,

@@ -28,9 +28,9 @@ func newRedisPurger(config cfg.Config, logger mon.Logger, name *string) (*redisP
 }
 
 func (p *redisPurger) purge() error {
-	p.logger.Infof("flushing redis %s", *p.name)
+	p.logger.Info("flushing redis %s", *p.name)
 	_, err := p.client.FlushDB(context.Background())
-	p.logger.Infof("flushing redis %s done", *p.name)
+	p.logger.Info("flushing redis %s done", *p.name)
 
 	return err
 }

@@ -130,7 +130,7 @@ func (c *ClientSqlx) GetResult(query string, args ...interface{}) (*Result, erro
 }
 
 func (c *ClientSqlx) Exec(query string, args ...interface{}) (sql.Result, error) {
-	c.logger.Debugf("> %s %q", query, args)
+	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.Exec(query, args...)
 }
@@ -140,7 +140,7 @@ func (c *ClientSqlx) Prepare(query string) (*sql.Stmt, error) {
 }
 
 func (c *ClientSqlx) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	c.logger.Debugf("> %s %q", query, args)
+	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.Query(query, args...)
 }
@@ -150,19 +150,19 @@ func (c *ClientSqlx) QueryRow(query string, args ...interface{}) *sql.Row {
 }
 
 func (c *ClientSqlx) Queryx(query string, args ...interface{}) (*sqlx.Rows, error) {
-	c.logger.Debugf("> %s %q", query, args)
+	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.Queryx(query, args...)
 }
 
 func (c *ClientSqlx) Select(dest interface{}, query string, args ...interface{}) error {
-	c.logger.Debugf("> %s %q", query, args)
+	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.Select(dest, query, args...)
 }
 
 func (c *ClientSqlx) Get(dest interface{}, query string, args ...interface{}) error {
-	c.logger.Debugf("> %s %q", query, args)
+	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.Get(dest, query, args...)
 }

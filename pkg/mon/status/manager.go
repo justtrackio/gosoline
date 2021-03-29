@@ -155,11 +155,11 @@ func (m *manager) PrintReport(logger mon.Logger) {
 	for _, key := range keys {
 		work := m.work[key]
 		if work.err != nil {
-			logger.Infof("Work item %s: failed with error %s", key, work.err.Error())
+			logger.Info("Work item %s: failed with error %s", key, work.err.Error())
 		} else if work.step < work.totalSteps || work.progress < 100 {
-			logger.Infof("Work item %s: step %d / %d (%.2f %%)", key, work.step, work.totalSteps, work.progress)
+			logger.Info("Work item %s: step %d / %d (%.2f %%)", key, work.step, work.totalSteps, work.progress)
 		} else {
-			logger.Infof("Work item %s: done", key)
+			logger.Info("Work item %s: done", key)
 		}
 	}
 }

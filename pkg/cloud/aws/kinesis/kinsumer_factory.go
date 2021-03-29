@@ -22,7 +22,7 @@ type kinsumerLogger struct {
 }
 
 func (k kinsumerLogger) Log(format string, args ...interface{}) {
-	k.logger.Infof(format, args...)
+	k.logger.Info(format, args...)
 }
 
 type KinsumerSettings struct {

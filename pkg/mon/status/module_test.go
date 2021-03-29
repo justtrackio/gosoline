@@ -28,7 +28,7 @@ func TestModule(t *testing.T) {
 	cfn.GoWithContext(ctx, m.Run)
 
 	mgr.StartWork("test", 3).ReportDone()
-	logger.On("Infof", "Work item %s: done", "test").Run(func(args mock.Arguments) {
+	logger.On("Info", "Work item %s: done", "test").Run(func(args mock.Arguments) {
 		// we can cancel the context as soon as we know that we will be logging stuff
 		// if we do this too early, the module might get a choice between returning and printing logs,
 		// but at this point we are already printing

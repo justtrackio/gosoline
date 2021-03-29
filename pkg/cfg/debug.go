@@ -23,13 +23,13 @@ func DebugConfig(config Config, logger Logger) error {
 
 	for i, key := range keys {
 		hashValues[i] = fmt.Sprintf("%v=%v", key, flattened[key])
-		logger.Infof("cfg %s", hashValues[i])
+		logger.Info("cfg %s", hashValues[i])
 	}
 
 	hashString := strings.Join(hashValues, ";")
 	hashBytes := md5.Sum([]byte(hashString))
 
-	logger.Infof("cfg fingerprint: %x", hashBytes)
+	logger.Info("cfg fingerprint: %x", hashBytes)
 
 	return nil
 }

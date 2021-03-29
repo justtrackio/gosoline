@@ -86,7 +86,7 @@ func (d *redisFixtureWriter) Write(fs *FixtureSet) error {
 		}
 	}
 
-	d.logger.Infof("loaded %d redis fixtures", len(fs.Fixtures))
+	d.logger.Info("loaded %d redis fixtures", len(fs.Fixtures))
 
 	return nil
 }
