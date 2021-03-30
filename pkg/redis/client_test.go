@@ -155,6 +155,32 @@ func (s *ClientWithMiniRedisTestSuite) TestHMGet() {
 	s.Equal([]interface{}{nil, "1"}, vals, "there should be no error on HSet")
 }
 
+func (s *ClientWithMiniRedisTestSuite) TestHGetAll() {
+	err := s.client.HSet(context.Background(), "key", "field", "value1")
+	s.NoError(err, "there should be no error on HSet")
+	serr := s.client.HSet(context.Background(), "key", "field2", "value2")
+	s.NoError(serr, "there should be no error on HSet")
+
+	vals, err := s.client.HGetAll(context.Background(), "key")
+	s.NoError(err, "there should be no error on HGetAll")
+	s.Equal(map[string]string{"field": "value1", "field2": "value2"}, vals)
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestHDel() {
+	err := s.client.HSet(context.Background(), "key", "field", "value1")
+	s.NoError(err, "there should be no error on HSet")
+	serr := s.client.HSet(context.Background(), "key", "field2", "value2")
+	s.NoError(serr, "there should be no error on HSet")
+
+	vals, err := s.client.HDel(context.Background(), "key", "field2")
+	s.NoError(err, "there should be no error on HDel")
+	s.Equal(int64(1), vals)
+
+	valuesFromMap, err := s.client.HGetAll(context.Background(), "key")
+	s.NoError(err, "there should be no error on HGetAll")
+	s.Equal(map[string]string{"field": "value1"}, valuesFromMap)
+}
+
 func (s *ClientWithMiniRedisTestSuite) TestIncr() {
 	val, err := s.client.Incr(context.Background(), "key")
 	s.NoError(err, "there should be no error on Incr")
