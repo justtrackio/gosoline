@@ -2,6 +2,7 @@ package ddb
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
@@ -13,22 +14,25 @@ type GetItemBuilder interface {
 	WithHash(hashValue interface{}) GetItemBuilder
 	WithRange(rangeValue interface{}) GetItemBuilder
 	WithKeys(keys ...interface{}) GetItemBuilder
+	DisableTtlFilter() GetItemBuilder
 	WithProjection(rangeValue interface{}) GetItemBuilder
 	WithConsistentRead(consistentRead bool) GetItemBuilder
 	Build(result interface{}) (*dynamodb.GetItemInput, error)
 }
 
 type getItemBuilder struct {
+	filterBuilder
+
 	err            error
-	metadata       *Metadata
 	keyBuilder     keyBuilder
 	consistentRead *bool
 	projection     interface{}
 }
 
-func NewGetItemBuilder(metadata *Metadata) GetItemBuilder {
+func NewGetItemBuilder(metadata *Metadata, clock clock.Clock) GetItemBuilder {
 	return &getItemBuilder{
-		metadata: metadata,
+		filterBuilder: newFilterBuilder(metadata, clock),
+
 		keyBuilder: keyBuilder{
 			metadata: metadata.Main,
 		},
@@ -60,6 +64,12 @@ func (b *getItemBuilder) WithKeys(keys ...interface{}) GetItemBuilder {
 	}
 
 	b.WithRange(keys[1])
+
+	return b
+}
+
+func (b *getItemBuilder) DisableTtlFilter() GetItemBuilder {
+	b.disableTtlFilter = true
 
 	return b
 }

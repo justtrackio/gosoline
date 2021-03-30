@@ -2,6 +2,7 @@ package ddb
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
@@ -32,7 +33,6 @@ type scanBuilder struct {
 	filterBuilder
 
 	err            error
-	metadata       *Metadata
 	indexName      *string
 	selected       FieldAware
 	projection     interface{}
@@ -43,9 +43,10 @@ type scanBuilder struct {
 	consistentRead *bool
 }
 
-func NewScanBuilder(metadata *Metadata) ScanBuilder {
+func NewScanBuilder(metadata *Metadata, clock clock.Clock) ScanBuilder {
 	return &scanBuilder{
-		metadata: metadata,
+		filterBuilder: newFilterBuilder(metadata, clock),
+
 		selected: metadata.Main,
 	}
 }
@@ -146,7 +147,7 @@ func (b *scanBuilder) buildExpression(result interface{}) (expression.Expression
 	parameters := 0
 	exprBuilder := expression.NewBuilder()
 
-	if filter := b.buildFilterCondition(b.metadata); filter != nil {
+	if filter := b.buildFilterCondition(); filter != nil {
 		exprBuilder = exprBuilder.WithFilter(*filter)
 		parameters++
 	}

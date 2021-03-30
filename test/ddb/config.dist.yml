@@ -1,0 +1,14 @@
+env: test
+
+app_project: gosoline
+app_family: test
+app_name: ddb-test
+
+aws_sdk_retries: 1
+aws_dynamoDb_endpoint: http://localhost:4566
+aws_dynamoDb_autoCreate: false
+
+ddb:
+  backoff:
+    enabled: true
+    blocking: true

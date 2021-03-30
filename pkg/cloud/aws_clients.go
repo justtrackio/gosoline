@@ -59,7 +59,15 @@ type ClientSettings struct {
 	LogLevel    string        `cfg:"log_level" default:"off"`
 }
 
-func GetAwsConfig(config cfg.Config, logger mon.Logger, service string, settings *ClientSettings) *aws.Config {
+type Option = func(config *aws.Config)
+
+var defaultOptions []Option
+
+func WithDefaultOptions(options ...Option) {
+	defaultOptions = append(defaultOptions, options...)
+}
+
+func GetAwsConfig(config cfg.Config, logger mon.Logger, service string, settings *ClientSettings, optFns ...Option) *aws.Config {
 	srvCfgKey := fmt.Sprintf("aws_%s_endpoint", service)
 
 	endpoint := config.GetString(srvCfgKey)
@@ -71,7 +79,7 @@ func GetAwsConfig(config cfg.Config, logger mon.Logger, service string, settings
 		httpTimeout = settings.HttpTimeout
 	}
 
-	return &aws.Config{
+	awsCfg := &aws.Config{
 		CredentialsChainVerboseErrors: aws.Bool(true),
 		Region:                        aws.String(endpoints.EuCentral1RegionID),
 		Endpoint:                      aws.String(endpoint),
@@ -82,6 +90,12 @@ func GetAwsConfig(config cfg.Config, logger mon.Logger, service string, settings
 		Logger:   PrefixedLogger(logger, service),
 		LogLevel: aws.LogLevel(logLevel),
 	}
+
+	for _, optFn := range append(defaultOptions, optFns...) {
+		optFn(awsCfg)
+	}
+
+	return awsCfg
 }
 
 /* Configuration Template for AWS Clients */

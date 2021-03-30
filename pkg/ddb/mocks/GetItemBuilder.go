@@ -34,6 +34,22 @@ func (_m *GetItemBuilder) Build(result interface{}) (*dynamodb.GetItemInput, err
 	return r0, r1
 }
 
+// DisableTtlFilter provides a mock function with given fields:
+func (_m *GetItemBuilder) DisableTtlFilter() ddb.GetItemBuilder {
+	ret := _m.Called()
+
+	var r0 ddb.GetItemBuilder
+	if rf, ok := ret.Get(0).(func() ddb.GetItemBuilder); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.GetItemBuilder)
+		}
+	}
+
+	return r0
+}
+
 // WithConsistentRead provides a mock function with given fields: consistentRead
 func (_m *GetItemBuilder) WithConsistentRead(consistentRead bool) ddb.GetItemBuilder {
 	ret := _m.Called(consistentRead)

@@ -2,6 +2,7 @@ package ddb
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
@@ -52,7 +53,6 @@ type QueryBuilder interface {
 type queryBuilder struct {
 	filterBuilder
 
-	metadata  *Metadata
 	indexName *string
 	selected  FieldAware
 	err       error
@@ -66,9 +66,10 @@ type queryBuilder struct {
 	consistentRead   *bool
 }
 
-func NewQueryBuilder(metadata *Metadata) QueryBuilder {
+func NewQueryBuilder(metadata *Metadata, clock clock.Clock) QueryBuilder {
 	return &queryBuilder{
-		metadata: metadata,
+		filterBuilder: newFilterBuilder(metadata, clock),
+
 		selected: metadata.Main,
 	}
 }
@@ -256,7 +257,7 @@ func (b *queryBuilder) Build(result interface{}) (*QueryOperation, error) {
 
 	exprBuilder = exprBuilder.WithKeyCondition(keyCondition)
 
-	if filter := b.buildFilterCondition(b.metadata); filter != nil {
+	if filter := b.buildFilterCondition(); filter != nil {
 		exprBuilder = exprBuilder.WithFilter(*filter)
 	}
 
