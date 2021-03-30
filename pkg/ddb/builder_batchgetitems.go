@@ -2,6 +2,7 @@ package ddb
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
@@ -13,23 +14,26 @@ type BatchGetItemsBuilder interface {
 	WithKeys(values ...interface{}) BatchGetItemsBuilder
 	WithKeyPairs(pairs [][]interface{}) BatchGetItemsBuilder
 	WithHashKeys(hashKeys interface{}) BatchGetItemsBuilder
+	DisableTtlFilter() BatchGetItemsBuilder
 	WithProjection(projection interface{}) BatchGetItemsBuilder
 	WithConsistentRead(consistentRead bool) BatchGetItemsBuilder
 	Build(result interface{}) (*dynamodb.BatchGetItemInput, error)
 }
 
 type batchGetItemsBuilder struct {
+	filterBuilder
+
 	err            error
-	metadata       *Metadata
 	keyBuilder     keyBuilder
 	keyPairs       [][]interface{}
 	consistentRead *bool
 	projection     interface{}
 }
 
-func NewBatchGetItemsBuilder(metadata *Metadata) BatchGetItemsBuilder {
+func NewBatchGetItemsBuilder(metadata *Metadata, clock clock.Clock) BatchGetItemsBuilder {
 	return &batchGetItemsBuilder{
-		metadata: metadata,
+		filterBuilder: newFilterBuilder(metadata, clock),
+
 		keyBuilder: keyBuilder{
 			metadata: metadata.Main,
 		},
@@ -59,6 +63,12 @@ func (b *batchGetItemsBuilder) WithHashKeys(hashKeys interface{}) BatchGetItemsB
 	for _, hash := range slice {
 		b.WithKeys(hash)
 	}
+
+	return b
+}
+
+func (b *batchGetItemsBuilder) DisableTtlFilter() BatchGetItemsBuilder {
+	b.disableTtlFilter = true
 
 	return b
 }

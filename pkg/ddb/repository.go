@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -65,6 +66,7 @@ type repository struct {
 	tracer   tracing.Tracer
 	client   dynamodbiface.DynamoDBAPI
 	executor aws.Executor
+	clock    clock.Clock
 
 	keyBuilder keyBuilder
 	metadata   *Metadata
@@ -102,7 +104,7 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) (Re
 		return exec.ErrorTypeUnknown
 	})
 
-	svc := NewService(config, logger)
+	svc := NewServiceWithInterfaces(logger, client)
 	_, err := svc.CreateTable(settings)
 
 	if err != nil {
@@ -142,6 +144,7 @@ func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodb
 		keyBuilder: keyBuilder,
 		metadata:   metadata,
 		settings:   settings,
+		clock:      clock.Provider,
 	}, nil
 }
 
@@ -166,7 +169,7 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 		return nil, fmt.Errorf("can not build input for BatchGetItems operation on table %s: %w", r.metadata.TableName, err)
 	}
 
-	for {
+	for input.RequestItems != nil {
 		outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
 			return r.client.BatchGetItemRequest(input)
 		})
@@ -183,24 +186,61 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 			return nil, fmt.Errorf("could not execute BatchGetItems operation for table %s: %w", r.metadata.TableName, err)
 		}
 
-		out := outI.(*dynamodb.BatchGetItemOutput)
-		responses := out.Responses[r.metadata.TableName]
-		err = unmarshaller.Append(responses)
+		input.RequestItems, err = r.processBatchReadItemsResponse(qb, outI.(*dynamodb.BatchGetItemOutput), unmarshaller, result)
 
 		if err != nil {
-			return nil, fmt.Errorf("could not unmarshal items after BatchGetItems operation for table %s: %w", r.metadata.TableName, err)
+			return nil, err
 		}
-
-		result.ConsumedCapacity.addSlice(out.ConsumedCapacity)
-
-		if _, ok := out.UnprocessedKeys[r.metadata.TableName]; !ok {
-			break
-		}
-
-		input.RequestItems = out.UnprocessedKeys
 	}
 
 	return result, nil
+}
+
+func (r *repository) processBatchReadItemsResponse(qb BatchGetItemsBuilder, out *dynamodb.BatchGetItemOutput, unmarshaller *Unmarshaller, result *OperationResult) (map[string]*dynamodb.KeysAndAttributes, error) {
+	responses, err := r.filterResponses(qb, out.Responses[r.metadata.TableName])
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = unmarshaller.Append(responses)
+
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal items after BatchGetItems operation for table %s: %w", r.metadata.TableName, err)
+	}
+
+	result.ConsumedCapacity.addSlice(out.ConsumedCapacity)
+
+	if _, ok := out.UnprocessedKeys[r.metadata.TableName]; !ok {
+		return nil, nil
+	}
+
+	return out.UnprocessedKeys, nil
+}
+
+func (r *repository) filterResponses(qb BatchGetItemsBuilder, responses []map[string]*dynamodb.AttributeValue) ([]map[string]*dynamodb.AttributeValue, error) {
+	var ok bool
+	var filterer ttlFilterer
+
+	if filterer, ok = qb.(ttlFilterer); !ok {
+		return responses, nil
+	}
+
+	filteredResponses := make([]map[string]*dynamodb.AttributeValue, 0, len(responses))
+
+	for _, response := range responses {
+		keep, err := filterer.PerformFilterCondition(response)
+
+		if err != nil {
+			return nil, fmt.Errorf("could not perform filter condition for table %s: %w", r.metadata.TableName, err)
+		}
+
+		if keep {
+			filteredResponses = append(filteredResponses, response)
+		}
+	}
+
+	return filteredResponses, nil
 }
 
 func (r *repository) BatchPutItems(ctx context.Context, value interface{}) (*OperationResult, error) {
@@ -411,6 +451,18 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 
 	if out.Item == nil {
 		return result, nil
+	}
+
+	if ttlFilterer, ok := qb.(ttlFilterer); ok {
+		keep, err := ttlFilterer.PerformFilterCondition(out.Item)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if !keep {
+			return result, nil
+		}
 	}
 
 	result.IsFound = true
@@ -657,7 +709,7 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 }
 
 func (r *repository) BatchGetItemsBuilder() BatchGetItemsBuilder {
-	return NewBatchGetItemsBuilder(r.metadata)
+	return NewBatchGetItemsBuilder(r.metadata, r.clock)
 }
 
 func (r *repository) DeleteItemBuilder() DeleteItemBuilder {
@@ -665,7 +717,7 @@ func (r *repository) DeleteItemBuilder() DeleteItemBuilder {
 }
 
 func (r *repository) GetItemBuilder() GetItemBuilder {
-	return NewGetItemBuilder(r.metadata)
+	return NewGetItemBuilder(r.metadata, r.clock)
 }
 
 func (r *repository) PutItemBuilder() PutItemBuilder {
@@ -673,11 +725,11 @@ func (r *repository) PutItemBuilder() PutItemBuilder {
 }
 
 func (r *repository) QueryBuilder() QueryBuilder {
-	return NewQueryBuilder(r.metadata)
+	return NewQueryBuilder(r.metadata, r.clock)
 }
 
 func (r *repository) ScanBuilder() ScanBuilder {
-	return NewScanBuilder(r.metadata)
+	return NewScanBuilder(r.metadata, r.clock)
 }
 
 func (r *repository) UpdateItemBuilder() UpdateItemBuilder {

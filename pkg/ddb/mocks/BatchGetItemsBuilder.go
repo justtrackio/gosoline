@@ -34,6 +34,22 @@ func (_m *BatchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetIte
 	return r0, r1
 }
 
+// DisableTtlFilter provides a mock function with given fields:
+func (_m *BatchGetItemsBuilder) DisableTtlFilter() ddb.BatchGetItemsBuilder {
+	ret := _m.Called()
+
+	var r0 ddb.BatchGetItemsBuilder
+	if rf, ok := ret.Get(0).(func() ddb.BatchGetItemsBuilder); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ddb.BatchGetItemsBuilder)
+		}
+	}
+
+	return r0
+}
+
 // WithConsistentRead provides a mock function with given fields: consistentRead
 func (_m *BatchGetItemsBuilder) WithConsistentRead(consistentRead bool) ddb.BatchGetItemsBuilder {
 	ret := _m.Called(consistentRead)

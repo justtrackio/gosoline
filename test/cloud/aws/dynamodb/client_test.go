@@ -154,9 +154,9 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 	})
 
 	var expectedErr *gosoAws.ErrRetryMaxElapsedTimeExceeded
-	isErrRetryAttempsExceeded := errors.As(err, &expectedErr)
+	isErrRetryAttemptsExceeded := errors.As(err, &expectedErr)
 
-	s.True(isErrRetryAttempsExceeded)
+	s.True(isErrRetryAttemptsExceeded)
 	loggerMock.AssertExpectations(s.T())
 }
 
