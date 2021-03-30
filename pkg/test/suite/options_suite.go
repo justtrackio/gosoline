@@ -7,6 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/ipread"
 	"github.com/applike/gosoline/pkg/kernel"
+	"github.com/applike/gosoline/pkg/mdlsub"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/spf13/cast"
@@ -147,6 +148,12 @@ func WithSharedEnvironment() Option {
 	return func(s *suiteOptions) {
 		s.envIsShared = true
 	}
+}
+
+func WithSubscribers(transformerFactoryMap mdlsub.TransformerMapTypeVersionFactories) Option {
+	subs := mdlsub.NewSubscriberFactory(transformerFactoryMap)
+
+	return WithModuleFactory(subs)
 }
 
 func WithoutAutoDetectedComponents(components ...string) Option {
