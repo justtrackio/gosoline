@@ -3,11 +3,8 @@ package suite
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"strings"
@@ -26,10 +23,6 @@ type testCaseDefinition struct {
 var testCaseDefinitions = map[string]testCaseDefinition{}
 
 func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
-	cloud.WithDefaultOptions(func(config *aws.Config) {
-		config.Credentials = credentials.NewStaticCredentials("id", "secret", "token")
-	})
-
 	var err error
 	var testCases map[string]testCaseRunner
 	var suiteOptions = suiteApplyOptions(suite, extraOptions)

@@ -5,6 +5,7 @@ import (
 	toxiproxy "github.com/Shopify/toxiproxy/client"
 	"github.com/applike/gosoline/pkg/cfg"
 	awsExec "github.com/applike/gosoline/pkg/cloud/aws"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -43,9 +44,10 @@ func (c *DdbComponent) Endpoint() string {
 
 func (c *DdbComponent) Client() *dynamodb.DynamoDB {
 	sess := session.Must(session.NewSession(&aws.Config{
-		Endpoint:   aws.String(c.Endpoint()),
-		MaxRetries: aws.Int(0),
-		Region:     aws.String(endpoints.EuCentral1RegionID),
+		Endpoint:    aws.String(c.Endpoint()),
+		MaxRetries:  aws.Int(0),
+		Region:      aws.String(endpoints.EuCentral1RegionID),
+		Credentials: gosoAws.GetDefaultCredentials(),
 	}))
 
 	return dynamodb.New(sess)
