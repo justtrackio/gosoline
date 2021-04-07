@@ -1,0 +1,8 @@
+{
+  "attributes": {
+    "encoding": "application/json",
+    "goso.aggregate": true,
+    "modelId": "gosoline.stream-example.batch-publisher-example.examplePublisher"
+  },
+  "body": "[{\"attributes\":{\"encoding\":\"application/json\",\"modelId\":\"gosoline.stream-example.batch-publisher-example.examplePublisher\",\"type\":\"create\",\"version\":0},\"body\":\"{\\\"greeting\\\":\\\"hello from iteration 5\\\"}\"},{\"attributes\":{\"encoding\":\"application/json\",\"modelId\":\"gosoline.stream-example.batch-publisher-example.examplePublisher\",\"type\":\"create\",\"version\":0},\"body\":\"{\\\"greeting\\\":\\\"hello from iteration 6\\\"}\"},{\"attributes\":{\"encoding\":\"application/json\",\"modelId\":\"gosoline.stream-example.batch-publisher-example.examplePublisher\",\"type\":\"create\",\"version\":0},\"body\":\"{\\\"greeting\\\":\\\"hello from iteration 7\\\"}\"},{\"attributes\":{\"encoding\":\"application/json\",\"modelId\":\"gosoline.stream-example.batch-publisher-example.examplePublisher\",\"type\":\"create\",\"version\":0},\"body\":\"{\\\"greeting\\\":\\\"hello from iteration 8\\\"}\"},{\"attributes\":{\"encoding\":\"application/json\",\"modelId\":\"gosoline.stream-example.batch-publisher-example.examplePublisher\",\"type\":\"create\",\"version\":0},\"body\":\"{\\\"greeting\\\":\\\"hello from iteration 9\\\"}\"}]"
+}
