@@ -15,11 +15,11 @@ const (
 	TypeRedis    = "redis"
 )
 
-type ChainConfiguration struct {
+type Configuration struct {
 	Project             string                `cfg:"project"`
 	Family              string                `cfg:"family"`
 	Application         string                `cfg:"application"`
-	Type                string                `cfg:"type" default:"chain" validate:"eq=chain"`
+	Type                string                `cfg:"type" default:"chain" validate:"oneof=chain redis ddb inMemory"`
 	Elements            []string              `cfg:"elements" validate:"min=1"`
 	Ttl                 time.Duration         `cfg:"ttl"`
 	BatchSize           int                   `cfg:"batch_size" default:"100" validate:"min=1"`
@@ -44,36 +44,21 @@ func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) (
 	switch t {
 	case TypeChain:
 		return newKvStoreChainFromConfig(config, logger, name)
+	case TypeDdb:
+		return newKvStoreDdbFromConfig(config, logger, name)
+	case TypeRedis:
+		return newKvStoreRedisFromConfig(config, logger, name)
+	case TypeInMemory:
+		return newKvStoreInMemoryFromConfig(config, logger, name)
 	}
 
 	return nil, fmt.Errorf("invalid kvstore %s of type %s", name, t)
 }
 
 func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string) (KvStore, error) {
-	key := GetConfigurableKey(name)
+	configuration, settings := getConfiguration(config, name)
 
-	configuration := ChainConfiguration{}
-	config.UnmarshalKey(key, &configuration)
-
-	store, err := NewChainKvStore(config, logger, configuration.MissingCacheEnabled, &Settings{
-		AppId: cfg.AppId{
-			Project:     configuration.Project,
-			Family:      configuration.Family,
-			Application: configuration.Application,
-		},
-		Name:           name,
-		Ttl:            configuration.Ttl,
-		BatchSize:      configuration.BatchSize,
-		MetricsEnabled: configuration.MetricsEnabled,
-		InMemorySettings: InMemorySettings{
-			MaxSize:        configuration.InMemory.MaxSize,
-			Buckets:        configuration.InMemory.Buckets,
-			ItemsToPrune:   configuration.InMemory.ItemsToPrune,
-			DeleteBuffer:   configuration.InMemory.DeleteBuffer,
-			PromoteBuffer:  configuration.InMemory.PromoteBuffer,
-			GetsPerPromote: configuration.InMemory.GetsPerPromote,
-		},
-	})
+	store, err := NewChainKvStore(config, logger, configuration.MissingCacheEnabled, settings)
 	if err != nil {
 		return nil, fmt.Errorf("can not create chain store: %w", err)
 	}
@@ -99,6 +84,66 @@ func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string
 	}
 
 	return store, nil
+}
+
+func newKvStoreDdbFromConfig(config cfg.Config, logger mon.Logger, name string) (KvStore, error) {
+	_, settings := getConfiguration(config, name)
+
+	store, err := NewDdbKvStore(config, logger, settings)
+	if err != nil {
+		return nil, fmt.Errorf("can not create ddb store: %w", err)
+	}
+
+	return store, nil
+}
+
+func newKvStoreRedisFromConfig(config cfg.Config, logger mon.Logger, name string) (KvStore, error) {
+	_, settings := getConfiguration(config, name)
+
+	store, err := NewRedisKvStore(config, logger, settings)
+	if err != nil {
+		return nil, fmt.Errorf("can not create ddb store: %w", err)
+	}
+
+	return store, nil
+}
+
+func newKvStoreInMemoryFromConfig(config cfg.Config, logger mon.Logger, name string) (KvStore, error) {
+	_, settings := getConfiguration(config, name)
+
+	store, err := NewInMemoryKvStore(config, logger, settings)
+	if err != nil {
+		return nil, fmt.Errorf("can not create ddb store: %w", err)
+	}
+
+	return store, nil
+}
+
+func getConfiguration(config cfg.Config, name string) (Configuration, *Settings) {
+	key := GetConfigurableKey(name)
+
+	configuration := Configuration{}
+	config.UnmarshalKey(key, &configuration)
+
+	return configuration, &Settings{
+		AppId: cfg.AppId{
+			Project:     configuration.Project,
+			Family:      configuration.Family,
+			Application: configuration.Application,
+		},
+		Name:           name,
+		Ttl:            configuration.Ttl,
+		BatchSize:      configuration.BatchSize,
+		MetricsEnabled: configuration.MetricsEnabled,
+		InMemorySettings: InMemorySettings{
+			MaxSize:        configuration.InMemory.MaxSize,
+			Buckets:        configuration.InMemory.Buckets,
+			ItemsToPrune:   configuration.InMemory.ItemsToPrune,
+			DeleteBuffer:   configuration.InMemory.DeleteBuffer,
+			PromoteBuffer:  configuration.InMemory.PromoteBuffer,
+			GetsPerPromote: configuration.InMemory.GetsPerPromote,
+		},
+	}
 }
 
 func GetConfigurableKey(name string) string {
