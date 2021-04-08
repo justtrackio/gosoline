@@ -2,6 +2,7 @@ package suite
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
@@ -87,6 +88,7 @@ func suiteApplyOptions(suite TestingSuite, extraOptions []Option) *suiteOptions 
 
 func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, testCases map[string]testCaseRunner) {
 	envOptions := []env.Option{
+		env.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		env.WithLoggerSettingsFromConfig,
 	}
 	envOptions = append(envOptions, suiteOptions.envOptions...)
