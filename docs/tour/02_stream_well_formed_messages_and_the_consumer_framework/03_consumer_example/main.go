@@ -11,9 +11,7 @@ import (
 )
 
 func main() {
-	app := application.Default()
-	app.Add("consumer-module", stream.NewConsumer("consumerExample", NewConsumerCallback))
-	app.Run()
+	application.RunConsumer(NewConsumerCallback)
 }
 
 func NewConsumerCallback(_ context.Context, _ cfg.Config, logger mon.Logger) (stream.ConsumerCallback, error) {

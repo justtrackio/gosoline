@@ -238,3 +238,5 @@ stream:
 ```
 
 When we now `go run` the application, we see how we consume messages at an increasingly slower rate (as messages grow larger) until after the 10th message our application shuts down again.
+This concludes the first overview of inputs and outputs.
+[Next](../02_stream_well_formed_messages_and_the_consumer_framework/index.md) time we will take a look on the first abstractions around inputs and outputs and how we can make use of it to build distributed applications.

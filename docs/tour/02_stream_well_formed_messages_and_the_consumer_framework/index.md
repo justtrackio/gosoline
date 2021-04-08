@@ -203,7 +203,7 @@ Gosoline then uses those when receiving the message to decompress it before it c
 Publishing messages helps us a lot more when we can consume them at some other part again.
 Gosoline can abstract most of the process of consuming for us.
 That includes fetching messages from time to time, parsing them into some structure for us, and acknowledging a message once we processed it successfully.
-We only have to provide `stream.NewConsumer` it with a `stream.ConsumerCallback` and a name for our consumer and we get back a module we can add to our application to consume messages:
+Gosoline provides a special application type for consumers, so we can use `application.RunConsumer` with a `stream.ConsumerCallback`:
 
 [//]: # (03_consumer_example/main.go)
 
@@ -221,9 +221,7 @@ import (
 )
 
 func main() {
-	app := application.Default()
-	app.Add("consumer-module", stream.NewConsumer("consumerExample", NewConsumerCallback))
-	app.Run()
+	application.RunConsumer(NewConsumerCallback)
 }
 
 func NewConsumerCallback(_ context.Context, _ cfg.Config, logger mon.Logger) (stream.ConsumerCallback, error) {
@@ -351,7 +349,7 @@ app_name: consumer-example
 
 stream:
   consumer:
-    consumerExample:
+    default:
       input: exampleInput
       runner_count: 1
   input:
@@ -361,8 +359,11 @@ stream:
 ```
 
 Not much interesting stuff is happening here.
-We define a consumer matching the name we initially gave it in our `main` method.
+We define a consumer called `default` (the name given to it by `application.RunConsumer`).
 We name the input of the consumer and give it a definition.
 We also define the `runner_count` for the consumer.
 Each runner is a go routine which is calling `GetModel` and `Consume`, so if you declare a `runner_cout` of 5, up to 5 runners can call `Consume` at the same time (so it better be thread safe).
 Having only a single runner therefore is the simplest configuration, but it might make it easier to decide how many instances of your service you need to run.
+
+This concludes the overview of producers and consumers.
+[Next](../03_stream_message_attributes_subscribers_and_the_producer_daemon/index.md) time we will look at another abstraction on top of producers as well as a specialized kind of consumer - the subscriber. 

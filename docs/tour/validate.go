@@ -123,6 +123,10 @@ func parseText(lines []string) map[string]string {
 
 		if inCodeBlock {
 			for _, currentFile := range currentFiles {
+				if currentFile == "-" {
+					continue
+				}
+
 				if acc, ok := result[currentFile]; ok {
 					result[currentFile] = acc + "\n" + line
 				} else {

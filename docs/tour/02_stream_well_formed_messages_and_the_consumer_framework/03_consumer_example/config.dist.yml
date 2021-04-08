@@ -6,7 +6,7 @@ app_name: consumer-example
 
 stream:
   consumer:
-    consumerExample:
+    default:
       input: exampleInput
       runner_count: 1
   input:

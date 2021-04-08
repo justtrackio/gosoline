@@ -19,6 +19,15 @@ var transformers mdlsub.TransformerMapTypeVersionFactories = map[string]mdlsub.T
 	},
 }
 
+type recordTransformer struct {
+}
+
+func NewRecordTransformer() *recordTransformer {
+	go provideFakeData()
+
+	return &recordTransformer{}
+}
+
 type RecordInputV0 struct {
 	Id         string    `json:"id"`
 	OrderDate  time.Time `json:"orderDate"`
@@ -34,13 +43,21 @@ func (r *Record) GetId() interface{} {
 	return r.Id
 }
 
-type recordTransformer struct {
+func (r recordTransformer) GetInput() interface{} {
+	return &RecordInputV0{}
 }
 
-func NewRecordTransformer() *recordTransformer {
-	go provideFakeData()
+func (r recordTransformer) Transform(_ context.Context, inp interface{}) (mdlsub.Model, error) {
+	input := inp.(*RecordInputV0)
 
-	return &recordTransformer{}
+	if input.CustomerId%2 == 0 {
+		return nil, nil
+	}
+
+	return &Record{
+		Id:        input.Id,
+		OrderDate: input.OrderDate,
+	}, nil
 }
 
 func provideFakeData() {
@@ -79,21 +96,4 @@ func provideFakeData() {
 	input.Publish(stream.NewJsonMessage(msg3, attributes))
 
 	input.Stop()
-}
-
-func (r recordTransformer) GetInput() interface{} {
-	return &RecordInputV0{}
-}
-
-func (r recordTransformer) Transform(_ context.Context, inp interface{}) (mdlsub.Model, error) {
-	input := inp.(*RecordInputV0)
-
-	if input.CustomerId%2 == 0 {
-		return nil, nil
-	}
-
-	return &Record{
-		Id:        input.Id,
-		OrderDate: input.OrderDate,
-	}, nil
 }
