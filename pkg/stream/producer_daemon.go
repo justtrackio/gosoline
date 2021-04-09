@@ -45,7 +45,7 @@ type ProducerDaemon struct {
 	metric        mon.MetricWriter
 	aggregate     []WritableMessage
 	batch         []WritableMessage
-	outCh         chan []WritableMessage
+	outCh         OutputChannel
 	output        Output
 	tickerFactory clock.TickerFactory
 	ticker        clock.Ticker
@@ -87,7 +87,7 @@ func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*Prod
 		logger:        logger,
 		metric:        metric,
 		batch:         make([]WritableMessage, 0, settings.Daemon.BatchSize),
-		outCh:         make(chan []WritableMessage, settings.Daemon.BufferSize),
+		outCh:         NewOutputChannel(logger, settings.Daemon.BufferSize),
 		output:        output,
 		tickerFactory: clock.NewRealTicker,
 		marshaller:    MarshalJsonMessage,
@@ -101,7 +101,7 @@ func NewProducerDaemonWithInterfaces(logger mon.Logger, metric mon.MetricWriter,
 		logger:        logger,
 		metric:        metric,
 		batch:         make([]WritableMessage, 0, settings.BatchSize),
-		outCh:         make(chan []WritableMessage, settings.BufferSize),
+		outCh:         NewOutputChannel(logger, settings.BufferSize),
 		output:        output,
 		tickerFactory: tickerFactory,
 		marshaller:    marshaller,
@@ -239,7 +239,7 @@ func (d *ProducerDaemon) flushBatch() {
 	var readyBatch []WritableMessage
 	readyBatch, d.batch = d.batch[:size], d.batch[size:]
 
-	d.outCh <- readyBatch
+	d.outCh.Write(readyBatch)
 }
 
 func (d *ProducerDaemon) flushAll() error {
@@ -259,7 +259,7 @@ func (d *ProducerDaemon) flushAll() error {
 func (d *ProducerDaemon) close() error {
 	d.lck.Lock()
 	defer d.lck.Unlock()
-	defer close(d.outCh)
+	defer d.outCh.Close()
 
 	if err := d.flushAll(); err != nil {
 		return fmt.Errorf("can not flush all messages: %w", err)
@@ -271,7 +271,7 @@ func (d *ProducerDaemon) close() error {
 func (d *ProducerDaemon) outputLoop(ctx context.Context) error {
 	for {
 		start := time.Now()
-		batch, ok := <-d.outCh
+		batch, ok := d.outCh.Read()
 		idleDuration := time.Since(start)
 
 		if !ok {
