@@ -328,6 +328,24 @@ func (s *ProducerDaemonTestSuite) TestWriteWithCanceledError() {
 	s.output.AssertExpectations(s.T())
 }
 
+func (s *ProducerDaemonTestSuite) TestWriteAfterClose() {
+	s.SetupDaemon(mon.Warn, 1, 2, time.Hour, stream.MarshalJsonMessage)
+
+	messages := []stream.WritableMessage{
+		&stream.Message{Body: "1"},
+		&stream.Message{Body: "2"},
+	}
+
+	err := s.stop()
+
+	s.NoError(err)
+
+	err = s.daemon.Write(context.Background(), messages)
+	s.NoError(err, "there should be no error on write")
+
+	s.output.AssertExpectations(s.T())
+}
+
 func TestProducerDaemonTestSuite(t *testing.T) {
 	suite.Run(t, new(ProducerDaemonTestSuite))
 }
