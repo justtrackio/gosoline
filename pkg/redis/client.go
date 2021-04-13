@@ -24,34 +24,36 @@ func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
 
 //go:generate mockery -name Client
 type Client interface {
+	Del(ctx context.Context, keys ...string) (int64, error)
+	DBSize(ctx context.Context) (int64, error)
 	Exists(ctx context.Context, keys ...string) (int64, error)
 	Expire(ctx context.Context, key string, ttl time.Duration) (bool, error)
 	FlushDB(ctx context.Context) (string, error)
-	DBSize(ctx context.Context) (int64, error)
-	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
-	SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error)
-	MSet(ctx context.Context, pairs ...interface{}) error
 	Get(ctx context.Context, key string) (string, error)
 	MGet(ctx context.Context, keys ...string) ([]interface{}, error)
-	Del(ctx context.Context, keys ...string) (int64, error)
+	MSet(ctx context.Context, pairs ...interface{}) error
+	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+	SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error)
 
 	BLPop(ctx context.Context, timeout time.Duration, keys ...string) ([]string, error)
 	LPop(ctx context.Context, key string) (string, error)
 	LLen(ctx context.Context, key string) (int64, error)
 	RPush(ctx context.Context, key string, values ...interface{}) (int64, error)
 
+	HDel(ctx context.Context, key string, fields ...string) (int64, error)
 	HExists(ctx context.Context, key string, field string) (bool, error)
-	HKeys(ctx context.Context, key string) ([]string, error)
 	HGet(ctx context.Context, key string, field string) (string, error)
-	HSet(ctx context.Context, key string, field string, value interface{}) error
+	HGetAll(ctx context.Context, key string) (map[string]string, error)
+	HKeys(ctx context.Context, key string) ([]string, error)
 	HMGet(ctx context.Context, key string, fields ...string) ([]interface{}, error)
 	HMSet(ctx context.Context, key string, pairs map[string]interface{}) error
+	HSet(ctx context.Context, key string, field string, value interface{}) error
 	HSetNX(ctx context.Context, key string, field string, value interface{}) (bool, error)
 
-	Incr(ctx context.Context, key string) (int64, error)
-	IncrBy(ctx context.Context, key string, amount int64) (int64, error)
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, amount int64) (int64, error)
+	Incr(ctx context.Context, key string) (int64, error)
+	IncrBy(ctx context.Context, key string, amount int64) (int64, error)
 
 	IsAlive(ctx context.Context) bool
 
@@ -257,6 +259,22 @@ func (c *redisClient) HSet(ctx context.Context, key, field string, value interfa
 	})
 
 	return err
+}
+
+func (c *redisClient) HDel(ctx context.Context, key string, fields ...string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.HDel(ctx, key, fields...)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) HGetAll(ctx context.Context, key string) (map[string]string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.HGetAll(ctx, key)
+	})
+
+	return cmd.(*baseRedis.StringStringMapCmd).Val(), err
 }
 
 func (c *redisClient) HSetNX(ctx context.Context, key, field string, value interface{}) (bool, error) {
