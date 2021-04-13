@@ -1,3 +1,7 @@
+terraform {
+  experiments = [module_variable_optional_attrs]
+}
+
 variable "project" {}
 variable "environment" {}
 variable "family" {}
@@ -35,8 +39,9 @@ variable "period" {
 
 variable "consumers" {
   type = set(object({
-    name     = string,
-    queue_id = string
+    application = optional(string),
+    name        = string,
+    queue_id    = string
   }))
   default     = null
   description = "List of consumer/queue_id pairs"

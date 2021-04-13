@@ -10,6 +10,12 @@ variable "environment" {
   description = "Environment, e.g. 'uw2', 'us-west-2', OR 'prod', 'staging', 'dev', 'UAT'"
 }
 
+variable "environment_short" {
+  type        = string
+  default     = ""
+  description = "Environment, e.g. 'uw2', 'us-west-2', OR 'prod', 'staging', 'dev', 'UAT' used for loadbalancers"
+}
+
 variable "family" {
   type        = string
   default     = ""
