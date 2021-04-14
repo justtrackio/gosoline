@@ -59,7 +59,7 @@ func (m inputModule) Run(ctx context.Context) error {
 		consumed := 0
 
 		for item := range m.input.Data() {
-			logger.Infof("received new message, processing it: %s", item.Body)
+			logger.Info("received new message, processing it: %s", item.Body)
 
 			// fake some work...
 			time.Sleep(time.Millisecond * 100 * time.Duration(len(item.Body)))

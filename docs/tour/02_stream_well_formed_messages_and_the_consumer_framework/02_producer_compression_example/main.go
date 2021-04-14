@@ -62,14 +62,14 @@ func (m producerModule) Run(ctx context.Context) error {
 		return err
 	}
 
-	m.logger.WithContext(ctx).Infof("publishing a message with more than %d characters", len(greeting))
+	m.logger.WithContext(ctx).Info("publishing a message with more than %d characters", len(greeting))
 
 	defer func() {
 		output := stream.ProvideInMemoryOutput("exampleProducer")
 		msg, ok := output.Get(0)
 
 		if ok {
-			m.logger.WithContext(ctx).Infof("published message with encoded body length of %d characters, attributes %v", len(msg.Body), msg.Attributes)
+			m.logger.WithContext(ctx).Info("published message with encoded body length of %d characters, attributes %v", len(msg.Body), msg.Attributes)
 		}
 	}()
 

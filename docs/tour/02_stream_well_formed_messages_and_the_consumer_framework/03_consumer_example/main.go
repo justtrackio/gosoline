@@ -87,7 +87,7 @@ func (c consumerCallback) GetModel(attributes map[string]interface{}) interface{
 func (c consumerCallback) Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error) {
 	switch cmd := model.(type) {
 	case *PrintCommand:
-		c.logger.WithContext(ctx).Infof("printing message: %s", cmd.Message)
+		c.logger.WithContext(ctx).Info("printing message: %s", cmd.Message)
 
 		return true, nil
 	case *WaitCommand:

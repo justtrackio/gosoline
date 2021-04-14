@@ -174,14 +174,14 @@ func (m producerModule) Run(ctx context.Context) error {
 		return err
 	}
 
-	m.logger.WithContext(ctx).Infof("publishing a message with more than %d characters", len(greeting))
+	m.logger.WithContext(ctx).Info("publishing a message with more than %d characters", len(greeting))
 
 	defer func() {
 		output := stream.ProvideInMemoryOutput("exampleProducer")
 		msg, ok := output.Get(0)
 
 		if ok {
-			m.logger.WithContext(ctx).Infof("published message with encoded body length of %d characters, attributes %v", len(msg.Body), msg.Attributes)
+			m.logger.WithContext(ctx).Info("published message with encoded body length of %d characters, attributes %v", len(msg.Body), msg.Attributes)
 		}
 	}()
 
@@ -323,7 +323,7 @@ Note that you can still acknowledge messages even in the case of failure (if you
 func (c consumerCallback) Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error) {
 	switch cmd := model.(type) {
 	case *PrintCommand:
-		c.logger.WithContext(ctx).Infof("printing message: %s", cmd.Message)
+		c.logger.WithContext(ctx).Info("printing message: %s", cmd.Message)
 
 		return true, nil
 	case *WaitCommand:
