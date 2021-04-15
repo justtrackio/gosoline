@@ -113,6 +113,11 @@ module "eks" {
       username = "jan"
       groups   = ["system:masters"]
     },
+    {
+      userarn  = "arn:aws:iam::164105964448:user/struss"
+      username = "struss"
+      groups   = ["system:masters"]
+    },
   ]
 
   worker_additional_security_group_ids = [aws_security_group.all_worker_mgmt.id]
