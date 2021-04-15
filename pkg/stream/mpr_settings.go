@@ -9,6 +9,7 @@ type MessagesPerRunnerMetricSettings struct {
 	Enabled            bool          `cfg:"enabled"`
 	LeaderElection     string        `cfg:"leader_election" default:"streamMprMetrics"`
 	Period             time.Duration `cfg:"period" default:"1m"`
+	TargetValue        float64       `cfg:"target_value" default:"0"`
 	MaxIncreasePercent float64       `cfg:"max_increase_percent" default:"200"`
 	MaxIncreasePeriod  time.Duration `cfg:"max_increase_period" default:"5m"`
 }

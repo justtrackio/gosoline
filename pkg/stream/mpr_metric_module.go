@@ -22,6 +22,7 @@ const (
 type MessagesPerRunnerMetricWriterSettings struct {
 	QueueNames         []string
 	UpdatePeriod       time.Duration
+	TargetValue        float64
 	MaxIncreasePercent float64
 	MaxIncreasePeriod  time.Duration
 	AppId              cfg.AppId
@@ -70,6 +71,7 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 		writerSettings := &MessagesPerRunnerMetricWriterSettings{
 			QueueNames:         queueNames,
 			UpdatePeriod:       settings.Period,
+			TargetValue:        settings.TargetValue,
 			MaxIncreasePercent: settings.MaxIncreasePercent,
 			MaxIncreasePeriod:  settings.MaxIncreasePeriod,
 			AppId:              cfg.AppId{},
@@ -186,7 +188,11 @@ func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner() (float64, e
 		currentMpr = newMpr
 	}
 
-	maxMpr = (currentMpr * (u.settings.MaxIncreasePercent / 100))
+	maxMpr = currentMpr * (u.settings.MaxIncreasePercent / 100)
+
+	if currentMpr < u.settings.TargetValue {
+		maxMpr = u.settings.TargetValue * (u.settings.MaxIncreasePercent / 100)
+	}
 
 	if newMpr > maxMpr {
 		u.logger.Warnf("newMpr of %f is higher than configured maxMpr of %f: falling back to max", newMpr, maxMpr)
@@ -258,7 +264,7 @@ func (u *MessagesPerRunnerMetricWriter) getStreamMprMetric(name string, stat str
 	appId := u.settings.AppId
 	namespace := fmt.Sprintf("%s/%s/%s/%s", appId.Project, appId.Environment, appId.Family, appId.Application)
 
-	startTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod * 5)
+	startTime := u.clock.Now().Add(-1 * period)
 	endTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod)
 	periodSeconds := int64(u.settings.UpdatePeriod.Seconds())
 
@@ -305,9 +311,9 @@ func (u *MessagesPerRunnerMetricWriter) getEcsMetric(name string, stat string, p
 	appId := u.settings.AppId
 	clusterName := fmt.Sprintf("%s-%s-%s", appId.Project, appId.Environment, appId.Family)
 
-	startTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod * 5)
-	endTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod)
-	periodSeconds := int64(u.settings.UpdatePeriod.Seconds())
+	startTime := u.clock.Now().Add(-1 * period * 5)
+	endTime := u.clock.Now().Add(-1 * period)
+	periodSeconds := int64(period.Seconds())
 
 	input := &cloudwatch.GetMetricDataInput{
 		StartTime: aws.Time(startTime),
