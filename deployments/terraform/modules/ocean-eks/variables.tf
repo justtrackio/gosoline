@@ -115,3 +115,13 @@ variable "private_subnet_ids" {
   type        = list(string)
   default     = []
 }
+
+variable "map_users" {
+  type = list(object({
+    userarn  = string
+    username = string
+    groups   = list(string)
+  }))
+  description = "Additional IAM users to add to the aws-auth configmap. See examples/basic/variables.tf for example format"
+  default     = []
+}

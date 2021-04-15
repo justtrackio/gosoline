@@ -7,7 +7,7 @@ data "template_file" "default" {
 }
 
 resource "spotinst_ocean_aws_launch_spec" "default" {
-  name                 = "historical"
+  name                 = "nvme"
   ocean_id             = spotinst_ocean_aws.this.id
   image_id             = local.ami_id
   iam_instance_profile = aws_iam_instance_profile.workers.arn
@@ -18,8 +18,8 @@ resource "spotinst_ocean_aws_launch_spec" "default" {
   user_data = data.template_file.default.rendered
 
   labels {
-    key   = "historical"
-    value = "true"
+    key   = "spotinst.io/virtual-node-group"
+    value = "nvme"
   }
 
   tags {

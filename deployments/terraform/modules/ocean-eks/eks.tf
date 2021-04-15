@@ -102,18 +102,7 @@ module "eks" {
     },
   ]
 
-  map_users = [
-    {
-      userarn  = "arn:aws:iam::164105964448:user/marco"
-      username = "marco"
-      groups   = ["system:masters"]
-    },
-    {
-      userarn  = "arn:aws:iam::164105964448:user/jan"
-      username = "jan"
-      groups   = ["system:masters"]
-    },
-  ]
+  map_users = var.map_users
 
   worker_additional_security_group_ids = [aws_security_group.all_worker_mgmt.id]
 }
