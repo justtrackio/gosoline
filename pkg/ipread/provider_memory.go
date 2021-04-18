@@ -10,6 +10,7 @@ import (
 type MemoryRecord struct {
 	CountryIso string `cfg:"country_iso"`
 	CityName   string `cfg:"city_name"`
+	TimeZone   string `cfg:"time_zone"`
 }
 
 type memoryProvider struct {
@@ -44,14 +45,14 @@ func (p memoryProvider) City(ipAddress net.IP) (*geoip2.City, error) {
 	return p.records[ipString], nil
 }
 
-func (p memoryProvider) AddRecord(ipString string, countryIso string, cityName string) {
+func (p memoryProvider) AddRecord(ipString string, record MemoryRecord) {
 	p.records[ipString] = &geoip2.City{
 		City: struct {
 			GeoNameID uint              `maxminddb:"geoname_id"`
 			Names     map[string]string `maxminddb:"names"`
 		}{
 			Names: map[string]string{
-				"en": cityName,
+				"en": record.CityName,
 			},
 		},
 		Country: struct {
@@ -60,7 +61,16 @@ func (p memoryProvider) AddRecord(ipString string, countryIso string, cityName s
 			IsoCode           string            `maxminddb:"iso_code"`
 			Names             map[string]string `maxminddb:"names"`
 		}{
-			IsoCode: countryIso,
+			IsoCode: record.CountryIso,
+		},
+		Location: struct {
+			AccuracyRadius uint16  `maxminddb:"accuracy_radius"`
+			Latitude       float64 `maxminddb:"latitude"`
+			Longitude      float64 `maxminddb:"longitude"`
+			MetroCode      uint    `maxminddb:"metro_code"`
+			TimeZone       string  `maxminddb:"time_zone"`
+		}{
+			TimeZone: record.TimeZone,
 		},
 	}
 }

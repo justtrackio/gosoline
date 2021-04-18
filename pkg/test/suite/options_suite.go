@@ -123,7 +123,7 @@ func WithIpReadFromMemory(name string, records map[string]ipread.MemoryRecord) O
 	provider := ipread.ProvideMemoryProvider(name)
 
 	for ip, record := range records {
-		provider.AddRecord(ip, record.CountryIso, record.CityName)
+		provider.AddRecord(ip, record)
 	}
 
 	return func(s *suiteOptions) {

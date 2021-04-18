@@ -17,6 +17,7 @@ type GeoCity struct {
 	City        string `json:"city"`
 	CountryCode string `json:"countryCode"`
 	Ip          string `json:"ip"`
+	TimeZone    string `json:"timeZone"`
 }
 
 type ReaderSettings struct {
@@ -74,5 +75,6 @@ func (r reader) City(ipString string) (*GeoCity, error) {
 		Ip:          ipString,
 		CountryCode: record.Country.IsoCode,
 		City:        record.City.Names["en"],
+		TimeZone:    record.Location.TimeZone,
 	}, nil
 }
