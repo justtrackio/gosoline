@@ -5,9 +5,13 @@ import (
 	"sync"
 )
 
+var inMemoryInputsLock sync.Mutex
 var inMemoryInputs = make(map[string]*InMemoryInput)
 
 func ResetInMemoryInputs() {
+	inMemoryInputsLock.Lock()
+	defer inMemoryInputsLock.Unlock()
+
 	for _, inp := range inMemoryInputs {
 		inp.Reset()
 	}
@@ -25,6 +29,9 @@ type InMemoryInput struct {
 }
 
 func ProvideInMemoryInput(name string, settings *InMemorySettings) *InMemoryInput {
+	inMemoryInputsLock.Lock()
+	defer inMemoryInputsLock.Unlock()
+
 	if input, ok := inMemoryInputs[name]; ok {
 		return input
 	}

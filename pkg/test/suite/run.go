@@ -135,6 +135,8 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		}
 
 		stream.ResetInMemoryInputs()
+		stream.ResetInMemoryOutputs()
+		stream.ResetProducerDaemons()
 	}
 }
 
