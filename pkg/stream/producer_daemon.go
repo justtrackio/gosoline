@@ -53,6 +53,13 @@ type ProducerDaemon struct {
 	settings      ProducerDaemonSettings
 }
 
+func ResetProducerDaemons() {
+	producerDaemonLock.Lock()
+	defer producerDaemonLock.Unlock()
+
+	producerDaemons = map[string]*ProducerDaemon{}
+}
+
 func ProvideProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*ProducerDaemon, error) {
 	producerDaemonLock.Lock()
 	defer producerDaemonLock.Unlock()
