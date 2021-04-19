@@ -22,6 +22,12 @@ resource "spotinst_ocean_aws_launch_spec" "default" {
     value = "nvme"
   }
 
+  taints {
+    key    = "spotinst.io/virtual-node-group"
+    value  = "nvme"
+    effect = "NoSchedule"
+  }
+
   tags {
     key   = "Name"
     value = "${module.application_label.id}-node"
