@@ -27,7 +27,7 @@ resource "spotinst_ocean_aws" "this" {
   user_data = <<-EOF
     #!/bin/bash
     set -o xtrace
-    /etc/eks/bootstrap.sh --kubelet-extra-args --node-labels=spotinst.io/virtual-node-group=default ${module.default_label.id}
+    /etc/eks/bootstrap.sh ${module.default_label.id}
 EOF
 
   tags {
@@ -62,8 +62,8 @@ EOF
 }
 
 module "ocean_controller" {
-  source            = "spotinst/ocean-controller/spotinst"
-  module_depends_on = [module.eks] # maintains backward compatibility with terraform v0.12
+  source     = "spotinst/ocean-controller/spotinst"
+  depends_on = [module.eks]
 
   # Credentials.
   spotinst_token   = var.spotinst_token
