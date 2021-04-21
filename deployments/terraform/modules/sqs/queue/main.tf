@@ -18,29 +18,6 @@ resource "aws_sqs_queue" "main" {
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "number-of-visible-messages" {
-  alarm_name = "${var.family}-${var.application}-${var.queueName}-number-of-visible-messages"
-  count      = var.environment == "prod" ? 1 : 0
-
-  namespace   = "AWS/SQS"
-  metric_name = "ApproximateNumberOfMessagesVisible"
-
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = var.alarm_evaluation_periods
-  period              = var.alarm_period
-  statistic           = "Maximum"
-  threshold           = var.alarm_visible_messages_threshold
-  treat_missing_data  = "notBreaching"
-  datapoints_to_alarm = var.alarm_datapoints_to_alarm
-
-  dimensions = {
-    QueueName = aws_sqs_queue.main.name
-  }
-
-  alarm_actions = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
-  ok_actions    = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
-}
-
 resource "aws_cloudwatch_metric_alarm" "backlog" {
   alarm_name = "${var.family}-${var.application}-${var.queueName}-backlog"
   count      = var.environment == "prod" && var.alarm_backlog_create == 1 ? 1 : 0
@@ -102,4 +79,7 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
     label       = "visible + incoming - (deleted * ${var.alarm_backlog_minutes})"
     return_data = true
   }
+
+  alarm_actions = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
+  ok_actions    = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
 }
