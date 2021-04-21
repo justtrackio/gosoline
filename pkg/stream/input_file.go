@@ -2,6 +2,7 @@ package stream
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
@@ -11,7 +12,6 @@ import (
 
 type FileSettings struct {
 	Filename string `cfg:"filename"`
-	Blocking bool   `cfg:"blocking"`
 }
 
 type fileInput struct {
@@ -39,36 +39,46 @@ func (i *fileInput) Data() chan *Message {
 }
 
 func (i *fileInput) Run(ctx context.Context) error {
-	defer func() {
-		if !i.settings.Blocking {
-			close(i.channel)
-		}
-	}()
+	defer close(i.channel)
+
+	logger := i.logger.WithContext(ctx).WithFields(mon.Fields{
+		"filename": i.settings.Filename,
+	})
 
 	file, err := os.Open(i.settings.Filename)
 
 	if err != nil {
-		i.logger.Error("can not open file: %w", err)
+		logger.Error("can not open file: %w", err)
 		return err
 	}
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		if i.stopped {
-			break
-		}
-
-		rawMessage := scanner.Text()
-
-		msg := Message{}
-		err = json.Unmarshal([]byte(rawMessage), &msg)
+	defer func() {
+		err := file.Close()
 
 		if err != nil {
-			i.logger.Error("could not unmarshal message: %w", err)
+			logger.Error("can not close file: %w", err)
+		}
+	}()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() && !i.stopped {
+		rawMessage := scanner.Bytes()
+
+		// skip over empty lines
+		rawMessage = bytes.TrimSpace(rawMessage)
+		if len(rawMessage) == 0 {
 			continue
 		}
 
-		i.channel <- &msg
+		msg := &Message{}
+		err = json.Unmarshal(rawMessage, msg)
+
+		if err != nil {
+			logger.Error("could not unmarshal message: %w", err)
+			continue
+		}
+
+		i.channel <- msg
 	}
 
 	return nil
