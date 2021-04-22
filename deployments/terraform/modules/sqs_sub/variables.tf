@@ -53,6 +53,10 @@ variable "alarm_main_backlog_minutes" {
   default = 3
 }
 
+variable "alarm_main_backlog_period" {
+  default = 60
+}
+
 variable "alarm_main_backlog_create" {
   default = 1
 }

@@ -26,6 +26,7 @@ module "main" {
   alarm_datapoints_to_alarm        = var.alarm_main_datapoints_to_alarm
   alarm_backlog_create             = var.alarm_main_backlog_create
   alarm_backlog_minutes            = var.alarm_main_backlog_minutes
+  alarm_backlog_period             = var.alarm_main_backlog_period
 }
 
 module "dead" {
