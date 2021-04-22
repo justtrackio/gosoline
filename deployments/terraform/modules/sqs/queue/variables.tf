@@ -76,3 +76,7 @@ variable "alarm_backlog_threshold" {
 variable "alarm_backlog_minutes" {
   default = 3
 }
+
+variable "alarm_backlog_period" {
+  default = 60
+}

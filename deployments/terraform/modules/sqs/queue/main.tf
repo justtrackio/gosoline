@@ -38,7 +38,7 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
       }
       metric_name = "ApproximateNumberOfMessagesVisible"
       namespace   = "AWS/SQS"
-      period      = 60
+      period      = var.alarm_backlog_period
       stat        = "Sum"
     }
   }
@@ -53,7 +53,22 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
       }
       metric_name = "NumberOfMessagesSent"
       namespace   = "AWS/SQS"
-      period      = 60
+      period      = var.alarm_backlog_period
+      stat        = "Sum"
+    }
+  }
+
+  metric_query {
+    id          = "delayed"
+    return_data = false
+
+    metric {
+      dimensions = {
+        QueueName = "${var.project}-${var.environment}-${var.family}-${var.application}-${var.queueName}"
+      }
+      metric_name = "ApproximateNumberOfMessagesDelayed"
+      namespace   = "AWS/SQS"
+      period      = var.alarm_backlog_period
       stat        = "Sum"
     }
   }
@@ -68,15 +83,15 @@ resource "aws_cloudwatch_metric_alarm" "backlog" {
       }
       metric_name = "NumberOfMessagesDeleted"
       namespace   = "AWS/SQS"
-      period      = 60
+      period      = var.alarm_backlog_period
       stat        = "Sum"
     }
   }
 
   metric_query {
-    expression  = "visible + incoming - (deleted * ${var.alarm_backlog_minutes})"
+    expression  = "visible - delayed + incoming - (deleted * ${var.alarm_backlog_minutes})"
     id          = "backlog"
-    label       = "visible + incoming - (deleted * ${var.alarm_backlog_minutes})"
+    label       = "visible - delayed + incoming - (deleted * ${var.alarm_backlog_minutes})"
     return_data = true
   }
 
