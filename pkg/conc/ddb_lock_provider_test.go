@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/ddb"
 	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
@@ -12,7 +13,6 @@ import (
 	"github.com/applike/gosoline/pkg/uuid"
 	uuidMocks "github.com/applike/gosoline/pkg/uuid/mocks"
 	"github.com/cenkalti/backoff"
-	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -23,13 +23,32 @@ type ddbLockProviderTestSuite struct {
 	suite.Suite
 	ctx        context.Context
 	repo       *ddbMocks.Repository
-	clock      clockwork.FakeClock
-	backOff    *backoff.ExponentialBackOff
+	clock      clock.Clock
+	backOff    backoff.BackOff
 	uuidSource *uuidMocks.Uuid
 	provider   conc.DistributedLockProvider
 
 	resource string
 	token    string
+}
+
+type testBackOff struct {
+	backOffs []time.Duration
+	index    int
+}
+
+func (t *testBackOff) NextBackOff() time.Duration {
+	t.index++
+
+	if t.index >= len(t.backOffs) {
+		return backoff.Stop
+	}
+
+	return t.backOffs[t.index-1]
+}
+
+func (t *testBackOff) Reset() {
+	t.index = 0
 }
 
 func (s *ddbLockProviderTestSuite) SetupSuite() {
@@ -41,16 +60,15 @@ func (s *ddbLockProviderTestSuite) SetupTest() {
 	logger := monMocks.NewLoggerMockedAll()
 	s.ctx = context.Background()
 	s.repo = new(ddbMocks.Repository)
-	s.clock = clockwork.NewFakeClock()
+	s.clock = clock.NewFakeClock()
 	s.uuidSource = new(uuidMocks.Uuid)
 	s.uuidSource.On("NewV4").Return(s.token).Once()
-	s.backOff = &backoff.ExponentialBackOff{
-		InitialInterval:     time.Millisecond,
-		RandomizationFactor: 0,
-		Multiplier:          2,
-		MaxInterval:         time.Millisecond * 4,
-		MaxElapsedTime:      time.Millisecond * 8,
-		Clock:               clockwork.NewRealClock(), // use a real clock, otherwise time does not advance without us
+	s.backOff = &testBackOff{
+		backOffs: []time.Duration{
+			time.Millisecond * 1,
+			time.Millisecond * 2,
+			time.Millisecond * 4,
+		},
 	}
 
 	s.provider = conc.NewDdbLockProviderWithInterfaces(logger, s.repo, s.backOff, s.clock, s.uuidSource, conc.DistributedLockSettings{
@@ -99,9 +117,6 @@ func (s *ddbLockProviderTestSuite) testAcquireLock(initialLocked bool, initialFa
 		Token:    s.token,
 		Ttl:      s.clock.Now().Add(time.Minute).Unix(),
 	}
-
-	// ensure we retry often enough if the first requests are configured to fail and we have a high load on the test runner
-	s.backOff.MaxElapsedTime = time.Minute
 
 	qb := s.getAcquireQueryBuilder()
 	if initialLocked {
