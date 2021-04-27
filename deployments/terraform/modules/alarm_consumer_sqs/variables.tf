@@ -2,11 +2,6 @@ terraform {
   experiments = [module_variable_optional_attrs]
 }
 
-variable "project" {}
-variable "environment" {}
-variable "family" {}
-variable "application" {}
-
 variable "create" {
   type        = bool
   default     = true

@@ -1,9 +1,11 @@
 module "lb_label" {
-  source      = "applike/label/aws"
-  version     = "1.0.2"
-  context     = module.label.context
+  source  = "applike/label/aws"
+  version = "1.1.0"
+
   environment = var.environment_short
   application = var.application_short
+
+  context = module.this.context
 }
 
 data "aws_lb" "default" {

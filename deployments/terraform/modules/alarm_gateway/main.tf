@@ -1,21 +1,14 @@
-module "label" {
-  source      = "applike/label/aws"
-  version     = "1.0.2"
-  project     = var.project
-  application = var.application
-  family      = var.family
-  environment = var.environment
-}
-
 module "metric_label" {
-  source    = "applike/label/aws"
-  version   = "1.0.2"
-  context   = module.label.context
+  source  = "applike/label/aws"
+  version = "1.1.0"
+
   delimiter = "/"
+
+  context = module.this.context
 }
 
 resource "aws_cloudwatch_metric_alarm" "elb-success-rate" {
-  alarm_name          = "${module.label.family}-${module.label.application}-elb-success-rate"
+  alarm_name          = "${module.this.family}-${module.this.application}-elb-success-rate"
   count               = var.create ? 1 : 0
   datapoints_to_alarm = var.elb_datapoints_to_alarm
   comparison_operator = "LessThanThreshold"
@@ -61,17 +54,12 @@ resource "aws_cloudwatch_metric_alarm" "elb-success-rate" {
   alarm_actions = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
   ok_actions    = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
 
-  tags = {
-    Environment = var.environment
-    Project     = var.project
-    Family      = var.family
-    Application = var.application
-  }
+  tags = module.this.tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "path-success-rate" {
   for_each            = var.create ? var.paths : []
-  alarm_name          = "${module.label.family}-${module.label.application}-${each.value}-success-rate"
+  alarm_name          = "${module.this.family}-${module.this.application}-${each.value}-success-rate"
   datapoints_to_alarm = var.path_datapoints_to_alarm
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = var.path_evaluation_periods
@@ -84,7 +72,7 @@ resource "aws_cloudwatch_metric_alarm" "path-success-rate" {
 
     metric {
       metric_name = "ApiRequestCount"
-      namespace   = "${var.project}/${var.environment}/${var.family}/${var.application}"
+      namespace   = module.metric_label.id
       dimensions = {
         "path" = each.value
       }
@@ -99,7 +87,7 @@ resource "aws_cloudwatch_metric_alarm" "path-success-rate" {
 
     metric {
       metric_name = "ApiStatus5XX"
-      namespace   = "${var.project}/${var.environment}/${var.family}/${var.application}"
+      namespace   = module.metric_label.id
       dimensions = {
         "path" = each.value
       }
@@ -118,10 +106,5 @@ resource "aws_cloudwatch_metric_alarm" "path-success-rate" {
   alarm_actions = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
   ok_actions    = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
 
-  tags = {
-    Environment = var.environment
-    Project     = var.project
-    Family      = var.family
-    Application = var.application
-  }
+  tags = module.this.tags
 }
