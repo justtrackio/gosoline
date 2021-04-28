@@ -19,14 +19,17 @@ module "main" {
   visibilityTimeout       = var.visibilityTimeout
   messageRetentionSeconds = var.messageRetentionSeconds
 
-  alarm_create                     = var.alarm_main_create
-  alarm_period                     = var.alarm_main_period
-  alarm_visible_messages_threshold = var.alarm_main_threshold
-  alarm_evaluation_periods         = var.alarm_main_evaluation_periods
-  alarm_datapoints_to_alarm        = var.alarm_main_datapoints_to_alarm
-  alarm_backlog_create             = var.alarm_main_backlog_create
-  alarm_backlog_minutes            = var.alarm_main_backlog_minutes
-  alarm_backlog_period             = var.alarm_main_backlog_period
+  alarm_create                      = var.alarm_main_create
+  alarm_period                      = var.alarm_main_period
+  alarm_visible_messages_threshold  = var.alarm_main_threshold
+  alarm_evaluation_periods          = var.alarm_main_evaluation_periods
+  alarm_datapoints_to_alarm         = var.alarm_main_datapoints_to_alarm
+  alarm_backlog_create              = var.alarm_main_backlog_create
+  alarm_backlog_minutes             = var.alarm_main_backlog_minutes
+  alarm_backlog_period              = var.alarm_main_backlog_period
+  alarm_backlog_evaluation_periods  = var.alarm_main_backlog_evaluation_periods
+  alarm_backlog_datapoints_to_alarm = var.alarm_main_backlog_datapoints_to_alarm
+  alarm_backlog_threshold           = var.alarm_main_backlog_treshold
 }
 
 module "dead" {

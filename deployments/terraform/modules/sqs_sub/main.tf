@@ -20,14 +20,17 @@ module "queue" {
   messageRetentionSeconds = var.messageRetentionSeconds
   maxReceiveCount         = var.maxReceiveCount
 
-  alarm_main_create              = var.alarm_main_create
-  alarm_main_period              = var.alarm_main_period
-  alarm_main_threshold           = var.alarm_main_threshold
-  alarm_main_evaluation_periods  = var.alarm_main_evaluation_periods
-  alarm_main_datapoints_to_alarm = var.alarm_main_datapoints_to_alarm
-  alarm_main_backlog_minutes     = var.alarm_main_backlog_minutes
-  alarm_main_backlog_period      = var.alarm_main_backlog_period
-  alarm_main_backlog_create      = var.alarm_main_backlog_create
+  alarm_main_create                      = var.alarm_main_create
+  alarm_main_period                      = var.alarm_main_period
+  alarm_main_threshold                   = var.alarm_main_threshold
+  alarm_main_evaluation_periods          = var.alarm_main_evaluation_periods
+  alarm_main_datapoints_to_alarm         = var.alarm_main_datapoints_to_alarm
+  alarm_main_backlog_minutes             = var.alarm_main_backlog_minutes
+  alarm_main_backlog_period              = var.alarm_main_backlog_period
+  alarm_main_backlog_create              = var.alarm_main_backlog_create
+  alarm_main_backlog_evaluation_periods  = var.alarm_main_backlog_evaluation_periods
+  alarm_main_backlog_datapoints_to_alarm = var.alarm_main_backlog_datapoints_to_alarm
+  alarm_main_backlog_treshold            = var.alarm_main_backlog_treshold
 
   alarm_dead_create              = var.alarm_dead_create
   alarm_dead_period              = var.alarm_dead_period

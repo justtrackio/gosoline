@@ -49,6 +49,18 @@ variable "alarm_main_datapoints_to_alarm" {
   default = 1
 }
 
+variable "alarm_main_backlog_evaluation_periods" {
+  default = 3
+}
+
+variable "alarm_main_backlog_datapoints_to_alarm" {
+  default = 3
+}
+
+variable "alarm_main_backlog_treshold" {
+  default = 0
+}
+
 variable "alarm_main_backlog_minutes" {
   default = 3
 }
