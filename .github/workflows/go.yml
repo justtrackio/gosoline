@@ -84,7 +84,7 @@ jobs:
         uses: golangci/golangci-lint-action@v2
         with:
           version: v1.29
-          args: --timeout 5m --print-issued-lines --print-linter-name --out-format=colored-line-number --disable structcheck
+          args: --timeout 5m --print-issued-lines --print-linter-name --disable structcheck
   go-test:
     name: go test
     runs-on: ubuntu-20.04

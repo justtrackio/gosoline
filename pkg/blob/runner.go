@@ -31,7 +31,7 @@ type BatchRunnerSettings struct {
 
 var br = struct {
 	sync.Mutex
-	instance *BatchRunner
+	instance *batchRunner
 }{}
 
 func ProvideBatchRunner() kernel.ModuleFactory {
@@ -49,7 +49,12 @@ func ProvideBatchRunner() kernel.ModuleFactory {
 	}
 }
 
-type BatchRunner struct {
+//go:generate mockery --name BatchRunner
+type BatchRunner interface {
+	Run(ctx context.Context) error
+}
+
+type batchRunner struct {
 	kernel.ForegroundModule
 	kernel.ServiceStage
 
@@ -60,14 +65,14 @@ type BatchRunner struct {
 	settings *BatchRunnerSettings
 }
 
-func NewBatchRunner(config cfg.Config, logger mon.Logger) *BatchRunner {
+func NewBatchRunner(config cfg.Config, logger mon.Logger) *batchRunner {
 	settings := &BatchRunnerSettings{}
 	config.UnmarshalKey("blob", settings)
 
 	defaultMetrics := getDefaultRunnerMetrics()
 	metricWriter := mon.NewMetricDaemonWriter(defaultMetrics...)
 
-	runner := &BatchRunner{
+	runner := &batchRunner{
 		logger:   logger,
 		metric:   metricWriter,
 		client:   ProvideS3Client(config),
@@ -78,21 +83,21 @@ func NewBatchRunner(config cfg.Config, logger mon.Logger) *BatchRunner {
 	return runner
 }
 
-func (r *BatchRunner) Run(ctx context.Context) error {
+func (r *batchRunner) Run(ctx context.Context) error {
 	for i := 0; i < r.settings.ReaderRunnerCount; i++ {
-		go r.executeRead()
+		go r.executeRead(ctx)
 	}
 
 	for i := 0; i < r.settings.WriterRunnerCount; i++ {
-		go r.executeWrite()
+		go r.executeWrite(ctx)
 	}
 
 	for i := 0; i < r.settings.CopyRunnerCount; i++ {
-		go r.executeCopy()
+		go r.executeCopy(ctx)
 	}
 
 	for i := 0; i < r.settings.DeleteRunnerCount; i++ {
-		go r.executeDelete()
+		go r.executeDelete(ctx)
 	}
 
 	<-ctx.Done()
@@ -100,116 +105,136 @@ func (r *BatchRunner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *BatchRunner) executeRead() {
-	for object := range r.channels.read {
-		var body io.ReadCloser
-		var err error
+func (r *batchRunner) executeRead(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case object := <-r.channels.read:
+			var body io.ReadCloser
+			var err error
 
-		key := object.GetFullKey()
-		exists := true
+			key := object.GetFullKey()
+			exists := true
 
-		input := &s3.GetObjectInput{
-			Bucket: object.bucket,
-			Key:    aws.String(key),
-		}
-
-		out, err := r.client.GetObject(input)
-
-		if err != nil {
-			if awsErr, ok := err.(awserr.RequestFailure); ok && awsErr.StatusCode() == 404 {
-				exists = false
-				err = nil
+			input := &s3.GetObjectInput{
+				Bucket: object.bucket,
+				Key:    aws.String(key),
 			}
-		} else {
-			body = out.Body
-		}
 
-		r.writeMetric(operationRead)
+			out, err := r.client.GetObject(input)
 
-		object.Body = StreamReader(body)
-		object.Exists = exists
-		object.Error = err
-		object.wg.Done()
-	}
-}
+			if err != nil {
+				if awsErr, ok := err.(awserr.RequestFailure); ok && awsErr.StatusCode() == 404 {
+					exists = false
+					err = nil
+				}
+			} else {
+				body = out.Body
+			}
 
-func (r *BatchRunner) executeWrite() {
-	for object := range r.channels.write {
-		key := object.GetFullKey()
-		body := CloseOnce(object.Body.AsReader())
+			r.writeMetric(operationRead)
 
-		input := &s3.PutObjectInput{
-			ACL:    object.ACL,
-			Body:   body,
-			Bucket: object.bucket,
-			Key:    aws.String(key),
-		}
-
-		_, err := r.client.PutObject(input)
-
-		if err != nil {
-			object.Exists = false
+			object.Body = StreamReader(body)
+			object.Exists = exists
 			object.Error = err
-		} else {
-			object.Exists = true
+			object.wg.Done()
 		}
-
-		if err := body.Close(); err != nil {
-			object.Error = multierror.Append(object.Error, err)
-		}
-
-		r.writeMetric(operationWrite)
-
-		object.wg.Done()
 	}
 }
 
-func (r *BatchRunner) executeCopy() {
-	for object := range r.channels.copy {
-		key := object.GetFullKey()
-		source := object.getSource()
+func (r *batchRunner) executeWrite(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case object := <-r.channels.write:
+			key := object.GetFullKey()
+			body := CloseOnce(object.Body.AsReader())
 
-		input := &s3.CopyObjectInput{
-			ACL:        object.ACL,
-			Bucket:     object.bucket,
-			Key:        aws.String(key),
-			CopySource: aws.String(source),
+			input := &s3.PutObjectInput{
+				ACL:    object.ACL,
+				Body:   body,
+				Bucket: object.bucket,
+				Key:    aws.String(key),
+			}
+
+			_, err := r.client.PutObject(input)
+
+			if err != nil {
+				object.Exists = false
+				object.Error = err
+			} else {
+				object.Exists = true
+			}
+
+			if err := body.Close(); err != nil {
+				object.Error = multierror.Append(object.Error, err)
+			}
+
+			r.writeMetric(operationWrite)
+
+			object.wg.Done()
 		}
-
-		_, err := r.client.CopyObject(input)
-
-		if err != nil {
-			object.Error = err
-		}
-
-		r.writeMetric(operationCopy)
-
-		object.wg.Done()
 	}
 }
 
-func (r *BatchRunner) executeDelete() {
-	for object := range r.channels.delete {
-		key := object.GetFullKey()
+func (r *batchRunner) executeCopy(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case object := <-r.channels.copy:
+			key := object.GetFullKey()
+			source := object.getSource()
 
-		input := &s3.DeleteObjectInput{
-			Bucket: object.bucket,
-			Key:    aws.String(key),
+			input := &s3.CopyObjectInput{
+				ACL:        object.ACL,
+				Bucket:     object.bucket,
+				Key:        aws.String(key),
+				CopySource: aws.String(source),
+			}
+
+			_, err := r.client.CopyObject(input)
+
+			if err != nil {
+				object.Error = err
+			}
+
+			r.writeMetric(operationCopy)
+
+			object.wg.Done()
 		}
-
-		_, err := r.client.DeleteObject(input)
-
-		if err != nil {
-			object.Error = err
-		}
-
-		r.writeMetric(operationDelete)
-
-		object.wg.Done()
 	}
 }
 
-func (r *BatchRunner) writeMetric(operation string) {
+func (r *batchRunner) executeDelete(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case object := <-r.channels.delete:
+			key := object.GetFullKey()
+
+			input := &s3.DeleteObjectInput{
+				Bucket: object.bucket,
+				Key:    aws.String(key),
+			}
+
+			_, err := r.client.DeleteObject(input)
+
+			if err != nil {
+				object.Error = err
+			}
+
+			r.writeMetric(operationDelete)
+
+			object.wg.Done()
+		}
+	}
+}
+
+func (r *batchRunner) writeMetric(operation string) {
 	r.metric.WriteOne(&mon.MetricDatum{
 		MetricName: metricName,
 		Priority:   mon.PriorityHigh,
