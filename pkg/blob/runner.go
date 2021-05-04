@@ -20,6 +20,7 @@ const (
 	operationWrite  = "Write"
 	operationCopy   = "Copy"
 	operationDelete = "Delete"
+	operationError  = "Error"
 )
 
 type BatchRunnerSettings struct {
@@ -129,6 +130,7 @@ func (r *batchRunner) executeRead(ctx context.Context) {
 					exists = false
 					err = nil
 				}
+				r.writeMetric(operationError)
 			} else {
 				body = out.Body
 			}
@@ -164,12 +166,14 @@ func (r *batchRunner) executeWrite(ctx context.Context) {
 			if err != nil {
 				object.Exists = false
 				object.Error = err
+				r.writeMetric(operationError)
 			} else {
 				object.Exists = true
 			}
 
 			if err := body.Close(); err != nil {
 				object.Error = multierror.Append(object.Error, err)
+				r.writeMetric(operationError)
 			}
 
 			r.writeMetric(operationWrite)
@@ -199,6 +203,7 @@ func (r *batchRunner) executeCopy(ctx context.Context) {
 
 			if err != nil {
 				object.Error = err
+				r.writeMetric(operationError)
 			}
 
 			r.writeMetric(operationCopy)
@@ -225,6 +230,7 @@ func (r *batchRunner) executeDelete(ctx context.Context) {
 
 			if err != nil {
 				object.Error = err
+				r.writeMetric(operationError)
 			}
 
 			r.writeMetric(operationDelete)
@@ -280,6 +286,15 @@ func getDefaultRunnerMetrics() []*mon.MetricDatum {
 			Priority:   mon.PriorityHigh,
 			Dimensions: map[string]string{
 				"Operation": operationDelete,
+			},
+			Unit:  mon.UnitCount,
+			Value: 0.0,
+		},
+		{
+			MetricName: metricName,
+			Priority:   mon.PriorityHigh,
+			Dimensions: map[string]string{
+				"Operation": operationError,
 			},
 			Unit:  mon.UnitCount,
 			Value: 0.0,
