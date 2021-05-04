@@ -13,13 +13,19 @@ variable "environment" {
 variable "environment_short" {
   type        = string
   default     = ""
-  description = "Environment, e.g. 'uw2', 'us-west-2', OR 'prod', 'staging', 'dev', 'UAT' used for loadbalancers"
+  description = "Short environment, e.g. 'uw2', 'us-west-2', OR 'pr', 'staging', 'dev', 'UAT' used for loadbalancers"
 }
 
 variable "family" {
   type        = string
   default     = ""
   description = "Family, e.g. 'prod', 'staging', 'dev', OR 'source', 'build', 'test', 'deploy', 'release'"
+}
+
+variable "family_short" {
+  type        = string
+  default     = ""
+  description = "Short family, e.g. 'prod', 'staging', 'dev', OR 'source', 'build', 'test', 'deploy', 'release' used for loadbalancers"
 }
 
 variable "application" {
@@ -31,7 +37,7 @@ variable "application" {
 variable "application_short" {
   type        = string
   default     = ""
-  description = "Solution application, e.g. 'app' or 'jenkins'"
+  description = "Solution short application, e.g. 'app' or 'jenkins'"
 }
 
 variable "create" {
