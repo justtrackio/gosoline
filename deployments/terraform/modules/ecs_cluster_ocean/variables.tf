@@ -20,3 +20,9 @@ variable "max_size" {
 variable "min_size" {
   default = 1
 }
+
+variable "tags" {
+  type        = "map"
+  default     = {}
+  description = "Additional tags for ECS Service"
+}
