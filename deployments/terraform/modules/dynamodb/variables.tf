@@ -159,6 +159,14 @@ variable "range_key_type" {
   description = "Range Key type, which must be a scalar type: `S`, `N`, or `B` for (S)tring, (N)umber or (B)inary data"
 }
 
+variable "tags" {
+  type        = object({
+    Group = string
+  })
+  default     = {}
+  description = "Additional tags for DynamoDB"
+}
+
 variable "ttl" {
   type        = string
   default     = "ttl"
