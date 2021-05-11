@@ -160,7 +160,7 @@ variable "range_key_type" {
 }
 
 variable "tags" {
-  type        = "map"
+  type        = map(string)
   default     = {}
   description = "Additional tags for DynamoDB"
 }

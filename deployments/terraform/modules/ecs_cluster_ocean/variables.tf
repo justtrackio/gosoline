@@ -22,7 +22,7 @@ variable "min_size" {
 }
 
 variable "tags" {
-  type        = "map"
+  type        = map(string)
   default     = {}
   description = "Additional tags for ECS Service"
 }
