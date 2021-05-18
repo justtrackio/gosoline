@@ -14,6 +14,7 @@ const (
 	OutputTypeInMemory = "inMemory"
 	OutputTypeKinesis  = "kinesis"
 	OutputTypeMultiple = "multiple"
+	OutputTypeNoOp     = "noop"
 	OutputTypeRedis    = "redis"
 	OutputTypeSns      = "sns"
 	OutputTypeSqs      = "sqs"
@@ -32,6 +33,7 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) (O
 		OutputTypeInMemory: newInMemoryOutputFromConfig,
 		OutputTypeKinesis:  newKinesisOutputFromConfig,
 		OutputTypeMultiple: NewConfigurableMultiOutput,
+		OutputTypeNoOp:     newNoOpOutput,
 		OutputTypeRedis:    newRedisListOutputFromConfig,
 		OutputTypeSns:      newSnsOutputFromConfig,
 		OutputTypeSqs:      newSqsOutputFromConfig,
