@@ -105,13 +105,13 @@ resource "aws_dynamodb_table" "default" {
     enabled        = var.ttl != "" && var.ttl != null ? true : false
   }
 
-  tags = {
+  tags = merge({
     Project     = var.project
     Environment = var.environment
     Family      = var.family
     Application = var.application
     Model       = var.model
-  }
+  }, var.tags)
 }
 
 module "dynamodb_autoscaler" {
