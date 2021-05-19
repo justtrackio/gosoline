@@ -4,6 +4,7 @@ package test_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -39,9 +40,12 @@ func (s *DbRepoChangeHistoryTestSuite) SetupSuite() {
 	_ = config.Option(
 		cfg.WithConfigFile("test_configs/config.mysql.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.db_repo_change_history.test.yml", "yml"),
+	)
+
+	config.Option(
 		cfg.WithConfigMap(map[string]interface{}{
-			"db.default.uri.port": s.mocks.ProvideMysqlPort("mysql"),
-			"db.default.uri.host": s.mocks.ProvideMysqlHost("mysql"),
+			fmt.Sprintf("db.%s.uri.port", config.GetString("orm.db")): s.mocks.ProvideMysqlPort("mysql"),
+			fmt.Sprintf("db.%s.uri.host", config.GetString("orm.db")): s.mocks.ProvideMysqlHost("mysql"),
 		}),
 	)
 

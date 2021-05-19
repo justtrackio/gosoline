@@ -3,8 +3,11 @@ app_project: gosoline
 app_family: integration-test
 app_name: db-repo-change-history-test
 
+orm:
+  db: myDb
+
 db:
-  default:
+  myDb:
     driver: mysql
     max_connection_lifetime: 120
     parse_time: true

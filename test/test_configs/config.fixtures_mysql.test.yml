@@ -3,6 +3,9 @@ app_project: gosoline
 app_family: integration-test
 app_name: fixture-loader
 
+orm:
+  db: default
+
 db:
   default:
     driver: mysql
