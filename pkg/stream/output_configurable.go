@@ -48,7 +48,7 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) (O
 	var output Output
 
 	if factory, ok = outputFactories[typ]; !ok {
-		return nil, fmt.Errorf("invalid input %s of type %s", name, typ)
+		return nil, fmt.Errorf("invalid output %s of type %s", name, typ)
 	}
 
 	if output, err = factory(config, logger, name); err != nil {
