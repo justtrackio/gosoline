@@ -4,6 +4,7 @@ resource "aws_ecr_repository" "main" {
 
 resource "aws_ecr_lifecycle_policy" "main" {
   repository = aws_ecr_repository.main.name
+  count      = var.use_default_lifecycle_policy
 
   policy = <<EOF
 {
