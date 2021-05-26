@@ -37,7 +37,7 @@ type ProducerDaemonSettings struct {
 }
 
 type ProducerDaemon struct {
-	kernel.EssentialModule
+	kernel.EssentialBackgroundModule
 
 	name          string
 	lck           sync.Mutex
@@ -89,6 +89,12 @@ func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*Prod
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
 	metric := mon.NewMetricDaemonWriter(defaultMetrics...)
 
+	encoder := NewMessageEncoder(&MessageEncoderSettings{
+		Encoding:       EncodingJson, // there is currently no other encoding for the Message struct, so the outer layer needs to be json
+		Compression:    CompressionType(settings.Compression),
+		EncodeHandlers: defaultEncodeHandlers,
+	})
+
 	return &ProducerDaemon{
 		name:          name,
 		logger:        logger,
@@ -97,8 +103,13 @@ func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*Prod
 		outCh:         NewOutputChannel(logger, settings.Daemon.BufferSize),
 		output:        output,
 		tickerFactory: clock.NewRealTicker,
-		marshaller:    MarshalJsonMessage,
-		settings:      settings.Daemon,
+		marshaller: func(body interface{}, attributes ...map[string]interface{}) (*Message, error) {
+			// why do we use the background context here? because the context is used to carry attributes from one context via
+			// the attributes of the message to the next context (in the consumer). But we are marshalling a batch, so we don't
+			// need to provide any attributes and can just use the background context.
+			return encoder.Encode(context.Background(), body, attributes...)
+		},
+		settings: settings.Daemon,
 	}, nil
 }
 

@@ -45,8 +45,8 @@ func (s *MessageEncoderSuite) TestEncode() {
 	}
 
 	tests := map[string]struct {
-		encoding           string
-		compression        string
+		encoding           stream.EncodingType
+		compression        stream.CompressionType
 		handlers           []stream.EncodeHandler
 		attributes         map[string]interface{}
 		expectedError      string
@@ -167,7 +167,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 				},
 				Body: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`,
 			},
-			expectedError: "there is no compressor for compression 'missing'",
+			expectedError: "there is no decompressor for compression 'missing'",
 		},
 		"wrong_encoding_attribute_type": {
 			message: &stream.Message{

@@ -32,7 +32,7 @@ type BaseConsumerCallback interface {
 type ConsumerSettings struct {
 	Input       string        `cfg:"input" default:"consumer" validate:"required"`
 	RunnerCount int           `cfg:"runner_count" default:"1" validate:"min=1"`
-	Encoding    string        `cfg:"encoding" default:"application/json"`
+	Encoding    EncodingType  `cfg:"encoding" default:"application/json"`
 	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
 }
 

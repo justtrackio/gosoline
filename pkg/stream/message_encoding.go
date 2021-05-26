@@ -18,8 +18,8 @@ func AddDefaultEncodeHandler(handler EncodeHandler) {
 }
 
 type MessageEncoderSettings struct {
-	Encoding       string
-	Compression    string
+	Encoding       EncodingType
+	Compression    CompressionType
 	EncodeHandlers []EncodeHandler
 }
 
@@ -30,8 +30,8 @@ type MessageEncoder interface {
 }
 
 type messageEncoder struct {
-	encoding       string
-	compression    string
+	encoding       EncodingType
+	compression    CompressionType
 	encodeHandlers []EncodeHandler
 }
 
@@ -87,20 +87,10 @@ func (e *messageEncoder) Encode(ctx context.Context, data interface{}, attribute
 }
 
 func (e *messageEncoder) encodeBody(attributes map[string]interface{}, data interface{}) ([]byte, error) {
-	if e.encoding == "" {
-		return nil, fmt.Errorf("no encoding provided to encode message")
-	}
-
-	encoder, ok := messageBodyEncoders[e.encoding]
-
-	if !ok {
-		return nil, fmt.Errorf("there is no message body encoder available for encoding '%s'", e.encoding)
-	}
-
-	body, err := encoder.Encode(data)
+	body, err := EncodeMessage(e.encoding, data)
 
 	if err != nil {
-		return nil, fmt.Errorf("can not encode message body with encoding '%s': %w", e.encoding, err)
+		return nil, err
 	}
 
 	attributes[AttributeEncoding] = e.encoding
@@ -113,16 +103,10 @@ func (e *messageEncoder) compressBody(attributes map[string]interface{}, body []
 		return body, nil
 	}
 
-	compressor, ok := messageBodyCompressors[e.compression]
-
-	if !ok {
-		return nil, fmt.Errorf("there is no compressor for compression '%s'", e.compression)
-	}
-
-	compressed, err := compressor.Compress(body)
+	compressed, err := CompressMessage(e.compression, body)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to compress message body: %w", err)
+		return nil, err
 	}
 
 	compressedBase64 := base64.Encode(compressed)
@@ -170,19 +154,14 @@ func (e *messageEncoder) Decode(ctx context.Context, msg *Message, out interface
 }
 
 func (e *messageEncoder) decompressBody(attributes map[string]interface{}, body []byte) ([]byte, error) {
-	if _, ok := attributes[AttributeCompression]; !ok {
+	compression, err := GetCompressionAttribute(attributes)
+
+	if err != nil {
+		return body, err
+	}
+
+	if compression == nil {
 		return body, nil
-	}
-
-	if _, ok := attributes[AttributeCompression].(string); !ok {
-		return body, fmt.Errorf("the compression attribute '%v' should be of type string but instead is '%T'", attributes[AttributeCompression], attributes[AttributeCompression])
-	}
-
-	compression := attributes[AttributeCompression].(string)
-	compressor, ok := messageBodyCompressors[compression]
-
-	if !ok {
-		return nil, fmt.Errorf("there is no compressor for compression '%s'", compression)
 	}
 
 	base64Decoded, err := base64.Decode(body)
@@ -191,10 +170,10 @@ func (e *messageEncoder) decompressBody(attributes map[string]interface{}, body 
 		return nil, fmt.Errorf("can not base64 decode the body: %w", err)
 	}
 
-	decompressed, err := compressor.Decompress(base64Decoded)
+	decompressed, err := DecompressMessage(*compression, base64Decoded)
 
 	if err != nil {
-		return nil, fmt.Errorf("can not decompress message body: %w", err)
+		return nil, err
 	}
 
 	delete(attributes, AttributeCompression)
@@ -205,24 +184,14 @@ func (e *messageEncoder) decompressBody(attributes map[string]interface{}, body 
 func (e *messageEncoder) decodeBody(attributes map[string]interface{}, body []byte, out interface{}) error {
 	encoding := e.encoding
 
-	if attrEncoding, ok := attributes[AttributeEncoding]; ok {
-		if _, ok := attrEncoding.(string); !ok {
-			return fmt.Errorf("the encoding attribute '%v' should be of type string but instead is '%T'", attributes[AttributeEncoding], attributes[AttributeEncoding])
-		}
-
-		encoding = attrEncoding.(string)
+	if attrEncoding, err := GetEncodingAttribute(attributes); err != nil {
+		return err
+	} else if attrEncoding != nil {
+		encoding = *attrEncoding
 	}
 
-	encoder, ok := messageBodyEncoders[encoding]
-
-	if !ok {
-		return fmt.Errorf("there is no message body decoder available for encoding '%s'", encoding)
-	}
-
-	err := encoder.Decode(body, out)
-
-	if err != nil {
-		return fmt.Errorf("can not decode message body with encoding '%s': %w", encoding, err)
+	if err := DecodeMessage(encoding, body, out); err != nil {
+		return err
 	}
 
 	delete(attributes, AttributeEncoding)

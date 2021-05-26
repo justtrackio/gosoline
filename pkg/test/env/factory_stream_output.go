@@ -50,8 +50,9 @@ func (f streamOutputFactory) Component(_ cfg.Config, _ mon.Logger, _ map[string]
 	s := settings.(*streamOutputSettings)
 
 	component := &streamOutputComponent{
-		name:   s.Name,
-		output: stream.ProvideInMemoryOutput(s.Name),
+		name:    s.Name,
+		output:  stream.ProvideInMemoryOutput(s.Name),
+		encoder: stream.NewMessageEncoder(&stream.MessageEncoderSettings{}),
 	}
 
 	return component, nil

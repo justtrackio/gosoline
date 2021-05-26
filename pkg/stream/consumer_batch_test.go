@@ -280,11 +280,13 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 		Run(func(args mock.Arguments) {
 			s.data <- aggregate.(*stream.Message)
 			s.stop()
-		}).Return(nil)
+		}).Return(nil).
+		Once()
 
 	s.input.Input.
 		On("Stop").
-		Return()
+		Return().
+		Once()
 
 	processed := 0
 	s.input.AcknowledgeableInput.
@@ -293,15 +295,14 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 			msgs := args[0].([]*stream.Message)
 			processed = len(msgs)
 		}).
-		Return(nil)
+		Return(nil).
+		Once()
 
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Return(nil)
 
-	acks := []bool{true, true}
-
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]interface {}")).
-		Return(acks, nil)
+		Return([]bool{true, true}, nil)
 
 	s.callback.
 		On("GetModel", mock.AnythingOfType("map[string]interface {}")).

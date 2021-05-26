@@ -46,7 +46,7 @@ func NewLoggerMockedUntilLevel(level string) *Logger {
 	return logger
 }
 
-func inspectLogFunction(level string, withFormat bool, allowed bool) func(args mock.Arguments) {
+func inspectLogFunction(level string, allowed bool) func(args mock.Arguments) {
 	return func(args mock.Arguments) {
 		// ensure we use formatting markers exactly when using a method with formatting
 		var msg string
@@ -64,13 +64,12 @@ func inspectLogFunction(level string, withFormat bool, allowed bool) func(args m
 
 func mockLoggerMethod(logger *Logger, method string, methodWithFormat string, level string, allowed bool) {
 	anythings := make(mock.Arguments, 0)
-	f := inspectLogFunction(level, false, allowed)
-	fWithFormat := inspectLogFunction(level, true, allowed)
+	f := inspectLogFunction(level, allowed)
 
 	for i := 0; i < 10; i++ {
 		anythings = append(anythings, mock.Anything)
 		logger.On(method, anythings...).Run(f).Return(logger).Maybe()
-		logger.On(methodWithFormat, anythings...).Run(fWithFormat).Return(logger).Maybe()
+		logger.On(methodWithFormat, anythings...).Run(f).Return(logger).Maybe()
 	}
 }
 

@@ -10,8 +10,8 @@ import (
 
 type ProducerSettings struct {
 	Output      string                 `cfg:"output"`
-	Encoding    string                 `cfg:"encoding"`
-	Compression string                 `cfg:"compression"`
+	Encoding    EncodingType           `cfg:"encoding"`
+	Compression CompressionType        `cfg:"compression"`
 	Daemon      ProducerDaemonSettings `cfg:"daemon"`
 }
 
@@ -28,6 +28,21 @@ type producer struct {
 func NewProducer(config cfg.Config, logger mon.Logger, name string, handlers ...EncodeHandler) (*producer, error) {
 	settings := readProducerSettings(config, name)
 
+	var err error
+	var output Output
+
+	if !settings.Daemon.Enabled {
+		if output, err = NewConfigurableOutput(config, logger, settings.Output); err != nil {
+			return nil, fmt.Errorf("can not create output %s: %w", settings.Output, err)
+		}
+	} else {
+		// the producer daemon will take care of compression for the whole batch, so we don't need to compress individual messages
+		settings.Compression = CompressionNone
+		if output, err = ProvideProducerDaemon(config, logger, name); err != nil {
+			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
+		}
+	}
+
 	encodeHandlers := make([]EncodeHandler, 0, len(defaultEncodeHandlers)+len(handlers))
 	encodeHandlers = append(encodeHandlers, defaultEncodeHandlers...)
 	encodeHandlers = append(encodeHandlers, handlers...)
@@ -37,19 +52,6 @@ func NewProducer(config cfg.Config, logger mon.Logger, name string, handlers ...
 		Compression:    settings.Compression,
 		EncodeHandlers: encodeHandlers,
 	})
-
-	var err error
-	var output Output
-
-	if !settings.Daemon.Enabled {
-		if output, err = NewConfigurableOutput(config, logger, settings.Output); err != nil {
-			return nil, fmt.Errorf("can not create output %s: %w", settings.Output, err)
-		}
-	} else {
-		if output, err = ProvideProducerDaemon(config, logger, name); err != nil {
-			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
-		}
-	}
 
 	return NewProducerWithInterfaces(encoder, output), nil
 }

@@ -77,6 +77,7 @@ require (
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	golang.org/x/sys v0.0.0-20210330210617-4fbd30eecc44
 	google.golang.org/api v0.5.0
+	google.golang.org/protobuf v1.23.0
 	gopkg.in/go-playground/validator.v8 v8.18.2
 	gopkg.in/go-playground/validator.v9 v9.30.0
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
