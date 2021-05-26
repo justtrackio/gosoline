@@ -49,6 +49,12 @@ func buildAttributes(attributes []map[string]interface{}) (map[string]*sns.Messa
 					StringValue: aws.String(strconv.FormatBool(v)),
 				}
 
+			case fmt.Stringer:
+				snsAttributes[key] = &sns.MessageAttributeValue{
+					DataType:    aws.String("String"),
+					StringValue: aws.String(v.String()),
+				}
+
 			default:
 				return nil, fmt.Errorf("data type %T of key %s is not supported", val, key)
 			}

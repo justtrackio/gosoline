@@ -35,6 +35,13 @@ stream:
       daemon:
         enabled: true
         aggregation_size: 7
+    testEventsSqs:
+      compression: application/gzip
+      daemon:
+        enabled: true
+        aggregation_size: 4
+        batch_size: 2
+        interval: 5s
 
   output:
     testDataKinesis:
@@ -43,3 +50,11 @@ stream:
     testDataSqs:
       type: sqs
       queue_id: testData
+    testEventsSqs:
+      type: sqs
+      queue_id: testEvents
+
+  input:
+    testEventsSqs:
+      type: sqs
+      target_queue_id: testEvents

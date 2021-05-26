@@ -6,19 +6,59 @@ import (
 	"fmt"
 )
 
+type CompressionType string
+
 const (
-	CompressionNone = "none"
-	CompressionGZip = "application/gzip"
+	CompressionNone CompressionType = "none"
+	CompressionGZip CompressionType = "application/gzip"
 )
+
+func (s CompressionType) String() string {
+	return string(s)
+}
+
+var _ fmt.Stringer = CompressionType("")
 
 type MessageBodyCompressor interface {
 	Compress(body []byte) ([]byte, error)
 	Decompress(body []byte) ([]byte, error)
 }
 
-var messageBodyCompressors = map[string]MessageBodyCompressor{
+var messageBodyCompressors = map[CompressionType]MessageBodyCompressor{
 	CompressionNone: new(noopCompressor),
 	CompressionGZip: new(gZipCompressor),
+}
+
+func CompressMessage(compression CompressionType, body []byte) ([]byte, error) {
+	compressor, ok := messageBodyCompressors[compression]
+
+	if !ok {
+		return nil, fmt.Errorf("there is no compressor for compression '%s'", compression)
+	}
+
+	compressed, err := compressor.Compress(body)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to compress message body: %w", err)
+	}
+
+	return compressed, nil
+}
+
+func DecompressMessage(compression CompressionType, body []byte) ([]byte, error) {
+	compressor, ok := messageBodyCompressors[compression]
+
+	if !ok {
+		return nil, fmt.Errorf("there is no decompressor for compression '%s'", compression)
+	}
+
+	decompressed, err := compressor.Decompress(body)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to decompress message body: %w", err)
+	}
+
+	return decompressed, nil
 }
 
 type noopCompressor struct {
