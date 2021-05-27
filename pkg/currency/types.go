@@ -1,5 +1,7 @@
 package currency
 
+import "time"
+
 type Currency string
 
 type Rate struct {
@@ -24,4 +26,23 @@ type ExchangeResponse struct {
 	Subject string `xml:"subject"`
 	Sender  Sender `xml:"Sender"`
 	Body    Body   `xml:"Cube"`
+}
+
+type HistoricalBody struct {
+	Content []Content `xml:"Cube"`
+}
+
+type HistoricalExchangeResponse struct {
+	Subject string         `xml:"subject"`
+	Sender  Sender         `xml:"Sender"`
+	Body    HistoricalBody `xml:"Cube"`
+}
+
+func (c Content) GetTime() (time.Time, error) {
+	t, err := time.Parse("2006-01-02", c.Time)
+
+	if err != nil {
+		return time.Time{}, err
+	}
+	return t, nil
 }

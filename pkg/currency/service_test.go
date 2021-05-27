@@ -2,12 +2,12 @@ package currency_test
 
 import (
 	"context"
+	"errors"
 	"github.com/applike/gosoline/pkg/currency"
 	"github.com/applike/gosoline/pkg/http"
 	httpMock "github.com/applike/gosoline/pkg/http/mocks"
 	kvStoreMock "github.com/applike/gosoline/pkg/kvstore/mocks"
 	loggerMock "github.com/applike/gosoline/pkg/mon/mocks"
-	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -57,6 +57,25 @@ var response = `<?xml version="1.0" encoding="UTF-8"?>
 </Cube>
 </Cube>
 </gesmes:Envelope>`
+var historicalResponse = `<?xml version="1.0" encoding="UTF-8"?>
+<gesmes:Envelope xmlns:gesmes="http://www.gesmes.org/xml/2002-08-01" xmlns="http://www.ecb.int/vocabulary/2002-08-01/eurofxref">
+   <gesmes:subject>Reference rates</gesmes:subject>
+   <gesmes:Sender>
+      <gesmes:name>European Central Bank</gesmes:name>
+   </gesmes:Sender>
+   <Cube>
+      <Cube time="2021-05-26">
+         <Cube currency="USD" rate="1.2229" />
+         <Cube currency="BGN" rate="1.9558" />
+      </Cube>
+      <Cube time="2021-05-23">
+         <Cube currency="USD" rate="1.2212" />
+         <Cube currency="JPY" rate="132.97" />
+      </Cube>
+   </Cube>
+</gesmes:Envelope>`
+var historicalRateKey = "2021-01-02-USD"
+var historicalRateDate = time.Date(2021, time.January, 2, 0, 0, 0, 0, time.Local)
 
 func TestCurrencyService_ToEur_Calculation(t *testing.T) {
 	store := new(kvStoreMock.KvStore)
@@ -108,7 +127,6 @@ func TestCurrencyService_ToUsd_Calculation(t *testing.T) {
 
 func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
 	logger := loggerMock.NewLoggerMockedAll()
-	tracer := tracing.NewNoopTracer()
 	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
 
@@ -126,7 +144,7 @@ func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
 	client.On("NewRequest").Return(http.NewRequest(nil))
 	client.On("Get", context.Background(), mock.AnythingOfType("*http.Request")).Return(r, nil)
 
-	service := currency.NewUpdaterWithInterfaces(logger, tracer, store, client)
+	service := currency.NewUpdaterWithInterfaces(logger, store, client)
 
 	err := service.EnsureRecentExchangeRates(context.TODO())
 
@@ -149,4 +167,125 @@ func TestCurrencyService_HasCurrency(t *testing.T) {
 	assert.True(t, hasCurrency)
 
 	store.AssertExpectations(t)
+}
+
+func TestCurrencyService_HasCurrencyAtDate(t *testing.T) {
+	store := new(kvStoreMock.KvStore)
+
+	store.On("Contains", mock.AnythingOfType("*context.emptyCtx"), "2021-01-02-USD").Return(true, nil).Times(1)
+
+	service := currency.NewWithInterfaces(store)
+
+	date := time.Date(2021, time.January, 2, 0, 0, 0, 0, time.Local)
+	hasCurrency, err := service.HasCurrencyAtDate(context.Background(), "USD", date)
+
+	assert.NoError(t, err)
+	assert.True(t, hasCurrency)
+
+	store.AssertExpectations(t)
+}
+
+func TestCurrencyService_HasCurrencyAtDate_NotThere(t *testing.T) {
+	store := new(kvStoreMock.KvStore)
+
+	store.On("Contains", mock.AnythingOfType("*context.emptyCtx"), "2021-01-02-USD").Return(false, nil).Times(1)
+
+	service := currency.NewWithInterfaces(store)
+
+	date := time.Date(2021, time.January, 2, 0, 0, 0, 0, time.Local)
+	hasCurrency, err := service.HasCurrencyAtDate(context.Background(), "USD", date)
+
+	assert.NoError(t, err)
+	assert.False(t, hasCurrency)
+
+	store.AssertExpectations(t)
+}
+
+func TestCurrencyService_HasCurrencyAtDate_Error(t *testing.T) {
+	store := new(kvStoreMock.KvStore)
+
+	store.On("Contains", mock.AnythingOfType("*context.emptyCtx"), historicalRateKey).Return(false, errors.New("lookup error")).Times(1)
+
+	service := currency.NewWithInterfaces(store)
+
+	hasCurrency, err := service.HasCurrencyAtDate(context.Background(), "USD", historicalRateDate)
+
+	assert.Error(t, err)
+	assert.False(t, hasCurrency)
+
+	store.AssertExpectations(t)
+}
+
+func TestCurrencyService_ToEurAtDate_Calculation(t *testing.T) {
+	store := new(kvStoreMock.KvStore)
+
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), historicalRateKey, mock.AnythingOfType("*float64")).Run(func(args mock.Arguments) {
+		f := args.Get(2).(*float64)
+		*f = 1.09
+	}).Return(true, nil)
+
+	service := currency.NewWithInterfaces(store)
+
+	valueUsd := 1.09
+	valueEur := 1.0
+	from := "USD"
+
+	converted, err := service.ToEurAtDate(context.Background(), valueUsd, from, historicalRateDate)
+
+	assert.NoError(t, err)
+	assert.Equal(t, valueEur, converted)
+}
+
+func TestCurrencyService_ToUsdAtDate_Calculation(t *testing.T) {
+	store := new(kvStoreMock.KvStore)
+
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), historicalRateKey, mock.AnythingOfType("*float64")).Run(func(args mock.Arguments) {
+		ptr := args.Get(2).(*float64)
+		*ptr = 1.09
+	}).Return(true, nil)
+
+	service := currency.NewWithInterfaces(store)
+
+	valueUsd := 1.09
+	valueEur := 1.0
+	from := "EUR"
+
+	converted, err := service.ToUsdAtDate(context.Background(), valueEur, from, historicalRateDate)
+
+	assert.NoError(t, err)
+	assert.Equal(t, valueUsd, converted)
+}
+
+func TestUpdaterService_ImportHistoricalExchangeRates(t *testing.T) {
+	logger := loggerMock.NewLoggerMockedAll()
+	store := new(kvStoreMock.KvStore)
+	client := new(httpMock.Client)
+
+	keyValyes := map[string]float64{
+		"2021-05-26-USD": 1.2229,
+		"2021-05-26-BGN": 1.9558,
+		"2021-05-25-USD": 1.2212,
+		"2021-05-25-JPY": 132.97,
+		"2021-05-24-USD": 1.2212,
+		"2021-05-24-JPY": 132.97,
+		"2021-05-23-USD": 1.2212,
+		"2021-05-23-JPY": 132.97,
+	}
+	store.On("PutBatch", mock.AnythingOfType("*context.emptyCtx"), keyValyes).Return(nil)
+
+	r := &http.Response{
+		Body: []byte(historicalResponse),
+	}
+
+	client.On("NewRequest").Return(http.NewRequest(nil))
+	client.On("Get", context.Background(), mock.AnythingOfType("*http.Request")).Return(r, nil)
+
+	service := currency.NewUpdaterWithInterfaces(logger, store, client)
+
+	err := service.ImportHistoricalExchangeRates(context.TODO())
+
+	assert.NoError(t, err)
+
+	store.AssertExpectations(t)
+	client.AssertExpectations(t)
 }
