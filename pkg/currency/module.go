@@ -35,6 +35,7 @@ func NewCurrencyModule() kernel.ModuleFactory {
 func (module *Module) Run(ctx context.Context) error {
 	ticker := time.NewTicker(time.Duration(1) * time.Hour)
 	module.refresh(ctx)
+	module.importExchangeRates(ctx)
 	for {
 		select {
 		case <-ctx.Done():
@@ -50,5 +51,12 @@ func (module *Module) refresh(ctx context.Context) {
 	err := module.updaterService.EnsureRecentExchangeRates(ctx)
 	if err != nil {
 		module.logger.Error(err, "failed to refresh currency exchange rates")
+	}
+}
+
+func (module *Module) importExchangeRates(ctx context.Context) {
+	err := module.updaterService.ImportHistoricalExchangeRates(ctx)
+	if err != nil {
+		module.logger.Error(err, "failed to import historical currency exchange rates")
 	}
 }
