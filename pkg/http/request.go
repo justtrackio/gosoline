@@ -10,13 +10,19 @@ import (
 	"sync"
 )
 
-const HdrAccept = "Accept"
-const HdrContentType = "Content-Type"
-const HdrUserAgent = "User-Agent"
+const (
+	HdrAccept          = "Accept"
+	HdrAcceptEncoding  = "Accept-Encoding"
+	HdrContentType     = "Content-Type"
+	HdrContentEncoding = "Content-Encoding"
+	HdrUserAgent       = "User-Agent"
 
-const ContentTypeApplicationJson = "application/json"
-const ContentTypeApplicationXml = "application/xml"
-const ContentTypeApplicationFormUrlencoded = "application/x-www-form-urlencoded"
+	ContentTypeApplicationJson           = "application/json"
+	ContentTypeApplicationXml            = "application/xml"
+	ContentTypeApplicationFormUrlencoded = "application/x-www-form-urlencoded"
+
+	ContentEncodingGzip = "gzip"
+)
 
 type Request struct {
 	errs         error

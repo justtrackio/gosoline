@@ -16,11 +16,17 @@ import (
 )
 
 type Settings struct {
-	Port         string
-	Mode         string
-	TimeoutRead  time.Duration
-	TimeoutWrite time.Duration
-	TimeoutIdle  time.Duration
+	Port        string              `cfg:"port" default:"8080"`
+	Mode        string              `cfg:"mode" default:"release" validate:"oneof=release debug test"`
+	Compression CompressionSettings `cfg:"compression"`
+	Timeout     TimeoutSettings     `cfg:"timeout"`
+}
+
+type TimeoutSettings struct {
+	// read, write and idle timeouts. You need to give at least 1s as timeout.
+	Read  time.Duration `cfg:"read" default:"60s" validate:"min=1000000000"`
+	Write time.Duration `cfg:"write" default:"60s" validate:"min=1000000000"`
+	Idle  time.Duration `cfg:"idle" default:"60s" validate:"min=1000000000"`
 }
 
 type ApiServer struct {
@@ -34,12 +40,27 @@ type ApiServer struct {
 
 func New(definer Definer) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
-		settings := &Settings{
-			Port:         config.GetString("api_port"),
-			Mode:         config.GetString("api_mode"),
-			TimeoutRead:  config.GetDuration("api_timeout_read"),
-			TimeoutWrite: config.GetDuration("api_timeout_write"),
-			TimeoutIdle:  config.GetDuration("api_timeout_idle"),
+		var settings *Settings
+		if config.IsSet("api_port") {
+			// old code path, build the settings from various keys without validation or defaults (and with
+			// no chance to configure compression)
+			settings = &Settings{
+				Port: config.GetString("api_port"),
+				Mode: config.GetString("api_mode"),
+				Compression: CompressionSettings{
+					Level:         "none",
+					Decompression: false,
+					Exclude:       CompressionExcludeSettings{},
+				},
+				Timeout: TimeoutSettings{
+					Read:  config.GetDuration("api_timeout_read") * time.Second,
+					Write: config.GetDuration("api_timeout_write") * time.Second,
+					Idle:  config.GetDuration("api_timeout_idle") * time.Second,
+				},
+			}
+		} else {
+			settings = &Settings{}
+			config.UnmarshalKey("api", settings)
 		}
 
 		gin.SetMode(settings.Mode)
@@ -64,6 +85,10 @@ func New(definer Definer) kernel.ModuleFactory {
 		router.Use(RecoveryWithSentry(logger))
 		router.Use(LoggingMiddleware(logger))
 
+		if err := configureCompression(router, settings.Compression); err != nil {
+			return nil, fmt.Errorf("could not configure compression: %w", err)
+		}
+
 		buildRouter(definitions, router)
 
 		return NewWithInterfaces(logger, router, tracer, settings)
@@ -74,9 +99,9 @@ func NewWithInterfaces(logger mon.Logger, router *gin.Engine, tracer tracing.Tra
 	server := &http.Server{
 		Addr:         ":" + s.Port,
 		Handler:      tracer.HttpHandler(router),
-		ReadTimeout:  s.TimeoutRead * time.Second,
-		WriteTimeout: s.TimeoutWrite * time.Second,
-		IdleTimeout:  s.TimeoutIdle * time.Second,
+		ReadTimeout:  s.Timeout.Read,
+		WriteTimeout: s.Timeout.Write,
+		IdleTimeout:  s.Timeout.Idle,
 	}
 
 	var err error
