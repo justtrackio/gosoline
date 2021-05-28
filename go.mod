@@ -28,9 +28,8 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/getsentry/sentry-go v0.9.0
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
-	github.com/gin-gonic/gin v1.4.0
-	github.com/go-playground/locales v0.12.1 // indirect
-	github.com/go-playground/universal-translator v0.16.0 // indirect
+	github.com/gin-contrib/gzip v0.0.3
+	github.com/gin-gonic/gin v1.6.3
 	github.com/go-redis/redis/v8 v8.8.0
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/go-sql-driver/mysql v1.5.0
@@ -52,7 +51,6 @@ require (
 	github.com/jonboulle/clockwork v0.1.0
 	github.com/karlseguin/ccache v0.0.0-20181227155450-692cd618b264
 	github.com/karlseguin/expect v1.0.1 // indirect
-	github.com/leodido/go-urn v1.1.0 // indirect
 	github.com/lib/pq v1.3.0
 	github.com/mitchellh/mapstructure v1.2.2
 	github.com/myesui/uuid v1.0.0 // indirect
