@@ -678,6 +678,201 @@ func TestMapStruct_Write_Basic_To_Slice(t *testing.T) {
 	assert.Equal(t, expected, source)
 }
 
+func TestMapStruct_Write_Typed(t *testing.T) {
+	type someString string
+	type someStruct struct {
+		Value someString `cfg:"value"`
+	}
+
+	values := mapx.NewMapX(map[string]interface{}{
+		"value": "string",
+	})
+
+	expected := &someStruct{
+		Value: "string",
+	}
+
+	source := &someStruct{}
+	ms := setupMapStructIO(t, source)
+	err := ms.Write(values)
+
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
+}
+
+func TestMapStruct_Write_Typed_Slice(t *testing.T) {
+	type someString string
+	type someStruct struct {
+		Values []someString `cfg:"values"`
+	}
+
+	values := mapx.NewMapX(map[string]interface{}{
+		"values": []string{"string", "other string"},
+	})
+
+	expected := &someStruct{
+		Values: []someString{"string", "other string"},
+	}
+
+	source := &someStruct{}
+	ms := setupMapStructIO(t, source)
+	err := ms.Write(values)
+
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
+}
+
+func TestMapStruct_Write_Typed_StringMap(t *testing.T) {
+	type someString string
+	type someKey string
+	type someStruct struct {
+		Values map[someKey]someString `cfg:"values"`
+	}
+
+	values := mapx.NewMapX(map[string]interface{}{
+		"values": map[string]interface{}{
+			"1": "string",
+			"2": "other string",
+		},
+	})
+
+	expected := &someStruct{
+		Values: map[someKey]someString{
+			"1": "string",
+			"2": "other string",
+		},
+	}
+
+	source := &someStruct{}
+	ms := setupMapStructIO(t, source)
+	err := ms.Write(values)
+
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
+}
+
+func TestMapStruct_Write_Typed_IntMap(t *testing.T) {
+	type someString string
+	type someInt int
+	type someStruct struct {
+		Values map[someInt]someString `cfg:"values"`
+	}
+
+	values := mapx.NewMapX(map[string]interface{}{
+		"values": map[string]interface{}{
+			"1": "string",
+			"2": "other string",
+		},
+	})
+
+	expected := &someStruct{
+		Values: map[someInt]someString{
+			1: "string",
+			2: "other string",
+		},
+	}
+
+	source := &someStruct{}
+	ms := setupMapStructIO(t, source)
+
+	// Right now this doesn't work because of the way `reflect.Value.String()` works.
+	// We have this test to be notified if this changes.
+	assert.Panics(t, func() {
+		err := ms.Write(values)
+
+		assert.NoError(t, err, "there should be no error during write")
+		assert.Equal(t, expected, source)
+	})
+}
+
+func TestMapStruct_Write_Typed_MapNestedInSlice(t *testing.T) {
+	type someString string
+	type someKey string
+	type someStruct struct {
+		Values map[someKey][]map[someString][]map[string][]someKey `cfg:"values"`
+	}
+
+	values := mapx.NewMapX(map[string]interface{}{
+		"values": map[string]interface{}{
+			"1": []interface{}{
+				map[string]interface{}{
+					"2": []interface{}{
+						map[string]interface{}{
+							"3": []interface{}{"string", "some string"},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	expected := &someStruct{
+		Values: map[someKey][]map[someString][]map[string][]someKey{
+			"1": {
+				{
+					"2": []map[string][]someKey{
+						{
+							"3": []someKey{"string", "some string"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	source := &someStruct{}
+	ms := setupMapStructIO(t, source)
+	err := ms.Write(values)
+
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
+}
+
+func TestMapStruct_Write_Typed_MapNested(t *testing.T) {
+	type someString string
+	type someKey string
+	type someStruct struct {
+		Values map[someKey]map[someString][]map[string][]someKey `cfg:"values"`
+	}
+
+	values := mapx.NewMapX(map[string]interface{}{
+		"values": map[string]interface{}{
+			"1": map[string]interface{}{
+				"2": []interface{}{
+					map[string]interface{}{
+						"3": []interface{}{"string", "some string"},
+					},
+				},
+			},
+		},
+	})
+
+	expected := &someStruct{
+		Values: map[someKey]map[someString][]map[string][]someKey{
+			"1": {
+				"2": []map[string][]someKey{
+					{
+						"3": []someKey{"string", "some string"},
+					},
+				},
+			},
+		},
+	}
+
+	source := &someStruct{}
+	ms := setupMapStructIO(t, source)
+
+	// Right now this doesn't work because in a map there needs to be either a struct or a slice, having a map in a map
+	// causes a map to be treated as a struct, which fails.
+	// We have this test to be notified if this changes.
+	assert.Panics(t, func() {
+		err := ms.Write(values)
+
+		assert.NoError(t, err, "there should be no error during write")
+		assert.Equal(t, expected, source)
+	})
+}
+
 func setupMapStructIO(t *testing.T, source interface{}) *mapx.MapXStruct {
 	ms, err := mapx.NewMapStruct(source, &mapx.MapXStructSettings{
 		FieldTag:   "cfg",

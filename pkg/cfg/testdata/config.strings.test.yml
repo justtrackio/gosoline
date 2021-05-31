@@ -1,0 +1,32 @@
+test:
+  encoding: json
+  compression: gzip
+  supported_compression:
+    - gzip
+    - none
+  encoding_compression:
+    json: gzip
+    html: gzip
+    png: none
+  supported_compressions:
+    json:
+      - gzip
+      - none
+    html:
+      - gzip
+    png:
+      - none
+  all_encodings:
+    - json
+    - html
+    - png
+  name_this:
+    json:
+      - html: [gzip, none]
+        png: [none]
+      - html: []
+        json: [none]
+    html:
+      - json: []
+      - html: []
+        json: [gzip, gzip]

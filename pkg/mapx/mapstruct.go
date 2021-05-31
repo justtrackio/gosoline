@@ -386,13 +386,21 @@ func (m *MapXStruct) doWriteMap(cfg string, targetValue reflect.Value, sourceMap
 	var sourceData = sourceMap.Get(cfg).Data()
 
 	sourceValue := reflect.ValueOf(sourceData)
-	targetValue.Set(reflect.MakeMap(targetValue.Type()))
+	targetType := targetValue.Type()
+	targetKeyType := targetType.Key()
+	targetValue.Set(reflect.MakeMap(targetType))
 
 	if sourceValue.Kind() != reflect.Map {
 		return fmt.Errorf("value for field %s has to be a map but instead is %T", cfg, sourceData)
 	}
 
 	for _, key := range sourceValue.MapKeys() {
+		if keyValue, err := m.cast(targetKeyType, key.Interface()); err != nil {
+			return fmt.Errorf("key type %s does not match target type %s: %w", key.Type().Name(), targetKeyType.Name(), err)
+		} else {
+			key = reflect.ValueOf(keyValue)
+		}
+
 		selector := fmt.Sprintf("%s.%s", cfg, key.String())
 		elementData := sourceMap.Get(selector)
 
@@ -505,6 +513,53 @@ func (m *MapXStruct) decodeAndCastValue(targetType reflect.Type, sourceValue int
 }
 
 func (m *MapXStruct) cast(targetType reflect.Type, value interface{}) (interface{}, error) {
+	valueType := reflect.TypeOf(value)
+
+	if valueType.AssignableTo(targetType) {
+		return value, nil
+	}
+
+	if valueType.ConvertibleTo(targetType) {
+		return reflect.ValueOf(value).Convert(targetType).Interface(), nil
+	}
+
+	if valueType.Kind() == reflect.Slice && targetType.Kind() == reflect.Slice {
+		elemType := targetType.Elem()
+		reflectValue := reflect.ValueOf(value)
+		resultSlice := reflect.MakeSlice(targetType, reflectValue.Len(), reflectValue.Len())
+
+		for i := 0; i < reflectValue.Len(); i++ {
+			if iValue, err := m.cast(elemType, reflectValue.Index(i).Interface()); err != nil {
+				return nil, fmt.Errorf("could not cast element %d in slice: %w", i, err)
+			} else {
+				resultSlice.Index(i).Set(reflect.ValueOf(iValue))
+			}
+		}
+
+		return resultSlice.Interface(), nil
+	}
+
+	if valueType.Kind() == reflect.Map && targetType.Kind() == reflect.Map {
+		keyType := targetType.Key()
+		elemType := targetType.Elem()
+		reflectValue := reflect.ValueOf(value)
+		resultMap := reflect.MakeMap(targetType)
+
+		for _, key := range reflectValue.MapKeys() {
+			if keyValue, err := m.cast(keyType, key.Interface()); err != nil {
+				return nil, fmt.Errorf("could not cast key %v in map: %w", key.Interface(), err)
+			} else {
+				if elemValue, err := m.cast(elemType, reflectValue.MapIndex(key).Interface()); err != nil {
+					return nil, fmt.Errorf("could not cast value at key %v in map: %w", key.Interface(), err)
+				} else {
+					resultMap.SetMapIndex(reflect.ValueOf(keyValue), reflect.ValueOf(elemValue))
+				}
+			}
+		}
+
+		return resultMap.Interface(), nil
+	}
+
 	for _, caster := range m.casters {
 		casted, err := caster(targetType, value)
 
