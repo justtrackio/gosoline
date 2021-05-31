@@ -236,6 +236,17 @@ func TestCurrencyService_ToEurAtDate_Calculation(t *testing.T) {
 	assert.Equal(t, valueEur, converted)
 }
 
+func TestCurrencyService_ToEurAtDate_DateInFuture(t *testing.T) {
+	store := new(kvStoreMock.KvStore)
+	service := currency.NewWithInterfaces(store)
+
+	from := "USD"
+	futureDate := time.Now().AddDate(0, 0, 2)
+	_, err := service.ToEurAtDate(context.Background(), 1, from, futureDate)
+
+	assert.Error(t, err)
+}
+
 func TestCurrencyService_ToUsdAtDate_Calculation(t *testing.T) {
 	store := new(kvStoreMock.KvStore)
 

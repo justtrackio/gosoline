@@ -114,6 +114,10 @@ func (s *currencyService) HasCurrencyAtDate(ctx context.Context, currency string
 		return true, nil
 	}
 
+	if date.After(time.Now()) {
+		return false, fmt.Errorf("CurrencyService: requested date in the future")
+	}
+
 	key := historicalRateKey(date, currency)
 	return s.store.Contains(ctx, key)
 }
@@ -122,6 +126,10 @@ func (s *currencyService) HasCurrencyAtDate(ctx context.Context, currency string
 func (s *currencyService) ToEurAtDate(ctx context.Context, value float64, from string, date time.Time) (float64, error) {
 	if from == Eur {
 		return value, nil
+	}
+
+	if date.After(time.Now()) {
+		return 0, fmt.Errorf("CurrencyService: requested date in the future")
 	}
 
 	key := historicalRateKey(date, from)
@@ -147,6 +155,10 @@ func (s *currencyService) ToUsdAtDate(ctx context.Context, value float64, from s
 func (s *currencyService) ToCurrencyAtDate(ctx context.Context, to string, value float64, from string, date time.Time) (float64, error) {
 	if from == to {
 		return value, nil
+	}
+
+	if date.After(time.Now()) {
+		return 0, fmt.Errorf("CurrencyService: requested date in the future")
 	}
 
 	key := historicalRateKey(date, to)

@@ -14,7 +14,7 @@ import (
 const (
 	ExchangeRateRefresh       = 8 * time.Hour
 	ExchangeRateUrl           = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
-	HistoricalExchangeRateUrl = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml"
+	HistoricalExchangeRateUrl = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml"
 	ExchangeRateDateKey       = "currency_exchange_last_refresh"
 )
 
@@ -140,11 +140,18 @@ func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
 }
 
 func (s *updaterService) ImportHistoricalExchangeRates(ctx context.Context) error {
+	startDate := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+
 	s.logger.Info("requesting historical exchange rates")
-	rates, err := s.getCurrencyRatesForLast3Months(ctx)
+	rates, err := s.fetchExchangeRates(ctx)
 
 	if err != nil {
 		return fmt.Errorf("error getting historical currency exchange rates: %w", err)
+	}
+
+	rates, err = filterOutOldExchangeRates(rates, startDate)
+	if err != nil {
+		return fmt.Errorf("error filtering out old rates: %w", err)
 	}
 
 	// the API doesn't return rates for weekends and public holidays at the time of writing this,
@@ -172,11 +179,11 @@ func (s *updaterService) ImportHistoricalExchangeRates(ctx context.Context) erro
 		return fmt.Errorf("error setting historical exchange rates: %w", err)
 	}
 
-	s.logger.Infof("stored %d days of historical exchange rates", len(rates))
+	s.logger.Infof("stored %d day-currency combinations of historical exchange rates", len(keyValues))
 	return nil
 }
 
-func (s *updaterService) getCurrencyRatesForLast3Months(ctx context.Context) ([]Content, error) {
+func (s *updaterService) fetchExchangeRates(ctx context.Context) ([]Content, error) {
 	request := s.http.NewRequest().WithUrl(HistoricalExchangeRateUrl)
 
 	response, err := s.http.Get(ctx, request)
@@ -199,6 +206,20 @@ func historicalRateKey(time time.Time, currency string) string {
 	return time.Format("2006-01-02") + "-" + currency
 }
 
+func filterOutOldExchangeRates(rates []Content, earliestDate time.Time) (ret []Content, e error) {
+	for _, dayRates := range rates {
+		date, err := dayRates.GetTime()
+		if err != nil {
+			e = fmt.Errorf("filterOutOldExchangeRates error parsing time: %w", err)
+			return
+		}
+		if !date.Before(earliestDate) {
+			ret = append(ret, dayRates)
+		}
+	}
+	return
+}
+
 func fillInGapDays(historicalContent []Content) ([]Content, error) {
 	var startDate time.Time
 	var endDate time.Time
@@ -218,18 +239,17 @@ func fillInGapDays(historicalContent []Content) ([]Content, error) {
 		dailyRates[date.Format(YMDLayout)] = dayRates
 	}
 
-	var date = startDate
-	var lastDay = date
-	counter := 0
-	for {
-		counter++
-		if counter > 180 {
-			break
-		}
+	if startDate.IsZero() || endDate.IsZero() {
+		return nil, fmt.Errorf("fillInGapDays, no valid data provided")
+	}
 
-		if date.Equal(endDate) || date.After(endDate) {
-			return historicalContent, nil
-		}
+	tomorrow := time.Now().AddDate(0, 0, 1)
+	if endDate.After(tomorrow) {
+		return nil, fmt.Errorf("fillInGapDays, unexpected end date %s", endDate)
+	}
+
+	var lastDay = startDate
+	for date := startDate; date.Before(endDate); date = date.AddDate(0, 0, 1) {
 		if _, ok := dailyRates[date.Format(YMDLayout)]; !ok {
 			gapContent := dailyRates[lastDay.Format(YMDLayout)]
 			gapContent.Time = date.Format(YMDLayout)
@@ -237,8 +257,6 @@ func fillInGapDays(historicalContent []Content) ([]Content, error) {
 		} else {
 			lastDay = date
 		}
-
-		date = date.AddDate(0, 0, 1)
 	}
 
 	return historicalContent, nil
