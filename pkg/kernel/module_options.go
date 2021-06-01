@@ -10,9 +10,11 @@ type ModuleOption func(ms *ModuleConfig)
 //
 // to declare the module as essential. Now if the module quits the
 // kernel will shut down instead of continuing to run.
-func ModuleType(moduleType string) ModuleOption {
+func ModuleType(moduleTypeProvider func() TypedModule) ModuleOption {
 	return func(ms *ModuleConfig) {
-		ms.Type = moduleType
+		moduleType := moduleTypeProvider()
+		ms.Essential = moduleType.IsEssential()
+		ms.Background = moduleType.IsBackground()
 	}
 }
 

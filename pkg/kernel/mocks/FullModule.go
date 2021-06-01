@@ -27,15 +27,29 @@ func (_m *FullModule) GetStage() int {
 	return r0
 }
 
-// GetType provides a mock function with given fields:
-func (_m *FullModule) GetType() string {
+// IsBackground provides a mock function with given fields:
+func (_m *FullModule) IsBackground() bool {
 	ret := _m.Called()
 
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// IsEssential provides a mock function with given fields:
+func (_m *FullModule) IsEssential() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
 	}
 
 	return r0

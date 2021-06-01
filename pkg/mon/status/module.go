@@ -11,12 +11,15 @@ import (
 )
 
 type module struct {
+	kernel.BackgroundModule
+	kernel.ServiceStage
+
 	logger        mon.Logger
 	statusManager Manager
 	sigChan       chan os.Signal
 }
 
-// create a new module which reports the status from the status manager upon receiving SIGUSR1
+// NewModule creates a new module which reports the status from the status manager upon receiving SIGUSR1
 func NewModule(statusManager Manager) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
 		sigChan := make(chan os.Signal, 1)
@@ -41,12 +44,4 @@ func (m *module) Run(ctx context.Context) error {
 			m.statusManager.PrintReport(m.logger)
 		}
 	}
-}
-
-func (m *module) GetStage() int {
-	return kernel.StageService
-}
-
-func (m *module) GetType() string {
-	return kernel.TypeBackground
 }

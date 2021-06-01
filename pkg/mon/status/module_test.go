@@ -22,9 +22,6 @@ func TestModule(t *testing.T) {
 	m, err := status.NewModule(mgr)(context.Background(), nil, logger)
 	assert.NoError(t, err)
 
-	assert.Equal(t, kernel.StageService, m.(kernel.StagedModule).GetStage())
-	assert.Equal(t, kernel.TypeBackground, m.(kernel.TypedModule).GetType())
-
 	ctx, cancel := context.WithCancel(context.Background())
 	cfn := coffin.New()
 

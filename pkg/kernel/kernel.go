@@ -332,7 +332,7 @@ func (k *kernel) countForegroundModules() int {
 	// no need to iterate in order as we are only counting
 	for _, stage := range k.stages {
 		for _, m := range stage.modules.modules {
-			if m.Config.Type != TypeBackground {
+			if !m.Config.Background {
 				count++
 			}
 		}
@@ -350,9 +350,9 @@ func (k *kernel) debugConfig() {
 }
 
 func (k *kernel) runModule(ctx context.Context, name string, ms *ModuleState) (moduleErr error) {
-	defer k.logger.Infof("stopped %s module %s", ms.Config.Type, name)
+	defer k.logger.Infof("stopped %s module %s", ms.Config.GetType(), name)
 
-	k.logger.Infof("running %s module %s in stage %d", ms.Config.Type, name, ms.Config.Stage)
+	k.logger.Infof("running %s module %s in stage %d", ms.Config.GetType(), name, ms.Config.Stage)
 
 	ms.IsRunning = true
 
@@ -367,14 +367,13 @@ func (k *kernel) runModule(ctx context.Context, name string, ms *ModuleState) (m
 		}
 
 		if ms.Err != nil {
-			k.logger.Errorf(ms.Err, "error running %s module %s", ms.Config.Type, name)
+			k.logger.Errorf(ms.Err, "error running %s module %s", ms.Config.GetType(), name)
 		}
 
 		ms.IsRunning = false
-		switch ms.Config.Type {
-		case TypeEssential:
+		if ms.Config.Essential {
 			k.essentialModuleExited(name)
-		case TypeForeground:
+		} else if !ms.Config.Background {
 			k.foregroundModuleExited()
 		}
 
@@ -453,19 +452,14 @@ func (k *kernel) getStageIndices() []int {
 
 func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 	done := conc.NewSignalOnce()
-	wg := &sync.WaitGroup{}
-	wg.Add(len(k.stages))
 
-	for _, s := range k.stages {
-		go func(s *stage) {
+	go func() {
+		for _, s := range k.stages {
 			<-s.ctx.Done()
+		}
 
-			wg.Done()
-			wg.Wait()
-
-			done.Signal()
-		}(s)
-	}
+		done.Signal()
+	}()
 
 	return done
 }

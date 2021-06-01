@@ -80,8 +80,12 @@ func NewMetricDaemonWithInterfaces(logger Logger, channel *metricChannel, writer
 	}, nil
 }
 
-func (d *MetricDaemon) GetType() string {
-	return common.TypeBackground
+func (d *MetricDaemon) IsEssential() bool {
+	return false
+}
+
+func (d *MetricDaemon) IsBackground() bool {
+	return true
 }
 
 func (d *MetricDaemon) GetStage() int {
