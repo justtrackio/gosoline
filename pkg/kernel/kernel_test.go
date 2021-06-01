@@ -33,7 +33,8 @@ func createMocks() (*cfgMocks.Config, *monMocks.Logger, *kernelMocks.FullModule)
 	logger.On("Infof", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 	module := new(kernelMocks.FullModule)
-	module.On("GetType").Return(kernel.TypeForeground)
+	module.On("IsEssential").Return(false)
+	module.On("IsBackground").Return(false)
 
 	return config, logger, module
 }
@@ -152,7 +153,8 @@ func TestStop(t *testing.T) {
 	k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
 	assert.NoError(t, err)
 
-	module.On("GetType").Return(kernel.TypeForeground)
+	module.On("IsEssential").Return(false)
+	module.On("IsBackground").Return(false)
 	module.On("GetStage").Return(kernel.StageApplication)
 	module.On("Run", mock.Anything).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
@@ -179,7 +181,8 @@ func TestRunningType(t *testing.T) {
 	mf.On("Run", mock.Anything).Run(func(args mock.Arguments) {}).Return(nil)
 
 	mb := new(kernelMocks.FullModule)
-	mb.On("GetType").Return(kernel.TypeBackground)
+	mb.On("IsEssential").Return(false)
+	mb.On("IsBackground").Return(true)
 	mb.On("GetStage").Return(kernel.StageApplication)
 	mb.On("Run", mock.Anything).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
@@ -216,7 +219,8 @@ func TestMultipleStages(t *testing.T) {
 		thisStage := stage
 
 		m := new(kernelMocks.FullModule)
-		m.On("GetType").Return(kernel.TypeEssential)
+		m.On("IsEssential").Return(true)
+		m.On("IsBackground").Return(false)
 		m.On("GetStage").Return(thisStage)
 		m.On("Run", mock.Anything).Run(func(args mock.Arguments) {
 			ctx := args.Get(0).(context.Context)
@@ -273,7 +277,8 @@ func TestKernelForcedExit(t *testing.T) {
 	assert.NoError(t, err)
 
 	app := new(kernelMocks.FullModule)
-	app.On("GetType").Return(kernel.TypeBackground)
+	app.On("IsEssential").Return(false)
+	app.On("IsBackground").Return(true)
 	app.On("GetStage").Return(kernel.StageApplication)
 	app.On("Run", mock.Anything).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
@@ -318,7 +323,8 @@ func TestKernelStageStopped(t *testing.T) {
 	assert.NoError(t, err)
 
 	app := new(kernelMocks.FullModule)
-	app.On("GetType").Return(kernel.TypeForeground)
+	app.On("IsEssential").Return(false)
+	app.On("IsBackground").Return(false)
 	app.On("GetStage").Return(kernel.StageApplication)
 	app.On("Run", mock.Anything).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
@@ -337,7 +343,8 @@ func TestKernelStageStopped(t *testing.T) {
 	}).Return(nil)
 
 	m := new(kernelMocks.FullModule)
-	m.On("GetType").Return(kernel.TypeBackground)
+	m.On("IsEssential").Return(false)
+	m.On("IsBackground").Return(true)
 	m.On("GetStage").Return(777)
 	m.On("Run", mock.Anything).Return(nil)
 
