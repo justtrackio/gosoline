@@ -519,7 +519,9 @@ func (m *MapXStruct) cast(targetType reflect.Type, value interface{}) (interface
 		return value, nil
 	}
 
-	if valueType.ConvertibleTo(targetType) {
+	// IMPORTANT: don't convert if the kind would change - we don't want to convert integers to strings, otherwise
+	// the int 80 becomes the string "P".
+	if valueType.ConvertibleTo(targetType) && valueType.Kind() == targetType.Kind() {
 		return reflect.ValueOf(value).Convert(targetType).Interface(), nil
 	}
 

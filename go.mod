@@ -30,6 +30,7 @@ require (
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.6.3
+	github.com/go-playground/validator/v10 v10.2.0
 	github.com/go-redis/redis/v8 v8.8.0
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/go-sql-driver/mysql v1.5.0
@@ -76,8 +77,6 @@ require (
 	golang.org/x/sys v0.0.0-20210330210617-4fbd30eecc44
 	google.golang.org/api v0.5.0
 	google.golang.org/protobuf v1.23.0
-	gopkg.in/go-playground/validator.v8 v8.18.2
-	gopkg.in/go-playground/validator.v9 v9.30.0
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
