@@ -55,6 +55,10 @@ type Client interface {
 	HSet(ctx context.Context, key string, field string, value interface{}) error
 	HSetNX(ctx context.Context, key string, field string, value interface{}) (bool, error)
 
+	SAdd(ctx context.Context, key string, values ...interface{}) (int64, error)
+	SCard(ctx context.Context, key string) (int64, error)
+	SIsMember(ctx context.Context, key string, value interface{}) (bool, error)
+
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, amount int64) (int64, error)
 	Incr(ctx context.Context, key string) (int64, error)
@@ -285,6 +289,32 @@ func (c *redisClient) HGetAll(ctx context.Context, key string) (map[string]strin
 func (c *redisClient) HSetNX(ctx context.Context, key, field string, value interface{}) (bool, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.HSetNX(ctx, key, field, value)
+	})
+
+	val := res.(*baseRedis.BoolCmd).Val()
+
+	return val, err
+}
+
+func (c *redisClient) SAdd(ctx context.Context, key string, values ...interface{}) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SAdd(ctx, key, values...)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) SCard(ctx context.Context, key string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SCard(ctx, key)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) SIsMember(ctx context.Context, key string, value interface{}) (bool, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SIsMember(ctx, key, value)
 	})
 
 	val := res.(*baseRedis.BoolCmd).Val()

@@ -181,6 +181,38 @@ func (s *ClientWithMiniRedisTestSuite) TestHDel() {
 	s.Equal(map[string]string{"field": "value1"}, valuesFromMap)
 }
 
+func (s *ClientWithMiniRedisTestSuite) TestSAdd() {
+	_, err := s.client.SAdd(context.Background(), "key", "value")
+	s.NoError(err, "there should be no error on SAdd")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSCard() {
+	_, err := s.client.SAdd(context.Background(), "key", "value1")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "key", "value2")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "key", "value2")
+	s.NoError(err, "there should be no error on SAdd")
+
+	amount, err := s.client.SCard(context.Background(), "key")
+	s.Equal(int64(2), amount)
+	s.NoError(err, "there should be no error on SCard")
+
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSIsMember() {
+	_, err := s.client.SAdd(context.Background(), "key", "value1")
+	s.NoError(err, "there should be no error on SAdd")
+
+	isMember, err := s.client.SIsMember(context.Background(), "key", "value1")
+	s.Equal(true, isMember)
+	s.NoError(err, "there should be no error on SIsMember")
+
+	isMember, err = s.client.SIsMember(context.Background(), "key", "value2")
+	s.Equal(false, isMember)
+	s.NoError(err, "there should be no error on SIsMember")
+}
+
 func (s *ClientWithMiniRedisTestSuite) TestIncr() {
 	val, err := s.client.Incr(context.Background(), "key")
 	s.NoError(err, "there should be no error on Incr")
