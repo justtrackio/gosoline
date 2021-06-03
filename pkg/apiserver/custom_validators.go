@@ -1,8 +1,9 @@
 package apiserver
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin/binding"
-	"gopkg.in/go-playground/validator.v8"
+	"github.com/go-playground/validator/v10"
 )
 
 type CustomValidator struct {
@@ -15,7 +16,7 @@ func AddCustomValidators(customValidators []CustomValidator) error {
 		v, ok := binding.Validator.Engine().(*validator.Validate)
 
 		if !ok {
-			continue
+			return fmt.Errorf("invalid validator engine type, expected %T, got %T", &validator.Validate{}, binding.Validator.Engine())
 		}
 
 		err := v.RegisterValidation(customValidator.Name, customValidator.Validator)

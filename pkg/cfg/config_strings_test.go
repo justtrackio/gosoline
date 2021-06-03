@@ -29,6 +29,11 @@ type TestSettings struct {
 	OkayIDontKnowANameForThis map[Encoding][]map[Encoding][]Compression `cfg:"name_this"`
 }
 
+type ApiSettings struct {
+	Port string `cfg:"port"`
+	Mode string `cfg:"mode"`
+}
+
 func TestConfigStringsTest(t *testing.T) {
 	config := cfg.New()
 	err := config.Option(cfg.WithConfigFile("./testdata/config.strings.test.yml", "yml"))
@@ -92,5 +97,19 @@ func TestConfigStringsTest(t *testing.T) {
 				},
 			},
 		},
+	}, settings)
+}
+
+func TestConfigStringConversionTest(t *testing.T) {
+	config := cfg.New()
+	err := config.Option(cfg.WithConfigFile("./testdata/config.strings.test.yml", "yml"))
+	assert.NoError(t, err)
+
+	settings := &ApiSettings{}
+	config.UnmarshalKey("api", settings)
+
+	assert.Equal(t, &ApiSettings{
+		Port: "80",
+		Mode: "release",
 	}, settings)
 }

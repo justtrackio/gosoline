@@ -30,3 +30,7 @@ test:
       - json: []
       - html: []
         json: [gzip, gzip]
+
+api:
+  port: 80
+  mode: release
