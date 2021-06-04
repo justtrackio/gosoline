@@ -8,12 +8,12 @@ app_name: stream-sqs-consumer
 api:
   health:
     port: 0
-
-api_port: 8090
-api_mode: release
-api_timeout_read: 60
-api_timeout_write: 60
-api_timeout_idle: 60
+  port: 8090
+  mode: release
+  timeout:
+    read: 60s
+    write: 60s
+    idle: 60s
 
 aws_sdk_retries: 1
 aws_cloudwatch_endpoint: http://localhost:4582

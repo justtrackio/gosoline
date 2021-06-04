@@ -3,11 +3,13 @@ app_project: project
 app_family: family
 app_name: name
 
-api_port: 8088
-api_mode: debug
-api_timeout_read: 5
-api_timeout_write: 5
-api_timeout_idle: 5
+api:
+  port: 8088
+  mode: debug
+  timeout:
+    read: 5s
+    write: 5s
+    idle: 5s
 
 api_auth_keys:
   - changeMe

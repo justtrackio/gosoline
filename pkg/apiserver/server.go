@@ -40,28 +40,12 @@ type ApiServer struct {
 
 func New(definer Definer) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
-		var settings *Settings
-		if config.IsSet("api_port") {
-			// old code path, build the settings from various keys without validation or defaults (and with
-			// no chance to configure compression)
-			settings = &Settings{
-				Port: config.GetString("api_port"),
-				Mode: config.GetString("api_mode"),
-				Compression: CompressionSettings{
-					Level:         "none",
-					Decompression: false,
-					Exclude:       CompressionExcludeSettings{},
-				},
-				Timeout: TimeoutSettings{
-					Read:  config.GetDuration("api_timeout_read") * time.Second,
-					Write: config.GetDuration("api_timeout_write") * time.Second,
-					Idle:  config.GetDuration("api_timeout_idle") * time.Second,
-				},
-			}
-		} else {
-			settings = &Settings{}
-			config.UnmarshalKey("api", settings)
+		if config.IsSet("api_port") || config.IsSet("api_mode") || config.IsSet("api_timeout_read") || config.IsSet("api_timeout_write") || config.IsSet("api_timeout_idle") {
+			return nil, fmt.Errorf("old config format detected. You have to change your config from api_port to api.port, api_mode to api.mode, and so on")
 		}
+
+		settings := &Settings{}
+		config.UnmarshalKey("api", settings)
 
 		gin.SetMode(settings.Mode)
 
