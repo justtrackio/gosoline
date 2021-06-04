@@ -51,6 +51,8 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 
 	if err != nil {
 		assert.FailNow(t, "failed to create application under test", err.Error())
+
+		return
 	}
 
 	for name, module := range suiteOptions.appModules {
