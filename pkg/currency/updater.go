@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	ExchangeRateRefresh       = 8 * time.Hour
-	ExchangeRateUrl           = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
-	HistoricalExchangeRateUrl = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml"
-	ExchangeRateDateKey       = "currency_exchange_last_refresh"
+	ExchangeRateRefresh           = 8 * time.Hour
+	ExchangeRateUrl               = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+	HistoricalExchangeRateUrl     = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml"
+	ExchangeRateDateKey           = "currency_exchange_last_refresh"
+	HistoricalExchangeRateDateKey = "currency_exchange_historical_last_refresh"
 )
 
 const YMDLayout = "2006-01-02"
@@ -23,7 +24,7 @@ const YMDLayout = "2006-01-02"
 //go:generate mockery -name UpdaterService
 type UpdaterService interface {
 	EnsureRecentExchangeRates(ctx context.Context) error
-	ImportHistoricalExchangeRates(ctx context.Context) error
+	EnsureHistoricalExchangeRates(ctx context.Context) error
 }
 
 type updaterService struct {
@@ -35,7 +36,7 @@ type updaterService struct {
 func NewUpdater(config cfg.Config, logger mon.Logger) (UpdaterService, error) {
 	logger = logger.WithChannel("currency_updater_service")
 
-	store, err := kvstore.NewConfigurableKvStore(config, logger, "currency")
+	store, err := kvstore.ProvideConfigurableKvStore(config, logger, kvStoreName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kvStore: %w", err)
 	}
@@ -139,8 +140,12 @@ func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
 	return exchangeRateResult.Body.Content.Rates, nil
 }
 
-func (s *updaterService) ImportHistoricalExchangeRates(ctx context.Context) error {
-	startDate := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) error {
+	if !s.historicalRatesNeedRefresh(ctx) {
+		return nil
+	}
+
+	startDate := time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	s.logger.Info("requesting historical exchange rates")
 	rates, err := s.fetchExchangeRates(ctx)
@@ -179,8 +184,41 @@ func (s *updaterService) ImportHistoricalExchangeRates(ctx context.Context) erro
 		return fmt.Errorf("error setting historical exchange rates: %w", err)
 	}
 
+	newTime := time.Now()
+	err = s.store.Put(ctx, HistoricalExchangeRateDateKey, newTime)
+	if err != nil {
+		return fmt.Errorf("error setting historical refresh date %w", err)
+	}
+
 	s.logger.Infof("stored %d day-currency combinations of historical exchange rates", len(keyValues))
 	return nil
+}
+
+func (s *updaterService) historicalRatesNeedRefresh(ctx context.Context) bool {
+	var date time.Time
+	exists, err := s.store.Get(ctx, HistoricalExchangeRateDateKey, &date)
+
+	if err != nil {
+		s.logger.Info("historicalRatesNeedRefresh error fetching date")
+
+		return true
+	}
+
+	if !exists {
+		s.logger.Info("historicalRatesNeedRefresh date doesn't exist")
+
+		return true
+	}
+
+	comparisonDate := time.Now().Add(-24 * time.Hour)
+
+	if date.Before(comparisonDate) {
+		s.logger.Info("historicalRatesNeedRefresh comparison date was more than threshold")
+
+		return true
+	}
+
+	return false
 }
 
 func (s *updaterService) fetchExchangeRates(ctx context.Context) ([]Content, error) {

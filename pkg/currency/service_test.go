@@ -267,7 +267,7 @@ func TestCurrencyService_ToUsdAtDate_Calculation(t *testing.T) {
 	assert.Equal(t, valueUsd, converted)
 }
 
-func TestUpdaterService_ImportHistoricalExchangeRates(t *testing.T) {
+func TestUpdaterService_EnsureHistoricalExchangeRates(t *testing.T) {
 	logger := loggerMock.NewLoggerMockedAll()
 	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
@@ -282,7 +282,9 @@ func TestUpdaterService_ImportHistoricalExchangeRates(t *testing.T) {
 		"2021-05-23-USD": 1.2212,
 		"2021-05-23-JPY": 132.97,
 	}
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.HistoricalExchangeRateDateKey, mock.AnythingOfType("*time.Time")).Return(false, nil)
 	store.On("PutBatch", mock.AnythingOfType("*context.emptyCtx"), keyValyes).Return(nil)
+	store.On("Put", mock.AnythingOfType("*context.emptyCtx"), currency.HistoricalExchangeRateDateKey, mock.AnythingOfType("time.Time")).Return(nil)
 
 	r := &http.Response{
 		Body: []byte(historicalResponse),
@@ -293,7 +295,7 @@ func TestUpdaterService_ImportHistoricalExchangeRates(t *testing.T) {
 
 	service := currency.NewUpdaterWithInterfaces(logger, store, client)
 
-	err := service.ImportHistoricalExchangeRates(context.TODO())
+	err := service.EnsureHistoricalExchangeRates(context.TODO())
 
 	assert.NoError(t, err)
 

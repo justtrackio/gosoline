@@ -2,6 +2,7 @@ package kvstore_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -89,9 +90,53 @@ func TestRedisKvStore_Put(t *testing.T) {
 }
 
 func TestRedisKvStore_PutBatch(t *testing.T) {
+	store, client := buildTestableRedisStoreWithTTL()
+
+	pipe := &redisMocks.Pipeliner{}
+	pipe.On("MSet", mock.AnythingOfType("*context.emptyCtx"), mock.MatchedBy(func(input []interface{}) bool {
+		possibleInput1 := `[applike-gosoline-kvstore-kvstore-test-foo {"id":"foo","body":"bar"} applike-gosoline-kvstore-kvstore-test-fuu {"id":"fuu","body":"baz"}]`
+		possibleInput2 := `[applike-gosoline-kvstore-kvstore-test-fuu {"id":"fuu","body":"baz"} applike-gosoline-kvstore-kvstore-test-foo {"id":"foo","body":"bar"}]`
+
+		inputStr := fmt.Sprintf("%s", input)
+		return inputStr == possibleInput1 || inputStr == possibleInput2
+	})).Return(nil)
+	client.On("Pipeline").Return(pipe)
+	pipe.On("TxPipeline").Return(pipe)
+	pipe.On("Expire", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo", mock.AnythingOfType("time.Duration")).Return(nil)
+	pipe.On("Expire", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-fuu", mock.AnythingOfType("time.Duration")).Return(nil)
+	pipe.On("Exec", mock.AnythingOfType("*context.emptyCtx")).Return(nil, nil)
+
+	items := map[string]Item{
+		"foo": {
+			Id:   "foo",
+			Body: "bar",
+		},
+		"fuu": {
+			Id:   "fuu",
+			Body: "baz",
+		},
+	}
+
+	err := store.PutBatch(context.Background(), items)
+
+	assert.NoError(t, err)
+	client.AssertExpectations(t)
+}
+
+func TestRedisKvStore_PutBatchSkipExpire(t *testing.T) {
 	store, client := buildTestableRedisStore()
-	client.On("Set", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo", []byte(`{"id":"foo","body":"bar"}`), time.Duration(0)).Return(nil)
-	client.On("Set", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-fuu", []byte(`{"id":"fuu","body":"baz"}`), time.Duration(0)).Return(nil)
+
+	pipe := &redisMocks.Pipeliner{}
+	pipe.On("MSet", mock.AnythingOfType("*context.emptyCtx"), mock.MatchedBy(func(input []interface{}) bool {
+		possibleInput1 := `[applike-gosoline-kvstore-kvstore-test-foo {"id":"foo","body":"bar"} applike-gosoline-kvstore-kvstore-test-fuu {"id":"fuu","body":"baz"}]`
+		possibleInput2 := `[applike-gosoline-kvstore-kvstore-test-fuu {"id":"fuu","body":"baz"} applike-gosoline-kvstore-kvstore-test-foo {"id":"foo","body":"bar"}]`
+
+		inputStr := fmt.Sprintf("%s", input)
+		return inputStr == possibleInput1 || inputStr == possibleInput2
+	})).Return(nil)
+	client.On("Pipeline").Return(pipe)
+	pipe.On("TxPipeline").Return(pipe)
+	pipe.On("Exec", mock.AnythingOfType("*context.emptyCtx")).Return(nil, nil)
 
 	items := map[string]Item{
 		"foo": {
@@ -155,6 +200,25 @@ func buildTestableRedisStore() (kvstore.KvStore, *redisMocks.Client) {
 		Name:           "test",
 		BatchSize:      100,
 		MetricsEnabled: false,
+	})
+
+	return store, client
+}
+
+func buildTestableRedisStoreWithTTL() (kvstore.KvStore, *redisMocks.Client) {
+	client := new(redisMocks.Client)
+
+	store := kvstore.NewRedisKvStoreWithInterfaces(client, &kvstore.Settings{
+		AppId: cfg.AppId{
+			Project:     "applike",
+			Environment: "test",
+			Family:      "gosoline",
+			Application: "kvstore",
+		},
+		Name:           "test",
+		BatchSize:      100,
+		MetricsEnabled: false,
+		Ttl:            time.Second,
 	})
 
 	return store, client

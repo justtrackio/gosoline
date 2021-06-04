@@ -27,7 +27,7 @@ type currencyService struct {
 }
 
 func New(config cfg.Config, logger mon.Logger) (*currencyService, error) {
-	store, err := kvstore.NewConfigurableKvStore(config, logger, "currency")
+	store, err := kvstore.ProvideConfigurableKvStore(config, logger, kvStoreName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kvStore: %w", err)
 	}
