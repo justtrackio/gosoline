@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
+	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
@@ -137,6 +138,7 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		stream.ResetInMemoryInputs()
 		stream.ResetInMemoryOutputs()
 		stream.ResetProducerDaemons()
+		kvstore.ResetConfigurableKvStores()
 	}
 }
 

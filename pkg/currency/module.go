@@ -55,7 +55,7 @@ func (module *Module) refresh(ctx context.Context) {
 }
 
 func (module *Module) importExchangeRates(ctx context.Context) {
-	err := module.updaterService.ImportHistoricalExchangeRates(ctx)
+	err := module.updaterService.EnsureHistoricalExchangeRates(ctx)
 	if err != nil {
 		module.logger.Error(err, "failed to import historical currency exchange rates")
 	}

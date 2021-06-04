@@ -134,16 +134,9 @@ func (s *redisKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys [
 }
 
 func (s *redisKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
-	bytes, err := Marshal(value)
-
+	keyStr, bytes, err := s.marshalKeyValue(key, value)
 	if err != nil {
-		return fmt.Errorf("can not marshal value %T %v: %w", value, value, err)
-	}
-
-	keyStr, err := s.key(key)
-
-	if err != nil {
-		return fmt.Errorf("can not get key to write value to redis: %w", err)
+		return fmt.Errorf("can not get key/value to write to redis: %w", err)
 	}
 
 	err = s.client.Set(ctx, keyStr, bytes, s.settings.Ttl)
@@ -155,6 +148,20 @@ func (s *redisKvStore) Put(ctx context.Context, key interface{}, value interface
 	return nil
 }
 
+func (s *redisKvStore) marshalKeyValue(key interface{}, value interface{}) (string, []byte, error) {
+	bytes, err := Marshal(value)
+	if err != nil {
+		return "", nil, fmt.Errorf("can not marshal value %T %v: %w", value, value, err)
+	}
+
+	keyStr, err := s.key(key)
+	if err != nil {
+		return "", nil, fmt.Errorf("can not get key to write value to redis: %w", err)
+	}
+
+	return keyStr, bytes, nil
+}
+
 func (s *redisKvStore) PutBatch(ctx context.Context, values interface{}) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 
@@ -162,13 +169,49 @@ func (s *redisKvStore) PutBatch(ctx context.Context, values interface{}) error {
 		return fmt.Errorf("could not convert values from %T to map[interface{}]interface{}", values)
 	}
 
+	chunkSize := s.settings.BatchSize
+	pairs := make([]interface{}, 0, 2*chunkSize)
 	for k, v := range mii {
-		if err = s.Put(ctx, k, v); err != nil {
-			return fmt.Errorf("failed to write batch to redis: %w", err)
+		key, value, err := s.marshalKeyValue(k, v)
+		if err != nil {
+			return fmt.Errorf("PutBatch could not marshal key/value: %w", err)
+		}
+		pairs = append(pairs, key, value)
+
+		if len(pairs) >= 2*chunkSize {
+			err = s.flushChunk(ctx, pairs)
+			if err != nil {
+				return fmt.Errorf("failed to write batch to redis: %w", err)
+			}
+			pairs = make([]interface{}, 0, chunkSize)
 		}
 	}
 
-	return nil
+	return s.flushChunk(ctx, pairs)
+}
+
+func (s *redisKvStore) flushChunk(ctx context.Context, pairs []interface{}) error {
+	if len(pairs) < 1 {
+		return nil
+	}
+
+	pipe := s.client.Pipeline().TxPipeline()
+	pipe.MSet(ctx, pairs)
+
+	// setting ttl
+	if s.settings.Ttl != 0 {
+		for i := 0; i < len(pairs); i += 2 {
+			keyStr, ok := pairs[i].(string)
+			if !ok {
+				return fmt.Errorf("setting ttl, failed to cast key to string: %v", pairs[i])
+			}
+			pipe.Expire(ctx, keyStr, s.settings.Ttl)
+		}
+	}
+
+	_, err := pipe.Exec(ctx)
+
+	return err
 }
 
 func (s *redisKvStore) EstimateSize() *int64 {

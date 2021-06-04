@@ -18,6 +18,11 @@ type ErrCmder interface {
 	Err() error
 }
 
+//go:generate mockery -name Pipeliner
+type Pipeliner interface {
+	baseRedis.Pipeliner
+}
+
 func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
 	return fmt.Sprintf("%v-%v-%v-%v-%v", appId.Project, appId.Environment, appId.Family, appId.Application, key)
 }
@@ -57,7 +62,7 @@ type Client interface {
 
 	IsAlive(ctx context.Context) bool
 
-	Pipeline() baseRedis.Pipeliner
+	Pipeline() Pipeliner
 }
 
 type redisClient struct {
@@ -337,7 +342,7 @@ func (c *redisClient) IsAlive(ctx context.Context) bool {
 	return alive && err == nil
 }
 
-func (c *redisClient) Pipeline() baseRedis.Pipeliner {
+func (c *redisClient) Pipeline() Pipeliner {
 	return c.base.Pipeline()
 }
 

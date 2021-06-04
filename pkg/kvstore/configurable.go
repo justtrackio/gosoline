@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mon"
+	"sync"
 	"time"
 )
 
@@ -102,4 +103,32 @@ func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string
 
 func GetConfigurableKey(name string) string {
 	return fmt.Sprintf("kvstore.%s", name)
+}
+
+var configurableKvStoreLock = sync.Mutex{}
+var configurableKvStores = map[string]KvStore{}
+
+func ResetConfigurableKvStores() {
+	configurableKvStoreLock.Lock()
+	defer configurableKvStoreLock.Unlock()
+
+	configurableKvStores = map[string]KvStore{}
+}
+
+func ProvideConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) (KvStore, error) {
+	configurableKvStoreLock.Lock()
+	defer configurableKvStoreLock.Unlock()
+
+	if _, ok := configurableKvStores[name]; ok {
+		return configurableKvStores[name], nil
+	}
+
+	var err error
+	configurableKvStores[name], err = NewConfigurableKvStore(config, logger, name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return configurableKvStores[name], nil
 }
