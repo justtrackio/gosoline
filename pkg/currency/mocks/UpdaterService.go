@@ -13,8 +13,8 @@ type UpdaterService struct {
 	mock.Mock
 }
 
-// EnsureRecentExchangeRates provides a mock function with given fields: ctx
-func (_m *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) error {
+// EnsureHistoricalExchangeRates provides a mock function with given fields: ctx
+func (_m *UpdaterService) EnsureHistoricalExchangeRates(ctx context.Context) error {
 	ret := _m.Called(ctx)
 
 	var r0 error
@@ -27,8 +27,8 @@ func (_m *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 	return r0
 }
 
-// ImportHistoricalExchangeRates provides a mock function with given fields: ctx
-func (_m *UpdaterService) ImportHistoricalExchangeRates(ctx context.Context) error {
+// EnsureRecentExchangeRates provides a mock function with given fields: ctx
+func (_m *UpdaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 	ret := _m.Called(ctx)
 
 	var r0 error
