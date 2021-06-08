@@ -608,6 +608,72 @@ func (_m *Client) RPush(ctx context.Context, key string, values ...interface{}) 
 	return r0, r1
 }
 
+// SAdd provides a mock function with given fields: ctx, key, values
+func (_m *Client) SAdd(ctx context.Context, key string, values ...interface{}) (int64, error) {
+	var _ca []interface{}
+	_ca = append(_ca, ctx, key)
+	_ca = append(_ca, values...)
+	ret := _m.Called(_ca...)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...interface{}) int64); ok {
+		r0 = rf(ctx, key, values...)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...interface{}) error); ok {
+		r1 = rf(ctx, key, values...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SCard provides a mock function with given fields: ctx, key
+func (_m *Client) SCard(ctx context.Context, key string) (int64, error) {
+	ret := _m.Called(ctx, key)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, string) int64); ok {
+		r0 = rf(ctx, key)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SIsMember provides a mock function with given fields: ctx, key, value
+func (_m *Client) SIsMember(ctx context.Context, key string, value interface{}) (bool, error) {
+	ret := _m.Called(ctx, key, value)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}) bool); ok {
+		r0 = rf(ctx, key, value)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, interface{}) error); ok {
+		r1 = rf(ctx, key, value)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Set provides a mock function with given fields: ctx, key, value, ttl
 func (_m *Client) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	ret := _m.Called(ctx, key, value, ttl)
