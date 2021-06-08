@@ -25,5 +25,5 @@ func (u *RealUuid) NewV4() string {
 
 // Check if the given string is a valid lowercase UUID v4 string
 func ValidV4(uuid string) bool {
-	return uuidRegExp.Match([]byte(uuid))
+	return uuidRegExp.MatchString(uuid)
 }
