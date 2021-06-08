@@ -203,6 +203,8 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 
 	db := r.orm.New()
 
+	db = db.Table(r.GetMetadata().TableName)
+
 	for _, j := range qb.joins {
 		db = db.Joins(j)
 	}

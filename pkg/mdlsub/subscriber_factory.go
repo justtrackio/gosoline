@@ -2,11 +2,21 @@ package mdlsub
 
 import (
 	"fmt"
+	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
 )
+
+const (
+	ConfigKeyMdlSub = "mdlsub"
+)
+
+type Settings struct {
+	SubscriberApi SubscriberApiSettings          `cfg:"subscriber_api"`
+	Subscribers   map[string]*SubscriberSettings `cfg:"subscribers"`
+}
 
 func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactories) kernel.MultiModuleFactory {
 	return func(config cfg.Config, logger mon.Logger) (map[string]kernel.ModuleFactory, error) {
@@ -15,30 +25,48 @@ func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactori
 }
 
 func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.ModuleFactory, error) {
-	subscriberSettings := make(map[string]*SubscriberSettings)
-	config.UnmarshalKey(ConfigKeyMdlSubSubscribers, &subscriberSettings)
+	settings := Settings{}
+	config.UnmarshalKey(ConfigKeyMdlSub, &settings)
 
 	var err error
 	var transformers ModelTransformers
 	var outputs Outputs
 
-	if transformers, err = initTransformers(config, logger, subscriberSettings, transformerFactories); err != nil {
+	if transformers, err = initTransformers(config, logger, settings.Subscribers, transformerFactories); err != nil {
 		return nil, fmt.Errorf("can not create subscribers: %w", err)
 	}
 
-	if outputs, err = initOutputs(config, logger, subscriberSettings, transformers); err != nil {
+	if outputs, err = initOutputs(config, logger, settings.Subscribers, transformers); err != nil {
 		return nil, fmt.Errorf("can not create subscribers: %w", err)
 	}
 
 	var modules = make(map[string]kernel.ModuleFactory)
 
-	for name := range subscriberSettings {
+	for name := range settings.Subscribers {
 		moduleName := fmt.Sprintf("subscriber-%s", name)
 		consumerName := fmt.Sprintf("subscriber-%s", name)
 		callbackFactory := NewSubscriberCallbackFactory(transformers, outputs)
 
 		modules[moduleName] = stream.NewConsumer(consumerName, callbackFactory)
 	}
+
+	if !settings.SubscriberApi.Enabled {
+		return modules, nil
+	}
+
+	var callbackFactories = make(map[string]stream.ConsumerCallbackFactory)
+
+	for name := range settings.Subscribers {
+		settings := settings.Subscribers[name]
+
+		model := settings.SourceModel.Name
+		callbackFactory := NewSubscriberCallbackFactory(transformers, outputs)
+
+		callbackFactories[model] = callbackFactory
+	}
+
+	definer := CreateDefiner(callbackFactories)
+	modules["mdlsub_subscriberapi"] = apiserver.New(definer)
 
 	return modules, nil
 }
