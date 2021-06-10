@@ -38,10 +38,10 @@ func NewLoggerMockedUntilLevel(level string) *Logger {
 		panic(fmt.Errorf("failed to find level to mock: %s", level))
 	}
 
-	mockLoggerMethod(logger, "Debug", "Debugf", mon.Debug, levelIndex >= levelMap[mon.Debug])
-	mockLoggerMethod(logger, "Info", "Infof", mon.Info, levelIndex >= levelMap[mon.Info])
-	mockLoggerMethod(logger, "Warn", "Warnf", mon.Warn, levelIndex >= levelMap[mon.Warn])
-	mockLoggerMethod(logger, "Error", "Errorf", mon.Error, levelIndex >= levelMap[mon.Error])
+	mockLoggerMethod(logger, "Debug", mon.Debug, levelIndex >= levelMap[mon.Debug])
+	mockLoggerMethod(logger, "Info", mon.Info, levelIndex >= levelMap[mon.Info])
+	mockLoggerMethod(logger, "Warn", mon.Warn, levelIndex >= levelMap[mon.Warn])
+	mockLoggerMethod(logger, "Error", mon.Error, levelIndex >= levelMap[mon.Error])
 
 	return logger
 }
@@ -62,14 +62,13 @@ func inspectLogFunction(level string, allowed bool) func(args mock.Arguments) {
 	}
 }
 
-func mockLoggerMethod(logger *Logger, method string, methodWithFormat string, level string, allowed bool) {
+func mockLoggerMethod(logger *Logger, method string, level string, allowed bool) {
 	anythings := make(mock.Arguments, 0)
 	f := inspectLogFunction(level, allowed)
 
 	for i := 0; i < 10; i++ {
 		anythings = append(anythings, mock.Anything)
 		logger.On(method, anythings...).Run(f).Return(logger).Maybe()
-		logger.On(methodWithFormat, anythings...).Run(f).Return(logger).Maybe()
 	}
 }
 

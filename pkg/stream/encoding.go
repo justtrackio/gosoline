@@ -84,6 +84,10 @@ func DecodeMessage(encoding EncodingType, data []byte, out interface{}) error {
 
 type jsonEncoder struct{}
 
+func NewJsonEncoder() MessageBodyEncoder {
+	return jsonEncoder{}
+}
+
 func (e jsonEncoder) Encode(data interface{}) ([]byte, error) {
 	return json.Marshal(data)
 }
@@ -93,6 +97,10 @@ func (e jsonEncoder) Decode(data []byte, out interface{}) error {
 }
 
 type protobufEncoder struct{}
+
+func NewProtobufEncoder() MessageBodyEncoder {
+	return protobufEncoder{}
+}
 
 func (e protobufEncoder) Encode(data interface{}) ([]byte, error) {
 	msg, ok := data.(ProtobufEncodable)

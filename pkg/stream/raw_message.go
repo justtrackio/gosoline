@@ -1,21 +1,17 @@
 package stream
 
-type Encoder interface {
-	Encode(body interface{}) ([]byte, error)
-}
-
 type RawMessage struct {
 	Body    interface{}
-	Encoder Encoder
+	Encoder MessageBodyEncoder
 }
 
-// Like NewRawMessage with the encoder set to marshal the body as JSON.
+// NewRawJsonMessage works like NewRawMessage with the encoder set to marshal the body as JSON.
 func NewRawJsonMessage(body interface{}) *RawMessage {
 	return NewRawMessage(body, jsonEncoder{})
 }
 
-// Create a new RawMessage. It uses the provided encoder to encode the message body.
-func NewRawMessage(body interface{}, encoder Encoder) *RawMessage {
+// NewRawMessage creates a new RawMessage. It uses the provided encoder to encode the message body.
+func NewRawMessage(body interface{}, encoder MessageBodyEncoder) *RawMessage {
 	return &RawMessage{
 		Body:    body,
 		Encoder: encoder,

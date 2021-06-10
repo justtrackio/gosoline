@@ -2,9 +2,10 @@ package stream_test
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/stream"
@@ -18,13 +19,19 @@ import (
 type ProducerDaemonTestSuite struct {
 	suite.Suite
 
-	ctx      context.Context
-	cancel   context.CancelFunc
-	wait     chan error
-	output   *streamMocks.Output
-	ticker   *clock.FakeTicker
-	executor exec.Executor
-	daemon   *stream.ProducerDaemon
+	ctx        context.Context
+	cancel     context.CancelFunc
+	wait       chan error
+	aggregator stream.ProducerDaemonAggregator
+	output     *streamMocks.Output
+	ticker     *clock.FakeTicker
+	executor   exec.Executor
+	daemon     producerDaemon
+}
+
+type producerDaemon interface {
+	stream.Output
+	kernel.Module
 }
 
 func (s *ProducerDaemonTestSuite) SetupTest() {
@@ -32,7 +39,7 @@ func (s *ProducerDaemonTestSuite) SetupTest() {
 	s.wait = make(chan error)
 }
 
-func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel string, batchSize int, aggregationSize int, interval time.Duration, marshaller stream.AggregateMarshaller) {
+func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel string, batchSize int, aggregationSize int, interval time.Duration) {
 	logger := monMocks.NewLoggerMockedUntilLevel(maxLogLevel)
 	metric := monMocks.NewMetricWriterMockedAll()
 
@@ -56,14 +63,20 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel string, batchSize int,
 		return s.ticker
 	}
 
-	s.daemon = stream.NewProducerDaemonWithInterfaces(logger, metric, s.output, tickerFactory, marshaller, "testDaemon", stream.ProducerDaemonSettings{
+	settings := stream.ProducerDaemonSettings{
 		Enabled:         true,
 		Interval:        interval,
 		BufferSize:      1,
 		RunnerCount:     1,
 		BatchSize:       batchSize,
 		AggregationSize: aggregationSize,
-	})
+	}
+
+	var err error
+	s.aggregator, err = stream.NewProducerDaemonAggregator(settings, stream.CompressionNone)
+	s.NoError(err)
+
+	s.daemon = stream.NewProducerDaemonWithInterfaces(logger, metric, s.aggregator, s.output, tickerFactory, "testDaemon", settings)
 
 	running := make(chan struct{})
 
@@ -82,13 +95,22 @@ func (s *ProducerDaemonTestSuite) stop() error {
 	return err
 }
 
-func (s *ProducerDaemonTestSuite) expectMessage(msg []stream.WritableMessage) {
-	call := s.output.On("Write", s.ctx, msg)
+func (s *ProducerDaemonTestSuite) expectMessage(messages []stream.WritableMessage) {
+	expectedJson, err := json.Marshal(messages)
+	s.NoError(err)
+
+	call := s.output.On("Write", s.ctx, mock.Anything)
 	call.Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
+		writtenMsg := args.Get(1)
+
+		writtenJson, err := json.Marshal(writtenMsg)
+		s.NoError(err)
+
+		s.JSONEq(string(expectedJson), string(writtenJson))
 
 		// simulate an executor like the real output would use
-		_, err := s.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		_, err = s.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
 			// return a context canceled error should the context already have been canceled (as the real output would)
 			select {
 			case <-ctx.Done():
@@ -103,7 +125,7 @@ func (s *ProducerDaemonTestSuite) expectMessage(msg []stream.WritableMessage) {
 }
 
 func (s *ProducerDaemonTestSuite) TestRun() {
-	s.SetupDaemon(mon.Info, 1, 1, time.Hour, stream.MarshalJsonMessage)
+	s.SetupDaemon(mon.Info, 1, 1, time.Hour)
 	err := s.stop()
 
 	s.NoError(err, "there should be no error on run")
@@ -111,7 +133,7 @@ func (s *ProducerDaemonTestSuite) TestRun() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatch() {
-	s.SetupDaemon(mon.Info, 2, 1, time.Hour, stream.MarshalJsonMessage)
+	s.SetupDaemon(mon.Info, 2, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -139,7 +161,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatch() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatchOnClose() {
-	s.SetupDaemon(mon.Info, 3, 1, time.Hour, stream.MarshalJsonMessage)
+	s.SetupDaemon(mon.Info, 3, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -162,7 +184,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnClose() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatchOnTick() {
-	s.SetupDaemon(mon.Info, 3, 1, time.Hour, stream.MarshalJsonMessage)
+	s.SetupDaemon(mon.Info, 3, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -187,7 +209,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTick() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatchOnTickAfterWrite() {
-	s.SetupDaemon(mon.Info, 2, 1, time.Hour, stream.MarshalJsonMessage)
+	s.SetupDaemon(mon.Info, 2, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -218,7 +240,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTickAfterWrite() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
-	s.SetupDaemon(mon.Info, 2, 3, time.Hour, stream.MarshalJsonMessage)
+	s.SetupDaemon(mon.Info, 2, 3, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -243,56 +265,8 @@ func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
 	s.output.AssertExpectations(s.T())
 }
 
-func (s *ProducerDaemonTestSuite) TestAggregateErrorOnWrite() {
-	s.SetupDaemon(mon.Info, 2, 3, time.Hour, func(body interface{}, attributes ...map[string]interface{}) (*stream.Message, error) {
-		return nil, fmt.Errorf("aggregate marshal error")
-	})
-
-	messages := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
-		&stream.Message{Body: "3"},
-	}
-
-	_, err := stream.MarshalJsonMessage(messages, map[string]interface{}{
-		stream.AttributeAggregate: true,
-	})
-	s.NoError(err)
-
-	err = s.daemon.Write(context.Background(), messages)
-	s.EqualError(err, "can not apply aggregation in producer testDaemon: can not marshal aggregate: aggregate marshal error")
-
-	err = s.stop()
-
-	s.NoError(err, "there should be no error on run")
-	s.output.AssertExpectations(s.T())
-}
-
-func (s *ProducerDaemonTestSuite) TestAggregateErrorOnClose() {
-	s.SetupDaemon(mon.Info, 2, 3, time.Hour, func(body interface{}, attributes ...map[string]interface{}) (*stream.Message, error) {
-		return nil, fmt.Errorf("aggregate marshal error")
-	})
-
-	messages := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-	}
-
-	_, err := stream.MarshalJsonMessage(messages, map[string]interface{}{
-		stream.AttributeAggregate: true,
-	})
-	s.NoError(err)
-
-	err = s.daemon.Write(context.Background(), messages)
-	s.NoError(err, "there should be no error on write")
-
-	err = s.stop()
-
-	s.EqualError(err, "error on close: can not flush all messages: can not flush aggregation: can not marshal aggregate: aggregate marshal error")
-	s.output.AssertExpectations(s.T())
-}
-
 func (s *ProducerDaemonTestSuite) TestWriteWithCanceledError() {
-	s.SetupDaemon(mon.Warn, 5, 5, time.Hour, stream.MarshalJsonMessage)
+	s.SetupDaemon(mon.Warn, 5, 5, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -303,9 +277,18 @@ func (s *ProducerDaemonTestSuite) TestWriteWithCanceledError() {
 	})
 	s.NoError(err)
 
-	expected := []stream.WritableMessage{aggregateMessage}
-	s.output.On("Write", s.ctx, expected).Run(func(args mock.Arguments) {
+	expectedJson, err := json.Marshal([]stream.WritableMessage{aggregateMessage})
+	s.NoError(err)
+
+	s.output.On("Write", s.ctx, mock.Anything).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
+		writtenMessages := args.Get(1)
+
+		writtenJson, err := json.Marshal(writtenMessages)
+		s.NoError(err)
+
+		s.JSONEq(string(expectedJson), string(writtenJson))
+
 		select {
 		case _, ok := <-ctx.Done():
 			s.False(ok, "expected the context to have been canceled")
@@ -329,7 +312,7 @@ func (s *ProducerDaemonTestSuite) TestWriteWithCanceledError() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteAfterClose() {
-	s.SetupDaemon(mon.Warn, 1, 2, time.Hour, stream.MarshalJsonMessage)
+	s.SetupDaemon(mon.Warn, 1, 2, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
