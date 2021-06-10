@@ -128,7 +128,7 @@ func TestMarshalProtobufMessage(t *testing.T) {
 			"attribute2":             "value",
 			stream.AttributeEncoding: stream.EncodingProtobuf,
 		},
-		Body: string([]byte{10, 3, 102, 111, 111, 16, 42}),
+		Body: "CgNmb28QKg==",
 	}
 
 	assert.NoError(t, err)

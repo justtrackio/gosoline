@@ -2,8 +2,6 @@ package stream
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -76,7 +74,7 @@ func NewJsonMessage(body string, attributes ...map[string]interface{}) *Message 
 }
 
 func MarshalJsonMessage(body interface{}, attributes ...map[string]interface{}) (*Message, error) {
-	data, err := json.Marshal(body)
+	data, err := NewJsonEncoder().Encode(body)
 
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal body to json: %w", err)
@@ -95,12 +93,7 @@ func NewProtobufMessage(body string, attributes ...map[string]interface{}) *Mess
 }
 
 func MarshalProtobufMessage(body ProtobufEncodable, attributes ...map[string]interface{}) (*Message, error) {
-	protoMsg, err := body.ToMessage()
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := proto.Marshal(protoMsg)
+	data, err := NewProtobufEncoder().Encode(body)
 
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal body to protobuf: %w", err)

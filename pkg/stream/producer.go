@@ -11,7 +11,7 @@ import (
 type ProducerSettings struct {
 	Output      string                 `cfg:"output"`
 	Encoding    EncodingType           `cfg:"encoding"`
-	Compression CompressionType        `cfg:"compression"`
+	Compression CompressionType        `cfg:"compression" default:"none"`
 	Daemon      ProducerDaemonSettings `cfg:"daemon"`
 }
 

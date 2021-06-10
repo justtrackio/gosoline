@@ -22,34 +22,53 @@ const (
 )
 
 var producerDaemonLock = sync.Mutex{}
-var producerDaemons = map[string]*ProducerDaemon{}
-
-type AggregateMarshaller func(body interface{}, attributes ...map[string]interface{}) (*Message, error)
+var producerDaemons = map[string]*producerDaemon{}
 
 type ProducerDaemonSettings struct {
-	Enabled           bool                   `cfg:"enabled" default:"false"`
-	Interval          time.Duration          `cfg:"interval" default:"1m"`
-	BufferSize        int                    `cfg:"buffer_size" default:"10" validate:"min=1"`
-	RunnerCount       int                    `cfg:"runner_count" default:"10" validate:"min=1"`
-	BatchSize         int                    `cfg:"batch_size" default:"10" validate:"min=1"`
-	AggregationSize   int                    `cfg:"aggregation_size" default:"1" validate:"min=1"`
+	Enabled bool `cfg:"enabled" default:"false"`
+	// Amount of time spend waiting for messages before sending out a batch.
+	Interval time.Duration `cfg:"interval" default:"1m"`
+	// Size of the buffer channel, i.e., how many messages can be in-flight at once? Generally it is a good idea to match
+	// this with the number of runners.
+	BufferSize int `cfg:"buffer_size" default:"10" validate:"min=1"`
+	// Number of daemons running in the background, writing complete batches to the output.
+	RunnerCount int `cfg:"runner_count" default:"10" validate:"min=1"`
+	// How many SQS messages do we submit in a single batch? SQS can accept up to 10 messages per batch.
+	// SNS doesn't support batching, so the value doesn't matter for SNS.
+	BatchSize int `cfg:"batch_size" default:"10" validate:"min=1"`
+	// How large may the sum of all messages in the aggregation be? For SQS you can't send more than 256 KB in one batch,
+	// for SNS a single message can't be larger than 256 KB. We use 252 KB as default to leave some room for request
+	// encoding and overhead.
+	BatchMaxSize int `cfg:"batch_max_size" default:"258048" validate:"min=0"`
+	// How many stream.Messages do we pack together in a single batch (one message in SQS) at once?
+	AggregationSize int `cfg:"aggregation_size" default:"1" validate:"min=1"`
+	// Maximum size in bytes of a batch. Defaults to 64 KB to leave some room for encoding overhead.
+	// Set to 0 to disable limiting the maximum size for a batch (it will still not put more than BatchSize messages
+	// in a batch).
+	//
+	// Note: Gosoline can't ensure your messages stay below this size if your messages are quite large (especially when
+	// using compression). Imagine you already aggregated 40kb of compressed messages (around 53kb when base64 encoded)
+	// and are now writing a message which compresses to 20 kb. Now your buffer reaches 60 kb and 80 kb base64 encoded.
+	// Gosoline will not already output a 53 kb message if you requested 64 kb messages (it would accept a 56 kb message),
+	// but after writing the next message
+	AggregationMaxSize int `cfg:"aggregation_max_size" default:"65536" validate:"min=0"`
+	// Additional attributes we append to each message
 	MessageAttributes map[string]interface{} `cfg:"message_attributes"`
 }
 
-type ProducerDaemon struct {
+type producerDaemon struct {
 	kernel.EssentialBackgroundModule
 
 	name          string
 	lck           sync.Mutex
 	logger        mon.Logger
 	metric        mon.MetricWriter
-	aggregate     []WritableMessage
-	batch         []WritableMessage
+	aggregator    ProducerDaemonAggregator
+	batcher       ProducerDaemonBatcher
 	outCh         OutputChannel
 	output        Output
 	tickerFactory clock.TickerFactory
 	ticker        clock.Ticker
-	marshaller    AggregateMarshaller
 	settings      ProducerDaemonSettings
 }
 
@@ -57,10 +76,10 @@ func ResetProducerDaemons() {
 	producerDaemonLock.Lock()
 	defer producerDaemonLock.Unlock()
 
-	producerDaemons = map[string]*ProducerDaemon{}
+	producerDaemons = map[string]*producerDaemon{}
 }
 
-func ProvideProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*ProducerDaemon, error) {
+func ProvideProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*producerDaemon, error) {
 	producerDaemonLock.Lock()
 	defer producerDaemonLock.Unlock()
 
@@ -78,7 +97,7 @@ func ProvideProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*
 	return producerDaemons[name], nil
 }
 
-func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*ProducerDaemon, error) {
+func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*producerDaemon, error) {
 	settings := readProducerSettings(config, name)
 
 	output, err := NewConfigurableOutput(config, logger, settings.Output)
@@ -89,49 +108,33 @@ func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*Prod
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
 	metric := mon.NewMetricDaemonWriter(defaultMetrics...)
 
-	encoder := NewMessageEncoder(&MessageEncoderSettings{
-		Encoding:       EncodingJson, // there is currently no other encoding for the Message struct, so the outer layer needs to be json
-		Compression:    CompressionType(settings.Compression),
-		EncodeHandlers: defaultEncodeHandlers,
-	})
+	aggregator, err := NewProducerDaemonAggregator(settings.Daemon, settings.Compression)
+	if err != nil {
+		return nil, fmt.Errorf("can not create aggregator for producer daemon %s: %w", name, err)
+	}
 
-	return &ProducerDaemon{
-		name:          name,
-		logger:        logger,
-		metric:        metric,
-		batch:         make([]WritableMessage, 0, settings.Daemon.BatchSize),
-		outCh:         NewOutputChannel(logger, settings.Daemon.BufferSize),
-		output:        output,
-		tickerFactory: clock.NewRealTicker,
-		marshaller: func(body interface{}, attributes ...map[string]interface{}) (*Message, error) {
-			// why do we use the background context here? because the context is used to carry attributes from one context via
-			// the attributes of the message to the next context (in the consumer). But we are marshalling a batch, so we don't
-			// need to provide any attributes and can just use the background context.
-			return encoder.Encode(context.Background(), body, attributes...)
-		},
-		settings: settings.Daemon,
-	}, nil
+	return NewProducerDaemonWithInterfaces(logger, metric, aggregator, output, clock.NewRealTicker, name, settings.Daemon), nil
 }
 
-func NewProducerDaemonWithInterfaces(logger mon.Logger, metric mon.MetricWriter, output Output, tickerFactory clock.TickerFactory, marshaller AggregateMarshaller, name string, settings ProducerDaemonSettings) *ProducerDaemon {
-	return &ProducerDaemon{
+func NewProducerDaemonWithInterfaces(logger mon.Logger, metric mon.MetricWriter, aggregator ProducerDaemonAggregator, output Output, tickerFactory clock.TickerFactory, name string, settings ProducerDaemonSettings) *producerDaemon {
+	return &producerDaemon{
 		name:          name,
 		logger:        logger,
 		metric:        metric,
-		batch:         make([]WritableMessage, 0, settings.BatchSize),
+		aggregator:    aggregator,
+		batcher:       NewProducerDaemonBatcher(settings),
 		outCh:         NewOutputChannel(logger, settings.BufferSize),
 		output:        output,
 		tickerFactory: tickerFactory,
-		marshaller:    marshaller,
 		settings:      settings,
 	}
 }
 
-func (d *ProducerDaemon) GetStage() int {
+func (d *producerDaemon) GetStage() int {
 	return 512
 }
 
-func (d *ProducerDaemon) Run(kernelCtx context.Context) error {
+func (d *producerDaemon) Run(kernelCtx context.Context) error {
 	d.ticker = d.tickerFactory(d.settings.Interval)
 
 	cfn := coffin.New()
@@ -157,34 +160,39 @@ func (d *ProducerDaemon) Run(kernelCtx context.Context) error {
 	return cfn.Wait()
 }
 
-func (d *ProducerDaemon) WriteOne(ctx context.Context, msg WritableMessage) error {
+func (d *producerDaemon) WriteOne(ctx context.Context, msg WritableMessage) error {
 	return d.Write(ctx, []WritableMessage{msg})
 }
 
-func (d *ProducerDaemon) Write(_ context.Context, batch []WritableMessage) error {
+func (d *producerDaemon) Write(_ context.Context, batch []WritableMessage) error {
 	d.lck.Lock()
 	defer d.lck.Unlock()
 
 	var err error
+	var aggregated []*Message
 	d.writeMetricMessageCount(len(batch))
 
-	if batch, err = d.applyAggregation(batch); err != nil {
+	if aggregated, err = d.applyAggregation(batch); err != nil {
 		return fmt.Errorf("can not apply aggregation in producer %s: %w", d.name, err)
 	}
 
-	d.batch = append(d.batch, batch...)
+	for _, msg := range aggregated {
+		flushedBatch, err := d.batcher.Append(msg)
 
-	if len(d.batch) < d.settings.BatchSize {
-		return nil
+		if err != nil {
+			return fmt.Errorf("can not append message to batch: %w", err)
+		}
+
+		if len(flushedBatch) > 0 {
+			d.ticker.Reset()
+			d.outCh.Write(flushedBatch)
+		}
 	}
-
-	d.ticker.Reset()
-	d.flushBatch()
 
 	return nil
 }
 
-func (d *ProducerDaemon) tickerLoop(ctx context.Context) error {
+func (d *producerDaemon) tickerLoop(ctx context.Context) error {
 	var err error
 
 	for {
@@ -205,76 +213,97 @@ func (d *ProducerDaemon) tickerLoop(ctx context.Context) error {
 	}
 }
 
-func (d *ProducerDaemon) applyAggregation(batch []WritableMessage) ([]WritableMessage, error) {
+func (d *producerDaemon) applyAggregation(batch []WritableMessage) ([]*Message, error) {
 	if d.settings.AggregationSize <= 1 {
-		return batch, nil
+		result := make([]*Message, len(batch))
+
+		for i, msg := range batch {
+			streamMsg, ok := msg.(*Message)
+
+			if !ok {
+				return nil, fmt.Errorf("are you writing to the daemon directly? expected a stream.Message to be written to the producer daemon, got %T instead", msg)
+			}
+
+			result[i] = streamMsg
+		}
+
+		return result, nil
 	}
 
-	d.aggregate = append(d.aggregate, batch...)
+	var result []*Message
 
-	if len(d.aggregate) < d.settings.AggregationSize {
-		return nil, nil
+	for _, msg := range batch {
+		streamMsg, ok := msg.(*Message)
+
+		if !ok {
+			return nil, fmt.Errorf("are you writing to the daemon directly? expected a stream.Message to be written to the producer daemon, got %T instead", msg)
+		}
+
+		readyMessages, err := d.aggregator.Write(streamMsg)
+
+		if err != nil {
+			return nil, err
+		}
+
+		for _, readyMessage := range readyMessages {
+			d.writeMetricAggregateSize(readyMessage.MessageCount)
+			aggregateMessage := BuildAggregateMessage(readyMessage.Body, d.settings.MessageAttributes, readyMessage.Attributes)
+
+			result = append(result, aggregateMessage)
+		}
 	}
 
-	return d.flushAggregate()
+	return result, nil
 }
 
-func (d *ProducerDaemon) flushAggregate() ([]WritableMessage, error) {
-	if len(d.aggregate) == 0 {
-		return nil, nil
-	}
-
-	size := d.settings.AggregationSize
-
-	if len(d.aggregate) < size {
-		size = len(d.aggregate)
-	}
-
-	var readyAggregate []WritableMessage
-	readyAggregate, d.aggregate = d.aggregate[:size], d.aggregate[size:]
-
-	d.writeMetricAggregateSize(len(readyAggregate))
-	aggregateMessage, err := BuildAggregateMessage(d.marshaller, readyAggregate, d.settings.MessageAttributes)
+func (d *producerDaemon) flushAggregate() (*Message, error) {
+	aggregate, err := d.aggregator.Flush()
 
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal aggregate: %w", err)
 	}
 
-	return []WritableMessage{aggregateMessage}, nil
+	if aggregate.MessageCount == 0 {
+		return nil, nil
+	}
+
+	d.writeMetricAggregateSize(aggregate.MessageCount)
+	aggregateMessage := BuildAggregateMessage(aggregate.Body, d.settings.MessageAttributes, aggregate.Attributes)
+
+	return aggregateMessage, nil
 }
 
-func (d *ProducerDaemon) flushBatch() {
-	if len(d.batch) == 0 {
+func (d *producerDaemon) flushBatch() {
+	readyBatch := d.batcher.Flush()
+
+	if len(readyBatch) == 0 {
 		return
 	}
-
-	size := d.settings.BatchSize
-
-	if len(d.batch) < size {
-		size = len(d.batch)
-	}
-
-	var readyBatch []WritableMessage
-	readyBatch, d.batch = d.batch[:size], d.batch[size:]
 
 	d.outCh.Write(readyBatch)
 }
 
-func (d *ProducerDaemon) flushAll() error {
-	var err error
-	var batch []WritableMessage
-
-	if batch, err = d.flushAggregate(); err != nil {
+func (d *producerDaemon) flushAll() error {
+	if readyBatch, err := d.flushAggregate(); err != nil {
 		return fmt.Errorf("can not flush aggregation: %w", err)
+	} else if readyBatch != nil {
+		flushedBatch, err := d.batcher.Append(readyBatch)
+
+		if err != nil {
+			return fmt.Errorf("can not append message to batch: %w", err)
+		}
+
+		if len(flushedBatch) > 0 {
+			d.outCh.Write(flushedBatch)
+		}
 	}
 
-	d.batch = append(d.batch, batch...)
 	d.flushBatch()
 
 	return nil
 }
 
-func (d *ProducerDaemon) close() error {
+func (d *producerDaemon) close() error {
 	d.lck.Lock()
 	defer d.lck.Unlock()
 	defer d.outCh.Close()
@@ -286,7 +315,7 @@ func (d *ProducerDaemon) close() error {
 	return nil
 }
 
-func (d *ProducerDaemon) outputLoop(ctx context.Context) error {
+func (d *producerDaemon) outputLoop(ctx context.Context) error {
 	for {
 		start := time.Now()
 		batch, ok := d.outCh.Read()
@@ -312,7 +341,7 @@ func (d *ProducerDaemon) outputLoop(ctx context.Context) error {
 	}
 }
 
-func (d *ProducerDaemon) writeMetricMessageCount(count int) {
+func (d *producerDaemon) writeMetricMessageCount(count int) {
 	d.metric.WriteOne(&mon.MetricDatum{
 		MetricName: metricNameMessageCount,
 		Dimensions: map[string]string{
@@ -322,7 +351,7 @@ func (d *ProducerDaemon) writeMetricMessageCount(count int) {
 	})
 }
 
-func (d *ProducerDaemon) writeMetricBatchSize(size int) {
+func (d *producerDaemon) writeMetricBatchSize(size int) {
 	d.metric.WriteOne(&mon.MetricDatum{
 		MetricName: metricNameBatchSize,
 		Dimensions: map[string]string{
@@ -332,7 +361,7 @@ func (d *ProducerDaemon) writeMetricBatchSize(size int) {
 	})
 }
 
-func (d *ProducerDaemon) writeMetricAggregateSize(size int) {
+func (d *producerDaemon) writeMetricAggregateSize(size int) {
 	d.metric.WriteOne(&mon.MetricDatum{
 		MetricName: metricNameAggregateSize,
 		Dimensions: map[string]string{
@@ -342,7 +371,7 @@ func (d *ProducerDaemon) writeMetricAggregateSize(size int) {
 	})
 }
 
-func (d *ProducerDaemon) writeMetricIdleDuration(idleDuration time.Duration) {
+func (d *producerDaemon) writeMetricIdleDuration(idleDuration time.Duration) {
 	if idleDuration > d.settings.Interval {
 		idleDuration = d.settings.Interval
 	}
@@ -390,10 +419,10 @@ func getProducerDaemonDefaultMetrics(name string) mon.MetricData {
 	}
 }
 
-func BuildAggregateMessage(marshaller AggregateMarshaller, aggregate []WritableMessage, attributes ...map[string]interface{}) (WritableMessage, error) {
+func BuildAggregateMessage(aggregateBody string, attributes ...map[string]interface{}) *Message {
 	attributes = append(attributes, map[string]interface{}{
 		AttributeAggregate: true,
 	})
 
-	return marshaller(aggregate, attributes...)
+	return NewJsonMessage(aggregateBody, attributes...)
 }

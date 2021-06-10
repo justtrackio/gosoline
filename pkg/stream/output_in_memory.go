@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 )
 
@@ -76,6 +77,22 @@ func (o *InMemoryOutput) Write(_ context.Context, batch []WritableMessage) error
 
 	for _, msg := range batch {
 		if streamMsg, ok := msg.(*Message); ok {
+			o.messages = append(o.messages, streamMsg)
+
+			continue
+		}
+
+		// the producer daemon may already have marshalled the message to know its length (for proper batching) and therefore
+		// we need to decode the message again. This is only needed for tests, for the real code it doesn't matter whether
+		// the message was already encoded as JSON or will be when send to the queue.
+		if jsonMsg, ok := msg.(rawJsonMessage); ok {
+			streamMsg := &Message{}
+			err := json.Unmarshal(jsonMsg, streamMsg)
+
+			if err != nil {
+				return err
+			}
+
 			o.messages = append(o.messages, streamMsg)
 
 			continue

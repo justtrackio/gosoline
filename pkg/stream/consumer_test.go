@@ -2,6 +2,7 @@ package stream_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -241,16 +242,17 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 		"attr1": "b",
 	})
 
-	aggregate, err := stream.BuildAggregateMessage(stream.MarshalJsonMessage, []stream.WritableMessage{message1, message2})
-
+	aggregateBody, err := json.Marshal([]stream.WritableMessage{message1, message2})
 	s.Require().NoError(err)
+
+	aggregate := stream.BuildAggregateMessage(string(aggregateBody))
 
 	s.input.On("Data").
 		Return(s.data)
 
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
-			s.data <- aggregate.(*stream.Message)
+			s.data <- aggregate
 			s.stop()
 		}).Return(nil)
 
