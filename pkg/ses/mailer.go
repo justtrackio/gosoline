@@ -96,7 +96,7 @@ func (e *simpleMailer) Send(ctx context.Context, message Message) error {
 	}
 
 	if err != nil {
-		e.logger.Error(err, "could not send email")
+		e.logger.Error("could not send email: %w", err)
 	}
 
 	return err
@@ -137,7 +137,7 @@ func (e *templatedMailer) Send(ctx context.Context, message TemplatedMessage) er
 	}
 
 	if err != nil {
-		e.logger.Error(err, "could not send email")
+		e.logger.Error("could not send email: %w", err)
 	}
 
 	return err

@@ -127,7 +127,7 @@ func (p *Pipeline) read(ctx context.Context) error {
 			disaggregated, err := p.disaggregateMessage(ctx, msg)
 
 			if err != nil {
-				p.logger.Error(err, "can not disaggregate the message")
+				p.logger.Error("can not disaggregate the message: %w", err)
 				continue
 			}
 
@@ -189,7 +189,7 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 			return
 		}
 
-		p.logger.Error(err, "panic when processing batch")
+		p.logger.Error("panic when processing batch: %w", err)
 	}()
 
 	p.ticker.Stop()
@@ -200,14 +200,14 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 		p.batch, err = stage.Process(ctx, p.batch)
 
 		if err != nil {
-			p.logger.Error(err, "could not process the batch")
+			p.logger.Error("could not process the batch: %w", err)
 		}
 	}
 
 	err = p.output.Write(ctx, MessagesToWritableMessages(p.batch))
 
 	if err != nil {
-		p.logger.Error(err, "could not write messages to output")
+		p.logger.Error("could not write messages to output: %w", err)
 
 		return
 	}

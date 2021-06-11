@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/hashicorp/go-multierror"
 )
 
 type notifyingRepository struct {
@@ -65,22 +66,19 @@ func (r *notifyingRepository) doCallback(ctx context.Context, callbackType strin
 	}
 
 	logger := r.logger.WithContext(ctx)
-	errors := make([]error, 0)
+	var errors error
 
 	for _, c := range r.notifiers[callbackType] {
 		err := c.Send(ctx, callbackType, value)
 
 		if err != nil {
-			errors = append(errors, err)
+			errors = multierror.Append(errors, err)
 			logger.Warn("%T notifier errored out with: %v", c, err)
 		}
 	}
 
-	if len(errors) > 0 {
-		err := fmt.Errorf("there were %v errors during execution of the callbacks for create", len(errors))
-		logger.Error(err, err.Error())
-
-		return err
+	if errors != nil {
+		return fmt.Errorf("there were errors during execution of the callbacks for %s: %w", callbackType, errors)
 	}
 
 	return nil

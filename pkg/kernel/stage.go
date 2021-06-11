@@ -67,7 +67,7 @@ func (s *stage) stopWait(stageIndex int, logger mon.Logger) {
 	err := s.cfn.Wait()
 
 	if err != nil && err != ErrKernelStopping {
-		logger.Error(err, "error during the execution of stage %d", stageIndex)
+		logger.Error("error during the execution of stage %d: %w", stageIndex, err)
 	}
 
 	s.terminated.Signal()

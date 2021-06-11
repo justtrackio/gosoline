@@ -22,9 +22,9 @@ func RecoveryWithSentry(logger mon.Logger) gin.HandlerFunc {
 					return
 				}
 
-				logger.Error(rval, rval.Error())
+				logger.Error("%w", rval)
 			case string:
-				logger.Error(errors.New(err.(string)), err.(string))
+				logger.Error(rval)
 			default:
 			}
 

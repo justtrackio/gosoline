@@ -240,7 +240,7 @@ func (s *service) createDeadLetterQueue(settings *Settings) (map[string]*string,
 	props, err := s.doCreateQueue(deadLetterInput)
 
 	if err != nil {
-		s.logger.Error(err, "could not get arn of dead letter sqs queue %v", deadLetterName)
+		s.logger.Error("could not get arn of dead letter sqs queue %v: %w", deadLetterName, err)
 		return attributes, err
 	}
 
@@ -267,7 +267,7 @@ func (s *service) doCreateQueue(input *sqs.CreateQueueInput) (*Properties, error
 	_, err := s.client.CreateQueue(input)
 
 	if err != nil {
-		s.logger.Error(err, "could not create sqs queue %v", name)
+		s.logger.Error("could not create sqs queue %v: %w", name, err)
 		return nil, err
 	}
 

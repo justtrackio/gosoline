@@ -105,7 +105,7 @@ func (c *AwsServiceClient) ScaleServices(filter *FilterServicesInput, count int)
 		_, err := c.client.UpdateService(&input)
 
 		if err != nil {
-			logger.Error(err, "could not scale service")
+			logger.Error("could not scale service: %w", err)
 
 			continue
 		}
@@ -134,7 +134,7 @@ func (c *AwsServiceClient) ForceNewDeployment(filter *FilterServicesInput) error
 		_, err := c.client.UpdateService(&input)
 
 		if err != nil {
-			logger.Error(err, "could not force deploy the service")
+			logger.Error("could not force deploy the service: %w", err)
 
 			return err
 		}
@@ -170,7 +170,7 @@ func (c *AwsServiceClient) GetServices(filter *FilterServicesInput) ([]*ecs.Serv
 		out, err := c.client.DescribeServices(&input)
 
 		if err != nil {
-			c.logger.Error(err, "could not describe services")
+			c.logger.Error("could not describe services: %w", err)
 
 			return nil, err
 		}
@@ -207,7 +207,7 @@ func (c *AwsServiceClient) WaitUntilServiceIsStable(filter *FilterServicesInput)
 		err := c.client.WaitUntilServicesStable(&input)
 
 		if err != nil {
-			logger.Error(err, "could not wait until services are stable")
+			logger.Error("could not wait until services are stable: %w", err)
 			return
 		}
 	}
@@ -226,7 +226,7 @@ func (c *AwsServiceClient) GetServiceList(filter *FilterServicesInput) []Service
 		out, err := c.client.ListServices(&input)
 
 		if err != nil {
-			c.logger.Error(err, "could not get the list of services")
+			c.logger.Error("could not get the list of services: %w", err)
 
 			break
 		}
@@ -235,7 +235,7 @@ func (c *AwsServiceClient) GetServiceList(filter *FilterServicesInput) []Service
 			listing, err := c.GetListingFromArn(srv)
 
 			if err != nil {
-				c.logger.Error(err, "failed to get listing for arn")
+				c.logger.Error("failed to get listing for arn: %w", err)
 
 				return nil
 			}

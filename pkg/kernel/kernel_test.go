@@ -53,7 +53,7 @@ func TestRunFactoriesError(t *testing.T) {
 	config, logger, _ := createMocks()
 
 	factoryErr := fmt.Errorf("error in module factory")
-	logger.On("Error", factoryErr, "error building additional modules by multiFactories")
+	logger.On("Error", "error building additional modules by multiFactories: %w", factoryErr)
 
 	assert.NotPanics(t, func() {
 		k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
@@ -69,12 +69,8 @@ func TestRunFactoriesError(t *testing.T) {
 func TestRunFactoriesPanic(t *testing.T) {
 	config, logger, _ := createMocks()
 
-	logger.On("Error", mock.Anything, "error running module factories").Run(func(args mock.Arguments) {
-		err := args.Get(0).(error)
-		assert.True(t, strings.Contains(err.Error(), "panic in module factory"))
-	})
-	logger.On("Error", mock.Anything, "error building additional modules by multiFactories").Run(func(args mock.Arguments) {
-		err := args.Get(0).(error)
+	logger.On("Error", "error building additional modules by multiFactories: %w", mock.Anything).Run(func(args mock.Arguments) {
+		err := args.Get(1).(error)
 		assert.True(t, strings.Contains(err.Error(), "panic in module factory"))
 	})
 
@@ -93,7 +89,7 @@ func TestBootFailure(t *testing.T) {
 	config, logger, _ := createMocks()
 
 	logger.On("Info", mock.Anything)
-	logger.On("Error", mock.AnythingOfType("*errors.withStack"), "error building modules")
+	logger.On("Error", "error building modules: %w", mock.AnythingOfType("*errors.withStack"))
 
 	assert.NotPanics(t, func() {
 		k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
@@ -128,7 +124,7 @@ func TestRunSuccess(t *testing.T) {
 func TestRunFailure(t *testing.T) {
 	config, logger, module := createMocks()
 
-	logger.On("Error", mock.Anything, "error during the execution of stage %d", kernel.StageApplication)
+	logger.On("Error", "error during the execution of stage %d: %w", kernel.StageApplication, mock.Anything)
 
 	module.On("GetStage").Return(kernel.StageApplication)
 	module.On("Run", mock.Anything).Run(func(args mock.Arguments) {

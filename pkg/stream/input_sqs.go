@@ -122,7 +122,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 		sqsMessages, err := i.queue.Receive(ctx, i.settings.MaxNumberOfMessages, i.settings.WaitTime)
 
 		if err != nil {
-			i.logger.Error(err, "could not get messages from sqs")
+			i.logger.Error("could not get messages from sqs: %w", err)
 			continue
 		}
 
@@ -130,7 +130,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 			msg, err := i.unmarshaler(sqsMessage.Body)
 
 			if err != nil {
-				i.logger.Error(err, "could not unmarshal message")
+				i.logger.Error("could not unmarshal message: %w", err)
 				continue
 			}
 

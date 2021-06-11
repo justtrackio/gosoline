@@ -66,12 +66,12 @@ type GosoLog interface {
 	Option(options ...LoggerOption) error
 }
 
-//go:generate mockery -name Logger
+//go:generate mockery --name Logger
 type Logger interface {
 	Debug(format string, args ...interface{})
 	Info(format string, args ...interface{})
 	Warn(format string, args ...interface{})
-	Error(err error, format string, args ...interface{})
+	Error(format string, args ...interface{})
 
 	WithChannel(channel string) Logger
 	WithContext(ctx context.Context) Logger
@@ -187,7 +187,10 @@ func (l *logger) Warn(msg string, args ...interface{}) {
 	l.log(Warn, msg, args, nil, Fields{})
 }
 
-func (l *logger) Error(err error, msg string, args ...interface{}) {
+func (l *logger) Error(msg string, args ...interface{}) {
+	err := fmt.Errorf(msg, args...)
+	msg = err.Error()
+
 	l.logError(Error, err, msg, args)
 }
 

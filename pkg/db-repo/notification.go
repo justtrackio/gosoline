@@ -76,7 +76,7 @@ func (n baseNotifier) Send(ctx context.Context, notificationType string, value M
 	}
 
 	if err != nil {
-		logger.Error(err, "error executing notification on %s for model %s with id %d", notificationType, modelId, *value.GetId())
+		logger.Error("error executing notification on %s for model %s with id %d: %w", notificationType, modelId, *value.GetId(), err)
 		n.writeMetric(err)
 		return err
 	}

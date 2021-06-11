@@ -187,7 +187,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	})
 
 	if err != nil {
-		logger.Error(err, "failed to assemble request")
+		logger.Error("failed to assemble request: %w", err)
 		return nil, fmt.Errorf("failed to assemble request: %w", err)
 	}
 

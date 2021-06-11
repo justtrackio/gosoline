@@ -5,13 +5,13 @@ import (
 	"os"
 )
 
-type ErrorHandler func(err error, msg string, args ...interface{})
+type ErrorHandler func(msg string, args ...interface{})
 
 func WithDefaultErrorHandler(handler ErrorHandler) {
 	defaultErrorHandler = handler
 }
 
-var defaultErrorHandler = func(err error, msg string, args ...interface{}) {
+var defaultErrorHandler = func(msg string, args ...interface{}) {
 	logger := mon.NewLogger()
 	options := []mon.LoggerOption{
 		mon.WithFormat(mon.FormatJson),
@@ -19,10 +19,10 @@ var defaultErrorHandler = func(err error, msg string, args ...interface{}) {
 	}
 
 	if err := logger.Option(options...); err != nil {
-		logger.Error(err, "can not create logger for default error handler")
+		logger.Error("can not create logger for default error handler: %w", err)
 		os.Exit(1)
 	}
 
-	logger.Error(err, msg, args...)
+	logger.Error(msg, args...)
 	os.Exit(1)
 }

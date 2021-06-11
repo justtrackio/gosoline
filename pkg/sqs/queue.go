@@ -136,7 +136,7 @@ func (q *queue) Send(ctx context.Context, msg *Message) error {
 	})
 
 	if err != nil {
-		q.logger.WithContext(ctx).Error(err, "could not send value to sqs queue %s", q.properties.Name)
+		q.logger.WithContext(ctx).Error("could not send value to sqs queue %s: %w", q.properties.Name, err)
 	}
 
 	return err
@@ -191,7 +191,7 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 	}
 
 	if err != nil && !exec.IsRequestCanceled(err) {
-		logger.Error(err, "could not send batch to sqs queue %s", q.properties.Name)
+		logger.Error("could not send batch to sqs queue %s: %w", q.properties.Name, err)
 	}
 
 	return err
@@ -217,7 +217,7 @@ func (q *queue) Receive(ctx context.Context, maxNumberOfMessages int64, waitTime
 	}
 
 	if err != nil {
-		logger.Error(err, "could not receive value from sqs queue %s", q.properties.Name)
+		logger.Error("could not receive value from sqs queue %s: %w", q.properties.Name, err)
 		return nil, err
 	}
 
@@ -237,7 +237,7 @@ func (q *queue) DeleteMessage(receiptHandle string) error {
 	})
 
 	if err != nil {
-		q.logger.Error(err, "could not delete message from sqs queue %s", q.properties.Name)
+		q.logger.Error("could not delete message from sqs queue %s: %w", q.properties.Name, err)
 		return err
 	}
 
@@ -287,7 +287,7 @@ func (q *queue) doDeleteMessageBatch(input *sqs.DeleteMessageBatchInput) error {
 	})
 
 	if err != nil {
-		q.logger.Error(err, "could not delete the messages from sqs queue %s", q.properties.Name)
+		q.logger.Error("could not delete the messages from sqs queue %s: %w", q.properties.Name, err)
 	}
 
 	return err

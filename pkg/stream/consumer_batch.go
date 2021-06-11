@@ -124,7 +124,7 @@ func (c *BatchConsumer) processAggregateMessage(ctx context.Context, msg *Messag
 	ctx, _, err = c.encoder.Decode(ctx, msg, &batch)
 
 	if err != nil {
-		c.logger.WithContext(ctx).Error(err, "an error occurred during disaggregation of the message")
+		c.logger.WithContext(ctx).Error("an error occurred during disaggregation of the message: %w", err)
 		return
 	}
 
@@ -173,12 +173,11 @@ func (c *BatchConsumer) consumeBatch(kernelCtx context.Context, batch []*Message
 
 	acks, err := c.callback.Consume(batchCtx, models, attributes)
 	if err != nil {
-		logger.Error(err, "an error occurred during the consume batch operation")
+		logger.Error("an error occurred during the consume batch operation: %w", err)
 	}
 
 	if len(messages) != len(acks) {
-		err = fmt.Errorf("number of acks does not match number of messages in batch: %d != %d", len(acks), len(messages))
-		logger.Error(err, err.Error())
+		logger.Error("number of acks does not match number of messages in batch: %d != %d", len(acks), len(messages))
 	}
 
 	ackMessages := make([]*Message, 0, len(messages))
@@ -207,7 +206,7 @@ func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*Messag
 
 		msgCtx, attribute, err := c.encoder.Decode(batchCtx, msg, model)
 		if err != nil {
-			c.logger.WithContext(msgCtx).Error(err, "an error occurred during the batch decode message operation")
+			c.logger.WithContext(msgCtx).Error("an error occurred during the batch decode message operation: %w", err)
 			continue
 		}
 

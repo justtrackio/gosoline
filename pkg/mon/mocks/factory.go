@@ -48,16 +48,8 @@ func NewLoggerMockedUntilLevel(level string) *Logger {
 
 func inspectLogFunction(level string, allowed bool) func(args mock.Arguments) {
 	return func(args mock.Arguments) {
-		// ensure we use formatting markers exactly when using a method with formatting
-		var msg string
-		if level == mon.Error {
-			msg = fmt.Sprint(args.Get(1))
-		} else if len(args) > 0 {
-			msg = fmt.Sprint(args.Get(0))
-		}
-
 		if !allowed {
-			panic(fmt.Errorf("invalid log message '%s'. Logs of level %s are not allowed", msg, level))
+			panic(fmt.Errorf("invalid log message '%s'. Logs of level %s are not allowed", args.Get(0), level))
 		}
 	}
 }

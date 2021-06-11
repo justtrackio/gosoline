@@ -271,7 +271,7 @@ func (d *dockerRunnerLegacy) isReachable(address string, timeout time.Duration) 
 		err := conn.Close()
 
 		if err != nil {
-			d.logger.Error(err, "failed to close connection")
+			d.logger.Error("failed to close connection: %w", err)
 		}
 	}()
 

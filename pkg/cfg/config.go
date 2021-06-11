@@ -96,7 +96,7 @@ func (c *config) GetBool(key string, optionalDefault ...bool) bool {
 	b, err := cast.ToBoolE(data)
 
 	if err != nil {
-		c.err(err, "can not cast value %v[%T] of key %s to bool", data, data, key)
+		c.err("can not cast value %v[%T] of key %s to bool: %w", data, data, key, err)
 		return false
 	}
 
@@ -112,7 +112,7 @@ func (c *config) GetDuration(key string, optionalDefault ...time.Duration) time.
 	duration, err := cast.ToDurationE(data)
 
 	if err != nil {
-		c.err(err, "can not cast value %v[%T] of key %s to duration", data, data, key)
+		c.err("can not cast value %v[%T] of key %s to duration: %w", data, data, key, err)
 		return time.Duration(0)
 	}
 
@@ -128,7 +128,7 @@ func (c *config) GetInt(key string, optionalDefault ...int) int {
 	i, err := cast.ToIntE(data)
 
 	if err != nil {
-		c.err(err, "can not cast value %v[%T] of key %s to int", data, data, key)
+		c.err("can not cast value %v[%T] of key %s to int: %w", data, data, key, err)
 		return 0
 	}
 
@@ -144,7 +144,7 @@ func (c *config) GetIntSlice(key string, optionalDefault ...[]int) []int {
 	intSlice, err := cast.ToIntSliceE(data)
 
 	if err != nil {
-		c.err(err, "can not cast value %v[%T] of key %s to []int", data, data, key)
+		c.err("can not cast value %v[%T] of key %s to []int: %w", data, data, key, err)
 		return nil
 	}
 
@@ -160,7 +160,7 @@ func (c *config) GetFloat64(key string, optionalDefault ...float64) float64 {
 	i, err := cast.ToFloat64E(data)
 
 	if err != nil {
-		c.err(err, "can not cast value %v[%T] of key %s to float64", data, data, key)
+		c.err("can not cast value %v[%T] of key %s to float64: %w", data, data, key, err)
 		return 0.0
 	}
 
@@ -177,8 +177,7 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interfa
 	var reflectValue = reflect.ValueOf(data)
 
 	if reflectValue.Kind() != reflect.Slice {
-		err = fmt.Errorf("can not cast value %v[%T] of key %s to []map[string]interface{}", data, data, key)
-		c.err(err, err.Error())
+		c.err("can not cast value %v[%T] of key %s to []map[string]interface{}: %w", data, data, key, err)
 		return nil
 	}
 
@@ -191,8 +190,7 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interfa
 		element = reflectValue.Index(i).Interface()
 
 		if msi, ok = element.(map[string]interface{}); !ok {
-			err := fmt.Errorf("element of key %s should be a msi but instead is %T", key, element)
-			c.err(err, err.Error())
+			c.err("element of key %s should be a msi but instead is %T", key, element)
 			return nil
 		}
 
@@ -215,7 +213,7 @@ func (c *config) GetStringMap(key string, optionalDefault ...map[string]interfac
 	strMap, err := cast.ToStringMapE(data)
 
 	if err != nil {
-		c.err(err, "can not cast value %v[%T] of key %s to map[string]interface{}", data, data, key)
+		c.err("can not cast value %v[%T] of key %s to map[string]interface{}: %w", data, data, key, err)
 		return nil
 	}
 
@@ -237,7 +235,7 @@ func (c *config) GetStringMapString(key string, optionalDefault ...map[string]st
 	strMap, err := cast.ToStringMapStringE(data)
 
 	if err != nil {
-		c.err(err, "can not cast value %v[%T] of key %s to map[string]string", data, data, key)
+		c.err("can not cast value %v[%T] of key %s to map[string]string: %w", data, data, key, err)
 		return nil
 	}
 
@@ -266,7 +264,7 @@ func (c *config) GetStringSlice(key string, optionalDefault ...[]string) []strin
 	}
 
 	if err != nil {
-		c.err(err, "can not cast value %v[%T] of key %s to []string", data, data, key)
+		c.err("can not cast value %v[%T] of key %s to []string: %w", data, data, key, err)
 		return nil
 	}
 
@@ -287,7 +285,7 @@ func (c *config) GetTime(key string, optionalDefault ...time.Time) time.Time {
 	tm, err := cast.ToTimeE(data)
 
 	if err != nil {
-		c.err(err, "can not cast value %v[%T] of key %s to time.Time", data, data, key)
+		c.err("can not cast value %v[%T] of key %s to time.Time: %w", data, data, key, err)
 		return time.Time{}
 	}
 
@@ -316,7 +314,7 @@ func (c *config) UnmarshalDefaults(output interface{}, additionalDefaults ...Unm
 	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
 
 	if err != nil {
-		c.err(err, "can not read zeros and defaults for struct %T", output)
+		c.err("can not read zeros and defaults for struct %T: %w", output, err)
 	}
 
 	finalSettings.Merge(".", zeroSettings)
@@ -327,7 +325,7 @@ func (c *config) UnmarshalDefaults(output interface{}, additionalDefaults ...Unm
 	}
 
 	if err = ms.Write(finalSettings); err != nil {
-		c.err(err, "can not write defaults into struct %T", output)
+		c.err("can not write defaults into struct %T: %w", output, err)
 		return
 	}
 }
@@ -349,7 +347,7 @@ func (c *config) UnmarshalKey(key string, output interface{}, defaults ...Unmars
 	}
 
 	err := fmt.Errorf("output should be a pointer to struct or slice but instead is %T", output)
-	c.err(err, "can not unmarshal key %s", key)
+	c.err("can not unmarshal key %s: %w", key, err)
 }
 
 func (c *config) augmentString(str string) string {
@@ -363,9 +361,9 @@ func (c *config) augmentString(str string) string {
 	return str
 }
 
-func (c *config) err(err error, msg string, args ...interface{}) {
+func (c *config) err(msg string, args ...interface{}) {
 	for i := 0; i < len(c.errorHandlers); i++ {
-		c.errorHandlers[i](err, msg, args...)
+		c.errorHandlers[i](msg, args...)
 	}
 }
 
@@ -383,7 +381,7 @@ func (c *config) buildMapStruct(target interface{}) *mapx.MapXStruct {
 	})
 
 	if err != nil {
-		c.err(err, "can not create MapXStruct for target %T", target)
+		c.err("can not create MapXStruct for target %T: %w", target, err)
 		return nil
 	}
 
@@ -450,7 +448,7 @@ func (c *config) keyCheck(key string, defaults int) bool {
 	}
 
 	err := fmt.Errorf("there is no config setting for key '%v'", key)
-	c.err(err, "key check failed")
+	c.err("key check failed: %w", err)
 
 	return false
 }
@@ -552,7 +550,7 @@ func (c *config) unmarshalMap(key string, output interface{}, defaults []Unmarsh
 	m, err := refl.MapOf(output)
 
 	if err != nil {
-		c.err(err, "can not unmarshal key %s", key)
+		c.err("can not unmarshal key %s: %w", key, err)
 		return
 	}
 
@@ -564,7 +562,7 @@ func (c *config) unmarshalMap(key string, output interface{}, defaults []Unmarsh
 		err = m.Set(name, item)
 
 		if err != nil {
-			c.err(err, "can not unmarshal key %s", key)
+			c.err("can not unmarshal key %s: %w", key, err)
 			return
 		}
 	}
@@ -574,14 +572,14 @@ func (c *config) unmarshalSlice(key string, output interface{}, defaults []Unmar
 	data, err := c.settings.Get(key).Slice()
 
 	if err != nil {
-		c.err(err, "can not unmarshal key %s", key)
+		c.err("can not unmarshal key %s: %w", key, err)
 		return
 	}
 
 	slice, err := refl.SliceOf(output)
 
 	if err != nil {
-		c.err(err, "can not unmarshal key %s into slice", key)
+		c.err("can not unmarshal key %s into slice: %w", key, err)
 		return
 	}
 
@@ -592,7 +590,7 @@ func (c *config) unmarshalSlice(key string, output interface{}, defaults []Unmar
 		c.unmarshalStruct(keyIndex, elem, defaults)
 
 		if err := slice.Append(elem); err != nil {
-			c.err(err, "can not unmarshal key %s into slice", key)
+			c.err("can not unmarshal key %s into slice: %w", key, err)
 			return
 		}
 	}
@@ -606,7 +604,7 @@ func (c *config) unmarshalStruct(key string, output interface{}, additionalDefau
 	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
 
 	if err != nil {
-		c.err(err, "can not read zeros and defaults for key %s", key)
+		c.err("can not read zeros and defaults for key %s: %w", key, err)
 	}
 
 	finalSettings.Merge(".", zeroSettings)
@@ -620,7 +618,7 @@ func (c *config) unmarshalStruct(key string, output interface{}, additionalDefau
 		settings, err := c.settings.Get(key).Map()
 
 		if err != nil {
-			c.err(fmt.Errorf("value is not of type map[string]interface{}: %w", err), "can not get settings for key: %s", key)
+			c.err("can not get settings for key: %s: %w", key, err)
 			return
 		}
 
@@ -634,7 +632,7 @@ func (c *config) unmarshalStruct(key string, output interface{}, additionalDefau
 	c.settings.Set(key, finalSettings)
 
 	if err = ms.Write(finalSettings); err != nil {
-		c.err(err, "error unmarshalling key: %s", key)
+		c.err("error unmarshalling key: %s: %w", key, err)
 		return
 	}
 
@@ -646,7 +644,7 @@ func (c *config) unmarshalStruct(key string, output interface{}, additionalDefau
 	}
 
 	if _, ok := err.(*validator.InvalidValidationError); ok {
-		c.err(err, "can not validate result of key: %s", key)
+		c.err("can not validate result of key: %s: %w", key, err)
 		return
 	}
 
@@ -657,7 +655,7 @@ func (c *config) unmarshalStruct(key string, output interface{}, additionalDefau
 	}
 
 	if errs != nil {
-		c.err(errs, "validation failed for key: %s", key)
+		c.err("validation failed for key: %s: %w", key, errs)
 		return
 	}
 }

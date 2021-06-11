@@ -95,6 +95,6 @@ func (s *ConfigServer) waitForStop(ctx context.Context) {
 	err := s.server.Close()
 
 	if err != nil {
-		s.logger.Error(err, "could not close config server")
+		s.logger.Error("could not close config server: %w", err)
 	}
 }

@@ -36,9 +36,9 @@ func (l *ContextEnforcingLogger) Debug(msg string, args ...interface{}) {
 	l.logger.Debug(msg, args...)
 }
 
-func (l *ContextEnforcingLogger) Error(err error, msg string, args ...interface{}) {
+func (l *ContextEnforcingLogger) Error(msg string, args ...interface{}) {
 	l.checkContext(Error)
-	l.logger.Error(err, msg, args...)
+	l.logger.Error(msg, args...)
 }
 
 func (l *ContextEnforcingLogger) Info(msg string, args ...interface{}) {

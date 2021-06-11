@@ -149,7 +149,7 @@ func (s *s3Store) CreateBucket() {
 	if isBucketAlreadyExistsError(err) {
 		s.logger.Info("s3 bucket %s did already exist", *s.bucket)
 	} else if err != nil {
-		s.logger.Error(err, "could not create s3 bucket %s", *s.bucket)
+		s.logger.Error("could not create s3 bucket %s: %w", *s.bucket, err)
 	} else {
 		s.logger.Info("created s3 bucket %s", *s.bucket)
 	}

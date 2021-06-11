@@ -61,12 +61,12 @@ func (l *SamplingLogger) Debug(msg string, args ...interface{}) {
 	l.Logger.Debug(msg, args...)
 }
 
-func (l *SamplingLogger) Error(err error, msg string, args ...interface{}) {
+func (l *SamplingLogger) Error(msg string, args ...interface{}) {
 	if !l.shouldLog(msg) {
 		return
 	}
 
-	l.Logger.Error(err, msg, args...)
+	l.Logger.Error(msg, args...)
 }
 
 func (l *SamplingLogger) Info(msg string, args ...interface{}) {

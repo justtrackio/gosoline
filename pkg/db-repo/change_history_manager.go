@@ -224,7 +224,8 @@ func (c *changeHistoryManager) execute() error {
 		if err != nil {
 			c.logger.WithFields(mon.Fields{
 				"sql": statement,
-			}).Error(err, "")
+			}).Error("could not migrate change history: %w", err)
+
 			return fmt.Errorf("could not migrate change history: %w", err)
 		}
 	}

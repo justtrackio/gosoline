@@ -68,7 +68,7 @@ func New(options ...Option) kernel.Kernel {
 	var ker kernel.Kernel
 
 	if ker, err = NewWithInterfaces(config, logger, options...); err != nil {
-		defaultErrorHandler(err, "can initialize the app")
+		defaultErrorHandler("can initialize the app: %w", err)
 	}
 
 	return ker
