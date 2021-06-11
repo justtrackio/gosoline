@@ -2,6 +2,7 @@ package application
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
@@ -63,9 +64,9 @@ func Default(options ...Option) kernel.Kernel {
 
 func New(options ...Option) kernel.Kernel {
 	var err error
-	var config = cfg.New()
-	var logger = mon.NewLogger()
 	var ker kernel.Kernel
+	config := cfg.New()
+	logger := mon.NewLogger()
 
 	if ker, err = NewWithInterfaces(config, logger, options...); err != nil {
 		defaultErrorHandler("can initialize the app: %w", err)

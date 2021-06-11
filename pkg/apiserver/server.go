@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/gin-gonic/gin"
-	"net"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 type Settings struct {
@@ -55,7 +56,6 @@ func New(definer Definer) kernel.ModuleFactory {
 		}
 
 		router := gin.New()
-		AddProfilingEndpoints(router)
 
 		router.GET("/health", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{})
@@ -89,8 +89,8 @@ func NewWithInterfaces(logger mon.Logger, router *gin.Engine, tracer tracing.Tra
 	}
 
 	var err error
-	var address = server.Addr
 	var listener net.Listener
+	address := server.Addr
 
 	if address == "" {
 		address = ":http"
@@ -130,7 +130,6 @@ func (a *ApiServer) Run(ctx context.Context) error {
 func (a *ApiServer) waitForStop(ctx context.Context) {
 	<-ctx.Done()
 	err := a.server.Close()
-
 	if err != nil {
 		a.logger.Error("Server Close: %w", err)
 	}
@@ -145,13 +144,11 @@ func (a *ApiServer) GetPort() (*int, error) {
 
 	address := a.listener.Addr().String()
 	_, portStr, err := net.SplitHostPort(address)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not get port from address %s: %w", address, err)
 	}
 
 	port, err := strconv.Atoi(portStr)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not convert port string to int: %w", err)
 	}
