@@ -61,7 +61,7 @@ func (a *ApiHealthCheck) Run(ctx context.Context) error {
 	err := a.server.ListenAndServe()
 
 	if err != http.ErrServerClosed {
-		a.logger.Error(err, "api health check closed unexpected")
+		a.logger.Error("api health check closed unexpected: %w", err)
 		return err
 	}
 
@@ -73,6 +73,6 @@ func (a *ApiHealthCheck) waitForStop(ctx context.Context) {
 	err := a.server.Close()
 
 	if err != nil {
-		a.logger.Error(err, "api health check close")
+		a.logger.Error("api health check close: %w", err)
 	}
 }

@@ -65,7 +65,7 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 			case gin.ErrorTypeRender:
 				log.Warn("%s %s %s - render error - %v", method, path, req.Proto, e.Err)
 			default:
-				log.Error(e.Err, "%s %s %s", method, path, req.Proto)
+				log.Error("%s %s %s: %w", method, path, req.Proto, e.Err)
 			}
 		}
 	}

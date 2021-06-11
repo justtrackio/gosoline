@@ -119,7 +119,7 @@ func (a *ApiServer) Run(ctx context.Context) error {
 	err := a.server.Serve(a.listener)
 
 	if err != http.ErrServerClosed {
-		a.logger.Error(err, "Server closed unexpected")
+		a.logger.Error("Server closed unexpected: %w", err)
 
 		return err
 	}
@@ -132,7 +132,7 @@ func (a *ApiServer) waitForStop(ctx context.Context) {
 	err := a.server.Close()
 
 	if err != nil {
-		a.logger.Error(err, "Server Close")
+		a.logger.Error("Server Close: %w", err)
 	}
 
 	a.logger.Info("leaving api")

@@ -31,7 +31,7 @@ func (p *mysqlPurger) purgeMysql() error {
 	err := p.setForeignKeyChecks(0)
 
 	if err != nil {
-		p.logger.Error(err, "error disabling foreign key checks")
+		p.logger.Error("error disabling foreign key checks: %w", err)
 
 		return err
 	}
@@ -40,14 +40,14 @@ func (p *mysqlPurger) purgeMysql() error {
 		err := p.setForeignKeyChecks(1)
 
 		if err != nil {
-			p.logger.Error(err, "error enabling foreign key checks")
+			p.logger.Error("error enabling foreign key checks: %w", err)
 		}
 	}()
 
 	_, err = p.client.Exec(fmt.Sprintf(truncateTableStatement, p.tableName))
 
 	if err != nil {
-		p.logger.Error(err, "error truncating table %s", p.tableName)
+		p.logger.Error("error truncating table %s: %w", p.tableName, err)
 		return err
 	}
 

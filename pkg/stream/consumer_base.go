@@ -202,11 +202,11 @@ func (c *baseConsumer) recover() {
 		return
 	}
 
-	c.logger.Error(err, err.Error())
+	c.logger.Error("%w", err)
 }
 
 func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
-	c.logger.WithContext(ctx).Error(err, msg)
+	c.logger.WithContext(ctx).Error("%s: %w", msg, err)
 
 	c.metricWriter.Write(mon.MetricData{
 		&mon.MetricDatum{

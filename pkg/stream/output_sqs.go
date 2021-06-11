@@ -68,7 +68,7 @@ func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 
 	if !ok {
 		err := fmt.Errorf("can not chunk messages for sending to sqs")
-		o.logger.WithContext(ctx).Error(err, "can not chunk messages for sending to sqs")
+		o.logger.WithContext(ctx).Error("can not chunk messages for sending to sqs: %w", err)
 
 		return err
 	}

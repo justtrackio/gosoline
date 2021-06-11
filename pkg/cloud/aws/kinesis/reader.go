@@ -95,7 +95,7 @@ func (r *reader) Run(ctx context.Context) error {
 
 		// rawMessage received
 		if err := r.handler.Handle(rawMessage); err != nil {
-			logger.Error(err, "could not handle message")
+			logger.Error("could not handle message: %w", err)
 		}
 	}
 }

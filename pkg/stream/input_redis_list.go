@@ -82,7 +82,7 @@ func (i *redisListInput) Run(ctx context.Context) error {
 		rawMessage, err := i.client.BLPop(ctx, i.settings.WaitTime, i.fullyQualifiedKey)
 
 		if err != nil && err.Error() != redis.Nil.Error() {
-			i.logger.Error(err, "could not BLPop from redis")
+			i.logger.Error("could not BLPop from redis: %w", err)
 			i.stopped = true
 			return err
 		}
@@ -95,7 +95,7 @@ func (i *redisListInput) Run(ctx context.Context) error {
 		err = json.Unmarshal([]byte(rawMessage[1]), &msg)
 
 		if err != nil {
-			i.logger.Error(err, "could not unmarshal message")
+			i.logger.Error("could not unmarshal message: %w", err)
 			continue
 		}
 
@@ -121,7 +121,7 @@ func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
 	llen, err := i.client.LLen(ctx, i.fullyQualifiedKey)
 
 	if err != nil {
-		i.logger.Error(err, "can not publish stream list metric data")
+		i.logger.Error("can not publish stream list metric data: %w", err)
 		return
 	}
 

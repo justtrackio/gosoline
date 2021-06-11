@@ -19,12 +19,12 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 
 	config := cfg.New()
 	if err := config.Option(configOptions...); err != nil {
-		defaultErrorHandler(err, "can not initialize the config")
+		defaultErrorHandler("can not initialize the config: %w", err)
 	}
 
 	logger, err := newCliLogger()
 	if err != nil {
-		defaultErrorHandler(err, "can not initialize the logger")
+		defaultErrorHandler("can not initialize the logger: %w", err)
 	}
 
 	settings := &kernelSettings{}
@@ -32,7 +32,7 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 
 	k, err := kernel.New(config, logger, kernel.KillTimeout(settings.KillTimeout))
 	if err != nil {
-		defaultErrorHandler(err, "can not initialize the kernel")
+		defaultErrorHandler("can not initialize the kernel: %w", err)
 	}
 
 	k.Add("cli", module, kernel.ModuleType(kernel.TypeEssential), kernel.ModuleStage(kernel.StageApplication))

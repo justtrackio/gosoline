@@ -205,7 +205,7 @@ func (d *producerDaemon) tickerLoop(ctx context.Context) error {
 			d.lck.Lock()
 
 			if err = d.flushAll(); err != nil {
-				d.logger.Error(err, "can not flush all messages")
+				d.logger.Error("can not flush all messages: %w", err)
 			}
 
 			d.lck.Unlock()
@@ -332,7 +332,7 @@ func (d *producerDaemon) outputLoop(ctx context.Context) error {
 				// however, if this would be a problem, you shouldn't be using the producer daemon at all.
 				d.logger.Warn("can not write messages to output in producer %s because of canceled context", d.name)
 			} else {
-				d.logger.Error(err, "can not write messages to output in producer %s", d.name)
+				d.logger.Error("can not write messages to output in producer %s: %w", d.name, err)
 			}
 		}
 

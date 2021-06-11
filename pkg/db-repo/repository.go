@@ -106,14 +106,14 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 	}
 
 	if err != nil {
-		logger.Error(err, "could not create model of type %v", modelId)
+		logger.Error("could not create model of type %v: %w", modelId, err)
 		return err
 	}
 
 	err = r.refreshAssociations(value, Create)
 
 	if err != nil {
-		logger.Error(err, "could not update associations of model type %v", modelId)
+		logger.Error("could not update associations of model type %v: %w", modelId, err)
 		return err
 	}
 
@@ -156,14 +156,14 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	}
 
 	if err != nil {
-		logger.Error(err, "could not update model of type %s with id %d", modelId, mdl.EmptyUintIfNil(value.GetId()))
+		logger.Error("could not update model of type %s with id %d: %w", modelId, mdl.EmptyUintIfNil(value.GetId()), err)
 		return err
 	}
 
 	err = r.refreshAssociations(value, Update)
 
 	if err != nil {
-		logger.Error(err, "could not update associations of model type %s with id %d", modelId, *value.GetId())
+		logger.Error("could not update associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
 		return err
 	}
 
@@ -182,14 +182,14 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	err := r.refreshAssociations(value, Delete)
 
 	if err != nil {
-		logger.Error(err, "could not delete associations of model type %s with id %d", modelId, *value.GetId())
+		logger.Error("could not delete associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
 		return err
 	}
 
 	err = r.orm.Delete(value).Error
 
 	if err != nil {
-		logger.Error(err, "could not delete model of type %s with id %d", modelId, *value.GetId())
+		logger.Error("could not delete model of type %s with id %d: %w", modelId, *value.GetId(), err)
 	}
 
 	logger.Info("deleted model of type %s with id %d", modelId, *value.GetId())

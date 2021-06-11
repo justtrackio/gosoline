@@ -131,7 +131,7 @@ func (k *kernel) Run() {
 	k.logger.Info("starting kernel")
 
 	if err := k.runMultiFactories(); err != nil {
-		k.logger.Error(err, "error building additional modules by multiFactories")
+		k.logger.Error("error building additional modules by multiFactories: %w", err)
 		close(k.running)
 		return
 	}
@@ -143,7 +143,7 @@ func (k *kernel) Run() {
 	}
 
 	if err := k.runFactories(); err != nil {
-		k.logger.Error(err, "error building modules")
+		k.logger.Error("error building modules: %w", err)
 		close(k.running)
 		return
 	}
@@ -345,7 +345,7 @@ func (k *kernel) debugConfig() {
 	debugErr := cfg.DebugConfig(k.config, k.logger)
 
 	if debugErr != nil {
-		k.logger.Error(debugErr, "can not debug config")
+		k.logger.Error("can not debug config: %w", debugErr)
 	}
 }
 
@@ -367,7 +367,7 @@ func (k *kernel) runModule(ctx context.Context, name string, ms *ModuleState) (m
 		}
 
 		if ms.Err != nil {
-			k.logger.Error(ms.Err, "error running %s module %s", ms.Config.GetType(), name)
+			k.logger.Error("error running %s module %s: %w", ms.Config.GetType(), name, ms.Err)
 		}
 
 		ms.IsRunning = false
@@ -412,7 +412,7 @@ func (k *kernel) waitStopped() {
 		select {
 		case <-timer.C:
 			err := fmt.Errorf("kernel was not able to shutdown in %v", k.killTimeout)
-			k.logger.Error(err, "kernel shutdown seems to be blocking.. exiting...")
+			k.logger.Error("kernel shutdown seems to be blocking.. exiting...: %w", err)
 
 			// we don't need to iterate in order, but doing so is much nicer, so lets do it
 			for _, stageIndex := range k.getStageIndices() {

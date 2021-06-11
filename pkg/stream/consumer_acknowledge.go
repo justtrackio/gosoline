@@ -28,7 +28,7 @@ func (c *ConsumerAcknowledge) Acknowledge(ctx context.Context, msg *Message) {
 	err := ackInput.Ack(msg)
 
 	if err != nil {
-		c.logger.WithContext(ctx).Error(err, "could not acknowledge the message")
+		c.logger.WithContext(ctx).Error("could not acknowledge the message: %w", err)
 	}
 }
 
@@ -43,6 +43,6 @@ func (c *ConsumerAcknowledge) AcknowledgeBatch(ctx context.Context, msg []*Messa
 	err := ackInput.AckBatch(msg)
 
 	if err != nil {
-		c.logger.WithContext(ctx).Error(err, "could not acknowledge the messages")
+		c.logger.WithContext(ctx).Error("could not acknowledge the messages: %w", err)
 	}
 }

@@ -25,7 +25,7 @@ func Start(handler Handler, defaultConfig ...map[string]interface{}) {
 
 	logger := mon.NewLogger()
 	if err := logger.Option(loggerOptions...); err != nil {
-		logger.Error(err, "failed to apply logger options")
+		logger.Error("failed to apply logger options: %w", err)
 		os.Exit(1)
 	}
 
@@ -33,8 +33,8 @@ func Start(handler Handler, defaultConfig ...map[string]interface{}) {
 	configOptions := []cfg.Option{
 		cfg.WithEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
 		cfg.WithSanitizers(cfg.TimeSanitizer),
-		cfg.WithErrorHandlers(func(err error, msg string, args ...interface{}) {
-			logger.Error(err, msg, args...)
+		cfg.WithErrorHandlers(func(msg string, args ...interface{}) {
+			logger.Error(msg, args...)
 			os.Exit(1)
 		}),
 	}
@@ -45,7 +45,7 @@ func Start(handler Handler, defaultConfig ...map[string]interface{}) {
 
 	config := cfg.New()
 	if err := config.Option(configOptions...); err != nil {
-		logger.Error(err, "failed to apply logger options")
+		logger.Error("failed to apply logger options: %w", err)
 		os.Exit(1)
 	}
 

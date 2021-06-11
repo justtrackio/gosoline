@@ -136,7 +136,7 @@ func (t *snsTopic) SubscribeSqs(queueArn string, attributes map[string]interface
 		t.logger.WithFields(mon.Fields{
 			"topicArn": t.settings.Arn,
 			"queueArn": queueArn,
-		}).Error(err, "could not subscribe for sqs queue")
+		}).Error("could not subscribe for sqs queue: %w", err)
 	}
 
 	t.logger.WithFields(mon.Fields{

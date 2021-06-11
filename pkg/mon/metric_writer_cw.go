@@ -127,7 +127,7 @@ func (w *cwWriter) Write(batch MetricData) {
 	if err != nil {
 		w.logger.WithFields(Fields{
 			"namespace": namespace,
-		}).Error(err, "could not write metric data")
+		}).Error("could not write metric data: %w", err)
 
 		return
 	}
@@ -147,7 +147,7 @@ func (w *cwWriter) Write(batch MetricData) {
 		_, err := w.cw.PutMetricData(&input)
 
 		if err != nil {
-			w.logger.Error(err, "could not write metric data")
+			w.logger.Error("could not write metric data: %w", err)
 			continue
 		}
 	}
@@ -188,7 +188,7 @@ func (w *cwWriter) buildMetricData(batch MetricData) ([]*cloudwatch.MetricDatum,
 		}
 
 		if err != nil {
-			w.logger.Error(err, "invalid metric dimension")
+			w.logger.Error("invalid metric dimension: %w", err)
 			continue
 		}
 
@@ -202,7 +202,7 @@ func (w *cwWriter) buildMetricData(batch MetricData) ([]*cloudwatch.MetricDatum,
 		}
 
 		if err := datum.Validate(); err != nil {
-			w.logger.Error(err, "invalid metric datum")
+			w.logger.Error("invalid metric datum: %w", err)
 			continue
 		}
 

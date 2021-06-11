@@ -36,8 +36,8 @@ func (s *ConfigTestSuite) applyOptions(options ...cfg.Option) {
 	}
 }
 
-func (s *ConfigTestSuite) errorHandler(err error, msg string, args ...interface{}) {
-	s.FailNow(err.Error(), fmt.Sprintf(msg, args...))
+func (s *ConfigTestSuite) errorHandler(msg string, args ...interface{}) {
+	s.FailNow(fmt.Errorf(msg, args...).Error())
 }
 
 func (s *ConfigTestSuite) environmentMock(key string) (string, bool) {
@@ -480,8 +480,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyValidation() {
 	}
 
 	var cfgErr error
-	errorHandler := func(err error, msg string, args ...interface{}) {
-		cfgErr = err
+	errorHandler := func(msg string, args ...interface{}) {
+		cfgErr = fmt.Errorf(msg, args...)
 	}
 	s.applyOptions(cfg.WithErrorHandlers(errorHandler))
 
@@ -497,7 +497,7 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyValidation() {
 	cm := configMap{}
 	s.config.UnmarshalKey("key", &cm)
 
-	s.EqualError(cfgErr, "2 errors occurred:\n\t* the setting Foo with value bar does not match its requirement\n\t* the setting A with value 0 does not match its requirement\n\n")
+	s.EqualError(cfgErr, "validation failed for key: key: 2 errors occurred:\n\t* the setting Foo with value bar does not match its requirement\n\t* the setting A with value 0 does not match its requirement\n\n")
 }
 
 func (s *ConfigTestSuite) TestConfig_UnmarshalKeyWithDefaultsFromKey() {

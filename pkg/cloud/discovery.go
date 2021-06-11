@@ -116,7 +116,7 @@ func (c *discoveryClient) listServices() (*servicediscovery.ListServicesOutput, 
 	})
 
 	if err != nil {
-		c.logger.Error(err, "Could not get list from service discovery")
+		c.logger.Error("Could not get list from service discovery: %w", err)
 
 		return nil, err
 	}
