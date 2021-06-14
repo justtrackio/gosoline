@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/http"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/mon"
@@ -31,6 +32,7 @@ type updaterService struct {
 	logger mon.Logger
 	http   http.Client
 	store  kvstore.KvStore
+	clock  clock.Clock
 }
 
 func NewUpdater(config cfg.Config, logger mon.Logger) (UpdaterService, error) {
@@ -43,14 +45,15 @@ func NewUpdater(config cfg.Config, logger mon.Logger) (UpdaterService, error) {
 
 	httpClient := http.NewHttpClient(config, logger)
 
-	return NewUpdaterWithInterfaces(logger, store, httpClient), nil
+	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider), nil
 }
 
-func NewUpdaterWithInterfaces(logger mon.Logger, store kvstore.KvStore, httpClient http.Client) UpdaterService {
+func NewUpdaterWithInterfaces(logger mon.Logger, store kvstore.KvStore, httpClient http.Client, clock clock.Clock) UpdaterService {
 	return &updaterService{
 		logger: logger,
 		store:  store,
 		http:   httpClient,
+		clock:  clock,
 	}
 }
 
@@ -161,7 +164,7 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 
 	// the API doesn't return rates for weekends and public holidays at the time of writing this,
 	// so we fill in the missing values using values from previously available days
-	rates, err = fillInGapDays(rates)
+	rates, err = fillInGapDays(rates, s.clock)
 	if err != nil {
 		return fmt.Errorf("error filling in gaps: %w", err)
 	}
@@ -184,7 +187,7 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 		return fmt.Errorf("error setting historical exchange rates: %w", err)
 	}
 
-	newTime := time.Now()
+	newTime := s.clock.Now()
 	err = s.store.Put(ctx, HistoricalExchangeRateDateKey, newTime)
 	if err != nil {
 		return fmt.Errorf("error setting historical refresh date %w", err)
@@ -210,7 +213,7 @@ func (s *updaterService) historicalRatesNeedRefresh(ctx context.Context) bool {
 		return true
 	}
 
-	comparisonDate := time.Now().Add(-24 * time.Hour)
+	comparisonDate := s.clock.Now().Add(-24 * time.Hour)
 
 	if date.Before(comparisonDate) {
 		s.logger.Info("historicalRatesNeedRefresh comparison date was more than threshold")
@@ -258,9 +261,9 @@ func filterOutOldExchangeRates(rates []Content, earliestDate time.Time) (ret []C
 	return
 }
 
-func fillInGapDays(historicalContent []Content) ([]Content, error) {
+func fillInGapDays(historicalContent []Content, clock clock.Clock) ([]Content, error) {
 	var startDate time.Time
-	var endDate time.Time
+	var endDate = clock.Now()
 	var dailyRates = make(map[string]Content)
 
 	for _, dayRates := range historicalContent {
@@ -271,23 +274,15 @@ func fillInGapDays(historicalContent []Content) ([]Content, error) {
 		if startDate.IsZero() || startDate.After(date) {
 			startDate = date
 		}
-		if endDate.IsZero() || endDate.Before(date) {
-			endDate = date
-		}
 		dailyRates[date.Format(YMDLayout)] = dayRates
 	}
 
-	if startDate.IsZero() || endDate.IsZero() {
-		return nil, fmt.Errorf("fillInGapDays, no valid data provided")
-	}
-
-	tomorrow := time.Now().AddDate(0, 0, 1)
-	if endDate.After(tomorrow) {
-		return nil, fmt.Errorf("fillInGapDays, unexpected end date %s", endDate)
+	if startDate.IsZero() {
+		return nil, fmt.Errorf("fillInGapDays, no valid data provided - startDate")
 	}
 
 	var lastDay = startDate
-	for date := startDate; date.Before(endDate); date = date.AddDate(0, 0, 1) {
+	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
 		if _, ok := dailyRates[date.Format(YMDLayout)]; !ok {
 			gapContent := dailyRates[lastDay.Format(YMDLayout)]
 			gapContent.Time = date.Format(YMDLayout)
