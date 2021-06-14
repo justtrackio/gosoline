@@ -90,7 +90,7 @@ func TestCurrencyService_ToEur_Calculation(t *testing.T) {
 		*f = 1.09
 	}).Return(true, nil)
 
-	service := currency.NewWithInterfaces(store)
+	service := currency.NewWithInterfaces(store, clock.NewRealClock())
 
 	valueUsd := 1.09
 	valueEur := 1.0
@@ -114,7 +114,7 @@ func TestCurrencyService_ToUsd_Calculation(t *testing.T) {
 		*ptr = 1.09
 	}).Return(true, nil)
 
-	service := currency.NewWithInterfaces(store)
+	service := currency.NewWithInterfaces(store, clock.NewRealClock())
 
 	valueUsd := 1.09
 	valueEur := 1.0
@@ -160,7 +160,7 @@ func TestCurrencyService_HasCurrency(t *testing.T) {
 
 	store.On("Contains", mock.AnythingOfType("*context.emptyCtx"), "USD").Return(true, nil).Times(1)
 
-	service := currency.NewWithInterfaces(store)
+	service := currency.NewWithInterfaces(store, clock.NewRealClock())
 
 	hasCurrency, err := service.HasCurrency(context.Background(), "USD")
 
@@ -175,7 +175,7 @@ func TestCurrencyService_HasCurrencyAtDate(t *testing.T) {
 
 	store.On("Contains", mock.AnythingOfType("*context.emptyCtx"), "2021-01-02-USD").Return(true, nil).Times(1)
 
-	service := currency.NewWithInterfaces(store)
+	service := currency.NewWithInterfaces(store, clock.NewRealClock())
 
 	date := time.Date(2021, time.January, 2, 0, 0, 0, 0, time.Local)
 	hasCurrency, err := service.HasCurrencyAtDate(context.Background(), "USD", date)
@@ -191,7 +191,7 @@ func TestCurrencyService_HasCurrencyAtDate_NotThere(t *testing.T) {
 
 	store.On("Contains", mock.AnythingOfType("*context.emptyCtx"), "2021-01-02-USD").Return(false, nil).Times(1)
 
-	service := currency.NewWithInterfaces(store)
+	service := currency.NewWithInterfaces(store, clock.NewRealClock())
 
 	date := time.Date(2021, time.January, 2, 0, 0, 0, 0, time.Local)
 	hasCurrency, err := service.HasCurrencyAtDate(context.Background(), "USD", date)
@@ -207,7 +207,7 @@ func TestCurrencyService_HasCurrencyAtDate_Error(t *testing.T) {
 
 	store.On("Contains", mock.AnythingOfType("*context.emptyCtx"), historicalRateKey).Return(false, errors.New("lookup error")).Times(1)
 
-	service := currency.NewWithInterfaces(store)
+	service := currency.NewWithInterfaces(store, clock.NewRealClock())
 
 	hasCurrency, err := service.HasCurrencyAtDate(context.Background(), "USD", historicalRateDate)
 
@@ -225,7 +225,7 @@ func TestCurrencyService_ToEurAtDate_Calculation(t *testing.T) {
 		*f = 1.09
 	}).Return(true, nil)
 
-	service := currency.NewWithInterfaces(store)
+	service := currency.NewWithInterfaces(store, clock.NewRealClock())
 
 	valueUsd := 1.09
 	valueEur := 1.0
@@ -237,9 +237,48 @@ func TestCurrencyService_ToEurAtDate_Calculation(t *testing.T) {
 	assert.Equal(t, valueEur, converted)
 }
 
+func TestCurrencyService_ToEurAtDate_FallbackToPreviousDay(t *testing.T) {
+	store := new(kvStoreMock.KvStore)
+	fakeClock := clock.NewFakeClockAt(time.Date(2021, 1, 3, 1, 0, 0, 0, time.UTC))
+
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), "2021-01-03-USD", mock.AnythingOfType("*float64")).Return(false, nil)
+
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), historicalRateKey, mock.AnythingOfType("*float64")).Run(func(args mock.Arguments) {
+		f := args.Get(2).(*float64)
+		*f = 1.09
+	}).Return(true, nil)
+
+	service := currency.NewWithInterfaces(store, fakeClock)
+
+	valueUsd := 1.09
+	valueEur := 1.0
+	from := "USD"
+
+	converted, err := service.ToEurAtDate(context.Background(), valueUsd, from, historicalRateDate.AddDate(0, 0, 1))
+
+	assert.NoError(t, err)
+	assert.Equal(t, valueEur, converted)
+}
+
+func TestCurrencyService_ToEurAtDate_DontFallbackToPreviousDay(t *testing.T) {
+	store := new(kvStoreMock.KvStore)
+	fakeClock := clock.NewFakeClockAt(time.Date(2021, 1, 2, 1, 0, 0, 0, time.UTC))
+
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), "2021-01-05-USD", mock.AnythingOfType("*float64")).Return(false, nil)
+
+	service := currency.NewWithInterfaces(store, fakeClock)
+
+	valueUsd := 1.09
+	from := "USD"
+
+	_, err := service.ToEurAtDate(context.Background(), valueUsd, from, fakeClock.Now().AddDate(0, 0, 3))
+
+	assert.Error(t, err)
+}
+
 func TestCurrencyService_ToEurAtDate_DateInFuture(t *testing.T) {
 	store := new(kvStoreMock.KvStore)
-	service := currency.NewWithInterfaces(store)
+	service := currency.NewWithInterfaces(store, clock.NewRealClock())
 
 	from := "USD"
 	futureDate := time.Now().AddDate(0, 0, 2)
@@ -256,13 +295,36 @@ func TestCurrencyService_ToUsdAtDate_Calculation(t *testing.T) {
 		*ptr = 1.09
 	}).Return(true, nil)
 
-	service := currency.NewWithInterfaces(store)
+	service := currency.NewWithInterfaces(store, clock.NewRealClock())
 
 	valueUsd := 1.09
 	valueEur := 1.0
 	from := "EUR"
 
 	converted, err := service.ToUsdAtDate(context.Background(), valueEur, from, historicalRateDate)
+
+	assert.NoError(t, err)
+	assert.Equal(t, valueUsd, converted)
+}
+
+func TestCurrencyService_ToUsdAtDate_FallbackToPreviousDay(t *testing.T) {
+	store := new(kvStoreMock.KvStore)
+	fakeClock := clock.NewFakeClockAt(time.Date(2021, 1, 3, 1, 0, 0, 0, time.UTC))
+
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), "2021-01-03-USD", mock.AnythingOfType("*float64")).Return(false, nil)
+
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), historicalRateKey, mock.AnythingOfType("*float64")).Run(func(args mock.Arguments) {
+		ptr := args.Get(2).(*float64)
+		*ptr = 1.09
+	}).Return(true, nil)
+
+	service := currency.NewWithInterfaces(store, fakeClock)
+
+	valueUsd := 1.09
+	valueEur := 1.0
+	from := "EUR"
+
+	converted, err := service.ToUsdAtDate(context.Background(), valueEur, from, historicalRateDate.AddDate(0, 0, 1))
 
 	assert.NoError(t, err)
 	assert.Equal(t, valueUsd, converted)
