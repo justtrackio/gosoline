@@ -3,6 +3,7 @@ package currency_test
 import (
 	"context"
 	"errors"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/currency"
 	"github.com/applike/gosoline/pkg/http"
 	httpMock "github.com/applike/gosoline/pkg/http/mocks"
@@ -144,9 +145,9 @@ func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
 	client.On("NewRequest").Return(http.NewRequest(nil))
 	client.On("Get", context.Background(), mock.AnythingOfType("*http.Request")).Return(r, nil)
 
-	service := currency.NewUpdaterWithInterfaces(logger, store, client)
+	service := currency.NewUpdaterWithInterfaces(logger, store, client, clock.NewRealClock())
 
-	err := service.EnsureRecentExchangeRates(context.TODO())
+	err := service.EnsureRecentExchangeRates(context.Background())
 
 	assert.NoError(t, err)
 
@@ -271,8 +272,11 @@ func TestUpdaterService_EnsureHistoricalExchangeRates(t *testing.T) {
 	logger := loggerMock.NewLoggerMockedAll()
 	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
+	fakeClock := clock.NewFakeClockAt(time.Date(2021, 05, 27, 0, 0, 0, 0, time.UTC))
 
 	keyValyes := map[string]float64{
+		"2021-05-27-USD": 1.2229,
+		"2021-05-27-BGN": 1.9558,
 		"2021-05-26-USD": 1.2229,
 		"2021-05-26-BGN": 1.9558,
 		"2021-05-25-USD": 1.2212,
@@ -284,7 +288,7 @@ func TestUpdaterService_EnsureHistoricalExchangeRates(t *testing.T) {
 	}
 	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.HistoricalExchangeRateDateKey, mock.AnythingOfType("*time.Time")).Return(false, nil)
 	store.On("PutBatch", mock.AnythingOfType("*context.emptyCtx"), keyValyes).Return(nil)
-	store.On("Put", mock.AnythingOfType("*context.emptyCtx"), currency.HistoricalExchangeRateDateKey, mock.AnythingOfType("time.Time")).Return(nil)
+	store.On("Put", mock.AnythingOfType("*context.emptyCtx"), currency.HistoricalExchangeRateDateKey, fakeClock.Now()).Return(nil)
 
 	r := &http.Response{
 		Body: []byte(historicalResponse),
@@ -293,9 +297,50 @@ func TestUpdaterService_EnsureHistoricalExchangeRates(t *testing.T) {
 	client.On("NewRequest").Return(http.NewRequest(nil))
 	client.On("Get", context.Background(), mock.AnythingOfType("*http.Request")).Return(r, nil)
 
-	service := currency.NewUpdaterWithInterfaces(logger, store, client)
+	service := currency.NewUpdaterWithInterfaces(logger, store, client, fakeClock)
 
-	err := service.EnsureHistoricalExchangeRates(context.TODO())
+	err := service.EnsureHistoricalExchangeRates(context.Background())
+
+	assert.NoError(t, err)
+
+	store.AssertExpectations(t)
+	client.AssertExpectations(t)
+}
+
+func TestUpdaterService_EnsureHistoricalExchangeRatesTwoGapDaysAtEnd(t *testing.T) {
+	logger := loggerMock.NewLoggerMockedAll()
+	store := new(kvStoreMock.KvStore)
+	client := new(httpMock.Client)
+	fakeClock := clock.NewFakeClockAt(time.Date(2021, 05, 28, 1, 0, 0, 0, time.UTC))
+
+	keyValyes := map[string]float64{
+		"2021-05-28-USD": 1.2229,
+		"2021-05-28-BGN": 1.9558,
+		"2021-05-27-USD": 1.2229,
+		"2021-05-27-BGN": 1.9558,
+		"2021-05-26-USD": 1.2229,
+		"2021-05-26-BGN": 1.9558,
+		"2021-05-25-USD": 1.2212,
+		"2021-05-25-JPY": 132.97,
+		"2021-05-24-USD": 1.2212,
+		"2021-05-24-JPY": 132.97,
+		"2021-05-23-USD": 1.2212,
+		"2021-05-23-JPY": 132.97,
+	}
+	store.On("Get", mock.AnythingOfType("*context.emptyCtx"), currency.HistoricalExchangeRateDateKey, mock.AnythingOfType("*time.Time")).Return(false, nil)
+	store.On("PutBatch", mock.AnythingOfType("*context.emptyCtx"), keyValyes).Return(nil)
+	store.On("Put", mock.AnythingOfType("*context.emptyCtx"), currency.HistoricalExchangeRateDateKey, fakeClock.Now()).Return(nil)
+
+	r := &http.Response{
+		Body: []byte(historicalResponse),
+	}
+
+	client.On("NewRequest").Return(http.NewRequest(nil))
+	client.On("Get", context.Background(), mock.AnythingOfType("*http.Request")).Return(r, nil)
+
+	service := currency.NewUpdaterWithInterfaces(logger, store, client, fakeClock)
+
+	err := service.EnsureHistoricalExchangeRates(context.Background())
 
 	assert.NoError(t, err)
 
