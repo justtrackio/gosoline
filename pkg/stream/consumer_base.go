@@ -47,8 +47,9 @@ type baseConsumer struct {
 	tracer       tracing.Tracer
 	encoder      MessageEncoder
 
-	wg     sync.WaitGroup
-	cancel context.CancelFunc
+	wg      sync.WaitGroup
+	stopped sync.Once
+	cancel  context.CancelFunc
 
 	id               string
 	name             string
@@ -132,11 +133,18 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 		cfn.GoWithContextf(manualCtx, inputRunner, "panic during consuming")
 	}
 
-	// stop input on kernel cancel
-	go func() {
-		<-kernelCtx.Done()
-		c.input.Stop()
-	}()
+	cfn.GoWithContext(manualCtx, func(ctx context.Context) error {
+		// wait for kernel or coffin cancel...
+		select {
+		case <-ctx.Done():
+		case <-kernelCtx.Done():
+		}
+
+		// and stop the input
+		c.stopped.Do(c.input.Stop)
+
+		return nil
+	})
 
 	if err := cfn.Wait(); err != nil {
 		return fmt.Errorf("error while waiting for all routines to stop: %w", err)
@@ -182,7 +190,7 @@ func (c *baseConsumer) stopConsuming() error {
 	defer c.logger.Debug("stopConsuming is ending")
 
 	c.wg.Wait()
-	c.input.Stop()
+	c.stopped.Do(c.input.Stop)
 	c.cancel()
 
 	return nil

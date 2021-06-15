@@ -88,7 +88,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 
 	s.input.Input.
 		On("Stop").
-		Return()
+		Once()
 
 	s.input.AcknowledgeableInput.
 		On("AckBatch", mock.AnythingOfType("[]*stream.Message")).
@@ -137,7 +137,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 
 	s.input.Input.
 		On("Stop").
-		Return()
+		Once()
 
 	processed := 0
 
@@ -218,6 +218,9 @@ func (s *BatchConsumerTestSuite) TestRun_InputRunError() {
 	s.input.Input.
 		On("Data").
 		Return(s.data)
+	s.input.Input.
+		On("Stop").
+		Once()
 
 	s.input.Input.
 		On("Run", mock.AnythingOfType("*context.cancelCtx")).
@@ -241,6 +244,8 @@ func (s *BatchConsumerTestSuite) TestRun_InputRunError() {
 func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
 	s.input.Input.On("Data").
 		Return(s.data)
+	s.input.Input.On("Stop").
+		Once()
 
 	s.input.Input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
@@ -287,7 +292,6 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 
 	s.input.Input.
 		On("Stop").
-		Return().
 		Once()
 
 	processed := 0

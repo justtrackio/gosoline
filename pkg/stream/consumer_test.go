@@ -65,7 +65,7 @@ func (s *ConsumerTestSuite) TestGetModelNil() {
 		})
 		s.stop()
 	}).Return(nil)
-	s.input.On("Stop")
+	s.input.On("Stop").Once()
 
 	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).Return(func(_ map[string]interface{}) interface{} {
 		return nil
@@ -87,7 +87,7 @@ func (s *ConsumerTestSuite) TestRun() {
 		s.data <- stream.NewJsonMessage(`"foobar"`)
 		s.stop()
 	}).Return(nil)
-	s.input.On("Stop")
+	s.input.On("Stop").Once()
 
 	consumed := make([]*string, 0)
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
@@ -131,7 +131,7 @@ func (s *ConsumerTestSuite) TestRun_ContextCancel() {
 			once.Do(func() {
 				close(stopped)
 			})
-		})
+		}).Once()
 
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Return(nil)
@@ -170,6 +170,8 @@ func (s *ConsumerTestSuite) TestRun_InputRunError() {
 func (s *ConsumerTestSuite) TestRun_CallbackRunError() {
 	s.input.On("Data").
 		Return(s.data)
+	s.input.On("Stop").
+		Once()
 
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
@@ -201,7 +203,7 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 
 	s.input.
 		On("Stop").
-		Return()
+		Once()
 
 	consumed := make([]*string, 0)
 
@@ -257,7 +259,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 		}).Return(nil)
 
 	s.input.On("Stop").
-		Return()
+		Once()
 
 	consumed := make([]string, 0)
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).

@@ -50,9 +50,8 @@ func (tc aggregatorTestCase) run(t *testing.T) {
 	for i, expectedFlush := range tc.flushes {
 		expectedFlushes[i] = expectedFlush.encode(tc.compression)
 
-		if expectedFlush.validate != nil && len(flushes) > i {
-			err := expectedFlush.validate(&flushes[i])
-			assert.NoError(t, err)
+		if tc.aggregationMaxSize > 0 && len(flushes) > i {
+			assert.LessOrEqualf(t, len(flushes[i].Body), tc.aggregationMaxSize, fmt.Sprintf("message is too large: %d > %d", len(flushes[i].Body), tc.aggregationMaxSize))
 		}
 	}
 
@@ -61,7 +60,6 @@ func (tc aggregatorTestCase) run(t *testing.T) {
 
 type expectedFlush struct {
 	messages []*stream.Message
-	validate func(flush *stream.AggregateFlush) error
 }
 
 func (f expectedFlush) encode(compression stream.CompressionType) stream.AggregateFlush {
@@ -153,8 +151,6 @@ func TestProducerDaemonAggregator_SizeRestricted(t *testing.T) {
 		mkTestMessage(t, strings.Repeat("7", 50), map[string]interface{}{}),
 	}
 
-	belowSizeLimit := getAggregatorValidateFunction(5_000)
-
 	aggregatorTestCase{
 		aggregationSize:    5_000,
 		aggregationMaxSize: 300,
@@ -163,19 +159,15 @@ func TestProducerDaemonAggregator_SizeRestricted(t *testing.T) {
 		flushes: []expectedFlush{
 			{
 				messages: messages[0:2],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[2:3],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[3:5],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[5:],
-				validate: belowSizeLimit,
 			},
 		},
 	}.run(t)
@@ -196,8 +188,6 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedSmall(t *testing.T) {
 		mkTestMessage(t, strings.Repeat("7", 5_000), map[string]interface{}{}),
 	}
 
-	belowSizeLimit := getAggregatorValidateFunction(5_000)
-
 	aggregatorTestCase{
 		aggregationSize:    5_000,
 		aggregationMaxSize: 5_000,
@@ -206,11 +196,9 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedSmall(t *testing.T) {
 		flushes: []expectedFlush{
 			{
 				messages: messages[0:1],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[1:],
-				validate: belowSizeLimit,
 			},
 		},
 	}.run(t)
@@ -218,39 +206,26 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedSmall(t *testing.T) {
 
 func TestProducerDaemonAggregator_CompressedSizeRestrictedLarge(t *testing.T) {
 	messages := []*stream.Message{
-		mkTestMessage(t, strings.Repeat("1", 5_000), map[string]interface{}{}),
+		mkTestMessage(t, strings.Repeat("1", 3_000), map[string]interface{}{}),
 	}
-	for i := 1; i < 30_000; i++ {
+	for i := 1; i < 3_000; i++ {
 		messages = append(messages, messages[0])
 	}
 
-	belowSizeLimit := getAggregatorValidateFunction(65536)
-
 	aggregatorTestCase{
-		aggregationSize:    100_000,
-		aggregationMaxSize: 65536,
+		aggregationSize:    10_000,
+		aggregationMaxSize: 16000,
 		compression:        stream.CompressionGZip,
 		messages:           messages,
 		flushes: []expectedFlush{
 			{
-				messages: messages[0:5733],
-				validate: belowSizeLimit,
+				messages: messages[:1362],
 			},
 			{
-				messages: messages[5733:12285],
-				validate: belowSizeLimit,
+				messages: messages[1362:2724],
 			},
 			{
-				messages: messages[12285:18837],
-				validate: belowSizeLimit,
-			},
-			{
-				messages: messages[18837:25389],
-				validate: belowSizeLimit,
-			},
-			{
-				messages: messages[25389:],
-				validate: belowSizeLimit,
+				messages: messages[2724:],
 			},
 		},
 	}.run(t)
@@ -270,8 +245,6 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedUncompressible(t *test
 		messages = append(messages, message)
 	}
 
-	belowSizeLimit := getAggregatorValidateFunction(65536)
-
 	aggregatorTestCase{
 		aggregationSize:    100_000,
 		aggregationMaxSize: 65536,
@@ -280,73 +253,43 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedUncompressible(t *test
 		flushes: []expectedFlush{
 			{
 				messages: messages[0:8],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[8:16],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[16:24],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[24:32],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[32:40],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[40:48],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[48:56],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[56:64],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[64:72],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[72:80],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[80:88],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[88:96],
-				validate: belowSizeLimit,
 			},
 			{
 				messages: messages[96:],
-				validate: belowSizeLimit,
 			},
 		},
 	}.run(t)
-}
-
-func getAggregatorValidateFunction(sizeLimit int) func(flush *stream.AggregateFlush) error {
-	return func(flush *stream.AggregateFlush) error {
-		msg := stream.BuildAggregateMessage(flush.Body, flush.Attributes)
-
-		encodedMsg, err := json.Marshal(msg)
-		if err != nil {
-			return err
-		}
-
-		if len(encodedMsg) > sizeLimit {
-			return fmt.Errorf("message is too large: %d > %d", len(encodedMsg), sizeLimit)
-		}
-
-		return nil
-	}
 }
