@@ -2,8 +2,8 @@ package oauth2
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/http"
 	"github.com/applike/gosoline/pkg/mon"
 )

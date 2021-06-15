@@ -1,8 +1,8 @@
 package mon
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/applike/gosoline/pkg/encoding/json"
 )
 
 func formatterJson(timestamp string, level string, msg string, err error, data *Metadata) ([]byte, error) {

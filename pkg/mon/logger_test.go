@@ -3,7 +3,7 @@ package mon_test
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"

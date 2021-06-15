@@ -2,8 +2,8 @@ package stream_test
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/applike/gosoline/pkg/clock"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"

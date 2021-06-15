@@ -1,10 +1,10 @@
 package stream
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud/aws/kinesis"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mon"
 )
 

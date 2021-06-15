@@ -1,8 +1,8 @@
 package stream
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/sns"
 )
 

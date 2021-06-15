@@ -2,12 +2,12 @@ package kinesis_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	configMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/cloud/aws/kinesis"
 	kinesisMocks "github.com/applike/gosoline/pkg/cloud/aws/kinesis/mocks"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mon"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/stream"

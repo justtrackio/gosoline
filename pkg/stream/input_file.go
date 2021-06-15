@@ -3,8 +3,8 @@ package stream
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mon"
 	"os"
 )
