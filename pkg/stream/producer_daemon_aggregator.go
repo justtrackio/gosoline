@@ -132,6 +132,8 @@ func (a *producerDaemonAggregator) write(encodedMessage []byte) error {
 		if err != nil {
 			return fmt.Errorf("failed to write separator to buffer: %w", err)
 		}
+
+		a.uncompressedBytes += 1
 	}
 
 	_, err := a.writer.Write(encodedMessage)
@@ -141,7 +143,7 @@ func (a *producerDaemonAggregator) write(encodedMessage []byte) error {
 	}
 
 	a.messageCount++
-	a.uncompressedBytes += len(encodedMessage) + 1
+	a.uncompressedBytes += len(encodedMessage)
 
 	return nil
 }
