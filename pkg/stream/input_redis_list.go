@@ -2,10 +2,10 @@ package stream
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/redis"
 	"time"

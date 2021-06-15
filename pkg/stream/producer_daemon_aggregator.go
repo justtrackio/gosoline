@@ -3,9 +3,9 @@ package stream
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"fmt"
 	"github.com/applike/gosoline/pkg/encoding/base64"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"io"
 )
 

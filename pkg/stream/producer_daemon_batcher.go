@@ -1,8 +1,8 @@
 package stream
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/applike/gosoline/pkg/encoding/json"
 )
 
 type producerDaemonBatcher struct {
@@ -19,7 +19,9 @@ type ProducerDaemonBatcher interface {
 	Flush() []WritableMessage
 }
 
-type rawJsonMessage json.RawMessage
+type rawJsonMessage []byte
+
+var _ json.Marshaler = rawJsonMessage{}
 
 func (r rawJsonMessage) MarshalToBytes() ([]byte, error) {
 	return r, nil

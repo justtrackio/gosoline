@@ -1,8 +1,8 @@
 package mon
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"os"
 )
 

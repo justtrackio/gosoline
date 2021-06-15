@@ -2,9 +2,9 @@ package stream_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/mdl"
 	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/stream"

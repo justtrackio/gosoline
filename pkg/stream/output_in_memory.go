@@ -2,7 +2,7 @@ package stream
 
 import (
 	"context"
-	"encoding/json"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"sync"
 )
 

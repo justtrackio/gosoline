@@ -2,8 +2,8 @@ package assert
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/tidwall/gjson"
 	"os"

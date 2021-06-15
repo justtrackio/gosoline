@@ -1,7 +1,7 @@
 package stream_test
 
 import (
-	"encoding/json"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
 	"testing"

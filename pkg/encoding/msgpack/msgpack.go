@@ -1,6 +1,8 @@
 package msgpack
 
-import "github.com/vmihailenco/msgpack"
+import (
+	"github.com/vmihailenco/msgpack"
+)
 
 func Marshal(v interface{}) ([]byte, error) {
 	return msgpack.Marshal(v)

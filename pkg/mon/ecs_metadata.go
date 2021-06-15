@@ -1,7 +1,7 @@
 package mon
 
 import (
-	"encoding/json"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"

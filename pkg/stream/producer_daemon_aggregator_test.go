@@ -3,9 +3,9 @@ package stream_test
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"fmt"
 	"github.com/applike/gosoline/pkg/encoding/base64"
+	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
