@@ -2,6 +2,7 @@ package db_repo
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
 	"github.com/applike/gosoline/pkg/log"
@@ -50,12 +51,12 @@ func NewOrmWithDbSettings(logger log.Logger, dbSettings db.Settings, application
 
 func NewOrmWithInterfaces(dbClient gorm.SQLCommon, settings OrmSettings) (*gorm.DB, error) {
 	orm, err := gorm.Open(settings.Driver, dbClient)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not create gorm: %w", err)
 	}
 
 	orm.LogMode(false)
+	orm.SetLogger(&noopLogger{})
 	orm = orm.Set("gorm:auto_preload", true)
 	orm = orm.Set("gorm:save_associations", false)
 
