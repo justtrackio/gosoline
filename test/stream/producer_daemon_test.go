@@ -13,13 +13,16 @@ import (
 	"github.com/applike/gosoline/pkg/encoding/base64"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/applike/gosoline/pkg/stream"
 	pkgTest "github.com/applike/gosoline/pkg/test"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/hashicorp/go-multierror"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -92,6 +95,7 @@ func (s *ProducerDaemonTestSuite) TestWriteData() {
 	app := application.Default(application.WithLoggerHook(s))
 	app.Add("testModule", newTestModule)
 	app.Add("testCompressionModule", newTestCompressionModule)
+	app.Add("testFifoModule", newTestFifoModule(s.T()))
 	app.Run()
 }
 
@@ -130,8 +134,6 @@ func newTestModule(_ context.Context, config cfg.Config, logger mon.Logger) (ker
 }
 
 func (m *testModule) Run(ctx context.Context) error {
-	time.Sleep(time.Second)
-
 	for i := 0; i < 13; i++ {
 		if err := m.producerKinesis.WriteOne(ctx, &TestData{}); err != nil {
 			return err
@@ -254,6 +256,108 @@ func (m *testCompressionModule) Run(ctx context.Context) error {
 	})
 
 	return cfn.Wait()
+}
+
+type testFifoModule struct {
+	kernel.ForegroundModule
+
+	producerFifoSqs stream.Producer
+	consumer        kernel.Module
+	cancel          func()
+	assert          func()
+}
+
+type testFifoConsumerCallback struct {
+	callback func(data *TestData, attributes map[string]interface{})
+}
+
+func (t testFifoConsumerCallback) GetModel(_ map[string]interface{}) interface{} {
+	return &TestData{}
+}
+
+func (t testFifoConsumerCallback) Consume(_ context.Context, model interface{}, attributes map[string]interface{}) (bool, error) {
+	t.callback(model.(*TestData), attributes)
+
+	return true, nil
+}
+
+func newTestFifoModule(t *testing.T) func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		var err error
+		var sqsProducer stream.Producer
+
+		if sqsProducer, err = stream.NewProducer(config, logger, "testDataFifoSqs"); err != nil {
+			return nil, err
+		}
+
+		var lck sync.Mutex
+		receivedMessages := make(map[string]bool)
+		calls := 0
+
+		module := &testFifoModule{
+			producerFifoSqs: sqsProducer,
+			assert: func() {
+				assert.Equal(t, 8, calls)
+				assert.Equal(t, map[string]bool{
+					"0": true,
+					"1": true,
+					"2": true,
+					"3": true,
+					"4": true,
+					"5": true,
+					"6": true,
+					"7": true,
+				}, receivedMessages)
+			},
+		}
+
+		factory := stream.NewConsumer("testDataFifoSqs", func(ctx context.Context, config cfg.Config, logger mon.Logger) (stream.ConsumerCallback, error) {
+			return testFifoConsumerCallback{
+				func(data *TestData, attributes map[string]interface{}) {
+					lck.Lock()
+					defer lck.Unlock()
+
+					logger.WithContext(ctx).Info("Got message with body %s", data.Data)
+
+					assert.Equal(t, "my_value", attributes["my_attribute"])
+					assert.Contains(t, []string{"0", "1", "2", "3"}, attributes[sqs.AttributeSqsMessageGroupId])
+					receivedMessages[attributes[sqs.AttributeSqsMessageDeduplicationId].(string)] = true
+					calls++
+
+					if calls == 8 {
+						module.cancel()
+					}
+				},
+			}, nil
+		})
+
+		if module.consumer, err = factory(ctx, config, logger); err != nil {
+			return nil, err
+		}
+
+		return module, nil
+	}
+}
+
+func (m *testFifoModule) Run(ctx context.Context) error {
+	for i := 0; i < 14; i++ {
+		if err := m.producerFifoSqs.WriteOne(ctx, &TestData{
+			Data: fmt.Sprintf("%d", i),
+		}, map[string]interface{}{
+			"my_attribute":                         "my_value",
+			sqs.AttributeSqsMessageGroupId:         fmt.Sprintf("%d", i%4),
+			sqs.AttributeSqsMessageDeduplicationId: fmt.Sprintf("%d", i%8),
+		}); err != nil {
+			return err
+		}
+	}
+
+	cancelContext, cancel := context.WithCancel(ctx)
+	m.cancel = cancel
+
+	defer m.assert()
+
+	return m.consumer.Run(cancelContext)
 }
 
 func TestProducerDaemon(t *testing.T) {

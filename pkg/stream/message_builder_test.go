@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-//go:generate protoc --go_out=../../../../../.. message_builder_test.proto
+//go:generate protoc --go_out=.. message_builder_test.proto
 type TestMessage struct {
 	FirstField  string `json:"first_field"`
 	SecondField uint32 `json:"second_field"`

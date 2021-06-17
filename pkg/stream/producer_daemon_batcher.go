@@ -19,20 +19,27 @@ type ProducerDaemonBatcher interface {
 	Flush() []WritableMessage
 }
 
-type rawJsonMessage []byte
+type rawJsonMessage struct {
+	attributes map[string]interface{}
+	body       []byte
+}
 
 var _ json.Marshaler = rawJsonMessage{}
 
 func (r rawJsonMessage) MarshalToBytes() ([]byte, error) {
-	return r, nil
+	return r.body, nil
 }
 
 func (r rawJsonMessage) MarshalToString() (string, error) {
-	return string(r), nil
+	return string(r.body), nil
 }
 
 func (r rawJsonMessage) MarshalJSON() ([]byte, error) {
-	return r, nil
+	return r.body, nil
+}
+
+func (r rawJsonMessage) GetAttributes() map[string]interface{} {
+	return r.attributes
 }
 
 func NewProducerDaemonBatcher(settings ProducerDaemonSettings) ProducerDaemonBatcher {
@@ -59,7 +66,10 @@ func (b *producerDaemonBatcher) Append(msg *Message) ([]WritableMessage, error) 
 		result = b.Flush()
 	}
 
-	b.messages = append(b.messages, rawJsonMessage(encodedMessage))
+	b.messages = append(b.messages, rawJsonMessage{
+		attributes: msg.Attributes,
+		body:       encodedMessage,
+	})
 	b.size += len(encodedMessage)
 
 	// if this batch is already full (we added a message exactly the max batch size), flush that too

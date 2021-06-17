@@ -42,6 +42,16 @@ stream:
         aggregation_size: 4
         batch_size: 2
         interval: 5s
+    testDataFifoSqs:
+      daemon:
+        enabled: true
+        aggregation_size: 1
+        batch_size: 7
+        interval: 1s
+
+  consumer:
+    testDataFifoSqs:
+      input: testDataFifoSqs
 
   output:
     testDataKinesis:
@@ -53,8 +63,20 @@ stream:
     testEventsSqs:
       type: sqs
       queue_id: testEvents
+    testDataFifoSqs:
+      type: sqs
+      queue_id: testDataFifo
+      fifo:
+        enabled: true
+        content_based_deduplication: true
 
   input:
     testEventsSqs:
       type: sqs
       target_queue_id: testEvents
+    testDataFifoSqs:
+      type: sqs
+      target_queue_id: testDataFifo
+      fifo:
+        enabled: true
+        content_based_deduplication: true
