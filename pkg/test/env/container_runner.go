@@ -10,6 +10,7 @@ import (
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"net"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -307,10 +308,16 @@ func (r *containerRunner) waitUntilHealthy(container *container, healthCheck Com
 	return nil
 }
 
+var alreadyExists = regexp.MustCompile(`API error \(409\): removal of container (\w+) is already in progress`)
+
 func (r *containerRunner) Stop() error {
 	for name, resource := range r.resources {
 		if err := r.pool.Purge(resource); err != nil {
-			return fmt.Errorf("could not stop container %s: %w", name, err)
+			if !alreadyExists.MatchString(err.Error()) {
+				return fmt.Errorf("could not stop container %s: %w", name, err)
+			}
+
+			r.logger.Debug("someone else is already stopping container %s, ignoring error %s", name, err.Error())
 		}
 
 		r.logger.Debug("stopping container %s", name)

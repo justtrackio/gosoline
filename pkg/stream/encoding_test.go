@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-//go:generate protoc --go_out=../../../../../.. encoding_test.proto
+//go:generate protoc --go_out=.. encoding_test.proto
 type TestEncodingMessage struct {
 	Id   int    `json:"id"`
 	Data string `json:"data"`

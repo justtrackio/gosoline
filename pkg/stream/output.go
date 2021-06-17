@@ -33,6 +33,12 @@ type hasAttributes interface {
 	GetAttributes() map[string]interface{}
 }
 
+// ensure all the types we actually write to SQS/SNS implement hasAttributes
+var (
+	_ hasAttributes = &Message{}
+	_ hasAttributes = rawJsonMessage{}
+)
+
 func getAttributes(msg WritableMessage) map[string]interface{} {
 	if withAttributes, ok := msg.(hasAttributes); ok {
 		return withAttributes.GetAttributes()

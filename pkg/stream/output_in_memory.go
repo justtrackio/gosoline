@@ -87,7 +87,7 @@ func (o *InMemoryOutput) Write(_ context.Context, batch []WritableMessage) error
 		// the message was already encoded as JSON or will be when send to the queue.
 		if jsonMsg, ok := msg.(rawJsonMessage); ok {
 			streamMsg := &Message{}
-			err := json.Unmarshal(jsonMsg, streamMsg)
+			err := json.Unmarshal(jsonMsg.body, streamMsg)
 
 			if err != nil {
 				return err

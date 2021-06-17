@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "gitlab.applike-services.info/mcoins/backend/gosoline/pkg/stream/testdata";
+option go_package = "stream/testdata";
 
 message TestEncodingMessage {
     int32 id = 1;
