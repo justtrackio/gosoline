@@ -57,12 +57,30 @@ func (m *tableMetadataBuilder) buildPrimaryKeys() []columnMetadata {
 	return columns
 }
 
-func (m *tableMetadataBuilder) buildColumn(field *gorm.StructField) columnMetadata {
+func (m *tableMetadataBuilder) buildColumn(field *gorm.StructField) (cm columnMetadata) {
+	name := field.DBName
+	nameQuoted := m.scope.Quote(field.DBName)
+	definition := m.scope.Quote(field.DBName) + " " + m.dataTypeOfField(field)
+
+	defer func() {
+		err := recover()
+		if err != nil {
+			cm = m.getColumnMetadata(name, nameQuoted, definition, false)
+		}
+	}()
+
+	exists := m.scope.Dialect().HasColumn(m.tableName, field.DBName)
+	cm = m.getColumnMetadata(name, nameQuoted, definition, exists)
+
+	return
+}
+
+func (m *tableMetadataBuilder) getColumnMetadata(name string, nameQuoted string, definition string, exists bool) columnMetadata {
 	return columnMetadata{
-		name:       field.DBName,
-		nameQuoted: m.scope.Quote(field.DBName),
-		definition: m.scope.Quote(field.DBName) + " " + m.dataTypeOfField(field),
-		exists:     m.scope.Dialect().HasColumn(m.tableName, field.DBName),
+		name:       name,
+		nameQuoted: nameQuoted,
+		definition: definition,
+		exists:     exists,
 	}
 }
 
