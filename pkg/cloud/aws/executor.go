@@ -3,7 +3,7 @@ package aws
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"net/http"
 )
@@ -15,7 +15,7 @@ type Executor interface {
 	Execute(ctx context.Context, f RequestFunction) (interface{}, error)
 }
 
-func NewExecutor(logger mon.Logger, res *exec.ExecutableResource, settings *exec.BackoffSettings, checks ...exec.ErrorChecker) Executor {
+func NewExecutor(logger log.Logger, res *exec.ExecutableResource, settings *exec.BackoffSettings, checks ...exec.ErrorChecker) Executor {
 	if !settings.Enabled {
 		return new(DefaultExecutor)
 	}
@@ -42,7 +42,7 @@ type BackoffExecutor struct {
 	sender   Sender
 }
 
-func NewBackoffExecutor(logger mon.Logger, res *exec.ExecutableResource, settings *exec.BackoffSettings, checks ...exec.ErrorChecker) Executor {
+func NewBackoffExecutor(logger log.Logger, res *exec.ExecutableResource, settings *exec.BackoffSettings, checks ...exec.ErrorChecker) Executor {
 	return NewBackoffExecutorWithSender(logger, res, settings, func(req *request.Request) (*http.Response, error) {
 		err := req.Send()
 
@@ -50,7 +50,7 @@ func NewBackoffExecutor(logger mon.Logger, res *exec.ExecutableResource, setting
 	}, checks...)
 }
 
-func NewBackoffExecutorWithSender(logger mon.Logger, res *exec.ExecutableResource, settings *exec.BackoffSettings, sender Sender, checks ...exec.ErrorChecker) Executor {
+func NewBackoffExecutorWithSender(logger log.Logger, res *exec.ExecutableResource, settings *exec.BackoffSettings, sender Sender, checks ...exec.ErrorChecker) Executor {
 	checks = append(checks, []exec.ErrorChecker{
 		exec.CheckRequestCanceled,
 		exec.CheckUsedClosedConnectionError,

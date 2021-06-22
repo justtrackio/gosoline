@@ -2,7 +2,7 @@ package ipread
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/oschwald/geoip2-golang"
 	"net"
 )
@@ -31,7 +31,7 @@ func ProvideMemoryProvider(name string) *memoryProvider {
 	return memoryProviderContainer[name]
 }
 
-func NewMemoryProvider(_ cfg.Config, _ mon.Logger, name string) (Provider, error) {
+func NewMemoryProvider(_ cfg.Config, _ log.Logger, name string) (Provider, error) {
 	return ProvideMemoryProvider(name), nil
 }
 

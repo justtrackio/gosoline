@@ -3,7 +3,7 @@ package sqs_test
 import (
 	"context"
 	awsMocks "github.com/applike/gosoline/pkg/cloud/aws/mocks"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	gosoSqs "github.com/applike/gosoline/pkg/sqs"
 	sqsMocks "github.com/applike/gosoline/pkg/sqs/mocks"
 	"github.com/aws/aws-sdk-go/aws"
@@ -25,7 +25,7 @@ type queueTestSuite struct {
 }
 
 func (qs *queueTestSuite) SetupTest() {
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	sqsClient := new(sqsMocks.SQSAPI)
 	qs.executor = new(awsMocks.Executor)
 	qs.queue = gosoSqs.NewWithInterfaces(logger, sqsClient, qs.executor, &gosoSqs.Properties{

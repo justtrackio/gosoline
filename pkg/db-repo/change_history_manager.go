@@ -3,7 +3,7 @@ package db_repo
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/jinzhu/gorm"
 	"reflect"
 	"strings"
@@ -16,7 +16,7 @@ type changeHistoryManagerSettings struct {
 
 type changeHistoryManager struct {
 	orm           *gorm.DB
-	logger        mon.Logger
+	logger        log.Logger
 	settings      *changeHistoryManagerSettings
 	model         ModelBased
 	originalTable *tableMetadata
@@ -24,7 +24,7 @@ type changeHistoryManager struct {
 	statements    []string
 }
 
-func newChangeHistoryManager(config cfg.Config, logger mon.Logger, model ModelBased) (*changeHistoryManager, error) {
+func newChangeHistoryManager(config cfg.Config, logger log.Logger, model ModelBased) (*changeHistoryManager, error) {
 	orm, err := NewOrm(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
@@ -36,10 +36,10 @@ func newChangeHistoryManager(config cfg.Config, logger mon.Logger, model ModelBa
 	return newChangeHistoryManagerWithInterfaces(logger, orm, model, settings), nil
 }
 
-func newChangeHistoryManagerWithInterfaces(logger mon.Logger, orm *gorm.DB, model ModelBased, settings *changeHistoryManagerSettings) *changeHistoryManager {
+func newChangeHistoryManagerWithInterfaces(logger log.Logger, orm *gorm.DB, model ModelBased, settings *changeHistoryManagerSettings) *changeHistoryManager {
 	statements := make([]string, 0)
 
-	logger = logger.WithChannel("change_history_manager").WithFields(mon.Fields{
+	logger = logger.WithChannel("change_history_manager").WithFields(log.Fields{
 		"model": reflect.TypeOf(model).Elem().Name(),
 	})
 
@@ -222,7 +222,7 @@ func (c *changeHistoryManager) execute() error {
 		c.logger.Debug(statement)
 		_, err := c.orm.CommonDB().Exec(statement)
 		if err != nil {
-			c.logger.WithFields(mon.Fields{
+			c.logger.WithFields(log.Fields{
 				"sql": statement,
 			}).Error("could not migrate change history: %w", err)
 

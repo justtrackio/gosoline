@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/sns"
 	snsMocks "github.com/applike/gosoline/pkg/sns/mocks"
 	"github.com/aws/aws-sdk-go/aws"
@@ -22,7 +22,7 @@ type TopicTestSuite struct {
 }
 
 func (s *TopicTestSuite) SetupTest() {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	settings := &sns.Settings{
 		Arn: "topicArn",

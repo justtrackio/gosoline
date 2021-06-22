@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/spf13/cast"
 )
 
@@ -29,11 +29,11 @@ type ModelTransformer interface {
 type ModelTransformers map[string]VersionedModelTransformers
 type VersionedModelTransformers map[int]ModelTransformer
 
-type TransformerFactory func(config cfg.Config, logger mon.Logger) (ModelTransformer, error)
+type TransformerFactory func(config cfg.Config, logger log.Logger) (ModelTransformer, error)
 type TransformerMapVersionFactories map[int]TransformerFactory
 type TransformerMapTypeVersionFactories map[string]TransformerMapVersionFactories
 
-func initTransformers(config cfg.Config, logger mon.Logger, subscriberSettings map[string]*SubscriberSettings, transformerFactories TransformerMapTypeVersionFactories) (ModelTransformers, error) {
+func initTransformers(config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformerFactories TransformerMapTypeVersionFactories) (ModelTransformers, error) {
 	var err error
 	var transformers = make(ModelTransformers)
 
@@ -58,8 +58,8 @@ func initTransformers(config cfg.Config, logger mon.Logger, subscriberSettings m
 	return transformers, nil
 }
 
-func NewGenericTransformer(transformer ModelTransformer) func(cfg.Config, mon.Logger) (ModelTransformer, error) {
-	return func(_ cfg.Config, _ mon.Logger) (ModelTransformer, error) {
+func NewGenericTransformer(transformer ModelTransformer) func(cfg.Config, log.Logger) (ModelTransformer, error) {
+	return func(_ cfg.Config, _ log.Logger) (ModelTransformer, error) {
 		return transformer, nil
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"os"
 )
 
@@ -15,18 +15,18 @@ type FileSettings struct {
 }
 
 type fileInput struct {
-	logger   mon.Logger
+	logger   log.Logger
 	settings FileSettings
 
 	channel chan *Message
 	stopped bool
 }
 
-func NewFileInput(_ cfg.Config, logger mon.Logger, settings FileSettings) Input {
+func NewFileInput(_ cfg.Config, logger log.Logger, settings FileSettings) Input {
 	return NewFileInputWithInterfaces(logger, settings)
 }
 
-func NewFileInputWithInterfaces(logger mon.Logger, settings FileSettings) Input {
+func NewFileInputWithInterfaces(logger log.Logger, settings FileSettings) Input {
 	return &fileInput{
 		logger:   logger,
 		settings: settings,

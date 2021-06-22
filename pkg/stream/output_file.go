@@ -3,7 +3,7 @@ package stream
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"os"
 )
 
@@ -13,11 +13,11 @@ type FileOutputSettings struct {
 }
 
 type fileOutput struct {
-	logger   mon.Logger
+	logger   log.Logger
 	settings *FileOutputSettings
 }
 
-func NewFileOutput(_ cfg.Config, logger mon.Logger, settings *FileOutputSettings) Output {
+func NewFileOutput(_ cfg.Config, logger log.Logger, settings *FileOutputSettings) Output {
 	return &fileOutput{
 		logger:   logger,
 		settings: settings,

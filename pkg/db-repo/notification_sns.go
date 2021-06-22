@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
 )
 
-func NewSnsNotifier(config cfg.Config, logger mon.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) (*baseNotifier, error) {
+func NewSnsNotifier(config cfg.Config, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) (*baseNotifier, error) {
 	output, err := stream.NewSnsOutput(config, logger, stream.SnsOutputSettings{
 		TopicId: modelId.Name,
 		AppId: cfg.AppId{

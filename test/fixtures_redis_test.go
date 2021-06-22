@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/fixtures"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/test"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/go-redis/redis/v8"
@@ -25,7 +25,7 @@ type RedisTestModel struct {
 type FixturesRedisSuite struct {
 	suite.Suite
 	client *redis.Client
-	logger mon.Logger
+	logger log.Logger
 	mocks  *test.Mocks
 }
 
@@ -41,7 +41,7 @@ func (s *FixturesRedisSuite) SetupSuite() {
 
 	s.mocks = mocks
 	s.client = s.mocks.ProvideRedisClient("redis")
-	s.logger = mon.NewLogger()
+	s.logger = log.NewCliLogger()
 }
 
 func (s *FixturesRedisSuite) TearDownSuite() {

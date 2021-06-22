@@ -5,7 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/stream"
 )
 
@@ -19,12 +19,12 @@ type Settings struct {
 }
 
 func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactories) kernel.MultiModuleFactory {
-	return func(config cfg.Config, logger mon.Logger) (map[string]kernel.ModuleFactory, error) {
+	return func(config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 		return SubscriberFactory(config, logger, transformerFactoryMap)
 	}
 }
 
-func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.ModuleFactory, error) {
+func SubscriberFactory(config cfg.Config, logger log.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.ModuleFactory, error) {
 	settings := Settings{
 		Subscribers: make(map[string]*SubscriberSettings),
 	}

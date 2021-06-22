@@ -4,14 +4,14 @@ package fixtures
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type noopFixtureLoader struct {
-	logger mon.Logger
+	logger log.Logger
 }
 
-func NewFixtureLoader(config cfg.Config, logger mon.Logger) FixtureLoader {
+func NewFixtureLoader(config cfg.Config, logger log.Logger) FixtureLoader {
 	return &noopFixtureLoader{
 		logger: logger.WithChannel("fixture_loader"),
 	}

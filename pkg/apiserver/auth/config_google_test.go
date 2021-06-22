@@ -4,8 +4,8 @@ import (
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver/auth"
 	authMocks "github.com/applike/gosoline/pkg/apiserver/auth/mocks"
-	"github.com/applike/gosoline/pkg/mon"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/googleapi"
@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-func getMocks(idToken string) (mon.Logger, *authMocks.TokenInfoProvider, *gin.Context) {
+func getMocks(idToken string) (log.Logger, *authMocks.TokenInfoProvider, *gin.Context) {
 	logger := mocks.NewLoggerMockedAll()
 	tokenProvider := new(authMocks.TokenInfoProvider)
 

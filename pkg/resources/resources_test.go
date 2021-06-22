@@ -2,7 +2,7 @@ package resources_test
 
 import (
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/resources"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
@@ -12,7 +12,7 @@ import (
 )
 
 func TestResourcesManager_GetResources(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	client := new(cloudMocks.ResourceGroupsTaggingAPIAPI)
 	client.On("GetResourcesPages",

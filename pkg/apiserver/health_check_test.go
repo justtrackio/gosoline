@@ -2,7 +2,7 @@ package apiserver_test
 
 import (
 	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +12,7 @@ import (
 func TestNewApiHealthCheck(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ginEngine := gin.New()
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	apiserver.NewApiHealthCheckWithInterfaces(logger, ginEngine, &apiserver.ApiHealthCheckSettings{
 		Path: "/health",

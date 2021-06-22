@@ -6,7 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/ddb"
 	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -16,14 +16,14 @@ import (
 type DdbLeaderElectionTestCase struct {
 	suite.Suite
 
-	logger     *monMocks.Logger
+	logger     *logMocks.Logger
 	clock      clock.Clock
 	repository *ddbMocks.Repository
 	election   *conc.DdbLeaderElection
 }
 
 func (s *DdbLeaderElectionTestCase) SetupTest() {
-	s.logger = new(monMocks.Logger)
+	s.logger = new(logMocks.Logger)
 	s.clock = clock.NewFakeClock()
 	s.repository = new(ddbMocks.Repository)
 

@@ -7,7 +7,7 @@ import (
 	awsExec "github.com/applike/gosoline/pkg/cloud/aws"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
@@ -17,7 +17,7 @@ import (
 
 type DdbComponent struct {
 	baseComponent
-	logger     mon.Logger
+	logger     log.Logger
 	ddbAddress string
 	toxiproxy  *toxiproxy.Proxy
 }

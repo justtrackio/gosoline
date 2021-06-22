@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 	"time"
@@ -58,9 +58,9 @@ type SizedStore interface {
 	EstimateSize() *int64
 }
 
-type Factory func(config cfg.Config, logger mon.Logger, settings *Settings) (KvStore, error)
+type Factory func(config cfg.Config, logger log.Logger, settings *Settings) (KvStore, error)
 
-func buildFactory(config cfg.Config, logger mon.Logger) func(factory Factory, settings *Settings) (KvStore, error) {
+func buildFactory(config cfg.Config, logger log.Logger) func(factory Factory, settings *Settings) (KvStore, error) {
 	return func(factory Factory, settings *Settings) (KvStore, error) {
 		return factory(config, logger, settings)
 	}

@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/metric"
 	"github.com/applike/gosoline/pkg/stream"
 	"time"
 )
@@ -30,16 +31,16 @@ type SubscriberModel struct {
 }
 
 type SubscriberCallback struct {
-	logger       mon.Logger
-	metric       mon.MetricWriter
+	logger       log.Logger
+	metric       metric.Writer
 	transformers ModelTransformers
 	outputs      Outputs
 }
 
 func NewSubscriberCallbackFactory(transformers ModelTransformers, outputs Outputs) stream.ConsumerCallbackFactory {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (stream.ConsumerCallback, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
 		defaultMetrics := getSubscriberCallbackDefaultMetrics(transformers)
-		metricWriter := mon.NewMetricDaemonWriter(defaultMetrics...)
+		metricWriter := metric.NewDaemonWriter(defaultMetrics...)
 
 		callback := &SubscriberCallback{
 			logger:       logger,
@@ -87,7 +88,7 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input interface{}, att
 		return false, err
 	}
 
-	logger := s.logger.WithContext(ctx).WithFields(mon.Fields{
+	logger := s.logger.WithContext(ctx).WithFields(log.Fields{
 		"modelId": spec.ModelId,
 		"type":    spec.CrudType,
 		"version": spec.Version,
@@ -149,39 +150,39 @@ func (s *SubscriberCallback) writeMetric(err error, spec *ModelSpecification) {
 		metricName = MetricNameFailure
 	}
 
-	s.metric.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
+	s.metric.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,
 		Dimensions: map[string]string{
 			"ModelId": spec.ModelId,
 		},
-		Unit:  mon.UnitCount,
+		Unit:  metric.UnitCount,
 		Value: 1.0,
 	})
 }
 
-func getSubscriberCallbackDefaultMetrics(transformers ModelTransformers) []*mon.MetricDatum {
-	defaults := make([]*mon.MetricDatum, 0)
+func getSubscriberCallbackDefaultMetrics(transformers ModelTransformers) []*metric.Datum {
+	defaults := make([]*metric.Datum, 0)
 
 	for modelId := range transformers {
-		success := &mon.MetricDatum{
-			Priority:   mon.PriorityHigh,
+		success := &metric.Datum{
+			Priority:   metric.PriorityHigh,
 			MetricName: MetricNameSuccess,
 			Dimensions: map[string]string{
 				"ModelId": modelId,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		}
 
-		failure := &mon.MetricDatum{
-			Priority:   mon.PriorityHigh,
+		failure := &metric.Datum{
+			Priority:   metric.PriorityHigh,
 			MetricName: MetricNameFailure,
 			Dimensions: map[string]string{
 				"ModelId": modelId,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		}
 

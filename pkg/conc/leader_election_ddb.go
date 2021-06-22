@@ -7,8 +7,8 @@ import (
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"time"
 )
 
@@ -25,13 +25,13 @@ type DdbLeaderElectionSettings struct {
 }
 
 type DdbLeaderElection struct {
-	logger     mon.Logger
+	logger     log.Logger
 	clock      clock.Clock
 	repository ddb.Repository
 	settings   *DdbLeaderElectionSettings
 }
 
-func NewDdbLeaderElection(config cfg.Config, logger mon.Logger, name string) (LeaderElection, error) {
+func NewDdbLeaderElection(config cfg.Config, logger log.Logger, name string) (LeaderElection, error) {
 	key := GetLeaderElectionConfigKey(name)
 	settings := &DdbLeaderElectionSettings{}
 	config.UnmarshalKey(key, settings)
@@ -39,7 +39,7 @@ func NewDdbLeaderElection(config cfg.Config, logger mon.Logger, name string) (Le
 	return NewDdbLeaderElectionWithSettings(config, logger, settings)
 }
 
-func NewDdbLeaderElectionWithSettings(config cfg.Config, logger mon.Logger, settings *DdbLeaderElectionSettings) (LeaderElection, error) {
+func NewDdbLeaderElectionWithSettings(config cfg.Config, logger log.Logger, settings *DdbLeaderElectionSettings) (LeaderElection, error) {
 	namingFactory := func(_ mdl.ModelId) string {
 		return settings.TableName
 	}
@@ -71,7 +71,7 @@ func NewDdbLeaderElectionWithSettings(config cfg.Config, logger mon.Logger, sett
 	return NewDdbLeaderElectionWithInterfaces(logger, clock.Provider, repository, settings)
 }
 
-func NewDdbLeaderElectionWithInterfaces(logger mon.Logger, clock clock.Clock, repository ddb.Repository, settings *DdbLeaderElectionSettings) (*DdbLeaderElection, error) {
+func NewDdbLeaderElectionWithInterfaces(logger log.Logger, clock clock.Clock, repository ddb.Repository, settings *DdbLeaderElectionSettings) (*DdbLeaderElection, error) {
 	election := &DdbLeaderElection{
 		logger:     logger,
 		clock:      clock,

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -19,12 +19,12 @@ type ApiHealthCheck struct {
 	kernel.BackgroundModule
 	kernel.ServiceStage
 
-	logger mon.Logger
+	logger log.Logger
 	server *http.Server
 }
 
 func NewApiHealthCheck() kernel.ModuleFactory {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		settings := &ApiHealthCheckSettings{}
 		config.UnmarshalKey("api.health", settings)
 
@@ -37,7 +37,7 @@ func NewApiHealthCheck() kernel.ModuleFactory {
 	}
 }
 
-func NewApiHealthCheckWithInterfaces(logger mon.Logger, router *gin.Engine, settings *ApiHealthCheckSettings) *ApiHealthCheck {
+func NewApiHealthCheckWithInterfaces(logger log.Logger, router *gin.Engine, settings *ApiHealthCheckSettings) *ApiHealthCheck {
 	router.Use(LoggingMiddleware(logger))
 	router.GET(settings.Path, func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{})

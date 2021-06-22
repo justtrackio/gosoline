@@ -2,8 +2,8 @@ package tracing_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/mon"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -52,12 +52,12 @@ func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
 	}
 
 	logger := new(mocks.Logger)
-	logger.On("WithFields", mon.Fields{
+	logger.On("WithFields", log.Fields{
 		"stacktrace": "mocked trace",
 	}).Return(logger).Once()
 	logger.On("Warn", "trace id is invalid: %s", "the traceId attribute is invalid: the trace id [1-5e3d557d-d06c248cc50169bd71b44fec] should consist of at least 2 parts")
 
-	strategy := tracing.NewTraceIdErrorWarningStrategyWithInterfaces(logger, mon.GetMockedStackTrace)
+	strategy := tracing.NewTraceIdErrorWarningStrategyWithInterfaces(logger, log.GetMockedStackTrace)
 
 	encoder := tracing.NewMessageWithTraceEncoder(strategy)
 	ctx, decodedAttributes, err := encoder.Decode(ctx, nil, attributes)

@@ -7,7 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/encoding/yaml"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"net"
 	"net/http"
 )
@@ -21,13 +21,13 @@ type ConfigServer struct {
 	kernel.ServiceStage
 
 	config   cfg.Config
-	logger   mon.Logger
+	logger   log.Logger
 	server   *http.Server
 	settings *ConfigServerSettings
 }
 
 func NewConfigServer() kernel.ModuleFactory {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		settings := &ConfigServerSettings{}
 		config.UnmarshalKey("cfg.server", settings)
 

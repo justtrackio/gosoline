@@ -3,7 +3,7 @@ package parquet_test
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/blob/mocks"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/parquet"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -28,7 +28,7 @@ func TestNopRecorder(t *testing.T) {
 }
 
 func TestS3FileRecorder(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	s3Api := new(mocks.S3API)
 
 	r := parquet.NewS3FileRecorderWithInterfaces(logger, s3Api)

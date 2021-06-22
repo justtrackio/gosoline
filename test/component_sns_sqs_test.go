@@ -7,7 +7,7 @@ import (
 	"fmt"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	pkgTest "github.com/applike/gosoline/pkg/test"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -44,7 +44,7 @@ func Test_sns_sqs(t *testing.T) {
 	snsClient := mocks.ProvideSnsClient("sns_sqs")
 	sqsClient := mocks.ProvideSqsClient("sns_sqs")
 
-	logger := mon.NewLogger()
+	logger := log.NewCliLogger()
 	res := &exec.ExecutableResource{
 		Type: "sns",
 		Name: topicName,

@@ -3,19 +3,20 @@ package ddb
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/metric"
 	"time"
 )
 
 type metricRepository struct {
 	Repository
-	metric mon.MetricWriter
+	metric metric.Writer
 }
 
-func NewMetricRepository(_ cfg.Config, _ mon.Logger, repo Repository) *metricRepository {
+func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
 	defaults := getDefaultMetrics(repo.GetModelId())
-	output := mon.NewMetricDaemonWriter(defaults...)
+	output := metric.NewDaemonWriter(defaults...)
 
 	return &metricRepository{
 		Repository: repo,
@@ -40,58 +41,58 @@ func (r metricRepository) writeMetric(op string, err error, start time.Time) {
 		metricName = MetricNameAccessFailure
 	}
 
-	r.metric.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
+	r.metric.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,
 		Dimensions: map[string]string{
 			"Operation": op,
 			"ModelId":   modelId.String(),
 		},
-		Unit:  mon.UnitCount,
+		Unit:  metric.UnitCount,
 		Value: 1.0,
 	})
 
 	latencyMillisecond := float64(latencyNano) / float64(time.Millisecond)
 
-	r.metric.WriteOne(&mon.MetricDatum{
+	r.metric.WriteOne(&metric.Datum{
 		Timestamp:  time.Now(),
 		MetricName: MetricNameAccessLatency,
 		Dimensions: map[string]string{
 			"Operation": op,
 			"ModelId":   modelId.String(),
 		},
-		Unit:  mon.UnitMillisecondsAverage,
+		Unit:  metric.UnitMillisecondsAverage,
 		Value: latencyMillisecond,
 	})
 }
 
-func getDefaultMetrics(mId mdl.ModelId) mon.MetricData {
+func getDefaultMetrics(mId mdl.ModelId) metric.Data {
 	model := mId.String()
-	defaults := make([]*mon.MetricDatum, 0)
+	defaults := make([]*metric.Datum, 0)
 
 	for _, op := range []string{OpSave} {
 		for _, name := range []string{MetricNameAccessSuccess, MetricNameAccessFailure} {
-			defaults = append(defaults, &mon.MetricDatum{
-				Priority:   mon.PriorityHigh,
+			defaults = append(defaults, &metric.Datum{
+				Priority:   metric.PriorityHigh,
 				MetricName: name,
 				Dimensions: map[string]string{
 					"Operation": op,
 					"ModelId":   model,
 				},
-				Unit:  mon.UnitCount,
+				Unit:  metric.UnitCount,
 				Value: 0.0,
 			})
 		}
 
-		defaults = append(defaults, &mon.MetricDatum{
-			Priority:   mon.PriorityLow,
+		defaults = append(defaults, &metric.Datum{
+			Priority:   metric.PriorityLow,
 			MetricName: MetricNameAccessLatency,
 			Dimensions: map[string]string{
 				"Operation": op,
 				"ModelId":   model,
 			},
-			Unit:  mon.UnitMillisecondsAverage,
+			Unit:  metric.UnitMillisecondsAverage,
 			Value: 0.0,
 		})
 	}

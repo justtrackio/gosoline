@@ -6,7 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/db"
 	db_repo "github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -14,10 +14,10 @@ import (
 
 type updateHandler struct {
 	transformer UpdateHandler
-	logger      mon.Logger
+	logger      log.Logger
 }
 
-func NewUpdateHandler(logger mon.Logger, transformer UpdateHandler) gin.HandlerFunc {
+func NewUpdateHandler(logger log.Logger, transformer UpdateHandler) gin.HandlerFunc {
 	uh := updateHandler{
 		transformer: transformer,
 		logger:      logger,

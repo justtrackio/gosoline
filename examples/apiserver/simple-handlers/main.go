@@ -8,14 +8,14 @@ import (
 	"github.com/applike/gosoline/pkg/apiserver/crud"
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type myTestStruct struct {
 	Status string `json:"status"`
 }
 
-func apiDefiner(ctx context.Context, config cfg.Config, logger mon.Logger) (*apiserver.Definitions, error) {
+func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*apiserver.Definitions, error) {
 	definitions := &apiserver.Definitions{}
 
 	definitions.GET("/json-from-map", apiserver.CreateHandler(&JsonResponseFromMapHandler{}))

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/tracing"
 )
 
@@ -28,7 +28,7 @@ type validator struct {
 	rules  Group
 }
 
-func NewValidator(config cfg.Config, logger mon.Logger) (*validator, error) {
+func NewValidator(config cfg.Config, logger log.Logger) (*validator, error) {
 	tracer, err := tracing.ProvideTracer(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)

@@ -7,7 +7,7 @@ import (
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
 	"github.com/applike/gosoline/pkg/ddb"
 	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	tracingMocks "github.com/applike/gosoline/pkg/tracing/mocks"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -23,7 +23,7 @@ type RepositoryTransactionTestSuite struct {
 	suite.Suite
 
 	span     *tracingMocks.Span
-	logger   *monMocks.Logger
+	logger   *logMocks.Logger
 	client   *cloudMocks.DynamoDBAPI
 	executor *cloudAws.TestableExecutor
 	tracer   *tracingMocks.Tracer
@@ -36,7 +36,7 @@ func TestRepositoryTransactionTestSuite(t *testing.T) {
 }
 
 func (s *RepositoryTransactionTestSuite) SetupTest() {
-	s.logger = monMocks.NewLoggerMockedAll()
+	s.logger = logMocks.NewLoggerMockedAll()
 	s.client = new(cloudMocks.DynamoDBAPI)
 	s.tracer = new(tracingMocks.Tracer)
 	s.span = new(tracingMocks.Span)

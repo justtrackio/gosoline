@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/refl"
 )
 
@@ -25,7 +25,7 @@ type producer struct {
 	output  Output
 }
 
-func NewProducer(config cfg.Config, logger mon.Logger, name string, handlers ...EncodeHandler) (*producer, error) {
+func NewProducer(config cfg.Config, logger log.Logger, name string, handlers ...EncodeHandler) (*producer, error) {
 	settings := readProducerSettings(config, name)
 
 	var err error

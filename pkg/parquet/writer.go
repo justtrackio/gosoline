@@ -6,8 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -31,7 +31,7 @@ type Writer interface {
 }
 
 type s3Writer struct {
-	logger   mon.Logger
+	logger   log.Logger
 	s3Cfg    *aws.Config
 	s3Client s3iface.S3API
 
@@ -41,7 +41,7 @@ type s3Writer struct {
 	recorder             FileRecorder
 }
 
-func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) (*s3Writer, error) {
+func NewWriter(config cfg.Config, logger log.Logger, settings *WriterSettings) (*s3Writer, error) {
 	s3Cfg := blob.GetS3ClientConfig(config)
 	s3Client := blob.ProvideS3Client(config)
 	settings.ModelId.PadFromConfig(config)
@@ -61,7 +61,7 @@ func NewWriter(config cfg.Config, logger mon.Logger, settings *WriterSettings) (
 }
 
 func NewWriterWithInterfaces(
-	logger mon.Logger,
+	logger log.Logger,
 	s3Client s3iface.S3API,
 	s3Cfg *aws.Config,
 	modelId mdl.ModelId,

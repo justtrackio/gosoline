@@ -3,7 +3,7 @@ package conc
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"sync/atomic"
 	"time"
 )
@@ -78,7 +78,7 @@ func (l *ddbLock) forkWatcher() {
 			}
 		}
 
-		l.manager.logger.WithContext(l.ctx).WithFields(mon.Fields{
+		l.manager.logger.WithContext(l.ctx).WithFields(log.Fields{
 			"ddb_lock_token":    l.token,
 			"ddb_lock_resource": l.resource,
 		}).Warn("failed to release or renew the lock before the timeout")

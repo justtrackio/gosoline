@@ -2,7 +2,6 @@ package env
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
 	"strings"
 	"time"
 )
@@ -10,13 +9,7 @@ import (
 type Option func(env *Environment)
 type ComponentOption func(componentConfigManger *ComponentsConfigManager) error
 type ConfigOption func(config cfg.GosoConf) error
-type LoggerOption func(config cfg.GosoConf, logger mon.GosoLog) error
-
-type loggerSettings struct {
-	Level           string `cfg:"level" default:"info" validate:"required"`
-	Format          string `cfg:"format" default:"console" validate:"required"`
-	TimestampFormat string `cfg:"timestamp_format" default:"15:04:05.000" validate:"required"`
-}
+type LoggerOption func(settings *LoggerSettings) error
 
 func WithComponent(settings ComponentBaseSettingsAware) Option {
 	return func(env *Environment) {
@@ -68,25 +61,11 @@ func WithContainerExpireAfter(expireAfter time.Duration) Option {
 
 func WithLoggerLevel(level string) Option {
 	return func(env *Environment) {
-		env.addLoggerOption(func(_ cfg.GosoConf, logger mon.GosoLog) error {
-			return logger.Option(mon.WithLevel(level))
+		env.addLoggerOption(func(settings *LoggerSettings) error {
+			settings.Level = level
+			return nil
 		})
 	}
-}
-
-func WithLoggerSettingsFromConfig(env *Environment) {
-	env.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		settings := &loggerSettings{}
-		config.UnmarshalKey("test.logger", settings)
-
-		loggerOptions := []mon.LoggerOption{
-			mon.WithLevel(settings.Level),
-			mon.WithFormat(settings.Format),
-			mon.WithTimestampFormat(settings.TimestampFormat),
-		}
-
-		return logger.Option(loggerOptions...)
-	})
 }
 
 func WithoutAutoDetectedComponents(components ...string) Option {

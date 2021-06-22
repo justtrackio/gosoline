@@ -3,12 +3,13 @@ package test
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/spf13/cast"
-	"log"
+	goLog "log"
 	"net"
 	"os"
 	"strconv"
@@ -60,7 +61,7 @@ type dockerRunnerLegacy struct {
 	containers      []string
 	containersMutex sync.Mutex
 	id              string
-	logger          mon.Logger
+	logger          log.Logger
 	auth            *authSettingsLegacy
 }
 
@@ -68,16 +69,19 @@ func NewDockerRunnerLegacy(config cfg.Config) *dockerRunnerLegacy {
 	pool, err := dockertest.NewPool("")
 
 	if err != nil {
-		log.Fatalf("could not connect to docker: %s", err)
+		goLog.Fatalf("could not connect to docker: %s", err)
 	}
 
 	pool.MaxWait = 2 * time.Minute
-
 	containers := make([]string, 0)
-
 	id := uuid.New().NewV4()
 
-	logger := mon.NewLogger().WithChannel("docker-runner")
+	gosoLogger, err := env.NewConsoleLogger()
+	if err != nil {
+		goLog.Fatalf("could not create logger: %s", err)
+	}
+
+	logger := gosoLogger.WithChannel("docker-runner")
 
 	auth := &authSettingsLegacy{}
 	// take the auth config from the new container runner so we don't have to specify it twice
@@ -97,7 +101,7 @@ func (d *dockerRunnerLegacy) Run(name string, config *containerConfigLegacy) err
 
 	d.markForCleanup(containerName)
 
-	logger := d.logger.WithFields(mon.Fields{
+	logger := d.logger.WithFields(log.Fields{
 		"container": containerName,
 	})
 
@@ -147,7 +151,7 @@ func (d *dockerRunnerLegacy) Run(name string, config *containerConfigLegacy) err
 		return fmt.Errorf("could not expire container %s: %w", containerName, err)
 	}
 
-	logger.WithFields(mon.Fields{
+	logger.WithFields(log.Fields{
 		"expire_after": config.ExpireAfter,
 	}).Info("set container expiry")
 
@@ -202,7 +206,7 @@ func (d *dockerRunnerLegacy) setPortMapping(resource *dockertest.Resource, conta
 		return err
 	}
 
-	d.logger.WithFields(mon.Fields{
+	d.logger.WithFields(log.Fields{
 		"container":    resource.Container.Name[1:],
 		"port_mapping": fmt.Sprintf("%s:%d", containerPort, port),
 	}).Info("set port mapping")
@@ -230,7 +234,7 @@ func (d *dockerRunnerLegacy) printContainerLogs(resource *dockertest.Resource) e
 
 func (d *dockerRunnerLegacy) RemoveAllContainers() {
 	for _, containerName := range d.containers {
-		d.logger.WithFields(mon.Fields{
+		d.logger.WithFields(log.Fields{
 			"container": containerName,
 		}).Info("stopping container")
 		if err := d.pool.RemoveContainerByName(containerName); err != nil {
@@ -247,7 +251,7 @@ func (d *dockerRunnerLegacy) setHostMapping(resource *dockertest.Resource, mappi
 	for _, ip := range addresses {
 		address := fmt.Sprintf("%s:%d", ip, *mapping.dialPort)
 		if d.isReachable(address, timeout) {
-			d.logger.WithFields(mon.Fields{
+			d.logger.WithFields(log.Fields{
 				"container": resource.Container.Name[1:],
 				"ip":        ip,
 			}).Info("set host mapping")

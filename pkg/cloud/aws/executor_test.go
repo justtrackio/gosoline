@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/exec"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -13,7 +13,7 @@ import (
 )
 
 func TestBackoffExecutor_Execute(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	executions := 0
 

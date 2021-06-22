@@ -5,7 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/http"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 const AuthTokenUrl = "https://accounts.google.com/o/oauth2/token"
@@ -32,7 +32,7 @@ type GoogleService struct {
 	httpClient http.Client
 }
 
-func NewGoogleService(config cfg.Config, logger mon.Logger) Service {
+func NewGoogleService(config cfg.Config, logger log.Logger) Service {
 	httpClient := http.NewHttpClient(config, logger)
 
 	return NewGoogleServiceWithInterfaces(httpClient)

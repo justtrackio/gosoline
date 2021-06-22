@@ -7,7 +7,7 @@ import (
 
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,12 +19,12 @@ type Profiling struct {
 	kernel.BackgroundModule
 	kernel.ServiceStage
 
-	logger mon.Logger
+	logger log.Logger
 	server *http.Server
 }
 
 func NewProfiling() kernel.ModuleFactory {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		settings := &ProfilingSettings{}
 		config.UnmarshalKey("profiling.api", settings)
 
@@ -37,7 +37,7 @@ func NewProfiling() kernel.ModuleFactory {
 	}
 }
 
-func NewProfilingWithInterfaces(logger mon.Logger, router *gin.Engine, settings *ProfilingSettings) *Profiling {
+func NewProfilingWithInterfaces(logger log.Logger, router *gin.Engine, settings *ProfilingSettings) *Profiling {
 	AddProfilingEndpoints(router)
 
 	addr := fmt.Sprintf(":%d", settings.Port)

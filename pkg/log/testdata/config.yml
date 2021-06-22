@@ -1,0 +1,7 @@
+log:
+  level: warn
+  handlers:
+    main:
+      type: iowriter
+      level: debug
+      writer: stdout

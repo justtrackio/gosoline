@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -151,7 +151,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 	}
 }
 
-func (f *localstackFactory) Component(config cfg.Config, logger mon.Logger, containers map[string]*container, settings interface{}) (Component, error) {
+func (f *localstackFactory) Component(config cfg.Config, logger log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*localstackSettings)
 
 	component := &localstackComponent{

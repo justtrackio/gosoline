@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"io/ioutil"
 	"os"
@@ -18,7 +18,7 @@ type BlobFixturesSettings struct {
 }
 
 type blobFixtureWriter struct {
-	logger      mon.Logger
+	logger      log.Logger
 	batchRunner blob.BatchRunner
 	purger      *blobPurger
 	store       blob.Store
@@ -26,7 +26,7 @@ type blobFixtureWriter struct {
 }
 
 func BlobFixtureWriterFactory(settings *BlobFixturesSettings) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
+	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		basePath, err := filepath.Abs(settings.BasePath)
 		if err != nil {
 			return nil, err
@@ -42,7 +42,7 @@ func BlobFixtureWriterFactory(settings *BlobFixturesSettings) FixtureWriterFacto
 	}
 }
 
-func NewBlobFixtureWriterWithInterfaces(logger mon.Logger, batchRunner blob.BatchRunner, purger *blobPurger, store blob.Store, basePath string) FixtureWriter {
+func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner blob.BatchRunner, purger *blobPurger, store blob.Store, basePath string) FixtureWriter {
 	return &blobFixtureWriter{
 		logger:      logger,
 		batchRunner: batchRunner,

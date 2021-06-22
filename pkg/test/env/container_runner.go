@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/cenkalti/backoff"
 	"github.com/ory/dockertest"
@@ -75,7 +75,7 @@ type containerRunnerSettings struct {
 }
 
 type containerRunner struct {
-	logger       mon.Logger
+	logger       log.Logger
 	pool         *dockertest.Pool
 	id           string
 	resources    map[string]*dockertest.Resource
@@ -83,7 +83,7 @@ type containerRunner struct {
 	settings     *containerRunnerSettings
 }
 
-func NewContainerRunner(config cfg.Config, logger mon.Logger) (*containerRunner, error) {
+func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner, error) {
 	id := uuid.New().NewV4()
 	logger = logger.WithChannel("container-runner")
 

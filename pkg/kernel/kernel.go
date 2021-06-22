@@ -6,7 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/conc"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"golang.org/x/sys/unix"
 	"os"
 	"os/signal"
@@ -34,7 +34,7 @@ type GosoKernel interface {
 
 type kernel struct {
 	config cfg.Config
-	logger mon.Logger
+	logger log.Logger
 
 	moduleSetupContainers []moduleSetupContainer
 	multiFactories        []MultiModuleFactory
@@ -50,7 +50,7 @@ type kernel struct {
 	forceExit   func(code int)
 }
 
-func New(config cfg.Config, logger mon.Logger, options ...Option) (*kernel, error) {
+func New(config cfg.Config, logger log.Logger, options ...Option) (*kernel, error) {
 	k := &kernel{
 		moduleSetupContainers: make([]moduleSetupContainer, 0),
 		multiFactories:        make([]MultiModuleFactory, 0),

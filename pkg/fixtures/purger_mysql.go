@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 const (
@@ -14,11 +14,11 @@ const (
 
 type mysqlPurger struct {
 	client    db.Client
-	logger    mon.Logger
+	logger    log.Logger
 	tableName string
 }
 
-func newMysqlPurger(config cfg.Config, logger mon.Logger, tableName string) (*mysqlPurger, error) {
+func newMysqlPurger(config cfg.Config, logger log.Logger, tableName string) (*mysqlPurger, error) {
 	client, err := db.NewClient(config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create db client: %w", err)

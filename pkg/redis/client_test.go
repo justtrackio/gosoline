@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/alicebob/miniredis"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/redis"
 	"github.com/elliotchance/redismock/v8"
 	baseRedis "github.com/go-redis/redis/v8"
@@ -33,7 +33,7 @@ func (s *ClientWithMiniRedisTestSuite) SetupTest() {
 	}
 
 	s.settings = &redis.Settings{}
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	executor := exec.NewDefaultExecutor()
 
 	s.baseClient = baseRedis.NewClient(&baseRedis.Options{
@@ -47,7 +47,7 @@ func (s *ClientWithMiniRedisTestSuite) SetupTest() {
 func (s *ClientWithMiniRedisTestSuite) TestGetNotFound() {
 	// the logger should fail the test as soon as any logger.Warn or anything gets called
 	// because we want to test the executor not doing that
-	logger := new(mocks.Logger)
+	logger := new(logMocks.Logger)
 	logger.On("WithFields", mock.Anything).Return(logger).Once()
 	logger.On("WithContext", context.Background()).Return(logger).Once()
 	executor := redis.NewBackoffExecutor(logger, exec.BackoffSettings{
@@ -275,7 +275,7 @@ type ClientWithMockTestSuite struct {
 
 func (s *ClientWithMockTestSuite) SetupTest() {
 	settings := &redis.Settings{}
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	executor := redis.NewBackoffExecutor(logger, settings.BackoffSettings, "test")
 
 	s.redisMock = redismock.NewMock()

@@ -3,7 +3,7 @@ package db_test
 import (
 	goSqlMock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/applike/gosoline/pkg/db"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -122,7 +122,7 @@ func TestClient_Exec(t *testing.T) {
 
 func getMocks() (db.Client, goSqlMock.Sqlmock) {
 	dbMock, sqlMock, _ := goSqlMock.New()
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 	sqlxDB := sqlx.NewDb(dbMock, "sqlmock")
 
 	client := db.NewClientWithInterfaces(loggerMock, sqlxDB)

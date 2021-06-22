@@ -2,3 +2,4 @@ mocks:
   kinesis:
     component: kinesis
     debug: false
+    expire_after: 2m

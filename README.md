@@ -11,14 +11,6 @@ backend applications. Despite the fact that we already use it in production,
 the current state should be considered as an early alpha. Main things to 
 come in the next weeks:
 
-
 * more tests
 * GoDoc
 * overall documentation
-
-## Roadmap
-* cfg: change callbacks
-* cfg: proper default value merging
-* test: gateway case
-* cloud: bundle aws config
-* add error returns to constructors

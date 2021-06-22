@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -32,7 +32,7 @@ func (m *multiOutput) Write(ctx context.Context, batch []WritableMessage) error 
 	return err.ErrorOrNil()
 }
 
-func NewConfigurableMultiOutput(config cfg.Config, logger mon.Logger, base string) (Output, error) {
+func NewConfigurableMultiOutput(config cfg.Config, logger log.Logger, base string) (Output, error) {
 	var key = fmt.Sprintf("%s.types", ConfigurableOutputKey(base))
 	var ts = config.Get(key).(map[string]interface{})
 

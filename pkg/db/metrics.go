@@ -3,7 +3,7 @@ package db
 import (
 	"database/sql"
 	"database/sql/driver"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/metric"
 	"github.com/jmoiron/sqlx"
 	"github.com/twinj/uuid"
 	"time"
@@ -16,11 +16,11 @@ const (
 type metricDriver struct {
 	driver.Driver
 
-	metricWriter mon.MetricWriter
+	metricWriter metric.Writer
 }
 
 func newMetricDriver(driver driver.Driver) string {
-	mw := mon.NewMetricDaemonWriter()
+	mw := metric.NewDaemonWriter()
 
 	id := uuid.NewV4().String()
 	md := &metricDriver{
@@ -34,13 +34,13 @@ func newMetricDriver(driver driver.Driver) string {
 }
 
 func (m *metricDriver) Open(dsn string) (driver.Conn, error) {
-	m.metricWriter.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
+	m.metricWriter.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
 		MetricName: metricNameDbConnectionCount,
 		Dimensions: map[string]string{
 			"Type": "new",
 		},
-		Unit:  mon.UnitCount,
+		Unit:  metric.UnitCount,
 		Value: 1.0,
 	})
 
@@ -48,38 +48,38 @@ func (m *metricDriver) Open(dsn string) (driver.Conn, error) {
 }
 
 func publishConnectionMetrics(conn *sqlx.DB) {
-	output := mon.NewMetricDaemonWriter()
+	output := metric.NewDaemonWriter()
 
 	go func() {
 		for {
 			stats := conn.Stats()
 
-			output.Write(mon.MetricData{
-				&mon.MetricDatum{
-					Priority:   mon.PriorityHigh,
+			output.Write(metric.Data{
+				&metric.Datum{
+					Priority:   metric.PriorityHigh,
 					MetricName: metricNameDbConnectionCount,
 					Dimensions: map[string]string{
 						"Type": "open",
 					},
-					Unit:  mon.UnitCountAverage,
+					Unit:  metric.UnitCountAverage,
 					Value: float64(stats.OpenConnections),
 				},
-				&mon.MetricDatum{
-					Priority:   mon.PriorityHigh,
+				&metric.Datum{
+					Priority:   metric.PriorityHigh,
 					MetricName: metricNameDbConnectionCount,
 					Dimensions: map[string]string{
 						"Type": "inUse",
 					},
-					Unit:  mon.UnitCountAverage,
+					Unit:  metric.UnitCountAverage,
 					Value: float64(stats.InUse),
 				},
-				&mon.MetricDatum{
-					Priority:   mon.PriorityHigh,
+				&metric.Datum{
+					Priority:   metric.PriorityHigh,
 					MetricName: metricNameDbConnectionCount,
 					Dimensions: map[string]string{
 						"Type": "idle",
 					},
-					Unit:  mon.UnitCountAverage,
+					Unit:  metric.UnitCountAverage,
 					Value: float64(stats.Idle),
 				},
 			})

@@ -7,7 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
@@ -97,7 +97,7 @@ func buildTestCaseApiServer(suite TestingSuite, method reflect.Method) (testCase
 
 		apiDefinitions := apiDefinitionAware.SetupApiDefinitions()
 
-		suiteOptions.appModules["api"] = func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		suiteOptions.appModules["api"] = func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			module, err := apiserver.New(apiDefinitions)(ctx, config, logger)
 
 			if err != nil {

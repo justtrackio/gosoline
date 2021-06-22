@@ -3,7 +3,7 @@ package test
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"strings"
@@ -25,7 +25,7 @@ type snsSqsComponent struct {
 	clients  *simpleCache
 }
 
-func (s *snsSqsComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
+func (s *snsSqsComponent) Boot(config cfg.Config, _ log.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	s.name = name
 	s.runner = runner
 	s.clients = &simpleCache{}

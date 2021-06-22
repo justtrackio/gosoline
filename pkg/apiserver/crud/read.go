@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/apiserver"
 	db_repo "github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"net/http"
@@ -12,10 +12,10 @@ import (
 
 type readHandler struct {
 	transformer BaseHandler
-	logger      mon.Logger
+	logger      log.Logger
 }
 
-func NewReadHandler(logger mon.Logger, transformer BaseHandler) gin.HandlerFunc {
+func NewReadHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFunc {
 	rh := readHandler{
 		transformer: transformer,
 		logger:      logger,

@@ -3,7 +3,7 @@ package sns
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
@@ -17,10 +17,10 @@ func WithNamingStrategy(strategy func(appId cfg.AppId, topicId string) string) {
 	namingStrategy = strategy
 }
 
-func CreateTopic(logger mon.Logger, client snsiface.SNSAPI, s *Settings) (string, error) {
+func CreateTopic(logger log.Logger, client snsiface.SNSAPI, s *Settings) (string, error) {
 	name := namingStrategy(s.AppId, s.TopicId)
 
-	logger.WithFields(mon.Fields{
+	logger.WithFields(log.Fields{
 		"name": name,
 	}).Info("looking for sns topic")
 
@@ -33,7 +33,7 @@ func CreateTopic(logger mon.Logger, client snsiface.SNSAPI, s *Settings) (string
 		return "", err
 	}
 
-	logger.WithFields(mon.Fields{
+	logger.WithFields(log.Fields{
 		"name": name,
 		"arn":  *out.TopicArn,
 	}).Info("found sns topic")

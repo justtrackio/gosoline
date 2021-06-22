@@ -1,15 +1,15 @@
 package stream_test
 
 import (
-	"github.com/applike/gosoline/pkg/mon"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/applike/gosoline/pkg/log"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestOutputChannel_Simple(t *testing.T) {
-	logger := monMocks.NewLoggerMock()
+	logger := logMocks.NewLoggerMock()
 
 	msg := []stream.WritableMessage{
 		stream.NewMessage("hello"),
@@ -32,7 +32,7 @@ func TestOutputChannel_Simple(t *testing.T) {
 }
 
 func TestOutputChannel_WriteAfterClose(t *testing.T) {
-	logger := monMocks.NewLoggerMockedUntilLevel(mon.Warn)
+	logger := logMocks.NewLoggerMockedUntilLevel(log.PriorityWarn)
 
 	msg := []stream.WritableMessage{
 		stream.NewMessage("hello"),

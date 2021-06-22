@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	awsMiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	smithyMiddleware "github.com/aws/smithy-go/middleware"
@@ -113,7 +113,7 @@ func IsErrRetryMaxElapsedTimeExceeded(err error) bool {
 	return errors.As(err, &errExpected)
 }
 
-func AttemptLoggerInitMiddleware(logger mon.Logger, clock clock.Clock, maxElapsedTime time.Duration) smithyMiddleware.InitializeMiddleware {
+func AttemptLoggerInitMiddleware(logger log.Logger, clock clock.Clock, maxElapsedTime time.Duration) smithyMiddleware.InitializeMiddleware {
 	return smithyMiddleware.InitializeMiddlewareFunc("AttemptLoggerInit", func(ctx context.Context, input smithyMiddleware.InitializeInput, handler smithyMiddleware.InitializeHandler) (smithyMiddleware.InitializeOutput, smithyMiddleware.Metadata, error) {
 		var err error
 		var cancel context.CancelFunc
@@ -157,7 +157,7 @@ func AttemptLoggerInitMiddleware(logger mon.Logger, clock clock.Clock, maxElapse
 	})
 }
 
-func AttemptLoggerRetryMiddleware(logger mon.Logger, clock clock.Clock) smithyMiddleware.FinalizeMiddleware {
+func AttemptLoggerRetryMiddleware(logger log.Logger, clock clock.Clock) smithyMiddleware.FinalizeMiddleware {
 	return smithyMiddleware.FinalizeMiddlewareFunc("AttemptLoggerRetry", func(ctx context.Context, input smithyMiddleware.FinalizeInput, next smithyMiddleware.FinalizeHandler) (smithyMiddleware.FinalizeOutput, smithyMiddleware.Metadata, error) {
 		var info *attemptInfo
 		var metadata smithyMiddleware.Metadata

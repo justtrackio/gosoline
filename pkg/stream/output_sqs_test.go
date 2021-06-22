@@ -2,8 +2,8 @@ package stream_test
 
 import (
 	"context"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/sqs"
 	sqsMocks "github.com/applike/gosoline/pkg/sqs/mocks"
 	"github.com/applike/gosoline/pkg/stream"
@@ -87,7 +87,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 	for test, data := range tests {
 		data := data
 		t.Run(test, func(t *testing.T) {
-			logger := monMocks.NewLoggerMockedAll()
+			logger := logMocks.NewLoggerMockedAll()
 
 			queue := new(sqsMocks.Queue)
 			queue.On("SendBatch", context.Background(), []*sqs.Message{

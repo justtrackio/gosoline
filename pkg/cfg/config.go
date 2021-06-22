@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cast"
 	"github.com/thoas/go-funk"
-	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -45,7 +44,7 @@ type GosoConf interface {
 }
 
 type config struct {
-	lookupEnv      LookupEnv
+	envProvider    EnvProvider
 	errorHandlers  []ErrorHandler
 	sanitizers     []Sanitizer
 	settings       *mapx.MapX
@@ -54,15 +53,16 @@ type config struct {
 }
 
 var DefaultEnvKeyReplacer = strings.NewReplacer(".", "_", "-", "_")
-var templateRegex = regexp.MustCompile(`{([\w.\-]+)}`)
+var templateRegexp = regexp.MustCompile(`{([\w.\-]+)}`)
+var keyToEnvRegexp = regexp.MustCompile(`\[(\d+)\]`)
 
 func New() GosoConf {
-	return NewWithInterfaces(os.LookupEnv)
+	return NewWithInterfaces(NewOsEnvProvider())
 }
 
-func NewWithInterfaces(lookupEnv LookupEnv) GosoConf {
+func NewWithInterfaces(envProvider EnvProvider) GosoConf {
 	cfg := &config{
-		lookupEnv:     lookupEnv,
+		envProvider:   envProvider,
 		errorHandlers: []ErrorHandler{defaultErrorHandler},
 		sanitizers:    make([]Sanitizer, 0),
 		settings:      mapx.NewMapX(),
@@ -351,7 +351,7 @@ func (c *config) UnmarshalKey(key string, output interface{}, defaults ...Unmars
 }
 
 func (c *config) augmentString(str string) string {
-	matches := templateRegex.FindAllStringSubmatch(str, -1)
+	matches := templateRegexp.FindAllStringSubmatch(str, -1)
 
 	for _, m := range matches {
 		replace := fmt.Sprint(c.getString(m[1]))
@@ -367,8 +367,8 @@ func (c *config) err(msg string, args ...interface{}) {
 	}
 }
 
-func (c *config) buildMapStruct(target interface{}) *mapx.MapXStruct {
-	ms, err := mapx.NewMapStruct(target, &mapx.MapXStructSettings{
+func (c *config) buildMapStruct(target interface{}) *mapx.Struct {
+	ms, err := mapx.NewStruct(target, &mapx.StructSettings{
 		FieldTag:   "cfg",
 		DefaultTag: "default",
 		Casters: []mapx.MapStructCaster{
@@ -404,7 +404,7 @@ func (c *config) get(key string) interface{} {
 	dataMap := mapx.NewMapX()
 	dataMap.Set(key, data)
 
-	environment := c.readEnvironment(c.envKeyPrefix, dataMap)
+	environment := c.readEnvironmentFromValues(c.envKeyPrefix, dataMap)
 	dataMap.Merge(".", environment)
 
 	c.settings.Merge(".", dataMap)
@@ -431,7 +431,7 @@ func (c *config) getString(key string, optionalDefault ...string) string {
 
 func (c *config) isSet(key string) bool {
 	envKey := c.resolveEnvKey(c.envKeyPrefix, key)
-	if _, ok := c.lookupEnv(envKey); ok {
+	if _, ok := c.envProvider.LookupEnv(envKey); ok {
 		return true
 	}
 
@@ -504,7 +504,53 @@ func (c *config) mergeStruct(prefix string, settings interface{}, options ...Mer
 	return c.mergeMsi(prefix, msi, options...)
 }
 
-func (c *config) readEnvironment(prefix string, input *mapx.MapX) *mapx.MapX {
+func (c *config) readEnvironmentFromStructKeys(prefix string, structKeys []mapx.StructKey) *mapx.MapX {
+	environment := mapx.NewMapX()
+
+	for _, structKey := range structKeys {
+		switch structKey.Kind {
+		case reflect.Slice:
+			if len(structKey.SubKeys) > 0 {
+				for i := 0; ; i++ {
+					sliceKeyIndexed := fmt.Sprintf("%s[%d]", structKey.Key, i)
+					sliceKeyPrefixed := fmt.Sprintf("%s.%s", prefix, sliceKeyIndexed)
+					sliceValues := c.readEnvironmentFromStructKeys(sliceKeyPrefixed, structKey.SubKeys)
+
+					if len(sliceValues.Msi()) == 0 {
+						break
+					}
+
+					environment.Set(sliceKeyIndexed, sliceValues)
+				}
+			} else {
+				for i := 0; ; i++ {
+					sliceKeyIndexed := fmt.Sprintf("%s[%d]", structKey.Key, i)
+					envKey := c.resolveEnvKey(prefix, sliceKeyIndexed)
+
+					if envValue, ok := c.envProvider.LookupEnv(envKey); ok {
+						augmentedString := c.augmentString(envValue)
+						environment.Set(sliceKeyIndexed, augmentedString)
+					} else {
+						break
+					}
+				}
+			}
+
+		default:
+			key := structKey.Key
+			envKey := c.resolveEnvKey(prefix, key)
+
+			if envValue, ok := c.envProvider.LookupEnv(envKey); ok {
+				augmentedString := c.augmentString(envValue)
+				environment.Set(key, augmentedString)
+			}
+		}
+	}
+
+	return environment
+}
+
+func (c *config) readEnvironmentFromValues(prefix string, input *mapx.MapX) *mapx.MapX {
 	environment := mapx.NewMapX()
 
 	for _, k := range input.Keys() {
@@ -512,12 +558,12 @@ func (c *config) readEnvironment(prefix string, input *mapx.MapX) *mapx.MapX {
 		val := input.Get(k)
 
 		if nestedMap, err := val.Map(); err == nil {
-			nestedValues := c.readEnvironment(key, nestedMap)
+			nestedValues := c.readEnvironmentFromValues(key, nestedMap)
 			environment.Set(k, nestedValues)
 			continue
 		}
 
-		if envValue, ok := c.lookupEnv(key); ok {
+		if envValue, ok := c.envProvider.LookupEnv(key); ok {
 			augmentedString := c.augmentString(envValue)
 			environment.Set(k, augmentedString)
 		}
@@ -531,8 +577,7 @@ func (c *config) resolveEnvKey(prefix string, key string) string {
 		key = strings.Join([]string{prefix, key}, ".")
 	}
 
-	rp := regexp.MustCompile(`\[(\d)\]`)
-	matches := rp.FindAllStringSubmatch(key, -1)
+	matches := keyToEnvRegexp.FindAllStringSubmatch(key, -1)
 
 	for _, m := range matches {
 		key = strings.Replace(key, m[0], fmt.Sprintf(".%s", m[1]), -1)
@@ -626,9 +671,12 @@ func (c *config) unmarshalStruct(key string, output interface{}, additionalDefau
 	}
 
 	environmentKey := c.resolveEnvKey(c.envKeyPrefix, key)
-	environmentSettings := c.readEnvironment(environmentKey, finalSettings)
+	environmentKeySettings := c.readEnvironmentFromStructKeys(environmentKey, ms.Keys())
+	environmentValueSettings := c.readEnvironmentFromValues(environmentKey, finalSettings)
 
-	finalSettings.Merge(".", environmentSettings)
+	finalSettings.Merge(".", environmentKeySettings)
+	finalSettings.Merge(".", environmentValueSettings)
+
 	c.settings.Set(key, finalSettings)
 
 	if err = ms.Write(finalSettings); err != nil {

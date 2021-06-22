@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 const (
@@ -16,7 +16,7 @@ func init() {
 	outputFactories[OutputTypeKvstore] = outputKvstoreFactory
 }
 
-func outputKvstoreFactory(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
+func outputKvstoreFactory(config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
 	var err error
 	var outputs = make(map[int]Output)
 
@@ -30,11 +30,11 @@ func outputKvstoreFactory(config cfg.Config, logger mon.Logger, settings *Subscr
 }
 
 type OutputKvstore struct {
-	logger mon.Logger
+	logger log.Logger
 	store  kvstore.KvStore
 }
 
-func NewOutputKvstore(config cfg.Config, logger mon.Logger, settings *SubscriberSettings) (*OutputKvstore, error) {
+func NewOutputKvstore(config cfg.Config, logger log.Logger, settings *SubscriberSettings) (*OutputKvstore, error) {
 	store, err := kvstore.NewConfigurableKvStore(config, logger, settings.TargetModel.Name)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kvStore: %w", err)

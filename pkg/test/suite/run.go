@@ -45,7 +45,7 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 	}
 }
 
-func suiteFindTestCases(t *testing.T, suite TestingSuite) (map[string]testCaseRunner, error) {
+func suiteFindTestCases(_ *testing.T, suite TestingSuite) (map[string]testCaseRunner, error) {
 	var err error
 	var testCases = make(map[string]testCaseRunner)
 	var methodFinder = reflect.TypeOf(suite)
@@ -90,7 +90,6 @@ func suiteApplyOptions(suite TestingSuite, extraOptions []Option) *suiteOptions 
 func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, testCases map[string]testCaseRunner) {
 	envOptions := []env.Option{
 		env.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
-		env.WithLoggerSettingsFromConfig,
 	}
 	envOptions = append(envOptions, suiteOptions.envOptions...)
 	envOptions = append(envOptions, env.WithConfigMap(map[string]interface{}{

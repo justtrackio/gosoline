@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/tracing"
 )
 
@@ -14,7 +14,7 @@ type outputTracer struct {
 	name   string
 }
 
-func NewOutputTracer(config cfg.Config, logger mon.Logger, base Output, name string) (*outputTracer, error) {
+func NewOutputTracer(config cfg.Config, logger log.Logger, base Output, name string) (*outputTracer, error) {
 	key := ConfigurableOutputKey(name)
 
 	settings := &BaseOutputSettings{}

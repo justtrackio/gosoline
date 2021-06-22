@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 const (
@@ -16,7 +16,7 @@ func init() {
 	outputFactories[OutputTypeDdb] = outputDdbFactory
 }
 
-func repoInit(config cfg.Config, logger mon.Logger, settings *SubscriberSettings) func(model interface{}) (ddb.Repository, error) {
+func repoInit(config cfg.Config, logger log.Logger, settings *SubscriberSettings) func(model interface{}) (ddb.Repository, error) {
 	return func(model interface{}) (ddb.Repository, error) {
 		repo, err := ddb.NewRepository(config, logger, &ddb.Settings{
 			ModelId: settings.TargetModel,
@@ -34,7 +34,7 @@ func repoInit(config cfg.Config, logger mon.Logger, settings *SubscriberSettings
 	}
 }
 
-func outputDdbFactory(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
+func outputDdbFactory(config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
 	outputs := make(map[int]Output)
 
 	for version := range transformers {
@@ -49,7 +49,7 @@ type OutputDdb struct {
 	repo     ddb.Repository
 }
 
-func NewOutputDdb(config cfg.Config, logger mon.Logger, settings *SubscriberSettings) *OutputDdb {
+func NewOutputDdb(config cfg.Config, logger log.Logger, settings *SubscriberSettings) *OutputDdb {
 	return &OutputDdb{
 		repoInit: repoInit(config, logger, settings),
 	}

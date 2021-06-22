@@ -7,8 +7,10 @@ import (
 	"github.com/applike/gosoline/pkg/clock"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
 	concMocks "github.com/applike/gosoline/pkg/conc/mocks"
-	"github.com/applike/gosoline/pkg/mon"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/applike/gosoline/pkg/log"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
+	"github.com/applike/gosoline/pkg/metric"
+	metricMocks "github.com/applike/gosoline/pkg/metric/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
@@ -168,10 +170,10 @@ type MprMetricModuleTestSuite struct {
 
 	ctx            context.Context
 	cancel         context.CancelFunc
-	logger         *monMocks.Logger
+	logger         *logMocks.Logger
 	leaderElection *concMocks.LeaderElection
 	cwClient       *cloudMocks.CloudWatchAPI
-	metricWriter   *monMocks.MetricWriter
+	metricWriter   *metricMocks.Writer
 	clock          clock.Clock
 	ticker         clock.Ticker
 
@@ -182,10 +184,10 @@ type MprMetricModuleTestSuite struct {
 func (s *MprMetricModuleTestSuite) SetupTestCase() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
-	s.logger = new(monMocks.Logger)
+	s.logger = new(logMocks.Logger)
 	s.leaderElection = new(concMocks.LeaderElection)
 	s.cwClient = new(cloudMocks.CloudWatchAPI)
-	s.metricWriter = new(monMocks.MetricWriter)
+	s.metricWriter = new(metricMocks.Writer)
 	s.clock = clock.NewFakeClock()
 	s.ticker = clock.NewFakeTicker()
 
@@ -233,12 +235,12 @@ func (s *MprMetricModuleTestSuite) TestModule() {
 }
 
 func (s *MprMetricModuleTestSuite) mockMetricWriteMessagesPerRunner(value float64) {
-	s.metricWriter.On("WriteOne", &mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
+	s.metricWriter.On("WriteOne", &metric.Datum{
+		Priority:   metric.PriorityHigh,
 		Timestamp:  s.clock.Now(),
 		MetricName: "StreamMprMessagesPerRunner",
 		Value:      value,
-		Unit:       mon.UnitCountAverage,
+		Unit:       metric.UnitCountAverage,
 	})
 }
 
@@ -373,7 +375,7 @@ func (s *MprMetricModuleTestSuite) mockGetMetricEcs(metric string, stat string, 
 }
 
 func (s *MprMetricModuleTestSuite) mockSuccessLogger(sent, visible, runnerCount, mpr float64) {
-	s.logger.On("WithFields", mon.Fields{
+	s.logger.On("WithFields", log.Fields{
 		"messagesSent":      sent,
 		"messagesVisible":   visible,
 		"runnerCount":       runnerCount,

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"sync/atomic"
 )
 
-type ConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger mon.Logger) (ConsumerCallback, error)
+type ConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (ConsumerCallback, error)
 
 //go:generate mockery -name=ConsumerCallback
 type ConsumerCallback interface {
@@ -28,10 +28,10 @@ type Consumer struct {
 	callback ConsumerCallback
 }
 
-func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		loggerCallback := logger.WithChannel("consumerCallback")
-		contextEnforcingLogger := mon.NewContextEnforcingLogger(loggerCallback)
+		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
 
 		callback, err := callbackFactory(ctx, config, contextEnforcingLogger)
 		if err != nil {

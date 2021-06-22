@@ -4,7 +4,7 @@ import (
 	"context"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
@@ -27,7 +27,7 @@ func TestWriter_WriteEvents(t *testing.T) {
 	successfulRecordOutput := &kinesis.PutRecordsOutput{Records: []*kinesis.PutRecordsResultEntry{}}
 	exec.ExpectExecution("PutRecordsRequest", mock.AnythingOfType("*kinesis.PutRecordsInput"), successfulRecordOutput, nil)
 
-	logger := monMocks.NewLoggerMock()
+	logger := logMocks.NewLoggerMock()
 	logger.On("Warn", "retrying resource %s %s after error: %s", "kinesis.batch", "streamName", "1 out of 3 records failed")
 	logger.On("Info", "sent request to resource %s %s successful after %d retries in %s", "kinesis.batch", "streamName", 1, mock.AnythingOfType("time.Duration"))
 

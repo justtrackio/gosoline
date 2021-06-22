@@ -6,8 +6,8 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/test"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -93,7 +93,7 @@ var TestHistoryModel2Metadata = db_repo.Metadata{
 
 type DbRepoChangeHistoryTestSuite struct {
 	suite.Suite
-	logger           mon.Logger
+	logger           log.Logger
 	config           cfg.Config
 	mocks            *test.Mocks
 	modelRepo        db_repo.Repository
@@ -125,7 +125,7 @@ func (s *DbRepoChangeHistoryTestSuite) SetupSuite() {
 	)
 
 	s.config = config
-	s.logger = mon.NewLogger()
+	s.logger = log.NewCliLogger()
 }
 
 func (s *DbRepoChangeHistoryTestSuite) TearDownSuite() {

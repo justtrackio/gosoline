@@ -6,7 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/metric"
 	"sync"
 	"time"
 )
@@ -14,12 +15,12 @@ import (
 const MetricNamePipelineReceivedCount = "PipelineReceivedCount"
 const MetricNamePipelineProcessedCount = "PipelineProcessedCount"
 
-//go:generate mockery -name PipelineCallback
+//go:generate mockery --name PipelineCallback
 type PipelineCallback interface {
 	Process(ctx context.Context, messages []*Message) ([]*Message, error)
 }
 
-type PipelineCallbackFactory func(ctx context.Context, config cfg.Config, logger mon.Logger) (PipelineCallback, error)
+type PipelineCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (PipelineCallback, error)
 
 type PipelineSettings struct {
 	Interval  time.Duration
@@ -31,7 +32,7 @@ type Pipeline struct {
 	kernel.ApplicationStage
 	ConsumerAcknowledge
 
-	metric   mon.MetricWriter
+	metric   metric.Writer
 	cfn      coffin.Coffin
 	lck      sync.Mutex
 	encoder  MessageEncoder
@@ -43,7 +44,7 @@ type Pipeline struct {
 }
 
 func NewPipeline(stageFactories ...PipelineCallbackFactory) kernel.ModuleFactory {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		var err error
 		var stages = make([]PipelineCallback, len(stageFactories))
 
@@ -54,7 +55,7 @@ func NewPipeline(stageFactories ...PipelineCallbackFactory) kernel.ModuleFactory
 		}
 
 		defaults := getDefaultPipelineMetrics()
-		metric := mon.NewMetricDaemonWriter(defaults...)
+		metric := metric.NewDaemonWriter(defaults...)
 
 		input, err := NewConfigurableInput(config, logger, "pipeline")
 		if err != nil {
@@ -75,7 +76,7 @@ func NewPipeline(stageFactories ...PipelineCallbackFactory) kernel.ModuleFactory
 	}
 }
 
-func NewPipelineWithInterfaces(logger mon.Logger, metric mon.MetricWriter, input Input, output Output, settings *PipelineSettings, stages ...PipelineCallback) (*Pipeline, error) {
+func NewPipelineWithInterfaces(logger log.Logger, metric metric.Writer, input Input, output Output, settings *PipelineSettings, stages ...PipelineCallback) (*Pipeline, error) {
 	pipeline := &Pipeline{
 		cfn: coffin.New(),
 		ConsumerAcknowledge: ConsumerAcknowledge{
@@ -174,7 +175,7 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 		return
 	}
 
-	p.metric.WriteOne(&mon.MetricDatum{
+	p.metric.WriteOne(&metric.Datum{
 		MetricName: MetricNamePipelineReceivedCount,
 		Value:      float64(batchSize),
 	})
@@ -215,23 +216,23 @@ func (p *Pipeline) process(ctx context.Context, force bool) {
 	processedCount := len(p.batch)
 
 	p.logger.Info("pipeline processed %d of %d messages", processedCount, batchSize)
-	p.metric.WriteOne(&mon.MetricDatum{
+	p.metric.WriteOne(&metric.Datum{
 		MetricName: MetricNamePipelineProcessedCount,
 		Value:      float64(processedCount),
 	})
 }
 
-func getDefaultPipelineMetrics() mon.MetricData {
-	return mon.MetricData{
+func getDefaultPipelineMetrics() metric.Data {
+	return metric.Data{
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: MetricNamePipelineReceivedCount,
-			Unit:       mon.UnitCount,
+			Unit:       metric.UnitCount,
 			Value:      0.0,
 		}, {
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: MetricNamePipelineProcessedCount,
-			Unit:       mon.UnitCount,
+			Unit:       metric.UnitCount,
 			Value:      0.0,
 		},
 	}

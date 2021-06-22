@@ -5,8 +5,8 @@ import (
 	"database/sql/driver"
 	goSqlMock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/applike/gosoline/pkg/db-repo"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
@@ -740,7 +740,7 @@ func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
 }
 
 func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Repository) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 
 	db, clientMock, _ := goSqlMock.New()
@@ -764,7 +764,7 @@ func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Re
 }
 
 func getTimedMocks(t *testing.T, time time.Time, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Repository) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 
 	db, clientMock, _ := goSqlMock.New()

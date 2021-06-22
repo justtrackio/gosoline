@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/metric"
 	"github.com/applike/gosoline/pkg/redis"
 	"time"
 )
@@ -24,8 +25,8 @@ type RedisListInputSettings struct {
 }
 
 type redisListInput struct {
-	logger   mon.Logger
-	mw       mon.MetricWriter
+	logger   log.Logger
+	mw       metric.Writer
 	client   redis.Client
 	settings *RedisListInputSettings
 
@@ -34,7 +35,7 @@ type redisListInput struct {
 	fullyQualifiedKey string
 }
 
-func NewRedisListInput(config cfg.Config, logger mon.Logger, settings *RedisListInputSettings) (Input, error) {
+func NewRedisListInput(config cfg.Config, logger log.Logger, settings *RedisListInputSettings) (Input, error) {
 	settings.PadFromConfig(config)
 
 	client, err := redis.ProvideClient(config, logger, settings.ServerName)
@@ -43,12 +44,12 @@ func NewRedisListInput(config cfg.Config, logger mon.Logger, settings *RedisList
 	}
 
 	defaultMetrics := getRedisListInputDefaultMetrics(settings.AppId, settings.Key)
-	mw := mon.NewMetricDaemonWriter(defaultMetrics...)
+	mw := metric.NewDaemonWriter(defaultMetrics...)
 
 	return NewRedisListInputWithInterfaces(logger, client, mw, settings), nil
 }
 
-func NewRedisListInputWithInterfaces(logger mon.Logger, client redis.Client, mw mon.MetricWriter, settings *RedisListInputSettings) Input {
+func NewRedisListInputWithInterfaces(logger log.Logger, client redis.Client, mw metric.Writer, settings *RedisListInputSettings) Input {
 	fullyQualifiedKey := redis.GetFullyQualifiedKey(settings.AppId, settings.Key)
 
 	return &redisListInput{
@@ -125,13 +126,13 @@ func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
 		return
 	}
 
-	data := mon.MetricData{{
-		Priority:   mon.PriorityHigh,
+	data := metric.Data{{
+		Priority:   metric.PriorityHigh,
 		MetricName: metricNameRedisListInputLength,
 		Dimensions: map[string]string{
 			"StreamName": i.fullyQualifiedKey,
 		},
-		Unit:  mon.UnitCountAverage,
+		Unit:  metric.UnitCountAverage,
 		Value: float64(llen),
 	}}
 
@@ -139,7 +140,7 @@ func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
 }
 
 func (i *redisListInput) writeListReadMetric() {
-	data := mon.MetricData{{
+	data := metric.Data{{
 		MetricName: metricNameRedisListInputReads,
 		Dimensions: map[string]string{
 			"StreamName": i.fullyQualifiedKey,
@@ -150,17 +151,17 @@ func (i *redisListInput) writeListReadMetric() {
 	i.mw.Write(data)
 }
 
-func getRedisListInputDefaultMetrics(appId cfg.AppId, key string) mon.MetricData {
+func getRedisListInputDefaultMetrics(appId cfg.AppId, key string) metric.Data {
 	fullyQualifiedKey := redis.GetFullyQualifiedKey(appId, key)
 
-	return mon.MetricData{
+	return metric.Data{
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameRedisListInputReads,
 			Dimensions: map[string]string{
 				"StreamName": fullyQualifiedKey,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 	}

@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 	"strings"
 )
 
-type Definer func(ctx context.Context, config cfg.Config, logger mon.Logger) (*Definitions, error)
+type Definer func(ctx context.Context, config cfg.Config, logger log.Logger) (*Definitions, error)
 
 type Definition struct {
 	group        *Definitions

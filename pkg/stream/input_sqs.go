@@ -7,7 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/hashicorp/go-multierror"
 )
@@ -39,7 +39,7 @@ func (s SqsInputSettings) IsFifoEnabled() bool {
 }
 
 type sqsInput struct {
-	logger      mon.Logger
+	logger      log.Logger
 	queue       sqs.Queue
 	settings    SqsInputSettings
 	unmarshaler UnmarshallerFunc
@@ -49,7 +49,7 @@ type sqsInput struct {
 	stopped bool
 }
 
-func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) (*sqsInput, error) {
+func NewSqsInput(config cfg.Config, logger log.Logger, s SqsInputSettings) (*sqsInput, error) {
 	s.AppId.PadFromConfig(config)
 
 	queue, err := sqs.New(config, logger, &sqs.Settings{
@@ -74,7 +74,7 @@ func NewSqsInput(config cfg.Config, logger mon.Logger, s SqsInputSettings) (*sqs
 	return NewSqsInputWithInterfaces(logger, queue, unmarshaller, s), nil
 }
 
-func NewSqsInputWithInterfaces(logger mon.Logger, queue sqs.Queue, unmarshaller UnmarshallerFunc, s SqsInputSettings) *sqsInput {
+func NewSqsInputWithInterfaces(logger log.Logger, queue sqs.Queue, unmarshaller UnmarshallerFunc, s SqsInputSettings) *sqsInput {
 	if s.RunnerCount <= 0 {
 		s.RunnerCount = 1
 	}

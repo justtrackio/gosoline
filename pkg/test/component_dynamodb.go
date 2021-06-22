@@ -3,7 +3,7 @@ package test
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
@@ -18,7 +18,7 @@ type dynamoDbComponent struct {
 	clients  *simpleCache
 }
 
-func (d *dynamoDbComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
+func (d *dynamoDbComponent) Boot(config cfg.Config, _ log.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	d.name = name
 	d.runner = runner
 	d.settings = &dynamoDbSettings{

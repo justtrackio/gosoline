@@ -3,7 +3,7 @@ package env
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"net/url"
@@ -121,7 +121,7 @@ func (f mysqlFactory) healthCheck(settings interface{}) ComponentHealthCheck {
 	}
 }
 
-func (f mysqlFactory) Component(_ cfg.Config, _ mon.Logger, containers map[string]*container, settings interface{}) (Component, error) {
+func (f mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*mysqlSettings)
 	binding := containers["main"].bindings["3306/tcp"]
 	client, err := f.connection(s, binding)

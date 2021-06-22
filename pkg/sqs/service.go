@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/sqs"
@@ -33,12 +33,12 @@ type Service interface {
 
 type service struct {
 	lck      sync.Mutex
-	logger   mon.Logger
+	logger   log.Logger
 	client   sqsiface.SQSAPI
 	settings *ServiceSettings
 }
 
-func NewService(config cfg.Config, logger mon.Logger) Service {
+func NewService(config cfg.Config, logger log.Logger) Service {
 	client := ProvideClient(config, logger, &Settings{})
 	settings := &ServiceSettings{
 		AutoCreate: config.GetBool("aws_sqs_autoCreate"),
@@ -47,7 +47,7 @@ func NewService(config cfg.Config, logger mon.Logger) Service {
 	return NewServiceWithInterfaces(logger, client, settings)
 }
 
-func NewServiceWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, settings *ServiceSettings) Service {
+func NewServiceWithInterfaces(logger log.Logger, client sqsiface.SQSAPI, settings *ServiceSettings) Service {
 	return &service{
 		logger:   logger,
 		client:   client,
@@ -119,7 +119,7 @@ func (s *service) CreateQueue(settings *Settings) (*Properties, error) {
 }
 
 func (s *service) QueueExists(name string) (bool, error) {
-	s.logger.WithFields(mon.Fields{
+	s.logger.WithFields(log.Fields{
 		"name": name,
 	}).Info("checking the existence of sqs queue")
 
@@ -134,7 +134,7 @@ func (s *service) QueueExists(name string) (bool, error) {
 		return true, nil
 	}
 
-	s.logger.WithFields(mon.Fields{
+	s.logger.WithFields(log.Fields{
 		"name": name,
 	}).Info("could not find queue")
 

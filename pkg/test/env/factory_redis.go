@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -79,7 +79,7 @@ func (f *redisFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *redisFactory) Component(_ cfg.Config, _ mon.Logger, containers map[string]*container, _ interface{}) (Component, error) {
+func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, _ interface{}) (Component, error) {
 	component := &redisComponent{
 		address: f.address(containers["main"]),
 		client:  f.client(containers["main"]),

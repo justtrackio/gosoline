@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/ory/ladon"
 )
 
@@ -29,7 +29,7 @@ type LadonGuard struct {
 	warden *ladon.Ladon
 }
 
-func NewGuard(config cfg.Config, logger mon.Logger) (*LadonGuard, error) {
+func NewGuard(config cfg.Config, logger log.Logger) (*LadonGuard, error) {
 	sqlManager, err := NewSqlManager(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create sqlManager: %w", err)

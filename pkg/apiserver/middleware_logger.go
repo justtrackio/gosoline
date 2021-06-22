@@ -2,13 +2,13 @@ package apiserver
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 	"strings"
 	"time"
 )
 
-func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
+func LoggingMiddleware(logger log.Logger) gin.HandlerFunc {
 	chLogger := logger.WithChannel("http")
 
 	return func(ginCtx *gin.Context) {
@@ -18,7 +18,6 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 
 		req := ginCtx.Request
 		ctx := req.Context()
-		log := chLogger.WithContext(ctx)
 
 		path := req.URL.Path
 		pathRaw := getPathRaw(ginCtx)
@@ -37,7 +36,7 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 		requestTimeNano := time.Since(start)
 		requestTimeSecond := float64(requestTimeNano) / float64(time.Second)
 
-		log = log.WithFields(mon.Fields{
+		ctxLogger := chLogger.WithContext(ctx).WithFields(log.Fields{
 			"bytes":                    ginCtx.Writer.Size(),
 			"client_ip":                ginCtx.ClientIP(),
 			"host":                     req.Host,
@@ -54,18 +53,18 @@ func LoggingMiddleware(logger mon.Logger) gin.HandlerFunc {
 		})
 
 		if len(ginCtx.Errors) == 0 {
-			log.Info("%s %s %s", method, path, req.Proto)
+			ctxLogger.Info("%s %s %s", method, path, req.Proto)
 			return
 		}
 
 		for _, e := range ginCtx.Errors {
 			switch e.Type {
 			case gin.ErrorTypeBind:
-				log.Warn("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)
+				ctxLogger.Warn("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)
 			case gin.ErrorTypeRender:
-				log.Warn("%s %s %s - render error - %v", method, path, req.Proto, e.Err)
+				ctxLogger.Warn("%s %s %s - render error - %v", method, path, req.Proto, e.Err)
 			default:
-				log.Error("%s %s %s: %w", method, path, req.Proto, e.Err)
+				ctxLogger.Error("%s %s %s: %w", method, path, req.Proto, e.Err)
 			}
 		}
 	}

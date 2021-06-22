@@ -5,8 +5,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/cloud"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,7 +15,7 @@ import (
 
 func TestGetServiceClient(t *testing.T) {
 	assert.NotPanics(t, func() {
-		loggerMock := monMocks.NewLoggerMockedAll()
+		loggerMock := logMocks.NewLoggerMockedAll()
 		clientMock := new(cloudMocks.ECSAPI)
 		appId := &cfg.AppId{}
 
@@ -31,7 +31,7 @@ func TestGetServiceClientWithDefaultClient(t *testing.T) {
 		config.On("GetString", "env").Return("")
 		config.On("GetString", "app_family").Return("")
 		config.On("GetString", "app_name").Return("")
-		loggerMock := monMocks.NewLoggerMockedAll()
+		loggerMock := logMocks.NewLoggerMockedAll()
 
 		serviceClient := cloud.GetServiceClientWithDefaultClient(config, loggerMock)
 		assert.NotNil(t, serviceClient)
@@ -39,7 +39,7 @@ func TestGetServiceClientWithDefaultClient(t *testing.T) {
 }
 
 func TestServiceClient_Stop(t *testing.T) {
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
 
 	serviceArn := "arn:aws:ecs:eu-central-1:123456789012:service/test-cluster/test-service"
@@ -104,7 +104,7 @@ func TestServiceClient_Stop(t *testing.T) {
 }
 
 func TestServiceClient_ScaleServices(t *testing.T) {
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
 	appId := &cfg.AppId{}
 
@@ -150,7 +150,7 @@ func TestServiceClient_ScaleServices(t *testing.T) {
 }
 
 func TestServiceClient_ForceNewDeployment(t *testing.T) {
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
 	appId := &cfg.AppId{}
 
@@ -198,7 +198,7 @@ func TestServiceClient_ForceNewDeployment(t *testing.T) {
 }
 
 func TestServiceClient_GetServices(t *testing.T) {
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
 
 	appId := &cfg.AppId{}
@@ -241,7 +241,7 @@ func TestServiceClient_GetServices(t *testing.T) {
 }
 
 func TestServiceClient_WaitUntilServiceIsStable(t *testing.T) {
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
 
 	appId := &cfg.AppId{}
@@ -295,7 +295,7 @@ func TestServiceClient_WaitUntilServiceIsStable(t *testing.T) {
 func TestServiceClient_GetListingFromArn(t *testing.T) {
 	arn := "arn:aws:ecs:eu-central-1:123456789012:service/test-cluster/test-service"
 
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 	clientMock := new(cloudMocks.ECSAPI)
 	clientMock.On("DescribeServices", &ecs.DescribeServicesInput{
 		Cluster: mdl.String("my-test-cluster"),

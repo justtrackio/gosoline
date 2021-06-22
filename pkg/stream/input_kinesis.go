@@ -5,7 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type kinesisInput struct {
@@ -13,7 +13,7 @@ type kinesisInput struct {
 	channel chan *Message
 }
 
-func NewKinesisInput(config cfg.Config, logger mon.Logger, factory kinesis.KinsumerFactory, settings kinesis.KinsumerSettings) (Input, error) {
+func NewKinesisInput(config cfg.Config, logger log.Logger, factory kinesis.KinsumerFactory, settings kinesis.KinsumerSettings) (Input, error) {
 	channel := make(chan *Message)
 	sink := NewKinesisMessageHandler(channel)
 	input, err := kinesis.NewReader(config, logger, factory, sink, settings)

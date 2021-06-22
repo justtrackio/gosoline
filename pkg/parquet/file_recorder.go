@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -25,7 +25,7 @@ type File struct {
 }
 
 type s3FileRecorder struct {
-	logger   mon.Logger
+	logger   log.Logger
 	s3Client s3iface.S3API
 	lck      sync.Mutex
 	files    []File
@@ -49,13 +49,13 @@ func NewNopRecorder() FileRecorder {
 	return nopRecorder{}
 }
 
-func NewS3FileRecorder(config cfg.Config, logger mon.Logger) FileRecorder {
+func NewS3FileRecorder(config cfg.Config, logger log.Logger) FileRecorder {
 	s3Client := blob.ProvideS3Client(config)
 
 	return NewS3FileRecorderWithInterfaces(logger, s3Client)
 }
 
-func NewS3FileRecorderWithInterfaces(logger mon.Logger, s3Client s3iface.S3API) FileRecorder {
+func NewS3FileRecorderWithInterfaces(logger log.Logger, s3Client s3iface.S3API) FileRecorder {
 	return &s3FileRecorder{
 		logger:   logger,
 		s3Client: s3Client,

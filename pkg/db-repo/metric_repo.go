@@ -3,8 +3,9 @@ package db_repo
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/metric"
 	"time"
 )
 
@@ -16,12 +17,12 @@ const (
 
 type metricRepository struct {
 	Repository
-	output mon.MetricWriter
+	output metric.Writer
 }
 
-func NewMetricRepository(_ cfg.Config, _ mon.Logger, repo Repository) *metricRepository {
+func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
 	defaults := getDefaultRepositoryMetrics(repo.GetMetadata().ModelId)
-	output := mon.NewMetricDaemonWriter(defaults...)
+	output := metric.NewDaemonWriter(defaults...)
 
 	return &metricRepository{
 		Repository: repo,
@@ -77,57 +78,57 @@ func (r metricRepository) writeMetric(op string, err error, start time.Time) {
 		metricName = MetricNameDbAccessFailure
 	}
 
-	r.output.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
+	r.output.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,
 		Dimensions: map[string]string{
 			"Operation": op,
 			"ModelId":   r.GetModelId(),
 		},
-		Unit:  mon.UnitCount,
+		Unit:  metric.UnitCount,
 		Value: 1.0,
 	})
 
 	latencyMillisecond := float64(latencyNano) / float64(time.Millisecond)
 
-	r.output.WriteOne(&mon.MetricDatum{
+	r.output.WriteOne(&metric.Datum{
 		Timestamp:  time.Now(),
 		MetricName: MetricNameDbAccessLatency,
 		Dimensions: map[string]string{
 			"Operation": op,
 			"ModelId":   r.GetModelId(),
 		},
-		Unit:  mon.UnitMillisecondsAverage,
+		Unit:  metric.UnitMillisecondsAverage,
 		Value: latencyMillisecond,
 	})
 }
 
-func getDefaultRepositoryMetrics(modelId mdl.ModelId) []*mon.MetricDatum {
-	defaults := make([]*mon.MetricDatum, 0)
+func getDefaultRepositoryMetrics(modelId mdl.ModelId) []*metric.Datum {
+	defaults := make([]*metric.Datum, 0)
 
 	for _, op := range operations {
 		for _, name := range []string{MetricNameDbAccessSuccess, MetricNameDbAccessFailure} {
-			defaults = append(defaults, &mon.MetricDatum{
-				Priority:   mon.PriorityHigh,
+			defaults = append(defaults, &metric.Datum{
+				Priority:   metric.PriorityHigh,
 				MetricName: name,
 				Dimensions: map[string]string{
 					"Operation": op,
 					"ModelId":   modelId.String(),
 				},
-				Unit:  mon.UnitCount,
+				Unit:  metric.UnitCount,
 				Value: 0.0,
 			})
 		}
 
-		defaults = append(defaults, &mon.MetricDatum{
-			Priority:   mon.PriorityLow,
+		defaults = append(defaults, &metric.Datum{
+			Priority:   metric.PriorityLow,
 			MetricName: MetricNameDbAccessLatency,
 			Dimensions: map[string]string{
 				"Operation": op,
 				"ModelId":   modelId.String(),
 			},
-			Unit:  mon.UnitMillisecondsAverage,
+			Unit:  metric.UnitMillisecondsAverage,
 			Value: 0.0,
 		})
 	}

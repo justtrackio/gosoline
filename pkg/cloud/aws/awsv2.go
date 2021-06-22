@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	awsHttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -32,7 +32,7 @@ type ClientSettings struct {
 	HttpClient ClientHttpSettings  `cfg:"http_client"`
 }
 
-func DefaultClientOptions(logger mon.Logger, clock clock.Clock, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) []func(options *awsCfg.LoadOptions) error {
+func DefaultClientOptions(logger log.Logger, clock clock.Clock, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) []func(options *awsCfg.LoadOptions) error {
 	options := []func(options *awsCfg.LoadOptions) error{
 		awsCfg.WithRegion(settings.Region),
 		awsCfg.WithEndpointResolver(EndpointResolver(settings.Endpoint)),
@@ -49,7 +49,7 @@ func DefaultClientOptions(logger mon.Logger, clock clock.Clock, settings ClientS
 	return options
 }
 
-func DefaultClientConfig(ctx context.Context, logger mon.Logger, clock clock.Clock, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) (aws.Config, error) {
+func DefaultClientConfig(ctx context.Context, logger log.Logger, clock clock.Clock, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) (aws.Config, error) {
 	var err error
 	var awsConfig aws.Config
 	var options = DefaultClientOptions(logger, clock, settings, optFns...)
@@ -94,10 +94,10 @@ func EndpointResolver(url string) aws.EndpointResolverFunc {
 }
 
 type Logger struct {
-	base mon.Logger
+	base log.Logger
 }
 
-func NewLogger(base mon.Logger) *Logger {
+func NewLogger(base log.Logger) *Logger {
 	return &Logger{
 		base: base,
 	}

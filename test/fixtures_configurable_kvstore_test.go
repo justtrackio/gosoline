@@ -7,7 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -20,12 +20,12 @@ type ConfigurableKvStoreTestModel struct {
 type FixturesConfigurableKvStoreSuite struct {
 	suite.Suite
 	store  kvstore.KvStore
-	logger mon.Logger
+	logger log.Logger
 }
 
 func (s *FixturesConfigurableKvStoreSuite) SetupSuite() {
 	setup(s.T())
-	s.logger = mon.NewLogger()
+	s.logger = log.NewCliLogger()
 	configPath := "test_configs/config.configurable_kvstore.test.yml"
 
 	config := cfg.New()

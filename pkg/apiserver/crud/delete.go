@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
 	db_repo "github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -13,10 +13,10 @@ import (
 
 type deleteHandler struct {
 	transformer BaseHandler
-	logger      mon.Logger
+	logger      log.Logger
 }
 
-func NewDeleteHandler(logger mon.Logger, transformer BaseHandler) gin.HandlerFunc {
+func NewDeleteHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFunc {
 	dh := deleteHandler{
 		transformer: transformer,
 		logger:      logger,

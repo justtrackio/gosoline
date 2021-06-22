@@ -4,15 +4,15 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver/auth"
-	"github.com/applike/gosoline/pkg/mon"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
 )
 
-func getBasicAuthMocks(user string, password string) (mon.Logger, *gin.Context) {
+func getBasicAuthMocks(user string, password string) (log.Logger, *gin.Context) {
 	logger := mocks.NewLoggerMockedAll()
 
 	header := http.Header{}

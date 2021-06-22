@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/karlseguin/ccache"
 	"math/bits"
@@ -20,7 +20,7 @@ type InMemoryKvStore struct {
 	cacheSize *int64
 }
 
-func NewInMemoryKvStore(_ cfg.Config, _ mon.Logger, settings *Settings) (KvStore, error) {
+func NewInMemoryKvStore(_ cfg.Config, _ log.Logger, settings *Settings) (KvStore, error) {
 	return NewInMemoryKvStoreWithInterfaces(settings), nil
 }
 

@@ -6,7 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/sns"
 	"github.com/hashicorp/go-multierror"
 )
@@ -19,12 +19,12 @@ type SnsOutputSettings struct {
 }
 
 type snsOutput struct {
-	logger   mon.Logger
+	logger   log.Logger
 	topic    sns.Topic
 	settings SnsOutputSettings
 }
 
-func NewSnsOutput(config cfg.Config, logger mon.Logger, s SnsOutputSettings) (Output, error) {
+func NewSnsOutput(config cfg.Config, logger log.Logger, s SnsOutputSettings) (Output, error) {
 	s.PadFromConfig(config)
 
 	topic, err := sns.NewTopic(config, logger, &sns.Settings{
@@ -40,7 +40,7 @@ func NewSnsOutput(config cfg.Config, logger mon.Logger, s SnsOutputSettings) (Ou
 	return NewSnsOutputWithInterfaces(logger, topic, s), nil
 }
 
-func NewSnsOutputWithInterfaces(logger mon.Logger, topic sns.Topic, s SnsOutputSettings) Output {
+func NewSnsOutputWithInterfaces(logger log.Logger, topic sns.Topic, s SnsOutputSettings) Output {
 	return &snsOutput{
 		logger:   logger,
 		topic:    topic,

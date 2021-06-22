@@ -2,7 +2,7 @@ package resources
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi/resourcegroupstaggingapiiface"
@@ -20,16 +20,16 @@ type Filter struct {
 
 type resourceManager struct {
 	client resourcegroupstaggingapiiface.ResourceGroupsTaggingAPIAPI
-	logger mon.Logger
+	logger log.Logger
 }
 
-func NewService(config cfg.Config, logger mon.Logger) Service {
+func NewService(config cfg.Config, logger log.Logger) Service {
 	client := GetClient(config, logger)
 
 	return NewServiceWithInterfaces(client, logger)
 }
 
-func NewServiceWithInterfaces(client resourcegroupstaggingapiiface.ResourceGroupsTaggingAPIAPI, logger mon.Logger) Service {
+func NewServiceWithInterfaces(client resourcegroupstaggingapiiface.ResourceGroupsTaggingAPIAPI, logger log.Logger) Service {
 	return &resourceManager{
 		client: client,
 		logger: logger,

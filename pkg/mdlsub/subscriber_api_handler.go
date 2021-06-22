@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/tracing"
 	"net/http"
@@ -16,7 +16,7 @@ type Handler struct {
 	tracer   tracing.Tracer
 }
 
-func NewHandler(ctx context.Context, config cfg.Config, logger mon.Logger, callbackFactory stream.ConsumerCallbackFactory) (apiserver.HandlerWithInput, error) {
+func NewHandler(ctx context.Context, config cfg.Config, logger log.Logger, callbackFactory stream.ConsumerCallbackFactory) (apiserver.HandlerWithInput, error) {
 	callback, err := callbackFactory(ctx, config, logger)
 	if err != nil {
 		return nil, err

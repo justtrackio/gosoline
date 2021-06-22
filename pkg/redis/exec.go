@@ -3,13 +3,13 @@ package redis
 import (
 	"errors"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"io"
 	"net"
 	"strings"
 )
 
-func NewExecutor(logger mon.Logger, settings exec.BackoffSettings, name string) exec.Executor {
+func NewExecutor(logger log.Logger, settings exec.BackoffSettings, name string) exec.Executor {
 	if !settings.Enabled {
 		return exec.NewDefaultExecutor()
 	}
@@ -17,7 +17,7 @@ func NewExecutor(logger mon.Logger, settings exec.BackoffSettings, name string) 
 	return NewBackoffExecutor(logger, settings, name)
 }
 
-func NewBackoffExecutor(logger mon.Logger, settings exec.BackoffSettings, name string) exec.Executor {
+func NewBackoffExecutor(logger log.Logger, settings exec.BackoffSettings, name string) exec.Executor {
 	executableResource := &exec.ExecutableResource{
 		Type: "redis",
 		Name: name,

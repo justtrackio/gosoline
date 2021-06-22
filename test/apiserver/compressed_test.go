@@ -9,7 +9,7 @@ import (
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/http"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/go-resty/resty/v2"
 	netHttp "net/http"
@@ -32,7 +32,7 @@ func (s *CompressedTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *CompressedTestSuite) SetupApiDefinitions() apiserver.Definer {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (*apiserver.Definitions, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (*apiserver.Definitions, error) {
 		d := &apiserver.Definitions{}
 		d.POST("/echo", apiserver.CreateJsonHandler(&compressedHandler{}))
 		d.POST("/uncompressed", apiserver.CreateJsonHandler(&compressedHandler{}))

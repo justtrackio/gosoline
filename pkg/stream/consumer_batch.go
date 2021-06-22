@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/tracing"
 	"sync/atomic"
 	"time"
 )
 
-type BatchConsumerCallbackFactory func(config cfg.Config, logger mon.Logger) (BatchConsumerCallback, error)
+type BatchConsumerCallbackFactory func(config cfg.Config, logger log.Logger) (BatchConsumerCallback, error)
 
-//go:generate mockery -name=BatchConsumerCallback
+//go:generate mockery --name=BatchConsumerCallback
 type BatchConsumerCallback interface {
 	BaseConsumerCallback
 	Consume(ctx context.Context, models []interface{}, attributes []map[string]interface{}) ([]bool, error)
 }
 
-//go:generate mockery -name=RunnableBatchConsumerCallback
+//go:generate mockery --name=RunnableBatchConsumerCallback
 type RunnableBatchConsumerCallback interface {
 	BatchConsumerCallback
 	RunnableCallback
@@ -38,10 +38,10 @@ type BatchConsumer struct {
 	settings *BatchConsumerSettings
 }
 
-func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory) func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory) func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		loggerCallback := logger.WithChannel("consumerCallback")
-		contextEnforcingLogger := mon.NewContextEnforcingLogger(loggerCallback)
+		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
 
 		callback, err := callbackFactory(config, contextEnforcingLogger)
 

@@ -12,7 +12,7 @@ import (
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/encoding/base64"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/applike/gosoline/pkg/stream"
 	pkgTest "github.com/applike/gosoline/pkg/test"
@@ -40,6 +40,24 @@ type TestEvent struct {
 type TestEventsBatch struct {
 	UserId string      `json:"user_id"`
 	Events []TestEvent `json:"events"`
+}
+
+type LoggingHandler struct {
+	t *testing.T
+}
+
+func (l LoggingHandler) Channels() []string {
+	return []string{}
+}
+
+func (l LoggingHandler) Level() int {
+	return log.PriorityDebug
+}
+
+func (l LoggingHandler) Log(_ time.Time, level int, msg string, _ []interface{}, err error, data log.Data) error {
+	assert.NoError(l.t, err)
+	assert.Contains(l.t, []int{log.PriorityDebug, log.PriorityInfo, log.PriorityWarn}, level, "Unexpected log message: [%s] %s %v %v", level, msg, err, data)
+	return nil
 }
 
 type ProducerDaemonTestSuite struct {
@@ -92,18 +110,15 @@ func (s *ProducerDaemonTestSuite) TestWriteData() {
 		os.Args = args
 	}()
 
-	app := application.Default(application.WithLoggerHook(s))
+	handler := LoggingHandler{
+		t: s.T(),
+	}
+
+	app := application.Default(application.WithLoggerHandlers(handler))
 	app.Add("testModule", newTestModule)
 	app.Add("testCompressionModule", newTestCompressionModule)
 	app.Add("testFifoModule", newTestFifoModule(s.T()))
 	app.Run()
-}
-
-func (s *ProducerDaemonTestSuite) Fire(level string, msg string, err error, data *mon.Metadata) error {
-	s.NoError(err)
-	s.Contains([]string{"debug", "info", "warn"}, level, "Unexpected log message: [%s] %s %v %v", level, msg, err, data)
-
-	return nil
 }
 
 type testModule struct {
@@ -113,7 +128,7 @@ type testModule struct {
 	producerSqs     stream.Producer
 }
 
-func newTestModule(_ context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+func newTestModule(_ context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	var err error
 	var kinesisProducer, sqsProducer stream.Producer
 
@@ -150,12 +165,12 @@ func (m *testModule) Run(ctx context.Context) error {
 type testCompressionModule struct {
 	kernel.ForegroundModule
 
-	logger      mon.Logger
+	logger      log.Logger
 	producerSqs stream.Producer
 	inputSqs    stream.Input
 }
 
-func newTestCompressionModule(_ context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+func newTestCompressionModule(_ context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	var err error
 	var sqsProducer stream.Producer
 	var sqsInput stream.Input
@@ -281,8 +296,8 @@ func (t testFifoConsumerCallback) Consume(_ context.Context, model interface{}, 
 	return true, nil
 }
 
-func newTestFifoModule(t *testing.T) func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+func newTestFifoModule(t *testing.T) func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		var err error
 		var sqsProducer stream.Producer
 
@@ -311,7 +326,7 @@ func newTestFifoModule(t *testing.T) func(ctx context.Context, config cfg.Config
 			},
 		}
 
-		factory := stream.NewConsumer("testDataFifoSqs", func(ctx context.Context, config cfg.Config, logger mon.Logger) (stream.ConsumerCallback, error) {
+		factory := stream.NewConsumer("testDataFifoSqs", func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
 			return testFifoConsumerCallback{
 				func(data *TestData, attributes map[string]interface{}) {
 					lck.Lock()

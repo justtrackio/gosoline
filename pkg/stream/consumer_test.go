@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	metricMocks "github.com/applike/gosoline/pkg/metric/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/stream/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
@@ -43,9 +44,9 @@ func (s *ConsumerTestSuite) SetupTest() {
 	s.input = new(mocks.Input)
 	s.callback = new(mocks.RunnableConsumerCallback)
 
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
-	mw := monMocks.NewMetricWriterMockedAll()
+	mw := metricMocks.NewWriterMockedAll()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
 	settings := &stream.ConsumerSettings{
 		Input:       "test",

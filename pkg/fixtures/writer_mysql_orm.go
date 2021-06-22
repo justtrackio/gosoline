@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type mysqlOrmFixtureWriter struct {
-	logger   mon.Logger
+	logger   log.Logger
 	metadata *db_repo.Metadata
 	repo     db_repo.Repository
 	purger   *mysqlPurger
 }
 
 func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
+	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		metadata.ModelId.PadFromConfig(config)
 
 		settings := db_repo.Settings{
@@ -38,7 +38,7 @@ func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFacto
 	}
 }
 
-func NewMysqlFixtureWriterWithInterfaces(logger mon.Logger, metadata *db_repo.Metadata, repo db_repo.Repository, purger *mysqlPurger) FixtureWriter {
+func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *db_repo.Metadata, repo db_repo.Repository, purger *mysqlPurger) FixtureWriter {
 	return &mysqlOrmFixtureWriter{
 		logger:   logger,
 		metadata: metadata,

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"net"
 )
 
@@ -18,14 +18,14 @@ var dialers = map[string]Dialer{
 	DialerTcp: dialerTcp,
 }
 
-type Dialer func(logger mon.Logger, settings *Settings) func(context.Context, string, string) (net.Conn, error)
+type Dialer func(logger log.Logger, settings *Settings) func(context.Context, string, string) (net.Conn, error)
 type SrvNamingFactory func(appId cfg.AppId, name string) string
 
 var srvNamingStrategy = func(appId cfg.AppId, name string) string {
 	return fmt.Sprintf("%s.%s.redis.%s.%s", name, appId.Application, appId.Environment, appId.Family)
 }
 
-func dialerSrv(logger mon.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {
+func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {
 	return func(ctx context.Context, _ string, _ string) (net.Conn, error) {
 		address := settings.Address
 
@@ -52,7 +52,7 @@ func dialerSrv(logger mon.Logger, settings *Settings) func(ctx context.Context, 
 	}
 }
 
-func dialerTcp(logger mon.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {
+func dialerTcp(logger log.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {
 	return func(_ context.Context, _ string, _ string) (net.Conn, error) {
 		logger.Info("using address %s for redis %s", settings.Address, settings.Name)
 

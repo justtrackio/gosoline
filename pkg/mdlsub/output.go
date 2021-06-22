@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type Output interface {
@@ -12,11 +12,11 @@ type Output interface {
 }
 
 type Outputs map[string]map[int]Output
-type OutputFactory func(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error)
+type OutputFactory func(config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error)
 
 var outputFactories = map[string]OutputFactory{}
 
-func initOutputs(config cfg.Config, logger mon.Logger, subscriberSettings map[string]*SubscriberSettings, transformers ModelTransformers) (Outputs, error) {
+func initOutputs(config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformers ModelTransformers) (Outputs, error) {
 	var ok bool
 	var err error
 	var modelId string

@@ -3,11 +3,12 @@ package tracing_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/applike/gosoline/pkg/tracing/mocks"
 	"github.com/stretchr/testify/suite"
 	"testing"
+	"time"
 )
 
 type LoggingSuite struct {
@@ -44,8 +45,8 @@ func (s *LoggingSuite) TestLoggerErrorHook() {
 	errToLog := fmt.Errorf("unexpected error")
 	s.span.On("AddError", errToLog)
 
-	hook := tracing.NewLoggerErrorHook()
-	err := hook.Fire("", "", errToLog, &mon.Metadata{
+	hook := tracing.NewLoggerErrorHandler()
+	err := hook.Log(time.Time{}, 0, "", []interface{}{}, errToLog, log.Data{
 		Context: s.ctx,
 	})
 

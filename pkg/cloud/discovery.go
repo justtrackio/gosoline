@@ -2,7 +2,7 @@ package cloud
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/servicediscovery"
 	"github.com/aws/aws-sdk-go/service/servicediscovery/servicediscoveryiface"
@@ -17,18 +17,18 @@ type DiscoveryClient interface {
 
 type discoveryClient struct {
 	client    servicediscoveryiface.ServiceDiscoveryAPI
-	logger    mon.Logger
+	logger    log.Logger
 	namespace string
 }
 
-func GetDiscoveryClient(config cfg.Config, logger mon.Logger) DiscoveryClient {
+func GetDiscoveryClient(config cfg.Config, logger log.Logger) DiscoveryClient {
 	endpoint := config.GetString("aws_serviceDiscovery_endpoint")
 	client := GetServiceDiscoveryClient(logger, endpoint)
 
 	return GetDiscoveryClientWithInterfaces(client, config, logger)
 }
 
-func GetDiscoveryClientWithInterfaces(client servicediscoveryiface.ServiceDiscoveryAPI, config cfg.Config, logger mon.Logger) DiscoveryClient {
+func GetDiscoveryClientWithInterfaces(client servicediscoveryiface.ServiceDiscoveryAPI, config cfg.Config, logger log.Logger) DiscoveryClient {
 	namespace := config.GetString("aws_serviceDiscovery_namespace")
 
 	return &discoveryClient{

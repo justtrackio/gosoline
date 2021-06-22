@@ -8,8 +8,8 @@ import (
 	"github.com/applike/gosoline/pkg/cloud/aws/kinesis"
 	kinesisMocks "github.com/applike/gosoline/pkg/cloud/aws/kinesis/mocks"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/mon"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/applike/gosoline/pkg/log"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -18,14 +18,14 @@ import (
 )
 
 func mockFactory(kinsumerMock kinesis.Kinsumer) kinesis.KinsumerFactory {
-	return func(config cfg.Config, logger mon.Logger, settings kinesis.KinsumerSettings) (kinesis.Kinsumer, error) {
+	return func(config cfg.Config, logger log.Logger, settings kinesis.KinsumerSettings) (kinesis.Kinsumer, error) {
 		return kinsumerMock, nil
 	}
 }
 
 func TestReaderLifeCycle(t *testing.T) {
 	configMock := new(configMocks.Config)
-	loggerMock := new(monMocks.Logger)
+	loggerMock := new(logMocks.Logger)
 	loggerMock.On("WithFields", mock.Anything).Return(loggerMock)
 	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
 
@@ -61,7 +61,7 @@ func TestReaderLifeCycle(t *testing.T) {
 
 func TestReaderRunErrorInClientRun(t *testing.T) {
 	configMock := new(configMocks.Config)
-	loggerMock := new(monMocks.Logger)
+	loggerMock := new(logMocks.Logger)
 	loggerMock.On("WithFields", mock.Anything).Return(loggerMock)
 	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
 
@@ -82,7 +82,7 @@ func TestReaderRunErrorInClientRun(t *testing.T) {
 func TestReaderRestartTrigger(t *testing.T) {
 	configMock := new(configMocks.Config)
 
-	loggerMock := new(monMocks.Logger)
+	loggerMock := new(logMocks.Logger)
 	loggerMock.On("WithFields", mock.Anything).Return(loggerMock)
 	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
 	loggerMock.On("Info", mock.Anything)

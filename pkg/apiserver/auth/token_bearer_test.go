@@ -8,7 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/ddb"
 	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
 	kvStoreMocks "github.com/applike/gosoline/pkg/kvstore/mocks"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -84,7 +84,7 @@ func makeDdbProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, []has
 }
 
 func (test *tokenBearerTestCase) run(t *testing.T, providerProvider providerProvider) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	provider, hasExpectations := providerProvider(test)
 
 	headers := http.Header{}

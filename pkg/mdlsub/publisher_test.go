@@ -2,9 +2,9 @@ package mdlsub_test
 
 import (
 	"context"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mdlsub"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	streamMocks "github.com/applike/gosoline/pkg/stream/mocks"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -17,7 +17,7 @@ type PublisherTestSuite struct {
 }
 
 func (s *PublisherTestSuite) SetupTest() {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	s.producer = new(streamMocks.Producer)
 
 	s.publisher = mdlsub.NewPublisherWithInterfaces(logger, s.producer, &mdlsub.PublisherSettings{

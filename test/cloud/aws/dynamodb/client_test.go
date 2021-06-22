@@ -9,7 +9,7 @@ import (
 	"github.com/applike/gosoline/pkg/clock"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	gosoDdb "github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
@@ -95,7 +95,7 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 	})
 
 	ctx := context.Background()
-	loggerMock := new(mocks.Logger)
+	loggerMock := new(logMocks.Logger)
 	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
 	loggerMock.On("Warn", "attempt number %d to request resource %s after %s cause of error %s", mock.AnythingOfType("int"), "DynamoDB/PutItem", mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
 	loggerMock.On("Info", "sent request to resource %s successful after %d retries in %s", "DynamoDB/PutItem", 3, mock.AnythingOfType("time.Duration")).Once()
@@ -137,7 +137,7 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 	})
 
 	ctx := context.Background()
-	loggerMock := new(mocks.Logger)
+	loggerMock := new(logMocks.Logger)
 	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
 
 	credentials := awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("AKID", "SECRET_KEY", "TOKEN"))

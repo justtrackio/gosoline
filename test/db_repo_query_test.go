@@ -6,8 +6,8 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/test"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -38,7 +38,7 @@ type WrongTestModel struct {
 
 type DbRepoQueryTestSuite struct {
 	suite.Suite
-	logger mon.Logger
+	logger log.Logger
 	config cfg.Config
 	mocks  *test.Mocks
 	repo   db_repo.Repository
@@ -69,7 +69,7 @@ func (s *DbRepoQueryTestSuite) SetupSuite() {
 	)
 
 	s.config = config
-	s.logger = mon.NewLogger()
+	s.logger = log.NewCliLogger()
 
 	s.repo, err = db_repo.New(s.config, s.logger, db_repo.Settings{
 		Metadata: TestModelMetadata,

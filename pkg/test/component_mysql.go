@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 )
@@ -22,7 +22,7 @@ type mysqlComponentLegacy struct {
 	db       *sql.DB
 }
 
-func (m *mysqlComponentLegacy) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
+func (m *mysqlComponentLegacy) Boot(config cfg.Config, _ log.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	m.name = name
 	m.runner = runner
 	m.settings = &mysqlSettingsLegacy{

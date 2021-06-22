@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
@@ -19,18 +19,18 @@ type TableDescription struct {
 }
 
 type Service struct {
-	logger          mon.Logger
+	logger          log.Logger
 	client          dynamodbiface.DynamoDBAPI
 	metadataFactory *metadataFactory
 }
 
-func NewService(config cfg.Config, logger mon.Logger) *Service {
+func NewService(config cfg.Config, logger log.Logger) *Service {
 	client := cloud.GetDynamoDbClient(config, logger)
 
 	return NewServiceWithInterfaces(logger, client)
 }
 
-func NewServiceWithInterfaces(logger mon.Logger, client dynamodbiface.DynamoDBAPI) *Service {
+func NewServiceWithInterfaces(logger log.Logger, client dynamodbiface.DynamoDBAPI) *Service {
 	return &Service{
 		logger:          logger,
 		client:          client,

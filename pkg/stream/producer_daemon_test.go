@@ -6,8 +6,9 @@ import (
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/applike/gosoline/pkg/log"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
+	metricMocks "github.com/applike/gosoline/pkg/metric/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	streamMocks "github.com/applike/gosoline/pkg/stream/mocks"
 	"github.com/stretchr/testify/mock"
@@ -39,9 +40,9 @@ func (s *ProducerDaemonTestSuite) SetupTest() {
 	s.wait = make(chan error)
 }
 
-func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel string, batchSize int, aggregationSize int, interval time.Duration) {
-	logger := monMocks.NewLoggerMockedUntilLevel(maxLogLevel)
-	metric := monMocks.NewMetricWriterMockedAll()
+func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, aggregationSize int, interval time.Duration) {
+	logger := logMocks.NewLoggerMockedUntilLevel(maxLogLevel)
+	metric := metricMocks.NewWriterMockedAll()
 
 	s.output = new(streamMocks.Output)
 	s.ticker = clock.NewFakeTicker()
@@ -125,7 +126,7 @@ func (s *ProducerDaemonTestSuite) expectMessage(messages []stream.WritableMessag
 }
 
 func (s *ProducerDaemonTestSuite) TestRun() {
-	s.SetupDaemon(mon.Info, 1, 1, time.Hour)
+	s.SetupDaemon(log.PriorityInfo, 1, 1, time.Hour)
 	err := s.stop()
 
 	s.NoError(err, "there should be no error on run")
@@ -133,7 +134,7 @@ func (s *ProducerDaemonTestSuite) TestRun() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatch() {
-	s.SetupDaemon(mon.Info, 2, 1, time.Hour)
+	s.SetupDaemon(log.PriorityInfo, 2, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -161,7 +162,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatch() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatchOnClose() {
-	s.SetupDaemon(mon.Info, 3, 1, time.Hour)
+	s.SetupDaemon(log.PriorityInfo, 3, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -184,7 +185,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnClose() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatchOnTick() {
-	s.SetupDaemon(mon.Info, 3, 1, time.Hour)
+	s.SetupDaemon(log.PriorityInfo, 3, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -209,7 +210,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTick() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteBatchOnTickAfterWrite() {
-	s.SetupDaemon(mon.Info, 2, 1, time.Hour)
+	s.SetupDaemon(log.PriorityInfo, 2, 1, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -240,7 +241,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTickAfterWrite() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
-	s.SetupDaemon(mon.Info, 2, 3, time.Hour)
+	s.SetupDaemon(log.PriorityInfo, 2, 3, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -266,7 +267,7 @@ func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteWithCanceledError() {
-	s.SetupDaemon(mon.Warn, 5, 5, time.Hour)
+	s.SetupDaemon(log.PriorityWarn, 5, 5, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},
@@ -312,7 +313,7 @@ func (s *ProducerDaemonTestSuite) TestWriteWithCanceledError() {
 }
 
 func (s *ProducerDaemonTestSuite) TestWriteAfterClose() {
-	s.SetupDaemon(mon.Warn, 1, 2, time.Hour)
+	s.SetupDaemon(log.PriorityWarn, 1, 2, time.Hour)
 
 	messages := []stream.WritableMessage{
 		&stream.Message{Body: "1"},

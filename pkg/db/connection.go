@@ -5,7 +5,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/jmoiron/sqlx"
 	"sync"
 	"time"
@@ -39,7 +39,7 @@ var defaultConnections = struct {
 	errors:    make(map[Settings]error),
 }
 
-func ProvideConnection(config cfg.Config, logger mon.Logger, configKey string) (*sqlx.DB, error) {
+func ProvideConnection(config cfg.Config, logger log.Logger, configKey string) (*sqlx.DB, error) {
 	defaultConnections.lck.Lock()
 	defer defaultConnections.lck.Unlock()
 
@@ -61,7 +61,7 @@ func ProvideConnection(config cfg.Config, logger mon.Logger, configKey string) (
 	return defaultConnections.instances[key], defaultConnections.errors[key]
 }
 
-func NewConnectionFromSettings(logger mon.Logger, settings Settings) (*sqlx.DB, error) {
+func NewConnectionFromSettings(logger log.Logger, settings Settings) (*sqlx.DB, error) {
 	var err error
 	var connection *sqlx.DB
 

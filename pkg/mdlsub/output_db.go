@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/jinzhu/gorm"
 )
 
@@ -17,7 +17,7 @@ func init() {
 	outputFactories[OutputTypeDb] = outputDbFactory
 }
 
-func outputDbFactory(config cfg.Config, logger mon.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
+func outputDbFactory(config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
 	var err error
 	var outputs = make(map[int]Output)
 
@@ -31,11 +31,11 @@ func outputDbFactory(config cfg.Config, logger mon.Logger, settings *SubscriberS
 }
 
 type OutputDb struct {
-	logger mon.Logger
+	logger log.Logger
 	orm    *gorm.DB
 }
 
-func NewOutputDb(config cfg.Config, logger mon.Logger) (*OutputDb, error) {
+func NewOutputDb(config cfg.Config, logger log.Logger) (*OutputDb, error) {
 	orm, err := db_repo.NewOrm(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)

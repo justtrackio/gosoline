@@ -5,7 +5,7 @@ import (
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/cloud"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/kinesis"
@@ -22,7 +22,7 @@ func TestGetStreamClientWithDefault(t *testing.T) {
 	config.On("GetString", "aws_dynamoDb_endpoint").Return("127.0.0.1")
 	config.On("GetString", "aws_kinesis_endpoint").Return("127.0.0.1")
 	config.On("GetInt", "aws_sdk_retries").Return(0)
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	assert.NotPanics(t, func() {
 		cloud.GetStreamClientWithDefault(config, logger)
@@ -30,7 +30,7 @@ func TestGetStreamClientWithDefault(t *testing.T) {
 }
 
 func TestStreamClient_GetActiveShardCount(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	dyn := new(cloudMocks.DynamoDBAPI)
 	dyn.On("GetItem", &dynamodb.GetItemInput{
 		TableName: aws.String("project-environment-family-application2-event_metadata"),
@@ -65,7 +65,7 @@ func TestStreamClient_GetActiveShardCount(t *testing.T) {
 }
 
 func TestStreamClient_SetShardCount(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	dyn := new(cloudMocks.DynamoDBAPI)
 
 	kin := new(cloudMocks.KinesisAPI)

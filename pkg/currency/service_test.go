@@ -9,7 +9,7 @@ import (
 	"github.com/applike/gosoline/pkg/http"
 	httpMock "github.com/applike/gosoline/pkg/http/mocks"
 	kvStoreMock "github.com/applike/gosoline/pkg/kvstore/mocks"
-	loggerMock "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -128,7 +128,7 @@ func TestCurrencyService_ToUsd_Calculation(t *testing.T) {
 }
 
 func TestUpdaterService_EnsureRecentExchangeRates(t *testing.T) {
-	logger := loggerMock.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
 
@@ -332,7 +332,7 @@ func TestCurrencyService_ToUsdAtDate_FallbackToPreviousDay(t *testing.T) {
 }
 
 func TestUpdaterService_EnsureHistoricalExchangeRates(t *testing.T) {
-	logger := loggerMock.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
 	fakeClock := clock.NewFakeClockAt(time.Date(2021, 05, 27, 0, 0, 0, 0, time.UTC))
@@ -371,7 +371,7 @@ func TestUpdaterService_EnsureHistoricalExchangeRates(t *testing.T) {
 }
 
 func TestUpdaterService_EnsureHistoricalExchangeRatesTwoGapDaysAtEnd(t *testing.T) {
-	logger := loggerMock.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
 	fakeClock := clock.NewFakeClockAt(time.Date(2021, 05, 28, 1, 0, 0, 0, time.UTC))

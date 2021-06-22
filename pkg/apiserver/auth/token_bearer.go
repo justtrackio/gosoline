@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -32,7 +32,7 @@ type Getter interface {
 }
 
 type tokenBearerAuthenticator struct {
-	logger      mon.Logger
+	logger      log.Logger
 	keyHeader   string
 	tokenHeader string
 	provider    TokenBearerProvider
@@ -61,7 +61,7 @@ func (i InvalidTokenErr) As(target interface{}) bool {
 type TokenBearerProvider func(ctx context.Context, key string, token string) (TokenBearer, error)
 type ModelProvider func() TokenBearer
 
-func NewTokenBearerHandler(config cfg.Config, logger mon.Logger, provider TokenBearerProvider) gin.HandlerFunc {
+func NewTokenBearerHandler(config cfg.Config, logger log.Logger, provider TokenBearerProvider) gin.HandlerFunc {
 	auth := NewTokenBearerAuthenticator(config, logger, provider)
 
 	return func(ginCtx *gin.Context) {
@@ -80,14 +80,14 @@ func NewTokenBearerHandler(config cfg.Config, logger mon.Logger, provider TokenB
 	}
 }
 
-func NewTokenBearerAuthenticator(config cfg.Config, logger mon.Logger, provider TokenBearerProvider) Authenticator {
+func NewTokenBearerAuthenticator(config cfg.Config, logger log.Logger, provider TokenBearerProvider) Authenticator {
 	keyHeader := config.GetString(configBearerIdHeader)
 	tokenHeader := config.GetString(configBearerTokenHeader)
 
 	return NewTokenBearerAuthenticatorWithInterfaces(logger, keyHeader, tokenHeader, provider)
 }
 
-func NewTokenBearerAuthenticatorWithInterfaces(logger mon.Logger, keyHeader string, tokenHeader string, provider TokenBearerProvider) Authenticator {
+func NewTokenBearerAuthenticatorWithInterfaces(logger log.Logger, keyHeader string, tokenHeader string, provider TokenBearerProvider) Authenticator {
 	return &tokenBearerAuthenticator{
 		logger:      logger,
 		keyHeader:   keyHeader,
