@@ -1,7 +1,7 @@
 package tracing
 
 import (
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"time"
 )
 
@@ -16,18 +16,18 @@ func (t TraceIdErrorReturnStrategy) TraceIdInvalid(err error) error {
 }
 
 type TraceIdErrorWarningStrategy struct {
-	logger             mon.Logger
-	stacktraceProvider mon.StackTraceProvider
+	logger             log.Logger
+	stacktraceProvider log.StackTraceProvider
 }
 
-func NewTraceIdErrorWarningStrategy(logger mon.Logger) *TraceIdErrorWarningStrategy {
+func NewTraceIdErrorWarningStrategy(logger log.Logger) *TraceIdErrorWarningStrategy {
 	logger = logger.WithChannel("tracing")
-	logger = mon.NewSamplingLogger(logger, time.Minute)
+	logger = log.NewSamplingLogger(logger, time.Minute)
 
-	return NewTraceIdErrorWarningStrategyWithInterfaces(logger, mon.GetStackTrace)
+	return NewTraceIdErrorWarningStrategyWithInterfaces(logger, log.GetStackTrace)
 }
 
-func NewTraceIdErrorWarningStrategyWithInterfaces(logger mon.Logger, stacktraceProvider mon.StackTraceProvider) *TraceIdErrorWarningStrategy {
+func NewTraceIdErrorWarningStrategyWithInterfaces(logger log.Logger, stacktraceProvider log.StackTraceProvider) *TraceIdErrorWarningStrategy {
 	return &TraceIdErrorWarningStrategy{
 		logger:             logger,
 		stacktraceProvider: stacktraceProvider,
@@ -37,7 +37,7 @@ func NewTraceIdErrorWarningStrategyWithInterfaces(logger mon.Logger, stacktraceP
 func (t TraceIdErrorWarningStrategy) TraceIdInvalid(err error) error {
 	stacktrace := t.stacktraceProvider(2)
 
-	t.logger.WithFields(mon.Fields{
+	t.logger.WithFields(log.Fields{
 		"stacktrace": stacktrace,
 	}).Warn("trace id is invalid: %s", err.Error())
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/applike/gosoline/pkg/mon"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/applike/gosoline/pkg/log"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
 	tracingMocks "github.com/applike/gosoline/pkg/tracing/mocks"
 	"github.com/gin-gonic/gin"
@@ -19,7 +19,7 @@ import (
 
 type ServerTestSuite struct {
 	suite.Suite
-	logger mon.Logger
+	logger log.Logger
 	router *gin.Engine
 	tracer tracing.Tracer
 	server *apiserver.ApiServer
@@ -30,7 +30,7 @@ func TestServerTestSuite(t *testing.T) {
 }
 
 func (s *ServerTestSuite) SetupTest() {
-	s.logger = monMocks.NewLoggerMockedAll()
+	s.logger = logMocks.NewLoggerMockedAll()
 
 	gin.SetMode(gin.TestMode)
 	s.router = gin.New()

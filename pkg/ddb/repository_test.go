@@ -8,8 +8,8 @@ import (
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/exec"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -37,7 +37,7 @@ type RepositoryTestSuite struct {
 }
 
 func (s *RepositoryTestSuite) SetupTest() {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 	client := new(cloudMocks.DynamoDBAPI)
 	s.executor = gosoAws.NewTestableExecutor(&client.Mock)

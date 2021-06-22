@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/redis"
 )
 
 type redisPurger struct {
-	logger mon.Logger
+	logger log.Logger
 	client redis.Client
 	name   *string
 }
 
-func newRedisPurger(config cfg.Config, logger mon.Logger, name *string) (*redisPurger, error) {
+func newRedisPurger(config cfg.Config, logger log.Logger, name *string) (*redisPurger, error) {
 	client, err := redis.ProvideClient(config, logger, *name)
 	if err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
-func ProducerDaemonFactory(config cfg.Config, logger mon.Logger) (map[string]kernel.ModuleFactory, error) {
+func ProducerDaemonFactory(config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 	var modules = map[string]kernel.ModuleFactory{}
 	var producerDaemonSettings = readAllProducerDaemonSettings(config)
 
@@ -21,7 +21,7 @@ func ProducerDaemonFactory(config cfg.Config, logger mon.Logger) (map[string]ker
 			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
 		} else {
 			moduleName := fmt.Sprintf("producer-daemon-%s", name)
-			modules[moduleName] = func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+			modules[moduleName] = func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 				return daemon, nil
 			}
 		}

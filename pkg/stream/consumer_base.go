@@ -7,7 +7,8 @@ import (
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/metric"
 	"github.com/applike/gosoline/pkg/tracing"
 	"sync"
 	"sync/atomic"
@@ -42,8 +43,8 @@ type baseConsumer struct {
 	ConsumerAcknowledge
 
 	clock        clock.Clock
-	logger       mon.Logger
-	metricWriter mon.MetricWriter
+	logger       log.Logger
+	metricWriter metric.Writer
 	tracer       tracing.Tracer
 	encoder      MessageEncoder
 
@@ -58,7 +59,7 @@ type baseConsumer struct {
 	processed        int32
 }
 
-func NewBaseConsumer(config cfg.Config, logger mon.Logger, name string, consumerCallback BaseConsumerCallback) (*baseConsumer, error) {
+func NewBaseConsumer(config cfg.Config, logger log.Logger, name string, consumerCallback BaseConsumerCallback) (*baseConsumer, error) {
 	settings := readConsumerSettings(config, name)
 	appId := cfg.GetAppIdFromConfig(config)
 
@@ -68,7 +69,7 @@ func NewBaseConsumer(config cfg.Config, logger mon.Logger, name string, consumer
 	}
 
 	defaultMetrics := getConsumerDefaultMetrics(name, settings.RunnerCount)
-	metricWriter := mon.NewMetricDaemonWriter(defaultMetrics...)
+	metricWriter := metric.NewDaemonWriter(defaultMetrics...)
 
 	input, err := NewConfigurableInput(config, logger, settings.Input)
 	if err != nil {
@@ -83,8 +84,8 @@ func NewBaseConsumer(config cfg.Config, logger mon.Logger, name string, consumer
 }
 
 func NewBaseConsumerWithInterfaces(
-	logger mon.Logger,
-	metricWriter mon.MetricWriter,
+	logger log.Logger,
+	metricWriter metric.Writer,
 	tracer tracing.Tracer,
 	input Input,
 	encoder MessageEncoder,
@@ -167,7 +168,7 @@ func (c *baseConsumer) logConsumeCounter(ctx context.Context) error {
 		case <-ticker.C:
 			processed := atomic.SwapInt32(&c.processed, 0)
 
-			logger.WithFields(mon.Fields{
+			logger.WithFields(log.Fields{
 				"count": processed,
 				"name":  c.name,
 			}).Info("processed %v messages", processed)
@@ -208,8 +209,8 @@ func (c *baseConsumer) recover() {
 func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
 	c.logger.WithContext(ctx).Error("%s: %w", msg, err)
 
-	c.metricWriter.Write(mon.MetricData{
-		&mon.MetricDatum{
+	c.metricWriter.Write(metric.Data{
+		&metric.Datum{
 			MetricName: metricNameConsumerError,
 			Dimensions: map[string]string{
 				"Consumer": c.name,
@@ -220,17 +221,17 @@ func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
 }
 
 func (c *baseConsumer) writeMetrics(duration time.Duration, processedCount int) {
-	c.metricWriter.Write(mon.MetricData{
-		&mon.MetricDatum{
-			Priority:   mon.PriorityHigh,
+	c.metricWriter.Write(metric.Data{
+		&metric.Datum{
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerDuration,
 			Dimensions: map[string]string{
 				"Consumer": c.name,
 			},
-			Unit:  mon.UnitMillisecondsAverage,
+			Unit:  metric.UnitMillisecondsAverage,
 			Value: float64(duration.Milliseconds()),
 		},
-		&mon.MetricDatum{
+		&metric.Datum{
 			MetricName: metricNameConsumerProcessedCount,
 			Dimensions: map[string]string{
 				"Consumer": c.name,
@@ -240,24 +241,24 @@ func (c *baseConsumer) writeMetrics(duration time.Duration, processedCount int) 
 	})
 }
 
-func getConsumerDefaultMetrics(name string, runnerCount int) mon.MetricData {
-	return mon.MetricData{
+func getConsumerDefaultMetrics(name string, runnerCount int) metric.Data {
+	return metric.Data{
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerProcessedCount,
 			Dimensions: map[string]string{
 				"Consumer": name,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerError,
 			Dimensions: map[string]string{
 				"Consumer": name,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 	}

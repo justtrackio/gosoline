@@ -2,15 +2,15 @@ package stream
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type ConsumerAcknowledge struct {
-	logger mon.Logger
+	logger log.Logger
 	input  Input
 }
 
-func NewConsumerAcknowledgeWithInterfaces(logger mon.Logger, input Input) ConsumerAcknowledge {
+func NewConsumerAcknowledgeWithInterfaces(logger log.Logger, input Input) ConsumerAcknowledge {
 	return ConsumerAcknowledge{
 		logger: logger,
 		input:  input,

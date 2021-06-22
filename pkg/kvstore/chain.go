@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/refl"
 )
 
 type chainKvStore struct {
-	logger   mon.Logger
+	logger   log.Logger
 	factory  func(factory Factory, settings *Settings) (KvStore, error)
 	chain    []KvStore
 	settings *Settings
@@ -19,7 +19,7 @@ type chainKvStore struct {
 
 var noValue = &struct{}{}
 
-func NewChainKvStore(config cfg.Config, logger mon.Logger, missingCacheEnabled bool, settings *Settings) (*chainKvStore, error) {
+func NewChainKvStore(config cfg.Config, logger log.Logger, missingCacheEnabled bool, settings *Settings) (*chainKvStore, error) {
 	settings.PadFromConfig(config)
 	factory := buildFactory(config, logger)
 
@@ -40,7 +40,7 @@ func NewChainKvStore(config cfg.Config, logger mon.Logger, missingCacheEnabled b
 	return NewChainKvStoreWithInterfaces(logger, factory, missingCache, settings), nil
 }
 
-func NewChainKvStoreWithInterfaces(logger mon.Logger, factory func(Factory, *Settings) (KvStore, error), missingCache KvStore, settings *Settings) *chainKvStore {
+func NewChainKvStoreWithInterfaces(logger log.Logger, factory func(Factory, *Settings) (KvStore, error), missingCache KvStore, settings *Settings) *chainKvStore {
 	return &chainKvStore{
 		logger:       logger,
 		factory:      factory,

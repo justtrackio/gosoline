@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/metric"
 	"github.com/applike/gosoline/pkg/stream"
 	"time"
 )
@@ -23,8 +24,8 @@ type Notifier interface {
 }
 
 type baseNotifier struct {
-	logger      mon.Logger
-	metric      mon.MetricWriter
+	logger      log.Logger
+	metric      metric.Writer
 	encoder     stream.MessageEncoder
 	output      stream.Output
 	modelId     mdl.ModelId
@@ -32,9 +33,9 @@ type baseNotifier struct {
 	transformer mdl.TransformerResolver
 }
 
-func NewBaseNotifier(logger mon.Logger, output stream.Output, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *baseNotifier {
+func NewBaseNotifier(logger log.Logger, output stream.Output, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *baseNotifier {
 	defaults := getDefaultNotifierMetrics(modelId)
-	mtr := mon.NewMetricDaemonWriter(defaults...)
+	mtr := metric.NewDaemonWriter(defaults...)
 
 	encoder := stream.NewMessageEncoder(&stream.MessageEncoderSettings{
 		Encoding: stream.EncodingJson,
@@ -94,39 +95,39 @@ func (n baseNotifier) writeMetric(err error) {
 		metricName = "ModelEventNotifyFailure"
 	}
 
-	n.metric.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
+	n.metric.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,
 		Dimensions: map[string]string{
 			"Application": n.modelId.Application,
 			"ModelId":     n.modelId.String(),
 		},
-		Unit:  mon.UnitCount,
+		Unit:  metric.UnitCount,
 		Value: 1.0,
 	})
 }
 
-func getDefaultNotifierMetrics(modelId mdl.ModelId) []*mon.MetricDatum {
-	return []*mon.MetricDatum{
+func getDefaultNotifierMetrics(modelId mdl.ModelId) []*metric.Datum {
+	return []*metric.Datum{
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameNotifySuccess,
 			Dimensions: map[string]string{
 				"Application": modelId.Application,
 				"ModelId":     modelId.String(),
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameNotifyFailure,
 			Dimensions: map[string]string{
 				"Application": modelId.Application,
 				"ModelId":     modelId.String(),
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 	}

@@ -7,8 +7,8 @@ import (
 	"github.com/applike/gosoline/pkg/cloud"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -83,13 +83,13 @@ func (s Settings) IsFifoEnabled() bool {
 }
 
 type queue struct {
-	logger     mon.Logger
+	logger     log.Logger
 	client     sqsiface.SQSAPI
 	executor   gosoAws.Executor
 	properties *Properties
 }
 
-func New(config cfg.Config, logger mon.Logger, settings *Settings) (Queue, error) {
+func New(config cfg.Config, logger log.Logger, settings *Settings) (Queue, error) {
 	settings.PadFromConfig(config)
 	name := QueueName(settings)
 
@@ -111,7 +111,7 @@ func New(config cfg.Config, logger mon.Logger, settings *Settings) (Queue, error
 	return NewWithInterfaces(logger, client, executor, props), nil
 }
 
-func NewWithInterfaces(logger mon.Logger, client sqsiface.SQSAPI, executor gosoAws.Executor, p *Properties) Queue {
+func NewWithInterfaces(logger log.Logger, client sqsiface.SQSAPI, executor gosoAws.Executor, p *Properties) Queue {
 	q := &queue{
 		logger:     logger,
 		client:     client,

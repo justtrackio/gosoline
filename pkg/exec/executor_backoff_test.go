@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	"github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sys/unix"
 	"io"

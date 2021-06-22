@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"net/http"
 	"sync"
 )
@@ -31,7 +31,7 @@ var tracerContainer = struct {
 	instance Tracer
 }{}
 
-func ProvideTracer(config cfg.Config, logger mon.Logger) (Tracer, error) {
+func ProvideTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
 	tracerContainer.Lock()
 	defer tracerContainer.Unlock()
 
@@ -49,7 +49,7 @@ func ProvideTracer(config cfg.Config, logger mon.Logger) (Tracer, error) {
 	return tracerContainer.instance, nil
 }
 
-func NewTracer(config cfg.Config, logger mon.Logger) (Tracer, error) {
+func NewTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
 	settings := &TracerSettings{}
 	config.UnmarshalKey("tracing", settings)
 

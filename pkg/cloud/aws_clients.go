@@ -8,7 +8,7 @@ import (
 
 	"github.com/applike/gosoline/pkg/cfg"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -67,7 +67,7 @@ type ClientSettings struct {
 	LogLevel    string        `cfg:"log_level" default:"off"`
 }
 
-func GetAwsConfig(config cfg.Config, logger mon.Logger, service string, settings *ClientSettings) *aws.Config {
+func GetAwsConfig(config cfg.Config, logger log.Logger, service string, settings *ClientSettings) *aws.Config {
 	srvCfgKey := fmt.Sprintf("aws_%s_endpoint", service)
 
 	endpoint := config.GetString(srvCfgKey)
@@ -109,7 +109,7 @@ var ddbcl = struct {
 	client map[string]dynamodbiface.DynamoDBAPI
 }{}
 
-func GetDynamoDbClient(config cfg.Config, logger mon.Logger) DynamoDBAPI {
+func GetDynamoDbClient(config cfg.Config, logger log.Logger) DynamoDBAPI {
 	ddbcl.Lock()
 	defer ddbcl.Unlock()
 
@@ -146,7 +146,7 @@ var aacl = struct {
 	initialized bool
 }{}
 
-func GetApplicationAutoScalingClient(config cfg.Config, logger mon.Logger) ApplicationAutoScalingAPI {
+func GetApplicationAutoScalingClient(config cfg.Config, logger log.Logger) ApplicationAutoScalingAPI {
 	aacl.Lock()
 	defer aacl.Unlock()
 
@@ -179,7 +179,7 @@ var ec2cl = struct {
 	initialized bool
 }{}
 
-func GetEc2Client(logger mon.Logger) EC2API {
+func GetEc2Client(logger log.Logger) EC2API {
 	ec2cl.Lock()
 	defer ec2cl.Unlock()
 
@@ -205,7 +205,7 @@ var ecscl = struct {
 	initialized bool
 }{}
 
-func GetEcsClient(logger mon.Logger) ECSAPI {
+func GetEcsClient(logger log.Logger) ECSAPI {
 	ecscl.Lock()
 	defer ecscl.Unlock()
 
@@ -231,7 +231,7 @@ var kcl = struct {
 	initialized bool
 }{}
 
-func GetKinesisClient(config cfg.Config, logger mon.Logger) KinesisAPI {
+func GetKinesisClient(config cfg.Config, logger log.Logger) KinesisAPI {
 	kcl.Lock()
 	defer kcl.Unlock()
 
@@ -264,7 +264,7 @@ var rdsClient = struct {
 	initialized bool
 }{}
 
-func GetRdsClient(config cfg.Config, logger mon.Logger) RDSAPI {
+func GetRdsClient(config cfg.Config, logger log.Logger) RDSAPI {
 	rdsClient.Lock()
 	defer rdsClient.Unlock()
 
@@ -294,7 +294,7 @@ var sdcl = struct {
 	initialized bool
 }{}
 
-func GetServiceDiscoveryClient(logger mon.Logger, endpoint string) ServiceDiscoveryAPI {
+func GetServiceDiscoveryClient(logger log.Logger, endpoint string) ServiceDiscoveryAPI {
 	sdcl.Lock()
 	defer sdcl.Unlock()
 
@@ -320,7 +320,7 @@ var ssmClient = struct {
 	initialized bool
 }{}
 
-func GetSystemsManagerClient(config cfg.Config, logger mon.Logger) SSMAPI {
+func GetSystemsManagerClient(config cfg.Config, logger log.Logger) SSMAPI {
 	ssmClient.Lock()
 	defer ssmClient.Unlock()
 
@@ -343,9 +343,9 @@ func GetSystemsManagerClient(config cfg.Config, logger mon.Logger) SSMAPI {
 	return ssmClient.client
 }
 
-func PrefixedLogger(logger mon.Logger, service string) aws.LoggerFunc {
+func PrefixedLogger(logger log.Logger, service string) aws.LoggerFunc {
 	return func(args ...interface{}) {
-		logger.WithFields(mon.Fields{
+		logger.WithFields(log.Fields{
 			"aws_service": service,
 		}).Info(fmt.Sprint(args...))
 	}

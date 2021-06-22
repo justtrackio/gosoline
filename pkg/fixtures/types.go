@@ -2,7 +2,7 @@ package fixtures
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type FixtureSet struct {
@@ -21,4 +21,4 @@ type FixtureWriter interface {
 	Write(fixture *FixtureSet) error
 }
 
-type FixtureWriterFactory func(config cfg.Config, logger mon.Logger) (FixtureWriter, error)
+type FixtureWriterFactory func(config cfg.Config, logger log.Logger) (FixtureWriter, error)

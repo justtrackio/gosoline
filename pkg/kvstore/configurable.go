@@ -3,7 +3,7 @@ package kvstore
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"sync"
 	"time"
 )
@@ -37,7 +37,7 @@ type InMemoryConfiguration struct {
 	GetsPerPromote int32  `cfg:"gets_per_promote" default:"3"`
 }
 
-func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) (KvStore, error) {
+func NewConfigurableKvStore(config cfg.Config, logger log.Logger, name string) (KvStore, error) {
 	key := fmt.Sprintf("kvstore.%s.type", name)
 	t := config.GetString(key)
 
@@ -49,7 +49,7 @@ func NewConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) (
 	return nil, fmt.Errorf("invalid kvstore %s of type %s", name, t)
 }
 
-func newKvStoreChainFromConfig(config cfg.Config, logger mon.Logger, name string) (KvStore, error) {
+func newKvStoreChainFromConfig(config cfg.Config, logger log.Logger, name string) (KvStore, error) {
 	key := GetConfigurableKey(name)
 
 	configuration := ChainConfiguration{}
@@ -115,7 +115,7 @@ func ResetConfigurableKvStores() {
 	configurableKvStores = map[string]KvStore{}
 }
 
-func ProvideConfigurableKvStore(config cfg.Config, logger mon.Logger, name string) (KvStore, error) {
+func ProvideConfigurableKvStore(config cfg.Config, logger log.Logger, name string) (KvStore, error) {
 	configurableKvStoreLock.Lock()
 	defer configurableKvStoreLock.Unlock()
 

@@ -2,7 +2,8 @@ package stream_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
+	metricMocks "github.com/applike/gosoline/pkg/metric/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -21,8 +22,8 @@ func (c *callback) Process(ctx context.Context, messages []*stream.Message) ([]*
 }
 
 func runPipelineWithSettings(t *testing.T, settings *stream.PipelineSettings, ctx context.Context) {
-	logger := mocks.NewLoggerMockedAll()
-	metric := mocks.NewMetricWriterMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
+	metric := metricMocks.NewWriterMockedAll()
 	output := stream.NewInMemoryOutput()
 
 	input := stream.NewInMemoryInput(&stream.InMemorySettings{Size: 1})

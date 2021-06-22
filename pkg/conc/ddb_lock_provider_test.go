@@ -9,7 +9,7 @@ import (
 	"github.com/applike/gosoline/pkg/ddb"
 	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
 	"github.com/applike/gosoline/pkg/exec"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/uuid"
 	uuidMocks "github.com/applike/gosoline/pkg/uuid/mocks"
 	"github.com/cenkalti/backoff"
@@ -57,7 +57,7 @@ func (s *ddbLockProviderTestSuite) SetupSuite() {
 }
 
 func (s *ddbLockProviderTestSuite) SetupTest() {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	s.ctx = context.Background()
 	s.repo = new(ddbMocks.Repository)
 	s.clock = clock.NewFakeClock()

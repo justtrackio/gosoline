@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/twinj/uuid"
 	"github.com/twitchscience/kinsumer"
 	"time"
@@ -18,7 +18,7 @@ type Kinsumer interface {
 }
 
 type kinsumerLogger struct {
-	logger mon.Logger
+	logger log.Logger
 }
 
 func (k kinsumerLogger) Log(format string, args ...interface{}) {
@@ -34,13 +34,13 @@ func (k *KinsumerSettings) GetResourceName() string {
 	return k.StreamName
 }
 
-func NewKinsumer(config cfg.Config, logger mon.Logger, settings KinsumerSettings) (Kinsumer, error) {
+func NewKinsumer(config cfg.Config, logger log.Logger, settings KinsumerSettings) (Kinsumer, error) {
 	kinesisClient := cloud.GetKinesisClient(config, logger)
 	dynamoDbClient := cloud.GetDynamoDbClient(config, logger)
 
 	clientName := uuid.NewV4().String()
 
-	logger = logger.WithFields(mon.Fields{
+	logger = logger.WithFields(log.Fields{
 		"applicationName":  settings.ApplicationName,
 		"clientIdentifier": clientName,
 		"inputStream":      settings.StreamName,

@@ -26,7 +26,7 @@ require (
 	github.com/elliotchance/redismock/v8 v8.6.1
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/fatih/color v1.7.0
-	github.com/getsentry/sentry-go v0.9.0
+	github.com/getsentry/sentry-go v0.11.0
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.6.3

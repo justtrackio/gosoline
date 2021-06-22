@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/stream"
 )
 
@@ -32,18 +32,18 @@ type Publisher interface {
 }
 
 type publisher struct {
-	logger   mon.Logger
+	logger   log.Logger
 	producer stream.Producer
 	settings *PublisherSettings
 }
 
-func NewPublisher(config cfg.Config, logger mon.Logger, name string) (*publisher, error) {
+func NewPublisher(config cfg.Config, logger log.Logger, name string) (*publisher, error) {
 	settings := readPublisherSetting(config, name)
 
 	return NewPublisherWithSettings(config, logger, settings)
 }
 
-func NewPublisherWithSettings(config cfg.Config, logger mon.Logger, settings *PublisherSettings) (*publisher, error) {
+func NewPublisherWithSettings(config cfg.Config, logger log.Logger, settings *PublisherSettings) (*publisher, error) {
 	var err error
 	var producer stream.Producer
 
@@ -54,7 +54,7 @@ func NewPublisherWithSettings(config cfg.Config, logger mon.Logger, settings *Pu
 	return NewPublisherWithInterfaces(logger, producer, settings), nil
 }
 
-func NewPublisherWithInterfaces(logger mon.Logger, producer stream.Producer, settings *PublisherSettings) *publisher {
+func NewPublisherWithInterfaces(logger log.Logger, producer stream.Producer, settings *PublisherSettings) *publisher {
 	return &publisher{
 		logger:   logger,
 		producer: producer,

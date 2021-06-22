@@ -2,7 +2,7 @@ package sns_test
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/sns"
 	snsMocks "github.com/applike/gosoline/pkg/sns/mocks"
 	"github.com/aws/aws-sdk-go/aws"
@@ -30,7 +30,7 @@ func TestCreateTopic(t *testing.T) {
 		TopicArn: aws.String("arn"),
 	}, nil)
 
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	arn, err := sns.CreateTopic(logger, client, s)
 
@@ -56,7 +56,7 @@ func TestCreateTopicFailing(t *testing.T) {
 		Name: aws.String("mcoins-test-analytics-topicker-topic"),
 	}).Return(nil, errors.New(""))
 
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	arn, err := sns.CreateTopic(logger, client, s)
 

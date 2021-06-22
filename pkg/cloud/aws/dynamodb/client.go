@@ -6,7 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -16,7 +16,7 @@ type Settings struct {
 	gosoAws.ClientSettings
 }
 
-func NewClient(ctx context.Context, config cfg.Config, logger mon.Logger, name string, optFns ...func(options *awsCfg.LoadOptions) error) (*dynamodb.Client, error) {
+func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...func(options *awsCfg.LoadOptions) error) (*dynamodb.Client, error) {
 	key := fmt.Sprintf("cloud.aws.dynamodb.clients.%s", name)
 	settings := &Settings{}
 	config.UnmarshalKey(key, settings,
@@ -27,7 +27,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger mon.Logger, name s
 	return NewClientWithInterfaces(ctx, config, logger, clock.Provider, settings, optFns...)
 }
 
-func NewClientWithInterfaces(ctx context.Context, config cfg.Config, logger mon.Logger, clock clock.Clock, settings *Settings, optFns ...func(options *awsCfg.LoadOptions) error) (*dynamodb.Client, error) {
+func NewClientWithInterfaces(ctx context.Context, config cfg.Config, logger log.Logger, clock clock.Clock, settings *Settings, optFns ...func(options *awsCfg.LoadOptions) error) (*dynamodb.Client, error) {
 	var err error
 	var awsConfig aws.Config
 

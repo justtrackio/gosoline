@@ -3,14 +3,14 @@ package stream
 import (
 	"context"
 	configMocks "github.com/applike/gosoline/pkg/cfg/mocks"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestFileInput_Run(t *testing.T) {
 	configMock := new(configMocks.Config)
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 
 	input := NewFileInput(configMock, loggerMock, FileSettings{
 		Filename: "testdata/file_input.json",

@@ -5,7 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
@@ -20,7 +20,7 @@ type testModule struct {
 	t *testing.T
 }
 
-func (m testModule) Boot(config cfg.Config, _ mon.Logger) error {
+func (m testModule) Boot(config cfg.Config, _ log.Logger) error {
 	settings := &testSettings{}
 	config.UnmarshalKey("test.settings-struct", settings)
 
@@ -39,7 +39,7 @@ func TestDefaultConfigParser(t *testing.T) {
 
 	runTestApp(t, func() {
 		app := application.Default()
-		app.Add("test", func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+		app.Add("test", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return testModule{
 				t: t,
 			}, nil

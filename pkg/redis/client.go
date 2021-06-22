@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	baseRedis "github.com/go-redis/redis/v8"
 	"time"
 )
@@ -71,15 +71,15 @@ type Client interface {
 
 type redisClient struct {
 	base     baseRedis.Cmdable
-	logger   mon.Logger
+	logger   log.Logger
 	executor exec.Executor
 	settings *Settings
 }
 
-func NewClient(config cfg.Config, logger mon.Logger, name string) (Client, error) {
+func NewClient(config cfg.Config, logger log.Logger, name string) (Client, error) {
 	settings := ReadSettings(config, name)
 
-	logger = logger.WithFields(mon.Fields{
+	logger = logger.WithFields(log.Fields{
 		"redis": name,
 	})
 
@@ -97,7 +97,7 @@ func NewClient(config cfg.Config, logger mon.Logger, name string) (Client, error
 	return NewClientWithInterfaces(logger, baseClient, executor, settings), nil
 }
 
-func NewClientWithInterfaces(logger mon.Logger, baseRedis baseRedis.Cmdable, executor exec.Executor, settings *Settings) Client {
+func NewClientWithInterfaces(logger log.Logger, baseRedis baseRedis.Cmdable, executor exec.Executor, settings *Settings) Client {
 	return &redisClient{
 		logger:   logger,
 		base:     baseRedis,

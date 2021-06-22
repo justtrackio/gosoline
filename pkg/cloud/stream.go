@@ -3,7 +3,7 @@ package cloud
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -26,7 +26,7 @@ type StreamClient interface {
 }
 
 type AwsStreamClient struct {
-	logger         mon.Logger
+	logger         log.Logger
 	appId          *cfg.AppId
 	environment    string
 	dynamoDbClient dynamodbiface.DynamoDBAPI
@@ -43,7 +43,7 @@ type ScaleStreamInput struct {
 	Count   int
 }
 
-func GetStreamClientWithDefault(config cfg.Config, logger mon.Logger) StreamClient {
+func GetStreamClientWithDefault(config cfg.Config, logger log.Logger) StreamClient {
 	env := config.GetString("env")
 
 	appId := &cfg.AppId{}
@@ -55,7 +55,7 @@ func GetStreamClientWithDefault(config cfg.Config, logger mon.Logger) StreamClie
 	return GetStreamClientWithInterfaces(logger, appId, dyn, kin, env)
 }
 
-func GetStreamClientWithInterfaces(logger mon.Logger, appId *cfg.AppId, dyn dynamodbiface.DynamoDBAPI, kin kinesisiface.KinesisAPI, env string) StreamClient {
+func GetStreamClientWithInterfaces(logger log.Logger, appId *cfg.AppId, dyn dynamodbiface.DynamoDBAPI, kin kinesisiface.KinesisAPI, env string) StreamClient {
 	return &AwsStreamClient{
 		logger:         logger,
 		appId:          appId,
@@ -78,7 +78,7 @@ func (sc *AwsStreamClient) GetActiveShardCount(application, eventType string) in
 	})
 
 	if err != nil {
-		sc.logger.WithFields(mon.Fields{
+		sc.logger.WithFields(log.Fields{
 			"tableName": tableName,
 		}).Warn(err.Error())
 
@@ -90,7 +90,7 @@ func (sc *AwsStreamClient) GetActiveShardCount(application, eventType string) in
 	err = dynamodbattribute.UnmarshalMap(out.Item, &shardCache)
 
 	if err != nil {
-		sc.logger.WithFields(mon.Fields{
+		sc.logger.WithFields(log.Fields{
 			"tableName": tableName,
 		}).Warn("Error unmarshalling dynamodbattribute map: %s", err)
 

@@ -3,27 +3,26 @@ package lambda
 import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/stream"
 	awsLambda "github.com/aws/aws-lambda-go/lambda"
 	"os"
 	"strings"
 )
 
-type Handler func(config cfg.Config, logger mon.Logger) interface{}
+type Handler func(config cfg.Config, logger log.Logger) interface{}
 
 func Start(handler Handler, defaultConfig ...map[string]interface{}) {
 	clock.WithUseUTC(true)
 
-	// configure logger
-	loggerOptions := []mon.LoggerOption{
-		mon.WithFormat(mon.FormatConsole),
-		// logs for lambda functions already provide timestamps, so we don't need these
-		mon.WithTimestampFormat(""),
-		mon.WithContextFieldsResolver(mon.ContextLoggerFieldsResolver),
+	logHandler := log.NewHandlerIoWriter(log.LevelInfo, []string{}, log.FormatterConsole, "", os.Stdout)
+	loggerOptions := []log.Option{
+		log.WithHandlers(logHandler),
+		log.WithContextFieldsResolver(log.ContextLoggerFieldsResolver),
 	}
 
-	logger := mon.NewLogger()
+	logger := log.NewLogger()
+
 	if err := logger.Option(loggerOptions...); err != nil {
 		logger.Error("failed to apply logger options: %w", err)
 		os.Exit(1)
@@ -49,7 +48,7 @@ func Start(handler Handler, defaultConfig ...map[string]interface{}) {
 		os.Exit(1)
 	}
 
-	stream.AddDefaultEncodeHandler(mon.NewMessageWithLoggingFieldsEncoder(config, logger))
+	stream.AddDefaultEncodeHandler(log.NewMessageWithLoggingFieldsEncoder(config, logger))
 
 	// create handler function and give lambda control
 	lambdaHandler := handler(config, logger)

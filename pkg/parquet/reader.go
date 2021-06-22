@@ -6,8 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -39,7 +39,7 @@ type Reader interface {
 }
 
 type s3Reader struct {
-	logger   mon.Logger
+	logger   log.Logger
 	s3Cfg    *aws.Config
 	s3Client s3iface.S3API
 
@@ -48,7 +48,7 @@ type s3Reader struct {
 	recorder             FileRecorder
 }
 
-func NewReader(config cfg.Config, logger mon.Logger, settings *ReaderSettings) *s3Reader {
+func NewReader(config cfg.Config, logger log.Logger, settings *ReaderSettings) *s3Reader {
 	s3Cfg := blob.GetS3ClientConfig(config)
 	s3Client := blob.ProvideS3Client(config)
 
@@ -67,7 +67,7 @@ func NewReader(config cfg.Config, logger mon.Logger, settings *ReaderSettings) *
 }
 
 func NewReaderWithInterfaces(
-	logger mon.Logger,
+	logger log.Logger,
 	s3Cfg *aws.Config,
 	s3Client s3iface.S3API,
 	modelId mdl.ModelId,

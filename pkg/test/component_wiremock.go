@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -21,7 +21,7 @@ type wiremockComponent struct {
 	settings *wiremockSettings
 }
 
-func (w *wiremockComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
+func (w *wiremockComponent) Boot(config cfg.Config, _ log.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	w.name = name
 	w.runner = runner
 	w.settings = &wiremockSettings{

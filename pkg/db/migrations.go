@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
@@ -16,7 +16,7 @@ type MigrationSettings struct {
 	Enabled        bool   `cfg:"enabled" default:"false"`
 }
 
-func runMigrations(logger mon.Logger, settings Settings, db *sqlx.DB) error {
+func runMigrations(logger log.Logger, settings Settings, db *sqlx.DB) error {
 	if !settings.Migrations.Enabled || settings.Migrations.Path == "" {
 		return nil
 	}

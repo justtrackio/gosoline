@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type ddbRepoFactory func() (ddb.Repository, error)
 
 type dynamoDbFixtureWriter struct {
-	logger  mon.Logger
+	logger  log.Logger
 	factory ddbRepoFactory
 	purger  *dynamodbPurger
 }
 
 func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOption) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
+	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		settings := &ddb.Settings{
 			ModelId:    settings.ModelId,
 			AutoCreate: true,
@@ -43,7 +43,7 @@ func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOp
 	}
 }
 
-func NewDynamoDbFixtureWriterWithInterfaces(logger mon.Logger, factory ddbRepoFactory, purger *dynamodbPurger) FixtureWriter {
+func NewDynamoDbFixtureWriterWithInterfaces(logger log.Logger, factory ddbRepoFactory, purger *dynamodbPurger) FixtureWriter {
 	return &dynamoDbFixtureWriter{
 		logger:  logger,
 		factory: factory,

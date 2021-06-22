@@ -6,8 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/fixtures"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/test"
 	gosoAssert "github.com/applike/gosoline/pkg/test/assert"
 	"github.com/stretchr/testify/suite"
@@ -17,7 +17,7 @@ import (
 type FixturesMysqlSuite struct {
 	suite.Suite
 	loader fixtures.FixtureLoader
-	logger mon.Logger
+	logger log.Logger
 	mocks  *test.Mocks
 }
 
@@ -60,7 +60,7 @@ func (s *FixturesMysqlSuite) SetupSuite() {
 		}),
 	)
 
-	s.logger = mon.NewLogger()
+	s.logger = log.NewCliLogger()
 	s.loader = fixtures.NewFixtureLoader(config, s.logger)
 }
 

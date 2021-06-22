@@ -7,7 +7,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/ory/ladon"
 	"github.com/thoas/go-funk"
 )
@@ -20,11 +20,11 @@ const (
 )
 
 type SqlManager struct {
-	logger   mon.Logger
+	logger   log.Logger
 	dbClient db.Client
 }
 
-func NewSqlManager(config cfg.Config, logger mon.Logger) (*SqlManager, error) {
+func NewSqlManager(config cfg.Config, logger log.Logger) (*SqlManager, error) {
 	dbClient, err := db.NewClient(config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create dbClient: %w", err)
@@ -33,7 +33,7 @@ func NewSqlManager(config cfg.Config, logger mon.Logger) (*SqlManager, error) {
 	return NewSqlManagerWithInterfaces(logger, dbClient), nil
 }
 
-func NewSqlManagerWithInterfaces(logger mon.Logger, dbClient db.Client) *SqlManager {
+func NewSqlManagerWithInterfaces(logger log.Logger, dbClient db.Client) *SqlManager {
 	return &SqlManager{
 		logger:   logger,
 		dbClient: dbClient,

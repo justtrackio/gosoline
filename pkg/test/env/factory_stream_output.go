@@ -3,7 +3,7 @@ package env
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/stream"
 )
 
@@ -46,7 +46,7 @@ func (f streamOutputFactory) DescribeContainers(settings interface{}) componentC
 	return nil
 }
 
-func (f streamOutputFactory) Component(_ cfg.Config, _ mon.Logger, _ map[string]*container, settings interface{}) (Component, error) {
+func (f streamOutputFactory) Component(_ cfg.Config, _ log.Logger, _ map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*streamOutputSettings)
 
 	component := &streamOutputComponent{

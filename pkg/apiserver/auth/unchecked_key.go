@@ -3,16 +3,16 @@ package auth
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 type uncheckedKeyAuthenticator struct {
-	logger mon.Logger
+	logger log.Logger
 }
 
-func NewUncheckedKeyHandler(config cfg.Config, logger mon.Logger) gin.HandlerFunc {
+func NewUncheckedKeyHandler(config cfg.Config, logger log.Logger) gin.HandlerFunc {
 	auth := NewUncheckedKeyAuthenticator(config, logger)
 
 	return func(ginCtx *gin.Context) {
@@ -31,11 +31,11 @@ func NewUncheckedKeyHandler(config cfg.Config, logger mon.Logger) gin.HandlerFun
 	}
 }
 
-func NewUncheckedKeyAuthenticator(_ cfg.Config, logger mon.Logger) Authenticator {
+func NewUncheckedKeyAuthenticator(_ cfg.Config, logger log.Logger) Authenticator {
 	return NewUncheckedKeyAuthenticatorWithInterfaces(logger)
 }
 
-func NewUncheckedKeyAuthenticatorWithInterfaces(logger mon.Logger) Authenticator {
+func NewUncheckedKeyAuthenticatorWithInterfaces(logger log.Logger) Authenticator {
 	return &uncheckedKeyAuthenticator{
 		logger: logger,
 	}

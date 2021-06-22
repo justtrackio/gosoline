@@ -3,7 +3,7 @@ package ddb
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 //go:generate mockery -name SimpleRepository
@@ -19,7 +19,7 @@ type simpleRepository struct {
 	base Repository
 }
 
-func NewSimpleRepository(config cfg.Config, logger mon.Logger, settings *SimpleSettings) (*simpleRepository, error) {
+func NewSimpleRepository(config cfg.Config, logger log.Logger, settings *SimpleSettings) (*simpleRepository, error) {
 	baseSettings := &Settings{
 		ModelId: settings.ModelId,
 		Main: MainSettings{

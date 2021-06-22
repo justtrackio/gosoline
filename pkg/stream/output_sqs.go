@@ -6,8 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -27,12 +27,12 @@ type SqsOutputSettings struct {
 }
 
 type sqsOutput struct {
-	logger   mon.Logger
+	logger   log.Logger
 	queue    sqs.Queue
 	settings SqsOutputSettings
 }
 
-func NewSqsOutput(config cfg.Config, logger mon.Logger, s SqsOutputSettings) (Output, error) {
+func NewSqsOutput(config cfg.Config, logger log.Logger, s SqsOutputSettings) (Output, error) {
 	s.PadFromConfig(config)
 
 	queue, err := sqs.New(config, logger, &sqs.Settings{
@@ -51,7 +51,7 @@ func NewSqsOutput(config cfg.Config, logger mon.Logger, s SqsOutputSettings) (Ou
 	return NewSqsOutputWithInterfaces(logger, queue, s), nil
 }
 
-func NewSqsOutputWithInterfaces(logger mon.Logger, queue sqs.Queue, s SqsOutputSettings) Output {
+func NewSqsOutputWithInterfaces(logger log.Logger, queue sqs.Queue, s SqsOutputSettings) Output {
 	return &sqsOutput{
 		logger:   logger,
 		queue:    queue,
@@ -150,8 +150,8 @@ func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg WritableMessage) (*
 	}
 
 	if o.settings.Fifo.ContentBasedDeduplication && messageDeduplicationId == nil {
-		o.logger.WithContext(ctx).WithFields(mon.Fields{
-			"stacktrace": mon.GetStackTrace(0),
+		o.logger.WithContext(ctx).WithFields(log.Fields{
+			"stacktrace": log.GetStackTrace(0),
 		}).Warn("writing message to queue %s (which is configured to use content based deduplication) without message deduplication id", o.queue.GetName())
 	}
 

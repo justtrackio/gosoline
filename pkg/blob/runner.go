@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/metric"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -38,7 +39,7 @@ func ProvideBatchRunner() kernel.ModuleFactory {
 	br.Lock()
 	defer br.Unlock()
 
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		if br.instance != nil {
 			return br.instance, nil
 		}
@@ -58,19 +59,19 @@ type batchRunner struct {
 	kernel.ForegroundModule
 	kernel.ServiceStage
 
-	logger   mon.Logger
-	metric   mon.MetricWriter
+	logger   log.Logger
+	metric   metric.Writer
 	client   s3iface.S3API
 	channels *BatchRunnerChannels
 	settings *BatchRunnerSettings
 }
 
-func NewBatchRunner(config cfg.Config, logger mon.Logger) *batchRunner {
+func NewBatchRunner(config cfg.Config, logger log.Logger) *batchRunner {
 	settings := &BatchRunnerSettings{}
 	config.UnmarshalKey("blob", settings)
 
 	defaultMetrics := getDefaultRunnerMetrics()
-	metricWriter := mon.NewMetricDaemonWriter(defaultMetrics...)
+	metricWriter := metric.NewDaemonWriter(defaultMetrics...)
 
 	runner := &batchRunner{
 		logger:   logger,
@@ -235,53 +236,53 @@ func (r *batchRunner) executeDelete(ctx context.Context) {
 }
 
 func (r *batchRunner) writeMetric(operation string) {
-	r.metric.WriteOne(&mon.MetricDatum{
+	r.metric.WriteOne(&metric.Datum{
 		MetricName: metricName,
-		Priority:   mon.PriorityHigh,
+		Priority:   metric.PriorityHigh,
 		Dimensions: map[string]string{
 			"Operation": operation,
 		},
-		Unit:  mon.UnitCount,
+		Unit:  metric.UnitCount,
 		Value: 1.0,
 	})
 }
 
-func getDefaultRunnerMetrics() []*mon.MetricDatum {
-	return []*mon.MetricDatum{
+func getDefaultRunnerMetrics() []*metric.Datum {
+	return []*metric.Datum{
 		{
 			MetricName: metricName,
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			Dimensions: map[string]string{
 				"Operation": operationRead,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 		{
 			MetricName: metricName,
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			Dimensions: map[string]string{
 				"Operation": operationWrite,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 		{
 			MetricName: metricName,
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			Dimensions: map[string]string{
 				"Operation": operationCopy,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 		{
 			MetricName: metricName,
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			Dimensions: map[string]string{
 				"Operation": operationDelete,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 	}

@@ -3,7 +3,7 @@ package db_repo
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"time"
 )
 
@@ -31,7 +31,7 @@ func (c *ChangeHistoryModel) GetHistoryRevision() int {
 	return c.ChangeHistoryRevision
 }
 
-func MigrateChangeHistory(config cfg.Config, logger mon.Logger, models ...ModelBased) error {
+func MigrateChangeHistory(config cfg.Config, logger log.Logger, models ...ModelBased) error {
 	for _, model := range models {
 		manager, err := newChangeHistoryManager(config, logger, model)
 		if err != nil {

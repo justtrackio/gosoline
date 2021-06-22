@@ -2,7 +2,7 @@ package stream_test
 
 import (
 	"context"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	sqsMocks "github.com/applike/gosoline/pkg/sqs/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/aws/aws-sdk-go/aws"
@@ -13,7 +13,7 @@ import (
 )
 
 func TestSqsInput_Run(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	count := 0
 	waitReadDone := make(chan struct{})
@@ -67,7 +67,7 @@ func TestSqsInput_Run(t *testing.T) {
 }
 
 func TestSqsInput_Run_Failure(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	count := 0
 	waitRunDone := make(chan struct{})

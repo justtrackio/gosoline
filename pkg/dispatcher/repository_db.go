@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type Repository struct {
 	db_repo.Repository
 	dispatcher Dispatcher
-	logger     mon.Logger
+	logger     log.Logger
 }
 
-func NewRepository(config cfg.Config, logger mon.Logger, repo db_repo.Repository) db_repo.Repository {
+func NewRepository(config cfg.Config, logger log.Logger, repo db_repo.Repository) db_repo.Repository {
 	disp := Get()
 
 	return &Repository{

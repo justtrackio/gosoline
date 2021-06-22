@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
 	"sort"
 )
@@ -29,7 +29,7 @@ func DdbBaseName(settings *Settings) string {
 	return fmt.Sprintf("kvstore-%s", settings.Name)
 }
 
-func NewDdbKvStore(config cfg.Config, logger mon.Logger, settings *Settings) (KvStore, error) {
+func NewDdbKvStore(config cfg.Config, logger log.Logger, settings *Settings) (KvStore, error) {
 	settings.PadFromConfig(config)
 	name := DdbBaseName(settings)
 

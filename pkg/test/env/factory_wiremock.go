@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -71,7 +71,7 @@ func (f *wiremockFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *wiremockFactory) Component(_ cfg.Config, logger mon.Logger, containers map[string]*container, settings interface{}) (Component, error) {
+func (f *wiremockFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
 	component := &wiremockComponent{
 		logger:  logger,
 		binding: containers["main"].bindings["8080/tcp"],

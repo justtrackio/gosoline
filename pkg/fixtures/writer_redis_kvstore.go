@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 )
 
 type redisKvStoreFixtureWriter struct {
-	logger mon.Logger
+	logger log.Logger
 	store  kvstore.KvStore
 	purger *redisPurger
 }
 
 func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
+	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		settings := &kvstore.Settings{
 			AppId: cfg.AppId{
 				Project:     modelId.Project,
@@ -43,7 +43,7 @@ func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory
 	}
 }
 
-func NewRedisKvStoreFixtureWriterWithInterfaces(logger mon.Logger, store kvstore.KvStore, purger *redisPurger) FixtureWriter {
+func NewRedisKvStoreFixtureWriterWithInterfaces(logger log.Logger, store kvstore.KvStore, purger *redisPurger) FixtureWriter {
 	return &redisKvStoreFixtureWriter{
 		logger: logger,
 		store:  store,

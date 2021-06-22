@@ -3,7 +3,7 @@ package sns
 import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sns/snsiface"
@@ -20,7 +20,7 @@ var c = struct {
 	instance *sns.SNS
 }{}
 
-func ProvideClient(config cfg.Config, logger mon.Logger, settings *Settings) *sns.SNS {
+func ProvideClient(config cfg.Config, logger log.Logger, settings *Settings) *sns.SNS {
 	c.Lock()
 	defer c.Unlock()
 
@@ -33,7 +33,7 @@ func ProvideClient(config cfg.Config, logger mon.Logger, settings *Settings) *sn
 	return c.instance
 }
 
-func NewClient(config cfg.Config, logger mon.Logger, settings *Settings) *sns.SNS {
+func NewClient(config cfg.Config, logger log.Logger, settings *Settings) *sns.SNS {
 	if settings.Backoff.Enabled {
 		settings.Client.MaxRetries = 0
 	}

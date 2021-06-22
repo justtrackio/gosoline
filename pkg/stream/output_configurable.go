@@ -5,7 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/sqs"
 )
 
@@ -27,7 +27,7 @@ type BaseOutputSettings struct {
 	} `cfg:"tracing"`
 }
 
-func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) (Output, error) {
+func NewConfigurableOutput(config cfg.Config, logger log.Logger, name string) (Output, error) {
 	var outputFactories = map[string]OutputFactory{
 		OutputTypeFile:     newFileOutputFromConfig,
 		OutputTypeInMemory: newInMemoryOutputFromConfig,
@@ -58,7 +58,7 @@ func NewConfigurableOutput(config cfg.Config, logger mon.Logger, name string) (O
 	return NewOutputTracer(config, logger, output, name)
 }
 
-func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) (Output, error) {
+func newFileOutputFromConfig(config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	settings := &FileOutputSettings{}
 	config.UnmarshalKey(key, settings)
@@ -66,7 +66,7 @@ func newFileOutputFromConfig(config cfg.Config, logger mon.Logger, name string) 
 	return NewFileOutput(config, logger, settings), nil
 }
 
-func newInMemoryOutputFromConfig(_ cfg.Config, _ mon.Logger, name string) (Output, error) {
+func newInMemoryOutputFromConfig(_ cfg.Config, _ log.Logger, name string) (Output, error) {
 	return ProvideInMemoryOutput(name), nil
 }
 
@@ -75,7 +75,7 @@ type kinesisOutputConfiguration struct {
 	Backoff    exec.BackoffSettings `cfg:"backoff"`
 }
 
-func newKinesisOutputFromConfig(config cfg.Config, logger mon.Logger, name string) (Output, error) {
+func newKinesisOutputFromConfig(config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	settings := &kinesisOutputConfiguration{}
 	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
@@ -95,7 +95,7 @@ type redisListOutputConfiguration struct {
 	BatchSize   int    `cfg:"batch_size" default:"100"`
 }
 
-func newRedisListOutputFromConfig(config cfg.Config, logger mon.Logger, name string) (Output, error) {
+func newRedisListOutputFromConfig(config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 
 	configuration := redisListOutputConfiguration{}
@@ -123,7 +123,7 @@ type SnsOutputConfiguration struct {
 	Client      cloud.ClientSettings `cfg:"client"`
 }
 
-func newSnsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) (Output, error) {
+func newSnsOutputFromConfig(config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 
 	configuration := SnsOutputConfiguration{}
@@ -153,7 +153,7 @@ type sqsOutputConfiguration struct {
 	Fifo              sqs.FifoSettings     `cfg:"fifo"`
 }
 
-func newSqsOutputFromConfig(config cfg.Config, logger mon.Logger, name string) (Output, error) {
+func newSqsOutputFromConfig(config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 
 	configuration := sqsOutputConfiguration{}

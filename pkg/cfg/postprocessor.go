@@ -29,11 +29,12 @@ func AddPostProcessor(priority int, name string, processor PostProcessor) {
 	postProcessorEntities[priority] = append(postProcessorEntities[priority], entity)
 }
 
-func ApplyPostProcessors(config GosoConf, logger Logger) error {
+func ApplyPostProcessors(config GosoConf) (map[string]int, error) {
 	sort.Ints(postProcessorPriorities)
 
 	var err error
 	var applied bool
+	var list = make(map[string]int)
 
 	for i := len(postProcessorPriorities) - 1; i >= 0; i-- {
 		priority := postProcessorPriorities[i]
@@ -42,16 +43,16 @@ func ApplyPostProcessors(config GosoConf, logger Logger) error {
 			processor := entity.processor
 
 			if applied, err = processor(config); err != nil {
-				return fmt.Errorf("can not apply post processor '%s' on config: %w", entity.name, err)
+				return nil, fmt.Errorf("can not apply post processor '%s' on config: %w", entity.name, err)
 			}
 
 			if !applied {
 				continue
 			}
 
-			logger.Info("applied priority %d config post processor '%s'", priority, entity.name)
+			list[entity.name] = priority
 		}
 	}
 
-	return nil
+	return list, nil
 }

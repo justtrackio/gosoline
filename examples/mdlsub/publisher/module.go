@@ -6,8 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/kernel"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdlsub"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/uuid"
 	"math/rand"
 	"time"
@@ -19,12 +19,12 @@ type RandomNumber struct {
 }
 
 type publisherModule struct {
-	logger    mon.Logger
+	logger    log.Logger
 	uuidGen   uuid.Uuid
 	publisher mdlsub.Publisher
 }
 
-func newPublisherModule(_ context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+func newPublisherModule(_ context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	var err error
 	var publisher mdlsub.Publisher
 

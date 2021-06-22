@@ -7,8 +7,8 @@ import (
 	"github.com/applike/gosoline/pkg/apiserver/crud"
 	"github.com/applike/gosoline/pkg/apiserver/crud/mocks"
 	"github.com/applike/gosoline/pkg/db-repo"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
 	"github.com/applike/gosoline/pkg/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -124,7 +124,7 @@ func TestCreateHandler_Handle(t *testing.T) {
 		Name: mdl.String("foobar"),
 	}
 
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Create", mock.AnythingOfType("*context.emptyCtx"), model).Run(func(args mock.Arguments) {
@@ -155,7 +155,7 @@ func TestCreateHandler_Handle_ValidationError(t *testing.T) {
 		Name: mdl.String("foobar"),
 	}
 
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Create", mock.AnythingOfType("*context.emptyCtx"), model).Return(&validation.Error{
@@ -176,7 +176,7 @@ func TestCreateHandler_Handle_ValidationError(t *testing.T) {
 func TestReadHandler_Handle(t *testing.T) {
 	model := &Model{}
 
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
@@ -209,7 +209,7 @@ func TestUpdateHandler_Handle(t *testing.T) {
 		Name: mdl.String("updated"),
 	}
 
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(nil)
@@ -245,7 +245,7 @@ func TestUpdateHandler_Handle_ValidationError(t *testing.T) {
 		Name: mdl.String("updated"),
 	}
 
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(&validation.Error{
@@ -283,7 +283,7 @@ func TestDeleteHandler_Handle(t *testing.T) {
 		Name: mdl.String("foobar"),
 	}
 
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
@@ -317,7 +317,7 @@ func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
 		Name: mdl.String("foobar"),
 	}
 
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
@@ -341,7 +341,7 @@ func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
 }
 
 func TestListHandler_Handle(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 	handler := crud.NewListHandler(logger, transformer)
 

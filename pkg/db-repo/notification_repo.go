@@ -3,18 +3,18 @@ package db_repo
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/hashicorp/go-multierror"
 )
 
 type notifyingRepository struct {
 	Repository
 
-	logger    mon.Logger
+	logger    log.Logger
 	notifiers NotificationMap
 }
 
-func NewNotifyingRepository(logger mon.Logger, base Repository) *notifyingRepository {
+func NewNotifyingRepository(logger log.Logger, base Repository) *notifyingRepository {
 	return &notifyingRepository{
 		Repository: base,
 		logger:     logger,

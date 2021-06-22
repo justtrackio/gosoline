@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/http"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type wiremockComponent struct {
 	baseComponent
-	logger  mon.Logger
+	logger  log.Logger
 	binding containerBinding
 	client  http.Client
 }

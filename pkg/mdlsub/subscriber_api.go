@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/stream"
 )
 
@@ -14,7 +14,7 @@ type SubscriberApiSettings struct {
 }
 
 func CreateDefiner(callbacks map[string]stream.ConsumerCallbackFactory) apiserver.Definer {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (*apiserver.Definitions, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (*apiserver.Definitions, error) {
 		d := &apiserver.Definitions{}
 
 		for name, callback := range callbacks {

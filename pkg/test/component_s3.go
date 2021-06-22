@@ -3,7 +3,7 @@ package test
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
@@ -20,7 +20,7 @@ type s3Component struct {
 	clients  *simpleCache
 }
 
-func (k *s3Component) Boot(config cfg.Config, logger mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
+func (k *s3Component) Boot(config cfg.Config, logger log.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	k.logger = logger
 	k.name = name
 	k.runner = runner

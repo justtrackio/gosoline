@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"strings"
 	"sync"
 )
@@ -15,11 +15,11 @@ type Reader interface {
 	Stop()
 }
 
-type KinsumerFactory func(config cfg.Config, logger mon.Logger, settings KinsumerSettings) (Kinsumer, error)
+type KinsumerFactory func(config cfg.Config, logger log.Logger, settings KinsumerSettings) (Kinsumer, error)
 
 type reader struct {
 	config   cfg.Config
-	logger   mon.Logger
+	logger   log.Logger
 	factory  KinsumerFactory
 	settings KinsumerSettings
 	client   Kinsumer
@@ -28,7 +28,7 @@ type reader struct {
 	wg       sync.WaitGroup
 }
 
-func NewReader(config cfg.Config, logger mon.Logger, factory KinsumerFactory, handler MessageHandler, settings KinsumerSettings) (Reader, error) {
+func NewReader(config cfg.Config, logger log.Logger, factory KinsumerFactory, handler MessageHandler, settings KinsumerSettings) (Reader, error) {
 	client, err := factory(config, logger, settings)
 
 	if err != nil {
@@ -67,7 +67,7 @@ func (r *reader) Run(ctx context.Context) error {
 
 			switch {
 			case strings.Contains(errMsg, "ExpiredIteratorException"):
-				logger.WithFields(mon.Fields{
+				logger.WithFields(log.Fields{
 					"error": errMsg,
 				}).Warn("ExpiredIteratorException while consuming events")
 
@@ -77,7 +77,7 @@ func (r *reader) Run(ctx context.Context) error {
 
 			case strings.Contains(errMsg, "ConditionalCheckFailedException"):
 				r.stopClient()
-				logger.WithFields(mon.Fields{
+				logger.WithFields(log.Fields{
 					"error": errMsg,
 				}).Warn("ConditionalCheckFailedException while consuming events")
 

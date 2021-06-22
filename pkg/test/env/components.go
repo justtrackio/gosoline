@@ -3,7 +3,7 @@ package env
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -22,7 +22,7 @@ type componentFactory interface {
 	Detect(config cfg.Config, manager *ComponentsConfigManager) error
 	GetSettingsSchema() ComponentBaseSettingsAware
 	DescribeContainers(settings interface{}) componentContainerDescriptions
-	Component(config cfg.Config, logger mon.Logger, container map[string]*container, settings interface{}) (Component, error)
+	Component(config cfg.Config, logger log.Logger, container map[string]*container, settings interface{}) (Component, error)
 }
 
 type ComponentHealthCheck func(container *container) error
@@ -135,7 +135,7 @@ func buildComponentSkeletons(manager *ComponentsConfigManager) ([]*componentSkel
 	return skeletons, nil
 }
 
-func buildComponent(config cfg.Config, logger mon.Logger, skeleton *componentSkeleton) (Component, error) {
+func buildComponent(config cfg.Config, logger log.Logger, skeleton *componentSkeleton) (Component, error) {
 	factory, ok := componentFactories[skeleton.typ]
 
 	if !ok {

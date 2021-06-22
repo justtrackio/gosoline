@@ -2,7 +2,7 @@ package exec
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/cenkalti/backoff"
 	"time"
@@ -20,14 +20,14 @@ type BackoffSettings struct {
 }
 
 type BackoffExecutor struct {
-	logger   mon.Logger
+	logger   log.Logger
 	uuidGen  uuid.Uuid
 	resource *ExecutableResource
 	checks   []ErrorChecker
 	settings *BackoffSettings
 }
 
-func NewBackoffExecutor(logger mon.Logger, res *ExecutableResource, settings *BackoffSettings, checks ...ErrorChecker) *BackoffExecutor {
+func NewBackoffExecutor(logger log.Logger, res *ExecutableResource, settings *BackoffSettings, checks ...ErrorChecker) *BackoffExecutor {
 	return &BackoffExecutor{
 		logger:   logger,
 		uuidGen:  uuid.New(),
@@ -38,7 +38,7 @@ func NewBackoffExecutor(logger mon.Logger, res *ExecutableResource, settings *Ba
 }
 
 func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{}, error) {
-	logger := e.logger.WithContext(ctx).WithFields(mon.Fields{
+	logger := e.logger.WithContext(ctx).WithFields(log.Fields{
 		"exec_id":            e.uuidGen.NewV4(),
 		"exec_resource_type": e.resource.Type,
 		"exec_resource_name": e.resource.Name,

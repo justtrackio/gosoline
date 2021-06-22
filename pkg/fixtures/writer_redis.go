@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/redis"
 	"time"
 )
@@ -34,14 +34,14 @@ var redisHandlers = map[string]redisOpHandler{
 }
 
 type redisFixtureWriter struct {
-	logger    mon.Logger
+	logger    log.Logger
 	client    redis.Client
 	operation string
 	purger    *redisPurger
 }
 
 func RedisFixtureWriterFactory(name *string, operation *string) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
+	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		client, err := redis.ProvideClient(config, logger, *name)
 		if err != nil {
 			return nil, fmt.Errorf("can not create redis client: %w", err)
@@ -56,7 +56,7 @@ func RedisFixtureWriterFactory(name *string, operation *string) FixtureWriterFac
 	}
 }
 
-func NewRedisFixtureWriterWithInterfaces(logger mon.Logger, client redis.Client, purger *redisPurger, operation *string) FixtureWriter {
+func NewRedisFixtureWriterWithInterfaces(logger log.Logger, client redis.Client, purger *redisPurger, operation *string) FixtureWriter {
 	return &redisFixtureWriter{
 		logger:    logger,
 		client:    client,

@@ -3,12 +3,12 @@ package apiserver
 import (
 	"errors"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
-func RecoveryWithSentry(logger mon.Logger) gin.HandlerFunc {
+func RecoveryWithSentry(logger log.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			err := recover()

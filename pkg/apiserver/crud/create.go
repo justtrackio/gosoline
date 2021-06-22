@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/db"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/validation"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -13,10 +13,10 @@ import (
 
 type createHandler struct {
 	transformer CreateHandler
-	logger      mon.Logger
+	logger      log.Logger
 }
 
-func NewCreateHandler(logger mon.Logger, transformer CreateHandler) gin.HandlerFunc {
+func NewCreateHandler(logger log.Logger, transformer CreateHandler) gin.HandlerFunc {
 	ch := createHandler{
 		transformer: transformer,
 		logger:      logger,

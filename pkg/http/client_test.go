@@ -6,7 +6,7 @@ import (
 	"fmt"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/http"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	netHttp "net/http"
@@ -58,7 +58,7 @@ func getConfig(retries int, timeout int) *cfgMocks.Config {
 
 func TestClient_Delete(t *testing.T) {
 	config := getConfig(1, 1)
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	runTestServer(t, "DELETE", 200, 0, func(host string) {
 		client := http.NewHttpClient(config, logger)
@@ -75,7 +75,7 @@ func TestClient_Delete(t *testing.T) {
 
 func TestClient_Get(t *testing.T) {
 	config := getConfig(1, 1)
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	runTestServer(t, "GET", 200, 0, func(host string) {
 		client := http.NewHttpClient(config, logger)
@@ -92,7 +92,7 @@ func TestClient_Get(t *testing.T) {
 
 func TestClient_GetTimeout(t *testing.T) {
 	config := getConfig(0, 1)
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	runTestServer(t, "GET", 200, 1100*time.Millisecond, func(host string) {
 		client := http.NewHttpClient(config, logger)
@@ -109,7 +109,7 @@ func TestClient_GetTimeout(t *testing.T) {
 
 func TestClient_GetCanceled(t *testing.T) {
 	config := getConfig(1, 1)
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	baseCtx := myContext(0)
 	ctx, cancel := context.WithCancel(&baseCtx)
@@ -134,7 +134,7 @@ func TestClient_GetCanceled(t *testing.T) {
 
 func TestClient_Post(t *testing.T) {
 	config := getConfig(1, 1)
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	runTestServer(t, "POST", 200, 0, func(host string) {
 		client := http.NewHttpClient(config, logger)

@@ -8,7 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/http"
 	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"time"
 )
 
@@ -29,13 +29,13 @@ type UpdaterService interface {
 }
 
 type updaterService struct {
-	logger mon.Logger
+	logger log.Logger
 	http   http.Client
 	store  kvstore.KvStore
 	clock  clock.Clock
 }
 
-func NewUpdater(config cfg.Config, logger mon.Logger) (UpdaterService, error) {
+func NewUpdater(config cfg.Config, logger log.Logger) (UpdaterService, error) {
 	logger = logger.WithChannel("currency_updater_service")
 
 	store, err := kvstore.ProvideConfigurableKvStore(config, logger, kvStoreName)
@@ -48,7 +48,7 @@ func NewUpdater(config cfg.Config, logger mon.Logger) (UpdaterService, error) {
 	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider), nil
 }
 
-func NewUpdaterWithInterfaces(logger mon.Logger, store kvstore.KvStore, httpClient http.Client, clock clock.Clock) UpdaterService {
+func NewUpdaterWithInterfaces(logger log.Logger, store kvstore.KvStore, httpClient http.Client, clock clock.Clock) UpdaterService {
 	return &updaterService{
 		logger: logger,
 		store:  store,

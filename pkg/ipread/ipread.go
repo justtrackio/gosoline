@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"net"
 )
 
@@ -33,7 +33,7 @@ type reader struct {
 	provider Provider
 }
 
-func NewReader(config cfg.Config, logger mon.Logger, name string) (*reader, error) {
+func NewReader(config cfg.Config, logger log.Logger, name string) (*reader, error) {
 	key := fmt.Sprintf("ipread.%s", name)
 	settings := &ReaderSettings{}
 	config.UnmarshalKey(key, settings)

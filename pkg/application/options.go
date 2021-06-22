@@ -3,7 +3,7 @@ package application
 import (
 	"context"
 	"flag"
-	"io"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -13,7 +13,8 @@ import (
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/fixtures"
 	kernelPkg "github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/metric"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/pkg/errors"
@@ -22,20 +23,13 @@ import (
 type (
 	Option       func(app *App)
 	ConfigOption func(config cfg.GosoConf) error
-	LoggerOption func(config cfg.GosoConf, logger mon.GosoLog) error
+	LoggerOption func(config cfg.GosoConf, logger log.GosoLogger) error
 	KernelOption func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error
-	SetupOption  func(config cfg.GosoConf, logger mon.GosoLog) error
+	SetupOption  func(config cfg.GosoConf, logger log.GosoLogger) error
 )
 
 type kernelSettings struct {
 	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
-}
-
-type loggerSettings struct {
-	Level           string                 `cfg:"level" default:"info" validate:"required"`
-	Format          string                 `cfg:"format" default:"console" validate:"required"`
-	TimestampFormat string                 `cfg:"timestamp_format" default:"15:04:05.000" validate:"required"`
-	Tags            map[string]interface{} `cfg:"tags"`
 }
 
 func WithApiHealthCheck(app *App) {
@@ -143,7 +137,7 @@ func WithConsumerMessagesPerRunnerMetrics(app *App) {
 
 func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 	return func(app *App) {
-		app.addSetupOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+		app.addSetupOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 			loader := fixtures.NewFixtureLoader(config, logger)
 			return loader.Load(fixtureSets)
 		})
@@ -160,122 +154,85 @@ func WithKernelSettingsFromConfig(app *App) {
 }
 
 func WithLoggerApplicationTag(app *App) {
-	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		if !config.IsSet("app_name") {
 			return errors.New("can not get application name from config to set it on logger")
 		}
 
-		return logger.Option(mon.WithTags(map[string]interface{}{
+		return logger.Option(log.WithFields(map[string]interface{}{
 			"application": config.GetString("app_name"),
 		}))
 	})
 }
 
-func WithLoggerContextFieldsMessageEncoder() Option {
-	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-			stream.AddDefaultEncodeHandler(mon.NewMessageWithLoggingFieldsEncoder(config, logger))
-			return nil
-		})
-	}
-}
-
-func WithLoggerContextFieldsResolver(resolver ...mon.ContextFieldsResolver) Option {
-	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-			return logger.Option(mon.WithContextFieldsResolver(resolver...))
-		})
-	}
-}
-
-func WithLoggerFormat(format string) Option {
-	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-			return logger.Option(mon.WithFormat(format))
-		})
-	}
-}
-
-func WithLoggerHook(hook mon.LoggerHook) Option {
-	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-			return logger.Option(mon.WithHook(hook))
-		})
-	}
-}
-
-func WithLoggerLevel(level string) Option {
-	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-			return logger.Option(mon.WithLevel(level))
-		})
-	}
-}
-
-func WithLoggerMetricHook(app *App) {
-	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		metricHook := mon.NewMetricHook()
-		return logger.Option(mon.WithHook(metricHook))
+func WithLoggerContextFieldsMessageEncoder(app *App) {
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+		stream.AddDefaultEncodeHandler(log.NewMessageWithLoggingFieldsEncoder(config, logger))
+		return nil
 	})
 }
 
-func WithLoggerOutput(output io.Writer) Option {
+func WithLoggerContextFieldsResolver(resolver ...log.ContextFieldsResolver) Option {
 	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-			return logger.Option(mon.WithOutput(output))
+		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+			return logger.Option(log.WithContextFieldsResolver(resolver...))
 		})
 	}
 }
 
-func WithLoggerSentryHook(extraProvider ...mon.SentryExtraProvider) Option {
+func WithLoggerHandlers(handler ...log.Handler) Option {
 	return func(app *App) {
-		app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+			return logger.Option(log.WithHandlers(handler...))
+		})
+	}
+}
+
+func WithLoggerHandlersFromConfig(app *App) {
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+		var err error
+		var handlers []log.Handler
+
+		if handlers, err = log.NewHandlersFromConfig(config); err != nil {
+			return fmt.Errorf("can not create handlers from config: %w", err)
+		}
+
+		return logger.Option(log.WithHandlers(handlers...))
+	})
+}
+
+func WithLoggerMetricHandler(app *App) {
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+		metricHandler := metric.NewLoggerHandler()
+		return logger.Option(log.WithHandlers(metricHandler))
+	})
+}
+
+func WithLoggerSentryHandler(contextProvider ...log.SentryContextProvider) Option {
+	return func(app *App) {
+		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 			var err error
+			var sentryHandler *log.HandlerSentry
 
-			env := config.GetString("env")
-			sentryHook := mon.NewSentryHook(env)
+			if sentryHandler, err = log.NewHandlerSentry(config); err != nil {
+				return fmt.Errorf("can not create logger sentry handler: %w", err)
+			}
 
-			for _, p := range extraProvider {
-				sentryHook, err = p(config, sentryHook)
-
-				if err != nil {
-					return errors.Wrap(err, "can not configure LoggerSentryHook")
+			for _, provider := range contextProvider {
+				if err = provider(config, sentryHandler); err != nil {
+					return fmt.Errorf("can not run sentry context provider %T: %w", provider, err)
 				}
 			}
 
-			return logger.Option(mon.WithHook(sentryHook))
+			return logger.Option(log.WithHandlers(sentryHandler))
 		})
 	}
-}
-
-func WithLoggerSettingsFromConfig(app *App) {
-	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		settings := &loggerSettings{}
-		config.UnmarshalKey("mon.logger", settings)
-
-		loggerOptions := []mon.LoggerOption{
-			mon.WithLevel(settings.Level),
-			mon.WithFormat(settings.Format),
-			mon.WithTimestampFormat(settings.TimestampFormat),
-		}
-
-		return logger.Option(loggerOptions...)
-	})
-}
-
-func WithLoggerTagsFromConfig(app *App) {
-	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		settings := &loggerSettings{}
-		config.UnmarshalKey("mon.logger", settings)
-
-		return logger.Option(mon.WithTags(settings.Tags))
-	})
 }
 
 func WithMetricDaemon(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-		kernel.Add("metric", func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernelPkg.Module, error) {
-			return mon.NewMetricDaemon(config, logger)
+		kernel.Add("metric", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Module, error) {
+			return metric.NewDaemon(config, logger)
 		})
 
 		return nil
@@ -299,18 +256,18 @@ func WithProfiling() Option {
 }
 
 func WithTracing(app *App) {
-	app.addLoggerOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
-		tracingHook := tracing.NewLoggerErrorHook()
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+		tracingHandler := tracing.NewLoggerErrorHandler()
 
-		options := []mon.LoggerOption{
-			mon.WithHook(tracingHook),
-			mon.WithContextFieldsResolver(tracing.ContextTraceFieldsResolver),
+		options := []log.Option{
+			log.WithHandlers(tracingHandler),
+			log.WithContextFieldsResolver(tracing.ContextTraceFieldsResolver),
 		}
 
 		return logger.Option(options...)
 	})
 
-	app.addSetupOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+	app.addSetupOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		strategy := tracing.NewTraceIdErrorWarningStrategy(logger)
 		stream.AddDefaultEncodeHandler(tracing.NewMessageWithTraceEncoder(strategy))
 
@@ -320,7 +277,7 @@ func WithTracing(app *App) {
 
 func WithUTCClock(useUTC bool) Option {
 	return func(app *App) {
-		app.addSetupOption(func(config cfg.GosoConf, logger mon.GosoLog) error {
+		app.addSetupOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 			clock.WithUseUTC(useUTC)
 
 			return nil

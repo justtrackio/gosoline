@@ -3,7 +3,7 @@ package stream_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/mon"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -18,7 +18,7 @@ func TestOutputFile_ConcurrentWrite(t *testing.T) {
 
 	_ = os.Remove(fileName)
 
-	logger := mon.NewLogger()
+	logger := new(logMocks.Logger)
 	output := stream.NewFileOutput(nil, logger, &stream.FileOutputSettings{
 		Filename: fileName,
 		Append:   true,

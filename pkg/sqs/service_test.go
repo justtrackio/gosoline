@@ -2,7 +2,7 @@ package sqs_test
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/applike/gosoline/pkg/sqs/mocks"
 	"github.com/aws/aws-sdk-go/aws"
@@ -14,7 +14,7 @@ import (
 )
 
 func TestService_CreateQueue(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	client := new(mocks.SQSAPI)
 
 	client.On("GetQueueUrl", &awsSqs.GetQueueUrlInput{
@@ -95,7 +95,7 @@ func TestService_CreateQueue(t *testing.T) {
 }
 
 func TestService_GetPropertiesByName(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	client := new(mocks.SQSAPI)
 
 	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
@@ -133,7 +133,7 @@ func TestService_GetPropertiesByName(t *testing.T) {
 }
 
 func TestService_GetPropertiesByArn(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	client := new(mocks.SQSAPI)
 
 	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
@@ -162,7 +162,7 @@ func TestService_GetPropertiesByArn(t *testing.T) {
 }
 
 func TestService_Purge(t *testing.T) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 	client := new(mocks.SQSAPI)
 
 	url := "https://sqs.eu-central-1.amazonaws.com/accountId/applike-test-gosoline-queue-id"

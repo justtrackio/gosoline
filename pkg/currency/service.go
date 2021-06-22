@@ -6,7 +6,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"time"
 )
 
@@ -30,7 +30,7 @@ type currencyService struct {
 	clock clock.Clock
 }
 
-func New(config cfg.Config, logger mon.Logger) (*currencyService, error) {
+func New(config cfg.Config, logger log.Logger) (*currencyService, error) {
 	store, err := kvstore.ProvideConfigurableKvStore(config, logger, kvStoreName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kvStore: %w", err)

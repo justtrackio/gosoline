@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-xray-sdk-go/strategy/ctxmissing"
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
 	"github.com/aws/aws-xray-sdk-go/xray"
@@ -31,7 +31,7 @@ type awsTracer struct {
 	enabled bool
 }
 
-func NewAwsTracer(config cfg.Config, logger mon.Logger) (Tracer, error) {
+func NewAwsTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
 	appId := cfg.AppId{}
 	appId.PadFromConfig(config)
 
@@ -57,7 +57,7 @@ func NewAwsTracer(config cfg.Config, logger mon.Logger) (Tracer, error) {
 	return NewAwsTracerWithInterfaces(logger, appId, xRaySettings)
 }
 
-func NewAwsTracerWithInterfaces(logger mon.Logger, appId cfg.AppId, settings *XRaySettings) (*awsTracer, error) {
+func NewAwsTracerWithInterfaces(logger log.Logger, appId cfg.AppId, settings *XRaySettings) (*awsTracer, error) {
 	if settings.StreamingMaxSubsegmentCount == 0 {
 		settings.StreamingMaxSubsegmentCount = xrayDefaultMaxSubsegmentCount
 	}

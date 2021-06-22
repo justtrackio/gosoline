@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"sync"
 )
 
@@ -19,7 +19,7 @@ type Settings struct {
 var mutex sync.Mutex
 var clients = map[string]Client{}
 
-func ProvideClient(config cfg.Config, logger mon.Logger, name string) (Client, error) {
+func ProvideClient(config cfg.Config, logger log.Logger, name string) (Client, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/apiserver/sql"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,10 +15,10 @@ type Output struct {
 
 type listHandler struct {
 	transformer ListHandler
-	logger      mon.Logger
+	logger      log.Logger
 }
 
-func NewListHandler(logger mon.Logger, transformer ListHandler) gin.HandlerFunc {
+func NewListHandler(logger log.Logger, transformer ListHandler) gin.HandlerFunc {
 	lh := listHandler{
 		transformer: transformer,
 		logger:      logger,

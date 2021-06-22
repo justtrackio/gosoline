@@ -109,6 +109,55 @@ func (s *MapTestSuite) TestSetSliceOffset() {
 	s.Equal(expected, actual)
 }
 
+func (s *MapTestSuite) TestSetSliceOfMaps() {
+	s.m.Set("sl", []interface{}{
+		map[string]interface{}{
+			"i": 1,
+		},
+	})
+
+	isMap := s.m.Get("sl[0]").IsMap()
+	s.True(isMap)
+
+	s.m.Set("m", map[string]interface{}{
+		"sl": []interface{}{
+			map[string]interface{}{
+				"i": 1,
+			},
+		},
+	})
+
+	isMap = s.m.Get("m.sl[0]").IsMap()
+	s.True(isMap)
+}
+
+func (s *MapTestSuite) TestSetSliceOfMapsDoesntModify() {
+	mapsList := []interface{}{
+		map[string]interface{}{
+			"true":  true,
+			"false": false,
+		},
+	}
+
+	m := mapx.NewMapX()
+	m.Set("maps", mapsList)
+
+	s.Equal([]interface{}{
+		map[string]interface{}{
+			"true":  true,
+			"false": false,
+		},
+	}, mapsList, "the argument shouldn't be modified")
+	s.Equal(m.Msi(), map[string]interface{}{
+		"maps": []interface{}{
+			map[string]interface{}{
+				"true":  true,
+				"false": false,
+			},
+		},
+	})
+}
+
 func (s *MapTestSuite) TestSkipExisting() {
 	s.m.Set("a", 1)
 	s.m.Set("a", 2, mapx.SkipExisting)
@@ -150,6 +199,11 @@ func (s *MapTestSuite) TestGet() {
 	s.Equal([]interface{}{1, 2}, msi.Get("sl1").Data())
 	s.Equal(2, msi.Get("sl1[1]").Data())
 	s.Equal(nil, msi.Get("sl1[2]").Data())
+}
+
+func (s *MapTestSuite) TestMergeRootEmpty() {
+	s.m.Merge(".", map[string]interface{}{})
+	s.Empty(s.m.Msi())
 }
 
 func (s *MapTestSuite) TestMerge() {

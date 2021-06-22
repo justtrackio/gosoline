@@ -2,7 +2,7 @@ package exec
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type ExecutableResource struct {
@@ -16,7 +16,7 @@ type Executor interface {
 	Execute(ctx context.Context, f Executable) (interface{}, error)
 }
 
-func NewExecutor(logger mon.Logger, res *ExecutableResource, settings *BackoffSettings, checks ...ErrorChecker) Executor {
+func NewExecutor(logger log.Logger, res *ExecutableResource, settings *BackoffSettings, checks ...ErrorChecker) Executor {
 	if !settings.Enabled {
 		return NewDefaultExecutor()
 	}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/iancoleman/strcase"
 	"github.com/jinzhu/gorm"
 )
@@ -19,7 +19,7 @@ type OrmSettings struct {
 	Application string              `cfg:"application" default:"{app_name}"`
 }
 
-func NewOrm(config cfg.Config, logger mon.Logger) (*gorm.DB, error) {
+func NewOrm(config cfg.Config, logger log.Logger) (*gorm.DB, error) {
 	dbClient, err := db.NewClient(config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create dbClient: %w", err)
@@ -31,7 +31,7 @@ func NewOrm(config cfg.Config, logger mon.Logger) (*gorm.DB, error) {
 	return NewOrmWithInterfaces(dbClient, settings)
 }
 
-func NewOrmWithDbSettings(logger mon.Logger, dbSettings db.Settings, application string) (*gorm.DB, error) {
+func NewOrmWithDbSettings(logger log.Logger, dbSettings db.Settings, application string) (*gorm.DB, error) {
 	dbClient, err := db.NewClientWithSettings(logger, dbSettings)
 	if err != nil {
 		return nil, fmt.Errorf("can not create dbClient: %w", err)

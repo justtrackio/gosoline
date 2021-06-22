@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
@@ -19,11 +19,11 @@ const (
 )
 
 type basicAuthAuthenticator struct {
-	logger mon.Logger
+	logger log.Logger
 	users  map[string]string
 }
 
-func NewBasicAuthHandler(config cfg.Config, logger mon.Logger) (gin.HandlerFunc, error) {
+func NewBasicAuthHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc, error) {
 	auth, err := NewBasicAuthAuthenticator(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create basicAuthAuthenticator: %w", err)
@@ -48,7 +48,7 @@ func NewBasicAuthHandler(config cfg.Config, logger mon.Logger) (gin.HandlerFunc,
 	}, nil
 }
 
-func NewBasicAuthAuthenticator(config cfg.Config, logger mon.Logger) (Authenticator, error) {
+func NewBasicAuthAuthenticator(config cfg.Config, logger log.Logger) (Authenticator, error) {
 	userEntries := config.GetStringSlice(configBasicAuth)
 
 	users := make(map[string]string)
@@ -69,7 +69,7 @@ func NewBasicAuthAuthenticator(config cfg.Config, logger mon.Logger) (Authentica
 	return NewBasicAuthAuthenticatorWithInterfaces(logger, users), nil
 }
 
-func NewBasicAuthAuthenticatorWithInterfaces(logger mon.Logger, users map[string]string) Authenticator {
+func NewBasicAuthAuthenticatorWithInterfaces(logger log.Logger, users map[string]string) Authenticator {
 	return &basicAuthAuthenticator{
 		logger: logger,
 		users:  users,

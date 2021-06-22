@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/metric"
 	"github.com/applike/gosoline/pkg/refl"
 	"time"
 )
@@ -24,7 +24,7 @@ const (
 
 type MetricStore struct {
 	KvStore
-	metricWriter mon.MetricWriter
+	metricWriter metric.Writer
 	model        string
 	store        string
 }
@@ -46,7 +46,7 @@ func NewMetricStoreWithInterfaces(store KvStore, settings *Settings) KvStore {
 
 	s := &MetricStore{
 		KvStore:      store,
-		metricWriter: mon.NewMetricDaemonWriter(defaults...),
+		metricWriter: metric.NewDaemonWriter(defaults...),
 		model:        model,
 		store:        storeName,
 	}
@@ -180,61 +180,61 @@ func (s *MetricStore) recordDeletes(count int) {
 	s.record(metricNameKvStoreDelete, int64(count))
 }
 
-func (s *MetricStore) record(metric string, value int64) {
-	s.metricWriter.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
-		MetricName: metric,
+func (s *MetricStore) record(name string, value int64) {
+	s.metricWriter.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: name,
 		Dimensions: map[string]string{
 			"model": s.model,
 			"store": s.store,
 		},
 		Value: float64(value),
-		Unit:  mon.UnitCount,
+		Unit:  metric.UnitCount,
 	})
 }
 
-func getDefaultMetrics(model string, store string) mon.MetricData {
+func getDefaultMetrics(model string, store string) metric.Data {
 	// no default for the size, if we don't know the size, it is not 0
 
-	return mon.MetricData{
+	return metric.Data{
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameKvStoreRead,
 			Dimensions: map[string]string{
 				"model": model,
 				"store": store,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameKvStoreHit,
 			Dimensions: map[string]string{
 				"model": model,
 				"store": store,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameKvStoreWrite,
 			Dimensions: map[string]string{
 				"model": model,
 				"store": store,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameKvStoreDelete,
 			Dimensions: map[string]string{
 				"model": model,
 				"store": store,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 	}

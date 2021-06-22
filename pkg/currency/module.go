@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"time"
 )
 
@@ -13,11 +13,11 @@ type Module struct {
 	kernel.BackgroundModule
 	kernel.ServiceStage
 	updaterService UpdaterService
-	logger         mon.Logger
+	logger         log.Logger
 }
 
 func NewCurrencyModule() kernel.ModuleFactory {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		updater, err := NewUpdater(config, logger)
 		if err != nil {
 			return nil, fmt.Errorf("can not create updater: %w", err)

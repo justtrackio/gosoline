@@ -11,7 +11,7 @@ import (
 
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/gin-gonic/gin"
 )
@@ -34,13 +34,13 @@ type ApiServer struct {
 	kernel.EssentialModule
 	kernel.ServiceStage
 
-	logger   mon.Logger
+	logger   log.Logger
 	server   *http.Server
 	listener net.Listener
 }
 
 func New(definer Definer) kernel.ModuleFactory {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		if config.IsSet("api_port") || config.IsSet("api_mode") || config.IsSet("api_timeout_read") || config.IsSet("api_timeout_write") || config.IsSet("api_timeout_idle") {
 			return nil, fmt.Errorf("old config format detected. You have to change your config from api_port to api.port, api_mode to api.mode, and so on")
 		}
@@ -79,7 +79,7 @@ func New(definer Definer) kernel.ModuleFactory {
 	}
 }
 
-func NewWithInterfaces(logger mon.Logger, router *gin.Engine, tracer tracing.Tracer, s *Settings) (*ApiServer, error) {
+func NewWithInterfaces(logger log.Logger, router *gin.Engine, tracer tracing.Tracer, s *Settings) (*ApiServer, error) {
 	server := &http.Server{
 		Addr:         ":" + s.Port,
 		Handler:      tracer.HttpHandler(router),

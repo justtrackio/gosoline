@@ -7,8 +7,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/fixtures"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/test"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -18,7 +18,7 @@ import (
 
 type FixturesDynamoDbSuite struct {
 	suite.Suite
-	logger mon.Logger
+	logger log.Logger
 	db     *dynamodb.DynamoDB
 	mocks  *test.Mocks
 }
@@ -35,7 +35,7 @@ func (s *FixturesDynamoDbSuite) SetupSuite() {
 
 	s.mocks = mocks
 	s.db = s.mocks.ProvideDynamoDbClient("dynamodb")
-	s.logger = mon.NewLogger()
+	s.logger = log.NewCliLogger()
 }
 
 func (s *FixturesDynamoDbSuite) TearDownSuite() {

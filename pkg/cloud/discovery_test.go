@@ -4,7 +4,7 @@ import (
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/cloud"
 	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/servicediscovery"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ func TestGetDiscoveryClient(t *testing.T) {
 	config := new(cfgMocks.Config)
 	config.On("GetString", "aws_serviceDiscovery_endpoint").Return("127.0.0.1")
 	config.On("GetString", "aws_serviceDiscovery_namespace").Return("dev")
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	//this also tests *WithInterfaces
 	_ = cloud.GetDiscoveryClient(config, logger)
@@ -28,7 +28,7 @@ func TestDiscoveryClient_GetServiceInstances(t *testing.T) {
 	configMock := new(cfgMocks.Config)
 	configMock.On("GetString", mock.Anything).Return("")
 
-	loggerMock := new(monMocks.Logger)
+	loggerMock := new(logMocks.Logger)
 	clientMock := new(cloudMocks.ServiceDiscoveryAPI)
 
 	clientMock.On("ListServices", mock.AnythingOfType("*servicediscovery.ListServicesInput")).Return(&servicediscovery.ListServicesOutput{
@@ -60,7 +60,7 @@ func TestDiscoveryClient_GetPipelineInstances(t *testing.T) {
 	configMock := new(cfgMocks.Config)
 	configMock.On("GetString", mock.Anything).Return("")
 
-	loggerMock := new(monMocks.Logger)
+	loggerMock := new(logMocks.Logger)
 	clientMock := new(cloudMocks.ServiceDiscoveryAPI)
 
 	serviceArn := "arn:aws:iam::12345678:role/mcoins-test-ec2"

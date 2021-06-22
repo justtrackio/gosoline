@@ -2,7 +2,7 @@ package cloud
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	ssm2 "github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
@@ -18,11 +18,11 @@ type SsmClient interface {
 }
 
 type SimpleSystemsManager struct {
-	logger mon.Logger
+	logger log.Logger
 	client ssmiface.SSMAPI
 }
 
-func NewSimpleSystemsManager(config cfg.Config, logger mon.Logger) *SimpleSystemsManager {
+func NewSimpleSystemsManager(config cfg.Config, logger log.Logger) *SimpleSystemsManager {
 	client := GetSystemsManagerClient(config, logger)
 
 	return &SimpleSystemsManager{

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/ecs/ecsiface"
@@ -27,7 +27,7 @@ type ServiceClient interface {
 }
 
 type AwsServiceClient struct {
-	logger      mon.Logger
+	logger      log.Logger
 	client      ecsiface.ECSAPI
 	clusterName string
 }
@@ -38,9 +38,9 @@ type ServiceListing struct {
 	Tags map[string]string
 }
 
-func GetServiceClient(logger mon.Logger, client ecsiface.ECSAPI, appId *cfg.AppId) ServiceClient {
+func GetServiceClient(logger log.Logger, client ecsiface.ECSAPI, appId *cfg.AppId) ServiceClient {
 	clusterName := fmt.Sprintf("%s-%s-%s", appId.Project, appId.Environment, appId.Family)
-	logger = logger.WithFields(mon.Fields{
+	logger = logger.WithFields(log.Fields{
 		"clusterName": clusterName,
 	})
 
@@ -51,7 +51,7 @@ func GetServiceClient(logger mon.Logger, client ecsiface.ECSAPI, appId *cfg.AppI
 	}
 }
 
-func GetServiceClientWithDefaultClient(config cfg.Config, logger mon.Logger) ServiceClient {
+func GetServiceClientWithDefaultClient(config cfg.Config, logger log.Logger) ServiceClient {
 	client := GetEcsClient(logger)
 
 	appId := &cfg.AppId{}
@@ -110,7 +110,7 @@ func (c *AwsServiceClient) ScaleServices(filter *FilterServicesInput, count int)
 			continue
 		}
 
-		logger.WithFields(mon.Fields{
+		logger.WithFields(log.Fields{
 			"desired_count": count,
 		}).Info("scaling service")
 	}
@@ -300,8 +300,8 @@ func (c *AwsServiceClient) GetListingFromService(svc *ecs.Service) *ServiceListi
 	return listing
 }
 
-func (c *AwsServiceClient) getLoggerFields(filter *FilterServicesInput) mon.Fields {
-	fields := mon.Fields{}
+func (c *AwsServiceClient) getLoggerFields(filter *FilterServicesInput) log.Fields {
+	fields := log.Fields{}
 
 	for key, value := range filter.Tags {
 		fields[key] = value

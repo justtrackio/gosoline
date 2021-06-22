@@ -5,7 +5,7 @@ import (
 
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type App struct {
@@ -43,14 +43,12 @@ func Default(options ...Option) kernel.Kernel {
 		WithConfigServer,
 		WithConsumerMessagesPerRunnerMetrics,
 		WithKernelSettingsFromConfig,
-		WithLoggerFormat(mon.FormatGelfFields),
 		WithLoggerApplicationTag,
-		WithLoggerTagsFromConfig,
-		WithLoggerSettingsFromConfig,
-		WithLoggerContextFieldsMessageEncoder(),
-		WithLoggerContextFieldsResolver(mon.ContextLoggerFieldsResolver),
-		WithLoggerMetricHook,
-		WithLoggerSentryHook(mon.SentryExtraConfigProvider, mon.SentryExtraEcsMetadataProvider),
+		WithLoggerContextFieldsMessageEncoder,
+		WithLoggerContextFieldsResolver(log.ContextLoggerFieldsResolver),
+		WithLoggerHandlersFromConfig,
+		WithLoggerMetricHandler,
+		WithLoggerSentryHandler(log.SentryContextConfigProvider, log.SentryContextEcsMetadataProvider),
 		WithMetricDaemon,
 		WithProducerDaemon,
 		WithTracing,
@@ -64,9 +62,9 @@ func Default(options ...Option) kernel.Kernel {
 
 func New(options ...Option) kernel.Kernel {
 	var err error
-	var ker kernel.Kernel
 	config := cfg.New()
-	logger := mon.NewLogger()
+	logger := log.NewLogger()
+	var ker kernel.Kernel
 
 	if ker, err = NewWithInterfaces(config, logger, options...); err != nil {
 		defaultErrorHandler("can initialize the app: %w", err)
@@ -75,9 +73,10 @@ func New(options ...Option) kernel.Kernel {
 	return ker
 }
 
-func NewWithInterfaces(config cfg.GosoConf, logger mon.GosoLog, options ...Option) (kernel.Kernel, error) {
+func NewWithInterfaces(config cfg.GosoConf, logger log.GosoLogger, options ...Option) (kernel.Kernel, error) {
 	var err error
 	var ker kernel.GosoKernel
+	var cfgPostProcessors map[string]int
 
 	app := &App{
 		configOptions: make([]ConfigOption, 0),
@@ -95,14 +94,18 @@ func NewWithInterfaces(config cfg.GosoConf, logger mon.GosoLog, options ...Optio
 		}
 	}
 
+	if cfgPostProcessors, err = cfg.ApplyPostProcessors(config); err != nil {
+		return nil, fmt.Errorf("can not apply post processor on config: %w", err)
+	}
+
 	for _, opt := range app.loggerOptions {
 		if err = opt(config, logger); err != nil {
 			return nil, fmt.Errorf("can not apply logger options on application: %w", err)
 		}
 	}
 
-	if err = cfg.ApplyPostProcessors(config, logger); err != nil {
-		return nil, fmt.Errorf("can not apply post processor on config: %w", err)
+	for name, priority := range cfgPostProcessors {
+		logger.Info("applied priority %d config post processor '%s'", priority, name)
 	}
 
 	for _, opt := range app.setupOptions {

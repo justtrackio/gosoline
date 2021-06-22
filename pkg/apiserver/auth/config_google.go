@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"google.golang.org/api/oauth2/v2"
@@ -30,7 +30,7 @@ func (p *GoogleTokenProvider) GetTokenInfo(idToken string) (*oauth2.Tokeninfo, e
 }
 
 type configGoogleAuthenticator struct {
-	logger           mon.Logger
+	logger           log.Logger
 	tokenCache       map[string]*oauth2.Tokeninfo
 	tokenProvider    TokenInfoProvider
 	mutex            sync.Mutex
@@ -38,7 +38,7 @@ type configGoogleAuthenticator struct {
 	allowedAddresses []string
 }
 
-func NewConfigGoogleHandler(config cfg.Config, logger mon.Logger) (gin.HandlerFunc, error) {
+func NewConfigGoogleHandler(config cfg.Config, logger log.Logger) (gin.HandlerFunc, error) {
 	auth, err := NewConfigGoogleAuthenticator(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create configGoogleAuthenticator: %w", err)
@@ -60,7 +60,7 @@ func NewConfigGoogleHandler(config cfg.Config, logger mon.Logger) (gin.HandlerFu
 	}, nil
 }
 
-func NewConfigGoogleAuthenticator(config cfg.Config, logger mon.Logger) (Authenticator, error) {
+func NewConfigGoogleAuthenticator(config cfg.Config, logger log.Logger) (Authenticator, error) {
 	// it will never be used, because we specify an http client here already
 	ctx := context.Background()
 	clientOption := option.WithHTTPClient(http.DefaultClient)
@@ -80,7 +80,7 @@ func NewConfigGoogleAuthenticator(config cfg.Config, logger mon.Logger) (Authent
 	return NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, clientId, allowedAddresses), nil
 }
 
-func NewConfigGoogleAuthenticatorWithInterfaces(logger mon.Logger, tokenProvider TokenInfoProvider, clientId string, allowedAddresses []string) Authenticator {
+func NewConfigGoogleAuthenticatorWithInterfaces(logger log.Logger, tokenProvider TokenInfoProvider, clientId string, allowedAddresses []string) Authenticator {
 	return &configGoogleAuthenticator{
 		logger:           logger,
 		validAudience:    clientId,
@@ -122,7 +122,7 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		return true, nil
 	}
 
-	logger.WithFields(mon.Fields{
+	logger.WithFields(log.Fields{
 		"id_token": idToken,
 	}).Info("token not in cache, will perform request")
 

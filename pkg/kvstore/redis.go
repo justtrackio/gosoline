@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/redis"
 	"github.com/applike/gosoline/pkg/refl"
 	"strings"
@@ -19,7 +19,7 @@ func RedisBasename(settings *Settings) string {
 	return fmt.Sprintf("kvstore_%s", settings.Name)
 }
 
-func NewRedisKvStore(config cfg.Config, logger mon.Logger, settings *Settings) (KvStore, error) {
+func NewRedisKvStore(config cfg.Config, logger log.Logger, settings *Settings) (KvStore, error) {
 	settings.PadFromConfig(config)
 	redisName := RedisBasename(settings)
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel/common"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 const (
@@ -21,8 +21,8 @@ const (
 	StageApplication = common.StageApplication
 )
 
-type ModuleFactory func(ctx context.Context, config cfg.Config, logger mon.Logger) (Module, error)
-type MultiModuleFactory func(config cfg.Config, logger mon.Logger) (map[string]ModuleFactory, error)
+type ModuleFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (Module, error)
+type MultiModuleFactory func(config cfg.Config, logger log.Logger) (map[string]ModuleFactory, error)
 
 type moduleSetupContainer struct {
 	name    string

@@ -7,8 +7,8 @@ import (
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -62,7 +62,7 @@ type Repository interface {
 }
 
 type repository struct {
-	logger   mon.Logger
+	logger   log.Logger
 	tracer   tracing.Tracer
 	client   dynamodbiface.DynamoDBAPI
 	executor aws.Executor
@@ -73,7 +73,7 @@ type repository struct {
 	settings   *Settings
 }
 
-func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) (Repository, error) {
+func NewRepository(config cfg.Config, logger log.Logger, settings *Settings) (Repository, error) {
 	if settings.ModelId.Name == "" {
 		settings.ModelId.Name = getTypeName(settings.Main.Model)
 	}
@@ -123,7 +123,7 @@ func NewRepository(config cfg.Config, logger mon.Logger, settings *Settings) (Re
 	return NewWithInterfaces(logger, tracer, client, executor, settings)
 }
 
-func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor aws.Executor, settings *Settings) (Repository, error) {
+func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor aws.Executor, settings *Settings) (Repository, error) {
 	metadataFactory := NewMetadataFactory()
 	metadata, err := metadataFactory.GetMetadata(settings)
 

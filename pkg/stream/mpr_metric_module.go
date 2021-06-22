@@ -7,7 +7,8 @@ import (
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/metric"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
@@ -29,7 +30,7 @@ type MessagesPerRunnerMetricWriterSettings struct {
 	MemberId           string
 }
 
-func MessagesPerRunnerMetricWriterFactory(config cfg.Config, logger mon.Logger) (map[string]kernel.ModuleFactory, error) {
+func MessagesPerRunnerMetricWriterFactory(config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 	settings := readMessagesPerRunnerMetricSettings(config)
 	modules := map[string]kernel.ModuleFactory{}
 
@@ -47,17 +48,17 @@ type MessagesPerRunnerMetricWriter struct {
 	kernel.EssentialModule
 	kernel.ServiceStage
 
-	logger         mon.Logger
+	logger         log.Logger
 	leaderElection conc.LeaderElection
 	cwClient       cloudwatchiface.CloudWatchAPI
-	metricWriter   mon.MetricWriter
+	metricWriter   metric.Writer
 	clock          clock.Clock
 	ticker         clock.Ticker
 	settings       *MessagesPerRunnerMetricWriterSettings
 }
 
 func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings) kernel.ModuleFactory {
-	return func(ctx context.Context, config cfg.Config, logger mon.Logger) (kernel.Module, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		var err error
 		var queueNames []string
 		var leaderElection conc.LeaderElection
@@ -83,15 +84,15 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 			return nil, fmt.Errorf("can not create leader election for stream-metric-messages-per-runner writer: %w", err)
 		}
 
-		cwClient := mon.ProvideCloudWatchClient(config)
-		metricWriter := mon.NewMetricDaemonWriter()
+		cwClient := metric.ProvideCloudWatchClient(config)
+		metricWriter := metric.NewDaemonWriter()
 		ticker := clock.NewRealTicker(settings.Period)
 
 		return NewMessagesPerRunnerMetricWriterWithInterfaces(logger, leaderElection, cwClient, metricWriter, clock.Provider, ticker, writerSettings)
 	}
 }
 
-func NewMessagesPerRunnerMetricWriterWithInterfaces(logger mon.Logger, leaderElection conc.LeaderElection, cwClient cloudwatchiface.CloudWatchAPI, metricWriter mon.MetricWriter, clock clock.Clock, ticker clock.Ticker, settings *MessagesPerRunnerMetricWriterSettings) (*MessagesPerRunnerMetricWriter, error) {
+func NewMessagesPerRunnerMetricWriterWithInterfaces(logger log.Logger, leaderElection conc.LeaderElection, cwClient cloudwatchiface.CloudWatchAPI, metricWriter metric.Writer, clock clock.Clock, ticker clock.Ticker, settings *MessagesPerRunnerMetricWriterSettings) (*MessagesPerRunnerMetricWriter, error) {
 	writer := &MessagesPerRunnerMetricWriter{
 		logger:         logger,
 		leaderElection: leaderElection,
@@ -146,11 +147,11 @@ func (u *MessagesPerRunnerMetricWriter) writeMessagesPerRunnerMetric(ctx context
 		return nil
 	}
 
-	u.metricWriter.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
+	u.metricWriter.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
 		Timestamp:  u.clock.Now(),
 		MetricName: metricNameStreamMprMessagesPerRunner,
-		Unit:       mon.UnitCountAverage,
+		Unit:       metric.UnitCountAverage,
 		Value:      messagesPerRunner,
 	})
 
@@ -199,7 +200,7 @@ func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner() (float64, e
 		newMpr = maxMpr
 	}
 
-	u.logger.WithFields(mon.Fields{
+	u.logger.WithFields(log.Fields{
 		"messagesSent":      messagesSent,
 		"messagesVisible":   messagesVisible,
 		"runnerCount":       runnerCount,

@@ -2,7 +2,8 @@ package tracing
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
+	"time"
 )
 
 func ContextTraceFieldsResolver(ctx context.Context) map[string]interface{} {
@@ -23,13 +24,22 @@ func ContextTraceFieldsResolver(ctx context.Context) map[string]interface{} {
 	}
 }
 
-type LoggerErrorHook struct{}
-
-func NewLoggerErrorHook() *LoggerErrorHook {
-	return &LoggerErrorHook{}
+type LoggerErrorHandler struct {
 }
 
-func (l LoggerErrorHook) Fire(_ string, _ string, err error, data *mon.Metadata) error {
+func NewLoggerErrorHandler() *LoggerErrorHandler {
+	return &LoggerErrorHandler{}
+}
+
+func (h *LoggerErrorHandler) Channels() []string {
+	return []string{}
+}
+
+func (h *LoggerErrorHandler) Level() int {
+	return log.PriorityError
+}
+
+func (h *LoggerErrorHandler) Log(_ time.Time, _ int, _ string, _ []interface{}, err error, data log.Data) error {
 	if err == nil {
 		return nil
 	}

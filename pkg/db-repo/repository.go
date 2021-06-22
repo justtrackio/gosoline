@@ -6,8 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/db"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/jinzhu/gorm"
@@ -55,14 +55,14 @@ type Repository interface {
 }
 
 type repository struct {
-	logger   mon.Logger
+	logger   log.Logger
 	tracer   tracing.Tracer
 	orm      *gorm.DB
 	clock    clockwork.Clock
 	metadata Metadata
 }
 
-func New(config cfg.Config, logger mon.Logger, s Settings) (*repository, error) {
+func New(config cfg.Config, logger log.Logger, s Settings) (*repository, error) {
 	tracer, err := tracing.ProvideTracer(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
@@ -82,7 +82,7 @@ func New(config cfg.Config, logger mon.Logger, s Settings) (*repository, error) 
 	return NewWithInterfaces(logger, tracer, orm, clk, s.Metadata), nil
 }
 
-func NewWithDbSettings(config cfg.Config, logger mon.Logger, dbSettings db.Settings, repoSettings Settings) (*repository, error) {
+func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings db.Settings, repoSettings Settings) (*repository, error) {
 	tracer, err := tracing.ProvideTracer(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
@@ -103,7 +103,7 @@ func NewWithDbSettings(config cfg.Config, logger mon.Logger, dbSettings db.Setti
 	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata), nil
 }
 
-func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata) *repository {
+func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata) *repository {
 	return &repository{
 		logger:   logger,
 		tracer:   tracer,

@@ -5,7 +5,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type MysqlPlainFixtureValues []interface{}
@@ -16,14 +16,14 @@ type MysqlPlainMetaData struct {
 }
 
 type mysqlPlainFixtureWriter struct {
-	logger   mon.Logger
+	logger   log.Logger
 	client   db.Client
 	metadata *MysqlPlainMetaData
 	purger   *mysqlPurger
 }
 
 func MysqlPlainFixtureWriterFactory(metadata *MysqlPlainMetaData) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
+	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		dbClient, err := db.NewClient(config, logger, "default")
 		if err != nil {
 			return nil, fmt.Errorf("can not create dbClient: %w", err)
@@ -38,7 +38,7 @@ func MysqlPlainFixtureWriterFactory(metadata *MysqlPlainMetaData) FixtureWriterF
 	}
 }
 
-func NewMysqlPlainFixtureWriterWithInterfaces(logger mon.Logger, client db.Client, metadata *MysqlPlainMetaData, purger *mysqlPurger) FixtureWriter {
+func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client db.Client, metadata *MysqlPlainMetaData, purger *mysqlPurger) FixtureWriter {
 	return &mysqlPlainFixtureWriter{
 		logger:   logger,
 		client:   client,

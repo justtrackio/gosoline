@@ -3,14 +3,14 @@ package test
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/hashicorp/go-multierror"
 	"sync"
 	"time"
 )
 
 type mockComponent interface {
-	Boot(config cfg.Config, logger mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string)
+	Boot(config cfg.Config, logger log.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string)
 	Start() error
 }
 
@@ -23,7 +23,7 @@ type mockSettings struct {
 }
 
 type mockComponentBase struct {
-	logger mon.Logger
+	logger log.Logger
 	runner *dockerRunnerLegacy
 	name   string
 }
@@ -32,12 +32,12 @@ type Mocks struct {
 	waitGroup    sync.WaitGroup
 	dockerRunner *dockerRunnerLegacy
 	components   map[string]mockComponent
-	logger       mon.Logger
+	logger       log.Logger
 	errors       *multierror.Error
 	errorsLock   sync.Mutex
 }
 
-func newMocks(config cfg.Config, logger mon.Logger) (*Mocks, error) {
+func newMocks(config cfg.Config, logger log.Logger) (*Mocks, error) {
 	dockerRunner := NewDockerRunnerLegacy(config)
 	logger = logger.WithChannel("mocks")
 

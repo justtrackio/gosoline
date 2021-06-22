@@ -7,7 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/aws/aws-sdk-go/service/ses/sesiface"
@@ -29,30 +29,30 @@ type Settings struct {
 }
 
 type simpleMailer struct {
-	logger   mon.Logger
+	logger   log.Logger
 	client   sesiface.SESAPI
 	settings *Settings
 }
 
 type templatedMailer struct {
-	logger   mon.Logger
+	logger   log.Logger
 	client   sesiface.SESAPI
 	settings *Settings
 }
 
-func NewSimpleMailer(config cfg.Config, logger mon.Logger, settings *Settings) SimpleMailer {
+func NewSimpleMailer(config cfg.Config, logger log.Logger, settings *Settings) SimpleMailer {
 	client := ProvideClient(config, logger, settings)
 
 	return NewSimpleMailerWithInterfaces(logger, client, settings)
 }
 
-func NewTemplatedMailer(config cfg.Config, logger mon.Logger, settings *Settings) TemplatedMailer {
+func NewTemplatedMailer(config cfg.Config, logger log.Logger, settings *Settings) TemplatedMailer {
 	client := ProvideClient(config, logger, settings)
 
 	return NewTemplatedMailerWithInterfaces(logger, client, settings)
 }
 
-func NewSimpleMailerWithInterfaces(logger mon.Logger, client sesiface.SESAPI, s *Settings) SimpleMailer {
+func NewSimpleMailerWithInterfaces(logger log.Logger, client sesiface.SESAPI, s *Settings) SimpleMailer {
 	return &simpleMailer{
 		logger:   logger,
 		client:   client,
@@ -60,7 +60,7 @@ func NewSimpleMailerWithInterfaces(logger mon.Logger, client sesiface.SESAPI, s 
 	}
 }
 
-func NewTemplatedMailerWithInterfaces(logger mon.Logger, client sesiface.SESAPI, s *Settings) TemplatedMailer {
+func NewTemplatedMailerWithInterfaces(logger log.Logger, client sesiface.SESAPI, s *Settings) TemplatedMailer {
 	return &templatedMailer{
 		logger:   logger,
 		client:   client,
@@ -116,7 +116,7 @@ func (e *templatedMailer) Send(ctx context.Context, message TemplatedMessage) er
 		return err
 	}
 
-	ctx = mon.AppendLoggerContextField(ctx, mon.Fields{
+	ctx = log.AppendLoggerContextField(ctx, log.Fields{
 		"template_name": message.TemplateName,
 	})
 	logger := e.logger.WithContext(ctx)

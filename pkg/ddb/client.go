@@ -3,7 +3,7 @@ package ddb
 import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
@@ -20,7 +20,7 @@ var c = struct {
 	instance map[string]dynamodbiface.DynamoDBAPI
 }{}
 
-func ProvideClient(config cfg.Config, logger mon.Logger, settings *Settings) dynamodbiface.DynamoDBAPI {
+func ProvideClient(config cfg.Config, logger log.Logger, settings *Settings) dynamodbiface.DynamoDBAPI {
 	c.Lock()
 	defer c.Unlock()
 
@@ -38,7 +38,7 @@ func ProvideClient(config cfg.Config, logger mon.Logger, settings *Settings) dyn
 	return c.instance[endpoint]
 }
 
-func NewClient(config cfg.Config, logger mon.Logger, settings *Settings) *dynamodb.DynamoDB {
+func NewClient(config cfg.Config, logger log.Logger, settings *Settings) *dynamodb.DynamoDB {
 	if settings.Backoff.Enabled {
 		settings.Client.MaxRetries = 0
 	}

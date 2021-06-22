@@ -1,7 +1,7 @@
 package stream
 
 import (
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"sync"
 )
 
@@ -12,13 +12,13 @@ type OutputChannel interface {
 }
 
 type outputChannel struct {
-	logger mon.Logger
+	logger log.Logger
 	ch     chan []WritableMessage
 	closed bool
 	lck    sync.RWMutex
 }
 
-func NewOutputChannel(logger mon.Logger, bufferSize int) OutputChannel {
+func NewOutputChannel(logger log.Logger, bufferSize int) OutputChannel {
 	return &outputChannel{
 		logger: logger,
 		ch:     make(chan []WritableMessage, bufferSize),

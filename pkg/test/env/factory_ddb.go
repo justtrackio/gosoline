@@ -4,7 +4,7 @@ import (
 	"fmt"
 	toxiproxy "github.com/Shopify/toxiproxy/client"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -92,7 +92,7 @@ func (f *ddbFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *ddbFactory) Component(_ cfg.Config, logger mon.Logger, containers map[string]*container, settings interface{}) (Component, error) {
+func (f *ddbFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*ddbSettings)
 
 	var err error

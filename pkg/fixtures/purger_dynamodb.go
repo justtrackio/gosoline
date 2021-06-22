@@ -3,19 +3,19 @@ package fixtures
 import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 )
 
 type dynamodbPurger struct {
-	logger   mon.Logger
+	logger   log.Logger
 	settings *ddb.Settings
 	client   dynamodbiface.DynamoDBAPI
 }
 
-func newDynamodbPurger(config cfg.Config, logger mon.Logger, settings *ddb.Settings) *dynamodbPurger {
+func newDynamodbPurger(config cfg.Config, logger log.Logger, settings *ddb.Settings) *dynamodbPurger {
 	client := ddb.ProvideClient(config, logger, settings)
 
 	return &dynamodbPurger{

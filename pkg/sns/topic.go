@@ -8,7 +8,7 @@ import (
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/sns"
@@ -31,13 +31,13 @@ type Settings struct {
 }
 
 type snsTopic struct {
-	logger   mon.Logger
+	logger   log.Logger
 	client   snsiface.SNSAPI
 	executor gosoAws.Executor
 	settings *Settings
 }
 
-func NewTopic(config cfg.Config, logger mon.Logger, settings *Settings) (*snsTopic, error) {
+func NewTopic(config cfg.Config, logger log.Logger, settings *Settings) (*snsTopic, error) {
 	settings.PadFromConfig(config)
 
 	client := ProvideClient(config, logger, settings)
@@ -58,7 +58,7 @@ func NewTopic(config cfg.Config, logger mon.Logger, settings *Settings) (*snsTop
 	return NewTopicWithInterfaces(logger, client, executor, settings), nil
 }
 
-func NewTopicWithInterfaces(logger mon.Logger, client snsiface.SNSAPI, executor gosoAws.Executor, s *Settings) *snsTopic {
+func NewTopicWithInterfaces(logger log.Logger, client snsiface.SNSAPI, executor gosoAws.Executor, s *Settings) *snsTopic {
 	return &snsTopic{
 		logger:   logger,
 		client:   client,
@@ -85,7 +85,7 @@ func (t *snsTopic) Publish(ctx context.Context, msg *string, attributes ...map[s
 	})
 
 	if exec.IsRequestCanceled(err) {
-		t.logger.WithFields(mon.Fields{
+		t.logger.WithFields(log.Fields{
 			"arn": t.settings.Arn,
 		}).Info("request was canceled while publishing to topic")
 
@@ -103,7 +103,7 @@ func (t *snsTopic) SubscribeSqs(queueArn string, attributes map[string]interface
 	}
 
 	if exists {
-		t.logger.WithFields(mon.Fields{
+		t.logger.WithFields(log.Fields{
 			"topicArn": t.settings.Arn,
 			"queueArn": queueArn,
 		}).Info("already subscribed to sns topic")
@@ -133,13 +133,13 @@ func (t *snsTopic) SubscribeSqs(queueArn string, attributes map[string]interface
 	})
 
 	if err != nil {
-		t.logger.WithFields(mon.Fields{
+		t.logger.WithFields(log.Fields{
 			"topicArn": t.settings.Arn,
 			"queueArn": queueArn,
 		}).Error("could not subscribe for sqs queue: %w", err)
 	}
 
-	t.logger.WithFields(mon.Fields{
+	t.logger.WithFields(log.Fields{
 		"topicArn": t.settings.Arn,
 		"queueArn": queueArn,
 	}).Info("successful subscribed to sns topic")
@@ -169,7 +169,7 @@ func (t *snsTopic) subscriptionExists(queueArn string, attributes map[string]int
 			return true, nil
 		}
 
-		t.logger.WithFields(mon.Fields{
+		t.logger.WithFields(log.Fields{
 			"topicArn":        *subscription.TopicArn,
 			"subscriptionArt": *subscription.SubscriptionArn,
 			"queueArn":        queueArn,

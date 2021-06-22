@@ -5,7 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/sns"
 	"github.com/applike/gosoline/pkg/sqs"
 )
@@ -44,7 +44,7 @@ type snsInput struct {
 	*sqsInput
 }
 
-func NewSnsInput(config cfg.Config, logger mon.Logger, settings SnsInputSettings, targets []SnsInputTarget) (*snsInput, error) {
+func NewSnsInput(config cfg.Config, logger log.Logger, settings SnsInputSettings, targets []SnsInputTarget) (*snsInput, error) {
 	autoSubscribe := config.GetBool("aws_sns_autoSubscribe")
 
 	sqsInput, err := NewSqsInput(config, logger, SqsInputSettings{

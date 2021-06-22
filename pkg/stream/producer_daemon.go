@@ -8,7 +8,8 @@ import (
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/metric"
 	"sync"
 	"time"
 )
@@ -61,8 +62,8 @@ type producerDaemon struct {
 
 	name          string
 	lck           sync.Mutex
-	logger        mon.Logger
-	metric        mon.MetricWriter
+	logger        log.Logger
+	metric        metric.Writer
 	aggregator    ProducerDaemonAggregator
 	batcher       ProducerDaemonBatcher
 	outCh         OutputChannel
@@ -79,7 +80,7 @@ func ResetProducerDaemons() {
 	producerDaemons = map[string]*producerDaemon{}
 }
 
-func ProvideProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*producerDaemon, error) {
+func ProvideProducerDaemon(config cfg.Config, logger log.Logger, name string) (*producerDaemon, error) {
 	producerDaemonLock.Lock()
 	defer producerDaemonLock.Unlock()
 
@@ -97,7 +98,7 @@ func ProvideProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*
 	return producerDaemons[name], nil
 }
 
-func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*producerDaemon, error) {
+func NewProducerDaemon(config cfg.Config, logger log.Logger, name string) (*producerDaemon, error) {
 	settings := readProducerSettings(config, name)
 
 	output, err := NewConfigurableOutput(config, logger, settings.Output)
@@ -106,7 +107,7 @@ func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*prod
 	}
 
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
-	metric := mon.NewMetricDaemonWriter(defaultMetrics...)
+	metric := metric.NewDaemonWriter(defaultMetrics...)
 
 	aggregator, err := NewProducerDaemonAggregator(settings.Daemon, settings.Compression)
 	if err != nil {
@@ -116,7 +117,7 @@ func NewProducerDaemon(config cfg.Config, logger mon.Logger, name string) (*prod
 	return NewProducerDaemonWithInterfaces(logger, metric, aggregator, output, clock.NewRealTicker, name, settings.Daemon), nil
 }
 
-func NewProducerDaemonWithInterfaces(logger mon.Logger, metric mon.MetricWriter, aggregator ProducerDaemonAggregator, output Output, tickerFactory clock.TickerFactory, name string, settings ProducerDaemonSettings) *producerDaemon {
+func NewProducerDaemonWithInterfaces(logger log.Logger, metric metric.Writer, aggregator ProducerDaemonAggregator, output Output, tickerFactory clock.TickerFactory, name string, settings ProducerDaemonSettings) *producerDaemon {
 	return &producerDaemon{
 		name:          name,
 		logger:        logger,
@@ -342,7 +343,7 @@ func (d *producerDaemon) outputLoop(ctx context.Context) error {
 }
 
 func (d *producerDaemon) writeMetricMessageCount(count int) {
-	d.metric.WriteOne(&mon.MetricDatum{
+	d.metric.WriteOne(&metric.Datum{
 		MetricName: metricNameMessageCount,
 		Dimensions: map[string]string{
 			"ProducerDaemon": d.name,
@@ -352,7 +353,7 @@ func (d *producerDaemon) writeMetricMessageCount(count int) {
 }
 
 func (d *producerDaemon) writeMetricBatchSize(size int) {
-	d.metric.WriteOne(&mon.MetricDatum{
+	d.metric.WriteOne(&metric.Datum{
 		MetricName: metricNameBatchSize,
 		Dimensions: map[string]string{
 			"ProducerDaemon": d.name,
@@ -362,7 +363,7 @@ func (d *producerDaemon) writeMetricBatchSize(size int) {
 }
 
 func (d *producerDaemon) writeMetricAggregateSize(size int) {
-	d.metric.WriteOne(&mon.MetricDatum{
+	d.metric.WriteOne(&metric.Datum{
 		MetricName: metricNameAggregateSize,
 		Dimensions: map[string]string{
 			"ProducerDaemon": d.name,
@@ -376,44 +377,44 @@ func (d *producerDaemon) writeMetricIdleDuration(idleDuration time.Duration) {
 		idleDuration = d.settings.Interval
 	}
 
-	d.metric.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
+	d.metric.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
 		MetricName: metricNameIdleDuration,
 		Dimensions: map[string]string{
 			"ProducerDaemon": d.name,
 		},
-		Unit:  mon.UnitMillisecondsAverage,
+		Unit:  metric.UnitMillisecondsAverage,
 		Value: float64(idleDuration.Milliseconds()),
 	})
 }
 
-func getProducerDaemonDefaultMetrics(name string) mon.MetricData {
-	return mon.MetricData{
+func getProducerDaemonDefaultMetrics(name string) metric.Data {
+	return metric.Data{
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameMessageCount,
 			Dimensions: map[string]string{
 				"ProducerDaemon": name,
 			},
-			Unit:  mon.UnitCount,
+			Unit:  metric.UnitCount,
 			Value: 0.0,
 		},
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameBatchSize,
 			Dimensions: map[string]string{
 				"ProducerDaemon": name,
 			},
-			Unit:  mon.UnitCountAverage,
+			Unit:  metric.UnitCountAverage,
 			Value: 0.0,
 		},
 		{
-			Priority:   mon.PriorityHigh,
+			Priority:   metric.PriorityHigh,
 			MetricName: metricNameAggregateSize,
 			Dimensions: map[string]string{
 				"ProducerDaemon": name,
 			},
-			Unit:  mon.UnitCountAverage,
+			Unit:  metric.UnitCountAverage,
 			Value: 0.0,
 		},
 	}

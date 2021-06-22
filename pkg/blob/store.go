@@ -3,8 +3,8 @@ package blob
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -73,7 +73,7 @@ type Store interface {
 }
 
 type s3Store struct {
-	logger   mon.Logger
+	logger   log.Logger
 	channels *BatchRunnerChannels
 	client   s3iface.S3API
 
@@ -104,7 +104,7 @@ func CreateKey() string {
 	return namingStrategy()
 }
 
-func NewStore(config cfg.Config, logger mon.Logger, name string) *s3Store {
+func NewStore(config cfg.Config, logger log.Logger, name string) *s3Store {
 	channels := ProvideBatchRunnerChannels(config)
 	client := ProvideS3Client(config)
 
@@ -127,7 +127,7 @@ func NewStore(config cfg.Config, logger mon.Logger, name string) *s3Store {
 	return store
 }
 
-func NewStoreWithInterfaces(logger mon.Logger, channels *BatchRunnerChannels, client s3iface.S3API, settings Settings) *s3Store {
+func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, client s3iface.S3API, settings Settings) *s3Store {
 	return &s3Store{
 		logger:   logger,
 		channels: channels,

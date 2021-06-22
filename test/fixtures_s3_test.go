@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/fixtures"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -24,7 +24,7 @@ const (
 
 type FixturesS3Suite struct {
 	suite.Suite
-	logger     mon.Logger
+	logger     log.Logger
 	client     s3iface.S3API
 	loader     fixtures.FixtureLoader
 	bucketName string

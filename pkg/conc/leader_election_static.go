@@ -3,7 +3,7 @@ package conc
 import (
 	"context"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type StaticLeaderElectionSettings struct {
@@ -14,7 +14,7 @@ type StaticLeaderElection struct {
 	result bool
 }
 
-func NewStaticLeaderElection(config cfg.Config, logger mon.Logger, name string) (LeaderElection, error) {
+func NewStaticLeaderElection(config cfg.Config, logger log.Logger, name string) (LeaderElection, error) {
 	key := GetLeaderElectionConfigKey(name)
 	settings := &StaticLeaderElectionSettings{}
 	config.UnmarshalKey(key, settings)

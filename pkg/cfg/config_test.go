@@ -14,11 +14,11 @@ type ConfigTestSuite struct {
 	suite.Suite
 
 	config      cfg.GosoConf
-	environment map[string]string
+	envProvider cfg.EnvProvider
 }
 
 func (s *ConfigTestSuite) SetupTest() {
-	s.environment = map[string]string{}
+	s.envProvider = cfg.NewMemoryEnvProvider()
 
 	options := []cfg.Option{
 		cfg.WithErrorHandlers(s.errorHandler),
@@ -26,7 +26,7 @@ func (s *ConfigTestSuite) SetupTest() {
 		cfg.WithSanitizers(cfg.TimeSanitizer),
 	}
 
-	s.config = cfg.NewWithInterfaces(s.environmentMock)
+	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.applyOptions(options...)
 }
 
@@ -40,12 +40,6 @@ func (s *ConfigTestSuite) errorHandler(msg string, args ...interface{}) {
 	s.FailNow(fmt.Errorf(msg, args...).Error())
 }
 
-func (s *ConfigTestSuite) environmentMock(key string) (string, bool) {
-	value, ok := s.environment[key]
-
-	return value, ok
-}
-
 func (s *ConfigTestSuite) setupConfigValues(values map[string]interface{}) {
 	if err := s.config.Option(cfg.WithConfigMap(values)); err != nil {
 		s.FailNow("can not setup config values", err.Error())
@@ -53,7 +47,9 @@ func (s *ConfigTestSuite) setupConfigValues(values map[string]interface{}) {
 }
 
 func (s *ConfigTestSuite) setupEnvironment(values map[string]string) {
-	s.environment = values
+	for k, v := range values {
+		_ = s.envProvider.SetEnv(k, v)
+	}
 }
 
 func (s *ConfigTestSuite) TestConfig_AllKeys() {
@@ -260,12 +256,16 @@ func (s *ConfigTestSuite) TestConfig_GetTime() {
 
 func (s *ConfigTestSuite) TestConfig_Environment() {
 	s.setupEnvironment(map[string]string{
-		"I": "2",
-		"S": "string",
+		"I":  "2",
+		"S":  "string",
+		"T":  "2019-11-27",
+		"SL": "a,b,c",
 	})
 
 	s.Equal(2, s.config.GetInt("i"))
 	s.Equal("string", s.config.GetString("s"))
+	s.Equal("2019-11-27", s.config.GetTime("t").Format("2006-01-02"))
+	s.Equal([]string{"a", "b", "c"}, s.config.GetStringSlice("sl"))
 }
 
 func (s *ConfigTestSuite) TestConfig_EnvironmentPrefixed() {
@@ -277,6 +277,31 @@ func (s *ConfigTestSuite) TestConfig_EnvironmentPrefixed() {
 
 	s.Equal(2, s.config.GetInt("i"))
 	s.Equal("string", s.config.GetString("s"))
+}
+
+func (s *ConfigTestSuite) TestEnvironmentUnmarshalStructWithEmbeddedSlice() {
+	type configMap struct {
+		Slice []struct {
+			S string `cfg:"s"`
+		} `cfg:"slice"`
+		Strings  []string `cfg:"strings"`
+		Integers []int    `cfg:"integers"`
+	}
+
+	s.setupEnvironment(map[string]string{
+		"PREFIX_SLICE_0_S": "a",
+		"PREFIX_SLICE_1_S": "b",
+		"PREFIX_STRINGS_0": "foo",
+		"PREFIX_STRINGS_1": "bar",
+		"PREFIX_INTEGERS":  "1,2,3",
+	})
+
+	cm := configMap{}
+	s.config.UnmarshalKey("prefix", &cm)
+
+	s.Len(cm.Slice, 2)
+	s.Equal([]string{"foo", "bar"}, cm.Strings)
+	s.Equal([]int{1, 2, 3}, cm.Integers)
 }
 
 func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Struct() {

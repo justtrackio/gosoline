@@ -1,7 +1,7 @@
 package tracing
 
 import (
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"time"
 )
 
@@ -11,13 +11,13 @@ type ContextMissingWarnSamplingConfig struct {
 }
 
 type ContextMissingWarnStrategy struct {
-	logger   mon.Logger
+	logger   log.Logger
 	sampling ContextMissingWarnSamplingConfig
 }
 
-func NewContextMissingWarningLogStrategy(logger mon.Logger) *ContextMissingWarnStrategy {
+func NewContextMissingWarningLogStrategy(logger log.Logger) *ContextMissingWarnStrategy {
 	logger = logger.WithChannel("tracing")
-	logger = mon.NewSamplingLogger(logger, time.Minute)
+	logger = log.NewSamplingLogger(logger, time.Minute)
 
 	strategy := &ContextMissingWarnStrategy{
 		logger: logger,
@@ -31,9 +31,9 @@ func NewContextMissingWarningLogStrategy(logger mon.Logger) *ContextMissingWarnS
 }
 
 func (c ContextMissingWarnStrategy) ContextMissing(v interface{}) {
-	stacktrace := mon.GetStackTrace(2)
+	stacktrace := log.GetStackTrace(2)
 
-	c.logger.WithFields(mon.Fields{
+	c.logger.WithFields(log.Fields{
 		"stacktrace": stacktrace,
 	}).Warn("can not trace the action: %s", v)
 }

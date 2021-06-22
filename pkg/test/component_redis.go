@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -19,7 +19,7 @@ type redisComponent struct {
 	clients  *simpleCache
 }
 
-func (r *redisComponent) Boot(config cfg.Config, _ mon.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
+func (r *redisComponent) Boot(config cfg.Config, _ log.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
 	r.name = name
 	r.runner = runner
 	r.settings = &redisSettings{

@@ -5,7 +5,7 @@ package fixtures
 import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type fixtureLoaderSettings struct {
@@ -13,12 +13,12 @@ type fixtureLoaderSettings struct {
 }
 
 type fixtureLoader struct {
-	logger        mon.Logger
+	logger        log.Logger
 	settings      *fixtureLoaderSettings
 	writerFactory func(factory FixtureWriterFactory) (FixtureWriter, error)
 }
 
-func NewFixtureLoader(config cfg.Config, logger mon.Logger) FixtureLoader {
+func NewFixtureLoader(config cfg.Config, logger log.Logger) FixtureLoader {
 	logger = logger.WithChannel("fixture_loader")
 
 	settings := &fixtureLoaderSettings{}

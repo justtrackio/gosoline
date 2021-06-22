@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/applike/gosoline/pkg/metric"
 	"github.com/go-resty/resty/v2"
 	"net/http"
 	netUrl "net/url"
@@ -58,11 +59,11 @@ type Response struct {
 type headers map[string]string
 
 type client struct {
-	logger         mon.Logger
+	logger         log.Logger
 	clock          clock.Clock
 	defaultHeaders headers
 	http           restyClient
-	mo             mon.MetricWriter
+	mo             metric.Writer
 }
 
 type Settings struct {
@@ -73,10 +74,10 @@ type Settings struct {
 	FollowRedirect   bool          `cfg:"follow_redirects"`
 }
 
-func NewHttpClient(config cfg.Config, logger mon.Logger) Client {
+func NewHttpClient(config cfg.Config, logger log.Logger) Client {
 	c := clock.NewRealClock()
 
-	mo := mon.NewMetricDaemonWriter()
+	mo := metric.NewDaemonWriter()
 
 	settings := &Settings{}
 	config.UnmarshalKey("http_client", settings)
@@ -94,7 +95,7 @@ func NewHttpClient(config cfg.Config, logger mon.Logger) Client {
 	return NewHttpClientWithInterfaces(logger, c, mo, httpClient)
 }
 
-func NewHttpClientWithInterfaces(logger mon.Logger, c clock.Clock, mo mon.MetricWriter, httpClient restyClient) Client {
+func NewHttpClientWithInterfaces(logger log.Logger, c clock.Clock, mo metric.Writer, httpClient restyClient) Client {
 	return &client{
 		logger:         logger,
 		clock:          c,
@@ -181,7 +182,7 @@ func (c *client) Put(ctx context.Context, request *Request) (*Response, error) {
 
 func (c *client) do(ctx context.Context, method string, request *Request) (*Response, error) {
 	req, url, err := request.build()
-	logger := c.logger.WithContext(ctx).WithFields(mon.Fields{
+	logger := c.logger.WithContext(ctx).WithFields(log.Fields{
 		"url":    url,
 		"method": method,
 	})
@@ -198,7 +199,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 		req.SetOutput(*request.outputFile)
 	}
 
-	c.writeMetric(metricRequest, method, mon.UnitCount, 1.0)
+	c.writeMetric(metricRequest, method, metric.UnitCount, 1.0)
 	start := c.clock.Now()
 	resp, err := req.Execute(method, url)
 
@@ -212,12 +213,12 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	// Otherwise a user might spam our error logs by just canceling a lot of requests
 	// (or many users spam us because sometimes they cancel requests)
 	if err != nil {
-		c.writeMetric(metricError, method, mon.UnitCount, 1.0)
+		c.writeMetric(metricError, method, metric.UnitCount, 1.0)
 		return nil, fmt.Errorf("failed to perform %s request to %s: %w", request.restyRequest.Method, request.url.String(), err)
 	}
 
 	metricName := fmt.Sprintf("%s%dXX", metricResponseCode, resp.StatusCode()/100)
-	c.writeMetric(metricName, method, mon.UnitCount, 1.0)
+	c.writeMetric(metricName, method, metric.UnitCount, 1.0)
 
 	response := buildResponse(resp, &totalDuration)
 
@@ -226,17 +227,17 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	// so the duration will be very low. If we get back an error (e.g., status 500),
 	// we log the duration as this is just a valid http response.
 	requestDurationMs := float64(resp.Time() / time.Millisecond)
-	c.writeMetric(metricRequestDuration, method, mon.UnitMillisecondsAverage, requestDurationMs)
+	c.writeMetric(metricRequestDuration, method, metric.UnitMillisecondsAverage, requestDurationMs)
 
 	return response, nil
 }
 
 func (c *client) writeMetric(metricName string, method string, unit string, value float64) {
-	c.mo.WriteOne(&mon.MetricDatum{
-		Priority:   mon.PriorityHigh,
+	c.mo.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,
-		Dimensions: mon.MetricDimensions{
+		Dimensions: metric.Dimensions{
 			"Method": method,
 		},
 		Unit:  unit,

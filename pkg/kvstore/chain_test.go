@@ -5,7 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
 	kvStoreMocks "github.com/applike/gosoline/pkg/kvstore/mocks"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -435,7 +435,7 @@ func nilFactory(_ kvstore.Factory, _ *kvstore.Settings) (kvstore.KvStore, error)
 }
 
 func buildTestableChainStore(missingCacheEnabled bool) (kvstore.KvStore, *kvStoreMocks.KvStore, *kvStoreMocks.KvStore) {
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	element0 := new(kvStoreMocks.KvStore)
 	element1 := new(kvStoreMocks.KvStore)

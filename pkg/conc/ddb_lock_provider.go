@@ -6,8 +6,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mon"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/cenkalti/backoff"
 	"github.com/jonboulle/clockwork"
@@ -24,7 +24,7 @@ type DdbLockItem struct {
 }
 
 type ddbLockProvider struct {
-	logger          mon.Logger
+	logger          log.Logger
 	repo            ddb.Repository
 	backOff         backoff.BackOff
 	clock           clockwork.Clock
@@ -33,7 +33,7 @@ type ddbLockProvider struct {
 	domain          string
 }
 
-func NewDdbLockProvider(config cfg.Config, logger mon.Logger, settings DistributedLockSettings) (DistributedLockProvider, error) {
+func NewDdbLockProvider(config cfg.Config, logger log.Logger, settings DistributedLockSettings) (DistributedLockProvider, error) {
 	repo, err := ddb.NewRepository(config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Name: "locks",
@@ -60,7 +60,7 @@ func NewDdbLockProvider(config cfg.Config, logger mon.Logger, settings Distribut
 }
 
 func NewDdbLockProviderWithInterfaces(
-	logger mon.Logger,
+	logger log.Logger,
 	repo ddb.Repository,
 	backOff backoff.BackOff,
 	clock clockwork.Clock,
@@ -111,7 +111,7 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (Distrib
 			return ErrOwnedLock
 		}
 
-		m.logger.WithContext(ctx).WithFields(mon.Fields{
+		m.logger.WithContext(ctx).WithFields(log.Fields{
 			"ddb_lock_token":    token,
 			"ddb_lock_resource": resource,
 		}).Debug("acquired lock")
@@ -149,7 +149,7 @@ func (m *ddbLockProvider) renew(ctx context.Context, lockTime time.Duration, res
 			return backoff.Permanent(ErrNotOwned)
 		}
 
-		m.logger.WithContext(ctx).WithFields(mon.Fields{
+		m.logger.WithContext(ctx).WithFields(log.Fields{
 			"ddb_lock_token":    token,
 			"ddb_lock_resource": resource,
 		}).Debug("renewed lock")
@@ -176,7 +176,7 @@ func (m *ddbLockProvider) release(ctx context.Context, resource string, token st
 		return ErrNotOwned
 	}
 
-	m.logger.WithContext(ctx).WithFields(mon.Fields{
+	m.logger.WithContext(ctx).WithFields(log.Fields{
 		"ddb_lock_token":    token,
 		"ddb_lock_resource": resource,
 	}).Debug("released lock")

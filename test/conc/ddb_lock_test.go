@@ -8,7 +8,7 @@ import (
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/exec"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	pkgTest "github.com/applike/gosoline/pkg/test"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/suite"
@@ -65,7 +65,7 @@ func (s *DdbLockTestSuite) SetupTest() {
 	config.On("GetString", "app_family").Return("test")
 	config.On("GetString", "app_name").Return("ddb-lock-test")
 
-	logger := monMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMockedAll()
 
 	provider, err := conc.NewDdbLockProvider(config, logger, conc.DistributedLockSettings{
 		Backoff: exec.BackoffSettings{

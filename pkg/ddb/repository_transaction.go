@@ -7,7 +7,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -23,14 +23,14 @@ type TransactionRepository interface {
 }
 
 type transactionRepository struct {
-	logger mon.Logger
+	logger log.Logger
 
 	client   dynamodbiface.DynamoDBAPI
 	executor aws.Executor
 	tracer   tracing.Tracer
 }
 
-func NewTransactionRepository(config cfg.Config, logger mon.Logger) (*transactionRepository, error) {
+func NewTransactionRepository(config cfg.Config, logger log.Logger) (*transactionRepository, error) {
 	settings := &Settings{}
 
 	settings.Client.MaxRetries = config.GetInt("aws_sdk_retries")
@@ -64,7 +64,7 @@ func NewTransactionRepository(config cfg.Config, logger mon.Logger) (*transactio
 	return NewTransactionRepositoryWithInterfaces(logger, client, executor, tracer), nil
 }
 
-func NewTransactionRepositoryWithInterfaces(logger mon.Logger, client dynamodbiface.DynamoDBAPI, executor aws.Executor, tracer tracing.Tracer) *transactionRepository {
+func NewTransactionRepositoryWithInterfaces(logger log.Logger, client dynamodbiface.DynamoDBAPI, executor aws.Executor, tracer tracing.Tracer) *transactionRepository {
 	return &transactionRepository{
 		logger:   logger,
 		client:   client,

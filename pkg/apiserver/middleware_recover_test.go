@@ -3,7 +3,7 @@ package apiserver_test
 import (
 	"errors"
 	"github.com/applike/gosoline/pkg/apiserver"
-	monMocks "github.com/applike/gosoline/pkg/mon/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
@@ -15,7 +15,7 @@ import (
 func TestRecoveryWithSentryCaseNil(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 
 	r := gin.New()
 	r.Use(apiserver.RecoveryWithSentry(loggerMock))
@@ -35,7 +35,7 @@ func TestRecoveryWithSentryCaseNil(t *testing.T) {
 func TestRecoveryWithSentryCaseError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 
 	r := gin.New()
 	r.Use(apiserver.RecoveryWithSentry(loggerMock))
@@ -59,7 +59,7 @@ func TestRecoveryWithSentryCaseError(t *testing.T) {
 func TestRecoveryWithSentryCaseResponseBodyWriterAndConnectionErrors(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 
 	r := gin.New()
 	r.Use(apiserver.RecoveryWithSentry(loggerMock))
@@ -83,7 +83,7 @@ func TestRecoveryWithSentryCaseResponseBodyWriterAndConnectionErrors(t *testing.
 func TestRecoveryWithSentryCaseResponseBodyWriterErrorButNotConnectionError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 
 	r := gin.New()
 	r.Use(apiserver.RecoveryWithSentry(loggerMock))
@@ -107,7 +107,7 @@ func TestRecoveryWithSentryCaseResponseBodyWriterErrorButNotConnectionError(t *t
 func TestRecoveryWithSentryCaseString(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	loggerMock := monMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMockedAll()
 
 	r := gin.New()
 	r.Use(apiserver.RecoveryWithSentry(loggerMock))

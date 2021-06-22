@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/conc"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 var ErrKernelStopping = fmt.Errorf("stopping kernel")
@@ -62,7 +62,7 @@ func (s *stage) run(k *kernel) {
 	s.running.Signal()
 }
 
-func (s *stage) stopWait(stageIndex int, logger mon.Logger) {
+func (s *stage) stopWait(stageIndex int, logger log.Logger) {
 	s.cfn.Kill(ErrKernelStopping)
 	err := s.cfn.Wait()
 

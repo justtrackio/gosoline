@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type configurableKvStoreFixtureWriter struct {
-	logger mon.Logger
+	logger log.Logger
 	store  kvstore.KvStore
 }
 
 func ConfigurableKvStoreFixtureWriterFactory(name string) FixtureWriterFactory {
-	return func(config cfg.Config, logger mon.Logger) (FixtureWriter, error) {
+	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		store, err := kvstore.ProvideConfigurableKvStore(config, logger, name)
 		if err != nil {
 			return nil, fmt.Errorf("can not provide configurable kvstore: %w", err)
@@ -24,7 +24,7 @@ func ConfigurableKvStoreFixtureWriterFactory(name string) FixtureWriterFactory {
 	}
 }
 
-func NewConfigurableKvStoreFixtureWriterWithInterfaces(logger mon.Logger, store kvstore.KvStore) FixtureWriter {
+func NewConfigurableKvStoreFixtureWriterWithInterfaces(logger log.Logger, store kvstore.KvStore) FixtureWriter {
 	return &configurableKvStoreFixtureWriter{
 		logger: logger,
 		store:  store,

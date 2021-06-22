@@ -9,7 +9,7 @@ import (
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	gosoKinesis "github.com/applike/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -30,7 +30,7 @@ func (k *KinesisOutputSettings) GetResourceName() string {
 }
 
 type kinesisOutput struct {
-	logger      mon.Logger
+	logger      log.Logger
 	uuidGen     uuid.Uuid
 	client      kinesisiface.KinesisAPI
 	batchExec   exec.Executor
@@ -38,7 +38,7 @@ type kinesisOutput struct {
 	settings    *KinesisOutputSettings
 }
 
-func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOutputSettings) (Output, error) {
+func NewKinesisOutput(config cfg.Config, logger log.Logger, settings *KinesisOutputSettings) (Output, error) {
 	client := cloud.GetKinesisClient(config, logger)
 	err := gosoKinesis.CreateKinesisStream(config, logger, client, settings)
 
@@ -55,7 +55,7 @@ func NewKinesisOutput(config cfg.Config, logger mon.Logger, settings *KinesisOut
 	return NewKinesisOutputWithInterfaces(logger, client, requestExec, settings), nil
 }
 
-func NewKinesisOutputWithInterfaces(logger mon.Logger, client kinesisiface.KinesisAPI, requestExec gosoAws.Executor, settings *KinesisOutputSettings) Output {
+func NewKinesisOutputWithInterfaces(logger log.Logger, client kinesisiface.KinesisAPI, requestExec gosoAws.Executor, settings *KinesisOutputSettings) Output {
 	uuidGen := uuid.New()
 
 	res := &exec.ExecutableResource{
@@ -83,7 +83,7 @@ func (o *kinesisOutput) Write(ctx context.Context, batch []WritableMessage) erro
 		return nil
 	}
 
-	ctx = mon.AppendLoggerContextField(ctx, mon.Fields{
+	ctx = log.AppendLoggerContextField(ctx, log.Fields{
 		"kinesis_write_request_id": o.uuidGen.NewV4(),
 	})
 
