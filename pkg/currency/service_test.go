@@ -3,6 +3,7 @@ package currency_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/currency"
 	"github.com/applike/gosoline/pkg/http"
@@ -408,4 +409,26 @@ func TestUpdaterService_EnsureHistoricalExchangeRatesTwoGapDaysAtEnd(t *testing.
 
 	store.AssertExpectations(t)
 	client.AssertExpectations(t)
+}
+
+func Test_ToUsdAtDate_closenessMargin(t *testing.T) {
+	fakeClock := clock.NewFakeClockAt(time.Date(2021, 1, 3, 1, 0, 0, 0, time.UTC))
+	store := new(kvStoreMock.KvStore)
+	store.On("Get", context.Background(), "2021-01-03-USD", mock.AnythingOfType("*float64")).Run(func(args mock.Arguments) {
+		ptr := args.Get(2).(*float64)
+		*ptr = 2
+	}).Return(true, nil)
+	service := currency.NewWithInterfaces(store, fakeClock)
+
+	got, err := service.ToUsdAtDate(context.Background(), 3.5, "USD", fakeClock.Now().Add(26*time.Hour))
+	assert.NoError(t, err)
+	assert.Equal(t, 3.5, got)
+
+	got, err = service.ToUsdAtDate(context.Background(), 12.12, "EUR", fakeClock.Now().Add(59*time.Second))
+	assert.NoError(t, err)
+	assert.Equal(t, 24.24, got)
+
+	got, err = service.ToUsdAtDate(context.Background(), 23.23, "EUR", fakeClock.Now().Add(61*time.Second))
+	assert.Equal(t, err, fmt.Errorf("CurrencyService: requested date in the future"))
+	assert.Equal(t, 0.0, got)
 }

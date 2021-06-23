@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const closenessMargin = time.Minute
+
 //go:generate mockery -name Service
 type Service interface {
 	HasCurrency(ctx context.Context, currency string) (bool, error)
@@ -115,8 +117,6 @@ func (s *currencyService) getExchangeRate(ctx context.Context, to string) (float
 // if the date parameter is recent enough and a lookup for the given currency fails,
 // function will return the lookup for the previous day
 func (s *currencyService) getExchangeRateAtDate(ctx context.Context, currency string, date time.Time) (float64, error) {
-	yesterday := s.clock.Now().AddDate(0, 0, -1)
-	tomorrow := s.clock.Now().AddDate(0, 0, 1)
 	var exchangeRate float64
 	key := historicalRateKey(date, currency)
 
@@ -124,11 +124,13 @@ func (s *currencyService) getExchangeRateAtDate(ctx context.Context, currency st
 
 	if err != nil {
 		return 0, fmt.Errorf("getExchangeRateAtDate: error getting exchange rate: %w", err)
+	}
 
-	} else if !exists {
-		if date.After(yesterday) && date.Before(tomorrow) {
+	if !exists {
+		if date.After(s.clock.Now().Add(-24 * time.Hour)) {
 			return s.getExchangeRateAtDate(ctx, currency, date.AddDate(0, 0, -1))
 		}
+
 		return 0, fmt.Errorf("getExchangeRateAtDate: currency not found: %s %s", currency, date)
 	}
 
@@ -143,20 +145,21 @@ func (s *currencyService) HasCurrencyAtDate(ctx context.Context, currency string
 		return true, nil
 	}
 
-	if date.After(time.Now()) {
+	if date.After(s.clock.Now().Add(closenessMargin)) {
 		return false, fmt.Errorf("CurrencyService: requested date in the future")
 	}
 
-	yesterday := s.clock.Now().AddDate(0, 0, -1)
-	tomorrow := s.clock.Now().AddDate(0, 0, 1)
 	key := historicalRateKey(date, currency)
 	exists, err := s.store.Contains(ctx, key)
 	if err != nil {
 		return exists, err
 
-	} else if !exists && date.After(yesterday) && date.Before(tomorrow) {
+	}
+
+	if !exists && date.After(s.clock.Now().Add(-24*time.Hour)) {
 		return s.HasCurrencyAtDate(ctx, currency, date.AddDate(0, 0, -1))
 	}
+
 	return exists, nil
 }
 
@@ -166,7 +169,7 @@ func (s *currencyService) ToEurAtDate(ctx context.Context, value float64, from s
 		return value, nil
 	}
 
-	if date.After(time.Now()) {
+	if date.After(s.clock.Now().Add(closenessMargin)) {
 		return 0, fmt.Errorf("CurrencyService: requested date in the future")
 	}
 
@@ -194,7 +197,7 @@ func (s *currencyService) ToCurrencyAtDate(ctx context.Context, to string, value
 		return value, nil
 	}
 
-	if date.After(time.Now()) {
+	if date.After(s.clock.Now().Add(closenessMargin)) {
 		return 0, fmt.Errorf("CurrencyService: requested date in the future")
 	}
 
