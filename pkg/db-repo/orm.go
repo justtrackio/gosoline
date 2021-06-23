@@ -5,8 +5,8 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/iancoleman/strcase"
 	"github.com/jinzhu/gorm"
-	"strings"
 )
 
 type OrmMigrationSetting struct {
@@ -28,17 +28,27 @@ func NewOrm(config cfg.Config, logger mon.Logger) (*gorm.DB, error) {
 	settings := OrmSettings{}
 	config.UnmarshalKey("db.default", &settings)
 
-	application := settings.Application
-
-	application = strings.ToLower(application)
-	application = strings.Replace(application, "-", "_", -1)
-
-	settings.Application = application
-
-	return NewOrmWithInterfaces(logger, dbClient, settings)
+	return NewOrmWithInterfaces(dbClient, settings)
 }
 
-func NewOrmWithInterfaces(logger mon.Logger, dbClient gorm.SQLCommon, settings OrmSettings) (*gorm.DB, error) {
+func NewOrmWithDbSettings(logger mon.Logger, dbSettings db.Settings, application string) (*gorm.DB, error) {
+	dbClient, err := db.NewClientWithSettings(logger, dbSettings)
+	if err != nil {
+		return nil, fmt.Errorf("can not create dbClient: %w", err)
+	}
+
+	ormSettings := OrmSettings{
+		Migrations: OrmMigrationSetting{
+			TablePrefixed: dbSettings.Migrations.PrefixedTables,
+		},
+		Driver:      dbSettings.Driver,
+		Application: application,
+	}
+
+	return NewOrmWithInterfaces(dbClient, ormSettings)
+}
+
+func NewOrmWithInterfaces(dbClient gorm.SQLCommon, settings OrmSettings) (*gorm.DB, error) {
 	orm, err := gorm.Open(settings.Driver, dbClient)
 
 	if err != nil {
@@ -53,8 +63,10 @@ func NewOrmWithInterfaces(logger mon.Logger, dbClient gorm.SQLCommon, settings O
 		return orm, nil
 	}
 
+	prefix := strcase.ToSnake(settings.Application)
+
 	gorm.DefaultTableNameHandler = func(db *gorm.DB, defaultTableName string) string {
-		return fmt.Sprintf("%s_%s", settings.Application, defaultTableName)
+		return fmt.Sprintf("%s_%s", prefix, defaultTableName)
 	}
 
 	return orm, nil

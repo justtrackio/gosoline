@@ -53,6 +53,15 @@ func NewClient(config cfg.Config, logger mon.Logger, name string) (Client, error
 	return NewClientWithInterfaces(logger, db), nil
 }
 
+func NewClientWithSettings(logger mon.Logger, settings Settings) (Client, error) {
+	db, err := NewConnectionFromSettings(logger, settings)
+	if err != nil {
+		return nil, fmt.Errorf("can not connect to sql database: %w", err)
+	}
+
+	return NewClientWithInterfaces(logger, db), nil
+}
+
 func NewClientWithInterfaces(logger mon.Logger, db *sqlx.DB) Client {
 	return &ClientSqlx{
 		logger: logger.WithContext(context.Background()), // TODO: this is not nice, but we don't (yet) have a context when logging in this module

@@ -680,7 +680,7 @@ func getMocks(t *testing.T) (goSqlMock.Sqlmock, db_repo.Repository) {
 	tracer := tracing.NewNoopTracer()
 
 	db, clientMock, _ := goSqlMock.New()
-	orm, err := db_repo.NewOrmWithInterfaces(logger, db, db_repo.OrmSettings{
+	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
 		Driver: "mysql",
 	})
 	if err != nil {
@@ -689,7 +689,7 @@ func getMocks(t *testing.T) (goSqlMock.Sqlmock, db_repo.Repository) {
 
 	clock := clockwork.NewFakeClock()
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, db_repo.Settings{})
+	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, db_repo.Metadata{})
 
 	return clientMock, repo
 }
@@ -700,7 +700,7 @@ func getTimedMocks(t *testing.T, time time.Time) (goSqlMock.Sqlmock, db_repo.Rep
 
 	db, clientMock, _ := goSqlMock.New()
 
-	orm, err := db_repo.NewOrmWithInterfaces(logger, db, db_repo.OrmSettings{
+	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
 		Driver: "mysql",
 	})
 	if err != nil {
@@ -709,7 +709,7 @@ func getTimedMocks(t *testing.T, time time.Time) (goSqlMock.Sqlmock, db_repo.Rep
 
 	clock := clockwork.NewFakeClockAt(time)
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, db_repo.Settings{})
+	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, db_repo.Metadata{})
 
 	return clientMock, repo
 }

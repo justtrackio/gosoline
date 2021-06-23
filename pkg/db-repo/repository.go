@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/db"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
@@ -50,7 +51,7 @@ type repository struct {
 	tracer   tracing.Tracer
 	orm      *gorm.DB
 	clock    clockwork.Clock
-	settings Settings
+	metadata Metadata
 }
 
 func New(config cfg.Config, logger mon.Logger, s Settings) (*repository, error) {
@@ -68,20 +69,39 @@ func New(config cfg.Config, logger mon.Logger, s Settings) (*repository, error) 
 		Update().
 		After("gorm:update_time_stamp").
 		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
-	clock := clockwork.NewRealClock()
+	clk := clock.NewRealClock()
 
-	s.PadFromConfig(config)
-
-	return NewWithInterfaces(logger, tracer, orm, clock, s), nil
+	return NewWithInterfaces(logger, tracer, orm, clk, s.Metadata), nil
 }
 
-func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clockwork.Clock, settings Settings) *repository {
+func NewWithDbSettings(config cfg.Config, logger mon.Logger, dbSettings db.Settings, repoSettings Settings) (*repository, error) {
+	tracer, err := tracing.ProvideTracer(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create tracer: %w", err)
+	}
+
+	orm, err := NewOrmWithDbSettings(logger, dbSettings, repoSettings.Application)
+	if err != nil {
+		return nil, fmt.Errorf("can not create orm: %w", err)
+	}
+
+	orm.Callback().
+		Update().
+		After("gorm:update_time_stamp").
+		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
+
+	clk := clock.NewRealClock()
+
+	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata), nil
+}
+
+func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata) *repository {
 	return &repository{
 		logger:   logger,
 		tracer:   tracer,
 		orm:      orm,
 		clock:    clock,
-		settings: settings,
+		metadata: metadata,
 	}
 }
 
@@ -354,15 +374,15 @@ func (r *repository) refreshAssociations(model interface{}, op string) error {
 }
 
 func (r *repository) GetModelId() string {
-	return r.settings.Metadata.ModelId.String()
+	return r.metadata.ModelId.String()
 }
 
 func (r *repository) GetModelName() string {
-	return r.settings.Metadata.ModelId.Name
+	return r.metadata.ModelId.Name
 }
 
 func (r *repository) GetMetadata() Metadata {
-	return r.settings.Metadata
+	return r.metadata
 }
 
 func (r *repository) startSubSpan(ctx context.Context, action string) (context.Context, tracing.Span) {
