@@ -10,10 +10,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/ecs/ecsiface"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
+	"github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/aws/aws-sdk-go/service/servicediscovery"
 	"github.com/aws/aws-sdk-go/service/servicediscovery/servicediscoveryiface"
 	"github.com/aws/aws-sdk-go/service/ssm"
@@ -103,7 +107,7 @@ var kcl = struct {
 	initialized bool
 }{}
 
-func GetKinesisClient(config cfg.Config, logger mon.Logger) kinesisiface.KinesisAPI {
+func GetKinesisClient(config cfg.Config, logger mon.Logger) KinesisAPI {
 	kcl.Lock()
 	defer kcl.Unlock()
 
@@ -135,7 +139,7 @@ var ddbcl = struct {
 	client map[string]dynamodbiface.DynamoDBAPI
 }{}
 
-func GetDynamoDbClient(config cfg.Config, logger mon.Logger) dynamodbiface.DynamoDBAPI {
+func GetDynamoDbClient(config cfg.Config, logger mon.Logger) DynamoDBAPI {
 	ddbcl.Lock()
 	defer ddbcl.Unlock()
 
@@ -165,6 +169,32 @@ func GetDynamoDbClient(config cfg.Config, logger mon.Logger) dynamodbiface.Dynam
 	return ddbcl.client[endpoint]
 }
 
+/* EC2 Client */
+var ec2cl = struct {
+	sync.Mutex
+	client      ec2iface.EC2API
+	initialized bool
+}{}
+
+func GetEc2Client(logger mon.Logger) EC2API {
+	ec2cl.Lock()
+	defer ec2cl.Unlock()
+
+	if ec2cl.initialized {
+		return ec2cl.client
+	}
+
+	awsConfig := ConfigTemplate
+	awsConfig.WithLogger(PrefixedLogger(logger, "aws_ec2"))
+
+	sess := session.Must(session.NewSession(&awsConfig))
+
+	ec2cl.client = ec2.New(sess)
+	ec2cl.initialized = true
+
+	return ec2cl.client
+}
+
 /* ECS Client */
 var ecscl = struct {
 	sync.Mutex
@@ -172,7 +202,7 @@ var ecscl = struct {
 	initialized bool
 }{}
 
-func GetEcsClient(logger mon.Logger) ecsiface.ECSAPI {
+func GetEcsClient(logger mon.Logger) ECSAPI {
 	ecscl.Lock()
 	defer ecscl.Unlock()
 
@@ -191,6 +221,36 @@ func GetEcsClient(logger mon.Logger) ecsiface.ECSAPI {
 	return ecscl.client
 }
 
+/* Rds Client */
+var rdsClient = struct {
+	sync.Mutex
+	client      rdsiface.RDSAPI
+	initialized bool
+}{}
+
+func GetRdsClient(config cfg.Config, logger mon.Logger) RDSAPI {
+	rdsClient.Lock()
+	defer rdsClient.Unlock()
+
+	if rdsClient.initialized {
+		return rdsClient.client
+	}
+
+	endpoint := config.GetString("aws_rds_endpoint")
+	maxRetries := config.GetInt("aws_sdk_retries")
+
+	awsConfig := ConfigTemplate
+	awsConfig.WithEndpoint(endpoint)
+	awsConfig.WithMaxRetries(maxRetries)
+	awsConfig.WithLogger(PrefixedLogger(logger, "aws_rds"))
+	sess := session.Must(session.NewSession(&awsConfig))
+
+	rdsClient.client = rds.New(sess)
+	rdsClient.initialized = true
+
+	return rdsClient.client
+}
+
 /* ServiceDiscovery Client */
 var sdcl = struct {
 	sync.Mutex
@@ -198,7 +258,7 @@ var sdcl = struct {
 	initialized bool
 }{}
 
-func GetServiceDiscoveryClient(logger mon.Logger, endpoint string) servicediscoveryiface.ServiceDiscoveryAPI {
+func GetServiceDiscoveryClient(logger mon.Logger, endpoint string) ServiceDiscoveryAPI {
 	sdcl.Lock()
 	defer sdcl.Unlock()
 
@@ -224,7 +284,7 @@ var ssmClient = struct {
 	initialized bool
 }{}
 
-func GetSystemsManagerClient(config cfg.Config, logger mon.Logger) ssmiface.SSMAPI {
+func GetSystemsManagerClient(config cfg.Config, logger mon.Logger) SSMAPI {
 	ssmClient.Lock()
 	defer ssmClient.Unlock()
 
