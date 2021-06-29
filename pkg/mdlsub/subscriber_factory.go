@@ -25,8 +25,11 @@ func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactori
 }
 
 func SubscriberFactory(config cfg.Config, logger mon.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.ModuleFactory, error) {
-	settings := Settings{}
-	config.UnmarshalKey(ConfigKeyMdlSub, &settings)
+	settings := Settings{
+		Subscribers: make(map[string]*SubscriberSettings),
+	}
+	config.UnmarshalKey(fmt.Sprintf("%s.%s", ConfigKeyMdlSub, "subscribers"), &settings.Subscribers)
+	config.UnmarshalKey(fmt.Sprintf("%s.%s", ConfigKeyMdlSub, "subscriber_api"), &settings.SubscriberApi)
 
 	var err error
 	var transformers ModelTransformers
