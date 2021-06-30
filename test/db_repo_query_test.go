@@ -105,6 +105,16 @@ func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
 	err = s.repo.Query(ctx, qb, &models)
 	s.NoError(err)
 	s.Equal(1, len(models), "expected 1 test model")
+
+	whereStr := "name = ?"
+
+	qb = db_repo.NewQueryBuilder()
+	qb.Where(whereStr, mdl.String("name2"))
+
+	models = make([]TestModel, 0)
+	err = s.repo.Query(ctx, qb, &models)
+	s.NoError(err)
+	s.Equal(1, len(models), "expected 1 test model")
 }
 
 func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
