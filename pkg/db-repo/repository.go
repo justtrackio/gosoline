@@ -224,11 +224,7 @@ func (r *repository) isQueryableModel(model interface{}) bool {
 		modelType = modelType.Elem()
 	}
 
-	if strings.ToLower(modelType.Name())  != strings.ToLower(r.GetMetadata().ModelId.Name) {
-		return false
-	}
-
-	return true
+	return strings.EqualFold(modelType.Name(), r.GetMetadata().ModelId.Name)
 }
 
 func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
@@ -236,7 +232,7 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 	defer span.Finish()
 
 	db := r.orm.New()
-	
+
 	db = db.Table(r.GetMetadata().TableName)
 
 	for _, j := range qb.joins {
