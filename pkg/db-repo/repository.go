@@ -217,12 +217,26 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	return err
 }
 
+func (r *repository) isQueryableModel(model interface{}) bool {
+	modelType := reflect.TypeOf(model)
+
+	if reflect.TypeOf(model).Kind() == reflect.Ptr {
+		modelType = modelType.Elem()
+	}
+
+	if strings.ToLower(modelType.Name())  != strings.ToLower(r.GetMetadata().ModelId.Name) {
+		return false
+	}
+
+	return true
+}
+
 func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
 	_, span := r.startSubSpan(ctx, "Query")
 	defer span.Finish()
 
 	db := r.orm.New()
-
+	
 	db = db.Table(r.GetMetadata().TableName)
 
 	for _, j := range qb.joins {
@@ -230,6 +244,15 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 	}
 
 	for i := range qb.where {
+		currentWhere := qb.where[i]
+		if reflect.TypeOf(currentWhere).Kind() == reflect.Ptr ||
+			reflect.TypeOf(currentWhere).Kind() == reflect.Struct {
+
+			if !r.isQueryableModel(currentWhere) {
+				return fmt.Errorf("cross querying wrong model from repo")
+			}
+		}
+
 		db = db.Where(qb.where[i], qb.args[i]...)
 	}
 
