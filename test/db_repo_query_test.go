@@ -135,4 +135,15 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
 	models := make([]TestModel, 0)
 	err := s.repo.Query(ctx, qb, &models)
 	s.EqualError(err, "cross querying wrong model from repo")
+
+	whereStruct := WrongTestModel{
+		WrongName: mdl.String("name1"),
+	}
+
+	qb = db_repo.NewQueryBuilder()
+	qb.Where(whereStruct)
+
+	models = make([]TestModel, 0)
+	err = s.repo.Query(ctx, qb, &models)
+	s.EqualError(err, "cross querying wrong model from repo")
 }
