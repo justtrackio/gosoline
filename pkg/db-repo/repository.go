@@ -8,6 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/db"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/refl"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/jinzhu/gorm"
 	"github.com/jonboulle/clockwork"
@@ -217,10 +218,26 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	return err
 }
 
-func (r *repository) isQueryableModel(db *gorm.DB, model interface{}) bool {
-	tableName := db.NewScope(model).TableName()
+func (r *repository) isQueryableModel(model interface{}) bool {
+	tableName := r.orm.NewScope(model).TableName()
 
 	return strings.EqualFold(tableName, r.GetMetadata().TableName) || tableName == ""
+}
+
+func (r *repository) checkResultModel(result interface{}) error {
+	if refl.IsSlice(result) {
+		return fmt.Errorf("result slice has to be pointer to slice")
+	}
+
+	if refl.IsPointerToSlice(result) {
+		model := reflect.ValueOf(result).Elem().Interface()
+
+		if !r.isQueryableModel(model) {
+			return fmt.Errorf("cross querying result slice has to of same model")
+		}
+	}
+
+	return nil
 }
 
 func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
@@ -238,7 +255,7 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 		if reflect.TypeOf(currentWhere).Kind() == reflect.Ptr ||
 			reflect.TypeOf(currentWhere).Kind() == reflect.Struct {
 
-			if !r.isQueryableModel(db, currentWhere) {
+			if !r.isQueryableModel(currentWhere) {
 				return fmt.Errorf("cross querying wrong model from repo")
 			}
 		}
@@ -259,9 +276,14 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 		db = db.Limit(qb.page.limit)
 	}
 
+	err := r.checkResultModel(result)
+	if err != nil {
+		return err
+	}
+
 	db = db.Table(r.GetMetadata().TableName)
 
-	err := db.Find(result).Error
+	err = db.Find(result).Error
 
 	if gorm.IsRecordNotFoundError(err) {
 		return NewNoQueryResultsError(r.GetModelId(), err)

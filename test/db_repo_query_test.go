@@ -31,6 +31,11 @@ type TestModel struct {
 	Name *string
 }
 
+type WrongTestModel struct {
+	db_repo.Model
+	WrongName *string
+}
+
 type DbRepoQueryTestSuite struct {
 	suite.Suite
 	logger mon.Logger
@@ -117,13 +122,41 @@ func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
 	s.Equal(1, len(models), "expected 1 test model")
 }
 
-func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
+func (s *DbRepoQueryTestSuite) TestQueryWrongResultModel() {
 	ctx := context.Background()
 
-	type WrongTestModel struct {
-		db_repo.Model
-		WrongName *string
+	model := &TestModel{
+		Name: mdl.String("name3"),
 	}
+
+	err := s.repo.Create(ctx, model)
+	s.NoError(err)
+
+	model = &TestModel{
+		Name: mdl.String("name4"),
+	}
+
+	err = s.repo.Create(ctx, model)
+	s.NoError(err)
+
+	where := &TestModel{
+		Name: mdl.String("name3"),
+	}
+
+	qb := db_repo.NewQueryBuilder()
+	qb.Where(where)
+
+	models := make([]WrongTestModel, 0)
+
+	err = s.repo.Query(ctx, qb, models)
+	s.EqualError(err, "result slice has to be pointer to slice")
+
+	err = s.repo.Query(ctx, qb, &models)
+	s.EqualError(err, "cross querying result slice has to of same model")
+}
+
+func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
+	ctx := context.Background()
 
 	where := &WrongTestModel{
 		WrongName: mdl.String("name1"),
