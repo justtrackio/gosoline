@@ -217,14 +217,10 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	return err
 }
 
-func (r *repository) isQueryableModel(model interface{}) bool {
-	modelType := reflect.TypeOf(model)
+func (r *repository) isQueryableModel(db *gorm.DB, model interface{}) bool {
+	tableName := db.NewScope(model).TableName()
 
-	if reflect.TypeOf(model).Kind() == reflect.Ptr {
-		modelType = modelType.Elem()
-	}
-
-	return strings.EqualFold(modelType.Name(), r.GetMetadata().ModelId.Name)
+	return strings.EqualFold(tableName, r.GetMetadata().TableName) || tableName == ""
 }
 
 func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
@@ -232,8 +228,6 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 	defer span.Finish()
 
 	db := r.orm.New()
-
-	db = db.Table(r.GetMetadata().TableName)
 
 	for _, j := range qb.joins {
 		db = db.Joins(j)
@@ -244,12 +238,12 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 		if reflect.TypeOf(currentWhere).Kind() == reflect.Ptr ||
 			reflect.TypeOf(currentWhere).Kind() == reflect.Struct {
 
-			if !r.isQueryableModel(currentWhere) {
+			if !r.isQueryableModel(db, currentWhere) {
 				return fmt.Errorf("cross querying wrong model from repo")
 			}
 		}
 
-		db = db.Where(qb.where[i], qb.args[i]...)
+		db = db.Where(currentWhere, qb.args[i]...)
 	}
 
 	for _, g := range qb.groupBy {
@@ -264,6 +258,8 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 		db = db.Offset(qb.page.offset)
 		db = db.Limit(qb.page.limit)
 	}
+
+	db = db.Table(r.GetMetadata().TableName)
 
 	err := db.Find(result).Error
 
