@@ -264,6 +264,11 @@ func (r *repository) checkResultModel(result interface{}) error {
 }
 
 func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
+	err := r.checkResultModel(result)
+	if err != nil {
+		return err
+	}
+
 	_, span := r.startSubSpan(ctx, "Query")
 	defer span.Finish()
 
@@ -297,11 +302,6 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 	if qb.page != nil {
 		db = db.Offset(qb.page.offset)
 		db = db.Limit(qb.page.limit)
-	}
-
-	err := r.checkResultModel(result)
-	if err != nil {
-		return err
 	}
 
 	db = db.Table(r.GetMetadata().TableName)
