@@ -44,7 +44,7 @@ type DbRepoQueryTestSuite struct {
 	repo   db_repo.Repository
 }
 
-func TestDbRepoQueryTestSuite(t *testing.T) {
+func TestDbRepoTestSuite(t *testing.T) {
 	suite.Run(t, new(DbRepoQueryTestSuite))
 }
 
@@ -288,7 +288,7 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongResultModel() {
 	s.EqualError(err, "result slice has to be pointer to slice")
 
 	err = s.repo.Query(ctx, qb, &models)
-	s.EqualError(err, "cross querying result slice has to of same model")
+	s.EqualError(err, "cross querying result slice has to be of same model")
 }
 
 func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
