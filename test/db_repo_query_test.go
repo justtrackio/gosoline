@@ -82,6 +82,142 @@ func (s *DbRepoQueryTestSuite) TearDownSuite() {
 	s.mocks.Shutdown()
 }
 
+func (s *DbRepoQueryTestSuite) TestCreateCorrectModel() {
+	ctx := context.Background()
+
+	model := &TestModel{
+		Name: mdl.String("nameCreate1"),
+	}
+
+	err := s.repo.Create(ctx, model)
+	s.NoError(err)
+
+	where := &TestModel{
+		Name: mdl.String("nameCreate1"),
+	}
+
+	qb := db_repo.NewQueryBuilder()
+	qb.Where(where)
+
+	models := make([]TestModel, 0)
+	err = s.repo.Query(ctx, qb, &models)
+	s.NoError(err)
+	s.Equal(1, len(models), "expected 1 test model")
+}
+
+func (s *DbRepoQueryTestSuite) TestCreateWrongModel() {
+	ctx := context.Background()
+
+	model := &WrongTestModel{
+		WrongName: mdl.String("nameCreateWrong1"),
+	}
+
+	err := s.repo.Create(ctx, model)
+	s.EqualError(err, "cross creating wrong model from repo")
+}
+
+func (s *DbRepoQueryTestSuite) TestReadCorrectModel() {
+	ctx := context.Background()
+
+	model := &TestModel{
+		Name: mdl.String("nameRead1"),
+	}
+
+	readModel := &TestModel{}
+
+	err := s.repo.Create(ctx, model)
+	s.NoError(err)
+
+	err = s.repo.Read(ctx, model.GetId(), readModel)
+	s.NoError(err)
+	s.Equal(model.Name, readModel.Name, "expected names to match")
+}
+
+func (s *DbRepoQueryTestSuite) TestReadWrongModel() {
+	ctx := context.Background()
+
+	model := &WrongTestModel{}
+
+	err := s.repo.Read(ctx, mdl.Uint(1), model)
+	s.EqualError(err, "cross reading wrong model from repo")
+}
+
+func (s *DbRepoQueryTestSuite) TestUpdateCorrectModel() {
+	ctx := context.Background()
+
+	model := &TestModel{
+		Name: mdl.String("nameUpdate1"),
+	}
+
+	err := s.repo.Create(ctx, model)
+	s.NoError(err)
+
+	where := &TestModel{
+		Name: mdl.String("nameUpdate1"),
+	}
+
+	qb := db_repo.NewQueryBuilder()
+	qb.Where(where)
+
+	models := make([]TestModel, 0)
+	err = s.repo.Query(ctx, qb, &models)
+	s.NoError(err)
+	s.Equal(1, len(models), "expected 1 test model")
+
+	model.Name = mdl.String("nameUpdate1Updated")
+
+	err = s.repo.Update(ctx, model)
+	s.NoError(err)
+
+	where = &TestModel{
+		Name: mdl.String("nameUpdate1Updated"),
+	}
+
+	qb = db_repo.NewQueryBuilder()
+	qb.Where(where)
+
+	models = make([]TestModel, 0)
+	err = s.repo.Query(ctx, qb, &models)
+	s.NoError(err)
+	s.Equal(1, len(models), "expected 1 test model")
+}
+
+func (s *DbRepoQueryTestSuite) TestUpdateWrongModel() {
+	ctx := context.Background()
+
+	model := &WrongTestModel{
+		WrongName: mdl.String("nameUpdateWrong1"),
+	}
+
+	err := s.repo.Update(ctx, model)
+	s.EqualError(err, "cross updating wrong model from repo")
+}
+
+func (s *DbRepoQueryTestSuite) TestDeleteCorrectModel() {
+	ctx := context.Background()
+
+	model := &TestModel{
+		Name: mdl.String("nameDelete1"),
+	}
+
+	err := s.repo.Create(ctx, model)
+	s.NoError(err)
+
+	err = s.repo.Delete(ctx, model)
+	s.NoError(err)
+}
+
+func (s *DbRepoQueryTestSuite) TestDeleteWrongModel() {
+	ctx := context.Background()
+
+	model := &WrongTestModel{
+		WrongName: mdl.String("nameUpdateWrong1"),
+	}
+
+	err := s.repo.Delete(ctx, model)
+	s.EqualError(err, "cross deleting wrong model from repo")
+}
+
 func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
 	ctx := context.Background()
 
