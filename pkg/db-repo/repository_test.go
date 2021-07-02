@@ -18,9 +18,41 @@ type MyTestModel struct {
 	db_repo.Model
 }
 
+const (
+	myTestModel = "myTestModel"
+	manyToMany  = "manyToMany"
+	oneOfMany   = "oneOfMany"
+	hasMany     = "hasMany"
+)
+
+var MyTestModelMetadata = db_repo.Metadata{
+	ModelId: mdl.ModelId{
+		Application: "application",
+		Name:        "myTestModel",
+	},
+	TableName:  "my_test_models",
+	PrimaryKey: "my_test_models.id",
+	Mappings: db_repo.FieldMappings{
+		"myTestModel.id":   db_repo.NewFieldMapping("my_test_models.id"),
+		"myTestModel.name": db_repo.NewFieldMapping("my_test_models.name"),
+	},
+}
+
 type ManyToMany struct {
 	db_repo.Model
 	RelModel []MyTestModel `gorm:"many2many:many_of_manies;" orm:"assoc_update"`
+}
+
+var ManyToManyMetadata = db_repo.Metadata{
+	ModelId: mdl.ModelId{
+		Application: "application",
+		Name:        "manyToMany",
+	},
+	TableName:  "many_to_manies",
+	PrimaryKey: "many_to_manies.id",
+	Mappings: db_repo.FieldMappings{
+		"manyToMany.id": db_repo.NewFieldMapping("many_to_manies.id"),
+	},
 }
 
 type OneOfMany struct {
@@ -29,14 +61,46 @@ type OneOfMany struct {
 	MyTestModelId *uint
 }
 
+var OneOfManyMetadata = db_repo.Metadata{
+	ModelId: mdl.ModelId{
+		Application: "application",
+		Name:        "oneOfMany",
+	},
+	TableName:  "one_of_manies",
+	PrimaryKey: "one_of_manies.id",
+	Mappings: db_repo.FieldMappings{
+		"oneOfMany.id":   db_repo.NewFieldMapping("one_of_manies.id"),
+		"myTestModel.id": db_repo.NewFieldMapping("one_of_manies.my_test_model_id"),
+	},
+}
+
 type HasMany struct {
 	db_repo.Model
 	Manies []*Ones `gorm:"association_autoupdate:true;association_autocreate:true;association_save_reference:true;" orm:"assoc_update"`
 }
 
+var HasManyMetadata = db_repo.Metadata{
+	ModelId: mdl.ModelId{
+		Application: "application",
+		Name:        "hasMany",
+	},
+	TableName:  "has_manies",
+	PrimaryKey: "has_manies.id",
+	Mappings: db_repo.FieldMappings{
+		"hasMany.id": db_repo.NewFieldMapping("has_manies.id"),
+	},
+}
+
 type Ones struct {
 	db_repo.Model
 	HasManyId *uint
+}
+
+var metadatas = map[string]db_repo.Metadata{
+	"myTestModel": MyTestModelMetadata,
+	"manyToMany":  ManyToManyMetadata,
+	"oneOfMany":   OneOfManyMetadata,
+	"hasMany":     HasManyMetadata,
 }
 
 type idMatcher struct {
@@ -52,7 +116,7 @@ var id24 = mdl.Uint(24)
 
 func TestRepository_Create(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now)
+	dbc, repo := getTimedMocks(t, now, myTestModel)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`id`,`updated_at`,`created_at`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(id1, &now, &now).WillReturnResult(result)
@@ -79,7 +143,7 @@ func TestRepository_Create(t *testing.T) {
 
 func TestRepository_CreateManyToManyNoRelation(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now)
+	dbc, repo := getTimedMocks(t, now, manyToMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	delRes := goSqlMock.NewResult(0, 0)
@@ -110,7 +174,7 @@ func TestRepository_CreateManyToManyNoRelation(t *testing.T) {
 
 func TestRepository_CreateManyToMany(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now)
+	dbc, repo := getTimedMocks(t, now, manyToMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	delRes := goSqlMock.NewResult(0, 0)
@@ -153,7 +217,7 @@ func TestRepository_CreateManyToMany(t *testing.T) {
 
 func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now)
+	dbc, repo := getTimedMocks(t, now, oneOfMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`id`,`updated_at`,`created_at`,`my_test_model_id`\\) VALUES \\(\\?,\\?,\\?,\\?\\)").WithArgs(id1, &now, &now, (*uint)(nil)).WillReturnResult(result)
@@ -180,7 +244,7 @@ func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 
 func TestRepository_CreateManyToOne(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now)
+	dbc, repo := getTimedMocks(t, now, oneOfMany)
 
 	result := goSqlMock.NewResult(0, 1)
 
@@ -215,7 +279,7 @@ func TestRepository_CreateManyToOne(t *testing.T) {
 
 func TestRepository_CreateHasManyNoRelation(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now)
+	dbc, repo := getTimedMocks(t, now, hasMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	delResult := goSqlMock.NewResult(0, 0)
@@ -246,7 +310,7 @@ func TestRepository_CreateHasManyNoRelation(t *testing.T) {
 
 func TestRepository_CreateHasMany(t *testing.T) {
 	now := time.Unix(1549964818, 0)
-	dbc, repo := getTimedMocks(t, now)
+	dbc, repo := getTimedMocks(t, now, hasMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	delResult := goSqlMock.NewResult(0, 0)
@@ -280,7 +344,7 @@ func TestRepository_CreateHasMany(t *testing.T) {
 }
 
 func TestRepository_Update(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, myTestModel)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -306,7 +370,7 @@ func TestRepository_Update(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, manyToMany)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -333,7 +397,7 @@ func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToMany(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, manyToMany)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -372,7 +436,7 @@ func TestRepository_UpdateManyToMany(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, oneOfMany)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -399,7 +463,7 @@ func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToOne(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, oneOfMany)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -431,7 +495,7 @@ func TestRepository_UpdateManyToOne(t *testing.T) {
 }
 
 func TestRepository_UpdateHasMany(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, hasMany)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -465,7 +529,7 @@ func TestRepository_UpdateHasMany(t *testing.T) {
 }
 
 func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, hasMany)
 	now := time.Unix(1549964818, 0)
 
 	result := goSqlMock.NewResult(0, 1)
@@ -495,7 +559,7 @@ func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
 }
 
 func TestRepository_Delete(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, myTestModel)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("DELETE FROM `my_test_models`  WHERE `my_test_models`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
@@ -516,7 +580,7 @@ func TestRepository_Delete(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, manyToMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(result)
@@ -538,7 +602,7 @@ func TestRepository_DeleteManyToManyNoRelation(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToMany(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, manyToMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(result)
@@ -567,7 +631,7 @@ func TestRepository_DeleteManyToMany(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToOneNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, oneOfMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("DELETE FROM `one_of_manies`  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
@@ -588,7 +652,7 @@ func TestRepository_DeleteManyToOneNoRelation(t *testing.T) {
 }
 
 func TestRepository_DeleteManyToOne(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, oneOfMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectExec("DELETE FROM `one_of_manies`  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
@@ -615,7 +679,7 @@ func TestRepository_DeleteManyToOne(t *testing.T) {
 }
 
 func TestRepository_DeleteHasMany(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, hasMany)
 
 	childResult := goSqlMock.NewResult(0, 0)
 	parentResult := goSqlMock.NewResult(0, 1)
@@ -651,7 +715,7 @@ func TestRepository_DeleteHasMany(t *testing.T) {
 }
 
 func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t)
+	dbc, repo := getMocks(t, hasMany)
 
 	childResult := goSqlMock.NewResult(0, 0)
 	parentResult := goSqlMock.NewResult(0, 1)
@@ -675,7 +739,7 @@ func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func getMocks(t *testing.T) (goSqlMock.Sqlmock, db_repo.Repository) {
+func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Repository) {
 	logger := monMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 
@@ -689,12 +753,17 @@ func getMocks(t *testing.T) (goSqlMock.Sqlmock, db_repo.Repository) {
 
 	clock := clockwork.NewFakeClock()
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, db_repo.Metadata{})
+	metadata, ok := metadatas[whichMetadata]
+	if !ok {
+		t.Errorf("couldn't find metadata named: %s", whichMetadata)
+	}
+
+	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, metadata)
 
 	return clientMock, repo
 }
 
-func getTimedMocks(t *testing.T, time time.Time) (goSqlMock.Sqlmock, db_repo.Repository) {
+func getTimedMocks(t *testing.T, time time.Time, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Repository) {
 	logger := monMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 
@@ -709,7 +778,12 @@ func getTimedMocks(t *testing.T, time time.Time) (goSqlMock.Sqlmock, db_repo.Rep
 
 	clock := clockwork.NewFakeClockAt(time)
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, db_repo.Metadata{})
+	metadata, ok := metadatas[whichMetadata]
+	if !ok {
+		t.Errorf("couldn't find metadata named: %s", whichMetadata)
+	}
+
+	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, metadata)
 
 	return clientMock, repo
 }
