@@ -69,9 +69,9 @@ var TestModel2Metadata = db_repo.Metadata{
 	TableName:  "test_model2",
 	PrimaryKey: "test_model2.id",
 	Mappings: db_repo.FieldMappings{
-		"testModel2.id":   db_repo.NewFieldMapping("test_model2.id"),
-		"testModel2.name": db_repo.NewFieldMapping("test_model2.name"),
-		"testModel2.foo": db_repo.NewFieldMapping("test_model2.foo"),
+		"testModel2.id":           db_repo.NewFieldMapping("test_model2.id"),
+		"testModel2.name":         db_repo.NewFieldMapping("test_model2.name"),
+		"testModel2.foo":          db_repo.NewFieldMapping("test_model2.foo"),
 		"testModel2.changeAuthor": db_repo.NewFieldMapping("test_model2.change_author"),
 	},
 }
@@ -84,20 +84,20 @@ var TestHistoryModel2Metadata = db_repo.Metadata{
 	TableName:  "test_model2_history_entries",
 	PrimaryKey: "test_model2_history_entries.id",
 	Mappings: db_repo.FieldMappings{
-		"testModel2HistoryEntry.id":   db_repo.NewFieldMapping("test_model2_history_entries.id"),
-		"testModel2HistoryEntry.name": db_repo.NewFieldMapping("test_model2_history_entries.name"),
-		"testModel2HistoryEntry.foo": db_repo.NewFieldMapping("test_model2_history_entries.foo"),
+		"testModel2HistoryEntry.id":           db_repo.NewFieldMapping("test_model2_history_entries.id"),
+		"testModel2HistoryEntry.name":         db_repo.NewFieldMapping("test_model2_history_entries.name"),
+		"testModel2HistoryEntry.foo":          db_repo.NewFieldMapping("test_model2_history_entries.foo"),
 		"testModel2HistoryEntry.changeAuthor": db_repo.NewFieldMapping("test_model2_history_entries.change_author"),
 	},
 }
 
 type DbRepoChangeHistoryTestSuite struct {
 	suite.Suite
-	logger mon.Logger
-	config cfg.Config
-	mocks  *test.Mocks
-	modelRepo   db_repo.Repository
-	modelHistoryRepo   db_repo.Repository
+	logger           mon.Logger
+	config           cfg.Config
+	mocks            *test.Mocks
+	modelRepo        db_repo.Repository
+	modelHistoryRepo db_repo.Repository
 }
 
 func TestDbChangelogTestSuite(t *testing.T) {
