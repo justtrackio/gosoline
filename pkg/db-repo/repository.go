@@ -8,6 +8,7 @@ import (
 	"github.com/applike/gosoline/pkg/db"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/applike/gosoline/pkg/refl"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/jinzhu/gorm"
 	"github.com/jonboulle/clockwork"
@@ -25,7 +26,14 @@ const (
 	Query  = "query"
 )
 
-var operations = []string{Create, Read, Update, Delete, Query}
+var (
+	operations     = []string{Create, Read, Update, Delete, Query}
+	ErrCrossQuery  = fmt.Errorf("cross querying wrong model from repo")
+	ErrCrossCreate = fmt.Errorf("cross creating wrong model from repo")
+	ErrCrossRead   = fmt.Errorf("cross reading wrong model from repo")
+	ErrCrossDelete = fmt.Errorf("cross deleting wrong model from repo")
+	ErrCrossUpdate = fmt.Errorf("cross updating wrong model from repo")
+)
 
 type Settings struct {
 	cfg.AppId
@@ -106,6 +114,10 @@ func NewWithInterfaces(logger mon.Logger, tracer tracing.Tracer, orm *gorm.DB, c
 }
 
 func (r *repository) Create(ctx context.Context, value ModelBased) error {
+	if !r.isQueryableModel(value) {
+		return ErrCrossCreate
+	}
+
 	modelId := r.GetModelId()
 	logger := r.logger.WithContext(ctx)
 
@@ -143,6 +155,10 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 }
 
 func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
+	if !r.isQueryableModel(out) {
+		return ErrCrossRead
+	}
+
 	modelId := r.GetModelId()
 	_, span := r.startSubSpan(ctx, "Get")
 	defer span.Finish()
@@ -157,6 +173,10 @@ func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
 }
 
 func (r *repository) Update(ctx context.Context, value ModelBased) error {
+	if !r.isQueryableModel(value) {
+		return ErrCrossUpdate
+	}
+
 	modelId := r.GetModelId()
 	logger := r.logger.WithContext(ctx)
 
@@ -193,6 +213,10 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 }
 
 func (r *repository) Delete(ctx context.Context, value ModelBased) error {
+	if !r.isQueryableModel(value) {
+		return ErrCrossDelete
+	}
+
 	modelId := r.GetModelId()
 	logger := r.logger.WithContext(ctx)
 
@@ -217,20 +241,54 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	return err
 }
 
+func (r *repository) isQueryableModel(model interface{}) bool {
+	tableName := r.orm.NewScope(model).TableName()
+
+	return strings.EqualFold(tableName, r.GetMetadata().TableName) || tableName == ""
+}
+
+func (r *repository) checkResultModel(result interface{}) error {
+	if refl.IsSlice(result) {
+		return fmt.Errorf("result slice has to be pointer to slice")
+	}
+
+	if refl.IsPointerToSlice(result) {
+		model := reflect.ValueOf(result).Elem().Interface()
+
+		if !r.isQueryableModel(model) {
+			return fmt.Errorf("cross querying result slice has to be of same model")
+		}
+	}
+
+	return nil
+}
+
 func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
+	err := r.checkResultModel(result)
+	if err != nil {
+		return err
+	}
+
 	_, span := r.startSubSpan(ctx, "Query")
 	defer span.Finish()
 
 	db := r.orm.New()
-
-	db = db.Table(r.GetMetadata().TableName)
 
 	for _, j := range qb.joins {
 		db = db.Joins(j)
 	}
 
 	for i := range qb.where {
-		db = db.Where(qb.where[i], qb.args[i]...)
+		currentWhere := qb.where[i]
+		if reflect.TypeOf(currentWhere).Kind() == reflect.Ptr ||
+			reflect.TypeOf(currentWhere).Kind() == reflect.Struct {
+
+			if !r.isQueryableModel(currentWhere) {
+				return ErrCrossQuery
+			}
+		}
+
+		db = db.Where(currentWhere, qb.args[i]...)
 	}
 
 	for _, g := range qb.groupBy {
@@ -246,7 +304,9 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 		db = db.Limit(qb.page.limit)
 	}
 
-	err := db.Find(result).Error
+	db = db.Table(r.GetMetadata().TableName)
+
+	err = db.Find(result).Error
 
 	if gorm.IsRecordNotFoundError(err) {
 		return NewNoQueryResultsError(r.GetModelId(), err)
