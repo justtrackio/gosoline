@@ -2,13 +2,14 @@ package guard
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/ory/ladon"
 	"github.com/thoas/go-funk"
-	"time"
 )
 
 const (
@@ -29,10 +30,14 @@ func NewSqlManager(config cfg.Config, logger mon.Logger) (*SqlManager, error) {
 		return nil, fmt.Errorf("can not create dbClient: %w", err)
 	}
 
+	return NewSqlManagerWithInterfaces(logger, dbClient), nil
+}
+
+func NewSqlManagerWithInterfaces(logger mon.Logger, dbClient db.Client) *SqlManager {
 	return &SqlManager{
 		logger:   logger,
 		dbClient: dbClient,
-	}, nil
+	}
 }
 
 func (m SqlManager) Create(pol ladon.Policy) error {
@@ -45,7 +50,6 @@ func (m SqlManager) Create(pol ladon.Policy) error {
 	})
 
 	sql, args, err := ins.ToSql()
-
 	if err != nil {
 		return err
 	}
@@ -78,7 +82,6 @@ func (m SqlManager) createAssociations(pol ladon.Policy, table string, values []
 	}
 
 	sql, args, err := ins.ToSql()
-
 	if err != nil {
 		return err
 	}
@@ -96,7 +99,6 @@ func (m SqlManager) Update(pol ladon.Policy) error {
 	})
 
 	sql, args, err := up.ToSql()
-
 	if err != nil {
 		return err
 	}
@@ -131,8 +133,19 @@ func (m SqlManager) updateAssociations(pol ladon.Policy, table string, values []
 	return nil
 }
 
-func (SqlManager) Get(id string) (ladon.Policy, error) {
-	panic("implement me")
+func (m SqlManager) Get(id string) (ladon.Policy, error) {
+	sel := buildSelectBuilder(squirrel.Eq{"p.id": id})
+
+	policies, err := m.queryPolicies(sel)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(policies) != 1 {
+		return nil, fmt.Errorf("invalid amount of policies for id %s", id)
+	}
+
+	return policies[0], nil
 }
 
 func (m SqlManager) Delete(id string) error {
@@ -140,7 +153,6 @@ func (m SqlManager) Delete(id string) error {
 
 	for _, table := range tables {
 		err := m.deleteByIdAndTable(id, table)
-
 		if err != nil {
 			return err
 		}
@@ -152,7 +164,6 @@ func (m SqlManager) Delete(id string) error {
 func (m SqlManager) deleteByIdAndTable(id string, table string) error {
 	del := squirrel.Delete(table).Where(squirrel.Eq{"id": id})
 	sql, args, err := del.ToSql()
-
 	if err != nil {
 		m.logger.Error("can not delete from %s: %w", table, err)
 		return err
@@ -168,8 +179,12 @@ func (m SqlManager) deleteByIdAndTable(id string, table string) error {
 	return nil
 }
 
-func (SqlManager) GetAll(limit, offset int64) (ladon.Policies, error) {
-	panic("implement me")
+func (m SqlManager) GetAll(limit, offset int64) (ladon.Policies, error) {
+	sel := buildSelectBuilder(squirrel.Eq{"1": "1"})
+	sel = sel.Limit(uint64(limit))
+	sel = sel.Offset(uint64(offset))
+
+	return m.queryPolicies(sel)
 }
 
 func (m SqlManager) FindRequestCandidates(r *ladon.Request) (ladon.Policies, error) {
@@ -177,30 +192,24 @@ func (m SqlManager) FindRequestCandidates(r *ladon.Request) (ladon.Policies, err
 }
 
 func (m SqlManager) FindPoliciesForSubject(subject string) (ladon.Policies, error) {
-	return m.queryPolicies(squirrel.Eq{"s.name": subject})
+	sel := buildSelectBuilder(squirrel.Eq{"s.name": subject})
+
+	return m.queryPolicies(sel)
 }
 
 func (m SqlManager) FindPoliciesForResource(resource string) (ladon.Policies, error) {
-	return m.queryPolicies(squirrel.Eq{"r.name": resource})
+	sel := buildSelectBuilder(squirrel.Eq{"r.name": resource})
+
+	return m.queryPolicies(sel)
 }
 
-func (m SqlManager) queryPolicies(where squirrel.Eq) (ladon.Policies, error) {
-	sel := squirrel.Select("p.id", "p.description", "p.effect", "s.name AS subject", "r.name AS resource", "a.name AS action")
-	sel = sel.From(fmt.Sprintf("%s AS p", tablePolicies))
-	sel = sel.Join(fmt.Sprintf("%s AS s ON s.id = p.id", tableSubjects))
-	sel = sel.Join(fmt.Sprintf("%s AS r ON r.id = p.id", tableResources))
-	sel = sel.Join(fmt.Sprintf("%s AS a ON a.id = p.id", tableActions))
-	sel = sel.Where(where)
-	sel = sel.OrderBy("p.id")
-
+func (m SqlManager) queryPolicies(sel squirrel.SelectBuilder) (ladon.Policies, error) {
 	sql, args, err := sel.ToSql()
-
 	if err != nil {
 		return nil, err
 	}
 
 	res, err := m.dbClient.GetResult(sql, args...)
-
 	if err != nil {
 		return nil, err
 	}
@@ -234,4 +243,16 @@ func (m SqlManager) queryPolicies(where squirrel.Eq) (ladon.Policies, error) {
 	}
 
 	return unique, nil
+}
+
+func buildSelectBuilder(where squirrel.Eq) squirrel.SelectBuilder {
+	sel := squirrel.Select("p.id", "p.description", "p.effect", "s.name AS subject", "r.name AS resource", "a.name AS action")
+	sel = sel.From(fmt.Sprintf("%s AS p", tablePolicies))
+	sel = sel.Join(fmt.Sprintf("%s AS s ON s.id = p.id", tableSubjects))
+	sel = sel.Join(fmt.Sprintf("%s AS r ON r.id = p.id", tableResources))
+	sel = sel.Join(fmt.Sprintf("%s AS a ON a.id = p.id", tableActions))
+	sel = sel.Where(where)
+	sel = sel.OrderBy("p.id")
+
+	return sel
 }
