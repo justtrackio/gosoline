@@ -14,7 +14,7 @@ type Repository struct {
 
 func NewRepository(logger mon.Logger, validator Validator, repo db_repo.Repository) db_repo.Repository {
 	return &Repository{
-		logger: logger,
+		logger:     logger,
 		Repository: repo,
 		validator:  validator,
 	}
