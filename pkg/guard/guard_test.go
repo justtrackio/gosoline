@@ -12,6 +12,9 @@ import (
 	"github.com/applike/gosoline/pkg/guard/mocks"
 )
 
+// Test LadonGuard::GetPolicies
+// Testing the other functions does not make any sense here, as they're wrapping just manager methods
+
 func TestLadonGuard_GetPolicies(t *testing.T) {
 	manager := new(mocks.Manager)
 	g := guard.NewGuardWithInterfaces(manager)
