@@ -58,36 +58,6 @@ resource "aws_cloudwatch_metric_alarm" "firehose-put-records-success-rate" {
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "firehose-put-record-success-rate" {
-  alarm_name          = "${var.family}-${var.application}-${var.family}-${var.model}-put-record-success-rate"
-  count               = var.alarm_create
-  comparison_operator = "LessThanThreshold"
-  evaluation_periods  = var.alarm_evaluation_periods
-  metric_name         = "PutRecord.Success"
-  namespace           = "AWS/Kinesis"
-  period              = var.alarm_period_seconds
-  statistic           = "Average"
-  threshold           = var.alarm_records_success_threshold
-  datapoints_to_alarm = var.alarm_put_records_datapoints_to_alarm
-  treat_missing_data  = "notBreaching"
-
-  alarm_description = "This alarm monitors the kinesis PutRecord.Success metric"
-
-  dimensions = {
-    StreamName = aws_kinesis_stream.main.name
-  }
-
-  alarm_actions = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
-  ok_actions    = ["arn:aws:sns:eu-central-1:164105964448:${var.project}-${var.environment}-${var.family}-alarm"]
-
-  tags = {
-    Environment = var.environment
-    Project     = var.project
-    Family      = var.family
-    Application = var.application
-  }
-}
-
 resource "aws_cloudwatch_metric_alarm" "firehose-write-records-high" {
   alarm_name          = "${var.family}-${var.application}-${var.family}-${var.model}-write-records-high"
   count               = var.alarm_create
