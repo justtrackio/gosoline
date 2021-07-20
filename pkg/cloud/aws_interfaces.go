@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"github.com/aws/aws-sdk-go/service/applicationautoscaling/applicationautoscalingiface"
 	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
@@ -11,6 +12,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/servicediscovery/servicediscoveryiface"
 	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
 )
+
+//go:generate mockery --name ApplicationAutoScalingAPI
+type ApplicationAutoScalingAPI interface {
+	applicationautoscalingiface.ApplicationAutoScalingAPI
+}
 
 //go:generate mockery --name CloudWatchAPI
 type CloudWatchAPI interface {

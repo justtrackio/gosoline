@@ -2,12 +2,18 @@ package cloud
 
 import (
 	"fmt"
+	"net/http"
+	"sync"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/mon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/applicationautoscaling"
+	"github.com/aws/aws-sdk-go/service/applicationautoscaling/applicationautoscalingiface"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -22,9 +28,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/servicediscovery/servicediscoveryiface"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
-	"net/http"
-	"sync"
-	"time"
 )
 
 const (
@@ -100,39 +103,6 @@ var ConfigTemplate = aws.Config{
 	},
 }
 
-/* Kinesis client */
-var kcl = struct {
-	sync.Mutex
-	client      kinesisiface.KinesisAPI
-	initialized bool
-}{}
-
-func GetKinesisClient(config cfg.Config, logger mon.Logger) KinesisAPI {
-	kcl.Lock()
-	defer kcl.Unlock()
-
-	if kcl.initialized {
-		return kcl.client
-	}
-
-	endpoint := config.GetString("aws_kinesis_endpoint")
-	maxRetries := config.GetInt("aws_sdk_retries")
-
-	awsConfig := ConfigTemplate
-	awsConfig.WithEndpoint(endpoint)
-	awsConfig.WithMaxRetries(maxRetries)
-	awsConfig.WithLogger(PrefixedLogger(logger, "aws_kinesis"))
-
-	sess := session.Must(session.NewSession(&awsConfig))
-
-	client := kinesis.New(sess)
-
-	kcl.client = client
-	kcl.initialized = true
-
-	return kcl.client
-}
-
 /* DynamoDB client */
 var ddbcl = struct {
 	sync.Mutex
@@ -167,6 +137,39 @@ func GetDynamoDbClient(config cfg.Config, logger mon.Logger) DynamoDBAPI {
 	ddbcl.client[endpoint] = client
 
 	return ddbcl.client[endpoint]
+}
+
+/* ApplicationAutoscaling client */
+var aacl = struct {
+	sync.Mutex
+	client      applicationautoscalingiface.ApplicationAutoScalingAPI
+	initialized bool
+}{}
+
+func GetApplicationAutoScalingClient(config cfg.Config, logger mon.Logger) ApplicationAutoScalingAPI {
+	aacl.Lock()
+	defer aacl.Unlock()
+
+	if aacl.initialized {
+		return aacl.client
+	}
+
+	endpoint := config.GetString("aws_application_autoscaling_endpoint")
+	maxRetries := config.GetInt("aws_sdk_retries")
+
+	awsConfig := ConfigTemplate
+	awsConfig.WithEndpoint(endpoint)
+	awsConfig.WithMaxRetries(maxRetries)
+	awsConfig.WithLogger(PrefixedLogger(logger, "aws_application_autoscaling"))
+
+	sess := session.Must(session.NewSession(&awsConfig))
+
+	client := applicationautoscaling.New(sess)
+
+	aacl.client = client
+	aacl.initialized = true
+
+	return aacl.client
 }
 
 /* EC2 Client */
@@ -219,6 +222,39 @@ func GetEcsClient(logger mon.Logger) ECSAPI {
 	ecscl.initialized = true
 
 	return ecscl.client
+}
+
+/* Kinesis client */
+var kcl = struct {
+	sync.Mutex
+	client      kinesisiface.KinesisAPI
+	initialized bool
+}{}
+
+func GetKinesisClient(config cfg.Config, logger mon.Logger) KinesisAPI {
+	kcl.Lock()
+	defer kcl.Unlock()
+
+	if kcl.initialized {
+		return kcl.client
+	}
+
+	endpoint := config.GetString("aws_kinesis_endpoint")
+	maxRetries := config.GetInt("aws_sdk_retries")
+
+	awsConfig := ConfigTemplate
+	awsConfig.WithEndpoint(endpoint)
+	awsConfig.WithMaxRetries(maxRetries)
+	awsConfig.WithLogger(PrefixedLogger(logger, "aws_kinesis"))
+
+	sess := session.Must(session.NewSession(&awsConfig))
+
+	client := kinesis.New(sess)
+
+	kcl.client = client
+	kcl.initialized = true
+
+	return kcl.client
 }
 
 /* Rds Client */
