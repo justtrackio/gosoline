@@ -33,7 +33,7 @@ require (
 	github.com/go-playground/validator/v10 v10.2.0
 	github.com/go-redis/redis/v8 v8.8.0
 	github.com/go-resty/resty/v2 v2.6.0
-	github.com/go-sql-driver/mysql v1.5.0
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gogo/protobuf v1.2.2-0.20190723190241-65acae22fc9d // indirect
 	github.com/golang-migrate/migrate/v4 v4.2.5
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
