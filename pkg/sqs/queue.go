@@ -9,6 +9,7 @@ import (
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
+	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -16,7 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/hashicorp/go-multierror"
 	"github.com/thoas/go-funk"
-	"github.com/twinj/uuid"
 	"math"
 )
 
@@ -151,7 +151,7 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 	entries := make([]*sqs.SendMessageBatchRequestEntry, len(messages))
 
 	for i := 0; i < len(messages); i++ {
-		id := uuid.NewV4().String()
+		id := uuid.New().NewV4()
 
 		entries[i] = &sqs.SendMessageBatchRequestEntry{
 			Id:                     aws.String(id),
@@ -253,7 +253,7 @@ func (q *queue) DeleteMessageBatch(receiptHandles []string) error {
 
 	for i, receiptHandle := range receiptHandles {
 		entry := &sqs.DeleteMessageBatchRequestEntry{
-			Id:            mdl.String(uuid.NewV4().String()),
+			Id:            mdl.String(uuid.New().NewV4()),
 			ReceiptHandle: mdl.String(receiptHandle),
 		}
 
