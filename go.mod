@@ -55,7 +55,6 @@ require (
 	github.com/karlseguin/expect v1.0.1 // indirect
 	github.com/lib/pq v1.3.0
 	github.com/mitchellh/mapstructure v1.2.2
-	github.com/myesui/uuid v1.0.0 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/ory/ladon v1.0.1
@@ -68,7 +67,6 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/thoas/go-funk v0.0.0-20181020164546-fbae87fb5b5c
 	github.com/tidwall/gjson v1.3.0
-	github.com/twinj/uuid v1.0.0
 	github.com/twitchscience/kinsumer v0.0.0-20201111182439-cd685b6b5f68
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 // indirect
@@ -79,7 +77,6 @@ require (
 	google.golang.org/api v0.5.0
 	google.golang.org/protobuf v1.23.0
 	gopkg.in/karlseguin/expect.v1 v1.0.1 // indirect
-	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 )

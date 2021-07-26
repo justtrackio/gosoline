@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/twinj/uuid"
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -48,7 +48,7 @@ func dtErrored(modelId mdl.ModelId, datetime time.Time) string {
 var DefaultS3KeyNamingStrategy = func(modelId mdl.ModelId, datetime time.Time, prefixCallback S3PrefixNamingStrategy) string {
 	prefix := prefixCallback(modelId, datetime)
 	timestamp := datetime.Format("2006-01-02-15-04-05")
-	uuid := uuid.NewV4().String()
+	uuid := uuid.New().String()
 
 	return fmt.Sprintf("%s/%s-%s-%s-%s-%s-%s.parquet", prefix, modelId.Project, modelId.Environment, modelId.Family, modelId.Name, timestamp, uuid)
 }

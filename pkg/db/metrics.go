@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"github.com/applike/gosoline/pkg/mon"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/twinj/uuid"
 	"time"
 )
 
@@ -22,7 +22,7 @@ type metricDriver struct {
 func newMetricDriver(driver driver.Driver) string {
 	mw := mon.NewMetricDaemonWriter()
 
-	id := uuid.NewV4().String()
+	id := uuid.New().String()
 	md := &metricDriver{
 		Driver:       driver,
 		metricWriter: mw,

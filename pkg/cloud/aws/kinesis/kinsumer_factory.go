@@ -5,7 +5,7 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/mon"
-	"github.com/twinj/uuid"
+	"github.com/google/uuid"
 	"github.com/twitchscience/kinsumer"
 	"time"
 )
@@ -38,7 +38,7 @@ func NewKinsumer(config cfg.Config, logger mon.Logger, settings KinsumerSettings
 	kinesisClient := cloud.GetKinesisClient(config, logger)
 	dynamoDbClient := cloud.GetDynamoDbClient(config, logger)
 
-	clientName := uuid.NewV4().String()
+	clientName := uuid.New().String()
 
 	logger = logger.WithFields(mon.Fields{
 		"applicationName":  settings.ApplicationName,

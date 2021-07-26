@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/twinj/uuid"
+	"github.com/google/uuid"
 	"strings"
 	"sync"
 	"time"
@@ -85,7 +85,7 @@ type NamingFactory func() string
 
 var defaultNamingStrategy = func() string {
 	y, m, d := time.Now().Date()
-	generatedUuid := uuid.NewV4().String()
+	generatedUuid := uuid.New().String()
 
 	return fmt.Sprintf("%d/%02d/%02d/%s", y, m, d, generatedUuid)
 }
