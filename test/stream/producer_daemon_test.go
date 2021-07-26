@@ -171,6 +171,7 @@ type testCompressionModule struct {
 }
 
 func newTestCompressionModule(_ context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+	logger = logger.WithChannel("compression_module")
 	var err error
 	var sqsProducer stream.Producer
 	var sqsInput stream.Input
@@ -298,6 +299,7 @@ func (t testFifoConsumerCallback) Consume(_ context.Context, model interface{}, 
 
 func newTestFifoModule(t *testing.T) func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		logger = logger.WithChannel("fifo_module")
 		var err error
 		var sqsProducer stream.Producer
 
