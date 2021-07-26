@@ -3,6 +3,11 @@ package application
 import (
 	"context"
 	"flag"
+	"io"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
@@ -12,17 +17,15 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/pkg/errors"
-	"io"
-	"os"
-	"strings"
-	"time"
 )
 
-type Option func(app *App)
-type ConfigOption func(config cfg.GosoConf) error
-type LoggerOption func(config cfg.GosoConf, logger mon.GosoLog) error
-type KernelOption func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error
-type SetupOption func(config cfg.GosoConf, logger mon.GosoLog) error
+type (
+	Option       func(app *App)
+	ConfigOption func(config cfg.GosoConf) error
+	LoggerOption func(config cfg.GosoConf, logger mon.GosoLog) error
+	KernelOption func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error
+	SetupOption  func(config cfg.GosoConf, logger mon.GosoLog) error
+)
 
 type kernelSettings struct {
 	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
@@ -86,7 +89,6 @@ func WithConfigFileFlag(app *App) {
 
 		configFile := flags.String("config", "", "path to a config file")
 		err := flags.Parse(os.Args[1:])
-
 		if err != nil {
 			return err
 		}
@@ -285,6 +287,15 @@ func WithProducerDaemon(app *App) {
 		kernel.AddFactory(stream.ProducerDaemonFactory)
 		return nil
 	})
+}
+
+func WithProfiling() Option {
+	return func(app *App) {
+		app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
+			kernel.Add("profiling", apiserver.NewProfiling())
+			return nil
+		})
+	}
 }
 
 func WithTracing(app *App) {
