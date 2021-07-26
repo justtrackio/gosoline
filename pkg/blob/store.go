@@ -5,10 +5,10 @@ import (
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
+	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/twinj/uuid"
 	"strings"
 	"sync"
 	"time"
@@ -85,7 +85,7 @@ type NamingFactory func() string
 
 var defaultNamingStrategy = func() string {
 	y, m, d := time.Now().Date()
-	generatedUuid := uuid.NewV4().String()
+	generatedUuid := uuid.New().NewV4()
 
 	return fmt.Sprintf("%d/%02d/%02d/%s", y, m, d, generatedUuid)
 }
