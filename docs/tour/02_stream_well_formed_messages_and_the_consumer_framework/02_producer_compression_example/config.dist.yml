@@ -1,0 +1,14 @@
+env: test
+
+app_project: gosoline
+app_family: stream-example
+app_name: producer-compression-example
+
+stream:
+  producer:
+    exampleProducer:
+      compression: application/gzip
+
+  output:
+    exampleProducer:
+      type: inMemory

@@ -97,7 +97,7 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
 	kvstoreKey := kvstore.GetConfigurableKey(name)
 
-	kvstoreSettings := &kvstore.ChainConfiguration{}
+	kvstoreSettings := &kvstore.Configuration{}
 	config.UnmarshalDefaults(kvstoreSettings)
 
 	kvstoreSettings.Project = subscriberSettings.TargetModel.Project

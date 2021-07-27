@@ -1,0 +1,9 @@
+{
+  "attributes": {
+    "encoding": "application/json",
+    "modelId": "gosoline.stream-example.publisher-example.examplePublisher",
+    "type": "create",
+    "version": 0
+  },
+  "body": "{\"greeting\":\"hello, world\"}"
+}

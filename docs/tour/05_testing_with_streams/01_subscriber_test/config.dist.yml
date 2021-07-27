@@ -1,0 +1,20 @@
+env: test
+
+app_project: gosoline
+app_family: subscriber-test
+app_name: book-api
+
+aws_dynamoDb_endpoint: http://localhost:4566
+aws_dynamoDb_autoCreate: true
+aws_sdk_retries: 5
+
+ddb:
+  backoff:
+    enabled: true
+    blocking: true
+
+mdlsub:
+  subscribers:
+    book:
+      output: ddb
+      source: { application: book-store }

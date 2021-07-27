@@ -1,0 +1,10 @@
+env: test
+
+app_project: gosoline
+app_family: stream-example
+app_name: producer-example
+
+stream:
+  output:
+    exampleProducer:
+      type: inMemory

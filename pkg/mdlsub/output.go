@@ -38,7 +38,7 @@ func initOutputs(config cfg.Config, logger mon.Logger, subscriberSettings map[st
 		modelId := settings.SourceModel.String()
 
 		if outputs[modelId], err = outputFactory(config, logger, settings, versionedModelTransformers); err != nil {
-			return nil, fmt.Errorf("can not create output for subscriber %s with modelId %s", name, modelId)
+			return nil, fmt.Errorf("can not create output for subscriber %s with modelId %s: %w", name, modelId, err)
 		}
 	}
 

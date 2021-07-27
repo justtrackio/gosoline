@@ -1,0 +1,23 @@
+env: test
+
+app_project: gosoline
+app_family: stream-example
+app_name: subscriber-example
+
+kvstore:
+  record:
+    type: inMemory
+
+mdlsub:
+  subscribers:
+    record:
+      input: inMemory
+      output: kvstore
+      source: { application: example }
+      target: { application: example }
+
+stream:
+  input:
+    subscriber-record:
+      type: inMemory
+      size: 3
