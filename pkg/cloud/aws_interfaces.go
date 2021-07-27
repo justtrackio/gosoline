@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/aws/aws-sdk-go/service/ecs/ecsiface"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
+	"github.com/aws/aws-sdk-go/service/lambda/lambdaiface"
 	"github.com/aws/aws-sdk-go/service/rds/rdsiface"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi/resourcegroupstaggingapiiface"
 	"github.com/aws/aws-sdk-go/service/servicediscovery/servicediscoveryiface"
@@ -61,4 +62,9 @@ type ServiceDiscoveryAPI interface {
 //go:generate mockery --name SSMAPI
 type SSMAPI interface {
 	ssmiface.SSMAPI
+}
+
+//go:generate mockery --name LambdaApi
+type LambdaApi interface {
+	lambdaiface.LambdaAPI
 }
