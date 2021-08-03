@@ -5,7 +5,7 @@ app_family: test
 app_name: compression-test
 
 api:
-  port: 8088
+  port: 0
   mode: release
   compression:
     level: default
