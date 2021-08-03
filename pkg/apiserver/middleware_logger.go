@@ -1,9 +1,11 @@
 package apiserver
 
 import (
+	"errors"
 	"fmt"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
+	"io"
 	"strings"
 	"time"
 )
@@ -60,7 +62,11 @@ func LoggingMiddleware(logger log.Logger) gin.HandlerFunc {
 		for _, e := range ginCtx.Errors {
 			switch e.Type {
 			case gin.ErrorTypeBind:
-				ctxLogger.Warn("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)
+				if errors.Is(e.Err, io.EOF) || errors.Is(e.Err, io.ErrUnexpectedEOF) {
+					ctxLogger.Warn("%s %s %s - network error - client has gone away - %v", method, path, req.Proto, e.Err)
+				} else {
+					ctxLogger.Warn("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)
+				}
 			case gin.ErrorTypeRender:
 				ctxLogger.Warn("%s %s %s - render error - %v", method, path, req.Proto, e.Err)
 			default:
