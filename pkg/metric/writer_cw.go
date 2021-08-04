@@ -1,44 +1,50 @@
 package metric
 
 import (
+	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
-	"github.com/hashicorp/go-multierror"
-	"github.com/jonboulle/clockwork"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/applike/gosoline/pkg/cfg"
+	gosoCloudwatch "github.com/applike/gosoline/pkg/cloud/aws/cloudwatch"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	"github.com/hashicorp/go-multierror"
+	"github.com/jonboulle/clockwork"
 )
 
 const (
 	PriorityLow  = 1
 	PriorityHigh = 2
 
-	UnitCount               = cloudwatch.StandardUnitCount
-	UnitCountAverage        = "UnitCountAverage"
-	UnitSeconds             = cloudwatch.StandardUnitSeconds
-	UnitSecondsAverage      = "UnitSecondsAverage"
-	UnitMilliseconds        = cloudwatch.StandardUnitMilliseconds
-	UnitMillisecondsAverage = "UnitMillisecondsAverage"
+	UnitCount               = types.StandardUnitCount
+	UnitCountAverage        = types.StandardUnit("UnitCountAverage")
+	UnitSeconds             = types.StandardUnitSeconds
+	UnitSecondsAverage      = types.StandardUnit("UnitSecondsAverage")
+	UnitMilliseconds        = types.StandardUnitMilliseconds
+	UnitMillisecondsAverage = types.StandardUnit("UnitMillisecondsAverage")
 
 	chunkSizeCloudWatch = 20
 	minusOneWeek        = -1 * 7 * 24 * time.Hour
 	plusOneHour         = 1 * time.Hour
 )
 
-type Dimensions map[string]string
+type (
+	StandardUnit = types.StandardUnit
+	Dimensions   map[string]string
+)
 
 type Datum struct {
-	Priority   int        `json:"-"`
-	Timestamp  time.Time  `json:"timestamp"`
-	MetricName string     `json:"metricName"`
-	Dimensions Dimensions `json:"dimensions"`
-	Value      float64    `json:"value"`
-	Unit       string     `json:"unit"`
+	Priority   int          `json:"-"`
+	Timestamp  time.Time    `json:"timestamp"`
+	MetricName string       `json:"metricName"`
+	Dimensions Dimensions   `json:"dimensions"`
+	Value      float64      `json:"value"`
+	Unit       StandardUnit `json:"unit"`
 }
 
 func (d *Datum) Id() string {
@@ -87,24 +93,29 @@ type Writer interface {
 type cwWriter struct {
 	logger   log.Logger
 	clock    clockwork.Clock
-	cw       cloudwatchiface.CloudWatchAPI
+	client   gosoCloudwatch.Client
 	settings *Settings
 }
 
 func NewCwWriter(config cfg.Config, logger log.Logger) (*cwWriter, error) {
 	settings := getMetricSettings(config)
-
 	clock := clockwork.NewRealClock()
-	cw := ProvideCloudWatchClient(config)
 
-	return NewCwWriterWithInterfaces(logger, clock, cw, settings), nil
+	var err error
+	var client gosoCloudwatch.Client
+
+	if client, err = gosoCloudwatch.ProvideClient(context.Background(), config, logger, "default"); err != nil {
+		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
+	}
+
+	return NewCwWriterWithInterfaces(logger, clock, client, settings), nil
 }
 
-func NewCwWriterWithInterfaces(logger log.Logger, clock clockwork.Clock, cw cloudwatchiface.CloudWatchAPI, settings *Settings) *cwWriter {
+func NewCwWriterWithInterfaces(logger log.Logger, clock clockwork.Clock, cw gosoCloudwatch.Client, settings *Settings) *cwWriter {
 	return &cwWriter{
 		logger:   logger.WithChannel("metrics"),
 		clock:    clock,
-		cw:       cw,
+		client:   cw,
 		settings: settings,
 	}
 }
@@ -145,10 +156,8 @@ func (w *cwWriter) Write(batch Data) {
 			Namespace:  aws.String(namespace),
 		}
 
-		_, err := w.cw.PutMetricData(&input)
-
-		if err != nil {
-			w.logger.Error("could not write metric data: %w", err)
+		if _, err = w.client.PutMetricData(context.Background(), &input); err != nil {
+			w.logger.Info("could not write metric data: %s", err)
 			continue
 		}
 	}
@@ -156,10 +165,10 @@ func (w *cwWriter) Write(batch Data) {
 	w.logger.Debug("written %d metric data sets to cloudwatch", len(metricData))
 }
 
-func (w *cwWriter) buildMetricData(batch Data) ([]*cloudwatch.MetricDatum, error) {
+func (w *cwWriter) buildMetricData(batch Data) ([]types.MetricDatum, error) {
 	start := w.clock.Now().Add(minusOneWeek)
 	end := w.clock.Now().Add(plusOneHour)
-	metricData := make([]*cloudwatch.MetricDatum, 0, len(batch))
+	metricData := make([]types.MetricDatum, 0, len(batch))
 
 	for _, data := range batch {
 		if data.Priority < w.GetPriority() {
@@ -174,7 +183,7 @@ func (w *cwWriter) buildMetricData(batch Data) ([]*cloudwatch.MetricDatum, error
 			continue
 		}
 
-		dimensions := make([]*cloudwatch.Dimension, 0)
+		dimensions := make([]types.Dimension, 0)
 
 		var err error
 		for n, v := range data.Dimensions {
@@ -182,7 +191,7 @@ func (w *cwWriter) buildMetricData(batch Data) ([]*cloudwatch.MetricDatum, error
 				err = multierror.Append(err, fmt.Errorf("invalid dimension '%s' = '%s' for metric %s, this will later be rejected", n, v, data.MetricName))
 			}
 
-			dimensions = append(dimensions, &cloudwatch.Dimension{
+			dimensions = append(dimensions, types.Dimension{
 				Name:  aws.String(n),
 				Value: aws.String(v),
 			})
@@ -193,18 +202,12 @@ func (w *cwWriter) buildMetricData(batch Data) ([]*cloudwatch.MetricDatum, error
 			continue
 		}
 
-		datum := &cloudwatch.MetricDatum{
+		datum := types.MetricDatum{
 			MetricName: aws.String(data.MetricName),
 			Dimensions: dimensions,
 			Timestamp:  aws.Time(data.Timestamp),
 			Value:      aws.Float64(data.Value),
-
-			Unit: aws.String(data.Unit),
-		}
-
-		if err := datum.Validate(); err != nil {
-			w.logger.Error("invalid metric datum: %w", err)
-			continue
+			Unit:       data.Unit,
 		}
 
 		metricData = append(metricData, datum)

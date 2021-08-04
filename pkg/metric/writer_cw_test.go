@@ -1,15 +1,18 @@
 package metric_test
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
-	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/metric"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	"github.com/jonboulle/clockwork"
+	"context"
 	"testing"
 	"time"
+
+	"github.com/applike/gosoline/pkg/cfg"
+	cloudwatchMocks "github.com/applike/gosoline/pkg/cloud/aws/cloudwatch/mocks"
+	logMocks "github.com/applike/gosoline/pkg/log/mocks"
+	"github.com/applike/gosoline/pkg/metric"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	"github.com/jonboulle/clockwork"
 )
 
 func TestOutput_Write(t *testing.T) {
@@ -28,17 +31,17 @@ func TestOutput_Write_OutOfRange(t *testing.T) {
 	cwClient.AssertNotCalled(t, "PutMetricData", "data should be out of range")
 }
 
-func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudMocks.CloudWatchAPI {
+func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudwatchMocks.Client {
 	clock := clockwork.NewFakeClockAt(now)
 
 	logger := logMocks.NewLoggerMockedAll()
-	cwClient := new(cloudMocks.CloudWatchAPI)
+	cwClient := new(cloudwatchMocks.Client)
 
-	cwClient.On("PutMetricData", &cloudwatch.PutMetricDataInput{
+	cwClient.On("PutMetricData", context.Background(), &cloudwatch.PutMetricDataInput{
 		Namespace: aws.String("my/test/namespace/app"),
-		MetricData: []*cloudwatch.MetricDatum{{
+		MetricData: []types.MetricDatum{{
 			MetricName: aws.String("my-test-metric-name"),
-			Dimensions: []*cloudwatch.Dimension{
+			Dimensions: []types.Dimension{
 				{
 					Name:  aws.String("d1"),
 					Value: aws.String("a"),
@@ -46,7 +49,7 @@ func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudMocks.Cl
 			},
 			Timestamp: aws.Time(metricTimeStamp),
 			Value:     aws.Float64(3.4),
-			Unit:      aws.String(metric.UnitCount),
+			Unit:      metric.UnitCount,
 		}},
 	}).Return(nil, nil)
 
