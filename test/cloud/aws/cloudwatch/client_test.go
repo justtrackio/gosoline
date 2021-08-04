@@ -4,6 +4,9 @@ package cloudwatch_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/cloud/aws/cloudwatch"
 	"github.com/applike/gosoline/pkg/test/suite"
@@ -12,8 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	awsCw "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
-	"testing"
-	"time"
 )
 
 type ClientTestSuite struct {
@@ -29,8 +30,8 @@ func (s *ClientTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *ClientTestSuite) TestNewDefault() {
-	credentials := config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("AKID", "SECRET_KEY", "TOKEN"))
-	client, err := cloudwatch.NewClient(context.Background(), s.Env().Config(), s.Env().Logger(), "default", credentials)
+	cred := config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("AKID", "SECRET_KEY", "TOKEN"))
+	client, err := cloudwatch.NewClient(context.Background(), s.Env().Config(), s.Env().Logger(), "default", cred)
 	s.NoError(err)
 
 	_, err = client.GetMetricStatistics(context.Background(), &awsCw.GetMetricStatisticsInput{

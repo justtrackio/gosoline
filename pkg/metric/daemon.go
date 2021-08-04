@@ -3,11 +3,13 @@ package metric
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel/common"
 	"github.com/applike/gosoline/pkg/log"
-	"sync"
-	"time"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 )
 
 const defaultTimeFormat = "2006-01-02T15:04Z07:00"
@@ -34,7 +36,7 @@ type BatchedMetricDatum struct {
 	MetricName string
 	Dimensions Dimensions
 	Values     []float64
-	Unit       string
+	Unit       types.StandardUnit
 }
 
 type Daemon struct {
@@ -58,7 +60,7 @@ func NewDaemon(config cfg.Config, logger log.Logger) (*Daemon, error) {
 	channel.logger = logger.WithChannel("metrics")
 
 	var err error
-	var writers = make([]Writer, len(settings.Writers))
+	writers := make([]Writer, len(settings.Writers))
 
 	for i, t := range settings.Writers {
 		if writers[i], err = ProvideMetricWriterByType(config, logger, t); err != nil {
@@ -231,7 +233,7 @@ func (d *Daemon) buildMetricData() Data {
 	return data
 }
 
-func (d *Daemon) calcValue(unit string, values []float64) (string, float64) {
+func (d *Daemon) calcValue(unit types.StandardUnit, values []float64) (types.StandardUnit, float64) {
 	value := 0.0
 
 	switch unit {

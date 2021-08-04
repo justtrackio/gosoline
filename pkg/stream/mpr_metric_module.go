@@ -3,17 +3,19 @@ package stream
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
+	gosoCloudwatch "github.com/applike/gosoline/pkg/cloud/aws/cloudwatch"
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/metric"
 	"github.com/applike/gosoline/pkg/uuid"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
-	"time"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 )
 
 const (
@@ -30,7 +32,7 @@ type MessagesPerRunnerMetricWriterSettings struct {
 	MemberId           string
 }
 
-func MessagesPerRunnerMetricWriterFactory(config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
+func MessagesPerRunnerMetricWriterFactory(config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
 	settings := readMessagesPerRunnerMetricSettings(config)
 	modules := map[string]kernel.ModuleFactory{}
 
@@ -50,7 +52,7 @@ type MessagesPerRunnerMetricWriter struct {
 
 	logger         log.Logger
 	leaderElection conc.LeaderElection
-	cwClient       cloudwatchiface.CloudWatchAPI
+	cwClient       gosoCloudwatch.Client
 	metricWriter   metric.Writer
 	clock          clock.Clock
 	ticker         clock.Ticker
@@ -62,6 +64,7 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 		var err error
 		var queueNames []string
 		var leaderElection conc.LeaderElection
+		var cwClient gosoCloudwatch.Client
 
 		logger = logger.WithChannel("stream-metric-messages-per-runner")
 
@@ -84,7 +87,10 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 			return nil, fmt.Errorf("can not create leader election for stream-metric-messages-per-runner writer: %w", err)
 		}
 
-		cwClient := metric.ProvideCloudWatchClient(config)
+		if cwClient, err = gosoCloudwatch.ProvideClient(context.Background(), config, logger, "default"); err != nil {
+			return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
+		}
+
 		metricWriter := metric.NewDaemonWriter()
 		ticker := clock.NewRealTicker(settings.Period)
 
@@ -92,7 +98,7 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 	}
 }
 
-func NewMessagesPerRunnerMetricWriterWithInterfaces(logger log.Logger, leaderElection conc.LeaderElection, cwClient cloudwatchiface.CloudWatchAPI, metricWriter metric.Writer, clock clock.Clock, ticker clock.Ticker, settings *MessagesPerRunnerMetricWriterSettings) (*MessagesPerRunnerMetricWriter, error) {
+func NewMessagesPerRunnerMetricWriterWithInterfaces(logger log.Logger, leaderElection conc.LeaderElection, cwClient gosoCloudwatch.Client, metricWriter metric.Writer, clock clock.Clock, ticker clock.Ticker, settings *MessagesPerRunnerMetricWriterSettings) (*MessagesPerRunnerMetricWriter, error) {
 	writer := &MessagesPerRunnerMetricWriter{
 		logger:         logger,
 		leaderElection: leaderElection,
@@ -142,7 +148,7 @@ func (u *MessagesPerRunnerMetricWriter) writeMessagesPerRunnerMetric(ctx context
 		return nil
 	}
 
-	if messagesPerRunner, err = u.calculateMessagesPerRunner(); err != nil {
+	if messagesPerRunner, err = u.calculateMessagesPerRunner(ctx); err != nil {
 		u.logger.Warn("can not calculate messages per runner: %s", err)
 		return nil
 	}
@@ -158,19 +164,19 @@ func (u *MessagesPerRunnerMetricWriter) writeMessagesPerRunnerMetric(ctx context
 	return nil
 }
 
-func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner() (float64, error) {
+func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner(ctx context.Context) (float64, error) {
 	var err error
 	var runnerCount, messagesSent, messagesVisible, currentMpr, newMpr, maxMpr float64
 
-	if messagesSent, err = u.getQueueMetrics("NumberOfMessagesSent", cloudwatch.StatisticSum); err != nil {
+	if messagesSent, err = u.getQueueMetrics(ctx, "NumberOfMessagesSent", types.StatisticSum); err != nil {
 		return 0, fmt.Errorf("can not get number of messages sent: %w", err)
 	}
 
-	if messagesVisible, err = u.getQueueMetrics("ApproximateNumberOfMessagesVisible", cloudwatch.StatisticMaximum); err != nil {
+	if messagesVisible, err = u.getQueueMetrics(ctx, "ApproximateNumberOfMessagesVisible", types.StatisticMaximum); err != nil {
 		return 0, fmt.Errorf("can not get number of messages visible: %w", err)
 	}
 
-	if runnerCount, err = u.getEcsMetric("DesiredTaskCount", cloudwatch.StatisticMaximum, u.settings.UpdatePeriod); err != nil {
+	if runnerCount, err = u.getEcsMetric(ctx, "DesiredTaskCount", types.StatisticMaximum, u.settings.UpdatePeriod); err != nil {
 		return 0, fmt.Errorf("can not get runner count: %w", err)
 	}
 
@@ -178,7 +184,7 @@ func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner() (float64, e
 		return 0, fmt.Errorf("runner count is zero")
 	}
 
-	if currentMpr, err = u.getStreamMprMetric(metricNameStreamMprMessagesPerRunner, cloudwatch.StatisticAverage, u.settings.MaxIncreasePeriod); err != nil {
+	if currentMpr, err = u.getStreamMprMetric(ctx, metricNameStreamMprMessagesPerRunner, types.StatisticAverage, u.settings.MaxIncreasePeriod); err != nil {
 		u.logger.Warn("can not get current messages per runner metric: defaulting to 0")
 		currentMpr = 0
 	}
@@ -210,29 +216,29 @@ func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner() (float64, e
 	return newMpr, nil
 }
 
-func (u *MessagesPerRunnerMetricWriter) getQueueMetrics(metric string, stat string) (float64, error) {
+func (u *MessagesPerRunnerMetricWriter) getQueueMetrics(ctx context.Context, metric string, stat types.Statistic) (float64, error) {
 	startTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod * 5)
 	endTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod)
-	period := int64(u.settings.UpdatePeriod.Seconds())
-	queries := make([]*cloudwatch.MetricDataQuery, len(u.settings.QueueNames))
+	period := int32(u.settings.UpdatePeriod.Seconds())
+	queries := make([]types.MetricDataQuery, len(u.settings.QueueNames))
 
 	for i, queueName := range u.settings.QueueNames {
-		queries[i] = &cloudwatch.MetricDataQuery{
+		queries[i] = types.MetricDataQuery{
 			Id: aws.String(fmt.Sprintf("m%d", i)),
-			MetricStat: &cloudwatch.MetricStat{
-				Metric: &cloudwatch.Metric{
+			MetricStat: &types.MetricStat{
+				Metric: &types.Metric{
 					Namespace:  aws.String("AWS/SQS"),
 					MetricName: aws.String(metric),
-					Dimensions: []*cloudwatch.Dimension{
+					Dimensions: []types.Dimension{
 						{
 							Name:  aws.String("QueueName"),
 							Value: aws.String(queueName),
 						},
 					},
 				},
-				Period: aws.Int64(period),
-				Stat:   aws.String(stat),
-				Unit:   aws.String(cloudwatch.StandardUnitCount),
+				Period: aws.Int32(period),
+				Stat:   aws.String(string(stat)),
+				Unit:   types.StandardUnitCount,
 			},
 		}
 	}
@@ -243,8 +249,7 @@ func (u *MessagesPerRunnerMetricWriter) getQueueMetrics(metric string, stat stri
 		MetricDataQueries: queries,
 	}
 
-	out, err := u.cwClient.GetMetricData(input)
-
+	out, err := u.cwClient.GetMetricData(ctx, input)
 	if err != nil {
 		return 0, fmt.Errorf("can not get metric data: %w", err)
 	}
@@ -255,42 +260,41 @@ func (u *MessagesPerRunnerMetricWriter) getQueueMetrics(metric string, stat stri
 			continue
 		}
 
-		value += *result.Values[0]
+		value += result.Values[0]
 	}
 
 	return value, nil
 }
 
-func (u *MessagesPerRunnerMetricWriter) getStreamMprMetric(name string, stat string, period time.Duration) (float64, error) {
+func (u *MessagesPerRunnerMetricWriter) getStreamMprMetric(ctx context.Context, name string, stat types.Statistic, period time.Duration) (float64, error) {
 	appId := u.settings.AppId
 	namespace := fmt.Sprintf("%s/%s/%s/%s", appId.Project, appId.Environment, appId.Family, appId.Application)
 
 	startTime := u.clock.Now().Add(-1 * period)
 	endTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod)
-	periodSeconds := int64(u.settings.UpdatePeriod.Seconds())
+	periodSeconds := int32(u.settings.UpdatePeriod.Seconds())
 
 	input := &cloudwatch.GetMetricDataInput{
 		StartTime: aws.Time(startTime),
 		EndTime:   aws.Time(endTime),
-		MetricDataQueries: []*cloudwatch.MetricDataQuery{
+		MetricDataQueries: []types.MetricDataQuery{
 			{
 				Id: aws.String("m1"),
-				MetricStat: &cloudwatch.MetricStat{
-					Metric: &cloudwatch.Metric{
+				MetricStat: &types.MetricStat{
+					Metric: &types.Metric{
 						Namespace:  aws.String(namespace),
 						MetricName: aws.String(name),
 					},
-					Period: aws.Int64(periodSeconds),
-					Stat:   aws.String(stat),
-					Unit:   aws.String(cloudwatch.StandardUnitCount),
+					Period: aws.Int32(periodSeconds),
+					Stat:   aws.String(string(stat)),
+					Unit:   types.StandardUnitCount,
 				},
 			},
 		},
-		MaxDatapoints: aws.Int64(1),
+		MaxDatapoints: aws.Int32(1),
 	}
 
-	out, err := u.cwClient.GetMetricData(input)
-
+	out, err := u.cwClient.GetMetricData(ctx, input)
 	if err != nil {
 		return 0, fmt.Errorf("can not get metric: %w", err)
 	}
@@ -303,30 +307,30 @@ func (u *MessagesPerRunnerMetricWriter) getStreamMprMetric(name string, stat str
 		return 0, fmt.Errorf("no metric values")
 	}
 
-	value := *out.MetricDataResults[0].Values[0]
+	value := out.MetricDataResults[0].Values[0]
 
 	return value, nil
 }
 
-func (u *MessagesPerRunnerMetricWriter) getEcsMetric(name string, stat string, period time.Duration) (float64, error) {
+func (u *MessagesPerRunnerMetricWriter) getEcsMetric(ctx context.Context, name string, stat types.Statistic, period time.Duration) (float64, error) {
 	appId := u.settings.AppId
 	clusterName := fmt.Sprintf("%s-%s-%s", appId.Project, appId.Environment, appId.Family)
 
 	startTime := u.clock.Now().Add(-1 * period * 5)
 	endTime := u.clock.Now().Add(-1 * period)
-	periodSeconds := int64(period.Seconds())
+	periodSeconds := int32(period.Seconds())
 
 	input := &cloudwatch.GetMetricDataInput{
 		StartTime: aws.Time(startTime),
 		EndTime:   aws.Time(endTime),
-		MetricDataQueries: []*cloudwatch.MetricDataQuery{
+		MetricDataQueries: []types.MetricDataQuery{
 			{
 				Id: aws.String("m1"),
-				MetricStat: &cloudwatch.MetricStat{
-					Metric: &cloudwatch.Metric{
+				MetricStat: &types.MetricStat{
+					Metric: &types.Metric{
 						Namespace:  aws.String("ECS/ContainerInsights"),
 						MetricName: aws.String(name),
-						Dimensions: []*cloudwatch.Dimension{
+						Dimensions: []types.Dimension{
 							{
 								Name:  aws.String("ClusterName"),
 								Value: aws.String(clusterName),
@@ -337,17 +341,16 @@ func (u *MessagesPerRunnerMetricWriter) getEcsMetric(name string, stat string, p
 							},
 						},
 					},
-					Period: aws.Int64(periodSeconds),
-					Stat:   aws.String(stat),
-					Unit:   aws.String(cloudwatch.StandardUnitCount),
+					Period: aws.Int32(periodSeconds),
+					Stat:   aws.String(string(stat)),
+					Unit:   types.StandardUnitCount,
 				},
 			},
 		},
-		MaxDatapoints: aws.Int64(1),
+		MaxDatapoints: aws.Int32(1),
 	}
 
-	out, err := u.cwClient.GetMetricData(input)
-
+	out, err := u.cwClient.GetMetricData(ctx, input)
 	if err != nil {
 		return 0, fmt.Errorf("can not get metric: %w", err)
 	}
@@ -360,7 +363,7 @@ func (u *MessagesPerRunnerMetricWriter) getEcsMetric(name string, stat string, p
 		return 0, fmt.Errorf("no metric values")
 	}
 
-	value := *out.MetricDataResults[0].Values[0]
+	value := out.MetricDataResults[0].Values[0]
 
 	return value, nil
 }

@@ -3,6 +3,9 @@ package aws
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,7 +15,6 @@ import (
 	"github.com/aws/smithy-go/logging"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/cenkalti/backoff"
-	"time"
 )
 
 type ClientHttpSettings struct {
@@ -30,6 +32,14 @@ type ClientSettings struct {
 	Endpoint   string              `cfg:"endpoint" default:"http://localhost:4566"`
 	Retry      ClientRetrySettings `cfg:"retry"`
 	HttpClient ClientHttpSettings  `cfg:"http_client"`
+}
+
+func UnmarshalClientSettings(config cfg.Config, settings interface{}, service string, name string) {
+	key := fmt.Sprintf("cloud.aws.%s.clients.%s", service, name)
+	config.UnmarshalKey(key, settings, []cfg.UnmarshalDefaults{
+		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.region", "region"),
+		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.endpoint", "endpoint"),
+	}...)
 }
 
 func DefaultClientOptions(logger log.Logger, clock clock.Clock, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) []func(options *awsCfg.LoadOptions) error {
@@ -52,7 +62,8 @@ func DefaultClientOptions(logger log.Logger, clock clock.Clock, settings ClientS
 func DefaultClientConfig(ctx context.Context, logger log.Logger, clock clock.Clock, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) (aws.Config, error) {
 	var err error
 	var awsConfig aws.Config
-	var options = DefaultClientOptions(logger, clock, settings, optFns...)
+
+	options := DefaultClientOptions(logger, clock, settings, optFns...)
 
 	if awsConfig, err = awsCfg.LoadDefaultConfig(ctx, options...); err != nil {
 		return awsConfig, fmt.Errorf("can not initialize config: %w", err)
@@ -123,17 +134,17 @@ type ExponentialBackoffDelayer struct {
 }
 
 func NewExponentialBackoffDelayer(clock clock.Clock, settings *ClientRetrySettings) *ExponentialBackoffDelayer {
-	backoff := backoff.NewExponentialBackOff()
-	backoff.Clock = clock
-	backoff.InitialInterval = settings.InitialInterval
-	backoff.MaxInterval = settings.MaxInterval
-	backoff.MaxElapsedTime = settings.MaxElapsedTime
+	backOff := backoff.NewExponentialBackOff()
+	backOff.Clock = clock
+	backOff.InitialInterval = settings.InitialInterval
+	backOff.MaxInterval = settings.MaxInterval
+	backOff.MaxElapsedTime = settings.MaxElapsedTime
 
 	return &ExponentialBackoffDelayer{
-		backoff: backoff,
+		backoff: backOff,
 	}
 }
 
-func (d *ExponentialBackoffDelayer) BackoffDelay(attempt int, err error) (time.Duration, error) {
+func (d *ExponentialBackoffDelayer) BackoffDelay(_ int, _ error) (time.Duration, error) {
 	return d.backoff.NextBackOff(), nil
 }

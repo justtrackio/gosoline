@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	netUrl "net/url"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/metric"
 	"github.com/go-resty/resty/v2"
-	"net/http"
-	netUrl "net/url"
-	"time"
 )
 
 const (
@@ -237,7 +238,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	return response, nil
 }
 
-func (c *client) writeMetric(metricName string, method string, unit string, value float64) {
+func (c *client) writeMetric(metricName string, method string, unit metric.StandardUnit, value float64) {
 	c.mo.WriteOne(&metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),

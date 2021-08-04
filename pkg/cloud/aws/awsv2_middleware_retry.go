@@ -4,21 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/log"
 	awsMiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	smithyMiddleware "github.com/aws/smithy-go/middleware"
-	"time"
 )
 
 type attemptInfoKey struct{}
 
 type attemptInfo struct {
-	resouceName string
-	start       time.Time
-	count       int
-	lastErr     error
+	resourceName string
+	start        time.Time
+	count        int
+	lastErr      error
 }
 
 func getAttemptInfo(ctx context.Context) *attemptInfo {
@@ -53,15 +54,15 @@ func increaseAttemptCount(ctx context.Context) (*attemptInfo, context.Context) {
 	return stats, ctx
 }
 
-type ErrRetryAttempsExceeded struct {
+type ErrRetryAttemptsExceeded struct {
 	ResourceName string
 	Attempts     int
 	DurationTook time.Duration
 	Err          error
 }
 
-func NewErrRetryAttempsExceeded(resourceName string, attempts int, durationTook time.Duration, err error) *ErrRetryAttempsExceeded {
-	return &ErrRetryAttempsExceeded{
+func NewErrRetryAttemptsExceeded(resourceName string, attempts int, durationTook time.Duration, err error) *ErrRetryAttemptsExceeded {
+	return &ErrRetryAttemptsExceeded{
 		ResourceName: resourceName,
 		Attempts:     attempts,
 		DurationTook: durationTook,
@@ -69,16 +70,16 @@ func NewErrRetryAttempsExceeded(resourceName string, attempts int, durationTook 
 	}
 }
 
-func (e *ErrRetryAttempsExceeded) Error() string {
+func (e *ErrRetryAttemptsExceeded) Error() string {
 	return fmt.Sprintf("sent request to resource %s failed after %d retries in %s: %s", e.ResourceName, e.Attempts, e.DurationTook, e.Err)
 }
 
-func (e *ErrRetryAttempsExceeded) Unwrap() error {
+func (e *ErrRetryAttemptsExceeded) Unwrap() error {
 	return e.Err
 }
 
-func IsErrRetryAttempsExceeded(err error) bool {
-	var errExpected *ErrRetryAttempsExceeded
+func IsErrRetryAttemptsExceeded(err error) bool {
+	var errExpected *ErrRetryAttemptsExceeded
 	return errors.As(err, &errExpected)
 }
 
@@ -125,8 +126,8 @@ func AttemptLoggerInitMiddleware(logger log.Logger, clock clock.Clock, maxElapse
 		resourceName := fmt.Sprintf("%s/%s", serviceId, operation)
 
 		info := &attemptInfo{
-			start:       clock.Now(),
-			resouceName: resourceName,
+			start:        clock.Now(),
+			resourceName: resourceName,
 		}
 		ctx = setAttemptInfo(ctx, info)
 
@@ -141,16 +142,16 @@ func AttemptLoggerInitMiddleware(logger log.Logger, clock clock.Clock, maxElapse
 		durationTook := clock.Now().Sub(info.start)
 
 		if ctx.Err() == context.DeadlineExceeded {
-			return output, metadata, NewErrRetryMaxElapsedTimeExceeded(info.resouceName, info.count, durationTook, maxElapsedTime, err)
+			return output, metadata, NewErrRetryMaxElapsedTimeExceeded(info.resourceName, info.count, durationTook, maxElapsedTime, err)
 		}
 
 		var maxAttemptsError *retry.MaxAttemptsError
 		if err != nil && errors.As(err, &maxAttemptsError) {
-			return output, metadata, NewErrRetryAttempsExceeded(info.resouceName, info.count, durationTook, err)
+			return output, metadata, NewErrRetryAttemptsExceeded(info.resourceName, info.count, durationTook, err)
 		}
 
 		if info.count > 1 && err == nil {
-			logger.WithContext(ctx).Info("sent request to resource %s successful after %d retries in %s", info.resouceName, info.count, durationTook)
+			logger.WithContext(ctx).Info("sent request to resource %s successful after %d retries in %s", info.resourceName, info.count, durationTook)
 		}
 
 		return output, metadata, err
@@ -167,7 +168,7 @@ func AttemptLoggerRetryMiddleware(logger log.Logger, clock clock.Clock) smithyMi
 
 		if info.count > 1 {
 			duration := clock.Now().Sub(info.start)
-			logger.WithContext(ctx).Warn("attempt number %d to request resource %s after %s cause of error %s", info.count, info.resouceName, duration, info.lastErr)
+			logger.WithContext(ctx).Warn("attempt number %d to request resource %s after %s cause of error %s", info.count, info.resourceName, duration, info.lastErr)
 		}
 
 		output, metadata, info.lastErr = next.HandleFinalize(ctx, input)
