@@ -9,16 +9,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-const (
-	CompBetween    = "between"
-	CompBeginsWith = "beginsWith"
-	CompEq         = "="
-	CompGt         = ">"
-	CompGte        = ">="
-	CompLt         = "<"
-	CompLte        = "<="
-)
-
 type QueryOperation struct {
 	input      *dynamodb.QueryInput
 	iterator   *pageIterator
@@ -32,7 +22,6 @@ type keyExprBuilder func() expression.KeyConditionBuilder
 type QueryBuilder interface {
 	WithIndex(name string) QueryBuilder
 	WithHash(value interface{}) QueryBuilder
-	WithRange(comp string, values ...interface{}) QueryBuilder
 	WithRangeBetween(lower interface{}, upper interface{}) QueryBuilder
 	WithRangeBeginsWith(prefix string) QueryBuilder
 	WithRangeEq(value interface{}) QueryBuilder
@@ -92,52 +81,6 @@ func (b *queryBuilder) WithHash(value interface{}) QueryBuilder {
 	b.hashExprBuilder = func() expression.KeyConditionBuilder {
 		return expression.KeyEqual(expression.Key(*b.selected.GetHashKey()), expression.Value(value))
 	}
-
-	return b
-}
-
-func (b *queryBuilder) WithRange(comp string, values ...interface{}) QueryBuilder {
-	if len(values) == 0 {
-		b.err = multierror.Append(b.err, fmt.Errorf("there are no values for the range query on table %s", b.metadata.TableName))
-		return b
-	}
-
-	switch comp {
-	case CompBetween:
-		if len(values) != 2 {
-			b.err = multierror.Append(b.err, fmt.Errorf("there are 2 values required for a range between query on table %s", b.metadata.TableName))
-			return b
-		}
-
-		return b.WithRangeBetween(values[0], values[1])
-
-	case CompBeginsWith:
-		prefix, ok := values[0].(string)
-
-		if !ok {
-			b.err = multierror.Append(b.err, fmt.Errorf("paramter for a range beginsWith query has to be of type string on table %s", b.metadata.TableName))
-			return b
-		}
-
-		return b.WithRangeBeginsWith(prefix)
-
-	case CompEq:
-		return b.WithRangeEq(values[0])
-
-	case CompGt:
-		return b.WithRangeGt(values[0])
-
-	case CompGte:
-		return b.WithRangeGte(values[0])
-
-	case CompLt:
-		return b.WithRangeLt(values[0])
-
-	case CompLte:
-		return b.WithRangeLte(values[0])
-	}
-
-	b.err = multierror.Append(b.err, fmt.Errorf("unkown query operation [%s] on table %s", comp, b.metadata.TableName))
 
 	return b
 }
