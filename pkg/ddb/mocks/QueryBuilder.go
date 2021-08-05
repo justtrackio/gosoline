@@ -178,25 +178,6 @@ func (_m *QueryBuilder) WithProjection(projection interface{}) ddb.QueryBuilder 
 	return r0
 }
 
-// WithRange provides a mock function with given fields: comp, values
-func (_m *QueryBuilder) WithRange(comp string, values ...interface{}) ddb.QueryBuilder {
-	var _ca []interface{}
-	_ca = append(_ca, comp)
-	_ca = append(_ca, values...)
-	ret := _m.Called(_ca...)
-
-	var r0 ddb.QueryBuilder
-	if rf, ok := ret.Get(0).(func(string, ...interface{}) ddb.QueryBuilder); ok {
-		r0 = rf(comp, values...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(ddb.QueryBuilder)
-		}
-	}
-
-	return r0
-}
-
 // WithRangeBeginsWith provides a mock function with given fields: prefix
 func (_m *QueryBuilder) WithRangeBeginsWith(prefix string) ddb.QueryBuilder {
 	ret := _m.Called(prefix)
