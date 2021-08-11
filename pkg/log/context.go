@@ -1,6 +1,9 @@
 package log
 
-import "context"
+import (
+	"context"
+	"math"
+)
 
 type key int
 
@@ -24,7 +27,13 @@ func AppendLoggerContextField(ctx context.Context, fields map[string]interface{}
 		return NewLoggerContext(ctx, fields)
 	}
 
-	newFields := make(map[string]interface{}, contextFieldsLength+len(fields))
+	// ensure potential buffer overflow does not happen
+	size := len(fields)
+	if contextFieldsLength < math.MaxInt32/2 && len(fields) < math.MaxInt32/2 {
+		size = contextFieldsLength + len(fields)
+	}
+
+	newFields := make(map[string]interface{}, size)
 
 	for k, v := range contextFields {
 		newFields[k] = v

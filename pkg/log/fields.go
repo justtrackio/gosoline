@@ -2,12 +2,19 @@ package log
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"time"
 )
 
 func mergeFields(receiver map[string]interface{}, input map[string]interface{}) map[string]interface{} {
-	newMap := make(map[string]interface{}, len(receiver)+len(input))
+	// ensure potential buffer overflow does not happen
+	size := len(receiver)
+	if len(receiver) < math.MaxInt32/2 && len(input) < math.MaxInt32/2 {
+		size = len(receiver) + len(input)
+	}
+
+	newMap := make(map[string]interface{}, size)
 
 	for k, v := range receiver {
 		newMap[k] = prepareForLog(v)
