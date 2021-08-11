@@ -25,26 +25,6 @@ variable "maxReceiveCount" {
   default = 0
 }
 
-variable "alarm_main_create" {
-  default = 1
-}
-
-variable "alarm_main_period" {
-  default = 300
-}
-
-variable "alarm_main_threshold" {
-  default = 200
-}
-
-variable "alarm_main_evaluation_periods" {
-  default = 1
-}
-
-variable "alarm_main_datapoints_to_alarm" {
-  default = 1
-}
-
 variable "alarm_main_backlog_create" {
   default = 1
 }
@@ -67,26 +47,6 @@ variable "alarm_main_backlog_datapoints_to_alarm" {
 
 variable "alarm_main_backlog_treshold" {
   default = 0
-}
-
-variable "alarm_dead_create" {
-  default = 1
-}
-
-variable "alarm_dead_period" {
-  default = 300
-}
-
-variable "alarm_dead_threshold" {
-  default = 200
-}
-
-variable "alarm_dead_evaluation_periods" {
-  default = 1
-}
-
-variable "alarm_dead_datapoints_to_alarm" {
-  default = 1
 }
 
 variable "alarm_dead_backlog_create" {

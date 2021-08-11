@@ -86,12 +86,6 @@ variable "associate_public_ip_address" {
   default     = false
 }
 
-variable "create_vpc" {
-  description = "Controls if VPC should be created (it affects almost all resources)"
-  type        = bool
-  default     = true
-}
-
 variable "cidr" {
   description = "The CIDR block for the VPC. Default value is a valid CIDR, but not acceptable by AWS and should be overridden (only needed if new vpc is created)"
   type        = string
@@ -106,12 +100,6 @@ variable "private_subnets" {
 
 variable "public_subnets" {
   description = "A list of public subnets inside the VPC (only needed if new vpc is created)"
-  type        = list(string)
-  default     = []
-}
-
-variable "private_subnet_ids" {
-  description = "A ID's of private subnets inside the VPC (only needed if no vpc is created)"
   type        = list(string)
   default     = []
 }

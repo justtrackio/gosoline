@@ -82,30 +82,6 @@ variable "autoscale_max_write_capacity" {
   description = "DynamoDB autoscaling max write capacity"
 }
 
-variable "autoscale_min_read_capacity_global_secondary_index" {
-  type        = number
-  default     = 1
-  description = "DynamoDB autoscaling min read capacity"
-}
-
-variable "autoscale_max_read_capacity_global_secondary_index" {
-  type        = number
-  default     = 1000
-  description = "DynamoDB autoscaling max read capacity"
-}
-
-variable "autoscale_min_write_capacity_global_secondary_index" {
-  type        = number
-  default     = 1
-  description = "DynamoDB autoscaling min write capacity"
-}
-
-variable "autoscale_max_write_capacity_global_secondary_index" {
-  type        = number
-  default     = 1000
-  description = "DynamoDB autoscaling max write capacity"
-}
-
 variable "billing_mode" {
   type        = string
   default     = "PROVISIONED"
@@ -209,12 +185,6 @@ variable "local_secondary_index" {
   }))
   default     = []
   description = "Additional local secondary indexes in the form of a list of mapped values"
-}
-
-variable "regex_replace_chars" {
-  type        = string
-  default     = "/[^a-zA-Z0-9-]/"
-  description = "Regex to replace chars with empty string in `namespace`, `environment`, `stage` and `name`. By default only hyphens, letters and digits are allowed, all other chars are removed"
 }
 
 variable "autoscaling_schedule_table_read_start" {

@@ -29,34 +29,6 @@ variable "deadLetterArn" {
   default = ""
 }
 
-variable "alarm_create" {
-  default = 1
-}
-
-variable "alarm_messages_age_create" {
-  default = 1
-}
-
-variable "alarm_period" {
-  default = 300
-}
-
-variable "alarm_visible_messages_threshold" {
-  default = 200
-}
-
-variable "alarm_messages_age_threshold_seconds" {
-  default = 60
-}
-
-variable "alarm_evaluation_periods" {
-  default = 1
-}
-
-variable "alarm_datapoints_to_alarm" {
-  default = 1
-}
-
 variable "alarm_backlog_create" {
   default = 1
 }
