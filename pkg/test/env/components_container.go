@@ -23,16 +23,26 @@ func (c *ComponentsContainer) Add(typ string, name string, component Component) 
 	c.components[typ][name] = component
 }
 
-func (c *ComponentsContainer) Get(typ string, name string) (Component, error) {
-	if _, ok := c.components[typ]; !ok {
-		return nil, fmt.Errorf("there is no component with name %s of type %s", name, typ)
+func (c *ComponentsContainer) Get(componentType string, name string) (Component, error) {
+	if _, ok := c.components[componentType]; !ok {
+		var components []string
+		for component := range c.components {
+			components = append(components, component)
+		}
+
+		return nil, fmt.Errorf("there is no component with name %s of type %s (there are only: %v)", name, componentType, components)
 	}
 
-	if _, ok := c.components[typ][name]; !ok {
-		return nil, fmt.Errorf("there is no component with name %s of type %s", name, typ)
+	if _, ok := c.components[componentType][name]; !ok {
+		var components []string
+		for component := range c.components[componentType] {
+			components = append(components, component)
+		}
+
+		return nil, fmt.Errorf("there is no component with name %s of type %s (there are only: %v)", name, componentType, components)
 	}
 
-	return c.components[typ][name], nil
+	return c.components[componentType][name], nil
 }
 
 func (c *ComponentsContainer) GetAll() []Component {

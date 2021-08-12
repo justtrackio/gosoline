@@ -11,6 +11,7 @@ import (
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
+	"net/http"
 	"reflect"
 	"testing"
 )
@@ -27,15 +28,28 @@ type TestingSuiteApiDefinitionsAware interface {
 }
 
 type ApiServerTestCase struct {
-	Method             string
-	Url                string
-	Headers            map[string]string
-	Body               interface{}
+	Method  string
+	Url     string
+	Headers map[string]string
+	Body    interface{}
+	// ExpectedStatusCode describes the status code the last response is required to have.
 	ExpectedStatusCode int
-	ExpectedResult     interface{}
-	ExpectedErr        error
-	Assert             func() error
-	ValidateResponse   func(response *resty.Response) error
+	// ExpectedRedirectsToFollow describes the number of redirects we want to follow. It is an error if less redirects
+	// are performed. More redirects result in the last redirect being returned as the response instead (e.g., if it is
+	// to some external site or with a protocol different from HTTP(S) like intent://) and do not result in an error.
+	ExpectedRedirectsToFollow int
+	// ExpectedResult defines the *type* the final response should be parsed into. You can then access the unmarshalled
+	// response in response.Result().
+	ExpectedResult interface{}
+	// ExpectedErr is compared with the error returned by the HTTP request. Only the error messages have to match.
+	ExpectedErr error
+	// Assert allows you to provide an assertion function which can be passed to validate certain post conditions (like
+	// messages being written to the correct queues).
+	Assert func() error
+	// ValidateResponse is intended to check that the response carries the correct response body, redirects to the correct
+	// location, or has the correct headers set. You don't need to validate the response status here, this is already
+	// performed automatically.
+	ValidateResponse func(response *resty.Response) error
 }
 
 func (c ApiServerTestCase) request(client *resty.Client) (*resty.Response, error) {
@@ -125,13 +139,25 @@ func buildTestCaseApiServer(suite TestingSuite, method reflect.Method) (testCase
 				}
 
 				url := fmt.Sprintf("http://127.0.0.1:%d", *port)
-				client := resty.New().SetHostURL(url)
+				remainingRedirects := tc.ExpectedRedirectsToFollow
+				client := resty.New().SetHostURL(url).SetRedirectPolicy(
+					resty.RedirectPolicyFunc(func(request *http.Request, _ []*http.Request) error {
+						if remainingRedirects <= 0 {
+							return http.ErrUseLastResponse
+						}
+
+						remainingRedirects--
+
+						return nil
+					}),
+				)
 				response, err := tc.request(client)
 
 				assert.NotNil(t, response, "there should be a response returned")
 
 				if response != nil {
 					assert.Equal(t, tc.ExpectedStatusCode, response.StatusCode(), "response status code should match")
+					assert.Equalf(t, 0, remainingRedirects, "expected %d redirects, but only %d redirects where performed", tc.ExpectedRedirectsToFollow, tc.ExpectedRedirectsToFollow-remainingRedirects)
 				}
 
 				if tc.ExpectedErr == nil {
