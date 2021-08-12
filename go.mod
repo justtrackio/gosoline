@@ -11,13 +11,14 @@ require (
 	github.com/apache/thrift v0.13.0 // indirect
 	github.com/aws/aws-lambda-go v1.13.2
 	github.com/aws/aws-sdk-go v1.38.7
-	github.com/aws/aws-sdk-go-v2 v1.3.0
+	github.com/aws/aws-sdk-go-v2 v1.8.0
 	github.com/aws/aws-sdk-go-v2/config v1.1.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.1.3
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.2.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.2.0
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.2.0
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.4.2
 	github.com/aws/aws-xray-sdk-go v1.1.0
-	github.com/aws/smithy-go v1.2.0
+	github.com/aws/smithy-go v1.7.0
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cenkalti/backoff/v4 v4.1.1 // indirect
 	github.com/containerd/containerd v1.5.4 // indirect
