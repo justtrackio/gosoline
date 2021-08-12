@@ -47,17 +47,26 @@ func runTestServer(t *testing.T, method string, status int, delay time.Duration,
 	test(testServer.Listener.Addr().String())
 }
 
-func getConfig(retries int, timeout int) *cfgMocks.Config {
+func getConfig(retries int, timeout time.Duration) *cfgMocks.Config {
 	config := new(cfgMocks.Config)
-	config.On("UnmarshalKey", mock.AnythingOfType("string"), mock.AnythingOfType("*http.Settings"))
-	config.On("GetInt", "http_client_retry_count").Return(retries)
-	config.On("GetDuration", "http_client_request_timeout").Return(time.Duration(timeout) * time.Second)
+	config.On("UnmarshalKey", "http_client", &http.Settings{}).Run(func(args mock.Arguments) {
+		config := args.Get(1).(*http.Settings)
+		*config = http.Settings{
+			RequestTimeout:   timeout,
+			RetryCount:       retries,
+			RetryWaitTime:    100 * time.Millisecond,
+			RetryMaxWaitTime: 200 * time.Millisecond,
+			FollowRedirects:  true,
+		}
+	})
+	config.On("IsSet", "http_client_retry_count").Return(false)
+	config.On("IsSet", "http_client_request_timeout").Return(false)
 
 	return config
 }
 
 func TestClient_Delete(t *testing.T) {
-	config := getConfig(1, 1)
+	config := getConfig(1, time.Second)
 	logger := logMocks.NewLoggerMockedAll()
 
 	runTestServer(t, "DELETE", 200, 0, func(host string) {
@@ -74,7 +83,7 @@ func TestClient_Delete(t *testing.T) {
 }
 
 func TestClient_Get(t *testing.T) {
-	config := getConfig(1, 1)
+	config := getConfig(1, time.Second)
 	logger := logMocks.NewLoggerMockedAll()
 
 	runTestServer(t, "GET", 200, 0, func(host string) {
@@ -91,7 +100,7 @@ func TestClient_Get(t *testing.T) {
 }
 
 func TestClient_GetTimeout(t *testing.T) {
-	config := getConfig(0, 1)
+	config := getConfig(0, time.Second)
 	logger := logMocks.NewLoggerMockedAll()
 
 	runTestServer(t, "GET", 200, 1100*time.Millisecond, func(host string) {
@@ -108,7 +117,7 @@ func TestClient_GetTimeout(t *testing.T) {
 }
 
 func TestClient_GetCanceled(t *testing.T) {
-	config := getConfig(1, 1)
+	config := getConfig(1, time.Second)
 	logger := logMocks.NewLoggerMockedAll()
 
 	baseCtx := myContext(0)
@@ -133,7 +142,7 @@ func TestClient_GetCanceled(t *testing.T) {
 }
 
 func TestClient_Post(t *testing.T) {
-	config := getConfig(1, 1)
+	config := getConfig(1, time.Second)
 	logger := logMocks.NewLoggerMockedAll()
 
 	runTestServer(t, "POST", 200, 0, func(host string) {
