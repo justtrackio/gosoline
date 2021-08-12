@@ -68,11 +68,11 @@ type client struct {
 }
 
 type Settings struct {
-	RetryCount       int
-	Timeout          time.Duration
+	RequestTimeout   time.Duration `cfg:"request_timeout" default:"30s"`
+	RetryCount       int           `cfg:"retry_count" default:"5"`
 	RetryWaitTime    time.Duration `cfg:"retry_wait_time" default:"100ms"`
 	RetryMaxWaitTime time.Duration `cfg:"retry_max_wait_time" default:"2000ms"`
-	FollowRedirect   bool          `cfg:"follow_redirects"`
+	FollowRedirects  bool          `cfg:"follow_redirects" default:"true"`
 }
 
 func NewHttpClient(config cfg.Config, logger log.Logger) Client {
@@ -83,13 +83,26 @@ func NewHttpClient(config cfg.Config, logger log.Logger) Client {
 	settings := &Settings{}
 	config.UnmarshalKey("http_client", settings)
 
-	settings.RetryCount = config.GetInt("http_client_retry_count")
-	settings.Timeout = config.GetDuration("http_client_request_timeout")
+	// allow the old settings to be used for now... we will eventually remove this though
+	if config.IsSet("http_client_retry_count") {
+		settings.RetryCount = config.GetInt("http_client_retry_count")
+		logger.Warn("http_client_retry_count is deprecated, use http_client.retry_count instead")
+	}
+	if config.IsSet("http_client_request_timeout") {
+		settings.RequestTimeout = config.GetDuration("http_client_request_timeout")
+		logger.Warn("http_client_request_timeout is deprecated, use http_client.request_timeout instead")
+	}
 
 	httpClient := resty.New()
-	httpClient.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
+	if settings.FollowRedirects {
+		httpClient.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
+	} else {
+		httpClient.SetRedirectPolicy(resty.RedirectPolicyFunc(func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		}))
+	}
 	httpClient.SetRetryCount(settings.RetryCount)
-	httpClient.SetTimeout(settings.Timeout)
+	httpClient.SetTimeout(settings.RequestTimeout)
 	httpClient.SetRetryWaitTime(settings.RetryWaitTime)
 	httpClient.SetRetryMaxWaitTime(settings.RetryMaxWaitTime)
 
