@@ -87,6 +87,26 @@ func (s *InMemoryKvStoreTestSuite) TestStoreStruct() {
 	s.Equal("d", missing[0], "element d should be missing")
 }
 
+func (s *InMemoryKvStoreTestSuite) TestModifyStruct() {
+	ctx := context.Background()
+
+	type item struct {
+		i int
+	}
+
+	a := &item{i: 1}
+	err := s.store.Put(ctx, "key", a)
+
+	a.i = 2
+	aCpy := item{}
+	found, err := s.store.Get(ctx, "key", &aCpy)
+	s.NoError(err)
+	s.True(found)
+	s.Equal(item{
+		i: 1,
+	}, aCpy)
+}
+
 func TestInMemoryKvStoreTestSuite(t *testing.T) {
 	suite.Run(t, new(InMemoryKvStoreTestSuite))
 }
