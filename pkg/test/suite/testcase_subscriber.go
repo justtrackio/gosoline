@@ -3,7 +3,10 @@ package suite
 import (
 	"context"
 	"fmt"
-	db_repo "github.com/applike/gosoline/pkg/db-repo"
+	"reflect"
+	"testing"
+
+	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -11,8 +14,6 @@ import (
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
-	"reflect"
-	"testing"
 )
 
 func init() {
@@ -57,28 +58,27 @@ func isTestCaseSubscriber(method reflect.Method) bool {
 	}
 
 	var v SubscriberTestCase
-	var subscriberTestCaseType = reflect.ValueOf(&v).Elem().Type()
-	var arg0 = method.Func.Type().Out(0)
+	subscriberTestCaseType := reflect.ValueOf(&v).Elem().Type()
+	arg0 := method.Func.Type().Out(0)
 
 	if !arg0.Implements(subscriberTestCaseType) {
 		return false
 	}
 
 	var err error
-	var errType = reflect.ValueOf(&err).Elem().Type()
-	var arg1 = method.Func.Type().Out(1)
+	errType := reflect.ValueOf(&err).Elem().Type()
+	arg1 := method.Func.Type().Out(1)
 
 	return arg1.Implements(errType)
 }
 
-func buildTestCaseSubscriber(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {
+func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRunner, error) {
 	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
 		suite.SetT(t)
 
 		ret := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
 		tc := ret[0].Interface().(SubscriberTestCase)
 		err := ret[1].Interface()
-
 		if err != nil {
 			assert.FailNow(t, err.(error).Error())
 		}
@@ -121,6 +121,7 @@ func buildTestCaseSubscriber(suite TestingSuite, method reflect.Method) (testCas
 				dbSub.Assert(t, fetcher)
 
 			case mdlsub.OutputTypeDdb:
+				ctx := context.Background()
 				ddbSub, ok := tc.(ddbSubscriberTestCase)
 
 				if !ok {
@@ -131,7 +132,7 @@ func buildTestCaseSubscriber(suite TestingSuite, method reflect.Method) (testCas
 				fetcher := &DdbSubscriberFetcher{
 					t: t,
 					repo: func(model interface{}) (ddb.Repository, error) {
-						return ddb.NewRepository(config, logger, &ddb.Settings{
+						return ddb.NewRepository(ctx, config, logger, &ddb.Settings{
 							ModelId: ddbSub.ModelIdTarget,
 							Main: ddb.MainSettings{
 								Model:              model,
@@ -146,6 +147,7 @@ func buildTestCaseSubscriber(suite TestingSuite, method reflect.Method) (testCas
 				ddbSub.Assert(t, fetcher)
 
 			case mdlsub.OutputTypeKvstore:
+				ctx := context.Background()
 				dbSub, ok := tc.(kvstoreSubscriberTestCase)
 
 				if !ok {
@@ -153,7 +155,7 @@ func buildTestCaseSubscriber(suite TestingSuite, method reflect.Method) (testCas
 					return
 				}
 
-				store, err := kvstore.NewConfigurableKvStore(config, logger, tc.GetName())
+				store, err := kvstore.NewConfigurableKvStore(ctx, config, logger, tc.GetName())
 				if err != nil {
 					assert.FailNow(t, "can't initialize kvStore", "the test case for the subscription of %s can't be initialized", tc.GetName())
 				}
@@ -172,7 +174,6 @@ func buildTestCaseSubscriber(suite TestingSuite, method reflect.Method) (testCas
 
 func DbTestCase(testCase DbSubscriberTestCase) (SubscriberTestCase, error) {
 	modelId, err := mdl.ModelIdFromString(testCase.ModelId)
-
 	if err != nil {
 		return nil, fmt.Errorf("invalid modelId for subscription test case %s: %w", testCase.Name, err)
 	}
@@ -291,7 +292,6 @@ func (f DdbSubscriberFetcher) ByHashAndRange(hash interface{}, rangeValue interf
 
 func KvstoreTestCase(testCase KvstoreSubscriberTestCase) (SubscriberTestCase, error) {
 	modelId, err := mdl.ModelIdFromString(testCase.ModelId)
-
 	if err != nil {
 		return nil, fmt.Errorf("invalid modelId for subscription test case %s: %w", testCase.Name, err)
 	}

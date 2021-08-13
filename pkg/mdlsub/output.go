@@ -3,6 +3,7 @@ package mdlsub
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 )
@@ -11,16 +12,18 @@ type Output interface {
 	Persist(ctx context.Context, model Model, op string) error
 }
 
-type Outputs map[string]map[int]Output
-type OutputFactory func(config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error)
+type (
+	Outputs       map[string]map[int]Output
+	OutputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error)
+)
 
 var outputFactories = map[string]OutputFactory{}
 
-func initOutputs(config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformers ModelTransformers) (Outputs, error) {
+func initOutputs(ctx context.Context, config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformers ModelTransformers) (Outputs, error) {
 	var ok bool
 	var err error
 	var modelId string
-	var outputs = make(Outputs)
+	outputs := make(Outputs)
 	var outputFactory OutputFactory
 	var versionedModelTransformers VersionedModelTransformers
 
@@ -37,7 +40,7 @@ func initOutputs(config cfg.Config, logger log.Logger, subscriberSettings map[st
 
 		modelId := settings.SourceModel.String()
 
-		if outputs[modelId], err = outputFactory(config, logger, settings, versionedModelTransformers); err != nil {
+		if outputs[modelId], err = outputFactory(ctx, config, logger, settings, versionedModelTransformers); err != nil {
 			return nil, fmt.Errorf("can not create output for subscriber %s with modelId %s", name, modelId)
 		}
 	}

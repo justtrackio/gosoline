@@ -6,16 +6,17 @@ package test_test
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/test"
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"time"
 )
 
 type RedisTestModel struct {
@@ -25,6 +26,7 @@ type RedisTestModel struct {
 
 type FixturesRedisSuite struct {
 	suite.Suite
+	ctx    context.Context
 	client *redis.Client
 	logger log.Logger
 	mocks  *test.Mocks
@@ -33,13 +35,13 @@ type FixturesRedisSuite struct {
 func (s *FixturesRedisSuite) SetupSuite() {
 	setup(s.T())
 	mocks, err := test.Boot("test_configs/config.redis.test.yml")
-
 	if err != nil {
 		s.Fail("failed to boot mocks: %s", err.Error())
 
 		return
 	}
 
+	s.ctx = context.Background()
 	s.mocks = mocks
 	s.client = s.mocks.ProvideRedisClient("redis")
 	s.logger = log.NewCliLogger()
@@ -65,9 +67,9 @@ func (s FixturesRedisSuite) TestRedis() {
 	_, err := s.client.FlushDB(context.Background()).Result()
 	s.NoError(err)
 
-	loader := fixtures.NewFixtureLoader(config, s.logger)
+	loader := fixtures.NewFixtureLoader(s.ctx, config, s.logger)
 
-	err = loader.Load(redisDisabledPurgeFixtures())
+	err = loader.Load(s.ctx, redisDisabledPurgeFixtures())
 	s.NoError(err)
 
 	setValue, err := s.client.Get(context.Background(), "set_test").Result()
@@ -101,9 +103,9 @@ func (s FixturesRedisSuite) TestRedisWithPurge() {
 	_, err := s.client.FlushDB(context.Background()).Result()
 	s.NoError(err)
 
-	loader := fixtures.NewFixtureLoader(config, s.logger)
+	loader := fixtures.NewFixtureLoader(s.ctx, config, s.logger)
 
-	err = loader.Load(redisDisabledPurgeFixtures())
+	err = loader.Load(s.ctx, redisDisabledPurgeFixtures())
 	s.NoError(err)
 
 	setValue, err := s.client.Get(context.Background(), "set_test").Result()
@@ -116,7 +118,7 @@ func (s FixturesRedisSuite) TestRedisWithPurge() {
 	s.NoError(err)
 	s.Len(keys, 2)
 
-	err = loader.Load(redisEnabledPurgeFixtures())
+	err = loader.Load(s.ctx, redisEnabledPurgeFixtures())
 	s.NoError(err)
 
 	setValue, err = s.client.Get(context.Background(), "set_test").Result()
@@ -147,9 +149,9 @@ func (s FixturesRedisSuite) TestRedisKvStore() {
 	_, err := s.client.FlushDB(context.Background()).Result()
 	s.NoError(err)
 
-	loader := fixtures.NewFixtureLoader(config, s.logger)
+	loader := fixtures.NewFixtureLoader(s.ctx, config, s.logger)
 
-	err = loader.Load(redisKvstoreDisabledPurgeFixtures())
+	err = loader.Load(s.ctx, redisKvstoreDisabledPurgeFixtures())
 	s.NoError(err)
 
 	res, err := s.client.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
@@ -171,9 +173,9 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 	_, err := s.client.FlushDB(context.Background()).Result()
 	s.NoError(err)
 
-	loader := fixtures.NewFixtureLoader(config, s.logger)
+	loader := fixtures.NewFixtureLoader(s.ctx, config, s.logger)
 
-	err = loader.Load(redisKvstoreDisabledPurgeFixtures())
+	err = loader.Load(s.ctx, redisKvstoreDisabledPurgeFixtures())
 	s.NoError(err)
 
 	res, err := s.client.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
@@ -182,7 +184,7 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 	s.NoError(err)
 	s.JSONEq(`{"name":"foo","age":123}`, res)
 
-	err = loader.Load(redisKvstoreEnabledPurgeFixtures())
+	err = loader.Load(s.ctx, redisKvstoreEnabledPurgeFixtures())
 	s.NoError(err)
 
 	res, err = s.client.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()

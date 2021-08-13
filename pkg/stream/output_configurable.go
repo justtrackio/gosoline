@@ -1,12 +1,13 @@
 package stream
 
 import (
+	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/cloud/aws/sqs"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/sqs"
 )
 
 const (
@@ -21,14 +22,13 @@ const (
 )
 
 type BaseOutputSettings struct {
-	Backoff exec.BackoffSettings `cfg:"backoff"`
 	Tracing struct {
 		Enabled bool `cfg:"enabled" default:"true"`
 	} `cfg:"tracing"`
 }
 
-func NewConfigurableOutput(config cfg.Config, logger log.Logger, name string) (Output, error) {
-	var outputFactories = map[string]OutputFactory{
+func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
+	outputFactories := map[string]OutputFactory{
 		OutputTypeFile:     newFileOutputFromConfig,
 		OutputTypeInMemory: newInMemoryOutputFromConfig,
 		OutputTypeKinesis:  newKinesisOutputFromConfig,
@@ -51,14 +51,14 @@ func NewConfigurableOutput(config cfg.Config, logger log.Logger, name string) (O
 		return nil, fmt.Errorf("invalid output %s of type %s", name, typ)
 	}
 
-	if output, err = factory(config, logger, name); err != nil {
+	if output, err = factory(ctx, config, logger, name); err != nil {
 		return nil, fmt.Errorf("can not create output %s: %w", name, err)
 	}
 
 	return NewOutputTracer(config, logger, output, name)
 }
 
-func newFileOutputFromConfig(config cfg.Config, logger log.Logger, name string) (Output, error) {
+func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	settings := &FileOutputSettings{}
 	config.UnmarshalKey(key, settings)
@@ -66,23 +66,24 @@ func newFileOutputFromConfig(config cfg.Config, logger log.Logger, name string) 
 	return NewFileOutput(config, logger, settings), nil
 }
 
-func newInMemoryOutputFromConfig(_ cfg.Config, _ log.Logger, name string) (Output, error) {
+func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, name string) (Output, error) {
 	return ProvideInMemoryOutput(name), nil
 }
 
 type kinesisOutputConfiguration struct {
-	StreamName string               `cfg:"stream_name"`
-	Backoff    exec.BackoffSettings `cfg:"backoff"`
+	StreamName string `cfg:"stream_name"`
+	Backoff    exec.BackoffSettings
 }
 
-func newKinesisOutputFromConfig(config cfg.Config, logger log.Logger, name string) (Output, error) {
+func newKinesisOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	settings := &kinesisOutputConfiguration{}
-	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
+	config.UnmarshalKey(key, settings)
+
+	settings.Backoff = exec.ReadBackoffSettings(config)
 
 	return NewKinesisOutput(config, logger, &KinesisOutputSettings{
 		StreamName: settings.StreamName,
-		Backoff:    settings.Backoff,
 	})
 }
 
@@ -95,7 +96,7 @@ type redisListOutputConfiguration struct {
 	BatchSize   int    `cfg:"batch_size" default:"100"`
 }
 
-func newRedisListOutputFromConfig(config cfg.Config, logger log.Logger, name string) (Output, error) {
+func newRedisListOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 
 	configuration := redisListOutputConfiguration{}
@@ -115,51 +116,58 @@ func newRedisListOutputFromConfig(config cfg.Config, logger log.Logger, name str
 
 type SnsOutputConfiguration struct {
 	BaseOutputSettings
-	Type        string               `cfg:"type"`
-	Project     string               `cfg:"project"`
-	Family      string               `cfg:"family"`
-	Application string               `cfg:"application"`
-	TopicId     string               `cfg:"topic_id" validate:"required"`
-	Client      cloud.ClientSettings `cfg:"client"`
+	Type        string `cfg:"type"`
+	Project     string `cfg:"project"`
+	Family      string `cfg:"family"`
+	Application string `cfg:"application"`
+	TopicId     string `cfg:"topic_id" validate:"required"`
+	ClientName  string `cfg:"client_name"`
 }
 
-func newSnsOutputFromConfig(config cfg.Config, logger log.Logger, name string) (Output, error) {
+func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
-
 	configuration := SnsOutputConfiguration{}
-	config.UnmarshalKey(key, &configuration, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
+	config.UnmarshalKey(key, &configuration)
 
-	return NewSnsOutput(config, logger, SnsOutputSettings{
+	clientName := configuration.ClientName
+	if clientName == "" {
+		clientName = fmt.Sprintf("stream-output-%s", name)
+	}
+
+	return NewSnsOutput(ctx, config, logger, &SnsOutputSettings{
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
 			Application: configuration.Application,
 		},
-		TopicId: configuration.TopicId,
-		Client:  configuration.Client,
-		Backoff: configuration.Backoff,
+		TopicId:    configuration.TopicId,
+		ClientName: clientName,
 	})
 }
 
 type sqsOutputConfiguration struct {
 	BaseOutputSettings
-	Project           string               `cfg:"project"`
-	Family            string               `cfg:"family"`
-	Application       string               `cfg:"application"`
-	QueueId           string               `cfg:"queue_id" validate:"required"`
-	VisibilityTimeout int                  `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
-	RedrivePolicy     sqs.RedrivePolicy    `cfg:"redrive_policy"`
-	Client            cloud.ClientSettings `cfg:"client"`
-	Fifo              sqs.FifoSettings     `cfg:"fifo"`
+	Project           string            `cfg:"project"`
+	Family            string            `cfg:"family"`
+	Application       string            `cfg:"application"`
+	QueueId           string            `cfg:"queue_id" validate:"required"`
+	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
+	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
+	Fifo              sqs.FifoSettings  `cfg:"fifo"`
+	ClientName        string            `cfg:"client_name"`
 }
 
-func newSqsOutputFromConfig(config cfg.Config, logger log.Logger, name string) (Output, error) {
+func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
-
 	configuration := sqsOutputConfiguration{}
-	config.UnmarshalKey(key, &configuration, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
+	config.UnmarshalKey(key, &configuration)
 
-	return NewSqsOutput(config, logger, SqsOutputSettings{
+	clientName := configuration.ClientName
+	if clientName == "" {
+		clientName = fmt.Sprintf("stream-output-%s", name)
+	}
+
+	return NewSqsOutput(ctx, config, logger, &SqsOutputSettings{
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
@@ -168,9 +176,8 @@ func newSqsOutputFromConfig(config cfg.Config, logger log.Logger, name string) (
 		QueueId:           configuration.QueueId,
 		VisibilityTimeout: configuration.VisibilityTimeout,
 		RedrivePolicy:     configuration.RedrivePolicy,
-		Client:            configuration.Client,
-		Backoff:           configuration.Backoff,
 		Fifo:              configuration.Fifo,
+		ClientName:        clientName,
 	})
 }
 

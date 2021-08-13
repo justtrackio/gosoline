@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
@@ -41,7 +42,6 @@ type kinesisOutput struct {
 func NewKinesisOutput(config cfg.Config, logger log.Logger, settings *KinesisOutputSettings) (Output, error) {
 	client := cloud.GetKinesisClient(config, logger)
 	err := gosoKinesis.CreateKinesisStream(config, logger, client, settings)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kinesis stream: %w", err)
 	}
@@ -109,7 +109,7 @@ func (o *kinesisOutput) Write(ctx context.Context, batch []WritableMessage) erro
 
 func (o *kinesisOutput) writeBatch(ctx context.Context, batch [][]byte) error {
 	var err error
-	var records = make([]*kinesis.PutRecordsRequestEntry, 0, len(batch))
+	records := make([]*kinesis.PutRecordsRequestEntry, 0, len(batch))
 
 	for _, data := range batch {
 		req := &kinesis.PutRecordsRequestEntry{
@@ -141,7 +141,6 @@ func (o *kinesisOutput) putRecordsAndCollectFailed(ctx context.Context, records 
 	output, err := o.requestExec.Execute(ctx, func() (*request.Request, interface{}) {
 		return o.client.PutRecordsRequest(&input)
 	})
-
 	if err != nil {
 		return records, fmt.Errorf("can execute PutRecordsRequest: %w", err)
 	}

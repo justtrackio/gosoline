@@ -5,8 +5,9 @@ import (
 
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/refl"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -98,7 +99,7 @@ func (b *batchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetItem
 		return nil, fmt.Errorf("no key pairs provided to select items")
 	}
 
-	keyAttributes := make([]map[string]*dynamodb.AttributeValue, len(b.keyPairs))
+	keyAttributes := make([]map[string]types.AttributeValue, len(b.keyPairs))
 
 	for i, keys := range b.keyPairs {
 		attributeValues, err := b.keyBuilder.fromValues(keys...)
@@ -115,7 +116,7 @@ func (b *batchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetItem
 	}
 
 	input := &dynamodb.BatchGetItemInput{
-		RequestItems: map[string]*dynamodb.KeysAndAttributes{
+		RequestItems: map[string]types.KeysAndAttributes{
 			b.metadata.TableName: {
 				Keys:                     keyAttributes,
 				ConsistentRead:           b.consistentRead,

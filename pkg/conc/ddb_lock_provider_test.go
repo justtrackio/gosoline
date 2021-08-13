@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/ddb"
@@ -15,8 +18,6 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"time"
 )
 
 type ddbLockProviderTestSuite struct {
@@ -103,7 +104,7 @@ func (s *ddbLockProviderTestSuite) getReleaseQueryBuilder(result *ddb.DeleteItem
 	qb.On("WithCondition", ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
 
 	s.repo.On("DeleteItemBuilder").Return(qb).Once()
-	s.repo.On("DeleteItem", mock.AnythingOfType("*exec.delayedCancelContext"), qb, &conc.DdbLockItem{
+	s.repo.On("DeleteItem", mock.AnythingOfType("*exec.DelayedCancelContext"), qb, &conc.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 	}).Return(result, err)

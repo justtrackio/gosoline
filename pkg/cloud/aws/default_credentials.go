@@ -3,7 +3,9 @@
 
 package aws
 
-import "github.com/aws/aws-sdk-go/aws/credentials"
+import (
+	"github.com/aws/aws-sdk-go/aws/credentials"
+)
 
 const (
 	DefaultAccessKeyID     = ""

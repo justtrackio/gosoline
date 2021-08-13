@@ -1,7 +1,9 @@
 package mdlsub
 
 import (
+	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
@@ -19,12 +21,12 @@ type Settings struct {
 }
 
 func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactories) kernel.MultiModuleFactory {
-	return func(config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
-		return SubscriberFactory(config, logger, transformerFactoryMap)
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
+		return SubscriberFactory(ctx, config, logger, transformerFactoryMap)
 	}
 }
 
-func SubscriberFactory(config cfg.Config, logger log.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.ModuleFactory, error) {
+func SubscriberFactory(ctx context.Context, config cfg.Config, logger log.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.ModuleFactory, error) {
 	settings := Settings{
 		Subscribers: make(map[string]*SubscriberSettings),
 	}
@@ -35,15 +37,15 @@ func SubscriberFactory(config cfg.Config, logger log.Logger, transformerFactorie
 	var transformers ModelTransformers
 	var outputs Outputs
 
-	if transformers, err = initTransformers(config, logger, settings.Subscribers, transformerFactories); err != nil {
+	if transformers, err = initTransformers(ctx, config, logger, settings.Subscribers, transformerFactories); err != nil {
 		return nil, fmt.Errorf("can not create subscribers: %w", err)
 	}
 
-	if outputs, err = initOutputs(config, logger, settings.Subscribers, transformers); err != nil {
+	if outputs, err = initOutputs(ctx, config, logger, settings.Subscribers, transformers); err != nil {
 		return nil, fmt.Errorf("can not create subscribers: %w", err)
 	}
 
-	var modules = make(map[string]kernel.ModuleFactory)
+	modules := make(map[string]kernel.ModuleFactory)
 
 	for name := range settings.Subscribers {
 		moduleName := fmt.Sprintf("subscriber-%s", name)
@@ -57,7 +59,7 @@ func SubscriberFactory(config cfg.Config, logger log.Logger, transformerFactorie
 		return modules, nil
 	}
 
-	var callbackFactories = make(map[string]stream.ConsumerCallbackFactory)
+	callbackFactories := make(map[string]stream.ConsumerCallbackFactory)
 
 	for name := range settings.Subscribers {
 		settings := settings.Subscribers[name]

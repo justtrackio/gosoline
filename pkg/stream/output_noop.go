@@ -2,14 +2,14 @@ package stream
 
 import (
 	"context"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 )
 
-type NoOpOutput struct {
-}
+type NoOpOutput struct{}
 
-func newNoOpOutput(_ cfg.Config, _ log.Logger, _ string) (Output, error) {
+func newNoOpOutput(_ context.Context, _ cfg.Config, _ log.Logger, _ string) (Output, error) {
 	return &NoOpOutput{}, nil
 }
 

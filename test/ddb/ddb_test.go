@@ -5,12 +5,13 @@ package ddb_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/test/suite"
-	"testing"
-	"time"
 )
 
 type TestData struct {
@@ -29,14 +30,14 @@ func (s *DdbTestSuite) SetupSuite() []suite.Option {
 	s.clock = clock.NewFakeClockAt(time.Now().UTC())
 
 	return []suite.Option{
+		suite.WithLogLevel("debug"),
 		suite.WithClockProvider(s.clock),
 		suite.WithConfigFile("./config.dist.yml"),
-		suite.WithoutAutoDetectedComponents("localstack"),
 	}
 }
 
 func (s *DdbTestSuite) SetupTest() error {
-	ddbConfig := ddb.Settings{
+	ddbConfig := &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Name: "test-data",
 		},
@@ -47,14 +48,10 @@ func (s *DdbTestSuite) SetupTest() error {
 		},
 	}
 	var err error
-	s.repo, err = ddb.NewRepository(s.Env().Config(), s.Env().Logger(), &ddbConfig)
+	s.repo, err = ddb.NewRepository(context.Background(), s.Env().Config(), s.Env().Logger(), ddbConfig)
 	if err != nil {
 		return err
 	}
-
-	// check our backoff settings actually got propagated correctly
-	s.True(ddbConfig.Backoff.Blocking)
-	s.True(ddbConfig.Backoff.Enabled)
 
 	return nil
 }
@@ -164,7 +161,7 @@ func (s *DdbTestSuite) TestScan() {
 	var items []*TestData
 	result, err := s.repo.Scan(ctx, s.repo.ScanBuilder(), &items)
 	s.NoError(err)
-	s.Equal(int64(1), result.ItemCount)
+	s.Equal(int32(1), result.ItemCount)
 	s.Equal([]*TestData{
 		s.makeItem("1", "abc", time.Hour-time.Minute),
 	}, items)
@@ -185,7 +182,7 @@ func (s *DdbTestSuite) TestQuery() {
 	var items []*TestData
 	result, err := s.repo.Query(ctx, s.repo.QueryBuilder().WithHash("1"), &items)
 	s.NoError(err)
-	s.Equal(int64(1), result.ItemCount)
+	s.Equal(int32(1), result.ItemCount)
 	s.Equal([]*TestData{
 		s.makeItem("1", "abc", time.Hour-time.Minute),
 	}, items)
@@ -193,7 +190,7 @@ func (s *DdbTestSuite) TestQuery() {
 	items = make([]*TestData, 0)
 	result, err = s.repo.Query(ctx, s.repo.QueryBuilder().WithHash("2"), &items)
 	s.NoError(err)
-	s.Equal(int64(0), result.ItemCount)
+	s.Equal(int32(0), result.ItemCount)
 	s.Equal(0, len(items))
 }
 

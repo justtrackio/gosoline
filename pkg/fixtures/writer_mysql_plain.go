@@ -1,7 +1,9 @@
 package fixtures
 
 import (
+	"context"
 	"fmt"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db"
@@ -23,7 +25,7 @@ type mysqlPlainFixtureWriter struct {
 }
 
 func MysqlPlainFixtureWriterFactory(metadata *MysqlPlainMetaData) FixtureWriterFactory {
-	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		dbClient, err := db.NewClient(config, logger, "default")
 		if err != nil {
 			return nil, fmt.Errorf("can not create dbClient: %w", err)
@@ -47,9 +49,8 @@ func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client db.Clien
 	}
 }
 
-func (m *mysqlPlainFixtureWriter) Purge() error {
+func (m *mysqlPlainFixtureWriter) Purge(_ context.Context) error {
 	err := m.purger.purgeMysql()
-
 	if err != nil {
 		m.logger.Error("error occured during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
 
@@ -61,24 +62,21 @@ func (m *mysqlPlainFixtureWriter) Purge() error {
 	return nil
 }
 
-func (m *mysqlPlainFixtureWriter) Write(fs *FixtureSet) error {
+func (m *mysqlPlainFixtureWriter) Write(_ context.Context, fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
 		fixture := item.(MysqlPlainFixtureValues)
 
 		sql, args, err := m.buildSql(fixture)
-
 		if err != nil {
 			return err
 		}
 
 		res, err := m.client.Exec(sql, args...)
-
 		if err != nil {
 			return err
 		}
 
 		ar, err := res.RowsAffected()
-
 		if err != nil {
 			return err
 		}

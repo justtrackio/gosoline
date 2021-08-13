@@ -5,21 +5,21 @@ import (
 	"time"
 )
 
-type delayedCancelContext struct {
+type DelayedCancelContext struct {
 	context.Context
 	done chan struct{}
 	stop chan struct{}
 }
 
-func (c *delayedCancelContext) Done() <-chan struct{} {
+func (c *DelayedCancelContext) Done() <-chan struct{} {
 	return c.done
 }
 
-func (c *delayedCancelContext) Stop() {
+func (c *DelayedCancelContext) Stop() {
 	close(c.stop)
 }
 
-func WithDelayedCancelContext(parentCtx context.Context, delay time.Duration) *delayedCancelContext {
+func WithDelayedCancelContext(parentCtx context.Context, delay time.Duration) *DelayedCancelContext {
 	done := make(chan struct{})
 	stop := make(chan struct{})
 
@@ -32,7 +32,7 @@ func WithDelayedCancelContext(parentCtx context.Context, delay time.Duration) *d
 		}
 	}()
 
-	return &delayedCancelContext{
+	return &DelayedCancelContext{
 		Context: parentCtx,
 		done:    done,
 		stop:    stop,

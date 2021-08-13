@@ -11,6 +11,6 @@ type Input interface {
 
 //go:generate mockery --name AcknowledgeableInput
 type AcknowledgeableInput interface {
-	Ack(msg *Message) error
-	AckBatch(msgs []*Message) error
+	Ack(ctx context.Context, msg *Message) error
+	AckBatch(ctx context.Context, msgs []*Message) error
 }

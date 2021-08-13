@@ -3,6 +3,7 @@ package kvstore
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/refl"
@@ -19,9 +20,9 @@ type chainKvStore struct {
 
 var noValue = &struct{}{}
 
-func NewChainKvStore(config cfg.Config, logger log.Logger, missingCacheEnabled bool, settings *Settings) (*chainKvStore, error) {
+func NewChainKvStore(ctx context.Context, config cfg.Config, logger log.Logger, missingCacheEnabled bool, settings *Settings) (*chainKvStore, error) {
 	settings.PadFromConfig(config)
-	factory := buildFactory(config, logger)
+	factory := buildFactory(ctx, config, logger)
 
 	var err error
 	var missingCache KvStore
@@ -30,7 +31,7 @@ func NewChainKvStore(config cfg.Config, logger log.Logger, missingCacheEnabled b
 		missingCacheSettings := *settings
 		missingCacheSettings.Name = fmt.Sprintf("%s-missingCache", settings.Name)
 
-		if missingCache, err = NewInMemoryKvStore(config, logger, &missingCacheSettings); err != nil {
+		if missingCache, err = NewInMemoryKvStore(ctx, config, logger, &missingCacheSettings); err != nil {
 			return nil, fmt.Errorf("can not create missing cache: %w", err)
 		}
 	} else {
@@ -70,7 +71,6 @@ func (s *chainKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 
 	// check if we can short circuit the whole deal
 	exists, err := s.missingCache.Contains(ctx, key)
-
 	if err != nil {
 		s.logger.WithContext(ctx).Warn("failed to read from missing value cache: %s", err.Error())
 	}
@@ -81,7 +81,6 @@ func (s *chainKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 
 	for i, element := range s.chain {
 		exists, err := element.Contains(ctx, key)
-
 		if err != nil {
 			// return error only if last element fails
 			if i == lastElementIndex {
@@ -107,7 +106,6 @@ func (s *chainKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 func (s *chainKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
 	// check if we can short circuit the whole deal
 	exists, err := s.missingCache.Contains(ctx, key)
-
 	if err != nil {
 		s.logger.WithContext(ctx).Warn("failed to read from missing value cache: %s", err.Error())
 	}
@@ -151,7 +149,6 @@ func (s *chainKvStore) Get(ctx context.Context, key interface{}, value interface
 	// propagate to the lower cache levels
 	for i := foundInIndex - 1; i >= 0; i-- {
 		err := s.chain[i].Put(ctx, key, value)
-
 		if err != nil {
 			s.logger.WithContext(ctx).Warn("could not put %s to kvstore %T: %s", key, s.chain[i], err.Error())
 		}
@@ -211,7 +208,6 @@ func (s *chainKvStore) GetBatch(ctx context.Context, keys interface{}, values in
 	}
 
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not cast result values from %T to map[interface{}]interface{}: %w", values, err)
 	}
@@ -268,7 +264,6 @@ func (s *chainKvStore) Put(ctx context.Context, key interface{}, value interface
 
 	for i := 0; i <= lastElementIndex; i++ {
 		err := s.chain[i].Put(ctx, key, value)
-
 		if err != nil {
 			// return error only if last element fails
 			if i == lastElementIndex {
@@ -291,7 +286,6 @@ func (s *chainKvStore) Put(ctx context.Context, key interface{}, value interface
 
 func (s *chainKvStore) PutBatch(ctx context.Context, values interface{}) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
-
 	if err != nil {
 		return fmt.Errorf("can not cast values from %T to map[interface{}]interface{}: %w", values, err)
 	}
@@ -300,7 +294,6 @@ func (s *chainKvStore) PutBatch(ctx context.Context, values interface{}) error {
 
 	for i := 0; i <= lastElementIndex; i++ {
 		err := s.chain[i].PutBatch(ctx, mii)
-
 		if err != nil {
 			// return error only if last element fails
 			if i == lastElementIndex {
@@ -323,7 +316,6 @@ func (s *chainKvStore) PutBatch(ctx context.Context, values interface{}) error {
 func (s *chainKvStore) Delete(ctx context.Context, key interface{}) error {
 	for _, store := range s.chain {
 		err := store.Delete(ctx, key)
-
 		if err != nil {
 			// even if we do not fail at the last index, we can't leave something
 			// in a cache but not in the backend store
@@ -338,7 +330,6 @@ func (s *chainKvStore) Delete(ctx context.Context, key interface{}) error {
 func (s *chainKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
 	for _, store := range s.chain {
 		err := store.DeleteBatch(ctx, keys)
-
 		if err != nil {
 			// even if we do not fail at the last index, we can't leave something
 			// in a cache but not in the backend store

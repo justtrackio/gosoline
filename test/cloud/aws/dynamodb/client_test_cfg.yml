@@ -1,5 +1,9 @@
 cloud:
   aws:
+    credentials:
+      access_key_id: AKID
+      secret_access_key: SECRET_KEY
+      session_token: TOKEN
     dynamodb:
       clients:
         http_timeout:
@@ -7,7 +11,8 @@ cloud:
             timeout: 100ms
 
         max_elapsed_time_exceeded:
-          retry:
+          backoff:
+            max_attempts: 0
             max_elapsed_time: 100ms
 
 

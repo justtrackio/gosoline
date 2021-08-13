@@ -2,7 +2,8 @@ package ddb
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type TransactPutItem struct {
@@ -14,7 +15,7 @@ func NewTransactionPutItemBuilder() *TransactPutItem {
 	return &TransactPutItem{}
 }
 
-func (b *TransactPutItem) Build() (*dynamodb.TransactWriteItem, error) {
+func (b *TransactPutItem) Build() (*types.TransactWriteItem, error) {
 	if !isPointer(b.Item) {
 		return nil, fmt.Errorf("item must be a pointer")
 	}
@@ -24,14 +25,14 @@ func (b *TransactPutItem) Build() (*dynamodb.TransactWriteItem, error) {
 		return nil, fmt.Errorf("could not built entry for transact put item: %w", err)
 	}
 
-	item := &dynamodb.TransactWriteItem{
-		Put: &dynamodb.Put{
+	item := &types.TransactWriteItem{
+		Put: &types.Put{
 			ConditionExpression:                 entry.ConditionExpression,
 			ExpressionAttributeNames:            entry.ExpressionAttributeNames,
 			ExpressionAttributeValues:           entry.ExpressionAttributeValues,
 			Item:                                entry.Item,
 			TableName:                           entry.TableName,
-			ReturnValuesOnConditionCheckFailure: entry.ReturnValues,
+			ReturnValuesOnConditionCheckFailure: types.ReturnValuesOnConditionCheckFailure(entry.ReturnValues),
 		},
 	}
 

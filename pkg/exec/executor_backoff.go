@@ -2,22 +2,12 @@ package exec
 
 import (
 	"context"
+	"time"
+
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/cenkalti/backoff"
-	"time"
 )
-
-type BackoffSettings struct {
-	Enabled             bool          `cfg:"enabled" default:"false"`
-	Blocking            bool          `cfg:"blocking" default:"false"`
-	CancelDelay         time.Duration `cfg:"cancel_delay" default:"1s"`
-	InitialInterval     time.Duration `cfg:"initial_interval" default:"50ms"`
-	RandomizationFactor float64       `cfg:"randomization_factor" default:"0.5"`
-	Multiplier          float64       `cfg:"multiplier" default:"1.5"`
-	MaxInterval         time.Duration `cfg:"max_interval" default:"10s"`
-	MaxElapsedTime      time.Duration `cfg:"max_elapsed_time" default:"15m"`
-}
 
 type BackoffExecutor struct {
 	logger   log.Logger
@@ -53,23 +43,17 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 
 	backoffConfig := backoff.NewExponentialBackOff()
 	backoffConfig.InitialInterval = e.settings.InitialInterval
-	backoffConfig.RandomizationFactor = e.settings.RandomizationFactor
-	backoffConfig.Multiplier = e.settings.Multiplier
 	backoffConfig.MaxInterval = e.settings.MaxInterval
 	backoffConfig.MaxElapsedTime = e.settings.MaxElapsedTime
 
-	if e.settings.Blocking {
-		backoffConfig.MaxElapsedTime = 0
-	}
-
 	backoffCtx := backoff.WithContext(backoffConfig, ctx)
 
-	retries := 0
+	attempts := 1
 	start := time.Now()
 
 	notify := func(err error, _ time.Duration) {
-		logger.Warn("retrying resource %s %s after error: %s", e.resource.Type, e.resource.Name, err.Error())
-		retries++
+		logger.Warn("retrying resource %s after error: %s", e.resource, err.Error())
+		attempts++
 	}
 
 	_ = backoff.RetryNotify(func() error {
@@ -77,6 +61,10 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 
 		if err == nil {
 			return nil
+		}
+
+		if e.settings.MaxAttempts > 0 && attempts >= e.settings.MaxAttempts {
+			return backoff.Permanent(err)
 		}
 
 		for _, check := range e.checks {
@@ -97,22 +85,29 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 
 	duration := time.Since(start)
 
+	// we're having an error after reaching the MaxAttempts and the error isn't good-natured
+	if err != nil && errType != ErrorTypeOk && e.settings.MaxAttempts > 0 && attempts > e.settings.MaxAttempts {
+		logger.Warn("crossed max attempts with an error on requesting resource %s after %d attempts in %s: %s", e.resource, attempts, duration, err.Error())
+
+		return res, NewErrAttemptsExceeded(e.resource, attempts, duration, err)
+	}
+
 	// we're having an error after reaching the MaxElapsedTime and the error isn't good-natured
 	if err != nil && errType != ErrorTypeOk && e.settings.MaxElapsedTime > 0 && duration > e.settings.MaxElapsedTime {
-		logger.Warn("crossed max elapsed time with an error on requesting resource %s %s after %d retries in %s: %s", e.resource.Type, e.resource.Name, retries, duration, err.Error())
+		logger.Warn("crossed max elapsed time with an error on requesting resource %s after %d attempts in %s: %s", e.resource, attempts, duration, err.Error())
 
-		return res, NewMaxElapsedTimeError(e.settings.MaxElapsedTime, duration, err)
+		return res, NewErrMaxElapsedTimeExceeded(e.resource, attempts, duration, e.settings.MaxElapsedTime, err)
 	}
 
 	// we're still having an error and the error isn't good-natured
 	if err != nil && errType != ErrorTypeOk {
-		logger.Warn("error on requesting resource %s %s after %d retries in %s: %s", e.resource.Type, e.resource.Name, retries, duration, err.Error())
+		logger.Warn("error on requesting resource %s after %d attempts in %s: %s", e.resource, attempts, duration, err.Error())
 
 		return res, err
 	}
 
-	if retries > 0 {
-		logger.Info("sent request to resource %s %s successful after %d retries in %s", e.resource.Type, e.resource.Name, retries, duration)
+	if attempts > 1 {
+		logger.Info("sent request to resource %s successful after %d attempts in %s", e.resource, attempts, duration)
 	}
 
 	return res, err

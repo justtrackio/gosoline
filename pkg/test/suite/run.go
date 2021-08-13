@@ -2,20 +2,23 @@ package suite
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
-	"reflect"
-	"strings"
-	"testing"
 )
 
-type testCaseMatcher func(method reflect.Method) bool
-type testCaseBuilder func(suite TestingSuite, method reflect.Method) (testCaseRunner, error)
-type testCaseRunner func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment)
+type (
+	testCaseMatcher func(method reflect.Method) bool
+	testCaseBuilder func(suite TestingSuite, method reflect.Method) (testCaseRunner, error)
+	testCaseRunner  func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment)
+)
 
 type testCaseDefinition struct {
 	matcher testCaseMatcher
@@ -29,7 +32,7 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 
 	var err error
 	var testCases map[string]testCaseRunner
-	var suiteOptions = suiteApplyOptions(suite, extraOptions)
+	suiteOptions := suiteApplyOptions(suite, extraOptions)
 
 	if testCases, err = suiteFindTestCases(t, suite); err != nil {
 		assert.FailNow(t, err.Error())
@@ -49,8 +52,8 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 
 func suiteFindTestCases(_ *testing.T, suite TestingSuite) (map[string]testCaseRunner, error) {
 	var err error
-	var testCases = make(map[string]testCaseRunner)
-	var methodFinder = reflect.TypeOf(suite)
+	testCases := make(map[string]testCaseRunner)
+	methodFinder := reflect.TypeOf(suite)
 
 	for i := 0; i < methodFinder.NumMethod(); i++ {
 		method := methodFinder.Method(i)
@@ -99,7 +102,6 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 	}))
 
 	environment, err := env.NewEnvironment(t, envOptions...)
-
 	if err != nil {
 		assert.FailNow(t, "failed to create test environment", err.Error())
 	}

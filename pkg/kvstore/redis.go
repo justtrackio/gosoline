@@ -3,11 +3,12 @@ package kvstore
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/redis"
 	"github.com/applike/gosoline/pkg/refl"
-	"strings"
 )
 
 type redisKvStore struct {
@@ -19,7 +20,7 @@ func RedisBasename(settings *Settings) string {
 	return fmt.Sprintf("kvstore_%s", settings.Name)
 }
 
-func NewRedisKvStore(config cfg.Config, logger log.Logger, settings *Settings) (KvStore, error) {
+func NewRedisKvStore(_ context.Context, config cfg.Config, logger log.Logger, settings *Settings) (KvStore, error) {
 	settings.PadFromConfig(config)
 	redisName := RedisBasename(settings)
 
@@ -40,13 +41,11 @@ func NewRedisKvStoreWithInterfaces(client redis.Client, settings *Settings) KvSt
 
 func (s *redisKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
 	keyStr, err := s.key(key)
-
 	if err != nil {
 		return false, fmt.Errorf("can not get key to check value in redis: %w", err)
 	}
 
 	count, err := s.client.Exists(ctx, keyStr)
-
 	if err != nil {
 		return false, fmt.Errorf("can not check existence in redis store: %w", err)
 	}
@@ -56,7 +55,6 @@ func (s *redisKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 
 func (s *redisKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
 	keyStr, err := s.key(key)
-
 	if err != nil {
 		return false, fmt.Errorf("can not get key to read value from redis: %w", err)
 	}
@@ -99,7 +97,6 @@ func (s *redisKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys [
 	}
 
 	items, err := s.client.MGet(ctx, keyStrings...)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not get batch from redis: %w", err)
 	}
@@ -164,7 +161,6 @@ func (s *redisKvStore) marshalKeyValue(key interface{}, value interface{}) (stri
 
 func (s *redisKvStore) PutBatch(ctx context.Context, values interface{}) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
-
 	if err != nil {
 		return fmt.Errorf("could not convert values from %T to map[interface{}]interface{}", values)
 	}
@@ -216,7 +212,6 @@ func (s *redisKvStore) flushChunk(ctx context.Context, pairs []interface{}) erro
 
 func (s *redisKvStore) EstimateSize() *int64 {
 	size, err := s.client.DBSize(context.Background())
-
 	if err != nil {
 		return nil
 	}
@@ -226,7 +221,6 @@ func (s *redisKvStore) EstimateSize() *int64 {
 
 func (s *redisKvStore) Delete(ctx context.Context, key interface{}) error {
 	keyStr, err := s.key(key)
-
 	if err != nil {
 		return fmt.Errorf("can not get key to delete value from redis: %w", err)
 	}
@@ -242,7 +236,6 @@ func (s *redisKvStore) Delete(ctx context.Context, key interface{}) error {
 
 func (s *redisKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
-
 	if err != nil {
 		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
 	}
@@ -251,7 +244,6 @@ func (s *redisKvStore) DeleteBatch(ctx context.Context, keys interface{}) error 
 
 	for i, key := range si {
 		keyStr, err := s.key(key)
-
 		if err != nil {
 			return fmt.Errorf("can not get key to delete value from redis: %w", err)
 		}
@@ -270,7 +262,6 @@ func (s *redisKvStore) DeleteBatch(ctx context.Context, keys interface{}) error 
 
 func (s *redisKvStore) key(key interface{}) (string, error) {
 	keyStr, err := CastKeyToString(key)
-
 	if err != nil {
 		return "", fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
 	}

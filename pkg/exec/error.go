@@ -2,11 +2,10 @@ package exec
 
 import (
 	"errors"
-	"fmt"
-	"golang.org/x/sys/unix"
 	"io"
 	"strings"
-	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 type ErrorType int
@@ -26,32 +25,6 @@ const (
 )
 
 type ErrorChecker func(result interface{}, err error) ErrorType
-
-type MaxElapsedTimeError struct {
-	maxTime     time.Duration
-	elapsedTime time.Duration
-	err         error
-}
-
-func NewMaxElapsedTimeError(maxTime time.Duration, elapsedTime time.Duration, err error) MaxElapsedTimeError {
-	return MaxElapsedTimeError{
-		maxTime:     maxTime,
-		elapsedTime: elapsedTime,
-		err:         err,
-	}
-}
-
-func (e MaxElapsedTimeError) Error() string {
-	return fmt.Sprintf("can not retry as the elapsed time %s is greater than the configured max of %s: %s", e.elapsedTime, e.maxTime, e.err)
-}
-
-func (e MaxElapsedTimeError) Unwrap() error {
-	return e.err
-}
-
-func IsMaxElapsedTimeError(err error) bool {
-	return errors.As(err, &MaxElapsedTimeError{})
-}
 
 func CheckUsedClosedConnectionError(_ interface{}, err error) ErrorType {
 	if IsUsedClosedConnectionError(err) {

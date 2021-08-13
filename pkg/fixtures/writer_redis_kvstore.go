@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/log"
@@ -16,7 +17,7 @@ type redisKvStoreFixtureWriter struct {
 }
 
 func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
-	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		settings := &kvstore.Settings{
 			AppId: cfg.AppId{
 				Project:     modelId.Project,
@@ -27,7 +28,7 @@ func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory
 			Name: modelId.Name,
 		}
 
-		store, err := kvstore.NewRedisKvStore(config, logger, settings)
+		store, err := kvstore.NewRedisKvStore(ctx, config, logger, settings)
 		if err != nil {
 			return nil, fmt.Errorf("can not create redis store: %w", err)
 		}
@@ -51,11 +52,11 @@ func NewRedisKvStoreFixtureWriterWithInterfaces(logger log.Logger, store kvstore
 	}
 }
 
-func (d *redisKvStoreFixtureWriter) Purge() error {
-	return d.purger.purge()
+func (d *redisKvStoreFixtureWriter) Purge(ctx context.Context) error {
+	return d.purger.purge(ctx)
 }
 
-func (d *redisKvStoreFixtureWriter) Write(fs *FixtureSet) error {
+func (d *redisKvStoreFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
 	if len(fs.Fixtures) == 0 {
 		return nil
 	}
@@ -67,7 +68,7 @@ func (d *redisKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 		m[kvItem.Key] = kvItem.Value
 	}
 
-	err := d.store.PutBatch(context.Background(), m)
+	err := d.store.PutBatch(ctx, m)
 	if err != nil {
 		return err
 	}

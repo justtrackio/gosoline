@@ -2,12 +2,13 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/log"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/encoding/json"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 func init() {
@@ -30,8 +31,7 @@ type localstackSettings struct {
 	Services []string `cfg:"services"`
 }
 
-type localstackFactory struct {
-}
+type localstackFactory struct{}
 
 func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
 	if manager.HasType(ComponentLocalstack) {
@@ -52,11 +52,11 @@ func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigM
 		services = append(services, localstackServiceS3)
 	}
 
-	if config.IsSet("aws_sns_endpoint") {
+	if config.IsSet("cloud.aws.sns") {
 		services = append(services, localstackServiceSns)
 	}
 
-	if config.IsSet("aws_sqs_endpoint") {
+	if config.IsSet("cloud.aws.sqs") {
 		services = append(services, localstackServiceSqs)
 	}
 
@@ -119,7 +119,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 		var err error
 		var resp *http.Response
 		var body []byte
-		var status = make(map[string]map[string]string)
+		status := make(map[string]map[string]string)
 
 		if resp, err = http.Get(url); err != nil {
 			return err

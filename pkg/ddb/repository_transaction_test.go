@@ -3,31 +3,31 @@ package ddb_test
 import (
 	"context"
 	"errors"
-	cloudAws "github.com/applike/gosoline/pkg/cloud/aws"
-	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
+	"strconv"
+	"testing"
+
+	dynamodbMocks "github.com/applike/gosoline/pkg/cloud/aws/dynamodb/mocks"
 	"github.com/applike/gosoline/pkg/ddb"
 	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
 	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	tracingMocks "github.com/applike/gosoline/pkg/tracing/mocks"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"strconv"
-	"testing"
 )
 
 type RepositoryTransactionTestSuite struct {
 	suite.Suite
 
-	span     *tracingMocks.Span
-	logger   *logMocks.Logger
-	client   *cloudMocks.DynamoDBAPI
-	executor *cloudAws.TestableExecutor
-	tracer   *tracingMocks.Tracer
-
+	ctx        context.Context
+	span       *tracingMocks.Span
+	logger     *logMocks.Logger
+	client     *dynamodbMocks.Client
+	tracer     *tracingMocks.Tracer
 	repository ddb.TransactionRepository
 }
 
@@ -36,26 +36,22 @@ func TestRepositoryTransactionTestSuite(t *testing.T) {
 }
 
 func (s *RepositoryTransactionTestSuite) SetupTest() {
+	s.ctx = context.Background()
 	s.logger = logMocks.NewLoggerMockedAll()
-	s.client = new(cloudMocks.DynamoDBAPI)
+	s.client = new(dynamodbMocks.Client)
 	s.tracer = new(tracingMocks.Tracer)
 	s.span = new(tracingMocks.Span)
 
-	s.executor = cloudAws.NewTestableExecutor(&s.client.Mock)
-
-	s.repository = ddb.NewTransactionRepositoryWithInterfaces(s.logger, s.client, s.executor, s.tracer)
+	s.repository = ddb.NewTransactionRepositoryWithInterfaces(s.logger, s.client, s.tracer)
 }
 
 func (s *RepositoryTransactionTestSuite) TearDownTest() {
 	s.span.AssertExpectations(s.T())
 	s.client.AssertExpectations(s.T())
-	s.executor.AssertExpectations(s.T())
 	s.tracer.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTransactionTestSuite) TestTransactGetItems() {
-	ctx := context.Background()
-
 	models := []model{
 		{
 			Id:  1,
@@ -75,65 +71,47 @@ func (s *RepositoryTransactionTestSuite) TestTransactGetItems() {
 	}
 
 	requestOutput := &dynamodb.TransactGetItemsOutput{
-		ConsumedCapacity: []*dynamodb.ConsumedCapacity{{
+		ConsumedCapacity: []types.ConsumedCapacity{{
 			TableName:         aws.String("model"),
 			CapacityUnits:     aws.Float64(6),
 			ReadCapacityUnits: aws.Float64(6),
 		}},
-		Responses: []*dynamodb.ItemResponse{
+		Responses: []types.ItemResponse{
 			{
-				Item: map[string]*dynamodb.AttributeValue{
-					"id": {
-						N: aws.String("1"),
-					},
-					"rev": {
-						S: aws.String("1"),
-					},
-					"foo": {
-						S: aws.String("1"),
-					},
+				Item: map[string]types.AttributeValue{
+					"id":  &types.AttributeValueMemberN{Value: "1"},
+					"rev": &types.AttributeValueMemberS{Value: "1"},
+					"foo": &types.AttributeValueMemberS{Value: "1"},
 				},
 			},
 			{
-				Item: map[string]*dynamodb.AttributeValue{
-					"id": {
-						N: aws.String("2"),
-					},
-					"rev": {
-						S: aws.String("2"),
-					},
-					"foo": {
-						S: aws.String("2"),
-					},
+				Item: map[string]types.AttributeValue{
+					"id":  &types.AttributeValueMemberN{Value: "2"},
+					"rev": &types.AttributeValueMemberS{Value: "2"},
+					"foo": &types.AttributeValueMemberS{Value: "2"},
 				},
 			},
 			{
-				Item: map[string]*dynamodb.AttributeValue{
-					"id": {
-						N: aws.String("3"),
-					},
-					"rev": {
-						S: aws.String("3"),
-					},
-					"foo": {
-						S: aws.String("3"),
-					},
+				Item: map[string]types.AttributeValue{
+					"id":  &types.AttributeValueMemberN{Value: "3"},
+					"rev": &types.AttributeValueMemberS{Value: "3"},
+					"foo": &types.AttributeValueMemberS{Value: "3"},
 				},
 			},
 		},
 	}
 
 	s.tracer.
-		On("StartSubSpan", ctx, "ddb.TransactGetItems").
-		Return(ctx, s.span)
+		On("StartSubSpan", s.ctx, "ddb.TransactGetItems").
+		Return(s.ctx, s.span)
 
 	s.span.
 		On("Finish").
 		Return()
 
-	s.executor.ExpectExecution("TransactGetItemsRequest", mock.AnythingOfType("*dynamodb.TransactGetItemsInput"), requestOutput, nil)
+	s.client.On("TransactGetItems", s.ctx, mock.AnythingOfType("*dynamodb.TransactGetItemsInput")).Return(requestOutput, nil)
 
-	result, err := s.repository.TransactGetItems(ctx, getEntries)
+	result, err := s.repository.TransactGetItems(s.ctx, getEntries)
 
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), result)
@@ -175,29 +153,21 @@ func (s *RepositoryTransactionTestSuite) TestTransactWriteItems_ConditionCheckFa
 	conditionCheckBuilder := new(ddbMocks.ConditionCheckBuilder)
 	conditionCheckBuilder.
 		On("Build", conditionCheckItem).
-		Return(&dynamodb.ConditionCheck{
+		Return(&types.ConditionCheck{
 			ConditionExpression: aws.String("#foo = :bar"),
-			ExpressionAttributeNames: map[string]*string{
-				"#foo": aws.String("foo"),
+			ExpressionAttributeNames: map[string]string{
+				"#foo": "foo",
 			},
-			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-				":bar": {
-					S: aws.String("bar"),
-				},
+			ExpressionAttributeValues: map[string]types.AttributeValue{
+				":bar": &types.AttributeValueMemberS{Value: "bar"},
 			},
-			Key: map[string]*dynamodb.AttributeValue{
-				"#id": {
-					N: aws.String("42"),
-				},
-				"#rev": {
-					N: aws.String("foo"),
-				},
+			Key: map[string]types.AttributeValue{
+				"#id":  &types.AttributeValueMemberN{Value: "42"},
+				"#rev": &types.AttributeValueMemberN{Value: "foo"},
 			},
-			ReturnValuesOnConditionCheckFailure: aws.String(dynamodb.ReturnValueAllOld),
+			ReturnValuesOnConditionCheckFailure: types.ReturnValuesOnConditionCheckFailureAllOld,
 			TableName:                           aws.String("model"),
 		}, nil)
-
-	ctx := context.Background()
 
 	items := []ddb.TransactWriteItemBuilder{
 		&ddb.TransactConditionCheck{
@@ -207,36 +177,29 @@ func (s *RepositoryTransactionTestSuite) TestTransactWriteItems_ConditionCheckFa
 	}
 
 	s.tracer.
-		On("StartSubSpan", ctx, "ddb.TransactWriteItems").
-		Return(ctx, s.span)
+		On("StartSubSpan", s.ctx, "ddb.TransactWriteItems").
+		Return(s.ctx, s.span)
 
 	s.span.
 		On("Finish").
 		Return()
 
-	requestErr := &dynamodb.TransactionCanceledException{
-		CancellationReasons: []*dynamodb.CancellationReason{
+	requestErr := &types.TransactionCanceledException{
+		CancellationReasons: []types.CancellationReason{
 			{
 				Code: aws.String("ConditionalCheckFailed"),
-				Item: map[string]*dynamodb.AttributeValue{
-					"id": {
-						N: aws.String("42"),
-					},
-					"rev": {
-						S: aws.String("foo"),
-					},
-					"foo": {
-						S: aws.String("foo"),
-					},
+				Item: map[string]types.AttributeValue{
+					"id":  &types.AttributeValueMemberN{Value: "42"},
+					"rev": &types.AttributeValueMemberS{Value: "foo"},
+					"foo": &types.AttributeValueMemberS{Value: "foo"},
 				},
 			},
 		},
 	}
 
-	s.executor.
-		ExpectExecution("TransactWriteItemsRequest", mock.AnythingOfType("*dynamodb.TransactWriteItemsInput"), nil, requestErr)
+	s.client.On("TransactWriteItems", s.ctx, mock.AnythingOfType("*dynamodb.TransactWriteItemsInput")).Return(nil, requestErr)
 
-	result, err := s.repository.TransactWriteItems(ctx, items)
+	result, err := s.repository.TransactWriteItems(s.ctx, items)
 
 	require.Nil(s.T(), result)
 	require.Error(s.T(), err)
@@ -263,21 +226,15 @@ func (s *RepositoryTransactionTestSuite) TestTransactWriteItems() {
 		On("Build", putItem).
 		Return(&dynamodb.PutItemInput{
 			ConditionExpression: aws.String("attribute_not_exists(id)"),
-			ExpressionAttributeNames: map[string]*string{
-				"#id":  aws.String("id"),
-				"#rev": aws.String("rev"),
-				"#foo": aws.String("foo"),
+			ExpressionAttributeNames: map[string]string{
+				"#id":  "id",
+				"#rev": "rev",
+				"#foo": "foo",
 			},
-			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-				"#id": {
-					N: aws.String("42"),
-				},
-				"#rev": {
-					N: aws.String("foo"),
-				},
-				"#foo": {
-					N: aws.String("bar"),
-				},
+			ExpressionAttributeValues: map[string]types.AttributeValue{
+				"#id":  &types.AttributeValueMemberN{Value: "42"},
+				"#rev": &types.AttributeValueMemberN{Value: "foo"},
+				"#foo": &types.AttributeValueMemberN{Value: "bar"},
 			},
 			TableName: aws.String("model"),
 		}, nil)
@@ -292,21 +249,15 @@ func (s *RepositoryTransactionTestSuite) TestTransactWriteItems() {
 		On("Build", updateItem).
 		Return(&dynamodb.UpdateItemInput{
 			ConditionExpression: aws.String(""),
-			ExpressionAttributeNames: map[string]*string{
-				"foo": aws.String("foo"),
+			ExpressionAttributeNames: map[string]string{
+				"foo": "foo",
 			},
-			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-				"bar": {
-					S: aws.String("bar"),
-				},
+			ExpressionAttributeValues: map[string]types.AttributeValue{
+				"bar": &types.AttributeValueMemberS{Value: "bar"},
 			},
-			Key: map[string]*dynamodb.AttributeValue{
-				"id": {
-					N: aws.String("24"),
-				},
-				"rev": {
-					S: aws.String("foo"),
-				},
+			Key: map[string]types.AttributeValue{
+				"id":  &types.AttributeValueMemberN{Value: "24"},
+				"rev": &types.AttributeValueMemberS{Value: "foo"},
 			},
 			TableName:        aws.String("model"),
 			UpdateExpression: aws.String("#foo = :bar"),
@@ -333,14 +284,13 @@ func (s *RepositoryTransactionTestSuite) TestTransactWriteItems() {
 		On("Finish").
 		Return()
 
-	requestOutput := &dynamodb.TransactWriteItemsOutput{ConsumedCapacity: []*dynamodb.ConsumedCapacity{{
+	requestOutput := &dynamodb.TransactWriteItemsOutput{ConsumedCapacity: []types.ConsumedCapacity{{
 		CapacityUnits:      aws.Float64(4),
 		ReadCapacityUnits:  aws.Float64(2),
 		WriteCapacityUnits: aws.Float64(2),
 	}}}
 
-	s.executor.
-		ExpectExecution("TransactWriteItemsRequest", mock.AnythingOfType("*dynamodb.TransactWriteItemsInput"), requestOutput, nil)
+	s.client.On("TransactWriteItems", s.ctx, mock.AnythingOfType("*dynamodb.TransactWriteItemsInput")).Return(requestOutput, nil)
 
 	result, err := s.repository.TransactWriteItems(ctx, items)
 
@@ -364,13 +314,9 @@ func buildTransactGetItemBuilder(item *model) ddb.TransactGetItemBuilder {
 
 	input := &dynamodb.GetItemInput{
 		ConsistentRead: aws.Bool(false),
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String(strconv.Itoa(item.Id)),
-			},
-			"rev": {
-				S: aws.String(item.Rev),
-			},
+		Key: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: strconv.Itoa(item.Id)},
+			"rev": &types.AttributeValueMemberS{Value: item.Rev},
 		},
 		TableName: aws.String("model"),
 	}

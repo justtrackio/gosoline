@@ -3,12 +3,13 @@ package mdlsub
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/metric"
 	"github.com/applike/gosoline/pkg/stream"
-	"time"
 )
 
 const (

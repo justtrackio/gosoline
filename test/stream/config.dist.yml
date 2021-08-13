@@ -12,12 +12,18 @@ api:
   health:
     port: 0
 
+cloud:
+  aws:
+    sqs:
+      autoCreate: true
+      clients:
+        default:
+          retry:
+            max_elapsed_time: 0
+
 aws_sdk_retries: 5
-aws_cloudwatch_endpoint: http://localhost:4566
 aws_kinesis_endpoint: http://localhost:4566
 aws_kinesis_autoCreate: true
-aws_sqs_endpoint: http://localhost:4566
-aws_sqs_autoCreate: true
 
 stream:
   backoff:

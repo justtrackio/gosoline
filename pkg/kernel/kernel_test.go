@@ -3,6 +3,11 @@ package kernel_test
 import (
 	"context"
 	"fmt"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
 	"github.com/applike/gosoline/pkg/coffin"
@@ -15,10 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/sys/unix"
-	"strings"
-	"sync"
-	"testing"
-	"time"
 )
 
 func createMocks() (*cfgMocks.Config, *logMocks.Logger, *kernelMocks.FullModule) {
@@ -43,7 +44,7 @@ func TestNoModules(t *testing.T) {
 	config, logger, _ := createMocks()
 	logger.On("Warn", "nothing to run")
 
-	k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+	k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(time.Second))
 	assert.NoError(t, err)
 
 	k.Run()
@@ -56,10 +57,10 @@ func TestRunFactoriesError(t *testing.T) {
 	logger.On("Error", "error building additional modules by multiFactories: %w", factoryErr)
 
 	assert.NotPanics(t, func() {
-		k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+		k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(time.Second))
 		assert.NoError(t, err)
 
-		k.AddFactory(func(cfg.Config, log.Logger) (map[string]kernel.ModuleFactory, error) {
+		k.AddFactory(func(context.Context, cfg.Config, log.Logger) (map[string]kernel.ModuleFactory, error) {
 			return nil, factoryErr
 		})
 		k.Run()
@@ -75,10 +76,10 @@ func TestRunFactoriesPanic(t *testing.T) {
 	})
 
 	assert.NotPanics(t, func() {
-		k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+		k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(time.Second))
 		assert.NoError(t, err)
 
-		k.AddFactory(func(cfg.Config, log.Logger) (map[string]kernel.ModuleFactory, error) {
+		k.AddFactory(func(context.Context, cfg.Config, log.Logger) (map[string]kernel.ModuleFactory, error) {
 			panic("panic in module factory")
 		})
 		k.Run()
@@ -92,7 +93,7 @@ func TestBootFailure(t *testing.T) {
 	logger.On("Error", "error building modules: %w", mock.AnythingOfType("*errors.withStack"))
 
 	assert.NotPanics(t, func() {
-		k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+		k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(time.Second))
 		assert.NoError(t, err)
 
 		k.Add("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -109,7 +110,7 @@ func TestRunSuccess(t *testing.T) {
 	module.On("Run", mock.Anything).Return(nil)
 
 	assert.NotPanics(t, func() {
-		k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+		k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(time.Second))
 		assert.NoError(t, err)
 
 		k.Add("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -132,7 +133,7 @@ func TestRunFailure(t *testing.T) {
 	})
 
 	assert.NotPanics(t, func() {
-		k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+		k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(time.Second))
 		assert.NoError(t, err)
 
 		k.Add("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -146,7 +147,7 @@ func TestRunFailure(t *testing.T) {
 
 func TestStop(t *testing.T) {
 	config, logger, module := createMocks()
-	k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+	k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(time.Second))
 	assert.NoError(t, err)
 
 	module.On("IsEssential").Return(false)
@@ -169,7 +170,7 @@ func TestStop(t *testing.T) {
 
 func TestRunningType(t *testing.T) {
 	config, logger, _ := createMocks()
-	k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+	k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(time.Second))
 	assert.NoError(t, err)
 
 	mf := new(kernelMocks.Module)
@@ -201,7 +202,7 @@ func TestRunningType(t *testing.T) {
 func TestMultipleStages(t *testing.T) {
 	config, logger, _ := createMocks()
 
-	k, err := kernel.New(config, logger, kernel.KillTimeout(time.Second))
+	k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(time.Second))
 	assert.NoError(t, err)
 
 	var allMocks []*kernelMocks.FullModule
@@ -265,7 +266,7 @@ func TestKernelForcedExit(t *testing.T) {
 	mayStop := conc.NewSignalOnce()
 	appStopped := conc.NewSignalOnce()
 
-	k, err := kernel.New(config, logger, kernel.KillTimeout(200*time.Millisecond), kernel.ForceExit(func(code int) {
+	k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(200*time.Millisecond), kernel.ForceExit(func(code int) {
 		assert.Equal(t, 1, code)
 
 		mayStop.Signal()
@@ -315,7 +316,7 @@ func TestKernelStageStopped(t *testing.T) {
 	success := false
 	appStopped := conc.NewSignalOnce()
 
-	k, err := kernel.New(config, logger, kernel.KillTimeout(200*time.Millisecond))
+	k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(200*time.Millisecond))
 	assert.NoError(t, err)
 
 	app := new(kernelMocks.FullModule)
@@ -358,8 +359,7 @@ func TestKernelStageStopped(t *testing.T) {
 	m.AssertExpectations(t)
 }
 
-type fakeModule struct {
-}
+type fakeModule struct{}
 
 func (m *fakeModule) Boot(_ cfg.Config, _ log.Logger) error {
 	return nil
@@ -414,7 +414,7 @@ func TestKernel_RunRealModule(t *testing.T) {
 		t.Run(fmt.Sprintf("fake iteration %d", i), func(t *testing.T) {
 			config, logger, _ := createMocks()
 			assert.NotPanics(t, func() {
-				k, err := kernel.New(config, logger)
+				k, err := kernel.New(context.Background(), config, logger)
 				assert.NoError(t, err)
 
 				k.Add("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -430,7 +430,7 @@ func TestKernel_RunRealModule(t *testing.T) {
 		t.Run(fmt.Sprintf("real iteration %d", i), func(t *testing.T) {
 			config, logger, _ := createMocks()
 			assert.NotPanics(t, func() {
-				k, err := kernel.New(config, logger)
+				k, err := kernel.New(context.Background(), config, logger)
 				assert.NoError(t, err)
 
 				k.Add("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -467,7 +467,7 @@ func (s *slowExitModule) Run(_ context.Context) error {
 func TestModuleFastShutdown(t *testing.T) {
 	config, logger, _ := createMocks()
 	assert.NotPanics(t, func() {
-		k, err := kernel.New(config, logger)
+		k, err := kernel.New(context.Background(), config, logger)
 		assert.NoError(t, err)
 
 		for s := 5; s < 10; s++ {

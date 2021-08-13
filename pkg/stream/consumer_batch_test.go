@@ -3,6 +3,10 @@ package stream_test
 import (
 	"context"
 	"fmt"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	logMocks "github.com/applike/gosoline/pkg/log/mocks"
@@ -13,9 +17,6 @@ import (
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"sync"
-	"testing"
-	"time"
 )
 
 type acknowledgeableInput struct {
@@ -92,12 +93,13 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 		Once()
 
 	s.input.AcknowledgeableInput.
-		On("AckBatch", mock.AnythingOfType("[]*stream.Message")).
+		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message")).
 		Run(func(args mock.Arguments) {
-			msgs := args[0].([]*stream.Message)
+			msgs := args[1].([]*stream.Message)
 			processed = len(msgs)
 		}).
-		Return(nil)
+		Return(nil).
+		Once()
 
 	acks := []bool{true, true, true}
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]interface {}")).
@@ -143,9 +145,9 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 	processed := 0
 
 	s.input.AcknowledgeableInput.
-		On("AckBatch", mock.AnythingOfType("[]*stream.Message")).
+		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message")).
 		Run(func(args mock.Arguments) {
-			msgs := args[0].([]*stream.Message)
+			msgs := args[1].([]*stream.Message)
 			processed = len(msgs)
 
 			s.stop()
@@ -297,9 +299,9 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 
 	processed := 0
 	s.input.AcknowledgeableInput.
-		On("AckBatch", mock.AnythingOfType("[]*stream.Message")).
+		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message")).
 		Run(func(args mock.Arguments) {
-			msgs := args[0].([]*stream.Message)
+			msgs := args[1].([]*stream.Message)
 			processed = len(msgs)
 		}).
 		Return(nil).

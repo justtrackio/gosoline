@@ -24,7 +24,7 @@ const (
 
 type (
 	ModuleFactory      func(ctx context.Context, config cfg.Config, logger log.Logger) (Module, error)
-	MultiModuleFactory func(config cfg.Config, logger log.Logger) (map[string]ModuleFactory, error)
+	MultiModuleFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]ModuleFactory, error)
 )
 
 type moduleSetupContainer struct {

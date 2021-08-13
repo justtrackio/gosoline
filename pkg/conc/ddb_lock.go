@@ -2,10 +2,11 @@ package conc
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/log"
 	"sync/atomic"
 	"time"
+
+	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 type ddbLock struct {

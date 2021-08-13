@@ -1,14 +1,14 @@
 package stream
 
 import (
+	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/cloud/aws/kinesis"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/sqs"
 	"time"
+
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud/aws/kinesis"
+	"github.com/applike/gosoline/pkg/cloud/aws/sqs"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 	InputTypeSqs      = "sqs"
 )
 
-type InputFactory func(config cfg.Config, logger log.Logger, name string) (Input, error)
+type InputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error)
 
 var inputFactories = map[string]InputFactory{
 	InputTypeFile:     newFileInputFromConfig,
@@ -37,7 +37,7 @@ func SetInputFactory(typ string, factory InputFactory) {
 
 var inputs = map[string]Input{}
 
-func ProvideConfigurableInput(config cfg.Config, logger log.Logger, name string) (Input, error) {
+func ProvideConfigurableInput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	var ok bool
 	var err error
 	var input Input
@@ -46,14 +46,14 @@ func ProvideConfigurableInput(config cfg.Config, logger log.Logger, name string)
 		return input, nil
 	}
 
-	if inputs[name], err = NewConfigurableInput(config, logger, name); err != nil {
+	if inputs[name], err = NewConfigurableInput(ctx, config, logger, name); err != nil {
 		return nil, err
 	}
 
 	return inputs[name], nil
 }
 
-func NewConfigurableInput(config cfg.Config, logger log.Logger, name string) (Input, error) {
+func NewConfigurableInput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	t := readInputType(config, name)
 
 	factory, ok := inputFactories[t]
@@ -62,8 +62,7 @@ func NewConfigurableInput(config cfg.Config, logger log.Logger, name string) (In
 		return nil, fmt.Errorf("invalid input %s of type %s", name, t)
 	}
 
-	input, err := factory(config, logger, name)
-
+	input, err := factory(ctx, config, logger, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create input: %w", err)
 	}
@@ -71,7 +70,7 @@ func NewConfigurableInput(config cfg.Config, logger log.Logger, name string) (In
 	return input, nil
 }
 
-func newFileInputFromConfig(config cfg.Config, logger log.Logger, name string) (Input, error) {
+func newFileInputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 	settings := FileSettings{}
 	config.UnmarshalKey(key, &settings)
@@ -79,7 +78,7 @@ func newFileInputFromConfig(config cfg.Config, logger log.Logger, name string) (
 	return NewFileInput(config, logger, settings), nil
 }
 
-func newInMemoryInputFromConfig(config cfg.Config, _ log.Logger, name string) (Input, error) {
+func newInMemoryInputFromConfig(_ context.Context, config cfg.Config, _ log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 	settings := &InMemorySettings{}
 	config.UnmarshalKey(key, settings)
@@ -92,7 +91,7 @@ type kinesisInputConfiguration struct {
 	ApplicationName string `cfg:"application_name" validate:"required"`
 }
 
-func newKinesisInputFromConfig(config cfg.Config, logger log.Logger, name string) (Input, error) {
+func newKinesisInputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
 	settings := kinesisInputConfiguration{}
@@ -115,7 +114,7 @@ type redisInputConfiguration struct {
 	WaitTime    time.Duration `cfg:"wait_time" default:"3s"`
 }
 
-func newRedisInputFromConfig(config cfg.Config, logger log.Logger, name string) (Input, error) {
+func newRedisInputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
 	configuration := redisInputConfiguration{}
@@ -148,22 +147,26 @@ type SnsInputConfiguration struct {
 	Family              string                        `cfg:"family" default:""`
 	Application         string                        `cfg:"application" default:""`
 	Targets             []SnsInputTargetConfiguration `cfg:"targets" validate:"min=1"`
-	MaxNumberOfMessages int64                         `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
-	WaitTime            int64                         `cfg:"wait_time" default:"3" validate:"min=1"`
+	MaxNumberOfMessages int32                         `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int32                         `cfg:"wait_time" default:"3" validate:"min=1"`
 	VisibilityTimeout   int                           `cfg:"visibility_timeout" default:"30" validate:"min=1"`
 	RunnerCount         int                           `cfg:"runner_count" default:"1" validate:"min=1"`
 	RedrivePolicy       sqs.RedrivePolicy             `cfg:"redrive_policy"`
-	Client              cloud.ClientSettings          `cfg:"client"`
-	Backoff             exec.BackoffSettings          `cfg:"backoff"`
+	ClientName          string                        `cfg:"client_name"`
 }
 
-func readSnsInputSettings(config cfg.Config, name string) (SnsInputSettings, []SnsInputTarget) {
+func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []SnsInputTarget) {
 	key := ConfigurableInputKey(name)
 
 	configuration := &SnsInputConfiguration{}
-	config.UnmarshalKey(key, configuration, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
+	config.UnmarshalKey(key, configuration)
 
-	settings := SnsInputSettings{
+	clientName := configuration.ClientName
+	if clientName == "" {
+		clientName = fmt.Sprintf("stream-input-%s", name)
+	}
+
+	settings := &SnsInputSettings{
 		AppId: cfg.AppId{
 			Family:      configuration.Family,
 			Application: configuration.Application,
@@ -174,8 +177,7 @@ func readSnsInputSettings(config cfg.Config, name string) (SnsInputSettings, []S
 		VisibilityTimeout:   configuration.VisibilityTimeout,
 		RunnerCount:         configuration.RunnerCount,
 		RedrivePolicy:       configuration.RedrivePolicy,
-		Client:              configuration.Client,
-		Backoff:             configuration.Backoff,
+		ClientName:          clientName,
 	}
 
 	settings.PadFromConfig(config)
@@ -195,34 +197,38 @@ func readSnsInputSettings(config cfg.Config, name string) (SnsInputSettings, []S
 	return settings, targets
 }
 
-func newSnsInputFromConfig(config cfg.Config, logger log.Logger, name string) (Input, error) {
+func newSnsInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	settings, targets := readSnsInputSettings(config, name)
 
-	return NewSnsInput(config, logger, settings, targets)
+	return NewSnsInput(ctx, config, logger, settings, targets)
 }
 
 type sqsInputConfiguration struct {
-	Family              string               `cfg:"target_family"`
-	Application         string               `cfg:"target_application"`
-	QueueId             string               `cfg:"target_queue_id" validate:"min=1"`
-	MaxNumberOfMessages int64                `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
-	WaitTime            int64                `cfg:"wait_time" default:"3" validate:"min=1"`
-	VisibilityTimeout   int                  `cfg:"visibility_timeout" default:"30" validate:"min=1"`
-	RunnerCount         int                  `cfg:"runner_count" default:"1" validate:"min=1"`
-	Fifo                sqs.FifoSettings     `cfg:"fifo"`
-	RedrivePolicy       sqs.RedrivePolicy    `cfg:"redrive_policy"`
-	Client              cloud.ClientSettings `cfg:"client"`
-	Backoff             exec.BackoffSettings `cfg:"backoff"`
-	Unmarshaller        string               `cfg:"unmarshaller" default:"msg"`
+	Family              string            `cfg:"target_family"`
+	Application         string            `cfg:"target_application"`
+	QueueId             string            `cfg:"target_queue_id" validate:"min=1"`
+	MaxNumberOfMessages int32             `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int32             `cfg:"wait_time" default:"3" validate:"min=1"`
+	VisibilityTimeout   int               `cfg:"visibility_timeout" default:"30" validate:"min=1"`
+	RunnerCount         int               `cfg:"runner_count" default:"1" validate:"min=1"`
+	Fifo                sqs.FifoSettings  `cfg:"fifo"`
+	RedrivePolicy       sqs.RedrivePolicy `cfg:"redrive_policy"`
+	ClientName          string            `cfg:"client_name"`
+	Unmarshaller        string            `cfg:"unmarshaller" default:"msg"`
 }
 
-func readSqsInputSettings(config cfg.Config, name string) SqsInputSettings {
+func readSqsInputSettings(config cfg.Config, name string) *SqsInputSettings {
 	key := ConfigurableInputKey(name)
 
 	configuration := sqsInputConfiguration{}
-	config.UnmarshalKey(key, &configuration, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
+	config.UnmarshalKey(key, &configuration)
 
-	settings := SqsInputSettings{
+	clientName := configuration.ClientName
+	if clientName == "" {
+		clientName = fmt.Sprintf("stream-input-%s", name)
+	}
+
+	settings := &SqsInputSettings{
 		AppId: cfg.AppId{
 			Family:      configuration.Family,
 			Application: configuration.Application,
@@ -234,8 +240,7 @@ func readSqsInputSettings(config cfg.Config, name string) SqsInputSettings {
 		RunnerCount:         configuration.RunnerCount,
 		Fifo:                configuration.Fifo,
 		RedrivePolicy:       configuration.RedrivePolicy,
-		Client:              configuration.Client,
-		Backoff:             configuration.Backoff,
+		ClientName:          clientName,
 		Unmarshaller:        configuration.Unmarshaller,
 	}
 
@@ -244,10 +249,10 @@ func readSqsInputSettings(config cfg.Config, name string) SqsInputSettings {
 	return settings
 }
 
-func newSqsInputFromConfig(config cfg.Config, logger log.Logger, name string) (Input, error) {
+func newSqsInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	settings := readSqsInputSettings(config, name)
 
-	return NewSqsInput(config, logger, settings)
+	return NewSqsInput(ctx, config, logger, settings)
 }
 
 func ConfigurableInputKey(name string) string {

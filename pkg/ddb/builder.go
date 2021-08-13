@@ -2,11 +2,11 @@ package ddb
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-type KeyValues map[string]*dynamodb.AttributeValue
+type KeyValues map[string]types.AttributeValue
 
 type keyBuilder struct {
 	metadata   KeyAware
@@ -35,8 +35,7 @@ func (b *keyBuilder) fromItem(item interface{}) (KeyValues, error) {
 		return nil, fmt.Errorf("can not build key attributes from nil Item")
 	}
 
-	key, err := dynamodbattribute.MarshalMap(item)
-
+	key, err := MarshalMap(item)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling the key attributes: %w", err)
 	}
@@ -89,8 +88,7 @@ func (b *keyBuilder) fromValues(values ...interface{}) (KeyValues, error) {
 }
 
 func (b *keyBuilder) marshal(attributeValueMap map[string]interface{}) (KeyValues, error) {
-	attributeValues, err := dynamodbattribute.MarshalMap(attributeValueMap)
-
+	attributeValues, err := MarshalMap(attributeValueMap)
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal keys: %w", err)
 	}

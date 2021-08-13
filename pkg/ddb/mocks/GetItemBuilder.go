@@ -4,7 +4,7 @@ package mocks
 
 import (
 	ddb "github.com/applike/gosoline/pkg/ddb"
-	dynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
+	dynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 
 	mock "github.com/stretchr/testify/mock"
 )

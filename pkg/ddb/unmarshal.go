@@ -2,9 +2,10 @@ package ddb
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"reflect"
+
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type Unmarshaller struct {
@@ -45,12 +46,11 @@ func NewUnmarshallerFromStruct(model interface{}) (*Unmarshaller, error) {
 	return um, nil
 }
 
-func (u *Unmarshaller) Unmarshal(items []map[string]*dynamodb.AttributeValue) (interface{}, error) {
+func (u *Unmarshaller) Unmarshal(items []map[string]types.AttributeValue) (interface{}, error) {
 	partValue := reflect.New(u.typ)
 	part := partValue.Interface()
 
-	err := dynamodbattribute.UnmarshalListOfMaps(items, &part)
-
+	err := UnmarshalListOfMaps(items, &part)
 	if err != nil {
 		return nil, err
 	}
@@ -61,14 +61,13 @@ func (u *Unmarshaller) Unmarshal(items []map[string]*dynamodb.AttributeValue) (i
 	return result, nil
 }
 
-func (u *Unmarshaller) Append(items []map[string]*dynamodb.AttributeValue) error {
+func (u *Unmarshaller) Append(items []map[string]types.AttributeValue) error {
 	partValue := reflect.New(u.typ)
 	part := partValue.Interface()
 
 	indirect := reflect.Indirect(partValue)
 
-	err := dynamodbattribute.UnmarshalListOfMaps(items, &part)
-
+	err := UnmarshalListOfMaps(items, &part)
 	if err != nil {
 		return err
 	}
@@ -78,4 +77,27 @@ func (u *Unmarshaller) Append(items []map[string]*dynamodb.AttributeValue) error
 	}
 
 	return nil
+}
+
+func NewDecoder() *attributevalue.Decoder {
+	return attributevalue.NewDecoder(func(options *attributevalue.DecoderOptions) {
+		options.TagKey = "json"
+	})
+}
+
+func UnmarshalListOfMaps(l []map[string]types.AttributeValue, out interface{}) error {
+	items := make([]types.AttributeValue, len(l))
+	for i, m := range l {
+		items[i] = &types.AttributeValueMemberM{Value: m}
+	}
+
+	return UnmarshalList(items, out)
+}
+
+func UnmarshalList(l []types.AttributeValue, out interface{}) error {
+	return NewDecoder().Decode(&types.AttributeValueMemberL{Value: l}, out)
+}
+
+func UnmarshalMap(m map[string]types.AttributeValue, out interface{}) error {
+	return NewDecoder().Decode(&types.AttributeValueMemberM{Value: m}, out)
 }

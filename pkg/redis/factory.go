@@ -2,37 +2,43 @@ package redis
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
-	"sync"
 )
 
 type Settings struct {
 	cfg.AppId
-	Name            string               `cfg:"name"`
-	Dialer          string               `cfg:"dialer" default:"tcp"`
-	Address         string               `cfg:"address" default:"127.0.0.1:6379"`
-	BackoffSettings exec.BackoffSettings `cfg:"backoff"`
+	Name            string `cfg:"name"`
+	Dialer          string `cfg:"dialer" default:"tcp"`
+	Address         string `cfg:"address" default:"127.0.0.1:6379"`
+	BackoffSettings exec.BackoffSettings
 }
 
-var mutex sync.Mutex
-var clients = map[string]Client{}
+var (
+	mutex   sync.Mutex
+	clients = map[string]Client{}
+)
 
 func ProvideClient(config cfg.Config, logger log.Logger, name string) (Client, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if client, ok := clients[name]; ok {
+	settings := ReadSettings(config, name)
+	cachKey := fmt.Sprintf("%s:%s", settings.Address, name)
+
+	if client, ok := clients[cachKey]; ok {
 		return client, nil
 	}
 
 	var err error
-	if clients[name], err = NewClient(config, logger, name); err != nil {
+	if clients[cachKey], err = NewClient(config, logger, name); err != nil {
 		return nil, err
 	}
 
-	return clients[name], nil
+	return clients[cachKey], nil
 }
 
 func ReadSettings(config cfg.Config, name string) *Settings {
@@ -40,6 +46,8 @@ func ReadSettings(config cfg.Config, name string) *Settings {
 
 	settings := &Settings{}
 	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey("redis.default", "."))
+
+	settings.BackoffSettings = exec.ReadBackoffSettings(config, key, "redis.default")
 
 	if settings.Name == "" {
 		settings.Name = name

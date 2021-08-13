@@ -2,14 +2,15 @@ package fixtures
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/blob"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/aws/aws-sdk-go/aws"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/applike/gosoline/pkg/blob"
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/aws/aws-sdk-go/aws"
 )
 
 type BlobFixturesSettings struct {
@@ -26,7 +27,7 @@ type blobFixtureWriter struct {
 }
 
 func BlobFixtureWriterFactory(settings *BlobFixturesSettings) FixtureWriterFactory {
-	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		basePath, err := filepath.Abs(settings.BasePath)
 		if err != nil {
 			return nil, err
@@ -52,11 +53,11 @@ func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner blob.Batc
 	}
 }
 
-func (s *blobFixtureWriter) Purge() error {
-	return s.purger.purge()
+func (s *blobFixtureWriter) Purge(ctx context.Context) error {
+	return s.purger.purge(ctx)
 }
 
-func (s *blobFixtureWriter) Write(_ *FixtureSet) error {
+func (s *blobFixtureWriter) Write(ctx context.Context, _ *FixtureSet) error {
 	s.store.CreateBucket()
 
 	var files []string
@@ -96,7 +97,7 @@ func (s *blobFixtureWriter) Write(_ *FixtureSet) error {
 		batch = append(batch, &object)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	go func(ctx context.Context) {
 		err = s.batchRunner.Run(ctx)
 	}(ctx)

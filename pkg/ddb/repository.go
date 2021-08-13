@@ -2,22 +2,21 @@ package ddb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/cloud/aws"
+	gosoDynamodb "github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/applike/gosoline/pkg/dx"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-multierror"
 )
@@ -29,10 +28,10 @@ const (
 
 	OpSave = "save"
 
-	StreamViewTypeNewImage        = dynamodb.StreamViewTypeNewImage
-	StreamViewTypeOldImage        = dynamodb.StreamViewTypeOldImage
-	StreamViewTypeNewAndOldImages = dynamodb.StreamViewTypeNewAndOldImages
-	StreamViewTypeKeysOnly        = dynamodb.StreamViewTypeKeysOnly
+	StreamViewTypeNewImage        = types.StreamViewTypeNewImage
+	StreamViewTypeOldImage        = types.StreamViewTypeOldImage
+	StreamViewTypeNewAndOldImages = types.StreamViewTypeNewAndOldImages
+	StreamViewTypeKeysOnly        = types.StreamViewTypeKeysOnly
 
 	Create = "create"
 	Update = "update"
@@ -63,72 +62,54 @@ type Repository interface {
 }
 
 type repository struct {
-	logger   log.Logger
-	tracer   tracing.Tracer
-	client   dynamodbiface.DynamoDBAPI
-	executor aws.Executor
-	clock    clock.Clock
+	logger log.Logger
+	tracer tracing.Tracer
+	client gosoDynamodb.Client
+	clock  clock.Clock
 
 	keyBuilder keyBuilder
 	metadata   *Metadata
 	settings   *Settings
 }
 
-func NewRepository(config cfg.Config, logger log.Logger, settings *Settings) (Repository, error) {
+func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...gosoDynamodb.ClientOption) (Repository, error) {
 	if settings.ModelId.Name == "" {
 		settings.ModelId.Name = getTypeName(settings.Main.Model)
 	}
 
 	settings.ModelId.PadFromConfig(config)
-	settings.AutoCreate = config.GetBool("aws_dynamoDb_autoCreate")
-	settings.Client.MaxRetries = config.GetInt("aws_sdk_retries")
+	settings.AutoCreate = dx.ShouldAutoCreate(config)
 
 	tableName := TableName(settings)
-	client := ProvideClient(config, logger, settings)
 
-	backoffSettings := &exec.BackoffSettings{}
-	config.UnmarshalKey("ddb.backoff", backoffSettings)
+	var err error
+	var client gosoDynamodb.Client
 
-	if err := cfg.Merge(&settings.Backoff, *backoffSettings); err != nil {
-		return nil, fmt.Errorf("could not merge backoff settings for ddb table %s: %w", tableName, err)
+	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, settings.ClientName, optFns...); err != nil {
+		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
 	}
-
-	res := &exec.ExecutableResource{
-		Type: "ddb",
-		Name: tableName,
-	}
-	executor := aws.NewExecutor(logger, res, &settings.Backoff, func(result interface{}, err error) exec.ErrorType {
-		if isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
-			return exec.ErrorTypeOk
-		}
-
-		return exec.ErrorTypeUnknown
-	})
 
 	svc := NewServiceWithInterfaces(logger, client)
-	_, err := svc.CreateTable(settings)
-	if err != nil {
+	if _, err = svc.CreateTable(ctx, settings); err != nil {
 		return nil, fmt.Errorf("could not create ddb table %s: %w", tableName, err)
 	}
 
 	tracer := tracing.NewNoopTracer()
 
 	if !settings.DisableTracing {
-		tracer, err = tracing.ProvideTracer(config, logger)
-		if err != nil {
+		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
 		}
 	}
 
-	return NewWithInterfaces(logger, tracer, client, executor, settings)
+	return NewWithInterfaces(logger, tracer, client, settings)
 }
 
-func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor aws.Executor, settings *Settings) (Repository, error) {
+func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, client gosoDynamodb.Client, settings *Settings) (Repository, error) {
 	metadataFactory := NewMetadataFactory()
 	metadata, err := metadataFactory.GetMetadata(settings)
 	if err != nil {
-		name := TableName(settings)
-		return nil, fmt.Errorf("could not factor metadata for ddb table %s: %w", name, err)
+		return nil, fmt.Errorf("could not factor metadata for ddb table %s: %w", TableName(settings), err)
 	}
 
 	keyBuilder := keyBuilder{
@@ -139,7 +120,6 @@ func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, client dynamodb
 		logger:     logger,
 		tracer:     tracer,
 		client:     client,
-		executor:   executor,
 		keyBuilder: keyBuilder,
 		metadata:   metadata,
 		settings:   settings,
@@ -168,15 +148,14 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 	}
 
 	for input.RequestItems != nil {
-		outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
-			return r.client.BatchGetItemRequest(input)
-		})
+		out, err := r.client.BatchGetItem(ctx, input)
 
 		if exec.IsRequestCanceled(err) {
 			return nil, exec.RequestCanceledError
 		}
 
-		if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+		var errResourceNotFoundException *types.ResourceNotFoundException
+		if errors.As(err, &errResourceNotFoundException) {
 			return nil, NewTableNotFoundError(r.metadata.TableName, err)
 		}
 
@@ -184,7 +163,7 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 			return nil, fmt.Errorf("could not execute BatchGetItems operation for table %s: %w", r.metadata.TableName, err)
 		}
 
-		input.RequestItems, err = r.processBatchReadItemsResponse(qb, outI.(*dynamodb.BatchGetItemOutput), unmarshaller, result)
+		input.RequestItems, err = r.processBatchReadItemsResponse(qb, out, unmarshaller, result)
 
 		if err != nil {
 			return nil, err
@@ -194,7 +173,7 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 	return result, nil
 }
 
-func (r *repository) processBatchReadItemsResponse(qb BatchGetItemsBuilder, out *dynamodb.BatchGetItemOutput, unmarshaller *Unmarshaller, result *OperationResult) (map[string]*dynamodb.KeysAndAttributes, error) {
+func (r *repository) processBatchReadItemsResponse(qb BatchGetItemsBuilder, out *dynamodb.BatchGetItemOutput, unmarshaller *Unmarshaller, result *OperationResult) (map[string]types.KeysAndAttributes, error) {
 	responses, err := r.filterResponses(qb, out.Responses[r.metadata.TableName])
 	if err != nil {
 		return nil, err
@@ -215,7 +194,7 @@ func (r *repository) processBatchReadItemsResponse(qb BatchGetItemsBuilder, out 
 	return out.UnprocessedKeys, nil
 }
 
-func (r *repository) filterResponses(qb BatchGetItemsBuilder, responses []map[string]*dynamodb.AttributeValue) ([]map[string]*dynamodb.AttributeValue, error) {
+func (r *repository) filterResponses(qb BatchGetItemsBuilder, responses []map[string]types.AttributeValue) ([]map[string]types.AttributeValue, error) {
 	var ok bool
 	var filterer ttlFilterer
 
@@ -223,7 +202,7 @@ func (r *repository) filterResponses(qb BatchGetItemsBuilder, responses []map[st
 		return responses, nil
 	}
 
-	filteredResponses := make([]map[string]*dynamodb.AttributeValue, 0, len(responses))
+	filteredResponses := make([]map[string]types.AttributeValue, 0, len(responses))
 
 	for _, response := range responses {
 		keep, err := filterer.PerformFilterCondition(response)
@@ -243,14 +222,14 @@ func (r *repository) BatchPutItems(ctx context.Context, value interface{}) (*Ope
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.BatchPutItems")
 	defer span.Finish()
 
-	return r.batchWriteItem(ctx, value, func(item interface{}) (*dynamodb.WriteRequest, error) {
-		marshalledItem, err := dynamodbattribute.MarshalMap(item)
+	return r.batchWriteItem(ctx, value, func(item interface{}) (types.WriteRequest, error) {
+		marshalledItem, err := MarshalMap(item)
 		if err != nil {
-			return nil, fmt.Errorf("could not marshal item for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
+			return types.WriteRequest{}, fmt.Errorf("could not marshal item for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
 		}
 
-		return &dynamodb.WriteRequest{
-			PutRequest: &dynamodb.PutRequest{
+		return types.WriteRequest{
+			PutRequest: &types.PutRequest{
 				Item: marshalledItem,
 			},
 		}, nil
@@ -261,21 +240,21 @@ func (r *repository) BatchDeleteItems(ctx context.Context, value interface{}) (*
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.BatchDeleteItems")
 	defer span.Finish()
 
-	return r.batchWriteItem(ctx, value, func(item interface{}) (*dynamodb.WriteRequest, error) {
+	return r.batchWriteItem(ctx, value, func(item interface{}) (types.WriteRequest, error) {
 		key, err := r.keyBuilder.fromItem(item)
 		if err != nil {
-			return nil, fmt.Errorf("could not create key for item for BatchDeleteItems operation on table %s: %w", r.metadata.TableName, err)
+			return types.WriteRequest{}, fmt.Errorf("could not create key for item for BatchDeleteItems operation on table %s: %w", r.metadata.TableName, err)
 		}
 
-		return &dynamodb.WriteRequest{
-			DeleteRequest: &dynamodb.DeleteRequest{
+		return types.WriteRequest{
+			DeleteRequest: &types.DeleteRequest{
 				Key: key,
 			},
 		}, nil
 	})
 }
 
-func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqBuilder func(interface{}) (*dynamodb.WriteRequest, error)) (*OperationResult, error) {
+func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqBuilder func(interface{}) (types.WriteRequest, error)) (*OperationResult, error) {
 	items, err := refl.InterfaceToInterfaceSlice(value)
 	if err != nil {
 		return nil, fmt.Errorf("no slice of items provided for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
@@ -286,7 +265,7 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 	result := newOperationResult()
 
 	for _, chunk := range chunks {
-		requests := make([]*dynamodb.WriteRequest, len(chunk))
+		requests := make([]types.WriteRequest, len(chunk))
 
 		for i, item := range chunk {
 			requests[i], err = reqBuilder(item)
@@ -296,7 +275,7 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 		}
 
 		input := &dynamodb.BatchWriteItemInput{
-			RequestItems: map[string][]*dynamodb.WriteRequest{
+			RequestItems: map[string][]types.WriteRequest{
 				r.metadata.TableName: requests,
 			},
 		}
@@ -318,14 +297,11 @@ func (r *repository) chunkWriteItem(ctx context.Context, input *dynamodb.BatchWr
 	finalErr := fmt.Errorf("could not write unprocessed items in chunkWriteItem on table %s", r.metadata.TableName)
 
 	return backoff.Retry(func() error {
-		outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
-			return r.client.BatchWriteItemRequest(input)
-		})
+		out, err := r.client.BatchWriteItem(ctx, input)
 		if err != nil {
 			return backoff.Permanent(fmt.Errorf("could not execute item for batchWriteItemWithContext operation on table %s: %w", r.metadata.TableName, err))
 		}
 
-		out := outI.(*dynamodb.BatchWriteItemOutput)
 		result.ConsumedCapacity.addSlice(out.ConsumedCapacity)
 
 		if _, ok := out.UnprocessedItems[r.metadata.TableName]; !ok {
@@ -348,7 +324,7 @@ func (r *repository) chunkWriteItem(ctx context.Context, input *dynamodb.BatchWr
 	}, backoff.WithContext(backoffConfig, ctx))
 }
 
-func totalItemCount(requests map[string][]*dynamodb.WriteRequest) int {
+func totalItemCount(requests map[string][]types.WriteRequest) int {
 	result := 0
 
 	for _, item := range requests {
@@ -373,31 +349,35 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 		return nil, fmt.Errorf("could not build input for DeleteItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
-	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
-		return r.client.DeleteItemRequest(input)
-	})
+	out, err := r.client.DeleteItem(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
 	}
 
-	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+	var errResourceNotFoundException *types.ResourceNotFoundException
+	if errors.As(err, &errResourceNotFoundException) {
 		return nil, NewTableNotFoundError(r.metadata.TableName, err)
 	}
 
-	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
+	var errConditionalCheckFailedException *types.ConditionalCheckFailedException
+	result.ConditionalCheckFailed = errors.As(err, &errConditionalCheckFailedException)
+
+	if err != nil && !result.ConditionalCheckFailed {
 		return nil, fmt.Errorf("could not execute DeleteItem operation for table %s: %w", r.metadata.TableName, err)
 	}
 
-	out := outI.(*dynamodb.DeleteItemOutput)
-	result.ConditionalCheckFailed = isError(err, dynamodb.ErrCodeConditionalCheckFailedException)
+	if out == nil {
+		return result, nil
+	}
+
 	result.ConsumedCapacity.add(out.ConsumedCapacity)
 
 	if out.Attributes == nil {
 		return result, nil
 	}
 
-	err = dynamodbattribute.UnmarshalMap(out.Attributes, item)
+	err = UnmarshalMap(out.Attributes, item)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal old value after DeleteItem operation on table %s: %w", r.metadata.TableName, err)
@@ -421,15 +401,14 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 		return nil, fmt.Errorf("could not build GetItem expression for table %s: %w", r.metadata.TableName, err)
 	}
 
-	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
-		return r.client.GetItemRequest(input)
-	})
+	out, err := r.client.GetItem(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
 	}
 
-	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+	var errResourceNotFoundException *types.ResourceNotFoundException
+	if errors.As(err, &errResourceNotFoundException) {
 		return nil, NewTableNotFoundError(r.metadata.TableName, err)
 	}
 
@@ -437,7 +416,6 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 		return nil, err
 	}
 
-	out := outI.(*dynamodb.GetItemOutput)
 	result.ConsumedCapacity.add(out.ConsumedCapacity)
 
 	if out.Item == nil {
@@ -456,7 +434,7 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 	}
 
 	result.IsFound = true
-	err = dynamodbattribute.UnmarshalMap(out.Item, item)
+	err = UnmarshalMap(out.Item, item)
 
 	if err != nil {
 		return nil, err
@@ -484,24 +462,28 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 
 	result := newPutItemResult()
 
-	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
-		return r.client.PutItemRequest(input)
-	})
+	out, err := r.client.PutItem(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
 	}
 
-	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+	var errResourceNotFoundException *types.ResourceNotFoundException
+	if errors.As(err, &errResourceNotFoundException) {
 		return nil, NewTableNotFoundError(r.metadata.TableName, err)
 	}
 
-	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
+	var errConditionalCheckFailedException *types.ConditionalCheckFailedException
+	result.ConditionalCheckFailed = errors.As(err, &errConditionalCheckFailedException)
+
+	if err != nil && !result.ConditionalCheckFailed {
 		return nil, fmt.Errorf("could not execute PutItem operation for table %s: %w", r.metadata.TableName, err)
 	}
 
-	out := outI.(*dynamodb.PutItemOutput)
-	result.ConditionalCheckFailed = isError(err, dynamodb.ErrCodeConditionalCheckFailedException)
+	if out == nil {
+		return result, nil
+	}
+
 	result.ConsumedCapacity.add(out.ConsumedCapacity)
 
 	if out.Attributes == nil {
@@ -510,7 +492,7 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 		return result, nil
 	}
 
-	err = dynamodbattribute.UnmarshalMap(out.Attributes, item)
+	err = UnmarshalMap(out.Attributes, item)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal old value after PutItem operation on table %s: %w", r.metadata.TableName, err)
@@ -548,15 +530,14 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 		return &readResult{}, nil
 	}
 
-	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
-		return r.client.QueryRequest(op.input)
-	})
+	out, err := r.client.Query(ctx, op.input)
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
 	}
 
-	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+	var errResourceNotFoundException *types.ResourceNotFoundException
+	if errors.As(err, &errResourceNotFoundException) {
 		return nil, NewTableNotFoundError(r.metadata.TableName, err)
 	}
 
@@ -564,13 +545,12 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 		return nil, fmt.Errorf("could not execute Query operation for table %s: %w", r.metadata.TableName, err)
 	}
 
-	out := outI.(*dynamodb.QueryOutput)
 	op.result.RequestCount++
-	op.result.ItemCount += *out.Count
-	op.result.ScannedCount += *out.ScannedCount
+	op.result.ItemCount += out.Count
+	op.result.ScannedCount += out.ScannedCount
 	op.result.ConsumedCapacity.add(out.ConsumedCapacity)
 
-	nextPageSize := op.iterator.advance(out.Count)
+	nextPageSize := op.iterator.advance(&out.Count)
 
 	op.input.Limit = nextPageSize
 	op.input.ExclusiveStartKey = out.LastEvaluatedKey
@@ -594,31 +574,35 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 	}
 
 	result := newUpdateItemResult()
-	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
-		return r.client.UpdateItemRequest(input)
-	})
+	out, err := r.client.UpdateItem(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
 	}
 
-	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+	var errResourceNotFoundException *types.ResourceNotFoundException
+	if errors.As(err, &errResourceNotFoundException) {
 		return nil, NewTableNotFoundError(r.metadata.TableName, err)
 	}
 
-	if err != nil && !isError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
+	var errConditionalCheckFailedException *types.ConditionalCheckFailedException
+	result.ConditionalCheckFailed = errors.As(err, &errConditionalCheckFailedException)
+
+	if err != nil && !result.ConditionalCheckFailed {
 		return nil, fmt.Errorf("could not execute UpdateItem operation for table %s: %w", r.metadata.TableName, err)
 	}
 
-	out := outI.(*dynamodb.UpdateItemOutput)
-	result.ConditionalCheckFailed = isError(err, dynamodb.ErrCodeConditionalCheckFailedException)
+	if out == nil {
+		return result, nil
+	}
+
 	result.ConsumedCapacity.add(out.ConsumedCapacity)
 
 	if out.Attributes == nil {
 		return result, nil
 	}
 
-	err = dynamodbattribute.UnmarshalMap(out.Attributes, item)
+	err = UnmarshalMap(out.Attributes, item)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal old value after UpdateItem operation on table %s: %w", r.metadata.TableName, err)
@@ -660,15 +644,14 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 		return &readResult{}, nil
 	}
 
-	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
-		return r.client.ScanRequest(op.input)
-	})
+	out, err := r.client.Scan(ctx, op.input)
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
 	}
 
-	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+	var errResourceNotFoundException *types.ResourceNotFoundException
+	if errors.As(err, &errResourceNotFoundException) {
 		return nil, NewTableNotFoundError(r.metadata.TableName, err)
 	}
 
@@ -676,13 +659,12 @@ func (r *repository) doScan(ctx context.Context, op *ScanOperation) (*readResult
 		return nil, err
 	}
 
-	out := outI.(*dynamodb.ScanOutput)
 	op.result.RequestCount++
-	op.result.ItemCount += *out.Count
-	op.result.ScannedCount += *out.ScannedCount
+	op.result.ItemCount += out.Count
+	op.result.ScannedCount += out.ScannedCount
 	op.result.ConsumedCapacity.add(out.ConsumedCapacity)
 
-	nextPageSize := op.iterator.advance(out.Count)
+	nextPageSize := op.iterator.advance(&out.Count)
 
 	op.input.Limit = nextPageSize
 	op.input.ExclusiveStartKey = out.LastEvaluatedKey
@@ -791,23 +773,4 @@ func (r *repository) readCallback(ctx context.Context, items interface{}, callba
 	}
 
 	return callbackErrors
-}
-
-func isError(err error, awsCode string) bool {
-	var ok bool
-	var aerr awserr.Error
-
-	if err == nil {
-		return false
-	}
-
-	if aerr, ok = err.(awserr.Error); !ok {
-		return false
-	}
-
-	if aerr.Code() == awsCode {
-		return true
-	}
-
-	return false
 }

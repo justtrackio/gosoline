@@ -2,6 +2,7 @@ package stream
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 )
 
@@ -20,7 +21,7 @@ func producerDaemonConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		outputKey := ConfigurableOutputKey(settings.Output)
 		outputSettings := &BaseOutputSettings{}
 
-		config.UnmarshalKey(outputKey, outputSettings, cfg.UnmarshalWithDefaultsFromKey(ConfigKeyStreamBackoff, "backoff"))
+		config.UnmarshalKey(outputKey, outputSettings)
 		outputSettings.Tracing.Enabled = false
 
 		configOptions := []cfg.Option{

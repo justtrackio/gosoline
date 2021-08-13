@@ -2,8 +2,9 @@ package stream
 
 import (
 	"fmt"
+
+	"github.com/applike/gosoline/pkg/cloud/aws/sns"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/sns"
 )
 
 const (
@@ -35,7 +36,6 @@ func RawUnmarshaller(data *string) (*Message, error) {
 
 func SnsMarshaller(msg *Message) (*string, error) {
 	bytes, err := json.Marshal(msg)
-
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,6 @@ func SnsUnmarshaller(data *string) (*Message, error) {
 
 	snsMessage := sns.Message{}
 	err := json.Unmarshal(bytes, &snsMessage)
-
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/log"
@@ -17,7 +18,7 @@ type dynamoDbFixtureWriter struct {
 }
 
 func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOption) FixtureWriterFactory {
-	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		settings := &ddb.Settings{
 			ModelId:    settings.ModelId,
 			AutoCreate: true,
@@ -34,10 +35,15 @@ func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOp
 		}
 
 		factory := func() (ddb.Repository, error) {
-			return ddb.NewRepository(config, logger, settings)
+			return ddb.NewRepository(ctx, config, logger, settings)
 		}
 
-		purger := newDynamodbPurger(config, logger, settings)
+		var err error
+		var purger *dynamodbPurger
+
+		if purger, err = newDynamodbPurger(ctx, config, logger, settings); err != nil {
+			return nil, fmt.Errorf("can not create dynamodb purger: %w", err)
+		}
 
 		return NewDynamoDbFixtureWriterWithInterfaces(logger, factory, purger), nil
 	}
@@ -51,11 +57,11 @@ func NewDynamoDbFixtureWriterWithInterfaces(logger log.Logger, factory ddbRepoFa
 	}
 }
 
-func (d *dynamoDbFixtureWriter) Purge() error {
-	return d.purger.purgeDynamodb()
+func (d *dynamoDbFixtureWriter) Purge(ctx context.Context) error {
+	return d.purger.purgeDynamodb(ctx)
 }
 
-func (d *dynamoDbFixtureWriter) Write(fs *FixtureSet) error {
+func (d *dynamoDbFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
 	if len(fs.Fixtures) == 0 {
 		return nil
 	}
@@ -65,7 +71,7 @@ func (d *dynamoDbFixtureWriter) Write(fs *FixtureSet) error {
 		return fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
-	if _, err = repo.BatchPutItems(context.Background(), fs.Fixtures); err != nil {
+	if _, err = repo.BatchPutItems(ctx, fs.Fixtures); err != nil {
 		return err
 	}
 

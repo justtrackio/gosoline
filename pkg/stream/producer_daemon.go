@@ -3,6 +3,9 @@ package stream
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/coffin"
@@ -10,8 +13,6 @@ import (
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/metric"
-	"sync"
-	"time"
 )
 
 const (
@@ -22,8 +23,10 @@ const (
 	metricNameIdleDuration  = "IdleDuration"
 )
 
-var producerDaemonLock = sync.Mutex{}
-var producerDaemons = map[string]*producerDaemon{}
+var (
+	producerDaemonLock = sync.Mutex{}
+	producerDaemons    = map[string]*producerDaemon{}
+)
 
 type ProducerDaemonSettings struct {
 	Enabled bool `cfg:"enabled" default:"false"`
@@ -80,7 +83,7 @@ func ResetProducerDaemons() {
 	producerDaemons = map[string]*producerDaemon{}
 }
 
-func ProvideProducerDaemon(config cfg.Config, logger log.Logger, name string) (*producerDaemon, error) {
+func ProvideProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*producerDaemon, error) {
 	producerDaemonLock.Lock()
 	defer producerDaemonLock.Unlock()
 
@@ -89,7 +92,7 @@ func ProvideProducerDaemon(config cfg.Config, logger log.Logger, name string) (*
 	}
 
 	var err error
-	producerDaemons[name], err = NewProducerDaemon(config, logger, name)
+	producerDaemons[name], err = NewProducerDaemon(ctx, config, logger, name)
 
 	if err != nil {
 		return nil, err
@@ -98,10 +101,10 @@ func ProvideProducerDaemon(config cfg.Config, logger log.Logger, name string) (*
 	return producerDaemons[name], nil
 }
 
-func NewProducerDaemon(config cfg.Config, logger log.Logger, name string) (*producerDaemon, error) {
+func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*producerDaemon, error) {
 	settings := readProducerSettings(config, name)
 
-	output, err := NewConfigurableOutput(config, logger, settings.Output)
+	output, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
 	if err != nil {
 		return nil, fmt.Errorf("can not create output for producer daemon %s: %w", name, err)
 	}
@@ -179,7 +182,6 @@ func (d *producerDaemon) Write(_ context.Context, batch []WritableMessage) error
 
 	for _, msg := range aggregated {
 		flushedBatch, err := d.batcher.Append(msg)
-
 		if err != nil {
 			return fmt.Errorf("can not append message to batch: %w", err)
 		}
@@ -241,7 +243,6 @@ func (d *producerDaemon) applyAggregation(batch []WritableMessage) ([]*Message, 
 		}
 
 		readyMessages, err := d.aggregator.Write(streamMsg)
-
 		if err != nil {
 			return nil, err
 		}
@@ -259,7 +260,6 @@ func (d *producerDaemon) applyAggregation(batch []WritableMessage) ([]*Message, 
 
 func (d *producerDaemon) flushAggregate() (*Message, error) {
 	aggregate, err := d.aggregator.Flush()
-
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal aggregate: %w", err)
 	}
@@ -289,7 +289,6 @@ func (d *producerDaemon) flushAll() error {
 		return fmt.Errorf("can not flush aggregation: %w", err)
 	} else if readyBatch != nil {
 		flushedBatch, err := d.batcher.Append(readyBatch)
-
 		if err != nil {
 			return fmt.Errorf("can not append message to batch: %w", err)
 		}

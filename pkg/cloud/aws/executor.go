@@ -17,10 +17,6 @@ type Executor interface {
 }
 
 func NewExecutor(logger log.Logger, res *exec.ExecutableResource, settings *exec.BackoffSettings, checks ...exec.ErrorChecker) Executor {
-	if !settings.Enabled {
-		return new(DefaultExecutor)
-	}
-
 	return NewBackoffExecutor(logger, res, settings, checks...)
 }
 

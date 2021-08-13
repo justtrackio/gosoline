@@ -2,17 +2,15 @@ package env
 
 import (
 	"fmt"
+
 	toxiproxy "github.com/Shopify/toxiproxy/client"
 	"github.com/applike/gosoline/pkg/cfg"
-	awsExec "github.com/applike/gosoline/pkg/cloud/aws"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 type DdbComponent struct {
@@ -27,8 +25,11 @@ func (c *DdbComponent) CfgOptions() []cfg.Option {
 
 	return []cfg.Option{
 		cfg.WithConfigMap(map[string]interface{}{
-			"aws_dynamoDb_endpoint":   c.Endpoint(),
-			"aws_dynamoDb_autoCreate": true,
+			"cloud.aws.credentials": map[string]interface{}{
+				"access_key_id":     DefaultAccessKeyID,
+				"secret_access_key": DefaultSecretAccessKey,
+				"session_token":     DefaultToken,
+			},
 		}),
 		cfg.WithConfigSetting(clientEndpointKey, c.Endpoint()),
 	}
@@ -42,19 +43,19 @@ func (c *DdbComponent) Endpoint() string {
 	return fmt.Sprintf("http://%s", c.ddbAddress)
 }
 
-func (c *DdbComponent) Client() *dynamodb.DynamoDB {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Endpoint:    aws.String(c.Endpoint()),
-		MaxRetries:  aws.Int(0),
-		Region:      aws.String(endpoints.EuCentral1RegionID),
-		Credentials: gosoAws.GetDefaultCredentials(),
-	}))
-
-	return dynamodb.New(sess)
+func (c *DdbComponent) Client() *dynamodb.Client {
+	return dynamodb.NewFromConfig(aws.Config{
+		EndpointResolver: gosoAws.EndpointResolver(c.Endpoint()),
+		Region:           "eu-central-1",
+		Credentials:      GetDefaultStaticCredentials(),
+	})
 }
 
 func (c *DdbComponent) Repository(settings *ddb.Settings) (ddb.Repository, error) {
-	return ddb.NewWithInterfaces(c.logger, tracing.NewNoopTracer(), c.Client(), awsExec.DefaultExecutor{}, settings)
+	tracer := tracing.NewNoopTracer()
+	client := c.Client()
+
+	return ddb.NewWithInterfaces(c.logger, tracer, client, settings)
 }
 
 func (c *DdbComponent) Toxiproxy() *toxiproxy.Proxy {

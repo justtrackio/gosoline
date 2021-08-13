@@ -3,12 +3,13 @@ package stream
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/tracing"
-	"sync/atomic"
-	"time"
 )
 
 type BatchConsumerCallbackFactory func(config cfg.Config, logger log.Logger) (BatchConsumerCallback, error)
@@ -44,7 +45,6 @@ func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory)
 		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
 
 		callback, err := callbackFactory(config, contextEnforcingLogger)
-
 		if err != nil {
 			return nil, fmt.Errorf("can not initiate callback for consumer %s: %w", name, err)
 		}
@@ -57,7 +57,7 @@ func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory)
 
 		ticker := time.NewTicker(settings.IdleTimeout)
 
-		baseConsumer, err := NewBaseConsumer(config, logger, name, callback)
+		baseConsumer, err := NewBaseConsumer(ctx, config, logger, name, callback)
 		if err != nil {
 			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
 		}

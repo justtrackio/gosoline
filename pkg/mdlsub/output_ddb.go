@@ -3,6 +3,7 @@ package mdlsub
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/log"
@@ -16,9 +17,9 @@ func init() {
 	outputFactories[OutputTypeDdb] = outputDdbFactory
 }
 
-func repoInit(config cfg.Config, logger log.Logger, settings *SubscriberSettings) func(model interface{}) (ddb.Repository, error) {
+func repoInit(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings) func(model interface{}) (ddb.Repository, error) {
 	return func(model interface{}) (ddb.Repository, error) {
-		repo, err := ddb.NewRepository(config, logger, &ddb.Settings{
+		repo, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
 			ModelId: settings.TargetModel,
 			Main: ddb.MainSettings{
 				Model:              model,
@@ -34,11 +35,11 @@ func repoInit(config cfg.Config, logger log.Logger, settings *SubscriberSettings
 	}
 }
 
-func outputDdbFactory(config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
+func outputDdbFactory(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
 	outputs := make(map[int]Output)
 
 	for version := range transformers {
-		outputs[version] = NewOutputDdb(config, logger, settings)
+		outputs[version] = NewOutputDdb(ctx, config, logger, settings)
 	}
 
 	return outputs, nil
@@ -49,9 +50,9 @@ type OutputDdb struct {
 	repo     ddb.Repository
 }
 
-func NewOutputDdb(config cfg.Config, logger log.Logger, settings *SubscriberSettings) *OutputDdb {
+func NewOutputDdb(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings) *OutputDdb {
 	return &OutputDdb{
-		repoInit: repoInit(config, logger, settings),
+		repoInit: repoInit(ctx, config, logger, settings),
 	}
 }
 

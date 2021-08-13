@@ -3,13 +3,14 @@ package aws_test
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/exec"
 	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
 )
 
 func TestBackoffExecutor_Execute(t *testing.T) {
@@ -20,10 +21,7 @@ func TestBackoffExecutor_Execute(t *testing.T) {
 	executor := aws.NewBackoffExecutorWithSender(logger, &exec.ExecutableResource{
 		Type: "ddb",
 		Name: "test-table",
-	}, &exec.BackoffSettings{
-		Enabled:  true,
-		Blocking: true,
-	}, func(req *request.Request) (*http.Response, error) {
+	}, &exec.BackoffSettings{}, func(req *request.Request) (*http.Response, error) {
 		executions++
 		switch executions {
 		case 1:

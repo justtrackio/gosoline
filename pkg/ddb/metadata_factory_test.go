@@ -1,9 +1,10 @@
 package ddb_test
 
 import (
+	"testing"
+
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 type TestModel struct {

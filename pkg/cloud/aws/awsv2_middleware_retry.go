@@ -3,23 +3,25 @@ package aws
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
-	"github.com/applike/gosoline/pkg/clock"
+	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/uuid"
+
 	"github.com/applike/gosoline/pkg/log"
 	awsMiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
+	awsRetry "github.com/aws/aws-sdk-go-v2/aws/retry"
 	smithyMiddleware "github.com/aws/smithy-go/middleware"
 )
 
 type attemptInfoKey struct{}
 
 type attemptInfo struct {
-	resourceName string
-	start        time.Time
-	count        int
-	lastErr      error
+	id       string
+	resource *exec.ExecutableResource
+	start    time.Time
+	count    int
+	lastErr  error
 }
 
 func getAttemptInfo(ctx context.Context) *attemptInfo {
@@ -54,125 +56,86 @@ func increaseAttemptCount(ctx context.Context) (*attemptInfo, context.Context) {
 	return stats, ctx
 }
 
-type ErrRetryAttemptsExceeded struct {
-	ResourceName string
-	Attempts     int
-	DurationTook time.Duration
-	Err          error
-}
-
-func NewErrRetryAttemptsExceeded(resourceName string, attempts int, durationTook time.Duration, err error) *ErrRetryAttemptsExceeded {
-	return &ErrRetryAttemptsExceeded{
-		ResourceName: resourceName,
-		Attempts:     attempts,
-		DurationTook: durationTook,
-		Err:          err,
-	}
-}
-
-func (e *ErrRetryAttemptsExceeded) Error() string {
-	return fmt.Sprintf("sent request to resource %s failed after %d retries in %s: %s", e.ResourceName, e.Attempts, e.DurationTook, e.Err)
-}
-
-func (e *ErrRetryAttemptsExceeded) Unwrap() error {
-	return e.Err
-}
-
-func IsErrRetryAttemptsExceeded(err error) bool {
-	var errExpected *ErrRetryAttemptsExceeded
-	return errors.As(err, &errExpected)
-}
-
-type ErrRetryMaxElapsedTimeExceeded struct {
-	ResourceName string
-	Attempts     int
-	DurationTook time.Duration
-	DurationMax  time.Duration
-	Err          error
-}
-
-func NewErrRetryMaxElapsedTimeExceeded(resourceName string, attempts int, durationTook time.Duration, durationMax time.Duration, err error) *ErrRetryMaxElapsedTimeExceeded {
-	return &ErrRetryMaxElapsedTimeExceeded{
-		ResourceName: resourceName,
-		Attempts:     attempts,
-		DurationTook: durationTook,
-		DurationMax:  durationMax,
-		Err:          err,
-	}
-}
-
-func (e *ErrRetryMaxElapsedTimeExceeded) Error() string {
-	return fmt.Sprintf("sent request to resource %s failed after %d retries in %s: retry max duration %s exceeded: %s", e.ResourceName, e.Attempts, e.DurationTook, e.DurationMax, e.Err)
-}
-
-func (e *ErrRetryMaxElapsedTimeExceeded) Unwrap() error {
-	return e.Err
-}
-
-func IsErrRetryMaxElapsedTimeExceeded(err error) bool {
-	var errExpected *ErrRetryMaxElapsedTimeExceeded
-	return errors.As(err, &errExpected)
-}
-
-func AttemptLoggerInitMiddleware(logger log.Logger, clock clock.Clock, maxElapsedTime time.Duration) smithyMiddleware.InitializeMiddleware {
+func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSettings) smithyMiddleware.InitializeMiddleware {
 	return smithyMiddleware.InitializeMiddlewareFunc("AttemptLoggerInit", func(ctx context.Context, input smithyMiddleware.InitializeInput, handler smithyMiddleware.InitializeHandler) (smithyMiddleware.InitializeOutput, smithyMiddleware.Metadata, error) {
 		var err error
 		var cancel context.CancelFunc
 		var metadata smithyMiddleware.Metadata
 		var output smithyMiddleware.InitializeOutput
+		var deadline time.Time
 
-		serviceId := awsMiddleware.GetServiceID(ctx)
-		operation := awsMiddleware.GetOperationName(ctx)
-		resourceName := fmt.Sprintf("%s/%s", serviceId, operation)
-
-		info := &attemptInfo{
-			start:        clock.Now(),
-			resourceName: resourceName,
+		resource := &exec.ExecutableResource{
+			Type: awsMiddleware.GetServiceID(ctx),
+			Name: awsMiddleware.GetOperationName(ctx),
 		}
-		ctx = setAttemptInfo(ctx, info)
 
-		if maxElapsedTime > 0 {
-			deadline := clock.Now().Add(maxElapsedTime)
+		attempt := &attemptInfo{
+			id:       uuid.New().NewV4(),
+			start:    time.Now(),
+			resource: resource,
+		}
+		ctx = setAttemptInfo(ctx, attempt)
+
+		if backoff.CancelDelay > 0 {
+			ctx = exec.WithDelayedCancelContext(ctx, backoff.CancelDelay)
+			defer (ctx.(*exec.DelayedCancelContext)).Stop()
+		}
+
+		if backoff.MaxElapsedTime > 0 {
+			deadline = attempt.start.Add(backoff.MaxElapsedTime)
 			ctx, cancel = context.WithDeadline(ctx, deadline)
 
 			defer cancel()
 		}
 
 		output, metadata, err = handler.HandleInitialize(ctx, input)
-		durationTook := clock.Now().Sub(info.start)
 
-		if ctx.Err() == context.DeadlineExceeded {
-			return output, metadata, NewErrRetryMaxElapsedTimeExceeded(info.resourceName, info.count, durationTook, maxElapsedTime, err)
+		now := time.Now()
+		durationTook := now.Sub(attempt.start)
+
+		if backoff.MaxElapsedTime > 0 && deadline.Before(now) && ctx.Err() == context.DeadlineExceeded {
+			return output, metadata, exec.NewErrMaxElapsedTimeExceeded(attempt.resource, attempt.count, durationTook, backoff.MaxElapsedTime, err)
 		}
 
-		var maxAttemptsError *retry.MaxAttemptsError
+		var maxAttemptsError *awsRetry.MaxAttemptsError
 		if err != nil && errors.As(err, &maxAttemptsError) {
-			return output, metadata, NewErrRetryAttemptsExceeded(info.resourceName, info.count, durationTook, err)
+			return output, metadata, exec.NewErrAttemptsExceeded(attempt.resource, attempt.count, durationTook, err)
 		}
 
-		if info.count > 1 && err == nil {
-			logger.WithContext(ctx).Info("sent request to resource %s successful after %d retries in %s", info.resourceName, info.count, durationTook)
+		if attempt.count > 1 && err == nil {
+			logger.
+				WithContext(ctx).
+				WithFields(log.Fields{
+					"attempt_id": attempt.id,
+					"resource":   attempt.resource.String(),
+				}).
+				Info("sent request to resource %s successful after %d attempts in %s", attempt.resource, attempt.count, durationTook)
 		}
 
 		return output, metadata, err
 	})
 }
 
-func AttemptLoggerRetryMiddleware(logger log.Logger, clock clock.Clock) smithyMiddleware.FinalizeMiddleware {
+func AttemptLoggerRetryMiddleware(logger log.Logger) smithyMiddleware.FinalizeMiddleware {
 	return smithyMiddleware.FinalizeMiddlewareFunc("AttemptLoggerRetry", func(ctx context.Context, input smithyMiddleware.FinalizeInput, next smithyMiddleware.FinalizeHandler) (smithyMiddleware.FinalizeOutput, smithyMiddleware.Metadata, error) {
-		var info *attemptInfo
+		var attempt *attemptInfo
 		var metadata smithyMiddleware.Metadata
 		var output smithyMiddleware.FinalizeOutput
 
-		info, ctx = increaseAttemptCount(ctx)
+		attempt, ctx = increaseAttemptCount(ctx)
 
-		if info.count > 1 {
-			duration := clock.Now().Sub(info.start)
-			logger.WithContext(ctx).Warn("attempt number %d to request resource %s after %s cause of error %s", info.count, info.resourceName, duration, info.lastErr)
+		if attempt.count > 1 {
+			duration := time.Since(attempt.start)
+			logger.
+				WithContext(ctx).
+				WithFields(log.Fields{
+					"attempt_id": attempt.id,
+					"resource":   attempt.resource.String(),
+				}).Warn("attempt number %d to request resource %s after %s cause of error: %s", attempt.count, attempt.resource, duration, attempt.lastErr)
 		}
 
-		output, metadata, info.lastErr = next.HandleFinalize(ctx, input)
+		output, metadata, attempt.lastErr = next.HandleFinalize(ctx, input)
 
-		return output, metadata, info.lastErr
+		return output, metadata, attempt.lastErr
 	})
 }

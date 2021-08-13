@@ -5,21 +5,19 @@ package dynamodb_test
 
 import (
 	"context"
-	"errors"
+	"testing"
+
 	toxiproxy "github.com/Shopify/toxiproxy/client"
 	"github.com/applike/gosoline/pkg/clock"
-	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	gosoDdb "github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/applike/gosoline/pkg/exec"
 	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awsCfg "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	awsDdb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 type ClientTestSuite struct {
@@ -37,12 +35,11 @@ func (s *ClientTestSuite) SetupSuite() []suite.Option {
 
 func (s *ClientTestSuite) SetupTest() error {
 	var err error
-	var ctx = context.Background()
-	var config = s.Env().Config()
-	var logger = s.Env().Logger()
+	ctx := context.Background()
+	config := s.Env().Config()
+	logger := s.Env().Logger()
 
-	credentials := awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("AKID", "SECRET_KEY", "TOKEN"))
-	if s.clientDefault, err = gosoDdb.NewClient(ctx, config, logger, "default", credentials); err != nil {
+	if s.clientDefault, err = gosoDdb.NewClient(ctx, config, logger, "default"); err != nil {
 		return err
 	}
 
@@ -96,13 +93,18 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 	})
 
 	ctx := context.Background()
+	resource := &exec.ExecutableResource{
+		Type: "DynamoDB",
+		Name: "PutItem",
+	}
+
 	loggerMock := new(logMocks.Logger)
 	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
-	loggerMock.On("Warn", "attempt number %d to request resource %s after %s cause of error %s", mock.AnythingOfType("int"), "DynamoDB/PutItem", mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
-	loggerMock.On("Info", "sent request to resource %s successful after %d retries in %s", "DynamoDB/PutItem", 3, mock.AnythingOfType("time.Duration")).Once()
+	loggerMock.On("WithFields", mock.AnythingOfType("log.Fields")).Return(loggerMock)
+	loggerMock.On("Warn", "attempt number %d to request resource %s after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
+	loggerMock.On("Info", "sent request to resource %s successful after %d attempts in %s", resource, 3, mock.AnythingOfType("time.Duration")).Once()
 
-	credentials := awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("AKID", "SECRET_KEY", "TOKEN"))
-	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "http_timeout", credentials)
+	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "http_timeout")
 	s.NoError(err)
 
 	_, err = client.PutItem(ctx, &awsDdb.PutItemInput{
@@ -141,8 +143,7 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 	loggerMock := new(logMocks.Logger)
 	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
 
-	credentials := awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("AKID", "SECRET_KEY", "TOKEN"))
-	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "max_elapsed_time_exceeded", credentials)
+	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "max_elapsed_time_exceeded")
 	s.NoError(err)
 
 	_, err = client.PutItem(ctx, &awsDdb.PutItemInput{
@@ -154,10 +155,7 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 		TableName: aws.String("gosoline-cloud-dynamodb-test"),
 	})
 
-	var expectedErr *gosoAws.ErrRetryMaxElapsedTimeExceeded
-	isErrRetryAttemptsExceeded := errors.As(err, &expectedErr)
-
-	s.True(isErrRetryAttemptsExceeded)
+	s.True(exec.IsErrMaxElapsedTimeExceeded(err))
 	loggerMock.AssertExpectations(s.T())
 }
 

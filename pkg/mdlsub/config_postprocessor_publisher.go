@@ -2,6 +2,7 @@ package mdlsub
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/stream"
 )
@@ -22,7 +23,7 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		publisherSettings := readPublisherSetting(config, name)
 
 		outputSettings := &stream.SnsOutputConfiguration{}
-		config.UnmarshalDefaults(outputSettings, cfg.UnmarshalWithDefaultsFromKey(stream.ConfigKeyStreamBackoff, "backoff"))
+		config.UnmarshalDefaults(outputSettings)
 
 		outputSettings.Type = publisherSettings.OutputType
 		outputSettings.Project = publisherSettings.Project

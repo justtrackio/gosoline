@@ -1,5 +1,5 @@
-aws_dynamoDb_autoCreate: true
-aws_sdk_retries: 30
+dx:
+  auto_create: true
 
 fixtures:
   enabled: true

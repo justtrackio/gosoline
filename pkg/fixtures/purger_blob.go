@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
@@ -24,8 +25,8 @@ func newBlobPurger(config cfg.Config, logger log.Logger, settings *BlobFixturesS
 	}
 }
 
-func (p *blobPurger) purge() error {
-	ctx, cancel := context.WithCancel(context.Background())
+func (p *blobPurger) purge(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
 
 	var batchRunnerErr error
 	go func(ctx context.Context) {

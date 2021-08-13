@@ -3,10 +3,10 @@ package ddb
 import (
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 //go:generate mockery --name PutItemBuilder
@@ -20,7 +20,7 @@ type PutItemBuilder interface {
 type putItemBuilder struct {
 	metadata   *Metadata
 	condition  *expression.ConditionBuilder
-	returnType *string
+	returnType types.ReturnValue
 }
 
 func NewPutItemBuilder(metadata *Metadata) PutItemBuilder {
@@ -36,19 +36,19 @@ func (b *putItemBuilder) WithCondition(cond expression.ConditionBuilder) PutItem
 }
 
 func (b *putItemBuilder) ReturnNone() PutItemBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueNone)
+	b.returnType = types.ReturnValueNone
 
 	return b
 }
 
 func (b *putItemBuilder) ReturnAllOld() PutItemBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueAllOld)
+	b.returnType = types.ReturnValueAllOld
 
 	return b
 }
 
 func (b *putItemBuilder) Build(item interface{}) (*dynamodb.PutItemInput, error) {
-	if b.returnType != nil && *b.returnType != dynamodb.ReturnValueNone && !isPointer(item) {
+	if b.returnType != "" && b.returnType != types.ReturnValueNone && !isPointer(item) {
 		return nil, fmt.Errorf("the provided old value has to be a pointer")
 	}
 
@@ -71,7 +71,7 @@ func (b *putItemBuilder) Build(item interface{}) (*dynamodb.PutItemInput, error)
 		ReturnValues:              b.returnType,
 	}
 
-	marshalled, err := dynamodbattribute.MarshalMap(item)
+	marshalled, err := MarshalMap(item)
 	if err != nil {
 		return nil, err
 	}

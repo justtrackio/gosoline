@@ -2,18 +2,15 @@ package redis
 
 import (
 	"errors"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/log"
 	"io"
 	"net"
 	"strings"
+
+	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 func NewExecutor(logger log.Logger, settings exec.BackoffSettings, name string) exec.Executor {
-	if !settings.Enabled {
-		return exec.NewDefaultExecutor()
-	}
-
 	return NewBackoffExecutor(logger, settings, name)
 }
 

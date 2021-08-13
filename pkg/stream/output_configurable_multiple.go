@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/hashicorp/go-multierror"
@@ -32,9 +33,9 @@ func (m *multiOutput) Write(ctx context.Context, batch []WritableMessage) error 
 	return err.ErrorOrNil()
 }
 
-func NewConfigurableMultiOutput(config cfg.Config, logger log.Logger, base string) (Output, error) {
-	var key = fmt.Sprintf("%s.types", ConfigurableOutputKey(base))
-	var ts = config.Get(key).(map[string]interface{})
+func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger log.Logger, base string) (Output, error) {
+	key := fmt.Sprintf("%s.types", ConfigurableOutputKey(base))
+	ts := config.Get(key).(map[string]interface{})
 
 	multiOutput := &multiOutput{
 		outputs: make([]Output, 0),
@@ -43,7 +44,7 @@ func NewConfigurableMultiOutput(config cfg.Config, logger log.Logger, base strin
 	for outputName := range ts {
 		name := fmt.Sprintf("%s.types.%s", base, outputName)
 
-		if output, err := NewConfigurableOutput(config, logger, name); err != nil {
+		if output, err := NewConfigurableOutput(ctx, config, logger, name); err != nil {
 			return nil, fmt.Errorf("can not create multi output %s: %w", base, err)
 		} else {
 			multiOutput.outputs = append(multiOutput.outputs, output)

@@ -2,7 +2,8 @@ package ddb
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 )
 
 func buildProjectionExpression(metadata FieldAware, model interface{}) (*expression.ProjectionBuilder, error) {
@@ -11,7 +12,6 @@ func buildProjectionExpression(metadata FieldAware, model interface{}) (*express
 	}
 
 	projectedFields, err := MetadataReadFields(model)
-
 	if err != nil {
 		return nil, err
 	}

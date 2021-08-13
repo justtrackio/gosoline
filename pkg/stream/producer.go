@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/refl"
@@ -25,20 +26,20 @@ type producer struct {
 	output  Output
 }
 
-func NewProducer(config cfg.Config, logger log.Logger, name string, handlers ...EncodeHandler) (*producer, error) {
+func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name string, handlers ...EncodeHandler) (*producer, error) {
 	settings := readProducerSettings(config, name)
 
 	var err error
 	var output Output
 
 	if !settings.Daemon.Enabled {
-		if output, err = NewConfigurableOutput(config, logger, settings.Output); err != nil {
+		if output, err = NewConfigurableOutput(ctx, config, logger, settings.Output); err != nil {
 			return nil, fmt.Errorf("can not create output %s: %w", settings.Output, err)
 		}
 	} else {
 		// the producer daemon will take care of compression for the whole batch, so we don't need to compress individual messages
 		settings.Compression = CompressionNone
-		if output, err = ProvideProducerDaemon(config, logger, name); err != nil {
+		if output, err = ProvideProducerDaemon(ctx, config, logger, name); err != nil {
 			return nil, fmt.Errorf("can not create producer daemon %s: %w", name, err)
 		}
 	}
@@ -65,7 +66,6 @@ func NewProducerWithInterfaces(encoder MessageEncoder, output Output) *producer 
 
 func (p *producer) WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]interface{}) error {
 	msg, err := p.encoder.Encode(ctx, model, attributeSets...)
-
 	if err != nil {
 		return fmt.Errorf("can not encode model into message: %w", err)
 	}
@@ -81,7 +81,6 @@ func (p *producer) WriteOne(ctx context.Context, model interface{}, attributeSet
 
 func (p *producer) Write(ctx context.Context, models interface{}, attributeSets ...map[string]interface{}) error {
 	slice, err := refl.InterfaceToInterfaceSlice(models)
-
 	if err != nil {
 		return fmt.Errorf("can not cast models interface to slice: %w", err)
 	}
@@ -89,7 +88,6 @@ func (p *producer) Write(ctx context.Context, models interface{}, attributeSets 
 	messages := make([]WritableMessage, len(slice))
 	for i, model := range slice {
 		msg, err := p.encoder.Encode(ctx, model, attributeSets...)
-
 		if err != nil {
 			return fmt.Errorf("can not encode model into message: %w", err)
 		}

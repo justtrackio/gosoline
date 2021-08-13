@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/log"
@@ -14,8 +15,8 @@ type configurableKvStoreFixtureWriter struct {
 }
 
 func ConfigurableKvStoreFixtureWriterFactory(name string) FixtureWriterFactory {
-	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
-		store, err := kvstore.ProvideConfigurableKvStore(config, logger, name)
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+		store, err := kvstore.ProvideConfigurableKvStore(ctx, config, logger, name)
 		if err != nil {
 			return nil, fmt.Errorf("can not provide configurable kvstore: %w", err)
 		}
@@ -31,12 +32,12 @@ func NewConfigurableKvStoreFixtureWriterWithInterfaces(logger log.Logger, store 
 	}
 }
 
-func (c *configurableKvStoreFixtureWriter) Purge() error {
+func (c *configurableKvStoreFixtureWriter) Purge(ctx context.Context) error {
 	c.logger.Info("purging configurable kvstore not supported")
 	return nil
 }
 
-func (c *configurableKvStoreFixtureWriter) Write(fs *FixtureSet) error {
+func (c *configurableKvStoreFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
 	if len(fs.Fixtures) == 0 {
 		return nil
 	}
@@ -48,7 +49,7 @@ func (c *configurableKvStoreFixtureWriter) Write(fs *FixtureSet) error {
 		m[kvItem.Key] = kvItem.Value
 	}
 
-	err := c.store.PutBatch(context.Background(), m)
+	err := c.store.PutBatch(ctx, m)
 	if err != nil {
 		return err
 	}

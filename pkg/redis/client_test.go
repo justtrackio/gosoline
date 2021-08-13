@@ -3,6 +3,9 @@ package redis_test
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/alicebob/miniredis"
 	"github.com/applike/gosoline/pkg/exec"
 	logMocks "github.com/applike/gosoline/pkg/log/mocks"
@@ -11,8 +14,6 @@ import (
 	baseRedis "github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"time"
 )
 
 type ClientWithMiniRedisTestSuite struct {
@@ -26,7 +27,6 @@ type ClientWithMiniRedisTestSuite struct {
 
 func (s *ClientWithMiniRedisTestSuite) SetupTest() {
 	server, err := miniredis.Run()
-
 	if err != nil {
 		s.FailNow(err.Error(), "can not start miniredis")
 		return
@@ -51,14 +51,11 @@ func (s *ClientWithMiniRedisTestSuite) TestGetNotFound() {
 	logger.On("WithFields", mock.Anything).Return(logger).Once()
 	logger.On("WithContext", context.Background()).Return(logger).Once()
 	executor := redis.NewBackoffExecutor(logger, exec.BackoffSettings{
-		Enabled:             true,
-		Blocking:            true,
-		CancelDelay:         time.Second,
-		InitialInterval:     time.Millisecond,
-		RandomizationFactor: 1.5,
-		Multiplier:          2,
-		MaxInterval:         time.Second * 3,
-		MaxElapsedTime:      time.Second * 5,
+		CancelDelay:     time.Second,
+		InitialInterval: time.Millisecond,
+		MaxAttempts:     0,
+		MaxInterval:     time.Second * 3,
+		MaxElapsedTime:  0,
 	}, "test")
 	s.client = redis.NewClientWithInterfaces(logger, s.baseClient, executor, s.settings)
 
@@ -197,7 +194,6 @@ func (s *ClientWithMiniRedisTestSuite) TestSCard() {
 	amount, err := s.client.SCard(context.Background(), "key")
 	s.Equal(int64(2), amount)
 	s.NoError(err, "there should be no error on SCard")
-
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestSIsMember() {

@@ -2,6 +2,9 @@ package conc_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/ddb"
@@ -9,8 +12,6 @@ import (
 	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"time"
 )
 
 type DdbLeaderElectionTestCase struct {

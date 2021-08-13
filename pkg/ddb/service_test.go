@@ -1,17 +1,19 @@
 package ddb_test
 
 import (
-	"github.com/applike/gosoline/pkg/cloud/mocks"
+	"context"
+	"testing"
+	"time"
+
+	dynamodbMocks "github.com/applike/gosoline/pkg/cloud/aws/dynamodb/mocks"
 	"github.com/applike/gosoline/pkg/ddb"
 	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
-	"time"
 )
 
 type createModel struct {
@@ -43,186 +45,187 @@ type globalModel1 struct {
 }
 
 func TestService_CreateTable(t *testing.T) {
+	ctx := context.Background()
 	logger := logMocks.NewLoggerMockedAll()
-	client := new(mocks.DynamoDBAPI)
+	client := new(dynamodbMocks.Client)
 
 	describeCount := 0
 	describeInput := &dynamodb.DescribeTableInput{
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
 	}
 	describeOutput := &dynamodb.DescribeTableOutput{
-		Table: &dynamodb.TableDescription{
-			TableStatus: aws.String(dynamodb.TableStatusActive),
+		Table: &types.TableDescription{
+			TableStatus: types.TableStatusActive,
 		},
 	}
-	client.On("DescribeTable", describeInput).Run(func(args mock.Arguments) {
+	client.On("DescribeTable", ctx, describeInput).Run(func(args mock.Arguments) {
 		describeCount++
-	}).Return(func(_ *dynamodb.DescribeTableInput) *dynamodb.DescribeTableOutput {
+	}).Return(func(_ context.Context, _ *dynamodb.DescribeTableInput, _ ...func(options *dynamodb.Options)) *dynamodb.DescribeTableOutput {
 		if describeCount == 0 {
 			return nil
 		}
 
 		return describeOutput
-	}, func(_ *dynamodb.DescribeTableInput) error {
+	}, func(_ context.Context, _ *dynamodb.DescribeTableInput, _ ...func(options *dynamodb.Options)) error {
 		if describeCount == 0 {
-			return awserr.New(dynamodb.ErrCodeResourceNotFoundException, "", nil)
+			return &types.ResourceNotFoundException{}
 		}
 
 		return nil
 	})
 
 	createInput := &dynamodb.CreateTableInput{
-		AttributeDefinitions: []*dynamodb.AttributeDefinition{
+		AttributeDefinitions: []types.AttributeDefinition{
 			{
 				AttributeName: aws.String("body"),
-				AttributeType: aws.String(dynamodb.ScalarAttributeTypeS),
+				AttributeType: types.ScalarAttributeTypeS,
 			},
 			{
 				AttributeName: aws.String("createdAt"),
-				AttributeType: aws.String(dynamodb.ScalarAttributeTypeS),
+				AttributeType: types.ScalarAttributeTypeS,
 			},
 			{
 				AttributeName: aws.String("id"),
-				AttributeType: aws.String(dynamodb.ScalarAttributeTypeN),
+				AttributeType: types.ScalarAttributeTypeN,
 			},
 			{
 				AttributeName: aws.String("name"),
-				AttributeType: aws.String(dynamodb.ScalarAttributeTypeS),
+				AttributeType: types.ScalarAttributeTypeS,
 			},
 			{
 				AttributeName: aws.String("rev"),
-				AttributeType: aws.String(dynamodb.ScalarAttributeTypeS),
+				AttributeType: types.ScalarAttributeTypeS,
 			},
 			{
 				AttributeName: aws.String("updatedAt"),
-				AttributeType: aws.String(dynamodb.ScalarAttributeTypeS),
+				AttributeType: types.ScalarAttributeTypeS,
 			},
 		},
-		GlobalSecondaryIndexes: []*dynamodb.GlobalSecondaryIndex{
+		GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
 			{
 				IndexName: aws.String("foo-index"),
-				KeySchema: []*dynamodb.KeySchemaElement{
+				KeySchema: []types.KeySchemaElement{
 					{
 						AttributeName: aws.String("rev"),
-						KeyType:       aws.String(dynamodb.KeyTypeHash),
+						KeyType:       types.KeyTypeHash,
 					}, {
 						AttributeName: aws.String("createdAt"),
-						KeyType:       aws.String(dynamodb.KeyTypeRange),
+						KeyType:       types.KeyTypeRange,
 					},
 				},
-				Projection: &dynamodb.Projection{
-					NonKeyAttributes: []*string{aws.String("header")},
-					ProjectionType:   aws.String(dynamodb.ProjectionTypeInclude),
+				Projection: &types.Projection{
+					NonKeyAttributes: []string{"header"},
+					ProjectionType:   types.ProjectionTypeInclude,
 				},
-				ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+				ProvisionedThroughput: &types.ProvisionedThroughput{
 					ReadCapacityUnits:  aws.Int64(7),
 					WriteCapacityUnits: aws.Int64(8),
 				},
 			},
 			{
 				IndexName: aws.String("global-name"),
-				KeySchema: []*dynamodb.KeySchemaElement{
+				KeySchema: []types.KeySchemaElement{
 					{
 						AttributeName: aws.String("name"),
-						KeyType:       aws.String(dynamodb.KeyTypeHash),
+						KeyType:       types.KeyTypeHash,
 					}, {
 						AttributeName: aws.String("updatedAt"),
-						KeyType:       aws.String(dynamodb.KeyTypeRange),
+						KeyType:       types.KeyTypeRange,
 					},
 				},
-				Projection: &dynamodb.Projection{
+				Projection: &types.Projection{
 					NonKeyAttributes: nil,
-					ProjectionType:   aws.String(dynamodb.ProjectionTypeAll),
+					ProjectionType:   types.ProjectionTypeAll,
 				},
-				ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+				ProvisionedThroughput: &types.ProvisionedThroughput{
 					ReadCapacityUnits:  aws.Int64(4),
 					WriteCapacityUnits: aws.Int64(5),
 				},
 			},
 		},
-		KeySchema: []*dynamodb.KeySchemaElement{
+		KeySchema: []types.KeySchemaElement{
 			{
 				AttributeName: aws.String("id"),
-				KeyType:       aws.String(dynamodb.KeyTypeHash),
+				KeyType:       types.KeyTypeHash,
 			}, {
 				AttributeName: aws.String("rev"),
-				KeyType:       aws.String(dynamodb.KeyTypeRange),
+				KeyType:       types.KeyTypeRange,
 			},
 		},
-		LocalSecondaryIndexes: []*dynamodb.LocalSecondaryIndex{
+		LocalSecondaryIndexes: []types.LocalSecondaryIndex{
 			{
 				IndexName: aws.String("local-body"),
-				KeySchema: []*dynamodb.KeySchemaElement{
+				KeySchema: []types.KeySchemaElement{
 					{
 						AttributeName: aws.String("id"),
-						KeyType:       aws.String(dynamodb.KeyTypeHash),
+						KeyType:       types.KeyTypeHash,
 					}, {
 						AttributeName: aws.String("body"),
-						KeyType:       aws.String(dynamodb.KeyTypeRange),
+						KeyType:       types.KeyTypeRange,
 					},
 				},
-				Projection: &dynamodb.Projection{
+				Projection: &types.Projection{
 					NonKeyAttributes: nil,
-					ProjectionType:   aws.String(dynamodb.ProjectionTypeKeysOnly),
+					ProjectionType:   types.ProjectionTypeKeysOnly,
 				},
 			},
 			{
 				IndexName: aws.String("local-createdAt"),
-				KeySchema: []*dynamodb.KeySchemaElement{
+				KeySchema: []types.KeySchemaElement{
 					{
 						AttributeName: aws.String("id"),
-						KeyType:       aws.String(dynamodb.KeyTypeHash),
+						KeyType:       types.KeyTypeHash,
 					}, {
 						AttributeName: aws.String("createdAt"),
-						KeyType:       aws.String(dynamodb.KeyTypeRange),
+						KeyType:       types.KeyTypeRange,
 					},
 				},
-				Projection: &dynamodb.Projection{
+				Projection: &types.Projection{
 					NonKeyAttributes: nil,
-					ProjectionType:   aws.String(dynamodb.ProjectionTypeAll),
+					ProjectionType:   types.ProjectionTypeAll,
 				},
 			},
 			{
 				IndexName: aws.String("local-updatedAt"),
-				KeySchema: []*dynamodb.KeySchemaElement{
+				KeySchema: []types.KeySchemaElement{
 					{
 						AttributeName: aws.String("id"),
-						KeyType:       aws.String(dynamodb.KeyTypeHash),
+						KeyType:       types.KeyTypeHash,
 					}, {
 						AttributeName: aws.String("updatedAt"),
-						KeyType:       aws.String(dynamodb.KeyTypeRange),
+						KeyType:       types.KeyTypeRange,
 					},
 				},
-				Projection: &dynamodb.Projection{
-					NonKeyAttributes: []*string{aws.String("name")},
-					ProjectionType:   aws.String(dynamodb.ProjectionTypeInclude),
+				Projection: &types.Projection{
+					NonKeyAttributes: []string{"name"},
+					ProjectionType:   types.ProjectionTypeInclude,
 				},
 			},
 		},
-		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+		ProvisionedThroughput: &types.ProvisionedThroughput{
 			ReadCapacityUnits:  aws.Int64(1),
 			WriteCapacityUnits: aws.Int64(2),
 		},
-		StreamSpecification: &dynamodb.StreamSpecification{
+		StreamSpecification: &types.StreamSpecification{
 			StreamEnabled:  aws.Bool(true),
-			StreamViewType: aws.String(dynamodb.StreamViewTypeNewImage),
+			StreamViewType: types.StreamViewTypeNewImage,
 		},
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
 	}
-	client.On("CreateTable", createInput).Return(nil, nil)
+	client.On("CreateTable", ctx, createInput).Return(nil, nil)
 
 	ttlInput := &dynamodb.UpdateTimeToLiveInput{
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
-		TimeToLiveSpecification: &dynamodb.TimeToLiveSpecification{
+		TimeToLiveSpecification: &types.TimeToLiveSpecification{
 			AttributeName: aws.String("ttl"),
 			Enabled:       aws.Bool(true),
 		},
 	}
-	client.On("UpdateTimeToLive", ttlInput).Return(nil, nil)
+	client.On("UpdateTimeToLive", ctx, ttlInput).Return(nil, nil)
 
 	svc := ddb.NewServiceWithInterfaces(logger, client)
 
-	_, err := svc.CreateTable(&ddb.Settings{
+	_, err := svc.CreateTable(ctx, &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     "applike",
 			Environment: "test",

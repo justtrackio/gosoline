@@ -3,9 +3,10 @@ package ddb
 import (
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 //go:generate mockery --name UpdateItemBuilder
@@ -33,7 +34,7 @@ type updateItemBuilder struct {
 	keyBuilder    keyBuilder
 	condition     *expression.ConditionBuilder
 	updateBuilder *expression.UpdateBuilder
-	returnType    *string
+	returnType    types.ReturnValue
 }
 
 func NewUpdateItemBuilder(metadata *Metadata) UpdateItemBuilder {
@@ -110,27 +111,27 @@ func (b *updateItemBuilder) RemoveMultiple(paths ...string) UpdateItemBuilder {
 }
 
 func (b *updateItemBuilder) ReturnNone() UpdateItemBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueNone)
+	b.returnType = types.ReturnValueNone
 	return b
 }
 
 func (b *updateItemBuilder) ReturnAllOld() UpdateItemBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueAllOld)
+	b.returnType = types.ReturnValueAllOld
 	return b
 }
 
 func (b *updateItemBuilder) ReturnUpdatedOld() UpdateItemBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueUpdatedOld)
+	b.returnType = types.ReturnValueUpdatedOld
 	return b
 }
 
 func (b *updateItemBuilder) ReturnAllNew() UpdateItemBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueAllNew)
+	b.returnType = types.ReturnValueAllNew
 	return b
 }
 
 func (b *updateItemBuilder) ReturnUpdatedNew() UpdateItemBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueUpdatedNew)
+	b.returnType = types.ReturnValueUpdatedNew
 	return b
 }
 
@@ -140,7 +141,7 @@ func (b *updateItemBuilder) Build(item interface{}) (*dynamodb.UpdateItemInput, 
 		return nil, err
 	}
 
-	if b.returnType != nil && *b.returnType != dynamodb.ReturnValueNone && !isPointer(item) {
+	if b.returnType != "" && b.returnType != types.ReturnValueNone && !isPointer(item) {
 		return nil, fmt.Errorf("value for returning the updated item is not a pointer")
 	}
 

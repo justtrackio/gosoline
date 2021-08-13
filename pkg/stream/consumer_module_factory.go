@@ -1,7 +1,9 @@
 package stream
 
 import (
+	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
@@ -10,7 +12,7 @@ import (
 type ConsumerCallbackMap map[string]ConsumerCallbackFactory
 
 func NewConsumerFactory(callbacks ConsumerCallbackMap) kernel.MultiModuleFactory {
-	return func(config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 		return ConsumerFactory(callbacks)
 	}
 }
