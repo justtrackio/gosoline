@@ -1,9 +1,8 @@
 package ddb
 
 import (
-	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/mdl"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 const defaultMaxWaitSeconds = 60
@@ -13,8 +12,7 @@ type Settings struct {
 	NamingStrategy NamingFactory
 	AutoCreate     bool
 	DisableTracing bool
-	Client         cloud.ClientSettings
-	Backoff        exec.BackoffSettings
+	ClientName     string
 	Main           MainSettings
 	Local          []LocalSettings
 	Global         []GlobalSettings
@@ -22,7 +20,7 @@ type Settings struct {
 
 type MainSettings struct {
 	Model              interface{}
-	StreamView         string
+	StreamView         types.StreamViewType
 	ReadCapacityUnits  int64
 	WriteCapacityUnits int64
 }

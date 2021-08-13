@@ -3,13 +3,13 @@ package conc
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"time"
 )
 
 type DdbLeaderElectionItem struct {
@@ -31,32 +31,22 @@ type DdbLeaderElection struct {
 	settings   *DdbLeaderElectionSettings
 }
 
-func NewDdbLeaderElection(config cfg.Config, logger log.Logger, name string) (LeaderElection, error) {
+func NewDdbLeaderElection(ctx context.Context, config cfg.Config, logger log.Logger, name string) (LeaderElection, error) {
 	key := GetLeaderElectionConfigKey(name)
 	settings := &DdbLeaderElectionSettings{}
 	config.UnmarshalKey(key, settings)
 
-	return NewDdbLeaderElectionWithSettings(config, logger, settings)
+	return NewDdbLeaderElectionWithSettings(ctx, config, logger, settings)
 }
 
-func NewDdbLeaderElectionWithSettings(config cfg.Config, logger log.Logger, settings *DdbLeaderElectionSettings) (LeaderElection, error) {
+func NewDdbLeaderElectionWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, settings *DdbLeaderElectionSettings) (LeaderElection, error) {
 	namingFactory := func(_ mdl.ModelId) string {
 		return settings.TableName
 	}
 
-	repository, err := ddb.NewRepository(config, logger, &ddb.Settings{
+	repository, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
 		ModelId:        mdl.ModelId{},
 		NamingStrategy: namingFactory,
-		Backoff: exec.BackoffSettings{
-			Enabled:             true,
-			Blocking:            false,
-			CancelDelay:         0,
-			InitialInterval:     time.Second,
-			RandomizationFactor: 0.5,
-			Multiplier:          1.5,
-			MaxInterval:         time.Second * 10,
-			MaxElapsedTime:      time.Minute,
-		},
 		DisableTracing: true,
 		Main: ddb.MainSettings{
 			Model:              DdbLeaderElectionItem{},
@@ -123,7 +113,6 @@ func (e *DdbLeaderElection) Resign(ctx context.Context, memberId string) error {
 	res, err := e.repository.DeleteItem(ctx, qb, DdbLeaderElectionItem{
 		GroupId: e.settings.GroupId,
 	})
-
 	if err != nil {
 		return fmt.Errorf("can not resign as current leader: %w", err)
 	}

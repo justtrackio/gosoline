@@ -1,11 +1,11 @@
 package ddb
 
-import "github.com/aws/aws-sdk-go/aws"
+import "github.com/aws/aws-sdk-go-v2/aws"
 
 type pageIterator struct {
-	limit *int64
-	size  *int64
-	count *int64
+	limit *int32
+	size  *int32
+	count *int32
 }
 
 func (p *pageIterator) isDone() bool {
@@ -16,8 +16,8 @@ func (p *pageIterator) isDone() bool {
 	return *p.limit == *p.count
 }
 
-func (p *pageIterator) advance(count *int64) *int64 {
-	p.count = aws.Int64(*p.count + *count)
+func (p *pageIterator) advance(count *int32) *int32 {
+	p.count = aws.Int32(*p.count + *count)
 
 	if p.limit == nil && p.size == nil {
 		return nil
@@ -34,22 +34,22 @@ func (p *pageIterator) advance(count *int64) *int64 {
 		nextPageSize = remainingCount
 	}
 
-	return aws.Int64(nextPageSize)
+	return aws.Int32(nextPageSize)
 }
 
-func buildPageIterator(limit *int64, size *int64) *pageIterator {
+func buildPageIterator(limit *int32, size *int32) *pageIterator {
 	if limit != nil && size == nil {
-		size = aws.Int64(*limit)
+		size = aws.Int32(*limit)
 	}
 
 	if limit != nil && *size > *limit {
-		size = aws.Int64(*limit)
+		size = limit
 	}
 
 	progress := &pageIterator{
 		limit: limit,
 		size:  size,
-		count: aws.Int64(0),
+		count: aws.Int32(0),
 	}
 
 	return progress

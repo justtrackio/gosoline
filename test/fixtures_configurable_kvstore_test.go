@@ -5,12 +5,13 @@ package test_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type ConfigurableKvStoreTestModel struct {
@@ -20,12 +21,15 @@ type ConfigurableKvStoreTestModel struct {
 
 type FixturesConfigurableKvStoreSuite struct {
 	suite.Suite
+	ctx    context.Context
 	store  kvstore.KvStore
 	logger log.Logger
 }
 
 func (s *FixturesConfigurableKvStoreSuite) SetupSuite() {
 	setup(s.T())
+
+	s.ctx = context.Background()
 	s.logger = log.NewCliLogger()
 	configPath := "test_configs/config.configurable_kvstore.test.yml"
 
@@ -35,7 +39,7 @@ func (s *FixturesConfigurableKvStoreSuite) SetupSuite() {
 	)
 
 	var err error
-	s.store, err = kvstore.ProvideConfigurableKvStore(config, s.logger, "test_store")
+	s.store, err = kvstore.ProvideConfigurableKvStore(s.ctx, config, s.logger, "test_store")
 	s.NoError(err)
 }
 
@@ -54,9 +58,9 @@ func (s FixturesConfigurableKvStoreSuite) TestConfigurableKvStore() {
 	)
 	s.NoError(err)
 
-	loader := fixtures.NewFixtureLoader(config, s.logger)
+	loader := fixtures.NewFixtureLoader(s.ctx, config, s.logger)
 
-	err = loader.Load(configurableKvStoreFixtures())
+	err = loader.Load(s.ctx, configurableKvStoreFixtures())
 	s.NoError(err)
 
 	var res ConfigurableKvStoreTestModel

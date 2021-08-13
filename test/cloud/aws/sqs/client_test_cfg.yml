@@ -1,0 +1,13 @@
+cloud:
+  aws:
+    credentials:
+      access_key_id: AKID
+      secret_access_key: SECRET_KEY
+      session_token: TOKEN
+    sqs:
+      autoCreate: true
+
+test:
+  components:
+    - name: localstack
+      type: localstack

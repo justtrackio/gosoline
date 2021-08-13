@@ -4,7 +4,11 @@
 package test_test
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/fixtures"
 	"github.com/applike/gosoline/pkg/log"
@@ -13,8 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"io/ioutil"
-	"testing"
 )
 
 const (
@@ -25,6 +27,7 @@ const (
 
 type FixturesS3Suite struct {
 	suite.Suite
+	ctx        context.Context
 	logger     log.Logger
 	client     s3iface.S3API
 	loader     fixtures.FixtureLoader
@@ -32,6 +35,8 @@ type FixturesS3Suite struct {
 }
 
 func (s *FixturesS3Suite) SetupSuite() []suite.Option {
+	s.ctx = context.Background()
+
 	return []suite.Option{
 		suite.WithConfigFile("test_configs/config.fixtures_s3.test.yml"),
 		suite.WithEnvSetup(func() error {
@@ -44,7 +49,7 @@ func (s *FixturesS3Suite) SetupSuite() []suite.Option {
 }
 
 func (s *FixturesS3Suite) SetupTest() error {
-	s.loader = fixtures.NewFixtureLoader(s.Env().Config(), s.logger)
+	s.loader = fixtures.NewFixtureLoader(s.ctx, s.Env().Config(), s.logger)
 	s.client = blob.ProvideS3Client(s.Env().Config())
 
 	return nil
@@ -57,7 +62,7 @@ func TestFixturesS3Suite(t *testing.T) {
 
 func (s *FixturesS3Suite) TestS3(app suite.AppUnderTest) {
 	fs := s3DisabledPurgeFixtures()
-	err := s.loader.Load(fs)
+	err := s.loader.Load(s.ctx, fs)
 	s.NoError(err)
 
 	input := &s3.GetObjectInput{
@@ -99,7 +104,7 @@ func (s *FixturesS3Suite) TestS3(app suite.AppUnderTest) {
 
 func (s *FixturesS3Suite) TestS3WithPurge(app suite.AppUnderTest) {
 	fs := s3DisabledPurgeFixtures()
-	err := s.loader.Load(fs)
+	err := s.loader.Load(s.ctx, fs)
 	s.NoError(err)
 
 	input := &s3.GetObjectInput{
@@ -115,7 +120,7 @@ func (s *FixturesS3Suite) TestS3WithPurge(app suite.AppUnderTest) {
 	s.Equal(28092, len(body))
 
 	fs = s3EnabledPurgeFixtures()
-	err = s.loader.Load(fs)
+	err = s.loader.Load(s.ctx, fs)
 	s.NoError(err)
 
 	input = &s3.GetObjectInput{

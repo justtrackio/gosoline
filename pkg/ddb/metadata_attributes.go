@@ -1,12 +1,16 @@
 package ddb
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+)
 
 type Attribute struct {
 	FieldName     string
 	AttributeName string
 	Tags          map[string]string
-	Type          string
+	Type          types.ScalarAttributeType
 }
 
 func (d *Attribute) HasTag(key string, value string) bool {

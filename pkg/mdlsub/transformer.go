@@ -29,13 +29,13 @@ type ModelTransformer interface {
 
 type (
 	ModelTransformers                  map[string]VersionedModelTransformers
-	TransformerFactory                 func(config cfg.Config, logger log.Logger) (ModelTransformer, error)
+	TransformerFactory                 func(ctx context.Context, config cfg.Config, logger log.Logger) (ModelTransformer, error)
 	TransformerMapTypeVersionFactories map[string]TransformerMapVersionFactories
 	TransformerMapVersionFactories     map[int]TransformerFactory
 	VersionedModelTransformers         map[int]ModelTransformer
 )
 
-func initTransformers(config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformerFactories TransformerMapTypeVersionFactories) (ModelTransformers, error) {
+func initTransformers(ctx context.Context, config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformerFactories TransformerMapTypeVersionFactories) (ModelTransformers, error) {
 	var err error
 	transformers := make(ModelTransformers)
 
@@ -51,7 +51,7 @@ func initTransformers(config cfg.Config, logger log.Logger, subscriberSettings m
 		transformers[modelId] = make(map[int]ModelTransformer)
 
 		for version, factory := range versionedFactories {
-			if transformers[modelId][version], err = factory(config, logger); err != nil {
+			if transformers[modelId][version], err = factory(ctx, config, logger); err != nil {
 				return nil, fmt.Errorf("can not create transformer for modelId %s in version %d: %w", modelId, version, err)
 			}
 		}
@@ -60,8 +60,8 @@ func initTransformers(config cfg.Config, logger log.Logger, subscriberSettings m
 	return transformers, nil
 }
 
-func NewGenericTransformer(transformer ModelTransformer) func(cfg.Config, log.Logger) (ModelTransformer, error) {
-	return func(_ cfg.Config, _ log.Logger) (ModelTransformer, error) {
+func NewGenericTransformer(transformer ModelTransformer) func(context.Context, cfg.Config, log.Logger) (ModelTransformer, error) {
+	return func(_ context.Context, _ cfg.Config, _ log.Logger) (ModelTransformer, error) {
 		return transformer, nil
 	}
 }

@@ -3,10 +3,11 @@ package fixtures
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/redis"
-	"time"
 )
 
 const (
@@ -20,14 +21,14 @@ type RedisFixture struct {
 	Expiry time.Duration
 }
 
-type redisOpHandler func(client redis.Client, fixture *RedisFixture) error
+type redisOpHandler func(ctx context.Context, client redis.Client, fixture *RedisFixture) error
 
 var redisHandlers = map[string]redisOpHandler{
-	RedisOpSet: func(client redis.Client, fixture *RedisFixture) error {
-		return client.Set(context.Background(), fixture.Key, fixture.Value, fixture.Expiry)
+	RedisOpSet: func(ctx context.Context, client redis.Client, fixture *RedisFixture) error {
+		return client.Set(ctx, fixture.Key, fixture.Value, fixture.Expiry)
 	},
-	RedisOpRpush: func(client redis.Client, fixture *RedisFixture) error {
-		_, err := client.RPush(context.Background(), fixture.Key, fixture.Value.([]interface{})...)
+	RedisOpRpush: func(ctx context.Context, client redis.Client, fixture *RedisFixture) error {
+		_, err := client.RPush(ctx, fixture.Key, fixture.Value.([]interface{})...)
 
 		return err
 	},
@@ -41,7 +42,7 @@ type redisFixtureWriter struct {
 }
 
 func RedisFixtureWriterFactory(name *string, operation *string) FixtureWriterFactory {
-	return func(config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		client, err := redis.ProvideClient(config, logger, *name)
 		if err != nil {
 			return nil, fmt.Errorf("can not create redis client: %w", err)
@@ -65,11 +66,11 @@ func NewRedisFixtureWriterWithInterfaces(logger log.Logger, client redis.Client,
 	}
 }
 
-func (d *redisFixtureWriter) Purge() error {
-	return d.purger.purge()
+func (d *redisFixtureWriter) Purge(ctx context.Context) error {
+	return d.purger.purge(ctx)
 }
 
-func (d *redisFixtureWriter) Write(fs *FixtureSet) error {
+func (d *redisFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
 		redisFixture := item.(*RedisFixture)
 
@@ -79,8 +80,7 @@ func (d *redisFixtureWriter) Write(fs *FixtureSet) error {
 			return fmt.Errorf("no handler for operation: %s", d.operation)
 		}
 
-		err := handler(d.client, redisFixture)
-
+		err := handler(ctx, d.client, redisFixture)
 		if err != nil {
 			return err
 		}

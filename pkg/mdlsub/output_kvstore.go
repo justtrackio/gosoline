@@ -3,6 +3,7 @@ package mdlsub
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/log"
@@ -16,12 +17,12 @@ func init() {
 	outputFactories[OutputTypeKvstore] = outputKvstoreFactory
 }
 
-func outputKvstoreFactory(config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
+func outputKvstoreFactory(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
 	var err error
-	var outputs = make(map[int]Output)
+	outputs := make(map[int]Output)
 
 	for version := range transformers {
-		if outputs[version], err = NewOutputKvstore(config, logger, settings); err != nil {
+		if outputs[version], err = NewOutputKvstore(ctx, config, logger, settings); err != nil {
 			return nil, fmt.Errorf("can not create output: %w", err)
 		}
 	}
@@ -34,8 +35,8 @@ type OutputKvstore struct {
 	store  kvstore.KvStore
 }
 
-func NewOutputKvstore(config cfg.Config, logger log.Logger, settings *SubscriberSettings) (*OutputKvstore, error) {
-	store, err := kvstore.NewConfigurableKvStore(config, logger, settings.TargetModel.Name)
+func NewOutputKvstore(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings) (*OutputKvstore, error) {
+	store, err := kvstore.NewConfigurableKvStore(ctx, config, logger, settings.TargetModel.Name)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kvStore: %w", err)
 	}

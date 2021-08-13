@@ -1,0 +1,21 @@
+exec:
+  backoff:
+    type: default
+
+ddb:
+  backoff:
+    type: once
+
+cloud:
+  aws:
+    backoff:
+      type: infinite
+
+cloud2:
+  aws:
+    backoff:
+      cancel_delay: 1s
+      initial_interval: 2s
+      max_attempts: 3
+      max_elapsed_time: 4m
+      max_interval: 5s

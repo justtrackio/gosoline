@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/applike/gosoline/pkg/clock"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -50,8 +50,8 @@ type queryBuilder struct {
 	hashExprBuilder  keyExprBuilder
 	rangeExprBuilder keyExprBuilder
 	projection       interface{}
-	limit            *int64
-	pageSize         *int64
+	limit            *int32
+	pageSize         *int32
 	scanIndexForward *bool
 	consistentRead   *bool
 }
@@ -161,13 +161,13 @@ func (b *queryBuilder) WithProjection(projection interface{}) QueryBuilder {
 }
 
 func (b *queryBuilder) WithLimit(limit int) QueryBuilder {
-	b.limit = aws.Int64(int64(limit))
+	b.limit = aws.Int32(int32(limit))
 
 	return b
 }
 
 func (b *queryBuilder) WithPageSize(size int) QueryBuilder {
-	b.pageSize = aws.Int64(int64(size))
+	b.pageSize = aws.Int32(int32(size))
 
 	return b
 }

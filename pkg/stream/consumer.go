@@ -41,7 +41,7 @@ func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(ctx 
 
 		contextEnforcingLogger.Enable()
 
-		baseConsumer, err := NewBaseConsumer(config, logger, name, callback)
+		baseConsumer, err := NewBaseConsumer(ctx, config, logger, name, callback)
 		if err != nil {
 			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
 		}

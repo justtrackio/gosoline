@@ -3,6 +3,7 @@ package mdlsub
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/log"
@@ -17,9 +18,9 @@ func init() {
 	outputFactories[OutputTypeDb] = outputDbFactory
 }
 
-func outputDbFactory(config cfg.Config, logger log.Logger, settings *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
+func outputDbFactory(_ context.Context, config cfg.Config, logger log.Logger, _ *SubscriberSettings, transformers VersionedModelTransformers) (map[int]Output, error) {
 	var err error
-	var outputs = make(map[int]Output)
+	outputs := make(map[int]Output)
 
 	for version := range transformers {
 		if outputs[version], err = NewOutputDb(config, logger); err != nil {
@@ -47,7 +48,7 @@ func NewOutputDb(config cfg.Config, logger log.Logger) (*OutputDb, error) {
 	}, nil
 }
 
-func (p *OutputDb) Persist(ctx context.Context, model Model, op string) error {
+func (p *OutputDb) Persist(_ context.Context, model Model, op string) error {
 	var err error
 
 	switch op {

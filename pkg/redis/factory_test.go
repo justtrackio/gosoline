@@ -1,12 +1,13 @@
 package redis_test
 
 import (
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/redis"
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"time"
 )
 
 type FactoryTestSuite struct {
@@ -47,14 +48,10 @@ func (s *FactoryTestSuite) TestDefault() {
 		Dialer:  "tcp",
 		Address: "127.0.0.1:6379",
 		BackoffSettings: exec.BackoffSettings{
-			Enabled:             false,
-			Blocking:            false,
-			CancelDelay:         time.Second,
-			InitialInterval:     50 * time.Millisecond,
-			RandomizationFactor: 0.5,
-			Multiplier:          1.5,
-			MaxInterval:         time.Second * 10,
-			MaxElapsedTime:      time.Minute * 15,
+			InitialInterval: 50 * time.Millisecond,
+			MaxAttempts:     10,
+			MaxInterval:     time.Second * 10,
+			MaxElapsedTime:  time.Minute * 10,
 		},
 	}
 
@@ -87,14 +84,10 @@ func (s *FactoryTestSuite) TestDedicated() {
 		Dialer:  "srv",
 		Address: "dedicated.address",
 		BackoffSettings: exec.BackoffSettings{
-			Enabled:             false,
-			Blocking:            false,
-			CancelDelay:         time.Second,
-			InitialInterval:     50 * time.Millisecond,
-			RandomizationFactor: 0.5,
-			Multiplier:          1.5,
-			MaxInterval:         time.Second * 10,
-			MaxElapsedTime:      time.Minute,
+			InitialInterval: 50 * time.Millisecond,
+			MaxAttempts:     10,
+			MaxInterval:     time.Second * 10,
+			MaxElapsedTime:  time.Minute,
 		},
 	}
 
@@ -129,14 +122,10 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 		Dialer:  "srv",
 		Address: "partial.address",
 		BackoffSettings: exec.BackoffSettings{
-			Enabled:             false,
-			Blocking:            false,
-			CancelDelay:         time.Second,
-			InitialInterval:     50 * time.Millisecond,
-			RandomizationFactor: 0.5,
-			Multiplier:          1.5,
-			MaxInterval:         time.Second * 10,
-			MaxElapsedTime:      time.Minute,
+			InitialInterval: 50 * time.Millisecond,
+			MaxAttempts:     10,
+			MaxInterval:     time.Second * 10,
+			MaxElapsedTime:  time.Minute,
 		},
 	}
 

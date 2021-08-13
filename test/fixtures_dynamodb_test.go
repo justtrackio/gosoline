@@ -4,7 +4,10 @@
 package test_test
 
 import (
+	"context"
 	"fmt"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/fixtures"
@@ -14,11 +17,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type FixturesDynamoDbSuite struct {
 	suite.Suite
+	ctx    context.Context
 	logger log.Logger
 	db     *dynamodb.DynamoDB
 	mocks  *test.Mocks
@@ -27,13 +30,13 @@ type FixturesDynamoDbSuite struct {
 func (s *FixturesDynamoDbSuite) SetupSuite() {
 	setup(s.T())
 	mocks, err := test.Boot("test_configs/config.dynamodb.test.yml")
-
 	if err != nil {
 		s.Fail("failed to boot mocks: %s", err.Error())
 
 		return
 	}
 
+	s.ctx = context.Background()
 	s.mocks = mocks
 	s.db = s.mocks.ProvideDynamoDbClient("dynamodb")
 	s.logger = log.NewCliLogger()
@@ -57,9 +60,9 @@ func (s FixturesDynamoDbSuite) TestDynamoDb() {
 
 	s.NoError(err)
 
-	loader := fixtures.NewFixtureLoader(config, s.logger)
+	loader := fixtures.NewFixtureLoader(s.ctx, config, s.logger)
 
-	err = loader.Load(dynamoDbDisabledPurgeFixtures())
+	err = loader.Load(s.ctx, dynamoDbDisabledPurgeFixtures())
 	s.NoError(err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
@@ -103,9 +106,9 @@ func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 
 	s.NoError(err)
 
-	loader := fixtures.NewFixtureLoader(config, s.logger)
+	loader := fixtures.NewFixtureLoader(s.ctx, config, s.logger)
 
-	err = loader.Load(dynamoDbDisabledPurgeFixtures())
+	err = loader.Load(s.ctx, dynamoDbDisabledPurgeFixtures())
 	s.NoError(err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
@@ -123,7 +126,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDbWithPurge() {
 	s.Equal("Ash", *(gio.Item["Name"].S))
 	s.Equal("10", *(gio.Item["Age"].N))
 
-	err = loader.Load(dynamoDbEnabledPurgeFixtures())
+	err = loader.Load(s.ctx, dynamoDbEnabledPurgeFixtures())
 	s.NoError(err)
 
 	gio, err = s.db.GetItem(&dynamodb.GetItemInput{
@@ -180,9 +183,9 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStore() {
 
 	s.NoError(err)
 
-	loader := fixtures.NewFixtureLoader(config, s.logger)
+	loader := fixtures.NewFixtureLoader(s.ctx, config, s.logger)
 
-	err = loader.Load(dynamoDbKvStoreDisabledPurgeFixtures())
+	err = loader.Load(s.ctx, dynamoDbKvStoreDisabledPurgeFixtures())
 	s.NoError(err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
@@ -211,9 +214,9 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 
 	s.NoError(err)
 
-	loader := fixtures.NewFixtureLoader(config, s.logger)
+	loader := fixtures.NewFixtureLoader(s.ctx, config, s.logger)
 
-	err = loader.Load(dynamoDbKvStoreDisabledPurgeFixtures())
+	err = loader.Load(s.ctx, dynamoDbKvStoreDisabledPurgeFixtures())
 	s.NoError(err)
 
 	gio, err := s.db.GetItem(&dynamodb.GetItemInput{
@@ -230,7 +233,7 @@ func (s FixturesDynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 	s.Len(gio.Item, 2, "2 attributes expected")
 	s.JSONEq(`{"Name":"Ash","Age":10}`, *(gio.Item["value"].S))
 
-	err = loader.Load(dynamoDbKvStoreEnabledPurgeFixtures())
+	err = loader.Load(s.ctx, dynamoDbKvStoreEnabledPurgeFixtures())
 	s.NoError(err)
 
 	gio, err = s.db.GetItem(&dynamodb.GetItemInput{
@@ -374,6 +377,6 @@ func dynamoDbEnabledPurgeFixtures() []*fixtures.FixtureSet {
 func (s FixturesDynamoDbSuite) dynamoDbConfig() map[string]interface{} {
 	dynamoDbEndpoint := fmt.Sprintf("http://%s:%d", s.mocks.ProvideDynamoDbHost("dynamodb"), s.mocks.ProvideDynamoDbPort("dynamodb"))
 	return map[string]interface{}{
-		"aws_dynamoDb_endpoint": dynamoDbEndpoint,
+		"cloud.aws.dynamodb.clients.default.endpoint": dynamoDbEndpoint,
 	}
 }

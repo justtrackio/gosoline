@@ -4,20 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
-	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
+	"testing"
+
+	dynamodbMocks "github.com/applike/gosoline/pkg/cloud/aws/dynamodb/mocks"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/exec"
 	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/suite"
-	"strconv"
-	"testing"
 )
 
 type model struct {
@@ -32,18 +31,20 @@ type projection struct {
 
 type RepositoryTestSuite struct {
 	suite.Suite
-	executor *gosoAws.TestableExecutor
-	repo     ddb.Repository
+	ctx    context.Context
+	client *dynamodbMocks.Client
+	repo   ddb.Repository
 }
 
 func (s *RepositoryTestSuite) SetupTest() {
 	logger := logMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
-	client := new(cloudMocks.DynamoDBAPI)
-	s.executor = gosoAws.NewTestableExecutor(&client.Mock)
+
+	s.ctx = context.Background()
+	s.client = new(dynamodbMocks.Client)
 
 	var err error
-	s.repo, err = ddb.NewWithInterfaces(logger, tracer, client, s.executor, &ddb.Settings{
+	s.repo, err = ddb.NewWithInterfaces(logger, tracer, s.client, &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     "applike",
 			Environment: "test",
@@ -61,35 +62,25 @@ func (s *RepositoryTestSuite) SetupTest() {
 func (s *RepositoryTestSuite) TestGetItem() {
 	item := model{}
 	input := &dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String("1"),
-			},
-			"rev": {
-				S: aws.String("0"),
-			},
+		Key: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "1"},
+			"rev": &types.AttributeValueMemberS{Value: "0"},
 		},
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
 	}
 	output := &dynamodb.GetItemOutput{
-		ConsumedCapacity: nil,
-		Item: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String(strconv.Itoa(1)),
-			},
-			"rev": {
-				S: aws.String("0"),
-			},
-			"foo": {
-				S: aws.String("bar"),
-			},
+		ConsumedCapacity: &types.ConsumedCapacity{},
+		Item: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "1"},
+			"rev": &types.AttributeValueMemberS{Value: "0"},
+			"foo": &types.AttributeValueMemberS{Value: "bar"},
 		},
 	}
 
-	s.executor.ExpectExecution("GetItemRequest", input, output, nil)
+	s.client.On("GetItem", s.ctx, input).Return(output, nil)
 
 	qb := s.repo.GetItemBuilder().WithHash(1).WithRange("0")
-	res, err := s.repo.GetItem(context.Background(), qb, &item)
+	res, err := s.repo.GetItem(s.ctx, qb, &item)
 
 	expected := model{
 		Id:  1,
@@ -101,37 +92,27 @@ func (s *RepositoryTestSuite) TestGetItem() {
 	s.True(res.IsFound)
 	s.EqualValues(expected, item)
 
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestGetItem_FromItem() {
 	input := &dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String("5"),
-			},
-			"rev": {
-				S: aws.String("abc"),
-			},
+		Key: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "5"},
+			"rev": &types.AttributeValueMemberS{Value: "abc"},
 		},
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
 	}
 	output := &dynamodb.GetItemOutput{
-		ConsumedCapacity: nil,
-		Item: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String("5"),
-			},
-			"rev": {
-				S: aws.String("abc"),
-			},
-			"foo": {
-				S: aws.String("baz"),
-			},
+		ConsumedCapacity: &types.ConsumedCapacity{},
+		Item: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "5"},
+			"rev": &types.AttributeValueMemberS{Value: "abc"},
+			"foo": &types.AttributeValueMemberS{Value: "baz"},
 		},
 	}
 
-	s.executor.ExpectExecution("GetItemRequest", input, output, nil)
+	s.client.On("GetItem", s.ctx, input).Return(output, nil)
 
 	item := model{
 		Id:  5,
@@ -156,60 +137,52 @@ func (s *RepositoryTestSuite) TestGetItemNotFound() {
 	item := model{}
 
 	input := &dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String(strconv.Itoa(1)),
-			},
-			"rev": {
-				S: aws.String("0"),
-			},
+		Key: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "1"},
+			"rev": &types.AttributeValueMemberS{Value: "0"},
 		},
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
 	}
-	output := &dynamodb.GetItemOutput{}
+	output := &dynamodb.GetItemOutput{
+		ConsumedCapacity: &types.ConsumedCapacity{},
+	}
 
-	s.executor.ExpectExecution("GetItemRequest", input, output, nil)
+	s.client.On("GetItem", s.ctx, input).Return(output, nil)
 
 	qb := s.repo.GetItemBuilder().WithHash(1).WithRange("0")
-	res, err := s.repo.GetItem(context.Background(), qb, &item)
+	res, err := s.repo.GetItem(s.ctx, qb, &item)
 
 	s.NoError(err)
 	s.False(res.IsFound)
 
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestGetItemProjection() {
 	input := &dynamodb.GetItemInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#0": aws.String("id"),
+		ExpressionAttributeNames: map[string]string{
+			"#0": "id",
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String(strconv.Itoa(1)),
-			},
-			"rev": {
-				S: aws.String("0"),
-			},
+		Key: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "1"},
+			"rev": &types.AttributeValueMemberS{Value: "0"},
 		},
 		ProjectionExpression: aws.String("#0"),
 		TableName:            aws.String("applike-test-gosoline-ddb-myModel"),
 	}
 	output := &dynamodb.GetItemOutput{
-		ConsumedCapacity: nil,
-		Item: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String(strconv.Itoa(1)),
-			},
+		ConsumedCapacity: &types.ConsumedCapacity{},
+		Item: map[string]types.AttributeValue{
+			"id": &types.AttributeValueMemberN{Value: "1"},
 		},
 	}
 
-	s.executor.ExpectExecution("GetItemRequest", input, output, nil)
+	s.client.On("GetItem", s.ctx, input).Return(output, nil)
 
 	item := projection{}
 
 	qb := s.repo.GetItemBuilder().WithHash(1).WithRange("0").WithProjection(item)
-	res, err := s.repo.GetItem(context.Background(), qb, &item)
+	res, err := s.repo.GetItem(s.ctx, qb, &item)
 
 	expected := projection{
 		Id: 1,
@@ -219,52 +192,39 @@ func (s *RepositoryTestSuite) TestGetItemProjection() {
 	s.True(res.IsFound)
 	s.EqualValues(expected, item)
 
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestQuery() {
 	input := &dynamodb.QueryInput{
-		ExpressionAttributeNames: map[string]*string{
-			"#0": aws.String("id"),
+		ExpressionAttributeNames: map[string]string{
+			"#0": "id",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":0": {
-				N: aws.String("1"),
-			},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":0": &types.AttributeValueMemberN{Value: "1"},
 		},
 		KeyConditionExpression: aws.String("#0 = :0"),
 		TableName:              aws.String("applike-test-gosoline-ddb-myModel"),
 	}
 	output := &dynamodb.QueryOutput{
-		Count:        aws.Int64(2),
-		ScannedCount: aws.Int64(2),
-		Items: []map[string]*dynamodb.AttributeValue{
+		ConsumedCapacity: &types.ConsumedCapacity{},
+		Count:            2,
+		ScannedCount:     2,
+		Items: []map[string]types.AttributeValue{
 			{
-				"id": {
-					N: aws.String("1"),
-				},
-				"rev": {
-					S: aws.String("0"),
-				},
-				"foo": {
-					S: aws.String("bar"),
-				},
+				"id":  &types.AttributeValueMemberN{Value: "1"},
+				"rev": &types.AttributeValueMemberS{Value: "0"},
+				"foo": &types.AttributeValueMemberS{Value: "bar"},
 			},
 			{
-				"id": {
-					N: aws.String("1"),
-				},
-				"rev": {
-					S: aws.String("1"),
-				},
-				"foo": {
-					S: aws.String("baz"),
-				},
+				"id":  &types.AttributeValueMemberN{Value: "1"},
+				"rev": &types.AttributeValueMemberS{Value: "1"},
+				"foo": &types.AttributeValueMemberS{Value: "baz"},
 			},
 		},
 	}
 
-	s.executor.ExpectExecution("QueryRequest", input, output, nil)
+	s.client.On("Query", s.ctx, input).Return(output, nil)
 
 	result := make([]model, 0)
 	expected := []model{
@@ -281,81 +241,80 @@ func (s *RepositoryTestSuite) TestQuery() {
 	}
 
 	qb := s.repo.QueryBuilder().WithHash(1)
-	_, err := s.repo.Query(context.Background(), qb, &result)
+	_, err := s.repo.Query(s.ctx, qb, &result)
 
 	s.NoError(err)
 	s.Len(result, 2)
 	s.EqualValues(expected, result)
 
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestQuery_Canceled() {
-	awsErr := awserr.New(request.CanceledErrorCode, "got canceled", nil)
+	awsErr := &smithy.CanceledError{}
 
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String("applike-test-gosoline-ddb-myModel"),
 		KeyConditionExpression: aws.String("#0 = :0"),
-		ExpressionAttributeNames: map[string]*string{
-			"#0": aws.String("id"),
+		ExpressionAttributeNames: map[string]string{
+			"#0": "id",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":0": {
-				N: aws.String("1"),
-			},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":0": &types.AttributeValueMemberN{Value: "1"},
 		},
 	}
-	s.executor.ExpectExecution("QueryRequest", input, nil, awsErr)
+
+	s.client.On("Query", s.ctx, input).Return(nil, awsErr)
 
 	result := make([]model, 0)
 
 	qb := s.repo.QueryBuilder().WithHash(1)
-	_, err := s.repo.Query(context.Background(), qb, &result)
+	_, err := s.repo.Query(s.ctx, qb, &result)
 
 	s.Error(err)
 
 	isRequestCanceled := errors.Is(err, exec.RequestCanceledError)
 	s.True(isRequestCanceled)
 
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestBatchGetItems() {
 	input := &dynamodb.BatchGetItemInput{
-		RequestItems: map[string]*dynamodb.KeysAndAttributes{
+		RequestItems: map[string]types.KeysAndAttributes{
 			"applike-test-gosoline-ddb-myModel": {
-				Keys: []map[string]*dynamodb.AttributeValue{
+				Keys: []map[string]types.AttributeValue{
 					{
-						"id":  {N: aws.String("1")},
-						"rev": {S: aws.String("0")},
+						"id":  &types.AttributeValueMemberN{Value: "1"},
+						"rev": &types.AttributeValueMemberS{Value: "0"},
 					},
 					{
-						"id":  {N: aws.String("2")},
-						"rev": {S: aws.String("0")},
+						"id":  &types.AttributeValueMemberN{Value: "2"},
+						"rev": &types.AttributeValueMemberS{Value: "0"},
 					},
 				},
 			},
 		},
 	}
 	output := &dynamodb.BatchGetItemOutput{
-		Responses: map[string][]map[string]*dynamodb.AttributeValue{
+		Responses: map[string][]map[string]types.AttributeValue{
 			"applike-test-gosoline-ddb-myModel": {
 				{
-					"id":  {N: aws.String("1")},
-					"rev": {S: aws.String("0")},
-					"foo": {S: aws.String("foo")},
+					"id":  &types.AttributeValueMemberN{Value: "1"},
+					"rev": &types.AttributeValueMemberS{Value: "0"},
+					"foo": &types.AttributeValueMemberS{Value: "foo"},
 				},
 				{
-					"id":  {N: aws.String("2")},
-					"rev": {S: aws.String("0")},
-					"foo": {S: aws.String("bar")},
+					"id":  &types.AttributeValueMemberN{Value: "2"},
+					"rev": &types.AttributeValueMemberS{Value: "0"},
+					"foo": &types.AttributeValueMemberS{Value: "bar"},
 				},
 			},
 		},
-		UnprocessedKeys: map[string]*dynamodb.KeysAndAttributes{},
+		UnprocessedKeys: map[string]types.KeysAndAttributes{},
 	}
 
-	s.executor.ExpectExecution("BatchGetItemRequest", input, output, nil)
+	s.client.On("BatchGetItem", s.ctx, input).Return(output, nil)
 
 	result := make([]model, 0)
 	expected := []model{
@@ -372,12 +331,12 @@ func (s *RepositoryTestSuite) TestBatchGetItems() {
 	}
 
 	qb := s.repo.BatchGetItemsBuilder().WithKeys(1, "0").WithKeys(2, "0")
-	_, err := s.repo.BatchGetItems(context.Background(), qb, &result)
+	_, err := s.repo.BatchGetItems(s.ctx, qb, &result)
 
 	s.NoError(err)
 	s.Equal(expected, result)
 
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestBatchWriteItem() {
@@ -395,23 +354,23 @@ func (s *RepositoryTestSuite) TestBatchWriteItem() {
 	}
 
 	input := &dynamodb.BatchWriteItemInput{
-		RequestItems: map[string][]*dynamodb.WriteRequest{
+		RequestItems: map[string][]types.WriteRequest{
 			"applike-test-gosoline-ddb-myModel": {
 				{
-					PutRequest: &dynamodb.PutRequest{
-						Item: map[string]*dynamodb.AttributeValue{
-							"id":  {N: aws.String("1")},
-							"rev": {S: aws.String("0")},
-							"foo": {S: aws.String("foo")},
+					PutRequest: &types.PutRequest{
+						Item: map[string]types.AttributeValue{
+							"id":  &types.AttributeValueMemberN{Value: "1"},
+							"rev": &types.AttributeValueMemberS{Value: "0"},
+							"foo": &types.AttributeValueMemberS{Value: "foo"},
 						},
 					},
 				},
 				{
-					PutRequest: &dynamodb.PutRequest{
-						Item: map[string]*dynamodb.AttributeValue{
-							"id":  {N: aws.String("2")},
-							"rev": {S: aws.String("0")},
-							"foo": {S: aws.String("bar")},
+					PutRequest: &types.PutRequest{
+						Item: map[string]types.AttributeValue{
+							"id":  &types.AttributeValueMemberN{Value: "2"},
+							"rev": &types.AttributeValueMemberS{Value: "0"},
+							"foo": &types.AttributeValueMemberS{Value: "bar"},
 						},
 					},
 				},
@@ -420,15 +379,15 @@ func (s *RepositoryTestSuite) TestBatchWriteItem() {
 	}
 
 	output := &dynamodb.BatchWriteItemOutput{
-		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
+		UnprocessedItems: map[string][]types.WriteRequest{},
 	}
 
-	s.executor.ExpectExecution("BatchWriteItemRequest", input, output, nil)
+	s.client.On("BatchWriteItem", s.ctx, input).Return(output, nil)
 
-	_, err := s.repo.BatchPutItems(context.Background(), items)
+	_, err := s.repo.BatchPutItems(s.ctx, items)
 
 	s.NoError(err)
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestBatchWriteItem_Retry() {
@@ -439,12 +398,12 @@ func (s *RepositoryTestSuite) TestBatchWriteItem_Retry() {
 			Foo: "data",
 		}
 	}
-	makePutRequest := func(id int) *dynamodb.PutRequest {
-		return &dynamodb.PutRequest{
-			Item: map[string]*dynamodb.AttributeValue{
-				"id":  {N: aws.String(fmt.Sprintf("%d", id))},
-				"rev": {S: aws.String(fmt.Sprintf("rev %d", id))},
-				"foo": {S: aws.String("data")},
+	makePutRequest := func(id int) *types.PutRequest {
+		return &types.PutRequest{
+			Item: map[string]types.AttributeValue{
+				"id":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", id)},
+				"rev": &types.AttributeValueMemberS{Value: fmt.Sprintf("rev %d", id)},
+				"foo": &types.AttributeValueMemberS{Value: "data"},
 			},
 		}
 	}
@@ -453,52 +412,55 @@ func (s *RepositoryTestSuite) TestBatchWriteItem_Retry() {
 	firstBatchItems := 10
 
 	items := make([]model, 0, totalItems)
-	firstInputData := make([]*dynamodb.WriteRequest, 0, totalItems)
-	firstOutputData := make([]*dynamodb.WriteRequest, 0, firstBatchItems)
-	secondInputData := make([]*dynamodb.WriteRequest, 0, firstBatchItems)
+	firstInputData := make([]types.WriteRequest, 0, totalItems)
+	firstOutputData := make([]types.WriteRequest, 0, firstBatchItems)
+	secondInputData := make([]types.WriteRequest, 0, firstBatchItems)
+
 	for i := 0; i < totalItems; i++ {
 		items = append(items, makeItem(i))
-		firstInputData = append(firstInputData, &dynamodb.WriteRequest{
+
+		firstInputData = append(firstInputData, types.WriteRequest{
 			PutRequest: makePutRequest(i),
 		})
+
 		if i < firstBatchItems {
-			secondInputData = append(secondInputData, &dynamodb.WriteRequest{
+			secondInputData = append(secondInputData, types.WriteRequest{
 				PutRequest: makePutRequest(i),
 			})
-			firstOutputData = append(firstOutputData, &dynamodb.WriteRequest{
+			firstOutputData = append(firstOutputData, types.WriteRequest{
 				PutRequest: makePutRequest(i),
 			})
 		}
 	}
 
 	firstInput := &dynamodb.BatchWriteItemInput{
-		RequestItems: map[string][]*dynamodb.WriteRequest{
+		RequestItems: map[string][]types.WriteRequest{
 			"applike-test-gosoline-ddb-myModel": firstInputData,
 		},
 	}
 	secondInput := &dynamodb.BatchWriteItemInput{
-		RequestItems: map[string][]*dynamodb.WriteRequest{
+		RequestItems: map[string][]types.WriteRequest{
 			"applike-test-gosoline-ddb-myModel": secondInputData,
 		},
 	}
 
 	firstOutput := &dynamodb.BatchWriteItemOutput{
-		UnprocessedItems: map[string][]*dynamodb.WriteRequest{
+		UnprocessedItems: map[string][]types.WriteRequest{
 			"applike-test-gosoline-ddb-myModel": firstOutputData,
 		},
 	}
 	secondOutput := &dynamodb.BatchWriteItemOutput{
-		UnprocessedItems: map[string][]*dynamodb.WriteRequest{},
+		UnprocessedItems: map[string][]types.WriteRequest{},
 	}
 
-	s.executor.ExpectExecution("BatchWriteItemRequest", firstInput, firstOutput, nil)
-	s.executor.ExpectExecution("BatchWriteItemRequest", secondInput, firstOutput, nil)
-	s.executor.ExpectExecution("BatchWriteItemRequest", secondInput, secondOutput, nil)
+	s.client.On("BatchWriteItem", s.ctx, firstInput).Return(firstOutput, nil).Once()
+	s.client.On("BatchWriteItem", s.ctx, secondInput).Return(firstOutput, nil).Once()
+	s.client.On("BatchWriteItem", s.ctx, secondInput).Return(secondOutput, nil).Once()
 
-	_, err := s.repo.BatchPutItems(context.Background(), items)
+	_, err := s.repo.BatchPutItems(s.ctx, items)
 
 	s.NoError(err)
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestPutItem() {
@@ -510,73 +472,58 @@ func (s *RepositoryTestSuite) TestPutItem() {
 
 	input := &dynamodb.PutItemInput{
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
-		Item: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String("1"),
-			},
-			"rev": {
-				S: aws.String("0"),
-			},
-			"foo": {
-				S: aws.String("foo"),
-			},
+		Item: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "1"},
+			"rev": &types.AttributeValueMemberS{Value: "0"},
+			"foo": &types.AttributeValueMemberS{Value: "foo"},
 		},
 	}
-	output := &dynamodb.PutItemOutput{}
+	output := &dynamodb.PutItemOutput{
+		ConsumedCapacity: &types.ConsumedCapacity{},
+	}
 
-	s.executor.ExpectExecution("PutItemRequest", input, output, nil)
+	s.client.On("PutItem", s.ctx, input).Return(output, nil)
 
-	res, err := s.repo.PutItem(context.Background(), nil, item)
+	res, err := s.repo.PutItem(s.ctx, nil, item)
 
 	s.NoError(err)
 	s.False(res.ConditionalCheckFailed)
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestUpdate() {
 	input := &dynamodb.UpdateItemInput{
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String("1"),
-			},
-			"rev": {
-				S: aws.String("0"),
-			},
+		Key: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "1"},
+			"rev": &types.AttributeValueMemberS{Value: "0"},
 		},
-		ExpressionAttributeNames: map[string]*string{
-			"#0": aws.String("foo"),
+		ExpressionAttributeNames: map[string]string{
+			"#0": "foo",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":0": {
-				S: aws.String("bar"),
-			},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":0": &types.AttributeValueMemberS{Value: "bar"},
 		},
 		UpdateExpression: aws.String("SET #0 = :0\n"),
-		ReturnValues:     aws.String(dynamodb.ReturnValueAllNew),
+		ReturnValues:     types.ReturnValueAllNew,
 	}
 	output := &dynamodb.UpdateItemOutput{
-		Attributes: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String("1"),
-			},
-			"rev": {
-				S: aws.String("0"),
-			},
-			"foo": {
-				S: aws.String("bar"),
-			},
+		ConsumedCapacity: &types.ConsumedCapacity{},
+		Attributes: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "1"},
+			"rev": &types.AttributeValueMemberS{Value: "0"},
+			"foo": &types.AttributeValueMemberS{Value: "bar"},
 		},
 	}
 
-	s.executor.ExpectExecution("UpdateItemRequest", input, output, nil)
+	s.client.On("UpdateItem", s.ctx, input).Return(output, nil)
 
 	updatedItem := &model{
 		Id:  1,
 		Rev: "0",
 	}
 	ub := s.repo.UpdateItemBuilder().Set("foo", "bar").ReturnAllNew()
-	res, err := s.repo.UpdateItem(context.Background(), ub, updatedItem)
+	res, err := s.repo.UpdateItem(s.ctx, ub, updatedItem)
 
 	expectedItem := &model{
 		Id:  1,
@@ -587,46 +534,35 @@ func (s *RepositoryTestSuite) TestUpdate() {
 	s.NoError(err)
 	s.False(res.ConditionalCheckFailed)
 	s.EqualValues(expectedItem, updatedItem)
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestDeleteItem() {
 	input := &dynamodb.DeleteItemInput{
 		ConditionExpression: aws.String("#0 = :0"),
-		ExpressionAttributeNames: map[string]*string{
-			"#0": aws.String("foo"),
+		ExpressionAttributeNames: map[string]string{
+			"#0": "foo",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":0": {
-				S: aws.String("bar"),
-			},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":0": &types.AttributeValueMemberS{Value: "bar"},
 		},
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String("1"),
-			},
-			"rev": {
-				S: aws.String("0"),
-			},
+		Key: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "1"},
+			"rev": &types.AttributeValueMemberS{Value: "0"},
 		},
-		ReturnValues: aws.String(dynamodb.ReturnValueAllOld),
+		ReturnValues: types.ReturnValueAllOld,
 		TableName:    aws.String("applike-test-gosoline-ddb-myModel"),
 	}
 	output := &dynamodb.DeleteItemOutput{
-		Attributes: map[string]*dynamodb.AttributeValue{
-			"id": {
-				N: aws.String("1"),
-			},
-			"rev": {
-				S: aws.String("0"),
-			},
-			"foo": {
-				S: aws.String("bar"),
-			},
+		ConsumedCapacity: &types.ConsumedCapacity{},
+		Attributes: map[string]types.AttributeValue{
+			"id":  &types.AttributeValueMemberN{Value: "1"},
+			"rev": &types.AttributeValueMemberS{Value: "0"},
+			"foo": &types.AttributeValueMemberS{Value: "bar"},
 		},
 	}
 
-	s.executor.ExpectExecution("DeleteItemRequest", input, output, nil)
+	s.client.On("DeleteItem", s.ctx, input).Return(output, nil)
 
 	item := model{
 		Id:  1,
@@ -641,12 +577,12 @@ func (s *RepositoryTestSuite) TestDeleteItem() {
 	}
 
 	db := s.repo.DeleteItemBuilder().WithCondition(ddb.Eq("foo", "bar")).ReturnAllOld()
-	res, err := s.repo.DeleteItem(context.Background(), db, &item)
+	res, err := s.repo.DeleteItem(s.ctx, db, &item)
 
 	s.NoError(err)
 	s.False(res.ConditionalCheckFailed)
 	s.Equal(expected, item)
-	s.executor.AssertExpectations(s.T())
+	s.client.AssertExpectations(s.T())
 }
 
 func TestRepositoryTestSuite(t *testing.T) {

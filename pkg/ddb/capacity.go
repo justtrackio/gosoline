@@ -1,6 +1,8 @@
 package ddb
 
-import "github.com/aws/aws-sdk-go/service/dynamodb"
+import (
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+)
 
 type Capacity struct {
 	Total float64
@@ -8,7 +10,11 @@ type Capacity struct {
 	Write float64
 }
 
-func (c *Capacity) add(cc *dynamodb.Capacity) {
+func (c *Capacity) add(cc *types.Capacity) {
+	if cc == nil {
+		return
+	}
+
 	if cc.CapacityUnits != nil {
 		c.Total += *cc.CapacityUnits
 	}
@@ -39,7 +45,7 @@ func newConsumedCapacity() *ConsumedCapacity {
 	}
 }
 
-func (c *ConsumedCapacity) add(cc *dynamodb.ConsumedCapacity) {
+func (c *ConsumedCapacity) add(cc *types.ConsumedCapacity) {
 	if cc == nil {
 		return
 	}
@@ -66,7 +72,7 @@ func (c *ConsumedCapacity) add(cc *dynamodb.ConsumedCapacity) {
 				c.LSI[name] = &Capacity{}
 			}
 
-			c.LSI[name].add(lsi)
+			c.LSI[name].add(&lsi)
 		}
 	}
 
@@ -76,17 +82,17 @@ func (c *ConsumedCapacity) add(cc *dynamodb.ConsumedCapacity) {
 				c.GSI[name] = &Capacity{}
 			}
 
-			c.GSI[name].add(gsi)
+			c.GSI[name].add(&gsi)
 		}
 	}
 }
 
-func (c *ConsumedCapacity) addSlice(capacities []*dynamodb.ConsumedCapacity) {
+func (c *ConsumedCapacity) addSlice(capacities []types.ConsumedCapacity) {
 	if capacities == nil {
 		return
 	}
 
 	for _, cc := range capacities {
-		c.add(cc)
+		c.add(&cc)
 	}
 }

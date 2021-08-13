@@ -2,13 +2,14 @@ package stream_test
 
 import (
 	"context"
+	"testing"
+
+	"github.com/applike/gosoline/pkg/cloud/aws/sqs"
+	sqsMocks "github.com/applike/gosoline/pkg/cloud/aws/sqs/mocks"
 	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/sqs"
-	sqsMocks "github.com/applike/gosoline/pkg/sqs/mocks"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestSqsOutput_WriteOne(t *testing.T) {
@@ -32,13 +33,13 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 		},
 		"with_delay": {
 			attributes: map[string]interface{}{
-				sqs.AttributeSqsDelaySeconds: int64(45),
+				sqs.AttributeSqsDelaySeconds: int32(45),
 			},
 			body: BodyStruct{
 				Foo: "bar",
 			},
 			expectedSqsMessage: sqs.Message{
-				DelaySeconds: mdl.Int64(45),
+				DelaySeconds: 45,
 				Body:         mdl.String(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":45},"body":"{\"Foo\":\"bar\"}"}`),
 			},
 		},
@@ -68,7 +69,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 		},
 		"with_all": {
 			attributes: map[string]interface{}{
-				sqs.AttributeSqsDelaySeconds:           int64(45),
+				sqs.AttributeSqsDelaySeconds:           int32(45),
 				sqs.AttributeSqsMessageGroupId:         "foo",
 				sqs.AttributeSqsMessageDeduplicationId: "bar",
 			},
@@ -76,7 +77,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 				Foo: "bar",
 			},
 			expectedSqsMessage: sqs.Message{
-				DelaySeconds:           mdl.Int64(45),
+				DelaySeconds:           45,
 				MessageGroupId:         mdl.String("foo"),
 				MessageDeduplicationId: mdl.String("bar"),
 				Body:                   mdl.String(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":45,"sqsMessageDeduplicationId":"bar","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
@@ -97,7 +98,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 			msg, err := stream.MarshalJsonMessage(data.body, data.attributes)
 			assert.NoError(t, err)
 
-			output := stream.NewSqsOutputWithInterfaces(logger, queue, stream.SqsOutputSettings{})
+			output := stream.NewSqsOutputWithInterfaces(logger, queue, &stream.SqsOutputSettings{})
 			err = output.WriteOne(context.Background(), msg)
 
 			assert.NoError(t, err)

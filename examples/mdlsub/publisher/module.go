@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdlsub"
 	"github.com/applike/gosoline/pkg/uuid"
-	"math/rand"
-	"time"
 )
 
 type RandomNumber struct {
@@ -24,11 +25,11 @@ type publisherModule struct {
 	publisher mdlsub.Publisher
 }
 
-func newPublisherModule(_ context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+func newPublisherModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	var err error
 	var publisher mdlsub.Publisher
 
-	if publisher, err = mdlsub.NewPublisher(config, logger, "random-number"); err != nil {
+	if publisher, err = mdlsub.NewPublisher(ctx, config, logger, "random-number"); err != nil {
 		return nil, fmt.Errorf("can not create publisher random-number: %w", err)
 	}
 

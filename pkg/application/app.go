@@ -1,8 +1,10 @@
 package application
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/applike/gosoline/pkg/appctx"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
@@ -62,9 +64,10 @@ func Default(options ...Option) kernel.Kernel {
 
 func New(options ...Option) kernel.Kernel {
 	var err error
+	var ker kernel.Kernel
+
 	config := cfg.New()
 	logger := log.NewLogger()
-	var ker kernel.Kernel
 
 	if ker, err = NewWithInterfaces(config, logger, options...); err != nil {
 		defaultErrorHandler("can initialize the app: %w", err)
@@ -77,6 +80,8 @@ func NewWithInterfaces(config cfg.GosoConf, logger log.GosoLogger, options ...Op
 	var err error
 	var ker kernel.GosoKernel
 	var cfgPostProcessors map[string]int
+
+	ctx := appctx.WithContainer(context.Background())
 
 	app := &App{
 		configOptions: make([]ConfigOption, 0),
@@ -114,7 +119,7 @@ func NewWithInterfaces(config cfg.GosoConf, logger log.GosoLogger, options ...Op
 		}
 	}
 
-	if ker, err = kernel.New(config, logger); err != nil {
+	if ker, err = kernel.New(ctx, config, logger); err != nil {
 		return nil, fmt.Errorf("can not create kernel: %w", err)
 	}
 

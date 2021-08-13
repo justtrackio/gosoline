@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	stream "github.com/applike/gosoline/pkg/stream"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -12,13 +14,13 @@ type AcknowledgeableInput struct {
 	mock.Mock
 }
 
-// Ack provides a mock function with given fields: msg
-func (_m *AcknowledgeableInput) Ack(msg *stream.Message) error {
-	ret := _m.Called(msg)
+// Ack provides a mock function with given fields: ctx, msg
+func (_m *AcknowledgeableInput) Ack(ctx context.Context, msg *stream.Message) error {
+	ret := _m.Called(ctx, msg)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*stream.Message) error); ok {
-		r0 = rf(msg)
+	if rf, ok := ret.Get(0).(func(context.Context, *stream.Message) error); ok {
+		r0 = rf(ctx, msg)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -26,13 +28,13 @@ func (_m *AcknowledgeableInput) Ack(msg *stream.Message) error {
 	return r0
 }
 
-// AckBatch provides a mock function with given fields: msgs
-func (_m *AcknowledgeableInput) AckBatch(msgs []*stream.Message) error {
-	ret := _m.Called(msgs)
+// AckBatch provides a mock function with given fields: ctx, msgs
+func (_m *AcknowledgeableInput) AckBatch(ctx context.Context, msgs []*stream.Message) error {
+	ret := _m.Called(ctx, msgs)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]*stream.Message) error); ok {
-		r0 = rf(msgs)
+	if rf, ok := ret.Get(0).(func(context.Context, []*stream.Message) error); ok {
+		r0 = rf(ctx, msgs)
 	} else {
 		r0 = ret.Error(0)
 	}

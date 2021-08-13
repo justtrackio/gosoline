@@ -6,6 +6,9 @@ package test_test
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
@@ -15,8 +18,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func Test_sns_sqs(t *testing.T) {
@@ -51,15 +52,12 @@ func Test_sns_sqs(t *testing.T) {
 		Name: topicName,
 	}
 
-	var executor = gosoAws.NewBackoffExecutor(logger, res, &exec.BackoffSettings{
-		Enabled:             true,
-		Blocking:            true,
-		CancelDelay:         time.Second * 1,
-		InitialInterval:     time.Millisecond * 50,
-		RandomizationFactor: 0.5,
-		Multiplier:          1.5,
-		MaxInterval:         time.Second * 2,
-		MaxElapsedTime:      time.Second * 10,
+	executor := gosoAws.NewBackoffExecutor(logger, res, &exec.BackoffSettings{
+		CancelDelay:     time.Second * 1,
+		InitialInterval: time.Millisecond * 50,
+		MaxAttempts:     0,
+		MaxInterval:     time.Second * 2,
+		MaxElapsedTime:  0,
 	})
 
 	// create a topic

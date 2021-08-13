@@ -4,6 +4,9 @@
 package test_test
 
 import (
+	"context"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/fixtures"
@@ -12,11 +15,11 @@ import (
 	"github.com/applike/gosoline/pkg/test"
 	gosoAssert "github.com/applike/gosoline/pkg/test/assert"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type FixturesMysqlSuite struct {
 	suite.Suite
+	ctx    context.Context
 	loader fixtures.FixtureLoader
 	logger log.Logger
 	mocks  *test.Mocks
@@ -42,7 +45,6 @@ var MysqlTestModelMetadata = db_repo.Metadata{
 func (s *FixturesMysqlSuite) SetupSuite() {
 	setup(s.T())
 	mocks, err := test.Boot("test_configs/config.mysql.test.yml", "test_configs/config.fixtures_mysql.test.yml")
-
 	if err != nil {
 		s.Fail("failed to boot mocks: %s", err.Error())
 
@@ -61,8 +63,9 @@ func (s *FixturesMysqlSuite) SetupSuite() {
 		}),
 	)
 
+	s.ctx = context.Background()
 	s.logger = log.NewCliLogger()
-	s.loader = fixtures.NewFixtureLoader(config, s.logger)
+	s.loader = fixtures.NewFixtureLoader(s.ctx, config, s.logger)
 }
 
 func (s *FixturesMysqlSuite) TearDownSuite() {
@@ -137,7 +140,7 @@ func plainMysqlTestFixturesWithPurge() []*fixtures.FixtureSet {
 }
 
 func (s *FixturesMysqlSuite) TestOrmFixturesMysql() {
-	err := s.loader.Load(ormMysqlTestFixtures())
+	err := s.loader.Load(s.ctx, ormMysqlTestFixtures())
 	s.NoError(err)
 
 	db := s.mocks.ProvideMysqlClient("mysql")
@@ -147,7 +150,7 @@ func (s *FixturesMysqlSuite) TestOrmFixturesMysql() {
 }
 
 func (s *FixturesMysqlSuite) TestPlainFixturesMysql() {
-	err := s.loader.Load(plainMysqlTestFixtures())
+	err := s.loader.Load(s.ctx, plainMysqlTestFixtures())
 	s.NoError(err)
 
 	db := s.mocks.ProvideMysqlClient("mysql")
@@ -157,26 +160,26 @@ func (s *FixturesMysqlSuite) TestPlainFixturesMysql() {
 }
 
 func (s *FixturesMysqlSuite) TestPurgedOrmFixturesMysql() {
-	err := s.loader.Load(ormMysqlTestFixtures())
+	err := s.loader.Load(s.ctx, ormMysqlTestFixtures())
 	s.NoError(err)
 
 	db := s.mocks.ProvideMysqlClient("mysql")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), db, "mysql_test_models", "name", "testName")
 
-	err = s.loader.Load(ormMysqlTestFixturesWithPurge())
+	err = s.loader.Load(s.ctx, ormMysqlTestFixturesWithPurge())
 	s.NoError(err)
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), db, "mysql_test_models")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), db, "mysql_test_models", "name", "purgedBefore")
 }
 
 func (s *FixturesMysqlSuite) TestPurgedPlainFixturesMysql() {
-	err := s.loader.Load(plainMysqlTestFixtures())
+	err := s.loader.Load(s.ctx, plainMysqlTestFixtures())
 	s.NoError(err)
 
 	db := s.mocks.ProvideMysqlClient("mysql")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), db, "mysql_plain_writer_test", "name", "testName3")
 
-	err = s.loader.Load(plainMysqlTestFixturesWithPurge())
+	err = s.loader.Load(s.ctx, plainMysqlTestFixturesWithPurge())
 	s.NoError(err)
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), db, "mysql_plain_writer_test")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), db, "mysql_plain_writer_test", "name", "purgedBefore")

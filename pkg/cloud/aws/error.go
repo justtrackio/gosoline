@@ -3,9 +3,11 @@ package aws
 import (
 	"errors"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/smithy-go"
 )
 
 func init() {
@@ -59,6 +61,11 @@ func IsAwsError(err error, awsCode string) bool {
 }
 
 func IsAwsErrorCodeRequestCanceled(err error) bool {
+	var errCancel *smithy.CanceledError
+	if errors.As(err, &errCancel) {
+		return true
+	}
+
 	return IsAwsError(err, request.CanceledErrorCode)
 }
 

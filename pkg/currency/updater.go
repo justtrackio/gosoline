@@ -36,10 +36,10 @@ type updaterService struct {
 	clock  clock.Clock
 }
 
-func NewUpdater(config cfg.Config, logger log.Logger) (UpdaterService, error) {
+func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (UpdaterService, error) {
 	logger = logger.WithChannel("currency_updater_service")
 
-	store, err := kvstore.ProvideConfigurableKvStore(config, logger, kvStoreName)
+	store, err := kvstore.ProvideConfigurableKvStore(ctx, config, logger, kvStoreName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kvStore: %w", err)
 	}

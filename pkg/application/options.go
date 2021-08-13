@@ -11,6 +11,7 @@ import (
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/fixtures"
 	kernelPkg "github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
@@ -135,11 +136,26 @@ func WithConsumerMessagesPerRunnerMetrics(app *App) {
 	})
 }
 
+func WithExecBackoffInfinite(app *App) {
+	app.addConfigOption(func(config cfg.GosoConf) error {
+		return config.Option(cfg.WithConfigSetting("exec.backoff.type", "infinite"))
+	})
+}
+
+func WithExecBackoffSettings(settings *exec.BackoffSettings) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithConfigSetting("exec.backoff", settings, cfg.SkipExisting))
+		})
+	}
+}
+
 func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 	return func(app *App) {
 		app.addSetupOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
-			loader := fixtures.NewFixtureLoader(config, logger)
-			return loader.Load(fixtureSets)
+			ctx := context.Background()
+			loader := fixtures.NewFixtureLoader(ctx, config, logger)
+			return loader.Load(ctx, fixtureSets)
 		})
 	}
 }

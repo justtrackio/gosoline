@@ -2,6 +2,7 @@ package mdlsub
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/stream"
@@ -11,8 +12,10 @@ func init() {
 	cfg.AddPostProcessor(8, "gosoline.mdlsub.subscriber", SubscriberConfigPostProcessor)
 }
 
-type SubscriberInputConfigPostProcessor func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option
-type SubscriberOutputConfigPostProcessor func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option
+type (
+	SubscriberInputConfigPostProcessor  func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option
+	SubscriberOutputConfigPostProcessor func(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option
+)
 
 var subscriberInputConfigPostProcessors = map[string]SubscriberInputConfigPostProcessor{
 	"sns": snsSubscriberInputConfigPostProcessor,
@@ -80,7 +83,7 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 	inputKey := getInputConfigKey(name)
 
 	inputSettings := &stream.SnsInputConfiguration{}
-	config.UnmarshalDefaults(inputSettings, cfg.UnmarshalWithDefaultsFromKey(stream.ConfigKeyStreamBackoff, "backoff"))
+	config.UnmarshalDefaults(inputSettings)
 
 	inputSettings.ConsumerId = subscriberSettings.SourceModel.Name
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{

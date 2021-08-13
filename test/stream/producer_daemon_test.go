@@ -8,24 +8,25 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud/aws/sqs"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/encoding/base64"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/applike/gosoline/pkg/stream"
 	pkgTest "github.com/applike/gosoline/pkg/test"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"io/ioutil"
-	"os"
-	"sync"
-	"testing"
-	"time"
 )
 
 type TestData struct {
@@ -73,7 +74,6 @@ func (s *ProducerDaemonTestSuite) SetupSuite() {
 	s.NoError(err)
 
 	mocks, err := pkgTest.Boot("../test_configs/config.kinesis.test.yml", "../test_configs/config.sns_sqs.test.yml")
-
 	if err != nil {
 		if mocks != nil {
 			mocks.Shutdown()
@@ -93,7 +93,7 @@ func (s *ProducerDaemonTestSuite) SetupTest() {
 
 	err := os.Setenv("AWS_KINESIS_ENDPOINT", kinesisEndpoint)
 	s.NoError(err)
-	err = os.Setenv("AWS_SQS_ENDPOINT", sqsEndpoint)
+	err = os.Setenv("CLOUD_AWS_DEFAULTS_ENDPOINT", sqsEndpoint)
 	s.NoError(err)
 }
 
@@ -129,15 +129,15 @@ type testModule struct {
 	producerSqs     stream.Producer
 }
 
-func newTestModule(_ context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+func newTestModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	var err error
 	var kinesisProducer, sqsProducer stream.Producer
 
-	if kinesisProducer, err = stream.NewProducer(config, logger, "testDataKinesis"); err != nil {
+	if kinesisProducer, err = stream.NewProducer(ctx, config, logger, "testDataKinesis"); err != nil {
 		return nil, err
 	}
 
-	if sqsProducer, err = stream.NewProducer(config, logger, "testDataSqs"); err != nil {
+	if sqsProducer, err = stream.NewProducer(ctx, config, logger, "testDataSqs"); err != nil {
 		return nil, err
 	}
 
@@ -171,17 +171,17 @@ type testCompressionModule struct {
 	inputSqs    stream.Input
 }
 
-func newTestCompressionModule(_ context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+func newTestCompressionModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	logger = logger.WithChannel("compression_module")
 	var err error
 	var sqsProducer stream.Producer
 	var sqsInput stream.Input
 
-	if sqsProducer, err = stream.NewProducer(config, logger, "testEventsSqs"); err != nil {
+	if sqsProducer, err = stream.NewProducer(ctx, config, logger, "testEventsSqs"); err != nil {
 		return nil, err
 	}
 
-	if sqsInput, err = stream.NewConfigurableInput(config, logger, "testEventsSqs"); err != nil {
+	if sqsInput, err = stream.NewConfigurableInput(ctx, config, logger, "testEventsSqs"); err != nil {
 		return nil, err
 	}
 
@@ -304,7 +304,7 @@ func newTestFifoModule(t *testing.T) func(ctx context.Context, config cfg.Config
 		var err error
 		var sqsProducer stream.Producer
 
-		if sqsProducer, err = stream.NewProducer(config, logger, "testDataFifoSqs"); err != nil {
+		if sqsProducer, err = stream.NewProducer(ctx, config, logger, "testDataFifoSqs"); err != nil {
 			return nil, err
 		}
 

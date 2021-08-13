@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+
 	"github.com/applike/gosoline/pkg/log"
 )
 
@@ -25,9 +26,7 @@ func (c *ConsumerAcknowledge) Acknowledge(ctx context.Context, msg *Message) {
 		return
 	}
 
-	err := ackInput.Ack(msg)
-
-	if err != nil {
+	if err := ackInput.Ack(ctx, msg); err != nil {
 		c.logger.WithContext(ctx).Error("could not acknowledge the message: %w", err)
 	}
 }
@@ -40,9 +39,7 @@ func (c *ConsumerAcknowledge) AcknowledgeBatch(ctx context.Context, msg []*Messa
 		return
 	}
 
-	err := ackInput.AckBatch(msg)
-
-	if err != nil {
+	if err := ackInput.AckBatch(ctx, msg); err != nil {
 		c.logger.WithContext(ctx).Error("could not acknowledge the messages: %w", err)
 	}
 }

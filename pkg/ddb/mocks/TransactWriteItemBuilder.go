@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	dynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
+	types "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,16 +13,14 @@ type TransactWriteItemBuilder struct {
 }
 
 // Build provides a mock function with given fields:
-func (_m *TransactWriteItemBuilder) Build() (*dynamodb.TransactWriteItem, error) {
+func (_m *TransactWriteItemBuilder) Build() (types.TransactWriteItem, error) {
 	ret := _m.Called()
 
-	var r0 *dynamodb.TransactWriteItem
-	if rf, ok := ret.Get(0).(func() *dynamodb.TransactWriteItem); ok {
+	var r0 types.TransactWriteItem
+	if rf, ok := ret.Get(0).(func() types.TransactWriteItem); ok {
 		r0 = rf()
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*dynamodb.TransactWriteItem)
-		}
+		r0 = ret.Get(0).(types.TransactWriteItem)
 	}
 
 	var r1 error

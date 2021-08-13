@@ -4,7 +4,9 @@
 package fixtures
 
 import (
+	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 )
@@ -19,7 +21,7 @@ type fixtureLoader struct {
 	writerFactory func(factory FixtureWriterFactory) (FixtureWriter, error)
 }
 
-func NewFixtureLoader(config cfg.Config, logger log.Logger) FixtureLoader {
+func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger) FixtureLoader {
 	logger = logger.WithChannel("fixture_loader")
 
 	settings := &fixtureLoaderSettings{}
@@ -29,12 +31,12 @@ func NewFixtureLoader(config cfg.Config, logger log.Logger) FixtureLoader {
 		logger:   logger,
 		settings: settings,
 		writerFactory: func(factory FixtureWriterFactory) (FixtureWriter, error) {
-			return factory(config, logger)
+			return factory(ctx, config, logger)
 		},
 	}
 }
 
-func (f *fixtureLoader) Load(fixtureSets []*FixtureSet) error {
+func (f *fixtureLoader) Load(ctx context.Context, fixtureSets []*FixtureSet) error {
 	if !f.settings.Enabled {
 		f.logger.Info("fixture loader is not enabled")
 		return nil
@@ -56,14 +58,13 @@ func (f *fixtureLoader) Load(fixtureSets []*FixtureSet) error {
 		}
 
 		if fs.Purge {
-			err := writer.Purge()
-
+			err := writer.Purge(ctx)
 			if err != nil {
 				return fmt.Errorf("error during purging of fixture set: %w", err)
 			}
 		}
 
-		if err = writer.Write(fs); err != nil {
+		if err = writer.Write(ctx, fs); err != nil {
 			return fmt.Errorf("error during loading of fixture set: %w", err)
 		}
 	}

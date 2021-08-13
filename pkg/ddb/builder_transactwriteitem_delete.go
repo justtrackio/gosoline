@@ -2,7 +2,8 @@ package ddb
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type TransactDeleteItem struct {
@@ -10,7 +11,7 @@ type TransactDeleteItem struct {
 	item    interface{}
 }
 
-func (b *TransactDeleteItem) Build() (*dynamodb.TransactWriteItem, error) {
+func (b *TransactDeleteItem) Build() (*types.TransactWriteItem, error) {
 	if !isPointer(b.item) {
 		return nil, fmt.Errorf("item must be a pointer")
 	}
@@ -20,13 +21,13 @@ func (b *TransactDeleteItem) Build() (*dynamodb.TransactWriteItem, error) {
 		return nil, fmt.Errorf("could not built entry for transact delete item: %w", err)
 	}
 
-	item := &dynamodb.TransactWriteItem{
-		Delete: &dynamodb.Delete{
+	item := &types.TransactWriteItem{
+		Delete: &types.Delete{
 			ConditionExpression:                 entry.ConditionExpression,
 			ExpressionAttributeNames:            entry.ExpressionAttributeNames,
 			ExpressionAttributeValues:           entry.ExpressionAttributeValues,
 			Key:                                 entry.Key,
-			ReturnValuesOnConditionCheckFailure: entry.ReturnValues,
+			ReturnValuesOnConditionCheckFailure: types.ReturnValuesOnConditionCheckFailure(entry.ReturnValues),
 			TableName:                           entry.TableName,
 		},
 	}

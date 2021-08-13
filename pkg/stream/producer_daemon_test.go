@@ -2,6 +2,9 @@ package stream_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/exec"
@@ -13,8 +16,6 @@ import (
 	streamMocks "github.com/applike/gosoline/pkg/stream/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"time"
 )
 
 type ProducerDaemonTestSuite struct {
@@ -50,14 +51,9 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, ag
 		Type: "test",
 		Name: "test-output",
 	}, &exec.BackoffSettings{
-		Enabled:             true,
-		Blocking:            true,
-		CancelDelay:         time.Second,
-		InitialInterval:     time.Millisecond * 50,
-		RandomizationFactor: 0.5,
-		Multiplier:          1.5,
-		MaxInterval:         time.Second * 3,
-		MaxElapsedTime:      time.Second * 15,
+		CancelDelay:     time.Second,
+		InitialInterval: time.Millisecond * 50,
+		MaxInterval:     time.Second * 3,
 	}, exec.CheckRequestCanceled)
 
 	tickerFactory := func(_ time.Duration) clock.Ticker {

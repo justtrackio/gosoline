@@ -1,16 +1,19 @@
 package ddb
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	"github.com/thoas/go-funk"
 	"sort"
 	"time"
+
+	"github.com/applike/gosoline/pkg/cfg"
+	gosoDynamodb "github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/applike/gosoline/pkg/log"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/thoas/go-funk"
 )
 
 type TableDescription struct {
@@ -20,17 +23,22 @@ type TableDescription struct {
 
 type Service struct {
 	logger          log.Logger
-	client          dynamodbiface.DynamoDBAPI
+	client          gosoDynamodb.Client
 	metadataFactory *metadataFactory
 }
 
-func NewService(config cfg.Config, logger log.Logger) *Service {
-	client := cloud.GetDynamoDbClient(config, logger)
+func NewService(ctx context.Context, config cfg.Config, logger log.Logger) (*Service, error) {
+	var err error
+	var client gosoDynamodb.Client
 
-	return NewServiceWithInterfaces(logger, client)
+	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, "default"); err != nil {
+		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
+	}
+
+	return NewServiceWithInterfaces(logger, client), nil
 }
 
-func NewServiceWithInterfaces(logger log.Logger, client dynamodbiface.DynamoDBAPI) *Service {
+func NewServiceWithInterfaces(logger log.Logger, client gosoDynamodb.Client) *Service {
 	return &Service{
 		logger:          logger,
 		client:          client,
@@ -38,30 +46,28 @@ func NewServiceWithInterfaces(logger log.Logger, client dynamodbiface.DynamoDBAP
 	}
 }
 
-func (s *Service) DescribeTable(settings *Settings) (*TableDescription, error) {
+func (s *Service) DescribeTable(ctx context.Context, settings *Settings) (*TableDescription, error) {
 	tableName := TableName(settings)
 	input := &dynamodb.DescribeTableInput{
 		TableName: aws.String(tableName),
 	}
 
-	out, err := s.client.DescribeTable(input)
-
+	out, err := s.client.DescribeTable(ctx, input)
 	if err != nil {
 		return nil, fmt.Errorf("can not get table description: %w", err)
 	}
 
 	description := &TableDescription{
 		Name:      tableName,
-		ItemCount: *out.Table.ItemCount,
+		ItemCount: out.Table.ItemCount,
 	}
 
 	return description, nil
 }
 
-func (s *Service) CreateTable(settings *Settings) (*Metadata, error) {
+func (s *Service) CreateTable(ctx context.Context, settings *Settings) (*Metadata, error) {
 	tableName := TableName(settings)
 	metadata, err := s.metadataFactory.GetMetadata(settings)
-
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +76,7 @@ func (s *Service) CreateTable(settings *Settings) (*Metadata, error) {
 		return metadata, nil
 	}
 
-	exists, err := s.tableExists(tableName)
-
+	exists, err := s.tableExists(ctx, tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -81,32 +86,29 @@ func (s *Service) CreateTable(settings *Settings) (*Metadata, error) {
 	}
 
 	mainKeySchema, err := s.getKeySchema(metadata.Main)
-
 	if err != nil {
 		return metadata, fmt.Errorf("can not create main key schema for table %s: %w", tableName, err)
 	}
 
 	localIndices, err := s.getLocalSecondaryIndices(metadata)
-
 	if err != nil {
 		return metadata, fmt.Errorf("can not create definitions for local secondary indices on table %s: %w", tableName, err)
 	}
 
 	globalIndices, err := s.getGlobalSecondaryIndices(metadata)
-
 	if err != nil {
 		return metadata, fmt.Errorf("can not create definitions for global secondary indices on table %s: %w", tableName, err)
 	}
 
 	attributeDefinitions := s.getAttributeDefinitions(metadata)
 
-	streamSpecification := &dynamodb.StreamSpecification{
+	streamSpecification := &types.StreamSpecification{
 		StreamEnabled: aws.Bool(false),
 	}
 
 	if settings.Main.StreamView != "" {
 		streamSpecification.StreamEnabled = aws.Bool(true)
-		streamSpecification.StreamViewType = aws.String(settings.Main.StreamView)
+		streamSpecification.StreamViewType = types.StreamViewType(settings.Main.StreamView)
 	}
 
 	input := &dynamodb.CreateTableInput{
@@ -116,15 +118,16 @@ func (s *Service) CreateTable(settings *Settings) (*Metadata, error) {
 		LocalSecondaryIndexes:  localIndices,
 		GlobalSecondaryIndexes: globalIndices,
 		StreamSpecification:    streamSpecification,
-		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+		ProvisionedThroughput: &types.ProvisionedThroughput{
 			ReadCapacityUnits:  aws.Int64(metadata.Main.ReadCapacityUnits),
 			WriteCapacityUnits: aws.Int64(metadata.Main.WriteCapacityUnits),
 		},
 	}
 
-	_, err = s.client.CreateTable(input)
+	_, err = s.client.CreateTable(ctx, input)
 
-	if err != nil && isError(err, dynamodb.ErrCodeResourceInUseException) {
+	var errResourceInUseException *types.ResourceInUseException
+	if errors.As(err, &errResourceInUseException) {
 		return metadata, nil
 	}
 
@@ -132,7 +135,7 @@ func (s *Service) CreateTable(settings *Settings) (*Metadata, error) {
 		return nil, err
 	}
 
-	err = s.waitForTableGettingAvailable(tableName)
+	err = s.waitForTableGettingAvailable(ctx, tableName)
 
 	if err != nil {
 		return nil, err
@@ -140,14 +143,13 @@ func (s *Service) CreateTable(settings *Settings) (*Metadata, error) {
 
 	s.logger.Info("created ddb table %s", tableName)
 
-	err = s.updateTtlSpecification(metadata)
+	err = s.updateTtlSpecification(ctx, metadata)
 
 	return metadata, err
 }
 
-func (s *Service) updateTtlSpecification(metadata *Metadata) error {
+func (s *Service) updateTtlSpecification(ctx context.Context, metadata *Metadata) error {
 	ttlSpecification, err := s.getTimeToLiveSpecification(metadata)
-
 	if err != nil {
 		return fmt.Errorf("can not create ttl specification for table %s: %w", metadata.TableName, err)
 	}
@@ -162,9 +164,10 @@ func (s *Service) updateTtlSpecification(metadata *Metadata) error {
 	}
 
 	for i := 0; i < defaultMaxWaitSeconds; i++ {
-		_, err = s.client.UpdateTimeToLive(ttlInput)
+		_, err = s.client.UpdateTimeToLive(ctx, ttlInput)
 
-		if isError(err, dynamodb.ErrCodeResourceInUseException) {
+		var errResourceInUseException *types.ResourceInUseException
+		if errors.As(err, &errResourceInUseException) {
 			time.Sleep(time.Second)
 			continue
 		}
@@ -181,16 +184,16 @@ func (s *Service) updateTtlSpecification(metadata *Metadata) error {
 	return fmt.Errorf("could not update ttl specification for ddb table %s cause the table is still in use", metadata.TableName)
 }
 
-func (s *Service) getAttributeDefinitions(metadata *Metadata) []*dynamodb.AttributeDefinition {
-	definitions := make([]*dynamodb.AttributeDefinition, 0)
+func (s *Service) getAttributeDefinitions(metadata *Metadata) []types.AttributeDefinition {
+	definitions := make([]types.AttributeDefinition, 0)
 	keyFields := s.getKeyFields(metadata)
 
 	for _, field := range keyFields {
 		attr := metadata.Attributes[field]
 
-		definitions = append(definitions, &dynamodb.AttributeDefinition{
+		definitions = append(definitions, types.AttributeDefinition{
 			AttributeName: aws.String(attr.AttributeName),
-			AttributeType: aws.String(attr.Type),
+			AttributeType: attr.Type,
 		})
 	}
 
@@ -215,37 +218,37 @@ func (s *Service) getKeyFields(metadata *Metadata) []string {
 	return fields
 }
 
-func (s *Service) getKeySchema(metadata KeyAware) ([]*dynamodb.KeySchemaElement, error) {
-	schema := make([]*dynamodb.KeySchemaElement, 0)
+func (s *Service) getKeySchema(metadata KeyAware) ([]types.KeySchemaElement, error) {
+	schema := make([]types.KeySchemaElement, 0)
 
 	if metadata.GetHashKey() == nil {
 		return schema, fmt.Errorf("no hash key defined")
 	}
 
-	schema = append(schema, &dynamodb.KeySchemaElement{
+	schema = append(schema, types.KeySchemaElement{
 		AttributeName: metadata.GetHashKey(),
-		KeyType:       aws.String(dynamodb.KeyTypeHash),
+		KeyType:       types.KeyTypeHash,
 	})
 
 	if metadata.GetRangeKey() == nil {
 		return schema, nil
 	}
 
-	schema = append(schema, &dynamodb.KeySchemaElement{
+	schema = append(schema, types.KeySchemaElement{
 		AttributeName: metadata.GetRangeKey(),
-		KeyType:       aws.String(dynamodb.KeyTypeRange),
+		KeyType:       types.KeyTypeRange,
 	})
 
 	return schema, nil
 }
 
-func (s *Service) getLocalSecondaryIndices(meta *Metadata) ([]*dynamodb.LocalSecondaryIndex, error) {
+func (s *Service) getLocalSecondaryIndices(meta *Metadata) ([]types.LocalSecondaryIndex, error) {
 	if len(meta.Local) == 0 {
 		return nil, nil
 	}
 
 	names := make([]string, 0)
-	indices := make([]*dynamodb.LocalSecondaryIndex, 0, len(meta.Local))
+	indices := make([]types.LocalSecondaryIndex, 0, len(meta.Local))
 
 	for name := range meta.Local {
 		names = append(names, name)
@@ -256,18 +259,16 @@ func (s *Service) getLocalSecondaryIndices(meta *Metadata) ([]*dynamodb.LocalSec
 	for _, name := range names {
 		data := meta.Local[name]
 		keySchema, err := s.getKeySchema(data)
-
 		if err != nil {
 			return nil, err
 		}
 
 		projection, err := s.projectedFields(meta.Main, data)
-
 		if err != nil {
 			return nil, err
 		}
 
-		indices = append(indices, &dynamodb.LocalSecondaryIndex{
+		indices = append(indices, types.LocalSecondaryIndex{
 			IndexName:  aws.String(name),
 			KeySchema:  keySchema,
 			Projection: projection,
@@ -277,13 +278,13 @@ func (s *Service) getLocalSecondaryIndices(meta *Metadata) ([]*dynamodb.LocalSec
 	return indices, nil
 }
 
-func (s *Service) getGlobalSecondaryIndices(meta *Metadata) ([]*dynamodb.GlobalSecondaryIndex, error) {
+func (s *Service) getGlobalSecondaryIndices(meta *Metadata) ([]types.GlobalSecondaryIndex, error) {
 	if len(meta.Global) == 0 {
 		return nil, nil
 	}
 
 	names := make([]string, 0)
-	indices := make([]*dynamodb.GlobalSecondaryIndex, 0, len(meta.Local))
+	indices := make([]types.GlobalSecondaryIndex, 0, len(meta.Local))
 
 	for name := range meta.Global {
 		names = append(names, name)
@@ -294,22 +295,20 @@ func (s *Service) getGlobalSecondaryIndices(meta *Metadata) ([]*dynamodb.GlobalS
 	for _, name := range names {
 		data := meta.Global[name]
 		keySchema, err := s.getKeySchema(data)
-
 		if err != nil {
 			return nil, err
 		}
 
 		projection, err := s.projectedFields(meta.Main, data)
-
 		if err != nil {
 			return nil, err
 		}
 
-		indices = append(indices, &dynamodb.GlobalSecondaryIndex{
+		indices = append(indices, types.GlobalSecondaryIndex{
 			IndexName:  aws.String(name),
 			KeySchema:  keySchema,
 			Projection: projection,
-			ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+			ProvisionedThroughput: &types.ProvisionedThroughput{
 				ReadCapacityUnits:  aws.Int64(data.ReadCapacityUnits),
 				WriteCapacityUnits: aws.Int64(data.WriteCapacityUnits),
 			},
@@ -319,7 +318,7 @@ func (s *Service) getGlobalSecondaryIndices(meta *Metadata) ([]*dynamodb.GlobalS
 	return indices, nil
 }
 
-func (s *Service) projectedFields(main FieldAware, second FieldAware) (*dynamodb.Projection, error) {
+func (s *Service) projectedFields(main FieldAware, second FieldAware) (*types.Projection, error) {
 	mainFields := main.GetFields()
 	secondFields := second.GetFields()
 
@@ -330,53 +329,53 @@ func (s *Service) projectedFields(main FieldAware, second FieldAware) (*dynamodb
 	}
 
 	if len(mainFields) == len(secondFields) {
-		projection := &dynamodb.Projection{
+		projection := &types.Projection{
 			NonKeyAttributes: nil,
-			ProjectionType:   aws.String(dynamodb.ProjectionTypeAll),
+			ProjectionType:   types.ProjectionTypeAll,
 		}
 
 		return projection, nil
 	}
 
-	projected := make([]*string, 0)
+	projected := make([]string, 0)
 
 	for _, field := range secondFields {
 		if main.IsKeyField(field) || second.IsKeyField(field) {
 			continue
 		}
 
-		projected = append(projected, aws.String(field))
+		projected = append(projected, field)
 	}
 
 	if len(projected) == 0 {
-		projection := &dynamodb.Projection{
+		projection := &types.Projection{
 			NonKeyAttributes: nil,
-			ProjectionType:   aws.String(dynamodb.ProjectionTypeKeysOnly),
+			ProjectionType:   types.ProjectionTypeKeysOnly,
 		}
 
 		return projection, nil
 	}
 
-	projection := &dynamodb.Projection{
+	projection := &types.Projection{
 		NonKeyAttributes: projected,
-		ProjectionType:   aws.String(dynamodb.ProjectionTypeInclude),
+		ProjectionType:   types.ProjectionTypeInclude,
 	}
 
 	return projection, nil
 }
 
-func (s *Service) getTimeToLiveSpecification(metadata *Metadata) (*dynamodb.TimeToLiveSpecification, error) {
+func (s *Service) getTimeToLiveSpecification(metadata *Metadata) (*types.TimeToLiveSpecification, error) {
 	if !metadata.TimeToLive.Enabled {
 		return nil, nil
 	}
 
 	attr := metadata.Attributes[metadata.TimeToLive.Field]
 
-	if attr.Type != dynamodb.ScalarAttributeTypeN {
+	if attr.Type != types.ScalarAttributeTypeN {
 		return nil, fmt.Errorf("the attribute of the ttl field '%s' has to be of type N but instead is of type %s ", attr.FieldName, attr.Type)
 	}
 
-	specification := &dynamodb.TimeToLiveSpecification{
+	specification := &types.TimeToLiveSpecification{
 		Enabled:       aws.Bool(true),
 		AttributeName: aws.String(attr.AttributeName),
 	}
@@ -384,12 +383,11 @@ func (s *Service) getTimeToLiveSpecification(metadata *Metadata) (*dynamodb.Time
 	return specification, nil
 }
 
-func (s *Service) waitForTableGettingAvailable(name string) error {
+func (s *Service) waitForTableGettingAvailable(ctx context.Context, name string) error {
 	s.logger.Info("waiting for ddb table %s getting available", name)
 
 	for i := 0; i < defaultMaxWaitSeconds; i++ {
-		exists, err := s.checkExists(name)
-
+		exists, err := s.checkExists(ctx, name)
 		if err != nil {
 			return err
 		}
@@ -404,11 +402,10 @@ func (s *Service) waitForTableGettingAvailable(name string) error {
 	return fmt.Errorf("table %s was not getting available in time", name)
 }
 
-func (s *Service) tableExists(name string) (bool, error) {
+func (s *Service) tableExists(ctx context.Context, name string) (bool, error) {
 	s.logger.Info("looking for ddb table %v", name)
 
-	exists, err := s.checkExists(name)
-
+	exists, err := s.checkExists(ctx, name)
 	if err != nil {
 		return false, err
 	}
@@ -422,12 +419,13 @@ func (s *Service) tableExists(name string) (bool, error) {
 	return true, nil
 }
 
-func (s *Service) checkExists(name string) (bool, error) {
-	out, err := s.client.DescribeTable(&dynamodb.DescribeTableInput{
+func (s *Service) checkExists(ctx context.Context, name string) (bool, error) {
+	out, err := s.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: aws.String(name),
 	})
 
-	if isError(err, dynamodb.ErrCodeResourceNotFoundException) {
+	var errResourceNotFoundException *types.ResourceNotFoundException
+	if errors.As(err, &errResourceNotFoundException) {
 		return false, nil
 	}
 
@@ -435,7 +433,7 @@ func (s *Service) checkExists(name string) (bool, error) {
 		return false, err
 	}
 
-	active := *out.Table.TableStatus == dynamodb.TableStatusActive
+	active := out.Table.TableStatus == types.TableStatusActive
 
 	return active, nil
 }

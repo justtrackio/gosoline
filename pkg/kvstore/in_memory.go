@@ -3,15 +3,16 @@ package kvstore
 import (
 	"context"
 	"fmt"
+	"math/bits"
+	"reflect"
+	"sync/atomic"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/karlseguin/ccache"
-	"math/bits"
-	"reflect"
-	"sync/atomic"
-	"time"
 )
 
 type InMemoryKvStore struct {
@@ -20,7 +21,7 @@ type InMemoryKvStore struct {
 	cacheSize *int64
 }
 
-func NewInMemoryKvStore(_ cfg.Config, _ log.Logger, settings *Settings) (KvStore, error) {
+func NewInMemoryKvStore(_ context.Context, _ cfg.Config, _ log.Logger, settings *Settings) (KvStore, error) {
 	return NewInMemoryKvStoreWithInterfaces(settings), nil
 }
 
@@ -82,7 +83,6 @@ func NewInMemoryKvStoreWithInterfaces(settings *Settings) KvStore {
 
 func (s *InMemoryKvStore) Contains(_ context.Context, key interface{}) (bool, error) {
 	keyStr, err := CastKeyToString(key)
-
 	if err != nil {
 		return false, fmt.Errorf("can not build string key %T %v: %w", key, key, err)
 	}
@@ -100,7 +100,6 @@ func (s *InMemoryKvStore) Contains(_ context.Context, key interface{}) (bool, er
 
 func (s *InMemoryKvStore) Get(_ context.Context, key interface{}, value interface{}) (bool, error) {
 	keyStr, err := CastKeyToString(key)
-
 	if err != nil {
 		return false, fmt.Errorf("can not build string key %T %v: %w", key, key, err)
 	}
@@ -134,14 +133,12 @@ func (s *InMemoryKvStore) getChunk(ctx context.Context, resultMap *refl.Map, key
 
 	for _, key := range keys {
 		keyString, err := CastKeyToString(key)
-
 		if err != nil {
 			return nil, fmt.Errorf("can not build string key %T %v: %w", key, key, err)
 		}
 
 		element := resultMap.NewElement()
 		ok, err := s.Get(ctx, key, element)
-
 		if err != nil {
 			return nil, fmt.Errorf("can not get batch element for key %s: %w", keyString, err)
 		}
@@ -162,7 +159,6 @@ func (s *InMemoryKvStore) getChunk(ctx context.Context, resultMap *refl.Map, key
 
 func (s *InMemoryKvStore) Put(_ context.Context, key interface{}, value interface{}) error {
 	keyStr, err := CastKeyToString(key)
-
 	if err != nil {
 		return fmt.Errorf("can not build string key %T %v: %w", key, key, err)
 	}
@@ -184,7 +180,6 @@ func (s *InMemoryKvStore) Put(_ context.Context, key interface{}, value interfac
 
 func (s *InMemoryKvStore) PutBatch(ctx context.Context, values interface{}) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
-
 	if err != nil {
 		return fmt.Errorf("could not convert values from %T to map[interface{}]interface{}", values)
 	}
@@ -204,7 +199,6 @@ func (s *InMemoryKvStore) EstimateSize() *int64 {
 
 func (s *InMemoryKvStore) Delete(_ context.Context, key interface{}) error {
 	keyStr, err := CastKeyToString(key)
-
 	if err != nil {
 		return fmt.Errorf("can not build string key %T %v: %w", key, key, err)
 	}
@@ -216,7 +210,6 @@ func (s *InMemoryKvStore) Delete(_ context.Context, key interface{}) error {
 
 func (s *InMemoryKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
-
 	if err != nil {
 		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
 	}

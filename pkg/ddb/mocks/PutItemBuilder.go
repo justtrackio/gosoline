@@ -4,9 +4,9 @@ package mocks
 
 import (
 	ddb "github.com/applike/gosoline/pkg/ddb"
-	dynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
+	dynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 
-	expression "github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	expression "github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 
 	mock "github.com/stretchr/testify/mock"
 )

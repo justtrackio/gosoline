@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"context"
+	"time"
+
+	"github.com/applike/gosoline/pkg/appctx"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
-	"time"
 )
 
 type kernelSettings struct {
@@ -30,7 +33,9 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 	settings := &kernelSettings{}
 	config.UnmarshalKey("kernel", settings)
 
-	k, err := kernel.New(config, logger, kernel.KillTimeout(settings.KillTimeout))
+	ctx := appctx.WithContainer(context.Background())
+
+	k, err := kernel.New(ctx, config, logger, kernel.KillTimeout(settings.KillTimeout))
 	if err != nil {
 		defaultErrorHandler("can not initialize the kernel: %w", err)
 	}

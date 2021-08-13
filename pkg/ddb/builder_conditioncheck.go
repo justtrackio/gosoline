@@ -3,15 +3,15 @@ package ddb
 import (
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hashicorp/go-multierror"
 )
 
 //go:generate mockery --name ConditionCheckBuilder
 type ConditionCheckBuilder interface {
-	Build(result interface{}) (*dynamodb.ConditionCheck, error)
+	Build(result interface{}) (*types.ConditionCheck, error)
 	ReturnNone() ConditionCheckBuilder
 	ReturnAllOld() ConditionCheckBuilder
 	WithHash(hashValue interface{}) ConditionCheckBuilder
@@ -25,7 +25,7 @@ type conditionCheckBuilder struct {
 	err        error
 	metadata   *Metadata
 	keyBuilder keyBuilder
-	returnType *string
+	returnType types.ReturnValuesOnConditionCheckFailure
 }
 
 func NewConditionCheckBuilder(metadata *Metadata) ConditionCheckBuilder {
@@ -38,12 +38,12 @@ func NewConditionCheckBuilder(metadata *Metadata) ConditionCheckBuilder {
 }
 
 func (b *conditionCheckBuilder) ReturnNone() ConditionCheckBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueNone)
+	b.returnType = types.ReturnValuesOnConditionCheckFailureNone
 	return b
 }
 
 func (b *conditionCheckBuilder) ReturnAllOld() ConditionCheckBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueAllOld)
+	b.returnType = types.ReturnValuesOnConditionCheckFailureAllOld
 	return b
 }
 
@@ -79,7 +79,7 @@ func (b *conditionCheckBuilder) WithKeys(keys ...interface{}) ConditionCheckBuil
 	return b
 }
 
-func (b *conditionCheckBuilder) Build(result interface{}) (*dynamodb.ConditionCheck, error) {
+func (b *conditionCheckBuilder) Build(result interface{}) (*types.ConditionCheck, error) {
 	if b.err != nil {
 		return nil, b.err
 	}
@@ -94,7 +94,7 @@ func (b *conditionCheckBuilder) Build(result interface{}) (*dynamodb.ConditionCh
 		return nil, err
 	}
 
-	input := &dynamodb.ConditionCheck{
+	input := &types.ConditionCheck{
 		ConditionExpression:                 expr.Condition(),
 		ExpressionAttributeNames:            expr.Names(),
 		ExpressionAttributeValues:           expr.Values(),

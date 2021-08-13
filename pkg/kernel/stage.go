@@ -3,6 +3,7 @@ package kernel
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/conc"
 	"github.com/applike/gosoline/pkg/log"
@@ -25,8 +26,8 @@ type modules struct {
 	modules map[string]*ModuleState
 }
 
-func newStage() *stage {
-	cfn, ctx := coffin.WithContext(context.Background())
+func newStage(ctx context.Context) *stage {
+	cfn, ctx := coffin.WithContext(ctx)
 
 	return &stage{
 		cfn: cfn,

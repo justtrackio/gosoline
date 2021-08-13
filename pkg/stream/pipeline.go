@@ -3,17 +3,20 @@ package stream
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/metric"
-	"sync"
-	"time"
 )
 
-const MetricNamePipelineReceivedCount = "PipelineReceivedCount"
-const MetricNamePipelineProcessedCount = "PipelineProcessedCount"
+const (
+	MetricNamePipelineReceivedCount  = "PipelineReceivedCount"
+	MetricNamePipelineProcessedCount = "PipelineProcessedCount"
+)
 
 //go:generate mockery --name PipelineCallback
 type PipelineCallback interface {
@@ -46,7 +49,7 @@ type Pipeline struct {
 func NewPipeline(stageFactories ...PipelineCallbackFactory) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		var err error
-		var stages = make([]PipelineCallback, len(stageFactories))
+		stages := make([]PipelineCallback, len(stageFactories))
 
 		for i, factory := range stageFactories {
 			if stages[i], err = factory(ctx, config, logger); err != nil {
@@ -57,12 +60,12 @@ func NewPipeline(stageFactories ...PipelineCallbackFactory) kernel.ModuleFactory
 		defaults := getDefaultPipelineMetrics()
 		metric := metric.NewDaemonWriter(defaults...)
 
-		input, err := NewConfigurableInput(config, logger, "pipeline")
+		input, err := NewConfigurableInput(ctx, config, logger, "pipeline")
 		if err != nil {
 			return nil, fmt.Errorf("can not create configurable input: %w", err)
 		}
 
-		output, err := NewConfigurableOutput(config, logger, "pipeline")
+		output, err := NewConfigurableOutput(ctx, config, logger, "pipeline")
 		if err != nil {
 			return nil, fmt.Errorf("can not create configurable output: %w", err)
 		}
@@ -126,7 +129,6 @@ func (p *Pipeline) read(ctx context.Context) error {
 			}
 
 			disaggregated, err := p.disaggregateMessage(ctx, msg)
-
 			if err != nil {
 				p.logger.Error("can not disaggregate the message: %w", err)
 				continue
@@ -152,7 +154,6 @@ func (p *Pipeline) disaggregateMessage(ctx context.Context, msg *Message) ([]*Me
 
 	batch := make([]*Message, 0)
 	_, _, err := p.encoder.Decode(ctx, msg, &batch)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not decode message: %w", err)
 	}

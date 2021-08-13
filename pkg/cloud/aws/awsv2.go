@@ -6,43 +6,73 @@ import (
 	"time"
 
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/clock"
+	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	awsHttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/smithy-go/logging"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/cenkalti/backoff"
 )
 
+type Credentials struct {
+	AccessKeyID     string `cfg:"access_key_id"`
+	SecretAccessKey string `cfg:"secret_access_key"`
+	SessionToken    string `cfg:"session_token"`
+}
+
 type ClientHttpSettings struct {
 	Timeout time.Duration `cfg:"timeout" default:"0"`
 }
 
-type ClientRetrySettings struct {
-	InitialInterval time.Duration `cfg:"initial_interval" default:"50ms"`
-	MaxInterval     time.Duration `cfg:"max_interval" default:"10s"`
-	MaxElapsedTime  time.Duration `cfg:"max_elapsed_time" default:"15m"`
-}
-
 type ClientSettings struct {
-	Region     string              `cfg:"region" default:"eu-central-1"`
-	Endpoint   string              `cfg:"endpoint" default:"http://localhost:4566"`
-	Retry      ClientRetrySettings `cfg:"retry"`
-	HttpClient ClientHttpSettings  `cfg:"http_client"`
+	Region     string             `cfg:"region" default:"eu-central-1"`
+	Endpoint   string             `cfg:"endpoint" default:"http://localhost:4566"`
+	HttpClient ClientHttpSettings `cfg:"http_client"`
+	Backoff    exec.BackoffSettings
 }
 
-func UnmarshalClientSettings(config cfg.Config, settings interface{}, service string, name string) {
-	key := fmt.Sprintf("cloud.aws.%s.clients.%s", service, name)
-	config.UnmarshalKey(key, settings, []cfg.UnmarshalDefaults{
+func (s *ClientSettings) SetBackoff(backoff exec.BackoffSettings) {
+	s.Backoff = backoff
+}
+
+type ClientSettingsAware interface {
+	SetBackoff(backoff exec.BackoffSettings)
+}
+
+func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, service string, name string) {
+	if name == "" {
+		name = "default"
+	}
+
+	clientsKey := fmt.Sprintf("cloud.aws.%s.clients.%s", service, name)
+	defaultClientKey := fmt.Sprintf("cloud.aws.%s.clients.default", service)
+
+	config.UnmarshalKey(clientsKey, settings, []cfg.UnmarshalDefaults{
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.region", "region"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.endpoint", "endpoint"),
+		cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, "."),
 	}...)
+
+	backoffSettings := exec.ReadBackoffSettings(config, clientsKey, "cloud.aws.defaults")
+	settings.SetBackoff(backoffSettings)
 }
 
-func DefaultClientOptions(logger log.Logger, clock clock.Clock, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) []func(options *awsCfg.LoadOptions) error {
+func UnmarshalCredentials(config cfg.Config) *Credentials {
+	if !config.IsSet("cloud.aws.credentials") {
+		return nil
+	}
+
+	creds := &Credentials{}
+	config.UnmarshalKey("cloud.aws.credentials", creds)
+
+	return creds
+}
+
+func DefaultClientOptions(config cfg.Config, logger log.Logger, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) []func(options *awsCfg.LoadOptions) error {
 	options := []func(options *awsCfg.LoadOptions) error{
 		awsCfg.WithRegion(settings.Region),
 		awsCfg.WithEndpointResolver(EndpointResolver(settings.Endpoint)),
@@ -50,30 +80,37 @@ func DefaultClientOptions(logger log.Logger, clock clock.Clock, settings ClientS
 		awsCfg.WithClientLogMode(aws.ClientLogMode(0)),
 		awsCfg.WithRetryer(func() aws.Retryer {
 			return retry.NewStandard(func(options *retry.StandardOptions) {
-				options.Backoff = NewExponentialBackoffDelayer(clock, &settings.Retry)
+				options.MaxAttempts = settings.Backoff.MaxAttempts
+				options.Backoff = NewExponentialBackoffDelayer(&settings.Backoff)
 			})
 		}),
 	}
+
+	if creds := UnmarshalCredentials(config); creds != nil {
+		credentialsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
+		options = append(options, awsCfg.WithCredentialsProvider(credentialsProvider))
+	}
+
 	options = append(options, optFns...)
 
 	return options
 }
 
-func DefaultClientConfig(ctx context.Context, logger log.Logger, clock clock.Clock, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) (aws.Config, error) {
+func DefaultClientConfig(ctx context.Context, config cfg.Config, logger log.Logger, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) (aws.Config, error) {
 	var err error
 	var awsConfig aws.Config
 
-	options := DefaultClientOptions(logger, clock, settings, optFns...)
+	options := DefaultClientOptions(config, logger, settings, optFns...)
 
 	if awsConfig, err = awsCfg.LoadDefaultConfig(ctx, options...); err != nil {
 		return awsConfig, fmt.Errorf("can not initialize config: %w", err)
 	}
 
 	awsConfig.APIOptions = append(awsConfig.APIOptions, func(stack *middleware.Stack) error {
-		return stack.Initialize.Add(AttemptLoggerInitMiddleware(logger, clock, settings.Retry.MaxElapsedTime), middleware.After)
+		return stack.Initialize.Add(AttemptLoggerInitMiddleware(logger, &settings.Backoff), middleware.After)
 	})
 	awsConfig.APIOptions = append(awsConfig.APIOptions, func(stack *middleware.Stack) error {
-		return stack.Finalize.Insert(AttemptLoggerRetryMiddleware(logger, clock), "Retry", middleware.After)
+		return stack.Finalize.Insert(AttemptLoggerRetryMiddleware(logger), "Retry", middleware.After)
 	})
 
 	if settings.HttpClient.Timeout > 0 {
@@ -133,9 +170,8 @@ type ExponentialBackoffDelayer struct {
 	backoff *backoff.ExponentialBackOff
 }
 
-func NewExponentialBackoffDelayer(clock clock.Clock, settings *ClientRetrySettings) *ExponentialBackoffDelayer {
+func NewExponentialBackoffDelayer(settings *exec.BackoffSettings) *ExponentialBackoffDelayer {
 	backOff := backoff.NewExponentialBackOff()
-	backOff.Clock = clock
 	backOff.InitialInterval = settings.InitialInterval
 	backOff.MaxInterval = settings.MaxInterval
 	backOff.MaxElapsedTime = settings.MaxElapsedTime

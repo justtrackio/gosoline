@@ -1,6 +1,6 @@
 package ddb
 
-import "github.com/aws/aws-sdk-go/service/dynamodb/expression"
+import "github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 
 func And(left, right expression.ConditionBuilder, other ...expression.ConditionBuilder) expression.ConditionBuilder {
 	return expression.And(left, right, other...)

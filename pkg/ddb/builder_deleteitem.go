@@ -3,9 +3,10 @@ package ddb
 import (
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 //go:generate mockery --name DeleteItemBuilder
@@ -22,7 +23,7 @@ type deleteItemBuilder struct {
 	metadata   *Metadata
 	keyBuilder keyBuilder
 	condition  *expression.ConditionBuilder
-	returnType *string
+	returnType types.ReturnValue
 }
 
 func NewDeleteItemBuilder(metadata *Metadata) DeleteItemBuilder {
@@ -53,19 +54,19 @@ func (b *deleteItemBuilder) WithCondition(cond expression.ConditionBuilder) Dele
 }
 
 func (b *deleteItemBuilder) ReturnNone() DeleteItemBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueNone)
+	b.returnType = types.ReturnValueNone
 
 	return b
 }
 
 func (b *deleteItemBuilder) ReturnAllOld() DeleteItemBuilder {
-	b.returnType = aws.String(dynamodb.ReturnValueAllOld)
+	b.returnType = types.ReturnValueAllOld
 
 	return b
 }
 
 func (b *deleteItemBuilder) Build(item interface{}) (*dynamodb.DeleteItemInput, error) {
-	if b.returnType != nil && *b.returnType != dynamodb.ReturnValueNone && !isPointer(item) {
+	if b.returnType != "" && b.returnType != types.ReturnValueNone && !isPointer(item) {
 		return nil, fmt.Errorf("the provided old value has to be a pointer")
 	}
 

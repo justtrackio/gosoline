@@ -3,7 +3,10 @@ package conc
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/applike/gosoline/pkg/ddb"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
@@ -11,7 +14,6 @@ import (
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/cenkalti/backoff"
 	"github.com/jonboulle/clockwork"
-	"time"
 )
 
 type DdbLockItem struct {
@@ -33,19 +35,26 @@ type ddbLockProvider struct {
 	domain          string
 }
 
-func NewDdbLockProvider(config cfg.Config, logger log.Logger, settings DistributedLockSettings) (DistributedLockProvider, error) {
-	repo, err := ddb.NewRepository(config, logger, &ddb.Settings{
+func NewDdbLockProvider(ctx context.Context, config cfg.Config, logger log.Logger, settings DistributedLockSettings) (DistributedLockProvider, error) {
+	ddbSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Name: "locks",
 		},
-		Backoff: settings.Backoff,
 		Main: ddb.MainSettings{
 			Model:              &DdbLockItem{},
 			ReadCapacityUnits:  1,
 			WriteCapacityUnits: 1,
 		},
-	})
-	if err != nil {
+	}
+
+	ddbClientOption := func(cfg *dynamodb.ClientConfig) {
+		cfg.Settings.Backoff.CancelDelay = 0
+	}
+
+	var err error
+	var repo ddb.Repository
+
+	if repo, err = ddb.NewRepository(ctx, config, logger, ddbSettings, ddbClientOption); err != nil {
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
@@ -167,7 +176,6 @@ func (m *ddbLockProvider) release(ctx context.Context, resource string, token st
 		Resource: resource,
 		Token:    token,
 	})
-
 	if err != nil {
 		return err
 	}

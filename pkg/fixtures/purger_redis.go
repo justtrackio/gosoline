@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/redis"
@@ -27,9 +28,9 @@ func newRedisPurger(config cfg.Config, logger log.Logger, name *string) (*redisP
 	}, nil
 }
 
-func (p *redisPurger) purge() error {
+func (p *redisPurger) purge(ctx context.Context) error {
 	p.logger.Info("flushing redis %s", *p.name)
-	_, err := p.client.FlushDB(context.Background())
+	_, err := p.client.FlushDB(ctx)
 	p.logger.Info("flushing redis %s done", *p.name)
 
 	return err

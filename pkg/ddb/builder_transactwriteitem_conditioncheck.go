@@ -2,7 +2,8 @@ package ddb
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type TransactConditionCheck struct {
@@ -10,7 +11,7 @@ type TransactConditionCheck struct {
 	Item    interface{}
 }
 
-func (b *TransactConditionCheck) Build() (*dynamodb.TransactWriteItem, error) {
+func (b *TransactConditionCheck) Build() (*types.TransactWriteItem, error) {
 	if !isPointer(b.Item) {
 		return nil, fmt.Errorf("item must be a pointer")
 	}
@@ -20,7 +21,7 @@ func (b *TransactConditionCheck) Build() (*dynamodb.TransactWriteItem, error) {
 		return nil, fmt.Errorf("could not built entry for transact condition check: %w", err)
 	}
 
-	item := &dynamodb.TransactWriteItem{
+	item := &types.TransactWriteItem{
 		ConditionCheck: entry,
 	}
 

@@ -2,21 +2,22 @@ package ddb
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type ResultCallback func(ctx context.Context, items interface{}, progress Progress) (bool, error)
 
 type Progress interface {
-	GetRequestCount() int64
-	GetItemCount() int64
-	GetScannedCount() int64
+	GetRequestCount() int32
+	GetItemCount() int32
+	GetScannedCount() int32
 	GetConsumedCapacity() *ConsumedCapacity
 }
 
 type readResult struct {
-	Items            []map[string]*dynamodb.AttributeValue
-	LastEvaluatedKey map[string]*dynamodb.AttributeValue
+	Items            []map[string]types.AttributeValue
+	LastEvaluatedKey map[string]types.AttributeValue
 	Progress         Progress
 }
 
@@ -65,21 +66,21 @@ func newPutItemResult() *PutItemResult {
 }
 
 type QueryResult struct {
-	RequestCount     int64
-	ItemCount        int64
-	ScannedCount     int64
+	RequestCount     int32
+	ItemCount        int32
+	ScannedCount     int32
 	ConsumedCapacity *ConsumedCapacity
 }
 
-func (q QueryResult) GetRequestCount() int64 {
+func (q QueryResult) GetRequestCount() int32 {
 	return q.RequestCount
 }
 
-func (q QueryResult) GetItemCount() int64 {
+func (q QueryResult) GetItemCount() int32 {
 	return q.ItemCount
 }
 
-func (q QueryResult) GetScannedCount() int64 {
+func (q QueryResult) GetScannedCount() int32 {
 	return q.ScannedCount
 }
 
@@ -94,21 +95,21 @@ func newQueryResult() *QueryResult {
 }
 
 type ScanResult struct {
-	RequestCount     int64
-	ItemCount        int64
-	ScannedCount     int64
+	RequestCount     int32
+	ItemCount        int32
+	ScannedCount     int32
 	ConsumedCapacity *ConsumedCapacity
 }
 
-func (s ScanResult) GetRequestCount() int64 {
+func (s ScanResult) GetRequestCount() int32 {
 	return s.RequestCount
 }
 
-func (s ScanResult) GetItemCount() int64 {
+func (s ScanResult) GetItemCount() int32 {
 	return s.ItemCount
 }
 
-func (s ScanResult) GetScannedCount() int64 {
+func (s ScanResult) GetScannedCount() int32 {
 	return s.ScannedCount
 }
 

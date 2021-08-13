@@ -3,10 +3,9 @@ package cloudwatch
 import (
 	"context"
 	"fmt"
-	"sync"
 
+	"github.com/applike/gosoline/pkg/appctx"
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/clock"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -20,46 +19,42 @@ type Client interface {
 	PutMetricData(ctx context.Context, params *cloudwatch.PutMetricDataInput, optFns ...func(options *cloudwatch.Options)) (*cloudwatch.PutMetricDataOutput, error)
 }
 
-type Settings struct {
+type ClientSettings struct {
 	gosoAws.ClientSettings
 }
 
-var clients = struct {
-	lck       sync.Mutex
-	instances map[string]*cloudwatch.Client
-}{
-	instances: map[string]*cloudwatch.Client{},
+type ClientConfig struct {
+	Settings    ClientSettings
+	LoadOptions []func(options *awsCfg.LoadOptions) error
 }
 
-func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...func(options *awsCfg.LoadOptions) error) (*cloudwatch.Client, error) {
-	clients.lck.Lock()
-	defer clients.lck.Unlock()
+type ClientOption func(cfg *ClientConfig)
 
-	var ok bool
-	var err error
-	var client *cloudwatch.Client
+type clientAppCtxKey string
 
-	if client, ok = clients.instances[name]; ok {
-		return client, nil
-	}
-
-	if client, err = NewClient(ctx, config, logger, name, optFns...); err != nil {
+func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*cloudwatch.Client, error) {
+	client, err := appctx.GetSet(ctx, clientAppCtxKey(name), func() (interface{}, error) {
+		return NewClient(ctx, config, logger, name, optFns...)
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	clients.instances[name] = client
-
-	return client, nil
+	return client.(*cloudwatch.Client), nil
 }
 
-func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...func(options *awsCfg.LoadOptions) error) (*cloudwatch.Client, error) {
-	settings := &Settings{}
-	gosoAws.UnmarshalClientSettings(config, settings, "cloudwatch", name)
+func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*cloudwatch.Client, error) {
+	clientCfg := &ClientConfig{}
+	gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "cloudwatch", name)
+
+	for _, opt := range optFns {
+		opt(clientCfg)
+	}
 
 	var err error
 	var awsConfig aws.Config
 
-	if awsConfig, err = gosoAws.DefaultClientConfig(ctx, logger, clock.Provider, settings.ClientSettings, optFns...); err != nil {
+	if awsConfig, err = gosoAws.DefaultClientConfig(ctx, config, logger, clientCfg.Settings.ClientSettings, clientCfg.LoadOptions...); err != nil {
 		return nil, fmt.Errorf("can not initialize config: %w", err)
 	}
 

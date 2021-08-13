@@ -3,12 +3,12 @@ package ddb
 import (
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 //go:generate mockery --name TransactGetItemBuilder
 type TransactGetItemBuilder interface {
-	Build() (*dynamodb.TransactGetItem, error)
+	Build() (types.TransactGetItem, error)
 	GetItem() interface{}
 }
 
@@ -17,18 +17,18 @@ type TransactGetItem struct {
 	Item    interface{}
 }
 
-func (b *TransactGetItem) Build() (*dynamodb.TransactGetItem, error) {
+func (b *TransactGetItem) Build() (types.TransactGetItem, error) {
 	if !isPointer(b.Item) {
-		return nil, fmt.Errorf("item must be a pointer")
+		return types.TransactGetItem{}, fmt.Errorf("item must be a pointer")
 	}
 
 	entry, err := b.Builder.Build(b.Item)
 	if err != nil {
-		return nil, fmt.Errorf("could not built entry for transact get item: %w", err)
+		return types.TransactGetItem{}, fmt.Errorf("could not built entry for transact get item: %w", err)
 	}
 
-	item := &dynamodb.TransactGetItem{
-		Get: &dynamodb.Get{
+	item := types.TransactGetItem{
+		Get: &types.Get{
 			ExpressionAttributeNames: entry.ExpressionAttributeNames,
 			Key:                      entry.Key,
 			ProjectionExpression:     entry.ProjectionExpression,

@@ -3,27 +3,27 @@ package stream
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
+	"github.com/applike/gosoline/pkg/cloud/aws/sqs"
 	"github.com/applike/gosoline/pkg/coffin"
-	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/hashicorp/go-multierror"
 )
 
+var _ AcknowledgeableInput = &sqsInput{}
+
 type SqsInputSettings struct {
 	cfg.AppId
-	QueueId             string               `cfg:"queue_id"`
-	MaxNumberOfMessages int64                `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
-	WaitTime            int64                `cfg:"wait_time"`
-	VisibilityTimeout   int                  `cfg:"visibility_timeout"`
-	RunnerCount         int                  `cfg:"runner_count"`
-	Fifo                sqs.FifoSettings     `cfg:"fifo"`
-	RedrivePolicy       sqs.RedrivePolicy    `cfg:"redrive_policy"`
-	Client              cloud.ClientSettings `cfg:"client"`
-	Backoff             exec.BackoffSettings `cfg:"backoff"`
-	Unmarshaller        string               `cfg:"unmarshaller" default:"msg"`
+	QueueId             string            `cfg:"queue_id"`
+	MaxNumberOfMessages int32             `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int32             `cfg:"wait_time"`
+	VisibilityTimeout   int               `cfg:"visibility_timeout"`
+	RunnerCount         int               `cfg:"runner_count"`
+	Fifo                sqs.FifoSettings  `cfg:"fifo"`
+	RedrivePolicy       sqs.RedrivePolicy `cfg:"redrive_policy"`
+	ClientName          string            `cfg:"client_name"`
+	Unmarshaller        string            `cfg:"unmarshaller" default:"msg"`
 }
 
 func (s SqsInputSettings) GetAppid() cfg.AppId {
@@ -41,7 +41,7 @@ func (s SqsInputSettings) IsFifoEnabled() bool {
 type sqsInput struct {
 	logger      log.Logger
 	queue       sqs.Queue
-	settings    SqsInputSettings
+	settings    *SqsInputSettings
 	unmarshaler UnmarshallerFunc
 
 	cfn     coffin.Coffin
@@ -49,40 +49,43 @@ type sqsInput struct {
 	stopped bool
 }
 
-func NewSqsInput(config cfg.Config, logger log.Logger, s SqsInputSettings) (*sqsInput, error) {
-	s.AppId.PadFromConfig(config)
+func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsInputSettings) (*sqsInput, error) {
+	settings.AppId.PadFromConfig(config)
 
-	queue, err := sqs.New(config, logger, &sqs.Settings{
-		AppId:             s.AppId,
-		QueueId:           s.QueueId,
-		Fifo:              s.Fifo,
-		RedrivePolicy:     s.RedrivePolicy,
-		VisibilityTimeout: s.VisibilityTimeout,
-		Client:            s.Client,
-		Backoff:           s.Backoff,
-	})
-	if err != nil {
+	queueName := sqs.GetQueueName(settings)
+	queueSettings := &sqs.Settings{
+		QueueName:         queueName,
+		VisibilityTimeout: settings.VisibilityTimeout,
+		Fifo:              settings.Fifo,
+		RedrivePolicy:     settings.RedrivePolicy,
+		ClientName:        settings.ClientName,
+	}
+
+	var ok bool
+	var err error
+	var queue sqs.Queue
+	var unmarshaller UnmarshallerFunc
+
+	if queue, err = sqs.NewQueue(ctx, config, logger, queueSettings); err != nil {
 		return nil, fmt.Errorf("can not create queue: %w", err)
 	}
 
-	unmarshaller, ok := unmarshallers[s.Unmarshaller]
-
-	if !ok {
-		return nil, fmt.Errorf("unknown unmarshaller %s", s.Unmarshaller)
+	if unmarshaller, ok = unmarshallers[settings.Unmarshaller]; !ok {
+		return nil, fmt.Errorf("unknown unmarshaller %s", settings.Unmarshaller)
 	}
 
-	return NewSqsInputWithInterfaces(logger, queue, unmarshaller, s), nil
+	return NewSqsInputWithInterfaces(logger, queue, unmarshaller, settings), nil
 }
 
-func NewSqsInputWithInterfaces(logger log.Logger, queue sqs.Queue, unmarshaller UnmarshallerFunc, s SqsInputSettings) *sqsInput {
-	if s.RunnerCount <= 0 {
-		s.RunnerCount = 1
+func NewSqsInputWithInterfaces(logger log.Logger, queue sqs.Queue, unmarshaller UnmarshallerFunc, settings *SqsInputSettings) *sqsInput {
+	if settings.RunnerCount <= 0 {
+		settings.RunnerCount = 1
 	}
 
 	return &sqsInput{
 		logger:      logger,
 		queue:       queue,
-		settings:    s,
+		settings:    settings,
 		unmarshaler: unmarshaller,
 		cfn:         coffin.New(),
 		channel:     make(chan *Message),
@@ -120,7 +123,6 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 		}
 
 		sqsMessages, err := i.queue.Receive(ctx, i.settings.MaxNumberOfMessages, i.settings.WaitTime)
-
 		if err != nil {
 			i.logger.Error("could not get messages from sqs: %w", err)
 			continue
@@ -128,7 +130,6 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 
 		for _, sqsMessage := range sqsMessages {
 			msg, err := i.unmarshaler(sqsMessage.Body)
-
 			if err != nil {
 				i.logger.Error("could not unmarshal message: %w", err)
 				continue
@@ -150,7 +151,7 @@ func (i *sqsInput) Stop() {
 	i.stopped = true
 }
 
-func (i *sqsInput) Ack(msg *Message) error {
+func (i *sqsInput) Ack(ctx context.Context, msg *Message) error {
 	var ok bool
 	var receiptHandleInterface interface{}
 	var receiptHandleString string
@@ -167,10 +168,10 @@ func (i *sqsInput) Ack(msg *Message) error {
 		return fmt.Errorf("the attribute %s of the message should not be empty", AttributeSqsReceiptHandle)
 	}
 
-	return i.queue.DeleteMessage(receiptHandleString)
+	return i.queue.DeleteMessage(ctx, receiptHandleString)
 }
 
-func (i *sqsInput) AckBatch(msgs []*Message) error {
+func (i *sqsInput) AckBatch(ctx context.Context, msgs []*Message) error {
 	receiptHandles := make([]string, 0, len(msgs))
 	multiError := new(multierror.Error)
 
@@ -204,7 +205,7 @@ func (i *sqsInput) AckBatch(msgs []*Message) error {
 		return multiError.ErrorOrNil()
 	}
 
-	if err := i.queue.DeleteMessageBatch(receiptHandles); err != nil {
+	if err := i.queue.DeleteMessageBatch(ctx, receiptHandles); err != nil {
 		multiError = multierror.Append(multiError, err)
 	}
 

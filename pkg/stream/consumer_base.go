@@ -60,7 +60,7 @@ type baseConsumer struct {
 	processed        int32
 }
 
-func NewBaseConsumer(config cfg.Config, logger log.Logger, name string, consumerCallback BaseConsumerCallback) (*baseConsumer, error) {
+func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, name string, consumerCallback BaseConsumerCallback) (*baseConsumer, error) {
 	settings := readConsumerSettings(config, name)
 	appId := cfg.GetAppIdFromConfig(config)
 
@@ -72,7 +72,7 @@ func NewBaseConsumer(config cfg.Config, logger log.Logger, name string, consumer
 	defaultMetrics := getConsumerDefaultMetrics(name, settings.RunnerCount)
 	metricWriter := metric.NewDaemonWriter(defaultMetrics...)
 
-	input, err := NewConfigurableInput(config, logger, settings.Input)
+	input, err := NewConfigurableInput(ctx, config, logger, settings.Input)
 	if err != nil {
 		return nil, err
 	}

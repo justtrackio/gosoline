@@ -1,25 +1,27 @@
 package stream
 
 import (
+	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/cloud/aws/sns"
+	"github.com/applike/gosoline/pkg/cloud/aws/sqs"
+	"github.com/applike/gosoline/pkg/dx"
 	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/sns"
-	"github.com/applike/gosoline/pkg/sqs"
 )
+
+var _ AcknowledgeableInput = &snsInput{}
 
 type SnsInputSettings struct {
 	cfg.AppId
-	QueueId             string               `cfg:"queue_id"`
-	MaxNumberOfMessages int64                `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
-	WaitTime            int64                `cfg:"wait_time"`
-	RedrivePolicy       sqs.RedrivePolicy    `cfg:"redrive_policy"`
-	VisibilityTimeout   int                  `cfg:"visibility_timeout"`
-	RunnerCount         int                  `cfg:"runner_count"`
-	Client              cloud.ClientSettings `cfg:"client"`
-	Backoff             exec.BackoffSettings `cfg:"backoff"`
+	QueueId             string            `cfg:"queue_id"`
+	MaxNumberOfMessages int32             `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int32             `cfg:"wait_time"`
+	RedrivePolicy       sqs.RedrivePolicy `cfg:"redrive_policy"`
+	VisibilityTimeout   int               `cfg:"visibility_timeout"`
+	RunnerCount         int               `cfg:"runner_count"`
+	ClientName          string            `cfg:"client_name"`
 }
 
 func (s SnsInputSettings) GetAppid() cfg.AppId {
@@ -44,10 +46,10 @@ type snsInput struct {
 	*sqsInput
 }
 
-func NewSnsInput(config cfg.Config, logger log.Logger, settings SnsInputSettings, targets []SnsInputTarget) (*snsInput, error) {
-	autoSubscribe := config.GetBool("aws_sns_autoSubscribe")
+func NewSnsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SnsInputSettings, targets []SnsInputTarget) (*snsInput, error) {
+	autoSubscribe := dx.ShouldAutoCreate(config)
 
-	sqsInput, err := NewSqsInput(config, logger, SqsInputSettings{
+	sqsInput, err := NewSqsInput(ctx, config, logger, &SqsInputSettings{
 		AppId:               settings.AppId,
 		QueueId:             settings.QueueId,
 		MaxNumberOfMessages: settings.MaxNumberOfMessages,
@@ -55,8 +57,7 @@ func NewSnsInput(config cfg.Config, logger log.Logger, settings SnsInputSettings
 		VisibilityTimeout:   settings.VisibilityTimeout,
 		RunnerCount:         settings.RunnerCount,
 		RedrivePolicy:       settings.RedrivePolicy,
-		Client:              settings.Client,
-		Backoff:             settings.Backoff,
+		ClientName:          settings.ClientName,
 		Unmarshaller:        UnmarshallerSns,
 	})
 	if err != nil {
@@ -66,19 +67,20 @@ func NewSnsInput(config cfg.Config, logger log.Logger, settings SnsInputSettings
 	queueArn := sqsInput.GetQueueArn()
 
 	if autoSubscribe {
+		var topic sns.Topic
+
 		for _, target := range targets {
-			topic, err := sns.NewTopic(config, logger, &sns.Settings{
-				AppId:   target.AppId,
-				TopicId: target.TopicId,
-				Client:  settings.Client,
-				Backoff: settings.Backoff,
-			})
-			if err != nil {
+			topicName := sns.GetTopicName(settings.AppId, target.TopicId)
+			topicSettings := &sns.TopicSettings{
+				TopicName:  topicName,
+				ClientName: "default",
+			}
+
+			if topic, err = sns.NewTopic(ctx, config, logger, topicSettings); err != nil {
 				return nil, fmt.Errorf("can not create topic: %w", err)
 			}
 
-			err = topic.SubscribeSqs(queueArn, target.Attributes)
-			if err != nil {
+			if err = topic.SubscribeSqs(ctx, queueArn, target.Attributes); err != nil {
 				return nil, fmt.Errorf("can not subscribe to queue: %w", err)
 			}
 		}

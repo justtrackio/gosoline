@@ -2,14 +2,15 @@ package stream_test
 
 import (
 	"context"
+	"testing"
+
+	sqsMocks "github.com/applike/gosoline/pkg/cloud/aws/sqs/mocks"
 	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	sqsMocks "github.com/applike/gosoline/pkg/sqs/mocks"
 	"github.com/applike/gosoline/pkg/stream"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestSqsInput_Run(t *testing.T) {
@@ -22,15 +23,15 @@ func TestSqsInput_Run(t *testing.T) {
 	msg := &stream.Message{}
 
 	queue := new(sqsMocks.Queue)
-	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int64(1), int64(3)).Return(func(_ context.Context, mrc int64, wt int64) []*sqs.Message {
+	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int32(1), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
 		count++
 
 		if count > int(mrc) {
 			<-waitStopDone
-			return []*sqs.Message{}
+			return []types.Message{}
 		}
 
-		return []*sqs.Message{
+		return []types.Message{
 			{
 				Body:          aws.String(`{"body": "foobar"}`),
 				MessageId:     aws.String(""),
@@ -39,9 +40,9 @@ func TestSqsInput_Run(t *testing.T) {
 		}
 	}, nil)
 
-	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, stream.SqsInputSettings{
-		MaxNumberOfMessages: int64(1),
-		WaitTime:            int64(3),
+	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, &stream.SqsInputSettings{
+		MaxNumberOfMessages: 1,
+		WaitTime:            3,
 		RunnerCount:         3,
 	})
 
@@ -73,11 +74,11 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 	waitRunDone := make(chan struct{})
 
 	queue := new(sqsMocks.Queue)
-	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int64(10), int64(3)).Return(func(_ context.Context, mrc int64, wt int64) []*sqs.Message {
+	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int32(10), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
 		count++
 
 		if count == 1 {
-			return []*sqs.Message{
+			return []types.Message{
 				{
 					Body:          aws.String(`{"body": "foobar"}`),
 					ReceiptHandle: nil,
@@ -85,11 +86,11 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 			}
 		}
 
-		return []*sqs.Message{}
+		return []types.Message{}
 	}, nil)
 
-	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, stream.SqsInputSettings{
-		WaitTime:    int64(3),
+	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, &stream.SqsInputSettings{
+		WaitTime:    3,
 		RunnerCount: 3,
 	})
 

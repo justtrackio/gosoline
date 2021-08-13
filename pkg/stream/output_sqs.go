@@ -3,14 +3,12 @@ package stream
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/exec"
+	"github.com/applike/gosoline/pkg/cloud/aws/sqs"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/sqs"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 	"github.com/thoas/go-funk"
 )
 
@@ -22,36 +20,50 @@ type SqsOutputSettings struct {
 	VisibilityTimeout int
 	Fifo              sqs.FifoSettings
 	RedrivePolicy     sqs.RedrivePolicy
-	Client            cloud.ClientSettings
-	Backoff           exec.BackoffSettings
+	ClientName        string
+}
+
+func (s SqsOutputSettings) GetAppid() cfg.AppId {
+	return s.AppId
+}
+
+func (s SqsOutputSettings) GetQueueId() string {
+	return s.QueueId
+}
+
+func (s SqsOutputSettings) IsFifoEnabled() bool {
+	return s.Fifo.Enabled
 }
 
 type sqsOutput struct {
 	logger   log.Logger
 	queue    sqs.Queue
-	settings SqsOutputSettings
+	settings *SqsOutputSettings
 }
 
-func NewSqsOutput(config cfg.Config, logger log.Logger, s SqsOutputSettings) (Output, error) {
-	s.PadFromConfig(config)
+func NewSqsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsOutputSettings) (Output, error) {
+	settings.PadFromConfig(config)
 
-	queue, err := sqs.New(config, logger, &sqs.Settings{
-		AppId:             s.AppId,
-		QueueId:           s.QueueId,
-		VisibilityTimeout: s.VisibilityTimeout,
-		Fifo:              s.Fifo,
-		RedrivePolicy:     s.RedrivePolicy,
-		Client:            s.Client,
-		Backoff:           s.Backoff,
-	})
-	if err != nil {
+	queueName := sqs.GetQueueName(settings)
+	queueSettings := &sqs.Settings{
+		QueueName:         queueName,
+		VisibilityTimeout: settings.VisibilityTimeout,
+		Fifo:              settings.Fifo,
+		RedrivePolicy:     settings.RedrivePolicy,
+		ClientName:        settings.ClientName,
+	}
+
+	var err error
+	var queue sqs.Queue
+
+	if queue, err = sqs.NewQueue(ctx, config, logger, queueSettings); err != nil {
 		return nil, fmt.Errorf("can not create queue: %w", err)
 	}
 
-	return NewSqsOutputWithInterfaces(logger, queue, s), nil
+	return NewSqsOutputWithInterfaces(logger, queue, settings), nil
 }
 
-func NewSqsOutputWithInterfaces(logger log.Logger, queue sqs.Queue, s SqsOutputSettings) Output {
+func NewSqsOutputWithInterfaces(logger log.Logger, queue sqs.Queue, s *SqsOutputSettings) Output {
 	return &sqsOutput{
 		logger:   logger,
 		queue:    queue,
@@ -77,7 +89,6 @@ func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 
 	for _, chunk := range chunks {
 		messages, err := o.buildSqsMessages(ctx, chunk)
-
 		if err != nil {
 			result = multierror.Append(result, err)
 		}
@@ -94,7 +105,7 @@ func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	}
 
 	if result != nil {
-		return errors.Wrap(result, "there were errors on writing to the sqs stream")
+		return fmt.Errorf("there were errors on writing to the sqs stream: %w", result)
 	}
 
 	return nil
@@ -106,7 +117,6 @@ func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []WritableMes
 
 	for _, msg := range messages {
 		sqsMessage, err := o.buildSqsMessage(ctx, msg)
-
 		if err != nil {
 			result = multierror.Append(result, err)
 			continue
@@ -119,17 +129,17 @@ func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []WritableMes
 }
 
 func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg WritableMessage) (*sqs.Message, error) {
-	var delay *int64
+	var delay int32
 	var messageGroupId *string
 	var messageDeduplicationId *string
 
 	attributes := getAttributes(msg)
 
 	if d, ok := attributes[sqs.AttributeSqsDelaySeconds]; ok {
-		if dInt64, ok := d.(int64); ok {
-			delay = mdl.Int64(dInt64)
+		if dInt32, ok := d.(int32); ok {
+			delay = dInt32
 		} else {
-			return nil, fmt.Errorf("the type of the %s attribute should be int64 but instead is %T", sqs.AttributeSqsDelaySeconds, d)
+			return nil, fmt.Errorf("the type of the %s attribute should be int32 but instead is %T", sqs.AttributeSqsDelaySeconds, d)
 		}
 	}
 
@@ -156,7 +166,6 @@ func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg WritableMessage) (*
 	}
 
 	body, err := msg.MarshalToString()
-
 	if err != nil {
 		return nil, err
 	}

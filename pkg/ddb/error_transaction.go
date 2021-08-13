@@ -2,8 +2,8 @@ package ddb
 
 import (
 	"errors"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -27,32 +27,10 @@ func (e errorTransactionConflict) Error() string {
 	return string(e)
 }
 
-func checkTransactionConflict(_ interface{}, err error) exec.ErrorType {
-	if isTransactionCanceledException(err, ErrorTransactionConflict) {
-		return exec.ErrorTypeRetryable
-	}
-
-	return exec.ErrorTypeUnknown
-}
-
-func checkPreconditionFailed(_ interface{}, err error) exec.ErrorType {
-	if isTransactionCanceledException(err, ErrorConditionalCheckFailed) {
-		return exec.ErrorTypePermanent
-	}
-
-	return exec.ErrorTypeUnknown
-}
-
-func isTransactionCanceledException(err error, checkErr error) bool {
-	err = parseTransactionError(err)
-
-	return errors.Is(err, checkErr)
-}
-
 func parseTransactionError(err error) error {
 	multiErr := &multierror.Error{}
 
-	var tcErr *dynamodb.TransactionCanceledException
+	var tcErr *types.TransactionCanceledException
 	if !errors.As(err, &tcErr) {
 		return err
 	}

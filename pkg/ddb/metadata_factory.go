@@ -2,11 +2,12 @@ package ddb
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/applike/gosoline/pkg/mdl"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type metadataFactory struct{}
@@ -18,31 +19,26 @@ func NewMetadataFactory() *metadataFactory {
 func (f *metadataFactory) GetMetadata(settings *Settings) (*Metadata, error) {
 	tableName := TableName(settings)
 	attributes, err := f.getAttributes(settings)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not get attributes for table %s: %w", tableName, err)
 	}
 
 	ttl, err := f.getTimeToLive(attributes)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not get ttl for table %s: %w", tableName, err)
 	}
 
 	mainFields, err := f.getFields(settings.Main.Model, tagKey, tagKey)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not get fields for main table %s: %w", tableName, err)
 	}
 
 	local, err := f.getLocalSecondaryIndices(settings.Local)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not get fields for local secondary index on table %s: %w", tableName, err)
 	}
 
 	global, err := f.getGlobalSecondaryIndices(settings.Global)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not get fields for global secondary index on table %s: %w", tableName, err)
 	}
@@ -149,7 +145,6 @@ func (f *metadataFactory) getLocalSecondaryIndices(settings []LocalSettings) (me
 
 	for _, ls := range settings {
 		localFields, err := f.getFields(ls.Model, tagKey, tagLocal)
-
 		if err != nil {
 			return nil, err
 		}
@@ -178,7 +173,6 @@ func (f *metadataFactory) getGlobalSecondaryIndices(settings []GlobalSettings) (
 
 	for _, gs := range settings {
 		globalFields, err := f.getFields(gs.Model, tagGlobal, tagGlobal)
-
 		if err != nil {
 			return nil, err
 		}
@@ -209,7 +203,6 @@ func (f *metadataFactory) getTimeToLive(attributes Attributes) (metadataTtl, err
 		Enabled: false,
 	}
 	ttl, err := attributes.GetByTag("ttl", "enabled")
-
 	if err != nil {
 		return data, err
 	}
@@ -247,7 +240,6 @@ func ReadAttributes(model interface{}) (Attributes, error) {
 		}
 
 		attributeNamePtr, err := getAttributeName(field)
-
 		if err != nil {
 			return nil, err
 		}
@@ -312,8 +304,8 @@ func getAttributeName(field reflect.StructField) (*string, error) {
 	return &jsonTag, nil
 }
 
-func getAttributeType(field reflect.StructField) string {
-	attributeType := ""
+func getAttributeType(field reflect.StructField) types.ScalarAttributeType {
+	var attributeType types.ScalarAttributeType
 
 	t := field.Type
 
@@ -323,13 +315,13 @@ func getAttributeType(field reflect.StructField) string {
 
 	switch t.Kind() {
 	case reflect.String:
-		attributeType = dynamodb.ScalarAttributeTypeS
-	case reflect.Int, reflect.Int64, reflect.Uint, reflect.Uint64, reflect.Float32, reflect.Float64:
-		attributeType = dynamodb.ScalarAttributeTypeN
+		attributeType = types.ScalarAttributeTypeS
+	case reflect.Int, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
+		attributeType = types.ScalarAttributeTypeN
 	case reflect.Struct:
 		switch t.String() {
 		case reflect.TypeOf(time.Time{}).String():
-			attributeType = dynamodb.ScalarAttributeTypeS
+			attributeType = types.ScalarAttributeTypeS
 		default:
 			panic(fmt.Errorf("type %s is not supported for kind of struct for attributeType", t.String()))
 		}
@@ -350,7 +342,6 @@ func MetadataReadFields(model interface{}) ([]string, error) {
 
 	for i := 0; i < t.NumField(); i++ {
 		fieldName, err := getAttributeName(t.Field(i))
-
 		if err != nil {
 			return nil, err
 		}

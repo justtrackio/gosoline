@@ -1,6 +1,8 @@
 package fixtures
 
 import (
+	"context"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 )
@@ -13,12 +15,12 @@ type FixtureSet struct {
 }
 
 type FixtureLoader interface {
-	Load(fixtureSets []*FixtureSet) error
+	Load(ctx context.Context, fixtureSets []*FixtureSet) error
 }
 
 type FixtureWriter interface {
-	Purge() error
-	Write(fixture *FixtureSet) error
+	Purge(ctx context.Context) error
+	Write(ctx context.Context, fixture *FixtureSet) error
 }
 
-type FixtureWriterFactory func(config cfg.Config, logger log.Logger) (FixtureWriter, error)
+type FixtureWriterFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error)

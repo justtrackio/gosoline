@@ -6,14 +6,12 @@ import (
 	"fmt"
 
 	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud/aws"
+	gosoDynamodb "github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -25,52 +23,33 @@ type TransactionRepository interface {
 
 type transactionRepository struct {
 	logger log.Logger
-
-	client   dynamodbiface.DynamoDBAPI
-	executor aws.Executor
-	tracer   tracing.Tracer
+	client gosoDynamodb.Client
+	tracer tracing.Tracer
 }
 
-func NewTransactionRepository(config cfg.Config, logger log.Logger) (*transactionRepository, error) {
+func NewTransactionRepository(ctx context.Context, config cfg.Config, logger log.Logger) (*transactionRepository, error) {
 	settings := &Settings{}
 
-	settings.Client.MaxRetries = config.GetInt("aws_sdk_retries")
+	var err error
+	var client gosoDynamodb.Client
+	var tracer tracing.Tracer
 
-	backoffSettings := &exec.BackoffSettings{}
-	config.UnmarshalKey("ddb.backoff", backoffSettings)
-
-	if err := cfg.Merge(&settings.Backoff, *backoffSettings); err != nil {
-		return nil, fmt.Errorf("could not merge backoff settings for transactions: %w", err)
+	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, settings.ClientName); err != nil {
+		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
 	}
 
-	tracer, err := tracing.ProvideTracer(config, logger)
-	if err != nil {
+	if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
 
-	client := ProvideClient(config, logger, settings)
-
-	res := &exec.ExecutableResource{
-		Type: "ddb",
-		Name: "transaction",
-	}
-
-	checks := []exec.ErrorChecker{
-		checkPreconditionFailed,
-		checkTransactionConflict,
-	}
-
-	executor := aws.NewExecutor(logger, res, &settings.Backoff, checks...)
-
-	return NewTransactionRepositoryWithInterfaces(logger, client, executor, tracer), nil
+	return NewTransactionRepositoryWithInterfaces(logger, client, tracer), nil
 }
 
-func NewTransactionRepositoryWithInterfaces(logger log.Logger, client dynamodbiface.DynamoDBAPI, executor aws.Executor, tracer tracing.Tracer) *transactionRepository {
+func NewTransactionRepositoryWithInterfaces(logger log.Logger, client gosoDynamodb.Client, tracer tracing.Tracer) *transactionRepository {
 	return &transactionRepository{
-		logger:   logger,
-		client:   client,
-		executor: executor,
-		tracer:   tracer,
+		logger: logger,
+		client: client,
+		tracer: tracer,
 	}
 }
 
@@ -85,7 +64,7 @@ func (r transactionRepository) TransactGetItems(ctx context.Context, items []Tra
 	defer span.Finish()
 
 	var err error
-	transactionItems := make([]*dynamodb.TransactGetItem, len(items))
+	transactionItems := make([]types.TransactGetItem, len(items))
 
 	for i, v := range items {
 		transactionItems[i], err = v.Build()
@@ -98,9 +77,7 @@ func (r transactionRepository) TransactGetItems(ctx context.Context, items []Tra
 		TransactItems: transactionItems,
 	}
 
-	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
-		return r.client.TransactGetItemsRequest(input)
-	})
+	out, err := r.client.TransactGetItems(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
@@ -111,11 +88,10 @@ func (r transactionRepository) TransactGetItems(ctx context.Context, items []Tra
 		return nil, parseTransactionError(err)
 	}
 
-	out := outI.(*dynamodb.TransactGetItemsOutput)
 	res.ConsumedCapacity.addSlice(out.ConsumedCapacity)
 
 	for i, itemResponse := range out.Responses {
-		err = dynamodbattribute.UnmarshalMap(itemResponse.Item, items[i].GetItem())
+		err = UnmarshalMap(itemResponse.Item, items[i].GetItem())
 		if err != nil {
 			return nil, fmt.Errorf("could not unmarshal partial response: %w", err)
 		}
@@ -140,46 +116,42 @@ func (r transactionRepository) TransactWriteItemsIdempotent(ctx context.Context,
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.TransactWriteItems")
 	defer span.Finish()
 
-	transactionItems := make([]*dynamodb.TransactWriteItem, 0)
+	transactionItems := make([]types.TransactWriteItem, 0)
 	for _, v := range itemBuilders {
 		item, err := v.Build()
 		if err != nil {
 			return nil, err
 		}
 
-		transactionItems = append(transactionItems, item)
+		transactionItems = append(transactionItems, *item)
 	}
 
-	input := dynamodb.TransactWriteItemsInput{
+	input := &dynamodb.TransactWriteItemsInput{
 		ClientRequestToken: clientRequestToken,
 		TransactItems:      transactionItems,
 	}
 
-	outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
-		return r.client.TransactWriteItemsRequest(&input)
-	})
+	out, err := r.client.TransactWriteItems(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
 	}
 
 	if err != nil {
-		trcErr := &dynamodb.TransactionCanceledException{}
-
-		if errors.As(err, &trcErr) {
-			return nil, transformTransactionCanceledError(trcErr, itemBuilders)
+		var errTransactionCanceledException *types.TransactionCanceledException
+		if errors.As(err, &errTransactionCanceledException) {
+			return nil, transformTransactionCanceledError(errTransactionCanceledException, itemBuilders)
 		}
 
 		return nil, parseTransactionError(err)
 	}
 
-	out := (outI).(*dynamodb.TransactWriteItemsOutput)
 	res.ConsumedCapacity.addSlice(out.ConsumedCapacity)
 
 	return res, parseTransactionError(err)
 }
 
-func transformTransactionCanceledError(tcErr *dynamodb.TransactionCanceledException, itemBuilders []TransactWriteItemBuilder) error {
+func transformTransactionCanceledError(tcErr *types.TransactionCanceledException, itemBuilders []TransactWriteItemBuilder) error {
 	multiErr := multierror.Append(&multierror.Error{}, parseTransactionError(tcErr))
 
 	for i, reason := range tcErr.CancellationReasons {
@@ -187,7 +159,7 @@ func transformTransactionCanceledError(tcErr *dynamodb.TransactionCanceledExcept
 			continue
 		}
 
-		err := dynamodbattribute.UnmarshalMap(reason.Item, itemBuilders[i].GetItem())
+		err := UnmarshalMap(reason.Item, itemBuilders[i].GetItem())
 		if err != nil {
 			unmarshalErr := fmt.Errorf("could not unmarshal partial response: %w", err)
 			multiErr = multierror.Append(multiErr, unmarshalErr)

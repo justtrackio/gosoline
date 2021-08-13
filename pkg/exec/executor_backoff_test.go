@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sys/unix"
-	"io"
-	"testing"
-	"time"
 )
 
 type ExecutorBackoffTestSuite struct {
@@ -26,8 +27,6 @@ func (s *ExecutorBackoffTestSuite) SetupTest() {
 		}
 
 		settings := &exec.BackoffSettings{
-			Enabled:         true,
-			Blocking:        false,
 			CancelDelay:     0,
 			InitialInterval: time.Millisecond,
 			MaxInterval:     time.Millisecond * 2,
@@ -133,7 +132,7 @@ func (s *ExecutorBackoffTestSuite) TestMaxElapsedTimeReached() {
 		return nil, longTakingErr
 	})
 
-	s.True(exec.IsMaxElapsedTimeError(err))
+	s.True(exec.IsErrMaxElapsedTimeExceeded(err))
 	s.EqualError(errors.Unwrap(err), longTakingErr.Error())
 	s.Equal(1, tries)
 }

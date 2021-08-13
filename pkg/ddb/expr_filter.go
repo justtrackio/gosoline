@@ -2,9 +2,8 @@ package ddb
 
 import (
 	"github.com/applike/gosoline/pkg/clock"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type ttlStruct struct {
@@ -12,7 +11,7 @@ type ttlStruct struct {
 }
 
 type ttlFilterer interface {
-	PerformFilterCondition(item map[string]*dynamodb.AttributeValue) (bool, error)
+	PerformFilterCondition(item map[string]types.AttributeValue) (bool, error)
 }
 
 type filterBuilder struct {
@@ -48,7 +47,7 @@ func (b *filterBuilder) buildFilterCondition() *expression.ConditionBuilder {
 	return &expr
 }
 
-func (b *filterBuilder) PerformFilterCondition(item map[string]*dynamodb.AttributeValue) (bool, error) {
+func (b *filterBuilder) PerformFilterCondition(item map[string]types.AttributeValue) (bool, error) {
 	ttl := b.metadata.TimeToLive
 
 	if !ttl.Enabled || b.disableTtlFilter {
@@ -58,10 +57,9 @@ func (b *filterBuilder) PerformFilterCondition(item map[string]*dynamodb.Attribu
 	now := b.clock.Now().Unix()
 
 	s := &ttlStruct{}
-	err := dynamodbattribute.UnmarshalMap(map[string]*dynamodb.AttributeValue{
+	err := UnmarshalMap(map[string]types.AttributeValue{
 		"ttl": item[ttl.Field],
 	}, s)
-
 	if err != nil {
 		return false, err
 	}

@@ -3,6 +3,7 @@ package conc
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 )
@@ -18,14 +19,14 @@ type LeaderElection interface {
 	Resign(ctx context.Context, memberId string) error
 }
 
-type LeaderElectionFactory func(config cfg.Config, logger log.Logger, name string) (LeaderElection, error)
+type LeaderElectionFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (LeaderElection, error)
 
 var leaderElectionFactories = map[string]LeaderElectionFactory{
 	LeaderElectionTypeDdb:    NewDdbLeaderElection,
 	LeaderElectionTypeStatic: NewStaticLeaderElection,
 }
 
-func NewLeaderElection(config cfg.Config, logger log.Logger, name string) (LeaderElection, error) {
+func NewLeaderElection(ctx context.Context, config cfg.Config, logger log.Logger, name string) (LeaderElection, error) {
 	key := GetLeaderElectionConfigKeyType(name)
 
 	if !config.IsSet(key) {
@@ -38,7 +39,7 @@ func NewLeaderElection(config cfg.Config, logger log.Logger, name string) (Leade
 		return nil, fmt.Errorf("leader election with name %s has an unknown type %s", name, typ)
 	}
 
-	return leaderElectionFactories[typ](config, logger, name)
+	return leaderElectionFactories[typ](ctx, config, logger, name)
 }
 
 func GetLeaderElectionConfigKeyType(name string) string {

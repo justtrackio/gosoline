@@ -32,7 +32,7 @@ type MessagesPerRunnerMetricWriterSettings struct {
 	MemberId           string
 }
 
-func MessagesPerRunnerMetricWriterFactory(config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
+func MessagesPerRunnerMetricWriterFactory(_ context.Context, config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
 	settings := readMessagesPerRunnerMetricSettings(config)
 	modules := map[string]kernel.ModuleFactory{}
 
@@ -83,7 +83,7 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 		}
 		writerSettings.AppId.PadFromConfig(config)
 
-		if leaderElection, err = conc.NewLeaderElection(config, logger, settings.LeaderElection); err != nil {
+		if leaderElection, err = conc.NewLeaderElection(ctx, config, logger, settings.LeaderElection); err != nil {
 			return nil, fmt.Errorf("can not create leader election for stream-metric-messages-per-runner writer: %w", err)
 		}
 

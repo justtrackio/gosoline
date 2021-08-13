@@ -1,11 +1,13 @@
 package kvstore
 
 import (
+	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
 	"sync"
 	"time"
+
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
 )
 
 const (
@@ -37,25 +39,25 @@ type InMemoryConfiguration struct {
 	GetsPerPromote int32  `cfg:"gets_per_promote" default:"3"`
 }
 
-func NewConfigurableKvStore(config cfg.Config, logger log.Logger, name string) (KvStore, error) {
+func NewConfigurableKvStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (KvStore, error) {
 	key := fmt.Sprintf("kvstore.%s.type", name)
 	t := config.GetString(key)
 
 	switch t {
 	case TypeChain:
-		return newKvStoreChainFromConfig(config, logger, name)
+		return newKvStoreChainFromConfig(ctx, config, logger, name)
 	}
 
 	return nil, fmt.Errorf("invalid kvstore %s of type %s", name, t)
 }
 
-func newKvStoreChainFromConfig(config cfg.Config, logger log.Logger, name string) (KvStore, error) {
+func newKvStoreChainFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (KvStore, error) {
 	key := GetConfigurableKey(name)
 
 	configuration := ChainConfiguration{}
 	config.UnmarshalKey(key, &configuration)
 
-	store, err := NewChainKvStore(config, logger, configuration.MissingCacheEnabled, &Settings{
+	store, err := NewChainKvStore(ctx, config, logger, configuration.MissingCacheEnabled, &Settings{
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
@@ -95,7 +97,6 @@ func newKvStoreChainFromConfig(config cfg.Config, logger log.Logger, name string
 		default:
 			return nil, fmt.Errorf("invalid element type %s for kvstore chain", element)
 		}
-
 	}
 
 	return store, nil
@@ -105,8 +106,10 @@ func GetConfigurableKey(name string) string {
 	return fmt.Sprintf("kvstore.%s", name)
 }
 
-var configurableKvStoreLock = sync.Mutex{}
-var configurableKvStores = map[string]KvStore{}
+var (
+	configurableKvStoreLock = sync.Mutex{}
+	configurableKvStores    = map[string]KvStore{}
+)
 
 func ResetConfigurableKvStores() {
 	configurableKvStoreLock.Lock()
@@ -115,7 +118,7 @@ func ResetConfigurableKvStores() {
 	configurableKvStores = map[string]KvStore{}
 }
 
-func ProvideConfigurableKvStore(config cfg.Config, logger log.Logger, name string) (KvStore, error) {
+func ProvideConfigurableKvStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (KvStore, error) {
 	configurableKvStoreLock.Lock()
 	defer configurableKvStoreLock.Unlock()
 
@@ -124,7 +127,7 @@ func ProvideConfigurableKvStore(config cfg.Config, logger log.Logger, name strin
 	}
 
 	var err error
-	configurableKvStores[name], err = NewConfigurableKvStore(config, logger, name)
+	configurableKvStores[name], err = NewConfigurableKvStore(ctx, config, logger, name)
 
 	if err != nil {
 		return nil, err

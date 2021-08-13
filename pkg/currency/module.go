@@ -3,10 +3,11 @@ package currency
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
-	"time"
 )
 
 type Module struct {
@@ -18,7 +19,7 @@ type Module struct {
 
 func NewCurrencyModule() kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		updater, err := NewUpdater(config, logger)
+		updater, err := NewUpdater(ctx, config, logger)
 		if err != nil {
 			return nil, fmt.Errorf("can not create updater: %w", err)
 		}

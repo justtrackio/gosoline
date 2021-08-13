@@ -38,17 +38,17 @@ type publisher struct {
 	settings *PublisherSettings
 }
 
-func NewPublisher(config cfg.Config, logger log.Logger, name string) (*publisher, error) {
+func NewPublisher(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*publisher, error) {
 	settings := readPublisherSetting(config, name)
 
-	return NewPublisherWithSettings(config, logger, settings)
+	return NewPublisherWithSettings(ctx, config, logger, settings)
 }
 
-func NewPublisherWithSettings(config cfg.Config, logger log.Logger, settings *PublisherSettings) (*publisher, error) {
+func NewPublisherWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, settings *PublisherSettings) (*publisher, error) {
 	var err error
 	var producer stream.Producer
 
-	if producer, err = stream.NewProducer(config, logger, settings.Producer); err != nil {
+	if producer, err = stream.NewProducer(ctx, config, logger, settings.Producer); err != nil {
 		return nil, fmt.Errorf("can not create producer %s: %w", settings.Producer, err)
 	}
 

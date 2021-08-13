@@ -1,16 +1,15 @@
 package env
 
 import (
+	"context"
 	"fmt"
 
 	toxiproxy "github.com/Shopify/toxiproxy/client"
 	"github.com/applike/gosoline/pkg/cfg"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/log"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 func init() {
@@ -31,7 +30,7 @@ type ddbFactory struct {
 }
 
 func (f *ddbFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
-	if !config.IsSet("aws_dynamoDb_endpoint") {
+	if !config.IsSet("cloud.aws.dynamodb") {
 		return nil
 	}
 
@@ -88,7 +87,7 @@ func (f *ddbFactory) configureContainer(settings interface{}) *containerConfig {
 func (f *ddbFactory) healthCheck() ComponentHealthCheck {
 	return func(container *container) error {
 		ddbClient := f.client(container)
-		_, err := ddbClient.ListTables(&dynamodb.ListTablesInput{})
+		_, err := ddbClient.ListTables(context.Background(), &dynamodb.ListTablesInput{})
 
 		return err
 	}
@@ -123,16 +122,13 @@ func (f *ddbFactory) Component(_ cfg.Config, logger log.Logger, containers map[s
 	return component, nil
 }
 
-func (f *ddbFactory) client(container *container) *dynamodb.DynamoDB {
+func (f *ddbFactory) client(container *container) *dynamodb.Client {
 	binding := container.bindings["8000/tcp"]
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
-	sess := session.Must(session.NewSession(&aws.Config{
-		Endpoint:    aws.String(address),
-		Region:      aws.String("eu-central-1"),
-		MaxRetries:  aws.Int(0),
-		Credentials: credentials.NewStaticCredentials(gosoAws.DefaultAccessKeyID, gosoAws.DefaultSecretAccessKey, gosoAws.DefaultToken),
-	}))
-
-	return dynamodb.New(sess)
+	return dynamodb.NewFromConfig(aws.Config{
+		EndpointResolver: gosoAws.EndpointResolver(address),
+		Region:           "eu-central-1",
+		Credentials:      GetDefaultStaticCredentials(),
+	})
 }

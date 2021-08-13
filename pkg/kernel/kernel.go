@@ -40,6 +40,7 @@ type kernel struct {
 	moduleSetupContainers []moduleSetupContainer
 	multiFactories        []MultiModuleFactory
 
+	ctx               context.Context
 	stages            map[int]*stage
 	stagesLck         conc.PoisonedLock
 	started           conc.PoisonedLock
@@ -51,18 +52,19 @@ type kernel struct {
 	forceExit   func(code int)
 }
 
-func New(config cfg.Config, logger log.Logger, options ...Option) (*kernel, error) {
+func New(ctx context.Context, config cfg.Config, logger log.Logger, options ...Option) (*kernel, error) {
 	k := &kernel{
+		config: config,
+		logger: logger.WithChannel("kernel"),
+
 		moduleSetupContainers: make([]moduleSetupContainer, 0),
 		multiFactories:        make([]MultiModuleFactory, 0),
 
+		ctx:       ctx,
 		stages:    make(map[int]*stage),
 		stagesLck: conc.NewPoisonedLock(),
 		running:   make(chan struct{}),
 		started:   conc.NewPoisonedLock(),
-
-		config: config,
-		logger: logger.WithChannel("kernel"),
 
 		killTimeout: time.Second * 10,
 		forceExit:   os.Exit,
@@ -73,22 +75,6 @@ func New(config cfg.Config, logger log.Logger, options ...Option) (*kernel, erro
 	}
 
 	return k, nil
-}
-
-func KillTimeout(killTimeout time.Duration) Option {
-	return func(k *kernel) error {
-		k.killTimeout = killTimeout
-
-		return nil
-	}
-}
-
-func ForceExit(forceExit func(code int)) Option {
-	return func(k *kernel) error {
-		k.forceExit = forceExit
-
-		return nil
-	}
 }
 
 func (k *kernel) Option(options ...Option) error {
@@ -120,10 +106,6 @@ func (k *kernel) AddFactory(factory MultiModuleFactory) {
 	k.multiFactories = append(k.multiFactories, factory)
 }
 
-func (k *kernel) Running() <-chan struct{} {
-	return k.running
-}
-
 func (k *kernel) Run() {
 	// do not allow config changes anymore
 	k.started.Poison()
@@ -131,7 +113,7 @@ func (k *kernel) Run() {
 	defer k.logger.Info("leaving kernel")
 	k.logger.Info("starting kernel")
 
-	if err := k.runMultiFactories(); err != nil {
+	if err := k.runMultiFactories(k.ctx); err != nil {
 		k.logger.Error("error building additional modules by multiFactories: %w", err)
 		close(k.running)
 		return
@@ -143,7 +125,7 @@ func (k *kernel) Run() {
 		return
 	}
 
-	if err := k.runFactories(); err != nil {
+	if err := k.runFactories(k.ctx); err != nil {
 		k.logger.Error("error building modules: %w", err)
 		close(k.running)
 		return
@@ -207,7 +189,11 @@ func (k *kernel) Stop(reason string) {
 	})
 }
 
-func (k *kernel) runMultiFactories() (err error) {
+func (k *kernel) Running() <-chan struct{} {
+	return k.running
+}
+
+func (k *kernel) runMultiFactories(ctx context.Context) (err error) {
 	defer func() {
 		if err != nil {
 			return
@@ -219,7 +205,7 @@ func (k *kernel) runMultiFactories() (err error) {
 	var moduleFactories map[string]ModuleFactory
 
 	for _, factory := range k.multiFactories {
-		if moduleFactories, err = factory(k.config, k.logger); err != nil {
+		if moduleFactories, err = factory(ctx, k.config, k.logger); err != nil {
 			return err
 		}
 
@@ -231,9 +217,7 @@ func (k *kernel) runMultiFactories() (err error) {
 	return
 }
 
-func (k *kernel) runFactories() error {
-	ctx := context.Background()
-
+func (k *kernel) runFactories(ctx context.Context) error {
 	bootCoffin := coffin.New()
 	startBooting := conc.NewSignalOnce()
 	bookLck := sync.Mutex{}
@@ -309,7 +293,7 @@ func (k *kernel) addModuleToStage(name string, module Module, opts []ModuleOptio
 }
 
 func (k *kernel) newStage(index int) *stage {
-	s := newStage()
+	s := newStage(k.ctx)
 	k.stages[index] = s
 
 	return s
