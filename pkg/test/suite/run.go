@@ -25,6 +25,8 @@ type testCaseDefinition struct {
 var testCaseDefinitions = map[string]testCaseDefinition{}
 
 func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
+	suite.SetT(t)
+
 	var err error
 	var testCases map[string]testCaseRunner
 	var suiteOptions = suiteApplyOptions(suite, extraOptions)
@@ -108,7 +110,6 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		}
 	}()
 
-	suite.SetT(t)
 	suite.SetEnv(environment)
 
 	for _, envSetup := range suiteOptions.envSetup {
