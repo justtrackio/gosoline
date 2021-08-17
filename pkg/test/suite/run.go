@@ -2,20 +2,23 @@ package suite
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
-	"reflect"
-	"strings"
-	"testing"
 )
 
-type testCaseMatcher func(method reflect.Method) bool
-type testCaseBuilder func(suite TestingSuite, method reflect.Method) (testCaseRunner, error)
-type testCaseRunner func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment)
+type (
+	testCaseMatcher func(method reflect.Method) bool
+	testCaseBuilder func(suite TestingSuite, method reflect.Method) (testCaseRunner, error)
+	testCaseRunner  func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment)
+)
 
 type testCaseDefinition struct {
 	matcher testCaseMatcher
@@ -27,30 +30,19 @@ var testCaseDefinitions = map[string]testCaseDefinition{}
 func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 	suite.SetT(t)
 
-	var err error
-	var testCases map[string]testCaseRunner
-	var suiteOptions = suiteApplyOptions(suite, extraOptions)
-
-	if testCases, err = suiteFindTestCases(t, suite); err != nil {
-		assert.FailNow(t, err.Error())
-		return
-	}
-
-	if len(testCases) == 0 {
-		return
-	}
+	suiteOptions := suiteApplyOptions(suite, extraOptions)
 
 	if suiteOptions.envIsShared {
-		runTestCaseWithSharedEnvironment(t, suite, suiteOptions, testCases)
+		runTestCasesWithSharedEnvironment(t, suite, suiteOptions)
 	} else {
-		runTestCaseWithIsolatedEnvironment(t, suite, suiteOptions, testCases)
+		runTestCaseWithIsolatedEnvironment(t, suite, suiteOptions)
 	}
 }
 
 func suiteFindTestCases(_ *testing.T, suite TestingSuite) (map[string]testCaseRunner, error) {
 	var err error
-	var testCases = make(map[string]testCaseRunner)
-	var methodFinder = reflect.TypeOf(suite)
+	testCases := make(map[string]testCaseRunner)
+	methodFinder := reflect.TypeOf(suite)
 
 	for i := 0; i < methodFinder.NumMethod(); i++ {
 		method := methodFinder.Method(i)
@@ -89,7 +81,7 @@ func suiteApplyOptions(suite TestingSuite, extraOptions []Option) *suiteOptions 
 	return options
 }
 
-func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, testCases map[string]testCaseRunner) {
+func buildEnvironment(t *testing.T, suiteOptions *suiteOptions) *env.Environment {
 	envOptions := []env.Option{
 		env.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 	}
@@ -99,10 +91,21 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 	}))
 
 	environment, err := env.NewEnvironment(t, envOptions...)
-
 	if err != nil {
 		assert.FailNow(t, "failed to create test environment", err.Error())
 	}
+
+	defer func() {
+		if err := environment.Stop(); err != nil {
+			assert.FailNow(t, "failed to stop test environment", err.Error())
+		}
+	}()
+
+	return environment
+}
+
+func runTestCasesWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions) {
+	environment := buildEnvironment(t, suiteOptions)
 
 	defer func() {
 		if err := environment.Stop(); err != nil {
@@ -118,34 +121,84 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		}
 	}
 
+	var err error
+	var testCases map[string]testCaseRunner
+	if testCases, err = suiteFindTestCases(t, suite); err != nil {
+		assert.FailNow(t, err.Error())
+		return
+	}
+
+	if len(testCases) == 0 {
+		return
+	}
+
 	for name, testCase := range testCases {
-		if setupTestAware, ok := suite.(TestingSuiteSetupTestAware); ok {
-			if err := setupTestAware.SetupTest(); err != nil {
-				assert.FailNow(t, "failed to setup the test", err.Error())
-			}
-		}
-
-		t.Run(name, func(t *testing.T) {
-			testCase(t, suite, suiteOptions, environment)
-		})
-
-		if tearDownTestAware, ok := suite.(TestingSuiteTearDownTestAware); ok {
-			if err := tearDownTestAware.TearDownTest(); err != nil {
-				assert.FailNow(t, "failed to tear down the test", err.Error())
-			}
-		}
-
-		stream.ResetInMemoryInputs()
-		stream.ResetInMemoryOutputs()
-		stream.ResetProducerDaemons()
-		kvstore.ResetConfigurableKvStores()
+		runTestCase(t, suite, name, testCase, suiteOptions, environment)
 	}
 }
 
-func runTestCaseWithIsolatedEnvironment(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, testCases map[string]testCaseRunner) {
+func runTestCase(t *testing.T, suite TestingSuite, name string, testCase testCaseRunner, suiteOptions *suiteOptions, environment *env.Environment) {
+	if setupTestAware, ok := suite.(TestingSuiteSetupTestAware); ok {
+		if err := setupTestAware.SetupTest(); err != nil {
+			assert.FailNow(t, "failed to setup the test", err.Error())
+		}
+	}
+
+	t.Run(name, func(t *testing.T) {
+		testCase(t, suite, suiteOptions, environment)
+	})
+
+	if tearDownTestAware, ok := suite.(TestingSuiteTearDownTestAware); ok {
+		if err := tearDownTestAware.TearDownTest(); err != nil {
+			assert.FailNow(t, "failed to tear down the test", err.Error())
+		}
+	}
+
+	stream.ResetInMemoryInputs()
+	stream.ResetInMemoryOutputs()
+	stream.ResetProducerDaemons()
+	kvstore.ResetConfigurableKvStores()
+}
+
+func runTestCaseWithIsolatedEnvironment(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions) {
+	environment := buildEnvironment(t, suiteOptions)
+
+	defer func() {
+		if err := environment.Stop(); err != nil {
+			assert.FailNow(t, "failed to stop test environment", err.Error())
+		}
+	}()
+
+	suite.SetEnv(environment)
+
+	var err error
+	var testCases map[string]testCaseRunner
+	if testCases, err = suiteFindTestCases(t, suite); err != nil {
+		assert.FailNow(t, err.Error())
+		return
+	}
+
+	if len(testCases) == 0 {
+		return
+	}
+
 	for name, testCase := range testCases {
-		runTestCaseWithSharedEnvironment(t, suite, suiteOptions, map[string]testCaseRunner{
-			name: testCase,
-		})
+		environment := buildEnvironment(t, suiteOptions)
+
+		defer func() {
+			if err := environment.Stop(); err != nil {
+				assert.FailNow(t, "failed to stop test environment", err.Error())
+			}
+		}()
+
+		suite.SetEnv(environment)
+
+		for _, envSetup := range suiteOptions.envSetup {
+			if err := envSetup(); err != nil {
+				assert.FailNow(t, "failed to execute additional environment setup", err.Error())
+			}
+		}
+
+		runTestCase(t, suite, name, testCase, suiteOptions, environment)
 	}
 }
