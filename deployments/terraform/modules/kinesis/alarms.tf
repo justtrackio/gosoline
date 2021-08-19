@@ -8,7 +8,7 @@ resource "aws_cloudwatch_metric_alarm" "firehose-get-records-success-rate" {
   period              = var.alarm_period_seconds
   statistic           = "Average"
   threshold           = var.alarm_records_success_threshold
-  datapoints_to_alarm = var.alarm_datapoints_to_alarm
+  datapoints_to_alarm = var.alarm_put_get_records_datapoints_to_alarm
   treat_missing_data  = "notBreaching"
 
   alarm_description = "This alarm monitors the kinesis GetRecords.Success metric"
@@ -38,7 +38,7 @@ resource "aws_cloudwatch_metric_alarm" "firehose-put-records-success-rate" {
   period              = var.alarm_period_seconds
   statistic           = "Average"
   threshold           = var.alarm_records_success_threshold
-  datapoints_to_alarm = var.alarm_put_records_datapoints_to_alarm
+  datapoints_to_alarm = var.alarm_put_get_records_datapoints_to_alarm
   treat_missing_data  = "notBreaching"
 
   alarm_description = "This alarm monitors the kinesis PutRecords.Success metric"

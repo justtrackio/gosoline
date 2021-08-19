@@ -18,7 +18,7 @@ variable "alarm_datapoints_to_alarm" {
   type    = number
   default = 4
 }
-variable "alarm_put_records_datapoints_to_alarm" {
+variable "alarm_put_get_records_datapoints_to_alarm" {
   type    = number
   default = 6
 }
