@@ -2,10 +2,7 @@ package uuid
 
 import (
 	"github.com/google/uuid"
-	"regexp"
 )
-
-var uuidRegExp = regexp.MustCompile("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 
 //go:generate mockery -name Uuid
 type Uuid interface {
@@ -23,7 +20,49 @@ func (u *RealUuid) NewV4() string {
 	return uuid.New().String()
 }
 
-// Check if the given string is a valid lowercase UUID v4 string
-func ValidV4(uuid string) bool {
-	return uuidRegExp.MatchString(uuid)
+// Valid checks if the given string has a valid xxxxxxxx-xxxx-4xxx-[89ab]xxx-xxxxxxxxxxxx uuid format
+func ValidV4(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+
+	// it must be of the form  xxxxxxxx-xxxx-4xxx-[89ab]xxx-xxxxxxxxxxxx
+	if s[8] != '-' || s[13] != '-' || s[14] != '4' || (s[19] != '8' && s[19] != '9' && s[19] != 'a' && s[19] != 'b') || s[18] != '-' || s[23] != '-' {
+		return false
+	}
+
+	for _, x := range alfaNumIndexes {
+		if !alfaNumChars[s[x]] {
+			return false
+		}
+	}
+
+	return true
+}
+
+var alfaNumChars = [256]bool{
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+	false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+}
+
+var alfaNumIndexes = [32]int{
+	0, 1, 2, 3, 4, 5, 6, 7,
+	9, 10, 11, 12,
+	14, 15, 16, 17,
+	19, 20, 21, 22,
+	24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
 }

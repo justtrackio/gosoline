@@ -1,13 +1,15 @@
 package uuid_test
 
 import (
-	"github.com/applike/gosoline/pkg/uuid"
-	"github.com/stretchr/testify/assert"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/applike/gosoline/pkg/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestRealUuidValid(t *testing.T) {
+func TestRealUuidValidV4(t *testing.T) {
 	uuidSource := uuid.New()
 
 	for i := 0; i < 100; i++ {
@@ -22,12 +24,25 @@ func TestRealUuidValid(t *testing.T) {
 }
 
 func TestValidV4(t *testing.T) {
-	assert.False(t, uuid.ValidV4(""))
-	assert.False(t, uuid.ValidV4("not a uuid"))
-	assert.False(t, uuid.ValidV4("00000000-0000-0000-0000-000000000000"))
-	assert.False(t, uuid.ValidV4("d5b047878c18425b8c14e2c15d0e55de"))
-	assert.False(t, uuid.ValidV4(" d5b04787-8c18-425b-8c14-e2c15d0e55de"))
-	assert.False(t, uuid.ValidV4("d5b04787-8c18-425b-8c14-e2c15d0e55de "))
-	assert.True(t, uuid.ValidV4("00000000-0000-4000-8000-000000000000"))
-	assert.True(t, uuid.ValidV4("d5b04787-8c18-425b-8c14-e2c15d0e55de"))
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"", false},
+		{"not a uuid", false},
+		{"00000000-0000-0000-0000-000000000000", false},
+		{"d5b047878c18425b8c14e2c15d0e55de", false},
+		{" d5b04787-8c18-425b-8c14-e2c15d0e55de", false},
+		{"d5b04787-8c18-425b-8c14-e2c15d0e55de", true},
+		{"00000000-0000-4000-8000-000000000000", true},
+		{"d5b04787-8c18-425b-8c14-e2c15d0e55de", true},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("test_%d", i), func(t *testing.T) {
+			got := uuid.ValidV4(tt.input)
+
+			assert.Equal(t, tt.want, got, fmt.Sprintf("uuid: %s", tt.input))
+		})
+	}
 }
