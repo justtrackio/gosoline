@@ -2,6 +2,8 @@ package suite
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/fixtures"
@@ -11,7 +13,6 @@ import (
 	"github.com/applike/gosoline/pkg/stream"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/spf13/cast"
-	"time"
 )
 
 type suiteOptions struct {

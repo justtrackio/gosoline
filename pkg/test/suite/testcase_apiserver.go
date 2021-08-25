@@ -3,6 +3,10 @@ package suite
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"reflect"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/cfg"
@@ -11,9 +15,6 @@ import (
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"reflect"
-	"testing"
 )
 
 func init() {
@@ -45,11 +46,10 @@ type ApiServerTestCase struct {
 	ExpectedErr error
 	// Assert allows you to provide an assertion function which can be passed to validate certain post conditions (like
 	// messages being written to the correct queues).
-	Assert func() error
-	// ValidateResponse is intended to check that the response carries the correct response body, redirects to the correct
-	// location, or has the correct headers set. You don't need to validate the response status here, this is already
-	// performed automatically.
-	ValidateResponse func(response *resty.Response) error
+	// It also allows to check that the response carries the correct response body, redirects to the correct
+	//	// location, or has the correct headers set. You don't need to validate the response status here, this is already
+	//	// performed automatically.
+	Assert func(response *resty.Response) error
 }
 
 func (c ApiServerTestCase) request(client *resty.Client) (*resty.Response, error) {
@@ -109,11 +109,11 @@ func buildTestCaseApiServer(suite TestingSuite, method reflect.Method) (testCase
 			testCases = out.([]*ApiServerTestCase)
 		}
 
+		responses := make([]*resty.Response, len(testCases))
 		apiDefinitions := apiDefinitionAware.SetupApiDefinitions()
 
 		suiteOptions.appModules["api"] = func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			module, err := apiserver.New(apiDefinitions)(ctx, config, logger)
-
 			if err != nil {
 				return nil, err
 			}
@@ -129,34 +129,36 @@ func buildTestCaseApiServer(suite TestingSuite, method reflect.Method) (testCase
 			},
 		}))
 
-		for _, tc := range testCases {
-			runTestCaseApplication(t, suite, suiteOptions, environment, func(app *appUnderTest) {
-				port, err := server.GetPort()
+		runTestCaseApplication(t, suite, suiteOptions, environment, func(app *appUnderTest) {
+			port, err := server.GetPort()
+			if err != nil {
+				assert.FailNow(t, err.Error(), "can not get port of server")
+				return
+			}
 
-				if err != nil {
-					assert.FailNow(t, err.Error(), "can not get port of server")
-					return
-				}
+			remainingRedirects := 0
+			url := fmt.Sprintf("http://127.0.0.1:%d", *port)
 
-				url := fmt.Sprintf("http://127.0.0.1:%d", *port)
-				remainingRedirects := tc.ExpectedRedirectsToFollow
-				client := resty.New().SetHostURL(url).SetRedirectPolicy(
-					resty.RedirectPolicyFunc(func(request *http.Request, _ []*http.Request) error {
-						if remainingRedirects <= 0 {
-							return http.ErrUseLastResponse
-						}
+			client := resty.New().SetHostURL(url).SetRedirectPolicy(
+				resty.RedirectPolicyFunc(func(request *http.Request, _ []*http.Request) error {
+					if remainingRedirects <= 0 {
+						return http.ErrUseLastResponse
+					}
 
-						remainingRedirects--
+					remainingRedirects--
 
-						return nil
-					}),
-				)
-				response, err := tc.request(client)
+					return nil
+				}),
+			)
 
-				assert.NotNil(t, response, "there should be a response returned")
+			for i, tc := range testCases {
+				remainingRedirects = tc.ExpectedRedirectsToFollow
+				responses[i], err = tc.request(client)
 
-				if response != nil {
-					assert.Equal(t, tc.ExpectedStatusCode, response.StatusCode(), "response status code should match")
+				assert.NotNil(t, responses[i], "there should be a response returned")
+
+				if responses[i] != nil {
+					assert.Equal(t, tc.ExpectedStatusCode, responses[i].StatusCode(), "response status code should match")
 					assert.Equalf(t, 0, remainingRedirects, "expected %d redirects, but only %d redirects where performed", tc.ExpectedRedirectsToFollow, tc.ExpectedRedirectsToFollow-remainingRedirects)
 				}
 
@@ -165,22 +167,18 @@ func buildTestCaseApiServer(suite TestingSuite, method reflect.Method) (testCase
 				} else {
 					assert.EqualError(t, err, tc.ExpectedErr.Error())
 				}
+			}
 
-				app.Stop()
-				app.WaitDone()
+			app.Stop()
+			app.WaitDone()
 
+			for i, tc := range testCases {
 				if tc.Assert != nil {
-					if err := tc.Assert(); err != nil {
+					if err := tc.Assert(responses[i]); err != nil {
 						assert.FailNow(t, err.Error(), "there should be no error on assert")
 					}
 				}
-
-				if tc.ValidateResponse != nil && response != nil {
-					if err := tc.ValidateResponse(response); err != nil {
-						assert.FailNow(t, err.Error(), "there should be no error when validating the response")
-					}
-				}
-			})
-		}
+			}
+		})
 	}, nil
 }

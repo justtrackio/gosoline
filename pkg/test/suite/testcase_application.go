@@ -1,11 +1,12 @@
 package suite
 
 import (
+	"reflect"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/application"
 	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
-	"reflect"
-	"testing"
 )
 
 func init() {
@@ -48,7 +49,6 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 	logger := environment.Logger()
 
 	app, err := application.NewWithInterfaces(config, logger, appOptions...)
-
 	if err != nil {
 		assert.FailNow(t, "failed to create application under test", err.Error())
 
@@ -76,8 +76,6 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 	}()
 
 	<-app.Running()
-
 	testcase(appUnderTest)
-
 	app.Stop("test done")
 }

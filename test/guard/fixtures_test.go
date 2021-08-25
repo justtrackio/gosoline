@@ -1,3 +1,4 @@
+//go:build integration && fixtures
 // +build integration,fixtures
 
 package guard_test

@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package apiserver
@@ -6,14 +7,15 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	netHttp "net/http"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/http"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/go-resty/resty/v2"
-	netHttp "net/http"
-	"testing"
 )
 
 type compressedHandler struct{}
@@ -70,7 +72,7 @@ func (s *CompressedTestSuite) TestCompressed() []*suite.ApiServerTestCase {
 			},
 			Body:               buffer.Bytes(), // all routes should accept compressed requests
 			ExpectedStatusCode: netHttp.StatusOK,
-			ValidateResponse: func(res *resty.Response) error {
+			Assert: func(res *resty.Response) error {
 				// only first route should be compressed
 				if i == 0 {
 					s.Equal([]string{http.ContentEncodingGzip}, res.Header()[http.HdrContentEncoding])
