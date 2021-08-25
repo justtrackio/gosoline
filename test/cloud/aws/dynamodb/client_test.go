@@ -1,4 +1,5 @@
-//+build integration
+//go:build integration
+// +build integration
 
 package dynamodb_test
 

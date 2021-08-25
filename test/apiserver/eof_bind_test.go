@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package apiserver
@@ -5,15 +6,16 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	netHttp "net/http"
+	"testing"
+	"time"
+
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/http"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/go-resty/resty/v2"
-	netHttp "net/http"
-	"testing"
-	"time"
 )
 
 type eofBindHandler struct{}
@@ -82,7 +84,7 @@ func (s *EofBindTestSuite) TestEofBind() *suite.ApiServerTestCase {
 		},
 		Body:               []byte{},
 		ExpectedStatusCode: netHttp.StatusBadRequest,
-		ValidateResponse: func(res *resty.Response) error {
+		Assert: func(res *resty.Response) error {
 			s.Equal(expectedBody, string(res.Body()))
 
 			return nil
@@ -107,7 +109,7 @@ func (s *EofBindTestSuite) TestUnexpectedEofBind() *suite.ApiServerTestCase {
 		},
 		Body:               []byte{'{'},
 		ExpectedStatusCode: netHttp.StatusBadRequest,
-		ValidateResponse: func(res *resty.Response) error {
+		Assert: func(res *resty.Response) error {
 			s.Equal(expectedBody, string(res.Body()))
 
 			return nil

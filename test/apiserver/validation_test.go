@@ -1,9 +1,15 @@
+//go:build integration
 // +build integration
 
 package apiserver
 
 import (
 	"context"
+	netHttp "net/http"
+	"reflect"
+	"strconv"
+	"testing"
+
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/http"
@@ -11,10 +17,6 @@ import (
 	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-resty/resty/v2"
-	netHttp "net/http"
-	"reflect"
-	"strconv"
-	"testing"
 )
 
 type ValidateMessageInput struct {
@@ -49,11 +51,13 @@ type ValidateInputStruct struct {
 	B int `json:"b"`
 }
 
-type messageHandler struct{}
-type customMessageHandler struct{}
-type aliasMessageHandler struct{}
-type nestedHandler struct{}
-type structHandler struct{}
+type (
+	messageHandler       struct{}
+	customMessageHandler struct{}
+	aliasMessageHandler  struct{}
+	nestedHandler        struct{}
+	structHandler        struct{}
+)
 
 type ValidationTestSuite struct {
 	suite.Suite
@@ -109,7 +113,7 @@ func (s *ValidationTestSuite) TestValidateMessageInput_Success() *suite.ApiServe
 			Message: "1234",
 		},
 		ExpectedStatusCode: netHttp.StatusOK,
-		ValidateResponse: func(response *resty.Response) error {
+		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResult := `{"message":"1234"}`
 
@@ -128,7 +132,7 @@ func (s *ValidationTestSuite) TestValidateMessageInput_Failure() *suite.ApiServe
 			Message: "123",
 		},
 		ExpectedStatusCode: netHttp.StatusBadRequest,
-		ValidateResponse: func(response *resty.Response) error {
+		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResult := `{"err":"Key: 'ValidateMessageInput.Message' Error:Field validation for 'Message' failed on the 'hasEvenLength' tag"}`
 
@@ -147,7 +151,7 @@ func (s *ValidationTestSuite) TestValidateCustomInput_Success() *suite.ApiServer
 			Message: "12345",
 		},
 		ExpectedStatusCode: netHttp.StatusOK,
-		ValidateResponse: func(response *resty.Response) error {
+		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResult := `{"message":"12345"}`
 
@@ -166,7 +170,7 @@ func (s *ValidationTestSuite) TestValidateCustomInput_Failure() *suite.ApiServer
 			Message: "1234",
 		},
 		ExpectedStatusCode: netHttp.StatusBadRequest,
-		ValidateResponse: func(response *resty.Response) error {
+		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResult := `{"err":"Key: 'ValidateCustomInput.Message' Error:Field validation for 'Message' failed on the 'len' tag"}`
 
@@ -185,7 +189,7 @@ func (s *ValidationTestSuite) TestValidateAliasInput_Success() *suite.ApiServerT
 			Message: "12345",
 		},
 		ExpectedStatusCode: netHttp.StatusOK,
-		ValidateResponse: func(response *resty.Response) error {
+		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResult := `{"message":"12345"}`
 
@@ -204,7 +208,7 @@ func (s *ValidationTestSuite) TestValidateAliasInput_Failure() *suite.ApiServerT
 			Message: "1234",
 		},
 		ExpectedStatusCode: netHttp.StatusBadRequest,
-		ValidateResponse: func(response *resty.Response) error {
+		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResult := `{"err":"Key: 'ValidateAliasInput.Message' Error:Field validation for 'Message' failed on the 'validMessage' tag"}`
 
@@ -226,7 +230,7 @@ func (s *ValidationTestSuite) TestValidateNestedInput_Success() *suite.ApiServer
 			},
 		},
 		ExpectedStatusCode: netHttp.StatusOK,
-		ValidateResponse: func(response *resty.Response) error {
+		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResult := `{"nested":{"a":13,"b":7}}`
 
@@ -250,7 +254,7 @@ func (s *ValidationTestSuite) TestValidateNestedInput_Failure() *suite.ApiServer
 		// We can't yet validate nested structs, so this returns success for now. This test ensures we notice if this
 		// state changes.
 		ExpectedStatusCode: netHttp.StatusOK,
-		ValidateResponse: func(response *resty.Response) error {
+		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResult := `{"nested":{"a":12,"b":7}}`
 
@@ -272,7 +276,7 @@ func (s *ValidationTestSuite) TestValidateStructInput_Success() *suite.ApiServer
 			},
 		},
 		ExpectedStatusCode: netHttp.StatusOK,
-		ValidateResponse: func(response *resty.Response) error {
+		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResult := `{"struct":{"a":13,"b":7}}`
 
@@ -294,7 +298,7 @@ func (s *ValidationTestSuite) TestValidateStructInput_Failure() *suite.ApiServer
 			},
 		},
 		ExpectedStatusCode: netHttp.StatusBadRequest,
-		ValidateResponse: func(response *resty.Response) error {
+		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResult := `{"err":"Key: 'ValidateStructInput.Struct.A' Error:Field validation for 'A' failed on the 'hasEvenSum' tag\nKey: 'ValidateStructInput.Struct.B' Error:Field validation for 'B' failed on the 'hasEvenSum' tag"}`
 

@@ -138,6 +138,10 @@ func (a *ApiServer) waitForStop(ctx context.Context) {
 }
 
 func (a *ApiServer) GetPort() (*int, error) {
+	if a == nil {
+		return nil, errors.New("apiServer is nil, module is not yet booted")
+	}
+
 	if a.listener == nil {
 		return nil, errors.New("could not get port. module is not yet booted")
 	}
