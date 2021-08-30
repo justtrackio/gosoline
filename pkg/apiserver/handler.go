@@ -3,15 +3,16 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+
 	"github.com/applike/gosoline/pkg/coffin"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 )
 
 const (
@@ -23,19 +24,19 @@ const (
 var ErrAccessForbidden = errors.New("cant access resource")
 
 type Request struct {
+	Body     interface{}
 	Header   http.Header
 	Params   gin.Params
 	Url      *url.URL
-	Body     interface{}
 	ClientIp string
 }
 
 // Don't create a response directly, use New*Response instead
 type Response struct {
-	StatusCode  int
-	ContentType *string // might be nil
-	Header      http.Header
 	Body        interface{}
+	Header      http.Header
+	ContentType *string // might be nil
+	StatusCode  int
 }
 
 type emptyRenderer struct{}
@@ -45,6 +46,15 @@ func (e emptyRenderer) Render(http.ResponseWriter) error {
 }
 
 func (e emptyRenderer) WriteContentType(_ http.ResponseWriter) {
+}
+
+func NewResponse(body interface{}, contentType string, statusCode int, header http.Header) *Response {
+	return &Response{
+		Body:        body,
+		Header:      header,
+		ContentType: &contentType,
+		StatusCode:  statusCode,
+	}
 }
 
 func NewHtmlResponse(body interface{}) *Response {
@@ -90,6 +100,18 @@ func (r *Response) AddHeader(key string, value string) {
 	r.Header.Add(key, value)
 }
 
+func (r *Response) WithBody(body interface{}) *Response {
+	r.Body = body
+
+	return r
+}
+
+func (r *Response) WithContentType(contentType string) *Response {
+	r.ContentType = &contentType
+
+	return r
+}
+
 type HandlerWithoutInput interface {
 	Handle(requestContext context.Context, request *Request) (response *Response, error error)
 }
@@ -105,8 +127,8 @@ type HandlerWithMultipleBindings interface {
 }
 
 type HandlerWithStream interface {
-	Handle(ginContext *gin.Context, requestContext context.Context, request *Request) (error error)
 	GetInput() interface{}
+	Handle(ginContext *gin.Context, requestContext context.Context, request *Request) (error error)
 }
 
 func CreateHandler(handler HandlerWithoutInput) gin.HandlerFunc {
@@ -149,12 +171,12 @@ func handleWithInput(handler HandlerWithInput, binding binding.Binding, errHandl
 	return func(ginCtx *gin.Context) {
 		input := handler.GetInput()
 		err := binding.Bind(ginCtx.Request, input)
-
 		if err != nil {
 			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
 				Err:  err,
 				Type: gin.ErrorTypeBind,
 			})
+
 			return
 		}
 
@@ -178,6 +200,7 @@ func handleWithMultiPartFormInput(handler HandlerWithInput, errHandler ErrorHand
 				Err:  err,
 				Type: gin.ErrorTypeBind,
 			})
+
 			return
 		}
 
@@ -189,12 +212,12 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 	return func(ginCtx *gin.Context) {
 		input := handler.GetInput()
 		err := binding.Bind(ginCtx.Request, input)
-
 		if err != nil {
 			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
 				Err:  err,
 				Type: gin.ErrorTypeBind,
 			})
+
 			return
 		}
 
@@ -214,6 +237,7 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 				Err:  err,
 				Type: gin.ErrorTypePrivate,
 			})
+
 			return
 		}
 	}
@@ -226,12 +250,12 @@ func handleWithMultipleBindings(handler HandlerWithMultipleBindings, errHandler 
 
 		for i := 0; i < len(bindings); i++ {
 			err := bindings[i].Bind(ginCtx.Request, input)
-
 			if err != nil {
 				handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
 					Err:  err,
 					Type: gin.ErrorTypeBind,
 				})
+
 				return
 			}
 
@@ -244,12 +268,12 @@ func handleWithMultipleBindings(handler HandlerWithMultipleBindings, errHandler 
 func handleRaw(handler HandlerWithoutInput, errHandler ErrorHandler) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		body, err := ioutil.ReadAll(ginCtx.Request.Body)
-
 		if err != nil {
 			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
 				Err:  err,
 				Type: gin.ErrorTypeBind,
 			})
+
 			return
 		}
 
@@ -281,6 +305,7 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 			Err:  err,
 			Type: gin.ErrorTypePrivate,
 		})
+
 		return
 	}
 
@@ -289,16 +314,17 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 			Err:  err,
 			Type: gin.ErrorTypePrivate,
 		})
+
 		return
 	}
 
 	writer, err := mkResponseBodyWriter(resp)
-
 	if err != nil {
 		handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
 			Err:  err,
 			Type: gin.ErrorTypeRender,
 		})
+
 		return
 	}
 
@@ -311,7 +337,6 @@ func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, g
 	resp := errHandler(statusCode, ginError.Err)
 
 	writer, err := mkResponseBodyWriter(resp)
-
 	if err != nil {
 		panic(errors.WithMessage(err, "Error creating writer for error handler"))
 	}
@@ -323,7 +348,6 @@ func handleForbidden(ginCtx *gin.Context, errHandler ErrorHandler, statusCode in
 	resp := errHandler(statusCode, ginError.Err)
 
 	writer, err := mkResponseBodyWriter(resp)
-
 	if err != nil {
 		panic(errors.WithMessage(err, "Error creating writer for error handler"))
 	}
@@ -359,7 +383,6 @@ func mkResponseBodyWriter(resp *Response) (func(ginCtx *gin.Context), error) {
 	}
 
 	data, err := cast.ToStringE(resp.Body)
-
 	if err != nil {
 		return nil, err
 	}
