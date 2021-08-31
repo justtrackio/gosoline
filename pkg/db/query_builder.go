@@ -5,7 +5,7 @@ import (
 	"github.com/thoas/go-funk"
 )
 
-//go:generate mockery -name QueryBuilder
+//go:generate mockery --name QueryBuilder
 type QueryBuilder interface {
 	Table(table string) QueryBuilder
 	Joins(joins []string) QueryBuilder

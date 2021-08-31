@@ -3,6 +3,7 @@ package cloud
 import (
 	"errors"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -12,7 +13,7 @@ import (
 	"github.com/thoas/go-funk"
 )
 
-//go:generate mockery -name ServiceClient
+//go:generate mockery --name ServiceClient
 type ServiceClient interface {
 	SetClient(client ecsiface.ECSAPI)
 	Start(filter *FilterServicesInput, count int) ([]*ecs.Service, error)
@@ -90,7 +91,6 @@ func (c *AwsServiceClient) Stop(filter *FilterServicesInput) ([]*ecs.Service, er
 func (c *AwsServiceClient) ScaleServices(filter *FilterServicesInput, count int) {
 	logger := c.logger.WithFields(c.getLoggerFields(filter))
 	services, err := c.GetServices(filter)
-
 	if err != nil {
 		return
 	}
@@ -103,7 +103,6 @@ func (c *AwsServiceClient) ScaleServices(filter *FilterServicesInput, count int)
 		}
 
 		_, err := c.client.UpdateService(&input)
-
 		if err != nil {
 			logger.Error("could not scale service: %w", err)
 
@@ -119,7 +118,6 @@ func (c *AwsServiceClient) ScaleServices(filter *FilterServicesInput, count int)
 func (c *AwsServiceClient) ForceNewDeployment(filter *FilterServicesInput) error {
 	logger := c.logger.WithFields(c.getLoggerFields(filter))
 	services, err := c.GetServices(filter)
-
 	if err != nil {
 		return err
 	}
@@ -132,7 +130,6 @@ func (c *AwsServiceClient) ForceNewDeployment(filter *FilterServicesInput) error
 		}
 
 		_, err := c.client.UpdateService(&input)
-
 		if err != nil {
 			logger.Error("could not force deploy the service: %w", err)
 
@@ -168,7 +165,6 @@ func (c *AwsServiceClient) GetServices(filter *FilterServicesInput) ([]*ecs.Serv
 		}
 
 		out, err := c.client.DescribeServices(&input)
-
 		if err != nil {
 			c.logger.Error("could not describe services: %w", err)
 
@@ -205,7 +201,6 @@ func (c *AwsServiceClient) WaitUntilServiceIsStable(filter *FilterServicesInput)
 		}
 
 		err := c.client.WaitUntilServicesStable(&input)
-
 		if err != nil {
 			logger.Error("could not wait until services are stable: %w", err)
 			return
@@ -224,7 +219,6 @@ func (c *AwsServiceClient) GetServiceList(filter *FilterServicesInput) []Service
 
 	for {
 		out, err := c.client.ListServices(&input)
-
 		if err != nil {
 			c.logger.Error("could not get the list of services: %w", err)
 
@@ -233,7 +227,6 @@ func (c *AwsServiceClient) GetServiceList(filter *FilterServicesInput) []Service
 
 		for _, srv := range out.ServiceArns {
 			listing, err := c.GetListingFromArn(srv)
-
 			if err != nil {
 				c.logger.Error("failed to get listing for arn: %w", err)
 
@@ -269,7 +262,6 @@ func (c *AwsServiceClient) GetListingFromArn(arn *string) (*ServiceListing, erro
 			arn,
 		},
 	})
-
 	if err != nil {
 		return nil, err
 	}

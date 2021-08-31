@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/exec"
@@ -16,7 +17,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-//go:generate mockery -name TransactionRepository
+//go:generate mockery --name TransactionRepository
 type TransactionRepository interface {
 	TransactWriteItems(ctx context.Context, items []TransactWriteItemBuilder) (*OperationResult, error)
 	TransactGetItems(ctx context.Context, items []TransactGetItemBuilder) (*OperationResult, error)

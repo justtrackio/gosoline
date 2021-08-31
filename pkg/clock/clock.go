@@ -1,11 +1,12 @@
 package clock
 
 import (
-	"github.com/jonboulle/clockwork"
 	"time"
+
+	"github.com/jonboulle/clockwork"
 )
 
-//go:generate mockery -name Clock
+//go:generate mockery --name Clock
 type Clock interface {
 	clockwork.Clock
 }

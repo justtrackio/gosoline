@@ -3,9 +3,10 @@ package ipread
 import (
 	"errors"
 	"fmt"
+	"net"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
-	"net"
 )
 
 var (
@@ -24,7 +25,7 @@ type ReaderSettings struct {
 	Provider string `cfg:"provider" default:"maxmind"`
 }
 
-//go:generate mockery -name Reader
+//go:generate mockery --name Reader
 type Reader interface {
 	City(ipString string) (*GeoCity, error)
 }
@@ -46,7 +47,6 @@ func NewReader(config cfg.Config, logger log.Logger, name string) (*reader, erro
 	}
 
 	provider, err := factory(config, logger, name)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not create ip reader provider: %w", err)
 	}
@@ -66,7 +66,6 @@ func (r reader) City(ipString string) (*GeoCity, error) {
 	}
 
 	record, err := r.provider.City(ip)
-
 	if err != nil {
 		return nil, err
 	}

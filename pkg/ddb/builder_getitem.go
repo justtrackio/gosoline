@@ -2,6 +2,7 @@ package ddb
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -9,7 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-//go:generate mockery -name GetItemBuilder
+//go:generate mockery --name GetItemBuilder
 type GetItemBuilder interface {
 	WithHash(hashValue interface{}) GetItemBuilder
 	WithRange(rangeValue interface{}) GetItemBuilder
@@ -96,13 +97,11 @@ func (b *getItemBuilder) Build(result interface{}) (*dynamodb.GetItemInput, erro
 	}
 
 	keys, err := b.keyBuilder.buildKey(result)
-
 	if err != nil {
 		return nil, err
 	}
 
 	expr, err := b.buildExpression()
-
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +119,6 @@ func (b *getItemBuilder) Build(result interface{}) (*dynamodb.GetItemInput, erro
 
 func (b *getItemBuilder) buildExpression() (expression.Expression, error) {
 	projection, err := buildProjectionExpression(b.metadata.Main, b.projection)
-
 	if err != nil {
 		return expression.Expression{}, err
 	}

@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/http"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/log"
-	"time"
 )
 
 const (
@@ -22,7 +23,7 @@ const (
 
 const YMDLayout = "2006-01-02"
 
-//go:generate mockery -name UpdaterService
+//go:generate mockery --name UpdaterService
 type UpdaterService interface {
 	EnsureRecentExchangeRates(ctx context.Context) error
 	EnsureHistoricalExchangeRates(ctx context.Context) error
@@ -64,7 +65,6 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 
 	s.logger.Info("requesting exchange rates")
 	rates, err := s.getCurrencyRates(ctx)
-
 	if err != nil {
 		return fmt.Errorf("error getting currency exchange rates: %w", err)
 	}
@@ -72,7 +72,6 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 	now := time.Now()
 	for _, rate := range rates {
 		err := s.store.Put(ctx, rate.Currency, rate.Rate)
-
 		if err != nil {
 			return fmt.Errorf("error setting exchange rate: %w", err)
 		}
@@ -100,7 +99,6 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 func (s *updaterService) needsRefresh(ctx context.Context) bool {
 	var date time.Time
 	exists, err := s.store.Get(ctx, ExchangeRateDateKey, &date)
-
 	if err != nil {
 		s.logger.Info("error fetching date")
 
@@ -128,7 +126,6 @@ func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
 	request := s.http.NewRequest().WithUrl(ExchangeRateUrl)
 
 	response, err := s.http.Get(ctx, request)
-
 	if err != nil {
 		return nil, fmt.Errorf("error requesting exchange rates: %w", err)
 	}
@@ -152,7 +149,6 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 
 	s.logger.Info("requesting historical exchange rates")
 	rates, err := s.fetchExchangeRates(ctx)
-
 	if err != nil {
 		return fmt.Errorf("error getting historical currency exchange rates: %w", err)
 	}
@@ -200,7 +196,6 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 func (s *updaterService) historicalRatesNeedRefresh(ctx context.Context) bool {
 	var date time.Time
 	exists, err := s.store.Get(ctx, HistoricalExchangeRateDateKey, &date)
-
 	if err != nil {
 		s.logger.Info("historicalRatesNeedRefresh error fetching date")
 
@@ -228,7 +223,6 @@ func (s *updaterService) fetchExchangeRates(ctx context.Context) ([]Content, err
 	request := s.http.NewRequest().WithUrl(HistoricalExchangeRateUrl)
 
 	response, err := s.http.Get(ctx, request)
-
 	if err != nil {
 		return nil, fmt.Errorf("error requesting historical exchange rates: %w", err)
 	}
@@ -263,8 +257,8 @@ func filterOutOldExchangeRates(rates []Content, earliestDate time.Time) (ret []C
 
 func fillInGapDays(historicalContent []Content, clock clock.Clock) ([]Content, error) {
 	var startDate time.Time
-	var endDate = clock.Now()
-	var dailyRates = make(map[string]Content)
+	endDate := clock.Now()
+	dailyRates := make(map[string]Content)
 
 	for _, dayRates := range historicalContent {
 		date, err := dayRates.GetTime()
@@ -281,7 +275,7 @@ func fillInGapDays(historicalContent []Content, clock clock.Clock) ([]Content, e
 		return nil, fmt.Errorf("fillInGapDays, no valid data provided - startDate")
 	}
 
-	var lastDay = startDate
+	lastDay := startDate
 	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
 		if _, ok := dailyRates[date.Format(YMDLayout)]; !ok {
 			gapContent := dailyRates[lastDay.Format(YMDLayout)]

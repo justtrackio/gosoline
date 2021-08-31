@@ -3,11 +3,12 @@ package redis
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
 	baseRedis "github.com/go-redis/redis/v8"
-	"time"
 )
 
 const (
@@ -18,7 +19,7 @@ type ErrCmder interface {
 	Err() error
 }
 
-//go:generate mockery -name Pipeliner
+//go:generate mockery --name Pipeliner
 type Pipeliner interface {
 	baseRedis.Pipeliner
 }
@@ -27,7 +28,7 @@ func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
 	return fmt.Sprintf("%v-%v-%v-%v-%v", appId.Project, appId.Environment, appId.Family, appId.Application, key)
 }
 
-//go:generate mockery -name Client
+//go:generate mockery --name Client
 type Client interface {
 	Del(ctx context.Context, keys ...string) (int64, error)
 	DBSize(ctx context.Context) (int64, error)
@@ -121,7 +122,6 @@ func (c *redisClient) Exists(ctx context.Context, keys ...string) (int64, error)
 }
 
 func (c *redisClient) FlushDB(ctx context.Context) (string, error) {
-
 	cmd, err := c.execute(ctx, func() ErrCmder {
 		return c.base.FlushDB(ctx)
 	})
@@ -130,7 +130,6 @@ func (c *redisClient) FlushDB(ctx context.Context) (string, error) {
 }
 
 func (c *redisClient) DBSize(ctx context.Context) (int64, error) {
-
 	cmd, err := c.execute(ctx, func() ErrCmder {
 		return c.base.DBSize(ctx)
 	})

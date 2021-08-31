@@ -2,6 +2,7 @@ package ses
 
 import (
 	"context"
+
 	"github.com/applike/gosoline/pkg/cast"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
@@ -13,12 +14,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/ses/sesiface"
 )
 
-//go:generate mockery -name SimpleMailer
+//go:generate mockery --name SimpleMailer
 type SimpleMailer interface {
 	Send(ctx context.Context, message Message) error
 }
 
-//go:generate mockery -name TemplatedMailer
+//go:generate mockery --name TemplatedMailer
 type TemplatedMailer interface {
 	Send(ctx context.Context, message TemplatedMessage) error
 }

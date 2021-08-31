@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
@@ -19,7 +20,7 @@ type ShardCache struct {
 	ShardIDs      []string
 }
 
-//go:generate mockery -name StreamClient
+//go:generate mockery --name StreamClient
 type StreamClient interface {
 	GetActiveShardCount(application string, eventType string) int
 	SetShardCount(input *ScaleStreamInput) []*kinesis.UpdateShardCountOutput
@@ -76,7 +77,6 @@ func (sc *AwsStreamClient) GetActiveShardCount(application, eventType string) in
 			},
 		},
 	})
-
 	if err != nil {
 		sc.logger.WithFields(log.Fields{
 			"tableName": tableName,
@@ -111,7 +111,6 @@ func (sc *AwsStreamClient) SetShardCount(input *ScaleStreamInput) []*kinesis.Upd
 		}
 
 		out, err := sc.kinesisClient.UpdateShardCount(&input)
-
 		if err != nil {
 			sc.logger.Warn(err.Error())
 			continue

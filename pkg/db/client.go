@@ -5,27 +5,30 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
+	"strconv"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/jmoiron/sqlx"
-	"reflect"
-	"strconv"
 )
 
 const (
 	FormatDateTime = "2006-01-02 15:04:05"
 )
 
-//go:generate mockery -name SqlResult
+//go:generate mockery --name SqlResult
 type SqlResult interface {
 	LastInsertId() (int64, error)
 	RowsAffected() (int64, error)
 }
 
-type ResultRow map[string]string
-type Result []ResultRow
+type (
+	ResultRow map[string]string
+	Result    []ResultRow
+)
 
-//go:generate mockery -name Client
+//go:generate mockery --name Client
 type Client interface {
 	GetSingleScalarValue(query string, args ...interface{}) (int, error)
 	GetResult(query string, args ...interface{}) (*Result, error)
@@ -45,7 +48,6 @@ type ClientSqlx struct {
 
 func NewClient(config cfg.Config, logger log.Logger, name string) (Client, error) {
 	db, err := ProvideConnection(config, logger, name)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not connect to sql database: %w", err)
 	}
@@ -72,7 +74,6 @@ func NewClientWithInterfaces(logger log.Logger, db *sqlx.DB) Client {
 func (c *ClientSqlx) GetSingleScalarValue(query string, args ...interface{}) (int, error) {
 	var val sql.NullInt64
 	err := c.Get(&val, query, args...)
-
 	if err != nil {
 		return 0, err
 	}
@@ -87,7 +88,6 @@ func (c *ClientSqlx) GetSingleScalarValue(query string, args ...interface{}) (in
 func (c *ClientSqlx) GetResult(query string, args ...interface{}) (*Result, error) {
 	out := make(Result, 0, 32)
 	rows, err := c.Query(query, args...)
-
 	if err != nil {
 		return nil, err
 	}

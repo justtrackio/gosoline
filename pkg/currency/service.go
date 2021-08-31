@@ -3,16 +3,17 @@ package currency
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/kvstore"
 	"github.com/applike/gosoline/pkg/log"
-	"time"
 )
 
 const closenessMargin = time.Minute
 
-//go:generate mockery -name Service
+//go:generate mockery --name Service
 type Service interface {
 	HasCurrency(ctx context.Context, currency string) (bool, error)
 	ToEur(ctx context.Context, value float64, from string) (float64, error)
@@ -62,7 +63,6 @@ func (s *currencyService) ToEur(ctx context.Context, value float64, from string)
 	}
 
 	exchangeRate, err := s.getExchangeRate(ctx, from)
-
 	if err != nil {
 		return 0, fmt.Errorf("CurrencyService: error parsing exchange rate: %w", err)
 	}
@@ -86,13 +86,11 @@ func (s *currencyService) ToCurrency(ctx context.Context, to string, value float
 	}
 
 	exchangeRate, err := s.getExchangeRate(ctx, to)
-
 	if err != nil {
 		return 0, fmt.Errorf("CurrencyService: error parsing exchange rate: %w", err)
 	}
 
 	eur, err := s.ToEur(ctx, value, from)
-
 	if err != nil {
 		return 0, fmt.Errorf("CurrencyService: error converting to eur: %w", err)
 	}
@@ -121,7 +119,6 @@ func (s *currencyService) getExchangeRateAtDate(ctx context.Context, currency st
 	key := historicalRateKey(date, currency)
 
 	exists, err := s.store.Get(ctx, key, &exchangeRate)
-
 	if err != nil {
 		return 0, fmt.Errorf("getExchangeRateAtDate: error getting exchange rate: %w", err)
 	}
@@ -153,7 +150,6 @@ func (s *currencyService) HasCurrencyAtDate(ctx context.Context, currency string
 	exists, err := s.store.Contains(ctx, key)
 	if err != nil {
 		return exists, err
-
 	}
 
 	if !exists && date.After(s.clock.Now().Add(-24*time.Hour)) {
@@ -174,7 +170,6 @@ func (s *currencyService) ToEurAtDate(ctx context.Context, value float64, from s
 	}
 
 	exchangeRate, err := s.getExchangeRateAtDate(ctx, from, date)
-
 	if err != nil {
 		return 0, fmt.Errorf("CurrencyService: error parsing exchange rate historically: %w", err)
 	}
@@ -202,13 +197,11 @@ func (s *currencyService) ToCurrencyAtDate(ctx context.Context, to string, value
 	}
 
 	exchangeRate, err := s.getExchangeRateAtDate(ctx, to, date)
-
 	if err != nil {
 		return 0, fmt.Errorf("CurrencyService: error parsing exchange rate historically: %w", err)
 	}
 
 	eur, err := s.ToEurAtDate(ctx, value, from, date)
-
 	if err != nil {
 		return 0, fmt.Errorf("CurrencyService: error converting to eur historically: %w", err)
 	}

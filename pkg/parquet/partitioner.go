@@ -16,7 +16,7 @@ type Partition struct {
 	LastUpdatedAt time.Time
 }
 
-//go:generate mockery -name Partitioner
+//go:generate mockery --name Partitioner
 type Partitioner interface {
 	Flush()
 	Ingest(data Partitionable)

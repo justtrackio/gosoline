@@ -3,20 +3,21 @@ package auth
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"regexp"
+	"sync"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
-	"net/http"
-	"regexp"
-	"sync"
 )
 
 const ByGoogle = "google"
 
-//go:generate mockery -name TokenInfoProvider
+//go:generate mockery --name TokenInfoProvider
 type TokenInfoProvider interface {
 	GetTokenInfo(string) (*oauth2.Tokeninfo, error)
 }
@@ -164,7 +165,6 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 func (a *configGoogleAuthenticator) isAddressAllowed(address string) (bool, error) {
 	for _, allowed := range a.allowedAddresses {
 		ok, err := regexp.MatchString(allowed, address)
-
 		if err != nil {
 			return false, fmt.Errorf("can not compile regex for allowed address check: %w", err)
 		}

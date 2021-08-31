@@ -2,21 +2,22 @@ package cfg
 
 import (
 	"fmt"
+	"reflect"
+	"regexp"
+	"strings"
+	"time"
+
 	"github.com/applike/gosoline/pkg/mapx"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/go-playground/validator/v10"
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cast"
 	"github.com/thoas/go-funk"
-	"reflect"
-	"regexp"
-	"strings"
-	"time"
 )
 
 type LookupEnv func(key string) (string, bool)
 
-//go:generate mockery -name Config
+//go:generate mockery --name Config
 type Config interface {
 	AllKeys() []string
 	AllSettings() map[string]interface{}
@@ -37,7 +38,7 @@ type Config interface {
 	UnmarshalKey(key string, val interface{}, additionalDefaults ...UnmarshalDefaults)
 }
 
-//go:generate mockery -name GosoConf
+//go:generate mockery --name GosoConf
 type GosoConf interface {
 	Config
 	Option(options ...Option) error
@@ -52,9 +53,11 @@ type config struct {
 	envKeyReplacer *strings.Replacer
 }
 
-var DefaultEnvKeyReplacer = strings.NewReplacer(".", "_", "-", "_")
-var templateRegexp = regexp.MustCompile(`{([\w.\-]+)}`)
-var keyToEnvRegexp = regexp.MustCompile(`\[(\d+)\]`)
+var (
+	DefaultEnvKeyReplacer = strings.NewReplacer(".", "_", "-", "_")
+	templateRegexp        = regexp.MustCompile(`{([\w.\-]+)}`)
+	keyToEnvRegexp        = regexp.MustCompile(`\[(\d+)\]`)
+)
 
 func New() GosoConf {
 	return NewWithInterfaces(NewOsEnvProvider())
@@ -94,7 +97,6 @@ func (c *config) GetBool(key string, optionalDefault ...bool) bool {
 
 	data := c.get(key)
 	b, err := cast.ToBoolE(data)
-
 	if err != nil {
 		c.err("can not cast value %v[%T] of key %s to bool: %w", data, data, key, err)
 		return false
@@ -110,7 +112,6 @@ func (c *config) GetDuration(key string, optionalDefault ...time.Duration) time.
 
 	data := c.get(key)
 	duration, err := cast.ToDurationE(data)
-
 	if err != nil {
 		c.err("can not cast value %v[%T] of key %s to duration: %w", data, data, key, err)
 		return time.Duration(0)
@@ -126,7 +127,6 @@ func (c *config) GetInt(key string, optionalDefault ...int) int {
 
 	data := c.get(key)
 	i, err := cast.ToIntE(data)
-
 	if err != nil {
 		c.err("can not cast value %v[%T] of key %s to int: %w", data, data, key, err)
 		return 0
@@ -142,7 +142,6 @@ func (c *config) GetIntSlice(key string, optionalDefault ...[]int) []int {
 
 	data := c.get(key)
 	intSlice, err := cast.ToIntSliceE(data)
-
 	if err != nil {
 		c.err("can not cast value %v[%T] of key %s to []int: %w", data, data, key, err)
 		return nil
@@ -158,7 +157,6 @@ func (c *config) GetFloat64(key string, optionalDefault ...float64) float64 {
 
 	data := c.get(key)
 	i, err := cast.ToFloat64E(data)
-
 	if err != nil {
 		c.err("can not cast value %v[%T] of key %s to float64: %w", data, data, key, err)
 		return 0.0
@@ -173,8 +171,8 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interfa
 	}
 
 	var err error
-	var data = c.settings.Get(key).Data()
-	var reflectValue = reflect.ValueOf(data)
+	data := c.settings.Get(key).Data()
+	reflectValue := reflect.ValueOf(data)
 
 	if reflectValue.Kind() != reflect.Slice {
 		c.err("can not cast value %v[%T] of key %s to []map[string]interface{}: %w", data, data, key, err)
@@ -184,7 +182,7 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interfa
 	var ok bool
 	var element interface{}
 	var msi map[string]interface{}
-	var msiSlice = make([]map[string]interface{}, reflectValue.Len())
+	msiSlice := make([]map[string]interface{}, reflectValue.Len())
 
 	for i := 0; i < reflectValue.Len(); i++ {
 		element = reflectValue.Index(i).Interface()
@@ -211,7 +209,6 @@ func (c *config) GetStringMap(key string, optionalDefault ...map[string]interfac
 
 	data := c.get(key)
 	strMap, err := cast.ToStringMapE(data)
-
 	if err != nil {
 		c.err("can not cast value %v[%T] of key %s to map[string]interface{}: %w", data, data, key, err)
 		return nil
@@ -233,7 +230,6 @@ func (c *config) GetStringMapString(key string, optionalDefault ...map[string]st
 
 	data := c.get(key)
 	strMap, err := cast.ToStringMapStringE(data)
-
 	if err != nil {
 		c.err("can not cast value %v[%T] of key %s to map[string]string: %w", data, data, key, err)
 		return nil
@@ -283,7 +279,6 @@ func (c *config) GetTime(key string, optionalDefault ...time.Time) time.Time {
 
 	data := c.get(key)
 	tm, err := cast.ToTimeE(data)
-
 	if err != nil {
 		c.err("can not cast value %v[%T] of key %s to time.Time: %w", data, data, key, err)
 		return time.Time{}
@@ -312,7 +307,6 @@ func (c *config) UnmarshalDefaults(output interface{}, additionalDefaults ...Unm
 
 	ms := c.buildMapStruct(output)
 	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
-
 	if err != nil {
 		c.err("can not read zeros and defaults for struct %T: %w", output, err)
 	}
@@ -379,7 +373,6 @@ func (c *config) buildMapStruct(target interface{}) *mapx.Struct {
 			c.decodeAugmentHook(),
 		},
 	})
-
 	if err != nil {
 		c.err("can not create MapXStruct for target %T: %w", target, err)
 		return nil
@@ -419,7 +412,6 @@ func (c *config) getString(key string, optionalDefault ...string) string {
 
 	data := c.get(key)
 	str, err := cast.ToStringE(data)
-
 	if err != nil {
 		panic(fmt.Errorf("can not cast value %v of key %s to string", data, key))
 	}
@@ -467,7 +459,6 @@ func (c *config) merge(prefix string, setting interface{}, options ...MergeOptio
 
 func (c *config) mergeValue(prefix string, value interface{}, options ...MergeOption) error {
 	sanitizedValue, err := Sanitize("root", value, c.sanitizers)
-
 	if err != nil {
 		return fmt.Errorf("could not sanitize settings on merge: %w", err)
 	}
@@ -480,7 +471,6 @@ func (c *config) mergeValue(prefix string, value interface{}, options ...MergeOp
 
 func (c *config) mergeMsi(prefix string, settings map[string]interface{}, options ...MergeOption) error {
 	sanitizedSettings, err := Sanitize("root", settings, c.sanitizers)
-
 	if err != nil {
 		return fmt.Errorf("could not sanitize settings on merge: %w", err)
 	}
@@ -494,7 +484,6 @@ func (c *config) mergeMsi(prefix string, settings map[string]interface{}, option
 func (c *config) mergeStruct(prefix string, settings interface{}, options ...MergeOption) error {
 	ms := c.buildMapStruct(settings)
 	nodeMap, err := ms.Read()
-
 	if err != nil {
 		return err
 	}
@@ -593,7 +582,6 @@ func (c *config) resolveEnvKey(prefix string, key string) string {
 func (c *config) unmarshalMap(key string, output interface{}, defaults []UnmarshalDefaults) {
 	names := c.GetStringMap(key)
 	m, err := refl.MapOf(output)
-
 	if err != nil {
 		c.err("can not unmarshal key %s: %w", key, err)
 		return
@@ -615,14 +603,12 @@ func (c *config) unmarshalMap(key string, output interface{}, defaults []Unmarsh
 
 func (c *config) unmarshalSlice(key string, output interface{}, defaults []UnmarshalDefaults) {
 	data, err := c.settings.Get(key).Slice()
-
 	if err != nil {
 		c.err("can not unmarshal key %s: %w", key, err)
 		return
 	}
 
 	slice, err := refl.SliceOf(output)
-
 	if err != nil {
 		c.err("can not unmarshal key %s into slice: %w", key, err)
 		return
@@ -647,7 +633,6 @@ func (c *config) unmarshalStruct(key string, output interface{}, additionalDefau
 
 	ms := c.buildMapStruct(output)
 	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
-
 	if err != nil {
 		c.err("can not read zeros and defaults for key %s: %w", key, err)
 	}
@@ -661,7 +646,6 @@ func (c *config) unmarshalStruct(key string, output interface{}, additionalDefau
 
 	if c.settings.Has(key) {
 		settings, err := c.settings.Get(key).Map()
-
 		if err != nil {
 			c.err("can not get settings for key: %s: %w", key, err)
 			return

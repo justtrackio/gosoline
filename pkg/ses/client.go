@@ -1,16 +1,17 @@
 package ses
 
 import (
+	"sync"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/aws/aws-sdk-go/service/ses/sesiface"
-	"sync"
 )
 
-//go:generate mockery -name Client
+//go:generate mockery --name Client
 type Client interface {
 	sesiface.SESAPI
 }

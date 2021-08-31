@@ -2,10 +2,11 @@ package cfg
 
 import (
 	"fmt"
+
 	"github.com/getsentry/sentry-go"
 )
 
-//go:generate mockery -name Sentry
+//go:generate mockery --name Sentry
 type Sentry interface {
 	CaptureException(exception error, hint *sentry.EventHint, scope sentry.EventModifier) *sentry.EventID
 }

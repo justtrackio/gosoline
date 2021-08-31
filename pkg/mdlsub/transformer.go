@@ -3,6 +3,7 @@ package mdlsub
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/spf13/cast"
@@ -20,22 +21,23 @@ func (m ModelDb) GetId() interface{} {
 	return *m.Id
 }
 
-//go:generate mockery -name ModelTransformer
+//go:generate mockery --name ModelTransformer
 type ModelTransformer interface {
 	GetInput() interface{}
 	Transform(ctx context.Context, inp interface{}) (out Model, err error)
 }
 
-type ModelTransformers map[string]VersionedModelTransformers
-type VersionedModelTransformers map[int]ModelTransformer
-
-type TransformerFactory func(config cfg.Config, logger log.Logger) (ModelTransformer, error)
-type TransformerMapVersionFactories map[int]TransformerFactory
-type TransformerMapTypeVersionFactories map[string]TransformerMapVersionFactories
+type (
+	ModelTransformers                  map[string]VersionedModelTransformers
+	TransformerFactory                 func(config cfg.Config, logger log.Logger) (ModelTransformer, error)
+	TransformerMapTypeVersionFactories map[string]TransformerMapVersionFactories
+	TransformerMapVersionFactories     map[int]TransformerFactory
+	VersionedModelTransformers         map[int]ModelTransformer
+)
 
 func initTransformers(config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformerFactories TransformerMapTypeVersionFactories) (ModelTransformers, error) {
 	var err error
-	var transformers = make(ModelTransformers)
+	transformers := make(ModelTransformers)
 
 	for name, settings := range subscriberSettings {
 		modelId := settings.SourceModel.String()

@@ -1,16 +1,17 @@
 package ddb
 
 import (
+	"sync"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
-	"sync"
 )
 
-//go:generate mockery -name Client
+//go:generate mockery --name Client
 type Client interface {
 	dynamodbiface.DynamoDBAPI
 }

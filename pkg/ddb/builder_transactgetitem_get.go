@@ -2,10 +2,11 @@ package ddb
 
 import (
 	"fmt"
+
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
-//go:generate mockery -name TransactGetItemBuilder
+//go:generate mockery --name TransactGetItemBuilder
 type TransactGetItemBuilder interface {
 	Build() (*dynamodb.TransactGetItem, error)
 	GetItem() interface{}

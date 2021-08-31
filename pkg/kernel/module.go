@@ -2,6 +2,7 @@ package kernel
 
 import (
 	"context"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel/common"
 	"github.com/applike/gosoline/pkg/log"
@@ -21,8 +22,10 @@ const (
 	StageApplication = common.StageApplication
 )
 
-type ModuleFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (Module, error)
-type MultiModuleFactory func(config cfg.Config, logger log.Logger) (map[string]ModuleFactory, error)
+type (
+	ModuleFactory      func(ctx context.Context, config cfg.Config, logger log.Logger) (Module, error)
+	MultiModuleFactory func(config cfg.Config, logger log.Logger) (map[string]ModuleFactory, error)
+)
 
 type moduleSetupContainer struct {
 	name    string
@@ -96,7 +99,7 @@ func (mc ModuleConfig) GetType() string {
 // For example, an HTTP server would be a single module (see "apiserver")
 // while a daemon writing metrics in the background would be a separate
 // module (see "mon").
-//go:generate mockery -name=Module
+//go:generate mockery --name Module
 type Module interface {
 	// Run the module. If the provided context is canceled you have a
 	// few seconds (configurable with kernel.killTimeout) until your module
@@ -116,7 +119,7 @@ type Module interface {
 // much good alone.
 // If you don't implement TypedModule it will default to a non-essential foreground
 // module.
-//go:generate mockery -name=TypedModule
+//go:generate mockery --name TypedModule
 type TypedModule interface {
 	IsEssential() bool
 	IsBackground() bool
@@ -135,13 +138,13 @@ var (
 // and shut down later. You should use the StageEssential, StageService and
 // StageApplication constants unless you have very specific needs and know what
 // you are doing.
-//go:generate mockery -name=StagedModule
+//go:generate mockery --name StagedModule
 type StagedModule interface {
 	GetStage() int
 }
 
 // A FullModule provides all the methods a module can have and thus never relies on defaults.
-//go:generate mockery -name=FullModule
+//go:generate mockery --name FullModule
 type FullModule interface {
 	Module
 	TypedModule
@@ -152,8 +155,7 @@ type FullModule interface {
 // For example, if you have a web server with a database and API as essential modules the application would exit
 // as soon as either the database is shut down or the API is stopped. In both cases there is no point in running
 // the rest anymore as the main function of the web server can no longer be fulfilled.
-type EssentialModule struct {
-}
+type EssentialModule struct{}
 
 func (m EssentialModule) IsEssential() bool {
 	return true
@@ -167,8 +169,7 @@ func (m EssentialModule) IsBackground() bool {
 // running if only this module remains. From the previous example the database might be a good candidate - the
 // app can't run without the database, but a database alone also is no proper app. The ProducerDaemon is using
 // this module for example.
-type EssentialBackgroundModule struct {
-}
+type EssentialBackgroundModule struct{}
 
 func (m EssentialBackgroundModule) IsEssential() bool {
 	return true
@@ -181,8 +182,7 @@ func (m EssentialBackgroundModule) IsBackground() bool {
 // A ForegroundModule will cause the application to exit as soon as the last foreground module exited.
 // For example, if you have three tasks you have to perform and afterwards want to terminate the program,
 // simply declare all three as foreground modules.
-type ForegroundModule struct {
-}
+type ForegroundModule struct{}
 
 func (m ForegroundModule) IsEssential() bool {
 	return false
@@ -194,8 +194,7 @@ func (m ForegroundModule) IsBackground() bool {
 
 // A BackgroundModule has no effect on application termination. If you only have running background modules, the
 // application will exit regardless.
-type BackgroundModule struct {
-}
+type BackgroundModule struct{}
 
 func (m BackgroundModule) IsEssential() bool {
 	return false

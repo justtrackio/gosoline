@@ -2,6 +2,7 @@ package stream
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/encoding/json"
 )
 
@@ -13,7 +14,7 @@ type producerDaemonBatcher struct {
 	size     int
 }
 
-//go:generate mockery -name ProducerDaemonBatcher
+//go:generate mockery --name ProducerDaemonBatcher
 type ProducerDaemonBatcher interface {
 	Append(msg *Message) ([]WritableMessage, error)
 	Flush() []WritableMessage
@@ -53,7 +54,6 @@ func NewProducerDaemonBatcher(settings ProducerDaemonSettings) ProducerDaemonBat
 
 func (b *producerDaemonBatcher) Append(msg *Message) ([]WritableMessage, error) {
 	encodedMessage, err := json.Marshal(msg)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode message for batch: %w", err)
 	}

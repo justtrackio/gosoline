@@ -10,7 +10,7 @@ import (
 
 const fetchLimit = 100
 
-//go:generate mockery -name Guard
+//go:generate mockery --name Guard
 type Guard interface {
 	IsAllowed(request *ladon.Request) error
 	GetPolicies() (ladon.Policies, error)
@@ -20,7 +20,7 @@ type Guard interface {
 	DeletePolicy(pol ladon.Policy) error
 }
 
-//go:generate mockery -name Manager
+//go:generate mockery --name Manager
 type Manager interface {
 	ladon.Manager
 }

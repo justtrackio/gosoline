@@ -1,17 +1,18 @@
 package cloud
 
 import (
+	"strings"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	ssm2 "github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
-	"strings"
 )
 
 type SsmParameters map[string]string
 
-//go:generate mockery -name SsmClient
+//go:generate mockery --name SsmClient
 type SsmClient interface {
 	GetParameters(string) (SsmParameters, error)
 	GetParameter(string) (string, error)
@@ -39,7 +40,6 @@ func (ssm SimpleSystemsManager) GetParameters(path string) (SsmParameters, error
 	}
 
 	out, err := ssm.client.GetParametersByPath(input)
-
 	if err != nil {
 		return SsmParameters{}, err
 	}
@@ -60,7 +60,6 @@ func (ssm SimpleSystemsManager) GetParameter(path string) (string, error) {
 	}
 
 	out, err := ssm.client.GetParameter(input)
-
 	if err != nil {
 		return "", err
 	}

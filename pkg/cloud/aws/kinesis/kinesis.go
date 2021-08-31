@@ -2,6 +2,7 @@ package kinesis
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
@@ -9,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 )
 
-//go:generate mockery -name ResourceNameGetter
+//go:generate mockery --name ResourceNameGetter
 type ResourceNameGetter interface {
 	GetResourceName() string
 }

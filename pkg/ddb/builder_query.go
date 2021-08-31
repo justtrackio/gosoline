@@ -2,6 +2,7 @@ package ddb
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -18,7 +19,7 @@ type QueryOperation struct {
 
 type keyExprBuilder func() expression.KeyConditionBuilder
 
-//go:generate mockery -name QueryBuilder
+//go:generate mockery --name QueryBuilder
 type QueryBuilder interface {
 	WithIndex(name string) QueryBuilder
 	WithHash(value interface{}) QueryBuilder
@@ -215,7 +216,6 @@ func (b *queryBuilder) Build(result interface{}) (*QueryOperation, error) {
 	}
 
 	expr, err := exprBuilder.Build()
-
 	if err != nil {
 		return nil, err
 	}

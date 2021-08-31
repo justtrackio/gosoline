@@ -3,13 +3,14 @@ package tracing
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
 	"net/http"
 	"sync"
+
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
 )
 
-//go:generate mockery -name=Tracer
+//go:generate mockery --name Tracer
 type Tracer interface {
 	HttpHandler(h http.Handler) http.Handler
 	StartSpan(name string) (context.Context, Span)
