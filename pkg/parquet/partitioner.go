@@ -1,11 +1,12 @@
 package parquet
 
 import (
-	"github.com/applike/gosoline/pkg/clock"
 	"math"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/applike/gosoline/pkg/clock"
 )
 
 type Partition struct {

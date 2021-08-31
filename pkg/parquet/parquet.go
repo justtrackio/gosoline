@@ -2,14 +2,17 @@ package parquet
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/applike/gosoline/pkg/uuid"
-	"time"
 )
 
-type S3PrefixNamingStrategy func(modelId mdl.ModelId, datetime time.Time) string
-type S3KeyNamingStrategy func(modelId mdl.ModelId, datetime time.Time, prefixCallback S3PrefixNamingStrategy) string
+type (
+	S3PrefixNamingStrategy func(modelId mdl.ModelId, datetime time.Time) string
+	S3KeyNamingStrategy    func(modelId mdl.ModelId, datetime time.Time, prefixCallback S3PrefixNamingStrategy) string
+)
 
 const (
 	NamingStrategyDtErrored   = "errors/yyyy/MM/dd"
@@ -19,6 +22,10 @@ const (
 var s3PrefixNamingStrategies = map[string]S3PrefixNamingStrategy{
 	NamingStrategyDtErrored:   dtErrored,
 	NamingStrategyDtSeparated: dtSeparated,
+}
+
+func RegisterS3PrefixNamingStrategy(name string, strategy S3PrefixNamingStrategy) {
+	s3PrefixNamingStrategies[name] = strategy
 }
 
 type ReaderSettings struct {
@@ -45,12 +52,12 @@ func dtErrored(modelId mdl.ModelId, datetime time.Time) string {
 	return fmt.Sprintf("datalake-errors/%s/result=format-conversion-failed/year=%s/month=%s/day=%s", modelId.Name, datetime.Format("2006"), datetime.Format("01"), datetime.Format("02"))
 }
 
-var DefaultS3KeyNamingStrategy = func(modelId mdl.ModelId, datetime time.Time, prefixCallback S3PrefixNamingStrategy) string {
+func DefaultS3KeyNamingStrategy(modelId mdl.ModelId, datetime time.Time, prefixCallback S3PrefixNamingStrategy) string {
 	prefix := prefixCallback(modelId, datetime)
 	timestamp := datetime.Format("2006-01-02-15-04-05")
-	uuid := uuid.New().NewV4()
+	uuidV4 := uuid.New().NewV4()
 
-	return fmt.Sprintf("%s/%s-%s-%s-%s-%s-%s.parquet", prefix, modelId.Project, modelId.Environment, modelId.Family, modelId.Name, timestamp, uuid)
+	return fmt.Sprintf("%s/%s-%s-%s-%s-%s-%s.parquet", prefix, modelId.Project, modelId.Environment, modelId.Family, modelId.Name, timestamp, uuidV4)
 }
 
 var s3KeyNamingStrategy = DefaultS3KeyNamingStrategy

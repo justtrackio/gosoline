@@ -3,17 +3,19 @@ package parquet
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"sync"
 )
 
-//go:generate mockery -name FileRecorder
+//go:generate mockery --name FileRecorder
 type FileRecorder interface {
+	Files() []File
 	RecordFile(bucket string, key string)
 	RenameRecordedFiles(ctx context.Context, newPrefix string) error
 	DeleteRecordedFiles(ctx context.Context) error
@@ -31,7 +33,10 @@ type s3FileRecorder struct {
 	files    []File
 }
 
-type nopRecorder struct {
+type nopRecorder struct{}
+
+func (w nopRecorder) Files() []File {
+	return nil
 }
 
 func (w nopRecorder) RecordFile(_ string, _ string) {
@@ -62,6 +67,10 @@ func NewS3FileRecorderWithInterfaces(logger log.Logger, s3Client s3iface.S3API) 
 		lck:      sync.Mutex{},
 		files:    make([]File, 0),
 	}
+}
+
+func (w *s3FileRecorder) Files() []File {
+	return w.files
 }
 
 func (w *s3FileRecorder) RecordFile(bucket string, key string) {
