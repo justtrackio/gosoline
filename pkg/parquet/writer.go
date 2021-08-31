@@ -3,6 +3,8 @@ package parquet
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
@@ -15,7 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	parquetS3 "github.com/xitongsys/parquet-go-source/s3"
 	"github.com/xitongsys/parquet-go/writer"
-	"time"
 )
 
 type WriterSettings struct {
@@ -28,6 +29,7 @@ type WriterSettings struct {
 //go:generate mockery -name Writer
 type Writer interface {
 	Write(ctx context.Context, datetime time.Time, items interface{}) error
+	WriteToKey(ctx context.Context, key string, items interface{}) error
 }
 
 type s3Writer struct {
@@ -93,23 +95,25 @@ func NewWriterWithInterfaces(
 }
 
 func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interface{}) error {
-	bucket := w.getBucketName()
 	key := s3KeyNamingStrategy(w.modelId, datetime, w.prefixNamingStrategy)
 
-	schema, converted, err := w.parseItems(items)
+	return w.WriteToKey(ctx, key, items)
+}
 
+func (w *s3Writer) WriteToKey(ctx context.Context, key string, items interface{}) error {
+	bucket := w.getBucketName()
+
+	schema, converted, err := w.parseItems(items)
 	if err != nil {
 		return err
 	}
 
 	fw, err := parquetS3.NewS3FileWriter(ctx, bucket, key, []func(*s3manager.Uploader){}, w.s3Cfg)
-
 	if err != nil {
 		return err
 	}
 
 	pw, err := writer.NewJSONWriter(schema, fw, 4)
-
 	if err != nil {
 		return err
 	}
@@ -151,7 +155,6 @@ func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interfac
 
 func (w *s3Writer) parseItems(items interface{}) (string, []string, error) {
 	schema, err := parseSchema(items)
-
 	if err != nil {
 		return "", nil, fmt.Errorf("could not parse schema: %w", err)
 	}
@@ -163,13 +166,11 @@ func (w *s3Writer) parseItems(items interface{}) (string, []string, error) {
 		item := it.Val()
 
 		m, err := mapFieldsToTags(item)
-
 		if err != nil {
 			return "", nil, fmt.Errorf("could not map fields to tags: %w", err)
 		}
 
 		marshalled, err := json.Marshal(m)
-
 		if err != nil {
 			return "", nil, fmt.Errorf("could not marshal mapped item: %w", err)
 		}

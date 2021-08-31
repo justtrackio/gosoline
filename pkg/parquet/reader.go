@@ -3,6 +3,10 @@ package parquet
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/applike/gosoline/pkg/blob"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/coffin"
@@ -17,9 +21,6 @@ import (
 	parquetS3 "github.com/xitongsys/parquet-go-source/s3"
 	"github.com/xitongsys/parquet-go/reader"
 	"golang.org/x/sync/semaphore"
-	"reflect"
-	"strings"
-	"time"
 )
 
 type Progress struct {
@@ -27,9 +28,11 @@ type Progress struct {
 	Current   int
 }
 
-type ReadResult map[string]interface{}
-type ReadResults []ReadResult
-type ResultCallback func(progress Progress, results interface{}) (bool, error)
+type (
+	ReadResult     map[string]interface{}
+	ReadResults    []ReadResult
+	ResultCallback func(progress Progress, results interface{}) (bool, error)
+)
 
 //go:generate mockery -name Reader
 type Reader interface {
@@ -101,7 +104,6 @@ func (r *s3Reader) ReadDate(ctx context.Context, datetime time.Time, target inte
 
 		return true, nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -133,7 +135,6 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 
 	for i, file := range files {
 		err := sem.Acquire(ctx, int64(1))
-
 		if err != nil {
 			return err
 		}
@@ -148,7 +149,6 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 
 				r.logger.Debug("reading file %d of %d: %s", i, fileCount, file)
 				result, err := r.ReadFile(ctx, file)
-
 				if err != nil {
 					return fmt.Errorf("can not read file %s: %w", file, err)
 				}
@@ -161,7 +161,6 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 				}
 
 				ok, err := callback(Progress{FileCount: fileCount, Current: i}, decoded)
-
 				if err != nil {
 					return fmt.Errorf("callback failed: %w", err)
 				}
@@ -183,14 +182,13 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 
 func (r *s3Reader) ReadFile(ctx context.Context, file string) (ReadResults, error) {
 	bucket := r.getBucketName()
-	fr, err := parquetS3.NewS3FileReader(ctx, bucket, file, r.s3Cfg)
 
+	fr, err := parquetS3.NewS3FileReader(ctx, bucket, file, r.s3Cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	pr, err := reader.NewParquetColumnReader(fr, 4)
-
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +200,6 @@ func (r *s3Reader) ReadFile(ctx context.Context, file string) (ReadResults, erro
 
 	for _, colSchema := range columnNames {
 		values, _, _, err := pr.ReadColumnByPath(colSchema, size)
-
 		if err != nil {
 			return nil, err
 		}
@@ -234,8 +231,8 @@ func (r *s3Reader) ReadFile(ctx context.Context, file string) (ReadResults, erro
 
 func (r *s3Reader) listFilesFromDate(datetime time.Time) ([]string, error) {
 	prefix := r.prefixNamingStrategy(r.modelId, datetime)
-	files, err := r.listFiles(prefix)
 
+	files, err := r.listFiles(prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +252,6 @@ func (r *s3Reader) listFiles(prefix string) ([]string, error) {
 
 	for {
 		out, err := r.s3Client.ListObjects(input)
-
 		if err != nil {
 			return nil, err
 		}
@@ -290,7 +286,6 @@ func (r *s3Reader) decode(input interface{}, output interface{}) error {
 	}
 
 	decoder, err := mapstructure.NewDecoder(decoderConfig)
-
 	if err != nil {
 		return errors.Wrap(err, "can not initialize decoder")
 	}
