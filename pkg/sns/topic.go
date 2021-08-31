@@ -3,6 +3,7 @@ package sns
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
@@ -16,7 +17,7 @@ import (
 	"github.com/thoas/go-funk"
 )
 
-//go:generate mockery -name Topic
+//go:generate mockery --name Topic
 type Topic interface {
 	Publish(ctx context.Context, msg *string, attributes ...map[string]interface{}) error
 	SubscribeSqs(queueArn string, attributes map[string]interface{}) error
@@ -42,7 +43,6 @@ func NewTopic(config cfg.Config, logger log.Logger, settings *Settings) (*snsTop
 
 	client := ProvideClient(config, logger, settings)
 	arn, err := CreateTopic(logger, client, settings)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not create sns topic %s: %w", settings.TopicId, err)
 	}
@@ -69,7 +69,6 @@ func NewTopicWithInterfaces(logger log.Logger, client snsiface.SNSAPI, executor 
 
 func (t *snsTopic) Publish(ctx context.Context, msg *string, attributes ...map[string]interface{}) error {
 	inputAttributes, err := buildAttributes(attributes)
-
 	if err != nil {
 		return fmt.Errorf("can not build message attributes: %w", err)
 	}
@@ -97,7 +96,6 @@ func (t *snsTopic) Publish(ctx context.Context, msg *string, attributes ...map[s
 
 func (t *snsTopic) SubscribeSqs(queueArn string, attributes map[string]interface{}) error {
 	exists, err := t.subscriptionExists(queueArn, attributes)
-
 	if err != nil {
 		return fmt.Errorf("can not check if the subscription exists already: %w", err)
 	}
@@ -120,7 +118,6 @@ func (t *snsTopic) SubscribeSqs(queueArn string, attributes map[string]interface
 
 	if len(attributes) > 0 {
 		policy, err := buildFilterPolicy(attributes)
-
 		if err != nil {
 			return fmt.Errorf("can not build filter policy: %w", err)
 		}
@@ -194,7 +191,6 @@ func (t *snsTopic) listSubscriptions() ([]*sns.Subscription, error) {
 		outI, err := t.executor.Execute(context.Background(), func() (*request.Request, interface{}) {
 			return t.client.ListSubscriptionsByTopicRequest(input)
 		})
-
 		if err != nil {
 			return nil, err
 		}
@@ -256,7 +252,6 @@ func (t *snsTopic) getSubscriptionAttributes(subscriptionArn *string) (map[strin
 	outI, err := t.executor.Execute(context.Background(), func() (*request.Request, interface{}) {
 		return t.client.GetSubscriptionAttributesRequest(input)
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("can not get subscription attributes: %w", err)
 	}

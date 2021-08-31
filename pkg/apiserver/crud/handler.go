@@ -3,16 +3,17 @@ package crud
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/applike/gosoline/pkg/apiserver"
 	"github.com/applike/gosoline/pkg/db-repo"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/jinzhu/inflection"
-	"net/http"
 )
 
 const DefaultApiView = "api"
 
-//go:generate mockery -name Repository
+//go:generate mockery --name Repository
 type Repository interface {
 	Create(ctx context.Context, value db_repo.ModelBased) error
 	Read(ctx context.Context, id *uint, out db_repo.ModelBased) error
@@ -23,49 +24,49 @@ type Repository interface {
 	GetMetadata() db_repo.Metadata
 }
 
-//go:generate mockery -name BaseHandler
+//go:generate mockery --name BaseHandler
 type BaseHandler interface {
 	GetRepository() Repository
 	GetModel() db_repo.ModelBased
 	TransformOutput(model db_repo.ModelBased, apiView string) (output interface{}, err error)
 }
 
-//go:generate mockery -name BaseCreateHandler
+//go:generate mockery --name BaseCreateHandler
 type BaseCreateHandler interface {
 	GetCreateInput() interface{}
 	TransformCreate(input interface{}, model db_repo.ModelBased) (err error)
 }
 
-//go:generate mockery -name CreateHandler
+//go:generate mockery --name CreateHandler
 type CreateHandler interface {
 	BaseHandler
 	BaseCreateHandler
 }
 
-//go:generate mockery -name BaseUpdateHandler
+//go:generate mockery --name BaseUpdateHandler
 type BaseUpdateHandler interface {
 	GetUpdateInput() interface{}
 	TransformUpdate(input interface{}, model db_repo.ModelBased) (err error)
 }
 
-//go:generate mockery -name UpdateHandler
+//go:generate mockery --name UpdateHandler
 type UpdateHandler interface {
 	BaseHandler
 	BaseUpdateHandler
 }
 
-//go:generate mockery -name BaseListHandler
+//go:generate mockery --name BaseListHandler
 type BaseListHandler interface {
 	List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out interface{}, err error)
 }
 
-//go:generate mockery -name ListHandler
+//go:generate mockery --name ListHandler
 type ListHandler interface {
 	BaseHandler
 	BaseListHandler
 }
 
-//go:generate mockery -name Handler
+//go:generate mockery --name Handler
 type Handler interface {
 	BaseHandler
 	BaseCreateHandler

@@ -1,6 +1,6 @@
 package kinesis
 
-//go:generate mockery -name MessageHandler
+//go:generate mockery --name MessageHandler
 type MessageHandler interface {
 	Handle(rawMessage []byte) error
 	Done()

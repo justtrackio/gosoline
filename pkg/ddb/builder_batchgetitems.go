@@ -2,6 +2,7 @@ package ddb
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/refl"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -9,7 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-//go:generate mockery -name=BatchGetItemsBuilder
+//go:generate mockery --name BatchGetItemsBuilder
 type BatchGetItemsBuilder interface {
 	WithKeys(values ...interface{}) BatchGetItemsBuilder
 	WithKeyPairs(pairs [][]interface{}) BatchGetItemsBuilder
@@ -55,7 +56,6 @@ func (b *batchGetItemsBuilder) WithKeyPairs(pairs [][]interface{}) BatchGetItems
 
 func (b *batchGetItemsBuilder) WithHashKeys(hashKeys interface{}) BatchGetItemsBuilder {
 	slice, err := refl.InterfaceToInterfaceSlice(hashKeys)
-
 	if err != nil {
 		b.err = multierror.Append(b.err, err)
 	}
@@ -102,7 +102,6 @@ func (b *batchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetItem
 
 	for i, keys := range b.keyPairs {
 		attributeValues, err := b.keyBuilder.fromValues(keys...)
-
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +110,6 @@ func (b *batchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetItem
 	}
 
 	expr, err := b.buildExpression()
-
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +130,6 @@ func (b *batchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetItem
 
 func (b *batchGetItemsBuilder) buildExpression() (expression.Expression, error) {
 	projection, err := buildProjectionExpression(b.metadata.Main, b.projection)
-
 	if err != nil {
 		return expression.Expression{}, err
 	}

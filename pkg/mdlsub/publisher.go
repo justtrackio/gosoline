@@ -3,6 +3,7 @@ package mdlsub
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/mdl"
@@ -26,7 +27,7 @@ type PublisherSettings struct {
 	Shared     bool   `cfg:"shared"`
 }
 
-//go:generate mockery -name Publisher
+//go:generate mockery --name Publisher
 type Publisher interface {
 	Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]interface{}) error
 }

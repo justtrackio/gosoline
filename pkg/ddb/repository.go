@@ -3,6 +3,8 @@ package ddb
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/cloud/aws"
@@ -18,7 +20,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-multierror"
-	"time"
 )
 
 const (
@@ -38,7 +39,7 @@ const (
 	Delete = "delete"
 )
 
-//go:generate mockery -name Repository
+//go:generate mockery --name Repository
 type Repository interface {
 	GetModelId() mdl.ModelId
 
@@ -106,7 +107,6 @@ func NewRepository(config cfg.Config, logger log.Logger, settings *Settings) (Re
 
 	svc := NewServiceWithInterfaces(logger, client)
 	_, err := svc.CreateTable(settings)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not create ddb table %s: %w", tableName, err)
 	}
@@ -126,7 +126,6 @@ func NewRepository(config cfg.Config, logger log.Logger, settings *Settings) (Re
 func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, client dynamodbiface.DynamoDBAPI, executor aws.Executor, settings *Settings) (Repository, error) {
 	metadataFactory := NewMetadataFactory()
 	metadata, err := metadataFactory.GetMetadata(settings)
-
 	if err != nil {
 		name := TableName(settings)
 		return nil, fmt.Errorf("could not factor metadata for ddb table %s: %w", name, err)
@@ -157,7 +156,6 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 	defer span.Finish()
 
 	unmarshaller, err := NewUnmarshallerFromPtrSlice(items)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not initialize unmarshaller for BatchGetItems operation on table %s: %w", r.metadata.TableName, err)
 	}
@@ -198,7 +196,6 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 
 func (r *repository) processBatchReadItemsResponse(qb BatchGetItemsBuilder, out *dynamodb.BatchGetItemOutput, unmarshaller *Unmarshaller, result *OperationResult) (map[string]*dynamodb.KeysAndAttributes, error) {
 	responses, err := r.filterResponses(qb, out.Responses[r.metadata.TableName])
-
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +227,6 @@ func (r *repository) filterResponses(qb BatchGetItemsBuilder, responses []map[st
 
 	for _, response := range responses {
 		keep, err := filterer.PerformFilterCondition(response)
-
 		if err != nil {
 			return nil, fmt.Errorf("could not perform filter condition for table %s: %w", r.metadata.TableName, err)
 		}
@@ -249,7 +245,6 @@ func (r *repository) BatchPutItems(ctx context.Context, value interface{}) (*Ope
 
 	return r.batchWriteItem(ctx, value, func(item interface{}) (*dynamodb.WriteRequest, error) {
 		marshalledItem, err := dynamodbattribute.MarshalMap(item)
-
 		if err != nil {
 			return nil, fmt.Errorf("could not marshal item for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
 		}
@@ -268,7 +263,6 @@ func (r *repository) BatchDeleteItems(ctx context.Context, value interface{}) (*
 
 	return r.batchWriteItem(ctx, value, func(item interface{}) (*dynamodb.WriteRequest, error) {
 		key, err := r.keyBuilder.fromItem(item)
-
 		if err != nil {
 			return nil, fmt.Errorf("could not create key for item for BatchDeleteItems operation on table %s: %w", r.metadata.TableName, err)
 		}
@@ -283,7 +277,6 @@ func (r *repository) BatchDeleteItems(ctx context.Context, value interface{}) (*
 
 func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqBuilder func(interface{}) (*dynamodb.WriteRequest, error)) (*OperationResult, error) {
 	items, err := refl.InterfaceToInterfaceSlice(value)
-
 	if err != nil {
 		return nil, fmt.Errorf("no slice of items provided for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
 	}
@@ -309,7 +302,6 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 		}
 
 		err := r.chunkWriteItem(ctx, input, result)
-
 		if err != nil {
 			return nil, fmt.Errorf("could not write chunk for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
 		}
@@ -329,7 +321,6 @@ func (r *repository) chunkWriteItem(ctx context.Context, input *dynamodb.BatchWr
 		outI, err := r.executor.Execute(ctx, func() (*request.Request, interface{}) {
 			return r.client.BatchWriteItemRequest(input)
 		})
-
 		if err != nil {
 			return backoff.Permanent(fmt.Errorf("could not execute item for batchWriteItemWithContext operation on table %s: %w", r.metadata.TableName, err))
 		}
@@ -455,7 +446,6 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 
 	if ttlFilterer, ok := qb.(ttlFilterer); ok {
 		keep, err := ttlFilterer.PerformFilterCondition(out.Item)
-
 		if err != nil {
 			return nil, err
 		}
@@ -488,7 +478,6 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 	}
 
 	input, err := qb.Build(item)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not build input and expr for PutItem operation on table %s: %w", r.metadata.TableName, err)
 	}
@@ -535,7 +524,6 @@ func (r *repository) Query(ctx context.Context, qb QueryBuilder, items interface
 	defer span.Finish()
 
 	op, err := qb.Build(items)
-
 	if err != nil {
 		return nil, err
 	}
@@ -601,7 +589,6 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 	defer span.Finish()
 
 	input, err := ub.Build(item)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not build input for UpdateItem operation on table %s: %w", r.metadata.TableName, err)
 	}
@@ -649,7 +636,6 @@ func (r *repository) Scan(ctx context.Context, sb ScanBuilder, items interface{}
 	}
 
 	op, err := sb.Build(items)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not build scan operation: %w", err)
 	}
@@ -738,14 +724,12 @@ func (r *repository) UpdateItemBuilder() UpdateItemBuilder {
 
 func (r *repository) readAll(items interface{}, read func() (*readResult, error)) error {
 	unmarshaller, err := NewUnmarshallerFromPtrSlice(items)
-
 	if err != nil {
 		return fmt.Errorf("can not initialize unmarshaller for operation on table %s: %w", r.metadata.TableName, err)
 	}
 
 	for {
 		out, err := read()
-
 		if err != nil {
 			return fmt.Errorf("could not execute read operation for table %s: %w", r.metadata.TableName, err)
 		}
@@ -770,7 +754,6 @@ func (r *repository) readAll(items interface{}, read func() (*readResult, error)
 
 func (r *repository) readCallback(ctx context.Context, items interface{}, callback ResultCallback, read func() (*readResult, error)) error {
 	unmarshaller, err := NewUnmarshallerFromStruct(items)
-
 	if err != nil {
 		return fmt.Errorf("can not initialize unmarshaller for operation on table %s: %w", r.metadata.TableName, err)
 	}
@@ -779,7 +762,6 @@ func (r *repository) readCallback(ctx context.Context, items interface{}, callba
 
 	for {
 		out, err := read()
-
 		if err != nil {
 			return fmt.Errorf("could not execute read operation for table %s: %w", r.metadata.TableName, err)
 		}
@@ -789,7 +771,6 @@ func (r *repository) readCallback(ctx context.Context, items interface{}, callba
 		}
 
 		items, err := unmarshaller.Unmarshal(out.Items)
-
 		if err != nil {
 			return fmt.Errorf("could not unmarshal items after read operation for table %s: %w", r.metadata.TableName, err)
 		}

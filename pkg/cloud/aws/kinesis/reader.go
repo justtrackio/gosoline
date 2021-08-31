@@ -3,13 +3,14 @@ package kinesis
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
 	"strings"
 	"sync"
+
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/log"
 )
 
-//go:generate mockery -name Reader
+//go:generate mockery --name Reader
 type Reader interface {
 	Run(ctx context.Context) error
 	Stop()
@@ -30,7 +31,6 @@ type reader struct {
 
 func NewReader(config cfg.Config, logger log.Logger, factory KinsumerFactory, handler MessageHandler, settings KinsumerSettings) (Reader, error) {
 	client, err := factory(config, logger, settings)
-
 	if err != nil {
 		return nil, fmt.Errorf("unable to create kinesis client: %w", err)
 	}
@@ -54,14 +54,12 @@ func (r *reader) Run(ctx context.Context) error {
 	logger := r.logger.WithContext(ctx)
 
 	err := r.client.Run()
-
 	if err != nil {
 		return fmt.Errorf("kinsumer.Kinsumer.Run() returned error %w", err)
 	}
 
 	for {
 		rawMessage, err := r.client.Next()
-
 		if err != nil {
 			errMsg := err.Error()
 

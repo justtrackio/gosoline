@@ -3,21 +3,22 @@ package stream
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/kernel"
 	"github.com/applike/gosoline/pkg/log"
-	"sync/atomic"
 )
 
 type ConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (ConsumerCallback, error)
 
-//go:generate mockery -name=ConsumerCallback
+//go:generate mockery --name ConsumerCallback
 type ConsumerCallback interface {
 	BaseConsumerCallback
 	Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error)
 }
 
-//go:generate mockery -name=RunnableConsumerCallback
+//go:generate mockery --name RunnableConsumerCallback
 type RunnableConsumerCallback interface {
 	ConsumerCallback
 	RunnableCallback
@@ -89,8 +90,8 @@ func (c *Consumer) run(ctx context.Context) error {
 
 func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message) {
 	var err error
-	var start = c.clock.Now()
-	var batch = make([]*Message, 0)
+	start := c.clock.Now()
+	batch := make([]*Message, 0)
 
 	if ctx, _, err = c.encoder.Decode(ctx, msg, &batch); err != nil {
 		c.handleError(ctx, err, "an error occurred during disaggregation of the message")

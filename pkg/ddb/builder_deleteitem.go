@@ -2,12 +2,13 @@ package ddb
 
 import (
 	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 )
 
-//go:generate mockery -name DeleteItemBuilder
+//go:generate mockery --name DeleteItemBuilder
 type DeleteItemBuilder interface {
 	WithHash(hashValue interface{}) DeleteItemBuilder
 	WithRange(rangeValue interface{}) DeleteItemBuilder
@@ -80,7 +81,6 @@ func (b *deleteItemBuilder) Build(item interface{}) (*dynamodb.DeleteItemInput, 
 	}
 
 	key, err := b.keyBuilder.buildKey(item)
-
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,10 @@ package sqs
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+	"sync"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/log"
@@ -9,9 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
-	"strconv"
-	"strings"
-	"sync"
 )
 
 const DefaultVisibilityTimeout = "30"
@@ -20,7 +21,7 @@ type ServiceSettings struct {
 	AutoCreate bool
 }
 
-//go:generate mockery -name Service
+//go:generate mockery --name Service
 type Service interface {
 	CreateQueue(*Settings) (*Properties, error)
 	QueueExists(string) (bool, error)
@@ -61,7 +62,6 @@ func (s *service) CreateQueue(settings *Settings) (*Properties, error) {
 
 	name := QueueName(settings)
 	exists, err := s.QueueExists(name)
-
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,6 @@ func (s *service) CreateQueue(settings *Settings) (*Properties, error) {
 	}
 
 	attributes, err := s.createDeadLetterQueue(settings)
-
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +97,6 @@ func (s *service) CreateQueue(settings *Settings) (*Properties, error) {
 	}
 
 	props, err := s.doCreateQueue(sqsInput)
-
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +122,6 @@ func (s *service) QueueExists(name string) (bool, error) {
 	}).Info("checking the existence of sqs queue")
 
 	url, err := s.GetUrl(name)
-
 	if err != nil {
 		return false, err
 	}
@@ -146,7 +143,6 @@ func (s *service) GetPropertiesByArn(arn string) (*Properties, error) {
 	name := arn[i+1:]
 
 	url, err := s.GetUrl(name)
-
 	if err != nil {
 		return nil, err
 	}
@@ -160,13 +156,11 @@ func (s *service) GetPropertiesByArn(arn string) (*Properties, error) {
 
 func (s *service) GetPropertiesByName(name string) (*Properties, error) {
 	url, err := s.GetUrl(name)
-
 	if err != nil {
 		return nil, err
 	}
 
 	arn, err := s.GetArn(url)
-
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +180,6 @@ func (s *service) GetUrl(name string) (string, error) {
 	}
 
 	out, err := s.client.GetQueueUrl(input)
-
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == sqs.ErrCodeQueueDoesNotExist {
 			return "", nil
@@ -205,7 +198,6 @@ func (s *service) GetArn(url string) (string, error) {
 	}
 
 	out, err := s.client.GetQueueAttributes(input)
-
 	if err != nil {
 		return "", err
 	}
@@ -238,7 +230,6 @@ func (s *service) createDeadLetterQueue(settings *Settings) (map[string]*string,
 	}
 
 	props, err := s.doCreateQueue(deadLetterInput)
-
 	if err != nil {
 		s.logger.Error("could not get arn of dead letter sqs queue %v: %w", deadLetterName, err)
 		return attributes, err
@@ -250,7 +241,6 @@ func (s *service) createDeadLetterQueue(settings *Settings) (map[string]*string,
 	}
 
 	b, err := json.Marshal(policy)
-
 	if err != nil {
 		return attributes, fmt.Errorf("could not marshal redrive policy for sqs queue %v: %w", queueName, err)
 	}
@@ -265,7 +255,6 @@ func (s *service) doCreateQueue(input *sqs.CreateQueueInput) (*Properties, error
 
 	s.logger.Info("trying to create sqs queue: %v", name)
 	_, err := s.client.CreateQueue(input)
-
 	if err != nil {
 		s.logger.Error("could not create sqs queue %v: %w", name, err)
 		return nil, err

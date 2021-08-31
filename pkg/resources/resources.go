@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi/resourcegroupstaggingapiiface"
 )
 
-//go:generate mockery -name Service
+//go:generate mockery --name Service
 type Service interface {
 	GetResources(filter Filter) ([]string, error)
 }

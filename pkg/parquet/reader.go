@@ -34,7 +34,7 @@ type (
 	ResultCallback func(progress Progress, results interface{}) (bool, error)
 )
 
-//go:generate mockery -name Reader
+//go:generate mockery --name Reader
 type Reader interface {
 	ReadDate(ctx context.Context, datetime time.Time, target interface{}) error
 	ReadDateAsync(ctx context.Context, datetime time.Time, target interface{}, callback ResultCallback) error

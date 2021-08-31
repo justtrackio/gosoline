@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
+
 	"github.com/applike/gosoline/pkg/encoding/base64"
 	"github.com/applike/gosoline/pkg/encoding/json"
-	"io"
 )
 
 const (
@@ -39,7 +40,7 @@ type AggregateFlush struct {
 	MessageCount int
 }
 
-//go:generate mockery -name ProducerDaemonAggregator
+//go:generate mockery --name ProducerDaemonAggregator
 type ProducerDaemonAggregator interface {
 	Write(msg *Message) ([]AggregateFlush, error)
 	Flush() (*AggregateFlush, error)
@@ -84,7 +85,6 @@ func NewProducerDaemonAggregator(settings ProducerDaemonSettings, compression Co
 
 func (a *producerDaemonAggregator) Write(msg *Message) ([]AggregateFlush, error) {
 	encodedMessage, err := json.Marshal(msg)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode message for aggregate: %w", err)
 	}
@@ -128,7 +128,6 @@ func (a *producerDaemonAggregator) getCurrentSize(newMessageSize int) int {
 func (a *producerDaemonAggregator) write(encodedMessage []byte) error {
 	if a.messageCount > 0 {
 		_, err := a.writer.Write(jsonArraySep)
-
 		if err != nil {
 			return fmt.Errorf("failed to write separator to buffer: %w", err)
 		}
@@ -137,7 +136,6 @@ func (a *producerDaemonAggregator) write(encodedMessage []byte) error {
 	}
 
 	_, err := a.writer.Write(encodedMessage)
-
 	if err != nil {
 		return fmt.Errorf("failed to write message to buffer: %w", err)
 	}

@@ -26,7 +26,7 @@ type WriterSettings struct {
 	Recorder       FileRecorder
 }
 
-//go:generate mockery -name Writer
+//go:generate mockery --name Writer
 type Writer interface {
 	Write(ctx context.Context, datetime time.Time, items interface{}) error
 	WriteToKey(ctx context.Context, key string, items interface{}) error

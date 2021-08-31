@@ -2,26 +2,27 @@ package blob
 
 import (
 	"bytes"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"sync/atomic"
+
+	"github.com/pkg/errors"
 )
 
-//go:generate mockery -name ReadCloser
+//go:generate mockery --name ReadCloser
 type ReadCloser interface {
 	io.ReadCloser
 }
 
 // A reader which we can close and which can seek
-//go:generate mockery -name ReadSeekerCloser
+//go:generate mockery --name ReadSeekerCloser
 type ReadSeekerCloser interface {
 	io.ReadSeeker
 	io.Closer
 }
 
 // A stream is a source of bytes you can either get as a full []byte or stream as a reader.
-//go:generate mockery -name Stream
+//go:generate mockery --name Stream
 type Stream interface {
 	// Read all data and close the reader.
 	ReadAll() ([]byte, error)
@@ -121,7 +122,7 @@ type fakeSeeker struct {
 	ReadCloser
 }
 
-func (f fakeSeeker) Seek(offset int64, whence int) (int64, error) {
+func (f fakeSeeker) Seek(_ int64, _ int) (int64, error) {
 	return 0, errors.New("Not a real seeker")
 }
 

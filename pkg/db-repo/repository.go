@@ -3,6 +3,11 @@ package db_repo
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/db"
@@ -12,10 +17,6 @@ import (
 	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/jinzhu/gorm"
 	"github.com/jonboulle/clockwork"
-	"reflect"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -40,7 +41,7 @@ type Settings struct {
 	Metadata Metadata
 }
 
-//go:generate mockery -name Repository
+//go:generate mockery --name Repository
 type Repository interface {
 	Create(ctx context.Context, value ModelBased) error
 	Read(ctx context.Context, id *uint, out ModelBased) error
@@ -224,7 +225,6 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	defer span.Finish()
 
 	err := r.refreshAssociations(value, Delete)
-
 	if err != nil {
 		logger.Error("could not delete associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
 		return err
@@ -319,7 +319,7 @@ func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBas
 	_, span := r.startSubSpan(ctx, "Count")
 	defer span.Finish()
 
-	var result = struct {
+	result := struct {
 		Count int
 	}{}
 

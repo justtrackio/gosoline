@@ -2,15 +2,16 @@ package kinesis
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/twitchscience/kinsumer"
-	"time"
 )
 
-//go:generate mockery -name Kinsumer
+//go:generate mockery --name Kinsumer
 type Kinsumer interface {
 	Run() error
 	Next() (data []byte, err error)
@@ -47,7 +48,6 @@ func NewKinsumer(config cfg.Config, logger log.Logger, settings KinsumerSettings
 	}).WithChannel("kinsumer")
 
 	err := CreateKinesisStream(config, logger, kinesisClient, &settings)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kinesis stream: %w", err)
 	}
@@ -64,7 +64,6 @@ func NewKinsumer(config cfg.Config, logger log.Logger, settings KinsumerSettings
 	})
 
 	client, err := kinsumer.NewWithInterfaces(kinesisClient, dynamoDbClient, settings.StreamName, settings.ApplicationName, clientName, kinsumerConfig)
-
 	if err != nil {
 		return nil, fmt.Errorf("error creating kinsumer: %w", err)
 	}

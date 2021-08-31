@@ -3,20 +3,21 @@ package kernel
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/coffin"
-	"github.com/applike/gosoline/pkg/conc"
-	"github.com/applike/gosoline/pkg/log"
-	"golang.org/x/sys/unix"
 	"os"
 	"os/signal"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/applike/gosoline/pkg/coffin"
+	"github.com/applike/gosoline/pkg/conc"
+	"github.com/applike/gosoline/pkg/log"
+	"golang.org/x/sys/unix"
 )
 
-//go:generate mockery -name=Kernel
+//go:generate mockery --name Kernel
 type Kernel interface {
 	Add(name string, moduleFactory ModuleFactory, opts ...ModuleOption)
 	AddFactory(factory MultiModuleFactory)
@@ -247,7 +248,6 @@ func (k *kernel) runFactories() error {
 				<-startBooting.Channel()
 
 				module, err := container.factory(ctx, k.config, k.logger)
-
 				if err != nil {
 					return fmt.Errorf("can not build module %s: %w", container.name, err)
 				}

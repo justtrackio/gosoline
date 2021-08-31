@@ -3,11 +3,12 @@ package tracing
 import (
 	"context"
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/aws/aws-xray-sdk-go/xray"
 )
 
-//go:generate mockery -name=Span
+//go:generate mockery --name Span
 type Span interface {
 	AddAnnotation(key string, value string)
 	AddError(err error)

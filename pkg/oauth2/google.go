@@ -2,6 +2,7 @@ package oauth2
 
 import (
 	"context"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/http"
@@ -23,7 +24,7 @@ type GoogleAuthRequest struct {
 	RefreshToken string
 }
 
-//go:generate mockery -name Service
+//go:generate mockery --name Service
 type Service interface {
 	GetAuthRefresh(ctx context.Context, authRequest *GoogleAuthRequest) (*GoogleAuthResponse, error)
 }
@@ -55,7 +56,6 @@ func (service *GoogleService) GetAuthRefresh(ctx context.Context, authRequest *G
 		})
 
 	response, err := service.httpClient.Post(ctx, request)
-
 	if err != nil {
 		return nil, err
 	}

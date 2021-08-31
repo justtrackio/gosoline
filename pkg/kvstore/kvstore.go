@@ -2,12 +2,13 @@ package kvstore
 
 import (
 	"context"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/encoding/json"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
-	"time"
 )
 
 type Settings struct {
@@ -28,7 +29,7 @@ type InMemorySettings struct {
 	GetsPerPromote int32
 }
 
-//go:generate mockery -name KvStore
+//go:generate mockery --name KvStore
 type KvStore interface {
 	// Check if a key exists in the store.
 	Contains(ctx context.Context, key interface{}) (bool, error)
@@ -50,7 +51,7 @@ type KvStore interface {
 	DeleteBatch(ctx context.Context, keys interface{}) error
 }
 
-//go:generate mockery -name SizedStore
+//go:generate mockery --name SizedStore
 type SizedStore interface {
 	KvStore
 	// return an estimate about how many elements are currently in the store

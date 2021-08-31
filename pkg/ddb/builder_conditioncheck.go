@@ -2,13 +2,14 @@ package ddb
 
 import (
 	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/hashicorp/go-multierror"
 )
 
-//go:generate mockery -name ConditionCheckBuilder
+//go:generate mockery --name ConditionCheckBuilder
 type ConditionCheckBuilder interface {
 	Build(result interface{}) (*dynamodb.ConditionCheck, error)
 	ReturnNone() ConditionCheckBuilder
@@ -84,13 +85,11 @@ func (b *conditionCheckBuilder) Build(result interface{}) (*dynamodb.ConditionCh
 	}
 
 	keys, err := b.keyBuilder.buildKey(result)
-
 	if err != nil {
 		return nil, err
 	}
 
 	expr, err := b.buildExpression()
-
 	if err != nil {
 		return nil, err
 	}

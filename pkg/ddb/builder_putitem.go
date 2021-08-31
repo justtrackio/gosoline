@@ -2,13 +2,14 @@ package ddb
 
 import (
 	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 )
 
-//go:generate mockery -name PutItemBuilder
+//go:generate mockery --name PutItemBuilder
 type PutItemBuilder interface {
 	WithCondition(cond expression.ConditionBuilder) PutItemBuilder
 	ReturnNone() PutItemBuilder

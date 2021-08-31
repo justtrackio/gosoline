@@ -3,6 +3,8 @@ package sqs
 import (
 	"context"
 	"fmt"
+	"math"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/cloud"
 	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
@@ -17,14 +19,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/hashicorp/go-multierror"
 	"github.com/thoas/go-funk"
-	"math"
 )
 
 const (
 	sqsBatchSize = 10
 )
 
-//go:generate mockery -name Queue
+//go:generate mockery --name Queue
 type Queue interface {
 	GetName() string
 	GetUrl() string
@@ -97,7 +98,6 @@ func New(config cfg.Config, logger log.Logger, settings *Settings) (Queue, error
 	srv := NewService(config, logger)
 
 	props, err := srv.CreateQueue(settings)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not create or get properties of queue %s: %w", name, err)
 	}
@@ -134,7 +134,6 @@ func (q *queue) Send(ctx context.Context, msg *Message) error {
 	_, err := q.executor.Execute(ctx, func() (*request.Request, interface{}) {
 		return q.client.SendMessageRequest(input)
 	})
-
 	if err != nil {
 		q.logger.WithContext(ctx).Error("could not send value to sqs queue %s: %w", q.properties.Name, err)
 	}
@@ -235,7 +234,6 @@ func (q *queue) DeleteMessage(receiptHandle string) error {
 	_, err := q.executor.Execute(context.Background(), func() (*request.Request, interface{}) {
 		return q.client.DeleteMessageRequest(input)
 	})
-
 	if err != nil {
 		q.logger.Error("could not delete message from sqs queue %s: %w", q.properties.Name, err)
 		return err
@@ -272,7 +270,6 @@ func (q *queue) DeleteMessageBatch(receiptHandles []string) error {
 		input.Entries = entries[i:j]
 
 		err := q.doDeleteMessageBatch(input)
-
 		if err != nil {
 			multiError = multierror.Append(multiError, err)
 		}
@@ -285,7 +282,6 @@ func (q *queue) doDeleteMessageBatch(input *sqs.DeleteMessageBatchInput) error {
 	_, err := q.executor.Execute(context.Background(), func() (*request.Request, interface{}) {
 		return q.client.DeleteMessageBatchRequest(input)
 	})
-
 	if err != nil {
 		q.logger.Error("could not delete the messages from sqs queue %s: %w", q.properties.Name, err)
 	}

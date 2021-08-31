@@ -7,7 +7,7 @@ import (
 
 var ErrAlreadyPoisoned = errors.New("lock was already poisoned")
 
-//go:generate mockery -name=PoisonedLock
+//go:generate mockery --name PoisonedLock
 type PoisonedLock interface {
 	Lock()
 	TryLock() error
@@ -34,7 +34,6 @@ func (p *poisonedLock) TryLock() error {
 
 func (p *poisonedLock) Lock() {
 	err := p.TryLock()
-
 	if err != nil {
 		panic(err)
 	}

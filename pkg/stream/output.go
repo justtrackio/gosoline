@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 )
@@ -11,7 +12,7 @@ type WritableMessage interface {
 	MarshalToString() (string, error)
 }
 
-//go:generate mockery -name Output
+//go:generate mockery --name Output
 type Output interface {
 	WriteOne(ctx context.Context, msg WritableMessage) error
 	Write(ctx context.Context, batch []WritableMessage) error

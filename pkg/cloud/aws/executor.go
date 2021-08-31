@@ -2,15 +2,16 @@ package aws
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/applike/gosoline/pkg/exec"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws/request"
-	"net/http"
 )
 
 type RequestFunction func() (*request.Request, interface{})
 
-//go:generate mockery -name Executor
+//go:generate mockery --name Executor
 type Executor interface {
 	Execute(ctx context.Context, f RequestFunction) (interface{}, error)
 }
@@ -23,8 +24,7 @@ func NewExecutor(logger log.Logger, res *exec.ExecutableResource, settings *exec
 	return NewBackoffExecutor(logger, res, settings, checks...)
 }
 
-type DefaultExecutor struct {
-}
+type DefaultExecutor struct{}
 
 func (e DefaultExecutor) Execute(ctx context.Context, f RequestFunction) (interface{}, error) {
 	req, out := f()

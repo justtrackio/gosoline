@@ -2,12 +2,13 @@ package ddb
 
 import (
 	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 )
 
-//go:generate mockery -name UpdateItemBuilder
+//go:generate mockery --name UpdateItemBuilder
 type UpdateItemBuilder interface {
 	WithHash(hashValue interface{}) UpdateItemBuilder
 	WithRange(rangeValue interface{}) UpdateItemBuilder
@@ -135,7 +136,6 @@ func (b *updateItemBuilder) ReturnUpdatedNew() UpdateItemBuilder {
 
 func (b *updateItemBuilder) Build(item interface{}) (*dynamodb.UpdateItemInput, error) {
 	keys, err := b.keyBuilder.buildKey(item)
-
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,6 @@ func (b *updateItemBuilder) Build(item interface{}) (*dynamodb.UpdateItemInput, 
 	}
 
 	expr, err := b.buildExpression()
-
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,10 @@ package stream
 import (
 	"context"
 	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/coffin"
@@ -10,9 +14,6 @@ import (
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/metric"
 	"github.com/applike/gosoline/pkg/tracing"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -21,7 +22,7 @@ const (
 	metricNameConsumerProcessedCount = "ProcessedCount"
 )
 
-//go:generate mockery -name=RunnableCallback
+//go:generate mockery --name RunnableCallback
 type RunnableCallback interface {
 	Run(ctx context.Context) error
 }
@@ -241,7 +242,7 @@ func (c *baseConsumer) writeMetrics(duration time.Duration, processedCount int) 
 	})
 }
 
-func getConsumerDefaultMetrics(name string, runnerCount int) metric.Data {
+func getConsumerDefaultMetrics(name string, _ int) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,

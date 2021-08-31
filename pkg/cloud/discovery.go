@@ -1,15 +1,16 @@
 package cloud
 
 import (
+	"strings"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/servicediscovery"
 	"github.com/aws/aws-sdk-go/service/servicediscovery/servicediscoveryiface"
-	"strings"
 )
 
-//go:generate mockery -name DiscoveryClient
+//go:generate mockery --name DiscoveryClient
 type DiscoveryClient interface {
 	GetServiceInstances(application string) []string
 	GetPipelineInstances(application string) map[string][]string
@@ -41,7 +42,6 @@ func GetDiscoveryClientWithInterfaces(client servicediscoveryiface.ServiceDiscov
 func (c *discoveryClient) GetServiceInstances(application string) []string {
 	instances := make([]string, 0, 16)
 	out, err := c.listServices()
-
 	if err != nil {
 		return instances
 	}
@@ -114,7 +114,6 @@ func (c *discoveryClient) listServices() (*servicediscovery.ListServicesOutput, 
 	out, err := c.client.ListServices(&servicediscovery.ListServicesInput{
 		Filters: filter,
 	})
-
 	if err != nil {
 		c.logger.Error("Could not get list from service discovery: %w", err)
 

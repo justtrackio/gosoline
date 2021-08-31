@@ -2,6 +2,7 @@ package ddb
 
 import (
 	"fmt"
+
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -16,7 +17,7 @@ type ScanOperation struct {
 	result     *ScanResult
 }
 
-//go:generate mockery -name ScanBuilder
+//go:generate mockery --name ScanBuilder
 type ScanBuilder interface {
 	WithIndex(name string) ScanBuilder
 	WithFilter(filter expression.ConditionBuilder) ScanBuilder
@@ -111,7 +112,6 @@ func (b *scanBuilder) WithConsistentRead(consistentRead bool) ScanBuilder {
 func (b *scanBuilder) Build(result interface{}) (*ScanOperation, error) {
 	targetType := resolveTargetType(b.selected, b.projection, result)
 	expr, err := b.buildExpression(targetType)
-
 	if err != nil {
 		return nil, err
 	}
