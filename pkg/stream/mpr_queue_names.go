@@ -1,7 +1,6 @@
 package stream
 
 import (
-	"fmt"
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/sqs"
 )
@@ -21,7 +20,8 @@ func getQueueNames(config cfg.Config) ([]string, error) {
 
 	for inputName, typ := range inputs {
 		if reader, ok = queueNameReaders[typ]; !ok {
-			return nil, fmt.Errorf("input type should be SNS/SQS")
+			// it is an input we can't measure (e.g., an inMemory input), skip it as there is no useful metric for us to write
+			continue
 		}
 
 		queueName := reader(config, inputName)
