@@ -2,9 +2,10 @@ package log
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/getsentry/sentry-go"
-	"time"
 )
 
 func init() {
@@ -74,7 +75,9 @@ func (h *HandlerSentry) Log(_ time.Time, _ int, _ string, _ []interface{}, err e
 		eventId := h.hub.CaptureException(err)
 
 		if eventId != nil {
-			data.Fields["sentry_event_id"] = *eventId
+			data.Fields = mergeFields(data.Fields, map[string]interface{}{
+				"sentry_event_id": *eventId,
+			})
 		}
 	})
 

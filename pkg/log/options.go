@@ -12,9 +12,7 @@ func WithContextFieldsResolver(resolvers ...ContextFieldsResolver) Option {
 
 func WithFields(tags map[string]interface{}) Option {
 	return func(logger *gosoLogger) error {
-		for k, v := range tags {
-			logger.data.Fields[k] = v
-		}
+		logger.data.Fields = mergeFields(logger.data.Fields, tags)
 
 		return nil
 	}
