@@ -120,11 +120,11 @@ func (_m *Repository) Query(ctx context.Context, qb *db_repo.QueryBuilder, resul
 }
 
 // Read provides a mock function with given fields: ctx, id, out
-func (_m *Repository) Read(ctx context.Context, id *uint, out db_repo.ModelBased) error {
+func (_m *Repository) Read(ctx context.Context, id int64, out db_repo.ModelBased) error {
 	ret := _m.Called(ctx, id, out)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *uint, db_repo.ModelBased) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64, db_repo.ModelBased) error); ok {
 		r0 = rf(ctx, id, out)
 	} else {
 		r0 = ret.Error(0)

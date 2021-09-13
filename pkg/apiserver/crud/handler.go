@@ -16,7 +16,7 @@ const DefaultApiView = "api"
 //go:generate mockery --name Repository
 type Repository interface {
 	Create(ctx context.Context, value db_repo.ModelBased) error
-	Read(ctx context.Context, id *uint, out db_repo.ModelBased) error
+	Read(ctx context.Context, id int64, out db_repo.ModelBased) error
 	Update(ctx context.Context, value db_repo.ModelBased) error
 	Delete(ctx context.Context, value db_repo.ModelBased) error
 	Query(ctx context.Context, qb *db_repo.QueryBuilder, result interface{}) error

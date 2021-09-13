@@ -3,7 +3,7 @@ package mdl
 const NamedView = "named"
 
 type NamedOutputV0 struct {
-	Id   *uint   `json:"id"`
+	Id   *int64  `json:"id"`
 	Name *string `json:"name"`
 }
 

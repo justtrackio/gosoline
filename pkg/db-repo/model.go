@@ -14,11 +14,11 @@ type ModelBased interface {
 }
 
 type Model struct {
-	Id *uint `gorm:"primary_key;AUTO_INCREMENT"`
+	Id *int64 `gorm:"primary_key;AUTO_INCREMENT"`
 	Timestamps
 }
 
-func (m *Model) GetId() *uint {
+func (m *Model) GetId() *int64 {
 	return m.Id
 }
 

@@ -125,6 +125,7 @@ func (s FixturesRedisSuite) TestRedisWithPurge() {
 
 	// should have created the item
 	s.Error(err)
+	s.Equal("", setValue)
 
 	keys, err = s.client.Keys(context.Background(), "*").Result()
 	s.NoError(err)
@@ -188,11 +189,10 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 	s.NoError(err)
 
 	res, err = s.client.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
-
 	s.Error(err)
+	s.Equal("", res)
 
 	res, err = s.client.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_2").Result()
-
 	// should have created the item
 	s.NoError(err)
 	s.JSONEq(`{"name":"foo","age":123}`, res)

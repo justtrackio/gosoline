@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
@@ -53,7 +54,7 @@ func (ch createHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	}
 
 	reload := ch.transformer.GetModel()
-	err = repo.Read(ctx, model.GetId(), reload)
+	err = repo.Read(ctx, mdl.EmptyInt64IfNil(model.GetId()), reload)
 
 	if err != nil {
 		return nil, err

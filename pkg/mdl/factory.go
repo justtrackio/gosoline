@@ -37,6 +37,14 @@ func Uint(v uint) *uint {
 	return &v
 }
 
+func Uint32(v uint32) *uint32 {
+	return &v
+}
+
+func Uint64(v uint64) *uint64 {
+	return &v
+}
+
 func EmptyBoolIfNil(b *bool) bool {
 	if b == nil {
 		return false
@@ -69,6 +77,14 @@ func EmptyIntIfNil(v *int) int {
 	return *v
 }
 
+func EmptyInt64IfNil(v *int64) int64 {
+	if v == nil {
+		return 0
+	}
+
+	return *v
+}
+
 func EmptyStringIfNil(s *string) string {
 	if s == nil {
 		return ""
@@ -86,6 +102,14 @@ func EmptyTimeIfNil(t *time.Time) time.Time {
 }
 
 func EmptyUintIfNil(i *uint) uint {
+	if i == nil {
+		return 0
+	}
+
+	return *i
+}
+
+func EmptyUint64IfNil(i *uint64) uint64 {
 	if i == nil {
 		return 0
 	}

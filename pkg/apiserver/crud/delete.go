@@ -27,7 +27,7 @@ func NewDeleteHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFun
 }
 
 func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
-	id, valid := apiserver.GetUintFromRequest(request, "id")
+	id, valid := apiserver.GetInt64FromRequest(request, "id")
 
 	if !valid {
 		return nil, errors.New("no valid id provided")
@@ -36,7 +36,7 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	repo := dh.transformer.GetRepository()
 	model := dh.transformer.GetModel()
 
-	err := repo.Read(ctx, id, model)
+	err := repo.Read(ctx, *id, model)
 
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {

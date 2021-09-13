@@ -6,19 +6,19 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-func GetUintFromRequest(request *Request, name string) (*uint, bool) {
+func GetInt64FromRequest(request *Request, name string) (*int64, bool) {
 	paramString, found := request.Params.Get(name)
 
 	if !found {
-		return mdl.Uint(0), false
+		return nil, false
 	}
 
-	param, err := strconv.Atoi(paramString)
+	param, err := strconv.ParseInt(paramString, 10, 64)
 	if err != nil {
-		return mdl.Uint(0), false
+		return nil, false
 	}
 
-	return mdl.Uint(uint(param)), true
+	return mdl.Int64(param), true
 }
 
 func GetStringFromRequest(request *Request, name string) (*string, bool) {

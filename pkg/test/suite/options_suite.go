@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdlsub"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/test/env"
+	"github.com/justtrackio/gosoline/pkg/uniqueid"
 	"github.com/spf13/cast"
 )
 
@@ -154,6 +155,18 @@ func WithSubscribers(transformerFactoryMap mdlsub.TransformerMapTypeVersionFacto
 	subs := mdlsub.NewSubscriberFactory(transformerFactoryMap)
 
 	return WithModuleFactory(subs)
+}
+
+func WithUniqueIdFromMemory(ids []int64) Option {
+	generator, _ := uniqueid.ProvideGeneratorMemory()
+
+	for _, id := range ids {
+		generator.AddId(id)
+	}
+
+	return func(s *suiteOptions) {
+		s.addEnvOption(env.WithConfigSetting("unique_id.type", "memory"))
+	}
 }
 
 func WithoutAutoDetectedComponents(components ...string) Option {

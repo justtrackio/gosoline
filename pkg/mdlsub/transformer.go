@@ -14,7 +14,7 @@ type Model interface {
 }
 
 type ModelDb struct {
-	Id *uint `gorm:"primary_key;"`
+	Id *uint64 `gorm:"primary_key;"`
 }
 
 func (m ModelDb) GetId() interface{} {

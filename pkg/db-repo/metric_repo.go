@@ -39,7 +39,7 @@ func (r metricRepository) Create(ctx context.Context, value ModelBased) error {
 	return err
 }
 
-func (r metricRepository) Read(ctx context.Context, id *uint, out ModelBased) error {
+func (r metricRepository) Read(ctx context.Context, id int64, out ModelBased) error {
 	start := time.Now()
 	err := r.Repository.Read(ctx, id, out)
 	r.writeMetric(Read, err, start)

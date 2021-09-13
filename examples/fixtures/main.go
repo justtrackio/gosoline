@@ -40,7 +40,7 @@ func createFixtures() []*fixtures.FixtureSet {
 			Fixtures: []interface{}{
 				&OrmFixtureExample{
 					Model: db_repo.Model{
-						Id: mdl.Uint(1),
+						Id: mdl.Int64(1),
 					},
 					Name: mdl.String("example"),
 				},

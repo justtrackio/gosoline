@@ -54,7 +54,7 @@ func (s *FixturesMysqlSuite) SetupSuite() {
 	s.mocks = mocks
 
 	config := cfg.New()
-	config.Option(
+	err = config.Option(
 		cfg.WithConfigFile("test_configs/config.mysql.test.yml", "yml"),
 		cfg.WithConfigFile("test_configs/config.fixtures_mysql.test.yml", "yml"),
 		cfg.WithConfigMap(map[string]interface{}{
@@ -62,6 +62,7 @@ func (s *FixturesMysqlSuite) SetupSuite() {
 			"db.default.uri.host": s.mocks.ProvideMysqlHost("mysql"),
 		}),
 	)
+	s.NoError(err)
 
 	s.ctx = context.Background()
 	s.logger = log.NewCliLogger()

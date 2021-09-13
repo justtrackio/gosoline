@@ -24,7 +24,7 @@ type Model struct {
 }
 
 type Output struct {
-	Id        *uint      `json:"id"`
+	Id        *int64     `json:"id"`
 	Name      *string    `json:"name"`
 	UpdatedAt *time.Time `json:"updatedAt"`
 	CreatedAt *time.Time `json:"createdAt"`
@@ -98,7 +98,7 @@ func (h Handler) List(_ context.Context, _ *db_repo.QueryBuilder, _ string) (int
 	return []Model{
 		{
 			Model: db_repo.Model{
-				Id: mdl.Uint(1),
+				Id: mdl.Int64(1),
 				Timestamps: db_repo.Timestamps{
 					UpdatedAt: mdl.Time(date),
 					CreatedAt: mdl.Time(date),
@@ -117,7 +117,7 @@ func NewTransformer() Handler {
 	}
 }
 
-var id1 = mdl.Uint(1)
+var id1 = mdl.Int64(1)
 
 func TestCreateHandler_Handle(t *testing.T) {
 	model := &Model{
@@ -129,11 +129,11 @@ func TestCreateHandler_Handle(t *testing.T) {
 
 	transformer.Repo.On("Create", mock.AnythingOfType("*context.emptyCtx"), model).Run(func(args mock.Arguments) {
 		model := args.Get(1).(*Model)
-		model.Id = mdl.Uint(1)
+		model.Id = mdl.Int64(1)
 	}).Return(nil)
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), &Model{}).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), int64(1), &Model{}).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
-		model.Id = mdl.Uint(1)
+		model.Id = mdl.Int64(1)
 		model.Name = mdl.String("foobar")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
@@ -178,9 +178,9 @@ func TestReadHandler_Handle(t *testing.T) {
 
 	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), model).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), int64(1), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
-		model.Id = mdl.Uint(1)
+		model.Id = mdl.Int64(1)
 		model.Name = mdl.String("foobar")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
@@ -200,7 +200,7 @@ func TestUpdateHandler_Handle(t *testing.T) {
 	readModel := &Model{}
 	updateModel := &Model{
 		Model: db_repo.Model{
-			Id: mdl.Uint(1),
+			Id: mdl.Int64(1),
 			Timestamps: db_repo.Timestamps{
 				UpdatedAt: &time.Time{},
 				CreatedAt: &time.Time{},
@@ -213,9 +213,9 @@ func TestUpdateHandler_Handle(t *testing.T) {
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(nil)
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), readModel).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), int64(1), readModel).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
-		model.Id = mdl.Uint(1)
+		model.Id = mdl.Int64(1)
 		model.Name = mdl.String("updated")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
@@ -236,7 +236,7 @@ func TestUpdateHandler_Handle_ValidationError(t *testing.T) {
 	readModel := &Model{}
 	updateModel := &Model{
 		Model: db_repo.Model{
-			Id: mdl.Uint(1),
+			Id: mdl.Int64(1),
 			Timestamps: db_repo.Timestamps{
 				UpdatedAt: &time.Time{},
 				CreatedAt: &time.Time{},
@@ -251,9 +251,9 @@ func TestUpdateHandler_Handle_ValidationError(t *testing.T) {
 	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(&validation.Error{
 		Errors: []error{fmt.Errorf("invalid foobar")},
 	})
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), readModel).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), int64(1), readModel).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
-		model.Id = mdl.Uint(1)
+		model.Id = mdl.Int64(1)
 		model.Name = mdl.String("updated")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
@@ -285,7 +285,7 @@ func TestDeleteHandler_Handle(t *testing.T) {
 
 	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("int64"), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
 		model.Id = id1
 		model.Name = mdl.String("foobar")
@@ -319,7 +319,7 @@ func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
 
 	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("int64"), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
 		model.Id = id1
 		model.Name = mdl.String("foobar")

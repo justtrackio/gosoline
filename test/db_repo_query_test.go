@@ -130,7 +130,7 @@ func (s *DbRepoQueryTestSuite) TestReadCorrectModel() {
 	err := s.repo.Create(ctx, model)
 	s.NoError(err)
 
-	err = s.repo.Read(ctx, model.GetId(), readModel)
+	err = s.repo.Read(ctx, *model.GetId(), readModel)
 	s.NoError(err)
 	s.Equal(model.Name, readModel.Name, "expected names to match")
 }
@@ -140,7 +140,7 @@ func (s *DbRepoQueryTestSuite) TestReadWrongModel() {
 
 	model := &WrongTestModel{}
 
-	err := s.repo.Read(ctx, mdl.Uint(1), model)
+	err := s.repo.Read(ctx, 1, model)
 	s.EqualError(err, "cross reading wrong model from repo")
 }
 

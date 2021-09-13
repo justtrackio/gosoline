@@ -45,7 +45,7 @@ func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*api
 }
 
 func main() {
-	app := application.New(application.WithConfigFile("config.dist.yml", "yml"))
+	app := application.Default()
 	app.Add("api", apiserver.New(apiDefiner))
 	app.Run()
 }

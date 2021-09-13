@@ -10,30 +10,30 @@ import (
 	"github.com/pkg/errors"
 )
 
-const ecsMetadataFileEnv = "ECS_CONTAINER_METADATA_FILE"
+const metadataFileEnv = "ECS_CONTAINER_METADATA_FILE"
 
-type EcsMetadata map[string]interface{}
+type Metadata map[string]interface{}
 
 var (
-	ecsLck      sync.Mutex
-	ecsMetadata EcsMetadata
+	metadataLck sync.Mutex
+	metadata    Metadata
 )
 
-func ReadEcsMetadata() (EcsMetadata, error) {
-	ecsLck.Lock()
-	defer ecsLck.Unlock()
+func ReadEcsMetadata() (Metadata, error) {
+	metadataLck.Lock()
+	defer metadataLck.Unlock()
 
-	if ecsMetadata != nil {
-		return ecsMetadata, nil
+	if metadata != nil {
+		return metadata, nil
 	}
 
-	path, ok := os.LookupEnv(ecsMetadataFileEnv)
+	path, ok := os.LookupEnv(metadataFileEnv)
 
 	if len(path) == 0 || !ok {
 		return nil, nil
 	}
 
-	metadata := make(EcsMetadata)
+	m := make(Metadata)
 
 	for {
 		data, err := ioutil.ReadFile(path)
@@ -41,14 +41,14 @@ func ReadEcsMetadata() (EcsMetadata, error) {
 			return nil, errors.Wrap(err, "can not read ecs metadata file")
 		}
 
-		metadata = make(EcsMetadata)
-		err = json.Unmarshal(data, &metadata)
+		m = make(Metadata)
+		err = json.Unmarshal(data, &m)
 
 		if err != nil {
 			return nil, errors.Wrap(err, "can not unmarshal ecs metadata")
 		}
 
-		if status, ok := metadata["MetadataFileStatus"]; ok {
+		if status, ok := m["MetadataFileStatus"]; ok {
 			if status.(string) == "READY" {
 				break
 			}
@@ -57,7 +57,7 @@ func ReadEcsMetadata() (EcsMetadata, error) {
 		time.Sleep(1 * time.Second)
 	}
 
-	ecsMetadata = metadata
+	metadata = m
 
-	return ecsMetadata, nil
+	return m, nil
 }

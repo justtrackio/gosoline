@@ -6,7 +6,6 @@ package test_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -100,7 +99,7 @@ func (s *FixturesS3Suite) TestS3WithPurge() {
 
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(fmt.Sprint("subDir/nyan_cat1.gif")),
+		Key:    aws.String("subDir/nyan_cat1.gif"),
 	}
 	output, err := s3Client.GetObject(s.ctx, input)
 	s.NoError(err)
@@ -116,7 +115,7 @@ func (s *FixturesS3Suite) TestS3WithPurge() {
 
 	input = &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(fmt.Sprint("nyan_cat3.gif")),
+		Key:    aws.String("nyan_cat3.gif"),
 	}
 	output, err = s3Client.GetObject(s.ctx, input)
 	s.NoError(err)
@@ -128,7 +127,7 @@ func (s *FixturesS3Suite) TestS3WithPurge() {
 
 	input = &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(fmt.Sprint("nyan_cat2.gif")),
+		Key:    aws.String("nyan_cat2.gif"),
 	}
 	output, err = s3Client.GetObject(s.ctx, input)
 

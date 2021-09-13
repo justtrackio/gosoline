@@ -26,7 +26,7 @@ func NewReadHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFunc 
 }
 
 func (rh readHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
-	id, valid := apiserver.GetUintFromRequest(request, "id")
+	id, valid := apiserver.GetInt64FromRequest(request, "id")
 
 	if !valid {
 		return nil, errors.New("no valid id provided")
@@ -34,7 +34,7 @@ func (rh readHandler) Handle(ctx context.Context, request *apiserver.Request) (*
 
 	repo := rh.transformer.GetRepository()
 	model := rh.transformer.GetModel()
-	err := repo.Read(ctx, id, model)
+	err := repo.Read(ctx, *id, model)
 
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {

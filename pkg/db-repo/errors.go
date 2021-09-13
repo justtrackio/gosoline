@@ -6,12 +6,12 @@ import (
 )
 
 type RecordNotFoundError struct {
-	id      uint
+	id      int64
 	modelId string
 	err     error
 }
 
-func NewRecordNotFoundError(id uint, modelId string, err error) RecordNotFoundError {
+func NewRecordNotFoundError(id int64, modelId string, err error) RecordNotFoundError {
 	return RecordNotFoundError{
 		id:      id,
 		modelId: modelId,

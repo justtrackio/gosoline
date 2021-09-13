@@ -1,0 +1,21 @@
+env: dev
+app_project: project
+app_family: family
+app_name: name
+
+cloud:
+  aws:
+    dynamodb:
+      clients: ~
+
+api:
+  port: 8088
+  mode: debug
+  timeout:
+    read: 5s
+    write: 5s
+    idle: 5s
+
+unique_id:
+  start_time: "2021-01-01T01:01:01Z"
+  machine_id: 1 # keep this empty on ec2 instances

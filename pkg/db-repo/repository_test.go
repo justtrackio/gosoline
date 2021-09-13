@@ -59,7 +59,7 @@ var ManyToManyMetadata = db_repo.Metadata{
 type OneOfMany struct {
 	db_repo.Model
 	MyTestModel   *MyTestModel `gorm:"foreignkey:MyTestModelId"`
-	MyTestModelId *uint
+	MyTestModelId *int64
 }
 
 var OneOfManyMetadata = db_repo.Metadata{
@@ -94,7 +94,7 @@ var HasManyMetadata = db_repo.Metadata{
 
 type Ones struct {
 	db_repo.Model
-	HasManyId *uint
+	HasManyId *int64
 }
 
 var metadatas = map[string]db_repo.Metadata{
@@ -107,13 +107,13 @@ var metadatas = map[string]db_repo.Metadata{
 type idMatcher struct{}
 
 func (a idMatcher) Match(id driver.Value) bool {
-	return uint(id.(int64)) == *id1 || uint(id.(int64)) == *id42
+	return id.(int64) == *id1 || id.(int64) == *id42
 }
 
 var (
-	id1  = mdl.Uint(1)
-	id42 = mdl.Uint(42)
-	id24 = mdl.Uint(24)
+	id1  = mdl.Int64(1)
+	id42 = mdl.Int64(42)
+	id24 = mdl.Int64(24)
 )
 
 func TestRepository_Create(t *testing.T) {
@@ -233,7 +233,7 @@ func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`id`,`updated_at`,`created_at`,`my_test_model_id`\\) VALUES \\(\\?,\\?,\\?,\\?\\)").WithArgs(id1, &now, &now, (*uint)(nil)).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`id`,`updated_at`,`created_at`,`my_test_model_id`\\) VALUES \\(\\?,\\?,\\?,\\?\\)").WithArgs(id1, &now, &now, (*uint64)(nil)).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := OneOfMany{
@@ -242,7 +242,7 @@ func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 		},
 	}
 
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at", "my_test_model_id"}).AddRow(id1, &now, &now, (*uint)(nil))
+	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at", "my_test_model_id"}).AddRow(id1, &now, &now, (*uint64)(nil))
 	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
 
 	err := repo.Create(context.Background(), &model)
@@ -471,7 +471,7 @@ func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at` = \\?, `my_test_model_id` = \\?  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), (*uint)(nil), id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at` = \\?, `my_test_model_id` = \\?  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), (*uint64)(nil), id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)

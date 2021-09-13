@@ -57,14 +57,14 @@ func ModelIdFromString(str string) (ModelId, error) {
 }
 
 type Identifiable interface {
-	GetId() *uint
+	GetId() *int64
 }
 
 type Identifier struct {
-	Id *uint `json:"id" binding:"required"`
+	Id *int64 `json:"id" binding:"required"`
 }
 
-func (i *Identifier) GetId() *uint {
+func (i *Identifier) GetId() *int64 {
 	if i == nil {
 		return nil
 	}
@@ -72,7 +72,7 @@ func (i *Identifier) GetId() *uint {
 	return i.Id
 }
 
-func WithIdentifier(id *uint) *Identifier {
+func WithIdentifier(id *int64) *Identifier {
 	return &Identifier{
 		Id: id,
 	}

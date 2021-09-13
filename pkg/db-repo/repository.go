@@ -44,7 +44,7 @@ type Settings struct {
 //go:generate mockery --name Repository
 type Repository interface {
 	Create(ctx context.Context, value ModelBased) error
-	Read(ctx context.Context, id *uint, out ModelBased) error
+	Read(ctx context.Context, id int64, out ModelBased) error
 	Update(ctx context.Context, value ModelBased) error
 	Delete(ctx context.Context, value ModelBased) error
 	Query(ctx context.Context, qb *QueryBuilder, result interface{}) error
@@ -152,10 +152,10 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 
 	logger.Info("created model of type %s with id %d", modelId, *value.GetId())
 
-	return r.Read(ctx, value.GetId(), value)
+	return r.Read(ctx, *value.GetId(), value)
 }
 
-func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
+func (r *repository) Read(ctx context.Context, id int64, out ModelBased) error {
 	if !r.isQueryableModel(out) {
 		return ErrCrossRead
 	}
@@ -164,10 +164,10 @@ func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
 	_, span := r.startSubSpan(ctx, "Get")
 	defer span.Finish()
 
-	err := r.orm.First(out, *id).Error
+	err := r.orm.First(out, id).Error
 
 	if gorm.IsRecordNotFoundError(err) {
-		return NewRecordNotFoundError(*id, modelId, err)
+		return NewRecordNotFoundError(id, modelId, err)
 	}
 
 	return err
@@ -190,14 +190,14 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	err := r.orm.Save(value).Error
 
 	if db.IsDuplicateEntryError(err) {
-		logger.Warn("could not update model of type %s with id %d due to duplicate entry error: %s", modelId, mdl.EmptyUintIfNil(value.GetId()), err.Error())
+		logger.Warn("could not update model of type %s with id %d due to duplicate entry error: %s", modelId, mdl.EmptyInt64IfNil(value.GetId()), err.Error())
 		return &db.DuplicateEntryError{
 			Err: err,
 		}
 	}
 
 	if err != nil {
-		logger.Error("could not update model of type %s with id %d: %w", modelId, mdl.EmptyUintIfNil(value.GetId()), err)
+		logger.Error("could not update model of type %s with id %d: %w", modelId, mdl.EmptyInt64IfNil(value.GetId()), err)
 		return err
 	}
 
@@ -210,7 +210,7 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 
 	logger.Info("updated model of type %s with id %d", modelId, *value.GetId())
 
-	return r.Read(ctx, value.GetId(), value)
+	return r.Read(ctx, *value.GetId(), value)
 }
 
 func (r *repository) Delete(ctx context.Context, value ModelBased) error {
@@ -459,8 +459,8 @@ func readIdsFromReflectValue(values reflect.Value) []string {
 	ids := make([]string, 0)
 
 	for j := 0; j < values.Len(); j++ {
-		id := values.Index(j).Elem().FieldByName("Id").Interface().(*uint)
-		ids = append(ids, strconv.Itoa(int(*id)))
+		id := values.Index(j).Elem().FieldByName("Id").Interface().(*int64)
+		ids = append(ids, strconv.FormatInt(*id, 10))
 	}
 
 	return ids

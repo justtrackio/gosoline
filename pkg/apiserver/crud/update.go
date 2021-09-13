@@ -32,7 +32,7 @@ func (uh updateHandler) GetInput() interface{} {
 }
 
 func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
-	id, valid := apiserver.GetUintFromRequest(request, "id")
+	id, valid := apiserver.GetInt64FromRequest(request, "id")
 
 	if !valid {
 		return nil, errors.New("no valid id provided")
@@ -40,7 +40,7 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 
 	repo := uh.transformer.GetRepository()
 	model := uh.transformer.GetModel()
-	err := repo.Read(ctx, id, model)
+	err := repo.Read(ctx, *id, model)
 
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {
@@ -77,7 +77,7 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	}
 
 	reload := uh.transformer.GetModel()
-	err = repo.Read(ctx, model.GetId(), reload)
+	err = repo.Read(ctx, *model.GetId(), reload)
 
 	if err != nil {
 		return nil, err

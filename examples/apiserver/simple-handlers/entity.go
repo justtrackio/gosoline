@@ -8,14 +8,14 @@ import (
 )
 
 type MyEntity struct {
-	Id        uint       `json:"id"`
+	Id        int64      `json:"id"`
 	Prop1     string     `json:"prop1"`
 	Prop2     string     `json:"prop2"`
 	CreatedAt *time.Time `json:"createdAt"`
 	UpdatedAt *time.Time `json:"updatedAt"`
 }
 
-func (e *MyEntity) GetId() *uint {
+func (e *MyEntity) GetId() *int64 {
 	return &e.Id
 }
 
@@ -33,7 +33,7 @@ func (*MyEntityRepository) Create(ctx context.Context, value db_repo.ModelBased)
 	return nil
 }
 
-func (*MyEntityRepository) Read(ctx context.Context, id *uint, out db_repo.ModelBased) error {
+func (*MyEntityRepository) Read(ctx context.Context, id int64, out db_repo.ModelBased) error {
 	return nil
 }
 
