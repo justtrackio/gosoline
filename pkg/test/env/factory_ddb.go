@@ -2,8 +2,10 @@ package env
 
 import (
 	"fmt"
+
 	toxiproxy "github.com/Shopify/toxiproxy/client"
 	"github.com/applike/gosoline/pkg/cfg"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -97,7 +99,7 @@ func (f *ddbFactory) Component(_ cfg.Config, logger log.Logger, containers map[s
 
 	var err error
 	var proxy *toxiproxy.Proxy
-	var ddbAddress = containers["main"].bindings["8000/tcp"].getAddress()
+	ddbAddress := containers["main"].bindings["8000/tcp"].getAddress()
 
 	if s.ToxiproxyEnabled {
 		toxiproxyClient := f.toxiproxyFactory.client(containers["toxiproxy"])
@@ -129,7 +131,7 @@ func (f *ddbFactory) client(container *container) *dynamodb.DynamoDB {
 		Endpoint:    aws.String(address),
 		Region:      aws.String("eu-central-1"),
 		MaxRetries:  aws.Int(0),
-		Credentials: credentials.NewStaticCredentials("id", "secret", "token"),
+		Credentials: credentials.NewStaticCredentials(gosoAws.DefaultAccessKeyID, gosoAws.DefaultSecretAccessKey, gosoAws.DefaultToken),
 	}))
 
 	return dynamodb.New(sess)

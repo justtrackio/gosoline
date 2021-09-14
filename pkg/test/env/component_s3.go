@@ -2,6 +2,11 @@ package env
 
 import (
 	"github.com/applike/gosoline/pkg/cfg"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 type S3Component struct {
@@ -17,4 +22,16 @@ func (c *S3Component) CfgOptions() []cfg.Option {
 			"aws_s3_forcePathStyle": true,
 		}),
 	}
+}
+
+func (c *S3Component) Client() *s3.S3 {
+	sess := session.Must(session.NewSession(&aws.Config{
+		Endpoint:         aws.String(c.s3Address),
+		MaxRetries:       aws.Int(0),
+		Region:           aws.String(endpoints.EuCentral1RegionID),
+		Credentials:      gosoAws.GetDefaultCredentials(),
+		S3ForcePathStyle: aws.Bool(true),
+	}))
+
+	return s3.New(sess)
 }
