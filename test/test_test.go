@@ -4,15 +4,17 @@
 package test_test
 
 import (
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
+	"github.com/stretchr/testify/assert"
 )
 
 func setup(t *testing.T) {
-	err := os.Setenv("AWS_ACCESS_KEY_ID", "gosoline")
+	err := os.Setenv("AWS_ACCESS_KEY_ID", gosoAws.DefaultAccessKeyID)
 	assert.NoError(t, err)
 
-	err = os.Setenv("AWS_SECRET_ACCESS_KEY", "gosoline")
+	err = os.Setenv("AWS_SECRET_ACCESS_KEY", gosoAws.DefaultSecretAccessKey)
 	assert.NoError(t, err)
 }

@@ -5,8 +5,10 @@ import (
 	"os"
 
 	"github.com/applike/gosoline/pkg/cfg"
+	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
@@ -99,9 +101,10 @@ func (f *s3Factory) client(container *container) *s3.S3 {
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
 	sess := session.Must(session.NewSession(&aws.Config{
-		Endpoint:   aws.String(address),
-		Region:     aws.String("eu-central-1"),
-		MaxRetries: aws.Int(0),
+		Endpoint:    aws.String(address),
+		Region:      aws.String("eu-central-1"),
+		MaxRetries:  aws.Int(0),
+		Credentials: credentials.NewStaticCredentials(gosoAws.DefaultAccessKeyID, gosoAws.DefaultSecretAccessKey, ""),
 	}))
 
 	return s3.New(sess)
