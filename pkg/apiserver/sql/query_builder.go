@@ -2,45 +2,48 @@ package sql
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/applike/gosoline/pkg/db"
 	"github.com/applike/gosoline/pkg/db-repo"
-	"strings"
 )
 
 const (
-	OpEq    = "="
-	OpNeq   = "!="
-	OpLike  = "~"
-	OpIs    = "is"
-	OpIsNot = "is not"
+	OpEq          = "="
+	OpIs          = "is"
+	OpIsNot       = "is not"
+	OpLike        = "~"
+	OPMemberOf    = "MEMBER OF"
+	OpNeq         = "!="
+	OPNotMemberOf = "NOT MEMBER OF"
 )
 
 type Order struct {
-	Field     string `json:"field"`
 	Direction string `json:"direction"`
+	Field     string `json:"field"`
 }
 
 type Page struct {
-	Offset int `json:"offset"`
 	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
 }
 
 type Filter struct {
-	Matches []FilterMatch `json:"matches"`
 	Groups  []Filter      `json:"groups"`
+	Matches []FilterMatch `json:"matches"`
 	Bool    string        `json:"bool"`
 }
 
 type FilterMatch struct {
+	Values    []interface{} `json:"values"`
 	Dimension string        `json:"dimension"`
 	Operator  string        `json:"operator"`
-	Values    []interface{} `json:"values"`
 }
 
 type Input struct {
 	Filter  Filter   `json:"filter"`
-	Order   []Order  `json:"order"`
 	GroupBy []string `json:"groupBy"`
+	Order   []Order  `json:"order"`
 	Page    *Page    `json:"page"`
 }
 
@@ -85,8 +88,8 @@ func (qb RawQueryBuilder) Build(inp *Input) (*db.RawQueryBuilder, error) {
 }
 
 type baseQueryBuilder struct {
-	metadata db_repo.Metadata
 	mapping  db_repo.FieldMappings
+	metadata db_repo.Metadata
 }
 
 func newBaseQueryBuilder(metadata db_repo.Metadata) *baseQueryBuilder {
@@ -98,13 +101,11 @@ func newBaseQueryBuilder(metadata db_repo.Metadata) *baseQueryBuilder {
 
 func (qb baseQueryBuilder) build(inp *Input, dbQb db.QueryBuilder) error {
 	joins, err := qb.getJoins(inp)
-
 	if err != nil {
 		return err
 	}
 
 	query, args, err := qb.buildFilter(inp.Filter)
-
 	if err != nil {
 		return err
 	}
@@ -154,7 +155,6 @@ func (qb baseQueryBuilder) getJoins(inp *Input) ([]string, error) {
 	joins := make([]string, 0)
 
 	err := qb.getJoinsFromOrder(&joins, inp.Order)
-
 	if err != nil {
 		return joins, err
 	}
@@ -199,7 +199,6 @@ func (qb baseQueryBuilder) getJoinsFromFilter(joins *[]string, filter Filter) er
 
 	for _, g := range filter.Groups {
 		err := qb.getJoinsFromFilter(joins, g)
-
 		if err != nil {
 			return err
 		}
@@ -225,7 +224,6 @@ func (qb baseQueryBuilder) buildFilter(filter Filter) (string, []interface{}, er
 
 	for _, g := range filter.Groups {
 		groupWhere, groupArgs, err := qb.buildFilter(g)
-
 		if err != nil {
 			return where, args, err
 		}
@@ -251,7 +249,6 @@ func (qb baseQueryBuilder) buildFilterMatches(filterMatches []FilterMatch) ([]st
 		}
 
 		values, valuesArgs, err := qb.buildFilterValues(m)
-
 		if err != nil {
 			return where, args, err
 		}
@@ -319,6 +316,14 @@ func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column db_repo.F
 
 		case match.Operator == OpNeq && distinctNull && v != nil:
 			stmts = append(stmts, fmt.Sprintf("%s != ? OR %s IS NULL", column.Name(), column.Name()))
+			args = append(args, v)
+
+		case match.Operator == OPMemberOf && v != nil:
+			stmts = append(stmts, fmt.Sprintf("? MEMBER OF (%s)", column.Name()))
+			args = append(args, v)
+
+		case match.Operator == OPNotMemberOf && v != nil:
+			stmts = append(stmts, fmt.Sprintf("NOT ? MEMBER OF (%s)", column.Name()))
 			args = append(args, v)
 
 		default:
