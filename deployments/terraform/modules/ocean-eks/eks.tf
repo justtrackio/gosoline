@@ -87,7 +87,7 @@ module "vpc" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "12.2.0"
+  version = "15.2.0"
 
   cluster_version = var.cluster_version
   cluster_name    = module.default_label.id
