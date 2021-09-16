@@ -1,18 +1,19 @@
 package lambda
 
 import (
+	"os"
+	"strings"
+
 	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/applike/gosoline/pkg/clock"
 	"github.com/applike/gosoline/pkg/log"
 	"github.com/applike/gosoline/pkg/stream"
 	awsLambda "github.com/aws/aws-lambda-go/lambda"
-	"os"
-	"strings"
 )
 
-type Handler func(config cfg.Config, logger log.Logger) interface{}
+type HandlerFactory func(config cfg.Config, logger log.Logger) (interface{}, error)
 
-func Start(handler Handler, defaultConfig ...map[string]interface{}) {
+func Start(handlerFactory HandlerFactory, defaultConfig ...map[string]interface{}) {
 	clock.WithUseUTC(true)
 
 	logHandler := log.NewHandlerIoWriter(log.LevelInfo, []string{}, log.FormatterConsole, "", os.Stdout)
@@ -51,6 +52,11 @@ func Start(handler Handler, defaultConfig ...map[string]interface{}) {
 	stream.AddDefaultEncodeHandler(log.NewMessageWithLoggingFieldsEncoder(config, logger))
 
 	// create handler function and give lambda control
-	lambdaHandler := handler(config, logger)
+	lambdaHandler, err := handlerFactory(config, logger)
+	if err != nil {
+		logger.Error("failed to create lambda handler: %w", err)
+		os.Exit(1)
+	}
+
 	awsLambda.Start(lambdaHandler)
 }

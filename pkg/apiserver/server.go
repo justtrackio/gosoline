@@ -45,6 +45,8 @@ func New(definer Definer) kernel.ModuleFactory {
 			return nil, fmt.Errorf("old config format detected. You have to change your config from api_port to api.port, api_mode to api.mode, and so on")
 		}
 
+		logger = logger.WithChannel("api")
+
 		settings := &Settings{}
 		config.UnmarshalKey("api", settings)
 
@@ -61,7 +63,7 @@ func New(definer Definer) kernel.ModuleFactory {
 			c.JSON(http.StatusOK, gin.H{})
 		})
 
-		definitions, err := definer(ctx, config, logger)
+		definitions, err := definer(ctx, config, logger.WithChannel("handler"))
 		if err != nil {
 			return nil, fmt.Errorf("could not define routes: %w", err)
 		}
