@@ -12,7 +12,7 @@ import (
 	"github.com/applike/gosoline/pkg/tracing"
 )
 
-type BatchConsumerCallbackFactory func(config cfg.Config, logger log.Logger) (BatchConsumerCallback, error)
+type BatchConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (BatchConsumerCallback, error)
 
 //go:generate mockery --name=BatchConsumerCallback
 type BatchConsumerCallback interface {
@@ -44,7 +44,7 @@ func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory)
 		loggerCallback := logger.WithChannel("consumerCallback")
 		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
 
-		callback, err := callbackFactory(config, contextEnforcingLogger)
+		callback, err := callbackFactory(ctx, config, contextEnforcingLogger)
 		if err != nil {
 			return nil, fmt.Errorf("can not initiate callback for consumer %s: %w", name, err)
 		}
