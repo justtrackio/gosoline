@@ -1,7 +1,7 @@
 ![Gosoline Logo](http://cdn.applike-services.info/public/2019/10/23/gosoline.svg)
 ------------------
-![Gosoline](https://github.com/applike/gosoline/workflows/Gosoline/badge.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/applike/gosoline)](https://goreportcard.com/report/github.com/applike/gosoline)
+![Gosoline](https://github.com/justtrackio/gosoline/workflows/Gosoline/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/justtrackio/gosoline)](https://goreportcard.com/report/github.com/justtrackio/gosoline)
 ------------------
 
 Gosoline is our framework which fuels all of our Golang applications. Internally,

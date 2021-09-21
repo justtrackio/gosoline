@@ -3,14 +3,15 @@ package stream_test
 import (
 	"context"
 	"fmt"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"sync"
 	"testing"
+
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOutputFile_ConcurrentWrite(t *testing.T) {

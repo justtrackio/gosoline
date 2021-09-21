@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	ddb "github.com/applike/gosoline/pkg/ddb"
+	ddb "github.com/justtrackio/gosoline/pkg/ddb"
 	mock "github.com/stretchr/testify/mock"
 )
 

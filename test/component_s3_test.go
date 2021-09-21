@@ -4,12 +4,13 @@
 package test_test
 
 import (
-	pkgTest "github.com/applike/gosoline/pkg/test"
-	gosoAssert "github.com/applike/gosoline/pkg/test/assert"
+	"testing"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+	pkgTest "github.com/justtrackio/gosoline/pkg/test"
+	gosoAssert "github.com/justtrackio/gosoline/pkg/test/assert"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func Test_s3(t *testing.T) {

@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/applike/gosoline/pkg/application"
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/fixtures"
-	"github.com/applike/gosoline/pkg/ipread"
-	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/mdlsub"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/applike/gosoline/pkg/test/env"
+	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/ipread"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/mdlsub"
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/spf13/cast"
 )
 

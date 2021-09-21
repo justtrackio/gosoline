@@ -1,20 +1,23 @@
 package log
 
 import (
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/pkg/errors"
 )
 
 const ecsMetadataFileEnv = "ECS_CONTAINER_METADATA_FILE"
 
 type EcsMetadata map[string]interface{}
 
-var ecsLck sync.Mutex
-var ecsMetadata EcsMetadata
+var (
+	ecsLck      sync.Mutex
+	ecsMetadata EcsMetadata
+)
 
 func ReadEcsMetadata() (EcsMetadata, error) {
 	ecsLck.Lock()
@@ -34,7 +37,6 @@ func ReadEcsMetadata() (EcsMetadata, error) {
 
 	for {
 		data, err := ioutil.ReadFile(path)
-
 		if err != nil {
 			return nil, errors.Wrap(err, "can not read ecs metadata file")
 		}

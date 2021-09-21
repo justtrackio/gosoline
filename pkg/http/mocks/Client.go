@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	http "github.com/applike/gosoline/pkg/http"
+	http "github.com/justtrackio/gosoline/pkg/http"
 	mock "github.com/stretchr/testify/mock"
 
 	nethttp "net/http"

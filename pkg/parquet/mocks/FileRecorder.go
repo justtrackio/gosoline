@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	parquet "github.com/applike/gosoline/pkg/parquet"
+	parquet "github.com/justtrackio/gosoline/pkg/parquet"
 	mock "github.com/stretchr/testify/mock"
 )
 

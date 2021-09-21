@@ -3,10 +3,10 @@ package env
 import (
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/thoas/go-funk"
 )
 

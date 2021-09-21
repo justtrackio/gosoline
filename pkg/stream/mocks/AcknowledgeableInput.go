@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	stream "github.com/applike/gosoline/pkg/stream"
+	stream "github.com/justtrackio/gosoline/pkg/stream"
 	mock "github.com/stretchr/testify/mock"
 )
 

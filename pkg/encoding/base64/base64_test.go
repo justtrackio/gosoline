@@ -1,9 +1,10 @@
 package base64_test
 
 import (
-	"github.com/applike/gosoline/pkg/encoding/base64"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/encoding/base64"
+	"github.com/stretchr/testify/assert"
 )
 
 type testVector struct {

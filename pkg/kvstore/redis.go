@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/redis"
-	"github.com/applike/gosoline/pkg/refl"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/redis"
+	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
 type redisKvStore struct {

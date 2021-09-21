@@ -2,9 +2,10 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/stream"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
 func init() {
@@ -17,8 +18,7 @@ type streamInputSettings struct {
 	ComponentBaseSettings
 }
 
-type streamInputFactory struct {
-}
+type streamInputFactory struct{}
 
 func (f *streamInputFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
 	inputs := config.GetStringMap("stream.input", map[string]interface{}{})

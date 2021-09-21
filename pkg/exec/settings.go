@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 type BackoffSettings struct {

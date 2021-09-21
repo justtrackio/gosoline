@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	blob "github.com/applike/gosoline/pkg/blob"
+	blob "github.com/justtrackio/gosoline/pkg/blob"
 	mock "github.com/stretchr/testify/mock"
 )
 

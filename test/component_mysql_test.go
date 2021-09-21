@@ -4,9 +4,10 @@
 package test_test
 
 import (
-	pkgTest "github.com/applike/gosoline/pkg/test"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	pkgTest "github.com/justtrackio/gosoline/pkg/test"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_mysql(t *testing.T) {

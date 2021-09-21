@@ -3,11 +3,12 @@ package stream_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/jonboulle/clockwork"
-	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
+
+	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/stretchr/testify/suite"
 )
 
 type encodingTestStruct struct {
@@ -16,8 +17,7 @@ type encodingTestStruct struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-type brokenEncodeHandler struct {
-}
+type brokenEncodeHandler struct{}
 
 func (b brokenEncodeHandler) Encode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
 	return ctx, attributes, fmt.Errorf("encode handler encode error")

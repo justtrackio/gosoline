@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	aws "github.com/applike/gosoline/pkg/cloud/aws"
+	aws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 
 	mock "github.com/stretchr/testify/mock"
 )

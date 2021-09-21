@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/applike/gosoline/pkg/stream/mocks"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/stream/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockConf struct {

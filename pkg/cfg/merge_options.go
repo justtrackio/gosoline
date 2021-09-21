@@ -1,6 +1,6 @@
 package cfg
 
-import "github.com/applike/gosoline/pkg/mapx"
+import "github.com/justtrackio/gosoline/pkg/mapx"
 
 type MergeOption func() func(mode *mapx.OpMode)
 

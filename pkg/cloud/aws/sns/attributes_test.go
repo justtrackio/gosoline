@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/cloud/aws/sns"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
 	"github.com/stretchr/testify/assert"
 )
 

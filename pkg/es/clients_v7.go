@@ -3,19 +3,20 @@ package es
 import (
 	"bytes"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/aws/signer/v4"
-	elasticsearch7 "github.com/elastic/go-elasticsearch/v7"
-	"github.com/sha1sum/aws_signing_client"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/aws/signer/v4"
+	elasticsearch7 "github.com/elastic/go-elasticsearch/v7"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/sha1sum/aws_signing_client"
 )
 
 type Logger interface {
@@ -27,8 +28,10 @@ type ClientV7 struct {
 	elasticsearch7.Client
 }
 
-var mtx sync.Mutex
-var ecl = map[string]*ClientV7{}
+var (
+	mtx sync.Mutex
+	ecl = map[string]*ClientV7{}
+)
 
 type clientBuilder func(logger Logger, url string) (*ClientV7, error)
 
@@ -123,7 +126,6 @@ func GetAwsClient(logger Logger, url string) (*ClientV7, error) {
 
 	signer := v4.NewSigner(creds)
 	awsClient, err := aws_signing_client.New(signer, nil, "es", endpoints.EuCentral1RegionID)
-
 	if err != nil {
 		return nil, fmt.Errorf("error creating the elastic aws client: %w", err)
 	}
@@ -147,7 +149,6 @@ func putTemplates(logger Logger, client *ClientV7, name string, paths []string) 
 
 	for _, file := range files {
 		buf, err := ioutil.ReadFile(file)
-
 		if err != nil {
 			return fmt.Errorf("could not read es-templates file %s: %w", file, err)
 		}
@@ -157,7 +158,6 @@ func putTemplates(logger Logger, client *ClientV7, name string, paths []string) 
 			name,
 			bytes.NewReader(buf),
 		)
-
 		if err != nil {
 			return fmt.Errorf("could not put the es-template in file %s for es client %s: %w", file, name, err)
 		}
@@ -183,7 +183,6 @@ func getTemplateFiles(logger Logger, paths []string) ([]string, error) {
 
 	for _, p := range paths {
 		fileInfo, err := os.Stat(p)
-
 		if err != nil {
 			return nil, fmt.Errorf("there was an error with the es-tempates path %s. Does it exist?: %w", p, err)
 		}
@@ -198,7 +197,6 @@ func getTemplateFiles(logger Logger, paths []string) ([]string, error) {
 		}
 
 		fileInfos, err := ioutil.ReadDir(p)
-
 		if err != nil {
 			return nil, fmt.Errorf("could not scan the the es-tempates path %s: %w", p, err)
 		}

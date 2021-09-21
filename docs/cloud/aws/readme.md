@@ -48,7 +48,7 @@ cloud:
 Call 
 ```golang
 import(
-    gosoCloudwatch "github.com/applike/gosoline/pkg/cloud/aws/cloudwatch"
+    gosoCloudwatch "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
 )
 
 cloudwatchClient := gosoCloudwatch.ProvideClient(ctx, config, logger , "default")

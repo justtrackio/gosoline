@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	conc "github.com/applike/gosoline/pkg/conc"
+	conc "github.com/justtrackio/gosoline/pkg/conc"
 
 	mock "github.com/stretchr/testify/mock"
 )

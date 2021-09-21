@@ -2,13 +2,14 @@ package parquet_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/blob/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/parquet"
+	"testing"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/justtrackio/gosoline/pkg/blob/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/parquet"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestNopRecorder(t *testing.T) {

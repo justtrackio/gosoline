@@ -3,10 +3,11 @@ package db
 import (
 	"database/sql"
 	"database/sql/driver"
-	"github.com/applike/gosoline/pkg/metric"
-	"github.com/applike/gosoline/pkg/uuid"
-	"github.com/jmoiron/sqlx"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 const (

@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/cloud/aws"
-	"github.com/applike/gosoline/pkg/exec"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 )
 

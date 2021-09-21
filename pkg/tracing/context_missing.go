@@ -1,8 +1,9 @@
 package tracing
 
 import (
-	"github.com/applike/gosoline/pkg/log"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type ContextMissingWarnSamplingConfig struct {

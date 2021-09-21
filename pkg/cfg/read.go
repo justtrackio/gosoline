@@ -1,9 +1,10 @@
 package cfg
 
 import (
-	"github.com/applike/gosoline/pkg/encoding/yaml"
-	"github.com/pkg/errors"
 	"io/ioutil"
+
+	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
+	"github.com/pkg/errors"
 )
 
 func readConfigFromFile(cfg *config, filePath string, fileType string) error {
@@ -12,7 +13,6 @@ func readConfigFromFile(cfg *config, filePath string, fileType string) error {
 	}
 
 	bytes, err := ioutil.ReadFile(filePath)
-
 	if err != nil {
 		return errors.Wrapf(err, "can not read config file %s", filePath)
 	}

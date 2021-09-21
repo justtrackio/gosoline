@@ -3,9 +3,10 @@ package log
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/clock"
 	"os"
 	"strings"
+
+	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
 const (

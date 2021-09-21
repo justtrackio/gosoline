@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/clock"
-	gosoCloudwatch "github.com/applike/gosoline/pkg/cloud/aws/cloudwatch"
-	"github.com/applike/gosoline/pkg/conc"
-	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/metric"
-	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	gosoCloudwatch "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
+	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 const (

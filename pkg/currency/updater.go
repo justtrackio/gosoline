@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/http"
-	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/applike/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/http"
+	"github.com/justtrackio/gosoline/pkg/kvstore"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (

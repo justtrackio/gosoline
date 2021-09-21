@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/conc"
-	"github.com/applike/gosoline/pkg/ddb"
-	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	ddbMocks "github.com/justtrackio/gosoline/pkg/ddb/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )

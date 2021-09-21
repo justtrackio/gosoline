@@ -3,10 +3,11 @@ package apiserver_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/stretchr/testify/assert"
 )
 
 type Input struct {
@@ -17,8 +18,7 @@ type Output struct {
 	Text string `json:"text"`
 }
 
-type HtmlHandler struct {
-}
+type HtmlHandler struct{}
 
 func (h HtmlHandler) Handle(_ context.Context, request *apiserver.Request) (*apiserver.Response, error) {
 	out := fmt.Sprintf("<html><body>%s</body></html>", request.Body)
@@ -26,8 +26,7 @@ func (h HtmlHandler) Handle(_ context.Context, request *apiserver.Request) (*api
 	return apiserver.NewHtmlResponse(out), nil
 }
 
-type JsonHandler struct {
-}
+type JsonHandler struct{}
 
 func (h JsonHandler) GetInput() interface{} {
 	return &Input{}
@@ -42,15 +41,13 @@ func (h JsonHandler) Handle(_ context.Context, request *apiserver.Request) (*api
 	return apiserver.NewJsonResponse(out), nil
 }
 
-type RedirectHandler struct {
-}
+type RedirectHandler struct{}
 
 func (h RedirectHandler) Handle(_ context.Context, _ *apiserver.Request) (*apiserver.Response, error) {
 	return apiserver.NewRedirectResponse("https://example.com"), nil
 }
 
-type NotModifiedHandler struct {
-}
+type NotModifiedHandler struct{}
 
 func (h NotModifiedHandler) Handle(_ context.Context, _ *apiserver.Request) (*apiserver.Response, error) {
 	return apiserver.NewStatusResponse(http.StatusNotModified), nil

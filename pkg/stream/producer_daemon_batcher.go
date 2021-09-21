@@ -3,7 +3,7 @@ package stream
 import (
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
 type producerDaemonBatcher struct {

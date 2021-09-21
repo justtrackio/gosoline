@@ -2,7 +2,8 @@ package mocks
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/log"
+
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/stretchr/testify/mock"
 )
 

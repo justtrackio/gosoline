@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"testing"
 
-	dynamodbMocks "github.com/applike/gosoline/pkg/cloud/aws/dynamodb/mocks"
-	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/exec"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go"
+	dynamodbMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb/mocks"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/suite"
 )
 

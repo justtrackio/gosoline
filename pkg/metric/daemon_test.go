@@ -1,8 +1,8 @@
 package metric_test
 
 import (
-	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
 // ensure the metric daemon implements the full module interface

@@ -1,10 +1,11 @@
 package cfg_test
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
-	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	cfgMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetAppIdFromConfig(t *testing.T) {

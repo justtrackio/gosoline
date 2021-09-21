@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/encoding/base64"
+	"github.com/justtrackio/gosoline/pkg/encoding/base64"
 )
 
 type EncodeHandler interface {

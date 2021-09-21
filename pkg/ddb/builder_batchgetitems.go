@@ -3,12 +3,12 @@ package ddb
 import (
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/refl"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
 //go:generate mockery --name BatchGetItemsBuilder

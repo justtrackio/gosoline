@@ -1,8 +1,9 @@
 package stream
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 type MessagesPerRunnerMetricSettings struct {

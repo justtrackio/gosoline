@@ -3,9 +3,10 @@ package test
 import (
 	"database/sql"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
+
 	"github.com/go-sql-driver/mysql"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/pkg/errors"
 )
 
@@ -64,7 +65,6 @@ func (m *mysqlComponentLegacy) Start() error {
 		},
 		HealthCheck: func() error {
 			client, err := m.provideMysqlClient()
-
 			if err != nil {
 				return err
 			}
@@ -82,15 +82,13 @@ func (m *mysqlComponentLegacy) Start() error {
 	})
 }
 
-type noopLogger struct {
-}
+type noopLogger struct{}
 
 func (l noopLogger) Print(v ...interface{}) {
 }
 
 func init() {
 	err := mysql.SetLogger(&noopLogger{})
-
 	if err != nil {
 		panic(err)
 	}
@@ -101,7 +99,6 @@ func (m *mysqlComponentLegacy) provideMysqlClient() (*sql.DB, error) {
 
 	if m.db == nil {
 		db, err := sql.Open("mysql", dsn)
-
 		if err != nil {
 			return nil, errors.Wrapf(err, "can not open mysql connection %s", dsn)
 		}

@@ -4,10 +4,11 @@
 package test_test
 
 import (
-	pkgTest "github.com/applike/gosoline/pkg/test"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	pkgTest "github.com/justtrackio/gosoline/pkg/test"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_dynamodb(t *testing.T) {

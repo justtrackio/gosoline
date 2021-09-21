@@ -1,11 +1,12 @@
 package apiserver
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
 	"regexp"
 	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 func Cors(config cfg.Config) gin.HandlerFunc {

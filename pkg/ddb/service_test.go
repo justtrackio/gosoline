@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	dynamodbMocks "github.com/applike/gosoline/pkg/cloud/aws/dynamodb/mocks"
-	"github.com/applike/gosoline/pkg/ddb"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	dynamodbMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb/mocks"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

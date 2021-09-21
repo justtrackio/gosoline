@@ -2,8 +2,9 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
 	"sync"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 type AutoDetectSettings struct {

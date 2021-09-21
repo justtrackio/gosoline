@@ -3,9 +3,9 @@ package sns
 import (
 	"context"
 
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func CreateTopic(ctx context.Context, logger log.Logger, client Client, topicName string) (string, error) {

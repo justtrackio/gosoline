@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/uuid"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 	"github.com/twitchscience/kinsumer"
 )
 

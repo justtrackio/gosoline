@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	cfg "github.com/applike/gosoline/pkg/cfg"
+	cfg "github.com/justtrackio/gosoline/pkg/cfg"
 	mock "github.com/stretchr/testify/mock"
 
 	time "time"

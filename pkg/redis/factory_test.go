@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/redis"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/redis"
 	"github.com/stretchr/testify/suite"
 )
 

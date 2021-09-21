@@ -2,12 +2,13 @@ package crud
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/apiserver"
-	db_repo "github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/gin-gonic/gin"
-	"github.com/pkg/errors"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/pkg/errors"
 )
 
 type readHandler struct {
@@ -47,7 +48,6 @@ func (rh readHandler) Handle(ctx context.Context, request *apiserver.Request) (*
 
 	apiView := GetApiViewFromHeader(request.Header)
 	out, err := rh.transformer.TransformOutput(model, apiView)
-
 	if err != nil {
 		return nil, err
 	}

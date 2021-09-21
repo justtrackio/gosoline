@@ -2,13 +2,14 @@ package kvstore_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kvstore"
-	kvStoreMocks "github.com/applike/gosoline/pkg/kvstore/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
+	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kvstore"
+	kvStoreMocks "github.com/justtrackio/gosoline/pkg/kvstore/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestChainKvStore_Contains(t *testing.T) {

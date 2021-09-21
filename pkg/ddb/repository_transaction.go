@@ -5,14 +5,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	gosoDynamodb "github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/tracing"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
 //go:generate mockery --name TransactionRepository

@@ -2,9 +2,10 @@ package stream
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
 	"os"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type FileOutputSettings struct {
@@ -36,15 +37,13 @@ func (o *fileOutput) Write(_ context.Context, batch []WritableMessage) error {
 		flags = flags | os.O_TRUNC
 	}
 
-	file, err := os.OpenFile(o.settings.Filename, flags, 0644)
-
+	file, err := os.OpenFile(o.settings.Filename, flags, 0o644)
 	if err != nil {
 		return err
 	}
 
 	for _, msg := range batch {
 		data, err := msg.MarshalToBytes()
-
 		if err != nil {
 			return err
 		}

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/test/suite"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
 type TestData struct {

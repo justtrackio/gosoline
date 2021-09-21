@@ -1,10 +1,11 @@
 package clock_test
 
 import (
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/test/assert"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/test/assert"
 )
 
 func TestRealClock_After(t *testing.T) {

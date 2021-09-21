@@ -2,11 +2,12 @@ package db
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/log"
+	"strings"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
-	"strings"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type MigrationSettings struct {
@@ -22,7 +23,6 @@ func runMigrations(logger log.Logger, settings Settings, db *sqlx.DB) error {
 	}
 
 	driverFactory, err := GetDriverFactory(settings.Driver)
-
 	if err != nil {
 		return fmt.Errorf("could not get driver factory for %s: %w", settings.Driver, err)
 	}
@@ -36,13 +36,11 @@ func runMigrations(logger log.Logger, settings Settings, db *sqlx.DB) error {
 	}
 
 	driver, err := driverFactory.GetMigrationDriver(db.DB, settings.Uri.Database, migrationsTable)
-
 	if err != nil {
 		return fmt.Errorf("could not get migration driver: %w", err)
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(settings.Migrations.Path, settings.Driver, driver)
-
 	if err != nil {
 		return fmt.Errorf("could not initialize migrator for db migrations: %w", err)
 	}

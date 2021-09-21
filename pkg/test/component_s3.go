@@ -2,9 +2,10 @@ package test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
+
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const componentS3 = "s3"

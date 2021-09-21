@@ -1,8 +1,9 @@
 package stream
 
 import (
-	"github.com/applike/gosoline/pkg/log"
 	"sync"
+
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type OutputChannel interface {

@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	metric "github.com/applike/gosoline/pkg/metric"
+	metric "github.com/justtrackio/gosoline/pkg/metric"
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/applike/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
 type Partition struct {

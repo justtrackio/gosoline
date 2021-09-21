@@ -3,12 +3,13 @@ package db_repo
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/metric"
-	"github.com/applike/gosoline/pkg/stream"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
 const (
@@ -18,10 +19,12 @@ const (
 
 var NotificationTypes = []string{Create, Update, Delete}
 
-type NotificationMap map[string][]Notifier
-type Notifier interface {
-	Send(ctx context.Context, notificationType string, value ModelBased) error
-}
+type (
+	NotificationMap map[string][]Notifier
+	Notifier        interface {
+		Send(ctx context.Context, notificationType string, value ModelBased) error
+	}
+)
 
 type baseNotifier struct {
 	logger      log.Logger
@@ -63,7 +66,6 @@ func (n baseNotifier) Send(ctx context.Context, notificationType string, value M
 		"version": n.version,
 		"modelId": modelId,
 	})
-
 	if err != nil {
 		return fmt.Errorf("can not encode notification message: %w", err)
 	}

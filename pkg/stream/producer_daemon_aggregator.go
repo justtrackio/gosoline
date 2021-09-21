@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/applike/gosoline/pkg/encoding/base64"
-	"github.com/applike/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/encoding/base64"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
 const (

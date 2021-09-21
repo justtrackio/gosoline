@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	tracing "github.com/applike/gosoline/pkg/tracing"
+	tracing "github.com/justtrackio/gosoline/pkg/tracing"
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -2,10 +2,11 @@ package db_test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/db"
-	"github.com/go-sql-driver/mysql"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/go-sql-driver/mysql"
+	"github.com/justtrackio/gosoline/pkg/db"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsDuplicateEntryError(t *testing.T) {

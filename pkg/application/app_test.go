@@ -2,13 +2,14 @@ package application_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/application"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/stretchr/testify/assert"
 )
 
 type testSettings struct {

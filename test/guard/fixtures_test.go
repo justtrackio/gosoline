@@ -3,7 +3,7 @@
 
 package guard_test
 
-import "github.com/applike/gosoline/pkg/fixtures"
+import "github.com/justtrackio/gosoline/pkg/fixtures"
 
 func buildPolicies() []interface{} {
 	return []interface{}{

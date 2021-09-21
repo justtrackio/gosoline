@@ -1,10 +1,11 @@
 package suite
 
 import (
-	"github.com/applike/gosoline/pkg/test/env"
+	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type TestingSuite interface {

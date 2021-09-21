@@ -3,11 +3,12 @@ package metric
 import (
 	"bytes"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/es"
-	"github.com/applike/gosoline/pkg/log"
+
 	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/es"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type esMetricDatum struct {

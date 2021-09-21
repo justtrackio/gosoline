@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/appctx"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/stretchr/testify/assert"
 )
 

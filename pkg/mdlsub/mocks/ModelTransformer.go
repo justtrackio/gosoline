@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	mdlsub "github.com/applike/gosoline/pkg/mdlsub"
+	mdlsub "github.com/justtrackio/gosoline/pkg/mdlsub"
 	mock "github.com/stretchr/testify/mock"
 )
 

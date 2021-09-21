@@ -1,6 +1,6 @@
 package db_repo
 
-import "github.com/applike/gosoline/pkg/mdl"
+import "github.com/justtrackio/gosoline/pkg/mdl"
 
 const (
 	BoolAnd = "AND"

@@ -3,12 +3,13 @@ package crud
 import (
 	"context"
 	"errors"
-	"github.com/applike/gosoline/pkg/apiserver"
-	db_repo "github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/validation"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
 type deleteHandler struct {
@@ -59,7 +60,6 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 
 	apiView := GetApiViewFromHeader(request.Header)
 	out, err := dh.transformer.TransformOutput(model, apiView)
-
 	if err != nil {
 		return nil, err
 	}

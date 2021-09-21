@@ -3,7 +3,8 @@ package kvstore
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/refl"
+
+	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
 func keyChunks(keys []interface{}, size int) [][]interface{} {
@@ -26,7 +27,6 @@ type chunkGetter func(ctx context.Context, resultMap *refl.Map, keys []interface
 
 func getBatch(ctx context.Context, keys interface{}, result interface{}, getChunk chunkGetter, batchSize int) ([]interface{}, error) {
 	keySlice, err := refl.InterfaceToInterfaceSlice(keys)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
 	}
@@ -38,7 +38,6 @@ func getBatch(ctx context.Context, keys interface{}, result interface{}, getChun
 	}
 
 	resultMap, err := refl.MapOf(result)
-
 	if err != nil {
 		return keySlice, fmt.Errorf("can not use provided result value: %w", err)
 	}
@@ -52,7 +51,6 @@ func getBatch(ctx context.Context, keys interface{}, result interface{}, getChun
 
 	for _, chunk := range chunks {
 		miss, err := getChunk(ctx, resultMap, chunk)
-
 		if err != nil {
 			return keySlice, fmt.Errorf("can not get chunk: %w", err)
 		}

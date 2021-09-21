@@ -3,11 +3,12 @@ package status_test
 import (
 	"context"
 	"fmt"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/log/status"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/log/status"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestManager(t *testing.T) {

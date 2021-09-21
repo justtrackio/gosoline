@@ -2,7 +2,8 @@ package validation
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/db-repo"
+
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 )
 
 type Repository struct {
@@ -19,7 +20,6 @@ func NewRepository(validator Validator, repo db_repo.Repository) db_repo.Reposit
 
 func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error {
 	err := r.validator.IsValid(ctx, value)
-
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,6 @@ func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error 
 
 func (r Repository) Update(ctx context.Context, value db_repo.ModelBased) error {
 	err := r.validator.IsValid(ctx, value)
-
 	if err != nil {
 		return err
 	}

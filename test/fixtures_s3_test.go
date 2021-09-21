@@ -9,14 +9,14 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/blob"
-	"github.com/applike/gosoline/pkg/fixtures"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/justtrackio/gosoline/pkg/blob"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
 const (

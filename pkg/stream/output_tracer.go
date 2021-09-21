@@ -3,9 +3,10 @@ package stream
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/tracing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
 type outputTracer struct {
@@ -21,7 +22,7 @@ func NewOutputTracer(config cfg.Config, logger log.Logger, base Output, name str
 	config.UnmarshalKey(key, settings)
 
 	var err error
-	var tracer = tracing.NewNoopTracer()
+	tracer := tracing.NewNoopTracer()
 
 	if settings.Tracing.Enabled {
 		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {

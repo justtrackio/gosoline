@@ -2,9 +2,10 @@ package tracing_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/tracing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestContextWithTrace(t *testing.T) {

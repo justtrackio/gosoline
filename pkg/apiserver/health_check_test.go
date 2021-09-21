@@ -1,12 +1,13 @@
 package apiserver_test
 
 import (
-	"github.com/applike/gosoline/pkg/apiserver"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 )
 
 func TestNewApiHealthCheck(t *testing.T) {

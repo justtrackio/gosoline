@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 type IoWriterWriterFactory func(config cfg.Config, configKey string) (io.Writer, error)

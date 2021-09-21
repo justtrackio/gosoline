@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	cfgMocks "github.com/applike/gosoline/pkg/cfg/mocks"
-	"github.com/applike/gosoline/pkg/http"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	netHttp "net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	cfgMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
+	"github.com/justtrackio/gosoline/pkg/http"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // A copy of context.emptyCtx

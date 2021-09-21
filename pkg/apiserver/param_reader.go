@@ -1,8 +1,9 @@
 package apiserver
 
 import (
-	"github.com/applike/gosoline/pkg/mdl"
 	"strconv"
+
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 func GetUintFromRequest(request *Request, name string) (*uint, bool) {
@@ -13,7 +14,6 @@ func GetUintFromRequest(request *Request, name string) (*uint, bool) {
 	}
 
 	param, err := strconv.Atoi(paramString)
-
 	if err != nil {
 		return mdl.Uint(0), false
 	}

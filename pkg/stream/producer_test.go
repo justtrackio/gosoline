@@ -2,10 +2,11 @@ package stream_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/applike/gosoline/pkg/stream/mocks"
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/stream/mocks"
+	"github.com/stretchr/testify/suite"
 )
 
 type testContent struct {

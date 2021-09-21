@@ -2,8 +2,8 @@ package env
 
 import (
 	"github.com/Masterminds/squirrel"
-	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/jmoiron/sqlx"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,7 +37,6 @@ func (c *mysqlComponent) Client() *sqlx.DB {
 
 func (c *mysqlComponent) Exec(qry string, args ...interface{}) {
 	_, err := c.client.Exec(qry, args...)
-
 	if err != nil {
 		assert.FailNow(c.t, err.Error(), "failed to execute query")
 		return
@@ -46,7 +45,6 @@ func (c *mysqlComponent) Exec(qry string, args ...interface{}) {
 
 func (c *mysqlComponent) AssertRowCount(table string, expectedCount int) {
 	qry, args, err := squirrel.Select("COUNT(*)").From(table).ToSql()
-
 	if err != nil {
 		assert.FailNow(c.t, err.Error(), "can not generate qry to count rows in table %s", table)
 	}

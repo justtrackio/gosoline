@@ -3,11 +3,12 @@ package stream
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/metric"
-	"github.com/applike/gosoline/pkg/redis"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/redis"
 )
 
 const (
@@ -61,7 +62,6 @@ func (o *redisListOutput) WriteOne(ctx context.Context, record WritableMessage) 
 
 func (o *redisListOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	chunks, err := BuildChunks(batch, o.settings.BatchSize)
-
 	if err != nil {
 		o.logger.Error("could not batch all messages: %w", err)
 	}
@@ -69,7 +69,6 @@ func (o *redisListOutput) Write(ctx context.Context, batch []WritableMessage) er
 	for _, chunk := range chunks {
 		interfaces := ByteChunkToInterfaces(chunk)
 		_, err := o.client.RPush(ctx, o.fullyQualifiedKey, interfaces...)
-
 		if err != nil {
 			return err
 		}

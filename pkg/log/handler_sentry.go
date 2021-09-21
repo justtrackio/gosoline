@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/getsentry/sentry-go"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 func init() {
@@ -30,7 +30,7 @@ func NewHandlerSentry(config cfg.Config) (*HandlerSentry, error) {
 
 	var err error
 	var client *sentry.Client
-	var scope = sentry.NewScope()
+	scope := sentry.NewScope()
 
 	if client, err = sentry.NewClient(options); err != nil {
 		return nil, fmt.Errorf("can not create sentry client: %w", err)

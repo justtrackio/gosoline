@@ -2,12 +2,13 @@ package cfg_test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/jonboulle/clockwork"
-	"github.com/stretchr/testify/suite"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/stretchr/testify/suite"
 )
 
 type ConfigTestSuite struct {

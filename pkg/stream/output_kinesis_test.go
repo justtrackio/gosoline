@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
-	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
-	"github.com/applike/gosoline/pkg/exec"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/stream"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
+	cloudMocks "github.com/justtrackio/gosoline/pkg/cloud/mocks"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

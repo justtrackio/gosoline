@@ -2,9 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/log"
 	"io"
+
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func newCliLogger() (log.Logger, error) {

@@ -2,10 +2,11 @@ package test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/encoding/json"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
 type healthcheck struct {
@@ -33,13 +34,11 @@ func localstackHealthCheck(settings *healthCheckMockSettings, services ...string
 	return func() error {
 		url := fmt.Sprintf("http://%s:%d/health", settings.Host, settings.Healthcheck.Port)
 		resp, err := http.Get(url)
-
 		if err != nil {
 			return err
 		}
 
 		body, err := ioutil.ReadAll(resp.Body)
-
 		if err != nil {
 			return err
 		}

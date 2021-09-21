@@ -3,10 +3,11 @@ package stream_test
 import (
 	"bytes"
 	"compress/gzip"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCompressionNone(t *testing.T) {

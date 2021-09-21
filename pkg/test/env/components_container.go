@@ -2,7 +2,8 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 type ComponentsContainer struct {
@@ -60,7 +61,7 @@ func (c *ComponentsContainer) GetAll() []Component {
 func (c *ComponentsContainer) GetCfgOptions() []cfg.Option {
 	var ok bool
 	var cfgOptionAware ComponentCfgOptionAware
-	var cfgOptions = make([]cfg.Option, 0)
+	cfgOptions := make([]cfg.Option, 0)
 
 	for _, component := range c.GetAll() {
 		if cfgOptionAware, ok = component.(ComponentCfgOptionAware); !ok {

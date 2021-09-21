@@ -3,20 +3,21 @@ package stream_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/mdl"
-	metricMocks "github.com/applike/gosoline/pkg/metric/mocks"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/applike/gosoline/pkg/stream/mocks"
-	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/stream/mocks"
+	"github.com/justtrackio/gosoline/pkg/tracing"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
 
 type ConsumerTestSuite struct {

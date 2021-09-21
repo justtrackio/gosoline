@@ -5,10 +5,11 @@ package test_test
 
 import (
 	"fmt"
-	pkgTest "github.com/applike/gosoline/pkg/test"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
+
+	pkgTest "github.com/justtrackio/gosoline/pkg/test"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_wiremock(t *testing.T) {

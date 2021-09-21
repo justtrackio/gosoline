@@ -1,8 +1,9 @@
 package log
 
 import (
-	"github.com/applike/gosoline/pkg/clock"
 	"os"
+
+	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
 func NewCliLogger() Logger {

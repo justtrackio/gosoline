@@ -1,12 +1,13 @@
 package db_test
 
 import (
-	goSqlMock "github.com/DATA-DOG/go-sqlmock"
-	"github.com/applike/gosoline/pkg/db"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/jmoiron/sqlx"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	goSqlMock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/jmoiron/sqlx"
+	"github.com/justtrackio/gosoline/pkg/db"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetResult(t *testing.T) {

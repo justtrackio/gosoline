@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	gosoDynamodb "github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type dynamodbPurger struct {

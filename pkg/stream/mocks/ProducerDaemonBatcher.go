@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	stream "github.com/applike/gosoline/pkg/stream"
+	stream "github.com/justtrackio/gosoline/pkg/stream"
 	mock "github.com/stretchr/testify/mock"
 )
 

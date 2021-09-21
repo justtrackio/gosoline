@@ -2,16 +2,16 @@ package stream_test
 
 import (
 	"context"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	metricMocks "github.com/applike/gosoline/pkg/metric/mocks"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/stretchr/testify/assert"
 )
 
-type callback struct {
-}
+type callback struct{}
 
 func (c *callback) Process(ctx context.Context, messages []*stream.Message) ([]*stream.Message, error) {
 	for _, msg := range messages {

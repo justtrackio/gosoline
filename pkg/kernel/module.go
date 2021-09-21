@@ -3,9 +3,9 @@ package kernel
 import (
 	"context"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kernel/common"
-	"github.com/applike/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel/common"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (

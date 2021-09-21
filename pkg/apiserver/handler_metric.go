@@ -2,9 +2,10 @@ package apiserver
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/metric"
-	"github.com/gin-gonic/gin"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
 const (

@@ -2,7 +2,8 @@ package ddb
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/mdl"
+
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type NamingFactory func(modelId mdl.ModelId) string

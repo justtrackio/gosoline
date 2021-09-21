@@ -1,15 +1,18 @@
 package env
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
 	"strings"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
-type Option func(env *Environment)
-type ComponentOption func(componentConfigManger *ComponentsConfigManager) error
-type ConfigOption func(config cfg.GosoConf) error
-type LoggerOption func(settings *LoggerSettings) error
+type (
+	Option          func(env *Environment)
+	ComponentOption func(componentConfigManger *ComponentsConfigManager) error
+	ConfigOption    func(config cfg.GosoConf) error
+	LoggerOption    func(settings *LoggerSettings) error
+)
 
 func WithComponent(settings ComponentBaseSettingsAware) Option {
 	return func(env *Environment) {

@@ -3,10 +3,11 @@ package kvstore
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/metric"
-	"github.com/applike/gosoline/pkg/refl"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
 const (
@@ -84,7 +85,6 @@ func (s *MetricStore) Get(ctx context.Context, key interface{}, value interface{
 
 func (s *MetricStore) GetBatch(ctx context.Context, keys interface{}, result interface{}) ([]interface{}, error) {
 	keySlice, err := refl.InterfaceToInterfaceSlice(keys)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
 	}
@@ -112,7 +112,6 @@ func (s *MetricStore) Put(ctx context.Context, key interface{}, value interface{
 
 func (s *MetricStore) PutBatch(ctx context.Context, values interface{}) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
-
 	if err != nil {
 		return fmt.Errorf("could not convert values to map[interface{}]interface{}: %w", err)
 	}
@@ -138,7 +137,6 @@ func (s *MetricStore) Delete(ctx context.Context, key interface{}) error {
 
 func (s *MetricStore) DeleteBatch(ctx context.Context, keys interface{}) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
-
 	if err != nil {
 		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
 	}

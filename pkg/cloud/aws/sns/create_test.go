@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	gosoSns "github.com/applike/gosoline/pkg/cloud/aws/sns"
-	gosoSnsMocks "github.com/applike/gosoline/pkg/cloud/aws/sns/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsSns "github.com/aws/aws-sdk-go-v2/service/sns"
+	gosoSns "github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
+	gosoSnsMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/sns/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )

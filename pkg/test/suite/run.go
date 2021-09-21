@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/applike/gosoline/pkg/test/env"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/kvstore"
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
 )
 

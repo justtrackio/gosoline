@@ -1,6 +1,6 @@
 package ddb
 
-import "github.com/applike/gosoline/pkg/clock"
+import "github.com/justtrackio/gosoline/pkg/clock"
 
 type BuilderFactory interface {
 	GetItemBuilder() GetItemBuilder
@@ -18,7 +18,6 @@ type builderFactory struct {
 func NewBuilderFactory(settings *Settings, clock clock.Clock) (BuilderFactory, error) {
 	metadataFactory := NewMetadataFactory()
 	metadata, err := metadataFactory.GetMetadata(settings)
-
 	if err != nil {
 		return nil, err
 	}

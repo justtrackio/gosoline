@@ -2,8 +2,9 @@ package tracing
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
+
 	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 type awsRootSpan struct {

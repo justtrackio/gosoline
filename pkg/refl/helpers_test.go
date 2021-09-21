@@ -1,18 +1,19 @@
 package refl_test
 
 import (
-	"github.com/applike/gosoline/pkg/refl"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/refl"
+	"github.com/stretchr/testify/assert"
 )
 
 type testStruct struct{}
 
 func TestIsPointerToSlice(t *testing.T) {
 	var nilSlice []string
-	var interfacedNilSlice = interface{}(nilSlice)
-	var interfacedSlice = interface{}([]string{"abc"})
+	interfacedNilSlice := interface{}(nilSlice)
+	interfacedSlice := interface{}([]string{"abc"})
 
 	tests := map[string]struct {
 		Input    interface{}
@@ -67,7 +68,7 @@ func TestIsPointerToSlice(t *testing.T) {
 
 func TestIsPointerToStruct(t *testing.T) {
 	var nilStruct testStruct
-	var interfacedStruct = interface{}(testStruct{})
+	interfacedStruct := interface{}(testStruct{})
 
 	tests := map[string]struct {
 		Input    interface{}
@@ -114,8 +115,8 @@ func TestIsPointerToStruct(t *testing.T) {
 
 func TestFindBaseType(t *testing.T) {
 	var nilStruct testStruct
-	var interfacedStruct = interface{}(testStruct{})
-	var interfacedSlice = interface{}([]interface{}{"abc"})
+	interfacedStruct := interface{}(testStruct{})
+	interfacedSlice := interface{}([]interface{}{"abc"})
 
 	tests := map[string]struct {
 		Input    interface{}
@@ -172,8 +173,8 @@ func TestFindBaseType(t *testing.T) {
 }
 
 func TestGetTypedValue(t *testing.T) {
-	var interfacedStruct = interface{}(testStruct{})
-	var interfacedSlice = interface{}([]string{})
+	interfacedStruct := interface{}(testStruct{})
+	interfacedSlice := interface{}([]string{})
 
 	tests := map[string]struct {
 		Input    interface{}
@@ -235,7 +236,6 @@ func TestCreatePointerToSliceOfTypeAndSizeWithEmptySlice(t *testing.T) {
 		assert.True(t, castable)
 		assert.Len(t, *casted, 1)
 	})
-
 }
 
 func TestCopyPointerSlice(t *testing.T) {

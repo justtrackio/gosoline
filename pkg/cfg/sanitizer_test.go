@@ -1,11 +1,12 @@
 package cfg_test
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/stretchr/objx"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/stretchr/objx"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTimeSanitizer(t *testing.T) {

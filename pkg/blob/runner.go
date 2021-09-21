@@ -2,17 +2,18 @@ package blob
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/metric"
+	"io"
+	"sync"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/hashicorp/go-multierror"
-	"io"
-	"sync"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
 const (
@@ -197,7 +198,6 @@ func (r *batchRunner) executeCopy(ctx context.Context) {
 			}
 
 			_, err := r.client.CopyObject(input)
-
 			if err != nil {
 				object.Error = err
 			}
@@ -223,7 +223,6 @@ func (r *batchRunner) executeDelete(ctx context.Context) {
 			}
 
 			_, err := r.client.DeleteObject(input)
-
 			if err != nil {
 				object.Error = err
 			}

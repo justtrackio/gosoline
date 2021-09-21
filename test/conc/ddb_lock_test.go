@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/conc"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/test/suite"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
 type DdbLockTestSuite struct {

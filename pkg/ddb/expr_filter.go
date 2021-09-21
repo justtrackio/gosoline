@@ -1,9 +1,9 @@
 package ddb
 
 import (
-	"github.com/applike/gosoline/pkg/clock"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
 type ttlStruct struct {

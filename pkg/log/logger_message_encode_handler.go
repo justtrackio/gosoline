@@ -2,10 +2,11 @@ package log
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/spf13/cast"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/spf13/cast"
 )
 
 const MessageAttributeLoggerContext = "logger:context"
@@ -44,7 +45,6 @@ func (m MessageWithLoggingFieldsEncoder) Encode(ctx context.Context, _ interface
 	}
 
 	encodedFields, err := json.Marshal(stringAble)
-
 	if err != nil {
 		m.logger.Warn("can not json marshal logger context fields during message encoding")
 		return ctx, attributes, nil
@@ -70,7 +70,6 @@ func (m MessageWithLoggingFieldsEncoder) Decode(ctx context.Context, _ interface
 
 	fields := make(map[string]interface{})
 	err := json.Unmarshal([]byte(str), &fields)
-
 	if err != nil {
 		m.logger.Warn("can not json unmarshal logger context fields during message decoding")
 		return ctx, attributes, nil

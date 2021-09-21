@@ -5,11 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/applike/gosoline/pkg/guard"
+	"github.com/justtrackio/gosoline/pkg/guard"
 	"github.com/ory/ladon"
 	"github.com/stretchr/testify/require"
 
-	"github.com/applike/gosoline/pkg/guard/mocks"
+	"github.com/justtrackio/gosoline/pkg/guard/mocks"
 )
 
 // Test LadonGuard::GetPolicies

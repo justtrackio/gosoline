@@ -3,8 +3,9 @@ package db_repo
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/log"
+
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type notifyingRepository struct {
@@ -70,7 +71,6 @@ func (r *notifyingRepository) doCallback(ctx context.Context, callbackType strin
 
 	for _, c := range r.notifiers[callbackType] {
 		err := c.Send(ctx, callbackType, value)
-
 		if err != nil {
 			errors = multierror.Append(errors, err)
 			logger.Warn("%T notifier errored out with: %v", c, err)

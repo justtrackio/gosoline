@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/applike/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/exec"
 )
 
 // you failed to acquire a lock before the operation timed out

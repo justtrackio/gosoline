@@ -1,10 +1,11 @@
 package suite
 
 import (
-	"github.com/applike/gosoline/pkg/test/env"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/test/env"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {

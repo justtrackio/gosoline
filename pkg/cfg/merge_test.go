@@ -1,9 +1,10 @@
 package cfg_test
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/stretchr/testify/suite"
 )
 
 type MergeTestSuite struct {

@@ -3,11 +3,11 @@ package kvstore
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/refl"
+
+	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
-type emptyKvStore struct {
-}
+type emptyKvStore struct{}
 
 func NewEmptyKvStore() KvStore {
 	return NewEmptyKvStoreWithInterfaces()
@@ -27,7 +27,6 @@ func (s *emptyKvStore) Get(_ context.Context, _ interface{}, _ interface{}) (boo
 
 func (s *emptyKvStore) GetBatch(_ context.Context, keys interface{}, _ interface{}) ([]interface{}, error) {
 	missing, err := refl.InterfaceToInterfaceSlice(keys)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
 	}

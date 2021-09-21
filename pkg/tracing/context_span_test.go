@@ -1,11 +1,12 @@
 package tracing_test
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/tracing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestContext(t *testing.T) {

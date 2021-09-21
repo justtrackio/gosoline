@@ -3,9 +3,10 @@ package dispatcher
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/log"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type Repository struct {
@@ -26,7 +27,6 @@ func NewRepository(config cfg.Config, logger log.Logger, repo db_repo.Repository
 
 func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error {
 	err := r.Repository.Create(ctx, value)
-
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,6 @@ func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error 
 
 func (r Repository) Update(ctx context.Context, value db_repo.ModelBased) error {
 	err := r.Repository.Update(ctx, value)
-
 	if err != nil {
 		return err
 	}
@@ -64,7 +63,6 @@ func (r Repository) Update(ctx context.Context, value db_repo.ModelBased) error 
 
 func (r Repository) Delete(ctx context.Context, value db_repo.ModelBased) error {
 	err := r.Repository.Delete(ctx, value)
-
 	if err != nil {
 		return err
 	}

@@ -1,12 +1,13 @@
 package cloud_test
 
 import (
-	configMocks "github.com/applike/gosoline/pkg/cfg/mocks"
-	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/log"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	configMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
+	"github.com/justtrackio/gosoline/pkg/cloud"
+	"github.com/justtrackio/gosoline/pkg/log"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetDynamoDbClient(t *testing.T) {

@@ -2,14 +2,15 @@ package stream_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	metricMocks "github.com/applike/gosoline/pkg/metric/mocks"
-	redisMocks "github.com/applike/gosoline/pkg/redis/mocks"
-	"github.com/applike/gosoline/pkg/stream"
+	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	redisMocks "github.com/justtrackio/gosoline/pkg/redis/mocks"
+	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestRedisListOutput_WriteOne(t *testing.T) {

@@ -8,15 +8,15 @@ import (
 	"testing"
 
 	toxiproxy "github.com/Shopify/toxiproxy/client"
-	"github.com/applike/gosoline/pkg/clock"
-	gosoDdb "github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/applike/gosoline/pkg/exec"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsDdb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go/middleware"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	gosoDdb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/suite"
 	"github.com/stretchr/testify/mock"
 )
 

@@ -1,7 +1,7 @@
 package stream
 
 import (
-	"github.com/applike/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
 const (
@@ -24,7 +24,6 @@ func (m *Message) MarshalToBytes() ([]byte, error) {
 
 func (m *Message) MarshalToString() (string, error) {
 	bytes, err := json.Marshal(*m)
-
 	if err != nil {
 		return "", err
 	}

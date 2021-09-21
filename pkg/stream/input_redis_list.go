@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/metric"
-	"github.com/applike/gosoline/pkg/redis"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/redis"
 )
 
 const (
@@ -120,7 +121,6 @@ func (i *redisListInput) runMetricLoop(ctx context.Context) {
 
 func (i *redisListInput) writeListLengthMetric(ctx context.Context) {
 	llen, err := i.client.LLen(ctx, i.fullyQualifiedKey)
-
 	if err != nil {
 		i.logger.Error("can not publish stream list metric data: %w", err)
 		return

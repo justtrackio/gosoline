@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	db_repo "github.com/applike/gosoline/pkg/db-repo"
 	"time"
+
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 )
 
 type MyEntity struct {
@@ -26,8 +27,7 @@ func (e *MyEntity) SetCreatedAt(createdAt *time.Time) {
 	e.CreatedAt = createdAt
 }
 
-type MyEntityRepository struct {
-}
+type MyEntityRepository struct{}
 
 func (*MyEntityRepository) Create(ctx context.Context, value db_repo.ModelBased) error {
 	return nil

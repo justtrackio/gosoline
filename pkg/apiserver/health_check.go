@@ -3,11 +3,12 @@ package apiserver
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type ApiHealthCheckSettings struct {
@@ -71,7 +72,6 @@ func (a *ApiHealthCheck) Run(ctx context.Context) error {
 func (a *ApiHealthCheck) waitForStop(ctx context.Context) {
 	<-ctx.Done()
 	err := a.server.Close()
-
 	if err != nil {
 		a.logger.Error("api health check close: %w", err)
 	}

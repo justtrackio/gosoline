@@ -2,16 +2,19 @@ package test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
+	"strings"
+
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"strings"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-const componentSns = "sns"
-const componentSqs = "sqs"
-const componentSnsSqs = "sns_sqs"
+const (
+	componentSns    = "sns"
+	componentSqs    = "sqs"
+	componentSnsSqs = "sns_sqs"
+)
 
 type snsSqsSettings struct {
 	*healthCheckMockSettings

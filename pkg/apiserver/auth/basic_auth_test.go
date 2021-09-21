@@ -3,13 +3,14 @@ package auth_test
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/applike/gosoline/pkg/apiserver/auth"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/apiserver/auth"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
 func getBasicAuthMocks(user string, password string) (log.Logger, *gin.Context) {

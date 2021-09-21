@@ -2,12 +2,13 @@ package mdlsub_test
 
 import (
 	"context"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mdlsub"
-	streamMocks "github.com/applike/gosoline/pkg/stream/mocks"
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/mdlsub"
+	streamMocks "github.com/justtrackio/gosoline/pkg/stream/mocks"
+	"github.com/stretchr/testify/suite"
 )
 
 type PublisherTestSuite struct {

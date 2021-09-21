@@ -3,9 +3,10 @@ package env
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/stream"
 	"reflect"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
 type streamOutputComponent struct {

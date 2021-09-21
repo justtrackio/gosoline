@@ -2,11 +2,12 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/stretchr/testify/assert"
 )
 
 type Environment struct {
@@ -56,8 +57,8 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 
 	var skeletons []*componentSkeleton
 	var component Component
-	var components = NewComponentsContainer()
-	var componentConfigManger = NewComponentsConfigManager(config)
+	components := NewComponentsContainer()
+	componentConfigManger := NewComponentsConfigManager(config)
 
 	for _, opt := range env.componentOptions {
 		if err := opt(componentConfigManger); err != nil {

@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/exec"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/smithy-go"
+	"github.com/justtrackio/gosoline/pkg/exec"
 )
 
 func init() {

@@ -3,13 +3,14 @@ package crud
 import (
 	"context"
 	"errors"
-	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/applike/gosoline/pkg/db"
-	db_repo "github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/validation"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/db"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
 type updateHandler struct {
@@ -84,7 +85,6 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 
 	apiView := GetApiViewFromHeader(request.Header)
 	out, err := uh.transformer.TransformOutput(reload, apiView)
-
 	if err != nil {
 		return nil, err
 	}

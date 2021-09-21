@@ -3,7 +3,7 @@ package sqs
 import (
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 const fifoSuffix = ".fifo"

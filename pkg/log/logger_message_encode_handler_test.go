@@ -2,11 +2,12 @@ package log_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/log/mocks"
+	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"testing"
 )
 
 type LoggerMessageEncodeHandlerTestSuite struct {

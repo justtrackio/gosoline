@@ -2,8 +2,9 @@ package stream
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/encoding/base64"
-	"github.com/applike/gosoline/pkg/encoding/json"
+
+	"github.com/justtrackio/gosoline/pkg/encoding/base64"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -58,7 +59,6 @@ func EncodeMessage(encoding EncodingType, data interface{}) ([]byte, error) {
 	}
 
 	body, err := encoder.Encode(data)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not encode message body with encoding '%s': %w", encoding, err)
 	}
@@ -74,7 +74,6 @@ func DecodeMessage(encoding EncodingType, data []byte, out interface{}) error {
 	}
 
 	err := encoder.Decode(data, out)
-
 	if err != nil {
 		return fmt.Errorf("can not decode message body with encoding '%s': %w", encoding, err)
 	}

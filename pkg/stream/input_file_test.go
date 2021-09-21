@@ -2,10 +2,11 @@ package stream
 
 import (
 	"context"
-	configMocks "github.com/applike/gosoline/pkg/cfg/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	configMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFileInput_Run(t *testing.T) {

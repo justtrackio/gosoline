@@ -1,6 +1,6 @@
 package sns
 
-import "github.com/applike/gosoline/pkg/encoding/json"
+import "github.com/justtrackio/gosoline/pkg/encoding/json"
 
 type Message struct {
 	Type      string

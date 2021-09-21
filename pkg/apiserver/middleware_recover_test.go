@@ -2,14 +2,15 @@ package apiserver_test
 
 import (
 	"errors"
-	"github.com/applike/gosoline/pkg/apiserver"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/sys/unix"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/sys/unix"
 )
 
 func TestRecoveryWithSentryCaseNil(t *testing.T) {
