@@ -2,10 +2,11 @@ package log
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/fatih/color"
 	"sort"
 	"strings"
+
+	"github.com/fatih/color"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
 type Formatter func(timestamp string, level int, format string, args []interface{}, err error, data Data) ([]byte, error)

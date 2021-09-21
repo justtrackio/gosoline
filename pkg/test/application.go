@@ -1,8 +1,8 @@
 package test
 
 import (
-	"github.com/applike/gosoline/pkg/application"
-	"github.com/applike/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/kernel"
 )
 
 func Application() kernel.Kernel {

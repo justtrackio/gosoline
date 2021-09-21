@@ -1,13 +1,16 @@
 package cfg_test
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/stretchr/testify/assert"
 )
 
-type Encoding string
-type Compression string
+type (
+	Encoding    string
+	Compression string
+)
 
 const (
 	EncodingJson    Encoding    = "json"

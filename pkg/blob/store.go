@@ -2,16 +2,17 @@ package blob
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/uuid"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 const (
@@ -43,8 +44,10 @@ type CopyObject struct {
 	wg     *sync.WaitGroup
 }
 
-type Batch []*Object
-type CopyBatch []*CopyObject
+type (
+	Batch     []*Object
+	CopyBatch []*CopyObject
+)
 
 type Settings struct {
 	cfg.AppId

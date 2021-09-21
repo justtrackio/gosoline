@@ -1,9 +1,10 @@
 package suite
 
 import (
-	"github.com/applike/gosoline/pkg/test/env"
 	"reflect"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/test/env"
 )
 
 func init() {

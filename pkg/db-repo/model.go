@@ -1,8 +1,9 @@
 package db_repo
 
 import (
-	"github.com/applike/gosoline/pkg/mdl"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 const ColumnUpdatedAt = "updated_at"

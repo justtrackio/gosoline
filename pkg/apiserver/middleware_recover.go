@@ -2,10 +2,11 @@ package apiserver
 
 import (
 	"errors"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func RecoveryWithSentry(logger log.Logger) gin.HandlerFunc {

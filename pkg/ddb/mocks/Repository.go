@@ -5,8 +5,8 @@ package mocks
 import (
 	context "context"
 
-	ddb "github.com/applike/gosoline/pkg/ddb"
-	mdl "github.com/applike/gosoline/pkg/mdl"
+	ddb "github.com/justtrackio/gosoline/pkg/ddb"
+	mdl "github.com/justtrackio/gosoline/pkg/mdl"
 
 	mock "github.com/stretchr/testify/mock"
 )

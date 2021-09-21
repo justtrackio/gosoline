@@ -3,10 +3,11 @@ package stream
 import (
 	"bufio"
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/log"
 	"os"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type FileSettings struct {
@@ -46,7 +47,6 @@ func (i *fileInput) Run(ctx context.Context) error {
 	}()
 
 	file, err := os.Open(i.settings.Filename)
-
 	if err != nil {
 		i.logger.Error("can not open file: %w", err)
 		return err

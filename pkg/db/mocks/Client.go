@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	db "github.com/applike/gosoline/pkg/db"
+	db "github.com/justtrackio/gosoline/pkg/db"
 	mock "github.com/stretchr/testify/mock"
 
 	sql "database/sql"

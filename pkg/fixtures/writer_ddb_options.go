@@ -1,6 +1,6 @@
 package fixtures
 
-import "github.com/applike/gosoline/pkg/ddb"
+import "github.com/justtrackio/gosoline/pkg/ddb"
 
 type DdbWriterOption func(settings *ddb.Settings)
 

@@ -1,11 +1,12 @@
 package coffin_test
 
 import (
-	"github.com/applike/gosoline/pkg/coffin"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestResolveRecovery(t *testing.T) {

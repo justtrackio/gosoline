@@ -7,13 +7,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/fixtures"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/test"
-	gosoAssert "github.com/applike/gosoline/pkg/test/assert"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/test"
+	gosoAssert "github.com/justtrackio/gosoline/pkg/test/assert"
 	"github.com/stretchr/testify/suite"
 )
 

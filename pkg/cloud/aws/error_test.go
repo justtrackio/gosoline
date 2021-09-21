@@ -2,18 +2,19 @@ package aws_test
 
 import (
 	"fmt"
-	cloudAws "github.com/applike/gosoline/pkg/cloud/aws"
-	"github.com/applike/gosoline/pkg/exec"
+	"net"
+	"net/http"
+	"testing"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	cloudAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/stretchr/testify/assert"
-	"net"
-	"net/http"
-	"testing"
 )
 
 type awsErr struct {
@@ -113,7 +114,6 @@ func TestIsUsedClosedConnectionError(t *testing.T) {
 			Transport: &http.Transport{
 				DialTLS: func(network, addr string) (net.Conn, error) {
 					conn, err := net.Dial(ln.Addr().Network(), ln.Addr().String())
-
 					if err != nil {
 						return nil, err
 					}

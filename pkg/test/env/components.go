@@ -2,11 +2,12 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/stretchr/testify/assert"
 )
 
 var componentFactories = map[string]componentFactory{}
@@ -106,7 +107,7 @@ func (s componentSkeleton) id() string {
 func buildComponentSkeletons(manager *ComponentsConfigManager) ([]*componentSkeleton, error) {
 	var err error
 	var allSettings []ComponentBaseSettingsAware
-	var skeletons = make([]*componentSkeleton, 0)
+	skeletons := make([]*componentSkeleton, 0)
 
 	if allSettings, err = manager.GetAllSettings(); err != nil {
 		return nil, fmt.Errorf("can not read settings for components: %w", err)

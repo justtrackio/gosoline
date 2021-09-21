@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	db_repo "github.com/applike/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 
 	mock "github.com/stretchr/testify/mock"
 )

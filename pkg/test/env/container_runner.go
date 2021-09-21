@@ -2,18 +2,19 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/coffin"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/uuid"
-	"github.com/cenkalti/backoff"
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
 	"net"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/cenkalti/backoff"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/uuid"
+	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
 )
 
 type containerConfig struct {
@@ -91,7 +92,6 @@ func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner,
 	config.UnmarshalKey("test.container_runner", settings)
 
 	pool, err := dockertest.NewPool(settings.Endpoint)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not create docker pool: %w", err)
 	}
@@ -173,7 +173,6 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string,
 		hc.AutoRemove = true
 		hc.Tmpfs = tmpfsConfig
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
 	}
@@ -188,7 +187,6 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string,
 	}
 
 	resolvedBindings, err := r.resolveBindings(resource, config.PortBindings)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not resolve bindings: %w", err)
 	}
@@ -240,7 +238,7 @@ func (r *containerRunner) expireAfter(resource *dockertest.Resource, expireAfter
 
 func (r *containerRunner) resolveBindings(resource *dockertest.Resource, bindings portBindings) (map[string]containerBinding, error) {
 	var err error
-	var resolvedAddresses = make(map[string]containerBinding)
+	resolvedAddresses := make(map[string]containerBinding)
 
 	for containerPort := range bindings {
 		if resolvedAddresses[containerPort], err = r.resolveBinding(resource, containerPort); err != nil {
@@ -298,7 +296,6 @@ func (r *containerRunner) waitUntilHealthy(container *container, healthCheck Com
 	err := backoff.RetryNotify(func() error {
 		return healthCheck(container)
 	}, backoffSetting, notify)
-
 	if err != nil {
 		return err
 	}

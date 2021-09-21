@@ -2,7 +2,8 @@ package validation
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/db-repo"
+
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 )
 
 type OperationValidatingRepository struct {
@@ -19,7 +20,6 @@ func NewOperationValidatingRepository(validator Validator, repo db_repo.Reposito
 
 func (r OperationValidatingRepository) Create(ctx context.Context, value db_repo.ModelBased) error {
 	err := r.validator.IsValid(ctx, value, db_repo.Create)
-
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,6 @@ func (r OperationValidatingRepository) Create(ctx context.Context, value db_repo
 
 func (r OperationValidatingRepository) Update(ctx context.Context, value db_repo.ModelBased) error {
 	err := r.validator.IsValid(ctx, value, db_repo.Update)
-
 	if err != nil {
 		return err
 	}
@@ -39,7 +38,6 @@ func (r OperationValidatingRepository) Update(ctx context.Context, value db_repo
 
 func (r OperationValidatingRepository) Delete(ctx context.Context, value db_repo.ModelBased) error {
 	err := r.validator.IsValid(ctx, value, db_repo.Delete)
-
 	if err != nil {
 		return err
 	}

@@ -2,10 +2,11 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/stream"
 	"io/ioutil"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
 type streamInputComponent struct {
@@ -24,7 +25,6 @@ func (s *streamInputComponent) CfgOptions() []cfg.Option {
 
 func (s *streamInputComponent) Publish(body interface{}, attributes map[string]interface{}) {
 	bytes, err := json.Marshal(body)
-
 	if err != nil {
 		s.failNow(err.Error(), "can not marshal message body for publishing")
 	}
@@ -44,7 +44,6 @@ func (s *streamInputComponent) PublishAndStop(body interface{}, attributes map[s
 
 func (s *streamInputComponent) PublishFromJsonFile(fileName string) {
 	bytes, err := ioutil.ReadFile(fileName)
-
 	if err != nil {
 		s.failNow(err.Error(), "can not open json file to publish messages")
 	}

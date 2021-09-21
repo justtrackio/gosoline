@@ -4,11 +4,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/stream"
 	awsLambda "github.com/aws/aws-lambda-go/lambda"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
 type HandlerFactory func(config cfg.Config, logger log.Logger) (interface{}, error)

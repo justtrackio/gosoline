@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/applike/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/stretchr/testify/assert"
 )
 

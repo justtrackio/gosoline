@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	ipread "github.com/applike/gosoline/pkg/ipread"
+	ipread "github.com/justtrackio/gosoline/pkg/ipread"
 	mock "github.com/stretchr/testify/mock"
 )
 

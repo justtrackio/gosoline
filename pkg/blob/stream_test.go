@@ -1,13 +1,14 @@
 package blob_test
 
 import (
-	"github.com/applike/gosoline/pkg/blob"
-	"github.com/applike/gosoline/pkg/blob/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"io"
 	"sync"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/blob"
+	"github.com/justtrackio/gosoline/pkg/blob/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestCloseOnce(t *testing.T) {

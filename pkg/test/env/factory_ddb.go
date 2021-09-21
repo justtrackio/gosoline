@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	toxiproxy "github.com/Shopify/toxiproxy/client"
-	"github.com/applike/gosoline/pkg/cfg"
-	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func init() {

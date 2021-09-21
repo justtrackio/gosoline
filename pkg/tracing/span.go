@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cfg"
 	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 //go:generate mockery --name Span

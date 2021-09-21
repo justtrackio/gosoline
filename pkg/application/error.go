@@ -1,10 +1,11 @@
 package application
 
 import (
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/metric"
 	"os"
+
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
 type ErrorHandler func(msg string, args ...interface{})

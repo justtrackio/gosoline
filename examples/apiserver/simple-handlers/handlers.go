@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/applike/gosoline/pkg/apiserver/crud"
-	"github.com/applike/gosoline/pkg/db-repo"
+
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/apiserver/crud"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 )
 
 type JsonResponseFromMapHandler struct{}
@@ -26,10 +27,12 @@ func (h *JsonResponseFromStructHandler) Handle(requestContext context.Context, r
 	return apiserver.NewJsonResponse(obj), nil
 }
 
-type JsonInputHandler struct{}
-type inputEntity struct {
-	Message string `form:"message" binding:"required"`
-}
+type (
+	JsonInputHandler struct{}
+	inputEntity      struct {
+		Message string `form:"message" binding:"required"`
+	}
+)
 
 func (h *JsonInputHandler) GetInput() interface{} {
 	return &inputEntity{}
@@ -61,6 +64,7 @@ type MyEntityCreateInput struct {
 	Prop1 string `json:"prop1"`
 	Prop2 string `json:"prop2"`
 }
+
 type MyEntityUpdateInput struct {
 	Prop1 string `json:"prop1"`
 }

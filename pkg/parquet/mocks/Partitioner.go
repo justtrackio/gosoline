@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	parquet "github.com/applike/gosoline/pkg/parquet"
+	parquet "github.com/justtrackio/gosoline/pkg/parquet"
 	mock "github.com/stretchr/testify/mock"
 )
 

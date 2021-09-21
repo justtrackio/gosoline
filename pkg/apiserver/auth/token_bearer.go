@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/subtle"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (
@@ -58,8 +59,10 @@ func (i InvalidTokenErr) As(target interface{}) bool {
 	return ok
 }
 
-type TokenBearerProvider func(ctx context.Context, key string, token string) (TokenBearer, error)
-type ModelProvider func() TokenBearer
+type (
+	TokenBearerProvider func(ctx context.Context, key string, token string) (TokenBearer, error)
+	ModelProvider       func() TokenBearer
+)
 
 func NewTokenBearerHandler(config cfg.Config, logger log.Logger, provider TokenBearerProvider) gin.HandlerFunc {
 	auth := NewTokenBearerAuthenticator(config, logger, provider)
@@ -105,7 +108,6 @@ func (a *tokenBearerAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	}
 
 	bearer, err := a.provider(ginCtx.Request.Context(), bearerId, token)
-
 	if err != nil {
 		return false, InvalidTokenErr{}
 	}

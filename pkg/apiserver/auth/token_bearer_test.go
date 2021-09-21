@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/applike/gosoline/pkg/apiserver/auth"
-	"github.com/applike/gosoline/pkg/ddb"
-	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
-	kvStoreMocks "github.com/applike/gosoline/pkg/kvstore/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"net/http"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/apiserver/auth"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	ddbMocks "github.com/justtrackio/gosoline/pkg/ddb/mocks"
+	kvStoreMocks "github.com/justtrackio/gosoline/pkg/kvstore/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 type bearer struct {

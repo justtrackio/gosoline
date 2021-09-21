@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/stretchr/testify/assert"
 )
 

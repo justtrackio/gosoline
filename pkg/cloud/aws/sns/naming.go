@@ -3,7 +3,7 @@ package sns
 import (
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 var GetTopicName = func(appId cfg.AppId, topicId string) string {

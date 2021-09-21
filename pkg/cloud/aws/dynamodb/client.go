@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/appctx"
-	"github.com/applike/gosoline/pkg/cfg"
-	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/appctx"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 //go:generate mockery --name Client

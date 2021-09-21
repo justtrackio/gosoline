@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/cloud/aws/sqs"
-	sqsMocks "github.com/applike/gosoline/pkg/cloud/aws/sqs/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
+	sqsMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/sqs/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
 )
 

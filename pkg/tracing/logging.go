@@ -2,8 +2,9 @@ package tracing
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/log"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func ContextTraceFieldsResolver(ctx context.Context) map[string]interface{} {
@@ -24,8 +25,7 @@ func ContextTraceFieldsResolver(ctx context.Context) map[string]interface{} {
 	}
 }
 
-type LoggerErrorHandler struct {
-}
+type LoggerErrorHandler struct{}
 
 func NewLoggerErrorHandler() *LoggerErrorHandler {
 	return &LoggerErrorHandler{}

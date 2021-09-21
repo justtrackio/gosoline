@@ -1,10 +1,11 @@
 package env_test
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/test/env"
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/test/env"
+	"github.com/stretchr/testify/suite"
 )
 
 type ComponentsConfigManagerTestSuite struct {

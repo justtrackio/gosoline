@@ -1,12 +1,12 @@
 package env
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
-	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type S3Component struct {

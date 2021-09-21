@@ -5,8 +5,8 @@ package mocks
 import (
 	context "context"
 
-	crud "github.com/applike/gosoline/pkg/apiserver/crud"
-	db_repo "github.com/applike/gosoline/pkg/db-repo"
+	crud "github.com/justtrackio/gosoline/pkg/apiserver/crud"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 
 	mock "github.com/stretchr/testify/mock"
 )

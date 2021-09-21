@@ -2,9 +2,10 @@ package fixtures
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/db"
-	"github.com/applike/gosoline/pkg/log"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/db"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (
@@ -29,7 +30,6 @@ func newMysqlPurger(config cfg.Config, logger log.Logger, tableName string) (*my
 
 func (p *mysqlPurger) purgeMysql() error {
 	err := p.setForeignKeyChecks(0)
-
 	if err != nil {
 		p.logger.Error("error disabling foreign key checks: %w", err)
 
@@ -38,7 +38,6 @@ func (p *mysqlPurger) purgeMysql() error {
 
 	defer func() {
 		err := p.setForeignKeyChecks(1)
-
 		if err != nil {
 			p.logger.Error("error enabling foreign key checks: %w", err)
 		}

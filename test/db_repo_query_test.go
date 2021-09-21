@@ -5,13 +5,14 @@ package test_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/test"
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/test"
+	"github.com/stretchr/testify/suite"
 )
 
 var TestModelMetadata = db_repo.Metadata{

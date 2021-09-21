@@ -5,18 +5,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
-	gosoAws "github.com/applike/gosoline/pkg/cloud/aws"
-	gosoKinesis "github.com/applike/gosoline/pkg/cloud/aws/kinesis"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
+	gosoKinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 const kinesisBatchSizeMax = 500

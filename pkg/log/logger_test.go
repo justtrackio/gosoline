@@ -3,18 +3,19 @@ package log_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLoggerIoWriter(t *testing.T) {
-	var buf = &bytes.Buffer{}
-	var handler = log.NewHandlerIoWriter(log.LevelInfo, []string{"main"}, log.FormatterJson, time.RFC3339, buf)
-	var cl = clock.NewFakeClock()
+	buf := &bytes.Buffer{}
+	handler := log.NewHandlerIoWriter(log.LevelInfo, []string{"main"}, log.FormatterJson, time.RFC3339, buf)
+	cl := clock.NewFakeClock()
 
 	logger := log.NewLoggerWithInterfaces(cl, []log.Handler{handler})
 

@@ -1,8 +1,8 @@
 package apiserver
 
 import (
-	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type ErrorHandler func(statusCode int, err error) *Response

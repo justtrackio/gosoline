@@ -2,10 +2,11 @@ package uuid_test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/uuid"
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFromBytes(t *testing.T) {

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
 const (

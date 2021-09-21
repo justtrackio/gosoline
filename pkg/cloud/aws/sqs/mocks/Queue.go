@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	sqs "github.com/applike/gosoline/pkg/cloud/aws/sqs"
+	sqs "github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	mock "github.com/stretchr/testify/mock"
 
 	types "github.com/aws/aws-sdk-go-v2/service/sqs/types"

@@ -3,18 +3,19 @@ package crud_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/applike/gosoline/pkg/apiserver/crud"
-	"github.com/applike/gosoline/pkg/apiserver/crud/mocks"
-	"github.com/applike/gosoline/pkg/db-repo"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/validation"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/apiserver/crud"
+	"github.com/justtrackio/gosoline/pkg/apiserver/crud/mocks"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/validation"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 type Model struct {
@@ -90,7 +91,6 @@ func (h Handler) TransformOutput(model db_repo.ModelBased, _ string) (interface{
 
 func (h Handler) List(_ context.Context, _ *db_repo.QueryBuilder, _ string) (interface{}, error) {
 	date, err := time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-
 	if err != nil {
 		panic(err)
 	}

@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/applike/gosoline/pkg/blob"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/justtrackio/gosoline/pkg/blob"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 //go:generate mockery --name FileRecorder

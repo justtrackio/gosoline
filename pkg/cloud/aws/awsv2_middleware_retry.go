@@ -5,13 +5,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/uuid"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 
-	"github.com/applike/gosoline/pkg/log"
 	awsMiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	awsRetry "github.com/aws/aws-sdk-go-v2/aws/retry"
 	smithyMiddleware "github.com/aws/smithy-go/middleware"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type attemptInfoKey struct{}

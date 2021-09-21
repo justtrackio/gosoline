@@ -2,11 +2,12 @@ package tracing_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/tracing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMessageWithTraceEncoder_Encode(t *testing.T) {

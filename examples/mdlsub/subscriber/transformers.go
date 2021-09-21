@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/mdlsub"
+
+	"github.com/justtrackio/gosoline/pkg/mdlsub"
 )
 
 var Transformers = mdlsub.TransformerMapTypeVersionFactories{
@@ -20,8 +21,7 @@ func (n RandomNumber) GetId() interface{} {
 	return n.Id
 }
 
-type randomNumberTransformer struct {
-}
+type randomNumberTransformer struct{}
 
 func (r randomNumberTransformer) GetInput() interface{} {
 	return &RandomNumber{}

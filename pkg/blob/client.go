@@ -1,15 +1,16 @@
 package blob
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
+	"net/http"
+	"sync"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"net/http"
-	"sync"
-	"time"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 var s3Clients = struct {

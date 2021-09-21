@@ -3,11 +3,12 @@ package apiserver
 import (
 	"errors"
 	"fmt"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/gin-gonic/gin"
 	"io"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func LoggingMiddleware(logger log.Logger) gin.HandlerFunc {
@@ -75,6 +76,7 @@ func LoggingMiddleware(logger log.Logger) gin.HandlerFunc {
 		}
 	}
 }
+
 func getPathRaw(ginCtx *gin.Context) string {
 	path := ginCtx.Request.URL.Path
 

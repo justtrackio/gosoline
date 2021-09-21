@@ -2,14 +2,14 @@ package uuid
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/mdl"
 	"strings"
+
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 func FromBytes(bytes []byte) (string, error) {
 	s := BytesToHex(bytes)
 	result, err := mdl.UuidWithDashes(&s)
-
 	if err != nil {
 		return "", err
 	}

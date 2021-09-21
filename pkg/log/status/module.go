@@ -2,12 +2,13 @@ package status
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/log"
-	"golang.org/x/sys/unix"
 	"os"
 	"os/signal"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"golang.org/x/sys/unix"
 )
 
 type module struct {

@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/currency"
-	"github.com/applike/gosoline/pkg/http"
-	httpMock "github.com/applike/gosoline/pkg/http/mocks"
-	kvStoreMock "github.com/applike/gosoline/pkg/kvstore/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/currency"
+	"github.com/justtrackio/gosoline/pkg/http"
+	httpMock "github.com/justtrackio/gosoline/pkg/http/mocks"
+	kvStoreMock "github.com/justtrackio/gosoline/pkg/kvstore/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var response = `<?xml version="1.0" encoding="UTF-8"?>
@@ -59,6 +60,7 @@ var response = `<?xml version="1.0" encoding="UTF-8"?>
 </Cube>
 </Cube>
 </gesmes:Envelope>`
+
 var historicalResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <gesmes:Envelope xmlns:gesmes="http://www.gesmes.org/xml/2002-08-01" xmlns="http://www.ecb.int/vocabulary/2002-08-01/eurofxref">
    <gesmes:subject>Reference rates</gesmes:subject>
@@ -76,8 +78,10 @@ var historicalResponse = `<?xml version="1.0" encoding="UTF-8"?>
       </Cube>
    </Cube>
 </gesmes:Envelope>`
-var historicalRateKey = "2021-01-02-USD"
-var historicalRateDate = time.Date(2021, time.January, 2, 0, 0, 0, 0, time.Local)
+var (
+	historicalRateKey  = "2021-01-02-USD"
+	historicalRateDate = time.Date(2021, time.January, 2, 0, 0, 0, 0, time.Local)
+)
 
 func TestCurrencyService_ToEur_Calculation(t *testing.T) {
 	store := new(kvStoreMock.KvStore)
@@ -335,7 +339,7 @@ func TestUpdaterService_EnsureHistoricalExchangeRates(t *testing.T) {
 	logger := logMocks.NewLoggerMockedAll()
 	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
-	fakeClock := clock.NewFakeClockAt(time.Date(2021, 05, 27, 0, 0, 0, 0, time.UTC))
+	fakeClock := clock.NewFakeClockAt(time.Date(2021, 0o5, 27, 0, 0, 0, 0, time.UTC))
 
 	keyValyes := map[string]float64{
 		"2021-05-27-USD": 1.2229,
@@ -374,7 +378,7 @@ func TestUpdaterService_EnsureHistoricalExchangeRatesTwoGapDaysAtEnd(t *testing.
 	logger := logMocks.NewLoggerMockedAll()
 	store := new(kvStoreMock.KvStore)
 	client := new(httpMock.Client)
-	fakeClock := clock.NewFakeClockAt(time.Date(2021, 05, 28, 1, 0, 0, 0, time.UTC))
+	fakeClock := clock.NewFakeClockAt(time.Date(2021, 0o5, 28, 1, 0, 0, 0, time.UTC))
 
 	keyValyes := map[string]float64{
 		"2021-05-28-USD": 1.2229,

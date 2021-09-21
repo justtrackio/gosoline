@@ -3,10 +3,11 @@ package log_test
 import (
 	"bytes"
 	"context"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/jonboulle/clockwork"
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/stretchr/testify/suite"
 )
 
 type ContextEnforcingLoggerTestSuite struct {

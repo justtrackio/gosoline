@@ -3,11 +3,12 @@ package env
 import (
 	"bytes"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func init() {
@@ -23,8 +24,7 @@ type wiremockSettings struct {
 	Port  int    `cfg:"port" default:"0"`
 }
 
-type wiremockFactory struct {
-}
+type wiremockFactory struct{}
 
 func (f *wiremockFactory) Detect(_ cfg.Config, _ *ComponentsConfigManager) error {
 	return nil
@@ -79,7 +79,6 @@ func (f *wiremockFactory) Component(_ cfg.Config, logger log.Logger, containers 
 
 	s := settings.(*wiremockSettings)
 	jsonStr, err := ioutil.ReadFile(s.Mocks)
-
 	if err != nil {
 		filename := s.Mocks
 
@@ -93,7 +92,6 @@ func (f *wiremockFactory) Component(_ cfg.Config, logger log.Logger, containers 
 
 	url := f.getUrl(containers["main"].bindings["8080/tcp"])
 	resp, err := http.Post(url+"/mappings/import", "application/json", bytes.NewBuffer(jsonStr))
-
 	if err != nil {
 		return nil, fmt.Errorf("could not send stubs to wiremock: %w", err)
 	}

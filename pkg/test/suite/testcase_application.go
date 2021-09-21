@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/application"
-	"github.com/applike/gosoline/pkg/test/env"
+	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
 )
 

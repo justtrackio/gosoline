@@ -3,11 +3,12 @@ package test
 import (
 	"bytes"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type wiremockSettings struct {
@@ -61,13 +62,11 @@ func (w *wiremockComponent) Start() error {
 		PrintLogs:   w.settings.Debug,
 		ExpireAfter: w.settings.ExpireAfter,
 	})
-
 	if err != nil {
 		return err
 	}
 
 	jsonStr, err := ioutil.ReadFile(w.settings.Mocks)
-
 	if err != nil {
 		filename := w.settings.Mocks
 
@@ -81,7 +80,6 @@ func (w *wiremockComponent) Start() error {
 
 	url := w.getUrl()
 	resp, err := http.Post(url+"/mappings/import", "application/json", bytes.NewBuffer(jsonStr))
-
 	if err != nil {
 		return fmt.Errorf("could not send stubs to wiremock: %w", err)
 	}

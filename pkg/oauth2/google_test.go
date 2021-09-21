@@ -3,12 +3,13 @@ package oauth2
 import (
 	"context"
 	"errors"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/http"
-	httpMocks "github.com/applike/gosoline/pkg/http/mocks"
+	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/http"
+	httpMocks "github.com/justtrackio/gosoline/pkg/http/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestGoogleService_GetAuthRefresh(t *testing.T) {

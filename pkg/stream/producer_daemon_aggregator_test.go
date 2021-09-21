@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"github.com/applike/gosoline/pkg/encoding/base64"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"strings"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/encoding/base64"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/stretchr/testify/assert"
 )
 
 type aggregatorTestCase struct {

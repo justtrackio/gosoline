@@ -1,11 +1,12 @@
 package stream_test
 
 import (
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/applike/gosoline/pkg/stream/testdata"
+	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/stream/testdata"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
-	"testing"
 )
 
 //go:generate protoc --go_out=.. encoding_test.proto

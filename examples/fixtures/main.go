@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/applike/gosoline/pkg/application"
-	"github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/fixtures"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/aws/aws-sdk-go/aws"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type DynamoDbExampleModel struct {

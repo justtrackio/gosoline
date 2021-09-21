@@ -3,15 +3,16 @@ package db_repo_test
 import (
 	"context"
 	"database/sql/driver"
-	goSqlMock "github.com/DATA-DOG/go-sqlmock"
-	"github.com/applike/gosoline/pkg/db-repo"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/jonboulle/clockwork"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	goSqlMock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/tracing"
+	"github.com/stretchr/testify/assert"
 )
 
 type MyTestModel struct {
@@ -103,16 +104,17 @@ var metadatas = map[string]db_repo.Metadata{
 	"hasMany":     HasManyMetadata,
 }
 
-type idMatcher struct {
-}
+type idMatcher struct{}
 
 func (a idMatcher) Match(id driver.Value) bool {
 	return uint(id.(int64)) == *id1 || uint(id.(int64)) == *id42
 }
 
-var id1 = mdl.Uint(1)
-var id42 = mdl.Uint(42)
-var id24 = mdl.Uint(24)
+var (
+	id1  = mdl.Uint(1)
+	id42 = mdl.Uint(42)
+	id24 = mdl.Uint(24)
+)
 
 func TestRepository_Create(t *testing.T) {
 	now := time.Unix(1549964818, 0)

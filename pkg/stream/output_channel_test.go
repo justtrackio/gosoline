@@ -1,11 +1,12 @@
 package stream_test
 
 import (
-	"github.com/applike/gosoline/pkg/log"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/log"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOutputChannel_Simple(t *testing.T) {

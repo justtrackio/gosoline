@@ -10,13 +10,13 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/http"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-resty/resty/v2"
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/http"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
 type ValidateMessageInput struct {

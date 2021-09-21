@@ -3,11 +3,11 @@ package ddb
 import (
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/clock"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
 type QueryOperation struct {

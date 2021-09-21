@@ -3,11 +3,12 @@ package exec_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/hashicorp/go-multierror"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"testing"
+
+	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsRequestCanceled(t *testing.T) {

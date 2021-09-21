@@ -1,8 +1,9 @@
 package cli
 
 import (
-	"github.com/applike/gosoline/pkg/log"
 	"os"
+
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type ErrorHandler func(msg string, args ...interface{})

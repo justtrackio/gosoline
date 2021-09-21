@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/applike/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/application"
 )
 
 func main() {

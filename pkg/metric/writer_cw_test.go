@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	cloudwatchMocks "github.com/applike/gosoline/pkg/cloud/aws/cloudwatch/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/metric"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	cloudwatchMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/metric"
 )
 
 func TestOutput_Write(t *testing.T) {

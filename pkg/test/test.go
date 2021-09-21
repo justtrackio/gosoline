@@ -2,14 +2,14 @@ package test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/test/env"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/test/env"
 )
 
 func Boot(configFilenames ...string) (*Mocks, error) {
 	config := cfg.New()
 	logger, err := env.NewConsoleLogger()
-
 	if err != nil {
 		return nil, fmt.Errorf("could not create console logger: %w", err)
 	}
@@ -20,7 +20,6 @@ func Boot(configFilenames ...string) (*Mocks, error) {
 
 	for _, filename := range configFilenames {
 		err := config.Option(cfg.WithConfigFile(filename, "yml"))
-
 		if err != nil {
 			return nil, fmt.Errorf("failed to read config from file %s: %w", filename, err)
 		}

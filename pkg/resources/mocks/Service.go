@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	resources "github.com/applike/gosoline/pkg/resources"
+	resources "github.com/justtrackio/gosoline/pkg/resources"
 	mock "github.com/stretchr/testify/mock"
 )
 

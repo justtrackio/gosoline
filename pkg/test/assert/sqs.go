@@ -1,10 +1,11 @@
 package assert
 
 import (
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/stretchr/testify/assert"
 )
 
 func SqsQueueExists(t *testing.T, client *sqs.SQS, queueName string) {

@@ -3,9 +3,10 @@ package redis
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
 	"net"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (
@@ -18,8 +19,10 @@ var dialers = map[string]Dialer{
 	DialerTcp: dialerTcp,
 }
 
-type Dialer func(logger log.Logger, settings *Settings) func(context.Context, string, string) (net.Conn, error)
-type SrvNamingFactory func(appId cfg.AppId, name string) string
+type (
+	Dialer           func(logger log.Logger, settings *Settings) func(context.Context, string, string) (net.Conn, error)
+	SrvNamingFactory func(appId cfg.AppId, name string) string
+)
 
 var srvNamingStrategy = func(appId cfg.AppId, name string) string {
 	return fmt.Sprintf("%s.%s.redis.%s.%s", name, appId.Application, appId.Environment, appId.Family)
@@ -35,7 +38,6 @@ func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, 
 		}
 
 		_, srvs, err := net.LookupSRV("", "", address)
-
 		if err != nil {
 			return nil, fmt.Errorf("can't lookup srv query for address %s: %w", address, err)
 		}

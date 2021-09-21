@@ -1,6 +1,6 @@
 package suite
 
-import "github.com/applike/gosoline/pkg/kernel"
+import "github.com/justtrackio/gosoline/pkg/kernel"
 
 type AppUnderTest interface {
 	Stop()

@@ -1,9 +1,10 @@
 package cast_test
 
 import (
-	"github.com/applike/gosoline/pkg/cast"
-	"github.com/applike/gosoline/pkg/test/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cast"
+	"github.com/justtrackio/gosoline/pkg/test/assert"
 )
 
 func TestToSlicePtrString(t *testing.T) {

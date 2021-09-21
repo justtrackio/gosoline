@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/cenkalti/backoff"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 type BackoffExecutor struct {

@@ -1,10 +1,11 @@
 package resources_test
 
 import (
-	configMocks "github.com/applike/gosoline/pkg/cfg/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/resources"
 	"testing"
+
+	configMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/resources"
 )
 
 func TestGetResourcesManagerClient(t *testing.T) {

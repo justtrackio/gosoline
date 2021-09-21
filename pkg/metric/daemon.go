@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kernel/common"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel/common"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const defaultTimeFormat = "2006-01-02T15:04Z07:00"

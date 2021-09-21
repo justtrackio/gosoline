@@ -2,12 +2,15 @@ package stream
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/encoding/json"
 	"sync"
+
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
-var inMemoryOutputsLock sync.Mutex
-var inMemoryOutputs = make(map[string]*InMemoryOutput)
+var (
+	inMemoryOutputsLock sync.Mutex
+	inMemoryOutputs     = make(map[string]*InMemoryOutput)
+)
 
 func ResetInMemoryOutputs() {
 	inMemoryOutputsLock.Lock()
@@ -88,7 +91,6 @@ func (o *InMemoryOutput) Write(_ context.Context, batch []WritableMessage) error
 		if jsonMsg, ok := msg.(rawJsonMessage); ok {
 			streamMsg := &Message{}
 			err := json.Unmarshal(jsonMsg.body, streamMsg)
-
 			if err != nil {
 				return err
 			}
@@ -99,7 +101,6 @@ func (o *InMemoryOutput) Write(_ context.Context, batch []WritableMessage) error
 		}
 
 		body, err := msg.MarshalToString()
-
 		if err != nil {
 			return err
 		}

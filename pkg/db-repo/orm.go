@@ -3,11 +3,11 @@ package db_repo
 import (
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/db"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/iancoleman/strcase"
 	"github.com/jinzhu/gorm"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/db"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type OrmMigrationSetting struct {

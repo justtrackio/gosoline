@@ -3,14 +3,15 @@ package tracing
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/log"
+	"net"
+	"net/http"
+
 	"github.com/aws/aws-xray-sdk-go/strategy/ctxmissing"
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
 	"github.com/aws/aws-xray-sdk-go/xray"
-	"net"
-	"net/http"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (
@@ -63,7 +64,6 @@ func NewAwsTracerWithInterfaces(logger log.Logger, appId cfg.AppId, settings *XR
 	}
 
 	streamingStrategy, err := xray.NewDefaultStreamingStrategyWithMaxSubsegmentCount(settings.StreamingMaxSubsegmentCount)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not create default xray streaming strategy: %w", err)
 	}
@@ -174,7 +174,6 @@ func lookupAddr(appId cfg.AppId, settings *TracerSettings) string {
 		}
 
 		_, srvs, err := net.LookupSRV("", "", addressValue)
-
 		if err != nil {
 			panic(err)
 		}

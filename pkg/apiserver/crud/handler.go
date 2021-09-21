@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/jinzhu/inflection"
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const DefaultApiView = "api"

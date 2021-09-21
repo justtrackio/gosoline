@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/jmoiron/sqlx"
 	"sync"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type Uri struct {
@@ -94,7 +95,6 @@ func NewConnectionWithInterfaces(settings Settings) (*sqlx.DB, error) {
 	metricDriverId := newMetricDriver(genDriver)
 
 	db, err := sqlx.Connect(metricDriverId, dsn)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not connect: %w", err)
 	}

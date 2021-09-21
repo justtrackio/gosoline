@@ -2,16 +2,17 @@ package auth_test
 
 import (
 	"errors"
-	"github.com/applike/gosoline/pkg/apiserver/auth"
-	authMocks "github.com/applike/gosoline/pkg/apiserver/auth/mocks"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/log/mocks"
+	"net/http"
+	"testing"
+
 	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/apiserver/auth"
+	authMocks "github.com/justtrackio/gosoline/pkg/apiserver/auth/mocks"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/oauth2/v2"
-	"net/http"
-	"testing"
 )
 
 func getMocks(idToken string) (log.Logger, *authMocks.TokenInfoProvider, *gin.Context) {

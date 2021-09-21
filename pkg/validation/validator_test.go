@@ -3,18 +3,18 @@ package validation_test
 import (
 	"context"
 	"errors"
-	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/applike/gosoline/pkg/validation"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/tracing"
+	"github.com/justtrackio/gosoline/pkg/validation"
+	"github.com/stretchr/testify/assert"
 )
 
 type Model struct {
 	Name string
 }
 
-type NameRule struct {
-}
+type NameRule struct{}
 
 func (NameRule) IsValid(ctx context.Context, model interface{}) error {
 	m := model.(*Model)

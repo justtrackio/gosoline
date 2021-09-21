@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/applike/gosoline/pkg/db"
-	"github.com/applike/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 )
 
 const (

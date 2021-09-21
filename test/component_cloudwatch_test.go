@@ -4,10 +4,11 @@
 package test_test
 
 import (
-	pkgTest "github.com/applike/gosoline/pkg/test"
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	pkgTest "github.com/justtrackio/gosoline/pkg/test"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_cloudwatch(t *testing.T) {

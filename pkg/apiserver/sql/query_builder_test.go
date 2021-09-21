@@ -1,10 +1,11 @@
 package sql_test
 
 import (
-	"github.com/applike/gosoline/pkg/apiserver/sql"
-	"github.com/applike/gosoline/pkg/db-repo"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/apiserver/sql"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestListQueryBuilder_Build_TableNameMissing(t *testing.T) {

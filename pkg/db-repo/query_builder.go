@@ -1,7 +1,7 @@
 package db_repo
 
 import (
-	"github.com/applike/gosoline/pkg/db"
+	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/thoas/go-funk"
 )
 

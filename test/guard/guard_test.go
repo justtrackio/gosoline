@@ -9,9 +9,9 @@ import (
 
 	"github.com/ory/ladon"
 
-	"github.com/applike/gosoline/pkg/guard"
+	"github.com/justtrackio/gosoline/pkg/guard"
 
-	"github.com/applike/gosoline/pkg/test/suite"
+	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
 type GuardTestSuite struct {

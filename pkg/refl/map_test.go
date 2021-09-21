@@ -1,9 +1,10 @@
 package refl_test
 
 import (
-	"github.com/applike/gosoline/pkg/refl"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/refl"
+	"github.com/stretchr/testify/assert"
 )
 
 type Item struct {

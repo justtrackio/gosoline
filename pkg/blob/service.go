@@ -2,12 +2,13 @@ package blob
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/thoas/go-funk"
 )
 
@@ -54,7 +55,6 @@ func (s *Service) deleteChunk(bucket string, objects []*s3.Object) error {
 	}
 
 	out, err := s.client.DeleteObjects(input)
-
 	if err != nil {
 		return fmt.Errorf("wasn't able to delete objects from bucket %s: %w", bucket, err)
 	}
@@ -77,7 +77,6 @@ func (s *Service) ListObjects(bucket string, prefix string) ([]*s3.Object, error
 
 	for {
 		out, err := s.client.ListObjectsV2(input)
-
 		if err != nil {
 			return nil, fmt.Errorf("can not list objects in s3 bucket: %w", err)
 		}

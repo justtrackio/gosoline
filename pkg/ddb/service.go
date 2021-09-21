@@ -7,12 +7,12 @@ import (
 	"sort"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	gosoDynamodb "github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/thoas/go-funk"
 )
 

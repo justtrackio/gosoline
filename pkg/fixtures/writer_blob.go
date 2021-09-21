@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/applike/gosoline/pkg/blob"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/justtrackio/gosoline/pkg/blob"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type BlobFixturesSettings struct {

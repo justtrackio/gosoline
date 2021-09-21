@@ -2,10 +2,11 @@ package stream
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud/aws/kinesis"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/log"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type kinesisInput struct {
@@ -17,7 +18,6 @@ func NewKinesisInput(config cfg.Config, logger log.Logger, factory kinesis.Kinsu
 	channel := make(chan *Message)
 	sink := NewKinesisMessageHandler(channel)
 	input, err := kinesis.NewReader(config, logger, factory, sink, settings)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kinsumer input: %w", err)
 	}
@@ -45,7 +45,6 @@ func NewKinesisMessageHandler(channel chan *Message) kinesis.MessageHandler {
 func (s kinesisMessageHandler) Handle(rawMessage []byte) error {
 	msg := Message{}
 	err := json.Unmarshal(rawMessage, &msg)
-
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal message: %w", err)
 	}

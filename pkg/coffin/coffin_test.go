@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/applike/gosoline/pkg/coffin"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCoffin_New(t *testing.T) {

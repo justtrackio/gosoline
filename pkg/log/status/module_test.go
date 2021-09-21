@@ -2,17 +2,18 @@ package status_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/application"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/coffin"
-	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/log"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/log/status"
+	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/log/status"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/sys/unix"
-	"testing"
 )
 
 func TestModule(t *testing.T) {

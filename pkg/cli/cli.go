@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/applike/gosoline/pkg/appctx"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/appctx"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel"
 )
 
 type kernelSettings struct {

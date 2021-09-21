@@ -1,11 +1,12 @@
 package parquet_test
 
 import (
-	"github.com/applike/gosoline/pkg/parquet"
-	"github.com/jonboulle/clockwork"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/parquet"
+	"github.com/stretchr/testify/assert"
 )
 
 type testDataType struct {

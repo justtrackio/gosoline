@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/uuid"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 	"github.com/stretchr/testify/assert"
 )
 

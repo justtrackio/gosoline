@@ -1,13 +1,14 @@
 package resources
 
 import (
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud"
-	"github.com/applike/gosoline/pkg/log"
+	"sync"
+
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi/resourcegroupstaggingapiiface"
-	"sync"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 var rgtClient = struct {

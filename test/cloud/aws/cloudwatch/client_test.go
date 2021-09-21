@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/cloud/aws/cloudwatch"
-	"github.com/applike/gosoline/pkg/test/suite"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCw "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
+	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
 type ClientTestSuite struct {

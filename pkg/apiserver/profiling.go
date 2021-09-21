@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kernel"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type ProfilingSettings struct {

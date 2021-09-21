@@ -3,7 +3,7 @@ package stream
 import (
 	"context"
 
-	"github.com/applike/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type ConsumerAcknowledge struct {

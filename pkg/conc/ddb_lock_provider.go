@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/uuid"
 	"github.com/cenkalti/backoff"
 	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 type DdbLockItem struct {

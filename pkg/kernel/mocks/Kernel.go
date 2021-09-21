@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	kernel "github.com/applike/gosoline/pkg/kernel"
+	kernel "github.com/justtrackio/gosoline/pkg/kernel"
 	mock "github.com/stretchr/testify/mock"
 )
 

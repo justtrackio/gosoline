@@ -2,11 +2,12 @@ package kvstore_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kvstore"
+	"github.com/stretchr/testify/suite"
 )
 
 type InMemoryKvStoreTestSuite struct {
@@ -34,7 +35,7 @@ func (s *InMemoryKvStoreTestSuite) TestStoreBasic() {
 	s.NoError(err, "there should be no error on Get")
 	s.True(ok, "the item should be in the store")
 
-	var v2 = 1.2
+	v2 := 1.2
 	err = s.store.Put(ctx, "key", &v2)
 	s.NoError(err, "there should be no error on Put")
 

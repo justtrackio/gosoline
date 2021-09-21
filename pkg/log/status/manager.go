@@ -2,10 +2,11 @@ package status
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/coffin"
-	"github.com/applike/gosoline/pkg/log"
 	"sort"
 	"sync"
+
+	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 //go:generate mockery --name Manager

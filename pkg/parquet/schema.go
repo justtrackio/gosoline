@@ -3,11 +3,12 @@ package parquet
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/refl"
 	"math/big"
 	"reflect"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
 const (

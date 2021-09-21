@@ -2,19 +2,20 @@ package test
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/test/env"
-	"github.com/applike/gosoline/pkg/uuid"
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
-	"github.com/spf13/cast"
 	goLog "log"
 	"net"
 	"os"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/test/env"
+	"github.com/justtrackio/gosoline/pkg/uuid"
+	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
+	"github.com/spf13/cast"
 )
 
 type portBindingLegacy map[string]string
@@ -67,7 +68,6 @@ type dockerRunnerLegacy struct {
 
 func NewDockerRunnerLegacy(config cfg.Config) *dockerRunnerLegacy {
 	pool, err := dockertest.NewPool("")
-
 	if err != nil {
 		goLog.Fatalf("could not connect to docker: %s", err)
 	}
@@ -129,7 +129,6 @@ func (d *dockerRunnerLegacy) Run(name string, config *containerConfigLegacy) err
 
 	if len(config.Tmpfs) > 0 {
 		tmpfs, err := cast.ToStringMapStringE(config.Tmpfs)
-
 		if err != nil {
 			return fmt.Errorf("can not cast tmpfs config to map[string]string: %w", err)
 		}
@@ -140,7 +139,6 @@ func (d *dockerRunnerLegacy) Run(name string, config *containerConfigLegacy) err
 	}
 
 	resource, err := d.pool.RunWithOptions(runOptions, hostConfigs...)
-
 	if err != nil {
 		return fmt.Errorf("could not start container %s: %w", containerName, err)
 	}
@@ -224,7 +222,6 @@ func (d *dockerRunnerLegacy) printContainerLogs(resource *dockertest.Resource) e
 		Stdout:       true,
 		Stderr:       true,
 	})
-
 	if err != nil {
 		return fmt.Errorf("could not print docker logs for container %s: %w", resource.Container.Name, err)
 	}
@@ -273,7 +270,6 @@ func (d *dockerRunnerLegacy) isReachable(address string, timeout time.Duration) 
 		}
 
 		err := conn.Close()
-
 		if err != nil {
 			d.logger.Error("failed to close connection: %w", err)
 		}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/cloud/aws/sqs"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	"github.com/stretchr/testify/assert"
 )
 

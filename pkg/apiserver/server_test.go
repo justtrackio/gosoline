@@ -3,18 +3,19 @@ package apiserver_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/applike/gosoline/pkg/log"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/tracing"
-	tracingMocks "github.com/applike/gosoline/pkg/tracing/mocks"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/log"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/tracing"
+	tracingMocks "github.com/justtrackio/gosoline/pkg/tracing/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type ServerTestSuite struct {

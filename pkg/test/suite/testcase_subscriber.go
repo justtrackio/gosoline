@@ -6,13 +6,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/applike/gosoline/pkg/db-repo"
-	"github.com/applike/gosoline/pkg/ddb"
-	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/applike/gosoline/pkg/mdl"
-	"github.com/applike/gosoline/pkg/mdlsub"
-	"github.com/applike/gosoline/pkg/test/env"
 	"github.com/jinzhu/gorm"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	"github.com/justtrackio/gosoline/pkg/kvstore"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/mdlsub"
+	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -7,14 +7,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	gosoCloudwatch "github.com/applike/gosoline/pkg/cloud/aws/cloudwatch"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoCloudwatch "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (

@@ -3,9 +3,10 @@ package env
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
+
 	"github.com/go-redis/redis/v8"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func init() {
@@ -20,8 +21,7 @@ type redisSettings struct {
 	Port int `cfg:"port" default:"0"`
 }
 
-type redisFactory struct {
-}
+type redisFactory struct{}
 
 func (f *redisFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
 	if !config.IsSet("redis") {

@@ -2,13 +2,14 @@ package kvstore_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/ddb"
-	ddbMocks "github.com/applike/gosoline/pkg/ddb/mocks"
-	"github.com/applike/gosoline/pkg/kvstore"
+	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/ddb"
+	ddbMocks "github.com/justtrackio/gosoline/pkg/ddb/mocks"
+	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestDdbKvStore_Contains(t *testing.T) {

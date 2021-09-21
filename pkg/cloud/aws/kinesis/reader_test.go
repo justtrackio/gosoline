@@ -3,18 +3,19 @@ package kinesis_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	configMocks "github.com/applike/gosoline/pkg/cfg/mocks"
-	"github.com/applike/gosoline/pkg/cloud/aws/kinesis"
-	kinesisMocks "github.com/applike/gosoline/pkg/cloud/aws/kinesis/mocks"
-	"github.com/applike/gosoline/pkg/encoding/json"
-	"github.com/applike/gosoline/pkg/log"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/stream"
+	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	configMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
+	kinesisMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis/mocks"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/log"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func mockFactory(kinsumerMock kinesis.Kinsumer) kinesis.KinsumerFactory {

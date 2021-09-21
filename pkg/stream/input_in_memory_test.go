@@ -2,9 +2,10 @@ package stream_test
 
 import (
 	"context"
-	"github.com/applike/gosoline/pkg/stream"
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/stretchr/testify/suite"
 )
 
 type InMemoryInputTestSuite struct {

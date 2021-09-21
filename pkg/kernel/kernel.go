@@ -10,10 +10,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/coffin"
-	"github.com/applike/gosoline/pkg/conc"
-	"github.com/applike/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"golang.org/x/sys/unix"
 )
 

@@ -1,9 +1,10 @@
 package auth_test
 
 import (
-	"github.com/applike/gosoline/pkg/apiserver/auth"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/apiserver/auth"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUncheckedKey_Authenticate_InvalidKeyError(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/applike/gosoline/pkg/mdl"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type metadataFactory struct{}

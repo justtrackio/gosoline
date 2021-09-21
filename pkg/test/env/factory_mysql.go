@@ -2,11 +2,12 @@ package env
 
 import (
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
+	"net/url"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	"net/url"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func init() {
@@ -30,8 +31,7 @@ type mysqlSettings struct {
 	Credentials mysqlCredentials `cfg:"credentials"`
 }
 
-type mysqlFactory struct {
-}
+type mysqlFactory struct{}
 
 func (f mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
 	if !config.IsSet("db") {
@@ -112,7 +112,6 @@ func (f mysqlFactory) healthCheck(settings interface{}) ComponentHealthCheck {
 		s := settings.(*mysqlSettings)
 		binding := container.bindings["3306/tcp"]
 		client, err := f.connection(s, binding)
-
 		if err != nil {
 			return fmt.Errorf("can not create client: %w", err)
 		}
@@ -125,7 +124,6 @@ func (f mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[strin
 	s := settings.(*mysqlSettings)
 	binding := containers["main"].bindings["3306/tcp"]
 	client, err := f.connection(s, binding)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not create client: %w", err)
 	}
@@ -156,7 +154,6 @@ func (f mysqlFactory) connection(settings *mysqlSettings, binding containerBindi
 	dsn.RawQuery = qry.Encode()
 
 	client, err := sqlx.Open("mysql", dsn.String()[2:])
-
 	if err != nil {
 		return nil, fmt.Errorf("can not create client: %w", err)
 	}

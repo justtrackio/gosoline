@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	redis "github.com/applike/gosoline/pkg/redis"
+	redis "github.com/justtrackio/gosoline/pkg/redis"
 	mock "github.com/stretchr/testify/mock"
 
 	time "time"

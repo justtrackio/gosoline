@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/applike/gosoline/pkg/clock"
-	"github.com/applike/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type LoggerSettings struct {

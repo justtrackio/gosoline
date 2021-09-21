@@ -3,10 +3,10 @@ package application
 import (
 	"time"
 
-	"github.com/applike/gosoline/pkg/apiserver"
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/mdlsub"
-	"github.com/applike/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/mdlsub"
+	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
 func RunApiServer(definer apiserver.Definer, options ...Option) {

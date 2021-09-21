@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/coffin"
-	"github.com/applike/gosoline/pkg/conc"
-	"github.com/applike/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 var ErrKernelStopping = fmt.Errorf("stopping kernel")

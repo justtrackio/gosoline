@@ -3,8 +3,8 @@ package stream
 import (
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cloud/aws/sns"
-	"github.com/applike/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
+	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
 const (

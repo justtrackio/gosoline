@@ -3,8 +3,8 @@
 package mocks
 
 import (
-	ddb "github.com/applike/gosoline/pkg/ddb"
 	dynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	ddb "github.com/justtrackio/gosoline/pkg/ddb"
 
 	expression "github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 

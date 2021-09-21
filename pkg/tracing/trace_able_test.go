@@ -1,10 +1,11 @@
 package tracing_test
 
 import (
-	"github.com/applike/gosoline/pkg/tracing"
-	"github.com/applike/gosoline/pkg/uuid"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/tracing"
+	"github.com/justtrackio/gosoline/pkg/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTrace(t *testing.T) {

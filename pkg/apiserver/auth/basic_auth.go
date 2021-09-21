@@ -3,11 +3,12 @@ package auth
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (
@@ -88,7 +89,6 @@ func (a *basicAuthAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	}
 
 	auth, err := base64.StdEncoding.DecodeString(basicAuth[6:])
-
 	if err != nil {
 		return false, err
 	}

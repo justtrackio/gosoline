@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/applike/gosoline/pkg/mapx"
-	"github.com/applike/gosoline/pkg/refl"
 	"github.com/go-playground/validator/v10"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/mapx"
+	"github.com/justtrackio/gosoline/pkg/refl"
 	"github.com/spf13/cast"
 	"github.com/thoas/go-funk"
 )

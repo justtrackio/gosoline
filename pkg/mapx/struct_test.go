@@ -1,16 +1,16 @@
 package mapx_test
 
 import (
-	"github.com/applike/gosoline/pkg/mapx"
-	"github.com/jonboulle/clockwork"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/mapx"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewMapStructIONoPointer(t *testing.T) {
-	source := struct {
-	}{}
+	source := struct{}{}
 
 	_, err := mapx.NewStruct(source, &mapx.StructSettings{})
 	assert.EqualError(t, err, "the target value has to be a pointer")

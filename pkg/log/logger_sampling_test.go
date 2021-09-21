@@ -1,11 +1,12 @@
 package log_test
 
 import (
-	"github.com/applike/gosoline/pkg/log"
-	"github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/jonboulle/clockwork"
 	"testing"
 	"time"
+
+	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/log/mocks"
 )
 
 func TestSamplingLogger_Info(t *testing.T) {

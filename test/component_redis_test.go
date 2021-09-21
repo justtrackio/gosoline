@@ -5,9 +5,10 @@ package test_test
 
 import (
 	"context"
-	pkgTest "github.com/applike/gosoline/pkg/test"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	pkgTest "github.com/justtrackio/gosoline/pkg/test"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_redis(t *testing.T) {

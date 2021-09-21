@@ -3,7 +3,7 @@ package dx
 import (
 	"fmt"
 
-	"github.com/applike/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
 func init() {
@@ -21,7 +21,7 @@ func AutoCreateConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		return false, nil
 	}
 
-	if err := config.Option(cfg.WithConfigSetting("dx.auto_create", true)); err != nil {
+	if err := config.Option(cfg.WithConfigSetting("dx.auto_create", true, cfg.SkipExisting)); err != nil {
 		return false, fmt.Errorf("could not set dx.auto_create: %w", err)
 	}
 

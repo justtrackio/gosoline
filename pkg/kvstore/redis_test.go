@@ -3,14 +3,15 @@ package kvstore_test
 import (
 	"context"
 	"fmt"
-	"github.com/applike/gosoline/pkg/cfg"
-	"github.com/applike/gosoline/pkg/kvstore"
-	"github.com/applike/gosoline/pkg/mdl"
-	redisMocks "github.com/applike/gosoline/pkg/redis/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kvstore"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+	redisMocks "github.com/justtrackio/gosoline/pkg/redis/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 type Item struct {

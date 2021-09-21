@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/applike/gosoline/pkg/exec"
-	"github.com/applike/gosoline/pkg/log"
 	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type RequestFunction func() (*request.Request, interface{})

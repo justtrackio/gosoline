@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	oauth2 "github.com/applike/gosoline/pkg/oauth2"
+	oauth2 "github.com/justtrackio/gosoline/pkg/oauth2"
 	mock "github.com/stretchr/testify/mock"
 )
 

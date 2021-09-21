@@ -1,9 +1,10 @@
 package conc_test
 
 import (
-	"github.com/applike/gosoline/pkg/conc"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSignalOnce_Signal(t *testing.T) {

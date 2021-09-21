@@ -1,10 +1,11 @@
 package http_test
 
 import (
-	"github.com/applike/gosoline/pkg/http"
-	"github.com/stretchr/testify/assert"
 	"net/url"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/http"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRequest_WithAll(t *testing.T) {

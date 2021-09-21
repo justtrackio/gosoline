@@ -1,14 +1,15 @@
 package resources_test
 
 import (
-	cloudMocks "github.com/applike/gosoline/pkg/cloud/mocks"
-	logMocks "github.com/applike/gosoline/pkg/log/mocks"
-	"github.com/applike/gosoline/pkg/resources"
+	"testing"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
+	cloudMocks "github.com/justtrackio/gosoline/pkg/cloud/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/resources"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestResourcesManager_GetResources(t *testing.T) {

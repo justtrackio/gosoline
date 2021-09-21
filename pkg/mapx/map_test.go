@@ -1,9 +1,10 @@
 package mapx_test
 
 import (
-	"github.com/applike/gosoline/pkg/mapx"
-	"github.com/stretchr/testify/suite"
 	"testing"
+
+	"github.com/justtrackio/gosoline/pkg/mapx"
+	"github.com/stretchr/testify/suite"
 )
 
 type MapTestSuite struct {
