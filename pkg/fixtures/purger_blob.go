@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/blob"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -14,15 +15,22 @@ type blobPurger struct {
 	store       blob.Store
 }
 
-func newBlobPurger(config cfg.Config, logger log.Logger, settings *BlobFixturesSettings) *blobPurger {
-	store := blob.NewStore(config, logger, settings.ConfigName)
-	br := blob.NewBatchRunner(config, logger)
+func newBlobPurger(ctx context.Context, config cfg.Config, logger log.Logger, settings *BlobFixturesSettings) (*blobPurger, error) {
+	store, err := blob.NewStore(ctx, config, logger, settings.ConfigName)
+	if err != nil {
+		return nil, fmt.Errorf("can not create blob store: %w", err)
+	}
+
+	br, err := blob.NewBatchRunner(ctx, config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create blob batch runner: %w", err)
+	}
 
 	return &blobPurger{
 		logger:      logger,
 		batchRunner: br,
 		store:       store,
-	}
+	}, nil
 }
 
 func (p *blobPurger) purge(ctx context.Context) error {
@@ -33,7 +41,7 @@ func (p *blobPurger) purge(ctx context.Context) error {
 		batchRunnerErr = p.batchRunner.Run(ctx)
 	}(ctx)
 
-	err := p.store.DeleteBucket()
+	err := p.store.DeleteBucket(ctx)
 	cancel()
 
 	if batchRunnerErr != nil {

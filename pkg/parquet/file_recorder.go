@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/justtrackio/gosoline/pkg/blob"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -28,7 +27,7 @@ type File struct {
 
 type s3FileRecorder struct {
 	logger   log.Logger
-	s3Client s3iface.S3API
+	s3Client gosoS3.Client
 	lck      sync.Mutex
 	files    []File
 }
@@ -54,13 +53,16 @@ func NewNopRecorder() FileRecorder {
 	return nopRecorder{}
 }
 
-func NewS3FileRecorder(config cfg.Config, logger log.Logger) FileRecorder {
-	s3Client := blob.ProvideS3Client(config)
+func NewS3FileRecorder(ctx context.Context, config cfg.Config, logger log.Logger) (FileRecorder, error) {
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+	}
 
-	return NewS3FileRecorderWithInterfaces(logger, s3Client)
+	return NewS3FileRecorderWithInterfaces(logger, s3Client), nil
 }
 
-func NewS3FileRecorderWithInterfaces(logger log.Logger, s3Client s3iface.S3API) FileRecorder {
+func NewS3FileRecorderWithInterfaces(logger log.Logger, s3Client gosoS3.Client) FileRecorder {
 	return &s3FileRecorder{
 		logger:   logger,
 		s3Client: s3Client,
@@ -94,7 +96,7 @@ func (w *s3FileRecorder) RenameRecordedFiles(ctx context.Context, newPrefix stri
 			CopySource: aws.String(fmt.Sprintf("%s/%s", file.Bucket, file.Key)),
 		}
 
-		if _, err := w.s3Client.CopyObjectWithContext(ctx, copyObjectInput); err != nil {
+		if _, err := w.s3Client.CopyObject(ctx, copyObjectInput); err != nil {
 			return err
 		}
 
@@ -103,7 +105,7 @@ func (w *s3FileRecorder) RenameRecordedFiles(ctx context.Context, newPrefix stri
 			Key:    aws.String(file.Key),
 		}
 
-		if _, err := w.s3Client.DeleteObjectWithContext(ctx, deleteObjectInput); err != nil {
+		if _, err := w.s3Client.DeleteObject(ctx, deleteObjectInput); err != nil {
 			return err
 		}
 	}
@@ -123,7 +125,7 @@ func (w *s3FileRecorder) DeleteRecordedFiles(ctx context.Context) error {
 			Key:    &file.Key,
 		}
 
-		if _, err := w.s3Client.DeleteObjectWithContext(ctx, deleteObjectInput); err != nil {
+		if _, err := w.s3Client.DeleteObject(ctx, deleteObjectInput); err != nil {
 			return err
 		}
 	}

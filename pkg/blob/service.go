@@ -1,34 +1,39 @@
 package blob
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/thoas/go-funk"
 )
 
 type Service struct {
-	client s3iface.S3API
+	client gosoS3.Client
 }
 
-func NewService(config cfg.Config, logger log.Logger) *Service {
-	client := ProvideS3Client(config)
+func NewService(ctx context.Context, config cfg.Config, logger log.Logger) (*Service, error) {
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+	}
 
 	return &Service{
-		client: client,
-	}
+		client: s3Client,
+	}, nil
 }
 
-func (s *Service) DeleteObjects(bucket string, objects []*s3.Object) error {
-	chunks := funk.Chunk(objects, 1000).([][]*s3.Object)
+func (s *Service) DeleteObjects(ctx context.Context, bucket string, objects []*types.Object) error {
+	chunks := funk.Chunk(objects, 1000).([][]*types.Object)
 
 	for _, chunk := range chunks {
-		if err := s.deleteChunk(bucket, chunk); err != nil {
+		if err := s.deleteChunk(ctx, bucket, chunk); err != nil {
 			return err
 		}
 	}
@@ -36,13 +41,13 @@ func (s *Service) DeleteObjects(bucket string, objects []*s3.Object) error {
 	return nil
 }
 
-func (s *Service) deleteChunk(bucket string, objects []*s3.Object) error {
-	del := &s3.Delete{
-		Objects: make([]*s3.ObjectIdentifier, 0),
+func (s *Service) deleteChunk(ctx context.Context, bucket string, objects []*types.Object) error {
+	del := &types.Delete{
+		Objects: make([]types.ObjectIdentifier, 0),
 	}
 
 	for _, obj := range objects {
-		objId := &s3.ObjectIdentifier{
+		objId := types.ObjectIdentifier{
 			Key: obj.Key,
 		}
 
@@ -54,7 +59,7 @@ func (s *Service) deleteChunk(bucket string, objects []*s3.Object) error {
 		Delete: del,
 	}
 
-	out, err := s.client.DeleteObjects(input)
+	out, err := s.client.DeleteObjects(ctx, input)
 	if err != nil {
 		return fmt.Errorf("wasn't able to delete objects from bucket %s: %w", bucket, err)
 	}
@@ -67,8 +72,8 @@ func (s *Service) deleteChunk(bucket string, objects []*s3.Object) error {
 	return multiErr.ErrorOrNil()
 }
 
-func (s *Service) ListObjects(bucket string, prefix string) ([]*s3.Object, error) {
-	objects := make([]*s3.Object, 0, 1024)
+func (s *Service) ListObjects(ctx context.Context, bucket string, prefix string) ([]types.Object, error) {
+	objects := make([]types.Object, 0, 1024)
 
 	input := &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
@@ -76,7 +81,7 @@ func (s *Service) ListObjects(bucket string, prefix string) ([]*s3.Object, error
 	}
 
 	for {
-		out, err := s.client.ListObjectsV2(input)
+		out, err := s.client.ListObjectsV2(ctx, input)
 		if err != nil {
 			return nil, fmt.Errorf("can not list objects in s3 bucket: %w", err)
 		}

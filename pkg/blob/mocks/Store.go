@@ -3,7 +3,10 @@
 package mocks
 
 import (
+	context "context"
+
 	blob "github.com/justtrackio/gosoline/pkg/blob"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -45,9 +48,18 @@ func (_m *Store) CopyOne(obj *blob.CopyObject) error {
 	return r0
 }
 
-// CreateBucket provides a mock function with given fields:
-func (_m *Store) CreateBucket() {
-	_m.Called()
+// CreateBucket provides a mock function with given fields: ctx
+func (_m *Store) CreateBucket(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // Delete provides a mock function with given fields: batch
@@ -55,13 +67,13 @@ func (_m *Store) Delete(batch blob.Batch) {
 	_m.Called(batch)
 }
 
-// DeleteBucket provides a mock function with given fields:
-func (_m *Store) DeleteBucket() error {
-	ret := _m.Called()
+// DeleteBucket provides a mock function with given fields: ctx
+func (_m *Store) DeleteBucket(ctx context.Context) error {
+	ret := _m.Called(ctx)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -103,8 +115,17 @@ func (_m *Store) ReadOne(obj *blob.Object) error {
 }
 
 // Write provides a mock function with given fields: batch
-func (_m *Store) Write(batch blob.Batch) {
-	_m.Called(batch)
+func (_m *Store) Write(batch blob.Batch) error {
+	ret := _m.Called(batch)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(blob.Batch) error); ok {
+		r0 = rf(batch)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // WriteOne provides a mock function with given fields: obj

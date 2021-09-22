@@ -1,29 +1,33 @@
 package blob
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
+	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 const (
-	PrivateACL    = "private"
-	PublicReadACL = "public-read"
+	PrivateACL    = types.ObjectCannedACLPrivate
+	PublicReadACL = types.ObjectCannedACLPublicRead
 )
 
 type Object struct {
 	Key    *string
 	Body   Stream
-	ACL    *string
+	ACL    types.ObjectCannedACL
 	Exists bool
 	Error  error
 
@@ -36,7 +40,7 @@ type CopyObject struct {
 	Key          *string
 	SourceKey    *string
 	SourceBucket *string
-	ACL          *string
+	ACL          types.ObjectCannedACL
 	Error        error
 
 	bucket *string
@@ -55,30 +59,27 @@ type Settings struct {
 	Prefix string `cfg:"prefix"`
 }
 
-//go:generate mockery --name S3API
-type S3API interface {
-	s3iface.S3API
-}
-
 //go:generate mockery --name Store
 type Store interface {
 	BucketName() string
 	Copy(batch CopyBatch)
 	CopyOne(obj *CopyObject) error
-	CreateBucket()
+	CreateBucket(ctx context.Context) error
 	Delete(batch Batch)
-	DeleteBucket() error
+	DeleteBucket(ctx context.Context) error
 	DeleteOne(obj *Object) error
 	Read(batch Batch)
 	ReadOne(obj *Object) error
-	Write(batch Batch)
+	Write(batch Batch) error
 	WriteOne(obj *Object) error
 }
+
+var _ Store = &s3Store{}
 
 type s3Store struct {
 	logger   log.Logger
 	channels *BatchRunnerChannels
-	client   s3iface.S3API
+	client   gosoS3.Client
 
 	bucket *string
 	prefix *string
@@ -107,9 +108,13 @@ func CreateKey() string {
 	return namingStrategy()
 }
 
-func NewStore(config cfg.Config, logger log.Logger, name string) *s3Store {
+func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*s3Store, error) {
 	channels := ProvideBatchRunnerChannels(config)
-	client := ProvideS3Client(config)
+
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+	}
 
 	var settings Settings
 	key := fmt.Sprintf("blobstore.%s", name)
@@ -120,17 +125,19 @@ func NewStore(config cfg.Config, logger log.Logger, name string) *s3Store {
 		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
 	}
 
-	store := NewStoreWithInterfaces(logger, channels, client, settings)
+	store := NewStoreWithInterfaces(logger, channels, s3Client, settings)
 
-	autoCreate := config.GetBool("aws_s3_autoCreate")
+	autoCreate := dx.ShouldAutoCreate(config)
 	if autoCreate {
-		store.CreateBucket()
+		if err = store.CreateBucket(ctx); err != nil {
+			return nil, fmt.Errorf("can not create bucket: %w", err)
+		}
 	}
 
-	return store
+	return store, nil
 }
 
-func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, client s3iface.S3API, settings Settings) *s3Store {
+func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, client gosoS3.Client, settings Settings) *s3Store {
 	return &s3Store{
 		logger:   logger,
 		channels: channels,
@@ -144,18 +151,22 @@ func (s *s3Store) BucketName() string {
 	return *s.bucket
 }
 
-func (s *s3Store) CreateBucket() {
-	_, err := s.client.CreateBucket(&s3.CreateBucketInput{
+func (s *s3Store) CreateBucket(ctx context.Context) error {
+	_, err := s.client.CreateBucket(ctx, &s3.CreateBucketInput{
 		Bucket: s.bucket,
 	})
 
 	if isBucketAlreadyExistsError(err) {
 		s.logger.Info("s3 bucket %s did already exist", *s.bucket)
-	} else if err != nil {
-		s.logger.Error("could not create s3 bucket %s: %w", *s.bucket, err)
-	} else {
-		s.logger.Info("created s3 bucket %s", *s.bucket)
+		return nil
 	}
+
+	if err != nil {
+		return fmt.Errorf("could not create s3 bucket %s: %w", *s.bucket, err)
+	}
+
+	s.logger.Info("created s3 bucket %s", *s.bucket)
+	return nil
 }
 
 func (s *s3Store) ReadOne(obj *Object) error {
@@ -182,12 +193,14 @@ func (s *s3Store) Read(batch Batch) {
 }
 
 func (s *s3Store) WriteOne(obj *Object) error {
-	s.Write(Batch{obj})
+	if err := s.Write(Batch{obj}); err != nil {
+		return obj.Error
+	}
 
-	return obj.Error
+	return nil
 }
 
-func (s *s3Store) Write(batch Batch) {
+func (s *s3Store) Write(batch Batch) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(batch))
 
@@ -202,6 +215,15 @@ func (s *s3Store) Write(batch Batch) {
 	}
 
 	wg.Wait()
+
+	var err error
+	for i := 0; i < len(batch); i++ {
+		if batch[i].Error != nil {
+			err = multierror.Append(err, batch[i].Error)
+		}
+	}
+
+	return err
 }
 
 func (s *s3Store) CopyOne(obj *CopyObject) error {
@@ -250,10 +272,10 @@ func (s *s3Store) Delete(batch Batch) {
 	wg.Wait()
 }
 
-func (s *s3Store) DeleteBucket() error {
+func (s *s3Store) DeleteBucket(ctx context.Context) error {
 	s.logger.Info("purging bucket %s", *s.bucket)
 
-	result, err := s.client.ListObjects(&s3.ListObjectsInput{Bucket: s.bucket})
+	result, err := s.client.ListObjects(ctx, &s3.ListObjectsInput{Bucket: s.bucket})
 	if err != nil {
 		return err
 	}
@@ -267,7 +289,7 @@ func (s *s3Store) DeleteBucket() error {
 
 	s.Delete(batch)
 
-	_, err = s.client.DeleteBucket(&s3.DeleteBucketInput{Bucket: s.bucket})
+	_, err = s.client.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: s.bucket})
 	if err != nil {
 		return err
 	}
@@ -286,7 +308,9 @@ func (o *CopyObject) GetFullKey() string {
 }
 
 func getFullKey(prefix, key *string) string {
-	return fmt.Sprintf("/%s/%s", mdl.EmptyStringIfNil(prefix), mdl.EmptyStringIfNil(key))
+	fullKey := fmt.Sprintf("%s/%s", mdl.EmptyStringIfNil(prefix), mdl.EmptyStringIfNil(key))
+	fullKey = strings.TrimLeft(fullKey, "/")
+	return fullKey
 }
 
 func (o *CopyObject) getSource() string {
@@ -304,13 +328,11 @@ func (o *CopyObject) getSource() string {
 }
 
 func isBucketAlreadyExistsError(err error) bool {
-	if err == nil {
-		return false
-	}
+	var bucketAlreadyExists *types.BucketAlreadyExists
+	var bucketAlreadyOwnedByYou *types.BucketAlreadyOwnedByYou
 
-	if aerr, ok := err.(awserr.Error); ok {
-		return aerr.Code() == s3.ErrCodeBucketAlreadyExists ||
-			aerr.Code() == s3.ErrCodeBucketAlreadyOwnedByYou
+	if errors.As(err, &bucketAlreadyExists) || errors.As(err, &bucketAlreadyOwnedByYou) {
+		return true
 	}
 
 	return false

@@ -2,15 +2,16 @@ package blob
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -45,9 +46,10 @@ func ProvideBatchRunner() kernel.ModuleFactory {
 			return br.instance, nil
 		}
 
-		br.instance = NewBatchRunner(config, logger)
+		var err error
+		br.instance, err = NewBatchRunner(ctx, config, logger)
 
-		return br.instance, nil
+		return br.instance, err
 	}
 }
 
@@ -62,27 +64,32 @@ type batchRunner struct {
 
 	logger   log.Logger
 	metric   metric.Writer
-	client   s3iface.S3API
+	client   gosoS3.Client
 	channels *BatchRunnerChannels
 	settings *BatchRunnerSettings
 }
 
-func NewBatchRunner(config cfg.Config, logger log.Logger) *batchRunner {
+func NewBatchRunner(ctx context.Context, config cfg.Config, logger log.Logger) (*batchRunner, error) {
 	settings := &BatchRunnerSettings{}
 	config.UnmarshalKey("blob", settings)
 
 	defaultMetrics := getDefaultRunnerMetrics()
 	metricWriter := metric.NewDaemonWriter(defaultMetrics...)
 
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+	}
+
 	runner := &batchRunner{
 		logger:   logger,
 		metric:   metricWriter,
-		client:   ProvideS3Client(config),
+		client:   s3Client,
 		channels: ProvideBatchRunnerChannels(config),
 		settings: settings,
 	}
 
-	return runner
+	return runner, nil
 }
 
 func (r *batchRunner) Run(ctx context.Context) error {
@@ -124,7 +131,7 @@ func (r *batchRunner) executeRead(ctx context.Context) {
 				Key:    aws.String(key),
 			}
 
-			out, err := r.client.GetObject(input)
+			out, err := r.client.GetObject(ctx, input)
 
 			if err != nil {
 				if awsErr, ok := err.(awserr.RequestFailure); ok && awsErr.StatusCode() == 404 {
@@ -161,7 +168,7 @@ func (r *batchRunner) executeWrite(ctx context.Context) {
 				Key:    aws.String(key),
 			}
 
-			_, err := r.client.PutObject(input)
+			_, err := r.client.PutObject(ctx, input)
 
 			if err != nil {
 				object.Exists = false
@@ -197,7 +204,7 @@ func (r *batchRunner) executeCopy(ctx context.Context) {
 				CopySource: aws.String(source),
 			}
 
-			_, err := r.client.CopyObject(input)
+			_, err := r.client.CopyObject(ctx, input)
 			if err != nil {
 				object.Error = err
 			}
@@ -222,7 +229,7 @@ func (r *batchRunner) executeDelete(ctx context.Context) {
 				Key:    aws.String(key),
 			}
 
-			_, err := r.client.DeleteObject(input)
+			_, err := r.client.DeleteObject(ctx, input)
 			if err != nil {
 				object.Error = err
 			}

@@ -7,11 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/justtrackio/gosoline/pkg/blob"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -44,21 +43,25 @@ type Reader interface {
 type s3Reader struct {
 	logger   log.Logger
 	s3Cfg    *aws.Config
-	s3Client s3iface.S3API
+	s3Client gosoS3.Client
 
 	modelId              mdl.ModelId
 	prefixNamingStrategy S3PrefixNamingStrategy
 	recorder             FileRecorder
 }
 
-func NewReader(config cfg.Config, logger log.Logger, settings *ReaderSettings) *s3Reader {
-	s3Cfg := blob.GetS3ClientConfig(config)
-	s3Client := blob.ProvideS3Client(config)
+func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings *ReaderSettings) (*s3Reader, error) {
+	s3Cfg := gosoS3.GetLegacyConfig(config, "default")
+
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+	}
 
 	prefixNaming, exists := s3PrefixNamingStrategies[settings.NamingStrategy]
 
 	if !exists {
-		panic(fmt.Sprintf("Unknown prefix naming strategy '%s'", settings.NamingStrategy))
+		return nil, fmt.Errorf("unknown prefix naming strategy: %s", settings.NamingStrategy)
 	}
 
 	recorder := settings.Recorder
@@ -66,13 +69,13 @@ func NewReader(config cfg.Config, logger log.Logger, settings *ReaderSettings) *
 		recorder = NewNopRecorder()
 	}
 
-	return NewReaderWithInterfaces(logger, s3Cfg, s3Client, settings.ModelId, prefixNaming, recorder)
+	return NewReaderWithInterfaces(logger, s3Cfg, s3Client, settings.ModelId, prefixNaming, recorder), nil
 }
 
 func NewReaderWithInterfaces(
 	logger log.Logger,
 	s3Cfg *aws.Config,
-	s3Client s3iface.S3API,
+	s3Client gosoS3.Client,
 	modelId mdl.ModelId,
 	prefixNaming S3PrefixNamingStrategy,
 	recorder FileRecorder,
@@ -118,7 +121,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 		return fmt.Errorf("target needs to be a pointer to a slice, but is %T", target)
 	}
 
-	files, err := r.listFilesFromDate(datetime)
+	files, err := r.listFilesFromDate(ctx, datetime)
 	if err != nil {
 		return err
 	}
@@ -229,10 +232,10 @@ func (r *s3Reader) ReadFile(ctx context.Context, file string) (ReadResults, erro
 	return results, nil
 }
 
-func (r *s3Reader) listFilesFromDate(datetime time.Time) ([]string, error) {
+func (r *s3Reader) listFilesFromDate(ctx context.Context, datetime time.Time) ([]string, error) {
 	prefix := r.prefixNamingStrategy(r.modelId, datetime)
 
-	files, err := r.listFiles(prefix)
+	files, err := r.listFiles(ctx, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +243,7 @@ func (r *s3Reader) listFilesFromDate(datetime time.Time) ([]string, error) {
 	return files, err
 }
 
-func (r *s3Reader) listFiles(prefix string) ([]string, error) {
+func (r *s3Reader) listFiles(ctx context.Context, prefix string) ([]string, error) {
 	bucket := r.getBucketName()
 
 	input := &s3.ListObjectsInput{
@@ -251,7 +254,7 @@ func (r *s3Reader) listFiles(prefix string) ([]string, error) {
 	files := make([]string, 0, 128)
 
 	for {
-		out, err := r.s3Client.ListObjects(input)
+		out, err := r.s3Client.ListObjects(ctx, input)
 		if err != nil {
 			return nil, err
 		}
@@ -264,7 +267,7 @@ func (r *s3Reader) listFiles(prefix string) ([]string, error) {
 			files = append(files, *obj.Key)
 		}
 
-		if !*out.IsTruncated {
+		if !out.IsTruncated {
 			break
 		}
 
