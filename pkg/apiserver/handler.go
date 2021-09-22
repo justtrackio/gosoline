@@ -112,20 +112,24 @@ func (r *Response) WithContentType(contentType string) *Response {
 	return r
 }
 
+//go:generate mockery --name HandlerWithoutInput
 type HandlerWithoutInput interface {
 	Handle(requestContext context.Context, request *Request) (response *Response, error error)
 }
 
+//go:generate mockery --name HandlerWithInput
 type HandlerWithInput interface {
 	HandlerWithoutInput
 	GetInput() interface{}
 }
 
+//go:generate mockery --name HandlerWithMultipleBindings
 type HandlerWithMultipleBindings interface {
 	HandlerWithInput
 	GetBindings() []binding.Binding
 }
 
+//go:generate mockery --name HandlerWithStream
 type HandlerWithStream interface {
 	GetInput() interface{}
 	Handle(ginContext *gin.Context, requestContext context.Context, request *Request) (error error)

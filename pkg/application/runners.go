@@ -5,9 +5,16 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/mdlsub"
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
+
+func RunModule(name string, moduleFactory kernel.ModuleFactory, options ...Option) {
+	app := Default(options...)
+	app.Add(name, moduleFactory)
+	app.Run()
+}
 
 func RunApiServer(definer apiserver.Definer, options ...Option) {
 	options = append(options, WithExecBackoffSettings(&exec.BackoffSettings{
@@ -16,9 +23,7 @@ func RunApiServer(definer apiserver.Definer, options ...Option) {
 		MaxInterval:     time.Second,
 	}))
 
-	app := Default(options...)
-	app.Add("api", apiserver.New(definer))
-	app.Run()
+	RunModule("api", apiserver.New(definer), options...)
 }
 
 func RunConsumer(callback stream.ConsumerCallbackFactory, options ...Option) {

@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+//go:generate mockery --name TraceAble
 type TraceAble interface {
 	GetTrace() *Trace
 }
