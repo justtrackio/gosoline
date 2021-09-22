@@ -2,12 +2,13 @@ package fixtures
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/justtrackio/gosoline/pkg/blob"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -35,9 +36,20 @@ func BlobFixtureWriterFactory(settings *BlobFixturesSettings) FixtureWriterFacto
 
 		settings.BasePath = basePath
 
-		store := blob.NewStore(config, logger, settings.ConfigName)
-		br := blob.NewBatchRunner(config, logger)
-		purger := newBlobPurger(config, logger, settings)
+		store, err := blob.NewStore(ctx, config, logger, settings.ConfigName)
+		if err != nil {
+			return nil, fmt.Errorf("can not create blob store: %w", err)
+		}
+
+		br, err := blob.NewBatchRunner(ctx, config, logger)
+		if err != nil {
+			return nil, fmt.Errorf("can not create blob batch runner: %w", err)
+		}
+
+		purger, err := newBlobPurger(ctx, config, logger, settings)
+		if err != nil {
+			return nil, fmt.Errorf("can not create blob purger: %w", err)
+		}
 
 		return NewBlobFixtureWriterWithInterfaces(logger, br, purger, store, settings.BasePath), nil
 	}
@@ -58,7 +70,9 @@ func (s *blobFixtureWriter) Purge(ctx context.Context) error {
 }
 
 func (s *blobFixtureWriter) Write(ctx context.Context, _ *FixtureSet) error {
-	s.store.CreateBucket()
+	if err := s.store.CreateBucket(ctx); err != nil {
+		return fmt.Errorf("can not create bucket: %w", err)
+	}
 
 	var files []string
 	err := filepath.Walk(s.basePath, func(path string, f os.FileInfo, err error) error {
@@ -101,9 +115,11 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ *FixtureSet) error {
 	go func(ctx context.Context) {
 		err = s.batchRunner.Run(ctx)
 	}(ctx)
+	defer cancel()
 
-	s.store.Write(batch)
-	cancel()
+	if err := s.store.Write(batch); err != nil {
+		return fmt.Errorf("can not write fixtes: %w", err)
+	}
 
 	s.logger.Info("loaded %d files", len(files))
 

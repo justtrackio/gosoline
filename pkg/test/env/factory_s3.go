@@ -1,13 +1,11 @@
 package env
 
 import (
+	"context"
 	"fmt"
-	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -28,16 +26,13 @@ type s3Settings struct {
 type s3Factory struct{}
 
 func (f *s3Factory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
-	if !config.IsSet("aws_s3_endpoint") {
+	if !config.IsSet("cloud.aws.s3") {
 		return nil
 	}
 
 	if manager.HasType(componentS3) {
 		return nil
 	}
-
-	_ = os.Setenv("AWS_ACCESS_KEY_ID", "gosoline")
-	_ = os.Setenv("AWS_SECRET_ACCESS_KEY", "gosoline")
 
 	settings := &s3Settings{}
 	config.UnmarshalDefaults(settings)
@@ -71,14 +66,14 @@ func (f *s3Factory) configureContainer(settings interface{}) *containerConfig {
 
 	return &containerConfig{
 		Repository: "minio/minio",
-		Tag:        "RELEASE.2020-12-03T05-49-24Z",
+		Tag:        "RELEASE.2021-09-18T18-09-59Z",
 		Cmd: []string{
 			"server",
 			"/data",
 		},
 		Env: []string{
-			"MINIO_ACCESS_KEY=gosoline",
-			"MINIO_SECRET_KEY=gosoline",
+			fmt.Sprintf("MINIO_ACCESS_KEY=%s", DefaultAccessKeyID),
+			fmt.Sprintf("MINIO_SECRET_KEY=%s", DefaultSecretAccessKey),
 		},
 		PortBindings: portBindings{
 			"9000/tcp": s.Port,
@@ -90,24 +85,23 @@ func (f *s3Factory) configureContainer(settings interface{}) *containerConfig {
 func (f *s3Factory) healthCheck() ComponentHealthCheck {
 	return func(container *container) error {
 		s3Client := f.client(container)
-		_, err := s3Client.ListBuckets(&s3.ListBucketsInput{})
+		_, err := s3Client.ListBuckets(context.Background(), &s3.ListBucketsInput{})
 
 		return err
 	}
 }
 
-func (f *s3Factory) client(container *container) *s3.S3 {
+func (f *s3Factory) client(container *container) *s3.Client {
 	binding := container.bindings["9000/tcp"]
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
-	sess := session.Must(session.NewSession(&aws.Config{
-		Endpoint:    aws.String(address),
-		Region:      aws.String("eu-central-1"),
-		MaxRetries:  aws.Int(0),
-		Credentials: credentials.NewStaticCredentials(gosoAws.DefaultAccessKeyID, gosoAws.DefaultSecretAccessKey, ""),
-	}))
+	awsCfg := aws.Config{
+		EndpointResolver: gosoAws.EndpointResolver(address),
+		Region:           "eu-central-1",
+		Credentials:      GetDefaultStaticCredentials(),
+	}
 
-	return s3.New(sess)
+	return s3.NewFromConfig(awsCfg)
 }
 
 func (f *s3Factory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings interface{}) (Component, error) {

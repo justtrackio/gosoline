@@ -4,10 +4,12 @@ app_project: prj
 app_family: fam
 app_name: app
 
-aws_s3_autoCreate: true
-aws_s3_endpoint: http://localhost:4566
-aws_s3_forcePathStyle: true
-aws_sdk_retries: 30
+cloud:
+  aws:
+    s3:
+      clients:
+        default:
+          usePathStyle: true
 
 blobstore:
   test:

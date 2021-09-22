@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/justtrackio/gosoline/pkg/blob"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -35,7 +35,7 @@ type Writer interface {
 type s3Writer struct {
 	logger   log.Logger
 	s3Cfg    *aws.Config
-	s3Client s3iface.S3API
+	s3Client gosoS3.Client
 
 	modelId              mdl.ModelId
 	prefixNamingStrategy S3PrefixNamingStrategy
@@ -43,10 +43,14 @@ type s3Writer struct {
 	recorder             FileRecorder
 }
 
-func NewWriter(config cfg.Config, logger log.Logger, settings *WriterSettings) (*s3Writer, error) {
-	s3Cfg := blob.GetS3ClientConfig(config)
-	s3Client := blob.ProvideS3Client(config)
+func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *WriterSettings) (*s3Writer, error) {
 	settings.ModelId.PadFromConfig(config)
+	s3Cfg := gosoS3.GetLegacyConfig(config, "default")
+
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+	}
 
 	prefixNaming, exists := s3PrefixNamingStrategies[settings.NamingStrategy]
 
@@ -64,7 +68,7 @@ func NewWriter(config cfg.Config, logger log.Logger, settings *WriterSettings) (
 
 func NewWriterWithInterfaces(
 	logger log.Logger,
-	s3Client s3iface.S3API,
+	s3Client gosoS3.Client,
 	s3Cfg *aws.Config,
 	modelId mdl.ModelId,
 	prefixNaming S3PrefixNamingStrategy,
@@ -141,10 +145,10 @@ func (w *s3Writer) WriteToKey(ctx context.Context, key string, items interface{}
 	tagInput := &s3.PutObjectTaggingInput{
 		Bucket:  &bucket,
 		Key:     &key,
-		Tagging: &s3.Tagging{TagSet: tagSet},
+		Tagging: &types.Tagging{TagSet: tagSet},
 	}
 
-	if _, err := w.s3Client.PutObjectTaggingWithContext(ctx, tagInput); err != nil {
+	if _, err := w.s3Client.PutObjectTagging(ctx, tagInput); err != nil {
 		return err
 	}
 
@@ -190,11 +194,11 @@ func (w *s3Writer) getBucketName() string {
 	})
 }
 
-func makeTags(tags map[string]string) []*s3.Tag {
-	s3Tags := make([]*s3.Tag, 0, len(tags))
+func makeTags(tags map[string]string) []types.Tag {
+	s3Tags := make([]types.Tag, 0, len(tags))
 
 	for key, value := range tags {
-		s3Tags = append(s3Tags, &s3.Tag{
+		s3Tags = append(s3Tags, types.Tag{
 			Key:   mdl.String(key),
 			Value: mdl.String(value),
 		})
