@@ -101,8 +101,8 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 	loggerMock := new(logMocks.Logger)
 	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
 	loggerMock.On("WithFields", mock.AnythingOfType("log.Fields")).Return(loggerMock)
-	loggerMock.On("Warn", "attempt number %d to request resource %s after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
-	loggerMock.On("Info", "sent request to resource %s successful after %d attempts in %s", resource, 3, mock.AnythingOfType("time.Duration")).Once()
+	loggerMock.On("Warn", "attempt number %d to request resource %s failed after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
+	loggerMock.On("Warn", "sent request to resource %s successful after %d attempts in %s", resource, 3, mock.AnythingOfType("time.Duration")).Once()
 
 	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "http_timeout")
 	s.NoError(err)

@@ -36,10 +36,10 @@ jobs:
     name: go build
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.15
+      - name: Set up Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: 1.15
+          go-version: 1.17
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
@@ -54,10 +54,10 @@ jobs:
     name: static code analysis (go vet)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.15
+      - name: Set up Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: 1.15
+          go-version: 1.17
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
@@ -72,10 +72,10 @@ jobs:
     name: static code analysis (golangci-lint)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.15
+      - name: Set up Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: 1.15
+          go-version: 1.17
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
@@ -90,10 +90,10 @@ jobs:
     name: go test
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.15
+      - name: Set up Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: 1.15
+          go-version: 1.17
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
@@ -108,10 +108,10 @@ jobs:
     name: go test (integration)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.15
+      - name: Set up Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: 1.15
+          go-version: 1.17
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2

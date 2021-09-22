@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/smithy-go/logging"
 	"github.com/aws/smithy-go/middleware"
-	"github.com/cenkalti/backoff"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -81,7 +80,7 @@ func DefaultClientOptions(config cfg.Config, logger log.Logger, settings ClientS
 		awsCfg.WithRetryer(func() aws.Retryer {
 			return retry.NewStandard(func(options *retry.StandardOptions) {
 				options.MaxAttempts = settings.Backoff.MaxAttempts
-				options.Backoff = NewExponentialBackoffDelayer(&settings.Backoff)
+				options.Backoff = NewBackoffDelayer(settings.Backoff.InitialInterval, settings.Backoff.MaxInterval)
 			})
 		}),
 	}
@@ -164,23 +163,4 @@ func (l Logger) WithContext(ctx context.Context) logging.Logger {
 	return &Logger{
 		base: l.base.WithContext(ctx),
 	}
-}
-
-type ExponentialBackoffDelayer struct {
-	backoff *backoff.ExponentialBackOff
-}
-
-func NewExponentialBackoffDelayer(settings *exec.BackoffSettings) *ExponentialBackoffDelayer {
-	backOff := backoff.NewExponentialBackOff()
-	backOff.InitialInterval = settings.InitialInterval
-	backOff.MaxInterval = settings.MaxInterval
-	backOff.MaxElapsedTime = settings.MaxElapsedTime
-
-	return &ExponentialBackoffDelayer{
-		backoff: backOff,
-	}
-}
-
-func (d *ExponentialBackoffDelayer) BackoffDelay(_ int, _ error) (time.Duration, error) {
-	return d.backoff.NextBackOff(), nil
 }
