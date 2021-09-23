@@ -81,6 +81,7 @@ func DefaultClientOptions(config cfg.Config, logger log.Logger, settings ClientS
 			return retry.NewStandard(func(options *retry.StandardOptions) {
 				options.MaxAttempts = settings.Backoff.MaxAttempts
 				options.Backoff = NewBackoffDelayer(settings.Backoff.InitialInterval, settings.Backoff.MaxInterval)
+				options.RateLimiter = NewNopRateLimiter()
 			})
 		}),
 	}
