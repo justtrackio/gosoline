@@ -184,11 +184,15 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 
 	targets := make([]SnsInputTarget, len(configuration.Targets))
 	for i, t := range configuration.Targets {
+		targetAppId := cfg.AppId{
+			Family:      t.Family,
+			Application: t.Application,
+		}
+
+		targetAppId.PadFromConfig(config)
+
 		targets[i] = SnsInputTarget{
-			AppId: cfg.AppId{
-				Family:      t.Family,
-				Application: t.Application,
-			},
+			AppId:      targetAppId,
 			TopicId:    t.TopicId,
 			Attributes: t.Attributes,
 		}

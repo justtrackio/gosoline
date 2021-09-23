@@ -70,7 +70,7 @@ func NewSnsInput(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		var topic sns.Topic
 
 		for _, target := range targets {
-			topicName := sns.GetTopicName(settings.AppId, target.TopicId)
+			topicName := sns.GetTopicName(target.AppId, target.TopicId)
 			topicSettings := &sns.TopicSettings{
 				TopicName:  topicName,
 				ClientName: "default",
