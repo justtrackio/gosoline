@@ -37,7 +37,8 @@ type (
 type Reader interface {
 	ReadDate(ctx context.Context, datetime time.Time, target interface{}) error
 	ReadDateAsync(ctx context.Context, datetime time.Time, target interface{}, callback ResultCallback) error
-	ReadFile(ctx context.Context, file string) (ReadResults, error)
+	ReadFileIntoTarget(ctx context.Context, file string, target interface{}, batchSize int, offset int64) error
+	ReadFile(ctx context.Context, file string, batchSize int, offset int64) (ReadResults, error)
 }
 
 type s3Reader struct {
@@ -151,7 +152,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 				}
 
 				r.logger.Debug("reading file %d of %d: %s", i, fileCount, file)
-				result, err := r.ReadFile(ctx, file)
+				result, err := r.ReadFile(ctx, file, -1, 0)
 				if err != nil {
 					return fmt.Errorf("can not read file %s: %w", file, err)
 				}
@@ -183,7 +184,29 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 	return cfn.Wait()
 }
 
-func (r *s3Reader) ReadFile(ctx context.Context, file string) (ReadResults, error) {
+func (r *s3Reader) ReadFileIntoTarget(ctx context.Context, file string, target interface{}, batchSize int, offset int64) error {
+	if !refl.IsPointerToSlice(target) {
+		return fmt.Errorf("target needs to be a pointer to a slice, but is %T", target)
+	}
+
+	result, err := r.ReadFile(ctx, file, batchSize, offset)
+	if err != nil {
+		return fmt.Errorf("can not read file %s: %w", file, err)
+	}
+
+	decoded := refl.CreatePointerToSliceOfTypeAndSize(target, len(result))
+
+	err = r.decode(result, decoded)
+	if err != nil {
+		return fmt.Errorf("can not decode results in file %s: %w", file, err)
+	}
+
+	refl.CopyPointerSlice(target, decoded)
+
+	return nil
+}
+
+func (r *s3Reader) ReadFile(ctx context.Context, file string, batchSize int, offset int64) (ReadResults, error) {
 	bucket := r.getBucketName()
 
 	fr, err := parquetS3.NewS3FileReader(ctx, bucket, file, r.s3Cfg)
@@ -197,6 +220,28 @@ func (r *s3Reader) ReadFile(ctx context.Context, file string) (ReadResults, erro
 	}
 
 	size := int(pr.GetNumRows())
+	results := make(ReadResults, size)
+
+	if size == 0 {
+		return results, nil
+	}
+
+	if offset > 0 {
+		err = pr.SkipRows(offset)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if batchSize > 0 {
+		remainingRows := size - int(offset)
+		size = batchSize
+
+		if batchSize > remainingRows {
+			size = remainingRows
+		}
+	}
+
 	columnNames := pr.SchemaHandler.ValueColumns
 	columns := make(map[string][]interface{})
 	rootName := pr.Footer.Schema[0].Name
@@ -216,8 +261,6 @@ func (r *s3Reader) ReadFile(ctx context.Context, file string) (ReadResults, erro
 	if err = fr.Close(); err != nil {
 		return nil, err
 	}
-
-	results := make(ReadResults, size)
 
 	for key, values := range columns {
 		for i := 0; i < size; i++ {
