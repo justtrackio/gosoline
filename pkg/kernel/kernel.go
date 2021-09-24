@@ -21,6 +21,7 @@ import (
 type Kernel interface {
 	Add(name string, moduleFactory ModuleFactory, opts ...ModuleOption)
 	AddFactory(factory MultiModuleFactory)
+	AddMiddleware(middleware Middleware, position Position)
 	Running() <-chan struct{}
 	Run()
 	Stop(reason string)
@@ -39,6 +40,7 @@ type kernel struct {
 
 	moduleSetupContainers []moduleSetupContainer
 	multiFactories        []MultiModuleFactory
+	middlewares           []Middleware
 
 	ctx               context.Context
 	stages            map[int]*stage
@@ -106,6 +108,14 @@ func (k *kernel) AddFactory(factory MultiModuleFactory) {
 	k.multiFactories = append(k.multiFactories, factory)
 }
 
+func (k *kernel) AddMiddleware(middleware Middleware, position Position) {
+	if position == PositionBeginning {
+		k.middlewares = append([]Middleware{middleware}, k.middlewares...)
+	} else {
+		k.middlewares = append(k.middlewares, middleware)
+	}
+}
+
 func (k *kernel) Run() {
 	// do not allow config changes anymore
 	k.started.Poison()
@@ -149,28 +159,36 @@ func (k *kernel) Run() {
 		return
 	}
 
-	sig := make(chan os.Signal, 2)
-	signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
-
 	k.debugConfig()
 
-	for _, stageIndex := range k.getStageIndices() {
-		k.stages[stageIndex].run(k)
-		k.logger.Info("stage %d up and running", stageIndex)
+	runHandler := func() {
+		sig := make(chan os.Signal, 2)
+		signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
+
+		for _, stageIndex := range k.getStageIndices() {
+			k.stages[stageIndex].run(k)
+			k.logger.Info("stage %d up and running", stageIndex)
+		}
+
+		k.logger.Info("kernel up and running")
+		close(k.running)
+
+		select {
+		case <-k.waitAllStagesDone().Channel():
+			k.Stop("context done")
+		case sig := <-sig:
+			reason := fmt.Sprintf("signal %s", sig.String())
+			k.Stop(reason)
+		}
+
+		k.waitStopped()
 	}
 
-	k.logger.Info("kernel up and running")
-	close(k.running)
-
-	select {
-	case <-k.waitAllStagesDone().Channel():
-		k.Stop("context done")
-	case sig := <-sig:
-		reason := fmt.Sprintf("signal %s", sig.String())
-		k.Stop(reason)
+	for i := len(k.middlewares) - 1; i >= 0; i-- {
+		runHandler = k.middlewares[i](k.ctx, k.config, k.logger, runHandler)
 	}
 
-	k.waitStopped()
+	runHandler()
 }
 
 func (k *kernel) Stop(reason string) {

@@ -260,6 +260,22 @@ func (s *MapTestSuite) TestMergeMap() {
 	s.Equal(msi, actual)
 }
 
+func (s *MapTestSuite) TestAppend() {
+	err := s.m.Append("slice.at.a", "foo")
+	s.NoError(err)
+
+	current, err := s.m.Get("slice.at.a").StringSlice()
+	s.NoError(err)
+	s.Equal([]string{"foo"}, current)
+
+	err = s.m.Append("slice.at.a", "bar", "baz")
+	s.NoError(err)
+
+	current, err = s.m.Get("slice.at.a").StringSlice()
+	s.NoError(err)
+	s.Equal([]string{"foo", "bar", "baz"}, current)
+}
+
 func TestMapTestSuite(t *testing.T) {
 	suite.Run(t, new(MapTestSuite))
 }

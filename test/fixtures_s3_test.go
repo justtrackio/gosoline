@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
-	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
@@ -27,14 +26,10 @@ const (
 type FixturesS3Suite struct {
 	suite.Suite
 	ctx        context.Context
-	logger     log.Logger
-	loader     fixtures.FixtureLoader
 	bucketName string
 }
 
 func (s *FixturesS3Suite) SetupSuite() []suite.Option {
-	s.ctx = context.Background()
-
 	return []suite.Option{
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("test_configs/config.fixtures_s3.test.yml"),
@@ -42,10 +37,8 @@ func (s *FixturesS3Suite) SetupSuite() []suite.Option {
 }
 
 func (s *FixturesS3Suite) SetupTest() (err error) {
-	s.logger = s.Env().Logger()
+	s.ctx = context.Background()
 	s.bucketName = s.Env().Config().GetString("blobstore.test.bucket")
-	s.loader = fixtures.NewFixtureLoader(s.ctx, s.Env().Config(), s.logger)
-
 	return
 }
 
@@ -54,9 +47,9 @@ func TestFixturesS3Suite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *FixturesS3Suite) TestS3(app suite.AppUnderTest) {
+func (s *FixturesS3Suite) TestS3() {
 	fs := s3DisabledPurgeFixtures()
-	err := s.loader.Load(s.ctx, fs)
+	err := s.Env().LoadFixtures(fs)
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
@@ -98,9 +91,9 @@ func (s *FixturesS3Suite) TestS3(app suite.AppUnderTest) {
 	s.Equal(28092, len(body))
 }
 
-func (s *FixturesS3Suite) TestS3WithPurge(app suite.AppUnderTest) {
+func (s *FixturesS3Suite) TestS3WithPurge() {
 	fs := s3DisabledPurgeFixtures()
-	err := s.loader.Load(s.ctx, fs)
+	err := s.Env().LoadFixtures(fs)
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
@@ -118,7 +111,7 @@ func (s *FixturesS3Suite) TestS3WithPurge(app suite.AppUnderTest) {
 	s.Equal(28092, len(body))
 
 	fs = s3EnabledPurgeFixtures()
-	err = s.loader.Load(s.ctx, fs)
+	err = s.Env().LoadFixtures(fs)
 	s.NoError(err)
 
 	input = &s3.GetObjectInput{

@@ -17,13 +17,10 @@ import (
 
 type DdbLockTestSuite struct {
 	suite.Suite
-	ctx      context.Context
 	provider conc.DistributedLockProvider
 }
 
 func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
-	s.ctx = context.Background()
-
 	return []suite.Option{
 		suite.WithClockProvider(clock.NewRealClock()),
 		suite.WithLogLevel("debug"),
@@ -32,7 +29,7 @@ func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *DdbLockTestSuite) SetupTest() (err error) {
-	s.provider, err = conc.NewDdbLockProvider(s.ctx, s.Env().Config(), s.Env().Logger(), conc.DistributedLockSettings{
+	s.provider, err = conc.NewDdbLockProvider(s.Env().Context(), s.Env().Config(), s.Env().Logger(), conc.DistributedLockSettings{
 		Backoff: exec.BackoffSettings{
 			MaxAttempts:    0,
 			MaxElapsedTime: 0,

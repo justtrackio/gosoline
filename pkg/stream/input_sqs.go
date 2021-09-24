@@ -66,7 +66,7 @@ func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	var queue sqs.Queue
 	var unmarshaller UnmarshallerFunc
 
-	if queue, err = sqs.NewQueue(ctx, config, logger, queueSettings); err != nil {
+	if queue, err = sqs.ProvideQueue(ctx, config, logger, queueSettings); err != nil {
 		return nil, fmt.Errorf("can not create queue: %w", err)
 	}
 

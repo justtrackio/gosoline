@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
@@ -36,7 +37,7 @@ func (s *FixturesDynamoDbSuite) SetupSuite() {
 		return
 	}
 
-	s.ctx = context.Background()
+	s.ctx = appctx.WithContainer(context.Background())
 	s.mocks = mocks
 	s.db = s.mocks.ProvideDynamoDbClient("dynamodb")
 	s.logger = log.NewCliLogger()

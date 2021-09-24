@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
@@ -13,28 +14,28 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type ConfigServerSettings struct {
+type MetadataServerSettings struct {
 	Port int `cfg:"port" default:"8070"`
 }
 
-type ConfigServer struct {
+type MetadataServer struct {
 	kernel.BackgroundModule
 	kernel.ServiceStage
 
 	config   cfg.Config
 	logger   log.Logger
 	server   *http.Server
-	settings *ConfigServerSettings
+	settings *MetadataServerSettings
 }
 
-func NewConfigServer() kernel.ModuleFactory {
+func NewMetadataServer() kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		settings := &ConfigServerSettings{}
-		config.UnmarshalKey("cfg.server", settings)
+		settings := &MetadataServerSettings{}
+		config.UnmarshalKey("appctx.metadata.server", settings)
 
-		server := &ConfigServer{
+		server := &MetadataServer{
 			config:   config,
-			logger:   logger.WithChannel("config-server"),
+			logger:   logger.WithChannel("metadata-server"),
 			server:   &http.Server{},
 			settings: settings,
 		}
@@ -43,19 +44,26 @@ func NewConfigServer() kernel.ModuleFactory {
 	}
 }
 
-func (s *ConfigServer) Run(ctx context.Context) error {
+func (s *MetadataServer) Run(ctx context.Context) error {
 	var err error
+	var metadata *appctx.Metadata
 	var listener net.Listener
+
+	if metadata, err = appctx.ProvideMetadata(ctx); err != nil {
+		return fmt.Errorf("can not access metadata: %w", err)
+	}
+
 	addr := fmt.Sprintf(":%d", s.settings.Port)
 
 	if listener, err = net.Listen("tcp", addr); err != nil {
 		return fmt.Errorf("can not listen on address %s: %w", addr, err)
 	}
 
-	s.logger.Info("serving config on address %s", listener.Addr())
+	s.logger.Info("serving metadata on address %s", listener.Addr())
 
 	handler := http.NewServeMux()
-	handler.HandleFunc("/", s.handleRead)
+	handler.HandleFunc("/", s.handleMetadata(metadata))
+	handler.HandleFunc("/config", s.handleConfig)
 
 	s.server.Handler = handler
 	go s.waitForStop(ctx)
@@ -67,7 +75,26 @@ func (s *ConfigServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *ConfigServer) handleRead(writer http.ResponseWriter, request *http.Request) {
+func (s *MetadataServer) handleMetadata(metadata *appctx.Metadata) func(http.ResponseWriter, *http.Request) {
+	data := metadata.Msi()
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		var err error
+		var bytes []byte
+
+		if bytes, err = json.Marshal(data); err != nil {
+			s.logger.Warn("can not marshal metadata %s", err.Error())
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if _, err = writer.Write(bytes); err != nil {
+			s.logger.Warn("can not write config %s", err.Error())
+		}
+	}
+}
+
+func (s *MetadataServer) handleConfig(writer http.ResponseWriter, request *http.Request) {
 	var err error
 	var bytes []byte
 	settings := s.config.AllSettings()
@@ -91,7 +118,7 @@ func (s *ConfigServer) handleRead(writer http.ResponseWriter, request *http.Requ
 	}
 }
 
-func (s *ConfigServer) waitForStop(ctx context.Context) {
+func (s *MetadataServer) waitForStop(ctx context.Context) {
 	<-ctx.Done()
 	err := s.server.Close()
 	if err != nil {

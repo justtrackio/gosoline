@@ -1,6 +1,10 @@
 package mapx
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/spf13/cast"
+)
 
 type MapXNode struct {
 	value interface{}
@@ -142,4 +146,8 @@ func (n *MapXNode) Slice() ([]interface{}, error) {
 	}
 
 	return nodeSliceToSlice(slice), nil
+}
+
+func (n *MapXNode) StringSlice() ([]string, error) {
+	return cast.ToStringSliceE(n.value)
 }

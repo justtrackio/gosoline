@@ -10,11 +10,17 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
+
+type HandlerMetadata struct {
+	Method string `json:"method"`
+	Path   string `json:"path"`
+}
 
 type Settings struct {
 	Port        string              `cfg:"port" default:"8080"`
@@ -52,30 +58,46 @@ func New(definer Definer) kernel.ModuleFactory {
 
 		gin.SetMode(settings.Mode)
 
-		tracer, err := tracing.ProvideTracer(config, logger)
-		if err != nil {
+		var err error
+		var tracer tracing.Tracer
+		var definitions *Definitions
+		var metadata *appctx.Metadata
+
+		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
 		}
 
 		router := gin.New()
+		router.Use(RecoveryWithSentry(logger))
+		router.Use(LoggingMiddleware(logger))
 
 		router.GET("/health", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{})
 		})
 
-		definitions, err := definer(ctx, config, logger.WithChannel("handler"))
-		if err != nil {
+		if definitions, err = definer(ctx, config, logger.WithChannel("handler")); err != nil {
 			return nil, fmt.Errorf("could not define routes: %w", err)
 		}
 
-		router.Use(RecoveryWithSentry(logger))
-		router.Use(LoggingMiddleware(logger))
-
-		if err := configureCompression(router, settings.Compression); err != nil {
+		if err = configureCompression(router, settings.Compression); err != nil {
 			return nil, fmt.Errorf("could not configure compression: %w", err)
 		}
 
+		if metadata, err = appctx.ProvideMetadata(ctx); err != nil {
+			return nil, fmt.Errorf("can not access appctx metadata: %w", err)
+		}
+
 		buildRouter(definitions, router)
+
+		for _, route := range router.Routes() {
+			err = metadata.Append("apiserver.routes", HandlerMetadata{
+				Method: route.Method,
+				Path:   route.Path,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("can not append apiserver routes to appctx metadata: %w", err)
+			}
+		}
 
 		return NewWithInterfaces(logger, router, tracer, settings)
 	}

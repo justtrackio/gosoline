@@ -1,11 +1,14 @@
 package env
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,12 +18,14 @@ type Environment struct {
 	configOptions    []ConfigOption
 	loggerOptions    []LoggerOption
 
-	t          *testing.T
-	config     cfg.GosoConf
-	logger     log.GosoLogger
-	filesystem *filesystem
-	runner     *containerRunner
-	components *ComponentsContainer
+	t             *testing.T
+	ctx           context.Context
+	config        cfg.GosoConf
+	logger        log.GosoLogger
+	filesystem    *filesystem
+	fixtureLoader fixtures.FixtureLoader
+	runner        *containerRunner
+	components    *ComponentsContainer
 }
 
 func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
@@ -66,9 +71,11 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		}
 	}
 
+	env.ctx = appctx.WithContainer(context.Background())
 	env.config = config
 	env.logger = logger
 	env.filesystem = newFilesystem(t)
+	env.fixtureLoader = fixtures.NewFixtureLoader(env.ctx, env.config, env.logger)
 
 	for typ, factory := range componentFactories {
 		if err = factory.Detect(config, componentConfigManger); err != nil {
@@ -120,6 +127,10 @@ func (e *Environment) addLoggerOption(opt LoggerOption) {
 
 func (e *Environment) Stop() error {
 	return e.runner.Stop()
+}
+
+func (e *Environment) Context() context.Context {
+	return e.ctx
 }
 
 func (e *Environment) Config() cfg.GosoConf {
@@ -175,4 +186,16 @@ func (e *Environment) StreamInput(name string) *streamInputComponent {
 
 func (e *Environment) StreamOutput(name string) *streamOutputComponent {
 	return e.Component(componentStreamOutput, name).(*streamOutputComponent)
+}
+
+func (e *Environment) LoadFixtures(fixtureSets []*fixtures.FixtureSet) error {
+	if len(fixtureSets) == 0 {
+		return nil
+	}
+
+	if err := e.fixtureLoader.Load(e.ctx, fixtureSets); err != nil {
+		return err
+	}
+
+	return nil
 }

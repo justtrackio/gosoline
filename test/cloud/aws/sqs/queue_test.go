@@ -31,7 +31,7 @@ func (s *QueueTestSuite) SetupSuite() []suite.Option {
 func (s *QueueTestSuite) SetupTest() error {
 	var err error
 
-	s.ctx = context.Background()
+	s.ctx = s.Env().Context()
 	config := s.Env().Config()
 	logger := s.Env().Logger()
 

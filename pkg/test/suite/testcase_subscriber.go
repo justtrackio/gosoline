@@ -121,7 +121,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 				dbSub.Assert(t, fetcher)
 
 			case mdlsub.OutputTypeDdb:
-				ctx := context.Background()
+				ctx := environment.Context()
 				ddbSub, ok := tc.(ddbSubscriberTestCase)
 
 				if !ok {
@@ -147,7 +147,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 				ddbSub.Assert(t, fetcher)
 
 			case mdlsub.OutputTypeKvstore:
-				ctx := context.Background()
+				ctx := environment.Context()
 				dbSub, ok := tc.(kvstoreSubscriberTestCase)
 
 				if !ok {
@@ -157,7 +157,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 
 				store, err := kvstore.NewConfigurableKvStore(ctx, config, logger, tc.GetName())
 				if err != nil {
-					assert.FailNow(t, "can't initialize kvStore", "the test case for the subscription of %s can't be initialized", tc.GetName())
+					assert.FailNow(t, err.Error(), "the test case for the subscription of %s can't be initialized", tc.GetName())
 				}
 
 				fetcher := &KvstoreSubscriberFetcher{
