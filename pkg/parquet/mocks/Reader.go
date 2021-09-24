@@ -44,13 +44,13 @@ func (_m *Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target 
 	return r0
 }
 
-// ReadFile provides a mock function with given fields: ctx, file
-func (_m *Reader) ReadFile(ctx context.Context, file string) (parquet.ReadResults, error) {
-	ret := _m.Called(ctx, file)
+// ReadFile provides a mock function with given fields: ctx, file, batchSize, offset
+func (_m *Reader) ReadFile(ctx context.Context, file string, batchSize int, offset int64) (parquet.ReadResults, error) {
+	ret := _m.Called(ctx, file, batchSize, offset)
 
 	var r0 parquet.ReadResults
-	if rf, ok := ret.Get(0).(func(context.Context, string) parquet.ReadResults); ok {
-		r0 = rf(ctx, file)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, int64) parquet.ReadResults); ok {
+		r0 = rf(ctx, file, batchSize, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(parquet.ReadResults)
@@ -58,11 +58,25 @@ func (_m *Reader) ReadFile(ctx context.Context, file string) (parquet.ReadResult
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, file)
+	if rf, ok := ret.Get(1).(func(context.Context, string, int, int64) error); ok {
+		r1 = rf(ctx, file, batchSize, offset)
 	} else {
 		r1 = ret.Error(1)
 	}
 
 	return r0, r1
+}
+
+// ReadFileIntoTarget provides a mock function with given fields: ctx, file, target, batchSize, offset
+func (_m *Reader) ReadFileIntoTarget(ctx context.Context, file string, target interface{}, batchSize int, offset int64) error {
+	ret := _m.Called(ctx, file, target, batchSize, offset)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}, int, int64) error); ok {
+		r0 = rf(ctx, file, target, batchSize, offset)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
