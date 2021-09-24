@@ -361,20 +361,12 @@ func TestKernelStageStopped(t *testing.T) {
 
 type fakeModule struct{}
 
-func (m *fakeModule) Boot(_ cfg.Config, _ log.Logger) error {
-	return nil
-}
-
 func (m *fakeModule) Run(_ context.Context) error {
 	return nil
 }
 
 type realModule struct {
 	t *testing.T
-}
-
-func (m *realModule) Boot(_ cfg.Config, _ log.Logger) error {
-	return nil
 }
 
 func (m *realModule) Run(ctx context.Context) error {

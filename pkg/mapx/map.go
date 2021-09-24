@@ -54,16 +54,16 @@ func (m *MapX) Keys() []string {
 	return keys
 }
 
-func (m *MapX) Get(selector string) *MapXNode {
+func (m *MapX) Get(key string) *MapXNode {
 	m.lck.Lock()
 	defer m.lck.Unlock()
 
-	val := m.access(m.msn, selector, nil, &OpMode{})
+	val := m.access(m.msn, key, nil, &OpMode{})
 
 	return &MapXNode{value: val}
 }
 
-func (m *MapX) Has(selector string) bool {
+func (m *MapX) Has(key string) bool {
 	m.lck.Lock()
 
 	if len(m.msn) == 0 {
@@ -73,7 +73,26 @@ func (m *MapX) Has(selector string) bool {
 
 	m.lck.Unlock()
 
-	return m.Get(selector).value != nil
+	return m.Get(key).value != nil
+}
+
+func (m *MapX) Append(key string, values ...interface{}) error {
+	if !m.Has(key) {
+		m.Set(key, values)
+		return nil
+	}
+
+	var err error
+	var slice []interface{}
+
+	if slice, err = m.Get(key).Slice(); err != nil {
+		return fmt.Errorf("current value is not a slice: %w", err)
+	}
+
+	slice = append(slice, values...)
+	m.Set(key, slice)
+
+	return nil
 }
 
 func (m *MapX) Set(key string, value interface{}, options ...MapOption) {

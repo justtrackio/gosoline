@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
@@ -22,6 +23,8 @@ import (
 )
 
 const (
+	MetadataKeyTables = "cloud.aws.dynamodb.tables"
+
 	MetricNameAccessSuccess = "DdbAccessSuccess"
 	MetricNameAccessFailure = "DdbAccessFailure"
 	MetricNameAccessLatency = "DdbAccessLatency"
@@ -100,6 +103,10 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
 		}
+	}
+
+	if err = appctx.MetadataAppend(ctx, MetadataKeyTables, tableName); err != nil {
+		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
 	return NewWithInterfaces(logger, tracer, client, settings)

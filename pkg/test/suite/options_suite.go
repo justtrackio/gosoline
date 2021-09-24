@@ -20,6 +20,8 @@ type suiteOptions struct {
 	envSetup    []func() error
 	envIsShared bool
 
+	fixtureSets []*fixtures.FixtureSet
+
 	appOptions   []application.Option
 	appModules   map[string]kernel.ModuleFactory
 	appFactories []kernel.MultiModuleFactory
@@ -107,10 +109,7 @@ func WithEnvSetup(setups ...func() error) Option {
 
 func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 	return func(s *suiteOptions) {
-		s.appOptions = append(s.appOptions, application.WithConfigSetting("fixtures", map[string]interface{}{
-			"enabled": true,
-		}))
-		s.appOptions = append(s.appOptions, application.WithFixtures(fixtureSets))
+		s.fixtureSets = append(s.fixtureSets, fixtureSets...)
 	}
 }
 

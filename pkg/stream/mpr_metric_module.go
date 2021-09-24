@@ -87,7 +87,7 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 			return nil, fmt.Errorf("can not create leader election for stream-metric-messages-per-runner writer: %w", err)
 		}
 
-		if cwClient, err = gosoCloudwatch.ProvideClient(context.Background(), config, logger, "default"); err != nil {
+		if cwClient, err = gosoCloudwatch.ProvideClient(ctx, config, logger, "default"); err != nil {
 			return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
 		}
 

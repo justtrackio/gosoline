@@ -49,10 +49,11 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 		}),
 	}...)
 
+	ctx := environment.Context()
 	config := environment.Config()
 	logger := environment.Logger()
 
-	app, err := application.NewWithInterfaces(config, logger, appOptions...)
+	app, err := application.NewWithInterfaces(ctx, config, logger, appOptions...)
 	if err != nil {
 		assert.FailNow(t, "failed to create application under test", err.Error())
 

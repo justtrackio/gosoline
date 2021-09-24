@@ -94,7 +94,7 @@ func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSetting
 		durationTook := now.Sub(attempt.start)
 
 		if backoff.MaxElapsedTime > 0 && deadline.Before(now) && ctx.Err() == context.DeadlineExceeded {
-			return output, metadata, exec.NewErrMaxElapsedTimeExceeded(attempt.resource, attempt.count, durationTook, backoff.MaxElapsedTime, err)
+			return output, metadata, exec.NewErrMaxElapsedTimeExceeded(attempt.resource, attempt.count, durationTook, backoff.MaxElapsedTime, ctx.Err())
 		}
 
 		var maxAttemptsError *awsRetry.MaxAttemptsError

@@ -1,6 +1,7 @@
 package db_repo
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -32,17 +33,15 @@ func (c *ChangeHistoryModel) GetHistoryRevision() int {
 	return c.ChangeHistoryRevision
 }
 
-func MigrateChangeHistory(config cfg.Config, logger log.Logger, models ...ModelBased) error {
-	for _, model := range models {
-		manager, err := newChangeHistoryManager(config, logger, model)
-		if err != nil {
-			return fmt.Errorf("can not create change history manager: %w", err)
-		}
+func MigrateChangeHistory(ctx context.Context, config cfg.Config, logger log.Logger, models ...ModelBased) error {
+	var err error
+	var manager *ChangeHistoryManager
 
-		if err = manager.runMigration(); err != nil {
-			return fmt.Errorf("can not run migrations: %w", err)
-		}
+	if manager, err = ProvideChangeHistoryManager(ctx, config, logger); err != nil {
+		return fmt.Errorf("can not access the change history manager: %w", err)
 	}
+
+	manager.addModels(models...)
 
 	return nil
 }

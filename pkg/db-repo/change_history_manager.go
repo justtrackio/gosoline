@@ -1,11 +1,12 @@
 package db_repo
 
 import (
+	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/jinzhu/gorm"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -15,17 +16,27 @@ type changeHistoryManagerSettings struct {
 	TableSuffix       string `cfg:"table_suffix" default:"history"`
 }
 
-type changeHistoryManager struct {
-	orm           *gorm.DB
-	logger        log.Logger
-	settings      *changeHistoryManagerSettings
-	model         ModelBased
-	originalTable *tableMetadata
-	historyTable  *tableMetadata
-	statements    []string
+type ChangeHistoryManager struct {
+	orm      *gorm.DB
+	logger   log.Logger
+	settings *changeHistoryManagerSettings
+	models   []ModelBased
 }
 
-func newChangeHistoryManager(config cfg.Config, logger log.Logger, model ModelBased) (*changeHistoryManager, error) {
+type changeHistoryManagerAppctxKey int
+
+func ProvideChangeHistoryManager(ctx context.Context, config cfg.Config, logger log.Logger) (*ChangeHistoryManager, error) {
+	manager, err := appctx.Provide(ctx, changeHistoryManagerAppctxKey(0), func() (interface{}, error) {
+		return NewChangeHistoryManager(config, logger)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return manager.(*ChangeHistoryManager), nil
+}
+
+func NewChangeHistoryManager(config cfg.Config, logger log.Logger) (*ChangeHistoryManager, error) {
 	orm, err := NewOrm(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
@@ -34,43 +45,47 @@ func newChangeHistoryManager(config cfg.Config, logger log.Logger, model ModelBa
 	settings := &changeHistoryManagerSettings{}
 	config.UnmarshalKey("change_history", settings)
 
-	return newChangeHistoryManagerWithInterfaces(logger, orm, model, settings), nil
+	return &ChangeHistoryManager{
+		logger:   logger.WithChannel("change_history_manager"),
+		orm:      orm,
+		settings: settings,
+	}, nil
 }
 
-func newChangeHistoryManagerWithInterfaces(logger log.Logger, orm *gorm.DB, model ModelBased, settings *changeHistoryManagerSettings) *changeHistoryManager {
+func (c *ChangeHistoryManager) addModels(models ...ModelBased) {
+	c.models = append(c.models, models...)
+}
+
+func (c *ChangeHistoryManager) RunMigrations() error {
+	for _, model := range c.models {
+		if err := c.RunMigration(model); err != nil {
+			return fmt.Errorf("can not run migration for model %T: %w", model, err)
+		}
+	}
+
+	return nil
+}
+
+func (c *ChangeHistoryManager) RunMigration(model ModelBased) error {
 	statements := make([]string, 0)
+	originalTable := c.buildOriginalTableMetadata(model)
+	historyTable := c.buildHistoryTableMetadata(model, originalTable)
 
-	logger = logger.WithChannel("change_history_manager").WithFields(log.Fields{
-		"model": reflect.TypeOf(model).Elem().Name(),
-	})
-
-	return &changeHistoryManager{
-		logger:     logger,
-		orm:        orm,
-		model:      model,
-		statements: statements,
-		settings:   settings,
-	}
-}
-
-func (c *changeHistoryManager) runMigration() error {
-	c.buildOriginalTableMetadata()
-	c.buildHistoryTableMetadata()
-
-	if !c.historyTable.exists {
-		c.createHistoryTable()
-		c.dropHistoryTriggers()
-		c.createHistoryTriggers()
+	if !historyTable.exists {
+		statements = append(statements, c.createHistoryTable(historyTable))
+		statements = append(statements, c.dropHistoryTriggers(originalTable, historyTable)...)
+		statements = append(statements, c.createHistoryTriggers(originalTable, historyTable)...)
 		c.logger.Info("creating change history setup")
-		return c.execute()
+		return c.execute(statements)
 	}
 
-	updated := c.updateHistoryTable()
+	updated, statement := c.updateHistoryTable(historyTable)
 	if updated {
-		c.dropHistoryTriggers()
-		c.createHistoryTriggers()
+		statements = append(statements, statement)
+		statements = append(statements, c.dropHistoryTriggers(originalTable, historyTable)...)
+		statements = append(statements, c.createHistoryTriggers(originalTable, historyTable)...)
 		c.logger.Info("updating change history setup")
-		return c.execute()
+		return c.execute(statements)
 	}
 
 	c.logger.Info("change history setup was already up to date")
@@ -78,85 +93,85 @@ func (c *changeHistoryManager) runMigration() error {
 	return nil
 }
 
-func (c *changeHistoryManager) buildOriginalTableMetadata() {
-	scope := c.orm.NewScope(c.model)
+func (c *ChangeHistoryManager) buildOriginalTableMetadata(model ModelBased) *tableMetadata {
+	scope := c.orm.NewScope(model)
 	fields := scope.GetModelStruct().StructFields
 	tableName := scope.TableName()
 
-	c.originalTable = newTableMetadata(scope, tableName, fields)
+	return newTableMetadata(scope, tableName, fields)
 }
 
-func (c *changeHistoryManager) buildHistoryTableMetadata() {
+func (c *ChangeHistoryManager) buildHistoryTableMetadata(model ModelBased, originalTable *tableMetadata) *tableMetadata {
 	historyScope := c.orm.NewScope(ChangeHistoryModel{})
-	tableName := fmt.Sprintf("%s_%s", c.originalTable.tableName, c.settings.TableSuffix)
-	modelFields := c.orm.NewScope(c.model).GetModelStruct().StructFields
+	tableName := fmt.Sprintf("%s_%s", originalTable.tableName, c.settings.TableSuffix)
+	modelFields := c.orm.NewScope(model).GetModelStruct().StructFields
 	fields := append(historyScope.GetModelStruct().StructFields, modelFields...)
 
-	c.historyTable = newTableMetadata(historyScope, tableName, fields)
+	return newTableMetadata(historyScope, tableName, fields)
 }
 
-func (c *changeHistoryManager) createHistoryTable() {
-	c.appendStatement(fmt.Sprintf("CREATE TABLE %v (%v, PRIMARY KEY (%v))",
-		c.historyTable.tableNameQuoted,
-		strings.Join(c.historyTable.columnDefinitions(), ","),
-		strings.Join(c.historyTable.primaryKeyNamesQuoted(), ","),
-	))
+func (c *ChangeHistoryManager) createHistoryTable(historyTable *tableMetadata) string {
+	return fmt.Sprintf("CREATE TABLE %v (%v, PRIMARY KEY (%v))",
+		historyTable.tableNameQuoted,
+		strings.Join(historyTable.columnDefinitions(), ","),
+		strings.Join(historyTable.primaryKeyNamesQuoted(), ","),
+	)
 }
 
-func (c *changeHistoryManager) appendStatement(statement string) {
-	c.statements = append(c.statements, statement)
-}
-
-func (c *changeHistoryManager) dropHistoryTriggers() {
+func (c *ChangeHistoryManager) dropHistoryTriggers(originalTable *tableMetadata, historyTable *tableMetadata) []string {
+	statements := make([]string, 0)
 	triggers := []string{
-		c.originalTable.tableName + "_ai",
-		c.originalTable.tableName + "_au",
-		c.originalTable.tableName + "_bd",
-		c.historyTable.tableName + "_revai",
+		originalTable.tableName + "_ai",
+		originalTable.tableName + "_au",
+		originalTable.tableName + "_bd",
+		historyTable.tableName + "_revai",
 	}
 
 	for _, trigger := range triggers {
-		c.appendStatement(fmt.Sprintf(`DROP TRIGGER IF EXISTS %s`, trigger))
+		statements = append(statements, fmt.Sprintf(`DROP TRIGGER IF EXISTS %s`, trigger))
 	}
+
+	return statements
 }
 
-func (c *changeHistoryManager) createHistoryTriggers() {
+func (c *ChangeHistoryManager) createHistoryTriggers(originalTable *tableMetadata, historyTable *tableMetadata) []string {
 	const NewRecord = "NEW"
 	const OldRecord = "OLD"
 
-	c.appendStatement(fmt.Sprintf(`CREATE TRIGGER %s_ai AFTER INSERT ON %s FOR EACH ROW %s WHERE %s`,
-		c.originalTable.tableName,
-		c.originalTable.tableNameQuoted,
-		c.insertHistoryEntry("insert", true),
-		c.primaryKeysMatchCondition(NewRecord),
-	))
+	statements := []string{
+		fmt.Sprintf(`CREATE TRIGGER %s_ai AFTER INSERT ON %s FOR EACH ROW %s WHERE %s`,
+			originalTable.tableName,
+			originalTable.tableNameQuoted,
+			c.insertHistoryEntry(originalTable, historyTable, "insert", true),
+			c.primaryKeysMatchCondition(originalTable, NewRecord),
+		),
+		fmt.Sprintf(`CREATE TRIGGER %s_au AFTER UPDATE ON %s FOR EACH ROW %s WHERE %s AND (%s)`,
+			originalTable.tableName,
+			originalTable.tableNameQuoted,
+			c.insertHistoryEntry(originalTable, historyTable, "update", true),
+			c.primaryKeysMatchCondition(originalTable, NewRecord),
+			c.rowUpdatedCondition(originalTable),
+		),
+		fmt.Sprintf(`CREATE TRIGGER %s_bd BEFORE DELETE ON %s FOR EACH ROW %s WHERE %s`,
+			originalTable.tableName,
+			originalTable.tableNameQuoted,
+			c.insertHistoryEntry(originalTable, historyTable, "delete", false),
+			c.primaryKeysMatchCondition(originalTable, OldRecord),
+		),
+		fmt.Sprintf(`CREATE TRIGGER %s_revai BEFORE INSERT ON %s FOR EACH ROW %s`,
+			historyTable.tableName,
+			historyTable.tableNameQuoted,
+			c.incrementRevision(originalTable, historyTable),
+		),
+	}
 
-	c.appendStatement(fmt.Sprintf(`CREATE TRIGGER %s_au AFTER UPDATE ON %s FOR EACH ROW %s WHERE %s AND (%s)`,
-		c.originalTable.tableName,
-		c.originalTable.tableNameQuoted,
-		c.insertHistoryEntry("update", true),
-		c.primaryKeysMatchCondition(NewRecord),
-		c.rowUpdatedCondition(),
-	))
-
-	c.appendStatement(fmt.Sprintf(`CREATE TRIGGER %s_bd BEFORE DELETE ON %s FOR EACH ROW %s WHERE %s`,
-		c.originalTable.tableName,
-		c.originalTable.tableNameQuoted,
-		c.insertHistoryEntry("delete", false),
-		c.primaryKeysMatchCondition(OldRecord),
-	))
-
-	c.appendStatement(fmt.Sprintf(`CREATE TRIGGER %s_revai BEFORE INSERT ON %s FOR EACH ROW %s`,
-		c.historyTable.tableName,
-		c.historyTable.tableNameQuoted,
-		c.incrementRevision(),
-	))
+	return statements
 }
 
-func (c *changeHistoryManager) insertHistoryEntry(action string, includeAuthorEmail bool) string {
-	columnNames := c.originalTable.columnNamesQuoted()
+func (c *ChangeHistoryManager) insertHistoryEntry(originalTable *tableMetadata, historyTable *tableMetadata, action string, includeAuthorEmail bool) string {
+	columnNames := originalTable.columnNamesQuoted()
 	if !includeAuthorEmail {
-		columnNames = c.originalTable.columnNamesQuotedExcludingValue(c.settings.ChangeAuthorField)
+		columnNames = originalTable.columnNamesQuotedExcludingValue(c.settings.ChangeAuthorField)
 	}
 
 	columns := strings.Join(columnNames, ",")
@@ -166,34 +181,34 @@ func (c *changeHistoryManager) insertHistoryEntry(action string, includeAuthorEm
 		INSERT INTO %s (change_history_action,change_history_revision,change_history_action_at,%s) 
 			SELECT '%s', NULL, NOW(), %s 
 			FROM %s AS d`,
-		c.historyTable.tableNameQuoted,
+		historyTable.tableNameQuoted,
 		columns,
 		action,
 		values,
-		c.originalTable.tableNameQuoted)
+		originalTable.tableNameQuoted)
 }
 
-func (c *changeHistoryManager) incrementRevision() string {
+func (c *ChangeHistoryManager) incrementRevision(originalTable *tableMetadata, historyTable *tableMetadata) string {
 	return fmt.Sprintf(`
 		BEGIN 
 			SET NEW.change_history_revision = (SELECT IFNULL(MAX(d.change_history_revision), 0) + 1 FROM %s as d WHERE %s); 
 		END`,
-		c.historyTable.tableNameQuoted,
-		c.primaryKeysMatchCondition("NEW"),
+		historyTable.tableNameQuoted,
+		c.primaryKeysMatchCondition(originalTable, "NEW"),
 	)
 }
 
-func (c *changeHistoryManager) primaryKeysMatchCondition(record string) string {
+func (c *ChangeHistoryManager) primaryKeysMatchCondition(originalTable *tableMetadata, record string) string {
 	var conditions []string
-	for _, columnName := range c.originalTable.primaryKeyNamesQuoted() {
+	for _, columnName := range originalTable.primaryKeyNamesQuoted() {
 		condition := fmt.Sprintf("d.%s = %s.%s", columnName, record, columnName)
 		conditions = append(conditions, condition)
 	}
 	return strings.Join(conditions, " AND ")
 }
 
-func (c *changeHistoryManager) rowUpdatedCondition() string {
-	columnNames := c.originalTable.columnNamesQuotedExcludingValue(c.settings.ChangeAuthorField, ColumnUpdatedAt)
+func (c *ChangeHistoryManager) rowUpdatedCondition(originalTable *tableMetadata) string {
+	columnNames := originalTable.columnNamesQuotedExcludingValue(c.settings.ChangeAuthorField, ColumnUpdatedAt)
 	var conditions []string
 	for _, columnName := range columnNames {
 		condition := fmt.Sprintf("NOT (OLD.%s <=> NEW.%s)", columnName, columnName)
@@ -202,24 +217,23 @@ func (c *changeHistoryManager) rowUpdatedCondition() string {
 	return strings.Join(conditions, " OR ")
 }
 
-func (c *changeHistoryManager) updateHistoryTable() bool {
-	for _, column := range c.historyTable.columns {
+func (c *ChangeHistoryManager) updateHistoryTable(historyTable *tableMetadata) (bool, string) {
+	for _, column := range historyTable.columns {
 		if column.exists {
 			continue
 		}
 
-		c.appendStatement(fmt.Sprintf("ALTER TABLE %s ADD %s",
-			c.historyTable.tableNameQuoted,
+		return true, fmt.Sprintf("ALTER TABLE %s ADD %s",
+			historyTable.tableNameQuoted,
 			column.definition,
-		))
-		return true
+		)
 	}
 
-	return false
+	return false, ""
 }
 
-func (c *changeHistoryManager) execute() error {
-	for _, statement := range c.statements {
+func (c *ChangeHistoryManager) execute(statements []string) error {
+	for _, statement := range statements {
 		c.logger.Debug(statement)
 		_, err := c.orm.CommonDB().Exec(statement)
 		if err != nil {

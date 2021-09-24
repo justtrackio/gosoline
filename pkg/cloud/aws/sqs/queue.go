@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -18,7 +19,8 @@ import (
 )
 
 const (
-	sqsBatchSize = 10
+	MetadataKeyQueues = "cloud.aws.sqs.queues"
+	sqsBatchSize      = 10
 )
 
 //go:generate mockery --name Queue
@@ -72,6 +74,21 @@ type queue struct {
 	properties *Properties
 }
 
+type metadataQueueKey string
+
+func ProvideQueue(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...ClientOption) (Queue, error) {
+	key := fmt.Sprintf("%s-%s", settings.ClientName, settings.QueueName)
+
+	queue, err := appctx.Provide(ctx, metadataQueueKey(key), func() (interface{}, error) {
+		return NewQueue(ctx, config, logger, settings, optFns...)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return queue.(Queue), nil
+}
+
 func NewQueue(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...ClientOption) (Queue, error) {
 	var err error
 	var client Client
@@ -88,6 +105,10 @@ func NewQueue(ctx context.Context, config cfg.Config, logger log.Logger, setting
 
 	if props, err = srv.CreateQueue(ctx, settings); err != nil {
 		return nil, fmt.Errorf("could not create or get properties of queue %s: %w", settings.QueueName, err)
+	}
+
+	if err = appctx.MetadataAppend(ctx, MetadataKeyQueues, settings.QueueName); err != nil {
+		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
 	return NewQueueWithInterfaces(logger, client, props), nil

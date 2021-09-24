@@ -11,6 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
@@ -114,13 +115,6 @@ func WithConfigSanitizers(sanitizers ...cfg.Sanitizer) Option {
 	}
 }
 
-func WithConfigServer(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-		kernel.Add("config-server", NewConfigServer())
-		return nil
-	})
-}
-
 func WithConfigSetting(key string, settings interface{}) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
@@ -150,12 +144,18 @@ func WithExecBackoffSettings(settings *exec.BackoffSettings) Option {
 	}
 }
 
+func WithDbRepoChangeHistory(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
+		kernel.AddMiddleware(db_repo.KernelMiddlewareChangeHistory, kernelPkg.PositionEnd)
+		return nil
+	})
+}
+
 func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 	return func(app *App) {
-		app.addSetupOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
-			ctx := context.Background()
-			loader := fixtures.NewFixtureLoader(ctx, config, logger)
-			return loader.Load(ctx, fixtureSets)
+		app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
+			kernel.AddMiddleware(fixtures.KernelMiddlewareLoader(fixtureSets), kernelPkg.PositionBeginning)
+			return nil
 		})
 	}
 }
@@ -243,6 +243,13 @@ func WithLoggerSentryHandler(contextProvider ...log.SentryContextProvider) Optio
 			return logger.Option(log.WithHandlers(sentryHandler))
 		})
 	}
+}
+
+func WithMetadataServer(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
+		kernel.Add("metadata-server", NewMetadataServer())
+		return nil
+	})
 }
 
 func WithMetricDaemon(app *App) {

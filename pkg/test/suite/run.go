@@ -98,7 +98,8 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 	}
 	envOptions = append(envOptions, suiteOptions.envOptions...)
 	envOptions = append(envOptions, env.WithConfigMap(map[string]interface{}{
-		"env": "test",
+		"env":              "test",
+		"fixtures.enabled": true,
 	}))
 
 	environment, err := env.NewEnvironment(t, envOptions...)
@@ -118,6 +119,10 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		if err := envSetup(); err != nil {
 			assert.FailNow(t, "failed to execute additional environment setup", err.Error())
 		}
+	}
+
+	if err = environment.LoadFixtures(suiteOptions.fixtureSets); err != nil {
+		assert.FailNow(t, "failed to load fixtures", err.Error())
 	}
 
 	for name, testCase := range testCases {

@@ -25,70 +25,27 @@ func (e ErrNoItemFound) Error() string {
 }
 
 type container struct {
-	sync.Mutex
-	items map[interface{}]interface{}
+	items sync.Map
 }
 
 func WithContainer(ctx context.Context) context.Context {
 	return context.WithValue(ctx, containerKey, &container{
-		items: make(map[interface{}]interface{}),
+		items: sync.Map{},
 	})
 }
 
-func Set(ctx context.Context, key interface{}, value interface{}) error {
-	contI := ctx.Value(containerKey)
-
-	if contI == nil {
-		return &ErrNoApplicationContainerFound{}
-	}
-
-	cont := contI.(*container)
-
-	cont.Lock()
-	defer cont.Unlock()
-
-	cont.items[key] = value
-
-	return nil
-}
-
-func Get(ctx context.Context, key interface{}) (interface{}, error) {
-	contI := ctx.Value(containerKey)
-
-	if contI == nil {
-		return nil, &ErrNoApplicationContainerFound{}
-	}
-
-	cont := contI.(*container)
-
-	cont.Lock()
-	defer cont.Unlock()
-
-	if val, ok := cont.items[key]; ok {
-		return val, nil
-	}
-
-	return nil, &ErrNoItemFound{
-		Key: key,
-	}
-}
-
-func GetSet(ctx context.Context, key interface{}, factory func() (interface{}, error)) (interface{}, error) {
+func Provide(ctx context.Context, key interface{}, factory func() (interface{}, error)) (interface{}, error) {
 	var ok bool
 	var err error
 	var contI, val interface{}
 
 	if contI = ctx.Value(containerKey); contI == nil {
-		return factory()
-		// return nil, &ErrNoApplicationContainerFound{}
+		return nil, &ErrNoApplicationContainerFound{}
 	}
 
 	cont := contI.(*container)
 
-	cont.Lock()
-	defer cont.Unlock()
-
-	if val, ok = cont.items[key]; ok {
+	if val, ok = cont.items.Load(key); ok {
 		return val, nil
 	}
 
@@ -96,7 +53,7 @@ func GetSet(ctx context.Context, key interface{}, factory func() (interface{}, e
 		return nil, err
 	}
 
-	cont.items[key] = val
+	cont.items.Store(key, val)
 
 	return val, nil
 }

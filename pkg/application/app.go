@@ -42,7 +42,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithConfigFileFlag,
 		WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		WithConfigSanitizers(cfg.TimeSanitizer),
-		WithConfigServer,
+		WithMetadataServer,
 		WithConsumerMessagesPerRunnerMetrics,
 		WithKernelSettingsFromConfig,
 		WithLoggerApplicationTag,
@@ -66,22 +66,21 @@ func New(options ...Option) kernel.Kernel {
 	var err error
 	var ker kernel.Kernel
 
+	ctx := appctx.WithContainer(context.Background())
 	config := cfg.New()
 	logger := log.NewLogger()
 
-	if ker, err = NewWithInterfaces(config, logger, options...); err != nil {
+	if ker, err = NewWithInterfaces(ctx, config, logger, options...); err != nil {
 		defaultErrorHandler("can initialize the app: %w", err)
 	}
 
 	return ker
 }
 
-func NewWithInterfaces(config cfg.GosoConf, logger log.GosoLogger, options ...Option) (kernel.Kernel, error) {
+func NewWithInterfaces(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger, options ...Option) (kernel.Kernel, error) {
 	var err error
 	var ker kernel.GosoKernel
 	var cfgPostProcessors map[string]int
-
-	ctx := appctx.WithContainer(context.Background())
 
 	app := &App{
 		configOptions: make([]ConfigOption, 0),

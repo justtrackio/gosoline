@@ -10,8 +10,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
-func NewSnsNotifier(config cfg.Config, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) (*baseNotifier, error) {
-	output, err := stream.NewSnsOutput(context.Background(), config, logger, &stream.SnsOutputSettings{
+func NewSnsNotifier(ctx context.Context, config cfg.Config, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) (*baseNotifier, error) {
+	output, err := stream.NewSnsOutput(ctx, config, logger, &stream.SnsOutputSettings{
 		TopicId: modelId.Name,
 		AppId: cfg.AppId{
 			Project:     modelId.Project,

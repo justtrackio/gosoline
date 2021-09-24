@@ -100,6 +100,7 @@ type DbRepoChangeHistoryTestSuite struct {
 	mocks            *test.Mocks
 	modelRepo        db_repo.Repository
 	modelHistoryRepo db_repo.Repository
+	historyManager   *db_repo.ChangeHistoryManager
 }
 
 func TestDbChangelogTestSuite(t *testing.T) {
@@ -128,6 +129,10 @@ func (s *DbRepoChangeHistoryTestSuite) SetupSuite() {
 
 	s.config = config
 	s.logger = log.NewCliLogger()
+
+	if s.historyManager, err = db_repo.NewChangeHistoryManager(s.config, s.logger); err != nil {
+		s.FailNow(err.Error(), "can not create change history manager")
+	}
 }
 
 func (s *DbRepoChangeHistoryTestSuite) TearDownSuite() {
@@ -147,7 +152,7 @@ func (s *DbRepoChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_Create
 	})
 	s.NoError(err)
 
-	err = db_repo.MigrateChangeHistory(s.config, s.logger, &TestModel1{})
+	err = s.historyManager.RunMigration(&TestModel1{})
 	s.NoError(err)
 
 	model := &TestModel1{
@@ -195,7 +200,7 @@ func (s *DbRepoChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_Update
 	})
 	s.NoError(err)
 
-	err = db_repo.MigrateChangeHistory(s.config, s.logger, &TestModel2{})
+	err = s.historyManager.RunMigration(&TestModel2{})
 	s.NoError(err)
 
 	model := &TestModel2{

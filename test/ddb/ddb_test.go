@@ -48,7 +48,7 @@ func (s *DdbTestSuite) SetupTest() error {
 		},
 	}
 	var err error
-	s.repo, err = ddb.NewRepository(context.Background(), s.Env().Config(), s.Env().Logger(), ddbConfig)
+	s.repo, err = ddb.NewRepository(s.Env().Context(), s.Env().Config(), s.Env().Logger(), ddbConfig)
 	if err != nil {
 		return err
 	}

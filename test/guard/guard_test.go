@@ -7,11 +7,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ory/ladon"
-
 	"github.com/justtrackio/gosoline/pkg/guard"
-
 	"github.com/justtrackio/gosoline/pkg/test/suite"
+	"github.com/ory/ladon"
 )
 
 type GuardTestSuite struct {
