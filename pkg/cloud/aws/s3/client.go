@@ -10,8 +10,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
+	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
+
+func init() {
+	dx.RegisterLocalstackSetting("cloud.aws.s3.clients.default.usePathStyle", true)
+}
 
 //go:generate mockery --name Client
 type Client interface {

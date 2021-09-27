@@ -8,11 +8,16 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
+
+func init() {
+	dx.RegisterRandomizablePortSetting("appctx.metadata.server.port")
+}
 
 type MetadataServerSettings struct {
 	Port int `cfg:"port" default:"8070"`

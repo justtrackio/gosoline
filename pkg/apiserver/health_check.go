@@ -7,9 +7,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
+
+func init() {
+	dx.RegisterRandomizablePortSetting("api.health.port")
+}
 
 type ApiHealthCheckSettings struct {
 	Port int    `cfg:"port" default:"8090"`
