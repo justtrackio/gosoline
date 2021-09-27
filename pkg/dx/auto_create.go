@@ -11,21 +11,13 @@ func init() {
 }
 
 func AutoCreateConfigPostProcessor(config cfg.GosoConf) (bool, error) {
-	if !config.IsSet("env") {
-		return false, nil
-	}
+	return runPostProcessorForDev(config, func(config cfg.GosoConf) error {
+		if err := config.Option(cfg.WithConfigSetting("dx.auto_create", true, cfg.SkipExisting)); err != nil {
+			return fmt.Errorf("could not set dx.auto_create: %w", err)
+		}
 
-	env := config.GetString("env")
-
-	if env != "dev" && env != "test" {
-		return false, nil
-	}
-
-	if err := config.Option(cfg.WithConfigSetting("dx.auto_create", true, cfg.SkipExisting)); err != nil {
-		return false, fmt.Errorf("could not set dx.auto_create: %w", err)
-	}
-
-	return true, nil
+		return nil
+	})
 }
 
 func ShouldAutoCreate(config cfg.Config) bool {
