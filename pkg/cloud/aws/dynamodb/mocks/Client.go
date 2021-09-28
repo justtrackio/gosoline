@@ -224,6 +224,36 @@ func (_m *Client) GetItem(ctx context.Context, params *dynamodb.GetItemInput, op
 	return r0, r1
 }
 
+// ListTagsOfResource provides a mock function with given fields: ctx, params, optFns
+func (_m *Client) ListTagsOfResource(ctx context.Context, params *dynamodb.ListTagsOfResourceInput, optFns ...func(*dynamodb.Options)) (*dynamodb.ListTagsOfResourceOutput, error) {
+	_va := make([]interface{}, len(optFns))
+	for _i := range optFns {
+		_va[_i] = optFns[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, params)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *dynamodb.ListTagsOfResourceOutput
+	if rf, ok := ret.Get(0).(func(context.Context, *dynamodb.ListTagsOfResourceInput, ...func(*dynamodb.Options)) *dynamodb.ListTagsOfResourceOutput); ok {
+		r0 = rf(ctx, params, optFns...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*dynamodb.ListTagsOfResourceOutput)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *dynamodb.ListTagsOfResourceInput, ...func(*dynamodb.Options)) error); ok {
+		r1 = rf(ctx, params, optFns...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // PutItem provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
 	_va := make([]interface{}, len(optFns))
