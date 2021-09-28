@@ -34,18 +34,6 @@ func TestGetKinesisClient(t *testing.T) {
 	config.AssertExpectations(t)
 }
 
-func TestGetEcsClient(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
-
-	_ = cloud.GetEcsClient(logger)
-}
-
-func TestGetServiceDiscoveryClient(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
-
-	_ = cloud.GetServiceDiscoveryClient(logger, "")
-}
-
 func TestPrefixedLogger(t *testing.T) {
 	l := logMocks.NewLoggerMock()
 	l.On("WithFields", log.Fields{
