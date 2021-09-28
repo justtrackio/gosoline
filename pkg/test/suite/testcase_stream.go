@@ -48,11 +48,11 @@ func isTestCaseStream(method reflect.Method) bool {
 }
 
 func buildTestCaseStream(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {
-	out := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
-	tc := out[0].Interface().(*StreamTestCase)
-
 	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
 		suite.SetT(t)
+
+		out := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
+		tc := out[0].Interface().(*StreamTestCase)
 
 		runTestCaseApplication(t, suite, suiteOptions, environment, func(app *appUnderTest) {
 			for inputName, data := range tc.Input {

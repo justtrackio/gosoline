@@ -21,6 +21,10 @@ func isTestCaseApplication(method reflect.Method) bool {
 		return false
 	}
 
+	if method.Func.Type().NumOut() != 0 {
+		return false
+	}
+
 	actualType1 := method.Func.Type().In(1)
 	expectedType := reflect.TypeOf((*AppUnderTest)(nil)).Elem()
 
