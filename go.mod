@@ -15,8 +15,14 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.2.0
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.2.0
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.4.2
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.18.0
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.9.1
+	github.com/aws/aws-sdk-go-v2/service/rds v1.9.0
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.5.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.16.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.7.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.7.1
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.11.0
 	github.com/aws/aws-xray-sdk-go v1.1.0
 	github.com/aws/smithy-go v1.8.0
 	github.com/cenkalti/backoff v2.2.1+incompatible
@@ -28,7 +34,7 @@ require (
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-playground/validator/v10 v10.2.0
-	github.com/go-redis/redis/v8 v8.8.0
+	github.com/go-redis/redis/v8 v8.11.3
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang-migrate/migrate/v4 v4.2.5
@@ -79,16 +85,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.0.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.2.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.3.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.18.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.9.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.3.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.0.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.3.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.7.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/rds v1.9.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.5.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.16.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssm v1.11.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.1.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.2.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
@@ -107,7 +107,7 @@ require (
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
-	github.com/golang/protobuf v1.5.0 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/gomodule/redigo v1.7.1-0.20190724094224-574c33c3df38 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
@@ -146,11 +146,8 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da // indirect
 	go.opencensus.io v0.22.3 // indirect
-	go.opentelemetry.io/otel v0.19.0 // indirect
-	go.opentelemetry.io/otel/metric v0.19.0 // indirect
-	go.opentelemetry.io/otel/trace v0.19.0 // indirect
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 // indirect
-	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
+	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
