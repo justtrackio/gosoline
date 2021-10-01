@@ -15,8 +15,14 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.2.0
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.2.0
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.4.2
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.18.0
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.9.1
+	github.com/aws/aws-sdk-go-v2/service/rds v1.9.0
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.5.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.16.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.7.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.7.1
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.11.0
 	github.com/aws/aws-xray-sdk-go v1.1.0
 	github.com/aws/smithy-go v1.8.0
 	github.com/cenkalti/backoff v2.2.1+incompatible
@@ -26,8 +32,8 @@ require (
 	github.com/getsentry/sentry-go v0.11.0
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
 	github.com/gin-contrib/gzip v0.0.3
-	github.com/gin-gonic/gin v1.6.3
-	github.com/go-playground/validator/v10 v10.2.0
+	github.com/gin-gonic/gin v1.7.0
+	github.com/go-playground/validator/v10 v10.4.1
 	github.com/go-redis/redis/v8 v8.8.0
 	github.com/go-resty/resty/v2 v2.6.0
 	github.com/go-sql-driver/mysql v1.6.0
@@ -79,16 +85,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.0.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.2.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.3.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.18.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.9.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.3.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.0.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.3.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.7.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/rds v1.9.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.5.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.16.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssm v1.11.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.1.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.2.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
