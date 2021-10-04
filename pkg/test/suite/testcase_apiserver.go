@@ -57,8 +57,13 @@ func buildTestCaseApiServer(suite TestingSuite, method reflect.Method) (testCase
 			reflect.ValueOf(client),
 		})
 
-		err := out[0].Interface().(error)
-		if err != nil {
+		result := out[0].Interface()
+
+		if result == nil {
+			return
+		}
+
+		if err := result.(error); err != nil {
 			assert.FailNow(suite.T(), err.Error(), "testcase %s returned an unexpected error: %s", method.Name, err)
 		}
 	})
