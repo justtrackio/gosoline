@@ -12,7 +12,7 @@ import (
 const (
 	GeneratorTypeMemory    = "memory"
 	GeneratorTypeHttp      = "http"
-	GeneratorTypeSonyFlake = "sonyFlake"
+	GeneratorTypeSonyFlake = "sonyflake"
 )
 
 //go:generate mockery --name Generator
