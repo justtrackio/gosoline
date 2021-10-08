@@ -1,6 +1,6 @@
 module "lb_label" {
-  source      = "applike/label/aws"
-  version     = "1.0.2"
+  source      = "gitlab.justdice-ops.io/devops/label/null"
+  version     = "1.0.0"
   context     = module.label.context
   environment = var.environment_short
   application = var.application_short
