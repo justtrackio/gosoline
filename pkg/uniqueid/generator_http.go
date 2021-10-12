@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws/instancemetadataservice"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/http"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -19,12 +20,23 @@ type generatorHttp struct {
 	url    string
 }
 
-func NewGeneratorHttp(config cfg.Config, logger log.Logger) (Generator, error) {
+func NewGeneratorHttp(ctx context.Context, config cfg.Config, logger log.Logger) (Generator, error) {
 	settings := GeneratorHttpSettings{}
 	config.UnmarshalKey("unique_id", &settings)
 
 	client := http.NewHttpClient(config, logger)
-	url := fmt.Sprintf("http://localhost:%d/nextId", settings.ApiPort)
+
+	imds, err := instancemetadataservice.NewInstanceMetadataService(ctx, config, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	ip, err := imds.GetIp(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not get local ip: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/nextId", ip, settings.ApiPort)
 
 	return &generatorHttp{
 		client: client,

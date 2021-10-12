@@ -25,7 +25,7 @@ var g = struct {
 	instance Generator
 }{}
 
-func ProvideGenerator(config cfg.Config, logger log.Logger) (Generator, error) {
+func ProvideGenerator(ctx context.Context, config cfg.Config, logger log.Logger) (Generator, error) {
 	g.Lock()
 	defer g.Unlock()
 
@@ -34,7 +34,7 @@ func ProvideGenerator(config cfg.Config, logger log.Logger) (Generator, error) {
 	}
 
 	var err error
-	if g.instance, err = NewGenerator(config, logger); err != nil {
+	if g.instance, err = NewGenerator(ctx, config, logger); err != nil {
 		return nil, err
 	}
 
@@ -45,16 +45,16 @@ type GeneratorSettings struct {
 	Type string `cfg:"type"`
 }
 
-func NewGenerator(config cfg.Config, logger log.Logger) (Generator, error) {
+func NewGenerator(ctx context.Context, config cfg.Config, logger log.Logger) (Generator, error) {
 	generatorType := config.GetString("unique_id.type")
 
 	switch generatorType {
 	case GeneratorTypeMemory:
-		return NewGeneratorMemory(config, logger)
+		return NewGeneratorMemory(ctx, config, logger)
 	case GeneratorTypeHttp:
-		return NewGeneratorHttp(config, logger)
+		return NewGeneratorHttp(ctx, config, logger)
 	case GeneratorTypeSonyFlake:
-		return NewGeneratorSonyFlake(config, logger)
+		return NewGeneratorSonyFlake(ctx, config, logger)
 	default:
 		return nil, fmt.Errorf("invalid generator type: %s", generatorType)
 	}

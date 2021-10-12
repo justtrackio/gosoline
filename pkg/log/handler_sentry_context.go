@@ -27,6 +27,7 @@ func SentryContextEcsMetadataProvider(_ ConfigProvider, handler *HandlerSentry) 
 		return nil
 	}
 
+	// TODO use aws sdk v2
 	handler.WithContext("ecsMetadata", ecsMetadata)
 
 	return nil

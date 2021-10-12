@@ -14,7 +14,7 @@ type NextIdResponse struct {
 }
 
 func DefineApi(ctx context.Context, config cfg.Config, logger log.Logger) (*apiserver.Definitions, error) {
-	h, err := NewHandler(config, logger)
+	h, err := NewHandler(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not create handler: %w", err)
 	}
@@ -31,10 +31,10 @@ type handler struct {
 	generator Generator
 }
 
-func NewHandler(config cfg.Config, logger log.Logger) (*handler, error) {
+func NewHandler(ctx context.Context, config cfg.Config, logger log.Logger) (*handler, error) {
 	logger = logger.WithChannel("unique-id")
 
-	generator, err := NewGeneratorSonyFlake(config, logger)
+	generator, err := NewGeneratorSonyFlake(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not create generator: %w", err)
 	}

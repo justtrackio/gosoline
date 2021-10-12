@@ -36,7 +36,7 @@ func ProvideGeneratorMemory() (*GeneratorMemory, error) {
 	return gm.instance, nil
 }
 
-func NewGeneratorMemory(_ cfg.Config, _ log.Logger) (Generator, error) {
+func NewGeneratorMemory(_ context.Context, _ cfg.Config, _ log.Logger) (Generator, error) {
 	return ProvideGeneratorMemory()
 }
 

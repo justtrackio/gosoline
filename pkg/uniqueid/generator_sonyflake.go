@@ -20,7 +20,7 @@ type generatorSonyFlake struct {
 	sonyFlake *sonyflake.Sonyflake
 }
 
-func NewGeneratorSonyFlake(config cfg.Config, logger log.Logger) (Generator, error) {
+func NewGeneratorSonyFlake(_ context.Context, config cfg.Config, _ log.Logger) (Generator, error) {
 	settings := &GeneratorSonyFlakeSettings{}
 	config.UnmarshalKey("unique_id", settings)
 
