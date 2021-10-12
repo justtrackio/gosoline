@@ -11,7 +11,7 @@ import (
 )
 
 type GeneratorHttpSettings struct {
-	ApiPort uint `cfg:"api_port" default:"8095"`
+	ApiPort uint `cfg:"api_port" default:"8088"`
 }
 
 type generatorHttp struct {
