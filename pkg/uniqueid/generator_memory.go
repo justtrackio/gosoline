@@ -36,6 +36,7 @@ func ProvideGeneratorMemory() (*GeneratorMemory, error) {
 	return gm.instance, nil
 }
 
+// NewGeneratorMemory use this for integration tests
 func NewGeneratorMemory(_ context.Context, _ cfg.Config, _ log.Logger) (Generator, error) {
 	return ProvideGeneratorMemory()
 }

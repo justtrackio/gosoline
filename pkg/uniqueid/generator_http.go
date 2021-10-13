@@ -20,20 +20,21 @@ type generatorHttp struct {
 	url    string
 }
 
+// NewGeneratorHttp use this to fetch unique ids from remotely from your local uniqe-id-gateway instance
 func NewGeneratorHttp(ctx context.Context, config cfg.Config, logger log.Logger) (Generator, error) {
 	settings := GeneratorHttpSettings{}
 	config.UnmarshalKey("unique_id", &settings)
 
 	client := http.NewHttpClient(config, logger)
 
-	imds, err := instancemetadataservice.NewInstanceMetadataService(ctx, config, logger)
+	ecsMetadata, err := instancemetadataservice.ReadEcsMetadata()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not get ecs metadata: %w", err)
 	}
 
-	ip, err := imds.GetIp(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not get local ip: %w", err)
+	ip, ok := ecsMetadata["HostPrivateIPv4Address"]
+	if !ok {
+		return nil, fmt.Errorf("invalid host private ipv4 received")
 	}
 
 	url := fmt.Sprintf("http://%s:%d/nextId", ip, settings.ApiPort)

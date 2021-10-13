@@ -1,4 +1,4 @@
-package log
+package instancemetadataservice
 
 import (
 	"io/ioutil"

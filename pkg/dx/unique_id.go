@@ -26,12 +26,12 @@ func UniqueIdConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		return false, nil
 	}
 
-	if err := config.Option(cfg.WithConfigSetting("unique_id.machine_id", defaultMachineId, cfg.SkipExisting)); err != nil {
-		return false, fmt.Errorf("could not set unique_id.machine_id: %w", err)
-	}
-
 	if err := config.Option(cfg.WithConfigSetting("unique_id.type", defaultGeneratorType, cfg.SkipExisting)); err != nil {
 		return false, fmt.Errorf("could not set unique_id.type: %w", err)
+	}
+
+	if err := config.Option(cfg.WithConfigSetting("unique_id.machine_id", defaultMachineId, cfg.SkipExisting)); err != nil {
+		return false, fmt.Errorf("could not set unique_id.machine_id: %w", err)
 	}
 
 	return true, nil

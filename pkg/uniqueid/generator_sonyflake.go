@@ -20,6 +20,10 @@ type generatorSonyFlake struct {
 	sonyFlake *sonyflake.Sonyflake
 }
 
+// NewGeneratorSonyFlake use this to generate unique ids in a distributed fashion.
+// The id consists of a timestamp (10ms resolution), a unique machine id and a sequence number which is atomically
+// increased per machine. It's recommended to get the machine id by parsing the lower 16 bits of your ip.
+// For more info: https://github.com/sony/sonyflake
 func NewGeneratorSonyFlake(_ context.Context, config cfg.Config, _ log.Logger) (Generator, error) {
 	settings := &GeneratorSonyFlakeSettings{}
 	config.UnmarshalKey("unique_id", settings)

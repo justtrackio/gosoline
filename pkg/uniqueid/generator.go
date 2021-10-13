@@ -13,6 +13,8 @@ const (
 	GeneratorTypeMemory    = "memory"
 	GeneratorTypeHttp      = "http"
 	GeneratorTypeSonyFlake = "sonyflake"
+	ConfigGeneratorType    = "unique_id.type"
+	ConfigMachineId        = "unique_id.machine_id"
 )
 
 //go:generate mockery --name Generator

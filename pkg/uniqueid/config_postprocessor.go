@@ -7,24 +7,32 @@ import (
 	"github.com/sony/sonyflake/awsutil"
 )
 
-type MachineIdSettings struct {
-	MachineId uint16 `cfg:"machine_id"`
-}
-
 func init() {
 	// has to run after the dx post processor in gosoline/pkg/dx/unique_id.go
 	cfg.AddPostProcessor(1, "gosoline.uniqueId", ConfigPostProcessor)
 }
 
 func ConfigPostProcessor(config cfg.GosoConf) (bool, error) {
+	// if there is no config, the common case is to fetch ids remotely
 	if !config.IsSet("unique_id") {
+		err := config.Option(cfg.WithConfigSetting(ConfigGeneratorType, GeneratorTypeHttp))
+		if err != nil {
+			return false, fmt.Errorf("could not set generator type: %w", err)
+		}
+
+		return true, nil
+	}
+
+	// for sonyflake generators, the machine id is derived from the ip
+	generatorType := config.GetString(ConfigGeneratorType)
+	if generatorType != GeneratorTypeSonyFlake {
 		return false, nil
 	}
 
-	settings := MachineIdSettings{}
-	config.UnmarshalKey("unique_id", &settings)
+	machineIdCfg := config.GetInt(ConfigMachineId, 0)
+	machineId := uint16(machineIdCfg)
 
-	if settings.MachineId > 0 {
+	if machineId > 0 {
 		return false, nil
 	}
 
@@ -33,7 +41,7 @@ func ConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		return false, fmt.Errorf("could not read ec2 machine id: %w", err)
 	}
 
-	if err := config.Option(cfg.WithConfigSetting("unique_id.machine_id", machineId)); err != nil {
+	if err := config.Option(cfg.WithConfigSetting(ConfigMachineId, machineId)); err != nil {
 		return false, fmt.Errorf("could not set unique_id.machine_id: %w", err)
 	}
 
