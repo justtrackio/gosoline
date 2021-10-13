@@ -1,6 +1,7 @@
 package metric
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -12,10 +13,10 @@ const (
 	WriterTypeES = "es"
 )
 
-func ProvideMetricWriterByType(config cfg.Config, logger log.Logger, typ string) (Writer, error) {
+func ProvideMetricWriterByType(ctx context.Context, config cfg.Config, logger log.Logger, typ string) (Writer, error) {
 	switch typ {
 	case WriterTypeCw:
-		return NewCwWriter(config, logger)
+		return NewCwWriter(ctx, config, logger)
 	case WriterTypeES:
 		return NewEsWriter(config, logger)
 	}

@@ -97,14 +97,14 @@ type cwWriter struct {
 	settings *Settings
 }
 
-func NewCwWriter(config cfg.Config, logger log.Logger) (*cwWriter, error) {
+func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*cwWriter, error) {
 	settings := getMetricSettings(config)
 	clock := clockwork.NewRealClock()
 
 	var err error
 	var client gosoCloudwatch.Client
 
-	if client, err = gosoCloudwatch.ProvideClient(context.Background(), config, logger, "default"); err != nil {
+	if client, err = gosoCloudwatch.ProvideClient(ctx, config, logger, "default"); err != nil {
 		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
 	}
 

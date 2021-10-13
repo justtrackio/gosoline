@@ -52,7 +52,7 @@ type Daemon struct {
 	dataPointCount int
 }
 
-func NewDaemon(config cfg.Config, logger log.Logger) (*Daemon, error) {
+func NewDaemon(ctx context.Context, config cfg.Config, logger log.Logger) (*Daemon, error) {
 	settings := getMetricSettings(config)
 
 	channel := ProviderMetricChannel()
@@ -63,7 +63,7 @@ func NewDaemon(config cfg.Config, logger log.Logger) (*Daemon, error) {
 	writers := make([]Writer, len(settings.Writers))
 
 	for i, t := range settings.Writers {
-		if writers[i], err = ProvideMetricWriterByType(config, logger, t); err != nil {
+		if writers[i], err = ProvideMetricWriterByType(ctx, config, logger, t); err != nil {
 			return nil, fmt.Errorf("can not create metric writer of type %s: %w", t, err)
 		}
 	}

@@ -255,7 +255,7 @@ func WithMetadataServer(app *App) {
 func WithMetricDaemon(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
 		kernel.Add("metric", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Module, error) {
-			return metric.NewDaemon(config, logger)
+			return metric.NewDaemon(ctx, config, logger)
 		})
 
 		return nil
