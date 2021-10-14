@@ -101,10 +101,12 @@ func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*cw
 	settings := getMetricSettings(config)
 	clock := clockwork.NewRealClock()
 
-	var err error
-	var client gosoCloudwatch.Client
-
-	if client, err = gosoCloudwatch.ProvideClient(ctx, config, logger, "default"); err != nil {
+	client, err := gosoCloudwatch.ProvideClient(ctx, config, logger, "default", func(cfg *gosoCloudwatch.ClientConfig) {
+		cfg.Settings.Backoff.MaxAttempts = 1
+		cfg.Settings.Backoff.MaxElapsedTime = time.Second
+		cfg.Settings.HttpClient.Timeout = time.Second
+	})
+	if err != nil {
 		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
 	}
 
