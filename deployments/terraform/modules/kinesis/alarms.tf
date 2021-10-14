@@ -1,17 +1,17 @@
-resource "aws_cloudwatch_metric_alarm" "firehose-read-bytes-high" {
-  alarm_name          = "${var.family}-${var.application}-${var.family}-${var.model}-read-bytes-high"
+resource "aws_cloudwatch_metric_alarm" "firehose-get-records-success-rate" {
+  alarm_name          = "${var.family}-${var.application}-${var.family}-${var.model}-get-records-success-rate"
   count               = var.alarm_create
-  comparison_operator = "GreaterThanOrEqualToThreshold"
+  comparison_operator = "LessThanThreshold"
   evaluation_periods  = var.alarm_evaluation_periods
-  metric_name         = "GetRecords.Bytes"
+  metric_name         = "GetRecords.Success"
   namespace           = "AWS/Kinesis"
   period              = var.alarm_period_seconds
-  statistic           = "Sum"
-  threshold           = var.shard_count * var.alarm_period_seconds * var.alarm_limit_threshold_percentage / 100 * 1024 * 1024 * 2
-  datapoints_to_alarm = var.alarm_datapoints_to_alarm
-  treat_missing_data  = "breaching"
+  statistic           = "Average"
+  threshold           = var.alarm_records_success_threshold
+  datapoints_to_alarm = var.alarm_put_get_records_datapoints_to_alarm
+  treat_missing_data  = "notBreaching"
 
-  alarm_description = "This metric monitors kinesis read bytes utilization"
+  alarm_description = "This alarm monitors the kinesis GetRecords.Success metric"
 
   dimensions = {
     StreamName = aws_kinesis_stream.main.name
@@ -28,20 +28,20 @@ resource "aws_cloudwatch_metric_alarm" "firehose-read-bytes-high" {
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "firehose-write-bytes-high" {
-  alarm_name          = "${var.family}-${var.application}-${var.family}-${var.model}-write-bytes-high"
+resource "aws_cloudwatch_metric_alarm" "firehose-put-records-success-rate" {
+  alarm_name          = "${var.family}-${var.application}-${var.family}-${var.model}-put-records-success-rate"
   count               = var.alarm_create
-  comparison_operator = "GreaterThanOrEqualToThreshold"
+  comparison_operator = "LessThanThreshold"
   evaluation_periods  = var.alarm_evaluation_periods
-  metric_name         = "IncomingBytes"
+  metric_name         = "PutRecords.Success"
   namespace           = "AWS/Kinesis"
   period              = var.alarm_period_seconds
-  statistic           = "Sum"
-  threshold           = var.shard_count * var.alarm_period_seconds * var.alarm_limit_threshold_percentage / 100 * 1024 * 1024
-  datapoints_to_alarm = var.alarm_datapoints_to_alarm
+  statistic           = "Average"
+  threshold           = var.alarm_records_success_threshold
+  datapoints_to_alarm = var.alarm_put_get_records_datapoints_to_alarm
   treat_missing_data  = "notBreaching"
 
-  alarm_description = "This metric monitors kinesis write bytes utilization"
+  alarm_description = "This alarm monitors the kinesis PutRecords.Success metric"
 
   dimensions = {
     StreamName = aws_kinesis_stream.main.name
