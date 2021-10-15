@@ -93,10 +93,10 @@ func WithConfigFileFlag(app *App) {
 	})
 }
 
-func WithConfigMap(configMap map[string]interface{}) Option {
+func WithConfigMap(configMap map[string]interface{}, mergeOptions ...cfg.MergeOption) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
-			return config.Option(cfg.WithConfigMap(configMap))
+			return config.Option(cfg.WithConfigMap(configMap, mergeOptions...))
 		})
 	}
 }
