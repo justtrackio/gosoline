@@ -53,6 +53,7 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 	config.UnmarshalKey(clientsKey, settings, []cfg.UnmarshalDefaults{
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.region", "region"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.endpoint", "endpoint"),
+		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.http_client", "http_client"),
 		cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, "."),
 	}...)
 
