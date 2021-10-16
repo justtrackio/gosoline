@@ -15,7 +15,7 @@ func init() {
 func ConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	// if there is no config, the common case is to fetch ids remotely
 	if !config.IsSet("unique_id") {
-		err := config.Option(cfg.WithConfigSetting(ConfigGeneratorType, GeneratorTypeHttp))
+		err := config.Option(cfg.WithConfigSetting(ConfigGeneratorType, GeneratorTypeSrv))
 		if err != nil {
 			return false, fmt.Errorf("could not set generator type: %w", err)
 		}

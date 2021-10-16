@@ -11,7 +11,7 @@ import (
 
 const (
 	GeneratorTypeMemory    = "memory"
-	GeneratorTypeHttp      = "http"
+	GeneratorTypeSrv       = "srv"
 	GeneratorTypeSonyFlake = "sonyflake"
 	ConfigGeneratorType    = "unique_id.type"
 	ConfigMachineId        = "unique_id.machine_id"
@@ -53,8 +53,8 @@ func NewGenerator(ctx context.Context, config cfg.Config, logger log.Logger) (Ge
 	switch generatorType {
 	case GeneratorTypeMemory:
 		return NewGeneratorMemory(ctx, config, logger)
-	case GeneratorTypeHttp:
-		return NewGeneratorHttp(ctx, config, logger)
+	case GeneratorTypeSrv:
+		return NewGeneratorSrv(ctx, config, logger)
 	case GeneratorTypeSonyFlake:
 		return NewGeneratorSonyFlake(ctx, config, logger)
 	default:

@@ -2,8 +2,6 @@ package log
 
 import (
 	"fmt"
-
-	"github.com/justtrackio/gosoline/pkg/cloud/aws/instancemetadataservice"
 )
 
 type ConfigProvider interface {
@@ -20,7 +18,7 @@ func SentryContextConfigProvider(config ConfigProvider, handler *HandlerSentry) 
 }
 
 func SentryContextEcsMetadataProvider(_ ConfigProvider, handler *HandlerSentry) error {
-	ecsMetadata, err := instancemetadataservice.ReadEcsMetadata()
+	ecsMetadata, err := ReadEcsMetadata()
 	if err != nil {
 		return fmt.Errorf("can not read ecs metadata: %w", err)
 	}
