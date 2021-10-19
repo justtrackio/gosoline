@@ -60,6 +60,15 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 		return
 	}
 
+	for _, o := range suiteOptions.appCtxOptions {
+		err := o(ctx)
+		if err != nil {
+			assert.FailNow(t, "failed to apply appctx option", err.Error())
+
+			return
+		}
+	}
+
 	for name, module := range suiteOptions.appModules {
 		app.Add(name, module)
 	}

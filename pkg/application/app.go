@@ -113,7 +113,7 @@ func NewWithInterfaces(ctx context.Context, config cfg.GosoConf, logger log.Goso
 	}
 
 	for _, opt := range app.setupOptions {
-		if err = opt(config, logger); err != nil {
+		if err = opt(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not apply setup options on application: %w", err)
 		}
 	}

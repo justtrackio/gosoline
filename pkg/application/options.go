@@ -19,6 +19,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/tracing"
+	"github.com/justtrackio/gosoline/pkg/uniqueid"
 	"github.com/pkg/errors"
 )
 
@@ -27,7 +28,7 @@ type (
 	ConfigOption func(config cfg.GosoConf) error
 	LoggerOption func(config cfg.GosoConf, logger log.GosoLogger) error
 	KernelOption func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error
-	SetupOption  func(config cfg.GosoConf, logger log.GosoLogger) error
+	SetupOption  func(appCtx context.Context, config cfg.GosoConf, logger log.GosoLogger) error
 )
 
 type kernelSettings struct {
@@ -278,6 +279,14 @@ func WithProfiling() Option {
 	}
 }
 
+func WithUniqueIdGenerator(generator uniqueid.Generator) Option {
+	return func(app *App) {
+		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+			return uniqueid.WithGenerator(ctx, generator)
+		})
+	}
+}
+
 func WithTracing(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		tracingHandler := tracing.NewLoggerErrorHandler()
@@ -290,7 +299,7 @@ func WithTracing(app *App) {
 		return logger.Option(options...)
 	})
 
-	app.addSetupOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+	app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
 		strategy := tracing.NewTraceIdErrorWarningStrategy(logger)
 		stream.AddDefaultEncodeHandler(tracing.NewMessageWithTraceEncoder(strategy))
 
@@ -300,7 +309,7 @@ func WithTracing(app *App) {
 
 func WithUTCClock(useUTC bool) Option {
 	return func(app *App) {
-		app.addSetupOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
 			clock.WithUseUTC(useUTC)
 
 			return nil

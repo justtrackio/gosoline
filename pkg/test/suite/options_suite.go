@@ -1,9 +1,11 @@
 package suite
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
@@ -23,19 +25,25 @@ type suiteOptions struct {
 
 	fixtureSets []*fixtures.FixtureSet
 
-	appOptions   []application.Option
-	appModules   map[string]kernel.ModuleFactory
-	appFactories []kernel.MultiModuleFactory
+	appOptions    []application.Option
+	appCtxOptions []appctx.Option
+	appModules    map[string]kernel.ModuleFactory
+	appFactories  []kernel.MultiModuleFactory
 }
 
 func newSuiteOptions() *suiteOptions {
 	return &suiteOptions{
-		envOptions:   make([]env.Option, 0),
-		envSetup:     make([]func() error, 0),
-		appOptions:   make([]application.Option, 0),
-		appModules:   make(map[string]kernel.ModuleFactory),
-		appFactories: make([]kernel.MultiModuleFactory, 0),
+		envOptions:    make([]env.Option, 0),
+		envSetup:      make([]func() error, 0),
+		appOptions:    make([]application.Option, 0),
+		appCtxOptions: make([]appctx.Option, 0),
+		appModules:    make(map[string]kernel.ModuleFactory),
+		appFactories:  make([]kernel.MultiModuleFactory, 0),
 	}
+}
+
+func (s *suiteOptions) addAppCtxOption(opt appctx.Option) {
+	s.appCtxOptions = append(s.appCtxOptions, opt)
 }
 
 func (s *suiteOptions) addAppOption(opt application.Option) {
@@ -157,17 +165,11 @@ func WithSubscribers(transformerFactoryMap mdlsub.TransformerMapTypeVersionFacto
 	return WithModuleFactory(subs)
 }
 
-func WithUniqueIdFromMemory(ids []int64) Option {
-	generator, _ := uniqueid.ProvideGeneratorMemory()
-
-	for _, id := range ids {
-		generator.AddId(id)
-	}
-
+func WithUniqueIdGenerator(generator uniqueid.Generator) Option {
 	return func(s *suiteOptions) {
-		s.addAppOption()
-
-		s.addEnvOption(env.WithConfigSetting("unique_id.type", "memory"))
+		s.addAppCtxOption(func(ctx context.Context) error {
+			return uniqueid.WithGenerator(ctx, generator)
+		})
 	}
 }
 
