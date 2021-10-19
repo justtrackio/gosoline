@@ -31,10 +31,10 @@ type handler struct {
 	generator Generator
 }
 
-func NewHandler(ctx context.Context, config cfg.Config, logger log.Logger) (*handler, error) {
+func NewHandler(_ context.Context, config cfg.Config, logger log.Logger) (*handler, error) {
 	logger = logger.WithChannel("unique-id")
 
-	generator, err := NewGeneratorSonyFlake(ctx, config, logger)
+	generator, err := NewGeneratorSonyFlake(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not create generator: %w", err)
 	}

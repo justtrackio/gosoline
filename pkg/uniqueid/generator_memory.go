@@ -5,40 +5,33 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 )
 
 type GeneratorMemory struct {
 	sync.Mutex
-
 	ids []int64
 }
 
-var gm = struct {
-	sync.Mutex
-	instance *GeneratorMemory
-}{}
+type generatorMemoryAppCtxKey string
 
-func ProvideGeneratorMemory() (*GeneratorMemory, error) {
-	gm.Lock()
-	defer gm.Unlock()
-
-	if gm.instance != nil {
-		return gm.instance, nil
+func ProvideGeneratorMemory(ctx context.Context) (*GeneratorMemory, error) {
+	generator, err := appctx.Provide(ctx, new(generatorMemoryAppCtxKey), func() (interface{}, error) {
+		return &GeneratorMemory{
+			Mutex: sync.Mutex{},
+			ids:   make([]int64, 0),
+		}, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	gm.instance = &GeneratorMemory{
-		Mutex: sync.Mutex{},
-		ids:   make([]int64, 0),
-	}
-
-	return gm.instance, nil
+	return generator.(*GeneratorMemory), nil
 }
 
 // NewGeneratorMemory use this for integration tests
-func NewGeneratorMemory(_ context.Context, _ cfg.Config, _ log.Logger) (Generator, error) {
-	return ProvideGeneratorMemory()
+func NewGeneratorMemory(ctx context.Context) (Generator, error) {
+	return ProvideGeneratorMemory(ctx)
 }
 
 func (g *GeneratorMemory) AddId(id int64) {

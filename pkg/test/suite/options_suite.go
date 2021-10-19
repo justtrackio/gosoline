@@ -165,6 +165,8 @@ func WithUniqueIdFromMemory(ids []int64) Option {
 	}
 
 	return func(s *suiteOptions) {
+		s.addAppOption()
+
 		s.addEnvOption(env.WithConfigSetting("unique_id.type", "memory"))
 	}
 }

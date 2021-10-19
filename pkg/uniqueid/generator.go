@@ -3,8 +3,8 @@ package uniqueid
 import (
 	"context"
 	"fmt"
-	"sync"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -22,25 +22,17 @@ type Generator interface {
 	NextId(ctx context.Context) (*int64, error)
 }
 
-var g = struct {
-	sync.Mutex
-	instance Generator
-}{}
+type generatorAppCtxKey string
 
 func ProvideGenerator(ctx context.Context, config cfg.Config, logger log.Logger) (Generator, error) {
-	g.Lock()
-	defer g.Unlock()
-
-	if g.instance != nil {
-		return g.instance, nil
-	}
-
-	var err error
-	if g.instance, err = NewGenerator(ctx, config, logger); err != nil {
+	generator, err := appctx.Provide(ctx, new(generatorAppCtxKey), func() (interface{}, error) {
+		return NewGenerator(ctx, config, logger)
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	return g.instance, nil
+	return generator.(Generator), nil
 }
 
 type GeneratorSettings struct {
@@ -52,11 +44,11 @@ func NewGenerator(ctx context.Context, config cfg.Config, logger log.Logger) (Ge
 
 	switch generatorType {
 	case GeneratorTypeMemory:
-		return NewGeneratorMemory(ctx, config, logger)
+		return NewGeneratorMemory(ctx)
 	case GeneratorTypeSrv:
-		return NewGeneratorSrv(ctx, config, logger)
+		return NewGeneratorSrv(config, logger)
 	case GeneratorTypeSonyFlake:
-		return NewGeneratorSonyFlake(ctx, config, logger)
+		return NewGeneratorSonyFlake(config, logger)
 	default:
 		return nil, fmt.Errorf("invalid generator type: %s", generatorType)
 	}

@@ -22,7 +22,7 @@ var srvNamingStrategy = func(appId cfg.AppId) string {
 }
 
 // NewGeneratorSrv use this to fetch unique ids remotely via a service discovery entry
-func NewGeneratorSrv(ctx context.Context, config cfg.Config, logger log.Logger) (Generator, error) {
+func NewGeneratorSrv(config cfg.Config, logger log.Logger) (Generator, error) {
 	client := http.NewHttpClient(config, logger)
 
 	appId := cfg.AppId{}
