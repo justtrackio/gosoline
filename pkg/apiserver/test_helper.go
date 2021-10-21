@@ -1,13 +1,14 @@
 package apiserver
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
-func HttpTest(method string, path string, requestPath string, body string, handler gin.HandlerFunc) *httptest.ResponseRecorder {
+func HttpTest(method string, path string, requestPath string, body string, handler gin.HandlerFunc, requestOptions ...func(r *http.Request)) *httptest.ResponseRecorder {
 	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.New()
@@ -15,6 +16,10 @@ func HttpTest(method string, path string, requestPath string, body string, handl
 
 	bodyReader := strings.NewReader(body)
 	request, _ := http.NewRequest(method, requestPath, bodyReader)
+	for _, opt := range requestOptions {
+		opt(request)
+	}
+
 	response := httptest.NewRecorder()
 
 	r.ServeHTTP(response, request)
