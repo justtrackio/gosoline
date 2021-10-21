@@ -26,6 +26,7 @@ var ErrAccessForbidden = errors.New("cant access resource")
 type Request struct {
 	Body     interface{}
 	Header   http.Header
+	Cookies  map[string]string
 	Params   gin.Params
 	Url      *url.URL
 	ClientIp string
@@ -228,6 +229,7 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 		reqCtx := ginCtx.Request.Context()
 		request := &Request{
 			Header:   ginCtx.Request.Header,
+			Cookies:  parseCookies(ginCtx.Request),
 			Params:   ginCtx.Params,
 			Url:      ginCtx.Request.URL,
 			Body:     input,
@@ -296,6 +298,7 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 
 	request := &Request{
 		Header:   ginCtx.Request.Header,
+		Cookies:  parseCookies(ginCtx.Request),
 		Params:   ginCtx.Params,
 		Url:      ginCtx.Request.URL,
 		Body:     input,
@@ -334,6 +337,16 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 
 	writeResponseHeaders(ginCtx, resp)
 	writer(ginCtx)
+}
+
+func parseCookies(request *http.Request) map[string]string {
+	result := make(map[string]string)
+
+	for _, cookie := range request.Cookies() {
+		result[cookie.Name] = cookie.Value
+	}
+
+	return result
 }
 
 func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, ginError gin.Error) {

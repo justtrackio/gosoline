@@ -97,3 +97,21 @@ func TestNotModifiedHandler(t *testing.T) {
 	assert.Equal(t, "", response.Header().Get("Location"))
 	assert.Equal(t, "", response.Body.String())
 }
+
+type CookieHandler struct{}
+
+func (h CookieHandler) Handle(_ context.Context, req *apiserver.Request) (*apiserver.Response, error) {
+	return apiserver.NewJsonResponse(req.Cookies), nil
+}
+
+func TestCookieHandler(t *testing.T) {
+	handler := apiserver.CreateRawHandler(CookieHandler{})
+	response := apiserver.HttpTest("GET", "/", "/", "", handler, func(r *http.Request) {
+		r.Header.Set("Cookie", "cookie1=value1;cookie2=value2;cookie1=value3")
+	})
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Equal(t, apiserver.ContentTypeJson, response.Header().Get("Content-Type"))
+	assert.Equal(t, "", response.Header().Get("Location"))
+	assert.JSONEq(t, `{"cookie1":"value3","cookie2":"value2"}`, response.Body.String())
+}
