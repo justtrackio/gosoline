@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -64,9 +65,20 @@ func getTracer(t *testing.T) tracing.Tracer {
 		Environment: "test_env",
 		Family:      "test_family",
 		Application: "test_name",
-	}, &tracing.XRaySettings{Enabled: true})
+	}, &tracing.XRaySettings{
+		Enabled:          true,
+		SamplingStrategy: &TestSamplingStrategy{},
+	})
 
 	assert.NoError(t, err, "we should be able to get a tracer")
 
 	return tracer
+}
+
+type TestSamplingStrategy struct{}
+
+func (tss *TestSamplingStrategy) ShouldTrace(request *sampling.Request) *sampling.Decision {
+	return &sampling.Decision{
+		Sample: true,
+	}
 }
