@@ -161,3 +161,9 @@ func WithoutAutoDetectedComponents(components ...string) Option {
 		s.addEnvOption(env.WithoutAutoDetectedComponents(components...))
 	}
 }
+
+func WithDbRepoChangeHistory() Option {
+	return func(s *suiteOptions) {
+		s.addAppOption(application.WithDbRepoChangeHistory)
+	}
+}
