@@ -25,7 +25,7 @@ type reader struct {
 	settings KinsumerSettings
 	client   Kinsumer
 	handler  MessageHandler
-	doStop   sync.Once
+	doStop   *sync.Once
 	wg       sync.WaitGroup
 }
 
@@ -38,10 +38,11 @@ func NewReader(config cfg.Config, logger log.Logger, factory KinsumerFactory, ha
 	return &reader{
 		config:   config,
 		logger:   logger,
+		factory:  factory,
 		settings: settings,
 		client:   client,
 		handler:  handler,
-		factory:  factory,
+		doStop:   &sync.Once{},
 	}, nil
 }
 
@@ -120,7 +121,7 @@ func (r *reader) restartClient() error {
 	}
 
 	// allow us to stop the new client again
-	r.doStop = sync.Once{}
+	r.doStop = &sync.Once{}
 
 	if err := r.client.Run(); err != nil {
 		return fmt.Errorf("unable to restart kinesis stream input: %w", err)

@@ -22,10 +22,11 @@ type InMemorySettings struct {
 }
 
 type InMemoryInput struct {
-	once     sync.Once
-	channel  chan *Message
-	stopped  chan struct{}
-	settings *InMemorySettings
+	lck           sync.Mutex
+	channel       chan *Message
+	stopped       chan struct{}
+	closedStopped bool
+	settings      *InMemorySettings
 }
 
 func ProvideInMemoryInput(name string, settings *InMemorySettings) *InMemoryInput {
@@ -43,16 +44,20 @@ func ProvideInMemoryInput(name string, settings *InMemorySettings) *InMemoryInpu
 
 func NewInMemoryInput(settings *InMemorySettings) *InMemoryInput {
 	return &InMemoryInput{
-		channel:  make(chan *Message, settings.Size),
-		stopped:  make(chan struct{}),
-		settings: settings,
+		channel:       make(chan *Message, settings.Size),
+		stopped:       make(chan struct{}),
+		closedStopped: false,
+		settings:      settings,
 	}
 }
 
 func (i *InMemoryInput) Reset() {
-	i.once = sync.Once{}
+	i.lck.Lock()
+	defer i.lck.Unlock()
+
 	i.channel = make(chan *Message, i.settings.Size)
 	i.stopped = make(chan struct{})
+	i.closedStopped = false
 }
 
 func (i *InMemoryInput) Publish(messages ...*Message) {
@@ -72,9 +77,13 @@ func (i *InMemoryInput) Run(ctx context.Context) error {
 }
 
 func (i *InMemoryInput) Stop() {
-	i.once.Do(func() {
+	i.lck.Lock()
+	defer i.lck.Unlock()
+
+	if !i.closedStopped {
 		close(i.stopped)
-	})
+		i.closedStopped = true
+	}
 }
 
 func (i *InMemoryInput) Data() chan *Message {

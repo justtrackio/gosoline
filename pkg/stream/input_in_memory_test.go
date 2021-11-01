@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/stretchr/testify/suite"
 )
@@ -38,6 +39,27 @@ func (s *InMemoryInputTestSuite) TestRun() {
 
 	s.Len(readMessages, 1, "1 message should have been read")
 	s.Equal("content", msg.Body, "message body should contain content")
+}
+
+func (s *InMemoryInputTestSuite) TestReset() {
+	input := stream.NewInMemoryInput(&stream.InMemorySettings{})
+	wait := make(chan struct{})
+	cfn := coffin.New()
+
+	for i := 0; i < 100; i++ {
+		cfn.Go(func() error {
+			<-wait
+			// these two calls should be thread safe and not interfere with each other
+			input.Stop()
+			input.Reset()
+
+			return nil
+		})
+	}
+
+	close(wait)
+
+	s.NoError(cfn.Wait())
 }
 
 func TestInMemoryInputSuite(t *testing.T) {
