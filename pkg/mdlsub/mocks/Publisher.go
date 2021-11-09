@@ -33,3 +33,24 @@ func (_m *Publisher) Publish(ctx context.Context, typ string, version int, value
 
 	return r0
 }
+
+// PublishBatch provides a mock function with given fields: ctx, typ, version, values, customAttributes
+func (_m *Publisher) PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]interface{}) error {
+	_va := make([]interface{}, len(customAttributes))
+	for _i := range customAttributes {
+		_va[_i] = customAttributes[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, typ, version, values)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, []interface{}, ...map[string]interface{}) error); ok {
+		r0 = rf(ctx, typ, version, values, customAttributes...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
