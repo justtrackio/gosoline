@@ -21,12 +21,9 @@ const (
 	PriorityLow  = 1
 	PriorityHigh = 2
 
-	UnitCount               = types.StandardUnitCount
-	UnitCountAverage        = types.StandardUnit("UnitCountAverage")
-	UnitSeconds             = types.StandardUnitSeconds
-	UnitSecondsAverage      = types.StandardUnit("UnitSecondsAverage")
-	UnitMilliseconds        = types.StandardUnitMilliseconds
-	UnitMillisecondsAverage = types.StandardUnit("UnitMillisecondsAverage")
+	UnitCount        = types.StandardUnitCount
+	UnitSeconds      = types.StandardUnitSeconds
+	UnitMilliseconds = types.StandardUnitMilliseconds
 
 	chunkSizeCloudWatch = 20
 	minusOneWeek        = -1 * 7 * 24 * time.Hour
