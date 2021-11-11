@@ -38,7 +38,6 @@ type Reader interface {
 	ReadDate(ctx context.Context, datetime time.Time, target interface{}) error
 	ReadDateAsync(ctx context.Context, datetime time.Time, target interface{}, callback ResultCallback) error
 	ReadFileIntoTarget(ctx context.Context, file string, target interface{}, batchSize int, offset int64) error
-	ReadFile(ctx context.Context, file string, batchSize int, offset int64) (ReadResults, error)
 }
 
 type s3Reader struct {
@@ -152,13 +151,13 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 				}
 
 				r.logger.Debug("reading file %d of %d: %s", i, fileCount, file)
-				result, err := r.ReadFile(ctx, file, -1, 0)
+
+				decoded := refl.CreatePointerToSliceOfTypeAndSize(target, 0)
+
+				err := r.ReadFileIntoTarget(ctx, file, decoded, -1, 0)
 				if err != nil {
 					return fmt.Errorf("can not read file %s: %w", file, err)
 				}
-
-				decoded := refl.CreatePointerToSliceOfTypeAndSize(target, len(result))
-				err = r.decode(result, decoded)
 
 				if err != nil {
 					return fmt.Errorf("can not decode results in file %s: %w", file, err)
@@ -189,7 +188,23 @@ func (r *s3Reader) ReadFileIntoTarget(ctx context.Context, file string, target i
 		return fmt.Errorf("target needs to be a pointer to a slice, but is %T", target)
 	}
 
-	result, err := r.ReadFile(ctx, file, batchSize, offset)
+	var columnNames []string
+	// as the user should provide *[]T here we have to unwrap the pointer and the slice to get the type of T
+	v := reflect.ValueOf(target).Type().Elem().Elem()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+
+		// Get the field tag value
+		tag := field.Tag.Get("parquet")
+		if tag == "" {
+			continue
+		}
+
+		columnNames = append(columnNames, tag)
+	}
+
+	result, err := r.ReadFileColumns(ctx, columnNames, file, batchSize, offset)
 	if err != nil {
 		return fmt.Errorf("can not read file %s: %w", file, err)
 	}
@@ -206,7 +221,7 @@ func (r *s3Reader) ReadFileIntoTarget(ctx context.Context, file string, target i
 	return nil
 }
 
-func (r *s3Reader) ReadFile(ctx context.Context, file string, batchSize int, offset int64) (ReadResults, error) {
+func (r *s3Reader) ReadFileColumns(ctx context.Context, columnNames []string, file string, batchSize int, offset int64) (ReadResults, error) {
 	bucket := r.getBucketName()
 
 	fr, err := parquetS3.NewS3FileReader(ctx, bucket, file, r.s3Cfg)
@@ -242,17 +257,29 @@ func (r *s3Reader) ReadFile(ctx context.Context, file string, batchSize int, off
 		}
 	}
 
-	columnNames := pr.SchemaHandler.ValueColumns
 	columns := make(map[string][]interface{})
+
+	columnsToRead := make(map[string]struct{})
+	for _, c := range columnNames {
+		columnsToRead[c] = struct{}{}
+	}
+
+	columnSchemas := pr.SchemaHandler.ValueColumns
 	rootName := pr.Footer.Schema[0].Name
 
-	for _, colSchema := range columnNames {
-		values, _, _, err := pr.ReadColumnByPath(colSchema, size)
+	for _, schema := range columnSchemas {
+		schemaSplit := strings.Split(schema, ".")
+		parquetColumnName := schemaSplit[len(schemaSplit)-1]
+		if _, found := columnsToRead[strings.ToLower(parquetColumnName)]; !found {
+			continue
+		}
+
+		values, _, _, err := pr.ReadColumnByPath(schema, size)
 		if err != nil {
 			return nil, err
 		}
 
-		key := strings.ToLower(colSchema[len(rootName)+1:])
+		key := strings.ToLower(schema[len(rootName)+1:])
 
 		columns[key] = values
 	}
