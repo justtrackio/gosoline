@@ -568,6 +568,86 @@ func (_m *Client) MSet(ctx context.Context, pairs ...interface{}) error {
 	return r0
 }
 
+// PFAdd provides a mock function with given fields: ctx, key, els
+func (_m *Client) PFAdd(ctx context.Context, key string, els ...interface{}) (int64, error) {
+	var _ca []interface{}
+	_ca = append(_ca, ctx, key)
+	_ca = append(_ca, els...)
+	ret := _m.Called(_ca...)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...interface{}) int64); ok {
+		r0 = rf(ctx, key, els...)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...interface{}) error); ok {
+		r1 = rf(ctx, key, els...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PFCount provides a mock function with given fields: ctx, keys
+func (_m *Client) PFCount(ctx context.Context, keys ...string) (int64, error) {
+	_va := make([]interface{}, len(keys))
+	for _i := range keys {
+		_va[_i] = keys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, ...string) int64); ok {
+		r0 = rf(ctx, keys...)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ...string) error); ok {
+		r1 = rf(ctx, keys...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PFMerge provides a mock function with given fields: ctx, dest, keys
+func (_m *Client) PFMerge(ctx context.Context, dest string, keys ...string) (string, error) {
+	_va := make([]interface{}, len(keys))
+	for _i := range keys {
+		_va[_i] = keys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, dest)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...string) string); ok {
+		r0 = rf(ctx, dest, keys...)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...string) error); ok {
+		r1 = rf(ctx, dest, keys...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Pipeline provides a mock function with given fields:
 func (_m *Client) Pipeline() redis.Pipeliner {
 	ret := _m.Called()
