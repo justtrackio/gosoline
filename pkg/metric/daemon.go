@@ -216,7 +216,7 @@ func (d *Daemon) buildMetricData() Data {
 	data := make([]*Datum, 0)
 
 	for _, v := range d.batch {
-		unit, value := d.calcValue(v.Unit, v.Values)
+		unit, value := resolveCustomUnit(v.Unit, v.Values)
 
 		datum := &Datum{
 			Priority:   v.Priority,
@@ -231,38 +231,4 @@ func (d *Daemon) buildMetricData() Data {
 	}
 
 	return data
-}
-
-func (d *Daemon) calcValue(unit types.StandardUnit, values []float64) (types.StandardUnit, float64) {
-	value := 0.0
-
-	switch unit {
-	case UnitCountAverage:
-		unit = UnitCount
-		value = average(values)
-	case UnitMillisecondsAverage:
-		unit = UnitMilliseconds
-		value = average(values)
-	case UnitSecondsAverage:
-		unit = UnitSeconds
-		value = average(values)
-	default:
-		value = sum(values)
-	}
-
-	return unit, value
-}
-
-func average(xs []float64) float64 {
-	return sum(xs) / float64(len(xs))
-}
-
-func sum(xs []float64) float64 {
-	total := 0.0
-
-	for _, v := range xs {
-		total += v
-	}
-
-	return total
 }
