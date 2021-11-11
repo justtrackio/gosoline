@@ -65,6 +65,10 @@ type Client interface {
 	Incr(ctx context.Context, key string) (int64, error)
 	IncrBy(ctx context.Context, key string, amount int64) (int64, error)
 
+	PFAdd(ctx context.Context, key string, els ...interface{}) (int64, error)
+	PFCount(ctx context.Context, keys ...string) (int64, error)
+	PFMerge(ctx context.Context, dest string, keys ...string) (string, error)
+
 	IsAlive(ctx context.Context) bool
 
 	Pipeline() Pipeliner
@@ -359,6 +363,30 @@ func (c *redisClient) Expire(ctx context.Context, key string, ttl time.Duration)
 	})
 
 	return cmd.(*baseRedis.BoolCmd).Val(), err
+}
+
+func (c *redisClient) PFAdd(ctx context.Context, key string, els ...interface{}) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.PFAdd(ctx, key, els...)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) PFCount(ctx context.Context, keys ...string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.PFCount(ctx, keys...)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) PFMerge(ctx context.Context, dest string, keys ...string) (string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.PFMerge(ctx, dest, keys...)
+	})
+
+	return cmd.(*baseRedis.StatusCmd).Val(), err
 }
 
 func (c *redisClient) IsAlive(ctx context.Context) bool {

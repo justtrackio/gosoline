@@ -279,8 +279,8 @@ func (s *ClientWithMockTestSuite) SetupTest() {
 }
 
 func (s *ClientWithMockTestSuite) TestSetWithOOM() {
-	s.redisMock.On("Set", mock.AnythingOfType("*context.emptyCtx"), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
-	s.redisMock.On("Set", mock.AnythingOfType("*context.emptyCtx"), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", nil)).Once()
+	s.redisMock.On("Set", context.Background(), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", errors.New("OOM command not allowed when used memory > 'maxmemory'"))).Once()
+	s.redisMock.On("Set", context.Background(), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", nil)).Once()
 
 	err := s.client.Set(context.Background(), "key", "value", time.Second)
 
@@ -289,13 +289,41 @@ func (s *ClientWithMockTestSuite) TestSetWithOOM() {
 }
 
 func (s *ClientWithMockTestSuite) TestSetWithError() {
-	s.redisMock.On("Set", mock.AnythingOfType("*context.emptyCtx"), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
-	s.redisMock.On("Set", mock.AnythingOfType("*context.emptyCtx"), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", nil)).Times(0)
+	s.redisMock.On("Set", context.Background(), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", errors.New("random redis error"))).Once()
+	s.redisMock.On("Set", context.Background(), "key", "value", time.Duration(1000000000)).Return(baseRedis.NewStatusResult("", nil)).Times(0)
 
 	err := s.client.Set(context.Background(), "key", "value", time.Second)
 
 	s.NotNil(err, "there should be an error on Set")
 	s.redisMock.AssertExpectations(s.T())
+}
+
+func (s *ClientWithMockTestSuite) TestPFAddCountMerge() {
+	// miniredis doesn't support HyperLogLogs, so we need to mock these
+	s.redisMock.On("PFAdd", context.Background(), "key1", []interface{}{"a", "b", "c"}).Return(baseRedis.NewIntResult(1, nil)).Once()
+	s.redisMock.On("PFAdd", context.Background(), "key2", []interface{}{"d"}).Return(baseRedis.NewIntResult(1, nil)).Once()
+	s.redisMock.On("PFAdd", context.Background(), "key2", []interface{}{"e", "f"}).Return(baseRedis.NewIntResult(1, nil)).Once()
+	s.redisMock.On("PFMerge", context.Background(), "key", []string{"key1", "key2"}).Return(baseRedis.NewStatusResult("OK", nil)).Once()
+	s.redisMock.On("PFCount", context.Background(), []string{"key"}).Return(baseRedis.NewIntResult(6, nil)).Once()
+
+	result, err := s.client.PFAdd(context.Background(), "key1", "a", "b", "c")
+	s.NoError(err, "There should be no error on PFAdd")
+	s.Equal(int64(1), result)
+
+	result, err = s.client.PFAdd(context.Background(), "key2", "d")
+	s.NoError(err, "There should be no error on PFAdd")
+	s.Equal(int64(1), result)
+
+	result, err = s.client.PFAdd(context.Background(), "key2", "e", "f")
+	s.NoError(err, "There should be no error on PFAdd")
+	s.Equal(int64(1), result)
+
+	_, err = s.client.PFMerge(context.Background(), "key", "key1", "key2")
+	s.NoError(err, "There should be no error on PFMerge")
+
+	result, err = s.client.PFCount(context.Background(), "key")
+	s.NoError(err, "There should be no error on PFCount")
+	s.Equal(int64(6), result)
 }
 
 func TestClientWithMockTestSuite(t *testing.T) {
