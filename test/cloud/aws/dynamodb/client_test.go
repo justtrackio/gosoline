@@ -159,6 +159,61 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 	loggerMock.AssertExpectations(s.T())
 }
 
+func (s *ClientTestSuite) TestRetryOnTransactionConflict() {
+	ctx := context.Background()
+	resource := &exec.ExecutableResource{
+		Type: "DynamoDB",
+		Name: "PutItem",
+	}
+
+	logger := new(logMocks.Logger)
+	logger.On("WithContext", mock.Anything).Return(logger)
+	logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(logger).Return(logger)
+	logger.On("Warn", "attempt number %d to request resource %s failed after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*types.TransactionCanceledException")).Once()
+	logger.On("Warn", "sent request to resource %s successful after %d attempts in %s", resource, 2, mock.AnythingOfType("time.Duration")).Once()
+
+	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), logger, "retryOnTransactionConflict")
+	s.NoError(err)
+
+	_, err = client.PutItem(ctx, &awsDdb.PutItemInput{
+		Item: map[string]types.AttributeValue{
+			"id": &types.AttributeValueMemberS{
+				Value: "goso-id",
+			},
+		},
+		TableName: aws.String("gosoline-cloud-dynamodb-test"),
+	}, func(options *awsDdb.Options) {
+		options.APIOptions = append(options.APIOptions, func(stack *middleware.Stack) error {
+			i := 0
+
+			return stack.Deserialize.Add(middleware.DeserializeMiddlewareFunc("injectTransactionConflict", func(ctx context.Context, input middleware.DeserializeInput, next middleware.DeserializeHandler) (middleware.DeserializeOutput, middleware.Metadata, error) {
+				i++
+
+				out, meta, err := next.HandleDeserialize(ctx, input)
+				if err != nil {
+					return out, meta, err
+				}
+
+				if i == 1 {
+					err = &types.TransactionCanceledException{
+						Message: aws.String(""),
+						CancellationReasons: []types.CancellationReason{
+							{
+								Code: aws.String("TransactionConflict"),
+							},
+						},
+					}
+				}
+
+				return out, meta, err
+			}), middleware.Before)
+		})
+	})
+
+	s.NoError(err)
+	logger.AssertExpectations(s.T())
+}
+
 func TestClientTestSuite(t *testing.T) {
 	suite.Run(t, new(ClientTestSuite))
 }

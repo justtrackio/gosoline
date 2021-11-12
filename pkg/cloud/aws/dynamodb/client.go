@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/appctx"
@@ -67,7 +68,19 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	var err error
 	var awsConfig aws.Config
 
-	if awsConfig, err = gosoAws.DefaultClientConfig(ctx, config, logger, clientCfg.Settings.ClientSettings, clientCfg.LoadOptions...); err != nil {
+	retryOptions := gosoAws.DefaultClientRetryOptions(clientCfg.Settings.ClientSettings)
+	retryOptions = append(retryOptions, gosoAws.RetryWithRetryables([]retry.IsErrorRetryable{
+		&RetryOnTransactionConflict{},
+		&RetryOnConditionalCheckFailed{},
+	}))
+
+	retryer := awsCfg.WithRetryer(func() aws.Retryer {
+		return retry.NewStandard(retryOptions...)
+	})
+
+	configOptions := append(clientCfg.LoadOptions, retryer)
+
+	if awsConfig, err = gosoAws.DefaultClientConfig(ctx, config, logger, clientCfg.Settings.ClientSettings, configOptions...); err != nil {
 		return nil, fmt.Errorf("can not initialize config: %w", err)
 	}
 
