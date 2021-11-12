@@ -2,12 +2,10 @@ package ddb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/exec"
@@ -27,14 +25,12 @@ type transactionRepository struct {
 	tracer tracing.Tracer
 }
 
-func NewTransactionRepository(ctx context.Context, config cfg.Config, logger log.Logger) (*transactionRepository, error) {
-	settings := &Settings{}
-
+func NewTransactionRepository(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*transactionRepository, error) {
 	var err error
 	var client gosoDynamodb.Client
 	var tracer tracing.Tracer
 
-	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, settings.ClientName); err != nil {
+	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, name); err != nil {
 		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
 	}
 
@@ -83,9 +79,8 @@ func (r transactionRepository) TransactGetItems(ctx context.Context, items []Tra
 		return nil, exec.RequestCanceledError
 	}
 
-	// TODO check error response doc
 	if err != nil {
-		return nil, parseTransactionError(err)
+		return nil, gosoDynamodb.TransformTransactionError(err)
 	}
 
 	res.ConsumedCapacity.addSlice(out.ConsumedCapacity)
@@ -104,6 +99,7 @@ func (r transactionRepository) TransactWriteItems(ctx context.Context, itemBuild
 	return r.TransactWriteItemsIdempotent(ctx, itemBuilders, nil)
 }
 
+// TransactWriteItemsIdempotent
 // ClientRequestToken enforces idempotency over a ten minute time frame
 // https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ClientRequestToken
 func (r transactionRepository) TransactWriteItemsIdempotent(ctx context.Context, itemBuilders []TransactWriteItemBuilder, clientRequestToken *string) (*OperationResult, error) {
@@ -138,33 +134,10 @@ func (r transactionRepository) TransactWriteItemsIdempotent(ctx context.Context,
 	}
 
 	if err != nil {
-		var errTransactionCanceledException *types.TransactionCanceledException
-		if errors.As(err, &errTransactionCanceledException) {
-			return nil, transformTransactionCanceledError(errTransactionCanceledException, itemBuilders)
-		}
-
-		return nil, parseTransactionError(err)
+		return nil, gosoDynamodb.TransformTransactionError(err)
 	}
 
 	res.ConsumedCapacity.addSlice(out.ConsumedCapacity)
 
-	return res, parseTransactionError(err)
-}
-
-func transformTransactionCanceledError(tcErr *types.TransactionCanceledException, itemBuilders []TransactWriteItemBuilder) error {
-	multiErr := multierror.Append(&multierror.Error{}, parseTransactionError(tcErr))
-
-	for i, reason := range tcErr.CancellationReasons {
-		if *reason.Code != cancellationReasonConditionCheckFailed {
-			continue
-		}
-
-		err := UnmarshalMap(reason.Item, itemBuilders[i].GetItem())
-		if err != nil {
-			unmarshalErr := fmt.Errorf("could not unmarshal partial response: %w", err)
-			multiErr = multierror.Append(multiErr, unmarshalErr)
-		}
-	}
-
-	return multiErr.ErrorOrNil()
+	return res, gosoDynamodb.TransformTransactionError(err)
 }

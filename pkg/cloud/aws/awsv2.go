@@ -79,11 +79,7 @@ func DefaultClientOptions(config cfg.Config, logger log.Logger, settings ClientS
 		awsCfg.WithLogger(NewLogger(logger)),
 		awsCfg.WithClientLogMode(aws.ClientLogMode(0)),
 		awsCfg.WithRetryer(func() aws.Retryer {
-			return retry.NewStandard(func(options *retry.StandardOptions) {
-				options.MaxAttempts = settings.Backoff.MaxAttempts
-				options.Backoff = NewBackoffDelayer(settings.Backoff.InitialInterval, settings.Backoff.MaxInterval)
-				options.RateLimiter = NewNopRateLimiter()
-			})
+			return retry.NewStandard(DefaultClientRetryOptions(settings)...)
 		}),
 	}
 
