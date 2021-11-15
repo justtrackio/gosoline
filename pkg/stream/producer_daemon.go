@@ -139,7 +139,10 @@ func (d *producerDaemon) GetStage() int {
 }
 
 func (d *producerDaemon) Run(kernelCtx context.Context) error {
+	// ensure we don't have a race with the code in Write checking if the ticker is nil
+	d.lck.Lock()
 	d.ticker = d.tickerFactory(d.settings.Interval)
+	d.lck.Unlock()
 
 	cfn := coffin.New()
 	// start the output loops before the ticker look - the output loop can't terminate until
@@ -187,7 +190,13 @@ func (d *producerDaemon) Write(_ context.Context, batch []WritableMessage) error
 		}
 
 		if len(flushedBatch) > 0 {
-			d.ticker.Reset()
+			// if Run has not yet started, we might have no ticker to reset.
+			// this normally only happens during an integration test, on production
+			// systems it normally takes a moment before we have data to write
+			// to the producer daemon.
+			if d.ticker != nil {
+				d.ticker.Reset()
+			}
 			d.outCh.Write(flushedBatch)
 		}
 	}
