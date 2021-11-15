@@ -7,16 +7,16 @@ import (
 )
 
 type TransactDeleteItem struct {
-	builder DeleteItemBuilder
-	item    interface{}
+	Builder DeleteItemBuilder
+	Item    interface{}
 }
 
 func (b *TransactDeleteItem) Build() (*types.TransactWriteItem, error) {
-	if !isPointer(b.item) {
+	if !isPointer(b.Item) {
 		return nil, fmt.Errorf("item must be a pointer")
 	}
 
-	entry, err := b.builder.Build(b.item)
+	entry, err := b.Builder.Build(b.Item)
 	if err != nil {
 		return nil, fmt.Errorf("could not built entry for transact delete item: %w", err)
 	}
@@ -36,5 +36,5 @@ func (b *TransactDeleteItem) Build() (*types.TransactWriteItem, error) {
 }
 
 func (b *TransactDeleteItem) GetItem() interface{} {
-	return b.item
+	return b.Item
 }
