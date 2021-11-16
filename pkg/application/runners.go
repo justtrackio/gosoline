@@ -29,7 +29,7 @@ func RunApiServer(definer apiserver.Definer, options ...Option) {
 func RunConsumer(callback stream.ConsumerCallbackFactory, options ...Option) {
 	RunConsumers(stream.ConsumerCallbackMap{
 		"default": callback,
-	})
+	}, options...)
 }
 
 func RunConsumers(consumers stream.ConsumerCallbackMap, options ...Option) {

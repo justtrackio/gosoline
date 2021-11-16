@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
@@ -35,10 +35,7 @@ type kernelSettings struct {
 }
 
 func WithApiHealthCheck(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-		kernel.Add("api-health-check", apiserver.NewApiHealthCheck())
-		return nil
-	})
+	WithModule("api-health-check", apiserver.NewApiHealthCheck())(app)
 }
 
 func WithConfigEnvKeyPrefix(prefix string) Option {
@@ -246,20 +243,13 @@ func WithLoggerSentryHandler(contextProvider ...log.SentryContextProvider) Optio
 }
 
 func WithMetadataServer(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-		kernel.Add("metadata-server", NewMetadataServer())
-		return nil
-	})
+	WithModule("metadata-server", NewMetadataServer())(app)
 }
 
 func WithMetricDaemon(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-		kernel.Add("metric", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Module, error) {
-			return metric.NewDaemon(ctx, config, logger)
-		})
-
-		return nil
-	})
+	WithModule("metric", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Module, error) {
+		return metric.NewDaemon(ctx, config, logger)
+	})(app)
 }
 
 func WithProducerDaemon(app *App) {
@@ -270,12 +260,7 @@ func WithProducerDaemon(app *App) {
 }
 
 func WithProfiling() Option {
-	return func(app *App) {
-		app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-			kernel.Add("profiling", apiserver.NewProfiling())
-			return nil
-		})
-	}
+	return WithModule("profiling", apiserver.NewProfiling())
 }
 
 func WithTracing(app *App) {
@@ -296,6 +281,16 @@ func WithTracing(app *App) {
 
 		return nil
 	})
+}
+
+func WithModule(name string, moduleFactory kernelPkg.ModuleFactory, opts ...kernelPkg.ModuleOption) Option {
+	return func(app *App) {
+		app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
+			kernel.Add(name, moduleFactory, opts...)
+
+			return nil
+		})
+	}
 }
 
 func WithUTCClock(useUTC bool) Option {
