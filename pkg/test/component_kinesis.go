@@ -11,8 +11,7 @@ import (
 const componentKinesis = "kinesis"
 
 type kinesisSettings struct {
-	*healthCheckMockSettings
-	Port int `cfg:"port" default:"0"`
+	*mockSettings
 }
 
 type kinesisComponent struct {
@@ -26,10 +25,7 @@ func (k *kinesisComponent) Boot(config cfg.Config, _ log.Logger, runner *dockerR
 	k.runner = runner
 	k.clients = &simpleCache{}
 	k.settings = &kinesisSettings{
-		healthCheckMockSettings: &healthCheckMockSettings{
-			mockSettings: settings,
-			Healthcheck:  healthCheckSettings(config, name),
-		},
+		mockSettings: settings,
 	}
 	key := fmt.Sprintf("mocks.%s", name)
 	config.UnmarshalKey(key, k.settings)
@@ -40,23 +36,22 @@ func (k *kinesisComponent) Start() error {
 
 	return k.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "localstack/localstack",
-		Tag:        "0.10.8",
+		Tag:        "0.12.5",
 		Env: []string{
 			fmt.Sprintf("SERVICES=%s", componentKinesis),
+			"EAGER_SERVICE_LOADING=1",
 		},
 		PortBindings: portBindingLegacy{
-			"4568/tcp": fmt.Sprint(k.settings.Port),
-			"8080/tcp": fmt.Sprint(k.settings.Healthcheck.Port),
+			"4566/tcp": fmt.Sprint(k.settings.Port),
 		},
 		PortMappings: portMappingLegacy{
-			"4568/tcp": &k.settings.Port,
-			"8080/tcp": &k.settings.Healthcheck.Port,
+			"4566/tcp": &k.settings.Port,
 		},
 		HostMapping: hostMappingLegacy{
 			dialPort: &k.settings.Port,
 			setHost:  &k.settings.Host,
 		},
-		HealthCheck: localstackHealthCheck(k.settings.healthCheckMockSettings, componentKinesis),
+		HealthCheck: localstackHealthCheck(k.settings.mockSettings, componentKinesis),
 		PrintLogs:   k.settings.Debug,
 		ExpireAfter: k.settings.ExpireAfter,
 	})

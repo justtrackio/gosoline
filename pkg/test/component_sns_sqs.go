@@ -17,9 +17,7 @@ const (
 )
 
 type snsSqsSettings struct {
-	*healthCheckMockSettings
-	SnsPort int `cfg:"sns_port" default:"0"`
-	SqsPort int `cfg:"sqs_port" default:"0"`
+	*mockSettings
 }
 
 type snsSqsComponent struct {
@@ -33,10 +31,7 @@ func (s *snsSqsComponent) Boot(config cfg.Config, _ log.Logger, runner *dockerRu
 	s.runner = runner
 	s.clients = &simpleCache{}
 	s.settings = &snsSqsSettings{
-		healthCheckMockSettings: &healthCheckMockSettings{
-			mockSettings: settings,
-			Healthcheck:  healthCheckSettings(config, name),
-		},
+		mockSettings: settings,
 	}
 	key := fmt.Sprintf("mocks.%s", name)
 	config.UnmarshalKey(key, s.settings)
@@ -48,7 +43,10 @@ func (s *snsSqsComponent) Start() error {
 		componentSqs,
 	}, ",")
 
-	env := []string{services}
+	env := []string{
+		services,
+		"EAGER_SERVICE_LOADING=1",
+	}
 
 	if s.settings.Debug {
 		env = append(env, "DEBUG=1")
@@ -58,23 +56,19 @@ func (s *snsSqsComponent) Start() error {
 
 	return s.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "localstack/localstack",
-		Tag:        "0.10.8",
+		Tag:        "0.12.5",
 		Env:        env,
 		PortBindings: portBindingLegacy{
-			"4575/tcp": fmt.Sprint(s.settings.SnsPort),
-			"4576/tcp": fmt.Sprint(s.settings.SqsPort),
-			"8080/tcp": fmt.Sprint(s.settings.Healthcheck.Port),
+			"4566/tcp": fmt.Sprint(s.settings.Port),
 		},
 		PortMappings: portMappingLegacy{
-			"4575/tcp": &s.settings.SnsPort,
-			"4576/tcp": &s.settings.SqsPort,
-			"8080/tcp": &s.settings.Healthcheck.Port,
+			"4566/tcp": &s.settings.Port,
 		},
 		HostMapping: hostMappingLegacy{
-			dialPort: &s.settings.SnsPort,
+			dialPort: &s.settings.Port,
 			setHost:  &s.settings.Host,
 		},
-		HealthCheck: localstackHealthCheck(s.settings.healthCheckMockSettings, componentSns, componentSqs),
+		HealthCheck: localstackHealthCheck(s.settings.mockSettings, componentSns, componentSqs),
 		PrintLogs:   s.settings.Debug,
 		ExpireAfter: s.settings.ExpireAfter,
 	})
@@ -82,7 +76,7 @@ func (s *snsSqsComponent) Start() error {
 
 func (s *snsSqsComponent) provideSnsClient() *sns.SNS {
 	return s.clients.New(fmt.Sprintf("%s-%s", componentSns, s.name), func() interface{} {
-		sess := getAwsSession(s.settings.Host, s.settings.SnsPort)
+		sess := getAwsSession(s.settings.Host, s.settings.Port)
 
 		return sns.New(sess)
 	}).(*sns.SNS)
@@ -90,7 +84,7 @@ func (s *snsSqsComponent) provideSnsClient() *sns.SNS {
 
 func (s *snsSqsComponent) provideSqsClient() *sqs.SQS {
 	return s.clients.New(fmt.Sprintf("%s-%s", componentSqs, s.name), func() interface{} {
-		sess := getAwsSession(s.settings.Host, s.settings.SqsPort)
+		sess := getAwsSession(s.settings.Host, s.settings.Port)
 
 		return sqs.New(sess)
 	}).(*sqs.SQS)

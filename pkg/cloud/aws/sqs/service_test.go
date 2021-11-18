@@ -54,7 +54,8 @@ func TestService_CreateQueue(t *testing.T) {
 
 	// dead letter queue
 	client.On("CreateQueue", ctx, &awsSqs.CreateQueueInput{
-		QueueName: aws.String("applike-test-gosoline-sqs-my-queue-dead"),
+		Attributes: map[string]string{},
+		QueueName:  aws.String("applike-test-gosoline-sqs-my-queue-dead"),
 	}).Return(nil, nil)
 
 	client.On("GetQueueUrl", ctx, &awsSqs.GetQueueUrlInput{

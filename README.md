@@ -112,4 +112,20 @@ app_name: application
 14:10:10.245 kernel  info    leaving kernel                                      application: application
 ```
 
+#### Integration test execution
+##### Linux
+On linux it's very straight to execute the integration tests:
+```shell
+go test -tags integration,fixtures ./test
+```
+##### macOS
+To run them on macOS you will (just once) have to execute this:
+```shell
+sudo ifconfig lo0 alias 172.17.0.1
+```
+Afterwards simply execute:
+```shell
+go test -tags integration,fixtures ./test
+```
+
 ![Gosoline Logo](http://cdn.applike-services.info/public/2019/10/23/gosoline.svg)

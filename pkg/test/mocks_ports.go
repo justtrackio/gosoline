@@ -2,12 +2,12 @@ package test
 
 func (m *Mocks) ProvideSqsPort(name string) int {
 	component := m.components[name].(*snsSqsComponent)
-	return component.settings.SqsPort
+	return component.settings.Port
 }
 
 func (m *Mocks) ProvideSnsPort(name string) int {
 	component := m.components[name].(*snsSqsComponent)
-	return component.settings.SnsPort
+	return component.settings.Port
 }
 
 func (m *Mocks) ProvideCloudwatchPort(name string) int {

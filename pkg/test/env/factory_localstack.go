@@ -100,10 +100,10 @@ func (f *localstackFactory) configureContainer(settings interface{}) *containerC
 		Env: []string{
 			fmt.Sprintf("SERVICES=%s", services),
 			fmt.Sprintf("DEFAULT_REGION=%s", s.Region),
+			"EAGER_SERVICE_LOADING=1",
 		},
 		PortBindings: portBindings{
 			"4566/tcp": s.Port,
-			"8080/tcp": 0,
 		},
 		ExpireAfter: s.ExpireAfter,
 	}
@@ -114,7 +114,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 
 	return func(container *container) error {
 		binding := container.bindings["4566/tcp"]
-		url := fmt.Sprintf("http://%s:%s/health?reload", binding.host, binding.port)
+		url := fmt.Sprintf("http://%s:%s/health", binding.host, binding.port)
 
 		var err error
 		var resp *http.Response
@@ -134,7 +134,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 		}
 
 		if _, ok := status["services"]; !ok {
-			return fmt.Errorf("sns service is not up yet")
+			return fmt.Errorf("no localstack services up yet")
 		}
 
 		for _, service := range s.Services {
@@ -143,7 +143,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 			}
 
 			if status["services"][service] != "running" {
-				return fmt.Errorf("%s service is in %s state", service, status["services"]["sns"])
+				return fmt.Errorf("%s service is in %s state", service, status["services"][service])
 			}
 		}
 
@@ -151,7 +151,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 	}
 }
 
-func (f *localstackFactory) Component(config cfg.Config, logger log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
+func (f *localstackFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*localstackSettings)
 
 	component := &localstackComponent{

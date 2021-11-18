@@ -11,7 +11,6 @@ import (
 
 type redisSettings struct {
 	*mockSettings
-	Port int `cfg:"port" default:"0"`
 }
 
 type redisComponent struct {

@@ -201,7 +201,7 @@ func (d *dockerRunnerLegacy) markForCleanup(containerName string) {
 func (d *dockerRunnerLegacy) setPortMapping(resource *dockertest.Resource, containerPort string, hostPort *int) error {
 	port, err := strconv.Atoi(resource.GetPort(containerPort))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to setup port mapping while searching for port %s: %w", containerPort, err)
 	}
 
 	d.logger.WithFields(log.Fields{

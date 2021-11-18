@@ -6,7 +6,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
-const fifoSuffix = ".fifo"
+const (
+	deadletterFifoSuffix = "-dead.fifo"
+	fifoSuffix           = ".fifo"
+)
 
 type NamingFactory func(appId cfg.AppId, queueId string) string
 

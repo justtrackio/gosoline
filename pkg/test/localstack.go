@@ -5,18 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
-
-type healthcheck struct {
-	Port int `cfg:"port" default:"0"`
-}
-
-type healthCheckMockSettings struct {
-	*mockSettings
-	Healthcheck healthcheck `cfg:"healthcheck"`
-}
 
 type localstackHealthcheck struct {
 	Services localstackHealthcheckServices
@@ -30,9 +20,9 @@ type localstackHealthcheckServices struct {
 	SQS        string
 }
 
-func localstackHealthCheck(settings *healthCheckMockSettings, services ...string) func() error {
+func localstackHealthCheck(settings *mockSettings, services ...string) func() error {
 	return func() error {
-		url := fmt.Sprintf("http://%s:%d/health", settings.Host, settings.Healthcheck.Port)
+		url := fmt.Sprintf("http://%s:%d/health", settings.Host, settings.Port)
 		resp, err := http.Get(url)
 		if err != nil {
 			return err
@@ -77,12 +67,4 @@ func localstackHealthCheck(settings *healthCheckMockSettings, services ...string
 
 		return nil
 	}
-}
-
-func healthCheckSettings(config cfg.Config, name string) healthcheck {
-	healthcheck := healthcheck{}
-	key := fmt.Sprintf("mocks.%s.healthcheck", name)
-	config.UnmarshalKey(key, &healthcheck)
-
-	return healthcheck
 }
