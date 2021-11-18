@@ -12,7 +12,6 @@ import (
 
 type mysqlSettingsLegacy struct {
 	*mockSettings
-	Port    int    `cfg:"port" default:"0"`
 	Version string `cfg:"version"`
 	DbName  string `cfg:"dbName"`
 }

@@ -5,7 +5,6 @@ package test_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -40,9 +39,6 @@ func Test_sns_sqs(t *testing.T) {
 	queueName := "my-queue"
 	topicName := "my-topic"
 
-	topicArn := fmt.Sprintf("arn:aws:sns:us-east-1:000000000000:%s", topicName)
-	queueUrl := fmt.Sprintf("http://localhost:4576/queue/%s", queueName)
-
 	snsClient := mocks.ProvideSnsClient("sns_sqs")
 	sqsClient := mocks.ProvideSqsClient("sns_sqs")
 
@@ -53,7 +49,7 @@ func Test_sns_sqs(t *testing.T) {
 	}
 
 	executor := gosoAws.NewBackoffExecutor(logger, res, &exec.BackoffSettings{
-		CancelDelay:     time.Second * 1,
+		CancelDelay:     time.Second * 10,
 		InitialInterval: time.Millisecond * 50,
 		MaxAttempts:     0,
 		MaxInterval:     time.Second * 2,
@@ -61,47 +57,53 @@ func Test_sns_sqs(t *testing.T) {
 	})
 
 	// create a topic
-	_, err = executor.Execute(context.Background(), func() (*request.Request, interface{}) {
+	cto, err := executor.Execute(context.Background(), func() (*request.Request, interface{}) {
 		return snsClient.CreateTopicRequest(&sns.CreateTopicInput{
 			Name: aws.String(topicName),
 		})
 	})
 
 	assert.NoError(t, err)
+	assert.NotNil(t, cto)
 
 	// create a queue
-	_, err = executor.Execute(context.Background(), func() (request *request.Request, i interface{}) {
+	cqo, err := executor.Execute(context.Background(), func() (request *request.Request, i interface{}) {
 		return sqsClient.CreateQueueRequest(&sqs.CreateQueueInput{
 			QueueName: aws.String(queueName),
 		})
 	})
 
 	assert.NoError(t, err)
+	assert.NotNil(t, cqo)
 
 	// create a topic subscription
-	_, err = executor.Execute(context.Background(), func() (request *request.Request, i interface{}) {
+	ctso, err := executor.Execute(context.Background(), func() (request *request.Request, i interface{}) {
 		return snsClient.SubscribeRequest(&sns.SubscribeInput{
 			Protocol: aws.String("sqs"),
-			Endpoint: aws.String(queueUrl),
-			TopicArn: aws.String(topicArn),
+			Endpoint: cqo.(*sqs.CreateQueueOutput).QueueUrl,
+			TopicArn: cto.(*sns.CreateTopicOutput).TopicArn,
 		})
 	})
 
 	assert.NoError(t, err)
+	assert.NotNil(t, ctso)
 
 	// send a message to a topic
-	_, err = executor.Execute(context.Background(), func() (r *request.Request, i interface{}) {
+	pro, err := executor.Execute(context.Background(), func() (r *request.Request, i interface{}) {
 		return snsClient.PublishRequest(&sns.PublishInput{
 			Message:  aws.String("Hello there."),
-			TopicArn: aws.String(topicArn),
+			TopicArn: cto.(*sns.CreateTopicOutput).TopicArn,
 		})
 	})
+
 	assert.NoError(t, err)
+	assert.NotNil(t, pro)
 
 	// receive the message from sqs
 	receive, err := executor.Execute(context.Background(), func() (r *request.Request, i interface{}) {
 		return sqsClient.ReceiveMessageRequest(&sqs.ReceiveMessageInput{
-			QueueUrl: aws.String(queueUrl),
+			QueueUrl:        cqo.(*sqs.CreateQueueOutput).QueueUrl,
+			WaitTimeSeconds: aws.Int64(5),
 		})
 	})
 

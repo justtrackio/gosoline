@@ -12,7 +12,6 @@ const componentS3 = "s3"
 
 type s3Settings struct {
 	*mockSettings
-	Port int `cfg:"port" default:"0"`
 }
 
 type s3Component struct {

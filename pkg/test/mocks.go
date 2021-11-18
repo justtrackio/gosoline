@@ -20,6 +20,7 @@ type mockSettings struct {
 	Debug       bool          `cfg:"debug"`
 	ExpireAfter time.Duration `cfg:"expire_after" default:"60s"`
 	Host        string
+	Port        int                    `cfg:"port" default:"0"`
 	Tmpfs       map[string]interface{} `cfg:"tmpfs"`
 }
 

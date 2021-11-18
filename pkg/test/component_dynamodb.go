@@ -10,7 +10,6 @@ import (
 
 type dynamoDbSettings struct {
 	*mockSettings
-	Port int `cfg:"port" default:"0"`
 }
 
 type dynamoDbComponent struct {

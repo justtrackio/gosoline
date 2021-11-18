@@ -13,7 +13,6 @@ import (
 
 type wiremockSettings struct {
 	*mockSettings
-	Port  int    `cfg:"port" default:"0"`
 	Mocks string `cfg:"mocks"`
 }
 
@@ -36,8 +35,9 @@ func (w *wiremockComponent) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_wiremock_%s", w.name)
 
 	err := w.runner.Run(containerName, &containerConfigLegacy{
-		Repository: "rodolpheche/wiremock",
-		Tag:        "2.26.3-alpine",
+		Repository: "wiremock/wiremock",
+		// alpine version doesn't run on arm based chips that support x86/x64 emulation, main does have an arm version but is not a specific version
+		Tag: "2.31.0",
 		PortBindings: portBindingLegacy{
 			"8080/tcp": fmt.Sprint(w.settings.Port),
 		},

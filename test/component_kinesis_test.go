@@ -4,6 +4,7 @@
 package test_test
 
 import (
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/kinesis"
@@ -29,8 +30,15 @@ func Test_kinesis(t *testing.T) {
 	}
 
 	kinClient := mocks.ProvideKinesisClient("kinesis")
-	o, err := kinClient.ListStreams(&kinesis.ListStreamsInput{})
+
+	_, err = kinClient.CreateStream(&kinesis.CreateStreamInput{
+		ShardCount: aws.Int64(1),
+		StreamName: aws.String("foo"),
+	})
+	assert.NoError(t, err)
+
+	listOutput, err := kinClient.ListStreams(&kinesis.ListStreamsInput{})
 
 	assert.NoError(t, err)
-	assert.Len(t, o.StreamNames, 0)
+	assert.Len(t, listOutput.StreamNames, 1)
 }

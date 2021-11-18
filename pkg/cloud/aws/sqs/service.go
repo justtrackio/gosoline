@@ -240,9 +240,17 @@ func (s *service) createDeadLetterQueue(ctx context.Context, settings *Settings)
 		return attributes, nil
 	}
 
+	deadLetterAttributes := map[string]string{}
 	deadLetterName := fmt.Sprintf("%s-dead", settings.QueueName)
+
+	if settings.Fifo.Enabled {
+		deadLetterAttributes[string(types.QueueAttributeNameFifoQueue)] = "true"
+		deadLetterName = strings.Replace(settings.QueueName, fifoSuffix, deadletterFifoSuffix, 1)
+	}
+
 	deadLetterInput := &sqs.CreateQueueInput{
-		QueueName: aws.String(deadLetterName),
+		Attributes: deadLetterAttributes,
+		QueueName:  aws.String(deadLetterName),
 	}
 
 	props, err := s.doCreateQueue(ctx, deadLetterInput)
