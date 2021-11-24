@@ -8,6 +8,7 @@ challenges like configuration, logging, structured code execution, handling
 http requests, asynchronous message processing, writing integration tests and 
 much more.
 
+embedded code:
 ```golang:pkg/apiserver/cors.go
 ```
 
