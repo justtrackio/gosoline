@@ -36,7 +36,7 @@ func (k *kinesisComponent) Start() error {
 
 	return k.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "localstack/localstack",
-		Tag:        "0.12.5",
+		Tag:        "0.13.0.4",
 		Env: []string{
 			fmt.Sprintf("SERVICES=%s", componentKinesis),
 			"EAGER_SERVICE_LOADING=1",

@@ -56,7 +56,7 @@ func (s *snsSqsComponent) Start() error {
 
 	return s.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "localstack/localstack",
-		Tag:        "0.12.5",
+		Tag:        "0.13.0.4",
 		Env:        env,
 		PortBindings: portBindingLegacy{
 			"4566/tcp": fmt.Sprint(s.settings.Port),

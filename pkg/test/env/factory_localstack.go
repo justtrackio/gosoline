@@ -96,7 +96,7 @@ func (f *localstackFactory) configureContainer(settings interface{}) *containerC
 
 	return &containerConfig{
 		Repository: "localstack/localstack",
-		Tag:        "0.12.5",
+		Tag:        "0.13.0.4",
 		Env: []string{
 			fmt.Sprintf("SERVICES=%s", services),
 			fmt.Sprintf("DEFAULT_REGION=%s", s.Region),
