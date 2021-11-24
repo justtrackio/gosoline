@@ -8,6 +8,9 @@ challenges like configuration, logging, structured code execution, handling
 http requests, asynchronous message processing, writing integration tests and 
 much more.
 
+```go:pkg/apiserver/cors.go
+```
+
 ## Quickstart
 Every application consists of at least a main.go and config.dist.yml file. The
 main file

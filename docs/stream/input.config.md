@@ -11,9 +11,6 @@ stream:
       wait_time: 3s
 ```
 
-```go:pkg/apiserver/cors.go
-```
-
 ##type
 **type**: `string`, **default**: `null` **validate**: `required`
 
