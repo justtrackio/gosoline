@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        with:
+          ref: testing_markdown
 
       - name: Embed markdown
         uses: tokusumi/markdown-embed-code@main
