@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"fmt"
 	"regexp"
 	"time"
 
@@ -10,6 +11,9 @@ import (
 )
 
 func Cors(config cfg.Config) gin.HandlerFunc {
+	// TODO: remove
+	fmt.Println("#### testing 1")
+
 	allowedOriginPattern := config.GetString("api_cors_allowed_origin_pattern")
 	validOrigin := regexp.MustCompile(allowedOriginPattern)
 
