@@ -16,7 +16,7 @@ jobs:
 
       - uses: tokusumi/markdown-embed-code@main
         with:
-          markdown: "README.md"
+          markdown: "docs/stream/input.config.md"
           token: ${{ secrets.GITHUB_TOKEN }}
           message: "synchronizing Readme"
           silent: true
