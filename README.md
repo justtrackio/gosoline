@@ -8,7 +8,7 @@ challenges like configuration, logging, structured code execution, handling
 http requests, asynchronous message processing, writing integration tests and 
 much more.
 
-```go:pkg/apiserver/cors.go
+```golang:pkg/apiserver/cors.go
 ```
 
 ## Quickstart
