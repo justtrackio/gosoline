@@ -11,8 +11,7 @@ stream:
       wait_time: 3s
 ```
 
-```
-go:code_snippet.go
+```go:code_snippet.go
 ```
 
 ##type
