@@ -12,7 +12,7 @@ stream:
 ```
 
 ```
-golang:definition.go
+go:code_snippet.go
 ```
 
 ##type
