@@ -1,7 +1,7 @@
 name: Embed code in README
 
 on:
-  pull_request:
+  push:
     branches:
       - testing_markdown
 
