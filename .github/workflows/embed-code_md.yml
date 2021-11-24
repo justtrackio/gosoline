@@ -3,7 +3,7 @@ name: Embed code in README
 on:
   pull_request:
     branches:
-      - main
+      - testing_markdown
 
 jobs:
   embed-code:
