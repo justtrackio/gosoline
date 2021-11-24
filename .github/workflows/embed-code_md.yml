@@ -1,20 +1,18 @@
-name: Embed code in README
+name: "Embed code in README"
 
 on:
   pull_request:
-    branches:
-      - testing_markdown
+    branches: [ main, testing_markdown ]
 
 jobs:
   embed-code:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
-          fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
-          ref: refs/heads/${{ github.head_ref }}
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-      - uses: tokusumi/markdown-embed-code@main
+      - name: Embed markdown
+        uses: tokusumi/markdown-embed-code@main
         with:
           markdown: "docs/stream/input.config.md"
           token: ${{ secrets.GITHUB_TOKEN }}
