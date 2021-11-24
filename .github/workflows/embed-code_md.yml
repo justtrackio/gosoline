@@ -1,7 +1,7 @@
 name: "Embed code in README"
 
 on:
-  push_request:
+  push:
     branches: [ testing_markdown ]
 
 jobs:
