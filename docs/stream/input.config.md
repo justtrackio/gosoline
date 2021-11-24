@@ -11,7 +11,7 @@ stream:
       wait_time: 3s
 ```
 
-```go:code_snippet.go
+```go:pkg/apiserver/cors.go
 ```
 
 ##type
