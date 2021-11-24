@@ -17,7 +17,7 @@ jobs:
           ref: testing_markdown
 
       - name: Embed markdown
-        uses: tokusumi/markdown-embed-code@main
+        uses: tokusumi/markdown-embed-code@v1.0.0
         with:
           markdown: README.md
           token: ${{ secrets.GITHUB_TOKEN }}
