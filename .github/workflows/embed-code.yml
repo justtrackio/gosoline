@@ -1,8 +1,9 @@
-name: "Embed code in README"
+name: Embed code in README
 
 on:
-  push:
-    branches: [ testing_markdown ]
+  pull_request:
+    branches:
+      - testing_markdown
 
 jobs:
   embed-code:
@@ -11,12 +12,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
-          ref: testing_markdown
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+          fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+          ref: refs/heads/${{ github.head_ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Install dependencies
+        run: pip install pytest
+      - name: Test with pytest
+        run: pytest test_src
 
       - name: Embed markdown
         uses: tokusumi/markdown-embed-code@main
         with:
           markdown: README.md
           token: ${{ secrets.GITHUB_TOKEN }}
-          message: "synchronizing Readme"
+          message: "synchronizing aaa Readme"
           silent: false
