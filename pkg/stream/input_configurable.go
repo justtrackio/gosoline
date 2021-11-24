@@ -189,6 +189,9 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 			Application: t.Application,
 		}
 
+		// TODO: remove
+		fmt.Printf("## %q\n", t.Attributes)
+
 		targetAppId.PadFromConfig(config)
 
 		targets[i] = SnsInputTarget{

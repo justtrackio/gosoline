@@ -10,7 +10,11 @@ stream:
       key: my-example-stream
       wait_time: 3s
 ```
- 
+
+```
+golang:definition.go
+```
+
 ##type
 **type**: `string`, **default**: `null` **validate**: `required`
 

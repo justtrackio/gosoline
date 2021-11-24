@@ -108,6 +108,9 @@ func (t *snsTopic) SubscribeSqs(ctx context.Context, queueArn string, attributes
 			return fmt.Errorf("can not build filter policy: %w", err)
 		}
 
+		// TODO: remove
+		fmt.Printf("## ## FilterPolicy %+v\n", policy)
+
 		input.Attributes["FilterPolicy"] = policy
 	}
 
