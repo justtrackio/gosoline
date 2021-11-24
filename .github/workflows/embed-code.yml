@@ -21,6 +21,6 @@ jobs:
         with:
           markdown: README.md
           token: ${{ secrets.GITHUB_TOKEN }}
-          message: "synchronizing aaa Readme"
+          message: "synchronizing 2 Readme"
           no_change: "No change on Readme."
           silent: false
