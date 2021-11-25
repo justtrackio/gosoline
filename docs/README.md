@@ -10,11 +10,11 @@ much more.
 
 Start of embedmd demo:
 
-[embedmd]:# (../pkg/apiserver/cors.go)
+[embedmd]:# (pkg/apiserver/cors.go)
  
 Start of structmd demo:
 
-[structmd]:# (../pkg/apiserver/server.go Settings TimeoutSettings HandlerMetadata)
+[structmd]:# (pkg/apiserver/server.go Settings TimeoutSettings HandlerMetadata)
 [structmd end]:#
 
 End of demo.
