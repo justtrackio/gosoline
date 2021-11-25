@@ -8,7 +8,7 @@ challenges like configuration, logging, structured code execution, handling
 http requests, asynchronous message processing, writing integration tests and 
 much more.
 
-Start of demo:
+Start of embedmd demo:
 
 [embedmd]:# (pkg/apiserver/cors.go)
 ```go
@@ -41,6 +41,11 @@ func Cors(config cfg.Config) gin.HandlerFunc {
 	})
 }
 ```
+
+Start of structmd demo:
+
+[structmd]:# (pkg/apiserver/cors.go MySettingsStruct MyOtherStruct)
+[structmd end]:#
 
 End of demo.
 
