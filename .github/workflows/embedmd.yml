@@ -21,6 +21,5 @@ jobs:
       - name: running embedmed
         run: |
           go get github.com/campoy/embedmd
-          cd docs
           ls -al
           embedmd -w README.md
