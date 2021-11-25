@@ -26,4 +26,4 @@ jobs:
 
       - name: run embedmd
         run: |
-          embedmd -d README.md
+          embedmd -d ${{ github.workspace }}/README.md
