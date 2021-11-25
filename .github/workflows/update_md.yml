@@ -3,7 +3,7 @@ name: "Update .md files"
 on: [push]
 
 jobs:
-  update markdown documentation:
+  update_markdown_documentation:
     runs-on: ubuntu-latest
     steps:
       - name: checkout on the lastest commit
