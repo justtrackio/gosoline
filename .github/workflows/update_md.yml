@@ -1,4 +1,4 @@
-name: "Update .md files"
+name: "Update markdown files"
 
 on: [push]
 
