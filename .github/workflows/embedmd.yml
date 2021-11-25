@@ -7,8 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: install embedmd
-        run: go get github.com/campoy/embedmd
+        run: |
+          go get github.com/campoy/embedmd
 
-      - name: List all .md files in the repository
-        run: find ${{ github.workspace }} -type f | grep *.md | cut -c 2-
+      - name: list all .md files in the repository
+        run: |
+          find ${{ github.workspace }} -type f | grep *.md | cut -c 2-
 
