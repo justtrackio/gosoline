@@ -24,7 +24,7 @@ import (
 )
 
 func Cors(config cfg.Config) gin.HandlerFunc {
-	allowedOriginPattern := config.GetString("api_cors_allowed_origin_pattern")
+	allowedOriginPattern := config.GetString("api_cors_allowed_origin_pattern1111")
 	validOrigin := regexp.MustCompile(allowedOriginPattern)
 
 	allowedHeaders := config.GetStringSlice("api_cors_allowed_headers")
@@ -45,6 +45,7 @@ func Cors(config cfg.Config) gin.HandlerFunc {
 Start of structmd demo:
 
 [structmd]:# (pkg/apiserver/cors.go MySettingsStruct MyOtherStruct)
+
 [structmd end]:#
 
 End of demo.
