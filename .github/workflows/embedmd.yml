@@ -25,6 +25,5 @@ jobs:
 
       - name: Auto-commit
         uses: docker://cdssnc/auto-commit-github-action
-        needs: [ "running embedded" ]
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
