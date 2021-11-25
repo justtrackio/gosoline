@@ -22,7 +22,8 @@ jobs:
 
       - name: list all .md files in the repository
         run: |
-          cd ${{ github.workspace }}; find  -type f | grep *.md | cut -c 2-
+          cd ${{ github.workspace }}
+          find  -type f | grep *.md | cut -c 2-
 
       - name: run embedmd
         run: |
