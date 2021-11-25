@@ -16,10 +16,11 @@ jobs:
         uses: actions/setup-go@v2
         with:
           stable: 'false'
-          go-version: '1.14.0'
+          go-version: '1.17.0'
 
       - name: running embedmed
         run: |
           go get github.com/campoy/embedmd
           cd docs
-          embedmd -w $(find *.md)
+          ls -al
+          embedmd -w README.md
