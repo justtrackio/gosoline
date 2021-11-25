@@ -14,7 +14,7 @@ Start of embedmd demo:
  
 Start of structmd demo:
 
-[structmd]:# (../pkg/apiserver/server.go Settings TimeoutSettings HandlerMetadata)
+[structmd]:# (pkg/apiserver/server.go Settings TimeoutSettings HandlerMetadata)
 [structmd end]:#
 
 End of demo.
