@@ -10,7 +10,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           stable: 'false'
-          go-version: '1.14.0'
+          go-version: '1.17.0'
 
       - name: go version
         run: |
@@ -23,3 +23,7 @@ jobs:
       - name: list all .md files in the repository
         run: |
           find ${{ github.workspace }} -type f | grep *.md | cut -c 2-
+
+      - name: run embedmd
+        run: |
+          embedmd -d README.md
