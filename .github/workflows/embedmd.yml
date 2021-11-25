@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: last commit id
-      - uses: octokit/request-action@v2.x
+        uses: octokit/request-action@v2.x
         id: get_PR_commits
         with:
           route: GET /repos/:repo/pulls/:pull_number/commits
@@ -25,12 +25,12 @@ jobs:
           response:  ${{ steps.get_PR_commits.outputs.data }}
 
       - name: checkout on the lastest commit
-      - uses: actions/checkout@v2
+        uses: actions/checkout@v2
         with:
           ref: ${{steps.getcommit.outputs.sha}}
 
       - name: setup golang
-      - uses: actions/setup-go@v2
+        uses: actions/setup-go@v2
         with:
           stable: 'false'
           go-version: '1.14.0'
