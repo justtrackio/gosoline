@@ -20,12 +20,12 @@ jobs:
 
       - name: "running embedmd"
         run: |
-          go get github.com/campoy/embedmd
+          go install github.com/campoy/embedmd
           embedmd -w README.md
 
       - name: "running structmd"
         run: |
-          go get github.com/justtrackio/structmd
+          go install github.com/justtrackio/structmd
           structmd README.md
 
       - name: Commit report
