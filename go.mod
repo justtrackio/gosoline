@@ -92,6 +92,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.7.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.1.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.2.0 // indirect
+	github.com/campoy/embedmd v1.0.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/containerd/containerd v1.5.5 // indirect
