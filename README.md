@@ -8,6 +8,8 @@ challenges like configuration, logging, structured code execution, handling
 http requests, asynchronous message processing, writing integration tests and 
 much more.
 
+Start of demo:
+
 [embedmd]:# (pkg/apiserver/cors.go)
 ```go
 package apiserver
@@ -39,6 +41,8 @@ func Cors(config cfg.Config) gin.HandlerFunc {
 	})
 }
 ```
+
+End of demo.
 
 ## Quickstart
 Every application consists of at least a main.go and config.dist.yml file. The
