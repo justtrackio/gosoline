@@ -23,7 +23,15 @@ jobs:
           go get github.com/campoy/embedmd
           embedmd -w README.md
 
-      - name: Auto-commit
-        uses: docker://cdssnc/auto-commit-github-action
+      - name: auto-commit action
+        uses: docker://cdssnc/touched-github-action:latest
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          args: auto-commit/**
+      - name: build auto-commit
+        uses: actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108
+        with:
+          args: build -t cdssnc/auto-commit-github-action ./auto-commit
+      - name: push auto-commit
+        uses: actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108
+        with:
+          args: push cdssnc/auto-commit-github-action
