@@ -1,4 +1,4 @@
-name: GitHub Actions Demo
+name: "Update .md files"
 
 on: [push]
 
@@ -13,4 +13,3 @@ jobs:
       - name: list all .md files in the repository
         run: |
           find ${{ github.workspace }} -type f | grep *.md | cut -c 2-
-
