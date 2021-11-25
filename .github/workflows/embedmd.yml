@@ -26,7 +26,7 @@ jobs:
       - name: Commit files
         run: |
           git config --local user.email "githubactions@github.com"
-          git config --local user.name "Myname"
+          git config --local user.name "embedmd step"
           git commit -s -m "Run embedmed" -a
       - name: Push changes
         uses: ad-m/github-push-action@master
