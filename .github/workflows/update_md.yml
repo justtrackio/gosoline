@@ -25,10 +25,11 @@ jobs:
 
       - name: "running structmd"
         run: |
-          go get github.com/justtrackio/structmd/cmd/replace_markdown
-          replace_markdown README.md
+          go get github.com/justtrackio/structmd
+          structmd README.md
 
       - name: Commit report
+        continue-on-error: true
         run: |
           git config --global user.name 'Your Name'
           git config --global user.email 'your-username@users.noreply.github.com'
