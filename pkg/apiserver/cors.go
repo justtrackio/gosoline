@@ -10,7 +10,7 @@ import (
 )
 
 func Cors(config cfg.Config) gin.HandlerFunc {
-	allowedOriginPattern := config.GetString("api_cors_allowed_origin_pattern")
+	allowedOriginPattern := config.GetString("api_cors_allowed_origin_pattern1111")
 	validOrigin := regexp.MustCompile(allowedOriginPattern)
 
 	allowedHeaders := config.GetStringSlice("api_cors_allowed_headers")
