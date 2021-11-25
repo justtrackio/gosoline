@@ -25,7 +25,6 @@ jobs:
 
       - name: "running structmd"
         run: |
-          go get github.com/justtrackio/structmd
           go install github.com/justtrackio/structmd
           structmd README.md
 
