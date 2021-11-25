@@ -8,7 +8,7 @@ jobs:
     steps:
       - name: install embedmd
         run: |
-          go get github.com/campoy/embedmd
+          go install github.com/campoy/embedmd
 
       - name: list all .md files in the repository
         run: |
