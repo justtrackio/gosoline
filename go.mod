@@ -61,7 +61,7 @@ require (
 	github.com/spf13/cast v1.3.0
 	github.com/stretchr/objx v0.2.0
 	github.com/stretchr/testify v1.7.0
-	github.com/thoas/go-funk v0.0.0-20181020164546-fbae87fb5b5c
+	github.com/thoas/go-funk v0.9.1
 	github.com/twitchscience/kinsumer v0.0.0-20201111182439-cd685b6b5f68
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	github.com/xitongsys/parquet-go v1.4.0
@@ -125,6 +125,7 @@ require (
 	github.com/jackc/pgtype v1.4.2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
+	github.com/justtrackio/structmd v0.0.0-20211125151122-86e16f99b116 // indirect
 	github.com/karlseguin/expect v1.0.8 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
