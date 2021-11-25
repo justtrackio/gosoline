@@ -22,4 +22,5 @@ jobs:
         run: |
           go get github.com/campoy/embedmd
           ls -al
+          embedmd -d README.md
           embedmd -w README.md
