@@ -22,7 +22,9 @@ type HandlerMetadata struct {
 	Path   string `json:"path"`
 }
 
+// Settings stores the settings for an apiserver.
 type Settings struct {
+	// Port stores the port where this app will listen on.
 	Port        string              `cfg:"port" default:"8080"`
 	Mode        string              `cfg:"mode" default:"release" validate:"oneof=release debug test"`
 	Compression CompressionSettings `cfg:"compression"`
