@@ -20,17 +20,17 @@ jobs:
 
       - name: print .md files
         run: |
-          echo $(find *.md)
+          echo $(find . *.md)
 
       - name: "running embedmd"
         run: |
           go install github.com/campoy/embedmd@latest
-          embedmd -w $(find *.md)
+          embedmd -w $(find . *.md)
 
       - name: "running structmd"
         run: |
           go install github.com/justtrackio/structmd@latest
-          structmd $(find *.md)
+          structmd $(find . *.md)
 
       - name: Commit report
         continue-on-error: true
