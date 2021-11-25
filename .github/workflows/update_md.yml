@@ -25,7 +25,7 @@ jobs:
 
       - name: "running structmd"
         run: |
-          go get github.com/justtrackio/structmd
+          go get github.com/justtrackio/structmd/cmd/replace_markdown
           structmd README.md
 
       - name: Commit report
