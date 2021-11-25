@@ -30,6 +30,8 @@ jobs:
       - name: "running structmd"
         run: |
           go install github.com/justtrackio/structmd@latest
+          echo pwd
+          echo $(find . | grep *.md)
           structmd $(find . | grep *.md)
 
       - name: Commit report
