@@ -21,6 +21,14 @@ jobs:
       - name: running embedmed
         run: |
           go get github.com/campoy/embedmd
-          ls -al
-          embedmd -d README.md
           embedmd -w README.md
+
+      - name: Commit files
+        run: |
+          git config --local user.email "githubactions@github.com"
+          git config --local user.name "Myname"
+          git commit -s -m "Run embedmed" -a
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
