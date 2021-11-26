@@ -192,5 +192,25 @@ results in
 
 ```
 
-[structmd]:# (pkg/apiserver/cors.go MySettingsStruct MyOtherStruct)
+[structmd]:# (pkg/apiserver/server.go Settings HandlerMetadata)
+##### Struct **HandlerMetadata**
+
+
+
+| field       | type     | default     | description     |
+| :------------- | :----------: | :----------: | -----------: |
+| Method | string |  |  |
+| Path | string |  |  |
+
+##### Struct **Settings**
+
+Settings stores the settings for an apiserver.
+
+| field       | type     | default     | description     |
+| :------------- | :----------: | :----------: | -----------: |
+| Port | string | 8080 | Port stores the port where this app will listen on. |
+| Mode | string | release |  |
+| Compression | CompressionSettings |  |  |
+| Timeout | TimeoutSettings |  |  |
+
 [structmd end]:#
