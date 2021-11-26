@@ -13,7 +13,8 @@ Every application consists of at least a main.go and config.dist.yml file. The
 main file
 
 #### main.go
-```golang
+[embedmd]:# (examples/application/main.go)
+```go
 package main
 
 import (

@@ -2,7 +2,8 @@
 
 The gosoline logger is based upon a simple interface which uses handlers internally to enable fully customizable log handling. 
 
-```golang
+[embedmd]:# (../../pkg/log/logger.go /type Logger interface {/ /\n}/)
+```go
 type Logger interface {
 	Debug(format string, args ...interface{})
 	Info(format string, args ...interface{})
@@ -61,17 +62,22 @@ log:
 
 ## Handlers
 Handlers have to implement the following interface:
-```golang
+
+[embedmd]:# (../../pkg/log/handler.go /type Handler interface {/ /\n}/)
+```go
 type Handler interface {
 	Channels() []string
 	Level() int
 	Log(timestamp time.Time, level int, msg string, args []interface{}, err error, data Data) error
 }
 ```
+
 `Channels() []string` and `Level() int` are called on every log action to check if the handler should be applied. `Log` does the actual logging afterwards.
 
 ### Implementing a handler and make it available via config
-```golang
+
+[embedmd]:# (custom_handler.go)
+```go
 package main
 
 import (
@@ -173,23 +179,36 @@ No configuration needed. Writes a metric data point for every warn and error log
 No configuration needed. Publishes every logged error to sentry.
 
 ## Usage
-```golang
-logger.Info("log a number %d", 4)
-logger.WithChannel("strings").Warn("a dangerous string appeared: %s", "foobar")
 
-loggerWithFields := logger.WithFields(log.Fields{
-	"b": true,
-})
-loggerWithFields.Debug("just some debug line")
-loggerWithFields.Error("it happens: %w", fmt.Errorf("should not happen"))
+[embedmd]:# (usage.go /func Usage/ /\n}/)
+```go
+func Usage() {
+	ctx := context.Background()
+	handler := log.NewHandlerIoWriter(log.LevelDebug, []string{}, log.FormatterConsole, "15:04:05.000", os.Stdout)
+	logger := log.NewLoggerWithInterfaces(clock.NewRealClock(), []log.Handler{handler})
 
-ctx = log.AppendLoggerContextField(ctx, map[string]interface{}{
-	"id": 1337,
-})
+	if err := logger.Option(log.WithContextFieldsResolver(log.ContextLoggerFieldsResolver)); err != nil {
+		panic(err)
+	}
 
-contextAwareLogger := logger.WithContext(ctx)
-contextAwareLogger.Info("some info")
+	logger.Info("log a number %d", 4)
+	logger.WithChannel("strings").Warn("a dangerous string appeared: %s", "foobar")
+
+	loggerWithFields := logger.WithFields(log.Fields{
+		"b": true,
+	})
+	loggerWithFields.Debug("just some debug line")
+	loggerWithFields.Error("it happens: %w", fmt.Errorf("should not happen"))
+
+	ctx = log.AppendLoggerContextField(ctx, map[string]interface{}{
+		"id": 1337,
+	})
+
+	contextAwareLogger := logger.WithContext(ctx)
+	contextAwareLogger.Info("some info")
+}
 ```
+
 results in
 ```
 14:03:14.631 main    info    log a number 4                                      

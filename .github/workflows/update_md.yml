@@ -21,12 +21,12 @@ jobs:
       - name: "running embedmd"
         run: |
           go install github.com/campoy/embedmd@latest
-          embedmd -w $(find . | grep *.md)
+          embedmd -w $(find . | grep "\.md")
 
       - name: "running structmd"
         run: |
           go install github.com/justtrackio/structmd@latest
-          structmd $(find . | grep *.md)
+          structmd $(find . | grep "\.md")
 
       - name: "Ensure embedmd & structmd found no changes"
         run: |
