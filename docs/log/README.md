@@ -191,3 +191,6 @@ results in
 14:03:14.631 main    info    some info                                          id: 1337 
 
 ```
+
+[structmd]:# (pkg/apiserver/cors.go MySettingsStruct MyOtherStruct)
+[structmd end]:#
