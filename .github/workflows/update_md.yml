@@ -30,5 +30,4 @@ jobs:
 
       - name: "Ensure embedmd & structmd found no changes"
         run: |
-          echo $(git diff)
           git diff --quiet
