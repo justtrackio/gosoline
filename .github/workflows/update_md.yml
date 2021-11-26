@@ -18,10 +18,6 @@ jobs:
           stable: 'false'
           go-version: '1.17.0'
 
-      - name: print .md files
-        run: |
-          echo $(find . | grep *.md)
-
       - name: "running embedmd"
         run: |
           go install github.com/campoy/embedmd@latest
@@ -30,14 +26,8 @@ jobs:
       - name: "running structmd"
         run: |
           go install github.com/justtrackio/structmd@latest
-          echo $pwd
-          echo $(find . | grep *.md)
           structmd $(find . | grep *.md)
 
-      - name: Commit report
-        continue-on-error: true
+      - name: Check for changes (fail if any)
         run: |
-          git config --global user.name 'Your Name'
-          git config --global user.email 'your-username@users.noreply.github.com'
-          git commit -am "Automated report"
-          git push
+          git diff --quiet
