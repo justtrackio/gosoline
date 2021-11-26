@@ -71,13 +71,12 @@ type Coffin interface {
 	Started() int
 	// Returns the number of currently running go routines in this coffin.
 	Running() int
-	// Returns the number of go routines which have already returned in this coffin.
+	// Returns the number of go routines that have already returned in this coffin.
 	Terminated() int
 }
 
 type coffin struct {
-	// we MUST represent this as a ptr as tomb.Tomb contains a mutex which
-	// we are not allowed to copy!
+	// we MUST represent this as a ptr as tomb. Tomb contains a mutex that we are not allowed to copy!
 	tomb *tomb.Tomb
 	// number of started go routines
 	started int32

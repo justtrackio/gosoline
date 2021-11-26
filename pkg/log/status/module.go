@@ -20,7 +20,7 @@ type module struct {
 	sigChan       chan os.Signal
 }
 
-// NewModule creates a new module which reports the status from the status manager upon receiving SIGUSR1
+// NewModule creates a new module that reports the status from the status manager upon receiving SIGUSR1
 func NewModule(statusManager Manager) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		sigChan := make(chan os.Signal, 1)

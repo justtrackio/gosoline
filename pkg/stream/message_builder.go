@@ -13,7 +13,7 @@ const (
 // and an error if the set value is of the wrong type.
 func GetEncodingAttribute(attributes map[string]interface{}) (*EncodingType, error) {
 	if attrEncoding, ok := attributes[AttributeEncoding]; ok {
-		// shortcut for unit tests which might specify the correct constant directly
+		// shortcut for unit tests that might specify the correct constant directly
 		if encoding, ok := attrEncoding.(EncodingType); ok {
 			return &encoding, nil
 		}
@@ -34,7 +34,7 @@ func GetEncodingAttribute(attributes map[string]interface{}) (*EncodingType, err
 // and an error if the set value is of the wrong type.
 func GetCompressionAttribute(attributes map[string]interface{}) (*CompressionType, error) {
 	if attrCompression, ok := attributes[AttributeCompression]; ok {
-		// shortcut for unit tests which might specify the correct constant directly
+		// shortcut for unit tests that might specify the correct constant directly
 		if compression, ok := attrCompression.(CompressionType); ok {
 			return &compression, nil
 		}

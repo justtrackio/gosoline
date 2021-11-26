@@ -1,0 +1,8 @@
+env: dev
+
+app_project: gosoline
+app_family: example
+app_name: application
+
+kernel:
+  killTimeout: 1s

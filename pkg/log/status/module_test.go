@@ -76,7 +76,7 @@ func (m *testModule) Run(ctx context.Context) error {
 	cfn.GoWithContext(ctx, m.statusManager.MonitorWithContext("work 2", m.WorkWithContext))
 	mainHandle.ReportProgress(2, 0)
 
-	// last step: launch a method which publishes two messages for the other workers to consume
+	// last step: launch a method that publishes two messages for the other workers to consume
 	publishHandle := m.statusManager.StartWork("publish", 2)
 	cfn.Go(publishHandle.Monitor(func() error {
 		m.data <- 1

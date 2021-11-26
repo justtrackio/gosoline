@@ -17,23 +17,35 @@ import (
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
+// HandlerMetadata stores the Path and Method of this Handler.
 type HandlerMetadata struct {
+	// Method is the route method of this Handler.
 	Method string `json:"method"`
-	Path   string `json:"path"`
+	// Path is the route path ot this handler.
+	Path string `json:"path"`
 }
 
+// Settings structure for an API server.
 type Settings struct {
-	Port        string              `cfg:"port" default:"8080"`
-	Mode        string              `cfg:"mode" default:"release" validate:"oneof=release debug test"`
+	// Port the API listens to.
+	Port string `cfg:"port" default:"8080"`
+	// Mode is either debug, release, test.
+	Mode string `cfg:"mode" default:"release" validate:"oneof=release debug test"`
+	// Compression settings.
 	Compression CompressionSettings `cfg:"compression"`
-	Timeout     TimeoutSettings     `cfg:"timeout"`
+	// Timeout settings.
+	Timeout TimeoutSettings `cfg:"timeout"`
 }
 
+// TimeoutSettings configures IO timeouts.
 type TimeoutSettings struct {
-	// read, write and idle timeouts. You need to give at least 1s as timeout.
-	Read  time.Duration `cfg:"read" default:"60s" validate:"min=1000000000"`
+	// You need to give at least 1s as timeout.
+	// Read timeout is the maximum duration for reading the entire request, including the body.
+	Read time.Duration `cfg:"read" default:"60s" validate:"min=1000000000"`
+	// Write timeout is the maximum duration before timing out writes of the response.
 	Write time.Duration `cfg:"write" default:"60s" validate:"min=1000000000"`
-	Idle  time.Duration `cfg:"idle" default:"60s" validate:"min=1000000000"`
+	// Idle timeout is the maximum amount of time to wait for the next request when keep-alives are enabled
+	Idle time.Duration `cfg:"idle" default:"60s" validate:"min=1000000000"`
 }
 
 type ApiServer struct {

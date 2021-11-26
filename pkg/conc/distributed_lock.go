@@ -11,8 +11,7 @@ import (
 // you failed to acquire a lock before the operation timed out
 var ErrOwnedLock = errors.New("lock owned")
 
-// you tried to release a lock which you (no longer) own. Make sure
-// you are not releasing a lock twice and are releasing a lock in a timely manner.
+// you tried to release a lock that you (no longer) own. Make sure you are not releasing a lock twice and are releasing a lock in a timely manner.
 var ErrNotOwned = errors.New("the lock was not (no longer) owned by you")
 
 //go:generate mockery --name DistributedLockProvider

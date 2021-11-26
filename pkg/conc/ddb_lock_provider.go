@@ -95,8 +95,7 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (Distrib
 	err := backoff.Retry(func() error {
 		now := m.clock.Now()
 		// ddb does return expired items if they have not yet been deleted
-		// to account for potential clock skew, we treat items which have been
-		// expired by at least a minute as deleted
+		// to account for potential clock skew, we treat items that have been expired by at least a minute as deleted
 		ttlThreshold := now.Unix() - 60
 		expires := now.Add(m.defaultLockTime).Unix()
 		qb := m.repo.PutItemBuilder().
