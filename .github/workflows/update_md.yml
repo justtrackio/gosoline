@@ -28,6 +28,6 @@ jobs:
           go install github.com/justtrackio/structmd@latest
           structmd $(find . | grep *.md)
 
-      - name: Check for changes (fail if any)
+      - name: "Ensure embedmd & structmd found no changes"
         run: |
           git diff --quiet
