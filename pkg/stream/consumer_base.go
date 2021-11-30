@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
@@ -115,11 +116,20 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 	defer c.logger.Info("leaving consumer %s", c.name)
 	c.logger.Info("running consumer %s with input %s", c.name, c.settings.Input)
 
-	// create ctx whose done channel is closed on dying coffin
-	cfn, dyingCtx := coffin.WithContext(context.Background())
+	dyingBackgroundCtxWithContainer, err := appctx.CopyContainer(kernelCtx, context.Background())
+	if err != nil {
+		return err
+	}
 
+	// create ctx whose done channel is closed on dying coffin
+	cfn, dyingCtx := coffin.WithContext(dyingBackgroundCtxWithContainer)
+
+	manualBackgroundCtxWithContainer, err := appctx.CopyContainer(kernelCtx, context.Background())
+	if err != nil {
+		return err
+	}
 	// create ctx whose done channel is closed on dying coffin and manual cancel
-	manualCtx := cfn.Context(context.Background())
+	manualCtx := cfn.Context(manualBackgroundCtxWithContainer)
 	manualCtx, c.cancel = context.WithCancel(manualCtx)
 
 	cfn.GoWithContextf(manualCtx, c.logConsumeCounter, "panic during counter log")

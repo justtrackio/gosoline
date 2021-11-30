@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
@@ -113,7 +114,8 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Return(nil)
 
-	err := s.batchConsumer.Run(context.Background())
+	ctx := appctx.WithContainer(context.Background())
+	err := s.batchConsumer.Run(ctx)
 
 	s.NoError(err, "there should be no error during run")
 	s.Equal(3, processed)
@@ -166,7 +168,8 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Return(nil)
 
-	err := s.batchConsumer.Run(context.Background())
+	ctx := appctx.WithContainer(context.Background())
+	err := s.batchConsumer.Run(ctx)
 
 	s.NoError(err, "there should be no error during run")
 	s.Equal(5, processed)
@@ -177,7 +180,8 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 }
 
 func (s *BatchConsumerTestSuite) TestRun_ContextCanceled() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := appctx.WithContainer(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	stopped := make(chan struct{})
 	once := sync.Once{}
 
@@ -235,7 +239,8 @@ func (s *BatchConsumerTestSuite) TestRun_InputRunError() {
 			<-args[0].(context.Context).Done()
 		}).Return(nil)
 
-	err := s.batchConsumer.Run(context.Background())
+	ctx := appctx.WithContainer(context.Background())
+	err := s.batchConsumer.Run(ctx)
 
 	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumer input: read error")
 
@@ -259,7 +264,8 @@ func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Return(fmt.Errorf("consumerCallback run error"))
 
-	err := s.batchConsumer.Run(context.Background())
+	ctx := appctx.WithContainer(context.Background())
+	err := s.batchConsumer.Run(ctx)
 
 	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumerCallback: consumerCallback run error")
 
@@ -318,7 +324,8 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 		Return(mdl.String("")).
 		Twice()
 
-	err = s.batchConsumer.Run(context.Background())
+	ctx := appctx.WithContainer(context.Background())
+	err = s.batchConsumer.Run(ctx)
 
 	s.Nil(err, "there should be no error returned on consume")
 	s.Equal(processed, 2)

@@ -57,3 +57,13 @@ func Provide(ctx context.Context, key interface{}, factory func() (interface{}, 
 
 	return val, nil
 }
+
+func CopyContainer(from, to context.Context) (context.Context, error) {
+	var contI interface{}
+
+	if contI = from.Value(containerKey); contI == nil {
+		return nil, &ErrNoApplicationContainerFound{}
+	}
+
+	return context.WithValue(to, containerKey, contI), nil
+}

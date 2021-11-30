@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -83,11 +84,20 @@ func (c *BatchConsumer) Run(kernelCtx context.Context) error {
 	return c.baseConsumer.run(kernelCtx, c.run)
 }
 
-func (c *BatchConsumer) run(ctx context.Context) error {
+func (c *BatchConsumer) run(ctx context.Context) (err error) {
 	logger := c.logger.WithContext(ctx)
+
 	defer logger.Debug("run is ending")
 	defer c.wg.Done()
-	defer c.processBatch(context.Background())
+	defer func() {
+		var ctxWithContainer context.Context
+
+		if ctxWithContainer, err = appctx.CopyContainer(ctx, context.Background()); err != nil {
+			return
+		}
+
+		c.processBatch(ctxWithContainer)
+	}()
 
 	for {
 		force := false
