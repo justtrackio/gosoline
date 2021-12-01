@@ -132,7 +132,7 @@ func (l *gosoLogger) Error(format string, args ...interface{}) {
 	err := fmt.Errorf(format, args...)
 	msg := err.Error()
 
-	l.log(PriorityError, msg, []interface{}{}, err)
+	l.log(PriorityError, "%s", []interface{}{msg}, err)
 }
 
 func (l *gosoLogger) WithChannel(channel string) Logger {
