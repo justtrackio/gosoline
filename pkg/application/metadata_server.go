@@ -81,11 +81,11 @@ func (s *MetadataServer) Run(ctx context.Context) error {
 }
 
 func (s *MetadataServer) handleMetadata(metadata *appctx.Metadata) func(http.ResponseWriter, *http.Request) {
-	data := metadata.Msi()
-
 	return func(writer http.ResponseWriter, request *http.Request) {
 		var err error
 		var bytes []byte
+
+		data := metadata.Msi()
 
 		if bytes, err = json.Marshal(data); err != nil {
 			s.logger.Warn("can not marshal metadata %s", err.Error())
