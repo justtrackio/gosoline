@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -52,32 +51,27 @@ func (o *snsOutput) WriteOne(ctx context.Context, record WritableMessage) error 
 }
 
 func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
-	errors := make([]error, 0)
+	messages, attributes, err := o.computeMessagesAttributes(batch)
+	if err != nil {
+		return fmt.Errorf("could not compute message attributes: %w", err)
+	}
 
-	for _, msg := range batch {
-		body, err := msg.MarshalToString()
+	return o.topic.PublishBatch(ctx, messages, attributes)
+}
+
+func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) ([]string, []map[string]interface{}, error) {
+	messages := make([]string, 0, len(batch))
+	attributes := make([]map[string]interface{}, 0, len(batch))
+
+	for i := 0; i < len(batch); i++ {
+		message, err := batch[i].MarshalToString()
 		if err != nil {
-			errors = append(errors, err)
-			continue
+			return nil, nil, fmt.Errorf("failed to marshal message %d: %w", i, err)
 		}
 
-		err = o.topic.Publish(ctx, body, getAttributes(msg))
-
-		if err != nil {
-			errors = append(errors, err)
-			continue
-		}
+		messages = append(messages, message)
+		attributes = append(attributes, getAttributes(batch[i]))
 	}
 
-	if len(errors) == 1 {
-		return errors[0]
-	}
-
-	if len(errors) > 0 {
-		return &multierror.Error{
-			Errors: errors,
-		}
-	}
-
-	return nil
+	return messages, attributes, nil
 }
