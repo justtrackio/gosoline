@@ -128,17 +128,25 @@ func WithEndpoint(url string) func(options *awsCfg.LoadOptions) error {
 	}
 }
 
-func EndpointResolver(url string) aws.EndpointResolverFunc {
-	return func(service, region string) (aws.Endpoint, error) {
-		if url == "" {
-			return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-		}
+type endpointResolver struct {
+	url string
+}
 
-		return aws.Endpoint{
-			PartitionID:   "aws",
-			URL:           url,
-			SigningRegion: region,
-		}, nil
+func (e *endpointResolver) ResolveEndpoint(service, region string) (aws.Endpoint, error) {
+	if e.url == "" {
+		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
+	}
+
+	return aws.Endpoint{
+		PartitionID:   "aws",
+		URL:           e.url,
+		SigningRegion: region,
+	}, nil
+}
+
+func EndpointResolver(url string) *endpointResolver {
+	return &endpointResolver{
+		url: url,
 	}
 }
 
