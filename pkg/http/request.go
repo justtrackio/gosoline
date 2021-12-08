@@ -1,13 +1,14 @@
 package http
 
 import (
+	"io"
+	"net/url"
+	"sync"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cast"
-	"io"
-	"net/url"
-	"sync"
 )
 
 const (
@@ -78,16 +79,18 @@ func (r *Request) WithUrl(rawUrl string) *Request {
 		return r
 	}
 
-	r.addQueryValues(parsedUrl.Query())
-
-	parsedUrl.RawQuery = ""
-
 	r.url = parsedUrl
+
+	if len(r.queryParams) != 0 {
+		r.takeQueryParamsFromUrl()
+	}
 
 	return r
 }
 
 func (r *Request) WithQueryParam(key string, values ...interface{}) *Request {
+	r.takeQueryParamsFromUrl()
+
 	for _, value := range values {
 		str, err := cast.ToStringE(value)
 
@@ -112,6 +115,7 @@ func (r *Request) WithQueryObject(obj interface{}) *Request {
 		return r
 	}
 
+	r.takeQueryParamsFromUrl()
 	r.addQueryValues(parts)
 
 	return r
@@ -126,6 +130,7 @@ func (r *Request) WithQueryMap(values interface{}) *Request {
 		return r
 	}
 
+	r.takeQueryParamsFromUrl()
 	r.addQueryValues(parts)
 
 	return r
@@ -199,7 +204,9 @@ func (r *Request) GetToken() string {
 }
 
 func (r *Request) GetUrl() string {
-	r.url.RawQuery = r.queryParams.Encode()
+	if len(r.queryParams) != 0 {
+		r.url.RawQuery = r.queryParams.Encode()
+	}
 
 	return r.url.String()
 }
@@ -213,10 +220,7 @@ func (r *Request) build() (*resty.Request, string, error) {
 		return nil, "", r.errs
 	}
 
-	r.url.RawQuery = r.queryParams.Encode()
-	urlString := r.url.String()
-
-	return r.restyRequest, urlString, nil
+	return r.restyRequest, r.GetUrl(), nil
 }
 
 func (r *Request) addQueryValues(parts url.Values) {
@@ -225,4 +229,18 @@ func (r *Request) addQueryValues(parts url.Values) {
 			r.queryParams.Add(key, value)
 		}
 	}
+}
+
+// takeQueryParamsFromUrl parses the query parameters in the url object (if any) and merges them into the queryParams object
+// We need this because we keep query params at two places: Either directly (without decoding and re-encoding) in the url
+// object or in the queryParams object (after adding some manually). This allows you to specify urls with a specific encoding
+// if you need to influence which characters are percent-encoded (because of a non-behaving service on the other side you
+// can't change).
+func (r *Request) takeQueryParamsFromUrl() {
+	if r.url.RawQuery == "" {
+		return
+	}
+
+	r.addQueryValues(r.url.Query())
+	r.url.RawQuery = ""
 }
