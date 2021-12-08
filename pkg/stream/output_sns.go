@@ -52,25 +52,13 @@ func (o *snsOutput) WriteOne(ctx context.Context, record WritableMessage) error 
 }
 
 func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
-	errors := make([]error, 0)
+	messages, attributes, errors := o.computeMessagesAttributes(batch)
 
-	for _, msg := range batch {
-		body, err := msg.MarshalToString()
-		if err != nil {
-			errors = append(errors, err)
-			continue
-		}
+	err := o.topic.PublishBatch(ctx, messages, attributes)
+	if err != nil {
+		errors = append(errors, err)
 
-		err = o.topic.Publish(ctx, body, getAttributes(msg))
-
-		if err != nil {
-			errors = append(errors, err)
-			continue
-		}
-	}
-
-	if len(errors) == 1 {
-		return errors[0]
+		errors[0], errors[len(errors)-1] = errors[len(errors)-1], errors[0]
 	}
 
 	if len(errors) > 0 {
@@ -80,4 +68,24 @@ func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	}
 
 	return nil
+}
+
+func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) ([]*string, []map[string]interface{}, []error) {
+	messages := make([]*string, 0, len(batch))
+	attributes := make([]map[string]interface{}, 0, len(batch))
+	errors := make([]error, 0)
+
+	for i := 0; i < len(batch); i++ {
+		message, err := batch[i].MarshalToString()
+		if err != nil {
+			errors = append(errors, err)
+
+			continue
+		}
+
+		messages = append(messages, &message)
+		attributes = append(attributes, getAttributes(batch[i]))
+	}
+
+	return messages, attributes, errors
 }

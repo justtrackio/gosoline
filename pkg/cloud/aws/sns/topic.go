@@ -3,6 +3,7 @@ package sns
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
@@ -11,12 +12,16 @@ import (
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/thoas/go-funk"
 )
+
+const MaxBatchSize = 10
 
 //go:generate mockery --name Topic
 type Topic interface {
 	Publish(ctx context.Context, msg string, attributes ...map[string]interface{}) error
+	PublishBatch(ctx context.Context, messages []*string, attributes []map[string]interface{}) error
 	SubscribeSqs(ctx context.Context, queueArn string, attributes map[string]interface{}) error
 }
 
@@ -78,6 +83,76 @@ func (t *snsTopic) Publish(ctx context.Context, msg string, attributes ...map[st
 	}
 
 	return err
+}
+
+func (t *snsTopic) PublishBatch(ctx context.Context, messages []*string, attributes []map[string]interface{}) error {
+	if len(messages) != len(attributes) {
+		return fmt.Errorf("there should be as many attributes as messages")
+	}
+
+	entries := t.computeEntries(messages, attributes)
+
+	for i := 0; i < len(messages); i += 10 {
+		currentBatch := t.getSubSlice(i, entries)
+
+		err := t.publishBatch(ctx, currentBatch)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (t *snsTopic) getSubSlice(from int, entries []types.PublishBatchRequestEntry) []types.PublishBatchRequestEntry {
+	endIndex := from + MaxBatchSize
+	if endIndex >= len(entries) {
+		endIndex = len(entries)
+	}
+
+	return entries[from:endIndex]
+}
+
+func (t *snsTopic) publishBatch(ctx context.Context, entries []types.PublishBatchRequestEntry) error {
+	if len(entries) > MaxBatchSize {
+		return fmt.Errorf("batch is too large, max length is %d", MaxBatchSize)
+	}
+
+	input := &sns.PublishBatchInput{
+		TopicArn:                   aws.String(t.topicArn),
+		PublishBatchRequestEntries: entries,
+	}
+
+	_, err := t.client.PublishBatch(ctx, input)
+
+	if exec.IsRequestCanceled(err) {
+		t.logger.WithContext(ctx).WithFields(log.Fields{
+			"arn": t.topicArn,
+		}).Info("request was canceled while publishing to topic")
+
+		return err
+	}
+
+	return err
+}
+
+func (t *snsTopic) computeEntries(messages []*string, attributes []map[string]interface{}) []types.PublishBatchRequestEntry {
+	result := make([]types.PublishBatchRequestEntry, len(messages))
+
+	for i := 0; i < len(messages); i++ {
+		messageAttributes, err := buildAttributes([]map[string]interface{}{attributes[i]})
+		if err != nil {
+			t.logger.Error("can not build message attributes: %w", err)
+		}
+
+		result[i] = types.PublishBatchRequestEntry{
+			Id:                mdl.String(strconv.Itoa(i)),
+			Message:           messages[i],
+			MessageAttributes: messageAttributes,
+		}
+	}
+
+	return result
 }
 
 func (t *snsTopic) SubscribeSqs(ctx context.Context, queueArn string, attributes map[string]interface{}) error {

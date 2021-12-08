@@ -11,6 +11,7 @@ import (
 	gosoSns "github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
 	gosoSnsMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/sns/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
@@ -179,4 +180,53 @@ func (s *TopicTestSuite) TestSubscribeSqsError() {
 
 func TestTopicTestSuite(t *testing.T) {
 	suite.Run(t, new(TopicTestSuite))
+}
+
+func (s *TopicTestSuite) TestPublishBatch() {
+	messages := []*string{
+		mdl.String("1"),
+		mdl.String("2"),
+		mdl.String("3"),
+		mdl.String("4"),
+		mdl.String("5"),
+		mdl.String("6"),
+		mdl.String("7"),
+		mdl.String("8"),
+		mdl.String("9"),
+		mdl.String("10"),
+		mdl.String("11"),
+	}
+	attributes := make([]map[string]interface{}, len(messages))
+	entries := make([]types.PublishBatchRequestEntry, 10)
+	for i := 0; i < 10; i++ {
+		entries[i] = types.PublishBatchRequestEntry{
+			Id:                mdl.String(fmt.Sprintf("%d", i)),
+			Message:           mdl.String(fmt.Sprintf("%d", i+1)),
+			MessageAttributes: make(map[string]types.MessageAttributeValue),
+		}
+	}
+	firstBatch := &awsSns.PublishBatchInput{
+		TopicArn:                   aws.String("topicArn"),
+		PublishBatchRequestEntries: entries,
+	}
+
+	s.client.On("PublishBatch", s.ctx, firstBatch).Return(nil, nil).Once()
+
+	secondBatch := &awsSns.PublishBatchInput{
+		TopicArn: aws.String("topicArn"),
+		PublishBatchRequestEntries: []types.PublishBatchRequestEntry{
+			{
+				Id:                mdl.String("10"),
+				Message:           mdl.String("11"),
+				MessageAttributes: make(map[string]types.MessageAttributeValue),
+			},
+		},
+	}
+
+	s.client.On("PublishBatch", s.ctx, secondBatch).Return(nil, nil).Once()
+
+	err := s.topic.PublishBatch(s.ctx, messages, attributes)
+	s.NoError(err)
+
+	s.client.AssertExpectations(s.T())
 }
