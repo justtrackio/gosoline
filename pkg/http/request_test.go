@@ -118,3 +118,61 @@ func TestRequest_GetUrl(t *testing.T) {
 	expected := "https://applike.info?test=test1&test=test2&test2=1&test2=2.2&test2=test&test999=1"
 	assert.Equal(t, expected, request.GetUrl())
 }
+
+func TestRequest_HandleQueryParamsCorrectly(t *testing.T) {
+	// just creating a request for a URL directly doesn't cause : to get encoded
+
+	request := http.NewRequest(nil).
+		WithUrl("https://example.com?api_key=foo:bar")
+	assert.Equal(t, "https://example.com?api_key=foo:bar", request.GetUrl())
+
+	// now we add a query parameter in different ways, it always causes the : to get encoded
+
+	// WithQueryParam
+
+	request = http.NewRequest(nil).
+		WithUrl("https://example.com?api_key=foo:bar").
+		WithQueryParam("data", "42")
+	assert.Equal(t, "https://example.com?api_key=foo%3Abar&data=42", request.GetUrl())
+
+	request = http.NewRequest(nil).
+		WithQueryParam("data", "42").
+		WithUrl("https://example.com?api_key=foo:bar")
+	assert.Equal(t, "https://example.com?api_key=foo%3Abar&data=42", request.GetUrl())
+
+	// WithQueryMap
+
+	request = http.NewRequest(nil).
+		WithUrl("https://example.com?api_key=foo:bar").
+		WithQueryMap(map[string]interface{}{
+			"data": "42",
+		})
+	assert.Equal(t, "https://example.com?api_key=foo%3Abar&data=42", request.GetUrl())
+
+	request = http.NewRequest(nil).
+		WithQueryMap(map[string]interface{}{
+			"data": "42",
+		}).
+		WithUrl("https://example.com?api_key=foo:bar")
+	assert.Equal(t, "https://example.com?api_key=foo%3Abar&data=42", request.GetUrl())
+
+	// WithQueryObject
+
+	type QueryObject struct {
+		Data string `url:"data"`
+	}
+
+	request = http.NewRequest(nil).
+		WithUrl("https://example.com?api_key=foo:bar").
+		WithQueryObject(QueryObject{
+			Data: "42",
+		})
+	assert.Equal(t, "https://example.com?api_key=foo%3Abar&data=42", request.GetUrl())
+
+	request = http.NewRequest(nil).
+		WithQueryObject(QueryObject{
+			Data: "42",
+		}).
+		WithUrl("https://example.com?api_key=foo:bar")
+	assert.Equal(t, "https://example.com?api_key=foo%3Abar&data=42", request.GetUrl())
+}
