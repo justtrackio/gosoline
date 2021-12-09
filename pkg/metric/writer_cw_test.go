@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
-	"github.com/jonboulle/clockwork"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	cloudwatchMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -32,7 +32,7 @@ func TestOutput_Write_OutOfRange(t *testing.T) {
 }
 
 func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudwatchMocks.Client {
-	clock := clockwork.NewFakeClockAt(now)
+	testClock := clock.NewFakeClockAt(now)
 
 	logger := logMocks.NewLoggerMockedAll()
 	cwClient := new(cloudwatchMocks.Client)
@@ -53,7 +53,7 @@ func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudwatchMoc
 		}},
 	}).Return(nil, nil)
 
-	mo := metric.NewCwWriterWithInterfaces(logger, clock, cwClient, &metric.Settings{
+	mo := metric.NewCwWriterWithInterfaces(logger, testClock, cwClient, &metric.Settings{
 		AppId: cfg.AppId{
 			Project:     "my",
 			Environment: "test",

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
-	"github.com/jonboulle/clockwork"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/db"
@@ -64,7 +63,7 @@ type repository struct {
 	logger   log.Logger
 	tracer   tracing.Tracer
 	orm      *gorm.DB
-	clock    clockwork.Clock
+	clock    clock.Clock
 	metadata Metadata
 }
 

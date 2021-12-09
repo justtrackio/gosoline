@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonboulle/clockwork"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -251,7 +251,7 @@ func (s *ConfigTestSuite) TestConfig_GetTime() {
 	s.Equal("2019-11-27", settings.StringDate.Format("2006-01-02"))
 	s.Equal("2020-04-22T07:17:13+02:00", settings.StringDateTime.Format(time.RFC3339))
 
-	fakeTime := clockwork.NewFakeClock().Now()
+	fakeTime := clock.NewFakeClock().Now()
 	s.Equal(fakeTime, s.config.GetTime("missing", fakeTime))
 }
 

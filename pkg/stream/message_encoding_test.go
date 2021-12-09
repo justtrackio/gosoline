@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/stretchr/testify/suite"
 )
@@ -29,11 +29,11 @@ func (b brokenEncodeHandler) Decode(ctx context.Context, _ interface{}, attribut
 
 type MessageEncoderSuite struct {
 	suite.Suite
-	clock clockwork.Clock
+	clock clock.Clock
 }
 
 func (s *MessageEncoderSuite) SetupTest() {
-	s.clock = clockwork.NewFakeClock()
+	s.clock = clock.NewFakeClock()
 }
 
 func (s *MessageEncoderSuite) TestEncode() {

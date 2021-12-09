@@ -50,7 +50,7 @@ func (p publisherModule) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 
-		case <-ticker.Tick():
+		case <-ticker.Chan():
 			number := RandomNumber{
 				Id:     p.uuidGen.NewV4(),
 				Number: rand.Intn(100),

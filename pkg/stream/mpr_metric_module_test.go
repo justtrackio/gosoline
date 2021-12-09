@@ -191,7 +191,7 @@ func (s *MprMetricModuleTestSuite) SetupTestCase() {
 	s.cwClient = new(cloudwatchMocks.Client)
 	s.metricWriter = new(metricMocks.Writer)
 	s.clock = clock.NewFakeClock()
-	s.ticker = clock.NewFakeTicker()
+	s.ticker = s.clock.NewTicker(time.Minute)
 
 	s.settings = &stream.MessagesPerRunnerMetricWriterSettings{
 		QueueNames:         []string{"queueName"},

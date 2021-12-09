@@ -7,7 +7,7 @@ import (
 	"time"
 
 	goSqlMock "github.com/DATA-DOG/go-sqlmock"
-	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -807,14 +807,14 @@ func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Re
 		assert.FailNow(t, err.Error())
 	}
 
-	clock := clockwork.NewFakeClock()
+	testClock := clock.NewFakeClock()
 
 	metadata, ok := metadatas[whichMetadata]
 	if !ok {
 		t.Errorf("couldn't find metadata named: %s", whichMetadata)
 	}
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, metadata)
+	repo := db_repo.NewWithInterfaces(logger, tracer, orm, testClock, metadata)
 
 	return clientMock, repo
 }
@@ -832,14 +832,14 @@ func getTimedMocks(t *testing.T, time time.Time, whichMetadata string) (goSqlMoc
 		assert.FailNow(t, err.Error())
 	}
 
-	clock := clockwork.NewFakeClockAt(time)
+	testClock := clock.NewFakeClockAt(time)
 
 	metadata, ok := metadatas[whichMetadata]
 	if !ok {
 		t.Errorf("couldn't find metadata named: %s", whichMetadata)
 	}
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, clock, metadata)
+	repo := db_repo.NewWithInterfaces(logger, tracer, orm, testClock, metadata)
 
 	return clientMock, repo
 }
