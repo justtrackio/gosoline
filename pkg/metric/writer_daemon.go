@@ -1,24 +1,24 @@
 package metric
 
 import (
-	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
 type daemonWriter struct {
-	clock   clockwork.Clock
+	clock   clock.Clock
 	channel *metricChannel
 }
 
 func NewDaemonWriter(defaults ...*Datum) *daemonWriter {
-	clock := clockwork.NewRealClock()
+	testClock := clock.NewRealClock()
 	channel := ProviderMetricChannel()
 
 	addMetricDefaults(defaults...)
 
-	return NewDaemonWriterWithInterfaces(clock, channel)
+	return NewDaemonWriterWithInterfaces(testClock, channel)
 }
 
-func NewDaemonWriterWithInterfaces(clock clockwork.Clock, channel *metricChannel) *daemonWriter {
+func NewDaemonWriterWithInterfaces(clock clock.Clock, channel *metricChannel) *daemonWriter {
 	return &daemonWriter{
 		clock:   clock,
 		channel: channel,

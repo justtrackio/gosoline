@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/hashicorp/go-multierror"
-	"github.com/jonboulle/clockwork"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	gosoCloudwatch "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -89,14 +89,14 @@ type Writer interface {
 
 type cwWriter struct {
 	logger   log.Logger
-	clock    clockwork.Clock
+	clock    clock.Clock
 	client   gosoCloudwatch.Client
 	settings *Settings
 }
 
 func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*cwWriter, error) {
 	settings := getMetricSettings(config)
-	clock := clockwork.NewRealClock()
+	testClock := clock.NewRealClock()
 
 	client, err := gosoCloudwatch.ProvideClient(ctx, config, logger, "default", func(cfg *gosoCloudwatch.ClientConfig) {
 		cfg.Settings.Backoff.MaxAttempts = 1
@@ -107,10 +107,10 @@ func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*cw
 		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
 	}
 
-	return NewCwWriterWithInterfaces(logger, clock, client, settings), nil
+	return NewCwWriterWithInterfaces(logger, testClock, client, settings), nil
 }
 
-func NewCwWriterWithInterfaces(logger log.Logger, clock clockwork.Clock, cw gosoCloudwatch.Client, settings *Settings) *cwWriter {
+func NewCwWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoCloudwatch.Client, settings *Settings) *cwWriter {
 	return &cwWriter{
 		logger:   logger.WithChannel("metrics"),
 		clock:    clock,

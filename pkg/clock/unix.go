@@ -2,7 +2,7 @@ package clock
 
 import "time"
 
-// ToUnixNano converts a timestamp to a 64 bit unsigned integer, namely the number of nanoseconds since 1970-01-01T00:00:00Z.
+// ToUnixNano converts a timestamp to a 64-bit unsigned integer, namely the number of nanoseconds since 1970-01-01T00:00:00Z.
 func ToUnixNano(t time.Time) int64 {
 	return t.UnixNano()
 }

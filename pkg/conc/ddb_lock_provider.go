@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
-	"github.com/jonboulle/clockwork"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/exec"
@@ -19,7 +19,7 @@ import (
 type DdbLockItem struct {
 	// unique name of the locked resource
 	Resource string `json:"resource" ddb:"key=hash"`
-	// token to ensure we are releasing a lock we are owning
+	// token to ensure we are releasing a lock we own
 	Token string `json:"token"`
 	// ttl until the lock should be released automatically
 	Ttl int64 `json:"ttl" ddb:"ttl=enabled"`
@@ -29,7 +29,7 @@ type ddbLockProvider struct {
 	logger          log.Logger
 	repo            ddb.Repository
 	backOff         backoff.BackOff
-	clock           clockwork.Clock
+	clock           clock.Clock
 	uuidSource      uuid.Uuid
 	defaultLockTime time.Duration
 	domain          string
@@ -62,7 +62,7 @@ func NewDdbLockProvider(ctx context.Context, config cfg.Config, logger log.Logge
 		logger,
 		repo,
 		backoff.NewExponentialBackOff(),
-		clockwork.NewRealClock(),
+		clock.NewRealClock(),
 		uuid.New(),
 		settings,
 	), nil
@@ -72,7 +72,7 @@ func NewDdbLockProviderWithInterfaces(
 	logger log.Logger,
 	repo ddb.Repository,
 	backOff backoff.BackOff,
-	clock clockwork.Clock,
+	clock clock.Clock,
 	uuidSource uuid.Uuid,
 	settings DistributedLockSettings,
 ) DistributedLockProvider {

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/parquet"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,8 +29,8 @@ func TestNewPartitioner(t *testing.T) {
 }
 
 func TestMemoryPartitioner_Ingest(t *testing.T) {
-	clock := clockwork.NewFakeClockAt(time.Unix(1578500000, 0))
-	partitioner := parquet.NewPartitionerWithInterfaces(clock, &parquet.PartitionerSettings{
+	testClock := clock.NewFakeClockAt(time.Unix(1578500000, 0))
+	partitioner := parquet.NewPartitionerWithInterfaces(testClock, &parquet.PartitionerSettings{
 		PartitionInterval: 2 * time.Second,
 		BufferInterval:    2 * time.Second,
 		MaxPartitionSize:  10,
@@ -55,7 +55,7 @@ func TestMemoryPartitioner_Ingest(t *testing.T) {
 	partitioner.Ingest(testData2)
 	partitioner.Ingest(testData3)
 
-	clock.Advance(5 * time.Second)
+	testClock.Advance(5 * time.Second)
 
 	go partitioner.Stop()
 

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/jonboulle/clockwork"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/es"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -18,7 +18,7 @@ type esMetricDatum struct {
 
 type esWriter struct {
 	logger    log.Logger
-	clock     clockwork.Clock
+	clock     clock.Clock
 	client    *es.ClientV7
 	namespace string
 }
@@ -29,15 +29,15 @@ func NewEsWriter(config cfg.Config, logger log.Logger) (*esWriter, error) {
 		return nil, fmt.Errorf("can not create es client: %w", err)
 	}
 
-	clock := clockwork.NewRealClock()
+	testClock := clock.NewRealClock()
 
 	appId := cfg.GetAppIdFromConfig(config)
 	namespace := fmt.Sprintf("%s/%s/%s/%s", appId.Project, appId.Environment, appId.Family, appId.Application)
 
-	return NewEsWriterWithInterfaces(logger, client, clock, namespace), nil
+	return NewEsWriterWithInterfaces(logger, client, testClock, namespace), nil
 }
 
-func NewEsWriterWithInterfaces(logger log.Logger, client *es.ClientV7, clock clockwork.Clock, namespace string) *esWriter {
+func NewEsWriterWithInterfaces(logger log.Logger, client *es.ClientV7, clock clock.Clock, namespace string) *esWriter {
 	return &esWriter{
 		logger:    logger.WithChannel("metrics"),
 		clock:     clock,

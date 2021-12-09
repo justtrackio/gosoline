@@ -2,25 +2,26 @@ package log
 
 import (
 	"context"
-	"github.com/jonboulle/clockwork"
 	"sync"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
 type SamplingLogger struct {
 	Logger
-	clock    clockwork.Clock
+	clock    clock.Clock
 	logs     *sync.Map
 	interval time.Duration
 }
 
 func NewSamplingLogger(logger Logger, interval time.Duration) Logger {
-	clock := clockwork.NewRealClock()
+	testClock := clock.NewRealClock()
 
-	return NewSamplingLoggerWithInterfaces(logger, clock, interval)
+	return NewSamplingLoggerWithInterfaces(logger, testClock, interval)
 }
 
-func NewSamplingLoggerWithInterfaces(logger Logger, clock clockwork.Clock, interval time.Duration) *SamplingLogger {
+func NewSamplingLoggerWithInterfaces(logger Logger, clock clock.Clock, interval time.Duration) *SamplingLogger {
 	return &SamplingLogger{
 		Logger:   logger,
 		clock:    clock,

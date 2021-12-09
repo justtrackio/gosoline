@@ -26,7 +26,7 @@ type ProducerDaemonTestSuite struct {
 	wait       chan error
 	aggregator stream.ProducerDaemonAggregator
 	output     *streamMocks.Output
-	ticker     *clock.FakeTicker
+	clock      clock.FakeClock
 	executor   exec.Executor
 	daemon     producerDaemon
 }
@@ -46,7 +46,7 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, ag
 	metric := metricMocks.NewWriterMockedAll()
 
 	s.output = new(streamMocks.Output)
-	s.ticker = clock.NewFakeTicker()
+	s.clock = clock.NewFakeClock()
 	s.executor = exec.NewBackoffExecutor(logger, &exec.ExecutableResource{
 		Type: "test",
 		Name: "test-output",
@@ -55,10 +55,6 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, ag
 		InitialInterval: time.Millisecond * 50,
 		MaxInterval:     time.Second * 3,
 	}, exec.CheckRequestCanceled)
-
-	tickerFactory := func(_ time.Duration) clock.Ticker {
-		return s.ticker
-	}
 
 	settings := stream.ProducerDaemonSettings{
 		Enabled:         true,
@@ -73,7 +69,7 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, ag
 	s.aggregator, err = stream.NewProducerDaemonAggregator(settings, stream.CompressionNone)
 	s.NoError(err)
 
-	s.daemon = stream.NewProducerDaemonWithInterfaces(logger, metric, s.aggregator, s.output, tickerFactory, "testDaemon", settings)
+	s.daemon = stream.NewProducerDaemonWithInterfaces(logger, metric, s.aggregator, s.output, s.clock, "testDaemon", settings)
 
 	running := make(chan struct{})
 
@@ -197,7 +193,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTick() {
 	}
 	s.expectMessage(expected1)
 
-	s.ticker.Trigger(time.Now())
+	s.clock.Advance(time.Hour)
 
 	err = s.stop()
 
@@ -228,7 +224,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTickAfterWrite() {
 	}
 	s.expectMessage(expected2)
 
-	s.ticker.Trigger(time.Now())
+	s.clock.Advance(time.Hour)
 	time.Sleep(time.Millisecond)
 	err = s.stop()
 

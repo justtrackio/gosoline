@@ -63,17 +63,17 @@ type ProducerDaemonSettings struct {
 type producerDaemon struct {
 	kernel.EssentialBackgroundModule
 
-	name          string
-	lck           sync.Mutex
-	logger        log.Logger
-	metric        metric.Writer
-	aggregator    ProducerDaemonAggregator
-	batcher       ProducerDaemonBatcher
-	outCh         OutputChannel
-	output        Output
-	tickerFactory clock.TickerFactory
-	ticker        clock.Ticker
-	settings      ProducerDaemonSettings
+	name       string
+	lck        sync.Mutex
+	logger     log.Logger
+	metric     metric.Writer
+	aggregator ProducerDaemonAggregator
+	batcher    ProducerDaemonBatcher
+	outCh      OutputChannel
+	output     Output
+	clock      clock.Clock
+	ticker     clock.Ticker
+	settings   ProducerDaemonSettings
 }
 
 func ResetProducerDaemons() {
@@ -110,27 +110,27 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 	}
 
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
-	metric := metric.NewDaemonWriter(defaultMetrics...)
+	metricWriter := metric.NewDaemonWriter(defaultMetrics...)
 
 	aggregator, err := NewProducerDaemonAggregator(settings.Daemon, settings.Compression)
 	if err != nil {
 		return nil, fmt.Errorf("can not create aggregator for producer daemon %s: %w", name, err)
 	}
 
-	return NewProducerDaemonWithInterfaces(logger, metric, aggregator, output, clock.NewRealTicker, name, settings.Daemon), nil
+	return NewProducerDaemonWithInterfaces(logger, metricWriter, aggregator, output, clock.Provider, name, settings.Daemon), nil
 }
 
-func NewProducerDaemonWithInterfaces(logger log.Logger, metric metric.Writer, aggregator ProducerDaemonAggregator, output Output, tickerFactory clock.TickerFactory, name string, settings ProducerDaemonSettings) *producerDaemon {
+func NewProducerDaemonWithInterfaces(logger log.Logger, metric metric.Writer, aggregator ProducerDaemonAggregator, output Output, clock clock.Clock, name string, settings ProducerDaemonSettings) *producerDaemon {
 	return &producerDaemon{
-		name:          name,
-		logger:        logger,
-		metric:        metric,
-		aggregator:    aggregator,
-		batcher:       NewProducerDaemonBatcher(settings),
-		outCh:         NewOutputChannel(logger, settings.BufferSize),
-		output:        output,
-		tickerFactory: tickerFactory,
-		settings:      settings,
+		name:       name,
+		logger:     logger,
+		metric:     metric,
+		aggregator: aggregator,
+		batcher:    NewProducerDaemonBatcher(settings),
+		outCh:      NewOutputChannel(logger, settings.BufferSize),
+		output:     output,
+		clock:      clock,
+		settings:   settings,
 	}
 }
 
@@ -141,7 +141,7 @@ func (d *producerDaemon) GetStage() int {
 func (d *producerDaemon) Run(kernelCtx context.Context) error {
 	// ensure we don't have a race with the code in Write checking if the ticker is nil
 	d.lck.Lock()
-	d.ticker = d.tickerFactory(d.settings.Interval)
+	d.ticker = d.clock.NewTicker(d.settings.Interval)
 	d.lck.Unlock()
 
 	cfn := coffin.New()
@@ -195,7 +195,7 @@ func (d *producerDaemon) Write(_ context.Context, batch []WritableMessage) error
 			// systems it normally takes a moment before we have data to write
 			// to the producer daemon.
 			if d.ticker != nil {
-				d.ticker.Reset()
+				d.ticker.Reset(d.settings.Interval)
 			}
 			d.outCh.Write(flushedBatch)
 		}
@@ -213,7 +213,7 @@ func (d *producerDaemon) tickerLoop(ctx context.Context) error {
 			d.ticker.Stop()
 			return nil
 
-		case <-d.ticker.Tick():
+		case <-d.ticker.Chan():
 			d.lck.Lock()
 
 			if err = d.flushAll(); err != nil {

@@ -121,7 +121,7 @@ func (u *MessagesPerRunnerMetricWriter) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-u.ticker.Tick():
+		case <-u.ticker.Chan():
 			if err := u.writeMessagesPerRunnerMetric(ctx); err != nil {
 				return fmt.Errorf("can not write message per runner metric: %w", err)
 			}

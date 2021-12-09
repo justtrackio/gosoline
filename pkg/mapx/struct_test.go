@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonboulle/clockwork"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/stretchr/testify/assert"
 )
@@ -192,7 +192,7 @@ func TestMapStructIO_ReadZeroAndDefaultValues_Unexported(t *testing.T) {
 }
 
 func TestMapStruct_ReadBasic(t *testing.T) {
-	fakeTime := clockwork.NewFakeClock().Now()
+	fakeTime := clock.NewFakeClock().Now()
 
 	type sourceStruct struct {
 		B    bool          `cfg:"b"`

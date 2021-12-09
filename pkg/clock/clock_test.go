@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/test/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRealClock_After(t *testing.T) {
@@ -23,16 +23,10 @@ func TestRealClock_NowYieldsUTC(t *testing.T) {
 	assert.Equal(t, now.UTC(), now)
 }
 
-func TestNewFakeClock(t *testing.T) {
-	c := clock.NewFakeClock()
-	now := c.Now()
-	time.Sleep(time.Millisecond)
-	assert.Equal(t, now, c.Now())
-}
-
-func TestNewFakeClockAt(t *testing.T) {
-	now := time.Now()
-	c := clock.NewFakeClockAt(now)
-	time.Sleep(time.Millisecond)
-	assert.Equal(t, now, c.Now())
+func TestRealClock_Sleep(t *testing.T) {
+	c := clock.NewRealClock()
+	start := c.Now()
+	c.Sleep(time.Millisecond * 5)
+	took := c.Now().Sub(start)
+	assert.GreaterOrEqual(t, took, time.Millisecond*5)
 }
