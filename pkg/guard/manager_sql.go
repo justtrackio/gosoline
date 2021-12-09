@@ -1,6 +1,7 @@
 package guard
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -41,10 +42,18 @@ func NewSqlManagerWithInterfaces(logger log.Logger, dbClient db.Client) *SqlMana
 }
 
 func (m SqlManager) Create(pol ladon.Policy) error {
+	var err error
+	var conditions []byte
+
+	if conditions, err = json.Marshal(pol.GetConditions()); err != nil {
+		return fmt.Errorf("can not marshal the conditions: %w", err)
+	}
+
 	ins := squirrel.Insert(tablePolicies).Options("IGNORE").SetMap(squirrel.Eq{
 		"id":          pol.GetID(),
 		"description": pol.GetDescription(),
 		"effect":      pol.GetEffect(),
+		"conditions":  string(conditions),
 		"updated_at":  time.Now().Format(db.FormatDateTime),
 		"created_at":  time.Now().Format(db.FormatDateTime),
 	})
@@ -86,15 +95,25 @@ func (m SqlManager) createAssociations(pol ladon.Policy, table string, values []
 		return err
 	}
 
-	_, err = m.dbClient.Exec(sql, args...)
+	if _, err = m.dbClient.Exec(sql, args...); err != nil {
+		return fmt.Errorf("can not execute sql statement: %w", err)
+	}
 
-	return err
+	return nil
 }
 
 func (m SqlManager) Update(pol ladon.Policy) error {
+	var err error
+	var conditions []byte
+
+	if conditions, err = json.Marshal(pol.GetConditions()); err != nil {
+		return fmt.Errorf("can not marshal the conditions: %w", err)
+	}
+
 	up := squirrel.Update(tablePolicies).Where("id = ?", pol.GetID()).SetMap(squirrel.Eq{
 		"description": pol.GetDescription(),
 		"effect":      pol.GetEffect(),
+		"conditions":  string(conditions),
 		"updated_at":  time.Now().Format(db.FormatDateTime),
 	})
 
@@ -103,10 +122,8 @@ func (m SqlManager) Update(pol ladon.Policy) error {
 		return err
 	}
 
-	_, err = m.dbClient.Exec(sql, args...)
-
-	if err != nil {
-		return err
+	if _, err = m.dbClient.Exec(sql, args...); err != nil {
+		return fmt.Errorf("can not execute sql statement: %w", err)
 	}
 
 	if err = m.updateAssociations(pol, tableResources, pol.GetResources()); err != nil {
@@ -206,17 +223,23 @@ func (m SqlManager) FindPoliciesForResource(resource string) (ladon.Policies, er
 func (m SqlManager) queryPolicies(sel squirrel.SelectBuilder) (ladon.Policies, error) {
 	sql, args, err := sel.ToSql()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can not build sql string to query the policies: %w", err)
 	}
 
 	res, err := m.dbClient.GetResult(sql, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can not get result to query the policies: %w", err)
 	}
 
 	policies := map[string]*ladon.DefaultPolicy{}
 	for _, row := range *res {
 		if _, ok := policies[row["id"]]; !ok {
+			conditions := make(ladon.Conditions)
+
+			if err = json.Unmarshal([]byte(row["conditions"]), &conditions); err != nil {
+				return nil, fmt.Errorf("can not unmarshal the conditions of policy %s: %w", row["id"], err)
+			}
+
 			policies[row["id"]] = &ladon.DefaultPolicy{
 				ID:          row["id"],
 				Description: row["description"],
@@ -224,6 +247,7 @@ func (m SqlManager) queryPolicies(sel squirrel.SelectBuilder) (ladon.Policies, e
 				Subjects:    make([]string, 0),
 				Resources:   make([]string, 0),
 				Actions:     make([]string, 0),
+				Conditions:  conditions,
 			}
 		}
 
@@ -246,7 +270,7 @@ func (m SqlManager) queryPolicies(sel squirrel.SelectBuilder) (ladon.Policies, e
 }
 
 func buildSelectBuilder(where squirrel.Eq) squirrel.SelectBuilder {
-	sel := squirrel.Select("p.id", "p.description", "p.effect", "s.name AS subject", "r.name AS resource", "a.name AS action")
+	sel := squirrel.Select("p.id", "p.description", "p.effect", "p.conditions", "s.name AS subject", "r.name AS resource", "a.name AS action")
 	sel = sel.From(fmt.Sprintf("%s AS p", tablePolicies))
 	sel = sel.Join(fmt.Sprintf("%s AS s ON s.id = p.id", tableSubjects))
 	sel = sel.Join(fmt.Sprintf("%s AS r ON r.id = p.id", tableResources))

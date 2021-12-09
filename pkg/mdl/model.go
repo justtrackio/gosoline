@@ -99,3 +99,7 @@ func UuidWithDashes(uuid *string) (*string, error) {
 type Resource interface {
 	GetResourceName() string
 }
+
+type ResourceContextAware interface {
+	GetResourceContext() map[string]interface{}
+}

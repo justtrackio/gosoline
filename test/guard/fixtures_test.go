@@ -7,9 +7,9 @@ import "github.com/justtrackio/gosoline/pkg/fixtures"
 
 func buildPolicies() []interface{} {
 	return []interface{}{
-		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "global - read and write access", "allow"},
-		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "entity - read and write access", "allow"},
-		fixtures.MysqlPlainFixtureValues{"4ab80e96-22ea-469e-96d1-12b232bd4660", "global - read access", "allow"},
+		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "global - read and write access", "allow", "{}"},
+		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "entity - read and write access", "allow", "{}"},
+		fixtures.MysqlPlainFixtureValues{"4ab80e96-22ea-469e-96d1-12b232bd4660", "global - read access", "allow", "{}"},
 	}
 }
 
@@ -42,7 +42,7 @@ func buildFixtures() []*fixtures.FixtureSet {
 			Purge:   false,
 			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
 				TableName: "guard_policies",
-				Columns:   []string{"id", "description", "effect"},
+				Columns:   []string{"id", "description", "effect", "conditions"},
 			}),
 			Fixtures: buildPolicies(),
 		},
