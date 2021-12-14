@@ -274,7 +274,7 @@ func (r *s3Reader) ReadFileColumns(ctx context.Context, columnNames []string, fi
 			continue
 		}
 
-		values, _, _, err := pr.ReadColumnByPath(schema, size)
+		values, _, _, err := pr.ReadColumnByPath(schema, int64(size))
 		if err != nil {
 			return nil, err
 		}
