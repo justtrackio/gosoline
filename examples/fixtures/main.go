@@ -7,7 +7,11 @@ import (
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/ddb"
-	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+	ddbFixtures "github.com/justtrackio/gosoline/pkg/fixtures/writers/ddb"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers/mysql"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers/redis"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers/s3"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
@@ -26,11 +30,11 @@ func main() {
 	app.Run()
 }
 
-func createFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func createFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
-			Writer: fixtures.MysqlOrmFixtureWriterFactory(
+			Writer: mysql.MysqlOrmFixtureWriterFactory(
 				&db_repo.Metadata{
 					ModelId: mdl.ModelId{
 						Name: "orm_fixture_example",
@@ -48,18 +52,18 @@ func createFixtures() []*fixtures.FixtureSet {
 		},
 		{
 			Enabled: true,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			Writer: mysql.MysqlPlainFixtureWriterFactory(&mysql.MysqlPlainMetaData{
 				TableName: "plain_fixture_example",
 				Columns:   []string{"id", "name"},
 			}),
 			Fixtures: []interface{}{
-				fixtures.MysqlPlainFixtureValues{1, "testName1"},
-				fixtures.MysqlPlainFixtureValues{2, "testName2"},
+				mysql.MysqlPlainFixtureValues{1, "testName1"},
+				mysql.MysqlPlainFixtureValues{2, "testName2"},
 			},
 		},
 		{
 			Enabled: true,
-			Writer: fixtures.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
+			Writer: ddbFixtures.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "dev",
 				Family:      "example",
@@ -67,7 +71,7 @@ func createFixtures() []*fixtures.FixtureSet {
 				Name:        "exampleModel",
 			}),
 			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
+				&ddbFixtures.KvStoreFixture{
 					Key:   "SomeKey",
 					Value: &DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
 				},
@@ -76,9 +80,9 @@ func createFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpSet)),
+			Writer:  redis.RedisFixtureWriterFactory(aws.String("default"), aws.String(redis.RedisOpSet)),
 			Fixtures: []interface{}{
-				&fixtures.RedisFixture{
+				&redis.RedisFixture{
 					Key:    "example-key",
 					Value:  "bar",
 					Expiry: 1 * time.Hour,
@@ -87,7 +91,7 @@ func createFixtures() []*fixtures.FixtureSet {
 		},
 		{
 			Enabled: true,
-			Writer: fixtures.DynamoDbFixtureWriterFactory(&ddb.Settings{
+			Writer: ddbFixtures.DynamoDbFixtureWriterFactory(&ddb.Settings{
 				ModelId: mdl.ModelId{
 					Project:     "gosoline",
 					Environment: "dev",
@@ -114,7 +118,7 @@ func createFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   false,
-			Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
+			Writer: s3.BlobFixtureWriterFactory(&s3.BlobFixturesSettings{
 				ConfigName: "test",
 				BasePath:   "../../test/test_data/s3_fixtures_test_data",
 			}),

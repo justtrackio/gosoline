@@ -9,6 +9,8 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+	kvstoreFixture "github.com/justtrackio/gosoline/pkg/fixtures/writers/kvstore"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/stretchr/testify/suite"
@@ -75,13 +77,13 @@ func (s FixturesConfigurableKvStoreSuite) TestConfigurableKvStore() {
 	}, res)
 }
 
-func configurableKvStoreFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func configurableKvStoreFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory("test_store"),
+			Writer:  kvstoreFixture.ConfigurableKvStoreFixtureWriterFactory("test_store"),
 			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
+				&kvstoreFixture.KvStoreFixture{
 					Key: "kvstore_entry_1",
 					Value: &ConfigurableKvStoreTestModel{
 						Name: "foo",

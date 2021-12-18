@@ -1,8 +1,10 @@
-package fixtures
+package mysql
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -21,11 +23,11 @@ type mysqlPlainFixtureWriter struct {
 	logger   log.Logger
 	client   db.Client
 	metadata *MysqlPlainMetaData
-	purger   *mysqlPurger
+	purger   writers.Purger
 }
 
-func MysqlPlainFixtureWriterFactory(metadata *MysqlPlainMetaData) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+func MysqlPlainFixtureWriterFactory(metadata *MysqlPlainMetaData) writers.FixtureWriterFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (writers.FixtureWriter, error) {
 		dbClient, err := db.NewClient(config, logger, "default")
 		if err != nil {
 			return nil, fmt.Errorf("can not create dbClient: %w", err)
@@ -40,7 +42,7 @@ func MysqlPlainFixtureWriterFactory(metadata *MysqlPlainMetaData) FixtureWriterF
 	}
 }
 
-func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client db.Client, metadata *MysqlPlainMetaData, purger *mysqlPurger) FixtureWriter {
+func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client db.Client, metadata *MysqlPlainMetaData, purger writers.Purger) writers.FixtureWriter {
 	return &mysqlPlainFixtureWriter{
 		logger:   logger,
 		client:   client,
@@ -49,8 +51,8 @@ func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client db.Clien
 	}
 }
 
-func (m *mysqlPlainFixtureWriter) Purge(_ context.Context) error {
-	err := m.purger.purgeMysql()
+func (m *mysqlPlainFixtureWriter) Purge(ctx context.Context) error {
+	err := m.purger.Purge(ctx)
 	if err != nil {
 		m.logger.Error("error occured during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
 
@@ -62,7 +64,7 @@ func (m *mysqlPlainFixtureWriter) Purge(_ context.Context) error {
 	return nil
 }
 
-func (m *mysqlPlainFixtureWriter) Write(_ context.Context, fs *FixtureSet) error {
+func (m *mysqlPlainFixtureWriter) Write(_ context.Context, fs *writers.FixtureSet) error {
 	for _, item := range fs.Fixtures {
 		fixture := item.(MysqlPlainFixtureValues)
 

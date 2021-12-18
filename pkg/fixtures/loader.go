@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -18,10 +19,10 @@ type fixtureLoaderSettings struct {
 type fixtureLoader struct {
 	logger        log.Logger
 	settings      *fixtureLoaderSettings
-	writerFactory func(factory FixtureWriterFactory) (FixtureWriter, error)
+	writerFactory func(factory writers.FixtureWriterFactory) (writers.FixtureWriter, error)
 }
 
-func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger) FixtureLoader {
+func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger) writers.FixtureLoader {
 	logger = logger.WithChannel("fixture_loader")
 
 	settings := &fixtureLoaderSettings{}
@@ -30,13 +31,13 @@ func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger)
 	return &fixtureLoader{
 		logger:   logger,
 		settings: settings,
-		writerFactory: func(factory FixtureWriterFactory) (FixtureWriter, error) {
+		writerFactory: func(factory writers.FixtureWriterFactory) (writers.FixtureWriter, error) {
 			return factory(ctx, config, logger)
 		},
 	}
 }
 
-func (f *fixtureLoader) Load(ctx context.Context, fixtureSets []*FixtureSet) error {
+func (f *fixtureLoader) Load(ctx context.Context, fixtureSets []*writers.FixtureSet) error {
 	if !f.settings.Enabled {
 		f.logger.Info("fixture loader is not enabled")
 		return nil

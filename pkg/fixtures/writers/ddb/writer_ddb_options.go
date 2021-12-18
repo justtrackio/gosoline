@@ -1,4 +1,4 @@
-package fixtures
+package ddb
 
 import "github.com/justtrackio/gosoline/pkg/ddb"
 

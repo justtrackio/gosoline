@@ -1,7 +1,10 @@
-package fixtures
+package mysql
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db"
@@ -19,7 +22,7 @@ type mysqlPurger struct {
 	tableName string
 }
 
-func newMysqlPurger(config cfg.Config, logger log.Logger, tableName string) (*mysqlPurger, error) {
+func newMysqlPurger(config cfg.Config, logger log.Logger, tableName string) (writers.Purger, error) {
 	client, err := db.NewClient(config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create db client: %w", err)
@@ -28,7 +31,7 @@ func newMysqlPurger(config cfg.Config, logger log.Logger, tableName string) (*my
 	return &mysqlPurger{client: client, logger: logger, tableName: tableName}, nil
 }
 
-func (p *mysqlPurger) purgeMysql() error {
+func (p *mysqlPurger) Purge(_ context.Context) error {
 	err := p.setForeignKeyChecks(0)
 	if err != nil {
 		p.logger.Error("error disabling foreign key checks: %w", err)

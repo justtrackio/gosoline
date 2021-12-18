@@ -1,4 +1,4 @@
-package fixtures
+package redis
 
 import (
 	"context"
@@ -28,7 +28,7 @@ func newRedisPurger(config cfg.Config, logger log.Logger, name *string) (*redisP
 	}, nil
 }
 
-func (p *redisPurger) purge(ctx context.Context) error {
+func (p *redisPurger) Purge(ctx context.Context) error {
 	p.logger.Info("flushing redis %s", *p.name)
 	_, err := p.client.FlushDB(ctx)
 	p.logger.Info("flushing redis %s done", *p.name)

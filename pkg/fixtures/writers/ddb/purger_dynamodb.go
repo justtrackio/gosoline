@@ -1,8 +1,10 @@
-package fixtures
+package ddb
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -12,13 +14,17 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+type DynamodbPurger interface {
+	Purge(ctx context.Context) error
+}
+
 type dynamodbPurger struct {
 	logger   log.Logger
 	settings *ddb.Settings
 	client   gosoDynamodb.Client
 }
 
-func newDynamodbPurger(ctx context.Context, config cfg.Config, logger log.Logger, settings *ddb.Settings) (*dynamodbPurger, error) {
+func newDynamodbPurger(ctx context.Context, config cfg.Config, logger log.Logger, settings *ddb.Settings) (writers.Purger, error) {
 	var err error
 	var client gosoDynamodb.Client
 
@@ -33,7 +39,7 @@ func newDynamodbPurger(ctx context.Context, config cfg.Config, logger log.Logger
 	}, nil
 }
 
-func (p *dynamodbPurger) purgeDynamodb(ctx context.Context) error {
+func (p *dynamodbPurger) Purge(ctx context.Context) error {
 	tableName := ddb.TableName(p.settings)
 	p.logger.Info("purging table %s", tableName)
 	_, err := p.client.DeleteTable(ctx, &dynamodb.DeleteTableInput{TableName: aws.String(tableName)})

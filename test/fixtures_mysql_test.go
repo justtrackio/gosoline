@@ -7,6 +7,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers/mysql"
+
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
@@ -20,7 +23,7 @@ import (
 type FixturesMysqlSuite struct {
 	suite.Suite
 	ctx    context.Context
-	loader fixtures.FixtureLoader
+	loader writers.FixtureLoader
 	logger log.Logger
 	mocks  *test.Mocks
 }
@@ -76,12 +79,12 @@ func TestFixturesMysqlSuite(t *testing.T) {
 	suite.Run(t, new(FixturesMysqlSuite))
 }
 
-func ormMysqlTestFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func ormMysqlTestFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   false,
-			Writer:  fixtures.MysqlOrmFixtureWriterFactory(&MysqlTestModelMetadata),
+			Writer:  mysql.MysqlOrmFixtureWriterFactory(&MysqlTestModelMetadata),
 			Fixtures: []interface{}{
 				&MysqlTestModel{
 					Name: mdl.String("testName"),
@@ -91,12 +94,12 @@ func ormMysqlTestFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func ormMysqlTestFixturesWithPurge() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func ormMysqlTestFixturesWithPurge() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer:  fixtures.MysqlOrmFixtureWriterFactory(&MysqlTestModelMetadata),
+			Writer:  mysql.MysqlOrmFixtureWriterFactory(&MysqlTestModelMetadata),
 			Fixtures: []interface{}{
 				&MysqlTestModel{
 					Name: mdl.String("purgedBefore"),
@@ -106,34 +109,34 @@ func ormMysqlTestFixturesWithPurge() []*fixtures.FixtureSet {
 	}
 }
 
-func plainMysqlTestFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func plainMysqlTestFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			Writer: mysql.MysqlPlainFixtureWriterFactory(&mysql.MysqlPlainMetaData{
 				TableName: "mysql_plain_writer_test",
 				Columns:   []string{"id", "name"},
 			}),
 			Fixtures: []interface{}{
-				fixtures.MysqlPlainFixtureValues{2, "testName2"},
-				fixtures.MysqlPlainFixtureValues{2, "testName3"},
+				mysql.MysqlPlainFixtureValues{2, "testName2"},
+				mysql.MysqlPlainFixtureValues{2, "testName3"},
 			},
 		},
 	}
 }
 
-func plainMysqlTestFixturesWithPurge() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func plainMysqlTestFixturesWithPurge() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			Writer: mysql.MysqlPlainFixtureWriterFactory(&mysql.MysqlPlainMetaData{
 				TableName: "mysql_plain_writer_test",
 				Columns:   []string{"id", "name"},
 			}),
 			Fixtures: []interface{}{
-				fixtures.MysqlPlainFixtureValues{1, "purgedBefore"},
+				mysql.MysqlPlainFixtureValues{1, "purgedBefore"},
 			},
 		},
 	}

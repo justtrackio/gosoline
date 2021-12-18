@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/ipread"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/mdlsub"
@@ -20,7 +21,7 @@ type suiteOptions struct {
 	envSetup    []func() error
 	envIsShared bool
 
-	fixtureSets []*fixtures.FixtureSet
+	fixtureSets []*writers.FixtureSet
 
 	appOptions   []application.Option
 	appModules   map[string]kernel.ModuleFactory
@@ -107,7 +108,7 @@ func WithEnvSetup(setups ...func() error) Option {
 	}
 }
 
-func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
+func WithFixtures(fixtureSets []*writers.FixtureSet) Option {
 	return func(s *suiteOptions) {
 		s.fixtureSets = append(s.fixtureSets, fixtureSets...)
 	}

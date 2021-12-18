@@ -1,10 +1,13 @@
-package fixtures
+package redis
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers/ddb"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -13,11 +16,11 @@ import (
 type redisKvStoreFixtureWriter struct {
 	logger log.Logger
 	store  kvstore.KvStore
-	purger *redisPurger
+	purger writers.Purger
 }
 
-func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) writers.FixtureWriterFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (writers.FixtureWriter, error) {
 		settings := &kvstore.Settings{
 			AppId: cfg.AppId{
 				Project:     modelId.Project,
@@ -44,7 +47,7 @@ func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory
 	}
 }
 
-func NewRedisKvStoreFixtureWriterWithInterfaces(logger log.Logger, store kvstore.KvStore, purger *redisPurger) FixtureWriter {
+func NewRedisKvStoreFixtureWriterWithInterfaces(logger log.Logger, store kvstore.KvStore, purger writers.Purger) writers.FixtureWriter {
 	return &redisKvStoreFixtureWriter{
 		logger: logger,
 		store:  store,
@@ -53,10 +56,10 @@ func NewRedisKvStoreFixtureWriterWithInterfaces(logger log.Logger, store kvstore
 }
 
 func (d *redisKvStoreFixtureWriter) Purge(ctx context.Context) error {
-	return d.purger.purge(ctx)
+	return d.purger.Purge(ctx)
 }
 
-func (d *redisKvStoreFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
+func (d *redisKvStoreFixtureWriter) Write(ctx context.Context, fs *writers.FixtureSet) error {
 	if len(fs.Fixtures) == 0 {
 		return nil
 	}
@@ -64,7 +67,7 @@ func (d *redisKvStoreFixtureWriter) Write(ctx context.Context, fs *FixtureSet) e
 	m := map[interface{}]interface{}{}
 
 	for _, item := range fs.Fixtures {
-		kvItem := item.(*KvStoreFixture)
+		kvItem := item.(*ddb.KvStoreFixture)
 		m[kvItem.Key] = kvItem.Value
 	}
 
