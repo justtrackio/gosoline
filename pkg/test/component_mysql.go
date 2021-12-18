@@ -38,6 +38,7 @@ func (m *mysqlComponentLegacy) Start() error {
 		"MYSQL_USER=gosoline",
 		"MYSQL_PASSWORD=gosoline",
 		"MYSQL_ROOT_PASSWORD=gosoline",
+		fmt.Sprintf("MYSQL_ROOT_HOST=%s", "%"),
 	}
 
 	if len(m.settings.Tmpfs) == 0 {
@@ -47,7 +48,7 @@ func (m *mysqlComponentLegacy) Start() error {
 	containerName := fmt.Sprintf("gosoline_test_mysql_%s", m.name)
 
 	return m.runner.Run(containerName, &containerConfigLegacy{
-		Repository: "mysql",
+		Repository: "mysql/mysql-server",
 		Tmpfs:      m.settings.Tmpfs,
 		Tag:        m.settings.Version,
 		Env:        env,

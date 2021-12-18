@@ -49,7 +49,7 @@ func (f *wiremockFactory) configureContainer(settings interface{}) *containerCon
 	return &containerConfig{
 		Repository: "wiremock/wiremock",
 		// alpine version doesn't run on arm based chips that support x86/x64 emulation, main does have an arm version but is not a specific version
-		Tag: "2.31.0",
+		Tag: "2.32.0",
 		PortBindings: portBindings{
 			"8080/tcp": s.Port,
 		},

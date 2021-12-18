@@ -86,6 +86,7 @@ func (f mysqlFactory) configureContainer(settings interface{}) *containerConfig 
 		fmt.Sprintf("MYSQL_USER=%s", s.Credentials.UserName),
 		fmt.Sprintf("MYSQL_PASSWORD=%s", s.Credentials.UserPassword),
 		fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", s.Credentials.RootPassword),
+		fmt.Sprintf("MYSQL_ROOT_HOST=%s", "%"),
 	}
 
 	if len(s.Tmpfs) == 0 {

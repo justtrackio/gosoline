@@ -119,7 +119,7 @@ On linux it's very straight to execute the integration tests:
 go test -tags integration,fixtures ./test
 ```
 ##### macOS
-To run them on macOS you will (just once) have to execute this:
+To run them on macOS you will (once initially and after each system update) have to execute this:
 ```shell
 sudo ifconfig lo0 alias 172.17.0.1
 ```
