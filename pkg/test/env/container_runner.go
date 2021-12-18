@@ -1,6 +1,7 @@
 package env
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"regexp"
@@ -106,9 +107,60 @@ func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner,
 	}, nil
 }
 
+func (r *containerRunner) PullContainerImages(skeletons []*componentSkeleton) error {
+	if len(skeletons) == 0 {
+		return nil
+	}
+
+	cfn := coffin.New()
+	for i := range skeletons {
+		for _, description := range skeletons[i].containerDescriptions {
+			skeleton := skeletons[i]
+			cfn.Gof(func() error {
+				err := r.PullContainerImage(description)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			}, "can not pull container %s", skeleton.id())
+		}
+	}
+
+	return cfn.Wait()
+}
+
+func (r *containerRunner) PullContainerImage(description *componentContainerDescription) error {
+	config := description.containerConfig
+	imageName := fmt.Sprintf("%s:%s", config.Repository, config.Tag)
+	_, err := r.pool.Client.InspectImage(imageName)
+	if err != nil && !errors.Is(err, docker.ErrNoSuchImage) {
+		return fmt.Errorf("could not check if image %s exists: %w", imageName, err)
+	}
+
+	if err == nil {
+		return nil
+	}
+
+	err = r.pool.Client.PullImage(
+		docker.PullImageOptions{
+			Repository: config.Repository,
+			Tag:        config.Tag,
+		}, r.settings.Auth.GetAuthConfig())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 	if len(skeletons) == 0 {
 		return nil
+	}
+
+	if err := r.PullContainerImages(skeletons); err != nil {
+		return err
 	}
 
 	cfn := coffin.New()

@@ -32,27 +32,19 @@ func (m *mysqlComponentLegacy) Boot(config cfg.Config, _ log.Logger, runner *doc
 	config.UnmarshalKey(key, m.settings)
 }
 
-func (m *mysqlComponentLegacy) Start() error {
-	env := []string{
-		fmt.Sprintf("MYSQL_DATABASE=%s", m.settings.DbName),
-		"MYSQL_USER=gosoline",
-		"MYSQL_PASSWORD=gosoline",
-		"MYSQL_ROOT_PASSWORD=gosoline",
-		fmt.Sprintf("MYSQL_ROOT_HOST=%s", "%"),
-	}
-
-	if len(m.settings.Tmpfs) == 0 {
-		m.settings.Tmpfs["/var/lib/mysql"] = ""
-	}
-
-	containerName := fmt.Sprintf("gosoline_test_mysql_%s", m.name)
-
-	return m.runner.Run(containerName, &containerConfigLegacy{
+func (m *mysqlComponentLegacy) getContainerConfig() *containerConfigLegacy {
+	return &containerConfigLegacy{
 		Repository: "mysql/mysql-server",
 		Tmpfs:      m.settings.Tmpfs,
 		Tag:        m.settings.Version,
-		Env:        env,
-		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE"},
+		Env: []string{
+			fmt.Sprintf("MYSQL_DATABASE=%s", m.settings.DbName),
+			"MYSQL_USER=gosoline",
+			"MYSQL_PASSWORD=gosoline",
+			"MYSQL_ROOT_PASSWORD=gosoline",
+			fmt.Sprintf("MYSQL_ROOT_HOST=%s", "%"),
+		},
+		Cmd: []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE"},
 		PortBindings: portBindingLegacy{
 			"3306/tcp": fmt.Sprint(m.settings.Port),
 		},
@@ -79,7 +71,25 @@ func (m *mysqlComponentLegacy) Start() error {
 		},
 		PrintLogs:   m.settings.Debug,
 		ExpireAfter: m.settings.ExpireAfter,
-	})
+	}
+}
+
+func (m *mysqlComponentLegacy) PullContainerImage() error {
+	containerName := fmt.Sprintf("gosoline_test_mysql_%s", m.name)
+	containerConfig := m.getContainerConfig()
+
+	return m.runner.PullContainerImage(containerName, containerConfig)
+}
+
+func (m *mysqlComponentLegacy) Start() error {
+	if len(m.settings.Tmpfs) == 0 {
+		m.settings.Tmpfs["/var/lib/mysql"] = ""
+	}
+
+	containerName := fmt.Sprintf("gosoline_test_mysql_%s", m.name)
+	containerConfig := m.getContainerConfig()
+
+	return m.runner.Run(containerName, containerConfig)
 }
 
 type noopLogger struct{}

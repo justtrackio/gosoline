@@ -31,10 +31,8 @@ func (k *kinesisComponent) Boot(config cfg.Config, _ log.Logger, runner *dockerR
 	config.UnmarshalKey(key, k.settings)
 }
 
-func (k *kinesisComponent) Start() error {
-	containerName := fmt.Sprintf("gosoline_test_kinesis_%s", k.name)
-
-	return k.runner.Run(containerName, &containerConfigLegacy{
+func (k *kinesisComponent) getContainerConfig() *containerConfigLegacy {
+	return &containerConfigLegacy{
 		Repository: "localstack/localstack",
 		Tag:        "0.13.0.4",
 		Env: []string{
@@ -54,7 +52,21 @@ func (k *kinesisComponent) Start() error {
 		HealthCheck: localstackHealthCheck(k.settings.mockSettings, componentKinesis),
 		PrintLogs:   k.settings.Debug,
 		ExpireAfter: k.settings.ExpireAfter,
-	})
+	}
+}
+
+func (k *kinesisComponent) PullContainerImage() error {
+	containerName := fmt.Sprintf("gosoline_test_kinesis_%s", k.name)
+	containerConfig := k.getContainerConfig()
+
+	return k.runner.PullContainerImage(containerName, containerConfig)
+}
+
+func (k *kinesisComponent) Start() error {
+	containerName := fmt.Sprintf("gosoline_test_kinesis_%s", k.name)
+	containerConfig := k.getContainerConfig()
+
+	return k.runner.Run(containerName, containerConfig)
 }
 
 func (k *kinesisComponent) provideKinesisClient() *kinesis.Kinesis {
