@@ -31,10 +31,8 @@ func (w *wiremockComponent) Boot(config cfg.Config, _ log.Logger, runner *docker
 	config.UnmarshalKey(key, w.settings)
 }
 
-func (w *wiremockComponent) Start() error {
-	containerName := fmt.Sprintf("gosoline_test_wiremock_%s", w.name)
-
-	err := w.runner.Run(containerName, &containerConfigLegacy{
+func (w *wiremockComponent) getContainerConfig() *containerConfigLegacy {
+	return &containerConfigLegacy{
 		Repository: "wiremock/wiremock",
 		// alpine version doesn't run on arm based chips that support x86/x64 emulation, main does have an arm version but is not a specific version
 		Tag: "2.32.0",
@@ -61,7 +59,21 @@ func (w *wiremockComponent) Start() error {
 		},
 		PrintLogs:   w.settings.Debug,
 		ExpireAfter: w.settings.ExpireAfter,
-	})
+	}
+}
+
+func (w *wiremockComponent) PullContainerImage() error {
+	containerName := fmt.Sprintf("gosoline_test_wiremock_%s", w.name)
+	containerConfig := w.getContainerConfig()
+
+	return w.runner.PullContainerImage(containerName, containerConfig)
+}
+
+func (w *wiremockComponent) Start() error {
+	containerName := fmt.Sprintf("gosoline_test_wiremock_%s", w.name)
+	containerConfig := w.getContainerConfig()
+
+	err := w.runner.Run(containerName, containerConfig)
 	if err != nil {
 		return err
 	}

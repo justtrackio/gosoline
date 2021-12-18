@@ -29,10 +29,8 @@ func (c *cloudwatchComponent) Boot(config cfg.Config, _ log.Logger, runner *dock
 	config.UnmarshalKey(key, c.settings)
 }
 
-func (c *cloudwatchComponent) Start() error {
-	containerName := fmt.Sprintf("gosoline_test_cloudwatch_%s", c.name)
-
-	return c.runner.Run(containerName, &containerConfigLegacy{
+func (c *cloudwatchComponent) getContainerConfig() *containerConfigLegacy {
+	return &containerConfigLegacy{
 		Repository: "localstack/localstack",
 		Tag:        "0.13.1",
 		Env: []string{
@@ -52,7 +50,21 @@ func (c *cloudwatchComponent) Start() error {
 		HealthCheck: localstackHealthCheck(c.settings.mockSettings, "cloudwatch"),
 		PrintLogs:   c.settings.Debug,
 		ExpireAfter: c.settings.ExpireAfter,
-	})
+	}
+}
+
+func (c *cloudwatchComponent) PullContainerImage() error {
+	containerName := fmt.Sprintf("gosoline_test_cloudwatch_%s", c.name)
+	containerConfig := c.getContainerConfig()
+
+	return c.runner.PullContainerImage(containerName, containerConfig)
+}
+
+func (c *cloudwatchComponent) Start() error {
+	containerName := fmt.Sprintf("gosoline_test_cloudwatch_%s", c.name)
+	containerConfig := c.getContainerConfig()
+
+	return c.runner.Run(containerName, containerConfig)
 }
 
 func (c *cloudwatchComponent) provideCloudwatchClient() *cloudwatch.CloudWatch {

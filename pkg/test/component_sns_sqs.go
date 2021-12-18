@@ -37,7 +37,7 @@ func (s *snsSqsComponent) Boot(config cfg.Config, _ log.Logger, runner *dockerRu
 	config.UnmarshalKey(key, s.settings)
 }
 
-func (s *snsSqsComponent) Start() error {
+func (s *snsSqsComponent) getContainerConfig() *containerConfigLegacy {
 	services := "SERVICES=" + strings.Join([]string{
 		componentSns,
 		componentSqs,
@@ -52,9 +52,7 @@ func (s *snsSqsComponent) Start() error {
 		env = append(env, "DEBUG=1")
 	}
 
-	containerName := fmt.Sprintf("gosoline_test_sns_sqs_%s", s.name)
-
-	return s.runner.Run(containerName, &containerConfigLegacy{
+	return &containerConfigLegacy{
 		Repository: "localstack/localstack",
 		Tag:        "0.13.0.4",
 		Env:        env,
@@ -71,7 +69,21 @@ func (s *snsSqsComponent) Start() error {
 		HealthCheck: localstackHealthCheck(s.settings.mockSettings, componentSns, componentSqs),
 		PrintLogs:   s.settings.Debug,
 		ExpireAfter: s.settings.ExpireAfter,
-	})
+	}
+}
+
+func (s *snsSqsComponent) PullContainerImage() error {
+	containerName := fmt.Sprintf("gosoline_test_sns_sqs_%s", s.name)
+	containerConfig := s.getContainerConfig()
+
+	return s.runner.PullContainerImage(containerName, containerConfig)
+}
+
+func (s *snsSqsComponent) Start() error {
+	containerName := fmt.Sprintf("gosoline_test_sns_sqs_%s", s.name)
+	containerConfig := s.getContainerConfig()
+
+	return s.runner.Run(containerName, containerConfig)
 }
 
 func (s *snsSqsComponent) provideSnsClient() *sns.SNS {

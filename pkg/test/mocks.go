@@ -12,6 +12,7 @@ import (
 
 type mockComponent interface {
 	Boot(config cfg.Config, logger log.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string)
+	PullContainerImage() error
 	Start() error
 }
 
@@ -81,8 +82,24 @@ func (m *Mocks) bootFromConfig(config cfg.Config) {
 
 		m.components[name] = component
 		component.Boot(config, m.logger, m.dockerRunner, settings, name)
+	}
 
-		m.runComponent(component)
+	for _, component := range m.components {
+		c := component
+
+		err := c.PullContainerImage()
+		if err != nil {
+			m.errorsLock.Lock()
+			m.errors = multierror.Append(m.errors, err)
+			m.errorsLock.Unlock()
+			continue
+		}
+	}
+
+	for _, component := range m.components {
+		c := component
+
+		m.runComponent(c)
 	}
 }
 

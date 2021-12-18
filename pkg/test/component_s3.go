@@ -20,22 +20,20 @@ type s3Component struct {
 	clients  *simpleCache
 }
 
-func (k *s3Component) Boot(config cfg.Config, logger log.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
-	k.logger = logger
-	k.name = name
-	k.runner = runner
-	k.clients = &simpleCache{}
-	k.settings = &s3Settings{
+func (s *s3Component) Boot(config cfg.Config, logger log.Logger, runner *dockerRunnerLegacy, settings *mockSettings, name string) {
+	s.logger = logger
+	s.name = name
+	s.runner = runner
+	s.clients = &simpleCache{}
+	s.settings = &s3Settings{
 		mockSettings: settings,
 	}
 	key := fmt.Sprintf("mocks.%s", name)
-	config.UnmarshalKey(key, k.settings)
+	config.UnmarshalKey(key, s.settings)
 }
 
-func (k *s3Component) Start() error {
-	containerName := fmt.Sprintf("gosoline_test_s3_%s", k.name)
-
-	return k.runner.Run(containerName, &containerConfigLegacy{
+func (s *s3Component) getContainerConfig() *containerConfigLegacy {
+	return &containerConfigLegacy{
 		Repository: "minio/minio",
 		Cmd: []string{
 			"server",
@@ -47,28 +45,42 @@ func (k *s3Component) Start() error {
 			"MINIO_SECRET_KEY=gosoline",
 		},
 		PortBindings: portBindingLegacy{
-			"9000/tcp": fmt.Sprint(k.settings.Port),
+			"9000/tcp": fmt.Sprint(s.settings.Port),
 		},
 		PortMappings: portMappingLegacy{
-			"9000/tcp": &k.settings.Port,
+			"9000/tcp": &s.settings.Port,
 		},
 		HostMapping: hostMappingLegacy{
-			dialPort: &k.settings.Port,
-			setHost:  &k.settings.Host,
+			dialPort: &s.settings.Port,
+			setHost:  &s.settings.Host,
 		},
 		HealthCheck: func() error {
-			_, err := k.provideS3Client().ListBuckets(&s3.ListBucketsInput{})
+			_, err := s.provideS3Client().ListBuckets(&s3.ListBucketsInput{})
 
 			return err
 		},
-		PrintLogs:   k.settings.Debug,
-		ExpireAfter: k.settings.ExpireAfter,
-	})
+		PrintLogs:   s.settings.Debug,
+		ExpireAfter: s.settings.ExpireAfter,
+	}
 }
 
-func (k *s3Component) provideS3Client() *s3.S3 {
-	return k.clients.New(k.name, func() interface{} {
-		sess := getAwsSession(k.settings.Host, k.settings.Port)
+func (s *s3Component) PullContainerImage() error {
+	containerName := fmt.Sprintf("gosoline_test_s3_%s", s.name)
+	containerConfig := s.getContainerConfig()
+
+	return s.runner.PullContainerImage(containerName, containerConfig)
+}
+
+func (s *s3Component) Start() error {
+	containerName := fmt.Sprintf("gosoline_test_s3_%s", s.name)
+	containerConfig := s.getContainerConfig()
+
+	return s.runner.Run(containerName, containerConfig)
+}
+
+func (s *s3Component) provideS3Client() *s3.S3 {
+	return s.clients.New(s.name, func() interface{} {
+		sess := getAwsSession(s.settings.Host, s.settings.Port)
 
 		return s3.New(sess)
 	}).(*s3.S3)

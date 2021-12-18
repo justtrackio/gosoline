@@ -30,10 +30,8 @@ func (r *redisComponent) Boot(config cfg.Config, _ log.Logger, runner *dockerRun
 	config.UnmarshalKey(key, r.settings)
 }
 
-func (r *redisComponent) Start() error {
-	containerName := fmt.Sprintf("gosoline_test_redis_%s", r.name)
-
-	return r.runner.Run(containerName, &containerConfigLegacy{
+func (r *redisComponent) getContainerConfig() *containerConfigLegacy {
+	return &containerConfigLegacy{
 		Repository: "redis",
 		Tag:        "5-alpine",
 		PortBindings: portBindingLegacy{
@@ -54,7 +52,21 @@ func (r *redisComponent) Start() error {
 		},
 		PrintLogs:   r.settings.Debug,
 		ExpireAfter: r.settings.ExpireAfter,
-	})
+	}
+}
+
+func (r *redisComponent) PullContainerImage() error {
+	containerName := fmt.Sprintf("gosoline_test_redis_%s", r.name)
+	containerConfig := r.getContainerConfig()
+
+	return r.runner.PullContainerImage(containerName, containerConfig)
+}
+
+func (r *redisComponent) Start() error {
+	containerName := fmt.Sprintf("gosoline_test_redis_%s", r.name)
+	containerConfig := r.getContainerConfig()
+
+	return r.runner.Run(containerName, containerConfig)
 }
 
 func (r *redisComponent) provideRedisClient() *redis.Client {

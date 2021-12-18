@@ -29,10 +29,8 @@ func (d *dynamoDbComponent) Boot(config cfg.Config, _ log.Logger, runner *docker
 	config.UnmarshalKey(key, d.settings)
 }
 
-func (d *dynamoDbComponent) Start() error {
-	containerName := fmt.Sprintf("gosoline_test_dynamodb_%s", d.name)
-
-	return d.runner.Run(containerName, &containerConfigLegacy{
+func (d *dynamoDbComponent) getContainerConfig() *containerConfigLegacy {
+	return &containerConfigLegacy{
 		Repository: "amazon/dynamodb-local",
 		Tag:        "1.17.2",
 		PortBindings: portBindingLegacy{
@@ -54,7 +52,21 @@ func (d *dynamoDbComponent) Start() error {
 		},
 		PrintLogs:   d.settings.Debug,
 		ExpireAfter: d.settings.ExpireAfter,
-	})
+	}
+}
+
+func (d *dynamoDbComponent) PullContainerImage() error {
+	containerName := fmt.Sprintf("gosoline_test_dynamodb_%s", d.name)
+	containerConfig := d.getContainerConfig()
+
+	return d.runner.PullContainerImage(containerName, containerConfig)
+}
+
+func (d *dynamoDbComponent) Start() error {
+	containerName := fmt.Sprintf("gosoline_test_dynamodb_%s", d.name)
+	containerConfig := d.getContainerConfig()
+
+	return d.runner.Run(containerName, containerConfig)
 }
 
 func (d *dynamoDbComponent) provideDynamoDbClient() *dynamodb.DynamoDB {

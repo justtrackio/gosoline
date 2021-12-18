@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	goLog "log"
 	"net"
@@ -94,6 +95,29 @@ func NewDockerRunnerLegacy(config cfg.Config) *dockerRunnerLegacy {
 		containers: containers,
 		auth:       auth,
 	}
+}
+
+func (d *dockerRunnerLegacy) PullContainerImage(name string, config *containerConfigLegacy) error {
+	imageName := fmt.Sprintf("%s:%s", config.Repository, config.Tag)
+	_, err := d.pool.Client.InspectImage(imageName)
+	if err != nil && !errors.Is(err, docker.ErrNoSuchImage) {
+		return fmt.Errorf("could not check if image %s exists: %w", imageName, err)
+	}
+
+	if err == nil {
+		return nil
+	}
+
+	err = d.pool.Client.PullImage(
+		docker.PullImageOptions{
+			Repository: config.Repository,
+			Tag:        config.Tag,
+		}, d.auth.GetAuthConfig())
+	if err != nil {
+		return fmt.Errorf("could not pull image for container %s: %w", name, err)
+	}
+
+	return nil
 }
 
 func (d *dockerRunnerLegacy) Run(name string, config *containerConfigLegacy) error {
