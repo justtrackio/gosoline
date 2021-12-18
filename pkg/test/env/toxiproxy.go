@@ -2,18 +2,18 @@ package env
 
 import (
 	"fmt"
-	toxiproxy "github.com/Shopify/toxiproxy/client"
 	"time"
+
+	toxiproxy "github.com/Shopify/toxiproxy/client"
 )
 
-type toxiproxyFactory struct {
-}
+type toxiproxyFactory struct{}
 
 func (f *toxiproxyFactory) describeContainer(expireAfter time.Duration) *componentContainerDescription {
 	return &componentContainerDescription{
 		containerConfig: &containerConfig{
-			Repository: "shopify/toxiproxy",
-			Tag:        "2.1.4",
+			Repository: "ghcr.io/shopify/toxiproxy",
+			Tag:        "2.2.0",
 			PortBindings: portBindings{
 				"8474/tcp":  0,
 				"56248/tcp": 0,

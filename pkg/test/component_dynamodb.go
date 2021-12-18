@@ -34,7 +34,7 @@ func (d *dynamoDbComponent) Start() error {
 
 	return d.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "amazon/dynamodb-local",
-		Tag:        "1.13.0",
+		Tag:        "1.17.2",
 		PortBindings: portBindingLegacy{
 			"8000/tcp": fmt.Sprint(d.settings.Port),
 		},

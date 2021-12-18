@@ -76,7 +76,7 @@ func (f *ddbFactory) configureContainer(settings interface{}) *containerConfig {
 
 	return &containerConfig{
 		Repository: "amazon/dynamodb-local",
-		Tag:        "1.15.0",
+		Tag:        "1.17.2",
 		PortBindings: portBindings{
 			"8000/tcp": s.Port,
 		},

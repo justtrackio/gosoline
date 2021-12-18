@@ -34,7 +34,7 @@ func (c *cloudwatchComponent) Start() error {
 
 	return c.runner.Run(containerName, &containerConfigLegacy{
 		Repository: "localstack/localstack",
-		Tag:        "0.13.0.4",
+		Tag:        "0.13.1",
 		Env: []string{
 			"SERVICES=cloudwatch",
 			"EAGER_SERVICE_LOADING=1",
