@@ -14,7 +14,7 @@ type ReadCloser interface {
 	io.ReadCloser
 }
 
-// A reader which we can close and which can seek
+// A reader that we can close and that can seek
 //go:generate mockery --name ReadSeekerCloser
 type ReadSeekerCloser interface {
 	io.ReadSeeker
@@ -51,8 +51,7 @@ func StreamReader(reader ReadCloser) Stream {
 	}
 }
 
-// Wrap a reader and provide a closer which can be called more than once.
-// If the reader does not implement closer, ignore calls to close.
+// CloseOnce wraps a reader and provide a closer. Can be called more than once. If the reader does not implement closer, it ignores calls to close.
 func CloseOnce(reader io.ReadSeeker) ReadSeekerCloser {
 	if closer, ok := reader.(ReadSeekerCloser); ok {
 		return &onceCloser{
@@ -132,7 +131,7 @@ func (r noSeekerReaderStream) AsReader() ReadSeekerCloser {
 	}
 }
 
-// a wrapper around a closer which only calls close once on the wrapped reader
+// a wrapper around a closer, which only calls close once on the wrapped reader
 
 type onceCloser struct {
 	// If 0, we haven't yet closed the reader
@@ -157,7 +156,7 @@ func (o *onceCloser) Close() error {
 	return nil
 }
 
-// a wrapper which provides close without doing anything
+// a wrapper, which provides Close() without doing anything
 
 type nopCloser struct {
 	io.ReadSeeker

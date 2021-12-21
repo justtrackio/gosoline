@@ -104,7 +104,9 @@ func (s *currencyService) getExchangeRate(ctx context.Context, to string) (float
 
 	if err != nil {
 		return 0, fmt.Errorf("CurrencyService: error getting exchange rate: %w", err)
-	} else if !exists {
+	}
+
+	if !exists {
 		return 0, fmt.Errorf("CurrencyService: currency not found: %s", to)
 	}
 

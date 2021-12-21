@@ -37,7 +37,7 @@ cloud:
 |--------------------------|------------------------------------------------------------------------------------|-------------------------------|
 | endpoint                 | Which service endpoint should be called                                            | http://localhost:4566         |
 | region                   | The region in use                                                                  | eu-central-1                  |
-| http_client.timeout      | After which duration the request should be canceled  if the server doesn't respond | 0s (no timeout)               |
+| http_client.timeout      | After what duration the request should be canceled, if the server doesn't respond | 0s (no timeout)               |
 | backoff.cancel_delay     | If the request get canceled, how long should the cancel delayed                    | 1s                            |
 | backoff.initial_interval | The initial duration to wait before retrying the request on error                  | 50ms                          |
 | backoff.max_attempts     | How many attempts should be done                                                   | 10 (0 means retry forever)    |

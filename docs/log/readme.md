@@ -1,6 +1,6 @@
 # Log package
 
-The gosoline logger is based upon a simple interface which uses handlers internally to enable fully customizable log handling. 
+The gosoline logger is based upon a simple interface that uses handlers internally to enable fully customizable log handling. 
 
 [embedmd]:# (../../pkg/log/logger.go /type Logger interface {/ /\n}/)
 ```go
@@ -30,10 +30,10 @@ logger := log.NewLoggerWithInterfaces(myClock, []log.Handler{handler1, handler2}
 Both will provide you with an extended interface including the `Option(opt ...Option) error` function to change the behaviour of the logger.
 
 ##### `WithContextFieldsResolver`
-Adds an additional context fields resolver to the logger
+Adds a context fields resolver to the logger
 
 ##### `WithFields`
-Adds global fields to the logger which will be set on every log message
+Adds global fields to the logger, which will be set on every log message
 
 ##### `WithHandlers`
 Adds additional handlers to the logger
@@ -57,7 +57,7 @@ log:
 | setting             | description                                                    | default                                                                            |
 |---------------------|----------------------------------------------------------------|------------------------------------------------------------------------------------|
 | log.level           | default level for all handlers without an explicit level value | info                                                                               |
-| log.handlers        | a map of handlers which will be called for every log message   | every logger gets a 'main' handler by default if there is no other handler defined |
+| log.handlers        | a map of handlers that will be called for every log message   | every logger gets a 'main' handler by default if there is no other handler defined |
 | log.handlers.X.type | defines the type of the handler                                | -                                                                                  |
 
 ## Handlers
@@ -133,10 +133,10 @@ log:
 ```
 
 ### Build-in handlers
-Gosoline has a couple of built-in handlers which are ready to use:
+Gosoline has a couple of built-in handlers, which are ready to use out of the box:
 
 #### iowriter
-Multitool which is able to write logs to everything which implements the `io.Writer` interface. Config options are:
+Multitool, which is able to write logs to everything which implements the `io.Writer` interface. Config options are:
 
 | Setting          | Description                                                        | Default      |
 |------------------|--------------------------------------------------------------------|--------------|

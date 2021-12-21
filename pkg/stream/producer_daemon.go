@@ -52,7 +52,7 @@ type ProducerDaemonSettings struct {
 	//
 	// Note: Gosoline can't ensure your messages stay below this size if your messages are quite large (especially when
 	// using compression). Imagine you already aggregated 40kb of compressed messages (around 53kb when base64 encoded)
-	// and are now writing a message which compresses to 20 kb. Now your buffer reaches 60 kb and 80 kb base64 encoded.
+	// and are now writing a message that compresses to 20 kb. Now your buffer reaches 60 kb and 80 kb base64 encoded.
 	// Gosoline will not already output a 53 kb message if you requested 64 kb messages (it would accept a 56 kb message),
 	// but after writing the next message
 	AggregationMaxSize int `cfg:"aggregation_max_size" default:"65536" validate:"min=0"`

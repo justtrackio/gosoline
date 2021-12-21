@@ -31,7 +31,7 @@ type ApiServerTestCase struct {
 	ExpectedResult interface{}
 	// ExpectedErr is compared with the error returned by the HTTP request. Only the error messages have to match.
 	ExpectedErr error
-	// Assert allows you to provide an assertion function which can be passed to validate certain post conditions (like
+	// Assert allows you to provide an assertion function that can be passed to validate certain post conditions (like
 	// messages being written to the correct queues).
 	// It also allows to check that the response carries the correct response body, redirects to the correct
 	//	// location, or has the correct headers set. You don't need to validate the response status here, this is already

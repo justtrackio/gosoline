@@ -10,9 +10,9 @@ import (
 
 const (
 	// The kernel is split into three stages.
-	//  * Essential: Starts first and shuts down last. Includes metric writers and anything else which gets data from other
+	//  * Essential: Starts first and shuts down last. Includes metric writers and anything else that gets data from other
 	//    modules and must not exist before the other modules do so.
-	//  * Service: Contains services provided to the application which should start first but still depend on the essential
+	//  * Service: Contains services provided to the application that should start first but still depend on the essential
 	//    modules. This includes the modules provided by gosoline, for example the ApiServer.
 	//  * Application: Your code should normally run in this stage. It will be started after other services are already
 	//    running and shut down first so other stages still have some time to process the messages they did receive from
@@ -65,18 +65,28 @@ func getModuleConfig(m Module) ModuleConfig {
 	}
 }
 
+// ModuleState stores data needed for module management.
 type ModuleState struct {
-	Factory   ModuleFactory
-	Module    Module
-	Config    ModuleConfig
+	// Factory function that will produce this module.
+	Factory ModuleFactory
+	// Module stores the core functionality of this module.
+	Module Module
+	// Config information regarding starting and stopping this module.
+	Config ModuleConfig
+	// IsRunning or not.
 	IsRunning bool
-	Err       error
+	// Error obtained by running this module.
+	Err error
 }
 
+// ModuleConfig stores attributes used in starting and stopping a module.
 type ModuleConfig struct {
-	Essential  bool
+	// Essential causes the kernel to stop after its first essential module finishes.
+	Essential bool
+	// Background modules run as long as there is at least one foreground module still running.
 	Background bool
-	Stage      int
+	// Stage in which this module will be started.
+	Stage int
 }
 
 func (mc ModuleConfig) GetType() string {
@@ -110,7 +120,7 @@ type Module interface {
 	Run(ctx context.Context) error
 }
 
-// TypedModule denotes a module which knows whether it is essential and whether
+// TypedModule denotes a module that knows whether it is essential and whether
 // it runs in the foreground or background. If your module is essential, the kernel
 // will shut down after your module stopped. If your module is a background module,
 // it will not keep the kernel running. Thus, an essential background module will
