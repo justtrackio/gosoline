@@ -9,7 +9,7 @@ import (
 )
 
 func CreateTopic(ctx context.Context, logger log.Logger, client Client, topicName string) (string, error) {
-	logger.WithFields(log.Fields{
+	logger.WithContext(ctx).WithFields(log.Fields{
 		"name": topicName,
 	}).Info("looking for sns topic")
 
@@ -24,7 +24,7 @@ func CreateTopic(ctx context.Context, logger log.Logger, client Client, topicNam
 		return "", err
 	}
 
-	logger.WithFields(log.Fields{
+	logger.WithContext(ctx).WithFields(log.Fields{
 		"name": topicName,
 		"arn":  *out.TopicArn,
 	}).Info("found sns topic")
