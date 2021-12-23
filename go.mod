@@ -15,11 +15,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.2.0
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.2.0
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.8.0
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.18.0
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.9.1
-	github.com/aws/aws-sdk-go-v2/service/rds v1.9.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.26.0
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.14.0
+	github.com/aws/aws-sdk-go-v2/service/rds v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.5.1
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.16.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.22.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.7.1
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.7.1
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.11.0
@@ -30,7 +30,7 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
 	github.com/elliotchance/redismock/v8 v8.6.1
 	github.com/fatih/color v1.13.0
-	github.com/getsentry/sentry-go v0.11.0
+	github.com/getsentry/sentry-go v0.12.0
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.7.7
@@ -54,7 +54,7 @@ require (
 	github.com/karlseguin/ccache v0.0.0-20181227155450-692cd618b264
 	github.com/lib/pq v1.3.0
 	github.com/mitchellh/mapstructure v1.4.1
-	github.com/ory/dockertest/v3 v3.7.0
+	github.com/ory/dockertest/v3 v3.8.1
 	github.com/ory/ladon v1.0.1
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/pkg/errors v0.9.1
@@ -68,7 +68,7 @@ require (
 	github.com/xitongsys/parquet-go v1.4.0
 	github.com/xitongsys/parquet-go-source v0.0.0-20191104003508-ecfa341356a6
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+	golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac
 	google.golang.org/api v0.20.0
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
@@ -79,29 +79,30 @@ require (
 	cloud.google.com/go v0.54.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/DataDog/zstd v1.4.8 // indirect
-	github.com/Microsoft/go-winio v0.4.17 // indirect
+	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/andybalholm/brotli v1.0.1 // indirect
 	github.com/apache/thrift v0.13.0 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.0.4 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.0 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.0.0 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.2 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.0.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.2.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.7.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.5.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.3.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.3.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.7.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.5.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.9.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.1.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.2.0 // indirect
-	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
+	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/containerd/containerd v1.5.5 // indirect
 	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/docker/cli v20.10.7+incompatible // indirect
+	github.com/docker/cli v20.10.11+incompatible // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v20.10.7+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -132,15 +133,15 @@ require (
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
-	github.com/mattn/go-colorable v0.1.9 // indirect
+	github.com/mattn/go-colorable v0.1.11 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/opencontainers/runc v1.0.1 // indirect
+	github.com/opencontainers/image-spec v1.0.2 // indirect
+	github.com/opencontainers/runc v1.0.2 // indirect
 	github.com/oschwald/maxminddb-golang v1.6.0 // indirect
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -156,16 +157,15 @@ require (
 	go.opentelemetry.io/otel v0.19.0 // indirect
 	go.opentelemetry.io/otel/metric v0.19.0 // indirect
 	go.opentelemetry.io/otel/trace v0.19.0 // indirect
-	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2 // indirect
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
-	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20210114201628-6edceaf6022f // indirect
 	google.golang.org/grpc v1.35.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gotest.tools/v3 v3.0.3 // indirect
 )
 
 go 1.17
