@@ -1,7 +1,8 @@
 package integration
 
 import (
-	gosoFixtures "github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers/kvstore"
 )
 
 type NamedFixture struct {
@@ -9,16 +10,16 @@ type NamedFixture struct {
 	Value interface{}
 }
 
-var fixtureSets = []*gosoFixtures.FixtureSet{
+var fixtureSets = []*writers.FixtureSet{
 	{
 		Enabled: true,
-		Writer:  gosoFixtures.ConfigurableKvStoreFixtureWriterFactory("currency"),
+		Writer:  kvstore.ConfigurableKvStoreFixtureWriterFactory("currency"),
 		Fixtures: []interface{}{
-			&gosoFixtures.KvStoreFixture{
+			&kvstore.KvStoreFixture{
 				Key:   "GBP",
 				Value: 1.25,
 			},
-			&gosoFixtures.KvStoreFixture{
+			&kvstore.KvStoreFixture{
 				Key:   "2021-01-03-GBP",
 				Value: 0.8,
 			},
