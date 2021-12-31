@@ -24,9 +24,9 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	pkgTest "github.com/justtrackio/gosoline/pkg/test"
+	"github.com/justtrackio/gosoline/pkg/test/suite"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 type TestData struct {
@@ -67,7 +67,7 @@ type ProducerDaemonTestSuite struct {
 	mocks *pkgTest.Mocks
 }
 
-func (s *ProducerDaemonTestSuite) SetupSuite() {
+func (s *ProducerDaemonTestSuite) SetupSuite() []suite.Option {
 	err := os.Setenv("AWS_ACCESS_KEY_ID", "a")
 	s.NoError(err)
 	err = os.Setenv("AWS_SECRET_ACCESS_KEY", "b")
@@ -81,12 +81,28 @@ func (s *ProducerDaemonTestSuite) SetupSuite() {
 
 		s.Fail("failed to boot mocks: %s", err.Error())
 
-		return
+		return nil
 	}
 
 	s.mocks = mocks
+
+	/*
+	handler := LoggingHandler{
+		t: s.T(),
+	}
+*/
+
+	return []suite.Option{
+		//suite.Option(application.WithLoggerHandlers(handler)),
+		suite.WithLogLevel("info"),
+		suite.WithConfigFile("config.dist.yml"),
+		suite.WithModule("testModule", newTestModule),
+		suite.WithModule("testCompressionModule", newTestCompressionModule),
+		suite.WithModule("testFifoModule", newTestFifoModule(s.T())),
+	}
 }
 
+/*
 func (s *ProducerDaemonTestSuite) SetupTest() {
 	kinesisEndpoint := fmt.Sprintf("http://%s:%d", s.mocks.ProvideKinesisHost("kinesis"), s.mocks.ProvideKinesisPort("kinesis"))
 	sqsEndpoint := fmt.Sprintf("http://%s:%d", s.mocks.ProvideSqsHost("sns_sqs"), s.mocks.ProvideSqsPort("sns_sqs"))
@@ -103,6 +119,7 @@ func (s *ProducerDaemonTestSuite) TearDownSuite() {
 		s.mocks = nil
 	}
 }
+*/
 
 func (s *ProducerDaemonTestSuite) TestWriteData() {
 	args := os.Args
@@ -245,15 +262,15 @@ func (m *testCompressionModule) Run(ctx context.Context) error {
 					continue
 				}
 
-				decoded, err := base64.DecodeString(msg.Body)
-				if err != nil {
-					multiErr = multierror.Append(multiErr, fmt.Errorf("failed to decode message body from base64: %w", err))
+				decoded, decodeErr := base64.DecodeString(msg.Body)
+				if decodeErr != nil {
+					multiErr = multierror.Append(multiErr, fmt.Errorf("failed to decode message body from base64: %w", decodeErr))
 					continue
 				}
 
-				reader, err := gzip.NewReader(bytes.NewReader(decoded))
-				if err != nil {
-					multiErr = multierror.Append(multiErr, fmt.Errorf("failed to create gzip reader: %w", err))
+				reader, readerErr := gzip.NewReader(bytes.NewReader(decoded))
+				if readerErr != nil {
+					multiErr = multierror.Append(multiErr, fmt.Errorf("failed to create gzip reader: %w", readerErr))
 					continue
 				}
 
