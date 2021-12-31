@@ -114,7 +114,7 @@ const (
 	PositionEnd       Position = "end"
 )
 ```
-_Position_ is a string type used in configuring the order in which middleware functions will run. More details [_here_](getting_started/middleware.md).
+_Position_ is a string type used in configuring the order in which middleware functions will run. More details [_here_](middleware.md).
 
 [embedmd]:# (../../pkg/kernel/module.go /type Module interface/ /\n}/)
 ```go
@@ -148,7 +148,7 @@ type (
 
 A _ModuleFactory_ is a function returning a _Module_, while a _MultiModuleFactory_ returns a map with string keys and _ModuleFactory_ values.
 
-More details about modules and module options can be found [_here_](getting_started/module.md).
+More details about modules and module options can be found [_here_](module.md).
 
 ### Adding modules to a _Kernel_
 

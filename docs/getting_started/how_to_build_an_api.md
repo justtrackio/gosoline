@@ -25,14 +25,14 @@ The idiomatic way to create an apiserver is to instantiate a new _Definitions_ o
 func (d *Definitions) Handle(httpMethod, relativePath string, handlers ...gin.HandlerFunc) 
 ```
 
-This allows to define functionality that is to be run whenever a given http call to a given path is received.
+This allows to define functionality that is to be run whenever a given HTTP call to a given path is received.
 
 [embedmd]:# (../../pkg/apiserver/definition.go /func \(d \*Definitions\) POST/ /HandlerFunc\) /)
 ```go
 func (d *Definitions) POST(relativePath string, handlers ...gin.HandlerFunc) 
 ```
 
-Same as `Handle`, except that it only applies to http POST calls. Similar methods exists for each type of http REST call.
+Same as `Handle`, except that it only applies to HTTP POST calls. Similar methods exists for each type of HTTP REST call.
 
 ### Config structs
 
@@ -169,7 +169,7 @@ _ApiDefiner_ does three things:
 
 Notice that you need to define each route you want an apiserver to listen to, and that for each such route you must also specify the handler that is to handle it. 
 
-Another thing to notice is the use of `definitions.GET`. This method configures a given route to be handled by a given handler, for (and only for) every incoming request of type http GET.
+Another thing to notice is the use of `definitions.GET`. This method configures a given route to be handled by a given handler, for (and only for) every incoming request of type HTTP GET.
 
 Lastly, let us look at this route `"/euro-at-date/:amount/:currency/:date"`. Its prefix `/euro-at-date/` is static, but the three _:name_ constructs following it are path parameters. This means that the handler will be able to access and use each of the following three path parameters: `amount`, `currency`, and `date`. _euroAtDateHandler_ uses these values in the following manner:
 

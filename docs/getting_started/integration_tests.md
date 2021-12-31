@@ -112,6 +112,8 @@ func (s *ApiTestSuite) SetupApiDefinitions() apiserver.Definer {
 }
 ```
 
+_SetupApiDefinitions_ is needed if you want to run _resty.Client_ or  _ApiServerTestCase_ test cases, more details [here](../more_details/integration_tests.md), and not adding it will cause an error.
+
 Lastly, for each method of _ApiTestSuite_ starting with `Test...`, Gosoline will run a separate test case. In this example, we have two such methods:
 
 [embedmd]:# (../../examples/getting_started/integration/api_test.go /func \(s \*ApiTestSuite\) Test_ToEuro/ /\n}/)
@@ -152,7 +154,7 @@ func (s *ApiTestSuite) Test_ToEuroAtDate(_ suite.AppUnderTest, client *resty.Cli
 
 Both `Test_ToEuro` and `Test_ToEuroAtDate` will issue a REST call to the API server, and check its response for correctness. 
 
-`Test_ToEuro` uses `client` to make an http GET call. Then it uses `Equal` and `NoError` to test its correctness. _ApiTestSuite_ offers `Equal` and `NoError` becuase it embeds `suite.Suite`, and `suite.Suite` embeds `*assert.Assertions`.
+`Test_ToEuro` uses `client` to make an HTTP GET call. Then it uses `Equal` and `NoError` to test its correctness. _ApiTestSuite_ offers `Equal` and `NoError` becuase it embeds `suite.Suite`, and `suite.Suite` embeds `*assert.Assertions`.
 
 In a similar manner, `Test_ToEuroAtDate` calls the `euro-at-date` endpoint and checks the result for correctness.
 
