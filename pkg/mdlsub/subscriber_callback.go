@@ -131,13 +131,19 @@ func (s *SubscriberCallback) getTransformer(spec *ModelSpecification) (ModelTran
 }
 
 func (s *SubscriberCallback) getOutput(spec *ModelSpecification) (Output, error) {
-	var ok bool
+	if _, ok := s.transformers[spec.ModelId]; !ok {
+		return nil, fmt.Errorf("there is no transformer for modelId %s", spec.ModelId)
+	}
 
-	if _, ok = s.transformers[spec.ModelId]; !ok {
+	if _, ok := s.transformers[spec.ModelId][spec.Version]; !ok {
+		return nil, fmt.Errorf("there is no transformer for modelId %s and version %d", spec.ModelId, spec.Version)
+	}
+
+	if _, ok := s.outputs[spec.ModelId]; !ok {
 		return nil, fmt.Errorf("there is no output for modelId %s", spec.ModelId)
 	}
 
-	if _, ok = s.transformers[spec.ModelId][spec.Version]; !ok {
+	if _, ok := s.outputs[spec.ModelId][spec.Version]; !ok {
 		return nil, fmt.Errorf("there is no output for modelId %s and version %d", spec.ModelId, spec.Version)
 	}
 
