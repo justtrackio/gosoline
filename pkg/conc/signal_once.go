@@ -10,9 +10,9 @@ type SignalOnce interface {
 	// All go routines waiting on that channel thus immediately get a value.
 	// Can be called more than once.
 	Signal()
-	// Returns a channel you can read on to wait for Signal to be called.
+	// Channel returns a channel you can read on to wait for Signal to be called.
 	Channel() chan struct{}
-	// Returns true after Signal has been called at least once.
+	// Signaled returns true after Signal has been called at least once.
 	Signaled() bool
 }
 

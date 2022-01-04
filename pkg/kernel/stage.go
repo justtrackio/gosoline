@@ -44,7 +44,10 @@ func newStage(ctx context.Context) *stage {
 }
 
 func (s *stage) run(k *kernel) {
-	s.modules.lck.Poison()
+	if err := s.modules.lck.Poison(); err != nil {
+		k.logger.Error("stage was already run: %w", err)
+		return
+	}
 
 	for name, ms := range s.modules.modules {
 		s.cfn.Gof(func(name string, ms *ModuleState) func() error {

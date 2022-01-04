@@ -118,7 +118,11 @@ func (k *kernel) AddMiddleware(middleware Middleware, position Position) {
 
 func (k *kernel) Run() {
 	// do not allow config changes anymore
-	k.started.Poison()
+	if err := k.started.Poison(); err != nil {
+		k.logger.Error("kernel was already run: %w", err)
+		// don't close running here, it should've been already closed when the lock was already poisoned
+		return
+	}
 
 	defer k.logger.Info("leaving kernel")
 	k.logger.Info("starting kernel")
@@ -145,17 +149,22 @@ func (k *kernel) Run() {
 
 	// poison our stages so any other thread trying to add a new stage will
 	// panic instead of hanging
-	k.stagesLck.Poison()
+	if err := k.stagesLck.Poison(); err != nil {
+		k.logger.Error("stages have already been run: %w", err)
+		close(k.running)
+		return
+	}
 
 	if !k.hasModules() {
-		close(k.running)
 		k.logger.Info("nothing to run")
+		close(k.running)
 		return
 	}
 
 	k.foregroundModules = int32(k.countForegroundModules())
 	if k.foregroundModules == 0 {
 		k.logger.Info("no foreground modules")
+		close(k.running)
 		return
 	}
 
@@ -283,7 +292,7 @@ func (k *kernel) addModuleToStage(name string, module Module, opts []ModuleOptio
 
 	// lock the stagesLck even if we are just reading from the map
 	// we are not allowed to read and write a map concurrently
-	k.stagesLck.Lock()
+	k.stagesLck.MustLock()
 
 	stage, ok := k.stages[ms.Config.Stage]
 
