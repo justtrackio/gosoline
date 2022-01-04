@@ -225,8 +225,25 @@ func ReadAttributes(model interface{}) (Attributes, error) {
 		return nil, fmt.Errorf("can't read attributes from model as it is not a struct but instead is %T", model)
 	}
 
+	err := readAttributesFromType(t, attributes)
+
+	return attributes, err
+}
+
+func readAttributesFromType(t reflect.Type, attributes Attributes) error {
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+
+		if field.Anonymous && field.Type.Kind() == reflect.Struct {
+			err := readAttributesFromType(field.Type, attributes)
+			if err != nil {
+				return err
+			}
+		}
+
 		tag, ok := field.Tag.Lookup("ddb")
 
 		if !ok {
@@ -236,16 +253,16 @@ func ReadAttributes(model interface{}) (Attributes, error) {
 		tag = strings.TrimSpace(tag)
 
 		if len(tag) == 0 {
-			return nil, fmt.Errorf("the ddb tag for field %s is empty", field.Name)
+			return fmt.Errorf("the ddb tag for field %s is empty", field.Name)
 		}
 
-		attributeNamePtr, err := getAttributeName(field)
+		attributeNamePtr, _, err := getAttributeName(field)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		if attributeNamePtr == nil {
-			return nil, fmt.Errorf("the json tag for field %s specifies the field should be dropped, but the field is required by ddb", field.Name)
+			return fmt.Errorf("the json tag for field %s specifies the field should be dropped, but the field is required by ddb", field.Name)
 		}
 
 		attributeName := *attributeNamePtr
@@ -263,7 +280,7 @@ func ReadAttributes(model interface{}) (Attributes, error) {
 			kv := strings.Split(part, "=")
 
 			if len(kv) != 2 {
-				return nil, fmt.Errorf("the parts of a ddb tag should have the format x=y on field %s", field.Name)
+				return fmt.Errorf("the parts of a ddb tag should have the format x=y on field %s", field.Name)
 			}
 
 			key := strings.TrimSpace(kv[0])
@@ -275,24 +292,24 @@ func ReadAttributes(model interface{}) (Attributes, error) {
 		}
 	}
 
-	return attributes, nil
+	return nil
 }
 
-func getAttributeName(field reflect.StructField) (*string, error) {
+func getAttributeName(field reflect.StructField) (*string, bool, error) {
 	jsonTag, ok := field.Tag.Lookup("json")
 
 	if !ok {
-		return &field.Name, nil
+		return &field.Name, false, nil
 	}
 
 	jsonTag = strings.TrimSpace(jsonTag)
 
 	if len(jsonTag) == 0 {
-		return nil, fmt.Errorf("the json tag for field %s is empty", field.Name)
+		return nil, false, fmt.Errorf("the json tag for field %s is empty", field.Name)
 	}
 
 	if jsonTag == "-" {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	jsonTag = strings.SplitN(jsonTag, ",", 2)[0]
@@ -301,7 +318,7 @@ func getAttributeName(field reflect.StructField) (*string, error) {
 		jsonTag = field.Name
 	}
 
-	return &jsonTag, nil
+	return &jsonTag, true, nil
 }
 
 func getAttributeType(field reflect.StructField) types.ScalarAttributeType {
@@ -334,16 +351,36 @@ func getAttributeType(field reflect.StructField) types.ScalarAttributeType {
 
 func MetadataReadFields(model interface{}) ([]string, error) {
 	t := findBaseType(model)
-	fields := make([]string, 0)
 
 	if t.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("can't read fields from model as it is not a struct but instead is %T", model)
 	}
 
+	return metadataReadFieldsForType(t)
+}
+
+func metadataReadFieldsForType(t reflect.Type) ([]string, error) {
+	fields := make([]string, 0)
+
 	for i := 0; i < t.NumField(); i++ {
-		fieldName, err := getAttributeName(t.Field(i))
+		field := t.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+
+		fieldName, hasJsonTag, err := getAttributeName(field)
 		if err != nil {
 			return nil, err
+		}
+
+		if field.Anonymous && !hasJsonTag {
+			embeddedFields, err := metadataReadFieldsForType(field.Type)
+			if err != nil {
+				return nil, err
+			}
+
+			fields = append(fields, embeddedFields...)
+			continue
 		}
 
 		if fieldName == nil {
