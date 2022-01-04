@@ -2,9 +2,10 @@ package coffin
 
 import (
 	"context"
+	"sync/atomic"
+
 	"github.com/pkg/errors"
 	"gopkg.in/tomb.v2"
-	"sync/atomic"
 )
 
 type Coffin interface {
@@ -96,6 +97,9 @@ func New() Coffin {
 // context is canceled, and a copy of parent with a replaced Done channel
 // that is closed when either the coffin is dying or the parent is canceled.
 // The returned context may also be obtained via the coffin's Context method.
+//
+// If the context is canceled, the coffin is killed with the error from the context.
+// Thus, you will normally get a context.Canceled error from a coffin you stop like this.
 func WithContext(parent context.Context) (Coffin, context.Context) {
 	tmb, ctx := tomb.WithContext(parent)
 	cfn := &coffin{
