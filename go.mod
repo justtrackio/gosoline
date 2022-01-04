@@ -50,7 +50,7 @@ require (
 	github.com/jinzhu/gorm v1.9.16
 	github.com/jinzhu/inflection v1.0.0
 	github.com/jmoiron/sqlx v1.3.1
-	github.com/jonboulle/clockwork v0.1.0
+	github.com/jonboulle/clockwork v0.2.2
 	github.com/karlseguin/ccache v0.0.0-20181227155450-692cd618b264
 	github.com/lib/pq v1.10.0
 	github.com/mitchellh/mapstructure v1.4.1
