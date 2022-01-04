@@ -58,7 +58,7 @@ func (l LoggingHandler) Level() int {
 
 func (l LoggingHandler) Log(_ time.Time, level int, msg string, _ []interface{}, err error, data log.Data) error {
 	assert.NoError(l.t, err)
-	assert.Contains(l.t, []int{log.PriorityDebug, log.PriorityInfo, log.PriorityWarn}, level, "Unexpected log message: [%s] %s %v %v", level, msg, err, data)
+	assert.Contains(l.t, []int{log.PriorityDebug, log.PriorityInfo, log.PriorityWarn}, level, "Unexpected log message: [%d] %s %v %v", level, msg, err, data)
 	return nil
 }
 
@@ -91,9 +91,14 @@ func (s *ProducerDaemonTestSuite) SetupTest() {
 	kinesisEndpoint := fmt.Sprintf("http://%s:%d", s.mocks.ProvideKinesisHost("kinesis"), s.mocks.ProvideKinesisPort("kinesis"))
 	sqsEndpoint := fmt.Sprintf("http://%s:%d", s.mocks.ProvideSqsHost("sns_sqs"), s.mocks.ProvideSqsPort("sns_sqs"))
 
-	err := os.Setenv("AWS_KINESIS_ENDPOINT", kinesisEndpoint)
+	err := os.Setenv("CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_ENDPOINT", kinesisEndpoint)
 	s.NoError(err)
-	err = os.Setenv("CLOUD_AWS_DEFAULTS_ENDPOINT", sqsEndpoint)
+	err = os.Setenv("CLOUD_AWS_SQS_CLIENTS_DEFAULT_ENDPOINT", sqsEndpoint)
+	s.NoError(err)
+	// TODO: remove once https://github.com/justtrackio/gosoline/issues/649 has been solved and we no longer need this work around
+	err = os.Setenv("CLOUD_AWS_SQS_CLIENTS_STREAM_OUTPUT_TESTDATAFIFOSQS_ENDPOINT", sqsEndpoint)
+	s.NoError(err)
+	err = os.Setenv("CLOUD_AWS_SQS_CLIENTS_STREAM_OUTPUT_TESTEVENTSSQS_ENDPOINT", sqsEndpoint)
 	s.NoError(err)
 }
 

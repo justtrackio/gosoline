@@ -87,22 +87,16 @@ func newInMemoryInputFromConfig(_ context.Context, config cfg.Config, _ log.Logg
 }
 
 type kinesisInputConfiguration struct {
-	StreamName      string `cfg:"stream_name" validate:"required"`
-	ApplicationName string `cfg:"application_name" validate:"required"`
+	kinesis.Settings
 }
 
-func newKinesisInputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
+func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
 	settings := kinesisInputConfiguration{}
 	config.UnmarshalKey(key, &settings)
 
-	readerSettings := kinesis.KinsumerSettings{
-		StreamName:      settings.StreamName,
-		ApplicationName: settings.ApplicationName,
-	}
-
-	return NewKinesisInput(config, logger, kinesis.NewKinsumer, readerSettings)
+	return NewKinesisInput(ctx, config, logger, settings.Settings)
 }
 
 type redisInputConfiguration struct {
