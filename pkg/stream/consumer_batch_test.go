@@ -19,19 +19,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type acknowledgeableInput struct {
-	mocks.AcknowledgeableInput
-	mocks.Input
-}
-
 type BatchConsumerTestSuite struct {
 	suite.Suite
 
-	data chan *stream.Message
-	once sync.Once
-	stop func()
+	data    chan *stream.Message
+	dataOut <-chan *stream.Message
+	once    sync.Once
+	stop    func()
 
-	input *acknowledgeableInput
+	input *mocks.AcknowledgeableInput
 
 	callback      *mocks.RunnableBatchConsumerCallback
 	batchConsumer *stream.BatchConsumer
@@ -43,6 +39,7 @@ func TestBatchConsumerTestSuite(t *testing.T) {
 
 func (s *BatchConsumerTestSuite) SetupTest() {
 	s.data = make(chan *stream.Message, 10)
+	s.dataOut = s.data
 	s.once = sync.Once{}
 	s.stop = func() {
 		s.once.Do(func() {
@@ -50,7 +47,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 		})
 	}
 
-	s.input = new(acknowledgeableInput)
+	s.input = new(mocks.AcknowledgeableInput)
 	s.callback = new(mocks.RunnableBatchConsumerCallback)
 
 	logger := logMocks.NewLoggerMockedAll()
@@ -73,11 +70,11 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 }
 
 func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
-	s.input.Input.
+	s.input.
 		On("Data").
-		Return(s.data)
+		Return(s.dataOut)
 
-	s.input.Input.
+	s.input.
 		On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
 			s.data <- stream.NewJsonMessage(`"foo"`)
@@ -88,11 +85,11 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 
 	processed := 0
 
-	s.input.Input.
+	s.input.
 		On("Stop").
 		Once()
 
-	s.input.AcknowledgeableInput.
+	s.input.
 		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message")).
 		Run(func(args mock.Arguments) {
 			msgs := args[1].([]*stream.Message)
@@ -118,17 +115,16 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 	s.NoError(err, "there should be no error during run")
 	s.Equal(3, processed)
 
-	s.input.Input.AssertExpectations(s.T())
-	s.input.AcknowledgeableInput.AssertExpectations(s.T())
+	s.input.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }
 
 func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
-	s.input.Input.
+	s.input.
 		On("Data").
-		Return(s.data)
+		Return(s.dataOut)
 
-	s.input.Input.
+	s.input.
 		On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
 			s.data <- stream.NewJsonMessage(`"foo"`)
@@ -138,13 +134,13 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 			s.data <- stream.NewJsonMessage(`"foobarfoo"`)
 		}).Return(nil)
 
-	s.input.Input.
+	s.input.
 		On("Stop").
 		Once()
 
 	processed := 0
 
-	s.input.AcknowledgeableInput.
+	s.input.
 		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message")).
 		Run(func(args mock.Arguments) {
 			msgs := args[1].([]*stream.Message)
@@ -171,8 +167,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 	s.NoError(err, "there should be no error during run")
 	s.Equal(5, processed)
 
-	s.input.Input.AssertExpectations(s.T())
-	s.input.AcknowledgeableInput.AssertExpectations(s.T())
+	s.input.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }
 
@@ -181,11 +176,11 @@ func (s *BatchConsumerTestSuite) TestRun_ContextCanceled() {
 	stopped := make(chan struct{})
 	once := sync.Once{}
 
-	s.input.Input.
+	s.input.
 		On("Data").
-		Return(s.data)
+		Return(s.dataOut)
 
-	s.input.Input.
+	s.input.
 		On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
 			cancel()
@@ -195,7 +190,7 @@ func (s *BatchConsumerTestSuite) TestRun_ContextCanceled() {
 
 	processed := 0
 
-	s.input.Input.
+	s.input.
 		On("Stop").
 		Run(func(args mock.Arguments) {
 			once.Do(func() {
@@ -212,20 +207,19 @@ func (s *BatchConsumerTestSuite) TestRun_ContextCanceled() {
 	s.NoError(err, "there should be no error during run")
 	s.Equal(0, processed)
 
-	s.input.Input.AssertExpectations(s.T())
-	s.input.AcknowledgeableInput.AssertExpectations(s.T())
+	s.input.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }
 
 func (s *BatchConsumerTestSuite) TestRun_InputRunError() {
-	s.input.Input.
+	s.input.
 		On("Data").
-		Return(s.data)
-	s.input.Input.
+		Return(s.dataOut)
+	s.input.
 		On("Stop").
 		Once()
 
-	s.input.Input.
+	s.input.
 		On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Return(fmt.Errorf("read error"))
 
@@ -239,18 +233,17 @@ func (s *BatchConsumerTestSuite) TestRun_InputRunError() {
 
 	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumer input: read error")
 
-	s.input.Input.AssertExpectations(s.T())
-	s.input.AcknowledgeableInput.AssertExpectations(s.T())
+	s.input.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }
 
 func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
-	s.input.Input.On("Data").
-		Return(s.data)
-	s.input.Input.On("Stop").
+	s.input.On("Data").
+		Return(s.dataOut)
+	s.input.On("Stop").
 		Once()
 
-	s.input.Input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
+	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
 			<-args[0].(context.Context).Done()
 		}).
@@ -263,8 +256,7 @@ func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
 
 	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumerCallback: consumerCallback run error")
 
-	s.input.Input.AssertExpectations(s.T())
-	s.input.AcknowledgeableInput.AssertExpectations(s.T())
+	s.input.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }
 
@@ -281,11 +273,11 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 
 	aggregate := stream.BuildAggregateMessage(string(aggregateBody))
 
-	s.input.Input.
+	s.input.
 		On("Data").
-		Return(s.data)
+		Return(s.dataOut)
 
-	s.input.Input.
+	s.input.
 		On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
 			s.data <- aggregate
@@ -293,12 +285,12 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 		}).Return(nil).
 		Once()
 
-	s.input.Input.
+	s.input.
 		On("Stop").
 		Once()
 
 	processed := 0
-	s.input.AcknowledgeableInput.
+	s.input.
 		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message")).
 		Run(func(args mock.Arguments) {
 			msgs := args[1].([]*stream.Message)
@@ -323,7 +315,6 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 	s.Nil(err, "there should be no error returned on consume")
 	s.Equal(processed, 2)
 
-	s.input.Input.AssertExpectations(s.T())
-	s.input.AcknowledgeableInput.AssertExpectations(s.T())
+	s.input.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }

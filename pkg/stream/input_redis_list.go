@@ -63,7 +63,7 @@ func NewRedisListInputWithInterfaces(logger log.Logger, client redis.Client, mw 
 	}
 }
 
-func (i *redisListInput) Data() chan *Message {
+func (i *redisListInput) Data() <-chan *Message {
 	return i.channel
 }
 
