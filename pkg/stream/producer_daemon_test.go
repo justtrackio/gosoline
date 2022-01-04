@@ -51,7 +51,7 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, ag
 		Type: "test",
 		Name: "test-output",
 	}, &exec.BackoffSettings{
-		CancelDelay:     time.Second,
+		CancelDelay:     time.Millisecond * 100,
 		InitialInterval: time.Millisecond * 50,
 		MaxInterval:     time.Second * 3,
 	}, exec.CheckRequestCanceled)

@@ -1,0 +1,11 @@
+env: dev
+
+app_project: gosoline
+app_family: example
+app_name: stream-kinesis-output
+
+stream:
+  output:
+    exampleRecord:
+      type: kinesis
+      stream_name: "{app_project}-{env}-{app_family}-{app_name}-exampleRecord"

@@ -17,6 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.8.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.26.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.14.0
+	github.com/aws/aws-sdk-go-v2/service/kinesis v1.10.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.5.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.22.0
@@ -62,7 +63,6 @@ require (
 	github.com/stretchr/objx v0.2.0
 	github.com/stretchr/testify v1.7.0
 	github.com/thoas/go-funk v0.0.0-20181020164546-fbae87fb5b5c
-	github.com/twitchscience/kinsumer v0.0.0-20201111182439-cd685b6b5f68
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	github.com/xitongsys/parquet-go v1.4.0
 	github.com/xitongsys/parquet-go-source v0.0.0-20191104003508-ecfa341356a6

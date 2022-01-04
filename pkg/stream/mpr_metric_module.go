@@ -72,6 +72,10 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 			return nil, fmt.Errorf("can't create stream-metric-messages-per-runner: %w", err)
 		}
 
+		if len(queueNames) == 0 {
+			return nil, fmt.Errorf("failed to detect any SQS queues to monitor")
+		}
+
 		writerSettings := &MessagesPerRunnerMetricWriterSettings{
 			QueueNames:         queueNames,
 			UpdatePeriod:       settings.Period,

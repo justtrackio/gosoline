@@ -1,38 +1,33 @@
 package kinesis
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/kinesis"
-	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name ResourceNameGetter
-type ResourceNameGetter interface {
-	GetResourceName() string
-}
-
-// Ensure a kinesis stream exists if autoCreate for kinesis is set to true.
-func CreateKinesisStream(config cfg.Config, logger log.Logger, client kinesisiface.KinesisAPI, settings ResourceNameGetter) error {
-	autoCreate := config.GetBool("aws_kinesis_autoCreate")
-	if !autoCreate {
+// CreateKinesisStream ensures a kinesis stream exists if dx.auto_create is set to true.
+func CreateKinesisStream(ctx context.Context, config cfg.Config, logger log.Logger, client Client, streamName string) error {
+	if !dx.ShouldAutoCreate(config) {
 		return nil
 	}
 
-	streamName := settings.GetResourceName()
 	logger.Info("looking for kinesis stream: %s", streamName)
 
-	streams, err := client.ListStreams(&kinesis.ListStreamsInput{})
-	if err != nil {
-		return fmt.Errorf("failed to list kinesis streams: %w", err)
-	}
-
-	for _, awsStreamName := range streams.StreamNames {
-		if *awsStreamName != streamName {
-			continue
+	_, err := client.DescribeStreamSummary(ctx, &kinesis.DescribeStreamSummaryInput{
+		StreamName: aws.String(streamName),
+	})
+	var errResourceNotFoundException *types.ResourceNotFoundException
+	if !errors.As(err, &errResourceNotFoundException) {
+		if err != nil {
+			return fmt.Errorf("failed to describe kinesis streams: %w", err)
 		}
 
 		logger.Info("found kinesis stream: %s", streamName)
@@ -41,8 +36,8 @@ func CreateKinesisStream(config cfg.Config, logger log.Logger, client kinesisifa
 	}
 
 	logger.Info("trying to create kinesis stream: %s", streamName)
-	_, err = client.CreateStream(&kinesis.CreateStreamInput{
-		ShardCount: aws.Int64(1),
+	_, err = client.CreateStream(ctx, &kinesis.CreateStreamInput{
+		ShardCount: aws.Int32(1),
 		StreamName: aws.String(streamName),
 	})
 

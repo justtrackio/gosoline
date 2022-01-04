@@ -22,8 +22,6 @@ cloud:
             max_elapsed_time: 0
 
 aws_sdk_retries: 5
-aws_kinesis_endpoint: http://localhost:4566
-aws_kinesis_autoCreate: true
 
 stream:
   backoff:

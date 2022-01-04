@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -10,22 +11,28 @@ import (
 )
 
 type kinesisInput struct {
-	kinesis.Reader
+	client  kinesis.Kinsumer
 	channel chan *Message
 }
 
-func NewKinesisInput(config cfg.Config, logger log.Logger, factory kinesis.KinsumerFactory, settings kinesis.KinsumerSettings) (Input, error) {
-	channel := make(chan *Message)
-	sink := NewKinesisMessageHandler(channel)
-	input, err := kinesis.NewReader(config, logger, factory, sink, settings)
+func NewKinesisInput(ctx context.Context, config cfg.Config, logger log.Logger, settings kinesis.Settings) (Input, error) {
+	client, err := kinesis.NewKinsumer(ctx, config, logger, &settings)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create kinsumer input: %w", err)
+		return nil, fmt.Errorf("unable to create kinesis client: %w", err)
 	}
 
 	return &kinesisInput{
-		Reader:  input,
-		channel: channel,
+		client:  client,
+		channel: make(chan *Message),
 	}, nil
+}
+
+func (i *kinesisInput) Run(ctx context.Context) error {
+	return i.client.Run(ctx, NewKinesisMessageHandler(i.channel))
+}
+
+func (i *kinesisInput) Stop() {
+	i.client.Stop()
 }
 
 func (i *kinesisInput) Data() chan *Message {

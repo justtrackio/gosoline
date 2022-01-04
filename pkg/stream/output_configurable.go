@@ -6,7 +6,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
-	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -72,17 +71,14 @@ func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, 
 
 type kinesisOutputConfiguration struct {
 	StreamName string `cfg:"stream_name"`
-	Backoff    exec.BackoffSettings
 }
 
-func newKinesisOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
+func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	settings := &kinesisOutputConfiguration{}
 	config.UnmarshalKey(key, settings)
 
-	settings.Backoff = exec.ReadBackoffSettings(config)
-
-	return NewKinesisOutput(config, logger, &KinesisOutputSettings{
+	return NewKinesisOutput(ctx, config, logger, &KinesisOutputSettings{
 		StreamName: settings.StreamName,
 	})
 }
