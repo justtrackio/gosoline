@@ -357,12 +357,15 @@ func (r *containerRunner) waitUntilHealthy(container *container, healthCheck Com
 	return nil
 }
 
-var alreadyExists = regexp.MustCompile(`API error \(409\): removal of container (\w+) is already in progress`)
+var (
+	alreadyExists   = regexp.MustCompile(`API error \(409\): removal of container (\w+) is already in progress`)
+	noSuchContainer = regexp.MustCompile(`No such container: (\w+)`)
+)
 
 func (r *containerRunner) Stop() error {
 	for name, resource := range r.resources {
 		if err := r.pool.Purge(resource); err != nil {
-			if !alreadyExists.MatchString(err.Error()) {
+			if !alreadyExists.MatchString(err.Error()) && !noSuchContainer.MatchString(err.Error()) {
 				return fmt.Errorf("could not stop container %s: %w", name, err)
 			}
 
