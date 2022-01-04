@@ -86,6 +86,24 @@ func TestCoffin_WithContext(t *testing.T) {
 	}
 }
 
+func TestCoffin_WithContext_Cancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cfn, ctx := coffin.WithContext(ctx)
+	cfn.GoWithContext(ctx, func(ctx context.Context) error {
+		<-ctx.Done()
+		// if we exit this function before the coffin is dying, we might sometimes have it return nil, sometimes context.Canceled
+		// thus, for now we wait until the coffin is dying, so we know it got already killed by context.Canceled
+		<-cfn.Dying()
+
+		return nil
+	})
+
+	cancel()
+
+	err := cfn.Wait()
+	assert.Equal(t, ctx.Err(), err)
+}
+
 func TestCoffin_Gof(t *testing.T) {
 	cfn := coffin.New()
 	cfn.Gof(func() error {
