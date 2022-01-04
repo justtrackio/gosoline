@@ -41,18 +41,23 @@ type Settings struct {
 	Metadata Metadata
 }
 
-//go:generate mockery --name Repository
-type Repository interface {
-	Create(ctx context.Context, value ModelBased) error
+//go:generate mockery --name RepositoryReadOnly
+type RepositoryReadOnly interface {
 	Read(ctx context.Context, id *uint, out ModelBased) error
-	Update(ctx context.Context, value ModelBased) error
-	Delete(ctx context.Context, value ModelBased) error
 	Query(ctx context.Context, qb *QueryBuilder, result interface{}) error
 	Count(ctx context.Context, qb *QueryBuilder, model ModelBased) (int, error)
 
 	GetModelId() string
 	GetModelName() string
 	GetMetadata() Metadata
+}
+
+//go:generate mockery --name Repository
+type Repository interface {
+	RepositoryReadOnly
+	Create(ctx context.Context, value ModelBased) error
+	Update(ctx context.Context, value ModelBased) error
+	Delete(ctx context.Context, value ModelBased) error
 }
 
 type repository struct {
