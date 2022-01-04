@@ -35,7 +35,7 @@ func NewFileInputWithInterfaces(logger log.Logger, settings FileSettings) Input 
 	}
 }
 
-func (i *fileInput) Data() chan *Message {
+func (i *fileInput) Data() <-chan *Message {
 	return i.channel
 }
 

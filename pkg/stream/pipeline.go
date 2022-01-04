@@ -58,7 +58,7 @@ func NewPipeline(stageFactories ...PipelineCallbackFactory) kernel.ModuleFactory
 		}
 
 		defaults := getDefaultPipelineMetrics()
-		metric := metric.NewDaemonWriter(defaults...)
+		metricWriter := metric.NewDaemonWriter(defaults...)
 
 		input, err := NewConfigurableInput(ctx, config, logger, "pipeline")
 		if err != nil {
@@ -75,7 +75,7 @@ func NewPipeline(stageFactories ...PipelineCallbackFactory) kernel.ModuleFactory
 			BatchSize: config.GetInt("pipeline_batch_size"),
 		}
 
-		return NewPipelineWithInterfaces(logger, metric, input, output, settings, stages...)
+		return NewPipelineWithInterfaces(logger, metricWriter, input, output, settings, stages...)
 	}
 }
 

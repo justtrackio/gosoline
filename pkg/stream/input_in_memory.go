@@ -86,6 +86,6 @@ func (i *InMemoryInput) Stop() {
 	}
 }
 
-func (i *InMemoryInput) Data() chan *Message {
+func (i *InMemoryInput) Data() <-chan *Message {
 	return i.channel
 }

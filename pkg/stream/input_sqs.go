@@ -92,7 +92,7 @@ func NewSqsInputWithInterfaces(logger log.Logger, queue sqs.Queue, unmarshaller 
 	}
 }
 
-func (i *sqsInput) Data() chan *Message {
+func (i *sqsInput) Data() <-chan *Message {
 	return i.channel
 }
 

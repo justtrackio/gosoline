@@ -23,9 +23,10 @@ import (
 type ConsumerTestSuite struct {
 	suite.Suite
 
-	data chan *stream.Message
-	once sync.Once
-	stop func()
+	data    chan *stream.Message
+	dataOut <-chan *stream.Message
+	once    sync.Once
+	stop    func()
 
 	input *mocks.Input
 
@@ -35,6 +36,7 @@ type ConsumerTestSuite struct {
 
 func (s *ConsumerTestSuite) SetupTest() {
 	s.data = make(chan *stream.Message, 10)
+	s.dataOut = s.data
 	s.once = sync.Once{}
 	s.stop = func() {
 		s.once.Do(func() {
@@ -60,7 +62,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 }
 
 func (s *ConsumerTestSuite) TestGetModelNil() {
-	s.input.On("Data").Return(s.data)
+	s.input.On("Data").Return(s.dataOut)
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
 		s.data <- stream.NewJsonMessage(`"foo"`, map[string]interface{}{
 			"bla": "blub",
@@ -82,7 +84,7 @@ func (s *ConsumerTestSuite) TestGetModelNil() {
 }
 
 func (s *ConsumerTestSuite) TestRun() {
-	s.input.On("Data").Return(s.data)
+	s.input.On("Data").Return(s.dataOut)
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
 		s.data <- stream.NewJsonMessage(`"foo"`)
 		s.data <- stream.NewJsonMessage(`"bar"`)
@@ -119,7 +121,7 @@ func (s *ConsumerTestSuite) TestRun_ContextCancel() {
 	once := sync.Once{}
 
 	s.input.On("Data").
-		Return(s.data)
+		Return(s.dataOut)
 
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
@@ -149,7 +151,7 @@ func (s *ConsumerTestSuite) TestRun_ContextCancel() {
 func (s *ConsumerTestSuite) TestRun_InputRunError() {
 	s.input.
 		On("Data").
-		Return(s.data)
+		Return(s.dataOut)
 
 	s.input.
 		On("Run", mock.AnythingOfType("*context.cancelCtx")).
@@ -171,7 +173,7 @@ func (s *ConsumerTestSuite) TestRun_InputRunError() {
 
 func (s *ConsumerTestSuite) TestRun_CallbackRunError() {
 	s.input.On("Data").
-		Return(s.data)
+		Return(s.dataOut)
 	s.input.On("Stop").
 		Once()
 
@@ -194,7 +196,7 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunError() {
 
 func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 	s.input.On("Data").
-		Return(s.data)
+		Return(s.dataOut)
 
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
@@ -252,7 +254,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 	aggregate := stream.BuildAggregateMessage(string(aggregateBody))
 
 	s.input.On("Data").
-		Return(s.data)
+		Return(s.dataOut)
 
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {

@@ -35,7 +35,7 @@ func (i *kinesisInput) Stop() {
 	i.client.Stop()
 }
 
-func (i *kinesisInput) Data() chan *Message {
+func (i *kinesisInput) Data() <-chan *Message {
 	return i.channel
 }
 
