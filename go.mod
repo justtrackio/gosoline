@@ -32,7 +32,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/getsentry/sentry-go v0.12.0
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
-	github.com/gin-contrib/gzip v0.0.3
+	github.com/gin-contrib/gzip v0.0.5
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
 	github.com/go-playground/validator/v10 v10.4.1
