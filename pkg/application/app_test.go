@@ -39,7 +39,9 @@ func TestDefaultConfigParser(t *testing.T) {
 	assert.NoError(t, err)
 
 	runTestApp(t, func() {
-		app := application.Default()
+		exitCodeHandler := application.WithKernelExitHandler(func(code int) {})
+
+		app := application.Default(exitCodeHandler)
 		app.Add("test", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return testModule{
 				t: t,

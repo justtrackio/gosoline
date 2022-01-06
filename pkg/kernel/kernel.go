@@ -17,6 +17,16 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+const (
+	ExitCodeOk           = 0
+	ExitCodeErr          = 1
+	ExitCodeNothingToRun = 10
+	ExitCodeNoForeground = 11
+	ExitCodeForced       = 12
+)
+
+type ExitHandler func(code int)
+
 //go:generate mockery --name Kernel
 type Kernel interface {
 	Add(name string, moduleFactory ModuleFactory, opts ...ModuleOption)
@@ -51,7 +61,9 @@ type kernel struct {
 	foregroundModules int32
 
 	killTimeout time.Duration
-	forceExit   func(code int)
+	exitCode    int
+	exitOnce    sync.Once
+	exitHandler ExitHandler
 }
 
 func New(ctx context.Context, config cfg.Config, logger log.Logger, options ...Option) (*kernel, error) {
@@ -69,7 +81,8 @@ func New(ctx context.Context, config cfg.Config, logger log.Logger, options ...O
 		started:   conc.NewPoisonedLock(),
 
 		killTimeout: time.Second * 10,
-		forceExit:   os.Exit,
+		exitCode:    ExitCodeErr,
+		exitHandler: os.Exit,
 	}
 
 	if err := k.Option(options...); err != nil {
@@ -116,6 +129,9 @@ func (k *kernel) AddMiddleware(middleware Middleware, position Position) {
 	}
 }
 
+// Run will boot and run the modules added to the kernel.
+// By default, os.Exit will get called if an error occurs or after the modules have stopped running,
+// which means that there will be no return out of this call.
 func (k *kernel) Run() {
 	// do not allow config changes anymore
 	if err := k.started.Poison(); err != nil {
@@ -124,24 +140,27 @@ func (k *kernel) Run() {
 		return
 	}
 
-	defer k.logger.Info("leaving kernel")
+	defer k.exit()
 	k.logger.Info("starting kernel")
 
 	if err := k.runMultiFactories(k.ctx); err != nil {
 		k.logger.Error("error building additional modules by multiFactories: %w", err)
 		close(k.running)
+		k.exitCode = ExitCodeErr
 		return
 	}
 
 	if len(k.moduleSetupContainers) == 0 {
 		k.logger.Warn("nothing to run")
 		close(k.running)
+		k.exitCode = ExitCodeNothingToRun
 		return
 	}
 
 	if err := k.runFactories(k.ctx); err != nil {
 		k.logger.Error("error building modules: %w", err)
 		close(k.running)
+		k.exitCode = ExitCodeErr
 		return
 	}
 
@@ -156,15 +175,16 @@ func (k *kernel) Run() {
 	}
 
 	if !k.hasModules() {
-		k.logger.Info("nothing to run")
 		close(k.running)
+		k.logger.Warn("nothing to run")
+		k.exitCode = ExitCodeNothingToRun
 		return
 	}
 
 	k.foregroundModules = int32(k.countForegroundModules())
 	if k.foregroundModules == 0 {
-		k.logger.Info("no foreground modules")
-		close(k.running)
+		k.logger.Warn("no foreground modules")
+		k.exitCode = ExitCodeNoForeground
 		return
 	}
 
@@ -191,6 +211,17 @@ func (k *kernel) Run() {
 		}
 
 		k.waitStopped()
+
+		hasErr := false
+		for _, stage := range k.stages {
+			if stage.err != nil && stage.err != ErrKernelStopping {
+				hasErr = true
+			}
+		}
+
+		if !hasErr {
+			k.exitCode = ExitCodeOk
+		}
 	}
 
 	for i := len(k.middlewares) - 1; i >= 0; i-- {
@@ -218,6 +249,13 @@ func (k *kernel) Stop(reason string) {
 
 func (k *kernel) Running() <-chan struct{} {
 	return k.running
+}
+
+func (k *kernel) exit() {
+	k.exitOnce.Do(func() {
+		k.logger.Info("leaving kernel with exit code %d", k.exitCode)
+		k.exitHandler(k.exitCode)
+	})
 }
 
 func (k *kernel) runMultiFactories(ctx context.Context) (err error) {
@@ -435,7 +473,8 @@ func (k *kernel) waitStopped() {
 				}
 			}
 
-			k.forceExit(1)
+			k.exitCode = ExitCodeForced
+			k.exit()
 		case <-done.Channel():
 			return
 		}

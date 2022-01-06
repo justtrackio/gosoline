@@ -15,7 +15,7 @@ import (
 func TestMiddleware(t *testing.T) {
 	config, logger, module := createMocks()
 
-	k, err := kernel.New(context.Background(), config, logger, kernel.KillTimeout(time.Second))
+	k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeOk))
 	assert.NoError(t, err)
 
 	callstack := make([]string, 0)

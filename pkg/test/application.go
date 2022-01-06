@@ -8,6 +8,7 @@ import (
 func Application() kernel.Kernel {
 	options := []application.Option{
 		application.WithConfigFile("./config.dist.yml", "yml"),
+		application.WithKernelExitHandler(func(code int) {}),
 	}
 
 	return application.New(options...)

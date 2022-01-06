@@ -38,7 +38,7 @@ func (s *GuardTestSuite) SetupTest() error {
 	return nil
 }
 
-func (s *GuardTestSuite) TestCrud(app suite.AppUnderTest) {
+func (s *GuardTestSuite) TestCrud() {
 	pol := ladon.DefaultPolicy{
 		ID:          "1",
 		Description: "allow all",
@@ -64,7 +64,7 @@ func (s *GuardTestSuite) TestCrud(app suite.AppUnderTest) {
 	s.NoError(err)
 }
 
-func (s *GuardTestSuite) TestGetPolicies(app suite.AppUnderTest) {
+func (s *GuardTestSuite) TestGetPolicies() {
 	policies, err := s.guard.GetPolicies()
 	if !s.NoError(err) {
 		return
@@ -80,7 +80,7 @@ func (s *GuardTestSuite) TestGetPolicies(app suite.AppUnderTest) {
 	s.Len(policies, 1)
 }
 
-func (s *GuardTestSuite) TestIsAllowed(app suite.AppUnderTest) {
+func (s *GuardTestSuite) TestIsAllowed() {
 	req := ladon.Request{
 		Resource: "gsl:e1",
 		Action:   "read",

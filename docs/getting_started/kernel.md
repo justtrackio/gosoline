@@ -181,16 +181,16 @@ type Option func(k *kernel) error
 
 Two useful predefined options are:
 
-[embedmd]:# (../../pkg/kernel/kernel_options.go /func KillTimeout/ /{/)
+[embedmd]:# (../../pkg/kernel/kernel_options.go /func WithKillTimeout/ /{/)
 ```go
-func KillTimeout(killTimeout time.Duration) Option {
+func WithKillTimeout(killTimeout time.Duration) Option {
 ```
 
 - configures how long a kernel will continue to run, after it has decided to stop (because it has received an interrupt signal, or all its foreground modules have finished, etc.).
 
-[embedmd]:# (../../pkg/kernel/kernel_options.go /func ForceExit/ /{/)
+[embedmd]:# (../../pkg/kernel/kernel_options.go /func WithExitHandler/ /{/)
 ```go
-func ForceExit(forceExit func(code int)) Option {
+func WithExitHandler(handler func(code int)) Option {
 ```
 
 - meant to be used in tests, it configures extra functionality to be run in case the kernel has a forced exit.
