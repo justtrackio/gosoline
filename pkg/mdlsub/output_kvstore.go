@@ -48,7 +48,16 @@ func NewOutputKvstore(ctx context.Context, config cfg.Config, logger log.Logger,
 }
 
 func (p *OutputKvstore) Persist(ctx context.Context, model Model, op string) error {
-	err := p.store.Put(ctx, model.GetId(), model)
+	var err error
+
+	switch op {
+	case TypeCreate, TypeUpdate:
+		err = p.store.Put(ctx, model.GetId(), model)
+	case TypeDelete:
+		err = p.store.Delete(ctx, model.GetId())
+	default:
+		err = fmt.Errorf("unknown operation %s in OutputKvStore", op)
+	}
 
 	return err
 }
