@@ -157,12 +157,20 @@ func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 	}
 }
 
+func WithKernelExitHandler(handler kernelPkg.ExitHandler) Option {
+	return func(app *App) {
+		app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
+			return kernel.Option(kernelPkg.WithExitHandler(handler))
+		})
+	}
+}
+
 func WithKernelSettingsFromConfig(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf, k kernelPkg.GosoKernel) error {
 		settings := &kernelSettings{}
 		config.UnmarshalKey("kernel", settings)
 
-		return k.Option(kernelPkg.KillTimeout(settings.KillTimeout))
+		return k.Option(kernelPkg.WithKillTimeout(settings.KillTimeout))
 	})
 }
 

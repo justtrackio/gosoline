@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
 )
@@ -43,9 +44,12 @@ func buildTestCaseApplication(suite TestingSuite, method reflect.Method) (testCa
 
 func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment, testcase func(aut *appUnderTest)) {
 	appOptions := append(suiteOptions.appOptions, []application.Option{
-		application.WithProducerDaemon,
 		application.WithConfigMap(map[string]interface{}{
 			"env": "test",
+		}),
+		application.WithProducerDaemon,
+		application.WithKernelExitHandler(func(code int) {
+			assert.Equal(t, kernel.ExitCodeOk, code, "exit code should be %d", kernel.ExitCodeOk)
 		}),
 	}...)
 

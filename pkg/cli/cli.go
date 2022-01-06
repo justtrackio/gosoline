@@ -35,7 +35,7 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 
 	ctx := appctx.WithContainer(context.Background())
 
-	k, err := kernel.New(ctx, config, logger, kernel.KillTimeout(settings.KillTimeout))
+	k, err := kernel.New(ctx, config, logger, kernel.WithKillTimeout(settings.KillTimeout))
 	if err != nil {
 		defaultErrorHandler("can not initialize the kernel: %w", err)
 	}

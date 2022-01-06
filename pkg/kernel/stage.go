@@ -14,6 +14,7 @@ var ErrKernelStopping = fmt.Errorf("stopping kernel")
 type stage struct {
 	cfn coffin.Coffin
 	ctx context.Context
+	err error
 
 	running    conc.SignalOnce
 	terminated conc.SignalOnce
@@ -68,10 +69,10 @@ func (s *stage) run(k *kernel) {
 
 func (s *stage) stopWait(stageIndex int, logger log.Logger) {
 	s.cfn.Kill(ErrKernelStopping)
-	err := s.cfn.Wait()
+	s.err = s.cfn.Wait()
 
-	if err != nil && err != ErrKernelStopping {
-		logger.Error("error during the execution of stage %d: %w", stageIndex, err)
+	if s.err != nil && s.err != ErrKernelStopping {
+		logger.Error("error during the execution of stage %d: %w", stageIndex, s.err)
 	}
 
 	s.terminated.Signal()

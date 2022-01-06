@@ -115,7 +115,9 @@ func (m *testModule) WorkWithContext(ctx context.Context) error {
 }
 
 func TestModuleExample(t *testing.T) {
-	app := application.New()
+	exitCodeHandler := application.WithKernelExitHandler(func(code int) {})
+
+	app := application.New(exitCodeHandler)
 	app.Add("status", status.NewModule(status.ProvideManager()))
 	app.Add("main", NewTestModule)
 	app.Run()

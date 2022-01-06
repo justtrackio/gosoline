@@ -120,7 +120,9 @@ func (s *ProducerDaemonTestSuite) TestWriteData() {
 		t: s.T(),
 	}
 
-	app := application.Default(application.WithLoggerHandlers(handler))
+	app := application.Default(application.WithLoggerHandlers(handler), application.WithKernelExitHandler(func(code int) {
+		assert.Equal(s.T(), kernel.ExitCodeOk, code, "exit code should be %d", kernel.ExitCodeOk)
+	}))
 	app.Add("testModule", newTestModule)
 	app.Add("testCompressionModule", newTestCompressionModule)
 	app.Add("testFifoModule", newTestFifoModule(s.T()))
