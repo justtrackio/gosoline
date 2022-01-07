@@ -307,8 +307,14 @@ func (o *CopyObject) GetFullKey() string {
 	return getFullKey(o.prefix, o.Key)
 }
 
-func getFullKey(prefix, key *string) string {
-	fullKey := fmt.Sprintf("%s/%s", mdl.EmptyStringIfNil(prefix), mdl.EmptyStringIfNil(key))
+func getFullKey(prefixPtr, keyPtr *string) string {
+	key := mdl.EmptyStringIfNil(keyPtr)
+	key = strings.TrimLeft(key, "/")
+
+	prefix := mdl.EmptyStringIfNil(prefixPtr)
+	prefix = strings.TrimRight(prefix, "/")
+
+	fullKey := fmt.Sprintf("%s/%s", prefix, key)
 	fullKey = strings.TrimLeft(fullKey, "/")
 	return fullKey
 }
