@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.4.3
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.4.1
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.2.0
-	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.2.0
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.8.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.26.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.14.0
