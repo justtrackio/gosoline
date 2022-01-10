@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
@@ -21,6 +22,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
+
+const MetadataKeyStreams = "cloud.aws.kinesis.streams"
 
 type (
 	Stream         string
@@ -95,6 +98,10 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	metadataRepository, err := NewMetadataRepository(ctx, config, logger, streamName, clientId, *settings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metadata manager: %w", err)
+	}
+
+	if err = appctx.MetadataAppend(ctx, MetadataKeyStreams, string(streamName)); err != nil {
+		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
 	return NewKinsumerWithInterfaces(logger, *settings, streamName, kinesisClient, metadataRepository, metricWriter, clock.Provider, func(logger log.Logger, shardId ShardId) ShardReader {
