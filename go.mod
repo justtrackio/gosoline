@@ -18,7 +18,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.26.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.10.0
-	github.com/aws/aws-sdk-go-v2/service/rds v1.14.0
+	github.com/aws/aws-sdk-go-v2/service/rds v1.15.0
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.10.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.22.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.7.1
@@ -90,7 +90,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.7.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.5.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.3.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.5.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.6.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.9.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.4.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.7.2 // indirect
