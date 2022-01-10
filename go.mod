@@ -28,7 +28,7 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
-	github.com/elliotchance/redismock/v8 v8.6.1
+	github.com/elliotchance/redismock/v8 v8.6.2
 	github.com/fatih/color v1.13.0
 	github.com/getsentry/sentry-go v0.12.0
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
@@ -50,7 +50,6 @@ require (
 	github.com/jinzhu/gorm v1.9.16
 	github.com/jinzhu/inflection v1.0.0
 	github.com/jmoiron/sqlx v1.3.1
-	github.com/jonboulle/clockwork v0.1.0
 	github.com/karlseguin/ccache v0.0.0-20181227155450-692cd618b264
 	github.com/lib/pq v1.10.0
 	github.com/mitchellh/mapstructure v1.4.1
