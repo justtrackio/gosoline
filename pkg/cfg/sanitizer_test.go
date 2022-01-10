@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/stretchr/objx"
+	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,7 +39,7 @@ func TestSanitize(t *testing.T) {
 	assert.NoError(t, err)
 	assert.IsType(t, map[string]interface{}{}, san)
 
-	s := objx.New(san)
+	s := mapx.NewMapX(san.(map[string]interface{}))
 
 	assert.Equal(t, "bar", s.Get("foo").Data())
 	assert.Equal(t, "2019-11-26T00:00:00Z", s.Get("date").Data())
