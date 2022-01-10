@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
@@ -20,6 +21,7 @@ const (
 	metricNameConsumerDuration       = "Duration"
 	metricNameConsumerError          = "Error"
 	metricNameConsumerProcessedCount = "ProcessedCount"
+	MetadataKeyConsumers             = "stream.consumers"
 )
 
 //go:generate mockery --name RunnableCallback
@@ -80,6 +82,10 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 	encoder := NewMessageEncoder(&MessageEncoderSettings{
 		Encoding: settings.Encoding,
 	})
+
+	if err = appctx.MetadataAppend(ctx, MetadataKeyConsumers, name); err != nil {
+		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
+	}
 
 	return NewBaseConsumerWithInterfaces(logger, metricWriter, tracer, input, encoder, consumerCallback, settings, name, appId), nil
 }
