@@ -2,7 +2,7 @@ module github.com/justtrackio/gosoline
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.4.1
-	github.com/Masterminds/squirrel v1.5.0
+	github.com/Masterminds/squirrel v1.5.2
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
 	github.com/alicebob/miniredis v2.4.6+incompatible
