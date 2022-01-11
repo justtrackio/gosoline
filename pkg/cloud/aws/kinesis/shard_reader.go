@@ -22,6 +22,7 @@ import (
 const (
 	metricNameFailedRecords      = "FailedRecords"
 	metricNameMillisecondsBehind = "MillisecondsBehind"
+	metricNameReadCount          = "ReadCount"
 	metricNameReadRecords        = "ReadRecords"
 	metricNameShardTaskRatio     = "ShardTaskRatio"
 )
@@ -206,6 +207,8 @@ func (s *shardReader) getRecords(ctx context.Context, iterator string) (records 
 	if err != nil {
 		return nil, "", 0, fmt.Errorf("failed to get records from shard: %w", err)
 	}
+
+	s.writeMetric(metricNameReadCount, 1.0, metric.UnitCount)
 
 	records = output.Records
 	nextIterator = mdl.EmptyStringIfNil(output.NextShardIterator)
@@ -408,6 +411,15 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 	// as we reported before - not 0 (which would be the default if we are not writing a metric). Thus, we instead leave
 	// gaps in the metric to show this (thus, you maybe shouldn't define an alarm on a too short period).
 	return metric.Data{
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameReadCount,
+			Dimensions: map[string]string{
+				"StreamName": string(stream),
+			},
+			Unit:  metric.UnitCount,
+			Value: 0.0,
+		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameReadRecords,
