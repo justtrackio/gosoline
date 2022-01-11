@@ -116,15 +116,7 @@ func (s *shardReaderTestSuite) TestGetShardIteratorReturnsEmpty() {
 	checkpoint.On("Done", gosoKinesis.SequenceNumber("")).Return(nil).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "MillisecondsBehind",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 0,
-		Unit:  metric.UnitMillisecondsMaximum,
-	}).Once()
+	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Once()
 
 	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
 	s.logger.On("Info", "acquired shard").Once()
@@ -148,15 +140,7 @@ func (s *shardReaderTestSuite) TestGetRecordsAndReleaseFails() {
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("LATEST")).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "MillisecondsBehind",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 0,
-		Unit:  metric.UnitMillisecondsMaximum,
-	}).Once()
+	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Once()
 
 	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
 	s.logger.On("Info", "acquired shard").Once()
@@ -214,35 +198,10 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 	checkpoint.On("Done", gosoKinesis.SequenceNumber("seq 2")).Return(nil).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "MillisecondsBehind",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 1000,
-		Unit:  metric.UnitMillisecondsMaximum,
-	}).Once()
-
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "MillisecondsBehind",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 0,
-		Unit:  metric.UnitMillisecondsMaximum,
-	}).Twice()
-
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "ReadRecords",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 1,
-		Unit:  metric.UnitCount,
-	}).Twice()
+	s.mockMetricCall("MillisecondsBehind", 1000, metric.UnitMillisecondsMaximum).Once()
+	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Twice()
+	s.mockMetricCall("ReadCount", 1, metric.UnitCount).Twice()
+	s.mockMetricCall("ReadRecords", 1, metric.UnitCount).Twice()
 
 	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
 	s.logger.On("Info", "acquired shard").Once()
@@ -299,45 +258,11 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "MillisecondsBehind",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 0,
-		Unit:  metric.UnitMillisecondsMaximum,
-	}).Times(3)
-
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "FailedRecords",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 1,
-		Unit:  metric.UnitCount,
-	}).Once()
-
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "ReadRecords",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 1,
-		Unit:  metric.UnitCount,
-	}).Once()
-
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "ReadRecords",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 0,
-		Unit:  metric.UnitCount,
-	}).Once()
+	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Times(3)
+	s.mockMetricCall("FailedRecords", 1, metric.UnitCount).Once()
+	s.mockMetricCall("ReadCount", 1, metric.UnitCount).Twice()
+	s.mockMetricCall("ReadRecords", 1, metric.UnitCount).Once()
+	s.mockMetricCall("ReadRecords", 0, metric.UnitCount).Once()
 
 	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
 	s.logger.On("Info", "acquired shard").Once()
@@ -423,25 +348,9 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 		s.clock.Advance(time.Second * 10)
 	}()
 
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "MillisecondsBehind",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 0,
-		Unit:  metric.UnitMillisecondsMaximum,
-	}).Twice()
-
-	s.metricWriter.On("WriteOne", &metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: "ReadRecords",
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-		},
-		Value: 0,
-		Unit:  metric.UnitCount,
-	}).Once()
+	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Twice()
+	s.mockMetricCall("ReadCount", 1, metric.UnitCount).Once()
+	s.mockMetricCall("ReadRecords", 0, metric.UnitCount).Once()
 
 	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
 	s.logger.On("Info", "acquired shard").Once()
@@ -476,4 +385,16 @@ func (s *shardReaderTestSuite) consumeRecord(record []byte) error {
 	s.consumedRecords = append(s.consumedRecords, record)
 
 	return s.consumeRecordError
+}
+
+func (s *shardReaderTestSuite) mockMetricCall(metricName string, value float64, unit metric.StandardUnit) *mock.Call {
+	return s.metricWriter.On("WriteOne", &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: metricName,
+		Dimensions: metric.Dimensions{
+			"StreamName": string(s.stream),
+		},
+		Value: value,
+		Unit:  unit,
+	})
 }
