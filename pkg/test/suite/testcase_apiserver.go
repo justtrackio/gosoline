@@ -110,7 +110,7 @@ func runTestCaseApiServer(suite TestingSuite, testCase func(suite TestingSuite, 
 			}
 
 			url := fmt.Sprintf("http://127.0.0.1:%d", *port)
-			client := resty.New().SetHostURL(url)
+			client := resty.New().SetBaseURL(url)
 
 			testCase(suite, app, client)
 		})
