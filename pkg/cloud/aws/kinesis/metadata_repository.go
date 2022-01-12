@@ -120,6 +120,7 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 			ReadCapacityUnits:  1,
 			WriteCapacityUnits: 1,
 		},
+		DisableTracing: true,
 	}
 
 	var err error
