@@ -17,6 +17,16 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+type ClientConfigAware interface {
+	GetSettings() ClientSettings
+	GetLoadOptions() []func(options *awsCfg.LoadOptions) error
+	GetRetryOptions() []func(*retry.StandardOptions)
+}
+
+type ClientSettingsAware interface {
+	SetBackoff(backoff exec.BackoffSettings)
+}
+
 type Credentials struct {
 	AccessKeyID     string `cfg:"access_key_id"`
 	SecretAccessKey string `cfg:"secret_access_key"`
@@ -36,10 +46,6 @@ type ClientSettings struct {
 
 func (s *ClientSettings) SetBackoff(backoff exec.BackoffSettings) {
 	s.Backoff = backoff
-}
-
-type ClientSettingsAware interface {
-	SetBackoff(backoff exec.BackoffSettings)
 }
 
 func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, service string, name string) {
@@ -72,14 +78,16 @@ func UnmarshalCredentials(config cfg.Config) *Credentials {
 	return creds
 }
 
-func DefaultClientOptions(config cfg.Config, logger log.Logger, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) []func(options *awsCfg.LoadOptions) error {
+func DefaultClientOptions(config cfg.Config, logger log.Logger, clientConfig ClientConfigAware) []func(options *awsCfg.LoadOptions) error {
+	settings := clientConfig.GetSettings()
+
 	options := []func(options *awsCfg.LoadOptions) error{
 		awsCfg.WithRegion(settings.Region),
 		awsCfg.WithEndpointResolver(EndpointResolver(settings.Endpoint)),
 		awsCfg.WithLogger(NewLogger(logger)),
 		awsCfg.WithClientLogMode(aws.ClientLogMode(0)),
 		awsCfg.WithRetryer(func() aws.Retryer {
-			return retry.NewStandard(DefaultClientRetryOptions(settings)...)
+			return retry.NewStandard(DefaultClientRetryOptions(clientConfig)...)
 		}),
 	}
 
@@ -88,16 +96,17 @@ func DefaultClientOptions(config cfg.Config, logger log.Logger, settings ClientS
 		options = append(options, awsCfg.WithCredentialsProvider(credentialsProvider))
 	}
 
-	options = append(options, optFns...)
+	options = append(options, clientConfig.GetLoadOptions()...)
 
 	return options
 }
 
-func DefaultClientConfig(ctx context.Context, config cfg.Config, logger log.Logger, settings ClientSettings, optFns ...func(options *awsCfg.LoadOptions) error) (aws.Config, error) {
+func DefaultClientConfig(ctx context.Context, config cfg.Config, logger log.Logger, clientConfig ClientConfigAware) (aws.Config, error) {
 	var err error
 	var awsConfig aws.Config
 
-	options := DefaultClientOptions(config, logger, settings, optFns...)
+	settings := clientConfig.GetSettings()
+	options := DefaultClientOptions(config, logger, clientConfig)
 
 	if awsConfig, err = awsCfg.LoadDefaultConfig(ctx, options...); err != nil {
 		return awsConfig, fmt.Errorf("can not initialize config: %w", err)

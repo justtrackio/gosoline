@@ -3,8 +3,10 @@ package kinesis
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/justtrackio/gosoline/pkg/appctx"
@@ -48,11 +50,25 @@ type Client interface {
 
 type ClientSettings struct {
 	gosoAws.ClientSettings
+	ReadProvisionedThroughputDelay time.Duration `cfg:"read_provisioned_throughput_exceeded_delay" default:"1s"`
 }
 
 type ClientConfig struct {
-	Settings    ClientSettings
-	LoadOptions []func(options *awsCfg.LoadOptions) error
+	Settings     ClientSettings
+	LoadOptions  []func(options *awsCfg.LoadOptions) error
+	RetryOptions []func(*retry.StandardOptions)
+}
+
+func (c ClientConfig) GetSettings() gosoAws.ClientSettings {
+	return c.Settings.ClientSettings
+}
+
+func (c ClientConfig) GetLoadOptions() []func(options *awsCfg.LoadOptions) error {
+	return c.LoadOptions
+}
+
+func (c ClientConfig) GetRetryOptions() []func(*retry.StandardOptions) {
+	return c.RetryOptions
 }
 
 type ClientOption func(cfg *ClientConfig)
@@ -74,6 +90,12 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	clientCfg := &ClientConfig{}
 	gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "kinesis", name)
 
+	settings := clientCfg.Settings
+	backoffDelayer := NewBackoffDelayer(settings.Backoff.InitialInterval, settings.Backoff.MaxInterval, settings.ReadProvisionedThroughputDelay)
+	clientCfg.RetryOptions = []func(*retry.StandardOptions){
+		gosoAws.RetryWithBackoff(backoffDelayer),
+	}
+
 	for _, opt := range optFns {
 		opt(clientCfg)
 	}
@@ -81,7 +103,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	var err error
 	var awsConfig aws.Config
 
-	if awsConfig, err = gosoAws.DefaultClientConfig(ctx, config, logger, clientCfg.Settings.ClientSettings, clientCfg.LoadOptions...); err != nil {
+	if awsConfig, err = gosoAws.DefaultClientConfig(ctx, config, logger, clientCfg); err != nil {
 		return nil, fmt.Errorf("can not initialize config: %w", err)
 	}
 
