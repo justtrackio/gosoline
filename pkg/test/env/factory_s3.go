@@ -96,9 +96,9 @@ func (f *s3Factory) client(container *container) *s3.Client {
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
 	awsCfg := aws.Config{
-		EndpointResolver: gosoAws.EndpointResolver(address),
-		Region:           "eu-central-1",
-		Credentials:      GetDefaultStaticCredentials(),
+		EndpointResolverWithOptions: gosoAws.EndpointResolver(address),
+		Region:                      "eu-central-1",
+		Credentials:                 GetDefaultStaticCredentials(),
 	}
 
 	return s3.NewFromConfig(awsCfg)
