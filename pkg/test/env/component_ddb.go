@@ -45,9 +45,9 @@ func (c *DdbComponent) Endpoint() string {
 
 func (c *DdbComponent) Client() *dynamodb.Client {
 	return dynamodb.NewFromConfig(aws.Config{
-		EndpointResolver: gosoAws.EndpointResolver(c.Endpoint()),
-		Region:           "eu-central-1",
-		Credentials:      GetDefaultStaticCredentials(),
+		EndpointResolverWithOptions: gosoAws.EndpointResolver(c.Endpoint()),
+		Region:                      "eu-central-1",
+		Credentials:                 GetDefaultStaticCredentials(),
 	})
 }
 

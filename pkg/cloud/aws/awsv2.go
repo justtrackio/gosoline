@@ -83,7 +83,7 @@ func DefaultClientOptions(config cfg.Config, logger log.Logger, clientConfig Cli
 
 	options := []func(options *awsCfg.LoadOptions) error{
 		awsCfg.WithRegion(settings.Region),
-		awsCfg.WithEndpointResolver(EndpointResolver(settings.Endpoint)),
+		awsCfg.WithEndpointResolverWithOptions(EndpointResolver(settings.Endpoint)),
 		awsCfg.WithLogger(NewLogger(logger)),
 		awsCfg.WithClientLogMode(aws.ClientLogMode(0)),
 		awsCfg.WithRetryer(func() aws.Retryer {
@@ -128,7 +128,7 @@ func DefaultClientConfig(ctx context.Context, config cfg.Config, logger log.Logg
 
 func WithEndpoint(url string) func(options *awsCfg.LoadOptions) error {
 	return func(o *awsCfg.LoadOptions) error {
-		o.EndpointResolver = EndpointResolver(url)
+		o.EndpointResolverWithOptions = EndpointResolver(url)
 		return nil
 	}
 }
@@ -137,7 +137,7 @@ type endpointResolver struct {
 	url string
 }
 
-func (e *endpointResolver) ResolveEndpoint(service, region string) (aws.Endpoint, error) {
+func (e *endpointResolver) ResolveEndpoint(service, region string, options ...interface{}) (aws.Endpoint, error) {
 	if e.url == "" {
 		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
 	}

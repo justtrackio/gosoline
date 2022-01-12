@@ -50,8 +50,8 @@ func (c *localstackComponent) Address() string {
 
 func (c *localstackComponent) SnsClient() *sns.Client {
 	return sns.NewFromConfig(aws.Config{
-		EndpointResolver: gosoAws.EndpointResolver(c.Address()),
-		Region:           "eu-central-1",
-		Credentials:      GetDefaultStaticCredentials(),
+		EndpointResolverWithOptions: gosoAws.EndpointResolver(c.Address()),
+		Region:                      "eu-central-1",
+		Credentials:                 GetDefaultStaticCredentials(),
 	})
 }

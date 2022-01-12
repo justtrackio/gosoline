@@ -29,9 +29,9 @@ func (c *S3Component) CfgOptions() []cfg.Option {
 
 func (c *S3Component) Client() *s3.Client {
 	awsCfg := aws.Config{
-		EndpointResolver: gosoAws.EndpointResolver(c.s3Address),
-		Region:           "eu-central-1",
-		Credentials:      GetDefaultStaticCredentials(),
+		EndpointResolverWithOptions: gosoAws.EndpointResolver(c.s3Address),
+		Region:                      "eu-central-1",
+		Credentials:                 GetDefaultStaticCredentials(),
 	}
 
 	return s3.NewFromConfig(awsCfg, func(o *s3.Options) {

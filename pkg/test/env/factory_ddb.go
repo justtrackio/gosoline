@@ -76,7 +76,7 @@ func (f *ddbFactory) configureContainer(settings interface{}) *containerConfig {
 
 	return &containerConfig{
 		Repository: "amazon/dynamodb-local",
-		Tag:        "1.17.2",
+		Tag:        "1.18.0",
 		PortBindings: portBindings{
 			"8000/tcp": s.Port,
 		},
@@ -127,8 +127,8 @@ func (f *ddbFactory) client(container *container) *dynamodb.Client {
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
 	return dynamodb.NewFromConfig(aws.Config{
-		EndpointResolver: gosoAws.EndpointResolver(address),
-		Region:           "eu-central-1",
-		Credentials:      GetDefaultStaticCredentials(),
+		EndpointResolverWithOptions: gosoAws.EndpointResolver(address),
+		Region:                      "eu-central-1",
+		Credentials:                 GetDefaultStaticCredentials(),
 	})
 }
