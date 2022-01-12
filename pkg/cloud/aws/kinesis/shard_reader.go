@@ -168,7 +168,7 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 		select {
 		case <-ctx.Done():
 			return false, nil
-		case <-s.clock.After(s.settings.WaitTime):
+		case <-s.clock.After(s.settings.IdleWaitTime):
 		}
 	}
 }
@@ -352,7 +352,7 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 			if len(records) > 0 || millisecondsBehind > 0 {
 				timer.Reset(0)
 			} else {
-				timer.Reset(s.settings.WaitTime)
+				timer.Reset(s.settings.IdleWaitTime)
 			}
 
 			iterator = nextIterator

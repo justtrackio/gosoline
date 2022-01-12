@@ -50,7 +50,7 @@ func (s *shardReaderTestSuite) SetupTest() {
 	s.logger = new(logMocks.Logger)
 	s.metricWriter = new(metricMocks.Writer)
 	s.settings = gosoKinesis.Settings{
-		WaitTime:         time.Second,
+		IdleWaitTime:     time.Second,
 		PersistFrequency: time.Second * 10,
 		ReleaseDelay:     time.Second * 30,
 	}

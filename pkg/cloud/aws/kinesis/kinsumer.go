@@ -39,7 +39,7 @@ type Settings struct {
 	// Name of the stream (before expanding with project, env, family & application prefix)
 	StreamName string `cfg:"stream_name" validate:"required"`
 	// Time between reads from empty shards. This defines how fast the kinsumer begins its work. Min = 1ms
-	WaitTime time.Duration `cfg:"wait_time" default:"10s" validate:"min=1000000"`
+	IdleWaitTime time.Duration `cfg:"idle_wait_time" default:"1s" validate:"min=1000000"`
 	// Time between writing checkpoints to ddb. This defines how much work you might lose. Min = 100ms
 	PersistFrequency time.Duration `cfg:"persist_frequency" default:"5s" validate:"min=100000000"`
 	// Time between checks for new shards. This defines how fast it reacts to shard changes. Min = 1s

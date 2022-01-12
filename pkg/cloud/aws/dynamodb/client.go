@@ -38,8 +38,21 @@ type ClientSettings struct {
 }
 
 type ClientConfig struct {
-	Settings    ClientSettings
-	LoadOptions []func(options *awsCfg.LoadOptions) error
+	Settings     ClientSettings
+	LoadOptions  []func(options *awsCfg.LoadOptions) error
+	RetryOptions []func(*retry.StandardOptions)
+}
+
+func (c ClientConfig) GetSettings() gosoAws.ClientSettings {
+	return c.Settings.ClientSettings
+}
+
+func (c ClientConfig) GetLoadOptions() []func(options *awsCfg.LoadOptions) error {
+	return c.LoadOptions
+}
+
+func (c ClientConfig) GetRetryOptions() []func(*retry.StandardOptions) {
+	return c.RetryOptions
 }
 
 type ClientOption func(cfg *ClientConfig)
@@ -61,6 +74,13 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	clientCfg := &ClientConfig{}
 	gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "dynamodb", name)
 
+	clientCfg.RetryOptions = []func(*retry.StandardOptions){
+		gosoAws.RetryWithRetryables([]retry.IsErrorRetryable{
+			&RetryOnTransactionConflict{},
+			&RetryOnConditionalCheckFailed{},
+		}),
+	}
+
 	for _, opt := range optFns {
 		opt(clientCfg)
 	}
@@ -68,19 +88,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	var err error
 	var awsConfig aws.Config
 
-	retryOptions := gosoAws.DefaultClientRetryOptions(clientCfg.Settings.ClientSettings)
-	retryOptions = append(retryOptions, gosoAws.RetryWithRetryables([]retry.IsErrorRetryable{
-		&RetryOnTransactionConflict{},
-		&RetryOnConditionalCheckFailed{},
-	}))
-
-	retryer := awsCfg.WithRetryer(func() aws.Retryer {
-		return retry.NewStandard(retryOptions...)
-	})
-
-	configOptions := append(clientCfg.LoadOptions, retryer)
-
-	if awsConfig, err = gosoAws.DefaultClientConfig(ctx, config, logger, clientCfg.Settings.ClientSettings, configOptions...); err != nil {
+	if awsConfig, err = gosoAws.DefaultClientConfig(ctx, config, logger, clientCfg); err != nil {
 		return nil, fmt.Errorf("can not initialize config: %w", err)
 	}
 
