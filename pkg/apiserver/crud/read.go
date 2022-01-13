@@ -6,14 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/pkg/errors"
 )
 
 type readHandler struct {
-	transformer BaseHandler
 	logger      log.Logger
+	transformer BaseHandler
 }
 
 func NewReadHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFunc {
@@ -39,6 +39,7 @@ func (rh readHandler) Handle(ctx context.Context, request *apiserver.Request) (*
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {
 		rh.logger.WithContext(ctx).Warn("failed to read model: %s", err)
+
 		return apiserver.NewStatusResponse(http.StatusNotFound), nil
 	}
 
@@ -47,7 +48,7 @@ func (rh readHandler) Handle(ctx context.Context, request *apiserver.Request) (*
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
-	out, err := rh.transformer.TransformOutput(model, apiView)
+	out, err := rh.transformer.TransformOutput(ctx, model, apiView)
 	if err != nil {
 		return nil, err
 	}

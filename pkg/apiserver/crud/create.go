@@ -13,8 +13,8 @@ import (
 )
 
 type createHandler struct {
-	transformer CreateHandler
 	logger      log.Logger
+	transformer CreateHandler
 }
 
 func NewCreateHandler(logger log.Logger, transformer CreateHandler) gin.HandlerFunc {
@@ -32,7 +32,7 @@ func (ch createHandler) GetInput() interface{} {
 
 func (ch createHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
 	model := ch.transformer.GetModel()
-	err := ch.transformer.TransformCreate(request.Body, model)
+	err := ch.transformer.TransformCreate(ctx, request.Body, model)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (ch createHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
-	out, err := ch.transformer.TransformOutput(reload, apiView)
+	out, err := ch.transformer.TransformOutput(ctx, reload, apiView)
 	if err != nil {
 		return nil, err
 	}

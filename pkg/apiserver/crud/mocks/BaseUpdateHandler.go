@@ -3,7 +3,10 @@
 package mocks
 
 import (
+	context "context"
+
 	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -28,13 +31,13 @@ func (_m *BaseUpdateHandler) GetUpdateInput() interface{} {
 	return r0
 }
 
-// TransformUpdate provides a mock function with given fields: input, model
-func (_m *BaseUpdateHandler) TransformUpdate(input interface{}, model db_repo.ModelBased) error {
-	ret := _m.Called(input, model)
+// TransformUpdate provides a mock function with given fields: ctx, input, model
+func (_m *BaseUpdateHandler) TransformUpdate(ctx context.Context, input interface{}, model db_repo.ModelBased) error {
+	ret := _m.Called(ctx, input, model)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(interface{}, db_repo.ModelBased) error); ok {
-		r0 = rf(input, model)
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, db_repo.ModelBased) error); ok {
+		r0 = rf(ctx, input, model)
 	} else {
 		r0 = ret.Error(0)
 	}

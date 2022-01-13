@@ -8,14 +8,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/db"
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
 type updateHandler struct {
-	transformer UpdateHandler
 	logger      log.Logger
+	transformer UpdateHandler
 }
 
 func NewUpdateHandler(logger log.Logger, transformer UpdateHandler) gin.HandlerFunc {
@@ -45,6 +45,7 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {
 		uh.logger.WithContext(ctx).Warn("failed to update model: %s", err)
+
 		return apiserver.NewStatusResponse(http.StatusNotFound), nil
 	}
 
@@ -52,7 +53,7 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 		return nil, err
 	}
 
-	err = uh.transformer.TransformUpdate(request.Body, model)
+	err = uh.transformer.TransformUpdate(ctx, request.Body, model)
 
 	if modelNotChanged(err) {
 		return apiserver.NewStatusResponse(http.StatusNotModified), nil
@@ -84,7 +85,7 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
-	out, err := uh.transformer.TransformOutput(reload, apiView)
+	out, err := uh.transformer.TransformOutput(ctx, reload, apiView)
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,7 @@ import (
 
 	"github.com/jinzhu/inflection"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -28,13 +28,13 @@ type Repository interface {
 type BaseHandler interface {
 	GetRepository() Repository
 	GetModel() db_repo.ModelBased
-	TransformOutput(model db_repo.ModelBased, apiView string) (output interface{}, err error)
+	TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (output interface{}, err error)
 }
 
 //go:generate mockery --name BaseCreateHandler
 type BaseCreateHandler interface {
 	GetCreateInput() interface{}
-	TransformCreate(input interface{}, model db_repo.ModelBased) (err error)
+	TransformCreate(ctx context.Context, input interface{}, model db_repo.ModelBased) (err error)
 }
 
 //go:generate mockery --name CreateHandler
@@ -46,7 +46,7 @@ type CreateHandler interface {
 //go:generate mockery --name BaseUpdateHandler
 type BaseUpdateHandler interface {
 	GetUpdateInput() interface{}
-	TransformUpdate(input interface{}, model db_repo.ModelBased) (err error)
+	TransformUpdate(ctx context.Context, input interface{}, model db_repo.ModelBased) (err error)
 }
 
 //go:generate mockery --name UpdateHandler
