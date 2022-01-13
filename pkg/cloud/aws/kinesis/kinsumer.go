@@ -23,7 +23,17 @@ import (
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
-const MetadataKeyStreams = "cloud.aws.kinesis.streams"
+const (
+	MetadataKeyKinsumers = "cloud.aws.kinesis.kinsumers"
+)
+
+type KinsumerMetadata struct {
+	ClientId       ClientId  `json:"client_id"`
+	Name           string    `json:"name"`
+	StreamAppId    cfg.AppId `json:"stream_app_id"`
+	StreamName     string    `json:"stream_name"`
+	StreamNameFull Stream    `json:"stream_name_full"`
+}
 
 type (
 	Stream         string
@@ -36,10 +46,14 @@ type shardIdSlice []ShardId
 
 type Settings struct {
 	cfg.AppId
+	// Name of the kinsumer
+	Name string
 	// Name of the stream (before expanding with project, env, family & application prefix)
 	StreamName string `cfg:"stream_name" validate:"required"`
+	// How many records the shard reader should fetch in a single call
+	MaxBatchSize int `cfg:"max_batch_size" default:"10000" validate:"gt=0,lte=10000"`
 	// Time between reads from empty shards. This defines how fast the kinsumer begins its work. Min = 1ms
-	IdleWaitTime time.Duration `cfg:"idle_wait_time" default:"1s" validate:"min=1000000"`
+	WaitTime time.Duration `cfg:"idle_wait_time" default:"1s" validate:"min=1000000"`
 	// Time between writing checkpoints to ddb. This defines how much work you might lose. Min = 100ms
 	PersistFrequency time.Duration `cfg:"persist_frequency" default:"5s" validate:"min=100000000"`
 	// Time between checks for new shards. This defines how fast it reacts to shard changes. Min = 1s
@@ -78,10 +92,12 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	settings.PadFromConfig(config)
 	streamName := Stream(fmt.Sprintf("%s-%s-%s-%s-%s", settings.Project, settings.Environment, settings.Family, settings.Application, settings.StreamName))
 	clientId := ClientId(uuid.New().NewV4())
+
 	logger = logger.WithChannel("kinsumer").WithFields(log.Fields{
 		"stream_name": streamName,
 		"client_id":   clientId,
 	})
+
 	shardReaderDefaults := getShardReaderDefaultMetrics(streamName)
 	metricWriter := metric.NewDaemonWriter(shardReaderDefaults...)
 
@@ -100,7 +116,14 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("failed to create metadata manager: %w", err)
 	}
 
-	if err = appctx.MetadataAppend(ctx, MetadataKeyStreams, string(streamName)); err != nil {
+	kinsumerMetadata := KinsumerMetadata{
+		ClientId:       clientId,
+		Name:           settings.Name,
+		StreamAppId:    settings.AppId,
+		StreamName:     settings.StreamName,
+		StreamNameFull: streamName,
+	}
+	if err = appctx.MetadataAppend(ctx, MetadataKeyKinsumers, kinsumerMetadata); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
