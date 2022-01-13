@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.3.6
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.12.0
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.26.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.27.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.10.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.15.0
