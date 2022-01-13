@@ -22,33 +22,37 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		publisherKey := getPublisherConfigKey(name)
 		publisherSettings := readPublisherSetting(config, name)
 
-		outputSettings := &stream.SnsOutputConfiguration{}
-		config.UnmarshalDefaults(outputSettings)
+		outputConfig := &stream.SnsOutputConfiguration{}
+		config.UnmarshalDefaults(outputConfig)
 
-		outputSettings.Type = publisherSettings.OutputType
-		outputSettings.Project = publisherSettings.Project
-		outputSettings.Family = publisherSettings.Family
-		outputSettings.Application = publisherSettings.Application
-		outputSettings.TopicId = publisherSettings.Name
+		outputConfig.Type = publisherSettings.OutputType
+		outputConfig.Project = publisherSettings.Project
+		outputConfig.Family = publisherSettings.Family
+		outputConfig.Application = publisherSettings.Application
+		outputConfig.TopicId = publisherSettings.Name
 
 		if publisherSettings.Shared {
-			outputSettings.TopicId = "publisher"
+			outputConfig.TopicId = "publisher"
 		}
 
 		producerName := fmt.Sprintf("publisher-%s", publisherSettings.Name)
 		outputName := fmt.Sprintf("publisher-%s", publisherSettings.Name)
-
-		if len(publisherSettings.Producer) != 0 {
-			producerName = publisherSettings.Producer
-		} else {
-			publisherSettings.Producer = producerName
-		}
 
 		producerSettings := &stream.ProducerSettings{}
 		config.UnmarshalDefaults(producerSettings)
 
 		producerSettings.Output = outputName
 		producerSettings.Daemon.MessageAttributes[AttributeModelId] = publisherSettings.ModelId.String()
+
+		var outputSettings interface{}
+		outputSettings = outputConfig
+
+		if len(publisherSettings.Producer) != 0 {
+			producerName = publisherSettings.Producer
+			outputSettings = producerSettings.Output
+		} else {
+			publisherSettings.Producer = producerName
+		}
 
 		producerKey := stream.ConfigurableProducerKey(producerName)
 		outputKey := stream.ConfigurableOutputKey(outputName)
