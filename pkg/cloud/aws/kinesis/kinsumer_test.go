@@ -18,6 +18,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/stretchr/testify/mock"
@@ -238,6 +239,9 @@ func (s *kinsumerTestSuite) TestInitialListShardsIterate() {
 		},
 	}, nil).Once()
 
+	s.metadataRepository.On("IsShardFinished", s.ctx, gosoKinesis.ShardId("shard1")).Return(false, nil).Once()
+	s.metadataRepository.On("IsShardFinished", s.ctx, gosoKinesis.ShardId("shard2")).Return(false, nil).Once()
+
 	s.logger.On("Info", "kinsumer started %d consumers for %d shards", 2, 2).Once()
 	s.logger.On("Info", "started consuming shard").Twice()
 	s.logger.On("Info", "done consuming shard").Twice()
@@ -287,9 +291,73 @@ func (s *kinsumerTestSuite) TestListShardsChangedShardIds() {
 				},
 			},
 		}, nil).Once()
+		s.metadataRepository.On("IsShardFinished", mock.AnythingOfType("*context.cancelCtx"), gosoKinesis.ShardId("shard4")).Return(false, nil).Once()
+		s.metadataRepository.On("IsShardFinished", mock.AnythingOfType("*context.cancelCtx"), gosoKinesis.ShardId("shard3")).Return(false, nil).Once()
 
 		s.clock.Advance(time.Second * 15)
 	}()
+
+	err := s.kinsumer.Run(s.ctx, s.handler)
+	s.NoError(err)
+}
+
+func (s *kinsumerTestSuite) TestShardListFinishedShardHandling() {
+	s.metadataRepository.On("RegisterClient", s.ctx).Return(0, 1, nil).Once()
+	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+
+	s.logger.On("Info", "we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
+
+	s.kinesisClient.On("ListShards", s.ctx, &kinesis.ListShardsInput{
+		StreamName: aws.String(string(s.stream)),
+	}).Return(&kinesis.ListShardsOutput{
+		NextToken: nil,
+		Shards: []types.Shard{
+			{
+				ShardId:       mdl.String("finished shard with no parent"),
+				ParentShardId: nil,
+			},
+			{
+				ShardId:       mdl.String("finished shard with parent"),
+				ParentShardId: mdl.String("finished shard with no parent"),
+			},
+			{
+				ShardId:       mdl.String("unfinished shard with no parent"),
+				ParentShardId: nil,
+			},
+			{
+				ShardId:       mdl.String("unfinished shard with non-existing parent"),
+				ParentShardId: mdl.String("doesn't exist"),
+			},
+			{
+				ShardId:       mdl.String("unfinished shard with unfinished parent"),
+				ParentShardId: mdl.String("unfinished shard with no parent"),
+			},
+			{
+				ShardId:       mdl.String("unfinished shard with finished parent"),
+				ParentShardId: mdl.String("finished shard with no parent"),
+			},
+		},
+	}, nil).Once()
+
+	s.metadataRepository.On("IsShardFinished", s.ctx, gosoKinesis.ShardId("finished shard with no parent")).Return(true, nil).Once()
+	s.metadataRepository.On("IsShardFinished", s.ctx, gosoKinesis.ShardId("finished shard with parent")).Return(true, nil).Once()
+	s.metadataRepository.On("IsShardFinished", s.ctx, gosoKinesis.ShardId("unfinished shard with no parent")).Return(false, nil).Once()
+	s.metadataRepository.On("IsShardFinished", s.ctx, gosoKinesis.ShardId("unfinished shard with non-existing parent")).Return(false, nil).Once()
+	s.metadataRepository.On("IsShardFinished", s.ctx, gosoKinesis.ShardId("unfinished shard with unfinished parent")).Return(false, nil).Once()
+	s.metadataRepository.On("IsShardFinished", s.ctx, gosoKinesis.ShardId("unfinished shard with finished parent")).Return(false, nil).Once()
+
+	s.logger.On("Info", "kinsumer started %d consumers for %d shards", 3, 3).Once()
+	s.logger.On("Info", "started consuming shard").Times(3)
+	s.logger.On("Info", "done consuming shard").Times(3)
+
+	s.logger.On("Info", "leaving kinsumer").Once()
+	s.logger.On("Info", "stopping kinsumer").Once()
+	s.handler.On("Done").Once()
+
+	s.mockShardTaskRatio(300)
+	s.mockShard("unfinished shard with no parent", false, context.Canceled)
+	s.mockShard("unfinished shard with non-existing parent", false, context.Canceled)
+	s.mockShard("unfinished shard with finished parent", false, context.Canceled)
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
 	s.NoError(err)
@@ -322,6 +390,8 @@ func (s *kinsumerTestSuite) TestListShardsNoChangeThenCancel() {
 			s.kinesisClient.On("ListShards", mock.AnythingOfType("*context.cancelCtx"), &kinesis.ListShardsInput{
 				StreamName: aws.String(string(s.stream)),
 			}).Return(nil, context.Canceled).Once()
+
+			s.metadataRepository.On("IsShardFinished", mock.AnythingOfType("*context.cancelCtx"), gosoKinesis.ShardId("shard1")).Return(false, nil).Once()
 
 			s.clock.Advance(time.Second * 15)
 		}).Once()
@@ -402,6 +472,8 @@ func (s *kinsumerTestSuite) mockBaseSuccess(shards ...string) {
 		shardsSlice[i] = types.Shard{
 			ShardId: aws.String(shard),
 		}
+
+		s.metadataRepository.On("IsShardFinished", s.ctx, gosoKinesis.ShardId(shard)).Return(false, nil).Once()
 	}
 
 	s.kinesisClient.On("ListShards", s.ctx, &kinesis.ListShardsInput{

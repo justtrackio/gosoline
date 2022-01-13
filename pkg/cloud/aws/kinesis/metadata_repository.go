@@ -3,6 +3,7 @@ package kinesis
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -32,6 +33,9 @@ type MetadataRepository interface {
 	RegisterClient(ctx context.Context) (clientIndex int, totalClients int, err error)
 	// DeregisterClient removes our client and thus indirectly informs the other clients to take over our work
 	DeregisterClient(ctx context.Context) error
+	// IsShardFinished checks if a shard has already been finished. It might cache this status as normally a shard, once
+	// finished, should never change that status again.
+	IsShardFinished(ctx context.Context, shardId ShardId) (bool, error)
 	// AcquireShard locks a shard for us and ensures no other client is working on it. It might fail to do so and returns
 	// nil in this case.
 	AcquireShard(ctx context.Context, shardId ShardId) (Checkpoint, error)
@@ -95,6 +99,11 @@ type metadataRepository struct {
 	clientTimeout     time.Duration
 	checkpointTimeout time.Duration
 	clock             clock.Clock
+	// an append-only map of finished shards. While we can never (besides restarting the app) remove something from this
+	// map, a finished shard will stay so forever, shard ids are not reused, and an AWS account is limited by default to
+	// 500 shards - so even if you have a lot of shards, you will most likely only need a few KB for this map.
+	finishedMap map[ShardId]bool
+	finishedLck sync.Mutex
 }
 
 type checkpoint struct {
@@ -153,6 +162,8 @@ func NewMetadataRepositoryWithInterfaces(logger log.Logger, stream Stream, clien
 		clientTimeout:     clientTimeout,
 		checkpointTimeout: checkpointTimeout,
 		clock:             clock,
+		finishedMap:       map[ShardId]bool{},
+		finishedLck:       sync.Mutex{},
 	}
 }
 
@@ -197,6 +208,37 @@ func (m *metadataRepository) DeregisterClient(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (m *metadataRepository) IsShardFinished(ctx context.Context, shardId ShardId) (bool, error) {
+	m.finishedLck.Lock()
+	defer m.finishedLck.Unlock()
+
+	if m.finishedMap[shardId] {
+		return true, nil
+	}
+
+	namespace := m.getCheckpointNamespace()
+	getQb := m.repo.GetItemBuilder().
+		WithHash(namespace).
+		WithRange(shardId)
+
+	record := &CheckpointRecord{}
+	getResult, err := m.repo.GetItem(ctx, getQb, record)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if shard is finished: %w", err)
+	}
+
+	if getResult.IsFound && record.FinishedAt != nil {
+		m.finishedMap[shardId] = true
+
+		return true, nil
+	}
+
+	// we have either never yet consumed this shard, so it is not yet finished (as far as we know), or we know that it is
+	// not yet finished
+
+	return false, nil
 }
 
 func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) (Checkpoint, error) {

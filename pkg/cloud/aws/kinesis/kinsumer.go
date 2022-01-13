@@ -255,8 +255,15 @@ func (k *kinsumer) refreshShards(ctx context.Context, runtimeCtx *runtimeContext
 	return changed, nil
 }
 
+// listShardIds returns a slice of shard ids which are not yet finished and also don't have a parent shard which is not
+// yet finished (i.e., exactly those shards we need to consume next)
 func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
-	shardIds := make([]ShardId, 0)
+	type shardInfo struct {
+		finished bool
+		parent   ShardId
+	}
+
+	shardMap := make(map[ShardId]shardInfo)
 	var nextToken *string
 
 	for {
@@ -283,7 +290,16 @@ func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
 		}
 
 		for _, s := range res.Shards {
-			shardIds = append(shardIds, ShardId(mdl.EmptyStringIfNil(s.ShardId)))
+			shardId := ShardId(mdl.EmptyStringIfNil(s.ShardId))
+			finished, err := k.metadataRepository.IsShardFinished(ctx, shardId)
+			if err != nil {
+				return nil, fmt.Errorf("could not check if shard is already finished: %w", err)
+			}
+
+			shardMap[shardId] = shardInfo{
+				finished: finished,
+				parent:   ShardId(mdl.EmptyStringIfNil(s.ParentShardId)),
+			}
 		}
 
 		if res.NextToken == nil {
@@ -291,6 +307,24 @@ func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
 		}
 
 		nextToken = res.NextToken
+	}
+
+	shardIds := make([]ShardId, 0)
+	for k, v := range shardMap {
+		if v.finished {
+			continue
+		}
+
+		// if a shard has a parent which no longer exists, we need to treat it like a shard without a parent (for all
+		// purposes, that is true already), otherwise we can't process most shards once they have had a parent somewhere
+		// in the past (but we already forgot everything about said parent)
+		if _, ok := shardMap[v.parent]; !ok {
+			v.parent = ""
+		}
+
+		if v.parent == "" || shardMap[v.parent].finished {
+			shardIds = append(shardIds, k)
+		}
 	}
 
 	sort.Sort(shardIdSlice(shardIds))
@@ -308,10 +342,6 @@ func (k *kinsumer) startConsumers(ctx context.Context, cfn coffin.Coffin, runtim
 
 	logger := k.logger.WithContext(consumerCtx)
 	startedConsumers := 0
-
-	// TODO: the following code starts consumers even for shards which still are waiting for their parent shards to finish.
-	// In the future, we want to (optionally) wait until the parent shards have been fully consumed before consuming child shards
-	// (as you can otherwise read data for the same partition key out of order)
 
 	for i := runtimeCtx.clientIndex; i < len(runtimeCtx.shardIds); i += runtimeCtx.totalClients {
 		wg.Add(1)
