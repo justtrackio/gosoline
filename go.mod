@@ -20,7 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.10.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.15.0
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.10.0
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.22.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.23.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.13.0
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.15.0
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.19.0
@@ -82,7 +82,7 @@ require (
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/andybalholm/brotli v1.0.1 // indirect
 	github.com/apache/thrift v0.13.0 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.0.0 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.1.0 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.9.0 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.1.0 // indirect
@@ -91,7 +91,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.6.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.4.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.6.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.9.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.10.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.8.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.13.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
