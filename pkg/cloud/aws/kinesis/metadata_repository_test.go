@@ -189,6 +189,79 @@ func (s *metadataRepositoryTestSuite) mockDeregisterClientDeleteItem(err error) 
 	return qb
 }
 
+func (s *metadataRepositoryTestSuite) TestIsShardFinished_ReadError() {
+	qb := s.mockIsShardFinished(false, nil, fmt.Errorf("fail"))
+	defer qb.AssertExpectations(s.T())
+
+	finished, err := s.metadataRepository.IsShardFinished(s.ctx, s.shardId)
+	s.EqualError(err, "failed to check if shard is finished: fail")
+	s.False(finished)
+}
+
+func (s *metadataRepositoryTestSuite) TestIsShardFinished_RecordNotFound() {
+	qb := s.mockIsShardFinished(false, nil, nil)
+	defer qb.AssertExpectations(s.T())
+
+	finished, err := s.metadataRepository.IsShardFinished(s.ctx, s.shardId)
+	s.NoError(err)
+	s.False(finished)
+}
+
+func (s *metadataRepositoryTestSuite) TestIsShardFinished_NotFinishedTwice() {
+	qb1 := s.mockIsShardFinished(true, nil, nil)
+	defer qb1.AssertExpectations(s.T())
+	qb2 := s.mockIsShardFinished(true, nil, nil)
+	defer qb2.AssertExpectations(s.T())
+
+	finished, err := s.metadataRepository.IsShardFinished(s.ctx, s.shardId)
+	s.NoError(err)
+	s.False(finished)
+
+	finished, err = s.metadataRepository.IsShardFinished(s.ctx, s.shardId)
+	s.NoError(err)
+	s.False(finished)
+}
+
+func (s *metadataRepositoryTestSuite) TestIsShardFinished_FirstReadThenCached() {
+	qb := s.mockIsShardFinished(true, mdl.Time(s.clock.Now()), nil)
+	defer qb.AssertExpectations(s.T())
+
+	finished, err := s.metadataRepository.IsShardFinished(s.ctx, s.shardId)
+	s.NoError(err)
+	s.True(finished)
+
+	finished, err = s.metadataRepository.IsShardFinished(s.ctx, s.shardId)
+	s.NoError(err)
+	s.True(finished)
+}
+
+func (s *metadataRepositoryTestSuite) mockIsShardFinished(found bool, finishedAt *time.Time, err error) *ddbMocks.GetItemBuilder {
+	qb := new(ddbMocks.GetItemBuilder)
+	qb.On("WithHash", s.checkpointNamespace).Return(qb).Once()
+	qb.On("WithRange", s.shardId).Return(qb).Once()
+
+	s.repo.On("GetItemBuilder").Return(qb).Once()
+	s.repo.On("GetItem", s.ctx, qb, &kinesis.CheckpointRecord{}).Run(func(args mock.Arguments) {
+		record := args.Get(2).(*kinesis.CheckpointRecord)
+
+		if !found {
+			return
+		}
+
+		*record = kinesis.CheckpointRecord{
+			BaseRecord: kinesis.BaseRecord{
+				Namespace: s.checkpointNamespace,
+				Resource:  string(s.shardId),
+			},
+			FinishedAt: finishedAt,
+		}
+	}).Return(&ddb.GetItemResult{
+		IsFound: found,
+	}, err).Once()
+
+	return qb
+}
+
 func (s *metadataRepositoryTestSuite) TestAcquireShard_ReadFail() {
 	qb := s.mockAcquireShardGetItem(false, "", 0, fmt.Errorf("fail"))
 	defer qb.AssertExpectations(s.T())
