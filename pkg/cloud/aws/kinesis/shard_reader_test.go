@@ -50,7 +50,8 @@ func (s *shardReaderTestSuite) SetupTest() {
 	s.logger = new(logMocks.Logger)
 	s.metricWriter = new(metricMocks.Writer)
 	s.settings = gosoKinesis.Settings{
-		IdleWaitTime:     time.Second,
+		MaxBatchSize:     10_000,
+		WaitTime:         time.Second,
 		PersistFrequency: time.Second * 10,
 		ReleaseDelay:     time.Second * 30,
 	}
@@ -207,6 +208,7 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 	s.logger.On("Info", "acquired shard").Once()
 	s.logger.On("Info", "releasing shard").Once()
 	s.logger.On("Info", "processed batch of %d records", 1).Twice()
+
 	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
@@ -215,9 +217,12 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 	}).Return(&kinesis.GetShardIteratorOutput{
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
+
 	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
+	}).Run(func(args mock.Arguments) {
+		s.clock.Advance(s.settings.WaitTime)
 	}).Return(&kinesis.GetRecordsOutput{
 		Records: []types.Record{
 			{
@@ -228,6 +233,7 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 		MillisBehindLatest: aws.Int64(1000),
 		NextShardIterator:  aws.String("next iterator"),
 	}, nil).Once()
+
 	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("next iterator"),
 		Limit:         aws.Int32(10000),
@@ -270,6 +276,7 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 	s.logger.On("Info", "processed batch of %d records", 1).Once()
 	s.logger.On("Info", "processed batch of %d records", 0).Once()
 	s.logger.On("Error", "failed to handle record %s: %w", aws.String("seq 1"), fmt.Errorf("parse error"))
+
 	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
@@ -278,10 +285,12 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 	}).Return(&kinesis.GetShardIteratorOutput{
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
+
 	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
 	}).Return(nil, &types.ExpiredIteratorException{}).Once()
+
 	s.kinesisClient.On("GetShardIterator", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
@@ -290,6 +299,7 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 	}).Return(&kinesis.GetShardIteratorOutput{
 		ShardIterator: aws.String("new iterator"),
 	}, nil).Once()
+
 	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("new iterator"),
 		Limit:         aws.Int32(10000),
@@ -303,9 +313,14 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 			s.clock.Advance(time.Second)
 		}()
 	}).Once()
+
 	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("next iterator"),
 		Limit:         aws.Int32(10000),
+	}).Run(func(args mock.Arguments) {
+		go func() {
+			s.clock.Advance(time.Second)
+		}()
 	}).Return(&kinesis.GetRecordsOutput{
 		Records: []types.Record{
 			{
@@ -316,6 +331,7 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 		MillisBehindLatest: aws.Int64(0),
 		NextShardIterator:  aws.String("final iterator"),
 	}, nil).Once()
+
 	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("final iterator"),
 		Limit:         aws.Int32(10000),

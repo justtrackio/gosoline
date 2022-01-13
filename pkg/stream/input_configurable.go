@@ -95,6 +95,7 @@ func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger lo
 
 	settings := kinesisInputConfiguration{}
 	config.UnmarshalKey(key, &settings)
+	settings.Name = name
 
 	return NewKinesisInput(ctx, config, logger, settings.Settings)
 }

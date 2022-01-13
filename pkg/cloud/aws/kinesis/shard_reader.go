@@ -168,7 +168,7 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 		select {
 		case <-ctx.Done():
 			return false, nil
-		case <-s.clock.After(s.settings.IdleWaitTime):
+		case <-s.clock.After(s.settings.WaitTime):
 		}
 	}
 }
@@ -199,7 +199,7 @@ func (s *shardReader) getShardIterator(ctx context.Context, sequenceNumber Seque
 
 func (s *shardReader) getRecords(ctx context.Context, iterator string) (records []types.Record, nextIterator string, millisecondsBehind int64, err error) {
 	params := &kinesis.GetRecordsInput{
-		Limit:         aws.Int32(10_000), // get up to the maximum of 10 000 records
+		Limit:         aws.Int32(int32(s.settings.MaxBatchSize)),
 		ShardIterator: aws.String(iterator),
 	}
 
@@ -292,7 +292,9 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 		case <-ctx.Done():
 			return nil
 		case <-timer.Chan():
+			getRecordsStart := s.clock.Now()
 			records, nextIterator, millisecondsBehind, err := s.getRecords(ctx, iterator)
+
 			var errExpiredIteratorException *types.ExpiredIteratorException
 			if errors.As(err, &errExpiredIteratorException) {
 				// we were too slow reading from the shard, so get a new iterator and continue
@@ -349,13 +351,22 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 			s.logger.Info("processed batch of %d records", processedSize)
 			s.writeMetric(metricNameReadRecords, float64(processedSize), metric.UnitCount)
 
-			if len(records) > 0 || millisecondsBehind > 0 {
+			iterator = nextIterator
+
+			// if the results are older than our wait time, continue immediately
+			if time.Duration(millisecondsBehind) > s.settings.WaitTime {
 				timer.Reset(0)
-			} else {
-				timer.Reset(s.settings.IdleWaitTime)
+				continue
 			}
 
-			iterator = nextIterator
+			durationSinceLastGetRecordsCall := s.clock.Since(getRecordsStart)
+			waitTime := s.settings.WaitTime - durationSinceLastGetRecordsCall
+
+			if waitTime < 0 {
+				waitTime = 0
+			}
+
+			timer.Reset(waitTime)
 		}
 	}
 }
