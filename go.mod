@@ -25,7 +25,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.15.0
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.19.0
 	github.com/aws/aws-xray-sdk-go v1.6.0
-	github.com/aws/smithy-go v1.9.1
+	github.com/aws/smithy-go v1.10.0
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
