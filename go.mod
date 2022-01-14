@@ -55,7 +55,7 @@ require (
 	github.com/lib/pq v1.10.4
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/ory/dockertest/v3 v3.8.1
-	github.com/ory/ladon v1.0.1
+	github.com/ory/ladon v1.2.0
 	github.com/oschwald/geoip2-golang v1.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
@@ -99,6 +99,7 @@ require (
 	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/dlclark/regexp2 v1.2.0 // indirect
 	github.com/docker/cli v20.10.11+incompatible // indirect
 	github.com/docker/docker v20.10.9+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect

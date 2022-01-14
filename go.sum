@@ -197,7 +197,6 @@ github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.4.0 h1:LVQAt
 github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.4.0/go.mod h1:XTo3HdhcCDMl/syHC+mGJyP3Qmm1BD3MNtuLlZCqiP8=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.2.2/go.mod h1:NXmNI41bdEsJMrD0v9rUvbGCB5GwdBEpKvUvIY3vTFg=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.3.2/go.mod h1:72HRZDLMtmVQiLG2tLfQcaWLCssELvGl+Zf2WVxMmR8=
-github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.5.2/go.mod h1:FgR1tCsn8C6+Hf+N5qkfrE4IXvUL1RgW87sunJ+5J4I=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.6.0 h1:rwE0kWa5qm0yEoNPwC3zhrt1tFVXTmkWRlUxLayAwyc=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.6.0/go.mod h1:wTgFkG6t7jS/6Y0SILXwfspV3IXowb6ngsAlSajW0Kc=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.5.2/go.mod h1:QuL2Ym8BkrLmN4lUofXYq6000/i5jPjosCNK//t6gak=
@@ -420,6 +419,8 @@ github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cu
 github.com/dgryski/go-sip13 v0.0.0-20181026042036-e10d5fee7954/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
 github.com/dhui/dktest v0.3.7 h1:jWjWgHAPDAdqgUr7lAsB3bqB2DKWC3OaA+isfekjRew=
 github.com/dhui/dktest v0.3.7/go.mod h1:nYMOkafiA07WchSwKnKFUSbGMb2hMm5DrCGiXYG6gwM=
+github.com/dlclark/regexp2 v1.2.0 h1:8sAhBGEM0dRWogWqWyQeIJnxjWO6oIjl8FKqREDsGfk=
+github.com/dlclark/regexp2 v1.2.0/go.mod h1:2pZnwuY/m+8K6iRw6wQdMtk+rH5tNGR1i55kozfMjCc=
 github.com/dnaeon/go-vcr v1.0.1/go.mod h1:aBB1+wY4s93YsC3HHjMBMrwTj2R9FHDzUr9KyGc8n1E=
 github.com/docker/cli v20.10.11+incompatible h1:tXU1ezXcruZQRrMP8RN2z9N91h+6egZTS1gsPsKantc=
 github.com/docker/cli v20.10.11+incompatible/go.mod h1:JLrzqnKDaYBop7H2jaqPtU4hHvMKP+vjCwu2uszcLI8=
@@ -1046,8 +1047,8 @@ github.com/opencontainers/selinux v1.8.2/go.mod h1:MUIHuUEvKB1wtJjQdOyYRgOnLD2xA
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/ory/dockertest/v3 v3.8.1 h1:vU/8d1We4qIad2YM0kOwRVtnyue7ExvacPiw1yDm17g=
 github.com/ory/dockertest/v3 v3.8.1/go.mod h1:wSRQ3wmkz+uSARYMk7kVJFDBGm8x5gSxIhI7NDc+BAQ=
-github.com/ory/ladon v1.0.1 h1:zCEfqnv8Ro62id0Z9cVPRPv4ejTu6HHtuPbXmTWBxks=
-github.com/ory/ladon v1.0.1/go.mod h1:1VhCA2mBtaMhRUS6VS0d9qrNVDQnFXqSRb5D0NvQUPY=
+github.com/ory/ladon v1.2.0 h1:efIVtNkObNR/HL7nR5y17Lrw9c/wMwe56iKVDcRv3GY=
+github.com/ory/ladon v1.2.0/go.mod h1:25bNc/Glx/8xCH7MbItDxjvviAmFQ+aYxb1V1SE5wlg=
 github.com/ory/pagination v0.0.1 h1:Zp+0n/UXSGYlJAMN0BuRjZhULsQRebGHfqByKtZXNYI=
 github.com/ory/pagination v0.0.1/go.mod h1:d1ToRROAUleriPhmb2dYbhANhhLwZ8s395m2yJCDFh8=
 github.com/oschwald/geoip2-golang v1.5.0 h1:igg2yQIrrcRccB1ytFXqBfOHCjXWIoMv85lVJ1ONZzw=
