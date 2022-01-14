@@ -11,14 +11,17 @@ import (
 )
 
 func NewSnsNotifier(ctx context.Context, config cfg.Config, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) (*baseNotifier, error) {
+	appId := cfg.AppId{
+		Project:     modelId.Project,
+		Environment: modelId.Environment,
+		Family:      modelId.Family,
+		Application: modelId.Application,
+	}
+	appId.PadFromConfig(config)
+
 	output, err := stream.NewSnsOutput(ctx, config, logger, &stream.SnsOutputSettings{
 		TopicId: modelId.Name,
-		AppId: cfg.AppId{
-			Project:     modelId.Project,
-			Environment: modelId.Environment,
-			Family:      modelId.Family,
-			Application: modelId.Application,
-		},
+		AppId:   appId,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("can not create sns output: %w", err)

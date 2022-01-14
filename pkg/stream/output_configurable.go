@@ -65,17 +65,22 @@ func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 	return NewFileOutput(config, logger, settings), nil
 }
 
+type InMemoryOutputConfiguration struct {
+	Type string `cfg:"type" default:"inMemory"`
+}
+
 func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, name string) (Output, error) {
 	return ProvideInMemoryOutput(name), nil
 }
 
-type kinesisOutputConfiguration struct {
+type KinesisOutputConfiguration struct {
+	Type       string `cfg:"type" default:"kinesis"`
 	StreamName string `cfg:"stream_name"`
 }
 
 func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
-	settings := &kinesisOutputConfiguration{}
+	settings := &KinesisOutputConfiguration{}
 	config.UnmarshalKey(key, settings)
 
 	return NewKinesisOutput(ctx, config, logger, &KinesisOutputSettings{
@@ -112,7 +117,7 @@ func newRedisListOutputFromConfig(_ context.Context, config cfg.Config, logger l
 
 type SnsOutputConfiguration struct {
 	BaseOutputSettings
-	Type        string `cfg:"type"`
+	Type        string `cfg:"type" default:"sns"`
 	Project     string `cfg:"project"`
 	Family      string `cfg:"family"`
 	Application string `cfg:"application"`
@@ -141,8 +146,9 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 	})
 }
 
-type sqsOutputConfiguration struct {
+type SqsOutputConfiguration struct {
 	BaseOutputSettings
+	Type              string            `cfg:"type" default:"sqs"`
 	Project           string            `cfg:"project"`
 	Family            string            `cfg:"family"`
 	Application       string            `cfg:"application"`
@@ -155,7 +161,7 @@ type sqsOutputConfiguration struct {
 
 func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
-	configuration := sqsOutputConfiguration{}
+	configuration := SqsOutputConfiguration{}
 	config.UnmarshalKey(key, &configuration)
 
 	clientName := configuration.ClientName

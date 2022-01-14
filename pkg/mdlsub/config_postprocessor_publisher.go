@@ -2,6 +2,7 @@ package mdlsub
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/stream"
@@ -9,6 +10,15 @@ import (
 
 func init() {
 	cfg.AddPostProcessor(8, "gosoline.mdlsub.publisher", PublisherConfigPostProcessor)
+}
+
+type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) interface{}
+
+var publisherOutputTypeHandlers = map[string]publisherOutputTypeHandler{
+	stream.OutputTypeInMemory: handlePublisherOutputTypeInMemory,
+	stream.OutputTypeKinesis:  handlePublisherOutputTypeKinesis,
+	stream.OutputTypeSns:      handlePublisherOutputTypeSns,
+	stream.OutputTypeSqs:      handlePublisherOutputTypeSqs,
 }
 
 func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
@@ -22,21 +32,8 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		publisherKey := getPublisherConfigKey(name)
 		publisherSettings := readPublisherSetting(config, name)
 
-		outputSettings := &stream.SnsOutputConfiguration{}
-		config.UnmarshalDefaults(outputSettings)
-
-		outputSettings.Type = publisherSettings.OutputType
-		outputSettings.Project = publisherSettings.Project
-		outputSettings.Family = publisherSettings.Family
-		outputSettings.Application = publisherSettings.Application
-		outputSettings.TopicId = publisherSettings.Name
-
-		if publisherSettings.Shared {
-			outputSettings.TopicId = "publisher"
-		}
-
-		producerName := fmt.Sprintf("publisher-%s", publisherSettings.Name)
-		outputName := fmt.Sprintf("publisher-%s", publisherSettings.Name)
+		producerName := fmt.Sprintf("publisher-%s", name)
+		outputName := fmt.Sprintf("publisher-%s", name)
 
 		if len(publisherSettings.Producer) != 0 {
 			producerName = publisherSettings.Producer
@@ -50,6 +47,14 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		producerSettings.Output = outputName
 		producerSettings.Daemon.MessageAttributes[AttributeModelId] = publisherSettings.ModelId.String()
 
+		var ok bool
+		var outputTypeHandler publisherOutputTypeHandler
+
+		if outputTypeHandler, ok = publisherOutputTypeHandlers[publisherSettings.OutputType]; !ok {
+			return false, fmt.Errorf("no publisherOutputTypeHandler found for publisher %s and output type %s", publisherSettings.Name, publisherSettings.OutputType)
+		}
+
+		outputSettings := outputTypeHandler(config, publisherSettings, producerSettings)
 		producerKey := stream.ConfigurableProducerKey(producerName)
 		outputKey := stream.ConfigurableOutputKey(outputName)
 
@@ -65,6 +70,63 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func handlePublisherOutputTypeInMemory(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) interface{} {
+	outputSettings := &stream.InMemoryOutputConfiguration{}
+	config.UnmarshalDefaults(outputSettings)
+
+	return outputSettings
+}
+
+func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) interface{} {
+	producerSettings.Daemon.Enabled = true
+	producerSettings.Daemon.Interval = time.Second
+	// kinesis batches have a max size of 5mb. we're using 4.5mb to give it some headroom
+	producerSettings.Daemon.BatchMaxSize = 4_500_000
+	// kinesis can handle up to 500 records per put records call
+	producerSettings.Daemon.BatchSize = 500
+	// kinesis limit for 1 record in size is 1mb, so we limit it to 950kb to give it some headroom
+	producerSettings.Daemon.AggregationMaxSize = 950_000
+
+	outputSettings := &stream.KinesisOutputConfiguration{}
+	config.UnmarshalDefaults(outputSettings)
+
+	outputSettings.StreamName = fmt.Sprintf("%s-%s-%s-%s-%s", publisherSettings.Project, publisherSettings.Environment, publisherSettings.Family, publisherSettings.Application, publisherSettings.Name)
+
+	return outputSettings
+}
+
+func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) interface{} {
+	outputSettings := &stream.SnsOutputConfiguration{}
+	config.UnmarshalDefaults(outputSettings)
+
+	outputSettings.Project = publisherSettings.Project
+	outputSettings.Family = publisherSettings.Family
+	outputSettings.Application = publisherSettings.Application
+	outputSettings.TopicId = publisherSettings.Name
+
+	if publisherSettings.Shared {
+		outputSettings.TopicId = "publisher"
+	}
+
+	return outputSettings
+}
+
+func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) interface{} {
+	outputSettings := &stream.SqsOutputConfiguration{}
+	config.UnmarshalDefaults(outputSettings)
+
+	outputSettings.Project = publisherSettings.Project
+	outputSettings.Family = publisherSettings.Family
+	outputSettings.Application = publisherSettings.Application
+	outputSettings.QueueId = publisherSettings.Name
+
+	if publisherSettings.Shared {
+		outputSettings.QueueId = "publisher"
+	}
+
+	return outputSettings
 }
 
 func getPublisherConfigKey(name string) string {

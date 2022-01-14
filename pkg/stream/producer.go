@@ -4,10 +4,18 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/refl"
 )
+
+const MetadataKeyProducers = "stream.producers"
+
+type ProducerMetadata struct {
+	Name          string `json:"name"`
+	DaemonEnabled bool   `json:"daemon_enabled"`
+}
 
 type ProducerSettings struct {
 	Output      string                 `cfg:"output"`
@@ -53,6 +61,14 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 		Compression:    settings.Compression,
 		EncodeHandlers: encodeHandlers,
 	})
+
+	metadata := ProducerMetadata{
+		Name:          name,
+		DaemonEnabled: settings.Daemon.Enabled,
+	}
+	if err = appctx.MetadataAppend(ctx, MetadataKeyProducers, metadata); err != nil {
+		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
+	}
 
 	return NewProducerWithInterfaces(encoder, output), nil
 }
