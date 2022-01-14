@@ -5,7 +5,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.2
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
-	github.com/alicebob/miniredis v2.4.6+incompatible
+	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/aws/aws-lambda-go v1.28.0
 	github.com/aws/aws-sdk-go v1.42.34
 	github.com/aws/aws-sdk-go-v2 v1.12.0
