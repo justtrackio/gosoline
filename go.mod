@@ -23,7 +23,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.23.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.15.0
-	github.com/aws/aws-sdk-go-v2/service/ssm v1.19.0
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.20.0
 	github.com/aws/aws-xray-sdk-go v1.6.0
 	github.com/aws/smithy-go v1.10.0
 	github.com/cenkalti/backoff v2.2.1+incompatible
