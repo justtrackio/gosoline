@@ -21,7 +21,7 @@ const (
 	metricNameConsumerDuration       = "Duration"
 	metricNameConsumerError          = "Error"
 	metricNameConsumerProcessedCount = "ProcessedCount"
-	MetadataKeyConsumers             = "stream.consumers"
+	metadataKeyConsumers             = "stream.consumers"
 )
 
 //go:generate mockery --name RunnableCallback
@@ -83,7 +83,7 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 		Encoding: settings.Encoding,
 	})
 
-	if err = appctx.MetadataAppend(ctx, MetadataKeyConsumers, name); err != nil {
+	if err = appctx.MetadataAppend(ctx, metadataKeyConsumers, name); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 

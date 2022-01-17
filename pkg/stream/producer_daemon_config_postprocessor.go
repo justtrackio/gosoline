@@ -19,7 +19,7 @@ func producerDaemonConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 
 	for name, settings := range producerDaemonSettings {
 		outputKey := ConfigurableOutputKey(settings.Output)
-		outputSettings := &BaseOutputSettings{}
+		outputSettings := &BaseOutputConfiguration{}
 
 		config.UnmarshalKey(outputKey, outputSettings)
 		outputSettings.Tracing.Enabled = false

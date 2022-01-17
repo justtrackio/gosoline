@@ -12,7 +12,7 @@ func init() {
 	cfg.AddPostProcessor(8, "gosoline.mdlsub.publisher", PublisherConfigPostProcessor)
 }
 
-type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) interface{}
+type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware
 
 var publisherOutputTypeHandlers = map[string]publisherOutputTypeHandler{
 	stream.OutputTypeInMemory: handlePublisherOutputTypeInMemory,
@@ -72,14 +72,14 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	return true, nil
 }
 
-func handlePublisherOutputTypeInMemory(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) interface{} {
+func handlePublisherOutputTypeInMemory(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.InMemoryOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 
 	return outputSettings
 }
 
-func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) interface{} {
+func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
 	producerSettings.Daemon.Enabled = true
 	producerSettings.Daemon.Interval = time.Second
 	// kinesis batches have a max size of 5mb. we're using 4.5mb to give it some headroom
@@ -93,11 +93,12 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 	config.UnmarshalDefaults(outputSettings)
 
 	outputSettings.StreamName = fmt.Sprintf("%s-%s-%s-%s-%s", publisherSettings.Project, publisherSettings.Environment, publisherSettings.Family, publisherSettings.Application, publisherSettings.Name)
+	outputSettings.Tracing.Enabled = false
 
 	return outputSettings
 }
 
-func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) interface{} {
+func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.SnsOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 
@@ -113,7 +114,7 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 	return outputSettings
 }
 
-func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) interface{} {
+func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.SqsOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 

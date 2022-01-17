@@ -1,24 +1,25 @@
-package stream_test
+package kinesis_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	kinesisMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis/mocks"
+	gosoKinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
+	gosoKinesisMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
-	"github.com/justtrackio/gosoline/pkg/stream"
+	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	uuidMocks "github.com/justtrackio/gosoline/pkg/uuid/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func TestWriter_WriteEvents(t *testing.T) {
+func TestRecordWriterPutRecords(t *testing.T) {
 	ctx := log.AppendLoggerContextField(context.Background(), map[string]interface{}{
 		"kinesis_write_request_id": "79db3180-99a9-4157-91c3-a591b9a8f01c",
 		"stream_name":              "streamName",
@@ -26,7 +27,9 @@ func TestWriter_WriteEvents(t *testing.T) {
 
 	logger := logMocks.NewLoggerMock()
 	logger.On("Warn", "%d / %d records failed, retrying", 1, 3)
-	logger.On("Info", "writeBatch successful after %d retries in %s", 1, 2*time.Second)
+	logger.On("Warn", "PutRecords successful after %d retries in %s", 1, 2*time.Second)
+
+	mw := metricMocks.NewWriterMockedAll()
 
 	testClock := clock.NewFakeClock()
 
@@ -36,19 +39,19 @@ func TestWriter_WriteEvents(t *testing.T) {
 	uuidGen.On("NewV4").Return("541c78c0-afc7-440f-b8a3-d2e49fb1ba4c").Once()
 	uuidGen.On("NewV4").Return("51b873fc-8086-4b39-8a68-bead0102cdf0").Once()
 
-	kinesisClient := new(kinesisMocks.Client)
+	kinesisClient := new(gosoKinesisMocks.Client)
 	kinesisClient.On("PutRecords", ctx, &kinesis.PutRecordsInput{
 		Records: []types.PutRecordsRequestEntry{
 			{
-				Data:         []byte(`{"attributes":{},"body":"1"}`),
+				Data:         []byte("1"),
 				PartitionKey: aws.String("ee080b0b-faae-40c2-8959-0f8f2b6d1b06"),
 			},
 			{
-				Data:         []byte(`{"attributes":{},"body":"2"}`),
+				Data:         []byte("2"),
 				PartitionKey: aws.String("541c78c0-afc7-440f-b8a3-d2e49fb1ba4c"),
 			},
 			{
-				Data:         []byte(`{"attributes":{},"body":"3"}`),
+				Data:         []byte("3"),
 				PartitionKey: aws.String("51b873fc-8086-4b39-8a68-bead0102cdf0"),
 			},
 		},
@@ -72,7 +75,7 @@ func TestWriter_WriteEvents(t *testing.T) {
 	kinesisClient.On("PutRecords", ctx, &kinesis.PutRecordsInput{
 		Records: []types.PutRecordsRequestEntry{
 			{
-				Data:         []byte(`{"attributes":{},"body":"2"}`),
+				Data:         []byte("2"),
 				PartitionKey: aws.String("541c78c0-afc7-440f-b8a3-d2e49fb1ba4c"),
 			},
 		},
@@ -88,17 +91,17 @@ func TestWriter_WriteEvents(t *testing.T) {
 		FailedRecordCount: aws.Int32(0),
 	}, nil).Once()
 
-	writer := stream.NewKinesisOutputWithInterfaces(logger, testClock, uuidGen, kinesisClient, &stream.KinesisOutputSettings{
+	writer := gosoKinesis.NewRecordWriterWithInterfaces(logger, mw, testClock, uuidGen, kinesisClient, &gosoKinesis.RecordWriterSettings{
 		StreamName: "streamName",
 	})
 
-	batch := []stream.WritableMessage{
-		stream.NewMessage("1"),
-		stream.NewMessage("2"),
-		stream.NewMessage("3"),
+	batch := [][]byte{
+		[]byte("1"),
+		[]byte("2"),
+		[]byte("3"),
 	}
 
-	err := writer.Write(context.Background(), batch)
+	err := writer.PutRecords(context.Background(), batch)
 	assert.NoError(t, err)
 
 	logger.AssertExpectations(t)

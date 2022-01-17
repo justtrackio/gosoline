@@ -18,7 +18,7 @@ type outputTracer struct {
 func NewOutputTracer(config cfg.Config, logger log.Logger, base Output, name string) (*outputTracer, error) {
 	key := ConfigurableOutputKey(name)
 
-	settings := &BaseOutputSettings{}
+	settings := &BaseOutputConfiguration{}
 	config.UnmarshalKey(key, settings)
 
 	var err error
