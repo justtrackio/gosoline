@@ -20,10 +20,20 @@ const (
 	OutputTypeSqs      = "sqs"
 )
 
-type BaseOutputSettings struct {
-	Tracing struct {
-		Enabled bool `cfg:"enabled" default:"true"`
-	} `cfg:"tracing"`
+type BaseOutputConfigurationAware interface {
+	SetTracing(enabled bool)
+}
+
+type BaseOutputConfiguration struct {
+	Tracing BaseOutputConfigurationTracing `cfg:"tracing"`
+}
+
+func (b *BaseOutputConfiguration) SetTracing(enabled bool) {
+	b.Tracing.Enabled = enabled
+}
+
+type BaseOutputConfigurationTracing struct {
+	Enabled bool `cfg:"enabled" default:"true"`
 }
 
 func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
@@ -66,6 +76,7 @@ func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 }
 
 type InMemoryOutputConfiguration struct {
+	BaseOutputConfiguration
 	Type string `cfg:"type" default:"inMemory"`
 }
 
@@ -74,6 +85,7 @@ func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, 
 }
 
 type KinesisOutputConfiguration struct {
+	BaseOutputConfiguration
 	Type       string `cfg:"type" default:"kinesis"`
 	StreamName string `cfg:"stream_name"`
 }
@@ -116,7 +128,7 @@ func newRedisListOutputFromConfig(_ context.Context, config cfg.Config, logger l
 }
 
 type SnsOutputConfiguration struct {
-	BaseOutputSettings
+	BaseOutputConfiguration
 	Type        string `cfg:"type" default:"sns"`
 	Project     string `cfg:"project"`
 	Family      string `cfg:"family"`
@@ -147,7 +159,7 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 }
 
 type SqsOutputConfiguration struct {
-	BaseOutputSettings
+	BaseOutputConfiguration
 	Type              string            `cfg:"type" default:"sqs"`
 	Project           string            `cfg:"project"`
 	Family            string            `cfg:"family"`
