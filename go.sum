@@ -149,9 +149,9 @@ github.com/aws/aws-sdk-go-v2 v1.11.2/go.mod h1:SQfA+m2ltnu1cA0soUkj4dRSsmITiVQUJ
 github.com/aws/aws-sdk-go-v2 v1.12.0/go.mod h1:tWhQI5N5SiMawto3uMAQJU5OUN/1ivhDDHq7HTsJvZ0=
 github.com/aws/aws-sdk-go-v2 v1.13.0 h1:1XIXAfxsEmbhbj5ry3D3vX+6ZcUYvIqSm4CWWEuGZCA=
 github.com/aws/aws-sdk-go-v2 v1.13.0/go.mod h1:L6+ZpqHaLbAaxsqV0L4cvxZY7QupWJB4fhkf8LXvC7w=
-github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.0.0/go.mod h1:Xn6sxgRuIDflLRJFj5Ev7UxABIkNbccFPV/p8itDReM=
-github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.1.0 h1:Wkxd2/y6/QFlNQYD8ueQqGy/9BYBq/E7v7fNeLV2P8o=
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.1.0/go.mod h1:VFAAzjEWnl0aWGwxREbyuC6qJOVnTANhKY4KYq2TPP0=
+github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.2.0 h1:scBthy70MB3m4LCMFaBcmYCyR2XWOz6MxSfdSu/+fQo=
+github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.2.0/go.mod h1:oZHzg1OVbuCiRTY0oRPM+c2HQvwnFCGJwKeSqqAJ/yM=
 github.com/aws/aws-sdk-go-v2/config v1.6.0/go.mod h1:TNtBVmka80lRPk5+S9ZqVfFszOQAGJJ9KbT3EM3CHNU=
 github.com/aws/aws-sdk-go-v2/config v1.8.3/go.mod h1:4AEiLtAb8kLs7vgw2ZV3p2VZ1+hBavOc84hqxVNpCyw=
 github.com/aws/aws-sdk-go-v2/config v1.12.0 h1:WOhIzj5HdixjlvQ4SLYAOk6OUUsuu88RwcsTzexa9cg=
@@ -214,8 +214,8 @@ github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.5.2/go.mod h1:QuL2Ym8B
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.7.2/go.mod h1:np7TMuJNT83O0oDOSF8i4dF3dvGqA6hPYYo6YYkzgRA=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.10.0 h1:BIqXLjEbWh7vTj1pQ/63czJUsfck6UwSLpJjhsiZezI=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.10.0/go.mod h1:63zwSPj+6owUqMTuMk12LQBJobiEsCy286evNW+/Mhk=
-github.com/aws/aws-sdk-go-v2/service/kinesis v1.10.0 h1:vOqqOA8jhE2Ivo54feqTmh/gqn3kJsdCb+CZZZsCSWU=
-github.com/aws/aws-sdk-go-v2/service/kinesis v1.10.0/go.mod h1:B1x58TfECuYHFX/bga902rUvMqQu9C/v2XiCi2GZZXE=
+github.com/aws/aws-sdk-go-v2/service/kinesis v1.13.0 h1:wqLvwC4qdrrGikudu8Z9X2sb79BYUYWAgMF5BGFQJY8=
+github.com/aws/aws-sdk-go-v2/service/kinesis v1.13.0/go.mod h1:RCOtKdXlUfirtaxlHIcFs586lpZU2HD8AzmfXzapOdg=
 github.com/aws/aws-sdk-go-v2/service/rds v1.16.0 h1:xYxIpmqlnc+U/miylJaNmEty34MC4BmxpVOqkF2DFpo=
 github.com/aws/aws-sdk-go-v2/service/rds v1.16.0/go.mod h1:U1tzFmWLyt4AqSRLONL0RXcYsQg0huiInDdRmCecz1w=
 github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.10.0 h1:rdwfpfLBDpv+SSPgIovAQG1g5br5Om0BL7zSYp329dU=
