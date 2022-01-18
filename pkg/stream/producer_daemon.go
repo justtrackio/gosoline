@@ -9,7 +9,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
-	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -102,18 +101,21 @@ func ProvideProducerDaemon(ctx context.Context, config cfg.Config, logger log.Lo
 }
 
 func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*producerDaemon, error) {
+	logger = logger.WithChannel(fmt.Sprintf("producer-daemon-%s", name))
 	settings := readProducerSettings(config, name)
-
-	output, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
-	if err != nil {
-		return nil, fmt.Errorf("can not create output for producer daemon %s: %w", name, err)
-	}
 
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
 	metricWriter := metric.NewDaemonWriter(defaultMetrics...)
 
-	aggregator, err := NewProducerDaemonAggregator(settings.Daemon, settings.Compression)
-	if err != nil {
+	var err error
+	var output Output
+	var aggregator ProducerDaemonAggregator
+
+	if output, err = NewConfigurableOutput(ctx, config, logger, settings.Output); err != nil {
+		return nil, fmt.Errorf("can not create output for producer daemon %s: %w", name, err)
+	}
+
+	if aggregator, err = NewProducerDaemonAggregator(settings.Daemon, settings.Compression); err != nil {
 		return nil, fmt.Errorf("can not create aggregator for producer daemon %s: %w", name, err)
 	}
 
@@ -148,7 +150,7 @@ func (d *producerDaemon) Run(kernelCtx context.Context) error {
 	// start the output loops before the ticker look - the output loop can't terminate until
 	// we call close, while the ticker can if the context is already canceled
 	for i := 0; i < d.settings.RunnerCount; i++ {
-		cfn.GoWithContextf(kernelCtx, d.outputLoop, "panic during running the ticker loop")
+		cfn.Gof(d.outputLoop, "panic during running the ticker loop")
 	}
 
 	cfn.GoWithContextf(kernelCtx, d.tickerLoop, "panic during running the ticker loop")
@@ -324,7 +326,10 @@ func (d *producerDaemon) close() error {
 	return nil
 }
 
-func (d *producerDaemon) outputLoop(ctx context.Context) error {
+func (d *producerDaemon) outputLoop() error {
+	// we want to use an empty context here instead of the kernel one to not cancel any remaining write requests
+	ctx := context.Background()
+
 	for {
 		start := time.Now()
 		batch, ok := d.outCh.Read()
@@ -334,15 +339,8 @@ func (d *producerDaemon) outputLoop(ctx context.Context) error {
 			return nil
 		}
 
-		// no need to have some delayed cancel context or so here - if you need this, your output should've already provided that
 		if err := d.output.Write(ctx, batch); err != nil {
-			if exec.IsRequestCanceled(err) {
-				// we were not fast enough to write all messages and have just lost some messages.
-				// however, if this would be a problem, you shouldn't be using the producer daemon at all.
-				d.logger.Warn("can not write messages to output in producer %s because of canceled context", d.name)
-			} else {
-				d.logger.Error("can not write messages to output in producer %s: %w", d.name, err)
-			}
+			d.logger.Error("can not write messages to output in producer %s: %w", d.name, err)
 		}
 
 		d.writeMetricBatchSize(len(batch))
