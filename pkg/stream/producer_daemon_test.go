@@ -92,7 +92,7 @@ func (s *ProducerDaemonTestSuite) expectMessage(messages []stream.WritableMessag
 	expectedJson, err := json.Marshal(messages)
 	s.NoError(err)
 
-	call := s.output.On("Write", s.ctx, mock.Anything)
+	call := s.output.On("Write", context.Background(), mock.Anything)
 	call.Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
 		writtenMsg := args.Get(1)
@@ -255,52 +255,6 @@ func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
 	err = s.stop()
 
 	s.NoError(err, "there should be no error on run")
-	s.output.AssertExpectations(s.T())
-}
-
-func (s *ProducerDaemonTestSuite) TestWriteWithCanceledError() {
-	s.SetupDaemon(log.PriorityWarn, 5, 5, time.Hour)
-
-	messages := []stream.WritableMessage{
-		&stream.Message{Body: "1"},
-		&stream.Message{Body: "2"},
-	}
-	aggregateMessage, err := stream.MarshalJsonMessage(messages, map[string]interface{}{
-		stream.AttributeAggregate: true,
-	})
-	s.NoError(err)
-
-	expectedJson, err := json.Marshal([]stream.WritableMessage{aggregateMessage})
-	s.NoError(err)
-
-	s.output.On("Write", s.ctx, mock.Anything).Run(func(args mock.Arguments) {
-		ctx := args.Get(0).(context.Context)
-		writtenMessages := args.Get(1)
-
-		writtenJson, err := json.Marshal(writtenMessages)
-		s.NoError(err)
-
-		s.JSONEq(string(expectedJson), string(writtenJson))
-
-		select {
-		case _, ok := <-ctx.Done():
-			s.False(ok, "expected the context to have been canceled")
-		default:
-			s.Fail("expected the context to have been canceled")
-		}
-	}).Return(context.Canceled).Once()
-
-	_, err = stream.MarshalJsonMessage(messages, map[string]interface{}{
-		stream.AttributeAggregate: true,
-	})
-	s.NoError(err)
-
-	err = s.daemon.Write(context.Background(), messages)
-	s.NoError(err, "there should be no error on write")
-
-	err = s.stop()
-
-	s.NoError(err)
 	s.output.AssertExpectations(s.T())
 }
 
