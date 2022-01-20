@@ -13,7 +13,7 @@ import (
 	"github.com/thoas/go-funk"
 )
 
-const sqsOutputBatchSize = 10
+const SqsOutputBatchSize = 10
 
 type SqsOutputSettings struct {
 	cfg.AppId
@@ -73,11 +73,21 @@ func NewSqsOutputWithInterfaces(logger log.Logger, queue sqs.Queue, s *SqsOutput
 }
 
 func (o *sqsOutput) WriteOne(ctx context.Context, record WritableMessage) error {
-	return o.Write(ctx, []WritableMessage{record})
+	sqsMessage, err := o.buildSqsMessage(ctx, record)
+	if err != nil {
+		return fmt.Errorf("could not build sqs message: %w", err)
+	}
+
+	err = o.queue.Send(ctx, sqsMessage)
+	if err != nil {
+		return fmt.Errorf("could not send sqs message: %w", err)
+	}
+
+	return nil
 }
 
 func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
-	chunks, ok := funk.Chunk(batch, sqsOutputBatchSize).([][]WritableMessage)
+	chunks, ok := funk.Chunk(batch, SqsOutputBatchSize).([][]WritableMessage)
 
 	if !ok {
 		err := fmt.Errorf("can not chunk messages for sending to sqs")
