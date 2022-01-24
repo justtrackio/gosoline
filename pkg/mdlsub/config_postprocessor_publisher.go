@@ -92,7 +92,10 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 	outputSettings := &stream.KinesisOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 
-	outputSettings.StreamName = fmt.Sprintf("%s-%s-%s-%s-%s", publisherSettings.Project, publisherSettings.Environment, publisherSettings.Family, publisherSettings.Application, publisherSettings.Name)
+	outputSettings.Project = publisherSettings.Project
+	outputSettings.Family = publisherSettings.Family
+	outputSettings.Application = publisherSettings.Application
+	outputSettings.StreamName = publisherSettings.Name
 	outputSettings.Tracing.Enabled = false
 
 	return outputSettings

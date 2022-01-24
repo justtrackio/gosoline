@@ -16,6 +16,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/stream/mocks"
 	"github.com/justtrackio/gosoline/pkg/tracing"
+	uuidMocks "github.com/justtrackio/gosoline/pkg/uuid/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -23,75 +24,106 @@ import (
 type ConsumerTestSuite struct {
 	suite.Suite
 
-	data    chan *stream.Message
-	dataOut <-chan *stream.Message
-	once    sync.Once
-	stop    func()
+	kernelCtx    context.Context
+	kernelCancel context.CancelFunc
 
-	input *mocks.Input
+	input         *mocks.Input
+	inputData     chan *stream.Message
+	inputDataOut  <-chan *stream.Message
+	inputStopOnce sync.Once
+	inputStop     func(args mock.Arguments)
 
+	retryHandler  *mocks.RetryHandler
+	retryData     chan *stream.Message
+	retryDataOut  <-chan *stream.Message
+	retryStopOnce sync.Once
+	retryStop     func(args mock.Arguments)
+
+	uuidGen  *uuidMocks.Uuid
 	callback *mocks.RunnableConsumerCallback
 	consumer *stream.Consumer
 }
 
 func (s *ConsumerTestSuite) SetupTest() {
-	s.data = make(chan *stream.Message, 10)
-	s.dataOut = s.data
-	s.once = sync.Once{}
-	s.stop = func() {
-		s.once.Do(func() {
-			close(s.data)
+	s.kernelCtx, s.kernelCancel = context.WithCancel(context.Background())
+
+	s.inputData = make(chan *stream.Message, 10)
+	s.inputDataOut = s.inputData
+	s.inputStopOnce = sync.Once{}
+	s.inputStop = func(args mock.Arguments) {
+		s.inputStopOnce.Do(func() {
+			close(s.inputData)
 		})
 	}
 
 	s.input = new(mocks.Input)
+	s.input.On("Data").Return(s.inputDataOut)
+	s.input.On("Stop").Run(s.inputStop).Once()
+
+	s.retryData = make(chan *stream.Message, 10)
+	s.retryDataOut = s.retryData
+	s.retryStopOnce = sync.Once{}
+	s.retryStop = func(args mock.Arguments) {
+		s.retryStopOnce.Do(func() {
+			close(s.retryData)
+		})
+	}
+
+	s.retryHandler = new(mocks.RetryHandler)
+	s.retryHandler.On("Data").Return(s.retryDataOut)
+	s.retryHandler.On("Stop").Run(s.retryStop).Once()
+
+	s.uuidGen = new(uuidMocks.Uuid)
 	s.callback = new(mocks.RunnableConsumerCallback)
 
 	logger := logMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
 	mw := metricMocks.NewWriterMockedAll()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
+
 	settings := &stream.ConsumerSettings{
 		Input:       "test",
 		RunnerCount: 1,
 		IdleTimeout: time.Second,
+		Retry: stream.ConsumerRetrySettings{
+			Enabled: true,
+		},
 	}
 
-	baseConsumer := stream.NewBaseConsumerWithInterfaces(logger, mw, tracer, s.input, me, s.callback, settings, "test", cfg.AppId{})
+	baseConsumer := stream.NewBaseConsumerWithInterfaces(s.uuidGen, logger, mw, tracer, s.input, me, s.retryHandler, s.callback, settings, "test", cfg.AppId{})
 	s.consumer = stream.NewConsumerWithInterfaces(baseConsumer, s.callback)
 }
 
 func (s *ConsumerTestSuite) TestGetModelNil() {
-	s.input.On("Data").Return(s.dataOut)
+	s.retryHandler.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
-		s.data <- stream.NewJsonMessage(`"foo"`, map[string]interface{}{
+		s.inputData <- stream.NewJsonMessage(`"foo"`, map[string]interface{}{
 			"bla": "blub",
 		})
-		s.stop()
+		s.kernelCancel()
 	}).Return(nil)
-	s.input.On("Stop").Once()
 
 	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).Return(func(_ map[string]interface{}) interface{} {
 		return nil
 	})
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
-	err := s.consumer.Run(context.Background())
+	err := s.consumer.Run(s.kernelCtx)
 
 	s.NoError(err, "there should be no error during run")
 	s.input.AssertExpectations(s.T())
+	s.retryHandler.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }
 
 func (s *ConsumerTestSuite) TestRun() {
-	s.input.On("Data").Return(s.dataOut)
+	s.retryHandler.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
-		s.data <- stream.NewJsonMessage(`"foo"`)
-		s.data <- stream.NewJsonMessage(`"bar"`)
-		s.data <- stream.NewJsonMessage(`"foobar"`)
-		s.stop()
+		s.inputData <- stream.NewJsonMessage(`"foo"`)
+		s.inputData <- stream.NewJsonMessage(`"bar"`)
+		s.inputData <- stream.NewJsonMessage(`"foobar"`)
+		s.kernelCancel()
 	}).Return(nil)
-	s.input.On("Stop").Once()
 
 	consumed := make([]*string, 0)
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
@@ -106,56 +138,19 @@ func (s *ConsumerTestSuite) TestRun() {
 
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
-	err := s.consumer.Run(context.Background())
+	err := s.consumer.Run(s.kernelCtx)
 
 	s.NoError(err, "there should be no error during run")
 	s.Len(consumed, 3)
 
 	s.input.AssertExpectations(s.T())
-	s.callback.AssertExpectations(s.T())
-}
-
-func (s *ConsumerTestSuite) TestRun_ContextCancel() {
-	ctx, cancel := context.WithCancel(context.Background())
-	stopped := make(chan struct{})
-	once := sync.Once{}
-
-	s.input.On("Data").
-		Return(s.dataOut)
-
-	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
-			cancel()
-			<-stopped
-			s.stop()
-		}).Return(nil)
-
-	s.input.On("Stop").
-		Run(func(args mock.Arguments) {
-			once.Do(func() {
-				close(stopped)
-			})
-		}).Once()
-
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Return(nil)
-
-	err := s.consumer.Run(ctx)
-
-	s.NoError(err, "there should be no error during run")
-
-	s.input.AssertExpectations(s.T())
+	s.retryHandler.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }
 
 func (s *ConsumerTestSuite) TestRun_InputRunError() {
-	s.input.
-		On("Data").
-		Return(s.dataOut)
-
-	s.input.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Return(fmt.Errorf("read error"))
+	s.retryHandler.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(fmt.Errorf("read error"))
 
 	s.callback.
 		On("Run", mock.AnythingOfType("*context.cancelCtx")).
@@ -163,20 +158,17 @@ func (s *ConsumerTestSuite) TestRun_InputRunError() {
 			<-args[0].(context.Context).Done()
 		}).Return(nil)
 
-	err := s.consumer.Run(context.Background())
+	err := s.consumer.Run(s.kernelCtx)
 
 	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumer input: read error")
 
 	s.input.AssertExpectations(s.T())
+	s.retryHandler.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }
 
 func (s *ConsumerTestSuite) TestRun_CallbackRunError() {
-	s.input.On("Data").
-		Return(s.dataOut)
-	s.input.On("Stop").
-		Once()
-
+	s.retryHandler.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
 			<-args[0].(context.Context).Done()
@@ -195,25 +187,17 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunError() {
 }
 
 func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
-	s.input.On("Data").
-		Return(s.dataOut)
-
+	s.retryHandler.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Run(func(args mock.Arguments) {
-			s.data <- stream.NewJsonMessage(`"foo"`)
-			s.data <- stream.NewJsonMessage(`"bar"`)
-			s.stop()
+			s.inputData <- stream.NewJsonMessage(`"foo"`)
+			s.inputData <- stream.NewJsonMessage(`"bar"`)
+			s.kernelCancel()
 		}).Return(nil)
-
-	s.input.
-		On("Stop").
-		Once()
 
 	consumed := make([]*string, 0)
 
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Return(nil)
-
+	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*string)
@@ -231,16 +215,19 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 			return mdl.String("")
 		})
 
-	err := s.consumer.Run(context.Background())
+	err := s.consumer.Run(s.kernelCtx)
 
 	s.Nil(err, "there should be no error returned on consume")
 	s.Len(consumed, 2)
 
 	s.input.AssertExpectations(s.T())
+	s.retryHandler.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }
 
 func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
+	s.retryHandler.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+
 	message1 := stream.NewJsonMessage(`"foo"`, map[string]interface{}{
 		"attr1": "a",
 	})
@@ -253,21 +240,13 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 
 	aggregate := stream.BuildAggregateMessage(string(aggregateBody))
 
-	s.input.On("Data").
-		Return(s.dataOut)
-
-	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
-			s.data <- aggregate
-			s.stop()
-		}).Return(nil)
-
-	s.input.On("Stop").
-		Once()
+	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
+		s.inputData <- aggregate
+		s.kernelCancel()
+	}).Return(nil)
 
 	consumed := make([]string, 0)
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Return(nil)
+	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
 	expectedAttributes1 := map[string]interface{}{"attr1": "a"}
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), expectedAttributes1).
@@ -293,13 +272,76 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 	s.callback.On("GetModel", expectedModelAttributes2).
 		Return(mdl.String(""))
 
-	err = s.consumer.Run(context.Background())
+	err = s.consumer.Run(s.kernelCtx)
 
 	s.Nil(err, "there should be no error returned on consume")
 	s.Len(consumed, 2)
 	s.Equal("foobar", strings.Join(consumed, ""))
 
 	s.input.AssertExpectations(s.T())
+	s.retryHandler.AssertExpectations(s.T())
+	s.callback.AssertExpectations(s.T())
+}
+
+func (s *ConsumerTestSuite) TestRunWithRetry() {
+	uuid := "243da976-c43f-4578-9307-596146e7dd9a"
+	s.uuidGen.On("NewV4").Return(uuid)
+
+	originalMessage := stream.NewJsonMessage(`"foo"`)
+	retryMessage := stream.NewMessage(`"foo"`, map[string]interface{}{
+		stream.AttributeRetry:   true,
+		stream.AttributeRetryId: uuid,
+	})
+
+	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
+		s.inputData <- originalMessage
+	}).Return(nil)
+
+	s.retryHandler.
+		On("Put", mock.AnythingOfType("*context.valueCtx"), retryMessage).
+		Run(func(args mock.Arguments) {
+			s.retryData <- stream.NewJsonMessage(`"foo from retry"`)
+		}).
+		Return(nil).
+		Once()
+	s.retryHandler.
+		On("Run", mock.AnythingOfType("*context.cancelCtx")).
+		Return(nil)
+
+	consumed := make([]string, 0)
+	s.callback.
+		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
+		Run(func(args mock.Arguments) {
+			consumed = append(consumed, *args[1].(*string))
+		}).
+		Return(false, nil).
+		Once()
+	s.callback.
+		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
+		Run(func(args mock.Arguments) {
+			consumed = append(consumed, *args[1].(*string))
+			s.kernelCancel()
+		}).
+		Return(true, nil).
+		Once()
+
+	s.callback.
+		On("GetModel", mock.AnythingOfType("map[string]interface {}")).
+		Return(func(_ map[string]interface{}) interface{} {
+			return mdl.String("")
+		}).
+		Twice()
+
+	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+
+	err := s.consumer.Run(s.kernelCtx)
+
+	s.NoError(err, "there should be no error during run")
+	s.Equal("foo", consumed[0])
+	s.Equal("foo from retry", consumed[1])
+
+	s.input.AssertExpectations(s.T())
+	s.retryHandler.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
 }
 

@@ -53,7 +53,7 @@ type Settings struct {
 	// How many records the shard reader should fetch in a single call
 	MaxBatchSize int `cfg:"max_batch_size" default:"10000" validate:"gt=0,lte=10000"`
 	// Time between reads from empty shards. This defines how fast the kinsumer begins its work. Min = 1ms
-	WaitTime time.Duration `cfg:"idle_wait_time" default:"1s" validate:"min=1000000"`
+	WaitTime time.Duration `cfg:"wait_time" default:"1s" validate:"min=1000000"`
 	// Time between writing checkpoints to ddb. This defines how much work you might lose. Min = 100ms
 	PersistFrequency time.Duration `cfg:"persist_frequency" default:"5s" validate:"min=100000000"`
 	// Time between checks for new shards. This defines how fast it reacts to shard changes. Min = 1s
@@ -94,8 +94,8 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	clientId := ClientId(uuid.New().NewV4())
 
 	logger = logger.WithChannel("kinsumer").WithFields(log.Fields{
-		"stream_name": streamName,
-		"client_id":   clientId,
+		"stream_name":        streamName,
+		"kinsumer_client_id": clientId,
 	})
 
 	shardReaderDefaults := getShardReaderDefaultMetrics(streamName)

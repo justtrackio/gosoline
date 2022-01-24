@@ -34,21 +34,21 @@ func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(ctx 
 		loggerCallback := logger.WithChannel("consumerCallback")
 		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
 
-		callback, err := callbackFactory(ctx, config, contextEnforcingLogger)
-		if err != nil {
+		var err error
+		var callback ConsumerCallback
+		var baseConsumer *baseConsumer
+
+		if callback, err = callbackFactory(ctx, config, contextEnforcingLogger); err != nil {
 			return nil, fmt.Errorf("can not initiate callback for consumer %s: %w", name, err)
 		}
 
 		contextEnforcingLogger.Enable()
 
-		baseConsumer, err := NewBaseConsumer(ctx, config, logger, name, callback)
-		if err != nil {
+		if baseConsumer, err = NewBaseConsumer(ctx, config, logger, name, callback); err != nil {
 			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
 		}
 
-		consumer := NewConsumerWithInterfaces(baseConsumer, callback)
-
-		return consumer, nil
+		return NewConsumerWithInterfaces(baseConsumer, callback), nil
 	}
 }
 
@@ -62,43 +62,43 @@ func NewConsumerWithInterfaces(base *baseConsumer, callback ConsumerCallback) *C
 }
 
 func (c *Consumer) Run(kernelCtx context.Context) error {
-	return c.baseConsumer.run(kernelCtx, c.run)
+	return c.baseConsumer.run(kernelCtx, c.readData)
 }
 
-func (c *Consumer) run(ctx context.Context) error {
-	defer c.logger.Debug("runConsuming is ending")
+func (c *Consumer) readData(ctx context.Context) error {
+	defer c.logger.Debug("read from input is ending")
 	defer c.wg.Done()
 
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("return from consuming as the coffin is dying")
+			return nil
 
-		case msg, ok := <-c.input.Data():
+		case cdata, ok := <-c.data:
 			if !ok {
 				return nil
 			}
 
-			if _, ok := msg.Attributes[AttributeAggregate]; ok {
-				c.processAggregateMessage(ctx, msg)
+			if _, ok := cdata.msg.Attributes[AttributeAggregate]; ok {
+				c.processAggregateMessage(ctx, cdata)
 			} else {
-				c.processSingleMessage(ctx, msg)
+				c.processSingleMessage(ctx, cdata)
 			}
 		}
 	}
 }
 
-func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message) {
+func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerData) {
 	var err error
 	start := c.clock.Now()
 	batch := make([]*Message, 0)
 
-	if ctx, _, err = c.encoder.Decode(ctx, msg, &batch); err != nil {
+	if ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch); err != nil {
 		c.handleError(ctx, err, "an error occurred during disaggregation of the message")
 		return
 	}
 
-	c.Acknowledge(ctx, msg)
+	c.Acknowledge(ctx, cdata)
 
 	for _, m := range batch {
 		c.process(ctx, m)
@@ -107,21 +107,19 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, msg *Message) {
 	duration := c.clock.Now().Sub(start)
 	atomic.AddInt32(&c.processed, int32(len(batch)))
 
-	c.writeMetrics(duration, len(batch))
+	c.writeMetricDurationAndProcessedCount(duration, len(batch))
 }
 
-func (c *Consumer) processSingleMessage(ctx context.Context, msg *Message) {
+func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData) {
 	start := c.clock.Now()
-	ack := c.process(ctx, msg)
 
-	if ack {
-		c.Acknowledge(ctx, msg)
+	if ack := c.process(ctx, cdata.msg); ack {
+		c.Acknowledge(ctx, cdata)
 	}
 
 	duration := c.clock.Now().Sub(start)
 	atomic.AddInt32(&c.processed, 1)
-
-	c.writeMetrics(duration, 1)
+	c.writeMetricDurationAndProcessedCount(duration, 1)
 }
 
 func (c *Consumer) process(ctx context.Context, msg *Message) bool {
@@ -149,6 +147,12 @@ func (c *Consumer) process(ctx context.Context, msg *Message) bool {
 	if ack, err = c.callback.Consume(ctx, model, attributes); err != nil {
 		c.handleError(ctx, err, "an error occurred during the consume operation")
 	}
+
+	if ack {
+		return true
+	}
+
+	c.retry(ctx, msg)
 
 	return ack
 }

@@ -16,6 +16,7 @@ import (
 
 const (
 	AttributeAggregate      = "goso.aggregate"
+	AttributeAggregateCount = "goso.aggregate.count"
 	metricNameMessageCount  = "MessageCount"
 	metricNameBatchSize     = "BatchSize"
 	metricNameAggregateSize = "AggregateSize"
@@ -431,5 +432,5 @@ func BuildAggregateMessage(aggregateBody string, attributes ...map[string]interf
 		AttributeAggregate: true,
 	})
 
-	return NewJsonMessage(aggregateBody, attributes...)
+	return NewMessage(aggregateBody, attributes...)
 }

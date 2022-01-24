@@ -212,6 +212,10 @@ func (i *sqsInput) AckBatch(ctx context.Context, msgs []*Message) error {
 	return multiError.ErrorOrNil()
 }
 
+func (i *sqsInput) HasRetry() bool {
+	return true
+}
+
 func (i *sqsInput) SetUnmarshaler(unmarshaler UnmarshallerFunc) {
 	i.unmarshaler = unmarshaler
 }

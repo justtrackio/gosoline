@@ -22,7 +22,7 @@ func TestOutputFile_ConcurrentWrite(t *testing.T) {
 	logger := new(logMocks.Logger)
 	output := stream.NewFileOutput(nil, logger, &stream.FileOutputSettings{
 		Filename: fileName,
-		Append:   true,
+		Mode:     stream.FileOutputModeAppend,
 	})
 	var waitGroup sync.WaitGroup
 	count := 10

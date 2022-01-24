@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/spf13/cast"
 	"github.com/thoas/go-funk"
 )
 
@@ -129,37 +130,32 @@ func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []WritableMes
 }
 
 func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg WritableMessage) (*sqs.Message, error) {
+	var err error
 	var delay int32
-	var messageGroupId *string
-	var messageDeduplicationId *string
+	var messageGroupId string
+	var messageDeduplicationId string
 
 	attributes := getAttributes(msg)
 
 	if d, ok := attributes[sqs.AttributeSqsDelaySeconds]; ok {
-		if dInt32, ok := d.(int32); ok {
-			delay = dInt32
-		} else {
-			return nil, fmt.Errorf("the type of the %s attribute should be int32 but instead is %T", sqs.AttributeSqsDelaySeconds, d)
+		if delay, err = cast.ToInt32E(d); err != nil {
+			return nil, fmt.Errorf("the type of the %s attribute with value %v should be castable to int32: %w", sqs.AttributeSqsDelaySeconds, attributes[sqs.AttributeSqsDelaySeconds], err)
 		}
 	}
 
 	if d, ok := attributes[sqs.AttributeSqsMessageGroupId]; ok {
-		if groupIdString, ok := d.(string); ok {
-			messageGroupId = mdl.String(groupIdString)
-		} else {
-			return nil, fmt.Errorf("the type of the %s attribute should be string but instead is %T", sqs.AttributeSqsMessageGroupId, d)
+		if messageGroupId, err = cast.ToStringE(d); err != nil {
+			return nil, fmt.Errorf("the type of the %s attribute with value %v should be castable to string: %w", sqs.AttributeSqsMessageGroupId, attributes[sqs.AttributeSqsMessageGroupId], err)
 		}
 	}
 
 	if d, ok := attributes[sqs.AttributeSqsMessageDeduplicationId]; ok {
-		if deduplicationIdString, ok := d.(string); ok {
-			messageDeduplicationId = mdl.String(deduplicationIdString)
-		} else {
-			return nil, fmt.Errorf("the type of the %s attribute should be string but instead is %T", sqs.AttributeSqsMessageDeduplicationId, d)
+		if messageDeduplicationId, err = cast.ToStringE(d); err != nil {
+			return nil, fmt.Errorf("the type of the %s attribute with value %v should be castable to string: %w", sqs.AttributeSqsMessageDeduplicationId, attributes[sqs.AttributeSqsMessageDeduplicationId], err)
 		}
 	}
 
-	if o.settings.Fifo.ContentBasedDeduplication && messageDeduplicationId == nil {
+	if o.settings.Fifo.ContentBasedDeduplication && messageDeduplicationId == "" {
 		o.logger.WithContext(ctx).WithFields(log.Fields{
 			"stacktrace": log.GetStackTrace(0),
 		}).Warn("writing message to queue %s (which is configured to use content based deduplication) without message deduplication id", o.queue.GetName())
@@ -171,10 +167,16 @@ func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg WritableMessage) (*
 	}
 
 	sqsMessage := &sqs.Message{
-		DelaySeconds:           delay,
-		MessageGroupId:         messageGroupId,
-		MessageDeduplicationId: messageDeduplicationId,
-		Body:                   mdl.String(body),
+		DelaySeconds: delay,
+		Body:         mdl.String(body),
+	}
+
+	if messageGroupId != "" {
+		sqsMessage.MessageGroupId = mdl.String(messageGroupId)
+	}
+
+	if messageDeduplicationId != "" {
+		sqsMessage.MessageDeduplicationId = mdl.String(messageDeduplicationId)
 	}
 
 	return sqsMessage, nil

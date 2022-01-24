@@ -9,13 +9,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
-type streamInputComponent struct {
+type StreamInputComponent struct {
 	baseComponent
 	name  string
 	input *stream.InMemoryInput
 }
 
-func (s *streamInputComponent) CfgOptions() []cfg.Option {
+func (s *StreamInputComponent) CfgOptions() []cfg.Option {
 	key := fmt.Sprintf("stream.input.%s.type", s.name)
 
 	return []cfg.Option{
@@ -23,7 +23,7 @@ func (s *streamInputComponent) CfgOptions() []cfg.Option {
 	}
 }
 
-func (s *streamInputComponent) Publish(body interface{}, attributes map[string]interface{}) {
+func (s *StreamInputComponent) Publish(body interface{}, attributes map[string]interface{}) {
 	bytes, err := json.Marshal(body)
 	if err != nil {
 		s.failNow(err.Error(), "can not marshal message body for publishing")
@@ -37,12 +37,12 @@ func (s *streamInputComponent) Publish(body interface{}, attributes map[string]i
 	s.input.Publish(message)
 }
 
-func (s *streamInputComponent) PublishAndStop(body interface{}, attributes map[string]interface{}) {
+func (s *StreamInputComponent) PublishAndStop(body interface{}, attributes map[string]interface{}) {
 	s.Publish(body, attributes)
 	s.Stop()
 }
 
-func (s *streamInputComponent) PublishFromJsonFile(fileName string) {
+func (s *StreamInputComponent) PublishFromJsonFile(fileName string) {
 	bytes, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		s.failNow(err.Error(), "can not open json file to publish messages")
@@ -62,6 +62,6 @@ func (s *streamInputComponent) PublishFromJsonFile(fileName string) {
 	s.input.Stop()
 }
 
-func (s *streamInputComponent) Stop() {
+func (s *StreamInputComponent) Stop() {
 	s.input.Stop()
 }

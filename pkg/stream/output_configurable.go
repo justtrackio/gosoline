@@ -72,6 +72,10 @@ func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 	settings := &FileOutputSettings{}
 	config.UnmarshalKey(key, settings)
 
+	if settings.Filename == "" {
+		settings.Filename = fmt.Sprintf("stream-output-%s", name)
+	}
+
 	return NewFileOutput(config, logger, settings), nil
 }
 
@@ -86,17 +90,25 @@ func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, 
 
 type KinesisOutputConfiguration struct {
 	BaseOutputConfiguration
-	Type       string `cfg:"type" default:"kinesis"`
-	StreamName string `cfg:"stream_name"`
+	Type        string `cfg:"type" default:"kinesis"`
+	Project     string `cfg:"project"`
+	Family      string `cfg:"family"`
+	Application string `cfg:"application"`
+	StreamName  string `cfg:"stream_name"`
 }
 
 func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
-	settings := &KinesisOutputConfiguration{}
-	config.UnmarshalKey(key, settings)
+	configuration := &KinesisOutputConfiguration{}
+	config.UnmarshalKey(key, configuration)
 
 	return NewKinesisOutput(ctx, config, logger, &KinesisOutputSettings{
-		StreamName: settings.StreamName,
+		AppId: cfg.AppId{
+			Project:     configuration.Project,
+			Family:      configuration.Family,
+			Application: configuration.Application,
+		},
+		StreamName: configuration.StreamName,
 	})
 }
 

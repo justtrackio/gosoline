@@ -51,7 +51,9 @@ func NewProducerDaemonAggregator(settings ProducerDaemonSettings, compression Co
 		maxMessages: settings.AggregationSize,
 		maxBytes:    settings.AggregationMaxSize,
 		compression: compression,
-		attributes:  map[string]interface{}{},
+		attributes: map[string]interface{}{
+			AttributeEncoding: EncodingJson,
+		},
 		// initially assume we don't perform any compression, first message might not be packed as tightly as the rest,
 		// but if your app runs for a little longer you will already have a proper ratio here for the second message
 		expectedCompressionRatio: 1,
@@ -229,8 +231,15 @@ func (a *producerDaemonAggregator) Flush() (*AggregateFlush, error) {
 		return nil, err
 	}
 
+	attributes := map[string]interface{}{
+		AttributeAggregateCount: messageCount,
+	}
+	for k, v := range a.attributes {
+		attributes[k] = v
+	}
+
 	return &AggregateFlush{
-		Attributes:   a.attributes,
+		Attributes:   attributes,
 		MessageCount: messageCount,
 		Body:         body,
 	}, nil

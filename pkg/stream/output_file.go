@@ -2,20 +2,32 @@ package stream
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"sync"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+type FileOutputMode string
+
+const (
+	FileOutputModeAppend   FileOutputMode = "append"
+	FileOutputModeSingle   FileOutputMode = "single"
+	FileOutputModeTruncate FileOutputMode = "truncate"
+)
+
 type FileOutputSettings struct {
-	Filename string `cfg:"filename"`
-	Append   bool   `cfg:"append"`
+	Filename string         `cfg:"filename"`
+	Mode     FileOutputMode `cfg:"mode" default:"append"`
 }
 
 type fileOutput struct {
 	logger   log.Logger
 	settings *FileOutputSettings
+	lck      sync.Mutex
+	cnt      int
 }
 
 func NewFileOutput(_ cfg.Config, logger log.Logger, settings *FileOutputSettings) Output {
@@ -30,14 +42,25 @@ func (o *fileOutput) WriteOne(ctx context.Context, msg WritableMessage) error {
 }
 
 func (o *fileOutput) Write(_ context.Context, batch []WritableMessage) error {
+	o.lck.Lock()
+	defer o.lck.Unlock()
+
+	filename := o.settings.Filename
 	flags := os.O_CREATE | os.O_WRONLY
-	if o.settings.Append {
-		flags = flags | os.O_APPEND
-	} else {
+
+	switch o.settings.Mode {
+	case FileOutputModeSingle:
+		filename = fmt.Sprintf("%s-%d", filename, o.cnt)
 		flags = flags | os.O_TRUNC
+		o.cnt++
+	case FileOutputModeTruncate:
+		flags = flags | os.O_TRUNC
+	default:
+		flags = flags | os.O_APPEND
+
 	}
 
-	file, err := os.OpenFile(o.settings.Filename, flags, 0o644)
+	file, err := os.OpenFile(filename, flags, 0o644)
 	if err != nil {
 		return err
 	}

@@ -15,14 +15,25 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/tracing"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 const (
 	metricNameConsumerDuration       = "Duration"
 	metricNameConsumerError          = "Error"
 	metricNameConsumerProcessedCount = "ProcessedCount"
+	metricNameConsumerRetryGetCount  = "RetryGetCount"
+	metricNameConsumerRetryPutCount  = "RetryPutCount"
+	dataSourceInput                  = "input"
+	dataSourceRetry                  = "retry"
 	metadataKeyConsumers             = "stream.consumers"
 )
+
+type ConsumerMetadata struct {
+	Name         string `json:"name"`
+	RetryEnabled bool   `json:"retry_enabled"`
+	RetryType    string `json:"retry_type"`
+}
 
 //go:generate mockery --name RunnableCallback
 type RunnableCallback interface {
@@ -34,10 +45,22 @@ type BaseConsumerCallback interface {
 }
 
 type ConsumerSettings struct {
-	Input       string        `cfg:"input" default:"consumer" validate:"required"`
-	RunnerCount int           `cfg:"runner_count" default:"1" validate:"min=1"`
-	Encoding    EncodingType  `cfg:"encoding" default:"application/json"`
-	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
+	Input       string                `cfg:"input" default:"consumer" validate:"required"`
+	RunnerCount int                   `cfg:"runner_count" default:"1" validate:"min=1"`
+	Encoding    EncodingType          `cfg:"encoding" default:"application/json"`
+	IdleTimeout time.Duration         `cfg:"idle_timeout" default:"10s"`
+	Retry       ConsumerRetrySettings `cfg:"retry"`
+}
+
+type ConsumerRetrySettings struct {
+	Enabled bool   `cfg:"enabled"`
+	Type    string `cfg:"type" default:"sqs"`
+}
+
+type consumerData struct {
+	msg   *Message
+	src   string
+	input Input
 }
 
 type baseConsumer struct {
@@ -46,14 +69,17 @@ type baseConsumer struct {
 	ConsumerAcknowledge
 
 	clock        clock.Clock
+	uuidGen      uuid.Uuid
 	logger       log.Logger
 	metricWriter metric.Writer
 	tracer       tracing.Tracer
 	encoder      MessageEncoder
+	retryHandler RetryHandler
 
 	wg      sync.WaitGroup
 	stopped sync.Once
 	cancel  context.CancelFunc
+	data    chan *consumerData
 
 	id               string
 	name             string
@@ -63,6 +89,9 @@ type baseConsumer struct {
 }
 
 func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, name string, consumerCallback BaseConsumerCallback) (*baseConsumer, error) {
+	uuidGen := uuid.New()
+	logger = logger.WithChannel(fmt.Sprintf("consumer-%s", name))
+
 	settings := readConsumerSettings(config, name)
 	appId := cfg.GetAppIdFromConfig(config)
 
@@ -71,11 +100,13 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
 
-	defaultMetrics := getConsumerDefaultMetrics(name, settings.RunnerCount)
+	defaultMetrics := getConsumerDefaultMetrics(name)
 	metricWriter := metric.NewDaemonWriter(defaultMetrics...)
 
-	input, err := NewConfigurableInput(ctx, config, logger, settings.Input)
-	if err != nil {
+	var input Input
+	var retryHandler RetryHandler
+
+	if input, err = NewConfigurableInput(ctx, config, logger, settings.Input); err != nil {
 		return nil, err
 	}
 
@@ -83,37 +114,54 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 		Encoding: settings.Encoding,
 	})
 
-	if err = appctx.MetadataAppend(ctx, metadataKeyConsumers, name); err != nil {
+	// disable the retry handler for inputs which have a retry mechanism on its own
+	if retryAware, ok := input.(RetryableInput); ok {
+		settings.Retry.Enabled = settings.Retry.Enabled && !retryAware.HasRetry()
+	}
+
+	if retryHandler, err = NewRetryHandler(ctx, config, logger, &settings.Retry, name); err != nil {
+		return nil, fmt.Errorf("can not create retry handler: %w", err)
+	}
+
+	consumerMetadata := ConsumerMetadata{
+		Name:         name,
+		RetryEnabled: settings.Retry.Enabled,
+		RetryType:    settings.Retry.Type,
+	}
+	if err = appctx.MetadataAppend(ctx, metadataKeyConsumers, consumerMetadata); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
-	return NewBaseConsumerWithInterfaces(logger, metricWriter, tracer, input, encoder, consumerCallback, settings, name, appId), nil
+	return NewBaseConsumerWithInterfaces(uuidGen, logger, metricWriter, tracer, input, encoder, retryHandler, consumerCallback, settings, name, appId), nil
 }
 
 func NewBaseConsumerWithInterfaces(
+	uuidGen uuid.Uuid,
 	logger log.Logger,
 	metricWriter metric.Writer,
 	tracer tracing.Tracer,
 	input Input,
 	encoder MessageEncoder,
+	retryHandler RetryHandler,
 	consumerCallback interface{},
 	settings *ConsumerSettings,
 	name string,
 	appId cfg.AppId,
 ) *baseConsumer {
-	logger = logger.WithChannel("consumer")
-
 	return &baseConsumer{
 		name:                name,
 		id:                  fmt.Sprintf("consumer-%s-%s-%s", appId.Family, appId.Application, name),
+		clock:               clock.Provider,
+		uuidGen:             uuidGen,
 		logger:              logger,
 		metricWriter:        metricWriter,
 		tracer:              tracer,
 		ConsumerAcknowledge: NewConsumerAcknowledgeWithInterfaces(logger, input),
 		encoder:             encoder,
+		retryHandler:        retryHandler,
 		settings:            settings,
 		consumerCallback:    consumerCallback,
-		clock:               clock.Provider,
+		data:                make(chan *consumerData),
 	}
 }
 
@@ -133,23 +181,25 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 	// run the input after the counters are running to make sure our coffin does not immediately
 	// die just because Run() immediately returns
 	cfn.GoWithContextf(dyingCtx, c.input.Run, "panic during run of the consumer input")
+	cfn.GoWithContextf(dyingCtx, c.retryHandler.Run, "panic during run of the retry handler")
+	cfn.GoWithContextf(dyingCtx, c.ingestData, "panic during shoveling the data")
 
 	c.wg.Add(c.settings.RunnerCount)
-	cfn.Go(c.stopConsuming)
-
 	for i := 0; i < c.settings.RunnerCount; i++ {
 		cfn.GoWithContextf(manualCtx, inputRunner, "panic during consuming")
 	}
 
-	cfn.GoWithContext(manualCtx, func(ctx context.Context) error {
+	cfn.Gof(c.stopConsuming, "panic during stopping the consuming")
+
+	cfn.GoWithContext(manualCtx, func(manualCtx context.Context) error {
 		// wait for kernel or coffin cancel...
 		select {
-		case <-ctx.Done():
+		case <-manualCtx.Done():
 		case <-kernelCtx.Done():
 		}
 
 		// and stop the input
-		c.stopped.Do(c.input.Stop)
+		c.stopIncomingData()
 
 		return nil
 	})
@@ -194,14 +244,65 @@ func (c *baseConsumer) runConsumerCallback(ctx context.Context) error {
 	return nil
 }
 
+func (c *baseConsumer) ingestData(ctx context.Context) error {
+	defer c.logger.Debug("ingestData is ending")
+	defer close(c.data)
+
+	cfn := coffin.New()
+	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput, func(msg *Message) {}), "panic during shoveling data from input")
+	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryHandler, dataSourceRetry, func(msg *Message) {
+		c.logger.Warn("retrying message with id %s", msg.Attributes[AttributeRetryId])
+		c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
+	}), "panic during shoveling data from retry")
+
+	return cfn.Wait()
+}
+
+func (c *baseConsumer) ingestDataFromSource(input Input, src string, onIngest func(msg *Message)) func(ctx context.Context) error {
+	return func(ctx context.Context) error {
+		defer c.logger.Debug("ingestDataFromSource %s is ending", src)
+		defer c.stopIncomingData()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+
+			case msg, ok := <-input.Data():
+				if !ok {
+					return nil
+				}
+
+				onIngest(msg)
+
+				c.data <- &consumerData{
+					msg:   msg,
+					src:   src,
+					input: input,
+				}
+			}
+		}
+	}
+}
+
+// this one acts as a fallback which should stop all still running routines
 func (c *baseConsumer) stopConsuming() error {
 	defer c.logger.Debug("stopConsuming is ending")
 
 	c.wg.Wait()
-	c.stopped.Do(c.input.Stop)
+	c.stopIncomingData()
 	c.cancel()
 
 	return nil
+}
+
+func (c *baseConsumer) stopIncomingData() {
+	c.stopped.Do(func() {
+		defer c.logger.Debug("stopIncomingData is ending")
+
+		c.retryHandler.Stop()
+		c.input.Stop()
+	})
 }
 
 func (c *baseConsumer) recover() {
@@ -211,6 +312,46 @@ func (c *baseConsumer) recover() {
 	}
 
 	c.logger.Error("%w", err)
+}
+
+func (c *baseConsumer) retry(ctx context.Context, msg *Message) {
+	if !c.settings.Retry.Enabled {
+		return
+	}
+
+	retryMsg, retryId := c.buildRetryMessage(msg)
+
+	ctx = log.AppendLoggerContextField(ctx, log.Fields{
+		"retry_id": retryId,
+	})
+
+	c.logger.WithContext(ctx).Warn("putting message with id %s into retry", retryId)
+	c.writeMetricRetryCount(metricNameConsumerRetryPutCount)
+
+	if err := c.retryHandler.Put(ctx, retryMsg); err != nil {
+		c.handleError(ctx, err, "can not put the message into the retry handler")
+	}
+}
+
+func (c *baseConsumer) buildRetryMessage(msg *Message) (*Message, interface{}) {
+	if retryId, ok := msg.Attributes[AttributeRetryId]; ok {
+		return msg, retryId
+	}
+
+	retryId := c.uuidGen.NewV4()
+	retryMsg := &Message{
+		Attributes: map[string]interface{}{},
+		Body:       msg.Body,
+	}
+
+	for k, v := range msg.Attributes {
+		retryMsg.Attributes[k] = v
+	}
+
+	retryMsg.Attributes[AttributeRetry] = true
+	retryMsg.Attributes[AttributeRetryId] = retryId
+
+	return retryMsg, retryId
 }
 
 func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
@@ -227,7 +368,7 @@ func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
 	})
 }
 
-func (c *baseConsumer) writeMetrics(duration time.Duration, processedCount int) {
+func (c *baseConsumer) writeMetricDurationAndProcessedCount(duration time.Duration, processedCount int) {
 	c.metricWriter.Write(metric.Data{
 		&metric.Datum{
 			Priority:   metric.PriorityHigh,
@@ -248,7 +389,19 @@ func (c *baseConsumer) writeMetrics(duration time.Duration, processedCount int) 
 	})
 }
 
-func getConsumerDefaultMetrics(name string, _ int) metric.Data {
+func (c *baseConsumer) writeMetricRetryCount(metricName string) {
+	c.metricWriter.Write(metric.Data{
+		&metric.Datum{
+			MetricName: metricName,
+			Dimensions: map[string]string{
+				"Consumer": c.name,
+			},
+			Value: float64(1),
+		},
+	})
+}
+
+func getConsumerDefaultMetrics(name string) metric.Data {
 	return metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
@@ -262,6 +415,24 @@ func getConsumerDefaultMetrics(name string, _ int) metric.Data {
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameConsumerError,
+			Dimensions: map[string]string{
+				"Consumer": name,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0.0,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumerRetryPutCount,
+			Dimensions: map[string]string{
+				"Consumer": name,
+			},
+			Unit:  metric.UnitCount,
+			Value: 0.0,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameConsumerRetryGetCount,
 			Dimensions: map[string]string{
 				"Consumer": name,
 			},
