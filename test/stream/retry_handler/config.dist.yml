@@ -1,0 +1,23 @@
+env: test
+
+app_project: gosoline
+app_family: test
+app_name: retry-handler-test
+
+stream:
+  consumer:
+    default:
+      retry:
+        enabled: true
+        type: sqs
+        wait_time: 1
+        after: 1s
+
+  input:
+    consumer:
+      type: inMemory
+
+test:
+  components:
+    - type: localstack
+      services: sqs

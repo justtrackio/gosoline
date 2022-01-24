@@ -180,8 +180,8 @@ func (e *Environment) Wiremock(name string) *wiremockComponent {
 	return e.Component(componentWiremock, name).(*wiremockComponent)
 }
 
-func (e *Environment) StreamInput(name string) *streamInputComponent {
-	return e.Component(componentStreamInput, name).(*streamInputComponent)
+func (e *Environment) StreamInput(name string) *StreamInputComponent {
+	return e.Component(componentStreamInput, name).(*StreamInputComponent)
 }
 
 func (e *Environment) StreamOutput(name string) *streamOutputComponent {

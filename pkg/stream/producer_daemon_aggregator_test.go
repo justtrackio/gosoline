@@ -69,7 +69,11 @@ func (f expectedFlush) encode(compression stream.CompressionType) stream.Aggrega
 		panic(err)
 	}
 
-	attributes := map[string]interface{}{}
+	attributes := map[string]interface{}{
+		stream.AttributeEncoding:       stream.EncodingJson,
+		stream.AttributeAggregateCount: len(f.messages),
+	}
+
 	if compression == stream.CompressionGZip {
 		attributes[stream.AttributeCompression] = compression
 

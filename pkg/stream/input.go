@@ -30,3 +30,7 @@ type AcknowledgeableInput interface {
 	// service.
 	AckBatch(ctx context.Context, msgs []*Message) error
 }
+
+type RetryableInput interface {
+	HasRetry() bool
+}

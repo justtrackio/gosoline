@@ -49,7 +49,7 @@ func (f streamInputFactory) DescribeContainers(settings interface{}) componentCo
 func (f streamInputFactory) Component(_ cfg.Config, _ log.Logger, _ map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*streamInputSettings)
 
-	component := &streamInputComponent{
+	component := &StreamInputComponent{
 		name: s.Name,
 		input: stream.ProvideInMemoryInput(s.Name, &stream.InMemorySettings{
 			Size: 10,

@@ -10,6 +10,7 @@ import (
 )
 
 type KinesisOutputSettings struct {
+	cfg.AppId
 	StreamName string
 }
 
@@ -21,8 +22,9 @@ func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger,
 	var err error
 	var recordWriter gosoKinesis.RecordWriter
 
+	settings.PadFromConfig(config)
 	recordWriterSettings := &gosoKinesis.RecordWriterSettings{
-		StreamName: settings.StreamName,
+		StreamName: fmt.Sprintf("%s-%s-%s-%s-%s", settings.Project, settings.Environment, settings.Family, settings.Application, settings.StreamName),
 	}
 
 	if recordWriter, err = gosoKinesis.NewRecordWriter(ctx, config, logger, recordWriterSettings); err != nil {

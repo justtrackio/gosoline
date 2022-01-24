@@ -130,6 +130,10 @@ func readProducerSettings(config cfg.Config, name string) *ProducerSettings {
 	settings := &ProducerSettings{}
 	config.UnmarshalKey(key, settings)
 
+	if settings.Encoding == "" {
+		settings.Encoding = defaultMessageBodyEncoding
+	}
+
 	if settings.Output == "" {
 		settings.Output = name
 	}

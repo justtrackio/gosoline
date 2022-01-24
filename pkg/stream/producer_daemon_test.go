@@ -242,7 +242,8 @@ func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
 	}
 
 	aggregateMessage, err := stream.MarshalJsonMessage(messages, map[string]interface{}{
-		stream.AttributeAggregate: true,
+		stream.AttributeAggregate:      true,
+		stream.AttributeAggregateCount: 3,
 	})
 	s.NoError(err)
 

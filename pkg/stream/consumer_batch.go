@@ -33,7 +33,7 @@ type BatchConsumerSettings struct {
 
 type BatchConsumer struct {
 	*baseConsumer
-	batch    []*Message
+	batch    []*consumerData
 	callback BatchConsumerCallback
 	ticker   *time.Ticker
 	settings *BatchConsumerSettings
@@ -80,10 +80,10 @@ func NewBatchConsumerWithInterfaces(base *baseConsumer, callback BatchConsumerCa
 }
 
 func (c *BatchConsumer) Run(kernelCtx context.Context) error {
-	return c.baseConsumer.run(kernelCtx, c.run)
+	return c.baseConsumer.run(kernelCtx, c.readFromInput)
 }
 
-func (c *BatchConsumer) run(ctx context.Context) error {
+func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 	logger := c.logger.WithContext(ctx)
 	defer logger.Debug("run is ending")
 	defer c.wg.Done()
@@ -96,15 +96,15 @@ func (c *BatchConsumer) run(ctx context.Context) error {
 		case <-ctx.Done():
 			return fmt.Errorf("return from consuming as the coffin is dying")
 
-		case msg, ok := <-c.input.Data():
+		case cdata, ok := <-c.data:
 			if !ok {
 				return nil
 			}
 
-			if _, ok := msg.Attributes[AttributeAggregate]; ok {
-				c.processAggregateMessage(ctx, msg)
+			if _, ok := cdata.msg.Attributes[AttributeAggregate]; ok {
+				c.processAggregateMessage(ctx, cdata)
 			} else {
-				c.processSingleMessage(ctx, msg)
+				c.processSingleMessage(ctx, cdata)
 			}
 
 		case <-c.ticker.C:
@@ -117,41 +117,46 @@ func (c *BatchConsumer) run(ctx context.Context) error {
 	}
 }
 
-func (c *BatchConsumer) processAggregateMessage(ctx context.Context, msg *Message) {
+func (c *BatchConsumer) processAggregateMessage(ctx context.Context, cdata *consumerData) {
 	batch := make([]*Message, 0)
 	var err error
 
-	ctx, _, err = c.encoder.Decode(ctx, msg, &batch)
+	ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch)
 
 	if err != nil {
 		c.logger.WithContext(ctx).Error("an error occurred during disaggregation of the message: %w", err)
 		return
 	}
 
-	c.batch = append(c.batch, batch...)
+	for _, msg := range batch {
+		c.batch = append(c.batch, &consumerData{
+			msg:   msg,
+			input: cdata.input,
+		})
+	}
 }
 
-func (c *BatchConsumer) processSingleMessage(_ context.Context, msg *Message) {
-	c.batch = append(c.batch, msg)
+func (c *BatchConsumer) processSingleMessage(_ context.Context, cdata *consumerData) {
+	c.batch = append(c.batch, cdata)
 }
 
 func (c *BatchConsumer) processBatch(ctx context.Context) {
 	batch := c.batch
 
-	c.batch = make([]*Message, 0, c.settings.BatchSize)
+	c.batch = make([]*consumerData, 0, c.settings.BatchSize)
 	c.ticker.Stop()
 	c.ticker = time.NewTicker(c.settings.IdleTimeout)
 
 	c.consumeBatch(ctx, batch)
 }
 
-func (c *BatchConsumer) consumeBatch(kernelCtx context.Context, batch []*Message) {
+func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData) {
 	defer c.recover()
 
 	start := c.clock.Now()
 
 	// make sure to create new context as we can't rely on the tracer to create a new one
-	batchCtx, cancel := context.WithCancel(kernelCtx)
+	batchCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	var span tracing.Span
@@ -162,7 +167,7 @@ func (c *BatchConsumer) consumeBatch(kernelCtx context.Context, batch []*Message
 		return
 	}
 
-	messages, models, attributes, subSpans := c.decodeMessages(batchCtx, batch)
+	batch, models, attributes, subSpans := c.decodeMessages(batchCtx, batch)
 	defer func() {
 		for i := range subSpans {
 			subSpans[i].Finish()
@@ -176,15 +181,18 @@ func (c *BatchConsumer) consumeBatch(kernelCtx context.Context, batch []*Message
 		logger.Error("an error occurred during the consume batch operation: %w", err)
 	}
 
-	if len(messages) != len(acks) {
-		logger.Error("number of acks does not match number of messages in batch: %d != %d", len(acks), len(messages))
+	if len(batch) != len(acks) {
+		logger.Error("number of acks does not match number of messages in batch: %d != %d", len(acks), len(batch))
 	}
 
-	ackMessages := make([]*Message, 0, len(messages))
+	ackMessages := make([]*consumerData, 0, len(batch))
 	for i, ack := range acks {
 		if ack {
-			ackMessages = append(ackMessages, messages[i])
+			ackMessages = append(ackMessages, batch[i])
+			continue
 		}
+
+		c.retry(batchCtx, batch[i].msg)
 	}
 
 	c.AcknowledgeBatch(batchCtx, ackMessages)
@@ -192,19 +200,19 @@ func (c *BatchConsumer) consumeBatch(kernelCtx context.Context, batch []*Message
 	duration := c.clock.Now().Sub(start)
 	atomic.AddInt32(&c.processed, int32(len(ackMessages)))
 
-	c.writeMetrics(duration, len(batch))
+	c.writeMetricDurationAndProcessedCount(duration, len(batch))
 }
 
-func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*Message) ([]*Message, []interface{}, []map[string]interface{}, []tracing.Span) {
+func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*consumerData) ([]*consumerData, []interface{}, []map[string]interface{}, []tracing.Span) {
 	models := make([]interface{}, 0, len(batch))
 	attributes := make([]map[string]interface{}, 0, len(batch))
 	spans := make([]tracing.Span, 0, len(batch))
-	newBatch := make([]*Message, 0, len(batch))
+	newBatch := make([]*consumerData, 0, len(batch))
 
-	for _, msg := range batch {
-		model := c.callback.GetModel(msg.Attributes)
+	for _, cdata := range batch {
+		model := c.callback.GetModel(cdata.msg.Attributes)
 
-		msgCtx, attribute, err := c.encoder.Decode(batchCtx, msg, model)
+		msgCtx, attribute, err := c.encoder.Decode(batchCtx, cdata.msg, model)
 		if err != nil {
 			c.logger.WithContext(msgCtx).Error("an error occurred during the batch decode message operation: %w", err)
 			continue
@@ -212,7 +220,7 @@ func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*Messag
 
 		models = append(models, model)
 		attributes = append(attributes, attribute)
-		newBatch = append(newBatch, msg)
+		newBatch = append(newBatch, cdata)
 
 		_, span := c.tracer.StartSubSpan(msgCtx, c.id)
 		spans = append(spans, span)
