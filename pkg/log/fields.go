@@ -10,10 +10,18 @@ func mergeFields(receiver map[string]interface{}, input map[string]interface{}) 
 	newMap := make(map[string]interface{}, len(receiver)+len(input))
 
 	for k, v := range receiver {
+		if k == "" {
+			continue
+		}
+
 		newMap[k] = prepareForLog(v)
 	}
 
 	for k, v := range input {
+		if k == "" {
+			continue
+		}
+
 		newMap[k] = prepareForLog(v)
 	}
 
