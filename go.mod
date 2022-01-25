@@ -16,7 +16,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.13.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.28.0
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.14.0
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.16.0
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.13.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.16.0
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.11.0
