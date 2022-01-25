@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.13.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.16.0
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.10.0
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.11.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.24.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.14.0
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.16.0
