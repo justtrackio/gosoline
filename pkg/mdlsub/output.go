@@ -41,7 +41,10 @@ func initOutputs(ctx context.Context, config cfg.Config, logger log.Logger, subs
 		modelId := settings.SourceModel.String()
 
 		if outputs[modelId], err = outputFactory(ctx, config, logger, settings, versionedModelTransformers); err != nil {
-			return nil, fmt.Errorf("can not create output for subscriber %s with modelId %s", name, modelId)
+			// TODO: remove
+			logger.WithContext(ctx).Info("can not create output for subscriber %s with modelId %s: %w", name, modelId, err)
+
+			return nil, fmt.Errorf("can not create output for subscriber %s with modelId %s: %w", name, modelId, err)
 		}
 	}
 
