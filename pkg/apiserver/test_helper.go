@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,6 +13,7 @@ func HttpTest(method string, path string, requestPath string, body string, handl
 	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.New()
+	r.Use(location.Default())
 	r.Handle(method, path, handler)
 
 	bodyReader := strings.NewReader(body)

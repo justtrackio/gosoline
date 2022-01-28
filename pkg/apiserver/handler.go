@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+	"github.com/imdario/mergo"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/pkg/errors"
@@ -226,12 +228,22 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 			return
 		}
 
+		ginUrl, err := parseUrl(ginCtx)
+		if err != nil {
+			handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
+				Err:  err,
+				Type: gin.ErrorTypePrivate,
+			})
+
+			return
+		}
+
 		reqCtx := ginCtx.Request.Context()
 		request := &Request{
 			Header:   ginCtx.Request.Header,
 			Cookies:  parseCookies(ginCtx.Request),
 			Params:   ginCtx.Params,
-			Url:      ginCtx.Request.URL,
+			Url:      ginUrl,
 			Body:     input,
 			ClientIp: ginCtx.ClientIP(),
 		}
@@ -296,11 +308,21 @@ func handleReader(handler HandlerWithoutInput, errHandler ErrorHandler) gin.Hand
 func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{}, errHandler ErrorHandler) {
 	reqCtx := ginCtx.Request.Context()
 
+	ginUrl, err := parseUrl(ginCtx)
+	if err != nil {
+		handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
+			Err:  err,
+			Type: gin.ErrorTypePrivate,
+		})
+
+		return
+	}
+
 	request := &Request{
 		Header:   ginCtx.Request.Header,
 		Cookies:  parseCookies(ginCtx.Request),
 		Params:   ginCtx.Params,
-		Url:      ginCtx.Request.URL,
+		Url:      ginUrl,
 		Body:     input,
 		ClientIp: ginCtx.ClientIP(),
 	}
@@ -347,6 +369,21 @@ func parseCookies(request *http.Request) map[string]string {
 	}
 
 	return result
+}
+
+func parseUrl(ctx *gin.Context) (*url.URL, error) {
+	ginUrl := location.Get(ctx)
+
+	reqUrl := ctx.Request.URL
+	if reqUrl == nil {
+		reqUrl = &url.URL{}
+	}
+
+	if err := mergo.Merge(reqUrl, ginUrl); err != nil {
+		return nil, fmt.Errorf("could not merge urls: %w", err)
+	}
+
+	return reqUrl, nil
 }
 
 func handleError(ginCtx *gin.Context, errHandler ErrorHandler, statusCode int, ginError gin.Error) {
