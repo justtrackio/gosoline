@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -78,6 +79,7 @@ func New(definer Definer) kernel.ModuleFactory {
 		router := gin.New()
 		router.Use(RecoveryWithSentry(logger))
 		router.Use(LoggingMiddleware(logger))
+		router.Use(location.Default())
 
 		router.GET("/health", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{})

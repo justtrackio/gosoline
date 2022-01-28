@@ -34,6 +34,7 @@ require (
 	github.com/getsentry/sentry-go v0.12.0
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
 	github.com/gin-contrib/gzip v0.0.5
+	github.com/gin-contrib/location v0.0.2
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
 	github.com/go-playground/validator/v10 v10.10.0
