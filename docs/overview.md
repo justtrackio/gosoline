@@ -17,3 +17,7 @@ If you are new to Gosoline, start with:
 3. [Middleware](getting_started/middleware.md)
 4. [How to build an API](getting_started/how_to_build_an_api.md)
 5. [Integration tests for your API](getting_started/integration_tests.md)
+
+### More details
+
+1. [Integration tests](more_details/integration_tests.md)

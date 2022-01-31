@@ -1,0 +1,19 @@
+env: dev
+
+app_project: project
+app_family: family
+app_name: stream-consumer
+
+mdlsub:
+  publishers:
+    outputEvent: { output_type: sns, application: stream-consumer }
+
+stream:
+  consumer:
+    uintConsumer:
+      input: consumerInput
+
+  input:
+    consumerInput:
+      type: sqs
+      target_queue_id: inputEvent

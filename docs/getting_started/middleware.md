@@ -142,4 +142,4 @@ The first function in the middleware chain, in this case `one`, starts running a
 
 ## Wrapping it up
 
-Gosoline's middleware offers a convenient way to run extra code before and after each module. Having an understanding of Gosoline kernels, modules and middleware, we are now ready for the next step: [How to build an API](getting_started/api_server.md)
+Gosoline's middleware offers a convenient way to run extra code before and after each module. Having an understanding of Gosoline kernels, modules and middleware, we are now ready for the next step: [How to build an API](how_to_build_an_api.md)

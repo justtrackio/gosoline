@@ -5,6 +5,7 @@ package integration
 
 import (
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -60,6 +61,22 @@ func (s *ApiTestSuite) Test_ToEuroAtDate(_ suite.AppUnderTest, client *resty.Cli
 	s.Equal(12.5, result)
 
 	return nil
+}
+
+func (s *ApiTestSuite) Test_Euro() *suite.ApiServerTestCase {
+	return &suite.ApiServerTestCase{
+		Method:             http.MethodGet,
+		Url:                "/euro/10/GBP",
+		Headers:            map[string]string{},
+		ExpectedStatusCode: http.StatusOK,
+		Assert: func(response *resty.Response) error {
+			result, err := strconv.ParseFloat(string(response.Body()), 64)
+			s.NoError(err)
+			s.Equal(8.0, result)
+
+			return nil
+		},
+	}
 }
 
 func TestApiTestSuite(t *testing.T) {
