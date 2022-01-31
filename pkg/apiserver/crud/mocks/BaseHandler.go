@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	crud "github.com/justtrackio/gosoline/pkg/apiserver/crud"
 	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 
@@ -46,13 +48,13 @@ func (_m *BaseHandler) GetRepository() crud.Repository {
 	return r0
 }
 
-// TransformOutput provides a mock function with given fields: model, apiView
-func (_m *BaseHandler) TransformOutput(model db_repo.ModelBased, apiView string) (interface{}, error) {
-	ret := _m.Called(model, apiView)
+// TransformOutput provides a mock function with given fields: ctx, model, apiView
+func (_m *BaseHandler) TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (interface{}, error) {
+	ret := _m.Called(ctx, model, apiView)
 
 	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(db_repo.ModelBased, string) interface{}); ok {
-		r0 = rf(model, apiView)
+	if rf, ok := ret.Get(0).(func(context.Context, db_repo.ModelBased, string) interface{}); ok {
+		r0 = rf(ctx, model, apiView)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(interface{})
@@ -60,8 +62,8 @@ func (_m *BaseHandler) TransformOutput(model db_repo.ModelBased, apiView string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(db_repo.ModelBased, string) error); ok {
-		r1 = rf(model, apiView)
+	if rf, ok := ret.Get(1).(func(context.Context, db_repo.ModelBased, string) error); ok {
+		r1 = rf(ctx, model, apiView)
 	} else {
 		r1 = ret.Error(1)
 	}

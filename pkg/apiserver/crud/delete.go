@@ -7,14 +7,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
 type deleteHandler struct {
-	transformer BaseHandler
 	logger      log.Logger
+	transformer BaseHandler
 }
 
 func NewDeleteHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFunc {
@@ -41,6 +41,7 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	var notFound db_repo.RecordNotFoundError
 	if errors.As(err, &notFound) {
 		dh.logger.WithContext(ctx).Warn("failed to delete model: %s", err)
+
 		return apiserver.NewStatusResponse(http.StatusNotFound), nil
 	}
 
@@ -59,7 +60,7 @@ func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) 
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
-	out, err := dh.transformer.TransformOutput(model, apiView)
+	out, err := dh.transformer.TransformOutput(ctx, model, apiView)
 	if err != nil {
 		return nil, err
 	}

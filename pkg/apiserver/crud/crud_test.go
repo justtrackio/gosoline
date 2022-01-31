@@ -26,8 +26,8 @@ type Model struct {
 type Output struct {
 	Id        *uint      `json:"id"`
 	Name      *string    `json:"name"`
-	UpdatedAt *time.Time `json:"updatedAt"`
 	CreatedAt *time.Time `json:"createdAt"`
+	UpdatedAt *time.Time `json:"updatedAt"`
 }
 
 type CreateInput struct {
@@ -58,7 +58,7 @@ func (h Handler) GetUpdateInput() interface{} {
 	return &UpdateInput{}
 }
 
-func (h Handler) TransformCreate(inp interface{}, model db_repo.ModelBased) (err error) {
+func (h Handler) TransformCreate(_ctx context.Context, inp interface{}, model db_repo.ModelBased) (err error) {
 	input := inp.(*CreateInput)
 	m := model.(*Model)
 
@@ -67,7 +67,7 @@ func (h Handler) TransformCreate(inp interface{}, model db_repo.ModelBased) (err
 	return nil
 }
 
-func (h Handler) TransformUpdate(inp interface{}, model db_repo.ModelBased) (err error) {
+func (h Handler) TransformUpdate(_ context.Context, inp interface{}, model db_repo.ModelBased) (err error) {
 	input := inp.(*UpdateInput)
 	m := model.(*Model)
 
@@ -76,7 +76,7 @@ func (h Handler) TransformUpdate(inp interface{}, model db_repo.ModelBased) (err
 	return nil
 }
 
-func (h Handler) TransformOutput(model db_repo.ModelBased, _ string) (interface{}, error) {
+func (h Handler) TransformOutput(ctx context.Context, model db_repo.ModelBased, _ string) (interface{}, error) {
 	m := model.(*Model)
 
 	out := &Output{

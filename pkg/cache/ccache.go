@@ -1,16 +1,28 @@
 package cache
 
-import "time"
-import "github.com/karlseguin/ccache"
+import (
+	"time"
 
-type Cache struct {
+	"github.com/karlseguin/ccache"
+)
+
+//go:generate mockery --name Cache
+type Cache interface {
+	Contains(key string) bool
+	Expire(key string) bool
+	Get(key string) (interface{}, bool)
+	Set(key string, value interface{})
+	SetX(key string, value interface{}, ttl time.Duration)
+}
+
+type cache struct {
 	base *ccache.Cache
 	size int
 	ttl  time.Duration
 }
 
-func New(maxSize int64, pruneCount uint32, ttl time.Duration) *Cache {
-	cache := &Cache{
+func New(maxSize int64, pruneCount uint32, ttl time.Duration) Cache {
+	cache := &cache{
 		size: 0,
 		ttl:  ttl,
 	}
@@ -24,8 +36,8 @@ func New(maxSize int64, pruneCount uint32, ttl time.Duration) *Cache {
 	return cache
 }
 
-func NewWithConfiguration(config ccache.Configuration, ttl time.Duration) *Cache {
-	cache := &Cache{
+func NewWithConfiguration(config ccache.Configuration, ttl time.Duration) Cache {
+	cache := &cache{
 		size: 0,
 		ttl:  ttl,
 	}
@@ -34,15 +46,15 @@ func NewWithConfiguration(config ccache.Configuration, ttl time.Duration) *Cache
 	return cache
 }
 
-func (c *Cache) Set(key string, value interface{}) {
+func (c *cache) Set(key string, value interface{}) {
 	c.base.Set(key, value, c.ttl)
 }
 
-func (c *Cache) SetX(key string, value interface{}, ttl time.Duration) {
+func (c *cache) SetX(key string, value interface{}, ttl time.Duration) {
 	c.base.Set(key, value, ttl)
 }
 
-func (c *Cache) Get(key string) (interface{}, bool) {
+func (c *cache) Get(key string) (interface{}, bool) {
 	item := c.base.Get(key)
 
 	if item == nil {
@@ -56,13 +68,13 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 	return item.Value(), true
 }
 
-func (c *Cache) Contains(key string) bool {
+func (c *cache) Contains(key string) bool {
 	_, ok := c.Get(key)
 
 	return ok
 }
 
-func (c *Cache) Expire(key string) bool {
+func (c *cache) Expire(key string) bool {
 	item := c.base.Get(key)
 
 	if item == nil {

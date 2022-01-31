@@ -15,6 +15,7 @@ func (h *JsonResponseFromMapHandler) Handle(requestContext context.Context, requ
 	m := map[string]string{
 		"status": "success",
 	}
+
 	return apiserver.NewJsonResponse(m), nil
 }
 
@@ -24,6 +25,7 @@ func (h *JsonResponseFromStructHandler) Handle(requestContext context.Context, r
 	obj := myTestStruct{
 		Status: "success",
 	}
+
 	return apiserver.NewJsonResponse(obj), nil
 }
 
@@ -53,6 +55,7 @@ func (h *AdminAuthenticatedHandler) Handle(requestContext context.Context, reque
 	m := map[string]bool{
 		"authenticated": true,
 	}
+
 	return apiserver.NewJsonResponse(m), nil
 }
 
@@ -77,7 +80,7 @@ func (h *MyEntityHandler) GetModel() db_repo.ModelBased {
 	return &MyEntity{}
 }
 
-func (h *MyEntityHandler) TransformOutput(model db_repo.ModelBased, apiView string) (output interface{}, err error) {
+func (h *MyEntityHandler) TransformOutput(_ context.Context, model db_repo.ModelBased, apiView string) (output interface{}, err error) {
 	return model, nil
 }
 
@@ -85,7 +88,7 @@ func (h *MyEntityHandler) GetCreateInput() interface{} {
 	return &MyEntityCreateInput{}
 }
 
-func (h *MyEntityHandler) TransformCreate(input interface{}, model db_repo.ModelBased) (err error) {
+func (h *MyEntityHandler) TransformCreate(_ context.Context, input interface{}, model db_repo.ModelBased) (err error) {
 	i := input.(*MyEntityCreateInput)
 	b := model.(*MyEntity)
 
@@ -99,7 +102,7 @@ func (h *MyEntityHandler) GetUpdateInput() interface{} {
 	return &MyEntityUpdateInput{}
 }
 
-func (h *MyEntityHandler) TransformUpdate(input interface{}, model db_repo.ModelBased) (err error) {
+func (h *MyEntityHandler) TransformUpdate(_ context.Context, input interface{}, model db_repo.ModelBased) (err error) {
 	i := input.(*MyEntityUpdateInput)
 	b := model.(*MyEntity)
 
