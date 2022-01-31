@@ -1,8 +1,10 @@
-package fixtures
+package ddb
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/ddb"
@@ -14,11 +16,11 @@ type ddbRepoFactory func() (ddb.Repository, error)
 type dynamoDbFixtureWriter struct {
 	logger  log.Logger
 	factory ddbRepoFactory
-	purger  *dynamodbPurger
+	purger  writers.Purger
 }
 
-func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOption) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOption) writers.FixtureWriterFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (writers.FixtureWriter, error) {
 		settings := &ddb.Settings{
 			ModelId:    settings.ModelId,
 			AutoCreate: true,
@@ -39,7 +41,7 @@ func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOp
 		}
 
 		var err error
-		var purger *dynamodbPurger
+		var purger writers.Purger
 
 		if purger, err = newDynamodbPurger(ctx, config, logger, settings); err != nil {
 			return nil, fmt.Errorf("can not create dynamodb purger: %w", err)
@@ -49,7 +51,7 @@ func DynamoDbFixtureWriterFactory(settings *ddb.Settings, options ...DdbWriterOp
 	}
 }
 
-func NewDynamoDbFixtureWriterWithInterfaces(logger log.Logger, factory ddbRepoFactory, purger *dynamodbPurger) FixtureWriter {
+func NewDynamoDbFixtureWriterWithInterfaces(logger log.Logger, factory ddbRepoFactory, purger writers.Purger) writers.FixtureWriter {
 	return &dynamoDbFixtureWriter{
 		logger:  logger,
 		factory: factory,
@@ -58,10 +60,10 @@ func NewDynamoDbFixtureWriterWithInterfaces(logger log.Logger, factory ddbRepoFa
 }
 
 func (d *dynamoDbFixtureWriter) Purge(ctx context.Context) error {
-	return d.purger.purgeDynamodb(ctx)
+	return d.purger.Purge(ctx)
 }
 
-func (d *dynamoDbFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
+func (d *dynamoDbFixtureWriter) Write(ctx context.Context, fs *writers.FixtureSet) error {
 	if len(fs.Fixtures) == 0 {
 		return nil
 	}

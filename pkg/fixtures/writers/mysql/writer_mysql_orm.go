@@ -1,8 +1,10 @@
-package fixtures
+package mysql
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
@@ -13,11 +15,11 @@ type mysqlOrmFixtureWriter struct {
 	logger   log.Logger
 	metadata *db_repo.Metadata
 	repo     db_repo.Repository
-	purger   *mysqlPurger
+	purger   writers.Purger
 }
 
-func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) writers.FixtureWriterFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (writers.FixtureWriter, error) {
 		metadata.ModelId.PadFromConfig(config)
 
 		settings := db_repo.Settings{
@@ -39,7 +41,7 @@ func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFacto
 	}
 }
 
-func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *db_repo.Metadata, repo db_repo.Repository, purger *mysqlPurger) FixtureWriter {
+func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *db_repo.Metadata, repo db_repo.Repository, purger writers.Purger) writers.FixtureWriter {
 	return &mysqlOrmFixtureWriter{
 		logger:   logger,
 		metadata: metadata,
@@ -48,8 +50,8 @@ func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *db_repo.Me
 	}
 }
 
-func (m *mysqlOrmFixtureWriter) Purge(_ context.Context) error {
-	err := m.purger.purgeMysql()
+func (m *mysqlOrmFixtureWriter) Purge(ctx context.Context) error {
+	err := m.purger.Purge(ctx)
 	if err != nil {
 		m.logger.Error("error occured during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
 
@@ -61,7 +63,7 @@ func (m *mysqlOrmFixtureWriter) Purge(_ context.Context) error {
 	return nil
 }
 
-func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
+func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fs *writers.FixtureSet) error {
 	for _, item := range fs.Fixtures {
 		model := item.(db_repo.ModelBased)
 

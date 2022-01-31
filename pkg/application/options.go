@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -148,7 +150,7 @@ func WithDbRepoChangeHistory(app *App) {
 	})
 }
 
-func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
+func WithFixtures(fixtureSets []*writers.FixtureSet) Option {
 	return func(app *App) {
 		app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
 			kernel.AddMiddleware(fixtures.KernelMiddlewareLoader(fixtureSets), kernelPkg.PositionBeginning)

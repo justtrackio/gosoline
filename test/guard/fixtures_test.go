@@ -3,44 +3,47 @@
 
 package guard_test
 
-import "github.com/justtrackio/gosoline/pkg/fixtures"
+import (
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers/mysql"
+)
 
 func buildPolicies() []interface{} {
 	return []interface{}{
-		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "global - read and write access", "allow", "{}"},
-		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "entity - read and write access", "allow", "{}"},
-		fixtures.MysqlPlainFixtureValues{"4ab80e96-22ea-469e-96d1-12b232bd4660", "global - read access", "allow", "{}"},
+		mysql.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "global - read and write access", "allow", "{}"},
+		mysql.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "entity - read and write access", "allow", "{}"},
+		mysql.MysqlPlainFixtureValues{"4ab80e96-22ea-469e-96d1-12b232bd4660", "global - read access", "allow", "{}"},
 	}
 }
 
 func buildSubjects() []interface{} {
 	return []interface{}{
-		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "r:1"},
-		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "r:2"},
+		mysql.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "r:1"},
+		mysql.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "r:2"},
 	}
 }
 
 func buildResources() []interface{} {
 	return []interface{}{
-		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "gsl:<.+>"},
-		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "gsl:e:1:<.+>"},
+		mysql.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "gsl:<.+>"},
+		mysql.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "gsl:e:1:<.+>"},
 	}
 }
 
 func buildActions() []interface{} {
 	return []interface{}{
-		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "<.+>"},
-		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "<.+>"},
-		fixtures.MysqlPlainFixtureValues{"ab80e96-22ea-469e-96d1-12b232bd4660", "read"},
+		mysql.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "<.+>"},
+		mysql.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "<.+>"},
+		mysql.MysqlPlainFixtureValues{"ab80e96-22ea-469e-96d1-12b232bd4660", "read"},
 	}
 }
 
-func buildFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func buildFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			Writer: mysql.MysqlPlainFixtureWriterFactory(&mysql.MysqlPlainMetaData{
 				TableName: "guard_policies",
 				Columns:   []string{"id", "description", "effect", "conditions"},
 			}),
@@ -49,7 +52,7 @@ func buildFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			Writer: mysql.MysqlPlainFixtureWriterFactory(&mysql.MysqlPlainMetaData{
 				TableName: "guard_subjects",
 				Columns:   []string{"id", "name"},
 			}),
@@ -58,7 +61,7 @@ func buildFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			Writer: mysql.MysqlPlainFixtureWriterFactory(&mysql.MysqlPlainMetaData{
 				TableName: "guard_resources",
 				Columns:   []string{"id", "name"},
 			}),
@@ -67,7 +70,7 @@ func buildFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			Writer: mysql.MysqlPlainFixtureWriterFactory(&mysql.MysqlPlainMetaData{
 				TableName: "guard_actions",
 				Columns:   []string{"id", "name"},
 			}),

@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+	ddb2 "github.com/justtrackio/gosoline/pkg/fixtures/writers/ddb"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/appctx"
@@ -269,11 +272,11 @@ type DynamoDbTestModel struct {
 	Age  uint   `ddb:"global=hash"`
 }
 
-func dynamoDbKvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func dynamoDbKvStoreDisabledPurgeFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
-			Writer: fixtures.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
+			Writer: ddb2.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
@@ -281,7 +284,7 @@ func dynamoDbKvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 				Name:        "testModel",
 			}),
 			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
+				&ddb2.KvStoreFixture{
 					Key:   "Ash",
 					Value: &DynamoDbTestModel{Name: "Ash", Age: 10},
 				},
@@ -290,12 +293,12 @@ func dynamoDbKvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func dynamoDbKvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func dynamoDbKvStoreEnabledPurgeFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer: fixtures.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
+			Writer: ddb2.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
@@ -303,7 +306,7 @@ func dynamoDbKvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 				Name:        "testModel",
 			}),
 			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
+				&ddb2.KvStoreFixture{
 					Key:   "Bash",
 					Value: &DynamoDbTestModel{Name: "Bash", Age: 10},
 				},
@@ -312,11 +315,11 @@ func dynamoDbKvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func dynamoDbDisabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func dynamoDbDisabledPurgeFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
-			Writer: fixtures.DynamoDbFixtureWriterFactory(&ddb.Settings{
+			Writer: ddb2.DynamoDbFixtureWriterFactory(&ddb.Settings{
 				ModelId: mdl.ModelId{
 					Project:     "gosoline",
 					Environment: "test",
@@ -343,12 +346,12 @@ func dynamoDbDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func dynamoDbEnabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func dynamoDbEnabledPurgeFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer: fixtures.DynamoDbFixtureWriterFactory(&ddb.Settings{
+			Writer: ddb2.DynamoDbFixtureWriterFactory(&ddb.Settings{
 				ModelId: mdl.ModelId{
 					Project:     "gosoline",
 					Environment: "test",

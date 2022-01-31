@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -23,7 +25,7 @@ type Environment struct {
 	config        cfg.GosoConf
 	logger        log.GosoLogger
 	filesystem    *filesystem
-	fixtureLoader fixtures.FixtureLoader
+	fixtureLoader writers.FixtureLoader
 	runner        *containerRunner
 	components    *ComponentsContainer
 }
@@ -188,7 +190,7 @@ func (e *Environment) StreamOutput(name string) *streamOutputComponent {
 	return e.Component(componentStreamOutput, name).(*streamOutputComponent)
 }
 
-func (e *Environment) LoadFixtures(fixtureSets []*fixtures.FixtureSet) error {
+func (e *Environment) LoadFixtures(fixtureSets []*writers.FixtureSet) error {
 	if len(fixtureSets) == 0 {
 		return nil
 	}

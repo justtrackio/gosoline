@@ -1,8 +1,10 @@
-package fixtures
+package ddb
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/ddb"
@@ -11,21 +13,21 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type ddbKvstoreFactory func() (kvstore.KvStore, error)
-
 type KvStoreFixture struct {
 	Key   interface{}
 	Value interface{}
 }
 
+type ddbKvstoreFactory func() (kvstore.KvStore, error)
+
 type dynamoDbKvStoreFixtureWriter struct {
 	logger  log.Logger
 	factory ddbKvstoreFactory
-	purger  *dynamodbPurger
+	purger  writers.Purger
 }
 
-func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) writers.FixtureWriterFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (writers.FixtureWriter, error) {
 		kvStoreSettings := &kvstore.Settings{
 			AppId: cfg.AppId{
 				Project:     modelId.Project,
@@ -48,7 +50,7 @@ func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFact
 		}
 
 		var err error
-		var purger *dynamodbPurger
+		var purger writers.Purger
 
 		if purger, err = newDynamodbPurger(ctx, config, logger, ddbSettings); err != nil {
 			return nil, fmt.Errorf("can not create dynamodb purger: %w", err)
@@ -58,7 +60,7 @@ func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFact
 	}
 }
 
-func NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger log.Logger, factory ddbKvstoreFactory, purger *dynamodbPurger) FixtureWriter {
+func NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger log.Logger, factory ddbKvstoreFactory, purger writers.Purger) writers.FixtureWriter {
 	return &dynamoDbKvStoreFixtureWriter{
 		logger:  logger,
 		factory: factory,
@@ -67,10 +69,10 @@ func NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger log.Logger, factory dd
 }
 
 func (d *dynamoDbKvStoreFixtureWriter) Purge(ctx context.Context) error {
-	return d.purger.purgeDynamodb(ctx)
+	return d.purger.Purge(ctx)
 }
 
-func (d *dynamoDbKvStoreFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
+func (d *dynamoDbKvStoreFixtureWriter) Write(ctx context.Context, fs *writers.FixtureSet) error {
 	if len(fs.Fixtures) == 0 {
 		return nil
 	}

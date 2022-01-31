@@ -10,10 +10,12 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+	s32 "github.com/justtrackio/gosoline/pkg/fixtures/writers/s3"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
@@ -139,11 +141,11 @@ func (s *FixturesS3Suite) TestS3WithPurge() {
 	s.Nil(output)
 }
 
-func s3DisabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func s3DisabledPurgeFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
-			Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
+			Writer: s32.BlobFixtureWriterFactory(&s32.BlobFixturesSettings{
 				ConfigName: configName,
 				BasePath:   basePath,
 			}),
@@ -152,12 +154,12 @@ func s3DisabledPurgeFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func s3EnabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func s3EnabledPurgeFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
+			Writer: s32.BlobFixtureWriterFactory(&s32.BlobFixturesSettings{
 				ConfigName: configName,
 				BasePath:   basePathPurge,
 			}),

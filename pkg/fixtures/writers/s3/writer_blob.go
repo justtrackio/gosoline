@@ -1,4 +1,4 @@
-package fixtures
+package s3
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/justtrackio/gosoline/pkg/blob"
@@ -22,13 +24,13 @@ type BlobFixturesSettings struct {
 type blobFixtureWriter struct {
 	logger      log.Logger
 	batchRunner blob.BatchRunner
-	purger      *blobPurger
+	purger      writers.Purger
 	store       blob.Store
 	basePath    string
 }
 
-func BlobFixtureWriterFactory(settings *BlobFixturesSettings) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+func BlobFixtureWriterFactory(settings *BlobFixturesSettings) writers.FixtureWriterFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (writers.FixtureWriter, error) {
 		basePath, err := filepath.Abs(settings.BasePath)
 		if err != nil {
 			return nil, err
@@ -55,7 +57,7 @@ func BlobFixtureWriterFactory(settings *BlobFixturesSettings) FixtureWriterFacto
 	}
 }
 
-func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner blob.BatchRunner, purger *blobPurger, store blob.Store, basePath string) FixtureWriter {
+func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner blob.BatchRunner, purger *blobPurger, store blob.Store, basePath string) *blobFixtureWriter {
 	return &blobFixtureWriter{
 		logger:      logger,
 		batchRunner: batchRunner,
@@ -66,10 +68,10 @@ func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner blob.Batc
 }
 
 func (s *blobFixtureWriter) Purge(ctx context.Context) error {
-	return s.purger.purge(ctx)
+	return s.purger.Purge(ctx)
 }
 
-func (s *blobFixtureWriter) Write(ctx context.Context, _ *FixtureSet) error {
+func (s *blobFixtureWriter) Write(ctx context.Context, _ *writers.FixtureSet) error {
 	if err := s.store.CreateBucket(ctx); err != nil {
 		return fmt.Errorf("can not create bucket: %w", err)
 	}

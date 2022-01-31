@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers/ddb"
+	redis2 "github.com/justtrackio/gosoline/pkg/fixtures/writers/redis"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/go-redis/redis/v8"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -198,13 +202,13 @@ func (s FixturesRedisSuite) TestRedisKvStoreWithPurge() {
 	s.JSONEq(`{"name":"foo","age":123}`, res)
 }
 
-func redisDisabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func redisDisabledPurgeFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpSet)),
+			Writer:  redis2.RedisFixtureWriterFactory(aws.String("default"), aws.String(redis2.RedisOpSet)),
 			Fixtures: []interface{}{
-				&fixtures.RedisFixture{
+				&redis2.RedisFixture{
 					Key:    "set_test",
 					Value:  "bar",
 					Expiry: 1 * time.Hour,
@@ -213,9 +217,9 @@ func redisDisabledPurgeFixtures() []*fixtures.FixtureSet {
 		},
 		{
 			Enabled: true,
-			Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpRpush)),
+			Writer:  redis2.RedisFixtureWriterFactory(aws.String("default"), aws.String(redis2.RedisOpRpush)),
 			Fixtures: []interface{}{
-				&fixtures.RedisFixture{
+				&redis2.RedisFixture{
 					Key: "rpush_test",
 					Value: []interface{}{
 						"bar",
@@ -227,14 +231,14 @@ func redisDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func redisEnabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func redisEnabledPurgeFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpSet)),
+			Writer:  redis2.RedisFixtureWriterFactory(aws.String("default"), aws.String(redis2.RedisOpSet)),
 			Fixtures: []interface{}{
-				&fixtures.RedisFixture{
+				&redis2.RedisFixture{
 					Key:    "set_test_purged",
 					Value:  "bar",
 					Expiry: 1 * time.Hour,
@@ -244,11 +248,11 @@ func redisEnabledPurgeFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func redisKvstoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func redisKvstoreDisabledPurgeFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
-			Writer: fixtures.RedisKvStoreFixtureWriterFactory(&mdl.ModelId{
+			Writer: redis2.RedisKvStoreFixtureWriterFactory(&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
@@ -256,7 +260,7 @@ func redisKvstoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 				Name:        "testModel",
 			}),
 			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
+				&ddb.KvStoreFixture{
 					Key: "kvstore_entry_1",
 					Value: &RedisTestModel{
 						Name: "foo",
@@ -268,12 +272,12 @@ func redisKvstoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	}
 }
 
-func redisKvstoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
+func redisKvstoreEnabledPurgeFixtures() []*writers.FixtureSet {
+	return []*writers.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer: fixtures.RedisKvStoreFixtureWriterFactory(&mdl.ModelId{
+			Writer: redis2.RedisKvStoreFixtureWriterFactory(&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
@@ -281,7 +285,7 @@ func redisKvstoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 				Name:        "testModel",
 			}),
 			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
+				&ddb.KvStoreFixture{
 					Key: "kvstore_entry_2",
 					Value: &RedisTestModel{
 						Name: "foo",

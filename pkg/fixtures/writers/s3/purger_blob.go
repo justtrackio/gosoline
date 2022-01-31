@@ -1,4 +1,4 @@
-package fixtures
+package s3
 
 import (
 	"context"
@@ -33,7 +33,7 @@ func newBlobPurger(ctx context.Context, config cfg.Config, logger log.Logger, se
 	}, nil
 }
 
-func (p *blobPurger) purge(ctx context.Context) error {
+func (p *blobPurger) Purge(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 
 	var batchRunnerErr error

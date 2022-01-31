@@ -1,9 +1,11 @@
-package fixtures
+package redis
 
 import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -38,11 +40,11 @@ type redisFixtureWriter struct {
 	logger    log.Logger
 	client    redis.Client
 	operation string
-	purger    *redisPurger
+	purger    writers.Purger
 }
 
-func RedisFixtureWriterFactory(name *string, operation *string) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+func RedisFixtureWriterFactory(name *string, operation *string) writers.FixtureWriterFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (writers.FixtureWriter, error) {
 		client, err := redis.ProvideClient(config, logger, *name)
 		if err != nil {
 			return nil, fmt.Errorf("can not create redis client: %w", err)
@@ -57,7 +59,7 @@ func RedisFixtureWriterFactory(name *string, operation *string) FixtureWriterFac
 	}
 }
 
-func NewRedisFixtureWriterWithInterfaces(logger log.Logger, client redis.Client, purger *redisPurger, operation *string) FixtureWriter {
+func NewRedisFixtureWriterWithInterfaces(logger log.Logger, client redis.Client, purger writers.Purger, operation *string) writers.FixtureWriter {
 	return &redisFixtureWriter{
 		logger:    logger,
 		client:    client,
@@ -67,10 +69,10 @@ func NewRedisFixtureWriterWithInterfaces(logger log.Logger, client redis.Client,
 }
 
 func (d *redisFixtureWriter) Purge(ctx context.Context) error {
-	return d.purger.purge(ctx)
+	return d.purger.Purge(ctx)
 }
 
-func (d *redisFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
+func (d *redisFixtureWriter) Write(ctx context.Context, fs *writers.FixtureSet) error {
 	for _, item := range fs.Fixtures {
 		redisFixture := item.(*RedisFixture)
 

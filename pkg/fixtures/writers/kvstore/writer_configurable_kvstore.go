@@ -1,21 +1,28 @@
-package fixtures
+package kvstore
 
 import (
 	"context"
 	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/fixtures/writers"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+type KvStoreFixture struct {
+	Key   interface{}
+	Value interface{}
+}
+
 type configurableKvStoreFixtureWriter struct {
 	logger log.Logger
 	store  kvstore.KvStore
 }
 
-func ConfigurableKvStoreFixtureWriterFactory(name string) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
+func ConfigurableKvStoreFixtureWriterFactory(name string) writers.FixtureWriterFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (writers.FixtureWriter, error) {
 		store, err := kvstore.ProvideConfigurableKvStore(ctx, config, logger, name)
 		if err != nil {
 			return nil, fmt.Errorf("can not provide configurable kvstore: %w", err)
@@ -25,7 +32,7 @@ func ConfigurableKvStoreFixtureWriterFactory(name string) FixtureWriterFactory {
 	}
 }
 
-func NewConfigurableKvStoreFixtureWriterWithInterfaces(logger log.Logger, store kvstore.KvStore) FixtureWriter {
+func NewConfigurableKvStoreFixtureWriterWithInterfaces(logger log.Logger, store kvstore.KvStore) writers.FixtureWriter {
 	return &configurableKvStoreFixtureWriter{
 		logger: logger,
 		store:  store,
@@ -37,7 +44,7 @@ func (c *configurableKvStoreFixtureWriter) Purge(ctx context.Context) error {
 	return nil
 }
 
-func (c *configurableKvStoreFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
+func (c *configurableKvStoreFixtureWriter) Write(ctx context.Context, fs *writers.FixtureSet) error {
 	if len(fs.Fixtures) == 0 {
 		return nil
 	}

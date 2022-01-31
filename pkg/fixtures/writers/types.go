@@ -1,4 +1,4 @@
-package fixtures
+package writers
 
 import (
 	"context"
@@ -24,3 +24,7 @@ type FixtureWriter interface {
 }
 
 type FixtureWriterFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error)
+
+type Purger interface {
+	Purge(ctx context.Context) error
+}
