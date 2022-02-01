@@ -7,7 +7,7 @@ require (
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
 	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/aws/aws-lambda-go v1.28.0
-	github.com/aws/aws-sdk-go v1.42.43
+	github.com/aws/aws-sdk-go v1.42.44
 	github.com/aws/aws-sdk-go-v2 v1.13.0
 	github.com/aws/aws-sdk-go-v2/config v1.13.0
 	github.com/aws/aws-sdk-go-v2/credentials v1.8.0
@@ -57,7 +57,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/ory/ladon v1.2.0
-	github.com/oschwald/geoip2-golang v1.5.0
+	github.com/oschwald/geoip2-golang v1.6.1
 	github.com/pkg/errors v0.9.1
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
 	github.com/spf13/cast v1.4.1
