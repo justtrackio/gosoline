@@ -1,4 +1,0 @@
-mocks:
-  cloudwatch:
-    component: cloudwatch
-    debug: true

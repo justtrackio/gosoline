@@ -1,18 +1,17 @@
 //go:build integration
 // +build integration
 
-package test_test
+package change_history_test
 
 import (
 	"context"
+	"os"
 	"testing"
 
-	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
-	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
-	"github.com/justtrackio/gosoline/pkg/test"
-	"github.com/stretchr/testify/suite"
+	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
 type TestModel1 struct {
@@ -93,84 +92,59 @@ var TestHistoryModel2Metadata = db_repo.Metadata{
 	},
 }
 
-type DbRepoChangeHistoryTestSuite struct {
+type ChangeHistoryTestSuite struct {
 	suite.Suite
-	logger           log.Logger
-	config           cfg.Config
-	mocks            *test.Mocks
-	modelRepo        db_repo.Repository
-	modelHistoryRepo db_repo.Repository
-	historyManager   *db_repo.ChangeHistoryManager
 }
 
-func TestDbChangelogTestSuite(t *testing.T) {
-	suite.Run(t, new(DbRepoChangeHistoryTestSuite))
-}
+func (s *ChangeHistoryTestSuite) SetupSuite() []suite.Option {
+	err := os.Setenv("AWS_ACCESS_KEY_ID", gosoAws.DefaultAccessKeyID)
+	s.NoError(err)
 
-func (s *DbRepoChangeHistoryTestSuite) SetupSuite() {
-	setup(s.T())
-	mocks, err := test.Boot("test_configs/config.mysql.test.yml")
+	err = os.Setenv("AWS_SECRET_ACCESS_KEY", gosoAws.DefaultSecretAccessKey)
+	s.NoError(err)
 
-	if !s.NoError(err) {
-		return
-	}
-
-	s.mocks = mocks
-
-	config := cfg.New()
-	_ = config.Option(
-		cfg.WithConfigFile("test_configs/config.mysql.test.yml", "yml"),
-		cfg.WithConfigFile("test_configs/config.db_repo_change_history.test.yml", "yml"),
-		cfg.WithConfigMap(map[string]interface{}{
-			"db.default.uri.port": s.mocks.ProvideMysqlPort("mysql"),
-			"db.default.uri.host": s.mocks.ProvideMysqlHost("mysql"),
-		}),
-	)
-
-	s.config = config
-	s.logger = log.NewCliLogger()
-
-	if s.historyManager, err = db_repo.NewChangeHistoryManager(s.config, s.logger); err != nil {
-		s.FailNow(err.Error(), "can not create change history manager")
+	return []suite.Option{
+		suite.WithLogLevel("debug"),
+		suite.WithConfigFile("config.test.yml"),
 	}
 }
 
-func (s *DbRepoChangeHistoryTestSuite) TearDownSuite() {
-	s.mocks.Shutdown()
-}
+func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_CreateTable() {
+	envConfig := s.Env().Config()
+	envLogger := s.Env().Logger()
 
-func (s *DbRepoChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_CreateTable() {
-	var err error
-
-	s.modelRepo, err = db_repo.New(s.config, s.logger, db_repo.Settings{
+	modelRepo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModel1Metadata,
 	})
 	s.NoError(err)
 
-	s.modelHistoryRepo, err = db_repo.New(s.config, s.logger, db_repo.Settings{
+	modelHistoryRepo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
 		Metadata: TestHistoryModel1Metadata,
 	})
 	s.NoError(err)
 
-	err = s.historyManager.RunMigration(&TestModel1{})
+	historyManager, err := db_repo.NewChangeHistoryManager(envConfig, envLogger)
+	s.NoError(err)
+
+	err = historyManager.RunMigration(&TestModel1{})
 	s.NoError(err)
 
 	model := &TestModel1{
 		Name: mdl.String("name1"),
 	}
 
-	err = s.modelRepo.Create(context.Background(), model)
+	err = modelRepo.Create(context.Background(), model)
 	s.NoError(err)
 
 	model.Name = mdl.String("name2")
-	err = s.modelRepo.Update(context.Background(), model)
+	err = modelRepo.Update(context.Background(), model)
 	s.NoError(err)
 
-	err = s.modelRepo.Delete(context.Background(), model)
+	err = modelRepo.Delete(context.Background(), model)
 	s.NoError(err)
 
 	entries := make([]*TestModel1HistoryEntry, 0)
-	err = s.modelHistoryRepo.Query(context.Background(), &db_repo.QueryBuilder{}, &entries)
+	err = modelHistoryRepo.Query(context.Background(), &db_repo.QueryBuilder{}, &entries)
 	s.NoError(err)
 	s.Equal(3, len(entries), "expected 3 change history entries")
 
@@ -187,20 +161,24 @@ func (s *DbRepoChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_Create
 	s.Equal("name2", *entries[2].Name)
 }
 
-func (s *DbRepoChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable() {
-	var err error
+func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable() {
+	envConfig := s.Env().Config()
+	envLogger := s.Env().Logger()
 
-	s.modelRepo, err = db_repo.New(s.config, s.logger, db_repo.Settings{
+	modelRepo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModel2Metadata,
 	})
 	s.NoError(err)
 
-	s.modelHistoryRepo, err = db_repo.New(s.config, s.logger, db_repo.Settings{
+	modelHistoryRepo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
 		Metadata: TestHistoryModel2Metadata,
 	})
 	s.NoError(err)
 
-	err = s.historyManager.RunMigration(&TestModel2{})
+	historyManager, err := db_repo.NewChangeHistoryManager(envConfig, envLogger)
+	s.NoError(err)
+
+	err = historyManager.RunMigration(&TestModel2{})
 	s.NoError(err)
 
 	model := &TestModel2{
@@ -209,18 +187,18 @@ func (s *DbRepoChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_Update
 		ChangeAuthor: mdl.String("john@example.com"),
 	}
 
-	err = s.modelRepo.Create(context.Background(), model)
+	err = modelRepo.Create(context.Background(), model)
 	s.NoError(err)
 
 	model.Foo = mdl.String("foo2")
-	err = s.modelRepo.Update(context.Background(), model)
+	err = modelRepo.Update(context.Background(), model)
 	s.NoError(err)
 
-	err = s.modelRepo.Delete(context.Background(), model)
+	err = modelRepo.Delete(context.Background(), model)
 	s.NoError(err)
 
 	entries := make([]*TestModel2HistoryEntry, 0)
-	err = s.modelHistoryRepo.Query(context.Background(), &db_repo.QueryBuilder{}, &entries)
+	err = modelHistoryRepo.Query(context.Background(), &db_repo.QueryBuilder{}, &entries)
 	s.NoError(err)
 	s.Equal(3, len(entries), "expected 3 change history entries")
 
@@ -238,4 +216,8 @@ func (s *DbRepoChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_Update
 	s.Equal("delete", entries[2].ChangeHistoryAction)
 	s.Equal("foo2", *entries[2].Foo)
 	s.Nil(entries[2].ChangeAuthor) // change-author is excluded for delete actions as it may be misleading
+}
+
+func TestChangeHistoryTestSuite(t *testing.T) {
+	suite.Run(t, new(ChangeHistoryTestSuite))
 }

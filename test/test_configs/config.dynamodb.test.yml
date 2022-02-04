@@ -1,4 +1,0 @@
-mocks:
-  dynamodb:
-    component: dynamodb
-    debug: true

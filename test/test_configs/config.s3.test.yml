@@ -1,4 +1,0 @@
-mocks:
-  s3:
-    component: s3
-    debug: false

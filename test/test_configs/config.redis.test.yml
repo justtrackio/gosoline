@@ -1,4 +1,0 @@
-mocks:
-  redis:
-    component: redis
-    debug: false

@@ -1,8 +1,12 @@
+env: test
+
 app_project: prj
 app_family: fam
 app_name: app
 
-env: test
-
 fixtures:
   enabled: true
+
+redis:
+  default:
+    dialer: tcp

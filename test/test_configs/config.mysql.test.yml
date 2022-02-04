@@ -1,9 +1,0 @@
-mocks:
-  mysql:
-    component: mysql
-    debug: false
-    dbName: myDbName
-    expire_after: 1m1s
-    tmpfs:
-      /var/lib/mysql: ''
-    version: '8.0'

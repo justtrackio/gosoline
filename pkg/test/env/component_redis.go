@@ -5,13 +5,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
-type redisComponent struct {
+type RedisComponent struct {
 	baseComponent
 	address string
 	client  *redis.Client
 }
 
-func (c *redisComponent) CfgOptions() []cfg.Option {
+func (c *RedisComponent) CfgOptions() []cfg.Option {
 	return []cfg.Option{
 		cfg.WithConfigSetting("redis", map[string]interface{}{
 			"default": map[string]interface{}{
@@ -22,10 +22,10 @@ func (c *redisComponent) CfgOptions() []cfg.Option {
 	}
 }
 
-func (c *redisComponent) Address() string {
+func (c *RedisComponent) Address() string {
 	return c.address
 }
 
-func (c *redisComponent) Client() *redis.Client {
+func (c *RedisComponent) Client() *redis.Client {
 	return c.client
 }

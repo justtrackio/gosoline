@@ -1,7 +1,0 @@
-mocks:
-  elasticsearch:
-    component: elasticsearch
-    debug: false
-    tmpfs:
-      /usr/share/elasticsearch/data: ''
-    version: 6.0.0

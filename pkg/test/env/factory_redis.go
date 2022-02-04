@@ -80,7 +80,7 @@ func (f *redisFactory) healthCheck() ComponentHealthCheck {
 }
 
 func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, _ interface{}) (Component, error) {
-	component := &redisComponent{
+	component := &RedisComponent{
 		address: f.address(containers["main"]),
 		client:  f.client(containers["main"]),
 	}
