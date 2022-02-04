@@ -383,6 +383,10 @@ func parseUrl(ctx *gin.Context) (*url.URL, error) {
 		return nil, fmt.Errorf("could not merge urls: %w", err)
 	}
 
+	if ctx.Request.Host != "" {
+		reqUrl.Host = ctx.Request.Host
+	}
+
 	return reqUrl, nil
 }
 
