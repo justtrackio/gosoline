@@ -20,24 +20,27 @@ import (
 )
 
 func TestRecordWriterPutRecords(t *testing.T) {
+	mw := metricMocks.NewWriterMockedAll()
+	testClock := clock.NewFakeClock(clock.WithNonBlockingSleep)
+
 	ctx := log.AppendLoggerContextField(context.Background(), map[string]interface{}{
 		"kinesis_write_request_id": "79db3180-99a9-4157-91c3-a591b9a8f01c",
 		"stream_name":              "streamName",
 	})
 
 	logger := logMocks.NewLoggerMock()
-	logger.On("Warn", "%d / %d records failed, retrying", 1, 3)
-	logger.On("Warn", "PutRecords successful after %d retries in %s", 1, 2*time.Second)
-
-	mw := metricMocks.NewWriterMockedAll()
-
-	testClock := clock.NewFakeClock()
+	logger.On("Warn", "PutRecords failed %d of %d records with reason %s: after %s attempts in %s", 1, 3, "1 ProvisionedThroughputExceededException errors", 1, time.Second)
+	logger.On("Warn", "PutRecords successful after %d attempts in %s", 2, 3*time.Second)
 
 	uuidGen := new(uuidMocks.Uuid)
+	// kinesis kinesis_write_request_id
 	uuidGen.On("NewV4").Return("79db3180-99a9-4157-91c3-a591b9a8f01c").Once()
+	// kinesis PartitionKey
 	uuidGen.On("NewV4").Return("ee080b0b-faae-40c2-8959-0f8f2b6d1b06").Once()
 	uuidGen.On("NewV4").Return("541c78c0-afc7-440f-b8a3-d2e49fb1ba4c").Once()
 	uuidGen.On("NewV4").Return("51b873fc-8086-4b39-8a68-bead0102cdf0").Once()
+	// batch_id
+	uuidGen.On("NewV4").Return("2ac1ed74-7c44-4312-b6da-cabe7b709224").Once()
 
 	kinesisClient := new(gosoKinesisMocks.Client)
 	kinesisClient.On("PutRecords", ctx, &kinesis.PutRecordsInput{
@@ -64,7 +67,7 @@ func TestRecordWriterPutRecords(t *testing.T) {
 				ErrorCode: nil,
 			},
 			{
-				ErrorCode: aws.String("throttling"),
+				ErrorCode: aws.String("ProvisionedThroughputExceededException"),
 			},
 			{
 				ErrorCode: nil,

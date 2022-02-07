@@ -90,29 +90,30 @@ type runtimeContext struct {
 
 func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Kinsumer, error) {
 	settings.PadFromConfig(config)
-	streamName := Stream(fmt.Sprintf("%s-%s-%s-%s-%s", settings.Project, settings.Environment, settings.Family, settings.Application, settings.StreamName))
+	fullStreamName := Stream(fmt.Sprintf("%s-%s-%s-%s-%s", settings.Project, settings.Environment, settings.Family, settings.Application, settings.StreamName))
 	clientId := ClientId(uuid.New().NewV4())
 
 	logger = logger.WithChannel("kinsumer").WithFields(log.Fields{
-		"stream_name":        streamName,
+		"stream_name":        fullStreamName,
 		"kinsumer_client_id": clientId,
 	})
 
-	shardReaderDefaults := getShardReaderDefaultMetrics(streamName)
+	shardReaderDefaults := getShardReaderDefaultMetrics(fullStreamName)
 	metricWriter := metric.NewDaemonWriter(shardReaderDefaults...)
 
-	kinesisClient, err := NewClient(ctx, config, logger, "default")
-	if err != nil {
+	var err error
+	var kinesisClient *kinesis.Client
+	var metadataRepository MetadataRepository
+
+	if kinesisClient, err = NewClient(ctx, config, logger, "default"); err != nil {
 		return nil, fmt.Errorf("failed to create kinesis client: %w", err)
 	}
 
-	err = CreateKinesisStream(ctx, config, logger, kinesisClient, string(streamName))
-	if err != nil {
+	if err = CreateKinesisStream(ctx, config, logger, kinesisClient, string(fullStreamName)); err != nil {
 		return nil, fmt.Errorf("failed to create kinesis stream: %w", err)
 	}
 
-	metadataRepository, err := NewMetadataRepository(ctx, config, logger, streamName, clientId, *settings)
-	if err != nil {
+	if metadataRepository, err = NewMetadataRepository(ctx, config, logger, fullStreamName, clientId, *settings); err != nil {
 		return nil, fmt.Errorf("failed to create metadata manager: %w", err)
 	}
 
@@ -121,15 +122,17 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		Name:           settings.Name,
 		StreamAppId:    settings.AppId,
 		StreamName:     settings.StreamName,
-		StreamNameFull: streamName,
+		StreamNameFull: fullStreamName,
 	}
 	if err = appctx.MetadataAppend(ctx, MetadataKeyKinsumers, kinsumerMetadata); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
-	return NewKinsumerWithInterfaces(logger, *settings, streamName, kinesisClient, metadataRepository, metricWriter, clock.Provider, func(logger log.Logger, shardId ShardId) ShardReader {
-		return NewShardReaderWithInterfaces(streamName, shardId, logger, metricWriter, metadataRepository, kinesisClient, *settings, clock.Provider)
-	}), nil
+	shardReaderFactory := func(logger log.Logger, shardId ShardId) ShardReader {
+		return NewShardReaderWithInterfaces(fullStreamName, shardId, logger, metricWriter, metadataRepository, kinesisClient, *settings, clock.Provider)
+	}
+
+	return NewKinsumerWithInterfaces(logger, *settings, fullStreamName, kinesisClient, metadataRepository, metricWriter, clock.Provider, shardReaderFactory), nil
 }
 
 func NewKinsumerWithInterfaces(logger log.Logger, settings Settings, stream Stream, kinesisClient Client, metadataRepository MetadataRepository, metricWriter metric.Writer, clock clock.Clock, shardReaderFactory func(logger log.Logger, shardId ShardId) ShardReader) Kinsumer {

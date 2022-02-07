@@ -23,12 +23,14 @@ func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger,
 	var recordWriter gosoKinesis.RecordWriter
 
 	settings.PadFromConfig(config)
+	fullStreamName := fmt.Sprintf("%s-%s-%s-%s-%s", settings.Project, settings.Environment, settings.Family, settings.Application, settings.StreamName)
+
 	recordWriterSettings := &gosoKinesis.RecordWriterSettings{
-		StreamName: fmt.Sprintf("%s-%s-%s-%s-%s", settings.Project, settings.Environment, settings.Family, settings.Application, settings.StreamName),
+		StreamName: fullStreamName,
 	}
 
 	if recordWriter, err = gosoKinesis.NewRecordWriter(ctx, config, logger, recordWriterSettings); err != nil {
-		return nil, fmt.Errorf("can not create record writer for stream %s: %w", settings.StreamName, err)
+		return nil, fmt.Errorf("can not create record writer for stream %s: %w", fullStreamName, err)
 	}
 
 	return NewKinesisOutputWithInterfaces(recordWriter), nil

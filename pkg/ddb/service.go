@@ -67,22 +67,25 @@ func (s *Service) DescribeTable(ctx context.Context, settings *Settings) (*Table
 
 func (s *Service) CreateTable(ctx context.Context, settings *Settings) (*Metadata, error) {
 	tableName := TableName(settings)
-	metadata, err := s.metadataFactory.GetMetadata(settings)
-	if err != nil {
-		return nil, err
+
+	var err error
+	var metadata *Metadata
+	var exists bool
+
+	if metadata, err = s.metadataFactory.GetMetadata(settings); err != nil {
+		return nil, fmt.Errorf("can not get metadata: %w", err)
 	}
 
-	if !settings.AutoCreate {
-		return metadata, nil
-	}
-
-	exists, err := s.tableExists(ctx, tableName)
-	if err != nil {
-		return nil, err
+	if exists, err = s.tableExists(ctx, tableName); err != nil {
+		return nil, fmt.Errorf("can not check if the table already exists: %w", err)
 	}
 
 	if exists {
 		return metadata, nil
+	}
+
+	if !exists && !settings.AutoCreate {
+		return nil, fmt.Errorf("table does not exist and auto create is disabled")
 	}
 
 	mainKeySchema, err := s.getKeySchema(metadata.Main)
@@ -132,12 +135,10 @@ func (s *Service) CreateTable(ctx context.Context, settings *Settings) (*Metadat
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not create table: %w", err)
 	}
 
-	err = s.waitForTableGettingAvailable(ctx, tableName)
-
-	if err != nil {
+	if err = s.waitForTableGettingAvailable(ctx, tableName); err != nil {
 		return nil, err
 	}
 
@@ -430,7 +431,7 @@ func (s *Service) checkExists(ctx context.Context, name string) (bool, error) {
 	}
 
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("can not describe table: %w", err)
 	}
 
 	active := out.Table.TableStatus == types.TableStatusActive
