@@ -8,3 +8,9 @@ kvstore:
   test_store:
     type: chain
     elements: [inMemory]
+  another_test_store:
+    type: chain
+    elements: [inMemory]
+
+fixtures:
+  enabled: true
