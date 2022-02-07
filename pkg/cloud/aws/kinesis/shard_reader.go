@@ -22,6 +22,7 @@ import (
 const (
 	metricNameFailedRecords      = "FailedRecords"
 	metricNameMillisecondsBehind = "MillisecondsBehind"
+	metricNameProcessDuration    = "ProcessDuration"
 	metricNameReadCount          = "ReadCount"
 	metricNameReadRecords        = "ReadRecords"
 	metricNameShardTaskRatio     = "ShardTaskRatio"
@@ -320,7 +321,9 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 			// nothing during processing. Thus, we need a separate task taking care of this
 			millisecondsBehindChan <- float64(millisecondsBehind)
 
+			processStart := s.clock.Now()
 			processedSize := 0
+
 		processRecords:
 			for _, record := range records {
 				if err := handler(record.Data); err != nil {
@@ -348,7 +351,9 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 				}
 			}
 
-			s.logger.Info("processed batch of %d records", processedSize)
+			processDuration := s.clock.Since(processStart)
+			s.logger.Info("processed batch of %d records in %s", processedSize, processDuration)
+			s.writeMetric(metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage)
 			s.writeMetric(metricNameReadRecords, float64(processedSize), metric.UnitCount)
 
 			iterator = nextIterator
@@ -422,6 +427,15 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 	// as we reported before - not 0 (which would be the default if we are not writing a metric). Thus, we instead leave
 	// gaps in the metric to show this (thus, you maybe shouldn't define an alarm on a too short period).
 	return metric.Data{
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricNameProcessDuration,
+			Dimensions: map[string]string{
+				"StreamName": string(stream),
+			},
+			Unit:  metric.UnitMillisecondsAverage,
+			Value: 0.0,
+		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameReadCount,

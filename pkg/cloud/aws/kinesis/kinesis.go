@@ -15,24 +15,24 @@ import (
 
 // CreateKinesisStream ensures a kinesis stream exists if dx.auto_create is set to true.
 func CreateKinesisStream(ctx context.Context, config cfg.Config, logger log.Logger, client Client, streamName string) error {
-	if !dx.ShouldAutoCreate(config) {
-		return nil
-	}
-
 	logger.Info("looking for kinesis stream: %s", streamName)
 
 	_, err := client.DescribeStreamSummary(ctx, &kinesis.DescribeStreamSummaryInput{
 		StreamName: aws.String(streamName),
 	})
-	var errResourceNotFoundException *types.ResourceNotFoundException
-	if !errors.As(err, &errResourceNotFoundException) {
-		if err != nil {
-			return fmt.Errorf("failed to describe kinesis streams: %w", err)
-		}
 
+	if err == nil {
 		logger.Info("found kinesis stream: %s", streamName)
-
 		return nil
+	}
+
+	var errResourceNotFoundException *types.ResourceNotFoundException
+	if !errors.As(err, &errResourceNotFoundException) && err != nil {
+		return fmt.Errorf("failed to describe kinesis streams: %w", err)
+	}
+
+	if !dx.ShouldAutoCreate(config) {
+		return fmt.Errorf("kinesis stream does not exist and auto create is disabled")
 	}
 
 	logger.Info("trying to create kinesis stream: %s", streamName)

@@ -24,14 +24,15 @@ type FakeClock interface {
 }
 
 type fakeClock struct {
-	now             time.Time
-	lck             sync.RWMutex
-	sleepers        []*fakeSleeper
-	timers          []*fakeTimer
-	tickers         []*fakeTicker
-	blockOnSleepers blockerMap
-	blockOnTimers   blockerMap
-	blockOnTickers  blockerMap
+	now              time.Time
+	lck              sync.RWMutex
+	sleepers         []*fakeSleeper
+	timers           []*fakeTimer
+	tickers          []*fakeTicker
+	blockOnSleepers  blockerMap
+	blockOnTimers    blockerMap
+	blockOnTickers   blockerMap
+	nonBlockingSleep bool
 }
 
 type blockerMap map[int][]chan struct{}
@@ -42,18 +43,24 @@ type fakeSleeper struct {
 }
 
 // NewFakeClock creates a new FakeClock at a non-zero and fixed date.
-func NewFakeClock() FakeClock {
-	return NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
+func NewFakeClock(options ...FakeClockOption) FakeClock {
+	return NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC), options...)
 }
 
 // NewFakeClockAt creates a new FakeClock at the given time.Time.
-func NewFakeClockAt(t time.Time) FakeClock {
-	return &fakeClock{
+func NewFakeClockAt(t time.Time, options ...FakeClockOption) FakeClock {
+	clock := &fakeClock{
 		now:             t,
 		blockOnSleepers: blockerMap{},
 		blockOnTickers:  blockerMap{},
 		blockOnTimers:   blockerMap{},
 	}
+
+	for _, opt := range options {
+		opt(clock)
+	}
+
+	return clock
 }
 
 func (f *fakeClock) Advance(d time.Duration) {
@@ -128,6 +135,11 @@ func (f *fakeClock) After(d time.Duration) <-chan time.Time {
 }
 
 func (f *fakeClock) Sleep(d time.Duration) {
+	if f.nonBlockingSleep {
+		f.Advance(d)
+		return
+	}
+
 	<-f.After(d)
 }
 

@@ -3,6 +3,8 @@ package kinesis
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
@@ -51,14 +53,15 @@ func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, 
 	defaultMetrics := getRecordWriterDefaultMetrics(settings.StreamName)
 	metricWriter := metric.NewDaemonWriter(defaultMetrics...)
 
-	client, err := ProvideClient(ctx, config, logger, "default")
-	if err != nil {
+	var err error
+	var client *kinesis.Client
+
+	if client, err = ProvideClient(ctx, config, logger, "default"); err != nil {
 		return nil, fmt.Errorf("failed to provide kinesis client: %w", err)
 	}
 
-	err = CreateKinesisStream(ctx, config, logger, client, settings.StreamName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create kinesis stream: %w", err)
+	if err = CreateKinesisStream(ctx, config, logger, client, settings.StreamName); err != nil {
+		return nil, fmt.Errorf("failed to create kinesis stream %s: %w", settings.StreamName, err)
 	}
 
 	metadata := RecordWriterMetadata{
@@ -82,112 +85,147 @@ func NewRecordWriterWithInterfaces(logger log.Logger, metricWriter metric.Writer
 	}
 }
 
-func (o *recordWriter) PutRecord(ctx context.Context, record []byte) error {
-	return o.PutRecords(ctx, [][]byte{record})
+func (w *recordWriter) PutRecord(ctx context.Context, record []byte) error {
+	return w.PutRecords(ctx, [][]byte{record})
 }
 
-func (o *recordWriter) PutRecords(ctx context.Context, records [][]byte) error {
+func (w *recordWriter) PutRecords(ctx context.Context, records [][]byte) error {
 	if len(records) == 0 {
 		return nil
 	}
 
 	ctx = log.AppendLoggerContextField(ctx, log.Fields{
-		"stream_name":              o.settings.StreamName,
-		"kinesis_write_request_id": o.uuidGen.NewV4(),
+		"stream_name":              w.settings.StreamName,
+		"kinesis_write_request_id": w.uuidGen.NewV4(),
 	})
 
 	var err, errs error
 	chunks := funk.Chunk(records, kinesisBatchSizeMax).([][][]byte)
 
 	for _, chunk := range chunks {
-		if err = o.putRecordsBatch(ctx, chunk); err != nil {
+		if err = w.putRecordsBatch(ctx, chunk); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}
 
 	if errs != nil {
-		return fmt.Errorf("can not put records to stream %s: %w", o.settings.StreamName, errs)
+		return fmt.Errorf("can not put records to stream %s: %w", w.settings.StreamName, errs)
 	}
 
 	return nil
 }
 
-func (o *recordWriter) putRecordsBatch(ctx context.Context, batch [][]byte) error {
+func (w *recordWriter) putRecordsBatch(ctx context.Context, batch [][]byte) error {
 	records := make([]types.PutRecordsRequestEntry, 0, len(batch))
 
 	for _, data := range batch {
 		req := types.PutRecordsRequestEntry{
 			Data:         data,
-			PartitionKey: aws.String(o.uuidGen.NewV4()),
+			PartitionKey: aws.String(w.uuidGen.NewV4()),
 		}
 
 		records = append(records, req)
 	}
 
-	tries := 0
-	start := o.clock.Now()
-	for len(records) > 0 {
-		tries++
-		failedRecords, err := o.putRecordsAndCollectFailed(ctx, records)
-		if err != nil {
-			return fmt.Errorf("can not write batch to stream %s: %w", o.settings.StreamName, err)
+	var err error
+	var failedRecords []types.PutRecordsRequestEntry
+	var reason string
+
+	attempt := 1
+	start := w.clock.Now()
+	batchId := w.uuidGen.NewV4()
+
+	for {
+		if failedRecords, reason, err = w.putRecordsAndCollectFailed(ctx, records); err != nil {
+			return fmt.Errorf("can not write batch to stream: %w", err)
 		}
 
-		o.writeMetrics(len(records), len(failedRecords))
+		w.writeMetrics(len(records), len(failedRecords))
+		took := w.clock.Now().Sub(start)
 
-		if len(failedRecords) > 0 {
-			o.logger.WithContext(ctx).Warn("%d / %d records failed, retrying", len(failedRecords), len(records))
-		} else if tries > 1 {
-			took := o.clock.Now().Sub(start)
-			o.logger.WithContext(ctx).Warn("PutRecords successful after %d retries in %s", tries-1, took)
+		if len(failedRecords) == 0 && attempt == 1 {
+			break
 		}
 
+		logger := w.logger.WithContext(ctx).WithFields(log.Fields{
+			"batch_id": batchId,
+		})
+
+		if len(failedRecords) == 0 && attempt > 1 {
+			logger.Warn("PutRecords successful after %d attempts in %s", attempt, took)
+			break
+		}
+
+		logger.Warn("PutRecords failed %d of %d records with reason %s: after %s attempts in %s", len(failedRecords), len(records), reason, attempt, took)
 		records = failedRecords
+
+		// sleep for a second before retrying to give the stream some time to recover from a ProvisionedThroughputExceededException
+		w.clock.Sleep(time.Second)
+		attempt++
 	}
 
 	return nil
 }
 
-func (o *recordWriter) putRecordsAndCollectFailed(ctx context.Context, records []types.PutRecordsRequestEntry) ([]types.PutRecordsRequestEntry, error) {
-	putRecordsOutput, err := o.client.PutRecords(ctx, &kinesis.PutRecordsInput{
+func (w *recordWriter) putRecordsAndCollectFailed(ctx context.Context, records []types.PutRecordsRequestEntry) ([]types.PutRecordsRequestEntry, string, error) {
+	putRecordsOutput, err := w.client.PutRecords(ctx, &kinesis.PutRecordsInput{
 		Records:    records,
-		StreamName: aws.String(o.settings.StreamName),
+		StreamName: aws.String(w.settings.StreamName),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("can not execute PutRecordsRequest: %w", err)
+		return nil, "", fmt.Errorf("can not execute PutRecordsRequest: %w", err)
 	}
 
 	failedRecords := make([]types.PutRecordsRequestEntry, 0, len(records))
+	errors := make(map[string]int)
 
 	for i, outputRecord := range putRecordsOutput.Records {
-		if outputRecord.ErrorCode != nil {
-			failedRecords = append(failedRecords, records[i])
+		if outputRecord.ErrorCode == nil {
+			continue
 		}
+
+		failedRecords = append(failedRecords, records[i])
+
+		if _, ok := errors[*outputRecord.ErrorCode]; !ok {
+			errors[*outputRecord.ErrorCode] = 0
+		}
+
+		errors[*outputRecord.ErrorCode]++
 	}
 
-	return failedRecords, nil
+	if len(failedRecords) == 0 {
+		return failedRecords, "", nil
+	}
+
+	reasons := make([]string, 0)
+	for errCode, count := range errors {
+		reasons = append(reasons, fmt.Sprintf("%d %s errors", count, errCode))
+	}
+	reason := strings.Join(reasons, ", ")
+
+	return failedRecords, reason, nil
 }
 
-func (o *recordWriter) writeMetrics(records int, failed int) {
-	o.metricWriter.Write(metric.Data{
+func (w *recordWriter) writeMetrics(records int, failed int) {
+	w.metricWriter.Write(metric.Data{
 		&metric.Datum{
 			MetricName: metricNamePutRecords,
 			Dimensions: map[string]string{
-				"StreamName": o.settings.StreamName,
+				"StreamName": w.settings.StreamName,
 			},
-			Value: float64(records),
+			Value: float64(records - failed),
 		},
 		&metric.Datum{
 			MetricName: metricNamePutRecordsFailure,
 			Dimensions: map[string]string{
-				"StreamName": o.settings.StreamName,
+				"StreamName": w.settings.StreamName,
 			},
 			Value: float64(failed),
 		},
 		&metric.Datum{
 			MetricName: metricNamePutRecordsBatchSize,
 			Dimensions: map[string]string{
-				"StreamName": o.settings.StreamName,
+				"StreamName": w.settings.StreamName,
 			},
 			Value: float64(records),
 		},
