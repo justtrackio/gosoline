@@ -156,7 +156,7 @@ func (w *recordWriter) putRecordsBatch(ctx context.Context, batch [][]byte) erro
 			break
 		}
 
-		logger.Warn("PutRecords failed %d of %d records with reason %s: after %s attempts in %s", len(failedRecords), len(records), reason, attempt, took)
+		logger.Warn("PutRecords failed %d of %d records with reason: %s: after %d attempts in %s", len(failedRecords), len(records), reason, attempt, took)
 		records = failedRecords
 
 		// sleep for a second before retrying to give the stream some time to recover from a ProvisionedThroughputExceededException
