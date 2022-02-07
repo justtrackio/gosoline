@@ -1,7 +1,7 @@
 //go:build integration && fixtures
 // +build integration,fixtures
 
-package test_test
+package s3_test
 
 import (
 	"context"
@@ -23,42 +23,30 @@ const (
 	configName    = "test"
 )
 
-type FixturesS3Suite struct {
+type S3TestSuite struct {
 	suite.Suite
-	ctx        context.Context
-	bucketName string
 }
 
-func (s *FixturesS3Suite) SetupSuite() []suite.Option {
+func (s *S3TestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("debug"),
-		suite.WithConfigFile("test_configs/config.fixtures_s3.test.yml"),
+		suite.WithConfigFile("config.test.yml"),
 	}
 }
 
-func (s *FixturesS3Suite) SetupTest() (err error) {
-	s.ctx = context.Background()
-	s.bucketName = s.Env().Config().GetString("blobstore.test.bucket")
-	return
-}
-
-func TestFixturesS3Suite(t *testing.T) {
-	s := new(FixturesS3Suite)
-	suite.Run(t, s)
-}
-
-func (s *FixturesS3Suite) TestS3() {
+func (s *S3TestSuite) TestS3() {
 	fs := s3DisabledPurgeFixtures()
 	err := s.Env().LoadFixtures(fs)
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
+	bucketName := s.Env().Config().GetString("blobstore.test.bucket")
 
 	input := &s3.GetObjectInput{
-		Bucket: aws.String(s.bucketName),
+		Bucket: aws.String(bucketName),
 		Key:    aws.String("nyan_cat2.gif"),
 	}
-	output, err := s3Client.GetObject(s.ctx, input)
+	output, err := s3Client.GetObject(context.Background(), input)
 	s.NoError(err)
 
 	body, err := ioutil.ReadAll(output.Body)
@@ -67,10 +55,10 @@ func (s *FixturesS3Suite) TestS3() {
 	s.Equal(28092, len(body))
 
 	input = &s3.GetObjectInput{
-		Bucket: aws.String(s.bucketName),
+		Bucket: aws.String(bucketName),
 		Key:    aws.String("subDir/nyan_cat1.gif"),
 	}
-	output, err = s3Client.GetObject(s.ctx, input)
+	output, err = s3Client.GetObject(context.Background(), input)
 	s.NoError(err)
 
 	body, err = ioutil.ReadAll(output.Body)
@@ -79,10 +67,10 @@ func (s *FixturesS3Suite) TestS3() {
 	s.Equal(28092, len(body))
 
 	input = &s3.GetObjectInput{
-		Bucket: aws.String(s.bucketName),
+		Bucket: aws.String(bucketName),
 		Key:    aws.String("subDir/nyan_cat.gif"),
 	}
-	output, err = s3Client.GetObject(s.ctx, input)
+	output, err = s3Client.GetObject(context.Background(), input)
 	s.NoError(err)
 
 	body, err = ioutil.ReadAll(output.Body)
@@ -91,18 +79,18 @@ func (s *FixturesS3Suite) TestS3() {
 	s.Equal(28092, len(body))
 }
 
-func (s *FixturesS3Suite) TestS3WithPurge() {
-	fs := s3DisabledPurgeFixtures()
-	err := s.Env().LoadFixtures(fs)
+func (s *S3TestSuite) TestS3WithPurge() {
+	err := s.Env().LoadFixtures(s3DisabledPurgeFixtures())
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
+	bucketName := s.Env().Config().GetString("blobstore.test.bucket")
 
 	input := &s3.GetObjectInput{
-		Bucket: aws.String(s.bucketName),
+		Bucket: aws.String(bucketName),
 		Key:    aws.String(fmt.Sprint("subDir/nyan_cat1.gif")),
 	}
-	output, err := s3Client.GetObject(s.ctx, input)
+	output, err := s3Client.GetObject(context.Background(), input)
 	s.NoError(err)
 
 	body, err := ioutil.ReadAll(output.Body)
@@ -110,15 +98,14 @@ func (s *FixturesS3Suite) TestS3WithPurge() {
 	s.NoError(err)
 	s.Equal(28092, len(body))
 
-	fs = s3EnabledPurgeFixtures()
-	err = s.Env().LoadFixtures(fs)
+	err = s.Env().LoadFixtures(s3EnabledPurgeFixtures())
 	s.NoError(err)
 
 	input = &s3.GetObjectInput{
-		Bucket: aws.String(s.bucketName),
+		Bucket: aws.String(bucketName),
 		Key:    aws.String(fmt.Sprint("nyan_cat3.gif")),
 	}
-	output, err = s3Client.GetObject(s.ctx, input)
+	output, err = s3Client.GetObject(context.Background(), input)
 	s.NoError(err)
 
 	body, err = ioutil.ReadAll(output.Body)
@@ -127,10 +114,10 @@ func (s *FixturesS3Suite) TestS3WithPurge() {
 	s.Equal(28092, len(body))
 
 	input = &s3.GetObjectInput{
-		Bucket: aws.String(s.bucketName),
+		Bucket: aws.String(bucketName),
 		Key:    aws.String(fmt.Sprint("nyan_cat2.gif")),
 	}
-	output, err = s3Client.GetObject(s.ctx, input)
+	output, err = s3Client.GetObject(context.Background(), input)
 
 	var noSuchKey *types.NoSuchKey
 	isNoSuchKeyErr := errors.As(err, &noSuchKey)
@@ -164,4 +151,8 @@ func s3EnabledPurgeFixtures() []*fixtures.FixtureSet {
 			Fixtures: nil,
 		},
 	}
+}
+
+func TestS3TestSuite(t *testing.T) {
+	suite.Run(t, new(S3TestSuite))
 }

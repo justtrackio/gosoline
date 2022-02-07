@@ -160,6 +160,10 @@ func (e *Environment) Component(typ string, name string) Component {
 	return component
 }
 
+func (e *Environment) Redis(name string) *RedisComponent {
+	return e.Component(componentRedis, name).(*RedisComponent)
+}
+
 func (e *Environment) S3(name string) *S3Component {
 	return e.Component(componentS3, name).(*S3Component)
 }

@@ -1,4 +1,0 @@
-mocks:
-  wiremock:
-    component: wiremock
-    mocks: test_fixtures/wiremock_fixtures.json

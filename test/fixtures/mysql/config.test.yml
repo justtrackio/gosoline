@@ -10,15 +10,14 @@ db:
     parse_time: true
     uri:
       host: 127.0.0.1
-      port: 3307
-      user: root
+      port: 3306
+      user: gosoline
       password: gosoline
-      database: myDbName
+      database: gosoline
     migrations:
       enabled: true
       table_prefixed: false
-      path: file://test_fixtures/migrations/
+      path: file://migrations/
 
 fixtures:
   enabled: true
-

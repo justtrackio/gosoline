@@ -1,5 +1,0 @@
-mocks:
-  sns_sqs:
-    debug: false
-    component: sns_sqs
-    expire_after: 2m
