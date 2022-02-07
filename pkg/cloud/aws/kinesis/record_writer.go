@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
@@ -13,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/uuid"
@@ -33,6 +33,7 @@ type RecordWriterMetadata struct {
 
 type RecordWriterSettings struct {
 	StreamName string
+	Backoff    exec.BackoffSettings
 }
 
 type RecordWriter interface {
@@ -135,6 +136,8 @@ func (w *recordWriter) putRecordsBatch(ctx context.Context, batch [][]byte) erro
 	start := w.clock.Now()
 	batchId := w.uuidGen.NewV4()
 
+	backoff := exec.NewExponentialBackOff(&w.settings.Backoff)
+
 	for {
 		if failedRecords, reason, err = w.putRecordsAndCollectFailed(ctx, records); err != nil {
 			return fmt.Errorf("can not write batch to stream: %w", err)
@@ -156,11 +159,12 @@ func (w *recordWriter) putRecordsBatch(ctx context.Context, batch [][]byte) erro
 			break
 		}
 
-		logger.Warn("PutRecords failed %d of %d records with reason %s: after %s attempts in %s", len(failedRecords), len(records), reason, attempt, took)
+		logger.Warn("PutRecords failed %d of %d records with reason: %s: after %d attempts in %s", len(failedRecords), len(records), reason, attempt, took)
 		records = failedRecords
 
-		// sleep for a second before retrying to give the stream some time to recover from a ProvisionedThroughputExceededException
-		w.clock.Sleep(time.Second)
+		// sleep some time before retrying to give the stream some time to recover from a ProvisionedThroughputExceededException
+		sleep := backoff.NextBackOff()
+		w.clock.Sleep(sleep)
 		attempt++
 	}
 

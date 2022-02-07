@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/cenkalti/backoff"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
@@ -41,11 +41,7 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 	var err error
 	var errType ErrorType
 
-	backoffConfig := backoff.NewExponentialBackOff()
-	backoffConfig.InitialInterval = e.settings.InitialInterval
-	backoffConfig.MaxInterval = e.settings.MaxInterval
-	backoffConfig.MaxElapsedTime = e.settings.MaxElapsedTime
-
+	backoffConfig := NewExponentialBackOff(e.settings)
 	backoffCtx := backoff.WithContext(backoffConfig, ctx)
 
 	attempts := 1

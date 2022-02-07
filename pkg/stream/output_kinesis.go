@@ -3,9 +3,11 @@ package stream
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoKinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -24,9 +26,12 @@ func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger,
 
 	settings.PadFromConfig(config)
 	fullStreamName := fmt.Sprintf("%s-%s-%s-%s-%s", settings.Project, settings.Environment, settings.Family, settings.Application, settings.StreamName)
+	backoffSettings := exec.ReadBackoffSettings(config)
+	backoffSettings.InitialInterval = time.Second
 
 	recordWriterSettings := &gosoKinesis.RecordWriterSettings{
 		StreamName: fullStreamName,
+		Backoff:    backoffSettings,
 	}
 
 	if recordWriter, err = gosoKinesis.NewRecordWriter(ctx, config, logger, recordWriterSettings); err != nil {

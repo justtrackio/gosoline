@@ -11,6 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	gosoKinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	gosoKinesisMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis/mocks"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
@@ -29,8 +30,8 @@ func TestRecordWriterPutRecords(t *testing.T) {
 	})
 
 	logger := logMocks.NewLoggerMock()
-	logger.On("Warn", "PutRecords failed %d of %d records with reason %s: after %s attempts in %s", 1, 3, "1 ProvisionedThroughputExceededException errors", 1, time.Second)
-	logger.On("Warn", "PutRecords successful after %d attempts in %s", 2, 3*time.Second)
+	logger.On("Warn", "PutRecords failed %d of %d records with reason: %s: after %d attempts in %s", 1, 3, "1 ProvisionedThroughputExceededException errors", 1, time.Second)
+	logger.On("Warn", "PutRecords successful after %d attempts in %s", 2, mock.AnythingOfType("time.Duration"))
 
 	uuidGen := new(uuidMocks.Uuid)
 	// kinesis kinesis_write_request_id
@@ -96,6 +97,10 @@ func TestRecordWriterPutRecords(t *testing.T) {
 
 	writer := gosoKinesis.NewRecordWriterWithInterfaces(logger, mw, testClock, uuidGen, kinesisClient, &gosoKinesis.RecordWriterSettings{
 		StreamName: "streamName",
+		Backoff: exec.BackoffSettings{
+			InitialInterval: time.Millisecond,
+			MaxInterval:     time.Millisecond,
+		},
 	})
 
 	batch := [][]byte{
