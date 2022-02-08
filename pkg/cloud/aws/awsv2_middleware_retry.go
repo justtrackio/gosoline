@@ -102,25 +102,23 @@ func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSetting
 			return output, metadata, exec.NewErrAttemptsExceeded(attempt.resource, attempt.count, durationTook, err)
 		}
 
-		if attempt.count > 1 && err == nil {
-			logger.
-				WithContext(ctx).
-				WithFields(log.Fields{
-					"attempt_id": attempt.id,
-					"resource":   attempt.resource.String(),
-				}).
-				Warn("sent request to resource %s successful after %d attempts in %s", attempt.resource, attempt.count, durationTook)
+		// if it was 1 attempt only, don't log anything
+		if attempt.count == 1 {
+			return output, metadata, err
 		}
 
+		logger = logger.WithContext(ctx).WithFields(log.Fields{
+			"attempt_id": attempt.id,
+			"resource":   attempt.resource.String(),
+		})
+
 		if err != nil {
-			logger.
-				WithContext(ctx).
-				WithFields(log.Fields{
-					"attempt_id": attempt.id,
-					"resource":   attempt.resource.String(),
-				}).
-				Warn("sent request to resource %s finally failed after %d attempts in %s: %w", attempt.resource, attempt.count, durationTook, err)
+			logger.Warn("sent request to resource %s finally failed after %d attempts in %s: %s", attempt.resource, attempt.count, durationTook, err)
+
+			return output, metadata, err
 		}
+
+		logger.Warn("sent request to resource %s successful after %d attempts in %s", attempt.resource, attempt.count, durationTook)
 
 		return output, metadata, err
 	})

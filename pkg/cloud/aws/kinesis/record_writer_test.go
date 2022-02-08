@@ -38,7 +38,6 @@ func TestRecordWriterPutRecords(t *testing.T) {
 	uuidGen.On("NewV4").Return("79db3180-99a9-4157-91c3-a591b9a8f01c").Once()
 	// kinesis PartitionKey
 	uuidGen.On("NewV4").Return("ee080b0b-faae-40c2-8959-0f8f2b6d1b06").Once()
-	uuidGen.On("NewV4").Return("541c78c0-afc7-440f-b8a3-d2e49fb1ba4c").Once()
 	uuidGen.On("NewV4").Return("51b873fc-8086-4b39-8a68-bead0102cdf0").Once()
 	// batch_id
 	uuidGen.On("NewV4").Return("2ac1ed74-7c44-4312-b6da-cabe7b709224").Once()
@@ -103,10 +102,17 @@ func TestRecordWriterPutRecords(t *testing.T) {
 		},
 	})
 
-	batch := [][]byte{
-		[]byte("1"),
-		[]byte("2"),
-		[]byte("3"),
+	batch := []*gosoKinesis.Record{
+		{
+			Data: []byte("1"),
+		},
+		{
+			Data:         []byte("2"),
+			PartitionKey: aws.String("541c78c0-afc7-440f-b8a3-d2e49fb1ba4c"),
+		},
+		{
+			Data: []byte("3"),
+		},
 	}
 
 	err := writer.PutRecords(context.Background(), batch)

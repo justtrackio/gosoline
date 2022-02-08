@@ -9,7 +9,10 @@ import (
 	gosoKinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/spf13/cast"
 )
+
+const AttributeKinesisPartitionKey = "gosoline.kinesis.partitionKey"
 
 type KinesisOutputSettings struct {
 	cfg.AppId
@@ -53,16 +56,36 @@ func (o *kinesisOutput) WriteOne(ctx context.Context, record WritableMessage) er
 
 func (o *kinesisOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	var err error
-	var record []byte
-	var records [][]byte
+	records := make([]*gosoKinesis.Record, len(batch))
 
-	for _, msg := range batch {
-		if record, err = msg.MarshalToBytes(); err != nil {
-			return fmt.Errorf("can not marshal message to bytes: %w", err)
+	for i, msg := range batch {
+		if records[i], err = o.buildRecord(msg); err != nil {
+			return fmt.Errorf("can not build record: %w", err)
 		}
-
-		records = append(records, record)
 	}
 
 	return o.recordWriter.PutRecords(ctx, records)
+}
+
+func (o *kinesisOutput) buildRecord(msg WritableMessage) (*gosoKinesis.Record, error) {
+	var err error
+	var partitionKey string
+
+	record := &gosoKinesis.Record{}
+
+	if record.Data, err = msg.MarshalToBytes(); err != nil {
+		return nil, fmt.Errorf("can not marshal message to bytes: %w", err)
+	}
+
+	attributes := getAttributes(msg)
+
+	if p, ok := attributes[AttributeKinesisPartitionKey]; ok {
+		if partitionKey, err = cast.ToStringE(p); err != nil {
+			return nil, fmt.Errorf("the type of the %s attribute with value %v should be castable to string: %w", AttributeKinesisPartitionKey, attributes[AttributeKinesisPartitionKey], err)
+		}
+
+		record.PartitionKey = &partitionKey
+	}
+
+	return record, nil
 }
