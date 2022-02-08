@@ -27,6 +27,11 @@ const (
 	metricNamePutRecordsBatchSize = "PutRecordsBatchSize"
 )
 
+type Record struct {
+	Data         []byte
+	PartitionKey *string
+}
+
 type RecordWriterMetadata struct {
 	StreamName string `json:"stream_name"`
 }
@@ -36,9 +41,10 @@ type RecordWriterSettings struct {
 	Backoff    exec.BackoffSettings
 }
 
+//go:generate mockery --name RecordWriter
 type RecordWriter interface {
-	PutRecord(ctx context.Context, record []byte) error
-	PutRecords(ctx context.Context, batch [][]byte) error
+	PutRecord(ctx context.Context, record *Record) error
+	PutRecords(ctx context.Context, batch []*Record) error
 }
 
 type recordWriter struct {
@@ -86,11 +92,11 @@ func NewRecordWriterWithInterfaces(logger log.Logger, metricWriter metric.Writer
 	}
 }
 
-func (w *recordWriter) PutRecord(ctx context.Context, record []byte) error {
-	return w.PutRecords(ctx, [][]byte{record})
+func (w *recordWriter) PutRecord(ctx context.Context, record *Record) error {
+	return w.PutRecords(ctx, []*Record{record})
 }
 
-func (w *recordWriter) PutRecords(ctx context.Context, records [][]byte) error {
+func (w *recordWriter) PutRecords(ctx context.Context, records []*Record) error {
 	if len(records) == 0 {
 		return nil
 	}
@@ -101,7 +107,7 @@ func (w *recordWriter) PutRecords(ctx context.Context, records [][]byte) error {
 	})
 
 	var err, errs error
-	chunks := funk.Chunk(records, kinesisBatchSizeMax).([][][]byte)
+	chunks := funk.Chunk(records, kinesisBatchSizeMax).([][]*Record)
 
 	for _, chunk := range chunks {
 		if err = w.putRecordsBatch(ctx, chunk); err != nil {
@@ -116,13 +122,17 @@ func (w *recordWriter) PutRecords(ctx context.Context, records [][]byte) error {
 	return nil
 }
 
-func (w *recordWriter) putRecordsBatch(ctx context.Context, batch [][]byte) error {
+func (w *recordWriter) putRecordsBatch(ctx context.Context, batch []*Record) error {
 	records := make([]types.PutRecordsRequestEntry, 0, len(batch))
 
-	for _, data := range batch {
+	for _, rec := range batch {
+		if rec.PartitionKey == nil {
+			rec.PartitionKey = aws.String(w.uuidGen.NewV4())
+		}
+
 		req := types.PutRecordsRequestEntry{
-			Data:         data,
-			PartitionKey: aws.String(w.uuidGen.NewV4()),
+			Data:         rec.Data,
+			PartitionKey: rec.PartitionKey,
 		}
 
 		records = append(records, req)
