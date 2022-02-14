@@ -52,8 +52,12 @@ func prepareForLog(v interface{}) interface{} {
 
 			for iter.Next() {
 				keyValue := iter.Key()
+				key := fmt.Sprint(keyValue.Interface())
+				if key == "" {
+					continue
+				}
 				elemValue := iter.Value()
-				newMap[fmt.Sprint(keyValue.Interface())] = prepareForLog(elemValue.Interface())
+				newMap[key] = prepareForLog(elemValue.Interface())
 			}
 
 			return newMap
@@ -74,7 +78,11 @@ func prepareForLog(v interface{}) interface{} {
 				if !field.CanInterface() {
 					continue
 				}
-				newMap[rvt.Field(i).Name] = prepareForLog(field.Interface())
+				fieldName := rvt.Field(i).Name
+				if fieldName == "" {
+					continue
+				}
+				newMap[fieldName] = prepareForLog(field.Interface())
 			}
 
 			return newMap
