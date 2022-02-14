@@ -58,3 +58,25 @@ func (o outputTracer) Write(ctx context.Context, batch []WritableMessage) error 
 
 	return o.base.Write(ctx, batch)
 }
+
+func (o outputTracer) IsPartitionedOutput() bool {
+	po, ok := o.base.(PartitionedOutput)
+
+	return ok && po.IsPartitionedOutput()
+}
+
+func (o outputTracer) GetMaxMessageSize() *int {
+	if sro, ok := o.base.(SizeRestrictedOutput); ok {
+		return sro.GetMaxMessageSize()
+	}
+
+	return nil
+}
+
+func (o outputTracer) GetMaxBatchSize() *int {
+	if sro, ok := o.base.(SizeRestrictedOutput); ok {
+		return sro.GetMaxBatchSize()
+	}
+
+	return nil
+}

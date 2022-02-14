@@ -9,10 +9,14 @@ import (
 	gosoKinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/spf13/cast"
 )
 
-const AttributeKinesisPartitionKey = "gosoline.kinesis.partitionKey"
+const (
+	AttributeKinesisPartitionKey    = "gosoline.kinesis.partitionKey"
+	AttributeKinesisExplicitHashKey = "gosoline.kinesis.explicitHashKey"
+)
 
 type KinesisOutputSettings struct {
 	cfg.AppId
@@ -67,9 +71,21 @@ func (o *kinesisOutput) Write(ctx context.Context, batch []WritableMessage) erro
 	return o.recordWriter.PutRecords(ctx, records)
 }
 
+func (o *kinesisOutput) IsPartitionedOutput() bool {
+	return true
+}
+
+func (o *kinesisOutput) GetMaxMessageSize() *int {
+	return mdl.Int(1024 * 1024)
+}
+
+func (o *kinesisOutput) GetMaxBatchSize() *int {
+	return mdl.Int(500)
+}
+
 func (o *kinesisOutput) buildRecord(msg WritableMessage) (*gosoKinesis.Record, error) {
 	var err error
-	var partitionKey string
+	var partitionKey, explicitHashKey string
 
 	record := &gosoKinesis.Record{}
 
@@ -85,6 +101,17 @@ func (o *kinesisOutput) buildRecord(msg WritableMessage) (*gosoKinesis.Record, e
 		}
 
 		record.PartitionKey = &partitionKey
+	}
+
+	if p, ok := attributes[AttributeKinesisExplicitHashKey]; ok {
+		if explicitHashKey, err = cast.ToStringE(p); err != nil {
+			return nil, fmt.Errorf("the type of the %s attribute with value %v should be castable to string: %w", AttributeKinesisExplicitHashKey, attributes[AttributeKinesisExplicitHashKey], err)
+		}
+
+		record.ExplicitHashKey = &explicitHashKey
+		// yes, this looks strange, but we need to provide something or AWS complains, so we just do that
+		// and hope it is ignored as documented...
+		record.PartitionKey = &explicitHashKey
 	}
 
 	return record, nil

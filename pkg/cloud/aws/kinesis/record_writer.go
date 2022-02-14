@@ -28,8 +28,9 @@ const (
 )
 
 type Record struct {
-	Data         []byte
-	PartitionKey *string
+	Data            []byte
+	PartitionKey    *string
+	ExplicitHashKey *string
 }
 
 type RecordWriterMetadata struct {
@@ -126,13 +127,14 @@ func (w *recordWriter) putRecordsBatch(ctx context.Context, batch []*Record) err
 	records := make([]types.PutRecordsRequestEntry, 0, len(batch))
 
 	for _, rec := range batch {
-		if rec.PartitionKey == nil {
+		if rec.PartitionKey == nil && rec.ExplicitHashKey == nil {
 			rec.PartitionKey = aws.String(w.uuidGen.NewV4())
 		}
 
 		req := types.PutRecordsRequestEntry{
-			Data:         rec.Data,
-			PartitionKey: rec.PartitionKey,
+			Data:            rec.Data,
+			PartitionKey:    rec.PartitionKey,
+			ExplicitHashKey: rec.ExplicitHashKey,
 		}
 
 		records = append(records, req)

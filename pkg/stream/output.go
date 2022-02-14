@@ -18,6 +18,23 @@ type Output interface {
 	Write(ctx context.Context, batch []WritableMessage) error
 }
 
+//go:generate mockery --name PartitionedOutput
+type PartitionedOutput interface {
+	Output
+	// IsPartitionedOutput returns true if the output is writing to more than one shard/partition/bucket, and we need to
+	// take care about writing messages to the correct partition.
+	IsPartitionedOutput() bool
+}
+
+//go:generate mockery --name SizeRestrictedOutput
+type SizeRestrictedOutput interface {
+	Output
+	// GetMaxMessageSize returns the maximum size of a message for this output (or nil if there is no limit on message size).
+	GetMaxMessageSize() *int
+	// GetMaxBatchSize returns the maximum number of messages we can write at once to the output (or nil if there is no limit).
+	GetMaxBatchSize() *int
+}
+
 type OutputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error)
 
 func MessagesToWritableMessages(batch []*Message) []WritableMessage {

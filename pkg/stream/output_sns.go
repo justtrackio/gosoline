@@ -8,6 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type SnsOutputSettings struct {
@@ -80,4 +81,12 @@ func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	}
 
 	return nil
+}
+
+func (o *snsOutput) GetMaxMessageSize() *int {
+	return mdl.Int(256 * 1024)
+}
+
+func (o *snsOutput) GetMaxBatchSize() *int {
+	return mdl.Int(10)
 }
