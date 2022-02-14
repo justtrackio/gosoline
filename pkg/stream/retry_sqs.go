@@ -21,6 +21,7 @@ type RetryHandlerSqsSettings struct {
 	MaxNumberOfMessages int32  `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
 	WaitTime            int32  `cfg:"wait_time" default:"10"`
 	RunnerCount         int    `cfg:"runner_count" default:"1"`
+	QueueId             string `cfg:"queue_id"`
 }
 
 type RetryHandlerSqs struct {
@@ -38,8 +39,12 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 	settings := &RetryHandlerSqsSettings{}
 	config.UnmarshalKey(key, settings)
 
+	if settings.QueueId == "" {
+		settings.QueueId = fmt.Sprintf("consumer-retry-%s", name)
+	}
+
 	inputSettings := &SqsInputSettings{
-		QueueId:             fmt.Sprintf("consumer-retry-%s", name),
+		QueueId:             settings.QueueId,
 		MaxNumberOfMessages: settings.MaxNumberOfMessages,
 		WaitTime:            settings.WaitTime,
 		VisibilityTimeout:   int(settings.After.Seconds()),
