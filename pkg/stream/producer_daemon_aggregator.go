@@ -3,6 +3,7 @@ package stream
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 
@@ -42,11 +43,11 @@ type AggregateFlush struct {
 
 //go:generate mockery --name ProducerDaemonAggregator
 type ProducerDaemonAggregator interface {
-	Write(msg *Message) ([]AggregateFlush, error)
-	Flush() (*AggregateFlush, error)
+	Write(ctx context.Context, msg *Message) ([]AggregateFlush, error)
+	Flush() ([]AggregateFlush, error)
 }
 
-func NewProducerDaemonAggregator(settings ProducerDaemonSettings, compression CompressionType) (ProducerDaemonAggregator, error) {
+func NewProducerDaemonAggregator(settings ProducerDaemonSettings, compression CompressionType, attributeSets ...map[string]interface{}) (ProducerDaemonAggregator, error) {
 	a := &producerDaemonAggregator{
 		maxMessages: settings.AggregationSize,
 		maxBytes:    settings.AggregationMaxSize,
@@ -57,6 +58,12 @@ func NewProducerDaemonAggregator(settings ProducerDaemonSettings, compression Co
 		// initially assume we don't perform any compression, first message might not be packed as tightly as the rest,
 		// but if your app runs for a little longer you will already have a proper ratio here for the second message
 		expectedCompressionRatio: 1,
+	}
+
+	for _, attributes := range attributeSets {
+		for k, v := range attributes {
+			a.attributes[k] = v
+		}
 	}
 
 	switch compression {
@@ -85,7 +92,7 @@ func NewProducerDaemonAggregator(settings ProducerDaemonSettings, compression Co
 	return a, nil
 }
 
-func (a *producerDaemonAggregator) Write(msg *Message) ([]AggregateFlush, error) {
+func (a *producerDaemonAggregator) Write(_ context.Context, msg *Message) ([]AggregateFlush, error) {
 	encodedMessage, err := json.Marshal(msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode message for aggregate: %w", err)
@@ -95,10 +102,8 @@ func (a *producerDaemonAggregator) Write(msg *Message) ([]AggregateFlush, error)
 
 	var flushes []AggregateFlush
 	if a.messageCount > 0 && a.maxBytes != 0 && a.getCurrentSize(expectedMessageSize) >= a.maxBytes {
-		if flush, err := a.Flush(); err != nil {
+		if flushes, err = a.Flush(); err != nil {
 			return nil, err
-		} else {
-			flushes = []AggregateFlush{*flush}
 		}
 	}
 
@@ -110,7 +115,7 @@ func (a *producerDaemonAggregator) Write(msg *Message) ([]AggregateFlush, error)
 		if flush, err := a.Flush(); err != nil {
 			return nil, err
 		} else {
-			flushes = append(flushes, *flush)
+			flushes = append(flushes, flush...)
 		}
 	}
 
@@ -201,14 +206,14 @@ func newWriterNopCloser(writer io.Writer) io.WriteCloser {
 	}
 }
 
-func (a *producerDaemonAggregator) Flush() (*AggregateFlush, error) {
+func (a *producerDaemonAggregator) Flush() ([]AggregateFlush, error) {
 	if _, err := a.writer.Write(jsonArrayEnd); err != nil {
 		return nil, err
 	}
 
 	a.uncompressedBytes += 1
 
-	// for gzip compression, close the writer so we write the footer, without compression this is a no-op
+	// for gzip compression, close the writer to write the footer, without compression this is a no-op
 	if err := a.writer.Close(); err != nil {
 		return nil, fmt.Errorf("failed to close writer during flush: %w", err)
 	}
@@ -221,8 +226,8 @@ func (a *producerDaemonAggregator) Flush() (*AggregateFlush, error) {
 		body = a.buffer.String()
 	}
 
-	// only update the expectation if we have some user data, if there are no messages in the aggregate, the ticker triggered
-	// and we would otherwise expect a compression ration of much > 1.
+	// only update the expectation if we have some user data, if there are no messages in the aggregate, the ticker triggered,
+	// and we would otherwise expect a compression ratio of much > 1.
 	if messageCount > 0 {
 		a.expectedCompressionRatio = float32(len(body)) / float32(a.uncompressedBytes)
 	}
@@ -238,9 +243,11 @@ func (a *producerDaemonAggregator) Flush() (*AggregateFlush, error) {
 		attributes[k] = v
 	}
 
-	return &AggregateFlush{
-		Attributes:   attributes,
-		MessageCount: messageCount,
-		Body:         body,
+	return []AggregateFlush{
+		{
+			Attributes:   attributes,
+			MessageCount: messageCount,
+			Body:         body,
+		},
 	}, nil
 }

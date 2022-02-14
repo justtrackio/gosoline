@@ -56,6 +56,21 @@ type ProducerDaemonSettings struct {
 	// Gosoline will not already output a 53 kb message if you requested 64 kb messages (it would accept a 56 kb message),
 	// but after writing the next message
 	AggregationMaxSize int `cfg:"aggregation_max_size" default:"65536" validate:"min=0"`
+	// If you are writing to an output using a partition key, we ensure messages are still distributed to a partition
+	// according to their partition key (although not necessary the same partition as without the producer daemon).
+	// For this, we split the messages into buckets while collecting them, thus potentially aggregating more messages in
+	// memory (depending on the number of buckets you configure).
+	//
+	// Note: This still does not guarantee that your messages are perfectly ordered - this is impossible as soon as you
+	// have more than once producer. However, messages with the same partition key will end up in the same shard, so if
+	// you are reading two different shards and one is much further behind than the other, you will not see messages
+	// *massively* out of order - it should be roughly bounded by the time you buffer messages (the Interval setting) and
+	// thus be not much more than a minute (using the default setting) instead of hours (if one shard is half a day behind
+	// while the other is up-to-date).
+	//
+	// Second note: If you change the amount of partitions, messages might move between buckets and thus end up in different
+	// shards than before. Thus, only do this if you can handle it (e.g., because no shard is currently lagging behind).
+	PartitionBucketCount int `cfg:"partition_bucket_count" default:"128" validate:"min=1"`
 	// Additional attributes we append to each message
 	MessageAttributes map[string]interface{} `cfg:"message_attributes"`
 }
@@ -116,8 +131,24 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create output for producer daemon %s: %w", name, err)
 	}
 
-	if aggregator, err = NewProducerDaemonAggregator(settings.Daemon, settings.Compression); err != nil {
-		return nil, fmt.Errorf("can not create aggregator for producer daemon %s: %w", name, err)
+	if sro, ok := output.(SizeRestrictedOutput); ok {
+		if maxBatchSize := sro.GetMaxBatchSize(); maxBatchSize != nil && *maxBatchSize < settings.Daemon.BatchSize {
+			settings.Daemon.BatchSize = *maxBatchSize
+		}
+
+		if maxMessageSize := sro.GetMaxMessageSize(); maxMessageSize != nil && *maxMessageSize < settings.Daemon.BatchMaxSize {
+			settings.Daemon.BatchMaxSize = *maxMessageSize
+		}
+	}
+
+	if po, ok := output.(PartitionedOutput); ok && po.IsPartitionedOutput() && settings.Daemon.PartitionBucketCount > 1 {
+		if aggregator, err = NewProducerDaemonPartitionedAggregator(logger, settings.Daemon, settings.Compression); err != nil {
+			return nil, fmt.Errorf("can not create partitioned aggregator for producer daemon %s: %w", name, err)
+		}
+	} else {
+		if aggregator, err = NewProducerDaemonAggregator(settings.Daemon, settings.Compression); err != nil {
+			return nil, fmt.Errorf("can not create aggregator for producer daemon %s: %w", name, err)
+		}
 	}
 
 	return NewProducerDaemonWithInterfaces(logger, metricWriter, aggregator, output, clock.Provider, name, settings.Daemon), nil
@@ -174,7 +205,7 @@ func (d *producerDaemon) WriteOne(ctx context.Context, msg WritableMessage) erro
 	return d.Write(ctx, []WritableMessage{msg})
 }
 
-func (d *producerDaemon) Write(_ context.Context, batch []WritableMessage) error {
+func (d *producerDaemon) Write(ctx context.Context, batch []WritableMessage) error {
 	d.lck.Lock()
 	defer d.lck.Unlock()
 
@@ -182,7 +213,7 @@ func (d *producerDaemon) Write(_ context.Context, batch []WritableMessage) error
 	var aggregated []*Message
 	d.writeMetricMessageCount(len(batch))
 
-	if aggregated, err = d.applyAggregation(batch); err != nil {
+	if aggregated, err = d.applyAggregation(ctx, batch); err != nil {
 		return fmt.Errorf("can not apply aggregation in producer %s: %w", d.name, err)
 	}
 
@@ -202,6 +233,28 @@ func (d *producerDaemon) Write(_ context.Context, batch []WritableMessage) error
 			}
 			d.outCh.Write(flushedBatch)
 		}
+	}
+
+	return nil
+}
+
+func (d *producerDaemon) IsPartitionedOutput() bool {
+	po, ok := d.output.(PartitionedOutput)
+
+	return ok && po.IsPartitionedOutput()
+}
+
+func (d *producerDaemon) GetMaxMessageSize() *int {
+	if sro, ok := d.output.(SizeRestrictedOutput); ok {
+		return sro.GetMaxMessageSize()
+	}
+
+	return nil
+}
+
+func (d *producerDaemon) GetMaxBatchSize() *int {
+	if sro, ok := d.output.(SizeRestrictedOutput); ok {
+		return sro.GetMaxBatchSize()
 	}
 
 	return nil
@@ -228,7 +281,7 @@ func (d *producerDaemon) tickerLoop(ctx context.Context) error {
 	}
 }
 
-func (d *producerDaemon) applyAggregation(batch []WritableMessage) ([]*Message, error) {
+func (d *producerDaemon) applyAggregation(ctx context.Context, batch []WritableMessage) ([]*Message, error) {
 	if d.settings.AggregationSize <= 1 {
 		result := make([]*Message, len(batch))
 
@@ -254,7 +307,7 @@ func (d *producerDaemon) applyAggregation(batch []WritableMessage) ([]*Message, 
 			return nil, fmt.Errorf("are you writing to the daemon directly? expected a stream.Message to be written to the producer daemon, got %T instead", msg)
 		}
 
-		readyMessages, err := d.aggregator.Write(streamMsg)
+		readyMessages, err := d.aggregator.Write(ctx, streamMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -270,20 +323,25 @@ func (d *producerDaemon) applyAggregation(batch []WritableMessage) ([]*Message, 
 	return result, nil
 }
 
-func (d *producerDaemon) flushAggregate() (*Message, error) {
-	aggregate, err := d.aggregator.Flush()
+func (d *producerDaemon) flushAggregate() ([]*Message, error) {
+	aggregates, err := d.aggregator.Flush()
 	if err != nil {
-		return nil, fmt.Errorf("can not marshal aggregate: %w", err)
+		return nil, fmt.Errorf("can not marshal aggregates: %w", err)
 	}
 
-	if aggregate.MessageCount == 0 {
-		return nil, nil
+	messages := make([]*Message, 0, len(aggregates))
+	for _, aggregate := range aggregates {
+		if aggregate.MessageCount == 0 {
+			continue
+		}
+
+		d.writeMetricAggregateSize(aggregate.MessageCount)
+		aggregateMessage := BuildAggregateMessage(aggregate.Body, d.settings.MessageAttributes, aggregate.Attributes)
+
+		messages = append(messages, aggregateMessage)
 	}
 
-	d.writeMetricAggregateSize(aggregate.MessageCount)
-	aggregateMessage := BuildAggregateMessage(aggregate.Body, d.settings.MessageAttributes, aggregate.Attributes)
-
-	return aggregateMessage, nil
+	return messages, nil
 }
 
 func (d *producerDaemon) flushBatch() {
@@ -297,16 +355,18 @@ func (d *producerDaemon) flushBatch() {
 }
 
 func (d *producerDaemon) flushAll() error {
-	if readyBatch, err := d.flushAggregate(); err != nil {
+	if readyBatches, err := d.flushAggregate(); err != nil {
 		return fmt.Errorf("can not flush aggregation: %w", err)
-	} else if readyBatch != nil {
-		flushedBatch, err := d.batcher.Append(readyBatch)
-		if err != nil {
-			return fmt.Errorf("can not append message to batch: %w", err)
-		}
+	} else {
+		for _, readyBatch := range readyBatches {
+			flushedBatch, err := d.batcher.Append(readyBatch)
+			if err != nil {
+				return fmt.Errorf("can not append message to batch: %w", err)
+			}
 
-		if len(flushedBatch) > 0 {
-			d.outCh.Write(flushedBatch)
+			if len(flushedBatch) > 0 {
+				d.outCh.Write(flushedBatch)
+			}
 		}
 	}
 

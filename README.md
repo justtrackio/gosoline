@@ -1,6 +1,6 @@
 # Gosoline Application Framework
 ![Gosoline](https://github.com/justtrackio/gosoline/workflows/Gosoline/badge.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/justtrackio/gosoline)](https://goreportcard.com/report/github.com/applike/gosoline)
+[![Go Report Card](https://goreportcard.com/badge/github.com/justtrackio/gosoline)](https://goreportcard.com/report/github.com/justtrackio/gosoline)
 
 Gosoline is a Golang based application framework specialized for building 
 microservices in the cloud. It provides tools for handling most of the common

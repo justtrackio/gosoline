@@ -112,6 +112,14 @@ func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	return nil
 }
 
+func (o *sqsOutput) GetMaxMessageSize() *int {
+	return mdl.Int(256 * 1024)
+}
+
+func (o *sqsOutput) GetMaxBatchSize() *int {
+	return mdl.Int(10)
+}
+
 func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []WritableMessage) ([]*sqs.Message, error) {
 	var result error
 	sqsMessages := make([]*sqs.Message, 0)

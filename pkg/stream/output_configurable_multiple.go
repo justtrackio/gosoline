@@ -33,6 +33,42 @@ func (m *multiOutput) Write(ctx context.Context, batch []WritableMessage) error 
 	return err.ErrorOrNil()
 }
 
+func (m *multiOutput) IsPartitionedOutput() bool {
+	for _, o := range m.outputs {
+		if po, ok := o.(PartitionedOutput); ok && po.IsPartitionedOutput() {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (m *multiOutput) GetMaxMessageSize() (maxMessageSize *int) {
+	for _, o := range m.outputs {
+		if sro, ok := o.(SizeRestrictedOutput); ok {
+			outputMaxMessageSize := sro.GetMaxMessageSize()
+			if (maxMessageSize == nil && outputMaxMessageSize != nil) || (maxMessageSize != nil && outputMaxMessageSize != nil && *maxMessageSize > *outputMaxMessageSize) {
+				maxMessageSize = outputMaxMessageSize
+			}
+		}
+	}
+
+	return
+}
+
+func (m *multiOutput) GetMaxBatchSize() (maxBatchSize *int) {
+	for _, o := range m.outputs {
+		if sro, ok := o.(SizeRestrictedOutput); ok {
+			outputMaxBatchSize := sro.GetMaxBatchSize()
+			if (maxBatchSize == nil && outputMaxBatchSize != nil) || (maxBatchSize != nil && outputMaxBatchSize != nil && *maxBatchSize > *outputMaxBatchSize) {
+				maxBatchSize = outputMaxBatchSize
+			}
+		}
+	}
+
+	return
+}
+
 func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger log.Logger, base string) (Output, error) {
 	key := fmt.Sprintf("%s.types", ConfigurableOutputKey(base))
 	ts := config.Get(key).(map[string]interface{})

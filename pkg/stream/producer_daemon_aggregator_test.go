@@ -3,6 +3,7 @@ package stream_test
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -33,16 +34,18 @@ func (tc aggregatorTestCase) run(t *testing.T) {
 	flushes := make([]stream.AggregateFlush, 0)
 
 	for _, msg := range tc.messages {
-		flushList, err := agg.Write(msg)
+		flushList, err := agg.Write(context.Background(), msg)
 		assert.NoError(t, err)
 
 		flushes = append(flushes, flushList...)
 	}
 
-	flush, err := agg.Flush()
+	newFlushes, err := agg.Flush()
 	assert.NoError(t, err)
-	if flush.MessageCount > 0 {
-		flushes = append(flushes, *flush)
+	for _, flush := range newFlushes {
+		if flush.MessageCount > 0 {
+			flushes = append(flushes, flush)
+		}
 	}
 
 	assert.Len(t, flushes, len(tc.flushes))
