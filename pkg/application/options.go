@@ -209,6 +209,32 @@ func WithLoggerHandlers(handler ...log.Handler) Option {
 	}
 }
 
+func WithLoggerAwsEcsMetadata(app *App) {
+	app.addConfigOption(func(config cfg.GosoConf) error {
+		if config.IsSet(log.EcsFieldsCfgKey) {
+			return nil
+		}
+
+		defaultCfgEcsFields := log.DefaultEcsConfig()
+
+		return config.Option(cfg.WithConfigSetting(log.EcsFieldsCfgKey, &defaultCfgEcsFields, cfg.SkipExisting))
+	})
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+		ecsLoggerFields, err := log.GetEcsLoggerFields(config)
+		if err != nil {
+			return err
+		}
+
+		if ecsLoggerFields == nil {
+			return nil
+		}
+
+		logger.WithFields(ecsLoggerFields)
+
+		return nil
+	})
+}
+
 func WithLoggerHandlersFromConfig(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		var err error
