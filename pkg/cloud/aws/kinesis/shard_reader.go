@@ -182,7 +182,7 @@ func (s *shardReader) getShardIterator(ctx context.Context, sequenceNumber Seque
 
 	switch sequenceNumber {
 	case "":
-		input.ShardIteratorType = types.ShardIteratorTypeTrimHorizon
+		input.ShardIteratorType = s.settings.InitialPosition.Type
 	case "LATEST":
 		input.ShardIteratorType = types.ShardIteratorTypeLatest
 	default:
