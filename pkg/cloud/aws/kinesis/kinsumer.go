@@ -44,12 +44,18 @@ type (
 
 type shardIdSlice []ShardId
 
+type SettingsInitialPosition struct {
+	Type types.ShardIteratorType `cfg:"type" default:"TRIM_HORIZON"`
+}
+
 type Settings struct {
 	cfg.AppId
 	// Name of the kinsumer
 	Name string
 	// Name of the stream (before expanding with project, env, family & application prefix)
 	StreamName string `cfg:"stream_name" validate:"required"`
+	// InitialPosition of a new kinsumer. Defines the starting position on the stream if no metadata is present.
+	InitialPosition SettingsInitialPosition `cfg:"initial_position"`
 	// How many records the shard reader should fetch in a single call
 	MaxBatchSize int `cfg:"max_batch_size" default:"10000" validate:"gt=0,lte=10000"`
 	// Time between reads from empty shards. This defines how fast the kinsumer begins its work. Min = 1ms

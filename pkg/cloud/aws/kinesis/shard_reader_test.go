@@ -50,6 +50,9 @@ func (s *shardReaderTestSuite) SetupTest() {
 	s.logger = new(logMocks.Logger)
 	s.metricWriter = new(metricMocks.Writer)
 	s.settings = gosoKinesis.Settings{
+		InitialPosition: gosoKinesis.SettingsInitialPosition{
+			Type: types.ShardIteratorTypeTrimHorizon,
+		},
 		MaxBatchSize:     10_000,
 		WaitTime:         time.Second,
 		PersistFrequency: time.Second * 10,
