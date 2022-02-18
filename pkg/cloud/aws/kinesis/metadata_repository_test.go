@@ -31,6 +31,7 @@ type metadataRepositoryTestSuite struct {
 	checkpointNamespace string
 	repo                *ddbMocks.Repository
 	settings            kinesis.Settings
+	appId               cfg.AppId
 	clock               clock.FakeClock
 	metadataRepository  kinesis.MetadataRepository
 }
@@ -49,18 +50,18 @@ func (s *metadataRepositoryTestSuite) SetupTest() {
 	s.checkpointNamespace = string("checkpoint:gosoline-test-metadata-repository-test-suite:" + s.stream)
 	s.repo = new(ddbMocks.Repository)
 	s.settings = kinesis.Settings{
-		AppId: cfg.AppId{
-			Project:     "gosoline",
-			Environment: "test",
-			Family:      "metadata-repository",
-			Application: "test-suite",
-		},
 		DiscoverFrequency: time.Minute * 10,
 		PersistFrequency:  time.Second * 10,
 	}
+	s.appId = cfg.AppId{
+		Project:     "gosoline",
+		Environment: "test",
+		Family:      "metadata-repository",
+		Application: "test-suite",
+	}
 	s.clock = clock.NewFakeClock()
 
-	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, s.clock)
+	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, s.appId, s.clock)
 }
 
 func (s *metadataRepositoryTestSuite) TearDownTest() {
