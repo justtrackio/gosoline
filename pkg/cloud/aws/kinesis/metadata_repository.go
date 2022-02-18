@@ -139,10 +139,15 @@ func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Lo
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
-	return NewMetadataRepositoryWithInterfaces(logger, stream, clientId, repo, settings, clock.Provider), nil
+	// we need the app id from the application we are running at, not the app id from the settings as this is the same
+	// for different kinsumers of the same stream!
+	appId := cfg.AppId{}
+	appId.PadFromConfig(config)
+
+	return NewMetadataRepositoryWithInterfaces(logger, stream, clientId, repo, settings, appId, clock.Provider), nil
 }
 
-func NewMetadataRepositoryWithInterfaces(logger log.Logger, stream Stream, clientId ClientId, repo ddb.Repository, settings Settings, clock clock.Clock) MetadataRepository {
+func NewMetadataRepositoryWithInterfaces(logger log.Logger, stream Stream, clientId ClientId, repo ddb.Repository, settings Settings, appId cfg.AppId, clock clock.Clock) MetadataRepository {
 	clientTimeout := settings.DiscoverFrequency * 5
 	if clientTimeout < time.Minute {
 		clientTimeout = time.Minute
@@ -158,7 +163,7 @@ func NewMetadataRepositoryWithInterfaces(logger log.Logger, stream Stream, clien
 		stream:            stream,
 		clientId:          clientId,
 		repo:              repo,
-		appId:             settings.AppId,
+		appId:             appId,
 		clientTimeout:     clientTimeout,
 		checkpointTimeout: checkpointTimeout,
 		clock:             clock,
