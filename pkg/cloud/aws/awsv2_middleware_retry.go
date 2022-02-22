@@ -139,7 +139,7 @@ func AttemptLoggerRetryMiddleware(logger log.Logger) smithyMiddleware.FinalizeMi
 				WithFields(log.Fields{
 					"attempt_id": attempt.id,
 					"resource":   attempt.resource.String(),
-				}).Warn("attempt number %d to request resource %s failed after %s cause of error: %s", attempt.count, attempt.resource, duration, attempt.lastErr)
+				}).Warn("attempt number %d to request resource %s failed after %s cause of error: %s", attempt.count-1, attempt.resource, duration, attempt.lastErr)
 		}
 
 		output, metadata, attempt.lastErr = next.HandleFinalize(ctx, input)

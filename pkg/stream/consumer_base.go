@@ -33,6 +33,7 @@ type ConsumerMetadata struct {
 	Name         string `json:"name"`
 	RetryEnabled bool   `json:"retry_enabled"`
 	RetryType    string `json:"retry_type"`
+	RunnerCount  int    `json:"runner_count"`
 }
 
 //go:generate mockery --name RunnableCallback
@@ -127,6 +128,7 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 		Name:         name,
 		RetryEnabled: settings.Retry.Enabled,
 		RetryType:    settings.Retry.Type,
+		RunnerCount:  settings.RunnerCount,
 	}
 	if err = appctx.MetadataAppend(ctx, metadataKeyConsumers, consumerMetadata); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
