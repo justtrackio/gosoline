@@ -56,7 +56,7 @@ type Settings struct {
 	// Name of the stream (before expanding with project, env, family & application prefix)
 	StreamName string `cfg:"stream_name" validate:"required"`
 	// The shard reader will sleep until the age of the record is older than this delay
-	ConsumeDelay time.Duration `cfg:"consumer_delay" default:"0"`
+	ConsumeDelay time.Duration `cfg:"consume_delay" default:"0"`
 	// InitialPosition of a new kinsumer. Defines the starting position on the stream if no metadata is present.
 	InitialPosition SettingsInitialPosition `cfg:"initial_position"`
 	// How many records the shard reader should fetch in a single call
