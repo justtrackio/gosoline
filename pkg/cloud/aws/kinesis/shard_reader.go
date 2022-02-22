@@ -20,6 +20,7 @@ import (
 )
 
 const (
+	metricNameSleepDuration      = "SleepDuration"
 	metricNameFailedRecords      = "FailedRecords"
 	metricNameMillisecondsBehind = "MillisecondsBehind"
 	metricNameProcessDuration    = "ProcessDuration"
@@ -272,43 +273,15 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 			millisecondsBehindChan <- float64(millisecondsBehind)
 
 			processStart := s.clock.Now()
-			processedSize := 0
+			var processedSize int
 
-		processRecords:
-			for _, record := range records {
-				s.delayConsume(ctx, record)
-
-				// if context was canceled in the meantime, stop processing
-				select {
-				case <-ctx.Done():
-					break processRecords
-				default:
-				}
-
-				if err := handler(record.Data); err != nil {
-					// if we can't handle the record, we can really not do much at this point.
-					// log the error and mark the record as done, returning an error would tear down the whole
-					// kinsumer and retrying the record (what tearing everything down would also cause) does
-					// not make sense at this point. Instead, the handler needs to implement a retry logic if needed
-					s.logger.Error("failed to handle record %s: %w", record.SequenceNumber, err)
-
-					s.writeMetric(metricNameFailedRecords, 1, metric.UnitCount)
-				}
-
-				lastSequenceNumber = SequenceNumber(mdl.EmptyStringIfNil(record.SequenceNumber))
-				err = s.getCheckpoint().Advance(lastSequenceNumber)
-				if err != nil {
-					return fmt.Errorf("failed to advance checkpoint: %w", err)
-				}
-
-				processedSize++
-
-				// if context was canceled in the meantime, stop processing
-				select {
-				case <-ctx.Done():
-					break processRecords
-				default:
-				}
+			if processedSize, err = s.processRecords(ctx, records, &lastSequenceNumber, handler); err != nil {
+				return err
+			} else if processedSize == len(records) {
+				// only advance the iterator if we processed the whole batch - if we don't do it like this, we could get
+				// canceled while processing a batch, but actually process the last iterator of the shard (so nextIterator is "")
+				// and thus would mark the shard as finished - losing the last few records from that shard
+				iterator = nextIterator
 			}
 
 			processDuration := s.clock.Since(processStart)
@@ -319,8 +292,6 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 				"count":       processedSize,
 				"duration_ms": processDuration.Milliseconds(),
 			}).Info("processed batch of %d records in %s", processedSize, processDuration)
-
-			iterator = nextIterator
 
 			// if the results are older than our wait time, continue immediately
 			if time.Duration(millisecondsBehind) > s.settings.WaitTime {
@@ -361,6 +332,48 @@ func (s *shardReader) getRecords(ctx context.Context, iterator string) (records 
 	return records, nextIterator, mdl.EmptyInt64IfNil(output.MillisBehindLatest), nil
 }
 
+func (s *shardReader) processRecords(ctx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler func(record []byte) error) (int, error) {
+	processedSize := 0
+
+	for _, record := range records {
+		s.delayConsume(ctx, record)
+
+		// if context was canceled in the meantime, stop processing
+		select {
+		case <-ctx.Done():
+			return processedSize, nil
+		default:
+		}
+
+		if err := handler(record.Data); err != nil {
+			// if we can't handle the record, we can really not do much at this point.
+			// log the error and mark the record as done, returning an error would tear down the whole
+			// kinsumer and retrying the record (what tearing everything down would also cause) does
+			// not make sense at this point. Instead, the handler needs to implement a retry logic if needed
+			s.logger.Error("failed to handle record %s: %w", record.SequenceNumber, err)
+
+			s.writeMetric(metricNameFailedRecords, 1, metric.UnitCount)
+		}
+
+		*lastSequenceNumber = SequenceNumber(mdl.EmptyStringIfNil(record.SequenceNumber))
+		err := s.getCheckpoint().Advance(*lastSequenceNumber)
+		if err != nil {
+			return processedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
+		}
+
+		processedSize++
+
+		// if context was canceled in the meantime, stop processing
+		select {
+		case <-ctx.Done():
+			return processedSize, nil
+		default:
+		}
+	}
+
+	return processedSize, nil
+}
+
 func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {
 	// don't sleep if we don't want to
 	if s.settings.ConsumeDelay == 0 {
@@ -382,6 +395,7 @@ func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {
 	select {
 	case <-ctx.Done():
 	case <-timer.Chan():
+		s.writeMetric(metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage)
 	}
 }
 

@@ -382,7 +382,7 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 	s.setupReader()
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.manualCancelContext")).Return(false, context.Canceled).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.manualCancelContext")).Return(false, context.Canceled).Maybe()
 	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
 	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
@@ -444,6 +444,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithWait() {
 	checkpoint.On("Done", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
+	s.mockMetricCall("SleepDuration", 1000, metric.UnitMillisecondsAverage).Once()
 	s.mockMetricCall("ProcessDuration", 1000, metric.UnitMillisecondsAverage).Once()
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Twice()
 	s.mockMetricCall("ReadCount", 1, metric.UnitCount).Once()
@@ -497,7 +498,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithOldRecord() {
 	s.settings.ConsumeDelay = time.Second
 	s.setupReader()
 
-	recordArrivaltime := s.clock.Now()
+	recordArrivalTime := s.clock.Now()
 	s.clock.Advance(time.Minute)
 
 	checkpoint := new(mocks.Checkpoint)
@@ -538,7 +539,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithOldRecord() {
 			{
 				Data:                        []byte("data 1"),
 				SequenceNumber:              aws.String("seq 1"),
-				ApproximateArrivalTimestamp: mdl.Time(recordArrivaltime),
+				ApproximateArrivalTimestamp: mdl.Time(recordArrivalTime),
 			},
 		},
 		MillisBehindLatest: aws.Int64(0),
@@ -563,7 +564,6 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWait() {
 	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
 	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
-	checkpoint.On("Done", gosoKinesis.SequenceNumber("")).Return(nil).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
 	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Once()
@@ -604,6 +604,62 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWait() {
 				ApproximateArrivalTimestamp: mdl.Time(s.clock.Now()),
 			},
 		},
+		MillisBehindLatest: aws.Int64(0),
+		NextShardIterator:  aws.String(""),
+	}, nil).Once()
+
+	err := s.shardReader.Run(ctx, s.consumeRecord)
+	if err != nil {
+		// we have a race condition in the test - either we see the context get canceled before the coffin in the shard
+		// reader finishes, and thus we get the canceled error, or the coffin finishes first, and we get no error at all...
+		s.EqualError(err, "context canceled")
+	}
+	s.Nil(s.consumedRecords)
+}
+
+func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWaitNoRecords() {
+	s.settings.ConsumeDelay = time.Minute
+	s.settings.ReleaseDelay = time.Millisecond
+	s.setupReader()
+
+	ctx, cancel := context.WithCancel(s.ctx)
+
+	checkpoint := new(mocks.Checkpoint)
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
+	checkpoint.On("Done", gosoKinesis.SequenceNumber("")).Return(nil).Once()
+	defer checkpoint.AssertExpectations(s.T())
+
+	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Once()
+	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Twice()
+	s.mockMetricCall("ReadCount", 1, metric.UnitCount).Once()
+	s.mockMetricCall("ReadRecords", 0, metric.UnitCount).Once()
+	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Once()
+
+	s.metadataRepository.On("AcquireShard", ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.On("Info", "acquired shard").Once()
+	s.logger.On("Info", "releasing shard").Once()
+	s.logger.On("WithChannel", "kinsumer-read").Return(s.logger)
+	s.logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(s.logger)
+	s.logger.On("Info", "processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
+
+	s.kinesisClient.On("GetShardIterator", ctx, &kinesis.GetShardIteratorInput{
+		ShardId:                aws.String(string(s.shardId)),
+		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
+		StreamName:             aws.String(string(s.stream)),
+		StartingSequenceNumber: aws.String("sequence number"),
+	}).Return(&kinesis.GetShardIteratorOutput{
+		ShardIterator: aws.String("shard iterator"),
+	}, nil).Once()
+
+	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+		ShardIterator: aws.String("shard iterator"),
+		Limit:         aws.Int32(10000),
+	}).Run(func(args mock.Arguments) {
+		cancel()
+	}).Return(&kinesis.GetRecordsOutput{
+		Records:            []types.Record{},
 		MillisBehindLatest: aws.Int64(0),
 		NextShardIterator:  aws.String(""),
 	}, nil).Once()
