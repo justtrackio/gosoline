@@ -45,7 +45,8 @@ type (
 type shardIdSlice []ShardId
 
 type SettingsInitialPosition struct {
-	Type types.ShardIteratorType `cfg:"type" default:"TRIM_HORIZON"`
+	Type      types.ShardIteratorType `cfg:"type" default:"TRIM_HORIZON"`
+	Timestamp time.Time               `cfg:"timestamp"`
 }
 
 type Settings struct {
@@ -54,6 +55,8 @@ type Settings struct {
 	Name string
 	// Name of the stream (before expanding with project, env, family & application prefix)
 	StreamName string `cfg:"stream_name" validate:"required"`
+	// The shard reader will sleep until the age of the record is older than this delay
+	ConsumeDelay time.Duration `cfg:"consumer_delay" default:"0"`
 	// InitialPosition of a new kinsumer. Defines the starting position on the stream if no metadata is present.
 	InitialPosition SettingsInitialPosition `cfg:"initial_position"`
 	// How many records the shard reader should fetch in a single call
@@ -99,7 +102,7 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	fullStreamName := Stream(fmt.Sprintf("%s-%s-%s-%s-%s", settings.Project, settings.Environment, settings.Family, settings.Application, settings.StreamName))
 	clientId := ClientId(uuid.New().NewV4())
 
-	logger = logger.WithChannel("kinsumer").WithFields(log.Fields{
+	logger = logger.WithChannel("kinsumer-main").WithFields(log.Fields{
 		"stream_name":        fullStreamName,
 		"kinsumer_client_id": clientId,
 	})
