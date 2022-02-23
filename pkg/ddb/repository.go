@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -470,6 +471,10 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 	result := newPutItemResult()
 
 	out, err := r.client.PutItem(ctx, input)
+
+	if err != nil && strings.Contains(err.Error(), "ProvisionedThroughputExceededException") {
+		r.logger.WithContext(ctx).Info("ProvisionedThroughputExceededException for %s", input.TableName)
+	}
 
 	if exec.IsRequestCanceled(err) {
 		return nil, exec.RequestCanceledError
