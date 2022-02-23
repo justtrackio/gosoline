@@ -9,6 +9,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
+type backoffExecuteAttempts string
+
+const BackoffExecuteAttempt = backoffExecuteAttempts("backoff.execute.attempt")
+
 type BackoffExecutor struct {
 	logger   log.Logger
 	uuidGen  uuid.Uuid
@@ -34,7 +38,9 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 		"exec_resource_name": e.resource.Name,
 	})
 
-	delayedCtx := WithDelayedCancelContext(ctx, e.settings.CancelDelay)
+	attempts := 1
+	attemptsContext := context.WithValue(ctx, BackoffExecuteAttempt, &attempts)
+	delayedCtx := WithDelayedCancelContext(attemptsContext, e.settings.CancelDelay)
 	defer delayedCtx.Stop()
 
 	var res interface{}
@@ -44,7 +50,6 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 	backoffConfig := NewExponentialBackOff(e.settings)
 	backoffCtx := backoff.WithContext(backoffConfig, ctx)
 
-	attempts := 1
 	start := time.Now()
 
 	notify := func(err error, _ time.Duration) {
