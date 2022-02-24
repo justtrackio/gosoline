@@ -18,11 +18,12 @@ type (
 )
 
 var subscriberInputConfigPostProcessors = map[string]SubscriberInputConfigPostProcessor{
-	"sns": snsSubscriberInputConfigPostProcessor,
+	stream.InputTypeKinesis: kinesisSubscriberInputConfigPostProcessor,
+	stream.InputTypeSns:     snsSubscriberInputConfigPostProcessor,
 }
 
 var subscriberOutputConfigPostProcessors = map[string]SubscriberOutputConfigPostProcessor{
-	"kvstore": kvstoreSubscriberOutputConfigPostProcessor,
+	OutputTypeKvstore: kvstoreSubscriberOutputConfigPostProcessor,
 }
 
 func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
@@ -48,13 +49,12 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 			subscriberSettings.TargetModel.Name = name
 		}
 
-		consumerName := fmt.Sprintf("subscriber-%s", name)
-		consumerKey := stream.ConfigurableConsumerKey(consumerName)
-
 		consumerSettings := &stream.ConsumerSettings{}
 		config.UnmarshalDefaults(consumerSettings)
 
-		consumerSettings.Input = getInputName(name)
+		consumerSettings.Input = GetSubscriberFQN(name, subscriberSettings.SourceModel)
+		consumerName := GetSubscriberFQN(name, subscriberSettings.SourceModel)
+		consumerKey := stream.ConfigurableConsumerKey(consumerName)
 
 		configOptions := []cfg.Option{
 			cfg.WithConfigSetting(consumerKey, consumerSettings, cfg.SkipExisting),
@@ -80,19 +80,45 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 }
 
 func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
-	inputKey := getInputConfigKey(name)
+	inputKey := getInputConfigKey(name, subscriberSettings.SourceModel)
+	consumerId := subscriberSettings.SourceModel.Name
+	topicId := subscriberSettings.SourceModel.Name
+
+	if subscriberSettings.SourceModel.Shared {
+		consumerId = sharedName
+		topicId = sharedName
+	}
 
 	inputSettings := &stream.SnsInputConfiguration{}
 	config.UnmarshalDefaults(inputSettings)
 
-	inputSettings.ConsumerId = subscriberSettings.SourceModel.Name
+	inputSettings.ConsumerId = consumerId
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{
 		{
 			Family:      subscriberSettings.SourceModel.Family,
 			Application: subscriberSettings.SourceModel.Application,
-			TopicId:     subscriberSettings.SourceModel.Name,
+			TopicId:     topicId,
 		},
 	}
+
+	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)
+}
+
+func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, subscriberSettings *SubscriberSettings) cfg.Option {
+	inputKey := getInputConfigKey(name, subscriberSettings.SourceModel)
+	streamName := subscriberSettings.SourceModel.Name
+
+	if subscriberSettings.SourceModel.Shared {
+		streamName = sharedName
+	}
+
+	inputSettings := &stream.KinesisInputConfiguration{}
+	config.UnmarshalDefaults(inputSettings)
+
+	inputSettings.Project = subscriberSettings.SourceModel.Project
+	inputSettings.Family = subscriberSettings.SourceModel.Family
+	inputSettings.Application = subscriberSettings.SourceModel.Application
+	inputSettings.StreamName = streamName
 
 	return cfg.WithConfigSetting(inputKey, inputSettings, cfg.SkipExisting)
 }
@@ -111,12 +137,16 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.SkipExisting)
 }
 
-func getInputName(name string) string {
-	return fmt.Sprintf("subscriber-%s", name)
+func GetSubscriberFQN(name string, sourceModel SubscriberSourceModel) string {
+	if !sourceModel.Shared {
+		return fmt.Sprintf("subscriber-%s", name)
+	}
+
+	return fmt.Sprintf("subscriber-%s-%s-%s-%s", sourceModel.Project, sourceModel.Family, sourceModel.Application, sharedName)
 }
 
-func getInputConfigKey(name string) string {
-	inputName := getInputName(name)
+func getInputConfigKey(name string, sourceModel SubscriberSourceModel) string {
+	inputName := GetSubscriberFQN(name, sourceModel)
 
 	return stream.ConfigurableInputKey(inputName)
 }
@@ -127,4 +157,16 @@ func GetSubscriberConfigKey(name string) string {
 
 func GetSubscriberOutputConfigKey(name string) string {
 	return fmt.Sprintf("%s.output", GetSubscriberConfigKey(name))
+}
+
+func UnmarshalSubscriberSourceModel(config cfg.Config, name string) SubscriberSourceModel {
+	key := fmt.Sprintf("%s.source", GetSubscriberConfigKey(name))
+	sourceModel := &SubscriberSourceModel{}
+	config.UnmarshalKey(key, sourceModel)
+
+	if sourceModel.Name == "" {
+		sourceModel.Name = name
+	}
+
+	return *sourceModel
 }

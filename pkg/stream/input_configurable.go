@@ -86,14 +86,14 @@ func newInMemoryInputFromConfig(_ context.Context, config cfg.Config, _ log.Logg
 	return ProvideInMemoryInput(name, settings), nil
 }
 
-type kinesisInputConfiguration struct {
+type KinesisInputConfiguration struct {
 	kinesis.Settings
 }
 
 func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
-	settings := kinesisInputConfiguration{}
+	settings := KinesisInputConfiguration{}
 	config.UnmarshalKey(key, &settings)
 	settings.Name = name
 
