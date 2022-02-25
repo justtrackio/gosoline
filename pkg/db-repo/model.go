@@ -22,6 +22,15 @@ func (m *Model) GetId() *uint {
 	return m.Id
 }
 
+type ModelWithoutPrimaryKey struct {
+	Id *uint `gorm:"AUTO_INCREMENT"`
+	Timestamps
+}
+
+func (m *ModelWithoutPrimaryKey) GetId() *uint {
+	return m.Id
+}
+
 type TimeStampable interface {
 	SetUpdatedAt(updatedAt *time.Time)
 	SetCreatedAt(createdAt *time.Time)
