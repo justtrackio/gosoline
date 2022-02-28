@@ -25,21 +25,19 @@ func CheckRequestCanceled(_ interface{}, err error) ErrorType {
 
 type RequestCanceledCheck func(err error) bool
 
-var requestCancelChecks = make([]RequestCanceledCheck, 0)
+var requestCancelChecks = []RequestCanceledCheck{
+	isError(context.Canceled),
+	isError(context.DeadlineExceeded),
+	isError(RequestCanceledError),
+}
 
 func AddRequestCancelCheck(check RequestCanceledCheck) {
 	requestCancelChecks = append(requestCancelChecks, check)
 }
 
-// Check if the given error was (only) caused by a canceled context - if there is any other error contained in it, we
+// IsRequestCanceled checks if the given error was (only) caused by a canceled context - if there is any other error contained in it, we
 // return false. Thus, if IsRequestCanceled returns true, you can (and should) ignore the error and stop processing instead.
 func IsRequestCanceled(err error) bool {
-	for _, check := range requestCancelChecks {
-		if check(err) {
-			return true
-		}
-	}
-
 	multiErr := &multierror.Error{}
 	if errors.As(err, &multiErr) {
 		// check if one of the errors is no request canceled
@@ -52,9 +50,17 @@ func IsRequestCanceled(err error) bool {
 		return len(multiErr.Errors) > 0
 	}
 
-	if errors.Is(err, context.Canceled) || errors.Is(err, RequestCanceledError) {
-		return true
+	for _, check := range requestCancelChecks {
+		if check(err) {
+			return true
+		}
 	}
 
 	return false
+}
+
+func isError(target error) RequestCanceledCheck {
+	return func(err error) bool {
+		return errors.Is(err, target)
+	}
 }
