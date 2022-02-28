@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/exec"
@@ -12,6 +13,16 @@ import (
 )
 
 func TestIsRequestCanceled(t *testing.T) {
+	ctxForCancel, cancelCtx := context.WithCancel(context.Background())
+	cancelCtx()
+
+	ctxForDeadlineCanceled, cancelDeadline := context.WithTimeout(context.Background(), time.Hour)
+	cancelDeadline()
+
+	ctxForDeadlineExpired, cancelExpiredDeadline := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancelExpiredDeadline()
+	<-ctxForDeadlineExpired.Done()
+
 	for name, test := range map[string]struct {
 		err        error
 		isCanceled bool
@@ -68,10 +79,26 @@ func TestIsRequestCanceled(t *testing.T) {
 			err:        multierror.Append(nil, context.Canceled, io.EOF),
 			isCanceled: false,
 		},
+		"multierror mixed swapped": {
+			err:        multierror.Append(nil, io.EOF, context.Canceled),
+			isCanceled: false,
+		},
+		"from canceled context": {
+			err:        ctxForCancel.Err(),
+			isCanceled: true,
+		},
+		"from canceled deadline": {
+			err:        ctxForDeadlineCanceled.Err(),
+			isCanceled: true,
+		},
+		"from expired deadline": {
+			err:        ctxForDeadlineExpired.Err(),
+			isCanceled: true,
+		},
 	} {
 		test := test
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, test.isCanceled, exec.IsRequestCanceled(test.err))
+			assert.Equal(t, test.isCanceled, exec.IsRequestCanceled(test.err), "Expected canceled = %v for error %v", test.isCanceled, test.err)
 		})
 	}
 }
