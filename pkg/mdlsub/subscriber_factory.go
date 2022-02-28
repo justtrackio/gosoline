@@ -47,12 +47,15 @@ func SubscriberFactory(ctx context.Context, config cfg.Config, logger log.Logger
 
 	modules := make(map[string]kernel.ModuleFactory)
 
-	for name := range settings.Subscribers {
-		moduleName := fmt.Sprintf("subscriber-%s", name)
-		consumerName := fmt.Sprintf("subscriber-%s", name)
-		callbackFactory := NewSubscriberCallbackFactory(transformers, outputs)
+	for name, subscriberSettings := range settings.Subscribers {
+		subscriberFQN := GetSubscriberFQN(name, subscriberSettings.SourceModel)
 
-		modules[moduleName] = stream.NewConsumer(consumerName, callbackFactory)
+		if _, ok := modules[subscriberFQN]; ok {
+			continue
+		}
+
+		callbackFactory := NewSubscriberCallbackFactory(transformers, outputs)
+		modules[subscriberFQN] = stream.NewConsumer(subscriberFQN, callbackFactory)
 	}
 
 	if !settings.SubscriberApi.Enabled {

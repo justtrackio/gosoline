@@ -12,6 +12,8 @@ func init() {
 	cfg.AddPostProcessor(8, "gosoline.mdlsub.publisher", PublisherConfigPostProcessor)
 }
 
+const sharedName = "publisher"
+
 type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware
 
 var publisherOutputTypeHandlers = map[string]publisherOutputTypeHandler{
@@ -111,7 +113,7 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 	outputSettings.TopicId = publisherSettings.Name
 
 	if publisherSettings.Shared {
-		outputSettings.TopicId = "publisher"
+		outputSettings.TopicId = sharedName
 	}
 
 	return outputSettings
@@ -127,7 +129,7 @@ func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *Publishe
 	outputSettings.QueueId = publisherSettings.Name
 
 	if publisherSettings.Shared {
-		outputSettings.QueueId = "publisher"
+		outputSettings.QueueId = sharedName
 	}
 
 	return outputSettings

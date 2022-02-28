@@ -86,8 +86,9 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 		runTestCaseApplication(t, suite, suiteOptions, environment, func(app *appUnderTest) {
 			attrs := mdlsub.CreateMessageAttributes(tc.GetModelId(), "create", 0)
 
-			streamName := fmt.Sprintf("subscriber-%s", tc.GetName())
-			suite.Env().StreamInput(streamName).PublishAndStop(tc.GetInput(), attrs)
+			sourceModel := mdlsub.UnmarshalSubscriberSourceModel(suite.Env().Config(), tc.GetName())
+			inputName := mdlsub.GetSubscriberFQN(tc.GetName(), sourceModel)
+			suite.Env().StreamInput(inputName).PublishAndStop(tc.GetInput(), attrs)
 
 			app.Stop()
 			app.WaitDone()
