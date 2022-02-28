@@ -59,29 +59,27 @@ func (l *ddbLock) Release() error {
 	return l.manager.release(ctx, l.resource, l.token)
 }
 
-func (l *ddbLock) forkWatcher() {
-	go func() {
-		for {
-			expires := atomic.LoadInt64(&l.expires)
-			now := l.manager.clock.Now()
+func (l *ddbLock) runWatcher() {
+	for {
+		expires := atomic.LoadInt64(&l.expires)
+		now := l.manager.clock.Now()
 
-			if expires < now.Unix() {
-				break
-			}
-
-			t := time.NewTimer(time.Unix(expires, 0).Sub(now))
-
-			select {
-			case <-t.C:
-				continue
-			case <-l.released.Channel():
-				return
-			}
+		if expires < now.Unix() {
+			break
 		}
 
-		l.manager.logger.WithContext(l.ctx).WithFields(log.Fields{
-			"ddb_lock_token":    l.token,
-			"ddb_lock_resource": l.resource,
-		}).Warn("failed to release or renew the lock before the timeout")
-	}()
+		t := time.NewTimer(time.Unix(expires, 0).Sub(now))
+
+		select {
+		case <-t.C:
+			continue
+		case <-l.released.Channel():
+			return
+		}
+	}
+
+	l.manager.logger.WithContext(l.ctx).WithFields(log.Fields{
+		"ddb_lock_token":    l.token,
+		"ddb_lock_resource": l.resource,
+	}).Warn("failed to release or renew the lock before the timeout")
 }
