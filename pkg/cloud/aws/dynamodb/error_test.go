@@ -34,7 +34,7 @@ func TestTransformTransactionError(t *testing.T) {
 
 	transformed := dynamodb.TransformTransactionError(err)
 
-	assert.True(t, errors.Is(transformed, dynamodb.ConditionalCheckFailedError))
+	assert.True(t, errors.As(transformed, &dynamodb.ConditionalCheckFailedError{}))
 	assert.True(t, errors.Is(transformed, dynamodb.TransactionConflictError))
 }
 

@@ -9,17 +9,22 @@ import (
 )
 
 const (
-	ConditionalCheckFailedError            = errorConditionalCheckFailed("conditional check failed")
 	TransactionConflictError               = errorTransactionConflict("transaction conflict")
 	cancellationReasonNone                 = "None"
 	cancellationReasonConditionCheckFailed = "ConditionalCheckFailed"
 	cancellationReasonTransactionConflict  = "TransactionConflict"
 )
 
-type errorConditionalCheckFailed string
+type ConditionalCheckFailedError struct {
+	Exception *types.TransactionCanceledException
+}
 
-func (e errorConditionalCheckFailed) Error() string {
-	return string(e)
+func (e ConditionalCheckFailedError) Unwrap() error {
+	return e.Exception
+}
+
+func (e ConditionalCheckFailedError) Error() string {
+	return "conditional check failed"
 }
 
 type errorTransactionConflict string
@@ -47,7 +52,7 @@ func TransformTransactionError(err error) error {
 		case cancellationReasonTransactionConflict:
 			multiErr = multierror.Append(multiErr, TransactionConflictError)
 		case cancellationReasonConditionCheckFailed:
-			multiErr = multierror.Append(multiErr, ConditionalCheckFailedError)
+			multiErr = multierror.Append(multiErr, ConditionalCheckFailedError{tcaErr})
 		default:
 			multiErr = multierror.Append(multiErr, errors.New(*r.Code))
 		}
@@ -77,7 +82,7 @@ type RetryOnConditionalCheckFailed struct{}
 // Thus, it should never be retried
 func (r RetryOnConditionalCheckFailed) IsErrorRetryable(err error) aws.Ternary {
 	err = TransformTransactionError(err)
-	if errors.Is(err, ConditionalCheckFailedError) {
+	if errors.As(err, &ConditionalCheckFailedError{}) {
 		return aws.FalseTernary
 	}
 
