@@ -34,7 +34,7 @@ func (s *DdbLockTestSuite) SetupTest() (err error) {
 			MaxAttempts:    0,
 			MaxElapsedTime: 0,
 		},
-		DefaultLockTime: time.Second * 3,
+		DefaultLockTime: time.Minute * 10,
 		Domain:          fmt.Sprintf("test%d", time.Now().Unix()),
 	})
 
@@ -43,7 +43,7 @@ func (s *DdbLockTestSuite) SetupTest() (err error) {
 
 func (s *DdbLockTestSuite) TestLockAndRelease() {
 	// Case 1: Acquire a lock and release it again
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	l, err := s.provider.Acquire(ctx, "a")
@@ -54,7 +54,7 @@ func (s *DdbLockTestSuite) TestLockAndRelease() {
 
 func (s *DdbLockTestSuite) TestAcquireTwiceFails() {
 	// Case 2: Acquire a lock, then try to acquire it again. Second call fails
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	l, err := s.provider.Acquire(ctx, "a")
@@ -71,16 +71,14 @@ func (s *DdbLockTestSuite) TestAcquireTwiceFails() {
 }
 
 func (s *DdbLockTestSuite) TestAcquireRenewWorks() {
-	// Case 3: Acquire a lock, then renew it, sleep some time, try to lock it again (should fail), release it
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	// Case 3: Acquire a lock, then renew it, try to lock it again (should fail), release it
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	l, err := s.provider.Acquire(ctx, "a")
 	s.NoError(err)
-	time.Sleep(time.Second * 1)
-	err = l.Renew(ctx, time.Second*10)
+	err = l.Renew(ctx, time.Hour)
 	s.NoError(err)
-	time.Sleep(time.Second * 4)
 
 	ctx2, cancel2 := context.WithTimeout(context.Background(), time.Second)
 	defer cancel2()
@@ -94,7 +92,7 @@ func (s *DdbLockTestSuite) TestAcquireRenewWorks() {
 
 func (s *DdbLockTestSuite) TestReleaseTwiceFails() {
 	// Case 4: try to release a lock twice
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	l, err := s.provider.Acquire(ctx, "a")
@@ -108,21 +106,21 @@ func (s *DdbLockTestSuite) TestReleaseTwiceFails() {
 
 func (s *DdbLockTestSuite) TestRenewAfterReleaseFails() {
 	// Case 5: try to renew a lock after releasing it
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	l, err := s.provider.Acquire(ctx, "a")
 	s.NoError(err)
 	err = l.Release()
 	s.NoError(err)
-	err = l.Renew(ctx, time.Minute)
+	err = l.Renew(ctx, time.Hour)
 	s.Error(err)
 	s.Equal(conc.ErrNotOwned, err)
 }
 
 func (s *DdbLockTestSuite) TestAcquireDifferentResources() {
 	// Case 6: try to acquire two different resources
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	l1, err := s.provider.Acquire(ctx, "a")

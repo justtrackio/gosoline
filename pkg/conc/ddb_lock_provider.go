@@ -125,7 +125,7 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (Distrib
 		}).Debug("acquired lock")
 
 		lock = newDdbLock(m, ctx, resource, token, expires)
-		lock.forkWatcher()
+		go lock.runWatcher()
 
 		return nil
 	}, m.backOff)
