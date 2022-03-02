@@ -88,6 +88,7 @@ func newInMemoryInputFromConfig(_ context.Context, config cfg.Config, _ log.Logg
 
 type KinesisInputConfiguration struct {
 	kinesis.Settings
+	Type string `cfg:"type" default:"kinesis"`
 }
 
 func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
