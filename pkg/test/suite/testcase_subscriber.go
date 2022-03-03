@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jinzhu/gorm"
+	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
@@ -82,6 +83,12 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 		if err != nil {
 			assert.FailNow(t, err.(error).Error())
 		}
+
+		suiteOptions.addAppOption(application.WithConfigMap(map[string]interface{}{
+			"api": map[string]interface{}{
+				"port": 0,
+			},
+		}))
 
 		runTestCaseApplication(t, suite, suiteOptions, environment, func(app *appUnderTest) {
 			attrs := mdlsub.CreateMessageAttributes(tc.GetModelId(), "create", 0)
