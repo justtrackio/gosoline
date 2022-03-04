@@ -34,8 +34,8 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 		"exec_resource_name": e.resource.Name,
 	})
 
-	delayedCtx := WithDelayedCancelContext(ctx, e.settings.CancelDelay)
-	defer delayedCtx.Stop()
+	delayedCtx, stop := WithDelayedCancelContext(ctx, e.settings.CancelDelay)
+	defer stop()
 
 	var res interface{}
 	var err error

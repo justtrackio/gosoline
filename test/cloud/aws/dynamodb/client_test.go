@@ -88,9 +88,10 @@ func (s *ClientTestSuite) TestSuccess() {
 
 func (s *ClientTestSuite) TestHttpTimeout() {
 	proxy := s.Env().DynamoDb("default").Toxiproxy()
-	proxy.AddToxic("latency_down", "latency", "downstream", 1.0, toxiproxy.Attributes{
+	_, err := proxy.AddToxic("latency_down", "latency", "downstream", 1.0, toxiproxy.Attributes{
 		"latency": 200,
 	})
+	s.NoError(err)
 
 	ctx := context.Background()
 	resource := &exec.ExecutableResource{
@@ -121,7 +122,8 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 			return stack.Finalize.Add(middleware.FinalizeMiddlewareFunc("bla", func(ctx context.Context, input middleware.FinalizeInput, handler middleware.FinalizeHandler) (middleware.FinalizeOutput, middleware.Metadata, error) {
 				i++
 				if i == 3 {
-					proxy.RemoveToxic("latency_down")
+					err := proxy.RemoveToxic("latency_down")
+					s.NoError(err)
 				}
 
 				return handler.HandleFinalize(ctx, input)
@@ -135,9 +137,10 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 
 func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 	proxy := s.Env().DynamoDb("default").Toxiproxy()
-	proxy.AddToxic("latency_down", "latency", "downstream", 1.0, toxiproxy.Attributes{
+	_, err := proxy.AddToxic("latency_down", "latency", "downstream", 1.0, toxiproxy.Attributes{
 		"latency": 200,
 	})
+	s.NoError(err)
 
 	ctx := context.Background()
 	loggerMock := new(logMocks.Logger)
