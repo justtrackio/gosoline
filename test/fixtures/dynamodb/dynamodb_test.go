@@ -1,5 +1,5 @@
-//go:build integration || fixtures
-// +build integration fixtures
+//go:build integration && fixtures
+// +build integration,fixtures
 
 package dynamodb_test
 

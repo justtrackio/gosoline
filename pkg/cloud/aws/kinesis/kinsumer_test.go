@@ -145,7 +145,7 @@ func (s *kinsumerTestSuite) TearDownTest() {
 
 func (s *kinsumerTestSuite) TestRegisterClientFail() {
 	s.metadataRepository.On("RegisterClient", s.ctx).Return(0, 0, fmt.Errorf("fail")).Once()
-	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
 	s.EqualError(err, "failed to load first list of shard ids and register as client: failed to register as client: fail")
@@ -153,7 +153,7 @@ func (s *kinsumerTestSuite) TestRegisterClientFail() {
 
 func (s *kinsumerTestSuite) TestRegisterClientDeregisterFailToo() {
 	s.metadataRepository.On("RegisterClient", s.ctx).Return(0, 0, fmt.Errorf("fail")).Once()
-	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(fmt.Errorf("also fail")).Once()
+	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.stoppableContext")).Return(fmt.Errorf("also fail")).Once()
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
 	s.EqualError(err, multierror.Append(
@@ -164,7 +164,7 @@ func (s *kinsumerTestSuite) TestRegisterClientDeregisterFailToo() {
 
 func (s *kinsumerTestSuite) TestInitialListShardsFail() {
 	s.metadataRepository.On("RegisterClient", s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 
 	s.logger.On("Info", "we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 
@@ -178,7 +178,7 @@ func (s *kinsumerTestSuite) TestInitialListShardsFail() {
 
 func (s *kinsumerTestSuite) TestInitialListShardsNoSuchStream() {
 	s.metadataRepository.On("RegisterClient", s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 
 	s.logger.On("Info", "we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 
@@ -196,7 +196,7 @@ func (s *kinsumerTestSuite) TestInitialListShardsNoSuchStream() {
 
 func (s *kinsumerTestSuite) TestInitialListShardsResourceInUse() {
 	s.metadataRepository.On("RegisterClient", s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 
 	s.logger.On("Info", "we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 
@@ -214,7 +214,7 @@ func (s *kinsumerTestSuite) TestInitialListShardsResourceInUse() {
 
 func (s *kinsumerTestSuite) TestInitialListShardsIterate() {
 	s.metadataRepository.On("RegisterClient", s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 
 	s.logger.On("Info", "we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 
@@ -303,7 +303,7 @@ func (s *kinsumerTestSuite) TestListShardsChangedShardIds() {
 
 func (s *kinsumerTestSuite) TestShardListFinishedShardHandling() {
 	s.metadataRepository.On("RegisterClient", s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 
 	s.logger.On("Info", "we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 
@@ -463,7 +463,7 @@ func (s *kinsumerTestSuite) TestConsumeMessagesFails() {
 
 func (s *kinsumerTestSuite) mockBaseSuccess(shards ...string) {
 	s.metadataRepository.On("RegisterClient", s.ctx).Return(0, 1, nil).Once()
-	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	s.metadataRepository.On("DeregisterClient", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 
 	s.logger.On("Info", "we are client %d / %d, refreshing %d shards", 1, 1, 0).Once()
 

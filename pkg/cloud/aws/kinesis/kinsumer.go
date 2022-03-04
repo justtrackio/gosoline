@@ -158,8 +158,8 @@ func NewKinsumerWithInterfaces(logger log.Logger, settings Settings, stream Stre
 }
 
 func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr error) {
-	deregisterCtx := exec.WithDelayedCancelContext(ctx, k.settings.ReleaseDelay)
-	defer deregisterCtx.Stop()
+	deregisterCtx, stop := exec.WithDelayedCancelContext(ctx, k.settings.ReleaseDelay)
+	defer stop()
 
 	logger := k.logger.WithContext(ctx)
 

@@ -81,8 +81,8 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 	s.logger.Info("acquired shard")
 	defer s.logger.Info("releasing shard")
 
-	releaseCtx := exec.WithDelayedCancelContext(ctx, s.settings.ReleaseDelay)
-	defer releaseCtx.Stop()
+	releaseCtx, stop := exec.WithDelayedCancelContext(ctx, s.settings.ReleaseDelay)
+	defer stop()
 
 	defer func() {
 		if err := s.releaseCheckpoint(releaseCtx); err != nil {

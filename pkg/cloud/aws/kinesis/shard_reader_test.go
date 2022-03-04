@@ -102,8 +102,8 @@ func (s *shardReaderTestSuite) TestGetShardIteratorFails() {
 	s.setupReader()
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
@@ -125,8 +125,8 @@ func (s *shardReaderTestSuite) TestGetShardIteratorReturnsEmpty() {
 	s.setupReader()
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("")).Once()
 	checkpoint.On("Done", gosoKinesis.SequenceNumber("")).Return(nil).Once()
 	defer checkpoint.AssertExpectations(s.T())
@@ -152,8 +152,8 @@ func (s *shardReaderTestSuite) TestGetRecordsAndReleaseFails() {
 	s.setupReader()
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(fmt.Errorf("fail again")).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(fmt.Errorf("fail again")).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("")).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
@@ -185,8 +185,8 @@ func (s *shardReaderTestSuite) TestReleaseFailsAfterShardIteratorFailed() {
 	s.setupReader()
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(fmt.Errorf("fail again")).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(fmt.Errorf("fail again")).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
@@ -211,8 +211,8 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 	s.setupReader()
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
 	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 2")).Return(nil).Once()
@@ -285,8 +285,8 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 	s.setupReader()
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Twice()
 	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
 	defer checkpoint.AssertExpectations(s.T())
@@ -383,8 +383,8 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 
 	checkpoint := new(mocks.Checkpoint)
 	checkpoint.On("Persist", mock.AnythingOfType("*exec.manualCancelContext")).Return(false, context.Canceled).Maybe()
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
@@ -437,8 +437,8 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithWait() {
 	s.setupReader()
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
 	checkpoint.On("Done", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
@@ -502,8 +502,8 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithOldRecord() {
 	s.clock.Advance(time.Minute)
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
 	checkpoint.On("Done", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
@@ -561,8 +561,8 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWait() {
 	ctx, cancel := context.WithCancel(s.ctx)
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
@@ -625,8 +625,8 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWaitNoRecords() {
 	ctx, cancel := context.WithCancel(s.ctx)
 
 	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.DelayedCancelContext")).Return(nil).Once()
+	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 	checkpoint.On("Done", gosoKinesis.SequenceNumber("")).Return(nil).Once()
 	defer checkpoint.AssertExpectations(s.T())

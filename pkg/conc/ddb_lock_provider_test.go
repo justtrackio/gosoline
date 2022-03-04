@@ -104,7 +104,7 @@ func (s *ddbLockProviderTestSuite) getReleaseQueryBuilder(result *ddb.DeleteItem
 	qb.On("WithCondition", ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
 
 	s.repo.On("DeleteItemBuilder").Return(qb).Once()
-	s.repo.On("DeleteItem", mock.AnythingOfType("*exec.DelayedCancelContext"), qb, &conc.DdbLockItem{
+	s.repo.On("DeleteItem", mock.AnythingOfType("*exec.stoppableContext"), qb, &conc.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 	}).Return(result, err)

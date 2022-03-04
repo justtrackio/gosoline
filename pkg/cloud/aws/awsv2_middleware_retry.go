@@ -59,7 +59,6 @@ func increaseAttemptCount(ctx context.Context) (*attemptInfo, context.Context) {
 func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSettings) smithyMiddleware.InitializeMiddleware {
 	return smithyMiddleware.InitializeMiddlewareFunc("AttemptLoggerInit", func(ctx context.Context, input smithyMiddleware.InitializeInput, handler smithyMiddleware.InitializeHandler) (smithyMiddleware.InitializeOutput, smithyMiddleware.Metadata, error) {
 		var err error
-		var cancel context.CancelFunc
 		var metadata smithyMiddleware.Metadata
 		var output smithyMiddleware.InitializeOutput
 		var deadline time.Time
@@ -77,15 +76,17 @@ func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSetting
 		ctx = setAttemptInfo(ctx, attempt)
 
 		if backoff.CancelDelay > 0 {
-			ctx = exec.WithDelayedCancelContext(ctx, backoff.CancelDelay)
-			defer (ctx.(*exec.DelayedCancelContext)).Stop()
+			var stop exec.StopFunc
+			ctx, stop = exec.WithDelayedCancelContext(ctx, backoff.CancelDelay)
+			defer stop()
 		}
 
 		if backoff.MaxElapsedTime > 0 {
+			var stop exec.StopFunc
 			deadline = attempt.start.Add(backoff.MaxElapsedTime)
-			ctx, cancel = context.WithDeadline(ctx, deadline)
+			ctx, stop = exec.WithStoppableDeadlineContext(ctx, deadline)
 
-			defer cancel()
+			defer stop()
 		}
 
 		output, metadata, err = handler.HandleInitialize(ctx, input)
