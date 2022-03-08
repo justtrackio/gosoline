@@ -141,6 +141,10 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 		"latency": 200,
 	})
 	s.NoError(err)
+	defer func() {
+		err := proxy.RemoveToxic("latency_down")
+		s.NoError(err)
+	}()
 
 	ctx := context.Background()
 	loggerMock := new(logMocks.Logger)

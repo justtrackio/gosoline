@@ -34,7 +34,7 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 	var testCases map[string]testCaseRunner
 	suiteOptions := suiteApplyOptions(suite, extraOptions)
 
-	if testCases, err = suiteFindTestCases(t, suite); err != nil {
+	if testCases, err = suiteFindTestCases(t, suite, suiteOptions); err != nil {
 		assert.FailNow(t, err.Error())
 		return
 	}
@@ -43,14 +43,16 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 		return
 	}
 
-	if suiteOptions.envIsShared {
-		runTestCaseWithSharedEnvironment(t, suite, suiteOptions, testCases)
-	} else {
-		runTestCaseWithIsolatedEnvironment(t, suite, suiteOptions, testCases)
+	for i := 0; i < suiteOptions.testCaseRepeatCount; i++ {
+		if suiteOptions.envIsShared {
+			runTestCaseWithSharedEnvironment(t, suite, suiteOptions, testCases)
+		} else {
+			runTestCaseWithIsolatedEnvironment(t, suite, suiteOptions, testCases)
+		}
 	}
 }
 
-func suiteFindTestCases(_ *testing.T, suite TestingSuite) (map[string]testCaseRunner, error) {
+func suiteFindTestCases(_ *testing.T, suite TestingSuite, options *suiteOptions) (map[string]testCaseRunner, error) {
 	var err error
 	testCases := make(map[string]testCaseRunner)
 	methodFinder := reflect.TypeOf(suite)
@@ -64,6 +66,14 @@ func suiteFindTestCases(_ *testing.T, suite TestingSuite) (map[string]testCaseRu
 
 		for typ, def := range testCaseDefinitions {
 			if !def.matcher(method) {
+				continue
+			}
+
+			if options.shouldSkip(method.Name) {
+				testCases[method.Name] = func(t *testing.T, _ TestingSuite, _ *suiteOptions, _ *env.Environment) {
+					t.SkipNow()
+				}
+
 				continue
 			}
 
