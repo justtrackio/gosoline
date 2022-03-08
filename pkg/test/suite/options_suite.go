@@ -13,6 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/spf13/cast"
+	"github.com/thoas/go-funk"
 )
 
 type suiteOptions struct {
@@ -25,15 +26,19 @@ type suiteOptions struct {
 	appOptions   []application.Option
 	appModules   map[string]kernel.ModuleFactory
 	appFactories []kernel.MultiModuleFactory
+
+	testCaseWhitelist   []string
+	testCaseRepeatCount int
 }
 
 func newSuiteOptions() *suiteOptions {
 	return &suiteOptions{
-		envOptions:   make([]env.Option, 0),
-		envSetup:     make([]func() error, 0),
-		appOptions:   make([]application.Option, 0),
-		appModules:   make(map[string]kernel.ModuleFactory),
-		appFactories: make([]kernel.MultiModuleFactory, 0),
+		envOptions:          make([]env.Option, 0),
+		envSetup:            make([]func() error, 0),
+		appOptions:          make([]application.Option, 0),
+		appModules:          make(map[string]kernel.ModuleFactory),
+		appFactories:        make([]kernel.MultiModuleFactory, 0),
+		testCaseRepeatCount: 1,
 	}
 }
 
@@ -43,6 +48,10 @@ func (s *suiteOptions) addAppOption(opt application.Option) {
 
 func (s *suiteOptions) addEnvOption(opt env.Option) {
 	s.envOptions = append(s.envOptions, opt)
+}
+
+func (s *suiteOptions) shouldSkip(name string) bool {
+	return len(s.testCaseWhitelist) > 0 && !funk.ContainsString(s.testCaseWhitelist, name)
 }
 
 type Option func(s *suiteOptions)
@@ -165,5 +174,21 @@ func WithoutAutoDetectedComponents(components ...string) Option {
 func WithDbRepoChangeHistory() Option {
 	return func(s *suiteOptions) {
 		s.addAppOption(application.WithDbRepoChangeHistory)
+	}
+}
+
+// WithTestCaseWhitelist returns an option which only runs the tests contained in the given whitelist. A test not in the
+// whitelist is skipped instead, allowing you to easily run a single test (e.g., for debugging).
+func WithTestCaseWhitelist(testCases ...string) Option {
+	return func(s *suiteOptions) {
+		s.testCaseWhitelist = testCases
+	}
+}
+
+// WithTestCaseRepeatCount repeats the whole test suite the given number of times. This can be useful if a problem doesn't
+// happen on every run (e.g., because it is timing dependent).
+func WithTestCaseRepeatCount(repeatCount int) Option {
+	return func(s *suiteOptions) {
+		s.testCaseRepeatCount = repeatCount
 	}
 }
