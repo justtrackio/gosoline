@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -127,4 +128,26 @@ func TestCoffin_Wait_Empty(t *testing.T) {
 	// check waiting on an empty coffin does not block forever
 	err := cfn.Wait()
 	assert.NoError(t, err)
+}
+
+func TestCoffin_AddAfterTerminated(t *testing.T) {
+	cfn := coffin.New()
+
+	for i := 0; i < 10; i++ {
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		cfn.Go(func() error {
+			wg.Done()
+
+			return nil
+		})
+		wg.Wait()
+
+		assert.True(t, cfn.Alive())
+	}
+
+	err := cfn.Wait()
+	assert.NoError(t, err)
+	assert.False(t, cfn.Alive())
+	<-cfn.Dead()
 }

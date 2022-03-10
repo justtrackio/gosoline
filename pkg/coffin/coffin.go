@@ -2,6 +2,7 @@ package coffin
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 
 	"github.com/pkg/errors"
@@ -79,17 +80,28 @@ type Coffin interface {
 type coffin struct {
 	// we MUST represent this as a ptr as tomb. Tomb contains a mutex that we are not allowed to copy!
 	tomb *tomb.Tomb
-	// number of started go routines
-	started int32
-	// number of terminated go routines
-	terminated int32
+	// number of started and stopped go routines (stopped << 32 | started)
+	status int64
+	// function to stop the go routine keeping the coffin alive until the first Wait call
+	markRunning func()
 }
 
+const (
+	startedShift            = 0
+	terminatedShift         = 32
+	increaseStartedCount    = 1 << startedShift
+	increaseTerminatedCount = 1 << terminatedShift
+	startedMask             = (1<<terminatedShift - 1) << startedShift
+	terminatedMask          = ^0 ^ (1<<(terminatedShift+startedShift) - 1)
+)
+
 func New() Coffin {
+	tmb := new(tomb.Tomb)
+
 	return &coffin{
-		tomb:       new(tomb.Tomb),
-		started:    0,
-		terminated: 0,
+		tomb:        tmb,
+		status:      0,
+		markRunning: prepareTomb(tmb),
 	}
 }
 
@@ -103,15 +115,33 @@ func New() Coffin {
 func WithContext(parent context.Context) (Coffin, context.Context) {
 	tmb, ctx := tomb.WithContext(parent)
 	cfn := &coffin{
-		tomb:       tmb,
-		started:    0,
-		terminated: 0,
+		tomb:        tmb,
+		status:      0,
+		markRunning: prepareTomb(tmb),
 	}
 
 	return cfn, ctx
 }
 
+func prepareTomb(tmb *tomb.Tomb) func() {
+	once := &sync.Once{}
+	ch := make(chan struct{})
+	tmb.Go(func() error {
+		<-ch
+
+		return nil
+	})
+
+	return func() {
+		once.Do(func() {
+			close(ch)
+		})
+	}
+}
+
 func (c *coffin) Alive() bool {
+	c.markRunning()
+
 	return c.tomb.Alive()
 }
 
@@ -120,21 +150,27 @@ func (c *coffin) Context(parent context.Context) context.Context {
 }
 
 func (c *coffin) Dead() <-chan struct{} {
+	c.markRunning()
+
 	return c.tomb.Dead()
 }
 
 func (c *coffin) Dying() <-chan struct{} {
+	c.markRunning()
+
 	return c.tomb.Dying()
 }
 
 func (c *coffin) Err() (reason error) {
+	c.markRunning()
+
 	return c.tomb.Err()
 }
 
 func (c *coffin) Go(f func() error) {
-	atomic.AddInt32(&c.started, 1)
+	atomic.AddInt64(&c.status, increaseStartedCount)
 	c.tomb.Go(func() (err error) {
-		defer atomic.AddInt32(&c.terminated, 1)
+		defer atomic.AddInt64(&c.status, increaseTerminatedCount)
 		defer func() {
 			panicErr := ResolveRecovery(recover())
 
@@ -148,9 +184,9 @@ func (c *coffin) Go(f func() error) {
 }
 
 func (c *coffin) Gof(f func() error, msg string, args ...interface{}) {
-	atomic.AddInt32(&c.started, 1)
+	atomic.AddInt64(&c.status, increaseStartedCount)
 	c.tomb.Go(func() (err error) {
-		defer atomic.AddInt32(&c.terminated, 1)
+		defer atomic.AddInt64(&c.status, increaseTerminatedCount)
 		defer func() {
 			panicErr := ResolveRecovery(recover())
 
@@ -189,29 +225,34 @@ func (c *coffin) GoWithContextf(ctx context.Context, f func(ctx context.Context)
 // even if nil. It's a runtime error to call Kill with ErrDying
 // if t is not in a dying state.
 func (c *coffin) Kill(reason error) {
+	c.markRunning()
 	c.tomb.Kill(reason)
 }
 
 func (c *coffin) Killf(f string, a ...interface{}) error {
+	c.markRunning()
+
 	return c.tomb.Killf(f, a...)
 }
 
 func (c *coffin) Wait() error {
-	if atomic.LoadInt32(&c.started) == 0 {
-		return nil
-	}
+	c.markRunning()
 
 	return c.tomb.Wait()
 }
 
 func (c *coffin) Started() int {
-	return int(atomic.LoadInt32(&c.started))
+	return int((atomic.LoadInt64(&c.status) >> startedShift) & startedMask)
 }
 
 func (c *coffin) Running() int {
-	return c.Started() - c.Terminated()
+	status := atomic.LoadInt64(&c.status)
+	started := (status >> startedShift) & startedMask
+	terminated := (status >> terminatedShift) & terminatedMask
+
+	return int(started - terminated)
 }
 
 func (c *coffin) Terminated() int {
-	return int(atomic.LoadInt32(&c.terminated))
+	return int((atomic.LoadInt64(&c.status) >> terminatedShift) & terminatedMask)
 }
