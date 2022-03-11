@@ -187,18 +187,13 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunError() {
 }
 
 func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
-	s.retryHandler.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
-	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
-			s.inputData <- stream.NewJsonMessage(`"foo"`)
-			s.inputData <- stream.NewJsonMessage(`"bar"`)
-			s.kernelCancel()
-		}).Return(nil)
-
 	consumed := make([]*string, 0)
 
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
+	s.callback.
+		On("Run", mock.AnythingOfType("*context.cancelCtx")).
+		Return(nil)
+	s.callback.
+		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*string)
 			consumed = append(consumed, ptr)
@@ -209,11 +204,37 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 			}
 		}).
 		Return(true, nil)
-
-	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).
+	s.callback.
+		On("GetModel", mock.AnythingOfType("map[string]interface {}")).
 		Return(func(_ map[string]interface{}) interface{} {
 			return mdl.String("")
 		})
+
+	retryMsg := &stream.Message{
+		Attributes: map[string]interface{}{
+			stream.AttributeRetry:   true,
+			stream.AttributeRetryId: "75828fe1-4c7d-4a21-99e5-03d63876ed23",
+		},
+		Body: `"foo"`,
+	}
+
+	s.uuidGen.
+		On("NewV4").
+		Return("75828fe1-4c7d-4a21-99e5-03d63876ed23")
+	s.retryHandler.
+		On("Run", mock.AnythingOfType("*context.cancelCtx")).
+		Return(nil)
+	s.retryHandler.
+		On("Put", mock.AnythingOfType("*context.valueCtx"), retryMsg).
+		Return(nil)
+	s.input.
+		On("Run", mock.AnythingOfType("*context.cancelCtx")).
+		Run(func(args mock.Arguments) {
+			s.inputData <- stream.NewJsonMessage(`"foo"`)
+			s.inputData <- stream.NewJsonMessage(`"bar"`)
+			s.kernelCancel()
+		}).
+		Return(nil)
 
 	err := s.consumer.Run(s.kernelCtx)
 

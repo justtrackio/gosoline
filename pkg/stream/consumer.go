@@ -123,7 +123,7 @@ func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData
 }
 
 func (c *Consumer) process(ctx context.Context, msg *Message) bool {
-	defer c.recover()
+	defer c.recover(ctx, msg)
 
 	var err error
 	var ack bool

@@ -89,6 +89,7 @@ type producerDaemon struct {
 	clock      clock.Clock
 	ticker     clock.Ticker
 	settings   ProducerDaemonSettings
+	running    bool
 }
 
 func ResetProducerDaemons() {
@@ -173,6 +174,9 @@ func (d *producerDaemon) GetStage() int {
 }
 
 func (d *producerDaemon) Run(kernelCtx context.Context) error {
+	d.running = true
+	defer func() { d.running = false }()
+
 	// ensure we don't have a race with the code in Write checking if the ticker is nil
 	d.lck.Lock()
 	d.ticker = d.clock.NewTicker(d.settings.Interval)
@@ -208,6 +212,10 @@ func (d *producerDaemon) WriteOne(ctx context.Context, msg WritableMessage) erro
 func (d *producerDaemon) Write(ctx context.Context, batch []WritableMessage) error {
 	d.lck.Lock()
 	defer d.lck.Unlock()
+
+	if !d.running {
+		return fmt.Errorf("can't write messages as the producer daemon %s is not running", d.name)
+	}
 
 	var err error
 	var aggregated []*Message
