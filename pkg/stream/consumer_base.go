@@ -175,7 +175,7 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 	cfn, dyingCtx := coffin.WithContext(context.Background())
 
 	// create ctx whose done channel is closed on dying coffin and manual cancel
-	manualCtx := cfn.Context(context.Background())
+	manualCtx := dyingCtx
 	manualCtx, c.cancel = context.WithCancel(manualCtx)
 
 	cfn.Go(func() error {

@@ -142,12 +142,9 @@ func TestCoffin_AddAfterTerminated(t *testing.T) {
 			return nil
 		})
 		wg.Wait()
-
-		assert.True(t, cfn.Alive())
 	}
 
 	err := cfn.Wait()
 	assert.NoError(t, err)
-	assert.False(t, cfn.Alive())
 	<-cfn.Dead()
 }

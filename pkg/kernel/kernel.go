@@ -284,36 +284,29 @@ func (k *kernel) runMultiFactories(ctx context.Context) (err error) {
 
 func (k *kernel) runFactories(ctx context.Context) error {
 	bootCoffin := coffin.New()
-	startBooting := conc.NewSignalOnce()
-	bookLck := sync.Mutex{}
+	bootCoffin.Spawn(func(bootCoffin coffin.Coffin) {
+		bookLck := sync.Mutex{}
 
-	for _, container := range k.moduleSetupContainers {
-		bootCoffin.GoWithContextf(ctx, func(container moduleSetupContainer) func(ctx context.Context) error {
-			return func(ctx context.Context) error {
-				// wait until we scheduled all boot routines
-				// otherwise a fast booting module might violate the
-				// condition of tomb.Go that no new routine must be
-				// spawned after the last one exited
-				<-startBooting.Channel()
+		for _, container := range k.moduleSetupContainers {
+			bootCoffin.GoWithContextf(ctx, func(container moduleSetupContainer) func(ctx context.Context) error {
+				return func(ctx context.Context) error {
+					module, err := container.factory(ctx, k.config, k.logger)
+					if err != nil {
+						return fmt.Errorf("can not build module %s: %w", container.name, err)
+					}
 
-				module, err := container.factory(ctx, k.config, k.logger)
-				if err != nil {
-					return fmt.Errorf("can not build module %s: %w", container.name, err)
+					bookLck.Lock()
+					defer bookLck.Unlock()
+
+					if err = k.addModuleToStage(container.name, module, container.opts); err != nil {
+						return fmt.Errorf("can not add module to stage: %w", err)
+					}
+
+					return nil
 				}
-
-				bookLck.Lock()
-				defer bookLck.Unlock()
-
-				if err = k.addModuleToStage(container.name, module, container.opts); err != nil {
-					return fmt.Errorf("can not add module to stage: %w", err)
-				}
-
-				return nil
-			}
-		}(container), "panic during boot of module %s", container.name)
-	}
-
-	startBooting.Signal()
+			}(container), "panic during boot of module %s", container.name)
+		}
+	})
 
 	return bootCoffin.Wait()
 }

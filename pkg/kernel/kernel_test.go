@@ -117,7 +117,7 @@ func TestBootFailure(t *testing.T) {
 	config, logger, _ := createMocks()
 
 	logger.On("Info", mock.Anything)
-	logger.On("Error", "error building modules: %w", mock.AnythingOfType("*errors.withStack"))
+	logger.On("Error", "error building modules: %w", mock.AnythingOfType("*fmt.wrapError"))
 
 	assert.NotPanics(t, func() {
 		k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeErr))
