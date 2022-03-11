@@ -151,7 +151,7 @@ func (c *BatchConsumer) processBatch(ctx context.Context) {
 }
 
 func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData) {
-	defer c.recover()
+	defer c.recover(ctx, nil)
 
 	start := c.clock.Now()
 

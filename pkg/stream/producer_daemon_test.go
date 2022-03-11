@@ -268,11 +268,10 @@ func (s *ProducerDaemonTestSuite) TestWriteAfterClose() {
 	}
 
 	err := s.stop()
-
 	s.NoError(err)
 
 	err = s.daemon.Write(context.Background(), messages)
-	s.NoError(err, "there should be no error on write")
+	s.EqualError(err, "can't write messages as the producer daemon testDaemon is not running")
 
 	s.output.AssertExpectations(s.T())
 }

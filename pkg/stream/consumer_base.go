@@ -307,13 +307,20 @@ func (c *baseConsumer) stopIncomingData() {
 	})
 }
 
-func (c *baseConsumer) recover() {
-	err := coffin.ResolveRecovery(recover())
-	if err == nil {
+func (c *baseConsumer) recover(ctx context.Context, msg *Message) {
+	var err error
+
+	if err = coffin.ResolveRecovery(recover()); err == nil {
 		return
 	}
 
-	c.logger.Error("%w", err)
+	c.handleError(ctx, err, "a panic occured during the consume operation")
+
+	if msg == nil {
+		return
+	}
+
+	c.retry(ctx, msg)
 }
 
 func (c *baseConsumer) retry(ctx context.Context, msg *Message) {
