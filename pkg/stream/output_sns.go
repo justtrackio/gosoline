@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -48,39 +47,50 @@ func NewSnsOutputWithInterfaces(logger log.Logger, topic sns.Topic) Output {
 	}
 }
 
-func (o *snsOutput) WriteOne(ctx context.Context, record WritableMessage) error {
-	return o.Write(ctx, []WritableMessage{record})
-}
+func (o *snsOutput) WriteOne(ctx context.Context, message WritableMessage) error {
+	var err error
+	var body string
+	attributes := getAttributes(message)
 
-func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
-	errors := make([]error, 0)
-
-	for _, msg := range batch {
-		body, err := msg.MarshalToString()
-		if err != nil {
-			errors = append(errors, err)
-			continue
-		}
-
-		err = o.topic.Publish(ctx, body, getAttributes(msg))
-
-		if err != nil {
-			errors = append(errors, err)
-			continue
-		}
+	if body, err = message.MarshalToString(); err != nil {
+		return fmt.Errorf("can not marshal message to string: %w", err)
 	}
 
-	if len(errors) == 1 {
-		return errors[0]
-	}
-
-	if len(errors) > 0 {
-		return &multierror.Error{
-			Errors: errors,
-		}
+	if err = o.topic.Publish(ctx, body, attributes); err != nil {
+		return fmt.Errorf("can not publish message: %w", err)
 	}
 
 	return nil
+}
+
+func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
+	messages, attributes, err := o.computeMessagesAttributes(batch)
+	if err != nil {
+		return fmt.Errorf("could not compute message attributes: %w", err)
+	}
+
+	if err = o.topic.PublishBatch(ctx, messages, attributes); err != nil {
+		return fmt.Errorf("can not publish message batch: %w", err)
+	}
+
+	return nil
+}
+
+func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) ([]string, []map[string]interface{}, error) {
+	messages := make([]string, 0, len(batch))
+	attributes := make([]map[string]interface{}, 0, len(batch))
+
+	for i := 0; i < len(batch); i++ {
+		message, err := batch[i].MarshalToString()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to marshal message %d: %w", i, err)
+		}
+
+		messages = append(messages, message)
+		attributes = append(attributes, getAttributes(batch[i]))
+	}
+
+	return messages, attributes, nil
 }
 
 func (o *snsOutput) GetMaxMessageSize() *int {

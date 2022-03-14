@@ -20,6 +20,7 @@ type Client interface {
 	GetSubscriptionAttributes(ctx context.Context, params *sns.GetSubscriptionAttributesInput, optFns ...func(*sns.Options)) (*sns.GetSubscriptionAttributesOutput, error)
 	ListSubscriptionsByTopic(ctx context.Context, params *sns.ListSubscriptionsByTopicInput, optFns ...func(*sns.Options)) (*sns.ListSubscriptionsByTopicOutput, error)
 	Publish(ctx context.Context, params *sns.PublishInput, optFns ...func(options *sns.Options)) (*sns.PublishOutput, error)
+	PublishBatch(ctx context.Context, input *sns.PublishBatchInput, optFns ...func(options *sns.Options)) (*sns.PublishBatchOutput, error)
 	Subscribe(ctx context.Context, params *sns.SubscribeInput, optFns ...func(options *sns.Options)) (*sns.SubscribeOutput, error)
 	Unsubscribe(ctx context.Context, params *sns.UnsubscribeInput, optFns ...func(*sns.Options)) (*sns.UnsubscribeOutput, error)
 }
