@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"runtime"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -69,6 +70,7 @@ func (s *MetadataServer) Run(ctx context.Context) error {
 	handler := http.NewServeMux()
 	handler.HandleFunc("/", s.handleMetadata(metadata))
 	handler.HandleFunc("/config", s.handleConfig)
+	handler.HandleFunc("/memory", s.handleMemory)
 
 	s.server.Handler = handler
 	go s.waitForStop(ctx)
@@ -100,9 +102,26 @@ func (s *MetadataServer) handleMetadata(metadata *appctx.Metadata) func(http.Res
 }
 
 func (s *MetadataServer) handleConfig(writer http.ResponseWriter, request *http.Request) {
+	settings := s.config.AllSettings()
+	s.formattedResponse(writer, request, settings)
+}
+
+func (s *MetadataServer) handleMemory(writer http.ResponseWriter, request *http.Request) {
+	var memMstats runtime.MemStats
+
+	gc := request.URL.Query().Get("gc")
+	switch gc {
+	case "true":
+		runtime.GC()
+	}
+
+	runtime.ReadMemStats(&memMstats)
+	s.formattedResponse(writer, request, memMstats)
+}
+
+func (s *MetadataServer) formattedResponse(writer http.ResponseWriter, request *http.Request, response interface{}) {
 	var err error
 	var bytes []byte
-	settings := s.config.AllSettings()
 	marshaller := yaml.Marshal
 
 	format := request.URL.Query().Get("format")
@@ -112,14 +131,14 @@ func (s *MetadataServer) handleConfig(writer http.ResponseWriter, request *http.
 		marshaller = json.Marshal
 	}
 
-	if bytes, err = marshaller(settings); err != nil {
-		s.logger.Warn("can not marshal config %s", err.Error())
+	if bytes, err = marshaller(response); err != nil {
+		s.logger.Warn("can not marshal response %s", err.Error())
 		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	if _, err = writer.Write(bytes); err != nil {
-		s.logger.Warn("can not write config %s", err.Error())
+		s.logger.Warn("can not write response %s", err.Error())
 	}
 }
 
