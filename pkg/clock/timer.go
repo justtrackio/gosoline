@@ -118,14 +118,19 @@ func (t *realTimer) Reset(d time.Duration) {
 func (t *realTimer) start() {
 	t.done = make(chan struct{})
 
-	go func() {
+	// important: pass the done channel here instead of reading from t.done
+	// if we read from the timer, it could be that the go routine is scheduled
+	// such that Stop was already called and the channel is nil - and reading
+	// from a nil channel blocks forever, leaking the go routine (as the timer
+	// was also stopped and thus never fires)
+	go func(done chan struct{}) {
 		select {
-		case <-t.done:
+		case <-done:
 			return
 		case tick := <-t.timer.C:
 			t.sendTick(tick)
 		}
-	}()
+	}(t.done)
 }
 
 func (t *realTimer) sendTick(tick time.Time) {
