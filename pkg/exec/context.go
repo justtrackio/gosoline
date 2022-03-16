@@ -3,7 +3,6 @@ package exec
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -11,10 +10,29 @@ import (
 
 type StopFunc func()
 
+type syncErr struct {
+	errLck sync.RWMutex
+	err    error
+}
+
+func (e *syncErr) load() error {
+	e.errLck.RLock()
+	defer e.errLck.RUnlock()
+
+	return e.err
+}
+
+func (e *syncErr) store(err error) {
+	e.errLck.Lock()
+	defer e.errLck.Unlock()
+
+	e.err = err
+}
+
 type stoppableContext struct {
 	parentCtx context.Context
 	done      chan struct{}
-	err       atomic.Value
+	err       syncErr
 	stopWg    *sync.WaitGroup
 	stopOnce  sync.Once
 	stopped   chan struct{}
@@ -31,7 +49,6 @@ func newStoppableContext(parentCtx context.Context, deadline *time.Time, handler
 
 	ctx := &stoppableContext{
 		parentCtx: parentCtx,
-		err:       atomic.Value{},
 		done:      make(chan struct{}),
 		stopWg:    wg,
 		stopped:   make(chan struct{}),
@@ -48,7 +65,7 @@ func newStoppableContext(parentCtx context.Context, deadline *time.Time, handler
 
 		shouldClose, err := handler(ctx)
 		if err != nil {
-			ctx.err.Store(err)
+			ctx.err.store(err)
 		}
 		if shouldClose {
 			close(ctx.done)
@@ -63,12 +80,7 @@ func (c *stoppableContext) Done() <-chan struct{} {
 }
 
 func (c *stoppableContext) Err() error {
-	err := c.err.Load()
-	if err == nil {
-		return nil
-	}
-
-	return err.(error)
+	return c.err.load()
 }
 
 func (c *stoppableContext) Deadline() (time.Time, bool) {
@@ -134,7 +146,7 @@ func WithStoppableDeadlineContext(parentCtx context.Context, deadline time.Time)
 type manualCancelContext struct {
 	context.Context
 	done chan struct{}
-	err  atomic.Value
+	err  syncErr
 }
 
 func (c *manualCancelContext) Done() <-chan struct{} {
@@ -142,12 +154,7 @@ func (c *manualCancelContext) Done() <-chan struct{} {
 }
 
 func (c *manualCancelContext) Err() error {
-	err := c.err.Load()
-	if err == nil {
-		return nil
-	}
-
-	return err.(error)
+	return c.err.load()
 }
 
 // WithManualCancelContext is similar to context.WithCancel, but it only cancels the returned context once the cancel
@@ -156,12 +163,11 @@ func WithManualCancelContext(parentCtx context.Context) (context.Context, contex
 	ctx := &manualCancelContext{
 		Context: parentCtx,
 		done:    make(chan struct{}),
-		err:     atomic.Value{},
 	}
 	once := &sync.Once{}
 	cancel := func() {
 		once.Do(func() {
-			ctx.err.Store(context.Canceled)
+			ctx.err.store(context.Canceled)
 			close(ctx.done)
 		})
 	}

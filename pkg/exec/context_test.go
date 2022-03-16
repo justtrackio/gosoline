@@ -2,10 +2,12 @@ package exec_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/stretchr/testify/suite"
 )
@@ -129,6 +131,37 @@ func (s *contextTestSuite) TestWithManualCancelContext() {
 	// once we cancel the child, it should be canceled
 	cancelChild()
 	s.assertCanceled(ctx, context.Canceled)
+}
+
+func (s *contextTestSuite) TestConcurrentlyPrintable() {
+	// if you want to know what this is: We used to use atomic.Value to store the error of the context. However, it seems
+	// like this is not safe for printing - you would run into some kind of invalid memory access like this:
+	//     [signal SIGSEGV: segmentation violation code=0x1 addr=0xffffffffffffffff pc=...]
+	// when fmt.Sprintf accesses the atomic.Value from the context. Thus, we switched the context to use a simple mutex
+	// and plain value guarded by it, which works fine. This test confirms that we can indeed print a context (which
+	// happens in mocks when a mocked method is called with something like mock.AnythingOfType("*exec.stoppableContext")
+	// as an argument) without crashing.
+	for i := 0; i < 1000; i++ {
+		ctx, cancel := exec.WithManualCancelContext(context.Background())
+		c := make(chan struct{})
+		cfn := coffin.New()
+		cfn.Go(func() error {
+			<-c
+			cancel()
+
+			return nil
+		})
+		cfn.Go(func() error {
+			<-c
+			if s := fmt.Sprintf("%v", ctx); s == "" {
+				return fmt.Errorf("should never happen")
+			}
+
+			return nil
+		})
+		close(c)
+		s.NoError(cfn.Wait(), "Fail at iteration %d", i)
+	}
 }
 
 func (s *contextTestSuite) assertCanceled(ctx context.Context, expectedErr error) {
