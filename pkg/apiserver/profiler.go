@@ -1,9 +1,10 @@
 package apiserver
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/pprof"
+
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -12,6 +13,7 @@ const (
 	Profile       = "/profile"
 	Symbol        = "/symbol"
 	Trace         = "/trace"
+	Allocs        = "/allocs"
 	Block         = "/block"
 	GoRoutine     = "/goroutine"
 	Heap          = "/heap"
@@ -27,6 +29,7 @@ func AddProfilingEndpoints(r *gin.Engine) {
 	pr.POST(Symbol, profilingHandler(pprof.Symbol))
 	pr.GET(Symbol, profilingHandler(pprof.Symbol))
 	pr.GET(Trace, profilingHandler(pprof.Trace))
+	pr.GET(Allocs, profilingHandler(pprof.Handler("allocs").ServeHTTP))
 	pr.GET(Block, profilingHandler(pprof.Handler("block").ServeHTTP))
 	pr.GET(GoRoutine, profilingHandler(pprof.Handler("goroutine").ServeHTTP))
 	pr.GET(Heap, profilingHandler(pprof.Handler("heap").ServeHTTP))
