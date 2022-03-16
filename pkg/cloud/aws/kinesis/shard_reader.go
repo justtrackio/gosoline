@@ -123,7 +123,16 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 		return s.iterateRecords(ctx, millisecondsBehindChan, iterator, handler)
 	})
 
-	return cfn.Wait()
+	// if we get a canceled error, drop it here. We used to do this at our caller, but this makes a test harder:
+	// if the context of the coffin gets canceled, we propagate the canceled error from the context to the coffin.
+	// however, if already all tasks in the coffin have exited, the coffin is already dead, and we don't propagate
+	// the error. Thus, it is impossible in the test to specify whether we expect the error or no error, so we just
+	// clean up here.
+	if err := cfn.Wait(); err != nil && !exec.IsRequestCanceled(err) {
+		return err
+	}
+
+	return nil
 }
 
 func (s *shardReader) getCheckpoint() CheckpointWithoutRelease {
