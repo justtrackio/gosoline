@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -46,7 +47,7 @@ type sqsInput struct {
 
 	cfn     coffin.Coffin
 	channel chan *Message
-	stopped bool
+	stopped int32
 }
 
 func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsInputSettings) (*sqsInput, error) {
@@ -118,7 +119,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 	defer i.logger.Info("leaving sqs input runner")
 
 	for {
-		if i.stopped {
+		if atomic.LoadInt32(&i.stopped) != 0 {
 			return nil
 		}
 
@@ -148,7 +149,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 }
 
 func (i *sqsInput) Stop() {
-	i.stopped = true
+	atomic.StoreInt32(&i.stopped, 1)
 }
 
 func (i *sqsInput) Ack(ctx context.Context, msg *Message) error {

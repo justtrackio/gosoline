@@ -216,8 +216,7 @@ func (s *MprMetricModuleTestSuite) TestModule() {
 	for name, tc := range mprMetricModuleTestCases {
 		s.Run(name, func() {
 			var err error
-
-			wg := sync.WaitGroup{}
+			var wg sync.WaitGroup
 			wg.Add(1)
 
 			s.SetupTestCase()

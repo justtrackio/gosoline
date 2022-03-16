@@ -32,7 +32,7 @@ func (e *syncErr) store(err error) {
 type stoppableContext struct {
 	parentCtx context.Context
 	done      chan struct{}
-	err       syncErr
+	err       *syncErr
 	stopWg    *sync.WaitGroup
 	stopOnce  sync.Once
 	stopped   chan struct{}
@@ -50,6 +50,7 @@ func newStoppableContext(parentCtx context.Context, deadline *time.Time, handler
 	ctx := &stoppableContext{
 		parentCtx: parentCtx,
 		done:      make(chan struct{}),
+		err:       &syncErr{},
 		stopWg:    wg,
 		stopped:   make(chan struct{}),
 		deadline:  deadline,
@@ -146,7 +147,7 @@ func WithStoppableDeadlineContext(parentCtx context.Context, deadline time.Time)
 type manualCancelContext struct {
 	context.Context
 	done chan struct{}
-	err  syncErr
+	err  *syncErr
 }
 
 func (c *manualCancelContext) Done() <-chan struct{} {
@@ -163,6 +164,7 @@ func WithManualCancelContext(parentCtx context.Context) (context.Context, contex
 	ctx := &manualCancelContext{
 		Context: parentCtx,
 		done:    make(chan struct{}),
+		err:     &syncErr{},
 	}
 	once := &sync.Once{}
 	cancel := func() {

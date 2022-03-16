@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	configMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
@@ -18,11 +19,15 @@ func TestFileInput_Run(t *testing.T) {
 	})
 
 	var err error
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		err = input.Run(context.Background())
+		wg.Done()
 	}()
 
 	msg := <-input.Data()
+	wg.Wait()
 
 	assert.Nil(t, err, "there should be no error in run")
 	assert.Equal(t, "foobar", msg.Body, "the body should match")

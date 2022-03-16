@@ -2,12 +2,14 @@ package clock
 
 import (
 	"errors"
+	"sync"
 	"time"
 )
 
 type fakeTicker struct {
 	clock     *fakeClock
 	c         chan time.Time
+	lck       sync.Mutex
 	remaining time.Duration
 	duration  time.Duration
 }
@@ -36,6 +38,9 @@ func (f *fakeClock) NewTicker(d time.Duration) Ticker {
 }
 
 func (f *fakeTicker) Stop() {
+	f.lck.Lock()
+	defer f.lck.Unlock()
+
 	f.remaining = 0
 	// mark ticker as disabled
 	f.duration = 0
@@ -50,8 +55,10 @@ func (f *fakeTicker) Reset(d time.Duration) {
 		panic(errors.New("non-positive interval for Reset"))
 	}
 
+	f.lck.Lock()
 	f.remaining = d
 	f.duration = d
+	f.lck.Unlock()
 
 	f.clock.lck.Lock()
 	defer f.clock.lck.Unlock()
@@ -60,6 +67,9 @@ func (f *fakeTicker) Reset(d time.Duration) {
 }
 
 func (f *fakeTicker) advance(t time.Time, d time.Duration) {
+	f.lck.Lock()
+	defer f.lck.Unlock()
+
 	if f.duration == 0 {
 		// ticker was stopped
 		return

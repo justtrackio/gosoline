@@ -226,9 +226,11 @@ func (f *fakeClock) waitingTimers() int {
 	result := 0
 
 	for _, timer := range f.timers {
+		timer.lck.Lock()
 		if timer.remaining > 0 {
 			result++
 		}
+		timer.lck.Unlock()
 	}
 
 	return result
@@ -238,9 +240,11 @@ func (f *fakeClock) waitingTickers() int {
 	result := 0
 
 	for _, ticker := range f.tickers {
+		ticker.lck.Lock()
 		if ticker.duration > 0 {
 			result++
 		}
+		ticker.lck.Unlock()
 	}
 
 	return result

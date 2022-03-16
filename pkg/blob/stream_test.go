@@ -32,7 +32,7 @@ func TestCloseOnceConcurrently(t *testing.T) {
 
 	closer := blob.CloseOnce(closerImpl)
 
-	wg := sync.WaitGroup{}
+	var wg sync.WaitGroup
 	wg.Add(100)
 
 	mutex := sync.RWMutex{}

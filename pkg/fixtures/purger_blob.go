@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/justtrackio/gosoline/pkg/blob"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -37,12 +38,16 @@ func (p *blobPurger) purge(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 
 	var batchRunnerErr error
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func(ctx context.Context) {
 		batchRunnerErr = p.batchRunner.Run(ctx)
+		wg.Done()
 	}(ctx)
 
 	err := p.store.DeleteBucket(ctx)
 	cancel()
+	wg.Wait()
 
 	if batchRunnerErr != nil {
 		return batchRunnerErr

@@ -2,6 +2,7 @@ package stream_test
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -16,7 +17,7 @@ import (
 func TestSqsInput_Run(t *testing.T) {
 	logger := logMocks.NewLoggerMockedAll()
 
-	count := 0
+	var count int32
 	waitReadDone := make(chan struct{})
 	waitStopDone := make(chan struct{})
 	waitRunDone := make(chan struct{})
@@ -24,9 +25,9 @@ func TestSqsInput_Run(t *testing.T) {
 
 	queue := new(sqsMocks.Queue)
 	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int32(1), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
-		count++
+		newCount := atomic.AddInt32(&count, 1)
 
-		if count > int(mrc) {
+		if newCount > mrc {
 			<-waitStopDone
 			return []types.Message{}
 		}
