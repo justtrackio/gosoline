@@ -97,6 +97,12 @@ func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner,
 		return nil, fmt.Errorf("can not create docker pool: %w", err)
 	}
 
+	// do this here, if we let the call to `pool.Retry` do this, we trigger a data race (not bad in this case, but annoying
+	// for the race detector)
+	if pool.MaxWait == 0 {
+		pool.MaxWait = time.Minute
+	}
+
 	return &containerRunner{
 		logger:       logger,
 		pool:         pool,
@@ -116,6 +122,7 @@ func (r *containerRunner) PullContainerImages(skeletons []*componentSkeleton) er
 	for i := range skeletons {
 		for _, description := range skeletons[i].containerDescriptions {
 			skeleton := skeletons[i]
+			description := description
 			cfn.Gof(func() error {
 				err := r.PullContainerImage(description)
 				if err != nil {

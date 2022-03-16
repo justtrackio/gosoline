@@ -1,12 +1,14 @@
 package clock
 
 import (
+	"sync"
 	"time"
 )
 
 type fakeTimer struct {
 	clock     *fakeClock
 	c         chan time.Time
+	lck       sync.Mutex
 	remaining time.Duration
 }
 
@@ -37,6 +39,9 @@ func (f *fakeTimer) Chan() <-chan time.Time {
 }
 
 func (f *fakeTimer) Stop() bool {
+	f.lck.Lock()
+	defer f.lck.Unlock()
+
 	oldRemaining := f.remaining
 	f.remaining = 0
 
@@ -44,7 +49,9 @@ func (f *fakeTimer) Stop() bool {
 }
 
 func (f *fakeTimer) Reset(d time.Duration) {
+	f.lck.Lock()
 	f.remaining = d
+	f.lck.Unlock()
 
 	f.clock.lck.Lock()
 	defer f.clock.lck.Unlock()
@@ -58,6 +65,9 @@ func (f *fakeTimer) Reset(d time.Duration) {
 }
 
 func (f *fakeTimer) advance(t time.Time, d time.Duration) {
+	f.lck.Lock()
+	defer f.lck.Unlock()
+
 	if f.remaining > d {
 		f.remaining -= d
 		return

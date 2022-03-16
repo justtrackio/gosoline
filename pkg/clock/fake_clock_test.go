@@ -39,7 +39,7 @@ func TestFakeClock_AdvanceSleep(t *testing.T) {
 	i := 0
 	c := clock.NewFakeClock()
 
-	wg := sync.WaitGroup{}
+	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		c.Sleep(time.Minute)
