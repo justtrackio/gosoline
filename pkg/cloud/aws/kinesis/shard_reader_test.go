@@ -388,12 +388,14 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 	defer checkpoint.AssertExpectations(s.T())
 
-	go func() {
-		s.clock.BlockUntilTickers(2)
-		s.clock.Advance(time.Second * 10)
-	}()
-
-	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Once()
+	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Once().Run(func(args mock.Arguments) {
+		// need to wait with this call until we wrote the process duration - otherwise we could (in rare events) advance the
+		// time while we measure the process duration, causing 10s instead of 0 to be said duration
+		go func() {
+			s.clock.BlockUntilTickers(2)
+			s.clock.Advance(time.Second * 10)
+		}()
+	})
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Twice()
 	s.mockMetricCall("ReadCount", 1, metric.UnitCount).Once()
 	s.mockMetricCall("ReadRecords", 0, metric.UnitCount).Once()
@@ -665,7 +667,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWaitNoRecords() {
 	}, nil).Once()
 
 	err := s.shardReader.Run(ctx, s.consumeRecord)
-	s.EqualError(err, "context canceled")
+	s.NoError(err)
 	s.Nil(s.consumedRecords)
 }
 

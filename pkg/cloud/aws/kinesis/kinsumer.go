@@ -368,10 +368,7 @@ func (k *kinsumer) startConsumers(ctx context.Context, cfn coffin.Coffin, runtim
 			logger.Info("started consuming shard")
 			defer logger.Info("done consuming shard")
 
-			if err := k.shardReaderFactory(logger, shardId).Run(ctx, handler.Handle); exec.IsRequestCanceled(err) {
-				// we are told to shut down, so drop the error and return success
-				return nil
-			} else if err != nil {
+			if err := k.shardReaderFactory(logger, shardId).Run(ctx, handler.Handle); err != nil {
 				return fmt.Errorf("failed to consume from shard: %w", err)
 			}
 

@@ -360,7 +360,7 @@ func (s *kinsumerTestSuite) TestShardListFinishedShardHandling() {
 	s.mockShard("unfinished shard with finished parent", false, context.Canceled)
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
-	s.NoError(err)
+	s.EqualError(err, "failed to consume from shard: context canceled")
 }
 
 func (s *kinsumerTestSuite) TestListShardsNoChangeThenCancel() {
@@ -449,7 +449,7 @@ func (s *kinsumerTestSuite) TestConsumeMessagesThenCancel() {
 	}()
 
 	err := s.kinsumer.Run(s.ctx, s.handler)
-	s.NoError(err)
+	s.EqualError(err, "failed to consume from shard: context canceled")
 }
 
 func (s *kinsumerTestSuite) TestConsumeMessagesFails() {
