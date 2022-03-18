@@ -100,8 +100,8 @@ func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*cw
 
 	client, err := gosoCloudwatch.ProvideClient(ctx, config, logger, "default", func(cfg *gosoCloudwatch.ClientConfig) {
 		cfg.Settings.Backoff.MaxAttempts = 1
-		cfg.Settings.Backoff.MaxElapsedTime = time.Second
-		cfg.Settings.HttpClient.Timeout = time.Second
+		cfg.Settings.Backoff.MaxElapsedTime = 2 * time.Second
+		cfg.Settings.HttpClient.Timeout = 2 * time.Second
 	})
 	if err != nil {
 		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
