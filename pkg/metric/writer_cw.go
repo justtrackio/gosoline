@@ -99,9 +99,9 @@ func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*cw
 	testClock := clock.NewRealClock()
 
 	client, err := gosoCloudwatch.ProvideClient(ctx, config, logger, "default", func(cfg *gosoCloudwatch.ClientConfig) {
-		cfg.Settings.Backoff.MaxAttempts = 1
-		cfg.Settings.Backoff.MaxElapsedTime = 2 * time.Second
-		cfg.Settings.HttpClient.Timeout = 2 * time.Second
+		cfg.Settings.Backoff.MaxAttempts = 0
+		cfg.Settings.Backoff.MaxElapsedTime = 60 * time.Second
+		cfg.Settings.HttpClient.Timeout = 10 * time.Second
 	})
 	if err != nil {
 		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
@@ -138,7 +138,7 @@ func (w *cwWriter) Write(batch Data) {
 	if err != nil {
 		w.logger.WithFields(log.Fields{
 			"namespace": namespace,
-		}).Error("could not write metric data: %w", err)
+		}).Error("could not build metric data: %w", err)
 
 		return
 	}
@@ -156,7 +156,7 @@ func (w *cwWriter) Write(batch Data) {
 		}
 
 		if _, err = w.client.PutMetricData(context.Background(), &input); err != nil {
-			w.logger.Info("could not write metric data: %s", err)
+			w.logger.Warn("could not write metric data: %s", err)
 			continue
 		}
 	}
