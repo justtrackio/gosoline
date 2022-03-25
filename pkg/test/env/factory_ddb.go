@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -86,8 +85,14 @@ func (f *ddbFactory) configureContainer(settings interface{}) *containerConfig {
 
 func (f *ddbFactory) healthCheck() ComponentHealthCheck {
 	return func(container *container) error {
-		ddbClient := f.client(container)
-		_, err := ddbClient.ListTables(context.Background(), &dynamodb.ListTablesInput{})
+		var err error
+		var client *dynamodb.Client
+
+		if client, err = f.client(container); err != nil {
+			return fmt.Errorf("can not build client: %w", err)
+		}
+
+		_, err = client.ListTables(context.Background(), &dynamodb.ListTablesInput{})
 
 		return err
 	}
@@ -122,13 +127,16 @@ func (f *ddbFactory) Component(_ cfg.Config, logger log.Logger, containers map[s
 	return component, nil
 }
 
-func (f *ddbFactory) client(container *container) *dynamodb.Client {
+func (f *ddbFactory) client(container *container) (*dynamodb.Client, error) {
 	binding := container.bindings["8000/tcp"]
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
-	return dynamodb.NewFromConfig(aws.Config{
-		EndpointResolverWithOptions: gosoAws.EndpointResolver(address),
-		Region:                      "eu-central-1",
-		Credentials:                 GetDefaultStaticCredentials(),
-	})
+	var err error
+	var cfg aws.Config
+
+	if cfg, err = GetDefaultAwsSdkConfig(address); err != nil {
+		return nil, fmt.Errorf("can't get default aws sdk config: %w", err)
+	}
+
+	return dynamodb.NewFromConfig(cfg), nil
 }

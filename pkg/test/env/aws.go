@@ -1,6 +1,14 @@
 package env
 
-import "github.com/aws/aws-sdk-go-v2/credentials"
+import (
+	"context"
+	"fmt"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
+)
 
 const (
 	DefaultAccessKeyID     = "gosoline"
@@ -10,4 +18,21 @@ const (
 
 func GetDefaultStaticCredentials() credentials.StaticCredentialsProvider {
 	return credentials.NewStaticCredentialsProvider(DefaultAccessKeyID, DefaultSecretAccessKey, DefaultToken)
+}
+
+func GetDefaultAwsSdkConfig(endpoint string) (aws.Config, error) {
+	cfgOptions := []func(options *config.LoadOptions) error{
+		config.WithRegion("eu-central-1"),
+		config.WithCredentialsProvider(GetDefaultStaticCredentials()),
+		config.WithEndpointResolverWithOptions(gosoAws.EndpointResolver(endpoint)),
+	}
+
+	var err error
+	var cfg aws.Config
+
+	if cfg, err = config.LoadDefaultConfig(context.Background(), cfgOptions...); err != nil {
+		return aws.Config{}, fmt.Errorf("unable to load aws sdk config: %w", err)
+	}
+
+	return cfg, nil
 }
