@@ -17,7 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.13.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.29.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.16.0
-	github.com/aws/aws-sdk-go-v2/service/kinesis v1.13.0
+	github.com/aws/aws-sdk-go-v2/service/kinesis v1.15.2
 	github.com/aws/aws-sdk-go-v2/service/rds v1.18.3
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.11.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.24.1
@@ -84,7 +84,7 @@ require (
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/andybalholm/brotli v1.0.1 // indirect
 	github.com/apache/thrift v0.13.0 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.2.0 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.1 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.8 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.2 // indirect
