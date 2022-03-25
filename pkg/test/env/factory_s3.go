@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -84,24 +83,30 @@ func (f *s3Factory) configureContainer(settings interface{}) *containerConfig {
 
 func (f *s3Factory) healthCheck() ComponentHealthCheck {
 	return func(container *container) error {
-		s3Client := f.client(container)
-		_, err := s3Client.ListBuckets(context.Background(), &s3.ListBucketsInput{})
+		var err error
+		var client *s3.Client
+
+		if client, err = f.client(container); err != nil {
+			return fmt.Errorf("can not build client: %w", err)
+		}
+		_, err = client.ListBuckets(context.Background(), &s3.ListBucketsInput{})
 
 		return err
 	}
 }
 
-func (f *s3Factory) client(container *container) *s3.Client {
+func (f *s3Factory) client(container *container) (*s3.Client, error) {
 	binding := container.bindings["9000/tcp"]
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
-	awsCfg := aws.Config{
-		EndpointResolverWithOptions: gosoAws.EndpointResolver(address),
-		Region:                      "eu-central-1",
-		Credentials:                 GetDefaultStaticCredentials(),
+	var err error
+	var cfg aws.Config
+
+	if cfg, err = GetDefaultAwsSdkConfig(address); err != nil {
+		return nil, fmt.Errorf("can't get default aws sdk config: %w", err)
 	}
 
-	return s3.NewFromConfig(awsCfg)
+	return s3.NewFromConfig(cfg), nil
 }
 
 func (f *s3Factory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
