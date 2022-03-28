@@ -16,12 +16,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.17.2
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.15.2
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.33.0
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.16.0
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.18.4
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.15.2
 	github.com/aws/aws-sdk-go-v2/service/rds v1.18.3
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.13.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.2
-	github.com/aws/aws-sdk-go-v2/service/sns v1.15.0
+	github.com/aws/aws-sdk-go-v2/service/sns v1.17.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.18.2
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.24.0
 	github.com/aws/aws-xray-sdk-go v1.6.0
@@ -32,7 +32,7 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
 	github.com/elliotchance/redismock/v8 v8.11.0
 	github.com/fatih/color v1.13.0
-	github.com/getsentry/sentry-go v0.12.0
+	github.com/getsentry/sentry-go v0.13.0
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
 	github.com/gin-contrib/gzip v0.0.5
 	github.com/gin-contrib/location v0.0.2
