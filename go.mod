@@ -7,12 +7,12 @@ require (
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
 	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/aws/aws-lambda-go v1.28.0
-	github.com/aws/aws-sdk-go v1.43.25
+	github.com/aws/aws-sdk-go v1.43.27
 	github.com/aws/aws-sdk-go-v2 v1.16.1
 	github.com/aws/aws-sdk-go-v2/config v1.15.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.11.1
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.8.2
-	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.3.7
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.4.3
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.17.2
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.15.2
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.33.0
