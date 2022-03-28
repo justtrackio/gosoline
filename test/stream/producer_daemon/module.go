@@ -40,7 +40,7 @@ func (p producingModule) Run(ctx context.Context) error {
 		}
 
 		if err := p.producer.WriteOne(ctx, event); err != nil {
-			return nil
+			return err
 		}
 	}
 
