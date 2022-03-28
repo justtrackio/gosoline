@@ -198,8 +198,8 @@ github.com/aws/aws-sdk-go-v2/service/dynamodb v1.15.2/go.mod h1:ygcB5l67goKHiY2M
 github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.11.0/go.mod h1:tS6jI0oPA0cVqUdZJe0qea1u7YnCejeTi4o6rAk9VO0=
 github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.13.2 h1:J1qWGXtgyBg1C00pdt9D03bUIwjZLD2eVtAPd8792EI=
 github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.13.2/go.mod h1:q2XV3nNxnuJoBsHMJkmSAUVpBdbd3I8uKl8wU/1PT0A=
-github.com/aws/aws-sdk-go-v2/service/ec2 v1.29.0 h1:7jk4NfzDnnSbaR9E4mOBWRZXQThq5rsqjlDC+uu9dsI=
-github.com/aws/aws-sdk-go-v2/service/ec2 v1.29.0/go.mod h1:HoTu0hnXGafTpKIZQ60jw0ybhhCH1QYf20oL7GEJFdg=
+github.com/aws/aws-sdk-go-v2/service/ec2 v1.33.0 h1:8dSIKBGRSPv83QDP0VviXZZNxcCvW2kG+zCtCtq9nV0=
+github.com/aws/aws-sdk-go-v2/service/ec2 v1.33.0/go.mod h1:6D06j9tuEco1LllNNN4HiRdUQa9yd4mF4/NZC0dtXGA=
 github.com/aws/aws-sdk-go-v2/service/ecs v1.16.0 h1:jKsGCcClotYWMCutELGyjy4J/6tm4Fzu4yVC3DiVNoA=
 github.com/aws/aws-sdk-go-v2/service/ecs v1.16.0/go.mod h1:GjwKJCJRh/yNW1IGiSxQz34Dbs1ZRY/VcBpMguhVquA=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.2.2/go.mod h1:EASdTcM1lGhUe1/p4gkojHwlGJkeoRjjr1sRCzup3Is=
@@ -214,7 +214,6 @@ github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.2 h1:B4O4h
 github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.2/go.mod h1:wfTUF+zWvmv3+u69r5g4wJs0OOrcWhAnQeUjLCS+eos=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.2.2/go.mod h1:NXmNI41bdEsJMrD0v9rUvbGCB5GwdBEpKvUvIY3vTFg=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.3.2/go.mod h1:72HRZDLMtmVQiLG2tLfQcaWLCssELvGl+Zf2WVxMmR8=
-github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.7.0/go.mod h1:K/qPe6AP2TGYv4l6n7c88zh9jWBDf6nHhvg1fx/EWfU=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.2 h1:RrN7V0r8+lUUKZM4OAoCOIZqjPLZPOl6wuwMd2QIryI=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.2/go.mod h1:7hwSi01X5Yj9H0qLQljrn8OSdLwwSym1aQCfGn1tDQQ=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.5.2/go.mod h1:QuL2Ym8BkrLmN4lUofXYq6000/i5jPjosCNK//t6gak=
