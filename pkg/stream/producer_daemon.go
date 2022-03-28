@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -89,7 +90,7 @@ type producerDaemon struct {
 	clock      clock.Clock
 	ticker     clock.Ticker
 	settings   ProducerDaemonSettings
-	running    bool
+	stopped    int32
 }
 
 func ResetProducerDaemons() {
@@ -174,8 +175,7 @@ func (d *producerDaemon) GetStage() int {
 }
 
 func (d *producerDaemon) Run(kernelCtx context.Context) error {
-	d.running = true
-	defer func() { d.running = false }()
+	defer func() { atomic.StoreInt32(&d.stopped, 1) }()
 
 	// ensure we don't have a race with the code in Write checking if the ticker is nil
 	d.lck.Lock()
@@ -213,7 +213,7 @@ func (d *producerDaemon) Write(ctx context.Context, batch []WritableMessage) err
 	d.lck.Lock()
 	defer d.lck.Unlock()
 
-	if !d.running {
+	if atomic.LoadInt32(&d.stopped) != 0 {
 		return fmt.Errorf("can't write messages as the producer daemon %s is not running", d.name)
 	}
 
