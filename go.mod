@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.11.1
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.8.2
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.3.7
-	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.15.0
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.17.2
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.15.2
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.29.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.16.0
@@ -22,8 +22,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.11.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.2
 	github.com/aws/aws-sdk-go-v2/service/sns v1.15.0
-	github.com/aws/aws-sdk-go-v2/service/sqs v1.16.0
-	github.com/aws/aws-sdk-go-v2/service/ssm v1.20.0
+	github.com/aws/aws-sdk-go-v2/service/sqs v1.18.2
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.24.0
 	github.com/aws/aws-xray-sdk-go v1.6.0
 	github.com/aws/smithy-go v1.11.2
 	github.com/cenkalti/backoff v2.2.1+incompatible
@@ -70,7 +70,7 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5
 	google.golang.org/api v0.73.0
-	google.golang.org/protobuf v1.27.1
+	google.golang.org/protobuf v1.28.0
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
