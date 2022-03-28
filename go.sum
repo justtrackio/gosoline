@@ -224,8 +224,8 @@ github.com/aws/aws-sdk-go-v2/service/kinesis v1.15.2 h1:LWV9Z2WRFcnWHRpdI/chZLIL
 github.com/aws/aws-sdk-go-v2/service/kinesis v1.15.2/go.mod h1:GBauwYMezy2G0IYAhhV6jzZcVI4LvoDXmiNZqD7LwTo=
 github.com/aws/aws-sdk-go-v2/service/rds v1.18.3 h1:kdZYeD3y7ENLa0mDKIXnH2UehnYZS84YazUB5cuO0Ug=
 github.com/aws/aws-sdk-go-v2/service/rds v1.18.3/go.mod h1:ogBOKgXv+fm7PdBaeYi6MM2iZYQDLAJzVgSBvVK0ZeI=
-github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.11.0 h1:IjP3WtlZTvG4YydUvFZjHlKFNnGzSvDkfDewBGnriHQ=
-github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.11.0/go.mod h1:FRW1HdniGDXHPTlYS6QWD6hAG3HDfZmstBg5pcEN2LE=
+github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.13.2 h1:t1sw70XCesCFvQ44hGDswAWV3jumiF0R13sLH/UDSMw=
+github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.13.2/go.mod h1:jh0BKnSFMWSgfd6pn491txh/UoQOCOYIi9VCU0HPofI=
 github.com/aws/aws-sdk-go-v2/service/route53 v1.6.2/go.mod h1:ZnAMilx42P7DgIrdjlWCkNIGSBLzeyk6T31uB8oGTwY=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.12.0/go.mod h1:6J++A5xpo7QDsIeSqPK4UHqMSyPOCopa+zKtqAMhqVQ=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.16.1/go.mod h1:CQe/KvWV1AqRc65KqeJjrLzr5X2ijnFTTVzJW0VBRCI=
