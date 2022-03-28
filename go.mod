@@ -20,7 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.15.2
 	github.com/aws/aws-sdk-go-v2/service/rds v1.18.3
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.11.0
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.24.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.2
 	github.com/aws/aws-sdk-go-v2/service/sns v1.15.0
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.16.0
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.20.0
@@ -58,17 +58,17 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/ory/ladon v1.2.0
-	github.com/oschwald/geoip2-golang v1.6.1
+	github.com/oschwald/geoip2-golang v1.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
 	github.com/spf13/cast v1.4.1
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/thoas/go-funk v0.0.0-20181020164546-fbae87fb5b5c
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	github.com/xitongsys/parquet-go v1.4.0
 	github.com/xitongsys/parquet-go-source v0.0.0-20191104003508-ecfa341356a6
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5
+	golang.org/x/sys v0.0.0-20220325203850-36772127a21f
 	google.golang.org/api v0.73.0
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
@@ -91,9 +91,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.13.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.11.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.11.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.2 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -139,7 +140,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opencontainers/runc v1.0.2 // indirect
-	github.com/oschwald/maxminddb-golang v1.8.0 // indirect
+	github.com/oschwald/maxminddb-golang v1.9.0 // indirect
 	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
