@@ -138,7 +138,7 @@ func (w *cwWriter) Write(batch Data) {
 	if err != nil {
 		w.logger.WithFields(log.Fields{
 			"namespace": namespace,
-		}).Error("could not build metric data: %w", err)
+		}).Info("could not build metric data: %w", err)
 
 		return
 	}
@@ -156,7 +156,7 @@ func (w *cwWriter) Write(batch Data) {
 		}
 
 		if _, err = w.client.PutMetricData(context.Background(), &input); err != nil {
-			w.logger.Warn("could not write metric data: %s", err)
+			w.logger.Info("could not write metric data: %s", err)
 			continue
 		}
 	}
