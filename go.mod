@@ -6,7 +6,7 @@ require (
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
 	github.com/alicebob/miniredis v2.5.0+incompatible
-	github.com/aws/aws-lambda-go v1.28.0
+	github.com/aws/aws-lambda-go v1.29.0
 	github.com/aws/aws-sdk-go v1.43.25
 	github.com/aws/aws-sdk-go-v2 v1.16.1
 	github.com/aws/aws-sdk-go-v2/config v1.15.2
@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.18.4
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.15.2
 	github.com/aws/aws-sdk-go-v2/service/rds v1.18.3
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.13.2
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.13.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.2
 	github.com/aws/aws-sdk-go-v2/service/sns v1.17.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.18.2
