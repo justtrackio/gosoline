@@ -4904,6 +4904,41 @@ func (_m *LambdaApi) WaitUntilFunctionActive(_a0 *lambda.GetFunctionConfiguratio
 	return r0
 }
 
+// WaitUntilFunctionActiveV2 provides a mock function with given fields: _a0
+func (_m *LambdaApi) WaitUntilFunctionActiveV2(_a0 *lambda.GetFunctionInput) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*lambda.GetFunctionInput) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// WaitUntilFunctionActiveV2WithContext provides a mock function with given fields: _a0, _a1, _a2
+func (_m *LambdaApi) WaitUntilFunctionActiveV2WithContext(_a0 context.Context, _a1 *lambda.GetFunctionInput, _a2 ...request.WaiterOption) error {
+	_va := make([]interface{}, len(_a2))
+	for _i := range _a2 {
+		_va[_i] = _a2[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _a0, _a1)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *lambda.GetFunctionInput, ...request.WaiterOption) error); ok {
+		r0 = rf(_a0, _a1, _a2...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // WaitUntilFunctionActiveWithContext provides a mock function with given fields: _a0, _a1, _a2
 func (_m *LambdaApi) WaitUntilFunctionActiveWithContext(_a0 context.Context, _a1 *lambda.GetFunctionConfigurationInput, _a2 ...request.WaiterOption) error {
 	_va := make([]interface{}, len(_a2))
@@ -4967,6 +5002,41 @@ func (_m *LambdaApi) WaitUntilFunctionUpdated(_a0 *lambda.GetFunctionConfigurati
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*lambda.GetFunctionConfigurationInput) error); ok {
 		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// WaitUntilFunctionUpdatedV2 provides a mock function with given fields: _a0
+func (_m *LambdaApi) WaitUntilFunctionUpdatedV2(_a0 *lambda.GetFunctionInput) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*lambda.GetFunctionInput) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// WaitUntilFunctionUpdatedV2WithContext provides a mock function with given fields: _a0, _a1, _a2
+func (_m *LambdaApi) WaitUntilFunctionUpdatedV2WithContext(_a0 context.Context, _a1 *lambda.GetFunctionInput, _a2 ...request.WaiterOption) error {
+	_va := make([]interface{}, len(_a2))
+	for _i := range _a2 {
+		_va[_i] = _a2[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _a0, _a1)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *lambda.GetFunctionInput, ...request.WaiterOption) error); ok {
+		r0 = rf(_a0, _a1, _a2...)
 	} else {
 		r0 = ret.Error(0)
 	}
