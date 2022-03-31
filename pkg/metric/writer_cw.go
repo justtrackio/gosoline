@@ -98,7 +98,7 @@ func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*cw
 	settings := getMetricSettings(config)
 	testClock := clock.NewRealClock()
 
-	client, err := gosoCloudwatch.ProvideClient(ctx, config, logger, "default", func(cfg *gosoCloudwatch.ClientConfig) {
+	client, err := gosoCloudwatch.ProvideClient(ctx, config, log.NewLogger(), "default", func(cfg *gosoCloudwatch.ClientConfig) {
 		cfg.Settings.Backoff.MaxAttempts = 0
 		cfg.Settings.Backoff.MaxElapsedTime = 60 * time.Second
 		cfg.Settings.HttpClient.Timeout = 10 * time.Second
