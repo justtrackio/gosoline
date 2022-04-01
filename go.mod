@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.16.2
 	github.com/aws/aws-sdk-go-v2/config v1.15.2
 	github.com/aws/aws-sdk-go-v2/credentials v1.11.2
-	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.8.3
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.8.4
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.4.4
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.17.2
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.15.3
@@ -23,7 +23,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.2
 	github.com/aws/aws-sdk-go-v2/service/sns v1.17.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.18.2
-	github.com/aws/aws-sdk-go-v2/service/ssm v1.24.0
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.24.1
 	github.com/aws/aws-xray-sdk-go v1.6.0
 	github.com/aws/smithy-go v1.11.2
 	github.com/cenkalti/backoff v2.2.1+incompatible
