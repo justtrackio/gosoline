@@ -14,6 +14,7 @@ import (
 func Test_healthServer_Check(t *testing.T) {
 	logger := logMocks.NewLoggerMockedAll()
 	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
 
 	tests := []struct {
 		name     string
