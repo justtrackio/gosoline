@@ -1,0 +1,15 @@
+env: dev
+app_project: project
+app_family: family
+app_name: grpc_server
+
+# grpcserver module configuration
+grpc_server:
+  default:
+    port: 8080 # the port that the server will be listening to, it defaults to 8081 if not set
+    health:
+      enabled: true # this flag determines if the grpcserver will have the default health check functionality, it defaults to true
+  no_health_checks:
+    port: 8081
+    health:
+      enabled: false
