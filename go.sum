@@ -214,8 +214,8 @@ github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.3 h1:BKjwCJPnANbkwQ
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.3/go.mod h1:Bm/v2IaN6rZ+Op7zX+bOUMdL4fsrYZiD0dsjLhNKwZc=
 github.com/aws/aws-sdk-go-v2/service/kinesis v1.15.3 h1:ZbNE0HOpVfiNdOpRQ/EqKlZ9Qb6WAFg+2bsM6gH8C6Q=
 github.com/aws/aws-sdk-go-v2/service/kinesis v1.15.3/go.mod h1:uG1zYsJGLNm6/gsNAAtxlF9YkD2nBVlMdYsjHYxMomE=
-github.com/aws/aws-sdk-go-v2/service/rds v1.18.3 h1:kdZYeD3y7ENLa0mDKIXnH2UehnYZS84YazUB5cuO0Ug=
-github.com/aws/aws-sdk-go-v2/service/rds v1.18.3/go.mod h1:ogBOKgXv+fm7PdBaeYi6MM2iZYQDLAJzVgSBvVK0ZeI=
+github.com/aws/aws-sdk-go-v2/service/rds v1.18.4 h1:o5uszX76RaDFxNvf6b8qZ3GF55EdFoPH8GnrROjtL4k=
+github.com/aws/aws-sdk-go-v2/service/rds v1.18.4/go.mod h1:u33weNg1XPt3iTVX2wVFIf7oAD7XmgkF640mnM8wQ5Q=
 github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.13.4 h1:c4byB9LfOEwRdRJnk0dt0HXeBGJ8BoHTkpSEFz7IqL8=
 github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.13.4/go.mod h1:WoxrrteeC9QkvhTqFJvqWpMG6+sNuNVA3w5Yyx7zhw8=
 github.com/aws/aws-sdk-go-v2/service/route53 v1.6.2/go.mod h1:ZnAMilx42P7DgIrdjlWCkNIGSBLzeyk6T31uB8oGTwY=
