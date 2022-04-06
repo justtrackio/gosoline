@@ -17,10 +17,12 @@ func main() {
 	)
 
 	// initialize the grpcserver kernel.ModuleFactory by passing a grpcserver.ServiceDefiner function to it
-	grpcServerModule := grpcserver.New(service.Definer)
+	grpcServerModule := grpcserver.New("default", service.Definer)
+	grpcServerModuleWithoutHealthChecks := grpcserver.New("no_health_checks", service.Definer)
 
 	// add the grpcserver kernel.ModuleFactory to the kernel
 	app.Add("grpc_server", grpcServerModule)
+	app.Add("grpc_server_no_health_checks", grpcServerModuleWithoutHealthChecks)
 
 	// start the app
 	app.Run()

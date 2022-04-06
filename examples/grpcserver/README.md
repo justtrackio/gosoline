@@ -20,9 +20,10 @@ You can configure the gRPC server by adding the following snippet in your config
 
 ```yml
 grpc_server:
-  port: 8080
-  health:
-    enabled: true
+  default:
+      port: 8080
+      health:
+        enabled: true
 ```
 
 ### Basic usage

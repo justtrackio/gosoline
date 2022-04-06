@@ -40,14 +40,14 @@ type Middleware grpc.UnaryServerInterceptor
 type MiddlewareFactory func(logger log.Logger) Middleware
 
 // New returns a kernel.ModuleFactory for the Server kernel.Module.
-func New(definer ServiceDefiner, middlewares ...MiddlewareFactory) kernel.ModuleFactory {
+func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		var (
 			err         error
 			definitions *Definitions
 		)
 		settings := &Settings{}
-		config.UnmarshalKey(grpcServerConfigKey, settings)
+		config.UnmarshalKey(fmt.Sprintf("%s.%s", grpcServerConfigKey, name), settings)
 
 		logger = logger.WithChannel(grpcServiceChannel)
 
