@@ -5,10 +5,9 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/log"
-
 	grpcServerProto "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	grpcServerTestProto "github.com/justtrackio/gosoline/pkg/grpcserver/proto/helloworld/v1"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const (

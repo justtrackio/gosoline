@@ -3,13 +3,11 @@ package service
 import (
 	"context"
 
-	"google.golang.org/grpc"
-
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/log"
-
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
 	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/helloworld/v1"
+	"github.com/justtrackio/gosoline/pkg/log"
+	"google.golang.org/grpc"
 )
 
 // Definer initializes the service dependencies, create and returns the grpcserver definitions.

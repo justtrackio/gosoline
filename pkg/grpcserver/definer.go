@@ -3,10 +3,9 @@ package grpcserver
 import (
 	"context"
 
-	"google.golang.org/grpc"
-
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"google.golang.org/grpc"
 )
 
 // ServiceDefiner is used to initialise the Server Module.

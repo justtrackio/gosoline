@@ -5,10 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
 	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDefinitions_Add(t *testing.T) {

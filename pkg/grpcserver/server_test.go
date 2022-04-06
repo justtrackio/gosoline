@@ -6,15 +6,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
-	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
-
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
 	grpcServerProto "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/helloworld/v1"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type greeter struct {

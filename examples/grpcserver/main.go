@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/justtrackio/gosoline/examples/grpcserver/service"
-
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
 )

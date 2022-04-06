@@ -5,10 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
-
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
 	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 )
 
 func Test_healthServer_Check(t *testing.T) {

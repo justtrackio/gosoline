@@ -4,12 +4,10 @@ import (
 	"context"
 	"sync"
 
+	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/justtrackio/gosoline/pkg/log"
-
-	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 )
 
 // HealthCheckCallback the signature of the HealthCheckCallback.

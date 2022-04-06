@@ -8,14 +8,12 @@ import (
 	"net/http"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	"google.golang.org/grpc"
-	_ "google.golang.org/grpc/encoding/gzip"
-
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
-
-	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
+	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/encoding/gzip"
 )
 
 const (

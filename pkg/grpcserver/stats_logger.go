@@ -4,9 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"google.golang.org/grpc/stats"
-
 	"github.com/justtrackio/gosoline/pkg/log"
+	"google.golang.org/grpc/stats"
 )
 
 type key int
