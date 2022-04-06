@@ -47,7 +47,9 @@ func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) 
 		settings := &Settings{}
 		config.UnmarshalKey(fmt.Sprintf("%s.%s", grpcServerConfigKey, name), settings)
 
-		logger = logger.WithChannel(grpcServiceChannel)
+		logger = logger.WithFields(log.Fields{
+			"server_name": name,
+		}).WithChannel(grpcServiceChannel)
 
 		if definitions, err = definer(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("could not define routes: %w", err)
