@@ -26,14 +26,9 @@ type ChangeHistoryManager struct {
 type changeHistoryManagerAppctxKey int
 
 func ProvideChangeHistoryManager(ctx context.Context, config cfg.Config, logger log.Logger) (*ChangeHistoryManager, error) {
-	manager, err := appctx.Provide(ctx, changeHistoryManagerAppctxKey(0), func() (interface{}, error) {
+	return appctx.Provide(ctx, changeHistoryManagerAppctxKey(0), func() (*ChangeHistoryManager, error) {
 		return NewChangeHistoryManager(config, logger)
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return manager.(*ChangeHistoryManager), nil
 }
 
 func NewChangeHistoryManager(config cfg.Config, logger log.Logger) (*ChangeHistoryManager, error) {

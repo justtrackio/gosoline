@@ -34,14 +34,9 @@ func MetadataAppend(ctx context.Context, key string, values ...interface{}) erro
 type metadataAppCtxKey int
 
 func ProvideMetadata(ctx context.Context) (*Metadata, error) {
-	metadata, err := Provide(ctx, metadataAppCtxKey(0), func() (interface{}, error) {
+	return Provide(ctx, metadataAppCtxKey(0), func() (*Metadata, error) {
 		return NewMetadata(), nil
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return metadata.(*Metadata), nil
 }
 
 type Metadata struct {

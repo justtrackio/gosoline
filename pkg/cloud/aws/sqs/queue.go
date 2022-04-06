@@ -79,14 +79,9 @@ type metadataQueueKey string
 func ProvideQueue(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...ClientOption) (Queue, error) {
 	key := fmt.Sprintf("%s-%s", settings.ClientName, settings.QueueName)
 
-	queue, err := appctx.Provide(ctx, metadataQueueKey(key), func() (interface{}, error) {
+	return appctx.Provide(ctx, metadataQueueKey(key), func() (Queue, error) {
 		return NewQueue(ctx, config, logger, settings, optFns...)
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return queue.(Queue), nil
 }
 
 func NewQueue(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...ClientOption) (Queue, error) {
