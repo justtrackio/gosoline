@@ -76,14 +76,9 @@ type ClientOption func(cfg *ClientConfig)
 type clientAppCtxKey string
 
 func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*kinesis.Client, error) {
-	client, err := appctx.Provide(ctx, clientAppCtxKey(name), func() (interface{}, error) {
+	return appctx.Provide(ctx, clientAppCtxKey(name), func() (*kinesis.Client, error) {
 		return NewClient(ctx, config, logger, name, optFns...)
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return client.(*kinesis.Client), nil
 }
 
 func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*kinesis.Client, error) {
