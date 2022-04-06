@@ -20,7 +20,7 @@ type statsLogger struct {
 	settings *Settings
 }
 
-func NewStatsLogger(settings *Settings, logger log.Logger) *statsLogger {
+func NewStatsLogger(logger log.Logger, settings *Settings) *statsLogger {
 	return &statsLogger{
 		logger:   logger,
 		settings: settings,
