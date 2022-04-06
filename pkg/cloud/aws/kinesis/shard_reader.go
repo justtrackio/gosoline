@@ -303,7 +303,7 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 			}).Info("processed batch of %d records in %s", processedSize, processDuration)
 
 			// if the results are older than our wait time, continue immediately
-			if time.Duration(millisecondsBehind) > s.settings.WaitTime {
+			if time.Duration(millisecondsBehind) > (s.settings.WaitTime + s.settings.ConsumeDelay) {
 				s.writeMetric(metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage)
 				timer.Reset(0)
 				continue
