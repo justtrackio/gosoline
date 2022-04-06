@@ -23,6 +23,11 @@ jobs:
     name: go fmt
     runs-on: ubuntu-20.04
     steps:
+      - name: Set up Go 1.18
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
@@ -36,10 +41,10 @@ jobs:
     name: go build
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.17
+      - name: Set up Go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
@@ -54,10 +59,10 @@ jobs:
     name: static code analysis (go vet)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.17
+      - name: Set up Go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
@@ -72,10 +77,10 @@ jobs:
     name: static code analysis (golangci-lint)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.17
+      - name: Set up Go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
@@ -83,17 +88,17 @@ jobs:
       - name: Static code analysis (golangci-lint)
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.42.0
+          version: v1.45.2
           args: --timeout 5m --print-issued-lines --print-linter-name --disable structcheck
 
   go-test:
     name: go test
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.17
+      - name: Set up Go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
@@ -108,10 +113,10 @@ jobs:
     name: go test (integration)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.17
+      - name: Set up Go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2

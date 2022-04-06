@@ -34,26 +34,26 @@ func WithContainer(ctx context.Context) context.Context {
 	})
 }
 
-func Provide(ctx context.Context, key interface{}, factory func() (interface{}, error)) (interface{}, error) {
+func Provide[T any](ctx context.Context, key any, factory func() (T, error)) (T, error) {
 	var ok bool
 	var err error
 	var contI, val interface{}
 
 	if contI = ctx.Value(containerKey); contI == nil {
-		return nil, &ErrNoApplicationContainerFound{}
+		return *new(T), &ErrNoApplicationContainerFound{}
 	}
 
 	cont := contI.(*container)
 
 	if val, ok = cont.items.Load(key); ok {
-		return val, nil
+		return val.(T), nil
 	}
 
 	if val, err = factory(); err != nil {
-		return nil, err
+		return *new(T), err
 	}
 
 	cont.items.Store(key, val)
 
-	return val, nil
+	return val.(T), nil
 }
