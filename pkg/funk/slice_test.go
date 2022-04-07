@@ -7,29 +7,91 @@ import (
 )
 
 func TestChunk(t *testing.T) {
-	sl := []int{0, 1, 2, 3, 4, 5, 6}
-
-	e := [][]int{
-		{0, 1, 2},
-		{3, 4, 5},
-		{6},
+	type input struct {
+		Sl   []int
+		Size int
 	}
 
-	res := funk.Chunk(sl, 3)
-	assert.Equal(t, e, res)
-}
-
-func TestChunkReduce(t *testing.T) {
-	sl := []int{0, 1, 2, 3, 4, 5, 6}
-
-	e := [][]int{
-		{0, 1, 2},
-		{3, 4, 5},
-		{6},
+	type testCase struct {
+		Name string
+		In   input
+		Out  [][]int
 	}
 
-	res := funk.ChunkReduce(sl, 3)
-	assert.Equal(t, e, res)
+	cases := []testCase{
+		{
+			Name: "remainder one",
+			In: input{
+				Sl:   []int{0, 1, 2, 3, 4, 5, 6},
+				Size: 3,
+			},
+			Out: [][]int{
+				{0, 1, 2},
+				{3, 4, 5},
+				{6},
+			},
+		},
+		{
+			Name: "remainder two",
+			In: input{
+				Sl:   []int{0, 1, 2, 3, 4, 5, 6, 7},
+				Size: 3,
+			},
+			Out: [][]int{
+				{0, 1, 2},
+				{3, 4, 5},
+				{6, 7},
+			},
+		},
+		{
+			Name: "size negative",
+			In: input{
+				Sl:   []int{0, 1, 2, 3, 4, 5, 6},
+				Size: -3,
+			},
+			Out: nil,
+		},
+		{
+			Name: "size zero",
+			In: input{
+				Sl:   []int{0, 1, 2, 3, 4, 5, 6},
+				Size: 0,
+			},
+			Out: nil,
+		},
+		{
+			Name: "size one",
+			In: input{
+				Sl:   []int{0, 1, 2, 3},
+				Size: 1,
+			},
+			Out: [][]int{{0}, {1}, {2}, {3}},
+		},
+		{
+			Name: "size larger than slice",
+			In: input{
+				Sl:   []int{0, 1, 2, 3},
+				Size: 5,
+			},
+			Out: [][]int{{0, 1, 2, 3}},
+		},
+		{
+			Name: "no values",
+			In: input{
+				Sl:   []int{},
+				Size: 5,
+			},
+			Out: nil,
+		},
+	}
+
+	for _, test := range cases {
+		res := funk.Chunk(test.In.Sl, test.In.Size)
+		resRed := funk.ChunkReduce(test.In.Sl, test.In.Size)
+		assert.Equalf(t, test.Out, res, "Test static failed: %s", test.Name)
+		assert.Equalf(t, test.Out, resRed, "Test reduce failed: %s", test.Name)
+	}
+
 }
 
 func TestDifference(t *testing.T) {

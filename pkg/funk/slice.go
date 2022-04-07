@@ -81,6 +81,10 @@ func First[S ~[]T, T any](sl S) (out T, ok bool) {
 }
 
 func Chunk[S ~[]T, T any](sl S, size int) (out [][]T) {
+	if size < 1 || len(sl) == 0 {
+		return
+	}
+
 	var chunk []T
 	length := len(sl)
 
@@ -104,6 +108,10 @@ func Chunk[S ~[]T, T any](sl S, size int) (out [][]T) {
 }
 
 func ChunkReduce[S ~[]T, T any](sl S, size int) (out [][]T) {
+	if size < 1 || len(sl) == 0 {
+		return
+	}
+
 	return Reduce(sl, func(result [][]T, item T, idx int) [][]T {
 		chunkIdx := int(math.Floor(float64(idx) / float64(size)))
 		if len(result) < chunkIdx+1 || result[chunkIdx] == nil {
