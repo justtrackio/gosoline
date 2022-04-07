@@ -111,9 +111,9 @@ func (a idMatcher) Match(id driver.Value) bool {
 }
 
 var (
-	id1  = mdl.Uint(1)
-	id42 = mdl.Uint(42)
-	id24 = mdl.Uint(24)
+	id1  = mdl.Box(uint(1))
+	id42 = mdl.Box(uint(42))
+	id24 = mdl.Box(uint(24))
 )
 
 func TestRepository_Create(t *testing.T) {

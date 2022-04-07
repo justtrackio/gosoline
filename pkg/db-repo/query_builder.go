@@ -2,7 +2,7 @@ package db_repo
 
 import (
 	"github.com/justtrackio/gosoline/pkg/db"
-	"github.com/thoas/go-funk"
+	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
 type page struct {
@@ -40,7 +40,7 @@ func (qb *QueryBuilder) Table(table string) db.QueryBuilder {
 }
 
 func (qb *QueryBuilder) Joins(joins []string) db.QueryBuilder {
-	qb.joins = funk.UniqString(joins)
+	qb.joins = funk.Uniq(joins)
 
 	return qb
 }

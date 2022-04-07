@@ -13,7 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/spf13/cast"
-	"github.com/thoas/go-funk"
+	"golang.org/x/exp/slices"
 )
 
 type suiteOptions struct {
@@ -51,7 +51,7 @@ func (s *suiteOptions) addEnvOption(opt env.Option) {
 }
 
 func (s *suiteOptions) shouldSkip(name string) bool {
-	return len(s.testCaseWhitelist) > 0 && !funk.ContainsString(s.testCaseWhitelist, name)
+	return len(s.testCaseWhitelist) > 0 && !slices.Contains(s.testCaseWhitelist, name)
 }
 
 type Option func(s *suiteOptions)

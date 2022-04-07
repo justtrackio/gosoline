@@ -133,7 +133,7 @@ func (s *ConsumerTestSuite) TestRun() {
 
 	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).
 		Return(func(_ map[string]interface{}) interface{} {
-			return mdl.String("")
+			return mdl.Box("")
 		})
 
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
@@ -207,7 +207,7 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 	s.callback.
 		On("GetModel", mock.AnythingOfType("map[string]interface {}")).
 		Return(func(_ map[string]interface{}) interface{} {
-			return mdl.String("")
+			return mdl.Box("")
 		})
 
 	retryMsg := &stream.Message{
@@ -279,7 +279,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 
 	expectedModelAttributes1 := map[string]interface{}{"attr1": "a", "encoding": "application/json"}
 	s.callback.On("GetModel", expectedModelAttributes1).
-		Return(mdl.String(""))
+		Return(mdl.Box(""))
 
 	expectedAttributes2 := map[string]interface{}{"attr1": "b"}
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), expectedAttributes2).
@@ -291,7 +291,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 
 	expectedModelAttributes2 := map[string]interface{}{"attr1": "b", "encoding": "application/json"}
 	s.callback.On("GetModel", expectedModelAttributes2).
-		Return(mdl.String(""))
+		Return(mdl.Box(""))
 
 	err = s.consumer.Run(s.kernelCtx)
 
@@ -349,7 +349,7 @@ func (s *ConsumerTestSuite) TestRunWithRetry() {
 	s.callback.
 		On("GetModel", mock.AnythingOfType("map[string]interface {}")).
 		Return(func(_ map[string]interface{}) interface{} {
-			return mdl.String("")
+			return mdl.Box("")
 		}).
 		Twice()
 

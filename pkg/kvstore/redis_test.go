@@ -162,7 +162,7 @@ func TestRedisKvStore_EstimateSize(t *testing.T) {
 
 	size := store.(kvstore.SizedStore).EstimateSize()
 
-	assert.Equal(t, mdl.Int64(42), size)
+	assert.Equal(t, mdl.Box(int64(42)), size)
 	client.AssertExpectations(t)
 }
 

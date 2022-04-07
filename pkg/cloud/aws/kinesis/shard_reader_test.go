@@ -486,7 +486,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithWait() {
 			{
 				Data:                        []byte("data 1"),
 				SequenceNumber:              aws.String("seq 1"),
-				ApproximateArrivalTimestamp: mdl.Time(s.clock.Now()),
+				ApproximateArrivalTimestamp: mdl.Box(s.clock.Now()),
 			},
 		},
 		MillisBehindLatest: aws.Int64(0),
@@ -545,7 +545,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithOldRecord() {
 			{
 				Data:                        []byte("data 1"),
 				SequenceNumber:              aws.String("seq 1"),
-				ApproximateArrivalTimestamp: mdl.Time(recordArrivalTime),
+				ApproximateArrivalTimestamp: mdl.Box(recordArrivalTime),
 			},
 		},
 		MillisBehindLatest: aws.Int64(0),
@@ -607,7 +607,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWait() {
 			{
 				Data:                        []byte("data 1"),
 				SequenceNumber:              aws.String("seq 1"),
-				ApproximateArrivalTimestamp: mdl.Time(s.clock.Now()),
+				ApproximateArrivalTimestamp: mdl.Box(s.clock.Now()),
 			},
 		},
 		MillisBehindLatest: aws.Int64(0),

@@ -63,7 +63,7 @@ func NewResponse(body interface{}, contentType string, statusCode int, header ht
 func NewHtmlResponse(body interface{}) *Response {
 	return &Response{
 		StatusCode:  http.StatusOK,
-		ContentType: mdl.String(ContentTypeHtml),
+		ContentType: mdl.Box(ContentTypeHtml),
 		Body:        body,
 		Header:      make(http.Header),
 	}
@@ -72,7 +72,7 @@ func NewHtmlResponse(body interface{}) *Response {
 func NewJsonResponse(body interface{}) *Response {
 	return &Response{
 		StatusCode:  http.StatusOK,
-		ContentType: mdl.String(ContentTypeJson),
+		ContentType: mdl.Box(ContentTypeJson),
 		Body:        body,
 		Header:      make(http.Header),
 	}

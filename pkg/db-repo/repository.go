@@ -194,14 +194,14 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	err := r.orm.Save(value).Error
 
 	if db.IsDuplicateEntryError(err) {
-		logger.Warn("could not update model of type %s with id %d due to duplicate entry error: %s", modelId, mdl.EmptyUintIfNil(value.GetId()), err.Error())
+		logger.Warn("could not update model of type %s with id %d due to duplicate entry error: %s", modelId, mdl.EmptyIfNil(value.GetId()), err.Error())
 		return &db.DuplicateEntryError{
 			Err: err,
 		}
 	}
 
 	if err != nil {
-		logger.Error("could not update model of type %s with id %d: %w", modelId, mdl.EmptyUintIfNil(value.GetId()), err)
+		logger.Error("could not update model of type %s with id %d: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
 		return err
 	}
 

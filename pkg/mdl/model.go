@@ -60,6 +60,10 @@ type Identifiable interface {
 	GetId() *uint
 }
 
+type Keyed interface {
+	GetKey() string
+}
+
 type Identifier struct {
 	Id *uint `json:"id" binding:"required"`
 }

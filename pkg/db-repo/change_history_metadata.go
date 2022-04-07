@@ -1,9 +1,11 @@
 package db_repo
 
 import (
-	"github.com/jinzhu/gorm"
-	"github.com/thoas/go-funk"
 	"strings"
+
+	"github.com/jinzhu/gorm"
+	"github.com/justtrackio/gosoline/pkg/funk"
+	"golang.org/x/exp/slices"
 )
 
 type columnMetadata struct {
@@ -117,17 +119,17 @@ func (m *tableMetadata) columnDefinitions() []string {
 func (m *tableMetadata) namesQuoted(items []columnMetadata) []string {
 	return funk.Map(items, func(item columnMetadata) string {
 		return item.nameQuoted
-	}).([]string)
+	})
 }
 
 func (m *tableMetadata) definitions(items []columnMetadata) []string {
 	return funk.Map(items, func(item columnMetadata) string {
 		return item.definition
-	}).([]string)
+	})
 }
 
 func (m *tableMetadata) columnNamesQuotedExcludingValue(excluded ...string) []string {
 	return m.namesQuoted(funk.Filter(m.columns, func(item columnMetadata) bool {
-		return !funk.ContainsString(excluded, item.name)
-	}).([]columnMetadata))
+		return !slices.Contains(excluded, item.name)
+	}))
 }

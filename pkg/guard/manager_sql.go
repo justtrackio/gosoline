@@ -8,9 +8,9 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/ory/ladon"
-	"github.com/thoas/go-funk"
 )
 
 const (
@@ -259,9 +259,9 @@ func (m SqlManager) queryPolicies(sel squirrel.SelectBuilder) (ladon.Policies, e
 
 	unique := make(ladon.Policies, 0)
 	for _, pol := range policies {
-		pol.Subjects = funk.UniqString(pol.Subjects)
-		pol.Resources = funk.UniqString(pol.Resources)
-		pol.Actions = funk.UniqString(pol.Actions)
+		pol.Subjects = funk.Uniq(pol.Subjects)
+		pol.Resources = funk.Uniq(pol.Resources)
+		pol.Actions = funk.Uniq(pol.Actions)
 
 		unique = append(unique, pol)
 	}

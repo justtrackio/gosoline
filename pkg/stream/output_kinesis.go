@@ -76,11 +76,11 @@ func (o *kinesisOutput) IsPartitionedOutput() bool {
 }
 
 func (o *kinesisOutput) GetMaxMessageSize() *int {
-	return mdl.Int(1024 * 1024)
+	return mdl.Box(1024 * 1024)
 }
 
 func (o *kinesisOutput) GetMaxBatchSize() *int {
-	return mdl.Int(500)
+	return mdl.Box(500)
 }
 
 func (o *kinesisOutput) buildRecord(msg WritableMessage) (*gosoKinesis.Record, error) {

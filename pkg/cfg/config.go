@@ -12,7 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/justtrackio/gosoline/pkg/refl"
 	"github.com/spf13/cast"
-	"github.com/thoas/go-funk"
+	"golang.org/x/exp/maps"
 )
 
 type LookupEnv func(key string) (string, bool)
@@ -75,7 +75,7 @@ func NewWithInterfaces(envProvider EnvProvider) GosoConf {
 }
 
 func (c *config) AllKeys() []string {
-	return funk.Keys(c.settings.Msi()).([]string)
+	return maps.Keys(c.settings.Msi())
 }
 
 func (c *config) AllSettings() map[string]interface{} {

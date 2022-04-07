@@ -72,7 +72,7 @@ func (c *checkpoint) Done(sequenceNumber SequenceNumber) error {
 	}
 	defer c.lck.Unlock()
 
-	c.finishedAt = mdl.Time(c.clock.Now())
+	c.finishedAt = mdl.Box(c.clock.Now())
 	c.finalSequenceNumber = sequenceNumber
 
 	return nil
@@ -89,7 +89,7 @@ func (c *checkpoint) Persist(ctx context.Context) (shouldRelease bool, err error
 			Namespace: c.namespace,
 			Resource:  string(c.shardId),
 			UpdatedAt: c.clock.Now(),
-			Ttl:       mdl.Int64(c.clock.Now().Add(ShardTimeout).Unix()),
+			Ttl:       mdl.Box(c.clock.Now().Add(ShardTimeout).Unix()),
 		},
 		OwningClientId: c.owningClientId,
 		SequenceNumber: c.sequenceNumber,
@@ -118,7 +118,7 @@ func (c *checkpoint) Release(ctx context.Context) error {
 			WithRange(c.shardId).
 			Remove("owningClientId").
 			Set("updatedAt", c.clock.Now()).
-			Set("ttl", mdl.Int64(c.clock.Now().Add(ShardTimeout).Unix())).
+			Set("ttl", mdl.Box(c.clock.Now().Add(ShardTimeout).Unix())).
 			Set("sequenceNumber", c.sequenceNumber).
 			WithCondition(ddb.Eq("owningClientId", c.owningClientId))
 		if result, err := c.repo.UpdateItem(ctx, qb, &CheckpointRecord{}); err != nil {

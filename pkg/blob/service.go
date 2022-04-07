@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/justtrackio/gosoline/pkg/funk"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -11,7 +13,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/thoas/go-funk"
 )
 
 type Service struct {
@@ -30,7 +31,7 @@ func NewService(ctx context.Context, config cfg.Config, logger log.Logger) (*Ser
 }
 
 func (s *Service) DeleteObjects(ctx context.Context, bucket string, objects []*types.Object) error {
-	chunks := funk.Chunk(objects, 1000).([][]*types.Object)
+	chunks := funk.Chunk(objects, 1000)
 
 	for _, chunk := range chunks {
 		if err := s.deleteChunk(ctx, bucket, chunk); err != nil {

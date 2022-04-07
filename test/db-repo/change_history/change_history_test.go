@@ -130,13 +130,13 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_CreateTable(
 	s.NoError(err)
 
 	model := &TestModel1{
-		Name: mdl.String("name1"),
+		Name: mdl.Box("name1"),
 	}
 
 	err = modelRepo.Create(context.Background(), model)
 	s.NoError(err)
 
-	model.Name = mdl.String("name2")
+	model.Name = mdl.Box("name2")
 	err = modelRepo.Update(context.Background(), model)
 	s.NoError(err)
 
@@ -182,15 +182,15 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable(
 	s.NoError(err)
 
 	model := &TestModel2{
-		Name:         mdl.String("name1"),
-		Foo:          mdl.String("foo1"),
-		ChangeAuthor: mdl.String("john@example.com"),
+		Name:         mdl.Box("name1"),
+		Foo:          mdl.Box("foo1"),
+		ChangeAuthor: mdl.Box("john@example.com"),
 	}
 
 	err = modelRepo.Create(context.Background(), model)
 	s.NoError(err)
 
-	model.Foo = mdl.String("foo2")
+	model.Foo = mdl.Box("foo2")
 	err = modelRepo.Update(context.Background(), model)
 	s.NoError(err)
 

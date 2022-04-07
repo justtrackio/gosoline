@@ -200,8 +200,8 @@ func (s *TopicTestSuite) TestPublishBatch() {
 	entries := make([]types.PublishBatchRequestEntry, 10)
 	for i := 0; i < 10; i++ {
 		entries[i] = types.PublishBatchRequestEntry{
-			Id:                mdl.String(fmt.Sprintf("%d", i)),
-			Message:           mdl.String(fmt.Sprintf("%d", i+1)),
+			Id:                mdl.Box(fmt.Sprintf("%d", i)),
+			Message:           mdl.Box(fmt.Sprintf("%d", i+1)),
 			MessageAttributes: make(map[string]types.MessageAttributeValue),
 		}
 	}
@@ -216,8 +216,8 @@ func (s *TopicTestSuite) TestPublishBatch() {
 		TopicArn: aws.String("topicArn"),
 		PublishBatchRequestEntries: []types.PublishBatchRequestEntry{
 			{
-				Id:                mdl.String("10"),
-				Message:           mdl.String("11"),
+				Id:                mdl.Box("10"),
+				Message:           mdl.Box("11"),
 				MessageAttributes: make(map[string]types.MessageAttributeValue),
 			},
 		},

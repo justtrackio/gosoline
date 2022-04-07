@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/thoas/go-funk"
 )
 
 const (
@@ -46,7 +48,7 @@ func NewConfigKeyHandler(config cfg.Config, logger log.Logger, provider ApiKeyPr
 
 func NewConfigKeyAuthenticator(config cfg.Config, logger log.Logger, provider ApiKeyProvider) Authenticator {
 	keys := config.GetStringSlice(configApiKeys)
-	keys = funk.FilterString(keys, func(key string) bool {
+	keys = funk.Filter(keys, func(key string) bool {
 		return key != ""
 	})
 
@@ -72,7 +74,7 @@ func (a *configKeyAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		return false, fmt.Errorf("there are no api keys configured")
 	}
 
-	if !funk.ContainsString(a.keys, apiKey) {
+	if !slices.Contains(a.keys, apiKey) {
 		return false, fmt.Errorf("api key does not match")
 	}
 

@@ -41,7 +41,7 @@ func (s *ConsumerTestSuite) TestSuccess() *suite.StreamTestCase {
 			"consumerInput": {
 				{
 					Attributes: nil,
-					Body:       mdl.Uint(5),
+					Body:       mdl.Box(uint(5)),
 				},
 			},
 		},
@@ -60,8 +60,8 @@ func (s *ConsumerTestSuite) TestSuccessTwice(app suite.AppUnderTest) {
 	consumer := s.Env().StreamInput("consumerInput")
 	s.NotNil(consumer)
 
-	consumer.Publish(mdl.Uint(2), nil)
-	consumer.Publish(mdl.Uint(3), nil)
+	consumer.Publish(mdl.Box(uint(2)), nil)
+	consumer.Publish(mdl.Box(uint(3)), nil)
 
 	app.Stop()
 	app.WaitDone()

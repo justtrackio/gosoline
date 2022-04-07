@@ -3,6 +3,7 @@ package sns
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -13,7 +14,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
-	"github.com/thoas/go-funk"
 )
 
 const MaxBatchSize = 10
@@ -158,7 +158,7 @@ func (t *snsTopic) computeEntries(messages []string, attributes []map[string]int
 		}
 
 		result[i] = types.PublishBatchRequestEntry{
-			Id:                mdl.String(strconv.Itoa(i)),
+			Id:                mdl.Box(strconv.Itoa(i)),
 			Message:           &messages[i],
 			MessageAttributes: messageAttributes,
 		}
@@ -305,7 +305,7 @@ func (t *snsTopic) subscriptionAttributesMatch(ctx context.Context, subscription
 		return false, fmt.Errorf("can not unmarshal expected filter policy: %w", err)
 	}
 
-	matches := funk.IsEqual(expectedAttributes, actualAttributes)
+	matches := reflect.DeepEqual(expectedAttributes, actualAttributes)
 
 	return matches, nil
 }

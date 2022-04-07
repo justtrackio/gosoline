@@ -127,7 +127,7 @@ func (s *metadataRepositoryTestSuite) mockRegisterClientPutItem(err error) *ddbM
 			Namespace: s.clientNamespace,
 			Resource:  string(s.clientId),
 			UpdatedAt: s.clock.Now(),
-			Ttl:       mdl.Int64(s.clock.Now().Add(time.Minute * 50).Unix()),
+			Ttl:       mdl.Box(s.clock.Now().Add(time.Minute * 50).Unix()),
 		},
 	}).Return(&ddb.PutItemResult{}, err).Once()
 
@@ -149,7 +149,7 @@ func (s *metadataRepositoryTestSuite) mockRegisterClientQuery(resultCount int, e
 					Namespace: s.clientNamespace,
 					Resource:  uuid.New().NewV4(),
 					UpdatedAt: s.clock.Now(),
-					Ttl:       mdl.Int64(s.clock.Now().Add(time.Minute * 45).Unix()),
+					Ttl:       mdl.Box(s.clock.Now().Add(time.Minute * 45).Unix()),
 				},
 			}
 			if i == 2 {
@@ -224,7 +224,7 @@ func (s *metadataRepositoryTestSuite) TestIsShardFinished_NotFinishedTwice() {
 }
 
 func (s *metadataRepositoryTestSuite) TestIsShardFinished_FirstReadThenCached() {
-	qb := s.mockIsShardFinished(true, mdl.Time(s.clock.Now()), nil)
+	qb := s.mockIsShardFinished(true, mdl.Box(s.clock.Now()), nil)
 	defer qb.AssertExpectations(s.T())
 
 	finished, err := s.metadataRepository.IsShardFinished(s.ctx, s.shardId)
@@ -386,7 +386,7 @@ func (s *metadataRepositoryTestSuite) mockAcquireShardGetItem(found bool, owning
 				Namespace: s.checkpointNamespace,
 				Resource:  string(s.shardId),
 				UpdatedAt: s.clock.Now().Add(-age),
-				Ttl:       mdl.Int64(s.clock.Now().Add(kinesis.ShardTimeout - age).Unix()),
+				Ttl:       mdl.Box(s.clock.Now().Add(kinesis.ShardTimeout - age).Unix()),
 			},
 			OwningClientId: owningClientId,
 			SequenceNumber: "1234",
@@ -409,7 +409,7 @@ func (s *metadataRepositoryTestSuite) mockAcquireShardPutItem(sequenceNumber kin
 			Namespace: s.checkpointNamespace,
 			Resource:  string(s.shardId),
 			UpdatedAt: s.clock.Now(),
-			Ttl:       mdl.Int64(s.clock.Now().Add(kinesis.ShardTimeout).Unix()),
+			Ttl:       mdl.Box(s.clock.Now().Add(kinesis.ShardTimeout).Unix()),
 		},
 		OwningClientId: s.clientId,
 		SequenceNumber: sequenceNumber,
@@ -478,7 +478,7 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	})
 
 	// we marked it as done, so we need to record the time we finished it
-	finishedAt := mdl.Time(s.clock.Now())
+	finishedAt := mdl.Box(s.clock.Now())
 
 	s.Run("PersistFinished_Error", func() {
 		qb := s.mockCheckpointPersist(finishedAt, "2000", false, fmt.Errorf("fail"))
@@ -564,7 +564,7 @@ func (s *metadataRepositoryTestSuite) mockCheckpointPersist(finishedAt *time.Tim
 			Namespace: s.checkpointNamespace,
 			Resource:  string(s.shardId),
 			UpdatedAt: s.clock.Now(),
-			Ttl:       mdl.Int64(s.clock.Now().Add(kinesis.ShardTimeout).Unix()),
+			Ttl:       mdl.Box(s.clock.Now().Add(kinesis.ShardTimeout).Unix()),
 		},
 		OwningClientId: s.clientId,
 		SequenceNumber: sequenceNumber,
@@ -585,7 +585,7 @@ func (s *metadataRepositoryTestSuite) mockCheckpointRelease(sequenceNumber kines
 	qb.On("WithRange", s.shardId).Return(qb).Once()
 	qb.On("Remove", "owningClientId").Return(qb).Once()
 	qb.On("Set", "updatedAt", s.clock.Now()).Return(qb).Once()
-	qb.On("Set", "ttl", mdl.Int64(s.clock.Now().Add(kinesis.ShardTimeout).Unix())).Return(qb).Once()
+	qb.On("Set", "ttl", mdl.Box(s.clock.Now().Add(kinesis.ShardTimeout).Unix())).Return(qb).Once()
 	qb.On("Set", "sequenceNumber", sequenceNumber).Return(qb).Once()
 	qb.On("WithCondition", ddb.Eq("owningClientId", s.clientId)).Return(qb).Once()
 

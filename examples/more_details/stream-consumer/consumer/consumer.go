@@ -29,7 +29,7 @@ type Consumer struct {
 }
 
 func (c *Consumer) GetModel(map[string]interface{}) interface{} {
-	return mdl.Uint(0)
+	return mdl.Box(uint(0))
 }
 
 func (c *Consumer) Consume(ctx context.Context, model interface{}, _ map[string]interface{}) (bool, error) {

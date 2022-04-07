@@ -23,7 +23,7 @@ func NewCounterController() *counterController {
 
 	return &counterController{
 		mw: mw,
-		c:  mdl.Int64(0),
+		c:  mdl.Box(int64(0)),
 	}
 }
 

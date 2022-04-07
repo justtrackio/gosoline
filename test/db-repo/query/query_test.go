@@ -65,14 +65,14 @@ func (s *DbRepoQueryTestSuite) TestCreateCorrectModel() {
 	s.NoError(err)
 
 	model := &TestModel{
-		Name: mdl.String("nameCreate1"),
+		Name: mdl.Box("nameCreate1"),
 	}
 
 	err = repo.Create(context.Background(), model)
 	s.NoError(err)
 
 	where := &TestModel{
-		Name: mdl.String("nameCreate1"),
+		Name: mdl.Box("nameCreate1"),
 	}
 
 	qb := db_repo.NewQueryBuilder()
@@ -95,7 +95,7 @@ func (s *DbRepoQueryTestSuite) TestCreateWrongModel() {
 	s.NoError(err)
 
 	model := &WrongTestModel{
-		WrongName: mdl.String("nameCreateWrong1"),
+		WrongName: mdl.Box("nameCreateWrong1"),
 	}
 
 	err = repo.Create(context.Background(), model)
@@ -112,7 +112,7 @@ func (s *DbRepoQueryTestSuite) TestReadCorrectModel() {
 	s.NoError(err)
 
 	model := &TestModel{
-		Name: mdl.String("nameRead1"),
+		Name: mdl.Box("nameRead1"),
 	}
 
 	err = repo.Create(context.Background(), model)
@@ -136,7 +136,7 @@ func (s *DbRepoQueryTestSuite) TestReadWrongModel() {
 
 	model := &WrongTestModel{}
 
-	err = repo.Read(context.Background(), mdl.Uint(1), model)
+	err = repo.Read(context.Background(), mdl.Box(uint(1)), model)
 	s.EqualError(err, "cross reading wrong model from repo")
 }
 
@@ -150,14 +150,14 @@ func (s *DbRepoQueryTestSuite) TestUpdateCorrectModel() {
 	s.NoError(err)
 
 	model := &TestModel{
-		Name: mdl.String("nameUpdate1"),
+		Name: mdl.Box("nameUpdate1"),
 	}
 
 	err = repo.Create(context.Background(), model)
 	s.NoError(err)
 
 	where := &TestModel{
-		Name: mdl.String("nameUpdate1"),
+		Name: mdl.Box("nameUpdate1"),
 	}
 
 	qb := db_repo.NewQueryBuilder()
@@ -169,13 +169,13 @@ func (s *DbRepoQueryTestSuite) TestUpdateCorrectModel() {
 	s.Equal(1, len(models), "expected 1 test model")
 	s.Equal(*model, models[0])
 
-	model.Name = mdl.String("nameUpdate1Updated")
+	model.Name = mdl.Box("nameUpdate1Updated")
 
 	err = repo.Update(context.Background(), model)
 	s.NoError(err)
 
 	where = &TestModel{
-		Name: mdl.String("nameUpdate1Updated"),
+		Name: mdl.Box("nameUpdate1Updated"),
 	}
 
 	qb = db_repo.NewQueryBuilder()
@@ -198,7 +198,7 @@ func (s *DbRepoQueryTestSuite) TestUpdateWrongModel() {
 	s.NoError(err)
 
 	model := &WrongTestModel{
-		WrongName: mdl.String("nameUpdateWrong1"),
+		WrongName: mdl.Box("nameUpdateWrong1"),
 	}
 
 	err = repo.Update(context.Background(), model)
@@ -215,7 +215,7 @@ func (s *DbRepoQueryTestSuite) TestDeleteCorrectModel() {
 	s.NoError(err)
 
 	model := &TestModel{
-		Name: mdl.String("nameDelete1"),
+		Name: mdl.Box("nameDelete1"),
 	}
 
 	err = repo.Create(context.Background(), model)
@@ -235,7 +235,7 @@ func (s *DbRepoQueryTestSuite) TestDeleteWrongModel() {
 	s.NoError(err)
 
 	model := &WrongTestModel{
-		WrongName: mdl.String("nameUpdateWrong1"),
+		WrongName: mdl.Box("nameUpdateWrong1"),
 	}
 
 	err = repo.Delete(context.Background(), model)
@@ -252,21 +252,21 @@ func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
 	s.NoError(err)
 
 	model := &TestModel{
-		Name: mdl.String("name1"),
+		Name: mdl.Box("name1"),
 	}
 
 	err = repo.Create(context.Background(), model)
 	s.NoError(err)
 
 	model = &TestModel{
-		Name: mdl.String("name2"),
+		Name: mdl.Box("name2"),
 	}
 
 	err = repo.Create(context.Background(), model)
 	s.NoError(err)
 
 	where := &TestModel{
-		Name: mdl.String("name1"),
+		Name: mdl.Box("name1"),
 	}
 
 	qb := db_repo.NewQueryBuilder()
@@ -281,7 +281,7 @@ func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
 	whereStr := "name = ?"
 
 	qb = db_repo.NewQueryBuilder()
-	qb.Where(whereStr, mdl.String("name2"))
+	qb.Where(whereStr, mdl.Box("name2"))
 
 	models = make([]TestModel, 0)
 	err = repo.Query(context.Background(), qb, &models)
@@ -300,21 +300,21 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongResultModel() {
 	s.NoError(err)
 
 	model := &TestModel{
-		Name: mdl.String("name3"),
+		Name: mdl.Box("name3"),
 	}
 
 	err = repo.Create(context.Background(), model)
 	s.NoError(err)
 
 	model = &TestModel{
-		Name: mdl.String("name4"),
+		Name: mdl.Box("name4"),
 	}
 
 	err = repo.Create(context.Background(), model)
 	s.NoError(err)
 
 	where := &TestModel{
-		Name: mdl.String("name3"),
+		Name: mdl.Box("name3"),
 	}
 
 	qb := db_repo.NewQueryBuilder()
@@ -339,7 +339,7 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
 	s.NoError(err)
 
 	where := &WrongTestModel{
-		WrongName: mdl.String("name1"),
+		WrongName: mdl.Box("name1"),
 	}
 
 	qb := db_repo.NewQueryBuilder()
@@ -350,7 +350,7 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
 	s.EqualError(err, "cross querying wrong model from repo")
 
 	whereStruct := WrongTestModel{
-		WrongName: mdl.String("name1"),
+		WrongName: mdl.Box("name1"),
 	}
 
 	qb = db_repo.NewQueryBuilder()

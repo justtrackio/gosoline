@@ -98,13 +98,13 @@ func (h Handler) List(_ context.Context, _ *db_repo.QueryBuilder, _ string) (int
 	return []Model{
 		{
 			Model: db_repo.Model{
-				Id: mdl.Uint(1),
+				Id: mdl.Box(uint(1)),
 				Timestamps: db_repo.Timestamps{
-					UpdatedAt: mdl.Time(date),
-					CreatedAt: mdl.Time(date),
+					UpdatedAt: mdl.Box(date),
+					CreatedAt: mdl.Box(date),
 				},
 			},
-			Name: mdl.String("foobar"),
+			Name: mdl.Box("foobar"),
 		},
 	}, nil
 }
@@ -117,11 +117,11 @@ func NewTransformer() Handler {
 	}
 }
 
-var id1 = mdl.Uint(1)
+var id1 = mdl.Box(uint(1))
 
 func TestCreateHandler_Handle(t *testing.T) {
 	model := &Model{
-		Name: mdl.String("foobar"),
+		Name: mdl.Box("foobar"),
 	}
 
 	logger := logMocks.NewLoggerMockedAll()
@@ -129,12 +129,12 @@ func TestCreateHandler_Handle(t *testing.T) {
 
 	transformer.Repo.On("Create", mock.AnythingOfType("*context.emptyCtx"), model).Run(func(args mock.Arguments) {
 		model := args.Get(1).(*Model)
-		model.Id = mdl.Uint(1)
+		model.Id = mdl.Box(uint(1))
 	}).Return(nil)
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), &Model{}).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Box(uint(1)), &Model{}).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
-		model.Id = mdl.Uint(1)
-		model.Name = mdl.String("foobar")
+		model.Id = mdl.Box(uint(1))
+		model.Name = mdl.Box("foobar")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
@@ -152,7 +152,7 @@ func TestCreateHandler_Handle(t *testing.T) {
 
 func TestCreateHandler_Handle_ValidationError(t *testing.T) {
 	model := &Model{
-		Name: mdl.String("foobar"),
+		Name: mdl.Box("foobar"),
 	}
 
 	logger := logMocks.NewLoggerMockedAll()
@@ -178,10 +178,10 @@ func TestReadHandler_Handle(t *testing.T) {
 
 	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), model).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Box(uint(1)), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
-		model.Id = mdl.Uint(1)
-		model.Name = mdl.String("foobar")
+		model.Id = mdl.Box(uint(1))
+		model.Name = mdl.Box("foobar")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
@@ -200,23 +200,23 @@ func TestUpdateHandler_Handle(t *testing.T) {
 	readModel := &Model{}
 	updateModel := &Model{
 		Model: db_repo.Model{
-			Id: mdl.Uint(1),
+			Id: mdl.Box(uint(1)),
 			Timestamps: db_repo.Timestamps{
 				UpdatedAt: &time.Time{},
 				CreatedAt: &time.Time{},
 			},
 		},
-		Name: mdl.String("updated"),
+		Name: mdl.Box("updated"),
 	}
 
 	logger := logMocks.NewLoggerMockedAll()
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(nil)
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), readModel).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Box(uint(1)), readModel).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
-		model.Id = mdl.Uint(1)
-		model.Name = mdl.String("updated")
+		model.Id = mdl.Box(uint(1))
+		model.Name = mdl.Box("updated")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
@@ -236,13 +236,13 @@ func TestUpdateHandler_Handle_ValidationError(t *testing.T) {
 	readModel := &Model{}
 	updateModel := &Model{
 		Model: db_repo.Model{
-			Id: mdl.Uint(1),
+			Id: mdl.Box(uint(1)),
 			Timestamps: db_repo.Timestamps{
 				UpdatedAt: &time.Time{},
 				CreatedAt: &time.Time{},
 			},
 		},
-		Name: mdl.String("updated"),
+		Name: mdl.Box("updated"),
 	}
 
 	logger := logMocks.NewLoggerMockedAll()
@@ -251,10 +251,10 @@ func TestUpdateHandler_Handle_ValidationError(t *testing.T) {
 	transformer.Repo.On("Update", mock.AnythingOfType("*context.emptyCtx"), updateModel).Return(&validation.Error{
 		Errors: []error{fmt.Errorf("invalid foobar")},
 	})
-	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Uint(1), readModel).Run(func(args mock.Arguments) {
+	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mdl.Box(uint(1)), readModel).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
-		model.Id = mdl.Uint(1)
-		model.Name = mdl.String("updated")
+		model.Id = mdl.Box(uint(1))
+		model.Name = mdl.Box("updated")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
@@ -280,7 +280,7 @@ func TestDeleteHandler_Handle(t *testing.T) {
 				CreatedAt: &time.Time{},
 			},
 		},
-		Name: mdl.String("foobar"),
+		Name: mdl.Box("foobar"),
 	}
 
 	logger := logMocks.NewLoggerMockedAll()
@@ -288,7 +288,7 @@ func TestDeleteHandler_Handle(t *testing.T) {
 	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
 		model.Id = id1
-		model.Name = mdl.String("foobar")
+		model.Name = mdl.Box("foobar")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)
@@ -314,7 +314,7 @@ func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
 				CreatedAt: &time.Time{},
 			},
 		},
-		Name: mdl.String("foobar"),
+		Name: mdl.Box("foobar"),
 	}
 
 	logger := logMocks.NewLoggerMockedAll()
@@ -322,7 +322,7 @@ func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
 	transformer.Repo.On("Read", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
 		model.Id = id1
-		model.Name = mdl.String("foobar")
+		model.Name = mdl.Box("foobar")
 		model.UpdatedAt = &time.Time{}
 		model.CreatedAt = &time.Time{}
 	}).Return(nil)

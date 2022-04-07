@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/justtrackio/gosoline/pkg/funk"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
@@ -16,7 +18,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/uuid"
-	"github.com/thoas/go-funk"
 )
 
 const (
@@ -108,7 +109,7 @@ func (w *recordWriter) PutRecords(ctx context.Context, records []*Record) error 
 	})
 
 	var err, errs error
-	chunks := funk.Chunk(records, kinesisBatchSizeMax).([][]*Record)
+	chunks := funk.Chunk(records, kinesisBatchSizeMax)
 
 	for _, chunk := range chunks {
 		if err = w.putRecordsBatch(ctx, chunk); err != nil {
