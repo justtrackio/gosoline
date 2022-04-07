@@ -18,7 +18,7 @@ func Test_Publish_Notifier(t *testing.T) {
 	}
 
 	transformer := func(view string, version int, in interface{}) (out interface{}) {
-		assert.Equal(t, mdl.Uint(3), in.(db_repo.ModelBased).GetId())
+		assert.Equal(t, mdl.Box(uint(3)), in.(db_repo.ModelBased).GetId())
 		assert.Equal(t, "api", view)
 		assert.Equal(t, 1, version)
 

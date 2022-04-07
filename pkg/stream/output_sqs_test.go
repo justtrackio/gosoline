@@ -6,11 +6,11 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	sqsMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/sqs/mocks"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
-	"github.com/thoas/go-funk"
 )
 
 func TestSqsOutput_WriteOne(t *testing.T) {
@@ -29,7 +29,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 				Foo: "bar",
 			},
 			expectedSqsMessage: sqs.Message{
-				Body: mdl.String(`{"attributes":{"encoding":"application/json"},"body":"{\"Foo\":\"bar\"}"}`),
+				Body: mdl.Box(`{"attributes":{"encoding":"application/json"},"body":"{\"Foo\":\"bar\"}"}`),
 			},
 		},
 		"with_delay": {
@@ -41,7 +41,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 			},
 			expectedSqsMessage: sqs.Message{
 				DelaySeconds: 45,
-				Body:         mdl.String(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":45},"body":"{\"Foo\":\"bar\"}"}`),
+				Body:         mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":45},"body":"{\"Foo\":\"bar\"}"}`),
 			},
 		},
 		"with_group_id": {
@@ -52,8 +52,8 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 				Foo: "bar",
 			},
 			expectedSqsMessage: sqs.Message{
-				MessageGroupId: mdl.String("foo"),
-				Body:           mdl.String(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
+				MessageGroupId: mdl.Box("foo"),
+				Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
 			},
 		},
 		"with_deduplication_id": {
@@ -64,8 +64,8 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 				Foo: "bar",
 			},
 			expectedSqsMessage: sqs.Message{
-				MessageDeduplicationId: mdl.String("bar"),
-				Body:                   mdl.String(`{"attributes":{"encoding":"application/json","sqsMessageDeduplicationId":"bar"},"body":"{\"Foo\":\"bar\"}"}`),
+				MessageDeduplicationId: mdl.Box("bar"),
+				Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageDeduplicationId":"bar"},"body":"{\"Foo\":\"bar\"}"}`),
 			},
 		},
 		"with_all": {
@@ -79,9 +79,9 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 			},
 			expectedSqsMessage: sqs.Message{
 				DelaySeconds:           45,
-				MessageGroupId:         mdl.String("foo"),
-				MessageDeduplicationId: mdl.String("bar"),
-				Body:                   mdl.String(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":45,"sqsMessageDeduplicationId":"bar","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
+				MessageGroupId:         mdl.Box("foo"),
+				MessageDeduplicationId: mdl.Box("bar"),
+				Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":45,"sqsMessageDeduplicationId":"bar","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
 			},
 		},
 	}
@@ -111,17 +111,14 @@ func TestSqsOutput_Write(t *testing.T) {
 		Foo string
 	}
 
-	largeAttributes, err := funk.Fill(make([]map[string]interface{}, 1000), map[string]interface{}{sqs.AttributeSqsMessageGroupId: "foo"})
-	assert.NoError(t, err)
-
-	largeBody, err := funk.Fill(make([]BodyStruct, 1000), BodyStruct{Foo: "bar"})
-	assert.NoError(t, err)
-
-	largeExpectedSqsMessage, err := funk.Fill(make([]*sqs.Message, 1000), &sqs.Message{
-		MessageGroupId: mdl.String("foo"),
-		Body:           mdl.String(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
-	})
-	assert.NoError(t, err)
+	largeBody := funk.Repeat(BodyStruct{Foo: "bar"}, 1000)
+	largeAttributes := funk.Repeat(
+		map[string]interface{}{sqs.AttributeSqsMessageGroupId: "foo"},
+		1000)
+	largeExpectedSqsMessage := funk.Repeat(&sqs.Message{
+		MessageGroupId: mdl.Box("foo"),
+		Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
+	}, 1000)
 
 	tests := map[string]struct {
 		attributes         []map[string]interface{}
@@ -137,7 +134,7 @@ func TestSqsOutput_Write(t *testing.T) {
 			},
 			expectedSqsMessage: []*sqs.Message{
 				{
-					Body: mdl.String(`{"attributes":{"encoding":"application/json"},"body":"{\"Foo\":\"bar\"}"}`),
+					Body: mdl.Box(`{"attributes":{"encoding":"application/json"},"body":"{\"Foo\":\"bar\"}"}`),
 				},
 			},
 		},
@@ -189,66 +186,66 @@ func TestSqsOutput_Write(t *testing.T) {
 			expectedSqsMessage: []*sqs.Message{
 				{
 					DelaySeconds: 45,
-					Body:         mdl.String(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":45},"body":"{\"Foo\":\"bar\"}"}`),
+					Body:         mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":45},"body":"{\"Foo\":\"bar\"}"}`),
 				},
 				{
-					MessageGroupId: mdl.String("foo"),
-					Body:           mdl.String(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
+					MessageGroupId: mdl.Box("foo"),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo"},"body":"{\"Foo\":\"bar\"}"}`),
 				},
 				{
-					MessageGroupId: mdl.String("foo1"),
-					Body:           mdl.String(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo1"},"body":"{\"Foo\":\"bar1\"}"}`),
+					MessageGroupId: mdl.Box("foo1"),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo1"},"body":"{\"Foo\":\"bar1\"}"}`),
 				},
 				{
-					MessageGroupId: mdl.String("foo2"),
-					Body:           mdl.String(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo2"},"body":"{\"Foo\":\"bar2\"}"}`),
+					MessageGroupId: mdl.Box("foo2"),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo2"},"body":"{\"Foo\":\"bar2\"}"}`),
 				},
 				{
-					MessageGroupId: mdl.String("foo3"),
-					Body:           mdl.String(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo3"},"body":"{\"Foo\":\"bar3\"}"}`),
+					MessageGroupId: mdl.Box("foo3"),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo3"},"body":"{\"Foo\":\"bar3\"}"}`),
 				},
 				{
-					MessageGroupId: mdl.String("foo4"),
-					Body:           mdl.String(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo4"},"body":"{\"Foo\":\"bar4\"}"}`),
+					MessageGroupId: mdl.Box("foo4"),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"foo4"},"body":"{\"Foo\":\"bar4\"}"}`),
 				},
 				{
-					MessageGroupId: mdl.String("bar"),
-					Body:           mdl.String(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"bar"},"body":"{\"Foo\":\"bar\"}"}`),
+					MessageGroupId: mdl.Box("bar"),
+					Body:           mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageGroupId":"bar"},"body":"{\"Foo\":\"bar\"}"}`),
 				},
 				{
-					MessageDeduplicationId: mdl.String("bar"),
-					Body:                   mdl.String(`{"attributes":{"encoding":"application/json","sqsMessageDeduplicationId":"bar"},"body":"{\"Foo\":\"bar\"}"}`),
+					MessageDeduplicationId: mdl.Box("bar"),
+					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsMessageDeduplicationId":"bar"},"body":"{\"Foo\":\"bar\"}"}`),
 				},
 				{
 					DelaySeconds:           45,
-					MessageGroupId:         mdl.String("foo1"),
-					MessageDeduplicationId: mdl.String("bar1"),
-					Body:                   mdl.String(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":45,"sqsMessageDeduplicationId":"bar1","sqsMessageGroupId":"foo1"},"body":"{\"Foo\":\"multipleAttributes1\"}"}`),
+					MessageGroupId:         mdl.Box("foo1"),
+					MessageDeduplicationId: mdl.Box("bar1"),
+					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":45,"sqsMessageDeduplicationId":"bar1","sqsMessageGroupId":"foo1"},"body":"{\"Foo\":\"multipleAttributes1\"}"}`),
 				},
 				{
 					DelaySeconds:           46,
-					MessageGroupId:         mdl.String("foo2"),
-					MessageDeduplicationId: mdl.String("bar2"),
-					Body:                   mdl.String(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":46,"sqsMessageDeduplicationId":"bar2","sqsMessageGroupId":"foo2"},"body":"{\"Foo\":\"multipleAttributes2\"}"}`),
+					MessageGroupId:         mdl.Box("foo2"),
+					MessageDeduplicationId: mdl.Box("bar2"),
+					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":46,"sqsMessageDeduplicationId":"bar2","sqsMessageGroupId":"foo2"},"body":"{\"Foo\":\"multipleAttributes2\"}"}`),
 				},
 				{
 					DelaySeconds:           47,
-					MessageGroupId:         mdl.String("foo3"),
-					MessageDeduplicationId: mdl.String("bar3"),
-					Body:                   mdl.String(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":47,"sqsMessageDeduplicationId":"bar3","sqsMessageGroupId":"foo3"},"body":"{\"Foo\":\"multipleAttributes3\"}"}`),
+					MessageGroupId:         mdl.Box("foo3"),
+					MessageDeduplicationId: mdl.Box("bar3"),
+					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":47,"sqsMessageDeduplicationId":"bar3","sqsMessageGroupId":"foo3"},"body":"{\"Foo\":\"multipleAttributes3\"}"}`),
 				},
 				{
 					DelaySeconds:           48,
-					MessageGroupId:         mdl.String("foo4"),
-					MessageDeduplicationId: mdl.String("bar4"),
-					Body:                   mdl.String(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":48,"sqsMessageDeduplicationId":"bar4","sqsMessageGroupId":"foo4"},"body":"{\"Foo\":\"multipleAttributes4\"}"}`),
+					MessageGroupId:         mdl.Box("foo4"),
+					MessageDeduplicationId: mdl.Box("bar4"),
+					Body:                   mdl.Box(`{"attributes":{"encoding":"application/json","sqsDelaySeconds":48,"sqsMessageDeduplicationId":"bar4","sqsMessageGroupId":"foo4"},"body":"{\"Foo\":\"multipleAttributes4\"}"}`),
 				},
 			},
 		},
 		"large": {
-			attributes:         largeAttributes.([]map[string]interface{}),
-			body:               largeBody.([]BodyStruct),
-			expectedSqsMessage: largeExpectedSqsMessage.([]*sqs.Message),
+			attributes:         largeAttributes,
+			body:               largeBody,
+			expectedSqsMessage: largeExpectedSqsMessage,
 		},
 	}
 
@@ -257,8 +254,7 @@ func TestSqsOutput_Write(t *testing.T) {
 		t.Run(test, func(t *testing.T) {
 			logger := logMocks.NewLoggerMockedAll()
 
-			expectedSqsMessageChunks, ok := funk.Chunk(data.expectedSqsMessage, stream.SqsOutputBatchSize).([][]*sqs.Message)
-			assert.True(t, ok)
+			expectedSqsMessageChunks := funk.Chunk(data.expectedSqsMessage, stream.SqsOutputBatchSize)
 
 			queue := new(sqsMocks.Queue)
 			for _, chunk := range expectedSqsMessageChunks {

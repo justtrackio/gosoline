@@ -120,7 +120,7 @@ func ormMysqlTestFixtures() []*fixtures.FixtureSet {
 			Writer:  fixtures.MysqlOrmFixtureWriterFactory(&MysqlTestModelMetadata),
 			Fixtures: []interface{}{
 				&MysqlTestModel{
-					Name: mdl.String("testName"),
+					Name: mdl.Box("testName"),
 				},
 			},
 		},
@@ -135,7 +135,7 @@ func ormMysqlTestFixturesWithPurge() []*fixtures.FixtureSet {
 			Writer:  fixtures.MysqlOrmFixtureWriterFactory(&MysqlTestModelMetadata),
 			Fixtures: []interface{}{
 				&MysqlTestModel{
-					Name: mdl.String("purgedBefore"),
+					Name: mdl.Box("purgedBefore"),
 				},
 			},
 		},

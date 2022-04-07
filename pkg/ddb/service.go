@@ -12,8 +12,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/thoas/go-funk"
+	"golang.org/x/exp/slices"
 )
 
 type TableDescription struct {
@@ -213,7 +214,7 @@ func (s *Service) getKeyFields(metadata *Metadata) []string {
 		fields = append(fields, data.GetKeyFields()...)
 	}
 
-	fields = funk.UniqString(fields)
+	fields = funk.Uniq(fields)
 	sort.Strings(fields)
 
 	return fields
@@ -324,7 +325,7 @@ func (s *Service) projectedFields(main FieldAware, second FieldAware) (*types.Pr
 	secondFields := second.GetFields()
 
 	for _, field := range secondFields {
-		if !funk.Contains(mainFields, field) {
+		if !slices.Contains(mainFields, field) {
 			return nil, fmt.Errorf("can't project field '%s' cause the main table is missing this field", field)
 		}
 	}

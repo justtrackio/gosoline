@@ -13,9 +13,9 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/uuid"
-	"github.com/thoas/go-funk"
 )
 
 const (
@@ -165,7 +165,7 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 
 		half := float64(len(messages)) / 2
 		chunkSize := int(math.Ceil(half))
-		messageChunks := funk.Chunk(messages, chunkSize).([][]*Message)
+		messageChunks := funk.Chunk(messages, chunkSize)
 
 		for _, msgChunk := range messageChunks {
 			if err = q.SendBatch(ctx, msgChunk); err != nil {

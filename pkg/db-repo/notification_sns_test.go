@@ -36,7 +36,7 @@ func Test_SNS_Notifier(t *testing.T) {
 	output := streamMocks.Output{}
 	output.On("WriteOne", context.Background(), &streamMessage).Return(nil).Once()
 	transformer := func(view string, version int, in interface{}) (out interface{}) {
-		assert.Equal(t, mdl.Uint(3), in.(db_repo.ModelBased).GetId())
+		assert.Equal(t, mdl.Box(uint(3)), in.(db_repo.ModelBased).GetId())
 		assert.Equal(t, "api", view)
 		assert.Equal(t, 55, version)
 
@@ -57,7 +57,7 @@ type modelBased struct {
 }
 
 func (m *modelBased) GetId() *uint {
-	return mdl.Uint(3)
+	return mdl.Box(uint(3))
 }
 
 func (m *modelBased) SetUpdatedAt(updatedAt *time.Time) {

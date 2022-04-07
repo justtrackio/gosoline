@@ -191,7 +191,7 @@ func (s *shardReader) getShardIterator(ctx context.Context, sequenceNumber Seque
 
 	switch iteratorType {
 	case types.ShardIteratorTypeAtTimestamp:
-		input.Timestamp = mdl.Time(s.settings.InitialPosition.Timestamp)
+		input.Timestamp = mdl.Box(s.settings.InitialPosition.Timestamp)
 	case types.ShardIteratorTypeAfterSequenceNumber:
 		input.StartingSequenceNumber = aws.String(string(sequenceNumber))
 	}
@@ -201,7 +201,7 @@ func (s *shardReader) getShardIterator(ctx context.Context, sequenceNumber Seque
 		return "", fmt.Errorf("failed to get shard iterator: %w", err)
 	}
 
-	return mdl.EmptyStringIfNil(resp.ShardIterator), nil
+	return mdl.EmptyIfNil(resp.ShardIterator), nil
 }
 
 func (s *shardReader) runPersister(ctx context.Context, releaseCtx context.Context) error {
@@ -336,9 +336,9 @@ func (s *shardReader) getRecords(ctx context.Context, iterator string) (records 
 	s.writeMetric(metricNameReadCount, 1.0, metric.UnitCount)
 
 	records = output.Records
-	nextIterator = mdl.EmptyStringIfNil(output.NextShardIterator)
+	nextIterator = mdl.EmptyIfNil(output.NextShardIterator)
 
-	return records, nextIterator, mdl.EmptyInt64IfNil(output.MillisBehindLatest), nil
+	return records, nextIterator, mdl.EmptyIfNil(output.MillisBehindLatest), nil
 }
 
 func (s *shardReader) processRecords(ctx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler func(record []byte) error) (int, error) {
@@ -364,7 +364,7 @@ func (s *shardReader) processRecords(ctx context.Context, records []types.Record
 			s.writeMetric(metricNameFailedRecords, 1, metric.UnitCount)
 		}
 
-		*lastSequenceNumber = SequenceNumber(mdl.EmptyStringIfNil(record.SequenceNumber))
+		*lastSequenceNumber = SequenceNumber(mdl.EmptyIfNil(record.SequenceNumber))
 		err := s.getCheckpoint().Advance(*lastSequenceNumber)
 		if err != nil {
 			return processedSize, fmt.Errorf("failed to advance checkpoint: %w", err)

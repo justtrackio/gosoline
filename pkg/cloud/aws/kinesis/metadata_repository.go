@@ -167,7 +167,7 @@ func (m *metadataRepository) RegisterClient(ctx context.Context) (clientIndex in
 			Namespace: namespace,
 			Resource:  string(m.clientId),
 			UpdatedAt: m.clock.Now(),
-			Ttl:       mdl.Int64(m.clock.Now().Add(m.clientTimeout).Unix()),
+			Ttl:       mdl.Box(m.clock.Now().Add(m.clientTimeout).Unix()),
 		},
 	})
 	if err != nil {
@@ -256,7 +256,7 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 				Namespace: namespace,
 				Resource:  string(shardId),
 				UpdatedAt: m.clock.Now(),
-				Ttl:       mdl.Int64(m.clock.Now().Add(ShardTimeout).Unix()),
+				Ttl:       mdl.Box(m.clock.Now().Add(ShardTimeout).Unix()),
 			},
 			OwningClientId: m.clientId,
 			SequenceNumber: "",
@@ -283,7 +283,7 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 
 		record.OwningClientId = m.clientId
 		record.UpdatedAt = m.clock.Now()
-		record.Ttl = mdl.Int64(m.clock.Now().Add(ShardTimeout).Unix())
+		record.Ttl = mdl.Box(m.clock.Now().Add(ShardTimeout).Unix())
 	}
 
 	putQb := m.repo.PutItemBuilder().

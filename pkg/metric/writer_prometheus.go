@@ -9,7 +9,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,9 +23,11 @@ const (
 	UnitPromSummary   StandardUnit = "prom-summary"
 )
 
-type registryAppCtxKey string
-type promMetricFactory func(*Datum) prometheus.Metric
-type promMetricPersister func(metric prometheus.Metric, data *Datum)
+type (
+	registryAppCtxKey   string
+	promMetricFactory   func(*Datum) prometheus.Metric
+	promMetricPersister func(metric prometheus.Metric, data *Datum)
+)
 
 func ProvideRegistry(ctx context.Context, name string) (*prometheus.Registry, error) {
 	return appctx.Provide(ctx, registryAppCtxKey(name), func() (*prometheus.Registry, error) {
@@ -40,7 +41,6 @@ func ProvideRegistry(ctx context.Context, name string) (*prometheus.Registry, er
 
 type promWriter struct {
 	logger      log.Logger
-	clock       clock.Clock
 	promMetrics sync.Map
 	registry    *prometheus.Registry
 	namespace   string
@@ -69,7 +69,7 @@ func NewPromWriterWithInterfaces(logger log.Logger, registry *prometheus.Registr
 		registry:    registry,
 		namespace:   namespace,
 		metricLimit: metricLimit,
-		metrics:     mdl.Int64(0),
+		metrics:     mdl.Box(int64(0)),
 	}
 }
 

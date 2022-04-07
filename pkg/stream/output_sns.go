@@ -94,9 +94,9 @@ func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) ([]string
 }
 
 func (o *snsOutput) GetMaxMessageSize() *int {
-	return mdl.Int(256 * 1024)
+	return mdl.Box(256 * 1024)
 }
 
 func (o *snsOutput) GetMaxBatchSize() *int {
-	return mdl.Int(10)
+	return mdl.Box(10)
 }

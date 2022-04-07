@@ -313,28 +313,28 @@ func (s *kinsumerTestSuite) TestShardListFinishedShardHandling() {
 		NextToken: nil,
 		Shards: []types.Shard{
 			{
-				ShardId:       mdl.String("finished shard with no parent"),
+				ShardId:       mdl.Box("finished shard with no parent"),
 				ParentShardId: nil,
 			},
 			{
-				ShardId:       mdl.String("finished shard with parent"),
-				ParentShardId: mdl.String("finished shard with no parent"),
+				ShardId:       mdl.Box("finished shard with parent"),
+				ParentShardId: mdl.Box("finished shard with no parent"),
 			},
 			{
-				ShardId:       mdl.String("unfinished shard with no parent"),
+				ShardId:       mdl.Box("unfinished shard with no parent"),
 				ParentShardId: nil,
 			},
 			{
-				ShardId:       mdl.String("unfinished shard with non-existing parent"),
-				ParentShardId: mdl.String("doesn't exist"),
+				ShardId:       mdl.Box("unfinished shard with non-existing parent"),
+				ParentShardId: mdl.Box("doesn't exist"),
 			},
 			{
-				ShardId:       mdl.String("unfinished shard with unfinished parent"),
-				ParentShardId: mdl.String("unfinished shard with no parent"),
+				ShardId:       mdl.Box("unfinished shard with unfinished parent"),
+				ParentShardId: mdl.Box("unfinished shard with no parent"),
 			},
 			{
-				ShardId:       mdl.String("unfinished shard with finished parent"),
-				ParentShardId: mdl.String("finished shard with no parent"),
+				ShardId:       mdl.Box("unfinished shard with finished parent"),
+				ParentShardId: mdl.Box("finished shard with no parent"),
 			},
 		},
 	}, nil).Once()

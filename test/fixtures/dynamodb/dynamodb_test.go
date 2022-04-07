@@ -20,7 +20,6 @@ import (
 
 type DynamoDbSuite struct {
 	suite.Suite
-	ddbSettings *ddb.Settings
 }
 
 func (s *DynamoDbSuite) SetupSuite() []suite.Option {

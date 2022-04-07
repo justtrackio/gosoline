@@ -1,6 +1,8 @@
 package ddb
 
-import "github.com/thoas/go-funk"
+import (
+	"golang.org/x/exp/slices"
+)
 
 const (
 	tagKey    = "key"
@@ -98,7 +100,7 @@ func (f metadataFields) GetKeyFields() []string {
 }
 
 func (f metadataFields) ContainsField(field string) bool {
-	return funk.ContainsString(f.Fields, field)
+	return slices.Contains(f.Fields, field)
 }
 
 func (f metadataFields) GetFields() []string {
@@ -115,5 +117,7 @@ type metadataMain struct {
 	metadataCapacity
 }
 
-type metaLocal map[string]metadataFields
-type metaGlobal map[string]metadataMain
+type (
+	metaLocal  map[string]metadataFields
+	metaGlobal map[string]metadataMain
+)

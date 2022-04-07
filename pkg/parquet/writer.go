@@ -199,8 +199,8 @@ func makeTags(tags map[string]string) []types.Tag {
 
 	for key, value := range tags {
 		s3Tags = append(s3Tags, types.Tag{
-			Key:   mdl.String(key),
-			Value: mdl.String(value),
+			Key:   mdl.Box(key),
+			Value: mdl.Box(value),
 		})
 	}
 

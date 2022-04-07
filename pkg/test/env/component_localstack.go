@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
-	"github.com/thoas/go-funk"
+	"golang.org/x/exp/slices"
 )
 
 type localstackComponent struct {
@@ -34,7 +34,7 @@ func (c *localstackComponent) CfgOptions() []cfg.Option {
 		}),
 	}
 
-	if funk.ContainsString(c.services, localstackServiceS3) {
+	if slices.Contains(c.services, localstackServiceS3) {
 		options = append(options, cfg.WithConfigMap(map[string]interface{}{
 			"aws_s3_endpoint":   c.Address(),
 			"aws_s3_autoCreate": true,

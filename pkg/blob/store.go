@@ -142,8 +142,8 @@ func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, cl
 		logger:   logger,
 		channels: channels,
 		client:   client,
-		bucket:   mdl.String(settings.Bucket),
-		prefix:   mdl.String(settings.Prefix),
+		bucket:   mdl.Box(settings.Bucket),
+		prefix:   mdl.Box(settings.Prefix),
 	}
 }
 
@@ -308,10 +308,10 @@ func (o *CopyObject) GetFullKey() string {
 }
 
 func getFullKey(prefixPtr, keyPtr *string) string {
-	key := mdl.EmptyStringIfNil(keyPtr)
+	key := mdl.EmptyIfNil(keyPtr)
 	key = strings.TrimLeft(key, "/")
 
-	prefix := mdl.EmptyStringIfNil(prefixPtr)
+	prefix := mdl.EmptyIfNil(prefixPtr)
 	prefix = strings.TrimRight(prefix, "/")
 
 	fullKey := fmt.Sprintf("%s/%s", prefix, key)
@@ -320,7 +320,7 @@ func getFullKey(prefixPtr, keyPtr *string) string {
 }
 
 func (o *CopyObject) getSource() string {
-	sourceKey := mdl.EmptyStringIfNil(o.SourceKey)
+	sourceKey := mdl.EmptyIfNil(o.SourceKey)
 	if o.SourceBucket == nil {
 		sourceKey = getFullKey(o.prefix, o.SourceKey)
 		o.SourceBucket = o.bucket
@@ -330,7 +330,7 @@ func (o *CopyObject) getSource() string {
 		sourceKey = "/" + sourceKey
 	}
 
-	return fmt.Sprintf("%s%s", mdl.EmptyStringIfNil(o.SourceBucket), sourceKey)
+	return fmt.Sprintf("%s%s", mdl.EmptyIfNil(o.SourceBucket), sourceKey)
 }
 
 func isBucketAlreadyExistsError(err error) bool {

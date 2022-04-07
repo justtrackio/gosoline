@@ -107,7 +107,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 
 	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).
 		Return(func(_ map[string]interface{}) interface{} {
-			return mdl.String("")
+			return mdl.Box("")
 		})
 
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
@@ -154,7 +154,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 
 	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).
 		Return(func(_ map[string]interface{}) interface{} {
-			return mdl.String("")
+			return mdl.Box("")
 		})
 
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
@@ -254,7 +254,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 
 	s.callback.
 		On("GetModel", mock.AnythingOfType("map[string]interface {}")).
-		Return(mdl.String("")).
+		Return(mdl.Box("")).
 		Twice()
 
 	err = s.batchConsumer.Run(s.kernelCtx)

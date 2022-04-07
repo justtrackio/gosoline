@@ -302,7 +302,7 @@ func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
 		}
 
 		for _, s := range res.Shards {
-			shardId := ShardId(mdl.EmptyStringIfNil(s.ShardId))
+			shardId := ShardId(mdl.EmptyIfNil(s.ShardId))
 			finished, err := k.metadataRepository.IsShardFinished(ctx, shardId)
 			if err != nil {
 				return nil, fmt.Errorf("could not check if shard is already finished: %w", err)
@@ -310,7 +310,7 @@ func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
 
 			shardMap[shardId] = shardInfo{
 				finished: finished,
-				parent:   ShardId(mdl.EmptyStringIfNil(s.ParentShardId)),
+				parent:   ShardId(mdl.EmptyIfNil(s.ParentShardId)),
 			}
 		}
 

@@ -7,10 +7,10 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/spf13/cast"
-	"github.com/thoas/go-funk"
 )
 
 const SqsOutputBatchSize = 10
@@ -87,14 +87,7 @@ func (o *sqsOutput) WriteOne(ctx context.Context, record WritableMessage) error 
 }
 
 func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
-	chunks, ok := funk.Chunk(batch, SqsOutputBatchSize).([][]WritableMessage)
-
-	if !ok {
-		err := fmt.Errorf("can not chunk messages for sending to sqs")
-		o.logger.WithContext(ctx).Error("can not chunk messages for sending to sqs: %w", err)
-
-		return err
-	}
+	chunks := funk.Chunk(batch, SqsOutputBatchSize)
 
 	var result error
 
@@ -123,11 +116,11 @@ func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 }
 
 func (o *sqsOutput) GetMaxMessageSize() *int {
-	return mdl.Int(256 * 1024)
+	return mdl.Box(256 * 1024)
 }
 
 func (o *sqsOutput) GetMaxBatchSize() *int {
-	return mdl.Int(10)
+	return mdl.Box(10)
 }
 
 func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []WritableMessage) ([]*sqs.Message, error) {
@@ -186,15 +179,15 @@ func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg WritableMessage) (*
 
 	sqsMessage := &sqs.Message{
 		DelaySeconds: delay,
-		Body:         mdl.String(body),
+		Body:         mdl.Box(body),
 	}
 
 	if messageGroupId != "" {
-		sqsMessage.MessageGroupId = mdl.String(messageGroupId)
+		sqsMessage.MessageGroupId = mdl.Box(messageGroupId)
 	}
 
 	if messageDeduplicationId != "" {
-		sqsMessage.MessageDeduplicationId = mdl.String(messageDeduplicationId)
+		sqsMessage.MessageDeduplicationId = mdl.Box(messageDeduplicationId)
 	}
 
 	return sqsMessage, nil

@@ -121,9 +121,9 @@ func (f *metadataFactory) getFields(model interface{}, hashTag string, rangeTag 
 		return metadataFields{}, err
 	}
 
-	hashKey = mdl.String(hashAttribute.AttributeName)
+	hashKey = mdl.Box(hashAttribute.AttributeName)
 	if rangeAttribute != nil {
-		rangeKey = mdl.String(rangeAttribute.AttributeName)
+		rangeKey = mdl.Box(rangeAttribute.AttributeName)
 	}
 
 	if fields, err = MetadataReadFields(model); err != nil {

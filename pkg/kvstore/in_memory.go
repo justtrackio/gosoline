@@ -194,7 +194,7 @@ func (s *InMemoryKvStore) PutBatch(ctx context.Context, values interface{}) erro
 }
 
 func (s *InMemoryKvStore) EstimateSize() *int64 {
-	return mdl.Int64(atomic.LoadInt64(s.cacheSize))
+	return mdl.Box(atomic.LoadInt64(s.cacheSize))
 }
 
 func (s *InMemoryKvStore) Delete(_ context.Context, key interface{}) error {

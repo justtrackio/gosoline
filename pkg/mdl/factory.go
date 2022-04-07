@@ -3,106 +3,32 @@ package mdl
 import (
 	"reflect"
 	"time"
+
+	"golang.org/x/exp/constraints"
 )
 
-func Bool(v bool) *bool {
-	return &v
+type Basic interface {
+	~bool | constraints.Float | constraints.Integer | time.Time | ~string
 }
 
-func Float32(v float32) *float32 {
-	return &v
-}
-
-func Float64(v float64) *float64 {
-	return &v
-}
-
-func Int(v int) *int {
-	return &v
-}
-
-func Int32(v int32) *int32 {
-	return &v
-}
-
-func Int64(v int64) *int64 {
-	return &v
-}
-
-func String(v string) *string {
-	return &v
-}
-
-func Uint(v uint) *uint {
-	return &v
-}
-
-func EmptyBoolIfNil(b *bool) bool {
-	if b == nil {
-		return false
+func EmptyIfNil[T comparable](v *T) (out T) {
+	if v != nil {
+		return *v
 	}
 
-	return *b
+	return
 }
 
-func EmptyFloat32IfNil(v *float32) float32 {
-	if v == nil {
-		return 0.0
+func NilIfEmpty[T comparable](in T) *T {
+	if *new(T) == in {
+		return nil
 	}
 
-	return *v
+	return &in
 }
 
-func EmptyFloat64IfNil(v *float64) float64 {
-	if v == nil {
-		return 0.0
-	}
-
-	return *v
-}
-
-func EmptyIntIfNil(v *int) int {
-	if v == nil {
-		return 0
-	}
-
-	return *v
-}
-
-func EmptyInt64IfNil(v *int64) int64 {
-	if v == nil {
-		return 0
-	}
-
-	return *v
-}
-
-func EmptyStringIfNil(s *string) string {
-	if s == nil {
-		return ""
-	}
-
-	return *s
-}
-
-func EmptyTimeIfNil(t *time.Time) time.Time {
-	if t == nil {
-		return time.Time{}
-	}
-
-	return *t
-}
-
-func EmptyUintIfNil(i *uint) uint {
-	if i == nil {
-		return 0
-	}
-
-	return *i
-}
-
-func Time(t time.Time) *time.Time {
-	return &t
+func Box[T Basic](v T) (out *T) {
+	return &v
 }
 
 func IsNil(m interface{}) bool {
