@@ -6,6 +6,42 @@ import (
 	"testing"
 )
 
+func TestReverse(t *testing.T) {
+	type testCase struct {
+		Name string
+		In   []int
+		Out  []int
+	}
+
+	cases := []testCase{
+		{
+			Name: "odd values",
+			In:   []int{1, 2, 3, 4, 5},
+			Out:  []int{5, 4, 3, 2, 1},
+		},
+		{
+			Name: "even values",
+			In:   []int{1, 2, 3, 4},
+			Out:  []int{4, 3, 2, 1},
+		},
+		{
+			Name: "no values",
+			In:   []int{},
+			Out:  []int{},
+		},
+		{
+			Name: "one value",
+			In:   []int{1},
+			Out:  []int{1},
+		},
+	}
+
+	for _, test := range cases {
+		res := funk.Reverse(test.In)
+		assert.Equalf(t, test.Out, res, "Test failed: %s", test.Name)
+	}
+}
+
 func TestChunk(t *testing.T) {
 	type input struct {
 		Sl   []int

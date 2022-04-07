@@ -125,6 +125,7 @@ func ChunkReduce[S ~[]T, T any](sl S, size int) (out [][]T) {
 }
 
 func Reverse[S ~[]T, T any](sl S) (out S) {
+	out = make(S, 0, len(sl))
 	for i := len(sl) - 1; i >= 0; i-- {
 		out = append(out, sl[i])
 	}
