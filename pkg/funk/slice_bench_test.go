@@ -1,5 +1,6 @@
 package funk_test
 
+/*
 import (
 	"math/rand"
 	"testing"
@@ -228,3 +229,4 @@ func staticIntSlice(length int) []int {
 
 	return a
 }
+*/

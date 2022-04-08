@@ -12,15 +12,31 @@ func TestSet_Set(t *testing.T) {
 	s.Set("a")
 	s.Set("b")
 
-	assert.True(t, s.Contains("a"))
-	assert.True(t, s.Contains("b"))
+	assert.Contains(t, s, "a")
+	assert.Contains(t, s, "b")
 }
 
 func TestSet_Contains(t *testing.T) {
 	s := Set[int]{}
 
-	assert.False(t, s.Contains(123))
+	assert.NotContains(t, s, 123)
 
 	s.Set(123)
-	assert.True(t, s.Contains(123))
+	assert.Contains(t, s, 123)
+}
+
+func FuzzSet(f *testing.F) {
+	f.Add([]byte("my byte slice"))
+
+	f.Fuzz(func(t *testing.T, input []byte) {
+		set := Set[byte]{}
+
+		for _, v := range input {
+			set.Set(v)
+		}
+
+		for _, v := range input {
+			assert.Contains(t, set, v)
+		}
+	})
 }

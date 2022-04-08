@@ -4,32 +4,45 @@ import (
 	"math"
 )
 
-func Map[S ~[]T1, T1, T2 any](sl S, op func(T1) T2) (out []T2) {
-	for _, item := range sl {
-		out = append(out, op(item))
+func Map[S ~[]T1, T1, T2 any](original S, op func(T1) T2) []T2 {
+	result := make([]T2, 0, len(original))
+
+	for _, item := range original {
+		result = append(result, op(item))
 	}
 
-	return
+	return result
 }
 
-func Filter[S ~[]T, T any](sl S, pred func(T) bool) (out []T) {
-	for _, item := range sl {
+func Filter[S ~[]T, T any](original S, pred func(T) bool) []T {
+	if len(original) == 0 {
+		return []T{}
+	}
+
+	result := make([]T, 0, len(original))
+
+	for _, item := range original {
 		if pred(item) {
-			out = append(out, item)
+			result = append(result, item)
 		}
 	}
 
-	return
-}
-
-func Reduce[S ~[]T1, T1, T2 any](sl S, op func(T2, T1, int) T2, init T2) (out T2) {
-	out = init
-
-	for idx, item := range sl {
-		out = op(out, item, idx)
+	// minimize slice suffix padding
+	if cap(result)-len(result) > len(result)/10 {
+		result = append(make([]T, 0, len(result)), result[:len(result)]...)
 	}
 
-	return
+	return result
+}
+
+func Reduce[S ~[]T1, T1, T2 any](original S, op func(T2, T1, int) T2, init T2) T2 {
+	result := init
+
+	for i, item := range original {
+		result = op(result, item, i)
+	}
+
+	return result
 }
 
 func ToMap[S ~[]T, T, V any, K comparable](sl S, keyer func(T) (K, V)) map[K]V {
@@ -43,33 +56,34 @@ func ToMap[S ~[]T, T, V any, K comparable](sl S, keyer func(T) (K, V)) map[K]V {
 	return out
 }
 
-func ToSet[S ~[]T, T comparable](sl S) Set[T] {
-	out := make(Set[T], 0)
-	for _, item := range sl {
-		out.Set(item)
+func ToSet[S ~[]T, T comparable](original S) Set[T] {
+	result := make(Set[T], len(original))
+
+	for _, item := range original {
+		result.Set(item)
 	}
 
-	return out
+	return result
 }
 
-func FindFirst[S ~[]T, T comparable](sl S, el T) (out T, ok bool) {
-	for _, item := range sl {
+func FindFirst[S ~[]T, T comparable](sl S, el T) (index int, ok bool) {
+	for i, item := range sl {
 		if item == el {
-			return item, true
+			return i, true
 		}
 	}
 
 	return
 }
 
-func FindFirstFunc[S ~[]T, T any](sl S, pred func(T) bool) (out T, ok bool) {
-	for _, item := range sl {
+func FindFirstFunc[S ~[]T, T any](sl S, pred func(T) bool) (index int, ok bool) {
+	for i, item := range sl {
 		if pred(item) {
-			return item, true
+			return i, true
 		}
 	}
 
-	return
+	return 0, false
 }
 
 func First[S ~[]T, T any](sl S) (out T, ok bool) {
@@ -80,31 +94,27 @@ func First[S ~[]T, T any](sl S) (out T, ok bool) {
 	return
 }
 
-func Chunk[S ~[]T, T any](sl S, size int) (out [][]T) {
-	if size < 1 || len(sl) == 0 {
-		return
+func Chunk[S ~[]T, T any](original S, size int) [][]T {
+	if size < 1 || len(original) == 0 {
+		return nil
 	}
 
-	var chunk []T
-	length := len(sl)
-
-	for i := 0; i < length; i++ {
-		if i%size == 0 || i == 0 {
-			if len(chunk) > 0 {
-				out = append(out, chunk)
-			}
-
-			chunk = []T{}
-		}
-
-		chunk = append(chunk, sl[i])
-
-		if i == length-1 {
-			out = append(out, chunk)
-		}
+	// TODO: the last bucket does not always need size elements, most times it needs less
+	bucketCount := len(original) / size
+	if len(original) % size != 0 {
+		bucketCount++
 	}
 
-	return
+	result := make([][]T, bucketCount)
+	for i := 0; i < bucketCount; i++ {
+		result[i] = make([]T, 0, size)
+	}
+
+	for i := 0; i < len(original); i++ {
+		result[i/size] = append(result[i/size], original[i])
+	}
+
+	return result
 }
 
 func ChunkReduce[S ~[]T, T any](sl S, size int) (out [][]T) {

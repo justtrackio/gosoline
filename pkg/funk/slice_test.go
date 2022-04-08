@@ -7,6 +7,74 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMap(t *testing.T) {
+	input := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	square := func(i int) int {
+		return i * i
+	}
+
+	got := funk.Map(input, square)
+	assert.Equal(t, []int{1, 4, 9, 16, 25, 36, 49, 64, 81}, got)
+}
+
+func TestFilter(t *testing.T) {
+	input := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	even := func(i int) bool {
+		return i%2 == 0
+	}
+
+	got := funk.Filter(input, even)
+	assert.Equal(t, []int{2, 4, 6, 8}, got)
+}
+
+func TestReduce(t *testing.T) {
+	input := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	sum := func(partial int, item int, _ int) int {
+		return partial + item
+	}
+
+	got := funk.Reduce(input, sum, 1000)
+	assert.Equal(t, 1045, got)
+}
+
+func TestToMap(t *testing.T) {
+	input := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	keyer := func(item int) (int, int) {
+		return item % 3, item / 3
+	}
+
+	got := funk.ToMap(input, keyer)
+
+	assert.Equal(t, 3, len(got))
+	assert.Contains(t, got, 0)
+	assert.Contains(t, got, 1)
+	assert.Contains(t, got, 2)
+}
+
+func TestToSet(t *testing.T) {
+	input := []int{1, 2, 3, 1, 2, 3, 1, 2, 3}
+
+	got := funk.ToSet(input)
+
+	assert.Contains(t, got, 1)
+	assert.Contains(t, got, 2)
+	assert.Contains(t, got, 3)
+	assert.NotContains(t, got, 0)
+	assert.NotContains(t, got, 4)
+}
+
+func TestFindFirstFunc(t *testing.T) {
+	input := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	seven := func(item int) bool {
+		return item == 7
+	}
+
+	got, ok := funk.FindFirstFunc(input, seven)
+
+	assert.True(t, ok)
+	assert.Equal(t, 6, got)
+}
+
 func TestReverse(t *testing.T) {
 	type testCase struct {
 		Name string
