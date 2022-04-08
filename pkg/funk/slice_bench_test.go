@@ -1,11 +1,12 @@
 package funk_test
 
 import (
-	"github.com/justtrackio/gosoline/pkg/funk"
-	goFunk "github.com/thoas/go-funk"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/justtrackio/gosoline/pkg/funk"
+	goFunk "github.com/thoas/go-funk"
 )
 
 var uniqResult []int
@@ -98,10 +99,12 @@ func BenchmarkChunkThoas(b *testing.B) {
 	chunkResult = res
 }
 
-var differenceResultA []int
-var differenceResultB []int
-var differenceResultAStruct []testStruct
-var differenceResultBStruct []testStruct
+var (
+	differenceResultA       []int
+	differenceResultB       []int
+	differenceResultAStruct []testStruct
+	differenceResultBStruct []testStruct
+)
 
 func BenchmarkDifferenceRandomStruct(b *testing.B) {
 	var resA, resB []int

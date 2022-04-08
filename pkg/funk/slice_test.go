@@ -1,9 +1,10 @@
 package funk_test
 
 import (
+	"testing"
+
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestReverse(t *testing.T) {
@@ -127,7 +128,6 @@ func TestChunk(t *testing.T) {
 		assert.Equalf(t, test.Out, res, "Test static failed: %s", test.Name)
 		assert.Equalf(t, test.Out, resRed, "Test reduce failed: %s", test.Name)
 	}
-
 }
 
 func TestDifference(t *testing.T) {
