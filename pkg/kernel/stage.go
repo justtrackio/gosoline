@@ -3,6 +3,7 @@ package kernel
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
@@ -12,11 +13,10 @@ import (
 var ErrKernelStopping = fmt.Errorf("stopping kernel")
 
 type stage struct {
+	lck sync.Mutex
 	cfn coffin.Coffin
-	ctx context.Context
 	err error
 
-	running    conc.SignalOnce
 	terminated conc.SignalOnce
 
 	modules modules
@@ -27,14 +27,8 @@ type modules struct {
 	modules map[string]*ModuleState
 }
 
-func newStage(ctx context.Context) *stage {
-	cfn, ctx := coffin.WithContext(ctx)
-
+func newStage() *stage {
 	return &stage{
-		cfn: cfn,
-		ctx: ctx,
-
-		running:    conc.NewSignalOnce(),
 		terminated: conc.NewSignalOnce(),
 
 		modules: modules{
@@ -50,30 +44,43 @@ func (s *stage) run(k *kernel) {
 		return
 	}
 
-	for name, ms := range s.modules.modules {
-		s.cfn.Gof(func(name string, ms *ModuleState) func() error {
-			return func() error {
-				// wait until every routine of the stage was spawned
-				// if a module exists too fast, we have a race condition
-				// regarding the precondition of tomb.Go (namely that no
-				// new routine may be added after the last one exited)
-				<-s.running.Channel()
+	s.lck.Lock()
+	defer s.lck.Unlock()
 
-				return k.runModule(s.ctx, name, ms)
-			}
-		}(name, ms), "panic during running of module %s", name)
-	}
-
-	s.running.Signal()
+	s.cfn = coffin.WithContext(k.ctx, func(cfn coffin.StartingCoffin, ctx context.Context) {
+		for name, ms := range s.modules.modules {
+			cfn.Gof(func(name string, ms *ModuleState) func() error {
+				return func() error {
+					return k.runModule(ctx, name, ms)
+				}
+			}(name, ms), "panic during running of module %s", name)
+		}
+	})
 }
 
 func (s *stage) stopWait(stageIndex int, logger log.Logger) {
-	s.cfn.Kill(ErrKernelStopping)
-	s.err = s.cfn.Wait()
+	s.lck.Lock()
+	cfn := s.cfn
+	s.lck.Unlock()
+
+	if cfn != nil {
+		cfn.Kill(ErrKernelStopping)
+		s.err = cfn.Wait()
+	} else {
+		s.err = fmt.Errorf("can not stop stage which is not yet running")
+	}
 
 	if s.err != nil && s.err != ErrKernelStopping {
 		logger.Error("error during the execution of stage %d: %w", stageIndex, s.err)
 	}
 
 	s.terminated.Signal()
+}
+
+func (s *stage) waitStopping() {
+	s.lck.Lock()
+	cfn := s.cfn
+	s.lck.Unlock()
+
+	<-cfn.Dying()
 }

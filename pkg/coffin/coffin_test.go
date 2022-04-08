@@ -14,12 +14,12 @@ import (
 )
 
 func TestCoffin_New(t *testing.T) {
-	cfn := coffin.New()
 	myErr := errors.New("my error")
-
-	cfn.Gof(func() error {
-		panic(myErr)
-	}, "got this error: %d", 42)
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		cfn.Gof(func() error {
+			panic(myErr)
+		}, "got this error: %d", 42)
+	})
 
 	err := cfn.Wait()
 	assert.Error(t, err)
@@ -45,36 +45,36 @@ func TestCoffin_WithContext(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("iteration %d", i), func(t *testing.T) {
 			assert.NotPanics(t, func() {
-				cfn, ctx := coffin.WithContext(context.Background())
 				c := make(chan struct{})
 				errStop := errors.New("please stop")
+				cfn := coffin.WithContext(context.Background(), func(cfn coffin.StartingCoffin, ctx context.Context) {
+					cfn.GoWithContext(ctx, func(ctx context.Context) error {
+						nestedCfn := coffin.WithContext(ctx, func(nestedCfn coffin.StartingCoffin, cfnCtx context.Context) {
+							nestedCfn.GoWithContext(cfnCtx, func(ctx context.Context) error {
+								ticker := time.NewTicker(time.Millisecond)
+								defer ticker.Stop()
+								count := 0
 
-				cfn.GoWithContext(ctx, func(ctx context.Context) error {
-					nestedCfn, cfnCtx := coffin.WithContext(ctx)
-
-					nestedCfn.GoWithContext(cfnCtx, func(ctx context.Context) error {
-						ticker := time.NewTicker(time.Millisecond)
-						defer ticker.Stop()
-						count := 0
-
-						for {
-							select {
-							case <-ticker.C:
-								count++
-								if count == 3 {
-									close(c)
+								for {
+									select {
+									case <-ticker.C:
+										count++
+										if count == 3 {
+											close(c)
+										}
+									case <-ctx.Done():
+										return nil
+									}
 								}
-							case <-ctx.Done():
-								return nil
-							}
-						}
-					})
+							})
+						})
 
-					err := nestedCfn.Wait()
-					if !errors.Is(err, context.Canceled) {
-						assert.NoError(t, err)
-					}
-					return err
+						err := nestedCfn.Wait()
+						if !errors.Is(err, context.Canceled) {
+							assert.NoError(t, err)
+						}
+						return err
+					})
 				})
 
 				<-c
@@ -89,14 +89,15 @@ func TestCoffin_WithContext(t *testing.T) {
 
 func TestCoffin_WithContext_Cancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	cfn, ctx := coffin.WithContext(ctx)
-	cfn.GoWithContext(ctx, func(ctx context.Context) error {
-		<-ctx.Done()
-		// if we exit this function before the coffin is dying, we might sometimes have it return nil, sometimes context.Canceled
-		// thus, for now we wait until the coffin is dying, so we know it got already killed by context.Canceled
-		<-cfn.Dying()
+	cfn := coffin.WithContext(ctx, func(cfn coffin.StartingCoffin, ctx context.Context) {
+		cfn.GoWithContext(ctx, func(ctx context.Context) error {
+			<-ctx.Done()
+			// if we exit this function before the coffin is dying, we might sometimes have it return nil, sometimes context.Canceled
+			// thus, for now we wait until the coffin is dying, so we know it got already killed by context.Canceled
+			<-cfn.Running().Dying()
 
-		return nil
+			return nil
+		})
 	})
 
 	cancel()
@@ -106,17 +107,18 @@ func TestCoffin_WithContext_Cancel(t *testing.T) {
 }
 
 func TestCoffin_Gof(t *testing.T) {
-	cfn := coffin.New()
-	cfn.Gof(func() error {
-		var err error
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		cfn.Gof(func() error {
+			var err error
 
-		// crash the function!
-		//goland:noinspection GoNilness
-		errString := err.Error()
-		assert.Failf(t, "got unexpected string back", errString)
+			// crash the function!
+			//goland:noinspection GoNilness
+			errString := err.Error()
+			assert.Failf(t, "got unexpected string back", errString)
 
-		return err
-	}, "crashing function")
+			return err
+		}, "crashing function")
+	})
 
 	err := cfn.Wait()
 	assert.Error(t, err)
@@ -124,25 +126,27 @@ func TestCoffin_Gof(t *testing.T) {
 }
 
 func TestCoffin_Wait_Empty(t *testing.T) {
-	cfn := coffin.New()
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		// nop
+	})
 	// check waiting on an empty coffin does not block forever
 	err := cfn.Wait()
 	assert.NoError(t, err)
 }
 
 func TestCoffin_AddAfterTerminated(t *testing.T) {
-	cfn := coffin.New()
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		for i := 0; i < 10; i++ {
+			wg := sync.WaitGroup{}
+			wg.Add(1)
+			cfn.Go(func() error {
+				wg.Done()
 
-	for i := 0; i < 10; i++ {
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		cfn.Go(func() error {
-			wg.Done()
-
-			return nil
-		})
-		wg.Wait()
-	}
+				return nil
+			})
+			wg.Wait()
+		}
+	})
 
 	err := cfn.Wait()
 	assert.NoError(t, err)

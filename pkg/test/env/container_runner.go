@@ -114,8 +114,7 @@ func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner,
 }
 
 func (r *containerRunner) PullContainerImages(skeletons []*componentSkeleton) error {
-	cfn := coffin.New()
-	cfn.Go(func() error {
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
 		for _, skeleton := range skeletons {
 			for _, description := range skeleton.containerDescriptions {
 				description := description
@@ -124,8 +123,6 @@ func (r *containerRunner) PullContainerImages(skeletons []*componentSkeleton) er
 				}, "can not pull container %s", skeleton.id())
 			}
 		}
-
-		return nil
 	})
 
 	return cfn.Wait()
@@ -164,32 +161,33 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 		return err
 	}
 
-	cfn := coffin.New()
-	lck := new(sync.Mutex)
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		lck := new(sync.Mutex)
 
-	for i := range skeletons {
-		for name, description := range skeletons[i].containerDescriptions {
-			name := name
-			description := description
-			skeleton := skeletons[i]
+		for i := range skeletons {
+			for name, description := range skeletons[i].containerDescriptions {
+				name := name
+				description := description
+				skeleton := skeletons[i]
 
-			cfn.Gof(func() error {
-				var err error
-				var container *container
+				cfn.Gof(func() error {
+					var err error
+					var container *container
 
-				if container, err = r.RunContainer(skeleton, name, description); err != nil {
-					return fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
-				}
+					if container, err = r.RunContainer(skeleton, name, description); err != nil {
+						return fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
+					}
 
-				lck.Lock()
-				defer lck.Unlock()
+					lck.Lock()
+					defer lck.Unlock()
 
-				skeleton.containers[name] = container
+					skeleton.containers[name] = container
 
-				return nil
-			}, "can not run container %s", skeleton.id())
+					return nil
+				}, "can not run container %s", skeleton.id())
+			}
 		}
-	}
+	})
 
 	return cfn.Wait()
 }

@@ -242,8 +242,7 @@ ModuleState stores data needed for module management.
 | Factory | ModuleFactory |  | Factory function that will produce this module. |
 | Module | Module |  | Module stores the core functionality of this module. |
 | Config | ModuleConfig |  | Config information regarding starting and stopping this module. |
-| IsRunning | bool |  | IsRunning or not. |
-| Err | error |  | Error obtained by running this module. |
+| isRunning | conc.AtomicBoolean |  |  |
 
 **ModuleConfig**
 

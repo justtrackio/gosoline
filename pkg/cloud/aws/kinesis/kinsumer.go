@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -181,49 +180,68 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 		return fmt.Errorf("failed to load first list of shard ids and register as client: %w", err)
 	}
 
-	cfn, coffinCtx := coffin.WithContext(ctx)
-	cancelableCoffinCtx, cancel := context.WithCancel(coffinCtx)
-	k.stop = cancel
+	cfn := coffin.WithContext(ctx, func(cfn coffin.StartingCoffin, coffinCtx context.Context) {
+		cancelableCoffinCtx, cancel := context.WithCancel(coffinCtx)
+		k.stop = cancel
 
-	cfn.GoWithContext(cancelableCoffinCtx, func(ctx context.Context) error {
-		discoverTicker := k.clock.NewTicker(k.settings.DiscoverFrequency)
-		defer discoverTicker.Stop()
-		defer logger.Info("leaving kinsumer")
+		cfn.GoWithContext(cancelableCoffinCtx, func(ctx context.Context) error {
+			discoverTicker := k.clock.NewTicker(k.settings.DiscoverFrequency)
+			defer discoverTicker.Stop()
+			defer logger.Info("leaving kinsumer")
 
-		consumersWaitGroup, stopConsumers := k.startConsumers(ctx, cfn, runtimeCtx, handler)
-		defer func() {
-			// we need to wrap this in a function like this to ensure we call the LAST value of stopConsumers.
-			// would we only do 'defer stopConsumers()', we would call the FIRST value and thus not actually cancel the
-			// last set of consumers
-			stopConsumers()
-			// no need to wait for consumersWaitGroup here, the coffin will also wait for it to be done
-		}()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-discoverTicker.Chan():
-				if changed, err := k.refreshShards(ctx, runtimeCtx); exec.IsRequestCanceled(err) {
-					// just terminate gracefully, if we return an error, that propagates to the top which we don't want
-					return nil
-				} else if err != nil {
-					return fmt.Errorf("failed to refresh shards: %w", err)
-				} else if !changed {
-					continue
-				}
-
-				logger.Info("discovered new shards or clients, restarting consumers for %d shards", len(runtimeCtx.shardIds))
-				discoverTicker.Stop()
+			consumerCfn, stopConsumers := k.startConsumers(ctx, runtimeCtx, handler)
+			defer func() {
+				// we need to wrap this in a function like this to ensure we call the LAST value of stopConsumers.
+				// would we only do 'defer stopConsumers()', we would call the FIRST value and thus not actually cancel the
+				// last set of consumers
 				stopConsumers()
-				consumersWaitGroup.Wait()
-				// Overwrite the value of stopConsumers with a new one so the above defer statement will call the correct one
-				consumersWaitGroup, stopConsumers = k.startConsumers(ctx, cfn, runtimeCtx, handler)
+			}()
 
-				// reset the ticker, so we don't include the time needed to reset the consumers in the next tick
-				discoverTicker.Reset(k.settings.DiscoverFrequency)
+			for {
+				select {
+				case <-ctx.Done():
+					if err := consumerCfn.Wait(); err != nil && !exec.IsRequestCanceled(err) {
+						return err
+					}
+
+					return nil
+				case <-consumerCfn.Dead():
+					if err := consumerCfn.Wait(); err != nil && !exec.IsRequestCanceled(err) {
+						return err
+					}
+
+					return fmt.Errorf("the shard consumers died without reason")
+				case <-discoverTicker.Chan():
+					if changed, err := k.refreshShards(ctx, runtimeCtx); exec.IsRequestCanceled(err) {
+						// need to call stopConsumers before we exit the method, so we can propagate the error from them
+						// (we don't want to propagate the canceled error from here anyway)
+						stopConsumers()
+
+						if err := consumerCfn.Wait(); err != nil && !exec.IsRequestCanceled(err) {
+							return err
+						}
+
+						return nil
+					} else if err != nil {
+						return fmt.Errorf("failed to refresh shards: %w", err)
+					} else if !changed {
+						continue
+					}
+
+					logger.Info("discovered new shards or clients, restarting consumers for %d shards", len(runtimeCtx.shardIds))
+					discoverTicker.Stop()
+					stopConsumers()
+					if err := consumerCfn.Wait(); err != nil && !exec.IsRequestCanceled(err) {
+						return err
+					}
+					// Overwrite the value of stopConsumers with a new one so the above defer statement will call the correct one
+					consumerCfn, stopConsumers = k.startConsumers(ctx, runtimeCtx, handler)
+
+					// reset the ticker, so we don't include the time needed to reset the consumers in the next tick
+					discoverTicker.Reset(k.settings.DiscoverFrequency)
+				}
 			}
-		}
+		})
 	})
 
 	defer handler.Done()
@@ -344,63 +362,56 @@ func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
 	return shardIds, nil
 }
 
-func (k *kinsumer) startConsumers(ctx context.Context, cfn coffin.Coffin, runtimeCtx *runtimeContext, handler MessageHandler) (*sync.WaitGroup, context.CancelFunc) {
+func (k *kinsumer) startConsumers(ctx context.Context, runtimeCtx *runtimeContext, handler MessageHandler) (coffin.Coffin, context.CancelFunc) {
 	consumerCtx, stopConsumers := context.WithCancel(ctx)
 
-	wg := &sync.WaitGroup{}
-	// add one for the task writing the metrics already, so it never falls to zero while we are spawning tasks and one
-	// task already finishes
-	wg.Add(1)
+	cfn := coffin.WithContext(consumerCtx, func(cfn coffin.StartingCoffin, consumerCtx context.Context) {
+		logger := k.logger.WithContext(consumerCtx)
+		startedConsumers := 0
 
-	logger := k.logger.WithContext(consumerCtx)
-	startedConsumers := 0
+		for i := runtimeCtx.clientIndex; i < len(runtimeCtx.shardIds); i += runtimeCtx.totalClients {
+			shardId := runtimeCtx.shardIds[i]
+			logger := logger.WithFields(log.Fields{
+				"shard_id": shardId,
+			})
+			startedConsumers++
+			cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
+				logger.Info("started consuming shard")
+				defer logger.Info("done consuming shard")
 
-	for i := runtimeCtx.clientIndex; i < len(runtimeCtx.shardIds); i += runtimeCtx.totalClients {
-		wg.Add(1)
-		shardId := runtimeCtx.shardIds[i]
-		logger := logger.WithFields(log.Fields{
-			"shard_id": shardId,
-		})
-		startedConsumers++
-		cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
-			defer wg.Done()
+				if err := k.shardReaderFactory(logger, shardId).Run(ctx, handler.Handle); err != nil {
+					return fmt.Errorf("failed to consume from shard: %w", err)
+				}
 
-			logger.Info("started consuming shard")
-			defer logger.Info("done consuming shard")
-
-			if err := k.shardReaderFactory(logger, shardId).Run(ctx, handler.Handle); err != nil {
-				return fmt.Errorf("failed to consume from shard: %w", err)
-			}
-
-			return nil
-		})
-	}
-
-	// we want to have one consumer / shard (ideally), so we write a metric which is above 100 if there are not enough
-	// tasks running (thus, we should scale), 100, if we have exactly the correct amount, and below 100, if there
-	// are too many tasks at the moment.
-	// division by 0 can't happen because we are one client running, so there is at least us
-	shardTaskRatio := float64(len(runtimeCtx.shardIds)) / float64(runtimeCtx.totalClients) * 100
-	cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
-		defer wg.Done()
-
-		logger.Info("kinsumer started %d consumers for %d shards", startedConsumers, len(runtimeCtx.shardIds))
-		ticker := k.clock.NewTicker(time.Minute)
-		defer ticker.Stop()
-
-		k.writeShardTaskRatioMetric(shardTaskRatio)
-
-		for {
-			select {
-			case <-ctx.Done():
 				return nil
-			case <-ticker.Chan():
-				k.writeShardTaskRatioMetric(shardTaskRatio)
-			}
+			})
 		}
+
+		// we want to have one consumer / shard (ideally), so we write a metric which is above 100 if there are not enough
+		// tasks running (thus, we should scale), 100, if we have exactly the correct amount, and below 100, if there
+		// are too many tasks at the moment.
+		// division by 0 can't happen because we are one client running, so there is at least us
+		shardTaskRatio := float64(len(runtimeCtx.shardIds)) / float64(runtimeCtx.totalClients) * 100
+		cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
+			logger.Info("kinsumer started %d consumers for %d shards", startedConsumers, len(runtimeCtx.shardIds))
+			ticker := k.clock.NewTicker(time.Minute)
+			defer ticker.Stop()
+
+			k.writeShardTaskRatioMetric(shardTaskRatio)
+
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-ticker.Chan():
+					k.writeShardTaskRatioMetric(shardTaskRatio)
+				}
+			}
+		})
+
 	})
 
-	return wg, stopConsumers
+	return cfn, stopConsumers
 }
 
 func (k *kinsumer) writeShardTaskRatioMetric(shardTaskRatio float64) {

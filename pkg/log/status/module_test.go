@@ -24,9 +24,9 @@ func TestModule(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cfn := coffin.New()
-
-	cfn.GoWithContext(ctx, m.Run)
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		cfn.GoWithContext(ctx, m.Run)
+	})
 
 	mgr.StartWork("test", 3).ReportDone()
 	logger.On("Info", "Work item %s: done", "test").Run(func(args mock.Arguments) {
@@ -66,27 +66,27 @@ func NewTestModule(_ context.Context, _ cfg.Config, logger log.Logger) (kernel.M
 func (m *testModule) Run(ctx context.Context) error {
 	// declare a new work item with 3 steps
 	mainHandle := m.statusManager.StartWork("main", 3)
-	cfn := coffin.New()
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		// first step: launch the work method and monitor its success
+		cfn.Go(m.statusManager.Monitor("work 1", m.Work))
+		mainHandle.ReportProgress(1, 0)
 
-	// first step: launch the work method and monitor its success
-	cfn.Go(m.statusManager.Monitor("work 1", m.Work))
-	mainHandle.ReportProgress(1, 0)
+		// second step: launch another work method and also monitor its success
+		cfn.GoWithContext(ctx, m.statusManager.MonitorWithContext("work 2", m.WorkWithContext))
+		mainHandle.ReportProgress(2, 0)
 
-	// second step: launch another work method and also monitor its success
-	cfn.GoWithContext(ctx, m.statusManager.MonitorWithContext("work 2", m.WorkWithContext))
-	mainHandle.ReportProgress(2, 0)
+		// last step: launch a method that publishes two messages for the other workers to consume
+		publishHandle := m.statusManager.StartWork("publish", 2)
+		cfn.Go(publishHandle.Monitor(func() error {
+			m.data <- 1
+			publishHandle.ReportProgress(1, 0)
+			m.data <- 2
+			publishHandle.ReportProgress(2, 0)
 
-	// last step: launch a method that publishes two messages for the other workers to consume
-	publishHandle := m.statusManager.StartWork("publish", 2)
-	cfn.Go(publishHandle.Monitor(func() error {
-		m.data <- 1
-		publishHandle.ReportProgress(1, 0)
-		m.data <- 2
-		publishHandle.ReportProgress(2, 0)
-
-		return nil
-	}))
-	mainHandle.ReportDone()
+			return nil
+		}))
+		mainHandle.ReportDone()
+	})
 
 	// print the report by hand. normally the Module takes care of this when it receives a SIGUSR1.
 	m.statusManager.PrintReport(m.logger)

@@ -203,7 +203,7 @@ func (k *kernel) Run() {
 		close(k.running)
 
 		select {
-		case <-k.waitAllStagesDone().Channel():
+		case <-k.waitAllStagesStopping().Channel():
 			k.Stop("context done")
 		case sig := <-sig:
 			reason := fmt.Sprintf("signal %s", sig.String())
@@ -283,8 +283,7 @@ func (k *kernel) runMultiFactories(ctx context.Context) (err error) {
 }
 
 func (k *kernel) runFactories(ctx context.Context) error {
-	bootCoffin := coffin.New()
-	bootCoffin.Spawn(func(bootCoffin coffin.Coffin) {
+	bootCoffin := coffin.New(func(bootCoffin coffin.StartingCoffin) {
 		bookLck := sync.Mutex{}
 
 		for _, container := range k.moduleSetupContainers {
@@ -313,10 +312,8 @@ func (k *kernel) runFactories(ctx context.Context) error {
 
 func (k *kernel) addModuleToStage(name string, module Module, opts []ModuleOption) error {
 	ms := &ModuleState{
-		Module:    module,
-		Config:    getModuleConfig(module),
-		IsRunning: false,
-		Err:       nil,
+		Module: module,
+		Config: getModuleConfig(module),
 	}
 
 	MergeOptions(opts)(&ms.Config)
@@ -351,7 +348,7 @@ func (k *kernel) addModuleToStage(name string, module Module, opts []ModuleOptio
 }
 
 func (k *kernel) newStage(index int) *stage {
-	s := newStage(k.ctx)
+	s := newStage()
 	k.stages[index] = s
 
 	return s
@@ -396,7 +393,7 @@ func (k *kernel) runModule(ctx context.Context, name string, ms *ModuleState) (m
 
 	k.logger.Info("running %s module %s in stage %d", ms.Config.GetType(), name, ms.Config.Stage)
 
-	ms.IsRunning = true
+	ms.isRunning.Set(true)
 
 	defer func(ms *ModuleState) {
 		// recover any crash from the module - if we let the coffin handle this,
@@ -405,27 +402,22 @@ func (k *kernel) runModule(ctx context.Context, name string, ms *ModuleState) (m
 		panicErr := coffin.ResolveRecovery(recover())
 
 		if panicErr != nil {
-			ms.Err = panicErr
+			moduleErr = panicErr
 		}
 
-		if ms.Err != nil {
-			k.logger.Error("error running %s module %s: %w", ms.Config.GetType(), name, ms.Err)
+		if moduleErr != nil {
+			k.logger.Error("error running %s module %s: %w", ms.Config.GetType(), name, moduleErr)
 		}
 
-		ms.IsRunning = false
+		ms.isRunning.Set(false)
 		if ms.Config.Essential {
 			k.essentialModuleExited(name)
 		} else if !ms.Config.Background {
 			k.foregroundModuleExited()
 		}
-
-		// make sure we are returning the correct error to our caller
-		moduleErr = ms.Err
 	}(ms)
 
-	ms.Err = ms.Module.Run(ctx)
-
-	return ms.Err
+	return ms.Module.Run(ctx)
 }
 
 func (k *kernel) essentialModuleExited(name string) {
@@ -460,7 +452,7 @@ func (k *kernel) waitStopped() {
 			for _, stageIndex := range k.getStageIndices() {
 				s := k.stages[stageIndex]
 				for name, ms := range s.modules.modules {
-					if ms.IsRunning {
+					if ms.isRunning.Get() {
 						k.logger.Info("module in stage %d blocking the shutdown: %s", stageIndex, name)
 					}
 				}
@@ -493,12 +485,12 @@ func (k *kernel) getStageIndices() []int {
 	return keys
 }
 
-func (k *kernel) waitAllStagesDone() conc.SignalOnce {
+func (k *kernel) waitAllStagesStopping() conc.SignalOnce {
 	done := conc.NewSignalOnce()
 
 	go func() {
 		for _, s := range k.stages {
-			<-s.ctx.Done()
+			s.waitStopping()
 		}
 
 		done.Signal()
