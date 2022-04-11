@@ -9,15 +9,15 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type ConsumerCallbackMap[T comparable] map[string]ConsumerCallbackFactory[T]
+type ConsumerCallbackMap map[string]ConsumerCallbackFactory
 
-func NewConsumerFactory[T comparable](callbacks ConsumerCallbackMap[T]) kernel.MultiModuleFactory {
+func NewConsumerFactory(callbacks ConsumerCallbackMap) kernel.MultiModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 		return ConsumerFactory(callbacks)
 	}
 }
 
-func ConsumerFactory[T comparable](callbacks ConsumerCallbackMap[T]) (map[string]kernel.ModuleFactory, error) {
+func ConsumerFactory(callbacks ConsumerCallbackMap) (map[string]kernel.ModuleFactory, error) {
 	modules := make(map[string]kernel.ModuleFactory)
 
 	for name, callback := range callbacks {
