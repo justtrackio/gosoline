@@ -12,17 +12,17 @@ import (
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
-type BatchConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (BatchConsumerCallback, error)
+type BatchConsumerCallbackFactory[T any] func(ctx context.Context, config cfg.Config, logger log.Logger) (BatchConsumerCallback[T], error)
 
 //go:generate mockery --name=BatchConsumerCallback
-type BatchConsumerCallback interface {
-	BaseConsumerCallback
-	Consume(ctx context.Context, models []interface{}, attributes []map[string]interface{}) ([]bool, error)
+type BatchConsumerCallback[T comparable] interface {
+	BaseConsumerCallback[T]
+	Consume(ctx context.Context, models []T, attributes []map[string]interface{}) ([]bool, error)
 }
 
 //go:generate mockery --name=RunnableBatchConsumerCallback
-type RunnableBatchConsumerCallback interface {
-	BatchConsumerCallback
+type RunnableBatchConsumerCallback[T comparable] interface {
+	BatchConsumerCallback[T]
 	RunnableCallback
 }
 
@@ -31,15 +31,15 @@ type BatchConsumerSettings struct {
 	BatchSize   int           `cfg:"batch_size" default:"1"`
 }
 
-type BatchConsumer struct {
+type BatchConsumer[T any] struct {
 	*baseConsumer
 	batch    []*consumerData
-	callback BatchConsumerCallback
+	callback BatchConsumerCallback[T]
 	ticker   *time.Ticker
 	settings *BatchConsumerSettings
 }
 
-func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory) func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+func NewBatchConsumer[T comparable](name string, callbackFactory BatchConsumerCallbackFactory[T]) func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		loggerCallback := logger.WithChannel("consumerCallback")
 		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
@@ -57,7 +57,7 @@ func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory)
 
 		ticker := time.NewTicker(settings.IdleTimeout)
 
-		baseConsumer, err := NewBaseConsumer(ctx, config, logger, name, callback)
+		baseConsumer, err := NewBaseConsumer[T](ctx, config, logger, name, callback)
 		if err != nil {
 			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
 		}
@@ -68,8 +68,8 @@ func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory)
 	}
 }
 
-func NewBatchConsumerWithInterfaces(base *baseConsumer, callback BatchConsumerCallback, ticker *time.Ticker, settings *BatchConsumerSettings) *BatchConsumer {
-	consumer := &BatchConsumer{
+func NewBatchConsumerWithInterfaces[T comparable](base *baseConsumer, callback BatchConsumerCallback[T], ticker *time.Ticker, settings *BatchConsumerSettings) *BatchConsumer[T] {
+	consumer := &BatchConsumer[T]{
 		baseConsumer: base,
 		callback:     callback,
 		ticker:       ticker,
@@ -79,11 +79,11 @@ func NewBatchConsumerWithInterfaces(base *baseConsumer, callback BatchConsumerCa
 	return consumer
 }
 
-func (c *BatchConsumer) Run(kernelCtx context.Context) error {
+func (c *BatchConsumer[T]) Run(kernelCtx context.Context) error {
 	return c.baseConsumer.run(kernelCtx, c.readFromInput)
 }
 
-func (c *BatchConsumer) readFromInput(ctx context.Context) error {
+func (c *BatchConsumer[T]) readFromInput(ctx context.Context) error {
 	logger := c.logger.WithContext(ctx)
 	defer logger.Debug("run is ending")
 	defer c.wg.Done()
@@ -117,7 +117,7 @@ func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 	}
 }
 
-func (c *BatchConsumer) processAggregateMessage(ctx context.Context, cdata *consumerData) {
+func (c *BatchConsumer[T]) processAggregateMessage(ctx context.Context, cdata *consumerData) {
 	batch := make([]*Message, 0)
 	var err error
 
@@ -136,11 +136,11 @@ func (c *BatchConsumer) processAggregateMessage(ctx context.Context, cdata *cons
 	}
 }
 
-func (c *BatchConsumer) processSingleMessage(_ context.Context, cdata *consumerData) {
+func (c *BatchConsumer[T]) processSingleMessage(_ context.Context, cdata *consumerData) {
 	c.batch = append(c.batch, cdata)
 }
 
-func (c *BatchConsumer) processBatch(ctx context.Context) {
+func (c *BatchConsumer[T]) processBatch(ctx context.Context) {
 	batch := c.batch
 
 	c.batch = make([]*consumerData, 0, c.settings.BatchSize)
@@ -150,7 +150,7 @@ func (c *BatchConsumer) processBatch(ctx context.Context) {
 	c.consumeBatch(ctx, batch)
 }
 
-func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData) {
+func (c *BatchConsumer[T]) consumeBatch(ctx context.Context, batch []*consumerData) {
 	defer c.recover(ctx, nil)
 
 	start := c.clock.Now()
@@ -203,7 +203,7 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData)
 	c.writeMetricDurationAndProcessedCount(duration, len(batch))
 }
 
-func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*consumerData) ([]*consumerData, []interface{}, []map[string]interface{}, []tracing.Span) {
+func (c *BatchConsumer[T]) decodeMessages(batchCtx context.Context, batch []*consumerData) ([]*consumerData, []interface{}, []map[string]interface{}, []tracing.Span) {
 	models := make([]interface{}, 0, len(batch))
 	attributes := make([]map[string]interface{}, 0, len(batch))
 	spans := make([]tracing.Span, 0, len(batch))

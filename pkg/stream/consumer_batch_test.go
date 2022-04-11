@@ -32,8 +32,8 @@ type BatchConsumerTestSuite struct {
 
 	input *mocks.AcknowledgeableInput
 
-	callback      *mocks.RunnableBatchConsumerCallback
-	batchConsumer *stream.BatchConsumer
+	callback      *mocks.RunnableBatchConsumerCallback[string]
+	batchConsumer *stream.BatchConsumer[string]
 }
 
 func TestBatchConsumerTestSuite(t *testing.T) {
@@ -74,7 +74,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	}
 
 	baseConsumer := stream.NewBaseConsumerWithInterfaces(uuidGen, logger, mw, tracer, s.input, me, retryHandler, s.callback, settings, "test", cfg.AppId{})
-	s.batchConsumer = stream.NewBatchConsumerWithInterfaces(baseConsumer, s.callback, ticker, batchSettings)
+	s.batchConsumer = stream.NewBatchConsumerWithInterfaces[string](baseConsumer, s.callback, ticker, batchSettings)
 }
 
 func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {

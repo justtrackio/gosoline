@@ -41,7 +41,7 @@ type ConsumerTestSuite struct {
 
 	uuidGen  *uuidMocks.Uuid
 	callback *mocks.RunnableConsumerCallback
-	consumer *stream.Consumer
+	consumer *stream.Consumer[string]
 }
 
 func (s *ConsumerTestSuite) SetupTest() {
@@ -91,7 +91,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 	}
 
 	baseConsumer := stream.NewBaseConsumerWithInterfaces(s.uuidGen, logger, mw, tracer, s.input, me, s.retryHandler, s.callback, settings, "test", cfg.AppId{})
-	s.consumer = stream.NewConsumerWithInterfaces(baseConsumer, s.callback)
+	s.consumer = stream.NewConsumerWithInterfaces[string](baseConsumer, s.callback)
 }
 
 func (s *ConsumerTestSuite) TestGetModelNil() {

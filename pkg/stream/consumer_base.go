@@ -41,8 +41,8 @@ type RunnableCallback interface {
 	Run(ctx context.Context) error
 }
 
-type BaseConsumerCallback interface {
-	GetModel(attributes map[string]interface{}) interface{}
+type BaseConsumerCallback[T comparable] interface {
+	GetModel(attributes map[string]interface{}) T
 }
 
 type ConsumerSettings struct {
@@ -89,7 +89,7 @@ type baseConsumer struct {
 	processed        int32
 }
 
-func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, name string, consumerCallback BaseConsumerCallback) (*baseConsumer, error) {
+func NewBaseConsumer[T any](ctx context.Context, config cfg.Config, logger log.Logger, name string, consumerCallback BaseConsumerCallback[T]) (*baseConsumer, error) {
 	uuidGen := uuid.New()
 	logger = logger.WithChannel(fmt.Sprintf("consumer-%s", name))
 
