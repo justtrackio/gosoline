@@ -15,7 +15,7 @@ type ConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger
 //go:generate mockery --name ConsumerCallback
 type ConsumerCallback interface {
 	BaseConsumerCallback
-	Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error)
+	Consume[T any](ctx context.Context, model T, attributes map[string]interface{}) (bool, error)
 }
 
 //go:generate mockery --name RunnableConsumerCallback
@@ -24,7 +24,7 @@ type RunnableConsumerCallback interface {
 	RunnableCallback
 }
 
-type Consumer struct {
+type Consumer[T any] struct {
 	*baseConsumer
 	callback ConsumerCallback
 }

@@ -42,7 +42,7 @@ type RunnableCallback interface {
 }
 
 type BaseConsumerCallback interface {
-	GetModel(attributes map[string]interface{}) interface{}
+	GetModel[T any](attributes map[string]interface{}) T
 }
 
 type ConsumerSettings struct {

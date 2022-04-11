@@ -25,3 +25,24 @@ func TestUnixNano(t *testing.T) {
 		assert.Equalf(t, now, parsed, "parsing a unix timestamp should result in the same value it was generated from, got %s != %s", now.Format(time.RFC3339Nano), parsed.Format(time.RFC3339Nano))
 	}
 }
+
+func TestFromUnixNano(t *testing.T) {
+	input := int64(1234567891234556789)
+
+	clock.WithUseUTC(true)
+	got := clock.FromUnixNano(input)
+
+	assert.Equal(t, time.Date(2009,2,13,23,31,31,234556789, time.UTC), got)
+}
+
+func FuzzFromUnixNano(f *testing.F) {
+	f.Add(true, int64(1234567891234556789))
+	f.Add(false, int64(-567891234556789))
+
+	f.Fuzz(func(t *testing.T, shouldUseUTC bool, nanoSeconds int64) {
+		clock.WithUseUTC(shouldUseUTC)
+		got := clock.FromUnixNano(nanoSeconds)
+
+		assert.Equal(t, nanoSeconds, got.UnixNano())
+	})
+}
