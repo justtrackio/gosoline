@@ -114,25 +114,19 @@ func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner,
 }
 
 func (r *containerRunner) PullContainerImages(skeletons []*componentSkeleton) error {
-	if len(skeletons) == 0 {
-		return nil
-	}
-
 	cfn := coffin.New()
-	for i := range skeletons {
-		for _, description := range skeletons[i].containerDescriptions {
-			skeleton := skeletons[i]
-			description := description
-			cfn.Gof(func() error {
-				err := r.PullContainerImage(description)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			}, "can not pull container %s", skeleton.id())
+	cfn.Go(func() error {
+		for _, skeleton := range skeletons {
+			for _, description := range skeleton.containerDescriptions {
+				description := description
+				cfn.Gof(func() error {
+					return r.PullContainerImage(description)
+				}, "can not pull container %s", skeleton.id())
+			}
 		}
-	}
+
+		return nil
+	})
 
 	return cfn.Wait()
 }

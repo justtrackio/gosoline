@@ -178,30 +178,34 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 	manualCtx := cfn.Context(context.Background())
 	manualCtx, c.cancel = context.WithCancel(manualCtx)
 
-	cfn.GoWithContextf(manualCtx, c.logConsumeCounter, "panic during counter log")
-	cfn.GoWithContextf(manualCtx, c.runConsumerCallback, "panic during run of the consumerCallback")
-	// run the input after the counters are running to make sure our coffin does not immediately
-	// die just because Run() immediately returns
-	cfn.GoWithContextf(dyingCtx, c.input.Run, "panic during run of the consumer input")
-	cfn.GoWithContextf(dyingCtx, c.retryHandler.Run, "panic during run of the retry handler")
-	cfn.GoWithContextf(dyingCtx, c.ingestData, "panic during shoveling the data")
+	cfn.Go(func() error {
+		cfn.GoWithContextf(manualCtx, c.logConsumeCounter, "panic during counter log")
+		cfn.GoWithContextf(manualCtx, c.runConsumerCallback, "panic during run of the consumerCallback")
+		// run the input after the counters are running to make sure our coffin does not immediately
+		// die just because Run() immediately returns
+		cfn.GoWithContextf(dyingCtx, c.input.Run, "panic during run of the consumer input")
+		cfn.GoWithContextf(dyingCtx, c.retryHandler.Run, "panic during run of the retry handler")
+		cfn.GoWithContextf(dyingCtx, c.ingestData, "panic during shoveling the data")
 
-	c.wg.Add(c.settings.RunnerCount)
-	for i := 0; i < c.settings.RunnerCount; i++ {
-		cfn.GoWithContextf(manualCtx, inputRunner, "panic during consuming")
-	}
-
-	cfn.Gof(c.stopConsuming, "panic during stopping the consuming")
-
-	cfn.GoWithContext(manualCtx, func(manualCtx context.Context) error {
-		// wait for kernel or coffin cancel...
-		select {
-		case <-manualCtx.Done():
-		case <-kernelCtx.Done():
+		c.wg.Add(c.settings.RunnerCount)
+		for i := 0; i < c.settings.RunnerCount; i++ {
+			cfn.GoWithContextf(manualCtx, inputRunner, "panic during consuming")
 		}
 
-		// and stop the input
-		c.stopIncomingData()
+		cfn.Gof(c.stopConsuming, "panic during stopping the consuming")
+
+		cfn.GoWithContext(manualCtx, func(manualCtx context.Context) error {
+			// wait for kernel or coffin cancel...
+			select {
+			case <-manualCtx.Done():
+			case <-kernelCtx.Done():
+			}
+
+			// and stop the input
+			c.stopIncomingData()
+
+			return nil
+		})
 
 		return nil
 	})

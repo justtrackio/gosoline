@@ -319,7 +319,7 @@ func (m *MapX) Merge(key string, source interface{}, options ...MapOption) {
 
 		mapIter = sourceValue.MapRange()
 		for mapIter.Next() {
-			elementKey = fmt.Sprintf("%s.%s", key, mapIter.Key())
+			elementKey = fmt.Sprintf("%s.%v", key, mapIter.Key())
 			elementValue = mapIter.Value().Interface()
 
 			m.Merge(elementKey, elementValue, options...)
