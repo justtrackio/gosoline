@@ -2,10 +2,11 @@ package mapx
 
 import (
 	"fmt"
-	"github.com/spf13/cast"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/spf13/cast"
 )
 
 type StructKey struct {
@@ -479,7 +480,7 @@ func (s *Struct) doWriteMap(cfg string, targetValue reflect.Value, sourceMap *Ma
 			key = reflect.ValueOf(keyValue)
 		}
 
-		selector := fmt.Sprintf("%s.%s", cfg, key.String())
+		selector := fmt.Sprintf("%s.%v", cfg, key.Interface())
 		elementData := sourceMap.Get(selector)
 
 		if elementData.IsMap() {

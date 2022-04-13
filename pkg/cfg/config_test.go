@@ -443,6 +443,33 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Map() {
 	s.Equal(configMap{Foo: "env", Def: 3}, cm["key3"])
 }
 
+func (s *ConfigTestSuite) TestConfig_UnmarshalKey_MapWithIntKeys() {
+	type configMap struct {
+		Map map[uint]string `cfg:"map"`
+	}
+
+	s.setupConfigValues(map[string]interface{}{
+		"data": map[string]interface{}{
+			"map": map[int]interface{}{
+				1: "foo",
+				2: "bar",
+				3: "baz",
+			},
+		},
+	})
+
+	cm := configMap{}
+	s.config.UnmarshalKey("data", &cm)
+
+	s.Equal(configMap{
+		Map: map[uint]string{
+			1: "foo",
+			2: "bar",
+			3: "baz",
+		},
+	}, cm)
+}
+
 func (s *ConfigTestSuite) TestConfig_UnmarshalKeyEnvironment() {
 	type configMap struct {
 		Foo    string `cfg:"foo"`

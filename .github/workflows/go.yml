@@ -113,10 +113,10 @@ jobs:
     name: go test (race)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.17
+      - name: Set up Go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
@@ -149,10 +149,10 @@ jobs:
     name: go test (integration, race)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.17
+      - name: Set up Go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2

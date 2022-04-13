@@ -339,9 +339,10 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 		MillisBehindLatest: aws.Int64(0),
 		NextShardIterator:  aws.String("next iterator"),
 	}, nil).Run(func(args mock.Arguments) {
+		testClock := s.clock
 		go func() {
-			s.clock.BlockUntilTimers(1)
-			s.clock.Advance(time.Second)
+			testClock.BlockUntilTimers(1)
+			testClock.Advance(time.Second)
 		}()
 	}).Once()
 
@@ -349,9 +350,10 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 		ShardIterator: aws.String("next iterator"),
 		Limit:         aws.Int32(10000),
 	}).Run(func(args mock.Arguments) {
+		testClock := s.clock
 		go func() {
-			s.clock.BlockUntilTimers(1)
-			s.clock.Advance(time.Second)
+			testClock.BlockUntilTimers(1)
+			testClock.Advance(time.Second)
 		}()
 	}).Return(&kinesis.GetRecordsOutput{
 		Records: []types.Record{
@@ -391,9 +393,10 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Once().Run(func(args mock.Arguments) {
 		// need to wait with this call until we wrote the process duration - otherwise we could (in rare events) advance the
 		// time while we measure the process duration, causing 10s instead of 0 to be said duration
+		testClock := s.clock
 		go func() {
-			s.clock.BlockUntilTickers(2)
-			s.clock.Advance(time.Second * 10)
+			testClock.BlockUntilTickers(2)
+			testClock.Advance(time.Second * 10)
 		}()
 	})
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Twice()
@@ -473,9 +476,10 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithWait() {
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
 	}).Run(func(args mock.Arguments) {
+		testClock := s.clock
 		go func() {
-			s.clock.BlockUntilTimers(1)
-			s.clock.Advance(time.Second)
+			testClock.BlockUntilTimers(1)
+			testClock.Advance(time.Second)
 		}()
 	}).Return(&kinesis.GetRecordsOutput{
 		Records: []types.Record{
