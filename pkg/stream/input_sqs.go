@@ -152,7 +152,11 @@ func (i *sqsInput) Stop() {
 	atomic.StoreInt32(&i.stopped, 1)
 }
 
-func (i *sqsInput) Ack(ctx context.Context, msg *Message) error {
+func (i *sqsInput) Ack(ctx context.Context, msg *Message, ack bool) error {
+	if !ack {
+		return nil
+	}
+
 	var ok bool
 	var receiptHandleInterface interface{}
 	var receiptHandleString string
@@ -172,13 +176,20 @@ func (i *sqsInput) Ack(ctx context.Context, msg *Message) error {
 	return i.queue.DeleteMessage(ctx, receiptHandleString)
 }
 
-func (i *sqsInput) AckBatch(ctx context.Context, msgs []*Message) error {
+func (i *sqsInput) AckBatch(ctx context.Context, msgs []*Message, acks []bool) error {
 	receiptHandles := make([]string, 0, len(msgs))
 	multiError := new(multierror.Error)
 
-	for _, msg := range msgs {
-		receiptHandleInterface, ok := msg.Attributes[AttributeSqsReceiptHandle]
+	for i := range msgs {
+		var (
+			msg = msgs[i]
+			ack = acks[i]
+		)
+		if !ack {
+			continue
+		}
 
+		receiptHandleInterface, ok := msg.Attributes[AttributeSqsReceiptHandle]
 		if !ok {
 			multiError = multierror.Append(multiError, fmt.Errorf("the message has no attribute %s", AttributeSqsReceiptHandle))
 

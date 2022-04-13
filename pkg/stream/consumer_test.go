@@ -27,7 +27,7 @@ type ConsumerTestSuite struct {
 	kernelCtx    context.Context
 	kernelCancel context.CancelFunc
 
-	input         *mocks.Input
+	input         *mocks.AcknowledgeableInput
 	inputData     chan *stream.Message
 	inputDataOut  <-chan *stream.Message
 	inputStopOnce sync.Once
@@ -56,7 +56,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 		})
 	}
 
-	s.input = new(mocks.Input)
+	s.input = new(mocks.AcknowledgeableInput)
 	s.input.On("Data").Return(s.inputDataOut)
 	s.input.On("Stop").Run(s.inputStop).Once()
 
@@ -103,6 +103,10 @@ func (s *ConsumerTestSuite) TestGetModelNil() {
 		s.kernelCancel()
 	}).Return(nil)
 
+	s.input.
+		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
+		Return(nil).
+		Once()
 	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).Return(func(_ map[string]interface{}) interface{} {
 		return nil
 	})
@@ -126,10 +130,17 @@ func (s *ConsumerTestSuite) TestRun() {
 	}).Return(nil)
 
 	consumed := make([]*string, 0)
+
+	ack := true
+	s.input.
+		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), ack).
+		Return(nil).
+		Times(3)
+
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
 		Run(func(args mock.Arguments) {
 			consumed = append(consumed, args[1].(*string))
-		}).Return(true, nil)
+		}).Return(ack, nil)
 
 	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).
 		Return(func(_ map[string]interface{}) interface{} {
@@ -192,6 +203,18 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 	s.callback.
 		On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Return(nil)
+
+	// 1 message should be acked.
+	s.input.
+		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
+		Return(nil).
+		Once()
+	// 1 message should be nacked due to panic.
+	s.input.
+		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
+		Return(nil).
+		Once()
+
 	s.callback.
 		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
 		Run(func(args mock.Arguments) {
@@ -270,12 +293,18 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
 	expectedAttributes1 := map[string]interface{}{"attr1": "a"}
+
+	ack := true
+	s.input.
+		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), ack).
+		Return(nil).
+		Once()
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), expectedAttributes1).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*string)
 			consumed = append(consumed, *ptr)
 		}).
-		Return(true, nil)
+		Return(ack, nil)
 
 	expectedModelAttributes1 := map[string]interface{}{"attr1": "a", "encoding": "application/json"}
 	s.callback.On("GetModel", expectedModelAttributes1).
@@ -330,6 +359,13 @@ func (s *ConsumerTestSuite) TestRunWithRetry() {
 		Return(nil)
 
 	consumed := make([]string, 0)
+
+	// If a single sub-message in an aggregate fails then aggregate should be nacked.
+	s.input.
+		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
+		Return(nil).
+		Once()
+
 	s.callback.
 		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
 		Run(func(args mock.Arguments) {

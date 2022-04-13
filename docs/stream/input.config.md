@@ -85,6 +85,35 @@ stream:
         max_receive_count: 3
       runner_count: 2
 ```
+
+#Kafka
+```yaml
+kafka:
+  connection:
+    default:
+      bootstrap:
+        [
+          "bootstrap:9094",
+        ]
+      insecure_skip_verify: true
+      username: username
+      password: password
+
+stream:
+  output:
+    datalake:
+      type: kafka
+      connection: default
+      topic: "topic"
+      async_write: true
+
+stream:
+  input:
+    datalake:
+      type: kafka
+      connection: default
+      topic: "topic"
+```
  
 ##type
 **type**: `string`, **default**: `null` **validate**: `required`

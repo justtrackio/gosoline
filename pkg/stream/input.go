@@ -25,10 +25,10 @@ type Input interface {
 type AcknowledgeableInput interface {
 	Input
 	// Ack acknowledges a single message. If possible, prefer calling AckBatch as it is more efficient.
-	Ack(ctx context.Context, msg *Message) error
+	Ack(ctx context.Context, msg *Message, ack bool) error
 	// AckBatch does the same as calling Ack for every single message would, but it might use fewer calls to an external
 	// service.
-	AckBatch(ctx context.Context, msgs []*Message) error
+	AckBatch(ctx context.Context, msgs []*Message, acks []bool) error
 }
 
 type RetryableInput interface {

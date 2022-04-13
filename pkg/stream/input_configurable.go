@@ -18,6 +18,7 @@ const (
 	InputTypeRedis    = "redis"
 	InputTypeSns      = "sns"
 	InputTypeSqs      = "sqs"
+	InputTypeKafka    = "kafka"
 )
 
 type InputFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error)
@@ -29,6 +30,7 @@ var inputFactories = map[string]InputFactory{
 	InputTypeRedis:    newRedisInputFromConfig,
 	InputTypeSns:      newSnsInputFromConfig,
 	InputTypeSqs:      newSqsInputFromConfig,
+	InputTypeKafka:    newKafkaInputFromConfig,
 }
 
 func SetInputFactory(typ string, factory InputFactory) {
@@ -84,6 +86,11 @@ func newInMemoryInputFromConfig(_ context.Context, config cfg.Config, _ log.Logg
 	config.UnmarshalKey(key, settings)
 
 	return ProvideInMemoryInput(name, settings), nil
+}
+
+func newKafkaInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
+	key := ConfigurableInputKey(name)
+	return NewKafkaInput(ctx, config, logger, key)
 }
 
 type KinesisInputConfiguration struct {
