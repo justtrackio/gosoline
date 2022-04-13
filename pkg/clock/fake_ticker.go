@@ -50,11 +50,11 @@ func (f *fakeTicker) Reset(d time.Duration) {
 		panic(errors.New("non-positive interval for Reset"))
 	}
 
-	f.remaining = d
-	f.duration = d
-
 	f.clock.lck.Lock()
 	defer f.clock.lck.Unlock()
+
+	f.remaining = d
+	f.duration = d
 
 	f.clock.blockOnTickers = f.clock.notifyBlockers(f.clock.blockOnTickers, f.clock.waitingTickers())
 }

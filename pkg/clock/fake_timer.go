@@ -44,10 +44,10 @@ func (f *fakeTimer) Stop() bool {
 }
 
 func (f *fakeTimer) Reset(d time.Duration) {
-	f.remaining = d
-
 	f.clock.lck.Lock()
 	defer f.clock.lck.Unlock()
+
+	f.remaining = d
 
 	// if we are reset to <= 0, we have to trigger a tick immediately
 	if d <= 0 {
