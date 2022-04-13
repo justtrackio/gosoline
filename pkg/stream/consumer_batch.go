@@ -187,15 +187,13 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData)
 
 	ackMessages := make([]*consumerData, 0, len(batch))
 	for i, ack := range acks {
-		if ack {
-			ackMessages = append(ackMessages, batch[i])
-			continue
+		ackMessages = append(ackMessages, batch[i])
+		if !ack {
+			c.retry(batchCtx, batch[i].msg)
 		}
-
-		c.retry(batchCtx, batch[i].msg)
 	}
 
-	c.AcknowledgeBatch(batchCtx, ackMessages)
+	c.AcknowledgeBatch(batchCtx, ackMessages, acks)
 
 	duration := c.clock.Now().Sub(start)
 	atomic.AddInt32(&c.processed, int32(len(ackMessages)))

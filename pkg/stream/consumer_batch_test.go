@@ -91,9 +91,9 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 		}).Return(nil)
 
 	processed := 0
-
+	acks := []bool{true, false, true}
 	s.input.
-		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message")).
+		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(args mock.Arguments) {
 			msgs := args[1].([]*stream.Message)
 			processed = len(msgs)
@@ -101,7 +101,6 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 		Return(nil).
 		Once()
 
-	acks := []bool{true, true, true}
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]interface {}")).
 		Return(acks, nil)
 
@@ -137,9 +136,9 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 		}).Return(nil)
 
 	processed := 0
-
+	acks := []bool{true, false, true, false, true}
 	s.input.
-		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message")).
+		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(args mock.Arguments) {
 			msgs := args[1].([]*stream.Message)
 			processed = len(msgs)
@@ -148,7 +147,6 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 		}).
 		Return(nil)
 
-	acks := []bool{true, true, true, true, true}
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]interface {}")).
 		Return(acks, nil)
 
@@ -237,8 +235,9 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 		Once()
 
 	processed := 0
+	acks := []bool{true, true}
 	s.input.
-		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message")).
+		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(args mock.Arguments) {
 			msgs := args[1].([]*stream.Message)
 			processed = len(msgs)
@@ -250,7 +249,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 		Return(nil)
 
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]interface {}")).
-		Return([]bool{true, true}, nil)
+		Return(acks, nil)
 
 	s.callback.
 		On("GetModel", mock.AnythingOfType("map[string]interface {}")).

@@ -18,6 +18,7 @@ const (
 	OutputTypeRedis    = "redis"
 	OutputTypeSns      = "sns"
 	OutputTypeSqs      = "sqs"
+	OutputTypeKafka    = "kafka"
 )
 
 type BaseOutputConfigurationAware interface {
@@ -46,6 +47,7 @@ func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Lo
 		OutputTypeRedis:    newRedisListOutputFromConfig,
 		OutputTypeSns:      newSnsOutputFromConfig,
 		OutputTypeSqs:      newSqsOutputFromConfig,
+		OutputTypeKafka:    newKafkaOutputFromConfig,
 	}
 
 	key := fmt.Sprintf("%s.type", ConfigurableOutputKey(name))
@@ -77,6 +79,11 @@ func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 	}
 
 	return NewFileOutput(config, logger, settings), nil
+}
+
+func newKafkaOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
+	key := ConfigurableOutputKey(name)
+	return NewKafkaOutput(ctx, config, logger, key)
 }
 
 type InMemoryOutputConfiguration struct {

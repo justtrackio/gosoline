@@ -18,7 +18,7 @@ func NewConsumerAcknowledgeWithInterfaces(logger log.Logger, input Input) Consum
 	}
 }
 
-func (c *ConsumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerData) {
+func (c *ConsumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerData, ack bool) {
 	var ok bool
 	var ackInput AcknowledgeableInput
 
@@ -26,33 +26,43 @@ func (c *ConsumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerDa
 		return
 	}
 
-	if err := ackInput.Ack(ctx, cdata.msg); err != nil {
+	if err := ackInput.Ack(ctx, cdata.msg, ack); err != nil {
 		c.logger.WithContext(ctx).Error("could not acknowledge the message: %w", err)
 	}
 }
 
-func (c *ConsumerAcknowledge) AcknowledgeBatch(ctx context.Context, cdata []*consumerData) {
+func (c *ConsumerAcknowledge) AcknowledgeBatch(ctx context.Context, cdata []*consumerData, acks []bool) {
 	var ok bool
 	var ackInput AcknowledgeableInput
 
-	ackInputs := make(map[string]AcknowledgeableInput)
-	ackMsgs := make(map[string][]*Message)
+	var (
+		inputs    = make(map[string]AcknowledgeableInput)
+		inputMsgs = make(map[string][]*Message)
+		inputAcks = make(map[string][]bool)
+	)
 
-	for _, data := range cdata {
+	for i := range cdata {
+		var (
+			data = cdata[i]
+			ack  = acks[i]
+		)
+
 		if ackInput, ok = data.input.(AcknowledgeableInput); !ok {
 			continue
 		}
 
-		if _, ok = ackInputs[data.src]; !ok {
-			ackInputs[data.src] = ackInput
-			ackMsgs[data.src] = make([]*Message, 0)
+		if _, ok = inputs[data.src]; !ok {
+			inputs[data.src] = ackInput
+			inputMsgs[data.src] = make([]*Message, 0)
+			inputAcks[data.src] = make([]bool, 0)
 		}
 
-		ackMsgs[data.src] = append(ackMsgs[data.src], data.msg)
+		inputMsgs[data.src] = append(inputMsgs[data.src], data.msg)
+		inputAcks[data.src] = append(inputAcks[data.src], ack)
 	}
 
-	for src, input := range ackInputs {
-		if err := input.AckBatch(ctx, ackMsgs[src]); err != nil {
+	for src, input := range inputs {
+		if err := input.AckBatch(ctx, inputMsgs[src], inputAcks[src]); err != nil {
 			c.logger.WithContext(ctx).Error("could not acknowledge the messages: %w", err)
 		}
 	}

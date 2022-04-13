@@ -24,6 +24,7 @@ type ProducerSettings struct {
 	Daemon      ProducerDaemonSettings `cfg:"daemon"`
 }
 
+//go:generate mockery --name Producer
 type Producer interface {
 	WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]interface{}) error
 	Write(ctx context.Context, models interface{}, attributeSets ...map[string]interface{}) error

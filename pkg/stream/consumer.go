@@ -98,10 +98,9 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 		return
 	}
 
-	c.Acknowledge(ctx, cdata)
-
+	c.Acknowledge(ctx, cdata, true)
 	for _, m := range batch {
-		c.process(ctx, m)
+		_ = c.process(ctx, m)
 	}
 
 	duration := c.clock.Now().Sub(start)
@@ -113,9 +112,8 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData) {
 	start := c.clock.Now()
 
-	if ack := c.process(ctx, cdata.msg); ack {
-		c.Acknowledge(ctx, cdata)
-	}
+	ack := c.process(ctx, cdata.msg)
+	c.Acknowledge(ctx, cdata, ack)
 
 	duration := c.clock.Now().Sub(start)
 	atomic.AddInt32(&c.processed, 1)
@@ -148,11 +146,9 @@ func (c *Consumer) process(ctx context.Context, msg *Message) bool {
 		c.handleError(ctx, err, "an error occurred during the consume operation")
 	}
 
-	if ack {
-		return true
+	if !ack {
+		c.retry(ctx, msg)
 	}
-
-	c.retry(ctx, msg)
 
 	return ack
 }
