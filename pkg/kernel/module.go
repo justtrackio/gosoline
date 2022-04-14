@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/kernel/common"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -74,9 +75,7 @@ type ModuleState struct {
 	// Config information regarding starting and stopping this module.
 	Config ModuleConfig
 	// IsRunning or not.
-	IsRunning bool
-	// Error obtained by running this module.
-	Err error
+	isRunning conc.AtomicBoolean
 }
 
 // ModuleConfig stores attributes used in starting and stopping a module.

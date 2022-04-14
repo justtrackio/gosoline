@@ -1,6 +1,8 @@
 package clock
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+)
 
 var Provider = NewRealClock()
 var useUTCEnabled int32 = 0
@@ -15,7 +17,7 @@ func WithUseUTC(useUTC bool) {
 		enabled = 1
 	}
 
-	atomic.SwapInt32(&useUTCEnabled, enabled)
+	atomic.StoreInt32(&useUTCEnabled, enabled)
 }
 
 func shouldUseUTC() bool {

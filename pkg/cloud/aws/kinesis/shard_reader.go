@@ -96,31 +96,32 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 		return fmt.Errorf("failed to get shard iterator: %w", err)
 	}
 
-	cfn, cfnCtx := coffin.WithContext(ctx)
-	persisterCtx, cancelPersister := exec.WithManualCancelContext(cfnCtx)
-	millisecondsBehindChan := make(chan float64)
-	cfn.Go(func() error {
-		// we don't use the context here because even when the context gets canceled, we need to keep draining the
-		// millisecondsBehindChan until it is closed - otherwise we might block the producer on the other side
-		s.reportMillisecondsBehind(millisecondsBehindChan)
+	cfn := coffin.WithContext(ctx, func(cfn coffin.StartingCoffin, cfnCtx context.Context) {
+		persisterCtx, cancelPersister := exec.WithManualCancelContext(cfnCtx)
+		millisecondsBehindChan := make(chan float64)
+		cfn.Go(func() error {
+			// we don't use the context here because even when the context gets canceled, we need to keep draining the
+			// millisecondsBehindChan until it is closed - otherwise we might block the producer on the other side
+			s.reportMillisecondsBehind(millisecondsBehindChan)
 
-		return nil
-	})
-	cfn.GoWithContext(persisterCtx, func(ctx context.Context) error {
-		return s.runPersister(ctx, releaseCtx)
-	})
-	cfn.GoWithContext(cfnCtx, func(ctx context.Context) (readerErr error) {
-		// similar to the outer release function, this additionally cancels the persister (and has a different error to append to)
-		// and closes the channel to report how many milliseconds we lag behind
-		defer func() {
-			close(millisecondsBehindChan)
-			cancelPersister()
-			if err := s.releaseCheckpoint(releaseCtx); err != nil {
-				readerErr = multierror.Append(readerErr, fmt.Errorf("failed to release checkpoint for shard: %w", err))
-			}
-		}()
+			return nil
+		})
+		cfn.GoWithContext(persisterCtx, func(ctx context.Context) error {
+			return s.runPersister(ctx, releaseCtx)
+		})
+		cfn.GoWithContext(cfnCtx, func(ctx context.Context) (readerErr error) {
+			// similar to the outer release function, this additionally cancels the persister (and has a different error to append to)
+			// and closes the channel to report how many milliseconds we lag behind
+			defer func() {
+				close(millisecondsBehindChan)
+				cancelPersister()
+				if err := s.releaseCheckpoint(releaseCtx); err != nil {
+					readerErr = multierror.Append(readerErr, fmt.Errorf("failed to release checkpoint for shard: %w", err))
+				}
+			}()
 
-		return s.iterateRecords(ctx, millisecondsBehindChan, iterator, handler)
+			return s.iterateRecords(ctx, millisecondsBehindChan, iterator, handler)
+		})
 	})
 
 	// if we get a canceled error, drop it here. We used to do this at our caller, but this makes a test harder:

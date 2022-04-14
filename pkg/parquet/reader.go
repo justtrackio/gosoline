@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
@@ -19,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 	parquetS3 "github.com/xitongsys/parquet-go-source/s3"
 	"github.com/xitongsys/parquet-go/reader"
-	"golang.org/x/sync/semaphore"
 )
 
 type Progress struct {
@@ -131,54 +131,60 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 		return nil
 	}
 
-	stop := false
+	var stop conc.AtomicBoolean
 
-	sem := semaphore.NewWeighted(int64(10))
-	cfn := coffin.New()
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		numWorkers := 10
+		c := make(chan int, numWorkers)
 
-	for i, file := range files {
-		err := sem.Acquire(ctx, int64(1))
-		if err != nil {
-			return err
-		}
+		cfn.Go(func() error {
+			defer close(c)
+			for i := range files {
+				c <- i
+			}
 
-		cfn.GoWithContextf(ctx, func(i int, file string) func(ctx context.Context) error {
-			return func(ctx context.Context) error {
-				defer sem.Release(int64(1))
+			return nil
+		})
 
-				if stop {
-					return nil
+		for n := 0; n < numWorkers; n++ {
+			cfn.GoWithContextf(ctx, func(ctx context.Context) error {
+				for i := range c {
+					if stop.Get() {
+						return nil
+					}
+
+					file := files[i]
+
+					r.logger.Debug("reading file %d of %d: %s", i, fileCount, file)
+
+					decoded := refl.CreatePointerToSliceOfTypeAndSize(target, 0)
+
+					err := r.ReadFileIntoTarget(ctx, file, decoded, -1, 0)
+					if err != nil {
+						return fmt.Errorf("can not read file %s: %w", file, err)
+					}
+
+					if err != nil {
+						return fmt.Errorf("can not decode results in file %s: %w", file, err)
+					}
+
+					ok, err := callback(Progress{FileCount: fileCount, Current: i}, decoded)
+					if err != nil {
+						return fmt.Errorf("callback failed: %w", err)
+					}
+
+					if !ok {
+						stop.Set(true)
+						return nil
+					}
+
+					r.recorder.RecordFile(r.getBucketName(), file)
 				}
-
-				r.logger.Debug("reading file %d of %d: %s", i, fileCount, file)
-
-				decoded := refl.CreatePointerToSliceOfTypeAndSize(target, 0)
-
-				err := r.ReadFileIntoTarget(ctx, file, decoded, -1, 0)
-				if err != nil {
-					return fmt.Errorf("can not read file %s: %w", file, err)
-				}
-
-				if err != nil {
-					return fmt.Errorf("can not decode results in file %s: %w", file, err)
-				}
-
-				ok, err := callback(Progress{FileCount: fileCount, Current: i}, decoded)
-				if err != nil {
-					return fmt.Errorf("callback failed: %w", err)
-				}
-
-				if !ok {
-					stop = true
-					return nil
-				}
-
-				r.recorder.RecordFile(r.getBucketName(), file)
 
 				return nil
-			}
-		}(i, file), "panic during file read")
-	}
+			}, "panic during file read")
+		}
+	})
 
 	return cfn.Wait()
 }

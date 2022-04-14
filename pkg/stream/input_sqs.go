@@ -45,7 +45,6 @@ type sqsInput struct {
 	settings    *SqsInputSettings
 	unmarshaler UnmarshallerFunc
 
-	cfn     coffin.Coffin
 	channel chan *Message
 	stopped int32
 }
@@ -88,7 +87,6 @@ func NewSqsInputWithInterfaces(logger log.Logger, queue sqs.Queue, unmarshaller 
 		queue:       queue,
 		settings:    settings,
 		unmarshaler: unmarshaller,
-		cfn:         coffin.New(),
 		channel:     make(chan *Message),
 	}
 }
@@ -103,16 +101,16 @@ func (i *sqsInput) Run(ctx context.Context) error {
 
 	i.logger.Info("starting sqs input with %d runners", i.settings.RunnerCount)
 
-	for j := 0; j < i.settings.RunnerCount; j++ {
-		i.cfn.Gof(func() error {
-			return i.runLoop(ctx)
-		}, "panic in sqs input runner")
-	}
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		for j := 0; j < i.settings.RunnerCount; j++ {
+			cfn.GoWithContextf(ctx, i.runLoop, "panic in sqs input runner")
+		}
+	})
 
-	<-i.cfn.Dying()
+	<-cfn.Dying()
 	i.Stop()
 
-	return i.cfn.Wait()
+	return cfn.Wait()
 }
 
 func (i *sqsInput) runLoop(ctx context.Context) error {

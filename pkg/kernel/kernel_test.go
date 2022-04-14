@@ -117,7 +117,7 @@ func TestBootFailure(t *testing.T) {
 	config, logger, _ := createMocks()
 
 	logger.On("Info", mock.Anything)
-	logger.On("Error", "error building modules: %w", mock.AnythingOfType("*errors.withStack"))
+	logger.On("Error", "error building modules: %w", mock.AnythingOfType("*fmt.wrapError"))
 
 	assert.NotPanics(t, func() {
 		k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeErr))
@@ -396,26 +396,26 @@ type realModule struct {
 }
 
 func (m *realModule) Run(ctx context.Context) error {
-	cfn, cfnCtx := coffin.WithContext(ctx)
+	cfn := coffin.WithContext(ctx, func(cfn coffin.StartingCoffin, cfnCtx context.Context) {
+		cfn.GoWithContext(cfnCtx, func(ctx context.Context) error {
+			ticker := time.NewTicker(time.Millisecond * 2)
+			defer ticker.Stop()
 
-	cfn.GoWithContext(cfnCtx, func(ctx context.Context) error {
-		ticker := time.NewTicker(time.Millisecond * 2)
-		defer ticker.Stop()
+			counter := 0
 
-		counter := 0
-
-		for {
-			select {
-			case <-ticker.C:
-				counter++
-				if counter == 3 {
-					err := unix.Kill(unix.Getpid(), unix.SIGTERM)
-					assert.NoError(m.t, err)
+			for {
+				select {
+				case <-ticker.C:
+					counter++
+					if counter == 3 {
+						err := unix.Kill(unix.Getpid(), unix.SIGTERM)
+						assert.NoError(m.t, err)
+					}
+				case <-ctx.Done():
+					return nil
 				}
-			case <-ctx.Done():
-				return nil
 			}
-		}
+		})
 	})
 
 	err := cfn.Wait()
@@ -483,21 +483,23 @@ func (s *slowExitModule) Run(_ context.Context) error {
 }
 
 func TestModuleFastShutdown(t *testing.T) {
-	config, logger, _ := createMocks()
-	assert.NotPanics(t, func() {
-		k, err := kernel.New(context.Background(), config, logger, mockExitHandler(t, kernel.ExitCodeOk))
-		assert.NoError(t, err)
+	for i := 0; i < 1000; i++ {
+		config, logger, _ := createMocks()
+		assert.NotPanics(t, func() {
+			k, err := kernel.New(context.Background(), config, logger, mockExitHandler(t, kernel.ExitCodeOk))
+			assert.NoError(t, err)
 
-		for s := 5; s < 10; s++ {
-			k.Add("exist-fast", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-				return &fastExitModule{}, nil
-			}, kernel.ModuleStage(s))
-			k.Add("exist-slow", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-				return &slowExitModule{
-					kernel: k,
-				}, nil
-			}, kernel.ModuleStage(s))
-		}
-		k.Run()
-	})
+			for s := 5; s < 10; s++ {
+				k.Add("exist-fast", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+					return &fastExitModule{}, nil
+				}, kernel.ModuleStage(s))
+				k.Add("exist-slow", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+					return &slowExitModule{
+						kernel: k,
+					}, nil
+				}, kernel.ModuleStage(s))
+			}
+			k.Run()
+		})
+	}
 }

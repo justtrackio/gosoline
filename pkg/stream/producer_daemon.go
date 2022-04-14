@@ -182,14 +182,13 @@ func (d *producerDaemon) Run(kernelCtx context.Context) error {
 	d.ticker = d.clock.NewTicker(d.settings.Interval)
 	d.lck.Unlock()
 
-	cfn := coffin.New()
-	// start the output loops before the ticker look - the output loop can't terminate until
-	// we call close, while the ticker can if the context is already canceled
-	for i := 0; i < d.settings.RunnerCount; i++ {
-		cfn.Gof(d.outputLoop, "panic during running the ticker loop")
-	}
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		cfn.GoWithContextf(kernelCtx, d.tickerLoop, "panic during running the ticker loop")
 
-	cfn.GoWithContextf(kernelCtx, d.tickerLoop, "panic during running the ticker loop")
+		for i := 0; i < d.settings.RunnerCount; i++ {
+			cfn.Gof(d.outputLoop, "panic during running the ticker loop")
+		}
+	})
 
 	select {
 	case <-cfn.Dying():

@@ -144,20 +144,21 @@ func (s *contextTestSuite) TestConcurrentlyPrintable() {
 	for i := 0; i < 1000; i++ {
 		ctx, cancel := exec.WithManualCancelContext(context.Background())
 		c := make(chan struct{})
-		cfn := coffin.New()
-		cfn.Go(func() error {
-			<-c
-			cancel()
+		cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+			cfn.Go(func() error {
+				<-c
+				cancel()
 
-			return nil
-		})
-		cfn.Go(func() error {
-			<-c
-			if s := fmt.Sprintf("%v", ctx); s == "" {
-				return fmt.Errorf("should never happen")
-			}
+				return nil
+			})
+			cfn.Go(func() error {
+				<-c
+				if s := fmt.Sprintf("%v", ctx); s == "" {
+					return fmt.Errorf("should never happen")
+				}
 
-			return nil
+				return nil
+			})
 		})
 		close(c)
 		s.NoError(cfn.Wait(), "Fail at iteration %d", i)

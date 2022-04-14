@@ -172,17 +172,13 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 	c.logger.Info("running consumer %s with input %s", c.name, c.settings.Input)
 
 	// create ctx whose done channel is closed on dying coffin
-	cfn, dyingCtx := coffin.WithContext(context.Background())
+	cfn := coffin.WithContext(context.Background(), func(cfn coffin.StartingCoffin, dyingCtx context.Context) {
+		// create ctx whose done channel is closed on dying coffin and manual cancel
+		manualCtx := dyingCtx
+		manualCtx, c.cancel = context.WithCancel(manualCtx)
 
-	// create ctx whose done channel is closed on dying coffin and manual cancel
-	manualCtx := cfn.Context(context.Background())
-	manualCtx, c.cancel = context.WithCancel(manualCtx)
-
-	cfn.Go(func() error {
 		cfn.GoWithContextf(manualCtx, c.logConsumeCounter, "panic during counter log")
 		cfn.GoWithContextf(manualCtx, c.runConsumerCallback, "panic during run of the consumerCallback")
-		// run the input after the counters are running to make sure our coffin does not immediately
-		// die just because Run() immediately returns
 		cfn.GoWithContextf(dyingCtx, c.input.Run, "panic during run of the consumer input")
 		cfn.GoWithContextf(dyingCtx, c.retryHandler.Run, "panic during run of the retry handler")
 		cfn.GoWithContextf(dyingCtx, c.ingestData, "panic during shoveling the data")
@@ -206,8 +202,6 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 
 			return nil
 		})
-
-		return nil
 	})
 
 	if err := cfn.Wait(); err != nil {
@@ -254,12 +248,13 @@ func (c *baseConsumer) ingestData(ctx context.Context) error {
 	defer c.logger.Debug("ingestData is ending")
 	defer close(c.data)
 
-	cfn := coffin.New()
-	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput, func(msg *Message) {}), "panic during shoveling data from input")
-	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryHandler, dataSourceRetry, func(msg *Message) {
-		c.logger.Warn("retrying message with id %s", msg.Attributes[AttributeRetryId])
-		c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
-	}), "panic during shoveling data from retry")
+	cfn := coffin.New(func(cfn coffin.StartingCoffin) {
+		cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput, func(msg *Message) {}), "panic during shoveling data from input")
+		cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryHandler, dataSourceRetry, func(msg *Message) {
+			c.logger.Warn("retrying message with id %s", msg.Attributes[AttributeRetryId])
+			c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
+		}), "panic during shoveling data from retry")
+	})
 
 	return cfn.Wait()
 }
@@ -318,7 +313,7 @@ func (c *baseConsumer) recover(ctx context.Context, msg *Message) {
 		return
 	}
 
-	c.handleError(ctx, err, "a panic occured during the consume operation")
+	c.handleError(ctx, err, "a panic occurred during the consume operation")
 
 	if msg == nil {
 		return
