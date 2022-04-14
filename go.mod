@@ -20,7 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.15.3
 	github.com/aws/aws-sdk-go-v2/service/rds v1.18.4
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.13.4
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.3
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.5
 	github.com/aws/aws-sdk-go-v2/service/sns v1.17.4
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.18.3
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.24.1
@@ -91,6 +91,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.9 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.10 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.13.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.3 // indirect
