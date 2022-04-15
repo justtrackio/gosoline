@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.11.2
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.8.4
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.4.4
-	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.17.2
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.18.1
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.15.3
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.33.0
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.18.5
@@ -55,7 +55,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/karlseguin/ccache v0.0.0-20181227155450-692cd618b264
-	github.com/lib/pq v1.10.4
+	github.com/lib/pq v1.10.5
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/ory/ladon v1.2.0
