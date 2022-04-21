@@ -59,7 +59,7 @@ type recordWriter struct {
 
 func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *RecordWriterSettings) (RecordWriter, error) {
 	defaultMetrics := getRecordWriterDefaultMetrics(settings.StreamName)
-	metricWriter := metric.NewDaemonWriter(defaultMetrics...)
+	metricWriter := metric.NewWriter(defaultMetrics...)
 
 	var err error
 	var client *kinesis.Client

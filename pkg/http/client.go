@@ -79,7 +79,7 @@ type Settings struct {
 func NewHttpClient(config cfg.Config, logger log.Logger) Client {
 	c := clock.NewRealClock()
 
-	mo := metric.NewDaemonWriter()
+	mo := metric.NewWriter()
 
 	settings := &Settings{}
 	config.UnmarshalKey("http_client", settings)

@@ -1,4 +1,4 @@
-package conc_test
+package ddb_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/conc"
+	concDdb "github.com/justtrackio/gosoline/pkg/conc/ddb"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	ddbMocks "github.com/justtrackio/gosoline/pkg/ddb/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
@@ -20,7 +20,7 @@ type DdbLeaderElectionTestCase struct {
 	logger     *logMocks.Logger
 	clock      clock.Clock
 	repository *ddbMocks.Repository
-	election   *conc.DdbLeaderElection
+	election   *concDdb.DdbLeaderElection
 }
 
 func (s *DdbLeaderElectionTestCase) SetupTest() {
@@ -29,7 +29,7 @@ func (s *DdbLeaderElectionTestCase) SetupTest() {
 	s.repository = new(ddbMocks.Repository)
 
 	var err error
-	s.election, err = conc.NewDdbLeaderElectionWithInterfaces(s.logger, s.clock, s.repository, &conc.DdbLeaderElectionSettings{
+	s.election, err = concDdb.NewDdbLeaderElectionWithInterfaces(s.logger, s.clock, s.repository, &concDdb.DdbLeaderElectionSettings{
 		TableName:     "gosoline-leader-election",
 		GroupId:       "test",
 		LeaseDuration: time.Minute,
@@ -43,7 +43,7 @@ func (s *DdbLeaderElectionTestCase) TestSuccess() {
 	builder := new(ddbMocks.PutItemBuilder)
 	builder.On("WithCondition", mock.AnythingOfType("expression.ConditionBuilder")).Return(builder)
 
-	item := &conc.DdbLeaderElectionItem{
+	item := &concDdb.DdbLeaderElectionItem{
 		GroupId:      "test",
 		MemberId:     "2693674e-66ec-11eb-8dcd-4b6da059a53a",
 		LeadingUntil: 449884860,

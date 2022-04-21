@@ -17,7 +17,7 @@ type metricRepository struct {
 
 func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
 	defaults := getDefaultMetrics(repo.GetModelId())
-	output := metric.NewDaemonWriter(defaults...)
+	output := metric.NewWriter(defaults...)
 
 	return &metricRepository{
 		Repository: repo,
@@ -25,7 +25,7 @@ func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRep
 	}
 }
 
-func (r metricRepository) PutItem(ctx context.Context, qb PutItemBuilder, item interface{}) (*PutItemResult, error) {
+func (r metricRepository) PutItem(ctx context.Context, _ PutItemBuilder, item interface{}) (*PutItemResult, error) {
 	start := time.Time{}
 	saved, err := r.Repository.PutItem(ctx, nil, item)
 	r.writeMetric(OpSave, err, start)

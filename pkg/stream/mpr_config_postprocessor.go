@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/conc/ddb"
 )
 
 func init() {
@@ -19,21 +19,21 @@ func mprConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 		return false, nil
 	}
 
-	key := conc.GetLeaderElectionConfigKey(settings.LeaderElection)
-	typKey := conc.GetLeaderElectionConfigKeyType(settings.LeaderElection)
+	key := ddb.GetLeaderElectionConfigKey(settings.LeaderElection)
+	typKey := ddb.GetLeaderElectionConfigKeyType(settings.LeaderElection)
 
 	if config.IsSet(key) {
 		return true, nil
 	}
 
-	leaderElectionSettings := &conc.DdbLeaderElectionSettings{
+	leaderElectionSettings := &ddb.DdbLeaderElectionSettings{
 		TableName:     fmt.Sprintf("%s-%s-%s-stream-metric-writer-leaders", config.GetString("app_project"), config.GetString("env"), config.GetString("app_family")),
 		GroupId:       config.GetString("app_name"),
 		LeaseDuration: time.Minute,
 	}
 
 	configOptions := []cfg.Option{
-		cfg.WithConfigSetting(typKey, conc.LeaderElectionTypeDdb),
+		cfg.WithConfigSetting(typKey, ddb.LeaderElectionTypeDdb),
 		cfg.WithConfigSetting(key, leaderElectionSettings),
 	}
 

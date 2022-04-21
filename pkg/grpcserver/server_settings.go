@@ -18,8 +18,10 @@ type Health struct {
 }
 
 type Stats struct {
-	// Enabled defines if the statistics logger is enabled.
+	// Enabled defines if the statistics handler is enabled.
 	Enabled bool `cfg:"enabled" default:"true"`
+	// LogLevel defines the log level for the statistics logs
+	LogLevel string `cfg:"log_level" default:"debug" validate:"oneof=debug info"`
 	// LogPayload defines whether to log the incoming and outgoing payloads of a gRPC method.
 	LogPayload bool `cfg:"log_payload" default:"false"`
 	// LogData defines whether to log the incoming and outgoing raw data of a gRPC method.

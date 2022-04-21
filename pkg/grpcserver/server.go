@@ -79,7 +79,7 @@ func NewWithInterfaces(ctx context.Context, logger log.Logger, definitions *Defi
 		),
 	}
 	if s.Stats.Enabled {
-		options = append(options, grpc.StatsHandler(NewStatsLogger(logger, s)))
+		options = append(options, grpc.StatsHandler(NewStatsHandler(logger, s)))
 	}
 
 	server := grpc.NewServer(options...)

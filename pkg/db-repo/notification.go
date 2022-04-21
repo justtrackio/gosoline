@@ -35,7 +35,7 @@ type notifier struct {
 
 func newNotifier(logger log.Logger, modelId mdl.ModelId, version int) notifier {
 	defaults := getDefaultNotifierMetrics(modelId)
-	mtr := metric.NewDaemonWriter(defaults...)
+	mtr := metric.NewWriter(defaults...)
 
 	return notifier{
 		logger:  logger,

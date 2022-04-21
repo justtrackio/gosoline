@@ -1,10 +1,11 @@
-package conc
+package ddb
 
 import (
 	"context"
 	"sync/atomic"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -15,7 +16,7 @@ type ddbLock struct {
 	resource string
 	token    string
 	expires  int64
-	released SignalOnce
+	released conc.SignalOnce
 }
 
 func newDdbLock(manager *ddbLockProvider, ctx context.Context, resource string, token string, expires int64) *ddbLock {
@@ -25,13 +26,13 @@ func newDdbLock(manager *ddbLockProvider, ctx context.Context, resource string, 
 		resource: resource,
 		token:    token,
 		expires:  expires,
-		released: NewSignalOnce(),
+		released: conc.NewSignalOnce(),
 	}
 }
 
 func (l *ddbLock) Renew(ctx context.Context, lockTime time.Duration) error {
 	if l == nil {
-		return ErrNotOwned
+		return conc.ErrNotOwned
 	}
 
 	err := l.manager.renew(ctx, lockTime, l.resource, l.token)
@@ -45,7 +46,7 @@ func (l *ddbLock) Renew(ctx context.Context, lockTime time.Duration) error {
 
 func (l *ddbLock) Release() error {
 	if l == nil {
-		return ErrNotOwned
+		return conc.ErrNotOwned
 	}
 
 	// stop the debug thread if needed

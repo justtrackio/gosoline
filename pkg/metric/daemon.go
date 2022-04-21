@@ -18,7 +18,7 @@ type Settings struct {
 	cfg.AppId
 	Enabled  bool          `cfg:"enabled" default:"false"`
 	Interval time.Duration `cfg:"interval" default:"60s"`
-	Writers  []string      `cfg:"writers"`
+	Writer   string        `cfg:"writer"`
 }
 
 func getMetricSettings(config cfg.Config) *Settings {
@@ -46,38 +46,39 @@ type Daemon struct {
 
 	channel *metricChannel
 	ticker  *time.Ticker
-	writers []Writer
+	writer  Writer
 
 	batch          map[string]*BatchedMetricDatum
 	dataPointCount int
 }
 
 func NewDaemon(ctx context.Context, config cfg.Config, logger log.Logger) (*Daemon, error) {
+	var metricWriter Writer
+	var err error
+
 	settings := getMetricSettings(config)
 
 	channel := ProviderMetricChannel()
 	channel.enabled = settings.Enabled
 	channel.logger = logger.WithChannel("metrics")
 
-	var err error
-	writers := make([]Writer, len(settings.Writers))
-
-	for i, t := range settings.Writers {
-		if writers[i], err = ProvideMetricWriterByType(ctx, config, logger, t); err != nil {
-			return nil, fmt.Errorf("can not create metric writer of type %s: %w", t, err)
+	if settings.Enabled {
+		metricWriter, err = ProvideMetricWriterByType(ctx, config, logger, settings.Writer)
+		if err != nil {
+			return nil, fmt.Errorf("can not create metric writer of type %s: %w", settings.Writer, err)
 		}
 	}
 
-	return NewMetricDaemonWithInterfaces(logger, channel, writers, settings)
+	return NewMetricDaemonWithInterfaces(logger, channel, metricWriter, settings)
 }
 
-func NewMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, writers []Writer, settings *Settings) (*Daemon, error) {
+func NewMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, writer Writer, settings *Settings) (*Daemon, error) {
 	return &Daemon{
 		logger:         logger.WithChannel("metrics"),
 		settings:       settings,
 		channel:        channel,
 		ticker:         time.NewTicker(settings.Interval),
-		writers:        writers,
+		writer:         writer,
 		batch:          make(map[string]*BatchedMetricDatum),
 		dataPointCount: 0,
 	}, nil
@@ -204,9 +205,7 @@ func (d *Daemon) publish() {
 
 	data := d.buildMetricData()
 
-	for _, w := range d.writers {
-		w.Write(data)
-	}
+	d.writer.Write(data)
 
 	d.logger.Info("published %d data points in %d metrics", d.dataPointCount, size)
 	d.resetBatch()

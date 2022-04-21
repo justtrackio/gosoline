@@ -23,7 +23,7 @@ type metricRepository struct {
 
 func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
 	defaults := getDefaultRepositoryMetrics(repo.GetMetadata().ModelId)
-	output := metric.NewDaemonWriter(defaults...)
+	output := metric.NewWriter(defaults...)
 
 	return &metricRepository{
 		Repository: repo,

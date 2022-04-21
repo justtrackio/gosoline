@@ -108,7 +108,7 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	})
 
 	shardReaderDefaults := getShardReaderDefaultMetrics(fullStreamName)
-	metricWriter := metric.NewDaemonWriter(shardReaderDefaults...)
+	metricWriter := metric.NewWriter(shardReaderDefaults...)
 
 	var err error
 	var kinesisClient *kinesis.Client

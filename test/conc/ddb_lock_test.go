@@ -11,6 +11,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/conc/ddb"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
@@ -29,7 +30,7 @@ func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *DdbLockTestSuite) SetupTest() (err error) {
-	s.provider, err = conc.NewDdbLockProvider(s.Env().Context(), s.Env().Config(), s.Env().Logger(), conc.DistributedLockSettings{
+	s.provider, err = ddb.NewDdbLockProvider(s.Env().Context(), s.Env().Config(), s.Env().Logger(), conc.DistributedLockSettings{
 		Backoff: exec.BackoffSettings{
 			MaxAttempts:    0,
 			MaxElapsedTime: 0,

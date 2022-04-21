@@ -1,4 +1,4 @@
-package conc
+package ddb
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -96,11 +97,11 @@ func (e *DdbLeaderElection) IsLeader(ctx context.Context, memberId string) (bool
 	}
 
 	if ddb.IsTableNotFoundError(err) {
-		return false, NewLeaderElectionFatalError(err)
+		return false, conc.NewLeaderElectionFatalError(err)
 	}
 
 	if err != nil {
-		return false, NewLeaderElectionTransientError(err)
+		return false, conc.NewLeaderElectionTransientError(err)
 	}
 
 	return !res.ConditionalCheckFailed, nil
