@@ -1,7 +1,6 @@
 package application
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -251,10 +250,8 @@ func WithMetadataServer(app *App) {
 	WithModuleFactory("metadata-server", NewMetadataServer())(app)
 }
 
-func WithMetricDaemon(app *App) {
-	WithModuleFactory("metric", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Module, error) {
-		return metric.NewDaemon(ctx, config, logger)
-	})(app)
+func WithMetrics(app *App) {
+	WithModuleFactory("metric", metric.NewMetricModule)(app)
 }
 
 func WithProducerDaemon(app *App) {

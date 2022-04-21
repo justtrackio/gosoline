@@ -4,32 +4,32 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
-type daemonWriter struct {
+type writer struct {
 	clock   clock.Clock
 	channel *metricChannel
 }
 
-func NewDaemonWriter(defaults ...*Datum) *daemonWriter {
+func NewWriter(defaults ...*Datum) *writer {
 	testClock := clock.NewRealClock()
 	channel := ProviderMetricChannel()
 
 	addMetricDefaults(defaults...)
 
-	return NewDaemonWriterWithInterfaces(testClock, channel)
+	return NewWriterWithInterfaces(testClock, channel)
 }
 
-func NewDaemonWriterWithInterfaces(clock clock.Clock, channel *metricChannel) *daemonWriter {
-	return &daemonWriter{
+func NewWriterWithInterfaces(clock clock.Clock, channel *metricChannel) *writer {
+	return &writer{
 		clock:   clock,
 		channel: channel,
 	}
 }
 
-func (w daemonWriter) GetPriority() int {
+func (w writer) GetPriority() int {
 	return PriorityLow
 }
 
-func (w daemonWriter) Write(batch Data) {
+func (w writer) Write(batch Data) {
 	if !w.channel.enabled || len(batch) == 0 {
 		return
 	}
@@ -43,6 +43,6 @@ func (w daemonWriter) Write(batch Data) {
 	w.channel.write(batch)
 }
 
-func (w daemonWriter) WriteOne(data *Datum) {
+func (w writer) WriteOne(data *Datum) {
 	w.Write(Data{data})
 }

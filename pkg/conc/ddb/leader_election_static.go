@@ -1,4 +1,4 @@
-package conc
+package ddb
 
 import (
 	"context"
@@ -15,7 +15,7 @@ type StaticLeaderElection struct {
 	result bool
 }
 
-func NewStaticLeaderElection(_ context.Context, config cfg.Config, logger log.Logger, name string) (LeaderElection, error) {
+func NewStaticLeaderElection(_ context.Context, config cfg.Config, _ log.Logger, name string) (LeaderElection, error) {
 	key := GetLeaderElectionConfigKey(name)
 	settings := &StaticLeaderElectionSettings{}
 	config.UnmarshalKey(key, settings)
@@ -29,10 +29,10 @@ func NewStaticLeaderElectionWithSettings(settings *StaticLeaderElectionSettings)
 	}, nil
 }
 
-func (e StaticLeaderElection) IsLeader(ctx context.Context, memberId string) (bool, error) {
+func (e StaticLeaderElection) IsLeader(context.Context, string) (bool, error) {
 	return e.result, nil
 }
 
-func (e StaticLeaderElection) Resign(ctx context.Context, memberId string) error {
+func (e StaticLeaderElection) Resign(context.Context, string) error {
 	return nil
 }

@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	WriterTypeCw = "cw"
-	WriterTypeES = "es"
+	WriterTypeCw   = "cw"
+	WriterTypeES   = "es"
+	WriterTypeProm = "prom"
 )
 
 func ProvideMetricWriterByType(ctx context.Context, config cfg.Config, logger log.Logger, typ string) (Writer, error) {
@@ -19,6 +20,8 @@ func ProvideMetricWriterByType(ctx context.Context, config cfg.Config, logger lo
 		return NewCwWriter(ctx, config, logger)
 	case WriterTypeES:
 		return NewEsWriter(config, logger)
+	case WriterTypeProm:
+		return NewPromWriter(ctx, config, logger)
 	}
 
 	return nil, fmt.Errorf("metric writer type of %s not found", typ)

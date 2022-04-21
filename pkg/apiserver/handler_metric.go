@@ -15,7 +15,7 @@ const (
 
 func CreateMetricHandler(definition Definition) gin.HandlerFunc {
 	defaults := getMetricMiddlewareDefaults(definition)
-	writer := metric.NewDaemonWriter(defaults...)
+	writer := metric.NewWriter(defaults...)
 
 	return func(ginCtx *gin.Context) {
 		start := time.Now()
@@ -63,7 +63,7 @@ func CreateMetricHandler(definition Definition) gin.HandlerFunc {
 func getMetricMiddlewareDefaults(definition Definition) metric.Data {
 	defaults := make(metric.Data, 0)
 
-	metric := &metric.Datum{
+	metricDatum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: MetricApiRequestCount,
 		Dimensions: metric.Dimensions{
@@ -72,7 +72,7 @@ func getMetricMiddlewareDefaults(definition Definition) metric.Data {
 		Unit:  metric.UnitCount,
 		Value: 0.0,
 	}
-	defaults = append(defaults, metric)
+	defaults = append(defaults, metricDatum)
 
 	return defaults
 }

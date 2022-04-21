@@ -41,7 +41,7 @@ type SubscriberCallback struct {
 func NewSubscriberCallbackFactory(transformers ModelTransformers, outputs Outputs) stream.ConsumerCallbackFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
 		defaultMetrics := getSubscriberCallbackDefaultMetrics(transformers)
-		metricWriter := metric.NewDaemonWriter(defaultMetrics...)
+		metricWriter := metric.NewWriter(defaultMetrics...)
 
 		callback := &SubscriberCallback{
 			logger:       logger,

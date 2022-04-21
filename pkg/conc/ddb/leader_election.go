@@ -1,4 +1,4 @@
-package conc
+package ddb
 
 import (
 	"context"

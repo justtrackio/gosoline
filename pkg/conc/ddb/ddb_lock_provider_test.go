@@ -1,4 +1,4 @@
-package conc_test
+package ddb_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/conc"
+	concDdb "github.com/justtrackio/gosoline/pkg/conc/ddb"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	ddbMocks "github.com/justtrackio/gosoline/pkg/ddb/mocks"
 	"github.com/justtrackio/gosoline/pkg/exec"
@@ -72,7 +73,7 @@ func (s *ddbLockProviderTestSuite) SetupTest() {
 		},
 	}
 
-	s.provider = conc.NewDdbLockProviderWithInterfaces(logger, s.repo, s.backOff, s.clock, s.uuidSource, conc.DistributedLockSettings{
+	s.provider = concDdb.NewDdbLockProviderWithInterfaces(logger, s.repo, s.backOff, s.clock, s.uuidSource, conc.DistributedLockSettings{
 		DefaultLockTime: time.Minute,
 		Domain:          "test",
 	})
@@ -104,7 +105,7 @@ func (s *ddbLockProviderTestSuite) getReleaseQueryBuilder(result *ddb.DeleteItem
 	qb.On("WithCondition", ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
 
 	s.repo.On("DeleteItemBuilder").Return(qb).Once()
-	s.repo.On("DeleteItem", mock.AnythingOfType("*exec.stoppableContext"), qb, &conc.DdbLockItem{
+	s.repo.On("DeleteItem", mock.AnythingOfType("*exec.stoppableContext"), qb, &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 	}).Return(result, err)
@@ -113,7 +114,7 @@ func (s *ddbLockProviderTestSuite) getReleaseQueryBuilder(result *ddb.DeleteItem
 }
 
 func (s *ddbLockProviderTestSuite) testAcquireLock(initialLocked bool, initialFail bool) conc.DistributedLock {
-	lockItem := &conc.DdbLockItem{
+	lockItem := &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 		Ttl:      s.clock.Now().Add(time.Minute).Unix(),
@@ -145,7 +146,7 @@ func (s *ddbLockProviderTestSuite) testAcquireLock(initialLocked bool, initialFa
 }
 
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireCanceled() {
-	lockItem := &conc.DdbLockItem{
+	lockItem := &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 		Ttl:      s.clock.Now().Add(time.Minute).Unix(),
@@ -177,7 +178,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireCanceled() {
 }
 
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireFails() {
-	lockItem := &conc.DdbLockItem{
+	lockItem := &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 		Ttl:      s.clock.Now().Add(time.Minute).Unix(),
@@ -256,7 +257,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRelease() {
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewCanceled() {
 	l := s.testAcquireLock(true, false)
 	qb := s.getRenewQueryBuilder()
-	lockItem := &conc.DdbLockItem{
+	lockItem := &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
@@ -278,7 +279,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewCanceled(
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewFails() {
 	l := s.testAcquireLock(true, false)
 	qb := s.getRenewQueryBuilder()
-	lockItem := &conc.DdbLockItem{
+	lockItem := &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
@@ -301,7 +302,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewErrorsAnd
 	l := s.testAcquireLock(true, false)
 	qb1 := s.getRenewQueryBuilder()
 	qb2 := s.getRenewQueryBuilder()
-	lockItem := &conc.DdbLockItem{
+	lockItem := &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 		Ttl:      s.clock.Now().Add(time.Hour).Unix(),

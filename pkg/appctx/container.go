@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/justtrackio/gosoline/pkg/conc"
 )
 
 type containerKeyType int
 
-var containerKey containerKeyType = 1
+var (
+	containerKey containerKeyType = 1
+)
 
 type ErrNoApplicationContainerFound struct{}
 
@@ -26,11 +30,13 @@ func (e ErrNoItemFound) Error() string {
 
 type container struct {
 	items sync.Map
+	lock  conc.KeyLock
 }
 
 func WithContainer(ctx context.Context) context.Context {
 	return context.WithValue(ctx, containerKey, &container{
 		items: sync.Map{},
+		lock:  conc.NewKeyLock(),
 	})
 }
 
@@ -44,6 +50,9 @@ func Provide[T any](ctx context.Context, key any, factory func() (T, error)) (T,
 	}
 
 	cont := contI.(*container)
+
+	unlock := cont.lock.Lock(key)
+	defer unlock()
 
 	if val, ok = cont.items.Load(key); ok {
 		return val.(T), nil

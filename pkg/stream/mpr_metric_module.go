@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	gosoCloudwatch "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
 	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/conc/ddb"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -51,7 +52,7 @@ type MessagesPerRunnerMetricWriter struct {
 	kernel.ServiceStage
 
 	logger         log.Logger
-	leaderElection conc.LeaderElection
+	leaderElection ddb.LeaderElection
 	cwClient       gosoCloudwatch.Client
 	metricWriter   metric.Writer
 	clock          clock.Clock
@@ -63,7 +64,7 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		var err error
 		var queueNames []string
-		var leaderElection conc.LeaderElection
+		var leaderElection ddb.LeaderElection
 		var cwClient gosoCloudwatch.Client
 
 		logger = logger.WithChannel("stream-metric-messages-per-runner")
@@ -87,7 +88,7 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 		}
 		writerSettings.AppId.PadFromConfig(config)
 
-		if leaderElection, err = conc.NewLeaderElection(ctx, config, logger, settings.LeaderElection); err != nil {
+		if leaderElection, err = ddb.NewLeaderElection(ctx, config, logger, settings.LeaderElection); err != nil {
 			return nil, fmt.Errorf("can not create leader election for stream-metric-messages-per-runner writer: %w", err)
 		}
 
@@ -95,14 +96,14 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 			return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
 		}
 
-		metricWriter := metric.NewDaemonWriter()
+		metricWriter := metric.NewWriter()
 		ticker := clock.NewRealTicker(settings.Period)
 
 		return NewMessagesPerRunnerMetricWriterWithInterfaces(logger, leaderElection, cwClient, metricWriter, clock.Provider, ticker, writerSettings)
 	}
 }
 
-func NewMessagesPerRunnerMetricWriterWithInterfaces(logger log.Logger, leaderElection conc.LeaderElection, cwClient gosoCloudwatch.Client, metricWriter metric.Writer, clock clock.Clock, ticker clock.Ticker, settings *MessagesPerRunnerMetricWriterSettings) (*MessagesPerRunnerMetricWriter, error) {
+func NewMessagesPerRunnerMetricWriterWithInterfaces(logger log.Logger, leaderElection ddb.LeaderElection, cwClient gosoCloudwatch.Client, metricWriter metric.Writer, clock clock.Clock, ticker clock.Ticker, settings *MessagesPerRunnerMetricWriterSettings) (*MessagesPerRunnerMetricWriter, error) {
 	writer := &MessagesPerRunnerMetricWriter{
 		logger:         logger,
 		leaderElection: leaderElection,

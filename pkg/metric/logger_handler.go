@@ -17,10 +17,10 @@ func LoggerHandlerFactory(_ cfg.Config, _ string) (log.Handler, error) {
 
 func NewLoggerHandler() *LoggerHandler {
 	defaults := getDefaultMetrics()
-	writer := NewDaemonWriter(defaults...)
+	metricWriter := NewWriter(defaults...)
 
 	return &LoggerHandler{
-		writer: writer,
+		writer: metricWriter,
 	}
 }
 

@@ -47,7 +47,7 @@ func NewMetricStoreWithInterfaces(store KvStore, settings *Settings) KvStore {
 
 	s := &MetricStore{
 		KvStore:      store,
-		metricWriter: metric.NewDaemonWriter(defaults...),
+		metricWriter: metric.NewWriter(defaults...),
 		model:        model,
 		store:        storeName,
 	}

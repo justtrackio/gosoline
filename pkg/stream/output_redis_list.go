@@ -39,7 +39,7 @@ func NewRedisListOutput(config cfg.Config, logger log.Logger, settings *RedisLis
 	}
 
 	defaultMetrics := getRedisListOutputDefaultMetrics(settings.AppId, settings.Key)
-	mw := metric.NewDaemonWriter(defaultMetrics...)
+	mw := metric.NewWriter(defaultMetrics...)
 
 	return NewRedisListOutputWithInterfaces(logger, mw, client, settings), nil
 }

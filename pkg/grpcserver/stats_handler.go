@@ -3,8 +3,10 @@ package grpcserver
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	"google.golang.org/grpc/stats"
 )
 
@@ -12,25 +14,33 @@ type key int
 
 const (
 	contextKey key = 0
+
+	MetricApiRequestCount        = "ApiRequestCount"
+	MetricApiRequestResponseTime = "ApiRequestResponseTime"
+	MetricDimensionFullMethod    = "full_method"
 )
 
-type statsLogger struct {
-	logger   log.Logger
-	settings *Settings
+type statsHandler struct {
+	logger       log.Logger
+	metricWriter metric.Writer
+	settings     *Settings
 }
 
-func NewStatsLogger(logger log.Logger, settings *Settings) *statsLogger {
-	return &statsLogger{
-		logger:   logger,
-		settings: settings,
+func NewStatsHandler(logger log.Logger, settings *Settings) *statsHandler {
+	writer := metric.NewWriter()
+
+	return &statsHandler{
+		logger:       logger,
+		metricWriter: writer,
+		settings:     settings,
 	}
 }
 
-func (s *statsLogger) TagRPC(ctx context.Context, _ *stats.RPCTagInfo) context.Context {
+func (s *statsHandler) TagRPC(ctx context.Context, _ *stats.RPCTagInfo) context.Context {
 	return ctx
 }
 
-func (s *statsLogger) HandleRPC(ctx context.Context, st stats.RPCStats) {
+func (s *statsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 	holder := ctx.Value(contextKey).(*statsHolder)
 
 	switch v := st.(type) {
@@ -94,20 +104,54 @@ func (s *statsLogger) HandleRPC(ctx context.Context, st stats.RPCStats) {
 		holder.Error = v.Error
 		holder.TotalTime = v.EndTime.Sub(v.BeginTime).Nanoseconds()
 
-		s.logger.
-			WithContext(ctx).
-			WithFields(holder.GetLoggerFields()).
-			WithChannel(s.settings.Stats.Channel).
-			Debug("handled gRPC method")
+		s.writeLog(ctx, holder)
+		s.writeMetrics(holder)
 	}
 }
 
-func (s *statsLogger) TagConn(ctx context.Context, _ *stats.ConnTagInfo) context.Context {
+func (s *statsHandler) TagConn(ctx context.Context, _ *stats.ConnTagInfo) context.Context {
 	return context.WithValue(ctx, contextKey, &statsHolder{
 		InHeaders:  &sync.Map{},
 		OutHeaders: &sync.Map{},
 	})
 }
 
-func (s *statsLogger) HandleConn(_ context.Context, _ stats.ConnStats) {
+func (s *statsHandler) HandleConn(_ context.Context, _ stats.ConnStats) {
+}
+
+func (s *statsHandler) writeLog(ctx context.Context, holder *statsHolder) {
+	logger := s.logger.
+		WithContext(ctx).
+		WithFields(holder.GetLoggerFields()).
+		WithChannel(s.settings.Stats.Channel)
+	msg := "handled gRPC method"
+
+	switch s.settings.Stats.LogLevel {
+	case log.LevelDebug:
+		logger.Debug(msg)
+	case log.LevelInfo:
+		logger.Info(msg)
+	}
+}
+
+func (s *statsHandler) writeMetrics(holder *statsHolder) {
+	s.metricWriter.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: MetricApiRequestResponseTime,
+		Dimensions: metric.Dimensions{
+			MetricDimensionFullMethod: holder.FullMethod,
+		},
+		Value: float64(holder.TotalTime) / float64(time.Millisecond),
+		Unit:  metric.UnitMillisecondsAverage,
+	})
+
+	s.metricWriter.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: MetricApiRequestCount,
+		Dimensions: metric.Dimensions{
+			MetricDimensionFullMethod: holder.FullMethod,
+		},
+		Value: 1.0,
+		Unit:  metric.UnitCount,
+	})
 }

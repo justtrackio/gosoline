@@ -1,4 +1,4 @@
-package conc
+package ddb
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -35,7 +36,7 @@ type ddbLockProvider struct {
 	domain          string
 }
 
-func NewDdbLockProvider(ctx context.Context, config cfg.Config, logger log.Logger, settings DistributedLockSettings) (DistributedLockProvider, error) {
+func NewDdbLockProvider(ctx context.Context, config cfg.Config, logger log.Logger, settings conc.DistributedLockSettings) (conc.DistributedLockProvider, error) {
 	ddbSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Name: "locks",
@@ -74,8 +75,8 @@ func NewDdbLockProviderWithInterfaces(
 	backOff backoff.BackOff,
 	clock clock.Clock,
 	uuidSource uuid.Uuid,
-	settings DistributedLockSettings,
-) DistributedLockProvider {
+	settings conc.DistributedLockSettings,
+) conc.DistributedLockProvider {
 	return &ddbLockProvider{
 		logger:          logger.WithChannel("ddbLock"),
 		repo:            repo,
@@ -87,7 +88,7 @@ func NewDdbLockProviderWithInterfaces(
 	}
 }
 
-func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (DistributedLock, error) {
+func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.DistributedLock, error) {
 	resource = fmt.Sprintf("%s-%s", m.domain, resource)
 	token := m.uuidSource.NewV4()
 
@@ -116,7 +117,7 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (Distrib
 		}
 
 		if result.ConditionalCheckFailed {
-			return ErrOwnedLock
+			return conc.ErrOwnedLock
 		}
 
 		m.logger.WithContext(ctx).WithFields(log.Fields{
@@ -154,7 +155,7 @@ func (m *ddbLockProvider) renew(ctx context.Context, lockTime time.Duration, res
 		}
 
 		if result.ConditionalCheckFailed {
-			return backoff.Permanent(ErrNotOwned)
+			return backoff.Permanent(conc.ErrNotOwned)
 		}
 
 		m.logger.WithContext(ctx).WithFields(log.Fields{
@@ -180,7 +181,7 @@ func (m *ddbLockProvider) release(ctx context.Context, resource string, token st
 	}
 
 	if result.ConditionalCheckFailed {
-		return ErrNotOwned
+		return conc.ErrNotOwned
 	}
 
 	m.logger.WithContext(ctx).WithFields(log.Fields{
