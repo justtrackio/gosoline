@@ -111,12 +111,10 @@ func (mc ModuleConfig) GetType() string {
 // module (see "mon").
 //go:generate mockery --name Module
 type Module interface {
-	// Run the module. If the provided context is canceled you have a
-	// few seconds (configurable with kernel.killTimeout) until your module
-	// is killed (via exit(1)). If you return from Run, it is assumed that
-	// your module is done executing and (depending on the type of your module)
-	// this might trigger a kernel shutdown. If you return an error, a kernel
-	// shutdown is also triggered.
+	// Run the module. If the provided context is canceled you have a few seconds (configurable with kernel.killTimeout)
+	// until your module is killed (via exit(1)). If you return from Run, it is assumed that your module is done
+	// executing and (depending on the type of your module) this might trigger a kernel shutdown.
+	// If one of your modules returns an error, the kernel will stop (thus stopping all other modules).
 	Run(ctx context.Context) error
 }
 

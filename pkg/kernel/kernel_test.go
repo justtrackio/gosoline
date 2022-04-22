@@ -22,6 +22,97 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+type FunctionModule func(ctx context.Context) error
+
+func (m FunctionModule) Run(ctx context.Context) error {
+	return m(ctx)
+}
+
+func TestHangingModule(t *testing.T) {
+	timeout(t, time.Second*3, func(t *testing.T) {
+		config, _, _ := createMocks()
+		logger := logMocks.NewLoggerMockedAll()
+
+		exitHandler := mockExitHandler(t, kernel.ExitCodeErr)
+		k, err := kernel.New(context.Background(), config, logger, exitHandler)
+		assert.NoError(t, err)
+
+		k.Add("normal module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return FunctionModule(func(ctx context.Context) error {
+				<-ctx.Done()
+
+				return nil
+			}), nil
+		}, kernel.ModuleStage(kernel.StageApplication), kernel.ModuleType(kernel.TypeForeground))
+
+		serviceChannel := make(chan int)
+		k.Add("service module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return FunctionModule(func(ctx context.Context) error {
+				processed := 0
+
+				for {
+					select {
+					case <-ctx.Done():
+						return nil
+					case <-serviceChannel:
+						processed++
+						if processed > 3 {
+							return fmt.Errorf("random fail")
+						}
+					}
+				}
+			}), nil
+		}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeBackground))
+
+		k.Add("hanging module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return FunctionModule(func(ctx context.Context) error {
+				n := 0
+				for {
+					select {
+					case <-ctx.Done():
+						return nil
+					case serviceChannel <- n:
+						n++
+					}
+				}
+			}), nil
+		}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeForeground))
+
+		k.Run()
+	})
+}
+
+func timeout(t *testing.T, d time.Duration, f func(t *testing.T)) {
+	done := make(chan struct{})
+	cfn := coffin.New()
+	cfn.Go(func() error {
+		defer close(done)
+		f(t)
+
+		return nil
+	})
+	errChan := make(chan error)
+	cfn.Go(func() error {
+		timer := time.NewTimer(d)
+		defer timer.Stop()
+		defer close(errChan)
+
+		select {
+		case <-timer.C:
+			errChan <- fmt.Errorf("test timed out after %v", d)
+		case <-done:
+		}
+
+		return nil
+	})
+
+	if err := <-errChan; err != nil {
+		assert.FailNow(t, err.Error())
+	}
+
+	assert.NoError(t, cfn.Wait())
+}
+
 func createMocks() (*cfgMocks.Config, *logMocks.Logger, *kernelMocks.FullModule) {
 	config := new(cfgMocks.Config)
 	config.On("AllSettings").Return(map[string]interface{}{})
