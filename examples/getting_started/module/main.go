@@ -13,37 +13,13 @@ import (
 
 func main() {
 	app := application.Default()
-	app.Add("hello-world", NewHelloWorldModule, kernel.ModuleType(kernel.TypeBackground))
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 3; i++ {
 		app.Add(fmt.Sprintf("foreground-module-%d", i), NewForegroundModule, kernel.ModuleType(kernel.TypeForeground))
 	}
 
-	app.Add("foregroundErrorModule", NewForegroundErrorModule, kernel.ModuleType(kernel.TypeBackground))
+	app.Add("foregroundErrorModule", NewForegroundErrorModule, kernel.ModuleType(kernel.TypeForeground))
 
 	app.Run()
-}
-
-func NewHelloWorldModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-	return &helloWorldModule{
-		logger: logger.WithChannel("hello-world"),
-	}, nil
-}
-
-type helloWorldModule struct {
-	logger log.Logger
-}
-
-func (h *helloWorldModule) Run(ctx context.Context) error {
-	ticker := time.Tick(2 * time.Second)
-
-	select {
-	case <-ctx.Done():
-		h.logger.Info("Time to stop @@@@@@@@@@@@@@@@@@@@")
-	case <-ticker:
-		h.logger.Info("Hello World")
-	}
-
-	return nil
 }
 
 func NewForegroundModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -59,14 +35,18 @@ type foregroundModule struct {
 func (e *foregroundModule) Run(ctx context.Context) error {
 	e.logger.Info("Foreground module")
 	ticker := time.Tick(1 * time.Second)
+	stop := time.Tick(10 * time.Second)
 
 	for {
 		select {
 		case <-ctx.Done():
-			e.logger.Info("######## ######## Time to stop")
-			// return nil
+			e.logger.Info("Time to stop, DONE channel")
+			return nil
 		case <-ticker:
 			e.logger.Info("Foreground module - tick")
+		case <-stop:
+			e.logger.Info("stoping due to 10s timeout")
+			return nil
 		}
 	}
 
@@ -84,9 +64,7 @@ type foregroundErrorModule struct {
 }
 
 func (e *foregroundErrorModule) Run(ctx context.Context) error {
-	e.logger.Info("Foreground module - mocked error")
+	e.logger.Info("Foreground module - NO error")
 
-	time.Sleep(4 * time.Second)
-
-	return fmt.Errorf("mocked error")
+	return nil
 }
