@@ -66,5 +66,5 @@ type foregroundErrorModule struct {
 func (e *foregroundErrorModule) Run(ctx context.Context) error {
 	e.logger.Info("Foreground module - NO error")
 
-	return nil
+	return fmt.Errorf("aaa")
 }

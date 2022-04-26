@@ -3,6 +3,7 @@ package kernel
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
@@ -12,6 +13,7 @@ import (
 var ErrKernelStopping = fmt.Errorf("stopping kernel")
 
 type stage struct {
+	index int
 	cfn coffin.Coffin
 	ctx context.Context
 	err error
@@ -27,10 +29,11 @@ type modules struct {
 	modules map[string]*ModuleState
 }
 
-func newStage(ctx context.Context) *stage {
+func newStage(ctx context.Context, index int) *stage {
 	cfn, ctx := coffin.WithContext(ctx)
 
 	return &stage{
+		index: index,
 		cfn: cfn,
 		ctx: ctx,
 
@@ -59,7 +62,18 @@ func (s *stage) run(k *kernel) {
 				// new routine may be added after the last one exited)
 				<-s.running.Channel()
 
-				return k.runModule(s.ctx, name, ms)
+				resultErr := k.runModule(s.ctx, name, ms)
+
+				// waiting for a timeout or until all other stages are terminated
+				timeout := time.Tick(time.Second)
+				otherStages := k.waitAllOtherStagesDone(s.index)
+
+				select {
+					case <- timeout:
+					case <- otherStages.Channel():
+				}
+
+				return resultErr
 			}
 		}(name, ms), "panic during running of module %s", name)
 	}

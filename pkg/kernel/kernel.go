@@ -358,7 +358,7 @@ func (k *kernel) addModuleToStage(name string, module Module, opts []ModuleOptio
 }
 
 func (k *kernel) newStage(index int) *stage {
-	s := newStage(k.ctx)
+	s := newStage(k.ctx, index)
 	k.stages[index] = s
 
 	return s
@@ -506,6 +506,22 @@ func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 	go func() {
 		for _, s := range k.stages {
 			<-s.ctx.Done()
+		}
+
+		done.Signal()
+	}()
+
+	return done
+}
+
+func (k *kernel) waitAllOtherStagesDone(exception int) conc.SignalOnce {
+	done := conc.NewSignalOnce()
+
+	go func() {
+		for name, s := range k.stages {
+			if name != exception {
+				<-s.ctx.Done()
+			}
 		}
 
 		done.Signal()
