@@ -54,3 +54,25 @@ func (e NoQueryResultsError) Unwrap() error {
 func IsNoQueryResultsError(err error) bool {
 	return errors.As(err, &NoQueryResultsError{})
 }
+
+type TooManyResultsError struct {
+	modelId  string
+	found    int
+	expected int
+}
+
+func NewTooManyResultsError(found int, expected int, modelId string) TooManyResultsError {
+	return TooManyResultsError{
+		modelId:  modelId,
+		found:    found,
+		expected: expected,
+	}
+}
+
+func (e TooManyResultsError) Error() string {
+	return fmt.Sprintf("found %d result(s), expected %d result(s) for model type %s", e.found, e.expected, e.modelId)
+}
+
+func IsTooManyResultsError(err error) bool {
+	return errors.As(err, &TooManyResultsError{})
+}
