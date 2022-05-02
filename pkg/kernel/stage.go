@@ -3,7 +3,6 @@ package kernel
 import (
 	"context"
 	"fmt"
-
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -59,7 +58,13 @@ func (s *stage) run(k *kernel) {
 				// new routine may be added after the last one exited)
 				<-s.running.Channel()
 
-				return k.runModule(s.ctx, name, ms)
+				resultErr := k.runModule(s.ctx, name, ms)
+
+				if resultErr != nil {
+					k.Stop(fmt.Sprintf("module %s returned with an error", name))
+				}
+
+				return resultErr
 			}
 		}(name, ms), "panic during running of module %s", name)
 	}
