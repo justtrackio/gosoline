@@ -16,16 +16,28 @@ func handlerSentryFactory(config cfg.Config, _ string) (Handler, error) {
 	return NewHandlerSentry(config)
 }
 
+type sentrySettings struct {
+	DSN     string            `cfg:"dsn"`     // will default to os.Getenv("SENTRY_DSN")
+	Release string            `cfg:"release"` // will default to sentrys defaultRelease()
+	Tags    map[string]string `cfg:"tags"`
+}
+
 type HandlerSentry struct {
-	hub *sentry.Hub
+	hub      *sentry.Hub
+	settings *sentrySettings
 }
 
 func NewHandlerSentry(config cfg.Config) (*HandlerSentry, error) {
 	env := config.GetString("env")
 	appName := config.GetString("app_name")
 
+	settings := &sentrySettings{}
+	config.UnmarshalKey("sentry", settings)
+
 	options := sentry.ClientOptions{
 		Environment: env,
+		Dsn:         settings.DSN,
+		Release:     settings.Release,
 	}
 
 	var err error
@@ -44,7 +56,8 @@ func NewHandlerSentry(config cfg.Config) (*HandlerSentry, error) {
 	})
 
 	return &HandlerSentry{
-		hub: hub,
+		hub:      hub,
+		settings: settings,
 	}, nil
 }
 
@@ -71,6 +84,10 @@ func (h *HandlerSentry) Log(_ time.Time, _ int, _ string, _ []interface{}, err e
 
 	h.hub.WithScope(func(scope *sentry.Scope) {
 		scope.SetContext("fields", fields)
+
+		if len(h.settings.Tags) > 0 {
+			scope.SetTags(h.settings.Tags)
+		}
 
 		eventId := h.hub.CaptureException(err)
 
