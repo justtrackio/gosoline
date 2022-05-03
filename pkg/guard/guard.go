@@ -12,12 +12,13 @@ const fetchLimit = 100
 
 //go:generate mockery --name Guard
 type Guard interface {
-	IsAllowed(request *ladon.Request) error
+	CreatePolicy(pol ladon.Policy) error
+	DeletePolicy(pol ladon.Policy) error
+	GetPolicy(id string) (ladon.Policy, error)
 	GetPolicies() (ladon.Policies, error)
 	GetPoliciesBySubject(subject string) (ladon.Policies, error)
-	CreatePolicy(pol ladon.Policy) error
+	IsAllowed(request *ladon.Request) error
 	UpdatePolicy(pol ladon.Policy) error
-	DeletePolicy(pol ladon.Policy) error
 }
 
 //go:generate mockery --name Manager
@@ -111,4 +112,8 @@ func (g LadonGuard) DeletePolicy(pol ladon.Policy) error {
 	}
 
 	return nil
+}
+
+func (g LadonGuard) GetPolicy(id string) (ladon.Policy, error) {
+	return g.warden.Manager.Get(id)
 }
