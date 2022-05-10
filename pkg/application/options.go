@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/share"
+
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -142,6 +144,12 @@ func WithExecBackoffSettings(settings *exec.BackoffSettings) Option {
 func WithDbRepoChangeHistory(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		return kernelPkg.WithMiddlewareFactory(db_repo.KernelMiddlewareChangeHistory, kernelPkg.PositionEnd)
+	})
+}
+
+func WithApiServerShares(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithMiddlewareFactory(share.KernelMiddlewareShares, kernelPkg.PositionEnd)
 	})
 }
 

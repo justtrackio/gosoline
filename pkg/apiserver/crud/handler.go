@@ -7,7 +7,7 @@ import (
 
 	"github.com/jinzhu/inflection"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
