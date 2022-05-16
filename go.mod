@@ -55,7 +55,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/karlseguin/ccache v0.0.0-20181227155450-692cd618b264
-	github.com/lib/pq v1.10.4
+	github.com/lib/pq v1.10.6
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/ory/ladon v1.2.0
