@@ -174,6 +174,10 @@ func CreateStreamHandler(handler HandlerWithStream) gin.HandlerFunc {
 	return handleWithStream(handler, binding.JSON, defaultErrorHandler)
 }
 
+func CreateDownloadHandler(handler HandlerWithStream) gin.HandlerFunc {
+	return handleWithStream(handler, binding.Query, defaultErrorHandler)
+}
+
 func handleWithInput(handler HandlerWithInput, binding binding.Binding, errHandler ErrorHandler) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		input := handler.GetInput()
