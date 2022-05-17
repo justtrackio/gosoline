@@ -25,11 +25,11 @@ type Manager interface {
 	ladon.Manager
 }
 
-type LadonGuard struct {
+type ladonGuard struct {
 	warden *ladon.Ladon
 }
 
-func NewGuard(config cfg.Config, logger log.Logger) (*LadonGuard, error) {
+func NewGuard(config cfg.Config, logger log.Logger) (Guard, error) {
 	sqlManager, err := NewSqlManager(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create sqlManager: %w", err)
@@ -38,21 +38,21 @@ func NewGuard(config cfg.Config, logger log.Logger) (*LadonGuard, error) {
 	return NewGuardWithInterfaces(sqlManager), nil
 }
 
-func NewGuardWithInterfaces(manager Manager) *LadonGuard {
+func NewGuardWithInterfaces(manager Manager) Guard {
 	warden := &ladon.Ladon{
 		Manager: manager,
 	}
 
-	return &LadonGuard{
+	return &ladonGuard{
 		warden: warden,
 	}
 }
 
-func (g LadonGuard) IsAllowed(request *ladon.Request) error {
+func (g ladonGuard) IsAllowed(request *ladon.Request) error {
 	return g.warden.IsAllowed(request)
 }
 
-func (g LadonGuard) GetPolicies() (ladon.Policies, error) {
+func (g ladonGuard) GetPolicies() (ladon.Policies, error) {
 	policies := make(ladon.Policies, 0)
 
 	offset := int64(0)
@@ -77,7 +77,7 @@ func (g LadonGuard) GetPolicies() (ladon.Policies, error) {
 	return policies, nil
 }
 
-func (g LadonGuard) GetPoliciesBySubject(subject string) (ladon.Policies, error) {
+func (g ladonGuard) GetPoliciesBySubject(subject string) (ladon.Policies, error) {
 	pol, err := g.warden.Manager.FindPoliciesForSubject(subject)
 	if err != nil {
 		return nil, fmt.Errorf("could not get policies by subject: %w", err)
@@ -86,7 +86,7 @@ func (g LadonGuard) GetPoliciesBySubject(subject string) (ladon.Policies, error)
 	return pol, nil
 }
 
-func (g LadonGuard) CreatePolicy(pol ladon.Policy) error {
+func (g ladonGuard) CreatePolicy(pol ladon.Policy) error {
 	err := g.warden.Manager.Create(pol)
 	if err != nil {
 		return fmt.Errorf("could not create policy: %w", err)
@@ -95,7 +95,7 @@ func (g LadonGuard) CreatePolicy(pol ladon.Policy) error {
 	return nil
 }
 
-func (g LadonGuard) UpdatePolicy(pol ladon.Policy) error {
+func (g ladonGuard) UpdatePolicy(pol ladon.Policy) error {
 	err := g.warden.Manager.Update(pol)
 	if err != nil {
 		return fmt.Errorf("could not update policy: %w", err)
@@ -104,7 +104,7 @@ func (g LadonGuard) UpdatePolicy(pol ladon.Policy) error {
 	return nil
 }
 
-func (g LadonGuard) DeletePolicy(pol ladon.Policy) error {
+func (g ladonGuard) DeletePolicy(pol ladon.Policy) error {
 	err := g.warden.Manager.Delete(pol.GetID())
 	if err != nil {
 		return fmt.Errorf("could not delete policy: %w", err)
