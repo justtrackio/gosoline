@@ -255,11 +255,15 @@ func (c *baseConsumer) ingestData(ctx context.Context) error {
 	defer close(c.data)
 
 	cfn := coffin.New()
-	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput, func(msg *Message) {}), "panic during shoveling data from input")
-	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryHandler, dataSourceRetry, func(msg *Message) {
-		c.logger.Warn("retrying message with id %s", msg.Attributes[AttributeRetryId])
-		c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
-	}), "panic during shoveling data from retry")
+	cfn.Go(func() error {
+		cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput, func(msg *Message) {}), "panic during shoveling data from input")
+		cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryHandler, dataSourceRetry, func(msg *Message) {
+			c.logger.Warn("retrying message with id %s", msg.Attributes[AttributeRetryId])
+			c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
+		}), "panic during shoveling data from retry")
+
+		return nil
+	})
 
 	return cfn.Wait()
 }
