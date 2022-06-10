@@ -53,6 +53,14 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 		}),
 	}...)
 
+	for name, module := range suiteOptions.appModules {
+		appOptions = append(appOptions, application.WithModuleFactory(name, module))
+	}
+
+	for _, factory := range suiteOptions.appFactories {
+		appOptions = append(appOptions, application.WithModuleMultiFactory(factory))
+	}
+
 	ctx := environment.Context()
 	config := environment.Config()
 	logger := environment.Logger()
@@ -62,14 +70,6 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 		assert.FailNow(t, "failed to create application under test", err.Error())
 
 		return
-	}
-
-	for name, module := range suiteOptions.appModules {
-		app.Add(name, module)
-	}
-
-	for _, factory := range suiteOptions.appFactories {
-		app.AddFactory(factory)
 	}
 
 	done := make(chan struct{})

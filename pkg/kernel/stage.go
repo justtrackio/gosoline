@@ -3,12 +3,23 @@ package kernel
 import (
 	"context"
 	"fmt"
+	"sort"
+
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 var ErrKernelStopping = fmt.Errorf("stopping kernel")
+
+type modules struct {
+	lck     conc.PoisonedLock
+	modules map[string]*ModuleState
+}
+
+func (m modules) len() int {
+	return len(m.modules)
+}
 
 type stage struct {
 	cfn coffin.Coffin
@@ -19,11 +30,6 @@ type stage struct {
 	terminated conc.SignalOnce
 
 	modules modules
-}
-
-type modules struct {
-	lck     conc.PoisonedLock
-	modules map[string]*ModuleState
 }
 
 func newStage(ctx context.Context) *stage {
@@ -81,4 +87,50 @@ func (s *stage) stopWait(stageIndex int, logger log.Logger) {
 	}
 
 	s.terminated.Signal()
+}
+
+func (s *stage) len() int {
+	return s.modules.len()
+}
+
+type stages map[int]*stage
+
+func (s stages) hasModules() bool {
+	// no need to iterate in order as we are only checking
+	for _, stage := range s {
+		if len(stage.modules.modules) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s stages) countForegroundModules() int32 {
+	count := int32(0)
+
+	// no need to iterate in order as we are only counting
+	for _, stage := range s {
+		for _, m := range stage.modules.modules {
+			if !m.Config.Background {
+				count++
+			}
+		}
+	}
+
+	return count
+}
+
+func (s stages) getIndices() []int {
+	keys := make([]int, len(s))
+	i := 0
+
+	for k := range s {
+		keys[i] = k
+		i++
+	}
+
+	sort.Ints(keys)
+
+	return keys
 }

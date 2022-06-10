@@ -10,10 +10,15 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
-func RunModule(name string, moduleFactory kernel.ModuleFactory, options ...Option) {
+func Run(options ...Option) {
 	app := Default(options...)
-	app.Add(name, moduleFactory)
 	app.Run()
+}
+
+func RunModule(name string, moduleFactory kernel.ModuleFactory, options ...Option) {
+	options = append(options, WithModuleFactory(name, moduleFactory))
+
+	Run(options...)
 }
 
 func RunApiServer(definer apiserver.Definer, options ...Option) {
@@ -34,19 +39,18 @@ func RunConsumer(callback stream.ConsumerCallbackFactory, options ...Option) {
 
 func RunConsumers(consumers stream.ConsumerCallbackMap, options ...Option) {
 	factory := stream.NewConsumerFactory(consumers)
+
+	options = append(options, WithModuleMultiFactory(factory))
 	options = append(options, WithExecBackoffInfinite)
 
-	app := Default(options...)
-	app.AddFactory(factory)
-	app.Run()
+	Run(options...)
 }
 
 func RunMdlSubscriber(transformers mdlsub.TransformerMapTypeVersionFactories, options ...Option) {
 	subs := mdlsub.NewSubscriberFactory(transformers)
 
+	options = append(options, WithModuleMultiFactory(subs))
 	options = append(options, WithExecBackoffInfinite)
 
-	app := Default(options...)
-	app.AddFactory(subs)
-	app.Run()
+	Run(options...)
 }

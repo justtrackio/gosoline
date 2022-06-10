@@ -8,13 +8,12 @@ import (
 )
 
 func main() {
-	app := application.New(
+	application.Run(
 		application.WithConfigFile("config.dist.yml", "yml"),
 		application.WithKernelSettingsFromConfig,
-		application.WithLoggerHandlersFromConfig)
+		application.WithLoggerHandlersFromConfig,
 
-	app.Add("api", apiserver.New(definer.ApiDefiner))
-	app.Add("currency", currency.NewCurrencyModule())
-
-	app.Run()
+		application.WithModuleFactory("api", apiserver.New(definer.ApiDefiner)),
+		application.WithModuleFactory("currency", currency.NewCurrencyModule()),
+	)
 }

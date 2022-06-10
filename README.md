@@ -27,9 +27,9 @@ import (
 )
 
 func main() {
-	app := application.Default()
-	app.Add("hello-world", NewHelloWorldModule)
-	app.Run()
+	application.Run(
+		application.WithModuleFactory("hello-world", NewHelloWorldModule),
+	)
 }
 
 func NewHelloWorldModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {

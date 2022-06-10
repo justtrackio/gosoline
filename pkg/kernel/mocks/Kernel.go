@@ -25,7 +25,7 @@ func (_m *Kernel) Add(name string, moduleFactory kernel.ModuleFactory, opts ...k
 }
 
 // AddFactory provides a mock function with given fields: factory
-func (_m *Kernel) AddFactory(factory kernel.MultiModuleFactory) {
+func (_m *Kernel) AddFactory(factory kernel.ModuleMultiFactory) {
 	_m.Called(factory)
 }
 

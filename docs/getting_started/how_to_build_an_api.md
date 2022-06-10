@@ -87,15 +87,14 @@ To understand what _money-exchange_ does, let us start by looking at its _main_ 
 [embedmd]:# (../../examples/getting_started/api/main.go /func main/ /\n}/)
 ```go
 func main() {
-	app := application.New(
+	application.Run(
 		application.WithConfigFile("config.dist.yml", "yml"),
 		application.WithKernelSettingsFromConfig,
-		application.WithLoggerHandlersFromConfig)
+		application.WithLoggerHandlersFromConfig,
 
-	app.Add("api", apiserver.New(definer.ApiDefiner))
-	app.Add("currency", currency.NewCurrencyModule())
-
-	app.Run()
+		application.WithModuleFactory("api", apiserver.New(definer.ApiDefiner)),
+		application.WithModuleFactory("currency", currency.NewCurrencyModule()),
+	)
 }
 ```
 
@@ -132,9 +131,9 @@ The _"currency"_ module is already defined by Gosoline, and will use this kvstor
 
 The _"api"_ module is our API server, notice that it was created with a call to `apiserver.New`:
 
-[embedmd]:# (../../examples/getting_started/api/main.go /app.Add\(\"api\"/ /\)/)
+[embedmd]:# (../../examples/getting_started/api/main.go /application.WithModuleFactory\(\"api\"/ /\)/)
 ```go
-app.Add("api", apiserver.New(definer.ApiDefiner)
+application.WithModuleFactory("api", apiserver.New(definer.ApiDefiner)
 ```
 
 The code for _ApiDefiner_ is as follows:

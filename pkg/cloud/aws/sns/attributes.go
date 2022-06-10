@@ -64,7 +64,7 @@ func buildAttributes(attributes []map[string]interface{}) (map[string]types.Mess
 	return snsAttributes, nil
 }
 
-var validAttributeRegex = regexp.MustCompile(`^[a-z0-9_\-]+(\.[a-z0-9_\-]+)*$`)
+var validAttributeRegex = regexp.MustCompile(`^[a-z\d_\-]+(\.[a-z\d_\-]+)*$`)
 
 func IsValidAttributeName(name string) bool {
 	// https://docs.aws.amazon.com/sns/latest/dg/sns-message-attributes.html#SNSMessageAttributes.DataTypes:

@@ -24,14 +24,8 @@ const (
 
 type (
 	ModuleFactory      func(ctx context.Context, config cfg.Config, logger log.Logger) (Module, error)
-	MultiModuleFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]ModuleFactory, error)
+	ModuleMultiFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]ModuleFactory, error)
 )
-
-type moduleSetupContainer struct {
-	name    string
-	factory ModuleFactory
-	opts    []ModuleOption
-}
 
 func isModuleEssential(m Module) bool {
 	if tm, ok := m.(TypedModule); ok {
