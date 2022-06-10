@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	app := application.Default()
-	app.Add("publisher", newPublisherModule)
-	app.Run()
+	application.Run(
+		application.WithModuleFactory("publisher", newPublisherModule),
+	)
 }

@@ -14,10 +14,6 @@ import (
 
 func TestMiddleware(t *testing.T) {
 	config, logger, module := createMocks()
-
-	k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeOk))
-	assert.NoError(t, err)
-
 	callstack := make([]string, 0)
 
 	module.On("GetStage").Return(kernel.StageApplication)
@@ -25,34 +21,34 @@ func TestMiddleware(t *testing.T) {
 		callstack = append(callstack, "module")
 	}).Return(nil)
 
-	k.Add("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return module, nil
-	})
-
-	k.AddMiddleware(func(ctx context.Context, config cfg.Config, logger log.Logger, next kernel.Handler) kernel.Handler {
-		return func() {
+	k, err := kernel.BuildKernel(context.Background(), config, logger, []kernel.Option{
+		kernel.WithMiddlewareFactory(kernel.BuildSimpeMiddleware(func(next kernel.MiddlewareHandler) {
 			callstack = append(callstack, "mid1 start")
 			next()
 			callstack = append(callstack, "mid1 end")
-		}
-	}, kernel.PositionEnd)
+		}), kernel.PositionEnd),
 
-	k.AddMiddleware(func(ctx context.Context, config cfg.Config, logger log.Logger, next kernel.Handler) kernel.Handler {
-		return func() {
+		kernel.WithMiddlewareFactory(kernel.BuildSimpeMiddleware(func(next kernel.MiddlewareHandler) {
 			callstack = append(callstack, "mid2 start")
 			next()
 			callstack = append(callstack, "mid2 end")
-		}
-	}, kernel.PositionEnd)
+		}), kernel.PositionEnd),
 
-	k.AddMiddleware(func(ctx context.Context, config cfg.Config, logger log.Logger, next kernel.Handler) kernel.Handler {
-		return func() {
+		kernel.WithMiddlewareFactory(kernel.BuildSimpeMiddleware(func(next kernel.MiddlewareHandler) {
 			callstack = append(callstack, "mid3 start")
 			next()
 			callstack = append(callstack, "mid3 end")
-		}
-	}, kernel.PositionBeginning)
+		}), kernel.PositionBeginning),
 
+		kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return module, nil
+		}),
+
+		kernel.WithKillTimeout(time.Second),
+		mockExitHandler(t, kernel.ExitCodeOk),
+	})
+
+	assert.NoError(t, err)
 	k.Run()
 
 	expectedCallstack := []string{

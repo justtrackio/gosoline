@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
@@ -26,7 +26,7 @@ type (
 	Option       func(app *App)
 	ConfigOption func(config cfg.GosoConf) error
 	LoggerOption func(config cfg.GosoConf, logger log.GosoLogger) error
-	KernelOption func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error
+	KernelOption func(config cfg.GosoConf) kernelPkg.Option
 	SetupOption  func(config cfg.GosoConf, logger log.GosoLogger) error
 )
 
@@ -35,7 +35,7 @@ type kernelSettings struct {
 }
 
 func WithApiHealthCheck(app *App) {
-	WithModule("api-health-check", apiserver.NewApiHealthCheck())(app)
+	WithModuleFactory("api-health-check", apiserver.NewApiHealthCheck())(app)
 }
 
 func WithConfigEnvKeyPrefix(prefix string) Option {
@@ -121,9 +121,8 @@ func WithConfigSetting(key string, settings interface{}) Option {
 }
 
 func WithConsumerMessagesPerRunnerMetrics(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-		kernel.AddFactory(stream.MessagesPerRunnerMetricWriterFactory)
-		return nil
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithModuleMultiFactory(stream.MessagesPerRunnerMetricWriterFactory)
 	})
 }
 
@@ -142,35 +141,33 @@ func WithExecBackoffSettings(settings *exec.BackoffSettings) Option {
 }
 
 func WithDbRepoChangeHistory(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-		kernel.AddMiddleware(db_repo.KernelMiddlewareChangeHistory, kernelPkg.PositionEnd)
-		return nil
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithMiddlewareFactory(db_repo.KernelMiddlewareChangeHistory, kernelPkg.PositionEnd)
 	})
 }
 
 func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
 	return func(app *App) {
-		app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-			kernel.AddMiddleware(fixtures.KernelMiddlewareLoader(fixtureSets), kernelPkg.PositionBeginning)
-			return nil
+		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(fixtureSets), kernelPkg.PositionBeginning)
 		})
 	}
 }
 
 func WithKernelExitHandler(handler kernelPkg.ExitHandler) Option {
 	return func(app *App) {
-		app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-			return kernel.Option(kernelPkg.WithExitHandler(handler))
+		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+			return kernelPkg.WithExitHandler(handler)
 		})
 	}
 }
 
 func WithKernelSettingsFromConfig(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, k kernelPkg.GosoKernel) error {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		settings := &kernelSettings{}
 		config.UnmarshalKey("kernel", settings)
 
-		return k.Option(kernelPkg.WithKillTimeout(settings.KillTimeout))
+		return kernelPkg.WithKillTimeout(settings.KillTimeout)
 	})
 }
 
@@ -251,24 +248,23 @@ func WithLoggerSentryHandler(contextProvider ...log.SentryContextProvider) Optio
 }
 
 func WithMetadataServer(app *App) {
-	WithModule("metadata-server", NewMetadataServer())(app)
+	WithModuleFactory("metadata-server", NewMetadataServer())(app)
 }
 
 func WithMetricDaemon(app *App) {
-	WithModule("metric", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Module, error) {
+	WithModuleFactory("metric", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Module, error) {
 		return metric.NewDaemon(ctx, config, logger)
 	})(app)
 }
 
 func WithProducerDaemon(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-		kernel.AddFactory(stream.ProducerDaemonFactory)
-		return nil
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithModuleMultiFactory(stream.ProducerDaemonFactory)
 	})
 }
 
 func WithProfiling() Option {
-	return WithModule("profiling", apiserver.NewProfiling())
+	return WithModuleFactory("profiling", apiserver.NewProfiling())
 }
 
 func WithTracing(app *App) {
@@ -291,12 +287,26 @@ func WithTracing(app *App) {
 	})
 }
 
-func WithModule(name string, moduleFactory kernelPkg.ModuleFactory, opts ...kernelPkg.ModuleOption) Option {
+func WithMiddlewareFactory(factory kernelPkg.MiddlewareFactory, position kernelPkg.Position) Option {
 	return func(app *App) {
-		app.addKernelOption(func(config cfg.GosoConf, kernel kernelPkg.GosoKernel) error {
-			kernel.Add(name, moduleFactory, opts...)
+		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+			return kernelPkg.WithMiddlewareFactory(factory, position)
+		})
+	}
+}
 
-			return nil
+func WithModuleFactory(name string, moduleFactory kernelPkg.ModuleFactory, opts ...kernelPkg.ModuleOption) Option {
+	return func(app *App) {
+		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+			return kernelPkg.WithModuleFactory(name, moduleFactory, opts...)
+		})
+	}
+}
+
+func WithModuleMultiFactory(factory kernelPkg.ModuleMultiFactory) Option {
+	return func(app *App) {
+		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+			return kernelPkg.WithModuleMultiFactory(factory)
 		})
 	}
 }

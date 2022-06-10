@@ -3,7 +3,6 @@ package kernel_test
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -28,25 +27,25 @@ func (m FunctionModule) Run(ctx context.Context) error {
 	return m(ctx)
 }
 
-func TestHangingModule(t *testing.T) {
+func TestKernelHangingModule(t *testing.T) {
 	timeout(t, time.Second*3, func(t *testing.T) {
 		config, _, _ := createMocks()
 		logger := logMocks.NewLoggerMockedAll()
 
-		exitHandler := mockExitHandler(t, kernel.ExitCodeErr)
-		k, err := kernel.New(context.Background(), config, logger, exitHandler)
-		assert.NoError(t, err)
+		options := []kernel.Option{
+			mockExitHandler(t, kernel.ExitCodeErr),
+		}
 
-		k.Add("normal module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		options = append(options, kernel.WithModuleFactory("normal module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return FunctionModule(func(ctx context.Context) error {
 				<-ctx.Done()
 
 				return nil
 			}), nil
-		}, kernel.ModuleStage(kernel.StageApplication), kernel.ModuleType(kernel.TypeForeground))
+		}, kernel.ModuleStage(kernel.StageApplication), kernel.ModuleType(kernel.TypeForeground)))
 
 		serviceChannel := make(chan int)
-		k.Add("service module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		options = append(options, kernel.WithModuleFactory("service module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return FunctionModule(func(ctx context.Context) error {
 				processed := 0
 
@@ -62,9 +61,9 @@ func TestHangingModule(t *testing.T) {
 					}
 				}
 			}), nil
-		}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeBackground))
+		}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeBackground)))
 
-		k.Add("hanging module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		options = append(options, kernel.WithModuleFactory("hanging module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return FunctionModule(func(ctx context.Context) error {
 				n := 0
 				for {
@@ -76,7 +75,10 @@ func TestHangingModule(t *testing.T) {
 					}
 				}
 			}), nil
-		}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeForeground))
+		}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeForeground)))
+
+		k, err := kernel.BuildKernel(context.Background(), config, logger, options)
+		assert.NoError(t, err)
 
 		k.Run()
 	})
@@ -137,110 +139,29 @@ func mockExitHandler(t *testing.T, expectedCode int) kernel.Option {
 	})
 }
 
-func TestNoModules(t *testing.T) {
-	config, logger, _ := createMocks()
-	logger.On("Warn", "nothing to run")
-
-	k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeNothingToRun))
-
-	assert.NoError(t, err)
-
-	k.Run()
-}
-
-func TestNoForegroundModules(t *testing.T) {
-	config, logger, _ := createMocks()
-	logger.On("Warn", "no foreground modules")
-
-	module := new(kernelMocks.FullModule)
-	module.On("IsEssential").Return(false)
-	module.On("IsBackground").Return(true)
-	module.On("GetStage").Return(kernel.StageApplication)
-	module.On("Run", mock.Anything).Return(nil)
-
-	k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeNoForeground))
-	k.Add("background", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return module, nil
-	})
-
-	assert.NoError(t, err)
-
-	k.Run()
-}
-
-func TestRunFactoriesError(t *testing.T) {
-	config, logger, _ := createMocks()
-
-	factoryErr := fmt.Errorf("error in module factory")
-	logger.On("Error", "error building additional modules by multiFactories: %w", factoryErr)
-
-	assert.NotPanics(t, func() {
-		k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeErr))
-		assert.NoError(t, err)
-
-		k.AddFactory(func(context.Context, cfg.Config, log.Logger) (map[string]kernel.ModuleFactory, error) {
-			return nil, factoryErr
-		})
-		k.Run()
-	})
-}
-
-func TestRunFactoriesPanic(t *testing.T) {
-	config, logger, _ := createMocks()
-
-	logger.On("Error", "error building additional modules by multiFactories: %w", mock.Anything).Run(func(args mock.Arguments) {
-		err := args.Get(1).(error)
-		assert.True(t, strings.Contains(err.Error(), "panic in module factory"))
-	})
-
-	assert.NotPanics(t, func() {
-		k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeErr))
-		assert.NoError(t, err)
-
-		k.AddFactory(func(context.Context, cfg.Config, log.Logger) (map[string]kernel.ModuleFactory, error) {
-			panic("panic in module factory")
-		})
-		k.Run()
-	})
-}
-
-func TestBootFailure(t *testing.T) {
-	config, logger, _ := createMocks()
-
-	logger.On("Info", mock.Anything)
-	logger.On("Error", "error building modules: %w", mock.AnythingOfType("*errors.withStack"))
-
-	assert.NotPanics(t, func() {
-		k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeErr))
-		assert.NoError(t, err)
-
-		k.Add("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-			panic(errors.New("panic"))
-		})
-		k.Run()
-	})
-}
-
-func TestRunSuccess(t *testing.T) {
+func TestKernelRunSuccess(t *testing.T) {
 	config, logger, module := createMocks()
 
 	module.On("GetStage").Return(kernel.StageApplication)
 	module.On("Run", mock.Anything).Return(nil)
 
 	assert.NotPanics(t, func() {
-		k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeOk))
+		k, err := kernel.BuildKernel(context.Background(), config, logger, []kernel.Option{
+			kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+				return module, nil
+			}),
+			kernel.WithKillTimeout(time.Second),
+			mockExitHandler(t, kernel.ExitCodeOk),
+		})
 		assert.NoError(t, err)
 
-		k.Add("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-			return module, nil
-		})
 		k.Run()
 	})
 
 	module.AssertCalled(t, "Run", mock.Anything)
 }
 
-func TestRunFailure(t *testing.T) {
+func TestKernelRunFailure(t *testing.T) {
 	config, logger, module := createMocks()
 
 	logger.On("Error", "error during the execution of stage %d: %w", kernel.StageApplication, mock.Anything)
@@ -251,22 +172,26 @@ func TestRunFailure(t *testing.T) {
 	})
 
 	assert.NotPanics(t, func() {
-		k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeErr))
+		k, err := kernel.BuildKernel(context.Background(), config, logger, []kernel.Option{
+			kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+				return module, nil
+			}),
+			kernel.WithKillTimeout(time.Second),
+			mockExitHandler(t, kernel.ExitCodeErr),
+		})
 		assert.NoError(t, err)
 
-		k.Add("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-			return module, nil
-		})
 		k.Run()
 	})
 
 	module.AssertCalled(t, "Run", mock.Anything)
 }
 
-func TestStop(t *testing.T) {
+func TestKernelStop(t *testing.T) {
 	config, logger, module := createMocks()
-	k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeOk))
-	assert.NoError(t, err)
+
+	var err error
+	var k kernel.Kernel
 
 	module.On("IsEssential").Return(false)
 	module.On("IsBackground").Return(false)
@@ -278,18 +203,22 @@ func TestStop(t *testing.T) {
 		<-ctx.Done()
 	}).Return(nil)
 
-	k.Add("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return module, nil
+	k, err = kernel.BuildKernel(context.Background(), config, logger, []kernel.Option{
+		kernel.WithModuleFactory("module", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return module, nil
+		}),
+		kernel.WithKillTimeout(time.Second),
+		mockExitHandler(t, kernel.ExitCodeOk),
 	})
+	assert.NoError(t, err)
+
 	k.Run()
 
 	module.AssertCalled(t, "Run", mock.Anything)
 }
 
-func TestRunningType(t *testing.T) {
+func TestKernelRunningType(t *testing.T) {
 	config, logger, _ := createMocks()
-	k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeOk))
-	assert.NoError(t, err)
 
 	mf := new(kernelMocks.Module)
 	// type = foreground & stage = application are the defaults for a module
@@ -305,23 +234,31 @@ func TestRunningType(t *testing.T) {
 		<-ctx.Done()
 	}).Return(nil)
 
-	k.Add("foreground", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return mf, nil
+	k, err := kernel.BuildKernel(context.Background(), config, logger, []kernel.Option{
+		kernel.WithModuleFactory("foreground", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return mf, nil
+		}),
+		kernel.WithModuleFactory("background", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return mb, nil
+		}),
+		kernel.WithKillTimeout(time.Second),
+		mockExitHandler(t, kernel.ExitCodeOk),
 	})
-	k.Add("background", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return mb, nil
-	})
+	assert.NoError(t, err)
+
 	k.Run()
 
 	mf.AssertExpectations(t)
 	mb.AssertExpectations(t)
 }
 
-func TestMultipleStages(t *testing.T) {
+func TestKernelMultipleStages(t *testing.T) {
 	config, logger, _ := createMocks()
 
-	k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(time.Second), mockExitHandler(t, kernel.ExitCodeOk))
-	assert.NoError(t, err)
+	options := []kernel.Option{
+		kernel.WithKillTimeout(time.Second),
+		mockExitHandler(t, kernel.ExitCodeOk),
+	}
 
 	var allMocks []*kernelMocks.FullModule
 	var stageStatus []int
@@ -361,10 +298,13 @@ func TestMultipleStages(t *testing.T) {
 		allMocks = append(allMocks, m)
 		stageStatus = append(stageStatus, 0)
 
-		k.Add("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		options = append(options, kernel.WithModuleFactory("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return m, nil
-		})
+		}))
 	}
+
+	k, err := kernel.BuildKernel(context.Background(), config, logger, options)
+	assert.NoError(t, err)
 
 	go func() {
 		time.Sleep(time.Millisecond * 300)
@@ -384,12 +324,6 @@ func TestKernelForcedExit(t *testing.T) {
 	mayStop := conc.NewSignalOnce()
 	appStopped := conc.NewSignalOnce()
 
-	k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(200*time.Millisecond), kernel.WithExitHandler(func(code int) {
-		assert.Equal(t, kernel.ExitCodeForced, code)
-		mayStop.Signal()
-	}))
-	assert.NoError(t, err)
-
 	app := new(kernelMocks.FullModule)
 	app.On("IsEssential").Return(false)
 	app.On("IsBackground").Return(true)
@@ -407,12 +341,22 @@ func TestKernelForcedExit(t *testing.T) {
 		assert.True(t, appStopped.Signaled())
 	}).Return(nil)
 
-	k.Add("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return m, nil
-	}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeForeground))
-	k.Add("app", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return app, nil
+	k, err := kernel.BuildKernel(context.Background(), config, logger, []kernel.Option{
+		kernel.WithModuleFactory("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return m, nil
+		}, kernel.ModuleStage(kernel.StageService), kernel.ModuleType(kernel.TypeForeground)),
+
+		kernel.WithModuleFactory("app", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return app, nil
+		}),
+
+		kernel.WithKillTimeout(200 * time.Millisecond),
+		kernel.WithExitHandler(func(code int) {
+			assert.Equal(t, kernel.ExitCodeForced, code)
+			mayStop.Signal()
+		}),
 	})
+	assert.NoError(t, err)
 
 	go func() {
 		time.Sleep(time.Millisecond * 300)
@@ -432,9 +376,6 @@ func TestKernelStageStopped(t *testing.T) {
 
 	success := false
 	appStopped := conc.NewSignalOnce()
-
-	k, err := kernel.New(context.Background(), config, logger, kernel.WithKillTimeout(200*time.Millisecond), mockExitHandler(t, kernel.ExitCodeOk))
-	assert.NoError(t, err)
 
 	app := new(kernelMocks.FullModule)
 	app.On("IsEssential").Return(false)
@@ -462,12 +403,20 @@ func TestKernelStageStopped(t *testing.T) {
 	m.On("GetStage").Return(777)
 	m.On("Run", mock.Anything).Return(nil)
 
-	k.Add("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return m, nil
+	k, err := kernel.BuildKernel(context.Background(), config, logger, []kernel.Option{
+		kernel.WithModuleFactory("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return m, nil
+		}),
+
+		kernel.WithModuleFactory("app", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return app, nil
+		}),
+
+		kernel.WithKillTimeout(200 * time.Millisecond),
+		mockExitHandler(t, kernel.ExitCodeOk),
 	})
-	k.Add("app", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return app, nil
-	})
+	assert.NoError(t, err)
+
 	k.Run()
 
 	assert.True(t, success)
@@ -522,15 +471,16 @@ func TestKernel_RunRealModule(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("fake iteration %d", i), func(t *testing.T) {
 			config, logger, _ := createMocks()
-			assert.NotPanics(t, func() {
-				k, err := kernel.New(context.Background(), config, logger, mockExitHandler(t, kernel.ExitCodeOk))
-				assert.NoError(t, err)
 
-				k.Add("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			k, err := kernel.BuildKernel(context.Background(), config, logger, []kernel.Option{
+				mockExitHandler(t, kernel.ExitCodeOk),
+				kernel.WithModuleFactory("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 					return &fakeModule{}, nil
-				})
-				k.Run()
+				}),
 			})
+			assert.NoError(t, err)
+
+			k.Run()
 		})
 	}
 	// test for a race condition on kernel shutdown
@@ -538,17 +488,18 @@ func TestKernel_RunRealModule(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("real iteration %d", i), func(t *testing.T) {
 			config, logger, _ := createMocks()
-			assert.NotPanics(t, func() {
-				k, err := kernel.New(context.Background(), config, logger, mockExitHandler(t, kernel.ExitCodeOk))
-				assert.NoError(t, err)
 
-				k.Add("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			k, err := kernel.BuildKernel(context.Background(), config, logger, []kernel.Option{
+				mockExitHandler(t, kernel.ExitCodeOk),
+				kernel.WithModuleFactory("main", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 					return &realModule{
 						t: t,
 					}, nil
-				})
-				k.Run()
+				}),
 			})
+			assert.NoError(t, err)
+
+			k.Run()
 		})
 	}
 }
@@ -564,31 +515,37 @@ func (f *fastExitModule) Run(_ context.Context) error {
 type slowExitModule struct {
 	fastExitModule
 	kernel.ForegroundModule
-	kernel kernel.Kernel
+	stop func()
 }
 
 func (s *slowExitModule) Run(_ context.Context) error {
-	s.kernel.Stop("slowly")
-
+	s.stop()
 	return nil
 }
 
 func TestModuleFastShutdown(t *testing.T) {
-	config, logger, _ := createMocks()
-	assert.NotPanics(t, func() {
-		k, err := kernel.New(context.Background(), config, logger, mockExitHandler(t, kernel.ExitCodeOk))
-		assert.NoError(t, err)
+	var err error
+	var k kernel.Kernel
 
-		for s := 5; s < 10; s++ {
-			k.Add("exist-fast", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-				return &fastExitModule{}, nil
-			}, kernel.ModuleStage(s))
-			k.Add("exist-slow", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-				return &slowExitModule{
-					kernel: k,
-				}, nil
-			}, kernel.ModuleStage(s))
-		}
-		k.Run()
-	})
+	config, logger, _ := createMocks()
+	options := []kernel.Option{mockExitHandler(t, kernel.ExitCodeOk)}
+
+	for s := 5; s < 10; s++ {
+		options = append(options, kernel.WithModuleFactory("exist-fast", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return &fastExitModule{}, nil
+		}, kernel.ModuleStage(s)))
+
+		options = append(options, kernel.WithModuleFactory("exist-slow", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			return &slowExitModule{
+				stop: func() {
+					k.Stop("slowly")
+				},
+			}, nil
+		}, kernel.ModuleStage(s)))
+	}
+
+	k, err = kernel.BuildKernel(context.Background(), config, logger, options)
+	assert.NoError(t, err)
+
+	k.Run()
 }

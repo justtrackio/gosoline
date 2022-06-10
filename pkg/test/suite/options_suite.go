@@ -25,7 +25,7 @@ type suiteOptions struct {
 
 	appOptions   []application.Option
 	appModules   map[string]kernel.ModuleFactory
-	appFactories []kernel.MultiModuleFactory
+	appFactories []kernel.ModuleMultiFactory
 
 	testCaseWhitelist   []string
 	testCaseRepeatCount int
@@ -37,7 +37,7 @@ func newSuiteOptions() *suiteOptions {
 		envSetup:            make([]func() error, 0),
 		appOptions:          make([]application.Option, 0),
 		appModules:          make(map[string]kernel.ModuleFactory),
-		appFactories:        make([]kernel.MultiModuleFactory, 0),
+		appFactories:        make([]kernel.ModuleMultiFactory, 0),
 		testCaseRepeatCount: 1,
 	}
 }
@@ -147,7 +147,7 @@ func WithModule(name string, module kernel.ModuleFactory) Option {
 	}
 }
 
-func WithModuleFactory(factory kernel.MultiModuleFactory) Option {
+func WithModuleFactory(factory kernel.ModuleMultiFactory) Option {
 	return func(s *suiteOptions) {
 		s.appFactories = append(s.appFactories, factory)
 	}

@@ -11,10 +11,10 @@ import (
 )
 
 func main() {
-	app := application.Default()
-	app.Add("hello-world", NewHelloWorldModule, kernel.ModuleType(kernel.TypeBackground))
-	app.Add("foreground-module", NewForegroundModule, kernel.ModuleType(kernel.TypeForeground))
-	app.Run()
+	application.Run(
+		application.WithModuleFactory("hello-world", NewHelloWorldModule, kernel.ModuleType(kernel.TypeBackground)),
+		application.WithModuleFactory("foreground-module", NewForegroundModule, kernel.ModuleType(kernel.TypeForeground)),
+	)
 }
 
 func NewHelloWorldModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {

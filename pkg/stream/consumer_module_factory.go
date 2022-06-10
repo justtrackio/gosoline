@@ -11,7 +11,7 @@ import (
 
 type ConsumerCallbackMap map[string]ConsumerCallbackFactory
 
-func NewConsumerFactory(callbacks ConsumerCallbackMap) kernel.MultiModuleFactory {
+func NewConsumerFactory(callbacks ConsumerCallbackMap) kernel.ModuleMultiFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 		return ConsumerFactory(callbacks)
 	}

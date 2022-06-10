@@ -79,7 +79,6 @@ func New(options ...Option) kernel.Kernel {
 
 func NewWithInterfaces(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger, options ...Option) (kernel.Kernel, error) {
 	var err error
-	var ker kernel.GosoKernel
 	var cfgPostProcessors map[string]int
 
 	app := &App{
@@ -118,15 +117,11 @@ func NewWithInterfaces(ctx context.Context, config cfg.GosoConf, logger log.Goso
 		}
 	}
 
-	if ker, err = kernel.New(ctx, config, logger); err != nil {
-		return nil, fmt.Errorf("can not create kernel: %w", err)
+	kernelOptions := make([]kernel.Option, len(app.kernelOptions))
+
+	for i := 0; i < len(app.kernelOptions); i++ {
+		kernelOptions[i] = app.kernelOptions[i](config)
 	}
 
-	for _, opt := range app.kernelOptions {
-		if err := opt(config, ker); err != nil {
-			return nil, fmt.Errorf("can not apply kernel options on application: %w", err)
-		}
-	}
-
-	return ker, nil
+	return kernel.BuildKernel(ctx, config, logger, kernelOptions)
 }

@@ -15,6 +15,17 @@ const (
 )
 
 type (
-	Middleware func(ctx context.Context, config cfg.Config, logger log.Logger, next Handler) Handler
-	Handler    func()
+	MiddlewareFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (Middleware, error)
+	Middleware        func(next MiddlewareHandler) MiddlewareHandler
+	MiddlewareHandler func()
 )
+
+func BuildSimpeMiddleware(handler func(next MiddlewareHandler)) MiddlewareFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (Middleware, error) {
+		return func(next MiddlewareHandler) MiddlewareHandler {
+			return func() {
+				handler(next)
+			}
+		}, nil
+	}
+}

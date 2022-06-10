@@ -40,13 +40,13 @@ func TestDefaultConfigParser(t *testing.T) {
 
 	runTestApp(t, func() {
 		exitCodeHandler := application.WithKernelExitHandler(func(code int) {})
-
-		app := application.Default(exitCodeHandler)
-		app.Add("test", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		moduleOption := application.WithModuleFactory("test", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 			return testModule{
 				t: t,
 			}, nil
 		})
+
+		app := application.Default(exitCodeHandler, moduleOption)
 		app.Run()
 	})
 }

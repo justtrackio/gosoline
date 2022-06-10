@@ -23,11 +23,13 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 	config := cfg.New()
 	if err := config.Option(configOptions...); err != nil {
 		defaultErrorHandler("can not initialize the config: %w", err)
+		return
 	}
 
 	logger, err := newCliLogger()
 	if err != nil {
 		defaultErrorHandler("can not initialize the logger: %w", err)
+		return
 	}
 
 	settings := &kernelSettings{}
@@ -35,16 +37,22 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 
 	ctx := appctx.WithContainer(context.Background())
 
-	k, err := kernel.New(ctx, config, logger, kernel.WithKillTimeout(settings.KillTimeout))
-	if err != nil {
-		defaultErrorHandler("can not initialize the kernel: %w", err)
+	options := []kernel.Option{
+		kernel.WithKillTimeout(settings.KillTimeout),
+		kernel.WithModuleFactory("cli", module, kernel.ModuleType(kernel.TypeEssential), kernel.ModuleStage(kernel.StageApplication)),
 	}
 
-	k.Add("cli", module, kernel.ModuleType(kernel.TypeEssential), kernel.ModuleStage(kernel.StageApplication))
 	for _, otherModuleMap := range otherModuleMaps {
 		for name, otherModule := range otherModuleMap {
-			k.Add(name, otherModule)
+			options = append(options, kernel.WithModuleFactory(name, otherModule))
 		}
 	}
+
+	k, err := kernel.BuildKernel(ctx, config, logger, options)
+	if err != nil {
+		defaultErrorHandler("can not initialize the kernel: %w", err)
+		return
+	}
+
 	k.Run()
 }

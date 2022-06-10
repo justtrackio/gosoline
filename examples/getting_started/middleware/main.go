@@ -11,10 +11,11 @@ import (
 )
 
 func main() {
-	app := application.New()
-	app.Add("hello", moduleFactory)
-	app.AddMiddleware(two, kernel.PositionBeginning)
-	app.AddMiddleware(one, kernel.PositionBeginning)
+	app := application.New(
+		application.WithModuleFactory("hello", moduleFactory),
+		application.WithMiddlewareFactory(two, kernel.PositionBeginning),
+		application.WithMiddlewareFactory(one, kernel.PositionBeginning),
+	)
 	app.Run()
 }
 
@@ -30,22 +31,26 @@ func (h *helloWorldModule) Run(ctx context.Context) error {
 	return nil
 }
 
-func one(ctx context.Context, config cfg.Config, logger log.Logger, next kernel.Handler) kernel.Handler {
-	return func() {
-		fmt.Println("Beginning of one")
+func one(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Middleware, error) {
+	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
+		return func() {
+			fmt.Println("Beginning of one")
 
-		next()
+			next()
 
-		fmt.Println("End of one")
-	}
+			fmt.Println("End of one")
+		}
+	}, nil
 }
 
-func two(ctx context.Context, config cfg.Config, logger log.Logger, next kernel.Handler) kernel.Handler {
-	return func() {
-		fmt.Println("Beginning of two")
+func two(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Middleware, error) {
+	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
+		return func() {
+			fmt.Println("Beginning of two")
 
-		next()
+			next()
 
-		fmt.Println("End of two")
-	}
+			fmt.Println("End of two")
+		}
+	}, nil
 }
