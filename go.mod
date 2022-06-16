@@ -68,6 +68,7 @@ require (
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	github.com/xitongsys/parquet-go v1.4.0
 	github.com/xitongsys/parquet-go-source v0.0.0-20191104003508-ecfa341356a6
+	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220328115105-d36c6a25d886
 	google.golang.org/api v0.74.0

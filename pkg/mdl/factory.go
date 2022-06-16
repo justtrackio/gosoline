@@ -1,9 +1,22 @@
 package mdl
 
 import (
+	"golang.org/x/exp/constraints"
 	"reflect"
 	"time"
 )
+
+type Basic interface {
+	~bool | constraints.Float | constraints.Integer | time.Time | ~string
+}
+
+func EmptyIfNil[T Basic](v *T) (out T) {
+	if v != nil {
+		return *v
+	}
+
+	return
+}
 
 func Bool(v bool) *bool {
 	return &v
@@ -124,4 +137,12 @@ func IsNil(m interface{}) bool {
 	default:
 		return false
 	}
+}
+
+func NilIfEmpty[T comparable](in T) *T {
+	if *new(T) == in {
+		return nil
+	}
+
+	return &in
 }
