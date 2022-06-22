@@ -20,28 +20,32 @@ const (
 	tableActions   = "guard_actions"
 )
 
-type SqlManager struct {
+type sqlManager struct {
 	logger   log.Logger
+	cache    SqlCache
 	dbClient db.Client
 }
 
-func NewSqlManager(config cfg.Config, logger log.Logger) (*SqlManager, error) {
+func NewSqlManager(config cfg.Config, logger log.Logger) (Manager, error) {
 	dbClient, err := db.NewClient(config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create dbClient: %w", err)
 	}
 
-	return NewSqlManagerWithInterfaces(logger, dbClient), nil
+	cache := NewCache()
+
+	return NewSqlManagerWithInterfaces(logger, cache, dbClient), nil
 }
 
-func NewSqlManagerWithInterfaces(logger log.Logger, dbClient db.Client) *SqlManager {
-	return &SqlManager{
+func NewSqlManagerWithInterfaces(logger log.Logger, cache SqlCache, dbClient db.Client) Manager {
+	return &sqlManager{
 		logger:   logger,
+		cache:    cache,
 		dbClient: dbClient,
 	}
 }
 
-func (m SqlManager) Create(pol ladon.Policy) error {
+func (m sqlManager) Create(pol ladon.Policy) error {
 	var err error
 	var conditions []byte
 
@@ -84,7 +88,7 @@ func (m SqlManager) Create(pol ladon.Policy) error {
 	return nil
 }
 
-func (m SqlManager) createAssociations(pol ladon.Policy, table string, values []string) error {
+func (m sqlManager) createAssociations(pol ladon.Policy, table string, values []string) error {
 	ins := squirrel.Insert(table).Options("IGNORE").Columns("id", "name")
 	for _, s := range values {
 		ins = ins.Values(pol.GetID(), s)
@@ -102,7 +106,7 @@ func (m SqlManager) createAssociations(pol ladon.Policy, table string, values []
 	return nil
 }
 
-func (m SqlManager) Update(pol ladon.Policy) error {
+func (m sqlManager) Update(pol ladon.Policy) error {
 	var err error
 	var conditions []byte
 
@@ -137,7 +141,7 @@ func (m SqlManager) Update(pol ladon.Policy) error {
 	return nil
 }
 
-func (m SqlManager) updateAssociations(pol ladon.Policy, table string, values []string) error {
+func (m sqlManager) updateAssociations(pol ladon.Policy, table string, values []string) error {
 	err := m.deleteByIdAndTable(pol.GetID(), table)
 	if err != nil {
 		return err
@@ -150,7 +154,7 @@ func (m SqlManager) updateAssociations(pol ladon.Policy, table string, values []
 	return nil
 }
 
-func (m SqlManager) Get(id string) (ladon.Policy, error) {
+func (m sqlManager) Get(id string) (ladon.Policy, error) {
 	sel := buildSelectBuilder(squirrel.Eq{"p.id": id})
 
 	policies, err := m.queryPolicies(sel)
@@ -165,7 +169,7 @@ func (m SqlManager) Get(id string) (ladon.Policy, error) {
 	return policies[0], nil
 }
 
-func (m SqlManager) Delete(id string) error {
+func (m sqlManager) Delete(id string) error {
 	tables := []string{tablePolicies, tableSubjects, tableResources, tableActions}
 
 	for _, table := range tables {
@@ -178,7 +182,7 @@ func (m SqlManager) Delete(id string) error {
 	return nil
 }
 
-func (m SqlManager) deleteByIdAndTable(id string, table string) error {
+func (m sqlManager) deleteByIdAndTable(id string, table string) error {
 	del := squirrel.Delete(table).Where(squirrel.Eq{"id": id})
 	sql, args, err := del.ToSql()
 	if err != nil {
@@ -196,7 +200,7 @@ func (m SqlManager) deleteByIdAndTable(id string, table string) error {
 	return nil
 }
 
-func (m SqlManager) GetAll(limit, offset int64) (ladon.Policies, error) {
+func (m sqlManager) GetAll(limit, offset int64) (ladon.Policies, error) {
 	sel := buildSelectBuilder(squirrel.Eq{"1": "1"})
 	sel = sel.Limit(uint64(limit))
 	sel = sel.Offset(uint64(offset))
@@ -204,69 +208,71 @@ func (m SqlManager) GetAll(limit, offset int64) (ladon.Policies, error) {
 	return m.queryPolicies(sel)
 }
 
-func (m SqlManager) FindRequestCandidates(r *ladon.Request) (ladon.Policies, error) {
+func (m sqlManager) FindRequestCandidates(r *ladon.Request) (ladon.Policies, error) {
 	return m.FindPoliciesForSubject(r.Subject)
 }
 
-func (m SqlManager) FindPoliciesForSubject(subject string) (ladon.Policies, error) {
+func (m sqlManager) FindPoliciesForSubject(subject string) (ladon.Policies, error) {
 	sel := buildSelectBuilder(squirrel.Eq{"s.name": subject})
 
 	return m.queryPolicies(sel)
 }
 
-func (m SqlManager) FindPoliciesForResource(resource string) (ladon.Policies, error) {
+func (m sqlManager) FindPoliciesForResource(resource string) (ladon.Policies, error) {
 	sel := buildSelectBuilder(squirrel.Eq{"r.name": resource})
 
 	return m.queryPolicies(sel)
 }
 
-func (m SqlManager) queryPolicies(sel squirrel.SelectBuilder) (ladon.Policies, error) {
+func (m sqlManager) queryPolicies(sel squirrel.SelectBuilder) (ladon.Policies, error) {
 	sql, args, err := sel.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("can not build sql string to query the policies: %w", err)
 	}
 
-	res, err := m.dbClient.GetResult(sql, args...)
-	if err != nil {
-		return nil, fmt.Errorf("can not get result to query the policies: %w", err)
-	}
-
-	policies := map[string]*ladon.DefaultPolicy{}
-	for _, row := range *res {
-		if _, ok := policies[row["id"]]; !ok {
-			conditions := make(ladon.Conditions)
-
-			if err = json.Unmarshal([]byte(row["conditions"]), &conditions); err != nil {
-				return nil, fmt.Errorf("can not unmarshal the conditions of policy %s: %w", row["id"], err)
-			}
-
-			policies[row["id"]] = &ladon.DefaultPolicy{
-				ID:          row["id"],
-				Description: row["description"],
-				Effect:      row["effect"],
-				Subjects:    make([]string, 0),
-				Resources:   make([]string, 0),
-				Actions:     make([]string, 0),
-				Conditions:  conditions,
-			}
+	return m.cache.WithCache(sql, args, func() (ladon.Policies, error) {
+		res, err := m.dbClient.GetResult(sql, args...)
+		if err != nil {
+			return nil, fmt.Errorf("can not get result to query the policies: %w", err)
 		}
 
-		pol := policies[row["id"]]
-		pol.Subjects = append(pol.Subjects, row["subject"])
-		pol.Resources = append(pol.Resources, row["resource"])
-		pol.Actions = append(pol.Actions, row["action"])
-	}
+		policies := map[string]*ladon.DefaultPolicy{}
+		for _, row := range *res {
+			if _, ok := policies[row["id"]]; !ok {
+				conditions := make(ladon.Conditions)
 
-	unique := make(ladon.Policies, 0)
-	for _, pol := range policies {
-		pol.Subjects = funk.UniqString(pol.Subjects)
-		pol.Resources = funk.UniqString(pol.Resources)
-		pol.Actions = funk.UniqString(pol.Actions)
+				if err = json.Unmarshal([]byte(row["conditions"]), &conditions); err != nil {
+					return nil, fmt.Errorf("can not unmarshal the conditions of policy %s: %w", row["id"], err)
+				}
 
-		unique = append(unique, pol)
-	}
+				policies[row["id"]] = &ladon.DefaultPolicy{
+					ID:          row["id"],
+					Description: row["description"],
+					Effect:      row["effect"],
+					Subjects:    make([]string, 0),
+					Resources:   make([]string, 0),
+					Actions:     make([]string, 0),
+					Conditions:  conditions,
+				}
+			}
 
-	return unique, nil
+			pol := policies[row["id"]]
+			pol.Subjects = append(pol.Subjects, row["subject"])
+			pol.Resources = append(pol.Resources, row["resource"])
+			pol.Actions = append(pol.Actions, row["action"])
+		}
+
+		unique := make(ladon.Policies, 0)
+		for _, pol := range policies {
+			pol.Subjects = funk.UniqString(pol.Subjects)
+			pol.Resources = funk.UniqString(pol.Resources)
+			pol.Actions = funk.UniqString(pol.Actions)
+
+			unique = append(unique, pol)
+		}
+
+		return unique, nil
+	})
 }
 
 func buildSelectBuilder(where squirrel.Eq) squirrel.SelectBuilder {

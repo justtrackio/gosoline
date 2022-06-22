@@ -12,7 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/guard/mocks"
 )
 
-// Test LadonGuard::GetPolicies
+// Test ladonGuard::GetPolicies
 // Testing the other functions does not make any sense here, as they're wrapping just manager methods
 
 func TestLadonGuard_GetPolicies(t *testing.T) {
