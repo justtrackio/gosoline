@@ -1,9 +1,12 @@
 package db_repo
 
 import (
+	"bytes"
+	"fmt"
 	"strings"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"golang.org/x/exp/slices"
 )
@@ -24,57 +27,127 @@ type tableMetadata struct {
 }
 
 type tableMetadataBuilder struct {
-	scope     *gorm.Scope
+	scope     *gorm.DB
 	tableName string
-	fields    []*gorm.StructField
+	fields    []*schema.Field
+	relations map[string]*schema.Relationship
 }
 
-func (m *tableMetadataBuilder) build() *tableMetadata {
+func (m *tableMetadataBuilder) build() (*tableMetadata, error) {
 	metadata := &tableMetadata{}
-	metadata.exists = m.scope.Dialect().HasTable(m.tableName)
+	metadata.exists = m.scope.Migrator().HasTable(m.tableName)
 	metadata.tableName = m.tableName
-	metadata.tableNameQuoted = m.scope.Quote(m.tableName)
-	metadata.columns = m.buildColumns()
-	metadata.primaryKeys = m.buildPrimaryKeys()
-	return metadata
+
+	buf := bytes.NewBufferString(metadata.tableNameQuoted)
+	m.scope.QuoteTo(buf, m.tableName)
+	metadata.tableNameQuoted = buf.String()
+
+	var err error
+	metadata.columns, err = m.buildColumns()
+	if err != nil {
+		return nil, err
+	}
+
+	metadata.primaryKeys, err = m.buildPrimaryKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	return metadata, nil
 }
 
-func (m *tableMetadataBuilder) buildColumns() []columnMetadata {
+func (m *tableMetadataBuilder) buildColumns() ([]columnMetadata, error) {
 	var columns []columnMetadata
 	for _, field := range m.fields {
-		if field.IsNormal {
-			columns = append(columns, m.buildColumn(field))
+		if field.EmbeddedSchema != nil {
+			continue
 		}
-	}
-	return columns
-}
 
-func (m *tableMetadataBuilder) buildPrimaryKeys() []columnMetadata {
-	var columns []columnMetadata
-	for _, field := range m.fields {
-		if field.IsPrimaryKey {
-			columns = append(columns, m.buildColumn(field))
+		if _, exists := m.relations[field.Name]; exists {
+			continue
 		}
-	}
-	return columns
-}
 
-func (m *tableMetadataBuilder) buildColumn(field *gorm.StructField) (cm columnMetadata) {
-	name := field.DBName
-	nameQuoted := m.scope.Quote(field.DBName)
-	definition := m.scope.Quote(field.DBName) + " " + m.dataTypeOfField(field)
-
-	defer func() {
-		err := recover()
+		cm, err := m.buildColumn(field)
 		if err != nil {
-			cm = m.getColumnMetadata(name, nameQuoted, definition, false)
+			return nil, err
 		}
-	}()
 
-	exists := m.scope.Dialect().HasColumn(m.tableName, field.DBName)
-	cm = m.getColumnMetadata(name, nameQuoted, definition, exists)
+		columns = append(columns, *cm)
+	}
 
-	return
+	return columns, nil
+}
+
+func (m *tableMetadataBuilder) buildPrimaryKeys() ([]columnMetadata, error) {
+	var columns []columnMetadata
+	for _, field := range m.fields {
+		if field.PrimaryKey {
+			cm, err := m.buildColumn(field)
+			if err != nil {
+				return nil, err
+			}
+
+			columns = append(columns, *cm)
+		}
+	}
+	return columns, nil
+}
+
+func (m *tableMetadataBuilder) buildColumn(field *schema.Field) (*columnMetadata, error) {
+	name := field.DBName
+
+	nameQuoted := ""
+	nameBuf := bytes.NewBufferString(nameQuoted)
+	m.scope.QuoteTo(nameBuf, field.DBName)
+	nameQuoted = nameBuf.String()
+
+	definition := ""
+	definitionBuf := bytes.NewBufferString(definition)
+	m.scope.QuoteTo(definitionBuf, field.DBName)
+	definition = definitionBuf.String() + " " + m.dataTypeOfField(field)
+
+	exists, err := m.hasColumn(m.tableName, field.DBName)
+	if err != nil {
+		return nil, fmt.Errorf("could not check if column exists: %w", err)
+	}
+
+	cm := m.getColumnMetadata(name, nameQuoted, definition, exists)
+
+	return &cm, nil
+}
+
+func (m *tableMetadataBuilder) hasColumn(tableName, fieldName string) (bool, error) {
+	database := m.scope.Migrator().CurrentDatabase()
+
+	sql := "SELECT count(*) FROM INFORMATION_SCHEMA.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?"
+
+	db := m.scope.Raw(sql, database, tableName, fieldName)
+	if db.Error != nil {
+		return false, db.Error
+	}
+
+	rows, err := db.Rows()
+	if err != nil {
+		return false, err
+	}
+
+	// close rows otherwise we're leaking connections
+	defer rows.Close()
+
+	if !rows.Next() {
+		if rows.Err() != nil {
+			return false, rows.Err()
+		}
+
+		return false, nil
+	}
+
+	var count int
+	if err := rows.Scan(&count); err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
 func (m *tableMetadataBuilder) getColumnMetadata(name string, nameQuoted string, definition string, exists bool) columnMetadata {
@@ -86,21 +159,24 @@ func (m *tableMetadataBuilder) getColumnMetadata(name string, nameQuoted string,
 	}
 }
 
-func (m *tableMetadataBuilder) dataTypeOfField(field *gorm.StructField) string {
-	tag := m.scope.Dialect().DataTypeOf(field)
+func (m *tableMetadataBuilder) dataTypeOfField(field *schema.Field) string {
+	tag := m.scope.Migrator().FullDataTypeOf(field)
+	sql := tag.SQL
 
-	tag = strings.Replace(tag, "AUTO_INCREMENT", "", -1)
-	tag = strings.Replace(tag, "UNIQUE", "", -1)
+	sql = strings.Replace(sql, "AUTO_INCREMENT", "", -1)
+	sql = strings.Replace(sql, "UNIQUE", "", -1)
 
-	return tag
+	return sql
 }
 
-func newTableMetadata(scope *gorm.Scope, tableName string, fields []*gorm.StructField) *tableMetadata {
+func newTableMetadata(scope *gorm.DB, tableName string, fields []*schema.Field, relations map[string]*schema.Relationship) (*tableMetadata, error) {
 	builder := tableMetadataBuilder{
 		tableName: tableName,
 		scope:     scope,
 		fields:    fields,
+		relations: relations,
 	}
+
 	return builder.build()
 }
 

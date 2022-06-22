@@ -1,6 +1,8 @@
 package db_repo
 
-import "github.com/justtrackio/gosoline/pkg/mdl"
+import (
+	"github.com/justtrackio/gosoline/pkg/mdl"
+)
 
 const (
 	BoolAnd = "AND"
@@ -19,6 +21,7 @@ type Metadata struct {
 	TableName  string
 	PrimaryKey string
 	Mappings   FieldMappings
+	Preloads   []string
 }
 
 type FieldMappings map[string]FieldMapping

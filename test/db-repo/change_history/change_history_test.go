@@ -1,5 +1,4 @@
 //go:build integration
-// +build integration
 
 package change_history_test
 
@@ -127,7 +126,10 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_CreateTable(
 	s.NoError(err)
 
 	err = historyManager.RunMigration(&TestModel1{})
-	s.NoError(err)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error running the history migration")
+		return
+	}
 
 	model := &TestModel1{
 		Name: mdl.Box("name1"),

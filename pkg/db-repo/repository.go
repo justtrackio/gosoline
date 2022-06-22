@@ -2,28 +2,32 @@ package db_repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
-	"time"
+	"sync"
 
-	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
 	"github.com/justtrackio/gosoline/pkg/tracing"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"gorm.io/gorm/schema"
 )
 
 const (
-	Create = "create"
-	Read   = "read"
-	Update = "update"
-	Delete = "delete"
-	Query  = "query"
+	BatchCreate = "batchCreate"
+	BatchUpdate = "batchUpdate"
+	BatchDelete = "batchDelete"
+	Create      = "create"
+	Read        = "read"
+	Update      = "update"
+	Delete      = "delete"
+	Query       = "query"
 )
 
 var (
@@ -54,17 +58,20 @@ type RepositoryReadOnly interface {
 //go:generate mockery --name Repository
 type Repository interface {
 	RepositoryReadOnly
+	BatchCreate(ctx context.Context, values interface{}) error
+	BatchUpdate(ctx context.Context, values interface{}) error
+	BatchDelete(ctx context.Context, values interface{}) error
 	Create(ctx context.Context, value ModelBased) error
-	Update(ctx context.Context, value ModelBased) error
 	Delete(ctx context.Context, value ModelBased) error
+	Update(ctx context.Context, value ModelBased) error
 }
 
 type repository struct {
-	logger   log.Logger
-	tracer   tracing.Tracer
-	orm      *gorm.DB
-	clock    clock.Clock
-	metadata Metadata
+	logger      log.Logger
+	tracer      tracing.Tracer
+	orm         *gorm.DB
+	metadata    Metadata
+	schemaCache *sync.Map
 }
 
 func New(config cfg.Config, logger log.Logger, s Settings) (*repository, error) {
@@ -78,13 +85,7 @@ func New(config cfg.Config, logger log.Logger, s Settings) (*repository, error) 
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
 
-	orm.Callback().
-		Update().
-		After("gorm:update_time_stamp").
-		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
-	clk := clock.NewRealClock()
-
-	return NewWithInterfaces(logger, tracer, orm, clk, s.Metadata), nil
+	return NewWithInterfaces(logger, tracer, orm, s.Metadata), nil
 }
 
 func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings db.Settings, repoSettings Settings) (*repository, error) {
@@ -98,28 +99,239 @@ func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings db.Setti
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
 
-	orm.Callback().
-		Update().
-		After("gorm:update_time_stamp").
-		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
-
-	clk := clock.NewRealClock()
-
-	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata), nil
+	return NewWithInterfaces(logger, tracer, orm, repoSettings.Metadata), nil
 }
 
-func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata) *repository {
+func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, metadata Metadata) *repository {
 	return &repository{
-		logger:   logger,
-		tracer:   tracer,
-		orm:      orm,
-		clock:    clock,
-		metadata: metadata,
+		logger:      logger,
+		tracer:      tracer,
+		orm:         orm,
+		metadata:    metadata,
+		schemaCache: &sync.Map{},
 	}
 }
 
+func (r *repository) BatchCreate(ctx context.Context, values interface{}) error {
+	valuesSlice, err := refl.InterfaceToInterfaceSlice(values)
+	if err != nil {
+		return fmt.Errorf("could not turn values into slice: %w", err)
+	}
+
+	if len(valuesSlice) == 0 {
+		return nil
+	}
+
+	queryable, err := r.isQueryableModel(valuesSlice[0])
+	if err != nil {
+		return err
+	}
+
+	if !queryable {
+		return ErrCrossCreate
+	}
+
+	valueType := reflect.TypeOf(valuesSlice[0])
+	for i := 0; i < len(valuesSlice); i++ {
+		if _, ok := valuesSlice[i].(ModelBased); !ok {
+			return fmt.Errorf("you should pass a slice of ModelBased, found element at %d with %T", i, valuesSlice[0])
+		}
+
+		if valueType != reflect.TypeOf(valuesSlice[i]) {
+			return fmt.Errorf("your elements should have all the same types, %d was different", i)
+		}
+	}
+
+	modelId := r.GetModelId()
+	logger := r.logger.WithContext(ctx)
+
+	ctx, span := r.startSubSpan(ctx, "CreateItems")
+	defer span.Finish()
+
+	orm := r.orm.
+		WithContext(ctx).
+		Session(&gorm.Session{
+			FullSaveAssociations: true,
+			NewDB:                true,
+		})
+
+	for _, preload := range r.metadata.Preloads {
+		orm = orm.Preload(preload)
+	}
+
+	err = orm.
+		Create(values).
+		Error
+
+	if db.IsDuplicateEntryError(err) {
+		logger.Warn("could not create models of type %s due to duplicate entry error: %s", modelId, err.Error())
+		return &db.DuplicateEntryError{
+			Err: err,
+		}
+	}
+
+	if err != nil {
+		logger.Error("could not create model of type %v: %w", modelId, err)
+		return err
+	}
+
+	for _, v := range valuesSlice {
+		logger.Info("created model of type %s with id %d", modelId, *v.(ModelBased).GetId())
+	}
+
+	return nil
+}
+
+func (r *repository) BatchUpdate(ctx context.Context, values interface{}) error {
+	valuesSlice, err := refl.InterfaceToInterfaceSlice(values)
+	if err != nil {
+		return fmt.Errorf("could not turn values into slice: %w", err)
+	}
+
+	if len(valuesSlice) == 0 {
+		return nil
+	}
+
+	queryable, err := r.isQueryableModel(valuesSlice[0])
+	if err != nil {
+		return err
+	}
+
+	if !queryable {
+		return ErrCrossUpdate
+	}
+
+	valueType := reflect.TypeOf(valuesSlice[0])
+	for i := 0; i < len(valuesSlice); i++ {
+		if _, ok := valuesSlice[i].(ModelBased); !ok {
+			return fmt.Errorf("you should pass a slice of ModelBased, found element at %d with %T", i, valuesSlice[0])
+		}
+
+		if valueType != reflect.TypeOf(valuesSlice[i]) {
+			return fmt.Errorf("your elements should have all the same types, %d was different", i)
+		}
+	}
+
+	modelId := r.GetModelId()
+	logger := r.logger.WithContext(ctx)
+
+	ctx, span := r.startSubSpan(ctx, "UpdateItems")
+	defer span.Finish()
+
+	orm := r.orm.
+		WithContext(ctx).
+		Session(&gorm.Session{
+			FullSaveAssociations: true,
+			NewDB:                true,
+		})
+
+	for _, preload := range r.metadata.Preloads {
+		orm = orm.Preload(preload)
+	}
+
+	err = orm.
+		Save(values).
+		Error
+
+	if db.IsDuplicateEntryError(err) {
+		logger.Warn("could not update models of type %s due to duplicate entry error: %s", modelId, err.Error())
+		return &db.DuplicateEntryError{
+			Err: err,
+		}
+	}
+
+	if err != nil {
+		logger.Error("could not update models of type %v: %w", modelId, err)
+		return err
+	}
+
+	for _, value := range valuesSlice {
+		vm := value.(ModelBased)
+
+		if err := r.updateAssociations(vm.(ModelBased)); err != nil {
+			logger.Error("could not update associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(vm.GetId()), err)
+			return err
+		}
+	}
+
+	for _, v := range valuesSlice {
+		logger.Info("updated model of type %s with id %d", modelId, *v.(ModelBased).GetId())
+	}
+
+	return nil
+}
+
+func (r *repository) BatchDelete(ctx context.Context, values interface{}) error {
+	valuesSlice, err := refl.InterfaceToInterfaceSlice(values)
+	if err != nil {
+		return fmt.Errorf("could not turn values into slice: %w", err)
+	}
+
+	if len(valuesSlice) == 0 {
+		return nil
+	}
+
+	valueType := reflect.TypeOf(valuesSlice[0])
+
+	for i := 0; i < len(valuesSlice); i++ {
+		if _, ok := valuesSlice[i].(ModelBased); !ok {
+			return fmt.Errorf("you should pass a slice of ModelBased, found element at %d with %T", i, valuesSlice[0])
+		}
+
+		if valueType != reflect.TypeOf(valuesSlice[i]) {
+			return fmt.Errorf("your elements have all the same types, %d was different", i)
+		}
+	}
+
+	queryable, err := r.isQueryableModel(valuesSlice[0])
+	if err != nil {
+		return err
+	}
+
+	if !queryable {
+		return ErrCrossDelete
+	}
+
+	modelId := r.GetModelId()
+	logger := r.logger.WithContext(ctx)
+
+	ctx, span := r.startSubSpan(ctx, "DeleteItems")
+	defer span.Finish()
+
+	orm := r.orm.
+		WithContext(ctx).
+		Session(&gorm.Session{
+			FullSaveAssociations: true,
+			NewDB:                true,
+		})
+
+	for _, preload := range r.metadata.Preloads {
+		orm = orm.Preload(preload)
+	}
+
+	err = orm.
+		Delete(values).
+		Error
+
+	if err != nil {
+		logger.Error("could not delete models of type %v: %w", modelId, err)
+		return err
+	}
+
+	for _, v := range valuesSlice {
+		logger.Info("deleted model of type %s with id %d", modelId, *v.(ModelBased).GetId())
+	}
+
+	return nil
+}
+
 func (r *repository) Create(ctx context.Context, value ModelBased) error {
-	if !r.isQueryableModel(value) {
+	queryable, err := r.isQueryableModel(value)
+	if err != nil {
+		return err
+	}
+
+	if !queryable {
 		return ErrCrossCreate
 	}
 
@@ -129,11 +341,20 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 	ctx, span := r.startSubSpan(ctx, "Create")
 	defer span.Finish()
 
-	now := r.clock.Now()
-	value.SetUpdatedAt(&now)
-	value.SetCreatedAt(&now)
+	orm := r.orm.
+		WithContext(ctx).
+		Session(&gorm.Session{
+			FullSaveAssociations: true,
+			NewDB:                true,
+		})
 
-	err := r.orm.Create(value).Error
+	for _, preload := range r.metadata.Preloads {
+		orm = orm.Preload(preload)
+	}
+
+	err = orm.
+		Create(value).
+		Error
 
 	if db.IsDuplicateEntryError(err) {
 		logger.Warn("could not create model of type %s due to duplicate entry error: %s", modelId, err.Error())
@@ -147,30 +368,42 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 		return err
 	}
 
-	err = r.refreshAssociations(value, Create)
-
-	if err != nil {
-		logger.Error("could not update associations of model type %v: %w", modelId, err)
-		return err
-	}
-
 	logger.Info("created model of type %s with id %d", modelId, *value.GetId())
 
-	return r.Read(ctx, value.GetId(), value)
+	return nil
 }
 
 func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
-	if !r.isQueryableModel(out) {
+	queryable, err := r.isQueryableModel(out)
+	if err != nil {
+		return err
+	}
+
+	if !queryable {
 		return ErrCrossRead
 	}
 
 	modelId := r.GetModelId()
+
 	_, span := r.startSubSpan(ctx, "Get")
 	defer span.Finish()
 
-	err := r.orm.First(out, *id).Error
+	orm := r.orm.
+		WithContext(ctx).
+		Session(&gorm.Session{
+			FullSaveAssociations: true,
+			NewDB:                true,
+		})
 
-	if gorm.IsRecordNotFoundError(err) {
+	for _, preload := range r.metadata.Preloads {
+		orm = orm.Preload(preload)
+	}
+
+	err = orm.
+		First(out, *id).
+		Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return NewRecordNotFoundError(*id, modelId, err)
 	}
 
@@ -178,7 +411,12 @@ func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
 }
 
 func (r *repository) Update(ctx context.Context, value ModelBased) error {
-	if !r.isQueryableModel(value) {
+	queryable, err := r.isQueryableModel(value)
+	if err != nil {
+		return err
+	}
+
+	if !queryable {
 		return ErrCrossUpdate
 	}
 
@@ -188,10 +426,20 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	ctx, span := r.startSubSpan(ctx, "UpdateItem")
 	defer span.Finish()
 
-	now := r.clock.Now()
-	value.SetUpdatedAt(&now)
+	orm := r.orm.
+		WithContext(ctx).
+		Session(&gorm.Session{
+			FullSaveAssociations: true,
+			NewDB:                true,
+		})
 
-	err := r.orm.Save(value).Error
+	for _, preload := range r.metadata.Preloads {
+		orm = orm.Preload(preload)
+	}
+
+	err = orm.
+		Save(value).
+		Error
 
 	if db.IsDuplicateEntryError(err) {
 		logger.Warn("could not update model of type %s with id %d due to duplicate entry error: %s", modelId, mdl.EmptyIfNil(value.GetId()), err.Error())
@@ -205,20 +453,23 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 		return err
 	}
 
-	err = r.refreshAssociations(value, Update)
-
-	if err != nil {
-		logger.Error("could not update associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
+	if err := r.updateAssociations(value); err != nil {
+		logger.Error("could not update associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
 		return err
 	}
 
 	logger.Info("updated model of type %s with id %d", modelId, *value.GetId())
 
-	return r.Read(ctx, value.GetId(), value)
+	return nil
 }
 
 func (r *repository) Delete(ctx context.Context, value ModelBased) error {
-	if !r.isQueryableModel(value) {
+	queryable, err := r.isQueryableModel(value)
+	if err != nil {
+		return err
+	}
+
+	if !queryable {
 		return ErrCrossDelete
 	}
 
@@ -228,13 +479,15 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	_, span := r.startSubSpan(ctx, "Delete")
 	defer span.Finish()
 
-	err := r.refreshAssociations(value, Delete)
-	if err != nil {
-		logger.Error("could not delete associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
-		return err
-	}
-
-	err = r.orm.Delete(value).Error
+	err = r.orm.
+		WithContext(ctx).
+		Session(&gorm.Session{
+			FullSaveAssociations: true,
+			NewDB:                true,
+		}).
+		Select(clause.Associations). // required to delete associations
+		Delete(value).
+		Error
 
 	if err != nil {
 		logger.Error("could not delete model of type %s with id %d: %w", modelId, *value.GetId(), err)
@@ -245,38 +498,52 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	return err
 }
 
-func (r *repository) isQueryableModel(model interface{}) bool {
-	tableName := r.orm.NewScope(model).TableName()
-
-	return strings.EqualFold(tableName, r.GetMetadata().TableName) || tableName == ""
-}
-
-func (r *repository) checkResultModel(result interface{}) error {
-	if refl.IsSlice(result) {
-		return fmt.Errorf("result slice has to be pointer to slice")
+func (r *repository) updateAssociations(value ModelBased) error {
+	scheme, err := schema.Parse(value, r.schemaCache, r.orm.NamingStrategy)
+	if err != nil {
+		return fmt.Errorf("could not parse schema: %w", err)
 	}
 
-	if refl.IsPointerToSlice(result) {
-		model := reflect.ValueOf(result).Elem().Interface()
+	of := reflect.ValueOf(value)
+	if of.Kind() != reflect.Ptr {
+		return fmt.Errorf("you must pass a pointer to your repository method")
+	}
 
-		if !r.isQueryableModel(model) {
-			return fmt.Errorf("cross querying result slice has to be of same model")
+	e := of.Elem()
+	scope := r.orm.Model(value)
+	for _, preload := range r.metadata.Preloads {
+		scope = scope.Preload(preload)
+	}
+
+	for name := range scheme.Relationships.Relations {
+		v := e.FieldByName(name).Interface()
+		if err := scope.Association(name).Replace(v); err != nil {
+			return fmt.Errorf("could not replace association before save: %w", err)
 		}
 	}
 
 	return nil
 }
 
+func (r *repository) isQueryableModel(model interface{}) (bool, error) {
+	scheme, err := schema.Parse(model, r.schemaCache, r.orm.NamingStrategy)
+	if err != nil {
+		return false, fmt.Errorf("could not parse model: %w", err)
+	}
+
+	return strings.EqualFold(scheme.Table, r.GetMetadata().TableName) || scheme.Table == "", nil
+}
+
 func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
 	err := r.checkResultModel(result)
 	if err != nil {
-		return err
+		return ErrCrossQuery
 	}
 
 	_, span := r.startSubSpan(ctx, "Query")
 	defer span.Finish()
 
-	db := r.orm.New()
+	db := r.orm.WithContext(ctx)
 
 	for _, j := range qb.joins {
 		db = db.Joins(j)
@@ -287,7 +554,12 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 		if reflect.TypeOf(currentWhere).Kind() == reflect.Ptr ||
 			reflect.TypeOf(currentWhere).Kind() == reflect.Struct {
 
-			if !r.isQueryableModel(currentWhere) {
+			queryable, err := r.isQueryableModel(currentWhere)
+			if err != nil {
+				return err
+			}
+
+			if !queryable {
 				return ErrCrossQuery
 			}
 		}
@@ -303,6 +575,10 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 		db = db.Order(fmt.Sprintf("%s %s", o.field, o.direction))
 	}
 
+	for _, p := range qb.preloads {
+		db = db.Preload(p)
+	}
+
 	if qb.page != nil {
 		db = db.Offset(qb.page.offset)
 		db = db.Limit(qb.page.limit)
@@ -310,24 +586,40 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 
 	db = db.Table(r.GetMetadata().TableName)
 
-	err = db.Find(result).Error
+	err = db.Find(result).
+		Error
 
-	if gorm.IsRecordNotFoundError(err) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return NewNoQueryResultsError(r.GetModelId(), err)
 	}
 
 	return err
 }
 
+func (r *repository) checkResultModel(result interface{}) error {
+	if !refl.IsPointerToSlice(result) {
+		return fmt.Errorf("result slice has to be pointer to slice")
+	}
+
+	model := reflect.ValueOf(result).Elem().Interface()
+
+	queryable, err := r.isQueryableModel(model)
+	if err != nil {
+		return err
+	}
+
+	if !queryable {
+		return fmt.Errorf("cross querying result slice has to be of same model")
+	}
+
+	return nil
+}
+
 func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBased) (int, error) {
 	_, span := r.startSubSpan(ctx, "Count")
 	defer span.Finish()
 
-	result := struct {
-		Count int
-	}{}
-
-	db := r.orm.New()
+	db := r.orm.WithContext(ctx)
 
 	for _, j := range qb.joins {
 		db = db.Joins(j)
@@ -337,104 +629,10 @@ func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBas
 		db = db.Where(qb.where[i], qb.args[i]...)
 	}
 
-	scope := r.orm.NewScope(model)
-	tableName := scope.TableName()
-	key := scope.PrimaryKey()
-	sel := fmt.Sprintf("COUNT(DISTINCT %s.%s) AS count", tableName, key)
+	var count int64
+	tx := db.Model(model).Count(&count)
 
-	err := db.Table(tableName).Select(sel).Scan(&result).Error
-
-	return result.Count, err
-}
-
-func (r *repository) refreshAssociations(model interface{}, op string) error {
-	typeReflection := reflect.TypeOf(model).Elem()
-	valueReflection := reflect.ValueOf(model).Elem()
-
-	for i := 0; i < typeReflection.NumField(); i++ {
-		field := typeReflection.Field(i)
-		tag := field.Tag.Get("orm")
-
-		if tag == "" {
-			continue
-		}
-
-		tags := make(map[string]string)
-		for _, tag := range strings.Split(tag, ",") {
-			parts := strings.Split(tag, ":")
-
-			value := ""
-			if len(parts) == 2 {
-				value = parts[1]
-			}
-
-			tags[parts[0]] = value
-		}
-
-		if _, ok := tags["assoc_update"]; !ok {
-			continue
-		}
-
-		var err error
-
-		values := valueReflection.Field(i)
-		scope := r.orm.NewScope(model)
-		scopeField, _ := scope.FieldByName(field.Name)
-
-		switch op {
-		case Create:
-			fallthrough
-
-		case Update:
-			switch scopeField.Relationship.Kind {
-			case "many_to_many":
-				err = r.orm.Model(model).Association(scopeField.Name).Replace(values.Interface()).Error
-
-			default:
-				assocIds := readIdsFromReflectValue(values)
-				parentId := valueReflection.FieldByName("Id").Elem().Interface()
-
-				tableName := scopeField.DBName
-				if tags["assoc_update"] != "" {
-					tableName = tags["assoc_update"]
-				}
-
-				qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", tableName, scopeField.Relationship.ForeignDBNames[0], parentId)
-
-				if len(assocIds) != 0 {
-					qry = qry + fmt.Sprintf(" AND %s NOT IN (%s)", "id", strings.Join(assocIds, ","))
-				}
-
-				err = r.orm.Exec(qry).Error
-			}
-
-		case Delete:
-			switch scopeField.Relationship.Kind {
-			case "has_many":
-				id := valueReflection.FieldByName("Id").Elem().Interface()
-				tableName := scopeField.DBName
-
-				if tags["assoc_update"] != "" {
-					tableName = tags["assoc_update"]
-				}
-
-				qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", tableName, scopeField.Relationship.ForeignDBNames[0], id)
-				err = r.orm.Exec(qry).Error
-
-			default:
-				err = r.orm.Model(model).Association(field.Name).Clear().Error
-			}
-
-		default:
-			err = fmt.Errorf("unkown operation")
-		}
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return int(count), tx.Error
 }
 
 func (r *repository) GetModelId() string {
@@ -459,37 +657,13 @@ func (r *repository) startSubSpan(ctx context.Context, action string) (context.C
 	return ctx, span
 }
 
-func readIdsFromReflectValue(values reflect.Value) []string {
-	ids := make([]string, 0)
-
-	for j := 0; j < values.Len(); j++ {
-		id := values.Index(j).Elem().FieldByName("Id").Interface().(*uint)
-		ids = append(ids, strconv.Itoa(int(*id)))
-	}
-
-	return ids
-}
-
-func ignoreCreatedAtIfNeeded(scope *gorm.Scope) {
-	// if you perform an update and do not specify the CreatedAt field on your data, gorm will set it to time.Time{}
-	// (0000-00-00 00:00:00 in mysql). To avoid this, we mark the field as ignored if it is empty
-	if m, ok := getModel(scope.Value); ok && (m.GetCreatedAt() == nil || *m.GetCreatedAt() == time.Time{}) {
-		scope.Search.Omit("CreatedAt")
-	}
-}
-
-func getModel(value interface{}) (TimestampAware, bool) {
+func getModel(value interface{}) (interface{}, error) {
 	if value == nil {
-		return nil, false
+		return nil, fmt.Errorf("failed to derive model from nil")
 	}
 
-	if m, ok := value.(TimestampAware); ok {
-		return m, true
-	}
+	baseType := refl.ResolveBaseType(value)
+	zero := reflect.New(baseType)
 
-	if val := reflect.ValueOf(value); val.Kind() == reflect.Ptr {
-		return getModel(val.Elem().Interface())
-	}
-
-	return nil, false
+	return zero.Interface(), nil
 }

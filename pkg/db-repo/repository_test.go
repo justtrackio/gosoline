@@ -2,7 +2,6 @@ package db_repo_test
 
 import (
 	"context"
-	"database/sql/driver"
 	"testing"
 	"time"
 
@@ -41,7 +40,7 @@ var MyTestModelMetadata = db_repo.Metadata{
 
 type ManyToMany struct {
 	db_repo.Model
-	RelModel []MyTestModel `gorm:"many2many:many_of_manies;" orm:"assoc_update"`
+	RelModel []MyTestModel `gorm:"many2many:many_of_manies;"`
 }
 
 var ManyToManyMetadata = db_repo.Metadata{
@@ -77,7 +76,7 @@ var OneOfManyMetadata = db_repo.Metadata{
 
 type HasMany struct {
 	db_repo.Model
-	Manies []*Ones `gorm:"association_autoupdate:true;association_autocreate:true;association_save_reference:true;" orm:"assoc_update"`
+	Manies []*Ones
 }
 
 var HasManyMetadata = db_repo.Metadata{
@@ -104,17 +103,113 @@ var metadatas = map[string]db_repo.Metadata{
 	"hasMany":     HasManyMetadata,
 }
 
-type idMatcher struct{}
-
-func (a idMatcher) Match(id driver.Value) bool {
-	return uint(id.(int64)) == *id1 || uint(id.(int64)) == *id42
-}
-
 var (
 	id1  = mdl.Box(uint(1))
+	id6  = mdl.Box(uint(6))
 	id42 = mdl.Box(uint(42))
 	id24 = mdl.Box(uint(24))
 )
+
+func TestRepository_BatchCreate(t *testing.T) {
+	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, myTestModel)
+
+	result := goSqlMock.NewResult(1, 2)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`\\) VALUES \\(\\?,\\?\\),\\(\\?,\\?\\)").WithArgs(&now, &now, &now, &now).WillReturnResult(result)
+	dbc.ExpectCommit()
+
+	models := []*MyTestModel{
+		{
+			Model: db_repo.Model{},
+		},
+		{
+			Model: db_repo.Model{},
+		},
+	}
+
+	err := repo.BatchCreate(context.Background(), &models)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+
+	assert.NoError(t, err, "there should not be an error")
+	assert.Equal(t, uint(1), mdl.EmptyIfNil(models[0].Id), "id should match for model 0")
+	assert.Equal(t, &now, models[0].UpdatedAt, "UpdatedAt should match for model 0")
+	assert.Equal(t, &now, models[0].CreatedAt, "CreatedAt should match for model 0")
+	assert.Equal(t, uint(2), mdl.EmptyIfNil(models[1].Id), "id should match for model 1")
+	assert.Equal(t, &now, models[1].UpdatedAt, "UpdatedAt should match for model 1")
+	assert.Equal(t, &now, models[1].CreatedAt, "CreatedAt should match for model 1")
+}
+
+func TestRepository_BatchUpdate(t *testing.T) {
+	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, myTestModel)
+
+	result := goSqlMock.NewResult(0, 2)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\),\\(\\?,\\?,\\?\\)").WithArgs(&now, &now, id1, &now, &now, id42).WillReturnResult(result)
+	dbc.ExpectCommit()
+
+	models := []*MyTestModel{
+		{
+			Model: db_repo.Model{
+				Id: id1,
+			},
+		},
+		{
+			Model: db_repo.Model{
+				Id: id42,
+			},
+		},
+	}
+
+	err := repo.BatchUpdate(context.Background(), &models)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+
+	assert.NoError(t, err, "there should not be an error")
+	assert.Equal(t, *id1, mdl.EmptyIfNil(models[0].Id), "id should match for model 0")
+	assert.Equal(t, &now, models[0].UpdatedAt, "UpdatedAt should match for model 0")
+	assert.Equal(t, &now, models[0].CreatedAt, "CreatedAt should match for model 0")
+	assert.Equal(t, *id42, mdl.EmptyIfNil(models[1].Id), "id should match for model 1")
+	assert.Equal(t, &now, models[1].UpdatedAt, "UpdatedAt should match for model 1")
+	assert.Equal(t, &now, models[1].CreatedAt, "CreatedAt should match for model 1")
+}
+
+func TestRepository_BatchDelete(t *testing.T) {
+	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, myTestModel)
+
+	result := goSqlMock.NewResult(0, 2)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("DELETE FROM `my_test_models` WHERE `my_test_models`\\.`id` IN \\(\\?,\\?\\)").WithArgs(id1, id42).WillReturnResult(result)
+	dbc.ExpectCommit()
+
+	models := []*MyTestModel{
+		{
+			Model: db_repo.Model{
+				Id: id1,
+			},
+		},
+		{
+			Model: db_repo.Model{
+				Id: id42,
+			},
+		},
+	}
+
+	err := repo.BatchDelete(context.Background(), &models)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+
+	assert.NoError(t, err, "there should not be an error")
+}
 
 func TestRepository_Create(t *testing.T) {
 	now := time.Unix(1549964818, 0)
@@ -122,7 +217,7 @@ func TestRepository_Create(t *testing.T) {
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`id`,`updated_at`,`created_at`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(id1, &now, &now).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(&now, &now, id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := MyTestModel{
@@ -130,9 +225,6 @@ func TestRepository_Create(t *testing.T) {
 			Id: id1,
 		},
 	}
-
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE `my_test_models`\\.`id` = \\? AND \\(\\(`my_test_models`\\.`id` = 1\\)\\) ORDER BY `my_test_models`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
 
 	err := repo.Create(context.Background(), &model)
 
@@ -150,18 +242,10 @@ func TestRepository_CreateManyToManyNoRelation(t *testing.T) {
 	dbc, repo := getTimedMocks(t, now, manyToMany)
 
 	result := goSqlMock.NewResult(0, 1)
-	delRes := goSqlMock.NewResult(0, 0)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `many_to_manies` \\(`id`,`updated_at`,`created_at`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(id1, &now, &now).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `many_to_manies` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(&now, &now, id1).WillReturnResult(result)
 	dbc.ExpectCommit()
-	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_of_manies` WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(delRes)
-	dbc.ExpectCommit()
-
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`\\.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`\\.`many_to_many_id` IN \\(\\?\\)\\)").WillReturnRows(rows)
 
 	model := ManyToMany{
 		Model: db_repo.Model{
@@ -185,23 +269,12 @@ func TestRepository_CreateManyToMany(t *testing.T) {
 	dbc, repo := getTimedMocks(t, now, manyToMany)
 
 	result := goSqlMock.NewResult(0, 1)
-	delRes := goSqlMock.NewResult(0, 0)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `many_to_manies` \\(`id`,`updated_at`,`created_at`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(id1, &now, &now).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `many_to_manies` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(&now, &now, id1).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(&now, &now, id42).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `many_of_manies` \\(`many_to_many_id`,`my_test_model_id`\\) VALUES \\(\\?,\\?\\) ON DUPLICATE KEY UPDATE `many_to_many_id`=`many_to_many_id`").WithArgs(id1, id42).WillReturnResult(result)
 	dbc.ExpectCommit()
-	dbc.ExpectExec(
-		"INSERT INTO `many_of_manies` \\((`my_test_model_id`|`many_to_many_id`),(`many_to_many_id`|`my_test_model_id`)\\) "+
-			"SELECT \\?,\\? FROM DUAL WHERE NOT EXISTS \\(SELECT \\* FROM `many_of_manies` "+"WHERE (`my_test_model_id`|`many_to_many_id`) = \\? AND (`my_test_model_id`|`many_to_many_id`) = \\?\\)",
-	).WithArgs(idMatcher{}, idMatcher{}, idMatcher{}, idMatcher{}).WillReturnResult(result)
-
-	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`my_test_model_id` NOT IN \\(\\?\\)\\) AND \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id42, id1).WillReturnResult(delRes)
-	dbc.ExpectCommit()
-
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`.`many_to_many_id` IN \\(\\?\\)\\)").WillReturnRows(rows)
 
 	model := ManyToMany{
 		Model: db_repo.Model{
@@ -233,7 +306,7 @@ func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`id`,`updated_at`,`created_at`,`my_test_model_id`\\) VALUES \\(\\?,\\?,\\?,\\?\\)").WithArgs(id1, &now, &now, (*uint)(nil)).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`updated_at`,`created_at`,`my_test_model_id`,`id`\\) VALUES \\(\\?,\\?,\\?,\\?\\)").WithArgs(&now, &now, (*uint)(nil), id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := OneOfMany{
@@ -241,9 +314,6 @@ func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 			Id: id1,
 		},
 	}
-
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at", "my_test_model_id"}).AddRow(id1, &now, &now, (*uint)(nil))
-	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
 
 	err := repo.Create(context.Background(), &model)
 
@@ -263,12 +333,9 @@ func TestRepository_CreateManyToOne(t *testing.T) {
 	result := goSqlMock.NewResult(0, 1)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`id`,`updated_at`,`created_at`,`my_test_model_id`\\) VALUES \\(\\?,\\?,\\?,\\?\\)").WithArgs(id1, &now, &now, id42).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `id`=`id`").WithArgs(&now, &now, id42).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`updated_at`,`created_at`,`my_test_model_id`,`id`\\) VALUES \\(\\?,\\?,\\?,\\?\\)").WithArgs(&now, &now, id42, id1).WillReturnResult(result)
 	dbc.ExpectCommit()
-
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at", "my_test_model_id"}).AddRow(id1, &now, &now, id42)
-	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE \\(`id` IN \\(\\?\\)\\) ORDER BY `my_test_models`\\.`id` ASC").WithArgs(id42).WillReturnRows(rows)
 
 	model := OneOfMany{
 		Model: db_repo.Model{
@@ -298,15 +365,9 @@ func TestRepository_CreateHasManyNoRelation(t *testing.T) {
 	dbc, repo := getTimedMocks(t, now, hasMany)
 
 	result := goSqlMock.NewResult(0, 1)
-	delResult := goSqlMock.NewResult(0, 0)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `has_manies` \\(`id`,`updated_at`,`created_at`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(id1, &now, &now).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `has_manies` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(&now, &now, id1).WillReturnResult(result)
 	dbc.ExpectCommit()
-	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(delResult)
-
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WillReturnRows(rows)
 
 	model := HasMany{
 		Model: db_repo.Model{
@@ -331,24 +392,29 @@ func TestRepository_CreateHasMany(t *testing.T) {
 	dbc, repo := getTimedMocks(t, now, hasMany)
 
 	result := goSqlMock.NewResult(0, 1)
-	delResult := goSqlMock.NewResult(0, 0)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `has_manies` \\(`updated_at`,`created_at`\\) VALUES \\(\\?,\\?\\)").WithArgs(&now, &now).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), 0).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), 0).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `has_manies` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(&now, &now, id1).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`,`id`\\) VALUES \\(\\?,\\?,\\?,\\?\\),\\(\\?,\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `has_many_id`=VALUES\\(`has_many_id`\\)").WithArgs(&now, &now, id1, id42, &now, &now, id1, id24).WillReturnResult(result)
 	dbc.ExpectCommit()
-	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 0 AND id NOT IN \\(0,0\\)").WillReturnResult(delResult)
-
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 0\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WillReturnRows(rows)
 
 	model := HasMany{
-		Model: db_repo.Model{},
+		Model: db_repo.Model{
+			Id: id1,
+		},
 		Manies: []*Ones{
-			{},
-			{},
+			{
+				Model: db_repo.Model{
+					Id: id42,
+				},
+				HasManyId: id1,
+			},
+			{
+				Model: db_repo.Model{
+					Id: id24,
+				},
+				HasManyId: id1,
+			},
 		},
 	}
 
@@ -363,18 +429,170 @@ func TestRepository_CreateHasMany(t *testing.T) {
 	assert.Equal(t, &now, model.CreatedAt)
 }
 
-func TestRepository_Update(t *testing.T) {
-	dbc, repo := getMocks(t, myTestModel)
+func TestRepository_Create_NoPrimary(t *testing.T) {
 	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, myTestModel)
+
+	result := goSqlMock.NewResult(1, 1)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`\\) VALUES \\(\\?,\\?\\)").WithArgs(&now, &now).WillReturnResult(result)
+	dbc.ExpectCommit()
+
+	model := MyTestModel{Model: db_repo.Model{}}
+
+	err := repo.Create(context.Background(), &model)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+
+	assert.NoError(t, err, "there should not be an error")
+	assert.Equal(t, &now, model.UpdatedAt, "UpdatedAt should match")
+	assert.Equal(t, &now, model.CreatedAt, "CreatedAt should match")
+	assert.Equal(t, uint(1), *model.Id)
+}
+
+func TestRepository_CreateManyToMany_NoPrimary(t *testing.T) {
+	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, manyToMany)
+
+	dbc.ExpectBegin()
+	resultManyToManies := goSqlMock.NewResult(int64(*id1), 1)
+	dbc.ExpectExec("INSERT INTO `many_to_manies` \\(`updated_at`,`created_at`\\) VALUES \\(\\?,\\?\\)").WithArgs(&now, &now).WillReturnResult(resultManyToManies)
+	resultMyTestModels := goSqlMock.NewResult(int64(*id42), 1)
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`\\) VALUES \\(\\?,\\?\\)").WithArgs(&now, &now).WillReturnResult(resultMyTestModels)
+	resultManyOfManies := goSqlMock.NewResult(0, 1)
+	dbc.ExpectExec("INSERT INTO `many_of_manies` \\(`many_to_many_id`,`my_test_model_id`\\) VALUES \\(\\?,\\?\\) ON DUPLICATE KEY UPDATE `many_to_many_id`=`many_to_many_id`").WithArgs(id1, id42).WillReturnResult(resultManyOfManies)
+	dbc.ExpectCommit()
+
+	model := ManyToMany{
+		Model: db_repo.Model{},
+		RelModel: []MyTestModel{
+			{
+				Model: db_repo.Model{},
+			},
+		},
+	}
+
+	err := repo.Create(context.Background(), &model)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+
+	assert.NoError(t, err)
+	assert.Equal(t, &now, model.UpdatedAt)
+	assert.Equal(t, &now, model.CreatedAt)
+	assert.Equal(t, *id1, *model.Id)
+	assert.Equal(t, *id42, *model.RelModel[0].Id)
+}
+
+func TestRepository_CreateManyToOne_NoPrimary(t *testing.T) {
+	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, oneOfMany)
+
+	dbc.ExpectBegin()
+	resultMyTestModels := goSqlMock.NewResult(int64(*id42), 1)
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`\\) VALUES \\(\\?,\\?\\) ON DUPLICATE KEY UPDATE `id`=`id`").WithArgs(&now, &now).WillReturnResult(resultMyTestModels)
+	resultOneOfManies := goSqlMock.NewResult(int64(*id1), 1)
+	dbc.ExpectExec("INSERT INTO `one_of_manies` \\(`updated_at`,`created_at`,`my_test_model_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(&now, &now, id42).WillReturnResult(resultOneOfManies)
+	dbc.ExpectCommit()
+
+	model := OneOfMany{
+		Model: db_repo.Model{},
+		MyTestModel: &MyTestModel{
+			Model: db_repo.Model{},
+		},
+	}
+
+	err := repo.Create(context.Background(), &model)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+
+	assert.NoError(t, err)
+	assert.Equal(t, &now, model.UpdatedAt)
+	assert.Equal(t, &now, model.CreatedAt)
+	assert.Equal(t, *id1, *model.Id)
+	assert.Equal(t, *id42, *model.MyTestModel.Id)
+	assert.Equal(t, *id42, *model.MyTestModelId)
+}
+
+func TestRepository_CreateHasMany_NoPrimary(t *testing.T) {
+	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, hasMany)
+
+	dbc.ExpectBegin()
+	resultHasManies := goSqlMock.NewResult(int64(*id1), 1)
+	dbc.ExpectExec("INSERT INTO `has_manies` \\(`updated_at`,`created_at`\\) VALUES \\(\\?,\\?\\)").WithArgs(&now, &now).WillReturnResult(resultHasManies)
+	resultOnes := goSqlMock.NewResult(int64(*id42), 1)
+	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\),\\(\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `has_many_id`=VALUES\\(`has_many_id`\\)").WithArgs(&now, &now, id1, &now, &now, id1).WillReturnResult(resultOnes)
+	dbc.ExpectCommit()
+
+	model := HasMany{
+		Model: db_repo.Model{},
+		Manies: []*Ones{
+			{
+				Model: db_repo.Model{},
+			},
+			{
+				Model: db_repo.Model{},
+			},
+		},
+	}
+
+	err := repo.Create(context.Background(), &model)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+
+	assert.NoError(t, err)
+	assert.Equal(t, &now, model.UpdatedAt)
+	assert.Equal(t, &now, model.CreatedAt)
+	assert.Equal(t, *id1, *model.Id)
+	assert.Equal(t, *id42, *model.Manies[0].Id)
+	assert.Equal(t, *id42+1, *model.Manies[1].Id)
+}
+
+func TestRepository_Update(t *testing.T) {
+	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, myTestModel)
 
 	result := goSqlMock.NewResult(0, 1)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `my_test_models` SET `updated_at` = \\? WHERE `my_test_models`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `my_test_models` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE `my_test_models`\\.`id` = \\? AND \\(\\(`my_test_models`\\.`id` = 1\\)\\) ORDER BY `my_test_models`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
+	model := MyTestModel{
+		Model: db_repo.Model{
+			Id: id1,
+			Timestamps: db_repo.Timestamps{
+				CreatedAt: &now,
+			},
+		},
+	}
+
+	err := repo.Update(context.Background(), &model)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+
+	assert.NoError(t, err)
+}
+
+func TestRepository_Update_MissingCreatedAt(t *testing.T) {
+	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, myTestModel)
+
+	result := goSqlMock.NewResult(0, 1)
+
+	dbc.ExpectBegin()
+	dbc.ExpectExec("UPDATE `my_test_models` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
+	dbc.ExpectCommit()
 
 	model := MyTestModel{
 		Model: db_repo.Model{
@@ -389,23 +607,27 @@ func TestRepository_Update(t *testing.T) {
 	}
 
 	assert.NoError(t, err)
+	assert.Equal(t, &now, model.CreatedAt)
+	assert.Equal(t, &now, model.UpdatedAt)
 }
 
 func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t, manyToMany)
 	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, manyToMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `many_to_manies` SET `updated_at` = \\? WHERE `many_to_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
-	dbc.ExpectCommit()
-	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `many_to_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`.`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("UPDATE `many_to_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
+	dbc.ExpectCommit()
+
+	deleteResult := goSqlMock.NewResult(0, 0)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("DELETE FROM `many_of_manies` WHERE `many_of_manies`\\.`many_to_many_id` = \\?").WithArgs(id1).WillReturnResult(deleteResult)
+	dbc.ExpectCommit()
 
 	model := ManyToMany{
 		Model: db_repo.Model{
@@ -423,25 +645,26 @@ func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToMany(t *testing.T) {
-	dbc, repo := getMocks(t, manyToMany)
 	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, manyToMany)
 
-	result := goSqlMock.NewResult(0, 1)
+	result := goSqlMock.NewResult(0, 2)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `many_to_manies` SET `updated_at` = \\? WHERE `many_to_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
-	dbc.ExpectCommit()
-	dbc.ExpectExec(
-		"INSERT INTO `many_of_manies` \\((`my_test_model_id`|`many_to_many_id`),(`many_to_many_id`|`my_test_model_id`)\\) "+
-			"SELECT \\?,\\? FROM DUAL WHERE NOT EXISTS \\(SELECT \\* FROM `many_of_manies` "+"WHERE (`my_test_model_id`|`many_to_many_id`) = \\? AND (`my_test_model_id`|`many_to_many_id`) = \\?\\)",
-	).WithArgs(idMatcher{}, idMatcher{}, idMatcher{}, idMatcher{}).WillReturnResult(result)
-	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`my_test_model_id` NOT IN \\(\\?\\)\\) AND \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id42, id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `many_to_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\),\\(\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `id`=`id`").WithArgs(&now, &now, id42, &now, &now, id24).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `many_of_manies` \\(`many_to_many_id`,`my_test_model_id`\\) VALUES \\(\\?,\\?\\),\\(\\?,\\?\\) ON DUPLICATE KEY UPDATE `many_to_many_id`=`many_to_many_id`").WithArgs(id1, id42, id1, id24).WillReturnResult(result)
 	dbc.ExpectCommit()
 
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND \\(\\(`many_to_manies`\\.`id` = 1\\)\\) ORDER BY `many_to_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` INNER JOIN `many_of_manies` ON `many_of_manies`.`my_test_model_id` = `my_test_models`\\.`id` WHERE \\(`many_of_manies`.`many_to_many_id` IN \\(\\?\\)\\)").WillReturnRows(rows)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("UPDATE `many_to_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\),\\(\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `id`=`id`").WithArgs(&now, &now, id42, &now, &now, id24).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `many_of_manies` \\(`many_to_many_id`,`my_test_model_id`\\) VALUES \\(\\?,\\?\\),\\(\\?,\\?\\) ON DUPLICATE KEY UPDATE `many_to_many_id`=`many_to_many_id`").WithArgs(id1, id42, id1, id24).WillReturnResult(result)
+	dbc.ExpectCommit()
+
+	dbc.ExpectBegin()
+	dbc.ExpectExec("DELETE FROM `many_of_manies` WHERE `many_of_manies`\\.`many_to_many_id` = \\? AND `many_of_manies`\\.`my_test_model_id` NOT IN \\(\\?,\\?\\)").WithArgs(id1, id42, id24).WillReturnResult(result)
+	dbc.ExpectCommit()
 
 	model := ManyToMany{
 		Model: db_repo.Model{
@@ -451,6 +674,11 @@ func TestRepository_UpdateManyToMany(t *testing.T) {
 			{
 				Model: db_repo.Model{
 					Id: id42,
+				},
+			},
+			{
+				Model: db_repo.Model{
+					Id: id24,
 				},
 			},
 		},
@@ -463,19 +691,21 @@ func TestRepository_UpdateManyToMany(t *testing.T) {
 	}
 
 	assert.NoError(t, err)
+	assert.Len(t, model.RelModel, 2)
 }
 
 func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t, oneOfMany)
 	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, oneOfMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at` = \\?, `my_test_model_id` = \\?  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), (*uint)(nil), id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at`=\\?,`created_at`=\\?,`my_test_model_id`=\\? WHERE `id` = \\?").WithArgs(&now, &now, (*uint)(nil), id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at`=\\?,`created_at`=\\?,`my_test_model_id`=\\? WHERE `id` = \\?").WithArgs(&now, &now, (*uint)(nil), id1).WillReturnResult(result)
+	dbc.ExpectCommit()
 
 	model := OneOfMany{
 		Model: db_repo.Model{
@@ -495,17 +725,19 @@ func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
 }
 
 func TestRepository_UpdateManyToOne(t *testing.T) {
-	dbc, repo := getMocks(t, oneOfMany)
 	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, oneOfMany)
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at` = \\?, `my_test_model_id` = \\?  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), id1).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `id`=`id`").WithArgs(&now, &now, id42).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at`=\\?,`created_at`=\\?,`my_test_model_id`=\\?  WHERE `id` = \\?").WithArgs(&now, &now, id42, id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE \\(`id` IN \\(\\?\\)\\) ORDER BY `my_test_models`\\.`id` ASC").WithArgs(id42).WillReturnRows(rows)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `id`=`id`").WithArgs(&now, &now, id42).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at`=\\?,`created_at`=\\?,`my_test_model_id`=\\?  WHERE `id` = \\?").WithArgs(&now, &now, id42, id1).WillReturnResult(result)
+	dbc.ExpectCommit()
 
 	model := OneOfMany{
 		Model: db_repo.Model{
@@ -529,31 +761,46 @@ func TestRepository_UpdateManyToOne(t *testing.T) {
 }
 
 func TestRepository_UpdateHasMany(t *testing.T) {
-	dbc, repo := getMocks(t, hasMany)
 	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, hasMany)
 
 	result := goSqlMock.NewResult(0, 1)
-	delResult := goSqlMock.NewResult(0, 0)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at` = \\? WHERE `has_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`,`id`\\) VALUES \\(\\?,\\?,\\?,\\?\\),\\(\\?,\\?,\\?,\\?\\),\\(\\?,\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `has_many_id`=VALUES\\(`has_many_id`\\)").
+		WithArgs(&now, &now, id1, id6, &now, &now, id1, id24, &now, &now, id1, id42).WillReturnResult(result)
 	dbc.ExpectCommit()
-	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1 AND id NOT IN \\(0,0,0\\)").WillReturnResult(delResult)
 
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WithArgs(id1).WillReturnRows(rows)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`,`id`\\) VALUES \\(\\?,\\?,\\?,\\?\\),\\(\\?,\\?,\\?,\\?\\),\\(\\?,\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `has_many_id`=VALUES\\(`has_many_id`\\)").
+		WithArgs(&now, &now, id1, id6, &now, &now, id1, id24, &now, &now, id1, id42).WillReturnResult(result)
+	dbc.ExpectCommit()
+
+	dbc.ExpectBegin()
+	dbc.ExpectExec("UPDATE `ones` SET `has_many_id`=\\? WHERE `ones`\\.`id` NOT IN \\(\\?,\\?,\\?\\) AND `ones`\\.`has_many_id` = \\?").WithArgs(nil, id6, id24, id42, id1).WillReturnResult(result)
+	dbc.ExpectCommit()
 
 	model := HasMany{
 		Model: db_repo.Model{
 			Id: id1,
 		},
 		Manies: []*Ones{
-			{},
-			{},
-			{},
+			{
+				Model: db_repo.Model{
+					Id: id6,
+				},
+			},
+			{
+				Model: db_repo.Model{
+					Id: id24,
+				},
+			},
+			{
+				Model: db_repo.Model{
+					Id: id42,
+				},
+			},
 		},
 	}
 
@@ -565,20 +812,22 @@ func TestRepository_UpdateHasMany(t *testing.T) {
 }
 
 func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
-	dbc, repo := getMocks(t, hasMany)
 	now := time.Unix(1549964818, 0)
+	dbc, repo := getTimedMocks(t, now, hasMany)
 
 	result := goSqlMock.NewResult(0, 1)
-	delResult := goSqlMock.NewResult(0, 0)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at` = \\? WHERE `has_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
 	dbc.ExpectCommit()
-	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(delResult)
 
-	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
-	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
-	dbc.ExpectQuery("SELECT \\* FROM `ones` WHERE \\(`has_many_id` IN \\(\\?\\)\\) ORDER BY `ones`\\.`id` ASC").WillReturnRows(rows)
+	dbc.ExpectBegin()
+	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
+	dbc.ExpectCommit()
+
+	dbc.ExpectBegin()
+	dbc.ExpectExec("UPDATE `ones` SET `has_many_id`=\\? WHERE `ones`\\.`has_many_id` = \\?").WithArgs(nil, id1).WillReturnResult(result)
+	dbc.ExpectCommit()
 
 	model := HasMany{
 		Model: db_repo.Model{
@@ -624,10 +873,8 @@ func TestRepository_DeleteManyToManyNoRelation(t *testing.T) {
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(result)
-	dbc.ExpectCommit()
-	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_to_manies`  WHERE `many_to_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `many_of_manies` WHERE `many_of_manies`\\.`many_to_many_id` = \\?").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := ManyToMany{
@@ -650,9 +897,7 @@ func TestRepository_DeleteManyToMany(t *testing.T) {
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE \\(`many_to_many_id` IN \\(\\?\\)\\)").WithArgs(id1).WillReturnResult(result)
-	dbc.ExpectCommit()
-	dbc.ExpectBegin()
+	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE `many_of_manies`\\.`many_to_many_id` = \\?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectExec("DELETE FROM `many_to_manies`  WHERE `many_to_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
@@ -707,6 +952,7 @@ func TestRepository_DeleteManyToOne(t *testing.T) {
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
 	dbc.ExpectExec("DELETE FROM `one_of_manies`  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
+	// TODO: check why ones are not deleted
 	dbc.ExpectCommit()
 
 	model := OneOfMany{
@@ -736,9 +982,9 @@ func TestRepository_DeleteHasMany(t *testing.T) {
 	childResult := goSqlMock.NewResult(0, 0)
 	parentResult := goSqlMock.NewResult(0, 1)
 
-	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(childResult)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `has_manies`  WHERE `has_manies`\\.`id` = ?").WithArgs(id1).WillReturnResult(parentResult)
+	dbc.ExpectExec("DELETE FROM `ones` WHERE `ones`\\.`has_many_id` = \\?").WithArgs(id1).WillReturnResult(childResult)
+	dbc.ExpectExec("DELETE FROM `has_manies` WHERE `has_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(parentResult)
 	dbc.ExpectCommit()
 
 	model := HasMany{
@@ -774,9 +1020,9 @@ func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
 	childResult := goSqlMock.NewResult(0, 0)
 	parentResult := goSqlMock.NewResult(0, 1)
 
-	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(childResult)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `has_manies`  WHERE `has_manies`\\.`id` = ?").WithArgs(id1).WillReturnResult(parentResult)
+	dbc.ExpectExec("DELETE FROM `ones` WHERE `ones`\\.`has_many_id` = \\?").WithArgs(id1).WillReturnResult(childResult)
+	dbc.ExpectExec("DELETE FROM `has_manies` WHERE `has_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(parentResult)
 	dbc.ExpectCommit()
 
 	model := HasMany{
@@ -795,26 +1041,94 @@ func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestRepository_Create_WrongModel(t *testing.T) {
+	dbc, repo := getMocks(t, myTestModel)
+
+	err := repo.Create(context.Background(), &ManyToMany{})
+
+	assert.Error(t, err)
+	assert.Equal(t, err, db_repo.ErrCrossCreate)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestRepository_Update_WrongModel(t *testing.T) {
+	dbc, repo := getMocks(t, myTestModel)
+
+	err := repo.Update(context.Background(), &ManyToMany{})
+
+	assert.Error(t, err)
+	assert.Equal(t, err, db_repo.ErrCrossUpdate)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestRepository_Delete_WrongModel(t *testing.T) {
+	dbc, repo := getMocks(t, myTestModel)
+
+	err := repo.Delete(context.Background(), &ManyToMany{})
+
+	assert.Error(t, err)
+	assert.Equal(t, err, db_repo.ErrCrossDelete)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestRepository_Read_WrongModel(t *testing.T) {
+	dbc, repo := getMocks(t, myTestModel)
+
+	err := repo.Read(context.Background(), nil, &ManyToMany{})
+
+	assert.Error(t, err)
+	assert.Equal(t, err, db_repo.ErrCrossRead)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestRepository_Query_WrongModel(t *testing.T) {
+	dbc, repo := getMocks(t, myTestModel)
+
+	err := repo.Query(context.Background(), db_repo.NewQueryBuilder(), &[]*ManyToMany{})
+
+	assert.Error(t, err)
+	assert.Equal(t, err, db_repo.ErrCrossQuery)
+
+	if err := dbc.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
 func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Repository) {
 	logger := logMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
+	clk := clock.NewFakeClock()
 
 	db, clientMock, _ := goSqlMock.New()
-	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
+
+	rows := goSqlMock.NewRows([]string{"SELECT VERSION()"}).AddRow("8.0.23")
+	clientMock.ExpectQuery("SELECT VERSION()").WillReturnRows(rows)
+
+	orm, err := db_repo.NewOrmWithInterfaces(clk, db, db_repo.OrmSettings{
 		Driver: "mysql",
 	})
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
 
-	testClock := clock.NewFakeClock()
-
 	metadata, ok := metadatas[whichMetadata]
 	if !ok {
 		t.Errorf("couldn't find metadata named: %s", whichMetadata)
 	}
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, testClock, metadata)
+	repo := db_repo.NewWithInterfaces(logger, tracer, orm, metadata)
 
 	return clientMock, repo
 }
@@ -822,24 +1136,26 @@ func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Re
 func getTimedMocks(t *testing.T, time time.Time, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Repository) {
 	logger := logMocks.NewLoggerMockedAll()
 	tracer := tracing.NewNoopTracer()
+	clk := clock.NewFakeClockAt(time)
 
 	db, clientMock, _ := goSqlMock.New()
 
-	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
+	rows := goSqlMock.NewRows([]string{"SELECT VERSION()"}).AddRow("8.0.23")
+	clientMock.ExpectQuery("SELECT VERSION()").WillReturnRows(rows)
+
+	orm, err := db_repo.NewOrmWithInterfaces(clk, db, db_repo.OrmSettings{
 		Driver: "mysql",
 	})
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
 
-	testClock := clock.NewFakeClockAt(time)
-
 	metadata, ok := metadatas[whichMetadata]
 	if !ok {
 		t.Errorf("couldn't find metadata named: %s", whichMetadata)
 	}
 
-	repo := db_repo.NewWithInterfaces(logger, tracer, orm, testClock, metadata)
+	repo := db_repo.NewWithInterfaces(logger, tracer, orm, metadata)
 
 	return clientMock, repo
 }

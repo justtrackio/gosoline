@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
@@ -51,7 +52,7 @@ func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *db_repo.Me
 func (m *mysqlOrmFixtureWriter) Purge(_ context.Context) error {
 	err := m.purger.purgeMysql()
 	if err != nil {
-		m.logger.Error("error occured during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
+		m.logger.Error("error occured during purging of table %s in orm mysql fixture loader: %w", m.metadata.TableName, err)
 
 		return err
 	}
@@ -62,13 +63,23 @@ func (m *mysqlOrmFixtureWriter) Purge(_ context.Context) error {
 }
 
 func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
-	for _, item := range fs.Fixtures {
-		model := item.(db_repo.ModelBased)
+	if len(fs.Fixtures) == 0 {
+		return nil
+	}
 
-		err := m.repo.Update(ctx, model)
-		if err != nil {
-			return err
-		}
+	modelType := reflect.TypeOf(fs.Fixtures[0])
+
+	modelSlice := reflect.MakeSlice(reflect.SliceOf(modelType), 0, len(fs.Fixtures))
+	for _, fx := range fs.Fixtures {
+		modelSlice = reflect.Append(modelSlice, reflect.ValueOf(fx))
+	}
+
+	models := modelSlice.Interface()
+
+	// TODO: investigate why BatchUpdate is not working (intended?)
+	err := m.repo.BatchCreate(ctx, models)
+	if err != nil {
+		return err
 	}
 
 	m.logger.Info("loaded %d mysql fixtures", len(fs.Fixtures))

@@ -39,11 +39,20 @@ type Client interface {
 	QueryRow(query string, args ...interface{}) *sql.Row
 	Select(dest interface{}, query string, args ...interface{}) error
 	Get(dest interface{}, query string, args ...interface{}) error
+
+	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 }
 
 type ClientSqlx struct {
 	logger log.Logger
 	db     *sqlx.DB
+}
+
+func (c *ClientSqlx) DB() *sql.DB {
+	return c.db.DB
 }
 
 func NewClient(config cfg.Config, logger log.Logger, name string) (Client, error) {
@@ -69,6 +78,28 @@ func NewClientWithInterfaces(logger log.Logger, db *sqlx.DB) Client {
 		logger: logger.WithContext(context.Background()), // TODO: this is not nice, but we don't (yet) have a context when logging in this module
 		db:     db,
 	}
+}
+
+func (c *ClientSqlx) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+	return c.db.PrepareContext(ctx, query)
+}
+
+func (c *ClientSqlx) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	c.logger.WithContext(ctx).Debug("> %s %q", query, args)
+
+	return c.db.ExecContext(ctx, query, args...)
+}
+
+func (c *ClientSqlx) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	c.logger.WithContext(ctx).Debug("> %s %q", query, args)
+
+	return c.db.QueryContext(ctx, query, args...)
+}
+
+func (c *ClientSqlx) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	c.logger.WithContext(ctx).Debug("> %s %q", query, args)
+
+	return c.db.QueryRowContext(ctx, query, args...)
 }
 
 func (c *ClientSqlx) GetSingleScalarValue(query string, args ...interface{}) (int, error) {

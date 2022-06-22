@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
 type OperationValidatingRepository struct {
@@ -16,6 +17,51 @@ func NewOperationValidatingRepository(validator Validator, repo db_repo.Reposito
 		Repository: repo,
 		validator:  validator,
 	}
+}
+
+func (r OperationValidatingRepository) BatchCreate(ctx context.Context, values interface{}) error {
+	valuesSlice, err := refl.InterfaceToInterfaceSlice(values)
+	if err != nil {
+		return err
+	}
+
+	for _, value := range valuesSlice {
+		if err = r.validator.IsValid(ctx, value, db_repo.Create); err != nil {
+			return err
+		}
+	}
+
+	return r.Repository.BatchCreate(ctx, values)
+}
+
+func (r OperationValidatingRepository) BatchUpdate(ctx context.Context, values interface{}) error {
+	valuesSlice, err := refl.InterfaceToInterfaceSlice(values)
+	if err != nil {
+		return err
+	}
+
+	for _, value := range valuesSlice {
+		if err = r.validator.IsValid(ctx, value, db_repo.Update); err != nil {
+			return err
+		}
+	}
+
+	return r.Repository.BatchUpdate(ctx, values)
+}
+
+func (r OperationValidatingRepository) BatchDelete(ctx context.Context, values interface{}) error {
+	valuesSlice, err := refl.InterfaceToInterfaceSlice(values)
+	if err != nil {
+		return err
+	}
+
+	for _, value := range valuesSlice {
+		if err = r.validator.IsValid(ctx, value, db_repo.Delete); err != nil {
+			return err
+		}
+	}
+
+	return r.Repository.BatchDelete(ctx, values)
 }
 
 func (r OperationValidatingRepository) Create(ctx context.Context, value db_repo.ModelBased) error {

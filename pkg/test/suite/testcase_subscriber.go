@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/ddb"
@@ -15,6 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdlsub"
 	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func init() {
