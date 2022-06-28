@@ -54,6 +54,7 @@ func (f *wiremockFactory) configureContainer(settings interface{}) *containerCon
 			"8080/tcp": s.Port,
 		},
 		ExpireAfter: s.ExpireAfter,
+		Cmd:         []string{"--local-response-templating"},
 	}
 }
 
