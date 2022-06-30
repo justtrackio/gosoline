@@ -12,7 +12,7 @@ import (
 
 // CastSlice casts a []any slice to the given type.
 // The parameter sliceType is required to correctly infer the target type.
-func CastSlice[T any, I ~[]any](sl I, sliceType T) ([]T, error) {
+func CastSlice[T any, I ~[]any](sl I) ([]T, error) {
 	result := make([]T, len(sl))
 
 	for i := 0; i < len(sl); i++ {

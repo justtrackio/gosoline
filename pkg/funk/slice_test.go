@@ -13,7 +13,7 @@ func TestCastSlice(t *testing.T) {
 	inputSlice := []any{"", ""}
 	expectedSlice := []string{"", ""}
 
-	target, err := funk.CastSlice(inputSlice, "")
+	target, err := funk.CastSlice[string](inputSlice)
 
 	assert.Equal(t, nil, err)
 	assert.Equal(t, expectedSlice, target)
