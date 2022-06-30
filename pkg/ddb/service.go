@@ -112,7 +112,7 @@ func (s *Service) CreateTable(ctx context.Context, settings *Settings) (*Metadat
 
 	if settings.Main.StreamView != "" {
 		streamSpecification.StreamEnabled = aws.Bool(true)
-		streamSpecification.StreamViewType = types.StreamViewType(settings.Main.StreamView)
+		streamSpecification.StreamViewType = settings.Main.StreamView
 	}
 
 	input := &dynamodb.CreateTableInput{
@@ -389,7 +389,7 @@ func (s *Service) waitForTableGettingAvailable(ctx context.Context, name string)
 	s.logger.Info("waiting for ddb table %s getting available", name)
 
 	for i := 0; i < defaultMaxWaitSeconds; i++ {
-		exists, err := s.checkExists(ctx, name)
+		exists, err := s.checkStatus(ctx, name, tableAvailableMapping)
 		if err != nil {
 			return err
 		}
@@ -407,7 +407,7 @@ func (s *Service) waitForTableGettingAvailable(ctx context.Context, name string)
 func (s *Service) tableExists(ctx context.Context, name string) (bool, error) {
 	s.logger.Info("looking for ddb table %v", name)
 
-	exists, err := s.checkExists(ctx, name)
+	exists, err := s.checkStatus(ctx, name, tableExistingMapping)
 	if err != nil {
 		return false, err
 	}
@@ -421,7 +421,45 @@ func (s *Service) tableExists(ctx context.Context, name string) (bool, error) {
 	return true, nil
 }
 
-func (s *Service) checkExists(ctx context.Context, name string) (bool, error) {
+type tableStatusMapping struct {
+	result bool
+	err    error
+}
+
+func statusError(msg string) tableStatusMapping {
+	return tableStatusMapping{
+		err: fmt.Errorf("%s", msg),
+	}
+}
+
+func statusResult(result bool) tableStatusMapping {
+	return tableStatusMapping{
+		result: result,
+	}
+}
+
+var (
+	tableAvailableMapping = map[types.TableStatus]tableStatusMapping{
+		types.TableStatusCreating:                          statusResult(false),
+		types.TableStatusUpdating:                          statusResult(true),
+		types.TableStatusActive:                            statusResult(true),
+		types.TableStatusDeleting:                          statusError("can not access deleting table"),
+		types.TableStatusInaccessibleEncryptionCredentials: statusError("table is not accessible because of inaccessible encryption details"),
+		types.TableStatusArchived:                          statusError("can not access archived table"),
+		types.TableStatusArchiving:                         statusError("can not access archiving table"),
+	}
+	tableExistingMapping = map[types.TableStatus]tableStatusMapping{
+		types.TableStatusCreating:                          statusResult(true),
+		types.TableStatusUpdating:                          statusResult(true),
+		types.TableStatusActive:                            statusResult(true),
+		types.TableStatusDeleting:                          statusError("can not access deleting table"),
+		types.TableStatusInaccessibleEncryptionCredentials: statusError("table is not accessible because of inaccessible encryption details"),
+		types.TableStatusArchived:                          statusError("can not access archived table"),
+		types.TableStatusArchiving:                         statusError("can not access archiving table"),
+	}
+)
+
+func (s *Service) checkStatus(ctx context.Context, name string, statusMap map[types.TableStatus]tableStatusMapping) (bool, error) {
 	out, err := s.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: aws.String(name),
 	})
@@ -435,22 +473,9 @@ func (s *Service) checkExists(ctx context.Context, name string) (bool, error) {
 		return false, fmt.Errorf("can not describe table: %w", err)
 	}
 
-	switch out.Table.TableStatus {
-	case types.TableStatusCreating: // hope the table finishes creating faster than we actually access it
-		fallthrough
-	case types.TableStatusUpdating: // the table might be changing capacity right now, but we can still access it
-		fallthrough
-	case types.TableStatusActive:
-		return true, nil
-	case types.TableStatusDeleting: // we can not create a new table while it is still deleting
-		return false, fmt.Errorf("can not access deleting table")
-	case types.TableStatusInaccessibleEncryptionCredentials:
-		return false, fmt.Errorf("table is not accessible because of inaccessible encryption details")
-	case types.TableStatusArchived:
-		fallthrough
-	case types.TableStatusArchiving:
-		return false, fmt.Errorf("can not access archived table")
-	default:
-		return false, fmt.Errorf("unhandled table status %s", out.Table.TableStatus)
+	if result, ok := statusMap[out.Table.TableStatus]; ok {
+		return result.result, result.err
 	}
+
+	return false, fmt.Errorf("unhandled table status %s", out.Table.TableStatus)
 }

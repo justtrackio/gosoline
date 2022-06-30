@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -46,13 +47,12 @@ func outputDdbFactory(ctx context.Context, config cfg.Config, logger log.Logger,
 }
 
 type OutputDdb struct {
-	repoInit func(model interface{}) (ddb.Repository, error)
-	repo     ddb.Repository
+	repo conc.Lazy[ddb.Repository, interface{}]
 }
 
 func NewOutputDdb(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings) *OutputDdb {
 	return &OutputDdb{
-		repoInit: repoInit(ctx, config, logger, settings),
+		repo: conc.NewLazy(repoInit(ctx, config, logger, settings)),
 	}
 }
 
@@ -62,18 +62,17 @@ func (p *OutputDdb) GetType() string {
 
 func (p *OutputDdb) Persist(ctx context.Context, model Model, op string) error {
 	var err error
+	var repo ddb.Repository
 
-	if p.repo == nil {
-		if p.repo, err = p.repoInit(model); err != nil {
-			return fmt.Errorf("can not initialize ddb repository: %w", err)
-		}
+	if repo, err = p.repo.Get(model); err != nil {
+		return fmt.Errorf("can not initialize ddb repository: %w", err)
 	}
 
 	switch op {
 	case ddb.Create, ddb.Update:
-		_, err = p.repo.PutItem(ctx, nil, model)
+		_, err = repo.PutItem(ctx, nil, model)
 	case ddb.Delete:
-		_, err = p.repo.DeleteItem(ctx, nil, model)
+		_, err = repo.DeleteItem(ctx, nil, model)
 	default:
 		err = fmt.Errorf("unknown operation %s in OutputDdb", op)
 	}
