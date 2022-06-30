@@ -435,7 +435,22 @@ func (s *Service) checkExists(ctx context.Context, name string) (bool, error) {
 		return false, fmt.Errorf("can not describe table: %w", err)
 	}
 
-	active := out.Table.TableStatus == types.TableStatusActive
-
-	return active, nil
+	switch out.Table.TableStatus {
+	case types.TableStatusCreating: // hope the table finishes creating faster than we actually access it
+		fallthrough
+	case types.TableStatusUpdating: // the table might be changing capacity right now, but we can still access it
+		fallthrough
+	case types.TableStatusActive:
+		return true, nil
+	case types.TableStatusDeleting: // we can not create a new table while it is still deleting
+		return false, fmt.Errorf("can not access deleting table")
+	case types.TableStatusInaccessibleEncryptionCredentials:
+		return false, fmt.Errorf("table is not accessible because of inaccessible encryption details")
+	case types.TableStatusArchived:
+		fallthrough
+	case types.TableStatusArchiving:
+		return false, fmt.Errorf("can not access archived table")
+	default:
+		return false, fmt.Errorf("unhandled table status %s", out.Table.TableStatus)
+	}
 }
