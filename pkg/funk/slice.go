@@ -269,7 +269,19 @@ func Tail[T any](sl []T) []T {
 }
 
 func Uniq[S ~[]T, T comparable](sl S) (out []T) {
-	return SetToSlice(SliceToSet(sl))
+	set := make(Set[T], len(sl))
+	res := make(S, 0)
+
+	for _, e := range sl {
+		if set.Contains(e) {
+			continue
+		}
+
+		set.Set(e)
+		res = append(res, e)
+	}
+
+	return res
 }
 
 func equal[T any](expected T) func(actualValue T) bool {
