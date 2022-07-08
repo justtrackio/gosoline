@@ -15,14 +15,17 @@ type Repository struct {
 	logger     log.Logger
 }
 
-func NewRepository(config cfg.Config, logger log.Logger, repo db_repo.Repository) db_repo.Repository {
-	disp := Get()
+func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, repo db_repo.Repository) (db_repo.Repository, error) {
+	disp, err := ProvideDispatcher(ctx, config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not provide dispatcher: %w", err)
+	}
 
 	return &Repository{
 		Repository: repo,
 		dispatcher: disp,
 		logger:     logger,
-	}
+	}, nil
 }
 
 func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error {

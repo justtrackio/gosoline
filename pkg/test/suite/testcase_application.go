@@ -1,9 +1,11 @@
 package suite
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/test/env"
@@ -61,7 +63,7 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 		appOptions = append(appOptions, application.WithModuleMultiFactory(factory))
 	}
 
-	ctx := environment.Context()
+	ctx := appctx.WithContainer(context.Background())
 	config := environment.Config()
 	logger := environment.Logger()
 
