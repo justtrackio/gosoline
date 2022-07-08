@@ -27,13 +27,13 @@ type dispatcher struct {
 	listeners map[string][]Callback
 }
 
-func ProvideDispatcher(ctx context.Context, config cfg.Config, logger log.Logger) (Dispatcher, error) {
+func ProvideDispatcher(ctx context.Context, _ cfg.Config, logger log.Logger) (Dispatcher, error) {
 	return appctx.Provide(ctx, dispatcherCtxKey("Dispatcher"), func() (Dispatcher, error) {
-		return newDispatcher(ctx, config, logger)
+		return newDispatcher(logger)
 	})
 }
 
-func newDispatcher(_ context.Context, _ cfg.Config, logger log.Logger) (Dispatcher, error) {
+func newDispatcher(logger log.Logger) (Dispatcher, error) {
 	return &dispatcher{
 		logger:    logger.WithChannel("dispatcher"),
 		mx:        sync.RWMutex{},

@@ -177,6 +177,12 @@ func WithDbRepoChangeHistory() Option {
 	}
 }
 
+func WithApiServerShares() Option {
+	return func(s *suiteOptions) {
+		s.addAppOption(application.WithApiServerShares)
+	}
+}
+
 // WithTestCaseWhitelist returns an option which only runs the tests contained in the given whitelist. A test not in the
 // whitelist is skipped instead, allowing you to easily run a single test (e.g., for debugging).
 func WithTestCaseWhitelist(testCases ...string) Option {
