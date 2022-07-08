@@ -152,7 +152,6 @@ func (r *repository) BatchCreate(ctx context.Context, values interface{}) error 
 		WithContext(ctx).
 		Session(&gorm.Session{
 			FullSaveAssociations: true,
-			NewDB:                true,
 		})
 
 	for _, preload := range r.metadata.Preloads {
@@ -222,7 +221,6 @@ func (r *repository) BatchUpdate(ctx context.Context, values interface{}) error 
 		WithContext(ctx).
 		Session(&gorm.Session{
 			FullSaveAssociations: true,
-			NewDB:                true,
 		})
 
 	for _, preload := range r.metadata.Preloads {
@@ -248,7 +246,7 @@ func (r *repository) BatchUpdate(ctx context.Context, values interface{}) error 
 	for _, value := range valuesSlice {
 		vm := value.(ModelBased)
 
-		if err := r.updateAssociations(vm.(ModelBased)); err != nil {
+		if err := r.updateAssociations(ctx, vm.(ModelBased)); err != nil {
 			logger.Error("could not update associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(vm.GetId()), err)
 			return err
 		}
@@ -302,7 +300,6 @@ func (r *repository) BatchDelete(ctx context.Context, values interface{}) error 
 		WithContext(ctx).
 		Session(&gorm.Session{
 			FullSaveAssociations: true,
-			NewDB:                true,
 		})
 
 	for _, preload := range r.metadata.Preloads {
@@ -345,7 +342,6 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 		WithContext(ctx).
 		Session(&gorm.Session{
 			FullSaveAssociations: true,
-			NewDB:                true,
 		})
 
 	for _, preload := range r.metadata.Preloads {
@@ -392,7 +388,6 @@ func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
 		WithContext(ctx).
 		Session(&gorm.Session{
 			FullSaveAssociations: true,
-			NewDB:                true,
 		})
 
 	for _, preload := range r.metadata.Preloads {
@@ -430,7 +425,6 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 		WithContext(ctx).
 		Session(&gorm.Session{
 			FullSaveAssociations: true,
-			NewDB:                true,
 		})
 
 	for _, preload := range r.metadata.Preloads {
@@ -453,7 +447,7 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 		return err
 	}
 
-	if err := r.updateAssociations(value); err != nil {
+	if err := r.updateAssociations(ctx, value); err != nil {
 		logger.Error("could not update associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
 		return err
 	}
@@ -483,7 +477,6 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 		WithContext(ctx).
 		Session(&gorm.Session{
 			FullSaveAssociations: true,
-			NewDB:                true,
 		}).
 		Select(clause.Associations). // required to delete associations
 		Delete(value).
@@ -496,42 +489,6 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	logger.Info("deleted model of type %s with id %d", modelId, *value.GetId())
 
 	return err
-}
-
-func (r *repository) updateAssociations(value ModelBased) error {
-	scheme, err := schema.Parse(value, r.schemaCache, r.orm.NamingStrategy)
-	if err != nil {
-		return fmt.Errorf("could not parse schema: %w", err)
-	}
-
-	of := reflect.ValueOf(value)
-	if of.Kind() != reflect.Ptr {
-		return fmt.Errorf("you must pass a pointer to your repository method")
-	}
-
-	e := of.Elem()
-	scope := r.orm.Model(value)
-	for _, preload := range r.metadata.Preloads {
-		scope = scope.Preload(preload)
-	}
-
-	for name := range scheme.Relationships.Relations {
-		v := e.FieldByName(name).Interface()
-		if err := scope.Association(name).Replace(v); err != nil {
-			return fmt.Errorf("could not replace association before save: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (r *repository) isQueryableModel(model interface{}) (bool, error) {
-	scheme, err := schema.Parse(model, r.schemaCache, r.orm.NamingStrategy)
-	if err != nil {
-		return false, fmt.Errorf("could not parse model: %w", err)
-	}
-
-	return strings.EqualFold(scheme.Table, r.GetMetadata().TableName) || scheme.Table == "", nil
 }
 
 func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
@@ -596,25 +553,6 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 	return err
 }
 
-func (r *repository) checkResultModel(result interface{}) error {
-	if !refl.IsPointerToSlice(result) {
-		return fmt.Errorf("result slice has to be pointer to slice")
-	}
-
-	model := reflect.ValueOf(result).Elem().Interface()
-
-	queryable, err := r.isQueryableModel(model)
-	if err != nil {
-		return err
-	}
-
-	if !queryable {
-		return fmt.Errorf("cross querying result slice has to be of same model")
-	}
-
-	return nil
-}
-
 func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBased) (int, error) {
 	_, span := r.startSubSpan(ctx, "Count")
 	defer span.Finish()
@@ -647,6 +585,34 @@ func (r *repository) GetMetadata() Metadata {
 	return r.metadata
 }
 
+func (r *repository) checkResultModel(result interface{}) error {
+	if !refl.IsPointerToSlice(result) {
+		return fmt.Errorf("result slice has to be pointer to slice")
+	}
+
+	model := reflect.ValueOf(result).Elem().Interface()
+
+	queryable, err := r.isQueryableModel(model)
+	if err != nil {
+		return err
+	}
+
+	if !queryable {
+		return fmt.Errorf("cross querying result slice has to be of same model")
+	}
+
+	return nil
+}
+
+func (r *repository) isQueryableModel(model interface{}) (bool, error) {
+	scheme, err := schema.Parse(model, r.schemaCache, r.orm.NamingStrategy)
+	if err != nil {
+		return false, fmt.Errorf("could not parse model: %w", err)
+	}
+
+	return strings.EqualFold(scheme.Table, r.GetMetadata().TableName) || scheme.Table == "", nil
+}
+
 func (r *repository) startSubSpan(ctx context.Context, action string) (context.Context, tracing.Span) {
 	modelName := r.GetModelId()
 	spanName := fmt.Sprintf("db_repo.%v.%v", modelName, action)
@@ -657,13 +623,61 @@ func (r *repository) startSubSpan(ctx context.Context, action string) (context.C
 	return ctx, span
 }
 
-func getModel(value interface{}) (interface{}, error) {
-	if value == nil {
-		return nil, fmt.Errorf("failed to derive model from nil")
+func (r *repository) updateAssociations(ctx context.Context, value ModelBased) error {
+	scheme, err := schema.Parse(value, r.schemaCache, r.orm.NamingStrategy)
+	if err != nil {
+		return fmt.Errorf("could not parse schema: %w", err)
 	}
 
-	baseType := refl.ResolveBaseType(value)
-	zero := reflect.New(baseType)
+	of := reflect.ValueOf(value)
+	if of.Kind() != reflect.Ptr {
+		return fmt.Errorf("you must pass a pointer to your repository method")
+	}
 
-	return zero.Interface(), nil
+	e := of.Elem()
+	relations := append(scheme.Relationships.HasMany, append(scheme.Relationships.Many2Many, scheme.Relationships.HasOne...)...)
+
+	orm := r.orm.WithContext(ctx)
+
+	for _, rel := range relations {
+		v := e.FieldByName(rel.Name)
+
+		switch rel.Type {
+		case schema.Many2Many:
+			err = orm.WithContext(ctx).Model(value).Association(rel.Name).Replace(v.Interface())
+
+		default:
+			assocIds := readIdsFromReflectValue(v)
+			parentId := value.GetId()
+
+			tableName := rel.FieldSchema.Table
+			args := make([]interface{}, 0)
+
+			qry := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", tableName, rel.References[0].ForeignKey.DBName)
+			args = append(args, parentId)
+
+			if len(assocIds) != 0 {
+				qry = qry + fmt.Sprintf(" AND %s NOT IN ?", "id")
+				args = append(args, assocIds)
+			}
+
+			err = orm.Exec(qry, args...).Error
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func readIdsFromReflectValue(values reflect.Value) []*uint {
+	ids := make([]*uint, 0)
+
+	for j := 0; j < values.Len(); j++ {
+		id := values.Index(j).Elem().FieldByName("Id").Interface().(*uint)
+		ids = append(ids, id)
+	}
+
+	return ids
 }

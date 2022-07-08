@@ -49,7 +49,7 @@ type container struct {
 type healthCheckSettings struct {
 	InitialInterval time.Duration `cfg:"initial_interval" default:"1s"`
 	MaxInterval     time.Duration `cfg:"max_interval" default:"3s"`
-	MaxElapsedTime  time.Duration `cfg:"max_elapsed_time" default:"1m"`
+	MaxElapsedTime  time.Duration `cfg:"max_elapsed_time" default:"10m"` // TODO: change
 }
 
 type authSettings struct {

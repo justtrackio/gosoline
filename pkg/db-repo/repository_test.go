@@ -703,10 +703,6 @@ func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
 	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at`=\\?,`created_at`=\\?,`my_test_model_id`=\\? WHERE `id` = \\?").WithArgs(&now, &now, (*uint)(nil), id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
-	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at`=\\?,`created_at`=\\?,`my_test_model_id`=\\? WHERE `id` = \\?").WithArgs(&now, &now, (*uint)(nil), id1).WillReturnResult(result)
-	dbc.ExpectCommit()
-
 	model := OneOfMany{
 		Model: db_repo.Model{
 			Id: id1,
@@ -729,11 +725,6 @@ func TestRepository_UpdateManyToOne(t *testing.T) {
 	dbc, repo := getTimedMocks(t, now, oneOfMany)
 
 	result := goSqlMock.NewResult(0, 1)
-	dbc.ExpectBegin()
-	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `id`=`id`").WithArgs(&now, &now, id42).WillReturnResult(result)
-	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at`=\\?,`created_at`=\\?,`my_test_model_id`=\\?  WHERE `id` = \\?").WithArgs(&now, &now, id42, id1).WillReturnResult(result)
-	dbc.ExpectCommit()
-
 	dbc.ExpectBegin()
 	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `id`=`id`").WithArgs(&now, &now, id42).WillReturnResult(result)
 	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at`=\\?,`created_at`=\\?,`my_test_model_id`=\\?  WHERE `id` = \\?").WithArgs(&now, &now, id42, id1).WillReturnResult(result)
@@ -771,15 +762,7 @@ func TestRepository_UpdateHasMany(t *testing.T) {
 		WithArgs(&now, &now, id1, id6, &now, &now, id1, id24, &now, &now, id1, id42).WillReturnResult(result)
 	dbc.ExpectCommit()
 
-	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`,`id`\\) VALUES \\(\\?,\\?,\\?,\\?\\),\\(\\?,\\?,\\?,\\?\\),\\(\\?,\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `has_many_id`=VALUES\\(`has_many_id`\\)").
-		WithArgs(&now, &now, id1, id6, &now, &now, id1, id24, &now, &now, id1, id42).WillReturnResult(result)
-	dbc.ExpectCommit()
-
-	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `ones` SET `has_many_id`=\\? WHERE `ones`\\.`id` NOT IN \\(\\?,\\?,\\?\\) AND `ones`\\.`has_many_id` = \\?").WithArgs(nil, id6, id24, id42, id1).WillReturnResult(result)
-	dbc.ExpectCommit()
+	dbc.ExpectExec("DELETE FROM ones WHERE has_many_id = \\? AND id NOT IN \\(\\?,\\?,\\?\\)").WithArgs(id1, id6, id24, id42).WillReturnResult(result)
 
 	model := HasMany{
 		Model: db_repo.Model{
@@ -821,13 +804,7 @@ func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
 	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
-	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at`=\\?,`created_at`=\\? WHERE `id` = \\?").WithArgs(&now, &now, id1).WillReturnResult(result)
-	dbc.ExpectCommit()
-
-	dbc.ExpectBegin()
-	dbc.ExpectExec("UPDATE `ones` SET `has_many_id`=\\? WHERE `ones`\\.`has_many_id` = \\?").WithArgs(nil, id1).WillReturnResult(result)
-	dbc.ExpectCommit()
+	dbc.ExpectExec("DELETE FROM ones WHERE has_many_id = \\?").WithArgs(id1).WillReturnResult(result)
 
 	model := HasMany{
 		Model: db_repo.Model{
