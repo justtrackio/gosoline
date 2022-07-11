@@ -2,7 +2,6 @@ package currency
 
 import (
 	"context"
-	"encoding/xml"
 	"fmt"
 	"time"
 
@@ -15,13 +14,14 @@ import (
 
 const (
 	ExchangeRateRefresh           = 8 * time.Hour
-	ExchangeRateUrl               = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
-	HistoricalExchangeRateUrl     = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml"
 	ExchangeRateDateKey           = "currency_exchange_last_refresh"
 	HistoricalExchangeRateDateKey = "currency_exchange_historical_last_refresh"
+	YMDLayout                     = "2006-01-02"
 )
 
-const YMDLayout = "2006-01-02"
+type UpdaterConfig struct {
+	Provider string `cfg:"provider" default:"ecb"`
+}
 
 //go:generate mockery --name UpdaterService
 type UpdaterService interface {
@@ -30,31 +30,49 @@ type UpdaterService interface {
 }
 
 type updaterService struct {
-	logger log.Logger
-	http   http.Client
-	store  kvstore.KvStore
-	clock  clock.Clock
+	logger   log.Logger
+	clock    clock.Clock
+	http     http.Client
+	provider Provider
+	store    kvstore.KvStore
 }
 
 func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (UpdaterService, error) {
 	logger = logger.WithChannel("currency_updater_service")
+
+	clk := clock.Provider
+
+	updaterConfig := UpdaterConfig{}
+	config.UnmarshalKey("currency.updater", &updaterConfig)
+
+	if updaterConfig.Provider == "" {
+		return nil, fmt.Errorf("missing provider configuration currency.updater.provider")
+	}
+
+	providerFn, ok := GetProviderFactory(updaterConfig.Provider)
+	if !ok {
+		return nil, fmt.Errorf("undefined provider %s", updaterConfig.Provider)
+	}
+
+	provider, err := providerFn(ctx, config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create provider: %w", err)
+	}
 
 	store, err := kvstore.ProvideConfigurableKvStore(ctx, config, logger, kvStoreName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kvStore: %w", err)
 	}
 
-	httpClient := http.NewHttpClient(config, logger)
-
-	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider), nil
+	return NewUpdaterWithInterfaces(logger, clk, provider, store), nil
 }
 
-func NewUpdaterWithInterfaces(logger log.Logger, store kvstore.KvStore, httpClient http.Client, clock clock.Clock) UpdaterService {
+func NewUpdaterWithInterfaces(logger log.Logger, clock clock.Clock, provider Provider, store kvstore.KvStore) UpdaterService {
 	return &updaterService{
-		logger: logger,
-		store:  store,
-		http:   httpClient,
-		clock:  clock,
+		logger:   logger,
+		clock:    clock,
+		provider: provider,
+		store:    store,
 	}
 }
 
@@ -64,13 +82,13 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 	}
 
 	s.logger.Info("requesting exchange rates")
-	rates, err := s.getCurrencyRates(ctx)
+	rates, err := s.provider.FetchCurrentRates(ctx)
 	if err != nil {
 		return fmt.Errorf("error getting currency exchange rates: %w", err)
 	}
 
 	now := time.Now()
-	for _, rate := range rates {
+	for _, rate := range rates.Rates {
 		err := s.store.Put(ctx, rate.Currency, rate.Rate)
 		if err != nil {
 			return fmt.Errorf("error setting exchange rate: %w", err)
@@ -122,24 +140,6 @@ func (s *updaterService) needsRefresh(ctx context.Context) bool {
 	return false
 }
 
-func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
-	request := s.http.NewRequest().WithUrl(ExchangeRateUrl)
-
-	response, err := s.http.Get(ctx, request)
-	if err != nil {
-		return nil, fmt.Errorf("error requesting exchange rates: %w", err)
-	}
-
-	exchangeRateResult := ExchangeResponse{}
-	err = xml.Unmarshal(response.Body, &exchangeRateResult)
-
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling exchange rates: %w", err)
-	}
-
-	return exchangeRateResult.Body.Content.Rates, nil
-}
-
 func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) error {
 	if !s.historicalRatesNeedRefresh(ctx) {
 		return nil
@@ -148,14 +148,9 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 	startDate := time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	s.logger.Info("requesting historical exchange rates")
-	rates, err := s.fetchExchangeRates(ctx)
+	rates, err := s.provider.FetchHistoricalExchangeRates(ctx, startDate)
 	if err != nil {
 		return fmt.Errorf("error getting historical currency exchange rates: %w", err)
-	}
-
-	rates, err = filterOutOldExchangeRates(rates, startDate)
-	if err != nil {
-		return fmt.Errorf("error filtering out old rates: %w", err)
 	}
 
 	// the API doesn't return rates for weekends and public holidays at the time of writing this,
@@ -167,13 +162,8 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 
 	keyValues := make(map[string]float64)
 	for _, dayRates := range rates {
-		date, err := dayRates.GetTime()
-		if err != nil {
-			return fmt.Errorf("error parsing time in historical exchange rates: %w", err)
-		}
-
 		for _, rate := range dayRates.Rates {
-			key := historicalRateKey(date, rate.Currency)
+			key := historicalRateKey(dayRates.Day, rate.Currency)
 			keyValues[key] = rate.Rate
 		}
 	}
@@ -219,52 +209,17 @@ func (s *updaterService) historicalRatesNeedRefresh(ctx context.Context) bool {
 	return false
 }
 
-func (s *updaterService) fetchExchangeRates(ctx context.Context) ([]Content, error) {
-	request := s.http.NewRequest().WithUrl(HistoricalExchangeRateUrl)
-
-	response, err := s.http.Get(ctx, request)
-	if err != nil {
-		return nil, fmt.Errorf("error requesting historical exchange rates: %w", err)
-	}
-
-	exchangeRateResult := HistoricalExchangeResponse{}
-	err = xml.Unmarshal(response.Body, &exchangeRateResult)
-
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling historical exchange rates: %w", err)
-	}
-
-	return exchangeRateResult.Body.Content, nil
-}
-
 func historicalRateKey(time time.Time, currency string) string {
-	return time.Format("2006-01-02") + "-" + currency
+	return time.Format(YMDLayout) + "-" + currency
 }
 
-func filterOutOldExchangeRates(rates []Content, earliestDate time.Time) (ret []Content, e error) {
-	for _, dayRates := range rates {
-		date, err := dayRates.GetTime()
-		if err != nil {
-			e = fmt.Errorf("filterOutOldExchangeRates error parsing time: %w", err)
-			return
-		}
-		if !date.Before(earliestDate) {
-			ret = append(ret, dayRates)
-		}
-	}
-	return
-}
-
-func fillInGapDays(historicalContent []Content, clock clock.Clock) ([]Content, error) {
+func fillInGapDays(historicalContent []Rates, clock clock.Clock) ([]Rates, error) {
 	var startDate time.Time
 	endDate := clock.Now()
-	dailyRates := make(map[string]Content)
+	dailyRates := make(map[string]Rates)
 
 	for _, dayRates := range historicalContent {
-		date, err := dayRates.GetTime()
-		if err != nil {
-			return nil, fmt.Errorf("fillInGapDays error: %w", err)
-		}
+		date := dayRates.Day
 		if startDate.IsZero() || startDate.After(date) {
 			startDate = date
 		}
@@ -277,13 +232,17 @@ func fillInGapDays(historicalContent []Content, clock clock.Clock) ([]Content, e
 
 	lastDay := startDate
 	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
-		if _, ok := dailyRates[date.Format(YMDLayout)]; !ok {
-			gapContent := dailyRates[lastDay.Format(YMDLayout)]
-			gapContent.Time = date.Format(YMDLayout)
-			historicalContent = append(historicalContent, gapContent)
-		} else {
+		if _, ok := dailyRates[date.Format(YMDLayout)]; ok {
 			lastDay = date
+			continue
 		}
+
+		gapContent := Rates{
+			Day:   date,
+			Rates: dailyRates[lastDay.Format(YMDLayout)].Rates,
+		}
+
+		historicalContent = append(historicalContent, gapContent)
 	}
 
 	return historicalContent, nil
