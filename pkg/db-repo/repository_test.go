@@ -57,7 +57,7 @@ var ManyToManyMetadata = db_repo.Metadata{
 
 type OneOfMany struct {
 	db_repo.Model
-	MyTestModel   *MyTestModel `gorm:"foreignkey:MyTestModelId"`
+	MyTestModel   *MyTestModel `gorm:"foreignKey:MyTestModelId"`
 	MyTestModelId *uint
 }
 
@@ -1135,4 +1135,85 @@ func getTimedMocks(t *testing.T, time time.Time, whichMetadata string) (goSqlMoc
 	repo := db_repo.NewWithInterfaces(logger, tracer, orm, metadata)
 
 	return clientMock, repo
+}
+
+type SimpleStruct struct {
+	Id   uint
+	Name string `orm:"preload"`
+}
+
+type NestedStruct struct {
+	Id              uint
+	Simple          SimpleStruct `orm:"preload"`
+	SimpleId        uint
+	SlicedStructId  uint
+	LayeredStructId uint
+}
+
+type LayeredStruct struct {
+	Id            uint
+	Layered       NestedStruct `orm:"preload"`
+	SaladStructId uint
+}
+
+type SlicedStruct struct {
+	Id     uint
+	Sliced []NestedStruct `orm:"preload"`
+}
+
+type SaladStruct struct {
+	Id     uint
+	Sliced []LayeredStruct `orm:"preload"`
+}
+
+type NoPreload struct {
+	Id     uint
+	Sliced []LayeredStruct `orm:"preload:false"`
+}
+
+var cases = map[string]struct {
+	input    interface{}
+	expected []string
+}{
+	"struct_no_tags": {
+		input:    struct{}{},
+		expected: []string{},
+	},
+	"struct_scalar_tags": {
+		// scalars don't require explicit preloading
+		input:    SimpleStruct{},
+		expected: []string{},
+	},
+	"nested_struct": {
+		// one level of nesting is supported via clause.Association
+		// we can add it nevertheless as it's deduplicated by GORM
+		input:    NestedStruct{},
+		expected: []string{"Simple"},
+	},
+	"layered_struct": {
+		input:    LayeredStruct{},
+		expected: []string{"Layered.Simple", "Layered"},
+	},
+	"sliced_struct": {
+		input:    SlicedStruct{},
+		expected: []string{"Sliced.Simple", "Sliced"},
+	},
+	"salad_struct": {
+		input:    SaladStruct{},
+		expected: []string{"Sliced.Layered.Simple", "Sliced.Layered", "Sliced"},
+	},
+	"no_preload": {
+		input:    NoPreload{},
+		expected: []string{},
+	},
+}
+
+func TestParsePreloads(t *testing.T) {
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			preloads := db_repo.ParsePreloads(c.input)
+
+			assert.Equal(t, c.expected, preloads)
+		})
+	}
 }

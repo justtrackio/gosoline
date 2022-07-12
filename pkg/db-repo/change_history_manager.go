@@ -8,6 +8,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -122,12 +123,7 @@ func (c *ChangeHistoryManager) buildHistoryTableMetadata(model ModelBased, origi
 
 	fields := append(historyScope.Fields, modelScope.Fields...)
 
-	// TODO: use nikplxjt funk.MergeMap
-	relations := historyScope.Relationships.Relations
-	for key, value := range modelScope.Relationships.Relations {
-		relations[key] = value
-	}
-
+	relations := funk.MergeMaps(historyScope.Relationships.Relations, modelScope.Relationships.Relations)
 	tableName := fmt.Sprintf("%s_%s", originalTable.tableName, c.settings.TableSuffix)
 
 	return newTableMetadata(c.orm.Model(model), tableName, fields, relations)

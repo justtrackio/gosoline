@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go/ast"
 	"reflect"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
 	"github.com/justtrackio/gosoline/pkg/tracing"
+	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/schema"
@@ -532,7 +534,7 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 		db = db.Order(fmt.Sprintf("%s %s", o.field, o.direction))
 	}
 
-	for _, p := range qb.preloads {
+	for _, p := range r.metadata.Preloads {
 		db = db.Preload(p)
 	}
 
@@ -583,6 +585,67 @@ func (r *repository) GetModelName() string {
 
 func (r *repository) GetMetadata() Metadata {
 	return r.metadata
+}
+
+func ParsePreloads(model interface{}) []string {
+	value := reflect.ValueOf(model)
+	if value.Kind() == reflect.Ptr && value.IsNil() {
+		value = reflect.New(value.Type().Elem())
+	}
+
+	modelType := reflect.Indirect(value).Type()
+	if modelType.Kind() == reflect.Interface {
+		modelType = reflect.Indirect(reflect.ValueOf(model)).Elem().Type()
+	}
+
+	for modelType.Kind() == reflect.Slice || modelType.Kind() == reflect.Array || modelType.Kind() == reflect.Ptr {
+		modelType = modelType.Elem()
+	}
+
+	preloadNames := make([]string, 0)
+
+	for i := 0; i < modelType.NumField(); i++ {
+		fieldStruct := modelType.Field(i)
+		if !ast.IsExported(fieldStruct.Name) {
+			continue
+		}
+
+		tags := fieldStruct.Tag.Get("orm")
+		parts := strings.Split(tags, ";")
+
+		if slices.Contains(parts, "preload:false") {
+			continue
+		}
+
+		if !slices.Contains(parts, "preload") {
+			continue
+		}
+
+		fieldKind := fieldStruct.Type.Kind()
+		if fieldKind != reflect.Ptr &&
+			fieldKind != reflect.Struct &&
+			fieldKind != reflect.Array &&
+			fieldKind != reflect.Slice {
+			continue
+		}
+
+		fieldType := fieldStruct.Type
+		for fieldType.Kind() == reflect.Ptr {
+			fieldType = fieldType.Elem()
+		}
+
+		fieldValue := reflect.New(fieldType).Interface()
+
+		childNames := ParsePreloads(fieldValue)
+
+		for _, child := range childNames {
+			preloadNames = append(preloadNames, fieldStruct.Name+"."+child)
+		}
+
+		preloadNames = append(preloadNames, fieldStruct.Name)
+	}
+
+	return preloadNames
 }
 
 func (r *repository) checkResultModel(result interface{}) error {

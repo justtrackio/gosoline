@@ -16,14 +16,13 @@ type order struct {
 }
 
 type QueryBuilder struct {
-	table    string
-	preloads []string
-	joins    []string
-	where    []interface{}
-	args     [][]interface{}
-	groupBy  []string
-	orderBy  []order
-	page     *page
+	table   string
+	joins   []string
+	where   []interface{}
+	args    [][]interface{}
+	groupBy []string
+	orderBy []order
+	page    *page
 }
 
 func NewQueryBuilder() *QueryBuilder {
@@ -36,12 +35,6 @@ func NewQueryBuilder() *QueryBuilder {
 
 func (qb *QueryBuilder) Table(table string) db.QueryBuilder {
 	qb.table = table
-
-	return qb
-}
-
-func (qb *QueryBuilder) Preloads(preloads []string) *QueryBuilder {
-	qb.preloads = preloads
 
 	return qb
 }

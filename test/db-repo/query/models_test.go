@@ -49,5 +49,5 @@ var TestManyMetadata = db_repo.Metadata{
 		"testMany.id":   db_repo.NewFieldMapping("test_manies.id"),
 		"testMany.name": db_repo.NewFieldMapping("test_manies.name"),
 	},
-	Preloads: []string{"Others.Other"},
+	Preloads: db_repo.ParsePreloads(TestMany{}),
 }
