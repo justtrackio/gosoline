@@ -28,13 +28,13 @@ var TestModelMetadata = db_repo.Metadata{
 type TestMany struct {
 	db_repo.Model
 	Name   string
-	Others []*TestManyToMany `gorm:"many2many:test_many_to_manies;joinReferences:manyId"`
+	Others []*TestManyToMany `gorm:"many2many:test_many_to_manies;joinReferences:manyId" orm:"preload"`
 }
 
 type TestManyToMany struct {
 	db_repo.Model
 	ManyId  *uint
-	Other   *TestMany `gorm:"joinForeignKey:otherId"`
+	Other   *TestMany `gorm:"joinForeignKey:otherId" orm:"preload"`
 	OtherId *uint
 }
 
