@@ -588,6 +588,14 @@ func (r *repository) GetMetadata() Metadata {
 }
 
 func ParsePreloads(model interface{}) []string {
+	preloadNames := make([]string, 0)
+
+	preloadNames = parsePreloadsForModel(preloadNames, model)
+
+	return preloadNames
+}
+
+func parsePreloadsForModel(preloads []string, model interface{}) []string {
 	value := reflect.ValueOf(model)
 	if value.Kind() == reflect.Ptr && value.IsNil() {
 		value = reflect.New(value.Type().Elem())
@@ -601,8 +609,6 @@ func ParsePreloads(model interface{}) []string {
 	for modelType.Kind() == reflect.Slice || modelType.Kind() == reflect.Array || modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
 	}
-
-	preloadNames := make([]string, 0)
 
 	for i := 0; i < modelType.NumField(); i++ {
 		fieldStruct := modelType.Field(i)
@@ -629,6 +635,13 @@ func ParsePreloads(model interface{}) []string {
 			continue
 		}
 
+		if slices.Contains(preloads, fieldStruct.Name) {
+			// don't allow self-references over one level as it ends in infinite recursion
+			continue
+		}
+
+		preloads = append(preloads, fieldStruct.Name)
+
 		fieldType := fieldStruct.Type
 		for fieldType.Kind() == reflect.Ptr {
 			fieldType = fieldType.Elem()
@@ -636,16 +649,14 @@ func ParsePreloads(model interface{}) []string {
 
 		fieldValue := reflect.New(fieldType).Interface()
 
-		childNames := ParsePreloads(fieldValue)
+		childNames := parsePreloadsForModel(preloads, fieldValue)
 
 		for _, child := range childNames {
-			preloadNames = append(preloadNames, fieldStruct.Name+"."+child)
+			preloads = append(preloads, fieldStruct.Name+"."+child)
 		}
-
-		preloadNames = append(preloadNames, fieldStruct.Name)
 	}
 
-	return preloadNames
+	return preloads
 }
 
 func (r *repository) checkResultModel(result interface{}) error {
