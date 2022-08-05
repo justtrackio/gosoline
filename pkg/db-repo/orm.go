@@ -11,7 +11,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 	"gorm.io/gorm/schema"
 )
 
@@ -80,8 +79,6 @@ func NewOrmWithInterfaces(clock clock.Clock, dbClient gorm.ConnPool, settings Or
 	if err != nil {
 		return nil, fmt.Errorf("could not create gorm: %w", err)
 	}
-
-	orm = orm.Preload(clause.Associations)
 
 	return orm, nil
 }
