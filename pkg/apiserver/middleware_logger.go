@@ -55,6 +55,12 @@ func LoggingMiddleware(logger log.Logger) gin.HandlerFunc {
 			"status":                   ginCtx.Writer.Status(),
 		})
 
+		if requestId := req.Header.Get("X-Request-Id"); requestId != "" {
+			ctxLogger = ctxLogger.WithFields(log.Fields{
+				"request_id": requestId,
+			})
+		}
+
 		if len(ginCtx.Errors) == 0 {
 			ctxLogger.Info("%s %s %s", method, path, req.Proto)
 			return
