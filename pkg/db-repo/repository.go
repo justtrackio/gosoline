@@ -17,7 +17,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 	"gorm.io/gorm/schema"
 )
 
@@ -176,6 +175,15 @@ func (r *repository) BatchCreate(ctx context.Context, values interface{}) error 
 		return err
 	}
 
+	for _, value := range valuesSlice {
+		vm := value.(ModelBased)
+
+		if err := r.refreshAssociations(ctx, vm.(ModelBased), Create); err != nil {
+			logger.Error("could not refresh associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(vm.GetId()), err)
+			return err
+		}
+	}
+
 	for _, v := range valuesSlice {
 		logger.Info("created model of type %s with id %d", modelId, *v.(ModelBased).GetId())
 	}
@@ -248,8 +256,8 @@ func (r *repository) BatchUpdate(ctx context.Context, values interface{}) error 
 	for _, value := range valuesSlice {
 		vm := value.(ModelBased)
 
-		if err := r.updateAssociations(ctx, vm.(ModelBased)); err != nil {
-			logger.Error("could not update associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(vm.GetId()), err)
+		if err := r.refreshAssociations(ctx, vm.(ModelBased), Update); err != nil {
+			logger.Error("could not refresh associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(vm.GetId()), err)
 			return err
 		}
 	}
@@ -297,6 +305,15 @@ func (r *repository) BatchDelete(ctx context.Context, values interface{}) error 
 
 	ctx, span := r.startSubSpan(ctx, "DeleteItems")
 	defer span.Finish()
+
+	for _, value := range valuesSlice {
+		vm := value.(ModelBased)
+
+		if err := r.refreshAssociations(ctx, vm.(ModelBased), Delete); err != nil {
+			logger.Error("could not refresh associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(vm.GetId()), err)
+			return err
+		}
+	}
 
 	orm := r.orm.
 		WithContext(ctx).
@@ -362,8 +379,13 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 	}
 
 	if err != nil {
-		logger.Error("could not create model of type %v: %w", modelId, err)
+		logger.Error("could not create model of type %s: %w", modelId, err)
 		return err
+	}
+
+	err = r.refreshAssociations(ctx, value, Create)
+	if err != nil {
+		logger.Error("could not refresh associations of model type %s: %w", modelId, err)
 	}
 
 	logger.Info("created model of type %s with id %d", modelId, *value.GetId())
@@ -449,8 +471,8 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 		return err
 	}
 
-	if err := r.updateAssociations(ctx, value); err != nil {
-		logger.Error("could not update associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
+	if err := r.refreshAssociations(ctx, value, Update); err != nil {
+		logger.Error("could not refresh associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
 		return err
 	}
 
@@ -475,12 +497,16 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	_, span := r.startSubSpan(ctx, "Delete")
 	defer span.Finish()
 
+	if err := r.refreshAssociations(ctx, value, Delete); err != nil {
+		logger.Error("could not refresh associations of type %s with id %d: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
+		return err
+	}
+
 	err = r.orm.
 		WithContext(ctx).
 		Session(&gorm.Session{
 			FullSaveAssociations: true,
 		}).
-		Select(clause.Associations). // required to delete associations
 		Delete(value).
 		Error
 
@@ -700,7 +726,7 @@ func (r *repository) startSubSpan(ctx context.Context, action string) (context.C
 	return ctx, span
 }
 
-func (r *repository) updateAssociations(ctx context.Context, value ModelBased) error {
+func (r *repository) refreshAssociations(ctx context.Context, value ModelBased, op string) error {
 	scheme, err := schema.Parse(value, r.schemaCache, r.orm.NamingStrategy)
 	if err != nil {
 		return fmt.Errorf("could not parse schema: %w", err)
@@ -712,47 +738,81 @@ func (r *repository) updateAssociations(ctx context.Context, value ModelBased) e
 	}
 
 	e := of.Elem()
-	relations := append(scheme.Relationships.HasMany, append(scheme.Relationships.Many2Many, scheme.Relationships.HasOne...)...)
 
 	orm := r.orm.WithContext(ctx)
 
-	for _, rel := range relations {
+	for _, rel := range scheme.Relationships.Relations {
 		v := e.FieldByName(rel.Name)
 
-		switch rel.Type {
-		case schema.Many2Many:
-			err = orm.WithContext(ctx).Model(value).Association(rel.Name).Replace(v.Interface())
+		tags := rel.Field.Tag.Get("orm")
+		parts := strings.Split(tags, ";")
 
+		if !slices.Contains(parts, "assoc_update") {
+			continue
+		}
+
+		switch op {
+		case Create:
+			fallthrough
+
+		case Update:
+			switch rel.Type {
+			case schema.Many2Many:
+				err = orm.Model(value).Association(rel.Name).Replace(v.Interface())
+			default:
+				assocIds := readIdsFromReflectValue(v)
+				parentId := value.GetId()
+
+				tableName := rel.FieldSchema.Table
+				args := make([]interface{}, 0)
+
+				qry := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", tableName, rel.References[0].ForeignKey.DBName)
+				args = append(args, parentId)
+
+				if len(assocIds) != 0 {
+					qry = qry + fmt.Sprintf(" AND %s NOT IN ?", "id")
+					args = append(args, assocIds)
+				}
+
+				err = orm.Exec(qry, args...).Error
+			}
+		case Delete:
+			switch rel.Type {
+			case schema.HasMany:
+				id := e.FieldByName("Id").Elem().Interface()
+
+				tableName := rel.FieldSchema.Table
+				qry := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", tableName, rel.References[0].ForeignKey.DBName)
+				err = r.orm.Exec(qry, id).Error
+			default:
+				err = orm.Model(value).Association(rel.Name).Clear()
+			}
 		default:
-			assocIds := readIdsFromReflectValue(v)
-			parentId := value.GetId()
-
-			tableName := rel.FieldSchema.Table
-			args := make([]interface{}, 0)
-
-			qry := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", tableName, rel.References[0].ForeignKey.DBName)
-			args = append(args, parentId)
-
-			if len(assocIds) != 0 {
-				qry = qry + fmt.Sprintf(" AND %s NOT IN ?", "id")
-				args = append(args, assocIds)
-			}
-
-			err = orm.Exec(qry, args...).Error
-			if err != nil {
-				return err
-			}
+			err = fmt.Errorf("unknown operation %s", op)
 		}
 	}
 
-	return nil
+	if err != nil {
+		return err
+	}
+
+	if op == Delete || len(scheme.Relationships.Relations) == 0 {
+		return nil
+	}
+
+	return r.Read(ctx, value.GetId(), value)
 }
 
 func readIdsFromReflectValue(values reflect.Value) []*uint {
 	ids := make([]*uint, 0)
 
 	for j := 0; j < values.Len(); j++ {
-		id := values.Index(j).Elem().FieldByName("Id").Interface().(*uint)
+		value := values.Index(j)
+		if value.Kind() == reflect.Ptr {
+			value = value.Elem()
+		}
+
+		id := value.FieldByName("Id").Interface().(*uint)
 		ids = append(ids, id)
 	}
 

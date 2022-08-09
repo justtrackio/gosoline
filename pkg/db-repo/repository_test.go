@@ -40,7 +40,7 @@ var MyTestModelMetadata = db_repo.Metadata{
 
 type ManyToMany struct {
 	db_repo.Model
-	RelModel []MyTestModel `gorm:"many2many:many_of_manies;"`
+	RelModel []MyTestModel `gorm:"many2many:many_of_manies" orm:"assoc_update"`
 }
 
 var ManyToManyMetadata = db_repo.Metadata{
@@ -76,7 +76,7 @@ var OneOfManyMetadata = db_repo.Metadata{
 
 type HasMany struct {
 	db_repo.Model
-	Manies []*Ones
+	Manies []*Ones `orm:"assoc_update"`
 }
 
 var HasManyMetadata = db_repo.Metadata{
@@ -629,6 +629,9 @@ func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
 	dbc.ExpectExec("DELETE FROM `many_of_manies` WHERE `many_of_manies`\\.`many_to_many_id` = \\?").WithArgs(id1).WillReturnResult(deleteResult)
 	dbc.ExpectCommit()
 
+	queryResult := goSqlMock.NewRows([]string{"id", "created_at", "updated_at"}).AddRow(*id1, now, now)
+	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND `many_to_manies`\\.`id` = \\? ORDER BY `many_to_manies`\\.`id` LIMIT 1").WithArgs(*id1, *id1).WillReturnRows(queryResult)
+
 	model := ManyToMany{
 		Model: db_repo.Model{
 			Id: id1,
@@ -642,6 +645,9 @@ func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
 	}
 
 	assert.NoError(t, err)
+	assert.Equal(t, *id1, *model.Id)
+	assert.Equal(t, now, *model.CreatedAt)
+	assert.Equal(t, now, *model.UpdatedAt)
 }
 
 func TestRepository_UpdateManyToMany(t *testing.T) {
@@ -665,6 +671,9 @@ func TestRepository_UpdateManyToMany(t *testing.T) {
 	dbc.ExpectBegin()
 	dbc.ExpectExec("DELETE FROM `many_of_manies` WHERE `many_of_manies`\\.`many_to_many_id` = \\? AND `many_of_manies`\\.`my_test_model_id` NOT IN \\(\\?,\\?\\)").WithArgs(id1, id42, id24).WillReturnResult(result)
 	dbc.ExpectCommit()
+
+	rows := goSqlMock.NewRows([]string{"id", "created_at", "updated_at"}).AddRow(*id1, now, now)
+	dbc.ExpectQuery("SELECT \\* FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\? AND `many_to_manies`\\.`id` = \\? ORDER BY `many_to_manies`\\.`id` LIMIT 1").WithArgs(*id1, *id1).WillReturnRows(rows)
 
 	model := ManyToMany{
 		Model: db_repo.Model{
@@ -703,6 +712,9 @@ func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
 	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at`=\\?,`created_at`=\\?,`my_test_model_id`=\\? WHERE `id` = \\?").WithArgs(&now, &now, (*uint)(nil), id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
+	queryResult := goSqlMock.NewRows([]string{"id", "my_test_model_id", "created_at", "updated_at"}).AddRow(*id1, nil, now, now)
+	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND `one_of_manies`\\.`id` = \\? ORDER BY `one_of_manies`\\.`id` LIMIT 1").WithArgs(*id1, *id1).WillReturnRows(queryResult)
+
 	model := OneOfMany{
 		Model: db_repo.Model{
 			Id: id1,
@@ -729,6 +741,9 @@ func TestRepository_UpdateManyToOne(t *testing.T) {
 	dbc.ExpectExec("INSERT INTO `my_test_models` \\(`updated_at`,`created_at`,`id`\\) VALUES \\(\\?,\\?,\\?\\) ON DUPLICATE KEY UPDATE `id`=`id`").WithArgs(&now, &now, id42).WillReturnResult(result)
 	dbc.ExpectExec("UPDATE `one_of_manies` SET `updated_at`=\\?,`created_at`=\\?,`my_test_model_id`=\\?  WHERE `id` = \\?").WithArgs(&now, &now, id42, id1).WillReturnResult(result)
 	dbc.ExpectCommit()
+
+	queryResult := goSqlMock.NewRows([]string{"id", "my_test_model_id", "created_at", "updated_at"}).AddRow(*id1, nil, now, now)
+	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND `one_of_manies`\\.`id` = \\? ORDER BY `one_of_manies`\\.`id` LIMIT 1").WithArgs(*id1, *id1).WillReturnRows(queryResult)
 
 	model := OneOfMany{
 		Model: db_repo.Model{
@@ -763,6 +778,9 @@ func TestRepository_UpdateHasMany(t *testing.T) {
 	dbc.ExpectCommit()
 
 	dbc.ExpectExec("DELETE FROM ones WHERE has_many_id = \\? AND id NOT IN \\(\\?,\\?,\\?\\)").WithArgs(id1, id6, id24, id42).WillReturnResult(result)
+
+	queryResult := goSqlMock.NewRows([]string{"id", "my_test_model_id", "created_at", "updated_at"}).AddRow(*id1, nil, now, now)
+	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND `has_manies`\\.`id` = \\? ORDER BY `has_manies`\\.`id` LIMIT 1").WithArgs(*id1, *id1).WillReturnRows(queryResult)
 
 	model := HasMany{
 		Model: db_repo.Model{
@@ -806,6 +824,9 @@ func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
 
 	dbc.ExpectExec("DELETE FROM ones WHERE has_many_id = \\?").WithArgs(id1).WillReturnResult(result)
 
+	queryResult := goSqlMock.NewRows([]string{"id", "my_test_model_id", "created_at", "updated_at"}).AddRow(*id1, nil, now, now)
+	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND `has_manies`\\.`id` = \\? ORDER BY `has_manies`\\.`id` LIMIT 1").WithArgs(*id1, *id1).WillReturnRows(queryResult)
+
 	model := HasMany{
 		Model: db_repo.Model{
 			Id: id1,
@@ -827,7 +848,7 @@ func TestRepository_Delete(t *testing.T) {
 
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `my_test_models`  WHERE `my_test_models`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectExec("DELETE FROM `my_test_models` WHERE `my_test_models`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := MyTestModel{
@@ -851,6 +872,9 @@ func TestRepository_DeleteManyToManyNoRelation(t *testing.T) {
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
 	dbc.ExpectExec("DELETE FROM `many_of_manies` WHERE `many_of_manies`\\.`many_to_many_id` = \\?").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectCommit()
+
+	dbc.ExpectBegin()
 	dbc.ExpectExec("DELETE FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
@@ -875,7 +899,10 @@ func TestRepository_DeleteManyToMany(t *testing.T) {
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
 	dbc.ExpectExec("DELETE FROM `many_of_manies`  WHERE `many_of_manies`\\.`many_to_many_id` = \\?").WithArgs(id1).WillReturnResult(result)
-	dbc.ExpectExec("DELETE FROM `many_to_manies`  WHERE `many_to_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
+	dbc.ExpectCommit()
+
+	dbc.ExpectBegin()
+	dbc.ExpectExec("DELETE FROM `many_to_manies` WHERE `many_to_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
 	dbc.ExpectCommit()
 
 	model := ManyToMany{
@@ -929,7 +956,6 @@ func TestRepository_DeleteManyToOne(t *testing.T) {
 	result := goSqlMock.NewResult(0, 1)
 	dbc.ExpectBegin()
 	dbc.ExpectExec("DELETE FROM `one_of_manies`  WHERE `one_of_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(result)
-	// TODO: check why ones are not deleted
 	dbc.ExpectCommit()
 
 	model := OneOfMany{
@@ -957,11 +983,11 @@ func TestRepository_DeleteHasMany(t *testing.T) {
 	dbc, repo := getMocks(t, hasMany)
 
 	childResult := goSqlMock.NewResult(0, 0)
-	parentResult := goSqlMock.NewResult(0, 1)
+
+	dbc.ExpectExec("DELETE FROM ones WHERE has_many_id = \\?").WithArgs(*id1).WillReturnResult(childResult)
 
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `ones` WHERE `ones`\\.`has_many_id` = \\?").WithArgs(id1).WillReturnResult(childResult)
-	dbc.ExpectExec("DELETE FROM `has_manies` WHERE `has_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(parentResult)
+	dbc.ExpectExec("DELETE FROM `has_manies` WHERE `has_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(childResult)
 	dbc.ExpectCommit()
 
 	model := HasMany{
@@ -997,8 +1023,9 @@ func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
 	childResult := goSqlMock.NewResult(0, 0)
 	parentResult := goSqlMock.NewResult(0, 1)
 
+	dbc.ExpectExec("DELETE FROM ones WHERE has_many_id = \\?").WithArgs(*id1).WillReturnResult(childResult)
+
 	dbc.ExpectBegin()
-	dbc.ExpectExec("DELETE FROM `ones` WHERE `ones`\\.`has_many_id` = \\?").WithArgs(id1).WillReturnResult(childResult)
 	dbc.ExpectExec("DELETE FROM `has_manies` WHERE `has_manies`\\.`id` = \\?").WithArgs(id1).WillReturnResult(parentResult)
 	dbc.ExpectCommit()
 
