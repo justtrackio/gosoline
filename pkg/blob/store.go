@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -81,8 +82,9 @@ type s3Store struct {
 	channels *BatchRunnerChannels
 	client   gosoS3.Client
 
-	bucket *string
-	prefix *string
+	region string
+	bucket string
+	prefix string
 }
 
 type NamingFactory func() string
@@ -116,6 +118,9 @@ func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name st
 		return nil, fmt.Errorf("can not create s3 client default: %w", err)
 	}
 
+	clientCfg := &gosoS3.ClientConfig{}
+	gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "s3", "default")
+
 	var settings Settings
 	key := fmt.Sprintf("blobstore.%s", name)
 	config.UnmarshalKey(key, &settings)
@@ -125,7 +130,7 @@ func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name st
 		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
 	}
 
-	store := NewStoreWithInterfaces(logger, channels, s3Client, settings)
+	store := NewStoreWithInterfaces(logger, channels, s3Client, clientCfg.Settings.Region, settings)
 
 	autoCreate := dx.ShouldAutoCreate(config)
 	if autoCreate {
@@ -137,35 +142,39 @@ func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name st
 	return store, nil
 }
 
-func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, client gosoS3.Client, settings Settings) *s3Store {
+func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, client gosoS3.Client, region string, settings Settings) *s3Store {
 	return &s3Store{
 		logger:   logger,
 		channels: channels,
 		client:   client,
-		bucket:   mdl.Box(settings.Bucket),
-		prefix:   mdl.Box(settings.Prefix),
+		region:   region,
+		bucket:   settings.Bucket,
+		prefix:   settings.Prefix,
 	}
 }
 
 func (s *s3Store) BucketName() string {
-	return *s.bucket
+	return s.bucket
 }
 
 func (s *s3Store) CreateBucket(ctx context.Context) error {
 	_, err := s.client.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: s.bucket,
+		Bucket: &s.bucket,
+		CreateBucketConfiguration: &types.CreateBucketConfiguration{
+			LocationConstraint: types.BucketLocationConstraint(s.region),
+		},
 	})
 
 	if isBucketAlreadyExistsError(err) {
-		s.logger.Info("s3 bucket %s did already exist", *s.bucket)
+		s.logger.Info("s3 bucket %s did already exist", s.bucket)
 		return nil
 	}
 
 	if err != nil {
-		return fmt.Errorf("could not create s3 bucket %s: %w", *s.bucket, err)
+		return fmt.Errorf("could not create s3 bucket %s: %w", s.bucket, err)
 	}
 
-	s.logger.Info("created s3 bucket %s", *s.bucket)
+	s.logger.Info("created s3 bucket %s", s.bucket)
 	return nil
 }
 
@@ -180,8 +189,8 @@ func (s *s3Store) Read(batch Batch) {
 	wg.Add(len(batch))
 
 	for i := 0; i < len(batch); i++ {
-		batch[i].bucket = s.bucket
-		batch[i].prefix = s.prefix
+		batch[i].bucket = &s.bucket
+		batch[i].prefix = &s.prefix
 		batch[i].wg = wg
 	}
 
@@ -205,8 +214,8 @@ func (s *s3Store) Write(batch Batch) error {
 	wg.Add(len(batch))
 
 	for i := 0; i < len(batch); i++ {
-		batch[i].bucket = s.bucket
-		batch[i].prefix = s.prefix
+		batch[i].bucket = &s.bucket
+		batch[i].prefix = &s.prefix
 		batch[i].wg = wg
 	}
 
@@ -237,8 +246,8 @@ func (s *s3Store) Copy(batch CopyBatch) {
 	wg.Add(len(batch))
 
 	for i := 0; i < len(batch); i++ {
-		batch[i].bucket = s.bucket
-		batch[i].prefix = s.prefix
+		batch[i].bucket = &s.bucket
+		batch[i].prefix = &s.prefix
 		batch[i].wg = wg
 	}
 
@@ -260,8 +269,8 @@ func (s *s3Store) Delete(batch Batch) {
 	wg.Add(len(batch))
 
 	for i := 0; i < len(batch); i++ {
-		batch[i].bucket = s.bucket
-		batch[i].prefix = s.prefix
+		batch[i].bucket = &s.bucket
+		batch[i].prefix = &s.prefix
 		batch[i].wg = wg
 	}
 
@@ -273,9 +282,9 @@ func (s *s3Store) Delete(batch Batch) {
 }
 
 func (s *s3Store) DeleteBucket(ctx context.Context) error {
-	s.logger.Info("purging bucket %s", *s.bucket)
+	s.logger.Info("purging bucket %s", s.bucket)
 
-	result, err := s.client.ListObjects(ctx, &s3.ListObjectsInput{Bucket: s.bucket})
+	result, err := s.client.ListObjects(ctx, &s3.ListObjectsInput{Bucket: &s.bucket})
 	if err != nil {
 		return err
 	}
@@ -289,12 +298,12 @@ func (s *s3Store) DeleteBucket(ctx context.Context) error {
 
 	s.Delete(batch)
 
-	_, err = s.client.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: s.bucket})
+	_, err = s.client.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: &s.bucket})
 	if err != nil {
 		return err
 	}
 
-	s.logger.Info("purging bucket %s done", *s.bucket)
+	s.logger.Info("purging bucket %s done", s.bucket)
 
 	return nil
 }
