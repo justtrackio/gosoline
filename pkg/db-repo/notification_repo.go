@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
 type notifyingRepository struct {
@@ -35,6 +36,72 @@ func (r *notifyingRepository) AddNotifier(t string, c Notifier) {
 	}
 
 	r.notifiers[t] = append(r.notifiers[t], c)
+}
+
+func (r *notifyingRepository) BatchCreate(ctx context.Context, values interface{}) error {
+	if err := r.Repository.BatchCreate(ctx, values); err != nil {
+		return err
+	}
+
+	valuesSlice, err := refl.InterfaceToInterfaceSlice(values)
+	if err != nil {
+		return err
+	}
+
+	multiErr := &multierror.Error{}
+
+	for _, value := range valuesSlice {
+		err = r.doCallback(ctx, Create, value.(ModelBased))
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+
+	return multiErr.ErrorOrNil()
+}
+
+func (r *notifyingRepository) BatchUpdate(ctx context.Context, values interface{}) error {
+	if err := r.Repository.BatchUpdate(ctx, values); err != nil {
+		return err
+	}
+
+	valuesSlice, err := refl.InterfaceToInterfaceSlice(values)
+	if err != nil {
+		return err
+	}
+
+	multiErr := &multierror.Error{}
+
+	for _, value := range valuesSlice {
+		err = r.doCallback(ctx, Update, value.(ModelBased))
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+
+	return multiErr.ErrorOrNil()
+}
+
+func (r *notifyingRepository) BatchDelete(ctx context.Context, values interface{}) error {
+	if err := r.Repository.BatchDelete(ctx, values); err != nil {
+		return err
+	}
+
+	valuesSlice, err := refl.InterfaceToInterfaceSlice(values)
+	if err != nil {
+		return err
+	}
+
+	multiErr := &multierror.Error{}
+
+	for _, value := range valuesSlice {
+		err = r.doCallback(ctx, Delete, value.(ModelBased))
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+
+	return multiErr.ErrorOrNil()
 }
 
 func (r *notifyingRepository) Create(ctx context.Context, value ModelBased) error {

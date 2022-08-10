@@ -1,53 +1,24 @@
 //go:build integration
-// +build integration
 
 package query_test
 
 import (
-	"context"
-	"os"
 	"testing"
 
-	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
-var TestModelMetadata = db_repo.Metadata{
-	ModelId: mdl.ModelId{
-		Application: "application",
-		Name:        "testModel",
-	},
-	TableName:  "test_models",
-	PrimaryKey: "test_models.id",
-	Mappings: db_repo.FieldMappings{
-		"testModel.id":   db_repo.NewFieldMapping("test_models.id"),
-		"testModel.name": db_repo.NewFieldMapping("test_models.name"),
-	},
-}
-
-type TestModel struct {
-	db_repo.Model
-	Name *string
-}
-
-type WrongTestModel struct {
-	db_repo.Model
-	WrongName *string
-}
-
 type DbRepoQueryTestSuite struct {
 	suite.Suite
 }
 
+func TestDbRepoQueryTestSuite(t *testing.T) {
+	suite.Run(t, new(DbRepoQueryTestSuite))
+}
+
 func (s *DbRepoQueryTestSuite) SetupSuite() []suite.Option {
-	err := os.Setenv("AWS_ACCESS_KEY_ID", gosoAws.DefaultAccessKeyID)
-	s.NoError(err)
-
-	err = os.Setenv("AWS_SECRET_ACCESS_KEY", gosoAws.DefaultSecretAccessKey)
-	s.NoError(err)
-
 	return []suite.Option{
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("config.test.yml"),
@@ -55,21 +26,165 @@ func (s *DbRepoQueryTestSuite) SetupSuite() []suite.Option {
 	}
 }
 
-func (s *DbRepoQueryTestSuite) TestCreateCorrectModel() {
+func (s *DbRepoQueryTestSuite) TestBatchCreate_Success() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
 	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
-	s.NoError(err)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during repo create")
+		return
+	}
+
+	models := []*TestModel{
+		{
+			Name: mdl.Box("nameBatchCreate1"),
+		},
+		{
+			Name: mdl.Box("nameBatchCreate2"),
+		},
+	}
+
+	err = repo.BatchCreate(s.Env().Context(), models)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
+	}
+
+	qb := db_repo.NewQueryBuilder()
+	qb.Where("name LIKE \"nameBatchCreate%\"")
+
+	results := make([]TestModel, 0)
+	err = repo.Query(s.Env().Context(), qb, &results)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
+	}
+	s.Equal(2, len(models), "expected 2 test models")
+	s.Equal(*models[0], results[0])
+	s.Equal(*models[1], results[1])
+}
+
+func (s *DbRepoQueryTestSuite) TestBatchUpdate_Success() {
+	envConfig := s.Env().Config()
+	envLogger := s.Env().Logger()
+
+	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+		Metadata: TestModelMetadata,
+	})
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during repo create")
+		return
+	}
+
+	models := []*TestModel{
+		{
+			Name: mdl.Box("nameBatchUpdate1"),
+		},
+		{
+			Name: mdl.Box("nameBatchUpdate2"),
+		},
+	}
+
+	err = repo.BatchCreate(s.Env().Context(), models)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
+	}
+
+	models[0].Name = mdl.Box("nameBatchUpdated1")
+	models[1].Name = mdl.Box("nameBatchUpdated2")
+
+	err = repo.BatchUpdate(s.Env().Context(), models)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during update")
+		return
+	}
+
+	qb := db_repo.NewQueryBuilder()
+	qb.Where("id in (?, ?)", models[0].Id, models[1].Id)
+
+	results := make([]TestModel, 0)
+	err = repo.Query(s.Env().Context(), qb, &results)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
+	}
+
+	s.Equal(2, len(models), "expected 2 test models")
+	s.Equal(models[0].Name, results[0].Name)
+	s.Equal(models[1].Name, results[1].Name)
+}
+
+func (s *DbRepoQueryTestSuite) TestBatchDelete_Success() {
+	envConfig := s.Env().Config()
+	envLogger := s.Env().Logger()
+
+	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+		Metadata: TestModelMetadata,
+	})
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during repo create")
+		return
+	}
+
+	models := []*TestModel{
+		{
+			Name: mdl.Box("nameBatchDelete1"),
+		},
+		{
+			Name: mdl.Box("nameBatchDelete2"),
+		},
+	}
+
+	err = repo.BatchCreate(s.Env().Context(), models)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
+	}
+
+	err = repo.BatchDelete(s.Env().Context(), models)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during delete")
+		return
+	}
+
+	qb := db_repo.NewQueryBuilder()
+	qb.Where("id in (?, ?)", models[0].Id, models[1].Id)
+
+	results := make([]TestModel, 0)
+	err = repo.Query(s.Env().Context(), qb, &results)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
+	}
+
+	s.Equal(0, len(results), "expected 0 test models")
+}
+
+func (s *DbRepoQueryTestSuite) TestCreate_Success() {
+	envConfig := s.Env().Config()
+	envLogger := s.Env().Logger()
+
+	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+		Metadata: TestModelMetadata,
+	})
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during repo create")
+		return
+	}
 
 	model := &TestModel{
 		Name: mdl.Box("nameCreate1"),
 	}
 
-	err = repo.Create(context.Background(), model)
-	s.NoError(err)
+	err = repo.Create(s.Env().Context(), model)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
+	}
 
 	where := &TestModel{
 		Name: mdl.Box("nameCreate1"),
@@ -79,191 +194,265 @@ func (s *DbRepoQueryTestSuite) TestCreateCorrectModel() {
 	qb.Where(where)
 
 	models := make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
-	s.NoError(err)
+	err = repo.Query(s.Env().Context(), qb, &models)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
+	}
+
 	s.Equal(1, len(models), "expected 1 test model")
 	s.Equal(*model, models[0])
 }
 
-func (s *DbRepoQueryTestSuite) TestCreateWrongModel() {
+func (s *DbRepoQueryTestSuite) TestRead_Success() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
 	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
-	s.NoError(err)
-
-	model := &WrongTestModel{
-		WrongName: mdl.Box("nameCreateWrong1"),
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during repo create")
+		return
 	}
-
-	err = repo.Create(context.Background(), model)
-	s.EqualError(err, "cross creating wrong model from repo")
-}
-
-func (s *DbRepoQueryTestSuite) TestReadCorrectModel() {
-	envConfig := s.Env().Config()
-	envLogger := s.Env().Logger()
-
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
-		Metadata: TestModelMetadata,
-	})
-	s.NoError(err)
 
 	model := &TestModel{
 		Name: mdl.Box("nameRead1"),
 	}
 
-	err = repo.Create(context.Background(), model)
-	s.NoError(err)
+	err = repo.Create(s.Env().Context(), model)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
+	}
 
 	readModel := &TestModel{}
 
-	err = repo.Read(context.Background(), model.GetId(), readModel)
-	s.NoError(err)
+	err = repo.Read(s.Env().Context(), model.GetId(), readModel)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
+	}
+
 	s.Equal(*model, *readModel, "expected db model to match")
 }
 
-func (s *DbRepoQueryTestSuite) TestReadWrongModel() {
+func (s *DbRepoQueryTestSuite) TestRead_WithPriorCreate() {
+	// TODO: do we still need this test?
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
 	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
-	s.NoError(err)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during repo create")
+		return
+	}
 
-	model := &WrongTestModel{}
+	model := &TestModel{
+		Name: mdl.Box("nameRead1"),
+	}
 
-	err = repo.Read(context.Background(), mdl.Box(uint(1)), model)
-	s.EqualError(err, "cross reading wrong model from repo")
+	err = repo.Create(s.Env().Context(), model)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
+	}
+
+	model2 := &TestModel{
+		Name: mdl.Box("nameRead2"),
+	}
+
+	err = repo.Create(s.Env().Context(), model2)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
+	}
+
+	readModel := &TestModel{}
+
+	err = repo.Read(s.Env().Context(), model.GetId(), readModel)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
+	}
+
+	s.Equal(*model, *readModel, "expected db model to match")
+
+	readModel2 := &TestModel{}
+
+	err = repo.Read(s.Env().Context(), model2.GetId(), readModel2)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
+	}
+
+	s.Equal(*model2, *readModel2, "expected db model to match")
 }
 
-func (s *DbRepoQueryTestSuite) TestUpdateCorrectModel() {
+func (s *DbRepoQueryTestSuite) TestRead_WithAssociations() {
+	envConfig := s.Env().Config()
+	envLogger := s.Env().Logger()
+
+	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+		Metadata: TestManyMetadata,
+	})
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during repo create")
+		return
+	}
+
+	other := &TestMany{
+		Name: "other",
+	}
+
+	err = repo.Create(s.Env().Context(), other)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
+	}
+
+	many := &TestMany{
+		Name: "many",
+		Others: []*TestManyToMany{
+			{
+				Other:   other,
+				OtherId: other.Id,
+			},
+		},
+	}
+
+	err = repo.Create(s.Env().Context(), many)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
+	}
+
+	model := &TestMany{}
+
+	err = repo.Read(s.Env().Context(), many.GetId(), model)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
+	}
+
+	s.Equal(*many, *model, "expected db model to match")
+}
+
+func (s *DbRepoQueryTestSuite) TestUpdate_Success() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
 	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
-	s.NoError(err)
-
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during repo create")
+		return
+	}
 	model := &TestModel{
 		Name: mdl.Box("nameUpdate1"),
 	}
 
-	err = repo.Create(context.Background(), model)
-	s.NoError(err)
+	err = repo.Create(s.Env().Context(), model)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
+	}
+
+	model.Name = mdl.Box("nameUpdate1Updated")
+
+	err = repo.Update(s.Env().Context(), model)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during update")
+		return
+	}
 
 	where := &TestModel{
-		Name: mdl.Box("nameUpdate1"),
+		Name: mdl.Box("nameUpdate1Updated"),
 	}
 
 	qb := db_repo.NewQueryBuilder()
 	qb.Where(where)
 
 	models := make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
-	s.NoError(err)
-	s.Equal(1, len(models), "expected 1 test model")
-	s.Equal(*model, models[0])
-
-	model.Name = mdl.Box("nameUpdate1Updated")
-
-	err = repo.Update(context.Background(), model)
-	s.NoError(err)
-
-	where = &TestModel{
-		Name: mdl.Box("nameUpdate1Updated"),
+	err = repo.Query(s.Env().Context(), qb, &models)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
 	}
 
-	qb = db_repo.NewQueryBuilder()
-	qb.Where(where)
-
-	models = make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
-	s.NoError(err)
 	s.Equal(1, len(models), "expected 1 test model")
 	s.Equal(*model, models[0])
 }
 
-func (s *DbRepoQueryTestSuite) TestUpdateWrongModel() {
+func (s *DbRepoQueryTestSuite) TestDelete_Success() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
 	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
-	s.NoError(err)
-
-	model := &WrongTestModel{
-		WrongName: mdl.Box("nameUpdateWrong1"),
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during repo create")
+		return
 	}
-
-	err = repo.Update(context.Background(), model)
-	s.EqualError(err, "cross updating wrong model from repo")
-}
-
-func (s *DbRepoQueryTestSuite) TestDeleteCorrectModel() {
-	envConfig := s.Env().Config()
-	envLogger := s.Env().Logger()
-
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
-		Metadata: TestModelMetadata,
-	})
-	s.NoError(err)
 
 	model := &TestModel{
 		Name: mdl.Box("nameDelete1"),
 	}
 
-	err = repo.Create(context.Background(), model)
-	s.NoError(err)
-
-	err = repo.Delete(context.Background(), model)
-	s.NoError(err)
-}
-
-func (s *DbRepoQueryTestSuite) TestDeleteWrongModel() {
-	envConfig := s.Env().Config()
-	envLogger := s.Env().Logger()
-
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
-		Metadata: TestModelMetadata,
-	})
-	s.NoError(err)
-
-	model := &WrongTestModel{
-		WrongName: mdl.Box("nameUpdateWrong1"),
+	err = repo.Create(s.Env().Context(), model)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
 	}
 
-	err = repo.Delete(context.Background(), model)
-	s.EqualError(err, "cross deleting wrong model from repo")
+	err = repo.Delete(s.Env().Context(), model)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during delete")
+		return
+	}
+
+	where := &TestModel{
+		Name: mdl.Box("nameDelete1"),
+	}
+
+	qb := db_repo.NewQueryBuilder()
+	qb.Where(where)
+
+	res := make([]TestModel, 0)
+	err = repo.Query(s.Env().Context(), qb, &res)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
+	}
+
+	s.Len(res, 0, "there should be no items found")
 }
 
-func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
+func (s *DbRepoQueryTestSuite) TestQuery_Success() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
 	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
-	s.NoError(err)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during repo create")
+		return
+	}
 
 	model := &TestModel{
 		Name: mdl.Box("name1"),
 	}
 
-	err = repo.Create(context.Background(), model)
-	s.NoError(err)
-
-	model = &TestModel{
-		Name: mdl.Box("name2"),
+	err = repo.Create(s.Env().Context(), model)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during create")
+		return
 	}
-
-	err = repo.Create(context.Background(), model)
-	s.NoError(err)
 
 	where := &TestModel{
 		Name: mdl.Box("name1"),
@@ -273,94 +462,12 @@ func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
 	qb.Where(where)
 
 	models := make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
-	s.NoError(err)
+	err = repo.Query(s.Env().Context(), qb, &models)
+	if !s.NoError(err) {
+		s.FailNow("there must be no error during query")
+		return
+	}
+
 	s.Equal(1, len(models), "expected 1 test model")
 	s.Equal(where.Name, models[0].Name)
-
-	whereStr := "name = ?"
-
-	qb = db_repo.NewQueryBuilder()
-	qb.Where(whereStr, mdl.Box("name2"))
-
-	models = make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
-	s.NoError(err)
-	s.Equal(1, len(models), "expected 1 test model")
-	s.Equal(*model, models[0])
-}
-
-func (s *DbRepoQueryTestSuite) TestQueryWrongResultModel() {
-	envConfig := s.Env().Config()
-	envLogger := s.Env().Logger()
-
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
-		Metadata: TestModelMetadata,
-	})
-	s.NoError(err)
-
-	model := &TestModel{
-		Name: mdl.Box("name3"),
-	}
-
-	err = repo.Create(context.Background(), model)
-	s.NoError(err)
-
-	model = &TestModel{
-		Name: mdl.Box("name4"),
-	}
-
-	err = repo.Create(context.Background(), model)
-	s.NoError(err)
-
-	where := &TestModel{
-		Name: mdl.Box("name3"),
-	}
-
-	qb := db_repo.NewQueryBuilder()
-	qb.Where(where)
-
-	models := make([]WrongTestModel, 0)
-
-	err = repo.Query(context.Background(), qb, models)
-	s.EqualError(err, "result slice has to be pointer to slice")
-
-	err = repo.Query(context.Background(), qb, &models)
-	s.EqualError(err, "cross querying result slice has to be of same model")
-}
-
-func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
-	envConfig := s.Env().Config()
-	envLogger := s.Env().Logger()
-
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
-		Metadata: TestModelMetadata,
-	})
-	s.NoError(err)
-
-	where := &WrongTestModel{
-		WrongName: mdl.Box("name1"),
-	}
-
-	qb := db_repo.NewQueryBuilder()
-	qb.Where(where)
-
-	models := make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
-	s.EqualError(err, "cross querying wrong model from repo")
-
-	whereStruct := WrongTestModel{
-		WrongName: mdl.Box("name1"),
-	}
-
-	qb = db_repo.NewQueryBuilder()
-	qb.Where(whereStruct)
-
-	models = make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
-	s.EqualError(err, "cross querying wrong model from repo")
-}
-
-func TestDbRepoQueryTestSuite(t *testing.T) {
-	suite.Run(t, new(DbRepoQueryTestSuite))
 }

@@ -1,5 +1,4 @@
 //go:build integration && fixtures
-// +build integration,fixtures
 
 package s3_test
 

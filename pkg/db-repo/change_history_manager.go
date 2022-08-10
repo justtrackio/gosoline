@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
-	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 type changeHistoryManagerSettings struct {
@@ -17,10 +20,11 @@ type changeHistoryManagerSettings struct {
 }
 
 type ChangeHistoryManager struct {
-	orm      *gorm.DB
-	logger   log.Logger
-	settings *changeHistoryManagerSettings
-	models   []ModelBased
+	orm         *gorm.DB
+	logger      log.Logger
+	schemaCache *sync.Map
+	settings    *changeHistoryManagerSettings
+	models      []ModelBased
 }
 
 type changeHistoryManagerAppctxKey int
@@ -41,9 +45,10 @@ func NewChangeHistoryManager(config cfg.Config, logger log.Logger) (*ChangeHisto
 	config.UnmarshalKey("change_history", settings)
 
 	return &ChangeHistoryManager{
-		logger:   logger.WithChannel("change_history_manager"),
-		orm:      orm,
-		settings: settings,
+		logger:      logger.WithChannel("change_history_manager"),
+		orm:         orm,
+		schemaCache: &sync.Map{},
+		settings:    settings,
 	}, nil
 }
 
@@ -63,8 +68,15 @@ func (c *ChangeHistoryManager) RunMigrations() error {
 
 func (c *ChangeHistoryManager) RunMigration(model ModelBased) error {
 	statements := make([]string, 0)
-	originalTable := c.buildOriginalTableMetadata(model)
-	historyTable := c.buildHistoryTableMetadata(model, originalTable)
+	originalTable, err := c.buildOriginalTableMetadata(model)
+	if err != nil {
+		return err
+	}
+
+	historyTable, err := c.buildHistoryTableMetadata(model, originalTable)
+	if err != nil {
+		return err
+	}
 
 	if !historyTable.exists {
 		statements = append(statements, c.createHistoryTable(historyTable))
@@ -74,9 +86,9 @@ func (c *ChangeHistoryManager) RunMigration(model ModelBased) error {
 		return c.execute(statements)
 	}
 
-	updated, statement := c.updateHistoryTable(historyTable)
+	updated, newColumnCreates := c.updateHistoryTable(historyTable)
 	if updated {
-		statements = append(statements, statement)
+		statements = append(statements, newColumnCreates...)
 		statements = append(statements, c.dropHistoryTriggers(originalTable, historyTable)...)
 		statements = append(statements, c.createHistoryTriggers(originalTable, historyTable)...)
 		c.logger.Info("updating change history setup")
@@ -88,21 +100,33 @@ func (c *ChangeHistoryManager) RunMigration(model ModelBased) error {
 	return nil
 }
 
-func (c *ChangeHistoryManager) buildOriginalTableMetadata(model ModelBased) *tableMetadata {
-	scope := c.orm.NewScope(model)
-	fields := scope.GetModelStruct().StructFields
-	tableName := scope.TableName()
+func (c *ChangeHistoryManager) buildOriginalTableMetadata(model ModelBased) (*tableMetadata, error) {
+	scope := c.orm.Model(model)
+	scheme, err := schema.Parse(model, c.schemaCache, c.orm.NamingStrategy)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse schema: %w", err)
+	}
 
-	return newTableMetadata(scope, tableName, fields)
+	return newTableMetadata(scope, scheme.Table, scheme.Fields, scheme.Relationships.Relations)
 }
 
-func (c *ChangeHistoryManager) buildHistoryTableMetadata(model ModelBased, originalTable *tableMetadata) *tableMetadata {
-	historyScope := c.orm.NewScope(ChangeHistoryModel{})
-	tableName := fmt.Sprintf("%s_%s", originalTable.tableName, c.settings.TableSuffix)
-	modelFields := c.orm.NewScope(model).GetModelStruct().StructFields
-	fields := append(historyScope.GetModelStruct().StructFields, modelFields...)
+func (c *ChangeHistoryManager) buildHistoryTableMetadata(model ModelBased, originalTable *tableMetadata) (*tableMetadata, error) {
+	historyScope, err := schema.Parse(ChangeHistoryModel{}, c.schemaCache, c.orm.NamingStrategy)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse history schema: %w", err)
+	}
 
-	return newTableMetadata(historyScope, tableName, fields)
+	modelScope, err := schema.Parse(model, c.schemaCache, c.orm.NamingStrategy)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse model schema: %w", err)
+	}
+
+	fields := append(historyScope.Fields, modelScope.Fields...)
+
+	relations := funk.MergeMaps(historyScope.Relationships.Relations, modelScope.Relationships.Relations)
+	tableName := fmt.Sprintf("%s_%s", originalTable.tableName, c.settings.TableSuffix)
+
+	return newTableMetadata(c.orm.Model(model), tableName, fields, relations)
 }
 
 func (c *ChangeHistoryManager) createHistoryTable(historyTable *tableMetadata) string {
@@ -212,31 +236,35 @@ func (c *ChangeHistoryManager) rowUpdatedCondition(originalTable *tableMetadata)
 	return strings.Join(conditions, " OR ")
 }
 
-func (c *ChangeHistoryManager) updateHistoryTable(historyTable *tableMetadata) (bool, string) {
+func (c *ChangeHistoryManager) updateHistoryTable(historyTable *tableMetadata) (bool, []string) {
+	added := make([]string, 0)
+
 	for _, column := range historyTable.columns {
 		if column.exists {
 			continue
 		}
 
-		return true, fmt.Sprintf("ALTER TABLE %s ADD %s",
+		stmt := fmt.Sprintf("ALTER TABLE %s ADD %s",
 			historyTable.tableNameQuoted,
 			column.definition,
 		)
+
+		added = append(added, stmt)
 	}
 
-	return false, ""
+	return len(added) > 0, added
 }
 
 func (c *ChangeHistoryManager) execute(statements []string) error {
 	for _, statement := range statements {
 		c.logger.Debug(statement)
-		_, err := c.orm.CommonDB().Exec(statement)
-		if err != nil {
+		db := c.orm.Exec(statement)
+		if db.Error != nil {
 			c.logger.WithFields(log.Fields{
 				"sql": statement,
-			}).Error("could not migrate change history: %w", err)
+			}).Error("could not migrate change history: %w", db.Error)
 
-			return fmt.Errorf("could not migrate change history: %w", err)
+			return fmt.Errorf("could not migrate change history: %w", db.Error)
 		}
 	}
 

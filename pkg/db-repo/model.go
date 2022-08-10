@@ -8,13 +8,13 @@ import (
 
 const ColumnUpdatedAt = "updated_at"
 
+//go:generate mockery --name ModelBased
 type ModelBased interface {
 	mdl.Identifiable
-	TimeStampable
 }
 
 type Model struct {
-	Id *uint `gorm:"primary_key;AUTO_INCREMENT"`
+	Id *uint `gorm:"primaryKey;type:int unsigned AUTO_INCREMENT"`
 	Timestamps
 }
 
@@ -22,27 +22,15 @@ func (m *Model) GetId() *uint {
 	return m.Id
 }
 
-type TimeStampable interface {
-	SetUpdatedAt(updatedAt *time.Time)
-	SetCreatedAt(createdAt *time.Time)
-}
-
+//go:generate mockery --name TimestampAware
 type TimestampAware interface {
 	GetCreatedAt() *time.Time
 	GetUpdatedAt() *time.Time
 }
 
 type Timestamps struct {
-	UpdatedAt *time.Time
-	CreatedAt *time.Time
-}
-
-func (m *Timestamps) SetUpdatedAt(updatedAt *time.Time) {
-	m.UpdatedAt = updatedAt
-}
-
-func (m *Timestamps) SetCreatedAt(createdAt *time.Time) {
-	m.CreatedAt = createdAt
+	UpdatedAt *time.Time `gorm:"autoCreateTime"`
+	CreatedAt *time.Time `gorm:"autoUpdateTime"`
 }
 
 func (m *Timestamps) GetUpdatedAt() *time.Time {

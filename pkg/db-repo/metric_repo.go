@@ -31,6 +31,30 @@ func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRep
 	}
 }
 
+func (r metricRepository) BatchCreate(ctx context.Context, values interface{}) error {
+	start := time.Now()
+	err := r.Repository.BatchCreate(ctx, values)
+	r.writeMetric(BatchCreate, err, start)
+
+	return err
+}
+
+func (r metricRepository) BatchUpdate(ctx context.Context, values interface{}) error {
+	start := time.Now()
+	err := r.Repository.BatchUpdate(ctx, values)
+	r.writeMetric(BatchUpdate, err, start)
+
+	return err
+}
+
+func (r metricRepository) BatchDelete(ctx context.Context, values interface{}) error {
+	start := time.Now()
+	err := r.Repository.BatchDelete(ctx, values)
+	r.writeMetric(BatchDelete, err, start)
+
+	return err
+}
+
 func (r metricRepository) Create(ctx context.Context, value ModelBased) error {
 	start := time.Now()
 	err := r.Repository.Create(ctx, value)

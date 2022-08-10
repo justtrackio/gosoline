@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"gorm.io/gorm"
 )
 
 type Settings struct {
@@ -61,15 +61,17 @@ func NewShareManager(config cfg.Config, logger log.Logger) (*shareManager, error
 	}, nil
 }
 
-func (m *shareManager) SetupShareTable() error {
+func (m *shareManager) SetupShareTable(ctx context.Context) error {
 	tn := m.settings.TableName
 
-	scope := m.orm.NewScope(Share{})
-	if scope.Dialect().HasTable(tn.Share) {
+	scope := m.orm.
+		WithContext(ctx)
+
+	if scope.Migrator().HasTable(tn.Share) {
 		return nil
 	}
 
-	_, err := m.orm.CommonDB().Exec(fmt.Sprintf(`
+	tx := scope.Exec(fmt.Sprintf(`
 		create table %s
 		(
 			id               int unsigned auto_increment primary key,
@@ -84,8 +86,8 @@ func (m *shareManager) SetupShareTable() error {
 			constraint shares_policy_id_fk foreign key (policy_id) references %s (id)
 		)
 	`, tn.Share, tn.Owner, tn.Policy))
-	if err != nil {
-		return fmt.Errorf("could not create table %s: %w", tn.Share, err)
+	if tx.Error != nil {
+		return fmt.Errorf("could not create table %s: %w", tn.Share, tx.Error)
 	}
 
 	return nil

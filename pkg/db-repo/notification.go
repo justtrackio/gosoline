@@ -16,15 +16,17 @@ const (
 
 var NotificationTypes = []string{Create, Update, Delete}
 
-type (
-	Publisher interface {
-		Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]interface{}) error
-	}
-	NotificationMap map[string][]Notifier
-	Notifier        interface {
-		Send(ctx context.Context, notificationType string, value ModelBased) error
-	}
-)
+//go:generate mockery --name Notifier
+type Notifier interface {
+	Send(ctx context.Context, notificationType string, value ModelBased) error
+}
+
+//go:generate mockery --name Publisher
+type Publisher interface {
+	Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]interface{}) error
+}
+
+type NotificationMap map[string][]Notifier
 
 type notifier struct {
 	logger  log.Logger

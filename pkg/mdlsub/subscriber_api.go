@@ -25,6 +25,7 @@ func CreateDefiner(callbacks map[string]stream.ConsumerCallbackFactory) apiserve
 			}
 
 			d.POST("/v0/subscription/"+name, apiserver.CreateJsonHandler(handler))
+			// TODO add batch handler
 		}
 
 		return d, nil

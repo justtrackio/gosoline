@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+//go:generate mockery --name ChangeHistoryModelBased
 type ChangeHistoryModelBased interface {
 	GetHistoryAction() string
 	GetHistoryActionAt() time.Time
@@ -16,9 +17,9 @@ type ChangeHistoryModelBased interface {
 }
 
 type ChangeHistoryModel struct {
-	ChangeHistoryAction   string    `sql:"type: VARCHAR(8) NOT NULL DEFAULT 'insert'"`
+	ChangeHistoryAction   string    `gorm:"type:VARCHAR(8) NOT NULL DEFAULT 'insert'"`
 	ChangeHistoryActionAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
-	ChangeHistoryRevision int       `gorm:"primary_key"`
+	ChangeHistoryRevision int       `gorm:"type:INT AUTO_INCREMENT;primaryKey"`
 }
 
 func (c *ChangeHistoryModel) GetHistoryAction() string {

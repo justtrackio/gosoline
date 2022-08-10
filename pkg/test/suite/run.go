@@ -6,6 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/exp/slices"
+
+	"golang.org/x/exp/maps"
+
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
@@ -135,7 +139,12 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		assert.FailNow(t, "failed to load fixtures", err.Error())
 	}
 
-	for name, testCase := range testCases {
+	testCaseNames := maps.Keys(testCases)
+	slices.Sort(testCaseNames)
+
+	for _, name := range testCaseNames {
+		testCase := testCases[name]
+
 		if setupTestAware, ok := suite.(TestingSuiteSetupTestAware); ok {
 			if err := setupTestAware.SetupTest(); err != nil {
 				assert.FailNow(t, "failed to setup the test", err.Error())

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"gorm.io/gorm"
 )
 
 const (
