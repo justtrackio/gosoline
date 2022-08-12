@@ -10,11 +10,12 @@ import (
 )
 
 type uncheckedKeyAuthenticator struct {
-	logger log.Logger
+	logger   log.Logger
+	provider ApiKeyProvider
 }
 
-func NewUncheckedKeyHandler(config cfg.Config, logger log.Logger) gin.HandlerFunc {
-	auth := NewUncheckedKeyAuthenticator(config, logger)
+func NewUncheckedKeyHandler(config cfg.Config, logger log.Logger, provider ApiKeyProvider) gin.HandlerFunc {
+	auth := NewUncheckedKeyAuthenticator(config, logger, provider)
 
 	return func(ginCtx *gin.Context) {
 		valid, err := auth.IsValid(ginCtx)
@@ -32,18 +33,19 @@ func NewUncheckedKeyHandler(config cfg.Config, logger log.Logger) gin.HandlerFun
 	}
 }
 
-func NewUncheckedKeyAuthenticator(_ cfg.Config, logger log.Logger) Authenticator {
-	return NewUncheckedKeyAuthenticatorWithInterfaces(logger)
+func NewUncheckedKeyAuthenticator(_ cfg.Config, logger log.Logger, provider ApiKeyProvider) Authenticator {
+	return NewUncheckedKeyAuthenticatorWithInterfaces(logger, provider)
 }
 
-func NewUncheckedKeyAuthenticatorWithInterfaces(logger log.Logger) Authenticator {
+func NewUncheckedKeyAuthenticatorWithInterfaces(logger log.Logger, provider ApiKeyProvider) Authenticator {
 	return &uncheckedKeyAuthenticator{
-		logger: logger,
+		logger:   logger,
+		provider: provider,
 	}
 }
 
 func (a *uncheckedKeyAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
-	apiKey := ginCtx.GetHeader(HeaderApiKey)
+	apiKey := a.provider(ginCtx)
 
 	if apiKey == "" {
 		return false, fmt.Errorf("no api key provided")
