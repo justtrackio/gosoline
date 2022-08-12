@@ -10,7 +10,7 @@ import (
 func TestUncheckedKey_Authenticate_InvalidKeyError(t *testing.T) {
 	logger, ginCtx := getHeaderKeyMocks("")
 
-	a := auth.NewUncheckedKeyAuthenticatorWithInterfaces(logger)
+	a := auth.NewUncheckedKeyAuthenticatorWithInterfaces(logger, auth.ProvideValueFromHeader(auth.HeaderApiKey))
 	_, err := a.IsValid(ginCtx)
 
 	if assert.Error(t, err) {
@@ -21,7 +21,7 @@ func TestUncheckedKey_Authenticate_InvalidKeyError(t *testing.T) {
 func TestUncheckedKey_Authenticate_ValidKey(t *testing.T) {
 	logger, ginCtx := getHeaderKeyMocks("t")
 
-	a := auth.NewUncheckedKeyAuthenticatorWithInterfaces(logger)
+	a := auth.NewUncheckedKeyAuthenticatorWithInterfaces(logger, auth.ProvideValueFromHeader(auth.HeaderApiKey))
 	_, err := a.IsValid(ginCtx)
 
 	ctx := ginCtx.Request.Context()
