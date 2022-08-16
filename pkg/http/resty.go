@@ -1,9 +1,10 @@
 package http
 
 import (
-	"github.com/go-resty/resty/v2"
 	"net/http"
 	"time"
+
+	"github.com/justtrackio/resty/v2"
 )
 
 type restyClient interface {

@@ -6,13 +6,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/env"
+	"github.com/justtrackio/resty/v2"
 	"github.com/stretchr/testify/assert"
 )
 
