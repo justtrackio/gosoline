@@ -85,15 +85,21 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input interface{}, att
 		return false, err
 	}
 
-	if model, err = transformer.Transform(ctx, input); err != nil {
-		return false, err
-	}
-
 	logger := s.logger.WithContext(ctx).WithFields(log.Fields{
 		"modelId": spec.ModelId,
 		"type":    spec.CrudType,
 		"version": spec.Version,
 	})
+
+	if model, err = transformer.Transform(ctx, input); err != nil {
+		if IsDelayOpError(err) {
+			logger.Info("delaying %s op for subscription for modelId %s and version %d: %s", spec.CrudType, spec.ModelId, spec.Version, err.Error())
+
+			return false, nil
+		}
+
+		return false, err
+	}
 
 	if model == nil {
 		logger.Info("skipping %s op for subscription for modelId %s and version %d", spec.CrudType, spec.ModelId, spec.Version)
