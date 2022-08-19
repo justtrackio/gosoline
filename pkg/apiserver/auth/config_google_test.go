@@ -19,6 +19,12 @@ func getMocks(idToken string) (log.Logger, *authMocks.TokenInfoProvider, *gin.Co
 	logger := mocks.NewLoggerMockedAll()
 	tokenProvider := new(authMocks.TokenInfoProvider)
 
+	ginCtx := getGinCtx(idToken)
+
+	return logger, tokenProvider, ginCtx
+}
+
+func getGinCtx(idToken string) *gin.Context {
 	header := http.Header{}
 	header.Set("X-ID-TOKEN", idToken)
 
@@ -31,13 +37,13 @@ func getMocks(idToken string) (log.Logger, *authMocks.TokenInfoProvider, *gin.Co
 
 	ginCtx.Request = request
 
-	return logger, tokenProvider, ginCtx
+	return ginCtx
 }
 
 func TestAuthGoogle_Authenticate_EmptyIdTokenError(t *testing.T) {
 	logger, tokenProvider, ginCtx := getMocks("")
 
-	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, "c", []string{"h"})
+	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c"}, []string{"h"})
 	_, err := a.IsValid(ginCtx)
 
 	if assert.Error(t, err) {
@@ -49,7 +55,7 @@ func TestAuthGoogle_Authenticate_IdTokenRequestError(t *testing.T) {
 	logger, tokenProvider, ginCtx := getMocks("test")
 
 	tokenProvider.On("GetTokenInfo", "test").Return(nil, errors.New("test"))
-	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, "c", []string{"h"})
+	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c"}, []string{"h"})
 
 	_, err := a.IsValid(ginCtx)
 
@@ -67,7 +73,7 @@ func TestAuthGoogle_Authenticate_IdTokenStatusCodeError(t *testing.T) {
 
 	tokenProvider.On("GetTokenInfo", "test").Return(tokenInfo, nil)
 
-	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, "c", []string{"h"})
+	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c"}, []string{"h"})
 	_, err := a.IsValid(ginCtx)
 
 	if assert.Error(t, err) {
@@ -86,7 +92,7 @@ func TestAuthGoogle_Authenticate_IdTokenInvalidAudienceError(t *testing.T) {
 
 	tokenProvider.On("GetTokenInfo", "test").Return(tokenInfo, nil)
 
-	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, "c", []string{"h"})
+	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c"}, []string{"h"})
 	_, err := a.IsValid(ginCtx)
 
 	if assert.Error(t, err) {
@@ -107,7 +113,7 @@ func TestAuthGoogle_Authenticate_IdTokenInvalidEmailSuffixError(t *testing.T) {
 	}
 
 	tokenProvider.On("GetTokenInfo", "test").Return(tokenInfo, nil)
-	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, "c.de", []string{"^.*c\\.de$"})
+	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c.de"}, []string{"^.*c\\.de$"})
 
 	_, err := a.IsValid(ginCtx)
 	assert.EqualError(t, err, "google auth: address a.b@c.be is not allowed")
@@ -129,8 +135,49 @@ func TestAuthGoogle_Authenticate_IdTokenValid(t *testing.T) {
 
 	tokenProvider.On("GetTokenInfo", "test").Return(tokenInfo, nil)
 
-	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, "c.de", []string{"^.*c\\.de$"})
+	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"c.de"}, []string{"^.*c\\.de$"})
 	_, err := a.IsValid(ginCtx)
+
+	assert.NoError(t, err)
+	tokenProvider.AssertExpectations(t)
+}
+
+func TestAuthGoogle_Authenticate_MultipleAudiences(t *testing.T) {
+	logger, tokenProvider, _ := getMocks("")
+
+	tokenInfoA := &oauth2.Tokeninfo{
+		Audience: "c.de",
+		Email:    "a.b@c.de",
+		ServerResponse: googleapi.ServerResponse{
+			HTTPStatusCode: http.StatusOK,
+		},
+	}
+
+	ginTestACtx := getGinCtx("testA")
+
+	tokenProvider.On("GetTokenInfo", "testA").Return(tokenInfoA, nil)
+
+	a := auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"d.de", "c.de"}, []string{"^.*[cd]\\.de$"})
+	_, err := a.IsValid(ginTestACtx)
+
+	assert.NoError(t, err)
+
+	ginTestBCtx := getGinCtx("testB")
+
+	tokenInfoB := &oauth2.Tokeninfo{
+		Audience: "d.de",
+		Email:    "b.a@d.de",
+		ServerResponse: googleapi.ServerResponse{
+			HTTPStatusCode: http.StatusOK,
+		},
+	}
+
+	tokenProvider.On("GetTokenInfo", "testB").Return(tokenInfoB, nil)
+
+	a = auth.NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, []string{"d.de", "c.de"}, []string{"^.*[cd]\\.de$"})
+	_, err = a.IsValid(ginTestBCtx)
+
+	assert.NoError(t, err)
 
 	assert.NoError(t, err)
 	tokenProvider.AssertExpectations(t)
