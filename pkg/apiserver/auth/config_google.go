@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"net/http"
 	"regexp"
 	"sync"
@@ -35,7 +36,7 @@ type configGoogleAuthenticator struct {
 	tokenCache       map[string]*oauth2.Tokeninfo
 	tokenProvider    TokenInfoProvider
 	mutex            sync.Mutex
-	validAudience    string
+	validAudiences   []string
 	allowedAddresses []string
 }
 
@@ -75,16 +76,16 @@ func NewConfigGoogleAuthenticator(config cfg.Config, logger log.Logger) (Authent
 		oauth2Service: oauth2Service,
 	}
 
-	clientId := config.GetString("api_auth_google_client_id")
+	clientIds := config.GetStringSlice("api_auth_google_client_id")
 	allowedAddresses := config.GetStringSlice("api_auth_google_allowed_addresses")
 
-	return NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, clientId, allowedAddresses), nil
+	return NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, clientIds, allowedAddresses), nil
 }
 
-func NewConfigGoogleAuthenticatorWithInterfaces(logger log.Logger, tokenProvider TokenInfoProvider, clientId string, allowedAddresses []string) Authenticator {
+func NewConfigGoogleAuthenticatorWithInterfaces(logger log.Logger, tokenProvider TokenInfoProvider, clientId []string, allowedAddresses []string) Authenticator {
 	return &configGoogleAuthenticator{
 		logger:           logger,
-		validAudience:    clientId,
+		validAudiences:   clientId,
 		allowedAddresses: allowedAddresses,
 		tokenCache:       make(map[string]*oauth2.Tokeninfo),
 		tokenProvider:    tokenProvider,
@@ -139,7 +140,7 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		return false, fmt.Errorf("google auth: invalid status code %d", tokenInfo.HTTPStatusCode)
 	}
 
-	if tokenInfo.Audience != a.validAudience {
+	if !slices.Contains(a.validAudiences, tokenInfo.Audience) {
 		a.tokenCache[idToken] = nil
 		return false, fmt.Errorf("google auth: invalid audience")
 	}
