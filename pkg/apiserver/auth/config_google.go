@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"sync"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -35,7 +37,7 @@ type configGoogleAuthenticator struct {
 	tokenCache       map[string]*oauth2.Tokeninfo
 	tokenProvider    TokenInfoProvider
 	mutex            sync.Mutex
-	validAudience    string
+	validAudiences   []string
 	allowedAddresses []string
 }
 
@@ -62,7 +64,7 @@ func NewConfigGoogleHandler(config cfg.Config, logger log.Logger) (gin.HandlerFu
 }
 
 func NewConfigGoogleAuthenticator(config cfg.Config, logger log.Logger) (Authenticator, error) {
-	// it will never be used, because we specify an http client here already
+	// it will never be used, because we specify a http client here already
 	ctx := context.Background()
 	clientOption := option.WithHTTPClient(http.DefaultClient)
 
@@ -75,16 +77,16 @@ func NewConfigGoogleAuthenticator(config cfg.Config, logger log.Logger) (Authent
 		oauth2Service: oauth2Service,
 	}
 
-	clientId := config.GetString("api_auth_google_client_id")
+	clientIds := config.GetStringSlice("api_auth_google_client_ids")
 	allowedAddresses := config.GetStringSlice("api_auth_google_allowed_addresses")
 
-	return NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, clientId, allowedAddresses), nil
+	return NewConfigGoogleAuthenticatorWithInterfaces(logger, tokenProvider, clientIds, allowedAddresses), nil
 }
 
-func NewConfigGoogleAuthenticatorWithInterfaces(logger log.Logger, tokenProvider TokenInfoProvider, clientId string, allowedAddresses []string) Authenticator {
+func NewConfigGoogleAuthenticatorWithInterfaces(logger log.Logger, tokenProvider TokenInfoProvider, clientIds []string, allowedAddresses []string) Authenticator {
 	return &configGoogleAuthenticator{
 		logger:           logger,
-		validAudience:    clientId,
+		validAudiences:   clientIds,
 		allowedAddresses: allowedAddresses,
 		tokenCache:       make(map[string]*oauth2.Tokeninfo),
 		tokenProvider:    tokenProvider,
@@ -139,7 +141,7 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		return false, fmt.Errorf("google auth: invalid status code %d", tokenInfo.HTTPStatusCode)
 	}
 
-	if tokenInfo.Audience != a.validAudience {
+	if !slices.Contains(a.validAudiences, tokenInfo.Audience) {
 		a.tokenCache[idToken] = nil
 		return false, fmt.Errorf("google auth: invalid audience")
 	}
