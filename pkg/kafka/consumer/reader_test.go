@@ -12,37 +12,37 @@ import (
 )
 
 var (
-	readerDialer = &kafka.Dialer{ClientID: "my-client"}
-	readerConf   = (&consumer.Settings{
-		Topic:   "my-topic",
-		FQTopic: "test-my-topic",
-		GroupID: "my-group",
+	readerDialer   = &kafka.Dialer{ClientID: "my-client"}
+	readerSettings = (&consumer.Settings{
+		Topic:     "my-topic",
+		FQTopic:   "test-my-topic",
+		FQGroupID: "my-group",
 	}).WithConnection(&connection.Settings{
 		Bootstrap: []string{"kafka.domain.tld:9094"},
 	})
 )
 
 func TestSaneDefaults(t *testing.T) {
-	reader, err := consumer.NewReader(logMocks.NewLoggerMockedAll(), readerDialer, readerConf)
+	reader, err := consumer.NewReader(logMocks.NewLoggerMockedAll(), readerDialer, readerSettings)
 	assert.Nil(t, err)
 
-	assert.Equal(t, int(reader.Config().MaxAttempts), 3)
+	assert.Equal(t, reader.Config().MaxAttempts, 3)
 
 	assert.Equal(t, reader.Config().MaxBytes, 1000000)
 	assert.Equal(t, reader.Config().CommitInterval, time.Duration(0))
 	assert.Equal(t, reader.Config().RetentionTime, time.Hour*24*7)
 
-	assert.Equal(t, reader.Config().Brokers, readerConf.Connection().Bootstrap)
+	assert.Equal(t, reader.Config().Brokers, readerSettings.Connection().Bootstrap)
 
-	assert.Equal(t, reader.Config().Topic, readerConf.FQTopic)
-	assert.Equal(t, reader.Config().GroupID, readerConf.GroupID)
+	assert.Equal(t, reader.Config().Topic, readerSettings.FQTopic)
+	assert.Equal(t, reader.Config().GroupID, readerSettings.FQGroupID)
 }
 
 func TestFallsbackToSaneDefaults(t *testing.T) {
 	reader, err := consumer.NewReader(
 		logMocks.NewLoggerMockedAll(),
 		readerDialer,
-		readerConf,
+		readerSettings,
 		consumer.WithBatch(1e6),
 	)
 	assert.Nil(t, err)
@@ -59,7 +59,7 @@ func TestAppliesWithBatch(t *testing.T) {
 	reader, err := consumer.NewReader(
 		logMocks.NewLoggerMockedAll(),
 		readerDialer,
-		readerConf,
+		readerSettings,
 		consumer.WithBatch(batchMaxSize),
 	)
 	assert.Nil(t, err)
