@@ -35,16 +35,16 @@ type Reader interface {
 func NewReader(
 	logger log.Logger,
 	dialer *kafka.Dialer,
-	conf *Settings,
+	settings *Settings,
 	opts ...ReaderOption,
 ) (*kafka.Reader, error) {
 	c := &kafka.ReaderConfig{
-		Brokers: conf.Connection().Bootstrap,
+		Brokers: settings.Connection().Bootstrap,
 		Dialer:  dialer,
 
 		// Topic.
-		Topic:                 conf.FQTopic,
-		GroupID:               conf.GroupID,
+		Topic:                 settings.FQTopic,
+		GroupID:               settings.FQGroupID,
 		WatchPartitionChanges: true,
 
 		// No batching by default.

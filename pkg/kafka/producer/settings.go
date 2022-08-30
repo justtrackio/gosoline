@@ -29,12 +29,12 @@ func (s *Settings) WithConnection(conn *connection.Settings) *Settings {
 	return s
 }
 
-func ParseSettings(c cfg.Config, key string) *Settings {
+func ParseSettings(config cfg.Config, key string) *Settings {
 	settings := &Settings{}
-	c.UnmarshalKey(key, settings)
+	config.UnmarshalKey(key, settings)
 
-	settings.connection = connection.ParseSettings(c, settings.ConnectionName)
-	settings.FQTopic = kafka.FQTopicName(cfg.GetAppIdFromConfig(c), settings.Topic)
+	settings.connection = connection.ParseSettings(config, settings.ConnectionName)
+	settings.FQTopic = kafka.FQTopicName(config, cfg.GetAppIdFromConfig(config), settings.Topic)
 
 	return settings
 }

@@ -51,7 +51,7 @@ func NewConsumerWithInterfaces(settings *Settings, logger log.Logger, manager Of
 	logger = logger.WithFields(
 		log.Fields{
 			"kafka_topic":          settings.FQTopic,
-			"kafka_consumer_group": settings.GroupID,
+			"kafka_consumer_group": settings.FQGroupID,
 			"kafka_batch_size":     settings.BatchSize,
 			"kafka_max_wait":       settings.BatchTimeout.Milliseconds(),
 		},
