@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
-	parquetS3 "github.com/xitongsys/parquet-go-source/s3"
+	parquetS3 "github.com/xitongsys/parquet-go-source/s3v2"
 	"github.com/xitongsys/parquet-go/writer"
 )
 
@@ -34,7 +33,6 @@ type Writer interface {
 
 type s3Writer struct {
 	logger   log.Logger
-	s3Cfg    *aws.Config
 	s3Client gosoS3.Client
 
 	modelId              mdl.ModelId
@@ -45,7 +43,6 @@ type s3Writer struct {
 
 func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *WriterSettings) (*s3Writer, error) {
 	settings.ModelId.PadFromConfig(config)
-	s3Cfg := gosoS3.GetLegacyConfig(config, "default")
 
 	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
 	if err != nil {
@@ -63,13 +60,12 @@ func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		recorder = NewNopRecorder()
 	}
 
-	return NewWriterWithInterfaces(logger, s3Client, s3Cfg, settings.ModelId, prefixNaming, settings.Tags, recorder), nil
+	return NewWriterWithInterfaces(logger, s3Client, settings.ModelId, prefixNaming, settings.Tags, recorder), nil
 }
 
 func NewWriterWithInterfaces(
 	logger log.Logger,
 	s3Client gosoS3.Client,
-	s3Cfg *aws.Config,
 	modelId mdl.ModelId,
 	prefixNaming S3PrefixNamingStrategy,
 	tags map[string]string,
@@ -89,7 +85,6 @@ func NewWriterWithInterfaces(
 
 	return &s3Writer{
 		logger:               logger,
-		s3Cfg:                s3Cfg,
 		s3Client:             s3Client,
 		modelId:              modelId,
 		prefixNamingStrategy: prefixNaming,
@@ -112,7 +107,7 @@ func (w *s3Writer) WriteToKey(ctx context.Context, key string, items interface{}
 		return err
 	}
 
-	fw, err := parquetS3.NewS3FileWriter(ctx, bucket, key, []func(*s3manager.Uploader){}, w.s3Cfg)
+	fw, err := parquetS3.NewS3FileWriterWithClient(ctx, w.s3Client, bucket, key, []func(*manager.Uploader){})
 	if err != nil {
 		return err
 	}

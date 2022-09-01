@@ -8,14 +8,18 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
 const (
-	tagName        = "parquet"
-	propName       = "name"
-	propType       = "type"
-	propRepetition = "repetitionType"
+	tagName           = "parquet"
+	propName          = "name"
+	propType          = "type"
+	propRepetition    = "repetitionType"
+	propConvertedType = "convertedType"
+
+	parquetRoot = "parquet-go-root"
 )
 
 type tagProps map[string]string
@@ -25,23 +29,28 @@ type schemaNode struct {
 	Fields []schemaNode `json:"Fields,omitempty"`
 }
 
-var schemaTypeMap = map[reflect.Type]string{
-	reflect.TypeOf(true):        "BOOLEAN",
-	reflect.TypeOf(int(0)):      "INT_32",
-	reflect.TypeOf(int8(0)):     "INT_8",
-	reflect.TypeOf(int16(0)):    "INT_16",
-	reflect.TypeOf(int32(0)):    "INT_32",
-	reflect.TypeOf(int64(0)):    "INT_64",
-	reflect.TypeOf(uint(0)):     "UINT_32",
-	reflect.TypeOf(uint8(0)):    "UINT_8",
-	reflect.TypeOf(uint16(0)):   "UINT_16",
-	reflect.TypeOf(uint32(0)):   "UINT_32",
-	reflect.TypeOf(uint64(0)):   "UINT_64",
-	reflect.TypeOf(float32(0)):  "FLOAT",
-	reflect.TypeOf(float64(0)):  "DOUBLE",
-	reflect.TypeOf(""):          "UTF8",
-	reflect.TypeOf([]byte{}):    "BYTE_ARRAY",
-	reflect.TypeOf(time.Time{}): "INT96",
+type logicalType struct {
+	primitiveType string
+	convertedType *string
+}
+
+var schemaTypeMap = map[reflect.Type]logicalType{
+	reflect.TypeOf(float32(0)):  {"FLOAT", nil},
+	reflect.TypeOf(float64(0)):  {"DOUBLE", nil},
+	reflect.TypeOf([]byte{}):    {"BYTE_ARRAY", nil},
+	reflect.TypeOf(time.Time{}): {"INT96", nil},
+	reflect.TypeOf(true):        {"BOOLEAN", nil},
+	reflect.TypeOf(""):          {"BYTE_ARRAY", mdl.Box("UTF8")},
+	reflect.TypeOf(int(0)):      {"INT32", mdl.Box("INT_32")},
+	reflect.TypeOf(int8(0)):     {"INT32", mdl.Box("INT_8")},
+	reflect.TypeOf(int16(0)):    {"INT32", mdl.Box("INT_16")},
+	reflect.TypeOf(int32(0)):    {"INT32", mdl.Box("INT_32")},
+	reflect.TypeOf(int64(0)):    {"INT64", mdl.Box("INT_64")},
+	reflect.TypeOf(uint(0)):     {"INT32", mdl.Box("UINT_32")},
+	reflect.TypeOf(uint8(0)):    {"INT32", mdl.Box("UINT_8")},
+	reflect.TypeOf(uint16(0)):   {"INT32", mdl.Box("UINT_16")},
+	reflect.TypeOf(uint32(0)):   {"INT32", mdl.Box("UINT_32")},
+	reflect.TypeOf(uint64(0)):   {"INT64", mdl.Box("UINT_64")},
 }
 
 func mapFieldsToTags(value interface{}) (map[string]interface{}, error) {
@@ -98,7 +107,7 @@ func parseSchema(items interface{}) (string, error) {
 	baseType, _ := refl.ResolveBaseTypeAndValue(items)
 
 	rootTag := createTag(tagProps{
-		propName:       "parquet-go-root",
+		propName:       parquetRoot,
 		propRepetition: "REQUIRED",
 	})
 
@@ -143,11 +152,17 @@ func createNode(schemaTag string, prop reflect.Type) schemaNode {
 			continue
 		}
 
-		propSchemaTag := createTag(tagProps{
+		fieldTag := tagProps{
 			propName:       fieldName,
-			propType:       fieldType,
+			propType:       fieldType.primitiveType,
 			propRepetition: repetition,
-		})
+		}
+
+		if fieldType.convertedType != nil {
+			fieldTag[propConvertedType] = *fieldType.convertedType
+		}
+
+		propSchemaTag := createTag(fieldTag)
 
 		propNode := createNode(propSchemaTag, prop.Field(i).Type)
 		node.Fields = append(node.Fields, propNode)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -12,12 +11,14 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	parquetS3 "github.com/xitongsys/parquet-go-source/s3"
+	parquetS3 "github.com/xitongsys/parquet-go-source/s3v2"
+	"github.com/xitongsys/parquet-go/common"
 	"github.com/xitongsys/parquet-go/reader"
 	"golang.org/x/sync/semaphore"
 )
@@ -42,7 +43,6 @@ type Reader interface {
 
 type s3Reader struct {
 	logger   log.Logger
-	s3Cfg    *aws.Config
 	s3Client gosoS3.Client
 
 	modelId              mdl.ModelId
@@ -51,8 +51,6 @@ type s3Reader struct {
 }
 
 func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings *ReaderSettings) (*s3Reader, error) {
-	s3Cfg := gosoS3.GetLegacyConfig(config, "default")
-
 	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create s3 client default: %w", err)
@@ -69,12 +67,11 @@ func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		recorder = NewNopRecorder()
 	}
 
-	return NewReaderWithInterfaces(logger, s3Cfg, s3Client, settings.ModelId, prefixNaming, recorder), nil
+	return NewReaderWithInterfaces(logger, s3Client, settings.ModelId, prefixNaming, recorder), nil
 }
 
 func NewReaderWithInterfaces(
 	logger log.Logger,
-	s3Cfg *aws.Config,
 	s3Client gosoS3.Client,
 	modelId mdl.ModelId,
 	prefixNaming S3PrefixNamingStrategy,
@@ -82,7 +79,6 @@ func NewReaderWithInterfaces(
 ) *s3Reader {
 	return &s3Reader{
 		logger:               logger,
-		s3Cfg:                s3Cfg,
 		s3Client:             s3Client,
 		modelId:              modelId,
 		prefixNamingStrategy: prefixNaming,
@@ -224,7 +220,7 @@ func (r *s3Reader) ReadFileIntoTarget(ctx context.Context, file string, target i
 func (r *s3Reader) ReadFileColumns(ctx context.Context, columnNames []string, file string, batchSize int, offset int64) (ReadResults, error) {
 	bucket := r.getBucketName()
 
-	fr, err := parquetS3.NewS3FileReader(ctx, bucket, file, r.s3Cfg)
+	fr, err := parquetS3.NewS3FileReaderWithClient(ctx, r.s3Client, bucket, file)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +230,7 @@ func (r *s3Reader) ReadFileColumns(ctx context.Context, columnNames []string, fi
 		return nil, err
 	}
 
-	size := int(pr.GetNumRows())
+	size := pr.GetNumRows()
 	results := make(ReadResults, size)
 
 	if size == 0 {
@@ -249,39 +245,27 @@ func (r *s3Reader) ReadFileColumns(ctx context.Context, columnNames []string, fi
 	}
 
 	if batchSize > 0 {
-		remainingRows := size - int(offset)
-		size = batchSize
+		remainingRows := size - offset
+		size = int64(batchSize)
 
-		if batchSize > remainingRows {
+		if int64(batchSize) > remainingRows {
 			size = remainingRows
 		}
 	}
 
 	columns := make(map[string][]interface{})
 
-	columnsToRead := make(map[string]struct{})
-	for _, c := range columnNames {
-		columnsToRead[c] = struct{}{}
-	}
+	columnsToRead := funk.SliceToSet(columnNames)
 
-	columnSchemas := pr.SchemaHandler.ValueColumns
-	rootName := pr.Footer.Schema[0].Name
+	for column := range columnsToRead {
+		path := common.ReformPathStr(fmt.Sprintf("%s.%s", parquetRoot, column))
 
-	for _, schema := range columnSchemas {
-		schemaSplit := strings.Split(schema, ".")
-		parquetColumnName := schemaSplit[len(schemaSplit)-1]
-		if _, found := columnsToRead[strings.ToLower(parquetColumnName)]; !found {
-			continue
-		}
-
-		values, _, _, err := pr.ReadColumnByPath(schema, size)
+		values, _, _, err := pr.ReadColumnByPath(path, size)
 		if err != nil {
 			return nil, err
 		}
 
-		key := strings.ToLower(schema[len(rootName)+1:])
-
-		columns[key] = values
+		columns[column] = values
 	}
 
 	pr.ReadStop()
@@ -290,7 +274,7 @@ func (r *s3Reader) ReadFileColumns(ctx context.Context, columnNames []string, fi
 	}
 
 	for key, values := range columns {
-		for i := 0; i < size; i++ {
+		for i := int64(0); i < size; i++ {
 			if results[i] == nil {
 				results[i] = make(ReadResult, len(columns))
 			}
