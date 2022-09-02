@@ -13,11 +13,12 @@ func init() {
 }
 
 func mprConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	settings := readMessagesPerRunnerMetricSettings(config)
-
-	if !settings.Enabled {
+	enabled := config.GetBool(configKey+".enabled", false)
+	if !enabled {
 		return false, nil
 	}
+
+	settings := readMessagesPerRunnerMetricSettings(config)
 
 	key := ddb.GetLeaderElectionConfigKey(settings.LeaderElection)
 	typKey := ddb.GetLeaderElectionConfigKeyType(settings.LeaderElection)

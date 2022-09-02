@@ -204,6 +204,10 @@ func (s *MprMetricModuleTestSuite) SetupTestCase() {
 			Family:      "stream",
 			Application: "mprMetric",
 		},
+		Ecs: stream.MessagesPerRunnerEcsSettings{
+			Cluster: "gosoline-test-stream",
+			Service: "mprMetric",
+		},
 		MemberId: "e7c6003c-66df-11eb-9bdf-af0dafba2813",
 	}
 
