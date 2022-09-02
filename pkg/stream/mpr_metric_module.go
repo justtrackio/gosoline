@@ -25,6 +25,7 @@ const (
 
 type MessagesPerRunnerMetricWriterSettings struct {
 	QueueNames         []string
+	Ecs                MessagesPerRunnerEcsSettings
 	UpdatePeriod       time.Duration
 	TargetValue        float64
 	MaxIncreasePercent float64
@@ -83,6 +84,7 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 			TargetValue:        settings.TargetValue,
 			MaxIncreasePercent: settings.MaxIncreasePercent,
 			MaxIncreasePeriod:  settings.MaxIncreasePeriod,
+			Ecs:                settings.Ecs,
 			AppId:              cfg.AppId{},
 			MemberId:           uuid.New().NewV4(),
 		}
@@ -318,8 +320,8 @@ func (u *MessagesPerRunnerMetricWriter) getStreamMprMetric(ctx context.Context, 
 }
 
 func (u *MessagesPerRunnerMetricWriter) getEcsMetric(ctx context.Context, name string, stat types.Statistic, period time.Duration) (float64, error) {
-	appId := u.settings.AppId
-	clusterName := fmt.Sprintf("%s-%s-%s", appId.Project, appId.Environment, appId.Family)
+	clusterName := u.settings.Ecs.Cluster
+	serviceName := u.settings.Ecs.Service
 
 	startTime := u.clock.Now().Add(-1 * period * 5)
 	endTime := u.clock.Now().Add(-1 * period)
@@ -342,7 +344,7 @@ func (u *MessagesPerRunnerMetricWriter) getEcsMetric(ctx context.Context, name s
 							},
 							{
 								Name:  aws.String("ServiceName"),
-								Value: aws.String(appId.Application),
+								Value: aws.String(serviceName),
 							},
 						},
 					},
