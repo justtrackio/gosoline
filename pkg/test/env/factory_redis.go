@@ -62,7 +62,7 @@ func (f *redisFactory) configureContainer(settings interface{}) *containerConfig
 
 	return &containerConfig{
 		Repository: "redis",
-		Tag:        "6-alpine",
+		Tag:        "7-alpine",
 		PortBindings: portBindings{
 			"6379/tcp": s.Port,
 		},
