@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -26,40 +27,47 @@ func LoggingMiddleware(logger log.Logger) gin.HandlerFunc {
 		pathRaw := getPathRaw(ginCtx)
 
 		referer := req.Referer()
+		userAgent := req.UserAgent()
+		status := ginCtx.Writer.Status()
 
-		query := req.URL.Query()
 		queryRaw := req.URL.RawQuery
-		queryParameters := make(map[string]string)
-
-		for k := range query {
-			queryParameters[k] = query.Get(k)
-		}
 
 		method := ginCtx.Request.Method
 		requestTimeNano := time.Since(start)
 		requestTimeSecond := float64(requestTimeNano) / float64(time.Second)
 
-		ctxLogger := chLogger.WithContext(ctx).WithFields(log.Fields{
-			"bytes":                    ginCtx.Writer.Size(),
-			"client_ip":                ginCtx.ClientIP(),
-			"host":                     req.Host,
-			"protocol":                 req.Proto,
-			"request_method":           method,
-			"request_path":             path,
-			"request_path_raw":         pathRaw,
-			"request_query":            queryRaw,
-			"request_query_parameters": queryParameters,
-			"request_referer":          referer,
-			"request_time":             requestTimeSecond,
-			"scheme":                   req.URL.Scheme,
-			"status":                   ginCtx.Writer.Status(),
-		})
+		fields := log.Fields{}
+		fields["bytes"] = ginCtx.Writer.Size()
+		fields["client_ip"] = ginCtx.ClientIP()
+		fields["host"] = req.Host
+		fields["protocol"] = req.Proto
+		fields["request_method"] = method
+		fields["request_path"] = path
+		fields["request_path_raw"] = pathRaw
+		fields["request_query"] = queryRaw
+		fields["request_referer"] = referer
+		fields["request_user_agent"] = userAgent
+		fields["request_time"] = requestTimeSecond
+		fields["scheme"] = req.URL.Scheme
+		fields["status"] = status
+
+		// only log query parameters in full for successful requests to avoid logging them from bad crawlers
+		if status != http.StatusUnauthorized && status != http.StatusForbidden && status != http.StatusNotFound {
+			queryParameters := make(map[string]string)
+			query := req.URL.Query()
+
+			for k := range query {
+				queryParameters[k] = query.Get(k)
+			}
+
+			fields["request_query_parameters"] = queryParameters
+		}
 
 		if requestId := req.Header.Get("X-Request-Id"); requestId != "" {
-			ctxLogger = ctxLogger.WithFields(log.Fields{
-				"request_id": requestId,
-			})
+			fields["request_id"] = requestId
 		}
+
+		ctxLogger := chLogger.WithContext(ctx).WithFields(fields)
 
 		if len(ginCtx.Errors) == 0 {
 			ctxLogger.Info("%s %s %s", method, path, req.Proto)
