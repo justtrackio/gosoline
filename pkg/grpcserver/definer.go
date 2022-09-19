@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// ServiceDefiner is used to initialise the Server Module.
+// ServiceDefiner is used to initialise the Server module.
 //
 // This function is used to initialise your dependencies i.e. the services.
 type ServiceDefiner func(ctx context.Context, config cfg.Config, logger log.Logger) (*Definitions, error)

@@ -1,6 +1,6 @@
 package kernel
 
-type ModuleOption func(ms *ModuleConfig)
+type ModuleOption func(ms *moduleConfig)
 
 // Overwrite the type a module specifies by something else.
 // E.g., if you have a background module you completely depend
@@ -11,10 +11,10 @@ type ModuleOption func(ms *ModuleConfig)
 // to declare the module as essential. Now if the module quits the
 // kernel will shut down instead of continuing to run.
 func ModuleType(moduleTypeProvider func() TypedModule) ModuleOption {
-	return func(ms *ModuleConfig) {
+	return func(ms *moduleConfig) {
 		moduleType := moduleTypeProvider()
-		ms.Essential = moduleType.IsEssential()
-		ms.Background = moduleType.IsBackground()
+		ms.essential = moduleType.IsEssential()
+		ms.background = moduleType.IsBackground()
 	}
 }
 
@@ -24,14 +24,14 @@ func ModuleType(moduleTypeProvider func() TypedModule) ModuleOption {
 // module and you need the other module to stop producing before you can
 // stop consuming).
 func ModuleStage(moduleStage int) ModuleOption {
-	return func(ms *ModuleConfig) {
-		ms.Stage = moduleStage
+	return func(ms *moduleConfig) {
+		ms.stage = moduleStage
 	}
 }
 
 // Combine a list of options by applying them in order.
 func MergeOptions(options []ModuleOption) ModuleOption {
-	return func(ms *ModuleConfig) {
+	return func(ms *moduleConfig) {
 		for _, opt := range options {
 			opt(ms)
 		}

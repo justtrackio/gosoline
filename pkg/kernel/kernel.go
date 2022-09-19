@@ -156,41 +156,41 @@ func (k *kernel) debugConfig() {
 	}
 }
 
-func (k *kernel) runModule(ctx context.Context, name string, ms *ModuleState) (moduleErr error) {
-	defer k.logger.Info("stopped %s module %s", ms.Config.GetType(), name)
+func (k *kernel) runModule(ctx context.Context, name string, ms *moduleState) (moduleErr error) {
+	defer k.logger.Info("stopped %s module %s", ms.config.GetType(), name)
 
-	k.logger.Info("running %s module %s in stage %d", ms.Config.GetType(), name, ms.Config.Stage)
+	k.logger.Info("running %s module %s in stage %d", ms.config.GetType(), name, ms.config.stage)
 
-	ms.IsRunning = true
+	atomic.StoreInt32(&ms.isRunning, 1)
 
-	defer func(ms *ModuleState) {
+	defer func(ms *moduleState) {
 		// recover any crash from the module - if we let the coffin handle this,
 		// this is already too late because we might have killed the kernel and
 		// swallowed the error
 		panicErr := coffin.ResolveRecovery(recover())
 
 		if panicErr != nil {
-			ms.Err = panicErr
+			ms.err = panicErr
 		}
 
-		if ms.Err != nil {
-			k.logger.Error("error running %s module %s: %w", ms.Config.GetType(), name, ms.Err)
+		if ms.err != nil {
+			k.logger.Error("error running %s module %s: %w", ms.config.GetType(), name, ms.err)
 		}
 
-		ms.IsRunning = false
-		if ms.Config.Essential {
+		atomic.StoreInt32(&ms.isRunning, 0)
+		if ms.config.essential {
 			k.essentialModuleExited(name)
-		} else if !ms.Config.Background {
+		} else if !ms.config.background {
 			k.foregroundModuleExited()
 		}
 
 		// make sure we are returning the correct error to our caller
-		moduleErr = ms.Err
+		moduleErr = ms.err
 	}(ms)
 
-	ms.Err = ms.Module.Run(ctx)
+	ms.err = ms.module.Run(ctx)
 
-	return ms.Err
+	return ms.err
 }
 
 func (k *kernel) essentialModuleExited(name string) {
@@ -225,7 +225,7 @@ func (k *kernel) waitStopped() {
 			for _, stageIndex := range k.stages.getIndices() {
 				s := k.stages[stageIndex]
 				for name, ms := range s.modules.modules {
-					if ms.IsRunning {
+					if atomic.LoadInt32(&ms.isRunning) != 0 {
 						k.logger.Info("module in stage %d blocking the shutdown: %s", stageIndex, name)
 					}
 				}

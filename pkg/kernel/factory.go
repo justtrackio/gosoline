@@ -135,21 +135,21 @@ func (f *factory) buildMiddleware(middlewareFactory MiddlewareFactory, position 
 }
 
 func (f *factory) addModuleToStage(name string, module Module, opts []ModuleOption) error {
-	ms := &ModuleState{
-		Module:    module,
-		Config:    getModuleConfig(module),
-		IsRunning: false,
-		Err:       nil,
+	ms := &moduleState{
+		module:    module,
+		config:    getModuleConfig(module),
+		isRunning: 0,
+		err:       nil,
 	}
 
-	MergeOptions(opts)(&ms.Config)
+	MergeOptions(opts)(&ms.config)
 
 	var ok bool
 	var stage *stage
 
 	// if the module specified a stage we do not yet have we have to add a new stage.
-	if stage, ok = f.stages[ms.Config.Stage]; !ok {
-		stage = f.newStage(ms.Config.Stage)
+	if stage, ok = f.stages[ms.config.stage]; !ok {
+		stage = f.newStage(ms.config.stage)
 	}
 
 	if _, didExist := stage.modules.modules[name]; didExist {
