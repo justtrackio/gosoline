@@ -224,33 +224,6 @@ Having this order is useful. For example, the metric daemon can collect metrics 
 
 We can configure the stage of a module with an _Option_, similarly to how a module can be configured to an essential or a background module. Alternatively, the stage of a module can also be configured by having the _Module_ object implement the `GetStage` method. If no stage was configured for a module, it will be added to stage `StageApplication`.
 
-## Interesting Config structures
-
-There are a few important configuration structures for modules and kernels:
-
-[structmd]:# (pkg/kernel/module.go ModuleState ModuleConfig)
-**ModuleState**
-
-ModuleState stores data needed for module management.
-
-| field       | type     | default     | description     |
-| :------------- | :----------: | :----------: | -----------: |
-| Factory | ModuleFactory |  | Factory function that will produce this module. |
-| Module | Module |  | Module stores the core functionality of this module. |
-| Config | ModuleConfig |  | Config information regarding starting and stopping this module. |
-| IsRunning | bool |  | IsRunning or not. |
-| Err | error |  | Error obtained by running this module. |
-
-**ModuleConfig**
-
-ModuleConfig stores attributes used in starting and stopping a module.
-
-| field       | type     | default     | description     |
-| :------------- | :----------: | :----------: | -----------: |
-| Essential | bool |  | Essential causes the kernel to stop after its first essential module finishes. |
-| Background | bool |  | Background modules run as long as there is at least one foreground module still running. |
-| Stage | int |  | Stage in which this module will be started. |
-
 [structmd end]:#
 
 ## Wrapping it up

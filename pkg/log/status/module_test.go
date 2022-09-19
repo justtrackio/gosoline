@@ -88,7 +88,7 @@ func (m *testModule) Run(ctx context.Context) error {
 	}))
 	mainHandle.ReportDone()
 
-	// print the report by hand. normally the Module takes care of this when it receives a SIGUSR1.
+	// print the report by hand. normally the module takes care of this when it receives a SIGUSR1.
 	m.statusManager.PrintReport(m.logger)
 	// defer it again to get it printed after all go routines finished
 	defer m.statusManager.PrintReport(m.logger)

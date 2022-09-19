@@ -51,48 +51,48 @@ func getModuleStage(m Module) int {
 	return StageApplication
 }
 
-func getModuleConfig(m Module) ModuleConfig {
-	return ModuleConfig{
-		Essential:  isModuleEssential(m),
-		Background: isModuleBackground(m),
-		Stage:      getModuleStage(m),
+func getModuleConfig(m Module) moduleConfig {
+	return moduleConfig{
+		essential:  isModuleEssential(m),
+		background: isModuleBackground(m),
+		stage:      getModuleStage(m),
 	}
 }
 
-// ModuleState stores data needed for module management.
-type ModuleState struct {
-	// Factory function that will produce this module.
-	Factory ModuleFactory
-	// Module stores the core functionality of this module.
-	Module Module
-	// Config information regarding starting and stopping this module.
-	Config ModuleConfig
-	// IsRunning or not.
-	IsRunning bool
+// moduleState stores data needed for module management.
+type moduleState struct {
+	// factory function that will produce this module.
+	factory ModuleFactory
+	// module stores the core functionality of this module.
+	module Module
+	// config information regarding starting and stopping this module.
+	config moduleConfig
+	// isRunning is 1 if the module is still running, 0 otherwise. Access with atomic reads
+	isRunning int32
 	// Error obtained by running this module.
-	Err error
+	err error
 }
 
-// ModuleConfig stores attributes used in starting and stopping a module.
-type ModuleConfig struct {
-	// Essential causes the kernel to stop after its first essential module finishes.
-	Essential bool
-	// Background modules run as long as there is at least one foreground module still running.
-	Background bool
-	// Stage in which this module will be started.
-	Stage int
+// moduleConfig stores attributes used in starting and stopping a module.
+type moduleConfig struct {
+	// essential causes the kernel to stop after its first essential module finishes.
+	essential bool
+	// background modules run as long as there is at least one foreground module still running.
+	background bool
+	// stage in which this module will be started.
+	stage int
 }
 
-func (mc ModuleConfig) GetType() string {
-	if mc.Essential {
-		if mc.Background {
+func (mc moduleConfig) GetType() string {
+	if mc.essential {
+		if mc.background {
 			return "essential-background"
 		}
 
 		return "essential"
 	}
 
-	if mc.Background {
+	if mc.background {
 		return "background"
 	}
 
@@ -102,7 +102,8 @@ func (mc ModuleConfig) GetType() string {
 // A Module provides a single function or service for your application.
 // For example, an HTTP server would be a single module (see "apiserver")
 // while a daemon writing metrics in the background would be a separate
-// module (see "mon").
+// module (see "log").
+//
 //go:generate mockery --name Module
 type Module interface {
 	// Run the module. If the provided context is canceled you have a few seconds (configurable with kernel.killTimeout)
@@ -121,6 +122,7 @@ type Module interface {
 // much good alone.
 // If you don't implement TypedModule it will default to a non-essential foreground
 // module.
+//
 //go:generate mockery --name TypedModule
 type TypedModule interface {
 	IsEssential() bool
@@ -140,12 +142,14 @@ var (
 // and shut down later. You should use the StageEssential, StageService and
 // StageApplication constants unless you have very specific needs and know what
 // you are doing.
+//
 //go:generate mockery --name StagedModule
 type StagedModule interface {
 	GetStage() int
 }
 
 // A FullModule provides all the methods a module can have and thus never relies on defaults.
+//
 //go:generate mockery --name FullModule
 type FullModule interface {
 	Module
@@ -226,9 +230,9 @@ func (s ApplicationStage) GetStage() int {
 
 // The DefaultModule type you could use for your application code.
 // Your module will
-//  * Run at the application stage
-//  * Be a foreground module and can therefore shut down the kernel if you don't run other foreground modules
-//  * Implement any future methods we might add to the Module interface with some reasonable default values
+//   - Run at the application stage
+//   - Be a foreground module and can therefore shut down the kernel if you don't run other foreground modules
+//   - Implement any future methods we might add to the Module interface with some reasonable default values
 type DefaultModule struct {
 	ForegroundModule
 	ApplicationStage

@@ -14,7 +14,7 @@ var ErrKernelStopping = fmt.Errorf("stopping kernel")
 
 type modules struct {
 	lck     conc.PoisonedLock
-	modules map[string]*ModuleState
+	modules map[string]*moduleState
 }
 
 func (m modules) len() int {
@@ -44,7 +44,7 @@ func newStage(ctx context.Context) *stage {
 
 		modules: modules{
 			lck:     conc.NewPoisonedLock(),
-			modules: make(map[string]*ModuleState),
+			modules: make(map[string]*moduleState),
 		},
 	}
 }
@@ -56,7 +56,7 @@ func (s *stage) run(k *kernel) {
 	}
 
 	for name, ms := range s.modules.modules {
-		s.cfn.Gof(func(name string, ms *ModuleState) func() error {
+		s.cfn.Gof(func(name string, ms *moduleState) func() error {
 			return func() error {
 				// wait until every routine of the stage was spawned
 				// if a module exists too fast, we have a race condition
@@ -112,7 +112,7 @@ func (s stages) countForegroundModules() int32 {
 	// no need to iterate in order as we are only counting
 	for _, stage := range s {
 		for _, m := range stage.modules.modules {
-			if !m.Config.Background {
+			if !m.config.background {
 				count++
 			}
 		}
