@@ -65,7 +65,7 @@ TimeoutSettings configures IO timeouts.
 [structmd]:# (pkg/apiserver/compression.go CompressionSettings)
 **CompressionSettings**
 
-CompressionSettings allow the enabling of gzip support for requests and responses. By default compressed requests are accepted, and compressed responses are returned (if suitable).
+CompressionSettings control gzip support for requests and responses. By default, compressed requests are accepted and compressed responses are returned (if accepted by the client).
 
 | field       | type     | default     | description     |
 | :------------- | :----------: | :----------: | -----------: |
