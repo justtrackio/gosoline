@@ -1,15 +1,15 @@
 package apiserver
 
 import (
-	compressGzip "compress/gzip"
+	"compress/gzip"
 	"fmt"
+	"strconv"
+
 	ginGzip "github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
-	"io"
-	"strconv"
 )
 
-// CompressionSettings allow the enabling of gzip support for requests and responses. By default compressed requests are accepted, and compressed responses are returned (if suitable).
+// CompressionSettings control gzip support for requests and responses. By default, compressed requests are accepted and compressed responses are returned (if accepted by the client).
 type CompressionSettings struct {
 	Level         string `cfg:"level" default:"default" validate:"oneof=none default best fast 0 1 2 3 4 5 6 7 8 9"`
 	Decompression bool   `cfg:"decompression" default:"true"`
@@ -25,12 +25,15 @@ type CompressionExcludeSettings struct {
 }
 
 func configureCompression(router *gin.Engine, settings CompressionSettings) error {
+	// we always record the request size
+	router.Use(recordRequestSize)
+
 	level, err := parseLevel(settings.Level)
 	if err != nil {
 		return err
 	}
 
-	if level == compressGzip.NoCompression && !settings.Decompression {
+	if level == gzip.NoCompression && !settings.Decompression {
 		// there is no use in adding a handler if we should neither compress nor decompress
 		return nil
 	}
@@ -54,6 +57,7 @@ func configureCompression(router *gin.Engine, settings CompressionSettings) erro
 	}
 
 	router.Use(ginGzip.Gzip(level, opts...))
+	router.Use(recordResponseSize)
 
 	return nil
 }
@@ -61,42 +65,26 @@ func configureCompression(router *gin.Engine, settings CompressionSettings) erro
 func parseLevel(level string) (int, error) {
 	switch level {
 	case "none":
-		return compressGzip.NoCompression, nil
+		return gzip.NoCompression, nil
 	case "default":
-		return compressGzip.DefaultCompression, nil
+		return gzip.DefaultCompression, nil
 	case "best":
-		return compressGzip.BestCompression, nil
+		return gzip.BestCompression, nil
 	case "fast":
-		return compressGzip.BestSpeed, nil
+		return gzip.BestSpeed, nil
 	default:
-		if i, err := strconv.ParseInt(level, 10, 64); err != nil {
+		if parsedLevel, err := strconv.ParseInt(level, 10, 64); err != nil {
 			return 0, fmt.Errorf("failed to parse level %s: %w", level, err)
+		} else if parsedLevel < gzip.NoCompression || parsedLevel > gzip.BestCompression {
+			return 0, fmt.Errorf("invalid compression level %d", parsedLevel)
 		} else {
-			return int(i), nil
+			return int(parsedLevel), nil
 		}
 	}
 }
 
-type gzipBodyReader struct {
-	body   io.ReadCloser
-	reader *compressGzip.Reader
-}
-
-func (r gzipBodyReader) Read(p []byte) (int, error) {
-	return r.reader.Read(p)
-}
-
-func (r gzipBodyReader) Close() error {
-	err := r.reader.Close()
-	if err != nil {
-		return err
-	}
-
-	return r.body.Close()
-}
-
 func decompressionFn(c *gin.Context) {
-	reader, err := compressGzip.NewReader(c.Request.Body)
+	gzipReader, readUncompressedBytes, err := NewGZipBodyReader(c.Request.Body)
 
 	if err != nil {
 		// the body is not a proper gzip encoded body, so don't do anything
@@ -104,8 +92,43 @@ func decompressionFn(c *gin.Context) {
 		return
 	}
 
-	c.Request.Body = gzipBodyReader{
-		body:   c.Request.Body,
-		reader: reader,
+	c.Request.Body = gzipReader
+
+	c.Set(requestCompressedSizeFields, encodedSizeData{
+		sizeData: sizeData{
+			size: readUncompressedBytes,
+		},
+		contentEncoding: "gzip",
+	})
+}
+
+func recordRequestSize(c *gin.Context) {
+	body, readBytes := NewCountingBodyReader(c.Request.Body)
+	c.Request.Body = body
+
+	c.Set(requestSizeFields, sizeData{
+		size: readBytes,
+	})
+
+	c.Next()
+}
+
+func recordResponseSize(c *gin.Context) {
+	if c.Writer.Header().Get("Content-Encoding") != "gzip" {
+		c.Next()
+
+		return
 	}
+
+	writer, writtenBytes := NewCountingBodyWriter(c.Writer)
+	c.Writer = writer
+
+	c.Set(responseSizeFields, encodedSizeData{
+		sizeData: sizeData{
+			size: writtenBytes,
+		},
+		contentEncoding: "gzip",
+	})
+
+	c.Next()
 }

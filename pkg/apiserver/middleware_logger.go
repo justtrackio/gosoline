@@ -36,7 +36,7 @@ func LoggingMiddleware(logger log.Logger) gin.HandlerFunc {
 		requestTimeNano := time.Since(start)
 		requestTimeSecond := float64(requestTimeNano) / float64(time.Second)
 
-		fields := log.Fields{}
+		fields := getRequestSizeFields(ginCtx)
 		fields["bytes"] = ginCtx.Writer.Size()
 		fields["client_ip"] = ginCtx.ClientIP()
 		fields["host"] = req.Host
@@ -71,6 +71,7 @@ func LoggingMiddleware(logger log.Logger) gin.HandlerFunc {
 
 		if len(ginCtx.Errors) == 0 {
 			ctxLogger.Info("%s %s %s", method, path, req.Proto)
+
 			return
 		}
 
