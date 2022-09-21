@@ -47,7 +47,7 @@ func NewWithInterfaces(store kvstore.KvStore, clock clock.Clock) *currencyServic
 	}
 }
 
-// returns whether we support converting a given currency or not and whether an error occurred or not
+// HasCurrency returns whether we support converting a given currency or not and whether an error occurred or not
 func (s *currencyService) HasCurrency(ctx context.Context, currency string) (bool, error) {
 	if currency == "EUR" {
 		return true, nil
@@ -56,7 +56,7 @@ func (s *currencyService) HasCurrency(ctx context.Context, currency string) (boo
 	return s.store.Contains(ctx, currency)
 }
 
-// returns the euro value for a given value and currency and nil if not error occurred. returns 0 and an error object otherwise.
+// ToEur returns the euro value for a given value and currency and nil if not error occurred. returns 0 and an error object otherwise.
 func (s *currencyService) ToEur(ctx context.Context, value float64, from string) (float64, error) {
 	if from == Eur {
 		return value, nil
@@ -70,7 +70,7 @@ func (s *currencyService) ToEur(ctx context.Context, value float64, from string)
 	return value / exchangeRate, nil
 }
 
-// returns the us dollar value for a given value and currency and nil if not error occurred. returns 0 and an error object otherwise.
+// ToUsd returns the us dollar value for a given value and currency and nil if not error occurred. returns 0 and an error object otherwise.
 func (s *currencyService) ToUsd(ctx context.Context, value float64, from string) (float64, error) {
 	if from == Usd {
 		return value, nil
@@ -79,7 +79,7 @@ func (s *currencyService) ToUsd(ctx context.Context, value float64, from string)
 	return s.ToCurrency(ctx, Usd, value, from)
 }
 
-// returns the value in the currency given in the to parameter for a given value and currency given in the from parameter and nil if not error occurred. returns 0 and an error object otherwise.
+// ToCurrency returns the value in the currency given in the to parameter for a given value and currency given in the from parameter and nil if not error occurred. returns 0 and an error object otherwise.
 func (s *currencyService) ToCurrency(ctx context.Context, to string, value float64, from string) (float64, error) {
 	if from == to {
 		return value, nil
@@ -136,7 +136,7 @@ func (s *currencyService) getExchangeRateAtDate(ctx context.Context, currency st
 	return exchangeRate, nil
 }
 
-// returns whether we support converting a given currency at the given time or not and whether an error occurred or not
+// HasCurrencyAtDate returns whether we support converting a given currency at the given time or not and whether an error occurred or not
 // if the date parameter is recent enough and a lookup for the given currency misses,
 // function will return the lookup for the previous day
 func (s *currencyService) HasCurrencyAtDate(ctx context.Context, currency string, date time.Time) (bool, error) {
@@ -161,7 +161,7 @@ func (s *currencyService) HasCurrencyAtDate(ctx context.Context, currency string
 	return exists, nil
 }
 
-// returns the euro value for a given value and currency at the given time and nil if not error occurred. returns 0 and an error object otherwise.
+// ToEurAtDate returns the euro value for a given value and currency at the given time and nil if not error occurred. returns 0 and an error object otherwise.
 func (s *currencyService) ToEurAtDate(ctx context.Context, value float64, from string, date time.Time) (float64, error) {
 	if from == Eur {
 		return value, nil
@@ -179,7 +179,7 @@ func (s *currencyService) ToEurAtDate(ctx context.Context, value float64, from s
 	return value / exchangeRate, nil
 }
 
-// returns the us dollar value for a given value and currency at the given time and nil if not error occurred. returns 0 and an error object otherwise.
+// ToUsdAtDate returns the us dollar value for a given value and currency at the given time and nil if not error occurred. returns 0 and an error object otherwise.
 func (s *currencyService) ToUsdAtDate(ctx context.Context, value float64, from string, date time.Time) (float64, error) {
 	if from == Usd {
 		return value, nil
@@ -188,7 +188,7 @@ func (s *currencyService) ToUsdAtDate(ctx context.Context, value float64, from s
 	return s.ToCurrencyAtDate(ctx, Usd, value, from, date)
 }
 
-// returns the value in the currency given in the to parameter for a given value and currency given in the from parameter and nil if not error occurred. returns 0 and an error object otherwise.
+// ToCurrencyAtDate returns the value in the currency given in the to parameter for a given value and currency given in the from parameter and nil if not error occurred. returns 0 and an error object otherwise.
 func (s *currencyService) ToCurrencyAtDate(ctx context.Context, to string, value float64, from string, date time.Time) (float64, error) {
 	if from == to {
 		return value, nil
