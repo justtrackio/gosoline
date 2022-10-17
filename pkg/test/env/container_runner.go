@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -324,6 +325,16 @@ func (r *containerRunner) resolveBinding(resource *dockertest.Resource, containe
 	}
 
 	address.host = resource.Container.NetworkSettings.Networks["bridge"].Gateway
+
+	// On OS X, we can't access docker via the IP of the container, but have to go through localhost.
+	//
+	// We also disable warnings about constant conditions here. This condition is always constant, but
+	// a different constant depending on the OS you are building for.
+	//
+	//goland:noinspection GoBoolExpressions
+	if runtime.GOOS == "darwin" {
+		address.host = "localhost"
+	}
 
 	return address, nil
 }
