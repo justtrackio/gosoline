@@ -3,7 +3,9 @@ package kvstore
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -136,7 +138,11 @@ func (s *redisKvStore) Put(ctx context.Context, key interface{}, value interface
 		return fmt.Errorf("can not get key/value to write to redis: %w", err)
 	}
 
-	err = s.client.Set(ctx, keyStr, bytes, s.settings.Ttl)
+	ttl := s.settings.Ttl
+	factor := (rand.Float64() - 0.5) * s.settings.TtlRandomization
+	ttl = ttl + time.Duration(factor*float64(ttl))
+
+	err = s.client.Set(ctx, keyStr, bytes, ttl)
 
 	if err != nil {
 		return fmt.Errorf("can not set value in redis store: %w", err)
@@ -201,7 +207,11 @@ func (s *redisKvStore) flushChunk(ctx context.Context, pairs []interface{}) erro
 			if !ok {
 				return fmt.Errorf("setting ttl, failed to cast key to string: %v", pairs[i])
 			}
-			pipe.Expire(ctx, keyStr, s.settings.Ttl)
+
+			ttl := s.settings.Ttl
+			factor := (rand.Float64() - 0.5) * s.settings.TtlRandomization
+			ttl = ttl + time.Duration(factor*float64(ttl))
+			pipe.Expire(ctx, keyStr, ttl)
 		}
 	}
 

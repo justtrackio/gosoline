@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/bits"
+	"math/rand"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -171,7 +172,11 @@ func (s *InMemoryKvStore) Put(_ context.Context, key interface{}, value interfac
 		value = rv.Interface()
 	}
 
-	s.cache.Set(keyStr, value, s.settings.Ttl)
+	ttl := s.settings.Ttl
+	factor := (rand.Float64() - 0.5) * s.settings.TtlRandomization
+	ttl = ttl + time.Duration(factor*float64(ttl))
+
+	s.cache.Set(keyStr, value, ttl)
 
 	atomic.AddInt64(s.cacheSize, 1)
 
