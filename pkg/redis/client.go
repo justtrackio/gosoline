@@ -69,6 +69,19 @@ type Client interface {
 	PFCount(ctx context.Context, keys ...string) (int64, error)
 	PFMerge(ctx context.Context, dest string, keys ...string) (string, error)
 
+	ZAdd(ctx context.Context, key string, score float64, member string) (int64, error)
+	ZCard(ctx context.Context, key string) (int64, error)
+	ZCount(ctx context.Context, key string, min string, max string) (int64, error)
+	ZIncrBy(ctx context.Context, key string, increment float64, member string) (float64, error)
+	ZScore(ctx context.Context, key string, member string) (float64, error)
+	ZMScore(ctx context.Context, key string, members ...string) ([]float64, error)
+	ZRange(ctx context.Context, key string, start int64, stop int64) ([]string, error)
+	ZRandMember(ctx context.Context, key string, count int, withScores bool) ([]string, error)
+	ZRank(ctx context.Context, key string, member string) (int64, error)
+	ZRem(ctx context.Context, key string, members ...string) (int64, error)
+	ZRevRange(ctx context.Context, key string, start int64, stop int64) ([]string, error)
+	ZRevRank(ctx context.Context, key string, member string) (int64, error)
+
 	IsAlive(ctx context.Context) bool
 
 	Pipeline() Pipeliner
@@ -387,6 +400,107 @@ func (c *redisClient) PFMerge(ctx context.Context, dest string, keys ...string) 
 	})
 
 	return cmd.(*baseRedis.StatusCmd).Val(), err
+}
+
+func (c *redisClient) ZAdd(ctx context.Context, key string, score float64, member string) (int64, error) {
+	z := &baseRedis.Z{
+		Score:  score,
+		Member: member,
+	}
+
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZAdd(ctx, key, z)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) ZCard(ctx context.Context, key string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZCard(ctx, key)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) ZCount(ctx context.Context, key string, min string, max string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZCount(ctx, key, min, max)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) ZIncrBy(ctx context.Context, key string, increment float64, member string) (float64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZIncrBy(ctx, key, increment, member)
+	})
+
+	return cmd.(*baseRedis.FloatCmd).Val(), err
+}
+
+func (c *redisClient) ZScore(ctx context.Context, key string, member string) (float64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZScore(ctx, key, member)
+	})
+
+	return cmd.(*baseRedis.FloatCmd).Val(), err
+}
+
+func (c *redisClient) ZMScore(ctx context.Context, key string, members ...string) ([]float64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZMScore(ctx, key, members...)
+	})
+
+	return cmd.(*baseRedis.FloatSliceCmd).Val(), err
+}
+
+func (c *redisClient) ZRange(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZRange(ctx, key, start, stop)
+	})
+
+	return cmd.(*baseRedis.StringSliceCmd).Val(), err
+}
+
+func (c *redisClient) ZRandMember(ctx context.Context, key string, count int, withScores bool) ([]string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZRandMember(ctx, key, count, withScores)
+	})
+
+	return cmd.(*baseRedis.StringSliceCmd).Val(), err
+}
+
+func (c *redisClient) ZRank(ctx context.Context, key string, member string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZRank(ctx, key, member)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) ZRem(ctx context.Context, key string, members ...string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZRem(ctx, key, members)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) ZRevRange(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZRevRange(ctx, key, start, stop)
+	})
+
+	return cmd.(*baseRedis.StringSliceCmd).Val(), err
+}
+
+func (c *redisClient) ZRevRank(ctx context.Context, key string, member string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZRevRank(ctx, key, member)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) IsAlive(ctx context.Context) bool {
