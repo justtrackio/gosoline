@@ -39,6 +39,7 @@ require (
 	github.com/gin-contrib/location v0.0.2
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
+	github.com/go-playground/mold/v4 v4.2.0
 	github.com/go-playground/validator/v10 v10.10.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-resty/resty/v2 v2.7.0
@@ -156,6 +157,8 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/segmentio/go-camelcase v0.0.0-20160726192923-7085f1e3c734 // indirect
+	github.com/segmentio/go-snakecase v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/ugorji/go/codec v1.1.7 // indirect
