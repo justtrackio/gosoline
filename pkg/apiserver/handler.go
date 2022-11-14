@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"reflect"
 
 	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
@@ -19,26 +20,26 @@ import (
 
 const (
 	ApiViewKey      = "X-Api-View"
-	ContentTypeJson = "application/json; charset=utf-8"
 	ContentTypeHtml = "text/html; charset=utf-8"
+	ContentTypeJson = "application/json; charset=utf-8"
 )
 
 var ErrAccessForbidden = errors.New("cant access resource")
 
 type Request struct {
 	Body     interface{}
-	Header   http.Header
+	ClientIp string
 	Cookies  map[string]string
+	Header   http.Header
 	Params   gin.Params
 	Url      *url.URL
-	ClientIp string
 }
 
 // Don't create a response directly, use New*Response instead
 type Response struct {
 	Body        interface{}
-	Header      http.Header
 	ContentType *string // might be nil
+	Header      http.Header
 	StatusCode  int
 }
 
@@ -181,6 +182,7 @@ func CreateDownloadHandler(handler HandlerWithStream) gin.HandlerFunc {
 func handleWithInput(handler HandlerWithInput, binding binding.Binding, errHandler ErrorHandler) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		input := handler.GetInput()
+
 		err := binding.Bind(ginCtx.Request, input)
 		if err != nil {
 			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
@@ -204,8 +206,8 @@ func handleWithoutInput(handler HandlerWithoutInput, errHandler ErrorHandler) gi
 func handleWithMultiPartFormInput(handler HandlerWithInput, errHandler ErrorHandler) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		input := handler.GetInput()
-		err := binding.FormMultipart.Bind(ginCtx.Request, input)
 
+		err := binding.FormMultipart.Bind(ginCtx.Request, input)
 		if err != nil && !errors.Is(err, http.ErrMissingFile) {
 			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
 				Err:  err,
@@ -222,6 +224,7 @@ func handleWithMultiPartFormInput(handler HandlerWithInput, errHandler ErrorHand
 func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHandler ErrorHandler) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		input := handler.GetInput()
+
 		err := binding.Bind(ginCtx.Request, input)
 		if err != nil {
 			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
@@ -268,6 +271,7 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 func handleWithMultipleBindings(handler HandlerWithMultipleBindings, errHandler ErrorHandler) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		input := handler.GetInput()
+
 		bindings := handler.GetBindings()
 
 		for i := 0; i < len(bindings); i++ {
@@ -322,6 +326,19 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 		return
 	}
 
+	if isMutableInput(input) {
+		modErr := modifyInput(ginCtx, input)
+
+		if modErr != nil {
+			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+				Err:  modErr,
+				Type: gin.ErrorTypePrivate,
+			})
+
+			return
+		}
+	}
+
 	request := &Request{
 		Header:   ginCtx.Request.Header,
 		Cookies:  parseCookies(ginCtx.Request),
@@ -363,6 +380,22 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 
 	writeResponseHeaders(ginCtx, resp)
 	writer(ginCtx)
+}
+
+func isMutableInput(input interface{}) bool {
+	if input == nil {
+		return false
+	}
+
+	if reflect.ValueOf(input).Kind() != reflect.Pointer {
+		return false
+	}
+
+	if reflect.ValueOf(input).Elem().Kind() != reflect.Struct {
+		return false
+	}
+
+	return true
 }
 
 func parseCookies(request *http.Request) map[string]string {
