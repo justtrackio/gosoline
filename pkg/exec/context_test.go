@@ -41,7 +41,7 @@ func (s *contextTestSuite) TestWithDelayedCancelContext() {
 	s.assertNotCanceled(ctx)
 
 	// only after some time passes, the context is canceled
-	s.fakeClock.BlockUntil(1)
+	s.fakeClock.BlockUntilTimers(1)
 	s.fakeClock.Advance(time.Minute)
 	stop() // Stop returns only after the go routine is gone
 	s.assertCanceled(ctx, context.Canceled)
@@ -64,6 +64,27 @@ func (s *contextTestSuite) TestWithDelayedCancelContext_Stop() {
 	// even give it some time to wrongly propagate a cancel - as this should not happen, this should not change it
 	time.Sleep(time.Millisecond)
 	s.assertNotCanceled(ctx)
+}
+
+func (s *contextTestSuite) TestWithDelayedCancelContext_StopAfterCancel() {
+	parentCtx, cancel := context.WithCancel(context.Background())
+	ctx, stop := exec.WithDelayedCancelContext(parentCtx, time.Hour)
+
+	// initially the context is not canceled
+	s.assertNotCanceled(ctx)
+
+	// we cancel the context, so the delayed cancel will go into the waiting state
+	cancel()
+	// sleep some time to give the worker some time to go into the sleep mode
+	time.Sleep(time.Millisecond * 100)
+	s.assertCanceled(parentCtx, context.Canceled)
+	s.assertNotCanceled(ctx)
+
+	// we stop the delayed context, so it will immediately propagate the already pending cancel
+	stop()
+	// the context is now canceled
+	<-ctx.Done()
+	s.assertCanceled(ctx, context.Canceled)
 }
 
 func (s *contextTestSuite) TestWithStoppableDeadlineContext() {
