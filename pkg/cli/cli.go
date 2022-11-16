@@ -14,6 +14,9 @@ type kernelSettings struct {
 }
 
 func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.ModuleFactory) {
+	var err error
+	var cfgPostProcessors map[string]int
+
 	configOptions := []cfg.Option{
 		cfg.WithErrorHandlers(defaultErrorHandler),
 		cfg.WithConfigFile("./config.dist.yml", "yml"),
@@ -26,10 +29,19 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 		return
 	}
 
+	if cfgPostProcessors, err = cfg.ApplyPostProcessors(config); err != nil {
+		defaultErrorHandler("can not apply post processor on config: %w", err)
+		return
+	}
+
 	logger, err := newCliLogger()
 	if err != nil {
 		defaultErrorHandler("can not initialize the logger: %w", err)
 		return
+	}
+
+	for name, priority := range cfgPostProcessors {
+		logger.Info("applied priority %d config post processor '%s'", priority, name)
 	}
 
 	settings := &kernelSettings{}
