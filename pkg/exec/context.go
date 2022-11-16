@@ -110,14 +110,26 @@ func (c *stoppableContext) stop() {
 // WithDelayedCancelContext creates a context which propagates the cancellation of the parent context after a fixed delay
 // to the returned context. Call the returned StopFunc function to release resources associated with the returned context once
 // you no longer need it. Calling stop never returns before all resources have been released, so after Stop returns,
-// the context will not experience a delayed cancel anymore.
+// the context will not experience a delayed cancel anymore (however, if the parent context was already canceled the moment
+// you called stop, the child context will immediately get canceled).
 func WithDelayedCancelContext(parentCtx context.Context, delay time.Duration) (context.Context, StopFunc) {
 	return newStoppableContext(parentCtx, nil, func(ctx *stoppableContext) (bool, error) {
 		select {
 		case <-ctx.stopped:
 			return false, nil
 		case <-parentCtx.Done():
-			clock.Provider.Sleep(delay)
+			// we used to just call sleep here. but this is not good if you have the following sequence:
+			// - parent gets canceled
+			// - we sleep to propagate the cancel
+			// - we are stopped - so now we have a caller blocking on the sleep call in the end because they are waiting for the waitgroup
+			timer := clock.Provider.NewTimer(delay)
+			select {
+			case <-ctx.stopped:
+				timer.Stop()
+			case <-timer.Chan():
+				// nop
+			}
+
 			return true, parentCtx.Err()
 		}
 	})
