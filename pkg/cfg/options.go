@@ -8,6 +8,18 @@ import (
 
 type Option func(cfg *config) error
 
+type configFiles []string
+
+func (c *configFiles) String() string {
+	return strings.Join(*c, ",")
+}
+
+func (c *configFiles) Set(value string) error {
+	*c = append(*c, value)
+
+	return nil
+}
+
 func WithConfigFile(filePath string, fileType string) Option {
 	return func(cfg *config) error {
 		return readConfigFromFile(cfg, filePath, fileType)
@@ -18,14 +30,23 @@ func WithConfigFileFlag(flagName string) Option {
 	return func(cfg *config) error {
 		flags := flag.NewFlagSet("cfg", flag.ContinueOnError)
 
-		configFile := flags.String(flagName, "", "path to a config file")
+		var configFiles configFiles
+		flags.Var(&configFiles, flagName, "path to a config file")
 		err := flags.Parse(os.Args[1:])
 
 		if err != nil {
 			return err
 		}
 
-		return readConfigFromFile(cfg, *configFile, "yml")
+		for _, configFile := range configFiles {
+			err := readConfigFromFile(cfg, configFile, "yml")
+
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 }
 
