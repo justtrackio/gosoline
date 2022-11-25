@@ -10,9 +10,7 @@ import (
 
 type containerKeyType int
 
-var (
-	containerKey containerKeyType = 1
-)
+var containerKey containerKeyType = 1
 
 type ErrNoApplicationContainerFound struct{}
 

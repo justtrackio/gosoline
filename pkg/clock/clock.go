@@ -6,6 +6,7 @@ import (
 
 // A Clock provides the most commonly needed functions from the time package while allowing you to substitute them for unit
 // and integration tests.
+//
 //go:generate mockery --name Clock
 type Clock interface {
 	// After waits for the duration to elapse and then sends the current time on the returned channel.

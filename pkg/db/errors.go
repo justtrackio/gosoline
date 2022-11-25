@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
+
 	"github.com/VividCortex/mysqlerr"
 	"github.com/go-sql-driver/mysql"
 )

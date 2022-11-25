@@ -130,7 +130,7 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 	var cfg, val string
 	var ok bool
 	var zeroValue, defValue interface{}
-	var values, defaults = NewMapX(), NewMapX()
+	values, defaults := NewMapX(), NewMapX()
 
 	for i := 0; i < st.NumField(); i++ {
 		targetField := st.Field(i)
@@ -143,7 +143,6 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 
 		if targetField.Type.Kind() == reflect.Struct && targetField.Anonymous {
 			embeddedZeros, embeddedDefaults, err := s.doReadZeroAndDefaultValues(targetValue.Interface())
-
 			if err != nil {
 				return nil, nil, fmt.Errorf("can not read from embedded field %s", targetField.Name)
 			}
@@ -160,7 +159,6 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 
 		if targetField.Type.Kind() == reflect.Struct && targetField.Type != reflect.TypeOf(time.Time{}) {
 			v, d, err := s.doReadZeroAndDefaultValues(targetValue.Interface())
-
 			if err != nil {
 				return nil, nil, fmt.Errorf("can not read from nested field %s", targetField.Name)
 			}
@@ -462,7 +460,7 @@ func (s *Struct) doWriteMap(cfg string, targetValue reflect.Value, sourceMap *Ma
 	var elementValue reflect.Value
 	var elementMap *MapX
 	var finalValue interface{}
-	var sourceData = sourceMap.Get(cfg).Data()
+	sourceData := sourceMap.Get(cfg).Data()
 
 	sourceValue := reflect.ValueOf(sourceData)
 	targetType := targetValue.Type()
@@ -516,7 +514,7 @@ func (s *Struct) doWriteSlice(cfg string, targetValue reflect.Value, sourceValue
 	var err error
 	var finalValue interface{}
 	var interfaceSlice []interface{}
-	var targetSliceElementType = targetValue.Type().Elem()
+	targetSliceElementType := targetValue.Type().Elem()
 
 	sourceValue := sourceValues.Get(cfg).Data()
 
@@ -551,7 +549,6 @@ func (s *Struct) doWriteSlice(cfg string, targetValue reflect.Value, sourceValue
 
 func (s *Struct) doWriteStruct(cfg string, targetValue reflect.Value, sourceValues *MapX) error {
 	elementValues, err := sourceValues.Get(cfg).Map()
-
 	if err != nil {
 		return fmt.Errorf("value for field %s has to be a map but instead is %T", cfg, sourceValues.Get(cfg).Data())
 	}
@@ -643,7 +640,6 @@ func (s *Struct) cast(targetType reflect.Type, value interface{}) (interface{}, 
 
 	for _, caster := range s.casters {
 		casted, err := caster(targetType, value)
-
 		if err != nil {
 			return nil, fmt.Errorf("caster %T failed: %w", caster, err)
 		}

@@ -34,8 +34,10 @@ type Server struct {
 	healthServer *healthServer
 }
 
-type Middleware grpc.UnaryServerInterceptor
-type MiddlewareFactory func(logger log.Logger) Middleware
+type (
+	Middleware        grpc.UnaryServerInterceptor
+	MiddlewareFactory func(logger log.Logger) Middleware
+)
 
 // New returns a kernel.ModuleFactory for the Server kernel.Module.
 func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) kernel.ModuleFactory {

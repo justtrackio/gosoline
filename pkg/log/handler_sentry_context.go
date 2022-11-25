@@ -19,7 +19,6 @@ func SentryContextConfigProvider(config ConfigProvider, handler *HandlerSentry) 
 
 func SentryContextEcsMetadataProvider(_ ConfigProvider, handler *HandlerSentry) error {
 	ecsMetadata, err := ReadEcsMetadata()
-
 	if err != nil {
 		return fmt.Errorf("can not read ecs metadata: %w", err)
 	}

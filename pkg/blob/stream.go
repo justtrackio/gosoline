@@ -15,6 +15,7 @@ type ReadCloser interface {
 }
 
 // A reader that we can close and that can seek
+//
 //go:generate mockery --name ReadSeekerCloser
 type ReadSeekerCloser interface {
 	io.ReadSeeker
@@ -22,6 +23,7 @@ type ReadSeekerCloser interface {
 }
 
 // A stream is a source of bytes you can either get as a full []byte or stream as a reader.
+//
 //go:generate mockery --name Stream
 type Stream interface {
 	// Read all data and close the reader.

@@ -3,11 +3,12 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
+	"strconv"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4/database"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
-	"net/url"
-	"strconv"
 )
 
 const DriverMysql = "mysql"

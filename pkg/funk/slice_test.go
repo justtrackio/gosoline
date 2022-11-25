@@ -174,7 +174,7 @@ func TestIndex(t *testing.T) {
 		Foo string
 	}
 
-	var tests = map[string]struct {
+	tests := map[string]struct {
 		in    []obj
 		index int
 	}{
@@ -339,7 +339,7 @@ func TestRepeatStructPointer(t *testing.T) {
 }
 
 func TestTail(t *testing.T) {
-	var tests = map[string]struct {
+	tests := map[string]struct {
 		input    []string
 		expected []string
 	}{

@@ -101,7 +101,6 @@ func (s *currencyService) ToCurrency(ctx context.Context, to string, value float
 func (s *currencyService) getExchangeRate(ctx context.Context, to string) (float64, error) {
 	var exchangeRate float64
 	exists, err := s.store.Get(ctx, to, &exchangeRate)
-
 	if err != nil {
 		return 0, fmt.Errorf("CurrencyService: error getting exchange rate: %w", err)
 	}

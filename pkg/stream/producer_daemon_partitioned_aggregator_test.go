@@ -137,7 +137,6 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestGettingExplicitHashKe
 	})
 	s.NoError(err)
 	s.Nil(flush)
-
 }
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestGettingPartitionKeyFails() {

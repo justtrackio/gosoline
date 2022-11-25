@@ -24,7 +24,6 @@ func (m *RawMessage) MarshalToBytes() ([]byte, error) {
 
 func (m *RawMessage) MarshalToString() (string, error) {
 	bytes, err := m.MarshalToBytes()
-
 	if err != nil {
 		return "", err
 	}

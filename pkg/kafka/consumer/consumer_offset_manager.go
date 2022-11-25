@@ -2,9 +2,8 @@ package consumer
 
 import (
 	"context"
-	"time"
-
 	"sync"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/segmentio/kafka-go"

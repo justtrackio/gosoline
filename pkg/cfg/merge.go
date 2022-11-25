@@ -2,8 +2,9 @@ package cfg
 
 import (
 	"fmt"
-	"github.com/imdario/mergo"
 	"reflect"
+
+	"github.com/imdario/mergo"
 )
 
 func Merge(target interface{}, source interface{}) error {

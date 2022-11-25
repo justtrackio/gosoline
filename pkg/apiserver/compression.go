@@ -85,7 +85,6 @@ func parseLevel(level string) (int, error) {
 
 func decompressionFn(c *gin.Context) {
 	gzipReader, readUncompressedBytes, err := NewGZipBodyReader(c.Request.Body)
-
 	if err != nil {
 		// the body is not a proper gzip encoded body, so don't do anything
 		// the client most likely set the wrong content encoding on the message

@@ -38,7 +38,8 @@ func (d *BackoffDelayer) BackoffDelay(attempt int, _ error) (time.Duration, erro
 }
 
 // Returns a random value from the following interval:
-// 	[randomizationFactor * currentInterval, randomizationFactor * currentInterval].
+//
+//	[randomizationFactor * currentInterval, randomizationFactor * currentInterval].
 func (d *BackoffDelayer) getRandomValueFromInterval(currentInterval time.Duration) time.Duration {
 	delta := d.randomizationFactor * float64(currentInterval)
 	minInterval := float64(currentInterval) - delta

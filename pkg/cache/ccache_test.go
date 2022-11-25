@@ -1,10 +1,11 @@
 package cache
 
 import (
-	"github.com/karlseguin/ccache"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/karlseguin/ccache"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNew(t *testing.T) {

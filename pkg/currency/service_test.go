@@ -78,6 +78,7 @@ var historicalResponse = `<?xml version="1.0" encoding="UTF-8"?>
       </Cube>
    </Cube>
 </gesmes:Envelope>`
+
 var (
 	historicalRateKey  = "2021-01-02-USD"
 	historicalRateDate = time.Date(2021, time.January, 2, 0, 0, 0, 0, time.Local)
