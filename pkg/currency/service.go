@@ -3,6 +3,7 @@ package currency
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -11,19 +12,21 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-const closenessMargin = time.Minute
+const (
+	maxClockSkew = time.Minute
+	oneDay       = time.Hour * 24
+)
 
 //go:generate mockery --name Service
 type Service interface {
 	HasCurrency(ctx context.Context, currency string) (bool, error)
-	ToEur(ctx context.Context, value float64, from string) (float64, error)
-	ToUsd(ctx context.Context, value float64, from string) (float64, error)
-	ToCurrency(ctx context.Context, to string, value float64, from string) (float64, error)
-
 	HasCurrencyAtDate(ctx context.Context, currency string, date time.Time) (bool, error)
-	ToEurAtDate(ctx context.Context, value float64, from string, date time.Time) (float64, error)
-	ToUsdAtDate(ctx context.Context, value float64, from string, date time.Time) (float64, error)
-	ToCurrencyAtDate(ctx context.Context, to string, value float64, from string, date time.Time) (float64, error)
+	ToEur(ctx context.Context, value float64, fromCurrency string) (float64, error)
+	ToEurAtDate(ctx context.Context, value float64, fromCurrency string, date time.Time) (float64, error)
+	ToUsd(ctx context.Context, value float64, fromCurrency string) (float64, error)
+	ToUsdAtDate(ctx context.Context, value float64, fromCurrency string, date time.Time) (float64, error)
+	ToCurrency(ctx context.Context, toCurrency string, value float64, fromCurrency string) (float64, error)
+	ToCurrencyAtDate(ctx context.Context, toCurrency string, value float64, fromCurrency string, date time.Time) (float64, error)
 }
 
 type currencyService struct {
@@ -31,182 +34,181 @@ type currencyService struct {
 	clock clock.Clock
 }
 
-func New(ctx context.Context, config cfg.Config, logger log.Logger) (*currencyService, error) {
+func New(ctx context.Context, config cfg.Config, logger log.Logger) (Service, error) {
 	store, err := kvstore.ProvideConfigurableKvStore(ctx, config, logger, kvStoreName)
 	if err != nil {
-		return nil, fmt.Errorf("can not create kvStore: %w", err)
+		return nil, fmt.Errorf("can not create currency kvStore: %w", err)
 	}
 
 	return NewWithInterfaces(store, clock.Provider), nil
 }
 
-func NewWithInterfaces(store kvstore.KvStore, clock clock.Clock) *currencyService {
+func NewWithInterfaces(store kvstore.KvStore, clock clock.Clock) Service {
 	return &currencyService{
 		store: store,
 		clock: clock,
 	}
 }
 
-// returns whether we support converting a given currency or not and whether an error occurred or not
+// HasCurrency returns whether we support converting a given currency.
 func (s *currencyService) HasCurrency(ctx context.Context, currency string) (bool, error) {
-	if currency == "EUR" {
+	if strings.EqualFold(currency, Eur) {
 		return true, nil
 	}
 
-	return s.store.Contains(ctx, currency)
-}
-
-// returns the euro value for a given value and currency and nil if not error occurred. returns 0 and an error object otherwise.
-func (s *currencyService) ToEur(ctx context.Context, value float64, from string) (float64, error) {
-	if from == Eur {
-		return value, nil
-	}
-
-	exchangeRate, err := s.getExchangeRate(ctx, from)
+	exits, err := s.store.Contains(ctx, strings.ToUpper(currency))
 	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error parsing exchange rate: %w", err)
+		return false, fmt.Errorf("CurrencyService: error looking up exchange rate for %s: %w", currency, err)
 	}
 
-	return value / exchangeRate, nil
+	return exits, nil
 }
 
-// returns the us dollar value for a given value and currency and nil if not error occurred. returns 0 and an error object otherwise.
-func (s *currencyService) ToUsd(ctx context.Context, value float64, from string) (float64, error) {
-	if from == Usd {
-		return value, nil
-	}
-
-	return s.ToCurrency(ctx, Usd, value, from)
-}
-
-// returns the value in the currency given in the to parameter for a given value and currency given in the from parameter and nil if not error occurred. returns 0 and an error object otherwise.
-func (s *currencyService) ToCurrency(ctx context.Context, to string, value float64, from string) (float64, error) {
-	if from == to {
-		return value, nil
-	}
-
-	exchangeRate, err := s.getExchangeRate(ctx, to)
-	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error parsing exchange rate: %w", err)
-	}
-
-	eur, err := s.ToEur(ctx, value, from)
-	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error converting to eur: %w", err)
-	}
-
-	return eur * exchangeRate, nil
-}
-
-func (s *currencyService) getExchangeRate(ctx context.Context, to string) (float64, error) {
-	var exchangeRate float64
-	exists, err := s.store.Get(ctx, to, &exchangeRate)
-
-	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error getting exchange rate: %w", err)
-	}
-
-	if !exists {
-		return 0, fmt.Errorf("CurrencyService: currency not found: %s", to)
-	}
-
-	return exchangeRate, nil
-}
-
-// looks up the exchange rate value for a given currency at a given date in the kvStore.
-// if the date parameter is recent enough and a lookup for the given currency fails,
-// function will return the lookup for the previous day
-func (s *currencyService) getExchangeRateAtDate(ctx context.Context, currency string, date time.Time) (float64, error) {
-	var exchangeRate float64
-	key := historicalRateKey(date, currency)
-
-	exists, err := s.store.Get(ctx, key, &exchangeRate)
-	if err != nil {
-		return 0, fmt.Errorf("getExchangeRateAtDate: error getting exchange rate: %w", err)
-	}
-
-	if !exists {
-		if date.After(s.clock.Now().Add(-24 * time.Hour)) {
-			return s.getExchangeRateAtDate(ctx, currency, date.AddDate(0, 0, -1))
-		}
-
-		return 0, fmt.Errorf("getExchangeRateAtDate: currency not found: %s %s", currency, date)
-	}
-
-	return exchangeRate, nil
-}
-
-// returns whether we support converting a given currency at the given time or not and whether an error occurred or not
-// if the date parameter is recent enough and a lookup for the given currency misses,
-// function will return the lookup for the previous day
+// HasCurrencyAtDate returns whether we support converting a given currency at the given time.
+// We might fall back to yesterday's data if today's data is not yet up to date.
 func (s *currencyService) HasCurrencyAtDate(ctx context.Context, currency string, date time.Time) (bool, error) {
-	if currency == "EUR" {
+	if strings.EqualFold(currency, Eur) {
 		return true, nil
 	}
 
-	if date.After(s.clock.Now().Add(closenessMargin)) {
-		return false, fmt.Errorf("CurrencyService: requested date in the future")
+	if date.After(s.clock.Now().Add(maxClockSkew)) {
+		return false, fmt.Errorf("CurrencyService: requested date %s is in the future", date.Format(time.RFC3339))
 	}
 
-	key := historicalRateKey(date, currency)
+	key := historicalRateKey(date, strings.ToUpper(currency))
 	exists, err := s.store.Contains(ctx, key)
 	if err != nil {
-		return exists, err
+		return false, fmt.Errorf("CurrencyService: error looking up historic exchange rate for %s at %s: %w", currency, date.Format(YMDLayout), err)
 	}
 
-	if !exists && date.After(s.clock.Now().Add(-24*time.Hour)) {
+	if !exists && date.After(s.clock.Now().Add(-oneDay)) {
 		return s.HasCurrencyAtDate(ctx, currency, date.AddDate(0, 0, -1))
 	}
 
 	return exists, nil
 }
 
-// returns the euro value for a given value and currency at the given time and nil if not error occurred. returns 0 and an error object otherwise.
-func (s *currencyService) ToEurAtDate(ctx context.Context, value float64, from string, date time.Time) (float64, error) {
-	if from == Eur {
-		return value, nil
-	}
-
-	if date.After(s.clock.Now().Add(closenessMargin)) {
-		return 0, fmt.Errorf("CurrencyService: requested date in the future")
-	}
-
-	exchangeRate, err := s.getExchangeRateAtDate(ctx, from, date)
+// ToEur returns the Euro value for a given value and currency.
+func (s *currencyService) ToEur(ctx context.Context, value float64, fromCurrency string) (float64, error) {
+	exchangeRate, err := s.getExchangeRateToEur(ctx, fromCurrency)
 	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error parsing exchange rate historically: %w", err)
+		return 0, fmt.Errorf("CurrencyService: error parsing exchange rate for %s: %w", fromCurrency, err)
 	}
 
 	return value / exchangeRate, nil
 }
 
-// returns the us dollar value for a given value and currency at the given time and nil if not error occurred. returns 0 and an error object otherwise.
-func (s *currencyService) ToUsdAtDate(ctx context.Context, value float64, from string, date time.Time) (float64, error) {
-	if from == Usd {
-		return value, nil
+// ToEurAtDate returns the Euro value for a given value and currency at the given time.
+// We might fall back to yesterday's data if today's data is not yet up to date.
+func (s *currencyService) ToEurAtDate(ctx context.Context, value float64, fromCurrency string, date time.Time) (float64, error) {
+	if date.After(s.clock.Now().Add(maxClockSkew)) {
+		return 0, fmt.Errorf("CurrencyService: requested date %s is in the future", date.Format(time.RFC3339))
 	}
 
-	return s.ToCurrencyAtDate(ctx, Usd, value, from, date)
+	exchangeRate, err := s.getExchangeRateToEurAtDate(ctx, fromCurrency, date)
+	if err != nil {
+		return 0, fmt.Errorf("CurrencyService: error parsing historic exchange rate for %s at %s: %w", fromCurrency, date.Format(YMDLayout), err)
+	}
+
+	return value / exchangeRate, nil
 }
 
-// returns the value in the currency given in the to parameter for a given value and currency given in the from parameter and nil if not error occurred. returns 0 and an error object otherwise.
-func (s *currencyService) ToCurrencyAtDate(ctx context.Context, to string, value float64, from string, date time.Time) (float64, error) {
-	if from == to {
+// ToUsd returns the US dollar value for a given value and currency.
+func (s *currencyService) ToUsd(ctx context.Context, value float64, fromCurrency string) (float64, error) {
+	return s.ToCurrency(ctx, Usd, value, fromCurrency)
+}
+
+// ToUsdAtDate returns the US dollar value for a given value and currency at the given time.
+// We might fall back to yesterday's data if today's data is not yet up to date.
+func (s *currencyService) ToUsdAtDate(ctx context.Context, value float64, fromCurrency string, date time.Time) (float64, error) {
+	return s.ToCurrencyAtDate(ctx, Usd, value, fromCurrency, date)
+}
+
+// ToCurrency returns the value converted from one currency to another currency.
+func (s *currencyService) ToCurrency(ctx context.Context, toCurrency string, value float64, fromCurrency string) (float64, error) {
+	if strings.EqualFold(fromCurrency, toCurrency) {
 		return value, nil
 	}
 
-	if date.After(s.clock.Now().Add(closenessMargin)) {
-		return 0, fmt.Errorf("CurrencyService: requested date in the future")
+	exchangeRate, err := s.getExchangeRateToEur(ctx, toCurrency)
+	if err != nil {
+		return 0, fmt.Errorf("CurrencyService: error parsing exchange rate for %s: %w", toCurrency, err)
 	}
 
-	exchangeRate, err := s.getExchangeRateAtDate(ctx, to, date)
+	eur, err := s.ToEur(ctx, value, fromCurrency)
 	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error parsing exchange rate historically: %w", err)
-	}
-
-	eur, err := s.ToEurAtDate(ctx, value, from, date)
-	if err != nil {
-		return 0, fmt.Errorf("CurrencyService: error converting to eur historically: %w", err)
+		return 0, fmt.Errorf("CurrencyService: error converting %s to EUR: %w", fromCurrency, err)
 	}
 
 	return eur * exchangeRate, nil
+}
+
+// ToCurrencyAtDate returns the value converted from one currency to another currency at the given time.
+// We might fall back to yesterday's data if today's data is not yet up to date.
+func (s *currencyService) ToCurrencyAtDate(ctx context.Context, toCurrency string, value float64, fromCurrency string, date time.Time) (float64, error) {
+	if strings.EqualFold(fromCurrency, toCurrency) {
+		return value, nil
+	}
+
+	if date.After(s.clock.Now().Add(maxClockSkew)) {
+		return 0, fmt.Errorf("CurrencyService: requested date %s is in the future", date.Format(time.RFC3339))
+	}
+
+	exchangeRate, err := s.getExchangeRateToEurAtDate(ctx, toCurrency, date)
+	if err != nil {
+		return 0, fmt.Errorf("CurrencyService: error parsing historic exchange rate for %s at %s: %w", toCurrency, date.Format(YMDLayout), err)
+	}
+
+	eur, err := s.ToEurAtDate(ctx, value, fromCurrency, date)
+	if err != nil {
+		return 0, fmt.Errorf("CurrencyService: error converting historic %s to EUR at %s: %w", fromCurrency, date.Format(YMDLayout), err)
+	}
+
+	return eur * exchangeRate, nil
+}
+
+// getExchangeRateToEurAtDate looks up the exchange rate value for a given currency in the kvStore.
+func (s *currencyService) getExchangeRateToEur(ctx context.Context, currency string) (float64, error) {
+	if strings.EqualFold(currency, Eur) {
+		return 1, nil
+	}
+
+	var exchangeRate float64
+	exists, err := s.store.Get(ctx, strings.ToUpper(currency), &exchangeRate)
+
+	if err != nil {
+		return 0, fmt.Errorf("CurrencyService: error getting exchange rate for %s: %w", currency, err)
+	}
+
+	if !exists {
+		return 0, fmt.Errorf("CurrencyService: currency %s not found", currency)
+	}
+
+	return exchangeRate, nil
+}
+
+// getExchangeRateToEurAtDate looks up the exchange rate value for a given currency at a given date in the kvStore.
+// We might fall back to yesterday's data if today's data is not yet up to date.
+func (s *currencyService) getExchangeRateToEurAtDate(ctx context.Context, currency string, date time.Time) (float64, error) {
+	if strings.EqualFold(currency, Eur) {
+		return 1, nil
+	}
+
+	var exchangeRate float64
+	key := historicalRateKey(date, strings.ToUpper(currency))
+
+	exists, err := s.store.Get(ctx, key, &exchangeRate)
+	if err != nil {
+		return 0, fmt.Errorf("CurrencyService: error getting historic exchange rate for %s at %s: %w", currency, date.Format(YMDLayout), err)
+	}
+
+	if !exists {
+		if date.After(s.clock.Now().Add(-oneDay)) {
+			return s.getExchangeRateToEurAtDate(ctx, currency, date.AddDate(0, 0, -1))
+		}
+
+		return 0, fmt.Errorf("CurrencyService: historic currency %s at %s not found", currency, date.Format(YMDLayout))
+	}
+
+	return exchangeRate, nil
 }
