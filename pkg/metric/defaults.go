@@ -14,3 +14,20 @@ func addMetricDefaults(data ...*Datum) {
 		metricDefaults[id] = datum
 	}
 }
+
+func amendFromDefault(datum *Datum) {
+	defId := datum.Id()
+	def, ok := metricDefaults[defId]
+
+	if !ok {
+		return
+	}
+
+	if datum.Priority == 0 {
+		datum.Priority = def.Priority
+	}
+
+	if datum.Unit == "" {
+		datum.Unit = def.Unit
+	}
+}

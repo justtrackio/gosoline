@@ -145,7 +145,7 @@ func (d *Daemon) append(datum *Datum) {
 	key := fmt.Sprintf("%s-%s-%s", datum.MetricName, dimKey, timeKey)
 
 	if _, ok := d.batch[key]; !ok {
-		d.amendFromDefault(datum)
+		amendFromDefault(datum)
 
 		if err := datum.IsValid(); err != nil {
 			d.logger.Warn("invalid metric: %s", err.Error())
@@ -165,23 +165,6 @@ func (d *Daemon) append(datum *Datum) {
 
 	existing := d.batch[key]
 	existing.Values = append(existing.Values, datum.Value)
-}
-
-func (d *Daemon) amendFromDefault(datum *Datum) {
-	defId := datum.Id()
-	def, ok := metricDefaults[defId]
-
-	if !ok {
-		return
-	}
-
-	if datum.Priority == 0 {
-		datum.Priority = def.Priority
-	}
-
-	if datum.Unit == "" {
-		datum.Unit = def.Unit
-	}
 }
 
 func (d *Daemon) resetBatch() {
