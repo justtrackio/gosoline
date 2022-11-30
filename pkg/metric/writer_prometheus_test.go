@@ -84,6 +84,7 @@ func Test_promWriter_Write(t *testing.T) {
 
 	tests := []struct {
 		name     string
+		initFunc func()
 		data     metric.Data
 		expected fields
 	}{
@@ -118,9 +119,43 @@ func Test_promWriter_Write(t *testing.T) {
 				count: 3,
 			},
 		},
+		{
+			name: "multiple with default",
+			initFunc: func() {
+				metric.NewWriter(&metric.Datum{
+					Priority:   metric.PriorityHigh,
+					MetricName: "counter",
+					Value:      0,
+					Unit:       metric.UnitPromCounter,
+				})
+			},
+			data: metric.Data{
+				&metric.Datum{
+					MetricName: "counter",
+					Value:      1,
+				},
+				&metric.Datum{
+					MetricName: "counter",
+					Value:      1,
+				},
+				&metric.Datum{
+					MetricName: "counter",
+					Value:      1,
+				},
+			},
+			expected: fields{
+				unit:  "prom-counter",
+				name:  "ns:test:write_counter",
+				count: 3,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.initFunc != nil {
+				tt.initFunc()
+			}
+
 			registry := prometheus.NewRegistry()
 			w := metric.NewPromWriterWithInterfaces(logger, registry, "ns:test:write", 1000)
 			w.Write(tt.data)

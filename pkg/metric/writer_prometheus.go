@@ -83,6 +83,8 @@ func (w *promWriter) Write(batch Data) {
 	}
 
 	for i := range batch {
+		amendFromDefault(batch[i])
+
 		if batch[i].Priority < w.GetPriority() {
 			continue
 		}
