@@ -118,6 +118,36 @@ func Test_promWriter_Write(t *testing.T) {
 				count: 3,
 			},
 		},
+		{
+			name: "multiple metrics with different priorities",
+			data: metric.Data{
+				&metric.Datum{
+					Priority:   metric.PriorityHigh,
+					MetricName: "counter",
+					Dimensions: nil,
+					Value:      1,
+					Unit:       metric.UnitPromCounter,
+				},
+				&metric.Datum{
+					Priority:   metric.PriorityLow,
+					MetricName: "counter",
+					Dimensions: nil,
+					Value:      1,
+					Unit:       metric.UnitPromCounter,
+				},
+				&metric.Datum{
+					MetricName: "counter",
+					Dimensions: nil,
+					Value:      1,
+					Unit:       metric.UnitPromCounter,
+				},
+			},
+			expected: fields{
+				unit:  "prom-counter",
+				name:  "ns:test:write_counter",
+				count: 3,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

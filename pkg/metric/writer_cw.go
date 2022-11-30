@@ -18,13 +18,6 @@ import (
 )
 
 const (
-	PriorityLow  = 1
-	PriorityHigh = 2
-
-	UnitCount        = types.StandardUnitCount
-	UnitSeconds      = types.StandardUnitSeconds
-	UnitMilliseconds = types.StandardUnitMilliseconds
-
 	chunkSizeCloudWatch = 20
 	minusOneWeek        = -1 * 7 * 24 * time.Hour
 	plusOneHour         = 1 * time.Hour
