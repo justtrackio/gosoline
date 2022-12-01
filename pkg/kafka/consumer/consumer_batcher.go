@@ -33,14 +33,21 @@ func (b *batcher) Get(ctx context.Context) []kafka.Message {
 	ticker := time.NewTicker(b.batchTimeout)
 	defer ticker.Stop()
 
-	batch := []kafka.Message{}
+	var (
+		batch     = []kafka.Message{}
+		processed = map[Offset]bool{}
+	)
 
 OUT:
 	for len(batch) < b.batchSize {
 		select {
 		case m := <-b.input:
+			if _, ok := processed[Offset{Partition: m.Partition, Index: m.Offset}]; ok {
+				// skip already processed message
+				continue
+			}
+			processed[Offset{Partition: m.Partition, Index: m.Offset}] = true
 			batch = append(batch, m)
-
 		case <-ticker.C:
 			// Batch timeout has elapsed.
 			if len(batch) > 0 {
