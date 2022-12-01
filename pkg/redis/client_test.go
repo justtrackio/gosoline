@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alicebob/miniredis"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/elliotchance/redismock/v8"
 	baseRedis "github.com/go-redis/redis/v8"
 	"github.com/justtrackio/gosoline/pkg/exec"
@@ -153,14 +153,27 @@ func (s *ClientWithMiniRedisTestSuite) TestHMGet() {
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestHGetAll() {
-	err := s.client.HSet(context.Background(), "key", "field", "value1")
+	err := s.client.HSet(context.Background(), "key", "field1", "value1")
 	s.NoError(err, "there should be no error on HSet")
 	serr := s.client.HSet(context.Background(), "key", "field2", "value2")
 	s.NoError(serr, "there should be no error on HSet")
 
 	vals, err := s.client.HGetAll(context.Background(), "key")
 	s.NoError(err, "there should be no error on HGetAll")
-	s.Equal(map[string]string{"field": "value1", "field2": "value2"}, vals)
+	s.Equal(map[string]string{"field1": "value1", "field2": "value2"}, vals)
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestGetDel() {
+	var ttl time.Duration
+	err := s.client.Set(context.Background(), "key", "value1", ttl)
+	s.NoError(err, "there should be no error on HSet")
+
+	val, err := s.client.GetDel(context.Background(), "key")
+	s.NoError(err, "there should be no error on HGetAll")
+	s.Equal("value1", val)
+
+	_, err = s.client.GetDel(context.Background(), "key")
+	s.Equal(redis.Nil, err)
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestHDel() {
