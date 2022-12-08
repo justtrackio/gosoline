@@ -23,7 +23,7 @@ type ServiceSettings struct {
 	AutoCreate bool
 }
 
-//go:generate mockery -name Service
+//go:generate mockery --name Service
 type Service interface {
 	CreateQueue(ctx context.Context, settings *Settings) (*Properties, error)
 	QueueExists(ctx context.Context, name string) (bool, error)

@@ -92,7 +92,8 @@ func (d *Definitions) PUT(relativePath string, handlers ...gin.HandlerFunc) {
 	d.Handle("PUT", relativePath, handlers...)
 }
 
-func buildRouter(definitions *Definitions, router gin.IRouter) {
+func buildRouter(definitions *Definitions, router gin.IRouter) []Definition {
+	var definitionList []Definition
 	grp := router
 
 	if definitions.parent != nil {
@@ -104,17 +105,19 @@ func buildRouter(definitions *Definitions, router gin.IRouter) {
 	}
 
 	for _, d := range definitions.routes {
-		metricHandler := CreateMetricHandler(d)
 		handlers := make([]gin.HandlerFunc, 0, len(d.handlers)+1)
-		handlers = append(handlers, metricHandler)
 		handlers = append(handlers, d.handlers...)
 
 		grp.Handle(d.httpMethod, d.relativePath, handlers...)
 	}
 
+	definitionList = append(definitionList, definitions.routes...)
+
 	for _, c := range definitions.children {
-		buildRouter(c, grp)
+		definitionList = append(definitionList, buildRouter(c, grp)...)
 	}
+
+	return definitionList
 }
 
 func removeDuplicates(s string) string {

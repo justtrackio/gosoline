@@ -9,16 +9,15 @@ type writer struct {
 	channel *metricChannel
 }
 
-func NewWriter(defaults ...*Datum) *writer {
-	testClock := clock.NewRealClock()
+func NewWriter(defaults ...*Datum) Writer {
 	channel := ProviderMetricChannel()
 
 	addMetricDefaults(defaults...)
 
-	return NewWriterWithInterfaces(testClock, channel)
+	return NewWriterWithInterfaces(clock.Provider, channel)
 }
 
-func NewWriterWithInterfaces(clock clock.Clock, channel *metricChannel) *writer {
+func NewWriterWithInterfaces(clock clock.Clock, channel *metricChannel) Writer {
 	return &writer{
 		clock:   clock,
 		channel: channel,
