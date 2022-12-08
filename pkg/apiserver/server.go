@@ -76,7 +76,10 @@ func New(definer Definer) kernel.ModuleFactory {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
 		}
 
+		metricMiddleware, setupMetricMiddleware := NewMetricMiddleware()
+
 		router := gin.New()
+		router.Use(metricMiddleware)
 		router.Use(RecoveryWithSentry(logger))
 		router.Use(LoggingMiddleware(logger))
 		router.Use(location.Default())
@@ -97,7 +100,8 @@ func New(definer Definer) kernel.ModuleFactory {
 			return nil, fmt.Errorf("can not access appctx metadata: %w", err)
 		}
 
-		buildRouter(definitions, router)
+		definitionList := buildRouter(definitions, router)
+		setupMetricMiddleware(definitionList)
 
 		for _, route := range router.Routes() {
 			err = metadata.Append("apiserver.routes", HandlerMetadata{
