@@ -30,8 +30,17 @@ func NewMetricMiddleware() (gin.HandlerFunc, func(definitions []Definition)) {
 func metricMiddleware(ginCtx *gin.Context, writer metric.Writer) {
 	start := time.Now()
 	path := ginCtx.FullPath()
+	if path == "" {
+		// the path was not found, so no need to print anything
+		return
+	}
+
 	path = strings.TrimRight(path, "/")
 	path = removeDuplicates(path)
+	if path == "" {
+		// we have a route at the root, so we have to use a single slash; empty dimensions are forbidden by cloudwatch
+		path = "/"
+	}
 
 	ginCtx.Next()
 
