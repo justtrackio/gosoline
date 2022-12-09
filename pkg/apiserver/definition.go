@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/http"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -77,19 +78,19 @@ func (d *Definitions) Handle(httpMethod, relativePath string, handlers ...gin.Ha
 }
 
 func (d *Definitions) POST(relativePath string, handlers ...gin.HandlerFunc) {
-	d.Handle("POST", relativePath, handlers...)
+	d.Handle(http.PostRequest, relativePath, handlers...)
 }
 
 func (d *Definitions) GET(relativePath string, handlers ...gin.HandlerFunc) {
-	d.Handle("GET", relativePath, handlers...)
+	d.Handle(http.GetRequest, relativePath, handlers...)
 }
 
 func (d *Definitions) DELETE(relativePath string, handlers ...gin.HandlerFunc) {
-	d.Handle("DELETE", relativePath, handlers...)
+	d.Handle(http.DeleteRequest, relativePath, handlers...)
 }
 
 func (d *Definitions) PUT(relativePath string, handlers ...gin.HandlerFunc) {
-	d.Handle("PUT", relativePath, handlers...)
+	d.Handle(http.PutRequest, relativePath, handlers...)
 }
 
 func buildRouter(definitions *Definitions, router gin.IRouter) []Definition {

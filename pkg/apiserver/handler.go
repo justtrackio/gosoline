@@ -31,6 +31,7 @@ type Request struct {
 	ClientIp string
 	Cookies  map[string]string
 	Header   http.Header
+	Method   string
 	Params   gin.Params
 	Url      *url.URL
 }
@@ -247,6 +248,7 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 
 		reqCtx := ginCtx.Request.Context()
 		request := &Request{
+			Method:   ginCtx.Request.Method,
 			Header:   ginCtx.Request.Header,
 			Cookies:  parseCookies(ginCtx.Request),
 			Params:   ginCtx.Params,
@@ -340,6 +342,7 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 	}
 
 	request := &Request{
+		Method:   ginCtx.Request.Method,
 		Header:   ginCtx.Request.Header,
 		Cookies:  parseCookies(ginCtx.Request),
 		Params:   ginCtx.Params,
