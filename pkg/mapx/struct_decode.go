@@ -1,9 +1,10 @@
 package mapx
 
 import (
-	"github.com/spf13/cast"
 	"reflect"
 	"time"
+
+	"github.com/spf13/cast"
 )
 
 type MapStructDecoder func(targetType reflect.Type, val interface{}) (interface{}, error)
