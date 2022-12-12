@@ -6,7 +6,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/spf13/cast"
+)
+
+const (
+	optionNoCast   = "nocast"
+	optionNoDecode = "nodecode"
 )
 
 type StructKey struct {
@@ -14,6 +20,12 @@ type StructKey struct {
 	Key     string
 	Kind    reflect.Kind
 	SubKeys []StructKey
+}
+
+type StructTag struct {
+	Name     string
+	NoCast   bool
+	NoDecode bool
 }
 
 func (k StructKey) String() string {
@@ -60,7 +72,7 @@ func (s *Struct) doKeys(parent string, target interface{}) []StructKey {
 	sv := reflect.ValueOf(target)
 
 	var ok bool
-	var key string
+	var tag *StructTag
 	var keys []StructKey
 
 	for i := 0; i < st.NumField(); i++ {
@@ -80,7 +92,7 @@ func (s *Struct) doKeys(parent string, target interface{}) []StructKey {
 			continue
 		}
 
-		if key, ok = targetField.Tag.Lookup(s.settings.FieldTag); !ok {
+		if tag, ok = s.readTag(targetField.Tag); !ok {
 			continue
 		}
 
@@ -93,11 +105,11 @@ func (s *Struct) doKeys(parent string, target interface{}) []StructKey {
 
 			if slValue.Kind() == reflect.Struct && slValue.Type() != reflect.TypeOf(time.Time{}) {
 				slInterface := slValue.Interface()
-				slKeys := s.doKeys(key, slInterface)
+				slKeys := s.doKeys(tag.Name, slInterface)
 
 				keys = append(keys, StructKey{
 					Parent:  parent,
-					Key:     key,
+					Key:     tag.Name,
 					Kind:    targetField.Type.Kind(),
 					SubKeys: slKeys,
 				})
@@ -108,7 +120,7 @@ func (s *Struct) doKeys(parent string, target interface{}) []StructKey {
 
 		keys = append(keys, StructKey{
 			Parent: parent,
-			Key:    key,
+			Key:    tag.Name,
 			Kind:   targetField.Type.Kind(),
 		})
 	}
@@ -127,10 +139,11 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 	sv := reflect.ValueOf(target)
 
 	var err error
-	var cfg, val string
+	var val string
+	var tag *StructTag
 	var ok bool
 	var zeroValue, defValue interface{}
-	var values, defaults = NewMapX(), NewMapX()
+	values, defaults := NewMapX(), NewMapX()
 
 	for i := 0; i < st.NumField(); i++ {
 		targetField := st.Field(i)
@@ -143,7 +156,6 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 
 		if targetField.Type.Kind() == reflect.Struct && targetField.Anonymous {
 			embeddedZeros, embeddedDefaults, err := s.doReadZeroAndDefaultValues(targetValue.Interface())
-
 			if err != nil {
 				return nil, nil, fmt.Errorf("can not read from embedded field %s", targetField.Name)
 			}
@@ -154,47 +166,46 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 			continue
 		}
 
-		if cfg, ok = targetField.Tag.Lookup(s.settings.FieldTag); !ok {
+		if tag, ok = s.readTag(targetField.Tag); !ok {
 			continue
 		}
 
 		if targetField.Type.Kind() == reflect.Struct && targetField.Type != reflect.TypeOf(time.Time{}) {
 			v, d, err := s.doReadZeroAndDefaultValues(targetValue.Interface())
-
 			if err != nil {
 				return nil, nil, fmt.Errorf("can not read from nested field %s", targetField.Name)
 			}
 
-			values.Set(cfg, v.Msi())
-			defaults.Set(cfg, d.Msi())
+			values.Set(tag.Name, v.Msi())
+			defaults.Set(tag.Name, d.Msi())
 
 			continue
 		}
 
 		if targetField.Type.Kind() == reflect.Slice {
 			zeroValue = reflect.MakeSlice(targetField.Type, 0, 4).Interface()
-			values.Set(cfg, zeroValue)
+			values.Set(tag.Name, zeroValue)
 			continue
 		}
 
 		if targetField.Type.Kind() == reflect.Map {
 			zeroValue = reflect.MakeMap(targetField.Type).Interface()
-			values.Set(cfg, zeroValue)
+			values.Set(tag.Name, zeroValue)
 			continue
 		}
 
 		zeroValue = reflect.Zero(targetField.Type).Interface()
-		values.Set(cfg, zeroValue)
+		values.Set(tag.Name, zeroValue)
 
 		if val, ok = targetField.Tag.Lookup(s.settings.DefaultTag); !ok {
 			continue
 		}
 
 		if defValue, err = s.cast(targetField.Type, val); err != nil {
-			return nil, nil, fmt.Errorf("can not read default from field %s: %w", cfg, err)
+			return nil, nil, fmt.Errorf("can not read default from field %s: %w", tag.Name, err)
 		}
 
-		defaults.Set(cfg, defValue)
+		defaults.Set(tag.Name, defValue)
 	}
 
 	return values, defaults, nil
@@ -295,7 +306,8 @@ func (s *Struct) doReadStruct(path string, mapValues *MapX, target interface{}) 
 
 	var ok bool
 	var err error
-	var cfg, fieldPath string
+	var tag *StructTag
+	var fieldPath string
 
 	for i := 0; i < targetValue.NumField(); i++ {
 		fieldType := targetType.Field(i)
@@ -317,11 +329,11 @@ func (s *Struct) doReadStruct(path string, mapValues *MapX, target interface{}) 
 		}
 
 		// skip fields without tag
-		if cfg, ok = fieldType.Tag.Lookup(s.settings.FieldTag); !ok {
+		if tag, ok = s.readTag(fieldType.Tag); !ok {
 			continue
 		}
 
-		fieldPath = fmt.Sprintf("%s.%s", path, cfg)
+		fieldPath = fmt.Sprintf("%s.%s", path, tag.Name)
 
 		if fieldValue.Kind() == reflect.Map {
 			target = fieldValue.Interface()
@@ -370,7 +382,7 @@ func (s *Struct) doWrite(target interface{}, sourceValues *MapX) error {
 	sv = sv.Elem()
 
 	var err error
-	var cfg string
+	var tag *StructTag
 	var sourceValue interface{}
 	var ok bool
 
@@ -384,33 +396,33 @@ func (s *Struct) doWrite(target interface{}, sourceValues *MapX) error {
 		}
 
 		if !targetValue.IsValid() {
-			return fmt.Errorf("field %s is invalid", cfg)
+			return fmt.Errorf("field %s is invalid", targetField.Name)
 		}
 
 		if !targetValue.CanSet() {
-			return fmt.Errorf("field %s is not addressable", cfg)
+			return fmt.Errorf("field %s is not addressable", targetField.Name)
 		}
 
 		if targetField.Anonymous {
-			if err = s.doWriteAnonymous(cfg, targetValue, sourceValues); err != nil {
+			if err = s.doWriteAnonymous(targetField.Name, targetValue, sourceValues); err != nil {
 				return err
 			}
 
 			continue
 		}
 
-		if cfg, ok = targetField.Tag.Lookup(s.settings.FieldTag); !ok {
+		if tag, ok = s.readTag(targetField.Tag); !ok {
 			continue
 		}
 
-		if !sourceValues.Has(cfg) {
+		if !sourceValues.Has(tag.Name) {
 			continue
 		}
 
-		sourceValue = sourceValues.Get(cfg).Data()
+		sourceValue = sourceValues.Get(tag.Name).Data()
 
 		if targetValue.Kind() == reflect.Map {
-			if err = s.doWriteMap(cfg, targetValue, sourceValues); err != nil {
+			if err = s.doWriteMap(tag, targetValue, sourceValues); err != nil {
 				return err
 			}
 
@@ -418,7 +430,7 @@ func (s *Struct) doWrite(target interface{}, sourceValues *MapX) error {
 		}
 
 		if targetValue.Kind() == reflect.Slice {
-			if err = s.doWriteSlice(cfg, targetValue, sourceValues); err != nil {
+			if err = s.doWriteSlice(tag, targetValue, sourceValues); err != nil {
 				return err
 			}
 
@@ -426,15 +438,15 @@ func (s *Struct) doWrite(target interface{}, sourceValues *MapX) error {
 		}
 
 		if targetValue.Kind() == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{}) {
-			if err = s.doWriteStruct(cfg, targetValue, sourceValues); err != nil {
+			if err = s.doWriteStruct(tag.Name, targetValue, sourceValues); err != nil {
 				return err
 			}
 
 			continue
 		}
 
-		if sourceValue, err = s.decodeAndCastValue(targetValue.Type(), sourceValue); err != nil {
-			return fmt.Errorf("can not decode and cast value for key %s: %w", cfg, err)
+		if sourceValue, err = s.decodeAndCastValue(tag, targetValue.Type(), sourceValue); err != nil {
+			return fmt.Errorf("can not decode and cast value for key %s: %w", tag.Name, err)
 		}
 
 		targetValue.Set(reflect.ValueOf(sourceValue))
@@ -457,12 +469,12 @@ func (s *Struct) doWriteAnonymous(cfg string, targetValue reflect.Value, sourceV
 	return nil
 }
 
-func (s *Struct) doWriteMap(cfg string, targetValue reflect.Value, sourceMap *MapX) error {
+func (s *Struct) doWriteMap(tag *StructTag, targetValue reflect.Value, sourceMap *MapX) error {
 	var err error
 	var elementValue reflect.Value
 	var elementMap *MapX
 	var finalValue interface{}
-	var sourceData = sourceMap.Get(cfg).Data()
+	sourceData := sourceMap.Get(tag.Name).Data()
 
 	sourceValue := reflect.ValueOf(sourceData)
 	targetType := targetValue.Type()
@@ -470,7 +482,7 @@ func (s *Struct) doWriteMap(cfg string, targetValue reflect.Value, sourceMap *Ma
 	targetValue.Set(reflect.MakeMap(targetType))
 
 	if sourceValue.Kind() != reflect.Map {
-		return fmt.Errorf("value for field %s has to be a map but instead is %T", cfg, sourceData)
+		return fmt.Errorf("value for field %s has to be a map but instead is %T", tag.Name, sourceData)
 	}
 
 	for _, key := range sourceValue.MapKeys() {
@@ -480,7 +492,7 @@ func (s *Struct) doWriteMap(cfg string, targetValue reflect.Value, sourceMap *Ma
 			key = reflect.ValueOf(keyValue)
 		}
 
-		selector := fmt.Sprintf("%s.%v", cfg, key.Interface())
+		selector := fmt.Sprintf("%s.%v", tag.Name, key.Interface())
 		elementData := sourceMap.Get(selector)
 
 		if elementData.IsMap() {
@@ -488,11 +500,11 @@ func (s *Struct) doWriteMap(cfg string, targetValue reflect.Value, sourceMap *Ma
 			elementInterface := elementValue.Interface()
 
 			if elementMap, err = elementData.Map(); err != nil {
-				return fmt.Errorf("element of field %s is not of type map: %w", cfg, err)
+				return fmt.Errorf("element of field %s is not of type map: %w", tag.Name, err)
 			}
 
 			if err = s.doWrite(elementInterface, elementMap); err != nil {
-				return fmt.Errorf("can not write map element of field %s: %w", cfg, err)
+				return fmt.Errorf("can not write map element of field %s: %w", tag.Name, err)
 			}
 
 			targetValue.SetMapIndex(key, elementValue.Elem())
@@ -502,8 +514,8 @@ func (s *Struct) doWriteMap(cfg string, targetValue reflect.Value, sourceMap *Ma
 		targetMapElementType := targetValue.Type().Elem()
 		elementValue := elementData.Data()
 
-		if finalValue, err = s.decodeAndCastValue(targetMapElementType, elementValue); err != nil {
-			return fmt.Errorf("can not decode and cast value for key %s: %w", cfg, err)
+		if finalValue, err = s.decodeAndCastValue(tag, targetMapElementType, elementValue); err != nil {
+			return fmt.Errorf("can not decode and cast value for key %s: %w", tag.Name, err)
 		}
 
 		targetValue.SetMapIndex(key, reflect.ValueOf(finalValue))
@@ -512,16 +524,16 @@ func (s *Struct) doWriteMap(cfg string, targetValue reflect.Value, sourceMap *Ma
 	return nil
 }
 
-func (s *Struct) doWriteSlice(cfg string, targetValue reflect.Value, sourceValues *MapX) error {
+func (s *Struct) doWriteSlice(tag *StructTag, targetValue reflect.Value, sourceValues *MapX) error {
 	var err error
 	var finalValue interface{}
 	var interfaceSlice []interface{}
-	var targetSliceElementType = targetValue.Type().Elem()
+	targetSliceElementType := targetValue.Type().Elem()
 
-	sourceValue := sourceValues.Get(cfg).Data()
+	sourceValue := sourceValues.Get(tag.Name).Data()
 
 	if interfaceSlice, err = s.trySlice(sourceValue); err != nil {
-		return fmt.Errorf("value for field %s has to be castable to []interface{} but is of type %T: %w", cfg, sourceValue, err)
+		return fmt.Errorf("value for field %s has to be castable to []interface{} but is of type %T: %w", tag.Name, sourceValue, err)
 	}
 
 	for j := 0; j < len(interfaceSlice); j++ {
@@ -532,14 +544,14 @@ func (s *Struct) doWriteSlice(cfg string, targetValue reflect.Value, sourceValue
 			elementMap := NewMapX(elementValue)
 
 			if err := s.doWrite(elementInterface, elementMap); err != nil {
-				return fmt.Errorf("can not write slice element of field %s: %w", cfg, err)
+				return fmt.Errorf("can not write slice element of field %s: %w", tag.Name, err)
 			}
 
 			indirect := reflect.Indirect(element)
 			targetValue.Set(reflect.Append(targetValue, indirect))
 		default:
-			if finalValue, err = s.decodeAndCastValue(targetSliceElementType, elementValue); err != nil {
-				return fmt.Errorf("can not decode and cast value for key %s: %w", cfg, err)
+			if finalValue, err = s.decodeAndCastValue(tag, targetSliceElementType, elementValue); err != nil {
+				return fmt.Errorf("can not decode and cast value for key %s: %w", tag.Name, err)
 			}
 
 			targetValue.Set(reflect.Append(targetValue, reflect.ValueOf(finalValue)))
@@ -551,7 +563,6 @@ func (s *Struct) doWriteSlice(cfg string, targetValue reflect.Value, sourceValue
 
 func (s *Struct) doWriteStruct(cfg string, targetValue reflect.Value, sourceValues *MapX) error {
 	elementValues, err := sourceValues.Get(cfg).Map()
-
 	if err != nil {
 		return fmt.Errorf("value for field %s has to be a map but instead is %T", cfg, sourceValues.Get(cfg).Data())
 	}
@@ -569,16 +580,20 @@ func (s *Struct) doWriteStruct(cfg string, targetValue reflect.Value, sourceValu
 	return nil
 }
 
-func (s *Struct) decodeAndCastValue(targetType reflect.Type, sourceValue interface{}) (interface{}, error) {
+func (s *Struct) decodeAndCastValue(tag *StructTag, targetType reflect.Type, sourceValue interface{}) (interface{}, error) {
 	var err error
 
-	if sourceValue, err = s.cast(targetType, sourceValue); err != nil {
-		return nil, fmt.Errorf("provided value %v doesn't match target type %v", sourceValue, targetType)
+	if !tag.NoCast {
+		if sourceValue, err = s.cast(targetType, sourceValue); err != nil {
+			return nil, fmt.Errorf("provided value %v doesn't match target type %v", sourceValue, targetType)
+		}
 	}
 
-	for _, decoder := range s.decoders {
-		if sourceValue, err = decoder(targetType, sourceValue); err != nil {
-			return nil, fmt.Errorf("can not decode value %v", sourceValue)
+	if !tag.NoDecode {
+		for _, decoder := range s.decoders {
+			if sourceValue, err = decoder(targetType, sourceValue); err != nil {
+				return nil, fmt.Errorf("can not decode value %v", sourceValue)
+			}
 		}
 	}
 
@@ -643,7 +658,6 @@ func (s *Struct) cast(targetType reflect.Type, value interface{}) (interface{}, 
 
 	for _, caster := range s.casters {
 		casted, err := caster(targetType, value)
-
 		if err != nil {
 			return nil, fmt.Errorf("caster %T failed: %w", caster, err)
 		}
@@ -721,4 +735,32 @@ func (s *Struct) trySlice(value interface{}) ([]interface{}, error) {
 	}
 
 	return slice, nil
+}
+
+func (s *Struct) readTag(sourceTag reflect.StructTag) (*StructTag, bool) {
+	var ok bool
+	var val string
+
+	if val, ok = sourceTag.Lookup(s.settings.FieldTag); !ok {
+		return nil, ok
+	}
+
+	parts := strings.Split(val, ",")
+	parts = funk.Map(parts, strings.TrimSpace)
+
+	tag := &StructTag{
+		Name: parts[0],
+	}
+
+	if len(parts) == 1 {
+		return tag, true
+	}
+
+	options := parts[1:]
+	options = funk.Map(options, strings.ToLower)
+
+	tag.NoCast = funk.Contains(options, optionNoCast)
+	tag.NoDecode = funk.Contains(options, optionNoDecode)
+
+	return tag, true
 }

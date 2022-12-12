@@ -1,6 +1,8 @@
 package mapx_test
 
 import (
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -895,6 +897,42 @@ func TestMapStruct_Write_Typed_MapNested(t *testing.T) {
 		assert.NoError(t, err, "there should be no error during write")
 		assert.Equal(t, expected, source)
 	})
+}
+
+func TestMapStruct_Decode(t *testing.T) {
+	type sourceStruct struct {
+		A string `cfg:"a"`
+		B string `cfg:"b,nodecode"`
+	}
+
+	source := &sourceStruct{}
+	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
+		FieldTag: "cfg",
+		Decoders: []mapx.MapStructDecoder{
+			func(targetType reflect.Type, val interface{}) (interface{}, error) {
+				if raw, ok := val.(string); ok {
+					return strings.ToUpper(raw), nil
+				}
+
+				return val, nil
+			},
+		},
+	})
+
+	assert.NoError(t, err, "there should be no error on creating the mapstruct")
+
+	err = ms.Write(mapx.NewMapX(map[string]interface{}{
+		"a": "foo",
+		"b": "bar",
+	}))
+
+	expected := &sourceStruct{
+		A: "FOO",
+		B: "bar",
+	}
+
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
 }
 
 func setupMapStructIO(t *testing.T, source interface{}) *mapx.Struct {
