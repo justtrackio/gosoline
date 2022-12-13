@@ -31,6 +31,10 @@ func (s SqsInputSettings) GetAppid() cfg.AppId {
 	return s.AppId
 }
 
+func (s SqsInputSettings) GetClientName() string {
+	return s.ClientName
+}
+
 func (s SqsInputSettings) GetQueueId() string {
 	return s.QueueId
 }
@@ -53,7 +57,16 @@ type sqsInput struct {
 func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsInputSettings) (*sqsInput, error) {
 	settings.AppId.PadFromConfig(config)
 
-	queueName := sqs.GetQueueName(settings)
+	var ok bool
+	var err error
+	var queue sqs.Queue
+	var queueName string
+	var unmarshaller UnmarshallerFunc
+
+	if queueName, err = sqs.GetQueueName(config, settings); err != nil {
+		return nil, fmt.Errorf("can not get sqs queue name: %w", err)
+	}
+
 	queueSettings := &sqs.Settings{
 		QueueName:         queueName,
 		VisibilityTimeout: settings.VisibilityTimeout,
@@ -61,11 +74,6 @@ func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		RedrivePolicy:     settings.RedrivePolicy,
 		ClientName:        settings.ClientName,
 	}
-
-	var ok bool
-	var err error
-	var queue sqs.Queue
-	var unmarshaller UnmarshallerFunc
 
 	if queue, err = sqs.ProvideQueue(ctx, config, logger, queueSettings); err != nil {
 		return nil, fmt.Errorf("can not create queue: %w", err)

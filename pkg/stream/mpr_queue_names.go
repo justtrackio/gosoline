@@ -1,11 +1,13 @@
 package stream
 
 import (
+	"fmt"
+
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 )
 
-type queueNameReader func(config cfg.Config, input string) string
+type queueNameReader func(config cfg.Config, input string) (string, error)
 
 var queueNameReaders = map[string]queueNameReader{
 	InputTypeSqs: queueNameReaderSqs,
@@ -14,6 +16,8 @@ var queueNameReaders = map[string]queueNameReader{
 
 func getQueueNames(config cfg.Config) ([]string, error) {
 	var ok bool
+	var err error
+	var queueName string
 	var reader queueNameReader
 
 	inputs := readAllInputTypes(config)
@@ -25,21 +29,24 @@ func getQueueNames(config cfg.Config) ([]string, error) {
 			continue
 		}
 
-		queueName := reader(config, inputName)
+		if queueName, err = reader(config, inputName); err != nil {
+			return nil, fmt.Errorf("can not get queue name for input %s: %w", inputName, err)
+		}
+
 		queueNames = append(queueNames, queueName)
 	}
 
 	return queueNames, nil
 }
 
-func queueNameReaderSns(config cfg.Config, input string) string {
+func queueNameReaderSns(config cfg.Config, input string) (string, error) {
 	inputSettings, _ := readSnsInputSettings(config, input)
 
-	return sqs.GetQueueName(inputSettings)
+	return sqs.GetQueueName(config, inputSettings)
 }
 
-func queueNameReaderSqs(config cfg.Config, input string) string {
+func queueNameReaderSqs(config cfg.Config, input string) (string, error) {
 	inputSettings := readSqsInputSettings(config, input)
 
-	return sqs.GetQueueName(inputSettings)
+	return sqs.GetQueueName(config, inputSettings)
 }

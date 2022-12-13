@@ -53,8 +53,8 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 		name = "default"
 	}
 
-	clientsKey := fmt.Sprintf("cloud.aws.%s.clients.%s", service, name)
-	defaultClientKey := fmt.Sprintf("cloud.aws.%s.clients.default", service)
+	clientsKey := GetClientConfigKey(service, name)
+	defaultClientKey := GetClientConfigKey(service, "default")
 
 	config.UnmarshalKey(clientsKey, settings, []cfg.UnmarshalDefaults{
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.region", "region"),
@@ -178,4 +178,8 @@ func (l Logger) WithContext(ctx context.Context) logging.Logger {
 	return &Logger{
 		base: l.base.WithContext(ctx),
 	}
+}
+
+func GetClientConfigKey(service string, name string) string {
+	return fmt.Sprintf("cloud.aws.%s.clients.%s", service, name)
 }

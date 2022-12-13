@@ -2,55 +2,73 @@ package sqs
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
-
-const (
-	deadletterFifoSuffix = "-dead.fifo"
-	fifoSuffix           = ".fifo"
-)
-
-type NamingFactory func(appId cfg.AppId, queueId string) string
-
-var namingStrategy = func(appId cfg.AppId, queueId string) string {
-	return fmt.Sprintf("%v-%v-%v-%v-%v", appId.Project, appId.Environment, appId.Family, appId.Application, queueId)
-}
-
-func WithNamingStrategy(strategy NamingFactory) {
-	namingStrategy = strategy
-}
 
 type QueueNameSettingsAware interface {
 	GetAppid() cfg.AppId
+	GetClientName() string
 	GetQueueId() string
 	IsFifoEnabled() bool
 }
 
 type QueueNameSettings struct {
 	AppId       cfg.AppId
-	QueueId     string
+	ClientName  string
 	FifoEnabled bool
+	QueueId     string
 }
 
-func (q QueueNameSettings) GetAppid() cfg.AppId {
-	return q.AppId
+func (s QueueNameSettings) GetAppid() cfg.AppId {
+	return s.AppId
 }
 
-func (q QueueNameSettings) GetQueueId() string {
-	return q.QueueId
+func (s QueueNameSettings) GetClientName() string {
+	return s.ClientName
 }
 
-func (q QueueNameSettings) IsFifoEnabled() bool {
-	return q.FifoEnabled
+func (s QueueNameSettings) IsFifoEnabled() bool {
+	return s.FifoEnabled
 }
 
-func GetQueueName(settings QueueNameSettingsAware) string {
-	name := namingStrategy(settings.GetAppid(), settings.GetQueueId())
+func (s QueueNameSettings) GetQueueId() string {
+	return s.QueueId
+}
 
-	if settings.IsFifoEnabled() {
-		name = name + fifoSuffix
+type QueueNamingSettings struct {
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{app}-{queueId}"`
+}
+
+func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (string, error) {
+	if len(queueSettings.GetClientName()) == 0 {
+		return "", fmt.Errorf("the client name shouldn't be empty")
 	}
 
-	return name
+	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sqs", queueSettings.GetClientName()))
+	namingSettings := &QueueNamingSettings{}
+	config.UnmarshalKey(namingKey, namingSettings)
+
+	name := namingSettings.Pattern
+	appId := queueSettings.GetAppid()
+	values := map[string]string{
+		"project": appId.Project,
+		"env":     appId.Environment,
+		"family":  appId.Family,
+		"app":     appId.Application,
+		"queueId": queueSettings.GetQueueId(),
+	}
+
+	for key, val := range values {
+		templ := fmt.Sprintf("{%s}", key)
+		name = strings.ReplaceAll(name, templ, val)
+	}
+
+	if queueSettings.IsFifoEnabled() {
+		name = name + FifoSuffix
+	}
+
+	return name, nil
 }

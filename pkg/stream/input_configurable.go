@@ -220,7 +220,7 @@ type sqsInputConfiguration struct {
 	RunnerCount         int               `cfg:"runner_count" default:"1" validate:"min=1"`
 	Fifo                sqs.FifoSettings  `cfg:"fifo"`
 	RedrivePolicy       sqs.RedrivePolicy `cfg:"redrive_policy"`
-	ClientName          string            `cfg:"client_name"`
+	ClientName          string            `cfg:"client_name" default:"default"`
 	Unmarshaller        string            `cfg:"unmarshaller" default:"msg"`
 }
 
@@ -229,11 +229,6 @@ func readSqsInputSettings(config cfg.Config, name string) *SqsInputSettings {
 
 	configuration := sqsInputConfiguration{}
 	config.UnmarshalKey(key, &configuration)
-
-	clientName := configuration.ClientName
-	if clientName == "" {
-		clientName = fmt.Sprintf("stream-input-%s", name)
-	}
 
 	settings := &SqsInputSettings{
 		AppId: cfg.AppId{
@@ -247,7 +242,7 @@ func readSqsInputSettings(config cfg.Config, name string) *SqsInputSettings {
 		RunnerCount:         configuration.RunnerCount,
 		Fifo:                configuration.Fifo,
 		RedrivePolicy:       configuration.RedrivePolicy,
-		ClientName:          clientName,
+		ClientName:          configuration.ClientName,
 		Unmarshaller:        configuration.Unmarshaller,
 	}
 

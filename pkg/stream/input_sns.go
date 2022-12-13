@@ -28,6 +28,10 @@ func (s SnsInputSettings) GetAppid() cfg.AppId {
 	return s.AppId
 }
 
+func (s SnsInputSettings) GetClientName() string {
+	return s.ClientName
+}
+
 func (s SnsInputSettings) GetQueueId() string {
 	return s.QueueId
 }
