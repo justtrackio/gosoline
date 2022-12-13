@@ -187,18 +187,13 @@ type SqsOutputConfiguration struct {
 	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
 	Fifo              sqs.FifoSettings  `cfg:"fifo"`
-	ClientName        string            `cfg:"client_name"`
+	ClientName        string            `cfg:"client_name" default:"default"`
 }
 
 func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	configuration := SqsOutputConfiguration{}
 	config.UnmarshalKey(key, &configuration)
-
-	clientName := configuration.ClientName
-	if clientName == "" {
-		clientName = fmt.Sprintf("stream-output-%s", name)
-	}
 
 	return NewSqsOutput(ctx, config, logger, &SqsOutputSettings{
 		AppId: cfg.AppId{
@@ -210,7 +205,7 @@ func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 		VisibilityTimeout: configuration.VisibilityTimeout,
 		RedrivePolicy:     configuration.RedrivePolicy,
 		Fifo:              configuration.Fifo,
-		ClientName:        clientName,
+		ClientName:        configuration.ClientName,
 	})
 }
 

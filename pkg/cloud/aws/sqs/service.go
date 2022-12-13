@@ -17,7 +17,11 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-const DefaultVisibilityTimeout = "30"
+const (
+	DefaultVisibilityTimeout = "30"
+	DeadletterFifoSuffix     = "-dead.fifo"
+	FifoSuffix               = ".fifo"
+)
 
 type ServiceSettings struct {
 	AutoCreate bool
@@ -245,7 +249,7 @@ func (s *service) createDeadLetterQueue(ctx context.Context, settings *Settings)
 
 	if settings.Fifo.Enabled {
 		deadLetterAttributes[string(types.QueueAttributeNameFifoQueue)] = "true"
-		deadLetterName = strings.Replace(settings.QueueName, fifoSuffix, deadletterFifoSuffix, 1)
+		deadLetterName = strings.Replace(settings.QueueName, FifoSuffix, DeadletterFifoSuffix, 1)
 	}
 
 	deadLetterInput := &sqs.CreateQueueInput{

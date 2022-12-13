@@ -17,23 +17,28 @@ const SqsOutputBatchSize = 10
 
 type SqsOutputSettings struct {
 	cfg.AppId
-	QueueId           string
-	VisibilityTimeout int
-	Fifo              sqs.FifoSettings
-	RedrivePolicy     sqs.RedrivePolicy
 	ClientName        string
+	Fifo              sqs.FifoSettings
+	QueueId           string
+	QueueNamePattern  string
+	RedrivePolicy     sqs.RedrivePolicy
+	VisibilityTimeout int
 }
 
 func (s SqsOutputSettings) GetAppid() cfg.AppId {
 	return s.AppId
 }
 
-func (s SqsOutputSettings) GetQueueId() string {
-	return s.QueueId
+func (s SqsOutputSettings) GetClientName() string {
+	return s.ClientName
 }
 
 func (s SqsOutputSettings) IsFifoEnabled() bool {
 	return s.Fifo.Enabled
+}
+
+func (s SqsOutputSettings) GetQueueId() string {
+	return s.QueueId
 }
 
 type sqsOutput struct {
@@ -45,7 +50,14 @@ type sqsOutput struct {
 func NewSqsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsOutputSettings) (Output, error) {
 	settings.PadFromConfig(config)
 
-	queueName := sqs.GetQueueName(settings)
+	var err error
+	var queueName string
+	var queue sqs.Queue
+
+	if queueName, err = sqs.GetQueueName(config, settings); err != nil {
+		return nil, fmt.Errorf("can not get sqs queue name: %w", err)
+	}
+
 	queueSettings := &sqs.Settings{
 		QueueName:         queueName,
 		VisibilityTimeout: settings.VisibilityTimeout,
@@ -54,9 +66,6 @@ func NewSqsOutput(ctx context.Context, config cfg.Config, logger log.Logger, set
 		ClientName:        settings.ClientName,
 	}
 
-	var err error
-	var queue sqs.Queue
-
 	if queue, err = sqs.ProvideQueue(ctx, config, logger, queueSettings); err != nil {
 		return nil, fmt.Errorf("can not create queue: %w", err)
 	}
@@ -64,11 +73,11 @@ func NewSqsOutput(ctx context.Context, config cfg.Config, logger log.Logger, set
 	return NewSqsOutputWithInterfaces(logger, queue, settings), nil
 }
 
-func NewSqsOutputWithInterfaces(logger log.Logger, queue sqs.Queue, s *SqsOutputSettings) Output {
+func NewSqsOutputWithInterfaces(logger log.Logger, queue sqs.Queue, settings *SqsOutputSettings) Output {
 	return &sqsOutput{
 		logger:   logger,
 		queue:    queue,
-		settings: s,
+		settings: settings,
 	}
 }
 
