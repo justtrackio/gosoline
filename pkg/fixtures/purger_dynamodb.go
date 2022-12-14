@@ -13,9 +13,10 @@ import (
 )
 
 type dynamodbPurger struct {
-	logger   log.Logger
-	settings *ddb.Settings
-	client   gosoDynamodb.Client
+	logger    log.Logger
+	settings  *ddb.Settings
+	client    gosoDynamodb.Client
+	tableName string
 }
 
 func newDynamodbPurger(ctx context.Context, config cfg.Config, logger log.Logger, settings *ddb.Settings) (*dynamodbPurger, error) {
@@ -26,18 +27,20 @@ func newDynamodbPurger(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
 	}
 
+	tableName := ddb.TableName(config, settings)
+
 	return &dynamodbPurger{
-		logger:   logger,
-		settings: settings,
-		client:   client,
+		logger:    logger,
+		settings:  settings,
+		client:    client,
+		tableName: tableName,
 	}, nil
 }
 
 func (p *dynamodbPurger) purgeDynamodb(ctx context.Context) error {
-	tableName := ddb.TableName(p.settings)
-	p.logger.Info("purging table %s", tableName)
-	_, err := p.client.DeleteTable(ctx, &dynamodb.DeleteTableInput{TableName: aws.String(tableName)})
-	p.logger.Info("purging table %s done", tableName)
+	p.logger.Info("purging table %s", p.tableName)
+	_, err := p.client.DeleteTable(ctx, &dynamodb.DeleteTableInput{TableName: aws.String(p.tableName)})
+	p.logger.Info("purging table %s done", p.tableName)
 
 	return err
 }

@@ -8,14 +8,14 @@ import (
 const defaultMaxWaitSeconds = 60
 
 type Settings struct {
-	ModelId        mdl.ModelId
-	NamingStrategy NamingFactory
-	AutoCreate     bool
-	DisableTracing bool
-	ClientName     string
-	Main           MainSettings
-	Local          []LocalSettings
-	Global         []GlobalSettings
+	ModelId             mdl.ModelId
+	TableNamingSettings TableNamingSettings
+	AutoCreate          bool
+	DisableTracing      bool
+	ClientName          string
+	Main                MainSettings
+	Local               []LocalSettings
+	Global              []GlobalSettings
 }
 
 type MainSettings struct {

@@ -15,9 +15,10 @@ import (
 
 type DdbComponent struct {
 	baseComponent
-	logger     log.Logger
-	ddbAddress string
-	toxiproxy  *toxiproxy.Proxy
+	logger         log.Logger
+	ddbAddress     string
+	namingSettings *ddb.TableNamingSettings
+	toxiproxy      *toxiproxy.Proxy
 }
 
 func (c *DdbComponent) CfgOptions() []cfg.Option {
@@ -54,8 +55,10 @@ func (c *DdbComponent) Client() *dynamodb.Client {
 func (c *DdbComponent) Repository(settings *ddb.Settings) (ddb.Repository, error) {
 	tracer := tracing.NewNoopTracer()
 	client := c.Client()
+	tableName := ddb.GetTableNameWithSettings(settings, c.namingSettings)
+	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(settings, tableName)
 
-	return ddb.NewWithInterfaces(c.logger, tracer, client, settings)
+	return ddb.NewWithInterfaces(c.logger, tracer, client, metadataFactory)
 }
 
 func (c *DdbComponent) Toxiproxy() *toxiproxy.Proxy {

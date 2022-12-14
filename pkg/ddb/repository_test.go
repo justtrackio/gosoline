@@ -43,8 +43,7 @@ func (s *RepositoryTestSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.client = new(dynamodbMocks.Client)
 
-	var err error
-	s.repo, err = ddb.NewWithInterfaces(logger, tracer, s.client, &ddb.Settings{
+	tableSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     "applike",
 			Environment: "test",
@@ -55,7 +54,12 @@ func (s *RepositoryTestSuite) SetupTest() {
 		Main: ddb.MainSettings{
 			Model: model{},
 		},
-	})
+	}
+
+	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(tableSettings, "applike-test-gosoline-ddb-myModel")
+
+	var err error
+	s.repo, err = ddb.NewWithInterfaces(logger, tracer, s.client, metadataFactory)
 	s.NoError(err)
 }
 

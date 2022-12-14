@@ -41,13 +41,11 @@ func NewDdbLeaderElection(ctx context.Context, config cfg.Config, logger log.Log
 }
 
 func NewDdbLeaderElectionWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, settings *DdbLeaderElectionSettings) (LeaderElection, error) {
-	namingFactory := func(_ mdl.ModelId) string {
-		return settings.TableName
-	}
-
 	repository, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
-		ModelId:        mdl.ModelId{},
-		NamingStrategy: namingFactory,
+		ModelId: mdl.ModelId{},
+		TableNamingSettings: ddb.TableNamingSettings{
+			Pattern: settings.TableName,
+		},
 		DisableTracing: true,
 		Main: ddb.MainSettings{
 			Model:              DdbLeaderElectionItem{},

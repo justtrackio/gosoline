@@ -7,51 +7,71 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type metadataFactory struct{}
-
-func NewMetadataFactory() *metadataFactory {
-	return &metadataFactory{}
+type MetadataFactory struct {
+	settings  *Settings
+	tableName string
 }
 
-func (f *metadataFactory) GetMetadata(settings *Settings) (*Metadata, error) {
-	tableName := TableName(settings)
-	attributes, err := f.getAttributes(settings)
+func NewMetadataFactory(config cfg.Config, settings *Settings) *MetadataFactory {
+	tableName := TableName(config, settings)
+
+	return NewMetadataFactoryWithInterfaces(settings, tableName)
+}
+
+func NewMetadataFactoryWithInterfaces(settings *Settings, tableName string) *MetadataFactory {
+	return &MetadataFactory{
+		settings:  settings,
+		tableName: tableName,
+	}
+}
+
+func (f *MetadataFactory) GetSettings() *Settings {
+	return f.settings
+}
+
+func (f *MetadataFactory) GetTableName() string {
+	return f.tableName
+}
+
+func (f *MetadataFactory) GetMetadata() (*Metadata, error) {
+	attributes, err := f.getAttributes(f.settings)
 	if err != nil {
-		return nil, fmt.Errorf("can not get attributes for table %s: %w", tableName, err)
+		return nil, fmt.Errorf("can not get attributes for table %s: %w", f.tableName, err)
 	}
 
 	ttl, err := f.getTimeToLive(attributes)
 	if err != nil {
-		return nil, fmt.Errorf("can not get ttl for table %s: %w", tableName, err)
+		return nil, fmt.Errorf("can not get ttl for table %s: %w", f.tableName, err)
 	}
 
-	mainFields, err := f.getFields(settings.Main.Model, tagKey, tagKey)
+	mainFields, err := f.getFields(f.settings.Main.Model, tagKey, tagKey)
 	if err != nil {
-		return nil, fmt.Errorf("can not get fields for main table %s: %w", tableName, err)
+		return nil, fmt.Errorf("can not get fields for main table %s: %w", f.tableName, err)
 	}
 
-	local, err := f.getLocalSecondaryIndices(settings.Local)
+	local, err := f.getLocalSecondaryIndices(f.settings.Local)
 	if err != nil {
-		return nil, fmt.Errorf("can not get fields for local secondary index on table %s: %w", tableName, err)
+		return nil, fmt.Errorf("can not get fields for local secondary index on table %s: %w", f.tableName, err)
 	}
 
-	global, err := f.getGlobalSecondaryIndices(settings.Global)
+	global, err := f.getGlobalSecondaryIndices(f.settings.Global)
 	if err != nil {
-		return nil, fmt.Errorf("can not get fields for global secondary index on table %s: %w", tableName, err)
+		return nil, fmt.Errorf("can not get fields for global secondary index on table %s: %w", f.tableName, err)
 	}
 
 	metadata := &Metadata{
-		TableName:  tableName,
+		TableName:  f.tableName,
 		Attributes: attributes,
 		TimeToLive: ttl,
 		Main: metadataMain{
 			metadataFields: mainFields,
 			metadataCapacity: metadataCapacity{
-				ReadCapacityUnits:  settings.Main.ReadCapacityUnits,
-				WriteCapacityUnits: settings.Main.WriteCapacityUnits,
+				ReadCapacityUnits:  f.settings.Main.ReadCapacityUnits,
+				WriteCapacityUnits: f.settings.Main.WriteCapacityUnits,
 			},
 		},
 		Local:  local,
@@ -61,7 +81,7 @@ func (f *metadataFactory) GetMetadata(settings *Settings) (*Metadata, error) {
 	return metadata, nil
 }
 
-func (f *metadataFactory) getAttributes(settings *Settings) (Attributes, error) {
+func (f *MetadataFactory) getAttributes(settings *Settings) (Attributes, error) {
 	var err error
 	var attributes Attributes
 
@@ -98,7 +118,7 @@ func (f *metadataFactory) getAttributes(settings *Settings) (Attributes, error) 
 	return allAttributes, nil
 }
 
-func (f *metadataFactory) getFields(model interface{}, hashTag string, rangeTag string) (metadataFields, error) {
+func (f *MetadataFactory) getFields(model interface{}, hashTag string, rangeTag string) (metadataFields, error) {
 	var err error
 	var attributes Attributes
 	var hashAttribute, rangeAttribute *Attribute
@@ -140,7 +160,7 @@ func (f *metadataFactory) getFields(model interface{}, hashTag string, rangeTag 
 	return data, nil
 }
 
-func (f *metadataFactory) getLocalSecondaryIndices(settings []LocalSettings) (metaLocal, error) {
+func (f *MetadataFactory) getLocalSecondaryIndices(settings []LocalSettings) (metaLocal, error) {
 	local := make(metaLocal)
 
 	for _, ls := range settings {
@@ -168,7 +188,7 @@ func (f *metadataFactory) getLocalSecondaryIndices(settings []LocalSettings) (me
 	return local, nil
 }
 
-func (f *metadataFactory) getGlobalSecondaryIndices(settings []GlobalSettings) (metaGlobal, error) {
+func (f *MetadataFactory) getGlobalSecondaryIndices(settings []GlobalSettings) (metaGlobal, error) {
 	global := make(metaGlobal)
 
 	for _, gs := range settings {
@@ -198,7 +218,7 @@ func (f *metadataFactory) getGlobalSecondaryIndices(settings []GlobalSettings) (
 	return global, nil
 }
 
-func (f *metadataFactory) getTimeToLive(attributes Attributes) (metadataTtl, error) {
+func (f *MetadataFactory) getTimeToLive(attributes Attributes) (metadataTtl, error) {
 	data := metadataTtl{
 		Enabled: false,
 	}

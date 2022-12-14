@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -98,12 +99,13 @@ func (f *ddbFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *ddbFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
+func (f *ddbFactory) Component(config cfg.Config, logger log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*ddbSettings)
 
 	var err error
 	var proxy *toxiproxy.Proxy
 	ddbAddress := containers["main"].bindings["8000/tcp"].getAddress()
+	namingSettings := ddb.GetTableNamingSettings(config, s.Name)
 
 	if s.ToxiproxyEnabled {
 		toxiproxyClient := f.toxiproxyFactory.client(containers["toxiproxy"])
@@ -119,9 +121,10 @@ func (f *ddbFactory) Component(_ cfg.Config, logger log.Logger, containers map[s
 		baseComponent: baseComponent{
 			name: s.Name,
 		},
-		logger:     logger,
-		ddbAddress: ddbAddress,
-		toxiproxy:  proxy,
+		logger:         logger,
+		ddbAddress:     ddbAddress,
+		namingSettings: namingSettings,
+		toxiproxy:      proxy,
 	}
 
 	return component, nil

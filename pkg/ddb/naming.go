@@ -2,25 +2,56 @@ package ddb
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
-type NamingFactory func(modelId mdl.ModelId) string
+const (
+	DefaultNamingPattern = "{project}-{env}-{family}-{app}-{modelId}"
+)
 
-var namingStrategy = func(modelId mdl.ModelId) string {
-	return fmt.Sprintf("%v-%v-%v-%v-%v", modelId.Project, modelId.Environment, modelId.Family, modelId.Application, modelId.Name)
+type TableNamingSettings struct {
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{app}-{modelId}"`
 }
 
-func WithNamingStrategy(strategy NamingFactory) {
-	namingStrategy = strategy
+func TableName(config cfg.Config, settings *Settings) string {
+	namingSettings := GetTableNamingSettings(config, settings.ClientName)
+
+	return GetTableNameWithSettings(settings, namingSettings)
 }
 
-func TableName(settings *Settings) string {
-	tableName := namingStrategy(settings.ModelId)
+func GetTableNamingSettings(config cfg.Config, clientName string) *TableNamingSettings {
+	if len(clientName) == 0 {
+		clientName = "default"
+	}
 
-	if settings.NamingStrategy != nil {
-		tableName = settings.NamingStrategy(settings.ModelId)
+	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("dynamodb", clientName))
+	namingSettings := &TableNamingSettings{}
+	config.UnmarshalKey(namingKey, namingSettings)
+
+	return namingSettings
+}
+
+func GetTableNameWithSettings(tableSettings *Settings, namingSettings *TableNamingSettings) string {
+	tableName := namingSettings.Pattern
+
+	if len(tableSettings.TableNamingSettings.Pattern) > 0 {
+		tableName = tableSettings.TableNamingSettings.Pattern
+	}
+
+	values := map[string]string{
+		"project": tableSettings.ModelId.Project,
+		"env":     tableSettings.ModelId.Environment,
+		"family":  tableSettings.ModelId.Family,
+		"app":     tableSettings.ModelId.Application,
+		"modelId": tableSettings.ModelId.Name,
+	}
+
+	for key, val := range values {
+		templ := fmt.Sprintf("{%s}", key)
+		tableName = strings.ReplaceAll(tableName, templ, val)
 	}
 
 	return tableName
