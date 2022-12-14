@@ -83,18 +83,22 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 	settings.ModelId.PadFromConfig(config)
 	settings.AutoCreate = dx.ShouldAutoCreate(config)
 
-	tableName := TableName(settings)
+	metadataFactory := NewMetadataFactory(config, settings)
 
 	var err error
+	var svc *Service
 	var client gosoDynamodb.Client
+
+	if svc, err = NewService(ctx, config, logger, settings, optFns...); err != nil {
+		return nil, fmt.Errorf("could not create ddb service for table %s: %w", metadataFactory.GetTableName(), err)
+	}
+
+	if _, err = svc.CreateTable(ctx); err != nil {
+		return nil, fmt.Errorf("could not create ddb table %s: %w", metadataFactory.GetTableName(), err)
+	}
 
 	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, settings.ClientName, optFns...); err != nil {
 		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
-	}
-
-	svc := NewServiceWithInterfaces(logger, client)
-	if _, err = svc.CreateTable(ctx, settings); err != nil {
-		return nil, fmt.Errorf("could not create ddb table %s: %w", tableName, err)
 	}
 
 	tracer := tracing.NewNoopTracer()
@@ -105,18 +109,17 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 		}
 	}
 
-	if err = appctx.MetadataAppend(ctx, MetadataKeyTables, tableName); err != nil {
+	if err = appctx.MetadataAppend(ctx, MetadataKeyTables, metadataFactory.GetTableName()); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
-	return NewWithInterfaces(logger, tracer, client, settings)
+	return NewWithInterfaces(logger, tracer, client, metadataFactory)
 }
 
-func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, client gosoDynamodb.Client, settings *Settings) (Repository, error) {
-	metadataFactory := NewMetadataFactory()
-	metadata, err := metadataFactory.GetMetadata(settings)
+func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, client gosoDynamodb.Client, metadataFactory *MetadataFactory) (Repository, error) {
+	metadata, err := metadataFactory.GetMetadata()
 	if err != nil {
-		return nil, fmt.Errorf("could not factor metadata for ddb table %s: %w", TableName(settings), err)
+		return nil, fmt.Errorf("could not factor metadata for ddb table %s: %w", metadataFactory.GetTableName(), err)
 	}
 
 	keyBuilder := keyBuilder{
@@ -129,7 +132,7 @@ func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, client gosoDyna
 		client:     client,
 		keyBuilder: keyBuilder,
 		metadata:   metadata,
-		settings:   settings,
+		settings:   metadataFactory.GetSettings(),
 		clock:      clock.Provider,
 	}, nil
 }

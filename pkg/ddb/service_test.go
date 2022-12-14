@@ -223,9 +223,7 @@ func TestService_CreateTable(t *testing.T) {
 	}
 	client.On("UpdateTimeToLive", ctx, ttlInput).Return(nil, nil)
 
-	svc := ddb.NewServiceWithInterfaces(logger, client)
-
-	_, err := svc.CreateTable(ctx, &ddb.Settings{
+	settings := &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     "applike",
 			Environment: "test",
@@ -264,7 +262,12 @@ func TestService_CreateTable(t *testing.T) {
 				WriteCapacityUnits: 8,
 			},
 		},
-	})
+	}
+
+	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(settings, "applike-test-gosoline-ddb-myModel")
+	svc := ddb.NewServiceWithInterfaces(logger, client, metadataFactory)
+
+	_, err := svc.CreateTable(ctx)
 
 	assert.NoError(t, err)
 }

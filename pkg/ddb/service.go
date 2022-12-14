@@ -25,32 +25,37 @@ type TableDescription struct {
 type Service struct {
 	logger          log.Logger
 	client          gosoDynamodb.Client
-	metadataFactory *metadataFactory
+	metadataFactory *MetadataFactory
 }
 
-func NewService(ctx context.Context, config cfg.Config, logger log.Logger) (*Service, error) {
+func NewService(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...gosoDynamodb.ClientOption) (*Service, error) {
+	if len(settings.ClientName) == 0 {
+		settings.ClientName = "default"
+	}
+
 	var err error
 	var client gosoDynamodb.Client
 
-	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, "default"); err != nil {
+	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, settings.ClientName, optFns...); err != nil {
 		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
 	}
 
-	return NewServiceWithInterfaces(logger, client), nil
+	metadataFactory := NewMetadataFactory(config, settings)
+
+	return NewServiceWithInterfaces(logger, client, metadataFactory), nil
 }
 
-func NewServiceWithInterfaces(logger log.Logger, client gosoDynamodb.Client) *Service {
+func NewServiceWithInterfaces(logger log.Logger, client gosoDynamodb.Client, metadataFactory *MetadataFactory) *Service {
 	return &Service{
 		logger:          logger,
 		client:          client,
-		metadataFactory: NewMetadataFactory(),
+		metadataFactory: metadataFactory,
 	}
 }
 
-func (s *Service) DescribeTable(ctx context.Context, settings *Settings) (*TableDescription, error) {
-	tableName := TableName(settings)
+func (s *Service) DescribeTable(ctx context.Context) (*TableDescription, error) {
 	input := &dynamodb.DescribeTableInput{
-		TableName: aws.String(tableName),
+		TableName: aws.String(s.metadataFactory.GetTableName()),
 	}
 
 	out, err := s.client.DescribeTable(ctx, input)
@@ -59,25 +64,23 @@ func (s *Service) DescribeTable(ctx context.Context, settings *Settings) (*Table
 	}
 
 	description := &TableDescription{
-		Name:      tableName,
+		Name:      s.metadataFactory.GetTableName(),
 		ItemCount: out.Table.ItemCount,
 	}
 
 	return description, nil
 }
 
-func (s *Service) CreateTable(ctx context.Context, settings *Settings) (*Metadata, error) {
-	tableName := TableName(settings)
-
+func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 	var err error
 	var metadata *Metadata
 	var exists bool
 
-	if metadata, err = s.metadataFactory.GetMetadata(settings); err != nil {
+	if metadata, err = s.metadataFactory.GetMetadata(); err != nil {
 		return nil, fmt.Errorf("can not get metadata: %w", err)
 	}
 
-	if exists, err = s.tableExists(ctx, tableName); err != nil {
+	if exists, err = s.tableExists(ctx, s.metadataFactory.GetTableName()); err != nil {
 		return nil, fmt.Errorf("can not check if the table already exists: %w", err)
 	}
 
@@ -85,23 +88,25 @@ func (s *Service) CreateTable(ctx context.Context, settings *Settings) (*Metadat
 		return metadata, nil
 	}
 
+	settings := s.metadataFactory.GetSettings()
+
 	if !exists && !settings.AutoCreate {
 		return nil, fmt.Errorf("table does not exist and auto create is disabled")
 	}
 
 	mainKeySchema, err := s.getKeySchema(metadata.Main)
 	if err != nil {
-		return metadata, fmt.Errorf("can not create main key schema for table %s: %w", tableName, err)
+		return metadata, fmt.Errorf("can not create main key schema for table %s: %w", s.metadataFactory.GetTableName(), err)
 	}
 
 	localIndices, err := s.getLocalSecondaryIndices(metadata)
 	if err != nil {
-		return metadata, fmt.Errorf("can not create definitions for local secondary indices on table %s: %w", tableName, err)
+		return metadata, fmt.Errorf("can not create definitions for local secondary indices on table %s: %w", s.metadataFactory.GetTableName(), err)
 	}
 
 	globalIndices, err := s.getGlobalSecondaryIndices(metadata)
 	if err != nil {
-		return metadata, fmt.Errorf("can not create definitions for global secondary indices on table %s: %w", tableName, err)
+		return metadata, fmt.Errorf("can not create definitions for global secondary indices on table %s: %w", s.metadataFactory.GetTableName(), err)
 	}
 
 	attributeDefinitions := s.getAttributeDefinitions(metadata)
@@ -116,7 +121,7 @@ func (s *Service) CreateTable(ctx context.Context, settings *Settings) (*Metadat
 	}
 
 	input := &dynamodb.CreateTableInput{
-		TableName:              aws.String(tableName),
+		TableName:              aws.String(s.metadataFactory.GetTableName()),
 		AttributeDefinitions:   attributeDefinitions,
 		KeySchema:              mainKeySchema,
 		LocalSecondaryIndexes:  localIndices,
@@ -139,11 +144,11 @@ func (s *Service) CreateTable(ctx context.Context, settings *Settings) (*Metadat
 		return nil, fmt.Errorf("could not create table: %w", err)
 	}
 
-	if err = s.waitForTableGettingAvailable(ctx, tableName); err != nil {
+	if err = s.waitForTableGettingAvailable(ctx, s.metadataFactory.GetTableName()); err != nil {
 		return nil, err
 	}
 
-	s.logger.Info("created ddb table %s", tableName)
+	s.logger.Info("created ddb table %s", s.metadataFactory.GetTableName())
 
 	err = s.updateTtlSpecification(ctx, metadata)
 
