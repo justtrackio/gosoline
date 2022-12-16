@@ -9,7 +9,7 @@ import (
 )
 
 type QueueNameSettingsAware interface {
-	GetAppid() cfg.AppId
+	GetAppId() cfg.AppId
 	GetClientName() string
 	GetQueueId() string
 	IsFifoEnabled() bool
@@ -22,7 +22,7 @@ type QueueNameSettings struct {
 	QueueId     string
 }
 
-func (s QueueNameSettings) GetAppid() cfg.AppId {
+func (s QueueNameSettings) GetAppId() cfg.AppId {
 	return s.AppId
 }
 
@@ -52,7 +52,7 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 	config.UnmarshalKey(namingKey, namingSettings)
 
 	name := namingSettings.Pattern
-	appId := queueSettings.GetAppid()
+	appId := queueSettings.GetAppId()
 	values := map[string]string{
 		"project": appId.Project,
 		"env":     appId.Environment,

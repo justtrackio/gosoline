@@ -27,7 +27,7 @@ type SqsInputSettings struct {
 	Unmarshaller        string            `cfg:"unmarshaller" default:"msg"`
 }
 
-func (s SqsInputSettings) GetAppid() cfg.AppId {
+func (s SqsInputSettings) GetAppId() cfg.AppId {
 	return s.AppId
 }
 

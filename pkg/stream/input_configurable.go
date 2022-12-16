@@ -142,6 +142,7 @@ type SnsInputTargetConfiguration struct {
 	Application string                 `cfg:"application" validate:"required"`
 	TopicId     string                 `cfg:"topic_id" validate:"required"`
 	Attributes  map[string]interface{} `cfg:"attributes"`
+	ClientName  string                 `cfg:"client_name" default:"default"`
 }
 
 type SnsInputConfiguration struct {
@@ -155,7 +156,7 @@ type SnsInputConfiguration struct {
 	VisibilityTimeout   int                           `cfg:"visibility_timeout" default:"30" validate:"min=1"`
 	RunnerCount         int                           `cfg:"runner_count" default:"1" validate:"min=1"`
 	RedrivePolicy       sqs.RedrivePolicy             `cfg:"redrive_policy"`
-	ClientName          string                        `cfg:"client_name"`
+	ClientName          string                        `cfg:"client_name" default:"default"`
 }
 
 func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []SnsInputTarget) {
@@ -163,11 +164,6 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 
 	configuration := &SnsInputConfiguration{}
 	config.UnmarshalKey(key, configuration)
-
-	clientName := configuration.ClientName
-	if clientName == "" {
-		clientName = fmt.Sprintf("stream-input-%s", name)
-	}
 
 	settings := &SnsInputSettings{
 		AppId: cfg.AppId{
@@ -180,7 +176,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		VisibilityTimeout:   configuration.VisibilityTimeout,
 		RunnerCount:         configuration.RunnerCount,
 		RedrivePolicy:       configuration.RedrivePolicy,
-		ClientName:          clientName,
+		ClientName:          configuration.ClientName,
 	}
 
 	settings.PadFromConfig(config)
@@ -194,10 +190,16 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 
 		targetAppId.PadFromConfig(config)
 
+		clientName := t.ClientName
+		if len(clientName) == 0 {
+			clientName = "default"
+		}
+
 		targets[i] = SnsInputTarget{
 			AppId:      targetAppId,
 			TopicId:    t.TopicId,
 			Attributes: t.Attributes,
+			ClientName: clientName,
 		}
 	}
 

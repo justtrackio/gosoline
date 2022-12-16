@@ -24,7 +24,7 @@ type SnsInputSettings struct {
 	ClientName          string            `cfg:"client_name"`
 }
 
-func (s SnsInputSettings) GetAppid() cfg.AppId {
+func (s SnsInputSettings) GetAppId() cfg.AppId {
 	return s.AppId
 }
 
@@ -44,6 +44,19 @@ type SnsInputTarget struct {
 	cfg.AppId
 	TopicId    string
 	Attributes map[string]interface{}
+	ClientName string
+}
+
+func (t SnsInputTarget) GetAppId() cfg.AppId {
+	return t.AppId
+}
+
+func (t SnsInputTarget) GetClientName() string {
+	return t.ClientName
+}
+
+func (t SnsInputTarget) GetTopicId() string {
+	return t.TopicId
 }
 
 type snsInput struct {
@@ -72,9 +85,13 @@ func NewSnsInput(ctx context.Context, config cfg.Config, logger log.Logger, sett
 
 	if autoSubscribe {
 		var topic sns.Topic
+		var topicName string
 
 		for _, target := range targets {
-			topicName := sns.GetTopicName(target.AppId, target.TopicId)
+			if topicName, err = sns.GetTopicName(config, target); err != nil {
+				return nil, fmt.Errorf("can not get sns topic name for target %s: %w", target.TopicId, err)
+			}
+
 			topicSettings := &sns.TopicSettings{
 				TopicName:  topicName,
 				ClientName: "default",

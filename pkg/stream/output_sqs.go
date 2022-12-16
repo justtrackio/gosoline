@@ -25,7 +25,7 @@ type SqsOutputSettings struct {
 	VisibilityTimeout int
 }
 
-func (s SqsOutputSettings) GetAppid() cfg.AppId {
+func (s SqsOutputSettings) GetAppId() cfg.AppId {
 	return s.AppId
 }
 

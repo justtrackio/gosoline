@@ -153,18 +153,13 @@ type SnsOutputConfiguration struct {
 	Family      string `cfg:"family"`
 	Application string `cfg:"application"`
 	TopicId     string `cfg:"topic_id" validate:"required"`
-	ClientName  string `cfg:"client_name"`
+	ClientName  string `cfg:"client_name" default:"default"`
 }
 
 func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 	configuration := SnsOutputConfiguration{}
 	config.UnmarshalKey(key, &configuration)
-
-	clientName := configuration.ClientName
-	if clientName == "" {
-		clientName = fmt.Sprintf("stream-output-%s", name)
-	}
 
 	return NewSnsOutput(ctx, config, logger, &SnsOutputSettings{
 		AppId: cfg.AppId{
@@ -173,7 +168,7 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 			Application: configuration.Application,
 		},
 		TopicId:    configuration.TopicId,
-		ClientName: clientName,
+		ClientName: configuration.ClientName,
 	})
 }
 
