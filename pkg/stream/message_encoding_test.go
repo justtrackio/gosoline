@@ -137,7 +137,7 @@ func (s *MessageEncoderSuite) TestEncode() {
 }
 
 func (s *MessageEncoderSuite) TestDecode() {
-	expected := &encodingTestStruct{
+	expectedStruct := &encodingTestStruct{
 		Id:        3,
 		Text:      "example",
 		CreatedAt: s.clock.Now(),
@@ -146,8 +146,10 @@ func (s *MessageEncoderSuite) TestDecode() {
 	tests := map[string]struct {
 		handlers           []stream.EncodeHandler
 		message            *stream.Message
+		actualOutput       any
 		expectedError      string
 		expectedAttributes map[string]interface{}
+		expectedOutput     any
 	}{
 		"wrong_compression_attribute_type": {
 			message: &stream.Message{
@@ -157,7 +159,9 @@ func (s *MessageEncoderSuite) TestDecode() {
 				},
 				Body: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`,
 			},
-			expectedError: "the compression attribute '1337' should be of type string but instead is 'int'",
+			actualOutput:   &encodingTestStruct{},
+			expectedError:  "the compression attribute '1337' should be of type string but instead is 'int'",
+			expectedOutput: expectedStruct,
 		},
 		"compression_missing": {
 			message: &stream.Message{
@@ -167,7 +171,9 @@ func (s *MessageEncoderSuite) TestDecode() {
 				},
 				Body: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`,
 			},
-			expectedError: "there is no decompressor for compression 'missing'",
+			actualOutput:   &encodingTestStruct{},
+			expectedError:  "there is no decompressor for compression 'missing'",
+			expectedOutput: expectedStruct,
 		},
 		"wrong_encoding_attribute_type": {
 			message: &stream.Message{
@@ -176,6 +182,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 				},
 				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
 			},
+			actualOutput:  &encodingTestStruct{},
 			expectedError: "can not decode message body: the encoding attribute '1337' should be of type string but instead is 'int'",
 		},
 		"encoding_missing": {
@@ -185,7 +192,9 @@ func (s *MessageEncoderSuite) TestDecode() {
 				},
 				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
 			},
-			expectedError: "can not decode message body: there is no message body decoder available for encoding 'missing'",
+			actualOutput:   &encodingTestStruct{},
+			expectedError:  "can not decode message body: there is no message body decoder available for encoding 'missing'",
+			expectedOutput: expectedStruct,
 		},
 		"broken_handler": {
 			handlers: []stream.EncodeHandler{
@@ -197,7 +206,9 @@ func (s *MessageEncoderSuite) TestDecode() {
 				},
 				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
 			},
-			expectedError: "can not apply encoding handler on message: encode handler decode error",
+			actualOutput:   &encodingTestStruct{},
+			expectedError:  "can not apply encoding handler on message: encode handler decode error",
+			expectedOutput: expectedStruct,
 		},
 		"json_uncompressed": {
 			message: &stream.Message{
@@ -208,10 +219,12 @@ func (s *MessageEncoderSuite) TestDecode() {
 				},
 				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
 			},
+			actualOutput: &encodingTestStruct{},
 			expectedAttributes: map[string]interface{}{
 				"attribute1": 5,
 				"attribute2": "test",
 			},
+			expectedOutput: expectedStruct,
 		},
 		"json_compressed": {
 			message: &stream.Message{
@@ -220,6 +233,28 @@ func (s *MessageEncoderSuite) TestDecode() {
 					stream.AttributeEncoding:    stream.EncodingJson,
 				},
 				Body: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`,
+			},
+			actualOutput:   &encodingTestStruct{},
+			expectedOutput: expectedStruct,
+		},
+		"json_into_msi": {
+			message: &stream.Message{
+				Attributes: map[string]interface{}{
+					stream.AttributeEncoding: stream.EncodingJson,
+					"attribute1":             5,
+					"attribute2":             "test",
+				},
+				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
+			},
+			actualOutput: &map[string]interface{}{},
+			expectedAttributes: map[string]interface{}{
+				"attribute1": 5,
+				"attribute2": "test",
+			},
+			expectedOutput: &map[string]interface{}{
+				"id":        float64(3),
+				"text":      "example",
+				"createdAt": "1984-04-04T00:00:00Z",
 			},
 		},
 	}
@@ -231,8 +266,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 			})
 
 			ctx := context.Background()
-			data := &encodingTestStruct{}
-			_, attributes, err := encoder.Decode(ctx, tt.message, data)
+			_, attributes, err := encoder.Decode(ctx, tt.message, tt.actualOutput)
 
 			if tt.expectedError != "" {
 				s.EqualError(err, tt.expectedError)
@@ -240,7 +274,7 @@ func (s *MessageEncoderSuite) TestDecode() {
 			}
 
 			s.NoError(err)
-			s.Equal(expected, data)
+			s.Equal(tt.expectedOutput, tt.actualOutput)
 			s.Len(attributes, len(tt.expectedAttributes))
 
 			for k, v := range tt.expectedAttributes {
