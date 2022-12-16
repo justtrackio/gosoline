@@ -5,7 +5,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
-	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -16,12 +15,12 @@ func TestGetSqsQueueNameTestSuite(t *testing.T) {
 type GetSqsQueueNameTestSuite struct {
 	suite.Suite
 	config   cfg.GosoConf
-	settings stream.SqsOutputSettings
+	settings sqs.QueueNameSettings
 }
 
 func (s *GetSqsQueueNameTestSuite) SetupTest() {
 	s.config = cfg.New()
-	s.settings = stream.SqsOutputSettings{
+	s.settings = sqs.QueueNameSettings{
 		AppId: cfg.AppId{
 			Project:     "justtrack",
 			Environment: "test",
@@ -45,7 +44,7 @@ func (s *GetSqsQueueNameTestSuite) TestDefault() {
 }
 
 func (s *GetSqsQueueNameTestSuite) TestDefaultFifo() {
-	s.settings.Fifo.Enabled = true
+	s.settings.FifoEnabled = true
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
 	s.NoError(err)

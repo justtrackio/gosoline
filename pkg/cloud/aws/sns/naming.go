@@ -2,14 +2,63 @@ package sns
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
-var GetTopicName = func(appId cfg.AppId, topicId string) string {
-	return fmt.Sprintf("%s-%s-%s-%s-%s", appId.Project, appId.Environment, appId.Family, appId.Application, topicId)
+type TopicNameSettingsAware interface {
+	GetAppId() cfg.AppId
+	GetClientName() string
+	GetTopicId() string
 }
 
-func WithTopicNamingStrategy(strategy func(appId cfg.AppId, topicId string) string) {
-	GetTopicName = strategy
+type TopicNameSettings struct {
+	AppId      cfg.AppId
+	ClientName string
+	TopicId    string
+}
+
+func (s TopicNameSettings) GetAppId() cfg.AppId {
+	return s.AppId
+}
+
+func (s TopicNameSettings) GetClientName() string {
+	return s.ClientName
+}
+
+func (s TopicNameSettings) GetTopicId() string {
+	return s.TopicId
+}
+
+type TopicNamingSettings struct {
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{app}-{topicId}"`
+}
+
+func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (string, error) {
+	if len(topicSettings.GetClientName()) == 0 {
+		return "", fmt.Errorf("the client name shouldn't be empty")
+	}
+
+	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sns", topicSettings.GetClientName()))
+	namingSettings := &TopicNamingSettings{}
+	config.UnmarshalKey(namingKey, namingSettings)
+
+	name := namingSettings.Pattern
+	appId := topicSettings.GetAppId()
+	values := map[string]string{
+		"project": appId.Project,
+		"env":     appId.Environment,
+		"family":  appId.Family,
+		"app":     appId.Application,
+		"topicId": topicSettings.GetTopicId(),
+	}
+
+	for key, val := range values {
+		templ := fmt.Sprintf("{%s}", key)
+		name = strings.ReplaceAll(name, templ, val)
+	}
+
+	return name, nil
 }

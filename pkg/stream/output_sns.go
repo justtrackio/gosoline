@@ -16,6 +16,18 @@ type SnsOutputSettings struct {
 	ClientName string
 }
 
+func (s SnsOutputSettings) GetAppId() cfg.AppId {
+	return s.AppId
+}
+
+func (s SnsOutputSettings) GetClientName() string {
+	return s.ClientName
+}
+
+func (s SnsOutputSettings) GetTopicId() string {
+	return s.TopicId
+}
+
 type snsOutput struct {
 	logger log.Logger
 	topic  sns.Topic
@@ -24,14 +36,18 @@ type snsOutput struct {
 func NewSnsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SnsOutputSettings) (Output, error) {
 	settings.PadFromConfig(config)
 
-	topicName := sns.GetTopicName(settings.AppId, settings.TopicId)
+	var err error
+	var topic sns.Topic
+	var topicName string
+
+	if topicName, err = sns.GetTopicName(config, settings); err != nil {
+		return nil, fmt.Errorf("can not get topic name: %w", err)
+	}
+
 	topicSettings := &sns.TopicSettings{
 		TopicName:  topicName,
 		ClientName: settings.ClientName,
 	}
-
-	var err error
-	var topic sns.Topic
 
 	if topic, err = sns.NewTopic(ctx, config, logger, topicSettings); err != nil {
 		return nil, fmt.Errorf("can not create topic: %w", err)

@@ -78,6 +78,7 @@ func NewSnsNotifier(ctx context.Context, config cfg.Config, logger log.Logger, m
 			Family:      modelId.Family,
 			Application: modelId.Application,
 		},
+		ClientName: "default",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("can not create sns output: %w", err)
