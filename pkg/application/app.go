@@ -71,7 +71,7 @@ func New(options ...Option) kernel.Kernel {
 	logger := log.NewLogger()
 
 	if ker, err = NewWithInterfaces(ctx, config, logger, options...); err != nil {
-		defaultErrorHandler("can initialize the app: %w", err)
+		defaultErrorHandler("can not initialize the app: %w", err)
 	}
 
 	return ker
