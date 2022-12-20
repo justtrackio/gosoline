@@ -177,6 +177,14 @@ func (s *ConfigTestSuite) TestConfig_GetString() {
 	s.Equal("default", s.config.GetString("missing", "default"))
 }
 
+func (s *ConfigTestSuite) TestConfig_GetStringNoDecode() {
+	s.setupConfigValues(map[string]interface{}{
+		"nodecode": "!nodecode {this}-should-{be}-plain",
+	})
+
+	s.Equal("{this}-should-{be}-plain", s.config.GetString("nodecode"))
+}
+
 func (s *ConfigTestSuite) TestConfig_GetStringMapString() {
 	s.setupConfigValues(map[string]interface{}{
 		"map": map[string]interface{}{

@@ -9,10 +9,15 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/justtrackio/gosoline/pkg/refl"
 	"github.com/spf13/cast"
 	"golang.org/x/exp/maps"
+)
+
+const (
+	flagNoDecode = "nodecode"
 )
 
 type LookupEnv func(key string) (string, bool)
@@ -55,6 +60,7 @@ type config struct {
 
 var (
 	DefaultEnvKeyReplacer = strings.NewReplacer(".", "_", "-", "_")
+	valFlagsRegexp        = regexp.MustCompile(`(!([\S]*)\s)?(.*)`)
 	templateRegexp        = regexp.MustCompile(`{([\w.\-]+)}`)
 	keyToEnvRegexp        = regexp.MustCompile(`\[(\d+)\]`)
 )
@@ -345,6 +351,19 @@ func (c *config) UnmarshalKey(key string, output interface{}, defaults ...Unmars
 }
 
 func (c *config) augmentString(str string) string {
+	groups := valFlagsRegexp.FindStringSubmatch(str)
+	flags := make([]string, 0)
+
+	if len(groups[2]) > 0 {
+		flags = strings.Split(groups[2], ",")
+		flags = funk.Map(flags, strings.ToLower)
+		str = groups[3]
+	}
+
+	if funk.Contains(flags, flagNoDecode) {
+		return str
+	}
+
 	matches := templateRegexp.FindAllStringSubmatch(str, -1)
 
 	for _, m := range matches {
