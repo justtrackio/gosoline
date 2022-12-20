@@ -39,6 +39,7 @@ type RecordWriterMetadata struct {
 }
 
 type RecordWriterSettings struct {
+	ClientName string
 	StreamName string
 	Backoff    exec.BackoffSettings
 }
@@ -65,7 +66,7 @@ func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, 
 	var err error
 	var client *kinesis.Client
 
-	if client, err = ProvideClient(ctx, config, logger, "default"); err != nil {
+	if client, err = ProvideClient(ctx, config, logger, settings.ClientName); err != nil {
 		return nil, fmt.Errorf("failed to provide kinesis client: %w", err)
 	}
 

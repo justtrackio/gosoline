@@ -101,6 +101,7 @@ type KinesisOutputConfiguration struct {
 	Project     string `cfg:"project"`
 	Family      string `cfg:"family"`
 	Application string `cfg:"application"`
+	ClientName  string `cfg:"client_name" default:"default"`
 	StreamName  string `cfg:"stream_name"`
 }
 
@@ -115,6 +116,7 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 			Family:      configuration.Family,
 			Application: configuration.Application,
 		},
+		ClientName: configuration.ClientName,
 		StreamName: configuration.StreamName,
 	})
 }

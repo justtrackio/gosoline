@@ -51,6 +51,8 @@ type SettingsInitialPosition struct {
 
 type Settings struct {
 	cfg.AppId
+	// Name of the kinesis client to use
+	ClientName string `cfg:"client_name" default:"default"`
 	// Name of the kinsumer
 	Name string
 	// Name of the stream (before expanding with project, env, family & application prefix)
@@ -71,6 +73,18 @@ type Settings struct {
 	ReleaseDelay time.Duration `cfg:"release_delay" default:"5s" validate:"min=1000000000"`
 	// Should we write how many milliseconds behind each shard is or only the whole stream?
 	ShardLevelMetrics bool `cfg:"shard_level_metrics" default:"false"`
+}
+
+func (s Settings) GetAppId() cfg.AppId {
+	return s.AppId
+}
+
+func (s Settings) GetClientName() string {
+	return s.ClientName
+}
+
+func (s Settings) GetStreamName() string {
+	return s.StreamName
 }
 
 //go:generate mockery --name Kinsumer
@@ -99,8 +113,14 @@ type runtimeContext struct {
 
 func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (Kinsumer, error) {
 	settings.PadFromConfig(config)
-	fullStreamName := Stream(fmt.Sprintf("%s-%s-%s-%s-%s", settings.Project, settings.Environment, settings.Family, settings.Application, settings.StreamName))
 	clientId := ClientId(uuid.New().NewV4())
+
+	var err error
+	var fullStreamName Stream
+
+	if fullStreamName, err = GetStreamName(config, settings); err != nil {
+		return nil, fmt.Errorf("can not get full stream name: %w", err)
+	}
 
 	logger = logger.WithChannel("kinsumer-main").WithFields(log.Fields{
 		"stream_name":        fullStreamName,
@@ -110,7 +130,6 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	shardReaderDefaults := getShardReaderDefaultMetrics(fullStreamName)
 	metricWriter := metric.NewWriter(shardReaderDefaults...)
 
-	var err error
 	var kinesisClient *kinesis.Client
 	var metadataRepository MetadataRepository
 
