@@ -20,7 +20,20 @@ const (
 
 type KinesisOutputSettings struct {
 	cfg.AppId
+	ClientName string
 	StreamName string
+}
+
+func (s KinesisOutputSettings) GetAppId() cfg.AppId {
+	return s.AppId
+}
+
+func (s KinesisOutputSettings) GetClientName() string {
+	return s.ClientName
+}
+
+func (s KinesisOutputSettings) GetStreamName() string {
+	return s.StreamName
 }
 
 type kinesisOutput struct {
@@ -28,16 +41,22 @@ type kinesisOutput struct {
 }
 
 func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *KinesisOutputSettings) (Output, error) {
+	settings.PadFromConfig(config)
+
 	var err error
+	var fullStreamName gosoKinesis.Stream
 	var recordWriter gosoKinesis.RecordWriter
 
-	settings.PadFromConfig(config)
-	fullStreamName := fmt.Sprintf("%s-%s-%s-%s-%s", settings.Project, settings.Environment, settings.Family, settings.Application, settings.StreamName)
+	if fullStreamName, err = gosoKinesis.GetStreamName(config, settings); err != nil {
+		return nil, fmt.Errorf("can not get stream name: %w", err)
+	}
+
 	backoffSettings := exec.ReadBackoffSettings(config)
 	backoffSettings.InitialInterval = time.Second
 
 	recordWriterSettings := &gosoKinesis.RecordWriterSettings{
-		StreamName: fullStreamName,
+		ClientName: settings.ClientName,
+		StreamName: string(fullStreamName),
 		Backoff:    backoffSettings,
 	}
 
