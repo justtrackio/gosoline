@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	awsHttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/smithy-go/logging"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -40,6 +39,7 @@ type ClientHttpSettings struct {
 type ClientSettings struct {
 	Region     string             `cfg:"region" default:"eu-central-1"`
 	Endpoint   string             `cfg:"endpoint" default:"http://localhost:4566"`
+	AssumeRole string             `cfg:"assume_role"`
 	HttpClient ClientHttpSettings `cfg:"http_client"`
 	Backoff    exec.BackoffSettings
 }
@@ -67,18 +67,7 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 	settings.SetBackoff(backoffSettings)
 }
 
-func UnmarshalCredentials(config cfg.Config) *Credentials {
-	if !config.IsSet("cloud.aws.credentials") {
-		return nil
-	}
-
-	creds := &Credentials{}
-	config.UnmarshalKey("cloud.aws.credentials", creds)
-
-	return creds
-}
-
-func DefaultClientOptions(config cfg.Config, logger log.Logger, clientConfig ClientConfigAware) []func(options *awsCfg.LoadOptions) error {
+func DefaultClientOptions(ctx context.Context, config cfg.Config, logger log.Logger, clientConfig ClientConfigAware) ([]func(options *awsCfg.LoadOptions) error, error) {
 	settings := clientConfig.GetSettings()
 
 	options := []func(options *awsCfg.LoadOptions) error{
@@ -91,22 +80,33 @@ func DefaultClientOptions(config cfg.Config, logger log.Logger, clientConfig Cli
 		}),
 	}
 
-	if creds := UnmarshalCredentials(config); creds != nil {
-		credentialsProvider := credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
+	var err error
+	var credentialsProvider aws.CredentialsProvider
+
+	if credentialsProvider, err = GetCredentialsProvider(ctx, config, settings); err != nil {
+		return nil, fmt.Errorf("can not get credentials provider: %w", err)
+	}
+
+	if credentialsProvider != nil {
+		credentialsProvider = aws.NewCredentialsCache(credentialsProvider)
 		options = append(options, awsCfg.WithCredentialsProvider(credentialsProvider))
 	}
 
 	options = append(options, clientConfig.GetLoadOptions()...)
 
-	return options
+	return options, nil
 }
 
 func DefaultClientConfig(ctx context.Context, config cfg.Config, logger log.Logger, clientConfig ClientConfigAware) (aws.Config, error) {
 	var err error
+	var options []func(options *awsCfg.LoadOptions) error
 	var awsConfig aws.Config
 
 	settings := clientConfig.GetSettings()
-	options := DefaultClientOptions(config, logger, clientConfig)
+
+	if options, err = DefaultClientOptions(ctx, config, logger, clientConfig); err != nil {
+		return awsConfig, fmt.Errorf("can not get default client options: %w", err)
+	}
 
 	if awsConfig, err = awsCfg.LoadDefaultConfig(ctx, options...); err != nil {
 		return awsConfig, fmt.Errorf("can not initialize config: %w", err)

@@ -94,7 +94,7 @@ func NewQueue(ctx context.Context, config cfg.Config, logger log.Logger, setting
 		return nil, fmt.Errorf("can not create sqs client %s: %w", settings.ClientName, err)
 	}
 
-	if srv, err = NewService(ctx, config, logger, optFns...); err != nil {
+	if srv, err = NewService(ctx, config, logger, settings.ClientName, optFns...); err != nil {
 		return nil, fmt.Errorf("can not create service: %w", err)
 	}
 

@@ -133,7 +133,7 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	var kinesisClient *kinesis.Client
 	var metadataRepository MetadataRepository
 
-	if kinesisClient, err = NewClient(ctx, config, logger, "default"); err != nil {
+	if kinesisClient, err = NewClient(ctx, config, logger, settings.ClientName); err != nil {
 		return nil, fmt.Errorf("failed to create kinesis client: %w", err)
 	}
 
