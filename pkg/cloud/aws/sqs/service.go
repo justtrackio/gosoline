@@ -45,11 +45,11 @@ type service struct {
 	settings *ServiceSettings
 }
 
-func NewService(ctx context.Context, config cfg.Config, logger log.Logger, optFns ...ClientOption) (*service, error) {
+func NewService(ctx context.Context, config cfg.Config, logger log.Logger, clientName string, optFns ...ClientOption) (*service, error) {
 	var err error
 	var client Client
 
-	if client, err = ProvideClient(ctx, config, logger, "default", optFns...); err != nil {
+	if client, err = ProvideClient(ctx, config, logger, clientName, optFns...); err != nil {
 		return nil, fmt.Errorf("can not create client: %w", err)
 	}
 
