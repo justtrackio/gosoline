@@ -192,13 +192,17 @@ func (e *Environment) StreamOutput(name string) *streamOutputComponent {
 	return e.Component(componentStreamOutput, name).(*streamOutputComponent)
 }
 
-func (e *Environment) LoadFixtures(fixtureSets []*fixtures.FixtureSet) error {
-	if len(fixtureSets) == 0 {
+func (e *Environment) LoadFixtureBuilderFactories(factories ...fixtures.FixtureBuilderFactory) error {
+	if len(factories) == 0 {
 		return nil
 	}
 
-	if err := e.fixtureLoader.Load(e.ctx, fixtureSets); err != nil {
-		return err
+	for _, factory := range factories {
+		fixtureBuilder := factory(e.ctx)
+
+		if err := e.fixtureLoader.Load(e.ctx, fixtureBuilder.Fixtures()); err != nil {
+			return err
+		}
 	}
 
 	return nil

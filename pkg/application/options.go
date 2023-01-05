@@ -153,10 +153,10 @@ func WithApiServerShares(app *App) {
 	})
 }
 
-func WithFixtures(fixtureSets []*fixtures.FixtureSet) Option {
+func WithFixtureBuilderFactory(factory fixtures.FixtureBuilderFactory) Option {
 	return func(app *App) {
 		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(fixtureSets), kernelPkg.PositionBeginning)
+			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(factory), kernelPkg.PositionBeginning)
 		})
 	}
 }

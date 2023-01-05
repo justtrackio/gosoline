@@ -131,8 +131,8 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		}
 	}
 
-	if err = environment.LoadFixtures(suiteOptions.fixtureSets); err != nil {
-		assert.FailNow(t, "failed to load fixtures", err.Error())
+	if err = environment.LoadFixtureBuilderFactories(suiteOptions.fixtureBuilderFactories...); err != nil {
+		assert.FailNow(t, "failed to load fixtures from factories", err.Error())
 	}
 
 	for name, testCase := range testCases {

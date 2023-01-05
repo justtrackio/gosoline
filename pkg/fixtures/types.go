@@ -14,6 +14,12 @@ type FixtureSet struct {
 	Fixtures []interface{}
 }
 
+type FixtureBuilderFactory func(ctx context.Context) FixtureBuilder
+
+type FixtureBuilder interface {
+	Fixtures() []*FixtureSet
+}
+
 type FixtureLoader interface {
 	Load(ctx context.Context, fixtureSets []*FixtureSet) error
 }
@@ -24,3 +30,19 @@ type FixtureWriter interface {
 }
 
 type FixtureWriterFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error)
+
+type simpleFixtureBuilder struct {
+	fixtureSets []*FixtureSet
+}
+
+func (s simpleFixtureBuilder) Fixtures() []*FixtureSet {
+	return s.fixtureSets
+}
+
+func SimpleFixtureBuilderFactory(fixtureSets []*FixtureSet) FixtureBuilderFactory {
+	return func(ctx context.Context) FixtureBuilder {
+		return &simpleFixtureBuilder{
+			fixtureSets: fixtureSets,
+		}
+	}
+}

@@ -82,7 +82,7 @@ func New(config cfg.Config, logger log.Logger, s Settings) (*repository, error) 
 		Update().
 		After("gorm:update_time_stamp").
 		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
-	clk := clock.NewRealClock()
+	clk := clock.Provider
 
 	return NewWithInterfaces(logger, tracer, orm, clk, s.Metadata), nil
 }
@@ -103,7 +103,7 @@ func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings db.Setti
 		After("gorm:update_time_stamp").
 		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
 
-	clk := clock.NewRealClock()
+	clk := clock.Provider
 
 	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata), nil
 }

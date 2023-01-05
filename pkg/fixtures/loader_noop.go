@@ -21,6 +21,6 @@ func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger)
 }
 
 func (n *noopFixtureLoader) Load(ctx context.Context, fixtureSets []*FixtureSet) error {
-	n.logger.Info("fixtures loading disabled, to enable it use the 'fixtures' build tag")
+	n.logger.Info("fixtureSets loading disabled, to enable it use the 'fixtureSets' build tag")
 	return nil
 }

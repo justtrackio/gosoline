@@ -1,9 +1,10 @@
 //go:build integration && fixtures
-// +build integration,fixtures
 
 package guard_test
 
-import "github.com/justtrackio/gosoline/pkg/fixtures"
+import (
+	"github.com/justtrackio/gosoline/pkg/fixtures"
+)
 
 func buildPolicies() []interface{} {
 	return []interface{}{
@@ -35,43 +36,41 @@ func buildActions() []interface{} {
 	}
 }
 
-func buildFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-				TableName: "guard_policies",
-				Columns:   []string{"id", "description", "effect", "conditions"},
-			}),
-			Fixtures: buildPolicies(),
-		},
-		{
-			Enabled: true,
-			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-				TableName: "guard_subjects",
-				Columns:   []string{"id", "name"},
-			}),
-			Fixtures: buildSubjects(),
-		},
-		{
-			Enabled: true,
-			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-				TableName: "guard_resources",
-				Columns:   []string{"id", "name"},
-			}),
-			Fixtures: buildResources(),
-		},
-		{
-			Enabled: true,
-			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-				TableName: "guard_actions",
-				Columns:   []string{"id", "name"},
-			}),
-			Fixtures: buildActions(),
-		},
-	}
+var fixtureSets = []*fixtures.FixtureSet{
+	{
+		Enabled: true,
+		Purge:   false,
+		Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			TableName: "guard_policies",
+			Columns:   []string{"id", "description", "effect", "conditions"},
+		}),
+		Fixtures: buildPolicies(),
+	},
+	{
+		Enabled: true,
+		Purge:   false,
+		Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			TableName: "guard_subjects",
+			Columns:   []string{"id", "name"},
+		}),
+		Fixtures: buildSubjects(),
+	},
+	{
+		Enabled: true,
+		Purge:   false,
+		Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			TableName: "guard_resources",
+			Columns:   []string{"id", "name"},
+		}),
+		Fixtures: buildResources(),
+	},
+	{
+		Enabled: true,
+		Purge:   false,
+		Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			TableName: "guard_actions",
+			Columns:   []string{"id", "name"},
+		}),
+		Fixtures: buildActions(),
+	},
 }
