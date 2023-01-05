@@ -1,5 +1,4 @@
 //go:build integration && fixtures
-// +build integration,fixtures
 
 package integration
 
@@ -13,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/examples/getting_started/api/definer"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
@@ -26,7 +26,7 @@ func (s *ApiTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("info"),
 		suite.WithConfigFile("../api/config.dist.yml"),
-		suite.WithFixtures(fixtureSets),
+		suite.WithFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
 		suite.WithClockProvider(s.clock),
 	}
 }

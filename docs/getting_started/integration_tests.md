@@ -41,18 +41,18 @@ Inside `examples/getting_started/integration` we have an integration test for _m
 
 `fixtures.go` contains initial values for the `currency` key value store. Its most important part is:
 
-[embedmd]:# (../../examples/getting_started/integration/fixtures.go /var fixtureSets/ /\n}/)
+[embedmd]:# (../../examples/getting_started/integration/fixtures.go /var / $)
 ```go
-var fixtureSets = []*gosoFixtures.FixtureSet{
+var fixtureSets = []*fixtures.FixtureSet{
 	{
 		Enabled: true,
-		Writer:  gosoFixtures.ConfigurableKvStoreFixtureWriterFactory("currency"),
+		Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory("currency"),
 		Fixtures: []interface{}{
-			&gosoFixtures.KvStoreFixture{
+			&fixtures.KvStoreFixture{
 				Key:   "GBP",
 				Value: 1.25,
 			},
-			&gosoFixtures.KvStoreFixture{
+			&fixtures.KvStoreFixture{
 				Key:   "2021-01-03-GBP",
 				Value: 0.8,
 			},
@@ -95,7 +95,7 @@ func (s *ApiTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("info"),
 		suite.WithConfigFile("../api/config.dist.yml"),
-		suite.WithFixtures(fixtureSets),
+		suite.WithFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
 		suite.WithClockProvider(s.clock),
 	}
 }
@@ -164,7 +164,6 @@ The tags are needed because the test file starts with:
 
 ```go
 //go:build integration && fixtures
-// +build integration,fixtures
 ```
 
  ### Wrapping it up

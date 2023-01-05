@@ -56,7 +56,7 @@ func (m *mysqlOrmFixtureWriter) Purge(ctx context.Context) error {
 		return err
 	}
 
-	m.logger.Info("purged table for orm mysql fixtures")
+	m.logger.Info("purged table for orm mysql fixtureSets")
 
 	return nil
 }

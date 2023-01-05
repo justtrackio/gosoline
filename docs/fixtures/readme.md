@@ -38,7 +38,10 @@ You can easily define multiple fixtures to different destinations in one file an
 [embedmd]:# (../../examples/fixtures/main.go /func main/ /}/)
 ```go
 func main() {
-	app := application.Default(application.WithFixtures(createFixtures()))
+	app := application.Default(
+		application.WithFixtureBuilderFactory(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
+	)
+
 	app.Run()
 }
 ```
@@ -51,108 +54,167 @@ blobstore:
     bucket: s3-fixtures-bucket
 ```
 
+## ID Generation
+You can also generate a locally unique identifier for your fixtures via `fixtures.AutoNumbered`.
+
+## Example with available fixture writers:
 [embedmd]:# (../../examples/fixtures/main.go /func main/ $)
 ```go
 func main() {
-	app := application.Default(application.WithFixtures(createFixtures()))
+	app := application.Default(
+		application.WithFixtureBuilderFactory(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
+	)
+
 	app.Run()
 }
 
-func createFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Writer: fixtures.MysqlOrmFixtureWriterFactory(
-				&db_repo.Metadata{
-					ModelId: mdl.ModelId{
-						Name: "orm_fixture_example",
-					},
-				},
-			),
-			Fixtures: []interface{}{
-				&OrmFixtureExample{
-					Model: db_repo.Model{
-						Id: mdl.Box(uint(1)),
-					},
-					Name: mdl.Box("example"),
+var autoNumbered = fixtures.NewAutoNumberedFrom(2)
+
+var fixtureSets = []*fixtures.FixtureSet{
+	{
+		Enabled: true,
+		Writer: fixtures.MysqlOrmFixtureWriterFactory(
+			&db_repo.Metadata{
+				ModelId: mdl.ModelId{
+					Name: "orm_fixture_example",
 				},
 			},
-		},
-		{
-			Enabled: true,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-				TableName: "plain_fixture_example",
-				Columns:   []string{"id", "name"},
-			}),
-			Fixtures: []interface{}{
-				fixtures.MysqlPlainFixtureValues{1, "testName1"},
-				fixtures.MysqlPlainFixtureValues{2, "testName2"},
+		),
+		Fixtures: []interface{}{
+			&OrmFixtureExample{
+				Model: db_repo.Model{
+					Id: autoNumbered.GetNext(),
+				},
+				Name: mdl.Box("example"),
 			},
 		},
-		{
-			Enabled: true,
-			Writer: fixtures.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
+	},
+	{
+		Enabled: true,
+		Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			TableName: "plain_fixture_example",
+			Columns:   []string{"id", "name"},
+		}),
+		Fixtures: []interface{}{
+			fixtures.MysqlPlainFixtureValues{1, "testName1"},
+			fixtures.MysqlPlainFixtureValues{2, "testName2"},
+		},
+	},
+	{
+		Enabled: true,
+		Writer: fixtures.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
+			Project:     "gosoline",
+			Environment: "dev",
+			Family:      "example",
+			Application: "fixture-loader",
+			Name:        "exampleModel",
+		}),
+		Fixtures: []interface{}{
+			&fixtures.KvStoreFixture{
+				Key:   "SomeKey",
+				Value: &DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
+			},
+		},
+	},
+	{
+		Enabled: true,
+		Purge:   true,
+		Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpSet)),
+		Fixtures: []interface{}{
+			&fixtures.RedisFixture{
+				Key:    "example-key",
+				Value:  "bar",
+				Expiry: 1 * time.Hour,
+			},
+		},
+	},
+	{
+		Enabled: true,
+		Writer: fixtures.DynamoDbFixtureWriterFactory(&ddb.Settings{
+			ModelId: mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "dev",
 				Family:      "example",
 				Application: "fixture-loader",
 				Name:        "exampleModel",
-			}),
-			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
-					Key:   "SomeKey",
-					Value: &DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
+			},
+			Main: ddb.MainSettings{
+				Model: DynamoDbExampleModel{},
+			},
+			Global: []ddb.GlobalSettings{
+				{
+					Name:               "IDX_Name",
+					Model:              DynamoDbExampleModel{},
+					ReadCapacityUnits:  1,
+					WriteCapacityUnits: 1,
 				},
 			},
+		}),
+		Fixtures: []interface{}{
+			&DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
 		},
+	},
+	{
+		Enabled: true,
+		Purge:   false,
+		Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
+			ConfigName: "test",
+			BasePath:   "../../test/test_data/s3_fixtures_test_data",
+		}),
+		Fixtures: nil,
+	},
+}
+```
+
+## Named Fixtures
+In case you want to reuse your fixtures values for assertions or additional processing, you can load them by name when using `fixtures.NamedFixtureSets`:
+
+[embedmd]:# (../../examples/fixtures/named/main.go /func main/ $)
+```go
+func main() {
+	// store named fixtures
+	namedFixtures := &namedFixtureBuilder{}
+
+	app := application.Default(
+		application.WithFixtureBuilderFactory(fixtures.SimpleFixtureBuilderFactory(namedFixtures.Fixtures())),
+	)
+
+	app.Run()
+
+	// then you can access them later
+	fx := namedFixtures.GetNamed("test")
+	_ = fx.Value
+}
+
+type namedFixtureBuilder struct {
+	fixtures fixtures.NamedFixtureSet
+}
+
+func (b *namedFixtureBuilder) Fixtures() []*fixtures.FixtureSet {
+	b.fixtures = fixtures.NamedFixtureSet{
 		{
-			Enabled: true,
-			Purge:   true,
-			Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpSet)),
-			Fixtures: []interface{}{
-				&fixtures.RedisFixture{
-					Key:    "example-key",
-					Value:  "bar",
-					Expiry: 1 * time.Hour,
-				},
-			},
+			Name:  "test",
+			Value: &DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
 		},
-		{
-			Enabled: true,
-			Writer: fixtures.DynamoDbFixtureWriterFactory(&ddb.Settings{
-				ModelId: mdl.ModelId{
-					Project:     "gosoline",
-					Environment: "dev",
-					Family:      "example",
-					Application: "fixture-loader",
-					Name:        "exampleModel",
-				},
-				Main: ddb.MainSettings{
-					Model: DynamoDbExampleModel{},
-				},
-				Global: []ddb.GlobalSettings{
-					{
-						Name:               "IDX_Name",
-						Model:              DynamoDbExampleModel{},
-						ReadCapacityUnits:  1,
-						WriteCapacityUnits: 1,
-					},
-				},
-			}),
-			Fixtures: []interface{}{
-				&DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
-			},
-		},
+	}
+
+	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
 			Purge:   false,
-			Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
-				ConfigName: "test",
-				BasePath:   "../../test/test_data/s3_fixtures_test_data",
+			Writer: fixtures.MysqlOrmFixtureWriterFactory(&db_repo.Metadata{
+				ModelId: mdl.ModelId{
+					Name: "orm_named_fixture_example",
+				},
 			}),
-			Fixtures: nil,
+			Fixtures: b.fixtures.All(),
 		},
 	}
+}
+
+// GetNamed Add properly typed getter
+func (b *namedFixtureBuilder) GetNamed(name string) *DynamoDbExampleModel {
+	return b.fixtures.GetValueByName(name).(*DynamoDbExampleModel)
 }
 ```
 

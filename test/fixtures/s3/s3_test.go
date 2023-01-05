@@ -1,5 +1,4 @@
 //go:build integration && fixtures
-// +build integration,fixtures
 
 package s3_test
 
@@ -34,8 +33,7 @@ func (s *S3TestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *S3TestSuite) TestS3() {
-	fs := s3DisabledPurgeFixtures()
-	err := s.Env().LoadFixtures(fs)
+	err := s.Env().LoadFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(s3DisabledPurgeFixtures))
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
@@ -79,7 +77,7 @@ func (s *S3TestSuite) TestS3() {
 }
 
 func (s *S3TestSuite) TestS3WithPurge() {
-	err := s.Env().LoadFixtures(s3DisabledPurgeFixtures())
+	err := s.Env().LoadFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(s3DisabledPurgeFixtures))
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
@@ -97,7 +95,7 @@ func (s *S3TestSuite) TestS3WithPurge() {
 	s.NoError(err)
 	s.Equal(28092, len(body))
 
-	err = s.Env().LoadFixtures(s3EnabledPurgeFixtures())
+	err = s.Env().LoadFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(s3EnabledPurgeFixtures))
 	s.NoError(err)
 
 	input = &s3.GetObjectInput{
@@ -125,31 +123,27 @@ func (s *S3TestSuite) TestS3WithPurge() {
 	s.Nil(output)
 }
 
-func s3DisabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
-				ConfigName: configName,
-				BasePath:   basePath,
-			}),
-			Fixtures: nil,
-		},
-	}
+var s3DisabledPurgeFixtures = []*fixtures.FixtureSet{
+	{
+		Enabled: true,
+		Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
+			ConfigName: configName,
+			BasePath:   basePath,
+		}),
+		Fixtures: nil,
+	},
 }
 
-func s3EnabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Purge:   true,
-			Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
-				ConfigName: configName,
-				BasePath:   basePathPurge,
-			}),
-			Fixtures: nil,
-		},
-	}
+var s3EnabledPurgeFixtures = []*fixtures.FixtureSet{
+	{
+		Enabled: true,
+		Purge:   true,
+		Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
+			ConfigName: configName,
+			BasePath:   basePathPurge,
+		}),
+		Fixtures: nil,
+	},
 }
 
 func TestS3TestSuite(t *testing.T) {

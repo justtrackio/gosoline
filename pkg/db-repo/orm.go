@@ -2,10 +2,12 @@ package db_repo
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/iancoleman/strcase"
 	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -59,6 +61,10 @@ func NewOrmWithInterfaces(dbClient gorm.SQLCommon, settings OrmSettings) (*gorm.
 	orm.SetLogger(&noopLogger{})
 	orm = orm.Set("gorm:auto_preload", true)
 	orm = orm.Set("gorm:save_associations", false)
+
+	orm.SetNowFuncOverride(func() time.Time {
+		return clock.Provider.Now()
+	})
 
 	if !settings.Migrations.TablePrefixed {
 		return orm, nil

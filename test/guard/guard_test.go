@@ -1,5 +1,4 @@
 //go:build integration && fixtures
-// +build integration,fixtures
 
 package guard_test
 
@@ -7,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/guard"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 	"github.com/ory/ladon"
@@ -22,7 +22,7 @@ func (s *GuardTestSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel("debug"),
 		suite.WithSharedEnvironment(),
 		suite.WithConfigFile("config.dist.yml"),
-		suite.WithFixtures(buildFixtures()),
+		suite.WithFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
 	}
 }
 
