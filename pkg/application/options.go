@@ -178,6 +178,18 @@ func WithKernelSettingsFromConfig(app *App) {
 	})
 }
 
+func WithLoggerGroupTag(app *App) {
+	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+		if !config.IsSet("app_group") {
+			return errors.New("can not get application group from config to set it on logger")
+		}
+
+		return logger.Option(log.WithFields(map[string]interface{}{
+			"group": config.GetString("app_group"),
+		}))
+	})
+}
+
 func WithLoggerApplicationTag(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		if !config.IsSet("app_name") {

@@ -111,8 +111,8 @@ type metadataRepository struct {
 func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Logger, stream Stream, clientId ClientId, settings Settings) (MetadataRepository, error) {
 	ddbSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Application: "kinsumer",
-			Name:        "metadata",
+			Group: "kinsumer",
+			Name:  "metadata",
 		},
 		Main: ddb.MainSettings{
 			Model:              &FullRecord{},

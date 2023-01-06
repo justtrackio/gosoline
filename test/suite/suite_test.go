@@ -17,6 +17,7 @@ type SuiteTestSuite struct {
 
 func (s *SuiteTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
+		suite.WithConfigFile("config.dist.yml"),
 		suite.WithSharedEnvironment(),
 		suite.WithTestCaseWhitelist("TestExpectedToRun"),
 		suite.WithTestCaseRepeatCount(2),

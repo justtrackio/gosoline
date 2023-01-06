@@ -121,6 +121,13 @@ func TestModuleExample(t *testing.T) {
 		exitCodeHandler,
 		application.WithModuleFactory("status", status.NewModule(status.ProvideManager())),
 		application.WithModuleFactory("main", NewTestModule),
+		application.WithConfigMap(map[string]interface{}{
+			"env":         "test",
+			"app_project": "justtrack",
+			"app_family":  "fam",
+			"app_group":   "grp",
+			"app_name":    "name",
+		}),
 	)
 	app.Run()
 }

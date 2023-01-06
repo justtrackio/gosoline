@@ -52,7 +52,7 @@ type Pipeliner interface {
 }
 
 func GetFullyQualifiedKey(appId cfg.AppId, key string) string {
-	return fmt.Sprintf("%v-%v-%v-%v-%v", appId.Project, appId.Environment, appId.Family, appId.Application, key)
+	return fmt.Sprintf("%s-%s-%s-%s-%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application, key)
 }
 
 //go:generate mockery --name Client

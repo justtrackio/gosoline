@@ -23,6 +23,7 @@ func RedisKvStoreFixtureWriterFactory[T any](modelId *mdl.ModelId) FixtureWriter
 				Project:     modelId.Project,
 				Environment: modelId.Environment,
 				Family:      modelId.Family,
+				Group:       modelId.Group,
 				Application: modelId.Application,
 			},
 			Name: modelId.Name,

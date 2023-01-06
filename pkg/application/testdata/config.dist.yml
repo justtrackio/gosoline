@@ -1,5 +1,6 @@
 env: test
 
 app_name: test_app
+app_group: test_group
 app_project: test_project
 app_family: test_family

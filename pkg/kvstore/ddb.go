@@ -44,6 +44,7 @@ func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Log
 			Project:     settings.Project,
 			Environment: settings.Environment,
 			Family:      settings.Family,
+			Group:       settings.Group,
 			Application: settings.Application,
 			Name:        name,
 		},
