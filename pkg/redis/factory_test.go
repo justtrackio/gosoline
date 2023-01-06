@@ -22,9 +22,10 @@ func (s *FactoryTestSuite) SetupTest() {
 func (s *FactoryTestSuite) initConfig(settings map[string]interface{}) {
 	appIdConfig := cfg.WithConfigMap(map[string]interface{}{
 		"app_project": "gosoline",
-		"app_family":  "test",
+		"app_family":  "fam",
+		"app_group":   "grp",
 		"app_name":    "redis",
-		"env":         "test",
+		"env":         "env",
 	})
 
 	if err := s.config.Option(cfg.WithConfigMap(settings), appIdConfig); err != nil {
@@ -40,11 +41,15 @@ func (s *FactoryTestSuite) TestDefault() {
 	expected := &redis.Settings{
 		AppId: cfg.AppId{
 			Project:     "gosoline",
-			Environment: "test",
-			Family:      "test",
+			Environment: "env",
+			Family:      "fam",
+			Group:       "grp",
 			Application: "redis",
 		},
-		Name:    "default",
+		Name: "default",
+		Naming: redis.Naming{
+			Pattern: "{name}.{group}.redis.{env}.{family}",
+		},
 		Dialer:  "tcp",
 		Address: "127.0.0.1:6379",
 		BackoffSettings: exec.BackoffSettings{
@@ -76,11 +81,15 @@ func (s *FactoryTestSuite) TestDedicated() {
 	expected := &redis.Settings{
 		AppId: cfg.AppId{
 			Project:     "gosoline",
-			Environment: "test",
-			Family:      "test",
+			Environment: "env",
+			Family:      "fam",
+			Group:       "grp",
 			Application: "redis",
 		},
-		Name:    "dedicated",
+		Name: "dedicated",
+		Naming: redis.Naming{
+			Pattern: "{name}.{group}.redis.{env}.{family}",
+		},
 		Dialer:  "srv",
 		Address: "dedicated.address",
 		BackoffSettings: exec.BackoffSettings{
@@ -114,11 +123,15 @@ func (s *FactoryTestSuite) TestWithDefaults() {
 	expected := &redis.Settings{
 		AppId: cfg.AppId{
 			Project:     "gosoline",
-			Environment: "test",
-			Family:      "test",
+			Environment: "env",
+			Family:      "fam",
+			Group:       "grp",
 			Application: "redis",
 		},
-		Name:    "partial",
+		Name: "partial",
+		Naming: redis.Naming{
+			Pattern: "{name}.{group}.redis.{env}.{family}",
+		},
 		Dialer:  "srv",
 		Address: "partial.address",
 		BackoffSettings: exec.BackoffSettings{

@@ -372,6 +372,7 @@ func (r *s3Reader) getBucketName() string {
 		Project:     r.modelId.Project,
 		Environment: r.modelId.Environment,
 		Family:      r.modelId.Family,
+		Group:       r.modelId.Group,
 		Application: r.modelId.Application,
 	})
 }

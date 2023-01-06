@@ -54,7 +54,7 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 				Value: "Ash",
 			},
 		},
-		TableName: aws.String("gosoline-test-integration-test-test-application-testModel"),
+		TableName: aws.String("gosoline-test-integration-test-grp-testModel"),
 	})
 
 	// should have created the item
@@ -64,7 +64,7 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	s.Equal("10", gio.Item["Age"].(*types.AttributeValueMemberN).Value)
 
 	qo, err := ddbClient.Query(context.Background(), &dynamodb.QueryInput{
-		TableName:              aws.String("gosoline-test-integration-test-test-application-testModel"),
+		TableName:              aws.String("gosoline-test-integration-test-grp-testModel"),
 		IndexName:              aws.String("IDX_Age"),
 		KeyConditionExpression: aws.String("Age = :v_age"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
@@ -78,7 +78,7 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	s.NoError(err)
 	s.Len(qo.Items, 1, "1 item expected")
 
-	_, err = ddbClient.DeleteTable(envContext, &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-test-application-testModel")})
+	_, err = ddbClient.DeleteTable(envContext, &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-grp-testModel")})
 	s.NoError(err)
 }
 
@@ -100,7 +100,7 @@ func (s *DynamoDbSuite) TestDynamoDbWithPurge() {
 				Value: "Ash",
 			},
 		},
-		TableName: aws.String("gosoline-test-integration-test-test-application-testModel"),
+		TableName: aws.String("gosoline-test-integration-test-grp-testModel"),
 	})
 
 	// should have created the first item
@@ -118,7 +118,7 @@ func (s *DynamoDbSuite) TestDynamoDbWithPurge() {
 				Value: "Bash",
 			},
 		},
-		TableName: aws.String("gosoline-test-integration-test-test-application-testModel"),
+		TableName: aws.String("gosoline-test-integration-test-grp-testModel"),
 	})
 
 	// should have created the second item
@@ -133,7 +133,7 @@ func (s *DynamoDbSuite) TestDynamoDbWithPurge() {
 				Value: "Ash",
 			},
 		},
-		TableName: aws.String("gosoline-test-integration-test-test-application-testModel"),
+		TableName: aws.String("gosoline-test-integration-test-grp-testModel"),
 	})
 
 	// first item should have been purged
@@ -141,7 +141,7 @@ func (s *DynamoDbSuite) TestDynamoDbWithPurge() {
 	s.Nil(gio.Item)
 
 	qo, err := ddbClient.Query(context.Background(), &dynamodb.QueryInput{
-		TableName:              aws.String("gosoline-test-integration-test-test-application-testModel"),
+		TableName:              aws.String("gosoline-test-integration-test-grp-testModel"),
 		IndexName:              aws.String("IDX_Age"),
 		KeyConditionExpression: aws.String("Age = :v_age"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
@@ -154,7 +154,7 @@ func (s *DynamoDbSuite) TestDynamoDbWithPurge() {
 	s.NoError(err)
 	s.Len(qo.Items, 1, "1 item expected")
 
-	_, err = ddbClient.DeleteTable(envContext, &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-test-application-testModel")})
+	_, err = ddbClient.DeleteTable(envContext, &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-grp-testModel")})
 	s.NoError(err)
 }
 
@@ -176,7 +176,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStore() {
 				Value: "Ash",
 			},
 		},
-		TableName: aws.String("gosoline-test-integration-test-test-application-kvstore-testModel"),
+		TableName: aws.String("gosoline-test-integration-test-grp-kvstore-testModel"),
 	})
 
 	// should have created the item
@@ -193,7 +193,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStore() {
 	}
 	s.Equal(expectedValue, gio.Item["value"].(*types.AttributeValueMemberS))
 
-	_, err = ddbClient.DeleteTable(envContext, &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-test-application-kvstore-testModel")})
+	_, err = ddbClient.DeleteTable(envContext, &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-grp-kvstore-testModel")})
 	s.NoError(err)
 }
 
@@ -215,7 +215,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 				Value: "Ash",
 			},
 		},
-		TableName: aws.String("gosoline-test-integration-test-test-application-kvstore-testModel"),
+		TableName: aws.String("gosoline-test-integration-test-grp-kvstore-testModel"),
 	})
 
 	// should have created the first item
@@ -236,7 +236,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 				Value: "Bash",
 			},
 		},
-		TableName: aws.String("gosoline-test-integration-test-test-application-kvstore-testModel"),
+		TableName: aws.String("gosoline-test-integration-test-grp-kvstore-testModel"),
 	})
 
 	// should have created the second item
@@ -259,14 +259,14 @@ func (s *DynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 				Value: "Ash",
 			},
 		},
-		TableName: aws.String("gosoline-test-integration-test-test-application-kvstore-testModel"),
+		TableName: aws.String("gosoline-test-integration-test-grp-kvstore-testModel"),
 	})
 
 	// first item should have been purged
 	s.NoError(err)
 	s.Nil(gio.Item)
 
-	_, err = ddbClient.DeleteTable(envContext, &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-test-application-kvstore-testModel")})
+	_, err = ddbClient.DeleteTable(envContext, &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-grp-kvstore-testModel")})
 	s.NoError(err)
 }
 
@@ -279,6 +279,7 @@ var kvStoreSettings = &mdl.ModelId{
 	Project:     "gosoline",
 	Environment: "test",
 	Family:      "integration-test",
+	Group:       "grp",
 	Application: "test-application",
 	Name:        "testModel",
 }
@@ -319,6 +320,7 @@ var ddbSettings = &ddb.Settings{
 		Project:     "gosoline",
 		Environment: "test",
 		Family:      "integration-test",
+		Group:       "grp",
 		Application: "test-application",
 		Name:        "testModel",
 	},

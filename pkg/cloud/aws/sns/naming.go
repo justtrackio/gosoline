@@ -33,7 +33,7 @@ func (s TopicNameSettings) GetTopicId() string {
 }
 
 type TopicNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{app}-{topicId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{topicId}"`
 }
 
 func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (string, error) {
@@ -51,6 +51,7 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 		"project": appId.Project,
 		"env":     appId.Environment,
 		"family":  appId.Family,
+		"group":   appId.Group,
 		"app":     appId.Application,
 		"topicId": topicSettings.GetTopicId(),
 	}

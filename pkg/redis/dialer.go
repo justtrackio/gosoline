@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -24,16 +25,26 @@ type (
 	SrvNamingFactory func(appId cfg.AppId, name string) string
 )
 
-var srvNamingStrategy = func(appId cfg.AppId, name string) string {
-	return fmt.Sprintf("%s.%s.redis.%s.%s", name, appId.Application, appId.Environment, appId.Family)
-}
-
 func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {
 	return func(ctx context.Context, _ string, _ string) (net.Conn, error) {
 		address := settings.Address
 
 		if address == "" {
-			address = srvNamingStrategy(settings.AppId, settings.Name)
+			values := map[string]string{
+				"project": settings.AppId.Project,
+				"env":     settings.AppId.Environment,
+				"family":  settings.AppId.Family,
+				"group":   settings.AppId.Group,
+				"app":     settings.AppId.Application,
+				"name":    settings.Name,
+			}
+
+			address = settings.Naming.Pattern
+			for key, val := range values {
+				templ := fmt.Sprintf("{%s}", key)
+				address = strings.ReplaceAll(address, templ, val)
+			}
+
 			logger.Info("no address provided for redis %s: using %s", settings.Name, address)
 		}
 

@@ -39,7 +39,12 @@ type ddbLockProvider struct {
 func NewDdbLockProvider(ctx context.Context, config cfg.Config, logger log.Logger, settings conc.DistributedLockSettings) (conc.DistributedLockProvider, error) {
 	ddbSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Name: "locks",
+			Project:     settings.AppId.Project,
+			Environment: settings.AppId.Environment,
+			Family:      settings.AppId.Family,
+			Group:       settings.AppId.Group,
+			Application: settings.AppId.Application,
+			Name:        "locks",
 		},
 		Main: ddb.MainSettings{
 			Model:              &DdbLockItem{},

@@ -13,6 +13,7 @@ import (
 
 type Settings struct {
 	cfg.AppId
+	DdbSettings    DdbSettings
 	Name           string
 	Ttl            time.Duration
 	BatchSize      int

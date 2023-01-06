@@ -32,7 +32,7 @@ func NewEsWriter(config cfg.Config, logger log.Logger) (*esWriter, error) {
 	testClock := clock.NewRealClock()
 
 	appId := cfg.GetAppIdFromConfig(config)
-	namespace := fmt.Sprintf("%s/%s/%s/%s", appId.Project, appId.Environment, appId.Family, appId.Application)
+	namespace := fmt.Sprintf("%s/%s/%s/%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application)
 
 	return NewEsWriterWithInterfaces(logger, client, testClock, namespace), nil
 }

@@ -13,12 +13,13 @@ type ModelId struct {
 	Project     string `cfg:"project" default:"{app_project}"`
 	Environment string `cfg:"environment" default:"{env}"`
 	Family      string `cfg:"family" default:"{app_family}"`
+	Group       string `cfg:"group" default:"{app_group}"`
 	Application string `cfg:"application" default:"{app_name}"`
 	Name        string `cfg:"name"`
 }
 
 func (m *ModelId) String() string {
-	return fmt.Sprintf("%v.%v.%v.%v", m.Project, m.Family, m.Application, m.Name)
+	return fmt.Sprintf("%s.%s.%s.%s", m.Project, m.Family, m.Group, m.Name)
 }
 
 func (m *ModelId) PadFromConfig(config ConfigProvider) {
@@ -34,6 +35,10 @@ func (m *ModelId) PadFromConfig(config ConfigProvider) {
 		m.Family = config.GetString("app_family")
 	}
 
+	if len(m.Group) == 0 {
+		m.Group = config.GetString("app_group")
+	}
+
 	if len(m.Application) == 0 {
 		m.Application = config.GetString("app_name")
 	}
@@ -47,10 +52,10 @@ func ModelIdFromString(str string) (ModelId, error) {
 	}
 
 	modelId := ModelId{
-		Project:     parts[0],
-		Family:      parts[1],
-		Application: parts[2],
-		Name:        parts[3],
+		Project: parts[0],
+		Family:  parts[1],
+		Group:   parts[2],
+		Name:    parts[3],
 	}
 
 	return modelId, nil

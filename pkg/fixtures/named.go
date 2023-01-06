@@ -68,7 +68,7 @@ func (l *NamedFixtureSet) GetValueByName(name string) interface{} {
 		return item.Name == name
 	})
 	if !ok {
-		panic(fmt.Errorf("failed to get value by name"))
+		panic(fmt.Errorf("failed to get value by name: %s", name))
 	}
 
 	return fixture.Value

@@ -18,7 +18,7 @@ type redisKvStore[T any] struct {
 }
 
 func RedisBasename(settings *Settings) string {
-	return fmt.Sprintf("kvstore_%s", settings.Name)
+	return fmt.Sprintf("kvstore-%s", settings.Name)
 }
 
 func NewRedisKvStore[T any](_ context.Context, config cfg.Config, logger log.Logger, settings *Settings) (KvStore[T], error) {
@@ -274,7 +274,7 @@ func (s *redisKvStore[T]) key(key any) (string, error) {
 	keyStr = strings.Join([]string{
 		s.settings.Project,
 		s.settings.Family,
-		s.settings.Application,
+		s.settings.Group,
 		"kvstore",
 		s.settings.Name,
 		keyStr,

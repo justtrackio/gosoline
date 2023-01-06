@@ -2,6 +2,7 @@ env: test
 
 app_project: gosoline
 app_family: test
+app_group: grp
 app_name: ddb-lock-test
 
 exec:

@@ -43,7 +43,7 @@ func initTransformers(ctx context.Context, config cfg.Config, logger log.Logger,
 		modelId := settings.SourceModel.String()
 
 		if _, ok := transformerFactories[modelId]; !ok {
-			return nil, fmt.Errorf("there is no transformer for subscriber %s with modelId %s", name, modelId)
+			return nil, fmt.Errorf("can not create transformers: there is no transformer for subscriber %s with modelId %s", name, modelId)
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
 )
 
@@ -38,6 +39,7 @@ type DistributedLock interface {
 }
 
 type DistributedLockSettings struct {
+	cfg.AppId
 	Backoff         exec.BackoffSettings
 	DefaultLockTime time.Duration
 	Domain          string

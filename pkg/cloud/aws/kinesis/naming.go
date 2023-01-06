@@ -15,7 +15,7 @@ type StreamNameSettingsAware interface {
 }
 
 type StreamNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{app}-{name}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{streamName}"`
 }
 
 func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream, error) {
@@ -31,11 +31,12 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 	name := namingSettings.Pattern
 
 	values := map[string]string{
-		"project": appId.Project,
-		"env":     appId.Environment,
-		"family":  appId.Family,
-		"app":     appId.Application,
-		"name":    settings.GetStreamName(),
+		"project":    appId.Project,
+		"env":        appId.Environment,
+		"family":     appId.Family,
+		"group":      appId.Group,
+		"app":        appId.Application,
+		"streamName": settings.GetStreamName(),
 	}
 
 	for key, val := range values {
