@@ -39,7 +39,7 @@ func (s QueueNameSettings) GetQueueId() string {
 }
 
 type QueueNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{app}-{queueId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{queueId}"`
 }
 
 func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (string, error) {
@@ -57,6 +57,7 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 		"project": appId.Project,
 		"env":     appId.Environment,
 		"family":  appId.Family,
+		"group":   appId.Group,
 		"app":     appId.Application,
 		"queueId": queueSettings.GetQueueId(),
 	}

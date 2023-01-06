@@ -274,7 +274,7 @@ func (s *redisKvStore[T]) key(key any) (string, error) {
 	keyStr = strings.Join([]string{
 		s.settings.Project,
 		s.settings.Family,
-		s.settings.Application,
+		s.settings.Group,
 		"kvstore",
 		s.settings.Name,
 		keyStr,

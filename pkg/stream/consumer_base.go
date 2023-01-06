@@ -152,7 +152,7 @@ func NewBaseConsumerWithInterfaces(
 ) *baseConsumer {
 	return &baseConsumer{
 		name:                name,
-		id:                  fmt.Sprintf("consumer-%s-%s-%s", appId.Family, appId.Application, name),
+		id:                  fmt.Sprintf("consumer-%s-%s-%s-%s", appId.Family, appId.Group, appId.Application, name),
 		clock:               clock.Provider,
 		uuidGen:             uuidGen,
 		logger:              logger,

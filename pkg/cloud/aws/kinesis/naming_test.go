@@ -23,8 +23,9 @@ func (s *GetStreamNameTestSuite) SetupTest() {
 	s.settings = &kinesis.Settings{
 		AppId: cfg.AppId{
 			Project:     "justtrack",
-			Environment: "test",
+			Environment: "env",
 			Family:      "gosoline",
+			Group:       "grp",
 			Application: "producer",
 		},
 		ClientName: "default",
@@ -40,12 +41,12 @@ func (s *GetStreamNameTestSuite) setupConfig(settings map[string]interface{}) {
 func (s *GetStreamNameTestSuite) TestDefault() {
 	name, err := kinesis.GetStreamName(s.config, s.settings)
 	s.NoError(err)
-	s.EqualValues("justtrack-test-gosoline-producer-event", name)
+	s.EqualValues("justtrack-env-gosoline-grp-event", string(name))
 }
 
 func (s *GetStreamNameTestSuite) TestDefaultWithPattern() {
 	s.setupConfig(map[string]interface{}{
-		"cloud.aws.kinesis.clients.default.naming.pattern": "{app}-{name}",
+		"cloud.aws.kinesis.clients.default.naming.pattern": "{app}-{streamName}",
 	})
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)
@@ -56,7 +57,7 @@ func (s *GetStreamNameTestSuite) TestDefaultWithPattern() {
 func (s *GetStreamNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
 	s.setupConfig(map[string]interface{}{
-		"cloud.aws.kinesis.clients.specific.naming.pattern": "{app}-{name}",
+		"cloud.aws.kinesis.clients.specific.naming.pattern": "{app}-{streamName}",
 	})
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)

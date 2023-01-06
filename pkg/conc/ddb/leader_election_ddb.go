@@ -19,10 +19,14 @@ type DdbLeaderElectionItem struct {
 	LeadingUntil int64  `json:"leadingUntil" ddb:"ttl=enabled"`
 }
 
+type TableNamingSettings struct {
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-leader-elections"`
+}
+
 type DdbLeaderElectionSettings struct {
-	TableName     string        `cfg:"table_name" default:"{app_project}-{env}-{app_family}-leader-elections"`
-	GroupId       string        `cfg:"group_id" default:"{app_name}"`
-	LeaseDuration time.Duration `cfg:"lease_duration" default:"1m"`
+	Naming        TableNamingSettings `cfg:"naming"`
+	GroupId       string              `cfg:"group_id" default:"{app_name}"`
+	LeaseDuration time.Duration       `cfg:"lease_duration" default:"1m"`
 }
 
 type DdbLeaderElection struct {
@@ -44,7 +48,7 @@ func NewDdbLeaderElectionWithSettings(ctx context.Context, config cfg.Config, lo
 	repository, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{},
 		TableNamingSettings: ddb.TableNamingSettings{
-			Pattern: settings.TableName,
+			Pattern: settings.Naming.Pattern,
 		},
 		DisableTracing: true,
 		Main: ddb.MainSettings{

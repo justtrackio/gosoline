@@ -2,6 +2,7 @@ env: test
 
 app_project: prj
 app_family: fam
+app_group: grp
 app_name: app
 
 cloud:

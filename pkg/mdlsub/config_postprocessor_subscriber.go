@@ -99,6 +99,7 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{
 		{
 			Family:      subscriberSettings.SourceModel.Family,
+			Group:       subscriberSettings.SourceModel.Group,
 			Application: subscriberSettings.SourceModel.Application,
 			TopicId:     topicId,
 		},
@@ -120,6 +121,7 @@ func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string,
 
 	inputSettings.Project = subscriberSettings.SourceModel.Project
 	inputSettings.Family = subscriberSettings.SourceModel.Family
+	inputSettings.Group = subscriberSettings.SourceModel.Group
 	inputSettings.Application = subscriberSettings.SourceModel.Application
 	inputSettings.StreamName = streamName
 
@@ -134,6 +136,7 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 
 	kvstoreSettings.Project = subscriberSettings.TargetModel.Project
 	kvstoreSettings.Family = subscriberSettings.TargetModel.Family
+	kvstoreSettings.Group = subscriberSettings.TargetModel.Group
 	kvstoreSettings.Application = subscriberSettings.TargetModel.Application
 	kvstoreSettings.Elements = []string{kvstore.TypeRedis, kvstore.TypeDdb}
 
@@ -145,7 +148,7 @@ func GetSubscriberFQN(name string, sourceModel SubscriberModel) string {
 		return fmt.Sprintf("subscriber-%s", name)
 	}
 
-	return fmt.Sprintf("subscriber-%s-%s-%s-%s", sourceModel.Project, sourceModel.Family, sourceModel.Application, sharedName)
+	return fmt.Sprintf("subscriber-%s-%s-%s-%s-%s", sourceModel.Project, sourceModel.Family, sourceModel.Group, sourceModel.Application, sharedName)
 }
 
 func getInputConfigKey(name string, sourceModel SubscriberModel) string {

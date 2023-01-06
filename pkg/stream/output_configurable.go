@@ -100,6 +100,7 @@ type KinesisOutputConfiguration struct {
 	Type        string `cfg:"type" default:"kinesis"`
 	Project     string `cfg:"project"`
 	Family      string `cfg:"family"`
+	Group       string `cfg:"group"`
 	Application string `cfg:"application"`
 	ClientName  string `cfg:"client_name" default:"default"`
 	StreamName  string `cfg:"stream_name"`
@@ -114,6 +115,7 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
+			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
 		ClientName: configuration.ClientName,
@@ -124,6 +126,7 @@ func newKinesisOutputFromConfig(ctx context.Context, config cfg.Config, logger l
 type redisListOutputConfiguration struct {
 	Project     string `cfg:"project"`
 	Family      string `cfg:"family"`
+	Group       string `cfg:"group"`
 	Application string `cfg:"application"`
 	ServerName  string `cfg:"server_name" default:"default" validate:"required,min=1"`
 	Key         string `cfg:"key" validate:"required,min=1"`
@@ -140,6 +143,7 @@ func newRedisListOutputFromConfig(_ context.Context, config cfg.Config, logger l
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
+			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
 		ServerName: configuration.ServerName,
@@ -153,6 +157,7 @@ type SnsOutputConfiguration struct {
 	Type        string `cfg:"type" default:"sns"`
 	Project     string `cfg:"project"`
 	Family      string `cfg:"family"`
+	Group       string `cfg:"group"`
 	Application string `cfg:"application"`
 	TopicId     string `cfg:"topic_id" validate:"required"`
 	ClientName  string `cfg:"client_name" default:"default"`
@@ -167,6 +172,7 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
+			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
 		TopicId:    configuration.TopicId,
@@ -179,6 +185,7 @@ type SqsOutputConfiguration struct {
 	Type              string            `cfg:"type" default:"sqs"`
 	Project           string            `cfg:"project"`
 	Family            string            `cfg:"family"`
+	Group             string            `cfg:"group"`
 	Application       string            `cfg:"application"`
 	QueueId           string            `cfg:"queue_id" validate:"required"`
 	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
@@ -196,6 +203,7 @@ func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
+			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
 		QueueId:           configuration.QueueId,

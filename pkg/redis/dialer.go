@@ -25,7 +25,7 @@ type (
 )
 
 var srvNamingStrategy = func(appId cfg.AppId, name string) string {
-	return fmt.Sprintf("%s.%s.redis.%s.%s", name, appId.Application, appId.Environment, appId.Family)
+	return fmt.Sprintf("%s.%s.redis.%s.%s", name, appId.Group, appId.Environment, appId.Family)
 }
 
 func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {

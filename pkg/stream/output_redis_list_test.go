@@ -15,7 +15,7 @@ import (
 
 func TestRedisListOutput_WriteOne(t *testing.T) {
 	output, redisMock := setup(1)
-	redisMock.On("RPush", mock.AnythingOfType("*context.emptyCtx"), "mcoins-test-analytics-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Once()
+	redisMock.On("RPush", mock.AnythingOfType("*context.emptyCtx"), "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Once()
 
 	record := stream.NewMessage("bla")
 	err := output.WriteOne(context.Background(), record)
@@ -26,7 +26,7 @@ func TestRedisListOutput_WriteOne(t *testing.T) {
 
 func TestRedisListOutput_Write(t *testing.T) {
 	output, redisMock := setup(2)
-	redisMock.On("RPush", mock.AnythingOfType("*context.emptyCtx"), "mcoins-test-analytics-app-my-list", mock.AnythingOfType("[]uint8"), mock.AnythingOfType("[]uint8")).Return(int64(2), nil).Once()
+	redisMock.On("RPush", mock.AnythingOfType("*context.emptyCtx"), "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8"), mock.AnythingOfType("[]uint8")).Return(int64(2), nil).Once()
 
 	batch := []stream.WritableMessage{
 		stream.NewMessage("foo"),
@@ -40,7 +40,7 @@ func TestRedisListOutput_Write(t *testing.T) {
 
 func TestRedisListOutput_Write_Chunked(t *testing.T) {
 	output, redisMock := setup(1)
-	redisMock.On("RPush", mock.AnythingOfType("*context.emptyCtx"), "mcoins-test-analytics-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Times(2)
+	redisMock.On("RPush", mock.AnythingOfType("*context.emptyCtx"), "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Times(2)
 
 	batch := []stream.WritableMessage{
 		stream.NewMessage("foo"),
@@ -67,7 +67,8 @@ func getSettings(batchSize int) *stream.RedisListOutputSettings {
 		AppId: cfg.AppId{
 			Project:     "mcoins",
 			Environment: "test",
-			Family:      "analytics",
+			Family:      "fam",
+			Group:       "grp",
 			Application: "app",
 		},
 		Key:       "my-list",

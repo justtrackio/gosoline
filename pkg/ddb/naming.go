@@ -8,12 +8,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
-const (
-	DefaultNamingPattern = "{project}-{env}-{family}-{app}-{modelId}"
-)
-
 type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{app}-{modelId}"`
+	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-{group}-{modelId}"`
 }
 
 func TableName(config cfg.Config, settings *Settings) string {
@@ -45,6 +41,7 @@ func GetTableNameWithSettings(tableSettings *Settings, namingSettings *TableNami
 		"project": tableSettings.ModelId.Project,
 		"env":     tableSettings.ModelId.Environment,
 		"family":  tableSettings.ModelId.Family,
+		"group":   tableSettings.ModelId.Group,
 		"app":     tableSettings.ModelId.Application,
 		"modelId": tableSettings.ModelId.Name,
 	}
