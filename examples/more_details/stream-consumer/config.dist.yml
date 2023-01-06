@@ -2,6 +2,7 @@ env: dev
 
 app_project: project
 app_family: family
+app_group: grp
 app_name: stream-consumer
 
 mdlsub:

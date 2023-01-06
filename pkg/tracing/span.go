@@ -83,8 +83,8 @@ func newSpan(ctx context.Context, seg *xray.Segment, app cfg.AppId) (context.Con
 		segment: seg,
 	}
 
-	appFamily := fmt.Sprintf("%v-%v-%v", app.Project, app.Environment, app.Family)
-	appId := fmt.Sprintf("%v-%v-%v-%v", app.Project, app.Environment, app.Family, app.Application)
+	appFamily := fmt.Sprintf("%s-%s-%s", app.Project, app.Environment, app.Family)
+	appId := fmt.Sprintf("%s-%s-%s-%s-%s", app.Project, app.Environment, app.Family, app.Group, app.Application)
 	span.AddAnnotation("appFamily", appFamily)
 	span.AddAnnotation("appId", appId)
 

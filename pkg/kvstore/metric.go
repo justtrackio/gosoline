@@ -40,6 +40,7 @@ func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) K
 		Project:     settings.Project,
 		Environment: settings.Environment,
 		Family:      settings.Family,
+		Group:       settings.Group,
 		Application: settings.Application,
 		Name:        settings.Name,
 	}).String()

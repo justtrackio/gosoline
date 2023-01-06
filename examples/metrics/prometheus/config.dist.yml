@@ -2,6 +2,7 @@ env: dev
 
 app_project: gosoline
 app_family: metrics
+app_group: grp
 app_name: prometheus
 
 api:

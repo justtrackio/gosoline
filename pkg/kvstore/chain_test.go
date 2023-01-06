@@ -467,6 +467,7 @@ func buildTestableChainStore[T any](missingCacheEnabled bool) (kvstore.KvStore[T
 			Project:     "applike",
 			Environment: "test",
 			Family:      "gosoline",
+			Group:       "grp",
 			Application: "kvstore",
 		},
 		Name:      "test",

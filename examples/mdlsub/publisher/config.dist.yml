@@ -1,7 +1,8 @@
 env: dev
 app_project: gosoline
 app_family: example
-app_name: mdlsub-publisher
+app_group: mdlsub
+app_name: publisher
 
 cfg:
   server:

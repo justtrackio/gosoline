@@ -115,7 +115,7 @@ func (s *RedisTestSuite) TestRedisKvStore() {
 	s.NoError(err)
 
 	// should have created the item
-	res, err := redisClient.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
+	res, err := redisClient.Get(context.Background(), "gosoline-integration-test-grp-kvstore-testModel-kvstore_entry_1").Result()
 	s.NoError(err)
 	s.JSONEq(`{"name":"foo","age":123}`, res)
 }
@@ -136,7 +136,7 @@ func (s *RedisTestSuite) TestRedisKvStoreWithPurge() {
 	s.NoError(err)
 
 	// should have created the first item
-	res, err := redisClient.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
+	res, err := redisClient.Get(context.Background(), "gosoline-integration-test-grp-kvstore-testModel-kvstore_entry_1").Result()
 	s.NoError(err)
 	s.JSONEq(`{"name":"foo","age":123}`, res)
 
@@ -144,11 +144,11 @@ func (s *RedisTestSuite) TestRedisKvStoreWithPurge() {
 	s.NoError(err)
 
 	// the first item should have been purged
-	res, err = redisClient.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_1").Result()
+	res, err = redisClient.Get(context.Background(), "gosoline-integration-test-grp-kvstore-testModel-kvstore_entry_1").Result()
 	s.Error(err)
 
 	// should have created the second item
-	res, err = redisClient.Get(context.Background(), "gosoline-integration-test-test-application-kvstore-testModel-kvstore_entry_2").Result()
+	res, err = redisClient.Get(context.Background(), "gosoline-integration-test-grp-kvstore-testModel-kvstore_entry_2").Result()
 	s.NoError(err)
 	s.JSONEq(`{"name":"foo","age":123}`, res)
 }
@@ -212,6 +212,7 @@ func kvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
+				Group:       "grp",
 				Application: "test-application",
 				Name:        "testModel",
 			}),
@@ -237,6 +238,7 @@ func kvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
+				Group:       "grp",
 				Application: "test-application",
 				Name:        "testModel",
 			}),

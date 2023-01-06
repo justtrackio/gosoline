@@ -64,6 +64,7 @@ func getTracer(t *testing.T) tracing.Tracer {
 		Project:     "test_project",
 		Environment: "test_env",
 		Family:      "test_family",
+		Group:       "test_group",
 		Application: "test_name",
 	}, &tracing.XRaySettings{
 		Enabled:          true,

@@ -74,7 +74,7 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	return true, nil
 }
 
-func handlePublisherOutputTypeInMemory(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeInMemory(config cfg.Config, _ *PublisherSettings, _ *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.InMemoryOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 
@@ -96,6 +96,7 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 
 	outputSettings.Project = publisherSettings.Project
 	outputSettings.Family = publisherSettings.Family
+	outputSettings.Group = publisherSettings.Group
 	outputSettings.Application = publisherSettings.Application
 	outputSettings.StreamName = publisherSettings.Name
 	outputSettings.Tracing.Enabled = false
@@ -103,12 +104,13 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 	return outputSettings
 }
 
-func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.SnsOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 
 	outputSettings.Project = publisherSettings.Project
 	outputSettings.Family = publisherSettings.Family
+	outputSettings.Group = publisherSettings.Group
 	outputSettings.Application = publisherSettings.Application
 	outputSettings.TopicId = publisherSettings.Name
 
@@ -119,12 +121,13 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 	return outputSettings
 }
 
-func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.SqsOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 
 	outputSettings.Project = publisherSettings.Project
 	outputSettings.Family = publisherSettings.Family
+	outputSettings.Group = publisherSettings.Group
 	outputSettings.Application = publisherSettings.Application
 	outputSettings.QueueId = publisherSettings.Name
 
