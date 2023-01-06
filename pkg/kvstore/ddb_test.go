@@ -280,6 +280,7 @@ func buildTestableDdbStore[T any]() (kvstore.KvStore[T], *ddbMocks.Repository) {
 			Project:     "applike",
 			Environment: "test",
 			Family:      "gosoline",
+			Group:       "grp",
 			Application: "kvstore",
 		},
 		Name:      "test",

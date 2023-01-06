@@ -31,17 +31,17 @@ func initOutputs(ctx context.Context, config cfg.Config, logger log.Logger, subs
 		modelId = settings.SourceModel.String()
 
 		if outputFactory, ok = outputFactories[settings.Output]; !ok {
-			return nil, fmt.Errorf("there is no output of type %s for subscriber %s with modelId %s", settings.Output, name, modelId)
+			return nil, fmt.Errorf("can not create outputs: there is no output of type %s for subscriber %s with modelId %s", settings.Output, name, modelId)
 		}
 
 		if versionedModelTransformers, ok = transformers[modelId]; !ok {
-			return nil, fmt.Errorf("there is no transformer for subscriber %s with modelId %s", name, modelId)
+			return nil, fmt.Errorf("can not create transformer: there is no transformer for subscriber %s with modelId %s", name, modelId)
 		}
 
 		modelId := settings.SourceModel.String()
 
 		if outputs[modelId], err = outputFactory(ctx, config, logger, settings, versionedModelTransformers); err != nil {
-			return nil, fmt.Errorf("can not create output for subscriber %s with modelId %s", name, modelId)
+			return nil, fmt.Errorf("can not create output for subscriber %s with modelId %s: %w", name, modelId, err)
 		}
 	}
 

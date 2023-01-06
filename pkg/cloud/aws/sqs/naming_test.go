@@ -25,6 +25,7 @@ func (s *GetSqsQueueNameTestSuite) SetupTest() {
 			Project:     "justtrack",
 			Environment: "test",
 			Family:      "gosoline",
+			Group:       "group",
 			Application: "producer",
 		},
 		ClientName: "default",
@@ -40,7 +41,7 @@ func (s *GetSqsQueueNameTestSuite) setupConfig(settings map[string]interface{}) 
 func (s *GetSqsQueueNameTestSuite) TestDefault() {
 	name, err := sqs.GetQueueName(s.config, s.settings)
 	s.NoError(err)
-	s.Equal("justtrack-test-gosoline-producer-event", name)
+	s.Equal("justtrack-test-gosoline-group-event", name)
 }
 
 func (s *GetSqsQueueNameTestSuite) TestDefaultFifo() {
@@ -48,7 +49,7 @@ func (s *GetSqsQueueNameTestSuite) TestDefaultFifo() {
 
 	name, err := sqs.GetQueueName(s.config, s.settings)
 	s.NoError(err)
-	s.Equal("justtrack-test-gosoline-producer-event.fifo", name)
+	s.Equal("justtrack-test-gosoline-group-event.fifo", name)
 }
 
 func (s *GetSqsQueueNameTestSuite) TestDefaultWithPattern() {

@@ -1,6 +1,7 @@
 env: test
 app_project: gosoline
 app_family: integration-test
+app_group: grp
 app_name: db-query-test
 
 db:

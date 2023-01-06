@@ -9,7 +9,7 @@ import (
 type NamingFactory func(modelId cfg.AppId) string
 
 var promNSNamingStrategy = func(modelId cfg.AppId) string {
-	return fmt.Sprintf("%v:%v:%v:%v", modelId.Project, modelId.Environment, modelId.Family, modelId.Application)
+	return fmt.Sprintf("%s:%s:%s:%s-%s", modelId.Project, modelId.Environment, modelId.Family, modelId.Group, modelId.Application)
 }
 
 func WithPromNSNamingStrategy(strategy NamingFactory) {

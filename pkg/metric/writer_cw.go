@@ -133,12 +133,26 @@ func (w *cwWriter) Write(batch Data) {
 	}
 
 	metricData, err := w.buildMetricData(batch)
-	namespace := fmt.Sprintf("%s/%s/%s/%s", w.settings.Project, w.settings.Environment, w.settings.Family, w.settings.Application)
+	namespace := w.settings.Cloudwatch.Naming.Pattern
+	values := map[string]string{
+		"project": w.settings.Project,
+		"env":     w.settings.Environment,
+		"family":  w.settings.Family,
+		"group":   w.settings.Group,
+		"app":     w.settings.Application,
+	}
+
+	for key, val := range values {
+		templ := fmt.Sprintf("{%s}", key)
+		namespace = strings.ReplaceAll(namespace, templ, val)
+	}
+
+	logger := w.logger.WithFields(log.Fields{
+		"namespace": namespace,
+	})
 
 	if err != nil {
-		w.logger.WithFields(log.Fields{
-			"namespace": namespace,
-		}).Info("could not build metric data: %w", err)
+		logger.Info("could not build metric data: %w", err)
 
 		return
 	}
@@ -156,12 +170,12 @@ func (w *cwWriter) Write(batch Data) {
 		}
 
 		if _, err = w.client.PutMetricData(context.Background(), &input); err != nil {
-			w.logger.Info("could not write metric data: %s", err)
+			logger.Info("could not write metric data: %s", err)
 			continue
 		}
 	}
 
-	w.logger.Debug("written %d metric data sets to cloudwatch", len(metricData))
+	logger.Debug("written %d metric data sets to cloudwatch", len(metricData))
 }
 
 func (w *cwWriter) buildMetricData(batch Data) ([]types.MetricDatum, error) {

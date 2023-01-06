@@ -25,6 +25,7 @@ func (s *PublisherTestSuite) SetupTest() {
 		ModelId: mdl.ModelId{
 			Project:     "gosoline",
 			Family:      "test",
+			Group:       "grp",
 			Application: "app",
 			Name:        "event",
 		},
@@ -46,7 +47,7 @@ func (s *PublisherTestSuite) TestPublish() {
 	expectedAttributes := map[string]interface{}{
 		"type":    mdlsub.TypeCreate,
 		"version": 0,
-		"modelId": "gosoline.test.app.event",
+		"modelId": "gosoline.test.grp.event",
 	}
 
 	s.producer.On("WriteOne", ctx, event, expectedAttributes).Return(nil)

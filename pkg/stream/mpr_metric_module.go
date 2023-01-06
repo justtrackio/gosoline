@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -24,14 +25,14 @@ const (
 )
 
 type MessagesPerRunnerMetricWriterSettings struct {
-	QueueNames         []string
-	Ecs                MessagesPerRunnerEcsSettings
-	UpdatePeriod       time.Duration
-	TargetValue        float64
-	MaxIncreasePercent float64
-	MaxIncreasePeriod  time.Duration
-	AppId              cfg.AppId
-	MemberId           string
+	Ecs                 MessagesPerRunnerEcsSettings
+	MaxIncreasePeriod   time.Duration
+	UpdatePeriod        time.Duration
+	CloudwatchNamespace string
+	MaxIncreasePercent  float64
+	MemberId            string
+	QueueNames          []string
+	TargetValue         float64
 }
 
 func MessagesPerRunnerMetricWriterFactory(_ context.Context, config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
@@ -78,17 +79,18 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 			return nil, fmt.Errorf("failed to detect any SQS queues to monitor")
 		}
 
+		cwNamespace := getCloudwatchNamespace(config, settings.Cloudwatch.Naming.Pattern)
+
 		writerSettings := &MessagesPerRunnerMetricWriterSettings{
-			QueueNames:         queueNames,
-			UpdatePeriod:       settings.Period,
-			TargetValue:        settings.TargetValue,
-			MaxIncreasePercent: settings.MaxIncreasePercent,
-			MaxIncreasePeriod:  settings.MaxIncreasePeriod,
-			Ecs:                settings.Ecs,
-			AppId:              cfg.AppId{},
-			MemberId:           uuid.New().NewV4(),
+			CloudwatchNamespace: cwNamespace,
+			QueueNames:          queueNames,
+			UpdatePeriod:        settings.Period,
+			TargetValue:         settings.TargetValue,
+			MaxIncreasePercent:  settings.MaxIncreasePercent,
+			MaxIncreasePeriod:   settings.MaxIncreasePeriod,
+			Ecs:                 settings.Ecs,
+			MemberId:            uuid.New().NewV4(),
 		}
-		writerSettings.AppId.PadFromConfig(config)
 
 		if leaderElection, err = ddb.NewLeaderElection(ctx, config, logger, settings.LeaderElection); err != nil {
 			return nil, fmt.Errorf("can not create leader election for stream-metric-messages-per-runner writer: %w", err)
@@ -103,6 +105,26 @@ func NewMessagesPerRunnerMetricWriter(settings *MessagesPerRunnerMetricSettings)
 
 		return NewMessagesPerRunnerMetricWriterWithInterfaces(logger, leaderElection, cwClient, metricWriter, clock.Provider, ticker, writerSettings)
 	}
+}
+
+func getCloudwatchNamespace(config cfg.Config, cwNamespacePattern string) string {
+	appId := cfg.AppId{}
+	appId.PadFromConfig(config)
+
+	values := map[string]string{
+		"project": appId.Project,
+		"env":     appId.Environment,
+		"family":  appId.Family,
+		"group":   appId.Group,
+		"app":     appId.Application,
+	}
+
+	for key, val := range values {
+		templ := fmt.Sprintf("{%s}", key)
+		cwNamespacePattern = strings.ReplaceAll(cwNamespacePattern, templ, val)
+	}
+
+	return cwNamespacePattern
 }
 
 func NewMessagesPerRunnerMetricWriterWithInterfaces(logger log.Logger, leaderElection ddb.LeaderElection, cwClient gosoCloudwatch.Client, metricWriter metric.Writer, clock clock.Clock, ticker clock.Ticker, settings *MessagesPerRunnerMetricWriterSettings) (*MessagesPerRunnerMetricWriter, error) {
@@ -192,7 +214,7 @@ func (u *MessagesPerRunnerMetricWriter) calculateMessagesPerRunner(ctx context.C
 	}
 
 	if currentMpr, err = u.getStreamMprMetric(ctx, metricNameStreamMprMessagesPerRunner, types.StatisticAverage, u.settings.MaxIncreasePeriod); err != nil {
-		u.logger.Warn("can not get current messages per runner metric: defaulting to 0")
+		u.logger.Warn("can not get current messages per runner metric: %s, defaulting to 0", err.Error())
 		currentMpr = 0
 	}
 
@@ -274,8 +296,7 @@ func (u *MessagesPerRunnerMetricWriter) getQueueMetrics(ctx context.Context, met
 }
 
 func (u *MessagesPerRunnerMetricWriter) getStreamMprMetric(ctx context.Context, name string, stat types.Statistic, period time.Duration) (float64, error) {
-	appId := u.settings.AppId
-	namespace := fmt.Sprintf("%s/%s/%s/%s", appId.Project, appId.Environment, appId.Family, appId.Application)
+	namespace := u.settings.CloudwatchNamespace
 
 	startTime := u.clock.Now().Add(-1 * period)
 	endTime := u.clock.Now().Add(-1 * u.settings.UpdatePeriod)

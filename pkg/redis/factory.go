@@ -27,18 +27,18 @@ func ProvideClient(config cfg.Config, logger log.Logger, name string) (Client, e
 	defer mutex.Unlock()
 
 	settings := ReadSettings(config, name)
-	cachKey := fmt.Sprintf("%s:%s", settings.Address, name)
+	cacheKey := fmt.Sprintf("%s:%s", settings.Address, name)
 
-	if client, ok := clients[cachKey]; ok {
+	if client, ok := clients[cacheKey]; ok {
 		return client, nil
 	}
 
 	var err error
-	if clients[cachKey], err = NewClient(config, logger, name); err != nil {
+	if clients[cacheKey], err = NewClient(config, logger, name); err != nil {
 		return nil, err
 	}
 
-	return clients[cachKey], nil
+	return clients[cacheKey], nil
 }
 
 func ReadSettings(config cfg.Config, name string) *Settings {

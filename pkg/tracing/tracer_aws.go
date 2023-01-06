@@ -150,7 +150,7 @@ func (t *awsTracer) HttpHandler(h http.Handler) http.Handler {
 		return h
 	}
 
-	name := fmt.Sprintf("%v-%v-%v-%v", t.Project, t.Environment, t.Family, t.Application)
+	name := fmt.Sprintf("%s-%s-%s-%s-%s", t.Project, t.Environment, t.Family, t.Group, t.Application)
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		seg := xray.GetSegment(r.Context())

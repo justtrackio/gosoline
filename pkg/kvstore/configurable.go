@@ -21,6 +21,7 @@ const (
 type ChainConfiguration struct {
 	Project             string                `cfg:"project"`
 	Family              string                `cfg:"family"`
+	Group               string                `cfg:"group"`
 	Application         string                `cfg:"application"`
 	Type                string                `cfg:"type" default:"chain" validate:"eq=chain"`
 	Elements            []string              `cfg:"elements" validate:"min=1"`
@@ -76,6 +77,7 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
+			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
 		Name:           name,
