@@ -21,21 +21,21 @@ type OrmSettings struct {
 }
 
 func NewOrm(config cfg.Config, logger log.Logger) (*gorm.DB, error) {
-	dbClient, err := db.NewClient(config, logger, "default")
+	connection, err := db.ProvideConnection(config, logger, "default")
 	if err != nil {
-		return nil, fmt.Errorf("can not create dbClient: %w", err)
+		return nil, fmt.Errorf("can not create db connection : %w", err)
 	}
 
 	settings := OrmSettings{}
 	config.UnmarshalKey("db.default", &settings)
 
-	return NewOrmWithInterfaces(dbClient, settings)
+	return NewOrmWithInterfaces(connection, settings)
 }
 
 func NewOrmWithDbSettings(logger log.Logger, dbSettings db.Settings, application string) (*gorm.DB, error) {
-	dbClient, err := db.NewClientWithSettings(logger, dbSettings)
+	dbClient, err := db.NewConnectionFromSettings(logger, dbSettings)
 	if err != nil {
-		return nil, fmt.Errorf("can not create dbClient: %w", err)
+		return nil, fmt.Errorf("can not connect to sql database: %w", err)
 	}
 
 	ormSettings := OrmSettings{

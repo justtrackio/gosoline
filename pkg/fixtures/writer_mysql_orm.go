@@ -48,8 +48,8 @@ func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *db_repo.Me
 	}
 }
 
-func (m *mysqlOrmFixtureWriter) Purge(_ context.Context) error {
-	err := m.purger.purgeMysql()
+func (m *mysqlOrmFixtureWriter) Purge(ctx context.Context) error {
+	err := m.purger.purgeMysql(ctx)
 	if err != nil {
 		m.logger.Error("error occured during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
 

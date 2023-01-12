@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -28,7 +29,7 @@ func newMysqlPurger(config cfg.Config, logger log.Logger, tableName string) (*my
 	return &mysqlPurger{client: client, logger: logger, tableName: tableName}, nil
 }
 
-func (p *mysqlPurger) purgeMysql() error {
+func (p *mysqlPurger) purgeMysql(ctx context.Context) error {
 	err := p.setForeignKeyChecks(0)
 	if err != nil {
 		p.logger.Error("error disabling foreign key checks: %w", err)
@@ -43,7 +44,7 @@ func (p *mysqlPurger) purgeMysql() error {
 		}
 	}()
 
-	_, err = p.client.Exec(fmt.Sprintf(truncateTableStatement, p.tableName))
+	_, err = p.client.Exec(ctx, fmt.Sprintf(truncateTableStatement, p.tableName))
 
 	if err != nil {
 		p.logger.Error("error truncating table %s: %w", p.tableName, err)
@@ -54,7 +55,8 @@ func (p *mysqlPurger) purgeMysql() error {
 }
 
 func (p *mysqlPurger) setForeignKeyChecks(enabled int) error {
-	_, err := p.client.Exec(fmt.Sprintf(foreignKeyChecksStatement, enabled))
+	ctx := context.Background()
+	_, err := p.client.Exec(ctx, fmt.Sprintf(foreignKeyChecksStatement, enabled))
 
 	return err
 }

@@ -49,8 +49,8 @@ func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client db.Clien
 	}
 }
 
-func (m *mysqlPlainFixtureWriter) Purge(_ context.Context) error {
-	err := m.purger.purgeMysql()
+func (m *mysqlPlainFixtureWriter) Purge(ctx context.Context) error {
+	err := m.purger.purgeMysql(ctx)
 	if err != nil {
 		m.logger.Error("error occured during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
 
@@ -62,7 +62,7 @@ func (m *mysqlPlainFixtureWriter) Purge(_ context.Context) error {
 	return nil
 }
 
-func (m *mysqlPlainFixtureWriter) Write(_ context.Context, fs *FixtureSet) error {
+func (m *mysqlPlainFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
 		fixture := item.(MysqlPlainFixtureValues)
 
@@ -71,7 +71,7 @@ func (m *mysqlPlainFixtureWriter) Write(_ context.Context, fs *FixtureSet) error
 			return err
 		}
 
-		res, err := m.client.Exec(sql, args...)
+		res, err := m.client.Exec(ctx, sql, args...)
 		if err != nil {
 			return err
 		}

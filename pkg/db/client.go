@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -30,15 +31,16 @@ type (
 
 //go:generate mockery --name Client
 type Client interface {
-	GetSingleScalarValue(query string, args ...interface{}) (int, error)
-	GetResult(query string, args ...interface{}) (*Result, error)
-	Exec(query string, args ...interface{}) (sql.Result, error)
-	Prepare(query string) (*sql.Stmt, error)
-	Query(query string, args ...interface{}) (*sql.Rows, error)
-	Queryx(query string, args ...interface{}) (*sqlx.Rows, error)
-	QueryRow(query string, args ...interface{}) *sql.Row
-	Select(dest interface{}, query string, args ...interface{}) error
-	Get(dest interface{}, query string, args ...interface{}) error
+	GetSingleScalarValue(ctx context.Context, query string, args ...interface{}) (int, error)
+	GetResult(ctx context.Context, query string, args ...interface{}) (*Result, error)
+	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	Prepare(ctx context.Context, query string) (*sql.Stmt, error)
+	Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	Queryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
+	QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row
+	Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sql.Tx) error) error
 }
 
 type ClientSqlx struct {
@@ -66,14 +68,14 @@ func NewClientWithSettings(logger log.Logger, settings Settings) (Client, error)
 
 func NewClientWithInterfaces(logger log.Logger, db *sqlx.DB) Client {
 	return &ClientSqlx{
-		logger: logger.WithContext(context.Background()), // TODO: this is not nice, but we don't (yet) have a context when logging in this module
+		logger: logger,
 		db:     db,
 	}
 }
 
-func (c *ClientSqlx) GetSingleScalarValue(query string, args ...interface{}) (int, error) {
+func (c *ClientSqlx) GetSingleScalarValue(ctx context.Context, query string, args ...interface{}) (int, error) {
 	var val sql.NullInt64
-	err := c.Get(&val, query, args...)
+	err := c.Get(ctx, &val, query, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -85,9 +87,9 @@ func (c *ClientSqlx) GetSingleScalarValue(query string, args ...interface{}) (in
 	return int(val.Int64), err
 }
 
-func (c *ClientSqlx) GetResult(query string, args ...interface{}) (*Result, error) {
+func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...interface{}) (*Result, error) {
 	out := make(Result, 0, 32)
-	rows, err := c.Query(query, args...)
+	rows, err := c.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -138,40 +140,77 @@ func (c *ClientSqlx) GetResult(query string, args ...interface{}) (*Result, erro
 	return &out, err
 }
 
-func (c *ClientSqlx) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (c *ClientSqlx) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	c.logger.Debug("> %s %q", query, args)
 
-	return c.db.Exec(query, args...)
+	return c.db.ExecContext(ctx, query, args...)
 }
 
-func (c *ClientSqlx) Prepare(query string) (*sql.Stmt, error) {
-	return c.db.Prepare(query)
+func (c *ClientSqlx) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
+	return c.db.PrepareContext(ctx, query)
 }
 
-func (c *ClientSqlx) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (c *ClientSqlx) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	c.logger.Debug("> %s %q", query, args)
 
-	return c.db.Query(query, args...)
+	return c.db.QueryContext(ctx, query, args...)
 }
 
-func (c *ClientSqlx) QueryRow(query string, args ...interface{}) *sql.Row {
-	return c.db.QueryRow(query, args...)
+func (c *ClientSqlx) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	return c.db.QueryRowContext(ctx, query, args...)
 }
 
-func (c *ClientSqlx) Queryx(query string, args ...interface{}) (*sqlx.Rows, error) {
+func (c *ClientSqlx) Queryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	c.logger.Debug("> %s %q", query, args)
 
-	return c.db.Queryx(query, args...)
+	return c.db.QueryxContext(ctx, query, args...)
 }
 
-func (c *ClientSqlx) Select(dest interface{}, query string, args ...interface{}) error {
+func (c *ClientSqlx) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	c.logger.Debug("> %s %q", query, args)
 
-	return c.db.Select(dest, query, args...)
+	return c.db.SelectContext(ctx, dest, query, args...)
 }
 
-func (c *ClientSqlx) Get(dest interface{}, query string, args ...interface{}) error {
+func (c *ClientSqlx) Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	c.logger.Debug("> %s %q", query, args)
 
-	return c.db.Get(dest, query, args...)
+	return c.db.GetContext(ctx, dest, query, args...)
+}
+
+func (c *ClientSqlx) BeginTx(ctx context.Context, ops *sql.TxOptions) (*sql.Tx, error) {
+	c.logger.Debug("start tx")
+
+	return c.db.BeginTx(ctx, ops)
+}
+
+func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sql.Tx) error) (err error) {
+	var tx *sql.Tx
+	tx, err = c.BeginTx(ctx, ops)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			errRollback := tx.Rollback()
+			if errRollback != nil {
+				err = multierror.Append(err, fmt.Errorf("can not roolback tx: %w", errRollback))
+				return
+			}
+			c.logger.WithContext(ctx).Debug("rollback successfully done")
+		}
+	}()
+
+	err = do(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("can not execute do function: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("can not commit tx: %w", err)
+	}
+
+	return nil
 }
