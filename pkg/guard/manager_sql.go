@@ -1,6 +1,7 @@
 package guard
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -42,6 +43,7 @@ func NewSqlManagerWithInterfaces(logger log.Logger, dbClient db.Client) *SqlMana
 }
 
 func (m SqlManager) Create(pol ladon.Policy) error {
+	ctx := context.Background()
 	var err error
 	var conditions []byte
 
@@ -63,7 +65,7 @@ func (m SqlManager) Create(pol ladon.Policy) error {
 		return err
 	}
 
-	_, err = m.dbClient.Exec(sql, args...)
+	_, err = m.dbClient.Exec(ctx, sql, args...)
 
 	if err != nil {
 		return err
@@ -85,6 +87,7 @@ func (m SqlManager) Create(pol ladon.Policy) error {
 }
 
 func (m SqlManager) createAssociations(pol ladon.Policy, table string, values []string) error {
+	ctx := context.Background()
 	ins := squirrel.Insert(table).Options("IGNORE").Columns("id", "name")
 	for _, s := range values {
 		ins = ins.Values(pol.GetID(), s)
@@ -95,7 +98,7 @@ func (m SqlManager) createAssociations(pol ladon.Policy, table string, values []
 		return err
 	}
 
-	if _, err = m.dbClient.Exec(sql, args...); err != nil {
+	if _, err = m.dbClient.Exec(ctx, sql, args...); err != nil {
 		return fmt.Errorf("can not execute sql statement: %w", err)
 	}
 
@@ -103,6 +106,7 @@ func (m SqlManager) createAssociations(pol ladon.Policy, table string, values []
 }
 
 func (m SqlManager) Update(pol ladon.Policy) error {
+	ctx := context.Background()
 	var err error
 	var conditions []byte
 
@@ -122,7 +126,7 @@ func (m SqlManager) Update(pol ladon.Policy) error {
 		return err
 	}
 
-	if _, err = m.dbClient.Exec(sql, args...); err != nil {
+	if _, err = m.dbClient.Exec(ctx, sql, args...); err != nil {
 		return fmt.Errorf("can not execute sql statement: %w", err)
 	}
 
@@ -179,6 +183,7 @@ func (m SqlManager) Delete(id string) error {
 }
 
 func (m SqlManager) deleteByIdAndTable(id string, table string) error {
+	ctx := context.Background()
 	del := squirrel.Delete(table).Where(squirrel.Eq{"id": id})
 	sql, args, err := del.ToSql()
 	if err != nil {
@@ -186,7 +191,7 @@ func (m SqlManager) deleteByIdAndTable(id string, table string) error {
 		return err
 	}
 
-	_, err = m.dbClient.Exec(sql, args...)
+	_, err = m.dbClient.Exec(ctx, sql, args...)
 
 	if err != nil {
 		m.logger.Error("can not delete from %s: %w", table, err)
@@ -221,12 +226,13 @@ func (m SqlManager) FindPoliciesForResource(resource string) (ladon.Policies, er
 }
 
 func (m SqlManager) queryPolicies(sel squirrel.SelectBuilder) (ladon.Policies, error) {
+	ctx := context.Background()
 	sql, args, err := sel.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("can not build sql string to query the policies: %w", err)
 	}
 
-	res, err := m.dbClient.GetResult(sql, args...)
+	res, err := m.dbClient.GetResult(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("can not get result to query the policies: %w", err)
 	}

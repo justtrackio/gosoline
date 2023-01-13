@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"context"
 	"testing"
 
 	goSqlMock "github.com/DATA-DOG/go-sqlmock"
@@ -11,6 +12,7 @@ import (
 )
 
 func TestGetResult(t *testing.T) {
+	ctx := context.Background()
 	client, sqlMock := getMocks()
 
 	expectedResult := db.Result{
@@ -30,7 +32,7 @@ func TestGetResult(t *testing.T) {
 
 	sqlMock.ExpectQuery("^SELECT (.+) FROM TestTable").WillReturnRows(rows)
 
-	result, err := client.GetResult("SELECT * FROM TestTable;")
+	result, err := client.GetResult(ctx, "SELECT * FROM TestTable;")
 
 	if !assert.Nil(t, err) {
 		return
@@ -47,6 +49,7 @@ func TestGetResult(t *testing.T) {
 }
 
 func TestGetSingleScalarValue(t *testing.T) {
+	ctx := context.Background()
 	client, sqlMock := getMocks()
 
 	rows := goSqlMock.NewRows([]string{"count"})
@@ -54,7 +57,7 @@ func TestGetSingleScalarValue(t *testing.T) {
 
 	sqlMock.ExpectQuery("^SELECT (.+) AS count FROM TestTable").WillReturnRows(rows)
 
-	count, err := client.GetSingleScalarValue("SELECT COUNT(id) AS count FROM TestTable")
+	count, err := client.GetSingleScalarValue(ctx, "SELECT COUNT(id) AS count FROM TestTable")
 
 	if !assert.Nil(t, err) {
 		return
@@ -64,6 +67,7 @@ func TestGetSingleScalarValue(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
+	ctx := context.Background()
 	client, sqlMock := getMocks()
 
 	id := "1"
@@ -77,7 +81,7 @@ func TestQuery(t *testing.T) {
 
 	sqlMock.ExpectQuery("^SELECT (.+) FROM TestTable").WillReturnRows(rows)
 
-	sqlRows, err := client.Query("SELECT * FROM TestTable;")
+	sqlRows, err := client.Query(ctx, "SELECT * FROM TestTable;")
 	assert.Nil(t, err)
 
 	var resultId string
@@ -98,6 +102,7 @@ func TestQuery(t *testing.T) {
 }
 
 func TestClient_Exec(t *testing.T) {
+	ctx := context.Background()
 	client, sqlMock := getMocks()
 
 	id := "2"
@@ -110,7 +115,7 @@ func TestClient_Exec(t *testing.T) {
 
 	sqlMock.ExpectExec("UPDATE Campaign").WithArgs(newName, id).WillReturnResult(goSqlMock.NewResult(0, 1))
 
-	result, err := client.Exec("UPDATE Campaign SET name = ? WHERE id = ?", newName, id)
+	result, err := client.Exec(ctx, "UPDATE Campaign SET name = ? WHERE id = ?", newName, id)
 	assert.Nil(t, err)
 
 	rowsAffected, err := result.RowsAffected()
