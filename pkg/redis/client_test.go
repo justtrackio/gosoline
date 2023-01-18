@@ -3,6 +3,7 @@ package redis_test
 import (
 	"context"
 	"errors"
+	"golang.org/x/exp/slices"
 	"testing"
 	"time"
 
@@ -209,6 +210,72 @@ func (s *ClientWithMiniRedisTestSuite) TestSCard() {
 	s.NoError(err, "there should be no error on SCard")
 }
 
+func (s *ClientWithMiniRedisTestSuite) TestSDiff() {
+	_, err := s.client.SAdd(context.Background(), "set1", "1", "2", "3", "4")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set2", "2", "3")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set3", "2", "4")
+	s.NoError(err, "there should be no error on SAdd")
+
+	diffs, err := s.client.SDiff(context.Background(), "set1", "set2", "set3")
+	s.Equal(1, len(diffs))
+	s.True(slices.Contains(diffs, "1"))
+	s.NoError(err, "there should be no error on SDiff")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSDiffStore() {
+	_, err := s.client.SAdd(context.Background(), "set1", "1", "2", "3", "4")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set2", "2", "3")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set3", "2", "4")
+	s.NoError(err, "there should be no error on SAdd")
+
+	numDiffs, err := s.client.SDiffStore(context.Background(), "set4", "set1", "set2", "set3")
+	s.Equal(int64(1), numDiffs)
+	s.NoError(err, "there should be no error on SDiffStore")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSInter() {
+	_, err := s.client.SAdd(context.Background(), "set1", "1", "2", "3", "4")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set2", "2", "3")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set3", "2", "4")
+	s.NoError(err, "there should be no error on SAdd")
+
+	inters, err := s.client.SInter(context.Background(), "set1", "set2", "set3")
+	s.Equal(1, len(inters))
+	s.True(slices.Contains(inters, "2"))
+	s.NoError(err, "there should be no error on SInter")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSInterStore() {
+	_, err := s.client.SAdd(context.Background(), "set1", "1", "2", "3", "4")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set2", "2", "3")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set3", "2", "4")
+	s.NoError(err, "there should be no error on SAdd")
+
+	numDiffs, err := s.client.SInterStore(context.Background(), "set4", "set1", "set2", "set3")
+	s.Equal(int64(1), numDiffs)
+	s.NoError(err, "there should be no error on SInterStore")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSMembers() {
+	_, err := s.client.SAdd(context.Background(), "set", "0", "1", "2")
+	s.NoError(err, "there should be no error on SAdd")
+
+	members, err := s.client.SMembers(context.Background(), "set")
+	s.Equal(3, len(members))
+	s.True(slices.Contains(members, "0"))
+	s.True(slices.Contains(members, "1"))
+	s.True(slices.Contains(members, "2"))
+	s.NoError(err, "there should be no error on SMembers")
+}
+
 func (s *ClientWithMiniRedisTestSuite) TestSIsMember() {
 	_, err := s.client.SAdd(context.Background(), "key", "value1")
 	s.NoError(err, "there should be no error on SAdd")
@@ -220,6 +287,76 @@ func (s *ClientWithMiniRedisTestSuite) TestSIsMember() {
 	isMember, err = s.client.SIsMember(context.Background(), "key", "value2")
 	s.Equal(false, isMember)
 	s.NoError(err, "there should be no error on SIsMember")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSMove() {
+	_, err := s.client.SAdd(context.Background(), "set1", "0", "1", "2")
+	s.NoError(err, "there should be no error on SAdd")
+
+	_, err = s.client.SMove(context.Background(), "set1", "set2", "1")
+	s.NoError(err, "there should be no error on SMove")
+
+	members, err := s.client.SMembers(context.Background(), "set2")
+	s.Equal(1, len(members))
+	s.True(slices.Contains(members, "1"))
+	s.NoError(err, "there should be no error on SMembers")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSPop() {
+	_, err := s.client.SAdd(context.Background(), "set1", "0", "1", "2")
+	s.NoError(err, "there should be no error on SAdd")
+
+	_, err = s.client.SPop(context.Background(), "set1")
+	s.NoError(err, "there should be no error on SPop")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSRem() {
+	count, err := s.client.SAdd(context.Background(), "set", "v1", "v2", "v3")
+	s.NoError(err, "there should be no error on SAdd")
+	s.Equal(int64(3), count)
+
+	numRemoved, err := s.client.SRem(context.Background(), "set", "v1", "v3")
+	s.NoError(err, "there should be no error on SRem")
+	s.Equal(int64(2), numRemoved)
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSRandMember() {
+	count, err := s.client.SAdd(context.Background(), "set", "v1", "v2", "v3")
+	s.NoError(err, "there should be no error on SAdd")
+	s.Equal(int64(3), count)
+
+	item, err := s.client.SRandMember(context.Background(), "set")
+	s.NoError(err, "there should be no error on SRandMember")
+
+	contained, err := s.client.SIsMember(context.Background(), "set", item)
+	s.Equal(true, contained)
+	s.NoError(err, "there should be no error on SIsMember")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSUnion() {
+	_, err := s.client.SAdd(context.Background(), "set1", "1", "2", "3", "4")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set2", "2", "3")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set3", "2", "4")
+	s.NoError(err, "there should be no error on SAdd")
+
+	union, err := s.client.SUnion(context.Background(), "set1", "set2", "set3")
+	s.Equal(4, len(union))
+	s.NoError(err, "there should be no error on SUnion")
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestSUnionStore() {
+	_, err := s.client.SAdd(context.Background(), "set1", "1", "2", "3", "4")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set2", "2", "3")
+	s.NoError(err, "there should be no error on SAdd")
+	_, err = s.client.SAdd(context.Background(), "set3", "2", "4")
+	s.NoError(err, "there should be no error on SAdd")
+
+	numUnion, err := s.client.SUnionStore(context.Background(), "set4", "set1", "set2", "set3")
+	s.Equal(int64(4), numUnion)
+	s.NoError(err, "there should be no error on SUnionStore")
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestIncr() {
@@ -257,6 +394,21 @@ func (s *ClientWithMiniRedisTestSuite) TestZAdd() {
 	inserts, err := s.client.ZAdd(context.Background(), "key", 10.0, "member")
 	s.NoError(err, "there should be no error on ZAdd")
 	s.EqualValues(1, inserts)
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestZAddArgs() {
+	args := redis.ZAddArgs{
+		Key: "key",
+		Members: []redis.Z{
+			{Member: "member1", Score: 20},
+			{Member: "member2", Score: 50},
+			{Member: "member3", Score: 110},
+			{Member: "member4", Score: 160},
+		},
+	}
+	inserts, err := s.client.ZAddArgs(context.Background(), args)
+	s.NoError(err, "there should be no error on ZAdd")
+	s.EqualValues(4, inserts)
 }
 
 func (s *ClientWithMiniRedisTestSuite) TestZCard() {
@@ -324,6 +476,78 @@ func (s *ClientWithMiniRedisTestSuite) TestZRange() {
 	s.Equal("member2", members[1])
 }
 
+func (s *ClientWithMiniRedisTestSuite) TestZRangeArgsWithScore() {
+	_, _ = s.client.ZAdd(context.Background(), "key", 10, "member0")
+	_, _ = s.client.ZAdd(context.Background(), "key", 50, "member1")
+	_, _ = s.client.ZAdd(context.Background(), "key", 90, "member2")
+	_, _ = s.client.ZAdd(context.Background(), "key", 100, "member3")
+	_, _ = s.client.ZAdd(context.Background(), "key", 120, "member4")
+
+	args := redis.ZRangeArgs{
+		Key:   "key",
+		Start: 1,
+		Stop:  2,
+	}
+
+	zs, err := s.client.ZRangeArgsWithScore(context.Background(), args)
+	s.NoError(err, "there should be no error on ZRangeArgsWithScore")
+	s.EqualValues(2, len(zs))
+	s.Equal("member1", zs[0].Member)
+	s.Equal(float64(50), zs[0].Score)
+	s.Equal("member2", zs[1].Member)
+	s.Equal(float64(90), zs[1].Score)
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestZRangeArgsWithScoreRev() {
+	_, _ = s.client.ZAdd(context.Background(), "key", 10, "member0")
+	_, _ = s.client.ZAdd(context.Background(), "key", 50, "member1")
+	_, _ = s.client.ZAdd(context.Background(), "key", 90, "member2")
+	_, _ = s.client.ZAdd(context.Background(), "key", 100, "member3")
+	_, _ = s.client.ZAdd(context.Background(), "key", 120, "member4")
+
+	args := redis.ZRangeArgs{
+		Key:   "key",
+		Start: 1,
+		Stop:  2,
+		Rev:   true,
+	}
+
+	zs, err := s.client.ZRangeArgsWithScore(context.Background(), args)
+	s.NoError(err, "there should be no error on ZRangeArgsWithScore")
+	s.EqualValues(2, len(zs))
+	s.Equal("member3", zs[0].Member)
+	s.Equal(float64(100), zs[0].Score)
+	s.Equal("member2", zs[1].Member)
+	s.Equal(float64(90), zs[1].Score)
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestZRangeArgsByScoreWithLimit() {
+	_, _ = s.client.ZAdd(context.Background(), "key", 10, "member0")
+	_, _ = s.client.ZAdd(context.Background(), "key", 50, "member1")
+	_, _ = s.client.ZAdd(context.Background(), "key", 90, "member2")
+	_, _ = s.client.ZAdd(context.Background(), "key", 100, "member3")
+	_, _ = s.client.ZAdd(context.Background(), "key", 120, "member4")
+	_, _ = s.client.ZAdd(context.Background(), "key", 150, "member5")
+	_, _ = s.client.ZAdd(context.Background(), "key", 170, "member6")
+
+	args := redis.ZRangeArgs{
+		Key:     "key",
+		Start:   "(10",
+		Stop:    "200",
+		Rev:     false,
+		ByScore: true,
+		Offset:  1,
+		Count:   3,
+	}
+
+	zs, err := s.client.ZRangeArgs(context.Background(), args)
+	s.NoError(err, "there should be no error on ZRangeArgs")
+	s.EqualValues(3, len(zs))
+	s.Equal("member2", zs[0])
+	s.Equal("member3", zs[1])
+	s.Equal("member4", zs[2])
+}
+
 func (s *ClientWithMiniRedisTestSuite) TestZRank() {
 	_, _ = s.client.ZAdd(context.Background(), "key", 10, "member0")
 	_, _ = s.client.ZAdd(context.Background(), "key", 50, "member1")
@@ -348,20 +572,6 @@ func (s *ClientWithMiniRedisTestSuite) TestZRem() {
 	s.EqualValues(2, removes)
 }
 
-func (s *ClientWithMiniRedisTestSuite) TestZRevRange() {
-	_, _ = s.client.ZAdd(context.Background(), "key", 10, "member0")
-	_, _ = s.client.ZAdd(context.Background(), "key", 50, "member1")
-	_, _ = s.client.ZAdd(context.Background(), "key", 90, "member2")
-	_, _ = s.client.ZAdd(context.Background(), "key", 100, "member3")
-	_, _ = s.client.ZAdd(context.Background(), "key", 120, "member4")
-
-	members, err := s.client.ZRevRange(context.Background(), "key", 1, 2)
-	s.NoError(err, "there should be no error on ZRevRange")
-	s.EqualValues(2, len(members))
-	s.Equal("member3", members[0])
-	s.Equal("member2", members[1])
-}
-
 func (s *ClientWithMiniRedisTestSuite) TestZRevRank() {
 	_, _ = s.client.ZAdd(context.Background(), "key", 10, "member0")
 	_, _ = s.client.ZAdd(context.Background(), "key", 50, "member1")
@@ -376,7 +586,7 @@ func (s *ClientWithMiniRedisTestSuite) TestZRevRank() {
 
 // Following commented redis operations are not supported by miniredis yet
 // so we can't unit-test them.
-// Issue: https://github.com/alicebob/miniredis/issues/302
+// Issue: https://github.com/alicebob/miniredis/issues/310
 // TODO: Check if miniredis supports these and update
 
 //func (s *ClientWithMiniRedisTestSuite) TestZRandMember() {
@@ -401,6 +611,42 @@ func (s *ClientWithMiniRedisTestSuite) TestZRevRank() {
 //	s.EqualValues(10.0, scores[0])
 //	s.EqualValues(50.0, scores[1])
 //}
+
+func (s *ClientWithMiniRedisTestSuite) TestLPush() {
+	count, err := s.client.LPush(context.Background(), "list", "v1", "v2", "v3")
+	s.NoError(err, "there should be no error on LPush")
+	s.Equal(int64(3), count)
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestLRem() {
+	count, err := s.client.LPush(context.Background(), "list", "v1", "v2", "v3")
+	s.NoError(err, "there should be no error on LPush")
+	s.Equal(int64(3), count)
+
+	numRemoved, err := s.client.LRem(context.Background(), "list", 0, "v1")
+	s.NoError(err, "there should be no error on LRem")
+	s.Equal(int64(1), numRemoved)
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestLPop() {
+	count, err := s.client.RPush(context.Background(), "list", "v1", "v2", "v3")
+	s.NoError(err, "there should be no error on RPush")
+	s.Equal(int64(3), count)
+
+	item, err := s.client.LPop(context.Background(), "list")
+	s.NoError(err, "there should be no error on LPop")
+	s.Equal("v1", item)
+}
+
+func (s *ClientWithMiniRedisTestSuite) TestRPop() {
+	count, err := s.client.LPush(context.Background(), "list", "v1", "v2", "v3")
+	s.NoError(err, "there should be no error on LPush")
+	s.Equal(int64(3), count)
+
+	item, err := s.client.RPop(context.Background(), "list")
+	s.NoError(err, "there should be no error on RPop")
+	s.Equal("v1", item)
+}
 
 func (s *ClientWithMiniRedisTestSuite) TestExpire() {
 	_, _ = s.client.Incr(context.Background(), "key")

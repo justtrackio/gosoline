@@ -19,6 +19,33 @@ type ErrCmder interface {
 	Err() error
 }
 
+type Z struct {
+	Score  float64
+	Member interface{}
+}
+
+type ZAddArgs struct {
+	Key     string
+	NX      bool
+	XX      bool
+	LT      bool
+	GT      bool
+	Ch      bool
+	Incr    bool
+	Members []Z
+}
+
+type ZRangeArgs struct {
+	Key     string
+	Start   interface{}
+	Stop    interface{}
+	ByScore bool
+	ByLex   bool
+	Rev     bool
+	Offset  int64
+	Count   int64
+}
+
 //go:generate mockery --name Pipeliner
 type Pipeliner interface {
 	baseRedis.Pipeliner
@@ -45,7 +72,10 @@ type Client interface {
 	BLPop(ctx context.Context, timeout time.Duration, keys ...string) ([]string, error)
 	LPop(ctx context.Context, key string) (string, error)
 	LLen(ctx context.Context, key string) (int64, error)
+	LPush(ctx context.Context, key string, values ...interface{}) (int64, error)
+	LRem(ctx context.Context, key string, count int64, value interface{}) (int64, error)
 	RPush(ctx context.Context, key string, values ...interface{}) (int64, error)
+	RPop(ctx context.Context, key string) (string, error)
 
 	HDel(ctx context.Context, key string, fields ...string) (int64, error)
 	HExists(ctx context.Context, key string, field string) (bool, error)
@@ -59,7 +89,18 @@ type Client interface {
 
 	SAdd(ctx context.Context, key string, values ...interface{}) (int64, error)
 	SCard(ctx context.Context, key string) (int64, error)
+	SDiff(ctx context.Context, keys ...string) ([]string, error)
+	SDiffStore(ctx context.Context, destination string, keys ...string) (int64, error)
+	SInter(ctx context.Context, keys ...string) ([]string, error)
+	SInterStore(ctx context.Context, destination string, keys ...string) (int64, error)
+	SMembers(ctx context.Context, key string) ([]string, error)
 	SIsMember(ctx context.Context, key string, value interface{}) (bool, error)
+	SMove(ctx context.Context, sourceKey string, destKey string, member interface{}) (bool, error)
+	SPop(ctx context.Context, key string) (string, error)
+	SRem(ctx context.Context, key string, values ...interface{}) (int64, error)
+	SRandMember(ctx context.Context, key string) (string, error)
+	SUnion(ctx context.Context, keys ...string) ([]string, error)
+	SUnionStore(ctx context.Context, destination string, keys ...string) (int64, error)
 
 	Decr(ctx context.Context, key string) (int64, error)
 	DecrBy(ctx context.Context, key string, amount int64) (int64, error)
@@ -71,16 +112,19 @@ type Client interface {
 	PFMerge(ctx context.Context, dest string, keys ...string) (string, error)
 
 	ZAdd(ctx context.Context, key string, score float64, member string) (int64, error)
+	ZAddArgs(ctx context.Context, args ZAddArgs) (int64, error)
+	ZAddArgsIncr(ctx context.Context, args ZAddArgs) (float64, error)
 	ZCard(ctx context.Context, key string) (int64, error)
 	ZCount(ctx context.Context, key string, min string, max string) (int64, error)
 	ZIncrBy(ctx context.Context, key string, increment float64, member string) (float64, error)
 	ZScore(ctx context.Context, key string, member string) (float64, error)
 	ZMScore(ctx context.Context, key string, members ...string) ([]float64, error)
 	ZRange(ctx context.Context, key string, start int64, stop int64) ([]string, error)
-	ZRandMember(ctx context.Context, key string, count int, withScores bool) ([]string, error)
+	ZRangeArgs(ctx context.Context, args ZRangeArgs) ([]string, error)
+	ZRangeArgsWithScore(ctx context.Context, args ZRangeArgs) ([]Z, error)
+	ZRandMember(ctx context.Context, key string, count int) ([]string, error)
 	ZRank(ctx context.Context, key string, member string) (int64, error)
 	ZRem(ctx context.Context, key string, members ...string) (int64, error)
-	ZRevRange(ctx context.Context, key string, start int64, stop int64) ([]string, error)
 	ZRevRank(ctx context.Context, key string, member string) (int64, error)
 
 	IsAlive(ctx context.Context) bool
@@ -245,6 +289,26 @@ func (c *redisClient) LLen(ctx context.Context, key string) (int64, error) {
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
+func (c *redisClient) LPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.LPush(ctx, key, values...)
+	})
+
+	val := res.(*baseRedis.IntCmd).Val()
+
+	return val, err
+}
+
+func (c *redisClient) LRem(ctx context.Context, key string, count int64, value interface{}) (int64, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.LRem(ctx, key, count, value)
+	})
+
+	val := res.(*baseRedis.IntCmd).Val()
+
+	return val, err
+}
+
 func (c *redisClient) RPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.RPush(ctx, key, values...)
@@ -253,6 +317,14 @@ func (c *redisClient) RPush(ctx context.Context, key string, values ...interface
 	val := res.(*baseRedis.IntCmd).Val()
 
 	return val, err
+}
+
+func (c *redisClient) RPop(ctx context.Context, key string) (string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.RPop(ctx, key)
+	})
+
+	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
 func (c *redisClient) HExists(ctx context.Context, key, field string) (bool, error) {
@@ -329,6 +401,48 @@ func (c *redisClient) SCard(ctx context.Context, key string) (int64, error) {
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
+func (c *redisClient) SDiff(ctx context.Context, keys ...string) ([]string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SDiff(ctx, keys...)
+	})
+
+	return cmd.(*baseRedis.StringSliceCmd).Val(), err
+}
+
+func (c *redisClient) SDiffStore(ctx context.Context, destination string, keys ...string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SDiffStore(ctx, destination, keys...)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) SInter(ctx context.Context, keys ...string) ([]string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SInter(ctx, keys...)
+	})
+
+	return cmd.(*baseRedis.StringSliceCmd).Val(), err
+}
+
+func (c *redisClient) SInterStore(ctx context.Context, destination string, keys ...string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SInterStore(ctx, destination, keys...)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) SMembers(ctx context.Context, key string) ([]string, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SMembers(ctx, key)
+	})
+
+	val := res.(*baseRedis.StringSliceCmd).Val()
+
+	return val, err
+}
+
 func (c *redisClient) SIsMember(ctx context.Context, key string, value interface{}) (bool, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.SIsMember(ctx, key, value)
@@ -337,6 +451,62 @@ func (c *redisClient) SIsMember(ctx context.Context, key string, value interface
 	val := res.(*baseRedis.BoolCmd).Val()
 
 	return val, err
+}
+
+func (c *redisClient) SMove(ctx context.Context, sourceKey string, destKey string, member interface{}) (bool, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SMove(ctx, sourceKey, destKey, member)
+	})
+
+	val := res.(*baseRedis.BoolCmd).Val()
+
+	return val, err
+}
+
+func (c *redisClient) SPop(ctx context.Context, key string) (string, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SPop(ctx, key)
+	})
+
+	val := res.(*baseRedis.StringCmd).Val()
+
+	return val, err
+}
+
+func (c *redisClient) SRem(ctx context.Context, key string, values ...interface{}) (int64, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SRem(ctx, key, values...)
+	})
+
+	val := res.(*baseRedis.IntCmd).Val()
+
+	return val, err
+}
+
+func (c *redisClient) SRandMember(ctx context.Context, key string) (string, error) {
+	res, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SRandMember(ctx, key)
+	})
+
+	val := res.(*baseRedis.StringCmd).Val()
+
+	return val, err
+}
+
+func (c *redisClient) SUnion(ctx context.Context, keys ...string) ([]string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SUnion(ctx, keys...)
+	})
+
+	return cmd.(*baseRedis.StringSliceCmd).Val(), err
+}
+
+func (c *redisClient) SUnionStore(ctx context.Context, destination string, keys ...string) (int64, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.SUnionStore(ctx, destination, keys...)
+	})
+
+	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
 func (c *redisClient) Incr(ctx context.Context, key string) (int64, error) {
@@ -404,16 +574,37 @@ func (c *redisClient) PFMerge(ctx context.Context, dest string, keys ...string) 
 }
 
 func (c *redisClient) ZAdd(ctx context.Context, key string, score float64, member string) (int64, error) {
-	z := &baseRedis.Z{
-		Score:  score,
-		Member: member,
+	args := ZAddArgs{
+		Key: key,
+		Members: []Z{
+			{
+				Member: member,
+				Score:  score,
+			},
+		},
 	}
 
+	return c.ZAddArgs(ctx, args)
+}
+
+func (c *redisClient) ZAddArgs(ctx context.Context, args ZAddArgs) (int64, error) {
+	zAddArgs := c.toGoRedisZAddArgs(args)
+
 	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.ZAdd(ctx, key, z)
+		return c.base.ZAddArgs(ctx, args.Key, zAddArgs)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
+}
+
+func (c *redisClient) ZAddArgsIncr(ctx context.Context, args ZAddArgs) (float64, error) {
+	zAddArgs := c.toGoRedisZAddArgs(args)
+
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZAddArgsIncr(ctx, args.Key, zAddArgs)
+	})
+
+	return cmd.(*baseRedis.FloatCmd).Val(), err
 }
 
 func (c *redisClient) ZCard(ctx context.Context, key string) (int64, error) {
@@ -457,16 +648,39 @@ func (c *redisClient) ZMScore(ctx context.Context, key string, members ...string
 }
 
 func (c *redisClient) ZRange(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
+	return c.ZRangeArgs(ctx, ZRangeArgs{
+		Key:   key,
+		Start: start,
+		Stop:  stop,
+	})
+}
+
+func (c *redisClient) ZRangeArgs(ctx context.Context, args ZRangeArgs) ([]string, error) {
+	zRangeArgs := baseRedis.ZRangeArgs(args)
+
 	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.ZRange(ctx, key, start, stop)
+		return c.base.ZRangeArgs(ctx, zRangeArgs)
 	})
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
 }
 
-func (c *redisClient) ZRandMember(ctx context.Context, key string, count int, withScores bool) ([]string, error) {
+func (c *redisClient) ZRangeArgsWithScore(ctx context.Context, args ZRangeArgs) ([]Z, error) {
+	zRangeArgs := baseRedis.ZRangeArgs(args)
+
 	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.ZRandMember(ctx, key, count, withScores)
+		return c.base.ZRangeArgsWithScores(ctx, zRangeArgs)
+	})
+
+	zs := cmd.(*baseRedis.ZSliceCmd).Val()
+	members := c.toGosolineZs(zs)
+
+	return members, err
+}
+
+func (c *redisClient) ZRandMember(ctx context.Context, key string, count int) ([]string, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.ZRandMember(ctx, key, count, false)
 	})
 
 	return cmd.(*baseRedis.StringSliceCmd).Val(), err
@@ -532,4 +746,34 @@ func (c *redisClient) execute(ctx context.Context, wrappedCmd func() ErrCmder) (
 
 		return cmder, cmder.Err()
 	})
+}
+
+func (c *redisClient) toGosolineZs(zs []baseRedis.Z) []Z {
+	result := make([]Z, len(zs))
+	for i := range zs {
+		result[i] = Z(zs[i])
+	}
+
+	return result
+}
+
+func (c *redisClient) toGoRedisZs(zs []Z) []baseRedis.Z {
+	result := make([]baseRedis.Z, len(zs))
+	for i := range zs {
+		result[i] = baseRedis.Z(zs[i])
+	}
+
+	return result
+}
+
+func (c *redisClient) toGoRedisZAddArgs(args ZAddArgs) baseRedis.ZAddArgs {
+	zs := c.toGoRedisZs(args.Members)
+	return baseRedis.ZAddArgs{
+		NX:      args.NX,
+		XX:      args.XX,
+		LT:      args.LT,
+		GT:      args.GT,
+		Ch:      args.Ch,
+		Members: zs,
+	}
 }

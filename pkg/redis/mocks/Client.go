@@ -544,6 +544,51 @@ func (_m *Client) LPop(ctx context.Context, key string) (string, error) {
 	return r0, r1
 }
 
+// LPush provides a mock function with given fields: ctx, key, values
+func (_m *Client) LPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
+	var _ca []interface{}
+	_ca = append(_ca, ctx, key)
+	_ca = append(_ca, values...)
+	ret := _m.Called(_ca...)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...interface{}) int64); ok {
+		r0 = rf(ctx, key, values...)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...interface{}) error); ok {
+		r1 = rf(ctx, key, values...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// LRem provides a mock function with given fields: ctx, key, count, value
+func (_m *Client) LRem(ctx context.Context, key string, count int64, value interface{}) (int64, error) {
+	ret := _m.Called(ctx, key, count, value)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, string, int64, interface{}) int64); ok {
+		r0 = rf(ctx, key, count, value)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, int64, interface{}) error); ok {
+		r1 = rf(ctx, key, count, value)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // MGet provides a mock function with given fields: ctx, keys
 func (_m *Client) MGet(ctx context.Context, keys ...string) ([]interface{}, error) {
 	_va := make([]interface{}, len(keys))
@@ -687,6 +732,27 @@ func (_m *Client) Pipeline() redis.Pipeliner {
 	return r0
 }
 
+// RPop provides a mock function with given fields: ctx, key
+func (_m *Client) RPop(ctx context.Context, key string) (string, error) {
+	ret := _m.Called(ctx, key)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, key)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RPush provides a mock function with given fields: ctx, key, values
 func (_m *Client) RPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
 	var _ca []interface{}
@@ -756,6 +822,122 @@ func (_m *Client) SCard(ctx context.Context, key string) (int64, error) {
 	return r0, r1
 }
 
+// SDiff provides a mock function with given fields: ctx, keys
+func (_m *Client) SDiff(ctx context.Context, keys ...string) ([]string, error) {
+	_va := make([]interface{}, len(keys))
+	for _i := range keys {
+		_va[_i] = keys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func(context.Context, ...string) []string); ok {
+		r0 = rf(ctx, keys...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ...string) error); ok {
+		r1 = rf(ctx, keys...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SDiffStore provides a mock function with given fields: ctx, destination, keys
+func (_m *Client) SDiffStore(ctx context.Context, destination string, keys ...string) (int64, error) {
+	_va := make([]interface{}, len(keys))
+	for _i := range keys {
+		_va[_i] = keys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, destination)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...string) int64); ok {
+		r0 = rf(ctx, destination, keys...)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...string) error); ok {
+		r1 = rf(ctx, destination, keys...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SInter provides a mock function with given fields: ctx, keys
+func (_m *Client) SInter(ctx context.Context, keys ...string) ([]string, error) {
+	_va := make([]interface{}, len(keys))
+	for _i := range keys {
+		_va[_i] = keys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func(context.Context, ...string) []string); ok {
+		r0 = rf(ctx, keys...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ...string) error); ok {
+		r1 = rf(ctx, keys...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SInterStore provides a mock function with given fields: ctx, destination, keys
+func (_m *Client) SInterStore(ctx context.Context, destination string, keys ...string) (int64, error) {
+	_va := make([]interface{}, len(keys))
+	for _i := range keys {
+		_va[_i] = keys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, destination)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...string) int64); ok {
+		r0 = rf(ctx, destination, keys...)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...string) error); ok {
+		r1 = rf(ctx, destination, keys...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SIsMember provides a mock function with given fields: ctx, key, value
 func (_m *Client) SIsMember(ctx context.Context, key string, value interface{}) (bool, error) {
 	ret := _m.Called(ctx, key, value)
@@ -770,6 +952,174 @@ func (_m *Client) SIsMember(ctx context.Context, key string, value interface{}) 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string, interface{}) error); ok {
 		r1 = rf(ctx, key, value)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SMembers provides a mock function with given fields: ctx, key
+func (_m *Client) SMembers(ctx context.Context, key string) ([]string, error) {
+	ret := _m.Called(ctx, key)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func(context.Context, string) []string); ok {
+		r0 = rf(ctx, key)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SMove provides a mock function with given fields: ctx, sourceKey, destKey, member
+func (_m *Client) SMove(ctx context.Context, sourceKey string, destKey string, member interface{}) (bool, error) {
+	ret := _m.Called(ctx, sourceKey, destKey, member)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, interface{}) bool); ok {
+		r0 = rf(ctx, sourceKey, destKey, member)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, interface{}) error); ok {
+		r1 = rf(ctx, sourceKey, destKey, member)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SPop provides a mock function with given fields: ctx, key
+func (_m *Client) SPop(ctx context.Context, key string) (string, error) {
+	ret := _m.Called(ctx, key)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, key)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SRandMember provides a mock function with given fields: ctx, key
+func (_m *Client) SRandMember(ctx context.Context, key string) (string, error) {
+	ret := _m.Called(ctx, key)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, key)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SRem provides a mock function with given fields: ctx, key, values
+func (_m *Client) SRem(ctx context.Context, key string, values ...interface{}) (int64, error) {
+	var _ca []interface{}
+	_ca = append(_ca, ctx, key)
+	_ca = append(_ca, values...)
+	ret := _m.Called(_ca...)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...interface{}) int64); ok {
+		r0 = rf(ctx, key, values...)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...interface{}) error); ok {
+		r1 = rf(ctx, key, values...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SUnion provides a mock function with given fields: ctx, keys
+func (_m *Client) SUnion(ctx context.Context, keys ...string) ([]string, error) {
+	_va := make([]interface{}, len(keys))
+	for _i := range keys {
+		_va[_i] = keys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func(context.Context, ...string) []string); ok {
+		r0 = rf(ctx, keys...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ...string) error); ok {
+		r1 = rf(ctx, keys...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SUnionStore provides a mock function with given fields: ctx, destination, keys
+func (_m *Client) SUnionStore(ctx context.Context, destination string, keys ...string) (int64, error) {
+	_va := make([]interface{}, len(keys))
+	for _i := range keys {
+		_va[_i] = keys[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, destination)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...string) int64); ok {
+		r0 = rf(ctx, destination, keys...)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...string) error); ok {
+		r1 = rf(ctx, destination, keys...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -826,6 +1176,48 @@ func (_m *Client) ZAdd(ctx context.Context, key string, score float64, member st
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string, float64, string) error); ok {
 		r1 = rf(ctx, key, score, member)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ZAddArgs provides a mock function with given fields: ctx, args
+func (_m *Client) ZAddArgs(ctx context.Context, args redis.ZAddArgs) (int64, error) {
+	ret := _m.Called(ctx, args)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(context.Context, redis.ZAddArgs) int64); ok {
+		r0 = rf(ctx, args)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, redis.ZAddArgs) error); ok {
+		r1 = rf(ctx, args)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ZAddArgsIncr provides a mock function with given fields: ctx, args
+func (_m *Client) ZAddArgsIncr(ctx context.Context, args redis.ZAddArgs) (float64, error) {
+	ret := _m.Called(ctx, args)
+
+	var r0 float64
+	if rf, ok := ret.Get(0).(func(context.Context, redis.ZAddArgs) float64); ok {
+		r0 = rf(ctx, args)
+	} else {
+		r0 = ret.Get(0).(float64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, redis.ZAddArgs) error); ok {
+		r1 = rf(ctx, args)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -926,13 +1318,13 @@ func (_m *Client) ZMScore(ctx context.Context, key string, members ...string) ([
 	return r0, r1
 }
 
-// ZRandMember provides a mock function with given fields: ctx, key, count, withScores
-func (_m *Client) ZRandMember(ctx context.Context, key string, count int, withScores bool) ([]string, error) {
-	ret := _m.Called(ctx, key, count, withScores)
+// ZRandMember provides a mock function with given fields: ctx, key, count
+func (_m *Client) ZRandMember(ctx context.Context, key string, count int) ([]string, error) {
+	ret := _m.Called(ctx, key, count)
 
 	var r0 []string
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, bool) []string); ok {
-		r0 = rf(ctx, key, count, withScores)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) []string); ok {
+		r0 = rf(ctx, key, count)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
@@ -940,8 +1332,8 @@ func (_m *Client) ZRandMember(ctx context.Context, key string, count int, withSc
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, int, bool) error); ok {
-		r1 = rf(ctx, key, count, withScores)
+	if rf, ok := ret.Get(1).(func(context.Context, string, int) error); ok {
+		r1 = rf(ctx, key, count)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -965,6 +1357,52 @@ func (_m *Client) ZRange(ctx context.Context, key string, start int64, stop int6
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string, int64, int64) error); ok {
 		r1 = rf(ctx, key, start, stop)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ZRangeArgs provides a mock function with given fields: ctx, args
+func (_m *Client) ZRangeArgs(ctx context.Context, args redis.ZRangeArgs) ([]string, error) {
+	ret := _m.Called(ctx, args)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func(context.Context, redis.ZRangeArgs) []string); ok {
+		r0 = rf(ctx, args)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, redis.ZRangeArgs) error); ok {
+		r1 = rf(ctx, args)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ZRangeArgsWithScore provides a mock function with given fields: ctx, args
+func (_m *Client) ZRangeArgsWithScore(ctx context.Context, args redis.ZRangeArgs) ([]redis.Z, error) {
+	ret := _m.Called(ctx, args)
+
+	var r0 []redis.Z
+	if rf, ok := ret.Get(0).(func(context.Context, redis.ZRangeArgs) []redis.Z); ok {
+		r0 = rf(ctx, args)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]redis.Z)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, redis.ZRangeArgs) error); ok {
+		r1 = rf(ctx, args)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1014,29 +1452,6 @@ func (_m *Client) ZRem(ctx context.Context, key string, members ...string) (int6
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string, ...string) error); ok {
 		r1 = rf(ctx, key, members...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// ZRevRange provides a mock function with given fields: ctx, key, start, stop
-func (_m *Client) ZRevRange(ctx context.Context, key string, start int64, stop int64) ([]string, error) {
-	ret := _m.Called(ctx, key, start, stop)
-
-	var r0 []string
-	if rf, ok := ret.Get(0).(func(context.Context, string, int64, int64) []string); ok {
-		r0 = rf(ctx, key, start, stop)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, int64, int64) error); ok {
-		r1 = rf(ctx, key, start, stop)
 	} else {
 		r1 = ret.Error(1)
 	}
