@@ -74,7 +74,6 @@ func (s *CompressedTestSuite) TestCompressed() []*suite.ApiServerTestCase {
 			Body:               buffer.Bytes(), // all routes should accept compressed requests
 			ExpectedStatusCode: netHttp.StatusOK,
 			Assert: func(res *resty.Response) error {
-
 				// only first route should be compressed
 				if i == 0 {
 					s.Equal([]string{http.ContentEncodingGzip}, res.Header()[httpHeaders.ContentEncoding])
