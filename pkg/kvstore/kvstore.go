@@ -13,10 +13,11 @@ import (
 
 type Settings struct {
 	cfg.AppId
-	Name           string
-	Ttl            time.Duration
-	BatchSize      int
-	MetricsEnabled bool
+	Name             string
+	Ttl              time.Duration
+	TtlRandomization float64
+	BatchSize        int
+	MetricsEnabled   bool
 	InMemorySettings
 }
 

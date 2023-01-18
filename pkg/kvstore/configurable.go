@@ -24,6 +24,7 @@ type ChainConfiguration struct {
 	Type                string                `cfg:"type" default:"chain" validate:"eq=chain"`
 	Elements            []string              `cfg:"elements" validate:"min=1"`
 	Ttl                 time.Duration         `cfg:"ttl"`
+	TtlRandomization    float64               `cfg:"ttl_randomization" default:"0.5" validate:"min=0,max=2"`
 	BatchSize           int                   `cfg:"batch_size" default:"100" validate:"min=1"`
 	MissingCacheEnabled bool                  `cfg:"missing_cache_enabled" default:"false"`
 	MetricsEnabled      bool                  `cfg:"metrics_enabled" default:"false"`
@@ -63,10 +64,11 @@ func newKvStoreChainFromConfig(ctx context.Context, config cfg.Config, logger lo
 			Family:      configuration.Family,
 			Application: configuration.Application,
 		},
-		Name:           name,
-		Ttl:            configuration.Ttl,
-		BatchSize:      configuration.BatchSize,
-		MetricsEnabled: configuration.MetricsEnabled,
+		Name:             name,
+		Ttl:              configuration.Ttl,
+		TtlRandomization: configuration.TtlRandomization,
+		BatchSize:        configuration.BatchSize,
+		MetricsEnabled:   configuration.MetricsEnabled,
 		InMemorySettings: InMemorySettings{
 			MaxSize:        configuration.InMemory.MaxSize,
 			Buckets:        configuration.InMemory.Buckets,
