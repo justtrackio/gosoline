@@ -27,6 +27,17 @@ func CastSlice[T any, I ~[]any](sl I) ([]T, error) {
 	return result, nil
 }
 
+func Partition[S ~[]T, T any, E comparable](sl S, keyer func(T) E) map[E][]T {
+	result := make(map[E][]T)
+
+	for i := 0; i < len(sl); i++ {
+		key := keyer(sl[i])
+		result[key] = append(result[key], sl[i])
+	}
+
+	return result
+}
+
 func Chunk[S ~[]T, T any](sl S, size int) [][]T {
 	if size <= 0 {
 		return nil
