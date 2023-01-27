@@ -67,6 +67,7 @@ func runTestApp(t *testing.T, f func()) {
 	os.Args = []string{os.Args[0]}
 	defer func() {
 		os.Args = args
+		assert.Nil(t, recover(), "App should not fail to be created")
 	}()
 
 	f()

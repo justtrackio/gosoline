@@ -78,11 +78,12 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 		suite.SetT(t)
 
 		ret := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
-		tc := ret[0].Interface().(SubscriberTestCase)
 		err := ret[1].Interface()
 		if err != nil {
 			assert.FailNow(t, err.(error).Error())
 		}
+
+		tc := ret[0].Interface().(SubscriberTestCase)
 
 		suiteOptions.addAppOption(application.WithConfigMap(map[string]interface{}{
 			"api": map[string]interface{}{

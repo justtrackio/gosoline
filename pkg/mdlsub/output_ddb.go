@@ -21,7 +21,7 @@ func init() {
 func repoInit(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings) func(model interface{}) (ddb.Repository, error) {
 	return func(model interface{}) (ddb.Repository, error) {
 		repo, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
-			ModelId: settings.TargetModel,
+			ModelId: settings.TargetModel.ModelId,
 			Main: ddb.MainSettings{
 				Model:              model,
 				ReadCapacityUnits:  5,

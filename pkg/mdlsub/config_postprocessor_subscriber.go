@@ -85,8 +85,11 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 	topicId := subscriberSettings.SourceModel.Name
 
 	if subscriberSettings.SourceModel.Shared {
-		consumerId = sharedName
 		topicId = sharedName
+	}
+
+	if subscriberSettings.TargetModel.Shared {
+		consumerId = sharedName
 	}
 
 	inputSettings := &stream.SnsInputConfiguration{}
@@ -137,7 +140,7 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 	return cfg.WithConfigSetting(kvstoreKey, kvstoreSettings, cfg.SkipExisting)
 }
 
-func GetSubscriberFQN(name string, sourceModel SubscriberSourceModel) string {
+func GetSubscriberFQN(name string, sourceModel SubscriberModel) string {
 	if !sourceModel.Shared {
 		return fmt.Sprintf("subscriber-%s", name)
 	}
@@ -145,7 +148,7 @@ func GetSubscriberFQN(name string, sourceModel SubscriberSourceModel) string {
 	return fmt.Sprintf("subscriber-%s-%s-%s-%s", sourceModel.Project, sourceModel.Family, sourceModel.Application, sharedName)
 }
 
-func getInputConfigKey(name string, sourceModel SubscriberSourceModel) string {
+func getInputConfigKey(name string, sourceModel SubscriberModel) string {
 	inputName := GetSubscriberFQN(name, sourceModel)
 
 	return stream.ConfigurableInputKey(inputName)
@@ -159,9 +162,9 @@ func GetSubscriberOutputConfigKey(name string) string {
 	return fmt.Sprintf("%s.output", GetSubscriberConfigKey(name))
 }
 
-func UnmarshalSubscriberSourceModel(config cfg.Config, name string) SubscriberSourceModel {
+func UnmarshalSubscriberSourceModel(config cfg.Config, name string) SubscriberModel {
 	key := fmt.Sprintf("%s.source", GetSubscriberConfigKey(name))
-	sourceModel := &SubscriberSourceModel{}
+	sourceModel := &SubscriberModel{}
 	config.UnmarshalKey(key, sourceModel)
 
 	if sourceModel.Name == "" {

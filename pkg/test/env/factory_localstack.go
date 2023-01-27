@@ -18,6 +18,7 @@ func init() {
 const (
 	ComponentLocalstack         = "localstack"
 	localstackServiceCloudWatch = "cloudwatch"
+	localstackServicesKey       = "services"
 	localstackServiceS3         = "s3"
 	localstackServiceSns        = "sns"
 	localstackServiceSqs        = "sqs"
@@ -96,10 +97,9 @@ func (f *localstackFactory) configureContainer(settings interface{}) *containerC
 
 	return &containerConfig{
 		Repository: "localstack/localstack",
-		Tag:        "0.13.1",
+		Tag:        "1.4",
 		Env: []string{
 			fmt.Sprintf("SERVICES=%s", services),
-			fmt.Sprintf("DEFAULT_REGION=%s", s.Region),
 			"EAGER_SERVICE_LOADING=1",
 		},
 		PortBindings: portBindings{
@@ -119,7 +119,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 		var err error
 		var resp *http.Response
 		var body []byte
-		status := make(map[string]map[string]string)
+		status := make(map[string]any)
 
 		if resp, err = http.Get(url); err != nil {
 			return err
@@ -133,17 +133,22 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 			return err
 		}
 
-		if _, ok := status["services"]; !ok {
+		if _, ok := status[localstackServicesKey]; !ok {
 			return fmt.Errorf("no localstack services up yet")
 		}
 
+		services, ok := status[localstackServicesKey].(map[string]any)
+		if !ok {
+			return fmt.Errorf("could not assert services key in healthcheck object as map[string]any")
+		}
+
 		for _, service := range s.Services {
-			if _, ok := status["services"][service]; !ok {
+			if _, ok := services[service]; !ok {
 				return fmt.Errorf("%s service is not up yet", service)
 			}
 
-			if status["services"][service] != "running" {
-				return fmt.Errorf("%s service is in %s state", service, status["services"][service])
+			if services[service] != "running" {
+				return fmt.Errorf("%s service is in %s state", service, services[service])
 			}
 		}
 
