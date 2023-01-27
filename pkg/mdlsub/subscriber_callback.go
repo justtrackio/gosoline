@@ -19,14 +19,14 @@ const (
 )
 
 type SubscriberSettings struct {
-	Input       string                `cfg:"input" default:"sns"`
-	Output      string                `cfg:"output"`
-	RunnerCount int                   `cfg:"runner_count" default:"10" validate:"min=1"`
-	SourceModel SubscriberSourceModel `cfg:"source"`
-	TargetModel mdl.ModelId           `cfg:"target"`
+	Input       string          `cfg:"input" default:"sns"`
+	Output      string          `cfg:"output"`
+	RunnerCount int             `cfg:"runner_count" default:"10" validate:"min=1"`
+	SourceModel SubscriberModel `cfg:"source"`
+	TargetModel SubscriberModel `cfg:"target"`
 }
 
-type SubscriberSourceModel struct {
+type SubscriberModel struct {
 	mdl.ModelId
 	Shared bool `cfg:"shared"`
 }

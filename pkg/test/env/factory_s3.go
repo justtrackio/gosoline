@@ -65,7 +65,7 @@ func (f *s3Factory) configureContainer(settings interface{}) *containerConfig {
 
 	return &containerConfig{
 		Repository: "minio/minio",
-		Tag:        "RELEASE.2021-09-18T18-09-59Z",
+		Tag:        "RELEASE.2023-03-09T23-16-13Z",
 		Cmd: []string{
 			"server",
 			"/data",
