@@ -112,7 +112,7 @@ func (s *ApiTestSuite) SetupApiDefinitions() apiserver.Definer {
 }
 ```
 
-_SetupApiDefinitions_ is needed if you want to run _resty.Client_ or  _ApiServerTestCase_ test cases, more details [here](../more_details/integration_tests.md), and not adding it will cause an error.
+_SetupApiDefinitions_ is needed if you want to run _resty.Client_ or  _ApiServerTestCase_ test cases, more details [here](../integration_tests/readme.md), and not adding it will cause an error.
 
 Lastly, for each method of _ApiTestSuite_ starting with `Test...`, Gosoline will run a separate test case. In this example, we have two such methods:
 

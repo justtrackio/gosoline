@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -124,15 +125,21 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 
 	suite.SetEnv(environment)
 
+	start := time.Now()
 	for _, envSetup := range suiteOptions.envSetup {
 		if err := envSetup(); err != nil {
 			assert.FailNow(t, "failed to execute additional environment setup", err.Error())
 		}
 	}
 
+	environment.Logger().Info("applied env setup in %s", time.Since(start))
+
+	start = time.Now()
 	if err = environment.LoadFixtureBuilderFactories(suiteOptions.fixtureBuilderFactories...); err != nil {
 		assert.FailNow(t, "failed to load fixtures from factories", err.Error())
 	}
+
+	environment.Logger().Info("loaded fixtures in %s", time.Since(start))
 
 	for name, testCase := range testCases {
 		if setupTestAware, ok := suite.(TestingSuiteSetupTestAware); ok {

@@ -19,17 +19,21 @@ import (
 )
 
 type containerConfig struct {
-	Repository   string
-	Tmpfs        []TmpfsSettings
-	Tag          string
-	Env          []string
-	Cmd          []string
-	PortBindings portBindings
-	ExposedPorts []string
-	ExpireAfter  time.Duration
+	Repository           string
+	Tmpfs                []TmpfsSettings
+	Tag                  string
+	Env                  []string
+	Cmd                  []string
+	PortBindings         portBindings
+	ExposedPorts         []string
+	ExpireAfter          time.Duration
+	UseExternalContainer bool
+	ContainerBindings    containerBindings
 }
 
 type portBindings map[string]int
+
+type containerBindings map[string]containerBinding
 
 type containerBinding struct {
 	host string
@@ -77,12 +81,13 @@ type containerRunnerSettings struct {
 }
 
 type containerRunner struct {
-	logger       log.Logger
-	pool         *dockertest.Pool
-	id           string
-	resources    map[string]*dockertest.Resource
-	resourcesLck sync.Mutex
-	settings     *containerRunnerSettings
+	logger            log.Logger
+	pool              *dockertest.Pool
+	id                string
+	resources         map[string]*dockertest.Resource
+	resourcesLck      sync.Mutex
+	settings          *containerRunnerSettings
+	shutdownCallbacks map[string]func() error
 }
 
 func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner, error) {
@@ -104,12 +109,13 @@ func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner,
 	}
 
 	return &containerRunner{
-		logger:       logger,
-		pool:         pool,
-		id:           id,
-		resources:    make(map[string]*dockertest.Resource),
-		resourcesLck: sync.Mutex{},
-		settings:     settings,
+		logger:            logger,
+		pool:              pool,
+		id:                id,
+		resources:         make(map[string]*dockertest.Resource),
+		resourcesLck:      sync.Mutex{},
+		settings:          settings,
+		shutdownCallbacks: make(map[string]func() error, 0),
 	}, nil
 }
 
@@ -119,6 +125,11 @@ func (r *containerRunner) PullContainerImages(skeletons []*componentSkeleton) er
 		for _, skeleton := range skeletons {
 			for _, description := range skeleton.containerDescriptions {
 				description := description
+
+				if description.containerConfig.UseExternalContainer {
+					continue
+				}
+
 				cfn.Gof(func() error {
 					return r.PullContainerImage(description)
 				}, "can not pull container %s", skeleton.id())
@@ -177,9 +188,13 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 				var err error
 				var container *container
 
+				start := time.Now()
+
 				if container, err = r.RunContainer(skeleton, name, description); err != nil {
 					return fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
 				}
+
+				r.logger.WithFields(log.Fields{"skeleton_type": skeleton.typ, "skeleton_name": skeleton.name, "container_name": name}).Info("booted in %s", time.Since(start))
 
 				lck.Lock()
 				defer lck.Unlock()
@@ -195,10 +210,60 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 }
 
 func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string, description *componentContainerDescription) (*container, error) {
+	config := description.containerConfig
 	containerName := fmt.Sprintf("%s-%s-%s-%s", r.settings.NamePrefix, r.id, skeleton.id(), name)
+
+	var container *container
+	var err error
+
+	if config.UseExternalContainer {
+		container, err = r.createExternalContainer(containerName, skeleton.typ, description.containerConfig)
+		if err != nil {
+			return nil, fmt.Errorf("could not create external container: %w", err)
+		}
+	} else {
+		container, err = r.runNewContainer(containerName, skeleton, name, config)
+		if err != nil {
+			return nil, fmt.Errorf("could not run new container: %w", err)
+		}
+	}
+
+	if err = r.waitUntilHealthy(container, description.healthCheck); err != nil {
+		return nil, fmt.Errorf("healthcheck failed on container for component %s: %w", skeleton.id(), err)
+	}
+
+	if description.shutdownCallback != nil {
+		if _, exists := r.shutdownCallbacks[name]; exists {
+			return nil, fmt.Errorf("there already exists a shutdown callback for %s", name)
+		}
+
+		r.shutdownCallbacks[name] = description.shutdownCallback(container)
+	}
+
+	return container, err
+}
+
+func (r *containerRunner) createExternalContainer(containerName, skeletonTyp string, config *containerConfig) (*container, error) {
+	r.logger.Debug("create external container %s %s", skeletonTyp, containerName)
+
+	containerBindings := make(map[string]containerBinding, len(config.ContainerBindings))
+	for key, cb := range config.ContainerBindings {
+		containerBindings[key] = containerBinding{
+			host: cb.host,
+			port: cb.port,
+		}
+	}
+
+	return &container{
+		typ:      skeletonTyp,
+		name:     containerName,
+		bindings: containerBindings,
+	}, nil
+}
+
+func (r *containerRunner) runNewContainer(containerName string, skeleton *componentSkeleton, name string, config *containerConfig) (*container, error) {
 	r.logger.Debug("run container %s %s", skeleton.typ, containerName)
 
-	config := description.containerConfig
 	bindings := make(map[docker.Port][]docker.PortBinding)
 
 	for containerPort, hostPort := range config.PortBindings {
@@ -222,39 +287,47 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string,
 
 	tmpfsConfig := r.getTmpfsConfig(config.Tmpfs)
 
-	resource, err := r.pool.RunWithOptions(runOptions, func(hc *docker.HostConfig) {
-		hc.AutoRemove = true
-		hc.Tmpfs = tmpfsConfig
-	})
+	resourceId := fmt.Sprintf("%s-%s", skeleton.id(), name)
+
+	container, err := r.runContainer(runOptions, resourceId, config.ExpireAfter, config.PortBindings, skeleton.typ, tmpfsConfig)
 	if err != nil {
-		return nil, fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
+		return nil, err
 	}
 
-	resourceId := fmt.Sprintf("%s-%s", skeleton.id(), name)
+	return container, nil
+}
+
+func (r *containerRunner) runContainer(options *dockertest.RunOptions, resourceId string, expireAfter time.Duration, bindings portBindings, typ string, tmpfs map[string]string) (*container, error) {
+	var resourceContainer *container
+
+	resource, err := r.pool.RunWithOptions(options, func(hc *docker.HostConfig) {
+		hc.AutoRemove = true
+		hc.Tmpfs = tmpfs
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can not run container %s: %w", resourceId, err)
+	}
+
 	r.resourcesLck.Lock()
 	r.resources[resourceId] = resource
 	r.resourcesLck.Unlock()
 
-	if err = r.expireAfter(resource, config.ExpireAfter); err != nil {
-		return nil, fmt.Errorf("could not set expiry on container %s: %w", containerName, err)
+	if err = r.expireAfter(resource, expireAfter); err != nil {
+		return nil, fmt.Errorf("could not set expiry on container %s: %w", options.Name, err)
 	}
 
-	resolvedBindings, err := r.resolveBindings(resource, config.PortBindings)
+	resolvedBindings, err := r.resolveBindings(resource, bindings)
 	if err != nil {
 		return nil, fmt.Errorf("can not resolve bindings: %w", err)
 	}
 
-	container := &container{
-		typ:      skeleton.typ,
-		name:     containerName,
+	resourceContainer = &container{
+		typ:      typ,
+		name:     options.Name,
 		bindings: resolvedBindings,
 	}
 
-	if err = r.waitUntilHealthy(container, description.healthCheck); err != nil {
-		return nil, fmt.Errorf("healthcheck failed on container for component %s: %w", skeleton.id(), err)
-	}
-
-	return container, err
+	return resourceContainer, nil
 }
 
 func (r *containerRunner) getTmpfsConfig(settings []TmpfsSettings) map[string]string {
@@ -364,6 +437,13 @@ var (
 )
 
 func (r *containerRunner) Stop() error {
+	for name, cb := range r.shutdownCallbacks {
+		err := cb()
+		if err != nil {
+			r.logger.Error("shutdown callback failed for container %s: %w", name, err)
+		}
+	}
+
 	for name, resource := range r.resources {
 		if err := r.pool.Purge(resource); err != nil {
 			if !alreadyExists.MatchString(err.Error()) && !noSuchContainer.MatchString(err.Error()) {

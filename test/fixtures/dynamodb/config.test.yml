@@ -1,3 +1,4 @@
 test:
   components:
-    - type: ddb
+    ddb:
+      default:

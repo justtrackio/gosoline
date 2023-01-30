@@ -1,13 +1,16 @@
 package env
 
 import (
+	"database/sql"
 	"fmt"
 	"net/url"
+	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 func init() {
@@ -26,15 +29,20 @@ type mysqlCredentials struct {
 type mysqlSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Port        int              `cfg:"port" default:"0"`
-	Version     string           `cfg:"version" default:"8.0"`
-	Credentials mysqlCredentials `cfg:"credentials"`
+	ContainerBindingSettings
+	UseExternalContainer bool             `cfg:"use_external_container" default:"false"`
+	Version              string           `cfg:"version" default:"8.0"`
+	Credentials          mysqlCredentials `cfg:"credentials"`
 }
 
 type mysqlFactory struct{}
 
 func (f mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
 	if !config.IsSet("db") {
+		return nil
+	}
+
+	if !manager.ShouldAutoDetect(componentMySql) {
 		return nil
 	}
 
@@ -72,14 +80,23 @@ func (f mysqlFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 func (f mysqlFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
 	return componentContainerDescriptions{
 		"main": {
-			containerConfig: f.configureContainer(settings),
-			healthCheck:     f.healthCheck(settings),
+			containerConfig:  f.configureContainer(settings),
+			healthCheck:      f.healthCheck(settings),
+			shutdownCallback: f.dropDatabase(settings),
 		},
 	}
 }
 
 func (f mysqlFactory) configureContainer(settings interface{}) *containerConfig {
 	s := settings.(*mysqlSettings)
+
+	if s.UseExternalContainer {
+		// when using an external instance we need to generate a new database
+		s.Credentials.DatabaseName = uuid.New().NewV4()
+	} else {
+		// ensure to use a free port for the new container
+		s.Port = 0
+	}
 
 	env := []string{
 		fmt.Sprintf("MYSQL_DATABASE=%s", s.Credentials.DatabaseName),
@@ -93,6 +110,18 @@ func (f mysqlFactory) configureContainer(settings interface{}) *containerConfig 
 		s.Tmpfs = append(s.Tmpfs, TmpfsSettings{
 			Path: "/var/lib/mysql",
 		})
+	}
+
+	if s.UseExternalContainer {
+		return &containerConfig{
+			UseExternalContainer: true,
+			ContainerBindings: containerBindings{
+				"3306/tcp": containerBinding{
+					host: s.Host,
+					port: strconv.Itoa(s.Port),
+				},
+			},
+		}
 	}
 
 	return &containerConfig{
@@ -142,6 +171,11 @@ func (f mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[strin
 }
 
 func (f mysqlFactory) connection(settings *mysqlSettings, binding containerBinding) (*sqlx.DB, error) {
+	err := f.setup(settings, binding)
+	if err != nil {
+		return nil, fmt.Errorf("can not prepare database: %w", err)
+	}
+
 	dsn := url.URL{
 		User: url.UserPassword(settings.Credentials.UserName, settings.Credentials.UserPassword),
 		Host: fmt.Sprintf("tcp(%s:%v)", binding.host, binding.port),
@@ -160,4 +194,68 @@ func (f mysqlFactory) connection(settings *mysqlSettings, binding containerBindi
 	}
 
 	return client, nil
+}
+
+func (f mysqlFactory) setup(settings *mysqlSettings, binding containerBinding) error {
+	dsn := url.URL{
+		User: url.UserPassword("root", settings.Credentials.RootPassword),
+		Host: fmt.Sprintf("tcp(%s:%v)", binding.host, binding.port),
+		Path: "/",
+	}
+
+	client, err := sql.Open("mysql", dsn.String()[2:])
+	if err != nil {
+		return fmt.Errorf("can not create root client: %w", err)
+	}
+
+	err = client.Ping()
+	if err != nil {
+		return fmt.Errorf("unable to connect via root: %w", err)
+	}
+
+	createDB := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`;", settings.Credentials.DatabaseName)
+
+	_, err = client.Exec(createDB)
+	if err != nil {
+		return fmt.Errorf("can not create database: %w", err)
+	}
+
+	createUser := fmt.Sprintf("CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s'", settings.Credentials.UserName, settings.Credentials.UserPassword)
+
+	_, err = client.Exec(createUser)
+	if err != nil {
+		return fmt.Errorf("can not create test user: %w", err)
+	}
+
+	grantPermissions := fmt.Sprintf("GRANT ALL ON `%s`.* TO '%s'@'%%';", settings.Credentials.DatabaseName, settings.Credentials.UserName)
+
+	_, err = client.Exec(grantPermissions)
+	if err != nil {
+		return fmt.Errorf("can not grant permissions for test user: %w", err)
+	}
+
+	return nil
+}
+
+func (f mysqlFactory) dropDatabase(settings interface{}) ComponentShutdownCallback {
+	return func(container *container) func() error {
+		return func() error {
+			s := settings.(*mysqlSettings)
+			binding := container.bindings["3306/tcp"]
+
+			client, err := f.connection(s, binding)
+			if err != nil {
+				return fmt.Errorf("can not connect to database: %w", err)
+			}
+
+			dropDatabase := fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", s.Credentials.DatabaseName)
+
+			_, err = client.Exec(dropDatabase)
+			if err != nil {
+				return fmt.Errorf("can not drop database: %w", err)
+			}
+
+			return nil
+		}
+	}
 }

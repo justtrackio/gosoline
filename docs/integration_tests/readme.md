@@ -192,10 +192,54 @@ func (s *SubscriberTestSuite) TestSuccess() (suite.SubscriberTestCase, error) {
 
 This test will publish an item to an input, stops the application and waits for it to finish, then looks inside a ddd table to see if it was written there.
 
-## Shared environment
+## External Dependencies
+The test suite supports configuring and launching external dependencies as docker containers via its environment component.
+An overview over supported can be found inside the `test/env` module.
 
-One of the options for a Gosoline _suite_ integration test is `suite.WithSharedEnvironment()`. When this option is off, each test case will run in its own environment. For example, the fixtures are being loaded for every test case, and any change to a database or stream will only last during that test case alone. When this option is enabled, the environment is created only once and used by all the test cases, and any change done by one test case will be available to the ones who follow.
-
-## Auto detect components
-
+### Auto detect components
 Another option each _suite_ test offers is `WithoutAutoDetectedComponents`. This simply adds one extra options to the test, which tells it to skip one of the components configured in any potential `config.dist.yml`. The skipped component's name is given as a parameter to `WithoutAutoDetectedComponents`. Also note that while a component can be skipped by auto detect, it can still be added manually to the test via an option.
+
+#### Example
+The suite environment tries to detect the component containers to launch automatically based on the resolved configuration.
+E.g., if you specify the `db` key with driver `mysql`, it will add a MySQL database to the launching components. You can disable this behaviour by setting `test.auto_detect.enabled` to `false`.
+With disabled auto-detection, your test bed can look like this:
+
+[embedmd]:# (../../examples/integration/config.test.yml)
+```yml
+test:
+  auto_detect:
+    enabled: false
+  components:
+    ddb:
+      default:
+        expire_after: 4m
+    mysql:
+      default:
+        expire_after: 4m
+```
+
+We define two components of type ddb (for DynamoDB) and mysql (for a MySql server); additionally we set both their expiration times to four minutes.
+
+### Using external container instances
+When booting a container takes some time, or you want to preconfigure it, it can be beneficial to fallback to a already running container instance.
+For this, you need to specify the option `use_external_container` on your component configuration, and provide connection details if they differ from the defaults. Depending on the container runtime, you need to pass host ips and ports explicitly (e.g. for docker, the IP of the bridge gateway as host).
+
+[embedmd]:# (../../examples/integration/config.external_instance.yml)
+```yml
+test:
+  components:
+    mysql:
+      default:
+        use_external_container: true
+        host: 127.0.0.1
+        port: 3306
+```
+
+You can find a complete example inside `examples/integration`.
+
+### Shared environment
+One of the options for a Gosoline _suite_ integration test is `suite.WithSharedEnvironment()`.
+When this option is off, each test case will run in its own environment.
+For example, the fixtures are being loaded for every test case, and any change to a database or stream will only last during that test case alone.
+When this option is enabled, the environment is created only once and used by all the test cases, and any change done by one test case will be available to the ones who follow.
+

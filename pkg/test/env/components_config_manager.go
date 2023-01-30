@@ -45,32 +45,48 @@ func (m *ComponentsConfigManager) ShouldAutoDetect(typ string) bool {
 func (m *ComponentsConfigManager) GetAllSettings() ([]ComponentBaseSettingsAware, error) {
 	allSettings := make([]ComponentBaseSettingsAware, 0)
 
-	for i, configured := range m.List() {
-		factory, ok := componentFactories[configured.Type]
+	for typ, components := range m.List() {
+		factory, ok := componentFactories[typ]
 
 		if !ok {
-			return nil, fmt.Errorf("there is no component of type %s available", configured.Type)
+			return nil, fmt.Errorf("there is no component of type %s available", typ)
 		}
 
-		settings := factory.GetSettingsSchema()
+		for name := range components {
+			settings := factory.GetSettingsSchema()
 
-		key := fmt.Sprintf("test.components[%d]", i)
-		m.config.UnmarshalKey(key, settings)
+			key := fmt.Sprintf("test.components.%s.%s", typ, name)
 
-		allSettings = append(allSettings, settings)
+			defaults := []cfg.UnmarshalDefaults{
+				cfg.UnmarshalWithDefaultForKey("type", typ),
+				cfg.UnmarshalWithDefaultForKey("name", name),
+			}
+
+			m.config.UnmarshalKey(key, settings, defaults...)
+
+			allSettings = append(allSettings, settings)
+		}
 	}
 
 	return allSettings, nil
 }
 
-func (m *ComponentsConfigManager) List() []ComponentBaseSettings {
-	settings := make([]ComponentBaseSettings, 0)
+func (m *ComponentsConfigManager) List() map[string]map[string]interface{} {
+	settings := make(map[string]map[string]interface{}, 0)
 
 	if !m.config.IsSet("test.components") {
 		return settings
 	}
 
-	m.config.UnmarshalKey("test.components", &settings)
+	types := m.config.GetStringMap("test.components")
+	for typ := range types {
+		settings[typ] = make(map[string]interface{}, 0)
+
+		names := m.config.GetStringMap(fmt.Sprintf("test.components.%s", typ))
+		for name, value := range names {
+			settings[typ][name] = value
+		}
+	}
 
 	return settings
 }
@@ -78,16 +94,10 @@ func (m *ComponentsConfigManager) List() []ComponentBaseSettings {
 func (m *ComponentsConfigManager) Has(typ string, name string) bool {
 	configured := m.List()
 
-	for _, c := range configured {
-		if typ != c.Type {
-			continue
+	if components, ok := configured[typ]; ok {
+		if _, ok = components[name]; ok {
+			return true
 		}
-
-		if name != c.Name {
-			continue
-		}
-
-		return true
 	}
 
 	return false
@@ -96,11 +106,7 @@ func (m *ComponentsConfigManager) Has(typ string, name string) bool {
 func (m *ComponentsConfigManager) HasType(typ string) bool {
 	configured := m.List()
 
-	for _, c := range configured {
-		if typ != c.Type {
-			continue
-		}
-
+	if _, ok := configured[typ]; ok {
 		return true
 	}
 
@@ -124,11 +130,10 @@ func (m *ComponentsConfigManager) Add(settings interface{}) error {
 	}
 
 	if m.Has(componentSettings.GetName(), componentSettings.GetType()) {
-		return nil
+		return fmt.Errorf("component %s of type %s already exists", componentSettings.GetName(), componentSettings.GetType())
 	}
 
-	configured := m.List()
-	key := fmt.Sprintf("test.components[%d]", len(configured))
+	key := fmt.Sprintf("test.components.%s.%s", componentSettings.GetType(), componentSettings.GetName())
 	option := cfg.WithConfigSetting(key, componentSettings)
 
 	if err := m.config.Option(option); err != nil {

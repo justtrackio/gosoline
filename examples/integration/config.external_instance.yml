@@ -1,0 +1,7 @@
+test:
+  components:
+    mysql:
+      default:
+        use_external_container: true
+        host: 127.0.0.1
+        port: 3306

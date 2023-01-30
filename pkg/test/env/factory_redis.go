@@ -28,6 +28,10 @@ func (f *redisFactory) Detect(config cfg.Config, manager *ComponentsConfigManage
 		return nil
 	}
 
+	if !manager.ShouldAutoDetect(componentRedis) {
+		return nil
+	}
+
 	if manager.HasType(componentRedis) {
 		return nil
 	}

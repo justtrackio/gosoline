@@ -8,7 +8,7 @@ Gosoline is a Golang application framework, designed to help you build microserv
 go install github.com/justtrackio/gosoline 
 ```
 
-### First steps
+### Getting started
 
 If you are new to Gosoline, start with:
 
@@ -20,4 +20,4 @@ If you are new to Gosoline, start with:
 
 ### More details
 
-1. [Integration tests](more_details/integration_tests.md)
+1. [Integration tests](integration_tests/readme.md)
