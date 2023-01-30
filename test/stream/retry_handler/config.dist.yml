@@ -19,5 +19,6 @@ stream:
 
 test:
   components:
-    - type: localstack
-      services: sqs
+    localstack:
+      default:
+        services: sqs

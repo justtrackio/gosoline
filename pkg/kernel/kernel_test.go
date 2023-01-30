@@ -125,6 +125,7 @@ func createMocks() (*cfgMocks.Config, *logMocks.Logger, *kernelMocks.FullModule)
 	logger.On("WithFields", mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything)
 	logger.On("Info", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	logger.On("Debug", mock.Anything, mock.Anything)
 
 	module := new(kernelMocks.FullModule)
 	module.On("IsEssential").Return(false)

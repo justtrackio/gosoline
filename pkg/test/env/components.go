@@ -13,8 +13,9 @@ import (
 var componentFactories = map[string]componentFactory{}
 
 type componentContainerDescription struct {
-	containerConfig *containerConfig
-	healthCheck     ComponentHealthCheck
+	containerConfig  *containerConfig
+	healthCheck      ComponentHealthCheck
+	shutdownCallback ComponentShutdownCallback
 }
 
 type componentContainerDescriptions map[string]*componentContainerDescription
@@ -26,7 +27,10 @@ type componentFactory interface {
 	Component(config cfg.Config, logger log.Logger, container map[string]*container, settings interface{}) (Component, error)
 }
 
-type ComponentHealthCheck func(container *container) error
+type (
+	ComponentHealthCheck      func(container *container) error
+	ComponentShutdownCallback func(container *container) func() error
+)
 
 type ComponentBaseSettingsAware interface {
 	GetName() string
@@ -54,6 +58,11 @@ func (c *ComponentBaseSettings) SetName(name string) {
 
 func (c *ComponentBaseSettings) SetType(typ string) {
 	c.Type = typ
+}
+
+type ContainerBindingSettings struct {
+	Host string `cfg:"host" default:"127.0.0.1"`
+	Port int    `cfg:"port" default:"0"`
 }
 
 type ComponentContainerSettings struct {

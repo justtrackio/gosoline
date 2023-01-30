@@ -18,6 +18,6 @@ cloud:
 
 test:
   components:
-    - name: default
-      type: ddb
-      toxiproxy_enabled: true
+    ddb:
+      default:
+        toxiproxy_enabled: true

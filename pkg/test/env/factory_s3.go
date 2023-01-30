@@ -29,6 +29,10 @@ func (f *s3Factory) Detect(config cfg.Config, manager *ComponentsConfigManager) 
 		return nil
 	}
 
+	if !manager.ShouldAutoDetect(componentS3) {
+		return nil
+	}
+
 	if manager.HasType(componentS3) {
 		return nil
 	}

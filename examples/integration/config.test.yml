@@ -1,0 +1,10 @@
+test:
+  auto_detect:
+    enabled: false
+  components:
+    ddb:
+      default:
+        expire_after: 4m
+    mysql:
+      default:
+        expire_after: 4m

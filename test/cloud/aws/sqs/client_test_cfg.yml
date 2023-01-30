@@ -9,5 +9,5 @@ cloud:
 
 test:
   components:
-    - name: localstack
-      type: localstack
+    localstack:
+      localstack:

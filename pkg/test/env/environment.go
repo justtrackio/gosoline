@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -29,6 +30,8 @@ type Environment struct {
 }
 
 func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
+	start := time.Now()
+
 	env := &Environment{
 		t: t,
 	}
@@ -56,6 +59,10 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		return nil, fmt.Errorf("can apply logger option: %w", err)
 	}
 
+	defer func() {
+		logger.Debug("booted env in %s", time.Since(start))
+	}()
+
 	for name, priority := range cfgPostProcessors {
 		logger.Info("applied priority %d config post processor '%s'", priority, name)
 	}
@@ -63,10 +70,10 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	var skeletons []*componentSkeleton
 	var component Component
 	components := NewComponentsContainer()
-	componentConfigManger := NewComponentsConfigManager(config)
+	componentConfigManager := NewComponentsConfigManager(config)
 
 	for _, opt := range env.componentOptions {
-		if err := opt(componentConfigManger); err != nil {
+		if err := opt(componentConfigManager); err != nil {
 			return nil, fmt.Errorf("can apply component option: %w", err)
 		}
 	}
@@ -78,12 +85,12 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	env.fixtureLoader = fixtures.NewFixtureLoader(env.ctx, env.config, env.logger)
 
 	for typ, factory := range componentFactories {
-		if err = factory.Detect(config, componentConfigManger); err != nil {
+		if err = factory.Detect(config, componentConfigManager); err != nil {
 			return env, fmt.Errorf("can not autodetect components for %s: %w", typ, err)
 		}
 	}
 
-	if skeletons, err = buildComponentSkeletons(componentConfigManger); err != nil {
+	if skeletons, err = buildComponentSkeletons(componentConfigManager); err != nil {
 		return env, fmt.Errorf("can not create component skeletons: %w", err)
 	}
 

@@ -81,7 +81,7 @@ func (m *mysqlPlainFixtureWriter) Write(ctx context.Context, fs *FixtureSet) err
 			return err
 		}
 
-		m.logger.Info(fmt.Sprintf("affected rows while fixture loading: %d", ar))
+		m.logger.Debug(fmt.Sprintf("affected rows while fixture loading: %d", ar))
 	}
 
 	m.logger.Info("loaded %d plain mysql fixtures", len(fs.Fixtures))
