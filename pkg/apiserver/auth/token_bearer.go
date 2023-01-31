@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -25,12 +26,10 @@ type TokenBearer interface {
 	GetToken() string
 }
 
-type Getter interface {
-	// Retrieve a value from the store by the given key. If the value does
-	// not exist, false is returned and value is not modified.
-	// value should be a pointer to the model you want to retrieve.
-	Get(ctx context.Context, key interface{}, value interface{}) (bool, error)
-}
+// A Getter retrieves a value from the store by the given key. If the value does
+// not exist, false is returned and value is not modified.
+// value should be a pointer to the model you want to retrieve.
+type Getter func(ctx context.Context, key string, value TokenBearer) (bool, error)
 
 type tokenBearerAuthenticator struct {
 	logger      log.Logger
@@ -55,6 +54,27 @@ func (i InvalidTokenErr) As(target interface{}) bool {
 	_, ok := target.(InvalidTokenErr)
 
 	// we don't have to write anything as our struct is always empty
+
+	return ok
+}
+
+type InvalidBearerErr struct {
+	Message string
+}
+
+func (i InvalidBearerErr) Error() string {
+	if i.Message != "" {
+		return i.Message
+	}
+
+	return "invalid bearer"
+}
+
+func (i InvalidBearerErr) As(target interface{}) bool {
+	err, ok := target.(*InvalidBearerErr)
+	if ok {
+		*err = i
+	}
 
 	return ok
 }
@@ -103,12 +123,26 @@ func (a *tokenBearerAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	bearerId := ginCtx.GetHeader(a.keyHeader)
 	token := ginCtx.GetHeader(a.tokenHeader)
 
-	if len(bearerId) == 0 || len(token) == 0 {
+	if token == "" {
 		return false, InvalidTokenErr{}
+	}
+
+	if bearerId == "" {
+		return false, &InvalidBearerErr{
+			Message: "bearer is empty",
+		}
 	}
 
 	bearer, err := a.provider(ginCtx.Request.Context(), bearerId, token)
 	if err != nil {
+		// if the provider responds with an invalid bearer error, don't mask it, maybe they want to communicate
+		// certain facts to the caller to help diagnose a problem (if their credentials are almost correct, and we can
+		// assume that an attack on them is unlikely)
+		bearerErr := InvalidBearerErr{}
+		if errors.As(err, &bearerErr) {
+			return false, bearerErr
+		}
+
 		return false, InvalidTokenErr{}
 	}
 
@@ -139,7 +173,7 @@ func (a *tokenBearerAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 func ProvideTokenBearerFromGetter(getter Getter, getModel ModelProvider) TokenBearerProvider {
 	return func(ctx context.Context, key string, _ string) (TokenBearer, error) {
 		m := getModel()
-		found, err := getter.Get(ctx, key, m)
+		found, err := getter(ctx, key, m)
 
 		if err == nil && found {
 			return m, nil

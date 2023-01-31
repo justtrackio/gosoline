@@ -52,7 +52,9 @@ func makeKvStoreProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, [
 		}).Return(test.bearer != nil, test.bearerErr).Once()
 	}
 
-	return auth.ProvideTokenBearerFromGetter(repo, func() auth.TokenBearer {
+	return auth.ProvideTokenBearerFromGetter(func(ctx context.Context, key string, value auth.TokenBearer) (bool, error) {
+		return repo.Get(ctx, key, value)
+	}, func() auth.TokenBearer {
 		return &bearer{}
 	}), []hasExpectations{repo}
 }
