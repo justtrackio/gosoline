@@ -7,7 +7,9 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
 )
@@ -45,6 +47,10 @@ func buildTestCaseApplication(suite TestingSuite, method reflect.Method) (testCa
 }
 
 func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment, testcase func(aut *appUnderTest)) {
+	for k, factory := range suiteOptions.appModules {
+		suiteOptions.appModules[k] = newEssentialModuleFactory(factory)
+	}
+
 	appOptions := append(suiteOptions.appOptions, []application.Option{
 		application.WithConfigMap(map[string]interface{}{
 			"env": "test",
@@ -89,4 +95,25 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 	<-app.Running()
 	testcase(appUnderTest)
 	app.Stop("test done")
+}
+
+func newEssentialModule(mod kernel.Module) kernel.Module {
+	return struct {
+		kernel.Module
+		kernel.EssentialModule
+	}{
+		mod,
+		kernel.EssentialModule{},
+	}
+}
+
+func newEssentialModuleFactory(factory kernel.ModuleFactory) kernel.ModuleFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		mod, err := factory(ctx, config, logger)
+		if err != nil {
+			return nil, err
+		}
+
+		return newEssentialModule(mod), nil
+	}
 }

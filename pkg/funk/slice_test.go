@@ -174,7 +174,7 @@ func TestIndex(t *testing.T) {
 		Foo string
 	}
 
-	var tests = map[string]struct {
+	tests := map[string]struct {
 		in    []obj
 		index int
 	}{
@@ -339,7 +339,7 @@ func TestRepeatStructPointer(t *testing.T) {
 }
 
 func TestTail(t *testing.T) {
-	var tests = map[string]struct {
+	tests := map[string]struct {
 		input    []string
 		expected []string
 	}{
@@ -394,6 +394,68 @@ func TestReverse(t *testing.T) {
 		data := data
 		t.Run(name, func(t *testing.T) {
 			res := funk.Reverse(data.In)
+			assert.Equal(t, data.Out, res)
+		})
+	}
+}
+
+type partitionable struct {
+	name string
+	time int
+}
+
+func TestPartition(t *testing.T) {
+	tests := map[string]struct {
+		In  []partitionable
+		Out map[int][]partitionable
+	}{
+		"simple": {
+			In: []partitionable{
+				{"a", 1},
+				{"b", 1},
+				{"c", 2},
+				{"d", 2},
+				{"e", 4},
+			},
+			Out: map[int][]partitionable{
+				1: {
+					{"a", 1},
+					{"b", 1},
+				},
+				2: {
+					{"c", 2},
+					{"d", 2},
+				},
+				4: {
+					{"e", 4},
+				},
+			},
+		},
+		"empty": {
+			In:  []partitionable{},
+			Out: map[int][]partitionable{},
+		},
+		"all in one partition": {
+			In: []partitionable{
+				{"a", 1},
+				{"b", 1},
+			},
+			Out: map[int][]partitionable{
+				1: {
+					{"a", 1},
+					{"b", 1},
+				},
+			},
+		},
+	}
+
+	for name, data := range tests {
+		data := data
+		t.Run(name, func(t *testing.T) {
+			res := funk.Partition(data.In, func(t partitionable) int {
+				return t.time
+			})
+
 			assert.Equal(t, data.Out, res)
 		})
 	}
