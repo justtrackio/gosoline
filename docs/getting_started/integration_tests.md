@@ -46,7 +46,7 @@ Inside `examples/getting_started/integration` we have an integration test for _m
 var fixtureSets = []*fixtures.FixtureSet{
 	{
 		Enabled: true,
-		Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory("currency"),
+		Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory[float64]("currency"),
 		Fixtures: []interface{}{
 			&fixtures.KvStoreFixture{
 				Key:   "GBP",

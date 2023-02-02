@@ -23,14 +23,14 @@ const (
 	metricNameKvStoreDelete = "kvStoreDelete"
 )
 
-type MetricStore struct {
-	KvStore
+type MetricStore[T any] struct {
+	KvStore[T]
 	metricWriter metric.Writer
 	model        string
 	store        string
 }
 
-func NewMetricStoreWithInterfaces(store KvStore, settings *Settings) KvStore {
+func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) KvStore[T] {
 	if !settings.MetricsEnabled {
 		return store
 	}
@@ -45,21 +45,21 @@ func NewMetricStoreWithInterfaces(store KvStore, settings *Settings) KvStore {
 	}).String()
 	defaults := getDefaultMetrics(model, storeName)
 
-	s := &MetricStore{
+	s := &MetricStore[T]{
 		KvStore:      store,
 		metricWriter: metric.NewWriter(defaults...),
 		model:        model,
 		store:        storeName,
 	}
 
-	if sizedStore, ok := store.(SizedStore); ok {
+	if sizedStore, ok := store.(SizedStore[T]); ok {
 		go s.recordSize(sizedStore)
 	}
 
 	return s
 }
 
-func (s *MetricStore) Contains(ctx context.Context, key interface{}) (bool, error) {
+func (s *MetricStore[T]) Contains(ctx context.Context, key any) (bool, error) {
 	s.recordReads(1)
 
 	found, err := s.KvStore.Contains(ctx, key)
@@ -71,7 +71,7 @@ func (s *MetricStore) Contains(ctx context.Context, key interface{}) (bool, erro
 	return found, err
 }
 
-func (s *MetricStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
+func (s *MetricStore[T]) Get(ctx context.Context, key any, value *T) (bool, error) {
 	s.recordReads(1)
 
 	found, err := s.KvStore.Get(ctx, key, value)
@@ -83,7 +83,7 @@ func (s *MetricStore) Get(ctx context.Context, key interface{}, value interface{
 	return found, err
 }
 
-func (s *MetricStore) GetBatch(ctx context.Context, keys interface{}, result interface{}) ([]interface{}, error) {
+func (s *MetricStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]interface{}, error) {
 	keySlice, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
@@ -100,7 +100,7 @@ func (s *MetricStore) GetBatch(ctx context.Context, keys interface{}, result int
 	return missing, err
 }
 
-func (s *MetricStore) Put(ctx context.Context, key interface{}, value interface{}) error {
+func (s *MetricStore[T]) Put(ctx context.Context, key any, value T) error {
 	err := s.KvStore.Put(ctx, key, value)
 
 	if err == nil {
@@ -110,7 +110,7 @@ func (s *MetricStore) Put(ctx context.Context, key interface{}, value interface{
 	return nil
 }
 
-func (s *MetricStore) PutBatch(ctx context.Context, values interface{}) error {
+func (s *MetricStore[T]) PutBatch(ctx context.Context, values any) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 	if err != nil {
 		return fmt.Errorf("could not convert values to map[interface{}]interface{}: %w", err)
@@ -125,7 +125,7 @@ func (s *MetricStore) PutBatch(ctx context.Context, values interface{}) error {
 	return nil
 }
 
-func (s *MetricStore) Delete(ctx context.Context, key interface{}) error {
+func (s *MetricStore[T]) Delete(ctx context.Context, key any) error {
 	err := s.KvStore.Delete(ctx, key)
 
 	if err == nil {
@@ -135,7 +135,7 @@ func (s *MetricStore) Delete(ctx context.Context, key interface{}) error {
 	return err
 }
 
-func (s *MetricStore) DeleteBatch(ctx context.Context, keys interface{}) error {
+func (s *MetricStore[T]) DeleteBatch(ctx context.Context, keys any) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
 		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
@@ -150,7 +150,7 @@ func (s *MetricStore) DeleteBatch(ctx context.Context, keys interface{}) error {
 	return err
 }
 
-func (s *MetricStore) recordSize(sizedStore SizedStore) {
+func (s *MetricStore[T]) recordSize(sizedStore SizedStore[T]) {
 	ticker := time.NewTicker(time.Minute)
 
 	for range ticker.C {
@@ -162,23 +162,23 @@ func (s *MetricStore) recordSize(sizedStore SizedStore) {
 	}
 }
 
-func (s *MetricStore) recordReads(count int) {
+func (s *MetricStore[T]) recordReads(count int) {
 	s.record(metricNameKvStoreRead, int64(count))
 }
 
-func (s *MetricStore) recordHits(count int) {
+func (s *MetricStore[T]) recordHits(count int) {
 	s.record(metricNameKvStoreHit, int64(count))
 }
 
-func (s *MetricStore) recordWrites(count int) {
+func (s *MetricStore[T]) recordWrites(count int) {
 	s.record(metricNameKvStoreWrite, int64(count))
 }
 
-func (s *MetricStore) recordDeletes(count int) {
+func (s *MetricStore[T]) recordDeletes(count int) {
 	s.record(metricNameKvStoreDelete, int64(count))
 }
 
-func (s *MetricStore) record(name string, value int64) {
+func (s *MetricStore[T]) record(name string, value int64) {
 	s.metricWriter.WriteOne(&metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: name,

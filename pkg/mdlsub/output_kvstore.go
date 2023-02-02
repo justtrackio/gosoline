@@ -32,11 +32,11 @@ func outputKvstoreFactory(ctx context.Context, config cfg.Config, logger log.Log
 
 type OutputKvstore struct {
 	logger log.Logger
-	store  kvstore.KvStore
+	store  kvstore.KvStore[Model]
 }
 
 func NewOutputKvstore(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings) (*OutputKvstore, error) {
-	store, err := kvstore.NewConfigurableKvStore(ctx, config, logger, settings.TargetModel.Name)
+	store, err := kvstore.NewConfigurableKvStore[Model](ctx, config, logger, settings.TargetModel.Name)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kvStore: %w", err)
 	}

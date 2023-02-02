@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
@@ -69,11 +68,10 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 		appOptions = append(appOptions, application.WithModuleMultiFactory(factory))
 	}
 
-	ctx := appctx.WithContainer(context.Background())
 	config := environment.Config()
 	logger := environment.Logger()
 
-	app, err := application.NewWithInterfaces(ctx, config, logger, appOptions...)
+	app, err := application.NewWithInterfaces(environment.Context(), config, logger, appOptions...)
 	if err != nil {
 		assert.FailNow(t, "failed to create application under test", err.Error())
 

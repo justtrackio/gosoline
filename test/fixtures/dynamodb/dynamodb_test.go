@@ -287,11 +287,11 @@ func dynamoDbKvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.DynamoDbKvStoreFixtureWriterFactory(kvStoreSettings),
+			Writer:  fixtures.DynamoDbKvStoreFixtureWriterFactory[Person](kvStoreSettings),
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key:   "Ash",
-					Value: &Person{Name: "Ash", Age: 10},
+					Value: Person{Name: "Ash", Age: 10},
 				},
 			},
 		},
@@ -303,11 +303,11 @@ func dynamoDbKvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer:  fixtures.DynamoDbKvStoreFixtureWriterFactory(kvStoreSettings),
+			Writer:  fixtures.DynamoDbKvStoreFixtureWriterFactory[Person](kvStoreSettings),
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key:   "Bash",
-					Value: &Person{Name: "Bash", Age: 10},
+					Value: Person{Name: "Bash", Age: 10},
 				},
 			},
 		},

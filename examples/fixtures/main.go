@@ -65,7 +65,7 @@ var fixtureSets = []*fixtures.FixtureSet{
 	},
 	{
 		Enabled: true,
-		Writer: fixtures.DynamoDbKvStoreFixtureWriterFactory(&mdl.ModelId{
+		Writer: fixtures.DynamoDbKvStoreFixtureWriterFactory[DynamoDbExampleModel](&mdl.ModelId{
 			Project:     "gosoline",
 			Environment: "dev",
 			Family:      "example",
@@ -75,7 +75,7 @@ var fixtureSets = []*fixtures.FixtureSet{
 		Fixtures: []interface{}{
 			&fixtures.KvStoreFixture{
 				Key:   "SomeKey",
-				Value: &DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
+				Value: DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
 			},
 		},
 	},

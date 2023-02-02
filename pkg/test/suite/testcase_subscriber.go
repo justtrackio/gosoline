@@ -163,7 +163,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 					return
 				}
 
-				store, err := kvstore.NewConfigurableKvStore(ctx, config, logger, tc.GetName())
+				store, err := kvstore.NewConfigurableKvStore[mdlsub.Model](ctx, config, logger, tc.GetName())
 				if err != nil {
 					assert.FailNow(t, err.Error(), "the test case for the subscription of %s can't be initialized", tc.GetName())
 				}
@@ -330,12 +330,12 @@ type KvStoreSubscriberAssertion func(t *testing.T, fetcher *KvstoreSubscriberFet
 
 type KvstoreSubscriberFetcher struct {
 	t     *testing.T
-	store kvstore.KvStore
+	store kvstore.KvStore[mdlsub.Model]
 	name  string
 }
 
-func (f KvstoreSubscriberFetcher) Get(key interface{}, model interface{}) {
-	ok, err := f.store.Get(context.Background(), key, model)
+func (f KvstoreSubscriberFetcher) Get(key interface{}, model mdlsub.Model) {
+	ok, err := f.store.Get(context.Background(), key, &model)
 
 	assert.Truef(f.t, ok, "model for subscription %s and key %v should be available in the store", f.name, key)
 	assert.NoErrorf(f.t, err, "unexpected error on fetching kvstore subscription %s", f.name)
