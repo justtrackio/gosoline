@@ -20,7 +20,7 @@ type serviceTestSuite struct {
 	ctx context.Context
 
 	logger *logMocks.Logger
-	store  *kvStoreMock.KvStore
+	store  *kvStoreMock.KvStore[float64]
 	clock  clock.FakeClock
 
 	service currency.Service
@@ -34,7 +34,7 @@ func (s *serviceTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
 	s.logger = logMocks.NewLoggerMockedAll()
-	s.store = new(kvStoreMock.KvStore)
+	s.store = new(kvStoreMock.KvStore[float64])
 	s.clock = clock.NewFakeClockAt(time.Date(2021, 1, 3, 4, 20, 33, 0, time.UTC))
 
 	s.service = currency.NewWithInterfaces(s.store, s.clock)

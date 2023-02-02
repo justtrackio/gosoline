@@ -3,6 +3,7 @@ package kvstore
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -11,7 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
-type redisKvStore struct {
+type redisKvStore[T any] struct {
 	client   redis.Client
 	settings *Settings
 }
@@ -20,7 +21,11 @@ func RedisBasename(settings *Settings) string {
 	return fmt.Sprintf("kvstore_%s", settings.Name)
 }
 
-func NewRedisKvStore(_ context.Context, config cfg.Config, logger log.Logger, settings *Settings) (KvStore, error) {
+func NewRedisKvStore[T any](_ context.Context, config cfg.Config, logger log.Logger, settings *Settings) (KvStore[T], error) {
+	if reflect.ValueOf(new(T)).Elem().Kind() == reflect.Pointer {
+		return nil, fmt.Errorf("the generic type T should not be a pointer type but is of type %T", *new(T))
+	}
+
 	settings.PadFromConfig(config)
 	redisName := RedisBasename(settings)
 
@@ -29,17 +34,17 @@ func NewRedisKvStore(_ context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
-	return NewRedisKvStoreWithInterfaces(client, settings), nil
+	return NewRedisKvStoreWithInterfaces[T](client, settings), nil
 }
 
-func NewRedisKvStoreWithInterfaces(client redis.Client, settings *Settings) KvStore {
-	return NewMetricStoreWithInterfaces(&redisKvStore{
+func NewRedisKvStoreWithInterfaces[T any](client redis.Client, settings *Settings) KvStore[T] {
+	return NewMetricStoreWithInterfaces[T](&redisKvStore[T]{
 		client:   client,
 		settings: settings,
 	}, settings)
 }
 
-func (s *redisKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
+func (s *redisKvStore[T]) Contains(ctx context.Context, key any) (bool, error) {
 	keyStr, err := s.key(key)
 	if err != nil {
 		return false, fmt.Errorf("can not get key to check value in redis: %w", err)
@@ -53,7 +58,7 @@ func (s *redisKvStore) Contains(ctx context.Context, key interface{}) (bool, err
 	return count > 0, nil
 }
 
-func (s *redisKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
+func (s *redisKvStore[T]) Get(ctx context.Context, key any, value *T) (bool, error) {
 	keyStr, err := s.key(key)
 	if err != nil {
 		return false, fmt.Errorf("can not get key to read value from redis: %w", err)
@@ -78,11 +83,11 @@ func (s *redisKvStore) Get(ctx context.Context, key interface{}, value interface
 	return true, nil
 }
 
-func (s *redisKvStore) GetBatch(ctx context.Context, keys interface{}, result interface{}) ([]interface{}, error) {
+func (s *redisKvStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]interface{}, error) {
 	return getBatch(ctx, keys, result, s.getChunk, s.settings.BatchSize)
 }
 
-func (s *redisKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
+func (s *redisKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
 	var err error
 
 	missing := make([]interface{}, 0)
@@ -130,7 +135,7 @@ func (s *redisKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys [
 	return missing, nil
 }
 
-func (s *redisKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
+func (s *redisKvStore[T]) Put(ctx context.Context, key any, value T) error {
 	keyStr, bytes, err := s.marshalKeyValue(key, value)
 	if err != nil {
 		return fmt.Errorf("can not get key/value to write to redis: %w", err)
@@ -145,7 +150,7 @@ func (s *redisKvStore) Put(ctx context.Context, key interface{}, value interface
 	return nil
 }
 
-func (s *redisKvStore) marshalKeyValue(key interface{}, value interface{}) (string, []byte, error) {
+func (s *redisKvStore[T]) marshalKeyValue(key any, value any) (string, []byte, error) {
 	bytes, err := Marshal(value)
 	if err != nil {
 		return "", nil, fmt.Errorf("can not marshal value %T %v: %w", value, value, err)
@@ -159,7 +164,7 @@ func (s *redisKvStore) marshalKeyValue(key interface{}, value interface{}) (stri
 	return keyStr, bytes, nil
 }
 
-func (s *redisKvStore) PutBatch(ctx context.Context, values interface{}) error {
+func (s *redisKvStore[T]) PutBatch(ctx context.Context, values any) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 	if err != nil {
 		return fmt.Errorf("could not convert values from %T to map[interface{}]interface{}", values)
@@ -186,7 +191,7 @@ func (s *redisKvStore) PutBatch(ctx context.Context, values interface{}) error {
 	return s.flushChunk(ctx, pairs)
 }
 
-func (s *redisKvStore) flushChunk(ctx context.Context, pairs []interface{}) error {
+func (s *redisKvStore[T]) flushChunk(ctx context.Context, pairs []any) error {
 	if len(pairs) < 1 {
 		return nil
 	}
@@ -210,7 +215,7 @@ func (s *redisKvStore) flushChunk(ctx context.Context, pairs []interface{}) erro
 	return err
 }
 
-func (s *redisKvStore) EstimateSize() *int64 {
+func (s *redisKvStore[T]) EstimateSize() *int64 {
 	size, err := s.client.DBSize(context.Background())
 	if err != nil {
 		return nil
@@ -219,7 +224,7 @@ func (s *redisKvStore) EstimateSize() *int64 {
 	return &size
 }
 
-func (s *redisKvStore) Delete(ctx context.Context, key interface{}) error {
+func (s *redisKvStore[T]) Delete(ctx context.Context, key any) error {
 	keyStr, err := s.key(key)
 	if err != nil {
 		return fmt.Errorf("can not get key to delete value from redis: %w", err)
@@ -234,7 +239,7 @@ func (s *redisKvStore) Delete(ctx context.Context, key interface{}) error {
 	return nil
 }
 
-func (s *redisKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
+func (s *redisKvStore[T]) DeleteBatch(ctx context.Context, keys any) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
 		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
@@ -260,7 +265,7 @@ func (s *redisKvStore) DeleteBatch(ctx context.Context, keys interface{}) error 
 	return nil
 }
 
-func (s *redisKvStore) key(key interface{}) (string, error) {
+func (s *redisKvStore[T]) key(key any) (string, error) {
 	keyStr, err := CastKeyToString(key)
 	if err != nil {
 		return "", fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)

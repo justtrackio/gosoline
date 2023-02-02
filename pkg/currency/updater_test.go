@@ -83,7 +83,7 @@ type updaterServiceTestSuite struct {
 	ctx context.Context
 
 	logger *logMocks.Logger
-	store  *kvStoreMock.KvStore
+	store  *kvStoreMock.KvStore[float64]
 	client *httpMock.Client
 	clock  clock.FakeClock
 
@@ -98,7 +98,7 @@ func (s *updaterServiceTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
 	s.logger = logMocks.NewLoggerMockedAll()
-	s.store = new(kvStoreMock.KvStore)
+	s.store = new(kvStoreMock.KvStore[float64])
 	s.client = new(httpMock.Client)
 	s.clock = clock.NewFakeClockAt(time.Date(2021, 5, 27, 0, 0, 0, 0, time.UTC))
 
@@ -113,7 +113,7 @@ func (s *updaterServiceTestSuite) TearDownTest() {
 
 func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRates() {
 	s.mockCurrencyStoreGetTime(currency.ExchangeRateDateKey, s.clock.Now().AddDate(-1, 0, 0), true)
-	s.store.On("Put", s.ctx, currency.ExchangeRateDateKey, mock.AnythingOfType("time.Time")).Return(nil)
+	s.store.On("Put", s.ctx, currency.ExchangeRateDateKey, mock.AnythingOfType("float64")).Return(nil)
 	s.store.On("Put", s.ctx, mock.AnythingOfType("string"), mock.AnythingOfType("float64")).Return(nil)
 
 	s.mockHttpRequest(response)
@@ -138,7 +138,7 @@ func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRates() {
 	}
 	s.mockCurrencyStoreGetTime(currency.HistoricalExchangeRateDateKey, time.Time{}, false)
 	s.store.On("PutBatch", s.ctx, exchangeRates).Return(nil)
-	s.store.On("Put", s.ctx, currency.HistoricalExchangeRateDateKey, s.clock.Now()).Return(nil)
+	s.store.On("Put", s.ctx, currency.HistoricalExchangeRateDateKey, float64(s.clock.Now().Unix())).Return(nil)
 
 	s.mockHttpRequest(historicalResponse)
 
@@ -166,7 +166,7 @@ func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRatesTwoGapDaysAtE
 	}
 	s.mockCurrencyStoreGetTime(currency.HistoricalExchangeRateDateKey, time.Time{}, false)
 	s.store.On("PutBatch", s.ctx, exchangeRates).Return(nil)
-	s.store.On("Put", s.ctx, currency.HistoricalExchangeRateDateKey, s.clock.Now()).Return(nil)
+	s.store.On("Put", s.ctx, currency.HistoricalExchangeRateDateKey, float64(s.clock.Now().Unix())).Return(nil)
 
 	s.mockHttpRequest(historicalResponse)
 
@@ -176,9 +176,9 @@ func (s *updaterServiceTestSuite) TestEnsureHistoricalExchangeRatesTwoGapDaysAtE
 }
 
 func (s *updaterServiceTestSuite) mockCurrencyStoreGetTime(key string, value time.Time, found bool) {
-	s.store.On("Get", s.ctx, key, &time.Time{}).Run(func(args mock.Arguments) {
-		f := args.Get(2).(*time.Time)
-		*f = value
+	s.store.On("Get", s.ctx, key, new(float64)).Run(func(args mock.Arguments) {
+		f := args.Get(2).(*float64)
+		*f = float64(value.Unix())
 	}).Return(found, nil).Once()
 }
 

@@ -3,9 +3,10 @@ package kvstore
 import (
 	"context"
 	"fmt"
-	"sync"
+	"reflect"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -39,25 +40,39 @@ type InMemoryConfiguration struct {
 	GetsPerPromote int32  `cfg:"gets_per_promote" default:"3"`
 }
 
-func NewConfigurableKvStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (KvStore, error) {
+type kvStoreAppCtxKey string
+
+func ProvideConfigurableKvStore[T any](ctx context.Context, config cfg.Config, logger log.Logger, name string) (KvStore[T], error) {
+	key := fmt.Sprintf("%s-kvStore", name)
+
+	return appctx.Provide(ctx, kvStoreAppCtxKey(key), func() (KvStore[T], error) {
+		return NewConfigurableKvStore[T](ctx, config, logger, name)
+	})
+}
+
+func NewConfigurableKvStore[T any](ctx context.Context, config cfg.Config, logger log.Logger, name string) (KvStore[T], error) {
+	if reflect.ValueOf(new(T)).Elem().Kind() == reflect.Pointer {
+		return nil, fmt.Errorf("the generic type T should not be a pointer type but is of type %T", *new(T))
+	}
+
 	key := fmt.Sprintf("kvstore.%s.type", name)
 	t := config.GetString(key)
 
 	switch t {
 	case TypeChain:
-		return newKvStoreChainFromConfig(ctx, config, logger, name)
+		return newKvStoreChainFromConfig[T](ctx, config, logger, name)
 	}
 
 	return nil, fmt.Errorf("invalid kvstore %s of type %s", name, t)
 }
 
-func newKvStoreChainFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (KvStore, error) {
+func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, logger log.Logger, name string) (KvStore[T], error) {
 	key := GetConfigurableKey(name)
 
 	configuration := ChainConfiguration{}
 	config.UnmarshalKey(key, &configuration)
 
-	store, err := NewChainKvStore(ctx, config, logger, configuration.MissingCacheEnabled, &Settings{
+	store, err := NewChainKvStore[T](ctx, config, logger, configuration.MissingCacheEnabled, &Settings{
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
@@ -83,15 +98,15 @@ func newKvStoreChainFromConfig(ctx context.Context, config cfg.Config, logger lo
 	for _, element := range configuration.Elements {
 		switch element {
 		case TypeDdb:
-			if err := store.Add(NewDdbKvStore); err != nil {
+			if err := store.Add(NewDdbKvStore[T]); err != nil {
 				return nil, fmt.Errorf("can not add ddb store: %w", err)
 			}
 		case TypeInMemory:
-			if err := store.Add(NewInMemoryKvStore); err != nil {
+			if err := store.Add(NewInMemoryKvStore[T]); err != nil {
 				return nil, fmt.Errorf("can not add inMemory store: %w", err)
 			}
 		case TypeRedis:
-			if err := store.Add(NewRedisKvStore); err != nil {
+			if err := store.Add(NewRedisKvStore[T]); err != nil {
 				return nil, fmt.Errorf("can not add redis store: %w", err)
 			}
 		default:
@@ -104,34 +119,4 @@ func newKvStoreChainFromConfig(ctx context.Context, config cfg.Config, logger lo
 
 func GetConfigurableKey(name string) string {
 	return fmt.Sprintf("kvstore.%s", name)
-}
-
-var (
-	configurableKvStoreLock = sync.Mutex{}
-	configurableKvStores    = map[string]KvStore{}
-)
-
-func ResetConfigurableKvStores() {
-	configurableKvStoreLock.Lock()
-	defer configurableKvStoreLock.Unlock()
-
-	configurableKvStores = map[string]KvStore{}
-}
-
-func ProvideConfigurableKvStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (KvStore, error) {
-	configurableKvStoreLock.Lock()
-	defer configurableKvStoreLock.Unlock()
-
-	if _, ok := configurableKvStores[name]; ok {
-		return configurableKvStores[name], nil
-	}
-
-	var err error
-	configurableKvStores[name], err = NewConfigurableKvStore(ctx, config, logger, name)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return configurableKvStores[name], nil
 }

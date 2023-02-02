@@ -11,20 +11,20 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type ddbKvstoreFactory func() (kvstore.KvStore, error)
+type ddbKvstoreFactory[T any] func() (kvstore.KvStore[T], error)
 
 type KvStoreFixture struct {
 	Key   interface{}
 	Value interface{}
 }
 
-type dynamoDbKvStoreFixtureWriter struct {
+type dynamoDbKvStoreFixtureWriter[T any] struct {
 	logger  log.Logger
-	factory ddbKvstoreFactory
+	factory ddbKvstoreFactory[T]
 	purger  *dynamodbPurger
 }
 
-func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
+func DynamoDbKvStoreFixtureWriterFactory[T any](modelId *mdl.ModelId) FixtureWriterFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		kvStoreSettings := &kvstore.Settings{
 			AppId: cfg.AppId{
@@ -43,8 +43,8 @@ func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFact
 			ModelId: kvstoreModel,
 		}
 
-		factory := func() (kvstore.KvStore, error) {
-			return kvstore.NewDdbKvStore(ctx, config, logger, kvStoreSettings)
+		factory := func() (kvstore.KvStore[T], error) {
+			return kvstore.NewDdbKvStore[T](ctx, config, logger, kvStoreSettings)
 		}
 
 		var err error
@@ -58,19 +58,19 @@ func DynamoDbKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFact
 	}
 }
 
-func NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger log.Logger, factory ddbKvstoreFactory, purger *dynamodbPurger) FixtureWriter {
-	return &dynamoDbKvStoreFixtureWriter{
+func NewDynamoDbKvStoreFixtureWriterWithInterfaces[T any](logger log.Logger, factory ddbKvstoreFactory[T], purger *dynamodbPurger) FixtureWriter {
+	return &dynamoDbKvStoreFixtureWriter[T]{
 		logger:  logger,
 		factory: factory,
 		purger:  purger,
 	}
 }
 
-func (d *dynamoDbKvStoreFixtureWriter) Purge(ctx context.Context) error {
+func (d *dynamoDbKvStoreFixtureWriter[T]) Purge(ctx context.Context) error {
 	return d.purger.purgeDynamodb(ctx)
 }
 
-func (d *dynamoDbKvStoreFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
+func (d *dynamoDbKvStoreFixtureWriter[T]) Write(ctx context.Context, fs *FixtureSet) error {
 	if len(fs.Fixtures) == 0 {
 		return nil
 	}

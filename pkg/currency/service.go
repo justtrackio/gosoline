@@ -30,12 +30,12 @@ type Service interface {
 }
 
 type currencyService struct {
-	store kvstore.KvStore
+	store kvstore.KvStore[float64]
 	clock clock.Clock
 }
 
 func New(ctx context.Context, config cfg.Config, logger log.Logger) (Service, error) {
-	store, err := kvstore.ProvideConfigurableKvStore(ctx, config, logger, kvStoreName)
+	store, err := kvstore.ProvideConfigurableKvStore[float64](ctx, config, logger, kvStoreName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create currency kvStore: %w", err)
 	}
@@ -43,7 +43,7 @@ func New(ctx context.Context, config cfg.Config, logger log.Logger) (Service, er
 	return NewWithInterfaces(store, clock.Provider), nil
 }
 
-func NewWithInterfaces(store kvstore.KvStore, clock clock.Clock) Service {
+func NewWithInterfaces(store kvstore.KvStore[float64], clock clock.Clock) Service {
 	return &currencyService{
 		store: store,
 		clock: clock,

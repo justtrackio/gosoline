@@ -5,7 +5,7 @@ import "github.com/justtrackio/gosoline/pkg/fixtures"
 var fixtureSets = []*fixtures.FixtureSet{
 	{
 		Enabled: true,
-		Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory("currency"),
+		Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory[float64]("currency"),
 		Fixtures: []interface{}{
 			&fixtures.KvStoreFixture{
 				Key:   "GBP",

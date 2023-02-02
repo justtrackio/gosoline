@@ -10,13 +10,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type redisKvStoreFixtureWriter struct {
+type redisKvStoreFixtureWriter[T any] struct {
 	logger log.Logger
-	store  kvstore.KvStore
+	store  kvstore.KvStore[T]
 	purger *redisPurger
 }
 
-func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory {
+func RedisKvStoreFixtureWriterFactory[T any](modelId *mdl.ModelId) FixtureWriterFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
 		settings := &kvstore.Settings{
 			AppId: cfg.AppId{
@@ -28,7 +28,7 @@ func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory
 			Name: modelId.Name,
 		}
 
-		store, err := kvstore.NewRedisKvStore(ctx, config, logger, settings)
+		store, err := kvstore.NewRedisKvStore[T](ctx, config, logger, settings)
 		if err != nil {
 			return nil, fmt.Errorf("can not create redis store: %w", err)
 		}
@@ -44,19 +44,19 @@ func RedisKvStoreFixtureWriterFactory(modelId *mdl.ModelId) FixtureWriterFactory
 	}
 }
 
-func NewRedisKvStoreFixtureWriterWithInterfaces(logger log.Logger, store kvstore.KvStore, purger *redisPurger) FixtureWriter {
-	return &redisKvStoreFixtureWriter{
+func NewRedisKvStoreFixtureWriterWithInterfaces[T any](logger log.Logger, store kvstore.KvStore[T], purger *redisPurger) FixtureWriter {
+	return &redisKvStoreFixtureWriter[T]{
 		logger: logger,
 		store:  store,
 		purger: purger,
 	}
 }
 
-func (d *redisKvStoreFixtureWriter) Purge(ctx context.Context) error {
+func (d *redisKvStoreFixtureWriter[T]) Purge(ctx context.Context) error {
 	return d.purger.purge(ctx)
 }
 
-func (d *redisKvStoreFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
+func (d *redisKvStoreFixtureWriter[T]) Write(ctx context.Context, fs *FixtureSet) error {
 	if len(fs.Fixtures) == 0 {
 		return nil
 	}

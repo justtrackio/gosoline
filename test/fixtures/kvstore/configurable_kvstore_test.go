@@ -38,7 +38,7 @@ func (s *ConfigurableKvStoreTestSuite) TestConfigurableKvStore() {
 	err := loader.Load(envContext, buildFixtures())
 	s.NoError(err)
 
-	store, err := kvstore.ProvideConfigurableKvStore(envContext, envConfig, envLogger, "test_store")
+	store, err := kvstore.ProvideConfigurableKvStore[KvStoreModel](envContext, envConfig, envLogger, "test_store")
 	s.NoError(err)
 
 	var res KvStoreModel
@@ -51,7 +51,7 @@ func (s *ConfigurableKvStoreTestSuite) TestConfigurableKvStore() {
 		Age:  12,
 	}, res)
 
-	anotherStore, err := kvstore.ProvideConfigurableKvStore(envContext, envConfig, envLogger, "another_test_store")
+	anotherStore, err := kvstore.ProvideConfigurableKvStore[KvStoreModel](envContext, envConfig, envLogger, "another_test_store")
 	s.NoError(err)
 
 	found, err = anotherStore.Get(context.Background(), "kvstore_entry_1", &res)
@@ -68,11 +68,11 @@ func buildFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory("test_store"),
+			Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory[KvStoreModel]("test_store"),
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key: "kvstore_entry_1",
-					Value: &KvStoreModel{
+					Value: KvStoreModel{
 						Name: "foo",
 						Age:  12,
 					},
@@ -81,11 +81,11 @@ func buildFixtures() []*fixtures.FixtureSet {
 		},
 		{
 			Enabled: true,
-			Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory("another_test_store"),
+			Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory[KvStoreModel]("another_test_store"),
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key: "kvstore_entry_1",
-					Value: &KvStoreModel{
+					Value: KvStoreModel{
 						Name: "bar",
 						Age:  34,
 					},

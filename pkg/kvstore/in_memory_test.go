@@ -10,13 +10,25 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+type item struct {
+	i int
+	s string
+}
+
 type InMemoryKvStoreTestSuite struct {
 	suite.Suite
-	store kvstore.KvStore
+	floatStore kvstore.KvStore[float64]
+	itemStore  kvstore.KvStore[item]
 }
 
 func (s *InMemoryKvStoreTestSuite) SetupTest() {
-	s.store = kvstore.NewInMemoryKvStoreWithInterfaces(&kvstore.Settings{
+	s.floatStore = kvstore.NewInMemoryKvStoreWithInterfaces[float64](&kvstore.Settings{
+		AppId:     cfg.AppId{},
+		Name:      "",
+		Ttl:       time.Hour,
+		BatchSize: 100,
+	})
+	s.itemStore = kvstore.NewInMemoryKvStoreWithInterfaces[item](&kvstore.Settings{
 		AppId:     cfg.AppId{},
 		Name:      "",
 		Ttl:       time.Hour,
@@ -27,20 +39,20 @@ func (s *InMemoryKvStoreTestSuite) SetupTest() {
 func (s *InMemoryKvStoreTestSuite) TestStoreBasic() {
 	ctx := context.Background()
 
-	err := s.store.Put(ctx, "key", 1.1)
+	err := s.floatStore.Put(ctx, "key", 1.1)
 	s.NoError(err, "there should be no error on Put")
 
 	var v1 float64
-	ok, err := s.store.Get(ctx, "key", &v1)
+	ok, err := s.floatStore.Get(ctx, "key", &v1)
 	s.NoError(err, "there should be no error on Get")
 	s.True(ok, "the item should be in the store")
 
 	v2 := 1.2
-	err = s.store.Put(ctx, "key", &v2)
+	err = s.floatStore.Put(ctx, "key", v2)
 	s.NoError(err, "there should be no error on Put")
 
 	var v3 float64
-	ok, err = s.store.Get(ctx, "key", &v3)
+	ok, err = s.floatStore.Get(ctx, "key", &v3)
 	s.NoError(err, "there should be no error on Get")
 	s.True(ok, "the item should be in the store")
 }
@@ -48,38 +60,33 @@ func (s *InMemoryKvStoreTestSuite) TestStoreBasic() {
 func (s *InMemoryKvStoreTestSuite) TestStoreStruct() {
 	ctx := context.Background()
 
-	type item struct {
-		i int
-		s string
-	}
-
 	a := item{i: 1, s: "s"}
-	err := s.store.Put(ctx, "key", a)
+	err := s.itemStore.Put(ctx, "key", a)
 	s.NoError(err, "there should be no error on Put")
 
-	ok, err := s.store.Contains(ctx, "key")
+	ok, err := s.itemStore.Contains(ctx, "key")
 	s.NoError(err, "there should be no error on Contains")
 	s.True(ok, "the item should be in the store")
 
-	ok, err = s.store.Contains(ctx, "missing")
+	ok, err = s.itemStore.Contains(ctx, "missing")
 	s.NoError(err, "there should be no error on Contains")
 	s.False(ok, "the item should be missing the store")
 
 	aCpy := item{}
-	ok, err = s.store.Get(ctx, "key", &aCpy)
+	ok, err = s.itemStore.Get(ctx, "key", &aCpy)
 	s.NoError(err, "there should be no error on Get")
 	s.True(ok, "the item should be in the store")
 	s.Equal(a, aCpy, "the retrieved item should match the original one")
 
-	putBatch := map[string]interface{}{
-		"b": item{i: 2, s: "t"},
-		"c": item{i: 3, s: "u"},
+	putBatch := map[string]item{
+		"b": {i: 2, s: "t"},
+		"c": {i: 3, s: "u"},
 	}
-	err = s.store.PutBatch(ctx, putBatch)
+	err = s.itemStore.PutBatch(ctx, putBatch)
 	s.NoError(err, "there should be no error on PutBatch")
 
-	getBatch := make(map[string]item)
-	missing, err := s.store.GetBatch(ctx, []string{"b", "c", "d"}, getBatch)
+	getBatch := make(map[string]item, 3)
+	missing, err := s.itemStore.GetBatch(ctx, []string{"b", "c", "d"}, getBatch)
 	s.NoError(err, "there should be no error on GetBatch")
 	s.Len(getBatch, 2, "there should be 2 elements in the batch")
 	s.Equal(putBatch["b"], getBatch["b"])

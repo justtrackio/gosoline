@@ -32,14 +32,14 @@ type UpdaterService interface {
 type updaterService struct {
 	logger log.Logger
 	http   http.Client
-	store  kvstore.KvStore
+	store  kvstore.KvStore[float64]
 	clock  clock.Clock
 }
 
 func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (UpdaterService, error) {
 	logger = logger.WithChannel("currency_updater_service")
 
-	store, err := kvstore.ProvideConfigurableKvStore(ctx, config, logger, kvStoreName)
+	store, err := kvstore.ProvideConfigurableKvStore[float64](ctx, config, logger, kvStoreName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create kvStore: %w", err)
 	}
@@ -49,7 +49,7 @@ func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (Upda
 	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider), nil
 }
 
-func NewUpdaterWithInterfaces(logger log.Logger, store kvstore.KvStore, httpClient http.Client, clock clock.Clock) UpdaterService {
+func NewUpdaterWithInterfaces(logger log.Logger, store kvstore.KvStore[float64], httpClient http.Client, clock clock.Clock) UpdaterService {
 	return &updaterService{
 		logger: logger,
 		store:  store,
@@ -69,7 +69,7 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 		return fmt.Errorf("error getting currency exchange rates: %w", err)
 	}
 
-	now := time.Now()
+	now := s.clock.Now()
 	for _, rate := range rates {
 		err := s.store.Put(ctx, rate.Currency, rate.Rate)
 		if err != nil {
@@ -85,7 +85,7 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 		}
 	}
 
-	newTime := time.Now()
+	newTime := float64(s.clock.Now().Unix())
 	err = s.store.Put(ctx, ExchangeRateDateKey, newTime)
 
 	if err != nil {
@@ -97,8 +97,8 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 }
 
 func (s *updaterService) needsRefresh(ctx context.Context) bool {
-	var date time.Time
-	exists, err := s.store.Get(ctx, ExchangeRateDateKey, &date)
+	var dateUnix float64
+	exists, err := s.store.Get(ctx, ExchangeRateDateKey, &dateUnix)
 	if err != nil {
 		s.logger.Info("error fetching date")
 
@@ -111,7 +111,9 @@ func (s *updaterService) needsRefresh(ctx context.Context) bool {
 		return true
 	}
 
-	comparisonDate := time.Now().Add(-ExchangeRateRefresh)
+	comparisonDate := s.clock.Now().Add(-ExchangeRateRefresh)
+
+	date := time.Unix(int64(dateUnix), 0)
 
 	if date.Before(comparisonDate) {
 		s.logger.Info("comparison date was more than 8 hours ago")
@@ -183,7 +185,7 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 		return fmt.Errorf("error setting historical exchange rates: %w", err)
 	}
 
-	newTime := s.clock.Now()
+	newTime := float64(s.clock.Now().Unix())
 	err = s.store.Put(ctx, HistoricalExchangeRateDateKey, newTime)
 	if err != nil {
 		return fmt.Errorf("error setting historical refresh date %w", err)
@@ -194,8 +196,8 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 }
 
 func (s *updaterService) historicalRatesNeedRefresh(ctx context.Context) bool {
-	var date time.Time
-	exists, err := s.store.Get(ctx, HistoricalExchangeRateDateKey, &date)
+	var dateUnix float64
+	exists, err := s.store.Get(ctx, HistoricalExchangeRateDateKey, &dateUnix)
 	if err != nil {
 		s.logger.Info("historicalRatesNeedRefresh error fetching date")
 
@@ -209,6 +211,8 @@ func (s *updaterService) historicalRatesNeedRefresh(ctx context.Context) bool {
 	}
 
 	comparisonDate := s.clock.Now().Add(-24 * time.Hour)
+
+	date := time.Unix(int64(dateUnix), 0)
 
 	if date.Before(comparisonDate) {
 		s.logger.Info("historicalRatesNeedRefresh comparison date was more than threshold")

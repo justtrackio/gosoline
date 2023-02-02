@@ -20,7 +20,7 @@ type Item struct {
 }
 
 func TestRedisKvStore_Contains(t *testing.T) {
-	store, client := buildTestableRedisStore()
+	store, client := buildTestableRedisStore[Item]()
 
 	client.On("Exists", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo").Return(int64(0), nil)
 	client.On("Exists", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-bar").Return(int64(1), nil)
@@ -37,7 +37,7 @@ func TestRedisKvStore_Contains(t *testing.T) {
 }
 
 func TestRedisKvStore_Get(t *testing.T) {
-	store, client := buildTestableRedisStore()
+	store, client := buildTestableRedisStore[Item]()
 	client.On("Get", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo").Return(`{"id":"foo","body":"bar"}`, nil)
 
 	item := &Item{}
@@ -52,7 +52,7 @@ func TestRedisKvStore_Get(t *testing.T) {
 }
 
 func TestRedisKvStore_GetBatch(t *testing.T) {
-	store, client := buildTestableRedisStore()
+	store, client := buildTestableRedisStore[Item]()
 
 	args := []interface{}{mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo", "applike-gosoline-kvstore-kvstore-test-fuu"}
 	returns := []interface{}{`{"id":"foo","body":"bar"}`, nil}
@@ -76,10 +76,10 @@ func TestRedisKvStore_GetBatch(t *testing.T) {
 }
 
 func TestRedisKvStore_Put(t *testing.T) {
-	store, client := buildTestableRedisStore()
+	store, client := buildTestableRedisStore[Item]()
 	client.On("Set", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo", []byte(`{"id":"foo","body":"bar"}`), time.Duration(0)).Return(nil)
 
-	item := &Item{
+	item := Item{
 		Id:   "foo",
 		Body: "bar",
 	}
@@ -91,7 +91,7 @@ func TestRedisKvStore_Put(t *testing.T) {
 }
 
 func TestRedisKvStore_PutBatch(t *testing.T) {
-	store, client := buildTestableRedisStoreWithTTL()
+	store, client := buildTestableRedisStoreWithTTL[Item]()
 
 	pipe := &redisMocks.Pipeliner{}
 	pipe.On("MSet", mock.AnythingOfType("*context.emptyCtx"), mock.MatchedBy(func(input []interface{}) bool {
@@ -125,7 +125,7 @@ func TestRedisKvStore_PutBatch(t *testing.T) {
 }
 
 func TestRedisKvStore_PutBatchSkipExpire(t *testing.T) {
-	store, client := buildTestableRedisStore()
+	store, client := buildTestableRedisStore[Item]()
 
 	pipe := &redisMocks.Pipeliner{}
 	pipe.On("MSet", mock.AnythingOfType("*context.emptyCtx"), mock.MatchedBy(func(input []interface{}) bool {
@@ -157,17 +157,17 @@ func TestRedisKvStore_PutBatchSkipExpire(t *testing.T) {
 }
 
 func TestRedisKvStore_EstimateSize(t *testing.T) {
-	store, client := buildTestableRedisStore()
+	store, client := buildTestableRedisStore[Item]()
 	client.On("DBSize", mock.AnythingOfType("*context.emptyCtx")).Return(int64(42), nil)
 
-	size := store.(kvstore.SizedStore).EstimateSize()
+	size := store.(kvstore.SizedStore[Item]).EstimateSize()
 
 	assert.Equal(t, mdl.Box(int64(42)), size)
 	client.AssertExpectations(t)
 }
 
 func TestRedisKvStore_Delete(t *testing.T) {
-	store, client := buildTestableRedisStore()
+	store, client := buildTestableRedisStore[Item]()
 	client.On("Del", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo").Return(int64(1), nil)
 
 	err := store.Delete(context.Background(), "foo")
@@ -177,7 +177,7 @@ func TestRedisKvStore_Delete(t *testing.T) {
 }
 
 func TestRedisKvStore_DeleteBatch(t *testing.T) {
-	store, client := buildTestableRedisStore()
+	store, client := buildTestableRedisStore[Item]()
 	client.On("Del", mock.AnythingOfType("*context.emptyCtx"), "applike-gosoline-kvstore-kvstore-test-foo", "applike-gosoline-kvstore-kvstore-test-fuu").Return(int64(2), nil)
 
 	items := []string{"foo", "fuu"}
@@ -188,10 +188,10 @@ func TestRedisKvStore_DeleteBatch(t *testing.T) {
 	client.AssertExpectations(t)
 }
 
-func buildTestableRedisStore() (kvstore.KvStore, *redisMocks.Client) {
+func buildTestableRedisStore[T any]() (kvstore.KvStore[T], *redisMocks.Client) {
 	client := new(redisMocks.Client)
 
-	store := kvstore.NewRedisKvStoreWithInterfaces(client, &kvstore.Settings{
+	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
 		AppId: cfg.AppId{
 			Project:     "applike",
 			Environment: "test",
@@ -206,10 +206,10 @@ func buildTestableRedisStore() (kvstore.KvStore, *redisMocks.Client) {
 	return store, client
 }
 
-func buildTestableRedisStoreWithTTL() (kvstore.KvStore, *redisMocks.Client) {
+func buildTestableRedisStoreWithTTL[T any]() (kvstore.KvStore[T], *redisMocks.Client) {
 	client := new(redisMocks.Client)
 
-	store := kvstore.NewRedisKvStoreWithInterfaces(client, &kvstore.Settings{
+	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
 		AppId: cfg.AppId{
 			Project:     "applike",
 			Environment: "test",

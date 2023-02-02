@@ -3,6 +3,7 @@ package kvstore
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -21,7 +22,7 @@ type DdbDeleteItem struct {
 	Key string `json:"key" ddb:"key=hash"`
 }
 
-type ddbKvStore struct {
+type ddbKvStore[T any] struct {
 	repository ddb.Repository
 	settings   *Settings
 }
@@ -30,7 +31,11 @@ func DdbBaseName(settings *Settings) string {
 	return fmt.Sprintf("kvstore-%s", settings.Name)
 }
 
-func NewDdbKvStore(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (KvStore, error) {
+func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (KvStore[T], error) {
+	if reflect.ValueOf(new(T)).Elem().Kind() == reflect.Pointer {
+		return nil, fmt.Errorf("the generic type T should not be a pointer type but is of type %T", *new(T))
+	}
+
 	settings.PadFromConfig(config)
 	name := DdbBaseName(settings)
 
@@ -52,17 +57,17 @@ func NewDdbKvStore(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
-	return NewDdbKvStoreWithInterfaces(repository, settings), nil
+	return NewDdbKvStoreWithInterfaces[T](repository, settings), nil
 }
 
-func NewDdbKvStoreWithInterfaces(repository ddb.Repository, settings *Settings) KvStore {
-	return NewMetricStoreWithInterfaces(&ddbKvStore{
+func NewDdbKvStoreWithInterfaces[T any](repository ddb.Repository, settings *Settings) KvStore[T] {
+	return NewMetricStoreWithInterfaces[T](&ddbKvStore[T]{
 		repository: repository,
 		settings:   settings,
 	}, settings)
 }
 
-func (s *ddbKvStore) Contains(ctx context.Context, key interface{}) (bool, error) {
+func (s *ddbKvStore[T]) Contains(ctx context.Context, key any) (bool, error) {
 	keyStr, err := CastKeyToString(key)
 	if err != nil {
 		return false, fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
@@ -78,7 +83,7 @@ func (s *ddbKvStore) Contains(ctx context.Context, key interface{}) (bool, error
 	return res.IsFound, nil
 }
 
-func (s *ddbKvStore) Get(ctx context.Context, key interface{}, value interface{}) (bool, error) {
+func (s *ddbKvStore[T]) Get(ctx context.Context, key any, value *T) (bool, error) {
 	keyStr, err := CastKeyToString(key)
 	if err != nil {
 		return false, fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
@@ -106,11 +111,11 @@ func (s *ddbKvStore) Get(ctx context.Context, key interface{}, value interface{}
 	return true, nil
 }
 
-func (s *ddbKvStore) GetBatch(ctx context.Context, keys interface{}, result interface{}) ([]interface{}, error) {
+func (s *ddbKvStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]interface{}, error) {
 	return getBatch(ctx, keys, result, s.getChunk, s.settings.BatchSize)
 }
 
-func (s *ddbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []interface{}) ([]interface{}, error) {
+func (s *ddbKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys []any) ([]interface{}, error) {
 	var err error
 
 	keyStrings := make([]string, len(keys))
@@ -165,7 +170,7 @@ func (s *ddbKvStore) getChunk(ctx context.Context, resultMap *refl.Map, keys []i
 	return missing, nil
 }
 
-func (s *ddbKvStore) Put(ctx context.Context, key interface{}, value interface{}) error {
+func (s *ddbKvStore[T]) Put(ctx context.Context, key any, value T) error {
 	keyStr, err := CastKeyToString(key)
 	if err != nil {
 		return fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
@@ -190,7 +195,7 @@ func (s *ddbKvStore) Put(ctx context.Context, key interface{}, value interface{}
 	return nil
 }
 
-func (s *ddbKvStore) PutBatch(ctx context.Context, values interface{}) error {
+func (s *ddbKvStore[T]) PutBatch(ctx context.Context, values any) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 	if err != nil {
 		return fmt.Errorf("could not convert values to map[interface{}]interface{}")
@@ -238,7 +243,7 @@ func (s *ddbKvStore) PutBatch(ctx context.Context, values interface{}) error {
 	return nil
 }
 
-func (s *ddbKvStore) Delete(ctx context.Context, key interface{}) error {
+func (s *ddbKvStore[T]) Delete(ctx context.Context, key any) error {
 	keyStr, err := CastKeyToString(key)
 	if err != nil {
 		return fmt.Errorf("can not cast key %T %v to string: %w", key, key, err)
@@ -255,7 +260,7 @@ func (s *ddbKvStore) Delete(ctx context.Context, key interface{}) error {
 	return nil
 }
 
-func (s *ddbKvStore) DeleteBatch(ctx context.Context, keys interface{}) error {
+func (s *ddbKvStore[T]) DeleteBatch(ctx context.Context, keys any) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
 		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)

@@ -208,7 +208,7 @@ func kvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer: fixtures.RedisKvStoreFixtureWriterFactory(&mdl.ModelId{
+			Writer: fixtures.RedisKvStoreFixtureWriterFactory[Person](&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
@@ -218,7 +218,7 @@ func kvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key: "kvstore_entry_1",
-					Value: &Person{
+					Value: Person{
 						Name: "foo",
 						Age:  123,
 					},
@@ -233,7 +233,7 @@ func kvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer: fixtures.RedisKvStoreFixtureWriterFactory(&mdl.ModelId{
+			Writer: fixtures.RedisKvStoreFixtureWriterFactory[Person](&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
@@ -243,7 +243,7 @@ func kvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key: "kvstore_entry_2",
-					Value: &Person{
+					Value: Person{
 						Name: "foo",
 						Age:  123,
 					},

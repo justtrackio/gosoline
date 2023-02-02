@@ -40,7 +40,7 @@ type hasExpectations interface {
 type providerProvider func(test *tokenBearerTestCase) (auth.TokenBearerProvider, []hasExpectations)
 
 func makeKvStoreProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, []hasExpectations) {
-	repo := new(kvStoreMocks.KvStore)
+	repo := new(kvStoreMocks.KvStore[bearer])
 
 	if test.bearerId != "" && test.token != "" {
 		repo.On("Get", context.Background(), test.bearerId, &bearer{}).Run(func(args mock.Arguments) {
@@ -53,7 +53,7 @@ func makeKvStoreProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, [
 	}
 
 	return auth.ProvideTokenBearerFromGetter(func(ctx context.Context, key string, value auth.TokenBearer) (bool, error) {
-		return repo.Get(ctx, key, value)
+		return repo.Get(ctx, key, value.(*bearer))
 	}, func() auth.TokenBearer {
 		return &bearer{}
 	}), []hasExpectations{repo}

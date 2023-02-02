@@ -8,7 +8,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
@@ -155,7 +154,6 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		stream.ResetInMemoryInputs()
 		stream.ResetInMemoryOutputs()
 		stream.ResetProducerDaemons()
-		kvstore.ResetConfigurableKvStores()
 	}
 }
 
