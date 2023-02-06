@@ -5,8 +5,7 @@ package mocks
 import (
 	context "context"
 
-	cloudwatch "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
-
+	ssm "github.com/aws/aws-sdk-go-v2/service/ssm"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -15,8 +14,8 @@ type Client struct {
 	mock.Mock
 }
 
-// GetMetricData provides a mock function with given fields: ctx, params, optFns
-func (_m *Client) GetMetricData(ctx context.Context, params *cloudwatch.GetMetricDataInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.GetMetricDataOutput, error) {
+// GetParameter provides a mock function with given fields: ctx, params, optFns
+func (_m *Client) GetParameter(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
 	_va := make([]interface{}, len(optFns))
 	for _i := range optFns {
 		_va[_i] = optFns[_i]
@@ -26,17 +25,17 @@ func (_m *Client) GetMetricData(ctx context.Context, params *cloudwatch.GetMetri
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
-	var r0 *cloudwatch.GetMetricDataOutput
-	if rf, ok := ret.Get(0).(func(context.Context, *cloudwatch.GetMetricDataInput, ...func(*cloudwatch.Options)) *cloudwatch.GetMetricDataOutput); ok {
+	var r0 *ssm.GetParameterOutput
+	if rf, ok := ret.Get(0).(func(context.Context, *ssm.GetParameterInput, ...func(*ssm.Options)) *ssm.GetParameterOutput); ok {
 		r0 = rf(ctx, params, optFns...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*cloudwatch.GetMetricDataOutput)
+			r0 = ret.Get(0).(*ssm.GetParameterOutput)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *cloudwatch.GetMetricDataInput, ...func(*cloudwatch.Options)) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *ssm.GetParameterInput, ...func(*ssm.Options)) error); ok {
 		r1 = rf(ctx, params, optFns...)
 	} else {
 		r1 = ret.Error(1)
@@ -45,8 +44,8 @@ func (_m *Client) GetMetricData(ctx context.Context, params *cloudwatch.GetMetri
 	return r0, r1
 }
 
-// PutMetricData provides a mock function with given fields: ctx, params, optFns
-func (_m *Client) PutMetricData(ctx context.Context, params *cloudwatch.PutMetricDataInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.PutMetricDataOutput, error) {
+// GetParametersByPath provides a mock function with given fields: ctx, params, optFns
+func (_m *Client) GetParametersByPath(ctx context.Context, params *ssm.GetParametersByPathInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersByPathOutput, error) {
 	_va := make([]interface{}, len(optFns))
 	for _i := range optFns {
 		_va[_i] = optFns[_i]
@@ -56,17 +55,17 @@ func (_m *Client) PutMetricData(ctx context.Context, params *cloudwatch.PutMetri
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
-	var r0 *cloudwatch.PutMetricDataOutput
-	if rf, ok := ret.Get(0).(func(context.Context, *cloudwatch.PutMetricDataInput, ...func(*cloudwatch.Options)) *cloudwatch.PutMetricDataOutput); ok {
+	var r0 *ssm.GetParametersByPathOutput
+	if rf, ok := ret.Get(0).(func(context.Context, *ssm.GetParametersByPathInput, ...func(*ssm.Options)) *ssm.GetParametersByPathOutput); ok {
 		r0 = rf(ctx, params, optFns...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*cloudwatch.PutMetricDataOutput)
+			r0 = ret.Get(0).(*ssm.GetParametersByPathOutput)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *cloudwatch.PutMetricDataInput, ...func(*cloudwatch.Options)) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *ssm.GetParametersByPathInput, ...func(*ssm.Options)) error); ok {
 		r1 = rf(ctx, params, optFns...)
 	} else {
 		r1 = ret.Error(1)
