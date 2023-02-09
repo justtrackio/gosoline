@@ -59,7 +59,7 @@ func NewMessage(body string, attributes ...map[string]interface{}) *Message {
 
 	for _, attrs := range attributes {
 		for k, v := range attrs {
-			msg.Attributes[k] = v
+			msg.AddAttribute(k, v)
 		}
 	}
 
@@ -68,7 +68,7 @@ func NewMessage(body string, attributes ...map[string]interface{}) *Message {
 
 func NewJsonMessage(body string, attributes ...map[string]interface{}) *Message {
 	msg := NewMessage(body, attributes...)
-	msg.Attributes[AttributeEncoding] = EncodingJson
+	msg.AddAttribute(AttributeEncoding, EncodingJson)
 
 	return msg
 }
@@ -87,7 +87,7 @@ func MarshalJsonMessage(body interface{}, attributes ...map[string]interface{}) 
 
 func NewProtobufMessage(body string, attributes ...map[string]interface{}) *Message {
 	msg := NewMessage(body, attributes...)
-	msg.Attributes[AttributeEncoding] = EncodingProtobuf
+	msg.AddAttribute(AttributeEncoding, EncodingProtobuf)
 
 	return msg
 }

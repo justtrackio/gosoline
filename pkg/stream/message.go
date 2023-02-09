@@ -14,6 +14,12 @@ type Message struct {
 	Body       string                 `json:"body"`
 }
 
+func (m *Message) AddAttribute(key string, val interface{}) *Message {
+	m.Attributes[key] = val
+
+	return m
+}
+
 func (m *Message) GetAttributes() map[string]interface{} {
 	return m.Attributes
 }

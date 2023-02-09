@@ -93,8 +93,8 @@ func (r *RetryHandlerSqs) Put(ctx context.Context, msg *Message) error {
 		return nil
 	}
 
-	msg.Attributes[attributeRetrySqs] = true
-	msg.Attributes[sqs.AttributeSqsDelaySeconds] = r.settings.After.Seconds()
+	msg.AddAttribute(attributeRetrySqs, true)
+	msg.AddAttribute(sqs.AttributeSqsDelaySeconds, r.settings.After.Seconds())
 
 	if err := r.output.WriteOne(ctx, msg); err != nil {
 		return fmt.Errorf("can not write the message to the output: %w", err)

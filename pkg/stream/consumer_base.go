@@ -359,11 +359,11 @@ func (c *baseConsumer) buildRetryMessage(msg *Message) (*Message, interface{}) {
 	}
 
 	for k, v := range msg.Attributes {
-		retryMsg.Attributes[k] = v
+		retryMsg.AddAttribute(k, v)
 	}
 
-	retryMsg.Attributes[AttributeRetry] = true
-	retryMsg.Attributes[AttributeRetryId] = retryId
+	retryMsg.AddAttribute(AttributeRetry, true)
+	retryMsg.AddAttribute(AttributeRetryId, retryId)
 
 	return retryMsg, retryId
 }
