@@ -31,6 +31,9 @@ type Object struct {
 	Exists bool
 	Error  error
 
+	ContentEncoding *string
+	ContentType     *string
+
 	bucket *string
 	prefix *string
 	wg     *sync.WaitGroup
@@ -42,6 +45,9 @@ type CopyObject struct {
 	SourceBucket *string
 	ACL          types.ObjectCannedACL
 	Error        error
+
+	ContentEncoding *string
+	ContentType     *string
 
 	bucket *string
 	prefix *string

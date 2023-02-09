@@ -162,10 +162,12 @@ func (r *batchRunner) executeWrite(ctx context.Context) {
 			body := CloseOnce(object.Body.AsReader())
 
 			input := &s3.PutObjectInput{
-				ACL:    object.ACL,
-				Body:   body,
-				Bucket: object.bucket,
-				Key:    aws.String(key),
+				ACL:             object.ACL,
+				Body:            body,
+				Bucket:          object.bucket,
+				Key:             aws.String(key),
+				ContentEncoding: object.ContentEncoding,
+				ContentType:     object.ContentType,
 			}
 
 			_, err := r.client.PutObject(ctx, input)
@@ -198,10 +200,12 @@ func (r *batchRunner) executeCopy(ctx context.Context) {
 			source := object.getSource()
 
 			input := &s3.CopyObjectInput{
-				ACL:        object.ACL,
-				Bucket:     object.bucket,
-				Key:        aws.String(key),
-				CopySource: aws.String(source),
+				ACL:             object.ACL,
+				Bucket:          object.bucket,
+				Key:             aws.String(key),
+				CopySource:      aws.String(source),
+				ContentEncoding: object.ContentEncoding,
+				ContentType:     object.ContentType,
 			}
 
 			_, err := r.client.CopyObject(ctx, input)
