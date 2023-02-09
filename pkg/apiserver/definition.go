@@ -93,6 +93,10 @@ func (d *Definitions) PUT(relativePath string, handlers ...gin.HandlerFunc) {
 	d.Handle(http.PutRequest, relativePath, handlers...)
 }
 
+func (d *Definitions) OPTIONS(relativePath string, handlers ...gin.HandlerFunc) {
+	d.Handle(http.OptionsRequest, relativePath, handlers...)
+}
+
 func buildRouter(definitions *Definitions, router gin.IRouter) []Definition {
 	var definitionList []Definition
 	grp := router
