@@ -22,6 +22,7 @@ const (
 	PostRequest           = "POST"
 	PutRequest            = "PUT"
 	PatchRequest          = "PATCH"
+	OptionsRequest        = "OPTIONS"
 	metricRequest         = "HttpClientRequest"
 	metricError           = "HttpClientError"
 	metricResponseCode    = "HttpClientResponseCode"
