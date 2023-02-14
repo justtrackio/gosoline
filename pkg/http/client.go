@@ -39,6 +39,7 @@ type Client interface {
 	SetUserAgent(ua string)
 	SetProxyUrl(p string)
 	SetCookies(cs []*http.Cookie)
+	SetTransport(r http.RoundTripper)
 	SetCookie(c *http.Cookie)
 	SetRedirectValidator(allowRequest func(request *http.Request) bool)
 	AddRetryCondition(f RetryConditionFunc)
@@ -146,6 +147,10 @@ func (c *client) SetCookies(cs []*http.Cookie) {
 
 func (c *client) SetTimeout(timeout time.Duration) {
 	c.http.SetTimeout(timeout)
+}
+
+func (c *client) SetTransport(r http.RoundTripper) {
+	c.http.SetTransport(r)
 }
 
 func (c *client) SetUserAgent(ua string) {
