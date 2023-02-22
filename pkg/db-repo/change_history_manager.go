@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type changeHistoryManagerSettings struct {
@@ -62,9 +64,82 @@ func (c *ChangeHistoryManager) RunMigrations() error {
 }
 
 func (c *ChangeHistoryManager) RunMigration(model ModelBased) error {
-	statements := make([]string, 0)
 	originalTable := c.buildOriginalTableMetadata(model)
 	historyTable := c.buildHistoryTableMetadata(model, originalTable)
+
+	if err := c.executeMigration(originalTable, historyTable); err != nil {
+		return fmt.Errorf("cannot execute change history migration: %w", err)
+	}
+
+	if err := c.validateSchema(originalTable.tableName, historyTable.tableName); err != nil {
+		return fmt.Errorf("error during schema validation: %w", err)
+	}
+
+	return nil
+}
+
+func (c *ChangeHistoryManager) validateSchema(originalTable, historyTable string) error {
+	qry := `
+select original.TABLE_NAME, original.COLUMN_NAME, original.DATA_TYPE, history_entries.DATA_TYPE
+from (select TABLE_NAME, COLUMN_NAME, DATA_TYPE
+      from information_schema.columns
+      where table_schema = '%s' and TABLE_NAME = '%s') original
+         left join (select TABLE_NAME, COLUMN_NAME, DATA_TYPE
+               from information_schema.columns
+               where table_schema = '%s' and TABLE_NAME = '%s') as history_entries
+              on original.COLUMN_NAME = history_entries.COLUMN_NAME
+where original.DATA_TYPE != coalesce(history_entries.DATA_TYPE, '');`
+
+	db := c.orm.Raw("select database();")
+	if db.Error != nil {
+		return fmt.Errorf("unable to fetch database name: %w", db.Error)
+	}
+
+	var dbName string
+	err := db.Row().Scan(&dbName)
+	if err != nil {
+		return fmt.Errorf("unable to scan database name: %w", db.Error)
+	}
+
+	parsed := fmt.Sprintf(qry, dbName, originalTable, dbName, historyTable)
+
+	db = c.orm.Raw(parsed)
+	if db.Error != nil {
+		return db.Error
+	}
+
+	invalidColumnsErr := &multierror.Error{}
+
+	rows, err := db.Rows()
+	if err != nil {
+		return fmt.Errorf("unable to fetch rows: %w", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var tableName, columnName, originalType string
+		var historyType *string
+
+		err = rows.Scan(&tableName, &columnName, &originalType, &historyType)
+		if err != nil {
+			return fmt.Errorf("unable to scan result row: %w", err)
+		}
+
+		if historyType == nil {
+			err = fmt.Errorf("missing column %s of type %s on history table %s", columnName, originalType, tableName)
+		} else {
+			err = fmt.Errorf("type mismatch for table %s and column %s: expected %s, got %s", tableName, columnName, originalType, mdl.EmptyIfNil(historyType))
+		}
+
+		invalidColumnsErr = multierror.Append(invalidColumnsErr, err)
+	}
+
+	return invalidColumnsErr.ErrorOrNil()
+}
+
+func (c *ChangeHistoryManager) executeMigration(originalTable, historyTable *tableMetadata) error {
+	statements := make([]string, 0)
 
 	if !historyTable.exists {
 		statements = append(statements, c.createHistoryTable(historyTable))

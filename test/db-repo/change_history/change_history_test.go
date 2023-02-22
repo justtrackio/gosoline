@@ -1,14 +1,13 @@
 //go:build integration
-// +build integration
 
 package change_history_test
 
 import (
 	"context"
-	"os"
+	"errors"
 	"testing"
 
-	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
+	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
@@ -92,17 +91,16 @@ var TestHistoryModel2Metadata = db_repo.Metadata{
 	},
 }
 
+type TestModel3 struct {
+	db_repo.Model
+	Name *string
+}
+
 type ChangeHistoryTestSuite struct {
 	suite.Suite
 }
 
 func (s *ChangeHistoryTestSuite) SetupSuite() []suite.Option {
-	err := os.Setenv("AWS_ACCESS_KEY_ID", gosoAws.DefaultAccessKeyID)
-	s.NoError(err)
-
-	err = os.Setenv("AWS_SECRET_ACCESS_KEY", gosoAws.DefaultSecretAccessKey)
-	s.NoError(err)
-
 	return []suite.Option{
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("config.test.yml"),
@@ -216,6 +214,26 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable(
 	s.Equal("delete", entries[2].ChangeHistoryAction)
 	s.Equal("foo2", *entries[2].Foo)
 	s.Nil(entries[2].ChangeAuthor) // change-author is excluded for delete actions as it may be misleading
+}
+
+func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_ValidateSchema() {
+	envConfig := s.Env().Config()
+	envLogger := s.Env().Logger()
+
+	historyManager, err := db_repo.NewChangeHistoryManager(envConfig, envLogger)
+	s.NoError(err)
+
+	err = historyManager.RunMigration(&TestModel3{})
+
+	multiErr := &multierror.Error{}
+	if !errors.As(err, &multiErr) {
+		s.FailNow("multi error expected, got %T", err)
+		return
+	}
+
+	s.Len(multiErr.Errors, 2)
+	s.Errorf(multiErr.Errors[0], "missing column foo of type varchar on history table test_model3")
+	s.Errorf(multiErr.Errors[1], "type mismatch for history table test_model3 and column name: expected text, got varchar")
 }
 
 func TestChangeHistoryTestSuite(t *testing.T) {
