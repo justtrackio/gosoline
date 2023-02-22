@@ -90,9 +90,13 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 		close(done)
 	}()
 
-	<-app.Running()
-	testcase(appUnderTest)
-	app.Stop("test done")
+	select {
+	case <-app.Running():
+		testcase(appUnderTest)
+		app.Stop("test done")
+	case <-done:
+		app.Stop("app stopped")
+	}
 }
 
 func newEssentialModule(mod kernel.Module) kernel.Module {
