@@ -2,6 +2,7 @@ package oauth2
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
@@ -9,7 +10,19 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-const AuthTokenUrl = "https://accounts.google.com/o/oauth2/token"
+const (
+	AuthTokenUrl  = "https://accounts.google.com/o/oauth2/token"
+	TokenCheckUrl = "https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=%s"
+)
+
+type GoogleTokenInfoResponse struct {
+	AccessType string `json:"access_type"`
+	Aud        string `json:"aud"`
+	Azp        string `json:"azp"`
+	Exp        string `json:"exp"`
+	ExpiresIn  string `json:"expires_in"`
+	Scope      string `json:"scope"`
+}
 
 type GoogleAuthResponse struct {
 	AccessToken string `json:"access_token"`
@@ -27,6 +40,7 @@ type GoogleAuthRequest struct {
 //go:generate mockery --name Service
 type Service interface {
 	GetAuthRefresh(ctx context.Context, authRequest *GoogleAuthRequest) (*GoogleAuthResponse, error)
+	TokenInfo(ctx context.Context, accessToken string) (*GoogleTokenInfoResponse, error)
 }
 
 type GoogleService struct {
@@ -64,4 +78,21 @@ func (service *GoogleService) GetAuthRefresh(ctx context.Context, authRequest *G
 	err = json.Unmarshal(response.Body, authResponse)
 
 	return authResponse, err
+}
+
+func (service *GoogleService) TokenInfo(ctx context.Context, accessToken string) (*GoogleTokenInfoResponse, error) {
+	url := fmt.Sprintf(TokenCheckUrl, accessToken)
+
+	request := service.httpClient.NewRequest().
+		WithUrl(url)
+
+	response, err := service.httpClient.Get(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenInfoResponse := &GoogleTokenInfoResponse{}
+	err = json.Unmarshal(response.Body, tokenInfoResponse)
+
+	return tokenInfoResponse, err
 }
