@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -45,6 +46,8 @@ func runMigrations(logger log.Logger, settings Settings, db *sqlx.DB) error {
 		return fmt.Errorf("could not initialize migrator for db migrations: %w", err)
 	}
 
+	start := time.Now()
+
 	err = m.Up()
 
 	if err == migrate.ErrNoChange {
@@ -55,6 +58,8 @@ func runMigrations(logger log.Logger, settings Settings, db *sqlx.DB) error {
 	if err != nil {
 		return fmt.Errorf("could not run db migrations: %w", err)
 	}
+
+	logger.Info("migrated db in %s", time.Since(start))
 
 	return nil
 }

@@ -188,13 +188,9 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 				var err error
 				var container *container
 
-				start := time.Now()
-
 				if container, err = r.RunContainer(skeleton, name, description); err != nil {
 					return fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
 				}
-
-				r.logger.WithFields(log.Fields{"skeleton_type": skeleton.typ, "skeleton_name": skeleton.name, "container_name": name}).Info("booted in %s", time.Since(start))
 
 				lck.Lock()
 				defer lck.Unlock()

@@ -60,7 +60,7 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	}
 
 	defer func() {
-		logger.Info("booted env in %s", time.Since(start))
+		logger.Debug("booted env in %s", time.Since(start))
 	}()
 
 	for name, priority := range cfgPostProcessors {
