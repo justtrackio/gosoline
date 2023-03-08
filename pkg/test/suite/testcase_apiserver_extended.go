@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/go-resty/resty/v2"
+	"github.com/justtrackio/resty/v2"
 	"github.com/stretchr/testify/assert"
 )
 

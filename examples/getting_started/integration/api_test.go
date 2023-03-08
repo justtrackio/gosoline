@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/examples/getting_started/api/definer"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
+	"github.com/justtrackio/resty/v2"
 )
 
 type ApiTestSuite struct {
