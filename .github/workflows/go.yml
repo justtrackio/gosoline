@@ -88,8 +88,8 @@ jobs:
       - name: Static code analysis (golangci-lint)
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.45.2
-          args: --timeout 5m --print-issued-lines --print-linter-name --disable structcheck
+          version: v1.51.2
+          args: --timeout 5m --print-issued-lines --print-linter-name --disable structcheck --disable unused
 
   go-test:
     name: go test

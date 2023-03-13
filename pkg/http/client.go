@@ -69,11 +69,12 @@ type client struct {
 }
 
 type Settings struct {
-	RequestTimeout   time.Duration `cfg:"request_timeout" default:"30s"`
-	RetryCount       int           `cfg:"retry_count" default:"5"`
-	RetryWaitTime    time.Duration `cfg:"retry_wait_time" default:"100ms"`
-	RetryMaxWaitTime time.Duration `cfg:"retry_max_wait_time" default:"2000ms"`
-	FollowRedirects  bool          `cfg:"follow_redirects" default:"true"`
+	FollowRedirects   bool          `cfg:"follow_redirects" default:"true"`
+	RequestTimeout    time.Duration `cfg:"request_timeout" default:"30s"`
+	RetryCount        int           `cfg:"retry_count" default:"5"`
+	RetryMaxWaitTime  time.Duration `cfg:"retry_max_wait_time" default:"2000ms"`
+	RetryResetReaders bool          `cfg:"retry_reset_readers" default:"true"`
+	RetryWaitTime     time.Duration `cfg:"retry_wait_time" default:"100ms"`
 }
 
 func NewHttpClient(config cfg.Config, logger log.Logger) Client {
@@ -106,6 +107,7 @@ func NewHttpClient(config cfg.Config, logger log.Logger) Client {
 	httpClient.SetTimeout(settings.RequestTimeout)
 	httpClient.SetRetryWaitTime(settings.RetryWaitTime)
 	httpClient.SetRetryMaxWaitTime(settings.RetryMaxWaitTime)
+	httpClient.SetRetryResetReaders(settings.RetryResetReaders)
 
 	return NewHttpClientWithInterfaces(logger, c, mo, httpClient)
 }
