@@ -24,7 +24,7 @@ func (d *Definition) getAbsolutePath() string {
 	groupPath := d.group.getAbsolutePath()
 
 	absolutePath := fmt.Sprintf("%s/%s", groupPath, d.relativePath)
-	absolutePath = strings.TrimRight(absolutePath, "/")
+	absolutePath = trimRightPath(absolutePath)
 
 	return removeDuplicates(absolutePath)
 }
@@ -67,7 +67,7 @@ func (d *Definitions) Use(middleware ...gin.HandlerFunc) {
 }
 
 func (d *Definitions) Handle(httpMethod, relativePath string, handlers ...gin.HandlerFunc) {
-	relativePath = strings.TrimRight(relativePath, "/")
+	relativePath = trimRightPath(relativePath)
 
 	d.routes = append(d.routes, Definition{
 		group:        d,
@@ -138,4 +138,14 @@ func removeDuplicates(s string) string {
 	}
 
 	return buf.String()
+}
+
+func trimRightPath(path string) string {
+	absolutePath := strings.TrimRight(path, "/")
+
+	if absolutePath == "" {
+		absolutePath = "/"
+	}
+
+	return absolutePath
 }

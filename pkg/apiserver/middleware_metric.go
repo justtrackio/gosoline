@@ -2,7 +2,6 @@ package apiserver
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -35,12 +34,8 @@ func metricMiddleware(ginCtx *gin.Context, writer metric.Writer) {
 		return
 	}
 
-	path = strings.TrimRight(path, "/")
+	path = trimRightPath(path)
 	path = removeDuplicates(path)
-	if path == "" {
-		// we have a route at the root, so we have to use a single slash; empty dimensions are forbidden by cloudwatch
-		path = "/"
-	}
 
 	ginCtx.Next()
 
