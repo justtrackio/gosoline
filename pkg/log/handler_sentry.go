@@ -17,31 +17,16 @@ func handlerSentryFactory(config cfg.Config, _ string) (Handler, error) {
 }
 
 type HandlerSentry struct {
-	hub *sentry.Hub
+	hub SentryHub
 }
 
 func NewHandlerSentry(config cfg.Config) (*HandlerSentry, error) {
-	env := config.GetString("env")
-	appName := config.GetString("app_name")
-
-	options := sentry.ClientOptions{
-		Environment: env,
-	}
-
 	var err error
-	var client *sentry.Client
-	scope := sentry.NewScope()
+	var hub SentryHub
 
-	if client, err = sentry.NewClient(options); err != nil {
-		return nil, fmt.Errorf("can not create sentry client: %w", err)
+	if hub, err = NewSentryHub(config); err != nil {
+		return nil, fmt.Errorf("can not create sentry hub: %w", err)
 	}
-
-	hub := sentry.NewHub(client, scope)
-	hub.ConfigureScope(func(scope *sentry.Scope) {
-		scope.SetTags(map[string]string{
-			"application": appName,
-		})
-	})
 
 	return &HandlerSentry{
 		hub: hub,
