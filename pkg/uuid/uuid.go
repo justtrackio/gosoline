@@ -11,7 +11,7 @@ type Uuid interface {
 
 type RealUuid struct{}
 
-var New = func() Uuid {
+func New() Uuid {
 	return &RealUuid{}
 }
 

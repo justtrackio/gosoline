@@ -12,7 +12,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdlsub"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/test/env"
-	"github.com/justtrackio/gosoline/pkg/uuid"
 	"github.com/spf13/cast"
 	"golang.org/x/exp/slices"
 )
@@ -77,18 +76,6 @@ func WithClockProviderAt(datetime string) Option {
 			}
 
 			clock.Provider = clock.NewFakeClockAt(dt)
-
-			return nil
-		})
-	}
-}
-
-func WithUuidProvider(p uuid.Uuid) Option {
-	return func(s *suiteOptions) {
-		s.envSetup = append(s.envSetup, func() error {
-			uuid.New = func() uuid.Uuid {
-				return p
-			}
 
 			return nil
 		})
