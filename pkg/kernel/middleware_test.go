@@ -22,19 +22,19 @@ func TestMiddleware(t *testing.T) {
 	}).Return(nil)
 
 	k, err := kernel.BuildKernel(context.Background(), config, logger, []kernel.Option{
-		kernel.WithMiddlewareFactory(kernel.BuildSimpeMiddleware(func(next kernel.MiddlewareHandler) {
+		kernel.WithMiddlewareFactory(kernel.BuildSimpleMiddleware(func(next kernel.MiddlewareHandler) {
 			callstack = append(callstack, "mid1 start")
 			next()
 			callstack = append(callstack, "mid1 end")
 		}), kernel.PositionEnd),
 
-		kernel.WithMiddlewareFactory(kernel.BuildSimpeMiddleware(func(next kernel.MiddlewareHandler) {
+		kernel.WithMiddlewareFactory(kernel.BuildSimpleMiddleware(func(next kernel.MiddlewareHandler) {
 			callstack = append(callstack, "mid2 start")
 			next()
 			callstack = append(callstack, "mid2 end")
 		}), kernel.PositionEnd),
 
-		kernel.WithMiddlewareFactory(kernel.BuildSimpeMiddleware(func(next kernel.MiddlewareHandler) {
+		kernel.WithMiddlewareFactory(kernel.BuildSimpleMiddleware(func(next kernel.MiddlewareHandler) {
 			callstack = append(callstack, "mid3 start")
 			next()
 			callstack = append(callstack, "mid3 end")

@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -85,6 +86,10 @@ func buildTestCaseApiServerExtended(suite TestingSuite, method reflect.Method) (
 		} else {
 			testCases = out.([]*ApiServerTestCase)
 		}
+
+		testCases = funk.Filter(testCases, func(elem *ApiServerTestCase) bool {
+			return elem != nil
+		})
 
 		responses := make([]*resty.Response, len(testCases))
 		remainingRedirects := 0
