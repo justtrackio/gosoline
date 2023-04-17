@@ -44,7 +44,10 @@ func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (Upda
 		return nil, fmt.Errorf("can not create kvStore: %w", err)
 	}
 
-	httpClient := http.NewHttpClient(config, logger)
+	httpClient, err := http.ProvideHttpClient(ctx, config, logger, "currencyUpdater")
+	if err != nil {
+		return nil, fmt.Errorf("can not create http client: %w", err)
+	}
 
 	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider), nil
 }

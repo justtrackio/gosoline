@@ -49,12 +49,15 @@ func ProvideIpInfo(ctx context.Context, config cfg.Config, logger log.Logger) (*
 
 func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger) (*Client, error) {
 	return appctx.Provide(ctx, ipInfoClientCtxKey("default"), func() (*Client, error) {
-		return NewClient(config, logger)
+		return NewClient(ctx, config, logger)
 	})
 }
 
-func NewClient(config cfg.Config, logger log.Logger) (*Client, error) {
-	httpClient := http.NewHttpClient(config, logger)
+func NewClient(ctx context.Context, config cfg.Config, logger log.Logger) (*Client, error) {
+	httpClient, err := http.ProvideHttpClient(ctx, config, logger, "ipInfo")
+	if err != nil {
+		return nil, fmt.Errorf("can not create http client: %w", err)
+	}
 
 	return &Client{logger: logger, http: httpClient}, nil
 }
