@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	cfgMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
+	"github.com/justtrackio/gosoline/pkg/appctx"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/http"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // A copy of context.emptyCtx
@@ -31,7 +31,7 @@ func (m *myContext) Err() error {
 	return nil
 }
 
-func (m *myContext) Value(key interface{}) interface{} {
+func (m *myContext) Value(_ interface{}) interface{} {
 	return nil
 }
 
@@ -48,30 +48,37 @@ func runTestServer(t *testing.T, method string, status int, delay time.Duration,
 	test(testServer.Listener.Addr().String())
 }
 
-func getConfig(retries int, timeout time.Duration) *cfgMocks.Config {
-	config := new(cfgMocks.Config)
-	config.On("UnmarshalKey", "http_client", &http.Settings{}).Run(func(args mock.Arguments) {
-		config := args.Get(1).(*http.Settings)
-		*config = http.Settings{
-			RequestTimeout:   timeout,
-			RetryCount:       retries,
-			RetryWaitTime:    100 * time.Millisecond,
-			RetryMaxWaitTime: 200 * time.Millisecond,
-			FollowRedirects:  true,
-		}
-	})
-	config.On("IsSet", "http_client_retry_count").Return(false)
-	config.On("IsSet", "http_client_request_timeout").Return(false)
+func getConfig(t *testing.T, retries int, timeout time.Duration) cfg.Config {
+	config := cfg.New()
+	err := config.Option(cfg.WithConfigMap(map[string]interface{}{
+		"http_client": map[string]interface{}{
+			"default": map[string]interface{}{
+				"request_timeout":     timeout,
+				"retry_count":         retries,
+				"retry_max_wait_time": "200ms",
+			},
+		},
+	}))
+	assert.NoError(t, err)
 
 	return config
 }
 
-func TestClient_Delete(t *testing.T) {
-	config := getConfig(1, time.Second)
+func getClient(t *testing.T, retries int, timeout time.Duration) http.Client {
+	ctx := appctx.WithContainer(context.Background())
+	config := getConfig(t, retries, timeout)
+
 	logger := logMocks.NewLoggerMockedAll()
 
+	client, err := http.ProvideHttpClient(ctx, config, logger, "default")
+	assert.NoError(t, err)
+
+	return client
+}
+
+func TestClient_Delete(t *testing.T) {
 	runTestServer(t, "DELETE", 200, 0, func(host string) {
-		client := http.NewHttpClient(config, logger)
+		client := getClient(t, 1, time.Second)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
 		response, err := client.Delete(context.TODO(), request)
@@ -79,16 +86,11 @@ func TestClient_Delete(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 200, response.StatusCode)
 	})
-
-	config.AssertExpectations(t)
 }
 
 func TestClient_Get(t *testing.T) {
-	config := getConfig(1, time.Second)
-	logger := logMocks.NewLoggerMockedAll()
-
 	runTestServer(t, "GET", 200, 0, func(host string) {
-		client := http.NewHttpClient(config, logger)
+		client := getClient(t, 1, time.Second)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
 		response, err := client.Get(context.TODO(), request)
@@ -96,16 +98,11 @@ func TestClient_Get(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 200, response.StatusCode)
 	})
-
-	config.AssertExpectations(t)
 }
 
 func TestClient_GetTimeout(t *testing.T) {
-	config := getConfig(0, time.Second)
-	logger := logMocks.NewLoggerMockedAll()
-
 	runTestServer(t, "GET", 200, 1100*time.Millisecond, func(host string) {
-		client := http.NewHttpClient(config, logger)
+		client := getClient(t, 0, time.Second)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
 		response, err := client.Get(context.TODO(), request)
@@ -113,19 +110,14 @@ func TestClient_GetTimeout(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, response)
 	})
-
-	config.AssertExpectations(t)
 }
 
 func TestClient_GetCanceled(t *testing.T) {
-	config := getConfig(1, time.Second)
-	logger := logMocks.NewLoggerMockedAll()
-
 	baseCtx := myContext(0)
 	ctx, cancel := context.WithCancel(&baseCtx)
 
 	runTestServer(t, "GET", 200, 200*time.Millisecond, func(host string) {
-		client := http.NewHttpClient(config, logger)
+		client := getClient(t, 1, time.Second)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
 		go func() {
@@ -138,16 +130,11 @@ func TestClient_GetCanceled(t *testing.T) {
 		assert.True(t, errors.Is(err, context.Canceled))
 		assert.Nil(t, response)
 	})
-
-	config.AssertExpectations(t)
 }
 
 func TestClient_Post(t *testing.T) {
-	config := getConfig(1, time.Second)
-	logger := logMocks.NewLoggerMockedAll()
-
 	runTestServer(t, "POST", 200, 0, func(host string) {
-		client := http.NewHttpClient(config, logger)
+		client := getClient(t, 1, time.Second)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
 		response, err := client.Post(context.TODO(), request)
@@ -155,6 +142,4 @@ func TestClient_Post(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 200, response.StatusCode)
 	})
-
-	config.AssertExpectations(t)
 }

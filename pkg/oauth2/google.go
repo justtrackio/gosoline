@@ -47,10 +47,13 @@ type GoogleService struct {
 	httpClient http.Client
 }
 
-func NewGoogleService(config cfg.Config, logger log.Logger) Service {
-	httpClient := http.NewHttpClient(config, logger)
+func NewGoogleService(ctx context.Context, config cfg.Config, logger log.Logger) (Service, error) {
+	httpClient, err := http.ProvideHttpClient(ctx, config, logger, "oauthGoogleService")
+	if err != nil {
+		return nil, fmt.Errorf("can not create http client: %w", err)
+	}
 
-	return NewGoogleServiceWithInterfaces(httpClient)
+	return NewGoogleServiceWithInterfaces(httpClient), nil
 }
 
 func NewGoogleServiceWithInterfaces(httpClient http.Client) Service {

@@ -10,6 +10,7 @@ import (
 
 	httpHeaders "github.com/go-http-utils/headers"
 	"github.com/go-resty/resty/v2"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -66,35 +67,30 @@ type client struct {
 	clock          clock.Clock
 	defaultHeaders headers
 	http           restyClient
-	mo             metric.Writer
+	metricWriter   metric.Writer
 }
 
 type Settings struct {
-	FollowRedirects   bool          `cfg:"follow_redirects" default:"true"`
-	RequestTimeout    time.Duration `cfg:"request_timeout" default:"30s"`
-	RetryCount        int           `cfg:"retry_count" default:"5"`
-	RetryMaxWaitTime  time.Duration `cfg:"retry_max_wait_time" default:"2000ms"`
-	RetryResetReaders bool          `cfg:"retry_reset_readers" default:"true"`
-	RetryWaitTime     time.Duration `cfg:"retry_wait_time" default:"100ms"`
+	FollowRedirects        bool                   `cfg:"follow_redirects" default:"true"`
+	RequestTimeout         time.Duration          `cfg:"request_timeout" default:"30s"`
+	RetryCount             int                    `cfg:"retry_count" default:"5"`
+	RetryMaxWaitTime       time.Duration          `cfg:"retry_max_wait_time" default:"2000ms"`
+	RetryResetReaders      bool                   `cfg:"retry_reset_readers" default:"true"`
+	RetryWaitTime          time.Duration          `cfg:"retry_wait_time" default:"100ms"`
+	CircuitBreakerSettings CircuitBreakerSettings `cfg:"circuit_breaker"`
 }
 
-func NewHttpClient(config cfg.Config, logger log.Logger) Client {
-	c := clock.NewRealClock()
+func ProvideHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
+	type httpClientName string
 
-	mo := metric.NewWriter()
+	return appctx.Provide(ctx, httpClientName(name), func() (Client, error) {
+		return newHttpClient(config, logger, name), nil
+	})
+}
 
-	settings := &Settings{}
-	config.UnmarshalKey("http_client", settings)
-
-	// allow the old settings to be used for now... we will eventually remove this though
-	if config.IsSet("http_client_retry_count") {
-		settings.RetryCount = config.GetInt("http_client_retry_count")
-		logger.Warn("http_client_retry_count is deprecated, use http_client.retry_count instead")
-	}
-	if config.IsSet("http_client_request_timeout") {
-		settings.RequestTimeout = config.GetDuration("http_client_request_timeout")
-		logger.Warn("http_client_request_timeout is deprecated, use http_client.request_timeout instead")
-	}
+func newHttpClient(config cfg.Config, logger log.Logger, name string) Client {
+	metricWriter := metric.NewWriter()
+	settings := UnmarshalClientSettings(config, name)
 
 	httpClient := resty.New()
 	if settings.FollowRedirects {
@@ -110,16 +106,22 @@ func NewHttpClient(config cfg.Config, logger log.Logger) Client {
 	httpClient.SetRetryMaxWaitTime(settings.RetryMaxWaitTime)
 	httpClient.SetRetryResetReaders(settings.RetryResetReaders)
 
-	return NewHttpClientWithInterfaces(logger, c, mo, httpClient)
+	client := NewHttpClientWithInterfaces(logger, clock.Provider, metricWriter, httpClient)
+
+	if settings.CircuitBreakerSettings.Enabled {
+		client = NewCircuitBreakerClientWithInterfaces(client, logger, clock.Provider, name, settings.CircuitBreakerSettings)
+	}
+
+	return client
 }
 
-func NewHttpClientWithInterfaces(logger log.Logger, c clock.Clock, mo metric.Writer, httpClient restyClient) Client {
+func NewHttpClientWithInterfaces(logger log.Logger, clock clock.Clock, metricWriter metric.Writer, httpClient restyClient) Client {
 	return &client{
 		logger:         logger,
-		clock:          c,
+		clock:          clock,
 		defaultHeaders: make(headers),
 		http:           httpClient,
-		mo:             mo,
+		metricWriter:   metricWriter,
 	}
 }
 
@@ -246,7 +248,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	response := buildResponse(resp, &totalDuration)
 
 	// Only log the duration if we did not get an error.
-	// If we get an error, we might not actually have send anything,
+	// If we get an error, we might not actually have sent anything,
 	// so the duration will be very low. If we get back an error (e.g., status 500),
 	// we log the duration as this is just a valid http response.
 	requestDurationMs := float64(resp.Time() / time.Millisecond)
@@ -256,7 +258,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 }
 
 func (c *client) writeMetric(metricName string, method string, unit metric.StandardUnit, value float64) {
-	c.mo.WriteOne(&metric.Datum{
+	c.metricWriter.WriteOne(&metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Now(),
 		MetricName: metricName,
@@ -281,4 +283,48 @@ func buildResponse(resp *resty.Response, totalDuration *time.Duration) *Response
 		StatusCode:      resp.StatusCode(),
 		TotalDuration:   totalDuration,
 	}
+}
+
+func GetClientConfigKey(name string) string {
+	return fmt.Sprintf("http_client.%s", name)
+}
+
+func UnmarshalClientSettings(config cfg.Config, name string) Settings {
+	// notify about wrong old settings being used
+	if config.IsSet("http_client_retry_count") {
+		panic("'http_client_retry_count' was removed, use 'http_client.default.retry_count' instead")
+	}
+	if config.IsSet("http_client_request_timeout") {
+		panic("'http_client_request_timeout' was removed, use 'http_client.default.request_timeout' instead")
+	}
+	if config.IsSet("http_client.follow_redirects") {
+		panic("'http_client.follow_redirects' was removed, use 'http_client.default.follow_redirects' instead")
+	}
+	if config.IsSet("http_client.request_timeout") {
+		panic("'http_client.request_timeout' was removed, use 'http_client.default.request_timeout' instead")
+	}
+	if config.IsSet("http_client.retry_count") {
+		panic("'http_client.retry_count' was removed, use 'http_client.default.retry_count' instead")
+	}
+	if config.IsSet("http_client.retry_max_wait_time") {
+		panic("'http_client.retry_max_wait_time' was removed, use 'http_client.default.retry_max_wait_time' instead")
+	}
+	if config.IsSet("http_client.retry_reset_readers") {
+		panic("'http_client.retry_reset_readers' was removed, use 'http_client.default.retry_reset_readers' instead")
+	}
+	if config.IsSet("http_client.retry_wait_time") {
+		panic("'http_client.retry_wait_time' was removed, use 'http_client.default.retry_wait_time' instead")
+	}
+
+	if name == "" {
+		name = "default"
+	}
+
+	clientsKey := GetClientConfigKey(name)
+	defaultClientKey := GetClientConfigKey("default")
+
+	var settings Settings
+	config.UnmarshalKey(clientsKey, &settings, cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, "."))
+
+	return settings
 }
