@@ -29,6 +29,7 @@ func RegisterS3PrefixNamingStrategy(name string, strategy S3PrefixNamingStrategy
 }
 
 type ReaderSettings struct {
+	ClientName     string `cfg:"client_name" default:"default"`
 	ModelId        mdl.ModelId
 	NamingStrategy string
 	Recorder       FileRecorder

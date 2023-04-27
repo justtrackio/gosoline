@@ -22,7 +22,7 @@ func newBlobPurger(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("can not create blob store: %w", err)
 	}
 
-	br, err := blob.NewBatchRunner(ctx, config, logger)
+	br, err := blob.NewBatchRunner(ctx, config, logger, settings.ConfigName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create blob batch runner: %w", err)
 	}

@@ -49,7 +49,7 @@ func main() {
 or for example when using the `BlobFixtureWriterFactory`:
 
 ```yaml
-blobstore:
+blob:
   blobconfig:
     bucket: s3-fixtures-bucket
 ```

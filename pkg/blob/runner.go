@@ -19,25 +19,26 @@ import (
 
 const (
 	metricName      = "BlobBatchRunner"
-	operationRead   = "Read"
-	operationWrite  = "Write"
 	operationCopy   = "Copy"
 	operationDelete = "Delete"
+	operationRead   = "Read"
+	operationWrite  = "Write"
 )
 
 type BatchRunnerSettings struct {
-	ReaderRunnerCount int `cfg:"reader_runner_count" default:"10"`
-	WriterRunnerCount int `cfg:"writer_runner_count" default:"10"`
-	CopyRunnerCount   int `cfg:"copy_runner_count" default:"10"`
-	DeleteRunnerCount int `cfg:"delete_runner_count" default:"10"`
+	ClientName        string `cfg:"client_name" default:"default"`
+	CopyRunnerCount   int    `cfg:"copy_runner_count" default:"10"`
+	DeleteRunnerCount int    `cfg:"delete_runner_count" default:"10"`
+	ReaderRunnerCount int    `cfg:"reader_runner_count" default:"10"`
+	WriterRunnerCount int    `cfg:"writer_runner_count" default:"10"`
 }
 
 var br = struct {
 	sync.Mutex
-	instance *batchRunner
+	instance BatchRunner
 }{}
 
-func ProvideBatchRunner() kernel.ModuleFactory {
+func ProvideBatchRunner(name string) kernel.ModuleFactory {
 	br.Lock()
 	defer br.Unlock()
 
@@ -47,7 +48,7 @@ func ProvideBatchRunner() kernel.ModuleFactory {
 		}
 
 		var err error
-		br.instance, err = NewBatchRunner(ctx, config, logger)
+		br.instance, err = NewBatchRunner(ctx, config, logger, name)
 
 		return br.instance, err
 	}
@@ -63,22 +64,22 @@ type batchRunner struct {
 	kernel.ServiceStage
 
 	logger   log.Logger
-	metric   metric.Writer
-	client   gosoS3.Client
 	channels *BatchRunnerChannels
+	client   gosoS3.Client
+	metric   metric.Writer
 	settings *BatchRunnerSettings
 }
 
-func NewBatchRunner(ctx context.Context, config cfg.Config, logger log.Logger) (*batchRunner, error) {
+func NewBatchRunner(ctx context.Context, config cfg.Config, logger log.Logger, name string) (BatchRunner, error) {
 	settings := &BatchRunnerSettings{}
-	config.UnmarshalKey("blob", settings)
+	config.UnmarshalKey(fmt.Sprintf("blob.%s", name), settings)
 
 	defaultMetrics := getDefaultRunnerMetrics()
 	metricWriter := metric.NewWriter(defaultMetrics...)
 
-	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {
-		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+		return nil, fmt.Errorf("can not create s3 client with name %s: %w", settings.ClientName, err)
 	}
 
 	runner := &batchRunner{

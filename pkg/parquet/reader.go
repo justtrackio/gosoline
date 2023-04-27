@@ -24,8 +24,8 @@ import (
 )
 
 type Progress struct {
-	FileCount int
 	Current   int
+	FileCount int
 }
 
 type (
@@ -42,18 +42,18 @@ type Reader interface {
 }
 
 type s3Reader struct {
-	logger   log.Logger
-	s3Client gosoS3.Client
+	logger log.Logger
 
 	modelId              mdl.ModelId
 	prefixNamingStrategy S3PrefixNamingStrategy
 	recorder             FileRecorder
+	s3Client             gosoS3.Client
 }
 
-func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings *ReaderSettings) (*s3Reader, error) {
-	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, settings *ReaderSettings) (Reader, error) {
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {
-		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+		return nil, fmt.Errorf("can not create s3 client with name %s: %w", settings.ClientName, err)
 	}
 
 	prefixNaming, exists := s3PrefixNamingStrategies[settings.NamingStrategy]
@@ -76,7 +76,7 @@ func NewReaderWithInterfaces(
 	modelId mdl.ModelId,
 	prefixNaming S3PrefixNamingStrategy,
 	recorder FileRecorder,
-) *s3Reader {
+) Reader {
 	return &s3Reader{
 		logger:               logger,
 		s3Client:             s3Client,
@@ -166,6 +166,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 
 				if !ok {
 					stop = true
+
 					return nil
 				}
 

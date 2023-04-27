@@ -41,7 +41,7 @@ func BlobFixtureWriterFactory(settings *BlobFixturesSettings) FixtureWriterFacto
 			return nil, fmt.Errorf("can not create blob store: %w", err)
 		}
 
-		br, err := blob.NewBatchRunner(ctx, config, logger)
+		br, err := blob.NewBatchRunner(ctx, config, logger, settings.ConfigName)
 		if err != nil {
 			return nil, fmt.Errorf("can not create blob batch runner: %w", err)
 		}
