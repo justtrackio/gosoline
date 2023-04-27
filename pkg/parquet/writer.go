@@ -19,10 +19,11 @@ import (
 )
 
 type WriterSettings struct {
+	ClientName     string `cfg:"client_name" default:"default"`
 	ModelId        mdl.ModelId
 	NamingStrategy string
-	Tags           map[string]string
 	Recorder       FileRecorder
+	Tags           map[string]string
 }
 
 //go:generate mockery --name Writer
@@ -32,21 +33,22 @@ type Writer interface {
 }
 
 type s3Writer struct {
-	logger   log.Logger
-	s3Client gosoS3.Client
+	logger log.Logger
 
 	modelId              mdl.ModelId
 	prefixNamingStrategy S3PrefixNamingStrategy
-	tags                 map[string]string
 	recorder             FileRecorder
+	s3Client             gosoS3.Client
+
+	tags map[string]string
 }
 
-func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *WriterSettings) (*s3Writer, error) {
+func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *WriterSettings) (Writer, error) {
 	settings.ModelId.PadFromConfig(config)
 
-	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {
-		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+		return nil, fmt.Errorf("can not create s3 client with name %s: %w", settings.ClientName, err)
 	}
 
 	prefixNaming, exists := s3PrefixNamingStrategies[settings.NamingStrategy]
@@ -70,7 +72,7 @@ func NewWriterWithInterfaces(
 	prefixNaming S3PrefixNamingStrategy,
 	tags map[string]string,
 	recorder FileRecorder,
-) *s3Writer {
+) Writer {
 	combinedTags := map[string]string{
 		"Project":     modelId.Project,
 		"Environment": modelId.Environment,

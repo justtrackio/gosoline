@@ -37,7 +37,7 @@ func (s *S3TestSuite) TestS3() {
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
-	bucketName := s.Env().Config().GetString("blobstore.test.bucket")
+	bucketName := s.Env().Config().GetString("blob.test.bucket")
 
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
@@ -81,7 +81,7 @@ func (s *S3TestSuite) TestS3WithPurge() {
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
-	bucketName := s.Env().Config().GetString("blobstore.test.bucket")
+	bucketName := s.Env().Config().GetString("blob.test.bucket")
 
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),

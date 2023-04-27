@@ -14,10 +14,10 @@ import (
 
 //go:generate mockery --name FileRecorder
 type FileRecorder interface {
+	DeleteRecordedFiles(ctx context.Context) error
 	Files() []File
 	RecordFile(bucket string, key string)
 	RenameRecordedFiles(ctx context.Context, newPrefix string) error
-	DeleteRecordedFiles(ctx context.Context) error
 }
 
 type File struct {
@@ -27,9 +27,9 @@ type File struct {
 
 type s3FileRecorder struct {
 	logger   log.Logger
-	s3Client gosoS3.Client
-	lck      sync.Mutex
 	files    []File
+	lck      sync.Mutex
+	s3Client gosoS3.Client
 }
 
 type nopRecorder struct{}
@@ -53,10 +53,14 @@ func NewNopRecorder() FileRecorder {
 	return nopRecorder{}
 }
 
-func NewS3FileRecorder(ctx context.Context, config cfg.Config, logger log.Logger) (FileRecorder, error) {
-	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+func NewS3FileRecorder(ctx context.Context, config cfg.Config, logger log.Logger, name string) (FileRecorder, error) {
+	if name == "" {
+		name = "default"
+	}
+
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, name)
 	if err != nil {
-		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+		return nil, fmt.Errorf("can not create s3 client with name %s: %w", name, err)
 	}
 
 	return NewS3FileRecorderWithInterfaces(logger, s3Client), nil

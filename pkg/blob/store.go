@@ -25,33 +25,37 @@ const (
 )
 
 type Object struct {
-	Key    *string
-	Body   Stream
-	ACL    types.ObjectCannedACL
-	Exists bool
-	Error  error
+	ACL  types.ObjectCannedACL
+	Body Stream
+
+	bucket *string
 
 	ContentEncoding *string
 	ContentType     *string
 
-	bucket *string
+	Error error
+
+	Exists bool
+	Key    *string
 	prefix *string
 	wg     *sync.WaitGroup
 }
 
 type CopyObject struct {
-	Key          *string
-	SourceKey    *string
-	SourceBucket *string
-	ACL          types.ObjectCannedACL
-	Error        error
+	ACL types.ObjectCannedACL
+
+	bucket *string
 
 	ContentEncoding *string
 	ContentType     *string
 
-	bucket *string
-	prefix *string
-	wg     *sync.WaitGroup
+	Error error
+
+	Key          *string
+	prefix       *string
+	SourceBucket *string
+	SourceKey    *string
+	wg           *sync.WaitGroup
 }
 
 type (
@@ -61,8 +65,9 @@ type (
 
 type Settings struct {
 	cfg.AppId
-	Bucket string `cfg:"bucket"`
-	Prefix string `cfg:"prefix"`
+	Bucket     string `cfg:"bucket"`
+	ClientName string `cfg:"client_name" default:"default"`
+	Prefix     string `cfg:"prefix"`
 }
 
 //go:generate mockery --name Store
@@ -83,7 +88,8 @@ type Store interface {
 var _ Store = &s3Store{}
 
 type s3Store struct {
-	logger   log.Logger
+	logger log.Logger
+
 	channels *BatchRunnerChannels
 	client   gosoS3.Client
 
@@ -114,21 +120,21 @@ func CreateKey() string {
 	return namingStrategy()
 }
 
-func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*s3Store, error) {
+func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Store, error) {
 	channels := ProvideBatchRunnerChannels(config)
 
-	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
-	if err != nil {
-		return nil, fmt.Errorf("can not create s3 client default: %w", err)
-	}
-
 	var settings Settings
-	key := fmt.Sprintf("blobstore.%s", name)
+	key := fmt.Sprintf("blob.%s", name)
 	config.UnmarshalKey(key, &settings)
 	settings.AppId.PadFromConfig(config)
 
 	if settings.Bucket == "" {
 		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
+	}
+
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
+	if err != nil {
+		return nil, fmt.Errorf("can not create s3 client with name %s: %w", settings.ClientName, err)
 	}
 
 	store := NewStoreWithInterfaces(logger, channels, s3Client, settings)
@@ -143,7 +149,7 @@ func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name st
 	return store, nil
 }
 
-func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, client gosoS3.Client, settings Settings) *s3Store {
+func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, client gosoS3.Client, settings Settings) Store {
 	return &s3Store{
 		logger:   logger,
 		channels: channels,
@@ -164,6 +170,7 @@ func (s *s3Store) CreateBucket(ctx context.Context) error {
 
 	if isBucketAlreadyExistsError(err) {
 		s.logger.Info("s3 bucket %s did already exist", *s.bucket)
+
 		return nil
 	}
 
@@ -172,6 +179,7 @@ func (s *s3Store) CreateBucket(ctx context.Context) error {
 	}
 
 	s.logger.Info("created s3 bucket %s", *s.bucket)
+
 	return nil
 }
 
@@ -322,6 +330,7 @@ func getFullKey(prefixPtr, keyPtr *string) string {
 
 	fullKey := fmt.Sprintf("%s/%s", prefix, key)
 	fullKey = strings.TrimLeft(fullKey, "/")
+
 	return fullKey
 }
 

@@ -11,7 +11,7 @@ cloud:
         default:
           usePathStyle: true
 
-blobstore:
+blob:
   test:
     bucket: s3-fixtures-test-bucket
 

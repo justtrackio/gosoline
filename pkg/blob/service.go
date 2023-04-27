@@ -19,10 +19,14 @@ type Service struct {
 	client gosoS3.Client
 }
 
-func NewService(ctx context.Context, config cfg.Config, logger log.Logger) (*Service, error) {
-	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, "default")
+func NewService(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*Service, error) {
+	if name == "" {
+		name = "default"
+	}
+
+	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, name)
 	if err != nil {
-		return nil, fmt.Errorf("can not create s3 client default: %w", err)
+		return nil, fmt.Errorf("can not create s3 client with name %s: %w", name, err)
 	}
 
 	return &Service{
