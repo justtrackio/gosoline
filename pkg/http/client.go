@@ -71,6 +71,7 @@ type client struct {
 }
 
 type Settings struct {
+	DisableCookies         bool                   `cfg:"disable_cookies" default:"false"`
 	FollowRedirects        bool                   `cfg:"follow_redirects" default:"true"`
 	RequestTimeout         time.Duration          `cfg:"request_timeout" default:"30s"`
 	RetryCount             int                    `cfg:"retry_count" default:"5"`
@@ -92,7 +93,13 @@ func newHttpClient(config cfg.Config, logger log.Logger, name string) Client {
 	metricWriter := metric.NewWriter()
 	settings := UnmarshalClientSettings(config, name)
 
-	httpClient := resty.New()
+	var httpClient *resty.Client
+	if settings.DisableCookies {
+		httpClient = resty.NewWithClient(&http.Client{})
+	} else {
+		httpClient = resty.New()
+	}
+
 	if settings.FollowRedirects {
 		httpClient.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
 	} else {
