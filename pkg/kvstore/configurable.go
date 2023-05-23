@@ -18,6 +18,10 @@ const (
 	TypeRedis    = "redis"
 )
 
+type DdbSettings struct {
+	ClientName string `cfg:"client_name" default:"default"`
+}
+
 type ChainConfiguration struct {
 	Project             string                `cfg:"project"`
 	Family              string                `cfg:"family"`
@@ -25,6 +29,7 @@ type ChainConfiguration struct {
 	Application         string                `cfg:"application"`
 	Type                string                `cfg:"type" default:"chain" validate:"eq=chain"`
 	Elements            []string              `cfg:"elements" validate:"min=1"`
+	Ddb                 DdbSettings           `cfg:"ddb"`
 	Ttl                 time.Duration         `cfg:"ttl"`
 	BatchSize           int                   `cfg:"batch_size" default:"100" validate:"min=1"`
 	MissingCacheEnabled bool                  `cfg:"missing_cache_enabled" default:"false"`
@@ -80,6 +85,7 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
+		DdbSettings:    configuration.Ddb,
 		Name:           name,
 		Ttl:            configuration.Ttl,
 		BatchSize:      configuration.BatchSize,
