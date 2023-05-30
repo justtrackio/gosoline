@@ -213,6 +213,19 @@ func Map[S ~[]T1, T1, T2 any, F func(T1) T2](sl S, op F) []T2 {
 	return result
 }
 
+func MapChecked[T1, T2 any, F func(T1) (T2, error)](sl []T1, op F) ([]T2, error) {
+	result := make([]T2, len(sl))
+	for idx, item := range sl {
+		var err error
+		result[idx], err = op(item)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
+}
+
 func Reduce[S ~[]T1, T1, T2 any](sl S, op func(T2, T1, int) T2, init T2) T2 {
 	result := init
 
@@ -221,6 +234,15 @@ func Reduce[S ~[]T1, T1, T2 any](sl S, op func(T2, T1, int) T2, init T2) T2 {
 	}
 
 	return result
+}
+
+func MapToSlice[S ~map[K]V, K, V comparable, T any](m S, unkeyer func(K, V) T) []T {
+	out := make([]T, 0, len(m))
+	for k, v := range m {
+		out = append(out, unkeyer(k, v))
+	}
+
+	return out
 }
 
 func SliceToMap[S ~[]T, T, V any, K comparable](sl S, keyer func(T) (K, V)) map[K]V {
@@ -293,6 +315,57 @@ func Uniq[S ~[]T, T comparable](sl S) (out []T) {
 	}
 
 	return res
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+
+	return n
+}
+
+func IndexSlice[S ~[]T1, T1 any](sl S) []int {
+	result := make([]int, len(sl))
+
+	for i := range sl {
+		result[i] = i
+	}
+
+	return result
+}
+
+// Range returns a slice of integers from `from` to `to` (inclusive).
+func Range(from, to int) []int {
+	if from == to {
+		return []int{}
+	}
+
+	if from < to {
+		return rangeUp(from, to)
+	}
+
+	return rangeDown(from, to)
+}
+
+func rangeUp(from, to int) []int {
+	result := make([]int, to-from + 1)
+
+	for i := from; i <= to; i++ {
+		result[i-from] = i
+	}
+
+	return result
+}
+
+func rangeDown(from, to int) []int {
+	result := make([]int, from-to + 1)
+
+	for i := from; i >= to; i-- {
+		result[from-i] = i
+	}
+
+	return result
 }
 
 func equal[T any](expected T) func(actualValue T) bool {

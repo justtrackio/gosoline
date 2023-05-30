@@ -27,6 +27,31 @@ func NilIfEmpty[T comparable](in T) *T {
 	return &in
 }
 
+func Uint[IN, OUT constraints.Unsigned](in IN) OUT {
+	return OUT(in)
+}
+
+func UintPR[IN, OUT constraints.Unsigned](in IN) *OUT {
+	return Box(OUT(in))
+}
+
+func UintPL[IN, OUT constraints.Unsigned](in *IN) (out OUT) {
+	if in != nil {
+		return OUT(*in)
+	}
+
+	return 0
+}
+
+func UintP[IN, OUT constraints.Unsigned](in *IN) (out *OUT) {
+	if in != nil {
+		return Box[OUT](OUT(*in))
+	}
+
+	return nil
+}
+
+
 func Box[T Basic](v T) (out *T) {
 	return &v
 }

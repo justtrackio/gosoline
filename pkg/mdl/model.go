@@ -2,6 +2,7 @@ package mdl
 
 import (
 	"fmt"
+	"golang.org/x/exp/constraints"
 	"strings"
 )
 
@@ -81,9 +82,13 @@ func (i *Identifier) GetId() *uint {
 	return i.Id
 }
 
-func WithIdentifier(id *uint) *Identifier {
+func ToIdentifier[u constraints.Unsigned](i u) Identifier {
+	return *WithIdentifier(&i)
+}
+
+func WithIdentifier[IN constraints.Unsigned](id *IN) *Identifier {
 	return &Identifier{
-		Id: id,
+		Id: UintP[IN, uint](id),
 	}
 }
 
