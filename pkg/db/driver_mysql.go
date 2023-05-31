@@ -3,11 +3,10 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
+
+	"github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4/database"
-	"github.com/golang-migrate/migrate/v4/database/mysql"
-	"net/url"
-	"strconv"
+	migrateMysql "github.com/golang-migrate/migrate/v4/database/mysql"
 )
 
 const DriverMysql = "mysql"
@@ -23,25 +22,21 @@ func NewMysqlDriverFactory() DriverFactory {
 type mysqlDriverFactory struct{}
 
 func (m *mysqlDriverFactory) GetDSN(settings Settings) string {
-	dsn := url.URL{
-		User: url.UserPassword(settings.Uri.User, settings.Uri.Password),
-		Host: fmt.Sprintf("tcp(%s:%d)", settings.Uri.Host, settings.Uri.Port),
-		Path: settings.Uri.Database,
-	}
+	cfg := mysql.NewConfig()
+	cfg.User = settings.Uri.User
+	cfg.Passwd = settings.Uri.Password
+	cfg.Net = "tcp"
+	cfg.Addr = fmt.Sprintf("%s:%d", settings.Uri.Host, settings.Uri.Port)
+	cfg.DBName = settings.Uri.Database
+	cfg.MultiStatements = true
+	cfg.ParseTime = true
+	cfg.Collation = "utf8mb4_general_ci"
 
-	qry := dsn.Query()
-	qry.Set("multiStatements", "true")
-	qry.Set("parseTime", strconv.FormatBool(settings.ParseTime))
-	qry.Set("charset", "utf8mb4")
-	dsn.RawQuery = qry.Encode()
-
-	uri := dsn.String()
-
-	return uri[2:]
+	return cfg.FormatDSN()
 }
 
 func (m *mysqlDriverFactory) GetMigrationDriver(db *sql.DB, database string, migrationsTable string) (database.Driver, error) {
-	return mysql.WithInstance(db, &mysql.Config{
+	return migrateMysql.WithInstance(db, &migrateMysql.Config{
 		DatabaseName:    database,
 		MigrationsTable: migrationsTable,
 	})

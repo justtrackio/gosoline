@@ -147,6 +147,12 @@ func WithDbRepoChangeHistory(app *App) {
 	})
 }
 
+func WithDbRepoHttpServer(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithModuleFactory("db-repo-http-server", db_repo.NewHttpServer())
+	})
+}
+
 func WithApiServerShares(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		return kernelPkg.WithMiddlewareFactory(share.KernelMiddlewareShares, kernelPkg.PositionEnd)

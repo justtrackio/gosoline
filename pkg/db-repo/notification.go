@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	TransformerDefaultView  = "api"
 	metricNameNotifySuccess = "ModelEventNotifySuccess"
 	metricNameNotifyFailure = "ModelEventNotifyFailure"
 )
@@ -27,21 +28,23 @@ type (
 )
 
 type notifier struct {
-	logger  log.Logger
-	metric  metric.Writer
-	modelId mdl.ModelId
-	version int
+	logger      log.Logger
+	metric      metric.Writer
+	modelId     mdl.ModelId
+	version     int
+	transformer mdl.TransformerResolver
 }
 
-func newNotifier(logger log.Logger, modelId mdl.ModelId, version int) notifier {
+func newNotifier(logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) notifier {
 	defaults := getDefaultNotifierMetrics(modelId)
 	mtr := metric.NewWriter(defaults...)
 
 	return notifier{
-		logger:  logger,
-		metric:  mtr,
-		modelId: modelId,
-		version: version,
+		logger:      logger,
+		metric:      mtr,
+		modelId:     modelId,
+		version:     version,
+		transformer: transformer,
 	}
 }
 

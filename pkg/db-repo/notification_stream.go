@@ -13,23 +13,21 @@ import (
 
 type streamNotifier struct {
 	notifier
-	encoder     stream.MessageEncoder
-	output      stream.Output
-	transformer mdl.TransformerResolver
+	encoder stream.MessageEncoder
+	output  stream.Output
 }
 
 func NewStreamNotifier(logger log.Logger, output stream.Output, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *streamNotifier {
-	notifier := newNotifier(logger, modelId, version)
+	notifier := newNotifier(logger, modelId, version, transformer)
 
 	encoder := stream.NewMessageEncoder(&stream.MessageEncoderSettings{
 		Encoding: stream.EncodingJson,
 	})
 
 	return &streamNotifier{
-		notifier:    notifier,
-		encoder:     encoder,
-		output:      output,
-		transformer: transformer,
+		notifier: notifier,
+		encoder:  encoder,
+		output:   output,
 	}
 }
 

@@ -140,6 +140,13 @@ type HandlerWithStream interface {
 	Handle(ginContext *gin.Context, requestContext context.Context, request *Request) (error error)
 }
 
+type FuncHandler func(ctx context.Context, request *Request) (*Response, error)
+
+func (f *FuncHandler) Handle(ctx context.Context, request *Request) (response *Response, error error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func CreateHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 	return handleWithoutInput(handler, defaultErrorHandler)
 }

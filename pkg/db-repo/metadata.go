@@ -15,10 +15,11 @@ const (
 type NullMode int
 
 type Metadata struct {
-	ModelId    mdl.ModelId
-	TableName  string
-	PrimaryKey string
-	Mappings   FieldMappings
+	ModelId        mdl.ModelId
+	TableName      string
+	PrimaryKey     string
+	Mappings       FieldMappings
+	OutputResolver mdl.TransformerResolver
 }
 
 type FieldMappings map[string]FieldMapping

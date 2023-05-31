@@ -12,26 +12,23 @@ import (
 
 type publisherNotifier struct {
 	notifier
-	publisher   Publisher
-	transformer mdl.TransformerResolver
+	publisher Publisher
 }
 
 func NewPublisherNotifier(_ context.Context, config cfg.Config, publisher Publisher, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *publisherNotifier {
 	modelId.PadFromConfig(config)
-
-	notifier := newNotifier(logger, modelId, version)
+	notifier := newNotifier(logger, modelId, version, transformer)
 
 	return &publisherNotifier{
-		notifier:    notifier,
-		publisher:   publisher,
-		transformer: transformer,
+		notifier:  notifier,
+		publisher: publisher,
 	}
 }
 
 func (n *publisherNotifier) Send(ctx context.Context, notificationType string, value ModelBased) error {
 	logger := n.logger.WithContext(ctx)
 
-	out := n.transformer("api", n.version, value)
+	out := n.transformer(TransformerDefaultView, n.version, value)
 	err := n.publisher.Publish(ctx, notificationType, n.version, out)
 
 	if exec.IsRequestCanceled(err) {
