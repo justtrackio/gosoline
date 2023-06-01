@@ -45,3 +45,23 @@ func DifferenceMaps[K comparable, V1, V2 any, M1 ~map[K]V1, M2 ~map[K]V2](left M
 
 	return inLeft, inRight
 }
+
+func MapKeys[K1 comparable, K2 comparable, V any, M1 ~map[K1]V](m M1, f func(key K1) K2) map[K2]V {
+	r := make(map[K2]V, len(m))
+
+	for k, v := range m {
+		r[f(k)] = v
+	}
+
+	return r
+}
+
+func MapValues[K comparable, V1, V2 any, M1 ~map[K]V1](m M1, f func(value V1) V2) map[K]V2 {
+	r := make(map[K]V2, len(m))
+
+	for k, v := range m {
+		r[k] = f(v)
+	}
+
+	return r
+}
