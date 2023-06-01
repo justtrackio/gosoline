@@ -4,18 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 )
-
-type Obj map[string]any
 
 type Matcher interface {
 	isMatcher()
 }
 
-type Map map[string]Matcher
+type Obj map[string]Matcher
 
-func (m Map) isMatcher() {}
+func (m Obj) isMatcher() {}
 
 func EqualTo[T json.Marshaler](example T) Matcher {
 	return equalTo{
@@ -122,10 +121,81 @@ type timestamp struct {
 func (t timestamp) isMatcher() {}
 
 func (t timestamp) MarshalJSON() ([]byte, error) {
-	ts := Map{
+	ts := Obj{
 		"seconds": Int64(t.example.Unix()),
 		"nanos":   Int32(t.example.Nanosecond()),
 	}
 
 	return json.Marshal(ts)
+}
+
+type stringMatcher struct {
+	example string
+}
+
+func Str(example string) Matcher {
+	return stringMatcher{
+		example: example,
+	}
+}
+
+func (s stringMatcher) isMatcher() {}
+func (s stringMatcher) MarshalJSON() ([]byte, error) {
+	st := fmt.Sprintf(`"%s"`, s.example)
+
+	return []byte(st), nil
+}
+
+type array struct {
+	example []Matcher
+}
+
+func Arr(example ...Matcher) Matcher {
+	return array{
+		example: example,
+	}
+}
+
+func (a array) isMatcher() {}
+
+//func (a array) MarshalJSON() ([]byte, error) {
+//	examples := make([]string, len(a.example))
+//
+//	for i, e := range a.example {
+//		ex, err := json.Marshal(e)
+//		if err != nil {
+//			return nil, err
+//		}
+//
+//		examples[i] = string(ex)
+//	}
+//
+//	s := fmt.Sprintf(`"matching(array(%s))"`, join(examples, ", "))
+//
+//	return []byte(s), nil
+//}
+
+func EachValue(matcher Matcher) Matcher {
+	return eachValue{
+		matcher: matcher,
+	}
+}
+
+type eachValue struct {
+	matcher Matcher
+}
+
+func (e eachValue) isMatcher() {}
+
+func (e eachValue) MarshalJSON() ([]byte, error) {
+	ex, err := json.Marshal(e.matcher)
+	if err != nil {
+		return nil, err
+	}
+
+	trimmed := strings.Trim(string(ex), `"`)
+
+	s := fmt.Sprintf(`"eachValue(%s)"`, trimmed)
+
+	return []byte(s), nil
 }
