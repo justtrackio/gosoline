@@ -12,6 +12,7 @@ func TestGetAppIdFromConfig(t *testing.T) {
 	config := new(cfgMocks.Config)
 	config.On("GetString", "app_project").Return("prj")
 	config.On("GetString", "app_family").Return("fam")
+	config.On("GetString", "app_group").Return("grp")
 	config.On("GetString", "app_name").Return("name")
 	config.On("GetString", "env").Return("test")
 
@@ -21,6 +22,7 @@ func TestGetAppIdFromConfig(t *testing.T) {
 		Project:     "prj",
 		Environment: "test",
 		Family:      "fam",
+		Group:       "grp",
 		Application: "name",
 	}, appId)
 
@@ -31,6 +33,7 @@ func TestAppId_PadFromConfig(t *testing.T) {
 	config := new(cfgMocks.Config)
 	config.On("GetString", "app_project").Return("prj")
 	config.On("GetString", "app_family").Return("fam")
+	config.On("GetString", "app_group").Return("grp")
 	config.On("GetString", "app_name").Return("name")
 	config.On("GetString", "env").Return("test")
 
@@ -41,6 +44,7 @@ func TestAppId_PadFromConfig(t *testing.T) {
 		Project:     "prj",
 		Environment: "test",
 		Family:      "fam",
+		Group:       "grp",
 		Application: "name",
 	}, appId)
 

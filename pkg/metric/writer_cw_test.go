@@ -38,7 +38,7 @@ func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudwatchMoc
 	cwClient := new(cloudwatchMocks.Client)
 
 	cwClient.On("PutMetricData", context.Background(), &cloudwatch.PutMetricDataInput{
-		Namespace: aws.String("my/test/namespace/app"),
+		Namespace: aws.String("my/test/namespace/grp/app"),
 		MetricData: []types.MetricDatum{{
 			MetricName: aws.String("my-test-metric-name"),
 			Dimensions: []types.Dimension{
@@ -58,7 +58,13 @@ func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudwatchMoc
 			Project:     "my",
 			Environment: "test",
 			Family:      "namespace",
+			Group:       "grp",
 			Application: "app",
+		},
+		Cloudwatch: metric.Cloudwatch{
+			Naming: metric.NamingSettings{
+				Pattern: "{project}/{env}/{family}/{group}/{app}",
+			},
 		},
 		Enabled: true,
 	})

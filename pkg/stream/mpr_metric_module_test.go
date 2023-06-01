@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
-	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	cloudwatchMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch/mocks"
 	concMocks "github.com/justtrackio/gosoline/pkg/conc/mocks"
@@ -142,7 +141,7 @@ var mprMetricModuleTestCases = map[string]mprMetricModuleTestCase{
 
 			err := fmt.Errorf("unknown error")
 			s.mockGetMetricMessagesPerRunner(500, err)
-			s.logger.On("Warn", "can not get current messages per runner metric: defaulting to 0")
+			s.logger.On("Warn", "can not get current messages per runner metric: %s, defaulting to 0", "can not get metric: unknown error")
 
 			s.mockSuccessLogger(1000, 0, 2, 500)
 			s.mockMetricWriteMessagesPerRunner(500)
@@ -194,19 +193,14 @@ func (s *MprMetricModuleTestSuite) SetupTestCase() {
 	s.ticker = s.clock.NewTicker(time.Minute)
 
 	s.settings = &stream.MessagesPerRunnerMetricWriterSettings{
-		QueueNames:         []string{"queueName"},
-		UpdatePeriod:       time.Minute,
-		MaxIncreasePercent: 200,
-		MaxIncreasePeriod:  time.Minute * 5,
-		AppId: cfg.AppId{
-			Project:     "gosoline",
-			Environment: "test",
-			Family:      "stream",
-			Application: "mprMetric",
-		},
+		QueueNames:          []string{"queueName"},
+		CloudwatchNamespace: "gosoline/test/stream/grp/mprMetric",
+		UpdatePeriod:        time.Minute,
+		MaxIncreasePercent:  200,
+		MaxIncreasePeriod:   time.Minute * 5,
 		Ecs: stream.MessagesPerRunnerEcsSettings{
 			Cluster: "gosoline-test-stream",
-			Service: "mprMetric",
+			Service: "grp/mprMetric",
 		},
 		MemberId: "e7c6003c-66df-11eb-9bdf-af0dafba2813",
 	}
@@ -313,7 +307,7 @@ func (s *MprMetricModuleTestSuite) mockGetMetricMpr(metric string, stat types.St
 				Id: aws.String("m1"),
 				MetricStat: &types.MetricStat{
 					Metric: &types.Metric{
-						Namespace:  aws.String("gosoline/test/stream/mprMetric"),
+						Namespace:  aws.String("gosoline/test/stream/grp/mprMetric"),
 						MetricName: aws.String(metric),
 					},
 					Period: aws.Int32(60),
@@ -355,7 +349,7 @@ func (s *MprMetricModuleTestSuite) mockGetMetricEcs(metric string, stat types.St
 							},
 							{
 								Name:  aws.String("ServiceName"),
-								Value: aws.String("mprMetric"),
+								Value: aws.String("grp/mprMetric"),
 							},
 						},
 					},

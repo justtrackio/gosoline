@@ -31,6 +31,7 @@ func DynamoDbKvStoreFixtureWriterFactory[T any](modelId *mdl.ModelId) FixtureWri
 				Project:     modelId.Project,
 				Environment: modelId.Environment,
 				Family:      modelId.Family,
+				Group:       modelId.Group,
 				Application: modelId.Application,
 			},
 			Name: modelId.Name,

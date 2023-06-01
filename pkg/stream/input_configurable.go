@@ -111,6 +111,7 @@ func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger lo
 type redisInputConfiguration struct {
 	Project     string        `cfg:"project"`
 	Family      string        `cfg:"family"`
+	Group       string        `cfg:"group"`
 	Application string        `cfg:"application"`
 	ServerName  string        `cfg:"server_name" default:"default" validate:"min=1"`
 	Key         string        `cfg:"key" validate:"required,min=1"`
@@ -127,6 +128,7 @@ func newRedisInputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,
+			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
 		ServerName: configuration.ServerName,
@@ -139,6 +141,7 @@ func newRedisInputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 
 type SnsInputTargetConfiguration struct {
 	Family      string                 `cfg:"family"`
+	Group       string                 `cfg:"group" validate:"required"`
 	Application string                 `cfg:"application" validate:"required"`
 	TopicId     string                 `cfg:"topic_id" validate:"required"`
 	Attributes  map[string]interface{} `cfg:"attributes"`
@@ -149,6 +152,7 @@ type SnsInputConfiguration struct {
 	Type                string                        `cfg:"type" default:"sns"`
 	ConsumerId          string                        `cfg:"id" validate:"required"`
 	Family              string                        `cfg:"family" default:""`
+	Group               string                        `cfg:"group" default:""`
 	Application         string                        `cfg:"application" default:""`
 	Targets             []SnsInputTargetConfiguration `cfg:"targets" validate:"min=1"`
 	MaxNumberOfMessages int32                         `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
@@ -168,6 +172,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 	settings := &SnsInputSettings{
 		AppId: cfg.AppId{
 			Family:      configuration.Family,
+			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
 		QueueId:             configuration.ConsumerId,
@@ -185,6 +190,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 	for i, t := range configuration.Targets {
 		targetAppId := cfg.AppId{
 			Family:      t.Family,
+			Group:       t.Group,
 			Application: t.Application,
 		}
 
@@ -214,6 +220,7 @@ func newSnsInputFromConfig(ctx context.Context, config cfg.Config, logger log.Lo
 
 type sqsInputConfiguration struct {
 	Family              string            `cfg:"target_family"`
+	Group               string            `cfg:"target_group"`
 	Application         string            `cfg:"target_application"`
 	QueueId             string            `cfg:"target_queue_id" validate:"min=1"`
 	MaxNumberOfMessages int32             `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
@@ -235,6 +242,7 @@ func readSqsInputSettings(config cfg.Config, name string) *SqsInputSettings {
 	settings := &SqsInputSettings{
 		AppId: cfg.AppId{
 			Family:      configuration.Family,
+			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
 		QueueId:             configuration.QueueId,

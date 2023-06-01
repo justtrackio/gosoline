@@ -2,6 +2,7 @@ package stream
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -13,29 +14,43 @@ func init() {
 }
 
 func mprConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	enabled := config.GetBool(configKey+".enabled", false)
+	enabledKey := fmt.Sprint(configKey, ".enabled")
+	enabled := config.GetBool(enabledKey, false)
 	if !enabled {
 		return false, nil
 	}
 
 	settings := readMessagesPerRunnerMetricSettings(config)
 
-	key := ddb.GetLeaderElectionConfigKey(settings.LeaderElection)
-	typKey := ddb.GetLeaderElectionConfigKeyType(settings.LeaderElection)
+	electionKey := ddb.GetLeaderElectionConfigKey(settings.LeaderElection)
+	electionKeyType := ddb.GetLeaderElectionConfigKeyType(settings.LeaderElection)
 
-	if config.IsSet(key) {
+	if config.IsSet(electionKey) {
 		return true, nil
 	}
 
+	pattern := settings.DynamoDb.Naming.Pattern
+
+	values := map[string]string{
+		"modelId": "stream-metric-writer-leaders",
+	}
+
+	for key, val := range values {
+		templ := fmt.Sprintf("{%s}", key)
+		pattern = strings.ReplaceAll(pattern, templ, val)
+	}
+
 	leaderElectionSettings := &ddb.DdbLeaderElectionSettings{
-		TableName:     fmt.Sprintf("%s-%s-%s-stream-metric-writer-leaders", config.GetString("app_project"), config.GetString("env"), config.GetString("app_family")),
-		GroupId:       config.GetString("app_name"),
+		Naming: ddb.TableNamingSettings{
+			Pattern: pattern,
+		},
+		GroupId:       fmt.Sprintf("%s-%s", config.GetString("app_group"), config.GetString("app_name")),
 		LeaseDuration: time.Minute,
 	}
 
 	configOptions := []cfg.Option{
-		cfg.WithConfigSetting(typKey, ddb.LeaderElectionTypeDdb),
-		cfg.WithConfigSetting(key, leaderElectionSettings),
+		cfg.WithConfigSetting(electionKeyType, ddb.LeaderElectionTypeDdb),
+		cfg.WithConfigSetting(electionKey, leaderElectionSettings),
 	}
 
 	if err := config.Option(configOptions...); err != nil {

@@ -25,6 +25,7 @@ func (s *GetTopicNameTestSuite) SetupTest() {
 			Project:     "justtrack",
 			Environment: "test",
 			Family:      "gosoline",
+			Group:       "group",
 			Application: "producer",
 		},
 		ClientName: "default",
@@ -40,7 +41,7 @@ func (s *GetTopicNameTestSuite) setupConfig(settings map[string]interface{}) {
 func (s *GetTopicNameTestSuite) TestDefault() {
 	name, err := sns.GetTopicName(s.config, s.settings)
 	s.NoError(err)
-	s.Equal("justtrack-test-gosoline-producer-event", name)
+	s.Equal("justtrack-test-gosoline-group-event", name)
 }
 
 func (s *GetTopicNameTestSuite) TestDefaultWithPattern() {

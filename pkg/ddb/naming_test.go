@@ -26,6 +26,7 @@ func (s *TableNameTestSuite) SetupTest() {
 			Project:     "justtrack",
 			Environment: "test",
 			Family:      "gosoline",
+			Group:       "group",
 			Application: "producer",
 			Name:        "event",
 		},
@@ -40,7 +41,7 @@ func (s *TableNameTestSuite) setupConfig(settings map[string]interface{}) {
 
 func (s *TableNameTestSuite) TestDefault() {
 	name := ddb.TableName(s.config, s.settings)
-	s.Equal("justtrack-test-gosoline-producer-event", name)
+	s.Equal("justtrack-test-gosoline-group-event", name)
 }
 
 func (s *TableNameTestSuite) TestDefaultWithPattern() {

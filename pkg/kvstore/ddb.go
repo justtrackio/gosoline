@@ -40,10 +40,12 @@ func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Log
 	name := DdbBaseName(settings)
 
 	repository, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
+		ClientName: settings.DdbSettings.ClientName,
 		ModelId: mdl.ModelId{
 			Project:     settings.Project,
 			Environment: settings.Environment,
 			Family:      settings.Family,
+			Group:       settings.Group,
 			Application: settings.Application,
 			Name:        name,
 		},

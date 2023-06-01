@@ -42,6 +42,7 @@ type MetadataRepository interface {
 }
 
 // A Checkpoint describes our position in a shard of the stream.
+//
 //go:generate mockery --name Checkpoint
 type Checkpoint interface {
 	CheckpointWithoutRelease
@@ -51,6 +52,7 @@ type Checkpoint interface {
 
 // CheckpointWithoutRelease consists of the Checkpoint interface without the release method. We only use this internally
 // to ensure Release can only be called when we have taken ownership of the Checkpoint.
+//
 //go:generate mockery --name CheckpointWithoutRelease
 type CheckpointWithoutRelease interface {
 	GetSequenceNumber() SequenceNumber
@@ -109,8 +111,8 @@ type metadataRepository struct {
 func NewMetadataRepository(ctx context.Context, config cfg.Config, logger log.Logger, stream Stream, clientId ClientId, settings Settings) (MetadataRepository, error) {
 	ddbSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
-			Application: "kinsumer",
-			Name:        "metadata",
+			Group: "kinsumer",
+			Name:  "metadata",
 		},
 		Main: ddb.MainSettings{
 			Model:              &FullRecord{},

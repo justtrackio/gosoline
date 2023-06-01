@@ -460,3 +460,51 @@ func TestPartition(t *testing.T) {
 		})
 	}
 }
+
+// TestRange tests the Range function.
+func TestRange(t *testing.T) {
+	tests := map[string]struct {
+		From int
+		To   int
+		Out  []int
+	}{
+		"simple": {
+			From: 1,
+			To:   5,
+			Out:  []int{1, 2, 3, 4, 5},
+		},
+		"negative": {
+			From: -5,
+			To:   -1,
+			Out:  []int{-5, -4, -3, -2, -1},
+		},
+		"zero": {
+			From: 0,
+			To:   0,
+			Out:  []int{0},
+		},
+		"empty": {
+			From: 1,
+			To:   0,
+			Out:  []int{0, 1},
+		},
+		"reverse": {
+			From: 5,
+			To:   1,
+			Out:  []int{5, 4, 3, 2, 1},
+		},
+		"reverse negative": {
+			From: -1,
+			To:   -5,
+			Out:  []int{-1, -2, -3, -4, -5},
+		},
+	}
+
+	for name, test := range tests {
+		test := test
+		t.Run(name, func(t *testing.T) {
+			out := funk.Range(test.From, test.To)
+			assert.Equal(t, test.Out, out)
+		})
+	}
+}

@@ -77,6 +77,7 @@ func NewWriterWithInterfaces(
 		"Project":     modelId.Project,
 		"Environment": modelId.Environment,
 		"Family":      modelId.Family,
+		"Group":       modelId.Group,
 		"Application": modelId.Application,
 		"Model":       modelId.Name,
 	}
@@ -187,6 +188,7 @@ func (w *s3Writer) getBucketName() string {
 		Project:     w.modelId.Project,
 		Environment: w.modelId.Environment,
 		Family:      w.modelId.Family,
+		Group:       w.modelId.Group,
 		Application: w.modelId.Application,
 	})
 }
