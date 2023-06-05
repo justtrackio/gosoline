@@ -225,6 +225,10 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string,
 	}
 
 	if err = r.waitUntilHealthy(container, description.healthCheck); err != nil {
+		if description.containerConfig.UseExternalContainer {
+			return nil, fmt.Errorf("healthcheck failed on container for component %s. The container is configured to use an external container, is that container running? %w", skeleton.id(), err)
+		}
+
 		return nil, fmt.Errorf("healthcheck failed on container for component %s: %w", skeleton.id(), err)
 	}
 
