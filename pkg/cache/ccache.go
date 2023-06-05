@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/karlseguin/ccache"
 )
 
@@ -22,6 +23,7 @@ type cache[T any] struct {
 	base        *ccache.Cache
 	ttl         time.Duration
 	notFoundTtl time.Duration
+	lock        conc.KeyLock
 }
 
 type Option[T any] func(*cache[T])
@@ -39,6 +41,7 @@ func NewWithConfiguration[T any](config ccache.Configuration, ttl time.Duration,
 		base:        ccache.New(&config),
 		ttl:         ttl,
 		notFoundTtl: 0,
+		lock:        conc.NewKeyLock(),
 	}
 
 	for _, opt := range options {
@@ -129,6 +132,9 @@ func (c *cache[T]) ProvideWithError(key string, provider func() (T, error)) (T, 
 }
 
 func provide[T any](c *cache[T], key string, provider func() (T, bool)) (T, bool) {
+	unlock := c.lock.Lock(key)
+	defer unlock()
+
 	if result, ok := c.Get(key); ok {
 		return result, true
 	}
