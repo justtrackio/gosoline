@@ -2,36 +2,49 @@ package mdl
 
 import (
 	"reflect"
-	"time"
-
-	"golang.org/x/exp/constraints"
 )
 
-type Basic interface {
-	~bool | constraints.Float | constraints.Integer | time.Time | ~string
-}
-
-func EmptyIfNil[T comparable](v *T) (out T) {
-	if v != nil {
-		return *v
-	}
-
+func Empty[T any]() (out T) {
 	return
 }
 
+func EmptyIfNil[T any](v *T) T {
+	return Unbox(v, Empty[T]())
+}
+
 func NilIfEmpty[T comparable](in T) *T {
-	if *new(T) == in {
+	if Empty[T]() == in {
 		return nil
 	}
 
 	return &in
 }
 
-func Box[T Basic](v T) (out *T) {
+func IsNilOrEmpty[T comparable](in *T) bool {
+	return in == nil || *in == Empty[T]()
+}
+
+func Box[T any](v T) *T {
 	return &v
 }
 
-func IsNil(m interface{}) bool {
+func Unbox[T any](v *T, def T) T {
+	if v == nil {
+		return def
+	}
+
+	return *v
+}
+
+func UnboxWith[T any](v *T, mkDef func() T) T {
+	if v == nil {
+		return mkDef()
+	}
+
+	return *v
+}
+
+func IsNil(m any) bool {
 	if m == nil {
 		return true
 	}
