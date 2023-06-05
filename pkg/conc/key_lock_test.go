@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_keyLock_Lock(t *testing.T) {
@@ -48,4 +50,43 @@ func Test_keyLock_Lock(t *testing.T) {
 	unlockFuncA()
 
 	atomic.StoreInt32(&done, 1)
+}
+
+func TestKeyLockHighTraffic(t *testing.T) {
+	cfn := coffin.New()
+	count := 0
+
+	cfn.Go(func() error {
+		l := conc.NewKeyLock()
+
+		var inCCS int32
+
+		for i := 0; i < 100; i++ {
+			cfn.Go(func() error {
+				for j := 0; j < 1000; j++ {
+					unlock := l.Lock("a")
+
+					// in critical section!
+					success := atomic.CompareAndSwapInt32(&inCCS, 0, 1)
+					assert.True(t, success, "we should be the only one in the critical section!")
+
+					count++
+
+					success = atomic.CompareAndSwapInt32(&inCCS, 1, 0)
+					assert.True(t, success, "we should be the only one in the critical section!")
+
+					unlock()
+				}
+
+				return nil
+			})
+		}
+
+		return nil
+	})
+
+	err := cfn.Wait()
+	assert.NoError(t, err)
+
+	assert.Equal(t, 100*1000, count)
 }
