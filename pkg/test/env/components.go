@@ -104,7 +104,7 @@ func (c *baseComponent) failNow(failureMessage string, msgAndArgs ...interface{}
 type componentSkeleton struct {
 	typ                   string
 	name                  string
-	settings              interface{}
+	settings              ComponentBaseSettingsAware
 	containerDescriptions componentContainerDescriptions
 	containers            map[string]*container
 }
