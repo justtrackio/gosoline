@@ -9,6 +9,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
@@ -54,13 +55,24 @@ func (c *ChangeHistoryManager) addModels(models ...ModelBased) {
 }
 
 func (c *ChangeHistoryManager) RunMigrations() error {
-	for _, model := range c.models {
-		if err := c.RunMigration(model); err != nil {
-			return fmt.Errorf("can not run migration for model %T: %w", model, err)
-		}
-	}
+	cfn := coffin.New()
 
-	return nil
+	cfn.Go(func() error {
+		for _, model := range c.models {
+			model := model
+			cfn.Go(func() error {
+				if err := c.RunMigration(model); err != nil {
+					return fmt.Errorf("can not run migration for model %T: %w", model, err)
+				}
+
+				return nil
+			})
+		}
+
+		return nil
+	})
+
+	return cfn.Wait()
 }
 
 func (c *ChangeHistoryManager) RunMigration(model ModelBased) error {
