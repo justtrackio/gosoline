@@ -1,9 +1,7 @@
 env: test
-
 app_project: gosoline
-app_family: test
-app_group: grp
-app_name: guard-test
+app_family: integration-test
+app_name: go-migrate
 
 db:
   default:
@@ -13,13 +11,14 @@ db:
     uri:
       host: 127.0.0.1
       port: 3306
-      user: root
+      user: gosoline
       password: gosoline
-      database: myDbName
+      database: gosoline
     migrations:
       enabled: true
+      provider: golang-migrate
       table_prefixed: false
-      path: migrations
+      path: file://migrations/
 
 fixtures:
   enabled: true
