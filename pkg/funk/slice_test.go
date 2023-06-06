@@ -460,3 +460,100 @@ func TestPartition(t *testing.T) {
 		})
 	}
 }
+
+func TestUniq(t *testing.T) {
+	tests := map[string]struct {
+		In  []string
+		Out []string
+	}{
+		"nil": {
+			In:  nil,
+			Out: []string{},
+		},
+		"empty": {
+			In:  []string{},
+			Out: []string{},
+		},
+		"single": {
+			In:  []string{"a"},
+			Out: []string{"a"},
+		},
+		"repeated": {
+			In:  []string{"a", "a"},
+			Out: []string{"a"},
+		},
+		"pair": {
+			In:  []string{"a", "b"},
+			Out: []string{"a", "b"},
+		},
+		"repeatedPair": {
+			In:  []string{"a", "b", "a", "b"},
+			Out: []string{"a", "b"},
+		},
+	}
+
+	for name, data := range tests {
+		data := data
+		t.Run(name, func(t *testing.T) {
+			res := funk.Uniq(data.In)
+
+			assert.Equal(t, data.Out, res)
+		})
+	}
+}
+
+func TestUniqByType(t *testing.T) {
+	type A struct {
+		Value int
+	}
+	type B struct {
+		Value string
+	}
+
+	tests := map[string]struct {
+		In  []any
+		Out []any
+	}{
+		"nil": {
+			In:  nil,
+			Out: []any{},
+		},
+		"empty": {
+			In:  []any{},
+			Out: []any{},
+		},
+		"single": {
+			In:  []any{&A{}},
+			Out: []any{&A{}},
+		},
+		"repeated": {
+			In:  []any{&A{}, &A{}},
+			Out: []any{&A{}},
+		},
+		"pair": {
+			In:  []any{&A{}, &B{}},
+			Out: []any{&A{}, &B{}},
+		},
+		"repeatedPair": {
+			In:  []any{&A{}, &B{}, &A{}, &B{}},
+			Out: []any{&A{}, &B{}},
+		},
+		"repeatedPairWithValues": {
+			In:  []any{&A{Value: 1}, &B{Value: "1"}, &A{Value: 2}, &B{Value: "2"}},
+			Out: []any{&A{Value: 1}, &B{Value: "1"}},
+		},
+		"repeatedPairMixedPointers": {
+			In:  []any{&A{Value: 1}, &B{Value: "1"}, A{Value: 2}, B{Value: "2"}},
+			Out: []any{&A{Value: 1}, &B{Value: "1"}, A{Value: 2}, B{Value: "2"}},
+		},
+	}
+
+	for name, data := range tests {
+		data := data
+		t.Run(name, func(t *testing.T) {
+			res := funk.UniqByType(data.In)
+
+			assert.Equal(t, data.Out, res)
+		})
+	}
+}
