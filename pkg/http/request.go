@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/url"
 	"sync"
+	"time"
 
 	httpHeaders "github.com/go-http-utils/headers"
 	"github.com/go-resty/resty/v2"
@@ -200,6 +201,10 @@ func (r *Request) GetUrl() string {
 	}
 
 	return r.url.String()
+}
+
+func (r *Request) GetRequestTime() time.Time {
+	return r.restyRequest.Time
 }
 
 func (r *Request) GetError() error {
