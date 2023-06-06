@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
@@ -58,7 +59,7 @@ func (c *ChangeHistoryManager) RunMigrations() error {
 	cfn := coffin.New()
 
 	cfn.Go(func() error {
-		for _, model := range c.models {
+		for _, model := range funk.UniqByType(c.models) {
 			model := model
 			cfn.Go(func() error {
 				if err := c.RunMigration(model); err != nil {
