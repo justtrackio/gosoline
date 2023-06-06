@@ -1,3 +1,4 @@
+-- +goose Up
 create table items (
     id int auto_increment primary key,
     change_history_author_id int,

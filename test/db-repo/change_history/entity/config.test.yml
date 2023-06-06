@@ -9,7 +9,7 @@ db:
     driver: mysql
     migrations:
       enabled: true
-      path: file://./migrations
+      path: ./migrations
       table_prefixed: false
     parse_time: true
     uri:
