@@ -1,62 +1,57 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type MigrationSettings struct {
 	Application    string `cfg:"application" default:"{app_name}"`
+	Enabled        bool   `cfg:"enabled" default:"false"`
 	Path           string `cfg:"path"`
 	PrefixedTables bool   `cfg:"prefixed_tables" default:"false"`
-	Enabled        bool   `cfg:"enabled" default:"false"`
+	Provider       string `cfg:"provider" default:"golang-migrate"`
 }
 
-func runMigrations(logger log.Logger, settings Settings, db *sqlx.DB) error {
+type MigrationProvider func(logger log.Logger, settings Settings, db *sql.DB) error
+
+func AddMigrationProvider(name string, provider MigrationProvider) {
+	migrationProviders[name] = provider
+}
+
+var migrationProviders = map[string]MigrationProvider{
+	"golang-migrate": runMigrationGolangMigrate,
+	"goose":          runMigrationGoose,
+}
+
+func runMigrations(logger log.Logger, settings Settings, db *sql.DB) error {
+	logger = logger.WithChannel("db-migrations")
+
 	if !settings.Migrations.Enabled || settings.Migrations.Path == "" {
+		logger.Info("migrations not enabled")
 		return nil
 	}
 
-	driverFactory, err := GetDriverFactory(settings.Driver)
-	if err != nil {
-		return fmt.Errorf("could not get driver factory for %s: %w", settings.Driver, err)
+	if settings.Migrations.Path == "" {
+		logger.Info("migrations enabled but no path provided")
+		return nil
 	}
 
-	migrationsTable := "schema_migrations"
+	var ok bool
+	var err error
+	var provider MigrationProvider
 
-	if settings.Migrations.PrefixedTables {
-		application := strings.ToLower(settings.Migrations.Application)
-		application = strings.Replace(application, "-", "_", -1)
-		migrationsTable = fmt.Sprintf("%s_schema_migrations", application)
-	}
-
-	driver, err := driverFactory.GetMigrationDriver(db.DB, settings.Uri.Database, migrationsTable)
-	if err != nil {
-		return fmt.Errorf("could not get migration driver: %w", err)
-	}
-
-	m, err := migrate.NewWithDatabaseInstance(settings.Migrations.Path, settings.Driver, driver)
-	if err != nil {
-		return fmt.Errorf("could not initialize migrator for db migrations: %w", err)
+	if provider, ok = migrationProviders[settings.Migrations.Provider]; !ok {
+		return fmt.Errorf("there is no migration provider of type %s available", settings.Migrations.Provider)
 	}
 
 	start := time.Now()
 
-	err = m.Up()
-
-	if err == migrate.ErrNoChange {
-		logger.Info("no db migrations to run")
-		return nil
-	}
-
-	if err != nil {
-		return fmt.Errorf("could not run db migrations: %w", err)
+	if err = provider(logger, settings, db); err != nil {
+		return fmt.Errorf("running migration provider %s failed: %w", settings.Migrations.Provider, err)
 	}
 
 	logger.Info("migrated db in %s", time.Since(start))
