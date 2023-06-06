@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/justtrackio/gosoline/pkg/mdl"
-
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 )
@@ -279,7 +278,7 @@ func Tail[T any](sl []T) []T {
 	return sl[1:]
 }
 
-func Uniq[S ~[]T, T comparable](sl S) (out []T) {
+func Uniq[S ~[]T, T comparable](sl S) S {
 	set := make(Set[T], len(sl))
 	res := make(S, 0)
 
@@ -293,6 +292,21 @@ func Uniq[S ~[]T, T comparable](sl S) (out []T) {
 	}
 
 	return res
+}
+
+func UniqByType[S ~[]T, T any](sl S) S {
+	types := map[reflect.Type]bool{}
+
+	return Filter(sl, func(a T) bool {
+		t := reflect.TypeOf(a)
+		if types[t] {
+			return false
+		}
+
+		types[t] = true
+
+		return true
+	})
 }
 
 func equal[T any](expected T) func(actualValue T) bool {
