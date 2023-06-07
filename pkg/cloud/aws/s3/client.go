@@ -2,6 +2,7 @@ package s3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -11,13 +12,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
-
-func init() {
-	dx.RegisterLocalstackSetting("cloud.aws.s3.clients.default.usePathStyle", true)
-}
 
 //go:generate mockery --name Client
 type Client interface {
@@ -40,7 +36,7 @@ type Client interface {
 
 type ClientSettings struct {
 	gosoAws.ClientSettings
-	UsePathStyle bool `cfg:"usePathStyle" default:"false"`
+	UsePathStyle bool `cfg:"usePathStyle" default:"true"`
 }
 
 type ClientConfig struct {
@@ -71,7 +67,7 @@ func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 }
 
 func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (*s3.Client, error) {
-	clientCfg := getClientConfig(config, name, optFns...)
+	clientCfg := GetClientConfig(config, name, optFns...)
 
 	var err error
 	var awsConfig aws.Config
@@ -87,7 +83,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	return client, nil
 }
 
-func getClientConfig(config cfg.Config, name string, optFns ...ClientOption) *ClientConfig {
+func GetClientConfig(config cfg.Config, name string, optFns ...ClientOption) *ClientConfig {
 	clientCfg := &ClientConfig{}
 	gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "s3", name)
 
@@ -96,4 +92,17 @@ func getClientConfig(config cfg.Config, name string, optFns ...ClientOption) *Cl
 	}
 
 	return clientCfg
+}
+
+func ResolveEndpoint(config cfg.Config, name string, optFns ...ClientOption) (aws.Endpoint, error) {
+	clientCfg := GetClientConfig(config, name, optFns...)
+	gosoResolver := gosoAws.EndpointResolver(clientCfg.Settings.Endpoint)
+
+	endpoint, err := gosoResolver.ResolveEndpoint("s3", clientCfg.Settings.Region)
+
+	if nf := (&aws.EndpointNotFoundError{}); !errors.As(err, &nf) {
+		return endpoint, err
+	}
+
+	return s3.NewDefaultEndpointResolver().ResolveEndpoint(clientCfg.Settings.Region, s3.EndpointResolverOptions{})
 }

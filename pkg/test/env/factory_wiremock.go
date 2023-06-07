@@ -3,8 +3,8 @@ package env
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -80,7 +80,7 @@ func (f *wiremockFactory) Component(_ cfg.Config, logger log.Logger, containers 
 	}
 
 	s := settings.(*wiremockSettings)
-	jsonStr, err := ioutil.ReadFile(s.Mocks)
+	jsonStr, err := os.ReadFile(s.Mocks)
 	if err != nil {
 		filename := s.Mocks
 

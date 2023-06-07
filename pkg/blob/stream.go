@@ -3,7 +3,6 @@ package blob
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"sync/atomic"
 
 	"github.com/pkg/errors"
@@ -15,6 +14,7 @@ type ReadCloser interface {
 }
 
 // A reader that we can close and that can seek
+//
 //go:generate mockery --name ReadSeekerCloser
 type ReadSeekerCloser interface {
 	io.ReadSeeker
@@ -22,6 +22,7 @@ type ReadSeekerCloser interface {
 }
 
 // A stream is a source of bytes you can either get as a full []byte or stream as a reader.
+//
 //go:generate mockery --name Stream
 type Stream interface {
 	// Read all data and close the reader.
@@ -86,7 +87,7 @@ type readerStream struct {
 }
 
 func (r readerStream) ReadAll() ([]byte, error) {
-	b, err := ioutil.ReadAll(r.reader)
+	b, err := io.ReadAll(r.reader)
 
 	if err == nil {
 		err = r.reader.Close()
@@ -106,7 +107,7 @@ type noSeekerReaderStream struct {
 }
 
 func (r noSeekerReaderStream) ReadAll() ([]byte, error) {
-	b, err := ioutil.ReadAll(r.reader)
+	b, err := io.ReadAll(r.reader)
 
 	if err == nil {
 		err = r.reader.Close()

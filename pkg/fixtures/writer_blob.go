@@ -3,7 +3,6 @@ package fixtures
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -98,7 +97,7 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ *FixtureSet) error {
 
 	var batch blob.Batch
 	for _, file := range files {
-		body, err := ioutil.ReadFile(file)
+		body, err := os.ReadFile(file)
 		if err != nil {
 			return err
 		}

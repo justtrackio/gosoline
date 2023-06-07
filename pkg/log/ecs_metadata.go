@@ -1,7 +1,6 @@
 package log
 
 import (
-	"io/ioutil"
 	"os"
 	"sync"
 	"time"
@@ -36,7 +35,7 @@ func ReadEcsMetadata() (EcsMetadata, error) {
 	metadata := make(EcsMetadata)
 
 	for {
-		data, err := ioutil.ReadFile(path)
+		data, err := os.ReadFile(path)
 		if err != nil {
 			return nil, errors.Wrap(err, "can not read ecs metadata file")
 		}

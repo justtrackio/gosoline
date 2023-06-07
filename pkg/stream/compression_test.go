@@ -3,7 +3,7 @@ package stream_test
 import (
 	"bytes"
 	"compress/gzip"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/stream"
@@ -44,7 +44,7 @@ func TestCompressionGzip(t *testing.T) {
 
 		reader, err := gzip.NewReader(bytes.NewReader(compressed))
 		assert.NoError(t, err)
-		decompressedBody, err := ioutil.ReadAll(reader)
+		decompressedBody, err := io.ReadAll(reader)
 		assert.NoError(t, err)
 		assert.Equal(t, body, string(decompressedBody))
 

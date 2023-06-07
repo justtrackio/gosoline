@@ -2,7 +2,7 @@ package env
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
@@ -43,7 +43,7 @@ func (s *StreamInputComponent) PublishAndStop(body interface{}, attributes map[s
 }
 
 func (s *StreamInputComponent) PublishFromJsonFile(fileName string) {
-	bytes, err := ioutil.ReadFile(fileName)
+	bytes, err := os.ReadFile(fileName)
 	if err != nil {
 		s.failNow(err.Error(), "can not open json file to publish messages")
 	}

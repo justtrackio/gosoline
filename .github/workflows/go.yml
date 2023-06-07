@@ -23,10 +23,10 @@ jobs:
     name: go fmt
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.18
+      - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18"
+          go-version: "1.20"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -72,10 +72,10 @@ jobs:
     name: go build
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.18
+      - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18"
+          go-version: "1.20"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -90,10 +90,10 @@ jobs:
     name: static code analysis (go vet)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.18
+      - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18"
+          go-version: "1.20"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -108,10 +108,10 @@ jobs:
     name: static code analysis (golangci-lint)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.18
+      - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18"
+          go-version: "1.20"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -126,10 +126,10 @@ jobs:
     name: go test
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.18
+      - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18"
+          go-version: "1.20"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -144,10 +144,10 @@ jobs:
     name: go test (race)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.18
+      - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18"
+          go-version: "1.20"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -162,10 +162,10 @@ jobs:
     name: go test (integration)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.18
+      - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18"
+          go-version: "1.20"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -180,10 +180,10 @@ jobs:
     name: go test (integration, race)
     runs-on: ubuntu-20.04
     steps:
-      - name: Set up Go 1.18
+      - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18"
+          go-version: "1.20"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3

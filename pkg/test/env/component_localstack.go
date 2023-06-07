@@ -21,7 +21,7 @@ func (c *localstackComponent) CfgOptions() []cfg.Option {
 	options := []cfg.Option{
 		cfg.WithConfigMap(map[string]interface{}{
 			"cloud.aws": map[string]interface{}{
-				"credentials:": map[string]interface{}{
+				"credentials": map[string]interface{}{
 					"access_key_id":     DefaultAccessKeyID,
 					"secret_access_key": DefaultSecretAccessKey,
 					"session_token":     DefaultToken,
