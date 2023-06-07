@@ -11,6 +11,7 @@ var ErrAlreadyPoisoned = fmt.Errorf("lock was already poisoned")
 // A PoisonedLock is similar to a sync.Mutex, but once you Poison it, any attempt to Lock it will fail. Thus, you can
 // implement something which is available for some time and at some point no longer is available (because it was closed
 // or released and is not automatically reopened, etc.)
+//
 //go:generate mockery --name PoisonedLock
 type PoisonedLock interface {
 	// MustLock is like TryLock, but panics if an error is returned by TryLock

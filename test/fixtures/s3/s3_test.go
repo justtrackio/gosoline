@@ -5,7 +5,7 @@ package s3_test
 import (
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -46,7 +46,7 @@ func (s *S3TestSuite) TestS3() {
 	output, err := s3Client.GetObject(context.Background(), input)
 	s.NoError(err)
 
-	body, err := ioutil.ReadAll(output.Body)
+	body, err := io.ReadAll(output.Body)
 
 	s.NoError(err)
 	s.Equal(28092, len(body))
@@ -58,7 +58,7 @@ func (s *S3TestSuite) TestS3() {
 	output, err = s3Client.GetObject(context.Background(), input)
 	s.NoError(err)
 
-	body, err = ioutil.ReadAll(output.Body)
+	body, err = io.ReadAll(output.Body)
 
 	s.NoError(err)
 	s.Equal(28092, len(body))
@@ -70,7 +70,7 @@ func (s *S3TestSuite) TestS3() {
 	output, err = s3Client.GetObject(context.Background(), input)
 	s.NoError(err)
 
-	body, err = ioutil.ReadAll(output.Body)
+	body, err = io.ReadAll(output.Body)
 
 	s.NoError(err)
 	s.Equal(28092, len(body))
@@ -90,7 +90,7 @@ func (s *S3TestSuite) TestS3WithPurge() {
 	output, err := s3Client.GetObject(context.Background(), input)
 	s.NoError(err)
 
-	body, err := ioutil.ReadAll(output.Body)
+	body, err := io.ReadAll(output.Body)
 
 	s.NoError(err)
 	s.Equal(28092, len(body))
@@ -105,7 +105,7 @@ func (s *S3TestSuite) TestS3WithPurge() {
 	output, err = s3Client.GetObject(context.Background(), input)
 	s.NoError(err)
 
-	body, err = ioutil.ReadAll(output.Body)
+	body, err = io.ReadAll(output.Body)
 
 	s.NoError(err)
 	s.Equal(28092, len(body))

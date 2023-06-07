@@ -346,6 +346,10 @@ func (m *MapX) Merge(key string, source interface{}, options ...MapOption) {
 	m.Set(key, source, options...)
 }
 
+func (m *MapX) String() string {
+	return fmt.Sprint(m.Msi())
+}
+
 // getIndex returns the index, which is hold in s by two braches.
 // It also returns s withour the index part, e.g. name[1] will return (1, name).
 // If no index is found, -1 is returned

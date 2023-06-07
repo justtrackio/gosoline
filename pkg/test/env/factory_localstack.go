@@ -2,7 +2,7 @@ package env
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -125,7 +125,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 			return err
 		}
 
-		if body, err = ioutil.ReadAll(resp.Body); err != nil {
+		if body, err = io.ReadAll(resp.Body); err != nil {
 			return err
 		}
 

@@ -3,7 +3,6 @@ package stream_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"sync"
@@ -41,7 +40,7 @@ func TestOutputFile_ConcurrentWrite(t *testing.T) {
 
 	waitGroup.Wait()
 
-	result, err := ioutil.ReadFile(fileName)
+	result, err := os.ReadFile(fileName)
 	assert.NoError(t, err)
 	assert.False(t, regexp.MustCompile("\n{2}").Match(result), "unexpected double new line")
 }

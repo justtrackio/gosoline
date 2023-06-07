@@ -5,6 +5,7 @@ import (
 )
 
 // A Timer will send the current time to a channel after a delay elapsed.
+//
 //go:generate mockery --name Timer
 type Timer interface {
 	// Chan returns the channel to which the current time will be sent once the Timer expires.

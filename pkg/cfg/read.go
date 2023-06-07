@@ -1,7 +1,7 @@
 package cfg
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
 	"github.com/pkg/errors"
@@ -12,7 +12,7 @@ func readConfigFromFile(cfg *config, filePath string, fileType string) error {
 		return nil
 	}
 
-	bytes, err := ioutil.ReadFile(filePath)
+	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return errors.Wrapf(err, "can not read config file %s", filePath)
 	}

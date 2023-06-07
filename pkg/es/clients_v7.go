@@ -3,7 +3,6 @@ package es
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -148,7 +147,7 @@ func putTemplates(logger Logger, client *ClientV7, name string, paths []string) 
 	}
 
 	for _, file := range files {
-		buf, err := ioutil.ReadFile(file)
+		buf, err := os.ReadFile(file)
 		if err != nil {
 			return fmt.Errorf("could not read es-templates file %s: %w", file, err)
 		}
@@ -196,7 +195,7 @@ func getTemplateFiles(logger Logger, paths []string) ([]string, error) {
 			return nil, fmt.Errorf("the es-tempates path %s is neither a file or a directory: %w", p, err)
 		}
 
-		fileInfos, err := ioutil.ReadDir(p)
+		fileInfos, err := os.ReadDir(p)
 		if err != nil {
 			return nil, fmt.Errorf("could not scan the the es-tempates path %s: %w", p, err)
 		}

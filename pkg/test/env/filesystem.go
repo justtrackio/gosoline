@@ -2,9 +2,10 @@ package env
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"io/ioutil"
+	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type filesystem struct {
@@ -18,7 +19,7 @@ func newFilesystem(t *testing.T) *filesystem {
 }
 
 func (f *filesystem) ReadString(filename string) string {
-	bytes, err := ioutil.ReadFile(filename)
+	bytes, err := os.ReadFile(filename)
 
 	if err != nil {
 		err = fmt.Errorf("can not read test data from file %s: %w", filename, err)

@@ -3,7 +3,7 @@ package apiserver
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -295,7 +295,7 @@ func handleWithMultipleBindings(handler HandlerWithMultipleBindings, errHandler 
 
 func handleRaw(handler HandlerWithoutInput, errHandler ErrorHandler) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
-		body, err := ioutil.ReadAll(ginCtx.Request.Body)
+		body, err := io.ReadAll(ginCtx.Request.Body)
 		if err != nil {
 			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
 				Err:  err,

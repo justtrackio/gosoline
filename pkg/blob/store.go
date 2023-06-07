@@ -122,15 +122,7 @@ func CreateKey() string {
 
 func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Store, error) {
 	channels := ProvideBatchRunnerChannels(config)
-
-	var settings Settings
-	key := fmt.Sprintf("blob.%s", name)
-	config.UnmarshalKey(key, &settings)
-	settings.AppId.PadFromConfig(config)
-
-	if settings.Bucket == "" {
-		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
-	}
+	settings := getStoreSettings(config, name)
 
 	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {
@@ -149,7 +141,7 @@ func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name st
 	return store, nil
 }
 
-func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, client gosoS3.Client, settings Settings) Store {
+func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, client gosoS3.Client, settings *Settings) Store {
 	return &s3Store{
 		logger:   logger,
 		channels: channels,
@@ -357,4 +349,17 @@ func isBucketAlreadyExistsError(err error) bool {
 	}
 
 	return false
+}
+
+func getStoreSettings(config cfg.Config, name string) *Settings {
+	settings := &Settings{}
+	key := fmt.Sprintf("blob.%s", name)
+	config.UnmarshalKey(key, settings)
+	settings.AppId.PadFromConfig(config)
+
+	if settings.Bucket == "" {
+		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
+	}
+
+	return settings
 }
