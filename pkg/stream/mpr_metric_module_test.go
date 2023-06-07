@@ -13,7 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	cloudwatchMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch/mocks"
-	concMocks "github.com/justtrackio/gosoline/pkg/conc/mocks"
+	concDdbMocks "github.com/justtrackio/gosoline/pkg/conc/ddb/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -173,7 +173,7 @@ type MprMetricModuleTestSuite struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	logger         *logMocks.Logger
-	leaderElection *concMocks.LeaderElection
+	leaderElection *concDdbMocks.LeaderElection
 	cwClient       *cloudwatchMocks.Client
 	metricWriter   *metricMocks.Writer
 	clock          clock.Clock
@@ -187,7 +187,7 @@ func (s *MprMetricModuleTestSuite) SetupTestCase() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	s.logger = new(logMocks.Logger)
-	s.leaderElection = new(concMocks.LeaderElection)
+	s.leaderElection = new(concDdbMocks.LeaderElection)
 	s.cwClient = new(cloudwatchMocks.Client)
 	s.metricWriter = new(metricMocks.Writer)
 	s.clock = clock.NewFakeClock()

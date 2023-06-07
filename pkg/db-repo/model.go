@@ -8,6 +8,7 @@ import (
 
 const ColumnUpdatedAt = "updated_at"
 
+//go:generate mockery --name ModelBased
 type ModelBased interface {
 	mdl.Identifiable
 	TimeStampable
@@ -22,6 +23,7 @@ func (m *Model) GetId() *uint {
 	return m.Id
 }
 
+//go:generate mockery --name TimeStampable
 type TimeStampable interface {
 	SetUpdatedAt(updatedAt *time.Time)
 	SetCreatedAt(createdAt *time.Time)
