@@ -80,8 +80,11 @@ func New(definer Definer) kernel.ModuleFactory {
 
 		router := gin.New()
 		router.Use(metricMiddleware)
-		router.Use(RecoveryWithSentry(logger))
 		router.Use(LoggingMiddleware(logger))
+		if err = configureCompression(router, settings.Compression); err != nil {
+			return nil, fmt.Errorf("could not configure compression: %w", err)
+		}
+		router.Use(RecoveryWithSentry(logger))
 		router.Use(location.Default())
 
 		router.GET("/health", func(c *gin.Context) {
@@ -90,10 +93,6 @@ func New(definer Definer) kernel.ModuleFactory {
 
 		if definitions, err = definer(ctx, config, logger.WithChannel("handler")); err != nil {
 			return nil, fmt.Errorf("could not define routes: %w", err)
-		}
-
-		if err = configureCompression(router, settings.Compression); err != nil {
-			return nil, fmt.Errorf("could not configure compression: %w", err)
 		}
 
 		if metadata, err = appctx.ProvideMetadata(ctx); err != nil {
