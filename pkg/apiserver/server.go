@@ -71,6 +71,7 @@ func New(definer Definer) kernel.ModuleFactory {
 		var tracer tracing.Tracer
 		var definitions *Definitions
 		var metadata *appctx.Metadata
+		var compressionMiddlewares []gin.HandlerFunc
 
 		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
@@ -78,12 +79,14 @@ func New(definer Definer) kernel.ModuleFactory {
 
 		metricMiddleware, setupMetricMiddleware := NewMetricMiddleware()
 
+		if compressionMiddlewares, err = configureCompression(settings.Compression); err != nil {
+			return nil, fmt.Errorf("could not configure compression: %w", err)
+		}
+
 		router := gin.New()
 		router.Use(metricMiddleware)
 		router.Use(LoggingMiddleware(logger))
-		if err = configureCompression(router, settings.Compression); err != nil {
-			return nil, fmt.Errorf("could not configure compression: %w", err)
-		}
+		router.Use(compressionMiddlewares...)
 		router.Use(RecoveryWithSentry(logger))
 		router.Use(location.Default())
 

@@ -24,18 +24,20 @@ type CompressionExcludeSettings struct {
 	PathRegex []string `cfg:"path_regex"`
 }
 
-func configureCompression(router *gin.Engine, settings CompressionSettings) error {
+func configureCompression(settings CompressionSettings) ([]gin.HandlerFunc, error) {
+	middlewares := make([]gin.HandlerFunc, 0)
+
 	// we always record the request size
-	router.Use(recordRequestSize)
+	middlewares = append(middlewares, recordRequestSize)
 
 	level, err := parseLevel(settings.Level)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if level == gzip.NoCompression && !settings.Decompression {
 		// there is no use in adding a handler if we should neither compress nor decompress
-		return nil
+		return middlewares, nil
 	}
 
 	opts := make([]ginGzip.Option, 0, 4)
@@ -56,10 +58,10 @@ func configureCompression(router *gin.Engine, settings CompressionSettings) erro
 		opts = append(opts, ginGzip.WithExcludedPathsRegexs(settings.Exclude.PathRegex))
 	}
 
-	router.Use(ginGzip.Gzip(level, opts...))
-	router.Use(recordResponseSize)
+	middlewares = append(middlewares, ginGzip.Gzip(level, opts...))
+	middlewares = append(middlewares, recordResponseSize)
 
-	return nil
+	return middlewares, nil
 }
 
 func parseLevel(level string) (int, error) {
@@ -85,7 +87,6 @@ func parseLevel(level string) (int, error) {
 
 func decompressionFn(c *gin.Context) {
 	gzipReader, readUncompressedBytes, err := NewGZipBodyReader(c.Request.Body)
-
 	if err != nil {
 		// the body is not a proper gzip encoded body, so don't do anything
 		// the client most likely set the wrong content encoding on the message
