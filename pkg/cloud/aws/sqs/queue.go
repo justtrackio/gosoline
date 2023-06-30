@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	cloudAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -143,6 +144,8 @@ func (q *queue) Send(ctx context.Context, msg *Message) error {
 		MessageBody:            msg.Body,
 	}
 
+	ctx = cloudAws.WithResourceTarget(ctx, q.properties.Name)
+
 	_, err := q.client.SendMessage(ctx, input)
 
 	return err
@@ -173,6 +176,8 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 		Entries:  entries,
 	}
 
+	ctx = cloudAws.WithResourceTarget(ctx, q.properties.Name)
+
 	_, err := q.client.SendMessageBatch(ctx, input)
 
 	var errRequestTooLong *types.BatchRequestTooLong
@@ -202,6 +207,8 @@ func (q *queue) Receive(ctx context.Context, maxNumberOfMessages int32, waitTime
 		WaitTimeSeconds:       waitTime,
 	}
 
+	ctx = cloudAws.WithResourceTarget(ctx, q.properties.Name)
+
 	var err error
 	var out *sqs.ReceiveMessageOutput
 
@@ -222,6 +229,8 @@ func (q *queue) DeleteMessage(ctx context.Context, receiptHandle string) error {
 		ReceiptHandle: aws.String(receiptHandle),
 	}
 
+	ctx = cloudAws.WithResourceTarget(ctx, q.properties.Name)
+
 	_, err := q.client.DeleteMessage(ctx, input)
 
 	return err
@@ -240,6 +249,8 @@ func (q *queue) DeleteMessageBatch(ctx context.Context, receiptHandles []string)
 			ReceiptHandle: aws.String(receiptHandle),
 		}
 	}
+
+	ctx = cloudAws.WithResourceTarget(ctx, q.properties.Name)
 
 	multiError := new(multierror.Error)
 

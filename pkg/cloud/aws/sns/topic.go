@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	cloudAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -72,6 +73,8 @@ func (t *snsTopic) Publish(ctx context.Context, msg string, attributes ...map[st
 		MessageAttributes: inputAttributes,
 	}
 
+	ctx = cloudAws.WithResourceTarget(ctx, t.topicArn)
+
 	_, err = t.client.Publish(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
@@ -99,6 +102,8 @@ func (t *snsTopic) PublishBatch(ctx context.Context, messages []string, attribut
 	if err != nil {
 		return fmt.Errorf("could not compute entries: %w", err)
 	}
+
+	ctx = cloudAws.WithResourceTarget(ctx, t.topicArn)
 
 	for i := 0; i < len(messages); i += MaxBatchSize {
 		currentBatch := t.getSubSlice(i, entries)
@@ -168,6 +173,8 @@ func (t *snsTopic) computeEntries(messages []string, attributes []map[string]str
 }
 
 func (t *snsTopic) SubscribeSqs(ctx context.Context, queueArn string, attributes map[string]string) error {
+	ctx = cloudAws.WithResourceTarget(ctx, t.topicArn)
+
 	exists, err := t.subscriptionExists(ctx, queueArn, attributes)
 	if err != nil {
 		return fmt.Errorf("can not check if the subscription exists already: %w", err)

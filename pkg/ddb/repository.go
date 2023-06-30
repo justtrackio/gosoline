@@ -13,6 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/exec"
@@ -167,6 +168,8 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 		return nil, fmt.Errorf("can not build input for BatchGetItems operation on table %s: %w", r.metadata.TableName, err)
 	}
 
+	ctx = aws.WithResourceTarget(ctx, r.metadata.TableName)
+
 	for input.RequestItems != nil {
 		out, err := r.client.BatchGetItem(ctx, input)
 
@@ -280,6 +283,8 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 		return nil, fmt.Errorf("no slice of items provided for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
+	ctx = aws.WithResourceTarget(ctx, r.metadata.TableName)
+
 	// DynamoDB limits the number of operations per batch request to 25
 	chunks := chunk(items, 25)
 	result := newOperationResult(kindWrite)
@@ -370,6 +375,8 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 		return nil, fmt.Errorf("could not build input for DeleteItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
+	ctx = aws.WithResourceTarget(ctx, r.metadata.TableName)
+
 	out, err := r.client.DeleteItem(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
@@ -421,6 +428,8 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 	if err != nil {
 		return nil, fmt.Errorf("could not build GetItem expression for table %s: %w", r.metadata.TableName, err)
 	}
+
+	ctx = aws.WithResourceTarget(ctx, r.metadata.TableName)
 
 	out, err := r.client.GetItem(ctx, input)
 
@@ -483,6 +492,8 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 
 	result := newPutItemResult()
 
+	ctx = aws.WithResourceTarget(ctx, r.metadata.TableName)
+
 	out, err := r.client.PutItem(ctx, input)
 
 	if exec.IsRequestCanceled(err) {
@@ -530,6 +541,8 @@ func (r *repository) Query(ctx context.Context, qb QueryBuilder, items interface
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = aws.WithResourceTarget(ctx, r.metadata.TableName)
 
 	if callback, ok := isResultCallback(items); ok {
 		err = r.readCallback(ctx, op.targetType, callback, func() (*readResult, error) {
@@ -594,6 +607,8 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 		return nil, fmt.Errorf("could not build input for UpdateItem operation on table %s: %w", r.metadata.TableName, err)
 	}
 
+	ctx = aws.WithResourceTarget(ctx, r.metadata.TableName)
+
 	result := newUpdateItemResult()
 	out, err := r.client.UpdateItem(ctx, input)
 
@@ -644,6 +659,8 @@ func (r *repository) Scan(ctx context.Context, sb ScanBuilder, items interface{}
 	if err != nil {
 		return nil, fmt.Errorf("can not build scan operation: %w", err)
 	}
+
+	ctx = aws.WithResourceTarget(ctx, r.metadata.TableName)
 
 	if callback, ok := isResultCallback(items); ok {
 		err = r.readCallback(ctx, op.targetType, callback, func() (*readResult, error) {
