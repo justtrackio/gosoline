@@ -15,6 +15,7 @@ import (
 )
 
 type attemptInfoKey struct{}
+type resourceTargetKey struct{}
 
 type attemptInfo struct {
 	id       string
@@ -66,6 +67,12 @@ func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSetting
 		resource := &exec.ExecutableResource{
 			Type: awsMiddleware.GetServiceID(ctx),
 			Name: awsMiddleware.GetOperationName(ctx),
+		}
+
+		if valueI := ctx.Value(resourceTargetKey{}); valueI != nil {
+			if value, ok := valueI.(string); ok {
+				resource.Name += " on " + value
+			}
 		}
 
 		attempt := &attemptInfo{
@@ -147,4 +154,8 @@ func AttemptLoggerRetryMiddleware(logger log.Logger) smithyMiddleware.FinalizeMi
 
 		return output, metadata, attempt.lastErr
 	})
+}
+
+func WithResourceTarget(ctx context.Context, target string) context.Context {
+	return context.WithValue(ctx, resourceTargetKey{}, target)
 }
