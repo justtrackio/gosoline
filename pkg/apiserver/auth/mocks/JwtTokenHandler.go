@@ -14,6 +14,14 @@ type JwtTokenHandler struct {
 	mock.Mock
 }
 
+type JwtTokenHandler_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *JwtTokenHandler) EXPECT() *JwtTokenHandler_Expecter {
+	return &JwtTokenHandler_Expecter{mock: &_m.Mock}
+}
+
 // Sign provides a mock function with given fields: user
 func (_m *JwtTokenHandler) Sign(user auth.SignUserInput) (*string, error) {
 	ret := _m.Called(user)
@@ -38,6 +46,34 @@ func (_m *JwtTokenHandler) Sign(user auth.SignUserInput) (*string, error) {
 	}
 
 	return r0, r1
+}
+
+// JwtTokenHandler_Sign_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Sign'
+type JwtTokenHandler_Sign_Call struct {
+	*mock.Call
+}
+
+// Sign is a helper method to define mock.On call
+//   - user auth.SignUserInput
+func (_e *JwtTokenHandler_Expecter) Sign(user interface{}) *JwtTokenHandler_Sign_Call {
+	return &JwtTokenHandler_Sign_Call{Call: _e.mock.On("Sign", user)}
+}
+
+func (_c *JwtTokenHandler_Sign_Call) Run(run func(user auth.SignUserInput)) *JwtTokenHandler_Sign_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(auth.SignUserInput))
+	})
+	return _c
+}
+
+func (_c *JwtTokenHandler_Sign_Call) Return(_a0 *string, _a1 error) *JwtTokenHandler_Sign_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *JwtTokenHandler_Sign_Call) RunAndReturn(run func(auth.SignUserInput) (*string, error)) *JwtTokenHandler_Sign_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Valid provides a mock function with given fields: jwtToken
@@ -71,6 +107,34 @@ func (_m *JwtTokenHandler) Valid(jwtToken string) (bool, *jwt.Token, error) {
 	}
 
 	return r0, r1, r2
+}
+
+// JwtTokenHandler_Valid_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Valid'
+type JwtTokenHandler_Valid_Call struct {
+	*mock.Call
+}
+
+// Valid is a helper method to define mock.On call
+//   - jwtToken string
+func (_e *JwtTokenHandler_Expecter) Valid(jwtToken interface{}) *JwtTokenHandler_Valid_Call {
+	return &JwtTokenHandler_Valid_Call{Call: _e.mock.On("Valid", jwtToken)}
+}
+
+func (_c *JwtTokenHandler_Valid_Call) Run(run func(jwtToken string)) *JwtTokenHandler_Valid_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *JwtTokenHandler_Valid_Call) Return(_a0 bool, _a1 *jwt.Token, _a2 error) *JwtTokenHandler_Valid_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *JwtTokenHandler_Valid_Call) RunAndReturn(run func(string) (bool, *jwt.Token, error)) *JwtTokenHandler_Valid_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewJwtTokenHandler interface {

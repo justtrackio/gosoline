@@ -16,6 +16,14 @@ type Manager struct {
 	mock.Mock
 }
 
+type Manager_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Manager) EXPECT() *Manager_Expecter {
+	return &Manager_Expecter{mock: &_m.Mock}
+}
+
 // Monitor provides a mock function with given fields: key, f
 func (_m *Manager) Monitor(key string, f func() error) func() error {
 	ret := _m.Called(key, f)
@@ -30,6 +38,35 @@ func (_m *Manager) Monitor(key string, f func() error) func() error {
 	}
 
 	return r0
+}
+
+// Manager_Monitor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Monitor'
+type Manager_Monitor_Call struct {
+	*mock.Call
+}
+
+// Monitor is a helper method to define mock.On call
+//   - key string
+//   - f func() error
+func (_e *Manager_Expecter) Monitor(key interface{}, f interface{}) *Manager_Monitor_Call {
+	return &Manager_Monitor_Call{Call: _e.mock.On("Monitor", key, f)}
+}
+
+func (_c *Manager_Monitor_Call) Run(run func(key string, f func() error)) *Manager_Monitor_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(func() error))
+	})
+	return _c
+}
+
+func (_c *Manager_Monitor_Call) Return(_a0 func() error) *Manager_Monitor_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Manager_Monitor_Call) RunAndReturn(run func(string, func() error) func() error) *Manager_Monitor_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // MonitorWithContext provides a mock function with given fields: key, f
@@ -48,9 +85,66 @@ func (_m *Manager) MonitorWithContext(key string, f func(context.Context) error)
 	return r0
 }
 
+// Manager_MonitorWithContext_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MonitorWithContext'
+type Manager_MonitorWithContext_Call struct {
+	*mock.Call
+}
+
+// MonitorWithContext is a helper method to define mock.On call
+//   - key string
+//   - f func(context.Context) error
+func (_e *Manager_Expecter) MonitorWithContext(key interface{}, f interface{}) *Manager_MonitorWithContext_Call {
+	return &Manager_MonitorWithContext_Call{Call: _e.mock.On("MonitorWithContext", key, f)}
+}
+
+func (_c *Manager_MonitorWithContext_Call) Run(run func(key string, f func(context.Context) error)) *Manager_MonitorWithContext_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(func(context.Context) error))
+	})
+	return _c
+}
+
+func (_c *Manager_MonitorWithContext_Call) Return(_a0 func(context.Context) error) *Manager_MonitorWithContext_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Manager_MonitorWithContext_Call) RunAndReturn(run func(string, func(context.Context) error) func(context.Context) error) *Manager_MonitorWithContext_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PrintReport provides a mock function with given fields: logger
 func (_m *Manager) PrintReport(logger log.Logger) {
 	_m.Called(logger)
+}
+
+// Manager_PrintReport_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PrintReport'
+type Manager_PrintReport_Call struct {
+	*mock.Call
+}
+
+// PrintReport is a helper method to define mock.On call
+//   - logger log.Logger
+func (_e *Manager_Expecter) PrintReport(logger interface{}) *Manager_PrintReport_Call {
+	return &Manager_PrintReport_Call{Call: _e.mock.On("PrintReport", logger)}
+}
+
+func (_c *Manager_PrintReport_Call) Run(run func(logger log.Logger)) *Manager_PrintReport_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(log.Logger))
+	})
+	return _c
+}
+
+func (_c *Manager_PrintReport_Call) Return() *Manager_PrintReport_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Manager_PrintReport_Call) RunAndReturn(run func(log.Logger)) *Manager_PrintReport_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // StartWork provides a mock function with given fields: key, steps
@@ -67,6 +161,35 @@ func (_m *Manager) StartWork(key string, steps int) status.WorkItem {
 	}
 
 	return r0
+}
+
+// Manager_StartWork_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartWork'
+type Manager_StartWork_Call struct {
+	*mock.Call
+}
+
+// StartWork is a helper method to define mock.On call
+//   - key string
+//   - steps int
+func (_e *Manager_Expecter) StartWork(key interface{}, steps interface{}) *Manager_StartWork_Call {
+	return &Manager_StartWork_Call{Call: _e.mock.On("StartWork", key, steps)}
+}
+
+func (_c *Manager_StartWork_Call) Run(run func(key string, steps int)) *Manager_StartWork_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *Manager_StartWork_Call) Return(_a0 status.WorkItem) *Manager_StartWork_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Manager_StartWork_Call) RunAndReturn(run func(string, int) status.WorkItem) *Manager_StartWork_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewManager interface {

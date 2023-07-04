@@ -14,6 +14,14 @@ type OffsetManager struct {
 	mock.Mock
 }
 
+type OffsetManager_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *OffsetManager) EXPECT() *OffsetManager_Expecter {
+	return &OffsetManager_Expecter{mock: &_m.Mock}
+}
+
 // Batch provides a mock function with given fields: ctx
 func (_m *OffsetManager) Batch(ctx context.Context) []kafka.Message {
 	ret := _m.Called(ctx)
@@ -28,6 +36,34 @@ func (_m *OffsetManager) Batch(ctx context.Context) []kafka.Message {
 	}
 
 	return r0
+}
+
+// OffsetManager_Batch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Batch'
+type OffsetManager_Batch_Call struct {
+	*mock.Call
+}
+
+// Batch is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *OffsetManager_Expecter) Batch(ctx interface{}) *OffsetManager_Batch_Call {
+	return &OffsetManager_Batch_Call{Call: _e.mock.On("Batch", ctx)}
+}
+
+func (_c *OffsetManager_Batch_Call) Run(run func(ctx context.Context)) *OffsetManager_Batch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *OffsetManager_Batch_Call) Return(_a0 []kafka.Message) *OffsetManager_Batch_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *OffsetManager_Batch_Call) RunAndReturn(run func(context.Context) []kafka.Message) *OffsetManager_Batch_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Commit provides a mock function with given fields: ctx, msgs
@@ -51,6 +87,42 @@ func (_m *OffsetManager) Commit(ctx context.Context, msgs ...kafka.Message) erro
 	return r0
 }
 
+// OffsetManager_Commit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Commit'
+type OffsetManager_Commit_Call struct {
+	*mock.Call
+}
+
+// Commit is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msgs ...kafka.Message
+func (_e *OffsetManager_Expecter) Commit(ctx interface{}, msgs ...interface{}) *OffsetManager_Commit_Call {
+	return &OffsetManager_Commit_Call{Call: _e.mock.On("Commit",
+		append([]interface{}{ctx}, msgs...)...)}
+}
+
+func (_c *OffsetManager_Commit_Call) Run(run func(ctx context.Context, msgs ...kafka.Message)) *OffsetManager_Commit_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]kafka.Message, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(kafka.Message)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *OffsetManager_Commit_Call) Return(_a0 error) *OffsetManager_Commit_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *OffsetManager_Commit_Call) RunAndReturn(run func(context.Context, ...kafka.Message) error) *OffsetManager_Commit_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Flush provides a mock function with given fields:
 func (_m *OffsetManager) Flush() error {
 	ret := _m.Called()
@@ -65,6 +137,33 @@ func (_m *OffsetManager) Flush() error {
 	return r0
 }
 
+// OffsetManager_Flush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Flush'
+type OffsetManager_Flush_Call struct {
+	*mock.Call
+}
+
+// Flush is a helper method to define mock.On call
+func (_e *OffsetManager_Expecter) Flush() *OffsetManager_Flush_Call {
+	return &OffsetManager_Flush_Call{Call: _e.mock.On("Flush")}
+}
+
+func (_c *OffsetManager_Flush_Call) Run(run func()) *OffsetManager_Flush_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *OffsetManager_Flush_Call) Return(_a0 error) *OffsetManager_Flush_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *OffsetManager_Flush_Call) RunAndReturn(run func() error) *OffsetManager_Flush_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Start provides a mock function with given fields: ctx
 func (_m *OffsetManager) Start(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -77,6 +176,34 @@ func (_m *OffsetManager) Start(ctx context.Context) error {
 	}
 
 	return r0
+}
+
+// OffsetManager_Start_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Start'
+type OffsetManager_Start_Call struct {
+	*mock.Call
+}
+
+// Start is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *OffsetManager_Expecter) Start(ctx interface{}) *OffsetManager_Start_Call {
+	return &OffsetManager_Start_Call{Call: _e.mock.On("Start", ctx)}
+}
+
+func (_c *OffsetManager_Start_Call) Run(run func(ctx context.Context)) *OffsetManager_Start_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *OffsetManager_Start_Call) Return(_a0 error) *OffsetManager_Start_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *OffsetManager_Start_Call) RunAndReturn(run func(context.Context) error) *OffsetManager_Start_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewOffsetManager interface {

@@ -14,6 +14,14 @@ type GetItemBuilder struct {
 	mock.Mock
 }
 
+type GetItemBuilder_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *GetItemBuilder) EXPECT() *GetItemBuilder_Expecter {
+	return &GetItemBuilder_Expecter{mock: &_m.Mock}
+}
+
 // Build provides a mock function with given fields: result
 func (_m *GetItemBuilder) Build(result interface{}) (*dynamodb.GetItemInput, error) {
 	ret := _m.Called(result)
@@ -40,6 +48,34 @@ func (_m *GetItemBuilder) Build(result interface{}) (*dynamodb.GetItemInput, err
 	return r0, r1
 }
 
+// GetItemBuilder_Build_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Build'
+type GetItemBuilder_Build_Call struct {
+	*mock.Call
+}
+
+// Build is a helper method to define mock.On call
+//   - result interface{}
+func (_e *GetItemBuilder_Expecter) Build(result interface{}) *GetItemBuilder_Build_Call {
+	return &GetItemBuilder_Build_Call{Call: _e.mock.On("Build", result)}
+}
+
+func (_c *GetItemBuilder_Build_Call) Run(run func(result interface{})) *GetItemBuilder_Build_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *GetItemBuilder_Build_Call) Return(_a0 *dynamodb.GetItemInput, _a1 error) *GetItemBuilder_Build_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *GetItemBuilder_Build_Call) RunAndReturn(run func(interface{}) (*dynamodb.GetItemInput, error)) *GetItemBuilder_Build_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DisableTtlFilter provides a mock function with given fields:
 func (_m *GetItemBuilder) DisableTtlFilter() ddb.GetItemBuilder {
 	ret := _m.Called()
@@ -54,6 +90,33 @@ func (_m *GetItemBuilder) DisableTtlFilter() ddb.GetItemBuilder {
 	}
 
 	return r0
+}
+
+// GetItemBuilder_DisableTtlFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DisableTtlFilter'
+type GetItemBuilder_DisableTtlFilter_Call struct {
+	*mock.Call
+}
+
+// DisableTtlFilter is a helper method to define mock.On call
+func (_e *GetItemBuilder_Expecter) DisableTtlFilter() *GetItemBuilder_DisableTtlFilter_Call {
+	return &GetItemBuilder_DisableTtlFilter_Call{Call: _e.mock.On("DisableTtlFilter")}
+}
+
+func (_c *GetItemBuilder_DisableTtlFilter_Call) Run(run func()) *GetItemBuilder_DisableTtlFilter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *GetItemBuilder_DisableTtlFilter_Call) Return(_a0 ddb.GetItemBuilder) *GetItemBuilder_DisableTtlFilter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GetItemBuilder_DisableTtlFilter_Call) RunAndReturn(run func() ddb.GetItemBuilder) *GetItemBuilder_DisableTtlFilter_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // WithConsistentRead provides a mock function with given fields: consistentRead
@@ -72,6 +135,34 @@ func (_m *GetItemBuilder) WithConsistentRead(consistentRead bool) ddb.GetItemBui
 	return r0
 }
 
+// GetItemBuilder_WithConsistentRead_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithConsistentRead'
+type GetItemBuilder_WithConsistentRead_Call struct {
+	*mock.Call
+}
+
+// WithConsistentRead is a helper method to define mock.On call
+//   - consistentRead bool
+func (_e *GetItemBuilder_Expecter) WithConsistentRead(consistentRead interface{}) *GetItemBuilder_WithConsistentRead_Call {
+	return &GetItemBuilder_WithConsistentRead_Call{Call: _e.mock.On("WithConsistentRead", consistentRead)}
+}
+
+func (_c *GetItemBuilder_WithConsistentRead_Call) Run(run func(consistentRead bool)) *GetItemBuilder_WithConsistentRead_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(bool))
+	})
+	return _c
+}
+
+func (_c *GetItemBuilder_WithConsistentRead_Call) Return(_a0 ddb.GetItemBuilder) *GetItemBuilder_WithConsistentRead_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GetItemBuilder_WithConsistentRead_Call) RunAndReturn(run func(bool) ddb.GetItemBuilder) *GetItemBuilder_WithConsistentRead_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithHash provides a mock function with given fields: hashValue
 func (_m *GetItemBuilder) WithHash(hashValue interface{}) ddb.GetItemBuilder {
 	ret := _m.Called(hashValue)
@@ -86,6 +177,34 @@ func (_m *GetItemBuilder) WithHash(hashValue interface{}) ddb.GetItemBuilder {
 	}
 
 	return r0
+}
+
+// GetItemBuilder_WithHash_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithHash'
+type GetItemBuilder_WithHash_Call struct {
+	*mock.Call
+}
+
+// WithHash is a helper method to define mock.On call
+//   - hashValue interface{}
+func (_e *GetItemBuilder_Expecter) WithHash(hashValue interface{}) *GetItemBuilder_WithHash_Call {
+	return &GetItemBuilder_WithHash_Call{Call: _e.mock.On("WithHash", hashValue)}
+}
+
+func (_c *GetItemBuilder_WithHash_Call) Run(run func(hashValue interface{})) *GetItemBuilder_WithHash_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *GetItemBuilder_WithHash_Call) Return(_a0 ddb.GetItemBuilder) *GetItemBuilder_WithHash_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GetItemBuilder_WithHash_Call) RunAndReturn(run func(interface{}) ddb.GetItemBuilder) *GetItemBuilder_WithHash_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // WithKeys provides a mock function with given fields: keys
@@ -106,6 +225,41 @@ func (_m *GetItemBuilder) WithKeys(keys ...interface{}) ddb.GetItemBuilder {
 	return r0
 }
 
+// GetItemBuilder_WithKeys_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithKeys'
+type GetItemBuilder_WithKeys_Call struct {
+	*mock.Call
+}
+
+// WithKeys is a helper method to define mock.On call
+//   - keys ...interface{}
+func (_e *GetItemBuilder_Expecter) WithKeys(keys ...interface{}) *GetItemBuilder_WithKeys_Call {
+	return &GetItemBuilder_WithKeys_Call{Call: _e.mock.On("WithKeys",
+		append([]interface{}{}, keys...)...)}
+}
+
+func (_c *GetItemBuilder_WithKeys_Call) Run(run func(keys ...interface{})) *GetItemBuilder_WithKeys_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GetItemBuilder_WithKeys_Call) Return(_a0 ddb.GetItemBuilder) *GetItemBuilder_WithKeys_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GetItemBuilder_WithKeys_Call) RunAndReturn(run func(...interface{}) ddb.GetItemBuilder) *GetItemBuilder_WithKeys_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithProjection provides a mock function with given fields: rangeValue
 func (_m *GetItemBuilder) WithProjection(rangeValue interface{}) ddb.GetItemBuilder {
 	ret := _m.Called(rangeValue)
@@ -122,6 +276,34 @@ func (_m *GetItemBuilder) WithProjection(rangeValue interface{}) ddb.GetItemBuil
 	return r0
 }
 
+// GetItemBuilder_WithProjection_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithProjection'
+type GetItemBuilder_WithProjection_Call struct {
+	*mock.Call
+}
+
+// WithProjection is a helper method to define mock.On call
+//   - rangeValue interface{}
+func (_e *GetItemBuilder_Expecter) WithProjection(rangeValue interface{}) *GetItemBuilder_WithProjection_Call {
+	return &GetItemBuilder_WithProjection_Call{Call: _e.mock.On("WithProjection", rangeValue)}
+}
+
+func (_c *GetItemBuilder_WithProjection_Call) Run(run func(rangeValue interface{})) *GetItemBuilder_WithProjection_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *GetItemBuilder_WithProjection_Call) Return(_a0 ddb.GetItemBuilder) *GetItemBuilder_WithProjection_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GetItemBuilder_WithProjection_Call) RunAndReturn(run func(interface{}) ddb.GetItemBuilder) *GetItemBuilder_WithProjection_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithRange provides a mock function with given fields: rangeValue
 func (_m *GetItemBuilder) WithRange(rangeValue interface{}) ddb.GetItemBuilder {
 	ret := _m.Called(rangeValue)
@@ -136,6 +318,34 @@ func (_m *GetItemBuilder) WithRange(rangeValue interface{}) ddb.GetItemBuilder {
 	}
 
 	return r0
+}
+
+// GetItemBuilder_WithRange_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithRange'
+type GetItemBuilder_WithRange_Call struct {
+	*mock.Call
+}
+
+// WithRange is a helper method to define mock.On call
+//   - rangeValue interface{}
+func (_e *GetItemBuilder_Expecter) WithRange(rangeValue interface{}) *GetItemBuilder_WithRange_Call {
+	return &GetItemBuilder_WithRange_Call{Call: _e.mock.On("WithRange", rangeValue)}
+}
+
+func (_c *GetItemBuilder_WithRange_Call) Run(run func(rangeValue interface{})) *GetItemBuilder_WithRange_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *GetItemBuilder_WithRange_Call) Return(_a0 ddb.GetItemBuilder) *GetItemBuilder_WithRange_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GetItemBuilder_WithRange_Call) RunAndReturn(run func(interface{}) ddb.GetItemBuilder) *GetItemBuilder_WithRange_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewGetItemBuilder interface {

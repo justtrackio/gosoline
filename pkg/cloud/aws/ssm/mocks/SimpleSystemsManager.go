@@ -14,6 +14,14 @@ type SimpleSystemsManager struct {
 	mock.Mock
 }
 
+type SimpleSystemsManager_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *SimpleSystemsManager) EXPECT() *SimpleSystemsManager_Expecter {
+	return &SimpleSystemsManager_Expecter{mock: &_m.Mock}
+}
+
 // GetParameter provides a mock function with given fields: ctx, path
 func (_m *SimpleSystemsManager) GetParameter(ctx context.Context, path string) (string, error) {
 	ret := _m.Called(ctx, path)
@@ -36,6 +44,35 @@ func (_m *SimpleSystemsManager) GetParameter(ctx context.Context, path string) (
 	}
 
 	return r0, r1
+}
+
+// SimpleSystemsManager_GetParameter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetParameter'
+type SimpleSystemsManager_GetParameter_Call struct {
+	*mock.Call
+}
+
+// GetParameter is a helper method to define mock.On call
+//   - ctx context.Context
+//   - path string
+func (_e *SimpleSystemsManager_Expecter) GetParameter(ctx interface{}, path interface{}) *SimpleSystemsManager_GetParameter_Call {
+	return &SimpleSystemsManager_GetParameter_Call{Call: _e.mock.On("GetParameter", ctx, path)}
+}
+
+func (_c *SimpleSystemsManager_GetParameter_Call) Run(run func(ctx context.Context, path string)) *SimpleSystemsManager_GetParameter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *SimpleSystemsManager_GetParameter_Call) Return(_a0 string, _a1 error) *SimpleSystemsManager_GetParameter_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *SimpleSystemsManager_GetParameter_Call) RunAndReturn(run func(context.Context, string) (string, error)) *SimpleSystemsManager_GetParameter_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetParameters provides a mock function with given fields: ctx, path
@@ -62,6 +99,35 @@ func (_m *SimpleSystemsManager) GetParameters(ctx context.Context, path string) 
 	}
 
 	return r0, r1
+}
+
+// SimpleSystemsManager_GetParameters_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetParameters'
+type SimpleSystemsManager_GetParameters_Call struct {
+	*mock.Call
+}
+
+// GetParameters is a helper method to define mock.On call
+//   - ctx context.Context
+//   - path string
+func (_e *SimpleSystemsManager_Expecter) GetParameters(ctx interface{}, path interface{}) *SimpleSystemsManager_GetParameters_Call {
+	return &SimpleSystemsManager_GetParameters_Call{Call: _e.mock.On("GetParameters", ctx, path)}
+}
+
+func (_c *SimpleSystemsManager_GetParameters_Call) Run(run func(ctx context.Context, path string)) *SimpleSystemsManager_GetParameters_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *SimpleSystemsManager_GetParameters_Call) Return(_a0 ssm.SsmParameters, _a1 error) *SimpleSystemsManager_GetParameters_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *SimpleSystemsManager_GetParameters_Call) RunAndReturn(run func(context.Context, string) (ssm.SsmParameters, error)) *SimpleSystemsManager_GetParameters_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewSimpleSystemsManager interface {

@@ -31,7 +31,7 @@ const (
 	DefaultIdleTimeout = 30 * time.Second
 )
 
-//go:generate mockery --name Writer --unroll-variadic=False
+//go:generate mockery --name Writer --unroll-variadic=False --with-expecter=False
 type Writer interface {
 	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
 	Stats() kafka.WriterStats

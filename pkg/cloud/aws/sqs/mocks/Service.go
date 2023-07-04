@@ -14,6 +14,14 @@ type Service struct {
 	mock.Mock
 }
 
+type Service_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Service) EXPECT() *Service_Expecter {
+	return &Service_Expecter{mock: &_m.Mock}
+}
+
 // CreateQueue provides a mock function with given fields: ctx, settings
 func (_m *Service) CreateQueue(ctx context.Context, settings *sqs.Settings) (*sqs.Properties, error) {
 	ret := _m.Called(ctx, settings)
@@ -40,6 +48,35 @@ func (_m *Service) CreateQueue(ctx context.Context, settings *sqs.Settings) (*sq
 	return r0, r1
 }
 
+// Service_CreateQueue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateQueue'
+type Service_CreateQueue_Call struct {
+	*mock.Call
+}
+
+// CreateQueue is a helper method to define mock.On call
+//   - ctx context.Context
+//   - settings *sqs.Settings
+func (_e *Service_Expecter) CreateQueue(ctx interface{}, settings interface{}) *Service_CreateQueue_Call {
+	return &Service_CreateQueue_Call{Call: _e.mock.On("CreateQueue", ctx, settings)}
+}
+
+func (_c *Service_CreateQueue_Call) Run(run func(ctx context.Context, settings *sqs.Settings)) *Service_CreateQueue_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*sqs.Settings))
+	})
+	return _c
+}
+
+func (_c *Service_CreateQueue_Call) Return(_a0 *sqs.Properties, _a1 error) *Service_CreateQueue_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_CreateQueue_Call) RunAndReturn(run func(context.Context, *sqs.Settings) (*sqs.Properties, error)) *Service_CreateQueue_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetArn provides a mock function with given fields: ctx, url
 func (_m *Service) GetArn(ctx context.Context, url string) (string, error) {
 	ret := _m.Called(ctx, url)
@@ -62,6 +99,35 @@ func (_m *Service) GetArn(ctx context.Context, url string) (string, error) {
 	}
 
 	return r0, r1
+}
+
+// Service_GetArn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetArn'
+type Service_GetArn_Call struct {
+	*mock.Call
+}
+
+// GetArn is a helper method to define mock.On call
+//   - ctx context.Context
+//   - url string
+func (_e *Service_Expecter) GetArn(ctx interface{}, url interface{}) *Service_GetArn_Call {
+	return &Service_GetArn_Call{Call: _e.mock.On("GetArn", ctx, url)}
+}
+
+func (_c *Service_GetArn_Call) Run(run func(ctx context.Context, url string)) *Service_GetArn_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Service_GetArn_Call) Return(_a0 string, _a1 error) *Service_GetArn_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_GetArn_Call) RunAndReturn(run func(context.Context, string) (string, error)) *Service_GetArn_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetPropertiesByArn provides a mock function with given fields: ctx, arn
@@ -90,6 +156,35 @@ func (_m *Service) GetPropertiesByArn(ctx context.Context, arn string) (*sqs.Pro
 	return r0, r1
 }
 
+// Service_GetPropertiesByArn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPropertiesByArn'
+type Service_GetPropertiesByArn_Call struct {
+	*mock.Call
+}
+
+// GetPropertiesByArn is a helper method to define mock.On call
+//   - ctx context.Context
+//   - arn string
+func (_e *Service_Expecter) GetPropertiesByArn(ctx interface{}, arn interface{}) *Service_GetPropertiesByArn_Call {
+	return &Service_GetPropertiesByArn_Call{Call: _e.mock.On("GetPropertiesByArn", ctx, arn)}
+}
+
+func (_c *Service_GetPropertiesByArn_Call) Run(run func(ctx context.Context, arn string)) *Service_GetPropertiesByArn_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Service_GetPropertiesByArn_Call) Return(_a0 *sqs.Properties, _a1 error) *Service_GetPropertiesByArn_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_GetPropertiesByArn_Call) RunAndReturn(run func(context.Context, string) (*sqs.Properties, error)) *Service_GetPropertiesByArn_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetPropertiesByName provides a mock function with given fields: ctx, name
 func (_m *Service) GetPropertiesByName(ctx context.Context, name string) (*sqs.Properties, error) {
 	ret := _m.Called(ctx, name)
@@ -116,6 +211,35 @@ func (_m *Service) GetPropertiesByName(ctx context.Context, name string) (*sqs.P
 	return r0, r1
 }
 
+// Service_GetPropertiesByName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPropertiesByName'
+type Service_GetPropertiesByName_Call struct {
+	*mock.Call
+}
+
+// GetPropertiesByName is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+func (_e *Service_Expecter) GetPropertiesByName(ctx interface{}, name interface{}) *Service_GetPropertiesByName_Call {
+	return &Service_GetPropertiesByName_Call{Call: _e.mock.On("GetPropertiesByName", ctx, name)}
+}
+
+func (_c *Service_GetPropertiesByName_Call) Run(run func(ctx context.Context, name string)) *Service_GetPropertiesByName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Service_GetPropertiesByName_Call) Return(_a0 *sqs.Properties, _a1 error) *Service_GetPropertiesByName_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_GetPropertiesByName_Call) RunAndReturn(run func(context.Context, string) (*sqs.Properties, error)) *Service_GetPropertiesByName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUrl provides a mock function with given fields: ctx, name
 func (_m *Service) GetUrl(ctx context.Context, name string) (string, error) {
 	ret := _m.Called(ctx, name)
@@ -140,6 +264,35 @@ func (_m *Service) GetUrl(ctx context.Context, name string) (string, error) {
 	return r0, r1
 }
 
+// Service_GetUrl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUrl'
+type Service_GetUrl_Call struct {
+	*mock.Call
+}
+
+// GetUrl is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+func (_e *Service_Expecter) GetUrl(ctx interface{}, name interface{}) *Service_GetUrl_Call {
+	return &Service_GetUrl_Call{Call: _e.mock.On("GetUrl", ctx, name)}
+}
+
+func (_c *Service_GetUrl_Call) Run(run func(ctx context.Context, name string)) *Service_GetUrl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Service_GetUrl_Call) Return(_a0 string, _a1 error) *Service_GetUrl_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_GetUrl_Call) RunAndReturn(run func(context.Context, string) (string, error)) *Service_GetUrl_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Purge provides a mock function with given fields: ctx, url
 func (_m *Service) Purge(ctx context.Context, url string) error {
 	ret := _m.Called(ctx, url)
@@ -152,6 +305,35 @@ func (_m *Service) Purge(ctx context.Context, url string) error {
 	}
 
 	return r0
+}
+
+// Service_Purge_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Purge'
+type Service_Purge_Call struct {
+	*mock.Call
+}
+
+// Purge is a helper method to define mock.On call
+//   - ctx context.Context
+//   - url string
+func (_e *Service_Expecter) Purge(ctx interface{}, url interface{}) *Service_Purge_Call {
+	return &Service_Purge_Call{Call: _e.mock.On("Purge", ctx, url)}
+}
+
+func (_c *Service_Purge_Call) Run(run func(ctx context.Context, url string)) *Service_Purge_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Service_Purge_Call) Return(_a0 error) *Service_Purge_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Service_Purge_Call) RunAndReturn(run func(context.Context, string) error) *Service_Purge_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // QueueExists provides a mock function with given fields: ctx, name
@@ -176,6 +358,35 @@ func (_m *Service) QueueExists(ctx context.Context, name string) (bool, error) {
 	}
 
 	return r0, r1
+}
+
+// Service_QueueExists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QueueExists'
+type Service_QueueExists_Call struct {
+	*mock.Call
+}
+
+// QueueExists is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+func (_e *Service_Expecter) QueueExists(ctx interface{}, name interface{}) *Service_QueueExists_Call {
+	return &Service_QueueExists_Call{Call: _e.mock.On("QueueExists", ctx, name)}
+}
+
+func (_c *Service_QueueExists_Call) Run(run func(ctx context.Context, name string)) *Service_QueueExists_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Service_QueueExists_Call) Return(_a0 bool, _a1 error) *Service_QueueExists_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_QueueExists_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *Service_QueueExists_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewService interface {

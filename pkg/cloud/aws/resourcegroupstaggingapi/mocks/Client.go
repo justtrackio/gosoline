@@ -14,6 +14,14 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Client) EXPECT() *Client_Expecter {
+	return &Client_Expecter{mock: &_m.Mock}
+}
+
 // GetResources provides a mock function with given fields: _a0, _a1, _a2
 func (_m *Client) GetResources(_a0 context.Context, _a1 *resourcegroupstaggingapi.GetResourcesInput, _a2 ...func(*resourcegroupstaggingapi.Options)) (*resourcegroupstaggingapi.GetResourcesOutput, error) {
 	_va := make([]interface{}, len(_a2))
@@ -45,6 +53,43 @@ func (_m *Client) GetResources(_a0 context.Context, _a1 *resourcegroupstaggingap
 	}
 
 	return r0, r1
+}
+
+// Client_GetResources_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetResources'
+type Client_GetResources_Call struct {
+	*mock.Call
+}
+
+// GetResources is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *resourcegroupstaggingapi.GetResourcesInput
+//   - _a2 ...func(*resourcegroupstaggingapi.Options)
+func (_e *Client_Expecter) GetResources(_a0 interface{}, _a1 interface{}, _a2 ...interface{}) *Client_GetResources_Call {
+	return &Client_GetResources_Call{Call: _e.mock.On("GetResources",
+		append([]interface{}{_a0, _a1}, _a2...)...)}
+}
+
+func (_c *Client_GetResources_Call) Run(run func(_a0 context.Context, _a1 *resourcegroupstaggingapi.GetResourcesInput, _a2 ...func(*resourcegroupstaggingapi.Options))) *Client_GetResources_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*resourcegroupstaggingapi.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*resourcegroupstaggingapi.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*resourcegroupstaggingapi.GetResourcesInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetResources_Call) Return(_a0 *resourcegroupstaggingapi.GetResourcesOutput, _a1 error) *Client_GetResources_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetResources_Call) RunAndReturn(run func(context.Context, *resourcegroupstaggingapi.GetResourcesInput, ...func(*resourcegroupstaggingapi.Options)) (*resourcegroupstaggingapi.GetResourcesOutput, error)) *Client_GetResources_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewClient interface {

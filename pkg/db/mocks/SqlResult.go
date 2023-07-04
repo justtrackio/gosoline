@@ -9,6 +9,14 @@ type SqlResult struct {
 	mock.Mock
 }
 
+type SqlResult_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *SqlResult) EXPECT() *SqlResult_Expecter {
+	return &SqlResult_Expecter{mock: &_m.Mock}
+}
+
 // LastInsertId provides a mock function with given fields:
 func (_m *SqlResult) LastInsertId() (int64, error) {
 	ret := _m.Called()
@@ -33,6 +41,33 @@ func (_m *SqlResult) LastInsertId() (int64, error) {
 	return r0, r1
 }
 
+// SqlResult_LastInsertId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LastInsertId'
+type SqlResult_LastInsertId_Call struct {
+	*mock.Call
+}
+
+// LastInsertId is a helper method to define mock.On call
+func (_e *SqlResult_Expecter) LastInsertId() *SqlResult_LastInsertId_Call {
+	return &SqlResult_LastInsertId_Call{Call: _e.mock.On("LastInsertId")}
+}
+
+func (_c *SqlResult_LastInsertId_Call) Run(run func()) *SqlResult_LastInsertId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SqlResult_LastInsertId_Call) Return(_a0 int64, _a1 error) *SqlResult_LastInsertId_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *SqlResult_LastInsertId_Call) RunAndReturn(run func() (int64, error)) *SqlResult_LastInsertId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RowsAffected provides a mock function with given fields:
 func (_m *SqlResult) RowsAffected() (int64, error) {
 	ret := _m.Called()
@@ -55,6 +90,33 @@ func (_m *SqlResult) RowsAffected() (int64, error) {
 	}
 
 	return r0, r1
+}
+
+// SqlResult_RowsAffected_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RowsAffected'
+type SqlResult_RowsAffected_Call struct {
+	*mock.Call
+}
+
+// RowsAffected is a helper method to define mock.On call
+func (_e *SqlResult_Expecter) RowsAffected() *SqlResult_RowsAffected_Call {
+	return &SqlResult_RowsAffected_Call{Call: _e.mock.On("RowsAffected")}
+}
+
+func (_c *SqlResult_RowsAffected_Call) Run(run func()) *SqlResult_RowsAffected_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SqlResult_RowsAffected_Call) Return(_a0 int64, _a1 error) *SqlResult_RowsAffected_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *SqlResult_RowsAffected_Call) RunAndReturn(run func() (int64, error)) *SqlResult_RowsAffected_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewSqlResult interface {

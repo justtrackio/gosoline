@@ -12,6 +12,14 @@ type Manager struct {
 	mock.Mock
 }
 
+type Manager_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Manager) EXPECT() *Manager_Expecter {
+	return &Manager_Expecter{mock: &_m.Mock}
+}
+
 // Create provides a mock function with given fields: policy
 func (_m *Manager) Create(policy ladon.Policy) error {
 	ret := _m.Called(policy)
@@ -26,6 +34,34 @@ func (_m *Manager) Create(policy ladon.Policy) error {
 	return r0
 }
 
+// Manager_Create_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Create'
+type Manager_Create_Call struct {
+	*mock.Call
+}
+
+// Create is a helper method to define mock.On call
+//   - policy ladon.Policy
+func (_e *Manager_Expecter) Create(policy interface{}) *Manager_Create_Call {
+	return &Manager_Create_Call{Call: _e.mock.On("Create", policy)}
+}
+
+func (_c *Manager_Create_Call) Run(run func(policy ladon.Policy)) *Manager_Create_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ladon.Policy))
+	})
+	return _c
+}
+
+func (_c *Manager_Create_Call) Return(_a0 error) *Manager_Create_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Manager_Create_Call) RunAndReturn(run func(ladon.Policy) error) *Manager_Create_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Delete provides a mock function with given fields: id
 func (_m *Manager) Delete(id string) error {
 	ret := _m.Called(id)
@@ -38,6 +74,34 @@ func (_m *Manager) Delete(id string) error {
 	}
 
 	return r0
+}
+
+// Manager_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
+type Manager_Delete_Call struct {
+	*mock.Call
+}
+
+// Delete is a helper method to define mock.On call
+//   - id string
+func (_e *Manager_Expecter) Delete(id interface{}) *Manager_Delete_Call {
+	return &Manager_Delete_Call{Call: _e.mock.On("Delete", id)}
+}
+
+func (_c *Manager_Delete_Call) Run(run func(id string)) *Manager_Delete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Manager_Delete_Call) Return(_a0 error) *Manager_Delete_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Manager_Delete_Call) RunAndReturn(run func(string) error) *Manager_Delete_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // FindPoliciesForResource provides a mock function with given fields: resource
@@ -66,6 +130,34 @@ func (_m *Manager) FindPoliciesForResource(resource string) (ladon.Policies, err
 	return r0, r1
 }
 
+// Manager_FindPoliciesForResource_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindPoliciesForResource'
+type Manager_FindPoliciesForResource_Call struct {
+	*mock.Call
+}
+
+// FindPoliciesForResource is a helper method to define mock.On call
+//   - resource string
+func (_e *Manager_Expecter) FindPoliciesForResource(resource interface{}) *Manager_FindPoliciesForResource_Call {
+	return &Manager_FindPoliciesForResource_Call{Call: _e.mock.On("FindPoliciesForResource", resource)}
+}
+
+func (_c *Manager_FindPoliciesForResource_Call) Run(run func(resource string)) *Manager_FindPoliciesForResource_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Manager_FindPoliciesForResource_Call) Return(_a0 ladon.Policies, _a1 error) *Manager_FindPoliciesForResource_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Manager_FindPoliciesForResource_Call) RunAndReturn(run func(string) (ladon.Policies, error)) *Manager_FindPoliciesForResource_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindPoliciesForSubject provides a mock function with given fields: subject
 func (_m *Manager) FindPoliciesForSubject(subject string) (ladon.Policies, error) {
 	ret := _m.Called(subject)
@@ -90,6 +182,34 @@ func (_m *Manager) FindPoliciesForSubject(subject string) (ladon.Policies, error
 	}
 
 	return r0, r1
+}
+
+// Manager_FindPoliciesForSubject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindPoliciesForSubject'
+type Manager_FindPoliciesForSubject_Call struct {
+	*mock.Call
+}
+
+// FindPoliciesForSubject is a helper method to define mock.On call
+//   - subject string
+func (_e *Manager_Expecter) FindPoliciesForSubject(subject interface{}) *Manager_FindPoliciesForSubject_Call {
+	return &Manager_FindPoliciesForSubject_Call{Call: _e.mock.On("FindPoliciesForSubject", subject)}
+}
+
+func (_c *Manager_FindPoliciesForSubject_Call) Run(run func(subject string)) *Manager_FindPoliciesForSubject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Manager_FindPoliciesForSubject_Call) Return(_a0 ladon.Policies, _a1 error) *Manager_FindPoliciesForSubject_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Manager_FindPoliciesForSubject_Call) RunAndReturn(run func(string) (ladon.Policies, error)) *Manager_FindPoliciesForSubject_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // FindRequestCandidates provides a mock function with given fields: r
@@ -118,6 +238,34 @@ func (_m *Manager) FindRequestCandidates(r *ladon.Request) (ladon.Policies, erro
 	return r0, r1
 }
 
+// Manager_FindRequestCandidates_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindRequestCandidates'
+type Manager_FindRequestCandidates_Call struct {
+	*mock.Call
+}
+
+// FindRequestCandidates is a helper method to define mock.On call
+//   - r *ladon.Request
+func (_e *Manager_Expecter) FindRequestCandidates(r interface{}) *Manager_FindRequestCandidates_Call {
+	return &Manager_FindRequestCandidates_Call{Call: _e.mock.On("FindRequestCandidates", r)}
+}
+
+func (_c *Manager_FindRequestCandidates_Call) Run(run func(r *ladon.Request)) *Manager_FindRequestCandidates_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*ladon.Request))
+	})
+	return _c
+}
+
+func (_c *Manager_FindRequestCandidates_Call) Return(_a0 ladon.Policies, _a1 error) *Manager_FindRequestCandidates_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Manager_FindRequestCandidates_Call) RunAndReturn(run func(*ladon.Request) (ladon.Policies, error)) *Manager_FindRequestCandidates_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function with given fields: id
 func (_m *Manager) Get(id string) (ladon.Policy, error) {
 	ret := _m.Called(id)
@@ -142,6 +290,34 @@ func (_m *Manager) Get(id string) (ladon.Policy, error) {
 	}
 
 	return r0, r1
+}
+
+// Manager_Get_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Get'
+type Manager_Get_Call struct {
+	*mock.Call
+}
+
+// Get is a helper method to define mock.On call
+//   - id string
+func (_e *Manager_Expecter) Get(id interface{}) *Manager_Get_Call {
+	return &Manager_Get_Call{Call: _e.mock.On("Get", id)}
+}
+
+func (_c *Manager_Get_Call) Run(run func(id string)) *Manager_Get_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Manager_Get_Call) Return(_a0 ladon.Policy, _a1 error) *Manager_Get_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Manager_Get_Call) RunAndReturn(run func(string) (ladon.Policy, error)) *Manager_Get_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetAll provides a mock function with given fields: limit, offset
@@ -170,6 +346,35 @@ func (_m *Manager) GetAll(limit int64, offset int64) (ladon.Policies, error) {
 	return r0, r1
 }
 
+// Manager_GetAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAll'
+type Manager_GetAll_Call struct {
+	*mock.Call
+}
+
+// GetAll is a helper method to define mock.On call
+//   - limit int64
+//   - offset int64
+func (_e *Manager_Expecter) GetAll(limit interface{}, offset interface{}) *Manager_GetAll_Call {
+	return &Manager_GetAll_Call{Call: _e.mock.On("GetAll", limit, offset)}
+}
+
+func (_c *Manager_GetAll_Call) Run(run func(limit int64, offset int64)) *Manager_GetAll_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int64), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *Manager_GetAll_Call) Return(_a0 ladon.Policies, _a1 error) *Manager_GetAll_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Manager_GetAll_Call) RunAndReturn(run func(int64, int64) (ladon.Policies, error)) *Manager_GetAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Update provides a mock function with given fields: policy
 func (_m *Manager) Update(policy ladon.Policy) error {
 	ret := _m.Called(policy)
@@ -182,6 +387,34 @@ func (_m *Manager) Update(policy ladon.Policy) error {
 	}
 
 	return r0
+}
+
+// Manager_Update_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Update'
+type Manager_Update_Call struct {
+	*mock.Call
+}
+
+// Update is a helper method to define mock.On call
+//   - policy ladon.Policy
+func (_e *Manager_Expecter) Update(policy interface{}) *Manager_Update_Call {
+	return &Manager_Update_Call{Call: _e.mock.On("Update", policy)}
+}
+
+func (_c *Manager_Update_Call) Run(run func(policy ladon.Policy)) *Manager_Update_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ladon.Policy))
+	})
+	return _c
+}
+
+func (_c *Manager_Update_Call) Return(_a0 error) *Manager_Update_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Manager_Update_Call) RunAndReturn(run func(ladon.Policy) error) *Manager_Update_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewManager interface {

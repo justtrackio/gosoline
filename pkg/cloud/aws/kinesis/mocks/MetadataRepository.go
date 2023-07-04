@@ -14,6 +14,14 @@ type MetadataRepository struct {
 	mock.Mock
 }
 
+type MetadataRepository_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *MetadataRepository) EXPECT() *MetadataRepository_Expecter {
+	return &MetadataRepository_Expecter{mock: &_m.Mock}
+}
+
 // AcquireShard provides a mock function with given fields: ctx, shardId
 func (_m *MetadataRepository) AcquireShard(ctx context.Context, shardId kinesis.ShardId) (kinesis.Checkpoint, error) {
 	ret := _m.Called(ctx, shardId)
@@ -40,6 +48,35 @@ func (_m *MetadataRepository) AcquireShard(ctx context.Context, shardId kinesis.
 	return r0, r1
 }
 
+// MetadataRepository_AcquireShard_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AcquireShard'
+type MetadataRepository_AcquireShard_Call struct {
+	*mock.Call
+}
+
+// AcquireShard is a helper method to define mock.On call
+//   - ctx context.Context
+//   - shardId kinesis.ShardId
+func (_e *MetadataRepository_Expecter) AcquireShard(ctx interface{}, shardId interface{}) *MetadataRepository_AcquireShard_Call {
+	return &MetadataRepository_AcquireShard_Call{Call: _e.mock.On("AcquireShard", ctx, shardId)}
+}
+
+func (_c *MetadataRepository_AcquireShard_Call) Run(run func(ctx context.Context, shardId kinesis.ShardId)) *MetadataRepository_AcquireShard_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(kinesis.ShardId))
+	})
+	return _c
+}
+
+func (_c *MetadataRepository_AcquireShard_Call) Return(_a0 kinesis.Checkpoint, _a1 error) *MetadataRepository_AcquireShard_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MetadataRepository_AcquireShard_Call) RunAndReturn(run func(context.Context, kinesis.ShardId) (kinesis.Checkpoint, error)) *MetadataRepository_AcquireShard_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeregisterClient provides a mock function with given fields: ctx
 func (_m *MetadataRepository) DeregisterClient(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -52,6 +89,34 @@ func (_m *MetadataRepository) DeregisterClient(ctx context.Context) error {
 	}
 
 	return r0
+}
+
+// MetadataRepository_DeregisterClient_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeregisterClient'
+type MetadataRepository_DeregisterClient_Call struct {
+	*mock.Call
+}
+
+// DeregisterClient is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MetadataRepository_Expecter) DeregisterClient(ctx interface{}) *MetadataRepository_DeregisterClient_Call {
+	return &MetadataRepository_DeregisterClient_Call{Call: _e.mock.On("DeregisterClient", ctx)}
+}
+
+func (_c *MetadataRepository_DeregisterClient_Call) Run(run func(ctx context.Context)) *MetadataRepository_DeregisterClient_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MetadataRepository_DeregisterClient_Call) Return(_a0 error) *MetadataRepository_DeregisterClient_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MetadataRepository_DeregisterClient_Call) RunAndReturn(run func(context.Context) error) *MetadataRepository_DeregisterClient_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // IsShardFinished provides a mock function with given fields: ctx, shardId
@@ -76,6 +141,35 @@ func (_m *MetadataRepository) IsShardFinished(ctx context.Context, shardId kines
 	}
 
 	return r0, r1
+}
+
+// MetadataRepository_IsShardFinished_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsShardFinished'
+type MetadataRepository_IsShardFinished_Call struct {
+	*mock.Call
+}
+
+// IsShardFinished is a helper method to define mock.On call
+//   - ctx context.Context
+//   - shardId kinesis.ShardId
+func (_e *MetadataRepository_Expecter) IsShardFinished(ctx interface{}, shardId interface{}) *MetadataRepository_IsShardFinished_Call {
+	return &MetadataRepository_IsShardFinished_Call{Call: _e.mock.On("IsShardFinished", ctx, shardId)}
+}
+
+func (_c *MetadataRepository_IsShardFinished_Call) Run(run func(ctx context.Context, shardId kinesis.ShardId)) *MetadataRepository_IsShardFinished_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(kinesis.ShardId))
+	})
+	return _c
+}
+
+func (_c *MetadataRepository_IsShardFinished_Call) Return(_a0 bool, _a1 error) *MetadataRepository_IsShardFinished_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MetadataRepository_IsShardFinished_Call) RunAndReturn(run func(context.Context, kinesis.ShardId) (bool, error)) *MetadataRepository_IsShardFinished_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // RegisterClient provides a mock function with given fields: ctx
@@ -107,6 +201,34 @@ func (_m *MetadataRepository) RegisterClient(ctx context.Context) (int, int, err
 	}
 
 	return r0, r1, r2
+}
+
+// MetadataRepository_RegisterClient_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterClient'
+type MetadataRepository_RegisterClient_Call struct {
+	*mock.Call
+}
+
+// RegisterClient is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MetadataRepository_Expecter) RegisterClient(ctx interface{}) *MetadataRepository_RegisterClient_Call {
+	return &MetadataRepository_RegisterClient_Call{Call: _e.mock.On("RegisterClient", ctx)}
+}
+
+func (_c *MetadataRepository_RegisterClient_Call) Run(run func(ctx context.Context)) *MetadataRepository_RegisterClient_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MetadataRepository_RegisterClient_Call) Return(clientIndex int, totalClients int, err error) *MetadataRepository_RegisterClient_Call {
+	_c.Call.Return(clientIndex, totalClients, err)
+	return _c
+}
+
+func (_c *MetadataRepository_RegisterClient_Call) RunAndReturn(run func(context.Context) (int, int, error)) *MetadataRepository_RegisterClient_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewMetadataRepository interface {

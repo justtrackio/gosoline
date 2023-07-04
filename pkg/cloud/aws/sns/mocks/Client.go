@@ -14,6 +14,14 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Client) EXPECT() *Client_Expecter {
+	return &Client_Expecter{mock: &_m.Mock}
+}
+
 // CreateTopic provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) CreateTopic(ctx context.Context, params *sns.CreateTopicInput, optFns ...func(*sns.Options)) (*sns.CreateTopicOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -45,6 +53,43 @@ func (_m *Client) CreateTopic(ctx context.Context, params *sns.CreateTopicInput,
 	}
 
 	return r0, r1
+}
+
+// Client_CreateTopic_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateTopic'
+type Client_CreateTopic_Call struct {
+	*mock.Call
+}
+
+// CreateTopic is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sns.CreateTopicInput
+//   - optFns ...func(*sns.Options)
+func (_e *Client_Expecter) CreateTopic(ctx interface{}, params interface{}, optFns ...interface{}) *Client_CreateTopic_Call {
+	return &Client_CreateTopic_Call{Call: _e.mock.On("CreateTopic",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_CreateTopic_Call) Run(run func(ctx context.Context, params *sns.CreateTopicInput, optFns ...func(*sns.Options))) *Client_CreateTopic_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sns.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sns.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sns.CreateTopicInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_CreateTopic_Call) Return(_a0 *sns.CreateTopicOutput, _a1 error) *Client_CreateTopic_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_CreateTopic_Call) RunAndReturn(run func(context.Context, *sns.CreateTopicInput, ...func(*sns.Options)) (*sns.CreateTopicOutput, error)) *Client_CreateTopic_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetSubscriptionAttributes provides a mock function with given fields: ctx, params, optFns
@@ -80,6 +125,43 @@ func (_m *Client) GetSubscriptionAttributes(ctx context.Context, params *sns.Get
 	return r0, r1
 }
 
+// Client_GetSubscriptionAttributes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSubscriptionAttributes'
+type Client_GetSubscriptionAttributes_Call struct {
+	*mock.Call
+}
+
+// GetSubscriptionAttributes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sns.GetSubscriptionAttributesInput
+//   - optFns ...func(*sns.Options)
+func (_e *Client_Expecter) GetSubscriptionAttributes(ctx interface{}, params interface{}, optFns ...interface{}) *Client_GetSubscriptionAttributes_Call {
+	return &Client_GetSubscriptionAttributes_Call{Call: _e.mock.On("GetSubscriptionAttributes",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_GetSubscriptionAttributes_Call) Run(run func(ctx context.Context, params *sns.GetSubscriptionAttributesInput, optFns ...func(*sns.Options))) *Client_GetSubscriptionAttributes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sns.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sns.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sns.GetSubscriptionAttributesInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetSubscriptionAttributes_Call) Return(_a0 *sns.GetSubscriptionAttributesOutput, _a1 error) *Client_GetSubscriptionAttributes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetSubscriptionAttributes_Call) RunAndReturn(run func(context.Context, *sns.GetSubscriptionAttributesInput, ...func(*sns.Options)) (*sns.GetSubscriptionAttributesOutput, error)) *Client_GetSubscriptionAttributes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListSubscriptionsByTopic provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) ListSubscriptionsByTopic(ctx context.Context, params *sns.ListSubscriptionsByTopicInput, optFns ...func(*sns.Options)) (*sns.ListSubscriptionsByTopicOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -111,6 +193,43 @@ func (_m *Client) ListSubscriptionsByTopic(ctx context.Context, params *sns.List
 	}
 
 	return r0, r1
+}
+
+// Client_ListSubscriptionsByTopic_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListSubscriptionsByTopic'
+type Client_ListSubscriptionsByTopic_Call struct {
+	*mock.Call
+}
+
+// ListSubscriptionsByTopic is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sns.ListSubscriptionsByTopicInput
+//   - optFns ...func(*sns.Options)
+func (_e *Client_Expecter) ListSubscriptionsByTopic(ctx interface{}, params interface{}, optFns ...interface{}) *Client_ListSubscriptionsByTopic_Call {
+	return &Client_ListSubscriptionsByTopic_Call{Call: _e.mock.On("ListSubscriptionsByTopic",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_ListSubscriptionsByTopic_Call) Run(run func(ctx context.Context, params *sns.ListSubscriptionsByTopicInput, optFns ...func(*sns.Options))) *Client_ListSubscriptionsByTopic_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sns.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sns.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sns.ListSubscriptionsByTopicInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ListSubscriptionsByTopic_Call) Return(_a0 *sns.ListSubscriptionsByTopicOutput, _a1 error) *Client_ListSubscriptionsByTopic_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ListSubscriptionsByTopic_Call) RunAndReturn(run func(context.Context, *sns.ListSubscriptionsByTopicInput, ...func(*sns.Options)) (*sns.ListSubscriptionsByTopicOutput, error)) *Client_ListSubscriptionsByTopic_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Publish provides a mock function with given fields: ctx, params, optFns
@@ -146,6 +265,43 @@ func (_m *Client) Publish(ctx context.Context, params *sns.PublishInput, optFns 
 	return r0, r1
 }
 
+// Client_Publish_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Publish'
+type Client_Publish_Call struct {
+	*mock.Call
+}
+
+// Publish is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sns.PublishInput
+//   - optFns ...func(*sns.Options)
+func (_e *Client_Expecter) Publish(ctx interface{}, params interface{}, optFns ...interface{}) *Client_Publish_Call {
+	return &Client_Publish_Call{Call: _e.mock.On("Publish",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_Publish_Call) Run(run func(ctx context.Context, params *sns.PublishInput, optFns ...func(*sns.Options))) *Client_Publish_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sns.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sns.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sns.PublishInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_Publish_Call) Return(_a0 *sns.PublishOutput, _a1 error) *Client_Publish_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Publish_Call) RunAndReturn(run func(context.Context, *sns.PublishInput, ...func(*sns.Options)) (*sns.PublishOutput, error)) *Client_Publish_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PublishBatch provides a mock function with given fields: ctx, input, optFns
 func (_m *Client) PublishBatch(ctx context.Context, input *sns.PublishBatchInput, optFns ...func(*sns.Options)) (*sns.PublishBatchOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -177,6 +333,43 @@ func (_m *Client) PublishBatch(ctx context.Context, input *sns.PublishBatchInput
 	}
 
 	return r0, r1
+}
+
+// Client_PublishBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PublishBatch'
+type Client_PublishBatch_Call struct {
+	*mock.Call
+}
+
+// PublishBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - input *sns.PublishBatchInput
+//   - optFns ...func(*sns.Options)
+func (_e *Client_Expecter) PublishBatch(ctx interface{}, input interface{}, optFns ...interface{}) *Client_PublishBatch_Call {
+	return &Client_PublishBatch_Call{Call: _e.mock.On("PublishBatch",
+		append([]interface{}{ctx, input}, optFns...)...)}
+}
+
+func (_c *Client_PublishBatch_Call) Run(run func(ctx context.Context, input *sns.PublishBatchInput, optFns ...func(*sns.Options))) *Client_PublishBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sns.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sns.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sns.PublishBatchInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_PublishBatch_Call) Return(_a0 *sns.PublishBatchOutput, _a1 error) *Client_PublishBatch_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PublishBatch_Call) RunAndReturn(run func(context.Context, *sns.PublishBatchInput, ...func(*sns.Options)) (*sns.PublishBatchOutput, error)) *Client_PublishBatch_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Subscribe provides a mock function with given fields: ctx, params, optFns
@@ -212,6 +405,43 @@ func (_m *Client) Subscribe(ctx context.Context, params *sns.SubscribeInput, opt
 	return r0, r1
 }
 
+// Client_Subscribe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Subscribe'
+type Client_Subscribe_Call struct {
+	*mock.Call
+}
+
+// Subscribe is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sns.SubscribeInput
+//   - optFns ...func(*sns.Options)
+func (_e *Client_Expecter) Subscribe(ctx interface{}, params interface{}, optFns ...interface{}) *Client_Subscribe_Call {
+	return &Client_Subscribe_Call{Call: _e.mock.On("Subscribe",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_Subscribe_Call) Run(run func(ctx context.Context, params *sns.SubscribeInput, optFns ...func(*sns.Options))) *Client_Subscribe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sns.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sns.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sns.SubscribeInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_Subscribe_Call) Return(_a0 *sns.SubscribeOutput, _a1 error) *Client_Subscribe_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Subscribe_Call) RunAndReturn(run func(context.Context, *sns.SubscribeInput, ...func(*sns.Options)) (*sns.SubscribeOutput, error)) *Client_Subscribe_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Unsubscribe provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) Unsubscribe(ctx context.Context, params *sns.UnsubscribeInput, optFns ...func(*sns.Options)) (*sns.UnsubscribeOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -243,6 +473,43 @@ func (_m *Client) Unsubscribe(ctx context.Context, params *sns.UnsubscribeInput,
 	}
 
 	return r0, r1
+}
+
+// Client_Unsubscribe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Unsubscribe'
+type Client_Unsubscribe_Call struct {
+	*mock.Call
+}
+
+// Unsubscribe is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sns.UnsubscribeInput
+//   - optFns ...func(*sns.Options)
+func (_e *Client_Expecter) Unsubscribe(ctx interface{}, params interface{}, optFns ...interface{}) *Client_Unsubscribe_Call {
+	return &Client_Unsubscribe_Call{Call: _e.mock.On("Unsubscribe",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_Unsubscribe_Call) Run(run func(ctx context.Context, params *sns.UnsubscribeInput, optFns ...func(*sns.Options))) *Client_Unsubscribe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sns.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sns.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sns.UnsubscribeInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_Unsubscribe_Call) Return(_a0 *sns.UnsubscribeOutput, _a1 error) *Client_Unsubscribe_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Unsubscribe_Call) RunAndReturn(run func(context.Context, *sns.UnsubscribeInput, ...func(*sns.Options)) (*sns.UnsubscribeOutput, error)) *Client_Unsubscribe_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewClient interface {

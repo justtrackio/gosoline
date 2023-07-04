@@ -12,6 +12,14 @@ type Writer struct {
 	mock.Mock
 }
 
+type Writer_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Writer) EXPECT() *Writer_Expecter {
+	return &Writer_Expecter{mock: &_m.Mock}
+}
+
 // GetPriority provides a mock function with given fields:
 func (_m *Writer) GetPriority() int {
 	ret := _m.Called()
@@ -26,14 +34,97 @@ func (_m *Writer) GetPriority() int {
 	return r0
 }
 
+// Writer_GetPriority_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPriority'
+type Writer_GetPriority_Call struct {
+	*mock.Call
+}
+
+// GetPriority is a helper method to define mock.On call
+func (_e *Writer_Expecter) GetPriority() *Writer_GetPriority_Call {
+	return &Writer_GetPriority_Call{Call: _e.mock.On("GetPriority")}
+}
+
+func (_c *Writer_GetPriority_Call) Run(run func()) *Writer_GetPriority_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Writer_GetPriority_Call) Return(_a0 int) *Writer_GetPriority_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Writer_GetPriority_Call) RunAndReturn(run func() int) *Writer_GetPriority_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Write provides a mock function with given fields: batch
 func (_m *Writer) Write(batch metric.Data) {
 	_m.Called(batch)
 }
 
+// Writer_Write_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Write'
+type Writer_Write_Call struct {
+	*mock.Call
+}
+
+// Write is a helper method to define mock.On call
+//   - batch metric.Data
+func (_e *Writer_Expecter) Write(batch interface{}) *Writer_Write_Call {
+	return &Writer_Write_Call{Call: _e.mock.On("Write", batch)}
+}
+
+func (_c *Writer_Write_Call) Run(run func(batch metric.Data)) *Writer_Write_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(metric.Data))
+	})
+	return _c
+}
+
+func (_c *Writer_Write_Call) Return() *Writer_Write_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Writer_Write_Call) RunAndReturn(run func(metric.Data)) *Writer_Write_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WriteOne provides a mock function with given fields: data
 func (_m *Writer) WriteOne(data *metric.Datum) {
 	_m.Called(data)
+}
+
+// Writer_WriteOne_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteOne'
+type Writer_WriteOne_Call struct {
+	*mock.Call
+}
+
+// WriteOne is a helper method to define mock.On call
+//   - data *metric.Datum
+func (_e *Writer_Expecter) WriteOne(data interface{}) *Writer_WriteOne_Call {
+	return &Writer_WriteOne_Call{Call: _e.mock.On("WriteOne", data)}
+}
+
+func (_c *Writer_WriteOne_Call) Run(run func(data *metric.Datum)) *Writer_WriteOne_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*metric.Datum))
+	})
+	return _c
+}
+
+func (_c *Writer_WriteOne_Call) Return() *Writer_WriteOne_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Writer_WriteOne_Call) RunAndReturn(run func(*metric.Datum)) *Writer_WriteOne_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewWriter interface {

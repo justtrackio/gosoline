@@ -12,6 +12,14 @@ type Reader struct {
 	mock.Mock
 }
 
+type Reader_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Reader) EXPECT() *Reader_Expecter {
+	return &Reader_Expecter{mock: &_m.Mock}
+}
+
 // City provides a mock function with given fields: ipString
 func (_m *Reader) City(ipString string) (*ipread.GeoCity, error) {
 	ret := _m.Called(ipString)
@@ -36,6 +44,34 @@ func (_m *Reader) City(ipString string) (*ipread.GeoCity, error) {
 	}
 
 	return r0, r1
+}
+
+// Reader_City_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'City'
+type Reader_City_Call struct {
+	*mock.Call
+}
+
+// City is a helper method to define mock.On call
+//   - ipString string
+func (_e *Reader_Expecter) City(ipString interface{}) *Reader_City_Call {
+	return &Reader_City_Call{Call: _e.mock.On("City", ipString)}
+}
+
+func (_c *Reader_City_Call) Run(run func(ipString string)) *Reader_City_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Reader_City_Call) Return(_a0 *ipread.GeoCity, _a1 error) *Reader_City_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Reader_City_Call) RunAndReturn(run func(string) (*ipread.GeoCity, error)) *Reader_City_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewReader interface {

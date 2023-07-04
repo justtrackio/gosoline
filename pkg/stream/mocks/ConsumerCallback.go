@@ -13,6 +13,14 @@ type ConsumerCallback struct {
 	mock.Mock
 }
 
+type ConsumerCallback_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *ConsumerCallback) EXPECT() *ConsumerCallback_Expecter {
+	return &ConsumerCallback_Expecter{mock: &_m.Mock}
+}
+
 // Consume provides a mock function with given fields: ctx, model, attributes
 func (_m *ConsumerCallback) Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error) {
 	ret := _m.Called(ctx, model, attributes)
@@ -37,6 +45,36 @@ func (_m *ConsumerCallback) Consume(ctx context.Context, model interface{}, attr
 	return r0, r1
 }
 
+// ConsumerCallback_Consume_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Consume'
+type ConsumerCallback_Consume_Call struct {
+	*mock.Call
+}
+
+// Consume is a helper method to define mock.On call
+//   - ctx context.Context
+//   - model interface{}
+//   - attributes map[string]interface{}
+func (_e *ConsumerCallback_Expecter) Consume(ctx interface{}, model interface{}, attributes interface{}) *ConsumerCallback_Consume_Call {
+	return &ConsumerCallback_Consume_Call{Call: _e.mock.On("Consume", ctx, model, attributes)}
+}
+
+func (_c *ConsumerCallback_Consume_Call) Run(run func(ctx context.Context, model interface{}, attributes map[string]interface{})) *ConsumerCallback_Consume_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}), args[2].(map[string]interface{}))
+	})
+	return _c
+}
+
+func (_c *ConsumerCallback_Consume_Call) Return(_a0 bool, _a1 error) *ConsumerCallback_Consume_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ConsumerCallback_Consume_Call) RunAndReturn(run func(context.Context, interface{}, map[string]interface{}) (bool, error)) *ConsumerCallback_Consume_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetModel provides a mock function with given fields: attributes
 func (_m *ConsumerCallback) GetModel(attributes map[string]interface{}) interface{} {
 	ret := _m.Called(attributes)
@@ -51,6 +89,34 @@ func (_m *ConsumerCallback) GetModel(attributes map[string]interface{}) interfac
 	}
 
 	return r0
+}
+
+// ConsumerCallback_GetModel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetModel'
+type ConsumerCallback_GetModel_Call struct {
+	*mock.Call
+}
+
+// GetModel is a helper method to define mock.On call
+//   - attributes map[string]interface{}
+func (_e *ConsumerCallback_Expecter) GetModel(attributes interface{}) *ConsumerCallback_GetModel_Call {
+	return &ConsumerCallback_GetModel_Call{Call: _e.mock.On("GetModel", attributes)}
+}
+
+func (_c *ConsumerCallback_GetModel_Call) Run(run func(attributes map[string]interface{})) *ConsumerCallback_GetModel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(map[string]interface{}))
+	})
+	return _c
+}
+
+func (_c *ConsumerCallback_GetModel_Call) Return(_a0 interface{}) *ConsumerCallback_GetModel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ConsumerCallback_GetModel_Call) RunAndReturn(run func(map[string]interface{}) interface{}) *ConsumerCallback_GetModel_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewConsumerCallback interface {

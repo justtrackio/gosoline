@@ -13,6 +13,14 @@ type Timer struct {
 	mock.Mock
 }
 
+type Timer_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Timer) EXPECT() *Timer_Expecter {
+	return &Timer_Expecter{mock: &_m.Mock}
+}
+
 // Chan provides a mock function with given fields:
 func (_m *Timer) Chan() <-chan time.Time {
 	ret := _m.Called()
@@ -29,9 +37,64 @@ func (_m *Timer) Chan() <-chan time.Time {
 	return r0
 }
 
+// Timer_Chan_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Chan'
+type Timer_Chan_Call struct {
+	*mock.Call
+}
+
+// Chan is a helper method to define mock.On call
+func (_e *Timer_Expecter) Chan() *Timer_Chan_Call {
+	return &Timer_Chan_Call{Call: _e.mock.On("Chan")}
+}
+
+func (_c *Timer_Chan_Call) Run(run func()) *Timer_Chan_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Timer_Chan_Call) Return(_a0 <-chan time.Time) *Timer_Chan_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Timer_Chan_Call) RunAndReturn(run func() <-chan time.Time) *Timer_Chan_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Reset provides a mock function with given fields: d
 func (_m *Timer) Reset(d time.Duration) {
 	_m.Called(d)
+}
+
+// Timer_Reset_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Reset'
+type Timer_Reset_Call struct {
+	*mock.Call
+}
+
+// Reset is a helper method to define mock.On call
+//   - d time.Duration
+func (_e *Timer_Expecter) Reset(d interface{}) *Timer_Reset_Call {
+	return &Timer_Reset_Call{Call: _e.mock.On("Reset", d)}
+}
+
+func (_c *Timer_Reset_Call) Run(run func(d time.Duration)) *Timer_Reset_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *Timer_Reset_Call) Return() *Timer_Reset_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Timer_Reset_Call) RunAndReturn(run func(time.Duration)) *Timer_Reset_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Stop provides a mock function with given fields:
@@ -46,6 +109,33 @@ func (_m *Timer) Stop() bool {
 	}
 
 	return r0
+}
+
+// Timer_Stop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stop'
+type Timer_Stop_Call struct {
+	*mock.Call
+}
+
+// Stop is a helper method to define mock.On call
+func (_e *Timer_Expecter) Stop() *Timer_Stop_Call {
+	return &Timer_Stop_Call{Call: _e.mock.On("Stop")}
+}
+
+func (_c *Timer_Stop_Call) Run(run func()) *Timer_Stop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Timer_Stop_Call) Return(_a0 bool) *Timer_Stop_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Timer_Stop_Call) RunAndReturn(run func() bool) *Timer_Stop_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewTimer interface {

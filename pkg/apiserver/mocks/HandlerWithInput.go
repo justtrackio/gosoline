@@ -15,6 +15,14 @@ type HandlerWithInput struct {
 	mock.Mock
 }
 
+type HandlerWithInput_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *HandlerWithInput) EXPECT() *HandlerWithInput_Expecter {
+	return &HandlerWithInput_Expecter{mock: &_m.Mock}
+}
+
 // GetInput provides a mock function with given fields:
 func (_m *HandlerWithInput) GetInput() interface{} {
 	ret := _m.Called()
@@ -29,6 +37,33 @@ func (_m *HandlerWithInput) GetInput() interface{} {
 	}
 
 	return r0
+}
+
+// HandlerWithInput_GetInput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInput'
+type HandlerWithInput_GetInput_Call struct {
+	*mock.Call
+}
+
+// GetInput is a helper method to define mock.On call
+func (_e *HandlerWithInput_Expecter) GetInput() *HandlerWithInput_GetInput_Call {
+	return &HandlerWithInput_GetInput_Call{Call: _e.mock.On("GetInput")}
+}
+
+func (_c *HandlerWithInput_GetInput_Call) Run(run func()) *HandlerWithInput_GetInput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *HandlerWithInput_GetInput_Call) Return(_a0 interface{}) *HandlerWithInput_GetInput_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *HandlerWithInput_GetInput_Call) RunAndReturn(run func() interface{}) *HandlerWithInput_GetInput_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Handle provides a mock function with given fields: requestContext, request
@@ -55,6 +90,35 @@ func (_m *HandlerWithInput) Handle(requestContext context.Context, request *apis
 	}
 
 	return r0, r1
+}
+
+// HandlerWithInput_Handle_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Handle'
+type HandlerWithInput_Handle_Call struct {
+	*mock.Call
+}
+
+// Handle is a helper method to define mock.On call
+//   - requestContext context.Context
+//   - request *apiserver.Request
+func (_e *HandlerWithInput_Expecter) Handle(requestContext interface{}, request interface{}) *HandlerWithInput_Handle_Call {
+	return &HandlerWithInput_Handle_Call{Call: _e.mock.On("Handle", requestContext, request)}
+}
+
+func (_c *HandlerWithInput_Handle_Call) Run(run func(requestContext context.Context, request *apiserver.Request)) *HandlerWithInput_Handle_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*apiserver.Request))
+	})
+	return _c
+}
+
+func (_c *HandlerWithInput_Handle_Call) Return(response *apiserver.Response, error error) *HandlerWithInput_Handle_Call {
+	_c.Call.Return(response, error)
+	return _c
+}
+
+func (_c *HandlerWithInput_Handle_Call) RunAndReturn(run func(context.Context, *apiserver.Request) (*apiserver.Response, error)) *HandlerWithInput_Handle_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewHandlerWithInput interface {

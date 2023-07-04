@@ -14,6 +14,14 @@ type SentryHub struct {
 	mock.Mock
 }
 
+type SentryHub_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *SentryHub) EXPECT() *SentryHub_Expecter {
+	return &SentryHub_Expecter{mock: &_m.Mock}
+}
+
 // CaptureException provides a mock function with given fields: exception
 func (_m *SentryHub) CaptureException(exception error) *sentry.EventID {
 	ret := _m.Called(exception)
@@ -30,9 +38,65 @@ func (_m *SentryHub) CaptureException(exception error) *sentry.EventID {
 	return r0
 }
 
+// SentryHub_CaptureException_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CaptureException'
+type SentryHub_CaptureException_Call struct {
+	*mock.Call
+}
+
+// CaptureException is a helper method to define mock.On call
+//   - exception error
+func (_e *SentryHub_Expecter) CaptureException(exception interface{}) *SentryHub_CaptureException_Call {
+	return &SentryHub_CaptureException_Call{Call: _e.mock.On("CaptureException", exception)}
+}
+
+func (_c *SentryHub_CaptureException_Call) Run(run func(exception error)) *SentryHub_CaptureException_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(error))
+	})
+	return _c
+}
+
+func (_c *SentryHub_CaptureException_Call) Return(_a0 *sentry.EventID) *SentryHub_CaptureException_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SentryHub_CaptureException_Call) RunAndReturn(run func(error) *sentry.EventID) *SentryHub_CaptureException_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ConfigureScope provides a mock function with given fields: f
 func (_m *SentryHub) ConfigureScope(f func(*sentry.Scope)) {
 	_m.Called(f)
+}
+
+// SentryHub_ConfigureScope_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfigureScope'
+type SentryHub_ConfigureScope_Call struct {
+	*mock.Call
+}
+
+// ConfigureScope is a helper method to define mock.On call
+//   - f func(*sentry.Scope)
+func (_e *SentryHub_Expecter) ConfigureScope(f interface{}) *SentryHub_ConfigureScope_Call {
+	return &SentryHub_ConfigureScope_Call{Call: _e.mock.On("ConfigureScope", f)}
+}
+
+func (_c *SentryHub_ConfigureScope_Call) Run(run func(f func(*sentry.Scope))) *SentryHub_ConfigureScope_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func(*sentry.Scope)))
+	})
+	return _c
+}
+
+func (_c *SentryHub_ConfigureScope_Call) Return() *SentryHub_ConfigureScope_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *SentryHub_ConfigureScope_Call) RunAndReturn(run func(func(*sentry.Scope))) *SentryHub_ConfigureScope_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Flush provides a mock function with given fields: timeout
@@ -49,9 +113,65 @@ func (_m *SentryHub) Flush(timeout time.Duration) bool {
 	return r0
 }
 
+// SentryHub_Flush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Flush'
+type SentryHub_Flush_Call struct {
+	*mock.Call
+}
+
+// Flush is a helper method to define mock.On call
+//   - timeout time.Duration
+func (_e *SentryHub_Expecter) Flush(timeout interface{}) *SentryHub_Flush_Call {
+	return &SentryHub_Flush_Call{Call: _e.mock.On("Flush", timeout)}
+}
+
+func (_c *SentryHub_Flush_Call) Run(run func(timeout time.Duration)) *SentryHub_Flush_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *SentryHub_Flush_Call) Return(_a0 bool) *SentryHub_Flush_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SentryHub_Flush_Call) RunAndReturn(run func(time.Duration) bool) *SentryHub_Flush_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithScope provides a mock function with given fields: f
 func (_m *SentryHub) WithScope(f func(*sentry.Scope)) {
 	_m.Called(f)
+}
+
+// SentryHub_WithScope_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithScope'
+type SentryHub_WithScope_Call struct {
+	*mock.Call
+}
+
+// WithScope is a helper method to define mock.On call
+//   - f func(*sentry.Scope)
+func (_e *SentryHub_Expecter) WithScope(f interface{}) *SentryHub_WithScope_Call {
+	return &SentryHub_WithScope_Call{Call: _e.mock.On("WithScope", f)}
+}
+
+func (_c *SentryHub_WithScope_Call) Run(run func(f func(*sentry.Scope))) *SentryHub_WithScope_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func(*sentry.Scope)))
+	})
+	return _c
+}
+
+func (_c *SentryHub_WithScope_Call) Return() *SentryHub_WithScope_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *SentryHub_WithScope_Call) RunAndReturn(run func(func(*sentry.Scope))) *SentryHub_WithScope_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewSentryHub interface {

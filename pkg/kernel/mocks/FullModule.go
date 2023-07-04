@@ -13,6 +13,14 @@ type FullModule struct {
 	mock.Mock
 }
 
+type FullModule_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *FullModule) EXPECT() *FullModule_Expecter {
+	return &FullModule_Expecter{mock: &_m.Mock}
+}
+
 // GetStage provides a mock function with given fields:
 func (_m *FullModule) GetStage() int {
 	ret := _m.Called()
@@ -25,6 +33,33 @@ func (_m *FullModule) GetStage() int {
 	}
 
 	return r0
+}
+
+// FullModule_GetStage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStage'
+type FullModule_GetStage_Call struct {
+	*mock.Call
+}
+
+// GetStage is a helper method to define mock.On call
+func (_e *FullModule_Expecter) GetStage() *FullModule_GetStage_Call {
+	return &FullModule_GetStage_Call{Call: _e.mock.On("GetStage")}
+}
+
+func (_c *FullModule_GetStage_Call) Run(run func()) *FullModule_GetStage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *FullModule_GetStage_Call) Return(_a0 int) *FullModule_GetStage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *FullModule_GetStage_Call) RunAndReturn(run func() int) *FullModule_GetStage_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // IsBackground provides a mock function with given fields:
@@ -41,6 +76,33 @@ func (_m *FullModule) IsBackground() bool {
 	return r0
 }
 
+// FullModule_IsBackground_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsBackground'
+type FullModule_IsBackground_Call struct {
+	*mock.Call
+}
+
+// IsBackground is a helper method to define mock.On call
+func (_e *FullModule_Expecter) IsBackground() *FullModule_IsBackground_Call {
+	return &FullModule_IsBackground_Call{Call: _e.mock.On("IsBackground")}
+}
+
+func (_c *FullModule_IsBackground_Call) Run(run func()) *FullModule_IsBackground_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *FullModule_IsBackground_Call) Return(_a0 bool) *FullModule_IsBackground_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *FullModule_IsBackground_Call) RunAndReturn(run func() bool) *FullModule_IsBackground_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsEssential provides a mock function with given fields:
 func (_m *FullModule) IsEssential() bool {
 	ret := _m.Called()
@@ -55,6 +117,33 @@ func (_m *FullModule) IsEssential() bool {
 	return r0
 }
 
+// FullModule_IsEssential_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsEssential'
+type FullModule_IsEssential_Call struct {
+	*mock.Call
+}
+
+// IsEssential is a helper method to define mock.On call
+func (_e *FullModule_Expecter) IsEssential() *FullModule_IsEssential_Call {
+	return &FullModule_IsEssential_Call{Call: _e.mock.On("IsEssential")}
+}
+
+func (_c *FullModule_IsEssential_Call) Run(run func()) *FullModule_IsEssential_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *FullModule_IsEssential_Call) Return(_a0 bool) *FullModule_IsEssential_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *FullModule_IsEssential_Call) RunAndReturn(run func() bool) *FullModule_IsEssential_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *FullModule) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -67,6 +156,34 @@ func (_m *FullModule) Run(ctx context.Context) error {
 	}
 
 	return r0
+}
+
+// FullModule_Run_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Run'
+type FullModule_Run_Call struct {
+	*mock.Call
+}
+
+// Run is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *FullModule_Expecter) Run(ctx interface{}) *FullModule_Run_Call {
+	return &FullModule_Run_Call{Call: _e.mock.On("Run", ctx)}
+}
+
+func (_c *FullModule_Run_Call) Run(run func(ctx context.Context)) *FullModule_Run_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *FullModule_Run_Call) Return(_a0 error) *FullModule_Run_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *FullModule_Run_Call) RunAndReturn(run func(context.Context) error) *FullModule_Run_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewFullModule interface {

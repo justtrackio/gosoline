@@ -14,6 +14,14 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Client) EXPECT() *Client_Expecter {
+	return &Client_Expecter{mock: &_m.Mock}
+}
+
 // CreateQueue provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) CreateQueue(ctx context.Context, params *sqs.CreateQueueInput, optFns ...func(*sqs.Options)) (*sqs.CreateQueueOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -45,6 +53,43 @@ func (_m *Client) CreateQueue(ctx context.Context, params *sqs.CreateQueueInput,
 	}
 
 	return r0, r1
+}
+
+// Client_CreateQueue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateQueue'
+type Client_CreateQueue_Call struct {
+	*mock.Call
+}
+
+// CreateQueue is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.CreateQueueInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) CreateQueue(ctx interface{}, params interface{}, optFns ...interface{}) *Client_CreateQueue_Call {
+	return &Client_CreateQueue_Call{Call: _e.mock.On("CreateQueue",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_CreateQueue_Call) Run(run func(ctx context.Context, params *sqs.CreateQueueInput, optFns ...func(*sqs.Options))) *Client_CreateQueue_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.CreateQueueInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_CreateQueue_Call) Return(_a0 *sqs.CreateQueueOutput, _a1 error) *Client_CreateQueue_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_CreateQueue_Call) RunAndReturn(run func(context.Context, *sqs.CreateQueueInput, ...func(*sqs.Options)) (*sqs.CreateQueueOutput, error)) *Client_CreateQueue_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // DeleteMessage provides a mock function with given fields: ctx, params, optFns
@@ -80,6 +125,43 @@ func (_m *Client) DeleteMessage(ctx context.Context, params *sqs.DeleteMessageIn
 	return r0, r1
 }
 
+// Client_DeleteMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteMessage'
+type Client_DeleteMessage_Call struct {
+	*mock.Call
+}
+
+// DeleteMessage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.DeleteMessageInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) DeleteMessage(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DeleteMessage_Call {
+	return &Client_DeleteMessage_Call{Call: _e.mock.On("DeleteMessage",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DeleteMessage_Call) Run(run func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options))) *Client_DeleteMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.DeleteMessageInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DeleteMessage_Call) Return(_a0 *sqs.DeleteMessageOutput, _a1 error) *Client_DeleteMessage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DeleteMessage_Call) RunAndReturn(run func(context.Context, *sqs.DeleteMessageInput, ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)) *Client_DeleteMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteMessageBatch provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) DeleteMessageBatch(ctx context.Context, params *sqs.DeleteMessageBatchInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageBatchOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -111,6 +193,43 @@ func (_m *Client) DeleteMessageBatch(ctx context.Context, params *sqs.DeleteMess
 	}
 
 	return r0, r1
+}
+
+// Client_DeleteMessageBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteMessageBatch'
+type Client_DeleteMessageBatch_Call struct {
+	*mock.Call
+}
+
+// DeleteMessageBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.DeleteMessageBatchInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) DeleteMessageBatch(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DeleteMessageBatch_Call {
+	return &Client_DeleteMessageBatch_Call{Call: _e.mock.On("DeleteMessageBatch",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DeleteMessageBatch_Call) Run(run func(ctx context.Context, params *sqs.DeleteMessageBatchInput, optFns ...func(*sqs.Options))) *Client_DeleteMessageBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.DeleteMessageBatchInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DeleteMessageBatch_Call) Return(_a0 *sqs.DeleteMessageBatchOutput, _a1 error) *Client_DeleteMessageBatch_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DeleteMessageBatch_Call) RunAndReturn(run func(context.Context, *sqs.DeleteMessageBatchInput, ...func(*sqs.Options)) (*sqs.DeleteMessageBatchOutput, error)) *Client_DeleteMessageBatch_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetQueueAttributes provides a mock function with given fields: ctx, params, optFns
@@ -146,6 +265,43 @@ func (_m *Client) GetQueueAttributes(ctx context.Context, params *sqs.GetQueueAt
 	return r0, r1
 }
 
+// Client_GetQueueAttributes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetQueueAttributes'
+type Client_GetQueueAttributes_Call struct {
+	*mock.Call
+}
+
+// GetQueueAttributes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.GetQueueAttributesInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) GetQueueAttributes(ctx interface{}, params interface{}, optFns ...interface{}) *Client_GetQueueAttributes_Call {
+	return &Client_GetQueueAttributes_Call{Call: _e.mock.On("GetQueueAttributes",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_GetQueueAttributes_Call) Run(run func(ctx context.Context, params *sqs.GetQueueAttributesInput, optFns ...func(*sqs.Options))) *Client_GetQueueAttributes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.GetQueueAttributesInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetQueueAttributes_Call) Return(_a0 *sqs.GetQueueAttributesOutput, _a1 error) *Client_GetQueueAttributes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetQueueAttributes_Call) RunAndReturn(run func(context.Context, *sqs.GetQueueAttributesInput, ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error)) *Client_GetQueueAttributes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetQueueUrl provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) GetQueueUrl(ctx context.Context, params *sqs.GetQueueUrlInput, optFns ...func(*sqs.Options)) (*sqs.GetQueueUrlOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -177,6 +333,43 @@ func (_m *Client) GetQueueUrl(ctx context.Context, params *sqs.GetQueueUrlInput,
 	}
 
 	return r0, r1
+}
+
+// Client_GetQueueUrl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetQueueUrl'
+type Client_GetQueueUrl_Call struct {
+	*mock.Call
+}
+
+// GetQueueUrl is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.GetQueueUrlInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) GetQueueUrl(ctx interface{}, params interface{}, optFns ...interface{}) *Client_GetQueueUrl_Call {
+	return &Client_GetQueueUrl_Call{Call: _e.mock.On("GetQueueUrl",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_GetQueueUrl_Call) Run(run func(ctx context.Context, params *sqs.GetQueueUrlInput, optFns ...func(*sqs.Options))) *Client_GetQueueUrl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.GetQueueUrlInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetQueueUrl_Call) Return(_a0 *sqs.GetQueueUrlOutput, _a1 error) *Client_GetQueueUrl_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetQueueUrl_Call) RunAndReturn(run func(context.Context, *sqs.GetQueueUrlInput, ...func(*sqs.Options)) (*sqs.GetQueueUrlOutput, error)) *Client_GetQueueUrl_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // PurgeQueue provides a mock function with given fields: ctx, params, optFns
@@ -212,6 +405,43 @@ func (_m *Client) PurgeQueue(ctx context.Context, params *sqs.PurgeQueueInput, o
 	return r0, r1
 }
 
+// Client_PurgeQueue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PurgeQueue'
+type Client_PurgeQueue_Call struct {
+	*mock.Call
+}
+
+// PurgeQueue is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.PurgeQueueInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) PurgeQueue(ctx interface{}, params interface{}, optFns ...interface{}) *Client_PurgeQueue_Call {
+	return &Client_PurgeQueue_Call{Call: _e.mock.On("PurgeQueue",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_PurgeQueue_Call) Run(run func(ctx context.Context, params *sqs.PurgeQueueInput, optFns ...func(*sqs.Options))) *Client_PurgeQueue_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.PurgeQueueInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_PurgeQueue_Call) Return(_a0 *sqs.PurgeQueueOutput, _a1 error) *Client_PurgeQueue_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PurgeQueue_Call) RunAndReturn(run func(context.Context, *sqs.PurgeQueueInput, ...func(*sqs.Options)) (*sqs.PurgeQueueOutput, error)) *Client_PurgeQueue_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReceiveMessage provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -243,6 +473,43 @@ func (_m *Client) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessage
 	}
 
 	return r0, r1
+}
+
+// Client_ReceiveMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReceiveMessage'
+type Client_ReceiveMessage_Call struct {
+	*mock.Call
+}
+
+// ReceiveMessage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.ReceiveMessageInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) ReceiveMessage(ctx interface{}, params interface{}, optFns ...interface{}) *Client_ReceiveMessage_Call {
+	return &Client_ReceiveMessage_Call{Call: _e.mock.On("ReceiveMessage",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_ReceiveMessage_Call) Run(run func(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options))) *Client_ReceiveMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.ReceiveMessageInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ReceiveMessage_Call) Return(_a0 *sqs.ReceiveMessageOutput, _a1 error) *Client_ReceiveMessage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ReceiveMessage_Call) RunAndReturn(run func(context.Context, *sqs.ReceiveMessageInput, ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)) *Client_ReceiveMessage_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SendMessage provides a mock function with given fields: ctx, params, optFns
@@ -278,6 +545,43 @@ func (_m *Client) SendMessage(ctx context.Context, params *sqs.SendMessageInput,
 	return r0, r1
 }
 
+// Client_SendMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendMessage'
+type Client_SendMessage_Call struct {
+	*mock.Call
+}
+
+// SendMessage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.SendMessageInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) SendMessage(ctx interface{}, params interface{}, optFns ...interface{}) *Client_SendMessage_Call {
+	return &Client_SendMessage_Call{Call: _e.mock.On("SendMessage",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_SendMessage_Call) Run(run func(ctx context.Context, params *sqs.SendMessageInput, optFns ...func(*sqs.Options))) *Client_SendMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.SendMessageInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SendMessage_Call) Return(_a0 *sqs.SendMessageOutput, _a1 error) *Client_SendMessage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SendMessage_Call) RunAndReturn(run func(context.Context, *sqs.SendMessageInput, ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)) *Client_SendMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SendMessageBatch provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) SendMessageBatch(ctx context.Context, params *sqs.SendMessageBatchInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageBatchOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -311,6 +615,43 @@ func (_m *Client) SendMessageBatch(ctx context.Context, params *sqs.SendMessageB
 	return r0, r1
 }
 
+// Client_SendMessageBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendMessageBatch'
+type Client_SendMessageBatch_Call struct {
+	*mock.Call
+}
+
+// SendMessageBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.SendMessageBatchInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) SendMessageBatch(ctx interface{}, params interface{}, optFns ...interface{}) *Client_SendMessageBatch_Call {
+	return &Client_SendMessageBatch_Call{Call: _e.mock.On("SendMessageBatch",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_SendMessageBatch_Call) Run(run func(ctx context.Context, params *sqs.SendMessageBatchInput, optFns ...func(*sqs.Options))) *Client_SendMessageBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.SendMessageBatchInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SendMessageBatch_Call) Return(_a0 *sqs.SendMessageBatchOutput, _a1 error) *Client_SendMessageBatch_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SendMessageBatch_Call) RunAndReturn(run func(context.Context, *sqs.SendMessageBatchInput, ...func(*sqs.Options)) (*sqs.SendMessageBatchOutput, error)) *Client_SendMessageBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetQueueAttributes provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) SetQueueAttributes(ctx context.Context, params *sqs.SetQueueAttributesInput, optFns ...func(*sqs.Options)) (*sqs.SetQueueAttributesOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -342,6 +683,43 @@ func (_m *Client) SetQueueAttributes(ctx context.Context, params *sqs.SetQueueAt
 	}
 
 	return r0, r1
+}
+
+// Client_SetQueueAttributes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetQueueAttributes'
+type Client_SetQueueAttributes_Call struct {
+	*mock.Call
+}
+
+// SetQueueAttributes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.SetQueueAttributesInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) SetQueueAttributes(ctx interface{}, params interface{}, optFns ...interface{}) *Client_SetQueueAttributes_Call {
+	return &Client_SetQueueAttributes_Call{Call: _e.mock.On("SetQueueAttributes",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_SetQueueAttributes_Call) Run(run func(ctx context.Context, params *sqs.SetQueueAttributesInput, optFns ...func(*sqs.Options))) *Client_SetQueueAttributes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.SetQueueAttributesInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SetQueueAttributes_Call) Return(_a0 *sqs.SetQueueAttributesOutput, _a1 error) *Client_SetQueueAttributes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SetQueueAttributes_Call) RunAndReturn(run func(context.Context, *sqs.SetQueueAttributesInput, ...func(*sqs.Options)) (*sqs.SetQueueAttributesOutput, error)) *Client_SetQueueAttributes_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewClient interface {

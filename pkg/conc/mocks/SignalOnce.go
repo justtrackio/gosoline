@@ -9,6 +9,14 @@ type SignalOnce struct {
 	mock.Mock
 }
 
+type SignalOnce_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *SignalOnce) EXPECT() *SignalOnce_Expecter {
+	return &SignalOnce_Expecter{mock: &_m.Mock}
+}
+
 // Channel provides a mock function with given fields:
 func (_m *SignalOnce) Channel() chan struct{} {
 	ret := _m.Called()
@@ -25,9 +33,63 @@ func (_m *SignalOnce) Channel() chan struct{} {
 	return r0
 }
 
+// SignalOnce_Channel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Channel'
+type SignalOnce_Channel_Call struct {
+	*mock.Call
+}
+
+// Channel is a helper method to define mock.On call
+func (_e *SignalOnce_Expecter) Channel() *SignalOnce_Channel_Call {
+	return &SignalOnce_Channel_Call{Call: _e.mock.On("Channel")}
+}
+
+func (_c *SignalOnce_Channel_Call) Run(run func()) *SignalOnce_Channel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SignalOnce_Channel_Call) Return(_a0 chan struct{}) *SignalOnce_Channel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SignalOnce_Channel_Call) RunAndReturn(run func() chan struct{}) *SignalOnce_Channel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Signal provides a mock function with given fields:
 func (_m *SignalOnce) Signal() {
 	_m.Called()
+}
+
+// SignalOnce_Signal_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Signal'
+type SignalOnce_Signal_Call struct {
+	*mock.Call
+}
+
+// Signal is a helper method to define mock.On call
+func (_e *SignalOnce_Expecter) Signal() *SignalOnce_Signal_Call {
+	return &SignalOnce_Signal_Call{Call: _e.mock.On("Signal")}
+}
+
+func (_c *SignalOnce_Signal_Call) Run(run func()) *SignalOnce_Signal_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SignalOnce_Signal_Call) Return() *SignalOnce_Signal_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *SignalOnce_Signal_Call) RunAndReturn(run func()) *SignalOnce_Signal_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Signaled provides a mock function with given fields:
@@ -42,6 +104,33 @@ func (_m *SignalOnce) Signaled() bool {
 	}
 
 	return r0
+}
+
+// SignalOnce_Signaled_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Signaled'
+type SignalOnce_Signaled_Call struct {
+	*mock.Call
+}
+
+// Signaled is a helper method to define mock.On call
+func (_e *SignalOnce_Expecter) Signaled() *SignalOnce_Signaled_Call {
+	return &SignalOnce_Signaled_Call{Call: _e.mock.On("Signaled")}
+}
+
+func (_c *SignalOnce_Signaled_Call) Run(run func()) *SignalOnce_Signaled_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SignalOnce_Signaled_Call) Return(_a0 bool) *SignalOnce_Signaled_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SignalOnce_Signaled_Call) RunAndReturn(run func() bool) *SignalOnce_Signaled_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewSignalOnce interface {

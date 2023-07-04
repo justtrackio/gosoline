@@ -14,6 +14,14 @@ type RecordWriter struct {
 	mock.Mock
 }
 
+type RecordWriter_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *RecordWriter) EXPECT() *RecordWriter_Expecter {
+	return &RecordWriter_Expecter{mock: &_m.Mock}
+}
+
 // PutRecord provides a mock function with given fields: ctx, record
 func (_m *RecordWriter) PutRecord(ctx context.Context, record *kinesis.Record) error {
 	ret := _m.Called(ctx, record)
@@ -28,6 +36,35 @@ func (_m *RecordWriter) PutRecord(ctx context.Context, record *kinesis.Record) e
 	return r0
 }
 
+// RecordWriter_PutRecord_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PutRecord'
+type RecordWriter_PutRecord_Call struct {
+	*mock.Call
+}
+
+// PutRecord is a helper method to define mock.On call
+//   - ctx context.Context
+//   - record *kinesis.Record
+func (_e *RecordWriter_Expecter) PutRecord(ctx interface{}, record interface{}) *RecordWriter_PutRecord_Call {
+	return &RecordWriter_PutRecord_Call{Call: _e.mock.On("PutRecord", ctx, record)}
+}
+
+func (_c *RecordWriter_PutRecord_Call) Run(run func(ctx context.Context, record *kinesis.Record)) *RecordWriter_PutRecord_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*kinesis.Record))
+	})
+	return _c
+}
+
+func (_c *RecordWriter_PutRecord_Call) Return(_a0 error) *RecordWriter_PutRecord_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *RecordWriter_PutRecord_Call) RunAndReturn(run func(context.Context, *kinesis.Record) error) *RecordWriter_PutRecord_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PutRecords provides a mock function with given fields: ctx, batch
 func (_m *RecordWriter) PutRecords(ctx context.Context, batch []*kinesis.Record) error {
 	ret := _m.Called(ctx, batch)
@@ -40,6 +77,35 @@ func (_m *RecordWriter) PutRecords(ctx context.Context, batch []*kinesis.Record)
 	}
 
 	return r0
+}
+
+// RecordWriter_PutRecords_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PutRecords'
+type RecordWriter_PutRecords_Call struct {
+	*mock.Call
+}
+
+// PutRecords is a helper method to define mock.On call
+//   - ctx context.Context
+//   - batch []*kinesis.Record
+func (_e *RecordWriter_Expecter) PutRecords(ctx interface{}, batch interface{}) *RecordWriter_PutRecords_Call {
+	return &RecordWriter_PutRecords_Call{Call: _e.mock.On("PutRecords", ctx, batch)}
+}
+
+func (_c *RecordWriter_PutRecords_Call) Run(run func(ctx context.Context, batch []*kinesis.Record)) *RecordWriter_PutRecords_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]*kinesis.Record))
+	})
+	return _c
+}
+
+func (_c *RecordWriter_PutRecords_Call) Return(_a0 error) *RecordWriter_PutRecords_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *RecordWriter_PutRecords_Call) RunAndReturn(run func(context.Context, []*kinesis.Record) error) *RecordWriter_PutRecords_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewRecordWriter interface {

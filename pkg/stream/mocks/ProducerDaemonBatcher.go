@@ -12,6 +12,14 @@ type ProducerDaemonBatcher struct {
 	mock.Mock
 }
 
+type ProducerDaemonBatcher_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *ProducerDaemonBatcher) EXPECT() *ProducerDaemonBatcher_Expecter {
+	return &ProducerDaemonBatcher_Expecter{mock: &_m.Mock}
+}
+
 // Append provides a mock function with given fields: msg
 func (_m *ProducerDaemonBatcher) Append(msg *stream.Message) ([]stream.WritableMessage, error) {
 	ret := _m.Called(msg)
@@ -38,6 +46,34 @@ func (_m *ProducerDaemonBatcher) Append(msg *stream.Message) ([]stream.WritableM
 	return r0, r1
 }
 
+// ProducerDaemonBatcher_Append_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Append'
+type ProducerDaemonBatcher_Append_Call struct {
+	*mock.Call
+}
+
+// Append is a helper method to define mock.On call
+//   - msg *stream.Message
+func (_e *ProducerDaemonBatcher_Expecter) Append(msg interface{}) *ProducerDaemonBatcher_Append_Call {
+	return &ProducerDaemonBatcher_Append_Call{Call: _e.mock.On("Append", msg)}
+}
+
+func (_c *ProducerDaemonBatcher_Append_Call) Run(run func(msg *stream.Message)) *ProducerDaemonBatcher_Append_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*stream.Message))
+	})
+	return _c
+}
+
+func (_c *ProducerDaemonBatcher_Append_Call) Return(_a0 []stream.WritableMessage, _a1 error) *ProducerDaemonBatcher_Append_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ProducerDaemonBatcher_Append_Call) RunAndReturn(run func(*stream.Message) ([]stream.WritableMessage, error)) *ProducerDaemonBatcher_Append_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Flush provides a mock function with given fields:
 func (_m *ProducerDaemonBatcher) Flush() []stream.WritableMessage {
 	ret := _m.Called()
@@ -52,6 +88,33 @@ func (_m *ProducerDaemonBatcher) Flush() []stream.WritableMessage {
 	}
 
 	return r0
+}
+
+// ProducerDaemonBatcher_Flush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Flush'
+type ProducerDaemonBatcher_Flush_Call struct {
+	*mock.Call
+}
+
+// Flush is a helper method to define mock.On call
+func (_e *ProducerDaemonBatcher_Expecter) Flush() *ProducerDaemonBatcher_Flush_Call {
+	return &ProducerDaemonBatcher_Flush_Call{Call: _e.mock.On("Flush")}
+}
+
+func (_c *ProducerDaemonBatcher_Flush_Call) Run(run func()) *ProducerDaemonBatcher_Flush_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ProducerDaemonBatcher_Flush_Call) Return(_a0 []stream.WritableMessage) *ProducerDaemonBatcher_Flush_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ProducerDaemonBatcher_Flush_Call) RunAndReturn(run func() []stream.WritableMessage) *ProducerDaemonBatcher_Flush_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewProducerDaemonBatcher interface {

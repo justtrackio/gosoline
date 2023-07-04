@@ -14,6 +14,14 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Client) EXPECT() *Client_Expecter {
+	return &Client_Expecter{mock: &_m.Mock}
+}
+
 // AddTagsToStream provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) AddTagsToStream(ctx context.Context, params *kinesis.AddTagsToStreamInput, optFns ...func(*kinesis.Options)) (*kinesis.AddTagsToStreamOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -45,6 +53,43 @@ func (_m *Client) AddTagsToStream(ctx context.Context, params *kinesis.AddTagsTo
 	}
 
 	return r0, r1
+}
+
+// Client_AddTagsToStream_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddTagsToStream'
+type Client_AddTagsToStream_Call struct {
+	*mock.Call
+}
+
+// AddTagsToStream is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.AddTagsToStreamInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) AddTagsToStream(ctx interface{}, params interface{}, optFns ...interface{}) *Client_AddTagsToStream_Call {
+	return &Client_AddTagsToStream_Call{Call: _e.mock.On("AddTagsToStream",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_AddTagsToStream_Call) Run(run func(ctx context.Context, params *kinesis.AddTagsToStreamInput, optFns ...func(*kinesis.Options))) *Client_AddTagsToStream_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.AddTagsToStreamInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_AddTagsToStream_Call) Return(_a0 *kinesis.AddTagsToStreamOutput, _a1 error) *Client_AddTagsToStream_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_AddTagsToStream_Call) RunAndReturn(run func(context.Context, *kinesis.AddTagsToStreamInput, ...func(*kinesis.Options)) (*kinesis.AddTagsToStreamOutput, error)) *Client_AddTagsToStream_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // CreateStream provides a mock function with given fields: ctx, params, optFns
@@ -80,6 +125,43 @@ func (_m *Client) CreateStream(ctx context.Context, params *kinesis.CreateStream
 	return r0, r1
 }
 
+// Client_CreateStream_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateStream'
+type Client_CreateStream_Call struct {
+	*mock.Call
+}
+
+// CreateStream is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.CreateStreamInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) CreateStream(ctx interface{}, params interface{}, optFns ...interface{}) *Client_CreateStream_Call {
+	return &Client_CreateStream_Call{Call: _e.mock.On("CreateStream",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_CreateStream_Call) Run(run func(ctx context.Context, params *kinesis.CreateStreamInput, optFns ...func(*kinesis.Options))) *Client_CreateStream_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.CreateStreamInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_CreateStream_Call) Return(_a0 *kinesis.CreateStreamOutput, _a1 error) *Client_CreateStream_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_CreateStream_Call) RunAndReturn(run func(context.Context, *kinesis.CreateStreamInput, ...func(*kinesis.Options)) (*kinesis.CreateStreamOutput, error)) *Client_CreateStream_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DecreaseStreamRetentionPeriod provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) DecreaseStreamRetentionPeriod(ctx context.Context, params *kinesis.DecreaseStreamRetentionPeriodInput, optFns ...func(*kinesis.Options)) (*kinesis.DecreaseStreamRetentionPeriodOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -111,6 +193,43 @@ func (_m *Client) DecreaseStreamRetentionPeriod(ctx context.Context, params *kin
 	}
 
 	return r0, r1
+}
+
+// Client_DecreaseStreamRetentionPeriod_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DecreaseStreamRetentionPeriod'
+type Client_DecreaseStreamRetentionPeriod_Call struct {
+	*mock.Call
+}
+
+// DecreaseStreamRetentionPeriod is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.DecreaseStreamRetentionPeriodInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) DecreaseStreamRetentionPeriod(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DecreaseStreamRetentionPeriod_Call {
+	return &Client_DecreaseStreamRetentionPeriod_Call{Call: _e.mock.On("DecreaseStreamRetentionPeriod",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DecreaseStreamRetentionPeriod_Call) Run(run func(ctx context.Context, params *kinesis.DecreaseStreamRetentionPeriodInput, optFns ...func(*kinesis.Options))) *Client_DecreaseStreamRetentionPeriod_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.DecreaseStreamRetentionPeriodInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DecreaseStreamRetentionPeriod_Call) Return(_a0 *kinesis.DecreaseStreamRetentionPeriodOutput, _a1 error) *Client_DecreaseStreamRetentionPeriod_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DecreaseStreamRetentionPeriod_Call) RunAndReturn(run func(context.Context, *kinesis.DecreaseStreamRetentionPeriodInput, ...func(*kinesis.Options)) (*kinesis.DecreaseStreamRetentionPeriodOutput, error)) *Client_DecreaseStreamRetentionPeriod_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // DeleteStream provides a mock function with given fields: ctx, params, optFns
@@ -146,6 +265,43 @@ func (_m *Client) DeleteStream(ctx context.Context, params *kinesis.DeleteStream
 	return r0, r1
 }
 
+// Client_DeleteStream_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteStream'
+type Client_DeleteStream_Call struct {
+	*mock.Call
+}
+
+// DeleteStream is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.DeleteStreamInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) DeleteStream(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DeleteStream_Call {
+	return &Client_DeleteStream_Call{Call: _e.mock.On("DeleteStream",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DeleteStream_Call) Run(run func(ctx context.Context, params *kinesis.DeleteStreamInput, optFns ...func(*kinesis.Options))) *Client_DeleteStream_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.DeleteStreamInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DeleteStream_Call) Return(_a0 *kinesis.DeleteStreamOutput, _a1 error) *Client_DeleteStream_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DeleteStream_Call) RunAndReturn(run func(context.Context, *kinesis.DeleteStreamInput, ...func(*kinesis.Options)) (*kinesis.DeleteStreamOutput, error)) *Client_DeleteStream_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeregisterStreamConsumer provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) DeregisterStreamConsumer(ctx context.Context, params *kinesis.DeregisterStreamConsumerInput, optFns ...func(*kinesis.Options)) (*kinesis.DeregisterStreamConsumerOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -177,6 +333,43 @@ func (_m *Client) DeregisterStreamConsumer(ctx context.Context, params *kinesis.
 	}
 
 	return r0, r1
+}
+
+// Client_DeregisterStreamConsumer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeregisterStreamConsumer'
+type Client_DeregisterStreamConsumer_Call struct {
+	*mock.Call
+}
+
+// DeregisterStreamConsumer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.DeregisterStreamConsumerInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) DeregisterStreamConsumer(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DeregisterStreamConsumer_Call {
+	return &Client_DeregisterStreamConsumer_Call{Call: _e.mock.On("DeregisterStreamConsumer",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DeregisterStreamConsumer_Call) Run(run func(ctx context.Context, params *kinesis.DeregisterStreamConsumerInput, optFns ...func(*kinesis.Options))) *Client_DeregisterStreamConsumer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.DeregisterStreamConsumerInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DeregisterStreamConsumer_Call) Return(_a0 *kinesis.DeregisterStreamConsumerOutput, _a1 error) *Client_DeregisterStreamConsumer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DeregisterStreamConsumer_Call) RunAndReturn(run func(context.Context, *kinesis.DeregisterStreamConsumerInput, ...func(*kinesis.Options)) (*kinesis.DeregisterStreamConsumerOutput, error)) *Client_DeregisterStreamConsumer_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // DescribeLimits provides a mock function with given fields: ctx, params, optFns
@@ -212,6 +405,43 @@ func (_m *Client) DescribeLimits(ctx context.Context, params *kinesis.DescribeLi
 	return r0, r1
 }
 
+// Client_DescribeLimits_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DescribeLimits'
+type Client_DescribeLimits_Call struct {
+	*mock.Call
+}
+
+// DescribeLimits is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.DescribeLimitsInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) DescribeLimits(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DescribeLimits_Call {
+	return &Client_DescribeLimits_Call{Call: _e.mock.On("DescribeLimits",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DescribeLimits_Call) Run(run func(ctx context.Context, params *kinesis.DescribeLimitsInput, optFns ...func(*kinesis.Options))) *Client_DescribeLimits_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.DescribeLimitsInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DescribeLimits_Call) Return(_a0 *kinesis.DescribeLimitsOutput, _a1 error) *Client_DescribeLimits_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DescribeLimits_Call) RunAndReturn(run func(context.Context, *kinesis.DescribeLimitsInput, ...func(*kinesis.Options)) (*kinesis.DescribeLimitsOutput, error)) *Client_DescribeLimits_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DescribeStream provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) DescribeStream(ctx context.Context, params *kinesis.DescribeStreamInput, optFns ...func(*kinesis.Options)) (*kinesis.DescribeStreamOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -243,6 +473,43 @@ func (_m *Client) DescribeStream(ctx context.Context, params *kinesis.DescribeSt
 	}
 
 	return r0, r1
+}
+
+// Client_DescribeStream_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DescribeStream'
+type Client_DescribeStream_Call struct {
+	*mock.Call
+}
+
+// DescribeStream is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.DescribeStreamInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) DescribeStream(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DescribeStream_Call {
+	return &Client_DescribeStream_Call{Call: _e.mock.On("DescribeStream",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DescribeStream_Call) Run(run func(ctx context.Context, params *kinesis.DescribeStreamInput, optFns ...func(*kinesis.Options))) *Client_DescribeStream_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.DescribeStreamInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DescribeStream_Call) Return(_a0 *kinesis.DescribeStreamOutput, _a1 error) *Client_DescribeStream_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DescribeStream_Call) RunAndReturn(run func(context.Context, *kinesis.DescribeStreamInput, ...func(*kinesis.Options)) (*kinesis.DescribeStreamOutput, error)) *Client_DescribeStream_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // DescribeStreamConsumer provides a mock function with given fields: ctx, params, optFns
@@ -278,6 +545,43 @@ func (_m *Client) DescribeStreamConsumer(ctx context.Context, params *kinesis.De
 	return r0, r1
 }
 
+// Client_DescribeStreamConsumer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DescribeStreamConsumer'
+type Client_DescribeStreamConsumer_Call struct {
+	*mock.Call
+}
+
+// DescribeStreamConsumer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.DescribeStreamConsumerInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) DescribeStreamConsumer(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DescribeStreamConsumer_Call {
+	return &Client_DescribeStreamConsumer_Call{Call: _e.mock.On("DescribeStreamConsumer",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DescribeStreamConsumer_Call) Run(run func(ctx context.Context, params *kinesis.DescribeStreamConsumerInput, optFns ...func(*kinesis.Options))) *Client_DescribeStreamConsumer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.DescribeStreamConsumerInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DescribeStreamConsumer_Call) Return(_a0 *kinesis.DescribeStreamConsumerOutput, _a1 error) *Client_DescribeStreamConsumer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DescribeStreamConsumer_Call) RunAndReturn(run func(context.Context, *kinesis.DescribeStreamConsumerInput, ...func(*kinesis.Options)) (*kinesis.DescribeStreamConsumerOutput, error)) *Client_DescribeStreamConsumer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DescribeStreamSummary provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) DescribeStreamSummary(ctx context.Context, params *kinesis.DescribeStreamSummaryInput, optFns ...func(*kinesis.Options)) (*kinesis.DescribeStreamSummaryOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -309,6 +613,43 @@ func (_m *Client) DescribeStreamSummary(ctx context.Context, params *kinesis.Des
 	}
 
 	return r0, r1
+}
+
+// Client_DescribeStreamSummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DescribeStreamSummary'
+type Client_DescribeStreamSummary_Call struct {
+	*mock.Call
+}
+
+// DescribeStreamSummary is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.DescribeStreamSummaryInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) DescribeStreamSummary(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DescribeStreamSummary_Call {
+	return &Client_DescribeStreamSummary_Call{Call: _e.mock.On("DescribeStreamSummary",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DescribeStreamSummary_Call) Run(run func(ctx context.Context, params *kinesis.DescribeStreamSummaryInput, optFns ...func(*kinesis.Options))) *Client_DescribeStreamSummary_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.DescribeStreamSummaryInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DescribeStreamSummary_Call) Return(_a0 *kinesis.DescribeStreamSummaryOutput, _a1 error) *Client_DescribeStreamSummary_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DescribeStreamSummary_Call) RunAndReturn(run func(context.Context, *kinesis.DescribeStreamSummaryInput, ...func(*kinesis.Options)) (*kinesis.DescribeStreamSummaryOutput, error)) *Client_DescribeStreamSummary_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // DisableEnhancedMonitoring provides a mock function with given fields: ctx, params, optFns
@@ -344,6 +685,43 @@ func (_m *Client) DisableEnhancedMonitoring(ctx context.Context, params *kinesis
 	return r0, r1
 }
 
+// Client_DisableEnhancedMonitoring_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DisableEnhancedMonitoring'
+type Client_DisableEnhancedMonitoring_Call struct {
+	*mock.Call
+}
+
+// DisableEnhancedMonitoring is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.DisableEnhancedMonitoringInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) DisableEnhancedMonitoring(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DisableEnhancedMonitoring_Call {
+	return &Client_DisableEnhancedMonitoring_Call{Call: _e.mock.On("DisableEnhancedMonitoring",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DisableEnhancedMonitoring_Call) Run(run func(ctx context.Context, params *kinesis.DisableEnhancedMonitoringInput, optFns ...func(*kinesis.Options))) *Client_DisableEnhancedMonitoring_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.DisableEnhancedMonitoringInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DisableEnhancedMonitoring_Call) Return(_a0 *kinesis.DisableEnhancedMonitoringOutput, _a1 error) *Client_DisableEnhancedMonitoring_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DisableEnhancedMonitoring_Call) RunAndReturn(run func(context.Context, *kinesis.DisableEnhancedMonitoringInput, ...func(*kinesis.Options)) (*kinesis.DisableEnhancedMonitoringOutput, error)) *Client_DisableEnhancedMonitoring_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // EnableEnhancedMonitoring provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) EnableEnhancedMonitoring(ctx context.Context, params *kinesis.EnableEnhancedMonitoringInput, optFns ...func(*kinesis.Options)) (*kinesis.EnableEnhancedMonitoringOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -375,6 +753,43 @@ func (_m *Client) EnableEnhancedMonitoring(ctx context.Context, params *kinesis.
 	}
 
 	return r0, r1
+}
+
+// Client_EnableEnhancedMonitoring_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EnableEnhancedMonitoring'
+type Client_EnableEnhancedMonitoring_Call struct {
+	*mock.Call
+}
+
+// EnableEnhancedMonitoring is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.EnableEnhancedMonitoringInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) EnableEnhancedMonitoring(ctx interface{}, params interface{}, optFns ...interface{}) *Client_EnableEnhancedMonitoring_Call {
+	return &Client_EnableEnhancedMonitoring_Call{Call: _e.mock.On("EnableEnhancedMonitoring",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_EnableEnhancedMonitoring_Call) Run(run func(ctx context.Context, params *kinesis.EnableEnhancedMonitoringInput, optFns ...func(*kinesis.Options))) *Client_EnableEnhancedMonitoring_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.EnableEnhancedMonitoringInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_EnableEnhancedMonitoring_Call) Return(_a0 *kinesis.EnableEnhancedMonitoringOutput, _a1 error) *Client_EnableEnhancedMonitoring_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_EnableEnhancedMonitoring_Call) RunAndReturn(run func(context.Context, *kinesis.EnableEnhancedMonitoringInput, ...func(*kinesis.Options)) (*kinesis.EnableEnhancedMonitoringOutput, error)) *Client_EnableEnhancedMonitoring_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetRecords provides a mock function with given fields: ctx, params, optFns
@@ -410,6 +825,43 @@ func (_m *Client) GetRecords(ctx context.Context, params *kinesis.GetRecordsInpu
 	return r0, r1
 }
 
+// Client_GetRecords_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRecords'
+type Client_GetRecords_Call struct {
+	*mock.Call
+}
+
+// GetRecords is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.GetRecordsInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) GetRecords(ctx interface{}, params interface{}, optFns ...interface{}) *Client_GetRecords_Call {
+	return &Client_GetRecords_Call{Call: _e.mock.On("GetRecords",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_GetRecords_Call) Run(run func(ctx context.Context, params *kinesis.GetRecordsInput, optFns ...func(*kinesis.Options))) *Client_GetRecords_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.GetRecordsInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetRecords_Call) Return(_a0 *kinesis.GetRecordsOutput, _a1 error) *Client_GetRecords_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetRecords_Call) RunAndReturn(run func(context.Context, *kinesis.GetRecordsInput, ...func(*kinesis.Options)) (*kinesis.GetRecordsOutput, error)) *Client_GetRecords_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetShardIterator provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) GetShardIterator(ctx context.Context, params *kinesis.GetShardIteratorInput, optFns ...func(*kinesis.Options)) (*kinesis.GetShardIteratorOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -441,6 +893,43 @@ func (_m *Client) GetShardIterator(ctx context.Context, params *kinesis.GetShard
 	}
 
 	return r0, r1
+}
+
+// Client_GetShardIterator_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetShardIterator'
+type Client_GetShardIterator_Call struct {
+	*mock.Call
+}
+
+// GetShardIterator is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.GetShardIteratorInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) GetShardIterator(ctx interface{}, params interface{}, optFns ...interface{}) *Client_GetShardIterator_Call {
+	return &Client_GetShardIterator_Call{Call: _e.mock.On("GetShardIterator",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_GetShardIterator_Call) Run(run func(ctx context.Context, params *kinesis.GetShardIteratorInput, optFns ...func(*kinesis.Options))) *Client_GetShardIterator_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.GetShardIteratorInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetShardIterator_Call) Return(_a0 *kinesis.GetShardIteratorOutput, _a1 error) *Client_GetShardIterator_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetShardIterator_Call) RunAndReturn(run func(context.Context, *kinesis.GetShardIteratorInput, ...func(*kinesis.Options)) (*kinesis.GetShardIteratorOutput, error)) *Client_GetShardIterator_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // IncreaseStreamRetentionPeriod provides a mock function with given fields: ctx, params, optFns
@@ -476,6 +965,43 @@ func (_m *Client) IncreaseStreamRetentionPeriod(ctx context.Context, params *kin
 	return r0, r1
 }
 
+// Client_IncreaseStreamRetentionPeriod_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncreaseStreamRetentionPeriod'
+type Client_IncreaseStreamRetentionPeriod_Call struct {
+	*mock.Call
+}
+
+// IncreaseStreamRetentionPeriod is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.IncreaseStreamRetentionPeriodInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) IncreaseStreamRetentionPeriod(ctx interface{}, params interface{}, optFns ...interface{}) *Client_IncreaseStreamRetentionPeriod_Call {
+	return &Client_IncreaseStreamRetentionPeriod_Call{Call: _e.mock.On("IncreaseStreamRetentionPeriod",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_IncreaseStreamRetentionPeriod_Call) Run(run func(ctx context.Context, params *kinesis.IncreaseStreamRetentionPeriodInput, optFns ...func(*kinesis.Options))) *Client_IncreaseStreamRetentionPeriod_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.IncreaseStreamRetentionPeriodInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_IncreaseStreamRetentionPeriod_Call) Return(_a0 *kinesis.IncreaseStreamRetentionPeriodOutput, _a1 error) *Client_IncreaseStreamRetentionPeriod_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_IncreaseStreamRetentionPeriod_Call) RunAndReturn(run func(context.Context, *kinesis.IncreaseStreamRetentionPeriodInput, ...func(*kinesis.Options)) (*kinesis.IncreaseStreamRetentionPeriodOutput, error)) *Client_IncreaseStreamRetentionPeriod_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListShards provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) ListShards(ctx context.Context, params *kinesis.ListShardsInput, optFns ...func(*kinesis.Options)) (*kinesis.ListShardsOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -507,6 +1033,43 @@ func (_m *Client) ListShards(ctx context.Context, params *kinesis.ListShardsInpu
 	}
 
 	return r0, r1
+}
+
+// Client_ListShards_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListShards'
+type Client_ListShards_Call struct {
+	*mock.Call
+}
+
+// ListShards is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.ListShardsInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) ListShards(ctx interface{}, params interface{}, optFns ...interface{}) *Client_ListShards_Call {
+	return &Client_ListShards_Call{Call: _e.mock.On("ListShards",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_ListShards_Call) Run(run func(ctx context.Context, params *kinesis.ListShardsInput, optFns ...func(*kinesis.Options))) *Client_ListShards_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.ListShardsInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ListShards_Call) Return(_a0 *kinesis.ListShardsOutput, _a1 error) *Client_ListShards_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ListShards_Call) RunAndReturn(run func(context.Context, *kinesis.ListShardsInput, ...func(*kinesis.Options)) (*kinesis.ListShardsOutput, error)) *Client_ListShards_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ListStreamConsumers provides a mock function with given fields: ctx, params, optFns
@@ -542,6 +1105,43 @@ func (_m *Client) ListStreamConsumers(ctx context.Context, params *kinesis.ListS
 	return r0, r1
 }
 
+// Client_ListStreamConsumers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListStreamConsumers'
+type Client_ListStreamConsumers_Call struct {
+	*mock.Call
+}
+
+// ListStreamConsumers is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.ListStreamConsumersInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) ListStreamConsumers(ctx interface{}, params interface{}, optFns ...interface{}) *Client_ListStreamConsumers_Call {
+	return &Client_ListStreamConsumers_Call{Call: _e.mock.On("ListStreamConsumers",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_ListStreamConsumers_Call) Run(run func(ctx context.Context, params *kinesis.ListStreamConsumersInput, optFns ...func(*kinesis.Options))) *Client_ListStreamConsumers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.ListStreamConsumersInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ListStreamConsumers_Call) Return(_a0 *kinesis.ListStreamConsumersOutput, _a1 error) *Client_ListStreamConsumers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ListStreamConsumers_Call) RunAndReturn(run func(context.Context, *kinesis.ListStreamConsumersInput, ...func(*kinesis.Options)) (*kinesis.ListStreamConsumersOutput, error)) *Client_ListStreamConsumers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListStreams provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) ListStreams(ctx context.Context, params *kinesis.ListStreamsInput, optFns ...func(*kinesis.Options)) (*kinesis.ListStreamsOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -573,6 +1173,43 @@ func (_m *Client) ListStreams(ctx context.Context, params *kinesis.ListStreamsIn
 	}
 
 	return r0, r1
+}
+
+// Client_ListStreams_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListStreams'
+type Client_ListStreams_Call struct {
+	*mock.Call
+}
+
+// ListStreams is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.ListStreamsInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) ListStreams(ctx interface{}, params interface{}, optFns ...interface{}) *Client_ListStreams_Call {
+	return &Client_ListStreams_Call{Call: _e.mock.On("ListStreams",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_ListStreams_Call) Run(run func(ctx context.Context, params *kinesis.ListStreamsInput, optFns ...func(*kinesis.Options))) *Client_ListStreams_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.ListStreamsInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ListStreams_Call) Return(_a0 *kinesis.ListStreamsOutput, _a1 error) *Client_ListStreams_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ListStreams_Call) RunAndReturn(run func(context.Context, *kinesis.ListStreamsInput, ...func(*kinesis.Options)) (*kinesis.ListStreamsOutput, error)) *Client_ListStreams_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ListTagsForStream provides a mock function with given fields: ctx, params, optFns
@@ -608,6 +1245,43 @@ func (_m *Client) ListTagsForStream(ctx context.Context, params *kinesis.ListTag
 	return r0, r1
 }
 
+// Client_ListTagsForStream_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListTagsForStream'
+type Client_ListTagsForStream_Call struct {
+	*mock.Call
+}
+
+// ListTagsForStream is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.ListTagsForStreamInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) ListTagsForStream(ctx interface{}, params interface{}, optFns ...interface{}) *Client_ListTagsForStream_Call {
+	return &Client_ListTagsForStream_Call{Call: _e.mock.On("ListTagsForStream",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_ListTagsForStream_Call) Run(run func(ctx context.Context, params *kinesis.ListTagsForStreamInput, optFns ...func(*kinesis.Options))) *Client_ListTagsForStream_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.ListTagsForStreamInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ListTagsForStream_Call) Return(_a0 *kinesis.ListTagsForStreamOutput, _a1 error) *Client_ListTagsForStream_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ListTagsForStream_Call) RunAndReturn(run func(context.Context, *kinesis.ListTagsForStreamInput, ...func(*kinesis.Options)) (*kinesis.ListTagsForStreamOutput, error)) *Client_ListTagsForStream_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MergeShards provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) MergeShards(ctx context.Context, params *kinesis.MergeShardsInput, optFns ...func(*kinesis.Options)) (*kinesis.MergeShardsOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -639,6 +1313,43 @@ func (_m *Client) MergeShards(ctx context.Context, params *kinesis.MergeShardsIn
 	}
 
 	return r0, r1
+}
+
+// Client_MergeShards_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MergeShards'
+type Client_MergeShards_Call struct {
+	*mock.Call
+}
+
+// MergeShards is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.MergeShardsInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) MergeShards(ctx interface{}, params interface{}, optFns ...interface{}) *Client_MergeShards_Call {
+	return &Client_MergeShards_Call{Call: _e.mock.On("MergeShards",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_MergeShards_Call) Run(run func(ctx context.Context, params *kinesis.MergeShardsInput, optFns ...func(*kinesis.Options))) *Client_MergeShards_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.MergeShardsInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_MergeShards_Call) Return(_a0 *kinesis.MergeShardsOutput, _a1 error) *Client_MergeShards_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_MergeShards_Call) RunAndReturn(run func(context.Context, *kinesis.MergeShardsInput, ...func(*kinesis.Options)) (*kinesis.MergeShardsOutput, error)) *Client_MergeShards_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // PutRecord provides a mock function with given fields: ctx, params, optFns
@@ -674,6 +1385,43 @@ func (_m *Client) PutRecord(ctx context.Context, params *kinesis.PutRecordInput,
 	return r0, r1
 }
 
+// Client_PutRecord_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PutRecord'
+type Client_PutRecord_Call struct {
+	*mock.Call
+}
+
+// PutRecord is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.PutRecordInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) PutRecord(ctx interface{}, params interface{}, optFns ...interface{}) *Client_PutRecord_Call {
+	return &Client_PutRecord_Call{Call: _e.mock.On("PutRecord",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_PutRecord_Call) Run(run func(ctx context.Context, params *kinesis.PutRecordInput, optFns ...func(*kinesis.Options))) *Client_PutRecord_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.PutRecordInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_PutRecord_Call) Return(_a0 *kinesis.PutRecordOutput, _a1 error) *Client_PutRecord_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PutRecord_Call) RunAndReturn(run func(context.Context, *kinesis.PutRecordInput, ...func(*kinesis.Options)) (*kinesis.PutRecordOutput, error)) *Client_PutRecord_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PutRecords provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) PutRecords(ctx context.Context, params *kinesis.PutRecordsInput, optFns ...func(*kinesis.Options)) (*kinesis.PutRecordsOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -705,6 +1453,43 @@ func (_m *Client) PutRecords(ctx context.Context, params *kinesis.PutRecordsInpu
 	}
 
 	return r0, r1
+}
+
+// Client_PutRecords_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PutRecords'
+type Client_PutRecords_Call struct {
+	*mock.Call
+}
+
+// PutRecords is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.PutRecordsInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) PutRecords(ctx interface{}, params interface{}, optFns ...interface{}) *Client_PutRecords_Call {
+	return &Client_PutRecords_Call{Call: _e.mock.On("PutRecords",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_PutRecords_Call) Run(run func(ctx context.Context, params *kinesis.PutRecordsInput, optFns ...func(*kinesis.Options))) *Client_PutRecords_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.PutRecordsInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_PutRecords_Call) Return(_a0 *kinesis.PutRecordsOutput, _a1 error) *Client_PutRecords_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PutRecords_Call) RunAndReturn(run func(context.Context, *kinesis.PutRecordsInput, ...func(*kinesis.Options)) (*kinesis.PutRecordsOutput, error)) *Client_PutRecords_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // RegisterStreamConsumer provides a mock function with given fields: ctx, params, optFns
@@ -740,6 +1525,43 @@ func (_m *Client) RegisterStreamConsumer(ctx context.Context, params *kinesis.Re
 	return r0, r1
 }
 
+// Client_RegisterStreamConsumer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterStreamConsumer'
+type Client_RegisterStreamConsumer_Call struct {
+	*mock.Call
+}
+
+// RegisterStreamConsumer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.RegisterStreamConsumerInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) RegisterStreamConsumer(ctx interface{}, params interface{}, optFns ...interface{}) *Client_RegisterStreamConsumer_Call {
+	return &Client_RegisterStreamConsumer_Call{Call: _e.mock.On("RegisterStreamConsumer",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_RegisterStreamConsumer_Call) Run(run func(ctx context.Context, params *kinesis.RegisterStreamConsumerInput, optFns ...func(*kinesis.Options))) *Client_RegisterStreamConsumer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.RegisterStreamConsumerInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_RegisterStreamConsumer_Call) Return(_a0 *kinesis.RegisterStreamConsumerOutput, _a1 error) *Client_RegisterStreamConsumer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_RegisterStreamConsumer_Call) RunAndReturn(run func(context.Context, *kinesis.RegisterStreamConsumerInput, ...func(*kinesis.Options)) (*kinesis.RegisterStreamConsumerOutput, error)) *Client_RegisterStreamConsumer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RemoveTagsFromStream provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) RemoveTagsFromStream(ctx context.Context, params *kinesis.RemoveTagsFromStreamInput, optFns ...func(*kinesis.Options)) (*kinesis.RemoveTagsFromStreamOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -771,6 +1593,43 @@ func (_m *Client) RemoveTagsFromStream(ctx context.Context, params *kinesis.Remo
 	}
 
 	return r0, r1
+}
+
+// Client_RemoveTagsFromStream_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveTagsFromStream'
+type Client_RemoveTagsFromStream_Call struct {
+	*mock.Call
+}
+
+// RemoveTagsFromStream is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.RemoveTagsFromStreamInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) RemoveTagsFromStream(ctx interface{}, params interface{}, optFns ...interface{}) *Client_RemoveTagsFromStream_Call {
+	return &Client_RemoveTagsFromStream_Call{Call: _e.mock.On("RemoveTagsFromStream",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_RemoveTagsFromStream_Call) Run(run func(ctx context.Context, params *kinesis.RemoveTagsFromStreamInput, optFns ...func(*kinesis.Options))) *Client_RemoveTagsFromStream_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.RemoveTagsFromStreamInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_RemoveTagsFromStream_Call) Return(_a0 *kinesis.RemoveTagsFromStreamOutput, _a1 error) *Client_RemoveTagsFromStream_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_RemoveTagsFromStream_Call) RunAndReturn(run func(context.Context, *kinesis.RemoveTagsFromStreamInput, ...func(*kinesis.Options)) (*kinesis.RemoveTagsFromStreamOutput, error)) *Client_RemoveTagsFromStream_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SplitShard provides a mock function with given fields: ctx, params, optFns
@@ -806,6 +1665,43 @@ func (_m *Client) SplitShard(ctx context.Context, params *kinesis.SplitShardInpu
 	return r0, r1
 }
 
+// Client_SplitShard_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SplitShard'
+type Client_SplitShard_Call struct {
+	*mock.Call
+}
+
+// SplitShard is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.SplitShardInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) SplitShard(ctx interface{}, params interface{}, optFns ...interface{}) *Client_SplitShard_Call {
+	return &Client_SplitShard_Call{Call: _e.mock.On("SplitShard",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_SplitShard_Call) Run(run func(ctx context.Context, params *kinesis.SplitShardInput, optFns ...func(*kinesis.Options))) *Client_SplitShard_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.SplitShardInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SplitShard_Call) Return(_a0 *kinesis.SplitShardOutput, _a1 error) *Client_SplitShard_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SplitShard_Call) RunAndReturn(run func(context.Context, *kinesis.SplitShardInput, ...func(*kinesis.Options)) (*kinesis.SplitShardOutput, error)) *Client_SplitShard_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // StartStreamEncryption provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) StartStreamEncryption(ctx context.Context, params *kinesis.StartStreamEncryptionInput, optFns ...func(*kinesis.Options)) (*kinesis.StartStreamEncryptionOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -837,6 +1733,43 @@ func (_m *Client) StartStreamEncryption(ctx context.Context, params *kinesis.Sta
 	}
 
 	return r0, r1
+}
+
+// Client_StartStreamEncryption_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartStreamEncryption'
+type Client_StartStreamEncryption_Call struct {
+	*mock.Call
+}
+
+// StartStreamEncryption is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.StartStreamEncryptionInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) StartStreamEncryption(ctx interface{}, params interface{}, optFns ...interface{}) *Client_StartStreamEncryption_Call {
+	return &Client_StartStreamEncryption_Call{Call: _e.mock.On("StartStreamEncryption",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_StartStreamEncryption_Call) Run(run func(ctx context.Context, params *kinesis.StartStreamEncryptionInput, optFns ...func(*kinesis.Options))) *Client_StartStreamEncryption_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.StartStreamEncryptionInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_StartStreamEncryption_Call) Return(_a0 *kinesis.StartStreamEncryptionOutput, _a1 error) *Client_StartStreamEncryption_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_StartStreamEncryption_Call) RunAndReturn(run func(context.Context, *kinesis.StartStreamEncryptionInput, ...func(*kinesis.Options)) (*kinesis.StartStreamEncryptionOutput, error)) *Client_StartStreamEncryption_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // StopStreamEncryption provides a mock function with given fields: ctx, params, optFns
@@ -872,6 +1805,43 @@ func (_m *Client) StopStreamEncryption(ctx context.Context, params *kinesis.Stop
 	return r0, r1
 }
 
+// Client_StopStreamEncryption_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StopStreamEncryption'
+type Client_StopStreamEncryption_Call struct {
+	*mock.Call
+}
+
+// StopStreamEncryption is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.StopStreamEncryptionInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) StopStreamEncryption(ctx interface{}, params interface{}, optFns ...interface{}) *Client_StopStreamEncryption_Call {
+	return &Client_StopStreamEncryption_Call{Call: _e.mock.On("StopStreamEncryption",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_StopStreamEncryption_Call) Run(run func(ctx context.Context, params *kinesis.StopStreamEncryptionInput, optFns ...func(*kinesis.Options))) *Client_StopStreamEncryption_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.StopStreamEncryptionInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_StopStreamEncryption_Call) Return(_a0 *kinesis.StopStreamEncryptionOutput, _a1 error) *Client_StopStreamEncryption_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_StopStreamEncryption_Call) RunAndReturn(run func(context.Context, *kinesis.StopStreamEncryptionInput, ...func(*kinesis.Options)) (*kinesis.StopStreamEncryptionOutput, error)) *Client_StopStreamEncryption_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SubscribeToShard provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) SubscribeToShard(ctx context.Context, params *kinesis.SubscribeToShardInput, optFns ...func(*kinesis.Options)) (*kinesis.SubscribeToShardOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -903,6 +1873,43 @@ func (_m *Client) SubscribeToShard(ctx context.Context, params *kinesis.Subscrib
 	}
 
 	return r0, r1
+}
+
+// Client_SubscribeToShard_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubscribeToShard'
+type Client_SubscribeToShard_Call struct {
+	*mock.Call
+}
+
+// SubscribeToShard is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.SubscribeToShardInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) SubscribeToShard(ctx interface{}, params interface{}, optFns ...interface{}) *Client_SubscribeToShard_Call {
+	return &Client_SubscribeToShard_Call{Call: _e.mock.On("SubscribeToShard",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_SubscribeToShard_Call) Run(run func(ctx context.Context, params *kinesis.SubscribeToShardInput, optFns ...func(*kinesis.Options))) *Client_SubscribeToShard_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.SubscribeToShardInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SubscribeToShard_Call) Return(_a0 *kinesis.SubscribeToShardOutput, _a1 error) *Client_SubscribeToShard_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SubscribeToShard_Call) RunAndReturn(run func(context.Context, *kinesis.SubscribeToShardInput, ...func(*kinesis.Options)) (*kinesis.SubscribeToShardOutput, error)) *Client_SubscribeToShard_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // UpdateShardCount provides a mock function with given fields: ctx, params, optFns
@@ -938,6 +1945,43 @@ func (_m *Client) UpdateShardCount(ctx context.Context, params *kinesis.UpdateSh
 	return r0, r1
 }
 
+// Client_UpdateShardCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateShardCount'
+type Client_UpdateShardCount_Call struct {
+	*mock.Call
+}
+
+// UpdateShardCount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.UpdateShardCountInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) UpdateShardCount(ctx interface{}, params interface{}, optFns ...interface{}) *Client_UpdateShardCount_Call {
+	return &Client_UpdateShardCount_Call{Call: _e.mock.On("UpdateShardCount",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_UpdateShardCount_Call) Run(run func(ctx context.Context, params *kinesis.UpdateShardCountInput, optFns ...func(*kinesis.Options))) *Client_UpdateShardCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.UpdateShardCountInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_UpdateShardCount_Call) Return(_a0 *kinesis.UpdateShardCountOutput, _a1 error) *Client_UpdateShardCount_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_UpdateShardCount_Call) RunAndReturn(run func(context.Context, *kinesis.UpdateShardCountInput, ...func(*kinesis.Options)) (*kinesis.UpdateShardCountOutput, error)) *Client_UpdateShardCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateStreamMode provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) UpdateStreamMode(ctx context.Context, params *kinesis.UpdateStreamModeInput, optFns ...func(*kinesis.Options)) (*kinesis.UpdateStreamModeOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -969,6 +2013,43 @@ func (_m *Client) UpdateStreamMode(ctx context.Context, params *kinesis.UpdateSt
 	}
 
 	return r0, r1
+}
+
+// Client_UpdateStreamMode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateStreamMode'
+type Client_UpdateStreamMode_Call struct {
+	*mock.Call
+}
+
+// UpdateStreamMode is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *kinesis.UpdateStreamModeInput
+//   - optFns ...func(*kinesis.Options)
+func (_e *Client_Expecter) UpdateStreamMode(ctx interface{}, params interface{}, optFns ...interface{}) *Client_UpdateStreamMode_Call {
+	return &Client_UpdateStreamMode_Call{Call: _e.mock.On("UpdateStreamMode",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_UpdateStreamMode_Call) Run(run func(ctx context.Context, params *kinesis.UpdateStreamModeInput, optFns ...func(*kinesis.Options))) *Client_UpdateStreamMode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*kinesis.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*kinesis.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*kinesis.UpdateStreamModeInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_UpdateStreamMode_Call) Return(_a0 *kinesis.UpdateStreamModeOutput, _a1 error) *Client_UpdateStreamMode_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_UpdateStreamMode_Call) RunAndReturn(run func(context.Context, *kinesis.UpdateStreamModeInput, ...func(*kinesis.Options)) (*kinesis.UpdateStreamModeOutput, error)) *Client_UpdateStreamMode_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewClient interface {

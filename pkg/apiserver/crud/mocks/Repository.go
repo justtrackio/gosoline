@@ -15,6 +15,14 @@ type Repository struct {
 	mock.Mock
 }
 
+type Repository_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Repository) EXPECT() *Repository_Expecter {
+	return &Repository_Expecter{mock: &_m.Mock}
+}
+
 // Count provides a mock function with given fields: ctx, qb, model
 func (_m *Repository) Count(ctx context.Context, qb *db_repo.QueryBuilder, model db_repo.ModelBased) (int, error) {
 	ret := _m.Called(ctx, qb, model)
@@ -39,6 +47,36 @@ func (_m *Repository) Count(ctx context.Context, qb *db_repo.QueryBuilder, model
 	return r0, r1
 }
 
+// Repository_Count_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Count'
+type Repository_Count_Call struct {
+	*mock.Call
+}
+
+// Count is a helper method to define mock.On call
+//   - ctx context.Context
+//   - qb *db_repo.QueryBuilder
+//   - model db_repo.ModelBased
+func (_e *Repository_Expecter) Count(ctx interface{}, qb interface{}, model interface{}) *Repository_Count_Call {
+	return &Repository_Count_Call{Call: _e.mock.On("Count", ctx, qb, model)}
+}
+
+func (_c *Repository_Count_Call) Run(run func(ctx context.Context, qb *db_repo.QueryBuilder, model db_repo.ModelBased)) *Repository_Count_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*db_repo.QueryBuilder), args[2].(db_repo.ModelBased))
+	})
+	return _c
+}
+
+func (_c *Repository_Count_Call) Return(_a0 int, _a1 error) *Repository_Count_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Repository_Count_Call) RunAndReturn(run func(context.Context, *db_repo.QueryBuilder, db_repo.ModelBased) (int, error)) *Repository_Count_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function with given fields: ctx, value
 func (_m *Repository) Create(ctx context.Context, value db_repo.ModelBased) error {
 	ret := _m.Called(ctx, value)
@@ -51,6 +89,35 @@ func (_m *Repository) Create(ctx context.Context, value db_repo.ModelBased) erro
 	}
 
 	return r0
+}
+
+// Repository_Create_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Create'
+type Repository_Create_Call struct {
+	*mock.Call
+}
+
+// Create is a helper method to define mock.On call
+//   - ctx context.Context
+//   - value db_repo.ModelBased
+func (_e *Repository_Expecter) Create(ctx interface{}, value interface{}) *Repository_Create_Call {
+	return &Repository_Create_Call{Call: _e.mock.On("Create", ctx, value)}
+}
+
+func (_c *Repository_Create_Call) Run(run func(ctx context.Context, value db_repo.ModelBased)) *Repository_Create_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(db_repo.ModelBased))
+	})
+	return _c
+}
+
+func (_c *Repository_Create_Call) Return(_a0 error) *Repository_Create_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Repository_Create_Call) RunAndReturn(run func(context.Context, db_repo.ModelBased) error) *Repository_Create_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Delete provides a mock function with given fields: ctx, value
@@ -67,6 +134,35 @@ func (_m *Repository) Delete(ctx context.Context, value db_repo.ModelBased) erro
 	return r0
 }
 
+// Repository_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
+type Repository_Delete_Call struct {
+	*mock.Call
+}
+
+// Delete is a helper method to define mock.On call
+//   - ctx context.Context
+//   - value db_repo.ModelBased
+func (_e *Repository_Expecter) Delete(ctx interface{}, value interface{}) *Repository_Delete_Call {
+	return &Repository_Delete_Call{Call: _e.mock.On("Delete", ctx, value)}
+}
+
+func (_c *Repository_Delete_Call) Run(run func(ctx context.Context, value db_repo.ModelBased)) *Repository_Delete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(db_repo.ModelBased))
+	})
+	return _c
+}
+
+func (_c *Repository_Delete_Call) Return(_a0 error) *Repository_Delete_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Repository_Delete_Call) RunAndReturn(run func(context.Context, db_repo.ModelBased) error) *Repository_Delete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetMetadata provides a mock function with given fields:
 func (_m *Repository) GetMetadata() db_repo.Metadata {
 	ret := _m.Called()
@@ -79,6 +175,33 @@ func (_m *Repository) GetMetadata() db_repo.Metadata {
 	}
 
 	return r0
+}
+
+// Repository_GetMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMetadata'
+type Repository_GetMetadata_Call struct {
+	*mock.Call
+}
+
+// GetMetadata is a helper method to define mock.On call
+func (_e *Repository_Expecter) GetMetadata() *Repository_GetMetadata_Call {
+	return &Repository_GetMetadata_Call{Call: _e.mock.On("GetMetadata")}
+}
+
+func (_c *Repository_GetMetadata_Call) Run(run func()) *Repository_GetMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Repository_GetMetadata_Call) Return(_a0 db_repo.Metadata) *Repository_GetMetadata_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Repository_GetMetadata_Call) RunAndReturn(run func() db_repo.Metadata) *Repository_GetMetadata_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Query provides a mock function with given fields: ctx, qb, result
@@ -95,6 +218,36 @@ func (_m *Repository) Query(ctx context.Context, qb *db_repo.QueryBuilder, resul
 	return r0
 }
 
+// Repository_Query_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Query'
+type Repository_Query_Call struct {
+	*mock.Call
+}
+
+// Query is a helper method to define mock.On call
+//   - ctx context.Context
+//   - qb *db_repo.QueryBuilder
+//   - result interface{}
+func (_e *Repository_Expecter) Query(ctx interface{}, qb interface{}, result interface{}) *Repository_Query_Call {
+	return &Repository_Query_Call{Call: _e.mock.On("Query", ctx, qb, result)}
+}
+
+func (_c *Repository_Query_Call) Run(run func(ctx context.Context, qb *db_repo.QueryBuilder, result interface{})) *Repository_Query_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*db_repo.QueryBuilder), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Repository_Query_Call) Return(_a0 error) *Repository_Query_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Repository_Query_Call) RunAndReturn(run func(context.Context, *db_repo.QueryBuilder, interface{}) error) *Repository_Query_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Read provides a mock function with given fields: ctx, id, out
 func (_m *Repository) Read(ctx context.Context, id *uint, out db_repo.ModelBased) error {
 	ret := _m.Called(ctx, id, out)
@@ -109,6 +262,36 @@ func (_m *Repository) Read(ctx context.Context, id *uint, out db_repo.ModelBased
 	return r0
 }
 
+// Repository_Read_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Read'
+type Repository_Read_Call struct {
+	*mock.Call
+}
+
+// Read is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id *uint
+//   - out db_repo.ModelBased
+func (_e *Repository_Expecter) Read(ctx interface{}, id interface{}, out interface{}) *Repository_Read_Call {
+	return &Repository_Read_Call{Call: _e.mock.On("Read", ctx, id, out)}
+}
+
+func (_c *Repository_Read_Call) Run(run func(ctx context.Context, id *uint, out db_repo.ModelBased)) *Repository_Read_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*uint), args[2].(db_repo.ModelBased))
+	})
+	return _c
+}
+
+func (_c *Repository_Read_Call) Return(_a0 error) *Repository_Read_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Repository_Read_Call) RunAndReturn(run func(context.Context, *uint, db_repo.ModelBased) error) *Repository_Read_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Update provides a mock function with given fields: ctx, value
 func (_m *Repository) Update(ctx context.Context, value db_repo.ModelBased) error {
 	ret := _m.Called(ctx, value)
@@ -121,6 +304,35 @@ func (_m *Repository) Update(ctx context.Context, value db_repo.ModelBased) erro
 	}
 
 	return r0
+}
+
+// Repository_Update_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Update'
+type Repository_Update_Call struct {
+	*mock.Call
+}
+
+// Update is a helper method to define mock.On call
+//   - ctx context.Context
+//   - value db_repo.ModelBased
+func (_e *Repository_Expecter) Update(ctx interface{}, value interface{}) *Repository_Update_Call {
+	return &Repository_Update_Call{Call: _e.mock.On("Update", ctx, value)}
+}
+
+func (_c *Repository_Update_Call) Run(run func(ctx context.Context, value db_repo.ModelBased)) *Repository_Update_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(db_repo.ModelBased))
+	})
+	return _c
+}
+
+func (_c *Repository_Update_Call) Return(_a0 error) *Repository_Update_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Repository_Update_Call) RunAndReturn(run func(context.Context, db_repo.ModelBased) error) *Repository_Update_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewRepository interface {

@@ -14,6 +14,14 @@ type Service struct {
 	mock.Mock
 }
 
+type Service_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Service) EXPECT() *Service_Expecter {
+	return &Service_Expecter{mock: &_m.Mock}
+}
+
 // GetResources provides a mock function with given fields: ctx, filter
 func (_m *Service) GetResources(ctx context.Context, filter resourcegroupstaggingapi.Filter) ([]string, error) {
 	ret := _m.Called(ctx, filter)
@@ -38,6 +46,35 @@ func (_m *Service) GetResources(ctx context.Context, filter resourcegroupstaggin
 	}
 
 	return r0, r1
+}
+
+// Service_GetResources_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetResources'
+type Service_GetResources_Call struct {
+	*mock.Call
+}
+
+// GetResources is a helper method to define mock.On call
+//   - ctx context.Context
+//   - filter resourcegroupstaggingapi.Filter
+func (_e *Service_Expecter) GetResources(ctx interface{}, filter interface{}) *Service_GetResources_Call {
+	return &Service_GetResources_Call{Call: _e.mock.On("GetResources", ctx, filter)}
+}
+
+func (_c *Service_GetResources_Call) Run(run func(ctx context.Context, filter resourcegroupstaggingapi.Filter)) *Service_GetResources_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(resourcegroupstaggingapi.Filter))
+	})
+	return _c
+}
+
+func (_c *Service_GetResources_Call) Return(_a0 []string, _a1 error) *Service_GetResources_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_GetResources_Call) RunAndReturn(run func(context.Context, resourcegroupstaggingapi.Filter) ([]string, error)) *Service_GetResources_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewService interface {

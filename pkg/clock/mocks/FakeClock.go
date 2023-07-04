@@ -14,9 +14,45 @@ type FakeClock struct {
 	mock.Mock
 }
 
+type FakeClock_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *FakeClock) EXPECT() *FakeClock_Expecter {
+	return &FakeClock_Expecter{mock: &_m.Mock}
+}
+
 // Advance provides a mock function with given fields: d
 func (_m *FakeClock) Advance(d time.Duration) {
 	_m.Called(d)
+}
+
+// FakeClock_Advance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Advance'
+type FakeClock_Advance_Call struct {
+	*mock.Call
+}
+
+// Advance is a helper method to define mock.On call
+//   - d time.Duration
+func (_e *FakeClock_Expecter) Advance(d interface{}) *FakeClock_Advance_Call {
+	return &FakeClock_Advance_Call{Call: _e.mock.On("Advance", d)}
+}
+
+func (_c *FakeClock_Advance_Call) Run(run func(d time.Duration)) *FakeClock_Advance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *FakeClock_Advance_Call) Return() *FakeClock_Advance_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *FakeClock_Advance_Call) RunAndReturn(run func(time.Duration)) *FakeClock_Advance_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // After provides a mock function with given fields: d
@@ -35,9 +71,65 @@ func (_m *FakeClock) After(d time.Duration) <-chan time.Time {
 	return r0
 }
 
+// FakeClock_After_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'After'
+type FakeClock_After_Call struct {
+	*mock.Call
+}
+
+// After is a helper method to define mock.On call
+//   - d time.Duration
+func (_e *FakeClock_Expecter) After(d interface{}) *FakeClock_After_Call {
+	return &FakeClock_After_Call{Call: _e.mock.On("After", d)}
+}
+
+func (_c *FakeClock_After_Call) Run(run func(d time.Duration)) *FakeClock_After_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *FakeClock_After_Call) Return(_a0 <-chan time.Time) *FakeClock_After_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *FakeClock_After_Call) RunAndReturn(run func(time.Duration) <-chan time.Time) *FakeClock_After_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BlockUntil provides a mock function with given fields: n
 func (_m *FakeClock) BlockUntil(n int) {
 	_m.Called(n)
+}
+
+// FakeClock_BlockUntil_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BlockUntil'
+type FakeClock_BlockUntil_Call struct {
+	*mock.Call
+}
+
+// BlockUntil is a helper method to define mock.On call
+//   - n int
+func (_e *FakeClock_Expecter) BlockUntil(n interface{}) *FakeClock_BlockUntil_Call {
+	return &FakeClock_BlockUntil_Call{Call: _e.mock.On("BlockUntil", n)}
+}
+
+func (_c *FakeClock_BlockUntil_Call) Run(run func(n int)) *FakeClock_BlockUntil_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int))
+	})
+	return _c
+}
+
+func (_c *FakeClock_BlockUntil_Call) Return() *FakeClock_BlockUntil_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *FakeClock_BlockUntil_Call) RunAndReturn(run func(int)) *FakeClock_BlockUntil_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // BlockUntilTickers provides a mock function with given fields: n
@@ -45,9 +137,65 @@ func (_m *FakeClock) BlockUntilTickers(n int) {
 	_m.Called(n)
 }
 
+// FakeClock_BlockUntilTickers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BlockUntilTickers'
+type FakeClock_BlockUntilTickers_Call struct {
+	*mock.Call
+}
+
+// BlockUntilTickers is a helper method to define mock.On call
+//   - n int
+func (_e *FakeClock_Expecter) BlockUntilTickers(n interface{}) *FakeClock_BlockUntilTickers_Call {
+	return &FakeClock_BlockUntilTickers_Call{Call: _e.mock.On("BlockUntilTickers", n)}
+}
+
+func (_c *FakeClock_BlockUntilTickers_Call) Run(run func(n int)) *FakeClock_BlockUntilTickers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int))
+	})
+	return _c
+}
+
+func (_c *FakeClock_BlockUntilTickers_Call) Return() *FakeClock_BlockUntilTickers_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *FakeClock_BlockUntilTickers_Call) RunAndReturn(run func(int)) *FakeClock_BlockUntilTickers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BlockUntilTimers provides a mock function with given fields: n
 func (_m *FakeClock) BlockUntilTimers(n int) {
 	_m.Called(n)
+}
+
+// FakeClock_BlockUntilTimers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BlockUntilTimers'
+type FakeClock_BlockUntilTimers_Call struct {
+	*mock.Call
+}
+
+// BlockUntilTimers is a helper method to define mock.On call
+//   - n int
+func (_e *FakeClock_Expecter) BlockUntilTimers(n interface{}) *FakeClock_BlockUntilTimers_Call {
+	return &FakeClock_BlockUntilTimers_Call{Call: _e.mock.On("BlockUntilTimers", n)}
+}
+
+func (_c *FakeClock_BlockUntilTimers_Call) Run(run func(n int)) *FakeClock_BlockUntilTimers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int))
+	})
+	return _c
+}
+
+func (_c *FakeClock_BlockUntilTimers_Call) Return() *FakeClock_BlockUntilTimers_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *FakeClock_BlockUntilTimers_Call) RunAndReturn(run func(int)) *FakeClock_BlockUntilTimers_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // NewTicker provides a mock function with given fields: d
@@ -66,6 +214,34 @@ func (_m *FakeClock) NewTicker(d time.Duration) clock.Ticker {
 	return r0
 }
 
+// FakeClock_NewTicker_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewTicker'
+type FakeClock_NewTicker_Call struct {
+	*mock.Call
+}
+
+// NewTicker is a helper method to define mock.On call
+//   - d time.Duration
+func (_e *FakeClock_Expecter) NewTicker(d interface{}) *FakeClock_NewTicker_Call {
+	return &FakeClock_NewTicker_Call{Call: _e.mock.On("NewTicker", d)}
+}
+
+func (_c *FakeClock_NewTicker_Call) Run(run func(d time.Duration)) *FakeClock_NewTicker_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *FakeClock_NewTicker_Call) Return(_a0 clock.Ticker) *FakeClock_NewTicker_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *FakeClock_NewTicker_Call) RunAndReturn(run func(time.Duration) clock.Ticker) *FakeClock_NewTicker_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewTimer provides a mock function with given fields: d
 func (_m *FakeClock) NewTimer(d time.Duration) clock.Timer {
 	ret := _m.Called(d)
@@ -82,6 +258,34 @@ func (_m *FakeClock) NewTimer(d time.Duration) clock.Timer {
 	return r0
 }
 
+// FakeClock_NewTimer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewTimer'
+type FakeClock_NewTimer_Call struct {
+	*mock.Call
+}
+
+// NewTimer is a helper method to define mock.On call
+//   - d time.Duration
+func (_e *FakeClock_Expecter) NewTimer(d interface{}) *FakeClock_NewTimer_Call {
+	return &FakeClock_NewTimer_Call{Call: _e.mock.On("NewTimer", d)}
+}
+
+func (_c *FakeClock_NewTimer_Call) Run(run func(d time.Duration)) *FakeClock_NewTimer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *FakeClock_NewTimer_Call) Return(_a0 clock.Timer) *FakeClock_NewTimer_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *FakeClock_NewTimer_Call) RunAndReturn(run func(time.Duration) clock.Timer) *FakeClock_NewTimer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Now provides a mock function with given fields:
 func (_m *FakeClock) Now() time.Time {
 	ret := _m.Called()
@@ -94,6 +298,33 @@ func (_m *FakeClock) Now() time.Time {
 	}
 
 	return r0
+}
+
+// FakeClock_Now_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Now'
+type FakeClock_Now_Call struct {
+	*mock.Call
+}
+
+// Now is a helper method to define mock.On call
+func (_e *FakeClock_Expecter) Now() *FakeClock_Now_Call {
+	return &FakeClock_Now_Call{Call: _e.mock.On("Now")}
+}
+
+func (_c *FakeClock_Now_Call) Run(run func()) *FakeClock_Now_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *FakeClock_Now_Call) Return(_a0 time.Time) *FakeClock_Now_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *FakeClock_Now_Call) RunAndReturn(run func() time.Time) *FakeClock_Now_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Since provides a mock function with given fields: t
@@ -110,9 +341,65 @@ func (_m *FakeClock) Since(t time.Time) time.Duration {
 	return r0
 }
 
+// FakeClock_Since_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Since'
+type FakeClock_Since_Call struct {
+	*mock.Call
+}
+
+// Since is a helper method to define mock.On call
+//   - t time.Time
+func (_e *FakeClock_Expecter) Since(t interface{}) *FakeClock_Since_Call {
+	return &FakeClock_Since_Call{Call: _e.mock.On("Since", t)}
+}
+
+func (_c *FakeClock_Since_Call) Run(run func(t time.Time)) *FakeClock_Since_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Time))
+	})
+	return _c
+}
+
+func (_c *FakeClock_Since_Call) Return(_a0 time.Duration) *FakeClock_Since_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *FakeClock_Since_Call) RunAndReturn(run func(time.Time) time.Duration) *FakeClock_Since_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Sleep provides a mock function with given fields: d
 func (_m *FakeClock) Sleep(d time.Duration) {
 	_m.Called(d)
+}
+
+// FakeClock_Sleep_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Sleep'
+type FakeClock_Sleep_Call struct {
+	*mock.Call
+}
+
+// Sleep is a helper method to define mock.On call
+//   - d time.Duration
+func (_e *FakeClock_Expecter) Sleep(d interface{}) *FakeClock_Sleep_Call {
+	return &FakeClock_Sleep_Call{Call: _e.mock.On("Sleep", d)}
+}
+
+func (_c *FakeClock_Sleep_Call) Run(run func(d time.Duration)) *FakeClock_Sleep_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *FakeClock_Sleep_Call) Return() *FakeClock_Sleep_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *FakeClock_Sleep_Call) RunAndReturn(run func(time.Duration)) *FakeClock_Sleep_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewFakeClock interface {

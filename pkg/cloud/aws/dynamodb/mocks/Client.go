@@ -14,6 +14,14 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Client) EXPECT() *Client_Expecter {
+	return &Client_Expecter{mock: &_m.Mock}
+}
+
 // BatchGetItem provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) BatchGetItem(ctx context.Context, params *dynamodb.BatchGetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.BatchGetItemOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -45,6 +53,43 @@ func (_m *Client) BatchGetItem(ctx context.Context, params *dynamodb.BatchGetIte
 	}
 
 	return r0, r1
+}
+
+// Client_BatchGetItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BatchGetItem'
+type Client_BatchGetItem_Call struct {
+	*mock.Call
+}
+
+// BatchGetItem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.BatchGetItemInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) BatchGetItem(ctx interface{}, params interface{}, optFns ...interface{}) *Client_BatchGetItem_Call {
+	return &Client_BatchGetItem_Call{Call: _e.mock.On("BatchGetItem",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_BatchGetItem_Call) Run(run func(ctx context.Context, params *dynamodb.BatchGetItemInput, optFns ...func(*dynamodb.Options))) *Client_BatchGetItem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.BatchGetItemInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_BatchGetItem_Call) Return(_a0 *dynamodb.BatchGetItemOutput, _a1 error) *Client_BatchGetItem_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_BatchGetItem_Call) RunAndReturn(run func(context.Context, *dynamodb.BatchGetItemInput, ...func(*dynamodb.Options)) (*dynamodb.BatchGetItemOutput, error)) *Client_BatchGetItem_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // BatchWriteItem provides a mock function with given fields: ctx, params, optFns
@@ -80,6 +125,43 @@ func (_m *Client) BatchWriteItem(ctx context.Context, params *dynamodb.BatchWrit
 	return r0, r1
 }
 
+// Client_BatchWriteItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BatchWriteItem'
+type Client_BatchWriteItem_Call struct {
+	*mock.Call
+}
+
+// BatchWriteItem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.BatchWriteItemInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) BatchWriteItem(ctx interface{}, params interface{}, optFns ...interface{}) *Client_BatchWriteItem_Call {
+	return &Client_BatchWriteItem_Call{Call: _e.mock.On("BatchWriteItem",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_BatchWriteItem_Call) Run(run func(ctx context.Context, params *dynamodb.BatchWriteItemInput, optFns ...func(*dynamodb.Options))) *Client_BatchWriteItem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.BatchWriteItemInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_BatchWriteItem_Call) Return(_a0 *dynamodb.BatchWriteItemOutput, _a1 error) *Client_BatchWriteItem_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_BatchWriteItem_Call) RunAndReturn(run func(context.Context, *dynamodb.BatchWriteItemInput, ...func(*dynamodb.Options)) (*dynamodb.BatchWriteItemOutput, error)) *Client_BatchWriteItem_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateTable provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) CreateTable(ctx context.Context, params *dynamodb.CreateTableInput, optFns ...func(*dynamodb.Options)) (*dynamodb.CreateTableOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -111,6 +193,43 @@ func (_m *Client) CreateTable(ctx context.Context, params *dynamodb.CreateTableI
 	}
 
 	return r0, r1
+}
+
+// Client_CreateTable_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateTable'
+type Client_CreateTable_Call struct {
+	*mock.Call
+}
+
+// CreateTable is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.CreateTableInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) CreateTable(ctx interface{}, params interface{}, optFns ...interface{}) *Client_CreateTable_Call {
+	return &Client_CreateTable_Call{Call: _e.mock.On("CreateTable",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_CreateTable_Call) Run(run func(ctx context.Context, params *dynamodb.CreateTableInput, optFns ...func(*dynamodb.Options))) *Client_CreateTable_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.CreateTableInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_CreateTable_Call) Return(_a0 *dynamodb.CreateTableOutput, _a1 error) *Client_CreateTable_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_CreateTable_Call) RunAndReturn(run func(context.Context, *dynamodb.CreateTableInput, ...func(*dynamodb.Options)) (*dynamodb.CreateTableOutput, error)) *Client_CreateTable_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // DeleteItem provides a mock function with given fields: ctx, params, optFns
@@ -146,6 +265,43 @@ func (_m *Client) DeleteItem(ctx context.Context, params *dynamodb.DeleteItemInp
 	return r0, r1
 }
 
+// Client_DeleteItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteItem'
+type Client_DeleteItem_Call struct {
+	*mock.Call
+}
+
+// DeleteItem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.DeleteItemInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) DeleteItem(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DeleteItem_Call {
+	return &Client_DeleteItem_Call{Call: _e.mock.On("DeleteItem",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DeleteItem_Call) Run(run func(ctx context.Context, params *dynamodb.DeleteItemInput, optFns ...func(*dynamodb.Options))) *Client_DeleteItem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.DeleteItemInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DeleteItem_Call) Return(_a0 *dynamodb.DeleteItemOutput, _a1 error) *Client_DeleteItem_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DeleteItem_Call) RunAndReturn(run func(context.Context, *dynamodb.DeleteItemInput, ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)) *Client_DeleteItem_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteTable provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) DeleteTable(ctx context.Context, params *dynamodb.DeleteTableInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DeleteTableOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -177,6 +333,43 @@ func (_m *Client) DeleteTable(ctx context.Context, params *dynamodb.DeleteTableI
 	}
 
 	return r0, r1
+}
+
+// Client_DeleteTable_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteTable'
+type Client_DeleteTable_Call struct {
+	*mock.Call
+}
+
+// DeleteTable is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.DeleteTableInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) DeleteTable(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DeleteTable_Call {
+	return &Client_DeleteTable_Call{Call: _e.mock.On("DeleteTable",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DeleteTable_Call) Run(run func(ctx context.Context, params *dynamodb.DeleteTableInput, optFns ...func(*dynamodb.Options))) *Client_DeleteTable_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.DeleteTableInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DeleteTable_Call) Return(_a0 *dynamodb.DeleteTableOutput, _a1 error) *Client_DeleteTable_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DeleteTable_Call) RunAndReturn(run func(context.Context, *dynamodb.DeleteTableInput, ...func(*dynamodb.Options)) (*dynamodb.DeleteTableOutput, error)) *Client_DeleteTable_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // DescribeTable provides a mock function with given fields: ctx, params, optFns
@@ -212,6 +405,43 @@ func (_m *Client) DescribeTable(ctx context.Context, params *dynamodb.DescribeTa
 	return r0, r1
 }
 
+// Client_DescribeTable_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DescribeTable'
+type Client_DescribeTable_Call struct {
+	*mock.Call
+}
+
+// DescribeTable is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.DescribeTableInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) DescribeTable(ctx interface{}, params interface{}, optFns ...interface{}) *Client_DescribeTable_Call {
+	return &Client_DescribeTable_Call{Call: _e.mock.On("DescribeTable",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_DescribeTable_Call) Run(run func(ctx context.Context, params *dynamodb.DescribeTableInput, optFns ...func(*dynamodb.Options))) *Client_DescribeTable_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.DescribeTableInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_DescribeTable_Call) Return(_a0 *dynamodb.DescribeTableOutput, _a1 error) *Client_DescribeTable_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DescribeTable_Call) RunAndReturn(run func(context.Context, *dynamodb.DescribeTableInput, ...func(*dynamodb.Options)) (*dynamodb.DescribeTableOutput, error)) *Client_DescribeTable_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetItem provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) GetItem(ctx context.Context, params *dynamodb.GetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -243,6 +473,43 @@ func (_m *Client) GetItem(ctx context.Context, params *dynamodb.GetItemInput, op
 	}
 
 	return r0, r1
+}
+
+// Client_GetItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetItem'
+type Client_GetItem_Call struct {
+	*mock.Call
+}
+
+// GetItem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.GetItemInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) GetItem(ctx interface{}, params interface{}, optFns ...interface{}) *Client_GetItem_Call {
+	return &Client_GetItem_Call{Call: _e.mock.On("GetItem",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_GetItem_Call) Run(run func(ctx context.Context, params *dynamodb.GetItemInput, optFns ...func(*dynamodb.Options))) *Client_GetItem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.GetItemInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetItem_Call) Return(_a0 *dynamodb.GetItemOutput, _a1 error) *Client_GetItem_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetItem_Call) RunAndReturn(run func(context.Context, *dynamodb.GetItemInput, ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)) *Client_GetItem_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ListTagsOfResource provides a mock function with given fields: ctx, params, optFns
@@ -278,6 +545,43 @@ func (_m *Client) ListTagsOfResource(ctx context.Context, params *dynamodb.ListT
 	return r0, r1
 }
 
+// Client_ListTagsOfResource_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListTagsOfResource'
+type Client_ListTagsOfResource_Call struct {
+	*mock.Call
+}
+
+// ListTagsOfResource is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.ListTagsOfResourceInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) ListTagsOfResource(ctx interface{}, params interface{}, optFns ...interface{}) *Client_ListTagsOfResource_Call {
+	return &Client_ListTagsOfResource_Call{Call: _e.mock.On("ListTagsOfResource",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_ListTagsOfResource_Call) Run(run func(ctx context.Context, params *dynamodb.ListTagsOfResourceInput, optFns ...func(*dynamodb.Options))) *Client_ListTagsOfResource_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.ListTagsOfResourceInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ListTagsOfResource_Call) Return(_a0 *dynamodb.ListTagsOfResourceOutput, _a1 error) *Client_ListTagsOfResource_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ListTagsOfResource_Call) RunAndReturn(run func(context.Context, *dynamodb.ListTagsOfResourceInput, ...func(*dynamodb.Options)) (*dynamodb.ListTagsOfResourceOutput, error)) *Client_ListTagsOfResource_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PutItem provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -309,6 +613,43 @@ func (_m *Client) PutItem(ctx context.Context, params *dynamodb.PutItemInput, op
 	}
 
 	return r0, r1
+}
+
+// Client_PutItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PutItem'
+type Client_PutItem_Call struct {
+	*mock.Call
+}
+
+// PutItem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.PutItemInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) PutItem(ctx interface{}, params interface{}, optFns ...interface{}) *Client_PutItem_Call {
+	return &Client_PutItem_Call{Call: _e.mock.On("PutItem",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_PutItem_Call) Run(run func(ctx context.Context, params *dynamodb.PutItemInput, optFns ...func(*dynamodb.Options))) *Client_PutItem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.PutItemInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_PutItem_Call) Return(_a0 *dynamodb.PutItemOutput, _a1 error) *Client_PutItem_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PutItem_Call) RunAndReturn(run func(context.Context, *dynamodb.PutItemInput, ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error)) *Client_PutItem_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Query provides a mock function with given fields: ctx, params, optFns
@@ -344,6 +685,43 @@ func (_m *Client) Query(ctx context.Context, params *dynamodb.QueryInput, optFns
 	return r0, r1
 }
 
+// Client_Query_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Query'
+type Client_Query_Call struct {
+	*mock.Call
+}
+
+// Query is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.QueryInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) Query(ctx interface{}, params interface{}, optFns ...interface{}) *Client_Query_Call {
+	return &Client_Query_Call{Call: _e.mock.On("Query",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_Query_Call) Run(run func(ctx context.Context, params *dynamodb.QueryInput, optFns ...func(*dynamodb.Options))) *Client_Query_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.QueryInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_Query_Call) Return(_a0 *dynamodb.QueryOutput, _a1 error) *Client_Query_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Query_Call) RunAndReturn(run func(context.Context, *dynamodb.QueryInput, ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error)) *Client_Query_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Scan provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) Scan(ctx context.Context, params *dynamodb.ScanInput, optFns ...func(*dynamodb.Options)) (*dynamodb.ScanOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -375,6 +753,43 @@ func (_m *Client) Scan(ctx context.Context, params *dynamodb.ScanInput, optFns .
 	}
 
 	return r0, r1
+}
+
+// Client_Scan_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Scan'
+type Client_Scan_Call struct {
+	*mock.Call
+}
+
+// Scan is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.ScanInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) Scan(ctx interface{}, params interface{}, optFns ...interface{}) *Client_Scan_Call {
+	return &Client_Scan_Call{Call: _e.mock.On("Scan",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_Scan_Call) Run(run func(ctx context.Context, params *dynamodb.ScanInput, optFns ...func(*dynamodb.Options))) *Client_Scan_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.ScanInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_Scan_Call) Return(_a0 *dynamodb.ScanOutput, _a1 error) *Client_Scan_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Scan_Call) RunAndReturn(run func(context.Context, *dynamodb.ScanInput, ...func(*dynamodb.Options)) (*dynamodb.ScanOutput, error)) *Client_Scan_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // TransactGetItems provides a mock function with given fields: ctx, params, optFns
@@ -410,6 +825,43 @@ func (_m *Client) TransactGetItems(ctx context.Context, params *dynamodb.Transac
 	return r0, r1
 }
 
+// Client_TransactGetItems_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TransactGetItems'
+type Client_TransactGetItems_Call struct {
+	*mock.Call
+}
+
+// TransactGetItems is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.TransactGetItemsInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) TransactGetItems(ctx interface{}, params interface{}, optFns ...interface{}) *Client_TransactGetItems_Call {
+	return &Client_TransactGetItems_Call{Call: _e.mock.On("TransactGetItems",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_TransactGetItems_Call) Run(run func(ctx context.Context, params *dynamodb.TransactGetItemsInput, optFns ...func(*dynamodb.Options))) *Client_TransactGetItems_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.TransactGetItemsInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_TransactGetItems_Call) Return(_a0 *dynamodb.TransactGetItemsOutput, _a1 error) *Client_TransactGetItems_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_TransactGetItems_Call) RunAndReturn(run func(context.Context, *dynamodb.TransactGetItemsInput, ...func(*dynamodb.Options)) (*dynamodb.TransactGetItemsOutput, error)) *Client_TransactGetItems_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TransactWriteItems provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) TransactWriteItems(ctx context.Context, params *dynamodb.TransactWriteItemsInput, optFns ...func(*dynamodb.Options)) (*dynamodb.TransactWriteItemsOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -441,6 +893,43 @@ func (_m *Client) TransactWriteItems(ctx context.Context, params *dynamodb.Trans
 	}
 
 	return r0, r1
+}
+
+// Client_TransactWriteItems_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TransactWriteItems'
+type Client_TransactWriteItems_Call struct {
+	*mock.Call
+}
+
+// TransactWriteItems is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.TransactWriteItemsInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) TransactWriteItems(ctx interface{}, params interface{}, optFns ...interface{}) *Client_TransactWriteItems_Call {
+	return &Client_TransactWriteItems_Call{Call: _e.mock.On("TransactWriteItems",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_TransactWriteItems_Call) Run(run func(ctx context.Context, params *dynamodb.TransactWriteItemsInput, optFns ...func(*dynamodb.Options))) *Client_TransactWriteItems_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.TransactWriteItemsInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_TransactWriteItems_Call) Return(_a0 *dynamodb.TransactWriteItemsOutput, _a1 error) *Client_TransactWriteItems_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_TransactWriteItems_Call) RunAndReturn(run func(context.Context, *dynamodb.TransactWriteItemsInput, ...func(*dynamodb.Options)) (*dynamodb.TransactWriteItemsOutput, error)) *Client_TransactWriteItems_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // UpdateItem provides a mock function with given fields: ctx, params, optFns
@@ -476,6 +965,43 @@ func (_m *Client) UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInp
 	return r0, r1
 }
 
+// Client_UpdateItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateItem'
+type Client_UpdateItem_Call struct {
+	*mock.Call
+}
+
+// UpdateItem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.UpdateItemInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) UpdateItem(ctx interface{}, params interface{}, optFns ...interface{}) *Client_UpdateItem_Call {
+	return &Client_UpdateItem_Call{Call: _e.mock.On("UpdateItem",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_UpdateItem_Call) Run(run func(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options))) *Client_UpdateItem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.UpdateItemInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_UpdateItem_Call) Return(_a0 *dynamodb.UpdateItemOutput, _a1 error) *Client_UpdateItem_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_UpdateItem_Call) RunAndReturn(run func(context.Context, *dynamodb.UpdateItemInput, ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error)) *Client_UpdateItem_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateTimeToLive provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) UpdateTimeToLive(ctx context.Context, params *dynamodb.UpdateTimeToLiveInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateTimeToLiveOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -507,6 +1033,43 @@ func (_m *Client) UpdateTimeToLive(ctx context.Context, params *dynamodb.UpdateT
 	}
 
 	return r0, r1
+}
+
+// Client_UpdateTimeToLive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateTimeToLive'
+type Client_UpdateTimeToLive_Call struct {
+	*mock.Call
+}
+
+// UpdateTimeToLive is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *dynamodb.UpdateTimeToLiveInput
+//   - optFns ...func(*dynamodb.Options)
+func (_e *Client_Expecter) UpdateTimeToLive(ctx interface{}, params interface{}, optFns ...interface{}) *Client_UpdateTimeToLive_Call {
+	return &Client_UpdateTimeToLive_Call{Call: _e.mock.On("UpdateTimeToLive",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_UpdateTimeToLive_Call) Run(run func(ctx context.Context, params *dynamodb.UpdateTimeToLiveInput, optFns ...func(*dynamodb.Options))) *Client_UpdateTimeToLive_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*dynamodb.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*dynamodb.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*dynamodb.UpdateTimeToLiveInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_UpdateTimeToLive_Call) Return(_a0 *dynamodb.UpdateTimeToLiveOutput, _a1 error) *Client_UpdateTimeToLive_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_UpdateTimeToLive_Call) RunAndReturn(run func(context.Context, *dynamodb.UpdateTimeToLiveInput, ...func(*dynamodb.Options)) (*dynamodb.UpdateTimeToLiveOutput, error)) *Client_UpdateTimeToLive_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewClient interface {

@@ -13,6 +13,14 @@ type ModelBased struct {
 	mock.Mock
 }
 
+type ModelBased_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *ModelBased) EXPECT() *ModelBased_Expecter {
+	return &ModelBased_Expecter{mock: &_m.Mock}
+}
+
 // GetId provides a mock function with given fields:
 func (_m *ModelBased) GetId() *uint {
 	ret := _m.Called()
@@ -29,14 +37,97 @@ func (_m *ModelBased) GetId() *uint {
 	return r0
 }
 
+// ModelBased_GetId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetId'
+type ModelBased_GetId_Call struct {
+	*mock.Call
+}
+
+// GetId is a helper method to define mock.On call
+func (_e *ModelBased_Expecter) GetId() *ModelBased_GetId_Call {
+	return &ModelBased_GetId_Call{Call: _e.mock.On("GetId")}
+}
+
+func (_c *ModelBased_GetId_Call) Run(run func()) *ModelBased_GetId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ModelBased_GetId_Call) Return(_a0 *uint) *ModelBased_GetId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ModelBased_GetId_Call) RunAndReturn(run func() *uint) *ModelBased_GetId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetCreatedAt provides a mock function with given fields: createdAt
 func (_m *ModelBased) SetCreatedAt(createdAt *time.Time) {
 	_m.Called(createdAt)
 }
 
+// ModelBased_SetCreatedAt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCreatedAt'
+type ModelBased_SetCreatedAt_Call struct {
+	*mock.Call
+}
+
+// SetCreatedAt is a helper method to define mock.On call
+//   - createdAt *time.Time
+func (_e *ModelBased_Expecter) SetCreatedAt(createdAt interface{}) *ModelBased_SetCreatedAt_Call {
+	return &ModelBased_SetCreatedAt_Call{Call: _e.mock.On("SetCreatedAt", createdAt)}
+}
+
+func (_c *ModelBased_SetCreatedAt_Call) Run(run func(createdAt *time.Time)) *ModelBased_SetCreatedAt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*time.Time))
+	})
+	return _c
+}
+
+func (_c *ModelBased_SetCreatedAt_Call) Return() *ModelBased_SetCreatedAt_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *ModelBased_SetCreatedAt_Call) RunAndReturn(run func(*time.Time)) *ModelBased_SetCreatedAt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetUpdatedAt provides a mock function with given fields: updatedAt
 func (_m *ModelBased) SetUpdatedAt(updatedAt *time.Time) {
 	_m.Called(updatedAt)
+}
+
+// ModelBased_SetUpdatedAt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetUpdatedAt'
+type ModelBased_SetUpdatedAt_Call struct {
+	*mock.Call
+}
+
+// SetUpdatedAt is a helper method to define mock.On call
+//   - updatedAt *time.Time
+func (_e *ModelBased_Expecter) SetUpdatedAt(updatedAt interface{}) *ModelBased_SetUpdatedAt_Call {
+	return &ModelBased_SetUpdatedAt_Call{Call: _e.mock.On("SetUpdatedAt", updatedAt)}
+}
+
+func (_c *ModelBased_SetUpdatedAt_Call) Run(run func(updatedAt *time.Time)) *ModelBased_SetUpdatedAt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*time.Time))
+	})
+	return _c
+}
+
+func (_c *ModelBased_SetUpdatedAt_Call) Return() *ModelBased_SetUpdatedAt_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *ModelBased_SetUpdatedAt_Call) RunAndReturn(run func(*time.Time)) *ModelBased_SetUpdatedAt_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewModelBased interface {

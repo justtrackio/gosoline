@@ -17,6 +17,14 @@ type HandlerWithStream struct {
 	mock.Mock
 }
 
+type HandlerWithStream_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *HandlerWithStream) EXPECT() *HandlerWithStream_Expecter {
+	return &HandlerWithStream_Expecter{mock: &_m.Mock}
+}
+
 // GetInput provides a mock function with given fields:
 func (_m *HandlerWithStream) GetInput() interface{} {
 	ret := _m.Called()
@@ -33,6 +41,33 @@ func (_m *HandlerWithStream) GetInput() interface{} {
 	return r0
 }
 
+// HandlerWithStream_GetInput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInput'
+type HandlerWithStream_GetInput_Call struct {
+	*mock.Call
+}
+
+// GetInput is a helper method to define mock.On call
+func (_e *HandlerWithStream_Expecter) GetInput() *HandlerWithStream_GetInput_Call {
+	return &HandlerWithStream_GetInput_Call{Call: _e.mock.On("GetInput")}
+}
+
+func (_c *HandlerWithStream_GetInput_Call) Run(run func()) *HandlerWithStream_GetInput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *HandlerWithStream_GetInput_Call) Return(_a0 interface{}) *HandlerWithStream_GetInput_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *HandlerWithStream_GetInput_Call) RunAndReturn(run func() interface{}) *HandlerWithStream_GetInput_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Handle provides a mock function with given fields: ginContext, requestContext, request
 func (_m *HandlerWithStream) Handle(ginContext *gin.Context, requestContext context.Context, request *apiserver.Request) error {
 	ret := _m.Called(ginContext, requestContext, request)
@@ -45,6 +80,36 @@ func (_m *HandlerWithStream) Handle(ginContext *gin.Context, requestContext cont
 	}
 
 	return r0
+}
+
+// HandlerWithStream_Handle_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Handle'
+type HandlerWithStream_Handle_Call struct {
+	*mock.Call
+}
+
+// Handle is a helper method to define mock.On call
+//   - ginContext *gin.Context
+//   - requestContext context.Context
+//   - request *apiserver.Request
+func (_e *HandlerWithStream_Expecter) Handle(ginContext interface{}, requestContext interface{}, request interface{}) *HandlerWithStream_Handle_Call {
+	return &HandlerWithStream_Handle_Call{Call: _e.mock.On("Handle", ginContext, requestContext, request)}
+}
+
+func (_c *HandlerWithStream_Handle_Call) Run(run func(ginContext *gin.Context, requestContext context.Context, request *apiserver.Request)) *HandlerWithStream_Handle_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*gin.Context), args[1].(context.Context), args[2].(*apiserver.Request))
+	})
+	return _c
+}
+
+func (_c *HandlerWithStream_Handle_Call) Return(error error) *HandlerWithStream_Handle_Call {
+	_c.Call.Return(error)
+	return _c
+}
+
+func (_c *HandlerWithStream_Handle_Call) RunAndReturn(run func(*gin.Context, context.Context, *apiserver.Request) error) *HandlerWithStream_Handle_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewHandlerWithStream interface {

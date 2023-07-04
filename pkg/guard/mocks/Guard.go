@@ -12,6 +12,14 @@ type Guard struct {
 	mock.Mock
 }
 
+type Guard_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Guard) EXPECT() *Guard_Expecter {
+	return &Guard_Expecter{mock: &_m.Mock}
+}
+
 // CreatePolicy provides a mock function with given fields: pol
 func (_m *Guard) CreatePolicy(pol ladon.Policy) error {
 	ret := _m.Called(pol)
@@ -26,6 +34,34 @@ func (_m *Guard) CreatePolicy(pol ladon.Policy) error {
 	return r0
 }
 
+// Guard_CreatePolicy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreatePolicy'
+type Guard_CreatePolicy_Call struct {
+	*mock.Call
+}
+
+// CreatePolicy is a helper method to define mock.On call
+//   - pol ladon.Policy
+func (_e *Guard_Expecter) CreatePolicy(pol interface{}) *Guard_CreatePolicy_Call {
+	return &Guard_CreatePolicy_Call{Call: _e.mock.On("CreatePolicy", pol)}
+}
+
+func (_c *Guard_CreatePolicy_Call) Run(run func(pol ladon.Policy)) *Guard_CreatePolicy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ladon.Policy))
+	})
+	return _c
+}
+
+func (_c *Guard_CreatePolicy_Call) Return(_a0 error) *Guard_CreatePolicy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Guard_CreatePolicy_Call) RunAndReturn(run func(ladon.Policy) error) *Guard_CreatePolicy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeletePolicy provides a mock function with given fields: pol
 func (_m *Guard) DeletePolicy(pol ladon.Policy) error {
 	ret := _m.Called(pol)
@@ -38,6 +74,34 @@ func (_m *Guard) DeletePolicy(pol ladon.Policy) error {
 	}
 
 	return r0
+}
+
+// Guard_DeletePolicy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeletePolicy'
+type Guard_DeletePolicy_Call struct {
+	*mock.Call
+}
+
+// DeletePolicy is a helper method to define mock.On call
+//   - pol ladon.Policy
+func (_e *Guard_Expecter) DeletePolicy(pol interface{}) *Guard_DeletePolicy_Call {
+	return &Guard_DeletePolicy_Call{Call: _e.mock.On("DeletePolicy", pol)}
+}
+
+func (_c *Guard_DeletePolicy_Call) Run(run func(pol ladon.Policy)) *Guard_DeletePolicy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ladon.Policy))
+	})
+	return _c
+}
+
+func (_c *Guard_DeletePolicy_Call) Return(_a0 error) *Guard_DeletePolicy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Guard_DeletePolicy_Call) RunAndReturn(run func(ladon.Policy) error) *Guard_DeletePolicy_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetPolicies provides a mock function with given fields:
@@ -66,6 +130,33 @@ func (_m *Guard) GetPolicies() (ladon.Policies, error) {
 	return r0, r1
 }
 
+// Guard_GetPolicies_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPolicies'
+type Guard_GetPolicies_Call struct {
+	*mock.Call
+}
+
+// GetPolicies is a helper method to define mock.On call
+func (_e *Guard_Expecter) GetPolicies() *Guard_GetPolicies_Call {
+	return &Guard_GetPolicies_Call{Call: _e.mock.On("GetPolicies")}
+}
+
+func (_c *Guard_GetPolicies_Call) Run(run func()) *Guard_GetPolicies_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Guard_GetPolicies_Call) Return(_a0 ladon.Policies, _a1 error) *Guard_GetPolicies_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Guard_GetPolicies_Call) RunAndReturn(run func() (ladon.Policies, error)) *Guard_GetPolicies_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetPoliciesBySubject provides a mock function with given fields: subject
 func (_m *Guard) GetPoliciesBySubject(subject string) (ladon.Policies, error) {
 	ret := _m.Called(subject)
@@ -90,6 +181,34 @@ func (_m *Guard) GetPoliciesBySubject(subject string) (ladon.Policies, error) {
 	}
 
 	return r0, r1
+}
+
+// Guard_GetPoliciesBySubject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPoliciesBySubject'
+type Guard_GetPoliciesBySubject_Call struct {
+	*mock.Call
+}
+
+// GetPoliciesBySubject is a helper method to define mock.On call
+//   - subject string
+func (_e *Guard_Expecter) GetPoliciesBySubject(subject interface{}) *Guard_GetPoliciesBySubject_Call {
+	return &Guard_GetPoliciesBySubject_Call{Call: _e.mock.On("GetPoliciesBySubject", subject)}
+}
+
+func (_c *Guard_GetPoliciesBySubject_Call) Run(run func(subject string)) *Guard_GetPoliciesBySubject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Guard_GetPoliciesBySubject_Call) Return(_a0 ladon.Policies, _a1 error) *Guard_GetPoliciesBySubject_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Guard_GetPoliciesBySubject_Call) RunAndReturn(run func(string) (ladon.Policies, error)) *Guard_GetPoliciesBySubject_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetPolicy provides a mock function with given fields: id
@@ -118,6 +237,34 @@ func (_m *Guard) GetPolicy(id string) (ladon.Policy, error) {
 	return r0, r1
 }
 
+// Guard_GetPolicy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPolicy'
+type Guard_GetPolicy_Call struct {
+	*mock.Call
+}
+
+// GetPolicy is a helper method to define mock.On call
+//   - id string
+func (_e *Guard_Expecter) GetPolicy(id interface{}) *Guard_GetPolicy_Call {
+	return &Guard_GetPolicy_Call{Call: _e.mock.On("GetPolicy", id)}
+}
+
+func (_c *Guard_GetPolicy_Call) Run(run func(id string)) *Guard_GetPolicy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Guard_GetPolicy_Call) Return(_a0 ladon.Policy, _a1 error) *Guard_GetPolicy_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Guard_GetPolicy_Call) RunAndReturn(run func(string) (ladon.Policy, error)) *Guard_GetPolicy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsAllowed provides a mock function with given fields: request
 func (_m *Guard) IsAllowed(request *ladon.Request) error {
 	ret := _m.Called(request)
@@ -132,6 +279,34 @@ func (_m *Guard) IsAllowed(request *ladon.Request) error {
 	return r0
 }
 
+// Guard_IsAllowed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsAllowed'
+type Guard_IsAllowed_Call struct {
+	*mock.Call
+}
+
+// IsAllowed is a helper method to define mock.On call
+//   - request *ladon.Request
+func (_e *Guard_Expecter) IsAllowed(request interface{}) *Guard_IsAllowed_Call {
+	return &Guard_IsAllowed_Call{Call: _e.mock.On("IsAllowed", request)}
+}
+
+func (_c *Guard_IsAllowed_Call) Run(run func(request *ladon.Request)) *Guard_IsAllowed_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*ladon.Request))
+	})
+	return _c
+}
+
+func (_c *Guard_IsAllowed_Call) Return(_a0 error) *Guard_IsAllowed_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Guard_IsAllowed_Call) RunAndReturn(run func(*ladon.Request) error) *Guard_IsAllowed_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdatePolicy provides a mock function with given fields: pol
 func (_m *Guard) UpdatePolicy(pol ladon.Policy) error {
 	ret := _m.Called(pol)
@@ -144,6 +319,34 @@ func (_m *Guard) UpdatePolicy(pol ladon.Policy) error {
 	}
 
 	return r0
+}
+
+// Guard_UpdatePolicy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdatePolicy'
+type Guard_UpdatePolicy_Call struct {
+	*mock.Call
+}
+
+// UpdatePolicy is a helper method to define mock.On call
+//   - pol ladon.Policy
+func (_e *Guard_Expecter) UpdatePolicy(pol interface{}) *Guard_UpdatePolicy_Call {
+	return &Guard_UpdatePolicy_Call{Call: _e.mock.On("UpdatePolicy", pol)}
+}
+
+func (_c *Guard_UpdatePolicy_Call) Run(run func(pol ladon.Policy)) *Guard_UpdatePolicy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(ladon.Policy))
+	})
+	return _c
+}
+
+func (_c *Guard_UpdatePolicy_Call) Return(_a0 error) *Guard_UpdatePolicy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Guard_UpdatePolicy_Call) RunAndReturn(run func(ladon.Policy) error) *Guard_UpdatePolicy_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewGuard interface {

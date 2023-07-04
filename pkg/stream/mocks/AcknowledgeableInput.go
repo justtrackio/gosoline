@@ -14,6 +14,14 @@ type AcknowledgeableInput struct {
 	mock.Mock
 }
 
+type AcknowledgeableInput_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *AcknowledgeableInput) EXPECT() *AcknowledgeableInput_Expecter {
+	return &AcknowledgeableInput_Expecter{mock: &_m.Mock}
+}
+
 // Ack provides a mock function with given fields: ctx, msg, ack
 func (_m *AcknowledgeableInput) Ack(ctx context.Context, msg *stream.Message, ack bool) error {
 	ret := _m.Called(ctx, msg, ack)
@@ -28,6 +36,36 @@ func (_m *AcknowledgeableInput) Ack(ctx context.Context, msg *stream.Message, ac
 	return r0
 }
 
+// AcknowledgeableInput_Ack_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Ack'
+type AcknowledgeableInput_Ack_Call struct {
+	*mock.Call
+}
+
+// Ack is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msg *stream.Message
+//   - ack bool
+func (_e *AcknowledgeableInput_Expecter) Ack(ctx interface{}, msg interface{}, ack interface{}) *AcknowledgeableInput_Ack_Call {
+	return &AcknowledgeableInput_Ack_Call{Call: _e.mock.On("Ack", ctx, msg, ack)}
+}
+
+func (_c *AcknowledgeableInput_Ack_Call) Run(run func(ctx context.Context, msg *stream.Message, ack bool)) *AcknowledgeableInput_Ack_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*stream.Message), args[2].(bool))
+	})
+	return _c
+}
+
+func (_c *AcknowledgeableInput_Ack_Call) Return(_a0 error) *AcknowledgeableInput_Ack_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *AcknowledgeableInput_Ack_Call) RunAndReturn(run func(context.Context, *stream.Message, bool) error) *AcknowledgeableInput_Ack_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AckBatch provides a mock function with given fields: ctx, msgs, acks
 func (_m *AcknowledgeableInput) AckBatch(ctx context.Context, msgs []*stream.Message, acks []bool) error {
 	ret := _m.Called(ctx, msgs, acks)
@@ -40,6 +78,36 @@ func (_m *AcknowledgeableInput) AckBatch(ctx context.Context, msgs []*stream.Mes
 	}
 
 	return r0
+}
+
+// AcknowledgeableInput_AckBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AckBatch'
+type AcknowledgeableInput_AckBatch_Call struct {
+	*mock.Call
+}
+
+// AckBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msgs []*stream.Message
+//   - acks []bool
+func (_e *AcknowledgeableInput_Expecter) AckBatch(ctx interface{}, msgs interface{}, acks interface{}) *AcknowledgeableInput_AckBatch_Call {
+	return &AcknowledgeableInput_AckBatch_Call{Call: _e.mock.On("AckBatch", ctx, msgs, acks)}
+}
+
+func (_c *AcknowledgeableInput_AckBatch_Call) Run(run func(ctx context.Context, msgs []*stream.Message, acks []bool)) *AcknowledgeableInput_AckBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]*stream.Message), args[2].([]bool))
+	})
+	return _c
+}
+
+func (_c *AcknowledgeableInput_AckBatch_Call) Return(_a0 error) *AcknowledgeableInput_AckBatch_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *AcknowledgeableInput_AckBatch_Call) RunAndReturn(run func(context.Context, []*stream.Message, []bool) error) *AcknowledgeableInput_AckBatch_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Data provides a mock function with given fields:
@@ -58,6 +126,33 @@ func (_m *AcknowledgeableInput) Data() <-chan *stream.Message {
 	return r0
 }
 
+// AcknowledgeableInput_Data_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Data'
+type AcknowledgeableInput_Data_Call struct {
+	*mock.Call
+}
+
+// Data is a helper method to define mock.On call
+func (_e *AcknowledgeableInput_Expecter) Data() *AcknowledgeableInput_Data_Call {
+	return &AcknowledgeableInput_Data_Call{Call: _e.mock.On("Data")}
+}
+
+func (_c *AcknowledgeableInput_Data_Call) Run(run func()) *AcknowledgeableInput_Data_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *AcknowledgeableInput_Data_Call) Return(_a0 <-chan *stream.Message) *AcknowledgeableInput_Data_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *AcknowledgeableInput_Data_Call) RunAndReturn(run func() <-chan *stream.Message) *AcknowledgeableInput_Data_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *AcknowledgeableInput) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -72,9 +167,64 @@ func (_m *AcknowledgeableInput) Run(ctx context.Context) error {
 	return r0
 }
 
+// AcknowledgeableInput_Run_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Run'
+type AcknowledgeableInput_Run_Call struct {
+	*mock.Call
+}
+
+// Run is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *AcknowledgeableInput_Expecter) Run(ctx interface{}) *AcknowledgeableInput_Run_Call {
+	return &AcknowledgeableInput_Run_Call{Call: _e.mock.On("Run", ctx)}
+}
+
+func (_c *AcknowledgeableInput_Run_Call) Run(run func(ctx context.Context)) *AcknowledgeableInput_Run_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *AcknowledgeableInput_Run_Call) Return(_a0 error) *AcknowledgeableInput_Run_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *AcknowledgeableInput_Run_Call) RunAndReturn(run func(context.Context) error) *AcknowledgeableInput_Run_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Stop provides a mock function with given fields:
 func (_m *AcknowledgeableInput) Stop() {
 	_m.Called()
+}
+
+// AcknowledgeableInput_Stop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stop'
+type AcknowledgeableInput_Stop_Call struct {
+	*mock.Call
+}
+
+// Stop is a helper method to define mock.On call
+func (_e *AcknowledgeableInput_Expecter) Stop() *AcknowledgeableInput_Stop_Call {
+	return &AcknowledgeableInput_Stop_Call{Call: _e.mock.On("Stop")}
+}
+
+func (_c *AcknowledgeableInput_Stop_Call) Run(run func()) *AcknowledgeableInput_Stop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *AcknowledgeableInput_Stop_Call) Return() *AcknowledgeableInput_Stop_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *AcknowledgeableInput_Stop_Call) RunAndReturn(run func()) *AcknowledgeableInput_Stop_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewAcknowledgeableInput interface {

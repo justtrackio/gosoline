@@ -14,6 +14,14 @@ type GosoConf struct {
 	mock.Mock
 }
 
+type GosoConf_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *GosoConf) EXPECT() *GosoConf_Expecter {
+	return &GosoConf_Expecter{mock: &_m.Mock}
+}
+
 // AllKeys provides a mock function with given fields:
 func (_m *GosoConf) AllKeys() []string {
 	ret := _m.Called()
@@ -30,6 +38,33 @@ func (_m *GosoConf) AllKeys() []string {
 	return r0
 }
 
+// GosoConf_AllKeys_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AllKeys'
+type GosoConf_AllKeys_Call struct {
+	*mock.Call
+}
+
+// AllKeys is a helper method to define mock.On call
+func (_e *GosoConf_Expecter) AllKeys() *GosoConf_AllKeys_Call {
+	return &GosoConf_AllKeys_Call{Call: _e.mock.On("AllKeys")}
+}
+
+func (_c *GosoConf_AllKeys_Call) Run(run func()) *GosoConf_AllKeys_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *GosoConf_AllKeys_Call) Return(_a0 []string) *GosoConf_AllKeys_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_AllKeys_Call) RunAndReturn(run func() []string) *GosoConf_AllKeys_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AllSettings provides a mock function with given fields:
 func (_m *GosoConf) AllSettings() map[string]interface{} {
 	ret := _m.Called()
@@ -44,6 +79,33 @@ func (_m *GosoConf) AllSettings() map[string]interface{} {
 	}
 
 	return r0
+}
+
+// GosoConf_AllSettings_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AllSettings'
+type GosoConf_AllSettings_Call struct {
+	*mock.Call
+}
+
+// AllSettings is a helper method to define mock.On call
+func (_e *GosoConf_Expecter) AllSettings() *GosoConf_AllSettings_Call {
+	return &GosoConf_AllSettings_Call{Call: _e.mock.On("AllSettings")}
+}
+
+func (_c *GosoConf_AllSettings_Call) Run(run func()) *GosoConf_AllSettings_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *GosoConf_AllSettings_Call) Return(_a0 map[string]interface{}) *GosoConf_AllSettings_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_AllSettings_Call) RunAndReturn(run func() map[string]interface{}) *GosoConf_AllSettings_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Get provides a mock function with given fields: key, optionalDefault
@@ -63,6 +125,42 @@ func (_m *GosoConf) Get(key string, optionalDefault ...interface{}) interface{} 
 	}
 
 	return r0
+}
+
+// GosoConf_Get_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Get'
+type GosoConf_Get_Call struct {
+	*mock.Call
+}
+
+// Get is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...interface{}
+func (_e *GosoConf_Expecter) Get(key interface{}, optionalDefault ...interface{}) *GosoConf_Get_Call {
+	return &GosoConf_Get_Call{Call: _e.mock.On("Get",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_Get_Call) Run(run func(key string, optionalDefault ...interface{})) *GosoConf_Get_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_Get_Call) Return(_a0 interface{}) *GosoConf_Get_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_Get_Call) RunAndReturn(run func(string, ...interface{}) interface{}) *GosoConf_Get_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetBool provides a mock function with given fields: key, optionalDefault
@@ -86,6 +184,42 @@ func (_m *GosoConf) GetBool(key string, optionalDefault ...bool) bool {
 	return r0
 }
 
+// GosoConf_GetBool_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBool'
+type GosoConf_GetBool_Call struct {
+	*mock.Call
+}
+
+// GetBool is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...bool
+func (_e *GosoConf_Expecter) GetBool(key interface{}, optionalDefault ...interface{}) *GosoConf_GetBool_Call {
+	return &GosoConf_GetBool_Call{Call: _e.mock.On("GetBool",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetBool_Call) Run(run func(key string, optionalDefault ...bool)) *GosoConf_GetBool_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]bool, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(bool)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetBool_Call) Return(_a0 bool) *GosoConf_GetBool_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetBool_Call) RunAndReturn(run func(string, ...bool) bool) *GosoConf_GetBool_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetDuration provides a mock function with given fields: key, optionalDefault
 func (_m *GosoConf) GetDuration(key string, optionalDefault ...time.Duration) time.Duration {
 	_va := make([]interface{}, len(optionalDefault))
@@ -105,6 +239,42 @@ func (_m *GosoConf) GetDuration(key string, optionalDefault ...time.Duration) ti
 	}
 
 	return r0
+}
+
+// GosoConf_GetDuration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDuration'
+type GosoConf_GetDuration_Call struct {
+	*mock.Call
+}
+
+// GetDuration is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...time.Duration
+func (_e *GosoConf_Expecter) GetDuration(key interface{}, optionalDefault ...interface{}) *GosoConf_GetDuration_Call {
+	return &GosoConf_GetDuration_Call{Call: _e.mock.On("GetDuration",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetDuration_Call) Run(run func(key string, optionalDefault ...time.Duration)) *GosoConf_GetDuration_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]time.Duration, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(time.Duration)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetDuration_Call) Return(_a0 time.Duration) *GosoConf_GetDuration_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetDuration_Call) RunAndReturn(run func(string, ...time.Duration) time.Duration) *GosoConf_GetDuration_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetFloat64 provides a mock function with given fields: key, optionalDefault
@@ -128,6 +298,42 @@ func (_m *GosoConf) GetFloat64(key string, optionalDefault ...float64) float64 {
 	return r0
 }
 
+// GosoConf_GetFloat64_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFloat64'
+type GosoConf_GetFloat64_Call struct {
+	*mock.Call
+}
+
+// GetFloat64 is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...float64
+func (_e *GosoConf_Expecter) GetFloat64(key interface{}, optionalDefault ...interface{}) *GosoConf_GetFloat64_Call {
+	return &GosoConf_GetFloat64_Call{Call: _e.mock.On("GetFloat64",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetFloat64_Call) Run(run func(key string, optionalDefault ...float64)) *GosoConf_GetFloat64_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]float64, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(float64)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetFloat64_Call) Return(_a0 float64) *GosoConf_GetFloat64_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetFloat64_Call) RunAndReturn(run func(string, ...float64) float64) *GosoConf_GetFloat64_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetInt provides a mock function with given fields: key, optionalDefault
 func (_m *GosoConf) GetInt(key string, optionalDefault ...int) int {
 	_va := make([]interface{}, len(optionalDefault))
@@ -147,6 +353,42 @@ func (_m *GosoConf) GetInt(key string, optionalDefault ...int) int {
 	}
 
 	return r0
+}
+
+// GosoConf_GetInt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInt'
+type GosoConf_GetInt_Call struct {
+	*mock.Call
+}
+
+// GetInt is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...int
+func (_e *GosoConf_Expecter) GetInt(key interface{}, optionalDefault ...interface{}) *GosoConf_GetInt_Call {
+	return &GosoConf_GetInt_Call{Call: _e.mock.On("GetInt",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetInt_Call) Run(run func(key string, optionalDefault ...int)) *GosoConf_GetInt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]int, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(int)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetInt_Call) Return(_a0 int) *GosoConf_GetInt_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetInt_Call) RunAndReturn(run func(string, ...int) int) *GosoConf_GetInt_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetIntSlice provides a mock function with given fields: key, optionalDefault
@@ -172,6 +414,42 @@ func (_m *GosoConf) GetIntSlice(key string, optionalDefault ...[]int) []int {
 	return r0
 }
 
+// GosoConf_GetIntSlice_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetIntSlice'
+type GosoConf_GetIntSlice_Call struct {
+	*mock.Call
+}
+
+// GetIntSlice is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...[]int
+func (_e *GosoConf_Expecter) GetIntSlice(key interface{}, optionalDefault ...interface{}) *GosoConf_GetIntSlice_Call {
+	return &GosoConf_GetIntSlice_Call{Call: _e.mock.On("GetIntSlice",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetIntSlice_Call) Run(run func(key string, optionalDefault ...[]int)) *GosoConf_GetIntSlice_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([][]int, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.([]int)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetIntSlice_Call) Return(_a0 []int) *GosoConf_GetIntSlice_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetIntSlice_Call) RunAndReturn(run func(string, ...[]int) []int) *GosoConf_GetIntSlice_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetMsiSlice provides a mock function with given fields: key, optionalDefault
 func (_m *GosoConf) GetMsiSlice(key string, optionalDefault ...[]map[string]interface{}) []map[string]interface{} {
 	_va := make([]interface{}, len(optionalDefault))
@@ -195,6 +473,42 @@ func (_m *GosoConf) GetMsiSlice(key string, optionalDefault ...[]map[string]inte
 	return r0
 }
 
+// GosoConf_GetMsiSlice_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMsiSlice'
+type GosoConf_GetMsiSlice_Call struct {
+	*mock.Call
+}
+
+// GetMsiSlice is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...[]map[string]interface{}
+func (_e *GosoConf_Expecter) GetMsiSlice(key interface{}, optionalDefault ...interface{}) *GosoConf_GetMsiSlice_Call {
+	return &GosoConf_GetMsiSlice_Call{Call: _e.mock.On("GetMsiSlice",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetMsiSlice_Call) Run(run func(key string, optionalDefault ...[]map[string]interface{})) *GosoConf_GetMsiSlice_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([][]map[string]interface{}, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.([]map[string]interface{})
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetMsiSlice_Call) Return(_a0 []map[string]interface{}) *GosoConf_GetMsiSlice_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetMsiSlice_Call) RunAndReturn(run func(string, ...[]map[string]interface{}) []map[string]interface{}) *GosoConf_GetMsiSlice_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetString provides a mock function with given fields: key, optionalDefault
 func (_m *GosoConf) GetString(key string, optionalDefault ...string) string {
 	_va := make([]interface{}, len(optionalDefault))
@@ -214,6 +528,42 @@ func (_m *GosoConf) GetString(key string, optionalDefault ...string) string {
 	}
 
 	return r0
+}
+
+// GosoConf_GetString_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetString'
+type GosoConf_GetString_Call struct {
+	*mock.Call
+}
+
+// GetString is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...string
+func (_e *GosoConf_Expecter) GetString(key interface{}, optionalDefault ...interface{}) *GosoConf_GetString_Call {
+	return &GosoConf_GetString_Call{Call: _e.mock.On("GetString",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetString_Call) Run(run func(key string, optionalDefault ...string)) *GosoConf_GetString_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetString_Call) Return(_a0 string) *GosoConf_GetString_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetString_Call) RunAndReturn(run func(string, ...string) string) *GosoConf_GetString_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetStringMap provides a mock function with given fields: key, optionalDefault
@@ -239,6 +589,42 @@ func (_m *GosoConf) GetStringMap(key string, optionalDefault ...map[string]inter
 	return r0
 }
 
+// GosoConf_GetStringMap_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStringMap'
+type GosoConf_GetStringMap_Call struct {
+	*mock.Call
+}
+
+// GetStringMap is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...map[string]interface{}
+func (_e *GosoConf_Expecter) GetStringMap(key interface{}, optionalDefault ...interface{}) *GosoConf_GetStringMap_Call {
+	return &GosoConf_GetStringMap_Call{Call: _e.mock.On("GetStringMap",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetStringMap_Call) Run(run func(key string, optionalDefault ...map[string]interface{})) *GosoConf_GetStringMap_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]map[string]interface{}, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(map[string]interface{})
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetStringMap_Call) Return(_a0 map[string]interface{}) *GosoConf_GetStringMap_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetStringMap_Call) RunAndReturn(run func(string, ...map[string]interface{}) map[string]interface{}) *GosoConf_GetStringMap_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetStringMapString provides a mock function with given fields: key, optionalDefault
 func (_m *GosoConf) GetStringMapString(key string, optionalDefault ...map[string]string) map[string]string {
 	_va := make([]interface{}, len(optionalDefault))
@@ -260,6 +646,42 @@ func (_m *GosoConf) GetStringMapString(key string, optionalDefault ...map[string
 	}
 
 	return r0
+}
+
+// GosoConf_GetStringMapString_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStringMapString'
+type GosoConf_GetStringMapString_Call struct {
+	*mock.Call
+}
+
+// GetStringMapString is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...map[string]string
+func (_e *GosoConf_Expecter) GetStringMapString(key interface{}, optionalDefault ...interface{}) *GosoConf_GetStringMapString_Call {
+	return &GosoConf_GetStringMapString_Call{Call: _e.mock.On("GetStringMapString",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetStringMapString_Call) Run(run func(key string, optionalDefault ...map[string]string)) *GosoConf_GetStringMapString_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]map[string]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(map[string]string)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetStringMapString_Call) Return(_a0 map[string]string) *GosoConf_GetStringMapString_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetStringMapString_Call) RunAndReturn(run func(string, ...map[string]string) map[string]string) *GosoConf_GetStringMapString_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetStringSlice provides a mock function with given fields: key, optionalDefault
@@ -285,6 +707,42 @@ func (_m *GosoConf) GetStringSlice(key string, optionalDefault ...[]string) []st
 	return r0
 }
 
+// GosoConf_GetStringSlice_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStringSlice'
+type GosoConf_GetStringSlice_Call struct {
+	*mock.Call
+}
+
+// GetStringSlice is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...[]string
+func (_e *GosoConf_Expecter) GetStringSlice(key interface{}, optionalDefault ...interface{}) *GosoConf_GetStringSlice_Call {
+	return &GosoConf_GetStringSlice_Call{Call: _e.mock.On("GetStringSlice",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetStringSlice_Call) Run(run func(key string, optionalDefault ...[]string)) *GosoConf_GetStringSlice_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([][]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.([]string)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetStringSlice_Call) Return(_a0 []string) *GosoConf_GetStringSlice_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetStringSlice_Call) RunAndReturn(run func(string, ...[]string) []string) *GosoConf_GetStringSlice_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetTime provides a mock function with given fields: key, optionalDefault
 func (_m *GosoConf) GetTime(key string, optionalDefault ...time.Time) time.Time {
 	_va := make([]interface{}, len(optionalDefault))
@@ -306,6 +764,42 @@ func (_m *GosoConf) GetTime(key string, optionalDefault ...time.Time) time.Time 
 	return r0
 }
 
+// GosoConf_GetTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTime'
+type GosoConf_GetTime_Call struct {
+	*mock.Call
+}
+
+// GetTime is a helper method to define mock.On call
+//   - key string
+//   - optionalDefault ...time.Time
+func (_e *GosoConf_Expecter) GetTime(key interface{}, optionalDefault ...interface{}) *GosoConf_GetTime_Call {
+	return &GosoConf_GetTime_Call{Call: _e.mock.On("GetTime",
+		append([]interface{}{key}, optionalDefault...)...)}
+}
+
+func (_c *GosoConf_GetTime_Call) Run(run func(key string, optionalDefault ...time.Time)) *GosoConf_GetTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]time.Time, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(time.Time)
+			}
+		}
+		run(args[0].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_GetTime_Call) Return(_a0 time.Time) *GosoConf_GetTime_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_GetTime_Call) RunAndReturn(run func(string, ...time.Time) time.Time) *GosoConf_GetTime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsSet provides a mock function with given fields: _a0
 func (_m *GosoConf) IsSet(_a0 string) bool {
 	ret := _m.Called(_a0)
@@ -318,6 +812,34 @@ func (_m *GosoConf) IsSet(_a0 string) bool {
 	}
 
 	return r0
+}
+
+// GosoConf_IsSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsSet'
+type GosoConf_IsSet_Call struct {
+	*mock.Call
+}
+
+// IsSet is a helper method to define mock.On call
+//   - _a0 string
+func (_e *GosoConf_Expecter) IsSet(_a0 interface{}) *GosoConf_IsSet_Call {
+	return &GosoConf_IsSet_Call{Call: _e.mock.On("IsSet", _a0)}
+}
+
+func (_c *GosoConf_IsSet_Call) Run(run func(_a0 string)) *GosoConf_IsSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *GosoConf_IsSet_Call) Return(_a0 bool) *GosoConf_IsSet_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_IsSet_Call) RunAndReturn(run func(string) bool) *GosoConf_IsSet_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Option provides a mock function with given fields: options
@@ -340,6 +862,41 @@ func (_m *GosoConf) Option(options ...cfg.Option) error {
 	return r0
 }
 
+// GosoConf_Option_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Option'
+type GosoConf_Option_Call struct {
+	*mock.Call
+}
+
+// Option is a helper method to define mock.On call
+//   - options ...cfg.Option
+func (_e *GosoConf_Expecter) Option(options ...interface{}) *GosoConf_Option_Call {
+	return &GosoConf_Option_Call{Call: _e.mock.On("Option",
+		append([]interface{}{}, options...)...)}
+}
+
+func (_c *GosoConf_Option_Call) Run(run func(options ...cfg.Option)) *GosoConf_Option_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]cfg.Option, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(cfg.Option)
+			}
+		}
+		run(variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_Option_Call) Return(_a0 error) *GosoConf_Option_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *GosoConf_Option_Call) RunAndReturn(run func(...cfg.Option) error) *GosoConf_Option_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UnmarshalDefaults provides a mock function with given fields: val, additionalDefaults
 func (_m *GosoConf) UnmarshalDefaults(val interface{}, additionalDefaults ...cfg.UnmarshalDefaults) {
 	_va := make([]interface{}, len(additionalDefaults))
@@ -352,6 +909,42 @@ func (_m *GosoConf) UnmarshalDefaults(val interface{}, additionalDefaults ...cfg
 	_m.Called(_ca...)
 }
 
+// GosoConf_UnmarshalDefaults_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnmarshalDefaults'
+type GosoConf_UnmarshalDefaults_Call struct {
+	*mock.Call
+}
+
+// UnmarshalDefaults is a helper method to define mock.On call
+//   - val interface{}
+//   - additionalDefaults ...cfg.UnmarshalDefaults
+func (_e *GosoConf_Expecter) UnmarshalDefaults(val interface{}, additionalDefaults ...interface{}) *GosoConf_UnmarshalDefaults_Call {
+	return &GosoConf_UnmarshalDefaults_Call{Call: _e.mock.On("UnmarshalDefaults",
+		append([]interface{}{val}, additionalDefaults...)...)}
+}
+
+func (_c *GosoConf_UnmarshalDefaults_Call) Run(run func(val interface{}, additionalDefaults ...cfg.UnmarshalDefaults)) *GosoConf_UnmarshalDefaults_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]cfg.UnmarshalDefaults, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(cfg.UnmarshalDefaults)
+			}
+		}
+		run(args[0].(interface{}), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_UnmarshalDefaults_Call) Return() *GosoConf_UnmarshalDefaults_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *GosoConf_UnmarshalDefaults_Call) RunAndReturn(run func(interface{}, ...cfg.UnmarshalDefaults)) *GosoConf_UnmarshalDefaults_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UnmarshalKey provides a mock function with given fields: key, val, additionalDefaults
 func (_m *GosoConf) UnmarshalKey(key string, val interface{}, additionalDefaults ...cfg.UnmarshalDefaults) {
 	_va := make([]interface{}, len(additionalDefaults))
@@ -362,6 +955,43 @@ func (_m *GosoConf) UnmarshalKey(key string, val interface{}, additionalDefaults
 	_ca = append(_ca, key, val)
 	_ca = append(_ca, _va...)
 	_m.Called(_ca...)
+}
+
+// GosoConf_UnmarshalKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnmarshalKey'
+type GosoConf_UnmarshalKey_Call struct {
+	*mock.Call
+}
+
+// UnmarshalKey is a helper method to define mock.On call
+//   - key string
+//   - val interface{}
+//   - additionalDefaults ...cfg.UnmarshalDefaults
+func (_e *GosoConf_Expecter) UnmarshalKey(key interface{}, val interface{}, additionalDefaults ...interface{}) *GosoConf_UnmarshalKey_Call {
+	return &GosoConf_UnmarshalKey_Call{Call: _e.mock.On("UnmarshalKey",
+		append([]interface{}{key, val}, additionalDefaults...)...)}
+}
+
+func (_c *GosoConf_UnmarshalKey_Call) Run(run func(key string, val interface{}, additionalDefaults ...cfg.UnmarshalDefaults)) *GosoConf_UnmarshalKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]cfg.UnmarshalDefaults, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(cfg.UnmarshalDefaults)
+			}
+		}
+		run(args[0].(string), args[1].(interface{}), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *GosoConf_UnmarshalKey_Call) Return() *GosoConf_UnmarshalKey_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *GosoConf_UnmarshalKey_Call) RunAndReturn(run func(string, interface{}, ...cfg.UnmarshalDefaults)) *GosoConf_UnmarshalKey_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewGosoConf interface {

@@ -14,6 +14,14 @@ type Reader struct {
 	mock.Mock
 }
 
+type Reader_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Reader) EXPECT() *Reader_Expecter {
+	return &Reader_Expecter{mock: &_m.Mock}
+}
+
 // Close provides a mock function with given fields:
 func (_m *Reader) Close() error {
 	ret := _m.Called()
@@ -26,6 +34,33 @@ func (_m *Reader) Close() error {
 	}
 
 	return r0
+}
+
+// Reader_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
+type Reader_Close_Call struct {
+	*mock.Call
+}
+
+// Close is a helper method to define mock.On call
+func (_e *Reader_Expecter) Close() *Reader_Close_Call {
+	return &Reader_Close_Call{Call: _e.mock.On("Close")}
+}
+
+func (_c *Reader_Close_Call) Run(run func()) *Reader_Close_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Reader_Close_Call) Return(_a0 error) *Reader_Close_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Reader_Close_Call) RunAndReturn(run func() error) *Reader_Close_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // CommitMessages provides a mock function with given fields: _a0, _a1
@@ -47,6 +82,42 @@ func (_m *Reader) CommitMessages(_a0 context.Context, _a1 ...kafka.Message) erro
 	}
 
 	return r0
+}
+
+// Reader_CommitMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CommitMessages'
+type Reader_CommitMessages_Call struct {
+	*mock.Call
+}
+
+// CommitMessages is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 ...kafka.Message
+func (_e *Reader_Expecter) CommitMessages(_a0 interface{}, _a1 ...interface{}) *Reader_CommitMessages_Call {
+	return &Reader_CommitMessages_Call{Call: _e.mock.On("CommitMessages",
+		append([]interface{}{_a0}, _a1...)...)}
+}
+
+func (_c *Reader_CommitMessages_Call) Run(run func(_a0 context.Context, _a1 ...kafka.Message)) *Reader_CommitMessages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]kafka.Message, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(kafka.Message)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Reader_CommitMessages_Call) Return(_a0 error) *Reader_CommitMessages_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Reader_CommitMessages_Call) RunAndReturn(run func(context.Context, ...kafka.Message) error) *Reader_CommitMessages_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // FetchMessage provides a mock function with given fields: _a0
@@ -73,6 +144,34 @@ func (_m *Reader) FetchMessage(_a0 context.Context) (kafka.Message, error) {
 	return r0, r1
 }
 
+// Reader_FetchMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FetchMessage'
+type Reader_FetchMessage_Call struct {
+	*mock.Call
+}
+
+// FetchMessage is a helper method to define mock.On call
+//   - _a0 context.Context
+func (_e *Reader_Expecter) FetchMessage(_a0 interface{}) *Reader_FetchMessage_Call {
+	return &Reader_FetchMessage_Call{Call: _e.mock.On("FetchMessage", _a0)}
+}
+
+func (_c *Reader_FetchMessage_Call) Run(run func(_a0 context.Context)) *Reader_FetchMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *Reader_FetchMessage_Call) Return(_a0 kafka.Message, _a1 error) *Reader_FetchMessage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Reader_FetchMessage_Call) RunAndReturn(run func(context.Context) (kafka.Message, error)) *Reader_FetchMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadMessage provides a mock function with given fields: _a0
 func (_m *Reader) ReadMessage(_a0 context.Context) (kafka.Message, error) {
 	ret := _m.Called(_a0)
@@ -97,6 +196,34 @@ func (_m *Reader) ReadMessage(_a0 context.Context) (kafka.Message, error) {
 	return r0, r1
 }
 
+// Reader_ReadMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadMessage'
+type Reader_ReadMessage_Call struct {
+	*mock.Call
+}
+
+// ReadMessage is a helper method to define mock.On call
+//   - _a0 context.Context
+func (_e *Reader_Expecter) ReadMessage(_a0 interface{}) *Reader_ReadMessage_Call {
+	return &Reader_ReadMessage_Call{Call: _e.mock.On("ReadMessage", _a0)}
+}
+
+func (_c *Reader_ReadMessage_Call) Run(run func(_a0 context.Context)) *Reader_ReadMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *Reader_ReadMessage_Call) Return(_a0 kafka.Message, _a1 error) *Reader_ReadMessage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Reader_ReadMessage_Call) RunAndReturn(run func(context.Context) (kafka.Message, error)) *Reader_ReadMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Stats provides a mock function with given fields:
 func (_m *Reader) Stats() kafka.ReaderStats {
 	ret := _m.Called()
@@ -109,6 +236,33 @@ func (_m *Reader) Stats() kafka.ReaderStats {
 	}
 
 	return r0
+}
+
+// Reader_Stats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stats'
+type Reader_Stats_Call struct {
+	*mock.Call
+}
+
+// Stats is a helper method to define mock.On call
+func (_e *Reader_Expecter) Stats() *Reader_Stats_Call {
+	return &Reader_Stats_Call{Call: _e.mock.On("Stats")}
+}
+
+func (_c *Reader_Stats_Call) Run(run func()) *Reader_Stats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Reader_Stats_Call) Return(_a0 kafka.ReaderStats) *Reader_Stats_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Reader_Stats_Call) RunAndReturn(run func() kafka.ReaderStats) *Reader_Stats_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewReader interface {

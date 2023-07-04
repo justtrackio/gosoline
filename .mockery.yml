@@ -1,0 +1,5 @@
+inpackage: false
+testonly: false
+with-expecter: true
+keeptree: true
+unroll-variadic: true

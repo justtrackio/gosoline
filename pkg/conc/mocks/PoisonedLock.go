@@ -9,9 +9,44 @@ type PoisonedLock struct {
 	mock.Mock
 }
 
+type PoisonedLock_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *PoisonedLock) EXPECT() *PoisonedLock_Expecter {
+	return &PoisonedLock_Expecter{mock: &_m.Mock}
+}
+
 // MustLock provides a mock function with given fields:
 func (_m *PoisonedLock) MustLock() {
 	_m.Called()
+}
+
+// PoisonedLock_MustLock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MustLock'
+type PoisonedLock_MustLock_Call struct {
+	*mock.Call
+}
+
+// MustLock is a helper method to define mock.On call
+func (_e *PoisonedLock_Expecter) MustLock() *PoisonedLock_MustLock_Call {
+	return &PoisonedLock_MustLock_Call{Call: _e.mock.On("MustLock")}
+}
+
+func (_c *PoisonedLock_MustLock_Call) Run(run func()) *PoisonedLock_MustLock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *PoisonedLock_MustLock_Call) Return() *PoisonedLock_MustLock_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *PoisonedLock_MustLock_Call) RunAndReturn(run func()) *PoisonedLock_MustLock_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Poison provides a mock function with given fields:
@@ -28,6 +63,33 @@ func (_m *PoisonedLock) Poison() error {
 	return r0
 }
 
+// PoisonedLock_Poison_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Poison'
+type PoisonedLock_Poison_Call struct {
+	*mock.Call
+}
+
+// Poison is a helper method to define mock.On call
+func (_e *PoisonedLock_Expecter) Poison() *PoisonedLock_Poison_Call {
+	return &PoisonedLock_Poison_Call{Call: _e.mock.On("Poison")}
+}
+
+func (_c *PoisonedLock_Poison_Call) Run(run func()) *PoisonedLock_Poison_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *PoisonedLock_Poison_Call) Return(_a0 error) *PoisonedLock_Poison_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PoisonedLock_Poison_Call) RunAndReturn(run func() error) *PoisonedLock_Poison_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PoisonIf provides a mock function with given fields: _a0
 func (_m *PoisonedLock) PoisonIf(_a0 func() (bool, error)) error {
 	ret := _m.Called(_a0)
@@ -40,6 +102,34 @@ func (_m *PoisonedLock) PoisonIf(_a0 func() (bool, error)) error {
 	}
 
 	return r0
+}
+
+// PoisonedLock_PoisonIf_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PoisonIf'
+type PoisonedLock_PoisonIf_Call struct {
+	*mock.Call
+}
+
+// PoisonIf is a helper method to define mock.On call
+//   - _a0 func()(bool , error)
+func (_e *PoisonedLock_Expecter) PoisonIf(_a0 interface{}) *PoisonedLock_PoisonIf_Call {
+	return &PoisonedLock_PoisonIf_Call{Call: _e.mock.On("PoisonIf", _a0)}
+}
+
+func (_c *PoisonedLock_PoisonIf_Call) Run(run func(_a0 func() (bool, error))) *PoisonedLock_PoisonIf_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func() (bool, error)))
+	})
+	return _c
+}
+
+func (_c *PoisonedLock_PoisonIf_Call) Return(_a0 error) *PoisonedLock_PoisonIf_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PoisonedLock_PoisonIf_Call) RunAndReturn(run func(func() (bool, error)) error) *PoisonedLock_PoisonIf_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // TryLock provides a mock function with given fields:
@@ -56,9 +146,63 @@ func (_m *PoisonedLock) TryLock() error {
 	return r0
 }
 
+// PoisonedLock_TryLock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TryLock'
+type PoisonedLock_TryLock_Call struct {
+	*mock.Call
+}
+
+// TryLock is a helper method to define mock.On call
+func (_e *PoisonedLock_Expecter) TryLock() *PoisonedLock_TryLock_Call {
+	return &PoisonedLock_TryLock_Call{Call: _e.mock.On("TryLock")}
+}
+
+func (_c *PoisonedLock_TryLock_Call) Run(run func()) *PoisonedLock_TryLock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *PoisonedLock_TryLock_Call) Return(_a0 error) *PoisonedLock_TryLock_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PoisonedLock_TryLock_Call) RunAndReturn(run func() error) *PoisonedLock_TryLock_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Unlock provides a mock function with given fields:
 func (_m *PoisonedLock) Unlock() {
 	_m.Called()
+}
+
+// PoisonedLock_Unlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Unlock'
+type PoisonedLock_Unlock_Call struct {
+	*mock.Call
+}
+
+// Unlock is a helper method to define mock.On call
+func (_e *PoisonedLock_Expecter) Unlock() *PoisonedLock_Unlock_Call {
+	return &PoisonedLock_Unlock_Call{Call: _e.mock.On("Unlock")}
+}
+
+func (_c *PoisonedLock_Unlock_Call) Run(run func()) *PoisonedLock_Unlock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *PoisonedLock_Unlock_Call) Return() *PoisonedLock_Unlock_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *PoisonedLock_Unlock_Call) RunAndReturn(run func()) *PoisonedLock_Unlock_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewPoisonedLock interface {

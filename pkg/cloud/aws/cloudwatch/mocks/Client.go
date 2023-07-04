@@ -15,6 +15,14 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Client) EXPECT() *Client_Expecter {
+	return &Client_Expecter{mock: &_m.Mock}
+}
+
 // GetMetricData provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) GetMetricData(ctx context.Context, params *cloudwatch.GetMetricDataInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.GetMetricDataOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -48,6 +56,43 @@ func (_m *Client) GetMetricData(ctx context.Context, params *cloudwatch.GetMetri
 	return r0, r1
 }
 
+// Client_GetMetricData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMetricData'
+type Client_GetMetricData_Call struct {
+	*mock.Call
+}
+
+// GetMetricData is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *cloudwatch.GetMetricDataInput
+//   - optFns ...func(*cloudwatch.Options)
+func (_e *Client_Expecter) GetMetricData(ctx interface{}, params interface{}, optFns ...interface{}) *Client_GetMetricData_Call {
+	return &Client_GetMetricData_Call{Call: _e.mock.On("GetMetricData",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_GetMetricData_Call) Run(run func(ctx context.Context, params *cloudwatch.GetMetricDataInput, optFns ...func(*cloudwatch.Options))) *Client_GetMetricData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*cloudwatch.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*cloudwatch.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*cloudwatch.GetMetricDataInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetMetricData_Call) Return(_a0 *cloudwatch.GetMetricDataOutput, _a1 error) *Client_GetMetricData_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetMetricData_Call) RunAndReturn(run func(context.Context, *cloudwatch.GetMetricDataInput, ...func(*cloudwatch.Options)) (*cloudwatch.GetMetricDataOutput, error)) *Client_GetMetricData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PutMetricData provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) PutMetricData(ctx context.Context, params *cloudwatch.PutMetricDataInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.PutMetricDataOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -79,6 +124,43 @@ func (_m *Client) PutMetricData(ctx context.Context, params *cloudwatch.PutMetri
 	}
 
 	return r0, r1
+}
+
+// Client_PutMetricData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PutMetricData'
+type Client_PutMetricData_Call struct {
+	*mock.Call
+}
+
+// PutMetricData is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *cloudwatch.PutMetricDataInput
+//   - optFns ...func(*cloudwatch.Options)
+func (_e *Client_Expecter) PutMetricData(ctx interface{}, params interface{}, optFns ...interface{}) *Client_PutMetricData_Call {
+	return &Client_PutMetricData_Call{Call: _e.mock.On("PutMetricData",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_PutMetricData_Call) Run(run func(ctx context.Context, params *cloudwatch.PutMetricDataInput, optFns ...func(*cloudwatch.Options))) *Client_PutMetricData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*cloudwatch.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*cloudwatch.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*cloudwatch.PutMetricDataInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_PutMetricData_Call) Return(_a0 *cloudwatch.PutMetricDataOutput, _a1 error) *Client_PutMetricData_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PutMetricData_Call) RunAndReturn(run func(context.Context, *cloudwatch.PutMetricDataInput, ...func(*cloudwatch.Options)) (*cloudwatch.PutMetricDataOutput, error)) *Client_PutMetricData_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewClient interface {

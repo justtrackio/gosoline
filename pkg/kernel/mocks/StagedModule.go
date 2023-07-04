@@ -9,6 +9,14 @@ type StagedModule struct {
 	mock.Mock
 }
 
+type StagedModule_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *StagedModule) EXPECT() *StagedModule_Expecter {
+	return &StagedModule_Expecter{mock: &_m.Mock}
+}
+
 // GetStage provides a mock function with given fields:
 func (_m *StagedModule) GetStage() int {
 	ret := _m.Called()
@@ -21,6 +29,33 @@ func (_m *StagedModule) GetStage() int {
 	}
 
 	return r0
+}
+
+// StagedModule_GetStage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStage'
+type StagedModule_GetStage_Call struct {
+	*mock.Call
+}
+
+// GetStage is a helper method to define mock.On call
+func (_e *StagedModule_Expecter) GetStage() *StagedModule_GetStage_Call {
+	return &StagedModule_GetStage_Call{Call: _e.mock.On("GetStage")}
+}
+
+func (_c *StagedModule_GetStage_Call) Run(run func()) *StagedModule_GetStage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *StagedModule_GetStage_Call) Return(_a0 int) *StagedModule_GetStage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *StagedModule_GetStage_Call) RunAndReturn(run func() int) *StagedModule_GetStage_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewStagedModule interface {

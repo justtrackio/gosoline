@@ -15,6 +15,14 @@ type HandlerWithoutInput struct {
 	mock.Mock
 }
 
+type HandlerWithoutInput_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *HandlerWithoutInput) EXPECT() *HandlerWithoutInput_Expecter {
+	return &HandlerWithoutInput_Expecter{mock: &_m.Mock}
+}
+
 // Handle provides a mock function with given fields: requestContext, request
 func (_m *HandlerWithoutInput) Handle(requestContext context.Context, request *apiserver.Request) (*apiserver.Response, error) {
 	ret := _m.Called(requestContext, request)
@@ -39,6 +47,35 @@ func (_m *HandlerWithoutInput) Handle(requestContext context.Context, request *a
 	}
 
 	return r0, r1
+}
+
+// HandlerWithoutInput_Handle_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Handle'
+type HandlerWithoutInput_Handle_Call struct {
+	*mock.Call
+}
+
+// Handle is a helper method to define mock.On call
+//   - requestContext context.Context
+//   - request *apiserver.Request
+func (_e *HandlerWithoutInput_Expecter) Handle(requestContext interface{}, request interface{}) *HandlerWithoutInput_Handle_Call {
+	return &HandlerWithoutInput_Handle_Call{Call: _e.mock.On("Handle", requestContext, request)}
+}
+
+func (_c *HandlerWithoutInput_Handle_Call) Run(run func(requestContext context.Context, request *apiserver.Request)) *HandlerWithoutInput_Handle_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*apiserver.Request))
+	})
+	return _c
+}
+
+func (_c *HandlerWithoutInput_Handle_Call) Return(response *apiserver.Response, error error) *HandlerWithoutInput_Handle_Call {
+	_c.Call.Return(response, error)
+	return _c
+}
+
+func (_c *HandlerWithoutInput_Handle_Call) RunAndReturn(run func(context.Context, *apiserver.Request) (*apiserver.Response, error)) *HandlerWithoutInput_Handle_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewHandlerWithoutInput interface {

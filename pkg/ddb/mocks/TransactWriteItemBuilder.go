@@ -12,6 +12,14 @@ type TransactWriteItemBuilder struct {
 	mock.Mock
 }
 
+type TransactWriteItemBuilder_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *TransactWriteItemBuilder) EXPECT() *TransactWriteItemBuilder_Expecter {
+	return &TransactWriteItemBuilder_Expecter{mock: &_m.Mock}
+}
+
 // Build provides a mock function with given fields:
 func (_m *TransactWriteItemBuilder) Build() (*types.TransactWriteItem, error) {
 	ret := _m.Called()
@@ -38,6 +46,33 @@ func (_m *TransactWriteItemBuilder) Build() (*types.TransactWriteItem, error) {
 	return r0, r1
 }
 
+// TransactWriteItemBuilder_Build_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Build'
+type TransactWriteItemBuilder_Build_Call struct {
+	*mock.Call
+}
+
+// Build is a helper method to define mock.On call
+func (_e *TransactWriteItemBuilder_Expecter) Build() *TransactWriteItemBuilder_Build_Call {
+	return &TransactWriteItemBuilder_Build_Call{Call: _e.mock.On("Build")}
+}
+
+func (_c *TransactWriteItemBuilder_Build_Call) Run(run func()) *TransactWriteItemBuilder_Build_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *TransactWriteItemBuilder_Build_Call) Return(_a0 *types.TransactWriteItem, _a1 error) *TransactWriteItemBuilder_Build_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *TransactWriteItemBuilder_Build_Call) RunAndReturn(run func() (*types.TransactWriteItem, error)) *TransactWriteItemBuilder_Build_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetItem provides a mock function with given fields:
 func (_m *TransactWriteItemBuilder) GetItem() interface{} {
 	ret := _m.Called()
@@ -52,6 +87,33 @@ func (_m *TransactWriteItemBuilder) GetItem() interface{} {
 	}
 
 	return r0
+}
+
+// TransactWriteItemBuilder_GetItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetItem'
+type TransactWriteItemBuilder_GetItem_Call struct {
+	*mock.Call
+}
+
+// GetItem is a helper method to define mock.On call
+func (_e *TransactWriteItemBuilder_Expecter) GetItem() *TransactWriteItemBuilder_GetItem_Call {
+	return &TransactWriteItemBuilder_GetItem_Call{Call: _e.mock.On("GetItem")}
+}
+
+func (_c *TransactWriteItemBuilder_GetItem_Call) Run(run func()) *TransactWriteItemBuilder_GetItem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *TransactWriteItemBuilder_GetItem_Call) Return(_a0 interface{}) *TransactWriteItemBuilder_GetItem_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *TransactWriteItemBuilder_GetItem_Call) RunAndReturn(run func() interface{}) *TransactWriteItemBuilder_GetItem_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewTransactWriteItemBuilder interface {

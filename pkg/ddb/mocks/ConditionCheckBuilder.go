@@ -15,6 +15,14 @@ type ConditionCheckBuilder struct {
 	mock.Mock
 }
 
+type ConditionCheckBuilder_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *ConditionCheckBuilder) EXPECT() *ConditionCheckBuilder_Expecter {
+	return &ConditionCheckBuilder_Expecter{mock: &_m.Mock}
+}
+
 // Build provides a mock function with given fields: result
 func (_m *ConditionCheckBuilder) Build(result interface{}) (*types.ConditionCheck, error) {
 	ret := _m.Called(result)
@@ -41,6 +49,34 @@ func (_m *ConditionCheckBuilder) Build(result interface{}) (*types.ConditionChec
 	return r0, r1
 }
 
+// ConditionCheckBuilder_Build_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Build'
+type ConditionCheckBuilder_Build_Call struct {
+	*mock.Call
+}
+
+// Build is a helper method to define mock.On call
+//   - result interface{}
+func (_e *ConditionCheckBuilder_Expecter) Build(result interface{}) *ConditionCheckBuilder_Build_Call {
+	return &ConditionCheckBuilder_Build_Call{Call: _e.mock.On("Build", result)}
+}
+
+func (_c *ConditionCheckBuilder_Build_Call) Run(run func(result interface{})) *ConditionCheckBuilder_Build_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_Build_Call) Return(_a0 *types.ConditionCheck, _a1 error) *ConditionCheckBuilder_Build_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_Build_Call) RunAndReturn(run func(interface{}) (*types.ConditionCheck, error)) *ConditionCheckBuilder_Build_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReturnAllOld provides a mock function with given fields:
 func (_m *ConditionCheckBuilder) ReturnAllOld() ddb.ConditionCheckBuilder {
 	ret := _m.Called()
@@ -55,6 +91,33 @@ func (_m *ConditionCheckBuilder) ReturnAllOld() ddb.ConditionCheckBuilder {
 	}
 
 	return r0
+}
+
+// ConditionCheckBuilder_ReturnAllOld_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReturnAllOld'
+type ConditionCheckBuilder_ReturnAllOld_Call struct {
+	*mock.Call
+}
+
+// ReturnAllOld is a helper method to define mock.On call
+func (_e *ConditionCheckBuilder_Expecter) ReturnAllOld() *ConditionCheckBuilder_ReturnAllOld_Call {
+	return &ConditionCheckBuilder_ReturnAllOld_Call{Call: _e.mock.On("ReturnAllOld")}
+}
+
+func (_c *ConditionCheckBuilder_ReturnAllOld_Call) Run(run func()) *ConditionCheckBuilder_ReturnAllOld_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_ReturnAllOld_Call) Return(_a0 ddb.ConditionCheckBuilder) *ConditionCheckBuilder_ReturnAllOld_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_ReturnAllOld_Call) RunAndReturn(run func() ddb.ConditionCheckBuilder) *ConditionCheckBuilder_ReturnAllOld_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ReturnNone provides a mock function with given fields:
@@ -73,6 +136,33 @@ func (_m *ConditionCheckBuilder) ReturnNone() ddb.ConditionCheckBuilder {
 	return r0
 }
 
+// ConditionCheckBuilder_ReturnNone_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReturnNone'
+type ConditionCheckBuilder_ReturnNone_Call struct {
+	*mock.Call
+}
+
+// ReturnNone is a helper method to define mock.On call
+func (_e *ConditionCheckBuilder_Expecter) ReturnNone() *ConditionCheckBuilder_ReturnNone_Call {
+	return &ConditionCheckBuilder_ReturnNone_Call{Call: _e.mock.On("ReturnNone")}
+}
+
+func (_c *ConditionCheckBuilder_ReturnNone_Call) Run(run func()) *ConditionCheckBuilder_ReturnNone_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_ReturnNone_Call) Return(_a0 ddb.ConditionCheckBuilder) *ConditionCheckBuilder_ReturnNone_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_ReturnNone_Call) RunAndReturn(run func() ddb.ConditionCheckBuilder) *ConditionCheckBuilder_ReturnNone_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithCondition provides a mock function with given fields: cond
 func (_m *ConditionCheckBuilder) WithCondition(cond expression.ConditionBuilder) ddb.ConditionCheckBuilder {
 	ret := _m.Called(cond)
@@ -89,6 +179,34 @@ func (_m *ConditionCheckBuilder) WithCondition(cond expression.ConditionBuilder)
 	return r0
 }
 
+// ConditionCheckBuilder_WithCondition_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithCondition'
+type ConditionCheckBuilder_WithCondition_Call struct {
+	*mock.Call
+}
+
+// WithCondition is a helper method to define mock.On call
+//   - cond expression.ConditionBuilder
+func (_e *ConditionCheckBuilder_Expecter) WithCondition(cond interface{}) *ConditionCheckBuilder_WithCondition_Call {
+	return &ConditionCheckBuilder_WithCondition_Call{Call: _e.mock.On("WithCondition", cond)}
+}
+
+func (_c *ConditionCheckBuilder_WithCondition_Call) Run(run func(cond expression.ConditionBuilder)) *ConditionCheckBuilder_WithCondition_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(expression.ConditionBuilder))
+	})
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_WithCondition_Call) Return(_a0 ddb.ConditionCheckBuilder) *ConditionCheckBuilder_WithCondition_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_WithCondition_Call) RunAndReturn(run func(expression.ConditionBuilder) ddb.ConditionCheckBuilder) *ConditionCheckBuilder_WithCondition_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithHash provides a mock function with given fields: hashValue
 func (_m *ConditionCheckBuilder) WithHash(hashValue interface{}) ddb.ConditionCheckBuilder {
 	ret := _m.Called(hashValue)
@@ -103,6 +221,34 @@ func (_m *ConditionCheckBuilder) WithHash(hashValue interface{}) ddb.ConditionCh
 	}
 
 	return r0
+}
+
+// ConditionCheckBuilder_WithHash_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithHash'
+type ConditionCheckBuilder_WithHash_Call struct {
+	*mock.Call
+}
+
+// WithHash is a helper method to define mock.On call
+//   - hashValue interface{}
+func (_e *ConditionCheckBuilder_Expecter) WithHash(hashValue interface{}) *ConditionCheckBuilder_WithHash_Call {
+	return &ConditionCheckBuilder_WithHash_Call{Call: _e.mock.On("WithHash", hashValue)}
+}
+
+func (_c *ConditionCheckBuilder_WithHash_Call) Run(run func(hashValue interface{})) *ConditionCheckBuilder_WithHash_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_WithHash_Call) Return(_a0 ddb.ConditionCheckBuilder) *ConditionCheckBuilder_WithHash_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_WithHash_Call) RunAndReturn(run func(interface{}) ddb.ConditionCheckBuilder) *ConditionCheckBuilder_WithHash_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // WithKeys provides a mock function with given fields: keys
@@ -123,6 +269,41 @@ func (_m *ConditionCheckBuilder) WithKeys(keys ...interface{}) ddb.ConditionChec
 	return r0
 }
 
+// ConditionCheckBuilder_WithKeys_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithKeys'
+type ConditionCheckBuilder_WithKeys_Call struct {
+	*mock.Call
+}
+
+// WithKeys is a helper method to define mock.On call
+//   - keys ...interface{}
+func (_e *ConditionCheckBuilder_Expecter) WithKeys(keys ...interface{}) *ConditionCheckBuilder_WithKeys_Call {
+	return &ConditionCheckBuilder_WithKeys_Call{Call: _e.mock.On("WithKeys",
+		append([]interface{}{}, keys...)...)}
+}
+
+func (_c *ConditionCheckBuilder_WithKeys_Call) Run(run func(keys ...interface{})) *ConditionCheckBuilder_WithKeys_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_WithKeys_Call) Return(_a0 ddb.ConditionCheckBuilder) *ConditionCheckBuilder_WithKeys_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_WithKeys_Call) RunAndReturn(run func(...interface{}) ddb.ConditionCheckBuilder) *ConditionCheckBuilder_WithKeys_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithRange provides a mock function with given fields: rangeValue
 func (_m *ConditionCheckBuilder) WithRange(rangeValue interface{}) ddb.ConditionCheckBuilder {
 	ret := _m.Called(rangeValue)
@@ -137,6 +318,34 @@ func (_m *ConditionCheckBuilder) WithRange(rangeValue interface{}) ddb.Condition
 	}
 
 	return r0
+}
+
+// ConditionCheckBuilder_WithRange_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithRange'
+type ConditionCheckBuilder_WithRange_Call struct {
+	*mock.Call
+}
+
+// WithRange is a helper method to define mock.On call
+//   - rangeValue interface{}
+func (_e *ConditionCheckBuilder_Expecter) WithRange(rangeValue interface{}) *ConditionCheckBuilder_WithRange_Call {
+	return &ConditionCheckBuilder_WithRange_Call{Call: _e.mock.On("WithRange", rangeValue)}
+}
+
+func (_c *ConditionCheckBuilder_WithRange_Call) Run(run func(rangeValue interface{})) *ConditionCheckBuilder_WithRange_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_WithRange_Call) Return(_a0 ddb.ConditionCheckBuilder) *ConditionCheckBuilder_WithRange_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ConditionCheckBuilder_WithRange_Call) RunAndReturn(run func(interface{}) ddb.ConditionCheckBuilder) *ConditionCheckBuilder_WithRange_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewConditionCheckBuilder interface {

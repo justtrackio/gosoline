@@ -14,6 +14,14 @@ type CheckpointWithoutRelease struct {
 	mock.Mock
 }
 
+type CheckpointWithoutRelease_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *CheckpointWithoutRelease) EXPECT() *CheckpointWithoutRelease_Expecter {
+	return &CheckpointWithoutRelease_Expecter{mock: &_m.Mock}
+}
+
 // Advance provides a mock function with given fields: sequenceNumber
 func (_m *CheckpointWithoutRelease) Advance(sequenceNumber kinesis.SequenceNumber) error {
 	ret := _m.Called(sequenceNumber)
@@ -26,6 +34,34 @@ func (_m *CheckpointWithoutRelease) Advance(sequenceNumber kinesis.SequenceNumbe
 	}
 
 	return r0
+}
+
+// CheckpointWithoutRelease_Advance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Advance'
+type CheckpointWithoutRelease_Advance_Call struct {
+	*mock.Call
+}
+
+// Advance is a helper method to define mock.On call
+//   - sequenceNumber kinesis.SequenceNumber
+func (_e *CheckpointWithoutRelease_Expecter) Advance(sequenceNumber interface{}) *CheckpointWithoutRelease_Advance_Call {
+	return &CheckpointWithoutRelease_Advance_Call{Call: _e.mock.On("Advance", sequenceNumber)}
+}
+
+func (_c *CheckpointWithoutRelease_Advance_Call) Run(run func(sequenceNumber kinesis.SequenceNumber)) *CheckpointWithoutRelease_Advance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(kinesis.SequenceNumber))
+	})
+	return _c
+}
+
+func (_c *CheckpointWithoutRelease_Advance_Call) Return(_a0 error) *CheckpointWithoutRelease_Advance_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *CheckpointWithoutRelease_Advance_Call) RunAndReturn(run func(kinesis.SequenceNumber) error) *CheckpointWithoutRelease_Advance_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Done provides a mock function with given fields: sequenceNumber
@@ -42,6 +78,34 @@ func (_m *CheckpointWithoutRelease) Done(sequenceNumber kinesis.SequenceNumber) 
 	return r0
 }
 
+// CheckpointWithoutRelease_Done_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Done'
+type CheckpointWithoutRelease_Done_Call struct {
+	*mock.Call
+}
+
+// Done is a helper method to define mock.On call
+//   - sequenceNumber kinesis.SequenceNumber
+func (_e *CheckpointWithoutRelease_Expecter) Done(sequenceNumber interface{}) *CheckpointWithoutRelease_Done_Call {
+	return &CheckpointWithoutRelease_Done_Call{Call: _e.mock.On("Done", sequenceNumber)}
+}
+
+func (_c *CheckpointWithoutRelease_Done_Call) Run(run func(sequenceNumber kinesis.SequenceNumber)) *CheckpointWithoutRelease_Done_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(kinesis.SequenceNumber))
+	})
+	return _c
+}
+
+func (_c *CheckpointWithoutRelease_Done_Call) Return(_a0 error) *CheckpointWithoutRelease_Done_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *CheckpointWithoutRelease_Done_Call) RunAndReturn(run func(kinesis.SequenceNumber) error) *CheckpointWithoutRelease_Done_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSequenceNumber provides a mock function with given fields:
 func (_m *CheckpointWithoutRelease) GetSequenceNumber() kinesis.SequenceNumber {
 	ret := _m.Called()
@@ -54,6 +118,33 @@ func (_m *CheckpointWithoutRelease) GetSequenceNumber() kinesis.SequenceNumber {
 	}
 
 	return r0
+}
+
+// CheckpointWithoutRelease_GetSequenceNumber_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSequenceNumber'
+type CheckpointWithoutRelease_GetSequenceNumber_Call struct {
+	*mock.Call
+}
+
+// GetSequenceNumber is a helper method to define mock.On call
+func (_e *CheckpointWithoutRelease_Expecter) GetSequenceNumber() *CheckpointWithoutRelease_GetSequenceNumber_Call {
+	return &CheckpointWithoutRelease_GetSequenceNumber_Call{Call: _e.mock.On("GetSequenceNumber")}
+}
+
+func (_c *CheckpointWithoutRelease_GetSequenceNumber_Call) Run(run func()) *CheckpointWithoutRelease_GetSequenceNumber_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *CheckpointWithoutRelease_GetSequenceNumber_Call) Return(_a0 kinesis.SequenceNumber) *CheckpointWithoutRelease_GetSequenceNumber_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *CheckpointWithoutRelease_GetSequenceNumber_Call) RunAndReturn(run func() kinesis.SequenceNumber) *CheckpointWithoutRelease_GetSequenceNumber_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Persist provides a mock function with given fields: ctx
@@ -78,6 +169,34 @@ func (_m *CheckpointWithoutRelease) Persist(ctx context.Context) (bool, error) {
 	}
 
 	return r0, r1
+}
+
+// CheckpointWithoutRelease_Persist_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Persist'
+type CheckpointWithoutRelease_Persist_Call struct {
+	*mock.Call
+}
+
+// Persist is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *CheckpointWithoutRelease_Expecter) Persist(ctx interface{}) *CheckpointWithoutRelease_Persist_Call {
+	return &CheckpointWithoutRelease_Persist_Call{Call: _e.mock.On("Persist", ctx)}
+}
+
+func (_c *CheckpointWithoutRelease_Persist_Call) Run(run func(ctx context.Context)) *CheckpointWithoutRelease_Persist_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *CheckpointWithoutRelease_Persist_Call) Return(shouldRelease bool, err error) *CheckpointWithoutRelease_Persist_Call {
+	_c.Call.Return(shouldRelease, err)
+	return _c
+}
+
+func (_c *CheckpointWithoutRelease_Persist_Call) RunAndReturn(run func(context.Context) (bool, error)) *CheckpointWithoutRelease_Persist_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewCheckpointWithoutRelease interface {

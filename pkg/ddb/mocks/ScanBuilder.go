@@ -13,6 +13,14 @@ type ScanBuilder struct {
 	mock.Mock
 }
 
+type ScanBuilder_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *ScanBuilder) EXPECT() *ScanBuilder_Expecter {
+	return &ScanBuilder_Expecter{mock: &_m.Mock}
+}
+
 // Build provides a mock function with given fields: result
 func (_m *ScanBuilder) Build(result interface{}) (*ddb.ScanOperation, error) {
 	ret := _m.Called(result)
@@ -39,6 +47,34 @@ func (_m *ScanBuilder) Build(result interface{}) (*ddb.ScanOperation, error) {
 	return r0, r1
 }
 
+// ScanBuilder_Build_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Build'
+type ScanBuilder_Build_Call struct {
+	*mock.Call
+}
+
+// Build is a helper method to define mock.On call
+//   - result interface{}
+func (_e *ScanBuilder_Expecter) Build(result interface{}) *ScanBuilder_Build_Call {
+	return &ScanBuilder_Build_Call{Call: _e.mock.On("Build", result)}
+}
+
+func (_c *ScanBuilder_Build_Call) Run(run func(result interface{})) *ScanBuilder_Build_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *ScanBuilder_Build_Call) Return(_a0 *ddb.ScanOperation, _a1 error) *ScanBuilder_Build_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ScanBuilder_Build_Call) RunAndReturn(run func(interface{}) (*ddb.ScanOperation, error)) *ScanBuilder_Build_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DisableTtlFilter provides a mock function with given fields:
 func (_m *ScanBuilder) DisableTtlFilter() ddb.ScanBuilder {
 	ret := _m.Called()
@@ -53,6 +89,33 @@ func (_m *ScanBuilder) DisableTtlFilter() ddb.ScanBuilder {
 	}
 
 	return r0
+}
+
+// ScanBuilder_DisableTtlFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DisableTtlFilter'
+type ScanBuilder_DisableTtlFilter_Call struct {
+	*mock.Call
+}
+
+// DisableTtlFilter is a helper method to define mock.On call
+func (_e *ScanBuilder_Expecter) DisableTtlFilter() *ScanBuilder_DisableTtlFilter_Call {
+	return &ScanBuilder_DisableTtlFilter_Call{Call: _e.mock.On("DisableTtlFilter")}
+}
+
+func (_c *ScanBuilder_DisableTtlFilter_Call) Run(run func()) *ScanBuilder_DisableTtlFilter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ScanBuilder_DisableTtlFilter_Call) Return(_a0 ddb.ScanBuilder) *ScanBuilder_DisableTtlFilter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ScanBuilder_DisableTtlFilter_Call) RunAndReturn(run func() ddb.ScanBuilder) *ScanBuilder_DisableTtlFilter_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // WithConsistentRead provides a mock function with given fields: consistentRead
@@ -71,6 +134,34 @@ func (_m *ScanBuilder) WithConsistentRead(consistentRead bool) ddb.ScanBuilder {
 	return r0
 }
 
+// ScanBuilder_WithConsistentRead_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithConsistentRead'
+type ScanBuilder_WithConsistentRead_Call struct {
+	*mock.Call
+}
+
+// WithConsistentRead is a helper method to define mock.On call
+//   - consistentRead bool
+func (_e *ScanBuilder_Expecter) WithConsistentRead(consistentRead interface{}) *ScanBuilder_WithConsistentRead_Call {
+	return &ScanBuilder_WithConsistentRead_Call{Call: _e.mock.On("WithConsistentRead", consistentRead)}
+}
+
+func (_c *ScanBuilder_WithConsistentRead_Call) Run(run func(consistentRead bool)) *ScanBuilder_WithConsistentRead_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(bool))
+	})
+	return _c
+}
+
+func (_c *ScanBuilder_WithConsistentRead_Call) Return(_a0 ddb.ScanBuilder) *ScanBuilder_WithConsistentRead_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ScanBuilder_WithConsistentRead_Call) RunAndReturn(run func(bool) ddb.ScanBuilder) *ScanBuilder_WithConsistentRead_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithFilter provides a mock function with given fields: filter
 func (_m *ScanBuilder) WithFilter(filter expression.ConditionBuilder) ddb.ScanBuilder {
 	ret := _m.Called(filter)
@@ -85,6 +176,34 @@ func (_m *ScanBuilder) WithFilter(filter expression.ConditionBuilder) ddb.ScanBu
 	}
 
 	return r0
+}
+
+// ScanBuilder_WithFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithFilter'
+type ScanBuilder_WithFilter_Call struct {
+	*mock.Call
+}
+
+// WithFilter is a helper method to define mock.On call
+//   - filter expression.ConditionBuilder
+func (_e *ScanBuilder_Expecter) WithFilter(filter interface{}) *ScanBuilder_WithFilter_Call {
+	return &ScanBuilder_WithFilter_Call{Call: _e.mock.On("WithFilter", filter)}
+}
+
+func (_c *ScanBuilder_WithFilter_Call) Run(run func(filter expression.ConditionBuilder)) *ScanBuilder_WithFilter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(expression.ConditionBuilder))
+	})
+	return _c
+}
+
+func (_c *ScanBuilder_WithFilter_Call) Return(_a0 ddb.ScanBuilder) *ScanBuilder_WithFilter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ScanBuilder_WithFilter_Call) RunAndReturn(run func(expression.ConditionBuilder) ddb.ScanBuilder) *ScanBuilder_WithFilter_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // WithIndex provides a mock function with given fields: name
@@ -103,6 +222,34 @@ func (_m *ScanBuilder) WithIndex(name string) ddb.ScanBuilder {
 	return r0
 }
 
+// ScanBuilder_WithIndex_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithIndex'
+type ScanBuilder_WithIndex_Call struct {
+	*mock.Call
+}
+
+// WithIndex is a helper method to define mock.On call
+//   - name string
+func (_e *ScanBuilder_Expecter) WithIndex(name interface{}) *ScanBuilder_WithIndex_Call {
+	return &ScanBuilder_WithIndex_Call{Call: _e.mock.On("WithIndex", name)}
+}
+
+func (_c *ScanBuilder_WithIndex_Call) Run(run func(name string)) *ScanBuilder_WithIndex_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *ScanBuilder_WithIndex_Call) Return(_a0 ddb.ScanBuilder) *ScanBuilder_WithIndex_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ScanBuilder_WithIndex_Call) RunAndReturn(run func(string) ddb.ScanBuilder) *ScanBuilder_WithIndex_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithLimit provides a mock function with given fields: limit
 func (_m *ScanBuilder) WithLimit(limit int) ddb.ScanBuilder {
 	ret := _m.Called(limit)
@@ -117,6 +264,34 @@ func (_m *ScanBuilder) WithLimit(limit int) ddb.ScanBuilder {
 	}
 
 	return r0
+}
+
+// ScanBuilder_WithLimit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithLimit'
+type ScanBuilder_WithLimit_Call struct {
+	*mock.Call
+}
+
+// WithLimit is a helper method to define mock.On call
+//   - limit int
+func (_e *ScanBuilder_Expecter) WithLimit(limit interface{}) *ScanBuilder_WithLimit_Call {
+	return &ScanBuilder_WithLimit_Call{Call: _e.mock.On("WithLimit", limit)}
+}
+
+func (_c *ScanBuilder_WithLimit_Call) Run(run func(limit int)) *ScanBuilder_WithLimit_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int))
+	})
+	return _c
+}
+
+func (_c *ScanBuilder_WithLimit_Call) Return(_a0 ddb.ScanBuilder) *ScanBuilder_WithLimit_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ScanBuilder_WithLimit_Call) RunAndReturn(run func(int) ddb.ScanBuilder) *ScanBuilder_WithLimit_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // WithPageSize provides a mock function with given fields: size
@@ -135,6 +310,34 @@ func (_m *ScanBuilder) WithPageSize(size int) ddb.ScanBuilder {
 	return r0
 }
 
+// ScanBuilder_WithPageSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithPageSize'
+type ScanBuilder_WithPageSize_Call struct {
+	*mock.Call
+}
+
+// WithPageSize is a helper method to define mock.On call
+//   - size int
+func (_e *ScanBuilder_Expecter) WithPageSize(size interface{}) *ScanBuilder_WithPageSize_Call {
+	return &ScanBuilder_WithPageSize_Call{Call: _e.mock.On("WithPageSize", size)}
+}
+
+func (_c *ScanBuilder_WithPageSize_Call) Run(run func(size int)) *ScanBuilder_WithPageSize_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int))
+	})
+	return _c
+}
+
+func (_c *ScanBuilder_WithPageSize_Call) Return(_a0 ddb.ScanBuilder) *ScanBuilder_WithPageSize_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ScanBuilder_WithPageSize_Call) RunAndReturn(run func(int) ddb.ScanBuilder) *ScanBuilder_WithPageSize_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithProjection provides a mock function with given fields: projection
 func (_m *ScanBuilder) WithProjection(projection interface{}) ddb.ScanBuilder {
 	ret := _m.Called(projection)
@@ -151,6 +354,34 @@ func (_m *ScanBuilder) WithProjection(projection interface{}) ddb.ScanBuilder {
 	return r0
 }
 
+// ScanBuilder_WithProjection_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithProjection'
+type ScanBuilder_WithProjection_Call struct {
+	*mock.Call
+}
+
+// WithProjection is a helper method to define mock.On call
+//   - projection interface{}
+func (_e *ScanBuilder_Expecter) WithProjection(projection interface{}) *ScanBuilder_WithProjection_Call {
+	return &ScanBuilder_WithProjection_Call{Call: _e.mock.On("WithProjection", projection)}
+}
+
+func (_c *ScanBuilder_WithProjection_Call) Run(run func(projection interface{})) *ScanBuilder_WithProjection_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *ScanBuilder_WithProjection_Call) Return(_a0 ddb.ScanBuilder) *ScanBuilder_WithProjection_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ScanBuilder_WithProjection_Call) RunAndReturn(run func(interface{}) ddb.ScanBuilder) *ScanBuilder_WithProjection_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithSegment provides a mock function with given fields: segment, total
 func (_m *ScanBuilder) WithSegment(segment int, total int) ddb.ScanBuilder {
 	ret := _m.Called(segment, total)
@@ -165,6 +396,35 @@ func (_m *ScanBuilder) WithSegment(segment int, total int) ddb.ScanBuilder {
 	}
 
 	return r0
+}
+
+// ScanBuilder_WithSegment_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithSegment'
+type ScanBuilder_WithSegment_Call struct {
+	*mock.Call
+}
+
+// WithSegment is a helper method to define mock.On call
+//   - segment int
+//   - total int
+func (_e *ScanBuilder_Expecter) WithSegment(segment interface{}, total interface{}) *ScanBuilder_WithSegment_Call {
+	return &ScanBuilder_WithSegment_Call{Call: _e.mock.On("WithSegment", segment, total)}
+}
+
+func (_c *ScanBuilder_WithSegment_Call) Run(run func(segment int, total int)) *ScanBuilder_WithSegment_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *ScanBuilder_WithSegment_Call) Return(_a0 ddb.ScanBuilder) *ScanBuilder_WithSegment_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ScanBuilder_WithSegment_Call) RunAndReturn(run func(int, int) ddb.ScanBuilder) *ScanBuilder_WithSegment_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewScanBuilder interface {

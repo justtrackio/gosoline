@@ -14,6 +14,14 @@ type TransactionRepository struct {
 	mock.Mock
 }
 
+type TransactionRepository_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *TransactionRepository) EXPECT() *TransactionRepository_Expecter {
+	return &TransactionRepository_Expecter{mock: &_m.Mock}
+}
+
 // TransactGetItems provides a mock function with given fields: ctx, items
 func (_m *TransactionRepository) TransactGetItems(ctx context.Context, items []ddb.TransactGetItemBuilder) (*ddb.OperationResult, error) {
 	ret := _m.Called(ctx, items)
@@ -40,6 +48,35 @@ func (_m *TransactionRepository) TransactGetItems(ctx context.Context, items []d
 	return r0, r1
 }
 
+// TransactionRepository_TransactGetItems_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TransactGetItems'
+type TransactionRepository_TransactGetItems_Call struct {
+	*mock.Call
+}
+
+// TransactGetItems is a helper method to define mock.On call
+//   - ctx context.Context
+//   - items []ddb.TransactGetItemBuilder
+func (_e *TransactionRepository_Expecter) TransactGetItems(ctx interface{}, items interface{}) *TransactionRepository_TransactGetItems_Call {
+	return &TransactionRepository_TransactGetItems_Call{Call: _e.mock.On("TransactGetItems", ctx, items)}
+}
+
+func (_c *TransactionRepository_TransactGetItems_Call) Run(run func(ctx context.Context, items []ddb.TransactGetItemBuilder)) *TransactionRepository_TransactGetItems_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]ddb.TransactGetItemBuilder))
+	})
+	return _c
+}
+
+func (_c *TransactionRepository_TransactGetItems_Call) Return(_a0 *ddb.OperationResult, _a1 error) *TransactionRepository_TransactGetItems_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *TransactionRepository_TransactGetItems_Call) RunAndReturn(run func(context.Context, []ddb.TransactGetItemBuilder) (*ddb.OperationResult, error)) *TransactionRepository_TransactGetItems_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TransactWriteItems provides a mock function with given fields: ctx, items
 func (_m *TransactionRepository) TransactWriteItems(ctx context.Context, items []ddb.TransactWriteItemBuilder) (*ddb.OperationResult, error) {
 	ret := _m.Called(ctx, items)
@@ -64,6 +101,35 @@ func (_m *TransactionRepository) TransactWriteItems(ctx context.Context, items [
 	}
 
 	return r0, r1
+}
+
+// TransactionRepository_TransactWriteItems_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TransactWriteItems'
+type TransactionRepository_TransactWriteItems_Call struct {
+	*mock.Call
+}
+
+// TransactWriteItems is a helper method to define mock.On call
+//   - ctx context.Context
+//   - items []ddb.TransactWriteItemBuilder
+func (_e *TransactionRepository_Expecter) TransactWriteItems(ctx interface{}, items interface{}) *TransactionRepository_TransactWriteItems_Call {
+	return &TransactionRepository_TransactWriteItems_Call{Call: _e.mock.On("TransactWriteItems", ctx, items)}
+}
+
+func (_c *TransactionRepository_TransactWriteItems_Call) Run(run func(ctx context.Context, items []ddb.TransactWriteItemBuilder)) *TransactionRepository_TransactWriteItems_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]ddb.TransactWriteItemBuilder))
+	})
+	return _c
+}
+
+func (_c *TransactionRepository_TransactWriteItems_Call) Return(_a0 *ddb.OperationResult, _a1 error) *TransactionRepository_TransactWriteItems_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *TransactionRepository_TransactWriteItems_Call) RunAndReturn(run func(context.Context, []ddb.TransactWriteItemBuilder) (*ddb.OperationResult, error)) *TransactionRepository_TransactWriteItems_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewTransactionRepository interface {

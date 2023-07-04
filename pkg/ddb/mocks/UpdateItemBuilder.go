@@ -16,6 +16,14 @@ type UpdateItemBuilder struct {
 	mock.Mock
 }
 
+type UpdateItemBuilder_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *UpdateItemBuilder) EXPECT() *UpdateItemBuilder_Expecter {
+	return &UpdateItemBuilder_Expecter{mock: &_m.Mock}
+}
+
 // Add provides a mock function with given fields: path, value
 func (_m *UpdateItemBuilder) Add(path string, value interface{}) ddb.UpdateItemBuilder {
 	ret := _m.Called(path, value)
@@ -30,6 +38,35 @@ func (_m *UpdateItemBuilder) Add(path string, value interface{}) ddb.UpdateItemB
 	}
 
 	return r0
+}
+
+// UpdateItemBuilder_Add_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Add'
+type UpdateItemBuilder_Add_Call struct {
+	*mock.Call
+}
+
+// Add is a helper method to define mock.On call
+//   - path string
+//   - value interface{}
+func (_e *UpdateItemBuilder_Expecter) Add(path interface{}, value interface{}) *UpdateItemBuilder_Add_Call {
+	return &UpdateItemBuilder_Add_Call{Call: _e.mock.On("Add", path, value)}
+}
+
+func (_c *UpdateItemBuilder_Add_Call) Run(run func(path string, value interface{})) *UpdateItemBuilder_Add_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_Add_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_Add_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_Add_Call) RunAndReturn(run func(string, interface{}) ddb.UpdateItemBuilder) *UpdateItemBuilder_Add_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Build provides a mock function with given fields: item
@@ -58,6 +95,34 @@ func (_m *UpdateItemBuilder) Build(item interface{}) (*dynamodb.UpdateItemInput,
 	return r0, r1
 }
 
+// UpdateItemBuilder_Build_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Build'
+type UpdateItemBuilder_Build_Call struct {
+	*mock.Call
+}
+
+// Build is a helper method to define mock.On call
+//   - item interface{}
+func (_e *UpdateItemBuilder_Expecter) Build(item interface{}) *UpdateItemBuilder_Build_Call {
+	return &UpdateItemBuilder_Build_Call{Call: _e.mock.On("Build", item)}
+}
+
+func (_c *UpdateItemBuilder_Build_Call) Run(run func(item interface{})) *UpdateItemBuilder_Build_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_Build_Call) Return(_a0 *dynamodb.UpdateItemInput, _a1 error) *UpdateItemBuilder_Build_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_Build_Call) RunAndReturn(run func(interface{}) (*dynamodb.UpdateItemInput, error)) *UpdateItemBuilder_Build_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Delete provides a mock function with given fields: path, value
 func (_m *UpdateItemBuilder) Delete(path string, value interface{}) ddb.UpdateItemBuilder {
 	ret := _m.Called(path, value)
@@ -74,6 +139,35 @@ func (_m *UpdateItemBuilder) Delete(path string, value interface{}) ddb.UpdateIt
 	return r0
 }
 
+// UpdateItemBuilder_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
+type UpdateItemBuilder_Delete_Call struct {
+	*mock.Call
+}
+
+// Delete is a helper method to define mock.On call
+//   - path string
+//   - value interface{}
+func (_e *UpdateItemBuilder_Expecter) Delete(path interface{}, value interface{}) *UpdateItemBuilder_Delete_Call {
+	return &UpdateItemBuilder_Delete_Call{Call: _e.mock.On("Delete", path, value)}
+}
+
+func (_c *UpdateItemBuilder_Delete_Call) Run(run func(path string, value interface{})) *UpdateItemBuilder_Delete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_Delete_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_Delete_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_Delete_Call) RunAndReturn(run func(string, interface{}) ddb.UpdateItemBuilder) *UpdateItemBuilder_Delete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Remove provides a mock function with given fields: path
 func (_m *UpdateItemBuilder) Remove(path string) ddb.UpdateItemBuilder {
 	ret := _m.Called(path)
@@ -88,6 +182,34 @@ func (_m *UpdateItemBuilder) Remove(path string) ddb.UpdateItemBuilder {
 	}
 
 	return r0
+}
+
+// UpdateItemBuilder_Remove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Remove'
+type UpdateItemBuilder_Remove_Call struct {
+	*mock.Call
+}
+
+// Remove is a helper method to define mock.On call
+//   - path string
+func (_e *UpdateItemBuilder_Expecter) Remove(path interface{}) *UpdateItemBuilder_Remove_Call {
+	return &UpdateItemBuilder_Remove_Call{Call: _e.mock.On("Remove", path)}
+}
+
+func (_c *UpdateItemBuilder_Remove_Call) Run(run func(path string)) *UpdateItemBuilder_Remove_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_Remove_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_Remove_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_Remove_Call) RunAndReturn(run func(string) ddb.UpdateItemBuilder) *UpdateItemBuilder_Remove_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // RemoveMultiple provides a mock function with given fields: paths
@@ -112,6 +234,41 @@ func (_m *UpdateItemBuilder) RemoveMultiple(paths ...string) ddb.UpdateItemBuild
 	return r0
 }
 
+// UpdateItemBuilder_RemoveMultiple_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveMultiple'
+type UpdateItemBuilder_RemoveMultiple_Call struct {
+	*mock.Call
+}
+
+// RemoveMultiple is a helper method to define mock.On call
+//   - paths ...string
+func (_e *UpdateItemBuilder_Expecter) RemoveMultiple(paths ...interface{}) *UpdateItemBuilder_RemoveMultiple_Call {
+	return &UpdateItemBuilder_RemoveMultiple_Call{Call: _e.mock.On("RemoveMultiple",
+		append([]interface{}{}, paths...)...)}
+}
+
+func (_c *UpdateItemBuilder_RemoveMultiple_Call) Run(run func(paths ...string)) *UpdateItemBuilder_RemoveMultiple_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_RemoveMultiple_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_RemoveMultiple_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_RemoveMultiple_Call) RunAndReturn(run func(...string) ddb.UpdateItemBuilder) *UpdateItemBuilder_RemoveMultiple_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReturnAllNew provides a mock function with given fields:
 func (_m *UpdateItemBuilder) ReturnAllNew() ddb.UpdateItemBuilder {
 	ret := _m.Called()
@@ -126,6 +283,33 @@ func (_m *UpdateItemBuilder) ReturnAllNew() ddb.UpdateItemBuilder {
 	}
 
 	return r0
+}
+
+// UpdateItemBuilder_ReturnAllNew_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReturnAllNew'
+type UpdateItemBuilder_ReturnAllNew_Call struct {
+	*mock.Call
+}
+
+// ReturnAllNew is a helper method to define mock.On call
+func (_e *UpdateItemBuilder_Expecter) ReturnAllNew() *UpdateItemBuilder_ReturnAllNew_Call {
+	return &UpdateItemBuilder_ReturnAllNew_Call{Call: _e.mock.On("ReturnAllNew")}
+}
+
+func (_c *UpdateItemBuilder_ReturnAllNew_Call) Run(run func()) *UpdateItemBuilder_ReturnAllNew_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_ReturnAllNew_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_ReturnAllNew_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_ReturnAllNew_Call) RunAndReturn(run func() ddb.UpdateItemBuilder) *UpdateItemBuilder_ReturnAllNew_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ReturnAllOld provides a mock function with given fields:
@@ -144,6 +328,33 @@ func (_m *UpdateItemBuilder) ReturnAllOld() ddb.UpdateItemBuilder {
 	return r0
 }
 
+// UpdateItemBuilder_ReturnAllOld_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReturnAllOld'
+type UpdateItemBuilder_ReturnAllOld_Call struct {
+	*mock.Call
+}
+
+// ReturnAllOld is a helper method to define mock.On call
+func (_e *UpdateItemBuilder_Expecter) ReturnAllOld() *UpdateItemBuilder_ReturnAllOld_Call {
+	return &UpdateItemBuilder_ReturnAllOld_Call{Call: _e.mock.On("ReturnAllOld")}
+}
+
+func (_c *UpdateItemBuilder_ReturnAllOld_Call) Run(run func()) *UpdateItemBuilder_ReturnAllOld_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_ReturnAllOld_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_ReturnAllOld_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_ReturnAllOld_Call) RunAndReturn(run func() ddb.UpdateItemBuilder) *UpdateItemBuilder_ReturnAllOld_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReturnNone provides a mock function with given fields:
 func (_m *UpdateItemBuilder) ReturnNone() ddb.UpdateItemBuilder {
 	ret := _m.Called()
@@ -158,6 +369,33 @@ func (_m *UpdateItemBuilder) ReturnNone() ddb.UpdateItemBuilder {
 	}
 
 	return r0
+}
+
+// UpdateItemBuilder_ReturnNone_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReturnNone'
+type UpdateItemBuilder_ReturnNone_Call struct {
+	*mock.Call
+}
+
+// ReturnNone is a helper method to define mock.On call
+func (_e *UpdateItemBuilder_Expecter) ReturnNone() *UpdateItemBuilder_ReturnNone_Call {
+	return &UpdateItemBuilder_ReturnNone_Call{Call: _e.mock.On("ReturnNone")}
+}
+
+func (_c *UpdateItemBuilder_ReturnNone_Call) Run(run func()) *UpdateItemBuilder_ReturnNone_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_ReturnNone_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_ReturnNone_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_ReturnNone_Call) RunAndReturn(run func() ddb.UpdateItemBuilder) *UpdateItemBuilder_ReturnNone_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ReturnUpdatedNew provides a mock function with given fields:
@@ -176,6 +414,33 @@ func (_m *UpdateItemBuilder) ReturnUpdatedNew() ddb.UpdateItemBuilder {
 	return r0
 }
 
+// UpdateItemBuilder_ReturnUpdatedNew_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReturnUpdatedNew'
+type UpdateItemBuilder_ReturnUpdatedNew_Call struct {
+	*mock.Call
+}
+
+// ReturnUpdatedNew is a helper method to define mock.On call
+func (_e *UpdateItemBuilder_Expecter) ReturnUpdatedNew() *UpdateItemBuilder_ReturnUpdatedNew_Call {
+	return &UpdateItemBuilder_ReturnUpdatedNew_Call{Call: _e.mock.On("ReturnUpdatedNew")}
+}
+
+func (_c *UpdateItemBuilder_ReturnUpdatedNew_Call) Run(run func()) *UpdateItemBuilder_ReturnUpdatedNew_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_ReturnUpdatedNew_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_ReturnUpdatedNew_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_ReturnUpdatedNew_Call) RunAndReturn(run func() ddb.UpdateItemBuilder) *UpdateItemBuilder_ReturnUpdatedNew_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReturnUpdatedOld provides a mock function with given fields:
 func (_m *UpdateItemBuilder) ReturnUpdatedOld() ddb.UpdateItemBuilder {
 	ret := _m.Called()
@@ -190,6 +455,33 @@ func (_m *UpdateItemBuilder) ReturnUpdatedOld() ddb.UpdateItemBuilder {
 	}
 
 	return r0
+}
+
+// UpdateItemBuilder_ReturnUpdatedOld_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReturnUpdatedOld'
+type UpdateItemBuilder_ReturnUpdatedOld_Call struct {
+	*mock.Call
+}
+
+// ReturnUpdatedOld is a helper method to define mock.On call
+func (_e *UpdateItemBuilder_Expecter) ReturnUpdatedOld() *UpdateItemBuilder_ReturnUpdatedOld_Call {
+	return &UpdateItemBuilder_ReturnUpdatedOld_Call{Call: _e.mock.On("ReturnUpdatedOld")}
+}
+
+func (_c *UpdateItemBuilder_ReturnUpdatedOld_Call) Run(run func()) *UpdateItemBuilder_ReturnUpdatedOld_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_ReturnUpdatedOld_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_ReturnUpdatedOld_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_ReturnUpdatedOld_Call) RunAndReturn(run func() ddb.UpdateItemBuilder) *UpdateItemBuilder_ReturnUpdatedOld_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Set provides a mock function with given fields: path, value
@@ -208,6 +500,35 @@ func (_m *UpdateItemBuilder) Set(path string, value interface{}) ddb.UpdateItemB
 	return r0
 }
 
+// UpdateItemBuilder_Set_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Set'
+type UpdateItemBuilder_Set_Call struct {
+	*mock.Call
+}
+
+// Set is a helper method to define mock.On call
+//   - path string
+//   - value interface{}
+func (_e *UpdateItemBuilder_Expecter) Set(path interface{}, value interface{}) *UpdateItemBuilder_Set_Call {
+	return &UpdateItemBuilder_Set_Call{Call: _e.mock.On("Set", path, value)}
+}
+
+func (_c *UpdateItemBuilder_Set_Call) Run(run func(path string, value interface{})) *UpdateItemBuilder_Set_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_Set_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_Set_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_Set_Call) RunAndReturn(run func(string, interface{}) ddb.UpdateItemBuilder) *UpdateItemBuilder_Set_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetIfNotExist provides a mock function with given fields: path, value
 func (_m *UpdateItemBuilder) SetIfNotExist(path string, value interface{}) ddb.UpdateItemBuilder {
 	ret := _m.Called(path, value)
@@ -222,6 +543,35 @@ func (_m *UpdateItemBuilder) SetIfNotExist(path string, value interface{}) ddb.U
 	}
 
 	return r0
+}
+
+// UpdateItemBuilder_SetIfNotExist_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetIfNotExist'
+type UpdateItemBuilder_SetIfNotExist_Call struct {
+	*mock.Call
+}
+
+// SetIfNotExist is a helper method to define mock.On call
+//   - path string
+//   - value interface{}
+func (_e *UpdateItemBuilder_Expecter) SetIfNotExist(path interface{}, value interface{}) *UpdateItemBuilder_SetIfNotExist_Call {
+	return &UpdateItemBuilder_SetIfNotExist_Call{Call: _e.mock.On("SetIfNotExist", path, value)}
+}
+
+func (_c *UpdateItemBuilder_SetIfNotExist_Call) Run(run func(path string, value interface{})) *UpdateItemBuilder_SetIfNotExist_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_SetIfNotExist_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_SetIfNotExist_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_SetIfNotExist_Call) RunAndReturn(run func(string, interface{}) ddb.UpdateItemBuilder) *UpdateItemBuilder_SetIfNotExist_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SetMap provides a mock function with given fields: values
@@ -240,6 +590,34 @@ func (_m *UpdateItemBuilder) SetMap(values map[string]interface{}) ddb.UpdateIte
 	return r0
 }
 
+// UpdateItemBuilder_SetMap_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetMap'
+type UpdateItemBuilder_SetMap_Call struct {
+	*mock.Call
+}
+
+// SetMap is a helper method to define mock.On call
+//   - values map[string]interface{}
+func (_e *UpdateItemBuilder_Expecter) SetMap(values interface{}) *UpdateItemBuilder_SetMap_Call {
+	return &UpdateItemBuilder_SetMap_Call{Call: _e.mock.On("SetMap", values)}
+}
+
+func (_c *UpdateItemBuilder_SetMap_Call) Run(run func(values map[string]interface{})) *UpdateItemBuilder_SetMap_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(map[string]interface{}))
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_SetMap_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_SetMap_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_SetMap_Call) RunAndReturn(run func(map[string]interface{}) ddb.UpdateItemBuilder) *UpdateItemBuilder_SetMap_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithCondition provides a mock function with given fields: cond
 func (_m *UpdateItemBuilder) WithCondition(cond expression.ConditionBuilder) ddb.UpdateItemBuilder {
 	ret := _m.Called(cond)
@@ -254,6 +632,34 @@ func (_m *UpdateItemBuilder) WithCondition(cond expression.ConditionBuilder) ddb
 	}
 
 	return r0
+}
+
+// UpdateItemBuilder_WithCondition_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithCondition'
+type UpdateItemBuilder_WithCondition_Call struct {
+	*mock.Call
+}
+
+// WithCondition is a helper method to define mock.On call
+//   - cond expression.ConditionBuilder
+func (_e *UpdateItemBuilder_Expecter) WithCondition(cond interface{}) *UpdateItemBuilder_WithCondition_Call {
+	return &UpdateItemBuilder_WithCondition_Call{Call: _e.mock.On("WithCondition", cond)}
+}
+
+func (_c *UpdateItemBuilder_WithCondition_Call) Run(run func(cond expression.ConditionBuilder)) *UpdateItemBuilder_WithCondition_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(expression.ConditionBuilder))
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_WithCondition_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_WithCondition_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_WithCondition_Call) RunAndReturn(run func(expression.ConditionBuilder) ddb.UpdateItemBuilder) *UpdateItemBuilder_WithCondition_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // WithHash provides a mock function with given fields: hashValue
@@ -272,6 +678,34 @@ func (_m *UpdateItemBuilder) WithHash(hashValue interface{}) ddb.UpdateItemBuild
 	return r0
 }
 
+// UpdateItemBuilder_WithHash_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithHash'
+type UpdateItemBuilder_WithHash_Call struct {
+	*mock.Call
+}
+
+// WithHash is a helper method to define mock.On call
+//   - hashValue interface{}
+func (_e *UpdateItemBuilder_Expecter) WithHash(hashValue interface{}) *UpdateItemBuilder_WithHash_Call {
+	return &UpdateItemBuilder_WithHash_Call{Call: _e.mock.On("WithHash", hashValue)}
+}
+
+func (_c *UpdateItemBuilder_WithHash_Call) Run(run func(hashValue interface{})) *UpdateItemBuilder_WithHash_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_WithHash_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_WithHash_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_WithHash_Call) RunAndReturn(run func(interface{}) ddb.UpdateItemBuilder) *UpdateItemBuilder_WithHash_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithRange provides a mock function with given fields: rangeValue
 func (_m *UpdateItemBuilder) WithRange(rangeValue interface{}) ddb.UpdateItemBuilder {
 	ret := _m.Called(rangeValue)
@@ -286,6 +720,34 @@ func (_m *UpdateItemBuilder) WithRange(rangeValue interface{}) ddb.UpdateItemBui
 	}
 
 	return r0
+}
+
+// UpdateItemBuilder_WithRange_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithRange'
+type UpdateItemBuilder_WithRange_Call struct {
+	*mock.Call
+}
+
+// WithRange is a helper method to define mock.On call
+//   - rangeValue interface{}
+func (_e *UpdateItemBuilder_Expecter) WithRange(rangeValue interface{}) *UpdateItemBuilder_WithRange_Call {
+	return &UpdateItemBuilder_WithRange_Call{Call: _e.mock.On("WithRange", rangeValue)}
+}
+
+func (_c *UpdateItemBuilder_WithRange_Call) Run(run func(rangeValue interface{})) *UpdateItemBuilder_WithRange_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *UpdateItemBuilder_WithRange_Call) Return(_a0 ddb.UpdateItemBuilder) *UpdateItemBuilder_WithRange_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateItemBuilder_WithRange_Call) RunAndReturn(run func(interface{}) ddb.UpdateItemBuilder) *UpdateItemBuilder_WithRange_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewUpdateItemBuilder interface {

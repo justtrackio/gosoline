@@ -14,6 +14,14 @@ type PartitionedOutput struct {
 	mock.Mock
 }
 
+type PartitionedOutput_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *PartitionedOutput) EXPECT() *PartitionedOutput_Expecter {
+	return &PartitionedOutput_Expecter{mock: &_m.Mock}
+}
+
 // IsPartitionedOutput provides a mock function with given fields:
 func (_m *PartitionedOutput) IsPartitionedOutput() bool {
 	ret := _m.Called()
@@ -26,6 +34,33 @@ func (_m *PartitionedOutput) IsPartitionedOutput() bool {
 	}
 
 	return r0
+}
+
+// PartitionedOutput_IsPartitionedOutput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsPartitionedOutput'
+type PartitionedOutput_IsPartitionedOutput_Call struct {
+	*mock.Call
+}
+
+// IsPartitionedOutput is a helper method to define mock.On call
+func (_e *PartitionedOutput_Expecter) IsPartitionedOutput() *PartitionedOutput_IsPartitionedOutput_Call {
+	return &PartitionedOutput_IsPartitionedOutput_Call{Call: _e.mock.On("IsPartitionedOutput")}
+}
+
+func (_c *PartitionedOutput_IsPartitionedOutput_Call) Run(run func()) *PartitionedOutput_IsPartitionedOutput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *PartitionedOutput_IsPartitionedOutput_Call) Return(_a0 bool) *PartitionedOutput_IsPartitionedOutput_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PartitionedOutput_IsPartitionedOutput_Call) RunAndReturn(run func() bool) *PartitionedOutput_IsPartitionedOutput_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Write provides a mock function with given fields: ctx, batch
@@ -42,6 +77,35 @@ func (_m *PartitionedOutput) Write(ctx context.Context, batch []stream.WritableM
 	return r0
 }
 
+// PartitionedOutput_Write_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Write'
+type PartitionedOutput_Write_Call struct {
+	*mock.Call
+}
+
+// Write is a helper method to define mock.On call
+//   - ctx context.Context
+//   - batch []stream.WritableMessage
+func (_e *PartitionedOutput_Expecter) Write(ctx interface{}, batch interface{}) *PartitionedOutput_Write_Call {
+	return &PartitionedOutput_Write_Call{Call: _e.mock.On("Write", ctx, batch)}
+}
+
+func (_c *PartitionedOutput_Write_Call) Run(run func(ctx context.Context, batch []stream.WritableMessage)) *PartitionedOutput_Write_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]stream.WritableMessage))
+	})
+	return _c
+}
+
+func (_c *PartitionedOutput_Write_Call) Return(_a0 error) *PartitionedOutput_Write_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PartitionedOutput_Write_Call) RunAndReturn(run func(context.Context, []stream.WritableMessage) error) *PartitionedOutput_Write_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WriteOne provides a mock function with given fields: ctx, msg
 func (_m *PartitionedOutput) WriteOne(ctx context.Context, msg stream.WritableMessage) error {
 	ret := _m.Called(ctx, msg)
@@ -54,6 +118,35 @@ func (_m *PartitionedOutput) WriteOne(ctx context.Context, msg stream.WritableMe
 	}
 
 	return r0
+}
+
+// PartitionedOutput_WriteOne_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteOne'
+type PartitionedOutput_WriteOne_Call struct {
+	*mock.Call
+}
+
+// WriteOne is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msg stream.WritableMessage
+func (_e *PartitionedOutput_Expecter) WriteOne(ctx interface{}, msg interface{}) *PartitionedOutput_WriteOne_Call {
+	return &PartitionedOutput_WriteOne_Call{Call: _e.mock.On("WriteOne", ctx, msg)}
+}
+
+func (_c *PartitionedOutput_WriteOne_Call) Run(run func(ctx context.Context, msg stream.WritableMessage)) *PartitionedOutput_WriteOne_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(stream.WritableMessage))
+	})
+	return _c
+}
+
+func (_c *PartitionedOutput_WriteOne_Call) Return(_a0 error) *PartitionedOutput_WriteOne_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PartitionedOutput_WriteOne_Call) RunAndReturn(run func(context.Context, stream.WritableMessage) error) *PartitionedOutput_WriteOne_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewPartitionedOutput interface {

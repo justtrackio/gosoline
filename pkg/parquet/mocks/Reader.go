@@ -16,6 +16,14 @@ type Reader struct {
 	mock.Mock
 }
 
+type Reader_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Reader) EXPECT() *Reader_Expecter {
+	return &Reader_Expecter{mock: &_m.Mock}
+}
+
 // ReadDate provides a mock function with given fields: ctx, datetime, target
 func (_m *Reader) ReadDate(ctx context.Context, datetime time.Time, target interface{}) error {
 	ret := _m.Called(ctx, datetime, target)
@@ -28,6 +36,36 @@ func (_m *Reader) ReadDate(ctx context.Context, datetime time.Time, target inter
 	}
 
 	return r0
+}
+
+// Reader_ReadDate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadDate'
+type Reader_ReadDate_Call struct {
+	*mock.Call
+}
+
+// ReadDate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - datetime time.Time
+//   - target interface{}
+func (_e *Reader_Expecter) ReadDate(ctx interface{}, datetime interface{}, target interface{}) *Reader_ReadDate_Call {
+	return &Reader_ReadDate_Call{Call: _e.mock.On("ReadDate", ctx, datetime, target)}
+}
+
+func (_c *Reader_ReadDate_Call) Run(run func(ctx context.Context, datetime time.Time, target interface{})) *Reader_ReadDate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Time), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Reader_ReadDate_Call) Return(_a0 error) *Reader_ReadDate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Reader_ReadDate_Call) RunAndReturn(run func(context.Context, time.Time, interface{}) error) *Reader_ReadDate_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ReadDateAsync provides a mock function with given fields: ctx, datetime, target, callback
@@ -44,6 +82,37 @@ func (_m *Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target 
 	return r0
 }
 
+// Reader_ReadDateAsync_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadDateAsync'
+type Reader_ReadDateAsync_Call struct {
+	*mock.Call
+}
+
+// ReadDateAsync is a helper method to define mock.On call
+//   - ctx context.Context
+//   - datetime time.Time
+//   - target interface{}
+//   - callback parquet.ResultCallback
+func (_e *Reader_Expecter) ReadDateAsync(ctx interface{}, datetime interface{}, target interface{}, callback interface{}) *Reader_ReadDateAsync_Call {
+	return &Reader_ReadDateAsync_Call{Call: _e.mock.On("ReadDateAsync", ctx, datetime, target, callback)}
+}
+
+func (_c *Reader_ReadDateAsync_Call) Run(run func(ctx context.Context, datetime time.Time, target interface{}, callback parquet.ResultCallback)) *Reader_ReadDateAsync_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Time), args[2].(interface{}), args[3].(parquet.ResultCallback))
+	})
+	return _c
+}
+
+func (_c *Reader_ReadDateAsync_Call) Return(_a0 error) *Reader_ReadDateAsync_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Reader_ReadDateAsync_Call) RunAndReturn(run func(context.Context, time.Time, interface{}, parquet.ResultCallback) error) *Reader_ReadDateAsync_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadFileIntoTarget provides a mock function with given fields: ctx, file, target, batchSize, offset
 func (_m *Reader) ReadFileIntoTarget(ctx context.Context, file string, target interface{}, batchSize int, offset int64) error {
 	ret := _m.Called(ctx, file, target, batchSize, offset)
@@ -56,6 +125,38 @@ func (_m *Reader) ReadFileIntoTarget(ctx context.Context, file string, target in
 	}
 
 	return r0
+}
+
+// Reader_ReadFileIntoTarget_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadFileIntoTarget'
+type Reader_ReadFileIntoTarget_Call struct {
+	*mock.Call
+}
+
+// ReadFileIntoTarget is a helper method to define mock.On call
+//   - ctx context.Context
+//   - file string
+//   - target interface{}
+//   - batchSize int
+//   - offset int64
+func (_e *Reader_Expecter) ReadFileIntoTarget(ctx interface{}, file interface{}, target interface{}, batchSize interface{}, offset interface{}) *Reader_ReadFileIntoTarget_Call {
+	return &Reader_ReadFileIntoTarget_Call{Call: _e.mock.On("ReadFileIntoTarget", ctx, file, target, batchSize, offset)}
+}
+
+func (_c *Reader_ReadFileIntoTarget_Call) Run(run func(ctx context.Context, file string, target interface{}, batchSize int, offset int64)) *Reader_ReadFileIntoTarget_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(interface{}), args[3].(int), args[4].(int64))
+	})
+	return _c
+}
+
+func (_c *Reader_ReadFileIntoTarget_Call) Return(_a0 error) *Reader_ReadFileIntoTarget_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Reader_ReadFileIntoTarget_Call) RunAndReturn(run func(context.Context, string, interface{}, int, int64) error) *Reader_ReadFileIntoTarget_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewReader interface {
