@@ -61,8 +61,6 @@ func getModuleConfig(m Module) moduleConfig {
 
 // moduleState stores data needed for module management.
 type moduleState struct {
-	// factory function that will produce this module.
-	factory ModuleFactory
 	// module stores the core functionality of this module.
 	module Module
 	// config information regarding starting and stopping this module.

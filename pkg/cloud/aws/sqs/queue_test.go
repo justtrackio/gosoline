@@ -37,7 +37,7 @@ func (s *queueTestSuite) SetupTest() {
 func (s *queueTestSuite) TestSendBatch_EmptyBatch() {
 	msgs := make([]*gosoSqs.Message, 0)
 
-	err := s.queue.SendBatch(context.Background(), msgs)
+	err := s.queue.SendBatch(s.ctx, msgs)
 	s.Nil(err)
 }
 
@@ -52,9 +52,9 @@ func (s *queueTestSuite) TestSendBatch_OneMsgRequestTooLongError() {
 	})
 
 	errRequestTooLong := &types.BatchRequestTooLong{}
-	s.client.On("SendMessageBatch", s.ctx, mock.AnythingOfType("*sqs.SendMessageBatchInput")).Once().Return(nil, errRequestTooLong)
+	s.client.EXPECT().SendMessageBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*sqs.SendMessageBatchInput")).Once().Return(nil, errRequestTooLong)
 
-	err := s.queue.SendBatch(context.Background(), msgs)
+	err := s.queue.SendBatch(s.ctx, msgs)
 	s.Equal(errRequestTooLong, err)
 }
 
@@ -81,9 +81,9 @@ func (s *queueTestSuite) TestSendBatch_ThreeMsgRequestTooLongError() {
 	})
 
 	errRequestTooLong := &types.BatchRequestTooLong{}
-	s.client.On("SendMessageBatch", s.ctx, mock.AnythingOfType("*sqs.SendMessageBatchInput")).Once().Return(nil, errRequestTooLong)
-	s.client.On("SendMessageBatch", s.ctx, mock.AnythingOfType("*sqs.SendMessageBatchInput")).Twice().Return(nil, nil)
+	s.client.EXPECT().SendMessageBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*sqs.SendMessageBatchInput")).Once().Return(nil, errRequestTooLong)
+	s.client.EXPECT().SendMessageBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*sqs.SendMessageBatchInput")).Twice().Return(nil, nil)
 
-	err := s.queue.SendBatch(context.Background(), msgs)
+	err := s.queue.SendBatch(s.ctx, msgs)
 	s.Nil(err)
 }

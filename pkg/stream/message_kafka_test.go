@@ -96,7 +96,8 @@ func Test_NewKafkaMessage(t *testing.T) {
 					Key:   "Attr2",
 					Value: []byte("2"),
 				},
-			}}
+			},
+		}
 		actual = stream.NewKafkaMessage(gMessage)
 	)
 

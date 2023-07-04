@@ -3,10 +3,11 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
+
 	"github.com/golang-migrate/migrate/v4/database"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/jackc/pgx/v4/stdlib"
-	"net/url"
 )
 
 const DriverNameCrateDb = "cratedb"

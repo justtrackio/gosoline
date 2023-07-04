@@ -13,9 +13,7 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-var (
-	ErrInvalidMessage = errors.New("kafka: message is invalid")
-)
+var ErrInvalidMessage = errors.New("kafka: message is invalid")
 
 type Producer struct {
 	Settings *Settings

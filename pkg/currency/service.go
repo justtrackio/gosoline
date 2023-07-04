@@ -175,7 +175,6 @@ func (s *currencyService) getExchangeRateToEur(ctx context.Context, currency str
 
 	var exchangeRate float64
 	exists, err := s.store.Get(ctx, strings.ToUpper(currency), &exchangeRate)
-
 	if err != nil {
 		return 0, fmt.Errorf("CurrencyService: error getting exchange rate for %s: %w", currency, err)
 	}

@@ -18,8 +18,7 @@ type CircuitBreakerSettings struct {
 	ExpectedStatuses []int         `cfg:"expected_statuses"`
 }
 
-type CircuitIsOpenError struct {
-}
+type CircuitIsOpenError struct{}
 
 func (c CircuitIsOpenError) Error() string {
 	return "request rejected, circuit breaker is open"

@@ -13,8 +13,7 @@ type EnvProvider interface {
 	SetEnv(key string, value string) error
 }
 
-type osEnvProvider struct {
-}
+type osEnvProvider struct{}
 
 func NewOsEnvProvider() *osEnvProvider {
 	return &osEnvProvider{}

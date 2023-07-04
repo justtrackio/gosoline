@@ -18,10 +18,8 @@ import (
 
 type panicHandler struct{}
 
-func (h panicHandler) Handle(_ context.Context, request *apiserver.Request) (*apiserver.Response, error) {
-	body := request.Body.(*map[string]interface{})
+func (h panicHandler) Handle(context.Context, *apiserver.Request) (*apiserver.Response, error) {
 	panic("test err")
-	return apiserver.NewJsonResponse(*body), nil
 }
 
 type PanicTestSuite struct {

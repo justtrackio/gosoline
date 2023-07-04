@@ -13,6 +13,7 @@ import (
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -31,7 +32,7 @@ func (s *TopicTestSuite) SetupTest() {
 	logger := logMocks.NewLoggerMockedAll()
 
 	s.ctx = context.Background()
-	s.client = new(gosoSnsMocks.Client)
+	s.client = gosoSnsMocks.NewClient(s.T())
 	s.topic = gosoSns.NewTopicWithInterfaces(logger, s.client, "topicArn")
 }
 
@@ -42,12 +43,10 @@ func (s *TopicTestSuite) TestPublish() {
 		MessageAttributes: map[string]types.MessageAttributeValue{},
 	}
 
-	s.client.On("Publish", s.ctx, input).Return(nil, nil)
+	s.client.EXPECT().Publish(mock.AnythingOfType("*context.valueCtx"), input).Return(nil, nil).Once()
 
 	err := s.topic.Publish(s.ctx, "test", map[string]string{})
 	s.NoError(err)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *TopicTestSuite) TestPublishError() {
@@ -56,18 +55,16 @@ func (s *TopicTestSuite) TestPublishError() {
 		Message:  aws.String("test"),
 	}
 
-	s.client.On("Publish", s.ctx, input).Return(nil, fmt.Errorf("error"))
+	s.client.EXPECT().Publish(mock.AnythingOfType("*context.valueCtx"), input).Return(nil, fmt.Errorf("error")).Once()
 
 	err := s.topic.Publish(context.Background(), "test")
 	s.Error(err)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *TopicTestSuite) TestSubscribeSqs() {
 	listInput := &awsSns.ListSubscriptionsByTopicInput{TopicArn: aws.String("topicArn")}
 	listOutput := &awsSns.ListSubscriptionsByTopicOutput{}
-	s.client.On("ListSubscriptionsByTopic", s.ctx, listInput).Return(listOutput, nil)
+	s.client.EXPECT().ListSubscriptionsByTopic(mock.AnythingOfType("*context.valueCtx"), listInput).Return(listOutput, nil).Once()
 
 	subInput := &awsSns.SubscribeInput{
 		Attributes: map[string]string{
@@ -77,15 +74,13 @@ func (s *TopicTestSuite) TestSubscribeSqs() {
 		Protocol: aws.String("sqs"),
 		Endpoint: aws.String("queueArn"),
 	}
-	s.client.On("Subscribe", s.ctx, subInput).Return(nil, nil)
+	s.client.EXPECT().Subscribe(mock.AnythingOfType("*context.valueCtx"), subInput).Return(nil, nil).Once()
 
 	err := s.topic.SubscribeSqs(s.ctx, "queueArn", map[string]string{
 		"model":   "goso",
 		"version": "1",
 	})
 	s.NoError(err)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *TopicTestSuite) TestSubscribeSqsExists() {
@@ -99,7 +94,7 @@ func (s *TopicTestSuite) TestSubscribeSqsExists() {
 			},
 		},
 	}
-	s.client.On("ListSubscriptionsByTopic", s.ctx, listInput).Return(listOutput, nil)
+	s.client.EXPECT().ListSubscriptionsByTopic(mock.AnythingOfType("*context.valueCtx"), listInput).Return(listOutput, nil).Once()
 
 	getAttributesInput := &awsSns.GetSubscriptionAttributesInput{SubscriptionArn: aws.String("subscriptionArn")}
 	getAttributesOutput := &awsSns.GetSubscriptionAttributesOutput{
@@ -107,15 +102,13 @@ func (s *TopicTestSuite) TestSubscribeSqsExists() {
 			"FilterPolicy": `{"model":"goso","version":"1"}`,
 		},
 	}
-	s.client.On("GetSubscriptionAttributes", s.ctx, getAttributesInput).Return(getAttributesOutput, nil)
+	s.client.EXPECT().GetSubscriptionAttributes(mock.AnythingOfType("*context.valueCtx"), getAttributesInput).Return(getAttributesOutput, nil).Once()
 
 	err := s.topic.SubscribeSqs(context.Background(), "queueArn", map[string]string{
 		"model":   "goso",
 		"version": "1",
 	})
 	s.NoError(err)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *TopicTestSuite) TestSubscribeSqsExistsWithDifferentAttributes() {
@@ -129,7 +122,7 @@ func (s *TopicTestSuite) TestSubscribeSqsExistsWithDifferentAttributes() {
 			},
 		},
 	}
-	s.client.On("ListSubscriptionsByTopic", s.ctx, listInput).Return(listOutput, nil)
+	s.client.EXPECT().ListSubscriptionsByTopic(mock.AnythingOfType("*context.valueCtx"), listInput).Return(listOutput, nil).Once()
 
 	getAttributesInput := &awsSns.GetSubscriptionAttributesInput{SubscriptionArn: aws.String("subscriptionArn")}
 	getAttributesOutput := &awsSns.GetSubscriptionAttributesOutput{
@@ -137,11 +130,11 @@ func (s *TopicTestSuite) TestSubscribeSqsExistsWithDifferentAttributes() {
 			"FilterPolicy": `{"model":"mismatch"}`,
 		},
 	}
-	s.client.On("GetSubscriptionAttributes", s.ctx, getAttributesInput).Return(getAttributesOutput, nil)
+	s.client.EXPECT().GetSubscriptionAttributes(mock.AnythingOfType("*context.valueCtx"), getAttributesInput).Return(getAttributesOutput, nil).Once()
 
 	unsubscribeInput := &awsSns.UnsubscribeInput{SubscriptionArn: aws.String("subscriptionArn")}
 	unsubscribeOutput := &awsSns.UnsubscribeOutput{}
-	s.client.On("Unsubscribe", s.ctx, unsubscribeInput).Return(unsubscribeOutput, nil)
+	s.client.EXPECT().Unsubscribe(mock.AnythingOfType("*context.valueCtx"), unsubscribeInput).Return(unsubscribeOutput, nil).Once()
 
 	subInput := &awsSns.SubscribeInput{
 		Attributes: map[string]string{
@@ -151,14 +144,13 @@ func (s *TopicTestSuite) TestSubscribeSqsExistsWithDifferentAttributes() {
 		Protocol: aws.String("sqs"),
 		TopicArn: aws.String("topicArn"),
 	}
-	s.client.On("Subscribe", s.ctx, subInput).Return(nil, nil)
+	s.client.EXPECT().Subscribe(mock.AnythingOfType("*context.valueCtx"), subInput).Return(nil, nil).Once()
 
 	err := s.topic.SubscribeSqs(context.Background(), "queueArn", map[string]string{
+		// err := s.topic.SubscribeSqs(s.ctx, "queueArn", map[string]interface{}{
 		"model": "goso",
 	})
 	s.NoError(err)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *TopicTestSuite) TestSubscribeSqsError() {
@@ -166,7 +158,7 @@ func (s *TopicTestSuite) TestSubscribeSqsError() {
 
 	listInput := &awsSns.ListSubscriptionsByTopicInput{TopicArn: aws.String("topicArn")}
 	listOutput := &awsSns.ListSubscriptionsByTopicOutput{}
-	s.client.On("ListSubscriptionsByTopic", s.ctx, listInput).Return(listOutput, nil)
+	s.client.EXPECT().ListSubscriptionsByTopic(mock.AnythingOfType("*context.valueCtx"), listInput).Return(listOutput, nil).Once()
 
 	subInput := &awsSns.SubscribeInput{
 		Attributes: map[string]string{},
@@ -174,12 +166,10 @@ func (s *TopicTestSuite) TestSubscribeSqsError() {
 		Protocol:   aws.String("sqs"),
 		Endpoint:   aws.String("queueArn"),
 	}
-	s.client.On("Subscribe", s.ctx, subInput).Return(nil, subErr)
+	s.client.EXPECT().Subscribe(mock.AnythingOfType("*context.valueCtx"), subInput).Return(nil, subErr).Once()
 
 	err := s.topic.SubscribeSqs(s.ctx, "queueArn", map[string]string{})
 	s.EqualError(err, "could not subscribe to topic arn topicArn for sqs queue arn queueArn: subscribe error")
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *TopicTestSuite) TestPublishBatch() {
@@ -210,7 +200,7 @@ func (s *TopicTestSuite) TestPublishBatch() {
 		PublishBatchRequestEntries: entries,
 	}
 
-	s.client.On("PublishBatch", s.ctx, firstBatch).Return(nil, nil).Once()
+	s.client.EXPECT().PublishBatch(mock.AnythingOfType("*context.valueCtx"), firstBatch).Return(nil, nil).Once().Once()
 
 	secondBatch := &awsSns.PublishBatchInput{
 		TopicArn: aws.String("topicArn"),
@@ -223,10 +213,8 @@ func (s *TopicTestSuite) TestPublishBatch() {
 		},
 	}
 
-	s.client.On("PublishBatch", s.ctx, secondBatch).Return(nil, nil).Once()
+	s.client.EXPECT().PublishBatch(mock.AnythingOfType("*context.valueCtx"), secondBatch).Return(nil, nil).Once().Once()
 
 	err := s.topic.PublishBatch(s.ctx, messages, attributes)
 	s.NoError(err)
-
-	s.client.AssertExpectations(s.T())
 }

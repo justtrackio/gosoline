@@ -14,8 +14,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type attemptInfoKey struct{}
-type resourceTargetKey struct{}
+type (
+	attemptInfoKey    struct{}
+	resourceTargetKey struct{}
+)
 
 type attemptInfo struct {
 	id       string

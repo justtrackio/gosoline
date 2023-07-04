@@ -15,8 +15,8 @@ import (
 
 func TestCreateTopic(t *testing.T) {
 	ctx := context.Background()
-	client := new(gosoSnsMocks.Client)
-	client.On("CreateTopic", ctx, &awsSns.CreateTopicInput{
+	client := gosoSnsMocks.NewClient(t)
+	client.EXPECT().CreateTopic(ctx, &awsSns.CreateTopicInput{
 		Name: aws.String("mcoins-test-analytics-topicker-topic"),
 	}).Return(&awsSns.CreateTopicOutput{
 		TopicArn: aws.String("arn"),
@@ -28,14 +28,12 @@ func TestCreateTopic(t *testing.T) {
 
 	assert.Equal(t, "arn", arn)
 	assert.NoError(t, err)
-
-	client.AssertExpectations(t)
 }
 
 func TestCreateTopicFailing(t *testing.T) {
 	ctx := context.Background()
-	client := new(gosoSnsMocks.Client)
-	client.On("CreateTopic", ctx, &awsSns.CreateTopicInput{
+	client := gosoSnsMocks.NewClient(t)
+	client.EXPECT().CreateTopic(ctx, &awsSns.CreateTopicInput{
 		Name: aws.String("mcoins-test-analytics-topicker-topic"),
 	}).Return(nil, errors.New(""))
 
@@ -45,6 +43,4 @@ func TestCreateTopicFailing(t *testing.T) {
 
 	assert.Equal(t, "", arn)
 	assert.Error(t, err)
-
-	client.AssertExpectations(t)
 }
