@@ -15,6 +15,14 @@ type Writer struct {
 	mock.Mock
 }
 
+type Writer_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Writer) EXPECT() *Writer_Expecter {
+	return &Writer_Expecter{mock: &_m.Mock}
+}
+
 // Write provides a mock function with given fields: ctx, datetime, items
 func (_m *Writer) Write(ctx context.Context, datetime time.Time, items interface{}) error {
 	ret := _m.Called(ctx, datetime, items)
@@ -29,6 +37,36 @@ func (_m *Writer) Write(ctx context.Context, datetime time.Time, items interface
 	return r0
 }
 
+// Writer_Write_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Write'
+type Writer_Write_Call struct {
+	*mock.Call
+}
+
+// Write is a helper method to define mock.On call
+//   - ctx context.Context
+//   - datetime time.Time
+//   - items interface{}
+func (_e *Writer_Expecter) Write(ctx interface{}, datetime interface{}, items interface{}) *Writer_Write_Call {
+	return &Writer_Write_Call{Call: _e.mock.On("Write", ctx, datetime, items)}
+}
+
+func (_c *Writer_Write_Call) Run(run func(ctx context.Context, datetime time.Time, items interface{})) *Writer_Write_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Time), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Writer_Write_Call) Return(_a0 error) *Writer_Write_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Writer_Write_Call) RunAndReturn(run func(context.Context, time.Time, interface{}) error) *Writer_Write_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WriteToKey provides a mock function with given fields: ctx, key, items
 func (_m *Writer) WriteToKey(ctx context.Context, key string, items interface{}) error {
 	ret := _m.Called(ctx, key, items)
@@ -41,6 +79,36 @@ func (_m *Writer) WriteToKey(ctx context.Context, key string, items interface{})
 	}
 
 	return r0
+}
+
+// Writer_WriteToKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteToKey'
+type Writer_WriteToKey_Call struct {
+	*mock.Call
+}
+
+// WriteToKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - items interface{}
+func (_e *Writer_Expecter) WriteToKey(ctx interface{}, key interface{}, items interface{}) *Writer_WriteToKey_Call {
+	return &Writer_WriteToKey_Call{Call: _e.mock.On("WriteToKey", ctx, key, items)}
+}
+
+func (_c *Writer_WriteToKey_Call) Run(run func(ctx context.Context, key string, items interface{})) *Writer_WriteToKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Writer_WriteToKey_Call) Return(_a0 error) *Writer_WriteToKey_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Writer_WriteToKey_Call) RunAndReturn(run func(context.Context, string, interface{}) error) *Writer_WriteToKey_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewWriter interface {

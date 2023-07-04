@@ -14,6 +14,14 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Client) EXPECT() *Client_Expecter {
+	return &Client_Expecter{mock: &_m.Mock}
+}
+
 // GetParameter provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) GetParameter(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -47,6 +55,43 @@ func (_m *Client) GetParameter(ctx context.Context, params *ssm.GetParameterInpu
 	return r0, r1
 }
 
+// Client_GetParameter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetParameter'
+type Client_GetParameter_Call struct {
+	*mock.Call
+}
+
+// GetParameter is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *ssm.GetParameterInput
+//   - optFns ...func(*ssm.Options)
+func (_e *Client_Expecter) GetParameter(ctx interface{}, params interface{}, optFns ...interface{}) *Client_GetParameter_Call {
+	return &Client_GetParameter_Call{Call: _e.mock.On("GetParameter",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_GetParameter_Call) Run(run func(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options))) *Client_GetParameter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*ssm.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*ssm.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*ssm.GetParameterInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetParameter_Call) Return(_a0 *ssm.GetParameterOutput, _a1 error) *Client_GetParameter_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetParameter_Call) RunAndReturn(run func(context.Context, *ssm.GetParameterInput, ...func(*ssm.Options)) (*ssm.GetParameterOutput, error)) *Client_GetParameter_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetParametersByPath provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) GetParametersByPath(ctx context.Context, params *ssm.GetParametersByPathInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersByPathOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -78,6 +123,43 @@ func (_m *Client) GetParametersByPath(ctx context.Context, params *ssm.GetParame
 	}
 
 	return r0, r1
+}
+
+// Client_GetParametersByPath_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetParametersByPath'
+type Client_GetParametersByPath_Call struct {
+	*mock.Call
+}
+
+// GetParametersByPath is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *ssm.GetParametersByPathInput
+//   - optFns ...func(*ssm.Options)
+func (_e *Client_Expecter) GetParametersByPath(ctx interface{}, params interface{}, optFns ...interface{}) *Client_GetParametersByPath_Call {
+	return &Client_GetParametersByPath_Call{Call: _e.mock.On("GetParametersByPath",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_GetParametersByPath_Call) Run(run func(ctx context.Context, params *ssm.GetParametersByPathInput, optFns ...func(*ssm.Options))) *Client_GetParametersByPath_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*ssm.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*ssm.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*ssm.GetParametersByPathInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetParametersByPath_Call) Return(_a0 *ssm.GetParametersByPathOutput, _a1 error) *Client_GetParametersByPath_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetParametersByPath_Call) RunAndReturn(run func(context.Context, *ssm.GetParametersByPathInput, ...func(*ssm.Options)) (*ssm.GetParametersByPathOutput, error)) *Client_GetParametersByPath_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewClient interface {

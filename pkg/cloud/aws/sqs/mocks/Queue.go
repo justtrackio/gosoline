@@ -16,6 +16,14 @@ type Queue struct {
 	mock.Mock
 }
 
+type Queue_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Queue) EXPECT() *Queue_Expecter {
+	return &Queue_Expecter{mock: &_m.Mock}
+}
+
 // DeleteMessage provides a mock function with given fields: ctx, receiptHandle
 func (_m *Queue) DeleteMessage(ctx context.Context, receiptHandle string) error {
 	ret := _m.Called(ctx, receiptHandle)
@@ -28,6 +36,35 @@ func (_m *Queue) DeleteMessage(ctx context.Context, receiptHandle string) error 
 	}
 
 	return r0
+}
+
+// Queue_DeleteMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteMessage'
+type Queue_DeleteMessage_Call struct {
+	*mock.Call
+}
+
+// DeleteMessage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - receiptHandle string
+func (_e *Queue_Expecter) DeleteMessage(ctx interface{}, receiptHandle interface{}) *Queue_DeleteMessage_Call {
+	return &Queue_DeleteMessage_Call{Call: _e.mock.On("DeleteMessage", ctx, receiptHandle)}
+}
+
+func (_c *Queue_DeleteMessage_Call) Run(run func(ctx context.Context, receiptHandle string)) *Queue_DeleteMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Queue_DeleteMessage_Call) Return(_a0 error) *Queue_DeleteMessage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Queue_DeleteMessage_Call) RunAndReturn(run func(context.Context, string) error) *Queue_DeleteMessage_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // DeleteMessageBatch provides a mock function with given fields: ctx, receiptHandles
@@ -44,6 +81,35 @@ func (_m *Queue) DeleteMessageBatch(ctx context.Context, receiptHandles []string
 	return r0
 }
 
+// Queue_DeleteMessageBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteMessageBatch'
+type Queue_DeleteMessageBatch_Call struct {
+	*mock.Call
+}
+
+// DeleteMessageBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - receiptHandles []string
+func (_e *Queue_Expecter) DeleteMessageBatch(ctx interface{}, receiptHandles interface{}) *Queue_DeleteMessageBatch_Call {
+	return &Queue_DeleteMessageBatch_Call{Call: _e.mock.On("DeleteMessageBatch", ctx, receiptHandles)}
+}
+
+func (_c *Queue_DeleteMessageBatch_Call) Run(run func(ctx context.Context, receiptHandles []string)) *Queue_DeleteMessageBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *Queue_DeleteMessageBatch_Call) Return(_a0 error) *Queue_DeleteMessageBatch_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Queue_DeleteMessageBatch_Call) RunAndReturn(run func(context.Context, []string) error) *Queue_DeleteMessageBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetArn provides a mock function with given fields:
 func (_m *Queue) GetArn() string {
 	ret := _m.Called()
@@ -56,6 +122,33 @@ func (_m *Queue) GetArn() string {
 	}
 
 	return r0
+}
+
+// Queue_GetArn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetArn'
+type Queue_GetArn_Call struct {
+	*mock.Call
+}
+
+// GetArn is a helper method to define mock.On call
+func (_e *Queue_Expecter) GetArn() *Queue_GetArn_Call {
+	return &Queue_GetArn_Call{Call: _e.mock.On("GetArn")}
+}
+
+func (_c *Queue_GetArn_Call) Run(run func()) *Queue_GetArn_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Queue_GetArn_Call) Return(_a0 string) *Queue_GetArn_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Queue_GetArn_Call) RunAndReturn(run func() string) *Queue_GetArn_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetName provides a mock function with given fields:
@@ -72,6 +165,33 @@ func (_m *Queue) GetName() string {
 	return r0
 }
 
+// Queue_GetName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetName'
+type Queue_GetName_Call struct {
+	*mock.Call
+}
+
+// GetName is a helper method to define mock.On call
+func (_e *Queue_Expecter) GetName() *Queue_GetName_Call {
+	return &Queue_GetName_Call{Call: _e.mock.On("GetName")}
+}
+
+func (_c *Queue_GetName_Call) Run(run func()) *Queue_GetName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Queue_GetName_Call) Return(_a0 string) *Queue_GetName_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Queue_GetName_Call) RunAndReturn(run func() string) *Queue_GetName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUrl provides a mock function with given fields:
 func (_m *Queue) GetUrl() string {
 	ret := _m.Called()
@@ -84,6 +204,33 @@ func (_m *Queue) GetUrl() string {
 	}
 
 	return r0
+}
+
+// Queue_GetUrl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUrl'
+type Queue_GetUrl_Call struct {
+	*mock.Call
+}
+
+// GetUrl is a helper method to define mock.On call
+func (_e *Queue_Expecter) GetUrl() *Queue_GetUrl_Call {
+	return &Queue_GetUrl_Call{Call: _e.mock.On("GetUrl")}
+}
+
+func (_c *Queue_GetUrl_Call) Run(run func()) *Queue_GetUrl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Queue_GetUrl_Call) Return(_a0 string) *Queue_GetUrl_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Queue_GetUrl_Call) RunAndReturn(run func() string) *Queue_GetUrl_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Receive provides a mock function with given fields: ctx, maxNumberOfMessages, waitTime
@@ -112,6 +259,36 @@ func (_m *Queue) Receive(ctx context.Context, maxNumberOfMessages int32, waitTim
 	return r0, r1
 }
 
+// Queue_Receive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Receive'
+type Queue_Receive_Call struct {
+	*mock.Call
+}
+
+// Receive is a helper method to define mock.On call
+//   - ctx context.Context
+//   - maxNumberOfMessages int32
+//   - waitTime int32
+func (_e *Queue_Expecter) Receive(ctx interface{}, maxNumberOfMessages interface{}, waitTime interface{}) *Queue_Receive_Call {
+	return &Queue_Receive_Call{Call: _e.mock.On("Receive", ctx, maxNumberOfMessages, waitTime)}
+}
+
+func (_c *Queue_Receive_Call) Run(run func(ctx context.Context, maxNumberOfMessages int32, waitTime int32)) *Queue_Receive_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int32), args[2].(int32))
+	})
+	return _c
+}
+
+func (_c *Queue_Receive_Call) Return(_a0 []types.Message, _a1 error) *Queue_Receive_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Queue_Receive_Call) RunAndReturn(run func(context.Context, int32, int32) ([]types.Message, error)) *Queue_Receive_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Send provides a mock function with given fields: ctx, msg
 func (_m *Queue) Send(ctx context.Context, msg *sqs.Message) error {
 	ret := _m.Called(ctx, msg)
@@ -126,6 +303,35 @@ func (_m *Queue) Send(ctx context.Context, msg *sqs.Message) error {
 	return r0
 }
 
+// Queue_Send_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Send'
+type Queue_Send_Call struct {
+	*mock.Call
+}
+
+// Send is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msg *sqs.Message
+func (_e *Queue_Expecter) Send(ctx interface{}, msg interface{}) *Queue_Send_Call {
+	return &Queue_Send_Call{Call: _e.mock.On("Send", ctx, msg)}
+}
+
+func (_c *Queue_Send_Call) Run(run func(ctx context.Context, msg *sqs.Message)) *Queue_Send_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*sqs.Message))
+	})
+	return _c
+}
+
+func (_c *Queue_Send_Call) Return(_a0 error) *Queue_Send_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Queue_Send_Call) RunAndReturn(run func(context.Context, *sqs.Message) error) *Queue_Send_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SendBatch provides a mock function with given fields: ctx, messages
 func (_m *Queue) SendBatch(ctx context.Context, messages []*sqs.Message) error {
 	ret := _m.Called(ctx, messages)
@@ -138,6 +344,35 @@ func (_m *Queue) SendBatch(ctx context.Context, messages []*sqs.Message) error {
 	}
 
 	return r0
+}
+
+// Queue_SendBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendBatch'
+type Queue_SendBatch_Call struct {
+	*mock.Call
+}
+
+// SendBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - messages []*sqs.Message
+func (_e *Queue_Expecter) SendBatch(ctx interface{}, messages interface{}) *Queue_SendBatch_Call {
+	return &Queue_SendBatch_Call{Call: _e.mock.On("SendBatch", ctx, messages)}
+}
+
+func (_c *Queue_SendBatch_Call) Run(run func(ctx context.Context, messages []*sqs.Message)) *Queue_SendBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]*sqs.Message))
+	})
+	return _c
+}
+
+func (_c *Queue_SendBatch_Call) Return(_a0 error) *Queue_SendBatch_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Queue_SendBatch_Call) RunAndReturn(run func(context.Context, []*sqs.Message) error) *Queue_SendBatch_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewQueue interface {

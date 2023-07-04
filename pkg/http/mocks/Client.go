@@ -18,9 +18,45 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Client) EXPECT() *Client_Expecter {
+	return &Client_Expecter{mock: &_m.Mock}
+}
+
 // AddRetryCondition provides a mock function with given fields: f
 func (_m *Client) AddRetryCondition(f http.RetryConditionFunc) {
 	_m.Called(f)
+}
+
+// Client_AddRetryCondition_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddRetryCondition'
+type Client_AddRetryCondition_Call struct {
+	*mock.Call
+}
+
+// AddRetryCondition is a helper method to define mock.On call
+//   - f http.RetryConditionFunc
+func (_e *Client_Expecter) AddRetryCondition(f interface{}) *Client_AddRetryCondition_Call {
+	return &Client_AddRetryCondition_Call{Call: _e.mock.On("AddRetryCondition", f)}
+}
+
+func (_c *Client_AddRetryCondition_Call) Run(run func(f http.RetryConditionFunc)) *Client_AddRetryCondition_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(http.RetryConditionFunc))
+	})
+	return _c
+}
+
+func (_c *Client_AddRetryCondition_Call) Return() *Client_AddRetryCondition_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Client_AddRetryCondition_Call) RunAndReturn(run func(http.RetryConditionFunc)) *Client_AddRetryCondition_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Delete provides a mock function with given fields: ctx, request
@@ -49,6 +85,35 @@ func (_m *Client) Delete(ctx context.Context, request *http.Request) (*http.Resp
 	return r0, r1
 }
 
+// Client_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
+type Client_Delete_Call struct {
+	*mock.Call
+}
+
+// Delete is a helper method to define mock.On call
+//   - ctx context.Context
+//   - request *http.Request
+func (_e *Client_Expecter) Delete(ctx interface{}, request interface{}) *Client_Delete_Call {
+	return &Client_Delete_Call{Call: _e.mock.On("Delete", ctx, request)}
+}
+
+func (_c *Client_Delete_Call) Run(run func(ctx context.Context, request *http.Request)) *Client_Delete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*http.Request))
+	})
+	return _c
+}
+
+func (_c *Client_Delete_Call) Return(_a0 *http.Response, _a1 error) *Client_Delete_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Delete_Call) RunAndReturn(run func(context.Context, *http.Request) (*http.Response, error)) *Client_Delete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function with given fields: ctx, request
 func (_m *Client) Get(ctx context.Context, request *http.Request) (*http.Response, error) {
 	ret := _m.Called(ctx, request)
@@ -75,6 +140,35 @@ func (_m *Client) Get(ctx context.Context, request *http.Request) (*http.Respons
 	return r0, r1
 }
 
+// Client_Get_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Get'
+type Client_Get_Call struct {
+	*mock.Call
+}
+
+// Get is a helper method to define mock.On call
+//   - ctx context.Context
+//   - request *http.Request
+func (_e *Client_Expecter) Get(ctx interface{}, request interface{}) *Client_Get_Call {
+	return &Client_Get_Call{Call: _e.mock.On("Get", ctx, request)}
+}
+
+func (_c *Client_Get_Call) Run(run func(ctx context.Context, request *http.Request)) *Client_Get_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*http.Request))
+	})
+	return _c
+}
+
+func (_c *Client_Get_Call) Return(_a0 *http.Response, _a1 error) *Client_Get_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Get_Call) RunAndReturn(run func(context.Context, *http.Request) (*http.Response, error)) *Client_Get_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewJsonRequest provides a mock function with given fields:
 func (_m *Client) NewJsonRequest() *http.Request {
 	ret := _m.Called()
@@ -89,6 +183,33 @@ func (_m *Client) NewJsonRequest() *http.Request {
 	}
 
 	return r0
+}
+
+// Client_NewJsonRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewJsonRequest'
+type Client_NewJsonRequest_Call struct {
+	*mock.Call
+}
+
+// NewJsonRequest is a helper method to define mock.On call
+func (_e *Client_Expecter) NewJsonRequest() *Client_NewJsonRequest_Call {
+	return &Client_NewJsonRequest_Call{Call: _e.mock.On("NewJsonRequest")}
+}
+
+func (_c *Client_NewJsonRequest_Call) Run(run func()) *Client_NewJsonRequest_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Client_NewJsonRequest_Call) Return(_a0 *http.Request) *Client_NewJsonRequest_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_NewJsonRequest_Call) RunAndReturn(run func() *http.Request) *Client_NewJsonRequest_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // NewRequest provides a mock function with given fields:
@@ -107,6 +228,33 @@ func (_m *Client) NewRequest() *http.Request {
 	return r0
 }
 
+// Client_NewRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewRequest'
+type Client_NewRequest_Call struct {
+	*mock.Call
+}
+
+// NewRequest is a helper method to define mock.On call
+func (_e *Client_Expecter) NewRequest() *Client_NewRequest_Call {
+	return &Client_NewRequest_Call{Call: _e.mock.On("NewRequest")}
+}
+
+func (_c *Client_NewRequest_Call) Run(run func()) *Client_NewRequest_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Client_NewRequest_Call) Return(_a0 *http.Request) *Client_NewRequest_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_NewRequest_Call) RunAndReturn(run func() *http.Request) *Client_NewRequest_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewXmlRequest provides a mock function with given fields:
 func (_m *Client) NewXmlRequest() *http.Request {
 	ret := _m.Called()
@@ -121,6 +269,33 @@ func (_m *Client) NewXmlRequest() *http.Request {
 	}
 
 	return r0
+}
+
+// Client_NewXmlRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewXmlRequest'
+type Client_NewXmlRequest_Call struct {
+	*mock.Call
+}
+
+// NewXmlRequest is a helper method to define mock.On call
+func (_e *Client_Expecter) NewXmlRequest() *Client_NewXmlRequest_Call {
+	return &Client_NewXmlRequest_Call{Call: _e.mock.On("NewXmlRequest")}
+}
+
+func (_c *Client_NewXmlRequest_Call) Run(run func()) *Client_NewXmlRequest_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Client_NewXmlRequest_Call) Return(_a0 *http.Request) *Client_NewXmlRequest_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_NewXmlRequest_Call) RunAndReturn(run func() *http.Request) *Client_NewXmlRequest_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Patch provides a mock function with given fields: ctx, request
@@ -149,6 +324,35 @@ func (_m *Client) Patch(ctx context.Context, request *http.Request) (*http.Respo
 	return r0, r1
 }
 
+// Client_Patch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Patch'
+type Client_Patch_Call struct {
+	*mock.Call
+}
+
+// Patch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - request *http.Request
+func (_e *Client_Expecter) Patch(ctx interface{}, request interface{}) *Client_Patch_Call {
+	return &Client_Patch_Call{Call: _e.mock.On("Patch", ctx, request)}
+}
+
+func (_c *Client_Patch_Call) Run(run func(ctx context.Context, request *http.Request)) *Client_Patch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*http.Request))
+	})
+	return _c
+}
+
+func (_c *Client_Patch_Call) Return(_a0 *http.Response, _a1 error) *Client_Patch_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Patch_Call) RunAndReturn(run func(context.Context, *http.Request) (*http.Response, error)) *Client_Patch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Post provides a mock function with given fields: ctx, request
 func (_m *Client) Post(ctx context.Context, request *http.Request) (*http.Response, error) {
 	ret := _m.Called(ctx, request)
@@ -173,6 +377,35 @@ func (_m *Client) Post(ctx context.Context, request *http.Request) (*http.Respon
 	}
 
 	return r0, r1
+}
+
+// Client_Post_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Post'
+type Client_Post_Call struct {
+	*mock.Call
+}
+
+// Post is a helper method to define mock.On call
+//   - ctx context.Context
+//   - request *http.Request
+func (_e *Client_Expecter) Post(ctx interface{}, request interface{}) *Client_Post_Call {
+	return &Client_Post_Call{Call: _e.mock.On("Post", ctx, request)}
+}
+
+func (_c *Client_Post_Call) Run(run func(ctx context.Context, request *http.Request)) *Client_Post_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*http.Request))
+	})
+	return _c
+}
+
+func (_c *Client_Post_Call) Return(_a0 *http.Response, _a1 error) *Client_Post_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Post_Call) RunAndReturn(run func(context.Context, *http.Request) (*http.Response, error)) *Client_Post_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Put provides a mock function with given fields: ctx, request
@@ -201,9 +434,66 @@ func (_m *Client) Put(ctx context.Context, request *http.Request) (*http.Respons
 	return r0, r1
 }
 
+// Client_Put_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Put'
+type Client_Put_Call struct {
+	*mock.Call
+}
+
+// Put is a helper method to define mock.On call
+//   - ctx context.Context
+//   - request *http.Request
+func (_e *Client_Expecter) Put(ctx interface{}, request interface{}) *Client_Put_Call {
+	return &Client_Put_Call{Call: _e.mock.On("Put", ctx, request)}
+}
+
+func (_c *Client_Put_Call) Run(run func(ctx context.Context, request *http.Request)) *Client_Put_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*http.Request))
+	})
+	return _c
+}
+
+func (_c *Client_Put_Call) Return(_a0 *http.Response, _a1 error) *Client_Put_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Put_Call) RunAndReturn(run func(context.Context, *http.Request) (*http.Response, error)) *Client_Put_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetCookie provides a mock function with given fields: c
 func (_m *Client) SetCookie(c *nethttp.Cookie) {
 	_m.Called(c)
+}
+
+// Client_SetCookie_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCookie'
+type Client_SetCookie_Call struct {
+	*mock.Call
+}
+
+// SetCookie is a helper method to define mock.On call
+//   - c *nethttp.Cookie
+func (_e *Client_Expecter) SetCookie(c interface{}) *Client_SetCookie_Call {
+	return &Client_SetCookie_Call{Call: _e.mock.On("SetCookie", c)}
+}
+
+func (_c *Client_SetCookie_Call) Run(run func(c *nethttp.Cookie)) *Client_SetCookie_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*nethttp.Cookie))
+	})
+	return _c
+}
+
+func (_c *Client_SetCookie_Call) Return() *Client_SetCookie_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Client_SetCookie_Call) RunAndReturn(run func(*nethttp.Cookie)) *Client_SetCookie_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SetCookies provides a mock function with given fields: cs
@@ -211,9 +501,65 @@ func (_m *Client) SetCookies(cs []*nethttp.Cookie) {
 	_m.Called(cs)
 }
 
+// Client_SetCookies_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCookies'
+type Client_SetCookies_Call struct {
+	*mock.Call
+}
+
+// SetCookies is a helper method to define mock.On call
+//   - cs []*nethttp.Cookie
+func (_e *Client_Expecter) SetCookies(cs interface{}) *Client_SetCookies_Call {
+	return &Client_SetCookies_Call{Call: _e.mock.On("SetCookies", cs)}
+}
+
+func (_c *Client_SetCookies_Call) Run(run func(cs []*nethttp.Cookie)) *Client_SetCookies_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]*nethttp.Cookie))
+	})
+	return _c
+}
+
+func (_c *Client_SetCookies_Call) Return() *Client_SetCookies_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Client_SetCookies_Call) RunAndReturn(run func([]*nethttp.Cookie)) *Client_SetCookies_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetProxyUrl provides a mock function with given fields: p
 func (_m *Client) SetProxyUrl(p string) {
 	_m.Called(p)
+}
+
+// Client_SetProxyUrl_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetProxyUrl'
+type Client_SetProxyUrl_Call struct {
+	*mock.Call
+}
+
+// SetProxyUrl is a helper method to define mock.On call
+//   - p string
+func (_e *Client_Expecter) SetProxyUrl(p interface{}) *Client_SetProxyUrl_Call {
+	return &Client_SetProxyUrl_Call{Call: _e.mock.On("SetProxyUrl", p)}
+}
+
+func (_c *Client_SetProxyUrl_Call) Run(run func(p string)) *Client_SetProxyUrl_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Client_SetProxyUrl_Call) Return() *Client_SetProxyUrl_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Client_SetProxyUrl_Call) RunAndReturn(run func(string)) *Client_SetProxyUrl_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SetRedirectValidator provides a mock function with given fields: allowRequest
@@ -221,14 +567,98 @@ func (_m *Client) SetRedirectValidator(allowRequest func(*nethttp.Request) bool)
 	_m.Called(allowRequest)
 }
 
+// Client_SetRedirectValidator_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetRedirectValidator'
+type Client_SetRedirectValidator_Call struct {
+	*mock.Call
+}
+
+// SetRedirectValidator is a helper method to define mock.On call
+//   - allowRequest func(*nethttp.Request) bool
+func (_e *Client_Expecter) SetRedirectValidator(allowRequest interface{}) *Client_SetRedirectValidator_Call {
+	return &Client_SetRedirectValidator_Call{Call: _e.mock.On("SetRedirectValidator", allowRequest)}
+}
+
+func (_c *Client_SetRedirectValidator_Call) Run(run func(allowRequest func(*nethttp.Request) bool)) *Client_SetRedirectValidator_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func(*nethttp.Request) bool))
+	})
+	return _c
+}
+
+func (_c *Client_SetRedirectValidator_Call) Return() *Client_SetRedirectValidator_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Client_SetRedirectValidator_Call) RunAndReturn(run func(func(*nethttp.Request) bool)) *Client_SetRedirectValidator_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetTimeout provides a mock function with given fields: timeout
 func (_m *Client) SetTimeout(timeout time.Duration) {
 	_m.Called(timeout)
 }
 
+// Client_SetTimeout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetTimeout'
+type Client_SetTimeout_Call struct {
+	*mock.Call
+}
+
+// SetTimeout is a helper method to define mock.On call
+//   - timeout time.Duration
+func (_e *Client_Expecter) SetTimeout(timeout interface{}) *Client_SetTimeout_Call {
+	return &Client_SetTimeout_Call{Call: _e.mock.On("SetTimeout", timeout)}
+}
+
+func (_c *Client_SetTimeout_Call) Run(run func(timeout time.Duration)) *Client_SetTimeout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *Client_SetTimeout_Call) Return() *Client_SetTimeout_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Client_SetTimeout_Call) RunAndReturn(run func(time.Duration)) *Client_SetTimeout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetUserAgent provides a mock function with given fields: ua
 func (_m *Client) SetUserAgent(ua string) {
 	_m.Called(ua)
+}
+
+// Client_SetUserAgent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetUserAgent'
+type Client_SetUserAgent_Call struct {
+	*mock.Call
+}
+
+// SetUserAgent is a helper method to define mock.On call
+//   - ua string
+func (_e *Client_Expecter) SetUserAgent(ua interface{}) *Client_SetUserAgent_Call {
+	return &Client_SetUserAgent_Call{Call: _e.mock.On("SetUserAgent", ua)}
+}
+
+func (_c *Client_SetUserAgent_Call) Run(run func(ua string)) *Client_SetUserAgent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Client_SetUserAgent_Call) Return() *Client_SetUserAgent_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Client_SetUserAgent_Call) RunAndReturn(run func(string)) *Client_SetUserAgent_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewClient interface {

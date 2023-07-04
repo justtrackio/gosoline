@@ -15,6 +15,14 @@ type BaseListHandler struct {
 	mock.Mock
 }
 
+type BaseListHandler_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *BaseListHandler) EXPECT() *BaseListHandler_Expecter {
+	return &BaseListHandler_Expecter{mock: &_m.Mock}
+}
+
 // List provides a mock function with given fields: ctx, qb, apiView
 func (_m *BaseListHandler) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (interface{}, error) {
 	ret := _m.Called(ctx, qb, apiView)
@@ -39,6 +47,36 @@ func (_m *BaseListHandler) List(ctx context.Context, qb *db_repo.QueryBuilder, a
 	}
 
 	return r0, r1
+}
+
+// BaseListHandler_List_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'List'
+type BaseListHandler_List_Call struct {
+	*mock.Call
+}
+
+// List is a helper method to define mock.On call
+//   - ctx context.Context
+//   - qb *db_repo.QueryBuilder
+//   - apiView string
+func (_e *BaseListHandler_Expecter) List(ctx interface{}, qb interface{}, apiView interface{}) *BaseListHandler_List_Call {
+	return &BaseListHandler_List_Call{Call: _e.mock.On("List", ctx, qb, apiView)}
+}
+
+func (_c *BaseListHandler_List_Call) Run(run func(ctx context.Context, qb *db_repo.QueryBuilder, apiView string)) *BaseListHandler_List_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*db_repo.QueryBuilder), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *BaseListHandler_List_Call) Return(out interface{}, err error) *BaseListHandler_List_Call {
+	_c.Call.Return(out, err)
+	return _c
+}
+
+func (_c *BaseListHandler_List_Call) RunAndReturn(run func(context.Context, *db_repo.QueryBuilder, string) (interface{}, error)) *BaseListHandler_List_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewBaseListHandler interface {

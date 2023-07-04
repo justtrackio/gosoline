@@ -12,14 +12,77 @@ type Partitioner struct {
 	mock.Mock
 }
 
+type Partitioner_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Partitioner) EXPECT() *Partitioner_Expecter {
+	return &Partitioner_Expecter{mock: &_m.Mock}
+}
+
 // Flush provides a mock function with given fields:
 func (_m *Partitioner) Flush() {
 	_m.Called()
 }
 
+// Partitioner_Flush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Flush'
+type Partitioner_Flush_Call struct {
+	*mock.Call
+}
+
+// Flush is a helper method to define mock.On call
+func (_e *Partitioner_Expecter) Flush() *Partitioner_Flush_Call {
+	return &Partitioner_Flush_Call{Call: _e.mock.On("Flush")}
+}
+
+func (_c *Partitioner_Flush_Call) Run(run func()) *Partitioner_Flush_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Partitioner_Flush_Call) Return() *Partitioner_Flush_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Partitioner_Flush_Call) RunAndReturn(run func()) *Partitioner_Flush_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Ingest provides a mock function with given fields: data
 func (_m *Partitioner) Ingest(data parquet.Partitionable) {
 	_m.Called(data)
+}
+
+// Partitioner_Ingest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Ingest'
+type Partitioner_Ingest_Call struct {
+	*mock.Call
+}
+
+// Ingest is a helper method to define mock.On call
+//   - data parquet.Partitionable
+func (_e *Partitioner_Expecter) Ingest(data interface{}) *Partitioner_Ingest_Call {
+	return &Partitioner_Ingest_Call{Call: _e.mock.On("Ingest", data)}
+}
+
+func (_c *Partitioner_Ingest_Call) Run(run func(data parquet.Partitionable)) *Partitioner_Ingest_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(parquet.Partitionable))
+	})
+	return _c
+}
+
+func (_c *Partitioner_Ingest_Call) Return() *Partitioner_Ingest_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Partitioner_Ingest_Call) RunAndReturn(run func(parquet.Partitionable)) *Partitioner_Ingest_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Out provides a mock function with given fields:
@@ -38,6 +101,33 @@ func (_m *Partitioner) Out() <-chan *parquet.Partition {
 	return r0
 }
 
+// Partitioner_Out_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Out'
+type Partitioner_Out_Call struct {
+	*mock.Call
+}
+
+// Out is a helper method to define mock.On call
+func (_e *Partitioner_Expecter) Out() *Partitioner_Out_Call {
+	return &Partitioner_Out_Call{Call: _e.mock.On("Out")}
+}
+
+func (_c *Partitioner_Out_Call) Run(run func()) *Partitioner_Out_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Partitioner_Out_Call) Return(_a0 <-chan *parquet.Partition) *Partitioner_Out_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Partitioner_Out_Call) RunAndReturn(run func() <-chan *parquet.Partition) *Partitioner_Out_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Size provides a mock function with given fields:
 func (_m *Partitioner) Size() int {
 	ret := _m.Called()
@@ -52,9 +142,63 @@ func (_m *Partitioner) Size() int {
 	return r0
 }
 
+// Partitioner_Size_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Size'
+type Partitioner_Size_Call struct {
+	*mock.Call
+}
+
+// Size is a helper method to define mock.On call
+func (_e *Partitioner_Expecter) Size() *Partitioner_Size_Call {
+	return &Partitioner_Size_Call{Call: _e.mock.On("Size")}
+}
+
+func (_c *Partitioner_Size_Call) Run(run func()) *Partitioner_Size_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Partitioner_Size_Call) Return(_a0 int) *Partitioner_Size_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Partitioner_Size_Call) RunAndReturn(run func() int) *Partitioner_Size_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Start provides a mock function with given fields:
 func (_m *Partitioner) Start() {
 	_m.Called()
+}
+
+// Partitioner_Start_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Start'
+type Partitioner_Start_Call struct {
+	*mock.Call
+}
+
+// Start is a helper method to define mock.On call
+func (_e *Partitioner_Expecter) Start() *Partitioner_Start_Call {
+	return &Partitioner_Start_Call{Call: _e.mock.On("Start")}
+}
+
+func (_c *Partitioner_Start_Call) Run(run func()) *Partitioner_Start_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Partitioner_Start_Call) Return() *Partitioner_Start_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Partitioner_Start_Call) RunAndReturn(run func()) *Partitioner_Start_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Stop provides a mock function with given fields:
@@ -62,9 +206,64 @@ func (_m *Partitioner) Stop() {
 	_m.Called()
 }
 
+// Partitioner_Stop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stop'
+type Partitioner_Stop_Call struct {
+	*mock.Call
+}
+
+// Stop is a helper method to define mock.On call
+func (_e *Partitioner_Expecter) Stop() *Partitioner_Stop_Call {
+	return &Partitioner_Stop_Call{Call: _e.mock.On("Stop")}
+}
+
+func (_c *Partitioner_Stop_Call) Run(run func()) *Partitioner_Stop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Partitioner_Stop_Call) Return() *Partitioner_Stop_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Partitioner_Stop_Call) RunAndReturn(run func()) *Partitioner_Stop_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Trim provides a mock function with given fields: size
 func (_m *Partitioner) Trim(size int) {
 	_m.Called(size)
+}
+
+// Partitioner_Trim_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Trim'
+type Partitioner_Trim_Call struct {
+	*mock.Call
+}
+
+// Trim is a helper method to define mock.On call
+//   - size int
+func (_e *Partitioner_Expecter) Trim(size interface{}) *Partitioner_Trim_Call {
+	return &Partitioner_Trim_Call{Call: _e.mock.On("Trim", size)}
+}
+
+func (_c *Partitioner_Trim_Call) Run(run func(size int)) *Partitioner_Trim_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int))
+	})
+	return _c
+}
+
+func (_c *Partitioner_Trim_Call) Return() *Partitioner_Trim_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Partitioner_Trim_Call) RunAndReturn(run func(int)) *Partitioner_Trim_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewPartitioner interface {

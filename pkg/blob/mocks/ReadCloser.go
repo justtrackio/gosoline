@@ -9,6 +9,14 @@ type ReadCloser struct {
 	mock.Mock
 }
 
+type ReadCloser_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *ReadCloser) EXPECT() *ReadCloser_Expecter {
+	return &ReadCloser_Expecter{mock: &_m.Mock}
+}
+
 // Close provides a mock function with given fields:
 func (_m *ReadCloser) Close() error {
 	ret := _m.Called()
@@ -21,6 +29,33 @@ func (_m *ReadCloser) Close() error {
 	}
 
 	return r0
+}
+
+// ReadCloser_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
+type ReadCloser_Close_Call struct {
+	*mock.Call
+}
+
+// Close is a helper method to define mock.On call
+func (_e *ReadCloser_Expecter) Close() *ReadCloser_Close_Call {
+	return &ReadCloser_Close_Call{Call: _e.mock.On("Close")}
+}
+
+func (_c *ReadCloser_Close_Call) Run(run func()) *ReadCloser_Close_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ReadCloser_Close_Call) Return(_a0 error) *ReadCloser_Close_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ReadCloser_Close_Call) RunAndReturn(run func() error) *ReadCloser_Close_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Read provides a mock function with given fields: p
@@ -45,6 +80,34 @@ func (_m *ReadCloser) Read(p []byte) (int, error) {
 	}
 
 	return r0, r1
+}
+
+// ReadCloser_Read_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Read'
+type ReadCloser_Read_Call struct {
+	*mock.Call
+}
+
+// Read is a helper method to define mock.On call
+//   - p []byte
+func (_e *ReadCloser_Expecter) Read(p interface{}) *ReadCloser_Read_Call {
+	return &ReadCloser_Read_Call{Call: _e.mock.On("Read", p)}
+}
+
+func (_c *ReadCloser_Read_Call) Run(run func(p []byte)) *ReadCloser_Read_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]byte))
+	})
+	return _c
+}
+
+func (_c *ReadCloser_Read_Call) Return(n int, err error) *ReadCloser_Read_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *ReadCloser_Read_Call) RunAndReturn(run func([]byte) (int, error)) *ReadCloser_Read_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewReadCloser interface {

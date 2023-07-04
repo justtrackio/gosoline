@@ -15,6 +15,14 @@ type BaseUpdateHandler struct {
 	mock.Mock
 }
 
+type BaseUpdateHandler_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *BaseUpdateHandler) EXPECT() *BaseUpdateHandler_Expecter {
+	return &BaseUpdateHandler_Expecter{mock: &_m.Mock}
+}
+
 // GetUpdateInput provides a mock function with given fields:
 func (_m *BaseUpdateHandler) GetUpdateInput() interface{} {
 	ret := _m.Called()
@@ -31,6 +39,33 @@ func (_m *BaseUpdateHandler) GetUpdateInput() interface{} {
 	return r0
 }
 
+// BaseUpdateHandler_GetUpdateInput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUpdateInput'
+type BaseUpdateHandler_GetUpdateInput_Call struct {
+	*mock.Call
+}
+
+// GetUpdateInput is a helper method to define mock.On call
+func (_e *BaseUpdateHandler_Expecter) GetUpdateInput() *BaseUpdateHandler_GetUpdateInput_Call {
+	return &BaseUpdateHandler_GetUpdateInput_Call{Call: _e.mock.On("GetUpdateInput")}
+}
+
+func (_c *BaseUpdateHandler_GetUpdateInput_Call) Run(run func()) *BaseUpdateHandler_GetUpdateInput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *BaseUpdateHandler_GetUpdateInput_Call) Return(_a0 interface{}) *BaseUpdateHandler_GetUpdateInput_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BaseUpdateHandler_GetUpdateInput_Call) RunAndReturn(run func() interface{}) *BaseUpdateHandler_GetUpdateInput_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TransformUpdate provides a mock function with given fields: ctx, input, model
 func (_m *BaseUpdateHandler) TransformUpdate(ctx context.Context, input interface{}, model db_repo.ModelBased) error {
 	ret := _m.Called(ctx, input, model)
@@ -43,6 +78,36 @@ func (_m *BaseUpdateHandler) TransformUpdate(ctx context.Context, input interfac
 	}
 
 	return r0
+}
+
+// BaseUpdateHandler_TransformUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TransformUpdate'
+type BaseUpdateHandler_TransformUpdate_Call struct {
+	*mock.Call
+}
+
+// TransformUpdate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - input interface{}
+//   - model db_repo.ModelBased
+func (_e *BaseUpdateHandler_Expecter) TransformUpdate(ctx interface{}, input interface{}, model interface{}) *BaseUpdateHandler_TransformUpdate_Call {
+	return &BaseUpdateHandler_TransformUpdate_Call{Call: _e.mock.On("TransformUpdate", ctx, input, model)}
+}
+
+func (_c *BaseUpdateHandler_TransformUpdate_Call) Run(run func(ctx context.Context, input interface{}, model db_repo.ModelBased)) *BaseUpdateHandler_TransformUpdate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}), args[2].(db_repo.ModelBased))
+	})
+	return _c
+}
+
+func (_c *BaseUpdateHandler_TransformUpdate_Call) Return(err error) *BaseUpdateHandler_TransformUpdate_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *BaseUpdateHandler_TransformUpdate_Call) RunAndReturn(run func(context.Context, interface{}, db_repo.ModelBased) error) *BaseUpdateHandler_TransformUpdate_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewBaseUpdateHandler interface {

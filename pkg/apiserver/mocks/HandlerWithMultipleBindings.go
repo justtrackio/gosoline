@@ -16,6 +16,14 @@ type HandlerWithMultipleBindings struct {
 	mock.Mock
 }
 
+type HandlerWithMultipleBindings_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *HandlerWithMultipleBindings) EXPECT() *HandlerWithMultipleBindings_Expecter {
+	return &HandlerWithMultipleBindings_Expecter{mock: &_m.Mock}
+}
+
 // GetBindings provides a mock function with given fields:
 func (_m *HandlerWithMultipleBindings) GetBindings() []binding.Binding {
 	ret := _m.Called()
@@ -32,6 +40,33 @@ func (_m *HandlerWithMultipleBindings) GetBindings() []binding.Binding {
 	return r0
 }
 
+// HandlerWithMultipleBindings_GetBindings_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBindings'
+type HandlerWithMultipleBindings_GetBindings_Call struct {
+	*mock.Call
+}
+
+// GetBindings is a helper method to define mock.On call
+func (_e *HandlerWithMultipleBindings_Expecter) GetBindings() *HandlerWithMultipleBindings_GetBindings_Call {
+	return &HandlerWithMultipleBindings_GetBindings_Call{Call: _e.mock.On("GetBindings")}
+}
+
+func (_c *HandlerWithMultipleBindings_GetBindings_Call) Run(run func()) *HandlerWithMultipleBindings_GetBindings_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *HandlerWithMultipleBindings_GetBindings_Call) Return(_a0 []binding.Binding) *HandlerWithMultipleBindings_GetBindings_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *HandlerWithMultipleBindings_GetBindings_Call) RunAndReturn(run func() []binding.Binding) *HandlerWithMultipleBindings_GetBindings_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetInput provides a mock function with given fields:
 func (_m *HandlerWithMultipleBindings) GetInput() interface{} {
 	ret := _m.Called()
@@ -46,6 +81,33 @@ func (_m *HandlerWithMultipleBindings) GetInput() interface{} {
 	}
 
 	return r0
+}
+
+// HandlerWithMultipleBindings_GetInput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInput'
+type HandlerWithMultipleBindings_GetInput_Call struct {
+	*mock.Call
+}
+
+// GetInput is a helper method to define mock.On call
+func (_e *HandlerWithMultipleBindings_Expecter) GetInput() *HandlerWithMultipleBindings_GetInput_Call {
+	return &HandlerWithMultipleBindings_GetInput_Call{Call: _e.mock.On("GetInput")}
+}
+
+func (_c *HandlerWithMultipleBindings_GetInput_Call) Run(run func()) *HandlerWithMultipleBindings_GetInput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *HandlerWithMultipleBindings_GetInput_Call) Return(_a0 interface{}) *HandlerWithMultipleBindings_GetInput_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *HandlerWithMultipleBindings_GetInput_Call) RunAndReturn(run func() interface{}) *HandlerWithMultipleBindings_GetInput_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Handle provides a mock function with given fields: requestContext, request
@@ -72,6 +134,35 @@ func (_m *HandlerWithMultipleBindings) Handle(requestContext context.Context, re
 	}
 
 	return r0, r1
+}
+
+// HandlerWithMultipleBindings_Handle_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Handle'
+type HandlerWithMultipleBindings_Handle_Call struct {
+	*mock.Call
+}
+
+// Handle is a helper method to define mock.On call
+//   - requestContext context.Context
+//   - request *apiserver.Request
+func (_e *HandlerWithMultipleBindings_Expecter) Handle(requestContext interface{}, request interface{}) *HandlerWithMultipleBindings_Handle_Call {
+	return &HandlerWithMultipleBindings_Handle_Call{Call: _e.mock.On("Handle", requestContext, request)}
+}
+
+func (_c *HandlerWithMultipleBindings_Handle_Call) Run(run func(requestContext context.Context, request *apiserver.Request)) *HandlerWithMultipleBindings_Handle_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*apiserver.Request))
+	})
+	return _c
+}
+
+func (_c *HandlerWithMultipleBindings_Handle_Call) Return(response *apiserver.Response, error error) *HandlerWithMultipleBindings_Handle_Call {
+	_c.Call.Return(response, error)
+	return _c
+}
+
+func (_c *HandlerWithMultipleBindings_Handle_Call) RunAndReturn(run func(context.Context, *apiserver.Request) (*apiserver.Response, error)) *HandlerWithMultipleBindings_Handle_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewHandlerWithMultipleBindings interface {

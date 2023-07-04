@@ -15,6 +15,14 @@ type Service struct {
 	mock.Mock
 }
 
+type Service_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Service) EXPECT() *Service_Expecter {
+	return &Service_Expecter{mock: &_m.Mock}
+}
+
 // HasCurrency provides a mock function with given fields: ctx, _a1
 func (_m *Service) HasCurrency(ctx context.Context, _a1 string) (bool, error) {
 	ret := _m.Called(ctx, _a1)
@@ -37,6 +45,35 @@ func (_m *Service) HasCurrency(ctx context.Context, _a1 string) (bool, error) {
 	}
 
 	return r0, r1
+}
+
+// Service_HasCurrency_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasCurrency'
+type Service_HasCurrency_Call struct {
+	*mock.Call
+}
+
+// HasCurrency is a helper method to define mock.On call
+//   - ctx context.Context
+//   - _a1 string
+func (_e *Service_Expecter) HasCurrency(ctx interface{}, _a1 interface{}) *Service_HasCurrency_Call {
+	return &Service_HasCurrency_Call{Call: _e.mock.On("HasCurrency", ctx, _a1)}
+}
+
+func (_c *Service_HasCurrency_Call) Run(run func(ctx context.Context, _a1 string)) *Service_HasCurrency_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Service_HasCurrency_Call) Return(_a0 bool, _a1 error) *Service_HasCurrency_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_HasCurrency_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *Service_HasCurrency_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // HasCurrencyAtDate provides a mock function with given fields: ctx, _a1, date
@@ -63,6 +100,36 @@ func (_m *Service) HasCurrencyAtDate(ctx context.Context, _a1 string, date time.
 	return r0, r1
 }
 
+// Service_HasCurrencyAtDate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasCurrencyAtDate'
+type Service_HasCurrencyAtDate_Call struct {
+	*mock.Call
+}
+
+// HasCurrencyAtDate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - _a1 string
+//   - date time.Time
+func (_e *Service_Expecter) HasCurrencyAtDate(ctx interface{}, _a1 interface{}, date interface{}) *Service_HasCurrencyAtDate_Call {
+	return &Service_HasCurrencyAtDate_Call{Call: _e.mock.On("HasCurrencyAtDate", ctx, _a1, date)}
+}
+
+func (_c *Service_HasCurrencyAtDate_Call) Run(run func(ctx context.Context, _a1 string, date time.Time)) *Service_HasCurrencyAtDate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(time.Time))
+	})
+	return _c
+}
+
+func (_c *Service_HasCurrencyAtDate_Call) Return(_a0 bool, _a1 error) *Service_HasCurrencyAtDate_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_HasCurrencyAtDate_Call) RunAndReturn(run func(context.Context, string, time.Time) (bool, error)) *Service_HasCurrencyAtDate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ToCurrency provides a mock function with given fields: ctx, toCurrency, value, fromCurrency
 func (_m *Service) ToCurrency(ctx context.Context, toCurrency string, value float64, fromCurrency string) (float64, error) {
 	ret := _m.Called(ctx, toCurrency, value, fromCurrency)
@@ -85,6 +152,37 @@ func (_m *Service) ToCurrency(ctx context.Context, toCurrency string, value floa
 	}
 
 	return r0, r1
+}
+
+// Service_ToCurrency_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ToCurrency'
+type Service_ToCurrency_Call struct {
+	*mock.Call
+}
+
+// ToCurrency is a helper method to define mock.On call
+//   - ctx context.Context
+//   - toCurrency string
+//   - value float64
+//   - fromCurrency string
+func (_e *Service_Expecter) ToCurrency(ctx interface{}, toCurrency interface{}, value interface{}, fromCurrency interface{}) *Service_ToCurrency_Call {
+	return &Service_ToCurrency_Call{Call: _e.mock.On("ToCurrency", ctx, toCurrency, value, fromCurrency)}
+}
+
+func (_c *Service_ToCurrency_Call) Run(run func(ctx context.Context, toCurrency string, value float64, fromCurrency string)) *Service_ToCurrency_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(float64), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *Service_ToCurrency_Call) Return(_a0 float64, _a1 error) *Service_ToCurrency_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_ToCurrency_Call) RunAndReturn(run func(context.Context, string, float64, string) (float64, error)) *Service_ToCurrency_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ToCurrencyAtDate provides a mock function with given fields: ctx, toCurrency, value, fromCurrency, date
@@ -111,6 +209,38 @@ func (_m *Service) ToCurrencyAtDate(ctx context.Context, toCurrency string, valu
 	return r0, r1
 }
 
+// Service_ToCurrencyAtDate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ToCurrencyAtDate'
+type Service_ToCurrencyAtDate_Call struct {
+	*mock.Call
+}
+
+// ToCurrencyAtDate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - toCurrency string
+//   - value float64
+//   - fromCurrency string
+//   - date time.Time
+func (_e *Service_Expecter) ToCurrencyAtDate(ctx interface{}, toCurrency interface{}, value interface{}, fromCurrency interface{}, date interface{}) *Service_ToCurrencyAtDate_Call {
+	return &Service_ToCurrencyAtDate_Call{Call: _e.mock.On("ToCurrencyAtDate", ctx, toCurrency, value, fromCurrency, date)}
+}
+
+func (_c *Service_ToCurrencyAtDate_Call) Run(run func(ctx context.Context, toCurrency string, value float64, fromCurrency string, date time.Time)) *Service_ToCurrencyAtDate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(float64), args[3].(string), args[4].(time.Time))
+	})
+	return _c
+}
+
+func (_c *Service_ToCurrencyAtDate_Call) Return(_a0 float64, _a1 error) *Service_ToCurrencyAtDate_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_ToCurrencyAtDate_Call) RunAndReturn(run func(context.Context, string, float64, string, time.Time) (float64, error)) *Service_ToCurrencyAtDate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ToEur provides a mock function with given fields: ctx, value, fromCurrency
 func (_m *Service) ToEur(ctx context.Context, value float64, fromCurrency string) (float64, error) {
 	ret := _m.Called(ctx, value, fromCurrency)
@@ -133,6 +263,36 @@ func (_m *Service) ToEur(ctx context.Context, value float64, fromCurrency string
 	}
 
 	return r0, r1
+}
+
+// Service_ToEur_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ToEur'
+type Service_ToEur_Call struct {
+	*mock.Call
+}
+
+// ToEur is a helper method to define mock.On call
+//   - ctx context.Context
+//   - value float64
+//   - fromCurrency string
+func (_e *Service_Expecter) ToEur(ctx interface{}, value interface{}, fromCurrency interface{}) *Service_ToEur_Call {
+	return &Service_ToEur_Call{Call: _e.mock.On("ToEur", ctx, value, fromCurrency)}
+}
+
+func (_c *Service_ToEur_Call) Run(run func(ctx context.Context, value float64, fromCurrency string)) *Service_ToEur_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(float64), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *Service_ToEur_Call) Return(_a0 float64, _a1 error) *Service_ToEur_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_ToEur_Call) RunAndReturn(run func(context.Context, float64, string) (float64, error)) *Service_ToEur_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ToEurAtDate provides a mock function with given fields: ctx, value, fromCurrency, date
@@ -159,6 +319,37 @@ func (_m *Service) ToEurAtDate(ctx context.Context, value float64, fromCurrency 
 	return r0, r1
 }
 
+// Service_ToEurAtDate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ToEurAtDate'
+type Service_ToEurAtDate_Call struct {
+	*mock.Call
+}
+
+// ToEurAtDate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - value float64
+//   - fromCurrency string
+//   - date time.Time
+func (_e *Service_Expecter) ToEurAtDate(ctx interface{}, value interface{}, fromCurrency interface{}, date interface{}) *Service_ToEurAtDate_Call {
+	return &Service_ToEurAtDate_Call{Call: _e.mock.On("ToEurAtDate", ctx, value, fromCurrency, date)}
+}
+
+func (_c *Service_ToEurAtDate_Call) Run(run func(ctx context.Context, value float64, fromCurrency string, date time.Time)) *Service_ToEurAtDate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(float64), args[2].(string), args[3].(time.Time))
+	})
+	return _c
+}
+
+func (_c *Service_ToEurAtDate_Call) Return(_a0 float64, _a1 error) *Service_ToEurAtDate_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_ToEurAtDate_Call) RunAndReturn(run func(context.Context, float64, string, time.Time) (float64, error)) *Service_ToEurAtDate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ToUsd provides a mock function with given fields: ctx, value, fromCurrency
 func (_m *Service) ToUsd(ctx context.Context, value float64, fromCurrency string) (float64, error) {
 	ret := _m.Called(ctx, value, fromCurrency)
@@ -183,6 +374,36 @@ func (_m *Service) ToUsd(ctx context.Context, value float64, fromCurrency string
 	return r0, r1
 }
 
+// Service_ToUsd_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ToUsd'
+type Service_ToUsd_Call struct {
+	*mock.Call
+}
+
+// ToUsd is a helper method to define mock.On call
+//   - ctx context.Context
+//   - value float64
+//   - fromCurrency string
+func (_e *Service_Expecter) ToUsd(ctx interface{}, value interface{}, fromCurrency interface{}) *Service_ToUsd_Call {
+	return &Service_ToUsd_Call{Call: _e.mock.On("ToUsd", ctx, value, fromCurrency)}
+}
+
+func (_c *Service_ToUsd_Call) Run(run func(ctx context.Context, value float64, fromCurrency string)) *Service_ToUsd_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(float64), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *Service_ToUsd_Call) Return(_a0 float64, _a1 error) *Service_ToUsd_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_ToUsd_Call) RunAndReturn(run func(context.Context, float64, string) (float64, error)) *Service_ToUsd_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ToUsdAtDate provides a mock function with given fields: ctx, value, fromCurrency, date
 func (_m *Service) ToUsdAtDate(ctx context.Context, value float64, fromCurrency string, date time.Time) (float64, error) {
 	ret := _m.Called(ctx, value, fromCurrency, date)
@@ -205,6 +426,37 @@ func (_m *Service) ToUsdAtDate(ctx context.Context, value float64, fromCurrency 
 	}
 
 	return r0, r1
+}
+
+// Service_ToUsdAtDate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ToUsdAtDate'
+type Service_ToUsdAtDate_Call struct {
+	*mock.Call
+}
+
+// ToUsdAtDate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - value float64
+//   - fromCurrency string
+//   - date time.Time
+func (_e *Service_Expecter) ToUsdAtDate(ctx interface{}, value interface{}, fromCurrency interface{}, date interface{}) *Service_ToUsdAtDate_Call {
+	return &Service_ToUsdAtDate_Call{Call: _e.mock.On("ToUsdAtDate", ctx, value, fromCurrency, date)}
+}
+
+func (_c *Service_ToUsdAtDate_Call) Run(run func(ctx context.Context, value float64, fromCurrency string, date time.Time)) *Service_ToUsdAtDate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(float64), args[2].(string), args[3].(time.Time))
+	})
+	return _c
+}
+
+func (_c *Service_ToUsdAtDate_Call) Return(_a0 float64, _a1 error) *Service_ToUsdAtDate_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Service_ToUsdAtDate_Call) RunAndReturn(run func(context.Context, float64, string, time.Time) (float64, error)) *Service_ToUsdAtDate_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewService interface {

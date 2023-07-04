@@ -9,6 +9,14 @@ type Uuid struct {
 	mock.Mock
 }
 
+type Uuid_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Uuid) EXPECT() *Uuid_Expecter {
+	return &Uuid_Expecter{mock: &_m.Mock}
+}
+
 // NewV4 provides a mock function with given fields:
 func (_m *Uuid) NewV4() string {
 	ret := _m.Called()
@@ -21,6 +29,33 @@ func (_m *Uuid) NewV4() string {
 	}
 
 	return r0
+}
+
+// Uuid_NewV4_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NewV4'
+type Uuid_NewV4_Call struct {
+	*mock.Call
+}
+
+// NewV4 is a helper method to define mock.On call
+func (_e *Uuid_Expecter) NewV4() *Uuid_NewV4_Call {
+	return &Uuid_NewV4_Call{Call: _e.mock.On("NewV4")}
+}
+
+func (_c *Uuid_NewV4_Call) Run(run func()) *Uuid_NewV4_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Uuid_NewV4_Call) Return(_a0 string) *Uuid_NewV4_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Uuid_NewV4_Call) RunAndReturn(run func() string) *Uuid_NewV4_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewUuid interface {

@@ -14,6 +14,14 @@ type SizeRestrictedOutput struct {
 	mock.Mock
 }
 
+type SizeRestrictedOutput_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *SizeRestrictedOutput) EXPECT() *SizeRestrictedOutput_Expecter {
+	return &SizeRestrictedOutput_Expecter{mock: &_m.Mock}
+}
+
 // GetMaxBatchSize provides a mock function with given fields:
 func (_m *SizeRestrictedOutput) GetMaxBatchSize() *int {
 	ret := _m.Called()
@@ -28,6 +36,33 @@ func (_m *SizeRestrictedOutput) GetMaxBatchSize() *int {
 	}
 
 	return r0
+}
+
+// SizeRestrictedOutput_GetMaxBatchSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMaxBatchSize'
+type SizeRestrictedOutput_GetMaxBatchSize_Call struct {
+	*mock.Call
+}
+
+// GetMaxBatchSize is a helper method to define mock.On call
+func (_e *SizeRestrictedOutput_Expecter) GetMaxBatchSize() *SizeRestrictedOutput_GetMaxBatchSize_Call {
+	return &SizeRestrictedOutput_GetMaxBatchSize_Call{Call: _e.mock.On("GetMaxBatchSize")}
+}
+
+func (_c *SizeRestrictedOutput_GetMaxBatchSize_Call) Run(run func()) *SizeRestrictedOutput_GetMaxBatchSize_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_GetMaxBatchSize_Call) Return(_a0 *int) *SizeRestrictedOutput_GetMaxBatchSize_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_GetMaxBatchSize_Call) RunAndReturn(run func() *int) *SizeRestrictedOutput_GetMaxBatchSize_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetMaxMessageSize provides a mock function with given fields:
@@ -46,6 +81,33 @@ func (_m *SizeRestrictedOutput) GetMaxMessageSize() *int {
 	return r0
 }
 
+// SizeRestrictedOutput_GetMaxMessageSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMaxMessageSize'
+type SizeRestrictedOutput_GetMaxMessageSize_Call struct {
+	*mock.Call
+}
+
+// GetMaxMessageSize is a helper method to define mock.On call
+func (_e *SizeRestrictedOutput_Expecter) GetMaxMessageSize() *SizeRestrictedOutput_GetMaxMessageSize_Call {
+	return &SizeRestrictedOutput_GetMaxMessageSize_Call{Call: _e.mock.On("GetMaxMessageSize")}
+}
+
+func (_c *SizeRestrictedOutput_GetMaxMessageSize_Call) Run(run func()) *SizeRestrictedOutput_GetMaxMessageSize_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_GetMaxMessageSize_Call) Return(_a0 *int) *SizeRestrictedOutput_GetMaxMessageSize_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_GetMaxMessageSize_Call) RunAndReturn(run func() *int) *SizeRestrictedOutput_GetMaxMessageSize_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Write provides a mock function with given fields: ctx, batch
 func (_m *SizeRestrictedOutput) Write(ctx context.Context, batch []stream.WritableMessage) error {
 	ret := _m.Called(ctx, batch)
@@ -60,6 +122,35 @@ func (_m *SizeRestrictedOutput) Write(ctx context.Context, batch []stream.Writab
 	return r0
 }
 
+// SizeRestrictedOutput_Write_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Write'
+type SizeRestrictedOutput_Write_Call struct {
+	*mock.Call
+}
+
+// Write is a helper method to define mock.On call
+//   - ctx context.Context
+//   - batch []stream.WritableMessage
+func (_e *SizeRestrictedOutput_Expecter) Write(ctx interface{}, batch interface{}) *SizeRestrictedOutput_Write_Call {
+	return &SizeRestrictedOutput_Write_Call{Call: _e.mock.On("Write", ctx, batch)}
+}
+
+func (_c *SizeRestrictedOutput_Write_Call) Run(run func(ctx context.Context, batch []stream.WritableMessage)) *SizeRestrictedOutput_Write_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]stream.WritableMessage))
+	})
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_Write_Call) Return(_a0 error) *SizeRestrictedOutput_Write_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_Write_Call) RunAndReturn(run func(context.Context, []stream.WritableMessage) error) *SizeRestrictedOutput_Write_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WriteOne provides a mock function with given fields: ctx, msg
 func (_m *SizeRestrictedOutput) WriteOne(ctx context.Context, msg stream.WritableMessage) error {
 	ret := _m.Called(ctx, msg)
@@ -72,6 +163,35 @@ func (_m *SizeRestrictedOutput) WriteOne(ctx context.Context, msg stream.Writabl
 	}
 
 	return r0
+}
+
+// SizeRestrictedOutput_WriteOne_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteOne'
+type SizeRestrictedOutput_WriteOne_Call struct {
+	*mock.Call
+}
+
+// WriteOne is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msg stream.WritableMessage
+func (_e *SizeRestrictedOutput_Expecter) WriteOne(ctx interface{}, msg interface{}) *SizeRestrictedOutput_WriteOne_Call {
+	return &SizeRestrictedOutput_WriteOne_Call{Call: _e.mock.On("WriteOne", ctx, msg)}
+}
+
+func (_c *SizeRestrictedOutput_WriteOne_Call) Run(run func(ctx context.Context, msg stream.WritableMessage)) *SizeRestrictedOutput_WriteOne_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(stream.WritableMessage))
+	})
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_WriteOne_Call) Return(_a0 error) *SizeRestrictedOutput_WriteOne_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizeRestrictedOutput_WriteOne_Call) RunAndReturn(run func(context.Context, stream.WritableMessage) error) *SizeRestrictedOutput_WriteOne_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewSizeRestrictedOutput interface {

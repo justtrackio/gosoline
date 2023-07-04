@@ -14,6 +14,14 @@ type RepositoryReadOnly struct {
 	mock.Mock
 }
 
+type RepositoryReadOnly_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *RepositoryReadOnly) EXPECT() *RepositoryReadOnly_Expecter {
+	return &RepositoryReadOnly_Expecter{mock: &_m.Mock}
+}
+
 // Count provides a mock function with given fields: ctx, qb, model
 func (_m *RepositoryReadOnly) Count(ctx context.Context, qb *db_repo.QueryBuilder, model db_repo.ModelBased) (int, error) {
 	ret := _m.Called(ctx, qb, model)
@@ -38,6 +46,36 @@ func (_m *RepositoryReadOnly) Count(ctx context.Context, qb *db_repo.QueryBuilde
 	return r0, r1
 }
 
+// RepositoryReadOnly_Count_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Count'
+type RepositoryReadOnly_Count_Call struct {
+	*mock.Call
+}
+
+// Count is a helper method to define mock.On call
+//   - ctx context.Context
+//   - qb *db_repo.QueryBuilder
+//   - model db_repo.ModelBased
+func (_e *RepositoryReadOnly_Expecter) Count(ctx interface{}, qb interface{}, model interface{}) *RepositoryReadOnly_Count_Call {
+	return &RepositoryReadOnly_Count_Call{Call: _e.mock.On("Count", ctx, qb, model)}
+}
+
+func (_c *RepositoryReadOnly_Count_Call) Run(run func(ctx context.Context, qb *db_repo.QueryBuilder, model db_repo.ModelBased)) *RepositoryReadOnly_Count_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*db_repo.QueryBuilder), args[2].(db_repo.ModelBased))
+	})
+	return _c
+}
+
+func (_c *RepositoryReadOnly_Count_Call) Return(_a0 int, _a1 error) *RepositoryReadOnly_Count_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RepositoryReadOnly_Count_Call) RunAndReturn(run func(context.Context, *db_repo.QueryBuilder, db_repo.ModelBased) (int, error)) *RepositoryReadOnly_Count_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetMetadata provides a mock function with given fields:
 func (_m *RepositoryReadOnly) GetMetadata() db_repo.Metadata {
 	ret := _m.Called()
@@ -50,6 +88,33 @@ func (_m *RepositoryReadOnly) GetMetadata() db_repo.Metadata {
 	}
 
 	return r0
+}
+
+// RepositoryReadOnly_GetMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMetadata'
+type RepositoryReadOnly_GetMetadata_Call struct {
+	*mock.Call
+}
+
+// GetMetadata is a helper method to define mock.On call
+func (_e *RepositoryReadOnly_Expecter) GetMetadata() *RepositoryReadOnly_GetMetadata_Call {
+	return &RepositoryReadOnly_GetMetadata_Call{Call: _e.mock.On("GetMetadata")}
+}
+
+func (_c *RepositoryReadOnly_GetMetadata_Call) Run(run func()) *RepositoryReadOnly_GetMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *RepositoryReadOnly_GetMetadata_Call) Return(_a0 db_repo.Metadata) *RepositoryReadOnly_GetMetadata_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *RepositoryReadOnly_GetMetadata_Call) RunAndReturn(run func() db_repo.Metadata) *RepositoryReadOnly_GetMetadata_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetModelId provides a mock function with given fields:
@@ -66,6 +131,33 @@ func (_m *RepositoryReadOnly) GetModelId() string {
 	return r0
 }
 
+// RepositoryReadOnly_GetModelId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetModelId'
+type RepositoryReadOnly_GetModelId_Call struct {
+	*mock.Call
+}
+
+// GetModelId is a helper method to define mock.On call
+func (_e *RepositoryReadOnly_Expecter) GetModelId() *RepositoryReadOnly_GetModelId_Call {
+	return &RepositoryReadOnly_GetModelId_Call{Call: _e.mock.On("GetModelId")}
+}
+
+func (_c *RepositoryReadOnly_GetModelId_Call) Run(run func()) *RepositoryReadOnly_GetModelId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *RepositoryReadOnly_GetModelId_Call) Return(_a0 string) *RepositoryReadOnly_GetModelId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *RepositoryReadOnly_GetModelId_Call) RunAndReturn(run func() string) *RepositoryReadOnly_GetModelId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetModelName provides a mock function with given fields:
 func (_m *RepositoryReadOnly) GetModelName() string {
 	ret := _m.Called()
@@ -78,6 +170,33 @@ func (_m *RepositoryReadOnly) GetModelName() string {
 	}
 
 	return r0
+}
+
+// RepositoryReadOnly_GetModelName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetModelName'
+type RepositoryReadOnly_GetModelName_Call struct {
+	*mock.Call
+}
+
+// GetModelName is a helper method to define mock.On call
+func (_e *RepositoryReadOnly_Expecter) GetModelName() *RepositoryReadOnly_GetModelName_Call {
+	return &RepositoryReadOnly_GetModelName_Call{Call: _e.mock.On("GetModelName")}
+}
+
+func (_c *RepositoryReadOnly_GetModelName_Call) Run(run func()) *RepositoryReadOnly_GetModelName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *RepositoryReadOnly_GetModelName_Call) Return(_a0 string) *RepositoryReadOnly_GetModelName_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *RepositoryReadOnly_GetModelName_Call) RunAndReturn(run func() string) *RepositoryReadOnly_GetModelName_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Query provides a mock function with given fields: ctx, qb, result
@@ -94,6 +213,36 @@ func (_m *RepositoryReadOnly) Query(ctx context.Context, qb *db_repo.QueryBuilde
 	return r0
 }
 
+// RepositoryReadOnly_Query_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Query'
+type RepositoryReadOnly_Query_Call struct {
+	*mock.Call
+}
+
+// Query is a helper method to define mock.On call
+//   - ctx context.Context
+//   - qb *db_repo.QueryBuilder
+//   - result interface{}
+func (_e *RepositoryReadOnly_Expecter) Query(ctx interface{}, qb interface{}, result interface{}) *RepositoryReadOnly_Query_Call {
+	return &RepositoryReadOnly_Query_Call{Call: _e.mock.On("Query", ctx, qb, result)}
+}
+
+func (_c *RepositoryReadOnly_Query_Call) Run(run func(ctx context.Context, qb *db_repo.QueryBuilder, result interface{})) *RepositoryReadOnly_Query_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*db_repo.QueryBuilder), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *RepositoryReadOnly_Query_Call) Return(_a0 error) *RepositoryReadOnly_Query_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *RepositoryReadOnly_Query_Call) RunAndReturn(run func(context.Context, *db_repo.QueryBuilder, interface{}) error) *RepositoryReadOnly_Query_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Read provides a mock function with given fields: ctx, id, out
 func (_m *RepositoryReadOnly) Read(ctx context.Context, id *uint, out db_repo.ModelBased) error {
 	ret := _m.Called(ctx, id, out)
@@ -106,6 +255,36 @@ func (_m *RepositoryReadOnly) Read(ctx context.Context, id *uint, out db_repo.Mo
 	}
 
 	return r0
+}
+
+// RepositoryReadOnly_Read_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Read'
+type RepositoryReadOnly_Read_Call struct {
+	*mock.Call
+}
+
+// Read is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id *uint
+//   - out db_repo.ModelBased
+func (_e *RepositoryReadOnly_Expecter) Read(ctx interface{}, id interface{}, out interface{}) *RepositoryReadOnly_Read_Call {
+	return &RepositoryReadOnly_Read_Call{Call: _e.mock.On("Read", ctx, id, out)}
+}
+
+func (_c *RepositoryReadOnly_Read_Call) Run(run func(ctx context.Context, id *uint, out db_repo.ModelBased)) *RepositoryReadOnly_Read_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*uint), args[2].(db_repo.ModelBased))
+	})
+	return _c
+}
+
+func (_c *RepositoryReadOnly_Read_Call) Return(_a0 error) *RepositoryReadOnly_Read_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *RepositoryReadOnly_Read_Call) RunAndReturn(run func(context.Context, *uint, db_repo.ModelBased) error) *RepositoryReadOnly_Read_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewRepositoryReadOnly interface {

@@ -16,6 +16,14 @@ type BaseHandler struct {
 	mock.Mock
 }
 
+type BaseHandler_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *BaseHandler) EXPECT() *BaseHandler_Expecter {
+	return &BaseHandler_Expecter{mock: &_m.Mock}
+}
+
 // GetModel provides a mock function with given fields:
 func (_m *BaseHandler) GetModel() db_repo.ModelBased {
 	ret := _m.Called()
@@ -32,6 +40,33 @@ func (_m *BaseHandler) GetModel() db_repo.ModelBased {
 	return r0
 }
 
+// BaseHandler_GetModel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetModel'
+type BaseHandler_GetModel_Call struct {
+	*mock.Call
+}
+
+// GetModel is a helper method to define mock.On call
+func (_e *BaseHandler_Expecter) GetModel() *BaseHandler_GetModel_Call {
+	return &BaseHandler_GetModel_Call{Call: _e.mock.On("GetModel")}
+}
+
+func (_c *BaseHandler_GetModel_Call) Run(run func()) *BaseHandler_GetModel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *BaseHandler_GetModel_Call) Return(_a0 db_repo.ModelBased) *BaseHandler_GetModel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BaseHandler_GetModel_Call) RunAndReturn(run func() db_repo.ModelBased) *BaseHandler_GetModel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRepository provides a mock function with given fields:
 func (_m *BaseHandler) GetRepository() crud.Repository {
 	ret := _m.Called()
@@ -46,6 +81,33 @@ func (_m *BaseHandler) GetRepository() crud.Repository {
 	}
 
 	return r0
+}
+
+// BaseHandler_GetRepository_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRepository'
+type BaseHandler_GetRepository_Call struct {
+	*mock.Call
+}
+
+// GetRepository is a helper method to define mock.On call
+func (_e *BaseHandler_Expecter) GetRepository() *BaseHandler_GetRepository_Call {
+	return &BaseHandler_GetRepository_Call{Call: _e.mock.On("GetRepository")}
+}
+
+func (_c *BaseHandler_GetRepository_Call) Run(run func()) *BaseHandler_GetRepository_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *BaseHandler_GetRepository_Call) Return(_a0 crud.Repository) *BaseHandler_GetRepository_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BaseHandler_GetRepository_Call) RunAndReturn(run func() crud.Repository) *BaseHandler_GetRepository_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // TransformOutput provides a mock function with given fields: ctx, model, apiView
@@ -72,6 +134,36 @@ func (_m *BaseHandler) TransformOutput(ctx context.Context, model db_repo.ModelB
 	}
 
 	return r0, r1
+}
+
+// BaseHandler_TransformOutput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TransformOutput'
+type BaseHandler_TransformOutput_Call struct {
+	*mock.Call
+}
+
+// TransformOutput is a helper method to define mock.On call
+//   - ctx context.Context
+//   - model db_repo.ModelBased
+//   - apiView string
+func (_e *BaseHandler_Expecter) TransformOutput(ctx interface{}, model interface{}, apiView interface{}) *BaseHandler_TransformOutput_Call {
+	return &BaseHandler_TransformOutput_Call{Call: _e.mock.On("TransformOutput", ctx, model, apiView)}
+}
+
+func (_c *BaseHandler_TransformOutput_Call) Run(run func(ctx context.Context, model db_repo.ModelBased, apiView string)) *BaseHandler_TransformOutput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(db_repo.ModelBased), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *BaseHandler_TransformOutput_Call) Return(output interface{}, err error) *BaseHandler_TransformOutput_Call {
+	_c.Call.Return(output, err)
+	return _c
+}
+
+func (_c *BaseHandler_TransformOutput_Call) RunAndReturn(run func(context.Context, db_repo.ModelBased, string) (interface{}, error)) *BaseHandler_TransformOutput_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewBaseHandler interface {

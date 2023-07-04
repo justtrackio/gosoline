@@ -15,6 +15,14 @@ type Executor struct {
 	mock.Mock
 }
 
+type Executor_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Executor) EXPECT() *Executor_Expecter {
+	return &Executor_Expecter{mock: &_m.Mock}
+}
+
 // Execute provides a mock function with given fields: ctx, f
 func (_m *Executor) Execute(ctx context.Context, f aws.RequestFunction) (interface{}, error) {
 	ret := _m.Called(ctx, f)
@@ -39,6 +47,35 @@ func (_m *Executor) Execute(ctx context.Context, f aws.RequestFunction) (interfa
 	}
 
 	return r0, r1
+}
+
+// Executor_Execute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Execute'
+type Executor_Execute_Call struct {
+	*mock.Call
+}
+
+// Execute is a helper method to define mock.On call
+//   - ctx context.Context
+//   - f aws.RequestFunction
+func (_e *Executor_Expecter) Execute(ctx interface{}, f interface{}) *Executor_Execute_Call {
+	return &Executor_Execute_Call{Call: _e.mock.On("Execute", ctx, f)}
+}
+
+func (_c *Executor_Execute_Call) Run(run func(ctx context.Context, f aws.RequestFunction)) *Executor_Execute_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(aws.RequestFunction))
+	})
+	return _c
+}
+
+func (_c *Executor_Execute_Call) Return(_a0 interface{}, _a1 error) *Executor_Execute_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Executor_Execute_Call) RunAndReturn(run func(context.Context, aws.RequestFunction) (interface{}, error)) *Executor_Execute_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewExecutor interface {

@@ -14,6 +14,14 @@ type Input struct {
 	mock.Mock
 }
 
+type Input_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Input) EXPECT() *Input_Expecter {
+	return &Input_Expecter{mock: &_m.Mock}
+}
+
 // Data provides a mock function with given fields:
 func (_m *Input) Data() <-chan *stream.Message {
 	ret := _m.Called()
@@ -30,6 +38,33 @@ func (_m *Input) Data() <-chan *stream.Message {
 	return r0
 }
 
+// Input_Data_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Data'
+type Input_Data_Call struct {
+	*mock.Call
+}
+
+// Data is a helper method to define mock.On call
+func (_e *Input_Expecter) Data() *Input_Data_Call {
+	return &Input_Data_Call{Call: _e.mock.On("Data")}
+}
+
+func (_c *Input_Data_Call) Run(run func()) *Input_Data_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Input_Data_Call) Return(_a0 <-chan *stream.Message) *Input_Data_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Input_Data_Call) RunAndReturn(run func() <-chan *stream.Message) *Input_Data_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *Input) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -44,9 +79,64 @@ func (_m *Input) Run(ctx context.Context) error {
 	return r0
 }
 
+// Input_Run_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Run'
+type Input_Run_Call struct {
+	*mock.Call
+}
+
+// Run is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *Input_Expecter) Run(ctx interface{}) *Input_Run_Call {
+	return &Input_Run_Call{Call: _e.mock.On("Run", ctx)}
+}
+
+func (_c *Input_Run_Call) Run(run func(ctx context.Context)) *Input_Run_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *Input_Run_Call) Return(_a0 error) *Input_Run_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Input_Run_Call) RunAndReturn(run func(context.Context) error) *Input_Run_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Stop provides a mock function with given fields:
 func (_m *Input) Stop() {
 	_m.Called()
+}
+
+// Input_Stop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stop'
+type Input_Stop_Call struct {
+	*mock.Call
+}
+
+// Stop is a helper method to define mock.On call
+func (_e *Input_Expecter) Stop() *Input_Stop_Call {
+	return &Input_Stop_Call{Call: _e.mock.On("Stop")}
+}
+
+func (_c *Input_Stop_Call) Run(run func()) *Input_Stop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Input_Stop_Call) Return() *Input_Stop_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Input_Stop_Call) RunAndReturn(run func()) *Input_Stop_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewInput interface {

@@ -14,6 +14,14 @@ type BatchGetItemsBuilder struct {
 	mock.Mock
 }
 
+type BatchGetItemsBuilder_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *BatchGetItemsBuilder) EXPECT() *BatchGetItemsBuilder_Expecter {
+	return &BatchGetItemsBuilder_Expecter{mock: &_m.Mock}
+}
+
 // Build provides a mock function with given fields: result
 func (_m *BatchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetItemInput, error) {
 	ret := _m.Called(result)
@@ -40,6 +48,34 @@ func (_m *BatchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetIte
 	return r0, r1
 }
 
+// BatchGetItemsBuilder_Build_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Build'
+type BatchGetItemsBuilder_Build_Call struct {
+	*mock.Call
+}
+
+// Build is a helper method to define mock.On call
+//   - result interface{}
+func (_e *BatchGetItemsBuilder_Expecter) Build(result interface{}) *BatchGetItemsBuilder_Build_Call {
+	return &BatchGetItemsBuilder_Build_Call{Call: _e.mock.On("Build", result)}
+}
+
+func (_c *BatchGetItemsBuilder_Build_Call) Run(run func(result interface{})) *BatchGetItemsBuilder_Build_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_Build_Call) Return(_a0 *dynamodb.BatchGetItemInput, _a1 error) *BatchGetItemsBuilder_Build_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_Build_Call) RunAndReturn(run func(interface{}) (*dynamodb.BatchGetItemInput, error)) *BatchGetItemsBuilder_Build_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DisableTtlFilter provides a mock function with given fields:
 func (_m *BatchGetItemsBuilder) DisableTtlFilter() ddb.BatchGetItemsBuilder {
 	ret := _m.Called()
@@ -54,6 +90,33 @@ func (_m *BatchGetItemsBuilder) DisableTtlFilter() ddb.BatchGetItemsBuilder {
 	}
 
 	return r0
+}
+
+// BatchGetItemsBuilder_DisableTtlFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DisableTtlFilter'
+type BatchGetItemsBuilder_DisableTtlFilter_Call struct {
+	*mock.Call
+}
+
+// DisableTtlFilter is a helper method to define mock.On call
+func (_e *BatchGetItemsBuilder_Expecter) DisableTtlFilter() *BatchGetItemsBuilder_DisableTtlFilter_Call {
+	return &BatchGetItemsBuilder_DisableTtlFilter_Call{Call: _e.mock.On("DisableTtlFilter")}
+}
+
+func (_c *BatchGetItemsBuilder_DisableTtlFilter_Call) Run(run func()) *BatchGetItemsBuilder_DisableTtlFilter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_DisableTtlFilter_Call) Return(_a0 ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_DisableTtlFilter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_DisableTtlFilter_Call) RunAndReturn(run func() ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_DisableTtlFilter_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // WithConsistentRead provides a mock function with given fields: consistentRead
@@ -72,6 +135,34 @@ func (_m *BatchGetItemsBuilder) WithConsistentRead(consistentRead bool) ddb.Batc
 	return r0
 }
 
+// BatchGetItemsBuilder_WithConsistentRead_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithConsistentRead'
+type BatchGetItemsBuilder_WithConsistentRead_Call struct {
+	*mock.Call
+}
+
+// WithConsistentRead is a helper method to define mock.On call
+//   - consistentRead bool
+func (_e *BatchGetItemsBuilder_Expecter) WithConsistentRead(consistentRead interface{}) *BatchGetItemsBuilder_WithConsistentRead_Call {
+	return &BatchGetItemsBuilder_WithConsistentRead_Call{Call: _e.mock.On("WithConsistentRead", consistentRead)}
+}
+
+func (_c *BatchGetItemsBuilder_WithConsistentRead_Call) Run(run func(consistentRead bool)) *BatchGetItemsBuilder_WithConsistentRead_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(bool))
+	})
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_WithConsistentRead_Call) Return(_a0 ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_WithConsistentRead_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_WithConsistentRead_Call) RunAndReturn(run func(bool) ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_WithConsistentRead_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithHashKeys provides a mock function with given fields: hashKeys
 func (_m *BatchGetItemsBuilder) WithHashKeys(hashKeys interface{}) ddb.BatchGetItemsBuilder {
 	ret := _m.Called(hashKeys)
@@ -88,6 +179,34 @@ func (_m *BatchGetItemsBuilder) WithHashKeys(hashKeys interface{}) ddb.BatchGetI
 	return r0
 }
 
+// BatchGetItemsBuilder_WithHashKeys_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithHashKeys'
+type BatchGetItemsBuilder_WithHashKeys_Call struct {
+	*mock.Call
+}
+
+// WithHashKeys is a helper method to define mock.On call
+//   - hashKeys interface{}
+func (_e *BatchGetItemsBuilder_Expecter) WithHashKeys(hashKeys interface{}) *BatchGetItemsBuilder_WithHashKeys_Call {
+	return &BatchGetItemsBuilder_WithHashKeys_Call{Call: _e.mock.On("WithHashKeys", hashKeys)}
+}
+
+func (_c *BatchGetItemsBuilder_WithHashKeys_Call) Run(run func(hashKeys interface{})) *BatchGetItemsBuilder_WithHashKeys_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_WithHashKeys_Call) Return(_a0 ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_WithHashKeys_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_WithHashKeys_Call) RunAndReturn(run func(interface{}) ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_WithHashKeys_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithKeyPairs provides a mock function with given fields: pairs
 func (_m *BatchGetItemsBuilder) WithKeyPairs(pairs [][]interface{}) ddb.BatchGetItemsBuilder {
 	ret := _m.Called(pairs)
@@ -102,6 +221,34 @@ func (_m *BatchGetItemsBuilder) WithKeyPairs(pairs [][]interface{}) ddb.BatchGet
 	}
 
 	return r0
+}
+
+// BatchGetItemsBuilder_WithKeyPairs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithKeyPairs'
+type BatchGetItemsBuilder_WithKeyPairs_Call struct {
+	*mock.Call
+}
+
+// WithKeyPairs is a helper method to define mock.On call
+//   - pairs [][]interface{}
+func (_e *BatchGetItemsBuilder_Expecter) WithKeyPairs(pairs interface{}) *BatchGetItemsBuilder_WithKeyPairs_Call {
+	return &BatchGetItemsBuilder_WithKeyPairs_Call{Call: _e.mock.On("WithKeyPairs", pairs)}
+}
+
+func (_c *BatchGetItemsBuilder_WithKeyPairs_Call) Run(run func(pairs [][]interface{})) *BatchGetItemsBuilder_WithKeyPairs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([][]interface{}))
+	})
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_WithKeyPairs_Call) Return(_a0 ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_WithKeyPairs_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_WithKeyPairs_Call) RunAndReturn(run func([][]interface{}) ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_WithKeyPairs_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // WithKeys provides a mock function with given fields: values
@@ -122,6 +269,41 @@ func (_m *BatchGetItemsBuilder) WithKeys(values ...interface{}) ddb.BatchGetItem
 	return r0
 }
 
+// BatchGetItemsBuilder_WithKeys_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithKeys'
+type BatchGetItemsBuilder_WithKeys_Call struct {
+	*mock.Call
+}
+
+// WithKeys is a helper method to define mock.On call
+//   - values ...interface{}
+func (_e *BatchGetItemsBuilder_Expecter) WithKeys(values ...interface{}) *BatchGetItemsBuilder_WithKeys_Call {
+	return &BatchGetItemsBuilder_WithKeys_Call{Call: _e.mock.On("WithKeys",
+		append([]interface{}{}, values...)...)}
+}
+
+func (_c *BatchGetItemsBuilder_WithKeys_Call) Run(run func(values ...interface{})) *BatchGetItemsBuilder_WithKeys_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_WithKeys_Call) Return(_a0 ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_WithKeys_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_WithKeys_Call) RunAndReturn(run func(...interface{}) ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_WithKeys_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithProjection provides a mock function with given fields: projection
 func (_m *BatchGetItemsBuilder) WithProjection(projection interface{}) ddb.BatchGetItemsBuilder {
 	ret := _m.Called(projection)
@@ -136,6 +318,34 @@ func (_m *BatchGetItemsBuilder) WithProjection(projection interface{}) ddb.Batch
 	}
 
 	return r0
+}
+
+// BatchGetItemsBuilder_WithProjection_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithProjection'
+type BatchGetItemsBuilder_WithProjection_Call struct {
+	*mock.Call
+}
+
+// WithProjection is a helper method to define mock.On call
+//   - projection interface{}
+func (_e *BatchGetItemsBuilder_Expecter) WithProjection(projection interface{}) *BatchGetItemsBuilder_WithProjection_Call {
+	return &BatchGetItemsBuilder_WithProjection_Call{Call: _e.mock.On("WithProjection", projection)}
+}
+
+func (_c *BatchGetItemsBuilder_WithProjection_Call) Run(run func(projection interface{})) *BatchGetItemsBuilder_WithProjection_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_WithProjection_Call) Return(_a0 ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_WithProjection_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BatchGetItemsBuilder_WithProjection_Call) RunAndReturn(run func(interface{}) ddb.BatchGetItemsBuilder) *BatchGetItemsBuilder_WithProjection_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewBatchGetItemsBuilder interface {

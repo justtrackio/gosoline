@@ -14,6 +14,14 @@ type MessageEncoder struct {
 	mock.Mock
 }
 
+type MessageEncoder_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *MessageEncoder) EXPECT() *MessageEncoder_Expecter {
+	return &MessageEncoder_Expecter{mock: &_m.Mock}
+}
+
 // Decode provides a mock function with given fields: ctx, msg, out
 func (_m *MessageEncoder) Decode(ctx context.Context, msg *stream.Message, out interface{}) (context.Context, map[string]interface{}, error) {
 	ret := _m.Called(ctx, msg, out)
@@ -49,6 +57,36 @@ func (_m *MessageEncoder) Decode(ctx context.Context, msg *stream.Message, out i
 	return r0, r1, r2
 }
 
+// MessageEncoder_Decode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Decode'
+type MessageEncoder_Decode_Call struct {
+	*mock.Call
+}
+
+// Decode is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msg *stream.Message
+//   - out interface{}
+func (_e *MessageEncoder_Expecter) Decode(ctx interface{}, msg interface{}, out interface{}) *MessageEncoder_Decode_Call {
+	return &MessageEncoder_Decode_Call{Call: _e.mock.On("Decode", ctx, msg, out)}
+}
+
+func (_c *MessageEncoder_Decode_Call) Run(run func(ctx context.Context, msg *stream.Message, out interface{})) *MessageEncoder_Decode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*stream.Message), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *MessageEncoder_Decode_Call) Return(_a0 context.Context, _a1 map[string]interface{}, _a2 error) *MessageEncoder_Decode_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MessageEncoder_Decode_Call) RunAndReturn(run func(context.Context, *stream.Message, interface{}) (context.Context, map[string]interface{}, error)) *MessageEncoder_Decode_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Encode provides a mock function with given fields: ctx, data, attributeSets
 func (_m *MessageEncoder) Encode(ctx context.Context, data interface{}, attributeSets ...map[string]interface{}) (*stream.Message, error) {
 	_va := make([]interface{}, len(attributeSets))
@@ -80,6 +118,43 @@ func (_m *MessageEncoder) Encode(ctx context.Context, data interface{}, attribut
 	}
 
 	return r0, r1
+}
+
+// MessageEncoder_Encode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Encode'
+type MessageEncoder_Encode_Call struct {
+	*mock.Call
+}
+
+// Encode is a helper method to define mock.On call
+//   - ctx context.Context
+//   - data interface{}
+//   - attributeSets ...map[string]interface{}
+func (_e *MessageEncoder_Expecter) Encode(ctx interface{}, data interface{}, attributeSets ...interface{}) *MessageEncoder_Encode_Call {
+	return &MessageEncoder_Encode_Call{Call: _e.mock.On("Encode",
+		append([]interface{}{ctx, data}, attributeSets...)...)}
+}
+
+func (_c *MessageEncoder_Encode_Call) Run(run func(ctx context.Context, data interface{}, attributeSets ...map[string]interface{})) *MessageEncoder_Encode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]map[string]interface{}, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(map[string]interface{})
+			}
+		}
+		run(args[0].(context.Context), args[1].(interface{}), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MessageEncoder_Encode_Call) Return(_a0 *stream.Message, _a1 error) *MessageEncoder_Encode_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MessageEncoder_Encode_Call) RunAndReturn(run func(context.Context, interface{}, ...map[string]interface{}) (*stream.Message, error)) *MessageEncoder_Encode_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewMessageEncoder interface {

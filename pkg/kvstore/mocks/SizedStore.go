@@ -13,6 +13,14 @@ type SizedStore[T interface{}] struct {
 	mock.Mock
 }
 
+type SizedStore_Expecter[T interface{}] struct {
+	mock *mock.Mock
+}
+
+func (_m *SizedStore[T]) EXPECT() *SizedStore_Expecter[T] {
+	return &SizedStore_Expecter[T]{mock: &_m.Mock}
+}
+
 // Contains provides a mock function with given fields: ctx, key
 func (_m *SizedStore[T]) Contains(ctx context.Context, key interface{}) (bool, error) {
 	ret := _m.Called(ctx, key)
@@ -37,6 +45,35 @@ func (_m *SizedStore[T]) Contains(ctx context.Context, key interface{}) (bool, e
 	return r0, r1
 }
 
+// SizedStore_Contains_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Contains'
+type SizedStore_Contains_Call[T interface{}] struct {
+	*mock.Call
+}
+
+// Contains is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key interface{}
+func (_e *SizedStore_Expecter[T]) Contains(ctx interface{}, key interface{}) *SizedStore_Contains_Call[T] {
+	return &SizedStore_Contains_Call[T]{Call: _e.mock.On("Contains", ctx, key)}
+}
+
+func (_c *SizedStore_Contains_Call[T]) Run(run func(ctx context.Context, key interface{})) *SizedStore_Contains_Call[T] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *SizedStore_Contains_Call[T]) Return(_a0 bool, _a1 error) *SizedStore_Contains_Call[T] {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *SizedStore_Contains_Call[T]) RunAndReturn(run func(context.Context, interface{}) (bool, error)) *SizedStore_Contains_Call[T] {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Delete provides a mock function with given fields: ctx, key
 func (_m *SizedStore[T]) Delete(ctx context.Context, key interface{}) error {
 	ret := _m.Called(ctx, key)
@@ -49,6 +86,35 @@ func (_m *SizedStore[T]) Delete(ctx context.Context, key interface{}) error {
 	}
 
 	return r0
+}
+
+// SizedStore_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
+type SizedStore_Delete_Call[T interface{}] struct {
+	*mock.Call
+}
+
+// Delete is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key interface{}
+func (_e *SizedStore_Expecter[T]) Delete(ctx interface{}, key interface{}) *SizedStore_Delete_Call[T] {
+	return &SizedStore_Delete_Call[T]{Call: _e.mock.On("Delete", ctx, key)}
+}
+
+func (_c *SizedStore_Delete_Call[T]) Run(run func(ctx context.Context, key interface{})) *SizedStore_Delete_Call[T] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *SizedStore_Delete_Call[T]) Return(_a0 error) *SizedStore_Delete_Call[T] {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizedStore_Delete_Call[T]) RunAndReturn(run func(context.Context, interface{}) error) *SizedStore_Delete_Call[T] {
+	_c.Call.Return(run)
+	return _c
 }
 
 // DeleteBatch provides a mock function with given fields: ctx, keys
@@ -65,6 +131,35 @@ func (_m *SizedStore[T]) DeleteBatch(ctx context.Context, keys interface{}) erro
 	return r0
 }
 
+// SizedStore_DeleteBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteBatch'
+type SizedStore_DeleteBatch_Call[T interface{}] struct {
+	*mock.Call
+}
+
+// DeleteBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - keys interface{}
+func (_e *SizedStore_Expecter[T]) DeleteBatch(ctx interface{}, keys interface{}) *SizedStore_DeleteBatch_Call[T] {
+	return &SizedStore_DeleteBatch_Call[T]{Call: _e.mock.On("DeleteBatch", ctx, keys)}
+}
+
+func (_c *SizedStore_DeleteBatch_Call[T]) Run(run func(ctx context.Context, keys interface{})) *SizedStore_DeleteBatch_Call[T] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *SizedStore_DeleteBatch_Call[T]) Return(_a0 error) *SizedStore_DeleteBatch_Call[T] {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizedStore_DeleteBatch_Call[T]) RunAndReturn(run func(context.Context, interface{}) error) *SizedStore_DeleteBatch_Call[T] {
+	_c.Call.Return(run)
+	return _c
+}
+
 // EstimateSize provides a mock function with given fields:
 func (_m *SizedStore[T]) EstimateSize() *int64 {
 	ret := _m.Called()
@@ -79,6 +174,33 @@ func (_m *SizedStore[T]) EstimateSize() *int64 {
 	}
 
 	return r0
+}
+
+// SizedStore_EstimateSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EstimateSize'
+type SizedStore_EstimateSize_Call[T interface{}] struct {
+	*mock.Call
+}
+
+// EstimateSize is a helper method to define mock.On call
+func (_e *SizedStore_Expecter[T]) EstimateSize() *SizedStore_EstimateSize_Call[T] {
+	return &SizedStore_EstimateSize_Call[T]{Call: _e.mock.On("EstimateSize")}
+}
+
+func (_c *SizedStore_EstimateSize_Call[T]) Run(run func()) *SizedStore_EstimateSize_Call[T] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *SizedStore_EstimateSize_Call[T]) Return(_a0 *int64) *SizedStore_EstimateSize_Call[T] {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizedStore_EstimateSize_Call[T]) RunAndReturn(run func() *int64) *SizedStore_EstimateSize_Call[T] {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Get provides a mock function with given fields: ctx, key, value
@@ -103,6 +225,36 @@ func (_m *SizedStore[T]) Get(ctx context.Context, key interface{}, value *T) (bo
 	}
 
 	return r0, r1
+}
+
+// SizedStore_Get_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Get'
+type SizedStore_Get_Call[T interface{}] struct {
+	*mock.Call
+}
+
+// Get is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key interface{}
+//   - value *T
+func (_e *SizedStore_Expecter[T]) Get(ctx interface{}, key interface{}, value interface{}) *SizedStore_Get_Call[T] {
+	return &SizedStore_Get_Call[T]{Call: _e.mock.On("Get", ctx, key, value)}
+}
+
+func (_c *SizedStore_Get_Call[T]) Run(run func(ctx context.Context, key interface{}, value *T)) *SizedStore_Get_Call[T] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}), args[2].(*T))
+	})
+	return _c
+}
+
+func (_c *SizedStore_Get_Call[T]) Return(_a0 bool, _a1 error) *SizedStore_Get_Call[T] {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *SizedStore_Get_Call[T]) RunAndReturn(run func(context.Context, interface{}, *T) (bool, error)) *SizedStore_Get_Call[T] {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetBatch provides a mock function with given fields: ctx, keys, values
@@ -131,6 +283,36 @@ func (_m *SizedStore[T]) GetBatch(ctx context.Context, keys interface{}, values 
 	return r0, r1
 }
 
+// SizedStore_GetBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBatch'
+type SizedStore_GetBatch_Call[T interface{}] struct {
+	*mock.Call
+}
+
+// GetBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - keys interface{}
+//   - values interface{}
+func (_e *SizedStore_Expecter[T]) GetBatch(ctx interface{}, keys interface{}, values interface{}) *SizedStore_GetBatch_Call[T] {
+	return &SizedStore_GetBatch_Call[T]{Call: _e.mock.On("GetBatch", ctx, keys, values)}
+}
+
+func (_c *SizedStore_GetBatch_Call[T]) Run(run func(ctx context.Context, keys interface{}, values interface{})) *SizedStore_GetBatch_Call[T] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *SizedStore_GetBatch_Call[T]) Return(_a0 []interface{}, _a1 error) *SizedStore_GetBatch_Call[T] {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *SizedStore_GetBatch_Call[T]) RunAndReturn(run func(context.Context, interface{}, interface{}) ([]interface{}, error)) *SizedStore_GetBatch_Call[T] {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Put provides a mock function with given fields: ctx, key, value
 func (_m *SizedStore[T]) Put(ctx context.Context, key interface{}, value T) error {
 	ret := _m.Called(ctx, key, value)
@@ -145,6 +327,36 @@ func (_m *SizedStore[T]) Put(ctx context.Context, key interface{}, value T) erro
 	return r0
 }
 
+// SizedStore_Put_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Put'
+type SizedStore_Put_Call[T interface{}] struct {
+	*mock.Call
+}
+
+// Put is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key interface{}
+//   - value T
+func (_e *SizedStore_Expecter[T]) Put(ctx interface{}, key interface{}, value interface{}) *SizedStore_Put_Call[T] {
+	return &SizedStore_Put_Call[T]{Call: _e.mock.On("Put", ctx, key, value)}
+}
+
+func (_c *SizedStore_Put_Call[T]) Run(run func(ctx context.Context, key interface{}, value T)) *SizedStore_Put_Call[T] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}), args[2].(T))
+	})
+	return _c
+}
+
+func (_c *SizedStore_Put_Call[T]) Return(_a0 error) *SizedStore_Put_Call[T] {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizedStore_Put_Call[T]) RunAndReturn(run func(context.Context, interface{}, T) error) *SizedStore_Put_Call[T] {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PutBatch provides a mock function with given fields: ctx, values
 func (_m *SizedStore[T]) PutBatch(ctx context.Context, values interface{}) error {
 	ret := _m.Called(ctx, values)
@@ -157,6 +369,35 @@ func (_m *SizedStore[T]) PutBatch(ctx context.Context, values interface{}) error
 	}
 
 	return r0
+}
+
+// SizedStore_PutBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PutBatch'
+type SizedStore_PutBatch_Call[T interface{}] struct {
+	*mock.Call
+}
+
+// PutBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - values interface{}
+func (_e *SizedStore_Expecter[T]) PutBatch(ctx interface{}, values interface{}) *SizedStore_PutBatch_Call[T] {
+	return &SizedStore_PutBatch_Call[T]{Call: _e.mock.On("PutBatch", ctx, values)}
+}
+
+func (_c *SizedStore_PutBatch_Call[T]) Run(run func(ctx context.Context, values interface{})) *SizedStore_PutBatch_Call[T] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *SizedStore_PutBatch_Call[T]) Return(_a0 error) *SizedStore_PutBatch_Call[T] {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SizedStore_PutBatch_Call[T]) RunAndReturn(run func(context.Context, interface{}) error) *SizedStore_PutBatch_Call[T] {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewSizedStore interface {

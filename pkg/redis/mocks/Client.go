@@ -16,6 +16,14 @@ type Client struct {
 	mock.Mock
 }
 
+type Client_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Client) EXPECT() *Client_Expecter {
+	return &Client_Expecter{mock: &_m.Mock}
+}
+
 // BLPop provides a mock function with given fields: ctx, timeout, keys
 func (_m *Client) BLPop(ctx context.Context, timeout time.Duration, keys ...string) ([]string, error) {
 	_va := make([]interface{}, len(keys))
@@ -49,6 +57,43 @@ func (_m *Client) BLPop(ctx context.Context, timeout time.Duration, keys ...stri
 	return r0, r1
 }
 
+// Client_BLPop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BLPop'
+type Client_BLPop_Call struct {
+	*mock.Call
+}
+
+// BLPop is a helper method to define mock.On call
+//   - ctx context.Context
+//   - timeout time.Duration
+//   - keys ...string
+func (_e *Client_Expecter) BLPop(ctx interface{}, timeout interface{}, keys ...interface{}) *Client_BLPop_Call {
+	return &Client_BLPop_Call{Call: _e.mock.On("BLPop",
+		append([]interface{}{ctx, timeout}, keys...)...)}
+}
+
+func (_c *Client_BLPop_Call) Run(run func(ctx context.Context, timeout time.Duration, keys ...string)) *Client_BLPop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), args[1].(time.Duration), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_BLPop_Call) Return(_a0 []string, _a1 error) *Client_BLPop_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_BLPop_Call) RunAndReturn(run func(context.Context, time.Duration, ...string) ([]string, error)) *Client_BLPop_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DBSize provides a mock function with given fields: ctx
 func (_m *Client) DBSize(ctx context.Context) (int64, error) {
 	ret := _m.Called(ctx)
@@ -71,6 +116,34 @@ func (_m *Client) DBSize(ctx context.Context) (int64, error) {
 	}
 
 	return r0, r1
+}
+
+// Client_DBSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DBSize'
+type Client_DBSize_Call struct {
+	*mock.Call
+}
+
+// DBSize is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *Client_Expecter) DBSize(ctx interface{}) *Client_DBSize_Call {
+	return &Client_DBSize_Call{Call: _e.mock.On("DBSize", ctx)}
+}
+
+func (_c *Client_DBSize_Call) Run(run func(ctx context.Context)) *Client_DBSize_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *Client_DBSize_Call) Return(_a0 int64, _a1 error) *Client_DBSize_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DBSize_Call) RunAndReturn(run func(context.Context) (int64, error)) *Client_DBSize_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Decr provides a mock function with given fields: ctx, key
@@ -97,6 +170,35 @@ func (_m *Client) Decr(ctx context.Context, key string) (int64, error) {
 	return r0, r1
 }
 
+// Client_Decr_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Decr'
+type Client_Decr_Call struct {
+	*mock.Call
+}
+
+// Decr is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) Decr(ctx interface{}, key interface{}) *Client_Decr_Call {
+	return &Client_Decr_Call{Call: _e.mock.On("Decr", ctx, key)}
+}
+
+func (_c *Client_Decr_Call) Run(run func(ctx context.Context, key string)) *Client_Decr_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_Decr_Call) Return(_a0 int64, _a1 error) *Client_Decr_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Decr_Call) RunAndReturn(run func(context.Context, string) (int64, error)) *Client_Decr_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DecrBy provides a mock function with given fields: ctx, key, amount
 func (_m *Client) DecrBy(ctx context.Context, key string, amount int64) (int64, error) {
 	ret := _m.Called(ctx, key, amount)
@@ -119,6 +221,36 @@ func (_m *Client) DecrBy(ctx context.Context, key string, amount int64) (int64, 
 	}
 
 	return r0, r1
+}
+
+// Client_DecrBy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DecrBy'
+type Client_DecrBy_Call struct {
+	*mock.Call
+}
+
+// DecrBy is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - amount int64
+func (_e *Client_Expecter) DecrBy(ctx interface{}, key interface{}, amount interface{}) *Client_DecrBy_Call {
+	return &Client_DecrBy_Call{Call: _e.mock.On("DecrBy", ctx, key, amount)}
+}
+
+func (_c *Client_DecrBy_Call) Run(run func(ctx context.Context, key string, amount int64)) *Client_DecrBy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int64))
+	})
+	return _c
+}
+
+func (_c *Client_DecrBy_Call) Return(_a0 int64, _a1 error) *Client_DecrBy_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_DecrBy_Call) RunAndReturn(run func(context.Context, string, int64) (int64, error)) *Client_DecrBy_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Del provides a mock function with given fields: ctx, keys
@@ -152,6 +284,42 @@ func (_m *Client) Del(ctx context.Context, keys ...string) (int64, error) {
 	return r0, r1
 }
 
+// Client_Del_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Del'
+type Client_Del_Call struct {
+	*mock.Call
+}
+
+// Del is a helper method to define mock.On call
+//   - ctx context.Context
+//   - keys ...string
+func (_e *Client_Expecter) Del(ctx interface{}, keys ...interface{}) *Client_Del_Call {
+	return &Client_Del_Call{Call: _e.mock.On("Del",
+		append([]interface{}{ctx}, keys...)...)}
+}
+
+func (_c *Client_Del_Call) Run(run func(ctx context.Context, keys ...string)) *Client_Del_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_Del_Call) Return(_a0 int64, _a1 error) *Client_Del_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Del_Call) RunAndReturn(run func(context.Context, ...string) (int64, error)) *Client_Del_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Exists provides a mock function with given fields: ctx, keys
 func (_m *Client) Exists(ctx context.Context, keys ...string) (int64, error) {
 	_va := make([]interface{}, len(keys))
@@ -183,6 +351,42 @@ func (_m *Client) Exists(ctx context.Context, keys ...string) (int64, error) {
 	return r0, r1
 }
 
+// Client_Exists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Exists'
+type Client_Exists_Call struct {
+	*mock.Call
+}
+
+// Exists is a helper method to define mock.On call
+//   - ctx context.Context
+//   - keys ...string
+func (_e *Client_Expecter) Exists(ctx interface{}, keys ...interface{}) *Client_Exists_Call {
+	return &Client_Exists_Call{Call: _e.mock.On("Exists",
+		append([]interface{}{ctx}, keys...)...)}
+}
+
+func (_c *Client_Exists_Call) Run(run func(ctx context.Context, keys ...string)) *Client_Exists_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_Exists_Call) Return(_a0 int64, _a1 error) *Client_Exists_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Exists_Call) RunAndReturn(run func(context.Context, ...string) (int64, error)) *Client_Exists_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Expire provides a mock function with given fields: ctx, key, ttl
 func (_m *Client) Expire(ctx context.Context, key string, ttl time.Duration) (bool, error) {
 	ret := _m.Called(ctx, key, ttl)
@@ -205,6 +409,36 @@ func (_m *Client) Expire(ctx context.Context, key string, ttl time.Duration) (bo
 	}
 
 	return r0, r1
+}
+
+// Client_Expire_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Expire'
+type Client_Expire_Call struct {
+	*mock.Call
+}
+
+// Expire is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - ttl time.Duration
+func (_e *Client_Expecter) Expire(ctx interface{}, key interface{}, ttl interface{}) *Client_Expire_Call {
+	return &Client_Expire_Call{Call: _e.mock.On("Expire", ctx, key, ttl)}
+}
+
+func (_c *Client_Expire_Call) Run(run func(ctx context.Context, key string, ttl time.Duration)) *Client_Expire_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *Client_Expire_Call) Return(_a0 bool, _a1 error) *Client_Expire_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Expire_Call) RunAndReturn(run func(context.Context, string, time.Duration) (bool, error)) *Client_Expire_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // FlushDB provides a mock function with given fields: ctx
@@ -231,6 +465,34 @@ func (_m *Client) FlushDB(ctx context.Context) (string, error) {
 	return r0, r1
 }
 
+// Client_FlushDB_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FlushDB'
+type Client_FlushDB_Call struct {
+	*mock.Call
+}
+
+// FlushDB is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *Client_Expecter) FlushDB(ctx interface{}) *Client_FlushDB_Call {
+	return &Client_FlushDB_Call{Call: _e.mock.On("FlushDB", ctx)}
+}
+
+func (_c *Client_FlushDB_Call) Run(run func(ctx context.Context)) *Client_FlushDB_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *Client_FlushDB_Call) Return(_a0 string, _a1 error) *Client_FlushDB_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_FlushDB_Call) RunAndReturn(run func(context.Context) (string, error)) *Client_FlushDB_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function with given fields: ctx, key
 func (_m *Client) Get(ctx context.Context, key string) (string, error) {
 	ret := _m.Called(ctx, key)
@@ -253,6 +515,35 @@ func (_m *Client) Get(ctx context.Context, key string) (string, error) {
 	}
 
 	return r0, r1
+}
+
+// Client_Get_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Get'
+type Client_Get_Call struct {
+	*mock.Call
+}
+
+// Get is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) Get(ctx interface{}, key interface{}) *Client_Get_Call {
+	return &Client_Get_Call{Call: _e.mock.On("Get", ctx, key)}
+}
+
+func (_c *Client_Get_Call) Run(run func(ctx context.Context, key string)) *Client_Get_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_Get_Call) Return(_a0 string, _a1 error) *Client_Get_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Get_Call) RunAndReturn(run func(context.Context, string) (string, error)) *Client_Get_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetDel provides a mock function with given fields: ctx, key
@@ -279,6 +570,35 @@ func (_m *Client) GetDel(ctx context.Context, key string) (interface{}, error) {
 	}
 
 	return r0, r1
+}
+
+// Client_GetDel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDel'
+type Client_GetDel_Call struct {
+	*mock.Call
+}
+
+// GetDel is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) GetDel(ctx interface{}, key interface{}) *Client_GetDel_Call {
+	return &Client_GetDel_Call{Call: _e.mock.On("GetDel", ctx, key)}
+}
+
+func (_c *Client_GetDel_Call) Run(run func(ctx context.Context, key string)) *Client_GetDel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_GetDel_Call) Return(_a0 interface{}, _a1 error) *Client_GetDel_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetDel_Call) RunAndReturn(run func(context.Context, string) (interface{}, error)) *Client_GetDel_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // HDel provides a mock function with given fields: ctx, key, fields
@@ -312,6 +632,43 @@ func (_m *Client) HDel(ctx context.Context, key string, fields ...string) (int64
 	return r0, r1
 }
 
+// Client_HDel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HDel'
+type Client_HDel_Call struct {
+	*mock.Call
+}
+
+// HDel is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - fields ...string
+func (_e *Client_Expecter) HDel(ctx interface{}, key interface{}, fields ...interface{}) *Client_HDel_Call {
+	return &Client_HDel_Call{Call: _e.mock.On("HDel",
+		append([]interface{}{ctx, key}, fields...)...)}
+}
+
+func (_c *Client_HDel_Call) Run(run func(ctx context.Context, key string, fields ...string)) *Client_HDel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_HDel_Call) Return(_a0 int64, _a1 error) *Client_HDel_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_HDel_Call) RunAndReturn(run func(context.Context, string, ...string) (int64, error)) *Client_HDel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HExists provides a mock function with given fields: ctx, key, field
 func (_m *Client) HExists(ctx context.Context, key string, field string) (bool, error) {
 	ret := _m.Called(ctx, key, field)
@@ -336,6 +693,36 @@ func (_m *Client) HExists(ctx context.Context, key string, field string) (bool, 
 	return r0, r1
 }
 
+// Client_HExists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HExists'
+type Client_HExists_Call struct {
+	*mock.Call
+}
+
+// HExists is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - field string
+func (_e *Client_Expecter) HExists(ctx interface{}, key interface{}, field interface{}) *Client_HExists_Call {
+	return &Client_HExists_Call{Call: _e.mock.On("HExists", ctx, key, field)}
+}
+
+func (_c *Client_HExists_Call) Run(run func(ctx context.Context, key string, field string)) *Client_HExists_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *Client_HExists_Call) Return(_a0 bool, _a1 error) *Client_HExists_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_HExists_Call) RunAndReturn(run func(context.Context, string, string) (bool, error)) *Client_HExists_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HGet provides a mock function with given fields: ctx, key, field
 func (_m *Client) HGet(ctx context.Context, key string, field string) (string, error) {
 	ret := _m.Called(ctx, key, field)
@@ -358,6 +745,36 @@ func (_m *Client) HGet(ctx context.Context, key string, field string) (string, e
 	}
 
 	return r0, r1
+}
+
+// Client_HGet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HGet'
+type Client_HGet_Call struct {
+	*mock.Call
+}
+
+// HGet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - field string
+func (_e *Client_Expecter) HGet(ctx interface{}, key interface{}, field interface{}) *Client_HGet_Call {
+	return &Client_HGet_Call{Call: _e.mock.On("HGet", ctx, key, field)}
+}
+
+func (_c *Client_HGet_Call) Run(run func(ctx context.Context, key string, field string)) *Client_HGet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *Client_HGet_Call) Return(_a0 string, _a1 error) *Client_HGet_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_HGet_Call) RunAndReturn(run func(context.Context, string, string) (string, error)) *Client_HGet_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // HGetAll provides a mock function with given fields: ctx, key
@@ -386,6 +803,35 @@ func (_m *Client) HGetAll(ctx context.Context, key string) (map[string]string, e
 	return r0, r1
 }
 
+// Client_HGetAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HGetAll'
+type Client_HGetAll_Call struct {
+	*mock.Call
+}
+
+// HGetAll is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) HGetAll(ctx interface{}, key interface{}) *Client_HGetAll_Call {
+	return &Client_HGetAll_Call{Call: _e.mock.On("HGetAll", ctx, key)}
+}
+
+func (_c *Client_HGetAll_Call) Run(run func(ctx context.Context, key string)) *Client_HGetAll_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_HGetAll_Call) Return(_a0 map[string]string, _a1 error) *Client_HGetAll_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_HGetAll_Call) RunAndReturn(run func(context.Context, string) (map[string]string, error)) *Client_HGetAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HKeys provides a mock function with given fields: ctx, key
 func (_m *Client) HKeys(ctx context.Context, key string) ([]string, error) {
 	ret := _m.Called(ctx, key)
@@ -410,6 +856,35 @@ func (_m *Client) HKeys(ctx context.Context, key string) ([]string, error) {
 	}
 
 	return r0, r1
+}
+
+// Client_HKeys_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HKeys'
+type Client_HKeys_Call struct {
+	*mock.Call
+}
+
+// HKeys is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) HKeys(ctx interface{}, key interface{}) *Client_HKeys_Call {
+	return &Client_HKeys_Call{Call: _e.mock.On("HKeys", ctx, key)}
+}
+
+func (_c *Client_HKeys_Call) Run(run func(ctx context.Context, key string)) *Client_HKeys_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_HKeys_Call) Return(_a0 []string, _a1 error) *Client_HKeys_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_HKeys_Call) RunAndReturn(run func(context.Context, string) ([]string, error)) *Client_HKeys_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // HMGet provides a mock function with given fields: ctx, key, fields
@@ -445,6 +920,43 @@ func (_m *Client) HMGet(ctx context.Context, key string, fields ...string) ([]in
 	return r0, r1
 }
 
+// Client_HMGet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HMGet'
+type Client_HMGet_Call struct {
+	*mock.Call
+}
+
+// HMGet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - fields ...string
+func (_e *Client_Expecter) HMGet(ctx interface{}, key interface{}, fields ...interface{}) *Client_HMGet_Call {
+	return &Client_HMGet_Call{Call: _e.mock.On("HMGet",
+		append([]interface{}{ctx, key}, fields...)...)}
+}
+
+func (_c *Client_HMGet_Call) Run(run func(ctx context.Context, key string, fields ...string)) *Client_HMGet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_HMGet_Call) Return(_a0 []interface{}, _a1 error) *Client_HMGet_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_HMGet_Call) RunAndReturn(run func(context.Context, string, ...string) ([]interface{}, error)) *Client_HMGet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HMSet provides a mock function with given fields: ctx, key, pairs
 func (_m *Client) HMSet(ctx context.Context, key string, pairs map[string]interface{}) error {
 	ret := _m.Called(ctx, key, pairs)
@@ -459,6 +971,36 @@ func (_m *Client) HMSet(ctx context.Context, key string, pairs map[string]interf
 	return r0
 }
 
+// Client_HMSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HMSet'
+type Client_HMSet_Call struct {
+	*mock.Call
+}
+
+// HMSet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - pairs map[string]interface{}
+func (_e *Client_Expecter) HMSet(ctx interface{}, key interface{}, pairs interface{}) *Client_HMSet_Call {
+	return &Client_HMSet_Call{Call: _e.mock.On("HMSet", ctx, key, pairs)}
+}
+
+func (_c *Client_HMSet_Call) Run(run func(ctx context.Context, key string, pairs map[string]interface{})) *Client_HMSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(map[string]interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_HMSet_Call) Return(_a0 error) *Client_HMSet_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_HMSet_Call) RunAndReturn(run func(context.Context, string, map[string]interface{}) error) *Client_HMSet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HSet provides a mock function with given fields: ctx, key, field, value
 func (_m *Client) HSet(ctx context.Context, key string, field string, value interface{}) error {
 	ret := _m.Called(ctx, key, field, value)
@@ -471,6 +1013,37 @@ func (_m *Client) HSet(ctx context.Context, key string, field string, value inte
 	}
 
 	return r0
+}
+
+// Client_HSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HSet'
+type Client_HSet_Call struct {
+	*mock.Call
+}
+
+// HSet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - field string
+//   - value interface{}
+func (_e *Client_Expecter) HSet(ctx interface{}, key interface{}, field interface{}, value interface{}) *Client_HSet_Call {
+	return &Client_HSet_Call{Call: _e.mock.On("HSet", ctx, key, field, value)}
+}
+
+func (_c *Client_HSet_Call) Run(run func(ctx context.Context, key string, field string, value interface{})) *Client_HSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_HSet_Call) Return(_a0 error) *Client_HSet_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_HSet_Call) RunAndReturn(run func(context.Context, string, string, interface{}) error) *Client_HSet_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // HSetNX provides a mock function with given fields: ctx, key, field, value
@@ -497,6 +1070,37 @@ func (_m *Client) HSetNX(ctx context.Context, key string, field string, value in
 	return r0, r1
 }
 
+// Client_HSetNX_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HSetNX'
+type Client_HSetNX_Call struct {
+	*mock.Call
+}
+
+// HSetNX is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - field string
+//   - value interface{}
+func (_e *Client_Expecter) HSetNX(ctx interface{}, key interface{}, field interface{}, value interface{}) *Client_HSetNX_Call {
+	return &Client_HSetNX_Call{Call: _e.mock.On("HSetNX", ctx, key, field, value)}
+}
+
+func (_c *Client_HSetNX_Call) Run(run func(ctx context.Context, key string, field string, value interface{})) *Client_HSetNX_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_HSetNX_Call) Return(_a0 bool, _a1 error) *Client_HSetNX_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_HSetNX_Call) RunAndReturn(run func(context.Context, string, string, interface{}) (bool, error)) *Client_HSetNX_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Incr provides a mock function with given fields: ctx, key
 func (_m *Client) Incr(ctx context.Context, key string) (int64, error) {
 	ret := _m.Called(ctx, key)
@@ -519,6 +1123,35 @@ func (_m *Client) Incr(ctx context.Context, key string) (int64, error) {
 	}
 
 	return r0, r1
+}
+
+// Client_Incr_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Incr'
+type Client_Incr_Call struct {
+	*mock.Call
+}
+
+// Incr is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) Incr(ctx interface{}, key interface{}) *Client_Incr_Call {
+	return &Client_Incr_Call{Call: _e.mock.On("Incr", ctx, key)}
+}
+
+func (_c *Client_Incr_Call) Run(run func(ctx context.Context, key string)) *Client_Incr_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_Incr_Call) Return(_a0 int64, _a1 error) *Client_Incr_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Incr_Call) RunAndReturn(run func(context.Context, string) (int64, error)) *Client_Incr_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // IncrBy provides a mock function with given fields: ctx, key, amount
@@ -545,6 +1178,36 @@ func (_m *Client) IncrBy(ctx context.Context, key string, amount int64) (int64, 
 	return r0, r1
 }
 
+// Client_IncrBy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncrBy'
+type Client_IncrBy_Call struct {
+	*mock.Call
+}
+
+// IncrBy is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - amount int64
+func (_e *Client_Expecter) IncrBy(ctx interface{}, key interface{}, amount interface{}) *Client_IncrBy_Call {
+	return &Client_IncrBy_Call{Call: _e.mock.On("IncrBy", ctx, key, amount)}
+}
+
+func (_c *Client_IncrBy_Call) Run(run func(ctx context.Context, key string, amount int64)) *Client_IncrBy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int64))
+	})
+	return _c
+}
+
+func (_c *Client_IncrBy_Call) Return(_a0 int64, _a1 error) *Client_IncrBy_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_IncrBy_Call) RunAndReturn(run func(context.Context, string, int64) (int64, error)) *Client_IncrBy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsAlive provides a mock function with given fields: ctx
 func (_m *Client) IsAlive(ctx context.Context) bool {
 	ret := _m.Called(ctx)
@@ -557,6 +1220,34 @@ func (_m *Client) IsAlive(ctx context.Context) bool {
 	}
 
 	return r0
+}
+
+// Client_IsAlive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsAlive'
+type Client_IsAlive_Call struct {
+	*mock.Call
+}
+
+// IsAlive is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *Client_Expecter) IsAlive(ctx interface{}) *Client_IsAlive_Call {
+	return &Client_IsAlive_Call{Call: _e.mock.On("IsAlive", ctx)}
+}
+
+func (_c *Client_IsAlive_Call) Run(run func(ctx context.Context)) *Client_IsAlive_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *Client_IsAlive_Call) Return(_a0 bool) *Client_IsAlive_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_IsAlive_Call) RunAndReturn(run func(context.Context) bool) *Client_IsAlive_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // LLen provides a mock function with given fields: ctx, key
@@ -583,6 +1274,35 @@ func (_m *Client) LLen(ctx context.Context, key string) (int64, error) {
 	return r0, r1
 }
 
+// Client_LLen_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LLen'
+type Client_LLen_Call struct {
+	*mock.Call
+}
+
+// LLen is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) LLen(ctx interface{}, key interface{}) *Client_LLen_Call {
+	return &Client_LLen_Call{Call: _e.mock.On("LLen", ctx, key)}
+}
+
+func (_c *Client_LLen_Call) Run(run func(ctx context.Context, key string)) *Client_LLen_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_LLen_Call) Return(_a0 int64, _a1 error) *Client_LLen_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_LLen_Call) RunAndReturn(run func(context.Context, string) (int64, error)) *Client_LLen_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LPop provides a mock function with given fields: ctx, key
 func (_m *Client) LPop(ctx context.Context, key string) (string, error) {
 	ret := _m.Called(ctx, key)
@@ -605,6 +1325,35 @@ func (_m *Client) LPop(ctx context.Context, key string) (string, error) {
 	}
 
 	return r0, r1
+}
+
+// Client_LPop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LPop'
+type Client_LPop_Call struct {
+	*mock.Call
+}
+
+// LPop is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) LPop(ctx interface{}, key interface{}) *Client_LPop_Call {
+	return &Client_LPop_Call{Call: _e.mock.On("LPop", ctx, key)}
+}
+
+func (_c *Client_LPop_Call) Run(run func(ctx context.Context, key string)) *Client_LPop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_LPop_Call) Return(_a0 string, _a1 error) *Client_LPop_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_LPop_Call) RunAndReturn(run func(context.Context, string) (string, error)) *Client_LPop_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // LPush provides a mock function with given fields: ctx, key, values
@@ -634,6 +1383,43 @@ func (_m *Client) LPush(ctx context.Context, key string, values ...interface{}) 
 	return r0, r1
 }
 
+// Client_LPush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LPush'
+type Client_LPush_Call struct {
+	*mock.Call
+}
+
+// LPush is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - values ...interface{}
+func (_e *Client_Expecter) LPush(ctx interface{}, key interface{}, values ...interface{}) *Client_LPush_Call {
+	return &Client_LPush_Call{Call: _e.mock.On("LPush",
+		append([]interface{}{ctx, key}, values...)...)}
+}
+
+func (_c *Client_LPush_Call) Run(run func(ctx context.Context, key string, values ...interface{})) *Client_LPush_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_LPush_Call) Return(_a0 int64, _a1 error) *Client_LPush_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_LPush_Call) RunAndReturn(run func(context.Context, string, ...interface{}) (int64, error)) *Client_LPush_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LRem provides a mock function with given fields: ctx, key, count, value
 func (_m *Client) LRem(ctx context.Context, key string, count int64, value interface{}) (int64, error) {
 	ret := _m.Called(ctx, key, count, value)
@@ -656,6 +1442,37 @@ func (_m *Client) LRem(ctx context.Context, key string, count int64, value inter
 	}
 
 	return r0, r1
+}
+
+// Client_LRem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LRem'
+type Client_LRem_Call struct {
+	*mock.Call
+}
+
+// LRem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - count int64
+//   - value interface{}
+func (_e *Client_Expecter) LRem(ctx interface{}, key interface{}, count interface{}, value interface{}) *Client_LRem_Call {
+	return &Client_LRem_Call{Call: _e.mock.On("LRem", ctx, key, count, value)}
+}
+
+func (_c *Client_LRem_Call) Run(run func(ctx context.Context, key string, count int64, value interface{})) *Client_LRem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int64), args[3].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_LRem_Call) Return(_a0 int64, _a1 error) *Client_LRem_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_LRem_Call) RunAndReturn(run func(context.Context, string, int64, interface{}) (int64, error)) *Client_LRem_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // MGet provides a mock function with given fields: ctx, keys
@@ -691,6 +1508,42 @@ func (_m *Client) MGet(ctx context.Context, keys ...string) ([]interface{}, erro
 	return r0, r1
 }
 
+// Client_MGet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MGet'
+type Client_MGet_Call struct {
+	*mock.Call
+}
+
+// MGet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - keys ...string
+func (_e *Client_Expecter) MGet(ctx interface{}, keys ...interface{}) *Client_MGet_Call {
+	return &Client_MGet_Call{Call: _e.mock.On("MGet",
+		append([]interface{}{ctx}, keys...)...)}
+}
+
+func (_c *Client_MGet_Call) Run(run func(ctx context.Context, keys ...string)) *Client_MGet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_MGet_Call) Return(_a0 []interface{}, _a1 error) *Client_MGet_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_MGet_Call) RunAndReturn(run func(context.Context, ...string) ([]interface{}, error)) *Client_MGet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MSet provides a mock function with given fields: ctx, pairs
 func (_m *Client) MSet(ctx context.Context, pairs ...interface{}) error {
 	var _ca []interface{}
@@ -706,6 +1559,42 @@ func (_m *Client) MSet(ctx context.Context, pairs ...interface{}) error {
 	}
 
 	return r0
+}
+
+// Client_MSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MSet'
+type Client_MSet_Call struct {
+	*mock.Call
+}
+
+// MSet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - pairs ...interface{}
+func (_e *Client_Expecter) MSet(ctx interface{}, pairs ...interface{}) *Client_MSet_Call {
+	return &Client_MSet_Call{Call: _e.mock.On("MSet",
+		append([]interface{}{ctx}, pairs...)...)}
+}
+
+func (_c *Client_MSet_Call) Run(run func(ctx context.Context, pairs ...interface{})) *Client_MSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_MSet_Call) Return(_a0 error) *Client_MSet_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_MSet_Call) RunAndReturn(run func(context.Context, ...interface{}) error) *Client_MSet_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // PFAdd provides a mock function with given fields: ctx, key, els
@@ -733,6 +1622,43 @@ func (_m *Client) PFAdd(ctx context.Context, key string, els ...interface{}) (in
 	}
 
 	return r0, r1
+}
+
+// Client_PFAdd_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PFAdd'
+type Client_PFAdd_Call struct {
+	*mock.Call
+}
+
+// PFAdd is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - els ...interface{}
+func (_e *Client_Expecter) PFAdd(ctx interface{}, key interface{}, els ...interface{}) *Client_PFAdd_Call {
+	return &Client_PFAdd_Call{Call: _e.mock.On("PFAdd",
+		append([]interface{}{ctx, key}, els...)...)}
+}
+
+func (_c *Client_PFAdd_Call) Run(run func(ctx context.Context, key string, els ...interface{})) *Client_PFAdd_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_PFAdd_Call) Return(_a0 int64, _a1 error) *Client_PFAdd_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PFAdd_Call) RunAndReturn(run func(context.Context, string, ...interface{}) (int64, error)) *Client_PFAdd_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // PFCount provides a mock function with given fields: ctx, keys
@@ -766,6 +1692,42 @@ func (_m *Client) PFCount(ctx context.Context, keys ...string) (int64, error) {
 	return r0, r1
 }
 
+// Client_PFCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PFCount'
+type Client_PFCount_Call struct {
+	*mock.Call
+}
+
+// PFCount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - keys ...string
+func (_e *Client_Expecter) PFCount(ctx interface{}, keys ...interface{}) *Client_PFCount_Call {
+	return &Client_PFCount_Call{Call: _e.mock.On("PFCount",
+		append([]interface{}{ctx}, keys...)...)}
+}
+
+func (_c *Client_PFCount_Call) Run(run func(ctx context.Context, keys ...string)) *Client_PFCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_PFCount_Call) Return(_a0 int64, _a1 error) *Client_PFCount_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PFCount_Call) RunAndReturn(run func(context.Context, ...string) (int64, error)) *Client_PFCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PFMerge provides a mock function with given fields: ctx, dest, keys
 func (_m *Client) PFMerge(ctx context.Context, dest string, keys ...string) (string, error) {
 	_va := make([]interface{}, len(keys))
@@ -797,6 +1759,43 @@ func (_m *Client) PFMerge(ctx context.Context, dest string, keys ...string) (str
 	return r0, r1
 }
 
+// Client_PFMerge_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PFMerge'
+type Client_PFMerge_Call struct {
+	*mock.Call
+}
+
+// PFMerge is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dest string
+//   - keys ...string
+func (_e *Client_Expecter) PFMerge(ctx interface{}, dest interface{}, keys ...interface{}) *Client_PFMerge_Call {
+	return &Client_PFMerge_Call{Call: _e.mock.On("PFMerge",
+		append([]interface{}{ctx, dest}, keys...)...)}
+}
+
+func (_c *Client_PFMerge_Call) Run(run func(ctx context.Context, dest string, keys ...string)) *Client_PFMerge_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_PFMerge_Call) Return(_a0 string, _a1 error) *Client_PFMerge_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PFMerge_Call) RunAndReturn(run func(context.Context, string, ...string) (string, error)) *Client_PFMerge_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Pipeline provides a mock function with given fields:
 func (_m *Client) Pipeline() redis.Pipeliner {
 	ret := _m.Called()
@@ -811,6 +1810,33 @@ func (_m *Client) Pipeline() redis.Pipeliner {
 	}
 
 	return r0
+}
+
+// Client_Pipeline_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Pipeline'
+type Client_Pipeline_Call struct {
+	*mock.Call
+}
+
+// Pipeline is a helper method to define mock.On call
+func (_e *Client_Expecter) Pipeline() *Client_Pipeline_Call {
+	return &Client_Pipeline_Call{Call: _e.mock.On("Pipeline")}
+}
+
+func (_c *Client_Pipeline_Call) Run(run func()) *Client_Pipeline_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Client_Pipeline_Call) Return(_a0 redis.Pipeliner) *Client_Pipeline_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_Pipeline_Call) RunAndReturn(run func() redis.Pipeliner) *Client_Pipeline_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // RPop provides a mock function with given fields: ctx, key
@@ -835,6 +1861,35 @@ func (_m *Client) RPop(ctx context.Context, key string) (string, error) {
 	}
 
 	return r0, r1
+}
+
+// Client_RPop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RPop'
+type Client_RPop_Call struct {
+	*mock.Call
+}
+
+// RPop is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) RPop(ctx interface{}, key interface{}) *Client_RPop_Call {
+	return &Client_RPop_Call{Call: _e.mock.On("RPop", ctx, key)}
+}
+
+func (_c *Client_RPop_Call) Run(run func(ctx context.Context, key string)) *Client_RPop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_RPop_Call) Return(_a0 string, _a1 error) *Client_RPop_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_RPop_Call) RunAndReturn(run func(context.Context, string) (string, error)) *Client_RPop_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // RPush provides a mock function with given fields: ctx, key, values
@@ -864,6 +1919,43 @@ func (_m *Client) RPush(ctx context.Context, key string, values ...interface{}) 
 	return r0, r1
 }
 
+// Client_RPush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RPush'
+type Client_RPush_Call struct {
+	*mock.Call
+}
+
+// RPush is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - values ...interface{}
+func (_e *Client_Expecter) RPush(ctx interface{}, key interface{}, values ...interface{}) *Client_RPush_Call {
+	return &Client_RPush_Call{Call: _e.mock.On("RPush",
+		append([]interface{}{ctx, key}, values...)...)}
+}
+
+func (_c *Client_RPush_Call) Run(run func(ctx context.Context, key string, values ...interface{})) *Client_RPush_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_RPush_Call) Return(_a0 int64, _a1 error) *Client_RPush_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_RPush_Call) RunAndReturn(run func(context.Context, string, ...interface{}) (int64, error)) *Client_RPush_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SAdd provides a mock function with given fields: ctx, key, values
 func (_m *Client) SAdd(ctx context.Context, key string, values ...interface{}) (int64, error) {
 	var _ca []interface{}
@@ -891,6 +1983,43 @@ func (_m *Client) SAdd(ctx context.Context, key string, values ...interface{}) (
 	return r0, r1
 }
 
+// Client_SAdd_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SAdd'
+type Client_SAdd_Call struct {
+	*mock.Call
+}
+
+// SAdd is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - values ...interface{}
+func (_e *Client_Expecter) SAdd(ctx interface{}, key interface{}, values ...interface{}) *Client_SAdd_Call {
+	return &Client_SAdd_Call{Call: _e.mock.On("SAdd",
+		append([]interface{}{ctx, key}, values...)...)}
+}
+
+func (_c *Client_SAdd_Call) Run(run func(ctx context.Context, key string, values ...interface{})) *Client_SAdd_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SAdd_Call) Return(_a0 int64, _a1 error) *Client_SAdd_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SAdd_Call) RunAndReturn(run func(context.Context, string, ...interface{}) (int64, error)) *Client_SAdd_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SCard provides a mock function with given fields: ctx, key
 func (_m *Client) SCard(ctx context.Context, key string) (int64, error) {
 	ret := _m.Called(ctx, key)
@@ -913,6 +2042,35 @@ func (_m *Client) SCard(ctx context.Context, key string) (int64, error) {
 	}
 
 	return r0, r1
+}
+
+// Client_SCard_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SCard'
+type Client_SCard_Call struct {
+	*mock.Call
+}
+
+// SCard is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) SCard(ctx interface{}, key interface{}) *Client_SCard_Call {
+	return &Client_SCard_Call{Call: _e.mock.On("SCard", ctx, key)}
+}
+
+func (_c *Client_SCard_Call) Run(run func(ctx context.Context, key string)) *Client_SCard_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_SCard_Call) Return(_a0 int64, _a1 error) *Client_SCard_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SCard_Call) RunAndReturn(run func(context.Context, string) (int64, error)) *Client_SCard_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SDiff provides a mock function with given fields: ctx, keys
@@ -948,6 +2106,42 @@ func (_m *Client) SDiff(ctx context.Context, keys ...string) ([]string, error) {
 	return r0, r1
 }
 
+// Client_SDiff_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SDiff'
+type Client_SDiff_Call struct {
+	*mock.Call
+}
+
+// SDiff is a helper method to define mock.On call
+//   - ctx context.Context
+//   - keys ...string
+func (_e *Client_Expecter) SDiff(ctx interface{}, keys ...interface{}) *Client_SDiff_Call {
+	return &Client_SDiff_Call{Call: _e.mock.On("SDiff",
+		append([]interface{}{ctx}, keys...)...)}
+}
+
+func (_c *Client_SDiff_Call) Run(run func(ctx context.Context, keys ...string)) *Client_SDiff_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SDiff_Call) Return(_a0 []string, _a1 error) *Client_SDiff_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SDiff_Call) RunAndReturn(run func(context.Context, ...string) ([]string, error)) *Client_SDiff_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SDiffStore provides a mock function with given fields: ctx, destination, keys
 func (_m *Client) SDiffStore(ctx context.Context, destination string, keys ...string) (int64, error) {
 	_va := make([]interface{}, len(keys))
@@ -977,6 +2171,43 @@ func (_m *Client) SDiffStore(ctx context.Context, destination string, keys ...st
 	}
 
 	return r0, r1
+}
+
+// Client_SDiffStore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SDiffStore'
+type Client_SDiffStore_Call struct {
+	*mock.Call
+}
+
+// SDiffStore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - destination string
+//   - keys ...string
+func (_e *Client_Expecter) SDiffStore(ctx interface{}, destination interface{}, keys ...interface{}) *Client_SDiffStore_Call {
+	return &Client_SDiffStore_Call{Call: _e.mock.On("SDiffStore",
+		append([]interface{}{ctx, destination}, keys...)...)}
+}
+
+func (_c *Client_SDiffStore_Call) Run(run func(ctx context.Context, destination string, keys ...string)) *Client_SDiffStore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SDiffStore_Call) Return(_a0 int64, _a1 error) *Client_SDiffStore_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SDiffStore_Call) RunAndReturn(run func(context.Context, string, ...string) (int64, error)) *Client_SDiffStore_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SInter provides a mock function with given fields: ctx, keys
@@ -1012,6 +2243,42 @@ func (_m *Client) SInter(ctx context.Context, keys ...string) ([]string, error) 
 	return r0, r1
 }
 
+// Client_SInter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SInter'
+type Client_SInter_Call struct {
+	*mock.Call
+}
+
+// SInter is a helper method to define mock.On call
+//   - ctx context.Context
+//   - keys ...string
+func (_e *Client_Expecter) SInter(ctx interface{}, keys ...interface{}) *Client_SInter_Call {
+	return &Client_SInter_Call{Call: _e.mock.On("SInter",
+		append([]interface{}{ctx}, keys...)...)}
+}
+
+func (_c *Client_SInter_Call) Run(run func(ctx context.Context, keys ...string)) *Client_SInter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SInter_Call) Return(_a0 []string, _a1 error) *Client_SInter_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SInter_Call) RunAndReturn(run func(context.Context, ...string) ([]string, error)) *Client_SInter_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SInterStore provides a mock function with given fields: ctx, destination, keys
 func (_m *Client) SInterStore(ctx context.Context, destination string, keys ...string) (int64, error) {
 	_va := make([]interface{}, len(keys))
@@ -1043,6 +2310,43 @@ func (_m *Client) SInterStore(ctx context.Context, destination string, keys ...s
 	return r0, r1
 }
 
+// Client_SInterStore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SInterStore'
+type Client_SInterStore_Call struct {
+	*mock.Call
+}
+
+// SInterStore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - destination string
+//   - keys ...string
+func (_e *Client_Expecter) SInterStore(ctx interface{}, destination interface{}, keys ...interface{}) *Client_SInterStore_Call {
+	return &Client_SInterStore_Call{Call: _e.mock.On("SInterStore",
+		append([]interface{}{ctx, destination}, keys...)...)}
+}
+
+func (_c *Client_SInterStore_Call) Run(run func(ctx context.Context, destination string, keys ...string)) *Client_SInterStore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SInterStore_Call) Return(_a0 int64, _a1 error) *Client_SInterStore_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SInterStore_Call) RunAndReturn(run func(context.Context, string, ...string) (int64, error)) *Client_SInterStore_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SIsMember provides a mock function with given fields: ctx, key, value
 func (_m *Client) SIsMember(ctx context.Context, key string, value interface{}) (bool, error) {
 	ret := _m.Called(ctx, key, value)
@@ -1065,6 +2369,36 @@ func (_m *Client) SIsMember(ctx context.Context, key string, value interface{}) 
 	}
 
 	return r0, r1
+}
+
+// Client_SIsMember_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SIsMember'
+type Client_SIsMember_Call struct {
+	*mock.Call
+}
+
+// SIsMember is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - value interface{}
+func (_e *Client_Expecter) SIsMember(ctx interface{}, key interface{}, value interface{}) *Client_SIsMember_Call {
+	return &Client_SIsMember_Call{Call: _e.mock.On("SIsMember", ctx, key, value)}
+}
+
+func (_c *Client_SIsMember_Call) Run(run func(ctx context.Context, key string, value interface{})) *Client_SIsMember_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_SIsMember_Call) Return(_a0 bool, _a1 error) *Client_SIsMember_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SIsMember_Call) RunAndReturn(run func(context.Context, string, interface{}) (bool, error)) *Client_SIsMember_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SMembers provides a mock function with given fields: ctx, key
@@ -1093,6 +2427,35 @@ func (_m *Client) SMembers(ctx context.Context, key string) ([]string, error) {
 	return r0, r1
 }
 
+// Client_SMembers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SMembers'
+type Client_SMembers_Call struct {
+	*mock.Call
+}
+
+// SMembers is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) SMembers(ctx interface{}, key interface{}) *Client_SMembers_Call {
+	return &Client_SMembers_Call{Call: _e.mock.On("SMembers", ctx, key)}
+}
+
+func (_c *Client_SMembers_Call) Run(run func(ctx context.Context, key string)) *Client_SMembers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_SMembers_Call) Return(_a0 []string, _a1 error) *Client_SMembers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SMembers_Call) RunAndReturn(run func(context.Context, string) ([]string, error)) *Client_SMembers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SMove provides a mock function with given fields: ctx, sourceKey, destKey, member
 func (_m *Client) SMove(ctx context.Context, sourceKey string, destKey string, member interface{}) (bool, error) {
 	ret := _m.Called(ctx, sourceKey, destKey, member)
@@ -1115,6 +2478,37 @@ func (_m *Client) SMove(ctx context.Context, sourceKey string, destKey string, m
 	}
 
 	return r0, r1
+}
+
+// Client_SMove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SMove'
+type Client_SMove_Call struct {
+	*mock.Call
+}
+
+// SMove is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sourceKey string
+//   - destKey string
+//   - member interface{}
+func (_e *Client_Expecter) SMove(ctx interface{}, sourceKey interface{}, destKey interface{}, member interface{}) *Client_SMove_Call {
+	return &Client_SMove_Call{Call: _e.mock.On("SMove", ctx, sourceKey, destKey, member)}
+}
+
+func (_c *Client_SMove_Call) Run(run func(ctx context.Context, sourceKey string, destKey string, member interface{})) *Client_SMove_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_SMove_Call) Return(_a0 bool, _a1 error) *Client_SMove_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SMove_Call) RunAndReturn(run func(context.Context, string, string, interface{}) (bool, error)) *Client_SMove_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SPop provides a mock function with given fields: ctx, key
@@ -1141,6 +2535,35 @@ func (_m *Client) SPop(ctx context.Context, key string) (string, error) {
 	return r0, r1
 }
 
+// Client_SPop_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SPop'
+type Client_SPop_Call struct {
+	*mock.Call
+}
+
+// SPop is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) SPop(ctx interface{}, key interface{}) *Client_SPop_Call {
+	return &Client_SPop_Call{Call: _e.mock.On("SPop", ctx, key)}
+}
+
+func (_c *Client_SPop_Call) Run(run func(ctx context.Context, key string)) *Client_SPop_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_SPop_Call) Return(_a0 string, _a1 error) *Client_SPop_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SPop_Call) RunAndReturn(run func(context.Context, string) (string, error)) *Client_SPop_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SRandMember provides a mock function with given fields: ctx, key
 func (_m *Client) SRandMember(ctx context.Context, key string) (string, error) {
 	ret := _m.Called(ctx, key)
@@ -1163,6 +2586,35 @@ func (_m *Client) SRandMember(ctx context.Context, key string) (string, error) {
 	}
 
 	return r0, r1
+}
+
+// Client_SRandMember_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SRandMember'
+type Client_SRandMember_Call struct {
+	*mock.Call
+}
+
+// SRandMember is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) SRandMember(ctx interface{}, key interface{}) *Client_SRandMember_Call {
+	return &Client_SRandMember_Call{Call: _e.mock.On("SRandMember", ctx, key)}
+}
+
+func (_c *Client_SRandMember_Call) Run(run func(ctx context.Context, key string)) *Client_SRandMember_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_SRandMember_Call) Return(_a0 string, _a1 error) *Client_SRandMember_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SRandMember_Call) RunAndReturn(run func(context.Context, string) (string, error)) *Client_SRandMember_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SRem provides a mock function with given fields: ctx, key, values
@@ -1190,6 +2642,43 @@ func (_m *Client) SRem(ctx context.Context, key string, values ...interface{}) (
 	}
 
 	return r0, r1
+}
+
+// Client_SRem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SRem'
+type Client_SRem_Call struct {
+	*mock.Call
+}
+
+// SRem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - values ...interface{}
+func (_e *Client_Expecter) SRem(ctx interface{}, key interface{}, values ...interface{}) *Client_SRem_Call {
+	return &Client_SRem_Call{Call: _e.mock.On("SRem",
+		append([]interface{}{ctx, key}, values...)...)}
+}
+
+func (_c *Client_SRem_Call) Run(run func(ctx context.Context, key string, values ...interface{})) *Client_SRem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SRem_Call) Return(_a0 int64, _a1 error) *Client_SRem_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SRem_Call) RunAndReturn(run func(context.Context, string, ...interface{}) (int64, error)) *Client_SRem_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SUnion provides a mock function with given fields: ctx, keys
@@ -1225,6 +2714,42 @@ func (_m *Client) SUnion(ctx context.Context, keys ...string) ([]string, error) 
 	return r0, r1
 }
 
+// Client_SUnion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SUnion'
+type Client_SUnion_Call struct {
+	*mock.Call
+}
+
+// SUnion is a helper method to define mock.On call
+//   - ctx context.Context
+//   - keys ...string
+func (_e *Client_Expecter) SUnion(ctx interface{}, keys ...interface{}) *Client_SUnion_Call {
+	return &Client_SUnion_Call{Call: _e.mock.On("SUnion",
+		append([]interface{}{ctx}, keys...)...)}
+}
+
+func (_c *Client_SUnion_Call) Run(run func(ctx context.Context, keys ...string)) *Client_SUnion_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SUnion_Call) Return(_a0 []string, _a1 error) *Client_SUnion_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SUnion_Call) RunAndReturn(run func(context.Context, ...string) ([]string, error)) *Client_SUnion_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SUnionStore provides a mock function with given fields: ctx, destination, keys
 func (_m *Client) SUnionStore(ctx context.Context, destination string, keys ...string) (int64, error) {
 	_va := make([]interface{}, len(keys))
@@ -1256,6 +2781,43 @@ func (_m *Client) SUnionStore(ctx context.Context, destination string, keys ...s
 	return r0, r1
 }
 
+// Client_SUnionStore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SUnionStore'
+type Client_SUnionStore_Call struct {
+	*mock.Call
+}
+
+// SUnionStore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - destination string
+//   - keys ...string
+func (_e *Client_Expecter) SUnionStore(ctx interface{}, destination interface{}, keys ...interface{}) *Client_SUnionStore_Call {
+	return &Client_SUnionStore_Call{Call: _e.mock.On("SUnionStore",
+		append([]interface{}{ctx, destination}, keys...)...)}
+}
+
+func (_c *Client_SUnionStore_Call) Run(run func(ctx context.Context, destination string, keys ...string)) *Client_SUnionStore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_SUnionStore_Call) Return(_a0 int64, _a1 error) *Client_SUnionStore_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SUnionStore_Call) RunAndReturn(run func(context.Context, string, ...string) (int64, error)) *Client_SUnionStore_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Set provides a mock function with given fields: ctx, key, value, ttl
 func (_m *Client) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	ret := _m.Called(ctx, key, value, ttl)
@@ -1268,6 +2830,37 @@ func (_m *Client) Set(ctx context.Context, key string, value interface{}, ttl ti
 	}
 
 	return r0
+}
+
+// Client_Set_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Set'
+type Client_Set_Call struct {
+	*mock.Call
+}
+
+// Set is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - value interface{}
+//   - ttl time.Duration
+func (_e *Client_Expecter) Set(ctx interface{}, key interface{}, value interface{}, ttl interface{}) *Client_Set_Call {
+	return &Client_Set_Call{Call: _e.mock.On("Set", ctx, key, value, ttl)}
+}
+
+func (_c *Client_Set_Call) Run(run func(ctx context.Context, key string, value interface{}, ttl time.Duration)) *Client_Set_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(interface{}), args[3].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *Client_Set_Call) Return(_a0 error) *Client_Set_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_Set_Call) RunAndReturn(run func(context.Context, string, interface{}, time.Duration) error) *Client_Set_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SetNX provides a mock function with given fields: ctx, key, value, ttl
@@ -1294,6 +2887,37 @@ func (_m *Client) SetNX(ctx context.Context, key string, value interface{}, ttl 
 	return r0, r1
 }
 
+// Client_SetNX_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetNX'
+type Client_SetNX_Call struct {
+	*mock.Call
+}
+
+// SetNX is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - value interface{}
+//   - ttl time.Duration
+func (_e *Client_Expecter) SetNX(ctx interface{}, key interface{}, value interface{}, ttl interface{}) *Client_SetNX_Call {
+	return &Client_SetNX_Call{Call: _e.mock.On("SetNX", ctx, key, value, ttl)}
+}
+
+func (_c *Client_SetNX_Call) Run(run func(ctx context.Context, key string, value interface{}, ttl time.Duration)) *Client_SetNX_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(interface{}), args[3].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *Client_SetNX_Call) Return(_a0 bool, _a1 error) *Client_SetNX_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_SetNX_Call) RunAndReturn(run func(context.Context, string, interface{}, time.Duration) (bool, error)) *Client_SetNX_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ZAdd provides a mock function with given fields: ctx, key, score, member
 func (_m *Client) ZAdd(ctx context.Context, key string, score float64, member string) (int64, error) {
 	ret := _m.Called(ctx, key, score, member)
@@ -1316,6 +2940,37 @@ func (_m *Client) ZAdd(ctx context.Context, key string, score float64, member st
 	}
 
 	return r0, r1
+}
+
+// Client_ZAdd_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZAdd'
+type Client_ZAdd_Call struct {
+	*mock.Call
+}
+
+// ZAdd is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - score float64
+//   - member string
+func (_e *Client_Expecter) ZAdd(ctx interface{}, key interface{}, score interface{}, member interface{}) *Client_ZAdd_Call {
+	return &Client_ZAdd_Call{Call: _e.mock.On("ZAdd", ctx, key, score, member)}
+}
+
+func (_c *Client_ZAdd_Call) Run(run func(ctx context.Context, key string, score float64, member string)) *Client_ZAdd_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(float64), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *Client_ZAdd_Call) Return(_a0 int64, _a1 error) *Client_ZAdd_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZAdd_Call) RunAndReturn(run func(context.Context, string, float64, string) (int64, error)) *Client_ZAdd_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ZAddArgs provides a mock function with given fields: ctx, args
@@ -1342,6 +2997,35 @@ func (_m *Client) ZAddArgs(ctx context.Context, args redis.ZAddArgs) (int64, err
 	return r0, r1
 }
 
+// Client_ZAddArgs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZAddArgs'
+type Client_ZAddArgs_Call struct {
+	*mock.Call
+}
+
+// ZAddArgs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - args redis.ZAddArgs
+func (_e *Client_Expecter) ZAddArgs(ctx interface{}, args interface{}) *Client_ZAddArgs_Call {
+	return &Client_ZAddArgs_Call{Call: _e.mock.On("ZAddArgs", ctx, args)}
+}
+
+func (_c *Client_ZAddArgs_Call) Run(run func(ctx context.Context, args redis.ZAddArgs)) *Client_ZAddArgs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(redis.ZAddArgs))
+	})
+	return _c
+}
+
+func (_c *Client_ZAddArgs_Call) Return(_a0 int64, _a1 error) *Client_ZAddArgs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZAddArgs_Call) RunAndReturn(run func(context.Context, redis.ZAddArgs) (int64, error)) *Client_ZAddArgs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ZAddArgsIncr provides a mock function with given fields: ctx, args
 func (_m *Client) ZAddArgsIncr(ctx context.Context, args redis.ZAddArgs) (float64, error) {
 	ret := _m.Called(ctx, args)
@@ -1364,6 +3048,35 @@ func (_m *Client) ZAddArgsIncr(ctx context.Context, args redis.ZAddArgs) (float6
 	}
 
 	return r0, r1
+}
+
+// Client_ZAddArgsIncr_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZAddArgsIncr'
+type Client_ZAddArgsIncr_Call struct {
+	*mock.Call
+}
+
+// ZAddArgsIncr is a helper method to define mock.On call
+//   - ctx context.Context
+//   - args redis.ZAddArgs
+func (_e *Client_Expecter) ZAddArgsIncr(ctx interface{}, args interface{}) *Client_ZAddArgsIncr_Call {
+	return &Client_ZAddArgsIncr_Call{Call: _e.mock.On("ZAddArgsIncr", ctx, args)}
+}
+
+func (_c *Client_ZAddArgsIncr_Call) Run(run func(ctx context.Context, args redis.ZAddArgs)) *Client_ZAddArgsIncr_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(redis.ZAddArgs))
+	})
+	return _c
+}
+
+func (_c *Client_ZAddArgsIncr_Call) Return(_a0 float64, _a1 error) *Client_ZAddArgsIncr_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZAddArgsIncr_Call) RunAndReturn(run func(context.Context, redis.ZAddArgs) (float64, error)) *Client_ZAddArgsIncr_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ZCard provides a mock function with given fields: ctx, key
@@ -1390,6 +3103,35 @@ func (_m *Client) ZCard(ctx context.Context, key string) (int64, error) {
 	return r0, r1
 }
 
+// Client_ZCard_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZCard'
+type Client_ZCard_Call struct {
+	*mock.Call
+}
+
+// ZCard is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *Client_Expecter) ZCard(ctx interface{}, key interface{}) *Client_ZCard_Call {
+	return &Client_ZCard_Call{Call: _e.mock.On("ZCard", ctx, key)}
+}
+
+func (_c *Client_ZCard_Call) Run(run func(ctx context.Context, key string)) *Client_ZCard_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_ZCard_Call) Return(_a0 int64, _a1 error) *Client_ZCard_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZCard_Call) RunAndReturn(run func(context.Context, string) (int64, error)) *Client_ZCard_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ZCount provides a mock function with given fields: ctx, key, min, max
 func (_m *Client) ZCount(ctx context.Context, key string, min string, max string) (int64, error) {
 	ret := _m.Called(ctx, key, min, max)
@@ -1414,6 +3156,37 @@ func (_m *Client) ZCount(ctx context.Context, key string, min string, max string
 	return r0, r1
 }
 
+// Client_ZCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZCount'
+type Client_ZCount_Call struct {
+	*mock.Call
+}
+
+// ZCount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - min string
+//   - max string
+func (_e *Client_Expecter) ZCount(ctx interface{}, key interface{}, min interface{}, max interface{}) *Client_ZCount_Call {
+	return &Client_ZCount_Call{Call: _e.mock.On("ZCount", ctx, key, min, max)}
+}
+
+func (_c *Client_ZCount_Call) Run(run func(ctx context.Context, key string, min string, max string)) *Client_ZCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *Client_ZCount_Call) Return(_a0 int64, _a1 error) *Client_ZCount_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZCount_Call) RunAndReturn(run func(context.Context, string, string, string) (int64, error)) *Client_ZCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ZIncrBy provides a mock function with given fields: ctx, key, increment, member
 func (_m *Client) ZIncrBy(ctx context.Context, key string, increment float64, member string) (float64, error) {
 	ret := _m.Called(ctx, key, increment, member)
@@ -1436,6 +3209,37 @@ func (_m *Client) ZIncrBy(ctx context.Context, key string, increment float64, me
 	}
 
 	return r0, r1
+}
+
+// Client_ZIncrBy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZIncrBy'
+type Client_ZIncrBy_Call struct {
+	*mock.Call
+}
+
+// ZIncrBy is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - increment float64
+//   - member string
+func (_e *Client_Expecter) ZIncrBy(ctx interface{}, key interface{}, increment interface{}, member interface{}) *Client_ZIncrBy_Call {
+	return &Client_ZIncrBy_Call{Call: _e.mock.On("ZIncrBy", ctx, key, increment, member)}
+}
+
+func (_c *Client_ZIncrBy_Call) Run(run func(ctx context.Context, key string, increment float64, member string)) *Client_ZIncrBy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(float64), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *Client_ZIncrBy_Call) Return(_a0 float64, _a1 error) *Client_ZIncrBy_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZIncrBy_Call) RunAndReturn(run func(context.Context, string, float64, string) (float64, error)) *Client_ZIncrBy_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ZMScore provides a mock function with given fields: ctx, key, members
@@ -1471,6 +3275,43 @@ func (_m *Client) ZMScore(ctx context.Context, key string, members ...string) ([
 	return r0, r1
 }
 
+// Client_ZMScore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZMScore'
+type Client_ZMScore_Call struct {
+	*mock.Call
+}
+
+// ZMScore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - members ...string
+func (_e *Client_Expecter) ZMScore(ctx interface{}, key interface{}, members ...interface{}) *Client_ZMScore_Call {
+	return &Client_ZMScore_Call{Call: _e.mock.On("ZMScore",
+		append([]interface{}{ctx, key}, members...)...)}
+}
+
+func (_c *Client_ZMScore_Call) Run(run func(ctx context.Context, key string, members ...string)) *Client_ZMScore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ZMScore_Call) Return(_a0 []float64, _a1 error) *Client_ZMScore_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZMScore_Call) RunAndReturn(run func(context.Context, string, ...string) ([]float64, error)) *Client_ZMScore_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ZRandMember provides a mock function with given fields: ctx, key, count
 func (_m *Client) ZRandMember(ctx context.Context, key string, count int) ([]string, error) {
 	ret := _m.Called(ctx, key, count)
@@ -1495,6 +3336,36 @@ func (_m *Client) ZRandMember(ctx context.Context, key string, count int) ([]str
 	}
 
 	return r0, r1
+}
+
+// Client_ZRandMember_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZRandMember'
+type Client_ZRandMember_Call struct {
+	*mock.Call
+}
+
+// ZRandMember is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - count int
+func (_e *Client_Expecter) ZRandMember(ctx interface{}, key interface{}, count interface{}) *Client_ZRandMember_Call {
+	return &Client_ZRandMember_Call{Call: _e.mock.On("ZRandMember", ctx, key, count)}
+}
+
+func (_c *Client_ZRandMember_Call) Run(run func(ctx context.Context, key string, count int)) *Client_ZRandMember_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *Client_ZRandMember_Call) Return(_a0 []string, _a1 error) *Client_ZRandMember_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZRandMember_Call) RunAndReturn(run func(context.Context, string, int) ([]string, error)) *Client_ZRandMember_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ZRange provides a mock function with given fields: ctx, key, start, stop
@@ -1523,6 +3394,37 @@ func (_m *Client) ZRange(ctx context.Context, key string, start int64, stop int6
 	return r0, r1
 }
 
+// Client_ZRange_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZRange'
+type Client_ZRange_Call struct {
+	*mock.Call
+}
+
+// ZRange is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - start int64
+//   - stop int64
+func (_e *Client_Expecter) ZRange(ctx interface{}, key interface{}, start interface{}, stop interface{}) *Client_ZRange_Call {
+	return &Client_ZRange_Call{Call: _e.mock.On("ZRange", ctx, key, start, stop)}
+}
+
+func (_c *Client_ZRange_Call) Run(run func(ctx context.Context, key string, start int64, stop int64)) *Client_ZRange_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int64), args[3].(int64))
+	})
+	return _c
+}
+
+func (_c *Client_ZRange_Call) Return(_a0 []string, _a1 error) *Client_ZRange_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZRange_Call) RunAndReturn(run func(context.Context, string, int64, int64) ([]string, error)) *Client_ZRange_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ZRangeArgs provides a mock function with given fields: ctx, args
 func (_m *Client) ZRangeArgs(ctx context.Context, args redis.ZRangeArgs) ([]string, error) {
 	ret := _m.Called(ctx, args)
@@ -1547,6 +3449,35 @@ func (_m *Client) ZRangeArgs(ctx context.Context, args redis.ZRangeArgs) ([]stri
 	}
 
 	return r0, r1
+}
+
+// Client_ZRangeArgs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZRangeArgs'
+type Client_ZRangeArgs_Call struct {
+	*mock.Call
+}
+
+// ZRangeArgs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - args redis.ZRangeArgs
+func (_e *Client_Expecter) ZRangeArgs(ctx interface{}, args interface{}) *Client_ZRangeArgs_Call {
+	return &Client_ZRangeArgs_Call{Call: _e.mock.On("ZRangeArgs", ctx, args)}
+}
+
+func (_c *Client_ZRangeArgs_Call) Run(run func(ctx context.Context, args redis.ZRangeArgs)) *Client_ZRangeArgs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(redis.ZRangeArgs))
+	})
+	return _c
+}
+
+func (_c *Client_ZRangeArgs_Call) Return(_a0 []string, _a1 error) *Client_ZRangeArgs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZRangeArgs_Call) RunAndReturn(run func(context.Context, redis.ZRangeArgs) ([]string, error)) *Client_ZRangeArgs_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ZRangeArgsWithScore provides a mock function with given fields: ctx, args
@@ -1575,6 +3506,35 @@ func (_m *Client) ZRangeArgsWithScore(ctx context.Context, args redis.ZRangeArgs
 	return r0, r1
 }
 
+// Client_ZRangeArgsWithScore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZRangeArgsWithScore'
+type Client_ZRangeArgsWithScore_Call struct {
+	*mock.Call
+}
+
+// ZRangeArgsWithScore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - args redis.ZRangeArgs
+func (_e *Client_Expecter) ZRangeArgsWithScore(ctx interface{}, args interface{}) *Client_ZRangeArgsWithScore_Call {
+	return &Client_ZRangeArgsWithScore_Call{Call: _e.mock.On("ZRangeArgsWithScore", ctx, args)}
+}
+
+func (_c *Client_ZRangeArgsWithScore_Call) Run(run func(ctx context.Context, args redis.ZRangeArgs)) *Client_ZRangeArgsWithScore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(redis.ZRangeArgs))
+	})
+	return _c
+}
+
+func (_c *Client_ZRangeArgsWithScore_Call) Return(_a0 []redis.Z, _a1 error) *Client_ZRangeArgsWithScore_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZRangeArgsWithScore_Call) RunAndReturn(run func(context.Context, redis.ZRangeArgs) ([]redis.Z, error)) *Client_ZRangeArgsWithScore_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ZRank provides a mock function with given fields: ctx, key, member
 func (_m *Client) ZRank(ctx context.Context, key string, member string) (int64, error) {
 	ret := _m.Called(ctx, key, member)
@@ -1597,6 +3557,36 @@ func (_m *Client) ZRank(ctx context.Context, key string, member string) (int64, 
 	}
 
 	return r0, r1
+}
+
+// Client_ZRank_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZRank'
+type Client_ZRank_Call struct {
+	*mock.Call
+}
+
+// ZRank is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - member string
+func (_e *Client_Expecter) ZRank(ctx interface{}, key interface{}, member interface{}) *Client_ZRank_Call {
+	return &Client_ZRank_Call{Call: _e.mock.On("ZRank", ctx, key, member)}
+}
+
+func (_c *Client_ZRank_Call) Run(run func(ctx context.Context, key string, member string)) *Client_ZRank_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *Client_ZRank_Call) Return(_a0 int64, _a1 error) *Client_ZRank_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZRank_Call) RunAndReturn(run func(context.Context, string, string) (int64, error)) *Client_ZRank_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ZRem provides a mock function with given fields: ctx, key, members
@@ -1630,6 +3620,43 @@ func (_m *Client) ZRem(ctx context.Context, key string, members ...string) (int6
 	return r0, r1
 }
 
+// Client_ZRem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZRem'
+type Client_ZRem_Call struct {
+	*mock.Call
+}
+
+// ZRem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - members ...string
+func (_e *Client_Expecter) ZRem(ctx interface{}, key interface{}, members ...interface{}) *Client_ZRem_Call {
+	return &Client_ZRem_Call{Call: _e.mock.On("ZRem",
+		append([]interface{}{ctx, key}, members...)...)}
+}
+
+func (_c *Client_ZRem_Call) Run(run func(ctx context.Context, key string, members ...string)) *Client_ZRem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ZRem_Call) Return(_a0 int64, _a1 error) *Client_ZRem_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZRem_Call) RunAndReturn(run func(context.Context, string, ...string) (int64, error)) *Client_ZRem_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ZRevRank provides a mock function with given fields: ctx, key, member
 func (_m *Client) ZRevRank(ctx context.Context, key string, member string) (int64, error) {
 	ret := _m.Called(ctx, key, member)
@@ -1654,6 +3681,36 @@ func (_m *Client) ZRevRank(ctx context.Context, key string, member string) (int6
 	return r0, r1
 }
 
+// Client_ZRevRank_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZRevRank'
+type Client_ZRevRank_Call struct {
+	*mock.Call
+}
+
+// ZRevRank is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - member string
+func (_e *Client_Expecter) ZRevRank(ctx interface{}, key interface{}, member interface{}) *Client_ZRevRank_Call {
+	return &Client_ZRevRank_Call{Call: _e.mock.On("ZRevRank", ctx, key, member)}
+}
+
+func (_c *Client_ZRevRank_Call) Run(run func(ctx context.Context, key string, member string)) *Client_ZRevRank_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *Client_ZRevRank_Call) Return(_a0 int64, _a1 error) *Client_ZRevRank_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZRevRank_Call) RunAndReturn(run func(context.Context, string, string) (int64, error)) *Client_ZRevRank_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ZScore provides a mock function with given fields: ctx, key, member
 func (_m *Client) ZScore(ctx context.Context, key string, member string) (float64, error) {
 	ret := _m.Called(ctx, key, member)
@@ -1676,6 +3733,36 @@ func (_m *Client) ZScore(ctx context.Context, key string, member string) (float6
 	}
 
 	return r0, r1
+}
+
+// Client_ZScore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ZScore'
+type Client_ZScore_Call struct {
+	*mock.Call
+}
+
+// ZScore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - member string
+func (_e *Client_Expecter) ZScore(ctx interface{}, key interface{}, member interface{}) *Client_ZScore_Call {
+	return &Client_ZScore_Call{Call: _e.mock.On("ZScore", ctx, key, member)}
+}
+
+func (_c *Client_ZScore_Call) Run(run func(ctx context.Context, key string, member string)) *Client_ZScore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *Client_ZScore_Call) Return(_a0 float64, _a1 error) *Client_ZScore_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ZScore_Call) RunAndReturn(run func(context.Context, string, string) (float64, error)) *Client_ZScore_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewClient interface {

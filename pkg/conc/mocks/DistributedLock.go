@@ -14,6 +14,14 @@ type DistributedLock struct {
 	mock.Mock
 }
 
+type DistributedLock_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *DistributedLock) EXPECT() *DistributedLock_Expecter {
+	return &DistributedLock_Expecter{mock: &_m.Mock}
+}
+
 // Release provides a mock function with given fields:
 func (_m *DistributedLock) Release() error {
 	ret := _m.Called()
@@ -28,6 +36,33 @@ func (_m *DistributedLock) Release() error {
 	return r0
 }
 
+// DistributedLock_Release_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Release'
+type DistributedLock_Release_Call struct {
+	*mock.Call
+}
+
+// Release is a helper method to define mock.On call
+func (_e *DistributedLock_Expecter) Release() *DistributedLock_Release_Call {
+	return &DistributedLock_Release_Call{Call: _e.mock.On("Release")}
+}
+
+func (_c *DistributedLock_Release_Call) Run(run func()) *DistributedLock_Release_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *DistributedLock_Release_Call) Return(_a0 error) *DistributedLock_Release_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *DistributedLock_Release_Call) RunAndReturn(run func() error) *DistributedLock_Release_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Renew provides a mock function with given fields: ctx, lockTime
 func (_m *DistributedLock) Renew(ctx context.Context, lockTime time.Duration) error {
 	ret := _m.Called(ctx, lockTime)
@@ -40,6 +75,35 @@ func (_m *DistributedLock) Renew(ctx context.Context, lockTime time.Duration) er
 	}
 
 	return r0
+}
+
+// DistributedLock_Renew_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Renew'
+type DistributedLock_Renew_Call struct {
+	*mock.Call
+}
+
+// Renew is a helper method to define mock.On call
+//   - ctx context.Context
+//   - lockTime time.Duration
+func (_e *DistributedLock_Expecter) Renew(ctx interface{}, lockTime interface{}) *DistributedLock_Renew_Call {
+	return &DistributedLock_Renew_Call{Call: _e.mock.On("Renew", ctx, lockTime)}
+}
+
+func (_c *DistributedLock_Renew_Call) Run(run func(ctx context.Context, lockTime time.Duration)) *DistributedLock_Renew_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *DistributedLock_Renew_Call) Return(_a0 error) *DistributedLock_Renew_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *DistributedLock_Renew_Call) RunAndReturn(run func(context.Context, time.Duration) error) *DistributedLock_Renew_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewDistributedLock interface {

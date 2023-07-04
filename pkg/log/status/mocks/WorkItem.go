@@ -9,6 +9,14 @@ type WorkItem struct {
 	mock.Mock
 }
 
+type WorkItem_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *WorkItem) EXPECT() *WorkItem_Expecter {
+	return &WorkItem_Expecter{mock: &_m.Mock}
+}
+
 // Monitor provides a mock function with given fields: f
 func (_m *WorkItem) Monitor(f func() error) func() error {
 	ret := _m.Called(f)
@@ -25,9 +33,64 @@ func (_m *WorkItem) Monitor(f func() error) func() error {
 	return r0
 }
 
+// WorkItem_Monitor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Monitor'
+type WorkItem_Monitor_Call struct {
+	*mock.Call
+}
+
+// Monitor is a helper method to define mock.On call
+//   - f func() error
+func (_e *WorkItem_Expecter) Monitor(f interface{}) *WorkItem_Monitor_Call {
+	return &WorkItem_Monitor_Call{Call: _e.mock.On("Monitor", f)}
+}
+
+func (_c *WorkItem_Monitor_Call) Run(run func(f func() error)) *WorkItem_Monitor_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func() error))
+	})
+	return _c
+}
+
+func (_c *WorkItem_Monitor_Call) Return(_a0 func() error) *WorkItem_Monitor_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *WorkItem_Monitor_Call) RunAndReturn(run func(func() error) func() error) *WorkItem_Monitor_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReportDone provides a mock function with given fields:
 func (_m *WorkItem) ReportDone() {
 	_m.Called()
+}
+
+// WorkItem_ReportDone_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReportDone'
+type WorkItem_ReportDone_Call struct {
+	*mock.Call
+}
+
+// ReportDone is a helper method to define mock.On call
+func (_e *WorkItem_Expecter) ReportDone() *WorkItem_ReportDone_Call {
+	return &WorkItem_ReportDone_Call{Call: _e.mock.On("ReportDone")}
+}
+
+func (_c *WorkItem_ReportDone_Call) Run(run func()) *WorkItem_ReportDone_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *WorkItem_ReportDone_Call) Return() *WorkItem_ReportDone_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *WorkItem_ReportDone_Call) RunAndReturn(run func()) *WorkItem_ReportDone_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ReportError provides a mock function with given fields: err
@@ -35,9 +98,66 @@ func (_m *WorkItem) ReportError(err error) {
 	_m.Called(err)
 }
 
+// WorkItem_ReportError_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReportError'
+type WorkItem_ReportError_Call struct {
+	*mock.Call
+}
+
+// ReportError is a helper method to define mock.On call
+//   - err error
+func (_e *WorkItem_Expecter) ReportError(err interface{}) *WorkItem_ReportError_Call {
+	return &WorkItem_ReportError_Call{Call: _e.mock.On("ReportError", err)}
+}
+
+func (_c *WorkItem_ReportError_Call) Run(run func(err error)) *WorkItem_ReportError_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(error))
+	})
+	return _c
+}
+
+func (_c *WorkItem_ReportError_Call) Return() *WorkItem_ReportError_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *WorkItem_ReportError_Call) RunAndReturn(run func(error)) *WorkItem_ReportError_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReportProgress provides a mock function with given fields: step, progress
 func (_m *WorkItem) ReportProgress(step int, progress float64) {
 	_m.Called(step, progress)
+}
+
+// WorkItem_ReportProgress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReportProgress'
+type WorkItem_ReportProgress_Call struct {
+	*mock.Call
+}
+
+// ReportProgress is a helper method to define mock.On call
+//   - step int
+//   - progress float64
+func (_e *WorkItem_Expecter) ReportProgress(step interface{}, progress interface{}) *WorkItem_ReportProgress_Call {
+	return &WorkItem_ReportProgress_Call{Call: _e.mock.On("ReportProgress", step, progress)}
+}
+
+func (_c *WorkItem_ReportProgress_Call) Run(run func(step int, progress float64)) *WorkItem_ReportProgress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int), args[1].(float64))
+	})
+	return _c
+}
+
+func (_c *WorkItem_ReportProgress_Call) Return() *WorkItem_ReportProgress_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *WorkItem_ReportProgress_Call) RunAndReturn(run func(int, float64)) *WorkItem_ReportProgress_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewWorkItem interface {

@@ -13,14 +13,78 @@ type TimeStampable struct {
 	mock.Mock
 }
 
+type TimeStampable_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *TimeStampable) EXPECT() *TimeStampable_Expecter {
+	return &TimeStampable_Expecter{mock: &_m.Mock}
+}
+
 // SetCreatedAt provides a mock function with given fields: createdAt
 func (_m *TimeStampable) SetCreatedAt(createdAt *time.Time) {
 	_m.Called(createdAt)
 }
 
+// TimeStampable_SetCreatedAt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCreatedAt'
+type TimeStampable_SetCreatedAt_Call struct {
+	*mock.Call
+}
+
+// SetCreatedAt is a helper method to define mock.On call
+//   - createdAt *time.Time
+func (_e *TimeStampable_Expecter) SetCreatedAt(createdAt interface{}) *TimeStampable_SetCreatedAt_Call {
+	return &TimeStampable_SetCreatedAt_Call{Call: _e.mock.On("SetCreatedAt", createdAt)}
+}
+
+func (_c *TimeStampable_SetCreatedAt_Call) Run(run func(createdAt *time.Time)) *TimeStampable_SetCreatedAt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*time.Time))
+	})
+	return _c
+}
+
+func (_c *TimeStampable_SetCreatedAt_Call) Return() *TimeStampable_SetCreatedAt_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *TimeStampable_SetCreatedAt_Call) RunAndReturn(run func(*time.Time)) *TimeStampable_SetCreatedAt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetUpdatedAt provides a mock function with given fields: updatedAt
 func (_m *TimeStampable) SetUpdatedAt(updatedAt *time.Time) {
 	_m.Called(updatedAt)
+}
+
+// TimeStampable_SetUpdatedAt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetUpdatedAt'
+type TimeStampable_SetUpdatedAt_Call struct {
+	*mock.Call
+}
+
+// SetUpdatedAt is a helper method to define mock.On call
+//   - updatedAt *time.Time
+func (_e *TimeStampable_Expecter) SetUpdatedAt(updatedAt interface{}) *TimeStampable_SetUpdatedAt_Call {
+	return &TimeStampable_SetUpdatedAt_Call{Call: _e.mock.On("SetUpdatedAt", updatedAt)}
+}
+
+func (_c *TimeStampable_SetUpdatedAt_Call) Run(run func(updatedAt *time.Time)) *TimeStampable_SetUpdatedAt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*time.Time))
+	})
+	return _c
+}
+
+func (_c *TimeStampable_SetUpdatedAt_Call) Return() *TimeStampable_SetUpdatedAt_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *TimeStampable_SetUpdatedAt_Call) RunAndReturn(run func(*time.Time)) *TimeStampable_SetUpdatedAt_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewTimeStampable interface {

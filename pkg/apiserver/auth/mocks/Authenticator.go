@@ -12,6 +12,14 @@ type Authenticator struct {
 	mock.Mock
 }
 
+type Authenticator_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Authenticator) EXPECT() *Authenticator_Expecter {
+	return &Authenticator_Expecter{mock: &_m.Mock}
+}
+
 // IsValid provides a mock function with given fields: ginCtx
 func (_m *Authenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	ret := _m.Called(ginCtx)
@@ -34,6 +42,34 @@ func (_m *Authenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	}
 
 	return r0, r1
+}
+
+// Authenticator_IsValid_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsValid'
+type Authenticator_IsValid_Call struct {
+	*mock.Call
+}
+
+// IsValid is a helper method to define mock.On call
+//   - ginCtx *gin.Context
+func (_e *Authenticator_Expecter) IsValid(ginCtx interface{}) *Authenticator_IsValid_Call {
+	return &Authenticator_IsValid_Call{Call: _e.mock.On("IsValid", ginCtx)}
+}
+
+func (_c *Authenticator_IsValid_Call) Run(run func(ginCtx *gin.Context)) *Authenticator_IsValid_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*gin.Context))
+	})
+	return _c
+}
+
+func (_c *Authenticator_IsValid_Call) Return(_a0 bool, _a1 error) *Authenticator_IsValid_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Authenticator_IsValid_Call) RunAndReturn(run func(*gin.Context) (bool, error)) *Authenticator_IsValid_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewAuthenticator interface {

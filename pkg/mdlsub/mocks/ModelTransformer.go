@@ -14,6 +14,14 @@ type ModelTransformer struct {
 	mock.Mock
 }
 
+type ModelTransformer_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *ModelTransformer) EXPECT() *ModelTransformer_Expecter {
+	return &ModelTransformer_Expecter{mock: &_m.Mock}
+}
+
 // GetInput provides a mock function with given fields:
 func (_m *ModelTransformer) GetInput() interface{} {
 	ret := _m.Called()
@@ -28,6 +36,33 @@ func (_m *ModelTransformer) GetInput() interface{} {
 	}
 
 	return r0
+}
+
+// ModelTransformer_GetInput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInput'
+type ModelTransformer_GetInput_Call struct {
+	*mock.Call
+}
+
+// GetInput is a helper method to define mock.On call
+func (_e *ModelTransformer_Expecter) GetInput() *ModelTransformer_GetInput_Call {
+	return &ModelTransformer_GetInput_Call{Call: _e.mock.On("GetInput")}
+}
+
+func (_c *ModelTransformer_GetInput_Call) Run(run func()) *ModelTransformer_GetInput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ModelTransformer_GetInput_Call) Return(_a0 interface{}) *ModelTransformer_GetInput_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ModelTransformer_GetInput_Call) RunAndReturn(run func() interface{}) *ModelTransformer_GetInput_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Transform provides a mock function with given fields: ctx, inp
@@ -54,6 +89,35 @@ func (_m *ModelTransformer) Transform(ctx context.Context, inp interface{}) (mdl
 	}
 
 	return r0, r1
+}
+
+// ModelTransformer_Transform_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Transform'
+type ModelTransformer_Transform_Call struct {
+	*mock.Call
+}
+
+// Transform is a helper method to define mock.On call
+//   - ctx context.Context
+//   - inp interface{}
+func (_e *ModelTransformer_Expecter) Transform(ctx interface{}, inp interface{}) *ModelTransformer_Transform_Call {
+	return &ModelTransformer_Transform_Call{Call: _e.mock.On("Transform", ctx, inp)}
+}
+
+func (_c *ModelTransformer_Transform_Call) Run(run func(ctx context.Context, inp interface{})) *ModelTransformer_Transform_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *ModelTransformer_Transform_Call) Return(out mdlsub.Model, err error) *ModelTransformer_Transform_Call {
+	_c.Call.Return(out, err)
+	return _c
+}
+
+func (_c *ModelTransformer_Transform_Call) RunAndReturn(run func(context.Context, interface{}) (mdlsub.Model, error)) *ModelTransformer_Transform_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewModelTransformer interface {

@@ -13,6 +13,14 @@ type Topic struct {
 	mock.Mock
 }
 
+type Topic_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Topic) EXPECT() *Topic_Expecter {
+	return &Topic_Expecter{mock: &_m.Mock}
+}
+
 // Publish provides a mock function with given fields: ctx, msg, attributes
 func (_m *Topic) Publish(ctx context.Context, msg string, attributes ...map[string]interface{}) error {
 	_va := make([]interface{}, len(attributes))
@@ -34,6 +42,43 @@ func (_m *Topic) Publish(ctx context.Context, msg string, attributes ...map[stri
 	return r0
 }
 
+// Topic_Publish_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Publish'
+type Topic_Publish_Call struct {
+	*mock.Call
+}
+
+// Publish is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msg string
+//   - attributes ...map[string]interface{}
+func (_e *Topic_Expecter) Publish(ctx interface{}, msg interface{}, attributes ...interface{}) *Topic_Publish_Call {
+	return &Topic_Publish_Call{Call: _e.mock.On("Publish",
+		append([]interface{}{ctx, msg}, attributes...)...)}
+}
+
+func (_c *Topic_Publish_Call) Run(run func(ctx context.Context, msg string, attributes ...map[string]interface{})) *Topic_Publish_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]map[string]interface{}, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(map[string]interface{})
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Topic_Publish_Call) Return(_a0 error) *Topic_Publish_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Topic_Publish_Call) RunAndReturn(run func(context.Context, string, ...map[string]interface{}) error) *Topic_Publish_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PublishBatch provides a mock function with given fields: ctx, messages, attributes
 func (_m *Topic) PublishBatch(ctx context.Context, messages []string, attributes []map[string]interface{}) error {
 	ret := _m.Called(ctx, messages, attributes)
@@ -48,6 +93,36 @@ func (_m *Topic) PublishBatch(ctx context.Context, messages []string, attributes
 	return r0
 }
 
+// Topic_PublishBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PublishBatch'
+type Topic_PublishBatch_Call struct {
+	*mock.Call
+}
+
+// PublishBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - messages []string
+//   - attributes []map[string]interface{}
+func (_e *Topic_Expecter) PublishBatch(ctx interface{}, messages interface{}, attributes interface{}) *Topic_PublishBatch_Call {
+	return &Topic_PublishBatch_Call{Call: _e.mock.On("PublishBatch", ctx, messages, attributes)}
+}
+
+func (_c *Topic_PublishBatch_Call) Run(run func(ctx context.Context, messages []string, attributes []map[string]interface{})) *Topic_PublishBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string), args[2].([]map[string]interface{}))
+	})
+	return _c
+}
+
+func (_c *Topic_PublishBatch_Call) Return(_a0 error) *Topic_PublishBatch_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Topic_PublishBatch_Call) RunAndReturn(run func(context.Context, []string, []map[string]interface{}) error) *Topic_PublishBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SubscribeSqs provides a mock function with given fields: ctx, queueArn, attributes
 func (_m *Topic) SubscribeSqs(ctx context.Context, queueArn string, attributes map[string]interface{}) error {
 	ret := _m.Called(ctx, queueArn, attributes)
@@ -60,6 +135,36 @@ func (_m *Topic) SubscribeSqs(ctx context.Context, queueArn string, attributes m
 	}
 
 	return r0
+}
+
+// Topic_SubscribeSqs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubscribeSqs'
+type Topic_SubscribeSqs_Call struct {
+	*mock.Call
+}
+
+// SubscribeSqs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - queueArn string
+//   - attributes map[string]interface{}
+func (_e *Topic_Expecter) SubscribeSqs(ctx interface{}, queueArn interface{}, attributes interface{}) *Topic_SubscribeSqs_Call {
+	return &Topic_SubscribeSqs_Call{Call: _e.mock.On("SubscribeSqs", ctx, queueArn, attributes)}
+}
+
+func (_c *Topic_SubscribeSqs_Call) Run(run func(ctx context.Context, queueArn string, attributes map[string]interface{})) *Topic_SubscribeSqs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(map[string]interface{}))
+	})
+	return _c
+}
+
+func (_c *Topic_SubscribeSqs_Call) Return(_a0 error) *Topic_SubscribeSqs_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Topic_SubscribeSqs_Call) RunAndReturn(run func(context.Context, string, map[string]interface{}) error) *Topic_SubscribeSqs_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewTopic interface {

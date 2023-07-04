@@ -14,6 +14,14 @@ type Output struct {
 	mock.Mock
 }
 
+type Output_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Output) EXPECT() *Output_Expecter {
+	return &Output_Expecter{mock: &_m.Mock}
+}
+
 // Write provides a mock function with given fields: ctx, batch
 func (_m *Output) Write(ctx context.Context, batch []stream.WritableMessage) error {
 	ret := _m.Called(ctx, batch)
@@ -28,6 +36,35 @@ func (_m *Output) Write(ctx context.Context, batch []stream.WritableMessage) err
 	return r0
 }
 
+// Output_Write_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Write'
+type Output_Write_Call struct {
+	*mock.Call
+}
+
+// Write is a helper method to define mock.On call
+//   - ctx context.Context
+//   - batch []stream.WritableMessage
+func (_e *Output_Expecter) Write(ctx interface{}, batch interface{}) *Output_Write_Call {
+	return &Output_Write_Call{Call: _e.mock.On("Write", ctx, batch)}
+}
+
+func (_c *Output_Write_Call) Run(run func(ctx context.Context, batch []stream.WritableMessage)) *Output_Write_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]stream.WritableMessage))
+	})
+	return _c
+}
+
+func (_c *Output_Write_Call) Return(_a0 error) *Output_Write_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Output_Write_Call) RunAndReturn(run func(context.Context, []stream.WritableMessage) error) *Output_Write_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WriteOne provides a mock function with given fields: ctx, msg
 func (_m *Output) WriteOne(ctx context.Context, msg stream.WritableMessage) error {
 	ret := _m.Called(ctx, msg)
@@ -40,6 +77,35 @@ func (_m *Output) WriteOne(ctx context.Context, msg stream.WritableMessage) erro
 	}
 
 	return r0
+}
+
+// Output_WriteOne_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteOne'
+type Output_WriteOne_Call struct {
+	*mock.Call
+}
+
+// WriteOne is a helper method to define mock.On call
+//   - ctx context.Context
+//   - msg stream.WritableMessage
+func (_e *Output_Expecter) WriteOne(ctx interface{}, msg interface{}) *Output_WriteOne_Call {
+	return &Output_WriteOne_Call{Call: _e.mock.On("WriteOne", ctx, msg)}
+}
+
+func (_c *Output_WriteOne_Call) Run(run func(ctx context.Context, msg stream.WritableMessage)) *Output_WriteOne_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(stream.WritableMessage))
+	})
+	return _c
+}
+
+func (_c *Output_WriteOne_Call) Return(_a0 error) *Output_WriteOne_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Output_WriteOne_Call) RunAndReturn(run func(context.Context, stream.WritableMessage) error) *Output_WriteOne_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewOutput interface {

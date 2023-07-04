@@ -16,6 +16,14 @@ type UpdateHandler struct {
 	mock.Mock
 }
 
+type UpdateHandler_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *UpdateHandler) EXPECT() *UpdateHandler_Expecter {
+	return &UpdateHandler_Expecter{mock: &_m.Mock}
+}
+
 // GetModel provides a mock function with given fields:
 func (_m *UpdateHandler) GetModel() db_repo.ModelBased {
 	ret := _m.Called()
@@ -30,6 +38,33 @@ func (_m *UpdateHandler) GetModel() db_repo.ModelBased {
 	}
 
 	return r0
+}
+
+// UpdateHandler_GetModel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetModel'
+type UpdateHandler_GetModel_Call struct {
+	*mock.Call
+}
+
+// GetModel is a helper method to define mock.On call
+func (_e *UpdateHandler_Expecter) GetModel() *UpdateHandler_GetModel_Call {
+	return &UpdateHandler_GetModel_Call{Call: _e.mock.On("GetModel")}
+}
+
+func (_c *UpdateHandler_GetModel_Call) Run(run func()) *UpdateHandler_GetModel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UpdateHandler_GetModel_Call) Return(_a0 db_repo.ModelBased) *UpdateHandler_GetModel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateHandler_GetModel_Call) RunAndReturn(run func() db_repo.ModelBased) *UpdateHandler_GetModel_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetRepository provides a mock function with given fields:
@@ -48,6 +83,33 @@ func (_m *UpdateHandler) GetRepository() crud.Repository {
 	return r0
 }
 
+// UpdateHandler_GetRepository_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRepository'
+type UpdateHandler_GetRepository_Call struct {
+	*mock.Call
+}
+
+// GetRepository is a helper method to define mock.On call
+func (_e *UpdateHandler_Expecter) GetRepository() *UpdateHandler_GetRepository_Call {
+	return &UpdateHandler_GetRepository_Call{Call: _e.mock.On("GetRepository")}
+}
+
+func (_c *UpdateHandler_GetRepository_Call) Run(run func()) *UpdateHandler_GetRepository_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UpdateHandler_GetRepository_Call) Return(_a0 crud.Repository) *UpdateHandler_GetRepository_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateHandler_GetRepository_Call) RunAndReturn(run func() crud.Repository) *UpdateHandler_GetRepository_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUpdateInput provides a mock function with given fields:
 func (_m *UpdateHandler) GetUpdateInput() interface{} {
 	ret := _m.Called()
@@ -62,6 +124,33 @@ func (_m *UpdateHandler) GetUpdateInput() interface{} {
 	}
 
 	return r0
+}
+
+// UpdateHandler_GetUpdateInput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUpdateInput'
+type UpdateHandler_GetUpdateInput_Call struct {
+	*mock.Call
+}
+
+// GetUpdateInput is a helper method to define mock.On call
+func (_e *UpdateHandler_Expecter) GetUpdateInput() *UpdateHandler_GetUpdateInput_Call {
+	return &UpdateHandler_GetUpdateInput_Call{Call: _e.mock.On("GetUpdateInput")}
+}
+
+func (_c *UpdateHandler_GetUpdateInput_Call) Run(run func()) *UpdateHandler_GetUpdateInput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UpdateHandler_GetUpdateInput_Call) Return(_a0 interface{}) *UpdateHandler_GetUpdateInput_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UpdateHandler_GetUpdateInput_Call) RunAndReturn(run func() interface{}) *UpdateHandler_GetUpdateInput_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // TransformOutput provides a mock function with given fields: ctx, model, apiView
@@ -90,6 +179,36 @@ func (_m *UpdateHandler) TransformOutput(ctx context.Context, model db_repo.Mode
 	return r0, r1
 }
 
+// UpdateHandler_TransformOutput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TransformOutput'
+type UpdateHandler_TransformOutput_Call struct {
+	*mock.Call
+}
+
+// TransformOutput is a helper method to define mock.On call
+//   - ctx context.Context
+//   - model db_repo.ModelBased
+//   - apiView string
+func (_e *UpdateHandler_Expecter) TransformOutput(ctx interface{}, model interface{}, apiView interface{}) *UpdateHandler_TransformOutput_Call {
+	return &UpdateHandler_TransformOutput_Call{Call: _e.mock.On("TransformOutput", ctx, model, apiView)}
+}
+
+func (_c *UpdateHandler_TransformOutput_Call) Run(run func(ctx context.Context, model db_repo.ModelBased, apiView string)) *UpdateHandler_TransformOutput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(db_repo.ModelBased), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *UpdateHandler_TransformOutput_Call) Return(output interface{}, err error) *UpdateHandler_TransformOutput_Call {
+	_c.Call.Return(output, err)
+	return _c
+}
+
+func (_c *UpdateHandler_TransformOutput_Call) RunAndReturn(run func(context.Context, db_repo.ModelBased, string) (interface{}, error)) *UpdateHandler_TransformOutput_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TransformUpdate provides a mock function with given fields: ctx, input, model
 func (_m *UpdateHandler) TransformUpdate(ctx context.Context, input interface{}, model db_repo.ModelBased) error {
 	ret := _m.Called(ctx, input, model)
@@ -102,6 +221,36 @@ func (_m *UpdateHandler) TransformUpdate(ctx context.Context, input interface{},
 	}
 
 	return r0
+}
+
+// UpdateHandler_TransformUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TransformUpdate'
+type UpdateHandler_TransformUpdate_Call struct {
+	*mock.Call
+}
+
+// TransformUpdate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - input interface{}
+//   - model db_repo.ModelBased
+func (_e *UpdateHandler_Expecter) TransformUpdate(ctx interface{}, input interface{}, model interface{}) *UpdateHandler_TransformUpdate_Call {
+	return &UpdateHandler_TransformUpdate_Call{Call: _e.mock.On("TransformUpdate", ctx, input, model)}
+}
+
+func (_c *UpdateHandler_TransformUpdate_Call) Run(run func(ctx context.Context, input interface{}, model db_repo.ModelBased)) *UpdateHandler_TransformUpdate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}), args[2].(db_repo.ModelBased))
+	})
+	return _c
+}
+
+func (_c *UpdateHandler_TransformUpdate_Call) Return(err error) *UpdateHandler_TransformUpdate_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *UpdateHandler_TransformUpdate_Call) RunAndReturn(run func(context.Context, interface{}, db_repo.ModelBased) error) *UpdateHandler_TransformUpdate_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewUpdateHandler interface {

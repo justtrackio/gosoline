@@ -12,6 +12,14 @@ type QueryBuilder struct {
 	mock.Mock
 }
 
+type QueryBuilder_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *QueryBuilder) EXPECT() *QueryBuilder_Expecter {
+	return &QueryBuilder_Expecter{mock: &_m.Mock}
+}
+
 // GroupBy provides a mock function with given fields: field
 func (_m *QueryBuilder) GroupBy(field ...string) db.QueryBuilder {
 	_va := make([]interface{}, len(field))
@@ -34,6 +42,41 @@ func (_m *QueryBuilder) GroupBy(field ...string) db.QueryBuilder {
 	return r0
 }
 
+// QueryBuilder_GroupBy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GroupBy'
+type QueryBuilder_GroupBy_Call struct {
+	*mock.Call
+}
+
+// GroupBy is a helper method to define mock.On call
+//   - field ...string
+func (_e *QueryBuilder_Expecter) GroupBy(field ...interface{}) *QueryBuilder_GroupBy_Call {
+	return &QueryBuilder_GroupBy_Call{Call: _e.mock.On("GroupBy",
+		append([]interface{}{}, field...)...)}
+}
+
+func (_c *QueryBuilder_GroupBy_Call) Run(run func(field ...string)) *QueryBuilder_GroupBy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *QueryBuilder_GroupBy_Call) Return(_a0 db.QueryBuilder) *QueryBuilder_GroupBy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *QueryBuilder_GroupBy_Call) RunAndReturn(run func(...string) db.QueryBuilder) *QueryBuilder_GroupBy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Joins provides a mock function with given fields: joins
 func (_m *QueryBuilder) Joins(joins []string) db.QueryBuilder {
 	ret := _m.Called(joins)
@@ -48,6 +91,34 @@ func (_m *QueryBuilder) Joins(joins []string) db.QueryBuilder {
 	}
 
 	return r0
+}
+
+// QueryBuilder_Joins_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Joins'
+type QueryBuilder_Joins_Call struct {
+	*mock.Call
+}
+
+// Joins is a helper method to define mock.On call
+//   - joins []string
+func (_e *QueryBuilder_Expecter) Joins(joins interface{}) *QueryBuilder_Joins_Call {
+	return &QueryBuilder_Joins_Call{Call: _e.mock.On("Joins", joins)}
+}
+
+func (_c *QueryBuilder_Joins_Call) Run(run func(joins []string)) *QueryBuilder_Joins_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *QueryBuilder_Joins_Call) Return(_a0 db.QueryBuilder) *QueryBuilder_Joins_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *QueryBuilder_Joins_Call) RunAndReturn(run func([]string) db.QueryBuilder) *QueryBuilder_Joins_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // OrderBy provides a mock function with given fields: field, direction
@@ -66,6 +137,35 @@ func (_m *QueryBuilder) OrderBy(field string, direction string) db.QueryBuilder 
 	return r0
 }
 
+// QueryBuilder_OrderBy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OrderBy'
+type QueryBuilder_OrderBy_Call struct {
+	*mock.Call
+}
+
+// OrderBy is a helper method to define mock.On call
+//   - field string
+//   - direction string
+func (_e *QueryBuilder_Expecter) OrderBy(field interface{}, direction interface{}) *QueryBuilder_OrderBy_Call {
+	return &QueryBuilder_OrderBy_Call{Call: _e.mock.On("OrderBy", field, direction)}
+}
+
+func (_c *QueryBuilder_OrderBy_Call) Run(run func(field string, direction string)) *QueryBuilder_OrderBy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *QueryBuilder_OrderBy_Call) Return(_a0 db.QueryBuilder) *QueryBuilder_OrderBy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *QueryBuilder_OrderBy_Call) RunAndReturn(run func(string, string) db.QueryBuilder) *QueryBuilder_OrderBy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Page provides a mock function with given fields: offset, size
 func (_m *QueryBuilder) Page(offset int, size int) db.QueryBuilder {
 	ret := _m.Called(offset, size)
@@ -82,6 +182,35 @@ func (_m *QueryBuilder) Page(offset int, size int) db.QueryBuilder {
 	return r0
 }
 
+// QueryBuilder_Page_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Page'
+type QueryBuilder_Page_Call struct {
+	*mock.Call
+}
+
+// Page is a helper method to define mock.On call
+//   - offset int
+//   - size int
+func (_e *QueryBuilder_Expecter) Page(offset interface{}, size interface{}) *QueryBuilder_Page_Call {
+	return &QueryBuilder_Page_Call{Call: _e.mock.On("Page", offset, size)}
+}
+
+func (_c *QueryBuilder_Page_Call) Run(run func(offset int, size int)) *QueryBuilder_Page_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *QueryBuilder_Page_Call) Return(_a0 db.QueryBuilder) *QueryBuilder_Page_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *QueryBuilder_Page_Call) RunAndReturn(run func(int, int) db.QueryBuilder) *QueryBuilder_Page_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Table provides a mock function with given fields: table
 func (_m *QueryBuilder) Table(table string) db.QueryBuilder {
 	ret := _m.Called(table)
@@ -96,6 +225,34 @@ func (_m *QueryBuilder) Table(table string) db.QueryBuilder {
 	}
 
 	return r0
+}
+
+// QueryBuilder_Table_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Table'
+type QueryBuilder_Table_Call struct {
+	*mock.Call
+}
+
+// Table is a helper method to define mock.On call
+//   - table string
+func (_e *QueryBuilder_Expecter) Table(table interface{}) *QueryBuilder_Table_Call {
+	return &QueryBuilder_Table_Call{Call: _e.mock.On("Table", table)}
+}
+
+func (_c *QueryBuilder_Table_Call) Run(run func(table string)) *QueryBuilder_Table_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *QueryBuilder_Table_Call) Return(_a0 db.QueryBuilder) *QueryBuilder_Table_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *QueryBuilder_Table_Call) RunAndReturn(run func(string) db.QueryBuilder) *QueryBuilder_Table_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Where provides a mock function with given fields: query, args
@@ -115,6 +272,42 @@ func (_m *QueryBuilder) Where(query interface{}, args ...interface{}) db.QueryBu
 	}
 
 	return r0
+}
+
+// QueryBuilder_Where_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Where'
+type QueryBuilder_Where_Call struct {
+	*mock.Call
+}
+
+// Where is a helper method to define mock.On call
+//   - query interface{}
+//   - args ...interface{}
+func (_e *QueryBuilder_Expecter) Where(query interface{}, args ...interface{}) *QueryBuilder_Where_Call {
+	return &QueryBuilder_Where_Call{Call: _e.mock.On("Where",
+		append([]interface{}{query}, args...)...)}
+}
+
+func (_c *QueryBuilder_Where_Call) Run(run func(query interface{}, args ...interface{})) *QueryBuilder_Where_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(args[0].(interface{}), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *QueryBuilder_Where_Call) Return(_a0 db.QueryBuilder) *QueryBuilder_Where_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *QueryBuilder_Where_Call) RunAndReturn(run func(interface{}, ...interface{}) db.QueryBuilder) *QueryBuilder_Where_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewQueryBuilder interface {

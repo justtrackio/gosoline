@@ -16,6 +16,14 @@ type PutItemBuilder struct {
 	mock.Mock
 }
 
+type PutItemBuilder_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *PutItemBuilder) EXPECT() *PutItemBuilder_Expecter {
+	return &PutItemBuilder_Expecter{mock: &_m.Mock}
+}
+
 // Build provides a mock function with given fields: item
 func (_m *PutItemBuilder) Build(item interface{}) (*dynamodb.PutItemInput, error) {
 	ret := _m.Called(item)
@@ -42,6 +50,34 @@ func (_m *PutItemBuilder) Build(item interface{}) (*dynamodb.PutItemInput, error
 	return r0, r1
 }
 
+// PutItemBuilder_Build_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Build'
+type PutItemBuilder_Build_Call struct {
+	*mock.Call
+}
+
+// Build is a helper method to define mock.On call
+//   - item interface{}
+func (_e *PutItemBuilder_Expecter) Build(item interface{}) *PutItemBuilder_Build_Call {
+	return &PutItemBuilder_Build_Call{Call: _e.mock.On("Build", item)}
+}
+
+func (_c *PutItemBuilder_Build_Call) Run(run func(item interface{})) *PutItemBuilder_Build_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *PutItemBuilder_Build_Call) Return(_a0 *dynamodb.PutItemInput, _a1 error) *PutItemBuilder_Build_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PutItemBuilder_Build_Call) RunAndReturn(run func(interface{}) (*dynamodb.PutItemInput, error)) *PutItemBuilder_Build_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReturnAllOld provides a mock function with given fields:
 func (_m *PutItemBuilder) ReturnAllOld() ddb.PutItemBuilder {
 	ret := _m.Called()
@@ -56,6 +92,33 @@ func (_m *PutItemBuilder) ReturnAllOld() ddb.PutItemBuilder {
 	}
 
 	return r0
+}
+
+// PutItemBuilder_ReturnAllOld_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReturnAllOld'
+type PutItemBuilder_ReturnAllOld_Call struct {
+	*mock.Call
+}
+
+// ReturnAllOld is a helper method to define mock.On call
+func (_e *PutItemBuilder_Expecter) ReturnAllOld() *PutItemBuilder_ReturnAllOld_Call {
+	return &PutItemBuilder_ReturnAllOld_Call{Call: _e.mock.On("ReturnAllOld")}
+}
+
+func (_c *PutItemBuilder_ReturnAllOld_Call) Run(run func()) *PutItemBuilder_ReturnAllOld_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *PutItemBuilder_ReturnAllOld_Call) Return(_a0 ddb.PutItemBuilder) *PutItemBuilder_ReturnAllOld_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PutItemBuilder_ReturnAllOld_Call) RunAndReturn(run func() ddb.PutItemBuilder) *PutItemBuilder_ReturnAllOld_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // ReturnNone provides a mock function with given fields:
@@ -74,6 +137,33 @@ func (_m *PutItemBuilder) ReturnNone() ddb.PutItemBuilder {
 	return r0
 }
 
+// PutItemBuilder_ReturnNone_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReturnNone'
+type PutItemBuilder_ReturnNone_Call struct {
+	*mock.Call
+}
+
+// ReturnNone is a helper method to define mock.On call
+func (_e *PutItemBuilder_Expecter) ReturnNone() *PutItemBuilder_ReturnNone_Call {
+	return &PutItemBuilder_ReturnNone_Call{Call: _e.mock.On("ReturnNone")}
+}
+
+func (_c *PutItemBuilder_ReturnNone_Call) Run(run func()) *PutItemBuilder_ReturnNone_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *PutItemBuilder_ReturnNone_Call) Return(_a0 ddb.PutItemBuilder) *PutItemBuilder_ReturnNone_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PutItemBuilder_ReturnNone_Call) RunAndReturn(run func() ddb.PutItemBuilder) *PutItemBuilder_ReturnNone_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WithCondition provides a mock function with given fields: cond
 func (_m *PutItemBuilder) WithCondition(cond expression.ConditionBuilder) ddb.PutItemBuilder {
 	ret := _m.Called(cond)
@@ -88,6 +178,34 @@ func (_m *PutItemBuilder) WithCondition(cond expression.ConditionBuilder) ddb.Pu
 	}
 
 	return r0
+}
+
+// PutItemBuilder_WithCondition_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WithCondition'
+type PutItemBuilder_WithCondition_Call struct {
+	*mock.Call
+}
+
+// WithCondition is a helper method to define mock.On call
+//   - cond expression.ConditionBuilder
+func (_e *PutItemBuilder_Expecter) WithCondition(cond interface{}) *PutItemBuilder_WithCondition_Call {
+	return &PutItemBuilder_WithCondition_Call{Call: _e.mock.On("WithCondition", cond)}
+}
+
+func (_c *PutItemBuilder_WithCondition_Call) Run(run func(cond expression.ConditionBuilder)) *PutItemBuilder_WithCondition_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(expression.ConditionBuilder))
+	})
+	return _c
+}
+
+func (_c *PutItemBuilder_WithCondition_Call) Return(_a0 ddb.PutItemBuilder) *PutItemBuilder_WithCondition_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PutItemBuilder_WithCondition_Call) RunAndReturn(run func(expression.ConditionBuilder) ddb.PutItemBuilder) *PutItemBuilder_WithCondition_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewPutItemBuilder interface {

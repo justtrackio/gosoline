@@ -12,9 +12,46 @@ type Span struct {
 	mock.Mock
 }
 
+type Span_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *Span) EXPECT() *Span_Expecter {
+	return &Span_Expecter{mock: &_m.Mock}
+}
+
 // AddAnnotation provides a mock function with given fields: key, value
 func (_m *Span) AddAnnotation(key string, value string) {
 	_m.Called(key, value)
+}
+
+// Span_AddAnnotation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddAnnotation'
+type Span_AddAnnotation_Call struct {
+	*mock.Call
+}
+
+// AddAnnotation is a helper method to define mock.On call
+//   - key string
+//   - value string
+func (_e *Span_Expecter) AddAnnotation(key interface{}, value interface{}) *Span_AddAnnotation_Call {
+	return &Span_AddAnnotation_Call{Call: _e.mock.On("AddAnnotation", key, value)}
+}
+
+func (_c *Span_AddAnnotation_Call) Run(run func(key string, value string)) *Span_AddAnnotation_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Span_AddAnnotation_Call) Return() *Span_AddAnnotation_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Span_AddAnnotation_Call) RunAndReturn(run func(string, string)) *Span_AddAnnotation_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // AddError provides a mock function with given fields: err
@@ -22,14 +59,98 @@ func (_m *Span) AddError(err error) {
 	_m.Called(err)
 }
 
+// Span_AddError_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddError'
+type Span_AddError_Call struct {
+	*mock.Call
+}
+
+// AddError is a helper method to define mock.On call
+//   - err error
+func (_e *Span_Expecter) AddError(err interface{}) *Span_AddError_Call {
+	return &Span_AddError_Call{Call: _e.mock.On("AddError", err)}
+}
+
+func (_c *Span_AddError_Call) Run(run func(err error)) *Span_AddError_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(error))
+	})
+	return _c
+}
+
+func (_c *Span_AddError_Call) Return() *Span_AddError_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Span_AddError_Call) RunAndReturn(run func(error)) *Span_AddError_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AddMetadata provides a mock function with given fields: key, value
 func (_m *Span) AddMetadata(key string, value interface{}) {
 	_m.Called(key, value)
 }
 
+// Span_AddMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddMetadata'
+type Span_AddMetadata_Call struct {
+	*mock.Call
+}
+
+// AddMetadata is a helper method to define mock.On call
+//   - key string
+//   - value interface{}
+func (_e *Span_Expecter) AddMetadata(key interface{}, value interface{}) *Span_AddMetadata_Call {
+	return &Span_AddMetadata_Call{Call: _e.mock.On("AddMetadata", key, value)}
+}
+
+func (_c *Span_AddMetadata_Call) Run(run func(key string, value interface{})) *Span_AddMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Span_AddMetadata_Call) Return() *Span_AddMetadata_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Span_AddMetadata_Call) RunAndReturn(run func(string, interface{})) *Span_AddMetadata_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Finish provides a mock function with given fields:
 func (_m *Span) Finish() {
 	_m.Called()
+}
+
+// Span_Finish_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Finish'
+type Span_Finish_Call struct {
+	*mock.Call
+}
+
+// Finish is a helper method to define mock.On call
+func (_e *Span_Expecter) Finish() *Span_Finish_Call {
+	return &Span_Finish_Call{Call: _e.mock.On("Finish")}
+}
+
+func (_c *Span_Finish_Call) Run(run func()) *Span_Finish_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Span_Finish_Call) Return() *Span_Finish_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Span_Finish_Call) RunAndReturn(run func()) *Span_Finish_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetId provides a mock function with given fields:
@@ -46,6 +167,33 @@ func (_m *Span) GetId() string {
 	return r0
 }
 
+// Span_GetId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetId'
+type Span_GetId_Call struct {
+	*mock.Call
+}
+
+// GetId is a helper method to define mock.On call
+func (_e *Span_Expecter) GetId() *Span_GetId_Call {
+	return &Span_GetId_Call{Call: _e.mock.On("GetId")}
+}
+
+func (_c *Span_GetId_Call) Run(run func()) *Span_GetId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Span_GetId_Call) Return(_a0 string) *Span_GetId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Span_GetId_Call) RunAndReturn(run func() string) *Span_GetId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetTrace provides a mock function with given fields:
 func (_m *Span) GetTrace() *tracing.Trace {
 	ret := _m.Called()
@@ -60,6 +208,33 @@ func (_m *Span) GetTrace() *tracing.Trace {
 	}
 
 	return r0
+}
+
+// Span_GetTrace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTrace'
+type Span_GetTrace_Call struct {
+	*mock.Call
+}
+
+// GetTrace is a helper method to define mock.On call
+func (_e *Span_Expecter) GetTrace() *Span_GetTrace_Call {
+	return &Span_GetTrace_Call{Call: _e.mock.On("GetTrace")}
+}
+
+func (_c *Span_GetTrace_Call) Run(run func()) *Span_GetTrace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Span_GetTrace_Call) Return(_a0 *tracing.Trace) *Span_GetTrace_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Span_GetTrace_Call) RunAndReturn(run func() *tracing.Trace) *Span_GetTrace_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 type mockConstructorTestingTNewSpan interface {
