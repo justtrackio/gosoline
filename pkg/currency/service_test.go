@@ -188,13 +188,6 @@ func (s *serviceTestSuite) TestToUsdAtDate_ClockSkew() {
 	s.Equal(0.0, got)
 }
 
-func (s *serviceTestSuite) mockCurrencyStoreGetTime(key string, value time.Time, found bool) {
-	s.store.On("Get", s.ctx, key, &time.Time{}).Run(func(args mock.Arguments) {
-		f := args.Get(2).(*time.Time)
-		*f = value
-	}).Return(found, nil).Once()
-}
-
 func (s *serviceTestSuite) mockCurrencyStoreGet(key string, value float64, found bool) {
 	s.store.On("Get", s.ctx, key, mdl.Box(0.0)).Run(func(args mock.Arguments) {
 		f := args.Get(2).(*float64)

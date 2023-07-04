@@ -1,8 +1,9 @@
 package kvstore
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUniqKeys_StringKeys(t *testing.T) {

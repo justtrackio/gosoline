@@ -30,20 +30,21 @@ func TestRecordWriterPutRecords(t *testing.T) {
 	})
 
 	logger := logMocks.NewLoggerMock()
-	logger.On("Warn", "PutRecords failed %d of %d records with reason: %s: after %d attempts in %s", 1, 3, "1 ProvisionedThroughputExceededException errors", 1, time.Second)
-	logger.On("Warn", "PutRecords successful after %d attempts in %s", 2, mock.AnythingOfType("time.Duration"))
+	t.Cleanup(func() { logger.AssertExpectations(t) })
+	logger.EXPECT().Warn("PutRecords failed %d of %d records with reason: %s: after %d attempts in %s", 1, 3, "1 ProvisionedThroughputExceededException errors", 1, time.Second)
+	logger.EXPECT().Warn("PutRecords successful after %d attempts in %s", 2, mock.AnythingOfType("time.Duration"))
 
-	uuidGen := new(uuidMocks.Uuid)
+	uuidGen := uuidMocks.NewUuid(t)
 	// kinesis kinesis_write_request_id
-	uuidGen.On("NewV4").Return("79db3180-99a9-4157-91c3-a591b9a8f01c").Once()
+	uuidGen.EXPECT().NewV4().Return("79db3180-99a9-4157-91c3-a591b9a8f01c").Once()
 	// kinesis PartitionKey
-	uuidGen.On("NewV4").Return("ee080b0b-faae-40c2-8959-0f8f2b6d1b06").Once()
-	uuidGen.On("NewV4").Return("51b873fc-8086-4b39-8a68-bead0102cdf0").Once()
+	uuidGen.EXPECT().NewV4().Return("ee080b0b-faae-40c2-8959-0f8f2b6d1b06").Once()
+	uuidGen.EXPECT().NewV4().Return("51b873fc-8086-4b39-8a68-bead0102cdf0").Once()
 	// batch_id
-	uuidGen.On("NewV4").Return("2ac1ed74-7c44-4312-b6da-cabe7b709224").Once()
+	uuidGen.EXPECT().NewV4().Return("2ac1ed74-7c44-4312-b6da-cabe7b709224").Once()
 
-	kinesisClient := new(gosoKinesisMocks.Client)
-	kinesisClient.On("PutRecords", ctx, &kinesis.PutRecordsInput{
+	kinesisClient := gosoKinesisMocks.NewClient(t)
+	kinesisClient.EXPECT().PutRecords(ctx, &kinesis.PutRecordsInput{
 		Records: []types.PutRecordsRequestEntry{
 			{
 				Data:         []byte("1"),
@@ -59,7 +60,7 @@ func TestRecordWriterPutRecords(t *testing.T) {
 			},
 		},
 		StreamName: aws.String("streamName"),
-	}).Run(func(args mock.Arguments) {
+	}).Run(func(ctx context.Context, params *kinesis.PutRecordsInput, optFns ...func(*kinesis.Options)) {
 		testClock.Advance(time.Second)
 	}).Return(&kinesis.PutRecordsOutput{
 		Records: []types.PutRecordsResultEntry{
@@ -75,7 +76,7 @@ func TestRecordWriterPutRecords(t *testing.T) {
 		},
 		FailedRecordCount: aws.Int32(1),
 	}, nil).Once()
-	kinesisClient.On("PutRecords", ctx, &kinesis.PutRecordsInput{
+	kinesisClient.EXPECT().PutRecords(ctx, &kinesis.PutRecordsInput{
 		Records: []types.PutRecordsRequestEntry{
 			{
 				Data:         []byte("2"),
@@ -83,7 +84,7 @@ func TestRecordWriterPutRecords(t *testing.T) {
 			},
 		},
 		StreamName: aws.String("streamName"),
-	}).Run(func(args mock.Arguments) {
+	}).Run(func(ctx context.Context, params *kinesis.PutRecordsInput, optFns ...func(*kinesis.Options)) {
 		testClock.Advance(time.Second)
 	}).Return(&kinesis.PutRecordsOutput{
 		Records: []types.PutRecordsResultEntry{
@@ -117,8 +118,4 @@ func TestRecordWriterPutRecords(t *testing.T) {
 
 	err := writer.PutRecords(context.Background(), batch)
 	assert.NoError(t, err)
-
-	logger.AssertExpectations(t)
-	uuidGen.AssertExpectations(t)
-	kinesisClient.AssertExpectations(t)
 }

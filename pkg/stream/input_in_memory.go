@@ -5,8 +5,10 @@ import (
 	"sync"
 )
 
-var inMemoryInputsLock sync.Mutex
-var inMemoryInputs = make(map[string]*InMemoryInput)
+var (
+	inMemoryInputsLock sync.Mutex
+	inMemoryInputs     = make(map[string]*InMemoryInput)
+)
 
 func ResetInMemoryInputs() {
 	inMemoryInputsLock.Lock()

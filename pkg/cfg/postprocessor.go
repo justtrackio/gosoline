@@ -12,8 +12,10 @@ type postProcessorEntity struct {
 	processor PostProcessor
 }
 
-var postProcessorPriorities []int
-var postProcessorEntities = map[int][]postProcessorEntity{}
+var (
+	postProcessorPriorities []int
+	postProcessorEntities   = map[int][]postProcessorEntity{}
+)
 
 func AddPostProcessor(priority int, name string, processor PostProcessor) {
 	if _, ok := postProcessorEntities[priority]; !ok {
@@ -34,7 +36,7 @@ func ApplyPostProcessors(config GosoConf) (map[string]int, error) {
 
 	var err error
 	var applied bool
-	var list = make(map[string]int)
+	list := make(map[string]int)
 
 	for i := len(postProcessorPriorities) - 1; i >= 0; i-- {
 		priority := postProcessorPriorities[i]

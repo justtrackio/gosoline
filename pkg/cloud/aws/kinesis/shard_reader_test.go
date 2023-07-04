@@ -46,10 +46,10 @@ func (s *shardReaderTestSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.stream = "testStream"
 	s.shardId = "shard-007"
-	s.metadataRepository = new(mocks.MetadataRepository)
-	s.kinesisClient = new(mocks.Client)
-	s.logger = new(logMocks.Logger)
-	s.metricWriter = new(metricMocks.Writer)
+	s.metadataRepository = mocks.NewMetadataRepository(s.T())
+	s.kinesisClient = mocks.NewClient(s.T())
+	s.logger = logMocks.NewLogger(s.T())
+	s.metricWriter = metricMocks.NewWriter(s.T())
 	s.settings = gosoKinesis.Settings{
 		InitialPosition: gosoKinesis.SettingsInitialPosition{
 			Type: types.ShardIteratorTypeLatest,
@@ -68,17 +68,10 @@ func (s *shardReaderTestSuite) setupReader() {
 	s.shardReader = gosoKinesis.NewShardReaderWithInterfaces(s.stream, s.shardId, s.logger, s.metricWriter, s.metadataRepository, s.kinesisClient, s.settings, s.clock)
 }
 
-func (s *shardReaderTestSuite) TearDownTest() {
-	s.logger.AssertExpectations(s.T())
-	s.metricWriter.AssertExpectations(s.T())
-	s.metadataRepository.AssertExpectations(s.T())
-	s.kinesisClient.AssertExpectations(s.T())
-}
-
 func (s *shardReaderTestSuite) TestAcquireShardFails() {
 	s.setupReader()
 
-	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(nil, fmt.Errorf("fail")).Once()
+	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(nil, fmt.Errorf("fail")).Once()
 
 	err := s.shardReader.Run(s.ctx, s.consumeRecord)
 	s.EqualError(err, "failed to acquire shard: failed to acquire shard: fail")
@@ -91,8 +84,8 @@ func (s *shardReaderTestSuite) TestAcquireShardNotSuccessful() {
 	ctx, cancel := context.WithCancel(s.ctx)
 	cancel()
 
-	s.metadataRepository.On("AcquireShard", ctx, s.shardId).Return(nil, nil).Once()
-	s.logger.On("Info", "could not acquire shard, leaving").Once()
+	s.metadataRepository.EXPECT().AcquireShard(ctx, s.shardId).Return(nil, nil).Once()
+	s.logger.EXPECT().Info("could not acquire shard, leaving").Once()
 
 	err := s.shardReader.Run(ctx, s.consumeRecord)
 	s.NoError(err)
@@ -101,16 +94,15 @@ func (s *shardReaderTestSuite) TestAcquireShardNotSuccessful() {
 func (s *shardReaderTestSuite) TestGetShardIteratorFails() {
 	s.setupReader()
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 
-	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
+	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
 		StreamName:             aws.String(string(s.stream)),
@@ -124,19 +116,18 @@ func (s *shardReaderTestSuite) TestGetShardIteratorFails() {
 func (s *shardReaderTestSuite) TestGetShardIteratorReturnsEmpty() {
 	s.setupReader()
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("")).Once()
-	checkpoint.On("Done", gosoKinesis.SequenceNumber("")).Return(nil).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("")).Once()
+	checkpoint.EXPECT().Done(gosoKinesis.SequenceNumber("")).Return(nil).Once()
 
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Once()
 
-	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
+	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:           aws.String(string(s.shardId)),
 		ShardIteratorType: "LATEST",
 		StreamName:        aws.String(string(s.stream)),
@@ -151,25 +142,24 @@ func (s *shardReaderTestSuite) TestGetShardIteratorReturnsEmpty() {
 func (s *shardReaderTestSuite) TestGetRecordsAndReleaseFails() {
 	s.setupReader()
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(fmt.Errorf("fail again")).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("")).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(fmt.Errorf("fail again")).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("")).Once()
 
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Once()
 
-	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
+	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:           aws.String(string(s.shardId)),
 		ShardIteratorType: "LATEST",
 		StreamName:        aws.String(string(s.stream)),
 	}).Return(&kinesis.GetShardIteratorOutput{
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
 	}).Return(nil, fmt.Errorf("fail")).Once()
@@ -184,16 +174,15 @@ func (s *shardReaderTestSuite) TestGetRecordsAndReleaseFails() {
 func (s *shardReaderTestSuite) TestReleaseFailsAfterShardIteratorFailed() {
 	s.setupReader()
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(fmt.Errorf("fail again")).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(fmt.Errorf("fail again")).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 
-	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
+	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
 		StreamName:             aws.String(string(s.stream)),
@@ -210,14 +199,13 @@ func (s *shardReaderTestSuite) TestReleaseFailsAfterShardIteratorFailed() {
 func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 	s.setupReader()
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
-	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
-	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 2")).Return(nil).Once()
-	checkpoint.On("Done", gosoKinesis.SequenceNumber("seq 2")).Return(nil).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("sequence number")).Once()
+	checkpoint.EXPECT().Advance(gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
+	checkpoint.EXPECT().Advance(gosoKinesis.SequenceNumber("seq 2")).Return(nil).Once()
+	checkpoint.EXPECT().Done(gosoKinesis.SequenceNumber("seq 2")).Return(nil).Once()
 
 	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Twice()
 	s.mockMetricCall("MillisecondsBehind", 1000, metric.UnitMillisecondsMaximum).Once()
@@ -227,14 +215,14 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 	s.mockMetricCall("WaitDuration", 0, metric.UnitMillisecondsAverage).Once()
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Once()
 
-	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.logger.On("WithChannel", "kinsumer-read").Return(s.logger)
-	s.logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.On("Info", "processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Twice()
+	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
+	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
+	s.logger.EXPECT().Info("processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Twice()
 
-	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
+	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
 		StreamName:             aws.String(string(s.stream)),
@@ -243,10 +231,10 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
 
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
-	}).Run(func(args mock.Arguments) {
+	}).Run(func(ctx context.Context, params *kinesis.GetRecordsInput, optFns ...func(*kinesis.Options)) {
 		s.clock.Advance(s.settings.WaitTime)
 	}).Return(&kinesis.GetRecordsOutput{
 		Records: []types.Record{
@@ -259,7 +247,7 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 		NextShardIterator:  aws.String("next iterator"),
 	}, nil).Once()
 
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("next iterator"),
 		Limit:         aws.Int32(10000),
 	}).Return(&kinesis.GetRecordsOutput{
@@ -284,12 +272,11 @@ func (s *shardReaderTestSuite) TestConsumeTwoBatches() {
 func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() {
 	s.setupReader()
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Twice()
-	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("sequence number")).Twice()
+	checkpoint.EXPECT().Advance(gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
 
 	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Twice()
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Times(3)
@@ -299,16 +286,16 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 	s.mockMetricCall("ReadRecords", 0, metric.UnitCount).Once()
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Twice()
 
-	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.logger.On("WithChannel", "kinsumer-read").Return(s.logger)
-	s.logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.On("Info", "processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
-	s.logger.On("Info", "processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
-	s.logger.On("Error", "failed to handle record %s: %w", aws.String("seq 1"), fmt.Errorf("parse error"))
+	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
+	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
+	s.logger.EXPECT().Info("processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
+	s.logger.EXPECT().Info("processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
+	s.logger.EXPECT().Error("failed to handle record %s: %w", aws.String("seq 1"), fmt.Errorf("parse error"))
 
-	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
+	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
 		StreamName:             aws.String(string(s.stream)),
@@ -317,12 +304,12 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
 
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
 	}).Return(nil, &types.ExpiredIteratorException{}).Once()
 
-	s.kinesisClient.On("GetShardIterator", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetShardIteratorInput{
+	s.kinesisClient.EXPECT().GetShardIterator(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
 		StreamName:             aws.String(string(s.stream)),
@@ -331,14 +318,14 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 		ShardIterator: aws.String("new iterator"),
 	}, nil).Once()
 
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("new iterator"),
 		Limit:         aws.Int32(10000),
 	}).Return(&kinesis.GetRecordsOutput{
 		Records:            []types.Record{},
 		MillisBehindLatest: aws.Int64(0),
 		NextShardIterator:  aws.String("next iterator"),
-	}, nil).Run(func(args mock.Arguments) {
+	}, nil).Run(func(ctx context.Context, params *kinesis.GetRecordsInput, optFns ...func(*kinesis.Options)) {
 		testClock := s.clock
 		go func() {
 			testClock.BlockUntilTimers(1)
@@ -346,10 +333,10 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 		}()
 	}).Once()
 
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("next iterator"),
 		Limit:         aws.Int32(10000),
-	}).Run(func(args mock.Arguments) {
+	}).Run(func(ctx context.Context, params *kinesis.GetRecordsInput, optFns ...func(*kinesis.Options)) {
 		testClock := s.clock
 		go func() {
 			testClock.BlockUntilTimers(1)
@@ -366,7 +353,7 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 		NextShardIterator:  aws.String("final iterator"),
 	}, nil).Once()
 
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("final iterator"),
 		Limit:         aws.Int32(10000),
 	}).Return(nil, context.Canceled).Once()
@@ -383,12 +370,11 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 	s.setupReader()
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.manualCancelContext")).Return(false, context.Canceled).Maybe()
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.manualCancelContext")).Return(false, context.Canceled).Maybe()
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 
 	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Once().Run(func(args mock.Arguments) {
 		// need to wait with this call until we wrote the process duration - otherwise we could (in rare events) advance the
@@ -404,13 +390,13 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 	s.mockMetricCall("ReadRecords", 0, metric.UnitCount).Once()
 	s.mockMetricCall("WaitDuration", 0, metric.UnitMillisecondsAverage).Once()
 
-	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.logger.On("WithChannel", "kinsumer-read").Return(s.logger)
-	s.logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.On("Info", "processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
-	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
+	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
+	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
+	s.logger.EXPECT().Info("processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
+	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
 		StreamName:             aws.String(string(s.stream)),
@@ -418,17 +404,17 @@ func (s *shardReaderTestSuite) TestPersisterPersistCanceled() {
 	}).Return(&kinesis.GetShardIteratorOutput{
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
-	}).Run(func(args mock.Arguments) {
+	}).Run(func(ctx context.Context, params *kinesis.GetRecordsInput, optFns ...func(*kinesis.Options)) {
 		s.clock.Advance(time.Second)
 	}).Return(&kinesis.GetRecordsOutput{
 		Records:            []types.Record{},
 		MillisBehindLatest: aws.Int64(0),
 		NextShardIterator:  aws.String("next iterator"),
 	}, nil).Once()
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("next iterator"),
 		Limit:         aws.Int32(10000),
 	}).Return(nil, context.Canceled).Once()
@@ -441,13 +427,12 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithWait() {
 	s.settings.ConsumeDelay = time.Second
 	s.setupReader()
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
-	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
-	checkpoint.On("Done", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("sequence number")).Once()
+	checkpoint.EXPECT().Advance(gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
+	checkpoint.EXPECT().Done(gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
 
 	s.mockMetricCall("SleepDuration", 1000, metric.UnitMillisecondsAverage).Once()
 	s.mockMetricCall("ProcessDuration", 1000, metric.UnitMillisecondsAverage).Once()
@@ -456,14 +441,14 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithWait() {
 	s.mockMetricCall("ReadRecords", 1, metric.UnitCount).Once()
 	s.mockMetricCall("WaitDuration", 0, metric.UnitMillisecondsAverage).Once()
 
-	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.logger.On("WithChannel", "kinsumer-read").Return(s.logger)
-	s.logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.On("Info", "processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
+	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
+	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
+	s.logger.EXPECT().Info("processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
 
-	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
+	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
 		StreamName:             aws.String(string(s.stream)),
@@ -472,10 +457,10 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithWait() {
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
 
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
-	}).Run(func(args mock.Arguments) {
+	}).Run(func(ctx context.Context, params *kinesis.GetRecordsInput, optFns ...func(*kinesis.Options)) {
 		testClock := s.clock
 		go func() {
 			testClock.BlockUntilTimers(1)
@@ -507,13 +492,12 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithOldRecord() {
 	recordArrivalTime := s.clock.Now()
 	s.clock.Advance(time.Minute)
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
-	checkpoint.On("Advance", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
-	checkpoint.On("Done", gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("sequence number")).Once()
+	checkpoint.EXPECT().Advance(gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
+	checkpoint.EXPECT().Done(gosoKinesis.SequenceNumber("seq 1")).Return(nil).Once()
 
 	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Once()
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Twice()
@@ -521,14 +505,14 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithOldRecord() {
 	s.mockMetricCall("ReadRecords", 1, metric.UnitCount).Once()
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Once()
 
-	s.metadataRepository.On("AcquireShard", s.ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.logger.On("WithChannel", "kinsumer-read").Return(s.logger)
-	s.logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.On("Info", "processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
+	s.metadataRepository.EXPECT().AcquireShard(s.ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
+	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
+	s.logger.EXPECT().Info("processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
 
-	s.kinesisClient.On("GetShardIterator", s.ctx, &kinesis.GetShardIteratorInput{
+	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
 		StreamName:             aws.String(string(s.stream)),
@@ -537,7 +521,7 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithOldRecord() {
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
 
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
 	}).Return(&kinesis.GetRecordsOutput{
@@ -566,11 +550,10 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWait() {
 
 	ctx, cancel := context.WithCancel(s.ctx)
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("sequence number")).Once()
 
 	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Once()
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Twice()
@@ -578,14 +561,14 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWait() {
 	s.mockMetricCall("ReadRecords", 0, metric.UnitCount).Once()
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Once()
 
-	s.metadataRepository.On("AcquireShard", ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.logger.On("WithChannel", "kinsumer-read").Return(s.logger)
-	s.logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.On("Info", "processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
+	s.metadataRepository.EXPECT().AcquireShard(ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
+	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
+	s.logger.EXPECT().Info("processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
 
-	s.kinesisClient.On("GetShardIterator", ctx, &kinesis.GetShardIteratorInput{
+	s.kinesisClient.EXPECT().GetShardIterator(ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
 		StreamName:             aws.String(string(s.stream)),
@@ -594,10 +577,10 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWait() {
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
 
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
-	}).Run(func(args mock.Arguments) {
+	}).Run(func(ctx context.Context, params *kinesis.GetRecordsInput, optFns ...func(*kinesis.Options)) {
 		go func() {
 			time.Sleep(time.Millisecond)
 			cancel()
@@ -630,12 +613,11 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWaitNoRecords() {
 
 	ctx, cancel := context.WithCancel(s.ctx)
 
-	checkpoint := new(mocks.Checkpoint)
-	checkpoint.On("Persist", mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
-	checkpoint.On("Release", mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
-	checkpoint.On("GetSequenceNumber").Return(gosoKinesis.SequenceNumber("sequence number")).Once()
-	checkpoint.On("Done", gosoKinesis.SequenceNumber("")).Return(nil).Once()
-	defer checkpoint.AssertExpectations(s.T())
+	checkpoint := mocks.NewCheckpoint(s.T())
+	checkpoint.EXPECT().Persist(mock.AnythingOfType("*exec.stoppableContext")).Return(true, nil).Once()
+	checkpoint.EXPECT().Release(mock.AnythingOfType("*exec.stoppableContext")).Return(nil).Once()
+	checkpoint.EXPECT().GetSequenceNumber().Return(gosoKinesis.SequenceNumber("sequence number")).Once()
+	checkpoint.EXPECT().Done(gosoKinesis.SequenceNumber("")).Return(nil).Once()
 
 	s.mockMetricCall("ProcessDuration", 0, metric.UnitMillisecondsAverage).Once()
 	s.mockMetricCall("MillisecondsBehind", 0, metric.UnitMillisecondsMaximum).Twice()
@@ -643,14 +625,14 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWaitNoRecords() {
 	s.mockMetricCall("ReadRecords", 0, metric.UnitCount).Once()
 	s.mockMetricCall("WaitDuration", 1000, metric.UnitMillisecondsAverage).Once()
 
-	s.metadataRepository.On("AcquireShard", ctx, s.shardId).Return(checkpoint, nil).Once()
-	s.logger.On("Info", "acquired shard").Once()
-	s.logger.On("Info", "releasing shard").Once()
-	s.logger.On("WithChannel", "kinsumer-read").Return(s.logger)
-	s.logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(s.logger)
-	s.logger.On("Info", "processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
+	s.metadataRepository.EXPECT().AcquireShard(ctx, s.shardId).Return(checkpoint, nil).Once()
+	s.logger.EXPECT().Info("acquired shard").Once()
+	s.logger.EXPECT().Info("releasing shard").Once()
+	s.logger.EXPECT().WithChannel("kinsumer-read").Return(s.logger)
+	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
+	s.logger.EXPECT().Info("processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
 
-	s.kinesisClient.On("GetShardIterator", ctx, &kinesis.GetShardIteratorInput{
+	s.kinesisClient.EXPECT().GetShardIterator(ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),
 		ShardIteratorType:      "AFTER_SEQUENCE_NUMBER",
 		StreamName:             aws.String(string(s.stream)),
@@ -659,10 +641,10 @@ func (s *shardReaderTestSuite) TestConsumeDelayWithCancelDuringWaitNoRecords() {
 		ShardIterator: aws.String("shard iterator"),
 	}, nil).Once()
 
-	s.kinesisClient.On("GetRecords", mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
+	s.kinesisClient.EXPECT().GetRecords(mock.AnythingOfType("*context.cancelCtx"), &kinesis.GetRecordsInput{
 		ShardIterator: aws.String("shard iterator"),
 		Limit:         aws.Int32(10000),
-	}).Run(func(args mock.Arguments) {
+	}).Run(func(ctx context.Context, params *kinesis.GetRecordsInput, optFns ...func(*kinesis.Options)) {
 		cancel()
 	}).Return(&kinesis.GetRecordsOutput{
 		Records:            []types.Record{},
@@ -681,8 +663,8 @@ func (s *shardReaderTestSuite) consumeRecord(record []byte) error {
 	return s.consumeRecordError
 }
 
-func (s *shardReaderTestSuite) mockMetricCall(metricName string, value float64, unit metric.StandardUnit) *mock.Call {
-	return s.metricWriter.On("WriteOne", &metric.Datum{
+func (s *shardReaderTestSuite) mockMetricCall(metricName string, value float64, unit metric.StandardUnit) *metricMocks.Writer_WriteOne_Call {
+	return s.metricWriter.EXPECT().WriteOne(&metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: metricName,
 		Dimensions: metric.Dimensions{

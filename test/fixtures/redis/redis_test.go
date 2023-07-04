@@ -91,6 +91,7 @@ func (s *RedisTestSuite) TestRedisWithPurge() {
 	// the set_test item should have been purged
 	setValue, err = redisClient.Get(context.Background(), "set_test").Result()
 	s.Error(err)
+	s.Equal("", setValue)
 
 	// should have only one key
 	keys, err = redisClient.Keys(context.Background(), "*").Result()
@@ -150,6 +151,7 @@ func (s *RedisTestSuite) TestRedisKvStoreWithPurge() {
 	// the first item should have been purged
 	res, err = redisClient.Get(context.Background(), "gosoline-integration-test-grp-kvstore-testModel-kvstore_entry_1").Result()
 	s.Error(err)
+	s.Equal("", res)
 
 	// should have created the second item
 	res, err = redisClient.Get(context.Background(), "gosoline-integration-test-grp-kvstore-testModel-kvstore_entry_2").Result()

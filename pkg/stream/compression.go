@@ -37,7 +37,6 @@ func CompressMessage(compression CompressionType, body []byte) ([]byte, error) {
 	}
 
 	compressed, err := compressor.Compress(body)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to compress message body: %w", err)
 	}
@@ -53,7 +52,6 @@ func DecompressMessage(compression CompressionType, body []byte) ([]byte, error)
 	}
 
 	decompressed, err := compressor.Decompress(body)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to decompress message body: %w", err)
 	}
@@ -61,8 +59,7 @@ func DecompressMessage(compression CompressionType, body []byte) ([]byte, error)
 	return decompressed, nil
 }
 
-type noopCompressor struct {
-}
+type noopCompressor struct{}
 
 func (n noopCompressor) Compress(body []byte) ([]byte, error) {
 	return body, nil
@@ -72,8 +69,7 @@ func (n noopCompressor) Decompress(body []byte) ([]byte, error) {
 	return body, nil
 }
 
-type gZipCompressor struct {
-}
+type gZipCompressor struct{}
 
 func (g gZipCompressor) Compress(body []byte) ([]byte, error) {
 	if body == nil {
@@ -105,7 +101,6 @@ func (g gZipCompressor) Decompress(body []byte) ([]byte, error) {
 	bufOut := &bytes.Buffer{}
 
 	reader, err := gzip.NewReader(bufBody)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not create gzip reader from body: %w", err)
 	}
