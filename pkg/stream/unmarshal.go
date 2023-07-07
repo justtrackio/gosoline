@@ -4,21 +4,24 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
+	"github.com/justtrackio/gosoline/pkg/encoding/base64"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
 const (
-	UnmarshallerMsg = "msg"
-	UnmarshallerRaw = "raw"
-	UnmarshallerSns = "sns"
+	UnmarshallerMsg       = "msg"
+	UnmarshallerRaw       = "raw"
+	UnmarshallerSns       = "sns"
+	UnmarshallerMsgBase64 = "msg_base64"
 )
 
 type UnmarshallerFunc func(data *string) (*Message, error)
 
 var unmarshallers = map[string]UnmarshallerFunc{
-	UnmarshallerMsg: MessageUnmarshaller,
-	UnmarshallerRaw: RawUnmarshaller,
-	UnmarshallerSns: SnsUnmarshaller,
+	UnmarshallerMsg:       MessageUnmarshaller,
+	UnmarshallerRaw:       RawUnmarshaller,
+	UnmarshallerSns:       SnsUnmarshaller,
+	UnmarshallerMsgBase64: MessageBase64Unmarshaller,
 }
 
 func MessageUnmarshaller(data *string) (*Message, error) {
@@ -72,4 +75,22 @@ func SnsUnmarshaller(data *string) (*Message, error) {
 	err = msg.UnmarshalFromString(snsMessage.Message)
 
 	return &msg, err
+}
+
+func MessageBase64Unmarshaller(data *string) (*Message, error) {
+	msg := &Message{}
+
+	err := json.Unmarshal([]byte(*data), msg)
+	if err != nil {
+		return nil, err
+	}
+
+	bytes, err := base64.DecodeString(msg.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	msg.Body = string(bytes)
+
+	return msg, nil
 }

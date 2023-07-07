@@ -7,11 +7,15 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
+	"github.com/justtrackio/gosoline/pkg/encoding/base64"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
 
-const attributeRetrySqs = "goso.retry.sqs"
+const (
+	attributeRetrySqs         = "goso.retry.sqs"
+	MessageBodyBase64Encoding = "base64"
+)
 
 func init() {
 	retryHandlers["sqs"] = NewRetryHandlerSqs
@@ -26,6 +30,8 @@ type RetryHandlerSqsSettings struct {
 	RunnerCount         int                        `cfg:"runner_count" default:"1"`
 	QueueId             string                     `cfg:"queue_id"`
 	Healthcheck         health.HealthCheckSettings `cfg:"healthcheck"`
+	MsgBodyEncoding     string `cfg:"msg_body_encoding" default:"raw"`
+	Unmarshaller        string `cfg:"unmarshaller" default:"msg"`
 }
 
 type RetryHandlerSqs struct {
@@ -67,7 +73,7 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 		},
 		ClientName:   settings.ClientName,
 		Healthcheck:  settings.Healthcheck,
-		Unmarshaller: UnmarshallerMsg,
+		Unmarshaller: settings.Unmarshaller,
 	}
 
 	if input, err = NewSqsInput(ctx, config, logger, inputSettings); err != nil {
@@ -106,9 +112,29 @@ func (r *RetryHandlerSqs) Put(ctx context.Context, msg *Message) error {
 	msg.Attributes[attributeRetrySqs] = strconv.FormatBool(true)
 	msg.Attributes[sqs.AttributeSqsDelaySeconds] = strconv.Itoa(int(r.settings.After.Seconds()))
 
+	err := r.EncodeMessageBody(msg)
+	if err != nil {
+		return fmt.Errorf("failed to encode retry message body: %w", err)
+	}
+
 	if err := r.output.WriteOne(ctx, msg); err != nil {
 		return fmt.Errorf("can not write the message to the output: %w", err)
 	}
+
+	return nil
+}
+
+func (r *RetryHandlerSqs) EncodeMessageBody(msg *Message) error {
+	switch r.settings.MsgBodyEncoding {
+	case MessageBodyBase64Encoding:
+		return r.encodeMessageBodyBase64(msg)
+	default:
+		return nil
+	}
+}
+
+func (r *RetryHandlerSqs) encodeMessageBodyBase64(msg *Message) error {
+	msg.Body = base64.EncodeToString([]byte(msg.Body))
 
 	return nil
 }
