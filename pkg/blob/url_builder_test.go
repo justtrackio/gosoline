@@ -23,6 +23,7 @@ func (s *UrlBuilderTestSuite) SetupTest() {
 	err := s.config.Option(cfg.WithConfigMap(map[string]interface{}{
 		"app_project": "justtrack",
 		"app_family":  "gosoline",
+		"app_group":   "grp",
 		"app_name":    "uploader",
 		"env":         "test",
 	}))
