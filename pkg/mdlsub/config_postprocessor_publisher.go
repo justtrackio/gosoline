@@ -14,7 +14,7 @@ func init() {
 
 const sharedName = "publisher"
 
-type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware
+type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, outputKey string) stream.BaseOutputConfigurationAware
 
 var publisherOutputTypeHandlers = map[string]publisherOutputTypeHandler{
 	stream.OutputTypeInMemory: handlePublisherOutputTypeInMemory,
@@ -56,9 +56,9 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 			return false, fmt.Errorf("no publisherOutputTypeHandler found for publisher %s and output type %s", publisherSettings.Name, publisherSettings.OutputType)
 		}
 
-		outputSettings := outputTypeHandler(config, publisherSettings, producerSettings)
-		producerKey := stream.ConfigurableProducerKey(producerName)
 		outputKey := stream.ConfigurableOutputKey(outputName)
+		outputSettings := outputTypeHandler(config, publisherSettings, producerSettings, outputKey)
+		producerKey := stream.ConfigurableProducerKey(producerName)
 
 		configOptions := []cfg.Option{
 			cfg.WithConfigSetting(producerKey, producerSettings, cfg.SkipExisting),
@@ -74,14 +74,14 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	return true, nil
 }
 
-func handlePublisherOutputTypeInMemory(config cfg.Config, _ *PublisherSettings, _ *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeInMemory(config cfg.Config, _ *PublisherSettings, _ *stream.ProducerSettings, _ string) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.InMemoryOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 
 	return outputSettings
 }
 
-func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, outputKey string) stream.BaseOutputConfigurationAware {
 	producerSettings.Daemon.Enabled = true
 	producerSettings.Daemon.Interval = time.Second
 	// kinesis batches have a max size of 5mb. we're using 4.5mb to give it some headroom
@@ -92,7 +92,7 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 	producerSettings.Daemon.AggregationMaxSize = 950_000
 
 	outputSettings := &stream.KinesisOutputConfiguration{}
-	config.UnmarshalDefaults(outputSettings)
+	config.UnmarshalKey(outputKey, outputSettings)
 
 	outputSettings.Project = publisherSettings.Project
 	outputSettings.Family = publisherSettings.Family
@@ -104,9 +104,9 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 	return outputSettings
 }
 
-func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, outputKey string) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.SnsOutputConfiguration{}
-	config.UnmarshalDefaults(outputSettings)
+	config.UnmarshalKey(outputKey, outputSettings)
 
 	outputSettings.Project = publisherSettings.Project
 	outputSettings.Family = publisherSettings.Family
@@ -121,9 +121,9 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 	return outputSettings
 }
 
-func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, outputKey string) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.SqsOutputConfiguration{}
-	config.UnmarshalDefaults(outputSettings)
+	config.UnmarshalKey(outputKey, outputSettings)
 
 	outputSettings.Project = publisherSettings.Project
 	outputSettings.Family = publisherSettings.Family

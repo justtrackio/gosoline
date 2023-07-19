@@ -93,7 +93,7 @@ func snsSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string, sub
 	}
 
 	inputSettings := &stream.SnsInputConfiguration{}
-	config.UnmarshalDefaults(inputSettings)
+	config.UnmarshalKey(inputKey, inputSettings)
 
 	inputSettings.ConsumerId = consumerId
 	inputSettings.Targets = []stream.SnsInputTargetConfiguration{
@@ -117,7 +117,7 @@ func kinesisSubscriberInputConfigPostProcessor(config cfg.GosoConf, name string,
 	}
 
 	inputSettings := &stream.KinesisInputConfiguration{}
-	config.UnmarshalDefaults(inputSettings)
+	config.UnmarshalKey(inputKey, inputSettings)
 
 	inputSettings.Project = subscriberSettings.SourceModel.Project
 	inputSettings.Family = subscriberSettings.SourceModel.Family
@@ -132,7 +132,7 @@ func kvstoreSubscriberOutputConfigPostProcessor(config cfg.GosoConf, name string
 	kvstoreKey := kvstore.GetConfigurableKey(name)
 
 	kvstoreSettings := &kvstore.ChainConfiguration{}
-	config.UnmarshalDefaults(kvstoreSettings)
+	config.UnmarshalKey(kvstoreKey, kvstoreSettings)
 
 	kvstoreSettings.Project = subscriberSettings.TargetModel.Project
 	kvstoreSettings.Family = subscriberSettings.TargetModel.Family
