@@ -2,8 +2,8 @@ env: dev
 
 app_project: gosoline
 app_family: example
-app_group: money-exchange
-app_name: money-exchange
+app_group: money
+app_name: exchange
 
 api:
   port: 8080
