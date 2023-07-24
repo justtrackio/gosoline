@@ -35,7 +35,10 @@ type Record struct {
 }
 
 type RecordWriterMetadata struct {
-	StreamName string `json:"stream_name"`
+	AwsClientName  string `json:"aws_client_name"`
+	OpenShardCount int    `json:"open_shard_count"`
+	StreamArn      string `json:"stream_arn"`
+	StreamName     string `json:"stream_name"`
 }
 
 type RecordWriterSettings struct {
@@ -70,13 +73,18 @@ func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, 
 		return nil, fmt.Errorf("failed to provide kinesis client: %w", err)
 	}
 
-	if err = CreateKinesisStream(ctx, config, logger, client, settings.StreamName); err != nil {
-		return nil, fmt.Errorf("failed to create kinesis stream %s: %w", settings.StreamName, err)
+	metadata := RecordWriterMetadata{
+		AwsClientName: settings.ClientName,
+		StreamName:    settings.StreamName,
 	}
 
-	metadata := RecordWriterMetadata{
-		StreamName: settings.StreamName,
+	if description, err := CreateKinesisStream(ctx, config, logger, client, settings.StreamName); err != nil {
+		return nil, fmt.Errorf("failed to create kinesis stream %s: %w", settings.StreamName, err)
+	} else {
+		metadata.OpenShardCount = description.OpenShardCount
+		metadata.StreamArn = description.StreamArn
 	}
+
 	if err = appctx.MetadataAppend(ctx, metadataKeyRecordWriters, metadata); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}

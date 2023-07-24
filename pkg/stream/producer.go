@@ -67,6 +67,7 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 		Name:          name,
 		DaemonEnabled: settings.Daemon.Enabled,
 	}
+
 	if err = appctx.MetadataAppend(ctx, MetadataKeyProducers, metadata); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
