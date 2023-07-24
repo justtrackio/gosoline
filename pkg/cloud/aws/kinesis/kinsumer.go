@@ -28,9 +28,12 @@ const (
 )
 
 type KinsumerMetadata struct {
+	AwsClientName  string    `json:"aws_client_name"`
 	ClientId       ClientId  `json:"client_id"`
 	Name           string    `json:"name"`
+	OpenShardCount int       `json:"open_shard_count"`
 	StreamAppId    cfg.AppId `json:"stream_app_id"`
+	StreamArn      string    `json:"stream_arn"`
 	StreamName     string    `json:"stream_name"`
 	StreamNameFull Stream    `json:"stream_name_full"`
 }
@@ -122,6 +125,15 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("can not get full stream name: %w", err)
 	}
 
+	kinsumerMetadata := KinsumerMetadata{
+		AwsClientName:  settings.ClientName,
+		ClientId:       clientId,
+		Name:           settings.Name,
+		StreamAppId:    settings.AppId,
+		StreamName:     settings.StreamName,
+		StreamNameFull: fullStreamName,
+	}
+
 	logger = logger.WithChannel("kinsumer-main").WithFields(log.Fields{
 		"stream_name":        fullStreamName,
 		"kinsumer_client_id": clientId,
@@ -137,21 +149,17 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("failed to create kinesis client: %w", err)
 	}
 
-	if err = CreateKinesisStream(ctx, config, logger, kinesisClient, string(fullStreamName)); err != nil {
+	if description, err := CreateKinesisStream(ctx, config, logger, kinesisClient, string(fullStreamName)); err != nil {
 		return nil, fmt.Errorf("failed to create kinesis stream: %w", err)
+	} else {
+		kinsumerMetadata.OpenShardCount = description.OpenShardCount
+		kinsumerMetadata.StreamArn = description.StreamArn
 	}
 
 	if metadataRepository, err = NewMetadataRepository(ctx, config, logger, fullStreamName, clientId, *settings); err != nil {
 		return nil, fmt.Errorf("failed to create metadata manager: %w", err)
 	}
 
-	kinsumerMetadata := KinsumerMetadata{
-		ClientId:       clientId,
-		Name:           settings.Name,
-		StreamAppId:    settings.AppId,
-		StreamName:     settings.StreamName,
-		StreamNameFull: fullStreamName,
-	}
 	if err = appctx.MetadataAppend(ctx, MetadataKeyKinsumers, kinsumerMetadata); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}

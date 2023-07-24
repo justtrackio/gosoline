@@ -64,6 +64,11 @@ type Repository interface {
 	UpdateItemBuilder() UpdateItemBuilder
 }
 
+type TableMetadata struct {
+	AwsClientName string `json:"aws_client_name"`
+	TableName     string `json:"table_name"`
+}
+
 type repository struct {
 	logger log.Logger
 	tracer tracing.Tracer
@@ -109,7 +114,12 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 		}
 	}
 
-	if err = appctx.MetadataAppend(ctx, MetadataKeyTables, metadataFactory.GetTableName()); err != nil {
+	metadata := TableMetadata{
+		AwsClientName: settings.ClientName,
+		TableName:     metadataFactory.GetTableName(),
+	}
+
+	if err = appctx.MetadataAppend(ctx, MetadataKeyTables, metadata); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 

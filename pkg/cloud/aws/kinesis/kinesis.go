@@ -13,26 +13,38 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+type StreamDescription struct {
+	StreamArn      string
+	StreamName     string
+	OpenShardCount int
+}
+
 // CreateKinesisStream ensures a kinesis stream exists if dx.auto_create is set to true.
-func CreateKinesisStream(ctx context.Context, config cfg.Config, logger log.Logger, client Client, streamName string) error {
+func CreateKinesisStream(ctx context.Context, config cfg.Config, logger log.Logger, client Client, streamName string) (*StreamDescription, error) {
 	logger.Info("looking for kinesis stream: %s", streamName)
 
-	_, err := client.DescribeStreamSummary(ctx, &kinesis.DescribeStreamSummaryInput{
+	summary, err := client.DescribeStreamSummary(ctx, &kinesis.DescribeStreamSummaryInput{
 		StreamName: aws.String(streamName),
 	})
 
 	if err == nil {
 		logger.Info("found kinesis stream: %s", streamName)
-		return nil
+		streamDescription := StreamDescription{
+			StreamArn:      *summary.StreamDescriptionSummary.StreamARN,
+			StreamName:     *summary.StreamDescriptionSummary.StreamName,
+			OpenShardCount: int(*summary.StreamDescriptionSummary.OpenShardCount),
+		}
+
+		return &streamDescription, nil
 	}
 
 	var errResourceNotFoundException *types.ResourceNotFoundException
 	if !errors.As(err, &errResourceNotFoundException) && err != nil {
-		return fmt.Errorf("failed to describe kinesis streams: %w", err)
+		return nil, fmt.Errorf("failed to describe kinesis streams: %w", err)
 	}
 
 	if !dx.ShouldAutoCreate(config) {
-		return fmt.Errorf("kinesis stream does not exist and auto create is disabled")
+		return nil, fmt.Errorf("kinesis stream does not exist and auto create is disabled")
 	}
 
 	logger.Info("trying to create kinesis stream: %s", streamName)
@@ -42,10 +54,24 @@ func CreateKinesisStream(ctx context.Context, config cfg.Config, logger log.Logg
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to create kinesis stream %s: %w", streamName, err)
+		return nil, fmt.Errorf("failed to create kinesis stream %s: %w", streamName, err)
 	}
 
 	logger.Info("created kinesis stream: %s", streamName)
 
-	return nil
+	summary, err = client.DescribeStreamSummary(ctx, &kinesis.DescribeStreamSummaryInput{
+		StreamName: aws.String(streamName),
+	})
+
+	if err == nil {
+		streamDescription := StreamDescription{
+			StreamArn:      *summary.StreamDescriptionSummary.StreamARN,
+			StreamName:     *summary.StreamDescriptionSummary.StreamName,
+			OpenShardCount: int(*summary.StreamDescriptionSummary.OpenShardCount),
+		}
+
+		return &streamDescription, nil
+	}
+
+	return nil, err
 }

@@ -36,6 +36,14 @@ type Queue interface {
 	SendBatch(ctx context.Context, messages []*Message) error
 }
 
+type QueueMetadata struct {
+	AwsClientName string `json:"aws_client_name"`
+	QueueArn      string `json:"queue_arn"`
+	QueueName     string `json:"queue_name"`
+	QueueNameFull string `json:"queue_name_full"`
+	QueueUrl      string `json:"queue_url"`
+}
+
 type Message struct {
 	DelaySeconds           int32
 	MessageGroupId         *string
@@ -102,7 +110,15 @@ func NewQueue(ctx context.Context, config cfg.Config, logger log.Logger, setting
 		return nil, fmt.Errorf("could not create or get properties of queue %s: %w", settings.QueueName, err)
 	}
 
-	if err = appctx.MetadataAppend(ctx, MetadataKeyQueues, settings.QueueName); err != nil {
+	metadata := QueueMetadata{
+		AwsClientName: settings.ClientName,
+		QueueArn:      props.Arn,
+		QueueName:     settings.QueueName,
+		QueueNameFull: props.Name,
+		QueueUrl:      props.Url,
+	}
+
+	if err = appctx.MetadataAppend(ctx, MetadataKeyQueues, metadata); err != nil {
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
