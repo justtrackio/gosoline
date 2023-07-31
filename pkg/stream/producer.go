@@ -6,6 +6,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/refl"
 )
@@ -71,6 +72,12 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 	}
 
 	encoder := NewMessageEncoder(encoderSettings)
+
+	if messageBodyEncoder, ok := messageBodyEncoders[encoder.encoding].(kernel.Configurable); ok {
+		if err := messageBodyEncoder.Init(ctx, config, logger); err != nil {
+			return nil, err
+		}
+	}
 
 	metadata := ProducerMetadata{
 		Name:          name,
