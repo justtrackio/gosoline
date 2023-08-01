@@ -21,10 +21,10 @@ func NewAvroEncoder(schema string) (MessageBodyEncoder, error) {
 	}, nil
 }
 
-func (e avroEncoder) Encode(data any) ([]byte, error) {
+func (e avroEncoder) Encode(data any, _ map[string]string) ([]byte, error) {
 	return avro.Marshal(e.schema, data)
 }
 
-func (e avroEncoder) Decode(data []byte, out any) error {
+func (e avroEncoder) Decode(data []byte, _ map[string]string, out any) error {
 	return avro.Unmarshal(e.schema, data, out)
 }

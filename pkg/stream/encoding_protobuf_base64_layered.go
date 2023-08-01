@@ -13,7 +13,7 @@ func NewBase64LayeredProtobufEncoder() MessageBodyEncoder {
 	return base64LayeredProtobufEncoder{}
 }
 
-func (e base64LayeredProtobufEncoder) Encode(data any) ([]byte, error) {
+func (e base64LayeredProtobufEncoder) Encode(data any, _ map[string]string) ([]byte, error) {
 	msg, ok := data.(ProtobufEncodable)
 
 	if !ok {
@@ -36,7 +36,7 @@ func (e base64LayeredProtobufEncoder) Encode(data any) ([]byte, error) {
 	return base64.Encode(bytes), nil
 }
 
-func (e base64LayeredProtobufEncoder) Decode(data64 []byte, out any) error {
+func (e base64LayeredProtobufEncoder) Decode(data64 []byte, _ map[string]string, out any) error {
 	msg, ok := out.(ProtobufEncodable)
 
 	if !ok {

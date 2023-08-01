@@ -35,10 +35,10 @@ func InitKafkaSchemaRegistry(
 		}
 
 		encodeFn = sr.EncodeFn(func(v any) ([]byte, error) {
-			return avroEncoder.Encode(v)
+			return avroEncoder.Encode(v, nil)
 		})
 		decodeFn = sr.DecodeFn(func(b []byte, v any) error {
-			return avroEncoder.Decode(b, v)
+			return avroEncoder.Decode(b, nil, v)
 		})
 
 		options = append(options, encodeFn, decodeFn)
@@ -46,10 +46,10 @@ func InitKafkaSchemaRegistry(
 		jsonEncoder := NewJsonEncoder()
 
 		encodeFn = sr.EncodeFn(func(v any) ([]byte, error) {
-			return jsonEncoder.Encode(v)
+			return jsonEncoder.Encode(v, nil)
 		})
 		decodeFn = sr.DecodeFn(func(b []byte, v any) error {
-			return jsonEncoder.Decode(b, v)
+			return jsonEncoder.Decode(b, nil, v)
 		})
 
 		options = append(options, encodeFn, decodeFn)
@@ -57,10 +57,10 @@ func InitKafkaSchemaRegistry(
 		protoEncoder := NewProtobufEncoder()
 
 		encodeFn = sr.EncodeFn(func(v any) ([]byte, error) {
-			return protoEncoder.Encode(v)
+			return protoEncoder.Encode(v, nil)
 		})
 		decodeFn = sr.DecodeFn(func(b []byte, v any) error {
-			return protoEncoder.Decode(b, v)
+			return protoEncoder.Decode(b, nil, v)
 		})
 
 		index := sr.Index(0)

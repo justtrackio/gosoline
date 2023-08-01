@@ -19,7 +19,7 @@ func NewRawMessage(body any, encoder MessageBodyEncoder) *RawMessage {
 }
 
 func (m *RawMessage) MarshalToBytes() ([]byte, error) {
-	return m.Encoder.Encode(m.Body)
+	return m.Encoder.Encode(m.Body, nil)
 }
 
 func (m *RawMessage) MarshalToString() (string, error) {

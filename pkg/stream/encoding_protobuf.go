@@ -18,7 +18,7 @@ func NewProtobufEncoder() MessageBodyEncoder {
 	return protobufEncoder{}
 }
 
-func (e protobufEncoder) Encode(data any) ([]byte, error) {
+func (e protobufEncoder) Encode(data any, _ map[string]string) ([]byte, error) {
 	msg, ok := data.(ProtobufEncodable)
 
 	if !ok {
@@ -33,7 +33,7 @@ func (e protobufEncoder) Encode(data any) ([]byte, error) {
 	return proto.Marshal(protoMsg)
 }
 
-func (e protobufEncoder) Decode(data []byte, out any) error {
+func (e protobufEncoder) Decode(data []byte, _ map[string]string, out any) error {
 	msg, ok := out.(ProtobufEncodable)
 
 	if !ok {

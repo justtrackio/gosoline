@@ -6,13 +6,27 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name Serde
 type Serde interface {
-	Decode(b []byte, v any) error
-	Encode(v any) ([]byte, error)
+	Decode(b []byte, attrs map[string]string, v any) error
+	Encode(v any, attrs map[string]string) ([]byte, error)
 	Register(id int, v any, opts ...sr.EncodingOpt)
 }
 
-func NewSerde() Serde {
-	var serde sr.Serde
+type SerdeWrapper struct {
+	serde sr.Serde
+}
 
-	return &serde
+func (s *SerdeWrapper) Decode(b []byte, _ map[string]string, v any) error {
+	return s.serde.Decode(b, v)
+}
+
+func (s *SerdeWrapper) Encode(v any, _ map[string]string) ([]byte, error) {
+	return s.serde.Encode(v)
+}
+
+func (s *SerdeWrapper) Register(id int, v any, opts ...sr.EncodingOpt) {
+	s.serde.Register(id, v, opts...)
+}
+
+func NewSerde() Serde {
+	return &SerdeWrapper{serde: sr.Serde{}}
 }

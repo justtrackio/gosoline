@@ -43,12 +43,12 @@ func TestEncodingJson(t *testing.T) {
 	body, err := stream.EncodeMessage(stream.EncodingJson, &TestEncodingMessage{
 		Id:   42,
 		Data: "this is data!",
-	})
+	}, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte(`{"id":42,"data":"this is data!"}`), body)
 
 	out := &TestEncodingMessage{}
-	err = stream.DecodeMessage(stream.EncodingJson, body, out)
+	err = stream.DecodeMessage(stream.EncodingJson, body, nil, out)
 	assert.NoError(t, err)
 	assert.Equal(t, &TestEncodingMessage{
 		Id:   42,
@@ -60,12 +60,12 @@ func TestEncodingProtobuf(t *testing.T) {
 	body, err := stream.EncodeMessage(stream.EncodingProtobuf, &TestEncodingMessage{
 		Id:   42,
 		Data: "this is data!",
-	})
+	}, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("CCoSDXRoaXMgaXMgZGF0YSE="), body)
 
 	out := &TestEncodingMessage{}
-	err = stream.DecodeMessage(stream.EncodingProtobuf, body, out)
+	err = stream.DecodeMessage(stream.EncodingProtobuf, body, nil, out)
 	assert.NoError(t, err)
 	assert.Equal(t, &TestEncodingMessage{
 		Id:   42,

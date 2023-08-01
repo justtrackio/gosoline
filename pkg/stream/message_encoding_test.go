@@ -29,11 +29,11 @@ func (b brokenEncodeHandler) Decode(ctx context.Context, _ any, attributes map[s
 
 type externalMessageBodyEncoder struct{}
 
-func (e externalMessageBodyEncoder) Encode(_ any) ([]byte, error) {
+func (e externalMessageBodyEncoder) Encode(_ any, _ map[string]string) ([]byte, error) {
 	return []byte("external encoding"), nil
 }
 
-func (e externalMessageBodyEncoder) Decode(_ []byte, out any) error {
+func (e externalMessageBodyEncoder) Decode(_ []byte, _ map[string]string, out any) error {
 	v := out.(*encodingTestStruct)
 
 	v.Id = 1
@@ -63,7 +63,7 @@ func (s *MessageEncoderSuite) TestEncode() {
 		encoding           stream.EncodingType
 		compression        stream.CompressionType
 		handlers           []stream.EncodeHandler
-		attributes         map[string]string
+		attributes         []map[string]string
 		externalEncoder    stream.MessageBodyEncoder
 		expectedError      string
 		expectedBody       string
@@ -81,8 +81,13 @@ func (s *MessageEncoderSuite) TestEncode() {
 		"attribute_duplicate": {
 			encoding:    stream.EncodingJson,
 			compression: stream.CompressionNone,
-			attributes: map[string]string{
-				stream.AttributeEncoding: "duplicate",
+			attributes: []map[string]string{
+				{
+					stream.AttributeEncoding: "duplicate",
+				},
+				{
+					stream.AttributeEncoding: "duplicate2",
+				},
 			},
 			expectedError: "duplicate attribute 'encoding' on message",
 		},
@@ -96,9 +101,11 @@ func (s *MessageEncoderSuite) TestEncode() {
 		"json_uncompressed": {
 			encoding:    stream.EncodingJson,
 			compression: stream.CompressionNone,
-			attributes: map[string]string{
-				"attribute1": "5",
-				"attribute2": "test",
+			attributes: []map[string]string{
+				{
+					"attribute1": "5",
+					"attribute2": "test",
+				},
 			},
 			expectedBody: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
 			expectedAttributes: map[string]string{
@@ -110,9 +117,11 @@ func (s *MessageEncoderSuite) TestEncode() {
 		"json_compressed": {
 			encoding:    stream.EncodingJson,
 			compression: stream.CompressionGZip,
-			attributes: map[string]string{
-				"attribute1": "5",
-				"attribute2": "test",
+			attributes: []map[string]string{
+				{
+					"attribute1": "5",
+					"attribute2": "test",
+				},
 			},
 			expectedBody: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAgAA//9Q/bHSPAAAAA==`,
 			expectedAttributes: map[string]string{
@@ -125,9 +134,11 @@ func (s *MessageEncoderSuite) TestEncode() {
 		"external_encoding": {
 			encoding:    stream.EncodingJson,
 			compression: stream.CompressionNone,
-			attributes: map[string]string{
-				"attribute1": "5",
-				"attribute2": "test",
+			attributes: []map[string]string{
+				{
+					"attribute1": "5",
+					"attribute2": "test",
+				},
 			},
 			externalEncoder: externalMessageBodyEncoder{},
 			expectedBody:    "external encoding",
@@ -148,7 +159,7 @@ func (s *MessageEncoderSuite) TestEncode() {
 			})
 
 			ctx := s.T().Context()
-			msg, err := encoder.Encode(ctx, data, tt.attributes)
+			msg, err := encoder.Encode(ctx, data, tt.attributes...)
 
 			if tt.expectedError != "" {
 				s.EqualError(err, tt.expectedError)

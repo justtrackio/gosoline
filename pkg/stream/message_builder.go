@@ -56,7 +56,7 @@ func NewJsonMessage(body string, attributes ...map[string]string) *Message {
 }
 
 func MarshalJsonMessage(body any, attributes ...map[string]string) (*Message, error) {
-	data, err := NewJsonEncoder().Encode(body)
+	data, err := NewJsonEncoder().Encode(body, nil)
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal body to json: %w", err)
 	}
@@ -74,7 +74,7 @@ func NewProtobufMessage(body string, attributes ...map[string]string) *Message {
 }
 
 func MarshalProtobufMessage(body ProtobufEncodable, attributes ...map[string]string) (*Message, error) {
-	data, err := NewBase64LayeredProtobufEncoder().Encode(body)
+	data, err := NewBase64LayeredProtobufEncoder().Encode(body, nil)
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal body to protobuf: %w", err)
 	}

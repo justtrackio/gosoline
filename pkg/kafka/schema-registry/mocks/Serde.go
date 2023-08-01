@@ -21,17 +21,17 @@ func (_m *Serde) EXPECT() *Serde_Expecter {
 	return &Serde_Expecter{mock: &_m.Mock}
 }
 
-// Decode provides a mock function with given fields: b, v
-func (_m *Serde) Decode(b []byte, v interface{}) error {
-	ret := _m.Called(b, v)
+// Decode provides a mock function with given fields: b, attrs, v
+func (_m *Serde) Decode(b []byte, attrs map[string]string, v interface{}) error {
+	ret := _m.Called(b, attrs, v)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Decode")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]byte, interface{}) error); ok {
-		r0 = rf(b, v)
+	if rf, ok := ret.Get(0).(func([]byte, map[string]string, interface{}) error); ok {
+		r0 = rf(b, attrs, v)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -46,14 +46,15 @@ type Serde_Decode_Call struct {
 
 // Decode is a helper method to define mock.On call
 //   - b []byte
+//   - attrs map[string]string
 //   - v interface{}
-func (_e *Serde_Expecter) Decode(b interface{}, v interface{}) *Serde_Decode_Call {
-	return &Serde_Decode_Call{Call: _e.mock.On("Decode", b, v)}
+func (_e *Serde_Expecter) Decode(b interface{}, attrs interface{}, v interface{}) *Serde_Decode_Call {
+	return &Serde_Decode_Call{Call: _e.mock.On("Decode", b, attrs, v)}
 }
 
-func (_c *Serde_Decode_Call) Run(run func(b []byte, v interface{})) *Serde_Decode_Call {
+func (_c *Serde_Decode_Call) Run(run func(b []byte, attrs map[string]string, v interface{})) *Serde_Decode_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]byte), args[1].(interface{}))
+		run(args[0].([]byte), args[1].(map[string]string), args[2].(interface{}))
 	})
 	return _c
 }
@@ -63,14 +64,14 @@ func (_c *Serde_Decode_Call) Return(_a0 error) *Serde_Decode_Call {
 	return _c
 }
 
-func (_c *Serde_Decode_Call) RunAndReturn(run func([]byte, interface{}) error) *Serde_Decode_Call {
+func (_c *Serde_Decode_Call) RunAndReturn(run func([]byte, map[string]string, interface{}) error) *Serde_Decode_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Encode provides a mock function with given fields: v
-func (_m *Serde) Encode(v interface{}) ([]byte, error) {
-	ret := _m.Called(v)
+// Encode provides a mock function with given fields: v, attrs
+func (_m *Serde) Encode(v interface{}, attrs map[string]string) ([]byte, error) {
+	ret := _m.Called(v, attrs)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Encode")
@@ -78,19 +79,19 @@ func (_m *Serde) Encode(v interface{}) ([]byte, error) {
 
 	var r0 []byte
 	var r1 error
-	if rf, ok := ret.Get(0).(func(interface{}) ([]byte, error)); ok {
-		return rf(v)
+	if rf, ok := ret.Get(0).(func(interface{}, map[string]string) ([]byte, error)); ok {
+		return rf(v, attrs)
 	}
-	if rf, ok := ret.Get(0).(func(interface{}) []byte); ok {
-		r0 = rf(v)
+	if rf, ok := ret.Get(0).(func(interface{}, map[string]string) []byte); ok {
+		r0 = rf(v, attrs)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]byte)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(interface{}) error); ok {
-		r1 = rf(v)
+	if rf, ok := ret.Get(1).(func(interface{}, map[string]string) error); ok {
+		r1 = rf(v, attrs)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -105,13 +106,14 @@ type Serde_Encode_Call struct {
 
 // Encode is a helper method to define mock.On call
 //   - v interface{}
-func (_e *Serde_Expecter) Encode(v interface{}) *Serde_Encode_Call {
-	return &Serde_Encode_Call{Call: _e.mock.On("Encode", v)}
+//   - attrs map[string]string
+func (_e *Serde_Expecter) Encode(v interface{}, attrs interface{}) *Serde_Encode_Call {
+	return &Serde_Encode_Call{Call: _e.mock.On("Encode", v, attrs)}
 }
 
-func (_c *Serde_Encode_Call) Run(run func(v interface{})) *Serde_Encode_Call {
+func (_c *Serde_Encode_Call) Run(run func(v interface{}, attrs map[string]string)) *Serde_Encode_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(interface{}))
+		run(args[0].(interface{}), args[1].(map[string]string))
 	})
 	return _c
 }
@@ -121,7 +123,7 @@ func (_c *Serde_Encode_Call) Return(_a0 []byte, _a1 error) *Serde_Encode_Call {
 	return _c
 }
 
-func (_c *Serde_Encode_Call) RunAndReturn(run func(interface{}) ([]byte, error)) *Serde_Encode_Call {
+func (_c *Serde_Encode_Call) RunAndReturn(run func(interface{}, map[string]string) ([]byte, error)) *Serde_Encode_Call {
 	_c.Call.Return(run)
 	return _c
 }
