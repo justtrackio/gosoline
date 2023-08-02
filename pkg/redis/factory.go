@@ -49,6 +49,10 @@ func ProvideClient(config cfg.Config, logger log.Logger, name string) (Client, e
 func ReadSettings(config cfg.Config, name string) *Settings {
 	key := fmt.Sprintf("redis.%s", name)
 
+	// TODO: This is a hack to ensure default redis config is populated,
+	// 		 because cfg.UnmarshalWithDefaultsFromKey does only read from already set config but not from env vars
+	config.UnmarshalKey("redis.default", &Settings{})
+
 	settings := &Settings{}
 	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultsFromKey("redis.default", "."))
 
