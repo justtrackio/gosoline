@@ -7,11 +7,10 @@
 package testdata
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -100,13 +99,10 @@ func file_encoding_test_proto_rawDescGZIP() []byte {
 	return file_encoding_test_proto_rawDescData
 }
 
-var (
-	file_encoding_test_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_encoding_test_proto_goTypes  = []any{
-		(*TestEncodingMessage)(nil), // 0: TestEncodingMessage
-	}
-)
-
+var file_encoding_test_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_encoding_test_proto_goTypes = []interface{}{
+	(*TestEncodingMessage)(nil), // 0: TestEncodingMessage
+}
 var file_encoding_test_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type

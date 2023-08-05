@@ -1,7 +1,6 @@
 package crud_test
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -10,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	configMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
@@ -39,21 +38,20 @@ func (s *deleteTestSuite) SetupTest() {
 	config.EXPECT().UnmarshalKey("crud", mock.AnythingOfType("*crud.Settings")).Run(func(key string, val any, additionalDefaults ...cfg.UnmarshalDefaults) {
 		settings := val.(*crud.Settings)
 		settings.WriteTimeout = time.Minute
-	}).Return(nil)
+	}).Return(nil).Once()
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
 	s.handler = newHandler(s.T())
-	s.deleteHandler, err = crud.NewDeleteHandler(config, logger, s.handler)
+	s.deleteHandler, err = crud.NewDeleteHandler[Output, uint, *Model](config, logger, s.handler)
 	s.NoError(err)
 }
 
 func (s *deleteTestSuite) TestDelete() {
-	model := &Model{}
 	deleteModel := &Model{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: mdl.Box(uint(1)),
-			Timestamps: db_repo.Timestamps{
+			Timestamps: dbRepo.Timestamps{
 				UpdatedAt: &time.Time{},
 				CreatedAt: &time.Time{},
 			},
@@ -61,14 +59,16 @@ func (s *deleteTestSuite) TestDelete() {
 		Name: mdl.Box("foobar"),
 	}
 
-	s.handler.Repo.EXPECT().Read(matcher.Context, mock.AnythingOfType("*uint"), model).
-		Run(func(ctx context.Context, id *uint, out db_repo.ModelBased) {
-			model := out.(*Model)
-			model.Id = mdl.Box(uint(1))
-			model.Name = mdl.Box("foobar")
-			model.UpdatedAt = &time.Time{}
-			model.CreatedAt = &time.Time{}
-		}).Return(nil)
+	s.handler.Repo.EXPECT().Read(matcher.Context, uint(1)).Return(&Model{
+		Model: dbRepo.Model{
+			Id: mdl.Box(uint(1)),
+			Timestamps: dbRepo.Timestamps{
+				UpdatedAt: &time.Time{},
+				CreatedAt: &time.Time{},
+			},
+		},
+		Name: mdl.Box("foobar"),
+	}, nil).Once()
 	s.handler.Repo.EXPECT().Delete(matcher.Context, deleteModel).Return(nil)
 
 	response := httpserver.HttpTest("DELETE", "/:id", "/1", "", s.deleteHandler)
@@ -78,11 +78,10 @@ func (s *deleteTestSuite) TestDelete() {
 }
 
 func (s *deleteTestSuite) TestDelete_ValidationError() {
-	model := &Model{}
 	deleteModel := &Model{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: mdl.Box(uint(1)),
-			Timestamps: db_repo.Timestamps{
+			Timestamps: dbRepo.Timestamps{
 				UpdatedAt: &time.Time{},
 				CreatedAt: &time.Time{},
 			},
@@ -90,17 +89,19 @@ func (s *deleteTestSuite) TestDelete_ValidationError() {
 		Name: mdl.Box("foobar"),
 	}
 
-	s.handler.Repo.EXPECT().Read(matcher.Context, mock.AnythingOfType("*uint"), model).
-		Run(func(ctx context.Context, id *uint, out db_repo.ModelBased) {
-			model := out.(*Model)
-			model.Id = mdl.Box(uint(1))
-			model.Name = mdl.Box("foobar")
-			model.UpdatedAt = &time.Time{}
-			model.CreatedAt = &time.Time{}
-		}).Return(nil)
+	s.handler.Repo.EXPECT().Read(matcher.Context, uint(1)).Return(&Model{
+		Model: dbRepo.Model{
+			Id: mdl.Box(uint(1)),
+			Timestamps: dbRepo.Timestamps{
+				UpdatedAt: &time.Time{},
+				CreatedAt: &time.Time{},
+			},
+		},
+		Name: mdl.Box("foobar"),
+	}, nil).Once()
 	s.handler.Repo.EXPECT().Delete(matcher.Context, deleteModel).Return(&validation.Error{
 		Errors: []error{fmt.Errorf("invalid foobar")},
-	})
+	}).Once()
 
 	response := httpserver.HttpTest("DELETE", "/:id", "/1", "", s.deleteHandler)
 

@@ -16,22 +16,22 @@ const (
 	MetricNameDbAccessLatency = "DbAccessLatency"
 )
 
-type metricRepository struct {
-	Repository
+type metricRepository[K mdl.PossibleIdentifier, M ModelBased[K]] struct {
+	Repository[K, M]
 	output metric.Writer
 }
 
-func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
+func NewMetricRepository[K mdl.PossibleIdentifier, M ModelBased[K]](_ cfg.Config, _ log.Logger, repo Repository[K, M]) Repository[K, M] {
 	defaults := getDefaultRepositoryMetrics(repo.GetMetadata().ModelId)
 	output := metric.NewWriter(defaults...)
 
-	return &metricRepository{
+	return &metricRepository[K, M]{
 		Repository: repo,
 		output:     output,
 	}
 }
 
-func (r metricRepository) Create(ctx context.Context, value ModelBased) error {
+func (r metricRepository[K, M]) Create(ctx context.Context, value M) error {
 	start := time.Now()
 	err := r.Repository.Create(ctx, value)
 	r.writeMetric(ctx, Create, err, start)
@@ -39,15 +39,15 @@ func (r metricRepository) Create(ctx context.Context, value ModelBased) error {
 	return err
 }
 
-func (r metricRepository) Read(ctx context.Context, id *uint, out ModelBased) error {
+func (r metricRepository[K, M]) Read(ctx context.Context, id K) (M, error) {
 	start := time.Now()
-	err := r.Repository.Read(ctx, id, out)
+	result, err := r.Repository.Read(ctx, id)
 	r.writeMetric(ctx, Read, err, start)
 
-	return err
+	return result, err
 }
 
-func (r metricRepository) Update(ctx context.Context, value ModelBased) error {
+func (r metricRepository[K, M]) Update(ctx context.Context, value M) error {
 	start := time.Now()
 	err := r.Repository.Update(ctx, value)
 	r.writeMetric(ctx, Update, err, start)
@@ -55,7 +55,7 @@ func (r metricRepository) Update(ctx context.Context, value ModelBased) error {
 	return err
 }
 
-func (r metricRepository) Delete(ctx context.Context, value ModelBased) error {
+func (r metricRepository[K, M]) Delete(ctx context.Context, value M) error {
 	start := time.Now()
 	err := r.Repository.Delete(ctx, value)
 	r.writeMetric(ctx, Delete, err, start)
@@ -63,15 +63,15 @@ func (r metricRepository) Delete(ctx context.Context, value ModelBased) error {
 	return err
 }
 
-func (r metricRepository) Query(ctx context.Context, qb *QueryBuilder, result any) error {
+func (r metricRepository[K, M]) Query(ctx context.Context, qb *QueryBuilder) ([]M, error) {
 	start := time.Now()
-	err := r.Repository.Query(ctx, qb, result)
+	result, err := r.Repository.Query(ctx, qb)
 	r.writeMetric(ctx, Query, err, start)
 
-	return err
+	return result, err
 }
 
-func (r metricRepository) writeMetric(ctx context.Context, op string, err error, start time.Time) {
+func (r metricRepository[K, M]) writeMetric(ctx context.Context, op string, err error, start time.Time) {
 	latencyNano := time.Since(start)
 	metricName := MetricNameDbAccessSuccess
 

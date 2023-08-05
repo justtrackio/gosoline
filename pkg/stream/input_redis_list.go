@@ -40,13 +40,11 @@ type redisListInput struct {
 }
 
 func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListInputSettings) (Input, error) {
-	err := settings.PadFromConfig(config)
-	if err != nil {
+	if err := settings.PadFromConfig(config); err != nil {
 		return nil, fmt.Errorf("can not pad settings from config: %w", err)
 	}
 
-	var client redis.Client
-	client, err = redis.ProvideClient(ctx, config, logger, settings.ServerName)
+	client, err := redis.ProvideClient(ctx, config, logger, settings.ServerName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}

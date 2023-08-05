@@ -7,28 +7,29 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type Repository struct {
-	db_repo.Repository
+type Repository[K mdl.PossibleIdentifier, M db_repo.ModelBased[K]] struct {
+	db_repo.Repository[K, M]
 	dispatcher Dispatcher
 	logger     log.Logger
 }
 
-func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, repo db_repo.Repository) (db_repo.Repository, error) {
+func NewRepository[K mdl.PossibleIdentifier, M db_repo.ModelBased[K]](ctx context.Context, config cfg.Config, logger log.Logger, repo db_repo.Repository[K, M]) (db_repo.Repository[K, M], error) {
 	disp, err := ProvideDispatcher(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not provide dispatcher: %w", err)
 	}
 
-	return &Repository{
+	return &Repository[K, M]{
 		Repository: repo,
 		dispatcher: disp,
 		logger:     logger,
 	}, nil
 }
 
-func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error {
+func (r Repository[K, M]) Create(ctx context.Context, value M) error {
 	err := r.Repository.Create(ctx, value)
 	if err != nil {
 		return err
@@ -44,7 +45,7 @@ func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error 
 	return err
 }
 
-func (r Repository) Update(ctx context.Context, value db_repo.ModelBased) error {
+func (r Repository[K, M]) Update(ctx context.Context, value M) error {
 	err := r.Repository.Update(ctx, value)
 	if err != nil {
 		return err
@@ -60,7 +61,7 @@ func (r Repository) Update(ctx context.Context, value db_repo.ModelBased) error 
 	return err
 }
 
-func (r Repository) Delete(ctx context.Context, value db_repo.ModelBased) error {
+func (r Repository[K, M]) Delete(ctx context.Context, value M) error {
 	err := r.Repository.Delete(ctx, value)
 	if err != nil {
 		return err

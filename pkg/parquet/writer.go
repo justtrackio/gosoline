@@ -44,7 +44,10 @@ type s3Writer struct {
 }
 
 func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *WriterSettings) (Writer, error) {
-	settings.ModelId.PadFromConfig(config)
+	err := settings.ModelId.PadFromConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not pad settings from config: %w", err)
+	}
 
 	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {

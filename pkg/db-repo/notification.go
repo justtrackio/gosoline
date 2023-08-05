@@ -20,9 +20,9 @@ type (
 	Publisher interface {
 		Publish(ctx context.Context, typ string, version int, value any, customAttributes ...map[string]string) error
 	}
-	NotificationMap map[string][]Notifier
-	Notifier        interface {
-		Send(ctx context.Context, notificationType string, value ModelBased) error
+	NotificationMap[K mdl.PossibleIdentifier] map[string][]Notifier[K]
+	Notifier[K mdl.PossibleIdentifier]        interface {
+		Send(ctx context.Context, notificationType string, value ModelBased[K]) error
 	}
 )
 

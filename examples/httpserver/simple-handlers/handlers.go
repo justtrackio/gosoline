@@ -6,7 +6,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
-	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 )
 
 type JsonResponseFromMapHandler struct{}
@@ -60,7 +59,7 @@ func (h *AdminAuthenticatedHandler) Handle(requestContext context.Context, reque
 }
 
 type MyEntityHandler struct {
-	repo crud.Repository
+	repo db_repo.Repository[uint, *MyEntity]
 }
 
 type MyEntityCreateInput struct {
@@ -72,53 +71,32 @@ type MyEntityUpdateInput struct {
 	Prop1 string `json:"prop1"`
 }
 
-func (h *MyEntityHandler) GetRepository() crud.Repository {
+func (h *MyEntityHandler) GetRepository() db_repo.Repository[uint, *MyEntity] {
 	return h.repo
 }
 
-func (h *MyEntityHandler) GetModel() db_repo.ModelBased {
-	return &MyEntity{}
-}
-
-func (h *MyEntityHandler) TransformOutput(_ context.Context, model db_repo.ModelBased, apiView string) (output any, err error) {
+func (h *MyEntityHandler) TransformOutput(_ context.Context, model *MyEntity, apiView string) (output *MyEntity, err error) {
 	return model, nil
 }
 
-func (h *MyEntityHandler) GetCreateInput() any {
-	return &MyEntityCreateInput{}
+func (h *MyEntityHandler) TransformCreate(_ context.Context, input *MyEntityCreateInput) (model *MyEntity, err error) {
+	return &MyEntity{
+		Prop1: input.Prop1,
+		Prop2: input.Prop2,
+	}, nil
 }
 
-func (h *MyEntityHandler) TransformCreate(_ context.Context, input any, model db_repo.ModelBased) (err error) {
-	i := input.(*MyEntityCreateInput)
-	b := model.(*MyEntity)
+func (h *MyEntityHandler) TransformUpdate(_ context.Context, input *MyEntityUpdateInput, model *MyEntity) (updated *MyEntity, err error) {
+	model.Prop1 = input.Prop1
 
-	b.Prop1 = i.Prop1
-	b.Prop2 = i.Prop2
-
-	return
+	return model, nil
 }
 
-func (h *MyEntityHandler) GetUpdateInput() any {
-	return &MyEntityUpdateInput{}
+func (h *MyEntityHandler) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out []*MyEntity, err error) {
+	return h.repo.Query(ctx, qb)
 }
 
-func (h *MyEntityHandler) TransformUpdate(_ context.Context, input any, model db_repo.ModelBased) (err error) {
-	i := input.(*MyEntityUpdateInput)
-	b := model.(*MyEntity)
-
-	b.Prop1 = i.Prop1
-
-	return
-}
-
-func (h *MyEntityHandler) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out any, err error) {
-	res := make([]*MyEntity, 0)
-	err = h.repo.Query(ctx, qb, &res)
-
-	return res, err
-}
-
-func (h *MyEntityHandler) Handle(requestContext context.Context, request *httpserver.Request) (response *httpserver.Response, err error) {
+func (h *MyEntityHandler) Handle(ctx context.Context, request *httpserver.Request) (response *httpserver.Response, err error) {
 	m := map[string]bool{
 		"authenticated": true,
 	}

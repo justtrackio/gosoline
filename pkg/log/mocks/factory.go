@@ -161,20 +161,6 @@ func NewLoggerMock(opts ...LoggerMockOption) LoggerMock {
 	return logger
 }
 
-// NewLoggerMockedAll is the same as NewLoggerMock(WithMockAll).
-//
-// Deprecated: use NewLoggerMock(WithMockAll) instead.
-func NewLoggerMockedAll(opts ...LoggerMockOption) LoggerMock {
-	return NewLoggerMock(append([]LoggerMockOption{WithMockAll}, opts...)...)
-}
-
-// NewLoggerMockedUntilLevel returns a logger mocked up to the given log level. All other calls will cause an error and fail the test.
-//
-// Deprecated: use NewLoggerMock(WithMockUntilLevel(level)) instead.
-func NewLoggerMockedUntilLevel(level int, opts ...LoggerMockOption) LoggerMock {
-	return NewLoggerMock(append([]LoggerMockOption{WithMockUntilLevel(level)}, opts...)...)
-}
-
 func (l *loggerMock) mockLoggerMethod(method string, level string, allowed bool) {
 	anythings := make(mock.Arguments, 0)
 	f := l.inspectLogFunction(level, allowed)
