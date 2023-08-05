@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
@@ -12,7 +13,7 @@ import (
 type mysqlOrmFixtureWriter struct {
 	logger   log.Logger
 	metadata *db_repo.Metadata
-	repo     db_repo.Repository
+	repo     db_repo.ConfigurableRepository[uint, db_repo.ModelBased[uint]]
 	purger   *mysqlPurger
 }
 
@@ -25,7 +26,7 @@ func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFacto
 			Metadata: *metadata,
 		}
 
-		repo, err := db_repo.New(config, logger, settings)
+		repo, err := db_repo.New[uint, db_repo.ModelBased[uint]](config, logger, settings)
 		if err != nil {
 			return nil, fmt.Errorf("can not create repo: %w", err)
 		}
@@ -39,7 +40,7 @@ func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFacto
 	}
 }
 
-func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *db_repo.Metadata, repo db_repo.Repository, purger *mysqlPurger) FixtureWriter {
+func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *db_repo.Metadata, repo db_repo.ConfigurableRepository[uint, db_repo.ModelBased[uint]], purger *mysqlPurger) FixtureWriter {
 	return &mysqlOrmFixtureWriter{
 		logger:   logger,
 		metadata: metadata,
@@ -63,7 +64,11 @@ func (m *mysqlOrmFixtureWriter) Purge(ctx context.Context) error {
 
 func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
 	for _, item := range fs.Fixtures {
-		model := item.(db_repo.ModelBased)
+		model := item.(db_repo.ModelBased[uint])
+
+		m.repo.SetModelSource(func() db_repo.ModelBased[uint] {
+			return createFromType(model)
+		})
 
 		err := m.repo.Update(ctx, model)
 		if err != nil {
@@ -74,4 +79,19 @@ func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error
 	m.logger.Info("loaded %d mysql fixtures", len(fs.Fixtures))
 
 	return nil
+}
+
+func createFromType[T any](model T) T {
+	modelType := reflect.TypeOf(model)
+
+	switch modelType.Kind() {
+	case reflect.Pointer:
+		return reflect.New(modelType.Elem()).Interface().(T)
+
+	case reflect.Map:
+		return reflect.MakeMap(modelType).Interface().(T)
+
+	default:
+		return *reflect.New(modelType.Elem()).Interface().(*T)
+	}
 }

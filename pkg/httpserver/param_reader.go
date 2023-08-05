@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -29,4 +30,24 @@ func GetStringFromRequest(request *Request, name string) (*string, bool) {
 	}
 
 	return &paramString, true
+}
+
+func GetIdentifierFromRequest[K mdl.PossibleIdentifier](request *Request, name string) (*K, bool) {
+	var k K
+	var ki any = k
+
+	switch ki.(type) {
+	case string:
+		id, valid := GetStringFromRequest(request, name)
+		var idVal any = id
+
+		return idVal.(*K), valid
+	case uint:
+		id, valid := GetUintFromRequest(request, name)
+		var idVal any = id
+
+		return idVal.(*K), valid
+	default:
+		panic(fmt.Errorf("type K should either be uint or string, got %T", k))
+	}
 }

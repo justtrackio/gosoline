@@ -5,19 +5,20 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/pkg/errors"
 )
 
-type readHandler struct {
+type readHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] struct {
 	logger      log.Logger
-	transformer BaseHandler
+	transformer BaseHandler[O, K, M]
 }
 
-func NewReadHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFunc {
-	rh := readHandler{
+func NewReadHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, transformer BaseHandler[O, K, M]) gin.HandlerFunc {
+	rh := readHandler[O, K, M]{
 		transformer: transformer,
 		logger:      logger,
 	}
@@ -25,18 +26,17 @@ func NewReadHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFunc 
 	return httpserver.CreateHandler(rh)
 }
 
-func (rh readHandler) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
-	id, valid := httpserver.GetUintFromRequest(request, "id")
+func (rh readHandler[O, K, M]) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
+	id, valid := httpserver.GetIdentifierFromRequest[K](request, "id")
 
 	if !valid {
 		return nil, errors.New("no valid id provided")
 	}
 
 	repo := rh.transformer.GetRepository()
-	model := rh.transformer.GetModel()
-	err := repo.Read(ctx, id, model)
+	model, err := repo.Read(ctx, *id)
 
-	var notFound db_repo.RecordNotFoundError
+	var notFound dbRepo.RecordNotFoundError
 	if errors.As(err, &notFound) {
 		rh.logger.WithContext(ctx).Warn("failed to read model: %s", err)
 

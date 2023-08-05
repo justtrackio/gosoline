@@ -29,12 +29,12 @@ type ItemsHistory struct {
 	Item
 }
 
-func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger) (db_repo.Repository, error) {
+func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger) (db_repo.Repository[uint, *Item], error) {
 	settings := db_repo.Settings{
 		Metadata: tableMetadata,
 	}
 
-	repository, err := db_repo.New(config, logger, settings)
+	repository, err := db_repo.New[uint, *Item](config, logger, settings)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create repository: %w", err)
 	}
@@ -52,12 +52,12 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger) (d
 	return repository, nil
 }
 
-func NewHistoryRepository(ctx context.Context, config cfg.Config, logger log.Logger) (db_repo.RepositoryReadOnly, error) {
+func NewHistoryRepository(ctx context.Context, config cfg.Config, logger log.Logger) (db_repo.RepositoryReadOnly[uint, *ItemsHistory], error) {
 	settings := db_repo.Settings{
 		Metadata: tableHistoryMetadata,
 	}
 
-	repository, err := db_repo.New(config, logger, settings)
+	repository, err := db_repo.New[uint, *ItemsHistory](config, logger, settings)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create repository: %w", err)
 	}

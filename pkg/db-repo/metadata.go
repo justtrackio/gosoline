@@ -1,6 +1,11 @@
 package db_repo
 
-import "github.com/justtrackio/gosoline/pkg/mdl"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/justtrackio/gosoline/pkg/mdl"
+)
 
 const (
 	BoolAnd = "AND"
@@ -19,6 +24,16 @@ type Metadata struct {
 	TableName  string
 	PrimaryKey string
 	Mappings   FieldMappings
+}
+
+func (m Metadata) PrimaryKeyWithoutTable() string {
+	parts := strings.Split(m.PrimaryKey, ".")
+	primaryKey := parts[len(parts)-1]
+	if primaryKey == "" {
+		panic(fmt.Errorf("missing primary key for table %q for model %q", m.TableName, m.TableName))
+	}
+
+	return primaryKey
 }
 
 type FieldMappings map[string]FieldMapping
