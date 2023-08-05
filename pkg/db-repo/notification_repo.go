@@ -6,38 +6,39 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type notifyingRepository struct {
-	Repository
+type notifyingRepository[K mdl.PossibleIdentifier, M ModelBased[K]] struct {
+	Repository[K, M]
 
 	logger    log.Logger
-	notifiers NotificationMap
+	notifiers NotificationMap[K]
 }
 
-func NewNotifyingRepository(logger log.Logger, base Repository) *notifyingRepository {
-	return &notifyingRepository{
+func NewNotifyingRepository[K mdl.PossibleIdentifier, M ModelBased[K]](logger log.Logger, base Repository[K, M]) Repository[K, M] {
+	return &notifyingRepository[K, M]{
 		Repository: base,
 		logger:     logger,
-		notifiers:  make(NotificationMap),
+		notifiers:  make(NotificationMap[K]),
 	}
 }
 
-func (r *notifyingRepository) AddNotifierAll(c Notifier) {
+func (r *notifyingRepository[K, M]) AddNotifierAll(c Notifier[K]) {
 	for _, t := range NotificationTypes {
 		r.AddNotifier(t, c)
 	}
 }
 
-func (r *notifyingRepository) AddNotifier(t string, c Notifier) {
+func (r *notifyingRepository[K, M]) AddNotifier(t string, c Notifier[K]) {
 	if _, ok := r.notifiers[t]; !ok {
-		r.notifiers[t] = make([]Notifier, 0)
+		r.notifiers[t] = make([]Notifier[K], 0)
 	}
 
 	r.notifiers[t] = append(r.notifiers[t], c)
 }
 
-func (r *notifyingRepository) Create(ctx context.Context, value ModelBased) error {
+func (r *notifyingRepository[K, M]) Create(ctx context.Context, value M) error {
 	if err := r.Repository.Create(ctx, value); err != nil {
 		return err
 	}
@@ -45,7 +46,7 @@ func (r *notifyingRepository) Create(ctx context.Context, value ModelBased) erro
 	return r.doCallback(ctx, Create, value)
 }
 
-func (r *notifyingRepository) Update(ctx context.Context, value ModelBased) error {
+func (r *notifyingRepository[K, M]) Update(ctx context.Context, value M) error {
 	if err := r.Repository.Update(ctx, value); err != nil {
 		return err
 	}
@@ -53,7 +54,7 @@ func (r *notifyingRepository) Update(ctx context.Context, value ModelBased) erro
 	return r.doCallback(ctx, Update, value)
 }
 
-func (r *notifyingRepository) Delete(ctx context.Context, value ModelBased) error {
+func (r *notifyingRepository[K, M]) Delete(ctx context.Context, value M) error {
 	if err := r.Repository.Delete(ctx, value); err != nil {
 		return err
 	}
@@ -61,7 +62,7 @@ func (r *notifyingRepository) Delete(ctx context.Context, value ModelBased) erro
 	return r.doCallback(ctx, Delete, value)
 }
 
-func (r *notifyingRepository) doCallback(ctx context.Context, callbackType string, value ModelBased) error {
+func (r *notifyingRepository[K, M]) doCallback(ctx context.Context, callbackType string, value M) error {
 	if _, ok := r.notifiers[callbackType]; !ok {
 		return nil
 	}

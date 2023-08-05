@@ -5,14 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/justtrackio/gosoline/pkg/db-repo"
-	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
-	"github.com/justtrackio/gosoline/pkg/httpserver/crud/mocks"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepoMocks "github.com/justtrackio/gosoline/pkg/db-repo/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type Model struct {
-	db_repo.Model
+	dbRepo.Model
 	Name *string `json:"name"`
 }
 
@@ -32,78 +31,54 @@ type UpdateInput struct {
 }
 
 type handler struct {
-	Repo *mocks.Repository
+	Repo *dbRepoMocks.Repository[uint, *Model]
 }
 
-func (h handler) GetRepository() crud.Repository {
+func (h handler) GetRepository() dbRepo.Repository[uint, *Model] {
 	return h.Repo
 }
 
-func (h handler) GetModel() db_repo.ModelBased {
-	return &Model{}
+func (h handler) TransformCreate(_ context.Context, inp *CreateInput) (*Model, error) {
+	return &Model{
+		Name: inp.Name,
+	}, nil
 }
 
-func (h handler) GetCreateInput() any {
-	return &CreateInput{}
+func (h handler) TransformUpdate(_ context.Context, inp *UpdateInput, model *Model) (*Model, error) {
+	model.Name = inp.Name
+
+	return model, nil
 }
 
-func (h handler) GetUpdateInput() any {
-	return &UpdateInput{}
-}
-
-func (h handler) TransformCreate(_ context.Context, inp any, model db_repo.ModelBased) (err error) {
-	input := inp.(*CreateInput)
-	m := model.(*Model)
-
-	m.Name = input.Name
-
-	return nil
-}
-
-func (h handler) TransformUpdate(_ context.Context, inp any, model db_repo.ModelBased) (err error) {
-	input := inp.(*UpdateInput)
-	m := model.(*Model)
-
-	m.Name = input.Name
-
-	return nil
-}
-
-func (h handler) TransformOutput(_ context.Context, model db_repo.ModelBased, _ string) (any, error) {
-	m := model.(*Model)
-
-	out := &Output{
-		Id:        m.Id,
-		Name:      m.Name,
-		UpdatedAt: m.UpdatedAt,
-		CreatedAt: m.CreatedAt,
+func (h handler) TransformOutput(_ context.Context, model *Model, _ string) (output Output, err error) {
+	out := Output{
+		Id:        model.Id,
+		Name:      model.Name,
+		UpdatedAt: model.UpdatedAt,
+		CreatedAt: model.CreatedAt,
 	}
 
 	return out, nil
 }
 
-func (h handler) List(_ context.Context, _ *db_repo.QueryBuilder, _ string) (any, error) {
+func (h handler) List(_ context.Context, _ *dbRepo.QueryBuilder, _ string) (out []Output, err error) {
 	date, err := time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
 	if err != nil {
 		panic(err)
 	}
 
-	return []Model{
+	return []Output{
 		{
-			Model: db_repo.Model{
-				Id: mdl.Box(uint(1)),
-				Timestamps: db_repo.Timestamps{
-					UpdatedAt: mdl.Box(date),
-					CreatedAt: mdl.Box(date),
-				},
-			},
-			Name: mdl.Box("foobar"),
+			Id:        mdl.Box(uint(1)),
+			Name:      mdl.Box("foobar"),
+			UpdatedAt: mdl.Box(date),
+			CreatedAt: mdl.Box(date),
 		},
 	}, nil
 }
 
 func newHandler(t *testing.T) handler {
-	repo := mocks.NewRepository(t)
+	repo := dbRepoMocks.NewRepository[uint, *Model](t)
 
 	return handler{
 		Repo: repo,

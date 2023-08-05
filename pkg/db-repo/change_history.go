@@ -70,7 +70,7 @@ func (c *ChangeHistoryModel) GetHistoryAuthorId() int {
 	return c.ChangeHistoryAuthorId
 }
 
-func MigrateChangeHistory(ctx context.Context, config cfg.Config, logger log.Logger, models ...ModelBased) error {
+func MigrateChangeHistory(ctx context.Context, config cfg.Config, logger log.Logger, models ...ModelBased[uint]) error {
 	var err error
 	var manager *ChangeHistoryManager
 

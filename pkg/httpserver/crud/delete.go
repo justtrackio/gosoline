@@ -7,40 +7,42 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
-type deleteHandler struct {
+type deleteHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] struct {
 	logger      log.Logger
-	transformer BaseHandler
+	transformer BaseHandler[O, K, M]
 	settings    Settings
 }
 
-func NewDeleteHandler(config cfg.Config, logger log.Logger, transformer BaseHandler) (gin.HandlerFunc, error) {
+func NewDeleteHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](config cfg.Config, logger log.Logger, transformer BaseHandler[O, K, M]) (gin.HandlerFunc, error) {
 	settings := Settings{}
 	if err := config.UnmarshalKey(SettingsConfigKey, &settings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal delete handler settings: %w", err)
 	}
-	dh := deleteHandler{
-		transformer: transformer,
+
+	dh := deleteHandler[O, K, M]{
 		logger:      logger,
+		transformer: transformer,
 		settings:    settings,
 	}
 
 	return httpserver.CreateHandler(dh), nil
 }
 
-func (dh deleteHandler) Handle(reqCtx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
+func (dh deleteHandler[O, K, M]) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
 	// replace context with a new one to prevent cancellations from client side
 	// include a new timeout to ensure that requests will be cancelled
-	ctx, cancel := exec.WithDelayedCancelContext(reqCtx, dh.settings.WriteTimeout)
+	ctx, cancel := exec.WithDelayedCancelContext(ctx, dh.settings.WriteTimeout)
 	defer cancel()
 
-	id, valid := httpserver.GetUintFromRequest(request, "id")
-
+	id, valid := httpserver.GetIdentifierFromRequest[K](request, "id")
 	if !valid {
 		return HandleErrorOnWrite(ctx, dh.logger, &validation.Error{
 			Errors: []error{
@@ -50,9 +52,8 @@ func (dh deleteHandler) Handle(reqCtx context.Context, request *httpserver.Reque
 	}
 
 	repo := dh.transformer.GetRepository()
-	model := dh.transformer.GetModel()
 
-	err := repo.Read(ctx, id, model)
+	model, err := repo.Read(ctx, *id)
 	if err != nil {
 		return HandleErrorOnWrite(ctx, dh.logger, err)
 	}

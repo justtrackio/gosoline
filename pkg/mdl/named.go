@@ -8,7 +8,7 @@ type NamedOutputV0 struct {
 }
 
 type Nameable interface {
-	Identifiable
+	Identifiable[uint]
 	GetName() *string
 }
 

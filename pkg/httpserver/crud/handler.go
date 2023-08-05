@@ -11,6 +11,7 @@ import (
 	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 const (
@@ -25,88 +26,74 @@ type Settings struct {
 	WriteTimeout time.Duration `cfg:"write_timeout" default:"10m" validate:"min=1000000000"`
 }
 
-//go:generate go run github.com/vektra/mockery/v2 --name Repository
-type Repository interface {
-	Create(ctx context.Context, value dbRepo.ModelBased) error
-	Read(ctx context.Context, id *uint, out dbRepo.ModelBased) error
-	Update(ctx context.Context, value dbRepo.ModelBased) error
-	Delete(ctx context.Context, value dbRepo.ModelBased) error
-	Query(ctx context.Context, qb *dbRepo.QueryBuilder, result any) error
-	Count(ctx context.Context, qb *dbRepo.QueryBuilder, model dbRepo.ModelBased) (int, error)
-	GetMetadata() dbRepo.Metadata
-}
-
 //go:generate go run github.com/vektra/mockery/v2 --name BaseHandler
-type BaseHandler interface {
-	GetRepository() Repository
-	GetModel() dbRepo.ModelBased
-	TransformOutput(ctx context.Context, model dbRepo.ModelBased, apiView string) (output any, err error)
+type BaseHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	GetRepository() dbRepo.Repository[K, M]
+	TransformOutput(ctx context.Context, model M, apiView string) (output O, err error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name BaseCreateHandler
-type BaseCreateHandler interface {
-	GetCreateInput() any
-	TransformCreate(ctx context.Context, input any, model dbRepo.ModelBased) (err error)
+type BaseCreateHandler[I any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	TransformCreate(ctx context.Context, input *I) (M, error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name CreateHandler
-type CreateHandler interface {
-	BaseHandler
-	BaseCreateHandler
+type CreateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	BaseHandler[O, K, M]
+	BaseCreateHandler[I, K, M]
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name BaseUpdateHandler
-type BaseUpdateHandler interface {
-	GetUpdateInput() any
-	TransformUpdate(ctx context.Context, input any, model dbRepo.ModelBased) (err error)
+type BaseUpdateHandler[I any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	TransformUpdate(ctx context.Context, input *I, model M) (M, error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name UpdateHandler
-type UpdateHandler interface {
-	BaseHandler
-	BaseUpdateHandler
+type UpdateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	BaseHandler[O, K, M]
+	BaseUpdateHandler[I, K, M]
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name BaseListHandler
-type BaseListHandler interface {
-	List(ctx context.Context, qb *dbRepo.QueryBuilder, apiView string) (out any, err error)
+type BaseListHandler[O any] interface {
+	List(ctx context.Context, qb *dbRepo.QueryBuilder, apiView string) (out []O, err error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name ListHandler
-type ListHandler interface {
-	BaseHandler
-	BaseListHandler
+type ListHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	BaseHandler[O, K, M]
+	BaseListHandler[O]
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Handler
-type Handler interface {
-	BaseHandler
-	BaseCreateHandler
-	BaseUpdateHandler
-	BaseListHandler
+type Handler[CI any, UI any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	BaseHandler[O, K, M]
+	BaseCreateHandler[CI, K, M]
+	BaseUpdateHandler[UI, K, M]
+	BaseListHandler[O]
 }
 
-func AddCrudHandlers(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler Handler) error {
-	if err := AddCreateHandler(config, logger, d, version, basePath, handler); err != nil {
+func AddCrudHandlers[CI any, UI any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler Handler[CI, UI, O, K, M]) error {
+	if err := AddCreateHandler[CI, O, K, M](config, logger, d, version, basePath, handler); err != nil {
 		return fmt.Errorf("failed to add create handler: %w", err)
 	}
 
-	AddReadHandler(config, logger, d, version, basePath, handler)
+	AddReadHandler[O, K, M](logger, d, version, basePath, handler)
 
-	if err := AddUpdateHandler(config, logger, d, version, basePath, handler); err != nil {
+	if err := AddUpdateHandler[UI, O, K, M](config, logger, d, version, basePath, handler); err != nil {
 		return fmt.Errorf("failed to add update handler: %w", err)
 	}
 
-	if err := AddDeleteHandler(config, logger, d, version, basePath, handler); err != nil {
+	if err := AddDeleteHandler[O, K, M](config, logger, d, version, basePath, handler); err != nil {
 		return fmt.Errorf("failed to add delete handler: %w", err)
 	}
 
-	AddListHandler(config, logger, d, version, basePath, handler)
+	AddListHandler[O, K, M](logger, d, version, basePath, handler)
 
 	return nil
 }
 
-func AddCreateHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler CreateHandler) error {
+func AddCreateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler CreateHandler[I, O, K, M]) error {
 	path, _ := getHandlerPaths(version, basePath)
 
 	createHandler, err := NewCreateHandler(config, logger, handler)
@@ -119,13 +106,13 @@ func AddCreateHandler(config cfg.Config, logger log.Logger, d *httpserver.Defini
 	return nil
 }
 
-func AddReadHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler) {
+func AddReadHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler[O, K, M]) {
 	_, idPath := getHandlerPaths(version, basePath)
 
-	d.GET(idPath, NewReadHandler(config, logger, handler))
+	d.GET(idPath, NewReadHandler(logger, handler))
 }
 
-func AddUpdateHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler UpdateHandler) error {
+func AddUpdateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler UpdateHandler[I, O, K, M]) error {
 	_, idPath := getHandlerPaths(version, basePath)
 
 	updateHandler, err := NewUpdateHandler(config, logger, handler)
@@ -138,7 +125,7 @@ func AddUpdateHandler(config cfg.Config, logger log.Logger, d *httpserver.Defini
 	return nil
 }
 
-func AddDeleteHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler) error {
+func AddDeleteHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler[O, K, M]) error {
 	_, idPath := getHandlerPaths(version, basePath)
 
 	deleteHandler, err := NewDeleteHandler(config, logger, handler)
@@ -151,10 +138,10 @@ func AddDeleteHandler(config cfg.Config, logger log.Logger, d *httpserver.Defini
 	return nil
 }
 
-func AddListHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler ListHandler) {
+func AddListHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler ListHandler[O, K, M]) {
 	plural := inflection.Plural(basePath)
 	path := fmt.Sprintf("/v%d/%s", version, plural)
-	d.POST(path, NewListHandler(config, logger, handler))
+	d.POST(path, NewListHandler(logger, handler))
 }
 
 func getHandlerPaths(version int, basePath string) (path string, idPath string) {

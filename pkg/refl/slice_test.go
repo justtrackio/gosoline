@@ -27,7 +27,8 @@ func TestSliceOf(t *testing.T) {
 	assert.EqualError(t, err, "the slice has to be addressable", "it should fail if the slice is not addressable")
 
 	s1 := make([]int, 0)
-	rs, _ := refl.SliceOf(&s1)
+	rs, err := refl.SliceOf(&s1)
+	assert.NoError(t, err)
 
 	i1 := 4
 	_ = rs.Append(i1)

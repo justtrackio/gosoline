@@ -4,29 +4,30 @@ import (
 	"context"
 
 	"github.com/gin-gonic/gin"
-	"github.com/justtrackio/gosoline/pkg/cfg"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/validation"
 	"github.com/pkg/errors"
 )
 
-type readHandler struct {
+type readHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] struct {
 	logger      log.Logger
-	transformer BaseHandler
+	transformer BaseHandler[O, K, M]
 }
 
-func NewReadHandler(_ cfg.Config, logger log.Logger, transformer BaseHandler) gin.HandlerFunc {
-	rh := readHandler{
-		transformer: transformer,
+func NewReadHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, transformer BaseHandler[O, K, M]) gin.HandlerFunc {
+	rh := readHandler[O, K, M]{
 		logger:      logger,
+		transformer: transformer,
 	}
 
 	return httpserver.CreateHandler(rh)
 }
 
-func (rh readHandler) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
-	id, valid := httpserver.GetUintFromRequest(request, "id")
+func (rh readHandler[O, K, M]) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
+	id, valid := httpserver.GetIdentifierFromRequest[K](request, "id")
 
 	if !valid {
 		return HandleErrorOnRead(ctx, rh.logger, &validation.Error{
@@ -41,8 +42,7 @@ func (rh readHandler) Handle(ctx context.Context, request *httpserver.Request) (
 	})
 
 	repo := rh.transformer.GetRepository()
-	model := rh.transformer.GetModel()
-	err := repo.Read(ctx, id, model)
+	model, err := repo.Read(ctx, *id)
 	if err != nil {
 		return HandleErrorOnRead(ctx, logger, err)
 	}

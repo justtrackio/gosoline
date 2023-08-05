@@ -21,6 +21,100 @@ func (_m *TimeStampable) EXPECT() *TimeStampable_Expecter {
 	return &TimeStampable_Expecter{mock: &_m.Mock}
 }
 
+// GetCreatedAt provides a mock function with no fields
+func (_m *TimeStampable) GetCreatedAt() *time.Time {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCreatedAt")
+	}
+
+	var r0 *time.Time
+	if rf, ok := ret.Get(0).(func() *time.Time); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*time.Time)
+		}
+	}
+
+	return r0
+}
+
+// TimeStampable_GetCreatedAt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCreatedAt'
+type TimeStampable_GetCreatedAt_Call struct {
+	*mock.Call
+}
+
+// GetCreatedAt is a helper method to define mock.On call
+func (_e *TimeStampable_Expecter) GetCreatedAt() *TimeStampable_GetCreatedAt_Call {
+	return &TimeStampable_GetCreatedAt_Call{Call: _e.mock.On("GetCreatedAt")}
+}
+
+func (_c *TimeStampable_GetCreatedAt_Call) Run(run func()) *TimeStampable_GetCreatedAt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *TimeStampable_GetCreatedAt_Call) Return(_a0 *time.Time) *TimeStampable_GetCreatedAt_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *TimeStampable_GetCreatedAt_Call) RunAndReturn(run func() *time.Time) *TimeStampable_GetCreatedAt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUpdatedAt provides a mock function with no fields
+func (_m *TimeStampable) GetUpdatedAt() *time.Time {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUpdatedAt")
+	}
+
+	var r0 *time.Time
+	if rf, ok := ret.Get(0).(func() *time.Time); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*time.Time)
+		}
+	}
+
+	return r0
+}
+
+// TimeStampable_GetUpdatedAt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUpdatedAt'
+type TimeStampable_GetUpdatedAt_Call struct {
+	*mock.Call
+}
+
+// GetUpdatedAt is a helper method to define mock.On call
+func (_e *TimeStampable_Expecter) GetUpdatedAt() *TimeStampable_GetUpdatedAt_Call {
+	return &TimeStampable_GetUpdatedAt_Call{Call: _e.mock.On("GetUpdatedAt")}
+}
+
+func (_c *TimeStampable_GetUpdatedAt_Call) Run(run func()) *TimeStampable_GetUpdatedAt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *TimeStampable_GetUpdatedAt_Call) Return(_a0 *time.Time) *TimeStampable_GetUpdatedAt_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *TimeStampable_GetUpdatedAt_Call) RunAndReturn(run func() *time.Time) *TimeStampable_GetUpdatedAt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetCreatedAt provides a mock function with given fields: createdAt
 func (_m *TimeStampable) SetCreatedAt(createdAt *time.Time) {
 	_m.Called(createdAt)

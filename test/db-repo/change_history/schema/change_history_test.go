@@ -115,12 +115,12 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_CreateTable(
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	modelRepo, err := db_repo.New(envContext, envConfig, envLogger, db_repo.Settings{
+	modelRepo, err := db_repo.New[uint, *TestModel1](envContext, envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModel1Metadata,
 	})
 	s.NoError(err)
 
-	modelHistoryRepo, err := db_repo.New(envContext, envConfig, envLogger, db_repo.Settings{
+	modelHistoryRepo, err := db_repo.New[uint, *TestModel1HistoryEntry](envContext, envConfig, envLogger, db_repo.Settings{
 		Metadata: TestHistoryModel1Metadata,
 	})
 	s.NoError(err)
@@ -145,8 +145,7 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_CreateTable(
 	err = modelRepo.Delete(s.T().Context(), model)
 	s.NoError(err)
 
-	entries := make([]*TestModel1HistoryEntry, 0)
-	err = modelHistoryRepo.Query(s.T().Context(), &db_repo.QueryBuilder{}, &entries)
+	entries, err := modelHistoryRepo.Query(s.T().Context(), &db_repo.QueryBuilder{})
 	s.NoError(err)
 	s.Equal(3, len(entries), "expected 3 change history entries")
 
@@ -168,12 +167,12 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable(
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	modelRepo, err := db_repo.New(envContext, envConfig, envLogger, db_repo.Settings{
+	modelRepo, err := db_repo.New[uint, *TestModel2](envContext, envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModel2Metadata,
 	})
 	s.NoError(err)
 
-	modelHistoryRepo, err := db_repo.New(envContext, envConfig, envLogger, db_repo.Settings{
+	modelHistoryRepo, err := db_repo.New[uint, *TestModel2HistoryEntry](envContext, envConfig, envLogger, db_repo.Settings{
 		Metadata: TestHistoryModel2Metadata,
 	})
 	s.NoError(err)
@@ -201,8 +200,7 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable(
 	err = modelRepo.Delete(s.T().Context(), model)
 	s.NoError(err)
 
-	entries := make([]*TestModel2HistoryEntry, 0)
-	err = modelHistoryRepo.Query(s.T().Context(), &db_repo.QueryBuilder{}, &entries)
+	entries, err := modelHistoryRepo.Query(s.T().Context(), &db_repo.QueryBuilder{})
 	s.NoError(err)
 	s.Equal(3, len(entries), "expected 3 change history entries")
 

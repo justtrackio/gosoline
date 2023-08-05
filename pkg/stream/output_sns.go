@@ -34,7 +34,9 @@ type snsOutput struct {
 }
 
 func NewSnsOutput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SnsOutputSettings) (Output, error) {
-	settings.PadFromConfig(config)
+	if err := settings.PadFromConfig(config); err != nil {
+		return nil, fmt.Errorf("can not pad settings from config: %w", err)
+	}
 
 	var err error
 	var topic sns.Topic

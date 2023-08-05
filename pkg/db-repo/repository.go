@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -14,7 +12,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
-	"github.com/justtrackio/gosoline/pkg/refl"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
@@ -42,10 +39,10 @@ type Settings struct {
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name RepositoryReadOnly
-type RepositoryReadOnly interface {
-	Read(ctx context.Context, id *uint, out ModelBased) error
-	Query(ctx context.Context, qb *QueryBuilder, result any) error
-	Count(ctx context.Context, qb *QueryBuilder, model ModelBased) (int, error)
+type RepositoryReadOnly[K mdl.PossibleIdentifier, M ModelBased[K]] interface {
+	Read(ctx context.Context, id K) (M, error)
+	Query(ctx context.Context, qb *QueryBuilder) ([]M, error)
+	Count(ctx context.Context, qb *QueryBuilder) (int, error)
 
 	GetModelId() string
 	GetModelName() string
@@ -53,22 +50,33 @@ type RepositoryReadOnly interface {
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Repository
-type Repository interface {
-	RepositoryReadOnly
-	Create(ctx context.Context, value ModelBased) error
-	Update(ctx context.Context, value ModelBased) error
-	Delete(ctx context.Context, value ModelBased) error
+type Repository[K mdl.PossibleIdentifier, M ModelBased[K]] interface {
+	RepositoryReadOnly[K, M]
+	Create(ctx context.Context, value M) error
+	Update(ctx context.Context, value M) error
+	Delete(ctx context.Context, value M) error
 }
 
-type repository struct {
-	logger   log.Logger
-	tracer   tracing.Tracer
-	orm      *gorm.DB
-	clock    clock.Clock
-	metadata Metadata
+type ConfigurableRepository[K mdl.PossibleIdentifier, M ModelBased[K]] interface {
+	Repository[K, M]
+	SetModelSource(modelSource func() M)
 }
 
-func New(ctx context.Context, config cfg.Config, logger log.Logger, settings Settings) (*repository, error) {
+type repository[K mdl.PossibleIdentifier, M ModelBased[K]] struct {
+	logger      log.Logger
+	tracer      tracing.Tracer
+	orm         *gorm.DB
+	clock       clock.Clock
+	metadata    Metadata
+	modelSource func() M
+}
+
+func New[K mdl.PossibleIdentifier, M ModelBased[K]](
+	ctx context.Context,
+	config cfg.Config,
+	logger log.Logger,
+	settings Settings,
+) (ConfigurableRepository[K, M], error) {
 	var err error
 	var tracer tracing.Tracer
 	var orm *gorm.DB
@@ -84,13 +92,19 @@ func New(ctx context.Context, config cfg.Config, logger log.Logger, settings Set
 	orm.Callback().
 		Update().
 		After("gorm:update_time_stamp").
-		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
+		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded[K, M])
 	clk := clock.Provider
 
-	return NewWithInterfaces(logger, tracer, orm, clk, settings.Metadata), nil
+	return NewWithInterfaces[K, M](logger, tracer, orm, clk, settings.Metadata, CreateModel[M]), nil
 }
 
-func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger, dbSettings *db.Settings, repoSettings Settings) (*repository, error) {
+func NewWithDbSettings[K mdl.PossibleIdentifier, M ModelBased[K]](
+	ctx context.Context,
+	config cfg.Config,
+	logger log.Logger,
+	dbSettings *db.Settings,
+	repoSettings Settings,
+) (ConfigurableRepository[K, M], error) {
 	tracer, err := tracing.ProvideTracer(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
@@ -104,28 +118,40 @@ func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger
 	orm.Callback().
 		Update().
 		After("gorm:update_time_stamp").
-		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
+		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded[K, M])
 
 	clk := clock.Provider
 
-	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata), nil
+	return NewWithInterfaces[K, M](logger, tracer, orm, clk, repoSettings.Metadata, CreateModel[M]), nil
 }
 
-func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata) *repository {
-	return &repository{
-		logger:   logger,
-		tracer:   tracer,
-		orm:      orm,
-		clock:    clock,
-		metadata: metadata,
+func NewWithInterfaces[K mdl.PossibleIdentifier, M ModelBased[K]](
+	logger log.Logger,
+	tracer tracing.Tracer,
+	orm *gorm.DB,
+	clock clock.Clock,
+	metadata Metadata,
+	modelSource func() M,
+) ConfigurableRepository[K, M] {
+	return &repository[K, M]{
+		logger:      logger,
+		tracer:      tracer,
+		orm:         orm,
+		clock:       clock,
+		metadata:    metadata,
+		modelSource: modelSource,
 	}
 }
 
-func (r *repository) GetOrm() *gorm.DB {
+func (r *repository[K, M]) GetOrm() *gorm.DB {
 	return r.orm
 }
 
-func (r *repository) Create(ctx context.Context, value ModelBased) error {
+func (r *repository[K, M]) SetModelSource(modelSource func() M) {
+	r.modelSource = modelSource
+}
+
+func (r *repository[K, M]) Create(ctx context.Context, value M) error {
 	if !r.isQueryableModel(value) {
 		return fmt.Errorf("table %q: %w", r.orm.NewScope(value).TableName(), ErrCrossCreate)
 	}
@@ -150,42 +176,49 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 	}
 
 	if err != nil {
-		r.logger.Error(ctx, "could not create model of type %v: %w", modelId, err)
-
-		return err
+		return fmt.Errorf("could not create model of type %s: %w", modelId, err)
 	}
 
 	err = r.refreshAssociations(value, Create)
 	if err != nil {
-		r.logger.Error(ctx, "could not update associations of model type %v: %w", modelId, err)
+		return fmt.Errorf("could not update associations of model type %s: %w", modelId, err)
+	}
 
+	r.logger.Info(ctx, "created model of type %s with id %v", modelId, *value.GetId())
+
+	created, err := r.Read(ctx, *value.GetId())
+	if err != nil {
 		return err
 	}
 
-	r.logger.Info(ctx, "created model of type %s with id %d", modelId, *value.GetId())
+	setValue(value, created)
 
-	return r.Read(ctx, value.GetId(), value)
+	return nil
 }
 
-func (r *repository) Read(ctx context.Context, id *uint, out ModelBased) error {
+func (r *repository[K, M]) Read(ctx context.Context, id K) (M, error) {
+	out := r.modelSource()
+
 	if !r.isQueryableModel(out) {
-		return fmt.Errorf("table %q: %w", r.orm.NewScope(out).TableName(), ErrCrossRead)
+		return out, fmt.Errorf("table %q: %w", r.orm.NewScope(out).TableName(), ErrCrossRead)
 	}
 
 	modelId := r.GetModelId()
 	_, span := r.startSubSpan(ctx, "Get")
 	defer span.Finish()
 
-	err := r.orm.First(out, *id).Error
+	err := r.orm.First(out, map[string]any{
+		r.metadata.PrimaryKeyWithoutTable(): id,
+	}).Error
 
 	if gorm.IsRecordNotFoundError(err) {
-		return NewRecordNotFoundError(*id, modelId, err)
+		return out, NewRecordNotFoundError(idToString(id), modelId, err)
 	}
 
-	return err
+	return out, err
 }
 
-func (r *repository) Update(ctx context.Context, value ModelBased) error {
+func (r *repository[K, M]) Update(ctx context.Context, value M) error {
 	if !r.isQueryableModel(value) {
 		return fmt.Errorf("table %q: %w", r.orm.NewScope(value).TableName(), ErrCrossUpdate)
 	}
@@ -201,7 +234,7 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	err := r.orm.Save(value).Error
 
 	if db.IsDuplicateEntryError(err) {
-		r.logger.Warn(ctx, "could not update model of type %s with id %d due to duplicate entry error: %s", modelId, mdl.EmptyIfNil(value.GetId()), err.Error())
+		r.logger.Warn(ctx, "could not update model of type %s with id %v due to duplicate entry error: %s", modelId, mdl.EmptyIfNil(value.GetId()), err.Error())
 
 		return &db.DuplicateEntryError{
 			Err: err,
@@ -209,24 +242,27 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	}
 
 	if err != nil {
-		r.logger.Error(ctx, "could not update model of type %s with id %d: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
-
-		return err
+		return fmt.Errorf("could not update model of type %s with id %v: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
 	}
 
 	err = r.refreshAssociations(value, Update)
 	if err != nil {
-		r.logger.Error(ctx, "could not update associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
+		return fmt.Errorf("could not update associations of model type %s with id %v: %w", modelId, *value.GetId(), err)
+	}
 
+	r.logger.Info(ctx, "updated model of type %s with id %v", modelId, *value.GetId())
+
+	updated, err := r.Read(ctx, *value.GetId())
+	if err != nil {
 		return err
 	}
 
-	r.logger.Info(ctx, "updated model of type %s with id %d", modelId, *value.GetId())
+	setValue(value, updated)
 
-	return r.Read(ctx, value.GetId(), value)
+	return nil
 }
 
-func (r *repository) Delete(ctx context.Context, value ModelBased) error {
+func (r *repository[K, M]) Delete(ctx context.Context, value M) error {
 	if !r.isQueryableModel(value) {
 		return fmt.Errorf("table %q: %w", r.orm.NewScope(value).TableName(), ErrCrossDelete)
 	}
@@ -238,94 +274,86 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 
 	err := r.refreshAssociations(value, Delete)
 	if err != nil {
-		r.logger.Error(ctx, "could not delete associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
-
-		return err
+		return fmt.Errorf("could not delete associations of model type %s with id %v: %w", modelId, *value.GetId(), err)
 	}
 
 	err = r.orm.Delete(value).Error
 	if err != nil {
-		r.logger.Error(ctx, "could not delete model of type %s with id %d: %w", modelId, *value.GetId(), err)
+		return fmt.Errorf("could not delete model of type %s with id %v: %w", modelId, *value.GetId(), err)
 	}
 
-	r.logger.Info(ctx, "deleted model of type %s with id %d", modelId, *value.GetId())
+	r.logger.Info(ctx, "deleted model of type %s with id %v", modelId, *value.GetId())
 
-	return err
+	return nil
 }
 
-func (r *repository) isQueryableModel(model any) bool {
+func (r *repository[K, M]) isQueryableModel(model any) bool {
 	tableName := r.orm.NewScope(model).TableName()
 
 	return strings.EqualFold(tableName, r.GetMetadata().TableName) || tableName == ""
 }
 
-func (r *repository) checkResultModel(result any) error {
-	if refl.IsSlice(result) {
-		return fmt.Errorf("result slice has to be pointer to slice")
-	}
+func (r *repository[K, M]) checkResultModel() error {
+	model := r.modelSource()
 
-	if refl.IsPointerToSlice(result) {
-		model := reflect.ValueOf(result).Elem().Interface()
-
-		if !r.isQueryableModel(model) {
-			return fmt.Errorf("table %q: %w", r.orm.NewScope(model).TableName(), fmt.Errorf("cross querying result slice has to be of same model"))
-		}
+	if !r.isQueryableModel(model) {
+		return fmt.Errorf("table %q: %w", r.orm.NewScope(model).TableName(), fmt.Errorf("cross querying result slice has to be of same model"))
 	}
 
 	return nil
 }
 
-func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result any) error {
-	err := r.checkResultModel(result)
+func (r *repository[K, M]) Query(ctx context.Context, qb *QueryBuilder) ([]M, error) {
+	err := r.checkResultModel()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, span := r.startSubSpan(ctx, "Query")
 	defer span.Finish()
 
-	db := r.orm.New()
+	query := r.orm.New()
 
 	for _, j := range qb.joins {
-		db = db.Joins(j)
+		query = query.Joins(j)
 	}
 
-	for i := range qb.where {
-		currentWhere := qb.where[i]
+	for i, currentWhere := range qb.where {
 		if reflect.TypeOf(currentWhere).Kind() == reflect.Ptr || reflect.TypeOf(currentWhere).Kind() == reflect.Struct {
 			if !r.isQueryableModel(currentWhere) {
-				return fmt.Errorf("table %q: %w", r.orm.NewScope(currentWhere).TableName(), ErrCrossQuery)
+				return nil, fmt.Errorf("table %q: %w", r.orm.NewScope(currentWhere).TableName(), ErrCrossQuery)
 			}
 		}
 
-		db = db.Where(currentWhere, qb.args[i]...)
+		query = query.Where(currentWhere, qb.args[i]...)
 	}
 
 	for _, g := range qb.groupBy {
-		db = db.Group(g)
+		query = query.Group(g)
 	}
 
 	for _, o := range qb.orderBy {
-		db = db.Order(fmt.Sprintf("%s %s", o.field, o.direction))
+		query = query.Order(fmt.Sprintf("%s %s", o.field, o.direction))
 	}
 
 	if qb.page != nil {
-		db = db.Offset(qb.page.offset)
-		db = db.Limit(qb.page.limit)
+		query = query.Offset(qb.page.offset)
+		query = query.Limit(qb.page.limit)
 	}
 
-	db = db.Table(r.GetMetadata().TableName)
+	query = query.Table(r.GetMetadata().TableName)
 
-	err = db.Find(result).Error
+	result := make([]M, 0)
+	err = query.Find(&result).Error
 
 	if gorm.IsRecordNotFoundError(err) {
-		return NewNoQueryResultsError(r.GetModelId(), err)
+		return nil, NewNoQueryResultsError(r.GetModelId(), err)
 	}
 
-	return err
+	return result, err
 }
 
-func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBased) (int, error) {
+func (r *repository[K, M]) Count(ctx context.Context, qb *QueryBuilder) (int, error) {
 	_, span := r.startSubSpan(ctx, "Count")
 	defer span.Finish()
 
@@ -333,27 +361,59 @@ func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBas
 		Count int
 	}{}
 
-	db := r.orm.New()
+	query := r.orm.New()
 
 	for _, j := range qb.joins {
-		db = db.Joins(j)
+		query = query.Joins(j)
 	}
 
-	for i := range qb.where {
-		db = db.Where(qb.where[i], qb.args[i]...)
+	for i, currentWhere := range qb.where {
+		if reflect.TypeOf(currentWhere).Kind() == reflect.Ptr || reflect.TypeOf(currentWhere).Kind() == reflect.Struct {
+			if !r.isQueryableModel(currentWhere) {
+				return 0, ErrCrossQuery
+			}
+		}
+
+		query = query.Where(currentWhere, qb.args[i]...)
 	}
 
+	model := r.modelSource()
 	scope := r.orm.NewScope(model)
 	tableName := scope.TableName()
 	key := scope.PrimaryKey()
 	sel := fmt.Sprintf("COUNT(DISTINCT %s.%s) AS count", tableName, key)
 
-	err := db.Table(tableName).Select(sel).Scan(&result).Error
+	err := query.Table(tableName).Select(sel).Scan(&result).Error
 
 	return result.Count, err
 }
 
-func (r *repository) refreshAssociations(model any, op string) error {
+func CreateModel[M any]() M {
+	var model M
+	value := reflect.ValueOf(model)
+	valueType := value.Type()
+
+	switch value.Kind() {
+	case reflect.Pointer:
+		return reflect.New(valueType.Elem()).Interface().(M)
+
+	case reflect.Map:
+		return reflect.MakeMap(valueType).Interface().(M)
+
+	default:
+		return model
+	}
+}
+
+func setValue[M any](value M, target M) {
+	reflected := reflect.ValueOf(value)
+
+	if reflected.Kind() == reflect.Ptr {
+		reflected.Elem().Set(reflect.ValueOf(target).Elem())
+	}
+}
+
+func (r *repository[K, M]) refreshAssociations(model M, op string) error {
 	typeReflection := reflect.TypeOf(model).Elem()
 
 	for i := 0; i < typeReflection.NumField(); i++ {
@@ -404,40 +464,35 @@ func (r *repository) refreshAssociations(model any, op string) error {
 	return nil
 }
 
-func (r *repository) refreshAssociationsCreate(model any, fieldNum int, tags map[string]string, scopeField *gorm.Field) (err error) {
+func (r *repository[K, M]) refreshAssociationsCreate(model any, fieldNum int, tags map[string]string, scopeField *gorm.Field) error {
 	valueReflection := reflect.ValueOf(model).Elem()
 	values := valueReflection.Field(fieldNum)
 
-	switch scopeField.Relationship.Kind {
-	case "many_to_many":
-		err = r.orm.Model(model).Association(scopeField.Name).Replace(values.Interface()).Error
-
-	default:
-		assocIds := readIdsFromReflectValue(values)
-		parentId := valueReflection.FieldByName("Id").Elem().Interface()
-
-		tableName := scopeField.DBName
-		if tags["assoc_update"] != "" {
-			tableName = tags["assoc_update"]
-		}
-
-		qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", tableName, scopeField.Relationship.ForeignDBNames[0], parentId)
-
-		if len(assocIds) != 0 {
-			qry += fmt.Sprintf(" AND %s NOT IN (%s)", "id", strings.Join(assocIds, ","))
-		}
-
-		err = r.orm.Exec(qry).Error
+	if scopeField.Relationship.Kind == "many_to_many" {
+		return r.orm.Model(model).Association(scopeField.Name).Replace(values.Interface()).Error
 	}
 
-	return
+	assocIds := readIdsFromReflectValue[K](values)
+	parentId := valueReflection.FieldByName("Id").Elem().Interface()
+
+	tableName := scopeField.DBName
+	if tags["assoc_update"] != "" {
+		tableName = tags["assoc_update"]
+	}
+
+	qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", tableName, scopeField.Relationship.ForeignDBNames[0], parentId)
+
+	if len(assocIds) != 0 {
+		qry += fmt.Sprintf(" AND %s NOT IN (%s)", "id", strings.Join(assocIds, ","))
+	}
+
+	return r.orm.Exec(qry).Error
 }
 
-func (r *repository) refreshAssociationsDelete(model any, field reflect.StructField, tags map[string]string, scopeField *gorm.Field) (err error) {
+func (r *repository[K, M]) refreshAssociationsDelete(model any, field reflect.StructField, tags map[string]string, scopeField *gorm.Field) error {
 	valueReflection := reflect.ValueOf(model).Elem()
 
-	switch scopeField.Relationship.Kind {
-	case "has_many":
+	if scopeField.Relationship.Kind == "has_many" {
 		id := valueReflection.FieldByName("Id").Elem().Interface()
 		tableName := scopeField.DBName
 
@@ -446,28 +501,25 @@ func (r *repository) refreshAssociationsDelete(model any, field reflect.StructFi
 		}
 
 		qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", tableName, scopeField.Relationship.ForeignDBNames[0], id)
-		err = r.orm.Exec(qry).Error
-
-	default:
-		err = r.orm.Model(model).Association(field.Name).Clear().Error
+		return r.orm.Exec(qry).Error
 	}
 
-	return
+	return r.orm.Model(model).Association(field.Name).Clear().Error
 }
 
-func (r *repository) GetModelId() string {
+func (r *repository[K, M]) GetModelId() string {
 	return r.metadata.ModelId.String()
 }
 
-func (r *repository) GetModelName() string {
+func (r *repository[K, M]) GetModelName() string {
 	return r.metadata.ModelId.Name
 }
 
-func (r *repository) GetMetadata() Metadata {
+func (r *repository[K, M]) GetMetadata() Metadata {
 	return r.metadata
 }
 
-func (r *repository) startSubSpan(ctx context.Context, action string) (context.Context, tracing.Span) {
+func (r *repository[K, M]) startSubSpan(ctx context.Context, action string) (context.Context, tracing.Span) {
 	modelName := r.GetModelId()
 	spanName := fmt.Sprintf("db_repo.%v.%v", modelName, action)
 
@@ -477,37 +529,26 @@ func (r *repository) startSubSpan(ctx context.Context, action string) (context.C
 	return ctx, span
 }
 
-func readIdsFromReflectValue(values reflect.Value) []string {
+func readIdsFromReflectValue[K mdl.PossibleIdentifier](values reflect.Value) []string {
 	ids := make([]string, 0)
 
 	for j := 0; j < values.Len(); j++ {
-		id := values.Index(j).Elem().FieldByName("Id").Interface().(*uint)
-		ids = append(ids, strconv.Itoa(int(*id)))
+		id := values.Index(j).Elem().FieldByName("Id").Interface().(*K)
+		ids = append(ids, idToString(*id))
 	}
 
 	return ids
 }
 
-func ignoreCreatedAtIfNeeded(scope *gorm.Scope) {
-	// if you perform an update and do not specify the CreatedAt field on your data, gorm will set it to time.Time{}
-	// (0000-00-00 00:00:00 in mysql). To avoid this, we mark the field as ignored if it is empty
-	if m, ok := getModel(scope.Value); ok && (m.GetCreatedAt() == nil || m.GetCreatedAt().Equal(time.Time{})) {
-		scope.Search.Omit("CreatedAt")
-	}
+func idToString[K mdl.PossibleIdentifier](id K) string {
+	return fmt.Sprintf("%v", id)
 }
 
-func getModel(value any) (TimestampAware, bool) {
-	if value == nil {
-		return nil, false
-	}
+func ignoreCreatedAtIfNeeded[K mdl.PossibleIdentifier, M ModelBased[K]](scope *gorm.Scope) {
+	// if you perform an update and do not specify the CreatedAt field on your data, gorm will set it to time.Time{}
+	// (0000-00-00 00:00:00 in mysql). To avoid this, we mark the field as ignored if it is empty
 
-	if m, ok := value.(TimestampAware); ok {
-		return m, true
+	if m, ok := scope.Value.(M); ok && mdl.IsNilOrEmpty(m.GetCreatedAt()) {
+		scope.Search.Omit("CreatedAt")
 	}
-
-	if val := reflect.ValueOf(value); val.Kind() == reflect.Ptr {
-		return getModel(val.Elem().Interface())
-	}
-
-	return nil, false
 }

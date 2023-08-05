@@ -1,7 +1,6 @@
 package crud_test
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -10,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	configMocks "github.com/justtrackio/gosoline/pkg/cfg/mocks"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
@@ -39,21 +38,20 @@ func (s *updateTestSuite) SetupTest() {
 	config.EXPECT().UnmarshalKey("crud", mock.AnythingOfType("*crud.Settings")).Run(func(key string, val any, additionalDefaults ...cfg.UnmarshalDefaults) {
 		settings := val.(*crud.Settings)
 		settings.WriteTimeout = time.Minute
-	}).Return(nil)
+	}).Return(nil).Once()
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
 	s.handler = newHandler(s.T())
-	s.updateHandler, err = crud.NewUpdateHandler(config, logger, s.handler)
+	s.updateHandler, err = crud.NewUpdateHandler[UpdateInput, Output, uint, *Model](config, logger, s.handler)
 	s.NoError(err)
 }
 
 func (s *updateTestSuite) TestUpdate() {
-	readModel := &Model{}
 	updateModel := &Model{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: mdl.Box(uint(1)),
-			Timestamps: db_repo.Timestamps{
+			Timestamps: dbRepo.Timestamps{
 				UpdatedAt: &time.Time{},
 				CreatedAt: &time.Time{},
 			},
@@ -61,15 +59,27 @@ func (s *updateTestSuite) TestUpdate() {
 		Name: mdl.Box("updated"),
 	}
 
-	s.handler.Repo.EXPECT().Update(matcher.Context, updateModel).Return(nil)
-	s.handler.Repo.EXPECT().Read(matcher.Context, mdl.Box(uint(1)), readModel).
-		Run(func(ctx context.Context, id *uint, out db_repo.ModelBased) {
-			model := out.(*Model)
-			model.Id = mdl.Box(uint(1))
-			model.Name = mdl.Box("updated")
-			model.UpdatedAt = &time.Time{}
-			model.CreatedAt = &time.Time{}
-		}).Return(nil)
+	s.handler.Repo.EXPECT().Update(matcher.Context, updateModel).Return(nil).Once()
+	s.handler.Repo.EXPECT().Read(matcher.Context, uint(1)).Return(&Model{
+		Model: dbRepo.Model{
+			Id: mdl.Box(uint(1)),
+			Timestamps: dbRepo.Timestamps{
+				UpdatedAt: &time.Time{},
+				CreatedAt: &time.Time{},
+			},
+		},
+		Name: mdl.Box("initial"),
+	}, nil).Once()
+	s.handler.Repo.EXPECT().Read(matcher.Context, uint(1)).Return(&Model{
+		Model: dbRepo.Model{
+			Id: mdl.Box(uint(1)),
+			Timestamps: dbRepo.Timestamps{
+				UpdatedAt: &time.Time{},
+				CreatedAt: &time.Time{},
+			},
+		},
+		Name: mdl.Box("updated"),
+	}, nil).Once()
 
 	body := `{"name": "updated"}`
 	response := httpserver.HttpTest("PUT", "/:id", "/1", body, s.updateHandler)
@@ -79,11 +89,10 @@ func (s *updateTestSuite) TestUpdate() {
 }
 
 func (s *updateTestSuite) TestUpdate_ValidationError() {
-	readModel := &Model{}
 	updateModel := &Model{
-		Model: db_repo.Model{
+		Model: dbRepo.Model{
 			Id: mdl.Box(uint(1)),
-			Timestamps: db_repo.Timestamps{
+			Timestamps: dbRepo.Timestamps{
 				UpdatedAt: &time.Time{},
 				CreatedAt: &time.Time{},
 			},
@@ -93,14 +102,17 @@ func (s *updateTestSuite) TestUpdate_ValidationError() {
 
 	s.handler.Repo.EXPECT().Update(matcher.Context, updateModel).Return(&validation.Error{
 		Errors: []error{fmt.Errorf("invalid foobar")},
-	})
-	s.handler.Repo.EXPECT().Read(matcher.Context, mdl.Box(uint(1)), readModel).Run(func(_ context.Context, _ *uint, out db_repo.ModelBased) {
-		model := out.(*Model)
-		model.Id = mdl.Box(uint(1))
-		model.Name = mdl.Box("updated")
-		model.UpdatedAt = &time.Time{}
-		model.CreatedAt = &time.Time{}
-	}).Return(nil)
+	}).Once()
+	s.handler.Repo.EXPECT().Read(matcher.Context, uint(1)).Return(&Model{
+		Model: dbRepo.Model{
+			Id: mdl.Box(uint(1)),
+			Timestamps: dbRepo.Timestamps{
+				UpdatedAt: &time.Time{},
+				CreatedAt: &time.Time{},
+			},
+		},
+		Name: mdl.Box("updated"),
+	}, nil).Once()
 
 	body := `{"name": "updated"}`
 	response := httpserver.HttpTest("PUT", "/:id", "/1", body, s.updateHandler)

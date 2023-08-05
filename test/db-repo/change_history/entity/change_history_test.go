@@ -282,12 +282,10 @@ func (s *ChangeHistoryTestSuite) assertHistory(entityId uint, expected []definit
 		return
 	}
 
-	histories := make([]*definitions.ItemsHistory, 0)
-
 	qb := db_repo.NewQueryBuilder()
 	qb.Where("id = ?", entityId)
 
-	err = repo.Query(s.Env().Context(), qb, &histories)
+	histories, err := repo.Query(s.Env().Context(), qb)
 	if !s.NoError(err) {
 		return
 	}
