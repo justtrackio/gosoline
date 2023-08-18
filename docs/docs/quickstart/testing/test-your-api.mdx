@@ -1,0 +1,346 @@
+---
+sidebar_position: 1
+title: Test your API
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Fixtures from "!!raw-loader!./src/integration-test-api/fixtures.go";
+import APITest from "!!raw-loader!./src/integration-test-api/api_test.go";
+
+In this tutorial, you'll create an integration test for a money exchange API.
+
+The service you'll be testing exposes two endpoints: 
+
+- `/euro/:amount/:currency`
+- `/euro-at-date/:amount/:currency/:date`
+
+These convert a given amount in a source currency to its equivalent in euros or to its equivalent in euros using the exchange rate at a given date, respectively.
+
+To test this application, one needs to be able to issue calls to both endpoints, and check their results for correctness. Gosoline offers plenty of help with this.
+
+:::info
+
+This tutorial is about testing, so you won't build the API here. However, if you'd like to learn how to build it, check out the [dedicated tutorial](/quickstart/api-server/create-a-money-exchange-app).
+
+:::
+
+## Before you begin
+
+Before you begin, make sure you have [Golang](https://go.dev/doc/install) installed on your machine.
+
+You'll also need to download the sample code for the API:
+
+```shell
+git clone https://github.com/justtrackio/gosoline.git
+cp -R gosoline/docs/docs/quickstart/api-server/src/create-a-money-exchange-app api
+```
+
+Each Gosoline integration test follows the same format:
+
+- Creates an object which implements _TestingSuite_
+- Implements the `SetupSuite` method for that object
+- Has at least one `Test...` method
+- It calls `suite.Run`
+
+## Set up your file structure
+
+First, in the same directory that you copied in the previous step, you need to set up the following file structure. Most of these files are already defined; you just need to add two more:
+
+```txt
+api/
+// highlight-start
+├── api_test.go
+├── fixtures.go
+//highlight-end
+├── handler.go
+├── definer.go
+├── config.dist.yml
+└── main.go
+```
+
+For example, in Unix, run:
+
+```shell
+cd api
+touch api_test.go
+touch fixtures.go
+```
+
+Those are all the files you need to write your web service test with gosoline! Next, you'll implement each of these files, starting with `fixtures.go`.
+
+## Implement your fixtures
+
+In `fixtures.go`, add the following code:
+
+<details><summary>fixtures.go</summary>
+
+<CodeBlock showLineNumbers language="go">{Fixtures}</CodeBlock>
+
+</details>
+
+Now, you'll walkthrough this file in detail to learn how it works.
+
+### Import your dependencies
+
+At the top of `fixtures.go`, you declared the package and imported a dependency:
+
+```go title=fixtures.go
+package main
+
+import "github.com/justtrackio/gosoline/pkg/fixtures"
+```
+
+Here, you declared the package as `main`. Then, you imported one gosoline dependency, `fixtures`.
+
+### Create a fixture set
+
+Next, you created a fixture set for your current exchange data:
+
+```go title=fixtures.go
+var fixtureSets = []*fixtures.FixtureSet{
+	{
+		Enabled: true,
+		Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory[float64]("currency"),
+		Fixtures: []interface{}{
+			&fixtures.KvStoreFixture{
+				Key:   "GBP",
+				Value: 1.25,
+			},
+			&fixtures.KvStoreFixture{
+				Key:   "2021-01-03-GBP",
+				Value: 0.8,
+			},
+		},
+	},
+}
+```
+
+The money exchange application has an in-memory key-value store for holding exchange rate information. The real app gets this data from an external API call to another service. This fixture loads hard-coded initial values into this data store so the service doesn't make an external request during the test. 
+
+There are many reasons why you would want to do this, but some of those reasons are outside the scope of this tutorial. For now, just know that, with this fixture, you are controlling the test conditions.
+
+Now that you've defined fixtures for your test, it's time to implement the test itself.
+
+## Implement api_test.go
+
+In `api_test.go`, add the following code:
+
+<details><summary>api_test.go</summary>
+
+<CodeBlock showLineNumbers language="go">{APITest}</CodeBlock>
+
+</details>
+
+Now, you'll walkthrough this file in detail to learn how it works.
+
+### Tag your test
+
+At the top of `api_test.go`, you designated the file as an integration test and loaded the fixtures file:
+
+```go title="api_test.go"
+//go:build integration && fixtures
+```
+
+This is important because, without it, your test won't use the fixtures and, therefore, will fail.
+
+### Import your dependencies
+
+Next, you declared the package and imported some dependencies:
+
+```go title=fixtures.go
+package main
+
+import (
+	"net/http"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/test/suite"
+)
+```
+
+Here, you declared the package as `main`. Then, you imported several standard modules and one several gosoline dependencies.
+
+### Define your test suite
+
+Next, you declared an `ApiTestSuite`:
+
+```go
+type ApiTestSuite struct {
+	suite.Suite
+
+	clock clock.Clock
+}
+```
+
+You implement the `TestingSuite` interface with the functions presented in the next sections.
+
+### Implement your setup method
+
+Next, you implemented `SetupSuite()`:
+
+```go title="api_test.go"
+func (s *ApiTestSuite) SetupSuite() []suite.Option {
+	return []suite.Option{
+		// 1
+		suite.WithLogLevel("info"),
+
+		// 2
+		suite.WithConfigFile("./config.dist.yml"),
+
+		// 3
+		suite.WithFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
+
+		// 4
+		suite.WithClockProvider(s.clock),
+	}
+}
+```
+
+This sets up the test suite with the following configurations:
+
+- A hard-coded log level.
+- Configurations from a config file.
+- The fixture set you created in the last section.
+- A clock from the `ApiTestSuite` struct.
+
+### Set up your API definitions 
+
+Implement `SetupApiDefinitions()`:
+
+```go title="api_test.go"
+func (s *ApiTestSuite) SetupApiDefinitions() apiserver.Definer {
+	return definer.ApiDefiner
+}
+```
+
+`SetupApiDefinitions()` is needed if you want to run `resty.Client` or  `ApiServerTestCase` test cases. It simply returns the `ApiDefiner`, which is part of the money exchange web service.
+
+### Write your test cases
+
+The first test in your file is `Test_ToEuro`:
+
+```go title="api_test.go"
+func (s *ApiTestSuite) Test_ToEuro(_ suite.AppUnderTest, client *resty.Client) error {
+	var result float64
+
+	// 1
+	response, err := client.R().
+		SetResult(&result).
+		Execute(http.MethodGet, "/euro/10/GBP")
+
+	// 2
+	s.NoError(err)
+
+	// 3
+	s.Equal(http.StatusOK, response.StatusCode())
+
+	// 4
+	s.Equal(8.0, result)
+
+	return nil
+}
+```
+
+Here, you:
+
+1. Make a GET request to `/euro/:amount/:currency` where:
+	- `:amount = 10`
+	- `:currency = GBP`
+2. Check that there is no error.
+3. Check that the response status code is 200 OK.
+4. Check that the converted amount is `8.0`.
+
+The second test is `Test_ToEuroAtDate`:
+
+```go title="api_test.go"
+func (s *ApiTestSuite) Test_ToEuroAtDate(_ suite.AppUnderTest, client *resty.Client) error {
+	var result float64
+
+	response, err := client.R().
+		SetResult(&result).
+		Execute(http.MethodGet, "/euro-at-date/10/GBP/2021-01-03T00:00:00Z")
+
+	s.NoError(err)
+	s.Equal(http.StatusOK, response.StatusCode())
+	s.Equal(12.5, result)
+
+	return nil
+}
+```
+
+This test is very similar to the first text, except that it checks the other endpoint (`/euro-at-date/:amount/:currency/:date`). This time, you check that the converted amount is `12.5`.
+
+The third test is `Test_Euro`:
+
+```go title="api_test.go"
+func (s *ApiTestSuite) Test_Euro() *suite.ApiServerTestCase {
+	return &suite.ApiServerTestCase{
+		Method:             http.MethodGet,
+		Url:                "/euro/10/GBP",
+		Headers:            map[string]string{},
+		ExpectedStatusCode: http.StatusOK,
+		Assert: func(response *resty.Response) error {
+			result, err := strconv.ParseFloat(string(response.Body()), 64)
+			s.NoError(err)
+			s.Equal(8.0, result)
+
+			return nil
+		},
+	}
+}
+```
+
+This is almost the same as the first test, but it uses `ApiServerTestCase`, instead.
+
+### Implement your test suite
+
+Finally, you declare a single, normal unit test:
+
+```go
+func TestApiTestSuite(t *testing.T) {
+	suite.Run(t, &ApiTestSuite{
+		clock: clock.NewFakeClockAt(time.Now().UTC()),
+	})
+}
+```
+
+This unit test makes use of the `ApiTestSuite` struct and calls `suite.Run()`:
+
+:::info Technical Detail
+
+In this test, you use `clock.NewFakeClockAt()`. When testing the same code multiple times, you want the test results to be identical and, therefore, predictable. For code that makes calls to `time.Now()` this won't be true. Using a fake clock, which always returns a predefined time, allows you to ensure calls to `time.Now()` always result in the same time. 
+
+:::
+
+Now that you've written your tests, it's time to run them.
+
+## Test your API
+
+From inside your `api` directory, run your tests:
+
+```shell
+go mod init api-test/m
+go mod tidy
+go test . --tags integration,fixtures -v
+```
+
+Here, you: 
+
+1. Initialize your go module
+2. Install the dependencies
+3. Run the integration test with the fixtures. These tags are important because of the designation at the top of your test file: `//go:build integration && fixtures`.
+
+## Conclusion
+
+Gosoline's suite package is meant to make writing integration tests easier and faster. For a web application composed out of many microservices, aim to have at least one integration test for each microservice, ideally one test for every use case.
+
+Check out these resources to learn more about testing and creating APIs with gosoline:
+
+- [Create a money exchange app](/quickstart/api-server/create-a-money-exchange-app)
+- [Write integration tests](/how-to/write-integration-tests)

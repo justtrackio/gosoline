@@ -1,0 +1,8 @@
+got port: 80
+got host: example.com
+is enabled: true
+foo is: bar
+missing is not set but has a default
+&{Host:example.com Port:80 Timeout:5s Threshold:100}
+got port: 88
+&{Host:example.com Port:80 Timeout:7s Threshold:100}

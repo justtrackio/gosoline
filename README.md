@@ -8,11 +8,37 @@ challenges like configuration, logging, structured code execution, handling
 http requests, asynchronous message processing, writing integration tests and 
 much more.
 
-## Quickstart
-Every application consists of at least a main.go and config.dist.yml file. The
-main file
+## Why use it?
 
-#### main.go
+- Provides an all-in-one solution for the primary use cases
+- Out-of-the-box solutions for many AWS services
+- Reduces a lot of needed glue and boilerplate code
+- Uses a lot of sane default values to to just run code from the IDE (e.g. uses localstack instead of AWS)
+- Makes it easy to build a microservice-based architecture which uses a lot of asynchronous event processing
+
+## Key Features
+
+- Configuration management
+- Logging
+- Metrics
+- Tracing
+- Fixture loading
+- Integration tests
+- Application lifecycle management
+- Api server
+- Consumer and producer applications
+- Integrates well with AWS
+
+## Documentation
+
+Read our [documentation](https://justtrackio.github.io/gosoline/) to learn how to use gosoline.
+
+## Quickstart
+
+Every application consists of at least a main.go and config.dist.yml file.
+
+### main.go
+
 [embedmd]:# (examples/application/main.go)
 ```go
 package main
@@ -48,7 +74,8 @@ func (h HelloWorldModule) Run(ctx context.Context) error {
 }
 ```
 
-#### config.dist.yml
+### config.dist.yml
+
 ```yaml
 env: dev
 app_project: gosoline
@@ -56,7 +83,8 @@ app_family: example
 app_name: application
 ```
 
-#### Output
+### Output
+
 ```
 14:10:10.242 main    info    applied priority 8 config post processor 'gosoline.log.handler_main'  application: application
 14:10:10.242 kernel  info    starting kernel                                     application: application
@@ -112,20 +140,24 @@ app_name: application
 14:10:10.245 kernel  info    leaving kernel                                      application: application
 ```
 
-#### Integration test execution
-##### Linux
+## Integration test execution
+
+### Linux
 On linux it's very straight to execute the integration tests:
 ```shell
 go test -tags integration,fixtures ./test
 ```
-##### macOS
+
+### macOS
+
 To run them on macOS you will (once initially and after each system update) have to execute this:
+
 ```shell
 sudo ifconfig lo0 alias 172.17.0.1
 ```
+
 Afterwards simply execute:
+
 ```shell
 go test -tags integration,fixtures ./test
 ```
-
-![Gosoline Logo](http://cdn.applike-services.info/public/2019/10/23/gosoline.svg)

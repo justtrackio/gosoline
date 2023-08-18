@@ -1,0 +1,86 @@
+---
+sidebar_position: 1
+title: Load configurations
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import ConfigDist from "!!raw-loader!./src/cfg/config.dist.yml";
+import FromFile from "!!raw-loader!./src/cfg/from-file.go";
+import FromMap from "!!raw-loader!./src/cfg/from-map.go";
+import FromSetting from "!!raw-loader!./src/cfg/from-setting.go";
+import FromEnv from "!!raw-loader!./src/cfg/from-env.go";
+import Main from "!!raw-loader!./src/cfg/main.go";
+import UseConfigs from "!!raw-loader!./src/cfg/getters.go";
+
+There are different ways to load configurations into your application:
+
+<details><summary>From a file</summary>
+
+First, configure your project in a yaml file:
+
+<CodeBlock showLineNumbers language="yaml" title="config.dist.yml">{ConfigDist}</CodeBlock>
+
+Then, load your configurations into your application:
+
+<CodeBlock showLineNumbers language="go" title="main.go">{FromFile}</CodeBlock>
+
+Here, you:
+
+1. Import the `cfg` package.
+2. Create a new configuration object.
+3. Load configurations from the file.
+4. Apply the options.
+
+</details>
+
+<details><summary>From a map</summary>
+
+<CodeBlock showLineNumbers language="go" title="main.go">{FromMap}</CodeBlock>
+
+Here, you:
+
+1. Import the `cfg` package.
+2. Create a new configuration object.
+3. Load configurations from the map.
+4. Apply the options.
+
+</details>
+
+<details><summary>From individual settings</summary>
+
+<CodeBlock showLineNumbers language="go" title="main.go">{FromSetting}</CodeBlock>
+
+Here, you've:
+
+1. Import the `cfg` package.
+2. Create a new configuration object.
+3. Load configurations from settings.
+4. Apply the options.
+
+</details>
+
+<details><summary>From multiple sources</summary>
+
+<CodeBlock showLineNumbers language="go" title="main.go">{Main}</CodeBlock>
+
+Here, you've:
+
+1. Import the `cfg` package.
+2. Create a new configuration object.
+3. Load configurations from multiple sources.
+4. Apply the options.
+
+</details>
+
+Once you've loaded your configurations, you can access them with type-specific getters. For example:
+
+<CodeBlock showLineNumbers language="go" title="main.go" lineHighlight="22-23">{UseConfigs}</CodeBlock>
+
+## Conclusion
+
+In this guide, you've learned multiple ways to load configurations into your app with gosoline.
+
+Check out these resources to learn more about configurations and gosoline:
+
+- [Configure a logger with gosoline](/how-to/logging/use-loggers#implement-a-logger-with-an-app-configuration)
+- [API reference for the cfg package](/reference/package-cfg)

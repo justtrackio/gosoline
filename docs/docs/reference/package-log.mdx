@@ -1,0 +1,194 @@
+---
+title: Package log
+---
+
+# log package
+
+The gosoline logger is based upon a simple interface that uses handlers internally to enable fully customizable log handling.
+
+## Function
+
+### [NewLogger()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L91)
+
+#### Usage
+
+```go title="main.go"
+logger := log.NewLoggerWithInterfaces(myClock, []log.Handler{handler1, handler2})
+```
+
+#### Description
+
+Create a logger with with no handlers and a real time clock. This provides an extended interface, including the `Option(opt ...Option) error` function to change the behaviour of the logger.
+
+### [NewLoggerWithInterfaces()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L95)
+
+#### Usage
+
+```go title="main.go"
+logger := log.NewLoggerWithInterfaces(myClock, []log.Handler{handler1, handler2})
+```
+
+#### Description
+
+Provide a clock and some handlers when you create a new logger. Like [`NewLogger()`](#newlogger), this provides an extended interface, including the `Option(opt ...Option) error` function to change the behaviour of the logger.
+
+## Methods
+
+### [Debug()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L119)
+
+```go
+logger.Debug("Message")
+```
+
+#### Description
+
+Logs a message at the Debug log level.
+
+#### Related methods
+
+<details><summary>Info()</summary>
+
+```go
+logger.Info("Message")
+```
+
+</details>
+
+<details><summary>Warn()</summary>
+
+```go
+logger.Warn("Message")
+```
+
+</details>
+
+<details><summary>Error()</summary>
+
+```go
+logger.Error("Message")
+```
+
+</details>
+
+### [WithContextFieldsResolver()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/options.go#L5)
+
+#### Usage
+
+```go
+if err := logger.Option(log.WithContextFieldsResolver(log.ContextLoggerFieldsResolver)); err != nil {
+	panic(err)
+}
+```
+
+#### Description
+
+Adds a context fields resolver to the logger.
+
+### [WithFields()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/options.go#L13)
+
+#### Usage
+
+```go
+loggerWithFields := logger.WithFields(log.Fields{
+	"b": true,
+})
+```
+
+#### Description
+
+Adds global fields to the logger, which will be set on every log message.
+
+### [WithHandlers()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/options.go#L21)
+
+#### Usage
+
+```go
+	logHandler := log.NewHandlerIoWriter(log.LevelInfo, []string{}, log.FormatterConsole, "", os.Stdout)
+	loggerOptions := []log.Option{
+		log.WithHandlers(logHandler),
+	}
+```
+
+#### Description
+
+Adds additional handlers to the logger.
+
+## Interfaces
+
+### [Handler](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/handler.go#L10)
+
+#### Definition
+
+```go
+type Handler interface {
+	Channels() []string
+	Level() int
+	Log(timestamp time.Time, level int, msg string, args []interface{}, err error, data Data) error
+}
+```
+
+#### Description
+
+- `Channels() []string` and `Level() int` are called on every log action to check if the handler should be applied. 
+- `Log` does the actual logging afterwards.
+
+## Log configurations
+
+| setting | description | default |
+|---|---|---|
+| log.level | default level for all handlers without an explicit level value | info |
+| log.handlers | a map of handlers that will be called for every log message | every logger gets a 'main' handler by default if there is no other handler defined |
+| log.handlers.X.type | defines the type of the handler | - |
+
+## Built-in handlers
+
+Gosoline has a couple of built-in handlers, which are ready to use out of the box:
+
+### iowriter
+
+Multitool, which is able to write logs to everything which implements the `io.Writer` interface. Config options are:
+
+| Setting          | Description                                                        | Default      |
+|------------------|--------------------------------------------------------------------|--------------|
+| level            | Levels of this and higher priority will get logged                 | info         |
+| channels         | Messages logged into these channels will be handled                | []           |
+| formatter        | Which format should be used by this handler                        | console      |
+| timestamp_format | A golang time format string to control the format of the timestamp | 15:04:05.000 |
+| writer           | Which io.writer implementation to use                              | stdout       |
+
+#### Log to STDOUT
+
+```yaml
+log:
+  handlers:
+    main:
+      type: iowriter
+      level: info
+      channels: []
+      formatter: console
+      timestamp_format: 15:04:05.000
+      writer: stdout
+```
+
+#### Log to a file
+
+```yaml
+log:
+  handlers:
+    main:
+      type: iowriter
+      level: info
+      channels: *
+      formatter: console
+      timestamp_format: 15:04:05.000
+      writer: file
+      path: logs.log
+```
+
+### Metric
+
+No configuration needed. Writes a metric data point for every warn and error log.
+
+### Sentry
+
+No configuration needed. Publishes every logged error to Sentry.

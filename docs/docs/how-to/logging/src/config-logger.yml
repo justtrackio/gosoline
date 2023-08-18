@@ -1,0 +1,17 @@
+env: dev
+app_project: gosoline
+app_family: get-started
+app_name: hello-world
+
+// highlight-start
+log:
+    level: info
+    handlers:
+        main:
+            type: iowriter
+            channels: []
+            formatter: console
+            level: info
+            timestamp_format: 15:04:05.000
+            writer: stdout
+// highlight-end

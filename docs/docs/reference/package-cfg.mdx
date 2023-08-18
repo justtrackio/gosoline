@@ -1,0 +1,124 @@
+---
+title: Package cfg
+---
+
+# cfg package
+
+With the cfg package, you can configure and use configurations in your gosoline project. 
+
+## Functions
+
+### [WithConfigFile()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/cfg/options.go#L23)
+
+#### Usage
+
+```go
+options := []cfg.Option{
+    cfg.WithConfigFile("config.dist.yml", "yml"),
+}
+```
+
+#### Description
+
+Load configurations from a file.
+
+:::info
+
+YAML is currently the only supported configuration filetype.
+
+:::
+
+## Methods
+
+### [GetInt()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/cfg/config.go#L129)
+
+#### Usage
+
+With default:
+
+```go
+config := cfg.New()
+config.GetInt("num", 1)
+```
+
+Without default:
+
+```go
+config := cfg.New()
+
+options := []cfg.Option{
+    cfg.WithConfigSetting("num", 1),
+}
+
+if err := config.Option(options...); err != nil {
+    panic(err)
+}
+
+config.GetInt("num")
+```
+
+#### Description
+
+Gets an integer from the configuration struct.
+
+:::caution
+
+Environment variables overwrite configuration values:
+
+```go
+config := cfg.New()
+
+options := []cfg.Option{
+    cfg.WithConfigSetting("port", "8080"),
+}
+
+if err := config.Option(options...); err != nil {
+    panic(err)
+}
+
+// Prints 8080
+fmt.Println(config.GetString("port"))
+
+os.Setenv("PORT", "8081")
+
+// Prints 8081
+fmt.Println(config.GetString("port"))
+```
+
+:::
+
+#### Related methods
+
+<details><summary>GetString()</summary>
+
+```go
+config := cfg.New()
+config.GetString("env", "dev")
+```
+
+</details>
+
+<details><summary>GetBool()</summary>
+
+```go
+config := cfg.New()
+config.GetBool("enabled", true)
+```
+
+</details>
+
+## Variables
+
+### [DefaultEnvKeyReplacer](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/cfg/config.go#L62)
+
+#### Usage
+
+```go
+options := []cfg.Option{
+    cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
+}
+```
+
+#### Description
+
+Replaces "." and "-" with "_" for env key loading.

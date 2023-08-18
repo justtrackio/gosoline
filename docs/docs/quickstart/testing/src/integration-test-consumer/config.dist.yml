@@ -1,0 +1,16 @@
+env: dev
+app_project: gosoline
+app_family: how-to
+app_name: consumer
+
+stream:
+  input:
+    consumer:
+      type: sqs
+      target_queue_id: events
+
+  output:
+    todos:
+      type:
+        type: sqs
+        queue_id: todos

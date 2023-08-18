@@ -1,0 +1,146 @@
+---
+sidebar_position: 3
+title: Implement a log handler
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import LogHandler from "!!raw-loader!./src/log-handler.go";
+
+With the `cfg` and `log` packages, you can implement a handler and make it available via config.
+
+## Before you begin
+
+Here is a preview of all the code you'll cover in this guide:
+
+<details><summary>main.go</summary>
+<p>
+
+<CodeBlock showLineNumbers language="go">{LogHandler}</CodeBlock>
+
+</p>
+</details>
+
+## Implement your custom log handler
+
+### Import your gosoline dependencies
+
+Add the following imports to your code:
+
+```go
+import (
+	"fmt"
+	"time"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+)
+```
+
+Here, you imported some standard dependencies, along with the `cfg` and `log` packages from gosoline.
+
+### Create a settings struct
+
+Create a struct that stores log settings:
+
+```go
+type MyCustomHandlerSettings struct {
+	Channel string `cfg:"channel"`
+}
+```
+
+`cfg:` defines the key you'll use to bind the `channel` value from the configuration object to this struct.
+
+### Create a new handler
+
+```go
+type MyCustomHandler struct {
+	channel string
+}
+```
+
+This handler struct stores the log `channel`. To use your handler, you must implement the required methods of the [`Handler`](/reference/package-log#handler) interface.
+
+### Implement the `Channels` method
+
+Create a getter for the log channels:
+
+```go
+func (h *MyCustomHandler) Channels() []string {
+	return []string{h.channel}
+}
+```
+
+This returns an array of channels, including the one stored on `MyCustomHandler`.
+
+### Implement the `Level` method
+
+Create a getter for the log priority level:
+
+```go
+func (h *MyCustomHandler) Level() int {
+	return log.PriorityInfo
+}
+```
+
+Here, you'll return the info level priority.
+
+### Implement the `Log` method
+
+Create a getter for the log message:
+
+```go
+func (h *MyCustomHandler) Log(timestamp time.Time, level int, msg string, args []interface{}, err error, data log.Data) error {
+	fmt.Printf("%s happenend at %s", msg, timestamp.Format(time.RFC822))
+	return nil
+}
+```
+
+Here, you accept, among other things, a `msg` string and a `timestamp`. Then, you print a formatted log message, using these values.
+
+### Create a handler factory
+
+Create a custom handler factory:
+
+```go
+func MyCustomHandlerFactory(config cfg.Config, name string) (log.Handler, error) {
+	// 1
+	settings := &MyCustomHandlerSettings{}
+
+	// 2
+	log.UnmarshalHandlerSettingsFromConfig(config, name, settings)
+
+	// 3
+	return &MyCustomHandler{
+		channel: settings.Channel,
+	}, nil
+}
+```
+
+This accepts a configuration and a name and returns a Handler. You accomplish this with the following steps:
+
+1. Initialize `settings` to a new, empty `MyCustomHandlerSettings` struct, which you defined in the last step.
+2. Store the configuration values from the configuration in the `settings` struct.
+3. Create a new `MyCustomHandler`, using the `settings.Channel`.
+
+### Add your handler factory
+
+In `main()`, or wherever is most appropriate for your application, add your custom handler factory: 
+
+```go
+log.AddHandlerFactory("my-custom-handler", MyCustomHandlerFactory)
+```
+
+This sets the handler type to "my-custom-handler".
+
+## Conclusion
+
+That's it! In this guide, you:
+
+- Implemented a custom Handler.
+- Created a handler factory.
+- Added your factory to the logging configuration.
+
+Check out these resources to learn more about logging with gosoline:
+
+- [Use loggers](/how-to/logging/use-loggers)
+- [API reference for the log package](/reference/package-log)
