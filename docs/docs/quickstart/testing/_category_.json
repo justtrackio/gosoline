@@ -1,0 +1,8 @@
+{
+  "label": "Testing",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Testing is an important responsibility for developing working code. With these tutorials, you'll write your first tests with gosoline:"
+  }
+}

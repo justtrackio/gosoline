@@ -1,0 +1,10 @@
+env: dev
+app_project: gosoline
+app_family: how-to
+app_name: consumer
+
+stream:
+  input:
+    consumer:
+      type: file
+      filename: events.json

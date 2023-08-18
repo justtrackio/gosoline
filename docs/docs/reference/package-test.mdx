@@ -1,0 +1,40 @@
+---
+title: Package test
+---
+
+This package acts as a wrapper over Golang's `testing` module.
+
+## Interfaces
+
+### [Suite](https://github.com/justtrackio/gosoline/blob/9b64c30bc4156d16fb1f2d11930f0b686b5d0113/pkg/test/suite/suite.go#L11)
+
+#### Interface
+
+```go
+type TestingSuite interface {
+	Env() *env.Environment
+	SetEnv(environment *env.Environment)
+	SetT(t *testing.T)
+	T() *testing.T
+	SetupSuite() []Option
+}
+```
+
+## Functions
+
+### [Run()](https://github.com/justtrackio/gosoline/blob/9b64c30bc4156d16fb1f2d11930f0b686b5d0113/pkg/test/suite/run.go#L30)
+
+#### Parameters
+
+- `t *testing.T`
+- `suite TestingSuite`
+- `extraOptions ...Option`
+
+#### Description
+
+This is the starting point for a gosoline integration test. This performs the following steps: 
+
+1. Uses reflection to find all test cases declared by a given `TestSuite`.
+2. Applies each of the `extraOptions`.
+3. Creates a kernel with whatever modules or APIs were declared in the `SetupSuite` and `SetupApiDefinitions`.
+4. Runs the tests.

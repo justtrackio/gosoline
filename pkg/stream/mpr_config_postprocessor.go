@@ -13,8 +13,7 @@ func init() {
 }
 
 func mprConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	enabled := config.GetBool(configKey+".enabled", false)
-	if !enabled {
+	if !messagesPerRunnerIsEnabled(config) {
 		return false, nil
 	}
 
