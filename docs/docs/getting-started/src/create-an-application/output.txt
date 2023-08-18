@@ -1,0 +1,50 @@
+10:17:41.210 main    info    applied priority 1 config post processor 'gosoline.dx.useRandomPort'  application: application
+10:17:41.210 main    info    applied priority 8 config post processor 'gosoline.log.handler_main'  application: application
+10:17:41.210 main    info    applied priority 1 config post processor 'gosoline.dx.autoCreate'  application: application
+08:17:41.211 kernel  info    starting kernel                                     application: application
+08:17:41.211 kernel  info    cfg api.health.path=/health                         application: application
+08:17:41.211 kernel  info    cfg api.health.port=0                               application: application
+08:17:41.211 kernel  info    cfg app_family=example                              application: application
+08:17:41.211 kernel  info    cfg app_name=application                            application: application
+08:17:41.211 kernel  info    cfg app_project=gosoline                            application: application
+08:17:41.211 kernel  info    cfg appctx.metadata.server.port=0                   application: application
+08:17:41.211 kernel  info    cfg dx.auto_create=true                             application: application
+08:17:41.211 kernel  info    cfg dx.use_random_port=true                         application: application
+08:17:41.211 kernel  info    cfg env=dev                                         application: application
+08:17:41.211 kernel  info    cfg kernel.killTimeout=10s                          application: application
+08:17:41.211 kernel  info    cfg log.handlers.main.formatter=console             application: application
+08:17:41.211 kernel  info    cfg log.handlers.main.level=info                    application: application
+08:17:41.211 kernel  info    cfg log.handlers.main.timestamp_format=15:04:05.000  application: application
+08:17:41.211 kernel  info    cfg log.handlers.main.type=iowriter                 application: application
+08:17:41.211 kernel  info    cfg log.handlers.main.writer=stdout                 application: application
+08:17:41.211 kernel  info    cfg metric.application={app_name}                   application: application
+08:17:41.211 kernel  info    cfg metric.enabled=false                            application: application
+08:17:41.211 kernel  info    cfg metric.environment={env}                        application: application
+08:17:41.211 kernel  info    cfg metric.family={app_family}                      application: application
+08:17:41.211 kernel  info    cfg metric.interval=1m0s                            application: application
+08:17:41.211 kernel  info    cfg metric.project={app_project}                    application: application
+08:17:41.211 kernel  info    cfg metric.writer=                                  application: application
+08:17:41.211 kernel  info    cfg fingerprint: d72da0c91021e6bddbe8fe9af94c36e1   application: application
+08:17:41.211 kernel  info    stage 0 up and running with 1 modules               application: application
+08:17:41.212 kernel  info    stage 1024 up and running with 2 modules            application: application
+08:17:41.212 kernel  info    running background module metric in stage 0         application: application
+08:17:41.212 metrics info    metrics not enabled..                               application: application
+08:17:41.212 kernel  info    running foreground module hello-world in stage 2048  application: application
+08:17:41.212 hello-world info    Hello World                                         application: application
+08:17:41.212 kernel  info    stopped foreground module hello-world               application: application
+08:17:41.212 kernel  info    stopped background module metric                    application: application
+08:17:41.212 kernel  info    running background module metadata-server in stage 1024  application: application
+08:17:41.212 kernel  info    running background module api-health-check in stage 1024  application: application
+08:17:41.212 kernel  info    stage 2048 up and running with 1 modules            application: application
+08:17:41.212 kernel  info    kernel up and running                               application: application
+08:17:41.212 kernel  info    stopping kernel due to: no more foreground modules in running state  application: application
+08:17:41.212 kernel  info    stopping stage 2048                                 application: application
+08:17:41.212 kernel  info    stopped stage 2048                                  application: application
+08:17:41.212 kernel  info    stopping stage 1024                                 application: application
+08:17:41.212 metadata-server info    serving metadata on address [::]:42375              application: application
+08:17:41.212 kernel  info    stopped background module api-health-check          application: application
+08:17:41.212 kernel  info    stopped background module metadata-server           application: application
+08:17:41.212 kernel  info    stopped stage 1024                                  application: application
+08:17:41.212 kernel  info    stopping stage 0                                    application: application
+08:17:41.213 kernel  info    stopped stage 0                                     application: application
+08:17:41.213 kernel  info    leaving kernel with exit code 0                     application: application

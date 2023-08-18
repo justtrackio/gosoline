@@ -1,0 +1,8 @@
+{
+  "label": "How-to",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Here you will find how-to examples for the most common gosoline use cases"
+  }
+}

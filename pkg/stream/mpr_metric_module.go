@@ -35,6 +35,10 @@ type MessagesPerRunnerMetricWriterSettings struct {
 }
 
 func MessagesPerRunnerMetricWriterFactory(_ context.Context, config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
+	if !messagesPerRunnerIsEnabled(config) {
+		return map[string]kernel.ModuleFactory{}, nil
+	}
+
 	settings := readMessagesPerRunnerMetricSettings(config)
 	modules := map[string]kernel.ModuleFactory{}
 

@@ -1,0 +1,34 @@
+---
+sidebar_position: 1
+title: Create a consumer
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import ConfigDist from "!!raw-loader!./src/consumer/config.dist.yml";
+import Consumer from "!!raw-loader!./src/consumer/consumer.go";
+import Main from "!!raw-loader!./src/consumer/main.go";
+
+# How-to create a consumer
+
+To build an application which is consuming events from an asynchronous input like SQS, Kinesis or Kafka, we don't have
+to create a kernel module but instead have to implement the `ConsumerCallback` interface of the `stream` package.
+
+## consumer callback implementation
+To get a working consumer callback, we have to implement the `ConsumerCallback` interface first which is done on the
+`Consumer` struct in this example. `GetModel` returns the expected input model struct which is used to unmarshal the
+data. `Consume` will be called for every single incoming message. `NewConsumer` is acting as the constructor, implements
+the `stream.ConsumerCallbackFactory` type and is used to add the callback to an application.
+
+<CodeBlock showLineNumbers language="go" title="consumer.go">{Consumer}</CodeBlock>
+
+## create the application
+With a simple `application.RunConsumer` we can execute our consumer. It expects a parameter of the type
+`stream.ConsumerCallbackFactory` to create and run the consumer.
+
+<CodeBlock showLineNumbers language="go" title="main.go">{Main}</CodeBlock>
+
+## add needed configuration
+By default the application expect that there is an input configured with the config key `stream.input.consumer` which
+defines the input source. In our example we're using a file as source with the configured filename.
+
+<CodeBlock showLineNumbers language="yaml" title="config.dist.yml">{ConfigDist}</CodeBlock>

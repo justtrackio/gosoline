@@ -1,0 +1,4 @@
+env: dev
+app_project: gosoline
+app_family: getting-started
+app_name: hello-world

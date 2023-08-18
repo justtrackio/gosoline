@@ -33,3 +33,7 @@ func readMessagesPerRunnerMetricSettings(config cfg.Config) *MessagesPerRunnerMe
 
 	return mprSettings
 }
+
+func messagesPerRunnerIsEnabled(config cfg.Config) bool {
+	return config.GetBool(configKey+".enabled", false)
+}
