@@ -8,8 +8,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/justtrackio/gosoline/pkg/appctx"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	dynamodbMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb/mocks"
 	"github.com/justtrackio/gosoline/pkg/ddb"
+	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +45,21 @@ type globalModel1 struct {
 	Rev       string    `json:"rev" ddb:"global=hash"`
 	CreatedAt time.Time `json:"createdAt" ddb:"global=range"`
 	Header    string    `json:"header"`
+}
+
+func TestService_sanitizeSettings(t *testing.T) {
+	ctx := appctx.WithContainer(context.Background())
+	config := cfg.New()
+	logger := log.NewLogger()
+
+	settings := &ddb.Settings{}
+
+	_, err := ddb.NewService(ctx, config, logger, settings)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "default", settings.ClientName)
+	assert.Equal(t, int64(1), settings.Main.ReadCapacityUnits)
+	assert.Equal(t, int64(1), settings.Main.WriteCapacityUnits)
 }
 
 func TestService_CreateTable(t *testing.T) {
