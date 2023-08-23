@@ -29,9 +29,7 @@ type Service struct {
 }
 
 func NewService(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...gosoDynamodb.ClientOption) (*Service, error) {
-	if len(settings.ClientName) == 0 {
-		settings.ClientName = "default"
-	}
+	sanitizeSettings(settings)
 
 	var err error
 	var client gosoDynamodb.Client
