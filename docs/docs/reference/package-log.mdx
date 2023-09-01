@@ -1,6 +1,10 @@
+---
+title: Package log
+---
+
 # Log package
 
-The gosoline logger is based upon a simple interface that uses handlers internally to enable fully customizable log handling. 
+The gosoline logger is based upon a simple interface that uses handlers internally to enable fully customizable log handling.
 
 [embedmd]:# (../../pkg/log/logger.go /type Logger interface {/ /\n}/)
 ```go
@@ -211,10 +215,10 @@ func Usage() {
 
 results in
 ```
-14:03:14.631 main    info    log a number 4                                      
-14:03:14.631 strings warn    a dangerous string appeared: foobar                 
+14:03:14.631 main    info    log a number 4
+14:03:14.631 strings warn    a dangerous string appeared: foobar
 14:03:14.631 main    debug   just some debug line                                b: true
 14:03:14.631 main    error   it happens: should not happen                       b: true
-14:03:14.631 main    info    some info                                          id: 1337 
+14:03:14.631 main    info    some info                                          id: 1337
 
 ```

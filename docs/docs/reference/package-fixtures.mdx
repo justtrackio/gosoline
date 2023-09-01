@@ -1,6 +1,10 @@
+---
+title: Package fixtures
+---
+
 # Gosoline Fixture Loader
-While using *gosoline* you are able to define fixtures directly in code. 
- 
+While using *gosoline* you are able to define fixtures directly in code.
+
 ## Usage
 * Enable fixture loading in your `config.dist.yml` File
 ```
@@ -10,7 +14,7 @@ fixtures:
 * Make sure to use a custom build tag named `fixtures`
 
 * Define your fixtures in code while using one of the built in `FixtureWriterFactory` and defining a slice of `[]fixtures.FixtureSet{}`.
-For more details check the `/examples/gosoline-fixture-loading` Directory or read the short example below. 
+For more details check the `/examples/gosoline-fixture-loading` Directory or read the short example below.
 
 * The `fixtures.FixtureSet{}` has the following definition:
 ```
@@ -23,14 +27,14 @@ type FixtureSet struct {
 ```
 You can easily define multiple fixtures to different destinations in one file and enable or disable them for each FixtureWriter.
 
-* Currently there are 7 different FixtureWriterFactories implemented to load fixtures. 
-    * `DynamoDbFixtureWriterFactory`
-    * `DynamoDbKvStoreFixtureWriterFactory` 
-    * `MysqlOrmFixtureWriterFactory` 
-    * `MysqlPlainFixtureWriterFactory`
-    * `RedisFixtureWriterFactory`
-    * `RedisKvStoreFixtureWriterFactory` 
-    * `BlobFixtureWriterFactory` 
+* Currently there are 7 different FixtureWriterFactories implemented to load fixtures.
+  * `DynamoDbFixtureWriterFactory`
+  * `DynamoDbKvStoreFixtureWriterFactory`
+  * `MysqlOrmFixtureWriterFactory`
+  * `MysqlPlainFixtureWriterFactory`
+  * `RedisFixtureWriterFactory`
+  * `RedisKvStoreFixtureWriterFactory`
+  * `BlobFixtureWriterFactory`
 
 ## Quick Usage
 * During the creation of your Application make sure to pass the `WithFixtures` option and provide fixtures as an argument of type `[]*fixtures.FixtureSet`
@@ -220,6 +224,6 @@ func (b *namedFixtureBuilder) GetNamed(name string) *DynamoDbExampleModel {
 
 ## Further Information
 * Existing fixtures will be updated instead of created.
-* When purge is enabled only the destination of the fixtures will be purged, not everything. That means for example while loading MySQL Fixtures with purge only the tables will be purged not the whole database.  
-* If you want to use the `MysqlOrmFixtureWriterFactory` make sure that your fixture struct embeds `db_repo.Model`   
+* When purge is enabled only the destination of the fixtures will be purged, not everything. That means for example while loading MySQL Fixtures with purge only the tables will be purged not the whole database.
+* If you want to use the `MysqlOrmFixtureWriterFactory` make sure that your fixture struct embeds `db_repo.Model`
 * For example usage of all `FixtureWriterFactory` see the `/examples/gosoline-fixture-loading` directory

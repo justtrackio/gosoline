@@ -1,3 +1,7 @@
+---
+title: Package test
+---
+
 # Integration tests
 
 In this section we will be looking at several types of integration tests provided by Gosoline. All of them can be used together in the same test, and Gosoline's `suite` package is responsible for reading their configuration, starting and running an application, then running the actual tests cases. Below is their description:
@@ -47,7 +51,7 @@ func (s *ConsumerTestSuite) TestSuccessTwice(app suite.AppUnderTest) {
 }
 ```
 
-This test publishes two items into the application's stream input, waits until the application is done, then reads its outputs, and compares them with their expected values. 
+This test publishes two items into the application's stream input, waits until the application is done, then reads its outputs, and compares them with their expected values.
 
 ### ApiServer test case
 
@@ -116,7 +120,7 @@ Forgetting to implement _SetupApiDefinitions_, and the trying to run an _Apiserv
 
 ### Stream test case
 
-If you have a Gosoline application that takes its input from a stream, you need a test which can run your application locally, send data to a stream, and check your application's output for correctness. 
+If you have a Gosoline application that takes its input from a stream, you need a test which can run your application locally, send data to a stream, and check your application's output for correctness.
 
 The stream-consumer application, found in `more_details/stream-consumer`, reads unsigned integers from the `consumerInput` input, increments them by one, and publishes them to the `publisher-outputEvent` output. Below is an extract from its integration test:
 

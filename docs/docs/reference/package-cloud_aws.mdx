@@ -1,6 +1,12 @@
+---
+title: Package cloud/aws
+---
+
+## The cloud/aws package
+
 ## Configuration
-The AWS SDK v2 based services use the following default settings for region 
-and endpoint, meaning you get those values for every requested client if you 
+The AWS SDK v2 based services use the following default settings for region
+and endpoint, meaning you get those values for every requested client if you
 don't specify anything else for the client.
 ```json
 cloud:
@@ -13,7 +19,7 @@ cloud:
 ### General service config
 AWS service clients are created and configured by name. The pattern here is:
 ```golang
-func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...func(options *awsCfg.LoadOptions) error) (*serviceX.Client, error) 
+func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...func(options *awsCfg.LoadOptions) error) (*serviceX.Client, error)
 ```
 The resulting client can be configured by:
 ```yaml
@@ -31,7 +37,7 @@ cloud:
                         initial_interval: 50ms
                         max_attempts: 10
                         max_elapsed_time: 15m0s
-                        max_interval: 10s 
+                        max_interval: 10s
 ```
 | Setting                  | Description                                                                        | Default                       |
 |--------------------------|------------------------------------------------------------------------------------|-------------------------------|
@@ -45,7 +51,7 @@ cloud:
 | backoff.max_elapsed_time | For how long the service should retry the request                                  | 10m (0m means retry forever)  |
 
 ### Cloudwatch
-Call 
+Call
 ```golang
 import(
     gosoCloudwatch "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
@@ -53,7 +59,7 @@ import(
 
 cloudwatchClient := gosoCloudwatch.ProvideClient(ctx, config, logger , "default")
 ```
-to get the default cloudwatch client. You don't have to provide any config 
+to get the default cloudwatch client. You don't have to provide any config
 if you want to go with the default settings. The default settings are:
 ```yaml
 cloud:
@@ -70,6 +76,6 @@ cloud:
                       initial_interval: 50ms
                       max_attempts: 10
                       max_elapsed_time: 15m0s
-                      max_interval: 10s 
+                      max_interval: 10s
 ```
-These are the default values which are used if you don't provide any config by yourself. 
+These are the default values which are used if you don't provide any config by yourself.
