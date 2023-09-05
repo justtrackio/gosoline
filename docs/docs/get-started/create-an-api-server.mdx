@@ -7,12 +7,23 @@ import ConfigDist from "!!raw-loader!./src/create-an-api-server/config.dist.yml"
 import Handler from "!!raw-loader!./src/create-an-api-server/handler.go";
 import Main from "!!raw-loader!./src/create-an-api-server/main.go";
 
-### input
-```shell
-curl "localhost:8080/todo?id=3&text=doit"
+# Create an API server
+
+One of the primary use cases for gosoline is to create a REST web service. In this tutorial, you'll do just that!
+
+Specifically, you'll use gosoline to create a web service that handles a single endpoint:
+
+```http
+GET /todo?id={ID}&text={TODO TEXT}
 ```
 
-### output
+This endpoint will:
+
+1. Accept the data from the request's querystring
+2. Send a Json response with the `id` and `text` from the request, along with an ISO-formatted creation date and time.
+
+Here's an example response:
+
 ```json
 {
   "Id": 3,
@@ -21,10 +32,283 @@ curl "localhost:8080/todo?id=3&text=doit"
 }
 ```
 
-### code
+## Before you begin
 
-<CodeBlock showLineNumbers language="go" title="handler.go">{Handler}</CodeBlock>
+Before you begin, make sure you have [Golang](https://go.dev/doc/install) installed on your machine.
 
-<CodeBlock showLineNumbers language="go" title="main.go">{Main}</CodeBlock>
+## Set up your file structure
+
+First, you need to set up the following file structure:
+
+```txt
+todo/
+├── handler.go
+├── main.go
+└── config.dist.yml
+```
+
+For example, in Unix, run:
+
+```shell
+mkdir todo; cd todo
+touch handler.go
+touch main.go
+touch config.dist.yml
+```
+
+That's all the files you need to build your web service with gosoline! Next, you'll implement each of these files, starting with `handler.go`.
+
+## Implement handler.go
+
+In `handler.go`, add the following code:
+
+<details><summary>handler.go</summary>
+<p>
+
+<CodeBlock showLineNumbers language="go">{Handler}</CodeBlock>
+
+</p>
+</details>
+
+Now, you'll walkthrough this file in detail to learn how it works.
+
+### Import dependencies
+
+At the top of `handler.go`, you declared the package and imported some dependencies:
+
+```go title=handler.go
+package main
+
+import (
+	"context"
+	"time"
+
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+)
+```
+
+Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with three gosoline dependencies:
+
+- [`apiserver`](#)
+- [`cfg`](#)
+- [`log`](#)
+
+### Define a Todo
+
+Next, you created a `Todo` struct:
+
+```go title=handler.go
+type Todo struct {
+	Id        int    `form:"id"`
+	Text      string `form:"text"`
+	CreatedAt time.Time
+}
+```
+
+Later in this file, you'll use this to bind the data from the HTTP querystring. Referring back to the specification for your todo service, the expected querystring looks like this:
+
+```http
+?id={ID}&text={TODO TEXT}
+```
+
+So, in your struct, you have an `Id` and a `Text`. With the `form:` tag, you've specified the querystring parameter from which to pull the value for these keys.
+
+### Create a TodoHandler
+
+Next, you created a struct for handling todos:
+
+```go title=handler.go
+type TodoHandler struct {
+	logger log.Logger
+}
+```
+
+This is a simple structure that holds a `log.Logger` reference.
+
+### Get request inputs
+
+Next, you created a function called `GetInput()` that returns the input instance to use:
+
+```go title=handler.go
+func (t TodoHandler) GetInput() interface{} {
+	return &Todo{}
+}
+```
+
+This is required because your `TodoHandler` must implement the `GetInput()` method of the `apiserver.HandlerWithInput` interface.
+
+### Handle new todos
+
+Next, you created a function called `NewTodoHandler()`:
+
+```go title=handler.go
+func NewTodoHandler(ctx context.Context, config cfg.Config, logger log.Logger) (*TodoHandler, error) {
+	handler := &TodoHandler{
+		logger: logger,
+	}
+
+	return handler, nil
+}
+```
+
+The `config` and `logger` argument types come from gosoline. This function initializes a new `TodoHandler` and assigns it the `logger`. Then, it returns the handler with no error.
+
+### Handle requests
+
+Finally, you created a `Handle()` function that accepts a `context.Context` and an `apiserver.Request` (also from gosoline) and handles that request:
+
+```go
+func (t TodoHandler) Handle(
+	ctx context.Context,
+	request *apiserver.Request,
+) (*apiserver.Response, error) {
+	// 1
+	todo := request.Body.(*Todo)
+
+	// 2
+	todo.CreatedAt = time.Now()
+
+	// 3
+	t.logger.Info("got todo with id %d", todo.Id)
+
+	// 4
+	return apiserver.NewJsonResponse(todo), nil
+}
+```
+
+Here, you've implemented a request handler in the following steps:
+
+1. Initialize a `Todo` struct from the request body.
+2. Set the `CreatedAt` to now.
+3. Log the request using the `TodoHandler` struct's `logger`.
+4. Return a Json response object with information from the `Todo` struct.
+
+With gosoline, you can handle requests and responses in just a few lines of code.
+
+`handler.go` contains most of the heavy lifting for your web service. However, you still need a main entry point to your service, where you'll make use of the logic in `handler.go`. This, you'll add in `main.go`.
+
+## Implement main.go
+
+In `main.go`, add the following code:
+
+<details><summary>main.go</summary>
+<p>
+
+<CodeBlock showLineNumbers language="go">{Main}</CodeBlock>
+
+</p>
+</details>
+
+Now, you'll walkthrough this file in detail to learn how it works.
+
+### Import dependencies
+
+In `main.go`, you declared the package and imported some dependencies:
+
+```go title=main.go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
+)
+```
+
+Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with three gosoline dependencies:
+
+- [`apiserver`](#)
+- [`application`](#)
+- [`cfg`](#)
+- [`log`](#)
+
+### Create your main entry point
+
+Next, you created your `main()` function as the entry point to your service:
+
+```go title=main.go
+func main() {
+	// 1
+	definer := func(ctx context.Context, config cfg.Config, logger log.Logger) (*apiserver.Definitions, error) {
+		// 2
+		def := &apiserver.Definitions{}
+
+		// 3
+		var err error
+		var handler apiserver.HandlerWithInput
+
+		// 4
+		if handler, err = NewTodoHandler(ctx, config, logger); err != nil {
+		return nil, fmt.Errorf("can not create trip handler: %w", err)
+		}
+
+		// 5
+		def.GET("/todo", apiserver.CreateQueryHandler(handler))
+
+		// 6
+		return def, nil
+	}
+
+	// 7
+	application.RunApiServer(definer)
+}
+```
+
+`main()` puts together all the data structures and logic from `handler.go` into a single, coherent function. To better understand this code, you can break it down like this:
+
+1. Initialize `definer`, an API server factory that defines your HTTP route.
+2. Initialize `def`, a reference to the `apiserver.Definitions`, which you'll use to create a GET route.
+3. Instantiate two new variables for handling errors and request input data.
+4. Create a handler (`NewTodoHandler`) that handles the request input data. If there is an error, return an error message. If there is no error, assign this `NewTodoHandler` to the `handler` variable from the last step. 
+5. Create a GET route for the endpoint `/todo`, using the `handler`.
+6. Return the response from `handler`.
+7. Run an API server application based on the logic from the previous steps.
+
+Now, you've implemented your server's main entry point and handler logic. Next, you'll configure your server.
+
+## Configure your server
+
+In `config.dist.yml`, configure your server:
 
 <CodeBlock showLineNumbers language="yaml" title="config.dist.yml">{ConfigDist}</CodeBlock>
+
+Here, you set some minimal configurations for your web server. The final step is to test it to confirm that it works as expected.
+
+## Test your gosoline server
+
+From the `todo` directory, start your go module, install the dependencies, and run your server:
+
+```shell
+go mod init todo/m
+go mod tidy
+go run .
+```
+
+In your console, you'll see a log stream that indicates your server is running properly. By default, the server is exposed to localhost:8080.
+
+Make a GET request to `localhost:8080/todo`. For example:
+
+```shell
+curl 'localhost:8080/todo?id=1&text=do_it'
+```
+
+You'll get the following output:
+
+```shell
+{"Id":1,"Text":"do_it","CreatedAt":"2023-09-05T16:55:49.02692+02:00"}
+```
+
+## Conclusion
+
+That's it! You created your first gosoline web service. With gosoline, you were able to:
+
+- Handle requests
+- Send Json-serialized responses
+- Log information
+- And more...
