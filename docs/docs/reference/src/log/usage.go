@@ -1,4 +1,3 @@
-// nolint
 package main
 
 import (
@@ -11,7 +10,6 @@ import (
 )
 
 func Usage() {
-	ctx := context.Background()
 	handler := log.NewHandlerIoWriter(log.LevelDebug, []string{}, log.FormatterConsole, "15:04:05.000", os.Stdout)
 	logger := log.NewLoggerWithInterfaces(clock.NewRealClock(), []log.Handler{handler})
 
@@ -28,6 +26,7 @@ func Usage() {
 	loggerWithFields.Debug("just some debug line")
 	loggerWithFields.Error("it happens: %w", fmt.Errorf("should not happen"))
 
+	ctx := context.Background()
 	ctx = log.AppendLoggerContextField(ctx, map[string]interface{}{
 		"id": 1337,
 	})

@@ -37,7 +37,3 @@ func (h *MyCustomHandler) Log(timestamp time.Time, level int, msg string, args [
 	fmt.Printf("%s happenend at %s", msg, timestamp.Format(time.RFC822))
 	return nil
 }
-
-func main() {
-	log.AddHandlerFactory("my-custom-handler", MyCustomHandlerFactory)
-}

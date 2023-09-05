@@ -1,0 +1,30 @@
+---
+sidebar_position: 2
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import ConfigDist from "!!raw-loader!./src/create-an-api-server/config.dist.yml";
+import Handler from "!!raw-loader!./src/create-an-api-server/handler.go";
+import Main from "!!raw-loader!./src/create-an-api-server/main.go";
+
+### input
+```shell
+curl "localhost:8080/todo?id=3&text=doit"
+```
+
+### output
+```json
+{
+  "Id": 3,
+  "Text": "doit",
+  "CreatedAt": "2023-09-05T11:18:09.325852335+02:00"
+}
+```
+
+### code
+
+<CodeBlock showLineNumbers language="go" title="handler.go">{Handler}</CodeBlock>
+
+<CodeBlock showLineNumbers language="go" title="main.go">{Main}</CodeBlock>
+
+<CodeBlock showLineNumbers language="yaml" title="config.dist.yml">{ConfigDist}</CodeBlock>
