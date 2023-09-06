@@ -21,8 +21,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Use docs folder
-        run: cd docs/
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
