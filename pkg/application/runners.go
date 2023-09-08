@@ -1,11 +1,15 @@
 package application
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/apiserver"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdlsub"
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
@@ -13,6 +17,21 @@ import (
 func Run(options ...Option) {
 	app := Default(options...)
 	app.Run()
+}
+
+func RunFunc(f func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.ModuleRunFunc, error), options ...Option) {
+	options = append(options, WithModuleFactory("func", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+		var err error
+		var run kernel.ModuleRunFunc
+
+		if run, err = f(ctx, config, logger); err != nil {
+			return nil, fmt.Errorf("can not build run function: %w", err)
+		}
+
+		return kernel.NewModuleFunc(run), nil
+	}))
+
+	Run(options...)
 }
 
 func RunModule(name string, moduleFactory kernel.ModuleFactory, options ...Option) {
