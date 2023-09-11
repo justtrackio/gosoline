@@ -800,6 +800,48 @@ func (_c *Config_GetTime_Call) RunAndReturn(run func(string, ...time.Time) time.
 	return _c
 }
 
+// HasPrefix provides a mock function with given fields: prefix
+func (_m *Config) HasPrefix(prefix string) bool {
+	ret := _m.Called(prefix)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(prefix)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// Config_HasPrefix_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasPrefix'
+type Config_HasPrefix_Call struct {
+	*mock.Call
+}
+
+// HasPrefix is a helper method to define mock.On call
+//   - prefix string
+func (_e *Config_Expecter) HasPrefix(prefix interface{}) *Config_HasPrefix_Call {
+	return &Config_HasPrefix_Call{Call: _e.mock.On("HasPrefix", prefix)}
+}
+
+func (_c *Config_HasPrefix_Call) Run(run func(prefix string)) *Config_HasPrefix_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Config_HasPrefix_Call) Return(_a0 bool) *Config_HasPrefix_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Config_HasPrefix_Call) RunAndReturn(run func(string) bool) *Config_HasPrefix_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsSet provides a mock function with given fields: _a0
 func (_m *Config) IsSet(_a0 string) bool {
 	ret := _m.Called(_a0)

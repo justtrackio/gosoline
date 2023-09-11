@@ -30,7 +30,7 @@ func (s *CredentialsTestSuite) SetupTest() {
 }
 
 func (s *CredentialsTestSuite) TestNoConfiguredProvider() {
-	s.config.On("IsSet", "cloud.aws.credentials").Return(false)
+	s.config.On("HasPrefix", "cloud.aws.credentials").Return(false)
 
 	provider, err := gosoAws.GetCredentialsProvider(s.ctx, s.config, gosoAws.ClientSettings{})
 
@@ -39,7 +39,7 @@ func (s *CredentialsTestSuite) TestNoConfiguredProvider() {
 }
 
 func (s *CredentialsTestSuite) TestStaticCredentialsProvider() {
-	s.config.On("IsSet", "cloud.aws.credentials").Return(true)
+	s.config.On("HasPrefix", "cloud.aws.credentials").Return(true)
 	s.config.On("UnmarshalKey", "cloud.aws.credentials", mock.AnythingOfType("*aws.Credentials")).Run(func(args mock.Arguments) {
 		credentials := args.Get(1).(*gosoAws.Credentials)
 

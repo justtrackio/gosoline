@@ -39,6 +39,7 @@ type Config interface {
 	GetStringSlice(key string, optionalDefault ...[]string) []string
 	GetTime(key string, optionalDefault ...time.Time) time.Time
 	IsSet(string) bool
+	HasPrefix(prefix string) bool
 	UnmarshalDefaults(val interface{}, additionalDefaults ...UnmarshalDefaults)
 	UnmarshalKey(key string, val interface{}, additionalDefaults ...UnmarshalDefaults)
 }
@@ -295,6 +296,16 @@ func (c *config) GetTime(key string, optionalDefault ...time.Time) time.Time {
 
 func (c *config) IsSet(key string) bool {
 	return c.isSet(key)
+}
+
+func (c *config) HasPrefix(prefix string) bool {
+	envPrefix := c.resolveEnvKey(c.envKeyPrefix, prefix)
+
+	if c.envProvider.PrefixExists(envPrefix) {
+		return true
+	}
+
+	return c.IsSet(prefix)
 }
 
 func (c *config) Option(options ...Option) error {
