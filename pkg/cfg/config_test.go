@@ -76,6 +76,31 @@ func (s *ConfigTestSuite) TestConfig_IsSet() {
 	s.False(s.config.IsSet("missing"))
 }
 
+func (s *ConfigTestSuite) TestConfig_HasPrefix() {
+	s.setupConfigValues(map[string]interface{}{
+		"i": 1,
+		"ms": map[string]interface{}{
+			"b": true,
+		},
+	})
+
+	s.True(s.config.HasPrefix("i"))
+	s.False(s.config.HasPrefix("k"))
+	s.True(s.config.HasPrefix("ms"))
+	s.True(s.config.HasPrefix("ms.b"))
+	s.False(s.config.HasPrefix("ms.b.c"))
+
+	s.setupEnvironment(map[string]string{
+		"FOO":          "bar",
+		"NESTED_KEY_A": "1",
+	})
+
+	s.True(s.config.HasPrefix("foo"))
+	s.False(s.config.HasPrefix("baz"))
+	s.True(s.config.HasPrefix("nested.key"))
+	s.False(s.config.HasPrefix("nested.keys"))
+}
+
 func (s *ConfigTestSuite) TestConfig_Get() {
 	s.setupConfigValues(map[string]interface{}{
 		"i": 1,

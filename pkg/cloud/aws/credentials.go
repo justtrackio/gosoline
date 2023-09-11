@@ -38,7 +38,7 @@ func GetAssumeRoleCredentialsProvider(ctx context.Context, roleArn string) (aws.
 }
 
 func UnmarshalCredentials(config cfg.Config) *Credentials {
-	if !config.IsSet("cloud.aws.credentials") {
+	if !config.HasPrefix("cloud.aws.credentials") {
 		return nil
 	}
 
