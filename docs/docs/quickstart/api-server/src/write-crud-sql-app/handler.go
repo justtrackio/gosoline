@@ -91,6 +91,10 @@ func (h TodoCrudHandlerV0) TransformUpdate(ctx context.Context, input interface{
 	return nil
 }
 
+func (h TodoCrudHandlerV0) TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (interface{}, error) {
+	return model, nil
+}
+
 func (h TodoCrudHandlerV0) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (interface{}, error) {
 	var err error
 	result := make([]*Todo, 0)
@@ -107,8 +111,4 @@ func (h TodoCrudHandlerV0) List(ctx context.Context, qb *db_repo.QueryBuilder, a
 	}
 
 	return out, nil
-}
-
-func (h TodoCrudHandlerV0) TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (interface{}, error) {
-	return model, nil
 }
