@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/golang-migrate/migrate/v4/database"
 )
 

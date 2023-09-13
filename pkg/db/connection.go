@@ -70,7 +70,7 @@ func NewConnectionFromSettings(logger log.Logger, settings Settings) (*sqlx.DB, 
 		return nil, fmt.Errorf("can not create connection: %w", err)
 	}
 
-	if err = runMigrations(logger, settings, connection); err != nil {
+	if err = runMigrations(logger, settings, connection.DB); err != nil {
 		return nil, fmt.Errorf("can not run migrations: %w", err)
 	}
 

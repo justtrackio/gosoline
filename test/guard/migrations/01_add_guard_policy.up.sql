@@ -1,3 +1,4 @@
+-- +goose Up
 create table guard_policies
 (
 	id varchar(255) not null,

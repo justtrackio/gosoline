@@ -1,3 +1,4 @@
+-- +goose Up
 create table test_model1
 (
   id int unsigned auto_increment

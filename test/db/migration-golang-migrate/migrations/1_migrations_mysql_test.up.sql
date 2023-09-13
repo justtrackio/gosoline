@@ -1,4 +1,3 @@
--- +goose Up
 create table mysql_test_models
 (
   id int unsigned auto_increment
