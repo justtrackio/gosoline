@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/justtrackio/gosoline/pkg/apiserver/auth"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func getJwtToken(issuer string, secret string, expirationDuration int) string {
@@ -130,13 +131,13 @@ func TestJwtTokenHandler_Sign_IsValid_Valid(t *testing.T) {
 	assert.NoError(t, err)
 
 	isValid, jwtToken, err := h.Valid(*token)
+	require.NoError(t, err)
+	require.True(t, isValid)
+	require.NotNil(t, token)
 
 	claims := jwtToken.Claims.(jwt.MapClaims)
 
 	assert.Equal(t, "test", claims["name"])
 	assert.Equal(t, "mail", claims["email"])
 	assert.Equal(t, "image", claims["image"])
-	assert.NoError(t, err)
-	assert.True(t, isValid)
-	assert.NotNil(t, token)
 }
