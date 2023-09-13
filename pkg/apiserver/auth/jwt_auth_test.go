@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 	"github.com/justtrackio/gosoline/pkg/apiserver/auth"
 	authMocks "github.com/justtrackio/gosoline/pkg/apiserver/auth/mocks"
 	"github.com/stretchr/testify/assert"

@@ -30,7 +30,6 @@ require (
 	github.com/aws/smithy-go v1.13.5
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cenkalti/backoff/v4 v4.1.2
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
 	github.com/elliotchance/redismock/v8 v8.11.0
 	github.com/fatih/color v1.13.0
@@ -45,6 +44,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-resty/resty/v2 v2.7.1-0.20230308051516-1578007c3c8d
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/google/go-querystring v1.1.0
 	github.com/google/uuid v1.3.0
