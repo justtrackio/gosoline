@@ -8,18 +8,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/db"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
-type updateHandler struct {
+type updateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] struct {
 	logger      log.Logger
-	transformer UpdateHandler
+	transformer UpdateHandler[I, O, K, M]
 }
 
-func NewUpdateHandler(logger log.Logger, transformer UpdateHandler) gin.HandlerFunc {
-	uh := updateHandler{
+func NewUpdateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, transformer UpdateHandler[I, O, K, M]) gin.HandlerFunc {
+	uh := updateHandler[I, O, K, M]{
 		transformer: transformer,
 		logger:      logger,
 	}
@@ -27,22 +28,23 @@ func NewUpdateHandler(logger log.Logger, transformer UpdateHandler) gin.HandlerF
 	return apiserver.CreateJsonHandler(uh)
 }
 
-func (uh updateHandler) GetInput() interface{} {
-	return uh.transformer.GetUpdateInput()
+func (uh updateHandler[I, O, K, M]) GetInput() interface{} {
+	var input I
+
+	return &input
 }
 
-func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
-	id, valid := apiserver.GetUintFromRequest(request, "id")
+func (uh updateHandler[I, O, K, M]) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+	id, valid := apiserver.GetIdentifierFromRequest[K](request, "id")
 
 	if !valid {
 		return nil, errors.New("no valid id provided")
 	}
 
 	repo := uh.transformer.GetRepository()
-	model := uh.transformer.GetModel()
-	err := repo.Read(ctx, id, model)
+	model, err := repo.Read(ctx, *id)
 
-	var notFound db_repo.RecordNotFoundError
+	var notFound dbRepo.RecordNotFoundError
 	if errors.As(err, &notFound) {
 		uh.logger.WithContext(ctx).Warn("failed to update model: %s", err.Error())
 
@@ -53,7 +55,7 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 		return nil, err
 	}
 
-	err = uh.transformer.TransformUpdate(ctx, request.Body, model)
+	model, err = uh.transformer.TransformUpdate(ctx, request.Body.(*I), model)
 
 	if modelNotChanged(err) {
 		return apiserver.NewStatusResponse(http.StatusNotModified), nil
@@ -77,9 +79,7 @@ func (uh updateHandler) Handle(ctx context.Context, request *apiserver.Request) 
 		return nil, err
 	}
 
-	reload := uh.transformer.GetModel()
-	err = repo.Read(ctx, model.GetId(), reload)
-
+	reload, err := repo.Read(ctx, *model.GetId())
 	if err != nil {
 		return nil, err
 	}

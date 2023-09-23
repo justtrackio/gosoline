@@ -75,7 +75,6 @@ func NewJsonMessage(body string, attributes ...map[string]interface{}) *Message 
 
 func MarshalJsonMessage(body interface{}, attributes ...map[string]interface{}) (*Message, error) {
 	data, err := NewJsonEncoder().Encode(body)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal body to json: %w", err)
 	}
@@ -94,7 +93,6 @@ func NewProtobufMessage(body string, attributes ...map[string]interface{}) *Mess
 
 func MarshalProtobufMessage(body ProtobufEncodable, attributes ...map[string]interface{}) (*Message, error) {
 	data, err := NewProtobufEncoder().Encode(body)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal body to protobuf: %w", err)
 	}

@@ -24,7 +24,7 @@ type ChangeHistoryManager struct {
 	orm      *gorm.DB
 	logger   log.Logger
 	settings *changeHistoryManagerSettings
-	models   []ModelBased
+	models   []ModelBased[uint]
 }
 
 type changeHistoryManagerAppctxKey int
@@ -51,7 +51,7 @@ func NewChangeHistoryManager(config cfg.Config, logger log.Logger) (*ChangeHisto
 	}, nil
 }
 
-func (c *ChangeHistoryManager) addModels(models ...ModelBased) {
+func (c *ChangeHistoryManager) addModels(models ...ModelBased[uint]) {
 	c.models = append(c.models, models...)
 }
 
@@ -76,7 +76,7 @@ func (c *ChangeHistoryManager) RunMigrations() error {
 	return cfn.Wait()
 }
 
-func (c *ChangeHistoryManager) RunMigration(model ModelBased) error {
+func (c *ChangeHistoryManager) RunMigration(model ModelBased[uint]) error {
 	originalTable := c.buildOriginalTableMetadata(model)
 	historyTable := c.buildHistoryTableMetadata(model, originalTable)
 
@@ -159,6 +159,7 @@ func (c *ChangeHistoryManager) executeMigration(originalTable, historyTable *tab
 		statements = append(statements, c.dropHistoryTriggers(originalTable, historyTable)...)
 		statements = append(statements, c.createHistoryTriggers(originalTable, historyTable)...)
 		c.logger.Info("creating change history setup")
+
 		return c.execute(statements)
 	}
 
@@ -168,6 +169,7 @@ func (c *ChangeHistoryManager) executeMigration(originalTable, historyTable *tab
 		statements = append(statements, c.dropHistoryTriggers(originalTable, historyTable)...)
 		statements = append(statements, c.createHistoryTriggers(originalTable, historyTable)...)
 		c.logger.Info("updating change history setup")
+
 		return c.execute(statements)
 	}
 
@@ -176,7 +178,7 @@ func (c *ChangeHistoryManager) executeMigration(originalTable, historyTable *tab
 	return nil
 }
 
-func (c *ChangeHistoryManager) buildOriginalTableMetadata(model ModelBased) *tableMetadata {
+func (c *ChangeHistoryManager) buildOriginalTableMetadata(model ModelBased[uint]) *tableMetadata {
 	scope := c.orm.NewScope(model)
 	fields := scope.GetModelStruct().StructFields
 	tableName := scope.TableName()
@@ -184,7 +186,7 @@ func (c *ChangeHistoryManager) buildOriginalTableMetadata(model ModelBased) *tab
 	return newTableMetadata(scope, tableName, fields)
 }
 
-func (c *ChangeHistoryManager) buildHistoryTableMetadata(model ModelBased, originalTable *tableMetadata) *tableMetadata {
+func (c *ChangeHistoryManager) buildHistoryTableMetadata(model ModelBased[uint], originalTable *tableMetadata) *tableMetadata {
 	historyScope := c.orm.NewScope(ChangeHistoryModel{})
 	tableName := fmt.Sprintf("%s_%s", originalTable.tableName, c.settings.TableSuffix)
 	modelFields := c.orm.NewScope(model).GetModelStruct().StructFields
@@ -287,6 +289,7 @@ func (c *ChangeHistoryManager) primaryKeysMatchCondition(originalTable *tableMet
 		condition := fmt.Sprintf("d.%s = %s.%s", columnName, record, columnName)
 		conditions = append(conditions, condition)
 	}
+
 	return strings.Join(conditions, " AND ")
 }
 
@@ -297,6 +300,7 @@ func (c *ChangeHistoryManager) rowUpdatedCondition(originalTable *tableMetadata)
 		condition := fmt.Sprintf("NOT (OLD.%s <=> NEW.%s)", columnName, columnName)
 		conditions = append(conditions, condition)
 	}
+
 	return strings.Join(conditions, " OR ")
 }
 

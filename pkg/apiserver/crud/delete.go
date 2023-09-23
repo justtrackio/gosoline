@@ -7,18 +7,19 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
-type deleteHandler struct {
+type deleteHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] struct {
 	logger      log.Logger
-	transformer BaseHandler
+	transformer BaseHandler[O, K, M]
 }
 
-func NewDeleteHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFunc {
-	dh := deleteHandler{
+func NewDeleteHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, transformer BaseHandler[O, K, M]) gin.HandlerFunc {
+	dh := deleteHandler[O, K, M]{
 		transformer: transformer,
 		logger:      logger,
 	}
@@ -26,19 +27,18 @@ func NewDeleteHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFun
 	return apiserver.CreateHandler(dh)
 }
 
-func (dh deleteHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
-	id, valid := apiserver.GetUintFromRequest(request, "id")
+func (dh deleteHandler[O, K, M]) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+	id, valid := apiserver.GetIdentifierFromRequest[K](request, "id")
 
 	if !valid {
 		return nil, errors.New("no valid id provided")
 	}
 
 	repo := dh.transformer.GetRepository()
-	model := dh.transformer.GetModel()
 
-	err := repo.Read(ctx, id, model)
+	model, err := repo.Read(ctx, *id)
 
-	var notFound db_repo.RecordNotFoundError
+	var notFound dbRepo.RecordNotFoundError
 	if errors.As(err, &notFound) {
 		dh.logger.WithContext(ctx).Warn("failed to delete model: %s", err)
 

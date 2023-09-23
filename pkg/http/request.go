@@ -59,7 +59,6 @@ func NewXmlRequest(client Client) *Request {
 
 func (r *Request) WithUrl(rawUrl string) *Request {
 	parsedUrl, err := url.Parse(rawUrl)
-
 	if err != nil {
 		r.errs = multierror.Append(r.errs, err)
 
@@ -80,7 +79,6 @@ func (r *Request) WithQueryParam(key string, values ...interface{}) *Request {
 
 	for _, value := range values {
 		str, err := cast.ToStringE(value)
-
 		if err != nil {
 			r.errs = multierror.Append(r.errs, err)
 
@@ -95,7 +93,6 @@ func (r *Request) WithQueryParam(key string, values ...interface{}) *Request {
 
 func (r *Request) WithQueryObject(obj interface{}) *Request {
 	parts, err := query.Values(obj)
-
 	if err != nil {
 		r.errs = multierror.Append(r.errs, err)
 
@@ -110,7 +107,6 @@ func (r *Request) WithQueryObject(obj interface{}) *Request {
 
 func (r *Request) WithQueryMap(values interface{}) *Request {
 	parts, err := cast.ToStringMapStringSliceE(values)
-
 	if err != nil {
 		r.errs = multierror.Append(r.errs, err)
 

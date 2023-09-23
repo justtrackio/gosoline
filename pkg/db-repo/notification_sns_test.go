@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/stream"
@@ -36,14 +36,14 @@ func Test_SNS_Notifier(t *testing.T) {
 	output := streamMocks.Output{}
 	output.On("WriteOne", context.Background(), &streamMessage).Return(nil).Once()
 	transformer := func(view string, version int, in interface{}) (out interface{}) {
-		assert.Equal(t, mdl.Box(uint(3)), in.(db_repo.ModelBased).GetId())
+		assert.Equal(t, mdl.Box(uint(3)), in.(db_repo.ModelBased[uint]).GetId())
 		assert.Equal(t, "api", view)
 		assert.Equal(t, 55, version)
 
 		return in
 	}
 
-	notifier := db_repo.NewStreamNotifier(logMocks.NewLoggerMockedAll(), &output, modelId, 55, transformer)
+	notifier := db_repo.NewStreamNotifier[uint](logMocks.NewLoggerMockedAll(), &output, modelId, 55, transformer)
 
 	err := notifier.Send(context.Background(), "CREATE", input)
 	assert.NoError(t, err)
@@ -58,6 +58,14 @@ type modelBased struct {
 
 func (m *modelBased) GetId() *uint {
 	return mdl.Box(uint(3))
+}
+
+func (m *modelBased) GetUpdatedAt() *time.Time {
+	return m.updatedAt
+}
+
+func (m *modelBased) GetCreatedAt() *time.Time {
+	return m.createdAt
 }
 
 func (m *modelBased) SetUpdatedAt(updatedAt *time.Time) {

@@ -2,9 +2,10 @@ package appctx_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestProvide(t *testing.T) {

@@ -2,8 +2,10 @@ package timeutils
 
 import "time"
 
-var defaultDateTimeFormat = "2006-01-02T15:04:05-07:00"
-var DateTimeMysql = "2006-01-02 15:04:05"
+var (
+	defaultDateTimeFormat = "2006-01-02T15:04:05-07:00"
+	DateTimeMysql         = "2006-01-02 15:04:05"
+)
 
 func WithDefaultDateTimeFormat(format string) {
 	defaultDateTimeFormat = format

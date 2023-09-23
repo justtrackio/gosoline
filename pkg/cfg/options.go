@@ -33,14 +33,12 @@ func WithConfigFileFlag(flagName string) Option {
 		var configFiles configFiles
 		flags.Var(&configFiles, flagName, "path to a config file")
 		err := flags.Parse(os.Args[1:])
-
 		if err != nil {
 			return err
 		}
 
 		for _, configFile := range configFiles {
 			err := readConfigFromFile(cfg, configFile, "yml")
-
 			if err != nil {
 				return err
 			}

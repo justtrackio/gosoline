@@ -2,8 +2,10 @@ package metric
 
 import "sync"
 
-var metricDefaultsLock = sync.Mutex{}
-var metricDefaults = map[string]*Datum{}
+var (
+	metricDefaultsLock = sync.Mutex{}
+	metricDefaults     = map[string]*Datum{}
+)
 
 func addMetricDefaults(data ...*Datum) {
 	metricDefaultsLock.Lock()

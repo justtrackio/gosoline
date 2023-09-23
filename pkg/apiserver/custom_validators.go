@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"fmt"
+
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 )
@@ -35,7 +36,6 @@ type ValidateAlias struct {
 
 func AddCustomValidators(customValidators []CustomValidator) error {
 	v, err := getValidateEngine()
-
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,6 @@ func AddCustomValidators(customValidators []CustomValidator) error {
 
 func AddStructValidators(structValidators []StructValidator) error {
 	v, err := getValidateEngine()
-
 	if err != nil {
 		return err
 	}
@@ -67,7 +66,6 @@ func AddStructValidators(structValidators []StructValidator) error {
 
 func AddCustomTypeFuncs(customTypeFuncs []CustomTypeFunc) error {
 	v, err := getValidateEngine()
-
 	if err != nil {
 		return err
 	}
@@ -81,7 +79,6 @@ func AddCustomTypeFuncs(customTypeFuncs []CustomTypeFunc) error {
 
 func AddValidateAlias(aliases []ValidateAlias) error {
 	v, err := getValidateEngine()
-
 	if err != nil {
 		return err
 	}

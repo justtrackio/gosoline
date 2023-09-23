@@ -67,6 +67,7 @@ func (m *Metadata) Append(key string, values ...interface{}) error {
 		for _, elem := range slice {
 			if elem == val {
 				found = true
+
 				break
 			}
 		}

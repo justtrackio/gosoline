@@ -3,7 +3,6 @@ package redis_test
 import (
 	"context"
 	"errors"
-	"golang.org/x/exp/slices"
 	"testing"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/redis"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/exp/slices"
 )
 
 type ClientWithMiniRedisTestSuite struct {

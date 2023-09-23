@@ -23,7 +23,7 @@ func Sanitize(key string, value interface{}, sanitizers []Sanitizer) (interface{
 
 func sanitizeValue(key string, val interface{}, sanitizers []Sanitizer) (interface{}, error) {
 	var err error
-	var san = val
+	san := val
 
 	for _, sanitizer := range sanitizers {
 		if san, err = sanitizer(san); err != nil {

@@ -3,11 +3,12 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
+
 	"github.com/golang-migrate/migrate/v4/database"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/database/redshift"
 	"github.com/lib/pq"
-	"net/url"
 )
 
 const DriverNameRedshift = "redshift"

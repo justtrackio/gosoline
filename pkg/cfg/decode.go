@@ -1,9 +1,10 @@
 package cfg
 
 import (
-	"github.com/spf13/cast"
 	"reflect"
 	"time"
+
+	"github.com/spf13/cast"
 )
 
 func StringToTimeHookFunc(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {

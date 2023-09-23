@@ -3,8 +3,9 @@ package assert
 import (
 	"database/sql"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type rowQuerying interface {

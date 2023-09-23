@@ -17,3 +17,8 @@ stream:
     consumerInput:
       type: sqs
       target_queue_id: inputEvent
+
+test:
+  components:
+    s3:
+      default: {}

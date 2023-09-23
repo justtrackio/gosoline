@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-
 	"github.com/justtrackio/gosoline/pkg/kafka"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 )

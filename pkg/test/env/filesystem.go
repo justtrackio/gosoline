@@ -20,7 +20,6 @@ func newFilesystem(t *testing.T) *filesystem {
 
 func (f *filesystem) ReadString(filename string) string {
 	bytes, err := os.ReadFile(filename)
-
 	if err != nil {
 		err = fmt.Errorf("can not read test data from file %s: %w", filename, err)
 		assert.FailNow(f.t, err.Error())

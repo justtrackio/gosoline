@@ -21,6 +21,7 @@ func KernelMiddlewareShares(ctx context.Context, config cfg.Config, logger log.L
 		return func() {
 			if err := manager.SetupShareTable(); err != nil {
 				logger.Error("can not setup share tables: %s", err.Error())
+
 				return
 			}
 

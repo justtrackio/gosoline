@@ -11,21 +11,21 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
-type streamNotifier struct {
+type streamNotifier[K mdl.PossibleIdentifier] struct {
 	notifier
 	encoder     stream.MessageEncoder
 	output      stream.Output
 	transformer mdl.TransformerResolver
 }
 
-func NewStreamNotifier(logger log.Logger, output stream.Output, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *streamNotifier {
+func NewStreamNotifier[K mdl.PossibleIdentifier](logger log.Logger, output stream.Output, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) Notifier[K] {
 	notifier := newNotifier(logger, modelId, version)
 
 	encoder := stream.NewMessageEncoder(&stream.MessageEncoderSettings{
 		Encoding: stream.EncodingJson,
 	})
 
-	return &streamNotifier{
+	return &streamNotifier[K]{
 		notifier:    notifier,
 		encoder:     encoder,
 		output:      output,
@@ -33,7 +33,7 @@ func NewStreamNotifier(logger log.Logger, output stream.Output, modelId mdl.Mode
 	}
 }
 
-func (n *streamNotifier) Send(ctx context.Context, notificationType string, value ModelBased) error {
+func (n *streamNotifier[K]) Send(ctx context.Context, notificationType string, value ModelBased[K]) error {
 	logger := n.logger.WithContext(ctx)
 	modelId := n.modelId.String()
 
@@ -51,23 +51,25 @@ func (n *streamNotifier) Send(ctx context.Context, notificationType string, valu
 	err = n.output.WriteOne(ctx, msg)
 
 	if exec.IsRequestCanceled(err) {
-		logger.Info("request canceled while executing notification on %s for model %s with id %d", notificationType, modelId, *value.GetId())
+		logger.Info("request canceled while executing notification on %s for model %s with id %v", notificationType, modelId, *value.GetId())
 		n.writeMetric(err)
+
 		return err
 	}
 
 	if err != nil {
 		n.writeMetric(err)
-		return fmt.Errorf("error executing notification on %s for model %s with id %d: %w", notificationType, modelId, *value.GetId(), err)
+
+		return fmt.Errorf("error executing notification on %s for model %s with id %v: %w", notificationType, modelId, *value.GetId(), err)
 	}
 
-	logger.Info("sent on %s successful for model %s with id %d", notificationType, modelId, *value.GetId())
+	logger.Info("sent on %s successful for model %s with id %v", notificationType, modelId, *value.GetId())
 	n.writeMetric(nil)
 
 	return nil
 }
 
-func NewSnsNotifier(ctx context.Context, config cfg.Config, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) (*streamNotifier, error) {
+func NewSnsNotifier[K mdl.PossibleIdentifier](ctx context.Context, config cfg.Config, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) (Notifier[K], error) {
 	modelId.PadFromConfig(config)
 
 	output, err := stream.NewSnsOutput(ctx, config, logger, &stream.SnsOutputSettings{
@@ -84,5 +86,5 @@ func NewSnsNotifier(ctx context.Context, config cfg.Config, logger log.Logger, m
 		return nil, fmt.Errorf("can not create sns output: %w", err)
 	}
 
-	return NewStreamNotifier(logger, output, modelId, version, transformer), nil
+	return NewStreamNotifier[K](logger, output, modelId, version, transformer), nil
 }

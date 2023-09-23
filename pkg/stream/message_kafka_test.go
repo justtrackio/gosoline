@@ -5,9 +5,8 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/stream"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/segmentio/kafka-go"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_NewKafkaMessageAttrs(t *testing.T) {
@@ -134,7 +133,8 @@ func Test_NewKafkaMessage(t *testing.T) {
 					Key:   "Attr2",
 					Value: []byte("2"),
 				},
-			}}
+			},
+		}
 		actual = stream.NewKafkaMessage(gMessage)
 	)
 

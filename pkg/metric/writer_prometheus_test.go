@@ -160,7 +160,7 @@ func Test_promWriter_Write(t *testing.T) {
 			w := metric.NewPromWriterWithInterfaces(logger, registry, "ns:test:write", 1000)
 			w.Write(tt.data)
 
-			var metricOutput = fmt.Sprintf(`
+			metricOutput := fmt.Sprintf(`
 				# HELP %s unit: %s
 				# TYPE %s counter
 				%s %d

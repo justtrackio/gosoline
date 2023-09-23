@@ -27,7 +27,8 @@ type Consumer struct {
 }
 
 func NewConsumer(
-	ctx context.Context, conf cfg.Config, logger log.Logger, key string) (*Consumer, error) {
+	ctx context.Context, conf cfg.Config, logger log.Logger, key string,
+) (*Consumer, error) {
 	settings := ParseSettings(conf, key)
 
 	// Connection.

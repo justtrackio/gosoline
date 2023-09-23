@@ -2,8 +2,10 @@ package clock
 
 import "sync/atomic"
 
-var Provider = NewRealClock()
-var useUTCEnabled int32 = 0
+var (
+	Provider            = NewRealClock()
+	useUTCEnabled int32 = 0
+)
 
 func WithProvider(def Clock) {
 	Provider = def

@@ -1,8 +1,9 @@
 package auth
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 func NewChainHandler(authenticators map[string]Authenticator) gin.HandlerFunc {
@@ -11,7 +12,6 @@ func NewChainHandler(authenticators map[string]Authenticator) gin.HandlerFunc {
 
 		for n, a := range authenticators {
 			valid, err := a.IsValid(ginCtx)
-
 			if err != nil {
 				errors[n] = err.Error()
 				continue

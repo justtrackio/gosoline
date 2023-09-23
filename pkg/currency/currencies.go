@@ -1,7 +1,9 @@
 package currency
 
-const Eur = "EUR"
-const Usd = "USD"
+const (
+	Eur = "EUR"
+	Usd = "USD"
+)
 
 var Currencies = map[string]string{
 	Eur: "€",

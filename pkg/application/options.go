@@ -7,17 +7,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justtrackio/gosoline/pkg/share"
-
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/share"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/pkg/errors"
@@ -143,7 +142,7 @@ func WithExecBackoffSettings(settings *exec.BackoffSettings) Option {
 
 func WithDbRepoChangeHistory(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-		return kernelPkg.WithMiddlewareFactory(db_repo.KernelMiddlewareChangeHistory, kernelPkg.PositionEnd)
+		return kernelPkg.WithMiddlewareFactory(dbRepo.KernelMiddlewareChangeHistory, kernelPkg.PositionEnd)
 	})
 }
 

@@ -7,106 +7,93 @@ import (
 
 	"github.com/jinzhu/inflection"
 	"github.com/justtrackio/gosoline/pkg/apiserver"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 const DefaultApiView = "api"
 
-//go:generate mockery --name Repository
-type Repository interface {
-	Create(ctx context.Context, value db_repo.ModelBased) error
-	Read(ctx context.Context, id *uint, out db_repo.ModelBased) error
-	Update(ctx context.Context, value db_repo.ModelBased) error
-	Delete(ctx context.Context, value db_repo.ModelBased) error
-	Query(ctx context.Context, qb *db_repo.QueryBuilder, result interface{}) error
-	Count(ctx context.Context, qb *db_repo.QueryBuilder, model db_repo.ModelBased) (int, error)
-	GetMetadata() db_repo.Metadata
-}
-
 //go:generate mockery --name BaseHandler
-type BaseHandler interface {
-	GetRepository() Repository
-	GetModel() db_repo.ModelBased
-	TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (output interface{}, err error)
+type BaseHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	GetRepository() dbRepo.Repository[K, M]
+	TransformOutput(ctx context.Context, model M, apiView string) (output O, err error)
 }
 
 //go:generate mockery --name BaseCreateHandler
-type BaseCreateHandler interface {
-	GetCreateInput() interface{}
-	TransformCreate(ctx context.Context, input interface{}, model db_repo.ModelBased) (err error)
+type BaseCreateHandler[I any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	TransformCreate(ctx context.Context, input *I) (M, error)
 }
 
 //go:generate mockery --name CreateHandler
-type CreateHandler interface {
-	BaseHandler
-	BaseCreateHandler
+type CreateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	BaseHandler[O, K, M]
+	BaseCreateHandler[I, K, M]
 }
 
 //go:generate mockery --name BaseUpdateHandler
-type BaseUpdateHandler interface {
-	GetUpdateInput() interface{}
-	TransformUpdate(ctx context.Context, input interface{}, model db_repo.ModelBased) (err error)
+type BaseUpdateHandler[I any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	TransformUpdate(ctx context.Context, input *I, model M) (M, error)
 }
 
 //go:generate mockery --name UpdateHandler
-type UpdateHandler interface {
-	BaseHandler
-	BaseUpdateHandler
+type UpdateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	BaseHandler[O, K, M]
+	BaseUpdateHandler[I, K, M]
 }
 
 //go:generate mockery --name BaseListHandler
-type BaseListHandler interface {
-	List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out interface{}, err error)
+type BaseListHandler[O any] interface {
+	List(ctx context.Context, qb *dbRepo.QueryBuilder, apiView string) (out []O, err error)
 }
 
 //go:generate mockery --name ListHandler
-type ListHandler interface {
-	BaseHandler
-	BaseListHandler
+type ListHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	BaseHandler[O, K, M]
+	BaseListHandler[O]
 }
 
 //go:generate mockery --name Handler
-type Handler interface {
-	BaseHandler
-	BaseCreateHandler
-	BaseUpdateHandler
-	BaseListHandler
+type Handler[CI any, UI any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] interface {
+	BaseHandler[O, K, M]
+	BaseCreateHandler[CI, K, M]
+	BaseUpdateHandler[UI, K, M]
+	BaseListHandler[O]
 }
 
-func AddCrudHandlers(logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler Handler) {
-	AddCreateHandler(logger, d, version, basePath, handler)
-	AddReadHandler(logger, d, version, basePath, handler)
-	AddUpdateHandler(logger, d, version, basePath, handler)
-	AddDeleteHandler(logger, d, version, basePath, handler)
-	AddListHandler(logger, d, version, basePath, handler)
+func AddCrudHandlers[CI any, UI any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler Handler[CI, UI, O, K, M]) {
+	AddCreateHandler[CI, O, K, M](logger, d, version, basePath, handler)
+	AddReadHandler[O, K, M](logger, d, version, basePath, handler)
+	AddUpdateHandler[UI, O, K, M](logger, d, version, basePath, handler)
+	AddDeleteHandler[O, K, M](logger, d, version, basePath, handler)
+	AddListHandler[O, K, M](logger, d, version, basePath, handler)
 }
 
-func AddCreateHandler(logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler CreateHandler) {
+func AddCreateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler CreateHandler[I, O, K, M]) {
 	path, _ := getHandlerPaths(version, basePath)
 
 	d.POST(path, NewCreateHandler(logger, handler))
 }
 
-func AddReadHandler(logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler BaseHandler) {
+func AddReadHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler BaseHandler[O, K, M]) {
 	_, idPath := getHandlerPaths(version, basePath)
 
 	d.GET(idPath, NewReadHandler(logger, handler))
 }
 
-func AddUpdateHandler(logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler UpdateHandler) {
+func AddUpdateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler UpdateHandler[I, O, K, M]) {
 	_, idPath := getHandlerPaths(version, basePath)
 
 	d.PUT(idPath, NewUpdateHandler(logger, handler))
 }
 
-func AddDeleteHandler(logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler BaseHandler) {
+func AddDeleteHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler BaseHandler[O, K, M]) {
 	_, idPath := getHandlerPaths(version, basePath)
 
 	d.DELETE(idPath, NewDeleteHandler(logger, handler))
 }
 
-func AddListHandler(logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler ListHandler) {
+func AddListHandler[O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler ListHandler[O, K, M]) {
 	plural := inflection.Plural(basePath)
 	path := fmt.Sprintf("/v%d/%s", version, plural)
 	d.POST(path, NewListHandler(logger, handler))

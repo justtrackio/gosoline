@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/funk"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 

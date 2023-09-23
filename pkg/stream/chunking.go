@@ -5,8 +5,10 @@ import (
 	"math"
 )
 
-type Chunk [][]byte
-type Chunks []Chunk
+type (
+	Chunk  [][]byte
+	Chunks []Chunk
+)
 
 func BuildChunks(batch []WritableMessage, size int) (Chunks, error) {
 	numOfChunks := int(math.Ceil(float64(len(batch)) / float64(size)))
@@ -21,7 +23,6 @@ func BuildChunks(batch []WritableMessage, size int) (Chunks, error) {
 	j := 0
 	for i := 0; i < len(batch); i++ {
 		bytes, err := batch[i].MarshalToBytes()
-
 		if err != nil {
 			errors = append(errors, err)
 			continue

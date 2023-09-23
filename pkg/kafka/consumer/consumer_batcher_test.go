@@ -198,5 +198,4 @@ func TestBatcher(t *testing.T) {
 			assert.Equal(t, tt.want, batcher.Get(ctx))
 		})
 	}
-
 }

@@ -32,8 +32,6 @@ func WithNamingStrategy(strategy NamingStrategy) {
 	namingStrategy = strategy
 }
 
-var (
-	namingStrategy = func(appId cfg.AppId, topic string) string {
-		return fmt.Sprintf("%s-%s", appId.Environment, topic)
-	}
-)
+var namingStrategy = func(appId cfg.AppId, topic string) string {
+	return fmt.Sprintf("%s-%s", appId.Environment, topic)
+}
