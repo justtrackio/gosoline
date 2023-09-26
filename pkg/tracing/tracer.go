@@ -19,12 +19,8 @@ type Tracer interface {
 }
 
 type TracerSettings struct {
-	Provider                    string                `cfg:"provider" default:"xray" validate:"required"`
-	Enabled                     bool                  `cfg:"enabled" default:"false"`
-	AddressType                 string                `cfg:"addr_type" default:"local" validate:"required"`
-	AddressValue                string                `cfg:"add_value" default:""`
-	Sampling                    SamplingConfiguration `cfg:"sampling"`
-	StreamingMaxSubsegmentCount int                   `cfg:"streaming_max_subsegment_count" default:"20"`
+	Provider string `cfg:"provider"`
+	Enabled  bool   `cfg:"enabled" default:"false"`
 }
 
 var tracerContainer = struct {
@@ -32,7 +28,7 @@ var tracerContainer = struct {
 	instance Tracer
 }{}
 
-func ProvideTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
+func ProvideTracer(ctx context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
 	tracerContainer.Lock()
 	defer tracerContainer.Unlock()
 
@@ -40,7 +36,7 @@ func ProvideTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
 		return tracerContainer.instance, nil
 	}
 
-	instance, err := NewTracer(config, logger)
+	instance, err := NewTracer(ctx, config, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +46,7 @@ func ProvideTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
 	return tracerContainer.instance, nil
 }
 
-func NewTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
+func NewTracer(ctx context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
 	settings := &TracerSettings{}
 	config.UnmarshalKey("tracing", settings)
 
@@ -64,5 +60,5 @@ func NewTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
 
 	provider := providers[settings.Provider]
 
-	return provider(config, logger)
+	return provider(ctx, config, logger)
 }

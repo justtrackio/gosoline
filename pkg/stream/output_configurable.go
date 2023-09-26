@@ -66,7 +66,7 @@ func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Lo
 		return nil, fmt.Errorf("can not create output %s: %w", name, err)
 	}
 
-	return NewOutputTracer(config, logger, output, name)
+	return NewOutputTracer(ctx, config, logger, output, name)
 }
 
 func newFileOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
