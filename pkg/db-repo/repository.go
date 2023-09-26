@@ -68,7 +68,7 @@ type repository struct {
 }
 
 func New(ctx context.Context, config cfg.Config, logger log.Logger, s Settings) (*repository, error) {
-	tracer, err := tracing.ProvideTracer(config, logger)
+	tracer, err := tracing.ProvideTracer(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
@@ -87,8 +87,8 @@ func New(ctx context.Context, config cfg.Config, logger log.Logger, s Settings) 
 	return NewWithInterfaces(logger, tracer, orm, clk, s.Metadata), nil
 }
 
-func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings *db.Settings, repoSettings Settings) (*repository, error) {
-	tracer, err := tracing.ProvideTracer(config, logger)
+func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger, dbSettings *db.Settings, repoSettings Settings) (*repository, error) {
+	tracer, err := tracing.ProvideTracer(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}

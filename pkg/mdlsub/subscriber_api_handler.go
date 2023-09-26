@@ -23,7 +23,7 @@ func NewHandler(ctx context.Context, config cfg.Config, logger log.Logger, callb
 		return nil, err
 	}
 
-	tracer, err := tracing.ProvideTracer(config, logger)
+	tracer, err := tracing.ProvideTracer(ctx, config, logger)
 	if err != nil {
 		return nil, err
 	}

@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
-	grpcServerProto "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/helloworld/v1"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	grpcServerProto "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 type greeter struct {

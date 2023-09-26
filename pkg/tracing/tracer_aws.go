@@ -19,8 +19,16 @@ const (
 	xrayDefaultMaxSubsegmentCount = 20
 )
 
+var _ Tracer = &awsTracer{}
+
+type XrayTracerSettings struct {
+	AddressType                 string                `cfg:"addr_type" default:"local" validate:"required"`
+	AddressValue                string                `cfg:"add_value" default:""`
+	Sampling                    SamplingConfiguration `cfg:"sampling"`
+	StreamingMaxSubsegmentCount int                   `cfg:"streaming_max_subsegment_count" default:"20"`
+}
+
 type XRaySettings struct {
-	Enabled                     bool
 	Address                     string
 	CtxMissingStrategy          ctxmissing.Strategy
 	SamplingStrategy            sampling.Strategy
@@ -29,15 +37,14 @@ type XRaySettings struct {
 
 type awsTracer struct {
 	cfg.AppId
-	enabled bool
 }
 
-func NewAwsTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
+func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
 	appId := cfg.AppId{}
 	appId.PadFromConfig(config)
 
-	settings := &TracerSettings{}
-	config.UnmarshalKey("tracing", settings)
+	settings := &XrayTracerSettings{}
+	config.UnmarshalKey("tracing.xray", settings)
 
 	addr := lookupAddr(appId, settings)
 	ctxMissingStrategy := NewContextMissingWarningLogStrategy(logger)
@@ -48,7 +55,6 @@ func NewAwsTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
 	}
 
 	xRaySettings := &XRaySettings{
-		Enabled:                     settings.Enabled,
 		Address:                     addr,
 		CtxMissingStrategy:          ctxMissingStrategy,
 		SamplingStrategy:            samplingStrategy,
@@ -82,42 +88,26 @@ func NewAwsTracerWithInterfaces(logger log.Logger, appId cfg.AppId, settings *XR
 	setGlobalXRayLogger(logger)
 
 	return &awsTracer{
-		AppId:   appId,
-		enabled: settings.Enabled,
+		AppId: appId,
 	}, nil
 }
 
 func (t *awsTracer) StartSubSpan(ctx context.Context, name string) (context.Context, Span) {
-	if !t.enabled {
-		return ctx, disabledSpan()
-	}
-
-	var ctxWithSegment, ctxWithSpan context.Context
+	var ctxWithSegment context.Context
 	var segment *xray.Segment
-	var span Span
 
 	if ctxWithSegment, segment = xray.BeginSubsegment(ctx, name); segment == nil {
 		return ctx, disabledSpan()
 	}
 
-	ctxWithSpan, span = newSpan(ctxWithSegment, segment, t.AppId)
-
-	return ctxWithSpan, span
+	return newSpan(ctxWithSegment, segment, t.AppId)
 }
 
 func (t *awsTracer) StartSpan(name string) (context.Context, Span) {
-	if !t.enabled {
-		return context.Background(), disabledRootSpan()
-	}
-
 	return newRootSpan(context.Background(), name, t.AppId)
 }
 
 func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (context.Context, Span) {
-	if !t.enabled {
-		return ctx, disabledSpan()
-	}
-
 	parentSpan := GetSpanFromContext(ctx)
 	ctx, transaction := newRootSpan(ctx, name, t.AppId)
 
@@ -144,10 +134,6 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 }
 
 func (t *awsTracer) HttpHandler(h http.Handler) http.Handler {
-	if !t.enabled {
-		return h
-	}
-
 	name := fmt.Sprintf("%s-%s-%s-%s-%s", t.Project, t.Environment, t.Family, t.Group, t.Application)
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -162,7 +148,7 @@ func (t *awsTracer) HttpHandler(h http.Handler) http.Handler {
 	return xray.Handler(xray.NewFixedSegmentNamer(name), handlerFunc)
 }
 
-func lookupAddr(appId cfg.AppId, settings *TracerSettings) string {
+func lookupAddr(appId cfg.AppId, settings *XrayTracerSettings) string {
 	addressValue := settings.AddressValue
 
 	switch settings.AddressType {

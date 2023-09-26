@@ -5,6 +5,8 @@ import (
 	"net/http"
 )
 
+var _ Tracer = &noopTracer{}
+
 type noopTracer struct{}
 
 func NewNoopTracer() Tracer {

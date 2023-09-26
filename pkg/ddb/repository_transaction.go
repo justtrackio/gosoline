@@ -34,7 +34,7 @@ func NewTransactionRepository(ctx context.Context, config cfg.Config, logger log
 		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
 	}
 
-	if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
+	if tracer, err = tracing.ProvideTracer(ctx, config, logger); err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
 
