@@ -4,6 +4,9 @@ package mocks
 
 import (
 	context "context"
+
+	grpc "google.golang.org/grpc"
+
 	http "net/http"
 
 	mock "github.com/stretchr/testify/mock"
@@ -22,6 +25,101 @@ type Tracer_Expecter struct {
 
 func (_m *Tracer) EXPECT() *Tracer_Expecter {
 	return &Tracer_Expecter{mock: &_m.Mock}
+}
+
+// GrpcUnaryServerInterceptor provides a mock function with given fields:
+func (_m *Tracer) GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GrpcUnaryServerInterceptor")
+	}
+
+	var r0 grpc.UnaryServerInterceptor
+	if rf, ok := ret.Get(0).(func() grpc.UnaryServerInterceptor); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(grpc.UnaryServerInterceptor)
+		}
+	}
+
+	return r0
+}
+
+// Tracer_GrpcUnaryServerInterceptor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GrpcUnaryServerInterceptor'
+type Tracer_GrpcUnaryServerInterceptor_Call struct {
+	*mock.Call
+}
+
+// GrpcUnaryServerInterceptor is a helper method to define mock.On call
+func (_e *Tracer_Expecter) GrpcUnaryServerInterceptor() *Tracer_GrpcUnaryServerInterceptor_Call {
+	return &Tracer_GrpcUnaryServerInterceptor_Call{Call: _e.mock.On("GrpcUnaryServerInterceptor")}
+}
+
+func (_c *Tracer_GrpcUnaryServerInterceptor_Call) Run(run func()) *Tracer_GrpcUnaryServerInterceptor_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Tracer_GrpcUnaryServerInterceptor_Call) Return(_a0 grpc.UnaryServerInterceptor) *Tracer_GrpcUnaryServerInterceptor_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Tracer_GrpcUnaryServerInterceptor_Call) RunAndReturn(run func() grpc.UnaryServerInterceptor) *Tracer_GrpcUnaryServerInterceptor_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HttpClient provides a mock function with given fields: baseClient
+func (_m *Tracer) HttpClient(baseClient *http.Client) *http.Client {
+	ret := _m.Called(baseClient)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HttpClient")
+	}
+
+	var r0 *http.Client
+	if rf, ok := ret.Get(0).(func(*http.Client) *http.Client); ok {
+		r0 = rf(baseClient)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*http.Client)
+		}
+	}
+
+	return r0
+}
+
+// Tracer_HttpClient_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HttpClient'
+type Tracer_HttpClient_Call struct {
+	*mock.Call
+}
+
+// HttpClient is a helper method to define mock.On call
+//   - baseClient *http.Client
+func (_e *Tracer_Expecter) HttpClient(baseClient interface{}) *Tracer_HttpClient_Call {
+	return &Tracer_HttpClient_Call{Call: _e.mock.On("HttpClient", baseClient)}
+}
+
+func (_c *Tracer_HttpClient_Call) Run(run func(baseClient *http.Client)) *Tracer_HttpClient_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*http.Client))
+	})
+	return _c
+}
+
+func (_c *Tracer_HttpClient_Call) Return(_a0 *http.Client) *Tracer_HttpClient_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Tracer_HttpClient_Call) RunAndReturn(run func(*http.Client) *http.Client) *Tracer_HttpClient_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // HttpHandler provides a mock function with given fields: h

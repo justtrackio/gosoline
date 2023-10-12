@@ -8,7 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/filters/interceptor"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/filters/interceptor" //nolint:staticcheck
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -143,6 +143,10 @@ func (t *otelTracer) HttpClient(baseClient *http.Client) *http.Client {
 	}
 }
 
+// GrpcUnaryServerInterceptor we still need to use the UnaryServerInterceptor because to maintain
+// because the Xray is also uses the UnaryServerInterceptor.
+//
+//nolint:staticcheck
 func (t *otelTracer) GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return otelgrpc.UnaryServerInterceptor(
 		otelgrpc.WithInterceptorFilter(

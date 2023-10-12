@@ -14,6 +14,7 @@ import (
 //go:generate mockery --name Tracer
 type Tracer interface {
 	HttpHandler(h http.Handler) http.Handler
+	HttpClient(baseClient *http.Client) *http.Client
 	GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor
 	StartSpan(name string) (context.Context, Span)
 	StartSpanFromContext(ctx context.Context, name string) (context.Context, Span)
