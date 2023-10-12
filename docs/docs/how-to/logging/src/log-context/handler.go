@@ -51,7 +51,7 @@ func NewTodoCrudHandler(ctx context.Context, config cfg.Config, logger log.Logge
 	var err error
 	var repo db_repo.Repository
 
-	if repo, err = db_repo.New(config, logger, settings); err != nil {
+	if repo, err = db_repo.New(ctx, config, logger, settings); err != nil {
 		return nil, fmt.Errorf("can not create db_repo.Repositorys: %w", err)
 	}
 

@@ -7,6 +7,8 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/filters/interceptor"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -14,6 +16,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -141,11 +144,13 @@ func (t *otelTracer) HttpClient(baseClient *http.Client) *http.Client {
 }
 
 func (t *otelTracer) GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor {
-	return otelgrpc.UnaryServerInterceptor(otelgrpc.WithInterceptorFilter(
-		filters.Not(
-			filters.HealthCheck(),
+	return otelgrpc.UnaryServerInterceptor(
+		otelgrpc.WithInterceptorFilter(
+			interceptor.Not(
+				interceptor.HealthCheck(),
+			),
 		),
-	))
+	)
 }
 
 func (t *otelTracer) spanFromTrace(ctx context.Context, trc *Trace, name string) (context.Context, Span) {
