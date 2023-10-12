@@ -143,6 +143,10 @@ func (t *otelTracer) HttpClient(baseClient *http.Client) *http.Client {
 	}
 }
 
+// GrpcUnaryServerInterceptor we still need to use the UnaryServerInterceptor because to maintain
+// because the Xray is also uses the UnaryServerInterceptor.
+//
+//nolint:staticcheck
 func (t *otelTracer) GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return otelgrpc.UnaryServerInterceptor(otelgrpc.WithInterceptorFilter(
 		filters.Not(

@@ -86,7 +86,7 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 				_ = g.Run(ctx)
 			}()
 
-			conn, err := grpc.DialContext(ctx, g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn, err := grpc.NewClient(g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			assert.NoError(t, err)
 			defer func() {
 				_ = conn.Close()
@@ -151,7 +151,7 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 				_ = g.Run(ctx)
 			}()
 
-			conn, err := grpc.DialContext(ctx, g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn, err := grpc.NewClient(g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			assert.NoError(t, err)
 			defer func() {
 				_ = conn.Close()

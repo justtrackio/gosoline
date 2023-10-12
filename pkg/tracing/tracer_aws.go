@@ -149,6 +149,10 @@ func (t *awsTracer) HttpHandler(h http.Handler) http.Handler {
 	return xray.Handler(xray.NewFixedSegmentNamer(name), handlerFunc)
 }
 
+func (t *awsTracer) HttpClient(baseClient *http.Client) *http.Client {
+	return xray.Client(baseClient)
+}
+
 func (t *awsTracer) GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return xray.UnaryServerInterceptor()
 }
