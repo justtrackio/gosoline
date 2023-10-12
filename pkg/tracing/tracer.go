@@ -8,11 +8,13 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"google.golang.org/grpc"
 )
 
 //go:generate mockery --name Tracer
 type Tracer interface {
 	HttpHandler(h http.Handler) http.Handler
+	GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor
 	StartSpan(name string) (context.Context, Span)
 	StartSpanFromContext(ctx context.Context, name string) (context.Context, Span)
 	StartSubSpan(ctx context.Context, name string) (context.Context, Span)

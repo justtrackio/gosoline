@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -146,6 +147,10 @@ func (t *awsTracer) HttpHandler(h http.Handler) http.Handler {
 	})
 
 	return xray.Handler(xray.NewFixedSegmentNamer(name), handlerFunc)
+}
+
+func (t *awsTracer) GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor {
+	return xray.UnaryServerInterceptor()
 }
 
 func lookupAddr(appId cfg.AppId, settings *XrayTracerSettings) string {
