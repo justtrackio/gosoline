@@ -1,4 +1,5 @@
 env: dev
 app_project: gosoline
 app_family: get-started
-app_name: api-server-example
+app_group: api-server
+app_name: example

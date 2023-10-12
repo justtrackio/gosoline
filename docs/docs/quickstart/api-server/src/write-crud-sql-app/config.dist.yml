@@ -1,7 +1,8 @@
 env: dev
 app_project: gosoline
 app_family: how-to
-app_name: crud-server
+app_group: crud
+app_name: server
 
 db:
   default:
