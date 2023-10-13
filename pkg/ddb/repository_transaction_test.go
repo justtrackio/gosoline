@@ -100,7 +100,7 @@ func (s *RepositoryTransactionTestSuite) TestTransactGetItems() {
 		On("Finish").
 		Return()
 
-	s.client.EXPECT().TransactGetItems(mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*dynamodb.TransactGetItemsInput")).Return(requestOutput, nil)
+	s.client.EXPECT().TransactGetItems(context.Background(), mock.AnythingOfType("*dynamodb.TransactGetItemsInput")).Return(requestOutput, nil)
 
 	result, err := s.repository.TransactGetItems(s.ctx, getEntries)
 
@@ -204,7 +204,7 @@ func (s *RepositoryTransactionTestSuite) TestTransactWriteItems() {
 		WriteCapacityUnits: aws.Float64(1),
 	}}}
 
-	s.client.EXPECT().TransactWriteItems(mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*dynamodb.TransactWriteItemsInput")).Return(requestOutput, nil)
+	s.client.EXPECT().TransactWriteItems(context.Background(), mock.AnythingOfType("*dynamodb.TransactWriteItemsInput")).Return(requestOutput, nil)
 
 	result, err := s.repository.TransactWriteItems(ctx, items)
 

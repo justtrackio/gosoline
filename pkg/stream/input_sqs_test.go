@@ -11,7 +11,6 @@ import (
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestSqsInput_Run(t *testing.T) {
@@ -24,7 +23,7 @@ func TestSqsInput_Run(t *testing.T) {
 	msg := &stream.Message{}
 
 	queue := new(sqsMocks.Queue)
-	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int32(1), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
+	queue.On("Receive", context.Background(), int32(1), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
 		newCount := atomic.AddInt32(&count, 1)
 
 		if newCount > mrc {
@@ -75,7 +74,7 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 	waitRunDone := make(chan struct{})
 
 	queue := new(sqsMocks.Queue)
-	queue.On("Receive", mock.AnythingOfType("*context.emptyCtx"), int32(10), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
+	queue.On("Receive", context.Background(), int32(10), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
 		count++
 
 		if count == 1 {

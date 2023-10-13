@@ -56,7 +56,7 @@ func TestRealTicker_Reset_DuringTick(t *testing.T) {
 	<-ticker.Chan()
 	select {
 	case <-ticker.Chan():
-		assert.Fail(t, "there should not be a tick immediatly after a tick")
+		assert.Fail(t, "there should not be a tick immediately after a tick")
 	default:
 		// nop
 	}
@@ -66,12 +66,12 @@ func TestRealTicker_Reset_DuringTick(t *testing.T) {
 }
 
 func TestRealTicker_NewTickerWithZero(t *testing.T) {
-	assert.PanicsWithError(t, "non-positive interval for NewTicker", func() {
+	assert.PanicsWithError(t, "non-positive interval (0s) for NewTicker", func() {
 		c := clock.NewRealClock()
 		_ = c.NewTicker(0)
 	})
 
-	assert.PanicsWithError(t, "non-positive interval for Reset", func() {
+	assert.PanicsWithError(t, "non-positive interval (0s) for Reset", func() {
 		c := clock.NewRealClock()
 		ticker := c.NewTicker(1)
 		ticker.Reset(0)
@@ -79,12 +79,12 @@ func TestRealTicker_NewTickerWithZero(t *testing.T) {
 }
 
 func TestRealTicker_NewTickerWithNegative(t *testing.T) {
-	assert.PanicsWithError(t, "non-positive interval for NewTicker", func() {
+	assert.PanicsWithError(t, "non-positive interval (-1ns) for NewTicker", func() {
 		c := clock.NewRealClock()
 		_ = c.NewTicker(-1)
 	})
 
-	assert.PanicsWithError(t, "non-positive interval for Reset", func() {
+	assert.PanicsWithError(t, "non-positive interval (-1ns) for Reset", func() {
 		c := clock.NewRealClock()
 		ticker := c.NewTicker(1)
 		ticker.Reset(-1)
