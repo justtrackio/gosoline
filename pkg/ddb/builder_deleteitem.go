@@ -92,6 +92,7 @@ func (b *deleteItemBuilder) Build(item interface{}) (*dynamodb.DeleteItemInput, 
 		ExpressionAttributeValues: expr.Values(),
 		ConditionExpression:       expr.Condition(),
 		Key:                       key,
+		ReturnConsumedCapacity:    types.ReturnConsumedCapacityIndexes,
 		ReturnValues:              b.returnType,
 	}
 

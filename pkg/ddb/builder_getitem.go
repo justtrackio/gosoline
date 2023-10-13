@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
@@ -112,6 +113,7 @@ func (b *getItemBuilder) Build(result interface{}) (*dynamodb.GetItemInput, erro
 		ConsistentRead:           b.consistentRead,
 		ExpressionAttributeNames: expr.Names(),
 		ProjectionExpression:     expr.Projection(),
+		ReturnConsumedCapacity:   types.ReturnConsumedCapacityIndexes,
 	}
 
 	return input, nil

@@ -161,7 +161,7 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 	}
 
 	input, err := qb.Build(items)
-	result := newOperationResult()
+	result := newOperationResult(kindRead)
 
 	if err != nil {
 		return nil, fmt.Errorf("can not build input for BatchGetItems operation on table %s: %w", r.metadata.TableName, err)
@@ -282,7 +282,7 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 
 	// DynamoDB limits the number of operations per batch request to 25
 	chunks := chunk(items, 25)
-	result := newOperationResult()
+	result := newOperationResult(kindWrite)
 
 	for _, chunk := range chunks {
 		requests := make([]types.WriteRequest, len(chunk))
@@ -298,6 +298,7 @@ func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqB
 			RequestItems: map[string][]types.WriteRequest{
 				r.metadata.TableName: requests,
 			},
+			ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 		}
 
 		err := r.chunkWriteItem(ctx, input, result)

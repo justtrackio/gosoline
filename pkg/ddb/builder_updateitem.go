@@ -157,6 +157,7 @@ func (b *updateItemBuilder) Build(item interface{}) (*dynamodb.UpdateItemInput, 
 		ExpressionAttributeValues: expr.Values(),
 		ConditionExpression:       expr.Condition(),
 		UpdateExpression:          expr.Update(),
+		ReturnConsumedCapacity:    types.ReturnConsumedCapacityIndexes,
 		ReturnValues:              b.returnType,
 	}
 

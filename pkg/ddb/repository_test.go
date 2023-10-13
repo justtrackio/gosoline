@@ -41,7 +41,7 @@ func (s *RepositoryTestSuite) SetupTest() {
 	tracer := tracing.NewNoopTracer()
 
 	s.ctx = context.Background()
-	s.client = new(dynamodbMocks.Client)
+	s.client = dynamodbMocks.NewClient(s.T())
 
 	tableSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
@@ -70,7 +70,8 @@ func (s *RepositoryTestSuite) TestGetItem() {
 			"id":  &types.AttributeValueMemberN{Value: "1"},
 			"rev": &types.AttributeValueMemberS{Value: "0"},
 		},
-		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
+		TableName:              aws.String("applike-test-gosoline-ddb-myModel"),
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 	output := &dynamodb.GetItemOutput{
 		ConsumedCapacity: &types.ConsumedCapacity{},
@@ -81,7 +82,7 @@ func (s *RepositoryTestSuite) TestGetItem() {
 		},
 	}
 
-	s.client.On("GetItem", s.ctx, input).Return(output, nil)
+	s.client.EXPECT().GetItem(s.ctx, input).Return(output, nil)
 
 	qb := s.repo.GetItemBuilder().WithHash(1).WithRange("0")
 	res, err := s.repo.GetItem(s.ctx, qb, &item)
@@ -95,8 +96,6 @@ func (s *RepositoryTestSuite) TestGetItem() {
 	s.NoError(err)
 	s.True(res.IsFound)
 	s.EqualValues(expected, item)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestGetItem_FromItem() {
@@ -105,7 +104,8 @@ func (s *RepositoryTestSuite) TestGetItem_FromItem() {
 			"id":  &types.AttributeValueMemberN{Value: "5"},
 			"rev": &types.AttributeValueMemberS{Value: "abc"},
 		},
-		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
+		TableName:              aws.String("applike-test-gosoline-ddb-myModel"),
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 	output := &dynamodb.GetItemOutput{
 		ConsumedCapacity: &types.ConsumedCapacity{},
@@ -116,7 +116,7 @@ func (s *RepositoryTestSuite) TestGetItem_FromItem() {
 		},
 	}
 
-	s.client.On("GetItem", s.ctx, input).Return(output, nil)
+	s.client.EXPECT().GetItem(s.ctx, input).Return(output, nil)
 
 	item := model{
 		Id:  5,
@@ -145,21 +145,20 @@ func (s *RepositoryTestSuite) TestGetItemNotFound() {
 			"id":  &types.AttributeValueMemberN{Value: "1"},
 			"rev": &types.AttributeValueMemberS{Value: "0"},
 		},
-		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
+		TableName:              aws.String("applike-test-gosoline-ddb-myModel"),
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 	output := &dynamodb.GetItemOutput{
 		ConsumedCapacity: &types.ConsumedCapacity{},
 	}
 
-	s.client.On("GetItem", s.ctx, input).Return(output, nil)
+	s.client.EXPECT().GetItem(s.ctx, input).Return(output, nil)
 
 	qb := s.repo.GetItemBuilder().WithHash(1).WithRange("0")
 	res, err := s.repo.GetItem(s.ctx, qb, &item)
 
 	s.NoError(err)
 	s.False(res.IsFound)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestGetItemProjection() {
@@ -171,8 +170,9 @@ func (s *RepositoryTestSuite) TestGetItemProjection() {
 			"id":  &types.AttributeValueMemberN{Value: "1"},
 			"rev": &types.AttributeValueMemberS{Value: "0"},
 		},
-		ProjectionExpression: aws.String("#0"),
-		TableName:            aws.String("applike-test-gosoline-ddb-myModel"),
+		ProjectionExpression:   aws.String("#0"),
+		TableName:              aws.String("applike-test-gosoline-ddb-myModel"),
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 	output := &dynamodb.GetItemOutput{
 		ConsumedCapacity: &types.ConsumedCapacity{},
@@ -181,7 +181,7 @@ func (s *RepositoryTestSuite) TestGetItemProjection() {
 		},
 	}
 
-	s.client.On("GetItem", s.ctx, input).Return(output, nil)
+	s.client.EXPECT().GetItem(s.ctx, input).Return(output, nil)
 
 	item := projection{}
 
@@ -195,8 +195,6 @@ func (s *RepositoryTestSuite) TestGetItemProjection() {
 	s.NoError(err)
 	s.True(res.IsFound)
 	s.EqualValues(expected, item)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestQuery() {
@@ -209,6 +207,7 @@ func (s *RepositoryTestSuite) TestQuery() {
 		},
 		KeyConditionExpression: aws.String("#0 = :0"),
 		TableName:              aws.String("applike-test-gosoline-ddb-myModel"),
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 	output := &dynamodb.QueryOutput{
 		ConsumedCapacity: &types.ConsumedCapacity{},
@@ -228,7 +227,7 @@ func (s *RepositoryTestSuite) TestQuery() {
 		},
 	}
 
-	s.client.On("Query", s.ctx, input).Return(output, nil)
+	s.client.EXPECT().Query(s.ctx, input).Return(output, nil)
 
 	result := make([]model, 0)
 	expected := []model{
@@ -250,8 +249,6 @@ func (s *RepositoryTestSuite) TestQuery() {
 	s.NoError(err)
 	s.Len(result, 2)
 	s.EqualValues(expected, result)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestQuery_Canceled() {
@@ -266,9 +263,10 @@ func (s *RepositoryTestSuite) TestQuery_Canceled() {
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":0": &types.AttributeValueMemberN{Value: "1"},
 		},
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 
-	s.client.On("Query", s.ctx, input).Return(nil, awsErr)
+	s.client.EXPECT().Query(s.ctx, input).Return(nil, awsErr)
 
 	result := make([]model, 0)
 
@@ -279,8 +277,6 @@ func (s *RepositoryTestSuite) TestQuery_Canceled() {
 
 	isRequestCanceled := errors.Is(err, exec.RequestCanceledError)
 	s.True(isRequestCanceled)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestBatchGetItems() {
@@ -299,6 +295,7 @@ func (s *RepositoryTestSuite) TestBatchGetItems() {
 				},
 			},
 		},
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 	output := &dynamodb.BatchGetItemOutput{
 		Responses: map[string][]map[string]types.AttributeValue{
@@ -318,7 +315,7 @@ func (s *RepositoryTestSuite) TestBatchGetItems() {
 		UnprocessedKeys: map[string]types.KeysAndAttributes{},
 	}
 
-	s.client.On("BatchGetItem", s.ctx, input).Return(output, nil)
+	s.client.EXPECT().BatchGetItem(s.ctx, input).Return(output, nil)
 
 	result := make([]model, 0)
 	expected := []model{
@@ -339,8 +336,6 @@ func (s *RepositoryTestSuite) TestBatchGetItems() {
 
 	s.NoError(err)
 	s.Equal(expected, result)
-
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestBatchWriteItem() {
@@ -380,18 +375,18 @@ func (s *RepositoryTestSuite) TestBatchWriteItem() {
 				},
 			},
 		},
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 
 	output := &dynamodb.BatchWriteItemOutput{
 		UnprocessedItems: map[string][]types.WriteRequest{},
 	}
 
-	s.client.On("BatchWriteItem", s.ctx, input).Return(output, nil)
+	s.client.EXPECT().BatchWriteItem(s.ctx, input).Return(output, nil)
 
 	_, err := s.repo.BatchPutItems(s.ctx, items)
 
 	s.NoError(err)
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestBatchWriteItem_Retry() {
@@ -441,11 +436,13 @@ func (s *RepositoryTestSuite) TestBatchWriteItem_Retry() {
 		RequestItems: map[string][]types.WriteRequest{
 			"applike-test-gosoline-ddb-myModel": firstInputData,
 		},
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 	secondInput := &dynamodb.BatchWriteItemInput{
 		RequestItems: map[string][]types.WriteRequest{
 			"applike-test-gosoline-ddb-myModel": secondInputData,
 		},
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 
 	firstOutput := &dynamodb.BatchWriteItemOutput{
@@ -457,14 +454,13 @@ func (s *RepositoryTestSuite) TestBatchWriteItem_Retry() {
 		UnprocessedItems: map[string][]types.WriteRequest{},
 	}
 
-	s.client.On("BatchWriteItem", s.ctx, firstInput).Return(firstOutput, nil).Once()
-	s.client.On("BatchWriteItem", s.ctx, secondInput).Return(firstOutput, nil).Once()
-	s.client.On("BatchWriteItem", s.ctx, secondInput).Return(secondOutput, nil).Once()
+	s.client.EXPECT().BatchWriteItem(s.ctx, firstInput).Return(firstOutput, nil).Once()
+	s.client.EXPECT().BatchWriteItem(s.ctx, secondInput).Return(firstOutput, nil).Once()
+	s.client.EXPECT().BatchWriteItem(s.ctx, secondInput).Return(secondOutput, nil).Once()
 
 	_, err := s.repo.BatchPutItems(s.ctx, items)
 
 	s.NoError(err)
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestPutItem() {
@@ -481,18 +477,18 @@ func (s *RepositoryTestSuite) TestPutItem() {
 			"rev": &types.AttributeValueMemberS{Value: "0"},
 			"foo": &types.AttributeValueMemberS{Value: "foo"},
 		},
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 	output := &dynamodb.PutItemOutput{
 		ConsumedCapacity: &types.ConsumedCapacity{},
 	}
 
-	s.client.On("PutItem", s.ctx, input).Return(output, nil)
+	s.client.EXPECT().PutItem(s.ctx, input).Return(output, nil)
 
 	res, err := s.repo.PutItem(s.ctx, nil, item)
 
 	s.NoError(err)
 	s.False(res.ConditionalCheckFailed)
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestUpdate() {
@@ -508,8 +504,9 @@ func (s *RepositoryTestSuite) TestUpdate() {
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":0": &types.AttributeValueMemberS{Value: "bar"},
 		},
-		UpdateExpression: aws.String("SET #0 = :0\n"),
-		ReturnValues:     types.ReturnValueAllNew,
+		UpdateExpression:       aws.String("SET #0 = :0\n"),
+		ReturnValues:           types.ReturnValueAllNew,
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 	output := &dynamodb.UpdateItemOutput{
 		ConsumedCapacity: &types.ConsumedCapacity{},
@@ -520,7 +517,7 @@ func (s *RepositoryTestSuite) TestUpdate() {
 		},
 	}
 
-	s.client.On("UpdateItem", s.ctx, input).Return(output, nil)
+	s.client.EXPECT().UpdateItem(s.ctx, input).Return(output, nil)
 
 	updatedItem := &model{
 		Id:  1,
@@ -538,7 +535,6 @@ func (s *RepositoryTestSuite) TestUpdate() {
 	s.NoError(err)
 	s.False(res.ConditionalCheckFailed)
 	s.EqualValues(expectedItem, updatedItem)
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTestSuite) TestDeleteItem() {
@@ -554,8 +550,9 @@ func (s *RepositoryTestSuite) TestDeleteItem() {
 			"id":  &types.AttributeValueMemberN{Value: "1"},
 			"rev": &types.AttributeValueMemberS{Value: "0"},
 		},
-		ReturnValues: types.ReturnValueAllOld,
-		TableName:    aws.String("applike-test-gosoline-ddb-myModel"),
+		ReturnValues:           types.ReturnValueAllOld,
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
+		TableName:              aws.String("applike-test-gosoline-ddb-myModel"),
 	}
 	output := &dynamodb.DeleteItemOutput{
 		ConsumedCapacity: &types.ConsumedCapacity{},
@@ -566,7 +563,7 @@ func (s *RepositoryTestSuite) TestDeleteItem() {
 		},
 	}
 
-	s.client.On("DeleteItem", s.ctx, input).Return(output, nil)
+	s.client.EXPECT().DeleteItem(s.ctx, input).Return(output, nil)
 
 	item := model{
 		Id:  1,
@@ -586,7 +583,6 @@ func (s *RepositoryTestSuite) TestDeleteItem() {
 	s.NoError(err)
 	s.False(res.ConditionalCheckFailed)
 	s.Equal(expected, item)
-	s.client.AssertExpectations(s.T())
 }
 
 func TestRepositoryTestSuite(t *testing.T) {

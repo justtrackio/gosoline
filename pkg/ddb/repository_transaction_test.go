@@ -13,9 +13,7 @@ import (
 	ddbMocks "github.com/justtrackio/gosoline/pkg/ddb/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	tracingMocks "github.com/justtrackio/gosoline/pkg/tracing/mocks"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -37,17 +35,11 @@ func TestRepositoryTransactionTestSuite(t *testing.T) {
 func (s *RepositoryTransactionTestSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.logger = logMocks.NewLoggerMockedAll()
-	s.client = new(dynamodbMocks.Client)
-	s.tracer = new(tracingMocks.Tracer)
-	s.span = new(tracingMocks.Span)
+	s.client = dynamodbMocks.NewClient(s.T())
+	s.tracer = tracingMocks.NewTracer(s.T())
+	s.span = tracingMocks.NewSpan(s.T())
 
 	s.repository = ddb.NewTransactionRepositoryWithInterfaces(s.logger, s.client, s.tracer)
-}
-
-func (s *RepositoryTransactionTestSuite) TearDownTest() {
-	s.span.AssertExpectations(s.T())
-	s.client.AssertExpectations(s.T())
-	s.tracer.AssertExpectations(s.T())
 }
 
 func (s *RepositoryTransactionTestSuite) TestTransactGetItems() {
@@ -66,7 +58,7 @@ func (s *RepositoryTransactionTestSuite) TestTransactGetItems() {
 
 	getEntries := make([]ddb.TransactGetItemBuilder, len(models))
 	for i := range models {
-		getEntries[i] = buildTransactGetItemBuilder(&models[i])
+		getEntries[i] = s.buildTransactGetItemBuilder(&models[i])
 	}
 
 	requestOutput := &dynamodb.TransactGetItemsOutput{
@@ -108,20 +100,12 @@ func (s *RepositoryTransactionTestSuite) TestTransactGetItems() {
 		On("Finish").
 		Return()
 
-	s.client.On("TransactGetItems", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*dynamodb.TransactGetItemsInput")).Return(requestOutput, nil)
+	s.client.EXPECT().TransactGetItems(mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*dynamodb.TransactGetItemsInput")).Return(requestOutput, nil)
 
 	result, err := s.repository.TransactGetItems(s.ctx, getEntries)
 
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), result)
-
-	expectedResult := &ddb.OperationResult{ConsumedCapacity: &ddb.ConsumedCapacity{
-		Total: 6,
-		Read:  6,
-		LSI:   make(map[string]*ddb.Capacity),
-		GSI:   make(map[string]*ddb.Capacity),
-		Table: &ddb.Capacity{},
-	}}
+	s.NoError(err)
+	s.NotNil(result)
 
 	expectedModels := []model{
 		{
@@ -139,8 +123,9 @@ func (s *RepositoryTransactionTestSuite) TestTransactGetItems() {
 		},
 	}
 
-	assert.Equal(s.T(), expectedResult, result)
-	assert.Equal(s.T(), expectedModels, models)
+	s.Equal(6.0, result.ConsumedCapacity.Read())
+	s.Equal(6.0, result.ConsumedCapacity.Total())
+	s.Equal(expectedModels, models)
 }
 
 func (s *RepositoryTransactionTestSuite) TestTransactWriteItems() {
@@ -150,7 +135,7 @@ func (s *RepositoryTransactionTestSuite) TestTransactWriteItems() {
 		Foo: "bar",
 	}
 
-	putItemBuilder := new(ddbMocks.PutItemBuilder)
+	putItemBuilder := ddbMocks.NewPutItemBuilder(s.T())
 	putItemBuilder.
 		On("Build", putItem).
 		Return(&dynamodb.PutItemInput{
@@ -173,7 +158,7 @@ func (s *RepositoryTransactionTestSuite) TestTransactWriteItems() {
 		Rev: "foo",
 	}
 
-	updateItemBuilder := new(ddbMocks.UpdateItemBuilder)
+	updateItemBuilder := ddbMocks.NewUpdateItemBuilder(s.T())
 	updateItemBuilder.
 		On("Build", updateItem).
 		Return(&dynamodb.UpdateItemInput{
@@ -215,31 +200,24 @@ func (s *RepositoryTransactionTestSuite) TestTransactWriteItems() {
 
 	requestOutput := &dynamodb.TransactWriteItemsOutput{ConsumedCapacity: []types.ConsumedCapacity{{
 		CapacityUnits:      aws.Float64(4),
-		ReadCapacityUnits:  aws.Float64(2),
-		WriteCapacityUnits: aws.Float64(2),
+		ReadCapacityUnits:  aws.Float64(3),
+		WriteCapacityUnits: aws.Float64(1),
 	}}}
 
-	s.client.On("TransactWriteItems", mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*dynamodb.TransactWriteItemsInput")).Return(requestOutput, nil)
+	s.client.EXPECT().TransactWriteItems(mock.AnythingOfType("*context.emptyCtx"), mock.AnythingOfType("*dynamodb.TransactWriteItemsInput")).Return(requestOutput, nil)
 
 	result, err := s.repository.TransactWriteItems(ctx, items)
 
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), result)
+	s.NoError(err)
+	s.NotNil(result)
 
-	expected := &ddb.OperationResult{ConsumedCapacity: &ddb.ConsumedCapacity{
-		Total: 4,
-		Read:  2,
-		Write: 2,
-		LSI:   make(map[string]*ddb.Capacity),
-		GSI:   make(map[string]*ddb.Capacity),
-		Table: &ddb.Capacity{},
-	}}
-
-	assert.Equal(s.T(), expected, result)
+	s.Equal(4.0, result.ConsumedCapacity.Total())
+	s.Equal(3.0, result.ConsumedCapacity.Read())
+	s.Equal(1.0, result.ConsumedCapacity.Write())
 }
 
-func buildTransactGetItemBuilder(item *model) ddb.TransactGetItemBuilder {
-	builder := new(ddbMocks.GetItemBuilder)
+func (s *RepositoryTransactionTestSuite) buildTransactGetItemBuilder(item *model) ddb.TransactGetItemBuilder {
+	builder := ddbMocks.NewGetItemBuilder(s.T())
 
 	input := &dynamodb.GetItemInput{
 		ConsistentRead: aws.Bool(false),

@@ -2,12 +2,62 @@ package ddb
 
 import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/justtrackio/gosoline/pkg/mdl"
+)
+
+type capacityKind int
+
+const (
+	kindRead capacityKind = iota
+	kindWrite
+	kindMixed
 )
 
 type Capacity struct {
-	Total float64
-	Read  float64
-	Write float64
+	kind  capacityKind
+	total *float64
+	read  *float64
+	write *float64
+}
+
+func newCapacity(kind capacityKind) *Capacity {
+	return &Capacity{
+		kind: kind,
+	}
+}
+
+func (c *Capacity) Total() float64 {
+	if c.total != nil {
+		return *c.total
+	}
+
+	return mdl.EmptyIfNil(c.read) + mdl.EmptyIfNil(c.write)
+}
+
+func (c *Capacity) Read() float64 {
+	if c.read == nil {
+		switch c.kind {
+		case kindRead:
+			return c.Total()
+		case kindWrite:
+			return 0.0
+		}
+	}
+
+	return mdl.EmptyIfNil(c.read)
+}
+
+func (c *Capacity) Write() float64 {
+	if c.write == nil {
+		switch c.kind {
+		case kindWrite:
+			return c.Total()
+		case kindRead:
+			return 0.0
+		}
+	}
+
+	return mdl.EmptyIfNil(c.write)
 }
 
 func (c *Capacity) add(cc *types.Capacity) {
@@ -15,33 +65,38 @@ func (c *Capacity) add(cc *types.Capacity) {
 		return
 	}
 
-	if cc.CapacityUnits != nil {
-		c.Total += *cc.CapacityUnits
+	c.addCapacity(mdl.EmptyIfNil(cc.CapacityUnits), mdl.EmptyIfNil(cc.ReadCapacityUnits), mdl.EmptyIfNil(cc.WriteCapacityUnits))
+}
+
+func (c *Capacity) addCapacity(total float64, read float64, write float64) {
+	addSomeCapacity := func(field **float64, value float64) {
+		if value != 0 {
+			if *field == nil {
+				*field = mdl.Box(value)
+			} else {
+				**field += value
+			}
+		}
 	}
 
-	if cc.CapacityUnits != nil {
-		c.Read += *cc.ReadCapacityUnits
-	}
-
-	if cc.CapacityUnits != nil {
-		c.Write += *cc.WriteCapacityUnits
-	}
+	addSomeCapacity(&c.total, total)
+	addSomeCapacity(&c.read, read)
+	addSomeCapacity(&c.write, write)
 }
 
 type ConsumedCapacity struct {
-	Total float64
-	Read  float64
-	Write float64
-	Table *Capacity
+	Capacity
+	Table Capacity
 	LSI   map[string]*Capacity
 	GSI   map[string]*Capacity
 }
 
-func newConsumedCapacity() *ConsumedCapacity {
+func newConsumedCapacity(kind capacityKind) *ConsumedCapacity {
 	return &ConsumedCapacity{
-		Table: &Capacity{},
-		GSI:   make(map[string]*Capacity),
-		LSI:   make(map[string]*Capacity),
+		Capacity: *newCapacity(kind),
+		Table:    *newCapacity(kind),
+		GSI:      make(map[string]*Capacity),
+		LSI:      make(map[string]*Capacity),
 	}
 }
 
@@ -50,48 +105,32 @@ func (c *ConsumedCapacity) add(cc *types.ConsumedCapacity) {
 		return
 	}
 
-	if cc.CapacityUnits != nil {
-		c.Total += *cc.CapacityUnits
-	}
+	c.Capacity.add(&types.Capacity{
+		CapacityUnits:      cc.CapacityUnits,
+		ReadCapacityUnits:  cc.ReadCapacityUnits,
+		WriteCapacityUnits: cc.WriteCapacityUnits,
+	})
 
-	if cc.ReadCapacityUnits != nil {
-		c.Read += *cc.ReadCapacityUnits
-	}
+	c.Table.add(cc.Table)
 
-	if cc.WriteCapacityUnits != nil {
-		c.Write += *cc.WriteCapacityUnits
-	}
-
-	if cc.Table != nil {
-		c.Table.add(cc.Table)
-	}
-
-	if cc.LocalSecondaryIndexes != nil {
-		for name, lsi := range cc.LocalSecondaryIndexes {
-			if _, ok := c.LSI[name]; !ok {
-				c.LSI[name] = &Capacity{}
-			}
-
-			c.LSI[name].add(&lsi)
+	for name, lsi := range cc.LocalSecondaryIndexes {
+		if _, ok := c.LSI[name]; !ok {
+			c.LSI[name] = newCapacity(c.kind)
 		}
+
+		c.LSI[name].add(&lsi)
 	}
 
-	if cc.GlobalSecondaryIndexes != nil {
-		for name, gsi := range cc.GlobalSecondaryIndexes {
-			if _, ok := c.GSI[name]; !ok {
-				c.GSI[name] = &Capacity{}
-			}
-
-			c.GSI[name].add(&gsi)
+	for name, gsi := range cc.GlobalSecondaryIndexes {
+		if _, ok := c.GSI[name]; !ok {
+			c.GSI[name] = newCapacity(c.kind)
 		}
+
+		c.GSI[name].add(&gsi)
 	}
 }
 
 func (c *ConsumedCapacity) addSlice(capacities []types.ConsumedCapacity) {
-	if capacities == nil {
-		return
-	}
-
 	for _, cc := range capacities {
 		c.add(&cc)
 	}
