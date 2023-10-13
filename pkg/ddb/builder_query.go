@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
@@ -231,6 +232,7 @@ func (b *queryBuilder) Build(result interface{}) (*QueryOperation, error) {
 		FilterExpression:          expr.Filter(),
 		ProjectionExpression:      expr.Projection(),
 		Limit:                     progress.size,
+		ReturnConsumedCapacity:    types.ReturnConsumedCapacityIndexes,
 		ScanIndexForward:          b.scanIndexForward,
 	}
 

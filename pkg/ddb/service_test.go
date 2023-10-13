@@ -16,7 +16,6 @@ import (
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 type createModel struct {
@@ -65,9 +64,8 @@ func TestService_sanitizeSettings(t *testing.T) {
 func TestService_CreateTable(t *testing.T) {
 	ctx := context.Background()
 	logger := logMocks.NewLoggerMockedAll()
-	client := new(dynamodbMocks.Client)
+	client := dynamodbMocks.NewClient(t)
 
-	describeCount := 0
 	describeInput := &dynamodb.DescribeTableInput{
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
 	}
@@ -76,21 +74,8 @@ func TestService_CreateTable(t *testing.T) {
 			TableStatus: types.TableStatusActive,
 		},
 	}
-	client.On("DescribeTable", ctx, describeInput).Run(func(args mock.Arguments) {
-		describeCount++
-	}).Return(func(_ context.Context, _ *dynamodb.DescribeTableInput, _ ...func(options *dynamodb.Options)) *dynamodb.DescribeTableOutput {
-		if describeCount == 0 {
-			return nil
-		}
-
-		return describeOutput
-	}, func(_ context.Context, _ *dynamodb.DescribeTableInput, _ ...func(options *dynamodb.Options)) error {
-		if describeCount == 0 {
-			return &types.ResourceNotFoundException{}
-		}
-
-		return nil
-	})
+	client.EXPECT().DescribeTable(ctx, describeInput).Return(nil, &types.ResourceNotFoundException{}).Once()
+	client.EXPECT().DescribeTable(ctx, describeInput).Return(describeOutput, nil).Once()
 
 	createInput := &dynamodb.CreateTableInput{
 		AttributeDefinitions: []types.AttributeDefinition{
@@ -230,7 +215,7 @@ func TestService_CreateTable(t *testing.T) {
 		},
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
 	}
-	client.On("CreateTable", ctx, createInput).Return(nil, nil)
+	client.EXPECT().CreateTable(ctx, createInput).Return(nil, nil)
 
 	ttlInput := &dynamodb.UpdateTimeToLiveInput{
 		TableName: aws.String("applike-test-gosoline-ddb-myModel"),
@@ -239,7 +224,7 @@ func TestService_CreateTable(t *testing.T) {
 			Enabled:       aws.Bool(true),
 		},
 	}
-	client.On("UpdateTimeToLive", ctx, ttlInput).Return(nil, nil)
+	client.EXPECT().UpdateTimeToLive(ctx, ttlInput).Return(nil, nil)
 
 	settings := &ddb.Settings{
 		ModelId: mdl.ModelId{

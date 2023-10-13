@@ -68,6 +68,7 @@ func (b *putItemBuilder) Build(item interface{}) (*dynamodb.PutItemInput, error)
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		ConditionExpression:       expr.Condition(),
+		ReturnConsumedCapacity:    types.ReturnConsumedCapacityIndexes,
 		ReturnValues:              b.returnType,
 	}
 

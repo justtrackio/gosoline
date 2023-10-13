@@ -25,9 +25,9 @@ type OperationResult struct {
 	ConsumedCapacity *ConsumedCapacity
 }
 
-func newOperationResult() *OperationResult {
+func newOperationResult(kind capacityKind) *OperationResult {
 	return &OperationResult{
-		ConsumedCapacity: newConsumedCapacity(),
+		ConsumedCapacity: newConsumedCapacity(kind),
 	}
 }
 
@@ -38,7 +38,7 @@ type DeleteItemResult struct {
 
 func newDeleteItemResult() *DeleteItemResult {
 	return &DeleteItemResult{
-		ConsumedCapacity: newConsumedCapacity(),
+		ConsumedCapacity: newConsumedCapacity(kindWrite),
 	}
 }
 
@@ -49,7 +49,7 @@ type GetItemResult struct {
 
 func newGetItemResult() *GetItemResult {
 	return &GetItemResult{
-		ConsumedCapacity: newConsumedCapacity(),
+		ConsumedCapacity: newConsumedCapacity(kindRead),
 	}
 }
 
@@ -61,7 +61,7 @@ type PutItemResult struct {
 
 func newPutItemResult() *PutItemResult {
 	return &PutItemResult{
-		ConsumedCapacity: newConsumedCapacity(),
+		ConsumedCapacity: newConsumedCapacity(kindWrite),
 	}
 }
 
@@ -90,7 +90,7 @@ func (q QueryResult) GetConsumedCapacity() *ConsumedCapacity {
 
 func newQueryResult() *QueryResult {
 	return &QueryResult{
-		ConsumedCapacity: newConsumedCapacity(),
+		ConsumedCapacity: newConsumedCapacity(kindRead),
 	}
 }
 
@@ -119,7 +119,7 @@ func (s ScanResult) GetConsumedCapacity() *ConsumedCapacity {
 
 func newScanResult() *ScanResult {
 	return &ScanResult{
-		ConsumedCapacity: newConsumedCapacity(),
+		ConsumedCapacity: newConsumedCapacity(kindRead),
 	}
 }
 
@@ -130,6 +130,6 @@ type UpdateItemResult struct {
 
 func newUpdateItemResult() *UpdateItemResult {
 	return &UpdateItemResult{
-		ConsumedCapacity: newConsumedCapacity(),
+		ConsumedCapacity: newConsumedCapacity(kindWrite),
 	}
 }

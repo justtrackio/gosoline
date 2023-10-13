@@ -124,6 +124,7 @@ func (b *batchGetItemsBuilder) Build(result interface{}) (*dynamodb.BatchGetItem
 				ProjectionExpression:     expr.Projection(),
 			},
 		},
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 
 	return input, nil

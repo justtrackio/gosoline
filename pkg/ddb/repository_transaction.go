@@ -50,7 +50,7 @@ func NewTransactionRepositoryWithInterfaces(logger log.Logger, client gosoDynamo
 }
 
 func (r transactionRepository) TransactGetItems(ctx context.Context, items []TransactGetItemBuilder) (*OperationResult, error) {
-	res := newOperationResult()
+	res := newOperationResult(kindRead)
 
 	if len(items) == 0 {
 		return res, nil
@@ -70,7 +70,8 @@ func (r transactionRepository) TransactGetItems(ctx context.Context, items []Tra
 	}
 
 	input := &dynamodb.TransactGetItemsInput{
-		TransactItems: transactionItems,
+		TransactItems:          transactionItems,
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 
 	out, err := r.client.TransactGetItems(ctx, input)
@@ -103,7 +104,7 @@ func (r transactionRepository) TransactWriteItems(ctx context.Context, itemBuild
 // ClientRequestToken enforces idempotency over a ten minute time frame
 // https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html#DDB-TransactWriteItems-request-ClientRequestToken
 func (r transactionRepository) TransactWriteItemsIdempotent(ctx context.Context, itemBuilders []TransactWriteItemBuilder, clientRequestToken *string) (*OperationResult, error) {
-	res := newOperationResult()
+	res := newOperationResult(kindMixed)
 
 	if len(itemBuilders) == 0 {
 		return res, nil
@@ -123,8 +124,9 @@ func (r transactionRepository) TransactWriteItemsIdempotent(ctx context.Context,
 	}
 
 	input := &dynamodb.TransactWriteItemsInput{
-		ClientRequestToken: clientRequestToken,
-		TransactItems:      transactionItems,
+		ClientRequestToken:     clientRequestToken,
+		TransactItems:          transactionItems,
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	}
 
 	out, err := r.client.TransactWriteItems(ctx, input)
