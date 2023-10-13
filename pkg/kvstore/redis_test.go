@@ -22,8 +22,8 @@ type Item struct {
 func TestRedisKvStore_Contains(t *testing.T) {
 	store, client := buildTestableRedisStore[Item]()
 
-	client.On("Exists", mock.AnythingOfType("*context.emptyCtx"), "justtrack-gosoline-grp-kvstore-test-foo").Return(int64(0), nil)
-	client.On("Exists", mock.AnythingOfType("*context.emptyCtx"), "justtrack-gosoline-grp-kvstore-test-bar").Return(int64(1), nil)
+	client.On("Exists", context.Background(), "justtrack-gosoline-grp-kvstore-test-foo").Return(int64(0), nil)
+	client.On("Exists", context.Background(), "justtrack-gosoline-grp-kvstore-test-bar").Return(int64(1), nil)
 
 	exists, err := store.Contains(context.Background(), "foo")
 	assert.NoError(t, err)
@@ -38,7 +38,7 @@ func TestRedisKvStore_Contains(t *testing.T) {
 
 func TestRedisKvStore_Get(t *testing.T) {
 	store, client := buildTestableRedisStore[Item]()
-	client.On("Get", mock.AnythingOfType("*context.emptyCtx"), "justtrack-gosoline-grp-kvstore-test-foo").Return(`{"id":"foo","body":"bar"}`, nil)
+	client.On("Get", context.Background(), "justtrack-gosoline-grp-kvstore-test-foo").Return(`{"id":"foo","body":"bar"}`, nil)
 
 	item := &Item{}
 	found, err := store.Get(context.Background(), "foo", item)
@@ -54,7 +54,7 @@ func TestRedisKvStore_Get(t *testing.T) {
 func TestRedisKvStore_GetBatch(t *testing.T) {
 	store, client := buildTestableRedisStore[Item]()
 
-	args := []interface{}{mock.AnythingOfType("*context.emptyCtx"), "justtrack-gosoline-grp-kvstore-test-foo", "justtrack-gosoline-grp-kvstore-test-fuu"}
+	args := []interface{}{context.Background(), "justtrack-gosoline-grp-kvstore-test-foo", "justtrack-gosoline-grp-kvstore-test-fuu"}
 	returns := []interface{}{`{"id":"foo","body":"bar"}`, nil}
 
 	client.On("MGet", args...).Return(returns, nil)
@@ -77,7 +77,7 @@ func TestRedisKvStore_GetBatch(t *testing.T) {
 
 func TestRedisKvStore_Put(t *testing.T) {
 	store, client := buildTestableRedisStore[Item]()
-	client.On("Set", mock.AnythingOfType("*context.emptyCtx"), "justtrack-gosoline-grp-kvstore-test-foo", []byte(`{"id":"foo","body":"bar"}`), time.Duration(0)).Return(nil)
+	client.On("Set", context.Background(), "justtrack-gosoline-grp-kvstore-test-foo", []byte(`{"id":"foo","body":"bar"}`), time.Duration(0)).Return(nil)
 
 	item := Item{
 		Id:   "foo",
@@ -94,7 +94,7 @@ func TestRedisKvStore_PutBatch(t *testing.T) {
 	store, client := buildTestableRedisStoreWithTTL[Item]()
 
 	pipe := &redisMocks.Pipeliner{}
-	pipe.On("MSet", mock.AnythingOfType("*context.emptyCtx"), mock.MatchedBy(func(input []interface{}) bool {
+	pipe.On("MSet", context.Background(), mock.MatchedBy(func(input []interface{}) bool {
 		possibleInput1 := `[justtrack-gosoline-grp-kvstore-test-foo {"id":"foo","body":"bar"} justtrack-gosoline-grp-kvstore-test-fuu {"id":"fuu","body":"baz"}]`
 		possibleInput2 := `[justtrack-gosoline-grp-kvstore-test-fuu {"id":"fuu","body":"baz"} justtrack-gosoline-grp-kvstore-test-foo {"id":"foo","body":"bar"}]`
 
@@ -103,9 +103,9 @@ func TestRedisKvStore_PutBatch(t *testing.T) {
 	})).Return(nil)
 	client.On("Pipeline").Return(pipe)
 	pipe.On("TxPipeline").Return(pipe)
-	pipe.On("Expire", mock.AnythingOfType("*context.emptyCtx"), "justtrack-gosoline-grp-kvstore-test-foo", mock.AnythingOfType("time.Duration")).Return(nil)
-	pipe.On("Expire", mock.AnythingOfType("*context.emptyCtx"), "justtrack-gosoline-grp-kvstore-test-fuu", mock.AnythingOfType("time.Duration")).Return(nil)
-	pipe.On("Exec", mock.AnythingOfType("*context.emptyCtx")).Return(nil, nil)
+	pipe.On("Expire", context.Background(), "justtrack-gosoline-grp-kvstore-test-foo", mock.AnythingOfType("time.Duration")).Return(nil)
+	pipe.On("Expire", context.Background(), "justtrack-gosoline-grp-kvstore-test-fuu", mock.AnythingOfType("time.Duration")).Return(nil)
+	pipe.On("Exec", context.Background()).Return(nil, nil)
 
 	items := map[string]Item{
 		"foo": {
@@ -128,7 +128,7 @@ func TestRedisKvStore_PutBatchSkipExpire(t *testing.T) {
 	store, client := buildTestableRedisStore[Item]()
 
 	pipe := &redisMocks.Pipeliner{}
-	pipe.On("MSet", mock.AnythingOfType("*context.emptyCtx"), mock.MatchedBy(func(input []interface{}) bool {
+	pipe.On("MSet", context.Background(), mock.MatchedBy(func(input []interface{}) bool {
 		possibleInput1 := `[justtrack-gosoline-grp-kvstore-test-foo {"id":"foo","body":"bar"} justtrack-gosoline-grp-kvstore-test-fuu {"id":"fuu","body":"baz"}]`
 		possibleInput2 := `[justtrack-gosoline-grp-kvstore-test-fuu {"id":"fuu","body":"baz"} justtrack-gosoline-grp-kvstore-test-foo {"id":"foo","body":"bar"}]`
 
@@ -137,7 +137,7 @@ func TestRedisKvStore_PutBatchSkipExpire(t *testing.T) {
 	})).Return(nil)
 	client.On("Pipeline").Return(pipe)
 	pipe.On("TxPipeline").Return(pipe)
-	pipe.On("Exec", mock.AnythingOfType("*context.emptyCtx")).Return(nil, nil)
+	pipe.On("Exec", context.Background()).Return(nil, nil)
 
 	items := map[string]Item{
 		"foo": {
@@ -158,7 +158,7 @@ func TestRedisKvStore_PutBatchSkipExpire(t *testing.T) {
 
 func TestRedisKvStore_EstimateSize(t *testing.T) {
 	store, client := buildTestableRedisStore[Item]()
-	client.On("DBSize", mock.AnythingOfType("*context.emptyCtx")).Return(int64(42), nil)
+	client.On("DBSize", context.Background()).Return(int64(42), nil)
 
 	size := store.(kvstore.SizedStore[Item]).EstimateSize()
 
@@ -168,7 +168,7 @@ func TestRedisKvStore_EstimateSize(t *testing.T) {
 
 func TestRedisKvStore_Delete(t *testing.T) {
 	store, client := buildTestableRedisStore[Item]()
-	client.On("Del", mock.AnythingOfType("*context.emptyCtx"), "justtrack-gosoline-grp-kvstore-test-foo").Return(int64(1), nil)
+	client.On("Del", context.Background(), "justtrack-gosoline-grp-kvstore-test-foo").Return(int64(1), nil)
 
 	err := store.Delete(context.Background(), "foo")
 
@@ -178,7 +178,7 @@ func TestRedisKvStore_Delete(t *testing.T) {
 
 func TestRedisKvStore_DeleteBatch(t *testing.T) {
 	store, client := buildTestableRedisStore[Item]()
-	client.On("Del", mock.AnythingOfType("*context.emptyCtx"), "justtrack-gosoline-grp-kvstore-test-foo", "justtrack-gosoline-grp-kvstore-test-fuu").Return(int64(2), nil)
+	client.On("Del", context.Background(), "justtrack-gosoline-grp-kvstore-test-foo", "justtrack-gosoline-grp-kvstore-test-fuu").Return(int64(2), nil)
 
 	items := []string{"foo", "fuu"}
 

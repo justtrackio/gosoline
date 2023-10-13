@@ -1,7 +1,7 @@
 package clock
 
 import (
-	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -32,6 +32,10 @@ type realTicker struct {
 // NewRealTicker creates a new Ticker based on the current system time. Use Clock.NewTicker instead if you need to replace
 // the ticker with a fake ticker for unit and integration tests.
 func NewRealTicker(d time.Duration) Ticker {
+	if d <= 0 {
+		panic(fmt.Errorf("non-positive interval (%v) for NewTicker", d))
+	}
+
 	t := &realTicker{
 		ticker: time.NewTicker(d),
 		close:  make(chan struct{}),
@@ -48,7 +52,7 @@ func (t *realTicker) Chan() <-chan time.Time {
 
 func (t *realTicker) Reset(d time.Duration) {
 	if d <= 0 {
-		panic(errors.New("non-positive interval for Reset"))
+		panic(fmt.Errorf("non-positive interval (%v) for Reset", d))
 	}
 	t.stopTransformer()
 	t.ticker.Reset(d)
