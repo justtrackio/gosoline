@@ -64,6 +64,7 @@ type Client interface {
 	FlushDB(ctx context.Context) (string, error)
 	Get(ctx context.Context, key string) (string, error)
 	GetDel(ctx context.Context, key string) (interface{}, error)
+	GetSet(ctx context.Context, key string, value interface{}) (interface{}, error)
 	MGet(ctx context.Context, keys ...string) ([]interface{}, error)
 	MSet(ctx context.Context, pairs ...interface{}) error
 	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
@@ -731,6 +732,14 @@ func (c *redisClient) IsAlive(ctx context.Context) bool {
 func (c *redisClient) GetDel(ctx context.Context, key string) (interface{}, error) {
 	cmd, err := c.execute(ctx, func() ErrCmder {
 		return c.base.GetDel(ctx, key)
+	})
+
+	return cmd.(*baseRedis.StringCmd).Val(), err
+}
+
+func (c *redisClient) GetSet(ctx context.Context, key string, value interface{}) (interface{}, error) {
+	cmd, err := c.execute(ctx, func() ErrCmder {
+		return c.base.GetSet(ctx, key, value)
 	})
 
 	return cmd.(*baseRedis.StringCmd).Val(), err

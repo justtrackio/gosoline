@@ -177,6 +177,16 @@ func (s *ClientWithMiniRedisTestSuite) TestGetDel() {
 	s.Equal(redis.Nil, err)
 }
 
+func (s *ClientWithMiniRedisTestSuite) TestGetSet() {
+	val, err := s.client.GetSet(context.Background(), "key", "value1")
+	s.Equal(redis.Nil, err)
+	s.Equal("", val)
+
+	val, err = s.client.GetSet(context.Background(), "key", "value2")
+	s.NoError(err, "there should be no error on GetSet")
+	s.Equal("value1", val)
+}
+
 func (s *ClientWithMiniRedisTestSuite) TestHDel() {
 	err := s.client.HSet(context.Background(), "key", "field", "value1")
 	s.NoError(err, "there should be no error on HSet")
