@@ -601,6 +601,62 @@ func (_c *Client_GetDel_Call) RunAndReturn(run func(context.Context, string) (in
 	return _c
 }
 
+// GetSet provides a mock function with given fields: ctx, key, value
+func (_m *Client) GetSet(ctx context.Context, key string, value interface{}) (interface{}, error) {
+	ret := _m.Called(ctx, key, value)
+
+	var r0 interface{}
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}) (interface{}, error)); ok {
+		return rf(ctx, key, value)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}) interface{}); ok {
+		r0 = rf(ctx, key, value)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interface{})
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, interface{}) error); ok {
+		r1 = rf(ctx, key, value)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_GetSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSet'
+type Client_GetSet_Call struct {
+	*mock.Call
+}
+
+// GetSet is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - value interface{}
+func (_e *Client_Expecter) GetSet(ctx interface{}, key interface{}, value interface{}) *Client_GetSet_Call {
+	return &Client_GetSet_Call{Call: _e.mock.On("GetSet", ctx, key, value)}
+}
+
+func (_c *Client_GetSet_Call) Run(run func(ctx context.Context, key string, value interface{})) *Client_GetSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_GetSet_Call) Return(_a0 interface{}, _a1 error) *Client_GetSet_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetSet_Call) RunAndReturn(run func(context.Context, string, interface{}) (interface{}, error)) *Client_GetSet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HDel provides a mock function with given fields: ctx, key, fields
 func (_m *Client) HDel(ctx context.Context, key string, fields ...string) (int64, error) {
 	_va := make([]interface{}, len(fields))
