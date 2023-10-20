@@ -26,15 +26,26 @@ func CastSlice[T any, I ~[]any](sl I) ([]T, error) {
 	return result, nil
 }
 
-func Partition[S ~[]T, T any, E comparable](sl S, keyer func(T) E) map[E][]T {
+func Partition[S ~[]T, T any, E comparable, F func(T) E](sl S, keyer F) map[E][]T {
 	result := make(map[E][]T)
 
-	for i := 0; i < len(sl); i++ {
-		key := keyer(sl[i])
-		result[key] = append(result[key], sl[i])
+	for _, item := range sl {
+		key := keyer(item)
+		result[key] = append(result[key], item)
 	}
 
 	return result
+}
+
+func PartitionMap[S ~[]T, T, K comparable, V any, F func(T) (K, V)](inp S, keyer F) map[K][]V {
+	out := make(map[K][]V)
+
+	for _, item := range inp {
+		key, val := keyer(item)
+		out[key] = append(out[key], val)
+	}
+
+	return out
 }
 
 func Chunk[S ~[]T, T any](sl S, size int) [][]T {
@@ -313,4 +324,26 @@ func equal[T any](expected T) func(actualValue T) bool {
 	return func(actualValue T) bool {
 		return reflect.DeepEqual(actualValue, expected)
 	}
+}
+
+func Any[S ~[]T, T any, F func(T) bool](inp S, pred F) bool {
+	_, ok := FindFirstFunc(inp, pred)
+
+	return ok
+}
+
+func None[S ~[]T, T any, F func(T) bool](inp S, pred F) bool {
+	return !Any(inp, pred)
+}
+
+func All[S ~[]T, T any, F func(T) bool](inp S, pred F) bool {
+	return None(inp, func(i T) bool { return !pred(i) })
+}
+
+func Empty[S ~[]T, T any](inp S) bool {
+	return len(inp) == 0
+}
+
+func NotEmpty[S ~[]T, T any](inp S) bool {
+	return len(inp) > 0
 }
