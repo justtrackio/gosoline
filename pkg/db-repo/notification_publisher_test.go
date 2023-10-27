@@ -3,7 +3,6 @@ package db_repo_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
@@ -14,24 +13,15 @@ import (
 )
 
 type modelBased struct {
-	value                string
-	createdAt, updatedAt *time.Time
-}
-
-func (m *modelBased) GetId() *uint {
-	return mdl.Box(uint(3))
-}
-
-func (m *modelBased) SetUpdatedAt(updatedAt *time.Time) {
-	m.updatedAt = updatedAt
-}
-
-func (m *modelBased) SetCreatedAt(createdAt *time.Time) {
-	m.createdAt = createdAt
+	db_repo.Model
+	value string
 }
 
 func Test_Publish_Notifier(t *testing.T) {
 	input := &modelBased{
+		Model: db_repo.Model{
+			Id: mdl.Box(uint(3)),
+		},
 		value: "my test input",
 	}
 

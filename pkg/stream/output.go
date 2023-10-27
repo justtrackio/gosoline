@@ -48,7 +48,7 @@ func MessagesToWritableMessages(batch []*Message) []WritableMessage {
 }
 
 type hasAttributes interface {
-	GetAttributes() map[string]interface{}
+	GetAttributes() map[string]string
 }
 
 // ensure all the types we actually write to SQS/SNS implement hasAttributes
@@ -57,10 +57,10 @@ var (
 	_ hasAttributes = rawJsonMessage{}
 )
 
-func getAttributes(msg WritableMessage) map[string]interface{} {
+func getAttributes(msg WritableMessage) map[string]string {
 	if withAttributes, ok := msg.(hasAttributes); ok {
 		return withAttributes.GetAttributes()
 	}
 
-	return map[string]interface{}{}
+	return map[string]string{}
 }

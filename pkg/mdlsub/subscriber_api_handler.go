@@ -41,6 +41,7 @@ func (h *Handler) GetInput() interface{} {
 func (h *Handler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
 	msg := request.Body.(*stream.Message)
 
+	var err error
 	var model interface{}
 
 	if model = h.callback.GetModel(msg.Attributes); model == nil {
@@ -48,10 +49,7 @@ func (h *Handler) Handle(ctx context.Context, request *apiserver.Request) (*apis
 		return apiserver.NewStatusResponse(http.StatusBadRequest), fmt.Errorf("could not get model: %w", err)
 	}
 
-	encoding, err := stream.GetEncodingAttribute(msg.Attributes)
-	if err != nil {
-		return apiserver.NewStatusResponse(http.StatusBadRequest), fmt.Errorf("could not get encoding: %w", err)
-	}
+	encoding := stream.GetEncodingAttribute(msg.Attributes)
 
 	if encoding == nil {
 		return apiserver.NewStatusResponse(http.StatusBadRequest), fmt.Errorf("missing encoding attribute")
@@ -61,7 +59,7 @@ func (h *Handler) Handle(ctx context.Context, request *apiserver.Request) (*apis
 		Encoding: *encoding,
 	})
 
-	var attributes map[string]interface{}
+	var attributes map[string]string
 	if ctx, attributes, err = encoder.Decode(ctx, msg, model); err != nil {
 		return apiserver.NewStatusResponse(http.StatusBadRequest), fmt.Errorf("could not decode message: %w", err)
 	}

@@ -92,9 +92,9 @@ func (o *snsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 	return nil
 }
 
-func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) ([]string, []map[string]interface{}, error) {
+func (o *snsOutput) computeMessagesAttributes(batch []WritableMessage) ([]string, []map[string]string, error) {
 	messages := make([]string, 0, len(batch))
-	attributes := make([]map[string]interface{}, 0, len(batch))
+	attributes := make([]map[string]string, 0, len(batch))
 
 	for i := 0; i < len(batch); i++ {
 		message, err := batch[i].MarshalToString()

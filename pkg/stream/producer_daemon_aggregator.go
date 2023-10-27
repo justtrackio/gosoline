@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/justtrackio/gosoline/pkg/encoding/base64"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
@@ -25,7 +26,7 @@ type producerDaemonAggregator struct {
 	maxMessages  int
 	maxBytes     int
 	compression  CompressionType
-	attributes   map[string]interface{}
+	attributes   map[string]string
 	encodeBase64 bool
 
 	buffer                   *bytes.Buffer
@@ -36,7 +37,7 @@ type producerDaemonAggregator struct {
 }
 
 type AggregateFlush struct {
-	Attributes   map[string]interface{}
+	Attributes   map[string]string
 	Body         string
 	MessageCount int
 }
@@ -47,13 +48,13 @@ type ProducerDaemonAggregator interface {
 	Flush() ([]AggregateFlush, error)
 }
 
-func NewProducerDaemonAggregator(settings ProducerDaemonSettings, compression CompressionType, attributeSets ...map[string]interface{}) (ProducerDaemonAggregator, error) {
+func NewProducerDaemonAggregator(settings ProducerDaemonSettings, compression CompressionType, attributeSets ...map[string]string) (ProducerDaemonAggregator, error) {
 	a := &producerDaemonAggregator{
 		maxMessages: settings.AggregationSize,
 		maxBytes:    settings.AggregationMaxSize,
 		compression: compression,
-		attributes: map[string]interface{}{
-			AttributeEncoding: EncodingJson,
+		attributes: map[string]string{
+			AttributeEncoding: EncodingJson.String(),
 		},
 		// initially assume we don't perform any compression, first message might not be packed as tightly as the rest,
 		// but if your app runs for a little longer you will already have a proper ratio here for the second message
@@ -78,7 +79,7 @@ func NewProducerDaemonAggregator(settings ProducerDaemonSettings, compression Co
 		if a.maxBytes > gzipMaxExpectedBuffer {
 			a.maxBytes -= gzipMaxExpectedBuffer
 		}
-		a.attributes[AttributeCompression] = CompressionGZip
+		a.attributes[AttributeCompression] = CompressionGZip.String()
 	case CompressionNone:
 		a.encodeBase64 = false
 	default:
@@ -236,8 +237,8 @@ func (a *producerDaemonAggregator) Flush() ([]AggregateFlush, error) {
 		return nil, err
 	}
 
-	attributes := map[string]interface{}{
-		AttributeAggregateCount: messageCount,
+	attributes := map[string]string{
+		AttributeAggregateCount: strconv.Itoa(messageCount),
 	}
 	for k, v := range a.attributes {
 		attributes[k] = v

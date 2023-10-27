@@ -26,8 +26,8 @@ type ProducerSettings struct {
 
 //go:generate mockery --name Producer
 type Producer interface {
-	WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]interface{}) error
-	Write(ctx context.Context, models interface{}, attributeSets ...map[string]interface{}) error
+	WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]string) error
+	Write(ctx context.Context, models interface{}, attributeSets ...map[string]string) error
 }
 
 type producer struct {
@@ -82,7 +82,7 @@ func NewProducerWithInterfaces(encoder MessageEncoder, output Output) *producer 
 	}
 }
 
-func (p *producer) WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]interface{}) error {
+func (p *producer) WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]string) error {
 	msg, err := p.encoder.Encode(ctx, model, attributeSets...)
 	if err != nil {
 		return fmt.Errorf("can not encode model into message: %w", err)
@@ -97,7 +97,7 @@ func (p *producer) WriteOne(ctx context.Context, model interface{}, attributeSet
 	return nil
 }
 
-func (p *producer) Write(ctx context.Context, models interface{}, attributeSets ...map[string]interface{}) error {
+func (p *producer) Write(ctx context.Context, models interface{}, attributeSets ...map[string]string) error {
 	slice, err := refl.InterfaceToInterfaceSlice(models)
 	if err != nil {
 		return fmt.Errorf("can not cast models interface to slice: %w", err)

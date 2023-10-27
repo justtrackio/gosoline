@@ -11,6 +11,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestPublisherTestSuite(t *testing.T) {
+	suite.Run(t, new(PublisherTestSuite))
+}
+
 type PublisherTestSuite struct {
 	suite.Suite
 	producer  *streamMocks.Producer
@@ -44,9 +48,9 @@ func (s *PublisherTestSuite) TestPublish() {
 		Title: "my title",
 	}
 
-	expectedAttributes := map[string]interface{}{
+	expectedAttributes := map[string]string{
 		"type":    mdlsub.TypeCreate,
-		"version": 0,
+		"version": "0",
 		"modelId": "gosoline.test.grp.event",
 	}
 
@@ -54,8 +58,4 @@ func (s *PublisherTestSuite) TestPublish() {
 
 	err := s.publisher.Publish(ctx, mdlsub.TypeCreate, 0, event)
 	s.NoError(err)
-}
-
-func TestPublisherTestSuite(t *testing.T) {
-	suite.Run(t, new(PublisherTestSuite))
 }

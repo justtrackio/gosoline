@@ -40,14 +40,14 @@ func (m *TestMessage) FromMessage(message proto.Message) error {
 }
 
 func TestNewMessage(t *testing.T) {
-	msg := stream.NewMessage(`{"foo": "bar"}`, map[string]interface{}{
-		"attribute1": 2,
+	msg := stream.NewMessage(`{"foo": "bar"}`, map[string]string{
+		"attribute1": "2",
 		"attribute2": "value",
 	})
 
 	expectedMsg := &stream.Message{
-		Attributes: map[string]interface{}{
-			"attribute1": 2,
+		Attributes: map[string]string{
+			"attribute1": "2",
 			"attribute2": "value",
 		},
 		Body: `{"foo": "bar"}`,
@@ -57,16 +57,16 @@ func TestNewMessage(t *testing.T) {
 }
 
 func TestNewJsonMessage(t *testing.T) {
-	msg := stream.NewJsonMessage(`{"foo": "bar"}`, map[string]interface{}{
-		"attribute1": 2,
+	msg := stream.NewJsonMessage(`{"foo": "bar"}`, map[string]string{
+		"attribute1": "2",
 		"attribute2": "value",
 	})
 
 	expectedMsg := &stream.Message{
-		Attributes: map[string]interface{}{
-			"attribute1":             2,
+		Attributes: map[string]string{
+			"attribute1":             "2",
 			"attribute2":             "value",
-			stream.AttributeEncoding: stream.EncodingJson,
+			stream.AttributeEncoding: stream.EncodingJson.String(),
 		},
 		Body: `{"foo": "bar"}`,
 	}
@@ -75,16 +75,16 @@ func TestNewJsonMessage(t *testing.T) {
 }
 
 func TestNewProtobufMessage(t *testing.T) {
-	msg := stream.NewProtobufMessage(string([]byte{10, 3, 102, 111, 111, 16, 42}), map[string]interface{}{
-		"attribute1": 2,
+	msg := stream.NewProtobufMessage(string([]byte{10, 3, 102, 111, 111, 16, 42}), map[string]string{
+		"attribute1": "2",
 		"attribute2": "value",
 	})
 
 	expectedMsg := &stream.Message{
-		Attributes: map[string]interface{}{
-			"attribute1":             2,
+		Attributes: map[string]string{
+			"attribute1":             "2",
 			"attribute2":             "value",
-			stream.AttributeEncoding: stream.EncodingProtobuf,
+			stream.AttributeEncoding: stream.EncodingProtobuf.String(),
 		},
 		Body: string([]byte{10, 3, 102, 111, 111, 16, 42}),
 	}
@@ -96,16 +96,16 @@ func TestMarshalJsonMessage(t *testing.T) {
 	msg, err := stream.MarshalJsonMessage(&TestMessage{
 		FirstField:  "foo",
 		SecondField: 42,
-	}, map[string]interface{}{
-		"attribute1": 2,
+	}, map[string]string{
+		"attribute1": "2",
 		"attribute2": "value",
 	})
 
 	expectedMsg := &stream.Message{
-		Attributes: map[string]interface{}{
-			"attribute1":             2,
+		Attributes: map[string]string{
+			"attribute1":             "2",
 			"attribute2":             "value",
-			stream.AttributeEncoding: stream.EncodingJson,
+			stream.AttributeEncoding: stream.EncodingJson.String(),
 		},
 		Body: `{"first_field":"foo","second_field":42}`,
 	}
@@ -118,16 +118,16 @@ func TestMarshalProtobufMessage(t *testing.T) {
 	msg, err := stream.MarshalProtobufMessage(&TestMessage{
 		FirstField:  "foo",
 		SecondField: 42,
-	}, map[string]interface{}{
-		"attribute1": 2,
+	}, map[string]string{
+		"attribute1": "2",
 		"attribute2": "value",
 	})
 
 	expectedMsg := &stream.Message{
-		Attributes: map[string]interface{}{
-			"attribute1":             2,
+		Attributes: map[string]string{
+			"attribute1":             "2",
 			"attribute2":             "value",
-			stream.AttributeEncoding: stream.EncodingProtobuf,
+			stream.AttributeEncoding: stream.EncodingProtobuf.String(),
 		},
 		Body: "CgNmb28QKg==",
 	}

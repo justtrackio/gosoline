@@ -63,10 +63,10 @@ func (tc batcherTestCase) run(t *testing.T) {
 
 func TestProducerDaemonBatcher_Single(t *testing.T) {
 	messages := []*stream.Message{
-		mkTestMessage(t, "1", map[string]interface{}{}),
-		mkTestMessage(t, "2", map[string]interface{}{}),
-		mkTestMessage(t, "3", map[string]interface{}{}),
-		mkTestMessage(t, "4", map[string]interface{}{}),
+		mkTestMessage(t, "1", map[string]string{}),
+		mkTestMessage(t, "2", map[string]string{}),
+		mkTestMessage(t, "3", map[string]string{}),
+		mkTestMessage(t, "4", map[string]string{}),
 	}
 
 	batcherTestCase{
@@ -92,10 +92,10 @@ func TestProducerDaemonBatcher_Single(t *testing.T) {
 
 func TestProducerDaemonBatcher_SmallBatches(t *testing.T) {
 	messages := []*stream.Message{
-		mkTestMessage(t, "1", map[string]interface{}{}),
-		mkTestMessage(t, "2", map[string]interface{}{}),
-		mkTestMessage(t, "3", map[string]interface{}{}),
-		mkTestMessage(t, "4", map[string]interface{}{}),
+		mkTestMessage(t, "1", map[string]string{}),
+		mkTestMessage(t, "2", map[string]string{}),
+		mkTestMessage(t, "3", map[string]string{}),
+		mkTestMessage(t, "4", map[string]string{}),
 	}
 
 	batcherTestCase{
@@ -117,15 +117,15 @@ func TestProducerDaemonBatcher_SmallBatches(t *testing.T) {
 
 func TestProducerDaemonBatcher_SizeLimited(t *testing.T) {
 	messages := []*stream.Message{
-		mkTestMessage(t, "1", map[string]interface{}{}),
-		mkTestMessage(t, "2", map[string]interface{}{}),
-		mkTestMessage(t, "3", map[string]interface{}{}),
-		mkTestMessage(t, "4", map[string]interface{}{}),
-		mkTestMessage(t, "55", map[string]interface{}{}),
-		mkTestMessage(t, "6", map[string]interface{}{}),
-		mkTestMessage(t, "7", map[string]interface{}{}),
-		mkTestMessage(t, "8", map[string]interface{}{}),
-		mkTestMessage(t, "99", map[string]interface{}{}),
+		mkTestMessage(t, "1", map[string]string{}),
+		mkTestMessage(t, "2", map[string]string{}),
+		mkTestMessage(t, "3", map[string]string{}),
+		mkTestMessage(t, "4", map[string]string{}),
+		mkTestMessage(t, "55", map[string]string{}),
+		mkTestMessage(t, "6", map[string]string{}),
+		mkTestMessage(t, "7", map[string]string{}),
+		mkTestMessage(t, "8", map[string]string{}),
+		mkTestMessage(t, "99", map[string]string{}),
 	}
 
 	batcherTestCase{

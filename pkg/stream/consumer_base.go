@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -42,7 +43,7 @@ type RunnableCallback interface {
 }
 
 type BaseConsumerCallback interface {
-	GetModel(attributes map[string]interface{}) interface{}
+	GetModel(attributes map[string]string) interface{}
 }
 
 type ConsumerSettings struct {
@@ -354,7 +355,7 @@ func (c *baseConsumer) buildRetryMessage(msg *Message) (*Message, interface{}) {
 
 	retryId := c.uuidGen.NewV4()
 	retryMsg := &Message{
-		Attributes: map[string]interface{}{},
+		Attributes: map[string]string{},
 		Body:       msg.Body,
 	}
 
@@ -362,7 +363,7 @@ func (c *baseConsumer) buildRetryMessage(msg *Message) (*Message, interface{}) {
 		retryMsg.Attributes[k] = v
 	}
 
-	retryMsg.Attributes[AttributeRetry] = true
+	retryMsg.Attributes[AttributeRetry] = strconv.FormatBool(true)
 	retryMsg.Attributes[AttributeRetryId] = retryId
 
 	return retryMsg, retryId

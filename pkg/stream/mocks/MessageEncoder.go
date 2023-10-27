@@ -23,13 +23,13 @@ func (_m *MessageEncoder) EXPECT() *MessageEncoder_Expecter {
 }
 
 // Decode provides a mock function with given fields: ctx, msg, out
-func (_m *MessageEncoder) Decode(ctx context.Context, msg *stream.Message, out interface{}) (context.Context, map[string]interface{}, error) {
+func (_m *MessageEncoder) Decode(ctx context.Context, msg *stream.Message, out interface{}) (context.Context, map[string]string, error) {
 	ret := _m.Called(ctx, msg, out)
 
 	var r0 context.Context
-	var r1 map[string]interface{}
+	var r1 map[string]string
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, *stream.Message, interface{}) (context.Context, map[string]interface{}, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *stream.Message, interface{}) (context.Context, map[string]string, error)); ok {
 		return rf(ctx, msg, out)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, *stream.Message, interface{}) context.Context); ok {
@@ -40,11 +40,11 @@ func (_m *MessageEncoder) Decode(ctx context.Context, msg *stream.Message, out i
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *stream.Message, interface{}) map[string]interface{}); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *stream.Message, interface{}) map[string]string); ok {
 		r1 = rf(ctx, msg, out)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(map[string]interface{})
+			r1 = ret.Get(1).(map[string]string)
 		}
 	}
 
@@ -77,18 +77,18 @@ func (_c *MessageEncoder_Decode_Call) Run(run func(ctx context.Context, msg *str
 	return _c
 }
 
-func (_c *MessageEncoder_Decode_Call) Return(_a0 context.Context, _a1 map[string]interface{}, _a2 error) *MessageEncoder_Decode_Call {
+func (_c *MessageEncoder_Decode_Call) Return(_a0 context.Context, _a1 map[string]string, _a2 error) *MessageEncoder_Decode_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MessageEncoder_Decode_Call) RunAndReturn(run func(context.Context, *stream.Message, interface{}) (context.Context, map[string]interface{}, error)) *MessageEncoder_Decode_Call {
+func (_c *MessageEncoder_Decode_Call) RunAndReturn(run func(context.Context, *stream.Message, interface{}) (context.Context, map[string]string, error)) *MessageEncoder_Decode_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Encode provides a mock function with given fields: ctx, data, attributeSets
-func (_m *MessageEncoder) Encode(ctx context.Context, data interface{}, attributeSets ...map[string]interface{}) (*stream.Message, error) {
+func (_m *MessageEncoder) Encode(ctx context.Context, data interface{}, attributeSets ...map[string]string) (*stream.Message, error) {
 	_va := make([]interface{}, len(attributeSets))
 	for _i := range attributeSets {
 		_va[_i] = attributeSets[_i]
@@ -100,10 +100,10 @@ func (_m *MessageEncoder) Encode(ctx context.Context, data interface{}, attribut
 
 	var r0 *stream.Message
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}, ...map[string]interface{}) (*stream.Message, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, ...map[string]string) (*stream.Message, error)); ok {
 		return rf(ctx, data, attributeSets...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}, ...map[string]interface{}) *stream.Message); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, ...map[string]string) *stream.Message); ok {
 		r0 = rf(ctx, data, attributeSets...)
 	} else {
 		if ret.Get(0) != nil {
@@ -111,7 +111,7 @@ func (_m *MessageEncoder) Encode(ctx context.Context, data interface{}, attribut
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, interface{}, ...map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, interface{}, ...map[string]string) error); ok {
 		r1 = rf(ctx, data, attributeSets...)
 	} else {
 		r1 = ret.Error(1)
@@ -128,18 +128,18 @@ type MessageEncoder_Encode_Call struct {
 // Encode is a helper method to define mock.On call
 //   - ctx context.Context
 //   - data interface{}
-//   - attributeSets ...map[string]interface{}
+//   - attributeSets ...map[string]string
 func (_e *MessageEncoder_Expecter) Encode(ctx interface{}, data interface{}, attributeSets ...interface{}) *MessageEncoder_Encode_Call {
 	return &MessageEncoder_Encode_Call{Call: _e.mock.On("Encode",
 		append([]interface{}{ctx, data}, attributeSets...)...)}
 }
 
-func (_c *MessageEncoder_Encode_Call) Run(run func(ctx context.Context, data interface{}, attributeSets ...map[string]interface{})) *MessageEncoder_Encode_Call {
+func (_c *MessageEncoder_Encode_Call) Run(run func(ctx context.Context, data interface{}, attributeSets ...map[string]string)) *MessageEncoder_Encode_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]map[string]interface{}, len(args)-2)
+		variadicArgs := make([]map[string]string, len(args)-2)
 		for i, a := range args[2:] {
 			if a != nil {
-				variadicArgs[i] = a.(map[string]interface{})
+				variadicArgs[i] = a.(map[string]string)
 			}
 		}
 		run(args[0].(context.Context), args[1].(interface{}), variadicArgs...)
@@ -152,7 +152,7 @@ func (_c *MessageEncoder_Encode_Call) Return(_a0 *stream.Message, _a1 error) *Me
 	return _c
 }
 
-func (_c *MessageEncoder_Encode_Call) RunAndReturn(run func(context.Context, interface{}, ...map[string]interface{}) (*stream.Message, error)) *MessageEncoder_Encode_Call {
+func (_c *MessageEncoder_Encode_Call) RunAndReturn(run func(context.Context, interface{}, ...map[string]string) (*stream.Message, error)) *MessageEncoder_Encode_Call {
 	_c.Call.Return(run)
 	return _c
 }

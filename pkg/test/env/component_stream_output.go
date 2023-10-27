@@ -32,7 +32,7 @@ func (s *streamOutputComponent) Get(i int) (*stream.Message, bool) {
 	return s.output.Get(i)
 }
 
-func (s *streamOutputComponent) Unmarshal(i int, output interface{}) map[string]interface{} {
+func (s *streamOutputComponent) Unmarshal(i int, output interface{}) map[string]string {
 	msg, ok := s.Get(i)
 
 	if !ok {
@@ -47,14 +47,14 @@ func (s *streamOutputComponent) Unmarshal(i int, output interface{}) map[string]
 	return msg.Attributes
 }
 
-func (s *streamOutputComponent) UnmarshalAggregate(i int, output interface{}) []map[string]interface{} {
+func (s *streamOutputComponent) UnmarshalAggregate(i int, output interface{}) []map[string]string {
 	msg, ok := s.Get(i)
 
 	if !ok {
 		s.failNow("message not available", "there is no message with index %d", i)
 	}
 
-	if msg.Attributes[stream.AttributeAggregate] != true {
+	if msg.Attributes[stream.AttributeAggregate] != "true" {
 		s.failNow("message not an aggregate", "there is no valid aggregate attribute on message with index %d", i)
 	}
 
@@ -69,7 +69,7 @@ func (s *streamOutputComponent) UnmarshalAggregate(i int, output interface{}) []
 	sliceType := outputType.Elem()
 	elemType := sliceType.Elem().Elem()
 	slice := reflect.MakeSlice(sliceType, 0, len(batch))
-	attributes := make([]map[string]interface{}, 0, len(batch))
+	attributes := make([]map[string]string, 0, len(batch))
 
 	for _, msg := range batch {
 		elem := reflect.New(elemType).Interface()

@@ -22,15 +22,15 @@ func (_m *RunnableBatchConsumerCallback) EXPECT() *RunnableBatchConsumerCallback
 }
 
 // Consume provides a mock function with given fields: ctx, models, attributes
-func (_m *RunnableBatchConsumerCallback) Consume(ctx context.Context, models []interface{}, attributes []map[string]interface{}) ([]bool, error) {
+func (_m *RunnableBatchConsumerCallback) Consume(ctx context.Context, models []interface{}, attributes []map[string]string) ([]bool, error) {
 	ret := _m.Called(ctx, models, attributes)
 
 	var r0 []bool
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []interface{}, []map[string]interface{}) ([]bool, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []interface{}, []map[string]string) ([]bool, error)); ok {
 		return rf(ctx, models, attributes)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []interface{}, []map[string]interface{}) []bool); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []interface{}, []map[string]string) []bool); ok {
 		r0 = rf(ctx, models, attributes)
 	} else {
 		if ret.Get(0) != nil {
@@ -38,7 +38,7 @@ func (_m *RunnableBatchConsumerCallback) Consume(ctx context.Context, models []i
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []interface{}, []map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, []interface{}, []map[string]string) error); ok {
 		r1 = rf(ctx, models, attributes)
 	} else {
 		r1 = ret.Error(1)
@@ -55,14 +55,14 @@ type RunnableBatchConsumerCallback_Consume_Call struct {
 // Consume is a helper method to define mock.On call
 //   - ctx context.Context
 //   - models []interface{}
-//   - attributes []map[string]interface{}
+//   - attributes []map[string]string
 func (_e *RunnableBatchConsumerCallback_Expecter) Consume(ctx interface{}, models interface{}, attributes interface{}) *RunnableBatchConsumerCallback_Consume_Call {
 	return &RunnableBatchConsumerCallback_Consume_Call{Call: _e.mock.On("Consume", ctx, models, attributes)}
 }
 
-func (_c *RunnableBatchConsumerCallback_Consume_Call) Run(run func(ctx context.Context, models []interface{}, attributes []map[string]interface{})) *RunnableBatchConsumerCallback_Consume_Call {
+func (_c *RunnableBatchConsumerCallback_Consume_Call) Run(run func(ctx context.Context, models []interface{}, attributes []map[string]string)) *RunnableBatchConsumerCallback_Consume_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]interface{}), args[2].([]map[string]interface{}))
+		run(args[0].(context.Context), args[1].([]interface{}), args[2].([]map[string]string))
 	})
 	return _c
 }
@@ -72,17 +72,17 @@ func (_c *RunnableBatchConsumerCallback_Consume_Call) Return(_a0 []bool, _a1 err
 	return _c
 }
 
-func (_c *RunnableBatchConsumerCallback_Consume_Call) RunAndReturn(run func(context.Context, []interface{}, []map[string]interface{}) ([]bool, error)) *RunnableBatchConsumerCallback_Consume_Call {
+func (_c *RunnableBatchConsumerCallback_Consume_Call) RunAndReturn(run func(context.Context, []interface{}, []map[string]string) ([]bool, error)) *RunnableBatchConsumerCallback_Consume_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetModel provides a mock function with given fields: attributes
-func (_m *RunnableBatchConsumerCallback) GetModel(attributes map[string]interface{}) interface{} {
+func (_m *RunnableBatchConsumerCallback) GetModel(attributes map[string]string) interface{} {
 	ret := _m.Called(attributes)
 
 	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(map[string]interface{}) interface{}); ok {
+	if rf, ok := ret.Get(0).(func(map[string]string) interface{}); ok {
 		r0 = rf(attributes)
 	} else {
 		if ret.Get(0) != nil {
@@ -99,14 +99,14 @@ type RunnableBatchConsumerCallback_GetModel_Call struct {
 }
 
 // GetModel is a helper method to define mock.On call
-//   - attributes map[string]interface{}
+//   - attributes map[string]string
 func (_e *RunnableBatchConsumerCallback_Expecter) GetModel(attributes interface{}) *RunnableBatchConsumerCallback_GetModel_Call {
 	return &RunnableBatchConsumerCallback_GetModel_Call{Call: _e.mock.On("GetModel", attributes)}
 }
 
-func (_c *RunnableBatchConsumerCallback_GetModel_Call) Run(run func(attributes map[string]interface{})) *RunnableBatchConsumerCallback_GetModel_Call {
+func (_c *RunnableBatchConsumerCallback_GetModel_Call) Run(run func(attributes map[string]string)) *RunnableBatchConsumerCallback_GetModel_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(map[string]interface{}))
+		run(args[0].(map[string]string))
 	})
 	return _c
 }
@@ -116,7 +116,7 @@ func (_c *RunnableBatchConsumerCallback_GetModel_Call) Return(_a0 interface{}) *
 	return _c
 }
 
-func (_c *RunnableBatchConsumerCallback_GetModel_Call) RunAndReturn(run func(map[string]interface{}) interface{}) *RunnableBatchConsumerCallback_GetModel_Call {
+func (_c *RunnableBatchConsumerCallback_GetModel_Call) RunAndReturn(run func(map[string]string) interface{}) *RunnableBatchConsumerCallback_GetModel_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -14,56 +14,7 @@ func Test_NewKafkaMessageAttrs(t *testing.T) {
 	assert.Equal(t, stream.NewKafkaMessageAttrs("MyKey"), map[string]interface{}{"KafkaKey": "MyKey"})
 }
 
-func Test_KafkaToGosoMessage(t *testing.T) {
-	kMessage := kafka.Message{
-		Key:   []byte("MessageKey"),
-		Value: []byte("MessageValue"),
-		Headers: []kafka.Header{
-			{
-				Key:   "HeaderKey",
-				Value: []byte("HeaderValue"),
-			},
-		},
-	}
-
-	gMessage := stream.KafkaToGosoMessage(kMessage)
-
-	// Validate message.
-	assert.Equal(t,
-		gMessage,
-		&stream.Message{
-			Body: string(kMessage.Value),
-			Attributes: map[string]interface{}{
-				stream.AttributeKafkaOriginalMessage: stream.KafkaSourceMessage{
-					Message: kMessage,
-				},
-				"HeaderKey": "HeaderValue",
-			},
-		},
-	)
-
-	// Validate serialization of the message.
-	serialized, err := json.Marshal(gMessage)
-	assert.Nil(t, err)
-
-	assert.JSONEq(t, string(serialized), `{
-		"attributes": {
-			"HeaderKey": "HeaderValue",
-			"KafkaOriginal": {
-				"Headers": {
-					"HeaderKey": "HeaderValue"
-				},
-				"Key": "MessageKey",
-				"Offset": 0,
-				"Partition": 0,
-				"Time": "0001-01-01T00:00:00Z"
-			}
-		},
-		"body": "MessageValue"
-	}`)
-}
-
-func Test_GosoToKafkaMessages(t *testing.T) {
+func Test_MessageConversion(t *testing.T) {
 	var (
 		kMessage1 = kafka.Message{
 			Key:   []byte("MessageKey1"),
@@ -88,33 +39,44 @@ func Test_GosoToKafkaMessages(t *testing.T) {
 		}
 	)
 
-	assert.Equal(t, stream.GosoToKafkaMessages(
-		&stream.Message{
-			Body: string(kMessage1.Value),
-			Attributes: map[string]interface{}{
-				stream.AttributeKafkaOriginalMessage: stream.KafkaSourceMessage{kMessage1},
-				kMessage1.Headers[0].Key:             string(kMessage1.Headers[0].Value),
-			},
-		},
-		&stream.Message{
-			Body: string(kMessage2.Value),
-			Attributes: map[string]interface{}{
-				stream.AttributeKafkaOriginalMessage: stream.KafkaSourceMessage{kMessage2},
-				kMessage2.Headers[0].Key:             string(kMessage2.Headers[0].Value),
-			},
-		},
-	),
+	gMessage1 := stream.KafkaToGosoMessage(kMessage1)
+	gMessage2 := stream.KafkaToGosoMessage(kMessage2)
+
+	assert.Equal(t,
 		[]kafka.Message{
 			kMessage1,
 			kMessage2,
 		},
+		stream.GosoToKafkaMessages(gMessage1, gMessage2),
 	)
+}
+
+func Test_GosoMessageSerialization(t *testing.T) {
+	kMessage := kafka.Message{
+		Key:   []byte("MessageKey"),
+		Value: []byte("MessageValue"),
+		Headers: []kafka.Header{
+			{
+				Key:   "HeaderKey",
+				Value: []byte("HeaderValue"),
+			},
+		},
+	}
+	gMessage := stream.KafkaToGosoMessage(kMessage)
+
+	serialized, err := json.Marshal(gMessage)
+	assert.Nil(t, err)
+
+	assert.JSONEq(t, string(serialized), `{
+		"attributes": {"HeaderKey":"HeaderValue"},
+		"body": "MessageValue"
+	}`)
 }
 
 func Test_NewKafkaMessage(t *testing.T) {
 	gMessage := &stream.Message{
 		Body: `{"MessageContent": "Content"}`,
-		Attributes: map[string]interface{}{
+		Attributes: map[string]string{
 			"Attr1":    "1",
 			"Attr2":    "2",
 			"KafkaKey": "MyKey",
@@ -161,14 +123,14 @@ func Test_NewKafkaMessages(t *testing.T) {
 	var (
 		gMessage1 = &stream.Message{
 			Body: `{"MessageContent": "Content1"}`,
-			Attributes: map[string]interface{}{
+			Attributes: map[string]string{
 				"Attr11": "11",
 			},
 		}
 		gMessage2 = &stream.Message{
 			Body: `{"MessageContent": "Content2"}`,
-			Attributes: map[string]interface{}{
-				"Attr1": "12",
+			Attributes: map[string]string{
+				"Attr11": "12",
 			},
 		}
 	)

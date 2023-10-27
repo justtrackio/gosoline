@@ -15,7 +15,7 @@ func NewMessageWithTraceEncoder(strategy TraceIdErrorStrategy) *MessageWithTrace
 	}
 }
 
-func (m MessageWithTraceEncoder) Encode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (m MessageWithTraceEncoder) Encode(ctx context.Context, _ interface{}, attributes map[string]string) (context.Context, map[string]string, error) {
 	var trace *Trace
 
 	if span := GetSpanFromContext(ctx); span != nil {
@@ -31,22 +31,14 @@ func (m MessageWithTraceEncoder) Encode(ctx context.Context, _ interface{}, attr
 	return ctx, attributes, nil
 }
 
-func (m MessageWithTraceEncoder) Decode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (m MessageWithTraceEncoder) Decode(ctx context.Context, _ interface{}, attributes map[string]string) (context.Context, map[string]string, error) {
 	var ok bool
-	var traceId string
 
 	if _, ok = attributes["traceId"]; !ok {
 		return ctx, attributes, nil
 	}
 
-	if traceId, ok = attributes["traceId"].(string); !ok {
-		err := fmt.Errorf("the traceId attribute should be of type string to decode it")
-		err = m.strategy.TraceIdInvalid(err)
-
-		return ctx, attributes, err
-	}
-
-	trace, err := StringToTrace(traceId)
+	trace, err := StringToTrace(attributes["traceId"])
 
 	if err != nil {
 		err := fmt.Errorf("the traceId attribute is invalid: %w", err)

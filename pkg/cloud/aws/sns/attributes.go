@@ -3,16 +3,14 @@ package sns
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
-	"github.com/spf13/cast"
 )
 
-func buildAttributes(attributes []map[string]interface{}) (map[string]types.MessageAttributeValue, error) {
+func buildAttributes(attributes []map[string]string) (map[string]types.MessageAttributeValue, error) {
 	if len(attributes) == 0 {
 		return nil, nil
 	}
@@ -25,38 +23,9 @@ func buildAttributes(attributes []map[string]interface{}) (map[string]types.Mess
 				continue
 			}
 
-			switch v := val.(type) {
-			case string:
-				snsAttributes[key] = types.MessageAttributeValue{
-					DataType:    aws.String("String"),
-					StringValue: aws.String(v),
-				}
-
-			case uint, uint8, uint16, uint32, uint64, int, int8, int16, int32, int64, float32, float64:
-				strVal, err := cast.ToStringE(val)
-				if err != nil {
-					return nil, fmt.Errorf("number %v of key %s is not castable to string", val, key)
-				}
-
-				snsAttributes[key] = types.MessageAttributeValue{
-					DataType:    aws.String("Number"),
-					StringValue: aws.String(strVal),
-				}
-
-			case bool:
-				snsAttributes[key] = types.MessageAttributeValue{
-					DataType:    aws.String("String"),
-					StringValue: aws.String(strconv.FormatBool(v)),
-				}
-
-			case fmt.Stringer:
-				snsAttributes[key] = types.MessageAttributeValue{
-					DataType:    aws.String("String"),
-					StringValue: aws.String(v.String()),
-				}
-
-			default:
-				return nil, fmt.Errorf("data type %T of key %s is not supported", val, key)
+			snsAttributes[key] = types.MessageAttributeValue{
+				DataType:    aws.String("String"),
+				StringValue: aws.String(val),
 			}
 		}
 	}
@@ -88,7 +57,7 @@ func IsValidAttributeName(name string) bool {
 	return validAttributeRegex.MatchString(name)
 }
 
-func buildFilterPolicy(attributes map[string]interface{}) (string, error) {
+func buildFilterPolicy(attributes map[string]string) (string, error) {
 	bytes, err := json.Marshal(attributes)
 	if err != nil {
 		return "", fmt.Errorf("can not marshal attributes to json: %w", err)

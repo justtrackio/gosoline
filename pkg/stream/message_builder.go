@@ -11,49 +11,31 @@ const (
 
 // GetEncodingAttribute returns the encoding attribute if one is set, nil if none is set,
 // and an error if the set value is of the wrong type.
-func GetEncodingAttribute(attributes map[string]interface{}) (*EncodingType, error) {
+func GetEncodingAttribute(attributes map[string]string) *EncodingType {
 	if attrEncoding, ok := attributes[AttributeEncoding]; ok {
-		// shortcut for unit tests that might specify the correct constant directly
-		if encoding, ok := attrEncoding.(EncodingType); ok {
-			return &encoding, nil
-		}
+		encoding := EncodingType(attrEncoding)
 
-		if encodingString, ok := attrEncoding.(string); ok {
-			encoding := EncodingType(encodingString)
-
-			return &encoding, nil
-		}
-
-		return nil, fmt.Errorf("the encoding attribute '%v' should be of type string but instead is '%T'", attrEncoding, attrEncoding)
+		return &encoding
 	}
 
-	return nil, nil
+	return nil
 }
 
 // GetCompressionAttribute returns the compression attribute if one is set, nil if none is set,
 // and an error if the set value is of the wrong type.
-func GetCompressionAttribute(attributes map[string]interface{}) (*CompressionType, error) {
+func GetCompressionAttribute(attributes map[string]string) *CompressionType {
 	if attrCompression, ok := attributes[AttributeCompression]; ok {
-		// shortcut for unit tests that might specify the correct constant directly
-		if compression, ok := attrCompression.(CompressionType); ok {
-			return &compression, nil
-		}
+		compression := CompressionType(attrCompression)
 
-		if compressionString, ok := attrCompression.(string); ok {
-			compression := CompressionType(compressionString)
-
-			return &compression, nil
-		}
-
-		return nil, fmt.Errorf("the compression attribute '%v' should be of type string but instead is '%T'", attrCompression, attrCompression)
+		return &compression
 	}
 
-	return nil, nil
+	return nil
 }
 
-func NewMessage(body string, attributes ...map[string]interface{}) *Message {
+func NewMessage(body string, attributes ...map[string]string) *Message {
 	msg := &Message{
-		Attributes: map[string]interface{}{},
+		Attributes: map[string]string{},
 		Body:       body,
 	}
 
@@ -66,14 +48,14 @@ func NewMessage(body string, attributes ...map[string]interface{}) *Message {
 	return msg
 }
 
-func NewJsonMessage(body string, attributes ...map[string]interface{}) *Message {
+func NewJsonMessage(body string, attributes ...map[string]string) *Message {
 	msg := NewMessage(body, attributes...)
-	msg.Attributes[AttributeEncoding] = EncodingJson
+	msg.Attributes[AttributeEncoding] = EncodingJson.String()
 
 	return msg
 }
 
-func MarshalJsonMessage(body interface{}, attributes ...map[string]interface{}) (*Message, error) {
+func MarshalJsonMessage(body interface{}, attributes ...map[string]string) (*Message, error) {
 	data, err := NewJsonEncoder().Encode(body)
 
 	if err != nil {
@@ -85,14 +67,14 @@ func MarshalJsonMessage(body interface{}, attributes ...map[string]interface{}) 
 	return msg, nil
 }
 
-func NewProtobufMessage(body string, attributes ...map[string]interface{}) *Message {
+func NewProtobufMessage(body string, attributes ...map[string]string) *Message {
 	msg := NewMessage(body, attributes...)
-	msg.Attributes[AttributeEncoding] = EncodingProtobuf
+	msg.Attributes[AttributeEncoding] = EncodingProtobuf.String()
 
 	return msg
 }
 
-func MarshalProtobufMessage(body ProtobufEncodable, attributes ...map[string]interface{}) (*Message, error) {
+func MarshalProtobufMessage(body ProtobufEncodable, attributes ...map[string]string) (*Message, error) {
 	data, err := NewProtobufEncoder().Encode(body)
 
 	if err != nil {

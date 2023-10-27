@@ -16,6 +16,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestTopicTestSuite(t *testing.T) {
+	suite.Run(t, new(TopicTestSuite))
+}
+
 type TopicTestSuite struct {
 	suite.Suite
 	ctx    context.Context
@@ -40,7 +44,7 @@ func (s *TopicTestSuite) TestPublish() {
 
 	s.client.On("Publish", s.ctx, input).Return(nil, nil)
 
-	err := s.topic.Publish(s.ctx, "test", map[string]interface{}{})
+	err := s.topic.Publish(s.ctx, "test", map[string]string{})
 	s.NoError(err)
 
 	s.client.AssertExpectations(s.T())
@@ -67,7 +71,7 @@ func (s *TopicTestSuite) TestSubscribeSqs() {
 
 	subInput := &awsSns.SubscribeInput{
 		Attributes: map[string]string{
-			"FilterPolicy": `{"model":"goso","version":1}`,
+			"FilterPolicy": `{"model":"goso","version":"1"}`,
 		},
 		TopicArn: aws.String("topicArn"),
 		Protocol: aws.String("sqs"),
@@ -75,9 +79,9 @@ func (s *TopicTestSuite) TestSubscribeSqs() {
 	}
 	s.client.On("Subscribe", s.ctx, subInput).Return(nil, nil)
 
-	err := s.topic.SubscribeSqs(s.ctx, "queueArn", map[string]interface{}{
+	err := s.topic.SubscribeSqs(s.ctx, "queueArn", map[string]string{
 		"model":   "goso",
-		"version": 1,
+		"version": "1",
 	})
 	s.NoError(err)
 
@@ -100,14 +104,14 @@ func (s *TopicTestSuite) TestSubscribeSqsExists() {
 	getAttributesInput := &awsSns.GetSubscriptionAttributesInput{SubscriptionArn: aws.String("subscriptionArn")}
 	getAttributesOutput := &awsSns.GetSubscriptionAttributesOutput{
 		Attributes: map[string]string{
-			"FilterPolicy": `{"model":"goso","version":1}`,
+			"FilterPolicy": `{"model":"goso","version":"1"}`,
 		},
 	}
 	s.client.On("GetSubscriptionAttributes", s.ctx, getAttributesInput).Return(getAttributesOutput, nil)
 
-	err := s.topic.SubscribeSqs(context.Background(), "queueArn", map[string]interface{}{
+	err := s.topic.SubscribeSqs(context.Background(), "queueArn", map[string]string{
 		"model":   "goso",
-		"version": 1,
+		"version": "1",
 	})
 	s.NoError(err)
 
@@ -149,7 +153,7 @@ func (s *TopicTestSuite) TestSubscribeSqsExistsWithDifferentAttributes() {
 	}
 	s.client.On("Subscribe", s.ctx, subInput).Return(nil, nil)
 
-	err := s.topic.SubscribeSqs(context.Background(), "queueArn", map[string]interface{}{
+	err := s.topic.SubscribeSqs(context.Background(), "queueArn", map[string]string{
 		"model": "goso",
 	})
 	s.NoError(err)
@@ -172,14 +176,10 @@ func (s *TopicTestSuite) TestSubscribeSqsError() {
 	}
 	s.client.On("Subscribe", s.ctx, subInput).Return(nil, subErr)
 
-	err := s.topic.SubscribeSqs(s.ctx, "queueArn", map[string]interface{}{})
+	err := s.topic.SubscribeSqs(s.ctx, "queueArn", map[string]string{})
 	s.EqualError(err, "could not subscribe to topic arn topicArn for sqs queue arn queueArn: subscribe error")
 
 	s.client.AssertExpectations(s.T())
-}
-
-func TestTopicTestSuite(t *testing.T) {
-	suite.Run(t, new(TopicTestSuite))
 }
 
 func (s *TopicTestSuite) TestPublishBatch() {
@@ -196,7 +196,7 @@ func (s *TopicTestSuite) TestPublishBatch() {
 		"10",
 		"11",
 	}
-	attributes := make([]map[string]interface{}, len(messages))
+	attributes := make([]map[string]string, len(messages))
 	entries := make([]types.PublishBatchRequestEntry, 10)
 	for i := 0; i < 10; i++ {
 		entries[i] = types.PublishBatchRequestEntry{

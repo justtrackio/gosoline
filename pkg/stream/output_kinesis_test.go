@@ -50,7 +50,7 @@ func (s *OutputKinesisTestSuite) TestStreamMessageSuccess() {
 	}
 	s.recordWriter.On("PutRecords", s.ctx, expectedRecords).Return(nil)
 
-	streamMessage := stream.NewJsonMessage("body", map[string]interface{}{
+	streamMessage := stream.NewJsonMessage("body", map[string]string{
 		stream.AttributeKinesisPartitionKey: "bfe5dfdc-0af2-44e5-863d-2c4860cc46d8",
 	})
 

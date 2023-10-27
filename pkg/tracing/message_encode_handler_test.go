@@ -17,7 +17,7 @@ func TestMessageWithTraceEncoder_Encode(t *testing.T) {
 	ctx, span := tracer.StartSpan("test-span")
 	defer span.Finish()
 
-	_, attributes, err := encoder.Encode(ctx, nil, map[string]interface{}{})
+	_, attributes, err := encoder.Encode(ctx, nil, map[string]string{})
 
 	assert.NoError(t, err)
 	assert.Contains(t, attributes, "traceId")
@@ -26,7 +26,7 @@ func TestMessageWithTraceEncoder_Encode(t *testing.T) {
 
 func TestMessageWithTraceEncoder_Decode(t *testing.T) {
 	ctx := context.Background()
-	attributes := map[string]interface{}{
+	attributes := map[string]string{
 		"traceId": "Root=1-5e3d557d-d06c248cc50169bd71b44fec;Parent=af297a5da6453826;Sampled=1",
 	}
 
@@ -48,7 +48,7 @@ func TestMessageWithTraceEncoder_Decode(t *testing.T) {
 
 func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
 	ctx := context.Background()
-	attributes := map[string]interface{}{
+	attributes := map[string]string{
 		"traceId": "1-5e3d557d-d06c248cc50169bd71b44fec",
 	}
 

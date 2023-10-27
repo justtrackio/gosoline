@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -73,7 +74,7 @@ type ProducerDaemonSettings struct {
 	// shards than before. Thus, only do this if you can handle it (e.g., because no shard is currently lagging behind).
 	PartitionBucketCount int `cfg:"partition_bucket_count" default:"128" validate:"min=1"`
 	// Additional attributes we append to each message
-	MessageAttributes map[string]interface{} `cfg:"message_attributes"`
+	MessageAttributes map[string]string `cfg:"message_attributes"`
 }
 
 type producerDaemon struct {
@@ -495,9 +496,9 @@ func getProducerDaemonDefaultMetrics(name string) metric.Data {
 	}
 }
 
-func BuildAggregateMessage(aggregateBody string, attributes ...map[string]interface{}) *Message {
-	attributes = append(attributes, map[string]interface{}{
-		AttributeAggregate: true,
+func BuildAggregateMessage(aggregateBody string, attributes ...map[string]string) *Message {
+	attributes = append(attributes, map[string]string{
+		AttributeAggregate: strconv.FormatBool(true),
 	})
 
 	return NewMessage(aggregateBody, attributes...)

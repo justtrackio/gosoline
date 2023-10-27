@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -72,13 +73,13 @@ func (f expectedFlush) encode(compression stream.CompressionType) stream.Aggrega
 		panic(err)
 	}
 
-	attributes := map[string]interface{}{
-		stream.AttributeEncoding:       stream.EncodingJson,
-		stream.AttributeAggregateCount: len(f.messages),
+	attributes := map[string]string{
+		stream.AttributeEncoding:       stream.EncodingJson.String(),
+		stream.AttributeAggregateCount: strconv.Itoa(len(f.messages)),
 	}
 
 	if compression == stream.CompressionGZip {
-		attributes[stream.AttributeCompression] = compression
+		attributes[stream.AttributeCompression] = compression.String()
 
 		var buffer bytes.Buffer
 		writer := gzip.NewWriter(&buffer)
@@ -101,8 +102,8 @@ func (f expectedFlush) encode(compression stream.CompressionType) stream.Aggrega
 	}
 }
 
-func mkTestMessage(t *testing.T, body interface{}, attributes map[string]interface{}) *stream.Message {
-	attributes[stream.AttributeEncoding] = stream.EncodingJson
+func mkTestMessage(t *testing.T, body interface{}, attributes map[string]string) *stream.Message {
+	attributes[stream.AttributeEncoding] = stream.EncodingJson.String()
 
 	bodyBytes, err := json.Marshal(body)
 	assert.NoError(t, err)
@@ -115,17 +116,17 @@ func mkTestMessage(t *testing.T, body interface{}, attributes map[string]interfa
 
 func TestProducerDaemonAggregator_CountRestricted(t *testing.T) {
 	messages := []*stream.Message{
-		mkTestMessage(t, "message 1", map[string]interface{}{}),
-		mkTestMessage(t, "message 2", map[string]interface{}{}),
-		mkTestMessage(t, "message 3", map[string]interface{}{
+		mkTestMessage(t, "message 1", map[string]string{}),
+		mkTestMessage(t, "message 2", map[string]string{}),
+		mkTestMessage(t, "message 3", map[string]string{
 			"attribute": "value",
 		}),
-		mkTestMessage(t, "message 4", map[string]interface{}{}),
-		mkTestMessage(t, "message 5", map[string]interface{}{}),
-		mkTestMessage(t, "message 6", map[string]interface{}{
+		mkTestMessage(t, "message 4", map[string]string{}),
+		mkTestMessage(t, "message 5", map[string]string{}),
+		mkTestMessage(t, "message 6", map[string]string{
 			"attribute": "another value",
 		}),
-		mkTestMessage(t, "message 7", map[string]interface{}{}),
+		mkTestMessage(t, "message 7", map[string]string{}),
 	}
 
 	aggregatorTestCase{
@@ -146,17 +147,17 @@ func TestProducerDaemonAggregator_CountRestricted(t *testing.T) {
 
 func TestProducerDaemonAggregator_SizeRestricted(t *testing.T) {
 	messages := []*stream.Message{
-		mkTestMessage(t, strings.Repeat("1", 50), map[string]interface{}{}),
-		mkTestMessage(t, strings.Repeat("2", 50), map[string]interface{}{}),
-		mkTestMessage(t, strings.Repeat("3", 50), map[string]interface{}{
+		mkTestMessage(t, strings.Repeat("1", 50), map[string]string{}),
+		mkTestMessage(t, strings.Repeat("2", 50), map[string]string{}),
+		mkTestMessage(t, strings.Repeat("3", 50), map[string]string{
 			"attribute": fmt.Sprintf("l%sng value", strings.Repeat("o", 100)),
 		}),
-		mkTestMessage(t, strings.Repeat("4", 50), map[string]interface{}{}),
-		mkTestMessage(t, strings.Repeat("5", 50), map[string]interface{}{}),
-		mkTestMessage(t, strings.Repeat("6", 50), map[string]interface{}{
+		mkTestMessage(t, strings.Repeat("4", 50), map[string]string{}),
+		mkTestMessage(t, strings.Repeat("5", 50), map[string]string{}),
+		mkTestMessage(t, strings.Repeat("6", 50), map[string]string{
 			"attribute": "another value",
 		}),
-		mkTestMessage(t, strings.Repeat("7", 50), map[string]interface{}{}),
+		mkTestMessage(t, strings.Repeat("7", 50), map[string]string{}),
 	}
 
 	aggregatorTestCase{
@@ -183,17 +184,17 @@ func TestProducerDaemonAggregator_SizeRestricted(t *testing.T) {
 
 func TestProducerDaemonAggregator_CompressedSizeRestrictedSmall(t *testing.T) {
 	messages := []*stream.Message{
-		mkTestMessage(t, strings.Repeat("1", 5_000), map[string]interface{}{}),
-		mkTestMessage(t, strings.Repeat("2", 5_000), map[string]interface{}{}),
-		mkTestMessage(t, strings.Repeat("3", 5_000), map[string]interface{}{
+		mkTestMessage(t, strings.Repeat("1", 5_000), map[string]string{}),
+		mkTestMessage(t, strings.Repeat("2", 5_000), map[string]string{}),
+		mkTestMessage(t, strings.Repeat("3", 5_000), map[string]string{
 			"attribute": fmt.Sprintf("l%sng value", strings.Repeat("o", 100)),
 		}),
-		mkTestMessage(t, strings.Repeat("4", 5_000), map[string]interface{}{}),
-		mkTestMessage(t, strings.Repeat("5", 5_000), map[string]interface{}{}),
-		mkTestMessage(t, strings.Repeat("6", 5_000), map[string]interface{}{
+		mkTestMessage(t, strings.Repeat("4", 5_000), map[string]string{}),
+		mkTestMessage(t, strings.Repeat("5", 5_000), map[string]string{}),
+		mkTestMessage(t, strings.Repeat("6", 5_000), map[string]string{
 			"attribute": "another value",
 		}),
-		mkTestMessage(t, strings.Repeat("7", 5_000), map[string]interface{}{}),
+		mkTestMessage(t, strings.Repeat("7", 5_000), map[string]string{}),
 	}
 
 	aggregatorTestCase{
@@ -214,7 +215,7 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedSmall(t *testing.T) {
 
 func TestProducerDaemonAggregator_CompressedSizeRestrictedLarge(t *testing.T) {
 	messages := []*stream.Message{
-		mkTestMessage(t, strings.Repeat("1", 3_000), map[string]interface{}{}),
+		mkTestMessage(t, strings.Repeat("1", 3_000), map[string]string{}),
 	}
 	for i := 1; i < 3_000; i++ {
 		messages = append(messages, messages[0])
@@ -249,7 +250,7 @@ func TestProducerDaemonAggregator_CompressedSizeRestrictedUncompressible(t *test
 			body.WriteByte(byte('A' + r.Int63()%('Z'-'A')))
 		}
 
-		message := mkTestMessage(t, body.String(), map[string]interface{}{})
+		message := mkTestMessage(t, body.String(), map[string]string{})
 		messages = append(messages, message)
 	}
 

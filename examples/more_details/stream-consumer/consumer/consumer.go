@@ -28,15 +28,15 @@ type Consumer struct {
 	publisher mdlsub.Publisher
 }
 
-func (c *Consumer) GetModel(map[string]interface{}) interface{} {
+func (c *Consumer) GetModel(map[string]string) interface{} {
 	return mdl.Box(uint(0))
 }
 
-func (c *Consumer) Consume(ctx context.Context, model interface{}, _ map[string]interface{}) (bool, error) {
+func (c *Consumer) Consume(ctx context.Context, model interface{}, _ map[string]string) (bool, error) {
 	input := model.(*uint)
 	*input++
 
-	err := c.publisher.Publish(ctx, mdlsub.TypeCreate, 0, input, map[string]interface{}{})
+	err := c.publisher.Publish(ctx, mdlsub.TypeCreate, 0, input, map[string]string{})
 	if err != nil {
 		return false, fmt.Errorf("can not publish event: %w", err)
 	}

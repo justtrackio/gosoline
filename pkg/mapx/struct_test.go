@@ -197,22 +197,24 @@ func TestMapStruct_ReadBasic(t *testing.T) {
 	fakeTime := clock.NewFakeClock().Now()
 
 	type sourceStruct struct {
-		B    bool          `cfg:"b"`
-		D    time.Duration `cfg:"d"`
-		I    int           `cfg:"i"`
-		I8   int8          `cfg:"i8"`
-		I16  int16         `cfg:"i16"`
-		I32  int32         `cfg:"i32"`
-		I64  int64         `cfg:"i64"`
-		F32  float32       `cfg:"f32"`
-		F64  float64       `cfg:"f64"`
-		S    string        `cfg:"s"`
-		T    time.Time     `cfg:"t"`
-		UI   uint          `cfg:"ui"`
-		UI8  uint8         `cfg:"ui8"`
-		UI16 uint16        `cfg:"ui16"`
-		UI32 uint32        `cfg:"ui32"`
-		UI64 uint64        `cfg:"ui64"`
+		B    bool                   `cfg:"b"`
+		D    time.Duration          `cfg:"d"`
+		I    int                    `cfg:"i"`
+		I8   int8                   `cfg:"i8"`
+		I16  int16                  `cfg:"i16"`
+		I32  int32                  `cfg:"i32"`
+		I64  int64                  `cfg:"i64"`
+		F32  float32                `cfg:"f32"`
+		F64  float64                `cfg:"f64"`
+		S    string                 `cfg:"s"`
+		T    time.Time              `cfg:"t"`
+		UI   uint                   `cfg:"ui"`
+		UI8  uint8                  `cfg:"ui8"`
+		UI16 uint16                 `cfg:"ui16"`
+		UI32 uint32                 `cfg:"ui32"`
+		UI64 uint64                 `cfg:"ui64"`
+		MSI  map[string]interface{} `cfg:"msi"`
+		MSS  map[string]string      `cfg:"mss"`
 	}
 
 	source := &sourceStruct{
@@ -232,6 +234,14 @@ func TestMapStruct_ReadBasic(t *testing.T) {
 		UI16: 3,
 		UI32: 4,
 		UI64: 5,
+		MSI: map[string]interface{}{
+			"a": "a",
+			"1": 1,
+		},
+		MSS: map[string]string{
+			"b": "b",
+			"c": "c",
+		},
 	}
 
 	expectedValues := map[string]interface{}{
@@ -251,6 +261,14 @@ func TestMapStruct_ReadBasic(t *testing.T) {
 		"ui16": uint16(3),
 		"ui32": uint32(4),
 		"ui64": uint64(5),
+		"msi": map[string]interface{}{
+			"a": "a",
+			"1": 1,
+		},
+		"mss": map[string]interface{}{
+			"b": "b",
+			"c": "c",
+		},
 	}
 
 	ms := setupMapStructIO(t, source)

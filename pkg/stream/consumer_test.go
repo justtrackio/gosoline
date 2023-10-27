@@ -21,6 +21,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestConsumerTestSuite(t *testing.T) {
+	suite.Run(t, new(ConsumerTestSuite))
+}
+
 type ConsumerTestSuite struct {
 	suite.Suite
 
@@ -97,7 +101,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 func (s *ConsumerTestSuite) TestGetModelNil() {
 	s.retryHandler.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
-		s.inputData <- stream.NewJsonMessage(`"foo"`, map[string]interface{}{
+		s.inputData <- stream.NewJsonMessage(`"foo"`, map[string]string{
 			"bla": "blub",
 		})
 		s.kernelCancel()
@@ -107,7 +111,7 @@ func (s *ConsumerTestSuite) TestGetModelNil() {
 		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
 		Return(nil).
 		Once()
-	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).Return(func(_ map[string]interface{}) interface{} {
+	s.callback.On("GetModel", mock.AnythingOfType("map[string]string")).Return(func(_ map[string]string) interface{} {
 		return nil
 	})
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
@@ -137,13 +141,13 @@ func (s *ConsumerTestSuite) TestRun() {
 		Return(nil).
 		Times(3)
 
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
+	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]string{}).
 		Run(func(args mock.Arguments) {
 			consumed = append(consumed, args[1].(*string))
 		}).Return(ack, nil)
 
-	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).
-		Return(func(_ map[string]interface{}) interface{} {
+	s.callback.On("GetModel", mock.AnythingOfType("map[string]string")).
+		Return(func(_ map[string]string) interface{} {
 			return mdl.Box("")
 		})
 
@@ -216,7 +220,7 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 		Once()
 
 	s.callback.
-		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
+		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]string{}).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*string)
 			consumed = append(consumed, ptr)
@@ -228,14 +232,14 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 		}).
 		Return(true, nil)
 	s.callback.
-		On("GetModel", mock.AnythingOfType("map[string]interface {}")).
-		Return(func(_ map[string]interface{}) interface{} {
+		On("GetModel", mock.AnythingOfType("map[string]string")).
+		Return(func(_ map[string]string) interface{} {
 			return mdl.Box("")
 		})
 
 	retryMsg := &stream.Message{
-		Attributes: map[string]interface{}{
-			stream.AttributeRetry:   true,
+		Attributes: map[string]string{
+			stream.AttributeRetry:   "true",
 			stream.AttributeRetryId: "75828fe1-4c7d-4a21-99e5-03d63876ed23",
 		},
 		Body: `"foo"`,
@@ -272,10 +276,10 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 	s.retryHandler.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
-	message1 := stream.NewJsonMessage(`"foo"`, map[string]interface{}{
+	message1 := stream.NewJsonMessage(`"foo"`, map[string]string{
 		"attr1": "a",
 	})
-	message2 := stream.NewJsonMessage(`"bar"`, map[string]interface{}{
+	message2 := stream.NewJsonMessage(`"bar"`, map[string]string{
 		"attr1": "b",
 	})
 
@@ -292,7 +296,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 	consumed := make([]string, 0)
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
-	expectedAttributes1 := map[string]interface{}{"attr1": "a"}
+	expectedAttributes1 := map[string]string{"attr1": "a"}
 
 	ack := true
 	s.input.
@@ -306,11 +310,11 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 		}).
 		Return(ack, nil)
 
-	expectedModelAttributes1 := map[string]interface{}{"attr1": "a", "encoding": "application/json"}
+	expectedModelAttributes1 := map[string]string{"attr1": "a", "encoding": "application/json"}
 	s.callback.On("GetModel", expectedModelAttributes1).
 		Return(mdl.Box(""))
 
-	expectedAttributes2 := map[string]interface{}{"attr1": "b"}
+	expectedAttributes2 := map[string]string{"attr1": "b"}
 	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), expectedAttributes2).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*string)
@@ -318,7 +322,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 		}).
 		Return(true, nil)
 
-	expectedModelAttributes2 := map[string]interface{}{"attr1": "b", "encoding": "application/json"}
+	expectedModelAttributes2 := map[string]string{"attr1": "b", "encoding": "application/json"}
 	s.callback.On("GetModel", expectedModelAttributes2).
 		Return(mdl.Box(""))
 
@@ -338,8 +342,8 @@ func (s *ConsumerTestSuite) TestRunWithRetry() {
 	s.uuidGen.On("NewV4").Return(uuid)
 
 	originalMessage := stream.NewJsonMessage(`"foo"`)
-	retryMessage := stream.NewMessage(`"foo"`, map[string]interface{}{
-		stream.AttributeRetry:   true,
+	retryMessage := stream.NewMessage(`"foo"`, map[string]string{
+		stream.AttributeRetry:   "true",
 		stream.AttributeRetryId: uuid,
 	})
 
@@ -367,14 +371,14 @@ func (s *ConsumerTestSuite) TestRunWithRetry() {
 		Once()
 
 	s.callback.
-		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
+		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]string{}).
 		Run(func(args mock.Arguments) {
 			consumed = append(consumed, *args[1].(*string))
 		}).
 		Return(false, nil).
 		Once()
 	s.callback.
-		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]interface{}{}).
+		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]string{}).
 		Run(func(args mock.Arguments) {
 			consumed = append(consumed, *args[1].(*string))
 			s.kernelCancel()
@@ -383,8 +387,8 @@ func (s *ConsumerTestSuite) TestRunWithRetry() {
 		Once()
 
 	s.callback.
-		On("GetModel", mock.AnythingOfType("map[string]interface {}")).
-		Return(func(_ map[string]interface{}) interface{} {
+		On("GetModel", mock.AnythingOfType("map[string]string")).
+		Return(func(_ map[string]string) interface{} {
 			return mdl.Box("")
 		}).
 		Twice()
@@ -400,8 +404,4 @@ func (s *ConsumerTestSuite) TestRunWithRetry() {
 	s.input.AssertExpectations(s.T())
 	s.retryHandler.AssertExpectations(s.T())
 	s.callback.AssertExpectations(s.T())
-}
-
-func TestConsumerTestSuite(t *testing.T) {
-	suite.Run(t, new(ConsumerTestSuite))
 }

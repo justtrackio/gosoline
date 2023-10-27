@@ -19,11 +19,11 @@ type encodingTestStruct struct {
 
 type brokenEncodeHandler struct{}
 
-func (b brokenEncodeHandler) Encode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (b brokenEncodeHandler) Encode(ctx context.Context, _ interface{}, attributes map[string]string) (context.Context, map[string]string, error) {
 	return ctx, attributes, fmt.Errorf("encode handler encode error")
 }
 
-func (b brokenEncodeHandler) Decode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (b brokenEncodeHandler) Decode(ctx context.Context, _ interface{}, attributes map[string]string) (context.Context, map[string]string, error) {
 	return ctx, attributes, fmt.Errorf("encode handler decode error")
 }
 
@@ -48,10 +48,10 @@ func (s *MessageEncoderSuite) TestEncode() {
 		encoding           stream.EncodingType
 		compression        stream.CompressionType
 		handlers           []stream.EncodeHandler
-		attributes         map[string]interface{}
+		attributes         map[string]string
 		expectedError      string
 		expectedBody       string
-		expectedAttributes map[string]interface{}
+		expectedAttributes map[string]string
 	}{
 		"encoding_missing": {
 			encoding:      "missing",
@@ -65,7 +65,7 @@ func (s *MessageEncoderSuite) TestEncode() {
 		"attribute_duplicate": {
 			encoding:    stream.EncodingJson,
 			compression: stream.CompressionNone,
-			attributes: map[string]interface{}{
+			attributes: map[string]string{
 				stream.AttributeEncoding: "duplicate",
 			},
 			expectedError: "duplicate attribute 'encoding' on message",
@@ -80,30 +80,30 @@ func (s *MessageEncoderSuite) TestEncode() {
 		"json_uncompressed": {
 			encoding:    stream.EncodingJson,
 			compression: stream.CompressionNone,
-			attributes: map[string]interface{}{
-				"attribute1": 5,
+			attributes: map[string]string{
+				"attribute1": "5",
 				"attribute2": "test",
 			},
 			expectedBody: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
-			expectedAttributes: map[string]interface{}{
-				"attribute1":             5,
+			expectedAttributes: map[string]string{
+				"attribute1":             "5",
 				"attribute2":             "test",
-				stream.AttributeEncoding: stream.EncodingJson,
+				stream.AttributeEncoding: stream.EncodingJson.String(),
 			},
 		},
 		"json_compressed": {
 			encoding:    stream.EncodingJson,
 			compression: stream.CompressionGZip,
-			attributes: map[string]interface{}{
-				"attribute1": 5,
+			attributes: map[string]string{
+				"attribute1": "5",
 				"attribute2": "test",
 			},
 			expectedBody: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAgAA//9Q/bHSPAAAAA==`,
-			expectedAttributes: map[string]interface{}{
-				"attribute1":                5,
+			expectedAttributes: map[string]string{
+				"attribute1":                "5",
 				"attribute2":                "test",
-				stream.AttributeEncoding:    stream.EncodingJson,
-				stream.AttributeCompression: stream.CompressionGZip,
+				stream.AttributeEncoding:    stream.EncodingJson.String(),
+				stream.AttributeCompression: stream.CompressionGZip.String(),
 			},
 		},
 	}
@@ -148,26 +148,14 @@ func (s *MessageEncoderSuite) TestDecode() {
 		message            *stream.Message
 		actualOutput       any
 		expectedError      string
-		expectedAttributes map[string]interface{}
+		expectedAttributes map[string]string
 		expectedOutput     any
 	}{
-		"wrong_compression_attribute_type": {
-			message: &stream.Message{
-				Attributes: map[string]interface{}{
-					stream.AttributeCompression: 1337,
-					stream.AttributeEncoding:    stream.EncodingJson,
-				},
-				Body: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`,
-			},
-			actualOutput:   &encodingTestStruct{},
-			expectedError:  "the compression attribute '1337' should be of type string but instead is 'int'",
-			expectedOutput: expectedStruct,
-		},
 		"compression_missing": {
 			message: &stream.Message{
-				Attributes: map[string]interface{}{
+				Attributes: map[string]string{
 					stream.AttributeCompression: "missing",
-					stream.AttributeEncoding:    stream.EncodingJson,
+					stream.AttributeEncoding:    stream.EncodingJson.String(),
 				},
 				Body: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`,
 			},
@@ -175,19 +163,9 @@ func (s *MessageEncoderSuite) TestDecode() {
 			expectedError:  "there is no decompressor for compression 'missing'",
 			expectedOutput: expectedStruct,
 		},
-		"wrong_encoding_attribute_type": {
-			message: &stream.Message{
-				Attributes: map[string]interface{}{
-					stream.AttributeEncoding: 1337,
-				},
-				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
-			},
-			actualOutput:  &encodingTestStruct{},
-			expectedError: "can not decode message body: the encoding attribute '1337' should be of type string but instead is 'int'",
-		},
 		"encoding_missing": {
 			message: &stream.Message{
-				Attributes: map[string]interface{}{
+				Attributes: map[string]string{
 					stream.AttributeEncoding: "missing",
 				},
 				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
@@ -201,8 +179,8 @@ func (s *MessageEncoderSuite) TestDecode() {
 				new(brokenEncodeHandler),
 			},
 			message: &stream.Message{
-				Attributes: map[string]interface{}{
-					stream.AttributeEncoding: stream.EncodingJson,
+				Attributes: map[string]string{
+					stream.AttributeEncoding: stream.EncodingJson.String(),
 				},
 				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
 			},
@@ -212,25 +190,25 @@ func (s *MessageEncoderSuite) TestDecode() {
 		},
 		"json_uncompressed": {
 			message: &stream.Message{
-				Attributes: map[string]interface{}{
-					stream.AttributeEncoding: stream.EncodingJson,
-					"attribute1":             5,
+				Attributes: map[string]string{
+					stream.AttributeEncoding: stream.EncodingJson.String(),
+					"attribute1":             "5",
 					"attribute2":             "test",
 				},
 				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
 			},
 			actualOutput: &encodingTestStruct{},
-			expectedAttributes: map[string]interface{}{
-				"attribute1": 5,
+			expectedAttributes: map[string]string{
+				"attribute1": "5",
 				"attribute2": "test",
 			},
 			expectedOutput: expectedStruct,
 		},
 		"json_compressed": {
 			message: &stream.Message{
-				Attributes: map[string]interface{}{
-					stream.AttributeCompression: stream.CompressionGZip,
-					stream.AttributeEncoding:    stream.EncodingJson,
+				Attributes: map[string]string{
+					stream.AttributeCompression: stream.CompressionGZip.String(),
+					stream.AttributeEncoding:    stream.EncodingJson.String(),
 				},
 				Body: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`,
 			},
@@ -239,16 +217,16 @@ func (s *MessageEncoderSuite) TestDecode() {
 		},
 		"json_into_msi": {
 			message: &stream.Message{
-				Attributes: map[string]interface{}{
-					stream.AttributeEncoding: stream.EncodingJson,
-					"attribute1":             5,
+				Attributes: map[string]string{
+					stream.AttributeEncoding: stream.EncodingJson.String(),
+					"attribute1":             "5",
 					"attribute2":             "test",
 				},
 				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
 			},
 			actualOutput: &map[string]interface{}{},
-			expectedAttributes: map[string]interface{}{
-				"attribute1": 5,
+			expectedAttributes: map[string]string{
+				"attribute1": "5",
 				"attribute2": "test",
 			},
 			expectedOutput: &map[string]interface{}{
