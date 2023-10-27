@@ -20,9 +20,9 @@ const MaxBatchSize = 10
 
 //go:generate mockery --name Topic
 type Topic interface {
-	Publish(ctx context.Context, msg string, attributes ...map[string]interface{}) error
-	PublishBatch(ctx context.Context, messages []string, attributes []map[string]interface{}) error
-	SubscribeSqs(ctx context.Context, queueArn string, attributes map[string]interface{}) error
+	Publish(ctx context.Context, msg string, attributes ...map[string]string) error
+	PublishBatch(ctx context.Context, messages []string, attributes []map[string]string) error
+	SubscribeSqs(ctx context.Context, queueArn string, attributes map[string]string) error
 }
 
 type TopicSettings struct {
@@ -60,7 +60,7 @@ func NewTopicWithInterfaces(logger log.Logger, client Client, topicArn string) *
 	}
 }
 
-func (t *snsTopic) Publish(ctx context.Context, msg string, attributes ...map[string]interface{}) error {
+func (t *snsTopic) Publish(ctx context.Context, msg string, attributes ...map[string]string) error {
 	inputAttributes, err := buildAttributes(attributes)
 	if err != nil {
 		return fmt.Errorf("can not build message attributes: %w", err)
@@ -90,7 +90,7 @@ func (t *snsTopic) Publish(ctx context.Context, msg string, attributes ...map[st
 }
 
 // PublishBatch fails at the first batch that could not be published.
-func (t *snsTopic) PublishBatch(ctx context.Context, messages []string, attributes []map[string]interface{}) error {
+func (t *snsTopic) PublishBatch(ctx context.Context, messages []string, attributes []map[string]string) error {
 	if len(messages) != len(attributes) {
 		return fmt.Errorf("there should be as many attributes as messages")
 	}
@@ -148,11 +148,11 @@ func (t *snsTopic) publishSubSlice(ctx context.Context, entries []types.PublishB
 	return nil
 }
 
-func (t *snsTopic) computeEntries(messages []string, attributes []map[string]interface{}) ([]types.PublishBatchRequestEntry, error) {
+func (t *snsTopic) computeEntries(messages []string, attributes []map[string]string) ([]types.PublishBatchRequestEntry, error) {
 	result := make([]types.PublishBatchRequestEntry, len(messages))
 
 	for i := 0; i < len(messages); i++ {
-		messageAttributes, err := buildAttributes([]map[string]interface{}{attributes[i]})
+		messageAttributes, err := buildAttributes([]map[string]string{attributes[i]})
 		if err != nil {
 			return nil, fmt.Errorf("could not build attributes for message %d: %w", i, err)
 		}
@@ -167,7 +167,7 @@ func (t *snsTopic) computeEntries(messages []string, attributes []map[string]int
 	return result, nil
 }
 
-func (t *snsTopic) SubscribeSqs(ctx context.Context, queueArn string, attributes map[string]interface{}) error {
+func (t *snsTopic) SubscribeSqs(ctx context.Context, queueArn string, attributes map[string]string) error {
 	exists, err := t.subscriptionExists(ctx, queueArn, attributes)
 	if err != nil {
 		return fmt.Errorf("can not check if the subscription exists already: %w", err)
@@ -212,7 +212,7 @@ func (t *snsTopic) SubscribeSqs(ctx context.Context, queueArn string, attributes
 	return nil
 }
 
-func (t *snsTopic) subscriptionExists(ctx context.Context, queueArn string, attributes map[string]interface{}) (bool, error) {
+func (t *snsTopic) subscriptionExists(ctx context.Context, queueArn string, attributes map[string]string) (bool, error) {
 	var ok bool
 	var err error
 	var subscriptions []types.Subscription
@@ -275,7 +275,7 @@ func (t *snsTopic) listSubscriptions(ctx context.Context) ([]types.Subscription,
 	return subscriptions, nil
 }
 
-func (t *snsTopic) subscriptionAttributesMatch(ctx context.Context, subscriptionArn *string, attributes map[string]interface{}) (bool, error) {
+func (t *snsTopic) subscriptionAttributesMatch(ctx context.Context, subscriptionArn *string, attributes map[string]string) (bool, error) {
 	var ok bool
 	var err error
 	var subAttributes map[string]string

@@ -54,7 +54,7 @@ func NewSubscriberCallbackFactory(transformers ModelTransformers, outputs Output
 	}
 }
 
-func (s *SubscriberCallback) GetModel(attributes map[string]interface{}) interface{} {
+func (s *SubscriberCallback) GetModel(attributes map[string]string) interface{} {
 	var err error
 	var spec *ModelSpecification
 	var transformer ModelTransformer
@@ -70,7 +70,7 @@ func (s *SubscriberCallback) GetModel(attributes map[string]interface{}) interfa
 	return transformer.GetInput()
 }
 
-func (s *SubscriberCallback) Consume(ctx context.Context, input interface{}, attributes map[string]interface{}) (bool, error) {
+func (s *SubscriberCallback) Consume(ctx context.Context, input interface{}, attributes map[string]string) (bool, error) {
 	var err error
 	var model Model
 	var spec *ModelSpecification

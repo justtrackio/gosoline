@@ -15,7 +15,7 @@ type ConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger
 //go:generate mockery --name ConsumerCallback
 type ConsumerCallback interface {
 	BaseConsumerCallback
-	Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error)
+	Consume(ctx context.Context, model interface{}, attributes map[string]string) (bool, error)
 }
 
 //go:generate mockery --name RunnableConsumerCallback
@@ -126,7 +126,7 @@ func (c *Consumer) process(ctx context.Context, msg *Message) bool {
 	var err error
 	var ack bool
 	var model interface{}
-	var attributes map[string]interface{}
+	var attributes map[string]string
 
 	if model = c.callback.GetModel(msg.Attributes); model == nil {
 		err := fmt.Errorf("can not get model for message attributes %v", msg.Attributes)

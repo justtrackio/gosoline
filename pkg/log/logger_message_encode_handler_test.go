@@ -10,6 +10,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestLoggerMessageEncodeHandlerTestSuite(t *testing.T) {
+	suite.Run(t, new(LoggerMessageEncodeHandlerTestSuite))
+}
+
 type LoggerMessageEncodeHandlerTestSuite struct {
 	suite.Suite
 
@@ -24,7 +28,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) SetupTest() {
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeEmpty() {
 	ctx := context.Background()
-	attributes := make(map[string]interface{})
+	attributes := make(map[string]string)
 
 	_, attributes, err := s.encoder.Encode(ctx, nil, attributes)
 
@@ -38,49 +42,35 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeSuccess() {
 	ctx := context.Background()
 	ctx = log.AppendLoggerContextField(ctx, map[string]interface{}{
 		"fieldA": "text",
-		"fieldB": 1,
+		"fieldB": "1",
 		"fieldC": struct{}{},
 	})
 
-	attributes := make(map[string]interface{})
+	attributes := make(map[string]string)
 	_, attributes, err := s.encoder.Encode(ctx, nil, attributes)
 
 	s.NoError(err)
 	s.Len(attributes, 1)
 	s.Contains(attributes, log.MessageAttributeLoggerContext)
-	s.JSONEq(`{"fieldA":"text","fieldB":1}`, attributes[log.MessageAttributeLoggerContext].(string))
+	s.JSONEq(`{"fieldA":"text","fieldB":"1"}`, attributes[log.MessageAttributeLoggerContext])
 
 	s.logger.AssertExpectations(s.T())
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeEmpty() {
 	ctx := context.Background()
-	attributes := map[string]interface{}{}
+	attributes := map[string]string{}
 
 	_, _, err := s.encoder.Decode(ctx, nil, attributes)
 
 	s.NoError(err)
-}
-
-func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeTypeError() {
-	s.logger.On("Warn", "encoded logger context fields should be of type string but instead are of type %T", 1)
-
-	ctx := context.Background()
-	attributes := map[string]interface{}{
-		log.MessageAttributeLoggerContext: 1,
-	}
-
-	_, _, err := s.encoder.Decode(ctx, nil, attributes)
-
-	s.NoError(err)
-	s.logger.AssertExpectations(s.T())
 }
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeJsonError() {
 	s.logger.On("Warn", "can not json unmarshal logger context fields during message decoding")
 
 	ctx := context.Background()
-	attributes := map[string]interface{}{
+	attributes := map[string]string{
 		log.MessageAttributeLoggerContext: `broken`,
 	}
 
@@ -92,7 +82,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeJsonError() {
 
 func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeSuccess() {
 	ctx := context.Background()
-	attributes := map[string]interface{}{
+	attributes := map[string]string{
 		log.MessageAttributeLoggerContext: `{"fieldA":"text","fieldB":1}`,
 	}
 
@@ -106,8 +96,4 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeSuccess() {
 	s.Equal("text", fields["fieldA"])
 	s.Contains(fields, "fieldB")
 	s.Equal(1.0, fields["fieldB"])
-}
-
-func TestLoggerMessageEncodeHandlerTestSuite(t *testing.T) {
-	suite.Run(t, new(LoggerMessageEncodeHandlerTestSuite))
 }

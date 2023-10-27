@@ -8,7 +8,6 @@ import (
 	"math/rand"
 
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/spf13/cast"
 )
 
 //go:generate mockery --name PartitionerRand
@@ -29,14 +28,14 @@ type producerDaemonPartitionedAggregatorBucket struct {
 
 func NewProducerDaemonPartitionedAggregator(logger log.Logger, settings ProducerDaemonSettings, compression CompressionType) (ProducerDaemonAggregator, error) {
 	partitionerRand := rand.New(rand.NewSource(int64(rand.Uint64())))
-	createAggregator := func(attributes map[string]interface{}) (ProducerDaemonAggregator, error) {
+	createAggregator := func(attributes map[string]string) (ProducerDaemonAggregator, error) {
 		return NewProducerDaemonAggregator(settings, compression, attributes)
 	}
 
 	return NewProducerDaemonPartitionedAggregatorWithInterfaces(logger, partitionerRand, settings.PartitionBucketCount, createAggregator)
 }
 
-func NewProducerDaemonPartitionedAggregatorWithInterfaces(logger log.Logger, rand PartitionerRand, aggregators int, createAggregator func(attributes map[string]interface{}) (ProducerDaemonAggregator, error)) (ProducerDaemonAggregator, error) {
+func NewProducerDaemonPartitionedAggregatorWithInterfaces(logger log.Logger, rand PartitionerRand, aggregators int, createAggregator func(attributes map[string]string) (ProducerDaemonAggregator, error)) (ProducerDaemonAggregator, error) {
 	buckets := make([]producerDaemonPartitionedAggregatorBucket, aggregators)
 	bucketCount := big.NewInt(int64(len(buckets)))
 
@@ -54,7 +53,7 @@ func NewProducerDaemonPartitionedAggregatorWithInterfaces(logger log.Logger, ran
 		explicitHashKeyInt = explicitHashKeyInt.Mul(explicitHashKeyInt, incrementStep)
 		explicitHashKeyInt = explicitHashKeyInt.Add(explicitHashKeyInt, incrementStepHalf)
 
-		aggregator, err := createAggregator(map[string]interface{}{
+		aggregator, err := createAggregator(map[string]string{
 			AttributeKinesisExplicitHashKey: explicitHashKeyInt.String(),
 		})
 		if err != nil {
@@ -104,24 +103,18 @@ func (a *producerDaemonPartitionedAggregator) Flush() ([]AggregateFlush, error) 
 }
 
 func (a *producerDaemonPartitionedAggregator) getExplicitHashKeyForMessage(msg *Message) (*big.Int, error) {
-	if p, ok := msg.Attributes[AttributeKinesisExplicitHashKey]; ok {
-		if explicitHashKeyString, err := cast.ToStringE(p); err != nil {
-			return nil, fmt.Errorf("the type of the %s attribute with value %v should be castable to string: %w", AttributeKinesisExplicitHashKey, msg.Attributes[AttributeKinesisExplicitHashKey], err)
-		} else if explicitHashKey, ok := big.NewInt(0).SetString(explicitHashKeyString, 10); !ok {
+	if explicitHashKeyString, ok := msg.Attributes[AttributeKinesisExplicitHashKey]; ok {
+		if explicitHashKey, ok := big.NewInt(0).SetString(explicitHashKeyString, 10); !ok {
 			return nil, fmt.Errorf("invalid explicit hash key: %s", explicitHashKeyString)
 		} else {
 			return explicitHashKey, nil
 		}
 	}
 
-	if p, ok := msg.Attributes[AttributeKinesisPartitionKey]; ok {
-		if partitionKey, err := cast.ToStringE(p); err != nil {
-			return nil, fmt.Errorf("the type of the %s attribute with value %v should be castable to string: %w", AttributeKinesisPartitionKey, msg.Attributes[AttributeKinesisPartitionKey], err)
-		} else {
-			partitionKeyHash := md5.Sum([]byte(partitionKey))
+	if partitionKey, ok := msg.Attributes[AttributeKinesisPartitionKey]; ok {
+		partitionKeyHash := md5.Sum([]byte(partitionKey))
 
-			return big.NewInt(0).SetBytes(partitionKeyHash[:]), nil
-		}
+		return big.NewInt(0).SetBytes(partitionKeyHash[:]), nil
 	}
 
 	return nil, nil

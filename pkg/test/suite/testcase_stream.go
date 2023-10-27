@@ -16,13 +16,13 @@ func init() {
 }
 
 type StreamTestCaseInput struct {
-	Attributes map[string]interface{}
+	Attributes map[string]string
 	Body       interface{}
 }
 
 type StreamTestCaseOutput struct {
 	Model              interface{}
-	ExpectedAttributes map[string]interface{}
+	ExpectedAttributes map[string]string
 	ExpectedBody       interface{}
 }
 

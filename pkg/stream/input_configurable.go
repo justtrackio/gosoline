@@ -140,12 +140,12 @@ func newRedisInputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 }
 
 type SnsInputTargetConfiguration struct {
-	Family      string                 `cfg:"family"`
-	Group       string                 `cfg:"group" validate:"required"`
-	Application string                 `cfg:"application" validate:"required"`
-	TopicId     string                 `cfg:"topic_id" validate:"required"`
-	Attributes  map[string]interface{} `cfg:"attributes"`
-	ClientName  string                 `cfg:"client_name" default:"default"`
+	Family      string            `cfg:"family"`
+	Group       string            `cfg:"group" validate:"required"`
+	Application string            `cfg:"application" validate:"required"`
+	TopicId     string            `cfg:"topic_id" validate:"required"`
+	Attributes  map[string]string `cfg:"attributes"`
+	ClientName  string            `cfg:"client_name" default:"default"`
 }
 
 type SnsInputConfiguration struct {

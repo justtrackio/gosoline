@@ -21,7 +21,7 @@ type ProducerDaemonBatcher interface {
 }
 
 type rawJsonMessage struct {
-	attributes map[string]interface{}
+	attributes map[string]string
 	body       []byte
 }
 
@@ -39,7 +39,7 @@ func (r rawJsonMessage) MarshalJSON() ([]byte, error) {
 	return r.body, nil
 }
 
-func (r rawJsonMessage) GetAttributes() map[string]interface{} {
+func (r rawJsonMessage) GetAttributes() map[string]string {
 	return r.attributes
 }
 

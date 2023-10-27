@@ -16,17 +16,17 @@ func Test_snsOutput_WriteOne(t *testing.T) {
 	logger := logMocks.NewLoggerMockedAll()
 
 	messages := []*stream.Message{
-		mkTestMessage(t, 1, make(map[string]interface{})),
-		mkTestMessage(t, 2, make(map[string]interface{})),
-		mkTestMessage(t, 3, make(map[string]interface{})),
-		mkTestMessage(t, 4, make(map[string]interface{})),
-		mkTestMessage(t, 5, make(map[string]interface{})),
-		mkTestMessage(t, 6, make(map[string]interface{})),
-		mkTestMessage(t, 7, make(map[string]interface{})),
-		mkTestMessage(t, 8, make(map[string]interface{})),
-		mkTestMessage(t, 9, make(map[string]interface{})),
-		mkTestMessage(t, 10, make(map[string]interface{})),
-		mkTestMessage(t, 11, make(map[string]interface{})),
+		mkTestMessage(t, 1, make(map[string]string)),
+		mkTestMessage(t, 2, make(map[string]string)),
+		mkTestMessage(t, 3, make(map[string]string)),
+		mkTestMessage(t, 4, make(map[string]string)),
+		mkTestMessage(t, 5, make(map[string]string)),
+		mkTestMessage(t, 6, make(map[string]string)),
+		mkTestMessage(t, 7, make(map[string]string)),
+		mkTestMessage(t, 8, make(map[string]string)),
+		mkTestMessage(t, 9, make(map[string]string)),
+		mkTestMessage(t, 10, make(map[string]string)),
+		mkTestMessage(t, 11, make(map[string]string)),
 	}
 
 	topic := &mocks.Topic{}
@@ -47,21 +47,21 @@ func Test_snsOutput_WriteOne(t *testing.T) {
 func Test_snsOutput_WriteBatch(t *testing.T) {
 	logger := logMocks.NewLoggerMockedAll()
 	topic := &mocks.Topic{}
-	topic.On("PublishBatch", context.Background(), mock.AnythingOfType("[]string"), mock.AnythingOfType("[]map[string]interface {}")).Return(nil).Once()
+	topic.On("PublishBatch", context.Background(), mock.AnythingOfType("[]string"), mock.AnythingOfType("[]map[string]string")).Return(nil).Once()
 
 	o := stream.NewSnsOutputWithInterfaces(logger, topic)
 	batch := []stream.WritableMessage{
-		mkTestMessage(t, 1, make(map[string]interface{})),
-		mkTestMessage(t, 2, make(map[string]interface{})),
-		mkTestMessage(t, 3, make(map[string]interface{})),
-		mkTestMessage(t, 4, make(map[string]interface{})),
-		mkTestMessage(t, 5, make(map[string]interface{})),
-		mkTestMessage(t, 6, make(map[string]interface{})),
-		mkTestMessage(t, 7, make(map[string]interface{})),
-		mkTestMessage(t, 8, make(map[string]interface{})),
-		mkTestMessage(t, 9, make(map[string]interface{})),
-		mkTestMessage(t, 10, make(map[string]interface{})),
-		mkTestMessage(t, 11, make(map[string]interface{})),
+		mkTestMessage(t, 1, make(map[string]string)),
+		mkTestMessage(t, 2, make(map[string]string)),
+		mkTestMessage(t, 3, make(map[string]string)),
+		mkTestMessage(t, 4, make(map[string]string)),
+		mkTestMessage(t, 5, make(map[string]string)),
+		mkTestMessage(t, 6, make(map[string]string)),
+		mkTestMessage(t, 7, make(map[string]string)),
+		mkTestMessage(t, 8, make(map[string]string)),
+		mkTestMessage(t, 9, make(map[string]string)),
+		mkTestMessage(t, 10, make(map[string]string)),
+		mkTestMessage(t, 11, make(map[string]string)),
 	}
 
 	err := o.Write(context.Background(), batch)

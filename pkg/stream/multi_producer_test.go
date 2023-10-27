@@ -98,25 +98,25 @@ func TestMultiProducerTestCallingOfChildren(t *testing.T) {
 
 func newMessage() interface{} {
 	return &stream.Message{
-		Attributes: map[string]interface{}{
-			stream.AttributeEncoding: stream.EncodingJson,
+		Attributes: map[string]string{
+			stream.AttributeEncoding: stream.EncodingJson.String(),
 		},
 		Body: `{"id":3,"name":"foobar"}`,
 	}
 }
 
-func newAttributeSetsParams() []map[string]interface{} {
-	return []map[string]interface{}{
+func newAttributeSetsParams() []map[string]string {
+	return []map[string]string{
 		{
 			"test": "foo",
 		},
 		{
-			"test": 100,
+			"test": "100",
 		},
 	}
 }
 
-func setupMocks(confs []mockConf, method string, msgOrMsgs interface{}, attributeSets []map[string]interface{}) []stream.Producer {
+func setupMocks(confs []mockConf, method string, msgOrMsgs interface{}, attributeSets []map[string]string) []stream.Producer {
 	children := make([]stream.Producer, len(confs))
 	for i, mock := range confs {
 		p := new(mocks.Producer)
@@ -131,7 +131,7 @@ func setupMocks(confs []mockConf, method string, msgOrMsgs interface{}, attribut
 	return children
 }
 
-func newParams(context context.Context, model interface{}, sets []map[string]interface{}) []interface{} {
+func newParams(context context.Context, model interface{}, sets []map[string]string) []interface{} {
 	params := []interface{}{context, model}
 	for _, set := range sets {
 		params = append(params, set)

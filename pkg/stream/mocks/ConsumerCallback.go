@@ -22,21 +22,21 @@ func (_m *ConsumerCallback) EXPECT() *ConsumerCallback_Expecter {
 }
 
 // Consume provides a mock function with given fields: ctx, model, attributes
-func (_m *ConsumerCallback) Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error) {
+func (_m *ConsumerCallback) Consume(ctx context.Context, model interface{}, attributes map[string]string) (bool, error) {
 	ret := _m.Called(ctx, model, attributes)
 
 	var r0 bool
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}, map[string]interface{}) (bool, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, map[string]string) (bool, error)); ok {
 		return rf(ctx, model, attributes)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}, map[string]interface{}) bool); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, map[string]string) bool); ok {
 		r0 = rf(ctx, model, attributes)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, interface{}, map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, interface{}, map[string]string) error); ok {
 		r1 = rf(ctx, model, attributes)
 	} else {
 		r1 = ret.Error(1)
@@ -53,14 +53,14 @@ type ConsumerCallback_Consume_Call struct {
 // Consume is a helper method to define mock.On call
 //   - ctx context.Context
 //   - model interface{}
-//   - attributes map[string]interface{}
+//   - attributes map[string]string
 func (_e *ConsumerCallback_Expecter) Consume(ctx interface{}, model interface{}, attributes interface{}) *ConsumerCallback_Consume_Call {
 	return &ConsumerCallback_Consume_Call{Call: _e.mock.On("Consume", ctx, model, attributes)}
 }
 
-func (_c *ConsumerCallback_Consume_Call) Run(run func(ctx context.Context, model interface{}, attributes map[string]interface{})) *ConsumerCallback_Consume_Call {
+func (_c *ConsumerCallback_Consume_Call) Run(run func(ctx context.Context, model interface{}, attributes map[string]string)) *ConsumerCallback_Consume_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(interface{}), args[2].(map[string]interface{}))
+		run(args[0].(context.Context), args[1].(interface{}), args[2].(map[string]string))
 	})
 	return _c
 }
@@ -70,17 +70,17 @@ func (_c *ConsumerCallback_Consume_Call) Return(_a0 bool, _a1 error) *ConsumerCa
 	return _c
 }
 
-func (_c *ConsumerCallback_Consume_Call) RunAndReturn(run func(context.Context, interface{}, map[string]interface{}) (bool, error)) *ConsumerCallback_Consume_Call {
+func (_c *ConsumerCallback_Consume_Call) RunAndReturn(run func(context.Context, interface{}, map[string]string) (bool, error)) *ConsumerCallback_Consume_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetModel provides a mock function with given fields: attributes
-func (_m *ConsumerCallback) GetModel(attributes map[string]interface{}) interface{} {
+func (_m *ConsumerCallback) GetModel(attributes map[string]string) interface{} {
 	ret := _m.Called(attributes)
 
 	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(map[string]interface{}) interface{}); ok {
+	if rf, ok := ret.Get(0).(func(map[string]string) interface{}); ok {
 		r0 = rf(attributes)
 	} else {
 		if ret.Get(0) != nil {
@@ -97,14 +97,14 @@ type ConsumerCallback_GetModel_Call struct {
 }
 
 // GetModel is a helper method to define mock.On call
-//   - attributes map[string]interface{}
+//   - attributes map[string]string
 func (_e *ConsumerCallback_Expecter) GetModel(attributes interface{}) *ConsumerCallback_GetModel_Call {
 	return &ConsumerCallback_GetModel_Call{Call: _e.mock.On("GetModel", attributes)}
 }
 
-func (_c *ConsumerCallback_GetModel_Call) Run(run func(attributes map[string]interface{})) *ConsumerCallback_GetModel_Call {
+func (_c *ConsumerCallback_GetModel_Call) Run(run func(attributes map[string]string)) *ConsumerCallback_GetModel_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(map[string]interface{}))
+		run(args[0].(map[string]string))
 	})
 	return _c
 }
@@ -114,7 +114,7 @@ func (_c *ConsumerCallback_GetModel_Call) Return(_a0 interface{}) *ConsumerCallb
 	return _c
 }
 
-func (_c *ConsumerCallback_GetModel_Call) RunAndReturn(run func(map[string]interface{}) interface{}) *ConsumerCallback_GetModel_Call {
+func (_c *ConsumerCallback_GetModel_Call) RunAndReturn(run func(map[string]string) interface{}) *ConsumerCallback_GetModel_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -15,18 +15,18 @@ type DataModel struct {
 type Callback struct {
 	aut                suite.AppUnderTest
 	receivedModels     []*DataModel
-	receivedAttributes []map[string]interface{}
+	receivedAttributes []map[string]string
 }
 
 func NewCallback() *Callback {
 	return &Callback{}
 }
 
-func (c *Callback) GetModel(attributes map[string]interface{}) interface{} {
+func (c *Callback) GetModel(attributes map[string]string) interface{} {
 	return &DataModel{}
 }
 
-func (c *Callback) Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error) {
+func (c *Callback) Consume(ctx context.Context, model interface{}, attributes map[string]string) (bool, error) {
 	c.receivedModels = append(c.receivedModels, model.(*DataModel))
 	c.receivedAttributes = append(c.receivedAttributes, attributes)
 

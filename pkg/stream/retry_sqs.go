@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
@@ -93,8 +94,8 @@ func (r *RetryHandlerSqs) Put(ctx context.Context, msg *Message) error {
 		return nil
 	}
 
-	msg.Attributes[attributeRetrySqs] = true
-	msg.Attributes[sqs.AttributeSqsDelaySeconds] = r.settings.After.Seconds()
+	msg.Attributes[attributeRetrySqs] = strconv.FormatBool(true)
+	msg.Attributes[sqs.AttributeSqsDelaySeconds] = strconv.Itoa(int(r.settings.After.Seconds()))
 
 	if err := r.output.WriteOne(ctx, msg); err != nil {
 		return fmt.Errorf("can not write the message to the output: %w", err)

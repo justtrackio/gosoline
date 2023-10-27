@@ -38,12 +38,12 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) SetupTest() {
 		"212676479325586539664609129644855132157", // floor((2 ^ 128 - 1) / 4) * 2 + floor((2 ^ 128 - 1) / 4 / 2)
 		"297747071055821155530452781502797185020", // floor((2 ^ 128 - 1) / 4) * 3 + floor((2 ^ 128 - 1) / 4 / 2)
 	}
-	createAggregator := func(attributes map[string]interface{}) (stream.ProducerDaemonAggregator, error) {
+	createAggregator := func(attributes map[string]string) (stream.ProducerDaemonAggregator, error) {
 		defer func() {
 			next++
 		}()
 
-		s.Equal(map[string]interface{}{
+		s.Equal(map[string]string{
 			stream.AttributeKinesisExplicitHashKey: expectedExplicitHashKeys[next],
 		}, attributes)
 
@@ -73,13 +73,13 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregatePlainMessage
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregatePartitionedMessage() {
 	s.aggregators[2].On("Write", s.ctx, &stream.Message{
-		Attributes: map[string]interface{}{
+		Attributes: map[string]string{
 			stream.AttributeKinesisPartitionKey: "my partition key",
 		},
 	}).Return(nil, nil).Once()
 
 	flush, err := s.aggregator.Write(s.ctx, &stream.Message{
-		Attributes: map[string]interface{}{
+		Attributes: map[string]string{
 			stream.AttributeKinesisPartitionKey: "my partition key", // md5sum ae926123d38f2789b5c350160d6e6c56 -> 6 % 4 = 2
 		},
 	})
@@ -89,13 +89,13 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregatePartitionedM
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregateExplicitHashedMessage() {
 	s.aggregators[2].On("Write", s.ctx, &stream.Message{
-		Attributes: map[string]interface{}{
+		Attributes: map[string]string{
 			stream.AttributeKinesisExplicitHashKey: "232045716840113089107413691294511164502",
 		},
 	}).Return(nil, nil).Once()
 
 	flush, err := s.aggregator.Write(s.ctx, &stream.Message{
-		Attributes: map[string]interface{}{
+		Attributes: map[string]string{
 			stream.AttributeKinesisExplicitHashKey: "232045716840113089107413691294511164502", // "my partition key" md5 hashed and converted to base 10
 		},
 	})
@@ -105,14 +105,14 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregateExplicitHash
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestAggregateMixedMessages() {
 	s.aggregators[2].On("Write", s.ctx, &stream.Message{
-		Attributes: map[string]interface{}{
+		Attributes: map[string]string{
 			stream.AttributeKinesisPartitionKey:    "not my partition key",
 			stream.AttributeKinesisExplicitHashKey: "232045716840113089107413691294511164502",
 		},
 	}).Return(nil, nil).Once()
 
 	flush, err := s.aggregator.Write(s.ctx, &stream.Message{
-		Attributes: map[string]interface{}{
+		Attributes: map[string]string{
 			stream.AttributeKinesisPartitionKey:    "not my partition key",                    // ignored
 			stream.AttributeKinesisExplicitHashKey: "232045716840113089107413691294511164502", // "my partition key" md5 hashed and converted to base 10
 		},
@@ -125,37 +125,19 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) TestGettingExplicitHashKe
 	s.logger.On("Error", "failed to determine partition or explicit hash key, will choose one at random: %w", fmt.Errorf("invalid explicit hash key: not a number")).Once()
 	s.rand.On("Intn", 4).Return(3).Once()
 	s.aggregators[3].On("Write", s.ctx, &stream.Message{
-		Attributes: map[string]interface{}{
+		Attributes: map[string]string{
 			stream.AttributeKinesisExplicitHashKey: "not a number",
 		},
 	}).Return(nil, nil).Once()
 
 	flush, err := s.aggregator.Write(s.ctx, &stream.Message{
-		Attributes: map[string]interface{}{
+		Attributes: map[string]string{
 			stream.AttributeKinesisExplicitHashKey: "not a number",
 		},
 	})
 	s.NoError(err)
 	s.Nil(flush)
 
-}
-
-func (s *producerDaemonPartitionedAggregatorTestSuite) TestGettingPartitionKeyFails() {
-	s.logger.On("Error", "failed to determine partition or explicit hash key, will choose one at random: %w", fmt.Errorf("the type of the gosoline.kinesis.partitionKey attribute with value {} should be castable to string: %w", fmt.Errorf("unable to cast struct {}{} of type struct {} to string"))).Once()
-	s.rand.On("Intn", 4).Return(1).Once()
-	s.aggregators[1].On("Write", s.ctx, &stream.Message{
-		Attributes: map[string]interface{}{
-			stream.AttributeKinesisPartitionKey: struct{}{},
-		},
-	}).Return(nil, nil).Once()
-
-	flush, err := s.aggregator.Write(s.ctx, &stream.Message{
-		Attributes: map[string]interface{}{
-			stream.AttributeKinesisPartitionKey: struct{}{},
-		},
-	})
-	s.NoError(err)
-	s.Nil(flush)
 }
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TestFlushSuccess() {

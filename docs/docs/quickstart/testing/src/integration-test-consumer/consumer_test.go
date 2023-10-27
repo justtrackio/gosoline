@@ -42,7 +42,7 @@ func (s *ConsumerTestSuite) TestSuccess() *suite.StreamTestCase {
 						Text:   "do it",
 						Status: "pending",
 					},
-					ExpectedAttributes: map[string]interface{}{},
+					ExpectedAttributes: map[string]string{},
 				},
 			},
 		},

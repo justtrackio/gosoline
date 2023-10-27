@@ -72,7 +72,7 @@ type ModelSpecification struct {
 	ModelId  string
 }
 
-func getModelSpecification(attributes map[string]interface{}) (*ModelSpecification, error) {
+func getModelSpecification(attributes map[string]string) (*ModelSpecification, error) {
 	var ok bool
 	var err error
 	var spec ModelSpecification
@@ -81,9 +81,7 @@ func getModelSpecification(attributes map[string]interface{}) (*ModelSpecificati
 		return nil, fmt.Errorf("the message has no attribute named 'type'")
 	}
 
-	if spec.CrudType, ok = attributes["type"].(string); !ok {
-		return nil, fmt.Errorf("type is not a string: %v", attributes["type"])
-	}
+	spec.CrudType = attributes["type"]
 
 	if _, ok := attributes["version"]; !ok {
 		return nil, fmt.Errorf("the message has no attribute named 'version'")
@@ -97,9 +95,7 @@ func getModelSpecification(attributes map[string]interface{}) (*ModelSpecificati
 		return nil, fmt.Errorf("the message has no attribute named 'modelId'")
 	}
 
-	if spec.ModelId, ok = attributes["modelId"].(string); !ok {
-		return nil, fmt.Errorf("modelId is not a string: %v", attributes["modelId"])
-	}
+	spec.ModelId = attributes["modelId"]
 
 	return &spec, nil
 }

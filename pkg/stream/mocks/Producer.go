@@ -22,7 +22,7 @@ func (_m *Producer) EXPECT() *Producer_Expecter {
 }
 
 // Write provides a mock function with given fields: ctx, models, attributeSets
-func (_m *Producer) Write(ctx context.Context, models interface{}, attributeSets ...map[string]interface{}) error {
+func (_m *Producer) Write(ctx context.Context, models interface{}, attributeSets ...map[string]string) error {
 	_va := make([]interface{}, len(attributeSets))
 	for _i := range attributeSets {
 		_va[_i] = attributeSets[_i]
@@ -33,7 +33,7 @@ func (_m *Producer) Write(ctx context.Context, models interface{}, attributeSets
 	ret := _m.Called(_ca...)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}, ...map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, ...map[string]string) error); ok {
 		r0 = rf(ctx, models, attributeSets...)
 	} else {
 		r0 = ret.Error(0)
@@ -50,18 +50,18 @@ type Producer_Write_Call struct {
 // Write is a helper method to define mock.On call
 //   - ctx context.Context
 //   - models interface{}
-//   - attributeSets ...map[string]interface{}
+//   - attributeSets ...map[string]string
 func (_e *Producer_Expecter) Write(ctx interface{}, models interface{}, attributeSets ...interface{}) *Producer_Write_Call {
 	return &Producer_Write_Call{Call: _e.mock.On("Write",
 		append([]interface{}{ctx, models}, attributeSets...)...)}
 }
 
-func (_c *Producer_Write_Call) Run(run func(ctx context.Context, models interface{}, attributeSets ...map[string]interface{})) *Producer_Write_Call {
+func (_c *Producer_Write_Call) Run(run func(ctx context.Context, models interface{}, attributeSets ...map[string]string)) *Producer_Write_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]map[string]interface{}, len(args)-2)
+		variadicArgs := make([]map[string]string, len(args)-2)
 		for i, a := range args[2:] {
 			if a != nil {
-				variadicArgs[i] = a.(map[string]interface{})
+				variadicArgs[i] = a.(map[string]string)
 			}
 		}
 		run(args[0].(context.Context), args[1].(interface{}), variadicArgs...)
@@ -74,13 +74,13 @@ func (_c *Producer_Write_Call) Return(_a0 error) *Producer_Write_Call {
 	return _c
 }
 
-func (_c *Producer_Write_Call) RunAndReturn(run func(context.Context, interface{}, ...map[string]interface{}) error) *Producer_Write_Call {
+func (_c *Producer_Write_Call) RunAndReturn(run func(context.Context, interface{}, ...map[string]string) error) *Producer_Write_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // WriteOne provides a mock function with given fields: ctx, model, attributeSets
-func (_m *Producer) WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]interface{}) error {
+func (_m *Producer) WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]string) error {
 	_va := make([]interface{}, len(attributeSets))
 	for _i := range attributeSets {
 		_va[_i] = attributeSets[_i]
@@ -91,7 +91,7 @@ func (_m *Producer) WriteOne(ctx context.Context, model interface{}, attributeSe
 	ret := _m.Called(_ca...)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}, ...map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, ...map[string]string) error); ok {
 		r0 = rf(ctx, model, attributeSets...)
 	} else {
 		r0 = ret.Error(0)
@@ -108,18 +108,18 @@ type Producer_WriteOne_Call struct {
 // WriteOne is a helper method to define mock.On call
 //   - ctx context.Context
 //   - model interface{}
-//   - attributeSets ...map[string]interface{}
+//   - attributeSets ...map[string]string
 func (_e *Producer_Expecter) WriteOne(ctx interface{}, model interface{}, attributeSets ...interface{}) *Producer_WriteOne_Call {
 	return &Producer_WriteOne_Call{Call: _e.mock.On("WriteOne",
 		append([]interface{}{ctx, model}, attributeSets...)...)}
 }
 
-func (_c *Producer_WriteOne_Call) Run(run func(ctx context.Context, model interface{}, attributeSets ...map[string]interface{})) *Producer_WriteOne_Call {
+func (_c *Producer_WriteOne_Call) Run(run func(ctx context.Context, model interface{}, attributeSets ...map[string]string)) *Producer_WriteOne_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]map[string]interface{}, len(args)-2)
+		variadicArgs := make([]map[string]string, len(args)-2)
 		for i, a := range args[2:] {
 			if a != nil {
-				variadicArgs[i] = a.(map[string]interface{})
+				variadicArgs[i] = a.(map[string]string)
 			}
 		}
 		run(args[0].(context.Context), args[1].(interface{}), variadicArgs...)
@@ -132,7 +132,7 @@ func (_c *Producer_WriteOne_Call) Return(_a0 error) *Producer_WriteOne_Call {
 	return _c
 }
 
-func (_c *Producer_WriteOne_Call) RunAndReturn(run func(context.Context, interface{}, ...map[string]interface{}) error) *Producer_WriteOne_Call {
+func (_c *Producer_WriteOne_Call) RunAndReturn(run func(context.Context, interface{}, ...map[string]string) error) *Producer_WriteOne_Call {
 	_c.Call.Return(run)
 	return _c
 }

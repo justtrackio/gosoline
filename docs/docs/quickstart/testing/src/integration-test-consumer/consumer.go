@@ -34,11 +34,11 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (str
 	return consumer, nil
 }
 
-func (c Consumer) GetModel(attributes map[string]interface{}) interface{} {
+func (c Consumer) GetModel(attributes map[string]string) interface{} {
 	return &Todo{}
 }
 
-func (c Consumer) Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error) {
+func (c Consumer) Consume(ctx context.Context, model interface{}, attributes map[string]string) (bool, error) {
 	todo := model.(*Todo)
 	todo.Status = "pending"
 

@@ -3,6 +3,7 @@ package mdlsub
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -29,8 +30,8 @@ type PublisherSettings struct {
 
 //go:generate mockery --name Publisher
 type Publisher interface {
-	PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]interface{}) error
-	Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]interface{}) error
+	PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]string) error
+	Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]string) error
 }
 
 type publisher struct {
@@ -64,8 +65,8 @@ func NewPublisherWithInterfaces(logger log.Logger, producer stream.Producer, set
 	}
 }
 
-func (p *publisher) PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]interface{}) error {
-	attributes := []map[string]interface{}{
+func (p *publisher) PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]string) error {
+	attributes := []map[string]string{
 		CreateMessageAttributes(p.settings.ModelId, typ, version),
 	}
 	attributes = append(attributes, customAttributes...)
@@ -77,8 +78,8 @@ func (p *publisher) PublishBatch(ctx context.Context, typ string, version int, v
 	return nil
 }
 
-func (p *publisher) Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]interface{}) error {
-	attributes := []map[string]interface{}{
+func (p *publisher) Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]string) error {
+	attributes := []map[string]string{
 		CreateMessageAttributes(p.settings.ModelId, typ, version),
 	}
 	attributes = append(attributes, customAttributes...)
@@ -90,10 +91,10 @@ func (p *publisher) Publish(ctx context.Context, typ string, version int, value 
 	return nil
 }
 
-func CreateMessageAttributes(modelId mdl.ModelId, typ string, version int) map[string]interface{} {
-	return map[string]interface{}{
+func CreateMessageAttributes(modelId mdl.ModelId, typ string, version int) map[string]string {
+	return map[string]string{
 		AttributeType:    typ,
-		AttributeVersion: version,
+		AttributeVersion: strconv.Itoa(version),
 		AttributeModelId: modelId.String(),
 	}
 }

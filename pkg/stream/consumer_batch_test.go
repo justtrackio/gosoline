@@ -20,6 +20,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestBatchConsumerTestSuite(t *testing.T) {
+	suite.Run(t, new(BatchConsumerTestSuite))
+}
+
 type BatchConsumerTestSuite struct {
 	suite.Suite
 
@@ -34,10 +38,6 @@ type BatchConsumerTestSuite struct {
 
 	callback      *mocks.RunnableBatchConsumerCallback
 	batchConsumer *stream.BatchConsumer
-}
-
-func TestBatchConsumerTestSuite(t *testing.T) {
-	suite.Run(t, new(BatchConsumerTestSuite))
 }
 
 func (s *BatchConsumerTestSuite) SetupTest() {
@@ -101,11 +101,11 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 		Return(nil).
 		Once()
 
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]interface {}")).
+	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
 		Return(acks, nil)
 
-	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).
-		Return(func(_ map[string]interface{}) interface{} {
+	s.callback.On("GetModel", mock.AnythingOfType("map[string]string")).
+		Return(func(_ map[string]string) interface{} {
 			return mdl.Box("")
 		})
 
@@ -147,11 +147,11 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 		}).
 		Return(nil)
 
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]interface {}")).
+	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
 		Return(acks, nil)
 
-	s.callback.On("GetModel", mock.AnythingOfType("map[string]interface {}")).
-		Return(func(_ map[string]interface{}) interface{} {
+	s.callback.On("GetModel", mock.AnythingOfType("map[string]string")).
+		Return(func(_ map[string]string) interface{} {
 			return mdl.Box("")
 		})
 
@@ -211,10 +211,10 @@ func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
 }
 
 func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
-	message1 := stream.NewJsonMessage(`"foo"`, map[string]interface{}{
+	message1 := stream.NewJsonMessage(`"foo"`, map[string]string{
 		"attr1": "a",
 	})
-	message2 := stream.NewJsonMessage(`"bar"`, map[string]interface{}{
+	message2 := stream.NewJsonMessage(`"bar"`, map[string]string{
 		"attr1": "b",
 	})
 
@@ -248,11 +248,11 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
 		Return(nil)
 
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]interface {}")).
+	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
 		Return(acks, nil)
 
 	s.callback.
-		On("GetModel", mock.AnythingOfType("map[string]interface {}")).
+		On("GetModel", mock.AnythingOfType("map[string]string")).
 		Return(mdl.Box("")).
 		Twice()
 

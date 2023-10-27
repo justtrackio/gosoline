@@ -145,7 +145,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 			}
 
 			if msg.Attributes == nil {
-				msg.Attributes = make(map[string]interface{})
+				msg.Attributes = make(map[string]string)
 			}
 
 			msg.Attributes[AttributeSqsMessageId] = *sqsMessage.MessageId
@@ -197,17 +197,9 @@ func (i *sqsInput) AckBatch(ctx context.Context, msgs []*Message, acks []bool) e
 			continue
 		}
 
-		receiptHandleInterface, ok := msg.Attributes[AttributeSqsReceiptHandle]
+		receiptHandleString, ok := msg.Attributes[AttributeSqsReceiptHandle]
 		if !ok {
 			multiError = multierror.Append(multiError, fmt.Errorf("the message has no attribute %s", AttributeSqsReceiptHandle))
-
-			continue
-		}
-
-		receiptHandleString, ok := receiptHandleInterface.(string)
-
-		if !ok {
-			multiError = multierror.Append(multiError, fmt.Errorf("the attribute %s of the message should be string but instead is %T", AttributeSqsReceiptHandle, receiptHandleInterface))
 
 			continue
 		}

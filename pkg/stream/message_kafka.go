@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	AttributeKafkaOriginalMessage = "KafkaOriginal"
-	AttributeKafkaKey             = "KafkaKey"
+	AttributeKafkaKey            = "KafkaKey"
+	MetaDataKafkaOriginalMessage = "KafkaOriginal"
 )
 
 type KafkaSourceMessage struct {
@@ -21,7 +21,7 @@ func (k KafkaSourceMessage) MarshalJSON() ([]byte, error) {
 		"Time":      k.Time,
 		"Partition": k.Partition,
 		"Offset":    k.Offset,
-		"Headers":   KafkaToGosoAttributes(k.Headers, map[string]interface{}{}),
+		"Headers":   KafkaHeadersToGosoAttributes(k.Headers),
 		"Key":       string(k.Key),
 	})
 }
@@ -30,7 +30,9 @@ func NewKafkaMessageAttrs(key string) map[string]interface{} {
 	return map[string]interface{}{AttributeKafkaKey: key}
 }
 
-func KafkaToGosoAttributes(headers []kafka.Header, attributes map[string]interface{}) map[string]interface{} {
+func KafkaHeadersToGosoAttributes(headers []kafka.Header) map[string]string {
+	attributes := make(map[string]string)
+
 	for _, v := range headers {
 		attributes[v.Key] = string(v.Value)
 	}
@@ -39,32 +41,33 @@ func KafkaToGosoAttributes(headers []kafka.Header, attributes map[string]interfa
 }
 
 func KafkaToGosoMessage(k kafka.Message) *Message {
-	attributes := KafkaToGosoAttributes(k.Headers, map[string]interface{}{
-		AttributeKafkaOriginalMessage: KafkaSourceMessage{Message: k},
-	})
+	attributes := KafkaHeadersToGosoAttributes(k.Headers)
+	metaData := map[string]interface{}{
+		MetaDataKafkaOriginalMessage: KafkaSourceMessage{Message: k},
+	}
 
-	return &Message{Body: string(k.Value), Attributes: attributes}
+	return &Message{Body: string(k.Value), Attributes: attributes, metaData: metaData}
 }
 
 func GosoToKafkaMessages(msgs ...*Message) []kafka.Message {
 	ks := []kafka.Message{}
 
 	for _, m := range msgs {
-		ks = append(ks, m.Attributes[AttributeKafkaOriginalMessage].(KafkaSourceMessage).Message)
+		ks = append(ks, GosoToKafkaMessage(m))
 	}
 
 	return ks
 }
 
 func GosoToKafkaMessage(msg *Message) kafka.Message {
-	return GosoToKafkaMessages(msg)[0]
+	return msg.metaData[MetaDataKafkaOriginalMessage].(KafkaSourceMessage).Message
 }
 
 func NewKafkaMessage(writable WritableMessage) kafka.Message {
 	gMessage := writable.(*Message)
 	kMessage := kafka.Message{Value: []byte(gMessage.Body)}
 
-	key, ok := gMessage.GetAttributes()[AttributeKafkaKey].(string)
+	key, ok := gMessage.GetAttributes()[AttributeKafkaKey]
 	if ok {
 		kMessage.Key = []byte(key)
 	}
@@ -73,14 +76,10 @@ func NewKafkaMessage(writable WritableMessage) kafka.Message {
 		if k == AttributeKafkaKey {
 			continue
 		}
-		vStr, ok := v.(string)
-		if !ok {
-			continue
-		}
 
 		kMessage.Headers = append(
 			kMessage.Headers,
-			protocol.Header{Key: k, Value: []byte(vStr)},
+			protocol.Header{Key: k, Value: []byte(v)},
 		)
 	}
 

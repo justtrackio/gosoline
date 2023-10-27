@@ -9,9 +9,9 @@ import (
 )
 
 func TestBuildChunks_Single_1(t *testing.T) {
-	msg := stream.NewMessage("bla", map[string]interface{}{
+	msg := stream.NewMessage("bla", map[string]string{
 		"foo": "bar",
-		"num": 1,
+		"num": "1",
 	})
 
 	bytes, _ := json.Marshal(msg)
@@ -22,7 +22,7 @@ func TestBuildChunks_Single_1(t *testing.T) {
 	assert.Nil(t, err, "there should be no error")
 	assert.Len(t, chunks, 1, "there should be 1 chunk")
 	assert.Len(t, chunks[0], 1, "there the chunk should have a length of 1")
-	assert.Equal(t, []byte(`{"attributes":{"foo":"bar","num":1},"body":"bla"}`), bytes, "the bytes should match")
+	assert.Equal(t, []byte(`{"attributes":{"foo":"bar","num":"1"},"body":"bla"}`), bytes, "the bytes should match")
 }
 
 func TestBuildChunks_Single_2(t *testing.T) {

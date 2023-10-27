@@ -22,7 +22,7 @@ func (_m *Publisher) EXPECT() *Publisher_Expecter {
 }
 
 // Publish provides a mock function with given fields: ctx, typ, version, value, customAttributes
-func (_m *Publisher) Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]interface{}) error {
+func (_m *Publisher) Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]string) error {
 	_va := make([]interface{}, len(customAttributes))
 	for _i := range customAttributes {
 		_va[_i] = customAttributes[_i]
@@ -33,7 +33,7 @@ func (_m *Publisher) Publish(ctx context.Context, typ string, version int, value
 	ret := _m.Called(_ca...)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, interface{}, ...map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, interface{}, ...map[string]string) error); ok {
 		r0 = rf(ctx, typ, version, value, customAttributes...)
 	} else {
 		r0 = ret.Error(0)
@@ -52,18 +52,18 @@ type Publisher_Publish_Call struct {
 //   - typ string
 //   - version int
 //   - value interface{}
-//   - customAttributes ...map[string]interface{}
+//   - customAttributes ...map[string]string
 func (_e *Publisher_Expecter) Publish(ctx interface{}, typ interface{}, version interface{}, value interface{}, customAttributes ...interface{}) *Publisher_Publish_Call {
 	return &Publisher_Publish_Call{Call: _e.mock.On("Publish",
 		append([]interface{}{ctx, typ, version, value}, customAttributes...)...)}
 }
 
-func (_c *Publisher_Publish_Call) Run(run func(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]interface{})) *Publisher_Publish_Call {
+func (_c *Publisher_Publish_Call) Run(run func(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]string)) *Publisher_Publish_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]map[string]interface{}, len(args)-4)
+		variadicArgs := make([]map[string]string, len(args)-4)
 		for i, a := range args[4:] {
 			if a != nil {
-				variadicArgs[i] = a.(map[string]interface{})
+				variadicArgs[i] = a.(map[string]string)
 			}
 		}
 		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(interface{}), variadicArgs...)
@@ -76,13 +76,13 @@ func (_c *Publisher_Publish_Call) Return(_a0 error) *Publisher_Publish_Call {
 	return _c
 }
 
-func (_c *Publisher_Publish_Call) RunAndReturn(run func(context.Context, string, int, interface{}, ...map[string]interface{}) error) *Publisher_Publish_Call {
+func (_c *Publisher_Publish_Call) RunAndReturn(run func(context.Context, string, int, interface{}, ...map[string]string) error) *Publisher_Publish_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // PublishBatch provides a mock function with given fields: ctx, typ, version, values, customAttributes
-func (_m *Publisher) PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]interface{}) error {
+func (_m *Publisher) PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]string) error {
 	_va := make([]interface{}, len(customAttributes))
 	for _i := range customAttributes {
 		_va[_i] = customAttributes[_i]
@@ -93,7 +93,7 @@ func (_m *Publisher) PublishBatch(ctx context.Context, typ string, version int, 
 	ret := _m.Called(_ca...)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, []interface{}, ...map[string]interface{}) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, int, []interface{}, ...map[string]string) error); ok {
 		r0 = rf(ctx, typ, version, values, customAttributes...)
 	} else {
 		r0 = ret.Error(0)
@@ -112,18 +112,18 @@ type Publisher_PublishBatch_Call struct {
 //   - typ string
 //   - version int
 //   - values []interface{}
-//   - customAttributes ...map[string]interface{}
+//   - customAttributes ...map[string]string
 func (_e *Publisher_Expecter) PublishBatch(ctx interface{}, typ interface{}, version interface{}, values interface{}, customAttributes ...interface{}) *Publisher_PublishBatch_Call {
 	return &Publisher_PublishBatch_Call{Call: _e.mock.On("PublishBatch",
 		append([]interface{}{ctx, typ, version, values}, customAttributes...)...)}
 }
 
-func (_c *Publisher_PublishBatch_Call) Run(run func(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]interface{})) *Publisher_PublishBatch_Call {
+func (_c *Publisher_PublishBatch_Call) Run(run func(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]string)) *Publisher_PublishBatch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]map[string]interface{}, len(args)-4)
+		variadicArgs := make([]map[string]string, len(args)-4)
 		for i, a := range args[4:] {
 			if a != nil {
-				variadicArgs[i] = a.(map[string]interface{})
+				variadicArgs[i] = a.(map[string]string)
 			}
 		}
 		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].([]interface{}), variadicArgs...)
@@ -136,7 +136,7 @@ func (_c *Publisher_PublishBatch_Call) Return(_a0 error) *Publisher_PublishBatch
 	return _c
 }
 
-func (_c *Publisher_PublishBatch_Call) RunAndReturn(run func(context.Context, string, int, []interface{}, ...map[string]interface{}) error) *Publisher_PublishBatch_Call {
+func (_c *Publisher_PublishBatch_Call) RunAndReturn(run func(context.Context, string, int, []interface{}, ...map[string]string) error) *Publisher_PublishBatch_Call {
 	_c.Call.Return(run)
 	return _c
 }

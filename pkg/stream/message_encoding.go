@@ -8,8 +8,8 @@ import (
 )
 
 type EncodeHandler interface {
-	Encode(ctx context.Context, data interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error)
-	Decode(ctx context.Context, data interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error)
+	Encode(ctx context.Context, data interface{}, attributes map[string]string) (context.Context, map[string]string, error)
+	Decode(ctx context.Context, data interface{}, attributes map[string]string) (context.Context, map[string]string, error)
 }
 
 var defaultEncodeHandlers = make([]EncodeHandler, 0)
@@ -26,8 +26,8 @@ type MessageEncoderSettings struct {
 
 //go:generate mockery --name MessageEncoder
 type MessageEncoder interface {
-	Encode(ctx context.Context, data interface{}, attributeSets ...map[string]interface{}) (*Message, error)
-	Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]interface{}, error)
+	Encode(ctx context.Context, data interface{}, attributeSets ...map[string]string) (*Message, error)
+	Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]string, error)
 }
 
 type messageEncoder struct {
@@ -56,10 +56,10 @@ func NewMessageEncoder(config *MessageEncoderSettings) *messageEncoder {
 	}
 }
 
-func (e *messageEncoder) Encode(ctx context.Context, data interface{}, attributeSets ...map[string]interface{}) (*Message, error) {
+func (e *messageEncoder) Encode(ctx context.Context, data interface{}, attributeSets ...map[string]string) (*Message, error) {
 	var err error
 	var body []byte
-	attributes := make(map[string]interface{})
+	attributes := make(map[string]string)
 
 	if body, err = e.encodeBody(attributes, data); err != nil {
 		return nil, fmt.Errorf("could not encode message body: %w", err)
@@ -87,18 +87,18 @@ func (e *messageEncoder) Encode(ctx context.Context, data interface{}, attribute
 	return msg, nil
 }
 
-func (e *messageEncoder) encodeBody(attributes map[string]interface{}, data interface{}) ([]byte, error) {
+func (e *messageEncoder) encodeBody(attributes map[string]string, data interface{}) ([]byte, error) {
 	body, err := EncodeMessage(e.encoding, data)
 	if err != nil {
 		return nil, err
 	}
 
-	attributes[AttributeEncoding] = e.encoding
+	attributes[AttributeEncoding] = e.encoding.String()
 
 	return body, nil
 }
 
-func (e *messageEncoder) compressBody(attributes map[string]interface{}, body []byte) ([]byte, error) {
+func (e *messageEncoder) compressBody(attributes map[string]string, body []byte) ([]byte, error) {
 	if e.compression == CompressionNone {
 		return body, nil
 	}
@@ -109,12 +109,12 @@ func (e *messageEncoder) compressBody(attributes map[string]interface{}, body []
 	}
 
 	compressedBase64 := base64.Encode(compressed)
-	attributes[AttributeCompression] = e.compression
+	attributes[AttributeCompression] = e.compression.String()
 
 	return compressedBase64, nil
 }
 
-func (e *messageEncoder) mergeAttributes(attributes map[string]interface{}, attributeSets []map[string]interface{}) (map[string]interface{}, error) {
+func (e *messageEncoder) mergeAttributes(attributes map[string]string, attributeSets []map[string]string) (map[string]string, error) {
 	for _, set := range attributeSets {
 		for k, v := range set {
 			if _, ok := attributes[k]; ok {
@@ -128,7 +128,7 @@ func (e *messageEncoder) mergeAttributes(attributes map[string]interface{}, attr
 	return attributes, nil
 }
 
-func (e *messageEncoder) Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]interface{}, error) {
+func (e *messageEncoder) Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]string, error) {
 	var err error
 	var body []byte
 
@@ -152,11 +152,8 @@ func (e *messageEncoder) Decode(ctx context.Context, msg *Message, out interface
 	return ctx, attributes, nil
 }
 
-func (e *messageEncoder) decompressBody(attributes map[string]interface{}, body []byte) ([]byte, error) {
-	compression, err := GetCompressionAttribute(attributes)
-	if err != nil {
-		return body, err
-	}
+func (e *messageEncoder) decompressBody(attributes map[string]string, body []byte) ([]byte, error) {
+	compression := GetCompressionAttribute(attributes)
 
 	if compression == nil {
 		return body, nil
@@ -177,12 +174,11 @@ func (e *messageEncoder) decompressBody(attributes map[string]interface{}, body 
 	return decompressed, nil
 }
 
-func (e *messageEncoder) decodeBody(attributes map[string]interface{}, body []byte, out interface{}) error {
+func (e *messageEncoder) decodeBody(attributes map[string]string, body []byte, out interface{}) error {
 	encoding := e.encoding
+	attrEncoding := GetEncodingAttribute(attributes)
 
-	if attrEncoding, err := GetEncodingAttribute(attributes); err != nil {
-		return err
-	} else if attrEncoding != nil {
+	if attrEncoding != nil {
 		encoding = *attrEncoding
 	}
 

@@ -226,6 +226,10 @@ func (s *Struct) doReadMap(path string, mapValues *MapX, mp interface{}) error {
 		return s.doReadMsi(path, mapValues, mp.(map[string]interface{}))
 	}
 
+	if _, ok := mp.(map[string]string); ok {
+		return s.doReadMss(path, mapValues, mp.(map[string]string))
+	}
+
 	valueType := reflect.TypeOf(mp).Elem()
 
 	if valueType.Kind() != reflect.Struct {
@@ -258,6 +262,15 @@ func (s *Struct) doReadMsi(path string, mapValues *MapX, msi map[string]interfac
 	return nil
 }
 
+func (s *Struct) doReadMss(path string, mapValues *MapX, mss map[string]string) error {
+	for k, v := range mss {
+		elementPath := fmt.Sprintf("%s.%s", path, k)
+		mapValues.Set(elementPath, v)
+	}
+
+	return nil
+}
+
 func (s *Struct) doReadSlice(path string, mapValues *MapX, slice reflect.Value) error {
 	sl := make([]interface{}, 0, slice.Len())
 	mapValues.Set(path, sl)
@@ -283,7 +296,7 @@ func (s *Struct) doReadSlice(path string, mapValues *MapX, slice reflect.Value) 
 
 		if elementValue.Kind() == reflect.Struct {
 			if err := s.doReadStruct(elementPath, mapValues, element); err != nil {
-				return fmt.Errorf("error on reading slice element on path %s", elementPath)
+				return fmt.Errorf("error on reading slice element on path %s: %w", elementPath, err)
 			}
 
 			continue

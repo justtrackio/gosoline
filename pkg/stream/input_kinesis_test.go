@@ -25,7 +25,7 @@ func TestKinesisMessageHandler(t *testing.T) {
 
 	assert.Equal(t, []*stream.Message{
 		{
-			Attributes: map[string]interface{}{
+			Attributes: map[string]string{
 				"type": "message",
 			},
 			Body: "foo",

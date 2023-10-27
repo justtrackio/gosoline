@@ -23,7 +23,7 @@ func (s *StreamInputComponent) CfgOptions() []cfg.Option {
 	}
 }
 
-func (s *StreamInputComponent) Publish(body interface{}, attributes map[string]interface{}) {
+func (s *StreamInputComponent) Publish(body interface{}, attributes map[string]string) {
 	bytes, err := json.Marshal(body)
 	if err != nil {
 		s.failNow(err.Error(), "can not marshal message body for publishing")
@@ -37,7 +37,7 @@ func (s *StreamInputComponent) Publish(body interface{}, attributes map[string]i
 	s.input.Publish(message)
 }
 
-func (s *StreamInputComponent) PublishAndStop(body interface{}, attributes map[string]interface{}) {
+func (s *StreamInputComponent) PublishAndStop(body interface{}, attributes map[string]string) {
 	s.Publish(body, attributes)
 	s.Stop()
 }
