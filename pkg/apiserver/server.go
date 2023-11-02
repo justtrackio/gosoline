@@ -72,6 +72,7 @@ func New(definer Definer) kernel.ModuleFactory {
 		var definitions *Definitions
 		var metadata *appctx.Metadata
 		var compressionMiddlewares []gin.HandlerFunc
+		var healthChecker kernel.HealthChecker
 
 		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
@@ -90,9 +91,10 @@ func New(definer Definer) kernel.ModuleFactory {
 		router.Use(RecoveryWithSentry(logger))
 		router.Use(location.Default())
 
-		router.GET("/health", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{})
-		})
+		if healthChecker, err = kernel.GetHealthChecker(ctx); err != nil {
+			return nil, fmt.Errorf("can not get health checker: %w", err)
+		}
+		router.GET("/health", buildHealthCheckHandler(logger, healthChecker))
 
 		if definitions, err = definer(ctx, config, logger.WithChannel("handler")); err != nil {
 			return nil, fmt.Errorf("could not define routes: %w", err)

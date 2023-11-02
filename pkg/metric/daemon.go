@@ -108,6 +108,7 @@ func (d *Daemon) GetStage() int {
 func (d *Daemon) Run(ctx context.Context) error {
 	if !d.settings.Enabled {
 		d.logger.Info("metrics not enabled..")
+
 		return nil
 	}
 
@@ -120,6 +121,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 			d.ticker.Stop()
 			d.emptyChannel()
 			d.publish()
+
 			return nil
 
 		case data := <-d.channel.c:
@@ -158,6 +160,7 @@ func (d *Daemon) append(datum *Datum) {
 
 		if err := datum.IsValid(); err != nil {
 			d.logger.Warn("invalid metric: %s", err.Error())
+
 			return
 		}
 
@@ -169,6 +172,7 @@ func (d *Daemon) append(datum *Datum) {
 			Unit:       datum.Unit,
 			Values:     []float64{datum.Value},
 		}
+
 		return
 	}
 

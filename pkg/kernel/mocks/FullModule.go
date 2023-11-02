@@ -144,6 +144,58 @@ func (_c *FullModule_IsEssential_Call) RunAndReturn(run func() bool) *FullModule
 	return _c
 }
 
+// IsHealthy provides a mock function with given fields: ctx
+func (_m *FullModule) IsHealthy(ctx context.Context) (bool, error) {
+	ret := _m.Called(ctx)
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (bool, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) bool); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FullModule_IsHealthy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsHealthy'
+type FullModule_IsHealthy_Call struct {
+	*mock.Call
+}
+
+// IsHealthy is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *FullModule_Expecter) IsHealthy(ctx interface{}) *FullModule_IsHealthy_Call {
+	return &FullModule_IsHealthy_Call{Call: _e.mock.On("IsHealthy", ctx)}
+}
+
+func (_c *FullModule_IsHealthy_Call) Run(run func(ctx context.Context)) *FullModule_IsHealthy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *FullModule_IsHealthy_Call) Return(_a0 bool, _a1 error) *FullModule_IsHealthy_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *FullModule_IsHealthy_Call) RunAndReturn(run func(context.Context) (bool, error)) *FullModule_IsHealthy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *FullModule) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)

@@ -14,6 +14,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
+func TestRedisTestSuite(t *testing.T) {
+	suite.Run(t, new(RedisTestSuite))
+}
+
 type RedisTestSuite struct {
 	suite.Suite
 }
@@ -253,8 +257,4 @@ func kvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 			},
 		},
 	}
-}
-
-func TestRedisTestSuite(t *testing.T) {
-	suite.Run(t, new(RedisTestSuite))
 }

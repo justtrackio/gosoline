@@ -28,5 +28,5 @@ func BuildKernel(ctx context.Context, config cfg.Config, logger log.Logger, opti
 		return nil, err
 	}
 
-	return factory.GetKernel(), nil
+	return factory.GetKernel()
 }

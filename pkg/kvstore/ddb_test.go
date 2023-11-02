@@ -13,26 +13,26 @@ import (
 )
 
 func TestDdbKvStore_Contains(t *testing.T) {
-	store, repo := buildTestableDdbStore[string]()
+	ctx, store, repo := buildTestableDdbStore[string]()
 
 	builder := new(ddbMocks.GetItemBuilder)
 	builder.On("WithHash", "foo").Return(builder).Once()
 
 	repo.On("GetItemBuilder").Return(builder)
-	repo.On("GetItem", context.Background(), builder, mock.AnythingOfType("*kvstore.DdbItem")).Return(&ddb.GetItemResult{
+	repo.On("GetItem", ctx, builder, mock.AnythingOfType("*kvstore.DdbItem")).Return(&ddb.GetItemResult{
 		IsFound: true,
 	}, nil).Once()
 
-	exists, err := store.Contains(context.Background(), "foo")
+	exists, err := store.Contains(ctx, "foo")
 	assert.NoError(t, err)
 	assert.True(t, exists)
 
 	builder.On("WithHash", "fuu").Return(builder).Once()
-	repo.On("GetItem", context.Background(), builder, mock.AnythingOfType("*kvstore.DdbItem")).Return(&ddb.GetItemResult{
+	repo.On("GetItem", ctx, builder, mock.AnythingOfType("*kvstore.DdbItem")).Return(&ddb.GetItemResult{
 		IsFound: false,
 	}, nil).Once()
 
-	exists, err = store.Contains(context.Background(), "fuu")
+	exists, err = store.Contains(ctx, "fuu")
 	assert.NoError(t, err)
 	assert.False(t, exists)
 
@@ -41,7 +41,7 @@ func TestDdbKvStore_Contains(t *testing.T) {
 }
 
 func TestDdbKvStore_Get(t *testing.T) {
-	store, repo := buildTestableDdbStore[Item]()
+	ctx, store, repo := buildTestableDdbStore[Item]()
 
 	builder := new(ddbMocks.GetItemBuilder)
 	builder.On("WithHash", "foo").Return(builder).Once()
@@ -52,7 +52,7 @@ func TestDdbKvStore_Get(t *testing.T) {
 	}
 
 	repo.On("GetItemBuilder").Return(builder)
-	repo.On("GetItem", context.Background(), builder, ddbItem).Run(func(args mock.Arguments) {
+	repo.On("GetItem", ctx, builder, ddbItem).Run(func(args mock.Arguments) {
 		ddbItem := args[2].(*kvstore.DdbItem)
 		ddbItem.Key = "foo"
 		ddbItem.Value = `{"id":"foo","body":"bar"}`
@@ -61,7 +61,7 @@ func TestDdbKvStore_Get(t *testing.T) {
 	}, nil).Once()
 
 	item := &Item{}
-	found, err := store.Get(context.Background(), "foo", item)
+	found, err := store.Get(ctx, "foo", item)
 
 	assert.NoError(t, err)
 	assert.True(t, found)
@@ -73,7 +73,7 @@ func TestDdbKvStore_Get(t *testing.T) {
 }
 
 func TestDdbKvStore_GetBatch(t *testing.T) {
-	store, repo := buildTestableDdbStore[Item]()
+	ctx, store, repo := buildTestableDdbStore[Item]()
 
 	keys := []string{"foo", "fuu"}
 	result := make(map[string]Item)
@@ -84,7 +84,7 @@ func TestDdbKvStore_GetBatch(t *testing.T) {
 	items := make([]kvstore.DdbItem, 0)
 
 	repo.On("BatchGetItemsBuilder").Return(builder)
-	repo.On("BatchGetItems", context.Background(), builder, &items).Run(func(args mock.Arguments) {
+	repo.On("BatchGetItems", ctx, builder, &items).Run(func(args mock.Arguments) {
 		item := kvstore.DdbItem{
 			Key:   "foo",
 			Value: `{"id":"foo","body":"bar"}`,
@@ -93,7 +93,7 @@ func TestDdbKvStore_GetBatch(t *testing.T) {
 		*items = append(*items, item)
 	}).Return(nil, nil)
 
-	missing, err := store.GetBatch(context.Background(), keys, result)
+	missing, err := store.GetBatch(ctx, keys, result)
 
 	assert.NoError(t, err)
 	assert.Contains(t, result, "foo")
@@ -108,7 +108,7 @@ func TestDdbKvStore_GetBatch(t *testing.T) {
 }
 
 func TestDdbKvStore_GetBatch_ReturnedKeysInDifferentOrder(t *testing.T) {
-	store, repo := buildTestableDdbStore[Item]()
+	ctx, store, repo := buildTestableDdbStore[Item]()
 
 	result := make(map[string]*Item)
 
@@ -120,7 +120,7 @@ func TestDdbKvStore_GetBatch_ReturnedKeysInDifferentOrder(t *testing.T) {
 	repo.On("BatchGetItemsBuilder").Return(builder)
 
 	// the order of the entries is not always the same as the order of the keys
-	repo.On("BatchGetItems", context.Background(), builder, &items).Run(func(args mock.Arguments) {
+	repo.On("BatchGetItems", ctx, builder, &items).Run(func(args mock.Arguments) {
 		items := args[2].(*[]kvstore.DdbItem)
 		*items = append(*items, kvstore.DdbItem{
 			Key:   "fuu",
@@ -132,7 +132,7 @@ func TestDdbKvStore_GetBatch_ReturnedKeysInDifferentOrder(t *testing.T) {
 		})
 	}).Return(nil, nil)
 
-	missing, err := store.GetBatch(context.Background(), []string{"foo", "fuu", "foo"}, result)
+	missing, err := store.GetBatch(ctx, []string{"foo", "fuu", "foo"}, result)
 
 	assert.NoError(t, err)
 
@@ -151,7 +151,7 @@ func TestDdbKvStore_GetBatch_ReturnedKeysInDifferentOrder(t *testing.T) {
 }
 
 func TestDdbKvStore_GetBatch_WithDuplicateKeys(t *testing.T) {
-	store, repo := buildTestableDdbStore[Item]()
+	ctx, store, repo := buildTestableDdbStore[Item]()
 
 	result := make(map[string]*Item)
 
@@ -161,7 +161,7 @@ func TestDdbKvStore_GetBatch_WithDuplicateKeys(t *testing.T) {
 	items := make([]kvstore.DdbItem, 0)
 
 	repo.On("BatchGetItemsBuilder").Return(builder)
-	repo.On("BatchGetItems", context.Background(), builder, &items).Run(func(args mock.Arguments) {
+	repo.On("BatchGetItems", ctx, builder, &items).Run(func(args mock.Arguments) {
 		item := kvstore.DdbItem{
 			Key:   "foo",
 			Value: `{"id":"foo","body":"bar"}`,
@@ -171,7 +171,7 @@ func TestDdbKvStore_GetBatch_WithDuplicateKeys(t *testing.T) {
 		*items = append(*items, item)
 	}).Return(nil, nil)
 
-	missing, err := store.GetBatch(context.Background(), []string{"foo", "fuu", "foo"}, result)
+	missing, err := store.GetBatch(ctx, []string{"foo", "fuu", "foo"}, result)
 
 	assert.NoError(t, err)
 	assert.Contains(t, result, "foo")
@@ -186,27 +186,27 @@ func TestDdbKvStore_GetBatch_WithDuplicateKeys(t *testing.T) {
 }
 
 func TestDdbKvStore_Put(t *testing.T) {
-	store, repo := buildTestableDdbStore[Item]()
+	ctx, store, repo := buildTestableDdbStore[Item]()
 
 	ddbItem := &kvstore.DdbItem{
 		Key:   "foo",
 		Value: `{"id":"foo","body":"bar"}`,
 	}
-	repo.On("PutItem", context.Background(), nil, ddbItem).Return(nil, nil)
+	repo.On("PutItem", ctx, nil, ddbItem).Return(nil, nil)
 
 	item := Item{
 		Id:   "foo",
 		Body: "bar",
 	}
 
-	err := store.Put(context.Background(), "foo", item)
+	err := store.Put(ctx, "foo", item)
 
 	assert.NoError(t, err)
 	repo.AssertExpectations(t)
 }
 
 func TestDdbKvStore_PutBatch(t *testing.T) {
-	store, repo := buildTestableDdbStore[Item]()
+	ctx, store, repo := buildTestableDdbStore[Item]()
 
 	ddbItems := []kvstore.DdbItem{
 		{
@@ -218,7 +218,7 @@ func TestDdbKvStore_PutBatch(t *testing.T) {
 			Value: `{"id":"fuu","body":"baz"}`,
 		},
 	}
-	repo.On("BatchPutItems", context.Background(), ddbItems).Return(nil, nil)
+	repo.On("BatchPutItems", ctx, ddbItems).Return(nil, nil)
 
 	items := map[string]Item{
 		"fuu": {
@@ -231,28 +231,28 @@ func TestDdbKvStore_PutBatch(t *testing.T) {
 		},
 	}
 
-	err := store.PutBatch(context.Background(), items)
+	err := store.PutBatch(ctx, items)
 
 	assert.NoError(t, err)
 	repo.AssertExpectations(t)
 }
 
 func TestDdbKvStore_Delete(t *testing.T) {
-	store, repo := buildTestableDdbStore[Item]()
+	ctx, store, repo := buildTestableDdbStore[Item]()
 
 	ddbItem := &kvstore.DdbDeleteItem{
 		Key: "foo",
 	}
-	repo.On("DeleteItem", context.Background(), nil, ddbItem).Return(nil, nil)
+	repo.On("DeleteItem", ctx, nil, ddbItem).Return(nil, nil)
 
-	err := store.Delete(context.Background(), "foo")
+	err := store.Delete(ctx, "foo")
 
 	assert.NoError(t, err)
 	repo.AssertExpectations(t)
 }
 
 func TestDdbKvStore_DeleteBatch(t *testing.T) {
-	store, repo := buildTestableDdbStore[string]()
+	ctx, store, repo := buildTestableDdbStore[string]()
 
 	ddbItems := []*kvstore.DdbDeleteItem{
 		{
@@ -262,17 +262,18 @@ func TestDdbKvStore_DeleteBatch(t *testing.T) {
 			Key: "fuu",
 		},
 	}
-	repo.On("BatchDeleteItems", context.Background(), ddbItems).Return(nil, nil)
+	repo.On("BatchDeleteItems", ctx, ddbItems).Return(nil, nil)
 
 	items := []string{"foo", "fuu"}
 
-	err := store.DeleteBatch(context.Background(), items)
+	err := store.DeleteBatch(ctx, items)
 
 	assert.NoError(t, err)
 	repo.AssertExpectations(t)
 }
 
-func buildTestableDdbStore[T any]() (kvstore.KvStore[T], *ddbMocks.Repository) {
+func buildTestableDdbStore[T any]() (context.Context, kvstore.KvStore[T], *ddbMocks.Repository) {
+	ctx := context.Background()
 	repository := new(ddbMocks.Repository)
 
 	store := kvstore.NewDdbKvStoreWithInterfaces[T](repository, &kvstore.Settings{
@@ -287,5 +288,5 @@ func buildTestableDdbStore[T any]() (kvstore.KvStore[T], *ddbMocks.Repository) {
 		BatchSize: 100,
 	})
 
-	return store, repository
+	return ctx, store, repository
 }

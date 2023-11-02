@@ -14,7 +14,7 @@ type FixtureSet struct {
 	Fixtures []interface{}
 }
 
-type FixtureBuilderFactory func(ctx context.Context) FixtureBuilder
+type FixtureBuilderFactory func(ctx context.Context) (FixtureBuilder, error)
 
 type FixtureBuilder interface {
 	Fixtures() []*FixtureSet
@@ -40,9 +40,9 @@ func (s simpleFixtureBuilder) Fixtures() []*FixtureSet {
 }
 
 func SimpleFixtureBuilderFactory(fixtureSets []*FixtureSet) FixtureBuilderFactory {
-	return func(ctx context.Context) FixtureBuilder {
+	return func(ctx context.Context) (FixtureBuilder, error) {
 		return &simpleFixtureBuilder{
 			fixtureSets: fixtureSets,
-		}
+		}, nil
 	}
 }

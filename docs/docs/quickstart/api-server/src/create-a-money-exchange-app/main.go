@@ -9,7 +9,6 @@ import (
 func main() {
 	application.Run(
 		application.WithConfigFile("config.dist.yml", "yml"),
-		application.WithKernelSettingsFromConfig,
 		application.WithLoggerHandlersFromConfig,
 
 		application.WithModuleFactory("api", apiserver.New(ApiDefiner)),

@@ -83,6 +83,10 @@ func suiteFindTestCases(_ *testing.T, suite TestingSuite, options *suiteOptions)
 		}
 	}
 
+	if len(testCases) == 0 {
+		return nil, fmt.Errorf("no testcases found. the function name has to start with 'Test'")
+	}
+
 	return testCases, nil
 }
 

@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -37,22 +38,23 @@ func NewApiHealthCheck() kernel.ModuleFactory {
 		gin.SetMode(gin.ReleaseMode)
 		router := gin.New()
 
-		healthCheck := NewApiHealthCheckWithInterfaces(logger, router, settings)
+		healthChecker, err := kernel.GetHealthChecker(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("can not get health checker: %w", err)
+		}
 
-		return healthCheck, nil
+		return NewApiHealthCheckWithInterfaces(logger, router, healthChecker, settings), nil
 	}
 }
 
-func NewApiHealthCheckWithInterfaces(logger log.Logger, router *gin.Engine, settings *ApiHealthCheckSettings) *ApiHealthCheck {
-	router.Use(LoggingMiddleware(logger))
-	router.GET(settings.Path, func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{})
-	})
+func NewApiHealthCheckWithInterfaces(logger log.Logger, router *gin.Engine, healthChecker kernel.HealthChecker, settings *ApiHealthCheckSettings) *ApiHealthCheck {
+	logger = logger.WithChannel("health-check")
 
-	addr := fmt.Sprintf(":%d", settings.Port)
+	router.Use(LoggingMiddleware(logger))
+	router.GET(settings.Path, buildHealthCheckHandler(logger, healthChecker))
 
 	server := &http.Server{
-		Addr:    addr,
+		Addr:    fmt.Sprintf(":%d", settings.Port),
 		Handler: router,
 	}
 
@@ -64,10 +66,12 @@ func NewApiHealthCheckWithInterfaces(logger log.Logger, router *gin.Engine, sett
 
 func (a *ApiHealthCheck) Run(ctx context.Context) error {
 	go a.waitForStop(ctx)
+
 	err := a.server.ListenAndServe()
 
-	if err != http.ErrServerClosed {
+	if !errors.Is(err, http.ErrServerClosed) {
 		a.logger.Error("api health check closed unexpected: %w", err)
+
 		return err
 	}
 
@@ -76,8 +80,36 @@ func (a *ApiHealthCheck) Run(ctx context.Context) error {
 
 func (a *ApiHealthCheck) waitForStop(ctx context.Context) {
 	<-ctx.Done()
-	err := a.server.Close()
-	if err != nil {
+
+	if err := a.server.Close(); err != nil {
 		a.logger.Error("api health check close: %w", err)
+	}
+}
+
+func buildHealthCheckHandler(logger log.Logger, healthChecker kernel.HealthChecker) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		result := healthChecker()
+
+		if result.IsHealthy() {
+			c.JSON(http.StatusOK, gin.H{})
+
+			return
+		}
+
+		if result.Err() != nil {
+			ctx := c.Request.Context()
+			logger.WithContext(ctx).Error("encountered an error during the health check: %", result.Err())
+		}
+
+		resp := gin.H{}
+		for _, module := range result.GetUnhealthy() {
+			if module.Err != nil {
+				resp[module.Name] = module.Err.Error()
+			} else {
+				resp[module.Name] = "unhealthy"
+			}
+		}
+
+		c.JSON(http.StatusInternalServerError, resp)
 	}
 }

@@ -1,14 +1,18 @@
 package kernel
 
 import (
+	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
@@ -26,8 +30,14 @@ const (
 
 type ExitHandler func(code int)
 
+type Settings struct {
+	KillTimeout time.Duration       `cfg:"kill_timeout" default:"10s"`
+	HealthCheck HealthCheckSettings `cfg:"health_check"`
+}
+
 //go:generate mockery --name Kernel
 type Kernel interface {
+	HealthCheck() HealthCheckResult
 	Running() <-chan struct{}
 	Run()
 	Stop(reason string)
@@ -52,22 +62,32 @@ type kernel struct {
 	exitHandler ExitHandler
 }
 
-func New(ctx context.Context, config cfg.Config, logger log.Logger, middlewares []Middleware, stages map[int]*stage) *kernel {
+func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kernel, error) {
+	settings := &Settings{}
+	config.UnmarshalKey("kernel", settings)
+
 	k := &kernel{
 		config: config,
 		logger: logger.WithChannel("kernel"),
 
-		ctx:         ctx,
-		middlewares: middlewares,
-		stages:      stages,
-		running:     make(chan struct{}),
+		ctx:     ctx,
+		running: make(chan struct{}),
 
-		killTimeout: time.Second * 10,
+		killTimeout: settings.KillTimeout,
 		exitCode:    ExitCodeErr,
 		exitHandler: os.Exit,
 	}
 
-	return k
+	_, err := appctx.Provide(ctx, healthCheckerKey, func() (HealthChecker, error) {
+		return k.HealthCheck, nil
+	})
+
+	return k, err
+}
+
+func (k *kernel) init(middlewares []Middleware, stages map[int]*stage) {
+	k.middlewares = middlewares
+	k.stages = stages
 }
 
 // Run will boot and run the modules added to the kernel.
@@ -80,31 +100,32 @@ func (k *kernel) Run() {
 	k.foregroundModules = k.stages.countForegroundModules()
 	k.debugConfig()
 
-	runHandler := func() {
-		sig := make(chan os.Signal, 2)
-		signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
+	sig := make(chan os.Signal, 2)
+	signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
 
-		for _, stageIndex := range k.stages.getIndices() {
-			k.stages[stageIndex].run(k)
-			k.logger.Info("stage %d up and running with %d modules", stageIndex, k.stages[stageIndex].len())
+	go func() {
+		signal := <-sig
+		reason := fmt.Sprintf("signal %s", signal.String())
+		k.Stop(reason)
+	}()
+
+	runHandler := func() {
+		if err := k.runStages(); err != nil {
+			reason := fmt.Sprintf("error during running all stages: %s", err)
+			k.Stop(reason)
 		}
 
 		k.logger.Info("kernel up and running")
 		close(k.running)
 
-		select {
-		case <-k.waitAllStagesDone().Channel():
-			k.Stop("context done")
-		case sig := <-sig:
-			reason := fmt.Sprintf("signal %s", sig.String())
-			k.Stop(reason)
-		}
+		<-k.waitAllStagesDone().Channel()
+		k.Stop("context done")
 
 		k.waitStopped()
 
 		hasErr := false
 		for _, stage := range k.stages {
-			if stage.err != nil && stage.err != ErrKernelStopping {
+			if stage.err != nil && !errors.Is(stage.err, ErrKernelStopping) {
 				hasErr = true
 			}
 		}
@@ -130,7 +151,7 @@ func (k *kernel) Stop(reason string) {
 			for i := len(indices) - 1; i >= 0; i-- {
 				stageIndex := indices[i]
 				k.logger.Info("stopping stage %d", stageIndex)
-				k.stages[stageIndex].stopWait(stageIndex, k.logger)
+				k.stages[stageIndex].stopWait()
 				k.logger.Info("stopped stage %d", stageIndex)
 			}
 		}()
@@ -139,6 +160,21 @@ func (k *kernel) Stop(reason string) {
 
 func (k *kernel) Running() <-chan struct{} {
 	return k.running
+}
+
+func (k *kernel) HealthCheck() HealthCheckResult {
+	var result HealthCheckResult
+
+	for _, stageIndex := range k.stages.getIndices() {
+		stageResult := k.stages[stageIndex].healthcheck()
+		result = append(result, stageResult...)
+	}
+
+	slices.SortFunc(result, func(a, b ModuleHealthCheckResult) int {
+		return cmp.Compare(a.StageIndex, b.StageIndex)
+	})
+
+	return result
 }
 
 func (k *kernel) exit() {
@@ -154,6 +190,18 @@ func (k *kernel) debugConfig() {
 	if debugErr != nil {
 		k.logger.Error("can not debug config: %w", debugErr)
 	}
+}
+
+func (k *kernel) runStages() error {
+	for _, stageIndex := range k.stages.getIndices() {
+		if err := k.stages[stageIndex].run(k); err != nil {
+			return fmt.Errorf("can not run stage %d: %w", stageIndex, err)
+		}
+
+		k.logger.Info("stage %d up and running with %d modules", stageIndex, k.stages[stageIndex].len())
+	}
+
+	return nil
 }
 
 func (k *kernel) runModule(ctx context.Context, name string, ms *moduleState) (moduleErr error) {

@@ -9,11 +9,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/segmentio/kafka-go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestOffsetManager_NotCommitting(t *testing.T) {
@@ -253,9 +252,10 @@ func TestOffsetManager_FetchMessageErrors(t *testing.T) {
 		readerErr = errors.New("reader: failed")
 	)
 
-	reader.On("FetchMessage", context.Background()).Return(
+	reader.On("FetchMessage", ctx).Return(
 		func(ctx context.Context) kafka.Message {
 			time.Sleep(time.Millisecond)
+
 			return kafka.Message{}
 		},
 		func(ctx context.Context) error {
@@ -277,9 +277,10 @@ func TestOffsetManager_FlushErrors(t *testing.T) {
 		readerErr = errors.New("reader: failed")
 	)
 
-	reader.On("FetchMessage", context.Background()).Return(
+	reader.On("FetchMessage", ctx).Return(
 		func(ctx context.Context) kafka.Message {
 			time.Sleep(time.Millisecond)
+
 			return kafka.Message{}
 		},
 		func(ctx context.Context) error {
