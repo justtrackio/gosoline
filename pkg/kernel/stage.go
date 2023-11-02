@@ -2,9 +2,12 @@ package kernel
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"sort"
+	"strings"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -22,9 +25,12 @@ func (m modules) len() int {
 }
 
 type stage struct {
-	cfn coffin.Coffin
-	ctx context.Context
-	err error
+	cfn                 coffin.Coffin
+	ctx                 context.Context
+	logger              log.Logger
+	index               int
+	healthCheckSettings HealthCheckSettings
+	err                 error
 
 	running    conc.SignalOnce
 	terminated conc.SignalOnce
@@ -32,12 +38,18 @@ type stage struct {
 	modules modules
 }
 
-func newStage(ctx context.Context) *stage {
+func newStage(ctx context.Context, config cfg.Config, logger log.Logger, index int) *stage {
 	cfn, ctx := coffin.WithContext(ctx)
 
+	settings := &Settings{}
+	config.UnmarshalKey("kernel", settings)
+
 	return &stage{
-		cfn: cfn,
-		ctx: ctx,
+		cfn:                 cfn,
+		ctx:                 ctx,
+		logger:              logger,
+		index:               index,
+		healthCheckSettings: settings.HealthCheck,
 
 		running:    conc.NewSignalOnce(),
 		terminated: conc.NewSignalOnce(),
@@ -49,10 +61,9 @@ func newStage(ctx context.Context) *stage {
 	}
 }
 
-func (s *stage) run(k *kernel) {
+func (s *stage) run(k *kernel) error {
 	if err := s.modules.lck.Poison(); err != nil {
-		k.logger.Error("stage was already run: %w", err)
-		return
+		return fmt.Errorf("stage was already run: %w", err)
 	}
 
 	for name, ms := range s.modules.modules {
@@ -76,14 +87,79 @@ func (s *stage) run(k *kernel) {
 	}
 
 	s.running.Signal()
+
+	return s.waitUntilHealthy()
 }
 
-func (s *stage) stopWait(stageIndex int, logger log.Logger) {
+func (s *stage) healthcheck() HealthCheckResult {
+	var ok bool
+	var err error
+	var healthAware HealthCheckedModule
+	var result HealthCheckResult
+
+	for name, ms := range s.modules.modules {
+		if healthAware, ok = ms.module.(HealthCheckedModule); !ok {
+			continue
+		}
+
+		ok, err = healthAware.IsHealthy(s.ctx)
+
+		result = append(result, ModuleHealthCheckResult{
+			StageIndex: s.index,
+			Name:       name,
+			Healthy:    ok,
+			Err:        err,
+		})
+	}
+
+	return result
+}
+
+func (s *stage) waitUntilHealthy() error {
+	var result HealthCheckResult
+
+	timeoutTimer := clock.NewRealTimer(s.healthCheckSettings.Timeout)
+	sleepTicker := clock.NewRealTicker(s.healthCheckSettings.WaitInterval)
+
+	defer timeoutTimer.Stop()
+	defer sleepTicker.Stop()
+
+	for {
+		sleepTicker.Stop()
+		result = s.healthcheck()
+
+		if result.Err() != nil {
+			s.logger.Warn("errors during health checks in stage %d: %s", s.index, result.Err())
+		}
+
+		if result.IsHealthy() {
+			return nil
+		}
+
+		for _, unhealthy := range result.GetUnhealthy() {
+			s.logger.Info("waiting for module %s in stage %d to get healthy", unhealthy.Name, s.index)
+		}
+
+		sleepTicker.Reset(s.healthCheckSettings.WaitInterval)
+
+		select {
+		case <-timeoutTimer.Chan():
+			unhealthyModules := result.GetUnhealthyNames()
+
+			return fmt.Errorf("stage %d was not able to get healthy in %s due to: %s", s.index, s.healthCheckSettings.Timeout, strings.Join(unhealthyModules, ", "))
+		case <-s.ctx.Done():
+			return nil
+		case <-sleepTicker.Chan():
+		}
+	}
+}
+
+func (s *stage) stopWait() {
 	s.cfn.Kill(ErrKernelStopping)
 	s.err = s.cfn.Wait()
 
-	if s.err != nil && s.err != ErrKernelStopping {
-		logger.Error("error during the execution of stage %d: %w", stageIndex, s.err)
+	if s.err != nil && !errors.Is(s.err, ErrKernelStopping) {
+		s.logger.Error("error during the execution of stage %d: %w", s.index, s.err)
 	}
 
 	s.terminated.Signal()
@@ -91,46 +167,4 @@ func (s *stage) stopWait(stageIndex int, logger log.Logger) {
 
 func (s *stage) len() int {
 	return s.modules.len()
-}
-
-type stages map[int]*stage
-
-func (s stages) hasModules() bool {
-	// no need to iterate in order as we are only checking
-	for _, stage := range s {
-		if len(stage.modules.modules) > 0 {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (s stages) countForegroundModules() int32 {
-	count := int32(0)
-
-	// no need to iterate in order as we are only counting
-	for _, stage := range s {
-		for _, m := range stage.modules.modules {
-			if !m.config.background {
-				count++
-			}
-		}
-	}
-
-	return count
-}
-
-func (s stages) getIndices() []int {
-	keys := make([]int, len(s))
-	i := 0
-
-	for k := range s {
-		keys[i] = k
-		i++
-	}
-
-	sort.Ints(keys)
-
-	return keys
 }

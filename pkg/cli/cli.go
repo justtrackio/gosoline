@@ -2,16 +2,11 @@ package cli
 
 import (
 	"context"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 )
-
-type kernelSettings struct {
-	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
-}
 
 func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.ModuleFactory) {
 	var err error
@@ -44,13 +39,9 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 		logger.Info("applied priority %d config post processor '%s'", priority, name)
 	}
 
-	settings := &kernelSettings{}
-	config.UnmarshalKey("kernel", settings)
-
 	ctx := appctx.WithContainer(context.Background())
 
 	options := []kernel.Option{
-		kernel.WithKillTimeout(settings.KillTimeout),
 		kernel.WithModuleFactory("cli", module, kernel.ModuleType(kernel.TypeEssential), kernel.ModuleStage(kernel.StageApplication)),
 	}
 

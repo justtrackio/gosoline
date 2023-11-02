@@ -148,6 +148,15 @@ type StagedModule interface {
 	GetStage() int
 }
 
+// A HealthCheckedModule provides an interface to implement a health check for a module.
+// This health check is used to determine if the module is in a ready state after executing
+// its run method and afterwards to check for the overall application healthyness.
+//
+//go:generate mockery --name HealthCheckedModule
+type HealthCheckedModule interface {
+	IsHealthy(ctx context.Context) (bool, error)
+}
+
 // A FullModule provides all the methods a module can have and thus never relies on defaults.
 //
 //go:generate mockery --name FullModule
@@ -155,6 +164,7 @@ type FullModule interface {
 	Module
 	TypedModule
 	StagedModule
+	HealthCheckedModule
 }
 
 // An EssentialModule will cause the application to exit as soon as the first essential module stops running.

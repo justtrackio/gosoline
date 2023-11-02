@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
-
-	"github.com/justtrackio/gosoline/pkg/share"
 
 	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -18,6 +15,7 @@ import (
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/share"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/pkg/errors"
@@ -31,10 +29,6 @@ type (
 	SetupOption  func(config cfg.GosoConf, logger log.GosoLogger) error
 )
 
-type kernelSettings struct {
-	KillTimeout time.Duration `cfg:"killTimeout" default:"10s"`
-}
-
 func WithApiHealthCheck(app *App) {
 	WithModuleFactory("api-health-check", apiserver.NewApiHealthCheck())(app)
 }
@@ -42,7 +36,7 @@ func WithApiHealthCheck(app *App) {
 func WithConfigEnvKeyPrefix(prefix string) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
-			prefix = strings.Replace(prefix, "-", "_", -1)
+			prefix = strings.ReplaceAll(prefix, "-", "_")
 
 			return config.Option(cfg.WithEnvKeyPrefix(prefix))
 		})
@@ -169,15 +163,6 @@ func WithKernelExitHandler(handler kernelPkg.ExitHandler) Option {
 	}
 }
 
-func WithKernelSettingsFromConfig(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-		settings := &kernelSettings{}
-		config.UnmarshalKey("kernel", settings)
-
-		return kernelPkg.WithKillTimeout(settings.KillTimeout)
-	})
-}
-
 func WithLoggerGroupTag(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		if !config.IsSet("app_group") {
@@ -205,6 +190,7 @@ func WithLoggerApplicationTag(app *App) {
 func WithLoggerContextFieldsMessageEncoder(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		stream.AddDefaultEncodeHandler(log.NewMessageWithLoggingFieldsEncoder(config, logger))
+
 		return nil
 	})
 }
@@ -241,6 +227,7 @@ func WithLoggerHandlersFromConfig(app *App) {
 func WithLoggerMetricHandler(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		metricHandler := metric.NewLoggerHandler()
+
 		return logger.Option(log.WithHandlers(metricHandler))
 	})
 }

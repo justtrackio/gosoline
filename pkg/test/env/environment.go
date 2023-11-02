@@ -205,9 +205,14 @@ func (e *Environment) LoadFixtureBuilderFactories(factories ...fixtures.FixtureB
 	}
 
 	for _, factory := range factories {
-		fixtureBuilder := factory(e.ctx)
+		var err error
+		var fixtureBuilder fixtures.FixtureBuilder
 
-		if err := e.fixtureLoader.Load(e.ctx, fixtureBuilder.Fixtures()); err != nil {
+		if fixtureBuilder, err = factory(e.ctx); err != nil {
+			return fmt.Errorf("can not build fixture builder: %w", err)
+		}
+
+		if err = e.fixtureLoader.Load(e.ctx, fixtureBuilder.Fixtures()); err != nil {
 			return err
 		}
 	}

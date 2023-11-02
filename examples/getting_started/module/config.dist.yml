@@ -6,4 +6,4 @@ app_group: grp
 app_name: application
 
 kernel:
-  killTimeout: 1s
+  kill_timeout: 1s

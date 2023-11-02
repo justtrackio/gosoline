@@ -1,0 +1,19 @@
+env: dev
+app_project: gosoline
+app_family: how-to
+app_group: health-check
+app_name: hello-world
+
+api:
+  // highlight-start
+  health:
+    path: /health
+    port: 8090
+  // highlight-end
+
+kernel:
+  // highlight-start
+  health_check:
+    timeout: 10s
+    wait_interval: 1s
+  // highlight-end

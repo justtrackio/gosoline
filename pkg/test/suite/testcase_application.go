@@ -99,11 +99,21 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 	}
 }
 
+type essentialModule struct {
+	kernel.Module
+	kernel.EssentialModule
+}
+
+func (e essentialModule) IsHealthy(ctx context.Context) (bool, error) {
+	if healthChecked, ok := e.Module.(kernel.HealthCheckedModule); ok {
+		return healthChecked.IsHealthy(ctx)
+	}
+
+	return true, nil
+}
+
 func newEssentialModule(mod kernel.Module) kernel.Module {
-	return struct {
-		kernel.Module
-		kernel.EssentialModule
-	}{
+	return essentialModule{
 		mod,
 		kernel.EssentialModule{},
 	}

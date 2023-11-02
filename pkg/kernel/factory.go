@@ -15,11 +15,14 @@ type factory struct {
 	logger    log.Logger
 	blueprint *blueprint
 
+	kernel      *kernel
 	middlewares []Middleware
 	stages      stages
 }
 
 func NewFactory(ctx context.Context, config cfg.Config, logger log.Logger, bp *blueprint) (*factory, error) {
+	var err error
+
 	factory := &factory{
 		ctx:       ctx,
 		config:    config,
@@ -30,21 +33,25 @@ func NewFactory(ctx context.Context, config cfg.Config, logger log.Logger, bp *b
 		stages:      make(stages),
 	}
 
-	if err := factory.build(); err != nil {
+	if factory.kernel, err = newKernel(ctx, config, logger); err != nil {
+		return nil, fmt.Errorf("can not create kernel: %w", err)
+	}
+
+	if err = factory.build(); err != nil {
 		return nil, fmt.Errorf("can not build kernel factory: %w", err)
 	}
 
 	return factory, nil
 }
 
-func (f *factory) GetKernel() Kernel {
-	k := New(f.ctx, f.config, f.logger, f.middlewares, f.stages)
+func (f *factory) GetKernel() (Kernel, error) {
+	f.kernel.init(f.middlewares, f.stages)
 
 	for _, opt := range f.blueprint.kernelOptions {
-		opt(k)
+		opt(f.kernel)
 	}
 
-	return k
+	return f.kernel, nil
 }
 
 func (f *factory) build() (err error) {
@@ -57,19 +64,19 @@ func (f *factory) build() (err error) {
 	}()
 
 	for _, mf := range f.blueprint.middlewareFactories {
-		if err = f.buildMiddleware(mf.factory, mf.position); err != nil {
+		if err := f.buildMiddleware(mf.factory, mf.position); err != nil {
 			return err
 		}
 	}
 
 	for _, mf := range f.blueprint.moduleFactories {
-		if err = f.buildModuleFactory(mf.name, mf.factory, mf.options...); err != nil {
+		if err := f.buildModuleFactory(mf.name, mf.factory, mf.options...); err != nil {
 			return err
 		}
 	}
 
 	for _, mf := range f.blueprint.multiModuleFactories {
-		if err = f.buildMultiModuleFactory(mf); err != nil {
+		if err := f.buildMultiModuleFactory(mf); err != nil {
 			return err
 		}
 	}
@@ -109,7 +116,7 @@ func (f *factory) buildMultiModuleFactory(factory ModuleMultiFactory) error {
 	}
 
 	for name, moduleFactory := range moduleFactories {
-		if err = f.buildModuleFactory(name, moduleFactory); err != nil {
+		if err := f.buildModuleFactory(name, moduleFactory); err != nil {
 			return err
 		}
 	}
@@ -164,7 +171,7 @@ func (f *factory) addModuleToStage(name string, module Module, opts []ModuleOpti
 }
 
 func (f *factory) newStage(index int) *stage {
-	s := newStage(f.ctx)
+	s := newStage(f.ctx, f.config, f.logger, index)
 	f.stages[index] = s
 
 	return s

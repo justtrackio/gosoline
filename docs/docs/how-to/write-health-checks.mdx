@@ -1,0 +1,157 @@
+---
+title: Implement health checks
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import ConfigDist from "!!raw-loader!./src/health-check/config.dist.yml";
+import Module from "!!raw-loader!./src/health-check/module.go";
+import Main from "!!raw-loader!./src/health-check/main.go";
+import Output from "!!raw-loader!./src/health-check/output.txt";
+
+You can check the health of a running gosoline application. 
+
+In this guide, you'll learn how to:
+
+- Configure and use the on-run health check.
+- Configure and use the health-check endpoint.
+- Customize a module's health-check behavior.
+
+## Check your application on run
+
+When you run your application, the kernel automatically performs a health check. After you call run, the application transitions into the "running" state only after all modules are considered healthy. You can configure the timing behavior of this health check like this:
+
+```yaml
+kernel:
+  health_check:    
+    timeout: 10s    
+    wait_interval: 1s
+```
+
+Here, you:
+
+1. Configure an on-run health check.
+2. Establish a timeout for the health check.
+2. Establish a one-second wait interval before checking or re-checking if the app is healthy.
+
+The `kernel.health_check.wait_interval` is used to verify that all modules are healthy. If they are not all healthy by the time the `kernel.health_check.timeout` is reached, the application stops. Once the application is considered healthy on run, the kernel no longer performs its own health checks.
+
+Therefore, to check the health of your application once it's running, you need to use the health-check endpoint.
+
+## Check your app's health manually
+
+Once your application is running, you can perform a health check with a simple HTTP request to its health-check endpoint:
+
+```http
+GET /health HTTP/1.1
+Host: localhost:8090
+```
+
+You can configure the health-check path and port with the following configuration:
+
+```yaml
+api:
+  health:
+    path: /health
+    port: 8090
+```
+
+By default, this route responds with a `200 OK` status code if the application is considered healthy. 
+
+If you want to have more control over the module's health status, you can implement the `kernel.HealthChecked` interface for your application modules.
+
+## Customize your health check
+
+To control how the health of your application is verified, you'll implement the `kernel.HealthChecked` interface:
+
+```go
+package kernel
+
+type HealthCheckedModule interface {
+	IsHealthy(ctx context.Context) (bool, error)
+}
+```
+
+Here you'll walk through a complete example application of how you might implement this interface, starting with `module.go`.
+
+### Implement module.go
+
+In `module.go`, add the following code:
+
+<details><summary>module.go</summary>
+<p>
+
+<CodeBlock showLineNumbers language="go">{Module}</CodeBlock>
+
+</p>
+</details>
+
+Now, you'll walkthrough this file in detail to learn how it works.
+
+First, you declare `healthy`, a boolean to store the health of the module:
+
+```go title=module.go
+type HelloWorldModule struct {
+	logger log.Logger
+  // highlight-next-line
+	healthy atomic.Bool
+}
+```
+
+Then, you implement `IsHealthy()`, a function that gets called on every health check:
+
+```go title=module.go
+func (h *HelloWorldModule) IsHealthy(ctx context.Context) (bool, error) {
+	return h.healthy.Load(), nil
+}
+```
+
+Next, you add a timer that simulates some work that has to be done before the module is considered healthy, then set `healthy` to `true`:
+
+```go title=module.go
+func (h *HelloWorldModule) Run(ctx context.Context) error {
+  // highlight-start
+	timer := clock.NewRealTimer(time.Second * 3)
+	<-timer.Chan()
+
+	h.healthy.Store(true)
+	// highlight-end
+
+	h.logger.Info("Hello World")
+
+	return nil
+}
+```
+
+And that's it! You've implemented custom health-check logic in your module.
+
+Now, add your app's `main.go` file:
+
+<details><summary>main.go</summary>
+<p>
+
+<CodeBlock showLineNumbers language="go">{Main}</CodeBlock>
+
+</p>
+</details>
+
+Then, add your app's configuration, including health-checks:
+
+<details><summary>config.dist.yml.go</summary>
+<p>
+
+<CodeBlock showLineNumbers language="yaml">{ConfigDist}</CodeBlock>
+
+</p>
+</details>
+
+And when you run your app, you'll see something like the following output:
+
+<CodeBlock showLineNumbers language="text" title="stdout">{Output}</CodeBlock>
+
+Note that the kernel waits the `wait_interval` and checks the health of the application's modules several times:
+
+```stdout
+12:34:26.605 kernel  info    waiting for module hello-world in stage 2048 to get healthy  application: hello-world, group: health-check
+12:34:27.605 kernel  info    waiting for module hello-world in stage 2048 to get healthy  application: hello-world, group: health-check
+12:34:28.606 kernel  info    waiting for module hello-world in stage 2048 to get healthy  application: hello-world, group: health-check
+```

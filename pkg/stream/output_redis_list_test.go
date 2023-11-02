@@ -14,52 +14,53 @@ import (
 )
 
 func TestRedisListOutput_WriteOne(t *testing.T) {
-	output, redisMock := setup(1)
-	redisMock.On("RPush", context.Background(), "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Once()
+	ctx, output, redisMock := setup(1)
+	redisMock.On("RPush", ctx, "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Once()
 
 	record := stream.NewMessage("bla")
-	err := output.WriteOne(context.Background(), record)
+	err := output.WriteOne(ctx, record)
 
 	assert.Nil(t, err, "there should be no error")
 	redisMock.AssertExpectations(t)
 }
 
 func TestRedisListOutput_Write(t *testing.T) {
-	output, redisMock := setup(2)
-	redisMock.On("RPush", context.Background(), "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8"), mock.AnythingOfType("[]uint8")).Return(int64(2), nil).Once()
+	ctx, output, redisMock := setup(2)
+	redisMock.On("RPush", ctx, "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8"), mock.AnythingOfType("[]uint8")).Return(int64(2), nil).Once()
 
 	batch := []stream.WritableMessage{
 		stream.NewMessage("foo"),
 		stream.NewMessage("bar"),
 	}
-	err := output.Write(context.Background(), batch)
+	err := output.Write(ctx, batch)
 
 	assert.Nil(t, err, "there should be no error")
 	redisMock.AssertExpectations(t)
 }
 
 func TestRedisListOutput_Write_Chunked(t *testing.T) {
-	output, redisMock := setup(1)
-	redisMock.On("RPush", context.Background(), "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Times(2)
+	ctx, output, redisMock := setup(1)
+	redisMock.On("RPush", ctx, "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Times(2)
 
 	batch := []stream.WritableMessage{
 		stream.NewMessage("foo"),
 		stream.NewMessage("bar"),
 	}
-	err := output.Write(context.Background(), batch)
+	err := output.Write(ctx, batch)
 
 	assert.Nil(t, err, "there should be no error")
 	redisMock.AssertExpectations(t)
 }
 
-func setup(batchSize int) (stream.Output, *redisMocks.Client) {
+func setup(batchSize int) (context.Context, stream.Output, *redisMocks.Client) {
+	ctx := context.Background()
 	loggerMock := logMocks.NewLoggerMockedAll()
 	mw := metricMocks.NewWriterMockedAll()
 
 	redisMock := new(redisMocks.Client)
 	output := stream.NewRedisListOutputWithInterfaces(loggerMock, mw, redisMock, getSettings(batchSize))
 
-	return output, redisMock
+	return ctx, output, redisMock
 }
 
 func getSettings(batchSize int) *stream.RedisListOutputSettings {
