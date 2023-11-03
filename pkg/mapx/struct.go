@@ -421,6 +421,11 @@ func (s *Struct) doWrite(target interface{}, sourceValues *MapX) error {
 
 		sourceValue = sourceValues.Get(tag.Name).Data()
 
+		if targetValue.Type().Kind() == reflect.Ptr {
+			targetValue.Set(reflect.New(targetValue.Type().Elem()))
+			targetValue = targetValue.Elem()
+		}
+
 		if targetValue.Kind() == reflect.Map {
 			if err = s.doWriteMap(tag, targetValue, sourceValues); err != nil {
 				return err

@@ -42,6 +42,45 @@ func TestMapStructIO_KeysBasic(t *testing.T) {
 	assert.Len(t, keys, 5)
 }
 
+// This tesst assumes that we can pass non-pointers of the same type for writing pointers to a mapStruct
+// (env vars config values to ptr struct properties case)
+func TestMapStructIO_PointerTarget(t *testing.T) {
+	type sourceStruct struct {
+		B   *bool                   `cfg:"b"`
+		D   *time.Duration          `cfg:"d"`
+		MSI *map[string]interface{} `cfg:"msi"`
+		S   *string                 `cfg:"s"`
+		SlS *[]string               `cfg:"sl_s"`
+		T   *time.Time              `cfg:"t"`
+	}
+
+	now := time.Now()
+
+	mx := mapx.NewMapX(map[string]interface{}{
+		"b": true,
+		"d": "1m",
+		"msi": map[string]interface{}{
+			"foo": "bar",
+		},
+		"s":    "foo",
+		"sl_s": []string{"a", "b"},
+		"t":    now,
+	})
+
+	source := &sourceStruct{}
+	ms := setupMapStructIO(t, source)
+
+	err := ms.Write(mx)
+	assert.Nil(t, err)
+
+	assert.Equal(t, true, *source.B)
+	assert.Equal(t, time.Minute, *source.D)
+	assert.Equal(t, "bar", (*source.MSI)["foo"])
+	assert.Equal(t, "foo", *source.S)
+	assert.Equal(t, []string{"a", "b"}, *source.SlS)
+	assert.Equal(t, now, *source.T)
+}
+
 func TestMapStructIO_ReadZeroAndDefaultValuesBasic(t *testing.T) {
 	type sourceStruct struct {
 		B    bool          `cfg:"b" default:"true"`
