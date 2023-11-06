@@ -17,7 +17,8 @@ import (
 
 func TestLadonGuard_GetPolicies(t *testing.T) {
 	manager := new(mocks.Manager)
-	g := guard.NewGuardWithInterfaces(manager)
+	auditLogger := new(mocks.AuditLogger)
+	g := guard.NewGuardWithInterfaces(manager, auditLogger)
 
 	pol1 := &ladon.DefaultPolicy{
 		ID: "100",
