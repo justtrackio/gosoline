@@ -36,12 +36,15 @@ func NewGuard(config cfg.Config, logger log.Logger) (*LadonGuard, error) {
 		return nil, fmt.Errorf("can not create sqlManager: %w", err)
 	}
 
-	return NewGuardWithInterfaces(sqlManager), nil
+	auditLogger := NewAuditLogger(logger)
+
+	return NewGuardWithInterfaces(sqlManager, auditLogger), nil
 }
 
-func NewGuardWithInterfaces(manager Manager) *LadonGuard {
+func NewGuardWithInterfaces(manager Manager, logger AuditLogger) *LadonGuard {
 	warden := &ladon.Ladon{
-		Manager: manager,
+		Manager:     manager,
+		AuditLogger: logger,
 	}
 
 	return &LadonGuard{
