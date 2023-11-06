@@ -413,7 +413,6 @@ func parseCookies(request *http.Request) map[string]string {
 
 func parseUrl(ctx *gin.Context) (*url.URL, error) {
 	ginUrl := location.Get(ctx)
-	ginUrl := ctx.Request.URL
 	if ginUrl == nil {
 		ginUrl = &url.URL{}
 	}
