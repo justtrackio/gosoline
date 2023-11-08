@@ -25,6 +25,7 @@ type TableNamingSettings struct {
 
 type DdbLeaderElectionSettings struct {
 	Naming        TableNamingSettings `cfg:"naming"`
+	ClientName    string              `cfg:"client_name" default:"default"`
 	GroupId       string              `cfg:"group_id" default:"{app_name}"`
 	LeaseDuration time.Duration       `cfg:"lease_duration" default:"1m"`
 }
@@ -56,6 +57,7 @@ func NewDdbLeaderElectionWithSettings(ctx context.Context, config cfg.Config, lo
 			ReadCapacityUnits:  3,
 			WriteCapacityUnits: 3,
 		},
+		ClientName: settings.ClientName,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
@@ -121,7 +123,7 @@ func (e *DdbLeaderElection) Resign(ctx context.Context, memberId string) error {
 	}
 
 	if res.ConditionalCheckFailed {
-		e.logger.Warn("not not resign as leader as we're not the current one")
+		e.logger.Warn("can not resign as leader as we're not the current one")
 	}
 
 	return nil
