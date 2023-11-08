@@ -557,3 +557,167 @@ func TestUniqByType(t *testing.T) {
 		})
 	}
 }
+
+func TestPartitionByField(t *testing.T) {
+	type A struct {
+		Type  string
+		Value int
+	}
+
+	tests := map[string]struct {
+		In  []A
+		Out map[string][]int
+	}{
+		"simple": {
+			In: []A{
+				{Type: "a", Value: 1},
+				{Type: "a", Value: 2},
+				{Type: "a", Value: 3},
+				{Type: "b", Value: 4},
+			},
+			Out: map[string][]int{
+				"a": {1, 2, 3},
+				"b": {4},
+			},
+		},
+		"empty": {
+			In:  []A{},
+			Out: map[string][]int{},
+		},
+		"allInOneSlice": {
+			In: []A{
+				{Type: "a", Value: 1},
+				{Type: "a", Value: 2},
+			},
+			Out: map[string][]int{
+				"a": {1, 2},
+			},
+		},
+		"multipleEqualValues": {
+			In: []A{
+				{Type: "a", Value: 2},
+				{Type: "a", Value: 2},
+				{Type: "a", Value: 2},
+			},
+			Out: map[string][]int{
+				"a": {2, 2, 2},
+			},
+		},
+	}
+
+	for name, data := range tests {
+		data := data
+		t.Run(name, func(t *testing.T) {
+			keyer := func(el A) (string, int) {
+				return el.Type, el.Value
+			}
+
+			assert.Equal(t, data.Out, funk.PartitionMap(data.In, keyer))
+		})
+	}
+}
+
+func TestAny(t *testing.T) {
+	tests := map[string]struct {
+		In  []int
+		Out bool
+	}{
+		"simple": {
+			In:  []int{1, 2, 3},
+			Out: true,
+		},
+		"empty": {
+			In:  []int{},
+			Out: false,
+		},
+		"all false": {
+			In:  []int{0, 0, 0},
+			Out: false,
+		},
+		"mixed": {
+			In:  []int{0, 1, 0},
+			Out: true,
+		},
+	}
+
+	biggerThenZero := func(i int) bool {
+		return i > 0
+	}
+
+	for name, data := range tests {
+		data := data
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, data.Out, funk.Any(data.In, biggerThenZero))
+		})
+	}
+}
+
+func TestAll(t *testing.T) {
+	tests := map[string]struct {
+		In  []int
+		Out bool
+	}{
+		"simple": {
+			In:  []int{1, 2, 3},
+			Out: true,
+		},
+		"empty": {
+			In:  []int{},
+			Out: true,
+		},
+		"all false": {
+			In:  []int{0, 0, 0, -1},
+			Out: false,
+		},
+		"mixed": {
+			In:  []int{0, 1, 0},
+			Out: false,
+		},
+	}
+
+	biggerThenZero := func(i int) bool {
+		return i > 0
+	}
+
+	for name, data := range tests {
+		data := data
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, data.Out, funk.All(data.In, biggerThenZero))
+		})
+	}
+}
+
+func TestNone(t *testing.T) {
+	tests := map[string]struct {
+		In  []int
+		Out bool
+	}{
+		"simple": {
+			In:  []int{1, 2, 3},
+			Out: false,
+		},
+		"empty": {
+			In:  []int{},
+			Out: true,
+		},
+		"all false": {
+			In:  []int{0, 0, 0, -1},
+			Out: true,
+		},
+		"mixed": {
+			In:  []int{0, 1, 0},
+			Out: false,
+		},
+	}
+
+	biggerThenZero := func(i int) bool {
+		return i > 0
+	}
+
+	for name, data := range tests {
+		data := data
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, data.Out, funk.None(data.In, biggerThenZero))
+		})
+	}
+}
