@@ -110,12 +110,6 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	var err error
 	var tokenInfo *oauth2.Tokeninfo
 
-	if tokenInfo, ok = a.tokenCache[idToken]; ok && tokenInfo == nil {
-		logger.Debug("token was in cache but invalid")
-
-		return false, fmt.Errorf("token from cache invalidated the user")
-	}
-
 	if tokenInfo, ok = a.tokenCache[idToken]; ok {
 		logger.Debug("idToken was already in cache and valid")
 
@@ -132,27 +126,27 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	tokenInfo, err = a.tokenProvider.GetTokenInfo(idToken)
 
 	if err != nil {
-		a.tokenCache[idToken] = nil
+		delete(a.tokenCache, idToken)
 		return false, errors.Wrap(err, "google auth: failed requesting token info")
 	}
 
 	if tokenInfo.HTTPStatusCode > 299 {
-		a.tokenCache[idToken] = nil
+		delete(a.tokenCache, idToken)
 		return false, fmt.Errorf("google auth: invalid status code %d", tokenInfo.HTTPStatusCode)
 	}
 
 	if !slices.Contains(a.validAudiences, tokenInfo.Audience) {
-		a.tokenCache[idToken] = nil
+		delete(a.tokenCache, idToken)
 		return false, fmt.Errorf("google auth: invalid audience")
 	}
 
 	if ok, err = a.isAddressAllowed(tokenInfo.Email); err != nil {
-		a.tokenCache[idToken] = nil
+		delete(a.tokenCache, idToken)
 		return false, fmt.Errorf("google auth: can not check if address is allowed")
 	}
 
 	if !ok {
-		a.tokenCache[idToken] = nil
+		delete(a.tokenCache, idToken)
 		return false, fmt.Errorf("google auth: address %s is not allowed", tokenInfo.Email)
 	}
 
