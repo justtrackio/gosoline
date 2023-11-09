@@ -44,7 +44,7 @@ func NewSubscriberCallbackFactory(transformers ModelTransformers, outputs Output
 		metricWriter := metric.NewWriter(defaultMetrics...)
 
 		callback := &SubscriberCallback{
-			logger:       logger,
+			logger:       logger.WithContext(ctx),
 			metric:       metricWriter,
 			transformers: transformers,
 			outputs:      outputs,
