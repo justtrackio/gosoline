@@ -96,7 +96,5 @@ export function CodeBlock({ children, snippet, ...props }) {
 
     code = code.join('\n')
 
-    // Remove potential leftover newlines and whitespace
-
     return <ThemeCodeBlock {...props}>{code}</ThemeCodeBlock>
 }
