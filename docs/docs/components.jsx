@@ -8,10 +8,11 @@ import LayersIcon from '@mui/icons-material/Layers';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import Grid from '@mui/material/Grid';
 import CloudQueueIcon from '@mui/icons-material/CloudQueue';
+import ThemeCodeBlock from '@theme/CodeBlock';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useColorMode } from '@docusaurus/theme-common'
 
-export default function PrimaryUseCases() {
+export function PrimaryUseCases() {
     const { isDarkTheme } = useColorMode();
 
     const darkTheme = createTheme({
@@ -64,3 +65,38 @@ export default function PrimaryUseCases() {
       </ThemeProvider>
     )
   }
+
+export function CodeBlock({ children, snippet, ...props }) {
+    let code = children.replace(/\n$/, '');
+    var foundMatch = false;
+    if (snippet) {
+      // Find the snippet
+      const snippetPattern = new RegExp(
+        `(?:\/\/|#) snippet-start: ${snippet}(.*)(?:\/\/|#) snippet-end: ${snippet}`, 
+        's'
+      );
+      let match = code.match(snippetPattern)
+      if (match) {
+        code = match[1];
+        foundMatch = true;
+      }
+    }    
+
+    // Remove all other potential snippet comments as well as the first and last empty lines
+    code = code.split('\n').filter(
+        function(line) {
+            let leftoverCommentsPattern = new RegExp('\w*?(?:\/\/|#) snippet.*\n*?$', 'g')
+            return !leftoverCommentsPattern.test(line)
+        }
+    )
+    
+    if (foundMatch) {
+        code = code.slice(1, -1)
+    }
+
+    code = code.join('\n')
+
+    // Remove potential leftover newlines and whitespace
+
+    return <ThemeCodeBlock {...props}>{code}</ThemeCodeBlock>
+}
