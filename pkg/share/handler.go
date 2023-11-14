@@ -9,7 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/guard"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/ory/ladon"
+	"github.com/selm0/ladon"
 )
 
 type Shareable interface {

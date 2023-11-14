@@ -3,7 +3,10 @@
 package mocks
 
 import (
-	ladon "github.com/ory/ladon"
+	context "context"
+
+	ladon "github.com/selm0/ladon"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -20,13 +23,13 @@ func (_m *Manager) EXPECT() *Manager_Expecter {
 	return &Manager_Expecter{mock: &_m.Mock}
 }
 
-// Create provides a mock function with given fields: policy
-func (_m *Manager) Create(policy ladon.Policy) error {
-	ret := _m.Called(policy)
+// Create provides a mock function with given fields: ctx, policy
+func (_m *Manager) Create(ctx context.Context, policy ladon.Policy) error {
+	ret := _m.Called(ctx, policy)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(ladon.Policy) error); ok {
-		r0 = rf(policy)
+	if rf, ok := ret.Get(0).(func(context.Context, ladon.Policy) error); ok {
+		r0 = rf(ctx, policy)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -40,14 +43,15 @@ type Manager_Create_Call struct {
 }
 
 // Create is a helper method to define mock.On call
+//   - ctx context.Context
 //   - policy ladon.Policy
-func (_e *Manager_Expecter) Create(policy interface{}) *Manager_Create_Call {
-	return &Manager_Create_Call{Call: _e.mock.On("Create", policy)}
+func (_e *Manager_Expecter) Create(ctx interface{}, policy interface{}) *Manager_Create_Call {
+	return &Manager_Create_Call{Call: _e.mock.On("Create", ctx, policy)}
 }
 
-func (_c *Manager_Create_Call) Run(run func(policy ladon.Policy)) *Manager_Create_Call {
+func (_c *Manager_Create_Call) Run(run func(ctx context.Context, policy ladon.Policy)) *Manager_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(ladon.Policy))
+		run(args[0].(context.Context), args[1].(ladon.Policy))
 	})
 	return _c
 }
@@ -57,18 +61,18 @@ func (_c *Manager_Create_Call) Return(_a0 error) *Manager_Create_Call {
 	return _c
 }
 
-func (_c *Manager_Create_Call) RunAndReturn(run func(ladon.Policy) error) *Manager_Create_Call {
+func (_c *Manager_Create_Call) RunAndReturn(run func(context.Context, ladon.Policy) error) *Manager_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Delete provides a mock function with given fields: id
-func (_m *Manager) Delete(id string) error {
-	ret := _m.Called(id)
+// Delete provides a mock function with given fields: ctx, id
+func (_m *Manager) Delete(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -82,14 +86,15 @@ type Manager_Delete_Call struct {
 }
 
 // Delete is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id string
-func (_e *Manager_Expecter) Delete(id interface{}) *Manager_Delete_Call {
-	return &Manager_Delete_Call{Call: _e.mock.On("Delete", id)}
+func (_e *Manager_Expecter) Delete(ctx interface{}, id interface{}) *Manager_Delete_Call {
+	return &Manager_Delete_Call{Call: _e.mock.On("Delete", ctx, id)}
 }
 
-func (_c *Manager_Delete_Call) Run(run func(id string)) *Manager_Delete_Call {
+func (_c *Manager_Delete_Call) Run(run func(ctx context.Context, id string)) *Manager_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -99,30 +104,30 @@ func (_c *Manager_Delete_Call) Return(_a0 error) *Manager_Delete_Call {
 	return _c
 }
 
-func (_c *Manager_Delete_Call) RunAndReturn(run func(string) error) *Manager_Delete_Call {
+func (_c *Manager_Delete_Call) RunAndReturn(run func(context.Context, string) error) *Manager_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// FindPoliciesForResource provides a mock function with given fields: resource
-func (_m *Manager) FindPoliciesForResource(resource string) (ladon.Policies, error) {
-	ret := _m.Called(resource)
+// FindPoliciesForResource provides a mock function with given fields: ctx, resource
+func (_m *Manager) FindPoliciesForResource(ctx context.Context, resource string) (ladon.Policies, error) {
+	ret := _m.Called(ctx, resource)
 
 	var r0 ladon.Policies
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (ladon.Policies, error)); ok {
-		return rf(resource)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (ladon.Policies, error)); ok {
+		return rf(ctx, resource)
 	}
-	if rf, ok := ret.Get(0).(func(string) ladon.Policies); ok {
-		r0 = rf(resource)
+	if rf, ok := ret.Get(0).(func(context.Context, string) ladon.Policies); ok {
+		r0 = rf(ctx, resource)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ladon.Policies)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(resource)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, resource)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -136,14 +141,15 @@ type Manager_FindPoliciesForResource_Call struct {
 }
 
 // FindPoliciesForResource is a helper method to define mock.On call
+//   - ctx context.Context
 //   - resource string
-func (_e *Manager_Expecter) FindPoliciesForResource(resource interface{}) *Manager_FindPoliciesForResource_Call {
-	return &Manager_FindPoliciesForResource_Call{Call: _e.mock.On("FindPoliciesForResource", resource)}
+func (_e *Manager_Expecter) FindPoliciesForResource(ctx interface{}, resource interface{}) *Manager_FindPoliciesForResource_Call {
+	return &Manager_FindPoliciesForResource_Call{Call: _e.mock.On("FindPoliciesForResource", ctx, resource)}
 }
 
-func (_c *Manager_FindPoliciesForResource_Call) Run(run func(resource string)) *Manager_FindPoliciesForResource_Call {
+func (_c *Manager_FindPoliciesForResource_Call) Run(run func(ctx context.Context, resource string)) *Manager_FindPoliciesForResource_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -153,30 +159,30 @@ func (_c *Manager_FindPoliciesForResource_Call) Return(_a0 ladon.Policies, _a1 e
 	return _c
 }
 
-func (_c *Manager_FindPoliciesForResource_Call) RunAndReturn(run func(string) (ladon.Policies, error)) *Manager_FindPoliciesForResource_Call {
+func (_c *Manager_FindPoliciesForResource_Call) RunAndReturn(run func(context.Context, string) (ladon.Policies, error)) *Manager_FindPoliciesForResource_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// FindPoliciesForSubject provides a mock function with given fields: subject
-func (_m *Manager) FindPoliciesForSubject(subject string) (ladon.Policies, error) {
-	ret := _m.Called(subject)
+// FindPoliciesForSubject provides a mock function with given fields: ctx, subject
+func (_m *Manager) FindPoliciesForSubject(ctx context.Context, subject string) (ladon.Policies, error) {
+	ret := _m.Called(ctx, subject)
 
 	var r0 ladon.Policies
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (ladon.Policies, error)); ok {
-		return rf(subject)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (ladon.Policies, error)); ok {
+		return rf(ctx, subject)
 	}
-	if rf, ok := ret.Get(0).(func(string) ladon.Policies); ok {
-		r0 = rf(subject)
+	if rf, ok := ret.Get(0).(func(context.Context, string) ladon.Policies); ok {
+		r0 = rf(ctx, subject)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ladon.Policies)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(subject)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, subject)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -190,14 +196,15 @@ type Manager_FindPoliciesForSubject_Call struct {
 }
 
 // FindPoliciesForSubject is a helper method to define mock.On call
+//   - ctx context.Context
 //   - subject string
-func (_e *Manager_Expecter) FindPoliciesForSubject(subject interface{}) *Manager_FindPoliciesForSubject_Call {
-	return &Manager_FindPoliciesForSubject_Call{Call: _e.mock.On("FindPoliciesForSubject", subject)}
+func (_e *Manager_Expecter) FindPoliciesForSubject(ctx interface{}, subject interface{}) *Manager_FindPoliciesForSubject_Call {
+	return &Manager_FindPoliciesForSubject_Call{Call: _e.mock.On("FindPoliciesForSubject", ctx, subject)}
 }
 
-func (_c *Manager_FindPoliciesForSubject_Call) Run(run func(subject string)) *Manager_FindPoliciesForSubject_Call {
+func (_c *Manager_FindPoliciesForSubject_Call) Run(run func(ctx context.Context, subject string)) *Manager_FindPoliciesForSubject_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -207,30 +214,30 @@ func (_c *Manager_FindPoliciesForSubject_Call) Return(_a0 ladon.Policies, _a1 er
 	return _c
 }
 
-func (_c *Manager_FindPoliciesForSubject_Call) RunAndReturn(run func(string) (ladon.Policies, error)) *Manager_FindPoliciesForSubject_Call {
+func (_c *Manager_FindPoliciesForSubject_Call) RunAndReturn(run func(context.Context, string) (ladon.Policies, error)) *Manager_FindPoliciesForSubject_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// FindRequestCandidates provides a mock function with given fields: r
-func (_m *Manager) FindRequestCandidates(r *ladon.Request) (ladon.Policies, error) {
-	ret := _m.Called(r)
+// FindRequestCandidates provides a mock function with given fields: ctx, r
+func (_m *Manager) FindRequestCandidates(ctx context.Context, r *ladon.Request) (ladon.Policies, error) {
+	ret := _m.Called(ctx, r)
 
 	var r0 ladon.Policies
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*ladon.Request) (ladon.Policies, error)); ok {
-		return rf(r)
+	if rf, ok := ret.Get(0).(func(context.Context, *ladon.Request) (ladon.Policies, error)); ok {
+		return rf(ctx, r)
 	}
-	if rf, ok := ret.Get(0).(func(*ladon.Request) ladon.Policies); ok {
-		r0 = rf(r)
+	if rf, ok := ret.Get(0).(func(context.Context, *ladon.Request) ladon.Policies); ok {
+		r0 = rf(ctx, r)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ladon.Policies)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*ladon.Request) error); ok {
-		r1 = rf(r)
+	if rf, ok := ret.Get(1).(func(context.Context, *ladon.Request) error); ok {
+		r1 = rf(ctx, r)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -244,14 +251,15 @@ type Manager_FindRequestCandidates_Call struct {
 }
 
 // FindRequestCandidates is a helper method to define mock.On call
+//   - ctx context.Context
 //   - r *ladon.Request
-func (_e *Manager_Expecter) FindRequestCandidates(r interface{}) *Manager_FindRequestCandidates_Call {
-	return &Manager_FindRequestCandidates_Call{Call: _e.mock.On("FindRequestCandidates", r)}
+func (_e *Manager_Expecter) FindRequestCandidates(ctx interface{}, r interface{}) *Manager_FindRequestCandidates_Call {
+	return &Manager_FindRequestCandidates_Call{Call: _e.mock.On("FindRequestCandidates", ctx, r)}
 }
 
-func (_c *Manager_FindRequestCandidates_Call) Run(run func(r *ladon.Request)) *Manager_FindRequestCandidates_Call {
+func (_c *Manager_FindRequestCandidates_Call) Run(run func(ctx context.Context, r *ladon.Request)) *Manager_FindRequestCandidates_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*ladon.Request))
+		run(args[0].(context.Context), args[1].(*ladon.Request))
 	})
 	return _c
 }
@@ -261,30 +269,30 @@ func (_c *Manager_FindRequestCandidates_Call) Return(_a0 ladon.Policies, _a1 err
 	return _c
 }
 
-func (_c *Manager_FindRequestCandidates_Call) RunAndReturn(run func(*ladon.Request) (ladon.Policies, error)) *Manager_FindRequestCandidates_Call {
+func (_c *Manager_FindRequestCandidates_Call) RunAndReturn(run func(context.Context, *ladon.Request) (ladon.Policies, error)) *Manager_FindRequestCandidates_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Get provides a mock function with given fields: id
-func (_m *Manager) Get(id string) (ladon.Policy, error) {
-	ret := _m.Called(id)
+// Get provides a mock function with given fields: ctx, id
+func (_m *Manager) Get(ctx context.Context, id string) (ladon.Policy, error) {
+	ret := _m.Called(ctx, id)
 
 	var r0 ladon.Policy
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (ladon.Policy, error)); ok {
-		return rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (ladon.Policy, error)); ok {
+		return rf(ctx, id)
 	}
-	if rf, ok := ret.Get(0).(func(string) ladon.Policy); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) ladon.Policy); ok {
+		r0 = rf(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ladon.Policy)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(id)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -298,14 +306,15 @@ type Manager_Get_Call struct {
 }
 
 // Get is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id string
-func (_e *Manager_Expecter) Get(id interface{}) *Manager_Get_Call {
-	return &Manager_Get_Call{Call: _e.mock.On("Get", id)}
+func (_e *Manager_Expecter) Get(ctx interface{}, id interface{}) *Manager_Get_Call {
+	return &Manager_Get_Call{Call: _e.mock.On("Get", ctx, id)}
 }
 
-func (_c *Manager_Get_Call) Run(run func(id string)) *Manager_Get_Call {
+func (_c *Manager_Get_Call) Run(run func(ctx context.Context, id string)) *Manager_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -315,30 +324,30 @@ func (_c *Manager_Get_Call) Return(_a0 ladon.Policy, _a1 error) *Manager_Get_Cal
 	return _c
 }
 
-func (_c *Manager_Get_Call) RunAndReturn(run func(string) (ladon.Policy, error)) *Manager_Get_Call {
+func (_c *Manager_Get_Call) RunAndReturn(run func(context.Context, string) (ladon.Policy, error)) *Manager_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetAll provides a mock function with given fields: limit, offset
-func (_m *Manager) GetAll(limit int64, offset int64) (ladon.Policies, error) {
-	ret := _m.Called(limit, offset)
+// GetAll provides a mock function with given fields: ctx, limit, offset
+func (_m *Manager) GetAll(ctx context.Context, limit int64, offset int64) (ladon.Policies, error) {
+	ret := _m.Called(ctx, limit, offset)
 
 	var r0 ladon.Policies
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int64, int64) (ladon.Policies, error)); ok {
-		return rf(limit, offset)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64) (ladon.Policies, error)); ok {
+		return rf(ctx, limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func(int64, int64) ladon.Policies); ok {
-		r0 = rf(limit, offset)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64) ladon.Policies); ok {
+		r0 = rf(ctx, limit, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ladon.Policies)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(int64, int64) error); ok {
-		r1 = rf(limit, offset)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int64) error); ok {
+		r1 = rf(ctx, limit, offset)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -352,15 +361,16 @@ type Manager_GetAll_Call struct {
 }
 
 // GetAll is a helper method to define mock.On call
+//   - ctx context.Context
 //   - limit int64
 //   - offset int64
-func (_e *Manager_Expecter) GetAll(limit interface{}, offset interface{}) *Manager_GetAll_Call {
-	return &Manager_GetAll_Call{Call: _e.mock.On("GetAll", limit, offset)}
+func (_e *Manager_Expecter) GetAll(ctx interface{}, limit interface{}, offset interface{}) *Manager_GetAll_Call {
+	return &Manager_GetAll_Call{Call: _e.mock.On("GetAll", ctx, limit, offset)}
 }
 
-func (_c *Manager_GetAll_Call) Run(run func(limit int64, offset int64)) *Manager_GetAll_Call {
+func (_c *Manager_GetAll_Call) Run(run func(ctx context.Context, limit int64, offset int64)) *Manager_GetAll_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64), args[1].(int64))
+		run(args[0].(context.Context), args[1].(int64), args[2].(int64))
 	})
 	return _c
 }
@@ -370,18 +380,18 @@ func (_c *Manager_GetAll_Call) Return(_a0 ladon.Policies, _a1 error) *Manager_Ge
 	return _c
 }
 
-func (_c *Manager_GetAll_Call) RunAndReturn(run func(int64, int64) (ladon.Policies, error)) *Manager_GetAll_Call {
+func (_c *Manager_GetAll_Call) RunAndReturn(run func(context.Context, int64, int64) (ladon.Policies, error)) *Manager_GetAll_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Update provides a mock function with given fields: policy
-func (_m *Manager) Update(policy ladon.Policy) error {
-	ret := _m.Called(policy)
+// Update provides a mock function with given fields: ctx, policy
+func (_m *Manager) Update(ctx context.Context, policy ladon.Policy) error {
+	ret := _m.Called(ctx, policy)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(ladon.Policy) error); ok {
-		r0 = rf(policy)
+	if rf, ok := ret.Get(0).(func(context.Context, ladon.Policy) error); ok {
+		r0 = rf(ctx, policy)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -395,14 +405,15 @@ type Manager_Update_Call struct {
 }
 
 // Update is a helper method to define mock.On call
+//   - ctx context.Context
 //   - policy ladon.Policy
-func (_e *Manager_Expecter) Update(policy interface{}) *Manager_Update_Call {
-	return &Manager_Update_Call{Call: _e.mock.On("Update", policy)}
+func (_e *Manager_Expecter) Update(ctx interface{}, policy interface{}) *Manager_Update_Call {
+	return &Manager_Update_Call{Call: _e.mock.On("Update", ctx, policy)}
 }
 
-func (_c *Manager_Update_Call) Run(run func(policy ladon.Policy)) *Manager_Update_Call {
+func (_c *Manager_Update_Call) Run(run func(ctx context.Context, policy ladon.Policy)) *Manager_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(ladon.Policy))
+		run(args[0].(context.Context), args[1].(ladon.Policy))
 	})
 	return _c
 }
@@ -412,7 +423,7 @@ func (_c *Manager_Update_Call) Return(_a0 error) *Manager_Update_Call {
 	return _c
 }
 
-func (_c *Manager_Update_Call) RunAndReturn(run func(ladon.Policy) error) *Manager_Update_Call {
+func (_c *Manager_Update_Call) RunAndReturn(run func(context.Context, ladon.Policy) error) *Manager_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }

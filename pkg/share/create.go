@@ -61,7 +61,7 @@ func (s shareCreateHandler) Handle(ctx context.Context, req *apiserver.Request) 
 	policy := BuildSharePolicy(s.uuidProvider.NewV4(), entity, shareInput.GetOwnerId(), shareInput.GetActions())
 
 	guard := s.transformer.GetGuard()
-	err = guard.CreatePolicy(policy)
+	err = guard.CreatePolicy(ctx, policy)
 	if err != nil {
 		return nil, err
 	}

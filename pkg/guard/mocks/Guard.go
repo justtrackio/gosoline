@@ -3,7 +3,10 @@
 package mocks
 
 import (
-	ladon "github.com/ory/ladon"
+	context "context"
+
+	ladon "github.com/selm0/ladon"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -20,13 +23,13 @@ func (_m *Guard) EXPECT() *Guard_Expecter {
 	return &Guard_Expecter{mock: &_m.Mock}
 }
 
-// CreatePolicy provides a mock function with given fields: pol
-func (_m *Guard) CreatePolicy(pol ladon.Policy) error {
-	ret := _m.Called(pol)
+// CreatePolicy provides a mock function with given fields: ctx, pol
+func (_m *Guard) CreatePolicy(ctx context.Context, pol ladon.Policy) error {
+	ret := _m.Called(ctx, pol)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(ladon.Policy) error); ok {
-		r0 = rf(pol)
+	if rf, ok := ret.Get(0).(func(context.Context, ladon.Policy) error); ok {
+		r0 = rf(ctx, pol)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -40,14 +43,15 @@ type Guard_CreatePolicy_Call struct {
 }
 
 // CreatePolicy is a helper method to define mock.On call
+//   - ctx context.Context
 //   - pol ladon.Policy
-func (_e *Guard_Expecter) CreatePolicy(pol interface{}) *Guard_CreatePolicy_Call {
-	return &Guard_CreatePolicy_Call{Call: _e.mock.On("CreatePolicy", pol)}
+func (_e *Guard_Expecter) CreatePolicy(ctx interface{}, pol interface{}) *Guard_CreatePolicy_Call {
+	return &Guard_CreatePolicy_Call{Call: _e.mock.On("CreatePolicy", ctx, pol)}
 }
 
-func (_c *Guard_CreatePolicy_Call) Run(run func(pol ladon.Policy)) *Guard_CreatePolicy_Call {
+func (_c *Guard_CreatePolicy_Call) Run(run func(ctx context.Context, pol ladon.Policy)) *Guard_CreatePolicy_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(ladon.Policy))
+		run(args[0].(context.Context), args[1].(ladon.Policy))
 	})
 	return _c
 }
@@ -57,18 +61,18 @@ func (_c *Guard_CreatePolicy_Call) Return(_a0 error) *Guard_CreatePolicy_Call {
 	return _c
 }
 
-func (_c *Guard_CreatePolicy_Call) RunAndReturn(run func(ladon.Policy) error) *Guard_CreatePolicy_Call {
+func (_c *Guard_CreatePolicy_Call) RunAndReturn(run func(context.Context, ladon.Policy) error) *Guard_CreatePolicy_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// DeletePolicy provides a mock function with given fields: pol
-func (_m *Guard) DeletePolicy(pol ladon.Policy) error {
-	ret := _m.Called(pol)
+// DeletePolicy provides a mock function with given fields: ctx, pol
+func (_m *Guard) DeletePolicy(ctx context.Context, pol ladon.Policy) error {
+	ret := _m.Called(ctx, pol)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(ladon.Policy) error); ok {
-		r0 = rf(pol)
+	if rf, ok := ret.Get(0).(func(context.Context, ladon.Policy) error); ok {
+		r0 = rf(ctx, pol)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -82,14 +86,15 @@ type Guard_DeletePolicy_Call struct {
 }
 
 // DeletePolicy is a helper method to define mock.On call
+//   - ctx context.Context
 //   - pol ladon.Policy
-func (_e *Guard_Expecter) DeletePolicy(pol interface{}) *Guard_DeletePolicy_Call {
-	return &Guard_DeletePolicy_Call{Call: _e.mock.On("DeletePolicy", pol)}
+func (_e *Guard_Expecter) DeletePolicy(ctx interface{}, pol interface{}) *Guard_DeletePolicy_Call {
+	return &Guard_DeletePolicy_Call{Call: _e.mock.On("DeletePolicy", ctx, pol)}
 }
 
-func (_c *Guard_DeletePolicy_Call) Run(run func(pol ladon.Policy)) *Guard_DeletePolicy_Call {
+func (_c *Guard_DeletePolicy_Call) Run(run func(ctx context.Context, pol ladon.Policy)) *Guard_DeletePolicy_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(ladon.Policy))
+		run(args[0].(context.Context), args[1].(ladon.Policy))
 	})
 	return _c
 }
@@ -99,30 +104,30 @@ func (_c *Guard_DeletePolicy_Call) Return(_a0 error) *Guard_DeletePolicy_Call {
 	return _c
 }
 
-func (_c *Guard_DeletePolicy_Call) RunAndReturn(run func(ladon.Policy) error) *Guard_DeletePolicy_Call {
+func (_c *Guard_DeletePolicy_Call) RunAndReturn(run func(context.Context, ladon.Policy) error) *Guard_DeletePolicy_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetPolicies provides a mock function with given fields:
-func (_m *Guard) GetPolicies() (ladon.Policies, error) {
-	ret := _m.Called()
+// GetPolicies provides a mock function with given fields: ctx
+func (_m *Guard) GetPolicies(ctx context.Context) (ladon.Policies, error) {
+	ret := _m.Called(ctx)
 
 	var r0 ladon.Policies
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (ladon.Policies, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(context.Context) (ladon.Policies, error)); ok {
+		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func() ladon.Policies); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) ladon.Policies); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ladon.Policies)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -136,13 +141,14 @@ type Guard_GetPolicies_Call struct {
 }
 
 // GetPolicies is a helper method to define mock.On call
-func (_e *Guard_Expecter) GetPolicies() *Guard_GetPolicies_Call {
-	return &Guard_GetPolicies_Call{Call: _e.mock.On("GetPolicies")}
+//   - ctx context.Context
+func (_e *Guard_Expecter) GetPolicies(ctx interface{}) *Guard_GetPolicies_Call {
+	return &Guard_GetPolicies_Call{Call: _e.mock.On("GetPolicies", ctx)}
 }
 
-func (_c *Guard_GetPolicies_Call) Run(run func()) *Guard_GetPolicies_Call {
+func (_c *Guard_GetPolicies_Call) Run(run func(ctx context.Context)) *Guard_GetPolicies_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -152,30 +158,30 @@ func (_c *Guard_GetPolicies_Call) Return(_a0 ladon.Policies, _a1 error) *Guard_G
 	return _c
 }
 
-func (_c *Guard_GetPolicies_Call) RunAndReturn(run func() (ladon.Policies, error)) *Guard_GetPolicies_Call {
+func (_c *Guard_GetPolicies_Call) RunAndReturn(run func(context.Context) (ladon.Policies, error)) *Guard_GetPolicies_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetPoliciesBySubject provides a mock function with given fields: subject
-func (_m *Guard) GetPoliciesBySubject(subject string) (ladon.Policies, error) {
-	ret := _m.Called(subject)
+// GetPoliciesBySubject provides a mock function with given fields: ctx, subject
+func (_m *Guard) GetPoliciesBySubject(ctx context.Context, subject string) (ladon.Policies, error) {
+	ret := _m.Called(ctx, subject)
 
 	var r0 ladon.Policies
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (ladon.Policies, error)); ok {
-		return rf(subject)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (ladon.Policies, error)); ok {
+		return rf(ctx, subject)
 	}
-	if rf, ok := ret.Get(0).(func(string) ladon.Policies); ok {
-		r0 = rf(subject)
+	if rf, ok := ret.Get(0).(func(context.Context, string) ladon.Policies); ok {
+		r0 = rf(ctx, subject)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ladon.Policies)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(subject)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, subject)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -189,14 +195,15 @@ type Guard_GetPoliciesBySubject_Call struct {
 }
 
 // GetPoliciesBySubject is a helper method to define mock.On call
+//   - ctx context.Context
 //   - subject string
-func (_e *Guard_Expecter) GetPoliciesBySubject(subject interface{}) *Guard_GetPoliciesBySubject_Call {
-	return &Guard_GetPoliciesBySubject_Call{Call: _e.mock.On("GetPoliciesBySubject", subject)}
+func (_e *Guard_Expecter) GetPoliciesBySubject(ctx interface{}, subject interface{}) *Guard_GetPoliciesBySubject_Call {
+	return &Guard_GetPoliciesBySubject_Call{Call: _e.mock.On("GetPoliciesBySubject", ctx, subject)}
 }
 
-func (_c *Guard_GetPoliciesBySubject_Call) Run(run func(subject string)) *Guard_GetPoliciesBySubject_Call {
+func (_c *Guard_GetPoliciesBySubject_Call) Run(run func(ctx context.Context, subject string)) *Guard_GetPoliciesBySubject_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -206,30 +213,30 @@ func (_c *Guard_GetPoliciesBySubject_Call) Return(_a0 ladon.Policies, _a1 error)
 	return _c
 }
 
-func (_c *Guard_GetPoliciesBySubject_Call) RunAndReturn(run func(string) (ladon.Policies, error)) *Guard_GetPoliciesBySubject_Call {
+func (_c *Guard_GetPoliciesBySubject_Call) RunAndReturn(run func(context.Context, string) (ladon.Policies, error)) *Guard_GetPoliciesBySubject_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetPolicy provides a mock function with given fields: id
-func (_m *Guard) GetPolicy(id string) (ladon.Policy, error) {
-	ret := _m.Called(id)
+// GetPolicy provides a mock function with given fields: ctx, id
+func (_m *Guard) GetPolicy(ctx context.Context, id string) (ladon.Policy, error) {
+	ret := _m.Called(ctx, id)
 
 	var r0 ladon.Policy
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (ladon.Policy, error)); ok {
-		return rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (ladon.Policy, error)); ok {
+		return rf(ctx, id)
 	}
-	if rf, ok := ret.Get(0).(func(string) ladon.Policy); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, string) ladon.Policy); ok {
+		r0 = rf(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(ladon.Policy)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(id)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -243,14 +250,15 @@ type Guard_GetPolicy_Call struct {
 }
 
 // GetPolicy is a helper method to define mock.On call
+//   - ctx context.Context
 //   - id string
-func (_e *Guard_Expecter) GetPolicy(id interface{}) *Guard_GetPolicy_Call {
-	return &Guard_GetPolicy_Call{Call: _e.mock.On("GetPolicy", id)}
+func (_e *Guard_Expecter) GetPolicy(ctx interface{}, id interface{}) *Guard_GetPolicy_Call {
+	return &Guard_GetPolicy_Call{Call: _e.mock.On("GetPolicy", ctx, id)}
 }
 
-func (_c *Guard_GetPolicy_Call) Run(run func(id string)) *Guard_GetPolicy_Call {
+func (_c *Guard_GetPolicy_Call) Run(run func(ctx context.Context, id string)) *Guard_GetPolicy_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -260,18 +268,18 @@ func (_c *Guard_GetPolicy_Call) Return(_a0 ladon.Policy, _a1 error) *Guard_GetPo
 	return _c
 }
 
-func (_c *Guard_GetPolicy_Call) RunAndReturn(run func(string) (ladon.Policy, error)) *Guard_GetPolicy_Call {
+func (_c *Guard_GetPolicy_Call) RunAndReturn(run func(context.Context, string) (ladon.Policy, error)) *Guard_GetPolicy_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// IsAllowed provides a mock function with given fields: request
-func (_m *Guard) IsAllowed(request *ladon.Request) error {
-	ret := _m.Called(request)
+// IsAllowed provides a mock function with given fields: ctx, request
+func (_m *Guard) IsAllowed(ctx context.Context, request *ladon.Request) error {
+	ret := _m.Called(ctx, request)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*ladon.Request) error); ok {
-		r0 = rf(request)
+	if rf, ok := ret.Get(0).(func(context.Context, *ladon.Request) error); ok {
+		r0 = rf(ctx, request)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -285,14 +293,15 @@ type Guard_IsAllowed_Call struct {
 }
 
 // IsAllowed is a helper method to define mock.On call
+//   - ctx context.Context
 //   - request *ladon.Request
-func (_e *Guard_Expecter) IsAllowed(request interface{}) *Guard_IsAllowed_Call {
-	return &Guard_IsAllowed_Call{Call: _e.mock.On("IsAllowed", request)}
+func (_e *Guard_Expecter) IsAllowed(ctx interface{}, request interface{}) *Guard_IsAllowed_Call {
+	return &Guard_IsAllowed_Call{Call: _e.mock.On("IsAllowed", ctx, request)}
 }
 
-func (_c *Guard_IsAllowed_Call) Run(run func(request *ladon.Request)) *Guard_IsAllowed_Call {
+func (_c *Guard_IsAllowed_Call) Run(run func(ctx context.Context, request *ladon.Request)) *Guard_IsAllowed_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*ladon.Request))
+		run(args[0].(context.Context), args[1].(*ladon.Request))
 	})
 	return _c
 }
@@ -302,18 +311,18 @@ func (_c *Guard_IsAllowed_Call) Return(_a0 error) *Guard_IsAllowed_Call {
 	return _c
 }
 
-func (_c *Guard_IsAllowed_Call) RunAndReturn(run func(*ladon.Request) error) *Guard_IsAllowed_Call {
+func (_c *Guard_IsAllowed_Call) RunAndReturn(run func(context.Context, *ladon.Request) error) *Guard_IsAllowed_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// UpdatePolicy provides a mock function with given fields: pol
-func (_m *Guard) UpdatePolicy(pol ladon.Policy) error {
-	ret := _m.Called(pol)
+// UpdatePolicy provides a mock function with given fields: ctx, pol
+func (_m *Guard) UpdatePolicy(ctx context.Context, pol ladon.Policy) error {
+	ret := _m.Called(ctx, pol)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(ladon.Policy) error); ok {
-		r0 = rf(pol)
+	if rf, ok := ret.Get(0).(func(context.Context, ladon.Policy) error); ok {
+		r0 = rf(ctx, pol)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -327,14 +336,15 @@ type Guard_UpdatePolicy_Call struct {
 }
 
 // UpdatePolicy is a helper method to define mock.On call
+//   - ctx context.Context
 //   - pol ladon.Policy
-func (_e *Guard_Expecter) UpdatePolicy(pol interface{}) *Guard_UpdatePolicy_Call {
-	return &Guard_UpdatePolicy_Call{Call: _e.mock.On("UpdatePolicy", pol)}
+func (_e *Guard_Expecter) UpdatePolicy(ctx interface{}, pol interface{}) *Guard_UpdatePolicy_Call {
+	return &Guard_UpdatePolicy_Call{Call: _e.mock.On("UpdatePolicy", ctx, pol)}
 }
 
-func (_c *Guard_UpdatePolicy_Call) Run(run func(pol ladon.Policy)) *Guard_UpdatePolicy_Call {
+func (_c *Guard_UpdatePolicy_Call) Run(run func(ctx context.Context, pol ladon.Policy)) *Guard_UpdatePolicy_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(ladon.Policy))
+		run(args[0].(context.Context), args[1].(ladon.Policy))
 	})
 	return _c
 }
@@ -344,7 +354,7 @@ func (_c *Guard_UpdatePolicy_Call) Return(_a0 error) *Guard_UpdatePolicy_Call {
 	return _c
 }
 
-func (_c *Guard_UpdatePolicy_Call) RunAndReturn(run func(ladon.Policy) error) *Guard_UpdatePolicy_Call {
+func (_c *Guard_UpdatePolicy_Call) RunAndReturn(run func(context.Context, ladon.Policy) error) *Guard_UpdatePolicy_Call {
 	_c.Call.Return(run)
 	return _c
 }

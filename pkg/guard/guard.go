@@ -1,24 +1,25 @@
 package guard
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/ory/ladon"
+	"github.com/selm0/ladon"
 )
 
 const fetchLimit = 100
 
 //go:generate mockery --name Guard
 type Guard interface {
-	CreatePolicy(pol ladon.Policy) error
-	DeletePolicy(pol ladon.Policy) error
-	GetPolicy(id string) (ladon.Policy, error)
-	GetPolicies() (ladon.Policies, error)
-	GetPoliciesBySubject(subject string) (ladon.Policies, error)
-	IsAllowed(request *ladon.Request) error
-	UpdatePolicy(pol ladon.Policy) error
+	CreatePolicy(ctx context.Context, pol ladon.Policy) error
+	DeletePolicy(ctx context.Context, pol ladon.Policy) error
+	GetPolicy(ctx context.Context, id string) (ladon.Policy, error)
+	GetPolicies(ctx context.Context) (ladon.Policies, error)
+	GetPoliciesBySubject(ctx context.Context, subject string) (ladon.Policies, error)
+	IsAllowed(ctx context.Context, request *ladon.Request) error
+	UpdatePolicy(ctx context.Context, pol ladon.Policy) error
 }
 
 //go:generate mockery --name Manager
@@ -36,7 +37,7 @@ func NewGuard(config cfg.Config, logger log.Logger) (*LadonGuard, error) {
 		return nil, fmt.Errorf("can not create sqlManager: %w", err)
 	}
 
-	auditLogger := NewAuditLogger(logger)
+	auditLogger := NewAuditLogger(config, logger)
 
 	return NewGuardWithInterfaces(sqlManager, auditLogger), nil
 }
@@ -52,18 +53,18 @@ func NewGuardWithInterfaces(manager Manager, logger AuditLogger) *LadonGuard {
 	}
 }
 
-func (g LadonGuard) IsAllowed(request *ladon.Request) error {
-	return g.warden.IsAllowed(request)
+func (g LadonGuard) IsAllowed(ctx context.Context, request *ladon.Request) error {
+	return g.warden.IsAllowed(ctx, request)
 }
 
-func (g LadonGuard) GetPolicies() (ladon.Policies, error) {
+func (g LadonGuard) GetPolicies(ctx context.Context) (ladon.Policies, error) {
 	policies := make(ladon.Policies, 0)
 
 	offset := int64(0)
 	var pols ladon.Policies
 	var err error
 
-	pols, err = g.warden.Manager.GetAll(fetchLimit, offset)
+	pols, err = g.warden.Manager.GetAll(ctx, fetchLimit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("could not get all policies: %w", err)
 	}
@@ -72,7 +73,7 @@ func (g LadonGuard) GetPolicies() (ladon.Policies, error) {
 	for ; len(pols) > 0; offset += fetchLimit {
 		policies = append(policies, pols...)
 
-		pols, err = g.warden.Manager.GetAll(fetchLimit, offset)
+		pols, err = g.warden.Manager.GetAll(ctx, fetchLimit, offset)
 		if err != nil {
 			return nil, fmt.Errorf("could not get all policies: %w", err)
 		}
@@ -81,8 +82,8 @@ func (g LadonGuard) GetPolicies() (ladon.Policies, error) {
 	return policies, nil
 }
 
-func (g LadonGuard) GetPoliciesBySubject(subject string) (ladon.Policies, error) {
-	pol, err := g.warden.Manager.FindPoliciesForSubject(subject)
+func (g LadonGuard) GetPoliciesBySubject(ctx context.Context, subject string) (ladon.Policies, error) {
+	pol, err := g.warden.Manager.FindPoliciesForSubject(ctx, subject)
 	if err != nil {
 		return nil, fmt.Errorf("could not get policies by subject: %w", err)
 	}
@@ -90,8 +91,8 @@ func (g LadonGuard) GetPoliciesBySubject(subject string) (ladon.Policies, error)
 	return pol, nil
 }
 
-func (g LadonGuard) CreatePolicy(pol ladon.Policy) error {
-	err := g.warden.Manager.Create(pol)
+func (g LadonGuard) CreatePolicy(ctx context.Context, pol ladon.Policy) error {
+	err := g.warden.Manager.Create(ctx, pol)
 	if err != nil {
 		return fmt.Errorf("could not create policy: %w", err)
 	}
@@ -99,8 +100,8 @@ func (g LadonGuard) CreatePolicy(pol ladon.Policy) error {
 	return nil
 }
 
-func (g LadonGuard) UpdatePolicy(pol ladon.Policy) error {
-	err := g.warden.Manager.Update(pol)
+func (g LadonGuard) UpdatePolicy(ctx context.Context, pol ladon.Policy) error {
+	err := g.warden.Manager.Update(ctx, pol)
 	if err != nil {
 		return fmt.Errorf("could not update policy: %w", err)
 	}
@@ -108,8 +109,8 @@ func (g LadonGuard) UpdatePolicy(pol ladon.Policy) error {
 	return nil
 }
 
-func (g LadonGuard) DeletePolicy(pol ladon.Policy) error {
-	err := g.warden.Manager.Delete(pol.GetID())
+func (g LadonGuard) DeletePolicy(ctx context.Context, pol ladon.Policy) error {
+	err := g.warden.Manager.Delete(ctx, pol.GetID())
 	if err != nil {
 		return fmt.Errorf("could not delete policy: %w", err)
 	}
@@ -117,6 +118,6 @@ func (g LadonGuard) DeletePolicy(pol ladon.Policy) error {
 	return nil
 }
 
-func (g LadonGuard) GetPolicy(id string) (ladon.Policy, error) {
-	return g.warden.Manager.Get(id)
+func (g LadonGuard) GetPolicy(ctx context.Context, id string) (ladon.Policy, error) {
+	return g.warden.Manager.Get(ctx, id)
 }
