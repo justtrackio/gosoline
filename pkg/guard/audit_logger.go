@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/ory/ladon"
+	"github.com/selm0/ladon"
 )
 
 //go:generate mockery --name AuditLogger
@@ -15,18 +16,34 @@ type AuditLogger interface {
 	ladon.AuditLogger
 }
 
-type auditLogger struct {
-	logger log.Logger
+type auditSettings struct {
+	LogGrants     bool `cfg:"log_grants" default:"false"`
+	LogRejections bool `cfg:"log_rejections" default:"true"`
 }
 
-func NewAuditLogger(logger log.Logger) AuditLogger {
+type auditLogger struct {
+	logger   log.Logger
+	settings auditSettings
+}
+
+func NewAuditLogger(config cfg.Config, logger log.Logger) AuditLogger {
+	settings := auditSettings{}
+	config.UnmarshalKey("guard.audit", &settings)
+
 	return &auditLogger{
-		logger: logger.WithChannel("guard_access").WithContext(context.Background()),
+		logger:   logger.WithChannel("guard_access"),
+		settings: settings,
 	}
 }
 
-func (a auditLogger) LogRejectedAccessRequest(request *ladon.Request, pool ladon.Policies, deciders ladon.Policies) {
-	logger := a.logger.WithFields(buildLogFields(request, deciders))
+func (a auditLogger) LogRejectedAccessRequest(ctx context.Context, request *ladon.Request, pool ladon.Policies, deciders ladon.Policies) {
+	if !a.settings.LogRejections {
+		return
+	}
+
+	logger := a.logger.
+		WithContext(ctx).
+		WithFields(buildLogFields(request, deciders))
 
 	if len(deciders) == 0 {
 		logger.Info("no policy allowed access for %s on %s", request.Subject, request.Resource)
@@ -39,8 +56,14 @@ func (a auditLogger) LogRejectedAccessRequest(request *ladon.Request, pool ladon
 	logger.Info("%d policy(s) allow access, but policy %s denied the access for %s on %s", len(deciders)-1, rejecter.GetID(), request.Subject, request.Resource)
 }
 
-func (a auditLogger) LogGrantedAccessRequest(request *ladon.Request, pool ladon.Policies, deciders ladon.Policies) {
-	logger := a.logger.WithFields(buildLogFields(request, deciders))
+func (a auditLogger) LogGrantedAccessRequest(ctx context.Context, request *ladon.Request, pool ladon.Policies, deciders ladon.Policies) {
+	if !a.settings.LogGrants {
+		return
+	}
+
+	logger := a.logger.
+		WithContext(ctx).
+		WithFields(buildLogFields(request, deciders))
 
 	logger.Info("%d policy(s) allow access for %s on %s", len(deciders), request.Subject, request.Resource)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/guard"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/ory/ladon"
+	"github.com/selm0/ladon"
 )
 
 type WithPolicy interface {
@@ -78,7 +78,7 @@ func (r sqlRepository) Delete(ctx context.Context, value db_repo.ModelBased) err
 		return err
 	}
 
-	err = r.guard.DeletePolicy(&ladon.DefaultPolicy{ID: s.GetPolicyId()})
+	err = r.guard.DeletePolicy(ctx, &ladon.DefaultPolicy{ID: s.GetPolicyId()})
 	if err != nil {
 		return err
 	}

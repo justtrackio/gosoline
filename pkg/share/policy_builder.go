@@ -3,7 +3,7 @@ package share
 import (
 	"fmt"
 
-	"github.com/ory/ladon"
+	"github.com/selm0/ladon"
 )
 
 func BuildSharePolicy(uuid string, entity Shareable, ownerId uint, actions []string) ladon.Policy {

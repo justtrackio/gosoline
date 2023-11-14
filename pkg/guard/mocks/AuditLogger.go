@@ -3,7 +3,10 @@
 package mocks
 
 import (
-	ladon "github.com/ory/ladon"
+	context "context"
+
+	ladon "github.com/selm0/ladon"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -20,9 +23,9 @@ func (_m *AuditLogger) EXPECT() *AuditLogger_Expecter {
 	return &AuditLogger_Expecter{mock: &_m.Mock}
 }
 
-// LogGrantedAccessRequest provides a mock function with given fields: request, pool, deciders
-func (_m *AuditLogger) LogGrantedAccessRequest(request *ladon.Request, pool ladon.Policies, deciders ladon.Policies) {
-	_m.Called(request, pool, deciders)
+// LogGrantedAccessRequest provides a mock function with given fields: ctx, request, pool, deciders
+func (_m *AuditLogger) LogGrantedAccessRequest(ctx context.Context, request *ladon.Request, pool ladon.Policies, deciders ladon.Policies) {
+	_m.Called(ctx, request, pool, deciders)
 }
 
 // AuditLogger_LogGrantedAccessRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LogGrantedAccessRequest'
@@ -31,16 +34,17 @@ type AuditLogger_LogGrantedAccessRequest_Call struct {
 }
 
 // LogGrantedAccessRequest is a helper method to define mock.On call
+//   - ctx context.Context
 //   - request *ladon.Request
 //   - pool ladon.Policies
 //   - deciders ladon.Policies
-func (_e *AuditLogger_Expecter) LogGrantedAccessRequest(request interface{}, pool interface{}, deciders interface{}) *AuditLogger_LogGrantedAccessRequest_Call {
-	return &AuditLogger_LogGrantedAccessRequest_Call{Call: _e.mock.On("LogGrantedAccessRequest", request, pool, deciders)}
+func (_e *AuditLogger_Expecter) LogGrantedAccessRequest(ctx interface{}, request interface{}, pool interface{}, deciders interface{}) *AuditLogger_LogGrantedAccessRequest_Call {
+	return &AuditLogger_LogGrantedAccessRequest_Call{Call: _e.mock.On("LogGrantedAccessRequest", ctx, request, pool, deciders)}
 }
 
-func (_c *AuditLogger_LogGrantedAccessRequest_Call) Run(run func(request *ladon.Request, pool ladon.Policies, deciders ladon.Policies)) *AuditLogger_LogGrantedAccessRequest_Call {
+func (_c *AuditLogger_LogGrantedAccessRequest_Call) Run(run func(ctx context.Context, request *ladon.Request, pool ladon.Policies, deciders ladon.Policies)) *AuditLogger_LogGrantedAccessRequest_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*ladon.Request), args[1].(ladon.Policies), args[2].(ladon.Policies))
+		run(args[0].(context.Context), args[1].(*ladon.Request), args[2].(ladon.Policies), args[3].(ladon.Policies))
 	})
 	return _c
 }
@@ -50,14 +54,14 @@ func (_c *AuditLogger_LogGrantedAccessRequest_Call) Return() *AuditLogger_LogGra
 	return _c
 }
 
-func (_c *AuditLogger_LogGrantedAccessRequest_Call) RunAndReturn(run func(*ladon.Request, ladon.Policies, ladon.Policies)) *AuditLogger_LogGrantedAccessRequest_Call {
+func (_c *AuditLogger_LogGrantedAccessRequest_Call) RunAndReturn(run func(context.Context, *ladon.Request, ladon.Policies, ladon.Policies)) *AuditLogger_LogGrantedAccessRequest_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// LogRejectedAccessRequest provides a mock function with given fields: request, pool, deciders
-func (_m *AuditLogger) LogRejectedAccessRequest(request *ladon.Request, pool ladon.Policies, deciders ladon.Policies) {
-	_m.Called(request, pool, deciders)
+// LogRejectedAccessRequest provides a mock function with given fields: ctx, request, pool, deciders
+func (_m *AuditLogger) LogRejectedAccessRequest(ctx context.Context, request *ladon.Request, pool ladon.Policies, deciders ladon.Policies) {
+	_m.Called(ctx, request, pool, deciders)
 }
 
 // AuditLogger_LogRejectedAccessRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LogRejectedAccessRequest'
@@ -66,16 +70,17 @@ type AuditLogger_LogRejectedAccessRequest_Call struct {
 }
 
 // LogRejectedAccessRequest is a helper method to define mock.On call
+//   - ctx context.Context
 //   - request *ladon.Request
 //   - pool ladon.Policies
 //   - deciders ladon.Policies
-func (_e *AuditLogger_Expecter) LogRejectedAccessRequest(request interface{}, pool interface{}, deciders interface{}) *AuditLogger_LogRejectedAccessRequest_Call {
-	return &AuditLogger_LogRejectedAccessRequest_Call{Call: _e.mock.On("LogRejectedAccessRequest", request, pool, deciders)}
+func (_e *AuditLogger_Expecter) LogRejectedAccessRequest(ctx interface{}, request interface{}, pool interface{}, deciders interface{}) *AuditLogger_LogRejectedAccessRequest_Call {
+	return &AuditLogger_LogRejectedAccessRequest_Call{Call: _e.mock.On("LogRejectedAccessRequest", ctx, request, pool, deciders)}
 }
 
-func (_c *AuditLogger_LogRejectedAccessRequest_Call) Run(run func(request *ladon.Request, pool ladon.Policies, deciders ladon.Policies)) *AuditLogger_LogRejectedAccessRequest_Call {
+func (_c *AuditLogger_LogRejectedAccessRequest_Call) Run(run func(ctx context.Context, request *ladon.Request, pool ladon.Policies, deciders ladon.Policies)) *AuditLogger_LogRejectedAccessRequest_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*ladon.Request), args[1].(ladon.Policies), args[2].(ladon.Policies))
+		run(args[0].(context.Context), args[1].(*ladon.Request), args[2].(ladon.Policies), args[3].(ladon.Policies))
 	})
 	return _c
 }
@@ -85,7 +90,7 @@ func (_c *AuditLogger_LogRejectedAccessRequest_Call) Return() *AuditLogger_LogRe
 	return _c
 }
 
-func (_c *AuditLogger_LogRejectedAccessRequest_Call) RunAndReturn(run func(*ladon.Request, ladon.Policies, ladon.Policies)) *AuditLogger_LogRejectedAccessRequest_Call {
+func (_c *AuditLogger_LogRejectedAccessRequest_Call) RunAndReturn(run func(context.Context, *ladon.Request, ladon.Policies, ladon.Policies)) *AuditLogger_LogRejectedAccessRequest_Call {
 	_c.Call.Return(run)
 	return _c
 }

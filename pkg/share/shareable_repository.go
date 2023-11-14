@@ -8,7 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/guard"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/ory/ladon"
+	"github.com/selm0/ladon"
 )
 
 type shareRepository struct {
@@ -54,13 +54,13 @@ func (r shareRepository) Update(ctx context.Context, value db_repo.ModelBased) e
 	}
 
 	for _, share := range shares {
-		oldPolicy, err := r.guard.GetPolicy(share.PolicyId)
+		oldPolicy, err := r.guard.GetPolicy(ctx, share.PolicyId)
 		if err != nil {
 			return fmt.Errorf("can not get policy by id: %w", err)
 		}
 
 		updatedPolicy := BuildSharePolicy(share.PolicyId, entity, share.OwnerId, oldPolicy.GetActions())
-		err = r.guard.UpdatePolicy(updatedPolicy)
+		err = r.guard.UpdatePolicy(ctx, updatedPolicy)
 		if err != nil {
 			return fmt.Errorf("can not update policy: %w", err)
 		}
@@ -86,7 +86,7 @@ func (r shareRepository) Delete(ctx context.Context, value db_repo.ModelBased) e
 			return fmt.Errorf("can not delete share of entity: %w", err)
 		}
 
-		err = r.guard.DeletePolicy(&ladon.DefaultPolicy{ID: share.PolicyId})
+		err = r.guard.DeletePolicy(ctx, &ladon.DefaultPolicy{ID: share.PolicyId})
 		if err != nil {
 			return fmt.Errorf("can not delete policy of share: %w", err)
 		}
