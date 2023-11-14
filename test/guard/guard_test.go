@@ -75,7 +75,7 @@ func (s *GuardTestSuite) TestGetPolicies() {
 		return
 	}
 
-	s.Len(policies, 2)
+	s.Len(policies, 3)
 
 	policies, err = s.guard.GetPoliciesBySubject(ctx, "r:1")
 	if !s.NoError(err) {

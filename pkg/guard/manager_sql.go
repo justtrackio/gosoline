@@ -9,16 +9,12 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db"
-	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/selm0/ladon"
 )
 
 const (
-	tablePolicies  = "guard_policies"
-	tableSubjects  = "guard_subjects"
-	tableResources = "guard_resources"
-	tableActions   = "guard_actions"
+	tableName = "guard_policies"
 )
 
 type SqlManager struct {
@@ -44,19 +40,17 @@ func NewSqlManagerWithInterfaces(logger log.Logger, dbClient db.Client) *SqlMana
 
 func (m SqlManager) Create(ctx context.Context, pol ladon.Policy) error {
 	var err error
-	var conditions []byte
+	var policy []byte
 
-	if conditions, err = json.Marshal(pol.GetConditions()); err != nil {
-		return fmt.Errorf("can not marshal the conditions: %w", err)
+	if policy, err = json.Marshal(pol); err != nil {
+		return fmt.Errorf("can not marshal the policy: %w", err)
 	}
 
-	ins := squirrel.Insert(tablePolicies).Options("IGNORE").SetMap(squirrel.Eq{
-		"id":          pol.GetID(),
-		"description": pol.GetDescription(),
-		"effect":      pol.GetEffect(),
-		"conditions":  string(conditions),
-		"updated_at":  time.Now().Format(db.FormatDateTime),
-		"created_at":  time.Now().Format(db.FormatDateTime),
+	ins := squirrel.Insert(tableName).Options("IGNORE").SetMap(squirrel.Eq{
+		"id":         pol.GetID(),
+		"policy":     string(policy),
+		"updated_at": time.Now().Format(db.FormatDateTime),
+		"created_at": time.Now().Format(db.FormatDateTime),
 	})
 
 	sql, args, err := ins.ToSql()
@@ -70,52 +64,20 @@ func (m SqlManager) Create(ctx context.Context, pol ladon.Policy) error {
 		return err
 	}
 
-	if err = m.createAssociations(ctx, pol, tableSubjects, pol.GetSubjects()); err != nil {
-		return err
-	}
-
-	if err = m.createAssociations(ctx, pol, tableResources, pol.GetResources()); err != nil {
-		return err
-	}
-
-	if err = m.createAssociations(ctx, pol, tableActions, pol.GetActions()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m SqlManager) createAssociations(ctx context.Context, pol ladon.Policy, table string, values []string) error {
-	ins := squirrel.Insert(table).Options("IGNORE").Columns("id", "name")
-	for _, s := range values {
-		ins = ins.Values(pol.GetID(), s)
-	}
-
-	sql, args, err := ins.ToSql()
-	if err != nil {
-		return err
-	}
-
-	if _, err = m.dbClient.Exec(ctx, sql, args...); err != nil {
-		return fmt.Errorf("can not execute sql statement: %w", err)
-	}
-
 	return nil
 }
 
 func (m SqlManager) Update(ctx context.Context, pol ladon.Policy) error {
 	var err error
-	var conditions []byte
+	var policy []byte
 
-	if conditions, err = json.Marshal(pol.GetConditions()); err != nil {
-		return fmt.Errorf("can not marshal the conditions: %w", err)
+	if policy, err = json.Marshal(pol); err != nil {
+		return fmt.Errorf("can not marshal the policy: %w", err)
 	}
 
-	up := squirrel.Update(tablePolicies).Where("id = ?", pol.GetID()).SetMap(squirrel.Eq{
-		"description": pol.GetDescription(),
-		"effect":      pol.GetEffect(),
-		"conditions":  string(conditions),
-		"updated_at":  time.Now().Format(db.FormatDateTime),
+	up := squirrel.Update(tableName).Where("id = ?", pol.GetID()).SetMap(squirrel.Eq{
+		"policy":     string(policy),
+		"updated_at": time.Now().Format(db.FormatDateTime),
 	})
 
 	sql, args, err := up.ToSql()
@@ -125,27 +87,6 @@ func (m SqlManager) Update(ctx context.Context, pol ladon.Policy) error {
 
 	if _, err = m.dbClient.Exec(ctx, sql, args...); err != nil {
 		return fmt.Errorf("can not execute sql statement: %w", err)
-	}
-
-	if err = m.updateAssociations(ctx, pol, tableResources, pol.GetResources()); err != nil {
-		return err
-	}
-
-	if err = m.updateAssociations(ctx, pol, tableActions, pol.GetActions()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m SqlManager) updateAssociations(ctx context.Context, pol ladon.Policy, table string, values []string) error {
-	err := m.deleteByIdAndTable(ctx, pol.GetID(), table)
-	if err != nil {
-		return err
-	}
-
-	if err = m.createAssociations(ctx, pol, table, values); err != nil {
-		return err
 	}
 
 	return nil
@@ -167,30 +108,17 @@ func (m SqlManager) Get(ctx context.Context, id string) (ladon.Policy, error) {
 }
 
 func (m SqlManager) Delete(ctx context.Context, id string) error {
-	tables := []string{tablePolicies, tableSubjects, tableResources, tableActions}
-
-	for _, table := range tables {
-		err := m.deleteByIdAndTable(ctx, id, table)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (m SqlManager) deleteByIdAndTable(ctx context.Context, id string, table string) error {
-	del := squirrel.Delete(table).Where(squirrel.Eq{"id": id})
+	del := squirrel.Delete(tableName).Where(squirrel.Eq{"id": id})
 	sql, args, err := del.ToSql()
 	if err != nil {
-		m.logger.Error("can not delete from %s: %w", table, err)
+		m.logger.Error("can not delete from %s: %w", tableName, err)
 		return err
 	}
 
 	_, err = m.dbClient.Exec(ctx, sql, args...)
 
 	if err != nil {
-		m.logger.Error("can not delete from %s: %w", table, err)
+		m.logger.Error("can not delete from %s: %w", tableName, err)
 		return err
 	}
 
@@ -210,13 +138,13 @@ func (m SqlManager) FindRequestCandidates(ctx context.Context, r *ladon.Request)
 }
 
 func (m SqlManager) FindPoliciesForSubject(ctx context.Context, subject string) (ladon.Policies, error) {
-	sel := buildSelectBuilder(squirrel.Eq{"s.name": subject})
+	sel := buildSelectBuilder(squirrel.Expr("JSON_CONTAINS(p.policy, JSON_QUOTE(?), '$.subjects')", subject))
 
 	return m.queryPolicies(ctx, sel)
 }
 
 func (m SqlManager) FindPoliciesForResource(ctx context.Context, resource string) (ladon.Policies, error) {
-	sel := buildSelectBuilder(squirrel.Eq{"r.name": resource})
+	sel := buildSelectBuilder(squirrel.Expr("JSON_CONTAINS(p.policy, JSON_QUOTE(?), '$.resources')", resource))
 
 	return m.queryPolicies(ctx, sel)
 }
@@ -232,50 +160,23 @@ func (m SqlManager) queryPolicies(ctx context.Context, sel squirrel.SelectBuilde
 		return nil, fmt.Errorf("can not get result to query the policies: %w", err)
 	}
 
-	policies := map[string]*ladon.DefaultPolicy{}
+	policies := make(ladon.Policies, 0)
 	for _, row := range *res {
-		if _, ok := policies[row["id"]]; !ok {
-			conditions := make(ladon.Conditions)
+		var policy ladon.DefaultPolicy
 
-			if err = json.Unmarshal([]byte(row["conditions"]), &conditions); err != nil {
-				return nil, fmt.Errorf("can not unmarshal the conditions of policy %s: %w", row["id"], err)
-			}
-
-			policies[row["id"]] = &ladon.DefaultPolicy{
-				ID:          row["id"],
-				Description: row["description"],
-				Effect:      row["effect"],
-				Subjects:    make([]string, 0),
-				Resources:   make([]string, 0),
-				Actions:     make([]string, 0),
-				Conditions:  conditions,
-			}
+		if err = json.Unmarshal([]byte(row["policy"]), &policy); err != nil {
+			return nil, fmt.Errorf("can not unmarshal the policy: %w", err)
 		}
 
-		pol := policies[row["id"]]
-		pol.Subjects = append(pol.Subjects, row["subject"])
-		pol.Resources = append(pol.Resources, row["resource"])
-		pol.Actions = append(pol.Actions, row["action"])
+		policies = append(policies, &policy)
 	}
 
-	unique := make(ladon.Policies, 0)
-	for _, pol := range policies {
-		pol.Subjects = funk.Uniq(pol.Subjects)
-		pol.Resources = funk.Uniq(pol.Resources)
-		pol.Actions = funk.Uniq(pol.Actions)
-
-		unique = append(unique, pol)
-	}
-
-	return unique, nil
+	return policies, nil
 }
 
-func buildSelectBuilder(where squirrel.Eq) squirrel.SelectBuilder {
-	sel := squirrel.Select("p.id", "p.description", "p.effect", "p.conditions", "s.name AS subject", "r.name AS resource", "a.name AS action")
-	sel = sel.From(fmt.Sprintf("%s AS p", tablePolicies))
-	sel = sel.Join(fmt.Sprintf("%s AS s ON s.id = p.id", tableSubjects))
-	sel = sel.Join(fmt.Sprintf("%s AS r ON r.id = p.id", tableResources))
-	sel = sel.Join(fmt.Sprintf("%s AS a ON a.id = p.id", tableActions))
+func buildSelectBuilder(where interface{}) squirrel.SelectBuilder {
+	sel := squirrel.Select("p.id", "p.policy")
+	sel = sel.From(fmt.Sprintf("%s AS p", tableName))
 	sel = sel.Where(where)
 	sel = sel.OrderBy("p.id")
 
