@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
+
 // snippet-end: imports
 
 // snippet-start: main
@@ -23,8 +24,8 @@ func main() {
 		var err error
 		var handler apiserver.HandlerWithInput
 
-		// Create a handler (`NewTodoHandler`) that handles the request input data. 
-		// If there is an error, return an error message. 
+		// Create a handler (`NewTodoHandler`) that handles the request input data.
+		// If there is an error, return an error message.
 		// If there is no error, assign this `NewTodoHandler` to the `handler` variable from the last step.
 		if handler, err = NewTodoHandler(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not create trip handler: %w", err)
@@ -40,4 +41,5 @@ func main() {
 	// Run an API server application based on the logic from the previous steps
 	application.RunApiServer(definer)
 }
+
 // snippet-end: main

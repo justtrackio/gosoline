@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
+
 // snippet-end: imports
 
 // snippet-start: todo struct
@@ -17,18 +18,21 @@ type Todo struct {
 	Text      string `form:"text"`
 	CreatedAt time.Time
 }
+
 // snippet-end: todo struct
 
 // snippet-start: todo handler
 type TodoHandler struct {
 	logger log.Logger
 }
+
 // snippet-end: todo handler
 
 // snippet-start: get input
 func (t TodoHandler) GetInput() interface{} {
 	return &Todo{}
 }
+
 // snippet-end: get input
 
 // snippet-start: new todo handler
@@ -39,6 +43,7 @@ func NewTodoHandler(ctx context.Context, config cfg.Config, logger log.Logger) (
 
 	return handler, nil
 }
+
 // snippet-end: new todo handler
 
 // snippet-start: handle
@@ -55,4 +60,5 @@ func (t TodoHandler) Handle(ctx context.Context, request *apiserver.Request) (*a
 	// Return a Json response object with information from the Todo struct
 	return apiserver.NewJsonResponse(todo), nil
 }
+
 // snippet-end: handle
