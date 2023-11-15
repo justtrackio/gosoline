@@ -3,7 +3,7 @@ sidebar_position: 1
 title: Create an API server
 ---
 
-import CodeBlock from '@theme/CodeBlock';
+import { CodeBlock } from '../../components.jsx';
 import ConfigDist from "!!raw-loader!./src/create-an-api-server/config.dist.yml";
 import Handler from "!!raw-loader!./src/create-an-api-server/handler.go";
 import Main from "!!raw-loader!./src/create-an-api-server/main.go";
@@ -75,18 +75,7 @@ Now, you'll walkthrough this file in detail to learn how it works.
 
 At the top of `handler.go`, you declared the package and imported some dependencies:
 
-```go title=handler.go
-package main
-
-import (
-	"context"
-	"time"
-
-	"github.com/justtrackio/gosoline/pkg/apiserver"
-	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/log"
-)
-```
+<CodeBlock language="go" title="handler.go" snippet="imports">{Handler}</CodeBlock>
 
 Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with three gosoline dependencies:
 
@@ -98,13 +87,7 @@ Here, you declared the package as `main`. Then, you imported the `context` and `
 
 Next, you created a `Todo` struct:
 
-```go title=handler.go
-type Todo struct {
-	Id        int    `form:"id"`
-	Text      string `form:"text"`
-	CreatedAt time.Time
-}
-```
+<CodeBlock language="go" title="handler.go" snippet="todo struct">{Handler}</CodeBlock>
 
 Later in this file, you'll use this to bind the data from the HTTP querystring. Referring back to the specification for your todo service, the expected querystring looks like this:
 
@@ -118,11 +101,7 @@ So, in your struct, you have an `Id` and a `Text`. With the `form:` tag, you've 
 
 Next, you created a struct for handling todos:
 
-```go title=handler.go
-type TodoHandler struct {
-	logger log.Logger
-}
-```
+<CodeBlock language="go" title="handler.go" snippet="todo handler">{Handler}</CodeBlock>
 
 This is a simple structure that holds a `log.Logger` reference.
 
@@ -130,11 +109,7 @@ This is a simple structure that holds a `log.Logger` reference.
 
 Next, you created a function called `GetInput()` that returns the input instance to use:
 
-```go title=handler.go
-func (t TodoHandler) GetInput() interface{} {
-	return &Todo{}
-}
-```
+<CodeBlock language="go" title="handler.go" snippet="get input">{Handler}</CodeBlock>
 
 This is required because your `TodoHandler` must implement the `GetInput()` method of the `apiserver.HandlerWithInput` interface.
 
@@ -142,15 +117,7 @@ This is required because your `TodoHandler` must implement the `GetInput()` meth
 
 Next, you created a function called `NewTodoHandler()`:
 
-```go title=handler.go
-func NewTodoHandler(ctx context.Context, config cfg.Config, logger log.Logger) (*TodoHandler, error) {
-	handler := &TodoHandler{
-		logger: logger,
-	}
-
-	return handler, nil
-}
-```
+<CodeBlock language="go" title="handler.go" snippet="new todo handler">{Handler}</CodeBlock>
 
 The `config` and `logger` argument types come from gosoline. This function initializes a new `TodoHandler` and assigns it the `logger`. Then, it returns the handler with no error.
 
@@ -158,35 +125,9 @@ The `config` and `logger` argument types come from gosoline. This function initi
 
 Finally, you created a `Handle()` function that accepts a `context.Context` and an `apiserver.Request` (also from gosoline) and handles that request:
 
-```go
-func (t TodoHandler) Handle(
-	ctx context.Context,
-	request *apiserver.Request,
-) (*apiserver.Response, error) {
-	// 1
-	todo := request.Body.(*Todo)
+<CodeBlock language="go" title="handler.go" snippet="handle">{Handler}</CodeBlock>
 
-	// 2
-	todo.CreatedAt = time.Now()
-
-	// 3
-	t.logger.Info("got todo with id %d", todo.Id)
-
-	// 4
-	return apiserver.NewJsonResponse(todo), nil
-}
-```
-
-Here, you've implemented a request handler in the following steps:
-
-1. Initialize a `Todo` struct from the request body.
-2. Set the `CreatedAt` to now.
-3. Log the request using the `TodoHandler` struct's `logger`.
-4. Return a Json response object with information from the `Todo` struct.
-
-With gosoline, you can handle requests and responses in just a few lines of code.
-
-`handler.go` contains most of the heavy lifting for your web service. However, you still need a main entry point to your service, where you'll make use of the logic in `handler.go`. This, you'll add in `main.go`.
+Here, you handle requests and responses in just a few lines of code. `handler.go` does most of the heavy lifting for your web service. However, you still need a main entry point to your service, where you'll make use of the logic in `handler.go`. This, you'll add in `main.go`.
 
 ## Implement main.go
 
@@ -206,19 +147,7 @@ Now, you'll walkthrough this file in detail to learn how it works.
 
 In `main.go`, you declared the package and imported some dependencies:
 
-```go title=main.go
-package main
-
-import (
-	"context"
-	"fmt"
-
-	"github.com/justtrackio/gosoline/pkg/apiserver"
-	"github.com/justtrackio/gosoline/pkg/application"
-	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/log"
-)
-```
+<CodeBlock language="go" title="main.go" snippet="imports">{Main}</CodeBlock>
 
 Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with three gosoline dependencies:
 
@@ -231,43 +160,9 @@ Here, you declared the package as `main`. Then, you imported the `context` and `
 
 Next, you created your `main()` function as the entry point to your service:
 
-```go title=main.go
-func main() {
-	// 1
-	definer := func(ctx context.Context, config cfg.Config, logger log.Logger) (*apiserver.Definitions, error) {
-		// 2
-		def := &apiserver.Definitions{}
+<CodeBlock language="go" title="main.go" snippet="main">{Main}</CodeBlock>
 
-		// 3
-		var err error
-		var handler apiserver.HandlerWithInput
-
-		// 4
-		if handler, err = NewTodoHandler(ctx, config, logger); err != nil {
-		return nil, fmt.Errorf("can not create trip handler: %w", err)
-		}
-
-		// 5
-		def.GET("/todo", apiserver.CreateQueryHandler(handler))
-
-		// 6
-		return def, nil
-	}
-
-	// 7
-	application.RunApiServer(definer)
-}
-```
-
-`main()` puts together all the data structures and logic from `handler.go` into a single, coherent function. To better understand this code, you can break it down like this:
-
-1. Initialize `definer`, an API server factory that defines your HTTP route.
-2. Initialize `def`, a reference to the `apiserver.Definitions`, which you'll use to create a GET route.
-3. Instantiate two new variables for handling errors and request input data.
-4. Create a handler (`NewTodoHandler`) that handles the request input data. If there is an error, return an error message. If there is no error, assign this `NewTodoHandler` to the `handler` variable from the last step. 
-5. Create a GET route for the endpoint `/todo`, using the `handler`.
-6. Return the response from `handler`.
-7. Run an API server application based on the logic from the previous steps.
+`main()` puts together all the data structures and logic from `handler.go` into a single, coherent function.
 
 Now, you've implemented your server's main entry point and handler logic. Next, you'll configure your server.
 
