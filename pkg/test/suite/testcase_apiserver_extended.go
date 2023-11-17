@@ -1,7 +1,10 @@
 package suite
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path"
 	"reflect"
 
 	"github.com/go-resty/resty/v2"
@@ -20,7 +23,13 @@ type ApiServerTestCase struct {
 	Method  string
 	Url     string
 	Headers map[string]string
-	Body    interface{}
+	// Body will be used as the request body. Supported request body data types is `string`,
+	// `[]byte`, `struct`, `map`, `slice` and `io.Reader`. Body value can be pointer or non-pointer.
+	// Automatic marshalling for JSON and XML content type, if it is `struct`, `map`, or `slice`.
+	Body interface{}
+	// BodyFile can be used to read the content of the request body from a file. If set, it will overwrite
+	// the Body field.
+	BodyFile string
 	// ExpectedStatusCode describes the status code the last response is required to have.
 	ExpectedStatusCode int
 	// ExpectedRedirectsToFollow describes the number of redirects we want to follow. It is an error if less redirects
@@ -38,6 +47,9 @@ type ApiServerTestCase struct {
 	//	// location, or has the correct headers set. You don't need to validate the response status here, this is already
 	//	// performed automatically.
 	Assert func(response *resty.Response) error
+	// AssertResultFile can be used to read the expected response body from a file, which will be used to check equality
+	// with the actual response body. If the file name extension is .json, the equality check is done via assert.JSONEq.
+	AssertResultFile string
 }
 
 func (c ApiServerTestCase) request(client *resty.Client) (*resty.Response, error) {
@@ -49,6 +61,15 @@ func (c ApiServerTestCase) request(client *resty.Client) (*resty.Response, error
 
 	if c.Body != nil {
 		req.SetBody(c.Body)
+	}
+
+	if c.BodyFile != "" {
+		bytes, err := os.ReadFile(c.BodyFile)
+		if err != nil {
+			return nil, fmt.Errorf("can not read body from file %q: %w", c.BodyFile, err)
+		}
+
+		req.SetBody(bytes)
 	}
 
 	if c.ExpectedResult != nil {
@@ -79,6 +100,7 @@ func buildTestCaseApiServerExtended(suite TestingSuite, method reflect.Method) (
 		out := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})[0].Interface()
 
 		var err error
+		var bytes []byte
 		var testCases []*ApiServerTestCase
 
 		if tc, ok := out.(*ApiServerTestCase); ok {
@@ -131,6 +153,22 @@ func buildTestCaseApiServerExtended(suite TestingSuite, method reflect.Method) (
 			if tc.Assert != nil {
 				if err := tc.Assert(responses[i]); err != nil {
 					assert.FailNow(suite.T(), err.Error(), "there should be no error on assert")
+				}
+			}
+
+			if tc.AssertResultFile != "" {
+				if bytes, err = os.ReadFile(tc.AssertResultFile); err != nil {
+					assert.FailNow(suite.T(), err.Error(), "can not read result file %q", tc.AssertResultFile)
+				}
+
+				extension := path.Ext(tc.AssertResultFile)
+				actual := responses[i].Body()
+
+				switch extension {
+				case ".json":
+					assert.JSONEq(suite.T(), string(bytes), string(actual), "response doesn't match")
+				default:
+					assert.Equal(suite.T(), bytes, actual, "response doesn't match")
 				}
 			}
 		}

@@ -20,8 +20,8 @@ const componentWiremock = "wiremock"
 type wiremockSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
-	Mocks string `cfg:"mocks"`
-	Port  int    `cfg:"port" default:"0"`
+	Mocks []string `cfg:"mocks"`
+	Port  int      `cfg:"port" default:"0"`
 }
 
 type wiremockFactory struct{}
@@ -79,29 +79,42 @@ func (f *wiremockFactory) Component(_ cfg.Config, logger log.Logger, containers 
 	}
 
 	s := settings.(*wiremockSettings)
-	jsonStr, err := os.ReadFile(s.Mocks)
-	if err != nil {
-		filename := s.Mocks
-
-		absolutePath, err := filepath.Abs(filename)
-		if err == nil {
-			filename = absolutePath
-		}
-
-		return nil, fmt.Errorf("could not read http mock configuration '%s': %w", filename, err)
-	}
-
 	url := f.getUrl(containers["main"].bindings["8080/tcp"])
-	resp, err := http.Post(url+"/mappings/import", "application/json", bytes.NewBuffer(jsonStr))
-	if err != nil {
-		return nil, fmt.Errorf("could not send stubs to wiremock: %w", err)
-	}
 
-	if resp.StatusCode > 399 {
-		return nil, fmt.Errorf("could not import mocks")
+	for _, mock := range s.Mocks {
+		if err := f.importMocks(url, mock); err != nil {
+			return nil, fmt.Errorf("could not import mocks from file %q: %w", mock, err)
+		}
 	}
 
 	return component, nil
+}
+
+func (f *wiremockFactory) importMocks(url string, mockFile string) error {
+	var err error
+	var jsonBytes []byte
+	var absolutePath string
+	var resp *http.Response
+
+	if jsonBytes, err = os.ReadFile(mockFile); err != nil {
+		filename := mockFile
+
+		if absolutePath, err = filepath.Abs(filename); err == nil {
+			filename = absolutePath
+		}
+
+		return fmt.Errorf("could not read http mock configuration '%s': %w", filename, err)
+	}
+
+	if resp, err = http.Post(url+"/mappings/import", "application/json", bytes.NewBuffer(jsonBytes)); err != nil {
+		return fmt.Errorf("could not send stubs to wiremock: %w", err)
+	}
+
+	if resp.StatusCode > 399 {
+		return fmt.Errorf("could not import mocks")
+	}
+
+	return nil
 }
 
 func (f *wiremockFactory) getUrl(binding containerBinding) string {

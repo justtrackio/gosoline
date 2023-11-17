@@ -36,6 +36,7 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 
 	if testCases, err = suiteFindTestCases(t, suite, suiteOptions); err != nil {
 		assert.FailNow(t, err.Error())
+
 		return
 	}
 
@@ -150,7 +151,12 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		}
 
 		t.Run(name, func(t *testing.T) {
+			parentT := suite.T()
+			suite.SetT(t)
+
 			testCase(t, suite, suiteOptions, environment)
+
+			suite.SetT(parentT)
 		})
 
 		if tearDownTestAware, ok := suite.(TestingSuiteTearDownTestAware); ok {
