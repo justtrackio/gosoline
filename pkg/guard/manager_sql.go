@@ -42,7 +42,7 @@ func (m SqlManager) Create(ctx context.Context, pol ladon.Policy) error {
 	var err error
 	var policy []byte
 
-	if policy, err = json.Marshal(pol); err != nil {
+	if policy, err = buildPolicy(pol); err != nil {
 		return fmt.Errorf("can not marshal the policy: %w", err)
 	}
 
@@ -71,7 +71,7 @@ func (m SqlManager) Update(ctx context.Context, pol ladon.Policy) error {
 	var err error
 	var policy []byte
 
-	if policy, err = json.Marshal(pol); err != nil {
+	if policy, err = buildPolicy(pol); err != nil {
 		return fmt.Errorf("can not marshal the policy: %w", err)
 	}
 
@@ -168,6 +168,8 @@ func (m SqlManager) queryPolicies(ctx context.Context, sel squirrel.SelectBuilde
 			return nil, fmt.Errorf("can not unmarshal the policy: %w", err)
 		}
 
+		policy.ID = row["id"]
+
 		policies = append(policies, &policy)
 	}
 
@@ -181,4 +183,23 @@ func buildSelectBuilder(where interface{}) squirrel.SelectBuilder {
 	sel = sel.OrderBy("p.id")
 
 	return sel
+}
+
+func buildPolicy(policy ladon.Policy) ([]byte, error) {
+	// removes ID field in the policy
+	return json.Marshal(&struct {
+		Description string           `json:"description"`
+		Effect      string           `json:"effect"`
+		Conditions  ladon.Conditions `json:"conditions"`
+		Subjects    []string         `json:"subjects"`
+		Resources   []string         `json:"resources"`
+		Actions     []string         `json:"actions"`
+	}{
+		Description: policy.GetDescription(),
+		Effect:      policy.GetEffect(),
+		Conditions:  policy.GetConditions(),
+		Subjects:    policy.GetSubjects(),
+		Resources:   policy.GetResources(),
+		Actions:     policy.GetActions(),
+	})
 }
