@@ -8,31 +8,9 @@ import (
 
 func buildPolicies() []interface{} {
 	return []interface{}{
-		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "global - read and write access", "allow", "{}"},
-		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "entity - read and write access", "allow", "{}"},
-		fixtures.MysqlPlainFixtureValues{"4ab80e96-22ea-469e-96d1-12b232bd4660", "global - read access", "allow", "{}"},
-	}
-}
-
-func buildSubjects() []interface{} {
-	return []interface{}{
-		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "r:1"},
-		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "r:2"},
-	}
-}
-
-func buildResources() []interface{} {
-	return []interface{}{
-		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "gsl:<.+>"},
-		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "gsl:e:1:<.+>"},
-	}
-}
-
-func buildActions() []interface{} {
-	return []interface{}{
-		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", "<.+>"},
-		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", "<.+>"},
-		fixtures.MysqlPlainFixtureValues{"ab80e96-22ea-469e-96d1-12b232bd4660", "read"},
+		fixtures.MysqlPlainFixtureValues{"a97b104f-4d93-4c15-a97a-4e3173e75cde", `{"id": "a97b104f-4d93-4c15-a97a-4e3173e75cde", "effect": "allow", "actions": ["<.+>"], "subjects": ["r:1"], "resources": ["gsl:<.+>"], "conditions": {}, "description": "global - read and write access"}`},
+		fixtures.MysqlPlainFixtureValues{"18a1de65-62eb-4af6-aab4-593d05ed30be", `{"id": "18a1de65-62eb-4af6-aab4-593d05ed30be", "effect": "allow", "actions": ["<.+>"], "subjects": ["r:2"], "resources": ["gsl:e:1:<.+>"], "conditions": {}, "description": "entity - read and write access"}`},
+		fixtures.MysqlPlainFixtureValues{"4ab80e96-22ea-469e-96d1-12b232bd4660", `{"id": "4ab80e96-22ea-469e-96d1-12b232bd4660", "effect": "allow", "actions": ["read"], "subjects": [], "resources": [], "conditions": {}, "description": "global - read access"}`},
 	}
 }
 
@@ -42,35 +20,8 @@ var fixtureSets = []*fixtures.FixtureSet{
 		Purge:   false,
 		Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
 			TableName: "guard_policies",
-			Columns:   []string{"id", "description", "effect", "conditions"},
+			Columns:   []string{"id", "policy"},
 		}),
 		Fixtures: buildPolicies(),
-	},
-	{
-		Enabled: true,
-		Purge:   false,
-		Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-			TableName: "guard_subjects",
-			Columns:   []string{"id", "name"},
-		}),
-		Fixtures: buildSubjects(),
-	},
-	{
-		Enabled: true,
-		Purge:   false,
-		Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-			TableName: "guard_resources",
-			Columns:   []string{"id", "name"},
-		}),
-		Fixtures: buildResources(),
-	},
-	{
-		Enabled: true,
-		Purge:   false,
-		Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-			TableName: "guard_actions",
-			Columns:   []string{"id", "name"},
-		}),
-		Fixtures: buildActions(),
 	},
 }
