@@ -48,6 +48,27 @@ func (s *ClientSettings) SetBackoff(backoff exec.BackoffSettings) {
 	s.Backoff = backoff
 }
 
+func (s *ClientSettings) LogFields() log.Fields {
+	return log.Fields{
+		"settings_region":                   s.Region,
+		"settings_endpoint":                 s.Endpoint,
+		"settings_assume_role":              s.AssumeRole,
+		"settings_http_client_timeout":      s.HttpClient.Timeout,
+		"settings_backoff_max_attempts":     s.Backoff.MaxAttempts,
+		"settings_backoff_max_interval":     s.Backoff.MaxInterval,
+		"settings_backoff_initial_interval": s.Backoff.InitialInterval,
+		"settings_backoff_cancel_delay":     s.Backoff.CancelDelay,
+		"settings_backoff_max_elapsed_time": s.Backoff.MaxElapsedTime,
+	}
+}
+
+func LogNewClientCreated(ctx context.Context, logger log.Logger, service string, clientName string, settings ClientSettings) {
+	logger.WithContext(ctx).WithFields(settings.LogFields()).WithFields(log.Fields{
+		"aws_service":     service,
+		"aws_client_name": clientName,
+	}).Info("created new %s client %s", service, clientName)
+}
+
 func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, service string, name string) {
 	if name == "" {
 		name = "default"

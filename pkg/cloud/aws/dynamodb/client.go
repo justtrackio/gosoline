@@ -89,5 +89,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 
 	client := dynamodb.NewFromConfig(awsConfig)
 
+	gosoAws.LogNewClientCreated(ctx, logger, "dynamodb", name, clientCfg.Settings.ClientSettings)
+
 	return client, nil
 }

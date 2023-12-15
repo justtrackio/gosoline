@@ -67,5 +67,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 
 	client := rds.NewFromConfig(awsConfig)
 
+	gosoAws.LogNewClientCreated(ctx, logger, "rds", name, clientCfg.Settings.ClientSettings)
+
 	return client, nil
 }
