@@ -3,11 +3,13 @@ package aws
 import (
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 )
 
 type BackoffDelayer struct {
 	rand                *rand.Rand
+	randLck             sync.Mutex
 	initialInterval     time.Duration
 	maxInterval         time.Duration
 	multiplier          float64
@@ -19,6 +21,7 @@ func NewBackoffDelayer(initialInterval time.Duration, maxInterval time.Duration)
 
 	return &BackoffDelayer{
 		rand:                rand.New(randSource),
+		randLck:             sync.Mutex{},
 		initialInterval:     initialInterval,
 		maxInterval:         maxInterval,
 		multiplier:          1.5,
@@ -34,6 +37,10 @@ func (d *BackoffDelayer) BackoffDelay(attempt int, _ error) (time.Duration, erro
 		currentInterval = d.maxInterval
 	}
 
+	if currentInterval < 0 {
+		currentInterval = 0
+	}
+
 	return currentInterval, nil
 }
 
@@ -44,6 +51,10 @@ func (d *BackoffDelayer) getRandomValueFromInterval(currentInterval time.Duratio
 	delta := d.randomizationFactor * float64(currentInterval)
 	minInterval := float64(currentInterval) - delta
 	maxInterval := float64(currentInterval) + delta
+
+	// our random source is not thread-safe, so ensure we don't cause a race
+	d.randLck.Lock()
+	defer d.randLck.Unlock()
 
 	// Get a random value from the range [minInterval, maxInterval].
 	// The formula used below has a +1 because if the minInterval is 1 and the maxInterval is 3 then
