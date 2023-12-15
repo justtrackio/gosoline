@@ -103,6 +103,7 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 	loggerMock.On("WithFields", mock.AnythingOfType("log.Fields")).Return(loggerMock)
 	loggerMock.On("Warn", "attempt number %d to request resource %s failed after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
 	loggerMock.On("Warn", "sent request to resource %s successful after %d attempts in %s", resource, 3, mock.AnythingOfType("time.Duration")).Once()
+	loggerMock.On("Info", "created new %s client %s", "dynamodb", "http_timeout").Once()
 
 	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "http_timeout")
 	s.NoError(err)
@@ -148,6 +149,8 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 	ctx := context.Background()
 	loggerMock := new(logMocks.Logger)
 	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
+	loggerMock.On("WithFields", mock.AnythingOfType("log.Fields")).Return(loggerMock)
+	loggerMock.On("Info", "created new %s client %s", "dynamodb", "max_elapsed_time_exceeded").Once()
 
 	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "max_elapsed_time_exceeded")
 	s.NoError(err)
@@ -174,9 +177,10 @@ func (s *ClientTestSuite) TestRetryOnTransactionConflict() {
 
 	logger := new(logMocks.Logger)
 	logger.On("WithContext", mock.Anything).Return(logger)
-	logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(logger).Return(logger)
+	logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(logger)
 	logger.On("Warn", "attempt number %d to request resource %s failed after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*types.TransactionCanceledException")).Once()
 	logger.On("Warn", "sent request to resource %s successful after %d attempts in %s", resource, 2, mock.AnythingOfType("time.Duration")).Once()
+	logger.On("Info", "created new %s client %s", "dynamodb", "retryOnTransactionConflict").Once()
 
 	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), logger, "retryOnTransactionConflict")
 	s.NoError(err)

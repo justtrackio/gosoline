@@ -67,5 +67,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 
 	client := ec2.NewFromConfig(awsConfig)
 
+	gosoAws.LogNewClientCreated(ctx, logger, "ec2", name, clientCfg.Settings.ClientSettings)
+
 	return client, nil
 }
