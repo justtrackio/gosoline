@@ -135,16 +135,15 @@ func (s *ConsumerTestSuite) TestRun() {
 
 	consumed := make([]*string, 0)
 
-	ack := true
 	s.input.
-		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), ack).
+		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
 		Return(nil).
 		Times(3)
 
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]string{}).
+	s.callback.On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{}).
 		Run(func(args mock.Arguments) {
 			consumed = append(consumed, args[1].(*string))
-		}).Return(ack, nil)
+		}).Return(true, nil)
 
 	s.callback.On("GetModel", mock.AnythingOfType("map[string]string")).
 		Return(func(_ map[string]string) interface{} {
@@ -220,7 +219,7 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 		Once()
 
 	s.callback.
-		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]string{}).
+		On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{}).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*string)
 			consumed = append(consumed, ptr)
@@ -298,24 +297,23 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 
 	expectedAttributes1 := map[string]string{"attr1": "a"}
 
-	ack := true
 	s.input.
-		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), ack).
+		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
 		Return(nil).
 		Once()
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), expectedAttributes1).
+	s.callback.On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), expectedAttributes1).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*string)
 			consumed = append(consumed, *ptr)
 		}).
-		Return(ack, nil)
+		Return(true, nil)
 
 	expectedModelAttributes1 := map[string]string{"attr1": "a", "encoding": "application/json"}
 	s.callback.On("GetModel", expectedModelAttributes1).
 		Return(mdl.Box(""))
 
 	expectedAttributes2 := map[string]string{"attr1": "b"}
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), expectedAttributes2).
+	s.callback.On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), expectedAttributes2).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(1).(*string)
 			consumed = append(consumed, *ptr)
@@ -371,14 +369,14 @@ func (s *ConsumerTestSuite) TestRunWithRetry() {
 		Once()
 
 	s.callback.
-		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]string{}).
+		On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{}).
 		Run(func(args mock.Arguments) {
 			consumed = append(consumed, *args[1].(*string))
 		}).
 		Return(false, nil).
 		Once()
 	s.callback.
-		On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*string"), map[string]string{}).
+		On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{}).
 		Run(func(args mock.Arguments) {
 			consumed = append(consumed, *args[1].(*string))
 			s.kernelCancel()

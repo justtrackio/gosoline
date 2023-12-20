@@ -142,6 +142,8 @@ func (c *Consumer) process(ctx context.Context, msg *Message) bool {
 	ctx, span := c.tracer.StartSpanFromContext(ctx, c.id)
 	defer span.Finish()
 
+	ctx = log.InitContext(ctx)
+
 	if ack, err = c.callback.Consume(ctx, model, attributes); err != nil {
 		c.handleError(ctx, err, "an error occurred during the consume operation")
 	}

@@ -2,7 +2,7 @@ package log
 
 type Option func(logger *gosoLogger) error
 
-func WithContextFieldsResolver(resolvers ...ContextFieldsResolver) Option {
+func WithContextFieldsResolver(resolvers ...ContextFieldsResolverFunction) Option {
 	return func(logger *gosoLogger) error {
 		logger.ctxResolvers = append(logger.ctxResolvers, resolvers...)
 

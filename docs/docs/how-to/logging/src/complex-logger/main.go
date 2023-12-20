@@ -17,7 +17,7 @@ func main() {
 	handler := log.NewHandlerIoWriter(log.LevelDebug, []string{}, log.FormatterConsole, "15:04:05.000", os.Stdout)
 	logger := log.NewLoggerWithInterfaces(clock.NewRealClock(), []log.Handler{handler})
 
-	if err := logger.Option(log.WithContextFieldsResolver(log.ContextLoggerFieldsResolver)); err != nil {
+	if err := logger.Option(log.WithContextFieldsResolver(log.ContextFieldsResolver)); err != nil {
 		panic(err)
 	}
 
@@ -35,7 +35,7 @@ func main() {
 	loggerWithFields.Error("it happens: %w", fmt.Errorf("should not happen"))
 
 	// 6
-	ctx = log.AppendLoggerContextField(ctx, map[string]interface{}{
+	ctx = log.AppendContextFields(ctx, map[string]interface{}{
 		"id": 1337,
 	})
 	contextAwareLogger := logger.WithContext(ctx)

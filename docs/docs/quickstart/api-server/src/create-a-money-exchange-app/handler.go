@@ -30,7 +30,7 @@ func NewEuroHandler(ctx context.Context, config cfg.Config, logger log.Logger) (
 	}, nil
 }
 
-func (h *euroHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, error error) {
+func (h *euroHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
 	currency := request.Params.ByName("currency")
 	amountString := request.Params.ByName("amount")
 	amount, err := strconv.ParseFloat(amountString, 64)
@@ -67,7 +67,7 @@ func NewEuroAtDateHandler(ctx context.Context, config cfg.Config, logger log.Log
 	}, nil
 }
 
-func (h *euroAtDateHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, error error) {
+func (h *euroAtDateHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
 	currency := request.Params.ByName("currency")
 	dateString := request.Params.ByName("date")
 	date, err := time.Parse(time.RFC3339, dateString)

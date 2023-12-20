@@ -144,7 +144,7 @@ You'll use this later to create a new `euroHandler`.
 Then, you implemented `euroHandler.Handle()` for handling HTTP requests:
 
 ```go title=handler.go
-func (h *euroHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, error error) {
+func (h *euroHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
     // 1
 	currency := request.Params.ByName("currency")
 	amountString := request.Params.ByName("amount")
@@ -213,7 +213,7 @@ The logic here is very similar to the logic for `euroHandler`.
 Finally, you implemented `euroAtDateHandler.Handle()` for handling HTTP requests:
 
 ```go title=handler.go
-func (h *euroAtDateHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, error error) {
+func (h *euroAtDateHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
     // 1
 	currency := request.Params.ByName("currency")
 	dateString := request.Params.ByName("date")

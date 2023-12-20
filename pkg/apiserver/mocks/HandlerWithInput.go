@@ -111,8 +111,8 @@ func (_c *HandlerWithInput_Handle_Call) Run(run func(requestContext context.Cont
 	return _c
 }
 
-func (_c *HandlerWithInput_Handle_Call) Return(response *apiserver.Response, error error) *HandlerWithInput_Handle_Call {
-	_c.Call.Return(response, error)
+func (_c *HandlerWithInput_Handle_Call) Return(response *apiserver.Response, err error) *HandlerWithInput_Handle_Call {
+	_c.Call.Return(response, err)
 	return _c
 }
 

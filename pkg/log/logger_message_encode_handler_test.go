@@ -40,7 +40,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestEncodeSuccess() {
 	s.logger.On("Warn", "omitting logger context field %s of type %T during message encoding", "fieldC", mock.Anything)
 
 	ctx := context.Background()
-	ctx = log.AppendLoggerContextField(ctx, map[string]interface{}{
+	ctx = log.AppendGlobalContextFields(ctx, map[string]interface{}{
 		"fieldA": "text",
 		"fieldB": "1",
 		"fieldC": struct{}{},
@@ -91,7 +91,7 @@ func (s *LoggerMessageEncodeHandlerTestSuite) TestDecodeSuccess() {
 	s.NoError(err)
 	s.NotContains(attributes, log.MessageAttributeLoggerContext)
 
-	fields := log.ContextLoggerFieldsResolver(ctx)
+	fields := log.GlobalContextFieldsResolver(ctx)
 	s.Contains(fields, "fieldA")
 	s.Equal("text", fields["fieldA"])
 	s.Contains(fields, "fieldB")

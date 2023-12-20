@@ -112,7 +112,7 @@ func (w *recordWriter) PutRecords(ctx context.Context, records []*Record) error 
 		return nil
 	}
 
-	ctx = log.AppendLoggerContextField(ctx, log.Fields{
+	ctx = log.AppendContextFields(ctx, log.Fields{
 		"stream_name":              w.settings.StreamName,
 		"kinesis_write_request_id": w.uuidGen.NewV4(),
 	})

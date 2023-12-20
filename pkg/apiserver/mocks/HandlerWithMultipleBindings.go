@@ -155,8 +155,8 @@ func (_c *HandlerWithMultipleBindings_Handle_Call) Run(run func(requestContext c
 	return _c
 }
 
-func (_c *HandlerWithMultipleBindings_Handle_Call) Return(response *apiserver.Response, error error) *HandlerWithMultipleBindings_Handle_Call {
-	_c.Call.Return(response, error)
+func (_c *HandlerWithMultipleBindings_Handle_Call) Return(response *apiserver.Response, err error) *HandlerWithMultipleBindings_Handle_Call {
+	_c.Call.Return(response, err)
 	return _c
 }
 

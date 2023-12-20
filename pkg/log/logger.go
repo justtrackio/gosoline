@@ -84,7 +84,7 @@ type HandlerSettings struct {
 type gosoLogger struct {
 	clock        clock.Clock
 	data         Data
-	ctxResolvers []ContextFieldsResolver
+	ctxResolvers []ContextFieldsResolverFunction
 	handlers     []Handler
 }
 
