@@ -68,8 +68,8 @@ func (_c *HandlerWithoutInput_Handle_Call) Run(run func(requestContext context.C
 	return _c
 }
 
-func (_c *HandlerWithoutInput_Handle_Call) Return(response *apiserver.Response, error error) *HandlerWithoutInput_Handle_Call {
-	_c.Call.Return(response, error)
+func (_c *HandlerWithoutInput_Handle_Call) Return(response *apiserver.Response, err error) *HandlerWithoutInput_Handle_Call {
+	_c.Call.Return(response, err)
 	return _c
 }
 

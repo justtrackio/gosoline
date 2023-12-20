@@ -102,8 +102,8 @@ func (_c *HandlerWithStream_Handle_Call) Run(run func(ginContext *gin.Context, r
 	return _c
 }
 
-func (_c *HandlerWithStream_Handle_Call) Return(error error) *HandlerWithStream_Handle_Call {
-	_c.Call.Return(error)
+func (_c *HandlerWithStream_Handle_Call) Return(err error) *HandlerWithStream_Handle_Call {
+	_c.Call.Return(err)
 	return _c
 }
 

@@ -28,7 +28,7 @@ func NewMessageWithLoggingFieldsEncoderWithInterfaces(logger Logger) *MessageWit
 }
 
 func (m MessageWithLoggingFieldsEncoder) Encode(ctx context.Context, _ interface{}, attributes map[string]string) (context.Context, map[string]string, error) {
-	fields := ContextLoggerFieldsResolver(ctx)
+	fields := GlobalContextFieldsResolver(ctx)
 
 	if len(fields) == 0 {
 		return ctx, attributes, nil
@@ -69,7 +69,7 @@ func (m MessageWithLoggingFieldsEncoder) Decode(ctx context.Context, _ interface
 		return ctx, attributes, nil
 	}
 
-	ctx = AppendLoggerContextField(ctx, fields)
+	ctx = AppendGlobalContextFields(ctx, fields)
 	delete(attributes, MessageAttributeLoggerContext)
 
 	return ctx, attributes, nil

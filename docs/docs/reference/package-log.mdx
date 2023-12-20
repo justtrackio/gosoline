@@ -75,7 +75,7 @@ logger.Error("Message")
 #### Usage
 
 ```go
-if err := logger.Option(log.WithContextFieldsResolver(log.ContextLoggerFieldsResolver)); err != nil {
+if err := logger.Option(log.WithContextFieldsResolver(log.ContextFieldsResolver)); err != nil {
 	panic(err)
 }
 ```

@@ -51,7 +51,7 @@ func Start(handlerFactory HandlerFactory, configOptions ...cfg.Option) {
 
 	loggerOptions := []log.Option{
 		log.WithHandlers(handlers...),
-		log.WithContextFieldsResolver(log.ContextLoggerFieldsResolver),
+		log.WithContextFieldsResolver(log.ContextFieldsResolver),
 	}
 
 	if err = logger.Option(loggerOptions...); err != nil {

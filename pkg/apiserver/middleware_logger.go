@@ -31,6 +31,8 @@ func LoggingMiddleware(logger log.Logger, settings LoggingSettings) gin.HandlerF
 			}
 		}
 
+		ginCtx.Request = ginCtx.Request.WithContext(log.InitContext(ginCtx.Request.Context()))
+
 		ginCtx.Next()
 
 		req := ginCtx.Request

@@ -11,7 +11,7 @@ import (
 
 type JsonResponseFromMapHandler struct{}
 
-func (h *JsonResponseFromMapHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, error error) {
+func (h *JsonResponseFromMapHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
 	m := map[string]string{
 		"status": "success",
 	}
@@ -21,7 +21,7 @@ func (h *JsonResponseFromMapHandler) Handle(requestContext context.Context, requ
 
 type JsonResponseFromStructHandler struct{}
 
-func (h *JsonResponseFromStructHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, error error) {
+func (h *JsonResponseFromStructHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
 	obj := myTestStruct{
 		Status: "success",
 	}
@@ -40,7 +40,7 @@ func (h *JsonInputHandler) GetInput() interface{} {
 	return &inputEntity{}
 }
 
-func (h *JsonInputHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, error error) {
+func (h *JsonInputHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
 	input := request.Body.(*inputEntity)
 	output := fmt.Sprintf("Thank you for submitting your message '%s', we will handle it with care!", input.Message)
 
@@ -51,7 +51,7 @@ func (h *JsonInputHandler) Handle(requestContext context.Context, request *apise
 
 type AdminAuthenticatedHandler struct{}
 
-func (h *AdminAuthenticatedHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, error error) {
+func (h *AdminAuthenticatedHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
 	m := map[string]bool{
 		"authenticated": true,
 	}
@@ -118,7 +118,7 @@ func (h *MyEntityHandler) List(ctx context.Context, qb *db_repo.QueryBuilder, ap
 	return res, err
 }
 
-func (h *MyEntityHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, error error) {
+func (h *MyEntityHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
 	m := map[string]bool{
 		"authenticated": true,
 	}

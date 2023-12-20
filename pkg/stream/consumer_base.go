@@ -320,7 +320,7 @@ func (c *baseConsumer) recover(ctx context.Context, msg *Message) {
 		return
 	}
 
-	c.handleError(ctx, err, "a panic occured during the consume operation")
+	c.handleError(ctx, err, "a panic occurred during the consume operation")
 
 	if msg == nil {
 		return
@@ -336,7 +336,7 @@ func (c *baseConsumer) retry(ctx context.Context, msg *Message) {
 
 	retryMsg, retryId := c.buildRetryMessage(msg)
 
-	ctx = log.AppendLoggerContextField(ctx, log.Fields{
+	ctx = log.AppendGlobalContextFields(ctx, log.Fields{
 		"retry_id": retryId,
 	})
 

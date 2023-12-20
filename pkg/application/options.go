@@ -195,7 +195,7 @@ func WithLoggerContextFieldsMessageEncoder(app *App) {
 	})
 }
 
-func WithLoggerContextFieldsResolver(resolver ...log.ContextFieldsResolver) Option {
+func WithLoggerContextFieldsResolver(resolver ...log.ContextFieldsResolverFunction) Option {
 	return func(app *App) {
 		app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 			return logger.Option(log.WithContextFieldsResolver(resolver...))

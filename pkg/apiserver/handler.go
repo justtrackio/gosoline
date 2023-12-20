@@ -119,7 +119,7 @@ func (r *Response) WithContentType(contentType string) *Response {
 
 //go:generate mockery --name HandlerWithoutInput
 type HandlerWithoutInput interface {
-	Handle(requestContext context.Context, request *Request) (response *Response, error error)
+	Handle(requestContext context.Context, request *Request) (response *Response, err error)
 }
 
 //go:generate mockery --name HandlerWithInput
@@ -137,7 +137,7 @@ type HandlerWithMultipleBindings interface {
 //go:generate mockery --name HandlerWithStream
 type HandlerWithStream interface {
 	GetInput() interface{}
-	Handle(ginContext *gin.Context, requestContext context.Context, request *Request) (error error)
+	Handle(ginContext *gin.Context, requestContext context.Context, request *Request) (err error)
 }
 
 func CreateHandler(handler HandlerWithoutInput) gin.HandlerFunc {
