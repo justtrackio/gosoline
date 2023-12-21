@@ -50,7 +50,7 @@ func NewApiHealthCheck() kernel.ModuleFactory {
 func NewApiHealthCheckWithInterfaces(logger log.Logger, router *gin.Engine, healthChecker kernel.HealthChecker, settings *ApiHealthCheckSettings) *ApiHealthCheck {
 	logger = logger.WithChannel("health-check")
 
-	router.Use(LoggingMiddleware(logger))
+	router.Use(LoggingMiddleware(logger, LoggingSettings{}))
 	router.GET(settings.Path, buildHealthCheckHandler(logger, healthChecker))
 
 	server := &http.Server{

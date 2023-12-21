@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -9,14 +10,22 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/encoding/base64"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-func LoggingMiddleware(logger log.Logger) gin.HandlerFunc {
+func LoggingMiddleware(logger log.Logger, settings LoggingSettings) gin.HandlerFunc {
 	chLogger := logger.WithChannel("http")
 
 	return func(ginCtx *gin.Context) {
 		start := time.Now()
+		var requestBody io.ReadCloser
+
+		if settings.RequestBody {
+			buf, _ := io.ReadAll(ginCtx.Request.Body)
+			requestBody = io.NopCloser(bytes.NewBuffer(buf))
+			ginCtx.Request.Body = io.NopCloser(bytes.NewBuffer(buf))
+		}
 
 		ginCtx.Next()
 
@@ -50,6 +59,17 @@ func LoggingMiddleware(logger log.Logger) gin.HandlerFunc {
 		fields["request_time"] = requestTimeSecond
 		fields["scheme"] = req.URL.Scheme
 		fields["status"] = status
+
+		if settings.RequestBody && requestBody != nil {
+			buf := new(bytes.Buffer)
+			buf.ReadFrom(requestBody)
+
+			if !settings.RequestBodyBase64 {
+				fields["request_body"] = buf.String()
+			} else {
+				fields["request_body"] = string(base64.Encode(buf.Bytes()))
+			}
+		}
 
 		// only log query parameters in full for successful requests to avoid logging them from bad crawlers
 		if status != http.StatusUnauthorized && status != http.StatusForbidden && status != http.StatusNotFound {

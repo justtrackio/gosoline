@@ -36,6 +36,8 @@ type Settings struct {
 	Compression CompressionSettings `cfg:"compression"`
 	// Timeout settings.
 	Timeout TimeoutSettings `cfg:"timeout"`
+	// Logging settings
+	Logging LoggingSettings `cfg:"logging"`
 }
 
 // TimeoutSettings configures IO timeouts.
@@ -47,6 +49,11 @@ type TimeoutSettings struct {
 	Write time.Duration `cfg:"write" default:"60s" validate:"min=1000000000"`
 	// Idle timeout is the maximum amount of time to wait for the next request when keep-alives are enabled
 	Idle time.Duration `cfg:"idle" default:"60s" validate:"min=1000000000"`
+}
+
+type LoggingSettings struct {
+	RequestBody       bool `cfg:"request_body"`
+	RequestBodyBase64 bool `cfg:"request_body_base64"`
 }
 
 type ApiServer struct {
@@ -86,7 +93,7 @@ func New(definer Definer) kernel.ModuleFactory {
 
 		router := gin.New()
 		router.Use(metricMiddleware)
-		router.Use(LoggingMiddleware(logger))
+		router.Use(LoggingMiddleware(logger, settings.Logging))
 		router.Use(compressionMiddlewares...)
 		router.Use(RecoveryWithSentry(logger))
 		router.Use(location.Default())
