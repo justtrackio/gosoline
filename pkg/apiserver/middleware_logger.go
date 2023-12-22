@@ -19,12 +19,16 @@ func LoggingMiddleware(logger log.Logger, settings LoggingSettings) gin.HandlerF
 
 	return func(ginCtx *gin.Context) {
 		start := time.Now()
-		var requestBody io.ReadCloser
+		var requestBody []byte
 
 		if settings.RequestBody {
-			buf, _ := io.ReadAll(ginCtx.Request.Body)
-			requestBody = io.NopCloser(bytes.NewBuffer(buf))
-			ginCtx.Request.Body = io.NopCloser(bytes.NewBuffer(buf))
+			buf, err := io.ReadAll(ginCtx.Request.Body)
+			if err != nil {
+				chLogger.Warn("can not read request body: %s", err.Error())
+			} else {
+				requestBody = buf
+				ginCtx.Request.Body = io.NopCloser(bytes.NewBuffer(buf))
+			}
 		}
 
 		ginCtx.Next()
@@ -61,13 +65,10 @@ func LoggingMiddleware(logger log.Logger, settings LoggingSettings) gin.HandlerF
 		fields["status"] = status
 
 		if settings.RequestBody && requestBody != nil {
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(requestBody)
-
 			if !settings.RequestBodyBase64 {
-				fields["request_body"] = buf.String()
+				fields["request_body"] = string(requestBody)
 			} else {
-				fields["request_body"] = string(base64.Encode(buf.Bytes()))
+				fields["request_body"] = string(base64.Encode(requestBody))
 			}
 		}
 
