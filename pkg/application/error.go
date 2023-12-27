@@ -10,7 +10,7 @@ import (
 
 type ErrorHandler func(msg string, args ...interface{})
 
-func WithDefaultErrorHandler(handler ErrorHandler) {
+func withDefaultErrorHandler(handler ErrorHandler) {
 	defaultErrorHandler = handler
 }
 
@@ -25,4 +25,8 @@ var defaultErrorHandler = func(msg string, args ...interface{}) {
 
 	logger.Error(msg, args...)
 	os.Exit(1)
+}
+
+func callDefaultErrorHandler(msg string, args ...interface{}) {
+	defaultErrorHandler(msg, args...)
 }

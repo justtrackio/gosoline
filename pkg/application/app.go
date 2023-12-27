@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -37,7 +38,9 @@ func (a *App) addSetupOption(opt SetupOption) {
 func Default(options ...Option) kernel.Kernel {
 	defaults := []Option{
 		WithApiHealthCheck,
-		WithConfigErrorHandlers(defaultErrorHandler),
+		// use an indirection for the default error handler. Otherwise, changes
+		// to the default are not reflected in the config error handler
+		WithConfigErrorHandlers(callDefaultErrorHandler),
 		WithConfigFile("./config.dist.yml", "yml"),
 		WithConfigFileFlag,
 		WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
@@ -106,6 +109,14 @@ func NewWithInterfaces(ctx context.Context, config cfg.GosoConf, logger log.Goso
 			return nil, fmt.Errorf("can not apply logger options on application: %w", err)
 		}
 	}
+
+	// switch the default error handler to use our logger - this ensures any application name or other setting we already
+	// configured for our logger gets picked up by the default error handler. We can only configure this here after we
+	// set up our logger successfully (otherwise the logger might not write any messages at all).
+	withDefaultErrorHandler(func(msg string, args ...interface{}) {
+		logger.Error(msg, args...)
+		os.Exit(1)
+	})
 
 	for name, priority := range cfgPostProcessors {
 		logger.Info("applied priority %d config post processor '%s'", priority, name)
