@@ -2,7 +2,6 @@ package lambda
 
 import (
 	"context"
-	"os"
 
 	awsLambda "github.com/aws/aws-lambda-go/lambda"
 	"github.com/justtrackio/gosoline/pkg/appctx"
@@ -15,59 +14,65 @@ import (
 type HandlerFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (interface{}, error)
 
 func Start(handlerFactory HandlerFactory, configOptions ...cfg.Option) {
+	var err error
+	var cfgPostProcessors map[string]int
+	var handlers []log.Handler
+	var lambdaHandler any
+
 	clock.WithUseUTC(true)
-
-	logHandler := log.NewHandlerIoWriter(log.LevelInfo, []string{}, log.FormatterConsole, "", os.Stdout)
-	loggerOptions := []log.Option{
-		log.WithHandlers(logHandler),
-		log.WithContextFieldsResolver(log.ContextLoggerFieldsResolver),
-	}
-
+	ctx := appctx.WithContainer(context.Background())
+	config := cfg.New()
 	logger := log.NewLogger()
-
-	if err := logger.Option(loggerOptions...); err != nil {
-		logger.Error("failed to apply logger options: %w", err)
-
-		os.Exit(1)
-	}
 
 	// configure and create config
 	mergedConfigOptions := append([]cfg.Option{
 		cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		cfg.WithSanitizers(cfg.TimeSanitizer),
 		cfg.WithErrorHandlers(func(msg string, args ...interface{}) {
-			logger.Error(msg, args...)
-			os.Exit(1)
+			defaultErrorHandler(msg, args...)
 		}),
 	}, configOptions...)
 
-	config := cfg.New()
-	if err := config.Option(mergedConfigOptions...); err != nil {
-		logger.Error("failed to apply config options: %w", err)
+	if err = config.Option(mergedConfigOptions...); err != nil {
+		defaultErrorHandler("failed to apply config options: %w", err)
 
-		os.Exit(1)
+		return
 	}
 
-	if cfgPostProcessors, err := cfg.ApplyPostProcessors(config); err != nil {
-		logger.Error("can not apply post processor on config: %w", err)
+	if cfgPostProcessors, err = cfg.ApplyPostProcessors(config); err != nil {
+		defaultErrorHandler("can not apply post processor on config: %w", err)
 
-		os.Exit(1)
-	} else {
-		for name, priority := range cfgPostProcessors {
-			logger.Debug("applied priority %d config post processor '%s'", priority, name)
-		}
+		return
+	}
+
+	if handlers, err = log.NewHandlersFromConfig(config); err != nil {
+		defaultErrorHandler("can not create handlers from config: %w", err)
+
+		return
+	}
+
+	loggerOptions := []log.Option{
+		log.WithHandlers(handlers...),
+		log.WithContextFieldsResolver(log.ContextLoggerFieldsResolver),
+	}
+
+	if err = logger.Option(loggerOptions...); err != nil {
+		defaultErrorHandler("failed to apply logger options: %w", err)
+
+		return
+	}
+
+	for name, priority := range cfgPostProcessors {
+		logger.Debug("applied priority %d config post processor '%s'", priority, name)
 	}
 
 	stream.AddDefaultEncodeHandler(log.NewMessageWithLoggingFieldsEncoder(config, logger))
 
-	ctx := appctx.WithContainer(context.Background())
-
 	// create handler function and give lambda control
-	lambdaHandler, err := handlerFactory(ctx, config, logger)
-	if err != nil {
-		logger.Error("failed to create lambda handler: %w", err)
+	if lambdaHandler, err = handlerFactory(ctx, config, logger); err != nil {
+		defaultErrorHandler("failed to create lambda handler: %w", err)
 
-		os.Exit(1)
+		return
 	}
 
 	awsLambda.Start(lambdaHandler)
