@@ -28,9 +28,7 @@ func Start(handlerFactory HandlerFactory, configOptions ...cfg.Option) {
 	mergedConfigOptions := append([]cfg.Option{
 		cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		cfg.WithSanitizers(cfg.TimeSanitizer),
-		cfg.WithErrorHandlers(func(msg string, args ...interface{}) {
-			defaultErrorHandler(msg, args...)
-		}),
+		cfg.WithErrorHandlers(defaultErrorHandler),
 	}, configOptions...)
 
 	if err = config.Option(mergedConfigOptions...); err != nil {
