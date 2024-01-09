@@ -64,10 +64,23 @@ func NewDdbLockProvider(ctx context.Context, config cfg.Config, logger log.Logge
 		return nil, fmt.Errorf("can not create ddb repository: %w", err)
 	}
 
+	backoffConfig := backoff.NewExponentialBackOff()
+	if settings.Backoff.InitialInterval > 0 {
+		backoffConfig.InitialInterval = settings.Backoff.InitialInterval
+	}
+
+	if settings.Backoff.MaxInterval > 0 {
+		backoffConfig.MaxInterval = settings.Backoff.MaxInterval
+	}
+
+	if settings.Backoff.MaxElapsedTime > 0 {
+		backoffConfig.MaxElapsedTime = settings.Backoff.MaxElapsedTime
+	}
+
 	return NewDdbLockProviderWithInterfaces(
 		logger,
 		repo,
-		backoff.NewExponentialBackOff(),
+		backoffConfig,
 		clock.NewRealClock(),
 		uuid.New(),
 		settings,
