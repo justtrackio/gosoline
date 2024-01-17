@@ -6,7 +6,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
-	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -51,7 +50,7 @@ func NewKinesisMessageHandler(channel chan *Message) kinesis.MessageHandler {
 
 func (s kinesisMessageHandler) Handle(rawMessage []byte) error {
 	msg := Message{}
-	err := json.Unmarshal(rawMessage, &msg)
+	err := msg.UnmarshalFromBytes(rawMessage)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal message: %w", err)
 	}
