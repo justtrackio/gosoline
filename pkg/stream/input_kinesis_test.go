@@ -15,6 +15,8 @@ func TestKinesisMessageHandler(t *testing.T) {
 	assert.NoError(t, err)
 	err = h.Handle([]byte("not a message"))
 	assert.Error(t, err)
+	err = h.Handle([]byte(`{"attributes":{"type":"message","version":0},"body":"foo"}`))
+	assert.NoError(t, err)
 
 	h.Done()
 
@@ -27,6 +29,13 @@ func TestKinesisMessageHandler(t *testing.T) {
 		{
 			Attributes: map[string]string{
 				"type": "message",
+			},
+			Body: "foo",
+		},
+		{
+			Attributes: map[string]string{
+				"type":    "message",
+				"version": "0",
 			},
 			Body: "foo",
 		},
