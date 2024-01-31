@@ -2,6 +2,8 @@ package tracing
 
 import (
 	"fmt"
+	"os"
+	"sync"
 
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-xray-sdk-go/xray"
@@ -9,6 +11,16 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
+
+var globalXRayLogger = &xrayLogger{
+	fallback: xraylog.NewDefaultLogger(os.Stdout, xraylog.LogLevelInfo),
+}
+
+func init() {
+	// SetLogger is not thread safe, so set it upon startup to our wrapper. Our wrapper is safe and falls back to the
+	// default if we don't have our logger initialized yet.
+	xray.SetLogger(globalXRayLogger)
+}
 
 func AWS(config cfg.Config, c *client.Client) {
 	enabled := config.GetBool("tracing_enabled")
@@ -21,16 +33,27 @@ func AWS(config cfg.Config, c *client.Client) {
 }
 
 type xrayLogger struct {
-	logger log.Logger
+	lck      sync.RWMutex
+	logger   log.Logger
+	fallback xraylog.Logger
 }
 
-func newXrayLogger(logger log.Logger) *xrayLogger {
-	return &xrayLogger{
-		logger: logger.WithChannel("tracing"),
+func setGlobalXRayLogger(logger log.Logger) {
+	globalXRayLogger.lck.Lock()
+	defer globalXRayLogger.lck.Unlock()
+
+	globalXRayLogger.logger = logger.WithChannel("tracing")
+}
+
+func (x *xrayLogger) Log(level xraylog.LogLevel, msg fmt.Stringer) {
+	globalXRayLogger.lck.RLock()
+	defer globalXRayLogger.lck.RUnlock()
+
+	if x.logger == nil {
+		x.fallback.Log(level, msg)
+		return
 	}
-}
 
-func (x xrayLogger) Log(level xraylog.LogLevel, msg fmt.Stringer) {
 	switch level {
 	case xraylog.LogLevelDebug:
 		x.logger.WithFields(log.Fields{
