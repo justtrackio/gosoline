@@ -19,7 +19,7 @@ func TableName(config cfg.Config, settings *Settings) string {
 }
 
 func GetTableNamingSettings(config cfg.Config, clientName string) *TableNamingSettings {
-	if len(clientName) == 0 {
+	if clientName == "" {
 		clientName = "default"
 	}
 

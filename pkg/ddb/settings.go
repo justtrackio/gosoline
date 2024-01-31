@@ -49,14 +49,16 @@ type SimpleSettings struct {
 }
 
 func sanitizeSettings(settings *Settings) {
-	if len(settings.ClientName) == 0 {
+	if settings.ClientName == "" {
 		settings.ClientName = "default"
 	}
 
 	settings.Main.ReadCapacityUnits = int64(math.Max(1, float64(settings.Main.ReadCapacityUnits)))
 	settings.Main.WriteCapacityUnits = int64(math.Max(1, float64(settings.Main.WriteCapacityUnits)))
 
-	for _, global := range settings.Global {
+	for i := range settings.Global {
+		// work on a reference to ensure our update is correctly propagated
+		global := &settings.Global[i]
 		global.ReadCapacityUnits = int64(math.Max(1, float64(global.ReadCapacityUnits)))
 		global.WriteCapacityUnits = int64(math.Max(1, float64(global.WriteCapacityUnits)))
 	}
