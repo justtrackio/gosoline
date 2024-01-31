@@ -198,7 +198,7 @@ func (f *MetadataFactory) getGlobalSecondaryIndices(settings []GlobalSettings) (
 		}
 
 		name := gs.Name
-		if len(name) == 0 {
+		if name == "" {
 			name = fmt.Sprintf("global-%s", *globalFields.HashKey)
 		}
 

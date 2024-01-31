@@ -44,7 +44,7 @@ func CreateKinesisStream(ctx context.Context, config cfg.Config, logger log.Logg
 	}
 
 	if !dx.ShouldAutoCreate(config) {
-		return nil, fmt.Errorf("kinesis stream does not exist and auto create is disabled")
+		return nil, fmt.Errorf("kinesis stream %s does not exist and auto create is disabled", streamName)
 	}
 
 	logger.Info("trying to create kinesis stream: %s", streamName)
