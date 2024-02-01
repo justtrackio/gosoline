@@ -5,13 +5,14 @@ app_family: family
 app_group: grp
 app_name: name
 
-api:
-  port: 8088
-  mode: debug
-  timeout:
-    read: 5s
-    write: 5s
-    idle: 5s
+httpserver:
+  default:
+    port: 8088
+    mode: debug
+    timeout:
+      read: 5s
+      write: 5s
+      idle: 5s
 
 api_auth_keys:
   - changeMe

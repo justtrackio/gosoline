@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/apiserver"
-	"github.com/justtrackio/gosoline/pkg/apiserver/auth"
-	"github.com/justtrackio/gosoline/pkg/apiserver/crud"
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
+	"github.com/justtrackio/gosoline/pkg/httpserver/auth"
+	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -16,13 +16,13 @@ type myTestStruct struct {
 	Status string `json:"status"`
 }
 
-func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*apiserver.Definitions, error) {
-	definitions := &apiserver.Definitions{}
+func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*httpserver.Definitions, error) {
+	definitions := &httpserver.Definitions{}
 
-	definitions.GET("/json-from-map", apiserver.CreateHandler(&JsonResponseFromMapHandler{}))
-	definitions.GET("/json-from-struct", apiserver.CreateHandler(&JsonResponseFromStructHandler{}))
+	definitions.GET("/json-from-map", httpserver.CreateHandler(&JsonResponseFromMapHandler{}))
+	definitions.GET("/json-from-struct", httpserver.CreateHandler(&JsonResponseFromStructHandler{}))
 
-	definitions.POST("/json-handler", apiserver.CreateJsonHandler(&JsonInputHandler{}))
+	definitions.POST("/json-handler", httpserver.CreateJsonHandler(&JsonInputHandler{}))
 
 	basicAuth, err := auth.NewBasicAuthAuthenticator(config, logger)
 	if err != nil {
@@ -35,7 +35,7 @@ func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*api
 		"basic-auth": basicAuth,
 	}))
 
-	group.GET("/authenticated", apiserver.CreateHandler(&AdminAuthenticatedHandler{}))
+	group.GET("/authenticated", httpserver.CreateHandler(&AdminAuthenticatedHandler{}))
 
 	crud.AddCrudHandlers(logger, definitions, 0, "/myEntity", &MyEntityHandler{
 		repo: &MyEntityRepository{},
@@ -47,6 +47,6 @@ func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*api
 func main() {
 	application.Run(
 		application.WithConfigFile("config.dist.yml", "yml"),
-		application.WithModuleFactory("api", apiserver.New(apiDefiner)),
+		application.WithModuleFactory("api", httpserver.New("default", apiDefiner)),
 	)
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
@@ -14,9 +14,9 @@ type SubscriberApiSettings struct {
 	Enabled bool `cfg:"enabled" default:"true"`
 }
 
-func CreateDefiner(callbacks map[string]stream.ConsumerCallbackFactory) apiserver.Definer {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (*apiserver.Definitions, error) {
-		d := &apiserver.Definitions{}
+func CreateDefiner(callbacks map[string]stream.ConsumerCallbackFactory) httpserver.Definer {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (*httpserver.Definitions, error) {
+		d := &httpserver.Definitions{}
 
 		for name, callback := range callbacks {
 			handler, err := NewHandler(ctx, config, logger, callback)
@@ -24,7 +24,7 @@ func CreateDefiner(callbacks map[string]stream.ConsumerCallbackFactory) apiserve
 				return nil, fmt.Errorf("could not define handler for %s: %w", name, err)
 			}
 
-			d.POST("/v0/subscription/"+name, apiserver.CreateJsonHandler(handler))
+			d.POST("/v0/subscription/"+name, httpserver.CreateJsonHandler(handler))
 		}
 
 		return d, nil

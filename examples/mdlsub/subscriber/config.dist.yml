@@ -8,8 +8,8 @@ cfg:
   server:
     port: 0
 
-api:
-  health:
+httpserver:
+  health-check:
     port: 0
 
 aws_sdk_retries: 1

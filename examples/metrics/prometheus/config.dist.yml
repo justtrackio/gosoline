@@ -5,13 +5,14 @@ app_family: metrics
 app_group: grp
 app_name: prometheus
 
-api:
-  port: 8088
-  mode: debug
-  timeout:
-    read: 5s
-    write: 5s
-    idle: 5s
+httpserver:
+  default:
+    port: 8088
+    mode: debug
+    timeout:
+      read: 5s
+      write: 5s
+      idle: 5s
 
 prometheus:
   metric_limit: 5000

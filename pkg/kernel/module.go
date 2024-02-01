@@ -98,7 +98,7 @@ func (mc moduleConfig) GetType() string {
 }
 
 // A Module provides a single function or service for your application.
-// For example, an HTTP server would be a single module (see "apiserver")
+// For example, an HTTP server would be a single module (see "httpserver")
 // while a daemon writing metrics in the background would be a separate
 // module (see "log").
 //

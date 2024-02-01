@@ -37,7 +37,7 @@ func (a *App) addSetupOption(opt SetupOption) {
 
 func Default(options ...Option) kernel.Kernel {
 	defaults := []Option{
-		WithApiHealthCheck,
+		WithHttpHealthCheck,
 		// use an indirection for the default error handler. Otherwise, changes
 		// to the default are not reflected in the config error handler
 		WithConfigErrorHandlers(callDefaultErrorHandler),

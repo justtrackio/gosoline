@@ -5,8 +5,9 @@ app_family: example
 app_group: money
 app_name: exchange
 
-api:
-  port: 8080
+httpserver:
+  default:
+    port: 8080
 
 kvstore:
   currency:

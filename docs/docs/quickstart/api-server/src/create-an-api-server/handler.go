@@ -5,8 +5,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -47,7 +47,7 @@ func NewTodoHandler(ctx context.Context, config cfg.Config, logger log.Logger) (
 // snippet-end: new todo handler
 
 // snippet-start: handle
-func (t TodoHandler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+func (t TodoHandler) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
 	// Initialize a Todo struct from the request body
 	todo := request.Body.(*Todo)
 
@@ -58,7 +58,7 @@ func (t TodoHandler) Handle(ctx context.Context, request *apiserver.Request) (*a
 	t.logger.Info("got todo with id %d", todo.Id)
 
 	// Return a Json response object with information from the Todo struct
-	return apiserver.NewJsonResponse(todo), nil
+	return httpserver.NewJsonResponse(todo), nil
 }
 
 // snippet-end: handle

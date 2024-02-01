@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdlsub"
@@ -40,14 +40,27 @@ func RunModule(name string, moduleFactory kernel.ModuleFactory, options ...Optio
 	Run(options...)
 }
 
-func RunApiServer(definer apiserver.Definer, options ...Option) {
+func RunHttpDefaultServer(definer httpserver.Definer, options ...Option) {
+	RunHttpServers(
+		map[string]httpserver.Definer{
+			"default": definer,
+		},
+		options...,
+	)
+}
+
+func RunHttpServers(servers map[string]httpserver.Definer, options ...Option) {
 	options = append(options, WithExecBackoffSettings(&exec.BackoffSettings{
 		InitialInterval: time.Millisecond * 100,
 		MaxElapsedTime:  time.Second * 10,
 		MaxInterval:     time.Second,
 	}))
 
-	RunModule("api", apiserver.New(definer), options...)
+	for name, definer := range servers {
+		options = append(options, WithModuleFactory("httpserver-"+name, httpserver.New(name, definer)))
+	}
+
+	Run(options...)
 }
 
 func RunConsumer(callback stream.ConsumerCallbackFactory, options ...Option) {

@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -29,8 +29,8 @@ type (
 	SetupOption  func(config cfg.GosoConf, logger log.GosoLogger) error
 )
 
-func WithApiHealthCheck(app *App) {
-	WithModuleFactory("api-health-check", apiserver.NewApiHealthCheck())(app)
+func WithHttpHealthCheck(app *App) {
+	WithModuleFactory("http-health-check", httpserver.NewHealthCheck())(app)
 }
 
 func WithConfigEnvKeyPrefix(prefix string) Option {
@@ -141,7 +141,7 @@ func WithDbRepoChangeHistory(app *App) {
 	})
 }
 
-func WithApiServerShares(app *App) {
+func WithHttpServerShares(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		return kernelPkg.WithMiddlewareFactory(share.KernelMiddlewareShares, kernelPkg.PositionEnd)
 	})
@@ -268,7 +268,7 @@ func WithProducerDaemon(app *App) {
 }
 
 func WithProfiling() Option {
-	return WithModuleFactory("profiling", apiserver.NewProfiling())
+	return WithModuleFactory("profiling", httpserver.NewProfiling())
 }
 
 func WithTracing(app *App) {

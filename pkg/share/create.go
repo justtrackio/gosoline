@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/justtrackio/gosoline/pkg/apiserver"
-	"github.com/justtrackio/gosoline/pkg/apiserver/crud"
 	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
+	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 	"github.com/justtrackio/gosoline/pkg/validation"
@@ -28,17 +28,17 @@ func NewShareCreateHandler(logger log.Logger, transformer ShareCreateHandler) gi
 		uuidProvider: uuid.New(),
 	}
 
-	return apiserver.CreateJsonHandler(sh)
+	return httpserver.CreateJsonHandler(sh)
 }
 
 func (s shareCreateHandler) GetInput() interface{} {
 	return s.transformer.GetCreateInput()
 }
 
-func (s shareCreateHandler) Handle(ctx context.Context, req *apiserver.Request) (*apiserver.Response, error) {
+func (s shareCreateHandler) Handle(ctx context.Context, req *httpserver.Request) (*httpserver.Response, error) {
 	logger := s.logger.WithContext(ctx)
 
-	id, valid := apiserver.GetUintFromRequest(req, "id")
+	id, valid := httpserver.GetUintFromRequest(req, "id")
 	if !valid {
 		return nil, errors.New("no valid id provided")
 	}
@@ -48,7 +48,7 @@ func (s shareCreateHandler) Handle(ctx context.Context, req *apiserver.Request) 
 	if errors.As(err, &notFound) {
 		logger.Warn("failed to read entity: %s", err.Error())
 
-		return apiserver.NewStatusResponse(http.StatusNotFound), nil
+		return httpserver.NewStatusResponse(http.StatusNotFound), nil
 	}
 
 	if err != nil {
@@ -75,11 +75,11 @@ func (s shareCreateHandler) Handle(ctx context.Context, req *apiserver.Request) 
 	err = shareRepo.Create(ctx, model)
 
 	if db.IsDuplicateEntryError(err) {
-		return apiserver.NewStatusResponse(http.StatusConflict), nil
+		return httpserver.NewStatusResponse(http.StatusConflict), nil
 	}
 
 	if errors.Is(err, &validation.Error{}) {
-		return apiserver.GetErrorHandler()(http.StatusBadRequest, err), nil
+		return httpserver.GetErrorHandler()(http.StatusBadRequest, err), nil
 	}
 
 	if err != nil {
@@ -99,7 +99,7 @@ func (s shareCreateHandler) Handle(ctx context.Context, req *apiserver.Request) 
 		return nil, err
 	}
 
-	return apiserver.NewJsonResponse(out), nil
+	return httpserver.NewJsonResponse(out), nil
 }
 
 func (s shareCreateHandler) getEntity(ctx context.Context, id *uint) (Shareable, error) {

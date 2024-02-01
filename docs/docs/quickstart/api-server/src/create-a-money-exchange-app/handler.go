@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/currency"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -30,24 +30,24 @@ func NewEuroHandler(ctx context.Context, config cfg.Config, logger log.Logger) (
 	}, nil
 }
 
-func (h *euroHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
+func (h *euroHandler) Handle(requestContext context.Context, request *httpserver.Request) (response *httpserver.Response, err error) {
 	currency := request.Params.ByName("currency")
 	amountString := request.Params.ByName("amount")
 	amount, err := strconv.ParseFloat(amountString, 64)
 	if err != nil {
 		h.logger.Error("cannot parse amount %s: %w", amountString, err)
 
-		return apiserver.NewStatusResponse(http.StatusBadRequest), nil
+		return httpserver.NewStatusResponse(http.StatusBadRequest), nil
 	}
 
 	result, err := h.currencyService.ToEur(requestContext, amount, currency)
 	if err != nil {
 		h.logger.Error("cannot convert amount %f with currency %s: %w", amount, currency, err)
 
-		return apiserver.NewStatusResponse(http.StatusInternalServerError), nil
+		return httpserver.NewStatusResponse(http.StatusInternalServerError), nil
 	}
 
-	return apiserver.NewJsonResponse(result), nil
+	return httpserver.NewJsonResponse(result), nil
 }
 
 type euroAtDateHandler struct {
@@ -67,14 +67,14 @@ func NewEuroAtDateHandler(ctx context.Context, config cfg.Config, logger log.Log
 	}, nil
 }
 
-func (h *euroAtDateHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
+func (h *euroAtDateHandler) Handle(requestContext context.Context, request *httpserver.Request) (response *httpserver.Response, err error) {
 	currency := request.Params.ByName("currency")
 	dateString := request.Params.ByName("date")
 	date, err := time.Parse(time.RFC3339, dateString)
 	if err != nil {
 		h.logger.Error("cannot parse date %s: %w", dateString, err)
 
-		return apiserver.NewStatusResponse(http.StatusInternalServerError), nil
+		return httpserver.NewStatusResponse(http.StatusInternalServerError), nil
 	}
 
 	amountString := request.Params.ByName("amount")
@@ -82,15 +82,15 @@ func (h *euroAtDateHandler) Handle(requestContext context.Context, request *apis
 	if err != nil {
 		h.logger.Error("cannot parse amount %s: %w", amountString, err)
 
-		return apiserver.NewStatusResponse(http.StatusInternalServerError), nil
+		return httpserver.NewStatusResponse(http.StatusInternalServerError), nil
 	}
 
 	result, err := h.currencyService.ToEurAtDate(requestContext, amount, currency, date)
 	if err != nil {
 		h.logger.Error("cannot convert amount %f with currency %s at date %v: %w", amount, currency, date, err)
 
-		return apiserver.NewStatusResponse(http.StatusInternalServerError), nil
+		return httpserver.NewStatusResponse(http.StatusInternalServerError), nil
 	}
 
-	return apiserver.NewJsonResponse(result), nil
+	return httpserver.NewJsonResponse(result), nil
 }
