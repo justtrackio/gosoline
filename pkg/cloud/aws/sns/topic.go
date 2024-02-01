@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sns/types"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	cloudAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
@@ -17,13 +18,22 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-const MaxBatchSize = 10
+const (
+	MaxBatchSize      = 10
+	MetadataKeyTopics = "cloud.aws.sns.topics"
+)
 
 //go:generate mockery --name Topic
 type Topic interface {
 	Publish(ctx context.Context, msg string, attributes ...map[string]string) error
 	PublishBatch(ctx context.Context, messages []string, attributes []map[string]string) error
 	SubscribeSqs(ctx context.Context, queueArn string, attributes map[string]string) error
+}
+
+type TopicMetadata struct {
+	AwsClientName string `json:"aws_client_name"`
+	TopicArn      string `json:"topic_arn"`
+	TopicName     string `json:"topic_name"`
 }
 
 type TopicSettings struct {
@@ -48,6 +58,16 @@ func NewTopic(ctx context.Context, config cfg.Config, logger log.Logger, setting
 
 	if topicArn, err = CreateTopic(ctx, logger, client, settings.TopicName); err != nil {
 		return nil, fmt.Errorf("can not create sns topic %s: %w", settings.TopicName, err)
+	}
+
+	metadata := TopicMetadata{
+		AwsClientName: settings.ClientName,
+		TopicArn:      topicArn,
+		TopicName:     settings.TopicName,
+	}
+
+	if err = appctx.MetadataAppend(ctx, MetadataKeyTopics, metadata); err != nil {
+		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
 	return NewTopicWithInterfaces(logger, client, topicArn), nil

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -17,7 +17,7 @@ type Handler struct {
 	tracer   tracing.Tracer
 }
 
-func NewHandler(ctx context.Context, config cfg.Config, logger log.Logger, callbackFactory stream.ConsumerCallbackFactory) (apiserver.HandlerWithInput, error) {
+func NewHandler(ctx context.Context, config cfg.Config, logger log.Logger, callbackFactory stream.ConsumerCallbackFactory) (httpserver.HandlerWithInput, error) {
 	callback, err := callbackFactory(ctx, config, logger)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func (h *Handler) GetInput() interface{} {
 	return &stream.Message{}
 }
 
-func (h *Handler) Handle(ctx context.Context, request *apiserver.Request) (*apiserver.Response, error) {
+func (h *Handler) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
 	msg := request.Body.(*stream.Message)
 
 	var err error
@@ -46,13 +46,13 @@ func (h *Handler) Handle(ctx context.Context, request *apiserver.Request) (*apis
 
 	if model = h.callback.GetModel(msg.Attributes); model == nil {
 		err := fmt.Errorf("invalid or incomplete attributes: %v", msg.Attributes)
-		return apiserver.NewStatusResponse(http.StatusBadRequest), fmt.Errorf("could not get model: %w", err)
+		return httpserver.NewStatusResponse(http.StatusBadRequest), fmt.Errorf("could not get model: %w", err)
 	}
 
 	encoding := stream.GetEncodingAttribute(msg.Attributes)
 
 	if encoding == nil {
-		return apiserver.NewStatusResponse(http.StatusBadRequest), fmt.Errorf("missing encoding attribute")
+		return httpserver.NewStatusResponse(http.StatusBadRequest), fmt.Errorf("missing encoding attribute")
 	}
 
 	encoder := stream.NewMessageEncoder(&stream.MessageEncoderSettings{
@@ -61,17 +61,17 @@ func (h *Handler) Handle(ctx context.Context, request *apiserver.Request) (*apis
 
 	var attributes map[string]string
 	if ctx, attributes, err = encoder.Decode(ctx, msg, model); err != nil {
-		return apiserver.NewStatusResponse(http.StatusBadRequest), fmt.Errorf("could not decode message: %w", err)
+		return httpserver.NewStatusResponse(http.StatusBadRequest), fmt.Errorf("could not decode message: %w", err)
 	}
 
 	ok, err := h.callback.Consume(ctx, model, attributes)
 	if err != nil {
-		return apiserver.NewStatusResponse(http.StatusInternalServerError), fmt.Errorf("could not process model: %w", err)
+		return httpserver.NewStatusResponse(http.StatusInternalServerError), fmt.Errorf("could not process model: %w", err)
 	}
 
 	if !ok {
-		return apiserver.NewStatusResponse(http.StatusInternalServerError), fmt.Errorf("logical error: should not acknowledge model")
+		return httpserver.NewStatusResponse(http.StatusInternalServerError), fmt.Errorf("logical error: should not acknowledge model")
 	}
 
-	return apiserver.NewStatusResponse(http.StatusOK), nil
+	return httpserver.NewStatusResponse(http.StatusOK), nil
 }

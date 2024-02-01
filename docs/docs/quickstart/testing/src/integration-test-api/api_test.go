@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
@@ -30,7 +30,7 @@ func (s *ApiTestSuite) SetupSuite() []suite.Option {
 	}
 }
 
-func (s *ApiTestSuite) SetupApiDefinitions() apiserver.Definer {
+func (s *ApiTestSuite) SetupApiDefinitions() httpserver.Definer {
 	return ApiDefiner
 }
 

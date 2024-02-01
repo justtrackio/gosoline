@@ -4,9 +4,9 @@ app_family: how-to
 app_group: health-check
 app_name: hello-world
 
-api:
+httpserver:
   // highlight-start
-  health:
+  health-check:
     path: /health
     port: 8090
   // highlight-end

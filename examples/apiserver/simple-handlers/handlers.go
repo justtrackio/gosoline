@@ -4,29 +4,29 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/apiserver"
-	"github.com/justtrackio/gosoline/pkg/apiserver/crud"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
+	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 )
 
 type JsonResponseFromMapHandler struct{}
 
-func (h *JsonResponseFromMapHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
+func (h *JsonResponseFromMapHandler) Handle(requestContext context.Context, request *httpserver.Request) (response *httpserver.Response, err error) {
 	m := map[string]string{
 		"status": "success",
 	}
 
-	return apiserver.NewJsonResponse(m), nil
+	return httpserver.NewJsonResponse(m), nil
 }
 
 type JsonResponseFromStructHandler struct{}
 
-func (h *JsonResponseFromStructHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
+func (h *JsonResponseFromStructHandler) Handle(requestContext context.Context, request *httpserver.Request) (response *httpserver.Response, err error) {
 	obj := myTestStruct{
 		Status: "success",
 	}
 
-	return apiserver.NewJsonResponse(obj), nil
+	return httpserver.NewJsonResponse(obj), nil
 }
 
 type (
@@ -40,23 +40,23 @@ func (h *JsonInputHandler) GetInput() interface{} {
 	return &inputEntity{}
 }
 
-func (h *JsonInputHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
+func (h *JsonInputHandler) Handle(requestContext context.Context, request *httpserver.Request) (response *httpserver.Response, err error) {
 	input := request.Body.(*inputEntity)
 	output := fmt.Sprintf("Thank you for submitting your message '%s', we will handle it with care!", input.Message)
 
-	return apiserver.NewJsonResponse(map[string]string{
+	return httpserver.NewJsonResponse(map[string]string{
 		"message": output,
 	}), nil
 }
 
 type AdminAuthenticatedHandler struct{}
 
-func (h *AdminAuthenticatedHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
+func (h *AdminAuthenticatedHandler) Handle(requestContext context.Context, request *httpserver.Request) (response *httpserver.Response, err error) {
 	m := map[string]bool{
 		"authenticated": true,
 	}
 
-	return apiserver.NewJsonResponse(m), nil
+	return httpserver.NewJsonResponse(m), nil
 }
 
 type MyEntityHandler struct {
@@ -118,10 +118,10 @@ func (h *MyEntityHandler) List(ctx context.Context, qb *db_repo.QueryBuilder, ap
 	return res, err
 }
 
-func (h *MyEntityHandler) Handle(requestContext context.Context, request *apiserver.Request) (response *apiserver.Response, err error) {
+func (h *MyEntityHandler) Handle(requestContext context.Context, request *httpserver.Request) (response *httpserver.Response, err error) {
 	m := map[string]bool{
 		"authenticated": true,
 	}
 
-	return apiserver.NewJsonResponse(m), nil
+	return httpserver.NewJsonResponse(m), nil
 }

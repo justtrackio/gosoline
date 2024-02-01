@@ -1,0 +1,10 @@
+env: test
+
+app_project: gosoline
+app_family: test
+app_group: grp
+app_name: validation-test
+
+httpserver:
+  default:
+    port: 0

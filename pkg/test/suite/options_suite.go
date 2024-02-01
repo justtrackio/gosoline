@@ -177,9 +177,9 @@ func WithDbRepoChangeHistory() Option {
 	}
 }
 
-func WithApiServerShares() Option {
+func WithHttpServerShares() Option {
 	return func(s *suiteOptions) {
-		s.addAppOption(application.WithApiServerShares)
+		s.addAppOption(application.WithHttpServerShares)
 	}
 }
 

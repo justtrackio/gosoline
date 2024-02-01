@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/apiserver"
-	"github.com/justtrackio/gosoline/pkg/apiserver/crud"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/guard"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
+	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/selm0/ladon"
 )
@@ -52,7 +52,7 @@ type ShareCreateHandler interface {
 	TransformCreate(ctx context.Context, input interface{}, entity Shareable, policy ladon.Policy, model db_repo.ModelBased) (err error)
 }
 
-func AddShareCreateHandler(logger log.Logger, d *apiserver.Definitions, version int, basePath string, handler ShareCreateHandler) {
+func AddShareCreateHandler(logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler ShareCreateHandler) {
 	path := fmt.Sprintf("/v%d/%s/:id/share", version, basePath)
 	d.POST(path, NewShareCreateHandler(logger, handler))
 }

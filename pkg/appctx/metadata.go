@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/mapx"
 )
 
@@ -62,16 +63,7 @@ func (m *Metadata) Append(key string, values ...interface{}) error {
 	}
 
 	for _, val := range values {
-		found := false
-
-		for _, elem := range slice {
-			if elem == val {
-				found = true
-				break
-			}
-		}
-
-		if found {
+		if funk.Contains(slice, val) {
 			continue
 		}
 

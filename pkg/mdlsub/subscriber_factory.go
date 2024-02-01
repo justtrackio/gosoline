@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/apiserver"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/stream"
@@ -74,7 +74,7 @@ func SubscriberFactory(ctx context.Context, config cfg.Config, logger log.Logger
 	}
 
 	definer := CreateDefiner(callbackFactories)
-	modules["mdlsub_subscriberapi"] = apiserver.New(definer)
+	modules["mdlsub_subscriberapi"] = httpserver.New("mdlsub", definer)
 
 	return modules, nil
 }
