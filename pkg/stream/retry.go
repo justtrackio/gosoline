@@ -16,7 +16,6 @@ const (
 
 //go:generate mockery --name RetryHandler
 type RetryHandler interface {
-	Input
 	Put(ctx context.Context, msg *Message) error
 }
 
@@ -25,11 +24,11 @@ type RetryHandlerSettings struct {
 	MaxAttempts int           `cfg:"max_attempts" default:"3"`
 }
 
-type RetryHandlerFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (RetryHandler, error)
+type RetryHandlerFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, RetryHandler, error)
 
 var retryHandlers = map[string]RetryHandlerFactory{}
 
-func NewRetryHandler(ctx context.Context, config cfg.Config, logger log.Logger, consumerSettings *ConsumerRetrySettings, name string) (RetryHandler, error) {
+func NewRetryHandler(ctx context.Context, config cfg.Config, logger log.Logger, consumerSettings *ConsumerRetrySettings, name string) (Input, RetryHandler, error) {
 	var ok bool
 	var factory RetryHandlerFactory
 
@@ -38,7 +37,7 @@ func NewRetryHandler(ctx context.Context, config cfg.Config, logger log.Logger, 
 	}
 
 	if factory, ok = retryHandlers[consumerSettings.Type]; !ok {
-		return nil, fmt.Errorf("there is no retry handler of type %s available", consumerSettings.Type)
+		return nil, nil, fmt.Errorf("there is no retry handler of type %s available", consumerSettings.Type)
 	}
 
 	return factory(ctx, config, logger, name)

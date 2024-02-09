@@ -20,7 +20,6 @@ type SqsOutputSettings struct {
 	ClientName        string
 	Fifo              sqs.FifoSettings
 	QueueId           string
-	QueueNamePattern  string
 	RedrivePolicy     sqs.RedrivePolicy
 	VisibilityTimeout int
 }

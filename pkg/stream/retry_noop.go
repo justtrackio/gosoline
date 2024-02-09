@@ -2,7 +2,6 @@ package stream
 
 import (
 	"context"
-	"sync"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -13,35 +12,16 @@ func init() {
 }
 
 type RetryHandlerNoop struct {
-	ch   chan *Message
-	once sync.Once
 }
 
-func NewRetryHandlerNoop(ctx context.Context, config cfg.Config, logger log.Logger, name string) (RetryHandler, error) {
-	return NewRetryHandlerNoopWithInterfaces(), nil
+func NewRetryHandlerNoop(context.Context, cfg.Config, log.Logger, string) (Input, RetryHandler, error) {
+	return NewNoopInput(), NewRetryHandlerNoopWithInterfaces(), nil
 }
 
-func NewRetryHandlerNoopWithInterfaces() *RetryHandlerNoop {
-	return &RetryHandlerNoop{
-		ch: make(chan *Message),
-	}
+func NewRetryHandlerNoopWithInterfaces() RetryHandlerNoop {
+	return RetryHandlerNoop{}
 }
 
-func (r *RetryHandlerNoop) Put(ctx context.Context, msg *Message) error {
+func (r RetryHandlerNoop) Put(context.Context, *Message) error {
 	return nil
-}
-
-func (r *RetryHandlerNoop) Data() <-chan *Message {
-	return r.ch
-}
-
-func (r *RetryHandlerNoop) Run(ctx context.Context) error {
-	<-r.ch
-	return nil
-}
-
-func (r *RetryHandlerNoop) Stop() {
-	r.once.Do(func() {
-		close(r.ch)
-	})
 }

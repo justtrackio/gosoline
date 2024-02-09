@@ -60,6 +60,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	tracer := tracing.NewNoopTracer()
 	mw := metricMocks.NewWriterMockedAll()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
+	retryInput := stream.NewNoopInput()
 	retryHandler := stream.NewRetryHandlerNoopWithInterfaces()
 
 	ticker := time.NewTicker(time.Second)
@@ -73,7 +74,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 		BatchSize:   5,
 	}
 
-	baseConsumer := stream.NewBaseConsumerWithInterfaces(uuidGen, logger, mw, tracer, s.input, me, retryHandler, s.callback, settings, "test", cfg.AppId{})
+	baseConsumer := stream.NewBaseConsumerWithInterfaces(uuidGen, logger, mw, tracer, s.input, me, retryInput, retryHandler, s.callback, settings, "test", cfg.AppId{})
 	s.batchConsumer = stream.NewBatchConsumerWithInterfaces(baseConsumer, s.callback, ticker, batchSettings)
 }
 
