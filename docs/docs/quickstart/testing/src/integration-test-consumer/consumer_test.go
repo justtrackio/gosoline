@@ -3,6 +3,7 @@ package consumertest
 import (
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
@@ -42,7 +43,9 @@ func (s *ConsumerTestSuite) TestSuccess() *suite.StreamTestCase {
 						Text:   "do it",
 						Status: "pending",
 					},
-					ExpectedAttributes: map[string]string{},
+					ExpectedAttributes: map[string]string{
+						stream.AttributeEncoding: stream.EncodingJson.String(),
+					},
 				},
 			},
 		},

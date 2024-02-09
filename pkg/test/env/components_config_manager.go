@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"golang.org/x/exp/slices"
 )
 
 type AutoDetectSettings struct {
@@ -29,17 +30,7 @@ func NewComponentsConfigManager(config cfg.GosoConf) *ComponentsConfigManager {
 }
 
 func (m *ComponentsConfigManager) ShouldAutoDetect(typ string) bool {
-	if !m.detect.Enabled {
-		return false
-	}
-
-	for _, component := range m.detect.SkipComponents {
-		if component == typ {
-			return false
-		}
-	}
-
-	return true
+	return m.detect.Enabled && !slices.Contains(m.detect.SkipComponents, typ)
 }
 
 func (m *ComponentsConfigManager) GetAllSettings() ([]ComponentBaseSettingsAware, error) {

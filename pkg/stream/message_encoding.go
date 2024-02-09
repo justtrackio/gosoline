@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/encoding/base64"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type EncodeHandler interface {
@@ -164,29 +165,11 @@ func (e *messageEncoder) decompressBody(attributes map[string]string, body []byt
 		return nil, fmt.Errorf("can not base64 decode the body: %w", err)
 	}
 
-	decompressed, err := DecompressMessage(*compression, base64Decoded)
-	if err != nil {
-		return nil, err
-	}
-
-	delete(attributes, AttributeCompression)
-
-	return decompressed, nil
+	return DecompressMessage(*compression, base64Decoded)
 }
 
 func (e *messageEncoder) decodeBody(attributes map[string]string, body []byte, out interface{}) error {
-	encoding := e.encoding
-	attrEncoding := GetEncodingAttribute(attributes)
+	encoding := mdl.Unbox(GetEncodingAttribute(attributes), e.encoding)
 
-	if attrEncoding != nil {
-		encoding = *attrEncoding
-	}
-
-	if err := DecodeMessage(encoding, body, out); err != nil {
-		return err
-	}
-
-	delete(attributes, AttributeEncoding)
-
-	return nil
+	return DecodeMessage(encoding, body, out)
 }

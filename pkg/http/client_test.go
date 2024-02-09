@@ -43,7 +43,7 @@ func runTestServer(t *testing.T, method string, status int, delay time.Duration,
 
 		res.WriteHeader(status)
 	}))
-	defer func() { testServer.Close() }()
+	defer testServer.Close()
 
 	test(testServer.Listener.Addr().String())
 }

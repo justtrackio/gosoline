@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+option go_package = "retry_handler_sqs/testdata";
+
+message DataModel {
+    int64 id = 1;
+}

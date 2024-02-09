@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -76,6 +77,7 @@ type baseConsumer struct {
 	metricWriter metric.Writer
 	tracer       tracing.Tracer
 	encoder      MessageEncoder
+	retryInput   Input
 	retryHandler RetryHandler
 
 	wg      sync.WaitGroup
@@ -105,7 +107,7 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 	defaultMetrics := getConsumerDefaultMetrics(name)
 	metricWriter := metric.NewWriter(defaultMetrics...)
 
-	var input Input
+	var input, retryInput Input
 	var retryHandler RetryHandler
 
 	if input, err = NewConfigurableInput(ctx, config, logger, settings.Input); err != nil {
@@ -116,12 +118,11 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 		Encoding: settings.Encoding,
 	})
 
-	// disable the retry handler for inputs which have a retry mechanism on its own
-	if retryAware, ok := input.(RetryableInput); ok {
-		settings.Retry.Enabled = settings.Retry.Enabled && !retryAware.HasRetry()
-	}
-
-	if retryHandler, err = NewRetryHandler(ctx, config, logger, &settings.Retry, name); err != nil {
+	// if our input knows how to retry already,
+	if retryingInput, ok := input.(RetryingInput); ok {
+		settings.Retry.Enabled = true
+		retryInput, retryHandler = retryingInput.GetRetryHandler()
+	} else if retryInput, retryHandler, err = NewRetryHandler(ctx, config, logger, &settings.Retry, name); err != nil {
 		return nil, fmt.Errorf("can not create retry handler: %w", err)
 	}
 
@@ -136,7 +137,7 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
-	return NewBaseConsumerWithInterfaces(uuidGen, logger, metricWriter, tracer, input, encoder, retryHandler, consumerCallback, settings, name, appId), nil
+	return NewBaseConsumerWithInterfaces(uuidGen, logger, metricWriter, tracer, input, encoder, retryInput, retryHandler, consumerCallback, settings, name, appId), nil
 }
 
 func NewBaseConsumerWithInterfaces(
@@ -146,6 +147,7 @@ func NewBaseConsumerWithInterfaces(
 	tracer tracing.Tracer,
 	input Input,
 	encoder MessageEncoder,
+	retryInput Input,
 	retryHandler RetryHandler,
 	consumerCallback interface{},
 	settings *ConsumerSettings,
@@ -162,6 +164,7 @@ func NewBaseConsumerWithInterfaces(
 		tracer:              tracer,
 		ConsumerAcknowledge: NewConsumerAcknowledgeWithInterfaces(logger, input),
 		encoder:             encoder,
+		retryInput:          retryInput,
 		retryHandler:        retryHandler,
 		settings:            settings,
 		consumerCallback:    consumerCallback,
@@ -186,7 +189,7 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 		// run the input after the counters are running to make sure our coffin does not immediately
 		// die just because Run() immediately returns
 		cfn.GoWithContextf(dyingCtx, c.input.Run, "panic during run of the consumer input")
-		cfn.GoWithContextf(dyingCtx, c.retryHandler.Run, "panic during run of the retry handler")
+		cfn.GoWithContextf(dyingCtx, c.retryInput.Run, "panic during run of the retry handler")
 		cfn.GoWithContextf(dyingCtx, c.ingestData, "panic during shoveling the data")
 
 		c.wg.Add(c.settings.RunnerCount)
@@ -257,16 +260,13 @@ func (c *baseConsumer) ingestData(ctx context.Context) error {
 	defer close(c.data)
 
 	cfn := coffin.New()
-	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput, func(msg *Message) {}), "panic during shoveling data from input")
-	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryHandler, dataSourceRetry, func(msg *Message) {
-		c.logger.Warn("retrying message with id %s", msg.Attributes[AttributeRetryId])
-		c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
-	}), "panic during shoveling data from retry")
+	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput), "panic during shoveling data from input")
+	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryInput, dataSourceRetry), "panic during shoveling data from retry")
 
 	return cfn.Wait()
 }
 
-func (c *baseConsumer) ingestDataFromSource(input Input, src string, onIngest func(msg *Message)) func(ctx context.Context) error {
+func (c *baseConsumer) ingestDataFromSource(input Input, src string) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
 		defer c.logger.Debug("ingestDataFromSource %s is ending", src)
 		defer c.stopIncomingData()
@@ -281,7 +281,10 @@ func (c *baseConsumer) ingestDataFromSource(input Input, src string, onIngest fu
 					return nil
 				}
 
-				onIngest(msg)
+				if retryId, ok := msg.Attributes[AttributeRetryId]; ok {
+					c.logger.Warn("retrying message with id %s", retryId)
+					c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
+				}
 
 				c.data <- &consumerData{
 					msg:   msg,
@@ -308,7 +311,7 @@ func (c *baseConsumer) stopIncomingData() {
 	c.stopped.Do(func() {
 		defer c.logger.Debug("stopIncomingData is ending")
 
-		c.retryHandler.Stop()
+		c.retryInput.Stop()
 		c.input.Stop()
 	})
 }
@@ -322,7 +325,7 @@ func (c *baseConsumer) recover(ctx context.Context, msg *Message) {
 
 	c.handleError(ctx, err, "a panic occurred during the consume operation")
 
-	if msg == nil {
+	if msg == nil || c.hasNativeRetry() {
 		return
 	}
 
@@ -348,23 +351,25 @@ func (c *baseConsumer) retry(ctx context.Context, msg *Message) {
 	}
 }
 
-func (c *baseConsumer) buildRetryMessage(msg *Message) (*Message, interface{}) {
+func (c *baseConsumer) hasNativeRetry() bool {
+	_, ok := c.input.(RetryingInput)
+
+	return ok
+}
+
+func (c *baseConsumer) buildRetryMessage(msg *Message) (retryMsg *Message, retryId string) {
 	if retryId, ok := msg.Attributes[AttributeRetryId]; ok {
 		return msg, retryId
 	}
 
-	retryId := c.uuidGen.NewV4()
-	retryMsg := &Message{
-		Attributes: map[string]string{},
-		Body:       msg.Body,
+	retryId = c.uuidGen.NewV4()
+	retryMsg = &Message{
+		Attributes: funk.MergeMaps(msg.Attributes, map[string]string{
+			AttributeRetry:   strconv.FormatBool(true),
+			AttributeRetryId: retryId,
+		}),
+		Body: msg.Body,
 	}
-
-	for k, v := range msg.Attributes {
-		retryMsg.Attributes[k] = v
-	}
-
-	retryMsg.Attributes[AttributeRetry] = strconv.FormatBool(true)
-	retryMsg.Attributes[AttributeRetryId] = retryId
 
 	return retryMsg, retryId
 }

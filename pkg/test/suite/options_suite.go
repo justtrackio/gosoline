@@ -141,9 +141,9 @@ func WithIpReadFromMemory(name string, records map[string]ipread.MemoryRecord) O
 	}
 }
 
-func WithModule(name string, module kernel.ModuleFactory) Option {
+func WithModule(name string, essentialModule kernel.ModuleFactory) Option {
 	return func(s *suiteOptions) {
-		s.appModules[name] = module
+		s.appModules[name] = essentialModule
 	}
 }
 

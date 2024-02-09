@@ -33,6 +33,6 @@ type AcknowledgeableInput interface {
 	AckBatch(ctx context.Context, msgs []*Message, acks []bool) error
 }
 
-type RetryableInput interface {
-	HasRetry() bool
+type RetryingInput interface {
+	GetRetryHandler() (Input, RetryHandler)
 }

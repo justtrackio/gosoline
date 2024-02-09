@@ -11,19 +11,28 @@ import (
 
 type StreamInputComponent struct {
 	baseComponent
-	name  string
-	input *stream.InMemoryInput
+	name             string
+	input            *stream.InMemoryInput
+	inMemoryOverride bool
 }
 
 func (s *StreamInputComponent) CfgOptions() []cfg.Option {
 	key := fmt.Sprintf("stream.input.%s.type", s.name)
 
-	return []cfg.Option{
-		cfg.WithConfigSetting(key, stream.InputTypeInMemory),
+	if s.inMemoryOverride {
+		return []cfg.Option{
+			cfg.WithConfigSetting(key, stream.InputTypeInMemory),
+		}
 	}
+
+	return []cfg.Option{}
 }
 
 func (s *StreamInputComponent) Publish(body interface{}, attributes map[string]string) {
+	if !s.inMemoryOverride {
+		s.failNow("you can't publish to a stream input component if it isn't overridden as an in-memory input")
+	}
+
 	bytes, err := json.Marshal(body)
 	if err != nil {
 		s.failNow(err.Error(), "can not marshal message body for publishing")
@@ -43,6 +52,10 @@ func (s *StreamInputComponent) PublishAndStop(body interface{}, attributes map[s
 }
 
 func (s *StreamInputComponent) PublishFromJsonFile(fileName string) {
+	if !s.inMemoryOverride {
+		s.failNow("you can't publish to a stream input component if it isn't overridden as an in-memory input")
+	}
+
 	bytes, err := os.ReadFile(fileName)
 	if err != nil {
 		s.failNow(err.Error(), "can not open json file to publish messages")

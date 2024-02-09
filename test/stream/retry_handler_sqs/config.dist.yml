@@ -1,0 +1,32 @@
+env: test
+
+app_project: gosoline
+app_family: test
+app_group: grp
+app_name: retry-handler-sqs-test
+
+stream:
+  consumer:
+    default:
+      input: consumer
+
+  input:
+    consumer:
+      type: sqs
+      id: consumer
+      target_queue_id: test
+      wait_time: 5
+      visibility_timeout: 2
+      runner_count: 1
+      redrive_policy:
+        enabled: true
+        max_receive_count: 4
+
+test:
+  components:
+    localstack:
+      default:
+        services: sqs
+    streamInput:
+      consumer:
+        in_memory_override: false

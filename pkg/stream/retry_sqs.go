@@ -27,12 +27,11 @@ type RetryHandlerSqsSettings struct {
 }
 
 type RetryHandlerSqs struct {
-	AcknowledgeableInput
 	output   Output
 	settings *RetryHandlerSqsSettings
 }
 
-func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logger, name string) (RetryHandler, error) {
+func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, RetryHandler, error) {
 	var err error
 	var input AcknowledgeableInput
 	var output Output
@@ -61,7 +60,7 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 	}
 
 	if input, err = NewSqsInput(ctx, config, logger, inputSettings); err != nil {
-		return nil, fmt.Errorf("can not create input: %w", err)
+		return nil, nil, fmt.Errorf("can not create input: %w", err)
 	}
 
 	outputSettings := &SqsOutputSettings{
@@ -73,17 +72,16 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 	}
 
 	if output, err = NewSqsOutput(ctx, config, logger, outputSettings); err != nil {
-		return nil, fmt.Errorf("can not create input: %w", err)
+		return nil, nil, fmt.Errorf("can not create input: %w", err)
 	}
 
-	return NewRetryHandlerSqsWithInterfaces(input, output, settings), nil
+	return input, NewRetryHandlerSqsWithInterfaces(output, settings), nil
 }
 
-func NewRetryHandlerSqsWithInterfaces(input AcknowledgeableInput, output Output, settings *RetryHandlerSqsSettings) *RetryHandlerSqs {
+func NewRetryHandlerSqsWithInterfaces(output Output, settings *RetryHandlerSqsSettings) *RetryHandlerSqs {
 	return &RetryHandlerSqs{
-		AcknowledgeableInput: input,
-		output:               output,
-		settings:             settings,
+		output:   output,
+		settings: settings,
 	}
 }
 

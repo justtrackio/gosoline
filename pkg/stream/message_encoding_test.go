@@ -199,8 +199,9 @@ func (s *MessageEncoderSuite) TestDecode() {
 			},
 			actualOutput: &encodingTestStruct{},
 			expectedAttributes: map[string]string{
-				"attribute1": "5",
-				"attribute2": "test",
+				stream.AttributeEncoding: stream.EncodingJson.String(),
+				"attribute1":             "5",
+				"attribute2":             "test",
 			},
 			expectedOutput: expectedStruct,
 		},
@@ -212,7 +213,11 @@ func (s *MessageEncoderSuite) TestDecode() {
 				},
 				Body: `H4sIAAAAAAAA/6pWykxRsjLWUSpJrShRslJKrUjMLchJVdJRSi5KTSxJTXEEiRpaWpjoGoBQiIGBFRhFKdUCAAAA//8BAAD//1D9sdI8AAAA`,
 			},
-			actualOutput:   &encodingTestStruct{},
+			actualOutput: &encodingTestStruct{},
+			expectedAttributes: map[string]string{
+				stream.AttributeCompression: stream.CompressionGZip.String(),
+				stream.AttributeEncoding:    stream.EncodingJson.String(),
+			},
 			expectedOutput: expectedStruct,
 		},
 		"json_into_msi": {
@@ -226,8 +231,9 @@ func (s *MessageEncoderSuite) TestDecode() {
 			},
 			actualOutput: &map[string]interface{}{},
 			expectedAttributes: map[string]string{
-				"attribute1": "5",
-				"attribute2": "test",
+				stream.AttributeEncoding: stream.EncodingJson.String(),
+				"attribute1":             "5",
+				"attribute2":             "test",
 			},
 			expectedOutput: &map[string]interface{}{
 				"id":        float64(3),

@@ -16,11 +16,16 @@ const componentStreamInput = "streamInput"
 
 type streamInputSettings struct {
 	ComponentBaseSettings
+	InMemoryOverride bool `cfg:"in_memory_override" default:"true"`
 }
 
 type streamInputFactory struct{}
 
 func (f *streamInputFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
+	if manager.HasType(componentStreamInput) {
+		return nil
+	}
+
 	inputs := config.GetStringMap("stream.input", map[string]interface{}{})
 
 	for inputName := range inputs {
@@ -54,6 +59,7 @@ func (f streamInputFactory) Component(_ cfg.Config, _ log.Logger, _ map[string]*
 		input: stream.ProvideInMemoryInput(s.Name, &stream.InMemorySettings{
 			Size: 10,
 		}),
+		inMemoryOverride: s.InMemoryOverride,
 	}
 
 	return component, nil

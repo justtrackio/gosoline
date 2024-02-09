@@ -12,7 +12,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-var _ AcknowledgeableInput = &sqsInput{}
+var (
+	_ AcknowledgeableInput = &sqsInput{}
+	_ RetryingInput        = &sqsInput{}
+)
 
 type SqsInputSettings struct {
 	cfg.AppId
@@ -52,6 +55,7 @@ type sqsInput struct {
 	cfn     coffin.Coffin
 	channel chan *Message
 	stopped int32
+	started int32
 }
 
 func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsInputSettings) (*sqsInput, error) {
@@ -106,6 +110,11 @@ func (i *sqsInput) Data() <-chan *Message {
 }
 
 func (i *sqsInput) Run(ctx context.Context) error {
+	alreadyStarted := atomic.SwapInt32(&i.started, 1)
+	if alreadyStarted == 1 {
+		return fmt.Errorf("can not run an sqs input a second time")
+	}
+
 	defer close(i.channel)
 	defer i.logger.Info("leaving sqs input")
 
@@ -134,6 +143,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 		sqsMessages, err := i.queue.Receive(ctx, i.settings.MaxNumberOfMessages, i.settings.WaitTime)
 		if err != nil {
 			i.logger.Error("could not get messages from sqs: %w", err)
+
 			continue
 		}
 
@@ -141,6 +151,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 			msg, err := i.unmarshaler(sqsMessage.Body)
 			if err != nil {
 				i.logger.Error("could not unmarshal message: %w", err)
+
 				continue
 			}
 
@@ -166,15 +177,10 @@ func (i *sqsInput) Ack(ctx context.Context, msg *Message, ack bool) error {
 	}
 
 	var ok bool
-	var receiptHandleInterface interface{}
 	var receiptHandleString string
 
-	if receiptHandleInterface, ok = msg.Attributes[AttributeSqsReceiptHandle]; !ok {
+	if receiptHandleString, ok = msg.Attributes[AttributeSqsReceiptHandle]; !ok {
 		return fmt.Errorf("the message has no attribute %s", AttributeSqsReceiptHandle)
-	}
-
-	if receiptHandleString, ok = receiptHandleInterface.(string); !ok {
-		return fmt.Errorf("the attribute %s of the message should be string but instead is %T", AttributeSqsReceiptHandle, receiptHandleInterface)
 	}
 
 	if receiptHandleString == "" {
@@ -224,8 +230,17 @@ func (i *sqsInput) AckBatch(ctx context.Context, msgs []*Message, acks []bool) e
 	return multiError.ErrorOrNil()
 }
 
-func (i *sqsInput) HasRetry() bool {
-	return true
+func (i *sqsInput) GetRetryHandler() (Input, RetryHandler) {
+	retryHandler := NewManualSqsRetryHandler(i.logger, i.queue, &SqsOutputSettings{
+		AppId:             i.settings.AppId,
+		ClientName:        i.settings.ClientName,
+		Fifo:              i.settings.Fifo,
+		QueueId:           i.settings.QueueId,
+		RedrivePolicy:     i.settings.RedrivePolicy,
+		VisibilityTimeout: i.settings.VisibilityTimeout,
+	})
+
+	return NewNoopInput(), retryHandler
 }
 
 func (i *sqsInput) SetUnmarshaler(unmarshaler UnmarshallerFunc) {

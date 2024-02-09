@@ -95,12 +95,13 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 
 	if ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch); err != nil {
 		c.handleError(ctx, err, "an error occurred during disaggregation of the message")
+
 		return
 	}
 
 	c.Acknowledge(ctx, cdata, true)
 	for _, m := range batch {
-		_ = c.process(ctx, m)
+		_ = c.process(ctx, m, false) // we can't natively retry aggregate messages
 	}
 
 	duration := c.clock.Now().Sub(start)
@@ -112,7 +113,7 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData) {
 	start := c.clock.Now()
 
-	ack := c.process(ctx, cdata.msg)
+	ack := c.process(ctx, cdata.msg, c.hasNativeRetry())
 	c.Acknowledge(ctx, cdata, ack)
 
 	duration := c.clock.Now().Sub(start)
@@ -120,7 +121,7 @@ func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData
 	c.writeMetricDurationAndProcessedCount(duration, 1)
 }
 
-func (c *Consumer) process(ctx context.Context, msg *Message) bool {
+func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry bool) bool {
 	defer c.recover(ctx, msg)
 
 	var err error
@@ -131,11 +132,13 @@ func (c *Consumer) process(ctx context.Context, msg *Message) bool {
 	if model = c.callback.GetModel(msg.Attributes); model == nil {
 		err := fmt.Errorf("can not get model for message attributes %v", msg.Attributes)
 		c.handleError(ctx, err, "an error occurred during the consume operation")
+
 		return false
 	}
 
 	if ctx, attributes, err = c.encoder.Decode(ctx, msg, model); err != nil {
 		c.handleError(ctx, err, "an error occurred during the consume operation")
+
 		return false
 	}
 
@@ -148,7 +151,7 @@ func (c *Consumer) process(ctx context.Context, msg *Message) bool {
 		c.handleError(ctx, err, "an error occurred during the consume operation")
 	}
 
-	if !ack {
+	if !ack && !hasNativeRetry {
 		c.retry(ctx, msg)
 	}
 

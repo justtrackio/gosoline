@@ -125,6 +125,7 @@ func (c *BatchConsumer) processAggregateMessage(ctx context.Context, cdata *cons
 
 	if err != nil {
 		c.logger.WithContext(ctx).Error("an error occurred during disaggregation of the message: %w", err)
+
 		return
 	}
 
@@ -188,7 +189,7 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData)
 	ackMessages := make([]*consumerData, 0, len(batch))
 	for i, ack := range acks {
 		ackMessages = append(ackMessages, batch[i])
-		if !ack {
+		if !ack && !c.hasNativeRetry() {
 			c.retry(batchCtx, batch[i].msg)
 		}
 	}
@@ -213,6 +214,7 @@ func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*consum
 		msgCtx, attribute, err := c.encoder.Decode(batchCtx, cdata.msg, model)
 		if err != nil {
 			c.logger.WithContext(msgCtx).Error("an error occurred during the batch decode message operation: %w", err)
+
 			continue
 		}
 
