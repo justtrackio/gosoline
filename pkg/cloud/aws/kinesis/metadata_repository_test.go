@@ -12,10 +12,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	ddbMocks "github.com/justtrackio/gosoline/pkg/ddb/mocks"
+	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/uuid"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -42,13 +42,13 @@ func TestMetadataRepository(t *testing.T) {
 
 func (s *metadataRepositoryTestSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.logger = new(logMocks.Logger)
+	s.logger = logMocks.NewLogger(s.T())
 	s.stream = "testStream"
 	s.clientId = kinesis.ClientId(uuid.New().NewV4())
 	s.clientNamespace = string("client:gosoline-test-metadata-repository-test-suite:" + s.stream)
 	s.shardId = kinesis.ShardId(uuid.New().NewV4())
 	s.checkpointNamespace = string("checkpoint:gosoline-test-metadata-repository-test-suite:" + s.stream)
-	s.repo = new(ddbMocks.Repository)
+	s.repo = ddbMocks.NewRepository(s.T())
 	s.settings = kinesis.Settings{
 		DiscoverFrequency: time.Minute * 10,
 		PersistFrequency:  time.Second * 10,
@@ -62,11 +62,6 @@ func (s *metadataRepositoryTestSuite) SetupTest() {
 	s.clock = clock.NewFakeClock()
 
 	s.metadataRepository = kinesis.NewMetadataRepositoryWithInterfaces(s.logger, s.stream, s.clientId, s.repo, s.settings, s.appId, s.clock)
-}
-
-func (s *metadataRepositoryTestSuite) TearDownTest() {
-	s.logger.AssertExpectations(s.T())
-	s.repo.AssertExpectations(s.T())
 }
 
 func (s *metadataRepositoryTestSuite) TestRegisterClient_PutItemError() {
@@ -119,10 +114,10 @@ func (s *metadataRepositoryTestSuite) TestRegisterClient_Success() {
 }
 
 func (s *metadataRepositoryTestSuite) mockRegisterClientPutItem(err error) *ddbMocks.PutItemBuilder {
-	qb := new(ddbMocks.PutItemBuilder)
+	qb := ddbMocks.NewPutItemBuilder(s.T())
 
-	s.repo.On("PutItemBuilder").Return(qb).Once()
-	s.repo.On("PutItem", s.ctx, qb, &kinesis.ClientRecord{
+	s.repo.EXPECT().PutItemBuilder().Return(qb).Once()
+	s.repo.EXPECT().PutItem(s.ctx, qb, &kinesis.ClientRecord{
 		BaseRecord: kinesis.BaseRecord{
 			Namespace: s.clientNamespace,
 			Resource:  string(s.clientId),
@@ -135,12 +130,12 @@ func (s *metadataRepositoryTestSuite) mockRegisterClientPutItem(err error) *ddbM
 }
 
 func (s *metadataRepositoryTestSuite) mockRegisterClientQuery(resultCount int, err error) *ddbMocks.QueryBuilder {
-	qb := new(ddbMocks.QueryBuilder)
-	qb.On("WithHash", s.clientNamespace).Return(qb).Once()
+	qb := ddbMocks.NewQueryBuilder(s.T())
+	qb.EXPECT().WithHash(s.clientNamespace).Return(qb).Once()
 
-	s.repo.On("QueryBuilder").Return(qb).Once()
-	s.repo.On("Query", s.ctx, qb, &[]kinesis.ClientRecord{}).Run(func(args mock.Arguments) {
-		clients := args.Get(2).(*[]kinesis.ClientRecord)
+	s.repo.EXPECT().QueryBuilder().Return(qb).Once()
+	s.repo.EXPECT().Query(s.ctx, qb, &[]kinesis.ClientRecord{}).Run(func(ctx context.Context, qb ddb.QueryBuilder, result interface{}) {
+		clients := result.(*[]kinesis.ClientRecord)
 
 		queryResult := make([]kinesis.ClientRecord, resultCount)
 		for i := range queryResult {
@@ -180,12 +175,12 @@ func (s *metadataRepositoryTestSuite) TestDeregisterClient_Success() {
 }
 
 func (s *metadataRepositoryTestSuite) mockDeregisterClientDeleteItem(err error) *ddbMocks.DeleteItemBuilder {
-	qb := new(ddbMocks.DeleteItemBuilder)
-	qb.On("WithHash", s.clientNamespace).Return(qb).Once()
-	qb.On("WithRange", s.clientId).Return(qb).Once()
+	qb := ddbMocks.NewDeleteItemBuilder(s.T())
+	qb.EXPECT().WithHash(s.clientNamespace).Return(qb).Once()
+	qb.EXPECT().WithRange(s.clientId).Return(qb).Once()
 
-	s.repo.On("DeleteItemBuilder").Return(qb).Once()
-	s.repo.On("DeleteItem", s.ctx, qb, &kinesis.ClientRecord{}).Return(&ddb.DeleteItemResult{}, err).Once()
+	s.repo.EXPECT().DeleteItemBuilder().Return(qb).Once()
+	s.repo.EXPECT().DeleteItem(s.ctx, qb, &kinesis.ClientRecord{}).Return(&ddb.DeleteItemResult{}, err).Once()
 
 	return qb
 }
@@ -237,13 +232,13 @@ func (s *metadataRepositoryTestSuite) TestIsShardFinished_FirstReadThenCached() 
 }
 
 func (s *metadataRepositoryTestSuite) mockIsShardFinished(found bool, finishedAt *time.Time, err error) *ddbMocks.GetItemBuilder {
-	qb := new(ddbMocks.GetItemBuilder)
-	qb.On("WithHash", s.checkpointNamespace).Return(qb).Once()
-	qb.On("WithRange", s.shardId).Return(qb).Once()
+	qb := ddbMocks.NewGetItemBuilder(s.T())
+	qb.EXPECT().WithHash(s.checkpointNamespace).Return(qb).Once()
+	qb.EXPECT().WithRange(s.shardId).Return(qb).Once()
 
-	s.repo.On("GetItemBuilder").Return(qb).Once()
-	s.repo.On("GetItem", s.ctx, qb, &kinesis.CheckpointRecord{}).Run(func(args mock.Arguments) {
-		record := args.Get(2).(*kinesis.CheckpointRecord)
+	s.repo.EXPECT().GetItemBuilder().Return(qb).Once()
+	s.repo.EXPECT().GetItem(s.ctx, qb, &kinesis.CheckpointRecord{}).Run(func(ctx context.Context, qb ddb.GetItemBuilder, result interface{}) {
+		record := result.(*kinesis.CheckpointRecord)
 
 		if !found {
 			return
@@ -278,7 +273,11 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_StillOwned() {
 	qb := s.mockAcquireShardGetItem(true, otherClientId, time.Second, nil)
 	defer qb.AssertExpectations(s.T())
 
-	s.logger.On("Info", "not trying to take over shard %s from %s, it is still in use", s.shardId, otherClientId).Once()
+	s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
+	s.logger.EXPECT().WithFields(log.Fields{
+		"shard_id": s.shardId,
+	}).Return(s.logger).Once()
+	s.logger.EXPECT().Info("not trying to take over shard from %s, it is still in use", otherClientId).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.Nil(checkpoint)
@@ -292,7 +291,11 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_PutFail() {
 	putQb := s.mockAcquireShardPutItem("", false, fmt.Errorf("fail"))
 	defer putQb.AssertExpectations(s.T())
 
-	s.logger.On("Info", "trying to use unused shard %s", s.shardId).Once()
+	s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
+	s.logger.EXPECT().WithFields(log.Fields{
+		"shard_id": s.shardId,
+	}).Return(s.logger).Once()
+	s.logger.EXPECT().Info("trying to use unused shard").Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.Nil(checkpoint)
@@ -306,8 +309,12 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_PutConditionFail() {
 	putQb := s.mockAcquireShardPutItem("", true, nil)
 	defer putQb.AssertExpectations(s.T())
 
-	s.logger.On("Info", "trying to use unused shard %s", s.shardId).Once()
-	s.logger.On("Info", "failed to acquire shard %s", s.shardId).Once()
+	s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
+	s.logger.EXPECT().WithFields(log.Fields{
+		"shard_id": s.shardId,
+	}).Return(s.logger).Once()
+	s.logger.EXPECT().Info("trying to use unused shard").Once()
+	s.logger.EXPECT().Info("failed to acquire shard").Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.Nil(checkpoint)
@@ -321,7 +328,11 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_SuccessNotFound() {
 	putQb := s.mockAcquireShardPutItem("", false, nil)
 	defer putQb.AssertExpectations(s.T())
 
-	s.logger.On("Info", "trying to use unused shard %s", s.shardId).Once()
+	s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
+	s.logger.EXPECT().WithFields(log.Fields{
+		"shard_id": s.shardId,
+	}).Return(s.logger).Once()
+	s.logger.EXPECT().Info("trying to use unused shard").Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.NotNil(checkpoint)
@@ -338,7 +349,11 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_SuccessNotInUse() {
 	putQb := s.mockAcquireShardPutItem("1234", false, nil)
 	defer putQb.AssertExpectations(s.T())
 
-	s.logger.On("Info", "trying to take over shard %s from %s", s.shardId, kinesis.ClientId("nobody")).Once()
+	s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
+	s.logger.EXPECT().WithFields(log.Fields{
+		"shard_id": s.shardId,
+	}).Return(s.logger).Once()
+	s.logger.EXPECT().Info("trying to take over shard from %s", kinesis.ClientId("nobody")).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.NotNil(checkpoint)
@@ -357,7 +372,11 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_SuccessTakenOver() {
 	putQb := s.mockAcquireShardPutItem("1234", false, nil)
 	defer putQb.AssertExpectations(s.T())
 
-	s.logger.On("Info", "trying to take over shard %s from %s", s.shardId, otherClientId).Once()
+	s.logger.EXPECT().WithContext(s.ctx).Return(s.logger).Once()
+	s.logger.EXPECT().WithFields(log.Fields{
+		"shard_id": s.shardId,
+	}).Return(s.logger).Once()
+	s.logger.EXPECT().Info("trying to take over shard from %s", otherClientId).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
 	s.NotNil(checkpoint)
@@ -368,14 +387,14 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_SuccessTakenOver() {
 }
 
 func (s *metadataRepositoryTestSuite) mockAcquireShardGetItem(found bool, owningClientId kinesis.ClientId, age time.Duration, err error) *ddbMocks.GetItemBuilder {
-	qb := new(ddbMocks.GetItemBuilder)
-	qb.On("WithHash", s.checkpointNamespace).Return(qb).Once()
-	qb.On("WithRange", s.shardId).Return(qb).Once()
-	qb.On("WithConsistentRead", true).Return(qb).Once()
+	qb := ddbMocks.NewGetItemBuilder(s.T())
+	qb.EXPECT().WithHash(s.checkpointNamespace).Return(qb).Once()
+	qb.EXPECT().WithRange(s.shardId).Return(qb).Once()
+	qb.EXPECT().WithConsistentRead(true).Return(qb).Once()
 
-	s.repo.On("GetItemBuilder").Return(qb).Once()
-	s.repo.On("GetItem", s.ctx, qb, &kinesis.CheckpointRecord{}).Run(func(args mock.Arguments) {
-		record := args.Get(2).(*kinesis.CheckpointRecord)
+	s.repo.EXPECT().GetItemBuilder().Return(qb).Once()
+	s.repo.EXPECT().GetItem(s.ctx, qb, &kinesis.CheckpointRecord{}).Run(func(ctx context.Context, qb ddb.GetItemBuilder, result interface{}) {
+		record := result.(*kinesis.CheckpointRecord)
 
 		if !found {
 			return
@@ -400,11 +419,11 @@ func (s *metadataRepositoryTestSuite) mockAcquireShardGetItem(found bool, owning
 }
 
 func (s *metadataRepositoryTestSuite) mockAcquireShardPutItem(sequenceNumber kinesis.SequenceNumber, conditionalCheckFailed bool, err error) *ddbMocks.PutItemBuilder {
-	qb := new(ddbMocks.PutItemBuilder)
-	qb.On("WithCondition", ddb.AttributeNotExists("owningClientId").Or(ddb.Lte("updatedAt", s.clock.Now().Add(-time.Minute)))).Return(qb).Once()
+	qb := ddbMocks.NewPutItemBuilder(s.T())
+	qb.EXPECT().WithCondition(ddb.AttributeNotExists("owningClientId").Or(ddb.Lte("updatedAt", s.clock.Now().Add(-time.Minute)))).Return(qb).Once()
 
-	s.repo.On("PutItemBuilder").Return(qb).Once()
-	s.repo.On("PutItem", s.ctx, qb, &kinesis.CheckpointRecord{
+	s.repo.EXPECT().PutItemBuilder().Return(qb).Once()
+	s.repo.EXPECT().PutItem(s.ctx, qb, &kinesis.CheckpointRecord{
 		BaseRecord: kinesis.BaseRecord{
 			Namespace: s.checkpointNamespace,
 			Resource:  string(s.shardId),
@@ -555,11 +574,11 @@ func (s *metadataRepositoryTestSuite) mockCheckpointPersist(finishedAt *time.Tim
 	// let the time run on to not always get the same numbers
 	s.clock.Advance(time.Second)
 
-	qb := new(ddbMocks.PutItemBuilder)
-	qb.On("WithCondition", ddb.Eq("owningClientId", s.clientId)).Return(qb).Once()
+	qb := ddbMocks.NewPutItemBuilder(s.T())
+	qb.EXPECT().WithCondition(ddb.Eq("owningClientId", s.clientId)).Return(qb).Once()
 
-	s.repo.On("PutItemBuilder").Return(qb).Once()
-	s.repo.On("PutItem", s.ctx, qb, &kinesis.CheckpointRecord{
+	s.repo.EXPECT().PutItemBuilder().Return(qb).Once()
+	s.repo.EXPECT().PutItem(s.ctx, qb, &kinesis.CheckpointRecord{
 		BaseRecord: kinesis.BaseRecord{
 			Namespace: s.checkpointNamespace,
 			Resource:  string(s.shardId),
@@ -580,17 +599,17 @@ func (s *metadataRepositoryTestSuite) mockCheckpointRelease(sequenceNumber kines
 	// let the time run on to not always get the same numbers
 	s.clock.Advance(time.Second)
 
-	qb := new(ddbMocks.UpdateItemBuilder)
-	qb.On("WithHash", s.checkpointNamespace).Return(qb).Once()
-	qb.On("WithRange", s.shardId).Return(qb).Once()
-	qb.On("Remove", "owningClientId").Return(qb).Once()
-	qb.On("Set", "updatedAt", s.clock.Now()).Return(qb).Once()
-	qb.On("Set", "ttl", mdl.Box(s.clock.Now().Add(kinesis.ShardTimeout).Unix())).Return(qb).Once()
-	qb.On("Set", "sequenceNumber", sequenceNumber).Return(qb).Once()
-	qb.On("WithCondition", ddb.Eq("owningClientId", s.clientId)).Return(qb).Once()
+	qb := ddbMocks.NewUpdateItemBuilder(s.T())
+	qb.EXPECT().WithHash(s.checkpointNamespace).Return(qb).Once()
+	qb.EXPECT().WithRange(s.shardId).Return(qb).Once()
+	qb.EXPECT().Remove("owningClientId").Return(qb).Once()
+	qb.EXPECT().Set("updatedAt", s.clock.Now()).Return(qb).Once()
+	qb.EXPECT().Set("ttl", mdl.Box(s.clock.Now().Add(kinesis.ShardTimeout).Unix())).Return(qb).Once()
+	qb.EXPECT().Set("sequenceNumber", sequenceNumber).Return(qb).Once()
+	qb.EXPECT().WithCondition(ddb.Eq("owningClientId", s.clientId)).Return(qb).Once()
 
-	s.repo.On("UpdateItemBuilder").Return(qb).Once()
-	s.repo.On("UpdateItem", s.ctx, qb, &kinesis.CheckpointRecord{}).Return(&ddb.UpdateItemResult{
+	s.repo.EXPECT().UpdateItemBuilder().Return(qb).Once()
+	s.repo.EXPECT().UpdateItem(s.ctx, qb, &kinesis.CheckpointRecord{}).Return(&ddb.UpdateItemResult{
 		ConditionalCheckFailed: conditionalCheckFailed,
 	}, err).Once()
 
