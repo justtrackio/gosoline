@@ -547,20 +547,18 @@ func (_c *Client_Get_Call) RunAndReturn(run func(context.Context, string) (strin
 }
 
 // GetDel provides a mock function with given fields: ctx, key
-func (_m *Client) GetDel(ctx context.Context, key string) (interface{}, error) {
+func (_m *Client) GetDel(ctx context.Context, key string) (string, error) {
 	ret := _m.Called(ctx, key)
 
-	var r0 interface{}
+	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (interface{}, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
 		return rf(ctx, key)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) interface{}); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
 		r0 = rf(ctx, key)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
+		r0 = ret.Get(0).(string)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
@@ -591,12 +589,12 @@ func (_c *Client_GetDel_Call) Run(run func(ctx context.Context, key string)) *Cl
 	return _c
 }
 
-func (_c *Client_GetDel_Call) Return(_a0 interface{}, _a1 error) *Client_GetDel_Call {
+func (_c *Client_GetDel_Call) Return(_a0 string, _a1 error) *Client_GetDel_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Client_GetDel_Call) RunAndReturn(run func(context.Context, string) (interface{}, error)) *Client_GetDel_Call {
+func (_c *Client_GetDel_Call) RunAndReturn(run func(context.Context, string) (string, error)) *Client_GetDel_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1895,6 +1893,236 @@ func (_c *Client_Pipeline_Call) RunAndReturn(run func() redis.Pipeliner) *Client
 	return _c
 }
 
+// PubSubChannels provides a mock function with given fields: ctx, pattern
+func (_m *Client) PubSubChannels(ctx context.Context, pattern string) ([]string, error) {
+	ret := _m.Called(ctx, pattern)
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]string, error)); ok {
+		return rf(ctx, pattern)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []string); ok {
+		r0 = rf(ctx, pattern)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, pattern)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_PubSubChannels_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PubSubChannels'
+type Client_PubSubChannels_Call struct {
+	*mock.Call
+}
+
+// PubSubChannels is a helper method to define mock.On call
+//   - ctx context.Context
+//   - pattern string
+func (_e *Client_Expecter) PubSubChannels(ctx interface{}, pattern interface{}) *Client_PubSubChannels_Call {
+	return &Client_PubSubChannels_Call{Call: _e.mock.On("PubSubChannels", ctx, pattern)}
+}
+
+func (_c *Client_PubSubChannels_Call) Run(run func(ctx context.Context, pattern string)) *Client_PubSubChannels_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_PubSubChannels_Call) Return(_a0 []string, _a1 error) *Client_PubSubChannels_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PubSubChannels_Call) RunAndReturn(run func(context.Context, string) ([]string, error)) *Client_PubSubChannels_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PubSubNumPat provides a mock function with given fields: ctx
+func (_m *Client) PubSubNumPat(ctx context.Context) (int64, error) {
+	ret := _m.Called(ctx)
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (int64, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) int64); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_PubSubNumPat_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PubSubNumPat'
+type Client_PubSubNumPat_Call struct {
+	*mock.Call
+}
+
+// PubSubNumPat is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *Client_Expecter) PubSubNumPat(ctx interface{}) *Client_PubSubNumPat_Call {
+	return &Client_PubSubNumPat_Call{Call: _e.mock.On("PubSubNumPat", ctx)}
+}
+
+func (_c *Client_PubSubNumPat_Call) Run(run func(ctx context.Context)) *Client_PubSubNumPat_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *Client_PubSubNumPat_Call) Return(_a0 int64, _a1 error) *Client_PubSubNumPat_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PubSubNumPat_Call) RunAndReturn(run func(context.Context) (int64, error)) *Client_PubSubNumPat_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PubSubNumSub provides a mock function with given fields: ctx, channels
+func (_m *Client) PubSubNumSub(ctx context.Context, channels ...string) (map[string]int64, error) {
+	_va := make([]interface{}, len(channels))
+	for _i := range channels {
+		_va[_i] = channels[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 map[string]int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ...string) (map[string]int64, error)); ok {
+		return rf(ctx, channels...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ...string) map[string]int64); ok {
+		r0 = rf(ctx, channels...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]int64)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ...string) error); ok {
+		r1 = rf(ctx, channels...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_PubSubNumSub_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PubSubNumSub'
+type Client_PubSubNumSub_Call struct {
+	*mock.Call
+}
+
+// PubSubNumSub is a helper method to define mock.On call
+//   - ctx context.Context
+//   - channels ...string
+func (_e *Client_Expecter) PubSubNumSub(ctx interface{}, channels ...interface{}) *Client_PubSubNumSub_Call {
+	return &Client_PubSubNumSub_Call{Call: _e.mock.On("PubSubNumSub",
+		append([]interface{}{ctx}, channels...)...)}
+}
+
+func (_c *Client_PubSubNumSub_Call) Run(run func(ctx context.Context, channels ...string)) *Client_PubSubNumSub_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_PubSubNumSub_Call) Return(_a0 map[string]int64, _a1 error) *Client_PubSubNumSub_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PubSubNumSub_Call) RunAndReturn(run func(context.Context, ...string) (map[string]int64, error)) *Client_PubSubNumSub_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Publish provides a mock function with given fields: ctx, channel, message
+func (_m *Client) Publish(ctx context.Context, channel string, message interface{}) (int64, error) {
+	ret := _m.Called(ctx, channel, message)
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}) (int64, error)); ok {
+		return rf(ctx, channel, message)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}) int64); ok {
+		r0 = rf(ctx, channel, message)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, interface{}) error); ok {
+		r1 = rf(ctx, channel, message)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_Publish_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Publish'
+type Client_Publish_Call struct {
+	*mock.Call
+}
+
+// Publish is a helper method to define mock.On call
+//   - ctx context.Context
+//   - channel string
+//   - message interface{}
+func (_e *Client_Expecter) Publish(ctx interface{}, channel interface{}, message interface{}) *Client_Publish_Call {
+	return &Client_Publish_Call{Call: _e.mock.On("Publish", ctx, channel, message)}
+}
+
+func (_c *Client_Publish_Call) Run(run func(ctx context.Context, channel string, message interface{})) *Client_Publish_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_Publish_Call) Return(_a0 int64, _a1 error) *Client_Publish_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_Publish_Call) RunAndReturn(run func(context.Context, string, interface{}) (int64, error)) *Client_Publish_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RPop provides a mock function with given fields: ctx, key
 func (_m *Client) RPop(ctx context.Context, key string) (string, error) {
 	ret := _m.Called(ctx, key)
@@ -2970,6 +3198,65 @@ func (_c *Client_SetNX_Call) Return(_a0 bool, _a1 error) *Client_SetNX_Call {
 }
 
 func (_c *Client_SetNX_Call) RunAndReturn(run func(context.Context, string, interface{}, time.Duration) (bool, error)) *Client_SetNX_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Subscribe provides a mock function with given fields: ctx, channels
+func (_m *Client) Subscribe(ctx context.Context, channels ...string) redis.PubSub {
+	_va := make([]interface{}, len(channels))
+	for _i := range channels {
+		_va[_i] = channels[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 redis.PubSub
+	if rf, ok := ret.Get(0).(func(context.Context, ...string) redis.PubSub); ok {
+		r0 = rf(ctx, channels...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(redis.PubSub)
+		}
+	}
+
+	return r0
+}
+
+// Client_Subscribe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Subscribe'
+type Client_Subscribe_Call struct {
+	*mock.Call
+}
+
+// Subscribe is a helper method to define mock.On call
+//   - ctx context.Context
+//   - channels ...string
+func (_e *Client_Expecter) Subscribe(ctx interface{}, channels ...interface{}) *Client_Subscribe_Call {
+	return &Client_Subscribe_Call{Call: _e.mock.On("Subscribe",
+		append([]interface{}{ctx}, channels...)...)}
+}
+
+func (_c *Client_Subscribe_Call) Run(run func(ctx context.Context, channels ...string)) *Client_Subscribe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]string, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(string)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_Subscribe_Call) Return(_a0 redis.PubSub) *Client_Subscribe_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_Subscribe_Call) RunAndReturn(run func(context.Context, ...string) redis.PubSub) *Client_Subscribe_Call {
 	_c.Call.Return(run)
 	return _c
 }

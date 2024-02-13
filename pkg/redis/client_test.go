@@ -3,7 +3,6 @@ package redis_test
 import (
 	"context"
 	"errors"
-	"golang.org/x/exp/slices"
 	"testing"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/redis"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/exp/slices"
 )
 
 type ClientWithMiniRedisTestSuite struct {
@@ -30,6 +30,7 @@ func (s *ClientWithMiniRedisTestSuite) SetupTest() {
 	server, err := miniredis.Run()
 	if err != nil {
 		s.FailNow(err.Error(), "can not start miniredis")
+
 		return
 	}
 
@@ -49,8 +50,8 @@ func (s *ClientWithMiniRedisTestSuite) TestGetNotFound() {
 	// the logger should fail the test as soon as any logger.Warn or anything gets called
 	// because we want to test the executor not doing that
 	logger := new(logMocks.Logger)
-	logger.On("WithFields", mock.Anything).Return(logger).Once()
-	logger.On("WithContext", context.Background()).Return(logger).Once()
+	logger.EXPECT().WithFields(mock.Anything).Return(logger).Once()
+	logger.EXPECT().WithContext(context.Background()).Return(logger).Once()
 	executor := redis.NewBackoffExecutor(logger, exec.BackoffSettings{
 		CancelDelay:     time.Second,
 		InitialInterval: time.Millisecond,
@@ -672,6 +673,59 @@ func (s *ClientWithMiniRedisTestSuite) TestExpire() {
 	s.NoError(err, "there should be no error on Exists")
 }
 
+func (s *ClientWithMiniRedisTestSuite) TestPubSub() {
+	result, err := s.client.Publish(context.Background(), "chan", "message 1")
+
+	s.NoError(err, "there should be no error on Publish")
+	s.Equal(int64(0), result)
+
+	subClient := baseRedis.NewClient(&baseRedis.Options{
+		Addr: s.server.Addr(),
+	})
+	logger := logMocks.NewLoggerMockedAll()
+	executor := exec.NewDefaultExecutor()
+	subscriber := redis.NewClientWithInterfaces(logger, subClient, executor, s.settings)
+
+	pubSub := subscriber.Subscribe(context.Background(), "chan")
+
+	result, err = s.client.Publish(context.Background(), "chan", "message 2")
+
+	s.NoError(err, "there should be no error on Publish")
+	s.Equal(int64(1), result)
+
+	msg := <-pubSub.Channel()
+	s.Equal("message 2", msg.Payload)
+
+	channels, err := s.client.PubSubChannels(context.Background(), "ch*")
+
+	s.NoError(err, "there should be no error on PubSubChannels")
+	s.Equal([]string{
+		"chan",
+	}, channels)
+
+	subscribers, err := s.client.PubSubNumSub(context.Background(), "chan")
+
+	s.NoError(err, "there should be no error on PubSubNumSub")
+	s.Equal(map[string]int64{
+		"chan": 1,
+	}, subscribers)
+
+	result, err = s.client.PubSubNumPat(context.Background())
+
+	s.NoError(err, "there should be no error on PubSubNumPat")
+	s.Equal(int64(0), result)
+
+	err = pubSub.Close()
+	s.NoError(err, "there should be no error on Close")
+
+	subscribers, err = s.client.PubSubNumSub(context.Background(), "chan")
+
+	s.NoError(err, "there should be no error on PubSubNumSub")
+	s.Equal(map[string]int64{
+		"chan": 0,
+	}, subscribers)
+}
+
 func (s *ClientWithMiniRedisTestSuite) TestIsAlive() {
 	alive := s.client.IsAlive(context.Background())
 	s.True(alive)
@@ -687,13 +741,33 @@ type ClientWithMockTestSuite struct {
 	redisMock *redismock.ClientMock
 }
 
+type UnimplementedRedisMethods interface {
+	Context() context.Context
+	AddHook(hook baseRedis.Hook)
+	Do(ctx context.Context, args ...interface{}) *baseRedis.Cmd
+	Process(ctx context.Context, cmd baseRedis.Cmder) error
+	Subscribe(ctx context.Context, channels ...string) *baseRedis.PubSub
+	PSubscribe(ctx context.Context, channels ...string) *baseRedis.PubSub
+	Close() error
+	PoolStats() *baseRedis.PoolStats
+}
+
+type redisMockWrapper struct {
+	*redismock.ClientMock
+	// hack to implement these missing methods without too much hassle. If we ever use them in a test, the test will crash,
+	// but then you just need to implement them somehow by hand
+	UnimplementedRedisMethods
+}
+
 func (s *ClientWithMockTestSuite) SetupTest() {
 	settings := &redis.Settings{}
 	logger := logMocks.NewLoggerMockedAll()
 	executor := redis.NewBackoffExecutor(logger, settings.BackoffSettings, "test")
 
 	s.redisMock = redismock.NewMock()
-	s.client = redis.NewClientWithInterfaces(logger, s.redisMock, executor, settings)
+	s.client = redis.NewClientWithInterfaces(logger, redisMockWrapper{
+		ClientMock: s.redisMock,
+	}, executor, settings)
 }
 
 func (s *ClientWithMockTestSuite) TestSetWithOOM() {
