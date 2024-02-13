@@ -218,6 +218,7 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 		defer logger.Info("leaving kinsumer")
 
 		consumersWaitGroup, stopConsumers := k.startConsumers(ctx, cfn, runtimeCtx, handler)
+		//nolint:gocritic // following the suggestion for deferUnlambda is wrong, see following comment or https://github.com/go-critic/go-critic/issues/1401
 		defer func() {
 			// we need to wrap this in a function like this to ensure we call the LAST value of stopConsumers.
 			// would we only do 'defer stopConsumers()', we would call the FIRST value and thus not actually cancel the
@@ -279,6 +280,7 @@ func (k *kinsumer) refreshShards(ctx context.Context, runtimeCtx *runtimeContext
 		for idx := range shardIds {
 			if shardIds[idx] != runtimeCtx.shardIds[idx] {
 				changed = true
+
 				break
 			}
 		}
