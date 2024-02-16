@@ -1,0 +1,37 @@
+env: test
+app_project: gosoline
+app_family: integration-test
+app_group: grp
+app_name: db-repo-change-history-entity-test
+
+db:
+  default:
+    driver: mysql
+    migrations:
+      enabled: true
+      path: file://./migrations
+      table_prefixed: false
+    parse_time: true
+    uri:
+      user: root
+      password: gosoline
+
+mon:
+  logger:
+    level: debug
+
+stream:
+  input:
+    default:
+
+change_history:
+  table_suffix: histories
+
+test:
+  auto_detect:
+    enabled: false
+  components:
+    mysql:
+      default:
+
+

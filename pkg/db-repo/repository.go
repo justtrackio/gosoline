@@ -118,6 +118,10 @@ func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, c
 	}
 }
 
+func (r *repository) GetOrm() *gorm.DB {
+	return r.orm
+}
+
 func (r *repository) Create(ctx context.Context, value ModelBased) error {
 	if !r.isQueryableModel(value) {
 		return ErrCrossCreate
