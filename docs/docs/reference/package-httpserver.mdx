@@ -1,0 +1,116 @@
+---
+title: Package httpserver
+---
+
+# httpserver package
+
+Package httpserver provides a convenient way to create HTTP servers.
+
+## Methods
+
+### [New()](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/server.go#L75)
+
+#### Usage
+
+```go
+httpserver.New(definer.MyCustomDefiner)
+```
+
+#### Description
+
+Creates a new [`ModuleFactory`](https://github.com/justtrackio/gosoline/blob/main/pkg/kernel/module.go#L26).
+
+### [Definer()](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/definition.go#L14)
+
+#### Usage
+
+```go
+func ApiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*httpserver.Definitions, error) {
+	definitions := &httpserver.Definitions{}
+	definitions.GET("/hello-world", httpserver.CreateHandler(helloWorldHandler))
+	return definitions, nil
+}
+
+application.WithModuleFactory("api", httpserver.New(definer.ApiDefiner))
+```
+
+#### Description
+
+This method returns a `Definitions` pointer. 
+
+The idiomatic way to create an httpserver is to:
+
+1. Instantiate a new `Definitions` object
+2. Use its many methods to add functionality to it,
+3. Declare a `Definer()`, which returns this object
+4. Call [`New()`](#new).
+
+### [Handle()](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/definition.go#L69)
+
+#### Usage
+
+```go
+def := &httpserver.Definitions{}
+def.Handle(http.PostRequest, relativePath, handlers...)
+```
+
+#### Description
+
+With this method, you can define functionality to be run whenever your server receives an HTTP call to a given path.
+
+#### Related methods
+
+- [`POST()`](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/definition.go#L80)
+- [`GET()`](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/definition.go#L84)
+- [`DELETE()`](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/definition.go#L88)
+- [`PUT()`](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/definition.go#L92)
+- [`OPTIONS()`](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/definition.go#L96)
+
+## Configuration
+
+:::info Further Reading
+
+Check out our guide on [configuring and running your server](/how-to/configure-your-httpserver).
+
+:::
+
+### [Settings](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/server.go#L37)
+
+Configures an HTTP server.
+
+| Field       | Type                | Default | Description                          |
+| ----------- | ------------------- | ------- | ------------------------------------ |
+| Port        | string              | 8080    | Port the server listens to.          |
+| Mode        | string              | release | Mode is either debug, release, test. |
+| Compression | CompressionSettings | -       | Compression settings.                |
+| Timeout     | TimeoutSettings     | -       | Timeout settings.                    |
+
+### [Timeout settings](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/server.go#L51)
+
+Configures IO timeouts.
+
+| Field | Type          | Default | Description                                                                                          |
+| ----- | ------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| Read  | time.Duration | 60s     | Read timeout is the maximum duration for reading the entire request, including the body.             |
+| Write | time.Duration | 60s     | Write timeout is the maximum duration before timing out writes of the response.                      |
+| Idle  | time.Duration | 60s     | Idle timeout is the maximum amount of time to wait for the next request when keep-alives are enabled |
+
+### [Compression settings](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/compression.go#L13)
+
+Controls gzip support for requests and responses. By default, compressed requests are accepted and compressed responses are returned (if accepted by the client).
+
+| Field         | Type                       | Default | Description                                                                                                                                            |
+| ------------- | -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Level         | string                     | default | -                                                                                                                                                      |
+| Decompression | bool                       | true    | -                                                                                                                                                      |
+| Exclude       | CompressionExcludeSettings | -       | Exclude files by path, extension, or regular expression from being considered for compression. Useful if you are serving a format unknown to Gosoline. |
+
+### [CompressionExcludeSettings](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/compression.go#L21) 
+
+Allows you to enable gzip support.
+
+| Field     | Type             | Default | Description |
+| --------- | ---------------- | ------- | ----------- |
+| Extension | array of strings | -       | -           |
+| Path      | array of strings | -       | -           |
+| PathRegex | array of strings | -       | -           |

@@ -1,3 +1,4 @@
+// snippet-start: imports
 package main
 
 import (
@@ -6,6 +7,9 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 )
 
+// snippet-end: imports
+
+// snippet-start: main
 func main() {
 	application.Run(
 		application.WithConfigFile("config.dist.yml", "yml"),
@@ -15,3 +19,5 @@ func main() {
 		application.WithModuleFactory("currency", currency.NewCurrencyModule()),
 	)
 }
+
+// snippet-end: main

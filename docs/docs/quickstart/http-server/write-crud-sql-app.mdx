@@ -3,7 +3,7 @@ sidebar_position: 4
 title: Write a CRUD SQL app
 ---
 
-import CodeBlock from '@theme/CodeBlock';
+import { CodeBlock } from '../../components.jsx';
 import Handler from "!!raw-loader!./src/write-crud-sql-app/handler.go";
 import Main from "!!raw-loader!./src/write-crud-sql-app/main.go";
 import ConfigDist from "!!raw-loader!./src/write-crud-sql-app/config.dist.yml";
@@ -12,7 +12,7 @@ import DockerCompose from "!!raw-loader!./src/write-crud-sql-app/docker-compose.
 
 A common REST API structure provides methods for users to **create**, **read**, **update**, and **delete** (CRUD) resources. In this tutorial, you'll:
 
-- Create an API that provides these CRUD methods
+- Create an HTTP server that provides these CRUD methods
 - Implement logic that interfaces with a MySQL backend
 
 Specifically, users of your service will be able create, read, update, and delete todos, such as you might use for a "To do list".
@@ -21,8 +21,8 @@ Specifically, users of your service will be able create, read, update, and delet
 
 While this tutorial requires no prior code, it is an intermediate gosoline tutorial and, therefore, skips some explanations. To understand the logic in this tutorial, you should have already completed at least one of the following tutorials first:
 
-- [Create an API server](/quickstart/api-server/create-an-api-server)
-- [Create a money exchange app](/quickstart/api-server/create-a-money-exchange-app)
+- [Create an HTTP server](/quickstart/http-server/create-an-http-server)
+- [Create a money exchange app](/quickstart/http-server/create-a-money-exchange-app)
 
 This tutorial also assumes you have some basic knowledge about relational databases, such as: 
 
@@ -41,7 +41,7 @@ Before you begin, make sure you have the following installed on your machine:
 First, you need to set up the following file structure:
 
 ```txt
-api/
+crud/
 ├── migrations
 │   └── 1_initialize_schema.up.sql
 ├── docker-compose.yml
@@ -53,7 +53,7 @@ api/
 For example, in Unix, run:
 
 ```shell
-mkdir api; cd api
+mkdir crud; cd crud
 mkdir migrations
 touch migrations/1_initialize_schema.up.sql
 touch docker-compose.yml
@@ -82,21 +82,7 @@ Now, you'll walkthrough this file in detail to learn how it works.
 
 At the top of `handler.go`, you declared the package and imported some dependencies:
 
-```go title=handler.go
-package main
-
-import (
-	"context"
-	"fmt"
-	"time"
-
-	"github.com/justtrackio/gosoline/pkg/apiserver/crud"
-	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
-	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
-)
-```
+<CodeBlock title="handler.go" language="go" snippet="imports">{Handler}</CodeBlock>
 
 Here, you declared the package as `main`. Then, you imported the `context`, `fmt`, and `time` modules along with several gosoline dependencies.
 
@@ -104,17 +90,7 @@ Here, you declared the package as `main`. Then, you imported the `context`, `fmt
 
 In this tutorial, you use a MySQL database to manage todo records. So, you first defined the settings for the data:
 
-```go title="handler.go"
-var settings = db_repo.Settings{
-	Metadata: db_repo.Metadata{
-		ModelId: mdl.ModelId{
-			Name: "todo",
-		},
-		TableName:  "todos",
-		PrimaryKey: "todos.id",
-	},
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="settings">{Handler}</CodeBlock>
 
 These settings include a model name, table name, and primary key.
 
@@ -122,13 +98,7 @@ These settings include a model name, table name, and primary key.
 
 Next, you defined a structure to model your todos:
 
-```go title="handler.go"
-type Todo struct {
-	db_repo.Model
-	Text    string
-	DueDate time.Time
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="todo">{Handler}</CodeBlock>
 
 The `Todo` has three values:
 
@@ -140,16 +110,7 @@ The `Todo` has three values:
 
 Next, you defined two structures for handling request input:
 
-```go title="handler.go"
-type CreateInput struct {
-	Text    string    `form:"text"`
-	DueDate time.Time `form:"dueDate"`
-}
-
-type UpdateInput struct {
-	Text string `form:"text"`
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="create and update">{Handler}</CodeBlock>
 
 When you create a todo, you'll pass the todo's text and a due date. When you update a todo, you'll pass only the text. Here, you defined the structures for parsing and storing that information.
 
@@ -157,11 +118,7 @@ When you create a todo, you'll pass the todo's text and a due date. When you upd
 
 Next, you defined a handler for CRUD requests:
 
-```go title="handler.go"
-type TodoCrudHandlerV0 struct {
-	repo db_repo.Repository
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="crud handler">{Handler}</CodeBlock>
 
 Here, the handler has a `repo`, which implements the [`Repository`](https://github.com/justtrackio/gosoline/blob/3c9f7b66578c95dca509faa35f653ef16ca12340/pkg/db-repo/repository.go#L55) interface. This `repo` implements model-based methods for creating, reading, updating, and deleting resources.
 
@@ -187,138 +144,41 @@ Later, you implement the methods for this struct.
 
 Next, you implemented a constructor for your `TodoCrudHandlerV0`:
 
-```go title="handler.go"
-func NewTodoCrudHandler(ctx context.Context, config cfg.Config, logger log.Logger) (*TodoCrudHandlerV0, error) {
-    // 1
-	var err error
-	var repo db_repo.Repository
-
-    // 2
-	if repo, err = db_repo.New(config, logger, settings); err != nil {
-		return nil, fmt.Errorf("can not create db_repo.Repositorys: %w", err)
-	}
-
-    // 3
-	handler := &TodoCrudHandlerV0{
-		repo: repo,
-	}
-
-    // 4
-	return handler, nil
-}
-```
-
-Here, you:
-
-1. Declare `error` and `repo` variables.
-2. Try to create a new `Repository` given a configuration, a logger, and settings. If there is an error, you return it.
-3. Create a new `TodoCrudHandlerV0` with that repo.
-4. Return the handler.
+<CodeBlock title="handler.go" language="go" snippet="todo constructor">{Handler}</CodeBlock>
 
 ### Implement the methods for your handler
 
 Finally, you implemented the following methods for your `TodoCrudHandlerV0`:
 
-```go title="handler.go"
-func (h TodoCrudHandlerV0) GetRepository() crud.Repository {
-	return h.repo
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="get repo">{Handler}</CodeBlock>
 
 This returns the handler's repository object.
 
-```go title="handler.go"
-func (h TodoCrudHandlerV0) GetModel() db_repo.ModelBased {
-	return &Todo{}
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="get model">{Handler}</CodeBlock>
 
 This returns the `Todo` model.
 
-```go title="handler.go"
-func (h TodoCrudHandlerV0) GetCreateInput() interface{} {
-	return &CreateInput{}
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="create input">{Handler}</CodeBlock>
 
 This returns the `CreateInput` struct.
 
-```go title="handler.go"
-func (h TodoCrudHandlerV0) TransformCreate(ctx context.Context, input interface{}, model db_repo.ModelBased) error {
-    // 1
-	in := input.(*CreateInput)
-	m := model.(*Todo)
-
-    // 2
-	m.Text = in.Text
-	m.DueDate = in.DueDate
-
-	return nil
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="transform create">{Handler}</CodeBlock>
 
 This parses the `Text` and `DueDate` from a `CreateInput` object and sets them on a `Todo` model. This is used for Create requests.
 
-```go title="handler.go"
-func (h TodoCrudHandlerV0) GetUpdateInput() interface{} {
-	return &UpdateInput{}
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="get update input">{Handler}</CodeBlock>
 
 This returns the `UpdateInput` struct.
 
-```go title="handler.go"
-func (h TodoCrudHandlerV0) TransformUpdate(ctx context.Context, input interface{}, model db_repo.ModelBased) error {
-	in := input.(*UpdateInput)
-	m := model.(*Todo)
-
-	m.Text = in.Text
-
-	return nil
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="transform update">{Handler}</CodeBlock>
 
 This parses the `Text` from an `UpdateInput` object and sets them on a `Todo` model. This is used for Update requests.
 
-```go title="handler.go"
-func (h TodoCrudHandlerV0) TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (interface{}, error) {
-	return model, nil
-}
-```
+<CodeBlock title="handler.go" language="go" snippet="transform output">{Handler}</CodeBlock>
 
 This simply returns the model with no transformations.
 
-```go title="handler.go"
-func (h TodoCrudHandlerV0) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (interface{}, error) {
-	var err error
-
-    // 1
-	result := make([]*Todo, 0)
-
-    // 2
-	if err = h.repo.Query(ctx, qb, &result); err != nil {
-		return nil, fmt.Errorf("can not query todo items: %w", err)
-	}
-
-    // 3
-	out := make([]interface{}, len(result))
-	for i, res := range result {
-		if out[i], err = h.TransformOutput(ctx, res, apiView); err != nil {
-			return nil, err
-		}
-	}
-
-    // 4
-	return out, nil
-}
-```
-
-Here, you:
-
-1. Instatiate a list of `Todo` objects, called `result`.
-2. Query the database using a `Context` and a `QueryBuilder`. If it finds the results, it sets them on `result`. Otherwise, it returns an error.
-3. Transform each result with `TransformOutput()`.
-4. Return the transformed results.
+<CodeBlock title="handler.go" language="go" snippet="list">{Handler}</CodeBlock>
 
 Now, you've implemented the handlers and logic for a model-based CRUD API. Next, you'll implement a main function that applies this logic.
 
@@ -340,20 +200,7 @@ Now, you'll walkthrough this file in detail to learn how it works.
 
 At the top of `main.go`, you declared the package and imported some dependencies:
 
-```go title=main.go
-package main
-
-import (
-	"context"
-	"fmt"
-
-	"github.com/justtrackio/gosoline/pkg/apiserver"
-	"github.com/justtrackio/gosoline/pkg/apiserver/crud"
-	"github.com/justtrackio/gosoline/pkg/application"
-	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/log"
-)
-```
+<CodeBlock title="main.go" language="go" snippet="imports">{Main}</CodeBlock>
 
 Here, you declared the package as `main`. Then, you imported the `context` and `fmt` modules along with several gosoline dependencies.
 
@@ -361,43 +208,7 @@ Here, you declared the package as `main`. Then, you imported the `context` and `
 
 Then, you implemented `main()`:
 
-```go title="main.go"
-
-func main() {
-	definer := func(ctx context.Context, config cfg.Config, logger log.Logger) (*apiserver.Definitions, error) {
-        // 1
-		def := &apiserver.Definitions{}
-
-		var err error
-		var handler crud.Handler
-
-        // 2
-		if handler, err = NewTodoCrudHandler(ctx, config, logger); err != nil {
-			return nil, fmt.Errorf("can not create trip handler: %w", err)
-		}
-
-        // 3
-		crud.AddCrudHandlers(logger, def, 0, "todo", handler)
-
-		return def, nil
-	}
-
-    // 4
-	application.RunApiServer(definer)
-}
-```
-
-Here, you:
-
-1. Instantiated a new `Definitions` object.
-2. Created a new CRUD handler.
-3. [Add CRUD handlers](https://github.com/justtrackio/gosoline/blob/3c9f7b66578c95dca509faa35f653ef16ca12340/pkg/apiserver/crud/handler.go#L77) to your definitions. This is a convenience method for adding handlers for: 
-    - Create
-    - Read
-    - Update
-    - Delete
-    - List
-4. Run your API server with the definitions.
+<CodeBlock title="main.go" language="go" snippet="main">{Main}</CodeBlock>
 
 Now that you have all your logic, you'll move on to setting up your server and docker container.
 
@@ -450,9 +261,9 @@ CONTAINER ID   IMAGE          COMMAND                  CREATED          STATUS  
 ccf507fd70e4   mysql:8.0.31   "docker-entrypoint.s…"   10 minutes ago   Up 10 minutes   0.0.0.0:3306->3306/tcp, 33060/tcp   write-crud-sql-app-mysql-1
 ```
 
-### Run your API server
+### Run your server
 
-In another shell, navigate to the root `api` directory of this project and spin up your API server:
+In another shell, navigate to the root `crud` directory of this project and spin up your server:
 
 ```shell
 go mod init crud/m

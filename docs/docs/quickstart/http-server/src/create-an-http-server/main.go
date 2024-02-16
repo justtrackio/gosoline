@@ -15,7 +15,7 @@ import (
 
 // snippet-start: main
 func main() {
-	// Initialize an API server factory that defines your HTTP route
+	// Initialize an HTTP server factory that defines your HTTP route
 	definer := func(ctx context.Context, config cfg.Config, logger log.Logger) (*httpserver.Definitions, error) {
 		// Initialize a reference to httpserver.Definitions, which you use to create a GET route
 		def := &httpserver.Definitions{}
@@ -38,7 +38,7 @@ func main() {
 		return def, nil
 	}
 
-	// Run an API server application based on the logic from the previous steps
+	// Run an HTTP server application based on the logic from the previous steps
 	application.RunHttpDefaultServer(definer)
 }
 

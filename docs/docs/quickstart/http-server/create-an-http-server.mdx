@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
-title: Create an API server
+title: Create an HTTP server
 ---
 
 import { CodeBlock } from '../../components.jsx';
-import ConfigDist from "!!raw-loader!./src/create-an-api-server/config.dist.yml";
-import Handler from "!!raw-loader!./src/create-an-api-server/handler.go";
-import Main from "!!raw-loader!./src/create-an-api-server/main.go";
+import ConfigDist from "!!raw-loader!./src/create-an-http-server/config.dist.yml";
+import Handler from "!!raw-loader!./src/create-an-http-server/handler.go";
+import Main from "!!raw-loader!./src/create-an-http-server/main.go";
 
 One of the primary use cases for gosoline is to create a REST web service. In this tutorial, you'll do just that!
 
@@ -79,8 +79,8 @@ At the top of `handler.go`, you declared the package and imported some dependenc
 
 Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with three gosoline dependencies:
 
-- `apiserver`
 - [`cfg`](/reference/package-cfg)
+- [`httpserver`](/reference/package-httpserver)
 - [`log`](/reference/package-log)
 
 ### Define a Todo
@@ -111,7 +111,7 @@ Next, you created a function called `GetInput()` that returns the input instance
 
 <CodeBlock language="go" title="handler.go" snippet="get input">{Handler}</CodeBlock>
 
-This is required because your `TodoHandler` must implement the `GetInput()` method of the `apiserver.HandlerWithInput` interface.
+This is required because your `TodoHandler` must implement the `GetInput()` method of the `httpserver.HandlerWithInput` interface.
 
 ### Handle new todos
 
@@ -123,7 +123,7 @@ The `config` and `logger` argument types come from gosoline. This function initi
 
 ### Handle requests
 
-Finally, you created a `Handle()` function that accepts a `context.Context` and an `apiserver.Request` (also from gosoline) and handles that request:
+Finally, you created a `Handle()` function that accepts a `context.Context` and an `httpserver.Request` (also from gosoline) and handles that request:
 
 <CodeBlock language="go" title="handler.go" snippet="handle">{Handler}</CodeBlock>
 
@@ -149,11 +149,11 @@ In `main.go`, you declared the package and imported some dependencies:
 
 <CodeBlock language="go" title="main.go" snippet="imports">{Main}</CodeBlock>
 
-Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with three gosoline dependencies:
+Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with four gosoline dependencies:
 
-- `apiserver`
 - `application`
 - [`cfg`](/reference/package-cfg)
+- [`httpserver`](/reference/package-httpserver)
 - [`log`](/reference/package-log)
 
 ### Create your main entry point
@@ -209,5 +209,5 @@ That's it! You created your first gosoline web service. In this tutorial, you we
 
 Check out these resources to learn more about creating web services with gosoline:
 
-- [Create a money exchange app](/quickstart/api-server/create-a-money-exchange-app)
-- [API reference for the apiserver package](/reference/package-apiserver)
+- [Create a money exchange app](/quickstart/http-server/create-a-money-exchange-app)
+- [API reference for the httpserver package](/reference/package-httpserver)
