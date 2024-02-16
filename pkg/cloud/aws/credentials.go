@@ -13,11 +13,15 @@ import (
 )
 
 func GetCredentialsProvider(ctx context.Context, config cfg.Config, settings ClientSettings) (aws.CredentialsProvider, error) {
+	if settings.Credentials.AccessKeyID != "" {
+		return credentials.NewStaticCredentialsProvider(settings.Credentials.AccessKeyID, settings.Credentials.SecretAccessKey, settings.Credentials.SessionToken), nil
+	}
+
 	if len(settings.AssumeRole) > 0 {
 		return GetAssumeRoleCredentialsProvider(ctx, settings.AssumeRole)
 	}
 
-	if creds := UnmarshalCredentials(config); creds != nil {
+	if creds := UnmarshalDefaultCredentials(config); creds != nil {
 		return credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken), nil
 	}
 
@@ -37,7 +41,7 @@ func GetAssumeRoleCredentialsProvider(ctx context.Context, roleArn string) (aws.
 	return stscreds.NewAssumeRoleProvider(stsClient, roleArn), nil
 }
 
-func UnmarshalCredentials(config cfg.Config) *Credentials {
+func UnmarshalDefaultCredentials(config cfg.Config) *Credentials {
 	if !config.HasPrefix("cloud.aws.credentials") {
 		return nil
 	}

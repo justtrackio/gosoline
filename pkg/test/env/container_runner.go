@@ -189,7 +189,7 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 				var container *container
 
 				if container, err = r.RunContainer(skeleton, name, description); err != nil {
-					return fmt.Errorf("can not run container %s: %w", skeleton.id(), err)
+					return fmt.Errorf("can not run container %s (%s:%s): %w", skeleton.id(), description.containerConfig.Repository, description.containerConfig.Tag, err)
 				}
 
 				lck.Lock()

@@ -27,6 +27,7 @@ func (m modules) len() int {
 type stage struct {
 	cfn                 coffin.Coffin
 	ctx                 context.Context
+	clk                 clock.Clock
 	logger              log.Logger
 	index               int
 	healthCheckSettings HealthCheckSettings
@@ -47,6 +48,7 @@ func newStage(ctx context.Context, config cfg.Config, logger log.Logger, index i
 	return &stage{
 		cfn:                 cfn,
 		ctx:                 ctx,
+		clk:                 clock.NewRealClock(),
 		logger:              logger,
 		index:               index,
 		healthCheckSettings: settings.HealthCheck,
@@ -102,7 +104,17 @@ func (s *stage) healthcheck() HealthCheckResult {
 			continue
 		}
 
-		ok, err = healthAware.IsHealthy(s.ctx)
+		ok, err = func() (ok bool, err error) {
+			defer func() {
+				if err != nil {
+					return
+				}
+
+				err = coffin.ResolveRecovery(recover())
+			}()
+
+			return healthAware.IsHealthy(s.ctx)
+		}()
 
 		result = append(result, ModuleHealthCheckResult{
 			StageIndex: s.index,
@@ -118,6 +130,7 @@ func (s *stage) healthcheck() HealthCheckResult {
 func (s *stage) waitUntilHealthy() error {
 	var result HealthCheckResult
 
+	waitStart := s.clk.Now()
 	timeoutTimer := clock.NewRealTimer(s.healthCheckSettings.Timeout)
 	sleepTicker := clock.NewRealTicker(s.healthCheckSettings.WaitInterval)
 
@@ -137,7 +150,8 @@ func (s *stage) waitUntilHealthy() error {
 		}
 
 		for _, unhealthy := range result.GetUnhealthy() {
-			s.logger.Info("waiting for module %s in stage %d to get healthy", unhealthy.Name, s.index)
+			timeLeft := s.healthCheckSettings.Timeout - s.clk.Since(waitStart)
+			s.logger.Info("waiting %s for module %s in stage %d to get healthy: time left %s", s.healthCheckSettings.WaitInterval, unhealthy.Name, s.index, timeLeft)
 		}
 
 		sleepTicker.Reset(s.healthCheckSettings.WaitInterval)
