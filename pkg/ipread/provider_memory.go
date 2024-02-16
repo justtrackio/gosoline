@@ -1,6 +1,7 @@
 package ipread
 
 import (
+	"context"
 	"net"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -32,7 +33,7 @@ func ProvideMemoryProvider(name string) *memoryProvider {
 	return memoryProviderContainer[name]
 }
 
-func NewMemoryProvider(_ cfg.Config, _ log.Logger, name string) (Provider, error) {
+func NewMemoryProvider(_ context.Context, _ cfg.Config, _ log.Logger, name string) (Provider, error) {
 	return ProvideMemoryProvider(name), nil
 }
 
@@ -44,6 +45,14 @@ func (p memoryProvider) City(ipAddress net.IP) (*geoip2.City, error) {
 	}
 
 	return p.records[ipString], nil
+}
+
+func (p memoryProvider) Refresh(ctx context.Context) error {
+	return nil
+}
+
+func (p memoryProvider) Close() error {
+	return nil
 }
 
 func (p memoryProvider) AddRecord(ipString string, record MemoryRecord) {

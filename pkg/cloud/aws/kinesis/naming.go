@@ -19,13 +19,14 @@ type StreamNamingSettings struct {
 }
 
 func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream, error) {
-	if len(settings.GetClientName()) == 0 {
+	if settings.GetClientName() == "" {
 		return "", fmt.Errorf("the client name shouldn't be empty")
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("kinesis", settings.GetClientName()))
+	defaultKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("kinesis", "default"))
 	namingSettings := &StreamNamingSettings{}
-	config.UnmarshalKey(namingKey, namingSettings)
+	config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultKey, "."))
 
 	appId := settings.GetAppId()
 	name := namingSettings.Pattern

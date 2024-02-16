@@ -1,10 +1,12 @@
 package ipread
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -21,10 +23,6 @@ type GeoCity struct {
 	TimeZone    string `json:"timeZone"`
 }
 
-type ReaderSettings struct {
-	Provider string `cfg:"provider" default:"maxmind"`
-}
-
 //go:generate mockery --name Reader
 type Reader interface {
 	City(ipString string) (*GeoCity, error)
@@ -34,28 +32,36 @@ type reader struct {
 	provider Provider
 }
 
-func NewReader(config cfg.Config, logger log.Logger, name string) (*reader, error) {
-	key := fmt.Sprintf("ipread.%s", name)
-	settings := &ReaderSettings{}
-	config.UnmarshalKey(key, settings)
+type readerCtxKey string
+
+func ProvideReader(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*reader, error) {
+	return appctx.Provide(ctx, readerCtxKey(name), func() (*reader, error) {
+		return NewReader(ctx, config, logger, name)
+	})
+}
+
+func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*reader, error) {
+	logger = logger.WithChannel("ipread")
+	settings := readSettings(config, name)
 
 	var ok bool
+	var err error
 	var factory ProviderFactory
+	var provider Provider
 
 	if factory, ok = providers[settings.Provider]; !ok {
 		return nil, fmt.Errorf("provider %s not found", settings.Provider)
 	}
 
-	provider, err := factory(config, logger, name)
-	if err != nil {
+	if provider, err = factory(ctx, config, logger, name); err != nil {
 		return nil, fmt.Errorf("can not create ip reader provider: %w", err)
 	}
 
-	reader := &reader{
+	read := &reader{
 		provider: provider,
 	}
 
-	return reader, nil
+	return read, nil
 }
 
 func (r reader) City(ipString string) (*GeoCity, error) {

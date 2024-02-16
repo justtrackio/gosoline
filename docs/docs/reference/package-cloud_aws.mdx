@@ -79,3 +79,53 @@ cloud:
                       max_interval: 10s
 ```
 These are the default values which are used if you don't provide any config by yourself.
+
+### Full reference
+```yaml
+cloud:
+  aws:
+    credentials:
+      access_key_id: "*******************"
+      secret_access_key: "****************************************"
+      session_token: "********************************************************************"
+    defaults:
+      region: "eu-central-1"
+      endpoint: ""
+    cloudwatch:
+      clients:
+        default:
+          endpoint: "http://localhost:4566"
+          region: "eu-central-1"
+          http_client:
+            timeout: 0s
+          backoff:
+            cancel_delay: 1s
+            initial_interval: 50ms
+            max_attempts: 10
+            max_elapsed_time: 15m0s
+            max_interval: 10s
+    dynamodb:
+      clients:
+        default:
+          naming:
+            pattern: "{env}-{group}-{modelId}"
+
+    kinesis:
+      clients:
+        default:
+          credentials:
+            access_key_id: "*******************"
+            secret_access_key: "****************************************"
+            session_token: "********************************************************************"
+    s3:
+      clients:
+        default:
+          usePathStyle: false
+          credentials:
+            endpoint: "https://s3.eu-central-1.amazonaws.com"
+    sqs:
+      clients:
+        default:
+          naming:
+            pattern: "{env}-{group}-{queueId}"
+```

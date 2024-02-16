@@ -37,11 +37,12 @@ type ClientHttpSettings struct {
 }
 
 type ClientSettings struct {
-	Region     string             `cfg:"region" default:"eu-central-1"`
-	Endpoint   string             `cfg:"endpoint" default:"http://localhost:4566"`
-	AssumeRole string             `cfg:"assume_role"`
-	HttpClient ClientHttpSettings `cfg:"http_client"`
-	Backoff    exec.BackoffSettings
+	Region      string             `cfg:"region" default:"eu-central-1"`
+	Endpoint    string             `cfg:"endpoint" default:"http://localhost:4566"`
+	AssumeRole  string             `cfg:"assume_role"`
+	Credentials Credentials        `cfg:"credentials"`
+	HttpClient  ClientHttpSettings `cfg:"http_client"`
+	Backoff     exec.BackoffSettings
 }
 
 func (s *ClientSettings) SetBackoff(backoff exec.BackoffSettings) {
@@ -150,6 +151,7 @@ func DefaultClientConfig(ctx context.Context, config cfg.Config, logger log.Logg
 func WithEndpoint(url string) func(options *awsCfg.LoadOptions) error {
 	return func(o *awsCfg.LoadOptions) error {
 		o.EndpointResolverWithOptions = EndpointResolver(url)
+
 		return nil
 	}
 }
