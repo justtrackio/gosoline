@@ -35,8 +35,8 @@ type TimestampAware interface {
 }
 
 type Timestamps struct {
-	UpdatedAt *time.Time
-	CreatedAt *time.Time
+	UpdatedAt *time.Time `gorm:"type:datetime"`
+	CreatedAt *time.Time `gorm:"type:datetime"`
 }
 
 func (m *Timestamps) SetUpdatedAt(updatedAt *time.Time) {
