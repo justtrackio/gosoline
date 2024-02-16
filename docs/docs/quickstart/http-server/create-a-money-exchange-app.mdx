@@ -1,0 +1,244 @@
+---
+sidebar_position: 4
+title: Create a money exchange app
+---
+
+import { CodeBlock } from '../../components.jsx';
+import Handler from "!!raw-loader!./src/create-a-money-exchange-app/handler.go";
+import Definer from "!!raw-loader!./src/create-a-money-exchange-app/definer.go";
+import Main from "!!raw-loader!./src/create-a-money-exchange-app/main.go";
+import ConfigDist from "!!raw-loader!./src/create-a-money-exchange-app/config.dist.yml";
+
+One of the primary purposes of Gosoline is to help you build an HTTP server. An HTTP server, in the context of Gosoline, is a module that: 
+
+- Runs indefinitely
+- Listens to a port for requests
+- Provides responses to those requests
+
+Our [`httpserver`](/reference/package-httpserver) package provides a convenient way to create HTTP servers.
+
+In this tutorial, you'll create a money exchange web service. This service will have two endpoints:
+
+```http
+GET /euro/{AMOUNT IN SOURCE CURRENCY}/{SOURCE CURRENCY}
+GET /euro-at-date/{AMOUNT IN SOURCE CURRENCY}/{SOURCE CURRENCY}/{EXCHANGE RATE DATE}
+```
+
+Both of these endpoints: 
+
+- Accept an amount in a source currency.
+- Convert that amount to euros based on an exchange rate.
+
+The `euro-at-date` endpoint allows you to specify a historical date for the exchange rate.
+
+## Before you begin
+
+Before you begin, make sure you have [Golang](https://go.dev/doc/install) installed on your machine.
+
+## Set up your file structure
+
+First, you need to set up the following file structure:
+
+```txt
+money-exchange/
+├── handler.go
+├── definer.go
+├── config.dist.yml
+└── main.go
+```
+
+For example, in Unix, run:
+
+```shell
+mkdir money-exchange; cd money-exchange
+touch handler.go
+touch definer.go
+touch config.dist.yml
+touch main.go
+```
+
+Those are all the files you need to build your web service with gosoline! Next, you'll implement each of these files, starting with `handler.go`.
+
+## Implement handler.go
+
+In `handler.go`, add the following code:
+
+<details><summary>handler.go</summary>
+
+<CodeBlock showLineNumbers language="go">{Handler}</CodeBlock>
+
+</details>
+
+Now, you'll walkthrough this file in detail to learn how it works.
+
+### Import your dependencies
+
+At the top of `handler.go`, you declared the package and imported some dependencies:
+
+<CodeBlock language="go" title="handler.go" snippet="imports">{Handler}</CodeBlock>
+
+Here, you declared the package as `main`. Then, you imported several standard modules along with four gosoline dependencies:
+
+- [`cfg`](/reference/package-cfg)
+- `currency`
+- [`httpserver`](/reference/package-httpserver)
+- [`log`](/reference/package-log)
+
+### Define a euroHandler structure
+
+Next, you created a `euroHandler` struct:
+
+<CodeBlock language="go" title="handler.go" snippet="euro handler">{Handler}</CodeBlock>
+
+You'll use this in a few places to carry data about your logger and currency service. You'll also implement its `Handle()` method to handle HTTP requests.
+
+### Define a handler
+
+Then, you implemented a function for creating new `euroHandler` structs:
+
+<CodeBlock language="go" title="handler.go" snippet="new euro handler">{Handler}</CodeBlock>
+
+You'll use this later to create a new `euroHandler`.
+
+### Implement a request handler
+
+Then, you implemented `euroHandler.Handle()` for handling HTTP requests:
+
+<CodeBlock language="go" title="handler.go" snippet="handle">{Handler}</CodeBlock>
+
+### Define a euroAtDateHandler
+
+Like you did with `euroHandler`, you defined a `euroAtDateHandler` struct and a corresponding constructor:
+
+<CodeBlock language="go" title="handler.go" snippet="euro at date handler">{Handler}</CodeBlock>
+
+The logic here is very similar to the logic for `euroHandler`.
+
+### Implement a second request handler
+
+Finally, you implemented `euroAtDateHandler.Handle()` for handling HTTP requests:
+
+<CodeBlock language="go" title="handler.go" snippet="euro-at-date handler handle">{Handler}</CodeBlock>
+
+The logic here is very similar to the logic for `euroHandler.Handle()`. 
+
+Now, you've fully implemented your request handlers. Next, you'll create a `Definer` object.
+
+## Implement definer.go
+
+In `definer.go`, add the following code:
+
+<details><summary>definer.go</summary>
+
+<CodeBlock showLineNumbers language="go">{Definer}</CodeBlock>
+
+</details>
+
+Now, you'll walkthrough this file in detail to learn how it works.
+
+### Import dependencies
+
+At the top of `definer.go`, you declared the package and imported some dependencies:
+
+<CodeBlock title="definer.go" language="go" snippet="imports">{Definer}</CodeBlock>
+
+Here, you declared the package as `main`. Then, you imported the standard `context` and `fmt` modules along with three gosoline dependencies:
+
+- [`cfg`](/reference/package-cfg)
+- [`httpserver`](/reference/package-httpserver)
+- [`log`](/reference/package-log)
+
+### Implement a definer
+
+Then, you implemented `ApiDefiner`:
+
+<CodeBlock title="definer.go" language="go" snippet="api definer">{Definer}</CodeBlock>
+
+Here, the `:amount`, `:currency`, etc. constructs are path parameters. This means the handler will be able to access and use them. Indeed, you already implemented this behavior in your `handler.go` file. `euroHandler.Handle()` gets these values like this:
+
+```go
+currency := request.Params.ByName("currency")
+amountString := request.Params.ByName("amount")
+```
+
+Now that you've created handlers and a definer, create a configuration file.
+
+## Configure your server
+
+In `config.dist.yml`, [configure your server](/how-to/configure-your-httpserver):
+
+<CodeBlock showLineNumbers language="yaml" title="config.dist.yml">{ConfigDist}</CodeBlock>
+
+Here, you set some minimal configurations for your web server. There are a few interesting configurations to note:
+
+- `httpserver.default.port` exposes port 8080. (In your applications, you can configure [more aspects of the server](/reference/package-httpserver#settings) in a similar manner.)
+- The `currency` key value store (`kvstore`) is defined as `inMemory` and serves as a local database. The `currency` module that you used in `handler.go` uses this to store the exchange rates for various currencies:
+    - First, it makes an initial call to an external endpoint in order to get exchange rates and stores them in a kvstore
+    - Later, it occasionally makes more calls to obtain exchange rates, in order to keep the kvstore updated
+
+At this point, you've implemented your handlers, a definer, and your app configuration. Next, you'll implement `main.go` that puts it all together.
+
+## Implement main.go
+
+In `main.go`, add the following code:
+
+<details><summary>main.go</summary>
+
+<CodeBlock showLineNumbers language="go">{Main}</CodeBlock>
+
+</details>
+
+Now, you'll walkthrough this file in detail to learn how it works.
+
+### Import your dependencies
+
+At the top of `main.go`, you declared the package and imported some dependencies:
+
+<CodeBlock title="main.go" language="go" snippet="imports">{Main}</CodeBlock>
+
+Here, you declared the package as `main`. Then, you imported three gosoline dependencies:
+
+- `application`
+- `currency`
+- [`httpserver`](/reference/package-httpserver)
+
+### Implement main()
+
+Then, you implemented the main entry point for your web service:
+
+<CodeBlock title="main.go" language="go" snippet="main">{Main}</CodeBlock>
+
+Here, you run a kernel that uses _config.dist.yml_ for its configuration and uses the `api` and `currency` modules.
+
+:::note 
+
+Notice the `api` module is using your `ApiDefiner` that, in turn, uses your handlers.
+
+:::
+
+Now that you've wired the application up, the final step is to test it to confirm that it works as expected.
+
+## Run your application
+
+Initialize your go module, install the dependencies, and run your web service:
+
+```shell
+go mod init money_exchange/m
+go mod tidy
+go run .
+```
+
+In a separate terminal, make requests to your service:
+
+```shell
+curl localhost:8080/euro/10/GBP
+curl localhost:8080/euro-at-date/10/USD/2021-01-03T00:00:00Z
+```
+
+## Conclusion
+
+Having seen a sample HTTP server, you can now look into more detailed functionality, such as [writing integration tests](/reference/package-test).
+Check out these resources to learn more about creating web services with gosoline:
+
+- [Create an HTTP server](/quickstart/http-server/create-an-http-server)
+- [API reference for the htpserver package](/reference/package-httpserver)

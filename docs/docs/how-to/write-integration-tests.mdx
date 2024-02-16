@@ -2,6 +2,9 @@
 title: Write integration tests
 ---
 
+import { CodeBlock } from '../components.jsx';
+import ServerTest from "!!raw-loader!../quickstart/testing/src/integration-test-server/server_test.go";
+
 In this section we will be looking at several types of integration tests provided by Gosoline. All of them can be used together in the same test, and Gosoline's `suite` package is responsible for reading their configuration, starting and running an application, then running the actual tests cases. Below is their description:
 
 ### Base test case
@@ -49,67 +52,33 @@ func (s *ConsumerTestSuite) TestSuccessTwice(app suite.AppUnderTest) {
 
 This test publishes two items into the application's stream input, waits until the application is done, then reads its outputs, and compares them with their expected values.
 
-### ApiServer test case
+### Httpserver test case
 
-If you want to make a standard API call and read the response, you can use Gosoline's _ApiServerTestCase_. These type of tests issue HTTP calls and compare their responses against a predefined value, and they need to follow a predefined structure. Below we can see and example:
+If you want to make a standard API call and read the response, you can use Gosoline's _HttpserverTestCase_. This type of test issues HTTP calls and compares its responses against predefined values and structures. Here's an example:
 
-```go
-func (s *ApiTestSuite) Test_Euro() *suite.ApiServerTestCase {
-	return &suite.ApiServerTestCase{
-		Method:             http.MethodGet,
-		Url:                "/euro/10/GBP",
-		Headers:            map[string]string{},
-		ExpectedStatusCode: http.StatusOK,
-		Assert: func(response *resty.Response) error {
-			result, err := strconv.ParseFloat(string(response.Body()), 64)
-			s.NoError(err)
-			s.Equal(8.0, result)
+<CodeBlock title="server_test.go" language="go" snippet="test euro">{ServerTest}</CodeBlock>
 
-			return nil
-		},
-	}
-}
-```
+Notice the predefined structure of an `HttpserverTestCase`: it is an object that has fields for all the information needed in performing an HTTP call, the expected status code, and a method that tests the result for correctness.
 
-Notice the predefined structure of an `ApiServerTestCase`: it is an object that has fields for all the information needed in performing an HTTP call, the expected status code, and a method that tests the result for correctness.
+In the example from our [HTTP server test tutorial](/quickstart/testing/test-your-http-server) we see two types of test cases (_Httpserver_ and _Httpserver extended_) in the same test suite. In fact, all types of tests can be part of the same test suite.
 
-In the example from our [API test tutorial](/quickstart/testing/test-your-api) we see two types of test cases (_ApiServer_ and _ApiServer extended_) in the same test suite. In fact, all types of tests can be part of the same test suite.
+### Httpserver extended test case
 
-### ApiServer extended test case
+In the [Test your HTTP server](/quickstart/testing/test-your-http-server) example, we saw the following test:
 
-In the [Integration tests for your API] example, we saw the following test:
-
-```go
-func (s *ApiTestSuite) Test_ToEuro(_ suite.AppUnderTest, client *resty.Client) error {
-	var result float64
-
-	response, err := client.R().
-		SetResult(&result).
-		Execute(http.MethodGet, "/euro/10/GBP")
-
-	s.NoError(err)
-	s.Equal(http.StatusOK, response.StatusCode())
-	s.Equal(8.0, result)
-
-	return nil
-}
-```
+<CodeBlock title="server_test.go" language="go" snippet="test to euro">{ServerTest}</CodeBlock>
 
 The `Test_ToEuro` method makes a GET call to an endpoint, in order to receive back the euro exchange value for 10 GBP. Lastly, it checks if the received value is 8.0.
 
 In order to make this GET call `Test_ToEuro` does not need to concern itself about the IP on which the exchange application is running, nor its port. All `Test_ToEuro` needs to know is the URL path of that endpoint, as the _client_ object does the rest.
 
-This _client_ object is provided by Gosoline, whenever at least one of a test suite's methods has the above signature. The main advantage of the _client_ object is that it allows you to control when requests are executed, and gives you access to the endpoint, by providing the host & port. Therefore, for example, if you want to time your requests, this is the way to go.
+This _client_ object is provided by Gosoline, whenever at least one of a test suite's methods has the above signature. The main advantage of the _client_ object is that it allows you to control when requests are executed, and gives you access to the endpoint, by providing the host and port. Therefore, for example, if you want to time your requests, this is the way to go.
 
-```go
-func (s *ApiTestSuite) SetupApiDefinitions() apiserver.Definer {
-	return definer.ApiDefiner
-}
-```
+<CodeBlock title="server_test.go" language="go" snippet="set up api defs">{ServerTest}</CodeBlock>
 
 Implementing _SetupApiDefinitions_ when configuring your test will inform Gosoline that an API is being tested, thus the _client_ object will contain meaningful data.
 
-Forgetting to implement _SetupApiDefinitions_, and the trying to run an _Apiserver_, or an _Apiserver extended_ test case, will result in an error reminding you that `the suite has to implement the TestingSuiteApiDefinitionsAware interface`.
+Forgetting to implement _SetupApiDefinitions_, and the trying to run an _Httpserver_, or an _Httpserver extended_ test case, will result in an error reminding you that `the suite has to implement the TestingSuiteApiDefinitionsAware interface`.
 
 ### Stream test case
 
@@ -127,7 +96,7 @@ func (s *ConsumerTestSuite) SetupSuite() []suite.Option {
 }
 ```
 
-It is making use of the same `config.dist.yml` file as `stream-consumer`, and it will be using the module created by _consumer.NewConsumer_. A `StreamTestCase` is very similar to an `ApiServerTestCase`:
+It is making use of the same `config.dist.yml` file as `stream-consumer`, and it will be using the module created by _consumer.NewConsumer_. A `StreamTestCase` is very similar to an `HttpserverTestCase`:
 
 ```go
 func (s *ConsumerTestSuite) TestSuccess() *suite.StreamTestCase {

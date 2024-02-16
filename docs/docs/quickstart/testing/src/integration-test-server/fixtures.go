@@ -1,7 +1,11 @@
+// snippet-start: imports
 package apitest
 
 import "github.com/justtrackio/gosoline/pkg/fixtures"
 
+// snippet-end: imports
+
+// snippet-start: fixture set
 var fixtureSets = []*fixtures.FixtureSet{
 	{
 		Enabled: true,
@@ -18,3 +22,5 @@ var fixtureSets = []*fixtures.FixtureSet{
 		},
 	},
 }
+
+// snippet-end: fixture set

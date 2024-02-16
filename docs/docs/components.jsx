@@ -27,12 +27,12 @@ export function PrimaryUseCases() {
 
         <Grid item xs={12} s={12} md={4}>
             <Card style={{ height: '100%' }}>
-                <CardHeader title="API Gateway" avatar={<CloudQueueIcon />} titleTypographyProps={{variant:'h6'}} />
+                <CardHeader title="HTTP Server" avatar={<CloudQueueIcon />} titleTypographyProps={{variant:'h6'}} />
                 <CardContent>                    
                     Build REST web services with HTTP handling, caching, OAuth, and much more.
                 </CardContent>
                 <CardActions>
-                    <Button size="small" href="/gosoline/category/api-gateway">Get started</Button>
+                    <Button size="small" href="/gosoline/category/http-server">Get started</Button>
                 </CardActions>
             </Card>
         </Grid>
@@ -72,8 +72,8 @@ export function CodeBlock({ children, snippet, ...props }) {
     if (snippet) {
       // Find the snippet
       const snippetPattern = new RegExp(
-        `(?:\/\/|#) snippet-start: ${snippet}(.*)(?:\/\/|#) snippet-end: ${snippet}`, 
-        's'
+        `(?:\/\/|#) snippet-start: ${snippet}\s*(.*)(?:\/\/|#) snippet-end: ${snippet}\s*$`,
+        'sm',
       );
       let match = code.match(snippetPattern)
       if (match) {
