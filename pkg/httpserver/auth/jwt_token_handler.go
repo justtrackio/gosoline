@@ -37,9 +37,10 @@ type JwtClaims struct {
 	jwt.StandardClaims
 }
 
-func NewJwtTokenHandler(config cfg.Config) JwtTokenHandler {
+func NewJwtTokenHandler(config cfg.Config, name string) JwtTokenHandler {
+	key := fmt.Sprintf("httpserver.%s.auth.jwt", name)
 	settings := &JwtTokenHandlerSettings{}
-	config.UnmarshalKey("api.auth.jwt", settings)
+	config.UnmarshalKey(key, settings)
 
 	return NewJwtTokenHandlerWithInterfaces(*settings)
 }
