@@ -19,8 +19,8 @@ type jwtAuthenticator struct {
 	jwtTokenHandler JwtTokenHandler
 }
 
-func NewJwtAuthHandler(config cfg.Config) gin.HandlerFunc {
-	auth := NewJWTAuthAuthenticator(config)
+func NewJwtAuthHandler(config cfg.Config, name string) gin.HandlerFunc {
+	auth := NewJWTAuthAuthenticator(config, name)
 
 	return func(ginCtx *gin.Context) {
 		valid, err := auth.IsValid(ginCtx)
@@ -38,8 +38,8 @@ func NewJwtAuthHandler(config cfg.Config) gin.HandlerFunc {
 	}
 }
 
-func NewJWTAuthAuthenticator(config cfg.Config) Authenticator {
-	jwtTokenHandler := NewJwtTokenHandler(config)
+func NewJWTAuthAuthenticator(config cfg.Config, name string) Authenticator {
+	jwtTokenHandler := NewJwtTokenHandler(config, name)
 
 	return NewJWTAuthAuthenticatorWithInterfaces(jwtTokenHandler)
 }
