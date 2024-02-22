@@ -32,7 +32,7 @@ type TestSettings struct {
 	OkayIDontKnowANameForThis map[Encoding][]map[Encoding][]Compression `cfg:"name_this"`
 }
 
-type ApiSettings struct {
+type HttpServerSettings struct {
 	Port string `cfg:"port"`
 	Mode string `cfg:"mode"`
 }
@@ -108,10 +108,10 @@ func TestConfigStringConversionTest(t *testing.T) {
 	err := config.Option(cfg.WithConfigFile("./testdata/config.strings.test.yml", "yml"))
 	assert.NoError(t, err)
 
-	settings := &ApiSettings{}
-	config.UnmarshalKey("api", settings)
+	settings := &HttpServerSettings{}
+	config.UnmarshalKey("httpserver.default", settings)
 
-	assert.Equal(t, &ApiSettings{
+	assert.Equal(t, &HttpServerSettings{
 		Port: "80",
 		Mode: "release",
 	}, settings)

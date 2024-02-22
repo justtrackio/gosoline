@@ -97,8 +97,10 @@ func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite,
 		}
 
 		suiteOptions.addAppOption(application.WithConfigMap(map[string]interface{}{
-			"api": map[string]interface{}{
-				"port": 0,
+			"httpserver": map[string]interface{}{
+				"default": map[string]interface{}{
+					"port": 0,
+				},
 			},
 		}))
 
@@ -106,6 +108,7 @@ func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite,
 			port, err := server.GetPort()
 			if err != nil {
 				assert.FailNow(t, err.Error(), "can not get port of server")
+
 				return
 			}
 
