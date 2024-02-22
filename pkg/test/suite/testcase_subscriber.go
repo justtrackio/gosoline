@@ -86,8 +86,10 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 		tc := ret[0].Interface().(SubscriberTestCase)
 
 		suiteOptions.addAppOption(application.WithConfigMap(map[string]interface{}{
-			"api": map[string]interface{}{
-				"port": 0,
+			"httpserver": map[string]interface{}{
+				"default": map[string]interface{}{
+					"port": 0,
+				},
 			},
 		}))
 
@@ -113,6 +115,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 
 				if !ok {
 					assert.FailNow(t, "invalid subscription test case", "the test case for the subscription of %s has to be of the db type", tc.GetName())
+
 					return
 				}
 
@@ -135,6 +138,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 
 				if !ok {
 					assert.FailNow(t, "invalid subscription test case", "the test case for the subscription of %s has to be of the ddb type", tc.GetName())
+
 					return
 				}
 
@@ -161,6 +165,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 
 				if !ok {
 					assert.FailNow(t, "invalid subscription test case", "the test case for the subscription of %s has to be of the kvstore type", tc.GetName())
+
 					return
 				}
 
