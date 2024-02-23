@@ -49,7 +49,6 @@ func (h *euroHandler) Handle(requestContext context.Context, request *httpserver
 
 	// Parse a float value from amountString.
 	amount, err := strconv.ParseFloat(amountString, 64)
-
 	// Send a 400 Bad Request response if amountString can't be parsed into a valid float.
 	if err != nil {
 		h.logger.Error("cannot parse amount %s: %w", amountString, err)
@@ -57,9 +56,8 @@ func (h *euroHandler) Handle(requestContext context.Context, request *httpserver
 		return httpserver.NewStatusResponse(http.StatusBadRequest), nil
 	}
 
-	// Convert the amount from the the source currency to euros.
+	// Convert the amount from the source currency to euros.
 	result, err := h.currencyService.ToEur(requestContext, amount, currency)
-
 	// Send a 500 Internal Server Error if the server can't convert the amount.
 	if err != nil {
 		h.logger.Error("cannot convert amount %f with currency %s: %w", amount, currency, err)
@@ -99,7 +97,6 @@ func (h *euroAtDateHandler) Handle(requestContext context.Context, request *http
 	currency := request.Params.ByName("currency")
 	dateString := request.Params.ByName("date")
 	date, err := time.Parse(time.RFC3339, dateString)
-
 	// Send a 500 Internal Server Error if the service can't parse the params or convert the currency.
 	if err != nil {
 		h.logger.Error("cannot parse date %s: %w", dateString, err)

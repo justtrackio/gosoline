@@ -26,6 +26,7 @@ type ClientTestSuite struct {
 
 func (s *ClientTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
+		suite.WithLogLevel("debug"),
 		suite.WithSharedEnvironment(),
 		suite.WithConfigFile("client_test_cfg.yml"),
 		suite.WithClockProvider(clock.NewRealClock()),

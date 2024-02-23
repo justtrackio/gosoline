@@ -11,8 +11,7 @@ func init() {
 	retryHandlers["noop"] = NewRetryHandlerNoop
 }
 
-type RetryHandlerNoop struct {
-}
+type RetryHandlerNoop struct{}
 
 func NewRetryHandlerNoop(context.Context, cfg.Config, log.Logger, string) (Input, RetryHandler, error) {
 	return NewNoopInput(), NewRetryHandlerNoopWithInterfaces(), nil

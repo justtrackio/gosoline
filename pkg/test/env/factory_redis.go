@@ -37,8 +37,7 @@ func (f *redisFactory) Detect(config cfg.Config, manager *ComponentsConfigManage
 	}
 
 	settings := &redisSettings{}
-	config.UnmarshalDefaults(settings)
-
+	UnmarshalSettings(config, settings, componentRedis, "default")
 	settings.Type = componentRedis
 
 	if err := manager.Add(settings); err != nil {
@@ -65,8 +64,8 @@ func (f *redisFactory) configureContainer(settings interface{}) *containerConfig
 	s := settings.(*redisSettings)
 
 	return &containerConfig{
-		Repository: "redis",
-		Tag:        "7-alpine",
+		Repository: s.Image.Repository,
+		Tag:        s.Image.Tag,
 		PortBindings: portBindings{
 			"6379/tcp": s.Port,
 		},

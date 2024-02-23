@@ -45,16 +45,7 @@ func (m *ComponentsConfigManager) GetAllSettings() ([]ComponentBaseSettingsAware
 
 		for name := range components {
 			settings := factory.GetSettingsSchema()
-
-			key := fmt.Sprintf("test.components.%s.%s", typ, name)
-
-			defaults := []cfg.UnmarshalDefaults{
-				cfg.UnmarshalWithDefaultForKey("type", typ),
-				cfg.UnmarshalWithDefaultForKey("name", name),
-			}
-
-			m.config.UnmarshalKey(key, settings, defaults...)
-
+			UnmarshalSettings(m.config, settings, typ, name)
 			allSettings = append(allSettings, settings)
 		}
 	}
@@ -132,4 +123,17 @@ func (m *ComponentsConfigManager) Add(settings interface{}) error {
 	}
 
 	return nil
+}
+
+func UnmarshalSettings(config cfg.Config, settings interface{}, typ string, name string) {
+	key := fmt.Sprintf("test.components.%s.%s", typ, name)
+	defaultKey := fmt.Sprintf("test.defaults.images.%s", typ)
+
+	defaults := []cfg.UnmarshalDefaults{
+		cfg.UnmarshalWithDefaultForKey("type", typ),
+		cfg.UnmarshalWithDefaultForKey("name", name),
+		cfg.UnmarshalWithDefaultsFromKey(defaultKey, "image"),
+	}
+
+	config.UnmarshalKey(key, settings, defaults...)
 }

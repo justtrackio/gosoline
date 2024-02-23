@@ -31,7 +31,6 @@ type mysqlSettings struct {
 	ComponentContainerSettings
 	ContainerBindingSettings
 	UseExternalContainer bool             `cfg:"use_external_container" default:"false"`
-	Version              string           `cfg:"version" default:"8.0"`
 	Credentials          mysqlCredentials `cfg:"credentials"`
 }
 
@@ -60,7 +59,7 @@ func (f mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManager
 		}
 
 		settings := &mysqlSettings{}
-		config.UnmarshalDefaults(settings)
+		UnmarshalSettings(config, settings, componentMySql, "default")
 
 		settings.Type = componentMySql
 		settings.Name = name
@@ -125,9 +124,9 @@ func (f mysqlFactory) configureContainer(settings interface{}) *containerConfig 
 	}
 
 	return &containerConfig{
-		Repository: "mysql/mysql-server",
+		Repository: s.Image.Repository,
+		Tag:        s.Image.Tag,
 		Tmpfs:      s.Tmpfs,
-		Tag:        s.Version,
 		Env:        env,
 		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE"},
 		PortBindings: portBindings{
