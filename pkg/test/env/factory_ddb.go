@@ -39,8 +39,7 @@ func (f *ddbFactory) Detect(config cfg.Config, manager *ComponentsConfigManager)
 	}
 
 	settings := &ddbSettings{}
-	config.UnmarshalDefaults(settings)
-
+	UnmarshalSettings(config, settings, componentDdb, "default")
 	settings.Type = componentDdb
 
 	if err := manager.Add(settings); err != nil {
@@ -75,8 +74,8 @@ func (f *ddbFactory) configureContainer(settings interface{}) *containerConfig {
 	s := settings.(*ddbSettings)
 
 	return &containerConfig{
-		Repository: "amazon/dynamodb-local",
-		Tag:        "1.21.0",
+		Repository: s.Image.Repository,
+		Tag:        s.Image.Tag,
 		PortBindings: portBindings{
 			"8000/tcp": s.Port,
 		},

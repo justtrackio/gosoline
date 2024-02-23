@@ -60,14 +60,20 @@ func (c *ComponentBaseSettings) SetType(typ string) {
 	c.Type = typ
 }
 
+type ContainerImageSettings struct {
+	Repository string `cfg:"repository"`
+	Tag        string `cfg:"tag"`
+}
+
 type ContainerBindingSettings struct {
 	Host string `cfg:"host" default:"127.0.0.1"`
 	Port int    `cfg:"port" default:"0"`
 }
 
 type ComponentContainerSettings struct {
-	ExpireAfter time.Duration   `cfg:"expire_after" default:"60s"`
-	Tmpfs       []TmpfsSettings `cfg:"tmpfs"`
+	Image       ContainerImageSettings `cfg:"image"`
+	ExpireAfter time.Duration          `cfg:"expire_after" default:"60s"`
+	Tmpfs       []TmpfsSettings        `cfg:"tmpfs"`
 }
 
 type TmpfsSettings struct {

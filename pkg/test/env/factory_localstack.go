@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
@@ -66,8 +65,7 @@ func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigM
 	}
 
 	settings := &localstackSettings{}
-	config.UnmarshalDefaults(settings)
-
+	UnmarshalSettings(config, settings, ComponentLocalstack, "default")
 	settings.Type = ComponentLocalstack
 	settings.Services = services
 
@@ -93,15 +91,11 @@ func (f *localstackFactory) DescribeContainers(settings interface{}) componentCo
 
 func (f *localstackFactory) configureContainer(settings interface{}) *containerConfig {
 	s := settings.(*localstackSettings)
-	services := strings.Join(s.Services, ",")
 
 	return &containerConfig{
-		Repository: "localstack/localstack",
-		Tag:        "1.4",
-		Env: []string{
-			fmt.Sprintf("SERVICES=%s", services),
-			"EAGER_SERVICE_LOADING=1",
-		},
+		Repository: s.Image.Repository,
+		Tag:        s.Image.Tag,
+		Env:        []string{},
 		PortBindings: portBindings{
 			"4566/tcp": s.Port,
 		},
@@ -114,7 +108,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 
 	return func(container *container) error {
 		binding := container.bindings["4566/tcp"]
-		url := fmt.Sprintf("http://%s:%s/health", binding.host, binding.port)
+		url := fmt.Sprintf("http://%s:%s/_localstack/health", binding.host, binding.port)
 
 		var err error
 		var resp *http.Response
@@ -129,7 +123,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 			return err
 		}
 
-		if err = json.Unmarshal(body, &status); err != nil {
+		if err := json.Unmarshal(body, &status); err != nil {
 			return err
 		}
 
@@ -147,7 +141,7 @@ func (f *localstackFactory) healthCheck(settings interface{}) ComponentHealthChe
 				return fmt.Errorf("%s service is not up yet", service)
 			}
 
-			if services[service] != "running" {
+			if services[service] != "available" {
 				return fmt.Errorf("%s service is in %s state", service, services[service])
 			}
 		}

@@ -2,6 +2,7 @@ package env
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"testing"
 	"time"
@@ -9,10 +10,14 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/stretchr/testify/assert"
 )
+
+//go:embed config.default.yml
+var configDefault []byte
 
 type Environment struct {
 	componentOptions []ComponentOption
@@ -30,33 +35,93 @@ type Environment struct {
 }
 
 func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
-	start := time.Now()
+	var err error
 
 	env := &Environment{
 		t: t,
 	}
 
-	for _, opt := range options {
-		opt(env)
+	if err = env.init(options...); err != nil {
+		return nil, fmt.Errorf("can not initialize environment: %w", err)
 	}
 
-	config := cfg.New()
-	for _, opt := range env.configOptions {
-		if err := opt(config); err != nil {
-			return nil, fmt.Errorf("can apply config option: %w", err)
+	var skeletons []*componentSkeleton
+	var component Component
+	components := NewComponentsContainer()
+	componentConfigManager := NewComponentsConfigManager(env.config)
+
+	for _, opt := range env.componentOptions {
+		if err := opt(componentConfigManager); err != nil {
+			return nil, fmt.Errorf("can apply component option: %w", err)
 		}
 	}
+
+	for typ, factory := range componentFactories {
+		if err = factory.Detect(env.config, componentConfigManager); err != nil {
+			return env, fmt.Errorf("can not autodetect components for %s: %w", typ, err)
+		}
+	}
+
+	if skeletons, err = buildComponentSkeletons(componentConfigManager); err != nil {
+		return env, fmt.Errorf("can not create component skeletons: %w", err)
+	}
+
+	if env.runner, err = NewContainerRunner(env.config, env.logger); err != nil {
+		return env, fmt.Errorf("can not create container runner: %w", err)
+	}
+
+	if err := env.runner.RunContainers(skeletons); err != nil {
+		return env, err
+	}
+
+	for _, skeleton := range skeletons {
+		if component, err = buildComponent(env.config, env.logger, skeleton); err != nil {
+			return env, fmt.Errorf("can not build component %s: %w", skeleton.id(), err)
+		}
+
+		component.SetT(t)
+		components.Add(skeleton.typ, skeleton.name, component)
+	}
+
+	if err = env.config.Option(components.GetCfgOptions()...); err != nil {
+		return nil, fmt.Errorf("can not apply cfg options from components: %w", err)
+	}
+
+	env.components = components
+
+	return env, nil
+}
+
+func (e *Environment) init(options ...Option) error {
+	start := time.Now()
 
 	var err error
 	var logger log.GosoLogger
 	var cfgPostProcessors map[string]int
 
-	if cfgPostProcessors, err = cfg.ApplyPostProcessors(config); err != nil {
-		return nil, fmt.Errorf("can not apply post processor on config: %w", err)
+	defaults := make(map[string]interface{})
+	if err = yaml.Unmarshal(configDefault, &defaults); err != nil {
+		return fmt.Errorf("can not read default configurion: %w", err)
+	}
+	options = append([]Option{WithConfigMap(defaults)}, options...)
+
+	for _, opt := range options {
+		opt(e)
 	}
 
-	if logger, err = NewConsoleLogger(env.loggerOptions...); err != nil {
-		return nil, fmt.Errorf("can apply logger option: %w", err)
+	config := cfg.New()
+	for _, opt := range e.configOptions {
+		if err := opt(config); err != nil {
+			return fmt.Errorf("can apply config option: %w", err)
+		}
+	}
+
+	if cfgPostProcessors, err = cfg.ApplyPostProcessors(config); err != nil {
+		return fmt.Errorf("can not apply post processor on config: %w", err)
+	}
+
+	if logger, err = NewConsoleLogger(e.loggerOptions...); err != nil {
+		return fmt.Errorf("can apply logger option: %w", err)
 	}
 
 	defer func() {
@@ -67,57 +132,13 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 		logger.Info("applied priority %d config post processor '%s'", priority, name)
 	}
 
-	var skeletons []*componentSkeleton
-	var component Component
-	components := NewComponentsContainer()
-	componentConfigManager := NewComponentsConfigManager(config)
+	e.ctx = appctx.WithContainer(context.Background())
+	e.config = config
+	e.logger = logger
+	e.filesystem = newFilesystem(e.t)
+	e.fixtureLoader = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger)
 
-	for _, opt := range env.componentOptions {
-		if err := opt(componentConfigManager); err != nil {
-			return nil, fmt.Errorf("can apply component option: %w", err)
-		}
-	}
-
-	env.ctx = appctx.WithContainer(context.Background())
-	env.config = config
-	env.logger = logger
-	env.filesystem = newFilesystem(t)
-	env.fixtureLoader = fixtures.NewFixtureLoader(env.ctx, env.config, env.logger)
-
-	for typ, factory := range componentFactories {
-		if err = factory.Detect(config, componentConfigManager); err != nil {
-			return env, fmt.Errorf("can not autodetect components for %s: %w", typ, err)
-		}
-	}
-
-	if skeletons, err = buildComponentSkeletons(componentConfigManager); err != nil {
-		return env, fmt.Errorf("can not create component skeletons: %w", err)
-	}
-
-	if env.runner, err = NewContainerRunner(config, logger); err != nil {
-		return env, fmt.Errorf("can not create container runner: %w", err)
-	}
-
-	if err = env.runner.RunContainers(skeletons); err != nil {
-		return env, err
-	}
-
-	for _, skeleton := range skeletons {
-		if component, err = buildComponent(config, logger, skeleton); err != nil {
-			return env, fmt.Errorf("can not build component %s: %w", skeleton.id(), err)
-		}
-
-		component.SetT(t)
-		components.Add(skeleton.typ, skeleton.name, component)
-	}
-
-	if err = config.Option(components.GetCfgOptions()...); err != nil {
-		return nil, fmt.Errorf("can not apply cfg options from components: %w", err)
-	}
-
-	env.components = components
-
-	return env, nil
+	return nil
 }
 
 func (e *Environment) addComponentOption(opt ComponentOption) {

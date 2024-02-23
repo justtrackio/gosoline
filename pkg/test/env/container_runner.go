@@ -262,7 +262,7 @@ func (r *containerRunner) createExternalContainer(containerName, skeletonTyp str
 }
 
 func (r *containerRunner) runNewContainer(containerName string, skeleton *componentSkeleton, name string, config *containerConfig) (*container, error) {
-	r.logger.Debug("run container %s %s", skeleton.typ, containerName)
+	r.logger.Debug("run container %s %s:%s %s", skeleton.typ, config.Repository, config.Tag, containerName)
 
 	bindings := make(map[docker.Port][]docker.PortBinding)
 

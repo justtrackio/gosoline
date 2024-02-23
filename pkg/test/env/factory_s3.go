@@ -38,8 +38,7 @@ func (f *s3Factory) Detect(config cfg.Config, manager *ComponentsConfigManager) 
 	}
 
 	settings := &s3Settings{}
-	config.UnmarshalDefaults(settings)
-
+	UnmarshalSettings(config, settings, componentS3, "default")
 	settings.Type = componentS3
 
 	if err := manager.Add(settings); err != nil {
@@ -68,8 +67,8 @@ func (f *s3Factory) configureContainer(settings interface{}) *containerConfig {
 	s := settings.(*s3Settings)
 
 	return &containerConfig{
-		Repository: "minio/minio",
-		Tag:        "RELEASE.2023-03-09T23-16-13Z",
+		Repository: s.Image.Repository,
+		Tag:        s.Image.Tag,
 		Cmd: []string{
 			"server",
 			"/data",
