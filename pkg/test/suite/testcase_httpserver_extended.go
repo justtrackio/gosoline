@@ -10,6 +10,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func init() {
@@ -26,10 +27,13 @@ type HttpserverTestCase struct {
 	// Body will be used as the request body. Supported request body data types is `string`,
 	// `[]byte`, `struct`, `map`, `slice` and `io.Reader`. Body value can be pointer or non-pointer.
 	// Automatic marshalling for JSON and XML content type, if it is `struct`, `map`, or `slice`.
+	//
+	// If you call EncodeBodyProtobuf on your body before assigning it to this field, it will instead be
+	// encoded using protobuf.
+	//
+	// To send the contents of a file, you can use ReadBodyFile and assign the result to this field. The
+	// test suite will read the file contents and send it as your request.
 	Body interface{}
-	// BodyFile can be used to read the content of the request body from a file. If set, it will overwrite
-	// the Body field.
-	BodyFile string
 	// ExpectedStatusCode describes the status code the last response is required to have.
 	ExpectedStatusCode int
 	// ExpectedRedirectsToFollow describes the number of redirects we want to follow. It is an error if less redirects
@@ -52,6 +56,30 @@ type HttpserverTestCase struct {
 	AssertResultFile string
 }
 
+type ProtobufEncodable interface {
+	ToMessage() (proto.Message, error)
+}
+
+type encodeBodyProtobuf struct {
+	ProtobufEncodable
+}
+
+func EncodeBodyProtobuf(body ProtobufEncodable) any {
+	return encodeBodyProtobuf{
+		ProtobufEncodable: body,
+	}
+}
+
+type readBodyFile struct {
+	file string
+}
+
+func ReadBodyFile(bodyFile string) any {
+	return readBodyFile{
+		file: bodyFile,
+	}
+}
+
 func (c HttpserverTestCase) request(client *resty.Client) (*resty.Response, error) {
 	req := client.R()
 
@@ -60,16 +88,29 @@ func (c HttpserverTestCase) request(client *resty.Client) (*resty.Response, erro
 	}
 
 	if c.Body != nil {
-		req.SetBody(c.Body)
-	}
+		switch body := c.Body.(type) {
+		case encodeBodyProtobuf:
+			msg, err := body.ToMessage()
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert body to message: %w", err)
+			}
 
-	if c.BodyFile != "" {
-		bytes, err := os.ReadFile(c.BodyFile)
-		if err != nil {
-			return nil, fmt.Errorf("can not read body from file %q: %w", c.BodyFile, err)
+			bytes, err := proto.Marshal(msg)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal message as protobuf: %w", err)
+			}
+
+			req.SetBody(bytes)
+		case readBodyFile:
+			bytes, err := os.ReadFile(body.file)
+			if err != nil {
+				return nil, fmt.Errorf("can not read body from file %q: %w", body.file, err)
+			}
+
+			req.SetBody(bytes)
+		default:
+			req.SetBody(c.Body)
 		}
-
-		req.SetBody(bytes)
 	}
 
 	if c.ExpectedResult != nil {

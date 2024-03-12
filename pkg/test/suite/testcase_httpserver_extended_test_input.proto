@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+option go_package = "suite/testdata";
+
+message TestInput {
+  string text = 1;
+}
