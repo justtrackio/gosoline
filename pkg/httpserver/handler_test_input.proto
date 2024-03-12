@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+option go_package = "httpserver/testdata";
+
+message ProtobufInput {
+  string text = 1;
+}

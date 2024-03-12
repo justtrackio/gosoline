@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+option go_package = "httpserver/testdata";
+
+message ProtobufOutput {
+  // have some slightly different format from out input
+  reserved 1;
+  reserved 2;
+  string text = 3;
+}

@@ -16,12 +16,14 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
-	ApiViewKey      = "X-Api-View"
-	ContentTypeHtml = "text/html; charset=utf-8"
-	ContentTypeJson = "application/json; charset=utf-8"
+	ApiViewKey          = "X-Api-View"
+	ContentTypeHtml     = "text/html; charset=utf-8"
+	ContentTypeJson     = "application/json; charset=utf-8"
+	ContentTypeProtobuf = "application/x-protobuf"
 )
 
 var ErrAccessForbidden = errors.New("cant access resource")
@@ -78,6 +80,25 @@ func NewJsonResponse(body interface{}) *Response {
 		Body:        body,
 		Header:      make(http.Header),
 	}
+}
+
+func NewProtobufResponse(body ProtobufEncodable) (*Response, error) {
+	message, err := body.ToMessage()
+	if err != nil {
+		return nil, fmt.Errorf("failed to transform body to protobuf message: %w", err)
+	}
+
+	bytes, err := proto.Marshal(message)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode body as protobuf message: %w", err)
+	}
+
+	return &Response{
+		StatusCode:  http.StatusOK,
+		ContentType: mdl.Box(ContentTypeProtobuf),
+		Body:        bytes,
+		Header:      make(http.Header),
+	}, nil
 }
 
 func NewRedirectResponse(url string) *Response {
@@ -146,6 +167,10 @@ func CreateHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 
 func CreateJsonHandler(handler HandlerWithInput) gin.HandlerFunc {
 	return handleWithInput(handler, binding.JSON, defaultErrorHandler)
+}
+
+func CreateProtobufHandler(handler HandlerWithInput) gin.HandlerFunc {
+	return handleWithInput(handler, protobufBinding, defaultErrorHandler)
 }
 
 func CreateMultiPartFormHandler(handler HandlerWithInput) gin.HandlerFunc {
