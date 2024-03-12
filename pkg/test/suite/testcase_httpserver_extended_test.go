@@ -2,16 +2,20 @@ package suite_test
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"sync/atomic"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
+	"github.com/justtrackio/gosoline/pkg/test/suite/testdata"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 type GatewayTestSuite struct {
@@ -19,10 +23,32 @@ type GatewayTestSuite struct {
 	totalTests int32
 }
 
+//go:generate protoc --go_out=.. testcase_httpserver_extended_test_input.proto
+type TestInput struct {
+	Text string `json:"text" binding:"required"`
+}
+
+func (p *TestInput) ToMessage() (proto.Message, error) {
+	return &testdata.TestInput{
+		Text: p.Text,
+	}, nil
+}
+
+func (p *TestInput) EmptyMessage() proto.Message {
+	return &testdata.TestInput{}
+}
+
+func (p *TestInput) FromMessage(message proto.Message) error {
+	input := message.(*testdata.TestInput)
+	p.Text = input.GetText()
+
+	return nil
+}
+
 func TestGatewayTestSuite(t *testing.T) {
 	var s GatewayTestSuite
 	suite.Run(t, &s)
-	assert.Equal(t, int32(5), s.totalTests)
+	assert.Equal(t, int32(6), s.totalTests)
 }
 
 func (s *GatewayTestSuite) SetupSuite() []suite.Option {
@@ -34,7 +60,18 @@ func (s *GatewayTestSuite) SetupSuite() []suite.Option {
 
 func (s *GatewayTestSuite) SetupApiDefinitions() httpserver.Definer {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (*httpserver.Definitions, error) {
-		return &httpserver.Definitions{}, nil
+		d := &httpserver.Definitions{}
+
+		d.POST("/echo", func(ginCtx *gin.Context) {
+			body, err := io.ReadAll(ginCtx.Request.Body)
+			s.NoError(err)
+
+			contentType := ginCtx.ContentType()
+
+			ginCtx.Data(http.StatusOK, contentType, body)
+		})
+
+		return d, nil
 	}
 }
 
@@ -49,7 +86,8 @@ func (s *GatewayTestSuite) TestSkipped() *suite.HttpserverTestCase {
 func (s *GatewayTestSuite) TestMultipleTests() []*suite.HttpserverTestCase {
 	return []*suite.HttpserverTestCase{
 		s.createTestCase(),
-		s.createTestCase(),
+		s.createProtobufTestCase(),
+		s.createFileTestCase(),
 	}
 }
 
@@ -57,7 +95,7 @@ func (s *GatewayTestSuite) TestMultipleTestsWithNil() []*suite.HttpserverTestCas
 	return []*suite.HttpserverTestCase{
 		s.createTestCase(),
 		nil,
-		s.createTestCase(),
+		s.createFileTestCase(),
 	}
 }
 
@@ -71,6 +109,54 @@ func (s *GatewayTestSuite) createTestCase() *suite.HttpserverTestCase {
 		Assert: func(response *resty.Response) error {
 			// language=JSON
 			expectedResponse := `{}`
+			s.JSONEq(expectedResponse, string(response.Body()))
+			atomic.AddInt32(&s.totalTests, 1)
+
+			return nil
+		},
+	}
+}
+
+func (s *GatewayTestSuite) createProtobufTestCase() *suite.HttpserverTestCase {
+	return &suite.HttpserverTestCase{
+		Method:  http.MethodPost,
+		Url:     "/echo",
+		Headers: map[string]string{},
+		Body: suite.EncodeBodyProtobuf(&TestInput{
+			Text: "hello, world",
+		}),
+		ExpectedStatusCode: http.StatusOK,
+		Assert: func(response *resty.Response) error {
+			body := &TestInput{}
+			msg := body.EmptyMessage()
+
+			err := proto.Unmarshal(response.Body(), msg)
+			s.NoError(err)
+
+			err = body.FromMessage(msg)
+			s.NoError(err)
+
+			expectedResponse := &TestInput{
+				Text: "hello, world",
+			}
+			s.Equal(expectedResponse, body)
+			atomic.AddInt32(&s.totalTests, 1)
+
+			return nil
+		},
+	}
+}
+
+func (s *GatewayTestSuite) createFileTestCase() *suite.HttpserverTestCase {
+	return &suite.HttpserverTestCase{
+		Method:             http.MethodPost,
+		Url:                "/echo",
+		Headers:            map[string]string{},
+		Body:               suite.ReadBodyFile("testdata/hello world.json"),
+		ExpectedStatusCode: http.StatusOK,
+		Assert: func(response *resty.Response) error {
+			// language=JSON
+			expectedResponse := `{"text": "hello, world"}`
 			s.JSONEq(expectedResponse, string(response.Body()))
 			atomic.AddInt32(&s.totalTests, 1)
 
