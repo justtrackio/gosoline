@@ -1,6 +1,8 @@
 package httpserver
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,14 +11,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func HttpTest(method string, path string, requestPath string, body string, handler gin.HandlerFunc, requestOptions ...func(r *http.Request)) *httptest.ResponseRecorder {
+type HttpBody interface {
+	string | []byte
+}
+
+func HttpTest[Body HttpBody](method string, path string, requestPath string, body Body, handler gin.HandlerFunc, requestOptions ...func(r *http.Request)) *httptest.ResponseRecorder {
 	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.New()
 	r.Use(location.Default())
 	r.Handle(method, path, handler)
 
-	bodyReader := strings.NewReader(body)
+	var bodyReader io.Reader
+	switch value := any(body).(type) {
+	case string:
+		bodyReader = strings.NewReader(value)
+	case []byte:
+		bodyReader = bytes.NewReader(value)
+	}
+
 	request, _ := http.NewRequest(method, requestPath, bodyReader)
 	for _, opt := range requestOptions {
 		opt(request)

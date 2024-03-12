@@ -4,10 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/go-http-utils/headers"
+	"github.com/justtrackio/gosoline/pkg/encoding/base64"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
+	"github.com/justtrackio/gosoline/pkg/httpserver/testdata"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 type Input struct {
@@ -39,6 +44,48 @@ func (h JsonHandler) Handle(_ context.Context, request *httpserver.Request) (*ht
 	}
 
 	return httpserver.NewJsonResponse(out), nil
+}
+
+type ProtobufHandler struct{}
+
+//go:generate protoc --go_out=.. handler_test_input.proto
+type ProtobufInput struct {
+	Text string `json:"text" binding:"required"`
+}
+
+func (p *ProtobufInput) EmptyMessage() proto.Message {
+	return &testdata.ProtobufInput{}
+}
+
+func (p *ProtobufInput) FromMessage(message proto.Message) error {
+	input := message.(*testdata.ProtobufInput)
+	p.Text = input.GetText()
+
+	return nil
+}
+
+//go:generate protoc --go_out=.. handler_test_output.proto
+type ProtobufOutput struct {
+	Text string `json:"text" binding:"required"`
+}
+
+func (p *ProtobufOutput) ToMessage() (proto.Message, error) {
+	return &testdata.ProtobufOutput{
+		Text: p.Text,
+	}, nil
+}
+
+func (h ProtobufHandler) GetInput() interface{} {
+	return &ProtobufInput{}
+}
+
+func (h ProtobufHandler) Handle(_ context.Context, request *httpserver.Request) (*httpserver.Response, error) {
+	inp := request.Body.(*ProtobufInput)
+	out := &ProtobufOutput{
+		Text: inp.Text,
+	}
+
+	return httpserver.NewProtobufResponse(out)
 }
 
 type RedirectHandler struct{}
@@ -76,6 +123,48 @@ func TestCreateIoHandler(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	assert.Equal(t, `{"text":"foobar"}`, response.Body.String())
+}
+
+func TestCreateProtobufHandler(t *testing.T) {
+	body, err := base64.DecodeString("CgxoZWxsbywgd29ybGQ=")
+	assert.NoError(t, err)
+
+	expectedBody, err := base64.DecodeString("GgxoZWxsbywgd29ybGQ=")
+	assert.NoError(t, err)
+
+	handler := httpserver.CreateProtobufHandler(ProtobufHandler{})
+	response := httpserver.HttpTest("PUT", "/action", "/action", body, handler)
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Equal(t, expectedBody, response.Body.Bytes())
+	assert.Equal(t, "application/x-protobuf", response.Header().Get(headers.ContentType))
+}
+
+func TestCreateProtobufHandler_NonProtobufInput(t *testing.T) {
+	// random data as input
+	body, err := base64.DecodeString("QQXEwryfXVgG6GZHz49VMauad7fYFRgSVAYzavgZefCxkHtC7oCmcwI3L512w4te")
+	assert.NoError(t, err)
+
+	handler := httpserver.CreateProtobufHandler(ProtobufHandler{})
+	response := httpserver.HttpTest("PUT", "/action", "/action", body, handler)
+
+	// replace all non-breaking spaces in the error message, protobuf introduces them to discourage us from comparing error messages
+	responseBody := strings.ReplaceAll(response.Body.String(), "\u00a0", " ")
+
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	assert.Equal(t, `{"err":"proto: cannot parse invalid wire-format data"}`, responseBody)
+}
+
+func TestCreateProtobufHandler_InvalidInput(t *testing.T) {
+	// empty data as input (doesn't match our required tag)
+	body, err := base64.DecodeString("CgA=")
+	assert.NoError(t, err)
+
+	handler := httpserver.CreateProtobufHandler(ProtobufHandler{})
+	response := httpserver.HttpTest("PUT", "/action", "/action", body, handler)
+
+	assert.Equal(t, http.StatusBadRequest, response.Code)
+	assert.Equal(t, `{"err":"Key: 'ProtobufInput.Text' Error:Field validation for 'Text' failed on the 'required' tag"}`, response.Body.String())
 }
 
 func TestRedirectHandler(t *testing.T) {
