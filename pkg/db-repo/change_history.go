@@ -3,22 +3,56 @@ package db_repo
 import (
 	"context"
 	"fmt"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"time"
+
+	"github.com/jinzhu/gorm"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+const (
+	changeHistoryAuthorField  = "change_history_author_id"
+	sqlSetChangeHistoryAuthor = "SET @" + changeHistoryAuthorField + " := ?"
+)
+
+type ChangeAuthorAware interface {
+	SetChangeAuthor(authorId uint)
+}
+
+type ChangeHistoryEmbeddable struct {
+	ChangeHistoryAuthorId *uint `gorm:"column:change_history_author_id"`
+}
+
+func (c *ChangeHistoryEmbeddable) SetChangeAuthor(authorId uint) {
+	c.ChangeHistoryAuthorId = mdl.Box(authorId)
+}
+
+func (c *ChangeHistoryEmbeddable) BeforeCreate(tx *gorm.DB) error {
+	return tx.Exec(sqlSetChangeHistoryAuthor, c.ChangeHistoryAuthorId).Error
+}
+
+func (c *ChangeHistoryEmbeddable) BeforeUpdate(tx *gorm.DB) error {
+	return tx.Exec(sqlSetChangeHistoryAuthor, c.ChangeHistoryAuthorId).Error
+}
+
+func (c *ChangeHistoryEmbeddable) BeforeDelete(tx *gorm.DB) error {
+	return tx.Exec(sqlSetChangeHistoryAuthor, c.ChangeHistoryAuthorId).Error
+}
+
 type ChangeHistoryModelBased interface {
 	GetHistoryAction() string
 	GetHistoryActionAt() time.Time
 	GetHistoryRevision() int
+	GetHistoryAuthorId() int
 }
 
 type ChangeHistoryModel struct {
 	ChangeHistoryAction   string    `sql:"type: VARCHAR(8) NOT NULL DEFAULT 'insert'"`
 	ChangeHistoryActionAt time.Time `gorm:"default:CURRENT_TIMESTAMP"`
 	ChangeHistoryRevision int       `gorm:"primary_key"`
+	ChangeHistoryAuthorId int       `gorm:"column:change_history_author_id"`
 }
 
 func (c *ChangeHistoryModel) GetHistoryAction() string {
@@ -31,6 +65,10 @@ func (c *ChangeHistoryModel) GetHistoryActionAt() time.Time {
 
 func (c *ChangeHistoryModel) GetHistoryRevision() int {
 	return c.ChangeHistoryRevision
+}
+
+func (c *ChangeHistoryModel) GetHistoryAuthorId() int {
+	return c.ChangeHistoryAuthorId
 }
 
 func MigrateChangeHistory(ctx context.Context, config cfg.Config, logger log.Logger, models ...ModelBased) error {

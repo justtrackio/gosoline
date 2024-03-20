@@ -16,8 +16,7 @@ import (
 )
 
 type changeHistoryManagerSettings struct {
-	ChangeAuthorField string `cfg:"change_author_column"`
-	TableSuffix       string `cfg:"table_suffix" default:"history"`
+	TableSuffix string `cfg:"table_suffix" default:"history"`
 }
 
 type ChangeHistoryManager struct {
@@ -27,10 +26,10 @@ type ChangeHistoryManager struct {
 	models   []ModelBased
 }
 
-type changeHistoryManagerAppctxKey int
+type changeHistoryManagerAppCtxKey int
 
 func ProvideChangeHistoryManager(ctx context.Context, config cfg.Config, logger log.Logger) (*ChangeHistoryManager, error) {
-	return appctx.Provide(ctx, changeHistoryManagerAppctxKey(0), func() (*ChangeHistoryManager, error) {
+	return appctx.Provide(ctx, changeHistoryManagerAppCtxKey(0), func() (*ChangeHistoryManager, error) {
 		return NewChangeHistoryManager(config, logger)
 	})
 }
@@ -187,7 +186,10 @@ func (c *ChangeHistoryManager) buildOriginalTableMetadata(model ModelBased) *tab
 func (c *ChangeHistoryManager) buildHistoryTableMetadata(model ModelBased, originalTable *tableMetadata) *tableMetadata {
 	historyScope := c.orm.NewScope(ChangeHistoryModel{})
 	tableName := fmt.Sprintf("%s_%s", originalTable.tableName, c.settings.TableSuffix)
-	modelFields := c.orm.NewScope(model).GetModelStruct().StructFields
+	modelFields := funk.Filter(c.orm.NewScope(model).GetModelStruct().StructFields, func(field *gorm.StructField) bool {
+		// filter out history author id, it may be added twice; once by ChangeAuthorEmbeddable, once by HistoryEmbeddable
+		return field.DBName != changeHistoryAuthorField
+	})
 	fields := append(historyScope.GetModelStruct().StructFields, modelFields...)
 
 	return newTableMetadata(historyScope, tableName, fields)
@@ -225,20 +227,20 @@ func (c *ChangeHistoryManager) createHistoryTriggers(originalTable *tableMetadat
 		fmt.Sprintf(`CREATE TRIGGER %s_ai AFTER INSERT ON %s FOR EACH ROW %s WHERE %s`,
 			originalTable.tableName,
 			originalTable.tableNameQuoted,
-			c.insertHistoryEntry(originalTable, historyTable, "insert", true),
+			c.insertHistoryEntry(originalTable, historyTable, "insert"),
 			c.primaryKeysMatchCondition(originalTable, NewRecord),
 		),
 		fmt.Sprintf(`CREATE TRIGGER %s_au AFTER UPDATE ON %s FOR EACH ROW %s WHERE %s AND (%s)`,
 			originalTable.tableName,
 			originalTable.tableNameQuoted,
-			c.insertHistoryEntry(originalTable, historyTable, "update", true),
+			c.insertHistoryEntry(originalTable, historyTable, "update"),
 			c.primaryKeysMatchCondition(originalTable, NewRecord),
 			c.rowUpdatedCondition(originalTable),
 		),
 		fmt.Sprintf(`CREATE TRIGGER %s_bd BEFORE DELETE ON %s FOR EACH ROW %s WHERE %s`,
 			originalTable.tableName,
 			originalTable.tableNameQuoted,
-			c.insertHistoryEntry(originalTable, historyTable, "delete", false),
+			c.insertHistoryEntry(originalTable, historyTable, "delete"),
 			c.primaryKeysMatchCondition(originalTable, OldRecord),
 		),
 		fmt.Sprintf(`CREATE TRIGGER %s_revai BEFORE INSERT ON %s FOR EACH ROW %s`,
@@ -251,14 +253,11 @@ func (c *ChangeHistoryManager) createHistoryTriggers(originalTable *tableMetadat
 	return statements
 }
 
-func (c *ChangeHistoryManager) insertHistoryEntry(originalTable *tableMetadata, historyTable *tableMetadata, action string, includeAuthorEmail bool) string {
-	columnNames := originalTable.columnNamesQuoted()
-	if !includeAuthorEmail {
-		columnNames = originalTable.columnNamesQuotedExcludingValue(c.settings.ChangeAuthorField)
-	}
+func (c *ChangeHistoryManager) insertHistoryEntry(originalTable *tableMetadata, historyTable *tableMetadata, action string) string {
+	columnNames := originalTable.columnNamesQuotedExcludingValue(changeHistoryAuthorField)
 
-	columns := strings.Join(columnNames, ",")
-	values := "d." + strings.Join(columnNames, ", d.")
+	columns := strings.Join(columnNames, ",") + ",`change_history_author_id`"
+	values := "d." + strings.Join(columnNames, ", d.") + ", @change_history_author_id"
 
 	return fmt.Sprintf(`
 		INSERT INTO %s (change_history_action,change_history_revision,change_history_action_at,%s) 
@@ -291,7 +290,7 @@ func (c *ChangeHistoryManager) primaryKeysMatchCondition(originalTable *tableMet
 }
 
 func (c *ChangeHistoryManager) rowUpdatedCondition(originalTable *tableMetadata) string {
-	columnNames := originalTable.columnNamesQuotedExcludingValue(c.settings.ChangeAuthorField, ColumnUpdatedAt)
+	columnNames := originalTable.columnNamesQuotedExcludingValue(changeHistoryAuthorField, ColumnUpdatedAt)
 	var conditions []string
 	for _, columnName := range columnNames {
 		condition := fmt.Sprintf("NOT (OLD.%s <=> NEW.%s)", columnName, columnName)
