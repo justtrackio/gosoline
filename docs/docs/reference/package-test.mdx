@@ -32,7 +32,7 @@ type TestingSuite interface {
 
 #### Description
 
-This is the starting point for a gosoline integration test. This performs the following steps: 
+This is the starting point for a Gosoline integration test. This performs the following steps: 
 
 1. Uses reflection to find all test cases declared by a given `TestSuite`.
 2. Applies each of the `extraOptions`.
@@ -40,12 +40,13 @@ This is the starting point for a gosoline integration test. This performs the fo
 4. Runs the tests.
 
 ## Configuration
-Test components are docker container like wiremock or localstack which support you in your integration tests to mock
+Test components are docker container like `wiremock` or `localstack` which support you in your integration tests to mock
 your applications infrastructure.
 
-#### image configuration
+#### Image configuration
+
 The used image for a component can be configured on a global and on a per component level. The following configuration
-snipped shows a config for two wiremock components. **mockA** gets the image configuration from the global level which is
+snipped shows a configuration for two `wiremock` components. **mockA** gets the image configuration from the global level which is
 configured via the key `test.defaults.images.wiremock` and **mockB** has local configuration. With this, **mockA** gets
 tag `3.4.0` and **mockB** gets `3.3.0`.
 

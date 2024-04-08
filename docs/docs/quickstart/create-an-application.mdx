@@ -11,7 +11,7 @@ import Output from "!!raw-loader!./src/create-an-application/output.txt";
 
 # Create an application
 
-For running a simple gosoline application we use the following 3 files:
+For running a simple Gosoline application we use the following 3 files:
 
 - `module.go` → kernel module with business logic
 - `config.dist.yml` → base configuration file
@@ -19,7 +19,7 @@ For running a simple gosoline application we use the following 3 files:
 
 ## Create the kernel module
 The kernel module contains the actual application logic. The `HelloWorldModule` struct has to implement the
-`kernel.Module` interface. The func `NewHelloWorldModule` is of the type `kernel.ModuleFactory` and is used to add
+`kernel.Module` interface. The function `NewHelloWorldModule()` is of the type `kernel.ModuleFactory` and is used to add
 the module to the application.
 
 <CodeBlock showLineNumbers language="go" title="module.go">{Module}</CodeBlock>
@@ -30,9 +30,10 @@ In the main function, we're running the application by adding the `HelloWorldMod
 
 <CodeBlock showLineNumbers language="go" title="main.go">{Main}</CodeBlock>
 
-## Create the config file
-The last missing piece for a minimal gosoline application is the default config file which is distributed with the
-application. For a minimal version it has at least the application identifiers and enviroment value.
+## Create the configuration file
+
+The last missing piece for a minimal Gosoline application is the default configuration file which is distributed with the
+application. For a minimal version it has at least the application identifiers and environment value.
 
 <CodeBlock showLineNumbers language="yaml" title="config.dist.yml">{ConfigDist}</CodeBlock>
 

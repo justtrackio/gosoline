@@ -2,13 +2,13 @@
 title: Package log
 ---
 
-# log package
+# `log` package
 
-The gosoline logger is based upon a simple interface that uses handlers internally to enable fully customizable log handling.
+The Gosoline logger is based upon a simple interface that uses handlers internally to enable fully customizable log handling.
 
 ## Function
 
-### [NewLogger()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L91)
+### [`NewLogger()`](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L91)
 
 #### Usage
 
@@ -20,7 +20,7 @@ logger := log.NewLoggerWithInterfaces(myClock, []log.Handler{handler1, handler2}
 
 Create a logger with with no handlers and a real time clock. This provides an extended interface, including the `Option(opt ...Option) error` function to change the behaviour of the logger.
 
-### [NewLoggerWithInterfaces()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L95)
+### [`NewLoggerWithInterfaces()`](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L95)
 
 #### Usage
 
@@ -144,7 +144,7 @@ print(localFields["field"])
 
 ## Methods
 
-### [Debug()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L119)
+### [`Debug()`](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/logger.go#L119)
 
 ```go
 logger.Debug("Message")
@@ -186,7 +186,7 @@ logger.Error("Message")
 
 </details>
 
-### [WithContextFieldsResolver()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/options.go#L5)
+### [`WithContextFieldsResolver()`](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/options.go#L5)
 
 #### Usage
 
@@ -200,7 +200,7 @@ if err := logger.Option(log.WithContextFieldsResolver(log.ContextFieldsResolver)
 
 Adds a context fields resolver to the logger.
 
-### [WithFields()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/options.go#L13)
+### [`WithFields()`](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/options.go#L13)
 
 #### Usage
 
@@ -214,7 +214,7 @@ loggerWithFields := logger.WithFields(log.Fields{
 
 Adds global fields to the logger, which will be set on every log message.
 
-### [WithHandlers()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/options.go#L21)
+### [`WithHandlers()`](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/options.go#L21)
 
 #### Usage
 
@@ -231,7 +231,7 @@ Adds additional handlers to the logger.
 
 ## Interfaces
 
-### [Handler](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/handler.go#L10)
+### [`Handler`](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/log/handler.go#L10)
 
 #### Definition
 
@@ -250,27 +250,27 @@ type Handler interface {
 
 ## Log configurations
 
-| setting | description | default |
-|---|---|---|
-| log.level | default level for all handlers without an explicit level value | info |
-| log.handlers | a map of handlers that will be called for every log message | every logger gets a 'main' handler by default if there is no other handler defined |
-| log.handlers.X.type | defines the type of the handler | - |
+| setting             | description                                                    | default                                                                            |
+| ------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| log.level           | default level for all handlers without an explicit level value | info                                                                               |
+| log.handlers        | a map of handlers that will be called for every log message    | every logger gets a 'main' handler by default if there is no other handler defined |
+| log.handlers.X.type | defines the type of the handler                                | -                                                                                  |
 
 ## Built-in handlers
 
 Gosoline has a couple of built-in handlers, which are ready to use out of the box:
 
-### iowriter
+### `iowriter`
 
-Multitool, which is able to write logs to everything which implements the `io.Writer` interface. Config options are:
+`Multitool`, which is able to write logs to everything which implements the `io.Writer` interface. Configuration options are:
 
-| Setting          | Description                                                        | Default      |
-|------------------|--------------------------------------------------------------------|--------------|
-| level            | Levels of this and higher priority will get logged                 | info         |
-| channels         | Messages logged into these channels will be handled                | []           |
-| formatter        | Which format should be used by this handler                        | console      |
-| timestamp_format | A golang time format string to control the format of the timestamp | 15:04:05.000 |
-| writer           | Which io.writer implementation to use                              | stdout       |
+| Setting            | Description                                                        | Default      |
+| ------------------ | ------------------------------------------------------------------ | ------------ |
+| `level`            | Levels of this and higher priority will get logged                 | `info`         |
+| `channels`         | Messages logged into these channels will be handled                | `[]`           |
+| `formatter`        | Which format should be used by this handler                        | `console`      |
+| `timestamp_format` | A Golang time format string to control the format of the timestamp | `15:04:05.000` |
+| `writer`           | Which io.writer implementation to use                              | `stdout`       |
 
 #### Log to STDOUT
 

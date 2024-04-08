@@ -15,11 +15,11 @@ A common REST API structure provides methods for users to **create**, **read**, 
 - Create an HTTP server that provides these CRUD methods
 - Implement logic that interfaces with a MySQL backend
 
-Specifically, users of your service will be able create, read, update, and delete todos, such as you might use for a "To do list".
+Specifically, users of your service will be able create, read, update, and delete `todo` objects, such as you might use for a "To do list".
 
 ## Before you begin
 
-While this tutorial requires no prior code, it is an intermediate gosoline tutorial and, therefore, skips some explanations. To understand the logic in this tutorial, you should have already completed at least one of the following tutorials first:
+While this tutorial requires no prior code, it's an intermediate Gosoline tutorial and, therefore, skips some explanations. To understand the logic in this tutorial, you should have already completed at least one of the following tutorials first:
 
 - [Create an HTTP server](/quickstart/http-server/create-an-http-server)
 - [Create a money exchange app](/quickstart/http-server/create-a-money-exchange-app)
@@ -62,7 +62,7 @@ touch config.dist.yml
 touch main.go
 ```
 
-Those are all the files you need to build your CRUD service with gosoline! Next, you'll implement each of these files, starting with `handler.go`.
+Those are all the files you need to build your CRUD service with Gosoline! Next, you'll implement each of these files, starting with `handler.go`.
 
 ## Implement handler.go
 
@@ -76,7 +76,7 @@ In `handler.go`, add the following code:
 
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 ### Import dependencies
 
@@ -84,19 +84,19 @@ At the top of `handler.go`, you declared the package and imported some dependenc
 
 <CodeBlock title="handler.go" language="go" snippet="imports">{Handler}</CodeBlock>
 
-Here, you declared the package as `main`. Then, you imported the `context`, `fmt`, and `time` modules along with several gosoline dependencies.
+Here, you declared the package as `main`. Then, you imported the `context`, `fmt`, and `time` modules along with several Gosoline dependencies.
 
 ### Define your database settings
 
-In this tutorial, you use a MySQL database to manage todo records. So, you first defined the settings for the data:
+In this tutorial, you use a MySQL database to manage `todo` records. So, you first defined the settings for the data:
 
 <CodeBlock title="handler.go" language="go" snippet="settings">{Handler}</CodeBlock>
 
 These settings include a model name, table name, and primary key.
 
-### Define your Todo struct
+### Define your `Todo` struct
 
-Next, you defined a structure to model your todos:
+Next, you defined a structure to model your `todo` objects:
 
 <CodeBlock title="handler.go" language="go" snippet="todo">{Handler}</CodeBlock>
 
@@ -104,7 +104,7 @@ The `Todo` has three values:
 
 - A [database model](https://github.com/justtrackio/gosoline/blob/9b64c30bc4156d16fb1f2d11930f0b686b5d0113/pkg/db-repo/model.go#L17)
 - Some text
-- A due date for the todo
+- A due date for the `todo`
 
 ### Define your input structs
 
@@ -112,7 +112,7 @@ Next, you defined two structures for handling request input:
 
 <CodeBlock title="handler.go" language="go" snippet="create and update">{Handler}</CodeBlock>
 
-When you create a todo, you'll pass the todo's text and a due date. When you update a todo, you'll pass only the text. Here, you defined the structures for parsing and storing that information.
+When you create a `todo`, you'll pass the `todo` object's text and a due date. When you update a `todo`, you'll pass only the text. Here, you defined the structures for parsing and storing that information.
 
 ### Define your `TodoCrudHandler`
 
@@ -194,7 +194,7 @@ In `main.go`, add the following code:
 </p>
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 ### Import dependencies
 
@@ -202,7 +202,7 @@ At the top of `main.go`, you declared the package and imported some dependencies
 
 <CodeBlock title="main.go" language="go" snippet="imports">{Main}</CodeBlock>
 
-Here, you declared the package as `main`. Then, you imported the `context` and `fmt` modules along with several gosoline dependencies.
+Here, you declared the package as `main`. Then, you imported the `context` and `fmt` modules along with several Gosoline dependencies.
 
 ### Implement main()
 
@@ -218,7 +218,7 @@ In `config.dist.yml`, configure your server:
 
 <CodeBlock showLineNumbers language="yaml" title="config.dist.yml">{ConfigDist}</CodeBlock>
 
-Here, you set some minimal configurations for your web server. You also configured your MySQL database, including the migrations you'll run to build a table for your todos. This migration will live in the migrations directory. You'll add this next.
+Here, you set some minimal configurations for your web server. You also configured your MySQL database, including the migrations you'll run to build a table for your `todo` objects. This migration will live in the migrations directory. You'll add this next.
 
 ## Add an initial migration
 
@@ -228,11 +228,11 @@ In `migrations/1_initialize_schema.up.sql`, add a migration that creates a `todo
 
 Here, you created a table, called `todos`, with five columns:
 
-1. `id`: The todo's identifier.
-2. `text`: The todo's text.
-3. `due_date`: The todo's due date.
-4. `updated_at`: The last time the todo was updated.
-5. `created_at`: The time the todo was created.
+1. `id`: The `todo` object's identifier.
+2. `text`: The `todo` object's text.
+3. `due_date`: The `todo` object's due date.
+4. `updated_at`: The last time the `todo` was updated.
+5. `created_at`: The time the `todo` was created.
 
 ## Configure docker-compose
 
@@ -275,37 +275,37 @@ You'll see logs of your server running.
 
 ### Make requests
 
-Finally, in a third shell, make requests to your service. For example, create a todo:
+Finally, in a third shell, make requests to your service. For example, create a `todo`:
 
 ```shell
 curl -d '{"text":"do it!", "dueDate":"2023-09-08T15:00:00Z"}' -H "Content-Type: application/json" -X POST localhost:8080/v0/todo
 ```
 
-View the todo:
+View the `todo`:
 
 ```shell
 curl -X GET localhost:8080/v0/todo/1
 ```
 
-Update the todo:
+Update the `todo`:
 
 ```shell
 curl -d '{"text":"do it!!!"}' -H "Content-Type: application/json" -X PUT localhost:8080/v0/todo/1
 ```
 
-View the todo again to observe the changes:
+View the `todo` again to observe the changes:
 
 ```shell
 curl -X GET localhost:8080/v0/todo/1
 ```
 
-List all todos:
+List all `todo` objects:
 
 ```shell
 curl -d '{}' -X POST localhost:8080/v0/todos
 ```
 
-Delete a todo:
+Delete a `todo`:
 
 ```shell
 curl -X DELETE localhost:8080/v0/todo/1
@@ -323,7 +323,7 @@ CONTAINER ID   IMAGE          COMMAND                  CREATED          STATUS  
 ccf507fd70e4   mysql:8.0.31   "docker-entrypoint.s…"   19 minutes ago   Up 19 minutes   0.0.0.0:3306->3306/tcp, 33060/tcp   write-crud-sql-app-mysql-1
 ```
 
-In this example, the container id is `ccf507fd70e4`, but it'll be different for you.
+In this example, the container ID is `ccf507fd70e4`, but it'll be different for you.
 
 Next, log into `mysql` in the container:
 
@@ -333,7 +333,7 @@ docker exec -it ccf507fd70e4 mysql -u root -p
 
 There are two things to note:
 
-- Use your MySQL container id here instead of `ccf507fd70e4`
+- Use your MySQL container ID here instead of `ccf507fd70e4`
 - Use the password `gosoline`, as you previously defined in `docker-compose.yml`
 
 From the `mysql` console, change to the `gosoline` database:
@@ -362,7 +362,7 @@ curl -d '{"text":"do it!", "dueDate":"2023-09-08T15:00:00Z"}' -H "Content-Type: 
 
 ## Conclusion
 
-And you're done! You've used gosoline to create a fully-fledged CRUD API service, complete with endpoints for:
+And you're done! You've used Gosoline to create a fully-fledged CRUD API service, complete with endpoints for:
 
 - Create
 - Read
@@ -370,4 +370,4 @@ And you're done! You've used gosoline to create a fully-fledged CRUD API service
 - Delete
 - List
 
-You also used docker to host a MySQL database and used a Todo model to handle API inputs and outputs as well as to store data in the table.
+You also used docker to host a MySQL database and used a `Todo` model to handle API inputs and outputs as well as to store data in the table.

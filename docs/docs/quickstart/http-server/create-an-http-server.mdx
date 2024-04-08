@@ -8,9 +8,9 @@ import ConfigDist from "!!raw-loader!./src/create-an-http-server/config.dist.yml
 import Handler from "!!raw-loader!./src/create-an-http-server/handler.go";
 import Main from "!!raw-loader!./src/create-an-http-server/main.go";
 
-One of the primary use cases for gosoline is to create a REST web service. In this tutorial, you'll do just that!
+One of the primary use cases for Gosoline is to create a REST web service. In this tutorial, you'll do just that!
 
-Specifically, you'll use gosoline to create a web service that handles a single endpoint:
+Specifically, you'll use Gosoline to create a web service that handles a single endpoint:
 
 ```http
 GET /todo?id={ID}&text={TODO TEXT}
@@ -18,8 +18,8 @@ GET /todo?id={ID}&text={TODO TEXT}
 
 This endpoint will:
 
-1. Accept the data from the request's querystring
-2. Send a Json response with the `id` and `text` from the request, along with an ISO-formatted creation date and time.
+1. Accept the data from the request's query string
+2. Send a JSON response with the `id` and `text` from the request, along with an ISO-formatted creation date and time.
 
 Here's an example response:
 
@@ -55,7 +55,7 @@ touch main.go
 touch config.dist.yml
 ```
 
-Those are all the files you need to build your web service with gosoline! Next, you'll implement each of these files, starting with `handler.go`.
+Those are all the files you need to build your web service with Gosoline! Next, you'll implement each of these files, starting with `handler.go`.
 
 ## Implement handler.go
 
@@ -69,7 +69,7 @@ In `handler.go`, add the following code:
 </p>
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 ### Import dependencies
 
@@ -77,29 +77,29 @@ At the top of `handler.go`, you declared the package and imported some dependenc
 
 <CodeBlock language="go" title="handler.go" snippet="imports">{Handler}</CodeBlock>
 
-Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with three gosoline dependencies:
+Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with three Gosoline dependencies:
 
 - [`cfg`](/reference/package-cfg)
 - [`httpserver`](/reference/package-httpserver)
 - [`log`](/reference/package-log)
 
-### Define a Todo
+### Define a `Todo`
 
 Next, you created a `Todo` struct:
 
 <CodeBlock language="go" title="handler.go" snippet="todo struct">{Handler}</CodeBlock>
 
-Later in this file, you'll use this to bind the data from the HTTP querystring. Referring back to the specification for your todo service, the expected querystring looks like this:
+Later in this file, you'll use this to bind the data from the HTTP query string. Referring back to the specification for your `todo` service, the expected query string looks like this:
 
 ```http
 ?id={ID}&text={TODO TEXT}
 ```
 
-So, in your struct, you have an `Id` and a `Text`. With the `form:` tag, you've specified the querystring parameter from which to pull the value for these keys.
+So, in your struct, you have an `Id` and a `Text`. With the `form:` tag, you've specified the query string parameter from which to pull the value for these keys.
 
-### Create a TodoHandler
+### Create a `TodoHandler`
 
-Next, you created a struct for handling todos:
+Next, you created a struct for handling `todo` objects:
 
 <CodeBlock language="go" title="handler.go" snippet="todo handler">{Handler}</CodeBlock>
 
@@ -113,17 +113,17 @@ Next, you created a function called `GetInput()` that returns the input instance
 
 This is required because your `TodoHandler` must implement the `GetInput()` method of the `httpserver.HandlerWithInput` interface.
 
-### Handle new todos
+### Handle new `todo` objects
 
 Next, you created a function called `NewTodoHandler()`:
 
 <CodeBlock language="go" title="handler.go" snippet="new todo handler">{Handler}</CodeBlock>
 
-The `config` and `logger` argument types come from gosoline. This function initializes a new `TodoHandler` and assigns it the `logger`. Then, it returns the handler with no error.
+The `config` and `logger` argument types come from Gosoline. This function initializes a new `TodoHandler` and assigns it the `logger`. Then, it returns the handler with no error.
 
 ### Handle requests
 
-Finally, you created a `Handle()` function that accepts a `context.Context` and an `httpserver.Request` (also from gosoline) and handles that request:
+Finally, you created a `Handle()` function that accepts a `context.Context` and an `httpserver.Request` (also from Gosoline) and handles that request:
 
 <CodeBlock language="go" title="handler.go" snippet="handle">{Handler}</CodeBlock>
 
@@ -141,7 +141,7 @@ In `main.go`, add the following code:
 </p>
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 ### Import dependencies
 
@@ -149,7 +149,7 @@ In `main.go`, you declared the package and imported some dependencies:
 
 <CodeBlock language="go" title="main.go" snippet="imports">{Main}</CodeBlock>
 
-Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with four gosoline dependencies:
+Here, you declared the package as `main`. Then, you imported the `context` and `time` modules along with four Gosoline dependencies:
 
 - `application`
 - [`cfg`](/reference/package-cfg)
@@ -174,7 +174,7 @@ In `config.dist.yml`, configure your server:
 
 Here, you set some minimal configurations for your web server. The final step is to test it to confirm that it works as expected.
 
-## Test your gosoline server
+## Test your Gosoline server
 
 From the `todo` directory, start your go module, install the dependencies, and run your server:
 
@@ -200,14 +200,14 @@ You'll get the following output:
 
 ## Conclusion
 
-That's it! You created your first gosoline web service. In this tutorial, you were able to:
+That's it! You created your first Gosoline web service. In this tutorial, you were able to:
 
 - Handle requests
 - Send Json-serialized responses
 - Log information
 - And more...
 
-Check out these resources to learn more about creating web services with gosoline:
+Check out these resources to learn more about creating web services with Gosoline:
 
 - [Create a money exchange app](/quickstart/http-server/create-a-money-exchange-app)
-- [API reference for the httpserver package](/reference/package-httpserver)
+- [API reference for the `httpserver` package](/reference/package-httpserver)

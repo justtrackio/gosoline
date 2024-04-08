@@ -53,7 +53,7 @@ export function PrimaryUseCases() {
             <Card style={{ height: '100%' }}>
                 <CardHeader title="Kernel Module" avatar={<TerminalIcon />} titleTypographyProps={{variant:'h6'}} />
                 <CardContent>                                    
-                    Implement a kernel module with which you can do anything, using gosoline's logging, configuration, and other solutions.
+                    Implement a kernel module with which you can do anything, using Gosoline's logging, configuration, and other solutions.
                 </CardContent>
                 <CardActions>
                     <Button size="small" href="/gosoline/quickstart/create-an-application">Get started</Button>

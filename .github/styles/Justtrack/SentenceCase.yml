@@ -1,0 +1,66 @@
+extends: capitalization
+message: '"%s" should be in sentence case'
+level: warning
+scope: heading
+match: $sentence
+indicators: 
+  - "`"
+exceptions:
+  - AdColony
+  - AdGem
+  - adjoe
+  - API
+  - AppLovin
+  - BitLabs
+  - ChartBoost
+  - CloudWatch
+  - CocoaPods
+  - CPX Research
+  - CSV
+  - DELETE
+  - GET
+  - Google Ads
+  - Gosoline
+  - HTTP
+  - ID
+  - inBrain
+  - ironSource
+  - JtAdClick
+  - JtAdClose
+  - JtAdLoad
+  - JtAdOpen
+  - JtAdShow
+  - JtAdStart
+  - JtAdStop
+  - JtButtonClick
+  - JtButtonShow
+  - JtCardClick
+  - JtCardShow
+  - JtDialogShow
+  - JtLevelFail
+  - JtLevelFinish
+  - JtLevelStart
+  - JtLogin
+  - JtNotificationClick
+  - JtNotificationShow
+  - JtPurchaseOptionClick
+  - JtPurchaseOptionConfirm
+  - JtResourceSink
+  - JtResourceSource
+  - JtScreenShow
+  - JtUserRating
+  - justtrack
+  - MySQL
+  - POST
+  - PUT
+  - Research
+  - Revenue Universe
+  - SDK
+  - SKAdNetwork
+  - STDOUT
+  - Swift Package Manager
+  - TapJoy
+  - TapResearch
+  - URL
+  - URLs
+  - UserEvent

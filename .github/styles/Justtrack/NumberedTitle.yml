@@ -1,0 +1,6 @@
+extends: existence
+message: 'Titles should not start with numbers'
+level: error
+scope: heading
+tokens: 
+  - "^\\d+"

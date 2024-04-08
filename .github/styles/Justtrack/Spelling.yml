@@ -1,0 +1,8 @@
+extends: spelling
+message: '"%s" is misspelled'
+level: error
+ignore:
+  - Justtrack/ignore-general.txt
+  - Justtrack/ignore-industry-terms.txt
+  - Justtrack/ignore-technical-terms.txt
+  - Justtrack/ignore-platforms.txt

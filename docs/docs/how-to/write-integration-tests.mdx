@@ -52,17 +52,17 @@ func (s *ConsumerTestSuite) TestSuccessTwice(app suite.AppUnderTest) {
 
 This test publishes two items into the application's stream input, waits until the application is done, then reads its outputs, and compares them with their expected values.
 
-### Httpserver test case
+### `httpserver` test case
 
 If you want to make a standard API call and read the response, you can use Gosoline's _HttpserverTestCase_. This type of test issues HTTP calls and compares its responses against predefined values and structures. Here's an example:
 
 <CodeBlock title="server_test.go" language="go" snippet="test euro">{ServerTest}</CodeBlock>
 
-Notice the predefined structure of an `HttpserverTestCase`: it is an object that has fields for all the information needed in performing an HTTP call, the expected status code, and a method that tests the result for correctness.
+Notice the predefined structure of an `HttpserverTestCase`: it's an object that has fields for all the information needed in performing an HTTP call, the expected status code, and a method that tests the result for correctness.
 
-In the example from our [HTTP server test tutorial](/quickstart/testing/test-your-http-server) we see two types of test cases (_Httpserver_ and _Httpserver extended_) in the same test suite. In fact, all types of tests can be part of the same test suite.
+In the example from our [HTTP server test tutorial](/quickstart/testing/test-your-http-server) we see two types of test cases (`httpserver` and `httpserver` extended) in the same test suite. In fact, all types of tests can be part of the same test suite.
 
-### Httpserver extended test case
+### `httpserver` extended test case
 
 In the [Test your HTTP server](/quickstart/testing/test-your-http-server) example, we saw the following test:
 
@@ -70,7 +70,7 @@ In the [Test your HTTP server](/quickstart/testing/test-your-http-server) exampl
 
 The `Test_ToEuro` method makes a GET call to an endpoint, in order to receive back the euro exchange value for 10 GBP. Lastly, it checks if the received value is 8.0.
 
-In order to make this GET call `Test_ToEuro` does not need to concern itself about the IP on which the exchange application is running, nor its port. All `Test_ToEuro` needs to know is the URL path of that endpoint, as the _client_ object does the rest.
+In order to make this GET call `Test_ToEuro` doesn't need to concern itself about the IP on which the exchange application is running, nor its port. All `Test_ToEuro` needs to know is the URL path of that endpoint, as the _client_ object does the rest.
 
 This _client_ object is provided by Gosoline, whenever at least one of a test suite's methods has the above signature. The main advantage of the _client_ object is that it allows you to control when requests are executed, and gives you access to the endpoint, by providing the host and port. Therefore, for example, if you want to time your requests, this is the way to go.
 
@@ -78,7 +78,7 @@ This _client_ object is provided by Gosoline, whenever at least one of a test su
 
 Implementing _SetupApiDefinitions_ when configuring your test will inform Gosoline that an API is being tested, thus the _client_ object will contain meaningful data.
 
-Forgetting to implement _SetupApiDefinitions_, and the trying to run an _Httpserver_, or an _Httpserver extended_ test case, will result in an error reminding you that `the suite has to implement the TestingSuiteApiDefinitionsAware interface`.
+Forgetting to implement _SetupApiDefinitions_, and the trying to run an `httpserver`, or an `httpserver` extended test case, will result in an error reminding you that `the suite has to implement the TestingSuiteApiDefinitionsAware interface`.
 
 ### Stream test case
 
@@ -96,7 +96,7 @@ func (s *ConsumerTestSuite) SetupSuite() []suite.Option {
 }
 ```
 
-It is making use of the same `config.dist.yml` file as `stream-consumer`, and it will be using the module created by _consumer.NewConsumer_. A `StreamTestCase` is very similar to an `HttpserverTestCase`:
+It's making use of the same `config.dist.yml` file as `stream-consumer`, and it will be using the module created by _consumer.NewConsumer_. A `StreamTestCase` is very similar to an `HttpserverTestCase`:
 
 ```go
 func (s *ConsumerTestSuite) TestSuccess() *suite.StreamTestCase {
@@ -154,9 +154,9 @@ func (s *SubscriberTestSuite) TestSuccess() (suite.SubscriberTestCase, error) {
 }
 ```
 
-This test will publish an item to an input, stops the application and waits for it to finish, then looks inside a ddd table to see if it was written there.
+This test will publish an item to an input, stops the application and waits for it to finish, then looks inside a `ddb` table to see if it was written there.
 
-## External Dependencies
+## External dependencies
 The test suite supports configuring and launching external dependencies as docker containers via its environment component.
 An overview over supported can be found inside the `test/env` module.
 
@@ -181,11 +181,11 @@ test:
         expire_after: 4m
 ```
 
-We define two components of type ddb (for DynamoDB) and mysql (for a MySql server); additionally we set both their expiration times to four minutes.
+We define two components of type `ddb` (for DynamoDB) and `mysql` (for a MySql server). Additionally, we set both their expiration times to four minutes.
 
 ### Using external container instances
-When booting a container takes some time, or you want to preconfigure it, it can be beneficial to fallback to a already running container instance.
-For this, you need to specify the option `use_external_container` on your component configuration, and provide connection details if they differ from the defaults. Depending on the container runtime, you need to pass host ips and ports explicitly (e.g. for docker, the IP of the bridge gateway as host).
+
+When booting a container takes some time, or you want to pre-configure it, it can be beneficial to fallback to a already running container instance. For this, you need to specify the option `use_external_container` on your component configuration, and provide connection details if they differ from the defaults. Depending on the container runtime, you need to pass host IP addresses and ports explicitly (e.g. for docker, the IP of the bridge gateway as host).
 
 ```yml
 test:

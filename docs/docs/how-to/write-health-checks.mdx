@@ -8,7 +8,7 @@ import Module from "!!raw-loader!./src/health-check/module.go";
 import Main from "!!raw-loader!./src/health-check/main.go";
 import Output from "!!raw-loader!./src/health-check/output.txt";
 
-You can check the health of a running gosoline application. 
+You can check the health of a running Gosoline application. 
 
 In this guide, you'll learn how to:
 
@@ -33,7 +33,7 @@ Here, you:
 2. Establish a timeout for the health check.
 2. Establish a one-second wait interval before checking or re-checking if the app is healthy.
 
-The `kernel.health_check.wait_interval` is used to verify that all modules are healthy. If they are not all healthy by the time the `kernel.health_check.timeout` is reached, the application stops. Once the application is considered healthy on run, the kernel no longer performs its own health checks.
+The `kernel.health_check.wait_interval` is used to verify that all modules are healthy. If they aren't all healthy by the time the `kernel.health_check.timeout` is reached, the application stops. Once the application is considered healthy on run, the kernel no longer performs its own health checks.
 
 Therefore, to check the health of your application once it's running, you need to use the health-check endpoint.
 
@@ -85,7 +85,7 @@ In `module.go`, add the following code:
 </p>
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 First, you declare `healthy`, a boolean to store the health of the module:
 

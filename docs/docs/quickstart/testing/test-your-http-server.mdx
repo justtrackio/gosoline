@@ -64,7 +64,7 @@ touch server_test.go
 touch fixtures.go
 ```
 
-Those are all the files you need to write your web service test with gosoline! Next, you'll implement each of these files, starting with `fixtures.go`.
+Those are all the files you need to write your web service test with Gosoline! Next, you'll implement each of these files, starting with `fixtures.go`.
 
 ## Implement your fixtures
 
@@ -76,7 +76,7 @@ In `fixtures.go`, add the following code:
 
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 ### Import your dependencies
 
@@ -84,7 +84,7 @@ At the top of `fixtures.go`, you declared the package and imported a dependency:
 
 <CodeBlock title="fixtures.go" language="go" snippet="imports">{Fixtures}</CodeBlock>
 
-Here, you declared the package as `main`. Then, you imported one gosoline dependency, `fixtures`.
+Here, you declared the package as `main`. Then, you imported one Gosoline dependency, `fixtures`.
 
 ### Create a fixture set
 
@@ -108,7 +108,7 @@ In `server_test.go`, add the following code:
 
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 ### Tag your test
 
@@ -126,7 +126,7 @@ Next, you declared the package and imported some dependencies:
 
 <CodeBlock title="server_test.go" language="go" snippet="imports">{ServerTest}</CodeBlock>
 
-Here, you declared the package as `main`. Then, you imported several standard modules and gosoline dependencies.
+Here, you declared the package as `main`. Then, you imported several standard modules and Gosoline dependencies.
 
 ### Define your test suite
 
@@ -204,7 +204,7 @@ Here, you:
 
 Gosoline's suite package is meant to make writing integration tests easier and faster. For a web application composed out of many microservices, aim to have at least one integration test for each microservice, ideally one test for every use case.
 
-Check out these resources to learn more about creating and testing HTTP services with gosoline:
+Check out these resources to learn more about creating and testing HTTP services with Gosoline:
 
 - [Create a money exchange app](/quickstart/http-server/create-a-money-exchange-app)
 - [Write integration tests](/how-to/write-integration-tests)

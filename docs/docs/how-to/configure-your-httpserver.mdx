@@ -3,9 +3,9 @@ sidebar_position: 1
 title: Configure your HTTP servers
 ---
 
-With gosoline, you have flexibility in how you define and run your HTTP servers. In this guide, you'll learn multiple ways to do this, so you can choose the option that best meet your needs.
+With Gosoline, you have flexibility in how you define and run your HTTP servers. In this guide, you'll learn multiple ways to do this, so you can choose the option that best meet your needs.
 
-## Default HTTP Server
+## Default HTTP server
 
 To configure and run a single, default HTTP server, configure your server in `config.dist.yml`:
 
@@ -21,7 +21,7 @@ Then, run your server, for example in `main.go`:
 application.RunHttpDefaultServer(definer)
 ```
 
-## Multiple HTTP Servers
+## Multiple HTTP servers
 
 To configure and run multiple servers, configure your servers in `config.dist.yml`:
 
@@ -46,7 +46,7 @@ application.RunHttpServers(map[string]httpserver.Definer{
 
 In this quick guide, you learned multiple ways to configure your HTTP servers.
 
-Check out these resources to learn more about HTTP server configurations and gosoline:
+Check out these resources to learn more about HTTP server configurations and Gosoline:
 
 - [Create an HTTP server](/quickstart/http-server/create-an-http-server)
-- [API reference for the httpserver package](/reference/package-httpserver)
+- [API reference for the `httpserver` package](/reference/package-httpserver)

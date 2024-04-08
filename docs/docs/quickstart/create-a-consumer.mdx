@@ -8,7 +8,7 @@ import ConfigDist from "!!raw-loader!./src/create-a-consumer/config.dist.yml";
 import Consumer from "!!raw-loader!./src/create-a-consumer/consumer.go";
 import Main from "!!raw-loader!./src/create-a-consumer/main.go";
 
-One of the primary use cases for gosoline is to create a message queue consumer. In this tutorial, you'll do just that!
+One of the primary use cases for Gosoline is to create a message queue consumer. In this tutorial, you'll do just that!
 
 To build a consumer of async message queues you'll' implement the `ConsumerCallback` interface of the `stream` package.
 
@@ -38,7 +38,7 @@ touch events.json
 touch config.dist.yml
 ```
 
-Those are all the files you need to build your first consumer with gosoline! Next, you'll implement each of these files, starting with `consumer.go`.
+Those are all the files you need to build your first consumer with Gosoline! Next, you'll implement each of these files, starting with `consumer.go`.
 
 ## Implement consumer.go
 
@@ -52,7 +52,7 @@ In `consumer.go`, add the following code:
 </p>
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 ### Import dependencies
 
@@ -70,7 +70,7 @@ import (
 )
 ```
 
-Here, you declared the package as `main`. Then, you imported the `context` module along with three gosoline dependencies:
+Here, you declared the package as `main`. Then, you imported the `context` module along with three Gosoline dependencies:
 
 - [`cfg`](/reference/package-cfg)
 - [`log`](/reference/package-log)
@@ -95,7 +95,7 @@ type Consumer struct {
 
 You'll use these to: 
 
-1. Bind data from the message queue. Note that you read an `id` and `body` from Json keys.
+1. Bind data from the message queue. Note that you read an `id` and `body` from JSON keys.
 2. Store logger information about your consumer.
 
 ### Implement `Consumer` methods
@@ -148,7 +148,7 @@ In `config.dist.yml`, configure your server:
 
 <CodeBlock showLineNumbers language="yaml" title="config.dist.yml">{ConfigDist}</CodeBlock>
 
-Here, you set some minimal configurations for your web server. By default, the gosoline expects that there is an input configured with the config key `stream.input.consumer`. This defines the input source. In this tutorial, you'll use a file as source with the configured filename, "events.json".
+Here, you set some minimal configurations for your web server. By default, the Gosoline expects that there is an input configured with the configuration key `stream.input.consumer`. This defines the input source. In this tutorial, you'll use a file as source with the configured filename, "events.json".
 
 ## Add your data
 
@@ -179,4 +179,4 @@ In the output, you'll see a log that indicates your consumer handled the event d
 
 ## Conclusion
 
-That's it! You created your first gosoline message queue consumer.
+That's it! You created your first Gosoline message queue consumer.
