@@ -80,6 +80,11 @@ const config = {
           },
         ],
       },
+      algolia: {
+        appId: 'ER8OFD58GM',
+        apiKey: '213984dd6a442d5a2401e35d1c8bb9f5', // This is a public, read-only key
+        indexName: 'gosoline docs',
+      },
       footer: {
         style: 'dark',
         links: [
