@@ -1,6 +1,9 @@
 name: Search index
 
-on: [pull_request]
+on:
+  push:
+    branches:
+      - main
 
 env:
   CONFIG: "../../gosoline/docs/docsearch-config.json"
@@ -14,7 +17,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: gosoline
-          ref: '678863eabc48b1f2ab309029a678493c2a943fcb'
       - name: Clone docsearch scraper
         uses: actions/checkout@v4
         with:
