@@ -1,0 +1,179 @@
+---
+sidebar_position: 3
+title: Use context with logs
+---
+
+import { CodeBlock } from '../components.jsx';
+import Handler from "!!raw-loader!./src/log-context/handler.go";
+
+The [go Context](https://pkg.go.dev/context) carries data from the moment the server receives an inbound request to the moment the server makes an outbound request. This means you can use it to propagate data between services and processes. With gosoline, you can use log functions to store data from the request lifecycle in the Context and attach that data to logs to provide more details.
+
+In this tutorial, you'll add some logs to a CRUD server used for managing a "To do list".
+
+:::info
+
+This tutorial is about logging, so you won't build the app here. However, if you'd like to learn how to build it, check out the [dedicated tutorial](/gosoline/quickstart/http-server/write-crud-sql-app).
+
+:::
+
+## Before you begin
+
+Before you begin, make sure you have [Golang](https://go.dev/doc/install) installed on your machine.
+
+You'll also need to download the sample code for the service:
+
+```shell
+git clone https://github.com/justtrackio/gosoline.git
+cp -R gosoline/docs/docs/quickstart/http-server/src/write-crud-sql-app
+```
+
+## Truncate todo text
+
+With this service, users can create, read, update, and delete todos. For the purposes of this tutorial, you'll add some new logic. Instead of accepting any text for a todo, you'll limit the length of that string to prevent users from posting huge amounts of text in their todos. In doing so, you'll store some interesting information in the `Context`. This context information will appear in the logs later.
+
+In `handler.go`, add a new function:
+
+<CodeBlock title="handler.go" language="go" snippet="truncate">{Handler}</CodeBlock>
+
+In this function, you:
+
+1. Capture the length of the string
+2. Use `log.InitContext()` to initialize special log-related values within the `Context`
+3. Mutate the `Context` to add a log-related field called `original_length`. This stores the length of the string submitted by the user.
+4. Truncate the string if it is longer than 50 runes.
+5. Returns the potentially truncated string
+
+There are two important concepts here:
+
+- Log-related context values
+- Mutating context
+
+### Log-related context values
+
+When you call `log.InitContext()`, you create two sets of log-related fields in the `Context`:
+
+- `localFields`: These fields are limited to the application in which they are set. They are not propagated to downstream services in any way.
+- `globalFields`: These fields aren't limited to the application in which they are set. They are propagated to downstream services.
+
+:::caution
+
+In cases where a local field and a global field have the same name, the global field will override the local one.
+
+:::
+
+This function then returns a new child context in which these local and global fields are mutable.
+
+### Mutating context
+
+After you call `log.InitContext()`, you can mutate the log-related `Context` fields with the following methods:
+
+- `MutateContextFields()`
+- `MutateGlobalContextFields()`
+
+These change the local and global fields, respectively.
+
+:::info
+
+You can also append fields and receive a new child context. Read more about this in our [API documentation](/gosoline/reference/package-log#appendcontextfields).
+
+:::
+
+## Use your new function
+
+Now that you have a function that can truncate todo text, use it in `TransformCreate()`:
+
+<CodeBlock title="handler.go" language="go" snippet="transform create">{Handler}</CodeBlock>
+
+Then, use it in `TransformUpdate()`:
+
+<CodeBlock title="handler.go" language="go" snippet="transform update">{Handler}</CodeBlock>
+
+:::info
+
+Global fields override local fields if there is a naming collision.
+
+:::
+
+## Test your work
+
+Now it's time to test your work.
+
+### Start MySQL
+
+First, start your MySQL container:
+
+```shell
+docker-compose up
+```
+
+Now, you have a MySQL database running in a container. You can see it running on port 3306 with `docker ps` in another shell:
+
+```shell
+CONTAINER ID   IMAGE          COMMAND                  CREATED          STATUS          PORTS                               NAMES
+ccf507fd70e4   mysql:8.0.31   "docker-entrypoint.s…"   10 minutes ago   Up 10 minutes   0.0.0.0:3306->3306/tcp, 33060/tcp   write-crud-sql-app-mysql-1
+```
+
+### Run your server
+
+In another shell, navigate to the root `crud` directory of this project and spin up your server:
+
+```shell
+go mod init crud/m
+go mod tidy
+go run .
+```
+
+You'll see logs of your server running.
+
+### Make requests
+
+Finally, in a third shell, make requests to your service. For example, create a todo:
+
+```shell
+curl -d '{"text":"do it!", "dueDate":"2023-09-08T15:00:00Z"}' -H "Content-Type: application/json" -X POST localhost:8080/v0/todo
+```
+
+Update the todo:
+
+```shell
+curl -d '{"text":"do it!!!"}' -H "Content-Type: application/json" -X PUT localhost:8080/v0/todo/1
+```
+
+In your logs, you should see the context field you added in the first step:
+
+```js
+13:32:05.145 http    info    POST /v0/todo HTTP/1.1
+// highlight-next-line
+original_length: 115 
+application: server
+bytes: 174
+client_ip: 127.0.0.1
+group: crud
+host:
+localhost:8080
+protocol: HTTP/1.1
+request_bytes: 160
+request_method: POST
+request_path: /v0/todo
+request_path_raw: /v0/todo
+request_query: 
+request_query_parameters: map[]
+request_referer: 
+request_time: 0.011703875
+request_user_agent: curl/8.1.2
+scheme: http
+status: 200
+```
+
+This is included in the log because we automatically resolve the local and global fields and include them in the log output.
+
+If you need to create a new logger, you have to resolve the fields yourself. However, we've made this easy for you. Just call `WithContext()`:
+
+```go
+logger := log.NewLogger()
+logger.WithContext(ctx).Info("My message with context")
+```
+
+## Conclusion
+
+Great work! In this tutorial, you used Gosoline to add some context to your logs.

@@ -1,0 +1,20 @@
+env: dev
+app_project: gosoline
+app_family: how-to
+app_group: crud
+app_name: server
+
+db:
+  default:
+    driver: mysql
+    parse_time: true
+    uri:
+      host: 127.0.0.1
+      port: 3306
+      user: gosoline
+      password: gosoline
+      database: gosoline
+    migrations:
+      enabled: true
+      table_prefixed: false
+      path: file://migrations
