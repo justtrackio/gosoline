@@ -3,7 +3,7 @@ sidebar_position: 3
 title: Use context with logs
 ---
 
-import { CodeBlock } from '../components.jsx';
+import { CodeBlock } from '../../components.jsx';
 import Handler from "!!raw-loader!./src/log-context/handler.go";
 
 The [go Context](https://pkg.go.dev/context) carries data from the moment the server receives an inbound request to the moment the server makes an outbound request. This means you can use it to propagate data between services and processes. With gosoline, you can use log functions to store data from the request lifecycle in the Context and attach that data to logs to provide more details.
