@@ -37,10 +37,16 @@ type UpdateInput struct {
 	Text string `form:"text"`
 }
 
+// snippet-start: crud handler v0
 type TodoCrudHandlerV0 struct {
-	repo db_repo.Repository
+	// highlight-next-line
+	logger log.Logger
+	repo   db_repo.Repository
 }
 
+// snippet-end: crud handler v0
+
+// snippet-start: new todo crud handler
 func NewTodoCrudHandler(ctx context.Context, config cfg.Config, logger log.Logger) (*TodoCrudHandlerV0, error) {
 	var err error
 	var repo db_repo.Repository
@@ -50,11 +56,15 @@ func NewTodoCrudHandler(ctx context.Context, config cfg.Config, logger log.Logge
 	}
 
 	handler := &TodoCrudHandlerV0{
-		repo: repo,
+		// highlight-next-line
+		logger: logger,
+		repo:   repo,
 	}
 
 	return handler, nil
 }
+
+// snippet-end: new todo crud handler
 
 func (h TodoCrudHandlerV0) GetRepository() crud.Repository {
 	return h.repo
@@ -73,7 +83,6 @@ func truncate(ctx context.Context, text string) string {
 	r := []rune(text)
 	length := len(r)
 
-	ctx = log.InitContext(ctx)
 	log.MutateContextFields(ctx, map[string]any{
 		"original_length": length,
 	})
@@ -92,8 +101,10 @@ func (h TodoCrudHandlerV0) TransformCreate(ctx context.Context, input interface{
 	in := input.(*CreateInput)
 	m := model.(*Todo)
 
-	// highlight-next-line
-	m.Text = truncate(ctx, in.Text)
+	// highlight-start
+	localctx := log.InitContext(ctx)
+	m.Text = truncate(localctx, in.Text)
+	// highlight-end
 	m.DueDate = in.DueDate
 
 	return nil
@@ -110,8 +121,10 @@ func (h TodoCrudHandlerV0) TransformUpdate(ctx context.Context, input interface{
 	in := input.(*UpdateInput)
 	m := model.(*Todo)
 
-	// highlight-next-line
-	m.Text = truncate(ctx, in.Text)
+	// highlight-start
+	localctx := log.InitContext(ctx)
+	m.Text = truncate(localctx, in.Text)
+	// highlight-end
 
 	return nil
 }

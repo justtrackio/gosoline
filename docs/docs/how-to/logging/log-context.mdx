@@ -8,7 +8,7 @@ import Handler from "!!raw-loader!./src/log-context/handler.go";
 
 The [go Context](https://pkg.go.dev/context) carries data from the moment the server receives an inbound request to the moment the server makes an outbound request. This means you can use it to propagate data between services and processes. With gosoline, you can use log functions to store data from the request lifecycle in the Context and attach that data to logs to provide more details.
 
-In this tutorial, you'll add some logs to a CRUD server used for managing a "To do list".
+In this guide, you'll add some logs to a CRUD server used for managing a "To do list".
 
 :::info
 
@@ -24,12 +24,12 @@ You'll also need to download the sample code for the service:
 
 ```shell
 git clone https://github.com/justtrackio/gosoline.git
-cp -R gosoline/docs/docs/quickstart/http-server/src/write-crud-sql-app
+cp -R gosoline/docs/docs/quickstart/http-server/src/write-crud-sql-app crud-app
 ```
 
 ## Truncate todo text
 
-With this service, users can create, read, update, and delete todos. For the purposes of this tutorial, you'll add some new logic. Instead of accepting any text for a todo, you'll limit the length of that string to prevent users from posting huge amounts of text in their todos. In doing so, you'll store some interesting information in the `Context`. This context information will appear in the logs later.
+With this service, users can create, read, update, and delete todos. For the purposes of this tutorial, you'll add some new logic. Instead of accepting any text for a todo, you'll limit the length of that string to prevent users from posting huge amounts of text in their todos.
 
 In `handler.go`, add a new function:
 
@@ -37,44 +37,25 @@ In `handler.go`, add a new function:
 
 In this function, you:
 
-1. Capture the length of the string
-2. Use `log.InitContext()` to initialize special log-related values within the `Context`
-3. Mutate the `Context` to add a log-related field called `original_length`. This stores the length of the string submitted by the user.
+1. Accept a `Context` and a string as arguments
+2. Capture the length of the string
+3. Mutate the `Context` to store the original length of the string
 4. Truncate the string if it is longer than 50 runes.
-5. Returns the potentially truncated string
+5. Return the potentially truncated string
 
-There are two important concepts here:
+For this tutorial, the important thing to pay attention to is where you mutate the `Context`: 
 
-- Log-related context values
-- Mutating context
+```go
+log.MutateContextFields(ctx, map[string]any{
+	"original_length": length,
+})
+```
 
-### Log-related context values
-
-When you call `log.InitContext()`, you create two sets of log-related fields in the `Context`:
-
-- `localFields`: These fields are limited to the application in which they are set. They are not propagated to downstream services in any way.
-- `globalFields`: These fields aren't limited to the application in which they are set. They are propagated to downstream services.
-
-:::caution
-
-In cases where a local field and a global field have the same name, the global field will override the local one.
-
-:::
-
-This function then returns a new child context in which these local and global fields are mutable.
-
-### Mutating context
-
-After you call `log.InitContext()`, you can mutate the log-related `Context` fields with the following methods:
-
-- `MutateContextFields()`
-- `MutateGlobalContextFields()`
-
-These change the local and global fields, respectively.
+With Gosoline, you can initilize specific fields that you can use with a `Logger`. (You'll do this in the next step.) Once those fields are initialized, you can append or mutate the fields as you've done here.
 
 :::info
 
-You can also append fields and receive a new child context. Read more about this in our [API documentation](/gosoline/reference/package-log#appendcontextfields).
+Read more about appending and mutating `Context` in our [log package reference](/gosoline/reference/package-log#appendcontextfields).
 
 :::
 
@@ -88,11 +69,44 @@ Then, use it in `TransformUpdate()`:
 
 <CodeBlock title="handler.go" language="go" snippet="transform update">{Handler}</CodeBlock>
 
-:::info
+Here, you first call `log.InitContext()`. This function creates two sets of log-related fields in the `Context`:
 
-Global fields override local fields if there is a naming collision.
+- `localFields`: These fields are limited to the application in which they are set. They are not propagated to downstream services in any way.
+- `globalFields`: These fields aren't limited to the application in which they are set. They are propagated to downstream services.
+
+Then, it returns a `Context` in which these local and global fields are mutable. You pass this `Context` as the first parameter to `truncate()`.
+
+:::info Technical Detail
+
+Actually, this call to `log.InitContext()` is not required because gosoline will have already initialized the `Context` earlier in the request lifecycle. In this case, the `ctx` you pass to `log.InitContext()` is returned, unchanged. Therefore, `localctx` and `ctx` are the same, so you could have passed `ctx` to `truncate()` instead.
+
+However, this example illustrates where to call `log.InitContext()` if you were to create or receive a `Context` from somewhere else. If you initialized the `Context` inside `truncate()`, the log-related fields would go out of scope when the function returns. Instead, you initilize the `Context` and pass it in, so you can make use of the log-related fields later.
 
 :::
+
+## Use your `Context` with logs
+
+If you run your service now, you'll see the results of your work. Gosoline has some built-in logs that will show your `Context` fields. However, you can also manually add the `Context` to a new logger.
+
+First, add a logger to your `TodoCrudHandlerV0`:
+
+<CodeBlock title="handler.go" language="go" snippet="crud handler v0">{Handler}</CodeBlock>
+
+Now, you can make use of this logger in any of the handler's methods.
+
+Next, when you initilize the handler, pass a logger:
+
+<CodeBlock title="handler.go" language="go" snippet="new todo crud handler">{Handler}</CodeBlock>
+
+Finally, in `TransformCreate()` or `TransformUpdate()`, you can use the logger:
+
+```go title=handler.go
+
+h.logger.WithContext(localctx).Info("creating new task due at %v", m.DueDate)
+
+```
+
+Here, you use `.WithContext()` to apply the `Context` to the logger.
 
 ## Test your work
 
@@ -139,7 +153,7 @@ Update the todo:
 curl -d '{"text":"do it!!!"}' -H "Content-Type: application/json" -X PUT localhost:8080/v0/todo/1
 ```
 
-In your logs, you should see the context field you added in the first step:
+In your logs, you should see the `Context` field you added in the first step:
 
 ```js
 13:32:05.145 http    info    POST /v0/todo HTTP/1.1

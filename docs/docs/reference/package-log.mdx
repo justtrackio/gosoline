@@ -106,6 +106,12 @@ localCtx = log.MutateGlobalContextFields(globalCtx, map[string]any{
 })
 ```
 
+:::caution
+
+Global fields override local fields when they have the same name.
+
+:::
+
 </details>
 
 ### [ContextFieldsResolver()](https://github.com/justtrackio/gosoline/blob/47a5bcfec77e453330c6ac6d5fb72c486f9c7321/pkg/log/context.go#L209C6-L209C27)
