@@ -55,7 +55,7 @@ With Gosoline, you can initilize specific fields that you can use with a `Logger
 
 :::info
 
-Read more about appending and mutating `Context` in our [log package reference](/gosoline/reference/package-log#appendcontextfields).
+Read more about appending and mutating context fields in our [log package reference](/gosoline/reference/package-log#appendcontextfields).
 
 :::
 
@@ -153,7 +153,7 @@ Update the todo:
 curl -d '{"text":"do it!!!"}' -H "Content-Type: application/json" -X PUT localhost:8080/v0/todo/1
 ```
 
-In your logs, you should see the `Context` field you added in the first step:
+In your logs, you should see the `original_length` field you added in the first step:
 
 ```js
 13:32:05.145 http    info    POST /v0/todo HTTP/1.1
