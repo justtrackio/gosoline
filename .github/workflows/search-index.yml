@@ -1,0 +1,43 @@
+name: Search index
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  CONFIG: "../../gosoline/docs/docsearch-config.json"
+
+jobs:
+  reindex:
+    name: Reindex search
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone this repo
+        uses: actions/checkout@v4
+        with:
+          path: gosoline
+      - name: Clone docsearch scraper
+        uses: actions/checkout@v4
+        with:
+          repository: "algolia/docsearch-scraper"
+          path: docsearch-scraper
+      - name: Set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.6.15" 
+      - name: Install pipenv
+        run: pip install pipenv
+      - name: Install dependencies
+        working-directory: ./docsearch-scraper
+        run: pipenv install
+      - working-directory: ./docsearch-scraper/scraper
+        run: ls ../../gosoline/docs
+      - name: Reindex
+        working-directory: ./docsearch-scraper/scraper
+        run: pipenv run python -m src.index
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          APPLICATION_ID: ${{ secrets.APPLICATION_ID }}
+        
+
