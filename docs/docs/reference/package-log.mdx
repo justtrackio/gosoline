@@ -12,7 +12,7 @@ The gosoline logger is based upon a simple interface that uses handlers internal
 
 #### Usage
 
-```go title="main.go"
+```go
 logger := log.NewLoggerWithInterfaces(myClock, []log.Handler{handler1, handler2})
 ```
 
@@ -24,13 +24,123 @@ Create a logger with with no handlers and a real time clock. This provides an ex
 
 #### Usage
 
-```go title="main.go"
+```go
 logger := log.NewLoggerWithInterfaces(myClock, []log.Handler{handler1, handler2})
 ```
 
 #### Description
 
 Provide a clock and some handlers when you create a new logger. Like [`NewLogger()`](#newlogger), this provides an extended interface, including the `Option(opt ...Option) error` function to change the behaviour of the logger.
+
+### [InitContext()](https://github.com/justtrackio/gosoline/blob/47a5bcfec77e453330c6ac6d5fb72c486f9c7321/pkg/log/context.go#L80)
+
+#### Usage
+
+```go
+ctx = log.InitContext(ctx)
+```
+
+#### Description
+
+Return a new context capable of carrying (mutable) local and global logger fields.
+
+### [AppendContextFields()](https://github.com/justtrackio/gosoline/blob/47a5bcfec77e453330c6ac6d5fb72c486f9c7321/pkg/log/context.go#L115C6-L115C25)
+
+#### Usage
+
+```go
+localCtx := log.AppendContextFields(ctx, map[string]any{
+  "field": "value",
+})
+```
+
+#### Description
+
+Appends fields to the existing **local** context fields, creating and returning a new context containing the merged fields.
+
+:::caution
+
+Any existing fields with the same key as any new field provided will be overwritten.
+
+:::
+
+#### Related methods
+
+<details>
+
+<summary>MutateContextFields()</summary>
+
+Mutates **local** context fields if the context already contains fields which can be mutated. Otherwise, it initializes a new context able to carry fields in the future.
+
+```go
+localCtx = log.MutateContextFields(localCtx, map[string]any{
+	"field": "new_value",
+})
+```
+
+</details>
+
+<details>
+
+<summary>AppendGlobalContextFields()</summary>
+
+Appends fields to the existing **global** context fields, creating a new context containing the merged fields.
+
+```go
+localCtx = log.AppendGlobalContextFields(globalCtx, map[string]any{
+	"field": "new_value",
+})
+```
+
+</details>
+
+<details>
+
+<summary>MutateGlobalContextFields()</summary>
+
+Mutates **global** context fields if the context already contains fields which can be mutated. Otherwise, it initializes a new context able to carry fields in the future.
+
+```go
+localCtx = log.MutateGlobalContextFields(globalCtx, map[string]any{
+	"field": "new_value",
+})
+```
+
+:::caution
+
+Global fields override local fields when they have the same name.
+
+:::
+
+</details>
+
+### [ContextFieldsResolver()](https://github.com/justtrackio/gosoline/blob/47a5bcfec77e453330c6ac6d5fb72c486f9c7321/pkg/log/context.go#L209C6-L209C27)
+
+#### Usage
+
+```go
+localFields := log.ContextFieldsResolver(ctx)
+print(localFields["field"])
+```
+
+#### Description
+
+Extracts the local and global fields from a context and returns a map.
+
+#### Related methods
+
+<details>
+
+<summary>GlobalContextFieldsResolver()</summary>
+
+Extracts the global fields from a context and returns a map.
+
+```go
+localFields := log.GlobalContextFieldsResolver(ctx)
+print(localFields["field"])
+```
+
+</details>
 
 ## Methods
 
@@ -46,7 +156,9 @@ Logs a message at the Debug log level.
 
 #### Related methods
 
-<details><summary>Info()</summary>
+<details>
+  
+<summary>Info()</summary>
 
 ```go
 logger.Info("Message")
@@ -54,7 +166,9 @@ logger.Info("Message")
 
 </details>
 
-<details><summary>Warn()</summary>
+<details>
+
+<summary>Warn()</summary>
 
 ```go
 logger.Warn("Message")
@@ -62,7 +176,9 @@ logger.Warn("Message")
 
 </details>
 
-<details><summary>Error()</summary>
+<details>
+
+<summary>Error()</summary>
 
 ```go
 logger.Error("Message")

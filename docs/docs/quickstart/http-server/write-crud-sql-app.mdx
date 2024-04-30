@@ -68,12 +68,12 @@ Those are all the files you need to build your CRUD service with gosoline! Next,
 
 In `handler.go`, add the following code:
 
-<details><summary>handler.go</summary>
-<p>
+<details>
+
+<summary>handler.go</summary>
 
 <CodeBlock showLineNumbers language="go">{Handler}</CodeBlock>
 
-</p>
 </details>
 
 Now, you'll walkthrough this file in detail to learn how it works.
@@ -254,7 +254,7 @@ First, start your MySQL container:
 docker-compose up
 ```
 
-Now, you have a MySQL database running in a container. You can see it running on post 3306 with `docker ps` in another shell:
+Now, you have a MySQL database running in a container. You can see it running on port 3306 with `docker ps` in another shell:
 
 ```shell
 CONTAINER ID   IMAGE          COMMAND                  CREATED          STATUS          PORTS                               NAMES
