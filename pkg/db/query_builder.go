@@ -1,6 +1,8 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/justtrackio/gosoline/pkg/funk"
 )
@@ -52,7 +54,8 @@ func (b *RawQueryBuilder) GroupBy(field ...string) QueryBuilder {
 }
 
 func (b *RawQueryBuilder) OrderBy(field string, direction string) QueryBuilder {
-	b.Builder = b.Builder.OrderBy(field, direction)
+	order := fmt.Sprintf("%s %s", field, direction)
+	b.Builder = b.Builder.OrderBy(order)
 
 	return b
 }
