@@ -32,7 +32,7 @@ logger := log.NewLoggerWithInterfaces(myClock, []log.Handler{handler1, handler2}
 
 Provide a clock and some handlers when you create a new logger. Like [`NewLogger()`](#newlogger), this provides an extended interface, including the `Option(opt ...Option) error` function to change the behaviour of the logger.
 
-### [InitContext()](https://github.com/justtrackio/gosoline/blob/47a5bcfec77e453330c6ac6d5fb72c486f9c7321/pkg/log/context.go#L80)
+### [`InitContext()`](https://github.com/justtrackio/gosoline/blob/47a5bcfec77e453330c6ac6d5fb72c486f9c7321/pkg/log/context.go#L80)
 
 #### Usage
 
@@ -44,7 +44,7 @@ ctx = log.InitContext(ctx)
 
 Return a new context capable of carrying (mutable) local and global logger fields.
 
-### [AppendContextFields()](https://github.com/justtrackio/gosoline/blob/47a5bcfec77e453330c6ac6d5fb72c486f9c7321/pkg/log/context.go#L115C6-L115C25)
+### [`AppendContextFields()`](https://github.com/justtrackio/gosoline/blob/47a5bcfec77e453330c6ac6d5fb72c486f9c7321/pkg/log/context.go#L115C6-L115C25)
 
 #### Usage
 
@@ -114,7 +114,7 @@ Global fields override local fields when they have the same name.
 
 </details>
 
-### [ContextFieldsResolver()](https://github.com/justtrackio/gosoline/blob/47a5bcfec77e453330c6ac6d5fb72c486f9c7321/pkg/log/context.go#L209C6-L209C27)
+### [`ContextFieldsResolver()`](https://github.com/justtrackio/gosoline/blob/47a5bcfec77e453330c6ac6d5fb72c486f9c7321/pkg/log/context.go#L209C6-L209C27)
 
 #### Usage
 
