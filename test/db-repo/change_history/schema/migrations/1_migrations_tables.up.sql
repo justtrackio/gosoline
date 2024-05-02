@@ -31,8 +31,9 @@ create table test_model3
  CREATE TABLE test_model2_history_entries
  (
  change_history_action  VARCHAR(8) NOT NULL DEFAULT 'insert',
- change_history_revision int ,
+ change_history_revision int,
  change_history_action_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+ change_history_author_id int,
  id int unsigned ,
  updated_at timestamp NULL,
  created_at timestamp NULL,

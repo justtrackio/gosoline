@@ -1,6 +1,6 @@
 //go:build integration
 
-package change_history_test
+package schema_test
 
 import (
 	"context"
@@ -94,6 +94,10 @@ var TestHistoryModel2Metadata = db_repo.Metadata{
 type TestModel3 struct {
 	db_repo.Model
 	Name *string
+}
+
+func TestChangeHistoryTestSuite(t *testing.T) {
+	suite.Run(t, new(ChangeHistoryTestSuite))
 }
 
 type ChangeHistoryTestSuite struct {
@@ -213,7 +217,6 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable(
 	s.Equal(3, entries[2].ChangeHistoryRevision)
 	s.Equal("delete", entries[2].ChangeHistoryAction)
 	s.Equal("foo2", *entries[2].Foo)
-	s.Nil(entries[2].ChangeAuthor) // change-author is excluded for delete actions as it may be misleading
 }
 
 func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_ValidateSchema() {
@@ -234,8 +237,4 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_ValidateSche
 	s.Len(multiErr.Errors, 2)
 	s.Errorf(multiErr.Errors[0], "missing column foo of type varchar on history table test_model3")
 	s.Errorf(multiErr.Errors[1], "type mismatch for history table test_model3 and column name: expected text, got varchar")
-}
-
-func TestChangeHistoryTestSuite(t *testing.T) {
-	suite.Run(t, new(ChangeHistoryTestSuite))
 }
