@@ -145,7 +145,7 @@ app_name: application
 ### Linux
 On linux it's very straight to execute the integration tests:
 ```shell
-go test -tags integration,fixtures ./test
+go test -tags integration,fixtures ./test/...
 ```
 
 ### macOS
@@ -159,5 +159,5 @@ sudo ifconfig lo0 alias 172.17.0.1
 Afterwards simply execute:
 
 ```shell
-go test -tags integration,fixtures ./test
+go test -tags integration,fixtures ./test/...
 ```
