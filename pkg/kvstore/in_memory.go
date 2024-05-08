@@ -79,7 +79,12 @@ func NewInMemoryKvStoreWithInterfaces[T any](settings *Settings) KvStore[T] {
 		ttl = time.Hour
 	}
 
-	baseCache := cache.NewWithConfiguration[T](*cacheConfig, ttl)
+	cacheOptions := make([]cache.Option[T], 0)
+	if settings.NotFoundTtl > 0 {
+		cacheOptions = append(cacheOptions, cache.WithNotFoundTtl[T](settings.NotFoundTtl))
+	}
+
+	baseCache := cache.NewWithConfiguration[T](*cacheConfig, ttl, cacheOptions...)
 
 	return NewMetricStoreWithInterfaces[T](&InMemoryKvStore[T]{
 		cache:     baseCache,

@@ -38,12 +38,13 @@ type ChainConfiguration struct {
 }
 
 type InMemoryConfiguration struct {
-	MaxSize        int64  `cfg:"max_size" default:"5000"`
-	Buckets        uint32 `cfg:"buckets" default:"16"`
-	ItemsToPrune   uint32 `cfg:"items_to_prune" default:"500"`
-	DeleteBuffer   uint32 `cfg:"delete_buffer" default:"1024"`
-	PromoteBuffer  uint32 `cfg:"promote_buffer" default:"1024"`
-	GetsPerPromote int32  `cfg:"gets_per_promote" default:"3"`
+	MaxSize        int64         `cfg:"max_size" default:"5000"`
+	Buckets        uint32        `cfg:"buckets" default:"16"`
+	ItemsToPrune   uint32        `cfg:"items_to_prune" default:"500"`
+	DeleteBuffer   uint32        `cfg:"delete_buffer" default:"1024"`
+	PromoteBuffer  uint32        `cfg:"promote_buffer" default:"1024"`
+	GetsPerPromote int32         `cfg:"gets_per_promote" default:"3"`
+	NotFoundTtl    time.Duration `cfg:"not_found_ttl" default:"0"`
 }
 
 type kvStoreAppCtxKey string
@@ -97,6 +98,7 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 			DeleteBuffer:   configuration.InMemory.DeleteBuffer,
 			PromoteBuffer:  configuration.InMemory.PromoteBuffer,
 			GetsPerPromote: configuration.InMemory.GetsPerPromote,
+			NotFoundTtl:    configuration.InMemory.NotFoundTtl,
 		},
 	})
 	if err != nil {
