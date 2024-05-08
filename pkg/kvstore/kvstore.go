@@ -28,6 +28,7 @@ type InMemorySettings struct {
 	DeleteBuffer   uint32
 	PromoteBuffer  uint32
 	GetsPerPromote int32
+	NotFoundTtl    time.Duration
 }
 
 //go:generate mockery --name KvStore
