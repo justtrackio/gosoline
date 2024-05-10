@@ -36,7 +36,7 @@ func (h LoggerHandler) Level() int {
 	return log.PriorityWarn
 }
 
-func (h LoggerHandler) Log(_ time.Time, level int, _ string, _ []interface{}, _ error, _ log.Data) error {
+func (h LoggerHandler) Log(_ time.Time, level int, _ string, _ []any, _ error, _ log.Data) error {
 	if level != log.PriorityWarn && level != log.PriorityError {
 		return nil
 	}

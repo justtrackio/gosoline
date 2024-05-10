@@ -14,14 +14,14 @@ const (
 )
 
 type Rule interface {
-	IsValid(ctx context.Context, model interface{}) error
+	IsValid(ctx context.Context, model any) error
 }
 
 type Group map[string][]Rule
 
 type Validator interface {
 	AddRule(rule Rule, groups ...string)
-	IsValid(ctx context.Context, model interface{}, groups ...string) error
+	IsValid(ctx context.Context, model any, groups ...string) error
 }
 
 type validator struct {
@@ -59,7 +59,7 @@ func (v *validator) AddRule(rule Rule, groups ...string) {
 	}
 }
 
-func (v *validator) IsValid(ctx context.Context, model interface{}, groups ...string) error {
+func (v *validator) IsValid(ctx context.Context, model any, groups ...string) error {
 	ctx, span := v.tracer.StartSubSpan(ctx, "validator")
 	defer span.Finish()
 
@@ -83,7 +83,7 @@ func (v *validator) IsValid(ctx context.Context, model interface{}, groups ...st
 	}
 }
 
-func (v *validator) validateGroup(ctx context.Context, model interface{}, group string) []error {
+func (v *validator) validateGroup(ctx context.Context, model any, group string) []error {
 	errs := make([]error, 0)
 
 	if _, ok := v.rules[group]; !ok {

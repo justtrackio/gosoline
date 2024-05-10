@@ -28,7 +28,7 @@ func (s *StreamInputComponent) CfgOptions() []cfg.Option {
 	return []cfg.Option{}
 }
 
-func (s *StreamInputComponent) Publish(body interface{}, attributes map[string]string) {
+func (s *StreamInputComponent) Publish(body any, attributes map[string]string) {
 	if !s.inMemoryOverride {
 		s.failNow("you can't publish to a stream input component if it isn't overridden as an in-memory input")
 	}
@@ -46,7 +46,7 @@ func (s *StreamInputComponent) Publish(body interface{}, attributes map[string]s
 	s.input.Publish(message)
 }
 
-func (s *StreamInputComponent) PublishAndStop(body interface{}, attributes map[string]string) {
+func (s *StreamInputComponent) PublishAndStop(body any, attributes map[string]string) {
 	s.Publish(body, attributes)
 	s.Stop()
 }

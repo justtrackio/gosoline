@@ -43,7 +43,7 @@ type HttpserverTestCase struct {
 	//
 	// To send the contents of a file, you can use ReadBodyFile and assign the result to this field. The
 	// test suite will read the file contents and send it as your request.
-	Body interface{}
+	Body any
 	// ExpectedStatusCode describes the status code the last response is required to have.
 	ExpectedStatusCode int
 	// ExpectedRedirectsToFollow describes the number of redirects we want to follow. It is an error if less redirects
@@ -52,7 +52,7 @@ type HttpserverTestCase struct {
 	ExpectedRedirectsToFollow int
 	// ExpectedResult defines the *type* the final response should be parsed into. You can then access the unmarshalled
 	// response in response.Result().
-	ExpectedResult interface{}
+	ExpectedResult any
 	// ExpectedErr is compared with the error returned by the HTTP request. Only the error messages have to match.
 	ExpectedErr error
 	// Assert allows you to provide an assertion function that can be passed to validate certain post conditions (like

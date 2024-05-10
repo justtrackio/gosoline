@@ -24,7 +24,10 @@ type Producer struct {
 
 // NewProducer returns a topic producer.
 func NewProducer(ctx context.Context, conf cfg.Config, logger log.Logger, name string) (*Producer, error) {
-	settings := ParseSettings(conf, name)
+	settings, err := ParseSettings(conf, name)
+	if err != nil {
+		return nil, fmt.Errorf("kafka: failed to parse producer settings: %w", err)
+	}
 
 	// Connection.
 	dialer, err := connection.NewDialer(settings.Connection())

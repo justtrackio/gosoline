@@ -16,7 +16,7 @@ func (e *StreamBusyError) Error() string {
 	return fmt.Sprintf("Stream is busy: %s", e.stream)
 }
 
-func (e *StreamBusyError) As(target interface{}) bool {
+func (e *StreamBusyError) As(target any) bool {
 	if err, ok := target.(*StreamBusyError); ok && err != nil {
 		*err = *e
 
@@ -40,7 +40,7 @@ func (e *NoSuchStreamError) Error() string {
 	return fmt.Sprintf("No such stream: %s", e.stream)
 }
 
-func (e *NoSuchStreamError) As(target interface{}) bool {
+func (e *NoSuchStreamError) As(target any) bool {
 	if err, ok := target.(*NoSuchStreamError); ok && err != nil {
 		*err = *e
 

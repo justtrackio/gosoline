@@ -113,12 +113,12 @@ func (s *InMemoryKvStore[T]) Get(_ context.Context, key any, value *T) (bool, er
 	return true, nil
 }
 
-func (s *InMemoryKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([]interface{}, error) {
+func (s *InMemoryKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([]any, error) {
 	return getBatch(ctx, keys, values, s.getChunk, s.settings.BatchSize)
 }
 
-func (s *InMemoryKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys []any) ([]interface{}, error) {
-	missing := make([]interface{}, 0)
+func (s *InMemoryKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys []any) ([]any, error) {
+	missing := make([]any, 0)
 
 	for _, key := range keys {
 		keyString, err := CastKeyToString(key)
@@ -162,7 +162,7 @@ func (s *InMemoryKvStore[T]) Put(_ context.Context, key any, value T) error {
 func (s *InMemoryKvStore[T]) PutBatch(ctx context.Context, values any) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 	if err != nil {
-		return fmt.Errorf("could not convert values from %T to map[interface{}]interface{}", values)
+		return fmt.Errorf("could not convert values from %T to map[any]any", values)
 	}
 
 	for k, v := range mii {
@@ -192,7 +192,7 @@ func (s *InMemoryKvStore[T]) Delete(_ context.Context, key any) error {
 func (s *InMemoryKvStore[T]) DeleteBatch(ctx context.Context, keys any) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
-		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
+		return fmt.Errorf("could not convert keys from %T to []any: %w", keys, err)
 	}
 
 	for _, key := range si {

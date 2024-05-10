@@ -40,7 +40,7 @@ func (s *ClientTestSuite) SetupSuite() []suite.Option {
 
 func (s *ClientTestSuite) SetupTest() error {
 	var err error
-	ctx := context.Background()
+	ctx := s.T().Context()
 	config := s.Env().Config()
 	logger := s.Env().Logger()
 
@@ -72,7 +72,7 @@ func (s *ClientTestSuite) SetupTest() error {
 }
 
 func (s *ClientTestSuite) TearDownTest() error {
-	_, err := s.clientDefault.DeleteTable(context.Background(), &awsDdb.DeleteTableInput{
+	_, err := s.clientDefault.DeleteTable(s.T().Context(), &awsDdb.DeleteTableInput{
 		TableName: aws.String("gosoline-cloud-dynamodb-test"),
 	})
 
@@ -80,7 +80,7 @@ func (s *ClientTestSuite) TearDownTest() error {
 }
 
 func (s *ClientTestSuite) TestSuccess() {
-	_, err := s.clientDefault.PutItem(context.Background(), &awsDdb.PutItemInput{
+	_, err := s.clientDefault.PutItem(s.T().Context(), &awsDdb.PutItemInput{
 		Item: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{
 				Value: "goso-id",
@@ -98,7 +98,7 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 	})
 	s.NoError(err)
 
-	ctx := context.Background()
+	ctx := s.T().Context()
 	resource := &exec.ExecutableResource{
 		Type: "DynamoDB",
 		Name: "PutItem",
@@ -151,7 +151,7 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 		s.NoError(err)
 	}()
 
-	ctx := context.Background()
+	ctx := s.T().Context()
 	loggerMock := logMocks.NewLogger(s.T())
 	loggerMock.EXPECT().WithContext(matcher.Context).Return(loggerMock)
 	loggerMock.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(loggerMock)
@@ -173,7 +173,7 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 }
 
 func (s *ClientTestSuite) TestRetryOnTransactionConflict() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	resource := &exec.ExecutableResource{
 		Type: "DynamoDB",
 		Name: "PutItem",

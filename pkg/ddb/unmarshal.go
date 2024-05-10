@@ -13,7 +13,7 @@ type Unmarshaller struct {
 	typ    reflect.Type
 }
 
-func NewUnmarshallerFromPtrSlice(result interface{}) (*Unmarshaller, error) {
+func NewUnmarshallerFromPtrSlice(result any) (*Unmarshaller, error) {
 	ptr := reflect.ValueOf(result)
 
 	if ptr.Kind() != reflect.Ptr {
@@ -34,7 +34,7 @@ func NewUnmarshallerFromPtrSlice(result interface{}) (*Unmarshaller, error) {
 	return um, nil
 }
 
-func NewUnmarshallerFromStruct(model interface{}) (*Unmarshaller, error) {
+func NewUnmarshallerFromStruct(model any) (*Unmarshaller, error) {
 	elemType := reflect.TypeOf(model)
 	elemSlice := reflect.MakeSlice(reflect.SliceOf(elemType), 0, 10)
 
@@ -46,7 +46,7 @@ func NewUnmarshallerFromStruct(model interface{}) (*Unmarshaller, error) {
 	return um, nil
 }
 
-func (u *Unmarshaller) Unmarshal(items []map[string]types.AttributeValue) (interface{}, error) {
+func (u *Unmarshaller) Unmarshal(items []map[string]types.AttributeValue) (any, error) {
 	partValue := reflect.New(u.typ)
 	part := partValue.Interface()
 
@@ -85,7 +85,7 @@ func NewDecoder() *attributevalue.Decoder {
 	})
 }
 
-func UnmarshalListOfMaps(l []map[string]types.AttributeValue, out interface{}) error {
+func UnmarshalListOfMaps(l []map[string]types.AttributeValue, out any) error {
 	items := make([]types.AttributeValue, len(l))
 	for i, m := range l {
 		items[i] = &types.AttributeValueMemberM{Value: m}
@@ -94,10 +94,10 @@ func UnmarshalListOfMaps(l []map[string]types.AttributeValue, out interface{}) e
 	return UnmarshalList(items, out)
 }
 
-func UnmarshalList(l []types.AttributeValue, out interface{}) error {
+func UnmarshalList(l []types.AttributeValue, out any) error {
 	return NewDecoder().Decode(&types.AttributeValueMemberL{Value: l}, out)
 }
 
-func UnmarshalMap(m map[string]types.AttributeValue, out interface{}) error {
+func UnmarshalMap(m map[string]types.AttributeValue, out any) error {
 	return NewDecoder().Decode(&types.AttributeValueMemberM{Value: m}, out)
 }

@@ -34,13 +34,13 @@ func (s *ContextMatcherTestSuite) SetupTest() {
 }
 
 func (s *ContextMatcherTestSuite) Test_MatchesContext() {
-	result := s.mockSvc.Process(context.Background())
+	result := s.mockSvc.Process(s.T().Context())
 	s.Equal("success", result)
 
-	result = s.mockSvc.Process(context.TODO())
+	result = s.mockSvc.Process(s.T().Context())
 	s.Equal("success", result)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	defer cancel()
 	result = s.mockSvc.Process(ctx)
 	s.Equal("success", result)

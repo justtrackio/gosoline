@@ -37,7 +37,10 @@ type KinsumerAutoscaleModule struct {
 func KinsumerAutoscaleModuleFactory(kinsumerInputName string) func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 		modules := map[string]kernel.ModuleFactory{}
-		settings := readKinsumerAutoscaleSettings(config)
+		settings, err := readKinsumerAutoscaleSettings(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read kinsumer autoscale settings in KinsumerAutoscaleModuleFactory: %w", err)
+		}
 
 		if !settings.Enabled {
 			return modules, nil
@@ -54,7 +57,10 @@ func newKinsumerAutoscaleModule(kinsumerInputName string, settings KinsumerAutos
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		logger = logger.WithChannel(kinsumerAutoscaleModuleName)
 
-		kinsumerInputSettings := readKinsumerInputSettings(config, kinsumerInputName)
+		kinsumerInputSettings, err := readKinsumerInputSettings(config, kinsumerInputName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read kinsumer input settings in newKinsumerAutoscaleModule: %w", err)
+		}
 
 		orchestratorFactory, ok := kinsumerAutoscaleOrchestratorFactories[settings.Orchestrator]
 		if !ok {

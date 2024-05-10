@@ -4,9 +4,9 @@ import (
 	"fmt"
 )
 
-func UniqKeys(keys []interface{}) ([]interface{}, error) {
+func UniqKeys(keys []any) ([]any, error) {
 	length := len(keys)
-	uniqKeys := make([]interface{}, 0, length)
+	uniqKeys := make([]any, 0, length)
 	seen := make(map[string]bool, length)
 
 	for i := 0; i < length; i++ {

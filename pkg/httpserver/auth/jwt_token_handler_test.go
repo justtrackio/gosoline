@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getJwtToken(issuer string, secret string, expirationDuration int) string {
+func getJwtToken(t *testing.T, issuer string, secret string, expirationDuration int) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &auth.JwtClaims{
 		Name:  "testName",
 		Email: "testMail",
@@ -22,7 +22,9 @@ func getJwtToken(issuer string, secret string, expirationDuration int) string {
 		},
 	})
 
-	tokenString, _ := token.SignedString([]byte(secret))
+	tokenString, err := token.SignedString([]byte(secret))
+	assert.NoError(t, err)
+
 	return tokenString
 }
 
@@ -54,7 +56,7 @@ func TestJwtTokenHandler_IsValid_Valid(t *testing.T) {
 
 	h := auth.NewJwtTokenHandlerWithInterfaces(settings)
 
-	jwtToken := getJwtToken("me", "1", 10000)
+	jwtToken := getJwtToken(t, "me", "1", 10000)
 
 	isValid, _, err := h.Valid(jwtToken)
 
@@ -71,7 +73,7 @@ func TestJwtTokenHandler_IsValid_InvalidSigningSecret(t *testing.T) {
 
 	h := auth.NewJwtTokenHandlerWithInterfaces(settings)
 
-	jwtToken := getJwtToken("me", "1", 10000)
+	jwtToken := getJwtToken(t, "me", "1", 10000)
 
 	isValid, _, err := h.Valid(jwtToken)
 
@@ -88,7 +90,7 @@ func TestJwtTokenHandler_IsValid_InvalidExpiredToken(t *testing.T) {
 
 	h := auth.NewJwtTokenHandlerWithInterfaces(settings)
 
-	jwtToken := getJwtToken("me", "1", -1)
+	jwtToken := getJwtToken(t, "me", "1", -1)
 
 	isValid, _, err := h.Valid(jwtToken)
 
@@ -105,7 +107,7 @@ func TestJwtTokenHandler_IsValid_InvalidIssuer(t *testing.T) {
 
 	h := auth.NewJwtTokenHandlerWithInterfaces(settings)
 
-	jwtToken := getJwtToken("me32424", "1", 10000)
+	jwtToken := getJwtToken(t, "me32424", "1", 10000)
 
 	isValid, _, err := h.Valid(jwtToken)
 

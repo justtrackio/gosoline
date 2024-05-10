@@ -66,8 +66,9 @@ func (f *mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManage
 		}
 
 		settings := &mysqlSettings{}
-		UnmarshalSettings(config, settings, componentMySql, "default")
-
+		if err := UnmarshalSettings(config, settings, componentMySql, "default"); err != nil {
+			return fmt.Errorf("can not unmarshal mysql settings for component %s: %w", name, err)
+		}
 		settings.Type = componentMySql
 		settings.Name = name
 

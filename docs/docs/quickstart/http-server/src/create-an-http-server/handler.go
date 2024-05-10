@@ -30,7 +30,7 @@ type TodoHandler struct {
 // snippet-end: todo handler
 
 // snippet-start: get input
-func (t TodoHandler) GetInput() interface{} {
+func (t TodoHandler) GetInput() any {
 	return &Todo{}
 }
 

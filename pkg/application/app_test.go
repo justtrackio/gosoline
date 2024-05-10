@@ -23,7 +23,9 @@ type testModule struct {
 
 func (m testModule) Boot(config cfg.Config, _ log.Logger) error {
 	settings := &testSettings{}
-	config.UnmarshalKey("test.settings-struct", settings)
+	if err := config.UnmarshalKey("test.settings-struct", settings); err != nil {
+		return err
+	}
 
 	assert.Equal(m.t, "value", settings.Field)
 
@@ -35,8 +37,7 @@ func (m testModule) Run(_ context.Context) error {
 }
 
 func TestDefaultConfigParser(t *testing.T) {
-	err := os.Setenv("TEST_SETTINGS_STRUCT_FIELD", "value")
-	assert.NoError(t, err)
+	t.Setenv("TEST_SETTINGS_STRUCT_FIELD", "value")
 
 	runTestApp(t, func() {
 		exitCodeHandler := application.WithKernelExitHandler(func(code int) {})
@@ -55,12 +56,10 @@ func runTestApp(t *testing.T, f func()) {
 	oldDir, err := os.Getwd()
 	assert.NoError(t, err)
 
-	err = os.Chdir("testdata")
-	assert.NoError(t, err)
+	t.Chdir("testdata")
 
 	defer func() {
-		err := os.Chdir(oldDir)
-		assert.NoError(t, err)
+		t.Chdir(oldDir)
 	}()
 
 	args := os.Args

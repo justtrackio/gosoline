@@ -55,7 +55,7 @@ func NewJsonMessage(body string, attributes ...map[string]string) *Message {
 	return msg
 }
 
-func MarshalJsonMessage(body interface{}, attributes ...map[string]string) (*Message, error) {
+func MarshalJsonMessage(body any, attributes ...map[string]string) (*Message, error) {
 	data, err := NewJsonEncoder().Encode(body)
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal body to json: %w", err)

@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/coffin"
@@ -24,7 +23,7 @@ func (s *InMemoryInputTestSuite) TestRun() {
 	msg := stream.NewMessage("content")
 
 	go func() {
-		err := s.input.Run(context.Background())
+		err := s.input.Run(s.T().Context())
 		s.NoError(err)
 	}()
 

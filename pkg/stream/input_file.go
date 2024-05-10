@@ -49,6 +49,7 @@ func (i *fileInput) Run(_ context.Context) error {
 	file, err := os.Open(i.settings.Filename)
 	if err != nil {
 		i.logger.Error("can not open file: %w", err)
+
 		return err
 	}
 
@@ -64,6 +65,7 @@ func (i *fileInput) Run(_ context.Context) error {
 		err = json.Unmarshal([]byte(rawMessage), &msg)
 		if err != nil {
 			i.logger.Error("could not unmarshal message: %w", err)
+
 			continue
 		}
 

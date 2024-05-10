@@ -15,7 +15,7 @@ func (e requestCanceledError) Error() string {
 	return string(e)
 }
 
-func CheckRequestCanceled(_ interface{}, err error) ErrorType {
+func CheckRequestCanceled(_ any, err error) ErrorType {
 	if IsRequestCanceled(err) {
 		return ErrorTypePermanent
 	}

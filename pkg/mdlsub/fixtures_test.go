@@ -1,7 +1,6 @@
 package mdlsub_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -71,7 +70,7 @@ func (s *FixtureSetTestSuite) TearDownTest() {
 }
 
 func (s *FixtureSetTestSuite) TestSuccess() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	s.output.EXPECT().Persist(ctx, TestModel{Id: 1}, "create").Return(nil)
 	s.output.EXPECT().Persist(ctx, TestModel{Id: 2}, "create").Return(nil)

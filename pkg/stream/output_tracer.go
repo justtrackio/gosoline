@@ -19,7 +19,9 @@ func NewOutputTracer(ctx context.Context, config cfg.Config, logger log.Logger, 
 	key := ConfigurableOutputKey(name)
 
 	settings := &BaseOutputConfiguration{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal output tracer settings for key %q in NewOutputTracer: %w", key, err)
+	}
 
 	var err error
 	tracer := tracing.NewLocalTracer()

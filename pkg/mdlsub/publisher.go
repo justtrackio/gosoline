@@ -30,8 +30,8 @@ type PublisherSettings struct {
 
 //go:generate go run github.com/vektra/mockery/v2 --name Publisher
 type Publisher interface {
-	PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]string) error
-	Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]string) error
+	PublishBatch(ctx context.Context, typ string, version int, values []any, customAttributes ...map[string]string) error
+	Publish(ctx context.Context, typ string, version int, value any, customAttributes ...map[string]string) error
 }
 
 type publisher struct {
@@ -41,7 +41,10 @@ type publisher struct {
 }
 
 func NewPublisher(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Publisher, error) {
-	settings := readPublisherSetting(config, name)
+	settings, err := readPublisherSetting(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("can not read publisher settings for %s: %w", name, err)
+	}
 
 	return NewPublisherWithSettings(ctx, config, logger, settings)
 }
@@ -65,27 +68,27 @@ func NewPublisherWithInterfaces(logger log.Logger, producer stream.Producer, set
 	}
 }
 
-func (p *publisher) PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]string) error {
+func (p *publisher) PublishBatch(ctx context.Context, typ string, version int, values []any, customAttributes ...map[string]string) error {
 	attributes := []map[string]string{
 		CreateMessageAttributes(p.settings.ModelId, typ, version),
 	}
 	attributes = append(attributes, customAttributes...)
 
 	if err := p.producer.Write(ctx, values, attributes...); err != nil {
-		return fmt.Errorf("can not publish %s with publisher %s: %w", p.settings.ModelId.String(), p.settings.Name, err)
+		return fmt.Errorf("can not publish %s with publisher %s: %w", p.settings.String(), p.settings.Name, err)
 	}
 
 	return nil
 }
 
-func (p *publisher) Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]string) error {
+func (p *publisher) Publish(ctx context.Context, typ string, version int, value any, customAttributes ...map[string]string) error {
 	attributes := []map[string]string{
 		CreateMessageAttributes(p.settings.ModelId, typ, version),
 	}
 	attributes = append(attributes, customAttributes...)
 
 	if err := p.producer.WriteOne(ctx, value, attributes...); err != nil {
-		return fmt.Errorf("can not publish %s with publisher %s: %w", p.settings.ModelId.String(), p.settings.Name, err)
+		return fmt.Errorf("can not publish %s with publisher %s: %w", p.settings.String(), p.settings.Name, err)
 	}
 
 	return nil

@@ -62,6 +62,7 @@ func encodeHex(b byte) byte {
 	if b < 10 {
 		return b + '0'
 	}
+
 	return b - 10 + 'a'
 }
 

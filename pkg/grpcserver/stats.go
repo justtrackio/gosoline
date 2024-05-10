@@ -27,13 +27,13 @@ type statsHolder struct {
 	InPayloadLength           int
 	InHeaders                 *sync.Map
 	InPayloadWireLength       int
-	InPayload                 interface{}
+	InPayload                 any
 	OutCompression            string
 	OutRemoteAddr             string
 	OutLocalAddr              string
 	OutPayloadLength          int
 	OutPayloadWireLength      int
-	OutPayload                interface{}
+	OutPayload                any
 	OutHeaders                *sync.Map
 	Error                     error
 }
@@ -80,7 +80,7 @@ func (s *statsHolder) GetLoggerFields() log.Fields {
 
 func syncMapToMapStringString(sm *sync.Map) map[string]string {
 	m := map[string]string{}
-	sm.Range(func(kI, vI interface{}) bool {
+	sm.Range(func(kI, vI any) bool {
 		k, ok := kI.(string)
 		if !ok {
 			return false

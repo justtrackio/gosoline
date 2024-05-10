@@ -66,7 +66,10 @@ type kernel struct {
 }
 
 func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kernel, error) {
-	settings := readSettings(config)
+	settings, err := readSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read kernel settings: %w", err)
+	}
 
 	k := &kernel{
 		logger: logger.WithChannel("kernel"),
@@ -81,7 +84,7 @@ func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kern
 		exitHandler: os.Exit,
 	}
 
-	_, err := appctx.Provide(ctx, healthCheckerKey, func() (HealthChecker, error) {
+	_, err = appctx.Provide(ctx, healthCheckerKey, func() (HealthChecker, error) {
 		return k.HealthCheck, nil
 	})
 
@@ -359,9 +362,11 @@ func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 	return done
 }
 
-func readSettings(config cfg.Config) Settings {
+func readSettings(config cfg.Config) (Settings, error) {
 	settings := Settings{}
-	config.UnmarshalKey("kernel", &settings)
+	if err := config.UnmarshalKey("kernel", &settings); err != nil {
+		return Settings{}, fmt.Errorf("failed to unmarshal kernel settings: %w", err)
+	}
 
-	return settings
+	return settings, nil
 }

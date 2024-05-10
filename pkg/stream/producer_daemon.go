@@ -124,12 +124,15 @@ func ProvideProducerDaemon(ctx context.Context, config cfg.Config, logger log.Lo
 
 func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*producerDaemon, error) {
 	logger = logger.WithChannel(producerDaemonName(name))
-	settings := readProducerSettings(config, name)
+
+	settings, err := readProducerSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read producer settings for producer daemon %q: %w", name, err)
+	}
 
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
 	metricWriter := metric.NewWriter(defaultMetrics...)
 
-	var err error
 	var output Output
 	var aggregator ProducerDaemonAggregator
 
@@ -302,6 +305,7 @@ func (d *producerDaemon) tickerLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			d.ticker.Stop()
+
 			return nil
 
 		case <-d.ticker.Chan():

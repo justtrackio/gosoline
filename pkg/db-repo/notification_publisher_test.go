@@ -1,7 +1,6 @@
 package db_repo_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -25,7 +24,7 @@ func Test_Publish_Notifier(t *testing.T) {
 		value: "my test input",
 	}
 
-	transformer := func(view string, version int, in interface{}) (out interface{}) {
+	transformer := func(view string, version int, in any) (out any) {
 		assert.Equal(t, mdl.Box(uint(3)), in.(db_repo.ModelBased).GetId())
 		assert.Equal(t, "api", view)
 		assert.Equal(t, 1, version)
@@ -34,7 +33,7 @@ func Test_Publish_Notifier(t *testing.T) {
 	}
 
 	publisher := *mdlMocks.NewPublisher(t)
-	publisher.EXPECT().Publish(context.Background(), "CREATE", 1, input).Return(nil).Once()
+	publisher.EXPECT().Publish(t.Context(), "CREATE", 1, input).Return(nil).Once()
 
 	modelId := mdl.ModelId{
 		Project:     "testProject",
@@ -46,7 +45,7 @@ func Test_Publish_Notifier(t *testing.T) {
 	}
 
 	notifier := db_repo.NewPublisherNotifier(
-		context.Background(),
+		t.Context(),
 		cfg.New(),
 		&publisher,
 		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
@@ -55,6 +54,6 @@ func Test_Publish_Notifier(t *testing.T) {
 		transformer,
 	)
 
-	err := notifier.Send(context.Background(), "CREATE", input)
+	err := notifier.Send(t.Context(), "CREATE", input)
 	assert.NoError(t, err)
 }

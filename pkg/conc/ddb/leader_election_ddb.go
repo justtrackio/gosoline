@@ -40,7 +40,9 @@ type DdbLeaderElection struct {
 func NewDdbLeaderElection(ctx context.Context, config cfg.Config, logger log.Logger, name string) (LeaderElection, error) {
 	key := GetLeaderElectionConfigKey(name)
 	settings := &DdbLeaderElectionSettings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal ddb leader election settings: %w", err)
+	}
 
 	return NewDdbLeaderElectionWithSettings(ctx, config, logger, settings)
 }

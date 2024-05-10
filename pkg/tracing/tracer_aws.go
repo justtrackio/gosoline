@@ -45,7 +45,9 @@ func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Trac
 	appId.PadFromConfig(config)
 
 	settings := &XrayTracerSettings{}
-	config.UnmarshalKey("tracing.xray", settings)
+	if err := config.UnmarshalKey("tracing.xray", settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal xray tracer settings: %w", err)
+	}
 
 	addr := lookupAddr(appId, settings)
 	ctxMissingStrategy := NewContextMissingWarningLogStrategy(logger)
@@ -114,9 +116,9 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 
 	if parentSpan != nil {
 		parentTrace := parentSpan.GetTrace()
-		transaction.awsSpan.segment.TraceID = parentTrace.TraceId
-		transaction.awsSpan.segment.ParentID = parentTrace.Id
-		transaction.awsSpan.segment.Sampled = parentTrace.Sampled
+		transaction.segment.TraceID = parentTrace.TraceId
+		transaction.segment.ParentID = parentTrace.Id
+		transaction.segment.Sampled = parentTrace.Sampled
 
 		return ctx, transaction
 	}
@@ -124,9 +126,9 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 	trace := GetTraceFromContext(ctx)
 
 	if trace != nil {
-		transaction.awsSpan.segment.TraceID = trace.TraceId
-		transaction.awsSpan.segment.ParentID = trace.ParentId
-		transaction.awsSpan.segment.Sampled = trace.Sampled
+		transaction.segment.TraceID = trace.TraceId
+		transaction.segment.ParentID = trace.ParentId
+		transaction.segment.Sampled = trace.Sampled
 
 		return ctx, transaction
 	}
@@ -137,8 +139,7 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 func lookupAddr(appId cfg.AppId, settings *XrayTracerSettings) string {
 	addressValue := settings.AddressValue
 
-	switch settings.AddressType {
-	case dnsSrv:
+	if settings.AddressType == dnsSrv {
 		if addressValue == "" {
 			addressValue = fmt.Sprintf("xray.%v.%v", appId.Environment, appId.Family)
 		}
@@ -150,6 +151,7 @@ func lookupAddr(appId cfg.AppId, settings *XrayTracerSettings) string {
 
 		for _, srv := range srvs {
 			addressValue = fmt.Sprintf("%v:%v", srv.Target, srv.Port)
+
 			break
 		}
 	}

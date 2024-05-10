@@ -47,7 +47,7 @@ func (s *ServerTestSuite) SetupTest() {
 }
 
 func (s *ServerTestSuite) TestLifecycle_Cancel() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	cancel()
 
 	s.NotPanics(func() {

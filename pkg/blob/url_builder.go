@@ -20,11 +20,18 @@ type urlBuilder struct {
 }
 
 func NewUrlBuilder(config cfg.Config, name string) (UrlBuilder, error) {
-	storeSettings := ReadStoreSettings(config, name)
-	clientConfig := s3.GetClientConfig(config, storeSettings.ClientName)
-
 	var err error
+	var storeSettings *Settings
+	var clientConfig *s3.ClientConfig
 	var endpoint string
+
+	if storeSettings, err = ReadStoreSettings(config, name); err != nil {
+		return nil, fmt.Errorf("can not read blob store settings for %s: %w", name, err)
+	}
+
+	if clientConfig, err = s3.GetClientConfig(config, storeSettings.ClientName); err != nil {
+		return nil, fmt.Errorf("can not get s3 client config for client %s: %w", storeSettings.ClientName, err)
+	}
 
 	if endpoint, err = s3.ResolveEndpoint(config, storeSettings.ClientName); err != nil {
 		return nil, fmt.Errorf("can not resolve s3 endpoint for client %s: %w", storeSettings.ClientName, err)

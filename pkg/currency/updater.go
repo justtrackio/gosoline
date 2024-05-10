@@ -55,7 +55,9 @@ func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (Upda
 	}
 
 	settings := &Settings{}
-	config.UnmarshalKey("currency_service", settings)
+	if err := config.UnmarshalKey("currency_service", settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal currency updater settings: %w", err)
+	}
 
 	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider, settings), nil
 }

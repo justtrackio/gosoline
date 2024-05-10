@@ -1,7 +1,6 @@
 package parquet_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -18,12 +17,12 @@ func TestNopRecorder(t *testing.T) {
 	r.RecordFile("bucket", "file")
 	assert.Equal(t, parquet.NewNopRecorder(), r)
 
-	err := r.DeleteRecordedFiles(context.Background())
+	err := r.DeleteRecordedFiles(t.Context())
 	assert.NoError(t, err)
 	assert.Equal(t, parquet.NewNopRecorder(), r)
 
 	r.RecordFile("bucket", "another file")
-	err = r.RenameRecordedFiles(context.Background(), "prefix")
+	err = r.RenameRecordedFiles(t.Context(), "prefix")
 	assert.NoError(t, err)
 	assert.Equal(t, parquet.NewNopRecorder(), r)
 }
@@ -36,30 +35,30 @@ func TestS3FileRecorder(t *testing.T) {
 	r.RecordFile("bucket", "my file")
 	r.RecordFile("another bucket", "my other file")
 
-	s3Client.EXPECT().DeleteObject(context.Background(), &s3.DeleteObjectInput{
+	s3Client.EXPECT().DeleteObject(t.Context(), &s3.DeleteObjectInput{
 		Bucket: aws.String("bucket"),
 		Key:    aws.String("my file"),
 	}).Return(nil, nil).Once()
-	s3Client.EXPECT().DeleteObject(context.Background(), &s3.DeleteObjectInput{
+	s3Client.EXPECT().DeleteObject(t.Context(), &s3.DeleteObjectInput{
 		Bucket: aws.String("another bucket"),
 		Key:    aws.String("my other file"),
 	}).Return(nil, nil).Once()
 
-	err := r.DeleteRecordedFiles(context.Background())
+	err := r.DeleteRecordedFiles(t.Context())
 	assert.NoError(t, err)
 
 	r.RecordFile("new bucket", "last file")
 
-	s3Client.EXPECT().CopyObject(context.Background(), &s3.CopyObjectInput{
+	s3Client.EXPECT().CopyObject(t.Context(), &s3.CopyObjectInput{
 		Bucket:     aws.String("new bucket"),
 		Key:        aws.String("prefix/last file"),
 		CopySource: aws.String("new bucket/last file"),
 	}).Return(nil, nil).Once()
-	s3Client.EXPECT().DeleteObject(context.Background(), &s3.DeleteObjectInput{
+	s3Client.EXPECT().DeleteObject(t.Context(), &s3.DeleteObjectInput{
 		Bucket: aws.String("new bucket"),
 		Key:    aws.String("last file"),
 	}).Return(nil, nil).Once()
 
-	err = r.RenameRecordedFiles(context.Background(), "prefix")
+	err = r.RenameRecordedFiles(t.Context(), "prefix")
 	assert.NoError(t, err)
 }

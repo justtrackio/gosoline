@@ -1,6 +1,7 @@
 package producer
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -29,12 +30,21 @@ func (s *Settings) WithConnection(conn *connection.Settings) *Settings {
 	return s
 }
 
-func ParseSettings(config cfg.Config, key string) *Settings {
+func ParseSettings(config cfg.Config, key string) (*Settings, error) {
 	settings := &Settings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kafka producer settings for key %q in ParseSettings: %w", key, err)
+	}
 
-	settings.connection = connection.ParseSettings(config, settings.ConnectionName)
-	settings.FQTopic = kafka.FQTopicName(config, cfg.GetAppIdFromConfig(config), settings.Topic)
+	conn, err := connection.ParseSettings(config, settings.ConnectionName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse kafka connection settings for connection %q in ParseSettings: %w", settings.ConnectionName, err)
+	}
+	settings.connection = conn
+	settings.FQTopic, err = kafka.FQTopicName(config, cfg.GetAppIdFromConfig(config), settings.Topic)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get fully qualified topic name for topic %q in ParseSettings: %w", settings.Topic, err)
+	}
 
-	return settings
+	return settings, nil
 }

@@ -30,7 +30,7 @@ type ServiceTestSuite struct {
 func (s *ServiceTestSuite) SetupTest() {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.client = gosoSnsMocks.NewClient(s.T())
 	s.service = gosoSns.NewServiceWithInterfaces(logger, s.client)
 }
@@ -78,7 +78,7 @@ func (s *ServiceTestSuite) TestSubscribeSqsExists() {
 	}
 	s.client.EXPECT().GetSubscriptionAttributes(matcher.Context, getAttributesInput).Return(getAttributesOutput, nil).Once()
 
-	err := s.service.SubscribeSqs(context.Background(), "queueArn", "topicArn", map[string]string{
+	err := s.service.SubscribeSqs(s.T().Context(), "queueArn", "topicArn", map[string]string{
 		"model":   "goso",
 		"version": "1",
 	})
@@ -120,8 +120,8 @@ func (s *ServiceTestSuite) TestSubscribeSqsExistsWithDifferentAttributes() {
 	}
 	s.client.EXPECT().Subscribe(matcher.Context, subInput).Return(nil, nil).Once()
 
-	err := s.service.SubscribeSqs(context.Background(), "queueArn", "topicArn", map[string]string{
-		// err := s.topic.SubscribeSqs(s.ctx, "queueArn", map[string]interface{}{
+	err := s.service.SubscribeSqs(s.T().Context(), "queueArn", "topicArn", map[string]string{
+		// err := s.topic.SubscribeSqs(s.ctx, "queueArn", map[string]any{
 		"model": "goso",
 	})
 	s.NoError(err)

@@ -33,16 +33,19 @@ func Test_RunUpdateTestSuite(t *testing.T) {
 }
 
 func (s *updateTestSuite) SetupTest() {
+	var err error
+
 	config := configMocks.NewConfig(s.T())
 	config.EXPECT().UnmarshalKey("crud", mock.AnythingOfType("*crud.Settings")).Run(func(key string, val any, additionalDefaults ...cfg.UnmarshalDefaults) {
 		settings := val.(*crud.Settings)
 		settings.WriteTimeout = time.Minute
-	})
+	}).Return(nil)
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
 	s.handler = newHandler(s.T())
-	s.updateHandler = crud.NewUpdateHandler(config, logger, s.handler)
+	s.updateHandler, err = crud.NewUpdateHandler(config, logger, s.handler)
+	s.NoError(err)
 }
 
 func (s *updateTestSuite) TestUpdate() {

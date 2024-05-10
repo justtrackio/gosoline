@@ -43,18 +43,18 @@ func TestExponentialBackoffDelayer(t *testing.T) {
 func TestUnmarshalClientSettings(t *testing.T) {
 	config := cfg.New()
 
-	err := config.Option(cfg.WithConfigMap(map[string]interface{}{
-		"cloud.aws": map[string]interface{}{
-			"defaults": map[string]interface{}{
+	err := config.Option(cfg.WithConfigMap(map[string]any{
+		"cloud.aws": map[string]any{
+			"defaults": map[string]any{
 				"http_client.timeout": "1s",
 				"assume_role":         "role",
-				"credentials": map[string]interface{}{
+				"credentials": map[string]any{
 					"access_key_id":     "access key id",
 					"secret_access_key": "secret access key",
 					"session_token":     "session token",
 				},
 			},
-			"cloudwatch.clients.metrics.http_client": map[string]interface{}{
+			"cloudwatch.clients.metrics.http_client": map[string]any{
 				"timeout": "2s",
 			},
 		},
@@ -62,7 +62,9 @@ func TestUnmarshalClientSettings(t *testing.T) {
 	assert.NoError(t, err)
 
 	settings := &aws.ClientSettings{}
-	aws.UnmarshalClientSettings(config, settings, "cloudwatch", "default")
+	err = aws.UnmarshalClientSettings(config, settings, "cloudwatch", "default")
+	assert.NoError(t, err)
+
 	assert.Equal(t, &aws.ClientSettings{
 		Region:     "eu-central-1",
 		Endpoint:   "http://localhost:4566",
@@ -85,7 +87,8 @@ func TestUnmarshalClientSettings(t *testing.T) {
 	}, settings)
 
 	settings = &aws.ClientSettings{}
-	aws.UnmarshalClientSettings(config, settings, "cloudwatch", "metrics")
+	err = aws.UnmarshalClientSettings(config, settings, "cloudwatch", "metrics")
+	assert.NoError(t, err)
 	assert.Equal(t, &aws.ClientSettings{
 		Region:     "eu-central-1",
 		Endpoint:   "http://localhost:4566",

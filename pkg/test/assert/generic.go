@@ -6,6 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Equal(t *testing.T, expected, actual interface{}, msgAndArgs ...interface{}) {
+func Equal(t *testing.T, expected, actual any, msgAndArgs ...any) {
 	assert.Equal(t, expected, actual, msgAndArgs...)
 }

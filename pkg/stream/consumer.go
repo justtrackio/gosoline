@@ -74,11 +74,11 @@ func NewUntypedConsumerWithInterfaces(base *baseConsumer, callback UntypedConsum
 }
 
 func (c *Consumer) Run(kernelCtx context.Context) error {
-	return c.baseConsumer.run(kernelCtx, c.readData)
+	return c.run(kernelCtx, c.readData)
 }
 
 func (c *Consumer) IsHealthy(_ context.Context) (bool, error) {
-	return c.baseConsumer.isHealthy() && c.healthCheckTimer.IsHealthy(), nil
+	return c.isHealthy() && c.healthCheckTimer.IsHealthy(), nil
 }
 
 func (c *Consumer) readData(ctx context.Context) error {

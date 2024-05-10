@@ -26,8 +26,8 @@ type ProducerSettings struct {
 
 //go:generate go run github.com/vektra/mockery/v2 --name Producer
 type Producer interface {
-	WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]string) error
-	Write(ctx context.Context, models interface{}, attributeSets ...map[string]string) error
+	WriteOne(ctx context.Context, model any, attributeSets ...map[string]string) error
+	Write(ctx context.Context, models any, attributeSets ...map[string]string) error
 }
 
 type producer struct {
@@ -36,9 +36,11 @@ type producer struct {
 }
 
 func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name string, handlers ...EncodeHandler) (*producer, error) {
-	settings := readProducerSettings(config, name)
+	settings, err := readProducerSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read producer settings for %q: %w", name, err)
+	}
 
-	var err error
 	var output Output
 
 	if !settings.Daemon.Enabled {
@@ -82,7 +84,7 @@ func NewProducerWithInterfaces(encoder MessageEncoder, output Output) *producer 
 	}
 }
 
-func (p *producer) WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]string) error {
+func (p *producer) WriteOne(ctx context.Context, model any, attributeSets ...map[string]string) error {
 	msg, err := p.encoder.Encode(ctx, model, attributeSets...)
 	if err != nil {
 		return fmt.Errorf("can not encode model into message: %w", err)
@@ -96,7 +98,7 @@ func (p *producer) WriteOne(ctx context.Context, model interface{}, attributeSet
 	return nil
 }
 
-func (p *producer) Write(ctx context.Context, models interface{}, attributeSets ...map[string]string) error {
+func (p *producer) Write(ctx context.Context, models any, attributeSets ...map[string]string) error {
 	slice, err := refl.InterfaceToInterfaceSlice(models)
 	if err != nil {
 		return fmt.Errorf("can not cast models interface to slice: %w", err)
@@ -124,36 +126,39 @@ func ConfigurableProducerKey(name string) string {
 	return fmt.Sprintf("stream.producer.%s", name)
 }
 
-func readProducerSettings(config cfg.Config, name string) *ProducerSettings {
+func readProducerSettings(config cfg.Config, name string) (*ProducerSettings, error) {
 	key := ConfigurableProducerKey(name)
 
-	settings := &ProducerSettings{}
-	config.UnmarshalKey(key, settings)
-
-	if settings.Encoding == "" {
-		settings.Encoding = defaultMessageBodyEncoding
+	s := &ProducerSettings{}
+	if err := config.UnmarshalKey(key, s); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal producer settings for key %q in readProducerSettings: %w", key, err)
 	}
 
-	if settings.Output == "" {
-		settings.Output = name
+	if s.Encoding == "" {
+		s.Encoding = defaultMessageBodyEncoding
 	}
 
-	return settings
+	if s.Output == "" {
+		s.Output = name
+	}
+
+	return s, nil
 }
 
-func readAllProducerDaemonSettings(config cfg.Config) map[string]*ProducerSettings {
+func readAllProducerDaemonSettings(config cfg.Config) (map[string]*ProducerSettings, error) {
 	producerSettings := make(map[string]*ProducerSettings)
-	producerMap := config.GetStringMap("stream.producer", map[string]interface{}{})
+	producerMap := config.GetStringMap("stream.producer", map[string]any{})
 
 	for name := range producerMap {
-		settings := readProducerSettings(config, name)
-
-		if !settings.Daemon.Enabled {
+		s, err := readProducerSettings(config, name)
+		if err != nil {
+			return nil, err
+		}
+		if !s.Daemon.Enabled {
 			continue
 		}
-
-		producerSettings[name] = settings
+		producerSettings[name] = s
 	}
 
-	return producerSettings
+	return producerSettings, nil
 }

@@ -39,7 +39,7 @@ func (s *sesSenderTestSuite) SetupTest() {
 		"sender@example.com",
 	)
 
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 }
 
 func (s *sesSenderTestSuite) TestSendEmail_TextEmail() {

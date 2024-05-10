@@ -28,7 +28,7 @@ type queueTestSuite struct {
 func (s *queueTestSuite) SetupTest() {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.client = new(sqsMocks.Client)
 	s.queue = gosoSqs.NewQueueWithInterfaces(logger, s.client, &gosoSqs.Properties{
 		Url: "http://foo.bar.baz",

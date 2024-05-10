@@ -273,7 +273,7 @@ func TestDdbKvStore_DeleteBatch(t *testing.T) {
 }
 
 func buildTestableDdbStore[T any](t *testing.T) (context.Context, kvstore.KvStore[T], *ddbMocks.Repository) {
-	ctx := context.Background()
+	ctx := t.Context()
 	repository := ddbMocks.NewRepository(t)
 
 	store := kvstore.NewDdbKvStoreWithInterfaces[T](repository, &kvstore.Settings{

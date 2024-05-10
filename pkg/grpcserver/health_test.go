@@ -12,7 +12,7 @@ import (
 
 func Test_healthServer_Check(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(t.Context())
 	defer cancelFunc()
 
 	tests := []struct {
@@ -67,6 +67,7 @@ func Test_healthServer_Check(t *testing.T) {
 			got, err := s.Check(ctx, tt.in)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Check() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {

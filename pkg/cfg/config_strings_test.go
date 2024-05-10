@@ -43,7 +43,8 @@ func TestConfigStringsTest(t *testing.T) {
 	assert.NoError(t, err)
 
 	settings := &TestSettings{}
-	config.UnmarshalKey("test", settings)
+	err = config.UnmarshalKey("test", settings)
+	assert.NoError(t, err)
 
 	assert.Equal(t, &TestSettings{
 		Encoding:            EncodingJson,
@@ -109,7 +110,8 @@ func TestConfigStringConversionTest(t *testing.T) {
 	assert.NoError(t, err)
 
 	settings := &HttpServerSettings{}
-	config.UnmarshalKey("httpserver.default", settings)
+	err = config.UnmarshalKey("httpserver.default", settings)
+	assert.NoError(t, err)
 
 	assert.Equal(t, &HttpServerSettings{
 		Port: "80",

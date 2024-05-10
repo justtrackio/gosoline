@@ -4,6 +4,7 @@ package fixtures
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -15,7 +16,10 @@ type noopFixtureLoader struct {
 }
 
 func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger, fixtureSets map[string][]FixtureSet, postProcessors []PostProcessor) (FixtureLoader, error) {
-	settings := unmarshalFixtureLoaderSettings(config)
+	settings, err := unmarshalFixtureLoaderSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal fixture loader settings: %w", err)
+	}
 
 	return &noopFixtureLoader{
 		logger:   logger.WithChannel("fixture_loader"),

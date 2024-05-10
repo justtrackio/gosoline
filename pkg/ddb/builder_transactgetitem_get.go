@@ -9,12 +9,12 @@ import (
 //go:generate go run github.com/vektra/mockery/v2 --name TransactGetItemBuilder
 type TransactGetItemBuilder interface {
 	Build() (types.TransactGetItem, error)
-	GetItem() interface{}
+	GetItem() any
 }
 
 type TransactGetItem struct {
 	Builder GetItemBuilder
-	Item    interface{}
+	Item    any
 }
 
 func (b *TransactGetItem) Build() (types.TransactGetItem, error) {
@@ -39,6 +39,6 @@ func (b *TransactGetItem) Build() (types.TransactGetItem, error) {
 	return item, nil
 }
 
-func (b *TransactGetItem) GetItem() interface{} {
+func (b *TransactGetItem) GetItem() any {
 	return b.Item
 }

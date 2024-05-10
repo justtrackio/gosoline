@@ -94,7 +94,7 @@ func file_testcase_httpserver_extended_test_input_proto_rawDescGZIP() []byte {
 
 var (
 	file_testcase_httpserver_extended_test_input_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_testcase_httpserver_extended_test_input_proto_goTypes  = []interface{}{
+	file_testcase_httpserver_extended_test_input_proto_goTypes  = []any{
 		(*TestInput)(nil), // 0: TestInput
 	}
 )
@@ -113,7 +113,7 @@ func file_testcase_httpserver_extended_test_input_proto_init() {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_testcase_httpserver_extended_test_input_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_testcase_httpserver_extended_test_input_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*TestInput); i {
 			case 0:
 				return &v.state

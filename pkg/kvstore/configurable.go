@@ -69,8 +69,7 @@ func NewConfigurableKvStore[T any](ctx context.Context, config cfg.Config, logge
 	key := fmt.Sprintf("kvstore.%s.type", name)
 	t := config.GetString(key)
 
-	switch t {
-	case TypeChain:
+	if t == TypeChain {
 		return newKvStoreChainFromConfig[T](ctx, config, logger, name)
 	}
 
@@ -81,7 +80,9 @@ func newKvStoreChainFromConfig[T any](ctx context.Context, config cfg.Config, lo
 	key := GetConfigurableKey(name)
 
 	configuration := ChainConfiguration{}
-	config.UnmarshalKey(key, &configuration)
+	if err := config.UnmarshalKey(key, &configuration); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kvstore configuration for %s: %w", name, err)
+	}
 
 	store, err := NewChainKvStore[T](ctx, config, logger, configuration.MissingCacheEnabled, &Settings{
 		AppId: cfg.AppId{

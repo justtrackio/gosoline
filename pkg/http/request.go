@@ -75,7 +75,7 @@ func (r *Request) WithUrl(rawUrl string) *Request {
 	return r
 }
 
-func (r *Request) WithQueryParam(key string, values ...interface{}) *Request {
+func (r *Request) WithQueryParam(key string, values ...any) *Request {
 	r.takeQueryParamsFromUrl()
 
 	for _, value := range values {
@@ -92,7 +92,7 @@ func (r *Request) WithQueryParam(key string, values ...interface{}) *Request {
 	return r
 }
 
-func (r *Request) WithQueryObject(obj interface{}) *Request {
+func (r *Request) WithQueryObject(obj any) *Request {
 	parts, err := query.Values(obj)
 	if err != nil {
 		r.errs = multierror.Append(r.errs, err)
@@ -106,7 +106,7 @@ func (r *Request) WithQueryObject(obj interface{}) *Request {
 	return r
 }
 
-func (r *Request) WithQueryMap(values interface{}) *Request {
+func (r *Request) WithQueryMap(values any) *Request {
 	parts, err := cast.ToStringMapStringSliceE(values)
 	if err != nil {
 		r.errs = multierror.Append(r.errs, err)
@@ -138,7 +138,7 @@ func (r *Request) WithHeader(key string, value string) *Request {
 	return r
 }
 
-func (r *Request) WithBody(body interface{}) *Request {
+func (r *Request) WithBody(body any) *Request {
 	r.restyRequest.SetBody(body)
 
 	return r
@@ -186,7 +186,7 @@ func (r *Request) GetHeader() Header {
 	return header
 }
 
-func (r *Request) GetBody() interface{} {
+func (r *Request) GetBody() any {
 	return r.restyRequest.Body
 }
 

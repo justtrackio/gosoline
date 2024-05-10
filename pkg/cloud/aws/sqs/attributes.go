@@ -17,7 +17,7 @@ const (
 var (
 	MessageDelaySeconds = Attribute{
 		key: AttributeSqsDelaySeconds,
-		convert: func(attribute interface{}) (interface{}, error) {
+		convert: func(attribute any) (any, error) {
 			delaySeconds, ok := attribute.(int32)
 
 			if !ok {
@@ -33,7 +33,7 @@ var (
 	}
 	MessageDeduplicationId = Attribute{
 		key: AttributeSqsMessageDeduplicationId,
-		convert: func(attribute interface{}) (interface{}, error) {
+		convert: func(attribute any) (any, error) {
 			deduplicationId, ok := attribute.(string)
 
 			if !ok {
@@ -49,7 +49,7 @@ var (
 	}
 	MessageGroupId = Attribute{
 		key: AttributeSqsMessageGroupId,
-		convert: func(attribute interface{}) (interface{}, error) {
+		convert: func(attribute any) (any, error) {
 			groupId, ok := attribute.(string)
 
 			if !ok {
@@ -67,10 +67,10 @@ var (
 
 type Attribute struct {
 	key     string
-	convert func(attribute interface{}) (interface{}, error)
+	convert func(attribute any) (any, error)
 }
 
-type AttributeProvider func(data interface{}) (interface{}, error)
+type AttributeProvider func(data any) (any, error)
 
 type AttributeEncodeHandler struct {
 	attribute         Attribute
@@ -84,7 +84,7 @@ func NewAttributeEncodeHandler(attribute Attribute, attributeProvider AttributeP
 	}
 }
 
-func (g *AttributeEncodeHandler) Encode(ctx context.Context, data interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (g *AttributeEncodeHandler) Encode(ctx context.Context, data any, attributes map[string]any) (context.Context, map[string]any, error) {
 	attribute, err := g.attributeProvider(data)
 	if err != nil {
 		return ctx, attributes, err
@@ -102,6 +102,6 @@ func (g *AttributeEncodeHandler) Encode(ctx context.Context, data interface{}, a
 	return ctx, attributes, nil
 }
 
-func (g *AttributeEncodeHandler) Decode(ctx context.Context, _ interface{}, attributes map[string]interface{}) (context.Context, map[string]interface{}, error) {
+func (g *AttributeEncodeHandler) Decode(ctx context.Context, _ any, attributes map[string]any) (context.Context, map[string]any, error) {
 	return ctx, attributes, nil
 }

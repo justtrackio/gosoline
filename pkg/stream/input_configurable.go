@@ -76,7 +76,9 @@ func NewConfigurableInput(ctx context.Context, config cfg.Config, logger log.Log
 func newFileInputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 	settings := FileSettings{}
-	config.UnmarshalKey(key, &settings)
+	if err := config.UnmarshalKey(key, &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal file input settings: %w", err)
+	}
 
 	return NewFileInput(config, logger, settings), nil
 }
@@ -84,7 +86,9 @@ func newFileInputFromConfig(_ context.Context, config cfg.Config, logger log.Log
 func newInMemoryInputFromConfig(_ context.Context, config cfg.Config, _ log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 	settings := &InMemorySettings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal in-memory input settings: %w", err)
+	}
 
 	return ProvideInMemoryInput(name, settings), nil
 }
@@ -104,7 +108,9 @@ func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger lo
 	key := ConfigurableInputKey(name)
 
 	settings := KinesisInputConfiguration{}
-	config.UnmarshalKey(key, &settings)
+	if err := config.UnmarshalKey(key, &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kinesis input settings: %w", err)
+	}
 	settings.Name = name
 
 	return NewKinesisInput(ctx, config, logger, settings.Settings)
@@ -125,7 +131,9 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 	key := ConfigurableInputKey(name)
 
 	configuration := redisInputConfiguration{}
-	config.UnmarshalKey(key, &configuration)
+	if err := config.UnmarshalKey(key, &configuration); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal redis input settings: %w", err)
+	}
 
 	settings := &RedisListInputSettings{
 		AppId: cfg.AppId{
@@ -168,11 +176,13 @@ type SnsInputConfiguration struct {
 	Healthcheck         health.HealthCheckSettings    `cfg:"healthcheck"`
 }
 
-func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []SnsInputTarget) {
+func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []SnsInputTarget, error) {
 	key := ConfigurableInputKey(name)
 
 	configuration := &SnsInputConfiguration{}
-	config.UnmarshalKey(key, configuration)
+	if err := config.UnmarshalKey(key, &configuration); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal sns input settings for key %q in readSnsInputSettings: %w", key, err)
+	}
 
 	settings := &SnsInputSettings{
 		AppId: cfg.AppId{
@@ -203,7 +213,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		targetAppId.PadFromConfig(config)
 
 		clientName := t.ClientName
-		if len(clientName) == 0 {
+		if clientName == "" {
 			clientName = "default"
 		}
 
@@ -215,11 +225,14 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		}
 	}
 
-	return settings, targets
+	return settings, targets, nil
 }
 
 func newSnsInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
-	settings, targets := readSnsInputSettings(config, name)
+	settings, targets, err := readSnsInputSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read sns input settings in newSnsInputFromConfig: %w", err)
+	}
 
 	return NewSnsInput(ctx, config, logger, settings, targets)
 }
@@ -240,11 +253,13 @@ type sqsInputConfiguration struct {
 	Unmarshaller        string                     `cfg:"unmarshaller" default:"msg"`
 }
 
-func readSqsInputSettings(config cfg.Config, name string) *SqsInputSettings {
+func readSqsInputSettings(config cfg.Config, name string) (*SqsInputSettings, error) {
 	key := ConfigurableInputKey(name)
 
 	configuration := sqsInputConfiguration{}
-	config.UnmarshalKey(key, &configuration)
+	if err := config.UnmarshalKey(key, &configuration); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal sqs input settings for key %q in readSqsInputSettings: %w", key, err)
+	}
 
 	settings := &SqsInputSettings{
 		AppId: cfg.AppId{
@@ -266,11 +281,14 @@ func readSqsInputSettings(config cfg.Config, name string) *SqsInputSettings {
 
 	settings.PadFromConfig(config)
 
-	return settings
+	return settings, nil
 }
 
 func newSqsInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
-	settings := readSqsInputSettings(config, name)
+	settings, err := readSqsInputSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read sqs input settings in newSqsInputFromConfig: %w", err)
+	}
 
 	return NewSqsInput(ctx, config, logger, settings)
 }
@@ -287,7 +305,7 @@ func readInputType(config cfg.Config, name string) string {
 }
 
 func readAllInputTypes(config cfg.Config) map[string]string {
-	inputMap := config.GetStringMap("stream.input", map[string]interface{}{})
+	inputMap := config.GetStringMap("stream.input", map[string]any{})
 	inputsTypes := make(map[string]string, len(inputMap))
 
 	for name := range inputMap {

@@ -16,7 +16,7 @@ type Model struct {
 
 type NameRule struct{}
 
-func (NameRule) IsValid(ctx context.Context, model interface{}) error {
+func (NameRule) IsValid(ctx context.Context, model any) error {
 	m := model.(*Model)
 
 	if len(m.Name) > 3 {
@@ -34,14 +34,14 @@ func TestValidator_IsValidDefaultGroup(t *testing.T) {
 		Name: "foobar",
 	}
 
-	err := v.IsValid(context.Background(), m1)
+	err := v.IsValid(t.Context(), m1)
 	assert.NoError(t, err, "model should be valid")
 
 	m2 := &Model{
 		Name: "foo",
 	}
 
-	err = v.IsValid(context.Background(), m2)
+	err = v.IsValid(t.Context(), m2)
 	assert.Error(t, err, "model should be invalid")
 }
 
@@ -53,10 +53,10 @@ func TestValidator_IsValidGroups(t *testing.T) {
 		Name: "foo",
 	}
 
-	err := v.IsValid(context.Background(), m2)
+	err := v.IsValid(t.Context(), m2)
 	assert.NoError(t, err, "model should be invalid")
 
-	err = v.IsValid(context.Background(), m2, "bla")
+	err = v.IsValid(t.Context(), m2, "bla")
 	assert.Error(t, err, "model should be invalid")
 }
 

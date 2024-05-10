@@ -70,6 +70,7 @@ func (f *fakeTimer) advance(t time.Time, d time.Duration) {
 
 	if f.remaining > d {
 		f.remaining -= d
+
 		return
 	}
 

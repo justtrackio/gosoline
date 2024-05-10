@@ -13,13 +13,13 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name GetItemBuilder
 type GetItemBuilder interface {
-	WithHash(hashValue interface{}) GetItemBuilder
-	WithRange(rangeValue interface{}) GetItemBuilder
-	WithKeys(keys ...interface{}) GetItemBuilder
+	WithHash(hashValue any) GetItemBuilder
+	WithRange(rangeValue any) GetItemBuilder
+	WithKeys(keys ...any) GetItemBuilder
 	DisableTtlFilter() GetItemBuilder
-	WithProjection(rangeValue interface{}) GetItemBuilder
+	WithProjection(rangeValue any) GetItemBuilder
 	WithConsistentRead(consistentRead bool) GetItemBuilder
-	Build(result interface{}) (*dynamodb.GetItemInput, error)
+	Build(result any) (*dynamodb.GetItemInput, error)
 }
 
 type getItemBuilder struct {
@@ -28,7 +28,7 @@ type getItemBuilder struct {
 	err            error
 	keyBuilder     keyBuilder
 	consistentRead *bool
-	projection     interface{}
+	projection     any
 }
 
 func NewGetItemBuilder(metadata *Metadata, clock clock.Clock) GetItemBuilder {
@@ -41,19 +41,19 @@ func NewGetItemBuilder(metadata *Metadata, clock clock.Clock) GetItemBuilder {
 	}
 }
 
-func (b *getItemBuilder) WithHash(hashValue interface{}) GetItemBuilder {
+func (b *getItemBuilder) WithHash(hashValue any) GetItemBuilder {
 	b.keyBuilder.withHash(hashValue)
 
 	return b
 }
 
-func (b *getItemBuilder) WithRange(rangeValue interface{}) GetItemBuilder {
+func (b *getItemBuilder) WithRange(rangeValue any) GetItemBuilder {
 	b.keyBuilder.withRange(rangeValue)
 
 	return b
 }
 
-func (b *getItemBuilder) WithKeys(keys ...interface{}) GetItemBuilder {
+func (b *getItemBuilder) WithKeys(keys ...any) GetItemBuilder {
 	if len(keys) == 0 {
 		return b
 	}
@@ -62,6 +62,7 @@ func (b *getItemBuilder) WithKeys(keys ...interface{}) GetItemBuilder {
 
 	if len(keys) > 2 {
 		b.err = multierror.Append(b.err, fmt.Errorf("more than two keys provided for WithKeys"))
+
 		return b
 	}
 
@@ -76,7 +77,7 @@ func (b *getItemBuilder) DisableTtlFilter() GetItemBuilder {
 	return b
 }
 
-func (b *getItemBuilder) WithProjection(projection interface{}) GetItemBuilder {
+func (b *getItemBuilder) WithProjection(projection any) GetItemBuilder {
 	b.projection = projection
 
 	return b
@@ -88,7 +89,7 @@ func (b *getItemBuilder) WithConsistentRead(consistentRead bool) GetItemBuilder 
 	return b
 }
 
-func (b *getItemBuilder) Build(result interface{}) (*dynamodb.GetItemInput, error) {
+func (b *getItemBuilder) Build(result any) (*dynamodb.GetItemInput, error) {
 	if b.err != nil {
 		return nil, b.err
 	}

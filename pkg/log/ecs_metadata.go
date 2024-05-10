@@ -11,7 +11,7 @@ import (
 
 const ecsMetadataFileEnv = "ECS_CONTAINER_METADATA_FILE"
 
-type EcsMetadata map[string]interface{}
+type EcsMetadata map[string]any
 
 var (
 	ecsLck      sync.Mutex
@@ -28,7 +28,7 @@ func ReadEcsMetadata() (EcsMetadata, error) {
 
 	path, ok := os.LookupEnv(ecsMetadataFileEnv)
 
-	if len(path) == 0 || !ok {
+	if path == "" || !ok {
 		return nil, nil
 	}
 

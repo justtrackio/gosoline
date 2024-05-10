@@ -24,7 +24,7 @@ type ProducerTestSuite struct {
 }
 
 func (s *ProducerTestSuite) SetupTest() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.encoder = stream.NewMessageEncoder(&stream.MessageEncoderSettings{
 		Encoding: stream.EncodingJson,
 	})

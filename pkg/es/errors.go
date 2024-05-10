@@ -1,6 +1,6 @@
 package es
 
-type DetailFields map[string]interface{}
+type DetailFields map[string]any
 
 type Error struct {
 	Message string
@@ -16,7 +16,7 @@ func (e *Error) WithFields(fields DetailFields) {
 	e.Fields = fields
 }
 
-func (e *Error) WithField(name string, value interface{}) {
+func (e *Error) WithField(name string, value any) {
 	e.Fields[name] = value
 }
 

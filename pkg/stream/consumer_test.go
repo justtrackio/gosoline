@@ -53,7 +53,7 @@ type ConsumerTestSuite struct {
 }
 
 func (s *ConsumerTestSuite) SetupTest() {
-	s.kernelCtx, s.kernelCancel = context.WithCancel(context.Background())
+	s.kernelCtx, s.kernelCancel = context.WithCancel(s.T().Context())
 
 	s.inputData = make(chan *stream.Message, 10)
 	s.inputDataOut = s.inputData
@@ -210,7 +210,7 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunError() {
 	s.callback.EXPECT().Run(matcher.Context).
 		Return(fmt.Errorf("consumerCallback run error"))
 
-	err := s.consumer.Run(context.Background())
+	err := s.consumer.Run(s.T().Context())
 
 	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumerCallback: consumerCallback run error")
 }
@@ -306,7 +306,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 	})
 
 	aggregateBody, err := json.Marshal([]stream.WritableMessage{message1, message2})
-	s.Require().NoError(err)
+	s.NoError(err)
 
 	aggregate := stream.BuildAggregateMessage(string(aggregateBody))
 

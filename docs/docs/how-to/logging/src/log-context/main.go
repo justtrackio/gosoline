@@ -29,7 +29,9 @@ func main() {
 		}
 
 		// Add CRUD handlers to your definitions. This is a convenience method for adding handlers for Create, Read, Update, Delete, and List.
-		crud.AddCrudHandlers(config, logger, def, 0, "todo", handler)
+		if err := crud.AddCrudHandlers(config, logger, def, 0, "todo", handler); err != nil {
+			return nil, fmt.Errorf("can not add crud handlers: %w", err)
+		}
 
 		return def, nil
 	}

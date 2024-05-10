@@ -42,7 +42,9 @@ type taskRunnerKey int
 
 func Factory(_ context.Context, config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
 	var settings Settings
-	config.UnmarshalKey("task_runner", &settings)
+	if err := config.UnmarshalKey("task_runner", &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal task runner settings: %w", err)
+	}
 
 	if !settings.Enabled {
 		return nil, nil

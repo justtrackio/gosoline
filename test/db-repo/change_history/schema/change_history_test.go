@@ -3,7 +3,6 @@
 package schema_test
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -136,18 +135,18 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_CreateTable(
 		Name: mdl.Box("name1"),
 	}
 
-	err = modelRepo.Create(context.Background(), model)
+	err = modelRepo.Create(s.T().Context(), model)
 	s.NoError(err)
 
 	model.Name = mdl.Box("name2")
-	err = modelRepo.Update(context.Background(), model)
+	err = modelRepo.Update(s.T().Context(), model)
 	s.NoError(err)
 
-	err = modelRepo.Delete(context.Background(), model)
+	err = modelRepo.Delete(s.T().Context(), model)
 	s.NoError(err)
 
 	entries := make([]*TestModel1HistoryEntry, 0)
-	err = modelHistoryRepo.Query(context.Background(), &db_repo.QueryBuilder{}, &entries)
+	err = modelHistoryRepo.Query(s.T().Context(), &db_repo.QueryBuilder{}, &entries)
 	s.NoError(err)
 	s.Equal(3, len(entries), "expected 3 change history entries")
 
@@ -192,18 +191,18 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable(
 		ChangeAuthor: mdl.Box("john@example.com"),
 	}
 
-	err = modelRepo.Create(context.Background(), model)
+	err = modelRepo.Create(s.T().Context(), model)
 	s.NoError(err)
 
 	model.Foo = mdl.Box("foo2")
-	err = modelRepo.Update(context.Background(), model)
+	err = modelRepo.Update(s.T().Context(), model)
 	s.NoError(err)
 
-	err = modelRepo.Delete(context.Background(), model)
+	err = modelRepo.Delete(s.T().Context(), model)
 	s.NoError(err)
 
 	entries := make([]*TestModel2HistoryEntry, 0)
-	err = modelHistoryRepo.Query(context.Background(), &db_repo.QueryBuilder{}, &entries)
+	err = modelHistoryRepo.Query(s.T().Context(), &db_repo.QueryBuilder{}, &entries)
 	s.NoError(err)
 	s.Equal(3, len(entries), "expected 3 change history entries")
 
@@ -235,6 +234,7 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_ValidateSche
 	multiErr := &multierror.Error{}
 	if !errors.As(err, &multiErr) {
 		s.FailNow("multi error expected, got %T", err)
+
 		return
 	}
 

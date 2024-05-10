@@ -11,7 +11,7 @@ func main() {
 
 	// 3
 	options := []cfg.Option{
-		cfg.WithConfigMap(map[string]interface{}{
+		cfg.WithConfigMap(map[string]any{
 			"enabled": true,
 		}),
 	}

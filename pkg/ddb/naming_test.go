@@ -52,7 +52,11 @@ func (s *TableNameTestSuite) setupConfigEnv(settings map[string]string) {
 }
 
 func (s *TableNameTestSuite) TestDefault() {
-	name := ddb.TableName(s.config, s.settings)
+	name, err := ddb.TableName(s.config, s.settings)
+	if err != nil {
+		s.FailNow("there should be no error on getting the table name", err)
+	}
+
 	s.Equal("justtrack-test-gosoline-group-event", name)
 }
 
@@ -61,7 +65,11 @@ func (s *TableNameTestSuite) TestDefaultWithPattern() {
 		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app}-{modelId}",
 	})
 
-	name := ddb.TableName(s.config, s.settings)
+	name, err := ddb.TableName(s.config, s.settings)
+	if err != nil {
+		s.FailNow("there should be no error on getting the table name", err)
+	}
+
 	s.Equal("producer-event", name)
 }
 
@@ -71,7 +79,11 @@ func (s *TableNameTestSuite) TestSpecificClientWithPattern() {
 		"cloud.aws.dynamodb.clients.specific.naming.pattern": "{app}-{modelId}",
 	})
 
-	name := ddb.TableName(s.config, s.settings)
+	name, err := ddb.TableName(s.config, s.settings)
+	if err != nil {
+		s.FailNow("there should be no error on getting the table name", err)
+	}
+
 	s.Equal("producer-event", name)
 }
 
@@ -80,7 +92,11 @@ func (s *TableNameTestSuite) TestPatternFromTableSettings() {
 		Pattern: "this-is-an-fqn-overwrite",
 	}
 
-	name := ddb.TableName(s.config, s.settings)
+	name, err := ddb.TableName(s.config, s.settings)
+	if err != nil {
+		s.FailNow("there should be no error on getting the table name", err)
+	}
+
 	s.Equal("this-is-an-fqn-overwrite", name)
 }
 
@@ -90,7 +106,11 @@ func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
 		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app}-{modelId}",
 	})
 
-	name := ddb.TableName(s.config, s.settings)
+	name, err := ddb.TableName(s.config, s.settings)
+	if err != nil {
+		s.FailNow("there should be no error on getting the table name", err)
+	}
+
 	s.Equal("producer-event", name)
 }
 
@@ -100,6 +120,10 @@ func (s *TableNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
 		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app}-{modelId}",
 	})
 
-	name := ddb.TableName(s.config, s.settings)
+	name, err := ddb.TableName(s.config, s.settings)
+	if err != nil {
+		s.FailNow("there should be no error on getting the table name", err)
+	}
+
 	s.Equal("producer-event", name)
 }

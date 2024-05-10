@@ -17,7 +17,10 @@ type kinsumerAutoscaleOrchestratorECS struct {
 }
 
 func newKinsumerAutoscaleOrchestratorECS(ctx context.Context, config cfg.Config, logger log.Logger) (KinsumerAutoscaleOrchestrator, error) {
-	settings := readKinsumerAutoscaleSettings(config)
+	settings, err := readKinsumerAutoscaleSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not read kinsumer autoscale settings: %w", err)
+	}
 
 	ecsClient, err := gosoEcs.ProvideClient(ctx, config, logger, settings.Ecs.Client)
 	if err != nil {

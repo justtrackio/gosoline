@@ -35,8 +35,12 @@ type rprHandler struct {
 
 func RequestsPerRunnerHandlerFactory(ctx context.Context, config cfg.Config, logger log.Logger, calculatorSettings *calculator.CalculatorSettings) (calculator.Handler, error) {
 	logger = logger.WithChannel("httpserver_requests_per_runner")
-	settings := calculator.ReadHandlerSettings(config, "httpserver_requests_per_runner", &calculator.PerRunnerMetricSettings{})
 	serverNames := getHttpServerNames(config)
+
+	settings, err := calculator.ReadHandlerSettings(config, "httpserver_requests_per_runner", &calculator.PerRunnerMetricSettings{})
+	if err != nil {
+		return nil, fmt.Errorf("can not read httpserver requests per runner settings: %w", err)
+	}
 
 	if !settings.Enabled {
 		return nil, nil
@@ -46,9 +50,7 @@ func RequestsPerRunnerHandlerFactory(ctx context.Context, config cfg.Config, log
 		return nil, nil
 	}
 
-	var err error
 	var cwClient gosoCloudwatch.Client
-
 	if cwClient, err = gosoCloudwatch.ProvideClient(ctx, config, logger, "default"); err != nil {
 		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
 	}

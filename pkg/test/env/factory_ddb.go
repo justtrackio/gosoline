@@ -43,7 +43,9 @@ func (f *ddbFactory) Detect(config cfg.Config, manager *ComponentsConfigManager)
 	}
 
 	settings := &ddbSettings{}
-	UnmarshalSettings(config, settings, componentDdb, "default")
+	if err := UnmarshalSettings(config, settings, componentDdb, "default"); err != nil {
+		return fmt.Errorf("can not parse ddb settings: %w", err)
+	}
 	settings.Type = componentDdb
 
 	if err := manager.Add(settings); err != nil {
@@ -104,12 +106,16 @@ func (f *ddbFactory) healthCheck() ComponentHealthCheck {
 }
 
 func (f *ddbFactory) Component(config cfg.Config, logger log.Logger, containers map[string]*container, settings any) (Component, error) {
-	s := settings.(*ddbSettings)
-
 	var err error
+	var namingSettings *ddb.TableNamingSettings
 	var proxy *toxiproxy.Proxy
+
+	s := settings.(*ddbSettings)
 	ddbAddress := containers["main"].bindings["8000/tcp"].getAddress()
-	namingSettings := ddb.GetTableNamingSettings(config, s.Name)
+
+	if namingSettings, err = ddb.GetTableNamingSettings(config, s.Name); err != nil {
+		return nil, fmt.Errorf("can not get table naming settings for ddb component: %w", err)
+	}
 
 	if s.ToxiproxyEnabled {
 		toxiproxyClient := f.toxiproxyFactory.client(containers["toxiproxy"])

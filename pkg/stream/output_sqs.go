@@ -138,6 +138,7 @@ func (o *sqsOutput) buildSqsMessages(ctx context.Context, messages []WritableMes
 		sqsMessage, err := o.buildSqsMessage(ctx, msg)
 		if err != nil {
 			result = multierror.Append(result, err)
+
 			continue
 		}
 

@@ -87,9 +87,12 @@ type baseConsumer struct {
 func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, name string, consumerCallback BaseConsumerCallback) (*baseConsumer, error) {
 	uuidGen := uuid.New()
 	logger = logger.WithChannel(fmt.Sprintf("consumer-%s", name))
-
-	settings := ReadConsumerSettings(config, name)
 	appId := cfg.GetAppIdFromConfig(config)
+
+	settings, err := ReadConsumerSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("can not read consumer settings for %s: %w", name, err)
+	}
 
 	tracer, err := tracing.ProvideTracer(ctx, config, logger)
 	if err != nil {

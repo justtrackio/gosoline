@@ -16,7 +16,7 @@ import (
 )
 
 func TestScheduler(t *testing.T) {
-	ctx := appctx.WithContainer(context.Background())
+	ctx := appctx.WithContainer(t.Context())
 	runner, err := taskRunner.Provide(ctx)
 	assert.NoError(t, err)
 

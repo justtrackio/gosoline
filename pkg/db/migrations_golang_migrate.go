@@ -25,7 +25,7 @@ func runMigrationGolangMigrate(logger log.Logger, settings *Settings, db *sql.DB
 
 	if settings.Migrations.PrefixedTables {
 		application := strings.ToLower(settings.Migrations.Application)
-		application = strings.Replace(application, "-", "_", -1)
+		application = strings.ReplaceAll(application, "-", "_")
 		migrationsTable = fmt.Sprintf("%s_schema_migrations", application)
 	}
 
@@ -43,6 +43,7 @@ func runMigrationGolangMigrate(logger log.Logger, settings *Settings, db *sql.DB
 
 	if errors.Is(err, migrate.ErrNoChange) {
 		logger.Info("no db migrations to run")
+
 		return nil
 	}
 

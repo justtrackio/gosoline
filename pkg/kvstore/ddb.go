@@ -112,15 +112,15 @@ func (s *ddbKvStore[T]) Get(ctx context.Context, key any, value *T) (bool, error
 	return true, nil
 }
 
-func (s *ddbKvStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]interface{}, error) {
+func (s *ddbKvStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]any, error) {
 	return getBatch(ctx, keys, result, s.getChunk, s.settings.BatchSize)
 }
 
-func (s *ddbKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys []any) ([]interface{}, error) {
+func (s *ddbKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys []any) ([]any, error) {
 	var err error
 
 	keyStrings := make([]string, len(keys))
-	keyMapToOriginal := make(map[string]interface{}, len(keys))
+	keyMapToOriginal := make(map[string]any, len(keys))
 
 	for i := 0; i < len(keyStrings); i++ {
 		keyStr, err := CastKeyToString(keys[i])
@@ -158,7 +158,7 @@ func (s *ddbKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys 
 		}
 	}
 
-	missing := make([]interface{}, 0)
+	missing := make([]any, 0)
 
 	for i, key := range keyStrings {
 		if !found[key] {
@@ -196,11 +196,11 @@ func (s *ddbKvStore[T]) Put(ctx context.Context, key any, value T) error {
 func (s *ddbKvStore[T]) PutBatch(ctx context.Context, values any) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 	if err != nil {
-		return fmt.Errorf("could not convert values to map[interface{}]interface{}")
+		return fmt.Errorf("could not convert values to map[any]any")
 	}
 
 	keyStrings := make([]string, 0, len(mii))
-	keyMap := make(map[string]interface{})
+	keyMap := make(map[string]any)
 
 	for k := range mii {
 		keyStr, err := CastKeyToString(k)
@@ -259,7 +259,7 @@ func (s *ddbKvStore[T]) Delete(ctx context.Context, key any) error {
 func (s *ddbKvStore[T]) DeleteBatch(ctx context.Context, keys any) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
-		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
+		return fmt.Errorf("could not convert keys from %T to []any: %w", keys, err)
 	}
 
 	items := make([]*DdbDeleteItem, len(si))

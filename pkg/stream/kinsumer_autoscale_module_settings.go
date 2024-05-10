@@ -35,25 +35,32 @@ type KinsumerAutoscaleModuleSettings struct {
 	Period         time.Duration                           `cfg:"period" default:"1m"`
 }
 
-func readKinsumerAutoscaleSettings(config cfg.Config) KinsumerAutoscaleModuleSettings {
+func readKinsumerAutoscaleSettings(config cfg.Config) (KinsumerAutoscaleModuleSettings, error) {
 	settings := &KinsumerAutoscaleModuleSettings{}
-	config.UnmarshalKey("kinsumer.autoscale", settings)
+	if err := config.UnmarshalKey("kinsumer.autoscale", settings); err != nil {
+		return KinsumerAutoscaleModuleSettings{}, fmt.Errorf("failed to unmarshal kinsumer autoscale settings in readKinsumerAutoscaleSettings: %w", err)
+	}
 
-	return *settings
+	return *settings, nil
 }
 
-func readKinsumerInputSettings(config cfg.Config, kinsumerInputName string) KinesisInputConfiguration {
+func readKinsumerInputSettings(config cfg.Config, kinsumerInputName string) (KinesisInputConfiguration, error) {
 	kinsumerInputKey := ConfigurableInputKey(kinsumerInputName)
 
 	settings := &KinesisInputConfiguration{}
-	config.UnmarshalKey(kinsumerInputKey, settings)
+	if err := config.UnmarshalKey(kinsumerInputKey, settings); err != nil {
+		return KinesisInputConfiguration{}, fmt.Errorf("failed to unmarshal kinsumer input settings for key %q in readKinsumerInputSettings: %w", kinsumerInputKey, err)
+	}
 	settings.Name = kinsumerInputName
 
-	return *settings
+	return *settings, nil
 }
 
 func kinsumerAutoscaleConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	settings := readKinsumerAutoscaleSettings(config)
+	settings, err := readKinsumerAutoscaleSettings(config)
+	if err != nil {
+		return false, fmt.Errorf("failed to read kinsumer autoscale settings in kinsumerAutoscaleConfigPostprocessor: %w", err)
+	}
 
 	if !settings.Enabled {
 		return false, nil

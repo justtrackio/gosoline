@@ -6,18 +6,18 @@ import (
 	"strings"
 )
 
-func getTypeName(value interface{}) string {
+func getTypeName(value any) string {
 	t := findBaseType(value)
 	name := t.Name()
 
 	return strings.ToLower(string(name[0])) + name[1:]
 }
 
-func isPointer(value interface{}) bool {
+func isPointer(value any) bool {
 	return value != nil && reflect.TypeOf(value).Kind() == reflect.Ptr
 }
 
-func isStruct(value interface{}) bool {
+func isStruct(value any) bool {
 	if value == nil {
 		return false
 	}
@@ -27,7 +27,7 @@ func isStruct(value interface{}) bool {
 	return t.Kind() == reflect.Struct
 }
 
-func findBaseType(value interface{}) reflect.Type {
+func findBaseType(value any) reflect.Type {
 	t := reflect.TypeOf(value)
 
 	for t.Kind() == reflect.Ptr || t.Kind() == reflect.Slice {
@@ -37,16 +37,16 @@ func findBaseType(value interface{}) reflect.Type {
 	return t
 }
 
-func isResultCallback(value interface{}) (func(ctx context.Context, items interface{}, progress Progress) (bool, error), bool) {
-	if callback, ok := value.(func(ctx context.Context, items interface{}, progress Progress) (bool, error)); ok {
+func isResultCallback(value any) (func(ctx context.Context, items any, progress Progress) (bool, error), bool) {
+	if callback, ok := value.(func(ctx context.Context, items any, progress Progress) (bool, error)); ok {
 		return callback, true
 	}
 
 	return nil, false
 }
 
-func chunk(batch []interface{}, size int) [][]interface{} {
-	var chunks [][]interface{}
+func chunk(batch []any, size int) [][]any {
+	var chunks [][]any
 
 	for i := 0; i < len(batch); i += size {
 		end := i + size

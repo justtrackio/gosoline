@@ -37,6 +37,7 @@ func TestIsConnectionResetError(t *testing.T) {
 
 		if listener, err = net.Listen("tcp", "localhost:0"); err != nil {
 			assert.FailNow(t, err.Error(), "can not create listener")
+
 			return
 		}
 
@@ -44,11 +45,13 @@ func TestIsConnectionResetError(t *testing.T) {
 
 		if conn, err = listener.Accept(); err != nil {
 			assert.FailNow(t, err.Error(), "can not accept connection")
+
 			return
 		}
 
 		if err = conn.(*net.TCPConn).SetLinger(0); err != nil {
 			assert.FailNow(t, err.Error(), "can not set linger value")
+
 			return
 		}
 
@@ -64,6 +67,7 @@ func TestIsConnectionResetError(t *testing.T) {
 
 	if conn, err = net.Dial("tcp", addr); err != nil {
 		assert.FailNow(t, err.Error(), "can not connect")
+
 		return
 	}
 

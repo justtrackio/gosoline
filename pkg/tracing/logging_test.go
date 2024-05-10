@@ -22,7 +22,7 @@ type LoggingSuite struct {
 func (s *LoggingSuite) SetupTest() {
 	s.span = mocks.NewSpan(s.T())
 
-	ctx := context.Background()
+	ctx := s.T().Context()
 	s.ctx = tracing.ContextWithSpan(ctx, s.span)
 }
 
@@ -64,7 +64,7 @@ func (s *LoggingSuite) TestContextTraceFieldsResolver_FromContextTrace() {
 		ParentId: "00000000-0000-0000-0000-000000000000",
 		Sampled:  false,
 	}
-	ctx := tracing.ContextWithTrace(context.Background(), trace)
+	ctx := tracing.ContextWithTrace(s.T().Context(), trace)
 
 	fields := tracing.ContextTraceFieldsResolver(ctx)
 
@@ -73,7 +73,7 @@ func (s *LoggingSuite) TestContextTraceFieldsResolver_FromContextTrace() {
 }
 
 func (s *LoggingSuite) TestContextTraceFieldsResolver_EmptyContext() {
-	fields := tracing.ContextTraceFieldsResolver(context.Background())
+	fields := tracing.ContextTraceFieldsResolver(s.T().Context())
 
 	s.NotContains(fields, "trace_id")
 }
@@ -83,7 +83,7 @@ func (s *LoggingSuite) TestLoggerErrorHook() {
 	s.span.EXPECT().AddError(errToLog).Once()
 
 	hook := tracing.NewLoggerErrorHandler()
-	err := hook.Log(time.Time{}, 0, "", []interface{}{}, errToLog, log.Data{
+	err := hook.Log(time.Time{}, 0, "", []any{}, errToLog, log.Data{
 		Context: s.ctx,
 	})
 

@@ -31,7 +31,7 @@ func NewContextMissingWarningLogStrategy(logger log.Logger) *ContextMissingWarnS
 	return strategy
 }
 
-func (c ContextMissingWarnStrategy) ContextMissing(v interface{}) {
+func (c ContextMissingWarnStrategy) ContextMissing(v any) {
 	stacktrace := log.GetStackTrace(2)
 
 	c.logger.WithFields(log.Fields{

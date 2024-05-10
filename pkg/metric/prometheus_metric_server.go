@@ -58,9 +58,14 @@ type metricsServer struct {
 
 func NewPrometheusMetricsServerModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	promSettings := &PrometheusSettings{}
-	getMetricWriterSettings(config, WriterTypePrometheus, promSettings)
+	if err := getMetricWriterSettings(config, WriterTypePrometheus, promSettings); err != nil {
+		return nil, fmt.Errorf("could not get prometheus writer settings: %w", err)
+	}
 
-	settings := getMetricSettings(config)
+	settings, err := getMetricSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("could not get metric settings: %w", err)
+	}
 
 	if !slices.Contains(settings.Writers, WriterTypePrometheus) || !promSettings.Api.Enabled {
 		return nil, nil
@@ -118,26 +123,22 @@ func NewMetricServerWithInterfaces(logger log.Logger, registry *prometheus.Regis
 func (s *metricsServer) Run(ctx context.Context) error {
 	var err error
 	go func() {
-		err = s.server.Serve(s.listener)
-		if !errors.Is(err, http.ErrServerClosed) {
+		if err = s.server.Serve(s.listener); !errors.Is(err, http.ErrServerClosed) {
 			s.logger.Error("Server closed unexpected: %w", err)
 
 			return
 		}
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			err = s.server.Close()
-			if err != nil {
-				s.logger.Error("Server Close: %w", err)
-			}
+	<-ctx.Done()
 
-			s.logger.Info("leaving metrics server")
-			return err
-		}
+	if err = s.server.Close(); err != nil {
+		s.logger.Error("Server Close: %w", err)
 	}
+
+	s.logger.Info("leaving metrics server")
+
+	return err
 }
 
 func (s *metricsServer) GetPort() (*int, error) {

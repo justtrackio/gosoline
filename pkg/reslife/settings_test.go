@@ -75,7 +75,9 @@ func TestSettingsDefaults(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			config := cfg.NewWithInterfaces(cfg.NewMemoryEnvProvider(), map[string]any{"resource_lifecycles": test.config})
-			settings := reslife.ReadSettings(config)
+
+			settings, err := reslife.ReadSettings(config)
+			assert.NoError(t, err, "there should be no error reading settings")
 
 			assert.Equal(t, test.expected, settings)
 		})

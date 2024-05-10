@@ -47,7 +47,7 @@ func TestWriteLotsOfBadMetrics(t *testing.T) {
 		}, nil
 	})
 
-	ctx, cancel := context.WithCancel(appctx.WithContainer(context.Background()))
+	ctx, cancel := context.WithCancel(appctx.WithContainer(t.Context()))
 
 	config := cfg.New(map[string]any{
 		"env":         "test",

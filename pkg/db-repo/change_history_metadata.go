@@ -36,6 +36,7 @@ func (m *tableMetadataBuilder) build() *tableMetadata {
 	metadata.tableNameQuoted = m.scope.Quote(m.tableName)
 	metadata.columns = m.buildColumns()
 	metadata.primaryKeys = m.buildPrimaryKeys()
+
 	return metadata
 }
 
@@ -46,6 +47,7 @@ func (m *tableMetadataBuilder) buildColumns() []columnMetadata {
 			columns = append(columns, m.buildColumn(field))
 		}
 	}
+
 	return columns
 }
 
@@ -56,6 +58,7 @@ func (m *tableMetadataBuilder) buildPrimaryKeys() []columnMetadata {
 			columns = append(columns, m.buildColumn(field))
 		}
 	}
+
 	return columns
 }
 
@@ -89,8 +92,8 @@ func (m *tableMetadataBuilder) getColumnMetadata(name string, nameQuoted string,
 func (m *tableMetadataBuilder) dataTypeOfField(field *gorm.StructField) string {
 	tag := m.scope.Dialect().DataTypeOf(field)
 
-	tag = strings.Replace(tag, "AUTO_INCREMENT", "", -1)
-	tag = strings.Replace(tag, "UNIQUE", "", -1)
+	tag = strings.ReplaceAll(tag, "AUTO_INCREMENT", "")
+	tag = strings.ReplaceAll(tag, "UNIQUE", "")
 
 	return tag
 }
@@ -101,11 +104,8 @@ func newTableMetadata(scope *gorm.Scope, tableName string, fields []*gorm.Struct
 		scope:     scope,
 		fields:    fields,
 	}
-	return builder.build()
-}
 
-func (m *tableMetadata) columnNamesQuoted() []string {
-	return m.namesQuoted(m.columns)
+	return builder.build()
 }
 
 func (m *tableMetadata) columnNames() []string {

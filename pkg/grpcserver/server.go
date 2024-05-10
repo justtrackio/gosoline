@@ -49,7 +49,9 @@ func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) 
 			tracingInstrumentor tracing.Instrumentor
 		)
 		settings := &Settings{}
-		config.UnmarshalKey(fmt.Sprintf("%s.%s", grpcServerConfigKey, name), settings)
+		if err := config.UnmarshalKey(fmt.Sprintf("%s.%s", grpcServerConfigKey, name), settings); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal grpc server config for %s: %w", name, err)
+		}
 
 		logger = logger.WithFields(log.Fields{
 			"server_name": name,

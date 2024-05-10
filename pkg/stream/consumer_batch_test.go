@@ -43,7 +43,7 @@ type BatchConsumerTestSuite struct {
 
 func (s *BatchConsumerTestSuite) SetupTest() {
 	s.once = sync.Once{}
-	s.kernelCtx, s.kernelCancel = context.WithCancel(context.Background())
+	s.kernelCtx, s.kernelCancel = context.WithCancel(s.T().Context())
 
 	s.inputData = make(chan *stream.Message, 10)
 	s.inputDataOut = s.inputData
@@ -123,7 +123,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 		Once()
 
 	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).
-		Return(func(_ map[string]string) interface{} {
+		Return(func(_ map[string]string) any {
 			return mdl.Box("")
 		}).
 		Times(3)
@@ -172,7 +172,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 		Once()
 
 	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).
-		Return(func(_ map[string]string) interface{} {
+		Return(func(_ map[string]string) any {
 			return mdl.Box("")
 		}).
 		Times(5)
@@ -242,7 +242,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 	})
 
 	aggregateBody, err := json.Marshal([]stream.WritableMessage{message1, message2})
-	s.Require().NoError(err)
+	s.NoError(err)
 
 	aggregate := stream.BuildAggregateMessage(string(aggregateBody))
 

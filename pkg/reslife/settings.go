@@ -1,6 +1,10 @@
 package reslife
 
-import "github.com/justtrackio/gosoline/pkg/cfg"
+import (
+	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/cfg"
+)
 
 type Settings struct {
 	Create   SettingsCycle `cfg:"create"`
@@ -14,12 +18,14 @@ type SettingsCycle struct {
 	Excludes []string `cfg:"excludes"`
 }
 
-func ReadSettings(config cfg.Config) *Settings {
+func ReadSettings(config cfg.Config) (*Settings, error) {
 	settings := &Settings{}
-	config.UnmarshalKey("resource_lifecycles", settings, []cfg.UnmarshalDefaults{
+	if err := config.UnmarshalKey("resource_lifecycles", settings, []cfg.UnmarshalDefaults{
 		cfg.UnmarshalWithDefaultForKey("init.enabled", true),
 		cfg.UnmarshalWithDefaultForKey("register.enabled", true),
-	}...)
+	}...); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal resource_lifecycles in ReadSettings: %w", err)
+	}
 
-	return settings
+	return settings, nil
 }

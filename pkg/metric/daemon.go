@@ -60,7 +60,10 @@ func metricWriterAggrKey(typ string) string {
 }
 
 func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-	settings := getMetricSettings(config)
+	settings, err := getMetricSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("could not get metric settings: %w", err)
+	}
 
 	channel := providerMetricChannel(func(channel *metricChannel) {
 		channel.enabled = settings.Enabled

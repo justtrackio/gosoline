@@ -1,7 +1,6 @@
 package tracing_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -9,7 +8,7 @@ import (
 )
 
 func TestContextWithTrace(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	trace := &tracing.Trace{
 		TraceId:  "1-5e3d5273-7f0bd984ad68e2d290caeb84",
 		Id:       "b1e67e41debe0b65",

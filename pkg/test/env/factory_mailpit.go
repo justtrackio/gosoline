@@ -38,7 +38,9 @@ func (m mailpitFactory) Detect(config cfg.Config, manager *ComponentsConfigManag
 	}
 
 	settings := &mailpitSettings{}
-	UnmarshalSettings(config, settings, componentMailpit, "default")
+	if err := UnmarshalSettings(config, settings, componentMailpit, "default"); err != nil {
+		return fmt.Errorf("can not unmarshal mailpit settings: %w", err)
+	}
 	settings.Type = componentMailpit
 
 	if err := manager.Add(settings); err != nil {

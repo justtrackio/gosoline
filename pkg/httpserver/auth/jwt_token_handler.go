@@ -46,12 +46,14 @@ func (c *JwtClaims) SetStandardClaims(standardClaims jwt.StandardClaims) {
 	c.StandardClaims = standardClaims
 }
 
-func NewJwtTokenHandler(config cfg.Config, name string) JwtTokenHandler {
+func NewJwtTokenHandler(config cfg.Config, name string) (JwtTokenHandler, error) {
 	key := fmt.Sprintf("httpserver.%s.auth.jwt", name)
 	settings := &JwtTokenHandlerSettings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal jwt token handler settings: %w", err)
+	}
 
-	return NewJwtTokenHandlerWithInterfaces(*settings)
+	return NewJwtTokenHandlerWithInterfaces(*settings), nil
 }
 
 func NewJwtTokenHandlerWithInterfaces(settings JwtTokenHandlerSettings) JwtTokenHandler {
@@ -85,7 +87,7 @@ func (h *jwtTokenHandler) SignClaims(claims Claims) (*string, error) {
 }
 
 func (h *jwtTokenHandler) Valid(jwtToken string) (bool, *jwt.Token, error) {
-	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}

@@ -40,7 +40,9 @@ func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logge
 
 	key := ConfigurableConsumerRetryKey(name)
 	settings := &RetryHandlerSqsSettings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal retry handler sqs settings for %s: %w", name, err)
+	}
 
 	if settings.QueueId == "" {
 		settings.QueueId = fmt.Sprintf("consumer-retry-%s", name)

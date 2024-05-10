@@ -494,7 +494,7 @@ func readIdsFromReflectValue(values reflect.Value) []string {
 func ignoreCreatedAtIfNeeded(scope *gorm.Scope) {
 	// if you perform an update and do not specify the CreatedAt field on your data, gorm will set it to time.Time{}
 	// (0000-00-00 00:00:00 in mysql). To avoid this, we mark the field as ignored if it is empty
-	if m, ok := getModel(scope.Value); ok && (m.GetCreatedAt() == nil || *m.GetCreatedAt() == time.Time{}) {
+	if m, ok := getModel(scope.Value); ok && (m.GetCreatedAt() == nil || m.GetCreatedAt().Equal(time.Time{})) {
 		scope.Search.Omit("CreatedAt")
 	}
 }

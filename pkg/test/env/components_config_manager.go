@@ -19,14 +19,16 @@ type ComponentsConfigManager struct {
 	detect *AutoDetectSettings
 }
 
-func NewComponentsConfigManager(config cfg.GosoConf) *ComponentsConfigManager {
+func NewComponentsConfigManager(config cfg.GosoConf) (*ComponentsConfigManager, error) {
 	autoDetectSettings := &AutoDetectSettings{}
-	config.UnmarshalKey("test.auto_detect", autoDetectSettings)
+	if err := config.UnmarshalKey("test.auto_detect", autoDetectSettings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal auto detect settings: %w", err)
+	}
 
 	return &ComponentsConfigManager{
 		config: config,
 		detect: autoDetectSettings,
-	}
+	}, nil
 }
 
 func (m *ComponentsConfigManager) ShouldAutoDetect(typ string) bool {
@@ -45,7 +47,10 @@ func (m *ComponentsConfigManager) GetAllSettings() ([]ComponentBaseSettingsAware
 
 		for name := range components {
 			settings := factory.GetSettingsSchema()
-			UnmarshalSettings(m.config, settings, typ, name)
+			err := UnmarshalSettings(m.config, settings, typ, name)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal settings for type %s of component %s: %w", typ, name, err)
+			}
 			allSettings = append(allSettings, settings)
 		}
 	}
@@ -53,8 +58,8 @@ func (m *ComponentsConfigManager) GetAllSettings() ([]ComponentBaseSettingsAware
 	return allSettings, nil
 }
 
-func (m *ComponentsConfigManager) List() map[string]map[string]interface{} {
-	settings := make(map[string]map[string]interface{}, 0)
+func (m *ComponentsConfigManager) List() map[string]map[string]any {
+	settings := make(map[string]map[string]any, 0)
 
 	if !m.config.IsSet("test.components") {
 		return settings
@@ -62,7 +67,7 @@ func (m *ComponentsConfigManager) List() map[string]map[string]interface{} {
 
 	types := m.config.GetStringMap("test.components")
 	for typ := range types {
-		settings[typ] = make(map[string]interface{}, 0)
+		settings[typ] = make(map[string]any, 0)
 
 		names := m.config.GetStringMap(fmt.Sprintf("test.components.%s", typ))
 		for name, value := range names {
@@ -95,7 +100,7 @@ func (m *ComponentsConfigManager) HasType(typ string) bool {
 	return false
 }
 
-func (m *ComponentsConfigManager) Add(settings interface{}) error {
+func (m *ComponentsConfigManager) Add(settings any) error {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println(settings)
@@ -125,7 +130,7 @@ func (m *ComponentsConfigManager) Add(settings interface{}) error {
 	return nil
 }
 
-func UnmarshalSettings(config cfg.Config, settings interface{}, typ string, name string) {
+func UnmarshalSettings(config cfg.Config, settings any, typ string, name string) error {
 	key := fmt.Sprintf("test.components.%s.%s", typ, name)
 	defaultKey := fmt.Sprintf("test.defaults.images.%s", typ)
 
@@ -135,5 +140,9 @@ func UnmarshalSettings(config cfg.Config, settings interface{}, typ string, name
 		cfg.UnmarshalWithDefaultsFromKey(defaultKey, "image"),
 	}
 
-	config.UnmarshalKey(key, settings, defaults...)
+	if err := config.UnmarshalKey(key, settings, defaults...); err != nil {
+		return fmt.Errorf("can not unmarshal settings: %w", err)
+	}
+
+	return nil
 }

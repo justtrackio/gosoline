@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func ResolveRecovery(unknownErr interface{}) error {
+func ResolveRecovery(unknownErr any) error {
 	switch rval := unknownErr.(type) {
 	case nil:
 		return nil

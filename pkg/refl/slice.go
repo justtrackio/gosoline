@@ -5,8 +5,8 @@ import (
 	"reflect"
 )
 
-func InterfaceToInterfaceSlice(in interface{}) ([]interface{}, error) {
-	if si, ok := in.([]interface{}); ok {
+func InterfaceToInterfaceSlice(in any) ([]any, error) {
+	if si, ok := in.([]any); ok {
 		return si, nil
 	}
 
@@ -20,7 +20,7 @@ func InterfaceToInterfaceSlice(in interface{}) ([]interface{}, error) {
 		return nil, fmt.Errorf("input is not an slice but instead of type %T", in)
 	}
 
-	out := make([]interface{}, val.Len())
+	out := make([]any, val.Len())
 
 	for i := 0; i < val.Len(); i++ {
 		out[i] = val.Index(i).Interface()
@@ -43,14 +43,14 @@ func (s *sliceIterator) Len() int {
 	return s.length
 }
 
-func (s *sliceIterator) Val() interface{} {
+func (s *sliceIterator) Val() any {
 	c := s.current
 	s.current++
 
 	return s.slice.Index(c).Interface()
 }
 
-func SliceInterfaceIterator(slice interface{}) *sliceIterator {
+func SliceInterfaceIterator(slice any) *sliceIterator {
 	_, sv := ResolveValueTo(slice, reflect.Slice)
 
 	return &sliceIterator{
@@ -60,7 +60,7 @@ func SliceInterfaceIterator(slice interface{}) *sliceIterator {
 	}
 }
 
-func SliceOf(slice interface{}) (*Slice, error) {
+func SliceOf(slice any) (*Slice, error) {
 	sliceType := reflect.TypeOf(slice)
 
 	if sliceType.Kind() != reflect.Ptr {
@@ -94,18 +94,18 @@ func SliceOf(slice interface{}) (*Slice, error) {
 }
 
 type Slice struct {
-	slice       interface{}
+	slice       any
 	sliceType   reflect.Type
 	sliceValue  reflect.Value
 	elementType reflect.Type
 	elementPtr  bool
 }
 
-func (s *Slice) NewElement() interface{} {
+func (s *Slice) NewElement() any {
 	return reflect.New(s.elementType).Interface()
 }
 
-func (s *Slice) Append(elem interface{}) error {
+func (s *Slice) Append(elem any) error {
 	ev := reflect.ValueOf(elem)
 
 	if s.elementPtr && ev.Kind() != reflect.Ptr {

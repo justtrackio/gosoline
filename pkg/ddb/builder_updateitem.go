@@ -11,14 +11,14 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name UpdateItemBuilder
 type UpdateItemBuilder interface {
-	WithHash(hashValue interface{}) UpdateItemBuilder
-	WithRange(rangeValue interface{}) UpdateItemBuilder
+	WithHash(hashValue any) UpdateItemBuilder
+	WithRange(rangeValue any) UpdateItemBuilder
 	WithCondition(cond expression.ConditionBuilder) UpdateItemBuilder
-	Add(path string, value interface{}) UpdateItemBuilder
-	Delete(path string, value interface{}) UpdateItemBuilder
-	Set(path string, value interface{}) UpdateItemBuilder
-	SetMap(values map[string]interface{}) UpdateItemBuilder
-	SetIfNotExist(path string, value interface{}) UpdateItemBuilder
+	Add(path string, value any) UpdateItemBuilder
+	Delete(path string, value any) UpdateItemBuilder
+	Set(path string, value any) UpdateItemBuilder
+	SetMap(values map[string]any) UpdateItemBuilder
+	SetIfNotExist(path string, value any) UpdateItemBuilder
 	Remove(path string) UpdateItemBuilder
 	RemoveMultiple(paths ...string) UpdateItemBuilder
 	ReturnNone() UpdateItemBuilder
@@ -26,7 +26,7 @@ type UpdateItemBuilder interface {
 	ReturnUpdatedOld() UpdateItemBuilder
 	ReturnAllNew() UpdateItemBuilder
 	ReturnUpdatedNew() UpdateItemBuilder
-	Build(item interface{}) (*dynamodb.UpdateItemInput, error)
+	Build(item any) (*dynamodb.UpdateItemInput, error)
 }
 
 type updateItemBuilder struct {
@@ -46,13 +46,13 @@ func NewUpdateItemBuilder(metadata *Metadata) UpdateItemBuilder {
 	}
 }
 
-func (b *updateItemBuilder) WithHash(hashValue interface{}) UpdateItemBuilder {
+func (b *updateItemBuilder) WithHash(hashValue any) UpdateItemBuilder {
 	b.keyBuilder.withHash(hashValue)
 
 	return b
 }
 
-func (b *updateItemBuilder) WithRange(rangeValue interface{}) UpdateItemBuilder {
+func (b *updateItemBuilder) WithRange(rangeValue any) UpdateItemBuilder {
 	b.keyBuilder.withRange(rangeValue)
 
 	return b
@@ -64,25 +64,25 @@ func (b *updateItemBuilder) WithCondition(cond expression.ConditionBuilder) Upda
 	return b
 }
 
-func (b *updateItemBuilder) Add(path string, value interface{}) UpdateItemBuilder {
+func (b *updateItemBuilder) Add(path string, value any) UpdateItemBuilder {
 	return b.update(func() expression.UpdateBuilder {
 		return b.updateBuilder.Add(expression.Name(path), expression.Value(value))
 	})
 }
 
-func (b *updateItemBuilder) Delete(path string, value interface{}) UpdateItemBuilder {
+func (b *updateItemBuilder) Delete(path string, value any) UpdateItemBuilder {
 	return b.update(func() expression.UpdateBuilder {
 		return b.updateBuilder.Delete(expression.Name(path), expression.Value(value))
 	})
 }
 
-func (b *updateItemBuilder) Set(path string, value interface{}) UpdateItemBuilder {
+func (b *updateItemBuilder) Set(path string, value any) UpdateItemBuilder {
 	return b.update(func() expression.UpdateBuilder {
 		return b.updateBuilder.Set(expression.Name(path), expression.Value(value))
 	})
 }
 
-func (b *updateItemBuilder) SetMap(values map[string]interface{}) UpdateItemBuilder {
+func (b *updateItemBuilder) SetMap(values map[string]any) UpdateItemBuilder {
 	for k, v := range values {
 		b.Set(k, v)
 	}
@@ -90,7 +90,7 @@ func (b *updateItemBuilder) SetMap(values map[string]interface{}) UpdateItemBuil
 	return b
 }
 
-func (b *updateItemBuilder) SetIfNotExist(path string, value interface{}) UpdateItemBuilder {
+func (b *updateItemBuilder) SetIfNotExist(path string, value any) UpdateItemBuilder {
 	return b.update(func() expression.UpdateBuilder {
 		return b.updateBuilder.Set(expression.Name(path), expression.IfNotExists(expression.Name(path), expression.Value(value)))
 	})
@@ -112,30 +112,35 @@ func (b *updateItemBuilder) RemoveMultiple(paths ...string) UpdateItemBuilder {
 
 func (b *updateItemBuilder) ReturnNone() UpdateItemBuilder {
 	b.returnType = types.ReturnValueNone
+
 	return b
 }
 
 func (b *updateItemBuilder) ReturnAllOld() UpdateItemBuilder {
 	b.returnType = types.ReturnValueAllOld
+
 	return b
 }
 
 func (b *updateItemBuilder) ReturnUpdatedOld() UpdateItemBuilder {
 	b.returnType = types.ReturnValueUpdatedOld
+
 	return b
 }
 
 func (b *updateItemBuilder) ReturnAllNew() UpdateItemBuilder {
 	b.returnType = types.ReturnValueAllNew
+
 	return b
 }
 
 func (b *updateItemBuilder) ReturnUpdatedNew() UpdateItemBuilder {
 	b.returnType = types.ReturnValueUpdatedNew
+
 	return b
 }
 
-func (b *updateItemBuilder) Build(item interface{}) (*dynamodb.UpdateItemInput, error) {
+func (b *updateItemBuilder) Build(item any) (*dynamodb.UpdateItemInput, error) {
 	keys, err := b.keyBuilder.buildKey(item)
 	if err != nil {
 		return nil, err

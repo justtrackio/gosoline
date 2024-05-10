@@ -107,7 +107,9 @@ func newProvider(ctx context.Context, config cfg.Config, logger log.Logger, name
 	}
 
 	var settings Settings
-	config.UnmarshalKey(fmt.Sprintf("cloud.aws.%s.ec2.metadata", name), &settings)
+	if err := config.UnmarshalKey(fmt.Sprintf("cloud.aws.%s.ec2.metadata", name), &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal ec2 metadata settings for %s: %w", name, err)
+	}
 
 	return NewProviderWithInterfaces(httpClient, clock.Provider, settings), nil
 }

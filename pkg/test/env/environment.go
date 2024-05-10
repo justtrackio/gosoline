@@ -49,7 +49,10 @@ func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
 	var skeletons []*componentSkeleton
 	var component Component
 	components := NewComponentsContainer()
-	componentConfigManager := NewComponentsConfigManager(env.config)
+	componentConfigManager, err := NewComponentsConfigManager(env.config)
+	if err != nil {
+		return nil, fmt.Errorf("can not create component config manager: %w", err)
+	}
 
 	for _, opt := range env.componentOptions {
 		if err := opt(componentConfigManager); err != nil {

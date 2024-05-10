@@ -24,7 +24,11 @@ type RefreshModule struct {
 
 func RefreshModuleFactory(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 	modules := map[string]kernel.ModuleFactory{}
-	readerSettings := readAllSettings(config)
+
+	readerSettings, err := readAllSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not read ipread settings: %w", err)
+	}
 
 	for name, settings := range readerSettings {
 		moduleName := fmt.Sprintf("ipread-refresh-%s", name)

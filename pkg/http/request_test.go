@@ -144,13 +144,13 @@ func TestRequest_HandleQueryParamsCorrectly(t *testing.T) {
 
 	request = http.NewRequest(nil).
 		WithUrl("https://example.com?api_key=foo:bar").
-		WithQueryMap(map[string]interface{}{
+		WithQueryMap(map[string]any{
 			"data": "42",
 		})
 	assert.Equal(t, "https://example.com?api_key=foo%3Abar&data=42", request.GetUrl())
 
 	request = http.NewRequest(nil).
-		WithQueryMap(map[string]interface{}{
+		WithQueryMap(map[string]any{
 			"data": "42",
 		}).
 		WithUrl("https://example.com?api_key=foo:bar")

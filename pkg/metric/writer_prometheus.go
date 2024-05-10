@@ -71,7 +71,9 @@ func ProvidePrometheusWriter(ctx context.Context, config cfg.Config, logger log.
 // Metrics with Kind "total" are dropped before writing them.
 func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	promSettings := &PrometheusSettings{}
-	getMetricWriterSettings(config, WriterTypePrometheus, promSettings)
+	if err := getMetricWriterSettings(config, WriterTypePrometheus, promSettings); err != nil {
+		return nil, fmt.Errorf("could not get prometheus writer settings: %w", err)
+	}
 
 	appId := cfg.GetAppIdFromConfig(config)
 	namespace := promNSNamingStrategy(appId)
@@ -145,15 +147,9 @@ func (w *prometheusWriter) writeMetricFromDatum(datum *Datum) {
 	}
 
 	switch datum.Unit {
-	case UnitCount:
-		fallthrough
-	case UnitPromCounter:
+	case UnitCount, UnitPromCounter:
 		w.counter(datum)
-	case UnitPromSummary:
-		fallthrough
-	case UnitMilliseconds:
-		fallthrough
-	case UnitSeconds:
+	case UnitPromSummary, UnitMilliseconds, UnitSeconds:
 		w.summary(datum)
 	case UnitPromHistogram:
 		w.histogram(datum)

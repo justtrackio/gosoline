@@ -63,7 +63,7 @@ type sqsInput struct {
 }
 
 func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SqsInputSettings) (*sqsInput, error) {
-	settings.AppId.PadFromConfig(config)
+	settings.PadFromConfig(config)
 
 	var ok bool
 	var err error

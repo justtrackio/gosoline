@@ -9,8 +9,8 @@ import (
 )
 
 type EncodeHandler interface {
-	Encode(ctx context.Context, data interface{}, attributes map[string]string) (context.Context, map[string]string, error)
-	Decode(ctx context.Context, data interface{}, attributes map[string]string) (context.Context, map[string]string, error)
+	Encode(ctx context.Context, data any, attributes map[string]string) (context.Context, map[string]string, error)
+	Decode(ctx context.Context, data any, attributes map[string]string) (context.Context, map[string]string, error)
 }
 
 var defaultEncodeHandlers = make([]EncodeHandler, 0)
@@ -27,8 +27,8 @@ type MessageEncoderSettings struct {
 
 //go:generate go run github.com/vektra/mockery/v2 --name MessageEncoder
 type MessageEncoder interface {
-	Encode(ctx context.Context, data interface{}, attributeSets ...map[string]string) (*Message, error)
-	Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]string, error)
+	Encode(ctx context.Context, data any, attributeSets ...map[string]string) (*Message, error)
+	Decode(ctx context.Context, msg *Message, out any) (context.Context, map[string]string, error)
 }
 
 type messageEncoder struct {
@@ -57,7 +57,7 @@ func NewMessageEncoder(config *MessageEncoderSettings) *messageEncoder {
 	}
 }
 
-func (e *messageEncoder) Encode(ctx context.Context, data interface{}, attributeSets ...map[string]string) (*Message, error) {
+func (e *messageEncoder) Encode(ctx context.Context, data any, attributeSets ...map[string]string) (*Message, error) {
 	var err error
 	var body []byte
 	attributes := make(map[string]string)
@@ -88,7 +88,7 @@ func (e *messageEncoder) Encode(ctx context.Context, data interface{}, attribute
 	return msg, nil
 }
 
-func (e *messageEncoder) encodeBody(attributes map[string]string, data interface{}) ([]byte, error) {
+func (e *messageEncoder) encodeBody(attributes map[string]string, data any) ([]byte, error) {
 	body, err := EncodeMessage(e.encoding, data)
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (e *messageEncoder) mergeAttributes(attributes map[string]string, attribute
 	return attributes, nil
 }
 
-func (e *messageEncoder) Decode(ctx context.Context, msg *Message, out interface{}) (context.Context, map[string]string, error) {
+func (e *messageEncoder) Decode(ctx context.Context, msg *Message, out any) (context.Context, map[string]string, error) {
 	var err error
 	var body []byte
 
@@ -168,7 +168,7 @@ func (e *messageEncoder) decompressBody(attributes map[string]string, body []byt
 	return DecompressMessage(*compression, base64Decoded)
 }
 
-func (e *messageEncoder) decodeBody(attributes map[string]string, body []byte, out interface{}) error {
+func (e *messageEncoder) decodeBody(attributes map[string]string, body []byte, out any) error {
 	encoding := mdl.Unbox(GetEncodingAttribute(attributes), e.encoding)
 
 	return DecodeMessage(encoding, body, out)

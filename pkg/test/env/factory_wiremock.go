@@ -35,7 +35,7 @@ func (f *wiremockFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &wiremockSettings{}
 }
 
-func (f *wiremockFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+func (f *wiremockFactory) DescribeContainers(settings any) componentContainerDescriptions {
 	return componentContainerDescriptions{
 		"main": {
 			containerConfig: f.configureContainer(settings),
@@ -44,7 +44,7 @@ func (f *wiremockFactory) DescribeContainers(settings interface{}) componentCont
 	}
 }
 
-func (f *wiremockFactory) configureContainer(settings interface{}) *containerConfig {
+func (f *wiremockFactory) configureContainer(settings any) *containerConfig {
 	s := settings.(*wiremockSettings)
 
 	return &containerConfig{
@@ -74,7 +74,7 @@ func (f *wiremockFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *wiremockFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
+func (f *wiremockFactory) Component(_ cfg.Config, logger log.Logger, containers map[string]*container, settings any) (Component, error) {
 	component := &wiremockComponent{
 		logger:  logger,
 		binding: containers["main"].bindings["8080/tcp"],

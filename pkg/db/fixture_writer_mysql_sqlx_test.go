@@ -1,7 +1,6 @@
 package db_test
 
 import (
-	"context"
 	"database/sql"
 	"testing"
 
@@ -67,7 +66,7 @@ func (s *MysqlSqlxFixtureWriterTestSuite) TestWrite() {
 		WithArgs(2, "Alice", false).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := s.writer.Write(context.Background(), fixtureSetFixtures)
+	err := s.writer.Write(s.T().Context(), fixtureSetFixtures)
 	s.NoError(err)
 
 	if err := s.mock.ExpectationsWereMet(); err != nil {

@@ -41,7 +41,7 @@ func TestMetadataRepository(t *testing.T) {
 }
 
 func (s *metadataRepositoryTestSuite) SetupTest() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.logger = logMocks.NewLogger(s.T())
 	s.stream = "testStream"
 	s.clientId = kinesis.ClientId(uuid.New().NewV4())
@@ -123,7 +123,7 @@ func (s *metadataRepositoryTestSuite) mockRegisterClientQuery(resultCount int, e
 	qb.EXPECT().WithConsistentRead(true).Return(qb).Once()
 
 	s.repo.EXPECT().QueryBuilder().Return(qb).Once()
-	s.repo.EXPECT().Query(s.ctx, qb, &[]kinesis.ClientRecord{}).Run(func(ctx context.Context, qb ddb.QueryBuilder, result interface{}) {
+	s.repo.EXPECT().Query(s.ctx, qb, &[]kinesis.ClientRecord{}).Run(func(ctx context.Context, qb ddb.QueryBuilder, result any) {
 		clients := result.(*[]kinesis.ClientRecord)
 
 		queryResult := make([]kinesis.ClientRecord, resultCount)
@@ -215,7 +215,7 @@ func (s *metadataRepositoryTestSuite) mockIsShardFinished(found bool, finishedAt
 	qb.EXPECT().WithRange(s.shardId).Return(qb).Once()
 
 	s.repo.EXPECT().GetItemBuilder().Return(qb).Once()
-	s.repo.EXPECT().GetItem(s.ctx, qb, &kinesis.CheckpointRecord{}).Run(func(ctx context.Context, qb ddb.GetItemBuilder, result interface{}) {
+	s.repo.EXPECT().GetItem(s.ctx, qb, &kinesis.CheckpointRecord{}).Run(func(ctx context.Context, qb ddb.GetItemBuilder, result any) {
 		record := result.(*kinesis.CheckpointRecord)
 
 		if !found {
@@ -328,7 +328,7 @@ func (s *metadataRepositoryTestSuite) mockAcquireShardGetItem(found bool, owning
 	qb.EXPECT().WithConsistentRead(true).Return(qb).Once()
 
 	s.repo.EXPECT().GetItemBuilder().Return(qb).Once()
-	s.repo.EXPECT().GetItem(s.ctx, qb, &kinesis.CheckpointRecord{}).Run(func(ctx context.Context, qb ddb.GetItemBuilder, result interface{}) {
+	s.repo.EXPECT().GetItem(s.ctx, qb, &kinesis.CheckpointRecord{}).Run(func(ctx context.Context, qb ddb.GetItemBuilder, result any) {
 		record := result.(*kinesis.CheckpointRecord)
 
 		if !found {

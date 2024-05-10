@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -36,14 +37,28 @@ func (s *Settings) WithConnection(conn *connection.Settings) *Settings {
 	return s
 }
 
-func ParseSettings(config cfg.Config, key string) *Settings {
+func ParseSettings(config cfg.Config, key string) (*Settings, error) {
 	settings := &Settings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal kafka consumer settings for key %q in ParseSettings: %w", key, err)
+	}
 
 	appID := cfg.GetAppIdFromConfig(config)
-	settings.connection = connection.ParseSettings(config, settings.ConnectionName)
-	settings.FQGroupID = kafka.FQGroupId(config, appID, settings.GroupID)
-	settings.FQTopic = kafka.FQTopicName(config, appID, settings.Topic)
+	conn, err := connection.ParseSettings(config, settings.ConnectionName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse kafka connection settings for connection %q in ParseSettings: %w", settings.ConnectionName, err)
+	}
+	settings.connection = conn
+	fqGroupID, err := kafka.FQGroupId(config, appID, settings.GroupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get FQGroupId in ParseSettings: %w", err)
+	}
+	settings.FQGroupID = fqGroupID
+	fqTopic, err := kafka.FQTopicName(config, appID, settings.Topic)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get FQTopicName in ParseSettings: %w", err)
+	}
+	settings.FQTopic = fqTopic
 
-	return settings
+	return settings, nil
 }

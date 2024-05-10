@@ -8,7 +8,7 @@ import (
 
 type TransactDeleteItem struct {
 	Builder DeleteItemBuilder
-	Item    interface{}
+	Item    any
 }
 
 func (b *TransactDeleteItem) Build() (*types.TransactWriteItem, error) {
@@ -35,6 +35,6 @@ func (b *TransactDeleteItem) Build() (*types.TransactWriteItem, error) {
 	return item, nil
 }
 
-func (b *TransactDeleteItem) GetItem() interface{} {
+func (b *TransactDeleteItem) GetItem() any {
 	return b.Item
 }

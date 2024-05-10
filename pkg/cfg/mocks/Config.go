@@ -949,7 +949,7 @@ func (_c *Config_IsSet_Call) RunAndReturn(run func(string) bool) *Config_IsSet_C
 }
 
 // UnmarshalDefaults provides a mock function with given fields: val, additionalDefaults
-func (_m *Config) UnmarshalDefaults(val interface{}, additionalDefaults ...cfg.UnmarshalDefaults) {
+func (_m *Config) UnmarshalDefaults(val interface{}, additionalDefaults ...cfg.UnmarshalDefaults) error {
 	_va := make([]interface{}, len(additionalDefaults))
 	for _i := range additionalDefaults {
 		_va[_i] = additionalDefaults[_i]
@@ -957,7 +957,20 @@ func (_m *Config) UnmarshalDefaults(val interface{}, additionalDefaults ...cfg.U
 	var _ca []interface{}
 	_ca = append(_ca, val)
 	_ca = append(_ca, _va...)
-	_m.Called(_ca...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnmarshalDefaults")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}, ...cfg.UnmarshalDefaults) error); ok {
+		r0 = rf(val, additionalDefaults...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // Config_UnmarshalDefaults_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnmarshalDefaults'
@@ -986,18 +999,18 @@ func (_c *Config_UnmarshalDefaults_Call) Run(run func(val interface{}, additiona
 	return _c
 }
 
-func (_c *Config_UnmarshalDefaults_Call) Return() *Config_UnmarshalDefaults_Call {
-	_c.Call.Return()
+func (_c *Config_UnmarshalDefaults_Call) Return(_a0 error) *Config_UnmarshalDefaults_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *Config_UnmarshalDefaults_Call) RunAndReturn(run func(interface{}, ...cfg.UnmarshalDefaults)) *Config_UnmarshalDefaults_Call {
-	_c.Run(run)
+func (_c *Config_UnmarshalDefaults_Call) RunAndReturn(run func(interface{}, ...cfg.UnmarshalDefaults) error) *Config_UnmarshalDefaults_Call {
+	_c.Call.Return(run)
 	return _c
 }
 
 // UnmarshalKey provides a mock function with given fields: key, val, additionalDefaults
-func (_m *Config) UnmarshalKey(key string, val interface{}, additionalDefaults ...cfg.UnmarshalDefaults) {
+func (_m *Config) UnmarshalKey(key string, val interface{}, additionalDefaults ...cfg.UnmarshalDefaults) error {
 	_va := make([]interface{}, len(additionalDefaults))
 	for _i := range additionalDefaults {
 		_va[_i] = additionalDefaults[_i]
@@ -1005,7 +1018,20 @@ func (_m *Config) UnmarshalKey(key string, val interface{}, additionalDefaults .
 	var _ca []interface{}
 	_ca = append(_ca, key, val)
 	_ca = append(_ca, _va...)
-	_m.Called(_ca...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnmarshalKey")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, interface{}, ...cfg.UnmarshalDefaults) error); ok {
+		r0 = rf(key, val, additionalDefaults...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // Config_UnmarshalKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnmarshalKey'
@@ -1035,13 +1061,13 @@ func (_c *Config_UnmarshalKey_Call) Run(run func(key string, val interface{}, ad
 	return _c
 }
 
-func (_c *Config_UnmarshalKey_Call) Return() *Config_UnmarshalKey_Call {
-	_c.Call.Return()
+func (_c *Config_UnmarshalKey_Call) Return(_a0 error) *Config_UnmarshalKey_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *Config_UnmarshalKey_Call) RunAndReturn(run func(string, interface{}, ...cfg.UnmarshalDefaults)) *Config_UnmarshalKey_Call {
-	_c.Run(run)
+func (_c *Config_UnmarshalKey_Call) RunAndReturn(run func(string, interface{}, ...cfg.UnmarshalDefaults) error) *Config_UnmarshalKey_Call {
+	_c.Call.Return(run)
 	return _c
 }
 

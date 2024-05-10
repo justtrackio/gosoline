@@ -16,7 +16,7 @@ func GetMockedStackTrace(depthSkip int) string {
 // stacktrace should be skipped. This is useful to not clutter the stacktrace with logging
 // function calls.
 func GetStackTrace(depthSkip int) string {
-	depthSkip = depthSkip + 1 // Skip this function in stacktrace
+	depthSkip += 1 // Skip this function in stacktrace
 	maxDepth := 50
 	traces := make([]string, 0, maxDepth)
 
@@ -45,5 +45,6 @@ func GetStackTrace(depthSkip int) string {
 	for i := len(traces) - 1; i > depthSkip; i-- {
 		strBuilder.WriteString(traces[i])
 	}
+
 	return strBuilder.String()
 }

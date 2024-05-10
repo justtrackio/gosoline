@@ -1,7 +1,6 @@
 package cfg_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -9,7 +8,7 @@ import (
 )
 
 func TestOsPrefixExists(t *testing.T) {
-	os.Setenv("GOSOLINE_TEST", "foobar")
+	t.Setenv("GOSOLINE_TEST", "foobar")
 
 	provider := cfg.NewOsEnvProvider()
 	assert.True(t, provider.PrefixExists("GOSOLINE"))

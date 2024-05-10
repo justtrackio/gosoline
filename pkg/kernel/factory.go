@@ -156,11 +156,14 @@ func (f *factory) addModuleToStage(name string, module Module, opts []ModuleOpti
 	MergeOptions(opts)(&ms.config)
 
 	var ok bool
+	var err error
 	var stage *stage
 
 	// if the module specified a stage we do not yet have we have to add a new stage.
 	if stage, ok = f.stages[ms.config.stage]; !ok {
-		stage = f.newStage(ms.config.stage)
+		if stage, err = f.newStage(ms.config.stage); err != nil {
+			return fmt.Errorf("can not create stage %d for module %s: %w", ms.config.stage, name, err)
+		}
 	}
 
 	if _, didExist := stage.modules.modules[name]; didExist {
@@ -174,9 +177,13 @@ func (f *factory) addModuleToStage(name string, module Module, opts []ModuleOpti
 	return nil
 }
 
-func (f *factory) newStage(index int) *stage {
-	s := newStage(f.ctx, f.config, f.logger, index)
+func (f *factory) newStage(index int) (*stage, error) {
+	s, err := newStage(f.ctx, f.config, f.logger, index)
+	if err != nil {
+		return nil, fmt.Errorf("can not create stage %d: %w", index, err)
+	}
+
 	f.stages[index] = s
 
-	return s
+	return s, nil
 }

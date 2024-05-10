@@ -26,7 +26,9 @@ func GetStreamName(config cfg.Config, settings StreamNameSettingsAware) (Stream,
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("kinesis", settings.GetClientName()))
 	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("kinesis", "default"))
 	namingSettings := &StreamNamingSettings{}
-	config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern"))
+	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern")); err != nil {
+		return "", fmt.Errorf("failed to unmarshal kinesis naming settings for %s: %w", namingKey, err)
+	}
 
 	appId := settings.GetAppId()
 	name := namingSettings.Pattern

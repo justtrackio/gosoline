@@ -34,7 +34,7 @@ type PerRunnerMetricHandlerTestSuite struct {
 }
 
 func (s *PerRunnerMetricHandlerTestSuite) SetupTest() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.logger = new(logMocks.Logger)
 	s.clock = clock.NewFakeClock()
 	s.cwClient = new(cloudwatchMocks.Client)

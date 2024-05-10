@@ -44,7 +44,7 @@ func TestCoffin_WithContext(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("iteration %d", i), func(t *testing.T) {
 			assert.NotPanics(t, func() {
-				cfn, ctx := coffin.WithContext(context.Background())
+				cfn, ctx := coffin.WithContext(t.Context())
 				c := make(chan struct{})
 				errStop := errors.New("please stop")
 
@@ -73,6 +73,7 @@ func TestCoffin_WithContext(t *testing.T) {
 					if !errors.Is(err, context.Canceled) {
 						assert.NoError(t, err)
 					}
+
 					return err
 				})
 
@@ -87,7 +88,7 @@ func TestCoffin_WithContext(t *testing.T) {
 }
 
 func TestCoffin_WithContext_Cancel(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cfn, ctx := coffin.WithContext(ctx)
 	cfn.GoWithContext(ctx, func(ctx context.Context) error {
 		<-ctx.Done()

@@ -43,14 +43,16 @@ type QueueNamingSettings struct {
 }
 
 func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (string, error) {
-	if len(queueSettings.GetClientName()) == 0 {
+	if queueSettings.GetClientName() == "" {
 		return "", fmt.Errorf("the client name shouldn't be empty")
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sqs", queueSettings.GetClientName()))
 	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("sqs", "default"))
 	namingSettings := &QueueNamingSettings{}
-	config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern"))
+	if err := config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern")); err != nil {
+		return "", fmt.Errorf("failed to unmarshal sqs naming settings for %s: %w", namingKey, err)
+	}
 
 	name := namingSettings.Pattern
 	appId := queueSettings.GetAppId()
@@ -69,7 +71,7 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 	}
 
 	if queueSettings.IsFifoEnabled() {
-		name = name + FifoSuffix
+		name += FifoSuffix
 	}
 
 	return name, nil

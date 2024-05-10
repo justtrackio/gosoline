@@ -84,7 +84,7 @@ func (s *MetricStore[T]) Get(ctx context.Context, key any, value *T) (bool, erro
 	return found, err
 }
 
-func (s *MetricStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]interface{}, error) {
+func (s *MetricStore[T]) GetBatch(ctx context.Context, keys any, result any) ([]any, error) {
 	keySlice, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
@@ -114,7 +114,7 @@ func (s *MetricStore[T]) Put(ctx context.Context, key any, value T) error {
 func (s *MetricStore[T]) PutBatch(ctx context.Context, values any) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 	if err != nil {
-		return fmt.Errorf("could not convert values to map[interface{}]interface{}: %w", err)
+		return fmt.Errorf("could not convert values to map[any]any: %w", err)
 	}
 
 	err = s.KvStore.PutBatch(ctx, mii)
@@ -139,7 +139,7 @@ func (s *MetricStore[T]) Delete(ctx context.Context, key any) error {
 func (s *MetricStore[T]) DeleteBatch(ctx context.Context, keys any) error {
 	si, err := refl.InterfaceToInterfaceSlice(keys)
 	if err != nil {
-		return fmt.Errorf("could not convert keys from %T to []interface{}: %w", keys, err)
+		return fmt.Errorf("could not convert keys from %T to []any: %w", keys, err)
 	}
 
 	err = s.KvStore.DeleteBatch(ctx, si)

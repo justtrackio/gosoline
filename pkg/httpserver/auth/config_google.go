@@ -95,7 +95,7 @@ func NewConfigGoogleAuthenticatorWithInterfaces(logger log.Logger, tokenProvider
 func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	idToken := ginCtx.GetHeader("X-ID-TOKEN")
 
-	if len(idToken) == 0 {
+	if idToken == "" {
 		return false, fmt.Errorf("google auth: zero length token")
 	}
 
@@ -131,26 +131,31 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	tokenInfo, err = a.tokenProvider.GetTokenInfo(idToken)
 	if err != nil {
 		a.tokenCache[idToken] = nil
+
 		return false, errors.Wrap(err, "google auth: failed requesting token info")
 	}
 
 	if tokenInfo.HTTPStatusCode > 299 {
 		a.tokenCache[idToken] = nil
+
 		return false, fmt.Errorf("google auth: invalid status code %d", tokenInfo.HTTPStatusCode)
 	}
 
 	if !slices.Contains(a.validAudiences, tokenInfo.Audience) {
 		a.tokenCache[idToken] = nil
+
 		return false, fmt.Errorf("google auth: invalid audience")
 	}
 
 	if ok, err = a.isAddressAllowed(tokenInfo.Email); err != nil {
 		a.tokenCache[idToken] = nil
+
 		return false, fmt.Errorf("google auth: can not check if address is allowed")
 	}
 
 	if !ok {
 		a.tokenCache[idToken] = nil
+
 		return false, fmt.Errorf("google auth: address %s is not allowed", tokenInfo.Email)
 	}
 

@@ -4,10 +4,10 @@ import (
 	"github.com/vmihailenco/msgpack"
 )
 
-func Marshal(v interface{}) ([]byte, error) {
+func Marshal(v any) ([]byte, error) {
 	return msgpack.Marshal(v)
 }
 
-func Unmarshal(data []byte, v interface{}) error {
+func Unmarshal(data []byte, v any) error {
 	return msgpack.Unmarshal(data, v)
 }

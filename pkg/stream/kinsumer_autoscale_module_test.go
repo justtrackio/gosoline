@@ -153,7 +153,7 @@ type KinsumerAutoscaleModuleTestSuite struct {
 }
 
 func (s *KinsumerAutoscaleModuleTestSuite) SetupTestCase() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx, s.cancel = context.WithCancel(s.T().Context())
 
 	s.logger = logMocks.NewLogger(s.T())
 	s.leaderElection = concDdbMocks.NewLeaderElection(s.T())

@@ -19,7 +19,7 @@ import (
 func TestOffsetManager_NotCommitting(t *testing.T) {
 	var (
 		pool        = coffin.New()
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel = context.WithTimeout(t.Context(), time.Second)
 	)
 	defer cancel()
 
@@ -64,13 +64,14 @@ func TestOffsetManager_NotCommitting(t *testing.T) {
 	// 2nd call to batch() should return an empty batch, since previous batch was not committed.
 	assert.Equal(t, []kafka.Message{}, manager.Batch(ctx))
 
-	_ = pool.Wait()
+	err := pool.Wait()
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func TestOffsetManager_PartialCommit(t *testing.T) {
 	var (
 		pool        = coffin.New()
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel = context.WithTimeout(t.Context(), time.Second)
 	)
 	defer cancel()
 
@@ -118,13 +119,14 @@ func TestOffsetManager_PartialCommit(t *testing.T) {
 	// 2nd call to batch() should return an empty batch, since previous batch was not committed.
 	assert.Equal(t, []kafka.Message{}, manager.Batch(ctx))
 
-	_ = pool.Wait()
+	err := pool.Wait()
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func TestOffsetManager_DoubleCommit(t *testing.T) {
 	var (
 		pool        = coffin.New()
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel = context.WithTimeout(t.Context(), time.Second)
 	)
 	defer cancel()
 
@@ -186,13 +188,14 @@ func TestOffsetManager_DoubleCommit(t *testing.T) {
 		},
 	}, manager.Batch(ctx))
 
-	_ = pool.Wait()
+	err := pool.Wait()
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func TestOffsetManager_FullCommit(t *testing.T) {
 	var (
 		pool        = coffin.New()
-		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel = context.WithTimeout(t.Context(), time.Second)
 	)
 	defer cancel()
 
@@ -254,11 +257,12 @@ func TestOffsetManager_FullCommit(t *testing.T) {
 	// 3rd call to batch() should return an empty batch, since previous there are no more messages.
 	assert.Equal(t, []kafka.Message{}, manager.Batch(ctx))
 
-	_ = pool.Wait()
+	err := pool.Wait()
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func TestOffsetManager_FetchMessageErrors(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var (
 		reader    = mocks.NewReader(t)
@@ -285,7 +289,7 @@ func TestOffsetManager_FetchMessageErrors(t *testing.T) {
 }
 
 func TestOffsetManager_FlushErrors(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var (
 		reader    = mocks.NewReader(t)

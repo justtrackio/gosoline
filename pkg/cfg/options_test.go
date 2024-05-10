@@ -24,7 +24,7 @@ func (s *OptionsTestSuite) SetupTest() {
 }
 
 func (s *OptionsTestSuite) TestWithConfigMap() {
-	s.apply(cfg.WithConfigMap(map[string]interface{}{
+	s.apply(cfg.WithConfigMap(map[string]any{
 		"b": true,
 	}))
 
@@ -33,31 +33,31 @@ func (s *OptionsTestSuite) TestWithConfigMap() {
 }
 
 func (s *OptionsTestSuite) TestWithConfigSetting() {
-	expected := mapx.NewMapX(map[string]interface{}{
-		"b": map[string]interface{}{
-			"c1": map[string]interface{}{
+	expected := mapx.NewMapX(map[string]any{
+		"b": map[string]any{
+			"c1": map[string]any{
 				"i": 1,
 				"s": "string",
 			},
-			"sl": []interface{}{
-				map[string]interface{}{
+			"sl": []any{
+				map[string]any{
 					"b": true,
 				},
-				map[string]interface{}{
+				map[string]any{
 					"b": false,
 				},
 			},
 		},
 	})
 
-	s.apply(cfg.WithConfigSetting("a.b.c1", map[string]interface{}{
+	s.apply(cfg.WithConfigSetting("a.b.c1", map[string]any{
 		"i": 1,
 		"s": "string",
 	}))
-	s.apply(cfg.WithConfigSetting("a.b.sl[0]", map[string]interface{}{
+	s.apply(cfg.WithConfigSetting("a.b.sl[0]", map[string]any{
 		"b": true,
 	}))
-	s.apply(cfg.WithConfigSetting("a.b.sl[1]", map[string]interface{}{
+	s.apply(cfg.WithConfigSetting("a.b.sl[1]", map[string]any{
 		"b": false,
 	}))
 
@@ -65,11 +65,11 @@ func (s *OptionsTestSuite) TestWithConfigSetting() {
 	expectedMsi := expected.Msi()
 	s.Equal(expectedMsi, actual)
 
-	expected.Set("b.c2", map[string]interface{}{
+	expected.Set("b.c2", map[string]any{
 		"b": true,
 	})
 
-	s.apply(cfg.WithConfigSetting("a.b.c2", map[string]interface{}{
+	s.apply(cfg.WithConfigSetting("a.b.c2", map[string]any{
 		"b": true,
 	}))
 

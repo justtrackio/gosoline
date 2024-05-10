@@ -19,8 +19,8 @@ import (
 )
 
 type Logger interface {
-	Debug(format string, args ...interface{})
-	Info(format string, args ...interface{})
+	Debug(format string, args ...any)
+	Info(format string, args ...any)
 }
 
 type ClientV7 struct {
@@ -48,6 +48,7 @@ var factory = map[string]clientBuilder{
 		}
 
 		client := &ClientV7{*elasticClient}
+
 		return client, err
 	},
 
@@ -112,7 +113,7 @@ func GetAwsClient(logger Logger, url string) (*ClientV7, error) {
 		CredentialsChainVerboseErrors: aws.Bool(true),
 		Region:                        aws.String(endpoints.EuCentral1RegionID),
 		LogLevel:                      aws.LogLevel(aws.LogDebug | aws.LogDebugWithRequestRetries | aws.LogDebugWithRequestErrors),
-		Logger: aws.LoggerFunc(func(args ...interface{}) {
+		Logger: aws.LoggerFunc(func(args ...any) {
 			logger.Debug(fmt.Sprint(args...))
 		}),
 		HTTPClient: &http.Client{
@@ -161,16 +162,14 @@ func putTemplates(logger Logger, client *ClientV7, name string, paths []string) 
 			return fmt.Errorf("could not put the es-template in file %s for es client %s: %w", file, name, err)
 		}
 
-		defer func() {
-			closeError := res.Body.Close()
-			if closeError != nil {
-				msg := "could not close response reader for PutTemplates"
-				logger.Info(msg)
-			}
-		}()
-
 		if res.IsError() {
 			return fmt.Errorf("could not put template from file %s: got error from ES: %s, %s", file, res.Status(), res.String())
+		}
+
+		closeError := res.Body.Close()
+		if closeError != nil {
+			msg := "could not close response reader for PutTemplates"
+			logger.Info(msg)
 		}
 	}
 
@@ -188,6 +187,7 @@ func getTemplateFiles(logger Logger, paths []string) ([]string, error) {
 
 		if fileInfo.Mode().IsRegular() {
 			files = append(files, p)
+
 			continue
 		}
 
@@ -197,7 +197,7 @@ func getTemplateFiles(logger Logger, paths []string) ([]string, error) {
 
 		fileInfos, err := os.ReadDir(p)
 		if err != nil {
-			return nil, fmt.Errorf("could not scan the the es-tempates path %s: %w", p, err)
+			return nil, fmt.Errorf("could not scan the es-tempates path %s: %w", p, err)
 		}
 
 		for _, fileInfo := range fileInfos {

@@ -3,7 +3,6 @@
 package mysql_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -54,7 +53,7 @@ func (s *ClientTestSuite) TestConnectionRefused() {
 	err := proxy.Disable()
 	s.FailIfError(err)
 
-	_, err = client.Exec(context.Background(), "SELECT * FROM todo")
+	_, err = client.Exec(s.T().Context(), "SELECT * FROM todo")
 	s.NoError(err)
 
 	s.Equal(3, failedAttempts)
@@ -79,7 +78,7 @@ func (s *ClientTestSuite) TestReadIOTimeout() {
 	})
 	s.FailIfError(err)
 
-	rows, err := client.Queryx(context.Background(), "SELECT * FROM todo")
+	rows, err := client.Queryx(s.T().Context(), "SELECT * FROM todo")
 	s.FailIfError(err)
 
 	rowsCount := 0
@@ -94,7 +93,7 @@ func (s *ClientTestSuite) TestRead() {
 	client, _ := s.getClients("default", func(err error, duration time.Duration) {})
 
 	todo := &ToDo{}
-	err := client.Get(context.Background(), todo, "SELECT * FROM todo")
+	err := client.Get(s.T().Context(), todo, "SELECT * FROM todo")
 	s.FailIfError(err)
 }
 
@@ -110,7 +109,9 @@ func (s *ClientTestSuite) getClients(name string, notifier exec.Notify) (db.Clie
 	connection, err = db.NewConnection(ctx, config, logger, name)
 	s.FailIfError(err)
 
-	executor := db.NewExecutor(config, logger, name, "api", notifier)
+	executor, err := db.NewExecutor(config, logger, name, "api", notifier)
+	s.FailIfError(err)
+
 	client := db.NewClientWithInterfaces(logger, connection, executor)
 
 	return client, proxy

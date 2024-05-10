@@ -40,7 +40,7 @@ func (s *AthenaRepositoryTestSuite) SetupSuite() {
 	raw := athena.NewRepositoryRawWithInterfaces(db, exec.NewDefaultExecutor(), settings)
 	s.NoError(err)
 
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.now = time.Unix(1707402132, 0)
 	s.clock = clock.NewFakeClockAt(s.now)
 	s.sqlMock = mock

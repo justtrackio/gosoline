@@ -43,7 +43,9 @@ func (f *s3Factory) Detect(config cfg.Config, manager *ComponentsConfigManager) 
 	}
 
 	settings := &s3Settings{}
-	UnmarshalSettings(config, settings, componentS3, "default")
+	if err := UnmarshalSettings(config, settings, componentS3, "default"); err != nil {
+		return fmt.Errorf("can not unmarshal S3 settings: %w", err)
+	}
 	settings.Type = componentS3
 
 	if err := manager.Add(settings); err != nil {

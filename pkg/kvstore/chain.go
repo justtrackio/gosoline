@@ -132,15 +132,15 @@ func (s *chainKvStore[T]) Get(ctx context.Context, key any, value *T) (bool, err
 	return true, nil
 }
 
-func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([]interface{}, error) {
+func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([]any, error) {
 	todo, err := refl.InterfaceToInterfaceSlice(keys)
-	var cachedMissing []interface{}
+	var cachedMissing []any
 
 	if err != nil {
 		return nil, fmt.Errorf("can not morph keys to slice of interfaces: %w", err)
 	}
 
-	cachedMissingMap := make(map[string]interface{})
+	cachedMissingMap := make(map[string]any)
 	todo, err = s.missingCache.GetBatch(ctx, todo, cachedMissingMap)
 	if err != nil {
 		s.logger.WithContext(ctx).Warn("failed to read from missing value cache: %s", err.Error())
@@ -155,7 +155,7 @@ func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([
 	}
 
 	lastElementIndex := len(s.chain) - 1
-	refill := make(map[int][]interface{})
+	refill := make(map[int][]any)
 	foundInIndex := lastElementIndex + 1
 
 	for i, element := range s.chain {
@@ -182,7 +182,7 @@ func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([
 
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 	if err != nil {
-		return nil, fmt.Errorf("can not cast result values from %T to map[interface{}]interface{}: %w", values, err)
+		return nil, fmt.Errorf("can not cast result values from %T to map[any]any: %w", values, err)
 	}
 
 	// propagate to the lower cache levels
@@ -191,7 +191,7 @@ func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([
 			continue
 		}
 
-		missingInElement := make(map[interface{}]T)
+		missingInElement := make(map[any]T)
 
 		for _, key := range refill[i] {
 			if val, ok := mii[key]; ok {
@@ -211,7 +211,7 @@ func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([
 
 	// store missing keys
 	if len(todo) > 0 {
-		missingValues := make(map[interface{}]interface{}, len(todo))
+		missingValues := make(map[any]any, len(todo))
 
 		for _, key := range todo {
 			missingValues[key] = *new(T)
@@ -223,7 +223,7 @@ func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([
 		}
 	}
 
-	missing := make([]interface{}, 0, len(todo)+len(cachedMissing))
+	missing := make([]any, 0, len(todo)+len(cachedMissing))
 	missing = append(missing, todo...)
 	missing = append(missing, cachedMissing...)
 
@@ -258,7 +258,7 @@ func (s *chainKvStore[T]) Put(ctx context.Context, key any, value T) error {
 func (s *chainKvStore[T]) PutBatch(ctx context.Context, values any) error {
 	mii, err := refl.InterfaceToMapInterfaceInterface(values)
 	if err != nil {
-		return fmt.Errorf("can not cast values from %T to map[interface{}]interface{}: %w", values, err)
+		return fmt.Errorf("can not cast values from %T to map[any]any: %w", values, err)
 	}
 
 	lastElementIndex := len(s.chain) - 1

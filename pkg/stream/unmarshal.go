@@ -51,6 +51,7 @@ func SnsMarshaller(msg *Message) (*string, error) {
 	}
 
 	data := string(bytes)
+
 	return &data, nil
 }
 

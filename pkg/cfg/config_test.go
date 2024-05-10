@@ -37,11 +37,11 @@ func (s *ConfigTestSuite) applyOptions(options ...cfg.Option) {
 	}
 }
 
-func (s *ConfigTestSuite) errorHandler(msg string, args ...interface{}) {
+func (s *ConfigTestSuite) errorHandler(msg string, args ...any) {
 	s.FailNow(fmt.Errorf(msg, args...).Error())
 }
 
-func (s *ConfigTestSuite) setupConfigValues(values map[string]interface{}) {
+func (s *ConfigTestSuite) setupConfigValues(values map[string]any) {
 	if err := s.config.Option(cfg.WithConfigMap(values)); err != nil {
 		s.FailNow("can not setup config values", err.Error())
 	}
@@ -49,12 +49,14 @@ func (s *ConfigTestSuite) setupConfigValues(values map[string]interface{}) {
 
 func (s *ConfigTestSuite) setupEnvironment(values map[string]string) {
 	for k, v := range values {
-		_ = s.envProvider.SetEnv(k, v)
+		if err := s.envProvider.SetEnv(k, v); err != nil {
+			s.FailNow("can not setup environment variable", fmt.Sprintf("key: %s, value: %s, error: %s", k, v, err.Error()))
+		}
 	}
 }
 
 func (s *ConfigTestSuite) TestConfig_AllKeys() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"i": 1,
 		"s": "string",
 	})
@@ -64,9 +66,9 @@ func (s *ConfigTestSuite) TestConfig_AllKeys() {
 }
 
 func (s *ConfigTestSuite) TestConfig_IsSet() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"i": 1,
-		"ms": map[string]interface{}{
+		"ms": map[string]any{
 			"b": true,
 		},
 	})
@@ -77,9 +79,9 @@ func (s *ConfigTestSuite) TestConfig_IsSet() {
 }
 
 func (s *ConfigTestSuite) TestConfig_HasPrefix() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"i": 1,
-		"ms": map[string]interface{}{
+		"ms": map[string]any{
 			"b": true,
 		},
 	})
@@ -102,27 +104,27 @@ func (s *ConfigTestSuite) TestConfig_HasPrefix() {
 }
 
 func (s *ConfigTestSuite) TestConfig_Get() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"i": 1,
-		"ms": map[string]interface{}{
+		"ms": map[string]any{
 			"b": true,
 		},
 	})
 
-	expectedMap := map[string]interface{}{
+	expectedMap := map[string]any{
 		"b": true,
 	}
 
 	s.Equal(1, s.config.Get("i"))
 	s.Equal(expectedMap, s.config.Get("ms"))
-	s.Equal(expectedMap, s.config.Get("ms"), map[string]interface{}{
+	s.Equal(expectedMap, s.config.Get("ms"), map[string]any{
 		"c": false,
 	})
 	s.Equal(true, s.config.Get("missing", true))
 }
 
 func (s *ConfigTestSuite) TestConfig_GetBool() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"b": "true",
 	})
 
@@ -131,7 +133,7 @@ func (s *ConfigTestSuite) TestConfig_GetBool() {
 }
 
 func (s *ConfigTestSuite) TestConfig_GetDuration() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"d": "1s",
 	})
 
@@ -140,7 +142,7 @@ func (s *ConfigTestSuite) TestConfig_GetDuration() {
 }
 
 func (s *ConfigTestSuite) TestConfig_GetInt() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"i": "1",
 	})
 
@@ -149,7 +151,7 @@ func (s *ConfigTestSuite) TestConfig_GetInt() {
 }
 
 func (s *ConfigTestSuite) TestConfig_GetIntSlice() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"slice": []int{30, 60, 120},
 	})
 
@@ -161,7 +163,7 @@ func (s *ConfigTestSuite) TestConfig_GetIntSlice() {
 }
 
 func (s *ConfigTestSuite) TestConfig_GetFloat64() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"f64": math.Pi,
 	})
 
@@ -170,8 +172,8 @@ func (s *ConfigTestSuite) TestConfig_GetFloat64() {
 }
 
 func (s *ConfigTestSuite) TestConfig_GetMsiSlice() {
-	s.setupConfigValues(map[string]interface{}{
-		"msi": []map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"msi": []map[string]any{
 			{
 				"i": 1,
 				"s": "string",
@@ -179,7 +181,7 @@ func (s *ConfigTestSuite) TestConfig_GetMsiSlice() {
 		},
 	})
 
-	expected := []map[string]interface{}{
+	expected := []map[string]any{
 		{
 			"i": 1,
 			"s": "string",
@@ -190,7 +192,7 @@ func (s *ConfigTestSuite) TestConfig_GetMsiSlice() {
 }
 
 func (s *ConfigTestSuite) TestConfig_GetString() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"s":      "foobar",
 		"a":      "this {is} augmented",
 		"is":     "is also {nested}",
@@ -203,7 +205,7 @@ func (s *ConfigTestSuite) TestConfig_GetString() {
 }
 
 func (s *ConfigTestSuite) TestConfig_GetStringNoDecode() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"nodecode": "!nodecode {this}-should-{be}-plain",
 	})
 
@@ -211,8 +213,8 @@ func (s *ConfigTestSuite) TestConfig_GetStringNoDecode() {
 }
 
 func (s *ConfigTestSuite) TestConfig_GetStringMapString() {
-	s.setupConfigValues(map[string]interface{}{
-		"map": map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"map": map[string]any{
 			"a":   "b",
 			"foo": "{bar}-{map.c}",
 			"c":   "d",
@@ -233,12 +235,12 @@ func (s *ConfigTestSuite) TestConfig_GetStringMapString() {
 }
 
 func (s *ConfigTestSuite) TestConfig_GetStringSlice() {
-	s.setupConfigValues(map[string]interface{}{
+	s.setupConfigValues(map[string]any{
 		"slice":  []string{"string", "a{b}"},
 		"b":      "bc",
 		"single": "s",
 		"split":  "x,y,z",
-		"ints":   []interface{}{1, 2, 3},
+		"ints":   []any{1, 2, 3},
 	})
 
 	missingSlice := []string{"a", "b"}
@@ -258,8 +260,8 @@ func (s *ConfigTestSuite) TestConfig_GetStringSlice() {
 }
 
 func (s *ConfigTestSuite) TestConfig_GetTime() {
-	s.setupConfigValues(map[string]interface{}{
-		"key": map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"key": map[string]any{
 			"foo":            "bar",
 			"date":           time.Date(2019, time.November, 26, 0, 0, 0, 0, time.UTC),
 			"stringDate":     "2019-11-27",
@@ -276,8 +278,8 @@ func (s *ConfigTestSuite) TestConfig_GetTime() {
 		StringDate     time.Time `cfg:"stringDate"`
 		StringDateTime time.Time `cfg:"stringDateTime"`
 	}{}
-
-	s.config.UnmarshalKey("key", &settings)
+	err := s.config.UnmarshalKey("key", &settings)
+	s.NoError(err)
 
 	s.Equal("bar", settings.Foo)
 	s.Equal("2019-11-26", settings.Date.Format("2006-01-02"))
@@ -331,7 +333,8 @@ func (s *ConfigTestSuite) TestEnvironmentUnmarshalStructWithEmbeddedSlice() {
 	})
 
 	cm := configMap{}
-	s.config.UnmarshalKey("prefix", &cm)
+	err := s.config.UnmarshalKey("prefix", &cm)
+	s.NoError(err)
 
 	s.Len(cm.Slice, 2)
 	s.Equal([]string{"foo", "bar"}, cm.Strings)
@@ -352,13 +355,13 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Struct() {
 		} `cfg:"nested"`
 	}
 
-	s.setupConfigValues(map[string]interface{}{
-		"key": map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"key": map[string]any{
 			"foo":           "zorg",
 			"bla":           "test",
-			"slice":         []interface{}{1, 2},
-			"slice_augment": []interface{}{"a", "b-{key2}"},
-			"nested": map[string]interface{}{
+			"slice":         []any{1, 2},
+			"slice_augment": []any{"a", "b-{key2}"},
+			"nested": map[string]any{
 				"augmented": "my-{key3}",
 			},
 		},
@@ -368,7 +371,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Struct() {
 	})
 
 	cm := configMap{}
-	s.config.UnmarshalKey("key", &cm)
+	err := s.config.UnmarshalKey("key", &cm)
+	s.NoError(err)
 
 	s.Equal("zorg", cm.Foo)
 	s.Equal("test", cm.Bla)
@@ -382,24 +386,25 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Struct() {
 
 func (s *ConfigTestSuite) TestConfig_UnmarshalKey_StructWithMap() {
 	type configMap struct {
-		MSI map[string]interface{} `cfg:"msi"`
+		MSI map[string]any `cfg:"msi"`
 	}
 
-	s.setupConfigValues(map[string]interface{}{
-		"key": map[string]interface{}{
-			"msi": map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"key": map[string]any{
+			"msi": map[string]any{
 				"augmented": "my-{augment}",
 			},
 		},
 		"augment": "value",
 	})
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"augmented": "my-value",
 	}
 
 	cm := configMap{}
-	s.config.UnmarshalKey("key", &cm)
+	err := s.config.UnmarshalKey("key", &cm)
+	s.NoError(err)
 
 	s.Equal(expected, cm.MSI)
 }
@@ -410,16 +415,16 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Slice() {
 		Def int    `cfg:"def" default:"1"`
 	}
 
-	s.setupConfigValues(map[string]interface{}{
-		"key": []interface{}{
-			map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"key": []any{
+			map[string]any{
 				"foo": "bar",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"foo": "baz",
 				"def": 2,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"def": 3,
 			},
 		},
@@ -429,7 +434,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Slice() {
 	})
 
 	cm := make([]configMap, 0)
-	s.config.UnmarshalKey("key", &cm)
+	err := s.config.UnmarshalKey("key", &cm)
+	s.NoError(err)
 
 	s.Len(cm, 3)
 	s.Equal("bar", cm[0].Foo)
@@ -446,16 +452,16 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Map() {
 		Def int    `cfg:"def" default:"1"`
 	}
 
-	s.setupConfigValues(map[string]interface{}{
-		"key": map[string]interface{}{
-			"key1": map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"key": map[string]any{
+			"key1": map[string]any{
 				"foo": "bar",
 			},
-			"key2": map[string]interface{}{
+			"key2": map[string]any{
 				"foo": "baz",
 				"def": 2,
 			},
-			"key3": map[string]interface{}{
+			"key3": map[string]any{
 				"def": 3,
 			},
 		},
@@ -465,7 +471,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Map() {
 	})
 
 	cm := map[string]configMap{}
-	s.config.UnmarshalKey("key", &cm)
+	err := s.config.UnmarshalKey("key", &cm)
+	s.NoError(err)
 
 	s.Len(cm, 3)
 	s.Contains(cm, "key1")
@@ -481,9 +488,9 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_MapWithIntKeys() {
 		Map map[uint]string `cfg:"map"`
 	}
 
-	s.setupConfigValues(map[string]interface{}{
-		"data": map[string]interface{}{
-			"map": map[int]interface{}{
+	s.setupConfigValues(map[string]any{
+		"data": map[string]any{
+			"map": map[int]any{
 				1: "foo",
 				2: "bar",
 				3: "baz",
@@ -492,7 +499,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_MapWithIntKeys() {
 	})
 
 	cm := configMap{}
-	s.config.UnmarshalKey("data", &cm)
+	err := s.config.UnmarshalKey("data", &cm)
+	s.NoError(err)
 
 	s.Equal(configMap{
 		Map: map[uint]string{
@@ -511,8 +519,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyEnvironment() {
 		} `cfg:"nested"`
 	}
 
-	s.setupConfigValues(map[string]interface{}{
-		"key": map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"key": map[string]any{
 			"foo": "bar",
 		},
 	})
@@ -522,7 +530,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyEnvironment() {
 	})
 
 	cm := configMap{}
-	s.config.UnmarshalKey("key", &cm)
+	err := s.config.UnmarshalKey("key", &cm)
+	s.NoError(err)
 
 	s.Equal("zorg", cm.Foo)
 	s.Equal(1, cm.Nested.A)
@@ -539,8 +548,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyEmbedded() {
 		Foo string `cfg:"foo"`
 	}
 
-	s.setupConfigValues(map[string]interface{}{
-		"key": map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"key": map[string]any{
 			"foo": "bar",
 		},
 	})
@@ -550,7 +559,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyEmbedded() {
 	})
 
 	cm := configMap{}
-	s.config.UnmarshalKey("key", &cm)
+	err := s.config.UnmarshalKey("key", &cm)
+	s.NoError(err)
 
 	s.Equal("zorg", cm.Foo)
 	s.Equal(1, cm.A)
@@ -565,25 +575,19 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyValidation() {
 		} `cfg:"nested" validate:"dive"`
 	}
 
-	var cfgErr error
-	errorHandler := func(msg string, args ...interface{}) {
-		cfgErr = fmt.Errorf(msg, args...)
-	}
-	s.applyOptions(cfg.WithErrorHandlers(errorHandler))
-
-	s.setupConfigValues(map[string]interface{}{
-		"key": map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"mykey": map[string]any{
 			"foo": "bar",
-			"nested": map[string]interface{}{
+			"nested": map[string]any{
 				"augmented": 1,
 			},
 		},
 	})
 
 	cm := configMap{}
-	s.config.UnmarshalKey("key", &cm)
-
-	s.EqualError(cfgErr, "validation failed for key: key: 2 errors occurred:\n\t* the setting Foo with value bar does not match its requirement\n\t* the setting A with value 0 does not match its requirement\n\n")
+	err := s.config.UnmarshalKey("mykey", &cm)
+	s.Require().Error(err)
+	s.EqualError(err, "can not unmarshal config struct with key mykey: validation failed for key: mykey: 2 errors occurred:\n\t* the setting Foo with value bar does not match its requirement\n\t* the setting A with value 0 does not match its requirement\n\n")
 }
 
 func (s *ConfigTestSuite) TestConfig_UnmarshalKeyWithDefaultsFromKey() {
@@ -597,14 +601,14 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyWithDefaultsFromKey() {
 		Nested ConfigNested `cfg:"nested"`
 	}
 
-	s.setupConfigValues(map[string]interface{}{
-		"key": map[string]interface{}{
+	s.setupConfigValues(map[string]any{
+		"key": map[string]any{
 			"s": "string",
-			"nested": map[string]interface{}{
+			"nested": map[string]any{
 				"i": 2,
 			},
 		},
-		"additionalDefaults": map[string]interface{}{
+		"additionalDefaults": map[string]any{
 			"i": 3,
 			"b": true,
 		},
@@ -619,35 +623,37 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKeyWithDefaultsFromKey() {
 	}
 
 	cm := configMap{}
-	s.config.UnmarshalKey("key", &cm, cfg.UnmarshalWithDefaultsFromKey("additionalDefaults", "nested"))
+	err := s.config.UnmarshalKey("key", &cm, cfg.UnmarshalWithDefaultsFromKey("additionalDefaults", "nested"))
+	s.NoError(err)
 
 	s.Equal(expected, cm)
 }
 
 func (s *ConfigTestSuite) TestConfig_FromYml() {
 	type configMap struct {
-		D   time.Duration          `cfg:"d"`
-		I   int                    `cfg:"i"`
-		MSI map[string]interface{} `cfg:"msi"`
-		S1  []int                  `cfg:"s1"`
-		S2  []interface{}          `cfg:"s2"`
+		D   time.Duration  `cfg:"d"`
+		I   int            `cfg:"i"`
+		MSI map[string]any `cfg:"msi"`
+		S1  []int          `cfg:"s1"`
+		S2  []any          `cfg:"s2"`
 	}
 
 	expected := configMap{
 		D: time.Minute,
 		I: 2,
-		MSI: map[string]interface{}{
+		MSI: map[string]any{
 			"s": "string",
 			"d": "1s",
 		},
 		S1: []int{1, 2},
-		S2: []interface{}{3, "s"},
+		S2: []any{3, "s"},
 	}
 
 	s.applyOptions(cfg.WithConfigFile("./testdata/config.test.yml", "yml"))
 
 	cm := configMap{}
-	s.config.UnmarshalKey("key", &cm)
+	err := s.config.UnmarshalKey("key", &cm)
+	s.NoError(err)
 
 	s.Equal(1, s.config.GetInt("i"))
 	s.Equal(expected, cm)
@@ -669,7 +675,8 @@ func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Defaults() {
 	}
 
 	cm := configMap{}
-	s.config.UnmarshalKey("key", &cm)
+	err := s.config.UnmarshalKey("key", &cm)
+	s.NoError(err)
 
 	s.Equal("fooVal", cm.Foo)
 	s.Equal(123, cm.Bar)

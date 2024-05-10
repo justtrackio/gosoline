@@ -27,5 +27,6 @@ type HelloWorldModule struct {
 
 func (h HelloWorldModule) Run(ctx context.Context) error {
 	h.logger.Info("Hello World")
+
 	return nil
 }

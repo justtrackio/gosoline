@@ -14,7 +14,7 @@ import (
 type ScanOperation struct {
 	input      *dynamodb.ScanInput
 	iterator   *pageIterator
-	targetType interface{}
+	targetType any
 	result     *ScanResult
 }
 
@@ -23,12 +23,12 @@ type ScanBuilder interface {
 	WithIndex(name string) ScanBuilder
 	WithFilter(filter expression.ConditionBuilder) ScanBuilder
 	DisableTtlFilter() ScanBuilder
-	WithProjection(projection interface{}) ScanBuilder
+	WithProjection(projection any) ScanBuilder
 	WithLimit(limit int) ScanBuilder
 	WithPageSize(size int) ScanBuilder
 	WithSegment(segment int, total int) ScanBuilder
 	WithConsistentRead(consistentRead bool) ScanBuilder
-	Build(result interface{}) (*ScanOperation, error)
+	Build(result any) (*ScanOperation, error)
 }
 
 type scanBuilder struct {
@@ -37,7 +37,7 @@ type scanBuilder struct {
 	err            error
 	indexName      *string
 	selected       FieldAware
-	projection     interface{}
+	projection     any
 	limit          *int32
 	pageSize       *int32
 	segment        *int32
@@ -58,6 +58,7 @@ func (b *scanBuilder) WithIndex(name string) ScanBuilder {
 
 	if index == nil {
 		b.err = multierror.Append(b.err, fmt.Errorf("no index [%s] defined for table [%s]", name, b.metadata.TableName))
+
 		return b
 	}
 
@@ -79,7 +80,7 @@ func (b *scanBuilder) DisableTtlFilter() ScanBuilder {
 	return b
 }
 
-func (b *scanBuilder) WithProjection(projection interface{}) ScanBuilder {
+func (b *scanBuilder) WithProjection(projection any) ScanBuilder {
 	b.projection = projection
 
 	return b
@@ -110,7 +111,7 @@ func (b *scanBuilder) WithConsistentRead(consistentRead bool) ScanBuilder {
 	return b
 }
 
-func (b *scanBuilder) Build(result interface{}) (*ScanOperation, error) {
+func (b *scanBuilder) Build(result any) (*ScanOperation, error) {
 	targetType := resolveTargetType(b.selected, b.projection, result)
 	expr, err := b.buildExpression(targetType)
 	if err != nil {
@@ -142,7 +143,7 @@ func (b *scanBuilder) Build(result interface{}) (*ScanOperation, error) {
 	return operation, nil
 }
 
-func (b *scanBuilder) buildExpression(result interface{}) (expression.Expression, error) {
+func (b *scanBuilder) buildExpression(result any) (expression.Expression, error) {
 	var err error
 	var projectionExpr *expression.ProjectionBuilder
 

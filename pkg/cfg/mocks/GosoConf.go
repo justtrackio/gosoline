@@ -1008,7 +1008,7 @@ func (_c *GosoConf_Option_Call) RunAndReturn(run func(...cfg.Option) error) *Gos
 }
 
 // UnmarshalDefaults provides a mock function with given fields: val, additionalDefaults
-func (_m *GosoConf) UnmarshalDefaults(val interface{}, additionalDefaults ...cfg.UnmarshalDefaults) {
+func (_m *GosoConf) UnmarshalDefaults(val interface{}, additionalDefaults ...cfg.UnmarshalDefaults) error {
 	_va := make([]interface{}, len(additionalDefaults))
 	for _i := range additionalDefaults {
 		_va[_i] = additionalDefaults[_i]
@@ -1016,7 +1016,20 @@ func (_m *GosoConf) UnmarshalDefaults(val interface{}, additionalDefaults ...cfg
 	var _ca []interface{}
 	_ca = append(_ca, val)
 	_ca = append(_ca, _va...)
-	_m.Called(_ca...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnmarshalDefaults")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}, ...cfg.UnmarshalDefaults) error); ok {
+		r0 = rf(val, additionalDefaults...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // GosoConf_UnmarshalDefaults_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnmarshalDefaults'
@@ -1045,18 +1058,18 @@ func (_c *GosoConf_UnmarshalDefaults_Call) Run(run func(val interface{}, additio
 	return _c
 }
 
-func (_c *GosoConf_UnmarshalDefaults_Call) Return() *GosoConf_UnmarshalDefaults_Call {
-	_c.Call.Return()
+func (_c *GosoConf_UnmarshalDefaults_Call) Return(_a0 error) *GosoConf_UnmarshalDefaults_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *GosoConf_UnmarshalDefaults_Call) RunAndReturn(run func(interface{}, ...cfg.UnmarshalDefaults)) *GosoConf_UnmarshalDefaults_Call {
-	_c.Run(run)
+func (_c *GosoConf_UnmarshalDefaults_Call) RunAndReturn(run func(interface{}, ...cfg.UnmarshalDefaults) error) *GosoConf_UnmarshalDefaults_Call {
+	_c.Call.Return(run)
 	return _c
 }
 
 // UnmarshalKey provides a mock function with given fields: key, val, additionalDefaults
-func (_m *GosoConf) UnmarshalKey(key string, val interface{}, additionalDefaults ...cfg.UnmarshalDefaults) {
+func (_m *GosoConf) UnmarshalKey(key string, val interface{}, additionalDefaults ...cfg.UnmarshalDefaults) error {
 	_va := make([]interface{}, len(additionalDefaults))
 	for _i := range additionalDefaults {
 		_va[_i] = additionalDefaults[_i]
@@ -1064,7 +1077,20 @@ func (_m *GosoConf) UnmarshalKey(key string, val interface{}, additionalDefaults
 	var _ca []interface{}
 	_ca = append(_ca, key, val)
 	_ca = append(_ca, _va...)
-	_m.Called(_ca...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnmarshalKey")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, interface{}, ...cfg.UnmarshalDefaults) error); ok {
+		r0 = rf(key, val, additionalDefaults...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // GosoConf_UnmarshalKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnmarshalKey'
@@ -1094,13 +1120,13 @@ func (_c *GosoConf_UnmarshalKey_Call) Run(run func(key string, val interface{}, 
 	return _c
 }
 
-func (_c *GosoConf_UnmarshalKey_Call) Return() *GosoConf_UnmarshalKey_Call {
-	_c.Call.Return()
+func (_c *GosoConf_UnmarshalKey_Call) Return(_a0 error) *GosoConf_UnmarshalKey_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *GosoConf_UnmarshalKey_Call) RunAndReturn(run func(string, interface{}, ...cfg.UnmarshalDefaults)) *GosoConf_UnmarshalKey_Call {
-	_c.Run(run)
+func (_c *GosoConf_UnmarshalKey_Call) RunAndReturn(run func(string, interface{}, ...cfg.UnmarshalDefaults) error) *GosoConf_UnmarshalKey_Call {
+	_c.Call.Return(run)
 	return _c
 }
 

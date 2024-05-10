@@ -1,7 +1,6 @@
 package tracing_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -27,8 +26,8 @@ func TestLocalTracer_StartSpan(t *testing.T) {
 func TestLocalTracer_StartSpanFromContext(t *testing.T) {
 	tracer := tracing.NewLocalTracer()
 
-	ctx1, _ := tracer.StartSpanFromContext(context.Background(), "test_trans1")
-	ctx2, _ := tracer.StartSpanFromContext(context.Background(), "test_trans2")
+	ctx1, _ := tracer.StartSpanFromContext(t.Context(), "test_trans1")
+	ctx2, _ := tracer.StartSpanFromContext(t.Context(), "test_trans2")
 
 	traceId1 := tracing.GetTraceIdFromContext(ctx1)
 	traceId2 := tracing.GetTraceIdFromContext(ctx2)
@@ -50,7 +49,7 @@ func TestLocalTracer_StartSpanFromContextWithTrace(t *testing.T) {
 		Sampled:  true,
 	}
 
-	ctx := tracing.ContextWithTrace(context.Background(), trace)
+	ctx := tracing.ContextWithTrace(t.Context(), trace)
 	ctx, _ = tracer.StartSpanFromContext(ctx, "another_trace")
 	traceId := tracing.GetTraceIdFromContext(ctx)
 

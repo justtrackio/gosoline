@@ -24,7 +24,7 @@ type Subject struct {
 	Name            string
 	Anonymous       bool
 	AuthenticatedBy string
-	Attributes      map[string]interface{}
+	Attributes      map[string]any
 }
 
 func RequestWithSubject(ginCtx *gin.Context, subject *Subject) {
@@ -42,13 +42,15 @@ func GetSubject(ctx context.Context) *Subject {
 	panic(fmt.Errorf("there is no subject in the context"))
 }
 
-func OnlyConfiguredAuthenticators(config cfg.Config, name string, authenticators map[string]Authenticator) map[string]Authenticator {
+func OnlyConfiguredAuthenticators(config cfg.Config, name string, authenticators map[string]Authenticator) (map[string]Authenticator, error) {
 	key := fmt.Sprintf("httpserver.%s.auth", name)
 	settings := &Settings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal auth settings: %w", err)
+	}
 	if len(settings.AllowedAuthenticators) == 0 {
-		return authenticators
+		return authenticators, nil
 	}
 
-	return funk.IntersectMaps(authenticators, funk.SliceToMap(settings.AllowedAuthenticators, func(method string) (string, Authenticator) { return method, nil }))
+	return funk.IntersectMaps(authenticators, funk.SliceToMap(settings.AllowedAuthenticators, func(method string) (string, Authenticator) { return method, nil })), nil
 }

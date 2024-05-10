@@ -47,7 +47,7 @@ func TestCircuitBreakerClient(t *testing.T) {
 }
 
 func (s *circuitBreakerTestSuite) SetupTest() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.logger = logMocks.NewLoggerMock(logMocks.WithMockUntilLevel(log.PriorityWarn), logMocks.WithTestingT(s.T()))
 	s.clock = clock.NewFakeClock()
 	s.baseClient = httpMocks.NewClient(s.T())

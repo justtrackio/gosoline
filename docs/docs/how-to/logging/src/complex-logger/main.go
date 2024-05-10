@@ -35,7 +35,7 @@ func main() {
 	loggerWithFields.Error("it happens: %w", fmt.Errorf("should not happen"))
 
 	// 6
-	ctx = log.AppendContextFields(ctx, map[string]interface{}{
+	ctx = log.AppendContextFields(ctx, map[string]any{
 		"id": 1337,
 	})
 	contextAwareLogger := logger.WithContext(ctx)

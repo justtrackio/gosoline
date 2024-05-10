@@ -13,13 +13,13 @@ import (
 )
 
 func TestIsRequestCanceled(t *testing.T) {
-	ctxForCancel, cancelCtx := context.WithCancel(context.Background())
+	ctxForCancel, cancelCtx := context.WithCancel(t.Context())
 	cancelCtx()
 
-	ctxForDeadlineCanceled, cancelDeadline := context.WithTimeout(context.Background(), time.Hour)
+	ctxForDeadlineCanceled, cancelDeadline := context.WithTimeout(t.Context(), time.Hour)
 	cancelDeadline()
 
-	ctxForDeadlineExpired, cancelExpiredDeadline := context.WithTimeout(context.Background(), time.Millisecond)
+	ctxForDeadlineExpired, cancelExpiredDeadline := context.WithTimeout(t.Context(), time.Millisecond)
 	defer cancelExpiredDeadline()
 	<-ctxForDeadlineExpired.Done()
 

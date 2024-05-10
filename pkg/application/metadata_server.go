@@ -36,7 +36,9 @@ type MetadataServer struct {
 
 func NewMetadataServer(_ context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	settings := &MetadataServerSettings{}
-	config.UnmarshalKey("appctx.metadata.server", settings)
+	if err := config.UnmarshalKey("appctx.metadata.server", settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal metadata server settings: %w", err)
+	}
 
 	server := &MetadataServer{
 		config:   config,
@@ -90,6 +92,7 @@ func (s *MetadataServer) handleMetadata(metadata *appctx.Metadata) func(http.Res
 		if bytes, err = json.Marshal(data); err != nil {
 			s.logger.Warn("can not marshal metadata %s", err.Error())
 			writer.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
 
@@ -107,9 +110,7 @@ func (s *MetadataServer) handleConfig(writer http.ResponseWriter, request *http.
 func (s *MetadataServer) handleMemory(writer http.ResponseWriter, request *http.Request) {
 	var memMstats runtime.MemStats
 
-	gc := request.URL.Query().Get("gc")
-	switch gc {
-	case "true":
+	if gc := request.URL.Query().Get("gc"); gc == "true" {
 		runtime.GC()
 	}
 
@@ -117,21 +118,19 @@ func (s *MetadataServer) handleMemory(writer http.ResponseWriter, request *http.
 	s.formattedResponse(writer, request, memMstats)
 }
 
-func (s *MetadataServer) formattedResponse(writer http.ResponseWriter, request *http.Request, response interface{}) {
+func (s *MetadataServer) formattedResponse(writer http.ResponseWriter, request *http.Request, response any) {
 	var err error
 	var bytes []byte
 	marshaller := yaml.Marshal
 
-	format := request.URL.Query().Get("format")
-
-	switch format {
-	case "json":
+	if format := request.URL.Query().Get("format"); format == "json" {
 		marshaller = json.Marshal
 	}
 
 	if bytes, err = marshaller(response); err != nil {
 		s.logger.Warn("can not marshal response %s", err.Error())
 		writer.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
 

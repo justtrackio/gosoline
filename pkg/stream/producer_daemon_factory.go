@@ -11,7 +11,11 @@ import (
 
 func ProducerDaemonFactory(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 	modules := map[string]kernel.ModuleFactory{}
-	producerDaemonSettings := readAllProducerDaemonSettings(config)
+
+	producerDaemonSettings, err := readAllProducerDaemonSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not read producer daemon settings: %w", err)
+	}
 
 	for name, settings := range producerDaemonSettings {
 		if !settings.Daemon.Enabled {

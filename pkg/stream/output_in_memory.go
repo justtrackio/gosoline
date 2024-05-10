@@ -110,6 +110,7 @@ func (o *InMemoryOutput) Write(_ context.Context, batch []WritableMessage) error
 			Body:       body,
 		})
 	}
+
 	return nil
 }
 

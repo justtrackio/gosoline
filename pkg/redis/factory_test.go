@@ -19,8 +19,8 @@ func (s *FactoryTestSuite) SetupTest() {
 	s.config = cfg.New()
 }
 
-func (s *FactoryTestSuite) initConfig(settings map[string]interface{}) {
-	appIdConfig := cfg.WithConfigMap(map[string]interface{}{
+func (s *FactoryTestSuite) initConfig(settings map[string]any) {
+	appIdConfig := cfg.WithConfigMap(map[string]any{
 		"app_project": "gosoline",
 		"app_family":  "fam",
 		"app_group":   "grp",
@@ -34,9 +34,10 @@ func (s *FactoryTestSuite) initConfig(settings map[string]interface{}) {
 }
 
 func (s *FactoryTestSuite) TestDefault() {
-	s.initConfig(map[string]interface{}{})
+	s.initConfig(map[string]any{})
 
-	settings := redis.ReadSettings(s.config, "default")
+	settings, err := redis.ReadSettings(s.config, "default")
+	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
 		AppId: cfg.AppId{
@@ -64,19 +65,20 @@ func (s *FactoryTestSuite) TestDefault() {
 }
 
 func (s *FactoryTestSuite) TestDedicated() {
-	s.initConfig(map[string]interface{}{
-		"redis": map[string]interface{}{
-			"dedicated": map[string]interface{}{
+	s.initConfig(map[string]any{
+		"redis": map[string]any{
+			"dedicated": map[string]any{
 				"dialer":  "srv",
 				"address": "dedicated.address",
-				"backoff": map[string]interface{}{
+				"backoff": map[string]any{
 					"max_elapsed_time": "1m",
 				},
 			},
 		},
 	})
 
-	settings := redis.ReadSettings(s.config, "dedicated")
+	settings, err := redis.ReadSettings(s.config, "dedicated")
+	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
 		AppId: cfg.AppId{
@@ -104,21 +106,22 @@ func (s *FactoryTestSuite) TestDedicated() {
 }
 
 func (s *FactoryTestSuite) TestWithDefaults() {
-	s.initConfig(map[string]interface{}{
-		"redis": map[string]interface{}{
-			"default": map[string]interface{}{
+	s.initConfig(map[string]any{
+		"redis": map[string]any{
+			"default": map[string]any{
 				"dialer": "srv",
-				"backoff": map[string]interface{}{
+				"backoff": map[string]any{
 					"max_elapsed_time": "1m",
 				},
 			},
-			"partial": map[string]interface{}{
+			"partial": map[string]any{
 				"address": "partial.address",
 			},
 		},
 	})
 
-	settings := redis.ReadSettings(s.config, "partial")
+	settings, err := redis.ReadSettings(s.config, "partial")
+	s.NoError(err, "there should be no error reading the settings")
 
 	expected := &redis.Settings{
 		AppId: cfg.AppId{

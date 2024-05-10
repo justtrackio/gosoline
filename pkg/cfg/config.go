@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -24,23 +25,23 @@ type LookupEnv func(key string) (string, bool)
 //go:generate go run github.com/vektra/mockery/v2 --name Config
 type Config interface {
 	AllKeys() []string
-	AllSettings() map[string]interface{}
-	Get(key string, optionalDefault ...interface{}) interface{}
+	AllSettings() map[string]any
+	Get(key string, optionalDefault ...any) any
 	GetBool(key string, optionalDefault ...bool) bool
 	GetDuration(key string, optionalDefault ...time.Duration) time.Duration
 	GetInt(key string, optionalDefault ...int) int
 	GetIntSlice(key string, optionalDefault ...[]int) []int
 	GetFloat64(key string, optionalDefault ...float64) float64
-	GetMsiSlice(key string, optionalDefault ...[]map[string]interface{}) []map[string]interface{}
+	GetMsiSlice(key string, optionalDefault ...[]map[string]any) []map[string]any
 	GetString(key string, optionalDefault ...string) string
-	GetStringMap(key string, optionalDefault ...map[string]interface{}) map[string]interface{}
+	GetStringMap(key string, optionalDefault ...map[string]any) map[string]any
 	GetStringMapString(key string, optionalDefault ...map[string]string) map[string]string
 	GetStringSlice(key string, optionalDefault ...[]string) []string
 	GetTime(key string, optionalDefault ...time.Time) time.Time
 	IsSet(string) bool
 	HasPrefix(prefix string) bool
-	UnmarshalDefaults(val interface{}, additionalDefaults ...UnmarshalDefaults)
-	UnmarshalKey(key string, val interface{}, additionalDefaults ...UnmarshalDefaults)
+	UnmarshalDefaults(val any, additionalDefaults ...UnmarshalDefaults) error
+	UnmarshalKey(key string, val any, additionalDefaults ...UnmarshalDefaults) error
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name GosoConf
@@ -65,11 +66,11 @@ var (
 	keyToEnvRegexp        = regexp.MustCompile(`\[(\d+)\]`)
 )
 
-func New(msis ...map[string]interface{}) GosoConf {
+func New(msis ...map[string]any) GosoConf {
 	return NewWithInterfaces(NewOsEnvProvider(), msis...)
 }
 
-func NewWithInterfaces(envProvider EnvProvider, msis ...map[string]interface{}) GosoConf {
+func NewWithInterfaces(envProvider EnvProvider, msis ...map[string]any) GosoConf {
 	cfg := &config{
 		envProvider:   envProvider,
 		errorHandlers: []ErrorHandler{defaultErrorHandler},
@@ -84,11 +85,11 @@ func (c *config) AllKeys() []string {
 	return funk.Keys(c.settings.Msi())
 }
 
-func (c *config) AllSettings() map[string]interface{} {
+func (c *config) AllSettings() map[string]any {
 	return c.settings.Msi()
 }
 
-func (c *config) Get(key string, optionalDefault ...interface{}) interface{} {
+func (c *config) Get(key string, optionalDefault ...any) any {
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -176,7 +177,7 @@ func (c *config) GetFloat64(key string, optionalDefault ...float64) float64 {
 	return i
 }
 
-func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interface{}) []map[string]interface{} {
+func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]any) []map[string]any {
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -186,20 +187,20 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interfa
 	reflectValue := reflect.ValueOf(data)
 
 	if reflectValue.Kind() != reflect.Slice {
-		c.err("can not cast value %v[%T] of key %s to []map[string]interface{}: %w", data, data, key, err)
+		c.err("can not cast value %v[%T] of key %s to []map[string]any: %w", data, data, key, err)
 
 		return nil
 	}
 
 	var ok bool
-	var element interface{}
-	var msi map[string]interface{}
-	msiSlice := make([]map[string]interface{}, reflectValue.Len())
+	var element any
+	var msi map[string]any
+	msiSlice := make([]map[string]any, reflectValue.Len())
 
 	for i := 0; i < reflectValue.Len(); i++ {
 		element = reflectValue.Index(i).Interface()
 
-		if msi, ok = element.(map[string]interface{}); !ok {
+		if msi, ok = element.(map[string]any); !ok {
 			c.err("element of key %s should be a msi but instead is %T", key, element)
 
 			return nil
@@ -215,7 +216,7 @@ func (c *config) GetString(key string, optionalDefault ...string) string {
 	return c.getString(key, optionalDefault...)
 }
 
-func (c *config) GetStringMap(key string, optionalDefault ...map[string]interface{}) map[string]interface{} {
+func (c *config) GetStringMap(key string, optionalDefault ...map[string]any) map[string]any {
 	if ok := c.keyCheck(key, len(optionalDefault)); !ok && len(optionalDefault) > 0 {
 		return optionalDefault[0]
 	}
@@ -223,7 +224,7 @@ func (c *config) GetStringMap(key string, optionalDefault ...map[string]interfac
 	data := c.get(key)
 	strMap, err := cast.ToStringMapE(data)
 	if err != nil {
-		c.err("can not cast value %v[%T] of key %s to map[string]interface{}: %w", data, data, key, err)
+		c.err("can not cast value %v[%T] of key %s to map[string]any: %w", data, data, key, err)
 
 		return nil
 	}
@@ -328,51 +329,64 @@ func (c *config) Option(options ...Option) error {
 	return nil
 }
 
-func (c *config) UnmarshalDefaults(output interface{}, additionalDefaults ...UnmarshalDefaults) {
+func (c *config) UnmarshalDefaults(output any, additionalDefaults ...UnmarshalDefaults) error {
 	refl.InitializeMapsAndSlices(output)
 	finalSettings := mapx.NewMapX()
 
-	ms := c.buildMapStruct(output)
-	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
-	if err != nil {
-		c.err("can not read zeros and defaults for struct %T: %w", output, err)
+	var err error
+	var ms *mapx.Struct
+	var zeroSettings, defaults *mapx.MapX
+
+	if ms, err = c.buildMapStruct(output); err != nil {
+		return fmt.Errorf("can not build mapx.Struct for output: %w", err)
+	}
+
+	if zeroSettings, defaults, err = ms.ReadZeroAndDefaultValues(); err != nil {
+		return fmt.Errorf("can not read zeros and defaults for struct %T: %w", output, err)
 	}
 
 	finalSettings.Merge(".", zeroSettings)
 	finalSettings.Merge(".", defaults)
 
 	for _, def := range additionalDefaults {
-		def(c, finalSettings)
+		if err := def(c, finalSettings); err != nil {
+			return fmt.Errorf("can not apply additional defaults: %w", err)
+		}
 	}
 
 	if err = ms.Write(finalSettings); err != nil {
-		c.err("can not write defaults into struct %T: %w", output, err)
-
-		return
+		return fmt.Errorf("can not write defaults into struct %T: %w", output, err)
 	}
+
+	return nil
 }
 
-func (c *config) UnmarshalKey(key string, output interface{}, defaults ...UnmarshalDefaults) {
+func (c *config) UnmarshalKey(key string, output any, defaults ...UnmarshalDefaults) error {
 	if refl.IsPointerToStruct(output) {
-		c.unmarshalStruct(key, output, defaults)
+		if err := c.unmarshalStruct(key, output, defaults); err != nil {
+			return fmt.Errorf("can not unmarshal config struct with key %s: %w", key, err)
+		}
 
-		return
+		return nil
 	}
 
 	if refl.IsPointerToSlice(output) {
-		c.unmarshalSlice(key, output, defaults)
+		if err := c.unmarshalSlice(key, output, defaults); err != nil {
+			return fmt.Errorf("can not unmarshal config struct with key %s: %w", key, err)
+		}
 
-		return
+		return nil
 	}
 
 	if refl.IsPointerToMap(output) {
-		c.unmarshalMap(key, output, defaults)
+		if err := c.unmarshalMap(key, output, defaults); err != nil {
+			return fmt.Errorf("can not unmarshal config struct with key %s: %w", key, err)
+		}
 
-		return
+		return nil
 	}
 
-	err := fmt.Errorf("output should be a pointer to struct or slice but instead is %T", output)
-	c.err("can not unmarshal key %s: %w", key, err)
+	return fmt.Errorf("can not unmarshal key %s: output should be a pointer to struct or slice but instead is %T", key, output)
 }
 
 func (c *config) augmentString(str string) string {
@@ -399,13 +413,13 @@ func (c *config) augmentString(str string) string {
 	return str
 }
 
-func (c *config) err(msg string, args ...interface{}) {
+func (c *config) err(msg string, args ...any) {
 	for i := 0; i < len(c.errorHandlers); i++ {
 		c.errorHandlers[i](msg, args...)
 	}
 }
 
-func (c *config) buildMapStruct(target interface{}) *mapx.Struct {
+func (c *config) buildMapStruct(target any) (*mapx.Struct, error) {
 	ms, err := mapx.NewStruct(target, &mapx.StructSettings{
 		FieldTag:   "cfg",
 		DefaultTag: "default",
@@ -419,16 +433,14 @@ func (c *config) buildMapStruct(target interface{}) *mapx.Struct {
 		},
 	})
 	if err != nil {
-		c.err("can not create MapXStruct for target %T: %w", target, err)
-
-		return nil
+		return nil, fmt.Errorf("can not create MapXStruct for target %T: %w", target, err)
 	}
 
-	return ms
+	return ms, nil
 }
 
 func (c *config) decodeAugmentHook() mapx.MapStructDecoder {
-	return func(_ reflect.Type, val interface{}) (interface{}, error) {
+	return func(_ reflect.Type, val any) (any, error) {
 		if raw, ok := val.(string); ok {
 			return c.augmentString(raw), nil
 		}
@@ -437,7 +449,7 @@ func (c *config) decodeAugmentHook() mapx.MapStructDecoder {
 	}
 }
 
-func (c *config) get(key string) interface{} {
+func (c *config) get(key string) any {
 	data := c.settings.Get(key).Data()
 
 	dataMap := mapx.NewMapX()
@@ -491,8 +503,8 @@ func (c *config) keyCheck(key string, defaults int) bool {
 	return false
 }
 
-func (c *config) merge(prefix string, setting interface{}, options ...MergeOption) error {
-	if msi, ok := setting.(map[string]interface{}); ok {
+func (c *config) merge(prefix string, setting any, options ...MergeOption) error {
+	if msi, ok := setting.(map[string]any); ok {
 		return c.mergeMsi(prefix, msi, options...)
 	}
 
@@ -503,7 +515,7 @@ func (c *config) merge(prefix string, setting interface{}, options ...MergeOptio
 	return c.mergeValue(prefix, setting, options...)
 }
 
-func (c *config) mergeValue(prefix string, value interface{}, options ...MergeOption) error {
+func (c *config) mergeValue(prefix string, value any, options ...MergeOption) error {
 	sanitizedValue, err := Sanitize("root", value, c.sanitizers)
 	if err != nil {
 		return fmt.Errorf("could not sanitize settings on merge: %w", err)
@@ -515,7 +527,7 @@ func (c *config) mergeValue(prefix string, value interface{}, options ...MergeOp
 	return nil
 }
 
-func (c *config) mergeMsi(prefix string, settings map[string]interface{}, options ...MergeOption) error {
+func (c *config) mergeMsi(prefix string, settings map[string]any, options ...MergeOption) error {
 	sanitizedSettings, err := Sanitize("root", settings, c.sanitizers)
 	if err != nil {
 		return fmt.Errorf("could not sanitize settings on merge: %w", err)
@@ -527,11 +539,17 @@ func (c *config) mergeMsi(prefix string, settings map[string]interface{}, option
 	return nil
 }
 
-func (c *config) mergeStruct(prefix string, settings interface{}, options ...MergeOption) error {
-	ms := c.buildMapStruct(settings)
-	nodeMap, err := ms.Read()
-	if err != nil {
-		return err
+func (c *config) mergeStruct(prefix string, settings any, options ...MergeOption) error {
+	var err error
+	var ms *mapx.Struct
+	var nodeMap *mapx.MapX
+
+	if ms, err = c.buildMapStruct(settings); err != nil {
+		return fmt.Errorf("can not build mapx.Struct for settings: %w", err)
+	}
+
+	if nodeMap, err = ms.Read(); err != nil {
+		return fmt.Errorf("can not perform read on mapx.Struct: %w", err)
 	}
 
 	msi := nodeMap.Msi()
@@ -638,81 +656,85 @@ func (c *config) resolveEnvKey(prefix string, key string) string {
 	return strings.ToUpper(key)
 }
 
-func (c *config) unmarshalMap(key string, output interface{}, defaults []UnmarshalDefaults) {
+func (c *config) unmarshalMap(key string, output any, defaults []UnmarshalDefaults) error {
 	names := c.GetStringMap(key)
 	m, err := refl.MapOf(output)
 	if err != nil {
-		c.err("can not unmarshal key %s: %w", key, err)
-
-		return
+		return fmt.Errorf("can not unmarshal key %s: %w", key, err)
 	}
 
 	for name := range names {
 		keyIndex := fmt.Sprintf("%s.%s", key, name)
 		item := m.NewElement()
 
-		c.unmarshalStruct(keyIndex, item, defaults)
-		err = m.Set(name, item)
-		if err != nil {
-			c.err("can not unmarshal key %s: %w", key, err)
+		cErr := c.unmarshalStruct(keyIndex, item, defaults)
+		if cErr != nil {
+			return fmt.Errorf("can not unmarshal key %s: %w", keyIndex, cErr)
+		}
 
-			return
+		if err = m.Set(name, item); err != nil {
+			return fmt.Errorf("can not unmarshal key %s: %w", key, err)
 		}
 	}
+
+	return nil
 }
 
-func (c *config) unmarshalSlice(key string, output interface{}, defaults []UnmarshalDefaults) {
+func (c *config) unmarshalSlice(key string, output any, defaults []UnmarshalDefaults) error {
 	data, err := c.settings.Get(key).Slice()
 	if err != nil {
-		c.err("can not unmarshal key %s: %w", key, err)
-
-		return
+		return fmt.Errorf("can not unmarshal key %s: %w", key, err)
 	}
 
 	slice, err := refl.SliceOf(output)
 	if err != nil {
-		c.err("can not unmarshal key %s into slice: %w", key, err)
-
-		return
+		return fmt.Errorf("can not unmarshal key %s into slice: %w", key, err)
 	}
 
 	for i := 0; i < len(data); i++ {
 		keyIndex := fmt.Sprintf("%s[%d]", key, i)
 		elem := slice.NewElement()
 
-		c.unmarshalStruct(keyIndex, elem, defaults)
+		if err = c.unmarshalStruct(keyIndex, elem, defaults); err != nil {
+			return fmt.Errorf("can not unmarshal struct with index %s: %w", keyIndex, err)
+		}
 
 		if err := slice.Append(elem); err != nil {
-			c.err("can not unmarshal key %s into slice: %w", key, err)
-
-			return
+			return fmt.Errorf("can not unmarshal key %s into slice: %w", key, err)
 		}
 	}
+
+	return nil
 }
 
-func (c *config) unmarshalStruct(key string, output interface{}, additionalDefaults []UnmarshalDefaults) {
+func (c *config) unmarshalStruct(key string, output any, additionalDefaults []UnmarshalDefaults) error {
 	refl.InitializeMapsAndSlices(output)
 	finalSettings := mapx.NewMapX()
 
-	ms := c.buildMapStruct(output)
-	zeroSettings, defaults, err := ms.ReadZeroAndDefaultValues()
-	if err != nil {
-		c.err("can not read zeros and defaults for key %s: %w", key, err)
+	var err error
+	var ms *mapx.Struct
+	var zeroSettings, defaults, settings *mapx.MapX
+
+	if ms, err = c.buildMapStruct(output); err != nil {
+		return fmt.Errorf("can not build mapx.Struct for output: %w", err)
+	}
+
+	if zeroSettings, defaults, err = ms.ReadZeroAndDefaultValues(); err != nil {
+		return fmt.Errorf("can not read zeros and defaults for struct %T: %w", output, err)
 	}
 
 	finalSettings.Merge(".", zeroSettings)
 	finalSettings.Merge(".", defaults)
 
 	for _, def := range additionalDefaults {
-		def(c, finalSettings)
+		if err := def(c, finalSettings); err != nil {
+			return fmt.Errorf("can not apply additional defaults: %w", err)
+		}
 	}
 
 	if c.settings.Has(key) {
-		settings, err := c.settings.Get(key).Map()
-		if err != nil {
-			c.err("can not get settings for key: %s: %w", key, err)
-
-			return
+		if settings, err = c.settings.Get(key).Map(); err != nil {
+			return fmt.Errorf("can not get settings for key: %s: %w", key, err)
 		}
 
 		finalSettings.Merge(".", settings)
@@ -728,33 +750,30 @@ func (c *config) unmarshalStruct(key string, output interface{}, additionalDefau
 	c.settings.Set(key, finalSettings)
 
 	if err = ms.Write(finalSettings); err != nil {
-		c.err("error unmarshalling key: %s: %w", key, err)
-
-		return
+		return fmt.Errorf("error unmarshalling key: %s: %w", key, err)
 	}
 
 	validate := validator.New()
 	err = validate.Struct(output)
 
 	if err == nil {
-		return
+		return nil
 	}
 
-	if _, ok := err.(*validator.InvalidValidationError); ok {
-		c.err("can not validate result of key: %s: %w", key, err)
-
-		return
+	var invalidValidationError *validator.InvalidValidationError
+	if errors.As(err, &invalidValidationError) {
+		return fmt.Errorf("can not validate result of key: %s: %w", key, err)
 	}
 
 	errs := &multierror.Error{}
 	for _, validationErr := range err.(validator.ValidationErrors) {
-		err := fmt.Errorf("the setting %s with value %v does not match its requirement", validationErr.Field(), validationErr.Value())
+		err = fmt.Errorf("the setting %s with value %v does not match its requirement", validationErr.Field(), validationErr.Value())
 		errs = multierror.Append(errs, err)
 	}
 
 	if errs != nil {
-		c.err("validation failed for key: %s: %w", key, errs)
-
-		return
+		return fmt.Errorf("validation failed for key: %s: %w", key, errs)
 	}
+
+	return nil
 }

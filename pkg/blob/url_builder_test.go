@@ -20,7 +20,7 @@ type UrlBuilderTestSuite struct {
 
 func (s *UrlBuilderTestSuite) SetupTest() {
 	s.config = cfg.New()
-	err := s.config.Option(cfg.WithConfigMap(map[string]interface{}{
+	err := s.config.Option(cfg.WithConfigMap(map[string]any{
 		"app_project": "justtrack",
 		"app_family":  "gosoline",
 		"app_group":   "grp",
@@ -41,7 +41,7 @@ func (s *UrlBuilderTestSuite) TestLocalstack() {
 }
 
 func (s *UrlBuilderTestSuite) TestAws() {
-	err := s.config.Option(cfg.WithConfigMap(map[string]interface{}{
+	err := s.config.Option(cfg.WithConfigMap(map[string]any{
 		"cloud.aws.defaults.endpoint":               "",
 		"cloud.aws.s3.clients.default.usePathStyle": false,
 	}))
@@ -57,8 +57,8 @@ func (s *UrlBuilderTestSuite) TestAws() {
 }
 
 func (s *UrlBuilderTestSuite) TestWithCustomBucket() {
-	err := s.config.Option(cfg.WithConfigMap(map[string]interface{}{
-		"blob.my_store": map[string]interface{}{
+	err := s.config.Option(cfg.WithConfigMap(map[string]any{
+		"blob.my_store": map[string]any{
 			"bucket": "my-custom-bucket",
 		},
 		"cloud.aws.defaults.endpoint":               "",

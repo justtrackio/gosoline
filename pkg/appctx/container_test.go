@@ -1,7 +1,6 @@
 package appctx_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
@@ -12,7 +11,7 @@ func TestProvide(t *testing.T) {
 	type customType struct {
 		val string
 	}
-	ctx := appctx.WithContainer(context.Background())
+	ctx := appctx.WithContainer(t.Context())
 
 	val, err := appctx.Provide(ctx, "foo", func() (*customType, error) {
 		return &customType{"bar"}, nil
@@ -22,6 +21,7 @@ func TestProvide(t *testing.T) {
 
 	val, err = appctx.Provide(ctx, "foo", func() (*customType, error) {
 		assert.FailNow(t, "the factory should not be called a second time")
+
 		return &customType{}, nil
 	})
 	assert.NoError(t, err)

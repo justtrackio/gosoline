@@ -1,7 +1,6 @@
 package stream
 
 import (
-	"context"
 	"sync"
 	"testing"
 
@@ -22,7 +21,7 @@ func TestFileInput_Run(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		err = input.Run(context.Background())
+		err = input.Run(t.Context())
 		wg.Done()
 	}()
 

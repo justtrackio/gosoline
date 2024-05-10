@@ -44,7 +44,9 @@ func RedisConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 		kvstoreKey := GetConfigurableKey(name)
 
 		configuration := ChainConfiguration{}
-		config.UnmarshalKey(kvstoreKey, &configuration)
+		if err := config.UnmarshalKey(kvstoreKey, &configuration); err != nil {
+			return false, fmt.Errorf("failed to unmarshal kvstore redis configuration for %s: %w", name, err)
+		}
 
 		if configuration.Redis.DB == 0 {
 			continue

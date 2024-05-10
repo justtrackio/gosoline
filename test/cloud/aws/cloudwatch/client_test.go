@@ -3,7 +3,6 @@
 package cloudwatch_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -28,10 +27,10 @@ func (s *ClientTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *ClientTestSuite) TestNewDefault() {
-	client, err := cloudwatch.NewClient(context.Background(), s.Env().Config(), s.Env().Logger(), "default")
+	client, err := cloudwatch.NewClient(s.T().Context(), s.Env().Config(), s.Env().Logger(), "default")
 	s.NoError(err)
 
-	_, err = client.GetMetricStatistics(context.Background(), &awsCw.GetMetricStatisticsInput{
+	_, err = client.GetMetricStatistics(s.T().Context(), &awsCw.GetMetricStatisticsInput{
 		StartTime:  aws.Time(time.Now().Add(time.Hour * -1)),
 		EndTime:    aws.Time(time.Now()),
 		Namespace:  aws.String("gosoline"),

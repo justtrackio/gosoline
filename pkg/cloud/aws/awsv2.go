@@ -71,7 +71,7 @@ func LogNewClientCreated(ctx context.Context, logger log.Logger, service string,
 	}).Info("created new %s client %s", service, clientName)
 }
 
-func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, service string, name string) {
+func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, service string, name string) error {
 	if name == "" {
 		name = "default"
 	}
@@ -81,7 +81,7 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 	clientDefaultsKey := GetDefaultsKey(name)
 	defaultsKey := GetDefaultsKey("default")
 
-	config.UnmarshalKey(clientsKey, settings, []cfg.UnmarshalDefaults{
+	defaults := []cfg.UnmarshalDefaults{
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.credentials", "credentials"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.region", "region"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.endpoint", "endpoint"),
@@ -89,12 +89,22 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.assume_role", "assume_role"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.profile", "profile"),
 		cfg.UnmarshalWithDefaultsFromKey(defaultsKey, "."),
-		cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, "."),
 		cfg.UnmarshalWithDefaultsFromKey(clientDefaultsKey, "."),
-	}...)
+		cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, "."),
+	}
 
-	backoffSettings := exec.ReadBackoffSettings(config, clientsKey, clientDefaultsKey, defaultClientKey, defaultsKey, "cloud.aws.defaults")
+	if err := config.UnmarshalKey(clientsKey, settings, defaults...); err != nil {
+		panic(fmt.Errorf("failed to unmarshal client settings for %s: %w", clientsKey, err))
+	}
+
+	backoffSettings, err := exec.ReadBackoffSettings(config, clientsKey, clientDefaultsKey, defaultClientKey, defaultsKey, "cloud.aws.defaults")
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal client settings for %s: %w", clientsKey, err)
+	}
+
 	settings.SetBackoff(backoffSettings)
+
+	return nil
 }
 
 func DefaultClientOptions(ctx context.Context, _ cfg.Config, logger log.Logger, clientConfig ClientConfigAware) ([]func(options *awsCfg.LoadOptions) error, error) {

@@ -43,13 +43,14 @@ func (s *ExecutorBackoffTestSuite) TestPermanent() {
 	tries := 0
 	permanentError := fmt.Errorf("permanent error")
 
-	checker := func(result interface{}, err error) exec.ErrorType {
+	checker := func(result any, err error) exec.ErrorType {
 		return exec.ErrorTypePermanent
 	}
 
 	executor := s.buildExecutor(time.Millisecond*25, checker)
-	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+	_, err := executor.Execute(s.T().Context(), func(ctx context.Context) (any, error) {
 		tries++
+
 		return nil, permanentError
 	})
 
@@ -61,13 +62,14 @@ func (s *ExecutorBackoffTestSuite) TestOk() {
 	tries := 0
 	okError := fmt.Errorf("ok error")
 
-	checker := func(result interface{}, err error) exec.ErrorType {
+	checker := func(result any, err error) exec.ErrorType {
 		return exec.ErrorTypeOk
 	}
 
 	executor := s.buildExecutor(time.Millisecond*25, checker)
-	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+	_, err := executor.Execute(s.T().Context(), func(ctx context.Context) (any, error) {
 		tries++
+
 		return nil, okError
 	})
 
@@ -79,12 +81,12 @@ func (s *ExecutorBackoffTestSuite) TestRetryable() {
 	tries := 0
 	retryableError := fmt.Errorf("ok retryable")
 
-	checker := func(result interface{}, err error) exec.ErrorType {
+	checker := func(result any, err error) exec.ErrorType {
 		return exec.ErrorTypeRetryable
 	}
 
 	executor := s.buildExecutor(time.Millisecond*100, checker)
-	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+	_, err := executor.Execute(s.T().Context(), func(ctx context.Context) (any, error) {
 		tries++
 
 		if tries < 3 {
@@ -102,13 +104,14 @@ func (s *ExecutorBackoffTestSuite) TestUnknown() {
 	tries := 0
 	unknownError := fmt.Errorf("unknown error")
 
-	checker := func(result interface{}, err error) exec.ErrorType {
+	checker := func(result any, err error) exec.ErrorType {
 		return exec.ErrorTypeUnknown
 	}
 
 	executor := s.buildExecutor(time.Millisecond*25, checker)
-	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+	_, err := executor.Execute(s.T().Context(), func(ctx context.Context) (any, error) {
 		tries++
+
 		return nil, unknownError
 	})
 
@@ -118,14 +121,14 @@ func (s *ExecutorBackoffTestSuite) TestUnknown() {
 
 func (s *ExecutorBackoffTestSuite) TestMaxElapsedTimeReached() {
 	tries := 0
-	longTakingErr := fmt.Errorf("this error occured after reaching max elapsed time")
+	longTakingErr := fmt.Errorf("this error occurred after reaching max elapsed time")
 
-	checker := func(result interface{}, err error) exec.ErrorType {
+	checker := func(result any, err error) exec.ErrorType {
 		return exec.ErrorTypeRetryable
 	}
 
 	executor := s.buildExecutor(time.Millisecond*25, checker)
-	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+	_, err := executor.Execute(s.T().Context(), func(ctx context.Context) (any, error) {
 		time.Sleep(time.Millisecond * 30)
 		tries++
 
@@ -146,8 +149,9 @@ func (s *ExecutorBackoffTestSuite) TestUsedClosedConnection() {
 	})
 
 	executor := s.buildExecutor(time.Millisecond*100, exec.CheckUsedClosedConnectionError)
-	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+	_, err := executor.Execute(s.T().Context(), func(ctx context.Context) (any, error) {
 		tries++
+
 		return client.Get("http://test.url")
 	})
 
@@ -166,8 +170,9 @@ func (s *ExecutorBackoffTestSuite) TestConnectionError() {
 	})
 
 	executor := s.buildExecutor(time.Millisecond*100, exec.CheckConnectionError)
-	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+	_, err := executor.Execute(s.T().Context(), func(ctx context.Context) (any, error) {
 		tries++
+
 		return client.Get("http://test.url")
 	})
 
@@ -184,8 +189,9 @@ func (s *ExecutorBackoffTestSuite) TestTimeOutError() {
 	})
 
 	executor := s.buildExecutor(time.Millisecond*100, exec.CheckTimeoutError)
-	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+	_, err := executor.Execute(s.T().Context(), func(ctx context.Context) (any, error) {
 		tries++
+
 		return client.Get("http://test.url")
 	})
 
@@ -202,8 +208,9 @@ func (s *ExecutorBackoffTestSuite) TestClientTimeoutError() {
 	})
 
 	executor := s.buildExecutor(time.Millisecond*100, exec.CheckClientAwaitHeaderTimeoutError)
-	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+	_, err := executor.Execute(s.T().Context(), func(ctx context.Context) (any, error) {
 		tries++
+
 		return client.Get("http://test.url")
 	})
 
@@ -220,8 +227,9 @@ func (s *ExecutorBackoffTestSuite) TestTlsHandshakeTimeoutError() {
 	})
 
 	executor := s.buildExecutor(time.Millisecond*100, exec.CheckTlsHandshakeTimeoutError)
-	_, err := executor.Execute(context.Background(), func(ctx context.Context) (interface{}, error) {
+	_, err := executor.Execute(s.T().Context(), func(ctx context.Context) (any, error) {
 		tries++
+
 		return client.Get("http://test.url")
 	})
 

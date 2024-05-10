@@ -34,10 +34,10 @@ func ConfigurableConsumerKey(name string) string {
 	return fmt.Sprintf("stream.consumer.%s", name)
 }
 
-func ReadConsumerSettings(config cfg.Config, name string) ConsumerSettings {
+func ReadConsumerSettings(config cfg.Config, name string) (ConsumerSettings, error) {
 	settings := ConsumerSettings{}
 	key := ConfigurableConsumerKey(name)
-	config.UnmarshalKey(
+	if err := config.UnmarshalKey(
 		key,
 		&settings,
 		cfg.UnmarshalWithDefaultForKey("encoding", defaultMessageBodyEncoding),
@@ -45,7 +45,9 @@ func ReadConsumerSettings(config cfg.Config, name string) ConsumerSettings {
 		// if we are processing a message and get a SIGTERM at that moment, writing the message to the retry queue will
 		// fail without some time buffer for writing the message
 		cfg.UnmarshalWithDefaultsFromKey("kernel.kill_timeout", "retry.grace_time"),
-	)
+	); err != nil {
+		return ConsumerSettings{}, fmt.Errorf("failed to unmarshal consumer settings for key %q in ReadConsumerSettings: %w", key, err)
+	}
 
-	return settings
+	return settings, nil
 }

@@ -49,7 +49,7 @@ func (s *S3TestSuite) TestS3() {
 		Bucket: aws.String(bucketName),
 		Key:    aws.String("nyan_cat2.gif"),
 	}
-	output, err := s3Client.GetObject(context.Background(), input)
+	output, err := s3Client.GetObject(s.T().Context(), input)
 	s.NoError(err)
 
 	body, err := io.ReadAll(output.Body)
@@ -61,7 +61,7 @@ func (s *S3TestSuite) TestS3() {
 		Bucket: aws.String(bucketName),
 		Key:    aws.String("subDir/nyan_cat1.gif"),
 	}
-	output, err = s3Client.GetObject(context.Background(), input)
+	output, err = s3Client.GetObject(s.T().Context(), input)
 	s.NoError(err)
 
 	body, err = io.ReadAll(output.Body)
@@ -73,7 +73,7 @@ func (s *S3TestSuite) TestS3() {
 		Bucket: aws.String(bucketName),
 		Key:    aws.String("subDir/nyan_cat.gif"),
 	}
-	output, err = s3Client.GetObject(context.Background(), input)
+	output, err = s3Client.GetObject(s.T().Context(), input)
 	s.NoError(err)
 
 	body, err = io.ReadAll(output.Body)

@@ -21,14 +21,14 @@ type Mock interface {
 	String() string
 	TestData() objx.Map
 	Test(t mock.TestingT)
-	On(methodName string, arguments ...interface{}) *mock.Call
-	Called(arguments ...interface{}) mock.Arguments
-	MethodCalled(methodName string, arguments ...interface{}) mock.Arguments
+	On(methodName string, arguments ...any) *mock.Call
+	Called(arguments ...any) mock.Arguments
+	MethodCalled(methodName string, arguments ...any) mock.Arguments
 	AssertExpectations(t mock.TestingT) bool
 	AssertNumberOfCalls(t mock.TestingT, methodName string, expectedCalls int) bool
-	AssertCalled(t mock.TestingT, methodName string, arguments ...interface{}) bool
-	AssertNotCalled(t mock.TestingT, methodName string, arguments ...interface{}) bool
-	IsMethodCallable(t mock.TestingT, methodName string, arguments ...interface{}) bool
+	AssertCalled(t mock.TestingT, methodName string, arguments ...any) bool
+	AssertNotCalled(t mock.TestingT, methodName string, arguments ...any) bool
+	IsMethodCallable(t mock.TestingT, methodName string, arguments ...any) bool
 }
 
 type LoggerMock interface {
@@ -63,7 +63,7 @@ type pendingLogMessage struct {
 
 func (l *loggerMock) WithChannel(channel string) log.Logger {
 	// forward potential calls to the underlying mock if we expect some
-	if _, ok := funk.FindFirstFunc(l.Logger.ExpectedCalls, func(call *mock.Call) bool {
+	if _, ok := funk.FindFirstFunc(l.ExpectedCalls, func(call *mock.Call) bool {
 		return call.Method == "WithChannel"
 	}); ok {
 		l.Logger.WithChannel(channel)
@@ -81,7 +81,7 @@ func (l *loggerMock) WithChannel(channel string) log.Logger {
 
 func (l *loggerMock) WithContext(ctx context.Context) log.Logger {
 	// forward potential calls to the underlying mock if we expect some
-	if _, ok := funk.FindFirstFunc(l.Logger.ExpectedCalls, func(call *mock.Call) bool {
+	if _, ok := funk.FindFirstFunc(l.ExpectedCalls, func(call *mock.Call) bool {
 		return call.Method == "WithContext"
 	}); ok {
 		l.Logger.WithContext(ctx)
@@ -94,7 +94,7 @@ func (l *loggerMock) WithContext(ctx context.Context) log.Logger {
 
 func (l *loggerMock) WithFields(fields log.Fields) log.Logger {
 	// forward potential calls to the underlying mock if we expect some
-	if _, ok := funk.FindFirstFunc(l.Logger.ExpectedCalls, func(call *mock.Call) bool {
+	if _, ok := funk.FindFirstFunc(l.ExpectedCalls, func(call *mock.Call) bool {
 		return call.Method == "WithFields"
 	}); ok {
 		l.Logger.WithFields(fields)

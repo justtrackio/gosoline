@@ -19,7 +19,7 @@ func (e ErrNoApplicationContainerFound) Error() string {
 }
 
 type ErrNoItemFound struct {
-	Key interface{}
+	Key any
 }
 
 func (e ErrNoItemFound) Error() string {
@@ -50,7 +50,7 @@ func WithContainer(ctx context.Context) context.Context {
 func Provide[T any](ctx context.Context, key any, factory func() (T, error)) (T, error) {
 	var ok bool
 	var err error
-	var contI, val interface{}
+	var contI, val any
 
 	if contI = ctx.Value(containerKey); contI == nil {
 		return *new(T), &ErrNoApplicationContainerFound{}

@@ -32,7 +32,7 @@ func (s *ddbLockTestSuite) SetupTest() {
 	s.lockManager = mocks.NewLockManager(s.T())
 	s.clock = clockPkg.NewFakeClock()
 	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.lock = ddb.NewDdbLockFromInterfaces(s.lockManager, s.clock, s.logger, s.ctx, "resource", "token", s.clock.Now().Add(time.Minute).Unix())
 }
 

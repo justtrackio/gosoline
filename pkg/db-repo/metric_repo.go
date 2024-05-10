@@ -63,7 +63,7 @@ func (r metricRepository) Delete(ctx context.Context, value ModelBased) error {
 	return err
 }
 
-func (r metricRepository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
+func (r metricRepository) Query(ctx context.Context, qb *QueryBuilder, result any) error {
 	start := time.Now()
 	err := r.Repository.Query(ctx, qb, result)
 	r.writeMetric(Query, err, start)

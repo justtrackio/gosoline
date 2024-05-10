@@ -39,18 +39,26 @@ type CalculatorSettings struct {
 	CloudWatchNamespace string
 }
 
-func readCalculatorSettings(config cfg.Config) *CalculatorSettings {
+func readCalculatorSettings(config cfg.Config) (*CalculatorSettings, error) {
+	var err error
 	settings := &CalculatorSettings{}
-	config.UnmarshalKey("metric.calculator", settings)
 
-	settings.CloudWatchNamespace = metric.GetCloudWatchNamespace(config)
+	if err = config.UnmarshalKey("metric.calculator", settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal metric.calculator settings: %w", err)
+	}
 
-	return settings
+	if settings.CloudWatchNamespace, err = metric.GetCloudWatchNamespace(config); err != nil {
+		return nil, fmt.Errorf("failed to get cloudwatch namespace: %w", err)
+	}
+
+	return settings, nil
 }
 
-func ReadHandlerSettings[T any](config cfg.Config, name string, settings T) T {
+func ReadHandlerSettings[T any](config cfg.Config, name string, settings T) (T, error) {
 	key := fmt.Sprintf("metric.calculator.handlers.%s", name)
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return settings, fmt.Errorf("failed to unmarshal handler settings for '%s': %w", name, err)
+	}
 
-	return settings
+	return settings, nil
 }

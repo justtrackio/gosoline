@@ -1,7 +1,6 @@
 package log_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -9,7 +8,7 @@ import (
 )
 
 func TestInitIdempotent(t *testing.T) {
-	baseCtx := context.Background()
+	baseCtx := t.Context()
 	ctx1 := log.InitContext(baseCtx)
 	assert.NotEqual(t, baseCtx, ctx1)
 
@@ -18,7 +17,7 @@ func TestInitIdempotent(t *testing.T) {
 }
 
 func TestCanMutateCorrectGlobalFields(t *testing.T) {
-	ctx := log.InitContext(context.Background())
+	ctx := log.InitContext(t.Context())
 	localCtx := log.AppendContextFields(ctx, map[string]any{
 		"field": "value",
 	})
@@ -42,7 +41,7 @@ func TestCanMutateCorrectGlobalFields(t *testing.T) {
 }
 
 func TestCanMutateCorrectLocalFields(t *testing.T) {
-	ctx := log.InitContext(context.Background())
+	ctx := log.InitContext(t.Context())
 	globalCtx := log.AppendGlobalContextFields(ctx, map[string]any{
 		"field": "value",
 	})
@@ -66,7 +65,7 @@ func TestCanMutateCorrectLocalFields(t *testing.T) {
 }
 
 func TestMergeLoggerFieldsCorrectly(t *testing.T) {
-	ctx := log.InitContext(context.Background())
+	ctx := log.InitContext(t.Context())
 	log.MutateContextFields(ctx, map[string]any{
 		"field":       "local value",
 		"local field": "local",

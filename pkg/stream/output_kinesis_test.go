@@ -20,7 +20,7 @@ type OutputKinesisTestSuite struct {
 }
 
 func (s *OutputKinesisTestSuite) SetupSuite() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.recordWriter = kinesisMocks.NewRecordWriter(s.T())
 	s.output = stream.NewKinesisOutputWithInterfaces(s.recordWriter)
 }

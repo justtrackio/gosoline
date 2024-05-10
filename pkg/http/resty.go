@@ -13,6 +13,6 @@ type restyClient interface {
 	SetCookie(cookie *http.Cookie) *resty.Client
 	SetCookies(cookies []*http.Cookie) *resty.Client
 	SetProxy(proxy string) *resty.Client
-	SetRedirectPolicy(policies ...interface{}) *resty.Client
+	SetRedirectPolicy(policies ...any) *resty.Client
 	SetTimeout(timeout time.Duration) *resty.Client
 }

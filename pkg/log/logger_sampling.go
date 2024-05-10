@@ -41,20 +41,23 @@ func (l *SamplingLogger) copy(logger Logger) *SamplingLogger {
 
 func (l *SamplingLogger) WithChannel(channel string) Logger {
 	logger := l.Logger.WithChannel(channel)
+
 	return l.copy(logger)
 }
 
 func (l *SamplingLogger) WithContext(ctx context.Context) Logger {
 	logger := l.Logger.WithContext(ctx)
+
 	return l.copy(logger)
 }
 
 func (l *SamplingLogger) WithFields(fields Fields) Logger {
 	logger := l.Logger.WithFields(fields)
+
 	return l.copy(logger)
 }
 
-func (l *SamplingLogger) Debug(msg string, args ...interface{}) {
+func (l *SamplingLogger) Debug(msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
 	}
@@ -62,7 +65,7 @@ func (l *SamplingLogger) Debug(msg string, args ...interface{}) {
 	l.Logger.Debug(msg, args...)
 }
 
-func (l *SamplingLogger) Error(msg string, args ...interface{}) {
+func (l *SamplingLogger) Error(msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
 	}
@@ -70,7 +73,7 @@ func (l *SamplingLogger) Error(msg string, args ...interface{}) {
 	l.Logger.Error(msg, args...)
 }
 
-func (l *SamplingLogger) Info(msg string, args ...interface{}) {
+func (l *SamplingLogger) Info(msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
 	}
@@ -78,7 +81,7 @@ func (l *SamplingLogger) Info(msg string, args ...interface{}) {
 	l.Logger.Info(msg, args...)
 }
 
-func (l *SamplingLogger) Warn(msg string, args ...interface{}) {
+func (l *SamplingLogger) Warn(msg string, args ...any) {
 	if !l.shouldLog(msg) {
 		return
 	}

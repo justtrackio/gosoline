@@ -14,7 +14,7 @@ type PutItemBuilder interface {
 	WithCondition(cond expression.ConditionBuilder) PutItemBuilder
 	ReturnNone() PutItemBuilder
 	ReturnAllOld() PutItemBuilder
-	Build(item interface{}) (*dynamodb.PutItemInput, error)
+	Build(item any) (*dynamodb.PutItemInput, error)
 }
 
 type putItemBuilder struct {
@@ -47,7 +47,7 @@ func (b *putItemBuilder) ReturnAllOld() PutItemBuilder {
 	return b
 }
 
-func (b *putItemBuilder) Build(item interface{}) (*dynamodb.PutItemInput, error) {
+func (b *putItemBuilder) Build(item any) (*dynamodb.PutItemInput, error) {
 	if b.returnType != "" && b.returnType != types.ReturnValueNone && !isPointer(item) {
 		return nil, fmt.Errorf("the provided old value has to be a pointer")
 	}

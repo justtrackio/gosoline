@@ -50,7 +50,9 @@ func ReadSettings(config cfg.Config, name string) (*Settings, error) {
 	}
 
 	settings := &Settings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal db settings for %s: %w", name, err)
+	}
 
 	return settings, nil
 }

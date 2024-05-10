@@ -1,7 +1,6 @@
 package tracing_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -33,7 +32,7 @@ func TestMessageWithTraceEncoder_Encode_TraceFromContext(t *testing.T) {
 		ParentId: "00000000-0000-0000-0000-000000000000",
 		Sampled:  false,
 	}
-	ctx := tracing.ContextWithTrace(context.Background(), trace)
+	ctx := tracing.ContextWithTrace(t.Context(), trace)
 	_, attributes, err := encoder.Encode(ctx, nil, map[string]string{})
 
 	assert.NoError(t, err)
@@ -42,7 +41,7 @@ func TestMessageWithTraceEncoder_Encode_TraceFromContext(t *testing.T) {
 }
 
 func TestMessageWithTraceEncoder_Decode(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	attributes := map[string]string{
 		"traceId": "Root=1-5e3d557d-d06c248cc50169bd71b44fec;Parent=af297a5da6453826;Sampled=1",
 	}
@@ -64,7 +63,7 @@ func TestMessageWithTraceEncoder_Decode(t *testing.T) {
 }
 
 func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	attributes := map[string]string{
 		"traceId": "1-5e3d557d-d06c248cc50169bd71b44fec",
 	}

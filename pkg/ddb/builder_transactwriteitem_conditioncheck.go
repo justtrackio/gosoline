@@ -8,7 +8,7 @@ import (
 
 type TransactConditionCheck struct {
 	Builder ConditionCheckBuilder
-	Item    interface{}
+	Item    any
 }
 
 func (b *TransactConditionCheck) Build() (*types.TransactWriteItem, error) {
@@ -28,6 +28,6 @@ func (b *TransactConditionCheck) Build() (*types.TransactWriteItem, error) {
 	return item, nil
 }
 
-func (b *TransactConditionCheck) GetItem() interface{} {
+func (b *TransactConditionCheck) GetItem() any {
 	return b.Item
 }

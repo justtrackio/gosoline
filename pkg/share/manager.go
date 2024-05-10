@@ -52,7 +52,9 @@ func NewShareManager(ctx context.Context, config cfg.Config, logger log.Logger) 
 	}
 
 	settings := Settings{}
-	config.UnmarshalKey("share", &settings)
+	if err := config.UnmarshalKey("share", &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal share manager settings: %w", err)
+	}
 
 	return &shareManager{
 		logger:   logger.WithChannel("share_manager"),

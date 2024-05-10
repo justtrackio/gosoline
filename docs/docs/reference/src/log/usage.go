@@ -27,7 +27,7 @@ func Usage() {
 	loggerWithFields.Error("it happens: %w", fmt.Errorf("should not happen"))
 
 	ctx := context.Background()
-	ctx = log.AppendContextFields(ctx, map[string]interface{}{
+	ctx = log.AppendContextFields(ctx, map[string]any{
 		"id": 1337,
 	})
 

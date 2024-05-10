@@ -16,10 +16,13 @@ type MetadataFactory struct {
 	tableName string
 }
 
-func NewMetadataFactory(config cfg.Config, settings *Settings) *MetadataFactory {
-	tableName := TableName(config, settings)
+func NewMetadataFactory(config cfg.Config, settings *Settings) (*MetadataFactory, error) {
+	tableName, err := TableName(config, settings)
+	if err != nil {
+		return nil, fmt.Errorf("can not get table name for settings %s: %w", settings.ModelId.String(), err)
+	}
 
-	return NewMetadataFactoryWithInterfaces(settings, tableName)
+	return NewMetadataFactoryWithInterfaces(settings, tableName), nil
 }
 
 func NewMetadataFactoryWithInterfaces(settings *Settings, tableName string) *MetadataFactory {
@@ -118,7 +121,7 @@ func (f *MetadataFactory) getAttributes(settings *Settings) (Attributes, error) 
 	return allAttributes, nil
 }
 
-func (f *MetadataFactory) getFields(model interface{}, hashTag string, rangeTag string) (metadataFields, error) {
+func (f *MetadataFactory) getFields(model any, hashTag string, rangeTag string) (metadataFields, error) {
 	var err error
 	var attributes Attributes
 	var hashAttribute, rangeAttribute *Attribute
@@ -174,7 +177,7 @@ func (f *MetadataFactory) getLocalSecondaryIndices(settings []LocalSettings) (me
 		}
 
 		name := ls.Name
-		if len(name) == 0 {
+		if name == "" {
 			name = fmt.Sprintf("local-%s", *localFields.RangeKey)
 		}
 
@@ -237,7 +240,7 @@ func (f *MetadataFactory) getTimeToLive(attributes Attributes) (metadataTtl, err
 	return data, nil
 }
 
-func ReadAttributes(model interface{}) (Attributes, error) {
+func ReadAttributes(model any) (Attributes, error) {
 	t := findBaseType(model)
 	attributes := make(Attributes)
 
@@ -272,7 +275,7 @@ func readAttributesFromType(t reflect.Type, attributes Attributes) error {
 
 		tag = strings.TrimSpace(tag)
 
-		if len(tag) == 0 {
+		if tag == "" {
 			return fmt.Errorf("the ddb tag for field %s is empty", field.Name)
 		}
 
@@ -315,7 +318,7 @@ func readAttributesFromType(t reflect.Type, attributes Attributes) error {
 	return nil
 }
 
-func getAttributeName(field reflect.StructField) (*string, bool, error) {
+func getAttributeName(field reflect.StructField) (name *string, ok bool, err error) {
 	jsonTag, ok := field.Tag.Lookup("json")
 
 	if !ok {
@@ -324,7 +327,7 @@ func getAttributeName(field reflect.StructField) (*string, bool, error) {
 
 	jsonTag = strings.TrimSpace(jsonTag)
 
-	if len(jsonTag) == 0 {
+	if jsonTag == "" {
 		return nil, false, fmt.Errorf("the json tag for field %s is empty", field.Name)
 	}
 
@@ -334,7 +337,7 @@ func getAttributeName(field reflect.StructField) (*string, bool, error) {
 
 	jsonTag = strings.SplitN(jsonTag, ",", 2)[0]
 
-	if len(jsonTag) == 0 {
+	if jsonTag == "" {
 		jsonTag = field.Name
 	}
 
@@ -369,7 +372,7 @@ func getAttributeType(field reflect.StructField) types.ScalarAttributeType {
 	return attributeType
 }
 
-func MetadataReadFields(model interface{}) ([]string, error) {
+func MetadataReadFields(model any) ([]string, error) {
 	t := findBaseType(model)
 
 	if t.Kind() != reflect.Struct {
@@ -400,6 +403,7 @@ func metadataReadFieldsForType(t reflect.Type) ([]string, error) {
 			}
 
 			fields = append(fields, embeddedFields...)
+
 			continue
 		}
 

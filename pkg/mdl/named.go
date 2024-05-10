@@ -12,7 +12,7 @@ type Nameable interface {
 	GetName() *string
 }
 
-func NamedOutput(in interface{}) interface{} {
+func NamedOutput(in any) any {
 	if IsNil(in) {
 		return &NamedOutputV0{}
 	}

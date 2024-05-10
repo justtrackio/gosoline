@@ -26,11 +26,13 @@ func (f *streamInputFactory) Detect(config cfg.Config, manager *ComponentsConfig
 		return nil
 	}
 
-	inputs := config.GetStringMap("stream.input", map[string]interface{}{})
+	inputs := config.GetStringMap("stream.input", map[string]any{})
 
 	for inputName := range inputs {
 		settings := &streamInputSettings{}
-		config.UnmarshalDefaults(settings)
+		if err := config.UnmarshalDefaults(settings); err != nil {
+			return fmt.Errorf("could not unmarshal defaults for input %s: %w", inputName, err)
+		}
 
 		settings.Name = inputName
 		settings.Type = componentStreamInput
@@ -47,11 +49,11 @@ func (f streamInputFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &streamInputSettings{}
 }
 
-func (f streamInputFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+func (f streamInputFactory) DescribeContainers(settings any) componentContainerDescriptions {
 	return nil
 }
 
-func (f streamInputFactory) Component(_ cfg.Config, _ log.Logger, _ map[string]*container, settings interface{}) (Component, error) {
+func (f streamInputFactory) Component(_ cfg.Config, _ log.Logger, _ map[string]*container, settings any) (Component, error) {
 	s := settings.(*streamInputSettings)
 
 	component := &StreamInputComponent{

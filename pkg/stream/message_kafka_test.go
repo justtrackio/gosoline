@@ -11,7 +11,7 @@ import (
 )
 
 func Test_NewKafkaMessageAttrs(t *testing.T) {
-	assert.Equal(t, stream.NewKafkaMessageAttrs("MyKey"), map[string]interface{}{"KafkaKey": "MyKey"})
+	assert.Equal(t, stream.NewKafkaMessageAttrs("MyKey"), map[string]any{"KafkaKey": "MyKey"})
 }
 
 func Test_MessageConversion(t *testing.T) {

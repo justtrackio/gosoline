@@ -30,7 +30,7 @@ type TopicTestSuite struct {
 func (s *TopicTestSuite) SetupTest() {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.client = gosoSnsMocks.NewClient(s.T())
 	s.topic = gosoSns.NewTopicWithInterfaces(logger, s.client, "topicArn")
 }
@@ -56,7 +56,7 @@ func (s *TopicTestSuite) TestPublishError() {
 
 	s.client.EXPECT().Publish(matcher.Context, input).Return(nil, fmt.Errorf("error")).Once()
 
-	err := s.topic.Publish(context.Background(), "test")
+	err := s.topic.Publish(s.T().Context(), "test")
 	s.Error(err)
 }
 

@@ -41,7 +41,9 @@ func (f *redisFactory) Detect(config cfg.Config, manager *ComponentsConfigManage
 	}
 
 	settings := &redisSettings{}
-	UnmarshalSettings(config, settings, componentRedis, "default")
+	if err := UnmarshalSettings(config, settings, componentRedis, "default"); err != nil {
+		return fmt.Errorf("can not unmarshal redis settings: %w", err)
+	}
 	settings.Type = componentRedis
 
 	if err := manager.Add(settings); err != nil {
@@ -55,7 +57,7 @@ func (f *redisFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &redisSettings{}
 }
 
-func (f *redisFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+func (f *redisFactory) DescribeContainers(settings any) componentContainerDescriptions {
 	return componentContainerDescriptions{
 		"main": {
 			containerConfig: f.configureContainer(settings),
@@ -64,7 +66,7 @@ func (f *redisFactory) DescribeContainers(settings interface{}) componentContain
 	}
 }
 
-func (f *redisFactory) configureContainer(settings interface{}) *containerConfig {
+func (f *redisFactory) configureContainer(settings any) *containerConfig {
 	s := settings.(*redisSettings)
 
 	return &containerConfig{
@@ -87,7 +89,7 @@ func (f *redisFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, _ interface{}) (Component, error) {
+func (f *redisFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, _ any) (Component, error) {
 	component := &RedisComponent{
 		address: f.address(containers["main"]),
 		client:  f.client(containers["main"]),

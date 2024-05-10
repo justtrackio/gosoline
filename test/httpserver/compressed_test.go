@@ -89,12 +89,12 @@ func (s *CompressedTestSuite) TestCompressed() []*suite.HttpserverTestCase {
 	return result
 }
 
-func (h compressedHandler) GetInput() interface{} {
-	return &map[string]interface{}{}
+func (h compressedHandler) GetInput() any {
+	return &map[string]any{}
 }
 
 func (h compressedHandler) Handle(_ context.Context, request *httpserver.Request) (*httpserver.Response, error) {
-	body := request.Body.(*map[string]interface{})
+	body := request.Body.(*map[string]any)
 
 	return httpserver.NewJsonResponse(*body), nil
 }

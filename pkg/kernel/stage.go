@@ -39,10 +39,13 @@ type stage struct {
 	modules modules
 }
 
-func newStage(ctx context.Context, config cfg.Config, logger log.Logger, index int) *stage {
+func newStage(ctx context.Context, config cfg.Config, logger log.Logger, index int) (*stage, error) {
 	cfn, ctx := coffin.WithContext(ctx)
 
-	settings := readSettings(config)
+	settings, err := readSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read kernel settings: %w", err)
+	}
 
 	return &stage{
 		cfn:                 cfn,
@@ -59,7 +62,7 @@ func newStage(ctx context.Context, config cfg.Config, logger log.Logger, index i
 			lck:     conc.NewPoisonedLock(),
 			modules: make(map[string]*moduleState),
 		},
-	}
+	}, nil
 }
 
 func (s *stage) run(k *kernel) error {

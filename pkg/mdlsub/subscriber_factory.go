@@ -17,10 +17,13 @@ func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactori
 }
 
 func SubscriberFactory(ctx context.Context, config cfg.Config, logger log.Logger, transformerFactories TransformerMapTypeVersionFactories) (map[string]kernel.ModuleFactory, error) {
-	settings := unmarshalSettings(config)
-
 	var err error
 	var core SubscriberCore
+	var settings *Settings
+
+	if settings, err = unmarshalSettings(config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal subscriber settings: %w", err)
+	}
 
 	if core, err = NewSubscriberCore(ctx, config, logger, settings.Subscribers, transformerFactories); err != nil {
 		return nil, fmt.Errorf("failed to create subscriber core: %w", err)

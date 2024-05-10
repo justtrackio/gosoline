@@ -44,7 +44,7 @@ type KernelTestSuite struct {
 }
 
 func (s *KernelTestSuite) SetupTest() {
-	s.ctx = appctx.WithContainer(context.Background())
+	s.ctx = appctx.WithContainer(s.T().Context())
 
 	s.config = cfgMocks.NewConfig(s.T())
 	s.logger = logMocks.NewLogger(s.T())
@@ -56,7 +56,7 @@ func (s *KernelTestSuite) SetupTest() {
 			settings.KillTimeout = time.Second
 			settings.HealthCheck.Timeout = time.Second
 			settings.HealthCheck.WaitInterval = time.Second
-		})
+		}).Return(nil)
 }
 
 func timeout(t *testing.T, d time.Duration, f func(t *testing.T)) {

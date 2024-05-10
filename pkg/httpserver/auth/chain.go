@@ -14,6 +14,7 @@ func NewChainHandler(authenticators map[string]Authenticator) gin.HandlerFunc {
 			valid, err := a.IsValid(ginCtx)
 			if err != nil {
 				errors[n] = err.Error()
+
 				continue
 			}
 

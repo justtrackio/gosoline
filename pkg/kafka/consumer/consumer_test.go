@@ -15,7 +15,7 @@ import (
 )
 
 func TestConsumer_Manager_Batch_Commit(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	var (
@@ -47,7 +47,8 @@ func TestConsumer_Manager_Batch_Commit(t *testing.T) {
 	assert.Nil(t, err)
 
 	go func() {
-		_ = con.Run(ctx)
+		err := con.Run(ctx)
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
 	}()
 
 	<-ctx.Done()

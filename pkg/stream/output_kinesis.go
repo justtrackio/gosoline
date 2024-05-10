@@ -52,7 +52,10 @@ func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger,
 	clientDefaultsKey := aws.GetDefaultsKey(settings.ClientName)
 	defaultsKey := aws.GetDefaultsKey("default")
 
-	backoffSettings := exec.ReadBackoffSettings(config, clientsKey, clientDefaultsKey, defaultClientKey, defaultsKey, "cloud.aws.defaults")
+	backoffSettings, err := exec.ReadBackoffSettings(config, clientsKey, clientDefaultsKey, defaultClientKey, defaultsKey, "cloud.aws.defaults")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read backoff settings for kinesis: %w", err)
+	}
 	backoffSettings.InitialInterval = time.Second
 
 	recordWriterSettings := &gosoKinesis.RecordWriterSettings{

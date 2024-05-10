@@ -1,7 +1,6 @@
 package ddb_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -48,7 +47,7 @@ type globalModel1 struct {
 }
 
 func TestService_sanitizeSettings(t *testing.T) {
-	ctx := appctx.WithContainer(context.Background())
+	ctx := appctx.WithContainer(t.Context())
 	config := cfg.New()
 	logger := log.NewLogger()
 
@@ -63,7 +62,7 @@ func TestService_sanitizeSettings(t *testing.T) {
 }
 
 func TestService_CreateTable(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := dynamodbMocks.NewClient(t)
 

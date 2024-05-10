@@ -77,7 +77,9 @@ func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 
 func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...ClientOption) (Client, error) {
 	clientCfg := &ClientConfig{}
-	gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "servicediscovery", name)
+	if err := gosoAws.UnmarshalClientSettings(config, &clientCfg.Settings, "servicediscovery", name); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal ServiceDiscovery client settings: %w", err)
+	}
 
 	for _, opt := range optFns {
 		opt(clientCfg)

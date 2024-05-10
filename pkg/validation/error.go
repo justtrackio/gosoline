@@ -25,7 +25,7 @@ func (e *Error) Is(err error) bool {
 	return ok
 }
 
-func (e *Error) As(target interface{}) bool {
+func (e *Error) As(target any) bool {
 	targetErr, ok := target.(*Error)
 
 	if ok {

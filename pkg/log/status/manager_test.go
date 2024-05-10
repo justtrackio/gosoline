@@ -45,16 +45,16 @@ func TestManager(t *testing.T) {
 	})()
 	assert.NoError(t, err)
 	err = m.MonitorWithContext("monitored error", func(ctx context.Context) error {
-		assert.Equal(t, context.Background(), ctx)
+		assert.Equal(t, t.Context(), ctx)
 
 		return fmt.Errorf("error: success")
-	})(context.Background())
+	})(t.Context())
 	assert.EqualError(t, err, "error: success")
 	err = m.MonitorWithContext("monitored panic", func(ctx context.Context) error {
-		assert.Equal(t, context.Background(), ctx)
+		assert.Equal(t, t.Context(), ctx)
 
 		panic(fmt.Errorf("panic error"))
-	})(context.Background())
+	})(t.Context())
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "panic error"))
 	logger.EXPECT().Info("Work item %s: done", "monitored").Once()

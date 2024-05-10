@@ -111,12 +111,12 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (str
 }
 
 // 2
-func (c Consumer) GetModel(attributes map[string]interface{}) interface{} {
+func (c Consumer) GetModel(attributes map[string]any) any {
 	return &Input{}
 }
 
 // 3
-func (c Consumer) Consume(ctx context.Context, model interface{}, attributes map[string]interface{}) (bool, error) {
+func (c Consumer) Consume(ctx context.Context, model any, attributes map[string]any) (bool, error) {
 	input := model.(*Input)
 
 	c.logger.WithContext(ctx).Info("got input with id %q and body %q", input.Id, input.Body)

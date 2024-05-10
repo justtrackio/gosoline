@@ -22,7 +22,9 @@ type Profiling struct {
 
 func ProfilingModuleFactory(_ context.Context, config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
 	settings := &ProfilingSettings{}
-	config.UnmarshalKey("profiling", settings)
+	if err := config.UnmarshalKey("profiling", settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal profiling settings: %w", err)
+	}
 
 	if !settings.Enabled {
 		return nil, nil

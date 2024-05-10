@@ -11,12 +11,12 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name ConditionCheckBuilder
 type ConditionCheckBuilder interface {
-	Build(result interface{}) (*types.ConditionCheck, error)
+	Build(result any) (*types.ConditionCheck, error)
 	ReturnNone() ConditionCheckBuilder
 	ReturnAllOld() ConditionCheckBuilder
-	WithHash(hashValue interface{}) ConditionCheckBuilder
-	WithRange(rangeValue interface{}) ConditionCheckBuilder
-	WithKeys(keys ...interface{}) ConditionCheckBuilder
+	WithHash(hashValue any) ConditionCheckBuilder
+	WithRange(rangeValue any) ConditionCheckBuilder
+	WithKeys(keys ...any) ConditionCheckBuilder
 	WithCondition(cond expression.ConditionBuilder) ConditionCheckBuilder
 }
 
@@ -39,30 +39,35 @@ func NewConditionCheckBuilder(metadata *Metadata) ConditionCheckBuilder {
 
 func (b *conditionCheckBuilder) ReturnNone() ConditionCheckBuilder {
 	b.returnType = types.ReturnValuesOnConditionCheckFailureNone
+
 	return b
 }
 
 func (b *conditionCheckBuilder) ReturnAllOld() ConditionCheckBuilder {
 	b.returnType = types.ReturnValuesOnConditionCheckFailureAllOld
+
 	return b
 }
 
 func (b *conditionCheckBuilder) WithCondition(cond expression.ConditionBuilder) ConditionCheckBuilder {
 	b.condition = &cond
+
 	return b
 }
 
-func (b *conditionCheckBuilder) WithHash(hashValue interface{}) ConditionCheckBuilder {
+func (b *conditionCheckBuilder) WithHash(hashValue any) ConditionCheckBuilder {
 	b.keyBuilder.withHash(hashValue)
+
 	return b
 }
 
-func (b *conditionCheckBuilder) WithRange(rangeValue interface{}) ConditionCheckBuilder {
+func (b *conditionCheckBuilder) WithRange(rangeValue any) ConditionCheckBuilder {
 	b.keyBuilder.withRange(rangeValue)
+
 	return b
 }
 
-func (b *conditionCheckBuilder) WithKeys(keys ...interface{}) ConditionCheckBuilder {
+func (b *conditionCheckBuilder) WithKeys(keys ...any) ConditionCheckBuilder {
 	if len(keys) == 0 {
 		return b
 	}
@@ -71,6 +76,7 @@ func (b *conditionCheckBuilder) WithKeys(keys ...interface{}) ConditionCheckBuil
 
 	if len(keys) > 2 {
 		b.err = multierror.Append(b.err, fmt.Errorf("more than two keys provided for WithKeys"))
+
 		return b
 	}
 
@@ -79,7 +85,7 @@ func (b *conditionCheckBuilder) WithKeys(keys ...interface{}) ConditionCheckBuil
 	return b
 }
 
-func (b *conditionCheckBuilder) Build(result interface{}) (*types.ConditionCheck, error) {
+func (b *conditionCheckBuilder) Build(result any) (*types.ConditionCheck, error) {
 	if b.err != nil {
 		return nil, b.err
 	}

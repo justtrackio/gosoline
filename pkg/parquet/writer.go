@@ -28,8 +28,8 @@ type WriterSettings struct {
 
 //go:generate go run github.com/vektra/mockery/v2 --name Writer
 type Writer interface {
-	Write(ctx context.Context, datetime time.Time, items interface{}) error
-	WriteToKey(ctx context.Context, key string, items interface{}) error
+	Write(ctx context.Context, datetime time.Time, items any) error
+	WriteToKey(ctx context.Context, key string, items any) error
 }
 
 type s3Writer struct {
@@ -96,13 +96,13 @@ func NewWriterWithInterfaces(
 	}
 }
 
-func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items interface{}) error {
+func (w *s3Writer) Write(ctx context.Context, datetime time.Time, items any) error {
 	key := s3KeyNamingStrategy(w.modelId, datetime, w.prefixNamingStrategy)
 
 	return w.WriteToKey(ctx, key, items)
 }
 
-func (w *s3Writer) WriteToKey(ctx context.Context, key string, items interface{}) error {
+func (w *s3Writer) WriteToKey(ctx context.Context, key string, items any) error {
 	bucket := w.getBucketName()
 
 	schema, converted, err := w.parseItems(items)
@@ -121,16 +121,16 @@ func (w *s3Writer) WriteToKey(ctx context.Context, key string, items interface{}
 	}
 
 	for _, item := range converted {
-		if err = pw.Write(item); err != nil {
+		if err := pw.Write(item); err != nil {
 			return err
 		}
 	}
 
-	if err = pw.WriteStop(); err != nil {
+	if err := pw.WriteStop(); err != nil {
 		return err
 	}
 
-	if err = fw.Close(); err != nil {
+	if err := fw.Close(); err != nil {
 		return err
 	}
 
@@ -155,14 +155,14 @@ func (w *s3Writer) WriteToKey(ctx context.Context, key string, items interface{}
 	return nil
 }
 
-func (w *s3Writer) parseItems(items interface{}) (string, []string, error) {
-	schema, err := parseSchema(items)
+func (w *s3Writer) parseItems(items any) (schema string, converted []string, err error) {
+	schema, err = parseSchema(items)
 	if err != nil {
 		return "", nil, fmt.Errorf("could not parse schema: %w", err)
 	}
 
 	it := refl.SliceInterfaceIterator(items)
-	converted := make([]string, 0, it.Len())
+	converted = make([]string, 0, it.Len())
 
 	for it.Next() {
 		item := it.Val()

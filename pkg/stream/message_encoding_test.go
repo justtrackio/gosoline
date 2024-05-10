@@ -19,11 +19,11 @@ type encodingTestStruct struct {
 
 type brokenEncodeHandler struct{}
 
-func (b brokenEncodeHandler) Encode(ctx context.Context, _ interface{}, attributes map[string]string) (context.Context, map[string]string, error) {
+func (b brokenEncodeHandler) Encode(ctx context.Context, _ any, attributes map[string]string) (context.Context, map[string]string, error) {
 	return ctx, attributes, fmt.Errorf("encode handler encode error")
 }
 
-func (b brokenEncodeHandler) Decode(ctx context.Context, _ interface{}, attributes map[string]string) (context.Context, map[string]string, error) {
+func (b brokenEncodeHandler) Decode(ctx context.Context, _ any, attributes map[string]string) (context.Context, map[string]string, error) {
 	return ctx, attributes, fmt.Errorf("encode handler decode error")
 }
 
@@ -116,11 +116,12 @@ func (s *MessageEncoderSuite) TestEncode() {
 				EncodeHandlers: tt.handlers,
 			})
 
-			ctx := context.Background()
+			ctx := s.T().Context()
 			msg, err := encoder.Encode(ctx, data, tt.attributes)
 
 			if tt.expectedError != "" {
 				s.EqualError(err, tt.expectedError)
+
 				return
 			}
 
@@ -229,13 +230,13 @@ func (s *MessageEncoderSuite) TestDecode() {
 				},
 				Body: `{"id":3,"text":"example","createdAt":"1984-04-04T00:00:00Z"}`,
 			},
-			actualOutput: &map[string]interface{}{},
+			actualOutput: &map[string]any{},
 			expectedAttributes: map[string]string{
 				stream.AttributeEncoding: stream.EncodingJson.String(),
 				"attribute1":             "5",
 				"attribute2":             "test",
 			},
-			expectedOutput: &map[string]interface{}{
+			expectedOutput: &map[string]any{
 				"id":        float64(3),
 				"text":      "example",
 				"createdAt": "1984-04-04T00:00:00Z",
@@ -249,11 +250,12 @@ func (s *MessageEncoderSuite) TestDecode() {
 				EncodeHandlers: tt.handlers,
 			})
 
-			ctx := context.Background()
+			ctx := s.T().Context()
 			_, attributes, err := encoder.Decode(ctx, tt.message, tt.actualOutput)
 
 			if tt.expectedError != "" {
 				s.EqualError(err, tt.expectedError)
+
 				return
 			}
 

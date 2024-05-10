@@ -6,13 +6,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type ErrorHandler func(msg string, args ...interface{})
+type ErrorHandler func(msg string, args ...any)
 
 func WithDefaultErrorHandler(handler ErrorHandler) {
 	defaultErrorHandler = handler
 }
 
-var defaultErrorHandler = func(msg string, args ...interface{}) {
+var defaultErrorHandler = func(msg string, args ...any) {
 	logger := log.NewCliLogger()
 
 	logger.Error(msg, args...)

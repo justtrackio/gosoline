@@ -8,10 +8,10 @@ func NewJsonEncoder() MessageBodyEncoder {
 	return jsonEncoder{}
 }
 
-func (e jsonEncoder) Encode(data interface{}) ([]byte, error) {
+func (e jsonEncoder) Encode(data any) ([]byte, error) {
 	return json.Marshal(data)
 }
 
-func (e jsonEncoder) Decode(data []byte, out interface{}) error {
+func (e jsonEncoder) Decode(data []byte, out any) error {
 	return json.Unmarshal(data, out)
 }

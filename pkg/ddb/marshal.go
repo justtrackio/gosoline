@@ -11,7 +11,7 @@ func NewEncoder() *attributevalue.Encoder {
 	})
 }
 
-func MarshalMap(in interface{}) (map[string]types.AttributeValue, error) {
+func MarshalMap(in any) (map[string]types.AttributeValue, error) {
 	av, err := NewEncoder().Encode(in)
 
 	asMap, ok := av.(*types.AttributeValueMemberM)

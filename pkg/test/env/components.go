@@ -23,8 +23,8 @@ type componentContainerDescriptions map[string]*componentContainerDescription
 type componentFactory interface {
 	Detect(config cfg.Config, manager *ComponentsConfigManager) error
 	GetSettingsSchema() ComponentBaseSettingsAware
-	DescribeContainers(settings interface{}) componentContainerDescriptions
-	Component(config cfg.Config, logger log.Logger, container map[string]*container, settings interface{}) (Component, error)
+	DescribeContainers(settings any) componentContainerDescriptions
+	Component(config cfg.Config, logger log.Logger, container map[string]*container, settings any) (Component, error)
 }
 
 type (
@@ -104,7 +104,7 @@ func (c *baseComponent) SetT(t *testing.T) {
 	c.t = t
 }
 
-func (c *baseComponent) failNow(failureMessage string, msgAndArgs ...interface{}) {
+func (c *baseComponent) failNow(failureMessage string, msgAndArgs ...any) {
 	assert.FailNow(c.t, failureMessage, msgAndArgs...)
 }
 

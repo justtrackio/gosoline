@@ -267,7 +267,10 @@ func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 	if err != nil {
 		return nil, err
 	}
-	settings := UnmarshalClientSettings(config, name)
+	settings, err := UnmarshalClientSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal client settings: %w", err)
+	}
 	restyClient := newRestyClient(tracer, settings)
 	client := NewHttpClientWithInterfaces(logger, clock.Provider, metricWriter, restyClient, settings.TracingSettings.ForwardTraceId)
 
@@ -470,6 +473,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 
 	if err != nil {
 		logger.Error("failed to assemble request: %w", err)
+
 		return nil, fmt.Errorf("failed to assemble request: %w", err)
 	}
 
@@ -501,6 +505,7 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	// (or many users spam us because sometimes they cancel requests)
 	if err != nil {
 		c.writeMetric(metricError, method, metric.UnitCount, 1.0)
+
 		return nil, fmt.Errorf("failed to perform %s request to %s: %w", request.restyRequest.Method, request.url.String(), err)
 	}
 
@@ -551,7 +556,7 @@ func GetClientConfigKey(name string) string {
 	return fmt.Sprintf("http_client.%s", name)
 }
 
-func UnmarshalClientSettings(config cfg.Config, name string) Settings {
+func UnmarshalClientSettings(config cfg.Config, name string) (Settings, error) {
 	if name == "" {
 		name = "default"
 	}
@@ -560,7 +565,9 @@ func UnmarshalClientSettings(config cfg.Config, name string) Settings {
 	defaultClientKey := GetClientConfigKey("default")
 
 	var settings Settings
-	config.UnmarshalKey(clientsKey, &settings, cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, "."))
+	if err := config.UnmarshalKey(clientsKey, &settings, cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, ".")); err != nil {
+		return Settings{}, fmt.Errorf("failed to unmarshal client settings for key '%s': %w", clientsKey, err)
+	}
 
-	return settings
+	return settings, nil
 }

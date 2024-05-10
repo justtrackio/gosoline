@@ -8,7 +8,7 @@ import (
 
 type TransactPutItem struct {
 	Builder PutItemBuilder
-	Item    interface{}
+	Item    any
 }
 
 func NewTransactionPutItemBuilder() *TransactPutItem {
@@ -39,6 +39,6 @@ func (b *TransactPutItem) Build() (*types.TransactWriteItem, error) {
 	return item, nil
 }
 
-func (b *TransactPutItem) GetItem() interface{} {
+func (b *TransactPutItem) GetItem() any {
 	return b.Item
 }

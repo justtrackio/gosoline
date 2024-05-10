@@ -14,6 +14,7 @@ import (
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	streamMocks "github.com/justtrackio/gosoline/pkg/stream/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -37,7 +38,7 @@ type producerDaemon interface {
 }
 
 func (s *ProducerDaemonTestSuite) SetupTest() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx, s.cancel = context.WithCancel(s.T().Context())
 	s.wait = make(chan error)
 }
 
@@ -85,6 +86,7 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, ag
 func (s *ProducerDaemonTestSuite) stop() error {
 	s.cancel()
 	err := <-s.wait
+
 	return err
 }
 
@@ -92,7 +94,7 @@ func (s *ProducerDaemonTestSuite) expectMessage(messages []stream.WritableMessag
 	expectedJson, err := json.Marshal(messages)
 	s.NoError(err)
 
-	call := s.output.EXPECT().Write(context.Background(), mock.AnythingOfType("[]stream.WritableMessage"))
+	call := s.output.EXPECT().Write(matcher.Context, mock.AnythingOfType("[]stream.WritableMessage"))
 	call.Run(func(ctx context.Context, writtenMsg []stream.WritableMessage) {
 		writtenJson, err := json.Marshal(writtenMsg)
 		s.NoError(err)
@@ -100,7 +102,7 @@ func (s *ProducerDaemonTestSuite) expectMessage(messages []stream.WritableMessag
 		s.JSONEq(string(expectedJson), string(writtenJson))
 
 		// simulate an executor like the real output would use
-		_, err = s.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		_, err = s.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 			// return a context canceled error should the context already have been canceled (as the real output would)
 			select {
 			case <-ctx.Done():
@@ -140,7 +142,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatch() {
 	s.expectMessage(expected1)
 	s.expectMessage(expected2)
 
-	err := s.daemon.Write(context.Background(), messages)
+	err := s.daemon.Write(s.T().Context(), messages)
 	s.NoError(err, "there should be no error on write")
 
 	err = s.stop()
@@ -156,7 +158,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnClose() {
 		&stream.Message{Body: "2"},
 	}
 
-	err := s.daemon.Write(context.Background(), messages)
+	err := s.daemon.Write(s.T().Context(), messages)
 	s.NoError(err, "there should be no error on write")
 
 	expected1 := []stream.WritableMessage{
@@ -178,7 +180,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTick() {
 		&stream.Message{Body: "2"},
 	}
 
-	err := s.daemon.Write(context.Background(), messages)
+	err := s.daemon.Write(s.T().Context(), messages)
 	s.NoError(err, "there should be no error on write")
 
 	expected1 := []stream.WritableMessage{
@@ -209,7 +211,7 @@ func (s *ProducerDaemonTestSuite) TestWriteBatchOnTickAfterWrite() {
 	}
 	s.expectMessage(expected1)
 
-	err := s.daemon.Write(context.Background(), messages)
+	err := s.daemon.Write(s.T().Context(), messages)
 	s.NoError(err, "there should be no error on write")
 
 	expected2 := []stream.WritableMessage{
@@ -242,7 +244,7 @@ func (s *ProducerDaemonTestSuite) TestWriteAggregate() {
 	expected := []stream.WritableMessage{aggregateMessage}
 	s.expectMessage(expected)
 
-	err = s.daemon.Write(context.Background(), messages)
+	err = s.daemon.Write(s.T().Context(), messages)
 	s.NoError(err, "there should be no error on write")
 
 	err = s.stop()
@@ -261,7 +263,7 @@ func (s *ProducerDaemonTestSuite) TestWriteAfterClose() {
 	err := s.stop()
 	s.NoError(err)
 
-	err = s.daemon.Write(context.Background(), messages)
+	err = s.daemon.Write(s.T().Context(), messages)
 	s.EqualError(err, "can't write messages as the producer daemon testDaemon is not running")
 }
 
