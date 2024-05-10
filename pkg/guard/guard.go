@@ -37,7 +37,10 @@ func NewGuard(ctx context.Context, config cfg.Config, logger log.Logger) (*Ladon
 		return nil, fmt.Errorf("can not create sqlManager: %w", err)
 	}
 
-	auditLogger := NewAuditLogger(config, logger)
+	auditLogger, err := NewAuditLogger(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create auditLogger: %w", err)
+	}
 
 	return NewGuardWithInterfaces(NewCachedManagerWithInterfaces(sqlManager), auditLogger), nil
 }

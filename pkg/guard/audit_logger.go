@@ -3,6 +3,7 @@ package guard
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -26,14 +27,16 @@ type auditLogger struct {
 	settings auditSettings
 }
 
-func NewAuditLogger(config cfg.Config, logger log.Logger) AuditLogger {
+func NewAuditLogger(config cfg.Config, logger log.Logger) (AuditLogger, error) {
 	settings := auditSettings{}
-	config.UnmarshalKey("guard.audit", &settings)
+	if err := config.UnmarshalKey("guard.audit", &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal guard audit settings: %w", err)
+	}
 
 	return &auditLogger{
 		logger:   logger.WithChannel("guard_access"),
 		settings: settings,
-	}
+	}, nil
 }
 
 func (a auditLogger) LogRejectedAccessRequest(ctx context.Context, request *ladon.Request, pool ladon.Policies, deciders ladon.Policies) {
@@ -69,6 +72,7 @@ func (a auditLogger) LogGrantedAccessRequest(ctx context.Context, request *ladon
 }
 
 func buildLogFields(request *ladon.Request, deciders ladon.Policies) log.Fields {
+	//nolint:errcheck // not possible currently due to the interface
 	ctx, _ := json.Marshal(request.Context)
 
 	fields := log.Fields{

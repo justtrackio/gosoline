@@ -130,7 +130,8 @@ func (_c *ProducerDaemonBatcher_Flush_Call) RunAndReturn(run func() []stream.Wri
 func NewProducerDaemonBatcher(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ProducerDaemonBatcher {
+},
+) *ProducerDaemonBatcher {
 	mock := &ProducerDaemonBatcher{}
 	mock.Mock.Test(t)
 

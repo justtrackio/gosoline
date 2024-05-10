@@ -121,7 +121,8 @@ func (_c *RecordWriter_PutRecords_Call) RunAndReturn(run func(context.Context, [
 func NewRecordWriter(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *RecordWriter {
+},
+) *RecordWriter {
 	mock := &RecordWriter{}
 	mock.Mock.Test(t)
 

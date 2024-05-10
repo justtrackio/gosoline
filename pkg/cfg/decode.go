@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cast"
 )
 
-func StringToTimeHookFunc(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+func StringToTimeHookFunc(f reflect.Type, t reflect.Type, data any) (any, error) {
 	if f.Kind() != reflect.String {
 		return data, nil
 	}

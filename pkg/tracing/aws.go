@@ -39,6 +39,7 @@ func (x *xrayLogger) Log(level xraylog.LogLevel, msg fmt.Stringer) {
 
 	if x.logger == nil {
 		x.fallback.Log(level, msg)
+
 		return
 	}
 
@@ -58,6 +59,6 @@ func (x *xrayLogger) Log(level xraylog.LogLevel, msg fmt.Stringer) {
 	case xraylog.LogLevelError:
 		x.logger.WithFields(log.Fields{
 			"xrayLogLevel": "error",
-		}).Warn(msg.String()) // TODO we set error to warn level to prevent triggering alarm when message too long appears
+		}).Warn(msg.String()) // we set error to warn level to prevent triggering alarm when message too long appears
 	}
 }

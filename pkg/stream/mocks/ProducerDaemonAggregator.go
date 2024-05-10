@@ -143,7 +143,8 @@ func (_c *ProducerDaemonAggregator_Write_Call) RunAndReturn(run func(context.Con
 func NewProducerDaemonAggregator(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ProducerDaemonAggregator {
+},
+) *ProducerDaemonAggregator {
 	mock := &ProducerDaemonAggregator{}
 	mock.Mock.Test(t)
 

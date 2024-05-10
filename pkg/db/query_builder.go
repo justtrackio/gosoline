@@ -11,7 +11,7 @@ import (
 type QueryBuilder interface {
 	Table(table string) QueryBuilder
 	Joins(joins []string) QueryBuilder
-	Where(query interface{}, args ...interface{}) QueryBuilder
+	Where(query any, args ...any) QueryBuilder
 	GroupBy(field ...string) QueryBuilder
 	OrderBy(field string, direction string) QueryBuilder
 	Page(offset int, size int) QueryBuilder
@@ -41,7 +41,7 @@ func (b *RawQueryBuilder) Joins(joins []string) QueryBuilder {
 	return b
 }
 
-func (b *RawQueryBuilder) Where(query interface{}, args ...interface{}) QueryBuilder {
+func (b *RawQueryBuilder) Where(query any, args ...any) QueryBuilder {
 	b.Builder = b.Builder.Where(query, args...)
 
 	return b

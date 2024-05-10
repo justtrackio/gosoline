@@ -12,7 +12,10 @@ import (
 
 func TestReadConsumerSettings_Empty(t *testing.T) {
 	config := cfg.New()
-	settings := stream.ReadConsumerSettings(config, "defaultConsumer")
+
+	settings, err := stream.ReadConsumerSettings(config, "defaultConsumer")
+	assert.NoError(t, err, "there should be no error reading the settings")
+
 	assert.Equal(t, stream.ConsumerSettings{
 		Input:       "consumer",
 		RunnerCount: 1,
@@ -35,7 +38,10 @@ func TestReadConsumerSettings_ReadKernelKillTimeout(t *testing.T) {
 			"kill_timeout": "5s",
 		},
 	})
-	settings := stream.ReadConsumerSettings(config, "defaultConsumer")
+
+	settings, err := stream.ReadConsumerSettings(config, "defaultConsumer")
+	assert.NoError(t, err, "there should be no error reading the settings")
+
 	assert.Equal(t, stream.ConsumerSettings{
 		Input:       "consumer",
 		RunnerCount: 1,
@@ -76,7 +82,10 @@ func TestReadConsumerSettings_SpecifyAll(t *testing.T) {
 			"kill_timeout": "5s",
 		},
 	})
-	settings := stream.ReadConsumerSettings(config, "defaultConsumer")
+
+	settings, err := stream.ReadConsumerSettings(config, "defaultConsumer")
+	assert.NoError(t, err, "there should be no error reading the settings")
+
 	assert.Equal(t, stream.ConsumerSettings{
 		Input:       "my_consumer",
 		RunnerCount: 2,

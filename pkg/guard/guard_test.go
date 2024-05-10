@@ -1,7 +1,6 @@
 package guard_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,13 +28,13 @@ func TestLadonGuard_GetPolicies(t *testing.T) {
 		ID: "200",
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	manager.EXPECT().GetAll(ctx, int64(100), int64(0)).Return(ladon.Policies{pol1}, nil).Once()
 	manager.EXPECT().GetAll(ctx, int64(100), int64(100)).Return(ladon.Policies{pol2}, nil).Once()
 	manager.EXPECT().GetAll(ctx, int64(100), int64(200)).Return(ladon.Policies{}, nil).Once()
 
-	pols, err := g.GetPolicies(context.Background())
+	pols, err := g.GetPolicies(t.Context())
 	require.NoError(t, err)
 
 	expected := ladon.Policies{pol1, pol2}

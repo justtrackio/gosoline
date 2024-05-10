@@ -22,17 +22,20 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 	config := cfg.New()
 	if err := config.Option(configOptions...); err != nil {
 		defaultErrorHandler("can not initialize the config: %w", err)
+
 		return
 	}
 
 	if cfgPostProcessors, err = cfg.ApplyPostProcessors(config); err != nil {
 		defaultErrorHandler("can not apply post processor on config: %w", err)
+
 		return
 	}
 
 	logger, err := newCliLogger()
 	if err != nil {
 		defaultErrorHandler("can not initialize the logger: %w", err)
+
 		return
 	}
 
@@ -56,6 +59,7 @@ func Run(module kernel.ModuleFactory, otherModuleMaps ...map[string]kernel.Modul
 	k, err := kernel.BuildKernel(ctx, config, logger, options)
 	if err != nil {
 		defaultErrorHandler("can not initialize the kernel: %w", err)
+
 		return
 	}
 

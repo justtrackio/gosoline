@@ -111,12 +111,14 @@ func (m SqlManager) Delete(ctx context.Context, id string) error {
 	sql, args, err := del.ToSql()
 	if err != nil {
 		m.logger.Error("can not delete from %s: %w", tableName, err)
+
 		return err
 	}
 
 	_, err = m.dbClient.Exec(ctx, sql, args...)
 	if err != nil {
 		m.logger.Error("can not delete from %s: %w", tableName, err)
+
 		return err
 	}
 
@@ -174,7 +176,7 @@ func (m SqlManager) queryPolicies(ctx context.Context, sel squirrel.SelectBuilde
 	return policies, nil
 }
 
-func buildSelectBuilder(where interface{}) squirrel.SelectBuilder {
+func buildSelectBuilder(where any) squirrel.SelectBuilder {
 	sel := squirrel.Select("p.id", "p.policy")
 	sel = sel.From(fmt.Sprintf("%s AS p", tableName))
 	sel = sel.Where(where)

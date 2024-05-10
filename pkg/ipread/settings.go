@@ -17,22 +17,27 @@ type ReaderSettings struct {
 	Refresh  RefreshSettings `cfg:"refresh"`
 }
 
-func readSettings(config cfg.Config, name string) *ReaderSettings {
+func readSettings(config cfg.Config, name string) (*ReaderSettings, error) {
 	key := fmt.Sprintf("ipread.%s", name)
 	settings := &ReaderSettings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal ipread settings for %s: %w", name, err)
+	}
 
-	return settings
+	return settings, nil
 }
 
-func readAllSettings(config cfg.Config) map[string]*ReaderSettings {
+func readAllSettings(config cfg.Config) (map[string]*ReaderSettings, error) {
 	readerSettings := make(map[string]*ReaderSettings)
-	readerMap := config.GetStringMap("ipread", map[string]interface{}{})
+	readerMap := config.GetStringMap("ipread", map[string]any{})
 
 	for name := range readerMap {
-		settings := readSettings(config, name)
+		settings, err := readSettings(config, name)
+		if err != nil {
+			return nil, err
+		}
 		readerSettings[name] = settings
 	}
 
-	return readerSettings
+	return readerSettings, nil
 }

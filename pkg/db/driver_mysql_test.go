@@ -25,13 +25,14 @@ type MysqlDriverTestSuite struct {
 
 func (s *MysqlDriverTestSuite) SetupTest() {
 	s.config = cfg.New()
-	err := s.config.Option(cfg.WithConfigMap(map[string]interface{}{
+	err := s.config.Option(cfg.WithConfigMap(map[string]any{
 		"app_name": "test",
 	}))
 	s.NoError(err)
 
 	s.settings = &db.Settings{}
-	s.config.UnmarshalDefaults(s.settings)
+	err = s.config.UnmarshalDefaults(s.settings)
+	s.NoError(err)
 
 	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 }

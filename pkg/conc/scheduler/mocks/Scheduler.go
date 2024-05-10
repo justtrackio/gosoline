@@ -131,7 +131,8 @@ func (_c *Scheduler_ScheduleJob_Call[T]) RunAndReturn(run func(string, func() (T
 func NewScheduler[T interface{}](t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Scheduler[T] {
+},
+) *Scheduler[T] {
 	mock := &Scheduler[T]{}
 	mock.Mock.Test(t)
 

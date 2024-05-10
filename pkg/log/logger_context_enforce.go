@@ -31,22 +31,22 @@ func (l *ContextEnforcingLogger) Enable() {
 	l.enabled = true
 }
 
-func (l *ContextEnforcingLogger) Debug(msg string, args ...interface{}) {
+func (l *ContextEnforcingLogger) Debug(msg string, args ...any) {
 	l.checkContext()
 	l.logger.Debug(msg, args...)
 }
 
-func (l *ContextEnforcingLogger) Error(msg string, args ...interface{}) {
+func (l *ContextEnforcingLogger) Error(msg string, args ...any) {
 	l.checkContext()
 	l.logger.Error(msg, args...)
 }
 
-func (l *ContextEnforcingLogger) Info(msg string, args ...interface{}) {
+func (l *ContextEnforcingLogger) Info(msg string, args ...any) {
 	l.checkContext()
 	l.logger.Info(msg, args...)
 }
 
-func (l *ContextEnforcingLogger) Warn(msg string, args ...interface{}) {
+func (l *ContextEnforcingLogger) Warn(msg string, args ...any) {
 	l.checkContext()
 	l.logger.Warn(msg, args...)
 }

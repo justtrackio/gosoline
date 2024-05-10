@@ -323,7 +323,8 @@ func (_c *Client_UpdateService_Call) RunAndReturn(run func(context.Context, *ecs
 func NewClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Client {
+},
+) *Client {
 	mock := &Client{}
 	mock.Mock.Test(t)
 

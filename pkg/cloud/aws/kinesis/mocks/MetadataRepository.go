@@ -252,7 +252,8 @@ func (_c *MetadataRepository_RegisterClient_Call) RunAndReturn(run func(context.
 func NewMetadataRepository(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MetadataRepository {
+},
+) *MetadataRepository {
 	mock := &MetadataRepository{}
 	mock.Mock.Test(t)
 

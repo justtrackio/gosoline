@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	redisMocks "github.com/justtrackio/gosoline/pkg/redis/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -92,6 +93,7 @@ func TestRedisKvStore_PutBatch(t *testing.T) {
 		possibleInput2 := `[justtrack-gosoline-grp-kvstore-test-fuu {"id":"fuu","body":"baz"} justtrack-gosoline-grp-kvstore-test-foo {"id":"foo","body":"bar"}]`
 
 		inputStr := fmt.Sprintf("%s", input)
+
 		return inputStr == possibleInput1 || inputStr == possibleInput2
 	})).Return(nil)
 	client.EXPECT().Pipeline().Return(pipe)
@@ -125,6 +127,7 @@ func TestRedisKvStore_PutBatchSkipExpire(t *testing.T) {
 		possibleInput2 := `[justtrack-gosoline-grp-kvstore-test-fuu {"id":"fuu","body":"baz"} justtrack-gosoline-grp-kvstore-test-foo {"id":"foo","body":"bar"}]`
 
 		inputStr := fmt.Sprintf("%s", input)
+
 		return inputStr == possibleInput1 || inputStr == possibleInput2
 	})).Return(nil)
 	client.EXPECT().Pipeline().Return(pipe)
@@ -148,8 +151,8 @@ func TestRedisKvStore_PutBatchSkipExpire(t *testing.T) {
 }
 
 func TestRedisKvStore_EstimateSize(t *testing.T) {
-	ctx, store, client := buildTestableRedisStore[Item](t)
-	client.EXPECT().DBSize(ctx).Return(int64(42), nil)
+	_, store, client := buildTestableRedisStore[Item](t)
+	client.EXPECT().DBSize(matcher.Context).Return(int64(42), nil)
 
 	size := store.(kvstore.SizedStore[Item]).EstimateSize()
 
@@ -177,7 +180,7 @@ func TestRedisKvStore_DeleteBatch(t *testing.T) {
 }
 
 func buildTestableRedisStore[T any](t *testing.T) (context.Context, kvstore.KvStore[T], *redisMocks.Client) {
-	ctx := context.Background()
+	ctx := t.Context()
 	client := redisMocks.NewClient(t)
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{
@@ -197,7 +200,7 @@ func buildTestableRedisStore[T any](t *testing.T) (context.Context, kvstore.KvSt
 }
 
 func buildTestableRedisStoreWithTTL[T any](t *testing.T) (context.Context, kvstore.KvStore[T], *redisMocks.Client) {
-	ctx := context.Background()
+	ctx := t.Context()
 	client := redisMocks.NewClient(t)
 
 	store := kvstore.NewRedisKvStoreWithInterfaces[T](client, &kvstore.Settings{

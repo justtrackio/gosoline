@@ -83,7 +83,8 @@ func (_c *Provider_GetMetadata_Call) RunAndReturn(run func(context.Context, stri
 func NewProvider(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Provider {
+},
+) *Provider {
 	mock := &Provider{}
 	mock.Mock.Test(t)
 

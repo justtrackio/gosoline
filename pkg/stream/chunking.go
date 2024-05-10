@@ -25,6 +25,7 @@ func BuildChunks(batch []WritableMessage, size int) (Chunks, error) {
 		bytes, err := batch[i].MarshalToBytes()
 		if err != nil {
 			errors = append(errors, err)
+
 			continue
 		}
 
@@ -53,8 +54,8 @@ func ByteChunkToStrings(chunk Chunk) []string {
 	return strings
 }
 
-func ByteChunkToInterfaces(chunk Chunk) []interface{} {
-	interfaces := make([]interface{}, len(chunk))
+func ByteChunkToInterfaces(chunk Chunk) []any {
+	interfaces := make([]any, len(chunk))
 
 	for i := 0; i < len(chunk); i++ {
 		interfaces[i] = chunk[i]

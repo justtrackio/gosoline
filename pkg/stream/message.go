@@ -14,9 +14,9 @@ const (
 )
 
 type Message struct {
-	Attributes map[string]string      `json:"attributes"`
-	Body       string                 `json:"body"`
-	metaData   map[string]interface{} `json:"-"`
+	Attributes map[string]string `json:"attributes"`
+	Body       string            `json:"body"`
+	metaData   map[string]any    `json:"-"`
 }
 
 func (m *Message) GetAttributes() map[string]string {
@@ -38,8 +38,8 @@ func (m *Message) MarshalToString() (string, error) {
 
 func (m *Message) UnmarshalFromBytes(data []byte) error {
 	type legacy struct {
-		Attributes map[string]interface{} `json:"attributes"`
-		Body       string                 `json:"body"`
+		Attributes map[string]any `json:"attributes"`
+		Body       string         `json:"body"`
 	}
 
 	legacyMsg := &legacy{}

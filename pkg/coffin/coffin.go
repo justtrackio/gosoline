@@ -44,11 +44,11 @@ type Coffin interface {
 	Go(f func() error)
 	// Gof is like Go, but wraps the returned error with the given
 	// name and args
-	Gof(f func() error, name string, args ...interface{})
+	Gof(f func() error, name string, args ...any)
 	// GoWithContext is like Go, but passes the given context to f
 	GoWithContext(ctx context.Context, f func(ctx context.Context) error)
 	// GoWithContextf is like Gof, but passes the given context to f
-	GoWithContextf(ctx context.Context, f func(ctx context.Context) error, msg string, args ...interface{})
+	GoWithContextf(ctx context.Context, f func(ctx context.Context) error, msg string, args ...any)
 	// Kill puts the coffin in a dying state for the given reason,
 	// closes the Dying channel, and sets Alive to false.
 	//
@@ -61,7 +61,7 @@ type Coffin interface {
 	Kill(reason error)
 	// Killf calls the Kill method with an error built providing the received
 	// parameters to fmt.Errorf. The generated error is also returned.
-	Killf(f string, a ...interface{}) error
+	Killf(f string, a ...any) error
 	// Wait blocks until all goroutines have finished running, and
 	// then returns the reason for their death.
 	//
@@ -147,7 +147,7 @@ func (c *coffin) Go(f func() error) {
 	})
 }
 
-func (c *coffin) Gof(f func() error, msg string, args ...interface{}) {
+func (c *coffin) Gof(f func() error, msg string, args ...any) {
 	atomic.AddInt32(&c.started, 1)
 	c.tomb.Go(func() (err error) {
 		defer atomic.AddInt32(&c.terminated, 1)
@@ -163,6 +163,7 @@ func (c *coffin) Gof(f func() error, msg string, args ...interface{}) {
 		if err != nil {
 			err = errors.Wrapf(err, msg, args...)
 		}
+
 		return
 	})
 }
@@ -173,7 +174,7 @@ func (c *coffin) GoWithContext(ctx context.Context, f func(ctx context.Context) 
 	})
 }
 
-func (c *coffin) GoWithContextf(ctx context.Context, f func(ctx context.Context) error, msg string, args ...interface{}) {
+func (c *coffin) GoWithContextf(ctx context.Context, f func(ctx context.Context) error, msg string, args ...any) {
 	c.Gof(func() error {
 		return f(ctx)
 	}, msg, args...)
@@ -192,7 +193,7 @@ func (c *coffin) Kill(reason error) {
 	c.tomb.Kill(reason)
 }
 
-func (c *coffin) Killf(f string, a ...interface{}) error {
+func (c *coffin) Killf(f string, a ...any) error {
 	return c.tomb.Killf(f, a...)
 }
 

@@ -3,6 +3,7 @@ package crud
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -18,17 +19,18 @@ type updateHandler struct {
 	settings    Settings
 }
 
-func NewUpdateHandler(config cfg.Config, logger log.Logger, transformer UpdateHandler) gin.HandlerFunc {
+func NewUpdateHandler(config cfg.Config, logger log.Logger, transformer UpdateHandler) (gin.HandlerFunc, error) {
 	settings := Settings{}
-	config.UnmarshalKey(SettingsConfigKey, &settings)
-
+	if err := config.UnmarshalKey(SettingsConfigKey, &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal update handler settings: %w", err)
+	}
 	uh := updateHandler{
 		transformer: transformer,
 		logger:      logger,
 		settings:    settings,
 	}
 
-	return httpserver.CreateJsonHandler(uh)
+	return httpserver.CreateJsonHandler(uh), nil
 }
 
 func (uh updateHandler) GetInput() any {

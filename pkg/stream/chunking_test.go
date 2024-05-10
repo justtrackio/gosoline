@@ -14,9 +14,10 @@ func TestBuildChunks_Single_1(t *testing.T) {
 		"num": "1",
 	})
 
-	bytes, _ := json.Marshal(msg)
-	batch := []stream.WritableMessage{msg}
+	bytes, err := json.Marshal(msg)
+	assert.NoError(t, err)
 
+	batch := []stream.WritableMessage{msg}
 	chunks, err := stream.BuildChunks(batch, 1)
 
 	assert.Nil(t, err, "there should be no error")
@@ -58,11 +59,13 @@ func TestBuildChunks_Batch(t *testing.T) {
 
 func TestByteChunkToInterfaces(t *testing.T) {
 	batch := []stream.WritableMessage{stream.NewMessage("bla")}
-	chunks, _ := stream.BuildChunks(batch, 500)
+
+	chunks, err := stream.BuildChunks(batch, 500)
+	assert.NoError(t, err, "there should be no error")
 
 	interfaces := stream.ByteChunkToInterfaces(chunks[0])
 
-	assert.IsType(t, []interface{}{}, interfaces)
+	assert.IsType(t, []any{}, interfaces)
 
 	bytes, ok := interfaces[0].([]byte)
 	assert.True(t, ok, "it should be a byte slice")

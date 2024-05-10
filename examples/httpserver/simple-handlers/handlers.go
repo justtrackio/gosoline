@@ -36,7 +36,7 @@ type (
 	}
 )
 
-func (h *JsonInputHandler) GetInput() interface{} {
+func (h *JsonInputHandler) GetInput() any {
 	return &inputEntity{}
 }
 
@@ -80,15 +80,15 @@ func (h *MyEntityHandler) GetModel() db_repo.ModelBased {
 	return &MyEntity{}
 }
 
-func (h *MyEntityHandler) TransformOutput(_ context.Context, model db_repo.ModelBased, apiView string) (output interface{}, err error) {
+func (h *MyEntityHandler) TransformOutput(_ context.Context, model db_repo.ModelBased, apiView string) (output any, err error) {
 	return model, nil
 }
 
-func (h *MyEntityHandler) GetCreateInput() interface{} {
+func (h *MyEntityHandler) GetCreateInput() any {
 	return &MyEntityCreateInput{}
 }
 
-func (h *MyEntityHandler) TransformCreate(_ context.Context, input interface{}, model db_repo.ModelBased) (err error) {
+func (h *MyEntityHandler) TransformCreate(_ context.Context, input any, model db_repo.ModelBased) (err error) {
 	i := input.(*MyEntityCreateInput)
 	b := model.(*MyEntity)
 
@@ -98,11 +98,11 @@ func (h *MyEntityHandler) TransformCreate(_ context.Context, input interface{}, 
 	return
 }
 
-func (h *MyEntityHandler) GetUpdateInput() interface{} {
+func (h *MyEntityHandler) GetUpdateInput() any {
 	return &MyEntityUpdateInput{}
 }
 
-func (h *MyEntityHandler) TransformUpdate(_ context.Context, input interface{}, model db_repo.ModelBased) (err error) {
+func (h *MyEntityHandler) TransformUpdate(_ context.Context, input any, model db_repo.ModelBased) (err error) {
 	i := input.(*MyEntityUpdateInput)
 	b := model.(*MyEntity)
 
@@ -111,7 +111,7 @@ func (h *MyEntityHandler) TransformUpdate(_ context.Context, input interface{}, 
 	return
 }
 
-func (h *MyEntityHandler) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out interface{}, err error) {
+func (h *MyEntityHandler) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out any, err error) {
 	res := make([]*MyEntity, 0)
 	err = h.repo.Query(ctx, qb, &res)
 

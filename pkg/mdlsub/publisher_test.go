@@ -1,7 +1,6 @@
 package mdlsub_test
 
 import (
-	"context"
 	"testing"
 
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
@@ -42,7 +41,7 @@ func (s *PublisherTestSuite) TestPublish() {
 		Title string `json:"title"`
 	}
 
-	ctx := context.Background()
+	ctx := s.T().Context()
 	event := testEvent{
 		Id:    1,
 		Title: "my title",

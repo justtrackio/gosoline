@@ -2,7 +2,6 @@ package log_test
 
 import (
 	"bytes"
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -31,7 +30,7 @@ func (s *ContextEnforcingLoggerTestSuite) SetupTest() {
 }
 
 func (s *ContextEnforcingLoggerTestSuite) TestInfoWithContext() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	logger := s.logger.WithContext(ctx)
 
 	logger.Info("this is a info message")

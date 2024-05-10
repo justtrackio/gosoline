@@ -33,7 +33,7 @@ func NewHandlerSentry(config cfg.Config) (*HandlerSentry, error) {
 	}, nil
 }
 
-func (h *HandlerSentry) WithContext(name string, context map[string]interface{}) {
+func (h *HandlerSentry) WithContext(name string, context map[string]any) {
 	h.hub.ConfigureScope(func(scope *sentry.Scope) {
 		scope.SetContext(name, context)
 	})
@@ -47,7 +47,7 @@ func (h *HandlerSentry) Level() int {
 	return PriorityError
 }
 
-func (h *HandlerSentry) Log(_ time.Time, _ int, _ string, _ []interface{}, err error, data Data) error {
+func (h *HandlerSentry) Log(_ time.Time, _ int, _ string, _ []any, err error, data Data) error {
 	if err == nil {
 		return nil
 	}
@@ -60,7 +60,7 @@ func (h *HandlerSentry) Log(_ time.Time, _ int, _ string, _ []interface{}, err e
 		eventId := h.hub.CaptureException(err)
 
 		if eventId != nil {
-			data.Fields = mergeFields(data.Fields, map[string]interface{}{
+			data.Fields = mergeFields(data.Fields, map[string]any{
 				"sentry_event_id": *eventId,
 			})
 		}

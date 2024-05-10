@@ -73,7 +73,8 @@ func (_c *ShardReader_Run_Call) RunAndReturn(run func(context.Context, func([]by
 func NewShardReader(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ShardReader {
+},
+) *ShardReader {
 	mock := &ShardReader{}
 	mock.Mock.Test(t)
 

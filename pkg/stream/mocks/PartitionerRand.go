@@ -68,7 +68,8 @@ func (_c *PartitionerRand_Intn_Call) RunAndReturn(run func(int) int) *Partitione
 func NewPartitionerRand(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *PartitionerRand {
+},
+) *PartitionerRand {
 	mock := &PartitionerRand{}
 	mock.Mock.Test(t)
 

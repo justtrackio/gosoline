@@ -339,7 +339,8 @@ func (_c *QueryBuilder_Where_Call) RunAndReturn(run func(interface{}, ...interfa
 func NewQueryBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *QueryBuilder {
+},
+) *QueryBuilder {
 	mock := &QueryBuilder{}
 	mock.Mock.Test(t)
 

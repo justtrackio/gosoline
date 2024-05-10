@@ -176,7 +176,8 @@ func (_c *Reader_ReadFileIntoTarget_Call) RunAndReturn(run func(context.Context,
 func NewReader(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Reader {
+},
+) *Reader {
 	mock := &Reader{}
 	mock.Mock.Test(t)
 

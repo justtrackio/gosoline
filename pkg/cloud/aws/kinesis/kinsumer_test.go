@@ -62,7 +62,7 @@ func TestKinsumer(t *testing.T) {
 }
 
 func (s *kinsumerTestSuite) SetupTest() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.stream = "gosoline-test-unitTest-kinesisTest-testData"
 	s.kinesisClient = mocks.NewClient(s.T())

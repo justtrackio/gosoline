@@ -93,7 +93,7 @@ func file_handler_test_input_proto_rawDescGZIP() []byte {
 
 var (
 	file_handler_test_input_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_handler_test_input_proto_goTypes  = []interface{}{
+	file_handler_test_input_proto_goTypes  = []any{
 		(*ProtobufInput)(nil), // 0: ProtobufInput
 	}
 )
@@ -112,7 +112,7 @@ func file_handler_test_input_proto_init() {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_handler_test_input_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_handler_test_input_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*ProtobufInput); i {
 			case 0:
 				return &v.state

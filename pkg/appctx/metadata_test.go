@@ -23,7 +23,7 @@ func (s *MetadataTestSuite) TestAppend() {
 
 	act, err := metadata.Get("key").Slice()
 	s.NoError(err)
-	s.Equal([]interface{}{"foo"}, act)
+	s.Equal([]any{"foo"}, act)
 
 	// append duplicate string
 	err = metadata.Append("key", "foo")
@@ -31,7 +31,7 @@ func (s *MetadataTestSuite) TestAppend() {
 
 	act, err = metadata.Get("key").Slice()
 	s.NoError(err)
-	s.Equal([]interface{}{"foo"}, act)
+	s.Equal([]any{"foo"}, act)
 
 	// append new string
 	err = metadata.Append("key", "bar")
@@ -39,7 +39,7 @@ func (s *MetadataTestSuite) TestAppend() {
 
 	act, err = metadata.Get("key").Slice()
 	s.NoError(err)
-	s.Equal([]interface{}{"foo", "bar"}, act)
+	s.Equal([]any{"foo", "bar"}, act)
 }
 
 func (s *MetadataTestSuite) TestAppendStruct() {
@@ -55,7 +55,7 @@ func (s *MetadataTestSuite) TestAppendStruct() {
 
 	act, err := metadata.Get("structKey").Slice()
 	s.NoError(err)
-	s.Equal([]interface{}{someStructValue{1, "foo"}}, act)
+	s.Equal([]any{someStructValue{1, "foo"}}, act)
 
 	// append duplicate someStructValue
 	err = metadata.Append("structKey", someStructValue{1, "foo"})
@@ -63,7 +63,7 @@ func (s *MetadataTestSuite) TestAppendStruct() {
 
 	act, err = metadata.Get("structKey").Slice()
 	s.NoError(err)
-	s.Equal([]interface{}{someStructValue{1, "foo"}}, act)
+	s.Equal([]any{someStructValue{1, "foo"}}, act)
 
 	// append new someStructValue
 	err = metadata.Append("structKey", someStructValue{1, "bar"})
@@ -71,7 +71,7 @@ func (s *MetadataTestSuite) TestAppendStruct() {
 
 	act, err = metadata.Get("structKey").Slice()
 	s.NoError(err)
-	s.Equal([]interface{}{someStructValue{1, "foo"}, someStructValue{1, "bar"}}, act)
+	s.Equal([]any{someStructValue{1, "foo"}, someStructValue{1, "bar"}}, act)
 }
 
 func (s *MetadataTestSuite) TestAppendStructNotComparable() {
@@ -92,5 +92,5 @@ func (s *MetadataTestSuite) TestAppendStructNotComparable() {
 
 	act, err := metadata.Get("structKey").Slice()
 	s.NoError(err)
-	s.Equal([]interface{}{someStructValue{[]int{1}}, someStructValue{[]int{2}}}, act)
+	s.Equal([]any{someStructValue{[]int{1}}, someStructValue{[]int{2}}}, act)
 }

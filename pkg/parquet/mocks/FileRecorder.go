@@ -201,7 +201,8 @@ func (_c *FileRecorder_RenameRecordedFiles_Call) RunAndReturn(run func(context.C
 func NewFileRecorder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *FileRecorder {
+},
+) *FileRecorder {
 	mock := &FileRecorder{}
 	mock.Mock.Test(t)
 

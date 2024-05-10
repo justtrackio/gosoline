@@ -39,13 +39,13 @@ type KvStore[T any] interface {
 	// value should be a pointer to the model you want to retrieve.
 	Get(ctx context.Context, key any, value *T) (bool, error)
 	// Retrieve a set of values from the store. Each value is written to the
-	// map in values at its key.  Values should be something which can be converted to map[interface{}]T.
+	// map in values at its key.  Values should be something which can be converted to map[any]T.
 	// Returns a list of missing keys in the store.
 	GetBatch(ctx context.Context, keys any, values any) ([]any, error)
 	// Write a value to the store
 	Put(ctx context.Context, key any, value T) error
 	// Write a batch of values to the store. Values should be something which
-	// can be converted to map[interface{}]T.
+	// can be converted to map[any]T.
 	PutBatch(ctx context.Context, values any) error
 	// Remove the value with the given key from the store
 	Delete(ctx context.Context, key any) error
@@ -71,7 +71,7 @@ func buildFactory[T any](ctx context.Context, config cfg.Config, logger log.Logg
 	}
 }
 
-func CastKeyToString(key interface{}) (string, error) {
+func CastKeyToString(key any) (string, error) {
 	str, err := cast.ToStringE(key)
 
 	if err == nil {
@@ -81,10 +81,10 @@ func CastKeyToString(key interface{}) (string, error) {
 	return "", errors.Wrapf(err, "unknown type [%T] for kvstore key", key)
 }
 
-func Marshal(v interface{}) ([]byte, error) {
+func Marshal(v any) ([]byte, error) {
 	return json.Marshal(v)
 }
 
-func Unmarshal(data []byte, v interface{}) error {
+func Unmarshal(data []byte, v any) error {
 	return json.Unmarshal(data, v)
 }

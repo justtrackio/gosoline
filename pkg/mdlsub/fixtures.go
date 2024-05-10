@@ -37,14 +37,19 @@ type FetchData struct {
 func FixtureSetFactory(transformerFactoryMap TransformerMapTypeVersionFactories) fixtures.FixtureSetsFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
 		var err error
+		var settings *Settings
 		var core SubscriberCore
 		var sets []fixtures.FixtureSet
 
-		settings := unmarshalSettings(config)
+		if settings, err = unmarshalSettings(config); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal subscriber settings: %w", err)
+		}
 
 		key := fmt.Sprintf("fixtures.providers.%s", group)
 		fixtureSettings := &FixtureSettings{}
-		config.UnmarshalKey(key, fixtureSettings)
+		if err := config.UnmarshalKey(key, fixtureSettings); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal fixture settings for group %s: %w", group, err)
+		}
 
 		if core, err = NewSubscriberCore(ctx, config, logger, settings.Subscribers, transformerFactoryMap); err != nil {
 			return nil, fmt.Errorf("failed to create subscriber core: %w", err)

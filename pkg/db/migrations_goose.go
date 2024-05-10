@@ -34,22 +34,22 @@ func newGooseLogger(logger log.Logger) goose.Logger {
 	}
 }
 
-func (g gooseLogger) Fatal(v ...interface{}) {
+func (g gooseLogger) Fatal(v ...any) {
 	g.logger.Error(fmt.Sprint(v...))
 }
 
-func (g gooseLogger) Fatalf(format string, v ...interface{}) {
+func (g gooseLogger) Fatalf(format string, v ...any) {
 	g.logger.Error(format, v...)
 }
 
-func (g gooseLogger) Print(v ...interface{}) {
+func (g gooseLogger) Print(v ...any) {
 	g.logger.Info(fmt.Sprint(v...))
 }
 
-func (g gooseLogger) Println(v ...interface{}) {
+func (g gooseLogger) Println(v ...any) {
 	g.logger.Info(fmt.Sprint(v...))
 }
 
-func (g gooseLogger) Printf(format string, v ...interface{}) {
+func (g gooseLogger) Printf(format string, v ...any) {
 	g.logger.Info(format, v...)
 }

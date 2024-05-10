@@ -1,7 +1,6 @@
 package db_repo_test
 
 import (
-	"context"
 	"database/sql/driver"
 	"testing"
 	"time"
@@ -134,7 +133,7 @@ func TestRepository_Create(t *testing.T) {
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
 	dbc.ExpectQuery("SELECT \\* FROM `my_test_models` WHERE `my_test_models`\\.`id` = \\? AND \\(\\(`my_test_models`\\.`id` = 1\\)\\) ORDER BY `my_test_models`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
 
-	err := repo.Create(context.Background(), &model)
+	err := repo.Create(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -169,7 +168,7 @@ func TestRepository_CreateManyToManyNoRelation(t *testing.T) {
 		},
 	}
 
-	err := repo.Create(context.Background(), &model)
+	err := repo.Create(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -216,7 +215,7 @@ func TestRepository_CreateManyToMany(t *testing.T) {
 		},
 	}
 
-	err := repo.Create(context.Background(), &model)
+	err := repo.Create(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -245,7 +244,7 @@ func TestRepository_CreateManyToOneNoRelation(t *testing.T) {
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at", "my_test_model_id"}).AddRow(id1, &now, &now, (*uint)(nil))
 	dbc.ExpectQuery("SELECT \\* FROM `one_of_manies` WHERE `one_of_manies`\\.`id` = \\? AND \\(\\(`one_of_manies`\\.`id` = 1\\)\\) ORDER BY `one_of_manies`\\.`id` ASC LIMIT 1").WillReturnRows(rows)
 
-	err := repo.Create(context.Background(), &model)
+	err := repo.Create(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -282,7 +281,7 @@ func TestRepository_CreateManyToOne(t *testing.T) {
 		MyTestModelId: id42,
 	}
 
-	err := repo.Create(context.Background(), &model)
+	err := repo.Create(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -315,7 +314,7 @@ func TestRepository_CreateHasManyNoRelation(t *testing.T) {
 		Manies: []*Ones{},
 	}
 
-	err := repo.Create(context.Background(), &model)
+	err := repo.Create(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -352,7 +351,7 @@ func TestRepository_CreateHasMany(t *testing.T) {
 		},
 	}
 
-	err := repo.Create(context.Background(), &model)
+	err := repo.Create(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -382,7 +381,7 @@ func TestRepository_Update(t *testing.T) {
 		},
 	}
 
-	err := repo.Update(context.Background(), &model)
+	err := repo.Update(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -413,7 +412,7 @@ func TestRepository_UpdateManyToManyNoRelation(t *testing.T) {
 		},
 	}
 
-	err := repo.Update(context.Background(), &model)
+	err := repo.Update(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -456,7 +455,7 @@ func TestRepository_UpdateManyToMany(t *testing.T) {
 		},
 	}
 
-	err := repo.Update(context.Background(), &model)
+	err := repo.Update(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -485,7 +484,7 @@ func TestRepository_UpdateManyToOneNoRelation(t *testing.T) {
 		MyTestModelId: nil,
 	}
 
-	err := repo.Update(context.Background(), &model)
+	err := repo.Update(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -519,7 +518,7 @@ func TestRepository_UpdateManyToOne(t *testing.T) {
 		MyTestModelId: id42,
 	}
 
-	err := repo.Update(context.Background(), &model)
+	err := repo.Update(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -557,7 +556,7 @@ func TestRepository_UpdateHasMany(t *testing.T) {
 		},
 	}
 
-	err := repo.Update(context.Background(), &model)
+	err := repo.Update(t.Context(), &model)
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
@@ -587,7 +586,7 @@ func TestRepository_UpdateHasManyNoRelation(t *testing.T) {
 		Manies: []*Ones{},
 	}
 
-	err := repo.Update(context.Background(), &model)
+	err := repo.Update(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -610,7 +609,7 @@ func TestRepository_Delete(t *testing.T) {
 		},
 	}
 
-	err := repo.Delete(context.Background(), &model)
+	err := repo.Delete(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -636,7 +635,7 @@ func TestRepository_DeleteManyToManyNoRelation(t *testing.T) {
 		},
 	}
 
-	err := repo.Delete(context.Background(), &model)
+	err := repo.Delete(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -669,7 +668,7 @@ func TestRepository_DeleteManyToMany(t *testing.T) {
 		},
 	}
 
-	err := repo.Delete(context.Background(), &model)
+	err := repo.Delete(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -692,7 +691,7 @@ func TestRepository_DeleteManyToOneNoRelation(t *testing.T) {
 		},
 	}
 
-	err := repo.Delete(context.Background(), &model)
+	err := repo.Delete(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -721,7 +720,7 @@ func TestRepository_DeleteManyToOne(t *testing.T) {
 		MyTestModelId: id42,
 	}
 
-	err := repo.Delete(context.Background(), &model)
+	err := repo.Delete(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -759,7 +758,7 @@ func TestRepository_DeleteHasMany(t *testing.T) {
 		},
 	}
 
-	err := repo.Delete(context.Background(), &model)
+	err := repo.Delete(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -786,7 +785,7 @@ func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
 		Manies: []*Ones{},
 	}
 
-	err := repo.Delete(context.Background(), &model)
+	err := repo.Delete(t.Context(), &model)
 
 	if err := dbc.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
@@ -799,7 +798,11 @@ func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Re
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tracer := tracing.NewLocalTracer()
 
-	db, clientMock, _ := goSqlMock.New()
+	db, clientMock, err := goSqlMock.New()
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+
 	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
 		Driver: "mysql",
 	})
@@ -823,7 +826,10 @@ func getTimedMocks(t *testing.T, time time.Time, whichMetadata string) (goSqlMoc
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tracer := tracing.NewLocalTracer()
 
-	db, clientMock, _ := goSqlMock.New()
+	db, clientMock, err := goSqlMock.New()
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
 
 	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
 		Driver: "mysql",

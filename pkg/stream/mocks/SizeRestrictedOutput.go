@@ -215,7 +215,8 @@ func (_c *SizeRestrictedOutput_WriteOne_Call) RunAndReturn(run func(context.Cont
 func NewSizeRestrictedOutput(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *SizeRestrictedOutput {
+},
+) *SizeRestrictedOutput {
 	mock := &SizeRestrictedOutput{}
 	mock.Mock.Test(t)
 

@@ -37,7 +37,7 @@ func (h HtmlHandler) Handle(_ context.Context, request *httpserver.Request) (*ht
 
 type JsonHandler struct{}
 
-func (h JsonHandler) GetInput() interface{} {
+func (h JsonHandler) GetInput() any {
 	return &Input{}
 }
 
@@ -79,7 +79,7 @@ func (p *ProtobufOutput) ToMessage() (proto.Message, error) {
 	}, nil
 }
 
-func (h ProtobufHandler) GetInput() interface{} {
+func (h ProtobufHandler) GetInput() any {
 	return &ProtobufInput{}
 }
 
@@ -237,7 +237,7 @@ type UriInput struct {
 
 type UriHandler struct{}
 
-func (u UriHandler) GetInput() interface{} {
+func (u UriHandler) GetInput() any {
 	return &UriInput{}
 }
 

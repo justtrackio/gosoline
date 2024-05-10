@@ -28,7 +28,9 @@ func (s *SettingsTestSuite) setupConfig(file string) {
 }
 
 func (s *SettingsTestSuite) TestDefault() {
-	settings := exec.ReadBackoffSettings(s.config)
+	settings, err := exec.ReadBackoffSettings(s.config)
+	s.NoError(err)
+
 	expected := exec.BackoffSettings{
 		InitialInterval: time.Millisecond * 50,
 		MaxAttempts:     10,
@@ -42,7 +44,9 @@ func (s *SettingsTestSuite) TestDefault() {
 func (s *SettingsTestSuite) TestOnce() {
 	s.setupConfig("once")
 
-	settings := exec.ReadBackoffSettings(s.config)
+	settings, err := exec.ReadBackoffSettings(s.config)
+	s.NoError(err)
+
 	expected := exec.BackoffSettings{
 		MaxAttempts: 1,
 	}
@@ -53,7 +57,9 @@ func (s *SettingsTestSuite) TestOnce() {
 func (s *SettingsTestSuite) TestInfinite() {
 	s.setupConfig("infinite")
 
-	settings := exec.ReadBackoffSettings(s.config)
+	settings, err := exec.ReadBackoffSettings(s.config)
+	s.NoError(err)
+
 	expected := exec.BackoffSettings{
 		InitialInterval: time.Millisecond * 50,
 		MaxAttempts:     0,
@@ -67,14 +73,18 @@ func (s *SettingsTestSuite) TestInfinite() {
 func (s *SettingsTestSuite) TestMultiplePathTypes() {
 	s.setupConfig("multiple_path_types")
 
-	settings := exec.ReadBackoffSettings(s.config, "ddb")
+	settings, err := exec.ReadBackoffSettings(s.config, "ddb")
+	s.NoError(err)
+
 	expected := exec.BackoffSettings{
 		MaxAttempts:    1,
 		MaxElapsedTime: 0,
 	}
 	s.Equal(expected, settings)
 
-	settings = exec.ReadBackoffSettings(s.config, "cloud.aws")
+	settings, err = exec.ReadBackoffSettings(s.config, "cloud.aws")
+	s.NoError(err)
+
 	expected = exec.BackoffSettings{
 		InitialInterval: time.Millisecond * 50,
 		MaxAttempts:     0,
@@ -83,7 +93,9 @@ func (s *SettingsTestSuite) TestMultiplePathTypes() {
 	}
 	s.Equal(expected, settings)
 
-	settings = exec.ReadBackoffSettings(s.config, "cloud2.aws", "cloud.aws", "ddb")
+	settings, err = exec.ReadBackoffSettings(s.config, "cloud2.aws", "cloud.aws", "ddb")
+	s.NoError(err)
+
 	expected = exec.BackoffSettings{
 		CancelDelay:     time.Second,
 		InitialInterval: time.Second * 2,
@@ -97,7 +109,9 @@ func (s *SettingsTestSuite) TestMultiplePathTypes() {
 func (s *SettingsTestSuite) TestMissingStep() {
 	s.setupConfig("missing_step")
 
-	settings := exec.ReadBackoffSettings(s.config, "redis.default")
+	settings, err := exec.ReadBackoffSettings(s.config, "redis.default")
+	s.NoError(err)
+
 	expected := exec.BackoffSettings{
 		InitialInterval: time.Millisecond * 50,
 		MaxAttempts:     0,

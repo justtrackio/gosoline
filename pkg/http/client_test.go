@@ -31,7 +31,7 @@ func (m *myContext) Err() error {
 	return nil
 }
 
-func (m *myContext) Value(_ interface{}) interface{} {
+func (m *myContext) Value(_ any) any {
 	return nil
 }
 
@@ -50,9 +50,9 @@ func runTestServer(t *testing.T, method string, status int, delay time.Duration,
 
 func getConfig(t *testing.T, retries int, timeout time.Duration) cfg.Config {
 	config := cfg.New()
-	err := config.Option(cfg.WithConfigMap(map[string]interface{}{
-		"http_client": map[string]interface{}{
-			"default": map[string]interface{}{
+	err := config.Option(cfg.WithConfigMap(map[string]any{
+		"http_client": map[string]any{
+			"default": map[string]any{
 				"request_timeout":     timeout,
 				"retry_count":         retries,
 				"retry_max_wait_time": "200ms",
@@ -65,7 +65,7 @@ func getConfig(t *testing.T, retries int, timeout time.Duration) cfg.Config {
 }
 
 func getClient(t *testing.T, retries int, timeout time.Duration) http.Client {
-	ctx := appctx.WithContainer(context.Background())
+	ctx := appctx.WithContainer(t.Context())
 	config := getConfig(t, retries, timeout)
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
@@ -81,7 +81,7 @@ func TestClient_Delete(t *testing.T) {
 		client := getClient(t, 1, time.Second)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
-		response, err := client.Delete(context.TODO(), request)
+		response, err := client.Delete(t.Context(), request)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 200, response.StatusCode)
@@ -93,7 +93,7 @@ func TestClient_Get(t *testing.T) {
 		client := getClient(t, 1, time.Second)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
-		response, err := client.Get(context.TODO(), request)
+		response, err := client.Get(t.Context(), request)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 200, response.StatusCode)
@@ -105,7 +105,7 @@ func TestClient_GetTimeout(t *testing.T) {
 		client := getClient(t, 0, time.Second)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
-		response, err := client.Get(context.TODO(), request)
+		response, err := client.Get(t.Context(), request)
 
 		assert.Error(t, err)
 		assert.Nil(t, response)
@@ -137,7 +137,7 @@ func TestClient_Post(t *testing.T) {
 		client := getClient(t, 1, time.Second)
 		request := client.NewRequest().
 			WithUrl(fmt.Sprintf("http://%s", host))
-		response, err := client.Post(context.TODO(), request)
+		response, err := client.Post(t.Context(), request)
 
 		assert.NoError(t, err)
 		assert.Equal(t, 200, response.StatusCode)

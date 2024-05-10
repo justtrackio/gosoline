@@ -101,7 +101,9 @@ func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner,
 	logger = logger.WithChannel("container-runner")
 
 	settings := &containerRunnerSettings{}
-	config.UnmarshalKey("test.container_runner", settings)
+	if err := config.UnmarshalKey("test.container_runner", settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal container runner settings: %w", err)
+	}
 
 	pool, err := dockertest.NewPool(settings.Endpoint)
 	if err != nil {

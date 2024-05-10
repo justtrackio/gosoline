@@ -129,7 +129,8 @@ func (_c *TransactWriteItemBuilder_GetItem_Call) RunAndReturn(run func() interfa
 func NewTransactWriteItemBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *TransactWriteItemBuilder {
+},
+) *TransactWriteItemBuilder {
 	mock := &TransactWriteItemBuilder{}
 	mock.Mock.Test(t)
 

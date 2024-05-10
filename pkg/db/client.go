@@ -131,7 +131,9 @@ func NewClientWithSettings(ctx context.Context, config cfg.Config, logger log.Lo
 	}
 
 	if settings.Retry.Enabled {
-		executor = NewExecutor(config, logger, name, ExecutorBackoffType(name))
+		if executor, err = NewExecutor(config, logger, name, ExecutorBackoffType(name)); err != nil {
+			return nil, fmt.Errorf("can not create executor for sql client %s: %w", name, err)
+		}
 	}
 
 	client := NewClientWithInterfaces(logger, connection, executor)

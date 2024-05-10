@@ -250,7 +250,8 @@ func (_c *Span_GetTrace_Call) RunAndReturn(run func() *tracing.Trace) *Span_GetT
 func NewSpan(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Span {
+},
+) *Span {
 	mock := &Span{}
 	mock.Mock.Test(t)
 

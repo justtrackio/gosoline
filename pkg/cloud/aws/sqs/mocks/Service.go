@@ -420,7 +420,8 @@ func (_c *Service_QueueExists_Call) RunAndReturn(run func(context.Context, strin
 func NewService(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Service {
+},
+) *Service {
 	mock := &Service{}
 	mock.Mock.Test(t)
 

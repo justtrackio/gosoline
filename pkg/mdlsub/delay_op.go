@@ -27,7 +27,7 @@ func (e DelayOpError) Error() string {
 	return fmt.Sprintf("delayed op error: %s", e.Err.Error())
 }
 
-func (e DelayOpError) As(target interface{}) bool {
+func (e DelayOpError) As(target any) bool {
 	if t, ok := target.(*DelayOpError); ok {
 		*t = e
 

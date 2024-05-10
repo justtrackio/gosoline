@@ -13,8 +13,8 @@ type RedisComponent struct {
 
 func (c *RedisComponent) CfgOptions() []cfg.Option {
 	return []cfg.Option{
-		cfg.WithConfigSetting("redis", map[string]interface{}{
-			"default": map[string]interface{}{
+		cfg.WithConfigSetting("redis", map[string]any{
+			"default": map[string]any{
 				"dialer":  "tcp",
 				"address": c.address,
 			},

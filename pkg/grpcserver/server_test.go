@@ -34,7 +34,7 @@ func (g *greeter) SayHello(_ context.Context, req *protobuf.HelloRequest) (*prot
 func TestGRPCServer_Run_Handler(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tests := []struct {
 		name    string
@@ -50,6 +50,7 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 					ServiceName: "greeter",
 					Registrant: func(server *grpc.Server) error {
 						protobuf.RegisterGreeterServiceServer(server, &greeter{})
+
 						return nil
 					},
 				},
@@ -64,6 +65,7 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 					ServiceName: "greeter",
 					Registrant: func(server *grpc.Server) error {
 						protobuf.RegisterGreeterServiceServer(server, &greeter{})
+
 						return nil
 					},
 				},
@@ -84,13 +86,19 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 			assert.NoError(t, err)
 
 			go func() {
-				_ = g.Run(ctx)
+				err := g.Run(ctx)
+				if err != nil {
+					t.Errorf("g.Run() error: %v", err)
+				}
 			}()
 
 			conn, err := grpc.NewClient(g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			assert.NoError(t, err)
 			defer func() {
-				_ = conn.Close()
+				err := conn.Close()
+				if err != nil {
+					t.Errorf("conn.Close() error: %v", err)
+				}
 			}()
 
 			assert.NoError(t, err)
@@ -99,6 +107,7 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 			resp, err := client.SayHello(ctx, &protobuf.HelloRequest{Name: tt.reqMsg})
 			if tt.wantErr {
 				assert.Error(t, err)
+
 				return
 			}
 			assert.NoError(t, err)
@@ -110,7 +119,7 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tests := []struct {
 		name    string
@@ -126,6 +135,7 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 					ServiceName: "greeter",
 					Registrant: func(server *grpc.Server) error {
 						protobuf.RegisterGreeterServiceServer(server, &greeter{})
+
 						return nil
 					},
 					HealthCheckCallback: func(ctx context.Context) grpcServerProto.HealthCheckResponse_ServingStatus {
@@ -149,13 +159,19 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 			assert.NoError(t, err)
 
 			go func() {
-				_ = g.Run(ctx)
+				err := g.Run(ctx)
+				if err != nil {
+					t.Errorf("g.Run() error: %v", err)
+				}
 			}()
 
 			conn, err := grpc.NewClient(g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			assert.NoError(t, err)
 			defer func() {
-				_ = conn.Close()
+				err := conn.Close()
+				if err != nil {
+					t.Errorf("conn.Close() error: %v", err)
+				}
 			}()
 
 			assert.NoError(t, err)
@@ -164,6 +180,7 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 			resp, err := client.SayHello(ctx, &protobuf.HelloRequest{Name: tt.reqMsg})
 			if tt.wantErr {
 				assert.Error(t, err)
+
 				return
 			}
 			assert.NoError(t, err)

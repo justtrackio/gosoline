@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-type ResultCallback func(ctx context.Context, items interface{}, progress Progress) (bool, error)
+type ResultCallback func(ctx context.Context, items any, progress Progress) (bool, error)
 
 type Progress interface {
 	GetRequestCount() int32

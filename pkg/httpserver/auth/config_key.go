@@ -82,7 +82,7 @@ func (a *configKeyAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		Name:            Anonymous,
 		Anonymous:       true,
 		AuthenticatedBy: ByApiKey,
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			AttributeApiKey: apiKey,
 		},
 	}

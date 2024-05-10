@@ -36,14 +36,19 @@ func NewLifecycleManager(settings *Settings, optFns ...gosoDynamodb.ClientOption
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (reslife.LifeCycleer, error) {
 		var err error
 		var svc *Service
+		var factory *MetadataFactory
 
 		if svc, err = NewService(ctx, config, logger, settings, optFns...); err != nil {
 			return nil, fmt.Errorf("could not create ddb service: %w", err)
 		}
 
+		if factory, err = NewMetadataFactory(config, settings); err != nil {
+			return nil, fmt.Errorf("could not create metadata factory for ddb service: %w", err)
+		}
+
 		return &lifecycleManager{
 			service:         svc,
-			metadataFactory: NewMetadataFactory(config, settings),
+			metadataFactory: factory,
 			settings:        settings,
 		}, nil
 	}

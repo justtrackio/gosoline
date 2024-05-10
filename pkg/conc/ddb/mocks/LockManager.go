@@ -125,7 +125,8 @@ func (_c *LockManager_RenewLock_Call) RunAndReturn(run func(context.Context, tim
 func NewLockManager(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *LockManager {
+},
+) *LockManager {
 	mock := &LockManager{}
 	mock.Mock.Test(t)
 

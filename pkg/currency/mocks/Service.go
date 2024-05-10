@@ -496,7 +496,8 @@ func (_c *Service_ToUsdAtDate_Call) RunAndReturn(run func(context.Context, float
 func NewService(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Service {
+},
+) *Service {
 	mock := &Service{}
 	mock.Mock.Test(t)
 

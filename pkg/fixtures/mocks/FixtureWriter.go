@@ -73,7 +73,8 @@ func (_c *FixtureWriter_Write_Call) RunAndReturn(run func(context.Context, []int
 func NewFixtureWriter(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *FixtureWriter {
+},
+) *FixtureWriter {
 	mock := &FixtureWriter{}
 	mock.Mock.Test(t)
 

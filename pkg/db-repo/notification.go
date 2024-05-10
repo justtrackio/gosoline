@@ -18,7 +18,7 @@ var NotificationTypes = []string{Create, Update, Delete}
 
 type (
 	Publisher interface {
-		Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]string) error
+		Publish(ctx context.Context, typ string, version int, value any, customAttributes ...map[string]string) error
 	}
 	NotificationMap map[string][]Notifier
 	Notifier        interface {

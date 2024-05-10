@@ -208,7 +208,8 @@ func (_c *JwtTokenHandler_Valid_Call) RunAndReturn(run func(string) (bool, *jwt.
 func NewJwtTokenHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *JwtTokenHandler {
+},
+) *JwtTokenHandler {
 	mock := &JwtTokenHandler{}
 	mock.Mock.Test(t)
 

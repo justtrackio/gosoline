@@ -4,7 +4,6 @@
 package query_test
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -69,7 +68,7 @@ func (s *DbRepoQueryTestSuite) TestCreateCorrectModel() {
 		Name: mdl.Box("nameCreate1"),
 	}
 
-	err = repo.Create(context.Background(), model)
+	err = repo.Create(s.T().Context(), model)
 	s.NoError(err)
 
 	where := &TestModel{
@@ -80,7 +79,7 @@ func (s *DbRepoQueryTestSuite) TestCreateCorrectModel() {
 	qb.Where(where)
 
 	models := make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
+	err = repo.Query(s.T().Context(), qb, &models)
 	s.NoError(err)
 	s.Equal(1, len(models), "expected 1 test model")
 	s.Equal(*model, models[0])
@@ -100,7 +99,7 @@ func (s *DbRepoQueryTestSuite) TestCreateWrongModel() {
 		WrongName: mdl.Box("nameCreateWrong1"),
 	}
 
-	err = repo.Create(context.Background(), model)
+	err = repo.Create(s.T().Context(), model)
 	s.EqualError(err, "cross creating wrong model from repo")
 }
 
@@ -118,12 +117,12 @@ func (s *DbRepoQueryTestSuite) TestReadCorrectModel() {
 		Name: mdl.Box("nameRead1"),
 	}
 
-	err = repo.Create(context.Background(), model)
+	err = repo.Create(s.T().Context(), model)
 	s.NoError(err)
 
 	readModel := &TestModel{}
 
-	err = repo.Read(context.Background(), model.GetId(), readModel)
+	err = repo.Read(s.T().Context(), model.GetId(), readModel)
 	s.NoError(err)
 	s.Equal(*model, *readModel, "expected db model to match")
 }
@@ -140,7 +139,7 @@ func (s *DbRepoQueryTestSuite) TestReadWrongModel() {
 
 	model := &WrongTestModel{}
 
-	err = repo.Read(context.Background(), mdl.Box(uint(1)), model)
+	err = repo.Read(s.T().Context(), mdl.Box(uint(1)), model)
 	s.EqualError(err, "cross reading wrong model from repo")
 }
 
@@ -158,7 +157,7 @@ func (s *DbRepoQueryTestSuite) TestUpdateCorrectModel() {
 		Name: mdl.Box("nameUpdate1"),
 	}
 
-	err = repo.Create(context.Background(), model)
+	err = repo.Create(s.T().Context(), model)
 	s.NoError(err)
 
 	where := &TestModel{
@@ -169,14 +168,14 @@ func (s *DbRepoQueryTestSuite) TestUpdateCorrectModel() {
 	qb.Where(where)
 
 	models := make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
+	err = repo.Query(s.T().Context(), qb, &models)
 	s.NoError(err)
 	s.Equal(1, len(models), "expected 1 test model")
 	s.Equal(*model, models[0])
 
 	model.Name = mdl.Box("nameUpdate1Updated")
 
-	err = repo.Update(context.Background(), model)
+	err = repo.Update(s.T().Context(), model)
 	s.NoError(err)
 
 	where = &TestModel{
@@ -187,7 +186,7 @@ func (s *DbRepoQueryTestSuite) TestUpdateCorrectModel() {
 	qb.Where(where)
 
 	models = make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
+	err = repo.Query(s.T().Context(), qb, &models)
 	s.NoError(err)
 	s.Equal(1, len(models), "expected 1 test model")
 	s.Equal(*model, models[0])
@@ -207,7 +206,7 @@ func (s *DbRepoQueryTestSuite) TestUpdateWrongModel() {
 		WrongName: mdl.Box("nameUpdateWrong1"),
 	}
 
-	err = repo.Update(context.Background(), model)
+	err = repo.Update(s.T().Context(), model)
 	s.EqualError(err, "cross updating wrong model from repo")
 }
 
@@ -225,10 +224,10 @@ func (s *DbRepoQueryTestSuite) TestDeleteCorrectModel() {
 		Name: mdl.Box("nameDelete1"),
 	}
 
-	err = repo.Create(context.Background(), model)
+	err = repo.Create(s.T().Context(), model)
 	s.NoError(err)
 
-	err = repo.Delete(context.Background(), model)
+	err = repo.Delete(s.T().Context(), model)
 	s.NoError(err)
 }
 
@@ -246,7 +245,7 @@ func (s *DbRepoQueryTestSuite) TestDeleteWrongModel() {
 		WrongName: mdl.Box("nameUpdateWrong1"),
 	}
 
-	err = repo.Delete(context.Background(), model)
+	err = repo.Delete(s.T().Context(), model)
 	s.EqualError(err, "cross deleting wrong model from repo")
 }
 
@@ -264,14 +263,14 @@ func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
 		Name: mdl.Box("name1"),
 	}
 
-	err = repo.Create(context.Background(), model)
+	err = repo.Create(s.T().Context(), model)
 	s.NoError(err)
 
 	model = &TestModel{
 		Name: mdl.Box("name2"),
 	}
 
-	err = repo.Create(context.Background(), model)
+	err = repo.Create(s.T().Context(), model)
 	s.NoError(err)
 
 	where := &TestModel{
@@ -282,7 +281,7 @@ func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
 	qb.Where(where)
 
 	models := make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
+	err = repo.Query(s.T().Context(), qb, &models)
 	s.NoError(err)
 	s.Equal(1, len(models), "expected 1 test model")
 	s.Equal(where.Name, models[0].Name)
@@ -293,7 +292,7 @@ func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
 	qb.Where(whereStr, mdl.Box("name2"))
 
 	models = make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
+	err = repo.Query(s.T().Context(), qb, &models)
 	s.NoError(err)
 	s.Equal(1, len(models), "expected 1 test model")
 	s.Equal(*model, models[0])
@@ -313,14 +312,14 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongResultModel() {
 		Name: mdl.Box("name3"),
 	}
 
-	err = repo.Create(context.Background(), model)
+	err = repo.Create(s.T().Context(), model)
 	s.NoError(err)
 
 	model = &TestModel{
 		Name: mdl.Box("name4"),
 	}
 
-	err = repo.Create(context.Background(), model)
+	err = repo.Create(s.T().Context(), model)
 	s.NoError(err)
 
 	where := &TestModel{
@@ -332,10 +331,10 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongResultModel() {
 
 	models := make([]WrongTestModel, 0)
 
-	err = repo.Query(context.Background(), qb, models)
+	err = repo.Query(s.T().Context(), qb, models)
 	s.EqualError(err, "result slice has to be pointer to slice")
 
-	err = repo.Query(context.Background(), qb, &models)
+	err = repo.Query(s.T().Context(), qb, &models)
 	s.EqualError(err, "cross querying result slice has to be of same model")
 }
 
@@ -357,7 +356,7 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
 	qb.Where(where)
 
 	models := make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
+	err = repo.Query(s.T().Context(), qb, &models)
 	s.EqualError(err, "cross querying wrong model from repo")
 
 	whereStruct := WrongTestModel{
@@ -368,7 +367,7 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
 	qb.Where(whereStruct)
 
 	models = make([]TestModel, 0)
-	err = repo.Query(context.Background(), qb, &models)
+	err = repo.Query(s.T().Context(), qb, &models)
 	s.EqualError(err, "cross querying wrong model from repo")
 }
 

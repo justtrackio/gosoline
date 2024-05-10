@@ -92,7 +92,7 @@ func (c *stoppableContext) Deadline() (time.Time, bool) {
 	return time.Time{}, false
 }
 
-func (c *stoppableContext) Value(key interface{}) interface{} {
+func (c *stoppableContext) Value(key any) any {
 	return c.parentCtx.Value(key)
 }
 

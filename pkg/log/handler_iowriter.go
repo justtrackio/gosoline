@@ -26,8 +26,11 @@ type ChannelSetting struct {
 
 func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
 	handlerConfigKey := getHandlerConfigKey(name)
+
 	settings := &HandlerIoWriterSettings{}
-	UnmarshalHandlerSettingsFromConfig(config, name, settings)
+	if err := UnmarshalHandlerSettingsFromConfig(config, name, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal handler settings: %w", err)
+	}
 
 	var ok bool
 	var err error
@@ -81,7 +84,7 @@ func (h *handlerIoWriter) Level() int {
 	return h.level
 }
 
-func (h *handlerIoWriter) Log(timestamp time.Time, level int, msg string, args []interface{}, logErr error, data Data) error {
+func (h *handlerIoWriter) Log(timestamp time.Time, level int, msg string, args []any, logErr error, data Data) error {
 	var err error
 	var bytes []byte
 	timestampStr := timestamp.Format(h.timestampFormat)

@@ -31,7 +31,7 @@ func NewShareCreateHandler(logger log.Logger, transformer ShareCreateHandler) gi
 	return httpserver.CreateJsonHandler(sh)
 }
 
-func (s shareCreateHandler) GetInput() interface{} {
+func (s shareCreateHandler) GetInput() any {
 	return s.transformer.GetCreateInput()
 }
 

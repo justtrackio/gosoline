@@ -50,7 +50,7 @@ func (i InvalidTokenErr) Is(err error) bool {
 	return ok
 }
 
-func (i InvalidTokenErr) As(target interface{}) bool {
+func (i InvalidTokenErr) As(target any) bool {
 	_, ok := target.(InvalidTokenErr)
 
 	// we don't have to write anything as our struct is always empty
@@ -70,7 +70,7 @@ func (i InvalidBearerErr) Error() string {
 	return "invalid bearer"
 }
 
-func (i InvalidBearerErr) As(target interface{}) bool {
+func (i InvalidBearerErr) As(target any) bool {
 	err, ok := target.(*InvalidBearerErr)
 	if ok {
 		*err = i
@@ -158,7 +158,7 @@ func (a *tokenBearerAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		Name:            Anonymous,
 		Anonymous:       true,
 		AuthenticatedBy: ByTokenBearer,
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			AttributeToken:         token,
 			AttributeTokenBearerId: bearerId,
 			AttributeTokenBearer:   bearer,

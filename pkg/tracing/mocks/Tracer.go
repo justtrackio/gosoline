@@ -209,7 +209,8 @@ func (_c *Tracer_StartSubSpan_Call) RunAndReturn(run func(context.Context, strin
 func NewTracer(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Tracer {
+},
+) *Tracer {
 	mock := &Tracer{}
 	mock.Mock.Test(t)
 

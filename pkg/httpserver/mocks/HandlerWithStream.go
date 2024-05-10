@@ -124,7 +124,8 @@ func (_c *HandlerWithStream_Handle_Call) RunAndReturn(run func(*gin.Context, con
 func NewHandlerWithStream(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *HandlerWithStream {
+},
+) *HandlerWithStream {
 	mock := &HandlerWithStream{}
 	mock.Mock.Test(t)
 

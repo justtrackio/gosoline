@@ -381,7 +381,8 @@ func (_c *GetItemBuilder_WithRange_Call) RunAndReturn(run func(interface{}) ddb.
 func NewGetItemBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *GetItemBuilder {
+},
+) *GetItemBuilder {
 	mock := &GetItemBuilder{}
 	mock.Mock.Test(t)
 

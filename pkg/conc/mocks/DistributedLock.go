@@ -119,7 +119,8 @@ func (_c *DistributedLock_Renew_Call) RunAndReturn(run func(context.Context, tim
 func NewDistributedLock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *DistributedLock {
+},
+) *DistributedLock {
 	mock := &DistributedLock{}
 	mock.Mock.Test(t)
 

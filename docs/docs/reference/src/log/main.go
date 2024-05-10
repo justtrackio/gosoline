@@ -31,7 +31,7 @@ func main() {
 		log.WithHandlers(handler),
 
 		// add some fields which are added to every log message
-		log.WithFields(map[string]interface{}{
+		log.WithFields(map[string]any{
 			"application": "gateway",
 		}),
 	}

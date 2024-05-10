@@ -72,7 +72,8 @@ func (_c *BatchRunner_Run_Call) RunAndReturn(run func(context.Context) error) *B
 func NewBatchRunner(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *BatchRunner {
+},
+) *BatchRunner {
 	mock := &BatchRunner{}
 	mock.Mock.Test(t)
 

@@ -56,7 +56,6 @@ func ReplaceDollarPlaceholders(query string, args []any) (sql string, err error)
 func EscapeString(value string) string {
 	var sb strings.Builder
 
-	//nolint:errcheck // WriteByte always returns nil
 	sb.WriteByte('\'')
 
 	for i := 0; i < len(value); i++ {
@@ -64,37 +63,36 @@ func EscapeString(value string) string {
 
 		switch c {
 		case '\\', '\'', '"':
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte('\\')
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte(c)
 		case '\000':
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte('\\')
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte('0')
 		case '\n':
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte('\\')
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte('n')
 		case '\r':
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte('\\')
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte('r')
 		case '\032':
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte('\\')
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte('Z')
 		default:
-			//nolint:errcheck // WriteByte always returns nil
+
 			sb.WriteByte(c)
 		}
 	}
 
-	//nolint:errcheck // WriteByte always returns nil
 	sb.WriteByte('\'')
 
 	return sb.String()

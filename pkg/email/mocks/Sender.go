@@ -74,7 +74,8 @@ func (_c *Sender_SendEmail_Call) RunAndReturn(run func(context.Context, email.Em
 func NewSender(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Sender {
+},
+) *Sender {
 	mock := &Sender{}
 	mock.Mock.Test(t)
 

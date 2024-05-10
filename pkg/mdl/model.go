@@ -23,23 +23,23 @@ func (m *ModelId) String() string {
 }
 
 func (m *ModelId) PadFromConfig(config ConfigProvider) {
-	if len(m.Project) == 0 {
+	if m.Project == "" {
 		m.Project = config.GetString("app_project")
 	}
 
-	if len(m.Environment) == 0 {
+	if m.Environment == "" {
 		m.Environment = config.GetString("env")
 	}
 
-	if len(m.Family) == 0 {
+	if m.Family == "" {
 		m.Family = config.GetString("app_family")
 	}
 
-	if len(m.Group) == 0 {
+	if m.Group == "" {
 		m.Group = config.GetString("app_group")
 	}
 
-	if len(m.Application) == 0 {
+	if m.Application == "" {
 		m.Application = config.GetString("app_name")
 	}
 }
@@ -89,7 +89,7 @@ func WithIdentifier(id *uint) *Identifier {
 
 func UuidWithDashes(uuid *string) (*string, error) {
 	if uuid == nil {
-		return uuid, fmt.Errorf("the uuid should not be nil")
+		return nil, fmt.Errorf("the uuid should not be nil")
 	}
 
 	if strings.Contains(*uuid, "-") {
@@ -110,5 +110,5 @@ type Resource interface {
 }
 
 type ResourceContextAware interface {
-	GetResourceContext() map[string]interface{}
+	GetResourceContext() map[string]any
 }

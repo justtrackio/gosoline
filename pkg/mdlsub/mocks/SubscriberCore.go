@@ -356,7 +356,8 @@ func (_c *SubscriberCore_Transform_Call) RunAndReturn(run func(context.Context, 
 func NewSubscriberCore(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *SubscriberCore {
+},
+) *SubscriberCore {
 	mock := &SubscriberCore{}
 	mock.Mock.Test(t)
 

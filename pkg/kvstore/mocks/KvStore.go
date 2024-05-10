@@ -390,7 +390,8 @@ func (_c *KvStore_PutBatch_Call[T]) RunAndReturn(run func(context.Context, inter
 func NewKvStore[T interface{}](t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *KvStore[T] {
+},
+) *KvStore[T] {
 	mock := &KvStore[T]{}
 	mock.Mock.Test(t)
 

@@ -24,11 +24,15 @@ type DebugModude struct {
 }
 
 func (d DebugModude) Run(ctx context.Context) error {
-	config, _ := yaml.Marshal(map[string]interface{}{
-		"cloud": map[string]interface{}{
+	config, err := yaml.Marshal(map[string]any{
+		"cloud": map[string]any{
 			"aws": d.config,
 		},
 	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal aws config: %w", err)
+	}
+
 	fmt.Println(string(config))
 
 	return nil

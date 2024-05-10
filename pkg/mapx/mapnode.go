@@ -24,6 +24,7 @@ func interfaceToMapNode(val any) *MapXNode {
 	switch val := val.(type) {
 	case map[string]any:
 		msn := msiToMsn(val)
+
 		return &MapXNode{value: msn}
 
 	case []map[string]any:
@@ -111,6 +112,7 @@ func (n *MapXNode) Data() any {
 
 func (n *MapXNode) IsMap() bool {
 	_, ok := n.value.(map[string]*MapXNode)
+
 	return ok
 }
 

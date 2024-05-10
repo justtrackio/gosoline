@@ -37,11 +37,13 @@ func (n *publisherNotifier) Send(ctx context.Context, notificationType string, v
 	if exec.IsRequestCanceled(err) {
 		logger.Info("request canceled while executing notification publish on %s for model %s with id %d", notificationType, n.modelId, value.GetId())
 		n.writeMetric(err)
+
 		return err
 	}
 
 	if err != nil {
 		n.writeMetric(err)
+
 		return fmt.Errorf("error executing notification on %s for model %s with id %d: %w", notificationType, n.modelId, *value.GetId(), err)
 	}
 

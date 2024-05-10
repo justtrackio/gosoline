@@ -74,7 +74,7 @@ func (h TodoCrudHandlerV0) GetModel() db_repo.ModelBased {
 	return &Todo{}
 }
 
-func (h TodoCrudHandlerV0) GetCreateInput() interface{} {
+func (h TodoCrudHandlerV0) GetCreateInput() any {
 	return &CreateInput{}
 }
 
@@ -97,7 +97,7 @@ func truncate(ctx context.Context, text string) string {
 // snippet-end: truncate
 
 // snippet-start: transform create
-func (h TodoCrudHandlerV0) TransformCreate(ctx context.Context, input interface{}, model db_repo.ModelBased) error {
+func (h TodoCrudHandlerV0) TransformCreate(ctx context.Context, input any, model db_repo.ModelBased) error {
 	in := input.(*CreateInput)
 	m := model.(*Todo)
 
@@ -112,12 +112,12 @@ func (h TodoCrudHandlerV0) TransformCreate(ctx context.Context, input interface{
 
 // snippet-end: transform create
 
-func (h TodoCrudHandlerV0) GetUpdateInput() interface{} {
+func (h TodoCrudHandlerV0) GetUpdateInput() any {
 	return &UpdateInput{}
 }
 
 // snippet-start: transform update
-func (h TodoCrudHandlerV0) TransformUpdate(ctx context.Context, input interface{}, model db_repo.ModelBased) error {
+func (h TodoCrudHandlerV0) TransformUpdate(ctx context.Context, input any, model db_repo.ModelBased) error {
 	in := input.(*UpdateInput)
 	m := model.(*Todo)
 
@@ -131,11 +131,11 @@ func (h TodoCrudHandlerV0) TransformUpdate(ctx context.Context, input interface{
 
 // snippet-end: transform update
 
-func (h TodoCrudHandlerV0) TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (interface{}, error) {
+func (h TodoCrudHandlerV0) TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (any, error) {
 	return model, nil
 }
 
-func (h TodoCrudHandlerV0) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (interface{}, error) {
+func (h TodoCrudHandlerV0) List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (any, error) {
 	var err error
 
 	// Instatiate a list of Todo objects, called result.
@@ -147,7 +147,7 @@ func (h TodoCrudHandlerV0) List(ctx context.Context, qb *db_repo.QueryBuilder, a
 	}
 
 	// Transform each result with TransformOutput().
-	out := make([]interface{}, len(result))
+	out := make([]any, len(result))
 	for i, res := range result {
 		if out[i], err = h.TransformOutput(ctx, res, apiView); err != nil {
 			return nil, err

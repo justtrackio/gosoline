@@ -278,7 +278,8 @@ func (_c *CreateHandler_TransformOutput_Call) RunAndReturn(run func(context.Cont
 func NewCreateHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *CreateHandler {
+},
+) *CreateHandler {
 	mock := &CreateHandler{}
 	mock.Mock.Test(t)
 

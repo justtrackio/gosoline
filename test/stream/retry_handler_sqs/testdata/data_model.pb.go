@@ -93,7 +93,7 @@ func file_data_model_proto_rawDescGZIP() []byte {
 
 var (
 	file_data_model_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_data_model_proto_goTypes  = []interface{}{
+	file_data_model_proto_goTypes  = []any{
 		(*DataModel)(nil), // 0: DataModel
 	}
 )
@@ -112,7 +112,7 @@ func file_data_model_proto_init() {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_data_model_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_data_model_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*DataModel); i {
 			case 0:
 				return &v.state

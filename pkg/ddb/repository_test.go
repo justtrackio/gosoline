@@ -41,7 +41,7 @@ func (s *RepositoryTestSuite) SetupTest() {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	tracer := tracing.NewLocalTracer()
 
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.client = dynamodbMocks.NewClient(s.T())
 
 	tableSettings := &ddb.Settings{
@@ -125,7 +125,7 @@ func (s *RepositoryTestSuite) TestGetItem_FromItem() {
 	}
 
 	qb := s.repo.GetItemBuilder().WithHash(5).WithRange("abc")
-	res, err := s.repo.GetItem(context.Background(), qb, &item)
+	res, err := s.repo.GetItem(s.T().Context(), qb, &item)
 
 	expected := model{
 		Id:  5,

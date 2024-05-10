@@ -78,7 +78,8 @@ func (_c *UrlBuilder_GetAbsoluteUrl_Call) RunAndReturn(run func(string) (string,
 func NewUrlBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *UrlBuilder {
+},
+) *UrlBuilder {
 	mock := &UrlBuilder{}
 	mock.Mock.Test(t)
 

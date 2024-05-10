@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 )
 
-func buildProjectionExpression(metadata FieldAware, model interface{}) (*expression.ProjectionBuilder, error) {
+func buildProjectionExpression(metadata FieldAware, model any) (*expression.ProjectionBuilder, error) {
 	if model == nil {
 		return nil, nil
 	}
@@ -35,7 +35,7 @@ func buildProjectionExpression(metadata FieldAware, model interface{}) (*express
 	return &projection, nil
 }
 
-func resolveTargetType(metadata FieldAware, projection interface{}, result interface{}) interface{} {
+func resolveTargetType(metadata FieldAware, projection any, result any) any {
 	if projection != nil {
 		return projection
 	}

@@ -67,7 +67,8 @@ func (_c *StagedModule_GetStage_Call) RunAndReturn(run func() int) *StagedModule
 func NewStagedModule(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *StagedModule {
+},
+) *StagedModule {
 	mock := &StagedModule{}
 	mock.Mock.Test(t)
 

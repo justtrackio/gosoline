@@ -90,6 +90,7 @@ func (f *fakeClock) Advance(d time.Duration) {
 func (f *fakeSleeper) advance(t time.Time, d time.Duration) bool {
 	if f.remaining > d {
 		f.remaining -= d
+
 		return true
 	}
 
@@ -138,6 +139,7 @@ func (f *fakeClock) After(d time.Duration) <-chan time.Time {
 func (f *fakeClock) Sleep(d time.Duration) {
 	if f.nonBlockingSleep {
 		f.Advance(d)
+
 		return
 	}
 

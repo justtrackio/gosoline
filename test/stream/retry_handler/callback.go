@@ -22,7 +22,7 @@ func NewCallback() *Callback {
 	return &Callback{}
 }
 
-func (c *Callback) GetModel(attributes map[string]string) interface{} {
+func (c *Callback) GetModel(attributes map[string]string) any {
 	return &DataModel{}
 }
 

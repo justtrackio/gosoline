@@ -5,12 +5,12 @@ import (
 	"reflect"
 )
 
-func InterfaceToMapInterfaceInterface(m interface{}) (map[interface{}]interface{}, error) {
-	if mii, ok := m.(map[interface{}]interface{}); ok {
+func InterfaceToMapInterfaceInterface(m any) (map[any]any, error) {
+	if mii, ok := m.(map[any]any); ok {
 		return mii, nil
 	}
 
-	mii := make(map[interface{}]interface{})
+	mii := make(map[any]any)
 
 	v := reflect.ValueOf(m)
 
@@ -33,7 +33,7 @@ func InterfaceToMapInterfaceInterface(m interface{}) (map[interface{}]interface{
 	return mii, nil
 }
 
-func MapOf(m interface{}) (*Map, error) {
+func MapOf(m any) (*Map, error) {
 	mapType := reflect.TypeOf(m)
 	mapValue := reflect.ValueOf(m)
 
@@ -72,11 +72,11 @@ type Map struct {
 	elementIsPointer bool
 }
 
-func (m *Map) NewElement() interface{} {
+func (m *Map) NewElement() any {
 	return reflect.New(m.elementType).Interface()
 }
 
-func (m *Map) Set(key interface{}, value interface{}) error {
+func (m *Map) Set(key any, value any) error {
 	keyValue := reflect.ValueOf(key)
 
 	if keyValue.Type() != m.keyType {

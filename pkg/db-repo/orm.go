@@ -37,7 +37,9 @@ func NewOrm(ctx context.Context, config cfg.Config, logger log.Logger, dbClientN
 
 	settings := OrmSettings{}
 	key := fmt.Sprintf("db.%s", dbClientName)
-	config.UnmarshalKey(key, &settings)
+	if err := config.UnmarshalKey(key, &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal orm settings for key %q: %w", key, err)
+	}
 
 	return NewOrmWithInterfaces(client, settings)
 }

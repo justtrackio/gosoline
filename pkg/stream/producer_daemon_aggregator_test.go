@@ -3,7 +3,6 @@ package stream_test
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -35,7 +34,7 @@ func (tc aggregatorTestCase) run(t *testing.T) {
 	flushes := make([]stream.AggregateFlush, 0)
 
 	for _, msg := range tc.messages {
-		flushList, err := agg.Write(context.Background(), msg)
+		flushList, err := agg.Write(t.Context(), msg)
 		assert.NoError(t, err)
 
 		flushes = append(flushes, flushList...)
@@ -102,7 +101,7 @@ func (f expectedFlush) encode(compression stream.CompressionType) stream.Aggrega
 	}
 }
 
-func mkTestMessage(t *testing.T, body interface{}, attributes map[string]string) *stream.Message {
+func mkTestMessage(t *testing.T, body any, attributes map[string]string) *stream.Message {
 	attributes[stream.AttributeEncoding] = stream.EncodingJson.String()
 
 	bodyBytes, err := json.Marshal(body)

@@ -33,11 +33,15 @@ type Service struct {
 
 func NewService(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...gosoDynamodb.ClientOption) (*Service, error) {
 	sanitizeSettings(settings)
-	metadataFactory := NewMetadataFactory(config, settings)
 
 	var err error
+	var metadataFactory *MetadataFactory
 	var client gosoDynamodb.Client
 	var purger *LifeCyclePurger
+
+	if metadataFactory, err = NewMetadataFactory(config, settings); err != nil {
+		return nil, fmt.Errorf("can not create metadata factory: %w", err)
+	}
 
 	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, settings.ClientName, optFns...); err != nil {
 		return nil, fmt.Errorf("can not create dynamodb client: %w", err)

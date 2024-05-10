@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -24,15 +25,15 @@ type OffsetManager interface {
 }
 
 type offsetManager struct {
-	logger               log.Logger
-	reader               Reader
-	readLock             *sync.Mutex
-	incoming             chan kafka.Message
-	batcher              Batcher
-	uncomitted           map[Offset]int64
-	uncomittedEmptyEvent chan bool
-	healthCheckTimer     clock.HealthCheckTimer
-	fetching             atomic.Bool
+	logger                log.Logger
+	reader                Reader
+	readLock              *sync.Mutex
+	incoming              chan kafka.Message
+	batcher               Batcher
+	uncommitted           map[Offset]int64
+	uncommittedEmptyEvent chan bool
+	healthCheckTimer      clock.HealthCheckTimer
+	fetching              atomic.Bool
 }
 
 func NewOffsetManager(logger log.Logger, reader Reader, batchSize int, batchTimeout time.Duration, healthCheckTimer clock.HealthCheckTimer) *offsetManager {
@@ -42,19 +43,25 @@ func NewOffsetManager(logger log.Logger, reader Reader, batchSize int, batchTime
 	incoming := make(chan kafka.Message, batchSize)
 
 	return &offsetManager{
-		logger:               logger,
-		reader:               reader,
-		readLock:             &sync.Mutex{},
-		incoming:             incoming,
-		batcher:              NewBatcher(incoming, batchSize, batchTimeout),
-		uncomitted:           map[Offset]int64{},
-		uncomittedEmptyEvent: events,
-		healthCheckTimer:     healthCheckTimer,
+		logger:                logger,
+		reader:                reader,
+		readLock:              &sync.Mutex{},
+		incoming:              incoming,
+		batcher:               NewBatcher(incoming, batchSize, batchTimeout),
+		uncommitted:           map[Offset]int64{},
+		uncommittedEmptyEvent: events,
+		healthCheckTimer:      healthCheckTimer,
 	}
 }
 
-func (m *offsetManager) Start(ctx context.Context) error {
-	defer m.Flush()
+func (m *offsetManager) Start(ctx context.Context) (err error) {
+	defer func() {
+		if flushErr := m.Flush(); flushErr != nil {
+			err = errors.Join(err, flushErr)
+		}
+	}()
+
+	var msg kafka.Message
 
 	for {
 		m.logger.Debug("fetching a message")
@@ -62,13 +69,13 @@ func (m *offsetManager) Start(ctx context.Context) error {
 		// record we are fetching a message - while we are fetching, we can't get unhealthy
 		// (as this code is outside our control to add code to mark us as healthy)
 		m.fetching.Store(true)
-		msg, err := m.reader.FetchMessage(ctx)
+		msg, err = m.reader.FetchMessage(ctx)
 		// mark us as healthy as soon as we got a message to ensure we stay healthy while we process the message
 		// (unless we take too long to send the message to the m.incoming channel)
 		m.healthCheckTimer.MarkHealthy()
 		m.fetching.Store(false)
 		if err != nil {
-			return err
+			return
 		}
 
 		m.logger.WithFields(log.Fields{
@@ -94,7 +101,7 @@ func (m *offsetManager) Batch(ctx context.Context) []kafka.Message {
 	batch := []kafka.Message{}
 
 	select {
-	case <-m.uncomittedEmptyEvent:
+	case <-m.uncommittedEmptyEvent:
 		batch = m.batcher.Get(ctx)
 	case <-ctx.Done():
 		return batch
@@ -109,13 +116,13 @@ func (m *offsetManager) Batch(ctx context.Context) []kafka.Message {
 
 	if len(batch) == 0 {
 		select {
-		case m.uncomittedEmptyEvent <- true:
+		case m.uncommittedEmptyEvent <- true:
 		default:
 		}
 	}
 
 	for _, msg := range batch {
-		m.uncomitted[Offset{Partition: msg.Partition, Index: msg.Offset}] = msg.Offset
+		m.uncommitted[Offset{Partition: msg.Partition, Index: msg.Offset}] = msg.Offset
 	}
 
 	return batch
@@ -139,7 +146,7 @@ func (m *offsetManager) Commit(ctx context.Context, msgs ...kafka.Message) error
 	defer m.readLock.Unlock()
 	for _, msg := range msgs {
 		key := Offset{Partition: msg.Partition, Index: msg.Offset}
-		if _, exists := m.uncomitted[key]; !exists {
+		if _, exists := m.uncommitted[key]; !exists {
 			m.logger.WithFields(log.Fields{
 				"kafka_partition": msg.Partition,
 				"kafka_offset":    msg.Offset,
@@ -148,14 +155,14 @@ func (m *offsetManager) Commit(ctx context.Context, msgs ...kafka.Message) error
 			}).Error("failed to commit message")
 		}
 
-		delete(m.uncomitted, key)
+		delete(m.uncommitted, key)
 	}
 	// Kafka is a stream and sequential in nature, there are no per-message acks/nacks,
 	// instead acks are done through offsets (similar to TCP sequence numbers), in other words,
 	// committing an offset implies committing everything that came before it,
 	// as such a batch must be committed before another one can be requested.
-	if len(m.uncomitted) == 0 {
-		m.uncomittedEmptyEvent <- true
+	if len(m.uncommitted) == 0 {
+		m.uncommittedEmptyEvent <- true
 	}
 
 	return m.reader.CommitMessages(ctx, msgs...)

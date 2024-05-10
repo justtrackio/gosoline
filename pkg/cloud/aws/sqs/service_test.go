@@ -1,7 +1,6 @@
 package sqs_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -15,7 +14,7 @@ import (
 )
 
 func TestService_CreateQueue(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
@@ -89,7 +88,7 @@ func TestService_CreateQueue(t *testing.T) {
 }
 
 func TestService_GetPropertiesByName(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
@@ -124,7 +123,7 @@ func TestService_GetPropertiesByName(t *testing.T) {
 }
 
 func TestService_GetPropertiesByArn(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
@@ -150,7 +149,7 @@ func TestService_GetPropertiesByArn(t *testing.T) {
 }
 
 func TestService_Purge(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 

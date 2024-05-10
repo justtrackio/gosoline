@@ -10,7 +10,7 @@ import (
 var defaultModifier = newDefaultModifier()
 
 type Modifier interface {
-	Struct(ctx context.Context, v interface{}) error
+	Struct(ctx context.Context, v any) error
 }
 
 func WithCustomModifier(modifier Modifier) {
@@ -24,7 +24,7 @@ func newDefaultModifier() Modifier {
 	return mod
 }
 
-func modifyInput(ctx context.Context, input interface{}) error {
+func modifyInput(ctx context.Context, input any) error {
 	err := defaultModifier.Struct(ctx, input)
 	if err != nil {
 		return fmt.Errorf("failed to modify input: %w", err)

@@ -86,18 +86,37 @@ type Handler interface {
 	BaseListHandler
 }
 
-func AddCrudHandlers(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler Handler) {
-	AddCreateHandler(config, logger, d, version, basePath, handler)
+func AddCrudHandlers(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler Handler) error {
+	if err := AddCreateHandler(config, logger, d, version, basePath, handler); err != nil {
+		return fmt.Errorf("failed to add create handler: %w", err)
+	}
+
 	AddReadHandler(config, logger, d, version, basePath, handler)
-	AddUpdateHandler(config, logger, d, version, basePath, handler)
-	AddDeleteHandler(config, logger, d, version, basePath, handler)
+
+	if err := AddUpdateHandler(config, logger, d, version, basePath, handler); err != nil {
+		return fmt.Errorf("failed to add update handler: %w", err)
+	}
+
+	if err := AddDeleteHandler(config, logger, d, version, basePath, handler); err != nil {
+		return fmt.Errorf("failed to add delete handler: %w", err)
+	}
+
 	AddListHandler(config, logger, d, version, basePath, handler)
+
+	return nil
 }
 
-func AddCreateHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler CreateHandler) {
+func AddCreateHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler CreateHandler) error {
 	path, _ := getHandlerPaths(version, basePath)
 
-	d.POST(path, NewCreateHandler(config, logger, handler))
+	createHandler, err := NewCreateHandler(config, logger, handler)
+	if err != nil {
+		return fmt.Errorf("failed to create handler: %w", err)
+	}
+
+	d.POST(path, createHandler)
+
+	return nil
 }
 
 func AddReadHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler) {
@@ -106,16 +125,30 @@ func AddReadHandler(config cfg.Config, logger log.Logger, d *httpserver.Definiti
 	d.GET(idPath, NewReadHandler(config, logger, handler))
 }
 
-func AddUpdateHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler UpdateHandler) {
+func AddUpdateHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler UpdateHandler) error {
 	_, idPath := getHandlerPaths(version, basePath)
 
-	d.PUT(idPath, NewUpdateHandler(config, logger, handler))
+	updateHandler, err := NewUpdateHandler(config, logger, handler)
+	if err != nil {
+		return fmt.Errorf("failed to create update handler: %w", err)
+	}
+
+	d.PUT(idPath, updateHandler)
+
+	return nil
 }
 
-func AddDeleteHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler) {
+func AddDeleteHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler) error {
 	_, idPath := getHandlerPaths(version, basePath)
 
-	d.DELETE(idPath, NewDeleteHandler(config, logger, handler))
+	deleteHandler, err := NewDeleteHandler(config, logger, handler)
+	if err != nil {
+		return fmt.Errorf("failed to create delete handler: %w", err)
+	}
+
+	d.DELETE(idPath, deleteHandler)
+
+	return nil
 }
 
 func AddListHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler ListHandler) {

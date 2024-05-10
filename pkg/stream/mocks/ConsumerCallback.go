@@ -84,7 +84,8 @@ func (_c *ConsumerCallback_Consume_Call[M]) RunAndReturn(run func(context.Contex
 func NewConsumerCallback[M interface{}](t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ConsumerCallback[M] {
+},
+) *ConsumerCallback[M] {
 	mock := &ConsumerCallback[M]{}
 	mock.Mock.Test(t)
 

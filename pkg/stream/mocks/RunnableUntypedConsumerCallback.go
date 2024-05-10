@@ -178,7 +178,8 @@ func (_c *RunnableUntypedConsumerCallback_Run_Call) RunAndReturn(run func(contex
 func NewRunnableUntypedConsumerCallback(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *RunnableUntypedConsumerCallback {
+},
+) *RunnableUntypedConsumerCallback {
 	mock := &RunnableUntypedConsumerCallback{}
 	mock.Mock.Test(t)
 

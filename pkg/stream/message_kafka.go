@@ -17,7 +17,7 @@ type KafkaSourceMessage struct {
 }
 
 func (k KafkaSourceMessage) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
+	return json.Marshal(map[string]any{
 		"Time":      k.Time,
 		"Partition": k.Partition,
 		"Offset":    k.Offset,
@@ -26,8 +26,8 @@ func (k KafkaSourceMessage) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewKafkaMessageAttrs(key string) map[string]interface{} {
-	return map[string]interface{}{AttributeKafkaKey: key}
+func NewKafkaMessageAttrs(key string) map[string]any {
+	return map[string]any{AttributeKafkaKey: key}
 }
 
 func KafkaHeadersToGosoAttributes(headers []kafka.Header) map[string]string {
@@ -42,7 +42,7 @@ func KafkaHeadersToGosoAttributes(headers []kafka.Header) map[string]string {
 
 func KafkaToGosoMessage(k kafka.Message) *Message {
 	attributes := KafkaHeadersToGosoAttributes(k.Headers)
-	metaData := map[string]interface{}{
+	metaData := map[string]any{
 		MetaDataKafkaOriginalMessage: KafkaSourceMessage{Message: k},
 	}
 

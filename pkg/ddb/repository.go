@@ -74,15 +74,18 @@ type repository struct {
 }
 
 func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...gosoDynamodb.ClientOption) (Repository, error) {
+	var err error
+	var client gosoDynamodb.Client
+	var metadataFactory *MetadataFactory
+
 	if settings.ModelId.Name == "" {
 		settings.ModelId.Name = getTypeName(settings.Main.Model)
 	}
-
 	settings.ModelId.PadFromConfig(config)
-	metadataFactory := NewMetadataFactory(config, settings)
 
-	var err error
-	var client gosoDynamodb.Client
+	if metadataFactory, err = NewMetadataFactory(config, settings); err != nil {
+		return nil, fmt.Errorf("could not create metadata factory for ddb service: %w", err)
+	}
 
 	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings, optFns...)); err != nil {
 		return nil, fmt.Errorf("could not add lifecycle for table %s: %w", metadataFactory.GetTableName(), err)
@@ -755,7 +758,7 @@ func (r *repository) readCallback(ctx context.Context, items any, callback Resul
 			return fmt.Errorf("could not execute read operation for table %s: %w", r.metadata.TableName, err)
 		}
 
-		if out.Items == nil || len(out.Items) == 0 {
+		if len(out.Items) == 0 {
 			return callbackErrors
 		}
 

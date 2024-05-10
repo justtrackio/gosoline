@@ -2,6 +2,7 @@ package ddb
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -18,7 +19,9 @@ type StaticLeaderElection struct {
 func NewStaticLeaderElection(_ context.Context, config cfg.Config, _ log.Logger, name string) (LeaderElection, error) {
 	key := GetLeaderElectionConfigKey(name)
 	settings := &StaticLeaderElectionSettings{}
-	config.UnmarshalKey(key, settings)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal static leader election settings: %w", err)
+	}
 
 	return NewStaticLeaderElectionWithSettings(settings)
 }

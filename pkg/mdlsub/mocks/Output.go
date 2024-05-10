@@ -75,7 +75,8 @@ func (_c *Output_Persist_Call) RunAndReturn(run func(context.Context, mdlsub.Mod
 func NewOutput(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Output {
+},
+) *Output {
 	mock := &Output{}
 	mock.Mock.Test(t)
 

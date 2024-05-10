@@ -34,5 +34,6 @@ func (e ErrMaxElapsedTimeExceeded) Unwrap() error {
 
 func IsErrMaxElapsedTimeExceeded(err error) bool {
 	var errExpected *ErrMaxElapsedTimeExceeded
+
 	return errors.As(err, &errExpected)
 }

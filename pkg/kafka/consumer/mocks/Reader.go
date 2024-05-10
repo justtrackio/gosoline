@@ -290,7 +290,8 @@ func (_c *Reader_Stats_Call) RunAndReturn(run func() kafka.ReaderStats) *Reader_
 func NewReader(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Reader {
+},
+) *Reader {
 	mock := &Reader{}
 	mock.Mock.Test(t)
 

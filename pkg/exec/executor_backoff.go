@@ -29,7 +29,7 @@ func NewBackoffExecutor(logger log.Logger, res *ExecutableResource, settings *Ba
 	}
 }
 
-func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ...Notify) (interface{}, error) {
+func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ...Notify) (any, error) {
 	logger := e.logger.WithContext(ctx).WithFields(log.Fields{
 		"exec_id":            e.uuidGen.NewV4(),
 		"exec_resource_type": e.resource.Type,
@@ -39,7 +39,7 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 	delayedCtx, stop := WithDelayedCancelContext(ctx, e.settings.CancelDelay)
 	defer stop()
 
-	var res interface{}
+	var res any
 	var err error
 	var errType ErrorType
 
@@ -58,6 +58,7 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ..
 		attempts++
 	}
 
+	//nolint:errcheck // we rely on the err variable in the closure
 	_ = backoff.RetryNotify(func() error {
 		res, err = f(delayedCtx)
 

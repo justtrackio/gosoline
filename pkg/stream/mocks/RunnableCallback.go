@@ -72,7 +72,8 @@ func (_c *RunnableCallback_Run_Call) RunAndReturn(run func(context.Context) erro
 func NewRunnableCallback(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *RunnableCallback {
+},
+) *RunnableCallback {
 	mock := &RunnableCallback{}
 	mock.Mock.Test(t)
 

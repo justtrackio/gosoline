@@ -29,7 +29,9 @@ func NewSesSender(ctx context.Context, config cfg.Config, logger log.Logger, nam
 	key := fmt.Sprintf("email.%s", name)
 
 	sesSettings := &SenderSesSettings{}
-	config.UnmarshalKey(key, sesSettings)
+	if err := config.UnmarshalKey(key, sesSettings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal ses settings for key %q in NewSesSender: %w", key, err)
+	}
 
 	sesClient, err := gosoSES.ProvideClient(ctx, config, logger, sesSettings.ClientName)
 	if err != nil {
@@ -37,7 +39,9 @@ func NewSesSender(ctx context.Context, config cfg.Config, logger log.Logger, nam
 	}
 
 	emailSettings := &emailSettings{}
-	config.UnmarshalKey(key, emailSettings)
+	if err := config.UnmarshalKey(key, emailSettings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal email settings for key %q in NewSesSender: %w", key, err)
+	}
 
 	return NewSesSenderWithInterfaces(logger, sesClient, emailSettings.FromAddress), nil
 }

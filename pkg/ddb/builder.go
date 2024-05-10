@@ -10,19 +10,19 @@ type KeyValues map[string]types.AttributeValue
 
 type keyBuilder struct {
 	metadata   KeyAware
-	hashValue  interface{}
-	rangeValue interface{}
+	hashValue  any
+	rangeValue any
 }
 
-func (b *keyBuilder) withHash(hashValue interface{}) {
+func (b *keyBuilder) withHash(hashValue any) {
 	b.hashValue = hashValue
 }
 
-func (b *keyBuilder) withRange(rangeValue interface{}) {
+func (b *keyBuilder) withRange(rangeValue any) {
 	b.rangeValue = rangeValue
 }
 
-func (b *keyBuilder) buildKey(item interface{}) (KeyValues, error) {
+func (b *keyBuilder) buildKey(item any) (KeyValues, error) {
 	if b.hashValue != nil || b.rangeValue != nil {
 		return b.fromValues(b.hashValue, b.rangeValue)
 	}
@@ -30,7 +30,7 @@ func (b *keyBuilder) buildKey(item interface{}) (KeyValues, error) {
 	return b.fromItem(item)
 }
 
-func (b *keyBuilder) fromItem(item interface{}) (KeyValues, error) {
+func (b *keyBuilder) fromItem(item any) (KeyValues, error) {
 	if item == nil {
 		return nil, fmt.Errorf("can not build key attributes from nil Item")
 	}
@@ -49,7 +49,7 @@ func (b *keyBuilder) fromItem(item interface{}) (KeyValues, error) {
 	return key, nil
 }
 
-func (b *keyBuilder) fromValues(values ...interface{}) (KeyValues, error) {
+func (b *keyBuilder) fromValues(values ...any) (KeyValues, error) {
 	if len(values) == 0 {
 		return nil, fmt.Errorf("there is no key values provided")
 	}
@@ -58,7 +58,7 @@ func (b *keyBuilder) fromValues(values ...interface{}) (KeyValues, error) {
 		return nil, fmt.Errorf("the keys should have 1 element for hash only or 2 for hash and range but instead has %d elements with values %v", len(values), values)
 	}
 
-	attributeValueMap := make(map[string]interface{})
+	attributeValueMap := make(map[string]any)
 
 	if b.metadata.GetHashKey() == nil {
 		return nil, fmt.Errorf("there is no hash key defined")
@@ -87,7 +87,7 @@ func (b *keyBuilder) fromValues(values ...interface{}) (KeyValues, error) {
 	return b.marshal(attributeValueMap)
 }
 
-func (b *keyBuilder) marshal(attributeValueMap map[string]interface{}) (KeyValues, error) {
+func (b *keyBuilder) marshal(attributeValueMap map[string]any) (KeyValues, error) {
 	attributeValues, err := MarshalMap(attributeValueMap)
 	if err != nil {
 		return nil, fmt.Errorf("can not marshal keys: %w", err)

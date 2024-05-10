@@ -46,7 +46,7 @@ type Purger_Purge_Call struct {
 
 // Purge is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *Purger_Expecter) Purge(ctx interface{}) *Purger_Purge_Call {
+func (_e *Purger_Expecter) Purge(ctx any) *Purger_Purge_Call {
 	return &Purger_Purge_Call{Call: _e.mock.On("Purge", ctx)}
 }
 
@@ -72,7 +72,8 @@ func (_c *Purger_Purge_Call) RunAndReturn(run func(context.Context) error) *Purg
 func NewPurger(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Purger {
+},
+) *Purger {
 	mock := &Purger{}
 	mock.Mock.Test(t)
 

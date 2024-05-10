@@ -1,7 +1,6 @@
 package email_test
 
 import (
-	"context"
 	"io"
 	"strings"
 	"testing"
@@ -70,13 +69,13 @@ Content-Type: text/html; charset="utf-8"
 		return ok
 	})).Run(func(_ string, _ []string, r io.Reader) {
 		bytes, err := io.ReadAll(r)
-		s.Require().NoError(err)
+		s.NoError(err)
 
 		body := string(bytes)
 		s.Equal(expectedBody, body)
 	}).Return(nil)
 
-	err := s.sender.SendEmail(context.Background(), email)
+	err := s.sender.SendEmail(s.T().Context(), email)
 	s.NoError(err)
 }
 
@@ -110,13 +109,13 @@ Hello! We're sending you a test email.
 		return ok
 	})).Run(func(_ string, _ []string, r io.Reader) {
 		bytes, err := io.ReadAll(r)
-		s.Require().NoError(err)
+		s.NoError(err)
 
 		body := string(bytes)
 		s.Equal(expectedBody, body)
 	}).Return(nil)
 
-	err := s.sender.SendEmail(context.Background(), email)
+	err := s.sender.SendEmail(s.T().Context(), email)
 	s.NoError(err)
 }
 
@@ -158,18 +157,18 @@ Hello! We're sending you a test email.
 		return ok
 	})).Run(func(_ string, _ []string, r io.Reader) {
 		bytes, err := io.ReadAll(r)
-		s.Require().NoError(err)
+		s.NoError(err)
 
 		body := string(bytes)
 		s.Equal(expectedBody, body)
 	}).Return(nil)
 
-	err := s.sender.SendEmail(context.Background(), email)
+	err := s.sender.SendEmail(s.T().Context(), email)
 	s.NoError(err)
 }
 
 func (s *senderSmtpTestSuite) TestSendEmail_NoBodyProvided() {
-	err := s.sender.SendEmail(context.Background(), email.Email{})
+	err := s.sender.SendEmail(s.T().Context(), email.Email{})
 
 	s.Error(err)
 	s.EqualError(err, "email body cannot be empty")

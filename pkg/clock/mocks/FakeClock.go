@@ -427,7 +427,8 @@ func (_c *FakeClock_Sleep_Call) RunAndReturn(run func(time.Duration)) *FakeClock
 func NewFakeClock(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *FakeClock {
+},
+) *FakeClock {
 	mock := &FakeClock{}
 	mock.Mock.Test(t)
 

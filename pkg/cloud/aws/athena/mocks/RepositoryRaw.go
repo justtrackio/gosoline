@@ -86,7 +86,8 @@ func (_c *RepositoryRaw_QueryRows_Call) RunAndReturn(run func(context.Context, s
 func NewRepositoryRaw(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *RepositoryRaw {
+},
+) *RepositoryRaw {
 	mock := &RepositoryRaw{}
 	mock.Mock.Test(t)
 

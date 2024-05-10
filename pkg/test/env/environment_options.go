@@ -38,7 +38,7 @@ func WithConfigEnvKeyReplacer(replacer *strings.Replacer) Option {
 	}
 }
 
-func WithConfigMap(settings map[string]interface{}) Option {
+func WithConfigMap(settings map[string]any) Option {
 	return func(env *Environment) {
 		env.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithConfigMap(settings))
@@ -46,7 +46,7 @@ func WithConfigMap(settings map[string]interface{}) Option {
 	}
 }
 
-func WithConfigSetting(key string, settings interface{}) Option {
+func WithConfigSetting(key string, settings any) Option {
 	return func(env *Environment) {
 		env.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithConfigSetting(key, settings))
@@ -66,6 +66,7 @@ func WithLoggerLevel(level string) Option {
 	return func(env *Environment) {
 		env.addLoggerOption(func(settings *LoggerSettings) error {
 			settings.Level = level
+
 			return nil
 		})
 	}
@@ -75,6 +76,7 @@ func WithLogRecording() Option {
 	return func(env *Environment) {
 		env.addLoggerOption(func(settings *LoggerSettings) error {
 			settings.RecordLogs = true
+
 			return nil
 		})
 	}

@@ -132,7 +132,8 @@ func (_c *UntypedConsumerCallback_GetModel_Call) RunAndReturn(run func(map[strin
 func NewUntypedConsumerCallback(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *UntypedConsumerCallback {
+},
+) *UntypedConsumerCallback {
 	mock := &UntypedConsumerCallback{}
 	mock.Mock.Test(t)
 

@@ -29,7 +29,7 @@ func (s *contextTestSuite) TearDownSuite() {
 }
 
 func (s *contextTestSuite) TestWithDelayedCancelContext() {
-	parentCtx, cancel := context.WithCancel(context.Background())
+	parentCtx, cancel := context.WithCancel(s.T().Context())
 	ctx, stop := exec.WithDelayedCancelContext(parentCtx, time.Minute)
 
 	// initially the context is not canceled
@@ -48,7 +48,7 @@ func (s *contextTestSuite) TestWithDelayedCancelContext() {
 }
 
 func (s *contextTestSuite) TestWithDelayedCancelContext_Stop() {
-	parentCtx, cancel := context.WithCancel(context.Background())
+	parentCtx, cancel := context.WithCancel(s.T().Context())
 	ctx, stop := exec.WithDelayedCancelContext(parentCtx, time.Minute)
 
 	// initially the context is not canceled
@@ -67,7 +67,7 @@ func (s *contextTestSuite) TestWithDelayedCancelContext_Stop() {
 }
 
 func (s *contextTestSuite) TestWithDelayedCancelContext_StopAfterCancel() {
-	parentCtx, cancel := context.WithCancel(context.Background())
+	parentCtx, cancel := context.WithCancel(s.T().Context())
 	ctx, stop := exec.WithDelayedCancelContext(parentCtx, time.Hour)
 
 	// initially the context is not canceled
@@ -88,7 +88,7 @@ func (s *contextTestSuite) TestWithDelayedCancelContext_StopAfterCancel() {
 }
 
 func (s *contextTestSuite) TestWithStoppableDeadlineContext() {
-	parentCtx := context.Background()
+	parentCtx := s.T().Context()
 	ctx, stop := exec.WithStoppableDeadlineContext(parentCtx, s.fakeClock.Now().Add(time.Minute))
 	defer stop()
 
@@ -104,7 +104,7 @@ func (s *contextTestSuite) TestWithStoppableDeadlineContext() {
 }
 
 func (s *contextTestSuite) TestWithStoppableDeadlineContext_CancelParent() {
-	parentCtx, cancel := context.WithCancel(context.Background())
+	parentCtx, cancel := context.WithCancel(s.T().Context())
 	ctx, stop := exec.WithStoppableDeadlineContext(parentCtx, s.fakeClock.Now().Add(time.Minute))
 	defer stop()
 
@@ -119,7 +119,7 @@ func (s *contextTestSuite) TestWithStoppableDeadlineContext_CancelParent() {
 }
 
 func (s *contextTestSuite) TestWithStoppableDeadlineContext_Stop() {
-	parentCtx, cancel := context.WithCancel(context.Background())
+	parentCtx, cancel := context.WithCancel(s.T().Context())
 	ctx, stop := exec.WithStoppableDeadlineContext(parentCtx, s.fakeClock.Now().Add(time.Minute))
 
 	// initially the context is not canceled
@@ -138,7 +138,7 @@ func (s *contextTestSuite) TestWithStoppableDeadlineContext_Stop() {
 }
 
 func (s *contextTestSuite) TestWithManualCancelContext() {
-	parentCtx, cancelParent := context.WithCancel(context.Background())
+	parentCtx, cancelParent := context.WithCancel(s.T().Context())
 	ctx, cancelChild := exec.WithManualCancelContext(parentCtx)
 
 	// initially the context is not canceled
@@ -163,7 +163,7 @@ func (s *contextTestSuite) TestConcurrentlyPrintable() {
 	// happens in mocks when a mocked method is called with something like mock.AnythingOfType("*exec.stoppableContext")
 	// as an argument) without crashing.
 	for i := 0; i < 1000; i++ {
-		ctx, cancel := exec.WithManualCancelContext(context.Background())
+		ctx, cancel := exec.WithManualCancelContext(s.T().Context())
 		c := make(chan struct{})
 		cfn := coffin.New()
 		cfn.Go(func() error {

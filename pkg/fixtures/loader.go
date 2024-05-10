@@ -20,7 +20,10 @@ type fixtureLoader struct {
 }
 
 func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger, fixtureSets map[string][]FixtureSet, postProcessors []PostProcessor) (FixtureLoader, error) {
-	settings := unmarshalFixtureLoaderSettings(config)
+	settings, err := unmarshalFixtureLoaderSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal fixture loader settings: %w", err)
+	}
 
 	return &fixtureLoader{
 		logger:         logger.WithChannel("fixtures"),

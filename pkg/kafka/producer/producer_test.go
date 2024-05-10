@@ -17,7 +17,7 @@ import (
 
 func Test_Write_WriteOne(t *testing.T) {
 	var (
-		ctx, cancel = context.WithCancel(context.Background())
+		ctx, cancel = context.WithCancel(t.Context())
 		logger      = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 		writer      = producerMocks.NewWriter(t)
 		conf        = &producer.Settings{
@@ -73,6 +73,7 @@ func Test_Write_WriteOne(t *testing.T) {
 					},
 				)
 			}
+
 			return nil
 		},
 	).Times(1)
@@ -96,6 +97,7 @@ func Test_Write_WriteOne(t *testing.T) {
 					Value:   messages[i].Value,
 					Topic:   conf.FQTopic,
 				})
+
 			return nil
 		},
 	).Times(1)
@@ -105,7 +107,8 @@ func Test_Write_WriteOne(t *testing.T) {
 
 	// Data should contain batch size of messages after consumer is started.
 	go func() {
-		_ = prod.Run(ctx)
+		err = prod.Run(ctx)
+		assert.Error(t, err)
 	}()
 
 	// Data should be written to the writer.

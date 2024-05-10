@@ -72,7 +72,9 @@ type batchRunner struct {
 
 func NewBatchRunner(ctx context.Context, config cfg.Config, logger log.Logger, name string) (BatchRunner, error) {
 	settings := &BatchRunnerSettings{}
-	config.UnmarshalKey(fmt.Sprintf("blob.%s", name), settings)
+	if err := config.UnmarshalKey(fmt.Sprintf("blob.%s", name), settings); err != nil {
+		return nil, err
+	}
 
 	defaultMetrics := getDefaultRunnerMetrics()
 	metricWriter := metric.NewWriter(defaultMetrics...)
@@ -82,11 +84,16 @@ func NewBatchRunner(ctx context.Context, config cfg.Config, logger log.Logger, n
 		return nil, fmt.Errorf("can not create s3 client with name %s: %w", settings.ClientName, err)
 	}
 
+	runnerChannels, err := ProvideBatchRunnerChannels(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not create batch runner channels: %w", err)
+	}
+
 	runner := &batchRunner{
 		logger:   logger,
 		metric:   metricWriter,
 		client:   s3Client,
-		channels: ProvideBatchRunnerChannels(config),
+		channels: runnerChannels,
 		settings: settings,
 	}
 

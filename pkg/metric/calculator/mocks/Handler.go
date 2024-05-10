@@ -85,7 +85,8 @@ func (_c *Handler_GetMetrics_Call) RunAndReturn(run func(context.Context) (metri
 func NewHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Handler {
+},
+) *Handler {
 	mock := &Handler{}
 	mock.Mock.Test(t)
 

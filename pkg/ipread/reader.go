@@ -42,12 +42,16 @@ func ProvideReader(ctx context.Context, config cfg.Config, logger log.Logger, na
 
 func NewReader(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*reader, error) {
 	logger = logger.WithChannel("ipread")
-	settings := readSettings(config, name)
 
 	var ok bool
 	var err error
+	var settings *ReaderSettings
 	var factory ProviderFactory
 	var provider Provider
+
+	if settings, err = readSettings(config, name); err != nil {
+		return nil, fmt.Errorf("can not read ip reader settings: %w", err)
+	}
 
 	if factory, ok = providers[settings.Provider]; !ok {
 		return nil, fmt.Errorf("provider %s not found", settings.Provider)

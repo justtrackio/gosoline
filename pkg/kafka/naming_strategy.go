@@ -17,9 +17,11 @@ func NormalizeKafkaName(name string) string {
 }
 
 // FQTopicName returns fully-qualified topic name.
-func FQTopicName(config cfg.Config, appId cfg.AppId, topic string) string {
+func FQTopicName(config cfg.Config, appId cfg.AppId, topic string) (string, error) {
 	namingSettings := &KafkaNamingSettings{}
-	config.UnmarshalKey("kafka.naming", namingSettings)
+	if err := config.UnmarshalKey("kafka.naming", namingSettings); err != nil {
+		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' in FQTopicName: %w", err)
+	}
 
 	name := namingSettings.TopicPattern
 	values := map[string]string{
@@ -35,16 +37,18 @@ func FQTopicName(config cfg.Config, appId cfg.AppId, topic string) string {
 		name = strings.ReplaceAll(name, fmt.Sprintf("{%s}", key), val)
 	}
 
-	return NormalizeKafkaName(name)
+	return NormalizeKafkaName(name), nil
 }
 
-func FQGroupId(config cfg.Config, appId cfg.AppId, groupId string) string {
+func FQGroupId(config cfg.Config, appId cfg.AppId, groupId string) (string, error) {
 	namingSettings := &KafkaNamingSettings{}
-	config.UnmarshalKey("kafka.naming", namingSettings)
+	if err := config.UnmarshalKey("kafka.naming", namingSettings); err != nil {
+		return "", fmt.Errorf("failed to unmarshal kafka naming settings for key 'kafka.naming' in FQGroupId: %w", err)
+	}
 
 	// legacy naming support
 	if groupId == "" {
-		return appId.Application
+		return appId.Application, nil
 	}
 
 	name := namingSettings.GroupPattern
@@ -61,5 +65,5 @@ func FQGroupId(config cfg.Config, appId cfg.AppId, groupId string) string {
 		name = strings.ReplaceAll(name, fmt.Sprintf("{%s}", key), val)
 	}
 
-	return name
+	return NormalizeKafkaName(name), nil
 }

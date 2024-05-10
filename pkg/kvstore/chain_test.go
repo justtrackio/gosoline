@@ -13,7 +13,7 @@ import (
 )
 
 func TestChainKvStore_Contains(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	store, element0, element1 := buildTestableChainStore[string](t, false)
 	item := new(string)
 
@@ -45,7 +45,7 @@ func TestChainKvStore_Contains(t *testing.T) {
 }
 
 func TestChainKvStore_Contains_Early(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	store, element0, element1 := buildTestableChainStore[string](t, false)
 	item := new(string)
 
@@ -62,7 +62,7 @@ func TestChainKvStore_Contains_Early(t *testing.T) {
 }
 
 func TestChainKvStore_Contains_CacheMissing(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	store, element0, element1 := buildTestableChainStore[string](t, true)
 	item := new(string)
 
@@ -82,7 +82,7 @@ func TestChainKvStore_Contains_CacheMissing(t *testing.T) {
 }
 
 func TestChainKvStore_Get(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	item := &Item{}
 	store, element0, element1 := buildTestableChainStore[Item](t, false)
 
@@ -117,7 +117,7 @@ func TestChainKvStore_Get(t *testing.T) {
 }
 
 func TestChainKvStore_Get_CacheMissing(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	item := &Item{}
 	store, element0, element1 := buildTestableChainStore[Item](t, true)
 
@@ -153,8 +153,8 @@ func TestChainKvStore_Get_CacheMissing(t *testing.T) {
 }
 
 func TestChainKvStore_GetBatch(t *testing.T) {
-	ctx := context.Background()
-	keys := []interface{}{"foo", "fuu"}
+	ctx := t.Context()
+	keys := []any{"foo", "fuu"}
 	result := make(map[string]Item)
 
 	store, element0, element1 := buildTestableChainStore[Item](t, false)
@@ -170,7 +170,7 @@ func TestChainKvStore_GetBatch(t *testing.T) {
 	assert.Equal(t, keys, missing)
 
 	// missing one
-	existing := map[interface{}]Item{
+	existing := map[any]Item{
 		"foo": {
 			Id:   "foo",
 			Body: "bar",
@@ -189,7 +189,7 @@ func TestChainKvStore_GetBatch(t *testing.T) {
 				Body: "bar",
 			},
 		}
-	}).Return([]interface{}{"fuu"}, nil).Once()
+	}).Return([]any{"fuu"}, nil).Once()
 
 	missing, err = store.GetBatch(ctx, keys, &result)
 
@@ -215,7 +215,7 @@ func TestChainKvStore_GetBatch(t *testing.T) {
 				Body: "baz",
 			},
 		}
-	}).Return([]interface{}{}, nil).Once()
+	}).Return([]any{}, nil).Once()
 
 	missing, err = store.GetBatch(ctx, keys, &result)
 
@@ -234,10 +234,10 @@ func TestChainKvStore_GetBatch(t *testing.T) {
 }
 
 func TestChainKvStore_GetBatch_CacheMissing_All(t *testing.T) {
-	expectedMissingKeys := []interface{}{"foo", "fuu"}
+	expectedMissingKeys := []any{"foo", "fuu"}
 
-	ctx := context.Background()
-	keys := []interface{}{"foo", "fuu"}
+	ctx := t.Context()
+	keys := []any{"foo", "fuu"}
 	result := make(map[string]Item)
 
 	store, element0, element1 := buildTestableChainStore[Item](t, true)
@@ -260,8 +260,8 @@ func TestChainKvStore_GetBatch_CacheMissing_All(t *testing.T) {
 }
 
 func TestChainKvStore_GetBatch_CacheMissing_None(t *testing.T) {
-	ctx := context.Background()
-	keys := []interface{}{"foo", "fuu"}
+	ctx := t.Context()
+	keys := []any{"foo", "fuu"}
 	result := make(map[string]Item)
 
 	store, element0, element1 := buildTestableChainStore[Item](t, true)
@@ -279,7 +279,7 @@ func TestChainKvStore_GetBatch_CacheMissing_None(t *testing.T) {
 			Id:   "fuu",
 			Body: "baz",
 		}
-	}).Return([]interface{}{}, nil).Once()
+	}).Return([]any{}, nil).Once()
 
 	missing, err := store.GetBatch(ctx, keys, result)
 
@@ -298,17 +298,17 @@ func TestChainKvStore_GetBatch_CacheMissing_None(t *testing.T) {
 }
 
 func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
-	expectedMissingKeys := []interface{}{"fuu"}
+	expectedMissingKeys := []any{"fuu"}
 
-	ctx := context.Background()
-	keys := []interface{}{"foo", "fuu"}
-	existingKeys := []interface{}{"foo"}
+	ctx := t.Context()
+	keys := []any{"foo", "fuu"}
+	existingKeys := []any{"foo"}
 	result := make(map[string]Item)
 
 	store, element0, element1 := buildTestableChainStore[Item](t, true)
 
 	// missing one
-	existing := map[interface{}]Item{
+	existing := map[any]Item{
 		"foo": {
 			Id:   "foo",
 			Body: "bar",
@@ -326,7 +326,7 @@ func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
 				Body: "bar",
 			},
 		}
-	}).Return([]interface{}{"fuu"}, nil).Once()
+	}).Return([]any{"fuu"}, nil).Once()
 
 	element0.EXPECT().PutBatch(matcher.Context, existing).Return(nil).Once()
 
@@ -370,7 +370,7 @@ func TestChainKvStore_GetBatch_CacheMissing_One(t *testing.T) {
 }
 
 func TestChainKvStore_Put(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	item := Item{
 		Id:   "foo",
 		Body: "bar",
@@ -389,7 +389,7 @@ func TestChainKvStore_Put(t *testing.T) {
 }
 
 func TestChainKvStore_PutBatch(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	items := map[string]Item{
 		"fuu": {
 			Id:   "fuu",
@@ -400,7 +400,7 @@ func TestChainKvStore_PutBatch(t *testing.T) {
 			Body: "bar",
 		},
 	}
-	itemsII := map[interface{}]interface{}{}
+	itemsII := map[any]any{}
 	for k, v := range items {
 		itemsII[k] = v
 	}
@@ -418,7 +418,7 @@ func TestChainKvStore_PutBatch(t *testing.T) {
 }
 
 func TestChainKvStore_Delete(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	store, element0, element1 := buildTestableChainStore[string](t, false)
 
@@ -433,7 +433,7 @@ func TestChainKvStore_Delete(t *testing.T) {
 }
 
 func TestChainKvStore_DeleteBatch(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	items := []string{"fuu", "foo"}
 
 	store, element0, element1 := buildTestableChainStore[string](t, false)

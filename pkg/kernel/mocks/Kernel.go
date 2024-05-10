@@ -184,7 +184,8 @@ func (_c *Kernel_Stop_Call) RunAndReturn(run func(string)) *Kernel_Stop_Call {
 func NewKernel(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Kernel {
+},
+) *Kernel {
 	mock := &Kernel{}
 	mock.Mock.Test(t)
 

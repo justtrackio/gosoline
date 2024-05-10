@@ -2,6 +2,7 @@ package crud
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -16,9 +17,11 @@ type createHandler struct {
 	settings    Settings
 }
 
-func NewCreateHandler(config cfg.Config, logger log.Logger, transformer CreateHandler) gin.HandlerFunc {
+func NewCreateHandler(config cfg.Config, logger log.Logger, transformer CreateHandler) (gin.HandlerFunc, error) {
 	settings := Settings{}
-	config.UnmarshalKey(SettingsConfigKey, &settings)
+	if err := config.UnmarshalKey(SettingsConfigKey, &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal create handler settings: %w", err)
+	}
 
 	ch := createHandler{
 		transformer: transformer,
@@ -26,7 +29,7 @@ func NewCreateHandler(config cfg.Config, logger log.Logger, transformer CreateHa
 		settings:    settings,
 	}
 
-	return httpserver.CreateJsonHandler(ch)
+	return httpserver.CreateJsonHandler(ch), nil
 }
 
 func (ch createHandler) GetInput() any {

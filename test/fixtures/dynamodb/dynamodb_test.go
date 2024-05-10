@@ -40,7 +40,7 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	s.NoError(err)
 
 	ddbClient := s.Env().DynamoDb("default").Client()
-	gio, err := ddbClient.GetItem(context.Background(), &dynamodb.GetItemInput{
+	gio, err := ddbClient.GetItem(s.T().Context(), &dynamodb.GetItemInput{
 		Key: map[string]types.AttributeValue{
 			"Name": &types.AttributeValueMemberS{
 				Value: "Ash",
@@ -55,7 +55,7 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	s.Equal("Ash", gio.Item["Name"].(*types.AttributeValueMemberS).Value)
 	s.Equal("10", gio.Item["Age"].(*types.AttributeValueMemberN).Value)
 
-	qo, err := ddbClient.Query(context.Background(), &dynamodb.QueryInput{
+	qo, err := ddbClient.Query(s.T().Context(), &dynamodb.QueryInput{
 		TableName:              aws.String("gosoline-test-integration-test-grp-testModel"),
 		IndexName:              aws.String("IDX_Age"),
 		KeyConditionExpression: aws.String("Age = :v_age"),
@@ -70,7 +70,7 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	s.NoError(err)
 	s.Len(qo.Items, 1, "1 item expected")
 
-	_, err = ddbClient.DeleteTable(context.Background(), &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-grp-testModel")})
+	_, err = ddbClient.DeleteTable(s.T().Context(), &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-grp-testModel")})
 	s.NoError(err)
 }
 
@@ -79,7 +79,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStore() {
 	s.NoError(err)
 
 	ddbClient := s.Env().DynamoDb("default").Client()
-	gio, err := ddbClient.GetItem(context.Background(), &dynamodb.GetItemInput{
+	gio, err := ddbClient.GetItem(s.T().Context(), &dynamodb.GetItemInput{
 		Key: map[string]types.AttributeValue{
 			"key": &types.AttributeValueMemberS{
 				Value: "Ash",
@@ -102,7 +102,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStore() {
 	}
 	s.Equal(expectedValue, gio.Item["value"].(*types.AttributeValueMemberS))
 
-	_, err = ddbClient.DeleteTable(context.Background(), &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-grp-kvstore-testModel")})
+	_, err = ddbClient.DeleteTable(s.T().Context(), &dynamodb.DeleteTableInput{TableName: aws.String("gosoline-test-integration-test-grp-kvstore-testModel")})
 	s.NoError(err)
 }
 

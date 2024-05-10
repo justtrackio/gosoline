@@ -31,7 +31,7 @@ type MiddleWareTestSuite struct {
 }
 
 func (s *MiddleWareTestSuite) SetupTest() {
-	s.ctx = appctx.WithContainer(context.Background())
+	s.ctx = appctx.WithContainer(s.T().Context())
 
 	s.config = cfgMocks.NewConfig(s.T())
 	s.config.EXPECT().UnmarshalKey("kernel", mock.AnythingOfType("*kernel.Settings")).Run(
@@ -40,7 +40,8 @@ func (s *MiddleWareTestSuite) SetupTest() {
 			settings.KillTimeout = time.Second
 			settings.HealthCheck.Timeout = time.Second
 			settings.HealthCheck.WaitInterval = time.Second
-		})
+		}).
+		Return(nil)
 
 	s.logger = logMocks.NewLogger(s.T())
 	s.logger.EXPECT().WithChannel(mock.AnythingOfType("string")).Return(s.logger)

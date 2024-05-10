@@ -209,7 +209,8 @@ func (_c *Manager_StartWork_Call) RunAndReturn(run func(string, int) status.Work
 func NewManager(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Manager {
+},
+) *Manager {
 	mock := &Manager{}
 	mock.Mock.Test(t)
 

@@ -130,7 +130,8 @@ func (_c *LeaderElection_Resign_Call) RunAndReturn(run func(context.Context, str
 func NewLeaderElection(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *LeaderElection {
+},
+) *LeaderElection {
 	mock := &LeaderElection{}
 	mock.Mock.Test(t)
 

@@ -112,7 +112,8 @@ func (_c *TypedModule_IsEssential_Call) RunAndReturn(run func() bool) *TypedModu
 func NewTypedModule(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *TypedModule {
+},
+) *TypedModule {
 	mock := &TypedModule{}
 	mock.Mock.Test(t)
 

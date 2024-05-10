@@ -381,7 +381,8 @@ func (_c *ConditionCheckBuilder_WithRange_Call) RunAndReturn(run func(interface{
 func NewConditionCheckBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ConditionCheckBuilder {
+},
+) *ConditionCheckBuilder {
 	mock := &ConditionCheckBuilder{}
 	mock.Mock.Test(t)
 

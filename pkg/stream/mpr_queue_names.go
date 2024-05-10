@@ -40,13 +40,19 @@ func getQueueNames(config cfg.Config) ([]string, error) {
 }
 
 func queueNameReaderSns(config cfg.Config, input string) (string, error) {
-	inputSettings, _ := readSnsInputSettings(config, input)
+	inputSettings, _, err := readSnsInputSettings(config, input)
+	if err != nil {
+		return "", fmt.Errorf("can not read sns input settings for input %s: %w", input, err)
+	}
 
 	return sqs.GetQueueName(config, inputSettings)
 }
 
 func queueNameReaderSqs(config cfg.Config, input string) (string, error) {
-	inputSettings := readSqsInputSettings(config, input)
+	inputSettings, err := readSqsInputSettings(config, input)
+	if err != nil {
+		return "", fmt.Errorf("can not read sqs input settings for input %s: %w", input, err)
+	}
 
 	return sqs.GetQueueName(config, inputSettings)
 }

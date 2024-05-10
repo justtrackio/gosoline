@@ -58,7 +58,7 @@ func (s *Suite) T() *testing.T {
 	return s.t
 }
 
-func (s *Suite) FailIfError(err error, msgAndArgs ...interface{}) {
+func (s *Suite) FailIfError(err error, msgAndArgs ...any) {
 	if err == nil {
 		return
 	}

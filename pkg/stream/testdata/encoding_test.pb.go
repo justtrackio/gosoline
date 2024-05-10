@@ -102,7 +102,7 @@ func file_encoding_test_proto_rawDescGZIP() []byte {
 
 var (
 	file_encoding_test_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-	file_encoding_test_proto_goTypes  = []interface{}{
+	file_encoding_test_proto_goTypes  = []any{
 		(*TestEncodingMessage)(nil), // 0: TestEncodingMessage
 	}
 )
@@ -121,7 +121,7 @@ func file_encoding_test_proto_init() {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_encoding_test_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_encoding_test_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*TestEncodingMessage); i {
 			case 0:
 				return &v.state

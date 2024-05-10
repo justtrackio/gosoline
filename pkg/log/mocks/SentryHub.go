@@ -187,7 +187,8 @@ func (_c *SentryHub_WithScope_Call) RunAndReturn(run func(func(*sentry.Scope))) 
 func NewSentryHub(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *SentryHub {
+},
+) *SentryHub {
 	mock := &SentryHub{}
 	mock.Mock.Test(t)
 

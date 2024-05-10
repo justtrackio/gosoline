@@ -293,7 +293,8 @@ func (_c *AcknowledgeableInput_Stop_Call) RunAndReturn(run func()) *Acknowledgea
 func NewAcknowledgeableInput(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *AcknowledgeableInput {
+},
+) *AcknowledgeableInput {
 	mock := &AcknowledgeableInput{}
 	mock.Mock.Test(t)
 

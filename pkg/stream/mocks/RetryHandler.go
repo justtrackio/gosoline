@@ -74,7 +74,8 @@ func (_c *RetryHandler_Put_Call) RunAndReturn(run func(context.Context, *stream.
 func NewRetryHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *RetryHandler {
+},
+) *RetryHandler {
 	mock := &RetryHandler{}
 	mock.Mock.Test(t)
 

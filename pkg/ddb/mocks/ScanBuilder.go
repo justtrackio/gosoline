@@ -468,7 +468,8 @@ func (_c *ScanBuilder_WithSegment_Call) RunAndReturn(run func(int, int) ddb.Scan
 func NewScanBuilder(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ScanBuilder {
+},
+) *ScanBuilder {
 	mock := &ScanBuilder{}
 	mock.Mock.Test(t)
 

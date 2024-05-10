@@ -73,7 +73,8 @@ func (_c *ConnectionLifeCycleAdvisor_ShouldCloseConnection_Call) RunAndReturn(ru
 func NewConnectionLifeCycleAdvisor(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *ConnectionLifeCycleAdvisor {
+},
+) *ConnectionLifeCycleAdvisor {
 	mock := &ConnectionLifeCycleAdvisor{}
 	mock.Mock.Test(t)
 

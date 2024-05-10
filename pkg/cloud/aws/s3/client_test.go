@@ -9,7 +9,7 @@ import (
 )
 
 func TestResolveDefaultEndpoint(t *testing.T) {
-	config := createConfig(t, map[string]interface{}{})
+	config := createConfig(t, map[string]any{})
 
 	endpoint, err := s3.ResolveEndpoint(config, "default")
 	assert.NoError(t, err, "there should be no error resolving the endpoint")
@@ -17,7 +17,7 @@ func TestResolveDefaultEndpoint(t *testing.T) {
 }
 
 func TestResolveAwsEndpoint(t *testing.T) {
-	config := createConfig(t, map[string]interface{}{
+	config := createConfig(t, map[string]any{
 		"cloud.aws.defaults.endpoint": "",
 	})
 
@@ -26,7 +26,7 @@ func TestResolveAwsEndpoint(t *testing.T) {
 	assert.Equal(t, "https://s3.eu-central-1.amazonaws.com", endpoint)
 }
 
-func createConfig(t *testing.T, settings map[string]interface{}) cfg.Config {
+func createConfig(t *testing.T, settings map[string]any) cfg.Config {
 	config := cfg.New()
 	err := config.Option(cfg.WithConfigMap(settings))
 	assert.NoError(t, err, "there should be no error on config create")

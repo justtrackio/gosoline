@@ -39,15 +39,19 @@ type mprHandler struct {
 
 func MessagesPerRunnerHandlerFactory(ctx context.Context, config cfg.Config, logger log.Logger, calculatorSettings *calculator.CalculatorSettings) (calculator.Handler, error) {
 	logger = logger.WithChannel(PrmHandlerName)
-	settings := calculator.ReadHandlerSettings(config, PrmHandlerName, &calculator.PerRunnerMetricSettings{})
+
+	var err error
+	var settings *calculator.PerRunnerMetricSettings
+	var cwClient gosoCloudwatch.Client
+	var queueNames []string
+
+	if settings, err = calculator.ReadHandlerSettings(config, PrmHandlerName, &calculator.PerRunnerMetricSettings{}); err != nil {
+		return nil, fmt.Errorf("can not read stream messages per runner settings: %w", err)
+	}
 
 	if !settings.Enabled {
 		return nil, nil
 	}
-
-	var err error
-	var cwClient gosoCloudwatch.Client
-	var queueNames []string
 
 	if cwClient, err = gosoCloudwatch.ProvideClient(ctx, config, logger, "default"); err != nil {
 		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)

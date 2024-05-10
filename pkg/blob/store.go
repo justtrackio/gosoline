@@ -121,8 +121,15 @@ func CreateKey() string {
 }
 
 func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Store, error) {
-	channels := ProvideBatchRunnerChannels(config)
-	settings := ReadStoreSettings(config, name)
+	channels, err := ProvideBatchRunnerChannels(config)
+	if err != nil {
+		return nil, fmt.Errorf("can not create batch runner channels: %w", err)
+	}
+
+	settings, err := ReadStoreSettings(config, name)
+	if err != nil {
+		return nil, fmt.Errorf("can not read store settings for %s: %w", name, err)
+	}
 
 	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {
@@ -316,20 +323,26 @@ func (o *CopyObject) getSource() string {
 	return fmt.Sprintf("%s%s", mdl.EmptyIfNil(o.SourceBucket), sourceKey)
 }
 
-func ReadStoreSettings(config cfg.Config, name string) *Settings {
+func ReadStoreSettings(config cfg.Config, name string) (*Settings, error) {
 	settings := &Settings{}
 	key := fmt.Sprintf("blob.%s", name)
-	config.UnmarshalKey(key, settings)
-	settings.AppId.PadFromConfig(config)
+	if err := config.UnmarshalKey(key, settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal blob store settings for %s: %w", name, err)
+	}
+	settings.PadFromConfig(config)
 
 	if settings.Bucket == "" {
 		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
 	}
 
 	if settings.Region == "" {
-		s3ClientConfig := gosoS3.GetClientConfig(config, settings.ClientName)
+		s3ClientConfig, err := gosoS3.GetClientConfig(config, settings.ClientName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get s3 client config for %s: %w", settings.ClientName, err)
+		}
+
 		settings.Region = s3ClientConfig.Settings.Region
 	}
 
-	return settings
+	return settings, nil
 }

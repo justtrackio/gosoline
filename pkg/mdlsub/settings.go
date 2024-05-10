@@ -23,11 +23,13 @@ type SubscriberSettings struct {
 	TargetModel SubscriberModel `cfg:"target"`
 }
 
-func unmarshalSettings(config cfg.Config) *Settings {
-	settings := Settings{
+func unmarshalSettings(config cfg.Config) (*Settings, error) {
+	settings := &Settings{
 		Subscribers: make(map[string]*SubscriberSettings),
 	}
-	config.UnmarshalKey(fmt.Sprintf("%s.%s", ConfigKeyMdlSub, "subscribers"), &settings.Subscribers)
+	if err := config.UnmarshalKey(fmt.Sprintf("%s.%s", ConfigKeyMdlSub, "subscribers"), &settings.Subscribers); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal mdlsub subscribers settings: %w", err)
+	}
 
 	for name, subscriberSettings := range settings.Subscribers {
 		if subscriberSettings.SourceModel.Name == "" {
@@ -39,5 +41,5 @@ func unmarshalSettings(config cfg.Config) *Settings {
 		}
 	}
 
-	return &settings
+	return settings, nil
 }

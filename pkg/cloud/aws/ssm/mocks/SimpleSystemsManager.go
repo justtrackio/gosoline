@@ -143,7 +143,8 @@ func (_c *SimpleSystemsManager_GetParameters_Call) RunAndReturn(run func(context
 func NewSimpleSystemsManager(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *SimpleSystemsManager {
+},
+) *SimpleSystemsManager {
 	mock := &SimpleSystemsManager{}
 	mock.Mock.Test(t)
 

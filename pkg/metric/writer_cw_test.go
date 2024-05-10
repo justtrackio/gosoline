@@ -1,7 +1,6 @@
 package metric_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	cloudwatchMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 )
 
 func TestOutput_Write(t *testing.T) {
@@ -33,7 +33,7 @@ func buildMocksAndWrite(t *testing.T, now time.Time, metricTimeStamp time.Time, 
 	cwClient := cloudwatchMocks.NewClient(t)
 
 	if shouldPutMetricData {
-		cwClient.EXPECT().PutMetricData(context.Background(), &cloudwatch.PutMetricDataInput{
+		cwClient.EXPECT().PutMetricData(matcher.Context, &cloudwatch.PutMetricDataInput{
 			Namespace: aws.String("my/test/namespace/grp/app"),
 			MetricData: []types.MetricDatum{{
 				MetricName: aws.String("my-test-metric-name"),

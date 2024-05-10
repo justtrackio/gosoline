@@ -31,11 +31,11 @@ func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, 
 
 		if address == "" {
 			values := map[string]string{
-				"project": settings.AppId.Project,
-				"env":     settings.AppId.Environment,
-				"family":  settings.AppId.Family,
-				"group":   settings.AppId.Group,
-				"app":     settings.AppId.Application,
+				"project": settings.Project,
+				"env":     settings.Environment,
+				"family":  settings.Family,
+				"group":   settings.Group,
+				"app":     settings.Application,
 				"name":    settings.Name,
 			}
 

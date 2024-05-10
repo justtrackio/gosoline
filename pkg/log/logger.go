@@ -56,18 +56,18 @@ func LevelPriority(level string) int {
 type Data struct {
 	Context       context.Context
 	Channel       string
-	ContextFields map[string]interface{}
-	Fields        map[string]interface{}
+	ContextFields map[string]any
+	Fields        map[string]any
 }
 
-type Fields map[string]interface{}
+type Fields map[string]any
 
 //go:generate go run github.com/vektra/mockery/v2 --name Logger
 type Logger interface {
-	Debug(format string, args ...interface{})
-	Info(format string, args ...interface{})
-	Warn(format string, args ...interface{})
-	Error(format string, args ...interface{})
+	Debug(format string, args ...any)
+	Info(format string, args ...any)
+	Warn(format string, args ...any)
+	Error(format string, args ...any)
 
 	WithChannel(channel string) Logger
 	WithContext(ctx context.Context) Logger
@@ -104,8 +104,8 @@ func NewLoggerWithInterfaces(clock clock.Clock, handlers []Handler) *gosoLogger 
 		data: Data{
 			Context:       nil,
 			Channel:       "main",
-			ContextFields: make(map[string]interface{}),
-			Fields:        make(map[string]interface{}),
+			ContextFields: make(map[string]any),
+			Fields:        make(map[string]any),
 		},
 		ctxResolvers: nil,
 		handlers:     handlers,
@@ -122,23 +122,23 @@ func (l *gosoLogger) Option(options ...Option) error {
 	return nil
 }
 
-func (l *gosoLogger) Debug(format string, args ...interface{}) {
+func (l *gosoLogger) Debug(format string, args ...any) {
 	l.log(PriorityDebug, format, args, nil)
 }
 
-func (l *gosoLogger) Info(format string, args ...interface{}) {
+func (l *gosoLogger) Info(format string, args ...any) {
 	l.log(PriorityInfo, format, args, nil)
 }
 
-func (l *gosoLogger) Warn(format string, args ...interface{}) {
+func (l *gosoLogger) Warn(format string, args ...any) {
 	l.log(PriorityWarn, format, args, nil)
 }
 
-func (l *gosoLogger) Error(format string, args ...interface{}) {
+func (l *gosoLogger) Error(format string, args ...any) {
 	err := fmt.Errorf(format, args...)
 	msg := err.Error()
 
-	l.log(PriorityError, "%s", []interface{}{msg}, err)
+	l.log(PriorityError, "%s", []any{msg}, err)
 }
 
 func (l *gosoLogger) WithChannel(channel string) Logger {
@@ -180,7 +180,7 @@ func (l *gosoLogger) copy() *gosoLogger {
 	}
 }
 
-func (l *gosoLogger) log(level int, msg string, args []interface{}, loggedErr error) {
+func (l *gosoLogger) log(level int, msg string, args []any, loggedErr error) {
 	timestamp := l.clock.Now()
 
 	for _, handler := range l.handlers {

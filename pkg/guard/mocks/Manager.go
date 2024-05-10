@@ -465,7 +465,8 @@ func (_c *Manager_Update_Call) RunAndReturn(run func(context.Context, ladon.Poli
 func NewManager(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Manager {
+},
+) *Manager {
 	mock := &Manager{}
 	mock.Mock.Test(t)
 

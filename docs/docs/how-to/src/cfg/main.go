@@ -12,7 +12,7 @@ func main() {
 	// 3
 	options := []cfg.Option{
 		cfg.WithConfigFile("config.dist.yml", "yml"),
-		cfg.WithConfigMap(map[string]interface{}{
+		cfg.WithConfigMap(map[string]any{
 			"enabled": true,
 		}),
 		cfg.WithConfigSetting("foo", "bar"),

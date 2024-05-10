@@ -17,7 +17,7 @@ type CustomValidator struct {
 // A StructValidator validates every instance of a struct type with the given validation. It is a little bit unfortunate
 // because you now can't have different validation rules for a struct at different places.
 type StructValidator struct {
-	Struct    interface{}
+	Struct    any
 	Validator validator.StructLevelFunc
 }
 
@@ -25,7 +25,7 @@ type StructValidator struct {
 // types with the built-in functions for, e.g., integers or strings.
 type CustomTypeFunc struct {
 	Func  validator.CustomTypeFunc
-	Types []interface{}
+	Types []any
 }
 
 // A ValidateAlias allows you to map one or more tags to a different name, making your validation rules easier to read.

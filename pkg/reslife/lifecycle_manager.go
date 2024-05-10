@@ -45,7 +45,10 @@ type LifeCycleManager struct {
 
 func NewLifeCycleManager(ctx context.Context, config cfg.Config, logger log.Logger) (*LifeCycleManager, error) {
 	logger = logger.WithChannel("lifecycle-manager")
-	settings := ReadSettings(config)
+	settings, err := ReadSettings(config)
+	if err != nil {
+		return nil, fmt.Errorf("could not read lifecycle settings: %w", err)
+	}
 
 	return &LifeCycleManager{
 		logger:   logger,

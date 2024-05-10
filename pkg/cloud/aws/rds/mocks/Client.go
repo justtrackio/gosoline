@@ -101,7 +101,8 @@ func (_c *Client_DescribeDBInstances_Call) RunAndReturn(run func(context.Context
 func NewClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Client {
+},
+) *Client {
 	mock := &Client{}
 	mock.Mock.Test(t)
 

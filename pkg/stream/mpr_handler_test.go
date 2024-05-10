@@ -37,7 +37,7 @@ type MessagesPerRunnerTestSuite struct {
 }
 
 func (s *MessagesPerRunnerTestSuite) SetupTest() {
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	s.logger = new(logMocks.Logger)
 	s.clock = clock.NewFakeClock()
 	s.cwClient = new(cloudwatchMocks.Client)

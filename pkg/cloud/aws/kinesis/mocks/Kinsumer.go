@@ -151,7 +151,8 @@ func (_c *Kinsumer_Stop_Call) RunAndReturn(run func()) *Kinsumer_Stop_Call {
 func NewKinsumer(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Kinsumer {
+},
+) *Kinsumer {
 	mock := &Kinsumer{}
 	mock.Mock.Test(t)
 

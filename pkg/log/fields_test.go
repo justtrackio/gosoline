@@ -21,15 +21,15 @@ func Test_PrepareForLog_TypeTime(t *testing.T) {
 }
 
 func Test_PrepareForLog_TypeMsi(t *testing.T) {
-	toBeTested := map[string]interface{}{
+	toBeTested := map[string]any{
 		"foo": "bar",
-		"baz": map[string]interface{}{
+		"baz": map[string]any{
 			"": "boom",
 		},
 	}
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"foo": "bar",
-		"baz": map[string]interface{}{},
+		"baz": map[string]any{},
 	}
 	prepared := prepareForLog(toBeTested)
 	assert.Equal(t, expected, prepared)
@@ -40,7 +40,7 @@ func Test_PrepareForLog_TypeMapSS(t *testing.T) {
 		"foo": "bar",
 		"":    "baz",
 	}
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"foo": "bar",
 	}
 	prepared := prepareForLog(toBeTested)
@@ -57,7 +57,7 @@ func Test_PrepareForLog_TypeStruct(t *testing.T) {
 		Foo: "bar",
 		Bar: "baz",
 	}
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"Foo": "bar",
 		"Bar": "baz",
 	}

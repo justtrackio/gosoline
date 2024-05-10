@@ -75,7 +75,8 @@ func (_c *Sentry_CaptureException_Call) RunAndReturn(run func(error, *sentry.Eve
 func NewSentry(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Sentry {
+},
+) *Sentry {
 	mock := &Sentry{}
 	mock.Mock.Test(t)
 

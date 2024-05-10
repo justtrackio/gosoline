@@ -129,7 +129,8 @@ func (_c *KinsumerAutoscaleOrchestrator_UpdateTaskCount_Call) RunAndReturn(run f
 func NewKinsumerAutoscaleOrchestrator(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *KinsumerAutoscaleOrchestrator {
+},
+) *KinsumerAutoscaleOrchestrator {
 	mock := &KinsumerAutoscaleOrchestrator{}
 	mock.Mock.Test(t)
 

@@ -81,7 +81,8 @@ func (_c *Authenticator_IsValid_Call) RunAndReturn(run func(*gin.Context) (bool,
 func NewAuthenticator(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Authenticator {
+},
+) *Authenticator {
 	mock := &Authenticator{}
 	mock.Mock.Test(t)
 

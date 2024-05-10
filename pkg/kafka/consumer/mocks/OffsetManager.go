@@ -272,7 +272,8 @@ func (_c *OffsetManager_Start_Call) RunAndReturn(run func(context.Context) error
 func NewOffsetManager(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *OffsetManager {
+},
+) *OffsetManager {
 	mock := &OffsetManager{}
 	mock.Mock.Test(t)
 

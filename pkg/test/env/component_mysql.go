@@ -18,9 +18,9 @@ type mysqlComponent struct {
 
 func (c *mysqlComponent) CfgOptions() []cfg.Option {
 	return []cfg.Option{
-		cfg.WithConfigMap(map[string]interface{}{
-			"db": map[string]interface{}{
-				c.name: map[string]interface{}{
+		cfg.WithConfigMap(map[string]any{
+			"db": map[string]any{
+				c.name: map[string]any{
 					"uri.host":           c.binding.host,
 					"uri.user":           c.credentials.UserName,
 					"uri.password":       c.credentials.UserPassword,
@@ -37,10 +37,11 @@ func (c *mysqlComponent) Client() *sqlx.DB {
 	return c.client
 }
 
-func (c *mysqlComponent) Exec(qry string, args ...interface{}) {
+func (c *mysqlComponent) Exec(qry string, args ...any) {
 	_, err := c.client.Exec(qry, args...)
 	if err != nil {
 		assert.FailNow(c.t, err.Error(), "failed to execute query")
+
 		return
 	}
 }

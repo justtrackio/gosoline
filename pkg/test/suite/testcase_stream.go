@@ -19,13 +19,13 @@ const expectedTestCaseStreamSignature = "func (s TestingSuite) TestFunc() T"
 
 type StreamTestCaseInput struct {
 	Attributes map[string]string
-	Body       interface{}
+	Body       any
 }
 
 type StreamTestCaseOutput struct {
-	Model              interface{}
+	Model              any
 	ExpectedAttributes map[string]string
-	ExpectedBody       interface{}
+	ExpectedBody       any
 }
 
 type StreamTestCase struct {

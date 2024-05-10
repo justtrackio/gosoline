@@ -133,7 +133,8 @@ func (_c *HandlerWithInput_Handle_Call) RunAndReturn(run func(context.Context, *
 func NewHandlerWithInput(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *HandlerWithInput {
+},
+) *HandlerWithInput {
 	mock := &HandlerWithInput{}
 	mock.Mock.Test(t)
 

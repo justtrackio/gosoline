@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/stream"
@@ -19,7 +18,7 @@ func (s *InMemoryOutputTestSuite) SetupTest() {
 
 func (s *InMemoryOutputTestSuite) TestWrite() {
 	msg := stream.NewMessage("content")
-	err := s.output.WriteOne(context.Background(), msg)
+	err := s.output.WriteOne(s.T().Context(), msg)
 
 	s.NoError(err, "there should be no error on write")
 	s.Equal(1, s.output.Len(), "there should be 1 written message")

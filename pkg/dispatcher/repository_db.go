@@ -34,7 +34,7 @@ func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error 
 		return err
 	}
 
-	eventName := fmt.Sprintf("%s.%s", r.Repository.GetModelName(), db_repo.Create)
+	eventName := fmt.Sprintf("%s.%s", r.GetModelName(), db_repo.Create)
 
 	err = r.dispatcher.Fire(ctx, eventName, value)
 	if err != nil {
@@ -50,7 +50,7 @@ func (r Repository) Update(ctx context.Context, value db_repo.ModelBased) error 
 		return err
 	}
 
-	eventName := fmt.Sprintf("%s.%s", r.Repository.GetModelName(), db_repo.Update)
+	eventName := fmt.Sprintf("%s.%s", r.GetModelName(), db_repo.Update)
 
 	err = r.dispatcher.Fire(ctx, eventName, value)
 	if err != nil {
@@ -66,7 +66,7 @@ func (r Repository) Delete(ctx context.Context, value db_repo.ModelBased) error 
 		return err
 	}
 
-	eventName := fmt.Sprintf("%s.%s", r.Repository.GetModelName(), db_repo.Delete)
+	eventName := fmt.Sprintf("%s.%s", r.GetModelName(), db_repo.Delete)
 
 	err = r.dispatcher.Fire(ctx, eventName, value)
 	if err != nil {

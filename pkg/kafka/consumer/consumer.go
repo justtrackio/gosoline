@@ -27,10 +27,11 @@ type Consumer struct {
 	manager OffsetManager
 }
 
-func NewConsumer(
-	ctx context.Context, conf cfg.Config, logger log.Logger, key string,
-) (*Consumer, error) {
-	settings := ParseSettings(conf, key)
+func NewConsumer(ctx context.Context, conf cfg.Config, logger log.Logger, key string) (*Consumer, error) {
+	settings, err := ParseSettings(conf, key)
+	if err != nil {
+		return nil, fmt.Errorf("kafka: failed to parse consumer settings: %w", err)
+	}
 
 	// Connection.
 	dialer, err := connection.NewDialer(settings.Connection())

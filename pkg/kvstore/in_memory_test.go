@@ -1,7 +1,6 @@
 package kvstore_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -37,7 +36,7 @@ func (s *InMemoryKvStoreTestSuite) SetupTest() {
 }
 
 func (s *InMemoryKvStoreTestSuite) TestStoreBasic() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	err := s.floatStore.Put(ctx, "key", 1.1)
 	s.NoError(err, "there should be no error on Put")
@@ -58,7 +57,7 @@ func (s *InMemoryKvStoreTestSuite) TestStoreBasic() {
 }
 
 func (s *InMemoryKvStoreTestSuite) TestStoreStruct() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 
 	a := item{i: 1, s: "s"}
 	err := s.itemStore.Put(ctx, "key", a)

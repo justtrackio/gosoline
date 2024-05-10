@@ -29,16 +29,16 @@ type Progress struct {
 }
 
 type (
-	ReadResult     map[string]interface{}
+	ReadResult     map[string]any
 	ReadResults    []ReadResult
-	ResultCallback func(progress Progress, results interface{}) (bool, error)
+	ResultCallback func(progress Progress, results any) (bool, error)
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name Reader
 type Reader interface {
-	ReadDate(ctx context.Context, datetime time.Time, target interface{}) error
-	ReadDateAsync(ctx context.Context, datetime time.Time, target interface{}, callback ResultCallback) error
-	ReadFileIntoTarget(ctx context.Context, file string, target interface{}, batchSize int, offset int64) error
+	ReadDate(ctx context.Context, datetime time.Time, target any) error
+	ReadDateAsync(ctx context.Context, datetime time.Time, target any, callback ResultCallback) error
+	ReadFileIntoTarget(ctx context.Context, file string, target any, batchSize int, offset int64) error
 }
 
 type s3Reader struct {
@@ -86,7 +86,7 @@ func NewReaderWithInterfaces(
 	}
 }
 
-func (r *s3Reader) ReadDate(ctx context.Context, datetime time.Time, target interface{}) error {
+func (r *s3Reader) ReadDate(ctx context.Context, datetime time.Time, target any) error {
 	if !refl.IsPointerToSlice(target) {
 		return fmt.Errorf("target needs to be a pointer to a slice, but is %T", target)
 	}
@@ -95,7 +95,7 @@ func (r *s3Reader) ReadDate(ctx context.Context, datetime time.Time, target inte
 	tp := reflect.ValueOf(tmp)
 	t := tp.Elem()
 
-	err := r.ReadDateAsync(ctx, datetime, target, func(progress Progress, result interface{}) (bool, error) {
+	err := r.ReadDateAsync(ctx, datetime, target, func(progress Progress, result any) (bool, error) {
 		rp := reflect.ValueOf(result)
 		r := rp.Elem()
 
@@ -112,7 +112,7 @@ func (r *s3Reader) ReadDate(ctx context.Context, datetime time.Time, target inte
 	return nil
 }
 
-func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target interface{}, callback ResultCallback) error {
+func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target any, callback ResultCallback) error {
 	if !refl.IsPointerToSlice(target) {
 		return fmt.Errorf("target needs to be a pointer to a slice, but is %T", target)
 	}
@@ -180,7 +180,7 @@ func (r *s3Reader) ReadDateAsync(ctx context.Context, datetime time.Time, target
 	return cfn.Wait()
 }
 
-func (r *s3Reader) ReadFileIntoTarget(ctx context.Context, file string, target interface{}, batchSize int, offset int64) error {
+func (r *s3Reader) ReadFileIntoTarget(ctx context.Context, file string, target any, batchSize int, offset int64) error {
 	if !refl.IsPointerToSlice(target) {
 		return fmt.Errorf("target needs to be a pointer to a slice, but is %T", target)
 	}
@@ -254,7 +254,7 @@ func (r *s3Reader) ReadFileColumns(ctx context.Context, columnNames []string, fi
 		}
 	}
 
-	columns := make(map[string][]interface{})
+	columns := make(map[string][]any)
 
 	columnsToRead := funk.SliceToSet(columnNames)
 
@@ -270,7 +270,7 @@ func (r *s3Reader) ReadFileColumns(ctx context.Context, columnNames []string, fi
 	}
 
 	pr.ReadStop()
-	if err = fr.Close(); err != nil {
+	if err := fr.Close(); err != nil {
 		return nil, err
 	}
 
@@ -332,7 +332,7 @@ func (r *s3Reader) listFiles(ctx context.Context, prefix string) ([]string, erro
 	return files, nil
 }
 
-func (r *s3Reader) decode(input interface{}, output interface{}) error {
+func (r *s3Reader) decode(input any, output any) error {
 	decoderConfig := &mapstructure.DecoderConfig{
 		Metadata:         nil,
 		Result:           output,
@@ -356,8 +356,8 @@ func (r *s3Reader) decode(input interface{}, output interface{}) error {
 	return nil
 }
 
-func (r *s3Reader) decodeTimeMillisHook() interface{} {
-	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+func (r *s3Reader) decodeTimeMillisHook() any {
+	return func(f reflect.Type, t reflect.Type, data any) (any, error) {
 		if f.Kind() != reflect.String || t != reflect.TypeOf(time.Time{}) {
 			return data, nil
 		}

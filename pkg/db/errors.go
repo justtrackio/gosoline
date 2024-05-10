@@ -22,7 +22,7 @@ func (e *DuplicateEntryError) Is(err error) bool {
 	return ok
 }
 
-func (e *DuplicateEntryError) As(target interface{}) bool {
+func (e *DuplicateEntryError) As(target any) bool {
 	targetErr, ok := target.(*DuplicateEntryError)
 
 	if ok {
