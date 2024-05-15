@@ -119,6 +119,7 @@ func (s *metadataRepositoryTestSuite) mockRegisterClientPutItem(err error) {
 func (s *metadataRepositoryTestSuite) mockRegisterClientQuery(resultCount int, err error) {
 	qb := ddbMocks.NewQueryBuilder(s.T())
 	qb.EXPECT().WithHash(s.clientNamespace).Return(qb).Once()
+	qb.EXPECT().WithConsistentRead(true).Return(qb).Once()
 
 	s.repo.EXPECT().QueryBuilder().Return(qb).Once()
 	s.repo.EXPECT().Query(s.ctx, qb, &[]kinesis.ClientRecord{}).Run(func(ctx context.Context, qb ddb.QueryBuilder, result interface{}) {
