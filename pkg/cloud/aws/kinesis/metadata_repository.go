@@ -177,7 +177,7 @@ func (m *metadataRepository) RegisterClient(ctx context.Context) (clientIndex in
 		return 0, 0, fmt.Errorf("failed to register client: %w", err)
 	}
 
-	qb := m.repo.QueryBuilder().WithHash(namespace)
+	qb := m.repo.QueryBuilder().WithHash(namespace).WithConsistentRead(true)
 	clients := make([]ClientRecord, 0)
 	if _, err = m.repo.Query(ctx, qb, &clients); err != nil {
 		return 0, 0, fmt.Errorf("failed to list clients: %w", err)
