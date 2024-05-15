@@ -40,13 +40,13 @@ type publisher struct {
 	settings *PublisherSettings
 }
 
-func NewPublisher(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*publisher, error) {
+func NewPublisher(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Publisher, error) {
 	settings := readPublisherSetting(config, name)
 
 	return NewPublisherWithSettings(ctx, config, logger, settings)
 }
 
-func NewPublisherWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, settings *PublisherSettings) (*publisher, error) {
+func NewPublisherWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, settings *PublisherSettings) (Publisher, error) {
 	var err error
 	var producer stream.Producer
 
@@ -57,7 +57,7 @@ func NewPublisherWithSettings(ctx context.Context, config cfg.Config, logger log
 	return NewPublisherWithInterfaces(logger, producer, settings), nil
 }
 
-func NewPublisherWithInterfaces(logger log.Logger, producer stream.Producer, settings *PublisherSettings) *publisher {
+func NewPublisherWithInterfaces(logger log.Logger, producer stream.Producer, settings *PublisherSettings) Publisher {
 	return &publisher{
 		logger:   logger,
 		producer: producer,
