@@ -77,11 +77,14 @@ func NewRecordingConsoleLogger(options ...LoggerOption) (RecordingLogger, error)
 	}
 
 	if settings.RecordLogs {
-		logger.Option(log.WithHandlers(handlerInMemoryWriter{
+		err = logger.Option(log.WithHandlers(handlerInMemoryWriter{
 			level:   log.LevelPriority(settings.Level),
 			records: recorder.records,
 			Uuid:    uuid.New(),
 		}))
+		if err != nil {
+			return nil, fmt.Errorf("adding log recording handler to logger: %w", err)
+		}
 	}
 
 	return recorder, nil
