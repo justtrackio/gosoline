@@ -31,6 +31,8 @@ type container struct {
 	lock  conc.KeyLock
 }
 
+// WithContainer injects a thread safe pointer backed container into the provided context.
+// This container is then addressable by [Provide] and [Get].
 func WithContainer(ctx context.Context) context.Context {
 	return context.WithValue(ctx, containerKey, &container{
 		items: sync.Map{},
@@ -38,6 +40,13 @@ func WithContainer(ctx context.Context) context.Context {
 	})
 }
 
+// Provide retrieves the value behind key from the container which was injected into ctx by
+// [WithContainer]. If key is not present in the container the factory will create a new value and
+// store it in the container.
+// This value is then accessible from all other points in a program which have access to the context
+// containing the container.
+// If no new value should be created when none is found for key, use [Get].
+// Returns [ErrNoApplicationContainerFound] when no container is present in ctx.
 func Provide[T any](ctx context.Context, key any, factory func() (T, error)) (T, error) {
 	var ok bool
 	var err error
@@ -65,6 +74,11 @@ func Provide[T any](ctx context.Context, key any, factory func() (T, error)) (T,
 	return val.(T), nil
 }
 
+// Get retrieves the value behind key from the container which was injected into ctx by
+// [WithContainer].
+// If a new value should be created when none is found for key, use [Provide].
+// Returns [ErrNoItemFound] if key is not present in the container.
+// Returns [ErrNoApplicationContainerFound] when no container is present in ctx.
 func Get[T any](ctx context.Context, key any) (T, error) {
 	var ok bool
 	var contI, val any
