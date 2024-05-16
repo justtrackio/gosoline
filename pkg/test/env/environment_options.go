@@ -71,6 +71,15 @@ func WithLoggerLevel(level string) Option {
 	}
 }
 
+func WithLogRecording() Option {
+	return func(env *Environment) {
+		env.addLoggerOption(func(settings *LoggerSettings) error {
+			settings.RecordLogs = true
+			return nil
+		})
+	}
+}
+
 func WithoutAutoDetectedComponents(components ...string) Option {
 	return func(env *Environment) {
 		env.addConfigOption(func(config cfg.GosoConf) error {

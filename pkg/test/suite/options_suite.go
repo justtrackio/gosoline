@@ -128,6 +128,12 @@ func WithLogLevel(level string) Option {
 	}
 }
 
+func WithLogRecording() Option {
+	return func(s *suiteOptions) {
+		s.addEnvOption(env.WithLogRecording())
+	}
+}
+
 func WithIpReadFromMemory(name string, records map[string]ipread.MemoryRecord) Option {
 	provider := ipread.ProvideMemoryProvider(name)
 
