@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 type (
@@ -44,7 +44,6 @@ type (
 		level   int
 		mutex   *sync.RWMutex
 		records *LogRecords
-		uuid.Uuid
 	}
 )
 
@@ -98,9 +97,7 @@ func (r recordingLogger) Records() []LogRecord {
 	defer r.mutex.RUnlock()
 
 	records := make([]LogRecord, 0, len(*r.records))
-	for _, record := range *r.records {
-		records = append(records, record)
-	}
+	copy(records, *r.records)
 
 	return records
 }
@@ -130,13 +127,5 @@ func (h handlerInMemoryWriter) Log(timestamp time.Time, level int, msg string, a
 }
 
 func (logs LogRecords) Filter(condition func(LogRecord) bool) LogRecords {
-	out := make(LogRecords, 0)
-
-	for _, log := range logs {
-		if condition(log) {
-			out = append(out, log)
-		}
-	}
-
-	return out
+	return funk.Filter(logs, condition)
 }
