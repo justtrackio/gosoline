@@ -3,11 +3,11 @@ package env
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
@@ -24,7 +24,8 @@ type (
 
 	recordingLogger struct {
 		log.GosoLogger
-		records *mapx.MapX
+		mutex   *sync.RWMutex
+		records *LogRecords
 	}
 
 	LogRecords []LogRecord
@@ -41,7 +42,8 @@ type (
 
 	handlerInMemoryWriter struct {
 		level   int
-		records *mapx.MapX
+		mutex   *sync.RWMutex
+		records *LogRecords
 		uuid.Uuid
 	}
 )
@@ -73,14 +75,15 @@ func NewRecordingConsoleLogger(options ...LoggerOption) (RecordingLogger, error)
 
 	recorder := recordingLogger{
 		GosoLogger: logger,
-		records:    mapx.NewMapX(),
+		records:    &LogRecords{},
+		mutex:      &sync.RWMutex{},
 	}
 
 	if settings.RecordLogs {
 		err = logger.Option(log.WithHandlers(handlerInMemoryWriter{
 			level:   log.LevelPriority(settings.Level),
 			records: recorder.records,
-			Uuid:    uuid.New(),
+			mutex:   recorder.mutex,
 		}))
 		if err != nil {
 			return nil, fmt.Errorf("adding log recording handler to logger: %w", err)
@@ -91,11 +94,12 @@ func NewRecordingConsoleLogger(options ...LoggerOption) (RecordingLogger, error)
 }
 
 func (r recordingLogger) Records() []LogRecord {
-	items := r.records.Msi()
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 
-	records := make([]LogRecord, 0, len(items))
-	for _, record := range items {
-		records = append(records, record.(LogRecord))
+	records := make([]LogRecord, 0, len(*r.records))
+	for _, record := range *r.records {
+		records = append(records, record)
 	}
 
 	return records
@@ -110,7 +114,10 @@ func (h handlerInMemoryWriter) Level() int {
 }
 
 func (h handlerInMemoryWriter) Log(timestamp time.Time, level int, msg string, args []interface{}, err error, data log.Data) error {
-	h.records.Set(h.NewV4(), LogRecord{
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	*h.records = append(*h.records, LogRecord{
 		Timestamp:    timestamp,
 		Data:         data,
 		Level:        level,
