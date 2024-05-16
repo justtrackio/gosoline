@@ -27,7 +27,7 @@ type Environment struct {
 	t             *testing.T
 	ctx           context.Context
 	config        cfg.GosoConf
-	logger        log.GosoLogger
+	logger        RecordingLogger
 	filesystem    *filesystem
 	fixtureLoader fixtures.FixtureLoader
 	runner        *containerRunner
@@ -96,7 +96,7 @@ func (e *Environment) init(options ...Option) error {
 	start := time.Now()
 
 	var err error
-	var logger log.GosoLogger
+	var logger RecordingLogger
 	var cfgPostProcessors map[string]int
 
 	defaults := make(map[string]interface{})
@@ -120,7 +120,7 @@ func (e *Environment) init(options ...Option) error {
 		return fmt.Errorf("can not apply post processor on config: %w", err)
 	}
 
-	if logger, err = NewConsoleLogger(e.loggerOptions...); err != nil {
+	if logger, err = NewRecordingConsoleLogger(e.loggerOptions...); err != nil {
 		return fmt.Errorf("can apply logger option: %w", err)
 	}
 
@@ -133,8 +133,8 @@ func (e *Environment) init(options ...Option) error {
 	}
 
 	e.ctx = appctx.WithContainer(context.Background())
-	e.config = config
 	e.logger = logger
+	e.config = config
 	e.filesystem = newFilesystem(e.t)
 	e.fixtureLoader = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger)
 
@@ -167,6 +167,10 @@ func (e *Environment) Config() cfg.GosoConf {
 
 func (e *Environment) Logger() log.GosoLogger {
 	return e.logger
+}
+
+func (e *Environment) Logs() LogRecords {
+	return e.logger.Records()
 }
 
 func (e *Environment) Clock() clock.Clock {
