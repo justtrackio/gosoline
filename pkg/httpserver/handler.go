@@ -161,55 +161,135 @@ type HandlerWithStream interface {
 	Handle(ginContext *gin.Context, requestContext context.Context, request *Request) (err error)
 }
 
+// CreateHandler creates a gin.HandlerFunc that handles the request without data binding and without passing the body to the handler
 func CreateHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 	return handleWithoutInput(handler, defaultErrorHandler)
 }
 
+// CreateJsonHandler creates a gin.HandlerFunc that handles the request with json binding
+// Example input struct from handler.GetInput():
+//
+//	type example struct{
+//	  A string `json:"a" binding:"required"`
+//	}
 func CreateJsonHandler(handler HandlerWithInput) gin.HandlerFunc {
-	return handleWithInput(handler, binding.JSON, defaultErrorHandler)
+	return handleWithBindingInput(handler, binding.JSON, defaultErrorHandler)
 }
 
+// CreateProtobufHandler creates a gin.HandlerFunc that handles the request with protobuf binding
+// Example input struct from handler.GetInput():
+//
+//	type example struct{ // <- this struct must implement ProtobufDecodable
+//	  A string `json:"a" binding:"required"`
+//	}
 func CreateProtobufHandler(handler HandlerWithInput) gin.HandlerFunc {
-	return handleWithInput(handler, protobufBinding, defaultErrorHandler)
+	return handleWithBindingInput(handler, protobufBinding, defaultErrorHandler)
 }
 
+// CreateMultiPartFormHandler creates a gin.HandlerFunc that handles the request with Form multipart data binding
+// Example input struct from handler.GetInput():
+//
+//	type example struct{
+//	  File *multipart.FileHeader `form:"file" binding:"required"`
+//	}
 func CreateMultiPartFormHandler(handler HandlerWithInput) gin.HandlerFunc {
 	return handleWithMultiPartFormInput(handler, defaultErrorHandler)
 }
 
+// CreateMultipleBindingsHandler creates a gin.HandlerFunc that handles the request with the bindings the input struct specifies
+// Example input struct from handler.GetInput():
+//
+//	type example struct{
+//	  A string `json:"a" binding:"required"`
+//	  B string `form:"b" binding:"required"`
+//	}
 func CreateMultipleBindingsHandler(handler HandlerWithMultipleBindings) gin.HandlerFunc {
 	return handleWithMultipleBindings(handler, defaultErrorHandler)
 }
 
+// CreateRawHandler creates a gin.HandlerFunc that handles the request without input binding and passes the body to the handler as []byte
 func CreateRawHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 	return handleRaw(handler, defaultErrorHandler)
 }
 
+// CreateReaderHandler creates a gin.HandlerFunc that handles the request without input binding and passes the body to the handler as io.ReadCloser
 func CreateReaderHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 	return handleReader(handler, defaultErrorHandler)
 }
 
+// CreateQueryHandler creates a gin.HandlerFunc that handles the request and uses the query parameters as input binding
+// Example input struct from handler.GetInput():
+//
+//	type example struct{
+//	  A string `query:"a" binding:"required"`
+//	}
 func CreateQueryHandler(handler HandlerWithInput) gin.HandlerFunc {
-	return handleWithInput(handler, binding.Query, defaultErrorHandler)
+	return handleWithBindingInput(handler, binding.Query, defaultErrorHandler)
 }
 
+// CreateUriHandler creates a gin.HandlerFunc that handles the request and uses the uri parameters as input binding
+// Example input struct from handler.GetInput():
+//
+//	type example struct{
+//	  A string `uri:"a" binding:"required"`
+//	}
+func CreateUriHandler(handler HandlerWithInput) gin.HandlerFunc {
+	return handleWithBindingUriInput(handler, defaultErrorHandler)
+}
+
+// CreateSseHandler creates a gin.HandlerFunc that handles the stream request and uses the query parameters as input binding
+// Example input struct from handler.GetInput():
+//
+//	type example struct{
+//	  A string `query:"a" binding:"required"`
+//	}
 func CreateSseHandler(handler HandlerWithStream) gin.HandlerFunc {
 	return handleWithStream(handler, binding.Query, defaultErrorHandler)
 }
 
+// CreateStreamHandler creates a gin.HandlerFunc that handles the stream request and uses the json body as input binding
+// Example input struct from handler.GetInput():
+//
+//	type example struct{
+//	  A string `json:"a" binding:"required"`
+//	}
 func CreateStreamHandler(handler HandlerWithStream) gin.HandlerFunc {
 	return handleWithStream(handler, binding.JSON, defaultErrorHandler)
 }
 
+// CreateDownloadHandler creates a gin.HandlerFunc that handles the stream request and uses the query parameters as input binding
+// Example input struct from handler.GetInput():
+//
+//	type example struct{
+//	  A string `query:"a" binding:"required"`
+//	}
 func CreateDownloadHandler(handler HandlerWithStream) gin.HandlerFunc {
 	return handleWithStream(handler, binding.Query, defaultErrorHandler)
 }
 
-func handleWithInput(handler HandlerWithInput, binding binding.Binding, errHandler ErrorHandler) gin.HandlerFunc {
+func handleWithBindingInput(handler HandlerWithInput, binding binding.Binding, errHandler ErrorHandler) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
 		input := handler.GetInput()
 
 		err := binding.Bind(ginCtx.Request, input)
+		if err != nil {
+			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+				Err:  err,
+				Type: gin.ErrorTypeBind,
+			})
+
+			return
+		}
+
+		handle(ginCtx, handler, input, errHandler)
+	}
+}
+
+func handleWithBindingUriInput(handler HandlerWithInput, errHandler ErrorHandler) gin.HandlerFunc {
+	return func(ginCtx *gin.Context) {
+		input := handler.GetInput()
+
+		err := ginCtx.ShouldBindUri(input)
 		if err != nil {
 			handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
 				Err:  err,
@@ -283,7 +363,6 @@ func handleWithStream(handler HandlerWithStream, binding binding.Binding, errHan
 		}
 
 		err = handler.Handle(ginCtx, reqCtx, request)
-
 		if err != nil {
 			handleError(ginCtx, errHandler, http.StatusInternalServerError, gin.Error{
 				Err:  err,

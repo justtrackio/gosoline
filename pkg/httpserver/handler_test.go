@@ -204,3 +204,25 @@ func TestCookieHandler(t *testing.T) {
 	assert.Equal(t, "", response.Header().Get("Location"))
 	assert.JSONEq(t, `{"cookie1":"value3","cookie2":"value2"}`, response.Body.String())
 }
+
+type UriInput struct {
+	U string `uri:"u" binding:"required"`
+}
+
+type UriHandler struct{}
+
+func (u UriHandler) GetInput() interface{} {
+	return &UriInput{}
+}
+
+func (u UriHandler) Handle(_ context.Context, req *httpserver.Request) (*httpserver.Response, error) {
+	return httpserver.NewResponse(req.Body.(*UriInput).U, "text/plain", 200, http.Header{}), nil
+}
+
+func TestUriHandler(t *testing.T) {
+	handler := httpserver.CreateUriHandler(UriHandler{})
+	response := httpserver.HttpTest("GET", "/:u", "/uriValue", "", handler)
+
+	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Equal(t, "uriValue", response.Body.String())
+}
