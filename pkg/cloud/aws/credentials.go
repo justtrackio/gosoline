@@ -25,7 +25,7 @@ func GetCredentialsProvider(ctx context.Context, config cfg.Config, settings Cli
 		return credentials.NewStaticCredentialsProvider(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken), nil
 	}
 
-	return nil, nil
+	return GetDefaultProvider(), nil
 }
 
 func GetAssumeRoleCredentialsProvider(ctx context.Context, roleArn string) (aws.CredentialsProvider, error) {
