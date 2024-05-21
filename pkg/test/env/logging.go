@@ -96,7 +96,7 @@ func (r recordingLogger) Records() []LogRecord {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
-	records := make([]LogRecord, 0, len(*r.records))
+	records := make([]LogRecord, len(*r.records))
 	copy(records, *r.records)
 
 	return records
