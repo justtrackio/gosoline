@@ -19,7 +19,7 @@ type serviceTestSuite struct {
 	suite.Suite
 	ctx context.Context
 
-	logger *logMocks.Logger
+	logger *logMocks.LoggerMock
 	store  *kvStoreMock.KvStore[float64]
 	clock  clock.FakeClock
 
