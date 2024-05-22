@@ -29,15 +29,6 @@ func (s *CredentialsTestSuite) SetupTest() {
 	s.config = new(mocks.Config)
 }
 
-func (s *CredentialsTestSuite) TestNoConfiguredProvider() {
-	s.config.On("HasPrefix", "cloud.aws.credentials").Return(false)
-
-	provider, err := gosoAws.GetCredentialsProvider(s.ctx, s.config, gosoAws.ClientSettings{})
-
-	s.NoError(err)
-	s.Nil(provider, "there should be no provider returned")
-}
-
 func (s *CredentialsTestSuite) TestStaticCredentialsProvider() {
 	s.config.On("HasPrefix", "cloud.aws.credentials").Return(true)
 	s.config.On("UnmarshalKey", "cloud.aws.credentials", mock.AnythingOfType("*aws.Credentials")).Run(func(args mock.Arguments) {

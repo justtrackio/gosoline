@@ -4,6 +4,8 @@
 package aws
 
 import (
+	"github.com/aws/aws-sdk-go-v2/aws"
+	credentialsv2 "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 )
 
@@ -24,4 +26,8 @@ func GetDefaultCredentials() *credentials.Credentials {
 			SessionToken:    DefaultToken,
 		}},
 	})
+}
+
+func GetDefaultProvider() aws.CredentialsProvider {
+	return credentialsv2.NewStaticCredentialsProvider(DefaultAccessKeyID, DefaultSecretAccessKey, DefaultToken)
 }
