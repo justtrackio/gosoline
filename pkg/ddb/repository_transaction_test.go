@@ -22,7 +22,7 @@ type RepositoryTransactionTestSuite struct {
 
 	ctx        context.Context
 	span       *tracingMocks.Span
-	logger     *logMocks.Logger
+	logger     *logMocks.LoggerMock
 	client     *dynamodbMocks.Client
 	tracer     *tracingMocks.Tracer
 	repository ddb.TransactionRepository

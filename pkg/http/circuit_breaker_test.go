@@ -21,7 +21,7 @@ type circuitBreakerTestSuite struct {
 	method string
 
 	ctx        context.Context
-	logger     *loggerMocks.Logger
+	logger     *loggerMocks.LoggerMock
 	clock      clock.FakeClock
 	baseClient *httpMocks.Client
 
