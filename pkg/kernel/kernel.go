@@ -102,11 +102,18 @@ func (k *kernel) Run() {
 
 	sig := make(chan os.Signal, 2)
 	signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
+	defer func() {
+		// stop receiving signals on that channel and close it to avoid leaking a go routine
+		signal.Stop(sig)
+		close(sig)
+	}()
 
 	go func() {
-		receivedSignal := <-sig
-		reason := fmt.Sprintf("signal %s", receivedSignal.String())
-		k.Stop(reason)
+		receivedSignal, ok := <-sig
+		if ok {
+			reason := fmt.Sprintf("signal %s", receivedSignal.String())
+			k.Stop(reason)
+		}
 	}()
 
 	runHandler := func() {
