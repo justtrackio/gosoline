@@ -50,7 +50,7 @@ type ProtobufHandler struct{}
 
 //go:generate protoc --go_out=.. handler_test_input.proto
 type ProtobufInput struct {
-	Text string `json:"text" binding:"required"`
+	Text string `binding:"required"`
 }
 
 func (p *ProtobufInput) EmptyMessage() proto.Message {
@@ -66,7 +66,7 @@ func (p *ProtobufInput) FromMessage(message proto.Message) error {
 
 //go:generate protoc --go_out=.. handler_test_output.proto
 type ProtobufOutput struct {
-	Text string `json:"text" binding:"required"`
+	Text string
 }
 
 func (p *ProtobufOutput) ToMessage() (proto.Message, error) {

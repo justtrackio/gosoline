@@ -125,24 +125,28 @@ func (s *KernelTestSuite) TestHangingModule() {
 
 func timeout(t *testing.T, d time.Duration, f func(t *testing.T)) {
 	done := make(chan struct{})
+	errChan := make(chan error)
 	cfn := coffin.New()
 	cfn.Go(func() error {
-		defer close(done)
-		f(t)
+		cfn.Go(func() error {
+			defer close(done)
+			f(t)
 
-		return nil
-	})
-	errChan := make(chan error)
-	cfn.Go(func() error {
-		timer := time.NewTimer(d)
-		defer timer.Stop()
-		defer close(errChan)
+			return nil
+		})
+		cfn.Go(func() error {
+			timer := time.NewTimer(d)
+			defer timer.Stop()
+			defer close(errChan)
 
-		select {
-		case <-timer.C:
-			errChan <- fmt.Errorf("test timed out after %v", d)
-		case <-done:
-		}
+			select {
+			case <-timer.C:
+				errChan <- fmt.Errorf("test timed out after %v", d)
+			case <-done:
+			}
+
+			return nil
+		})
 
 		return nil
 	})

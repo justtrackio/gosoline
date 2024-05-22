@@ -80,7 +80,9 @@ func (s *stage) run(k *kernel) error {
 				resultErr := k.runModule(s.ctx, name, ms)
 
 				if resultErr != nil {
-					k.Stop(fmt.Sprintf("module %s returned with an error", name))
+					// pass the error (and stage) to the internal stop function, so we raise the correct error in the end
+					// (see also the note in stage.stopWait(error))
+					k.stop(fmt.Sprintf("module %s returned with an error", name), ms.config.stage, resultErr)
 				}
 
 				return resultErr
@@ -168,8 +170,15 @@ func (s *stage) waitUntilHealthy() error {
 	}
 }
 
-func (s *stage) stopWait() {
-	s.cfn.Kill(ErrKernelStopping)
+func (s *stage) stopWait(killErr error) {
+	// if the stage already failed, we had a race condition in the past. On the one hand, the error wasn't propagated to
+	// the coffin/tomb yet, on the other hand, we had spawned a go routine to stop the kernel (which would eventually call
+	// this method here). Thus, we now pass the error for the stage which caused us to terminate the stage/kernel and
+	// kill the coffin with this error (so we still have the race, but both results are the same)
+	if killErr == nil {
+		killErr = ErrKernelStopping
+	}
+	s.cfn.Kill(killErr)
 	s.err = s.cfn.Wait()
 
 	if s.err != nil && !errors.Is(s.err, ErrKernelStopping) {

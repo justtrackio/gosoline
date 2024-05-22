@@ -104,8 +104,8 @@ func (k *kernel) Run() {
 	signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
 
 	go func() {
-		signal := <-sig
-		reason := fmt.Sprintf("signal %s", signal.String())
+		receivedSignal := <-sig
+		reason := fmt.Sprintf("signal %s", receivedSignal.String())
 		k.Stop(reason)
 	}()
 
@@ -143,6 +143,10 @@ func (k *kernel) Run() {
 }
 
 func (k *kernel) Stop(reason string) {
+	k.stop(reason, 0, nil)
+}
+
+func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 	k.stopOnce.Do(func() {
 		go func() {
 			k.logger.Info("stopping kernel due to: %s", reason)
@@ -151,7 +155,13 @@ func (k *kernel) Stop(reason string) {
 			for i := len(indices) - 1; i >= 0; i-- {
 				stageIndex := indices[i]
 				k.logger.Info("stopping stage %d", stageIndex)
-				k.stages[stageIndex].stopWait()
+
+				waitErr := moduleErr
+				if stageIndex != moduleStage {
+					waitErr = nil
+				}
+				k.stages[stageIndex].stopWait(waitErr)
+
 				k.logger.Info("stopped stage %d", stageIndex)
 			}
 		}()
