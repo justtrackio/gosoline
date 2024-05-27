@@ -21,7 +21,7 @@ func main() {
 		def := &httpserver.Definitions{}
 
 		var err error
-		var handler crud.Handler
+		var handler crud.Handler[CreateInput, UpdateInput, *Todo, uint, *Todo]
 
 		// Created a new CRUD handler.
 		if handler, err = NewTodoCrudHandler(ctx, config, logger); err != nil {

@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"golang.org/x/exp/slices"
-
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"golang.org/x/exp/slices"
 )
 
 const (

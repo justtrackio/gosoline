@@ -6,7 +6,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
 	"github.com/justtrackio/gosoline/pkg/log"
-
 	"github.com/segmentio/kafka-go"
 )
 

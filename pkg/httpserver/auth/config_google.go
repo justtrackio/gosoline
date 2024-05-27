@@ -7,12 +7,11 @@ import (
 	"regexp"
 	"sync"
 
-	"golang.org/x/exp/slices"
-
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/slices"
 	"google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 )

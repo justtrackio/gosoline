@@ -3,23 +3,24 @@ package validation
 import (
 	"context"
 
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type OperationValidatingRepository struct {
-	db_repo.Repository
+type OperationValidatingRepository[K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] struct {
+	dbRepo.Repository[K, M]
 	validator Validator
 }
 
-func NewOperationValidatingRepository(validator Validator, repo db_repo.Repository) db_repo.Repository {
-	return &OperationValidatingRepository{
+func NewOperationValidatingRepository[K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](validator Validator, repo dbRepo.Repository[K, M]) dbRepo.Repository[K, M] {
+	return &OperationValidatingRepository[K, M]{
 		Repository: repo,
 		validator:  validator,
 	}
 }
 
-func (r OperationValidatingRepository) Create(ctx context.Context, value db_repo.ModelBased) error {
-	err := r.validator.IsValid(ctx, value, db_repo.Create)
+func (r OperationValidatingRepository[K, M]) Create(ctx context.Context, value M) error {
+	err := r.validator.IsValid(ctx, value, dbRepo.Create)
 	if err != nil {
 		return err
 	}
@@ -27,8 +28,8 @@ func (r OperationValidatingRepository) Create(ctx context.Context, value db_repo
 	return r.Repository.Create(ctx, value)
 }
 
-func (r OperationValidatingRepository) Update(ctx context.Context, value db_repo.ModelBased) error {
-	err := r.validator.IsValid(ctx, value, db_repo.Update)
+func (r OperationValidatingRepository[K, M]) Update(ctx context.Context, value M) error {
+	err := r.validator.IsValid(ctx, value, dbRepo.Update)
 	if err != nil {
 		return err
 	}
@@ -36,8 +37,8 @@ func (r OperationValidatingRepository) Update(ctx context.Context, value db_repo
 	return r.Repository.Update(ctx, value)
 }
 
-func (r OperationValidatingRepository) Delete(ctx context.Context, value db_repo.ModelBased) error {
-	err := r.validator.IsValid(ctx, value, db_repo.Delete)
+func (r OperationValidatingRepository[K, M]) Delete(ctx context.Context, value M) error {
+	err := r.validator.IsValid(ctx, value, dbRepo.Delete)
 	if err != nil {
 		return err
 	}
