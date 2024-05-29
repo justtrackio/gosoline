@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -34,7 +33,7 @@ func (s *Share) GetPolicyId() string {
 }
 
 type shareManager struct {
-	orm      *gorm.DB
+	orm      db_repo.Remote
 	logger   log.Logger
 	settings Settings
 }
@@ -45,20 +44,32 @@ func ProvideShareManager(ctx context.Context, config cfg.Config, logger log.Logg
 	})
 }
 
+func ProvideShareManagerFactory(ctx context.Context, config cfg.Config, logger log.Logger) (func(db_repo.Remote) *shareManager, error) {
+	return appctx.Provide(ctx, shareManagerAppctxKey("shareManagerFactory"), func() (func(db_repo.Remote) *shareManager, error) {
+		return NewShareManagerFactory(config, logger), nil
+	})
+}
+
 func NewShareManager(config cfg.Config, logger log.Logger) (*shareManager, error) {
 	orm, err := db_repo.NewOrm(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
 
+	return NewShareManagerFactory(config, logger)(orm), nil
+}
+
+func NewShareManagerFactory(config cfg.Config, logger log.Logger) func(db_repo.Remote) *shareManager {
 	settings := Settings{}
 	config.UnmarshalKey("share", &settings)
 
-	return &shareManager{
-		logger:   logger.WithChannel("share_manager"),
-		orm:      orm,
-		settings: settings,
-	}, nil
+	return func(remote db_repo.Remote) *shareManager {
+		return &shareManager{
+			logger:   logger.WithChannel("share_manager"),
+			orm:      remote,
+			settings: settings,
+		}
+	}
 }
 
 func (m *shareManager) SetupShareTable() error {

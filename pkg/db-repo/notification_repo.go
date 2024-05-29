@@ -23,18 +23,22 @@ func NewNotifyingRepository(logger log.Logger, base Repository) *notifyingReposi
 	}
 }
 
-func (r *notifyingRepository) AddNotifierAll(c Notifier) {
-	for _, t := range NotificationTypes {
-		r.AddNotifier(t, c)
+func NewNotifyingRepositoryFactory(logger log.Logger, notifiers NotificationMap) func(Repository) Repository {
+	return func(base Repository) Repository {
+		return &notifyingRepository{
+			Repository: base,
+			logger:     logger,
+			notifiers:  notifiers,
+		}
 	}
 }
 
-func (r *notifyingRepository) AddNotifier(t string, c Notifier) {
-	if _, ok := r.notifiers[t]; !ok {
-		r.notifiers[t] = make([]Notifier, 0)
-	}
+func (r *notifyingRepository) AddNotifierAll(c Notifier) {
+	r.notifiers.AddNotifierAll(c)
+}
 
-	r.notifiers[t] = append(r.notifiers[t], c)
+func (r *notifyingRepository) AddNotifier(t string, c Notifier) {
+	r.notifiers.AddNotifier(t, c)
 }
 
 func (r *notifyingRepository) Create(ctx context.Context, value ModelBased) error {

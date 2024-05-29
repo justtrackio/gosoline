@@ -6,9 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/application"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -218,7 +217,7 @@ type DbSubscriberAssertion func(t *testing.T, fetcher *DbSubscriberFetcher)
 
 type DbSubscriberFetcher struct {
 	t    *testing.T
-	orm  *gorm.DB
+	orm  db_repo.Remote
 	name string
 }
 

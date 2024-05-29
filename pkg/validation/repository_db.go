@@ -3,7 +3,7 @@ package validation
 import (
 	"context"
 
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 )
 
 type Repository struct {
@@ -15,6 +15,15 @@ func NewRepository(validator Validator, repo db_repo.Repository) db_repo.Reposit
 	return &Repository{
 		Repository: repo,
 		validator:  validator,
+	}
+}
+
+func NewRepositoryFactory(validator Validator) func(db_repo.Repository) db_repo.Repository {
+	return func(repo db_repo.Repository) db_repo.Repository {
+		return &Repository{
+			Repository: repo,
+			validator:  validator,
+		}
 	}
 }
 

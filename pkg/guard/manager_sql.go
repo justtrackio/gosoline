@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/selm0/ladon"
 )
@@ -17,10 +18,12 @@ const (
 	tableName = "guard_policies"
 )
 
-type SqlManager struct {
-	logger   log.Logger
-	dbClient db.Client
-}
+type (
+	SqlManager struct {
+		logger   log.Logger
+		dbClient db.ClientBase
+	}
+)
 
 func NewSqlManager(config cfg.Config, logger log.Logger) (*SqlManager, error) {
 	dbClient, err := db.NewClient(config, logger, "default")
@@ -31,7 +34,13 @@ func NewSqlManager(config cfg.Config, logger log.Logger) (*SqlManager, error) {
 	return NewSqlManagerWithInterfaces(logger, dbClient), nil
 }
 
-func NewSqlManagerWithInterfaces(logger log.Logger, dbClient db.Client) *SqlManager {
+func NewSqlManagerFactory(logger log.Logger) func(db_repo.Remote) *SqlManager {
+	return func(remote db_repo.Remote) *SqlManager {
+		return NewSqlManagerWithInterfaces(logger, db_repo.RemoteToClientBase(remote, logger))
+	}
+}
+
+func NewSqlManagerWithInterfaces(logger log.Logger, dbClient db.ClientBase) *SqlManager {
 	return &SqlManager{
 		logger:   logger,
 		dbClient: dbClient,
@@ -59,7 +68,6 @@ func (m SqlManager) Create(ctx context.Context, pol ladon.Policy) error {
 	}
 
 	_, err = m.dbClient.Exec(ctx, sql, args...)
-
 	if err != nil {
 		return err
 	}
@@ -116,7 +124,6 @@ func (m SqlManager) Delete(ctx context.Context, id string) error {
 	}
 
 	_, err = m.dbClient.Exec(ctx, sql, args...)
-
 	if err != nil {
 		m.logger.Error("can not delete from %s: %w", tableName, err)
 		return err

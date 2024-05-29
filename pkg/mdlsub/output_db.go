@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -33,7 +32,7 @@ func outputDbFactory(_ context.Context, config cfg.Config, logger log.Logger, _ 
 
 type OutputDb struct {
 	logger log.Logger
-	orm    *gorm.DB
+	orm    db_repo.Remote
 }
 
 func NewOutputDb(config cfg.Config, logger log.Logger) (*OutputDb, error) {
@@ -42,10 +41,16 @@ func NewOutputDb(config cfg.Config, logger log.Logger) (*OutputDb, error) {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
 
-	return &OutputDb{
-		logger: logger,
-		orm:    orm,
-	}, nil
+	return NewOutputDbFactory(logger)(orm), nil
+}
+
+func NewOutputDbFactory(logger log.Logger) func(remote db_repo.Remote) *OutputDb {
+	return func(remote db_repo.Remote) *OutputDb {
+		return &OutputDb{
+			logger: logger,
+			orm:    remote,
+		}
+	}
 }
 
 func (p *OutputDb) Persist(_ context.Context, model Model, op string) error {

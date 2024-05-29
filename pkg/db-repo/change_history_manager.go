@@ -20,7 +20,7 @@ type changeHistoryManagerSettings struct {
 }
 
 type ChangeHistoryManager struct {
-	orm      *gorm.DB
+	orm      Remote
 	logger   log.Logger
 	settings *changeHistoryManagerSettings
 	models   []ModelBased
@@ -34,20 +34,32 @@ func ProvideChangeHistoryManager(ctx context.Context, config cfg.Config, logger 
 	})
 }
 
+func ProvideChangeHistoryManagerFactory(ctx context.Context, config cfg.Config, logger log.Logger) (func(Remote) *ChangeHistoryManager, error) {
+	return appctx.Provide(ctx, changeHistoryManagerAppCtxKey(1), func() (func(Remote) *ChangeHistoryManager, error) {
+		return NewChangeHistoryManagerFactory(config, logger), nil
+	})
+}
+
 func NewChangeHistoryManager(config cfg.Config, logger log.Logger) (*ChangeHistoryManager, error) {
 	orm, err := NewOrm(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
 
+	return NewChangeHistoryManagerFactory(config, logger)(orm), nil
+}
+
+func NewChangeHistoryManagerFactory(config cfg.Config, logger log.Logger) func(Remote) *ChangeHistoryManager {
 	settings := &changeHistoryManagerSettings{}
 	config.UnmarshalKey("change_history", settings)
 
-	return &ChangeHistoryManager{
-		logger:   logger.WithChannel("change_history_manager"),
-		orm:      orm,
-		settings: settings,
-	}, nil
+	return func(remote Remote) *ChangeHistoryManager {
+		return &ChangeHistoryManager{
+			logger:   logger.WithChannel("change_history_manager"),
+			orm:      remote,
+			settings: settings,
+		}
+	}
 }
 
 func (c *ChangeHistoryManager) addModels(models ...ModelBased) {
@@ -260,8 +272,8 @@ func (c *ChangeHistoryManager) insertHistoryEntry(originalTable *tableMetadata, 
 	values := "d." + strings.Join(columnNames, ", d.") + ", @change_history_author_id"
 
 	return fmt.Sprintf(`
-		INSERT INTO %s (change_history_action,change_history_revision,change_history_action_at,%s) 
-			SELECT '%s', NULL, NOW(), %s 
+		INSERT INTO %s (change_history_action,change_history_revision,change_history_action_at,%s)
+			SELECT '%s', NULL, NOW(), %s
 			FROM %s AS d`,
 		historyTable.tableNameQuoted,
 		columns,
@@ -272,8 +284,8 @@ func (c *ChangeHistoryManager) insertHistoryEntry(originalTable *tableMetadata, 
 
 func (c *ChangeHistoryManager) incrementRevision(originalTable *tableMetadata, historyTable *tableMetadata) string {
 	return fmt.Sprintf(`
-		BEGIN 
-			SET NEW.change_history_revision = (SELECT IFNULL(MAX(d.change_history_revision), 0) + 1 FROM %s as d WHERE %s); 
+		BEGIN
+			SET NEW.change_history_revision = (SELECT IFNULL(MAX(d.change_history_revision), 0) + 1 FROM %s as d WHERE %s);
 		END`,
 		historyTable.tableNameQuoted,
 		c.primaryKeysMatchCondition(originalTable, "NEW"),
@@ -315,9 +327,10 @@ func (c *ChangeHistoryManager) updateHistoryTable(historyTable *tableMetadata) (
 }
 
 func (c *ChangeHistoryManager) execute(statements []string) error {
+	db := c.orm.CommonDB()
 	for _, statement := range statements {
 		c.logger.Debug(statement)
-		_, err := c.orm.CommonDB().Exec(statement)
+		_, err := db.Exec(statement)
 		if err != nil {
 			c.logger.WithFields(log.Fields{
 				"sql": statement,

@@ -31,6 +31,12 @@ type (
 
 //go:generate mockery --name Client
 type Client interface {
+	ClientBase
+	WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sql.Tx) error) error
+}
+
+//go:generate mockery --name ClientBase
+type ClientBase interface {
 	GetSingleScalarValue(ctx context.Context, query string, args ...interface{}) (int, error)
 	GetResult(ctx context.Context, query string, args ...interface{}) (*Result, error)
 	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
@@ -40,12 +46,32 @@ type Client interface {
 	QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row
 	Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error
-	WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sql.Tx) error) error
 }
 
 type ClientSqlx struct {
+	ClientBaseSqlx
+	db db
+}
+
+type ClientBaseSqlx struct {
 	logger log.Logger
-	db     *sqlx.DB
+	db     dbBase
+}
+
+type db interface {
+	dbBase
+
+	BeginTx(ctx context.Context, ops *sql.TxOptions) (*sql.Tx, error)
+}
+
+type dbBase interface {
+	sqlx.ExecerContext
+	sqlx.PreparerContext
+	sqlx.QueryerContext
+
+	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 }
 
 func NewClient(config cfg.Config, logger log.Logger, name string) (Client, error) {
@@ -66,14 +92,24 @@ func NewClientWithSettings(logger log.Logger, settings Settings) (Client, error)
 	return NewClientWithInterfaces(logger, db), nil
 }
 
-func NewClientWithInterfaces(logger log.Logger, db *sqlx.DB) Client {
+func NewClientWithInterfaces(logger log.Logger, db db) Client {
 	return &ClientSqlx{
+		ClientBaseSqlx: ClientBaseSqlx{
+			logger: logger,
+			db:     db,
+		},
+		db: db,
+	}
+}
+
+func NewClientBaseWithInterfaces(logger log.Logger, db dbBase) ClientBase {
+	return &ClientBaseSqlx{
 		logger: logger,
 		db:     db,
 	}
 }
 
-func (c *ClientSqlx) GetSingleScalarValue(ctx context.Context, query string, args ...interface{}) (int, error) {
+func (c *ClientBaseSqlx) GetSingleScalarValue(ctx context.Context, query string, args ...interface{}) (int, error) {
 	var val sql.NullInt64
 	err := c.Get(ctx, &val, query, args...)
 	if err != nil {
@@ -87,7 +123,7 @@ func (c *ClientSqlx) GetSingleScalarValue(ctx context.Context, query string, arg
 	return int(val.Int64), err
 }
 
-func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...interface{}) (*Result, error) {
+func (c *ClientBaseSqlx) GetResult(ctx context.Context, query string, args ...interface{}) (*Result, error) {
 	out := make(Result, 0, 32)
 	rows, err := c.Query(ctx, query, args...)
 	if err != nil {
@@ -140,39 +176,39 @@ func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...interf
 	return &out, err
 }
 
-func (c *ClientSqlx) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+func (c *ClientBaseSqlx) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.ExecContext(ctx, query, args...)
 }
 
-func (c *ClientSqlx) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
+func (c *ClientBaseSqlx) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
 	return c.db.PrepareContext(ctx, query)
 }
 
-func (c *ClientSqlx) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+func (c *ClientBaseSqlx) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.QueryContext(ctx, query, args...)
 }
 
-func (c *ClientSqlx) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
+func (c *ClientBaseSqlx) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
 	return c.db.QueryRowContext(ctx, query, args...)
 }
 
-func (c *ClientSqlx) Queryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+func (c *ClientBaseSqlx) Queryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.QueryxContext(ctx, query, args...)
 }
 
-func (c *ClientSqlx) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
+func (c *ClientBaseSqlx) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.SelectContext(ctx, dest, query, args...)
 }
 
-func (c *ClientSqlx) Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
+func (c *ClientBaseSqlx) Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.GetContext(ctx, dest, query, args...)

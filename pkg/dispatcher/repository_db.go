@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -16,15 +16,26 @@ type Repository struct {
 }
 
 func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, repo db_repo.Repository) (db_repo.Repository, error) {
+	factory, err := NewRepositoryFactory(ctx, config, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	return factory(repo), nil
+}
+
+func NewRepositoryFactory(ctx context.Context, config cfg.Config, logger log.Logger) (func(db_repo.Repository) db_repo.Repository, error) {
 	disp, err := ProvideDispatcher(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not provide dispatcher: %w", err)
 	}
 
-	return &Repository{
-		Repository: repo,
-		dispatcher: disp,
-		logger:     logger,
+	return func(repo db_repo.Repository) db_repo.Repository {
+		return &Repository{
+			Repository: repo,
+			dispatcher: disp,
+			logger:     logger,
+		}
 	}, nil
 }
 

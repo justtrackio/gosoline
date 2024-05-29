@@ -14,24 +14,22 @@ const (
 	metricNameNotifyFailure = "ModelEventNotifyFailure"
 )
 
-var NotificationTypes = []string{Create, Update, Delete}
-
 type (
 	Publisher interface {
 		Publish(ctx context.Context, typ string, version int, value interface{}, customAttributes ...map[string]string) error
 	}
-	NotificationMap map[string][]Notifier
-	Notifier        interface {
+
+	Notifier interface {
 		Send(ctx context.Context, notificationType string, value ModelBased) error
 	}
-)
 
-type notifier struct {
-	logger  log.Logger
-	metric  metric.Writer
-	modelId mdl.ModelId
-	version int
-}
+	notifier struct {
+		logger  log.Logger
+		metric  metric.Writer
+		modelId mdl.ModelId
+		version int
+	}
+)
 
 func newNotifier(logger log.Logger, modelId mdl.ModelId, version int) notifier {
 	defaults := getDefaultNotifierMetrics(modelId)

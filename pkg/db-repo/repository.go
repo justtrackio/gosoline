@@ -62,7 +62,7 @@ type Repository interface {
 type repository struct {
 	logger   log.Logger
 	tracer   tracing.Tracer
-	orm      *gorm.DB
+	orm      Remote
 	clock    clock.Clock
 	metadata Metadata
 }
@@ -73,15 +73,7 @@ func New(config cfg.Config, logger log.Logger, s Settings) (*repository, error) 
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
 
-	orm, err := NewOrm(config, logger)
-	if err != nil {
-		return nil, fmt.Errorf("can not create orm: %w", err)
-	}
-
-	orm.Callback().
-		Update().
-		After("gorm:update_time_stamp").
-		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
+	orm, err := NewConfiguredOrm(config, logger)
 	clk := clock.Provider
 
 	return NewWithInterfaces(logger, tracer, orm, clk, s.Metadata), nil
@@ -108,7 +100,7 @@ func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings db.Setti
 	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata), nil
 }
 
-func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata) *repository {
+func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm Remote, clock clock.Clock, metadata Metadata) *repository {
 	return &repository{
 		logger:   logger,
 		tracer:   tracer,
@@ -118,8 +110,35 @@ func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, c
 	}
 }
 
-func (r *repository) GetOrm() *gorm.DB {
-	return r.orm
+func NewConfiguredOrm(config cfg.Config, logger log.Logger) (*gorm.DB, error) {
+	orm, err := NewOrm(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create orm: %w", err)
+	}
+
+	orm.Callback().
+		Update().
+		After("gorm:update_time_stamp").
+		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
+
+	return orm, nil
+}
+
+func NewFactory(config cfg.Config, logger log.Logger, s Settings) (func(Remote) *repository, error) {
+	tracer, err := tracing.ProvideTracer(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("can not create tracer: %w", err)
+	}
+
+	clk := clock.Provider
+
+	return NewFactoryWithInterfaces(logger, tracer, clk, s.Metadata), nil
+}
+
+func NewFactoryWithInterfaces(logger log.Logger, tracer tracing.Tracer, clock clock.Clock, metadata Metadata) func(Remote) *repository {
+	return func(r Remote) *repository {
+		return NewWithInterfaces(logger, tracer, r, clock, metadata)
+	}
 }
 
 func (r *repository) Create(ctx context.Context, value ModelBased) error {
@@ -152,7 +171,6 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 	}
 
 	err = r.refreshAssociations(value, Create)
-
 	if err != nil {
 		logger.Error("could not update associations of model type %v: %w", modelId, err)
 		return err
@@ -210,7 +228,6 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 	}
 
 	err = r.refreshAssociations(value, Update)
-
 	if err != nil {
 		logger.Error("could not update associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
 		return err
@@ -239,7 +256,6 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	}
 
 	err = r.orm.Delete(value).Error
-
 	if err != nil {
 		logger.Error("could not delete model of type %s with id %d: %w", modelId, *value.GetId(), err)
 	}

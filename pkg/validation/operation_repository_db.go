@@ -3,7 +3,7 @@ package validation
 import (
 	"context"
 
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 )
 
 type OperationValidatingRepository struct {
@@ -12,9 +12,15 @@ type OperationValidatingRepository struct {
 }
 
 func NewOperationValidatingRepository(validator Validator, repo db_repo.Repository) db_repo.Repository {
-	return &OperationValidatingRepository{
-		Repository: repo,
-		validator:  validator,
+	return NewOperationValidatingRepositoryFactory(validator)(repo)
+}
+
+func NewOperationValidatingRepositoryFactory(validator Validator) func(db_repo.Repository) db_repo.Repository {
+	return func(repo db_repo.Repository) db_repo.Repository {
+		return &OperationValidatingRepository{
+			Repository: repo,
+			validator:  validator,
+		}
 	}
 }
 

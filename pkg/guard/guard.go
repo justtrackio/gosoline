@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/selm0/ladon"
 )
@@ -40,6 +41,17 @@ func NewGuard(config cfg.Config, logger log.Logger) (*LadonGuard, error) {
 	auditLogger := NewAuditLogger(config, logger)
 
 	return NewGuardWithInterfaces(sqlManager, auditLogger), nil
+}
+
+func NewGuardFactory(config cfg.Config, logger log.Logger) func(db_repo.Remote) *LadonGuard {
+	sqlManagerFactory := NewSqlManagerFactory(logger)
+
+	auditLogger := NewAuditLogger(config, logger)
+
+	return func(remote db_repo.Remote) *LadonGuard {
+		sqlManager := sqlManagerFactory(remote)
+		return NewGuardWithInterfaces(sqlManager, auditLogger)
+	}
 }
 
 func NewGuardWithInterfaces(manager Manager, logger AuditLogger) *LadonGuard {

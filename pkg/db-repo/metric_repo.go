@@ -31,6 +31,17 @@ func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRep
 	}
 }
 
+func NewMetricRepositoryFactory(_ cfg.Config, _ log.Logger) func(repo Repository) *metricRepository {
+	return func(repo Repository) *metricRepository {
+		defaults := getDefaultRepositoryMetrics(repo.GetMetadata().ModelId)
+		output := metric.NewWriter(defaults...)
+		return &metricRepository{
+			Repository: repo,
+			output:     output,
+		}
+	}
+}
+
 func (r metricRepository) Create(ctx context.Context, value ModelBased) error {
 	start := time.Now()
 	err := r.Repository.Create(ctx, value)

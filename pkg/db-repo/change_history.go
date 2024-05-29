@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -28,15 +27,15 @@ func (c *ChangeHistoryEmbeddable) SetChangeAuthor(authorId uint) {
 	c.ChangeHistoryAuthorId = mdl.Box(authorId)
 }
 
-func (c *ChangeHistoryEmbeddable) BeforeCreate(tx *gorm.DB) error {
+func (c *ChangeHistoryEmbeddable) BeforeCreate(tx Remote) error {
 	return tx.Exec(sqlSetChangeHistoryAuthor, c.ChangeHistoryAuthorId).Error
 }
 
-func (c *ChangeHistoryEmbeddable) BeforeUpdate(tx *gorm.DB) error {
+func (c *ChangeHistoryEmbeddable) BeforeUpdate(tx Remote) error {
 	return tx.Exec(sqlSetChangeHistoryAuthor, c.ChangeHistoryAuthorId).Error
 }
 
-func (c *ChangeHistoryEmbeddable) BeforeDelete(tx *gorm.DB) error {
+func (c *ChangeHistoryEmbeddable) BeforeDelete(tx Remote) error {
 	return tx.Exec(sqlSetChangeHistoryAuthor, c.ChangeHistoryAuthorId).Error
 }
 
