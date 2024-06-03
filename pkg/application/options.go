@@ -254,7 +254,7 @@ func WithLoggerSentryHandler(contextProvider ...log.SentryContextProvider) Optio
 }
 
 func WithMetadataServer(app *App) {
-	WithModuleFactory("metadata-server", NewMetadataServer())(app)
+	WithModuleFactory("metadata-server", NewMetadataServer)(app)
 }
 
 func WithMetrics(app *App) {
@@ -267,8 +267,10 @@ func WithProducerDaemon(app *App) {
 	})
 }
 
-func WithProfiling() Option {
-	return WithModuleFactory("profiling", httpserver.NewProfiling())
+func WithProfiling(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithModuleMultiFactory(httpserver.ProfilingModuleFactory)
+	})
 }
 
 func WithTracing(app *App) {
