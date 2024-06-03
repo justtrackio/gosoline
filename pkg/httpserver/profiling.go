@@ -13,6 +13,11 @@ import (
 )
 
 type ProfilingSettings struct {
+	Enabled bool                 `cfg:"enabled" default:"false"`
+	Api     ProfilingApiSettings `cfg:"api"`
+}
+
+type ProfilingApiSettings struct {
 	Port int `cfg:"port" default:"8091"`
 }
 
@@ -24,24 +29,30 @@ type Profiling struct {
 	server *http.Server
 }
 
-func NewProfiling() kernel.ModuleFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		settings := &ProfilingSettings{}
-		config.UnmarshalKey("profiling.api", settings)
+func ProfilingModuleFactory(_ context.Context, config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
+	settings := &ProfilingSettings{}
+	config.UnmarshalKey("profiling", settings)
 
-		gin.SetMode(gin.ReleaseMode)
-		router := gin.New()
-
-		profiling := NewProfilingWithInterfaces(logger, router, settings)
-
-		return profiling, nil
+	if !settings.Enabled {
+		return nil, nil
 	}
+
+	return map[string]kernel.ModuleFactory{
+		"profiling": func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+			gin.SetMode(gin.ReleaseMode)
+			router := gin.New()
+
+			profiling := NewProfilingWithInterfaces(logger, router, settings)
+
+			return profiling, nil
+		},
+	}, nil
 }
 
 func NewProfilingWithInterfaces(logger log.Logger, router *gin.Engine, settings *ProfilingSettings) *Profiling {
 	AddProfilingEndpoints(router)
 
-	addr := fmt.Sprintf(":%d", settings.Port)
+	addr := fmt.Sprintf(":%d", settings.Api.Port)
 
 	server := &http.Server{
 		Addr:    addr,

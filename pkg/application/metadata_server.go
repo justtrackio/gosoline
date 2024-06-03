@@ -34,20 +34,18 @@ type MetadataServer struct {
 	settings *MetadataServerSettings
 }
 
-func NewMetadataServer() kernel.ModuleFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-		settings := &MetadataServerSettings{}
-		config.UnmarshalKey("appctx.metadata.server", settings)
+func NewMetadataServer(_ context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+	settings := &MetadataServerSettings{}
+	config.UnmarshalKey("appctx.metadata.server", settings)
 
-		server := &MetadataServer{
-			config:   config,
-			logger:   logger.WithChannel("metadata-server"),
-			server:   &http.Server{},
-			settings: settings,
-		}
-
-		return server, nil
+	server := &MetadataServer{
+		config:   config,
+		logger:   logger.WithChannel("metadata-server"),
+		server:   &http.Server{},
+		settings: settings,
 	}
+
+	return server, nil
 }
 
 func (s *MetadataServer) Run(ctx context.Context) error {
