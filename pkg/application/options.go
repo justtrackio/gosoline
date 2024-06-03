@@ -8,6 +8,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	taskRunner "github.com/justtrackio/gosoline/pkg/conc/task_runner"
 	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
@@ -264,6 +265,12 @@ func WithMetrics(app *App) {
 func WithProducerDaemon(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		return kernelPkg.WithModuleMultiFactory(stream.ProducerDaemonFactory)
+	})
+}
+
+func WithTaskRunner(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithModuleMultiFactory(taskRunner.Factory)
 	})
 }
 
