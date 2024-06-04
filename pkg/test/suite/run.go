@@ -94,6 +94,9 @@ func suiteFindTestCases(_ *testing.T, suite TestingSuite, options *suiteOptions)
 func suiteApplyOptions(suite TestingSuite, extraOptions []Option) *suiteOptions {
 	setupOptions := []Option{
 		WithClockProvider(clock.NewFakeClock()),
+		WithConfigMap(map[string]interface{}{
+			"cloud.aws.default.ec2.metadata.available": false,
+		}),
 	}
 	setupOptions = append(setupOptions, suite.SetupSuite()...)
 	setupOptions = append(setupOptions, extraOptions...)
