@@ -16,6 +16,7 @@ import (
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/metric/calculator"
 	"github.com/justtrackio/gosoline/pkg/share"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -116,9 +117,9 @@ func WithConfigSetting(key string, settings interface{}) Option {
 	}
 }
 
-func WithConsumerMessagesPerRunnerMetrics(app *App) {
+func WithMetricsCalculatorModule(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-		return kernelPkg.WithModuleMultiFactory(stream.MessagesPerRunnerMetricWriterFactory)
+		return kernelPkg.WithModuleMultiFactory(calculator.CalculatorModuleFactory)
 	})
 }
 

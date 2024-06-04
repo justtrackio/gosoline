@@ -1,0 +1,89 @@
+run:
+  concurrency: 4
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+  build-tags:
+  skip-dirs:
+  skip-files:
+  modules-download-mode: readonly
+
+output:
+  formats:
+    - format: colored-tab
+      path: stdout
+  print-issued-lines: true
+  print-linter-name: true
+
+linters:
+  enable:
+    - dogsled # Checks assignments with too many blank identifiers (e.g. x, , , _, := f()).
+    - dupword # Checks for duplicate words in the source code.
+    - errcheck # Errcheck is a program for checking for unchecked errors in Go code. These unchecked errors can be critical bugs in some cases.
+    - gci # Gci controls Go package import order and makes it always deterministic.
+    - gocognit # Computes and checks the cognitive complexity of functions.
+    - goconst # Finds repeated strings that could be replaced by a constant.
+    - gocritic # Provides diagnostics that check for bugs, performance and style issues.
+    - godox # Tool for detection of FIXME, TODO and other comment keywords.
+    - govet # Vet examines Go source code and reports suspicious constructs, such as Printf calls whose arguments do not align with the format string.
+    - ineffassign # Detects when assignments to existing variables are not used.
+    - lll # Reports long lines.
+    - misspell # Finds commonly misspelled English words in comments.
+    - nestif # Reports deeply nested if statements.
+    - nlreturn # Nlreturn checks for a new line before return and branch statements to increase code clarity.
+    - staticcheck # It's a set of rules from staticcheck.
+    - tenv # Tenv is analyzer that detects using os.Setenv instead of t.Setenv since Go1.17.
+    - typecheck
+    - unused # Checks Go code for unused constants, variables, functions and types.
+    - whitespace # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
+  enable-all: false
+  disable:
+  disable-all: true
+  presets:
+  fast: false
+
+linters-settings:
+  errcheck:
+    check-type-assertions: false
+    check-blank: true
+    disable-default-exclusions: true
+
+  gocognit:
+    min-complexity: 20
+
+  gocritic:
+    enabled-checks:
+    disabled-checks:
+      - paramTypeCombine
+      - importShadow
+    enabled-tags:
+      - diagnostic
+      - style
+      - experimental
+      - opinionated
+    disabled-tags:
+    settings:
+
+  godox:
+    keywords:
+      - TODO
+      - BUG
+      - FIXME
+
+  lll:
+    line-length: 240
+
+  nestif:
+    min-complexity: 4
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dogsled
+        - goconst
+
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false

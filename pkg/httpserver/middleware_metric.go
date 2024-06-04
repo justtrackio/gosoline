@@ -49,48 +49,52 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer) {
 	requestTimeNano := time.Since(start)
 	requestTimeMillisecond := float64(requestTimeNano) / float64(time.Millisecond)
 
-	writer.WriteOne(&metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: MetricHttpRequestResponseTime,
-		Dimensions: metric.Dimensions{
-			"Method":     method,
-			"Path":       path,
-			"ServerName": name,
-		},
-		Unit:  metric.UnitMillisecondsAverage,
-		Value: requestTimeMillisecond,
-	})
-
-	writer.WriteOne(&metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: MetricHttpRequestCount,
-		Dimensions: metric.Dimensions{
-			"Method":     method,
-			"Path":       path,
-			"ServerName": name,
-		},
-		Unit:  metric.UnitCount,
-		Value: 1.0,
-	})
-
 	status := ginCtx.Writer.Status() / 100
 	statusMetric := fmt.Sprintf("%s%dXX", MetricHttpStatus, status)
 
-	writer.WriteOne(&metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: statusMetric,
-		Dimensions: metric.Dimensions{
-			"Method":     method,
-			"Path":       path,
-			"ServerName": name,
+	writer.Write(createMetricsWithDimensions(metric.Data{
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: MetricHttpRequestResponseTime,
+			Unit:       metric.UnitMillisecondsAverage,
+			Value:      requestTimeMillisecond,
 		},
-		Unit:  metric.UnitCount,
-		Value: 1.0,
-	})
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: MetricHttpRequestCount,
+			Unit:       metric.UnitCount,
+			Value:      1.0,
+		},
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: statusMetric,
+			Unit:       metric.UnitCount,
+			Value:      1.0,
+		},
+	}, metric.Dimensions{
+		"Method":     method,
+		"Path":       path,
+		"ServerName": name,
+	}, metric.Dimensions{
+		"ServerName": name,
+	}))
+}
+
+// createMetricsWithDimensions is creating a metric.Data set
+// which included each provided metric with each provided set of dimensions.
+func createMetricsWithDimensions(metrics metric.Data, dimensions ...metric.Dimensions) metric.Data {
+	return funk.Flatten(funk.Map(metrics, func(metricDatum *metric.Datum) metric.Data {
+		return funk.Map(dimensions, func(dimensions metric.Dimensions) *metric.Datum {
+			datum := *metricDatum
+			datum.Dimensions = dimensions
+
+			return &datum
+		})
+	}))
 }
 
 func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.Data {
-	return funk.Map(definitions, func(definition Definition) *metric.Datum {
+	return append(funk.Map(definitions, func(definition Definition) *metric.Datum {
 		return &metric.Datum{
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricHttpRequestCount,
@@ -102,5 +106,13 @@ func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.
 			Unit:  metric.UnitCount,
 			Value: 0.0,
 		}
+	}), &metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: MetricHttpRequestCount,
+		Dimensions: metric.Dimensions{
+			"ServerName": name,
+		},
+		Unit:  metric.UnitCount,
+		Value: 0.0,
 	})
 }

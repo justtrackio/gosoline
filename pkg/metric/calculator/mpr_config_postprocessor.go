@@ -1,4 +1,4 @@
-package stream
+package calculator
 
 import (
 	"fmt"
@@ -10,15 +10,15 @@ import (
 )
 
 func init() {
-	cfg.AddPostProcessor(16, "gosoline.stream.mpr_metric_leader_elections", mprConfigPostprocessor)
+	cfg.AddPostProcessor(16, "gosoline.metrics.calculator_leader_elections", calculatorConfigPostprocessor)
 }
 
-func mprConfigPostprocessor(config cfg.GosoConf) (bool, error) {
-	if !messagesPerRunnerIsEnabled(config) {
+func calculatorConfigPostprocessor(config cfg.GosoConf) (bool, error) {
+	settings := readCalculatorSettings(config)
+
+	if !settings.Enabled {
 		return false, nil
 	}
-
-	settings := readMessagesPerRunnerMetricSettings(config)
 
 	electionKey := ddb.GetLeaderElectionConfigKey(settings.LeaderElection)
 	electionKeyType := ddb.GetLeaderElectionConfigKeyType(settings.LeaderElection)
@@ -30,7 +30,7 @@ func mprConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 	pattern := settings.DynamoDb.Naming.Pattern
 
 	values := map[string]string{
-		"modelId": "stream-metric-writer-leaders",
+		"modelId": "metric-calculator-leaders",
 	}
 
 	for key, val := range values {
@@ -52,7 +52,7 @@ func mprConfigPostprocessor(config cfg.GosoConf) (bool, error) {
 	}
 
 	if err := config.Option(configOptions...); err != nil {
-		return false, fmt.Errorf("can not apply config settings for stream mpr metric: %w", err)
+		return false, fmt.Errorf("can not apply config settings for metrics calculator leader election: %w", err)
 	}
 
 	return true, nil

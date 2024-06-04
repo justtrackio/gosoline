@@ -46,7 +46,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
 		WithConfigSanitizers(cfg.TimeSanitizer),
 		WithMetadataServer,
-		WithConsumerMessagesPerRunnerMetrics,
+		WithMetricsCalculatorModule,
 		WithLoggerGroupTag,
 		WithLoggerApplicationTag,
 		WithLoggerContextFieldsMessageEncoder,

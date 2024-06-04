@@ -80,23 +80,21 @@ func (d *Datum) IsValid() error {
 
 type Data []*Datum
 
-//go:generate mockery --name Writer
-type Writer interface {
-	GetPriority() int
-	Write(batch Data)
-	WriteOne(data *Datum)
-}
-
 type cwWriter struct {
-	logger   log.Logger
-	clock    clock.Clock
-	client   gosoCloudwatch.Client
-	settings *Settings
+	logger      log.Logger
+	clock       clock.Clock
+	client      gosoCloudwatch.Client
+	cwNamespace string
 }
 
-func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*cwWriter, error) {
-	settings := getMetricSettings(config)
+func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	testClock := clock.NewRealClock()
+	settings := getMetricSettings(config)
+	cwNamespace := GetCloudWatchNamespace(config)
+
+	if !settings.Enabled {
+		return newNoopWriter(), nil
+	}
 
 	client, err := gosoCloudwatch.ProvideClient(ctx, config, log.NewLogger(), "default", func(cfg *gosoCloudwatch.ClientConfig) {
 		cfg.Settings.Backoff.MaxAttempts = 0
@@ -107,15 +105,15 @@ func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*cw
 		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
 	}
 
-	return NewCwWriterWithInterfaces(logger, testClock, client, settings), nil
+	return NewCwWriterWithInterfaces(logger, testClock, client, cwNamespace), nil
 }
 
-func NewCwWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoCloudwatch.Client, settings *Settings) *cwWriter {
+func NewCwWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoCloudwatch.Client, cwNamespace string) *cwWriter {
 	return &cwWriter{
-		logger:   logger.WithChannel("metrics"),
-		clock:    clock,
-		client:   cw,
-		settings: settings,
+		logger:      logger.WithChannel("metrics"),
+		clock:       clock,
+		client:      cw,
+		cwNamespace: cwNamespace,
 	}
 }
 
@@ -128,27 +126,14 @@ func (w *cwWriter) WriteOne(data *Datum) {
 }
 
 func (w *cwWriter) Write(batch Data) {
-	if !w.settings.Enabled || len(batch) == 0 {
+	if len(batch) == 0 {
 		return
 	}
 
 	metricData, err := w.buildMetricData(batch)
-	namespace := w.settings.Cloudwatch.Naming.Pattern
-	values := map[string]string{
-		"project": w.settings.Project,
-		"env":     w.settings.Environment,
-		"family":  w.settings.Family,
-		"group":   w.settings.Group,
-		"app":     w.settings.Application,
-	}
-
-	for key, val := range values {
-		templ := fmt.Sprintf("{%s}", key)
-		namespace = strings.ReplaceAll(namespace, templ, val)
-	}
 
 	logger := w.logger.WithFields(log.Fields{
-		"namespace": namespace,
+		"namespace": w.cwNamespace,
 	})
 
 	if err != nil {
@@ -166,11 +151,12 @@ func (w *cwWriter) Write(batch Data) {
 
 		input := cloudwatch.PutMetricDataInput{
 			MetricData: metricData[i:end],
-			Namespace:  aws.String(namespace),
+			Namespace:  aws.String(w.cwNamespace),
 		}
 
 		if _, err = w.client.PutMetricData(context.Background(), &input); err != nil {
 			logger.Info("could not write metric data: %s", err)
+
 			continue
 		}
 	}
@@ -212,6 +198,7 @@ func (w *cwWriter) buildMetricData(batch Data) ([]types.MetricDatum, error) {
 
 		if err != nil {
 			w.logger.Error("invalid metric dimension: %w", err)
+
 			continue
 		}
 
