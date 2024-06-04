@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
-	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	cloudwatchMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
@@ -53,21 +52,7 @@ func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudwatchMoc
 		}},
 	}).Return(nil, nil)
 
-	mo := metric.NewCwWriterWithInterfaces(logger, testClock, cwClient, &metric.Settings{
-		AppId: cfg.AppId{
-			Project:     "my",
-			Environment: "test",
-			Family:      "namespace",
-			Group:       "grp",
-			Application: "app",
-		},
-		Cloudwatch: metric.Cloudwatch{
-			Naming: metric.NamingSettings{
-				Pattern: "{project}/{env}/{family}/{group}/{app}",
-			},
-		},
-		Enabled: true,
-	})
+	mo := metric.NewCwWriterWithInterfaces(logger, testClock, cwClient, "my/test/namespace/grp/app")
 
 	data := metric.Data{
 		{

@@ -113,6 +113,12 @@ func suiteApplyOptions(suite TestingSuite, extraOptions []Option) *suiteOptions 
 func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, testCases map[string]testCaseRunner) {
 	envOptions := []env.Option{
 		env.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
+		env.WithConfigMap(map[string]interface{}{
+			"app_project": "justtrack",
+			"app_family":  "gosoline",
+			"app_group":   "test",
+			"app_name":    "test",
+		}),
 	}
 	envOptions = append(envOptions, suiteOptions.envOptions...)
 	envOptions = append(envOptions, env.WithConfigMap(map[string]interface{}{

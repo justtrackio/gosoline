@@ -4,6 +4,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
+//go:generate mockery --name Writer
+type Writer interface {
+	GetPriority() int
+	Write(batch Data)
+	WriteOne(data *Datum)
+}
+
 type writer struct {
 	clock   clock.Clock
 	channel *metricChannel
