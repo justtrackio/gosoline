@@ -26,6 +26,7 @@ type Settings struct {
 	MaxIdleConnections    int           `cfg:"max_idle_connections" default:"2"` // 0 or negative number=no idle connections, sql driver default=2
 	MaxOpenConnections    int           `cfg:"max_open_connections" default:"0"` // 0 or negative number=unlimited, sql driver default=0
 	ParseTime             bool          `cfg:"parse_time" default:"true"`
+	SslModeEnabled        bool          `cfg:"ssl_mode_enabled" default:"true"`
 
 	Uri        Uri               `cfg:"uri"`
 	Migrations MigrationSettings `cfg:"migrations"`
