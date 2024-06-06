@@ -18,6 +18,8 @@ import (
 //
 // Try to avoid using this module if possible. It is only meant as a last resort.
 //
+// Enable it by setting task_runner.enabled = true
+//
 //go:generate mockery --name TaskRunner
 type TaskRunner interface {
 	kernel.Module
@@ -25,10 +27,11 @@ type TaskRunner interface {
 }
 
 type Settings struct {
-	Enabled bool `cfg:"enabled" default:"true"`
+	Enabled bool `cfg:"enabled" default:"false"`
 }
 
 type taskRunner struct {
+	kernel.BackgroundModule
 	lck          sync.Mutex
 	done         bool
 	pendingTasks chan kernel.Module
