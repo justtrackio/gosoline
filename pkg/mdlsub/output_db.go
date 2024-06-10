@@ -52,9 +52,7 @@ func (p *OutputDb) Persist(_ context.Context, model Model, op string) error {
 	var err error
 
 	switch op {
-	case db_repo.Create:
-		err = p.orm.Create(model).Error
-	case db_repo.Update:
+	case db_repo.Create, db_repo.Update:
 		err = p.orm.Save(model).Error
 	case db_repo.Delete:
 		err = p.orm.Delete(model).Error
