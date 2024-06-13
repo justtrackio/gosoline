@@ -12,9 +12,7 @@ import (
 )
 
 func (s *CredentialsTestSuite) TestNoConfiguredProvider() {
-	s.config.On("HasPrefix", "cloud.aws.credentials").Return(false)
-
-	provider, err := gosoAws.GetCredentialsProvider(s.ctx, s.config, gosoAws.ClientSettings{})
+	provider, err := gosoAws.GetCredentialsProvider(s.ctx, gosoAws.ClientSettings{})
 	s.NoError(err)
 	s.IsType(credentials.StaticCredentialsProvider{}, provider, "the provider should be a static one")
 
