@@ -41,11 +41,19 @@ func TestUnmarshalClientSettings(t *testing.T) {
 	config := cfg.New()
 
 	err := config.Option(cfg.WithConfigMap(map[string]interface{}{
-		"cloud.aws.defaults.http_client": map[string]interface{}{
-			"timeout": "1s",
-		},
-		"cloud.aws.cloudwatch.clients.metrics.http_client": map[string]interface{}{
-			"timeout": "2s",
+		"cloud.aws": map[string]interface{}{
+			"credentials": map[string]interface{}{
+				"access_key_id":     "access key id",
+				"secret_access_key": "secret access key",
+				"session_token":     "session token",
+			},
+			"defaults": map[string]interface{}{
+				"http_client.timeout": "1s",
+				"assume_role":         "role",
+			},
+			"cloudwatch.clients.metrics.http_client": map[string]interface{}{
+				"timeout": "2s",
+			},
 		},
 	}))
 	assert.NoError(t, err)
@@ -53,8 +61,14 @@ func TestUnmarshalClientSettings(t *testing.T) {
 	settings := &aws.ClientSettings{}
 	aws.UnmarshalClientSettings(config, settings, "cloudwatch", "default")
 	assert.Equal(t, &aws.ClientSettings{
-		Region:   "eu-central-1",
-		Endpoint: "http://localhost:4566",
+		Region:     "eu-central-1",
+		Endpoint:   "http://localhost:4566",
+		AssumeRole: "role",
+		Credentials: aws.Credentials{
+			AccessKeyID:     "access key id",
+			SecretAccessKey: "secret access key",
+			SessionToken:    "session token",
+		},
 		HttpClient: aws.ClientHttpSettings{
 			Timeout: time.Second,
 		},
@@ -70,8 +84,14 @@ func TestUnmarshalClientSettings(t *testing.T) {
 	settings = &aws.ClientSettings{}
 	aws.UnmarshalClientSettings(config, settings, "cloudwatch", "metrics")
 	assert.Equal(t, &aws.ClientSettings{
-		Region:   "eu-central-1",
-		Endpoint: "http://localhost:4566",
+		Region:     "eu-central-1",
+		Endpoint:   "http://localhost:4566",
+		AssumeRole: "role",
+		Credentials: aws.Credentials{
+			AccessKeyID:     "access key id",
+			SecretAccessKey: "secret access key",
+			SessionToken:    "session token",
+		},
 		HttpClient: aws.ClientHttpSettings{
 			Timeout: time.Second * 2,
 		},

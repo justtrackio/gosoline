@@ -79,9 +79,11 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 	defaultClientKey := GetClientConfigKey(service, "default")
 
 	config.UnmarshalKey(clientsKey, settings, []cfg.UnmarshalDefaults{
+		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.credentials", "credentials"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.region", "region"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.endpoint", "endpoint"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.http_client", "http_client"),
+		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.assume_role", "assume_role"),
 		cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, "."),
 	}...)
 
@@ -105,7 +107,7 @@ func DefaultClientOptions(ctx context.Context, config cfg.Config, logger log.Log
 	var err error
 	var credentialsProvider aws.CredentialsProvider
 
-	if credentialsProvider, err = GetCredentialsProvider(ctx, config, settings); err != nil {
+	if credentialsProvider, err = GetCredentialsProvider(ctx, settings); err != nil {
 		return nil, fmt.Errorf("can not get credentials provider: %w", err)
 	}
 
