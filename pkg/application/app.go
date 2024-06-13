@@ -49,6 +49,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithConsumerMessagesPerRunnerMetrics,
 		WithLoggerGroupTag,
 		WithLoggerApplicationTag,
+		WithLoggerAwsEcsMetadata,
 		WithLoggerContextFieldsMessageEncoder,
 		WithLoggerContextFieldsResolver(log.ContextFieldsResolver),
 		WithLoggerHandlersFromConfig,
