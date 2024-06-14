@@ -57,7 +57,7 @@ touch config.dist.yml
 touch main.go
 ```
 
-Those are all the files you need to build your web service with gosoline! Next, you'll implement each of these files, starting with `handler.go`.
+Those are all the files you need to build your web service with Gosoline! Next, you'll implement each of these files, starting with `handler.go`.
 
 ## Implement handler.go
 
@@ -69,7 +69,7 @@ In `handler.go`, add the following code:
 
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 ### Import your dependencies
 
@@ -77,14 +77,14 @@ At the top of `handler.go`, you declared the package and imported some dependenc
 
 <CodeBlock language="go" title="handler.go" snippet="imports">{Handler}</CodeBlock>
 
-Here, you declared the package as `main`. Then, you imported several standard modules along with four gosoline dependencies:
+Here, you declared the package as `main`. Then, you imported several standard modules along with four Gosoline dependencies:
 
 - [`cfg`](/reference/package-cfg)
 - `currency`
 - [`httpserver`](/reference/package-httpserver)
 - [`log`](/reference/package-log)
 
-### Define a euroHandler structure
+### Define a `euroHandler` structure
 
 Next, you created a `euroHandler` struct:
 
@@ -106,7 +106,7 @@ Then, you implemented `euroHandler.Handle()` for handling HTTP requests:
 
 <CodeBlock language="go" title="handler.go" snippet="handle">{Handler}</CodeBlock>
 
-### Define a euroAtDateHandler
+### Define a `euroAtDateHandler`
 
 Like you did with `euroHandler`, you defined a `euroAtDateHandler` struct and a corresponding constructor:
 
@@ -134,7 +134,7 @@ In `definer.go`, add the following code:
 
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 ### Import dependencies
 
@@ -142,7 +142,7 @@ At the top of `definer.go`, you declared the package and imported some dependenc
 
 <CodeBlock title="definer.go" language="go" snippet="imports">{Definer}</CodeBlock>
 
-Here, you declared the package as `main`. Then, you imported the standard `context` and `fmt` modules along with three gosoline dependencies:
+Here, you declared the package as `main`. Then, you imported the standard `context` and `fmt` modules along with three Gosoline dependencies:
 
 - [`cfg`](/reference/package-cfg)
 - [`httpserver`](/reference/package-httpserver)
@@ -173,8 +173,8 @@ Here, you set some minimal configurations for your web server. There are a few i
 
 - `httpserver.default.port` exposes port 8080. (In your applications, you can configure [more aspects of the server](/reference/package-httpserver#settings) in a similar manner.)
 - The `currency` key value store (`kvstore`) is defined as `inMemory` and serves as a local database. The `currency` module that you used in `handler.go` uses this to store the exchange rates for various currencies:
-    - First, it makes an initial call to an external endpoint in order to get exchange rates and stores them in a kvstore
-    - Later, it occasionally makes more calls to obtain exchange rates, in order to keep the kvstore updated
+    - First, it makes an initial call to an external endpoint in order to get exchange rates and stores them in a `kvstore`
+    - Later, it occasionally makes more calls to obtain exchange rates, in order to keep the `kvstore` updated
 
 At this point, you've implemented your handlers, a definer, and your app configuration. Next, you'll implement `main.go` that puts it all together.
 
@@ -188,7 +188,7 @@ In `main.go`, add the following code:
 
 </details>
 
-Now, you'll walkthrough this file in detail to learn how it works.
+Now, you'll walk through this file in detail to learn how it works.
 
 ### Import your dependencies
 
@@ -196,7 +196,7 @@ At the top of `main.go`, you declared the package and imported some dependencies
 
 <CodeBlock title="main.go" language="go" snippet="imports">{Main}</CodeBlock>
 
-Here, you declared the package as `main`. Then, you imported three gosoline dependencies:
+Here, you declared the package as `main`. Then, you imported three Gosoline dependencies:
 
 - `application`
 - `currency`
@@ -238,7 +238,7 @@ curl localhost:8080/euro-at-date/10/USD/2021-01-03T00:00:00Z
 ## Conclusion
 
 Having seen a sample HTTP server, you can now look into more detailed functionality, such as [writing integration tests](/reference/package-test).
-Check out these resources to learn more about creating web services with gosoline:
+Check out these resources to learn more about creating web services with Gosoline:
 
 - [Create an HTTP server](/quickstart/http-server/create-an-http-server)
-- [API reference for the htpserver package](/reference/package-httpserver)
+- [API reference for the `htpserver` package](/reference/package-httpserver)

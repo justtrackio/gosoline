@@ -2,13 +2,13 @@
 title: Package cfg
 ---
 
-# cfg package
+# `cfg` package
 
-With the cfg package, you can configure and use configurations in your gosoline project. 
+With the `cfg` package, you can configure and use configurations in your Gosoline project. 
 
 ## Functions
 
-### [WithConfigFile()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/cfg/options.go#L23)
+### [`WithConfigFile()`](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/cfg/options.go#L23)
 
 #### Usage
 
@@ -24,13 +24,13 @@ Load configurations from a file.
 
 :::info
 
-YAML is currently the only supported configuration filetype.
+YAML is currently the only supported configuration file type.
 
 :::
 
 ## Methods
 
-### [GetInt()](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/cfg/config.go#L129)
+### [`GetInt()`](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/cfg/config.go#L129)
 
 #### Usage
 
@@ -109,7 +109,7 @@ config.GetBool("enabled", true)
 
 ## Variables
 
-### [DefaultEnvKeyReplacer](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/cfg/config.go#L62)
+### [`DefaultEnvKeyReplacer`](https://github.com/justtrackio/gosoline/blob/ff4eff871415fdf1b2b0d4ae86f99a48a990778c/pkg/cfg/config.go#L62)
 
 #### Usage
 
@@ -121,4 +121,4 @@ options := []cfg.Option{
 
 #### Description
 
-Replaces "." and "-" with "_" for env key loading.
+Replaces "." and "-" with "_" for `EnvKey` loading.

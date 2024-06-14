@@ -31,7 +31,7 @@ much more.
 
 ## Documentation
 
-Read our [documentation](https://justtrackio.github.io/gosoline/) to learn how to use gosoline.
+Read our [documentation](https://justtrackio.github.io/gosoline/) to learn how to use Gosoline.
 
 ## Quickstart
 

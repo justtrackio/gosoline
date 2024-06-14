@@ -2,9 +2,9 @@
 title: Package httpserver
 ---
 
-# httpserver package
+# `httpserver` package
 
-Package httpserver provides a convenient way to create HTTP servers.
+Package `httpserver` provides a convenient way to create HTTP servers.
 
 ## Methods
 
@@ -38,7 +38,7 @@ application.WithModuleFactory("api", httpserver.New(definer.ApiDefiner))
 
 This method returns a `Definitions` pointer. 
 
-The idiomatic way to create an httpserver is to:
+The idiomatic way to create an `httpserver` is to:
 
 1. Instantiate a new `Definitions` object
 2. Use its many methods to add functionality to it,
@@ -97,17 +97,17 @@ Configures IO timeouts.
 
 ### [Compression settings](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/compression.go#L13)
 
-Controls gzip support for requests and responses. By default, compressed requests are accepted and compressed responses are returned (if accepted by the client).
+Controls `gzip` support for requests and responses. By default, compressed requests are accepted and compressed responses are returned (if accepted by the client).
 
 | Field         | Type                       | Default | Description                                                                                                                                            |
 | ------------- | -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Level         | string                     | default | -                                                                                                                                                      |
-| Decompression | bool                       | true    | -                                                                                                                                                      |
-| Exclude       | CompressionExcludeSettings | -       | Exclude files by path, extension, or regular expression from being considered for compression. Useful if you are serving a format unknown to Gosoline. |
+| Level         | `string`                     | `default` | -                                                                                                                                                      |
+| Decompression | `bool`                       | `true`    | -                                                                                                                                                      |
+| Exclude       | `CompressionExcludeSettings` | -       | Exclude files by path, extension, or regular expression from being considered for compression. Useful if you are serving a format unknown to Gosoline. |
 
-### [CompressionExcludeSettings](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/compression.go#L21) 
+### [`CompressionExcludeSettings`](https://github.com/justtrackio/gosoline/blob/main/pkg/httpserver/compression.go#L21) 
 
-Allows you to enable gzip support.
+Allows you to enable `gzip` support.
 
 | Field     | Type             | Default | Description |
 | --------- | ---------------- | ------- | ----------- |

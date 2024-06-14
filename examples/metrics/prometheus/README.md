@@ -41,27 +41,27 @@ every time an endpoint is called (the handler name is used as a label)
 
 example output of custom metrics when requesting the `/metrics` endpoint
 ```
-# HELP gosoline:dev:metrics:prometheus_ApiRequestCount unit: Count
-# TYPE gosoline:dev:metrics:prometheus_ApiRequestCount counter
+# HELP Gosoline:dev:metrics:prometheus_ApiRequestCount unit: Count
+# TYPE Gosoline:dev:metrics:prometheus_ApiRequestCount counter
 gosoline:dev:metrics:prometheus_ApiRequestCount{path="/current-value"} 4
 gosoline:dev:metrics:prometheus_ApiRequestCount{path="/decrease"} 4
 gosoline:dev:metrics:prometheus_ApiRequestCount{path="/increase"} 5
-# HELP gosoline:dev:metrics:prometheus_ApiRequestResponseTime unit: UnitMillisecondsAverage
-# TYPE gosoline:dev:metrics:prometheus_ApiRequestResponseTime gauge
+# HELP Gosoline:dev:metrics:prometheus_ApiRequestResponseTime unit: UnitMillisecondsAverage
+# TYPE Gosoline:dev:metrics:prometheus_ApiRequestResponseTime gauge
 gosoline:dev:metrics:prometheus_ApiRequestResponseTime{path="/current-value"} 0.042044
 gosoline:dev:metrics:prometheus_ApiRequestResponseTime{path="/decrease"} 0.040718
 gosoline:dev:metrics:prometheus_ApiRequestResponseTime{path="/increase"} 0.044629
-# HELP gosoline:dev:metrics:prometheus_ApiStatus2XX unit: Count
-# TYPE gosoline:dev:metrics:prometheus_ApiStatus2XX counter
+# HELP Gosoline:dev:metrics:prometheus_ApiStatus2XX unit: Count
+# TYPE Gosoline:dev:metrics:prometheus_ApiStatus2XX counter
 gosoline:dev:metrics:prometheus_ApiStatus2XX{path="/current-value"} 4
 gosoline:dev:metrics:prometheus_ApiStatus2XX{path="/decrease"} 4
 gosoline:dev:metrics:prometheus_ApiStatus2XX{path="/increase"} 5
-# HELP gosoline:dev:metrics:prometheus_api_request unit: prom-counter
-# TYPE gosoline:dev:metrics:prometheus_api_request counter
+# HELP Gosoline:dev:metrics:prometheus_api_request unit: prom-counter
+# TYPE Gosoline:dev:metrics:prometheus_api_request counter
 gosoline:dev:metrics:prometheus_api_request{handler="cur"} 4
 gosoline:dev:metrics:prometheus_api_request{handler="decr"} 4
 gosoline:dev:metrics:prometheus_api_request{handler="incr"} 5
-# HELP gosoline:dev:metrics:prometheus_important_counter unit: Count
-# TYPE gosoline:dev:metrics:prometheus_important_counter counter
+# HELP Gosoline:dev:metrics:prometheus_important_counter unit: Count
+# TYPE Gosoline:dev:metrics:prometheus_important_counter counter
 gosoline:dev:metrics:prometheus_important_counter 25
 ```

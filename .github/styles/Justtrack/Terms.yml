@@ -1,0 +1,9 @@
+extends: substitution
+message: 'Use "%s" instead of "%s"'
+level: error
+ignorecase: true
+swap:
+  tracking link: tracking URL
+  placeholder: macro
+  business unit: organization
+  click on: click

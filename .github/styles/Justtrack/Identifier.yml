@@ -1,0 +1,8 @@
+extends: existence
+message: 'Use "ID" instead of "%s"'
+level: error
+ignorecase: false
+tokens:
+  - "^[iI]d"
+  - "[iI]d[.:]?$"
+  - " [iI]d "

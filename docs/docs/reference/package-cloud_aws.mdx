@@ -16,7 +16,8 @@ cloud:
       endpoint: "http://localhost:4566" #localstack
 ```
 
-### General service config
+### General service configuration
+
 AWS service clients are created and configured by name. The pattern here is:
 ```golang
 func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, optFns ...func(options *awsCfg.LoadOptions) error) (*serviceX.Client, error)
@@ -50,7 +51,8 @@ cloud:
 | backoff.max_interval     | Max duration between 2 calls when retrying                                         | 10s                           |
 | backoff.max_elapsed_time | For how long the service should retry the request                                  | 10m (0m means retry forever)  |
 
-### Cloudwatch
+### CloudWatch
+
 Call
 ```golang
 import(
@@ -59,8 +61,10 @@ import(
 
 cloudwatchClient := gosoCloudwatch.ProvideClient(ctx, config, logger , "default")
 ```
-to get the default cloudwatch client. You don't have to provide any config
+
+to get the default `cloudwatch` client. You don't have to provide any configuration
 if you want to go with the default settings. The default settings are:
+
 ```yaml
 cloud:
     aws:
@@ -78,7 +82,8 @@ cloud:
                       max_elapsed_time: 15m0s
                       max_interval: 10s
 ```
-These are the default values which are used if you don't provide any config by yourself.
+
+These are the default values which are used if you don't provide any configuration by yourself.
 
 ### Full reference
 ```yaml

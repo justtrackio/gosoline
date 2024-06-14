@@ -13,7 +13,7 @@ const (
 	//  * Essential: Starts first and shuts down last. Includes metric writers and anything else that gets data from other
 	//    modules and must not exist before the other modules do so.
 	//  * Service: Contains services provided to the application that should start first but still depend on the essential
-	//    modules. This includes the modules provided by gosoline, for example the ApiServer.
+	//    modules. This includes the modules provided by Gosoline, for example the ApiServer.
 	//  * Application: Your code should normally run in this stage. It will be started after other services are already
 	//    running and shut down first so other stages still have some time to process the messages they did receive from
 	//    your application.
