@@ -15,7 +15,7 @@ func runMigrationGolangMigrate(logger log.Logger, settings Settings, db *sql.DB)
 		return nil
 	}
 
-	driverFactory, err := GetDriverFactory(settings.Driver)
+	driverFactory, err := GetDriver(logger, settings.Driver)
 	if err != nil {
 		return fmt.Errorf("could not get driver factory for %s: %w", settings.Driver, err)
 	}

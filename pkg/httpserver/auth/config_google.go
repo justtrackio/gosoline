@@ -130,7 +130,6 @@ func (a *configGoogleAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 	}).Info("token not in cache, will perform request")
 
 	tokenInfo, err = a.tokenProvider.GetTokenInfo(idToken)
-
 	if err != nil {
 		a.tokenCache[idToken] = nil
 		return false, errors.Wrap(err, "google auth: failed requesting token info")

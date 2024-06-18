@@ -187,7 +187,6 @@ func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder,
 		}
 
 		input.RequestItems, err = r.processBatchReadItemsResponse(qb, out, unmarshaller, result)
-
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +202,6 @@ func (r *repository) processBatchReadItemsResponse(qb BatchGetItemsBuilder, out 
 	}
 
 	err = unmarshaller.Append(responses)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal items after BatchGetItems operation for table %s: %w", r.metadata.TableName, err)
 	}
@@ -406,7 +404,6 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 	}
 
 	err = UnmarshalMap(out.Attributes, item)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal old value after DeleteItem operation on table %s: %w", r.metadata.TableName, err)
 	}
@@ -465,7 +462,6 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 
 	result.IsFound = true
 	err = UnmarshalMap(out.Item, item)
-
 	if err != nil {
 		return nil, err
 	}
@@ -525,7 +521,6 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 	}
 
 	err = UnmarshalMap(out.Attributes, item)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal old value after PutItem operation on table %s: %w", r.metadata.TableName, err)
 	}
@@ -639,7 +634,6 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 	}
 
 	err = UnmarshalMap(out.Attributes, item)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal old value after UpdateItem operation on table %s: %w", r.metadata.TableName, err)
 	}
@@ -759,7 +753,6 @@ func (r *repository) readAll(items interface{}, read func() (*readResult, error)
 		}
 
 		err = unmarshaller.Append(out.Items)
-
 		if err != nil {
 			return fmt.Errorf("could not unmarshal items after Query operation for table %s: %w", r.metadata.TableName, err)
 		}

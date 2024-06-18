@@ -122,7 +122,6 @@ func (c *BatchConsumer) processAggregateMessage(ctx context.Context, cdata *cons
 	var err error
 
 	ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch)
-
 	if err != nil {
 		c.logger.WithContext(ctx).Error("an error occurred during disaggregation of the message: %w", err)
 

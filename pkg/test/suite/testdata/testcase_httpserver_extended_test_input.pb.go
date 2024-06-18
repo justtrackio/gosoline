@@ -98,6 +98,7 @@ var (
 		(*TestInput)(nil), // 0: TestInput
 	}
 )
+
 var file_testcase_httpserver_extended_test_input_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type

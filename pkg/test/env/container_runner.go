@@ -387,7 +387,6 @@ func (r *containerRunner) resolveBinding(resource *dockertest.Resource, containe
 
 		return nil
 	})
-
 	if err != nil {
 		return address, fmt.Errorf("can not resolve binding for port %s: %w", containerPort, err)
 	}

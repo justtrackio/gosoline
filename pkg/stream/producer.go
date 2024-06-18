@@ -89,7 +89,6 @@ func (p *producer) WriteOne(ctx context.Context, model interface{}, attributeSet
 	}
 
 	err = p.output.WriteOne(ctx, msg)
-
 	if err != nil {
 		return fmt.Errorf("can not write msg to output: %w", err)
 	}
@@ -114,7 +113,6 @@ func (p *producer) Write(ctx context.Context, models interface{}, attributeSets 
 	}
 
 	err = p.output.Write(ctx, messages)
-
 	if err != nil {
 		return fmt.Errorf("can not write messages to output: %w", err)
 	}

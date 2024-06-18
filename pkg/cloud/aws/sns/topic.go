@@ -226,7 +226,6 @@ func (t *snsTopic) SubscribeSqs(ctx context.Context, queueArn string, attributes
 	}
 
 	_, err = t.client.Subscribe(ctx, input)
-
 	if err != nil {
 		return fmt.Errorf("could not subscribe to topic arn %s for sqs queue arn %s: %w", t.topicArn, queueArn, err)
 	}

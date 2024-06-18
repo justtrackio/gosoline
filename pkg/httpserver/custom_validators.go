@@ -42,7 +42,6 @@ func AddCustomValidators(customValidators []CustomValidator) error {
 
 	for _, customValidator := range customValidators {
 		err = v.RegisterValidation(customValidator.Name, customValidator.Validator)
-
 		if err != nil {
 			return err
 		}

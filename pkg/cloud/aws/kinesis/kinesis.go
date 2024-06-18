@@ -52,7 +52,6 @@ func CreateKinesisStream(ctx context.Context, config cfg.Config, logger log.Logg
 		ShardCount: aws.Int32(1),
 		StreamName: aws.String(streamName),
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kinesis stream %s: %w", streamName, err)
 	}

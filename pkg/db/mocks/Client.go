@@ -92,6 +92,75 @@ func (_c *Client_Exec_Call) RunAndReturn(run func(context.Context, string, ...in
 	return _c
 }
 
+// ExecMultiInTx provides a mock function with given fields: ctx, sqlers
+func (_m *Client) ExecMultiInTx(ctx context.Context, sqlers ...db.Sqler) ([]sql.Result, error) {
+	_va := make([]interface{}, len(sqlers))
+	for _i := range sqlers {
+		_va[_i] = sqlers[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []sql.Result
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ...db.Sqler) ([]sql.Result, error)); ok {
+		return rf(ctx, sqlers...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ...db.Sqler) []sql.Result); ok {
+		r0 = rf(ctx, sqlers...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]sql.Result)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ...db.Sqler) error); ok {
+		r1 = rf(ctx, sqlers...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_ExecMultiInTx_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExecMultiInTx'
+type Client_ExecMultiInTx_Call struct {
+	*mock.Call
+}
+
+// ExecMultiInTx is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sqlers ...db.Sqler
+func (_e *Client_Expecter) ExecMultiInTx(ctx interface{}, sqlers ...interface{}) *Client_ExecMultiInTx_Call {
+	return &Client_ExecMultiInTx_Call{Call: _e.mock.On("ExecMultiInTx",
+		append([]interface{}{ctx}, sqlers...)...)}
+}
+
+func (_c *Client_ExecMultiInTx_Call) Run(run func(ctx context.Context, sqlers ...db.Sqler)) *Client_ExecMultiInTx_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]db.Sqler, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(db.Sqler)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ExecMultiInTx_Call) Return(results []sql.Result, err error) *Client_ExecMultiInTx_Call {
+	_c.Call.Return(results, err)
+	return _c
+}
+
+func (_c *Client_ExecMultiInTx_Call) RunAndReturn(run func(context.Context, ...db.Sqler) ([]sql.Result, error)) *Client_ExecMultiInTx_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function with given fields: ctx, dest, query, args
 func (_m *Client) Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	var _ca []interface{}

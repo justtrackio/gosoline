@@ -639,7 +639,6 @@ func (c *config) unmarshalMap(key string, output interface{}, defaults []Unmarsh
 
 		c.unmarshalStruct(keyIndex, item, defaults)
 		err = m.Set(name, item)
-
 		if err != nil {
 			c.err("can not unmarshal key %s: %w", key, err)
 

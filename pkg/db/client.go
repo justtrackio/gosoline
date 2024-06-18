@@ -24,6 +24,28 @@ type SqlResult interface {
 	RowsAffected() (int64, error)
 }
 
+type Sqler interface {
+	ToSql() (string, []interface{}, error)
+}
+
+func SqlFmt(format string, a ...any) Sqler {
+	return sqlFmt{
+		format: format,
+		a:      a,
+	}
+}
+
+type sqlFmt struct {
+	format string
+	a      []any
+}
+
+func (s sqlFmt) ToSql() (qry string, args []interface{}, err error) {
+	qry = fmt.Sprintf(s.format, s.a...)
+
+	return
+}
+
 type (
 	ResultRow map[string]string
 	Result    []ResultRow
@@ -34,6 +56,7 @@ type Client interface {
 	GetSingleScalarValue(ctx context.Context, query string, args ...interface{}) (int, error)
 	GetResult(ctx context.Context, query string, args ...interface{}) (*Result, error)
 	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error)
 	Prepare(ctx context.Context, query string) (*sql.Stmt, error)
 	Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
 	Queryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
@@ -94,7 +117,11 @@ func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...interf
 		return nil, err
 	}
 
-	cols, _ := rows.Columns()
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("can not get columns: %w", err)
+	}
+
 	types := make(map[string]string)
 
 	for rows.Next() {
@@ -130,6 +157,7 @@ func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...interf
 				m[colName] = strconv.FormatFloat((*val).(float64), 'f', -1, 64)
 			default:
 				errStr := fmt.Sprintf("could not convert mysql result into string map: %v -> %v is %v", colName, *val, reflect.TypeOf(*val))
+
 				return nil, errors.New(errStr)
 			}
 		}
@@ -144,6 +172,56 @@ func (c *ClientSqlx) Exec(ctx context.Context, query string, args ...interface{}
 	c.logger.Debug("> %s %q", query, args)
 
 	return c.db.ExecContext(ctx, query, args...)
+}
+
+func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error) {
+	var tx *sql.Tx
+	var res sql.Result
+	var queries []string
+	var argss [][]interface{}
+
+	for i, sqler := range sqlers {
+		var buildErr error
+		var qry string
+		var args []interface{}
+
+		if qry, args, buildErr = sqler.ToSql(); buildErr != nil {
+			return nil, fmt.Errorf("can not build sql #%d: %w", i, err)
+		}
+
+		queries = append(queries, qry)
+		argss = append(argss, args)
+	}
+
+	if tx, err = c.BeginTx(ctx, &sql.TxOptions{}); err != nil {
+		return nil, fmt.Errorf("can not begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err == nil {
+			return
+		}
+
+		if errRollback := tx.Rollback(); errRollback != nil {
+			err = multierror.Append(err, fmt.Errorf("can not rollback tx: %w", errRollback)).ErrorOrNil()
+
+			return
+		}
+	}()
+
+	for i, qry := range queries {
+		if res, err = c.Exec(ctx, qry, argss[i]...); err != nil {
+			return nil, fmt.Errorf("can not exec qry %s: %w", qry, err)
+		}
+
+		results = append(results, res)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("can not commit transaction: %w", err)
+	}
+
+	return
 }
 
 func (c *ClientSqlx) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
@@ -195,7 +273,8 @@ func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx
 		if err != nil {
 			errRollback := tx.Rollback()
 			if errRollback != nil {
-				err = multierror.Append(err, fmt.Errorf("can not roolback tx: %w", errRollback))
+				err = multierror.Append(err, fmt.Errorf("can not rollback tx: %w", errRollback))
+
 				return
 			}
 			c.logger.WithContext(ctx).Debug("rollback successfully done")

@@ -88,7 +88,6 @@ func (s shareCreateHandler) Handle(ctx context.Context, req *httpserver.Request)
 
 	reload := s.transformer.GetModel()
 	err = shareRepo.Read(ctx, model.GetId(), reload)
-
 	if err != nil {
 		return nil, err
 	}
