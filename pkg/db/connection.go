@@ -13,22 +13,32 @@ import (
 )
 
 type Uri struct {
-	Host     string `cfg:"host" validation:"required"`
-	Port     int    `cfg:"port" validation:"required"`
+	Host     string `cfg:"host" default:"localhost" validation:"required"`
+	Port     int    `cfg:"port" default:"3306" validation:"required"`
 	User     string `cfg:"user" validation:"required"`
 	Password string `cfg:"password" validation:"required"`
 	Database string `cfg:"database" validation:"required"`
 }
 
 type Settings struct {
-	ConnectionMaxLifetime time.Duration `cfg:"connection_max_lifetime" default:"120s"`
-	Driver                string        `cfg:"driver"`
-	MaxIdleConnections    int           `cfg:"max_idle_connections" default:"2"` // 0 or negative number=no idle connections, sql driver default=2
-	MaxOpenConnections    int           `cfg:"max_open_connections" default:"0"` // 0 or negative number=unlimited, sql driver default=0
-	ParseTime             bool          `cfg:"parse_time" default:"true"`
+	Charset               string            `cfg:"charset" default:"utf8mb4"`
+	Collation             string            `cfg:"collation" default:"utf8mb4_general_ci"`
+	ConnectionMaxIdleTime time.Duration     `cfg:"connection_max_idletime" default:"120s"`
+	ConnectionMaxLifetime time.Duration     `cfg:"connection_max_lifetime" default:"120s"`
+	Driver                string            `cfg:"driver"`
+	MaxIdleConnections    int               `cfg:"max_idle_connections" default:"2"` // 0 or negative number=no idle connections, sql driver default=2
+	MaxOpenConnections    int               `cfg:"max_open_connections" default:"0"` // 0 or negative number=unlimited, sql driver default=0
+	Migrations            MigrationSettings `cfg:"migrations"`
+	MultiStatements       bool              `cfg:"multi_statements" default:"true"`
+	ParseTime             bool              `cfg:"parse_time" default:"true"`
+	Timeouts              SettingsTimeout   `cfg:"timeouts"`
+	Uri                   Uri               `cfg:"uri"`
+}
 
-	Uri        Uri               `cfg:"uri"`
-	Migrations MigrationSettings `cfg:"migrations"`
+type SettingsTimeout struct {
+	ReadTimeout  time.Duration `cfg:"readTimeout" default:"0"`  // I/O read timeout. The value must be a decimal number with a unit suffix ("ms", "s", "m", "h"), such as "30s", "0.5m" or "1m30s".
+	WriteTimeout time.Duration `cfg:"writeTimeout" default:"0"` // I/O write timeout. The value must be a decimal number with a unit suffix ("ms", "s", "m", "h"), such as "30s", "0.5m" or "1m30s".
+	Timeout      time.Duration `cfg:"timeout" default:"0"`      // Timeout for establishing connections, aka dial timeout. The value must be a decimal number with a unit suffix ("ms", "s", "m", "h"), such as "30s", "0.5m" or "1m30s".
 }
 
 var defaultConnections = struct {
@@ -66,7 +76,7 @@ func NewConnectionFromSettings(logger log.Logger, settings Settings) (*sqlx.DB, 
 	var err error
 	var connection *sqlx.DB
 
-	if connection, err = NewConnectionWithInterfaces(settings); err != nil {
+	if connection, err = NewConnectionWithInterfaces(logger, settings); err != nil {
 		return nil, fmt.Errorf("can not create connection: %w", err)
 	}
 
@@ -79,13 +89,13 @@ func NewConnectionFromSettings(logger log.Logger, settings Settings) (*sqlx.DB, 
 	return connection, nil
 }
 
-func NewConnectionWithInterfaces(settings Settings) (*sqlx.DB, error) {
-	driverFactory, err := GetDriverFactory(settings.Driver)
+func NewConnectionWithInterfaces(logger log.Logger, settings Settings) (*sqlx.DB, error) {
+	driver, err := GetDriver(logger, settings.Driver)
 	if err != nil {
 		return nil, fmt.Errorf("could not get dsn provider for driver %s", settings.Driver)
 	}
 
-	dsn := driverFactory.GetDSN(settings)
+	dsn := driver.GetDSN(settings)
 
 	genDriver, err := getGenericDriver(settings.Driver, dsn)
 	if err != nil {
@@ -99,6 +109,7 @@ func NewConnectionWithInterfaces(settings Settings) (*sqlx.DB, error) {
 		return nil, fmt.Errorf("can not connect: %w", err)
 	}
 
+	db.SetConnMaxIdleTime(settings.ConnectionMaxIdleTime)
 	db.SetConnMaxLifetime(settings.ConnectionMaxLifetime)
 	db.SetMaxIdleConns(settings.MaxIdleConnections)
 	db.SetMaxOpenConns(settings.MaxOpenConnections)

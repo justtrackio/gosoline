@@ -110,7 +110,6 @@ func (o *sqsOutput) Write(ctx context.Context, batch []WritableMessage) error {
 		}
 
 		err = o.queue.SendBatch(ctx, messages)
-
 		if err != nil {
 			result = multierror.Append(result, err)
 		}

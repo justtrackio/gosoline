@@ -79,7 +79,6 @@ func (uh updateHandler) Handle(ctx context.Context, request *httpserver.Request)
 
 	reload := uh.transformer.GetModel()
 	err = repo.Read(ctx, model.GetId(), reload)
-
 	if err != nil {
 		return nil, err
 	}

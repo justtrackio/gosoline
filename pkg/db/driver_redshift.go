@@ -8,6 +8,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/database/redshift"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/lib/pq"
 )
 
@@ -15,16 +16,16 @@ const DriverNameRedshift = "redshift"
 
 func init() {
 	sql.Register(DriverNameRedshift, &pq.Driver{})
-	connectionFactories[DriverNameRedshift] = NewRedshiftDriverFactory()
+	connectionFactories[DriverNameRedshift] = NewRedshiftDriver
 }
 
-func NewRedshiftDriverFactory() DriverFactory {
-	return &redshiftDriverFactory{}
+func NewRedshiftDriver(logger log.Logger) (Driver, error) {
+	return &redshiftDriver{}, nil
 }
 
-type redshiftDriverFactory struct{}
+type redshiftDriver struct{}
 
-func (m *redshiftDriverFactory) GetDSN(settings Settings) string {
+func (m *redshiftDriver) GetDSN(settings Settings) string {
 	dsn := url.URL{
 		Scheme: "postgres",
 		User:   url.UserPassword(settings.Uri.User, settings.Uri.Password),
@@ -38,7 +39,7 @@ func (m *redshiftDriverFactory) GetDSN(settings Settings) string {
 	return dsn.String()
 }
 
-func (m *redshiftDriverFactory) GetMigrationDriver(db *sql.DB, database string, migrationsTable string) (database.Driver, error) {
+func (m *redshiftDriver) GetMigrationDriver(db *sql.DB, database string, migrationsTable string) (database.Driver, error) {
 	return redshift.WithInstance(db, &redshift.Config{
 		MigrationsTable: migrationsTable,
 		DatabaseName:    database,

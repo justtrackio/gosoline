@@ -75,7 +75,6 @@ func NewAwsTracerWithInterfaces(logger log.Logger, appId cfg.AppId, settings *XR
 		SamplingStrategy:       settings.SamplingStrategy,
 		StreamingStrategy:      streamingStrategy,
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("can not configure xray tracer: %w", err)
 	}

@@ -59,7 +59,6 @@ func (m SqlManager) Create(ctx context.Context, pol ladon.Policy) error {
 	}
 
 	_, err = m.dbClient.Exec(ctx, sql, args...)
-
 	if err != nil {
 		return err
 	}
@@ -116,7 +115,6 @@ func (m SqlManager) Delete(ctx context.Context, id string) error {
 	}
 
 	_, err = m.dbClient.Exec(ctx, sql, args...)
-
 	if err != nil {
 		m.logger.Error("can not delete from %s: %w", tableName, err)
 		return err

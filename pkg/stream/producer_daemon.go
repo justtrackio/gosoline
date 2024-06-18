@@ -111,7 +111,6 @@ func ProvideProducerDaemon(ctx context.Context, config cfg.Config, logger log.Lo
 
 	var err error
 	producerDaemons[name], err = NewProducerDaemon(ctx, config, logger, name)
-
 	if err != nil {
 		return nil, err
 	}

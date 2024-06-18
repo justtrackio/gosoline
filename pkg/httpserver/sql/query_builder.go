@@ -160,7 +160,6 @@ func (qb baseQueryBuilder) getJoins(inp *Input) ([]string, error) {
 	}
 
 	err = qb.getJoinsFromFilter(&joins, inp.Filter)
-
 	if err != nil {
 		return joins, err
 	}

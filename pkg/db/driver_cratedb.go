@@ -8,22 +8,23 @@ import (
 	"github.com/golang-migrate/migrate/v4/database"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const DriverNameCrateDb = "cratedb"
 
 func init() {
 	sql.Register(DriverNameCrateDb, stdlib.GetDefaultDriver())
-	connectionFactories[DriverNameCrateDb] = NewCrateDbDriverFactory()
+	connectionFactories[DriverNameCrateDb] = NewCrateDbDriver
 }
 
-type crateDbDriverFactory struct{}
+type crateDbDriver struct{}
 
-func NewCrateDbDriverFactory() *crateDbDriverFactory {
-	return &crateDbDriverFactory{}
+func NewCrateDbDriver(logger log.Logger) (Driver, error) {
+	return &crateDbDriver{}, nil
 }
 
-func (c crateDbDriverFactory) GetDSN(settings Settings) string {
+func (c crateDbDriver) GetDSN(settings Settings) string {
 	dsn := url.URL{
 		Scheme: "postgres",
 		Host:   fmt.Sprintf("%s:%d", settings.Uri.Host, settings.Uri.Port),
@@ -34,7 +35,7 @@ func (c crateDbDriverFactory) GetDSN(settings Settings) string {
 	return dsn.String()
 }
 
-func (c crateDbDriverFactory) GetMigrationDriver(db *sql.DB, database string, migrationsTable string) (database.Driver, error) {
+func (c crateDbDriver) GetMigrationDriver(db *sql.DB, database string, migrationsTable string) (database.Driver, error) {
 	return postgres.WithInstance(db, &postgres.Config{
 		MigrationsTable: migrationsTable,
 		DatabaseName:    database,

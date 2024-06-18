@@ -54,7 +54,6 @@ func (ch createHandler) Handle(ctx context.Context, request *httpserver.Request)
 
 	reload := ch.transformer.GetModel()
 	err = repo.Read(ctx, model.GetId(), reload)
-
 	if err != nil {
 		return nil, err
 	}

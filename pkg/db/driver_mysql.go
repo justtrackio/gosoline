@@ -3,47 +3,70 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"net/url"
+	"net"
 	"strconv"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4/database"
-	"github.com/golang-migrate/migrate/v4/database/mysql"
+	migrateMysql "github.com/golang-migrate/migrate/v4/database/mysql"
+	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 const DriverMysql = "mysql"
 
 func init() {
-	connectionFactories[DriverMysql] = NewMysqlDriverFactory()
+	connectionFactories[DriverMysql] = NewMysqlDriver
 }
 
-func NewMysqlDriverFactory() DriverFactory {
-	return &mysqlDriverFactory{}
-}
+func NewMysqlDriver(logger log.Logger) (Driver, error) {
+	sqlLogger := &mysqlLogger{logger: logger}
 
-type mysqlDriverFactory struct{}
-
-func (m *mysqlDriverFactory) GetDSN(settings Settings) string {
-	dsn := url.URL{
-		User: url.UserPassword(settings.Uri.User, settings.Uri.Password),
-		Host: fmt.Sprintf("tcp(%s:%d)", settings.Uri.Host, settings.Uri.Port),
-		Path: settings.Uri.Database,
+	if err := mysql.SetLogger(sqlLogger); err != nil {
+		return nil, fmt.Errorf("failed to set mysql logger: %w", err)
 	}
 
-	qry := dsn.Query()
-	qry.Set("multiStatements", "true")
-	qry.Set("parseTime", strconv.FormatBool(settings.ParseTime))
-	qry.Set("charset", "utf8mb4")
-	dsn.RawQuery = qry.Encode()
-
-	uri := dsn.String()
-
-	return uri[2:]
+	return &mysqlDriver{}, nil
 }
 
-func (m *mysqlDriverFactory) GetMigrationDriver(db *sql.DB, database string, migrationsTable string) (database.Driver, error) {
-	return mysql.WithInstance(db, &mysql.Config{
+type mysqlDriver struct{}
+
+func (m *mysqlDriver) GetDSN(settings Settings) string {
+	params := map[string]string{
+		"charset":      settings.Charset,
+		"readTimeout":  settings.Timeouts.ReadTimeout.String(),
+		"writeTimeout": settings.Timeouts.WriteTimeout.String(),
+	}
+
+	if settings.Timeouts.Timeout > 0 {
+		params["timeout"] = settings.Timeouts.Timeout.String()
+	}
+
+	cfg := mysql.NewConfig()
+	cfg.User = settings.Uri.User
+	cfg.Passwd = settings.Uri.Password
+	cfg.Net = "tcp"
+	cfg.Addr = net.JoinHostPort(settings.Uri.Host, strconv.Itoa(settings.Uri.Port))
+	cfg.DBName = settings.Uri.Database
+	cfg.MultiStatements = settings.MultiStatements
+	cfg.ParseTime = settings.ParseTime
+	cfg.Params = params
+	cfg.Collation = settings.Collation
+
+	return cfg.FormatDSN()
+}
+
+func (m *mysqlDriver) GetMigrationDriver(db *sql.DB, database string, migrationsTable string) (database.Driver, error) {
+	return migrateMysql.WithInstance(db, &migrateMysql.Config{
 		DatabaseName:    database,
 		MigrationsTable: migrationsTable,
 	})
+}
+
+type mysqlLogger struct {
+	logger log.Logger
+}
+
+func (m mysqlLogger) Print(v ...interface{}) {
+	msg := fmt.Sprint(v...)
+	m.logger.Error(msg)
 }

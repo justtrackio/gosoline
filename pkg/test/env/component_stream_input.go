@@ -63,7 +63,6 @@ func (s *StreamInputComponent) PublishFromJsonFile(fileName string) {
 
 	messages := make([]*stream.Message, 0)
 	err = json.Unmarshal(bytes, &messages)
-
 	if err != nil {
 		s.failNow(err.Error(), "can not unmarshal messages from json file")
 	}
