@@ -54,7 +54,7 @@ func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, ag
 		CancelDelay:     time.Millisecond * 100,
 		InitialInterval: time.Millisecond * 50,
 		MaxInterval:     time.Second * 3,
-	}, exec.CheckRequestCanceled)
+	}, []exec.ErrorChecker{exec.CheckRequestCanceled})
 
 	settings := stream.ProducerDaemonSettings{
 		Enabled:         true,

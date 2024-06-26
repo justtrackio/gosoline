@@ -20,8 +20,8 @@ type mysqlPurger struct {
 	tableName string
 }
 
-func newMysqlPurger(config cfg.Config, logger log.Logger, tableName string) (*mysqlPurger, error) {
-	client, err := db.NewClient(config, logger, "default")
+func newMysqlPurger(ctx context.Context, config cfg.Config, logger log.Logger, tableName string) (*mysqlPurger, error) {
+	client, err := db.ProvideClient(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create db client: %w", err)
 	}
@@ -30,21 +30,31 @@ func newMysqlPurger(config cfg.Config, logger log.Logger, tableName string) (*my
 }
 
 func (p *mysqlPurger) purgeMysql(ctx context.Context) error {
-	err := p.setForeignKeyChecks(0)
-	if err != nil {
-		p.logger.Error("error disabling foreign key checks: %w", err)
+	//err := p.setForeignKeyChecks(0)
+	//if err != nil {
+	//	p.logger.Error("error disabling foreign key checks: %w", err)
+	//
+	//	return err
+	//}
+	//
+	//defer func() {
+	//	err := p.setForeignKeyChecks(1)
+	//	if err != nil {
+	//		p.logger.Error("error enabling foreign key checks: %w", err)
+	//	}
+	//}()
+	//
+	//_, err = p.client.Exec(ctx, fmt.Sprintf(truncateTableStatement, p.tableName))
+	//if err != nil {
+	//	p.logger.Error("error truncating table %s: %w", p.tableName, err)
+	//	return err
+	//}
 
-		return err
-	}
-
-	defer func() {
-		err := p.setForeignKeyChecks(1)
-		if err != nil {
-			p.logger.Error("error enabling foreign key checks: %w", err)
-		}
-	}()
-
-	_, err = p.client.Exec(ctx, fmt.Sprintf(truncateTableStatement, p.tableName))
+	_, err := p.client.ExecMultiInTx(ctx, []db.Sqler{
+		db.SqlFmt(foreignKeyChecksStatement, 0),
+		db.SqlFmt(truncateTableStatement, p.tableName),
+		db.SqlFmt(foreignKeyChecksStatement, 1),
+	}...)
 	if err != nil {
 		p.logger.Error("error truncating table %s: %w", p.tableName, err)
 		return err

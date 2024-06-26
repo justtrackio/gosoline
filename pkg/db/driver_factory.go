@@ -11,7 +11,7 @@ import (
 type DriverFactory func(logger log.Logger) (Driver, error)
 
 type Driver interface {
-	GetDSN(settings Settings) string
+	GetDSN(settings *Settings) string
 	GetMigrationDriver(db *sql.DB, database string, migrationsTable string) (database.Driver, error)
 }
 

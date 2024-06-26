@@ -26,7 +26,7 @@ func NewBackoffExecutor(logger log.Logger, settings exec.BackoffSettings, name s
 		NilChecker,
 	}
 
-	return exec.NewBackoffExecutor(logger, executableResource, &settings, checks...)
+	return exec.NewBackoffExecutor(logger, executableResource, &settings, checks)
 }
 
 func NilChecker(_ interface{}, err error) exec.ErrorType {

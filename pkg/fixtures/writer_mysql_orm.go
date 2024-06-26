@@ -25,12 +25,12 @@ func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFacto
 			Metadata: *metadata,
 		}
 
-		repo, err := db_repo.New(config, logger, settings)
+		repo, err := db_repo.New(ctx, config, logger, settings)
 		if err != nil {
 			return nil, fmt.Errorf("can not create repo: %w", err)
 		}
 
-		purger, err := newMysqlPurger(config, logger, metadata.TableName)
+		purger, err := newMysqlPurger(ctx, config, logger, metadata.TableName)
 		if err != nil {
 			return nil, fmt.Errorf("can not create purger: %w", err)
 		}

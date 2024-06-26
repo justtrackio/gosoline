@@ -22,8 +22,8 @@ type SqlManager struct {
 	dbClient db.Client
 }
 
-func NewSqlManager(config cfg.Config, logger log.Logger) (*SqlManager, error) {
-	dbClient, err := db.NewClient(config, logger, "default")
+func NewSqlManager(ctx context.Context, config cfg.Config, logger log.Logger) (*SqlManager, error) {
+	dbClient, err := db.ProvideClient(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create dbClient: %w", err)
 	}

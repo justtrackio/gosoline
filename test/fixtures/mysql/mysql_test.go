@@ -16,13 +16,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
-type MysqlTestSuite struct {
-	suite.Suite
-}
-
 type MysqlTestModel struct {
 	db_repo.Model
 	Name *string
+}
+
+type MysqlTestSuite struct {
+	suite.Suite
 }
 
 func (s *MysqlTestSuite) SetupSuite() []suite.Option {
@@ -39,12 +39,11 @@ func (s *MysqlTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *MysqlTestSuite) TestOrmFixturesMysql() {
-	envConfig := s.Env().Config()
-	envLogger := s.Env().Logger()
+	ctx := s.Env().Context()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := fixtures.NewFixtureLoader(context.Background(), envConfig, envLogger)
-	err := loader.Load(context.Background(), ormMysqlTestFixtures())
+	loader := s.buildFixtureLoader(ctx)
+	err := loader.Load(ctx, ormMysqlTestFixtures())
 	s.NoError(err)
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_test_models")
@@ -52,12 +51,11 @@ func (s *MysqlTestSuite) TestOrmFixturesMysql() {
 }
 
 func (s *MysqlTestSuite) TestPlainFixturesMysql() {
-	envConfig := s.Env().Config()
-	envLogger := s.Env().Logger()
+	ctx := s.Env().Context()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := fixtures.NewFixtureLoader(context.Background(), envConfig, envLogger)
-	err := loader.Load(context.Background(), plainMysqlTestFixtures())
+	loader := s.buildFixtureLoader(ctx)
+	err := loader.Load(ctx, plainMysqlTestFixtures())
 	s.NoError(err)
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_plain_writer_test")
@@ -65,17 +63,16 @@ func (s *MysqlTestSuite) TestPlainFixturesMysql() {
 }
 
 func (s *MysqlTestSuite) TestPurgedOrmFixturesMysql() {
-	envConfig := s.Env().Config()
-	envLogger := s.Env().Logger()
+	ctx := s.Env().Context()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := fixtures.NewFixtureLoader(context.Background(), envConfig, envLogger)
-	err := loader.Load(context.Background(), ormMysqlTestFixtures())
+	loader := s.buildFixtureLoader(ctx)
+	err := loader.Load(ctx, ormMysqlTestFixtures())
 	s.NoError(err)
 
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_test_models", "name", "testName")
 
-	err = loader.Load(context.Background(), ormMysqlTestFixturesWithPurge())
+	err = loader.Load(ctx, ormMysqlTestFixturesWithPurge())
 	s.NoError(err)
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_test_models")
@@ -83,12 +80,13 @@ func (s *MysqlTestSuite) TestPurgedOrmFixturesMysql() {
 }
 
 func (s *MysqlTestSuite) TestPurgedPlainFixturesMysql() {
+	ctx := s.Env().Context()
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := fixtures.NewFixtureLoader(context.Background(), envConfig, envLogger)
-	err := loader.Load(context.Background(), plainMysqlTestFixtures())
+	loader := fixtures.NewFixtureLoader(ctx, envConfig, envLogger)
+	err := loader.Load(ctx, plainMysqlTestFixtures())
 	s.NoError(err)
 
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_plain_writer_test", "name", "testName3")
@@ -98,6 +96,13 @@ func (s *MysqlTestSuite) TestPurgedPlainFixturesMysql() {
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_plain_writer_test")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_plain_writer_test", "name", "purgedBefore")
+}
+
+func (s *MysqlTestSuite) buildFixtureLoader(ctx context.Context) fixtures.FixtureLoader {
+	envConfig := s.Env().Config()
+	envLogger := s.Env().Logger()
+
+	return fixtures.NewFixtureLoader(ctx, envConfig, envLogger)
 }
 
 var MysqlTestModelMetadata = db_repo.Metadata{

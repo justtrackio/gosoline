@@ -1,6 +1,7 @@
 package db_repo
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -22,8 +23,8 @@ type OrmSettings struct {
 	Application string              `cfg:"application" default:"{app_name}"`
 }
 
-func NewOrm(config cfg.Config, logger log.Logger) (*gorm.DB, error) {
-	connection, err := db.ProvideConnection(config, logger, "default")
+func NewOrm(ctx context.Context, config cfg.Config, logger log.Logger) (*gorm.DB, error) {
+	connection, err := db.ProvideConnection(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create db connection : %w", err)
 	}
@@ -34,7 +35,7 @@ func NewOrm(config cfg.Config, logger log.Logger) (*gorm.DB, error) {
 	return NewOrmWithInterfaces(connection, settings)
 }
 
-func NewOrmWithDbSettings(logger log.Logger, dbSettings db.Settings, application string) (*gorm.DB, error) {
+func NewOrmWithDbSettings(logger log.Logger, dbSettings *db.Settings, application string) (*gorm.DB, error) {
 	dbClient, err := db.NewConnectionFromSettings(logger, dbSettings)
 	if err != nil {
 		return nil, fmt.Errorf("can not connect to sql database: %w", err)

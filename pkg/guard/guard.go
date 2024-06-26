@@ -31,8 +31,8 @@ type LadonGuard struct {
 	warden *ladon.Ladon
 }
 
-func NewGuard(config cfg.Config, logger log.Logger) (*LadonGuard, error) {
-	sqlManager, err := NewSqlManager(config, logger)
+func NewGuard(ctx context.Context, config cfg.Config, logger log.Logger) (*LadonGuard, error) {
+	sqlManager, err := NewSqlManager(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create sqlManager: %w", err)
 	}
