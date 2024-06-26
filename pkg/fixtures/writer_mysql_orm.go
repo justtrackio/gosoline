@@ -25,7 +25,7 @@ func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFacto
 			Metadata: *metadata,
 		}
 
-		repo, err := db_repo.New(config, logger, settings)
+		repo, err := db_repo.New(ctx, config, logger, settings)
 		if err != nil {
 			return nil, fmt.Errorf("can not create repo: %w", err)
 		}

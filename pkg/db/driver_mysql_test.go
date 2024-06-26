@@ -33,18 +33,18 @@ func (s *MysqlDriverTestSuite) SetupTest() {
 	s.settings = &db.Settings{}
 	s.config.UnmarshalDefaults(s.settings)
 
-	s.logger = new(mocks.Logger)
+	s.logger = mocks.NewLoggerMockedAll()
 }
 
 func (s *MysqlDriverTestSuite) TestDsn() {
 	driver, err := db.NewMysqlDriver(s.logger)
 	s.NoError(err)
 
-	dsn := driver.GetDSN(*s.settings)
+	dsn := driver.GetDSN(s.settings)
 	s.Equal("tcp(localhost:3306)/?collation=utf8mb4_general_ci&multiStatements=true&parseTime=true&charset=utf8mb4&readTimeout=0s&writeTimeout=0s", dsn)
 
 	s.settings.Timeouts.ReadTimeout = time.Millisecond * 50
 	s.settings.Timeouts.WriteTimeout = time.Millisecond * 50
-	dsn = driver.GetDSN(*s.settings)
+	dsn = driver.GetDSN(s.settings)
 	s.Equal("tcp(localhost:3306)/?collation=utf8mb4_general_ci&multiStatements=true&parseTime=true&charset=utf8mb4&readTimeout=50ms&writeTimeout=50ms", dsn)
 }

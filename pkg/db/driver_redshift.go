@@ -25,7 +25,7 @@ func NewRedshiftDriver(logger log.Logger) (Driver, error) {
 
 type redshiftDriver struct{}
 
-func (m *redshiftDriver) GetDSN(settings Settings) string {
+func (m *redshiftDriver) GetDSN(settings *Settings) string {
 	dsn := url.URL{
 		Scheme: "postgres",
 		User:   url.UserPassword(settings.Uri.User, settings.Uri.Password),

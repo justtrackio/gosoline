@@ -30,12 +30,12 @@ type changeHistoryManagerAppCtxKey int
 
 func ProvideChangeHistoryManager(ctx context.Context, config cfg.Config, logger log.Logger) (*ChangeHistoryManager, error) {
 	return appctx.Provide(ctx, changeHistoryManagerAppCtxKey(0), func() (*ChangeHistoryManager, error) {
-		return NewChangeHistoryManager(config, logger)
+		return NewChangeHistoryManager(ctx, config, logger)
 	})
 }
 
-func NewChangeHistoryManager(config cfg.Config, logger log.Logger) (*ChangeHistoryManager, error) {
-	orm, err := NewOrm(config, logger)
+func NewChangeHistoryManager(ctx context.Context, config cfg.Config, logger log.Logger) (*ChangeHistoryManager, error) {
+	orm, err := NewOrm(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
