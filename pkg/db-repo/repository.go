@@ -67,13 +67,13 @@ type repository struct {
 	metadata Metadata
 }
 
-func New(config cfg.Config, logger log.Logger, s Settings) (*repository, error) {
+func New(ctx context.Context, config cfg.Config, logger log.Logger, s Settings) (*repository, error) {
 	tracer, err := tracing.ProvideTracer(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
 
-	orm, err := NewOrm(config, logger)
+	orm, err := NewOrm(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
@@ -87,7 +87,7 @@ func New(config cfg.Config, logger log.Logger, s Settings) (*repository, error) 
 	return NewWithInterfaces(logger, tracer, orm, clk, s.Metadata), nil
 }
 
-func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings db.Settings, repoSettings Settings) (*repository, error) {
+func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings *db.Settings, repoSettings Settings) (*repository, error) {
 	tracer, err := tracing.ProvideTracer(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)

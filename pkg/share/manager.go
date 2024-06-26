@@ -41,12 +41,12 @@ type shareManager struct {
 
 func ProvideShareManager(ctx context.Context, config cfg.Config, logger log.Logger) (*shareManager, error) {
 	return appctx.Provide(ctx, shareManagerAppctxKey("shareManager"), func() (*shareManager, error) {
-		return NewShareManager(config, logger)
+		return NewShareManager(ctx, config, logger)
 	})
 }
 
-func NewShareManager(config cfg.Config, logger log.Logger) (*shareManager, error) {
-	orm, err := db_repo.NewOrm(config, logger)
+func NewShareManager(ctx context.Context, config cfg.Config, logger log.Logger) (*shareManager, error) {
+	orm, err := db_repo.NewOrm(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}

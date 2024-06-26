@@ -8,7 +8,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-func runMigrationGoose(logger log.Logger, settings Settings, db *sql.DB) error {
+func runMigrationGoose(logger log.Logger, settings *Settings, db *sql.DB) error {
 	var err error
 
 	goose.SetLogger(newGooseLogger(logger))

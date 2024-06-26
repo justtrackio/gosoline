@@ -26,12 +26,12 @@ type mysqlPlainFixtureWriter struct {
 
 func MysqlPlainFixtureWriterFactory(metadata *MysqlPlainMetaData) FixtureWriterFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
-		dbClient, err := db.NewClient(config, logger, "default")
+		dbClient, err := db.ProvideClient(ctx, config, logger, "default")
 		if err != nil {
 			return nil, fmt.Errorf("can not create dbClient: %w", err)
 		}
 
-		purger, err := newMysqlPurger(config, logger, metadata.TableName)
+		purger, err := newMysqlPurger(ctx, config, logger, metadata.TableName)
 		if err != nil {
 			return nil, fmt.Errorf("can not create purger: %w", err)
 		}
@@ -52,7 +52,7 @@ func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client db.Clien
 func (m *mysqlPlainFixtureWriter) Purge(ctx context.Context) error {
 	err := m.purger.purgeMysql(ctx)
 	if err != nil {
-		m.logger.Error("error occured during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
+		m.logger.Error("error occurred during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
 
 		return err
 	}

@@ -1,13 +1,14 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -31,8 +32,13 @@ type Settings struct {
 	Migrations            MigrationSettings `cfg:"migrations"`
 	MultiStatements       bool              `cfg:"multi_statements" default:"true"`
 	ParseTime             bool              `cfg:"parse_time" default:"true"`
+	Retry                 SettingsRetry     `cfg:"retry"`
 	Timeouts              SettingsTimeout   `cfg:"timeouts"`
 	Uri                   Uri               `cfg:"uri"`
+}
+
+type SettingsRetry struct {
+	Enabled bool `cfg:"enabled" default:"false"`
 }
 
 type SettingsTimeout struct {
@@ -41,38 +47,31 @@ type SettingsTimeout struct {
 	Timeout      time.Duration `cfg:"timeout" default:"0"`      // Timeout for establishing connections, aka dial timeout. The value must be a decimal number with a unit suffix ("ms", "s", "m", "h"), such as "30s", "0.5m" or "1m30s".
 }
 
-var defaultConnections = struct {
-	lck       sync.Mutex
-	instances map[Settings]*sqlx.DB
-	errors    map[Settings]error
-}{
-	instances: make(map[Settings]*sqlx.DB),
-	errors:    make(map[Settings]error),
+type connectionCtxKey string
+
+func ProvideConnection(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*sqlx.DB, error) {
+	return appctx.Provide(ctx, connectionCtxKey(name), func() (*sqlx.DB, error) {
+		return NewConnection(config, logger, name)
+	})
 }
 
-func ProvideConnection(config cfg.Config, logger log.Logger, configKey string) (*sqlx.DB, error) {
-	defaultConnections.lck.Lock()
-	defer defaultConnections.lck.Unlock()
+func NewConnection(config cfg.Config, logger log.Logger, name string) (*sqlx.DB, error) {
+	var err error
+	var con *sqlx.DB
+	var settings *Settings
 
-	key := createSettings(config, configKey)
-
-	if err := defaultConnections.errors[key]; err != nil {
+	if settings, err = readSettings(config, name); err != nil {
 		return nil, err
 	}
 
-	if instance := defaultConnections.instances[key]; instance != nil {
-		return instance, nil
+	if con, err = NewConnectionFromSettings(logger, settings); err != nil {
+		return nil, err
 	}
 
-	instance, err := NewConnectionFromSettings(logger, key)
-
-	defaultConnections.instances[key] = instance
-	defaultConnections.errors[key] = err
-
-	return defaultConnections.instances[key], defaultConnections.errors[key]
+	return con, nil
 }
 
-func NewConnectionFromSettings(logger log.Logger, settings Settings) (*sqlx.DB, error) {
+func NewConnectionFromSettings(logger log.Logger, settings *Settings) (*sqlx.DB, error) {
 	var err error
 	var connection *sqlx.DB
 
@@ -89,7 +88,7 @@ func NewConnectionFromSettings(logger log.Logger, settings Settings) (*sqlx.DB, 
 	return connection, nil
 }
 
-func NewConnectionWithInterfaces(logger log.Logger, settings Settings) (*sqlx.DB, error) {
+func NewConnectionWithInterfaces(logger log.Logger, settings *Settings) (*sqlx.DB, error) {
 	driver, err := GetDriver(logger, settings.Driver)
 	if err != nil {
 		return nil, fmt.Errorf("could not get dsn provider for driver %s", settings.Driver)
@@ -117,14 +116,17 @@ func NewConnectionWithInterfaces(logger log.Logger, settings Settings) (*sqlx.DB
 	return db, nil
 }
 
-func createSettings(config cfg.Config, key string) Settings {
-	settings := Settings{
-		Migrations: MigrationSettings{},
+func readSettings(config cfg.Config, name string) (*Settings, error) {
+	key := fmt.Sprintf("db.%s", name)
+
+	if !config.IsSet(key) {
+		return nil, fmt.Errorf("there is no db connection with name %q configured", name)
 	}
 
-	config.UnmarshalKey(fmt.Sprintf("db.%s", key), &settings)
+	settings := &Settings{}
+	config.UnmarshalKey(key, settings)
 
-	return settings
+	return settings, nil
 }
 
 func getGenericDriver(driverName, dsn string) (driver.Driver, error) {

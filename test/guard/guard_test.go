@@ -28,10 +28,12 @@ func (s *GuardTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *GuardTestSuite) SetupTest() error {
+	ctx := s.Env().Context()
+	config := s.Env().Config()
 	logger := s.Env().Logger()
 
 	var err error
-	s.guard, err = guard.NewGuard(s.Env().Config(), logger)
+	s.guard, err = guard.NewGuard(ctx, config, logger)
 	if err != nil {
 		return fmt.Errorf("could not create guard: %w", err)
 	}

@@ -3,7 +3,6 @@
 package migration_golang_migrate
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -35,12 +34,13 @@ func (s *MysqlTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *MysqlTestSuite) TestPlainFixturesMysql() {
+	ctx := s.Env().Context()
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := fixtures.NewFixtureLoader(context.Background(), envConfig, envLogger)
-	err := loader.Load(context.Background(), plainMysqlTestFixtures())
+	loader := fixtures.NewFixtureLoader(ctx, envConfig, envLogger)
+	err := loader.Load(ctx, plainMysqlTestFixtures())
 	s.NoError(err)
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_plain_writer_test")

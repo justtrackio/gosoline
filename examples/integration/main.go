@@ -62,7 +62,7 @@ func newAppModule(ctx context.Context, config cfg.Config, logger log.Logger) (ke
 		return nil, fmt.Errorf("unable to create dynamodb repository: %w", err)
 	}
 
-	dbRepository, err := db_repo.New(config, logger, repoSettings)
+	dbRepository, err := db_repo.New(ctx, config, logger, repoSettings)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create mysql client: %w", err)
 	}

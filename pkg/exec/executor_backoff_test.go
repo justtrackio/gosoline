@@ -35,7 +35,7 @@ func (s *ExecutorBackoffTestSuite) SetupTest() {
 
 		logger := mocks.NewLoggerMockedAll()
 
-		return exec.NewBackoffExecutor(logger, resource, settings, checkers...)
+		return exec.NewBackoffExecutor(logger, resource, settings, checkers)
 	}
 }
 

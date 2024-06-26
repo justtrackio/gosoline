@@ -34,12 +34,12 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger) (d
 		Metadata: tableMetadata,
 	}
 
-	repository, err := db_repo.New(config, logger, settings)
+	repository, err := db_repo.New(ctx, config, logger, settings)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create repository: %w", err)
 	}
 
-	manager, err := db_repo.NewChangeHistoryManager(config, logger)
+	manager, err := db_repo.NewChangeHistoryManager(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create change history manager: %w", err)
 	}
@@ -57,7 +57,7 @@ func NewHistoryRepository(ctx context.Context, config cfg.Config, logger log.Log
 		Metadata: tableHistoryMetadata,
 	}
 
-	repository, err := db_repo.New(config, logger, settings)
+	repository, err := db_repo.New(ctx, config, logger, settings)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create repository: %w", err)
 	}

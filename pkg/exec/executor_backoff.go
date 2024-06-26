@@ -13,21 +13,23 @@ type BackoffExecutor struct {
 	logger   log.Logger
 	uuidGen  uuid.Uuid
 	resource *ExecutableResource
-	checks   []ErrorChecker
 	settings *BackoffSettings
+	checks   []ErrorChecker
+	notifier []Notify
 }
 
-func NewBackoffExecutor(logger log.Logger, res *ExecutableResource, settings *BackoffSettings, checks ...ErrorChecker) *BackoffExecutor {
+func NewBackoffExecutor(logger log.Logger, res *ExecutableResource, settings *BackoffSettings, checks []ErrorChecker, notifier ...Notify) *BackoffExecutor {
 	return &BackoffExecutor{
 		logger:   logger,
 		uuidGen:  uuid.New(),
 		resource: res,
 		checks:   checks,
 		settings: settings,
+		notifier: notifier,
 	}
 }
 
-func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{}, error) {
+func (e *BackoffExecutor) Execute(ctx context.Context, f Executable, notifier ...Notify) (interface{}, error) {
 	logger := e.logger.WithContext(ctx).WithFields(log.Fields{
 		"exec_id":            e.uuidGen.NewV4(),
 		"exec_resource_type": e.resource.Type,
@@ -47,7 +49,11 @@ func (e *BackoffExecutor) Execute(ctx context.Context, f Executable) (interface{
 	attempts := 1
 	start := time.Now()
 
-	notify := func(err error, _ time.Duration) {
+	notify := func(err error, dur time.Duration) {
+		for _, n := range append(e.notifier, notifier...) {
+			n(err, dur)
+		}
+
 		logger.Warn("retrying resource %s after error: %s", e.resource, err.Error())
 		attempts++
 	}

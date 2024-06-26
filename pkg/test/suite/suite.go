@@ -57,3 +57,12 @@ func (s *Suite) SetT(t *testing.T) {
 func (s *Suite) T() *testing.T {
 	return s.t
 }
+
+func (s *Suite) FailIfError(err error, msgAndArgs ...interface{}) {
+	if err == nil {
+		return
+	}
+
+	s.NoError(err, msgAndArgs...)
+	s.FailNow("can not continue after error")
+}

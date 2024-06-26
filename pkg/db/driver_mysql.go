@@ -19,6 +19,7 @@ func init() {
 }
 
 func NewMysqlDriver(logger log.Logger) (Driver, error) {
+	logger = logger.WithChannel("mysql-driver")
 	sqlLogger := &mysqlLogger{logger: logger}
 
 	if err := mysql.SetLogger(sqlLogger); err != nil {
@@ -30,7 +31,7 @@ func NewMysqlDriver(logger log.Logger) (Driver, error) {
 
 type mysqlDriver struct{}
 
-func (m *mysqlDriver) GetDSN(settings Settings) string {
+func (m *mysqlDriver) GetDSN(settings *Settings) string {
 	params := map[string]string{
 		"charset":      settings.Charset,
 		"readTimeout":  settings.Timeouts.ReadTimeout.String(),

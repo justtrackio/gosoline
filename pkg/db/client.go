@@ -10,7 +10,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/jmoiron/sqlx"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -58,6 +60,7 @@ type Client interface {
 	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error)
 	Prepare(ctx context.Context, query string) (*sql.Stmt, error)
+	Preparex(ctx context.Context, query string) (*sqlx.Stmt, error)
 	Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
 	Queryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 	QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row
@@ -67,32 +70,52 @@ type Client interface {
 }
 
 type ClientSqlx struct {
-	logger log.Logger
-	db     *sqlx.DB
+	logger   log.Logger
+	db       *sqlx.DB
+	executor exec.Executor
+}
+
+type clientCtxKey string
+
+func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
+	return appctx.Provide(ctx, clientCtxKey(name), func() (Client, error) {
+		return NewClient(config, logger, name)
+	})
 }
 
 func NewClient(config cfg.Config, logger log.Logger, name string) (Client, error) {
-	db, err := ProvideConnection(config, logger, name)
-	if err != nil {
+	var err error
+	var settings *Settings
+
+	if settings, err = readSettings(config, name); err != nil {
+		return nil, err
+	}
+
+	return NewClientWithSettings(config, logger, name, settings)
+}
+
+func NewClientWithSettings(config cfg.Config, logger log.Logger, name string, settings *Settings) (Client, error) {
+	var err error
+	var connection *sqlx.DB
+	var executor exec.Executor = exec.NewDefaultExecutor()
+
+	if connection, err = NewConnectionFromSettings(logger, settings); err != nil {
 		return nil, fmt.Errorf("can not connect to sql database: %w", err)
 	}
 
-	return NewClientWithInterfaces(logger, db), nil
-}
-
-func NewClientWithSettings(logger log.Logger, settings Settings) (Client, error) {
-	db, err := NewConnectionFromSettings(logger, settings)
-	if err != nil {
-		return nil, fmt.Errorf("can not connect to sql database: %w", err)
+	if settings.Retry.Enabled {
+		path := fmt.Sprintf("db.%s.retry", name)
+		executor = NewExecutor(config, logger, name, path)
 	}
 
-	return NewClientWithInterfaces(logger, db), nil
+	return NewClientWithInterfaces(logger, connection, executor), nil
 }
 
-func NewClientWithInterfaces(logger log.Logger, db *sqlx.DB) Client {
+func NewClientWithInterfaces(logger log.Logger, connection *sqlx.DB, executor exec.Executor) Client {
 	return &ClientSqlx{
-		logger: logger,
-		db:     db,
+		logger:   logger,
+		db:       connection,
+		executor: executor,
 	}
 }
 
@@ -171,7 +194,14 @@ func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...interf
 func (c *ClientSqlx) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	c.logger.Debug("> %s %q", query, args)
 
-	return c.db.ExecContext(ctx, query, args...)
+	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return c.db.ExecContext(ctx, query, args...)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(sql.Result), err
 }
 
 func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error) {
@@ -225,41 +255,97 @@ func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (result
 }
 
 func (c *ClientSqlx) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
-	return c.db.PrepareContext(ctx, query)
+	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return c.db.PrepareContext(ctx, query)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*sql.Stmt), nil
+}
+
+func (c *ClientSqlx) Preparex(ctx context.Context, query string) (*sqlx.Stmt, error) {
+	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return c.db.PreparexContext(ctx, query)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*sqlx.Stmt), nil
 }
 
 func (c *ClientSqlx) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	c.logger.Debug("> %s %q", query, args)
 
-	return c.db.QueryContext(ctx, query, args...)
+	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return c.db.QueryContext(ctx, query, args...)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*sql.Rows), nil
 }
 
 func (c *ClientSqlx) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	return c.db.QueryRowContext(ctx, query, args...)
+	c.logger.Debug("> %s %q", query, args)
+
+	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return c.db.QueryRowContext(ctx, query, args...), nil
+	})
+	if err != nil {
+		return nil
+	}
+
+	return res.(*sql.Row)
 }
 
 func (c *ClientSqlx) Queryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	c.logger.Debug("> %s %q", query, args)
 
-	return c.db.QueryxContext(ctx, query, args...)
+	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return c.db.QueryxContext(ctx, query, args...)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*sqlx.Rows), err
 }
 
 func (c *ClientSqlx) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	c.logger.Debug("> %s %q", query, args)
 
-	return c.db.SelectContext(ctx, dest, query, args...)
+	_, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return nil, c.db.SelectContext(ctx, dest, query, args...)
+	})
+
+	return err
 }
 
 func (c *ClientSqlx) Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	c.logger.Debug("> %s %q", query, args)
 
-	return c.db.GetContext(ctx, dest, query, args...)
+	_, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return nil, c.db.GetContext(ctx, dest, query, args...)
+	})
+
+	return err
 }
 
 func (c *ClientSqlx) BeginTx(ctx context.Context, ops *sql.TxOptions) (*sql.Tx, error) {
 	c.logger.Debug("start tx")
 
-	return c.db.BeginTx(ctx, ops)
+	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return c.db.BeginTx(ctx, ops)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*sql.Tx), err
 }
 
 func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sql.Tx) error) (err error) {

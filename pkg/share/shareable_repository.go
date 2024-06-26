@@ -19,7 +19,7 @@ type shareRepository struct {
 }
 
 func NewShareableRepository(ctx context.Context, config cfg.Config, logger log.Logger, repo db_repo.Repository) (*shareRepository, error) {
-	guard, err := guard.NewGuard(config, logger)
+	guard, err := guard.NewGuard(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create guard: %w", err)
 	}
