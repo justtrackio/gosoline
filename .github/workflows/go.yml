@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install mockery
-        run: go install github.com/vektra/mockery/v2@v2.22.1
+        run: go install github.com/vektra/mockery/v2@v2.43.2
 
       - name: Execute mockery
         run: go generate -run='mockery' ./...
@@ -61,7 +61,7 @@ jobs:
           changes=$(git status -s | grep -E '^[ ]?M|A') || true
           if [ "0" != $(echo -n $changes | wc -c) ]; then
             git status -s | grep -E '^[ ]?M|A'
-            echo "please check the file list above and (re-)create those mocks locally with the mockery version v2.22.1!"
+            echo "please check the file list above and (re-)create those mocks locally with the mockery version v2.43.2!"
             echo "here's the diff:"
             git diff HEAD~0
             echo "end of diff"
