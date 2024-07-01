@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
-	grpcServerProto "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/helloworld/v1"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	grpcServerProto "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 type greeter struct {
@@ -86,7 +86,7 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 				_ = g.Run(ctx)
 			}()
 
-			conn, err := grpc.DialContext(ctx, g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn, err := grpc.NewClient(g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			assert.NoError(t, err)
 			defer func() {
 				_ = conn.Close()
@@ -151,7 +151,7 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 				_ = g.Run(ctx)
 			}()
 
-			conn, err := grpc.DialContext(ctx, g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn, err := grpc.NewClient(g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			assert.NoError(t, err)
 			defer func() {
 				_ = conn.Close()
