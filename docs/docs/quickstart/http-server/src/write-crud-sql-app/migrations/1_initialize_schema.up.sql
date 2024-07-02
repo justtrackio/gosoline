@@ -1,3 +1,5 @@
+-- +goose Up
+-- +goose StatementBegin
 create table todos
 (
     id         int       auto_increment primary key,
@@ -6,3 +8,4 @@ create table todos
     updated_at timestamp not null,
     created_at timestamp not null
 );
+-- +goose StatementEnd
