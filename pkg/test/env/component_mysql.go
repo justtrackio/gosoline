@@ -2,6 +2,7 @@ package env
 
 import (
 	"github.com/Masterminds/squirrel"
+	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,7 @@ type mysqlComponent struct {
 	client      *sqlx.DB
 	credentials mysqlCredentials
 	binding     containerBinding
+	toxiproxy   *toxiproxy.Proxy
 }
 
 func (c *mysqlComponent) CfgOptions() []cfg.Option {
@@ -51,10 +53,13 @@ func (c *mysqlComponent) AssertRowCount(table string, expectedCount int) {
 
 	var actualCount int
 	err = c.client.Get(&actualCount, qry, args...)
-
 	if err != nil {
 		assert.FailNow(c.t, err.Error(), "can not count rows in table %s", table)
 	}
 
 	assert.Equal(c.t, expectedCount, actualCount, "row count doesn't match for table %s", table)
+}
+
+func (c *mysqlComponent) Toxiproxy() *toxiproxy.Proxy {
+	return c.toxiproxy
 }

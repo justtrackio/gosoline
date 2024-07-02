@@ -24,7 +24,7 @@ func NewCrateDbDriver(logger log.Logger) (Driver, error) {
 	return &crateDbDriver{}, nil
 }
 
-func (c crateDbDriver) GetDSN(settings Settings) string {
+func (c crateDbDriver) GetDSN(settings *Settings) string {
 	dsn := url.URL{
 		Scheme: "postgres",
 		Host:   fmt.Sprintf("%s:%d", settings.Uri.Host, settings.Uri.Port),

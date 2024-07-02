@@ -7,6 +7,7 @@ import (
 	goSqlMock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/db"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 )
@@ -131,7 +132,7 @@ func getMocks() (db.Client, goSqlMock.Sqlmock) {
 	loggerMock := logMocks.NewLoggerMockedAll()
 	sqlxDB := sqlx.NewDb(dbMock, "sqlmock")
 
-	client := db.NewClientWithInterfaces(loggerMock, sqlxDB)
+	client := db.NewClientWithInterfaces(loggerMock, sqlxDB, exec.NewDefaultExecutor())
 
 	return client, sqlMock
 }

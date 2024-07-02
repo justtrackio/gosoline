@@ -60,7 +60,7 @@ func NewBackoffExecutorWithSender(logger log.Logger, res *exec.ExecutableResourc
 	}...)
 
 	return &BackoffExecutor{
-		executor: exec.NewBackoffExecutor(logger, res, settings, checks...),
+		executor: exec.NewBackoffExecutor(logger, res, settings, checks),
 		sender:   sender,
 	}
 }

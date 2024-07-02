@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
+	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -30,11 +31,14 @@ type mysqlSettings struct {
 	ComponentBaseSettings
 	ComponentContainerSettings
 	ContainerBindingSettings
-	UseExternalContainer bool             `cfg:"use_external_container" default:"false"`
 	Credentials          mysqlCredentials `cfg:"credentials"`
+	ToxiproxyEnabled     bool             `cfg:"toxiproxy_enabled" default:"false"`
+	UseExternalContainer bool             `cfg:"use_external_container" default:"false"`
 }
 
-type mysqlFactory struct{}
+type mysqlFactory struct {
+	toxiproxyFactory toxiproxyFactory
+}
 
 func (f mysqlFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
 	if !config.IsSet("db") {
@@ -77,13 +81,21 @@ func (f mysqlFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 }
 
 func (f mysqlFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
-	return componentContainerDescriptions{
+	s := settings.(*mysqlSettings)
+
+	descriptions := componentContainerDescriptions{
 		"main": {
 			containerConfig:  f.configureContainer(settings),
 			healthCheck:      f.healthCheck(settings),
 			shutdownCallback: f.dropDatabase(settings),
 		},
 	}
+
+	if s.ToxiproxyEnabled {
+		descriptions["toxiproxy"] = f.toxiproxyFactory.describeContainer(s.ExpireAfter)
+	}
+
+	return descriptions
 }
 
 func (f mysqlFactory) configureContainer(settings interface{}) *containerConfig {
@@ -151,9 +163,24 @@ func (f mysqlFactory) healthCheck(settings interface{}) ComponentHealthCheck {
 
 func (f mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
 	s := settings.(*mysqlSettings)
-	binding := containers["main"].bindings["3306/tcp"]
-	client, err := f.connection(s, binding)
-	if err != nil {
+
+	var err error
+	var con *sqlx.DB
+	var proxy *toxiproxy.Proxy
+
+	mysqlBinding := containers["main"].bindings["3306/tcp"]
+
+	if s.ToxiproxyEnabled {
+		toxiproxyClient := f.toxiproxyFactory.client(containers["toxiproxy"])
+
+		if proxy, err = toxiproxyClient.CreateProxy("ddb", ":56248", mysqlBinding.getAddress()); err != nil {
+			return nil, fmt.Errorf("can not create toxiproxy proxy for ddb component: %w", err)
+		}
+
+		mysqlBinding = containers["toxiproxy"].bindings["56248/tcp"]
+	}
+
+	if con, err = f.connection(s, mysqlBinding); err != nil {
 		return nil, fmt.Errorf("can not create client: %w", err)
 	}
 
@@ -161,9 +188,10 @@ func (f mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[strin
 		baseComponent: baseComponent{
 			name: s.Name,
 		},
-		client:      client,
+		client:      con,
 		credentials: s.Credentials,
-		binding:     binding,
+		binding:     mysqlBinding,
+		toxiproxy:   proxy,
 	}
 
 	return component, nil

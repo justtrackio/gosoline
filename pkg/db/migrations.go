@@ -16,7 +16,7 @@ type MigrationSettings struct {
 	Provider       string `cfg:"provider" default:"goose"`
 }
 
-type MigrationProvider func(logger log.Logger, settings Settings, db *sql.DB) error
+type MigrationProvider func(logger log.Logger, settings *Settings, db *sql.DB) error
 
 func AddMigrationProvider(name string, provider MigrationProvider) {
 	migrationProviders[name] = provider
@@ -27,7 +27,7 @@ var migrationProviders = map[string]MigrationProvider{
 	"goose":          runMigrationGoose,
 }
 
-func runMigrations(logger log.Logger, settings Settings, db *sql.DB) error {
+func runMigrations(logger log.Logger, settings *Settings, db *sql.DB) error {
 	logger = logger.WithChannel("db-migrations")
 
 	if !settings.Migrations.Enabled || settings.Migrations.Path == "" {

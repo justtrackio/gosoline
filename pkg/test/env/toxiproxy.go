@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	toxiproxy "github.com/Shopify/toxiproxy/client"
+	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
 )
 
 type toxiproxyFactory struct{}
@@ -13,7 +13,7 @@ func (f *toxiproxyFactory) describeContainer(expireAfter time.Duration) *compone
 	return &componentContainerDescription{
 		containerConfig: &containerConfig{
 			Repository: "ghcr.io/shopify/toxiproxy",
-			Tag:        "2.2.0",
+			Tag:        "2.9.0",
 			PortBindings: portBindings{
 				"8474/tcp":  0,
 				"56248/tcp": 0,
