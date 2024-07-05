@@ -25,11 +25,11 @@ type sqlRepository struct {
 
 func ProvideRepository(ctx context.Context, config cfg.Config, logger log.Logger) (db_repo.Repository, error) {
 	return appctx.Provide(ctx, repositoryCtxKey("ShareRepository"), func() (db_repo.Repository, error) {
-		return newRepository(config, logger)
+		return newRepository(ctx, config, logger)
 	})
 }
 
-func newRepository(config cfg.Config, logger log.Logger) (db_repo.Repository, error) {
+func newRepository(ctx context.Context, config cfg.Config, logger log.Logger) (db_repo.Repository, error) {
 	var settings Settings
 	config.UnmarshalKey("shares", &settings)
 	tn := settings.TableName
@@ -51,7 +51,7 @@ func newRepository(config cfg.Config, logger log.Logger) (db_repo.Repository, er
 		},
 	}
 
-	repo, err := db_repo.New(config, logger, dbSettings)
+	repo, err := db_repo.New(ctx, config, logger, dbSettings)
 	if err != nil {
 		return nil, fmt.Errorf("can not create repository: %w", err)
 	}

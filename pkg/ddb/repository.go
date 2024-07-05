@@ -110,7 +110,7 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 	tracer := tracing.NewNoopTracer()
 
 	if !settings.DisableTracing {
-		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
+		if tracer, err = tracing.ProvideTracer(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
 		}
 	}

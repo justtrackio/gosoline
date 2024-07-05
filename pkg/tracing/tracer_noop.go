@@ -3,7 +3,11 @@ package tracing
 import (
 	"context"
 	"net/http"
+
+	"google.golang.org/grpc"
 )
+
+var _ Tracer = &noopTracer{}
 
 type noopTracer struct{}
 
@@ -25,4 +29,14 @@ func (t *noopTracer) StartSpanFromContext(ctx context.Context, name string) (con
 
 func (t *noopTracer) HttpHandler(h http.Handler) http.Handler {
 	return h
+}
+
+func (t *noopTracer) HttpClient(baseClient *http.Client) *http.Client {
+	return baseClient
+}
+
+func (t *noopTracer) GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+		return handler(ctx, req)
+	}
 }

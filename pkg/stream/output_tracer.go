@@ -15,7 +15,7 @@ type outputTracer struct {
 	name   string
 }
 
-func NewOutputTracer(config cfg.Config, logger log.Logger, base Output, name string) (*outputTracer, error) {
+func NewOutputTracer(ctx context.Context, config cfg.Config, logger log.Logger, base Output, name string) (*outputTracer, error) {
 	key := ConfigurableOutputKey(name)
 
 	settings := &BaseOutputConfiguration{}
@@ -25,7 +25,7 @@ func NewOutputTracer(config cfg.Config, logger log.Logger, base Output, name str
 	tracer := tracing.NewNoopTracer()
 
 	if settings.Tracing.Enabled {
-		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
+		if tracer, err = tracing.ProvideTracer(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
 		}
 	}

@@ -59,7 +59,7 @@ func (s *DbRepoQueryTestSuite) TestCreateCorrectModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)
@@ -89,7 +89,7 @@ func (s *DbRepoQueryTestSuite) TestCreateWrongModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)
@@ -106,7 +106,7 @@ func (s *DbRepoQueryTestSuite) TestReadCorrectModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)
@@ -129,7 +129,7 @@ func (s *DbRepoQueryTestSuite) TestReadWrongModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)
@@ -144,7 +144,7 @@ func (s *DbRepoQueryTestSuite) TestUpdateCorrectModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)
@@ -192,7 +192,7 @@ func (s *DbRepoQueryTestSuite) TestUpdateWrongModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)
@@ -209,7 +209,7 @@ func (s *DbRepoQueryTestSuite) TestDeleteCorrectModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)
@@ -229,7 +229,7 @@ func (s *DbRepoQueryTestSuite) TestDeleteWrongModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)
@@ -246,7 +246,7 @@ func (s *DbRepoQueryTestSuite) TestQueryCorrectModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)
@@ -294,7 +294,7 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongResultModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)
@@ -333,7 +333,7 @@ func (s *DbRepoQueryTestSuite) TestQueryWrongModel() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	repo, err := db_repo.New(envConfig, envLogger, db_repo.Settings{
+	repo, err := db_repo.New(context.Background(), envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModelMetadata,
 	})
 	s.NoError(err)

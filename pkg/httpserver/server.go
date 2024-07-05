@@ -95,7 +95,7 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 		var compressionMiddlewares []gin.HandlerFunc
 		var healthChecker kernel.HealthChecker
 
-		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
+		if tracer, err = tracing.ProvideTracer(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
 		}
 
