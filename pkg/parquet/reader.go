@@ -349,7 +349,6 @@ func (r *s3Reader) decode(input interface{}, output interface{}) error {
 	}
 
 	err = decoder.Decode(input)
-
 	if err != nil {
 		return errors.Wrap(err, "can not decode input")
 	}

@@ -75,7 +75,6 @@ func (s *redisKvStore[T]) Get(ctx context.Context, key any, value *T) (bool, err
 	}
 
 	err = Unmarshal([]byte(data), value)
-
 	if err != nil {
 		return false, fmt.Errorf("can not unmarshal value from redis store: %w", err)
 	}
@@ -95,7 +94,6 @@ func (s *redisKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, key
 
 	for i := 0; i < len(keyStrings); i++ {
 		keyStrings[i], err = s.key(keys[i])
-
 		if err != nil {
 			return nil, fmt.Errorf("can not build string key: %w", err)
 		}
@@ -122,7 +120,6 @@ func (s *redisKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, key
 
 		element := resultMap.NewElement()
 		err = Unmarshal([]byte(item), element)
-
 		if err != nil {
 			return nil, fmt.Errorf("can not unmarshal item: %w", err)
 		}
@@ -142,7 +139,6 @@ func (s *redisKvStore[T]) Put(ctx context.Context, key any, value T) error {
 	}
 
 	err = s.client.Set(ctx, keyStr, bytes, s.settings.Ttl)
-
 	if err != nil {
 		return fmt.Errorf("can not set value in redis store: %w", err)
 	}
@@ -231,7 +227,6 @@ func (s *redisKvStore[T]) Delete(ctx context.Context, key any) error {
 	}
 
 	_, err = s.client.Del(ctx, keyStr)
-
 	if err != nil {
 		return fmt.Errorf("can not delete value from redis store: %w", err)
 	}
@@ -257,7 +252,6 @@ func (s *redisKvStore[T]) DeleteBatch(ctx context.Context, keys any) error {
 	}
 
 	_, err = s.client.Del(ctx, redisKeys...)
-
 	if err != nil {
 		return fmt.Errorf("can not delete values from redis store: %w", err)
 	}

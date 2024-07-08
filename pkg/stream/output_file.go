@@ -20,7 +20,7 @@ const (
 
 type FileOutputSettings struct {
 	Filename string         `cfg:"filename"`
-	Mode     FileOutputMode `cfg:"mode" default:"append"`
+	Mode     FileOutputMode `cfg:"mode"     default:"append"`
 }
 
 type fileOutput struct {
@@ -72,7 +72,6 @@ func (o *fileOutput) Write(_ context.Context, batch []WritableMessage) error {
 		}
 
 		_, err = file.Write(append(data, '\n'))
-
 		if err != nil {
 			return err
 		}
