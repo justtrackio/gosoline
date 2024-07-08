@@ -1,4 +1,5 @@
 golang 1.21.3
+gofumpt 0.6.0
 golangci-lint 1.54.2
 mockery 2.43.2
 protoc 24.2
