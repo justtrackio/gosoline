@@ -14,7 +14,7 @@ import (
 )
 
 type DdbItem struct {
-	Key   string `json:"key" ddb:"key=hash"`
+	Key   string `json:"key"   ddb:"key=hash"`
 	Value string `json:"value"`
 }
 
@@ -105,7 +105,6 @@ func (s *ddbKvStore[T]) Get(ctx context.Context, key any, value *T) (bool, error
 
 	bytes := []byte(item.Value)
 	err = Unmarshal(bytes, value)
-
 	if err != nil {
 		return false, fmt.Errorf("can not unmarshal value for item %s: %w", keyStr, err)
 	}
@@ -138,7 +137,6 @@ func (s *ddbKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys 
 	items := make([]DdbItem, 0)
 
 	_, err = s.repository.BatchGetItems(ctx, qb, &items)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not get items from ddb: %w", err)
 	}
@@ -150,7 +148,6 @@ func (s *ddbKvStore[T]) getChunk(ctx context.Context, resultMap *refl.Map, keys 
 
 		element := resultMap.NewElement()
 		err = Unmarshal([]byte(items[i].Value), element)
-
 		if err != nil {
 			return nil, fmt.Errorf("can not unmarshal item: %w", err)
 		}
@@ -189,7 +186,6 @@ func (s *ddbKvStore[T]) Put(ctx context.Context, key any, value T) error {
 	}
 
 	_, err = s.repository.PutItem(ctx, nil, item)
-
 	if err != nil {
 		return fmt.Errorf("can not put item %s into ddb store: %w", keyStr, err)
 	}
@@ -237,7 +233,6 @@ func (s *ddbKvStore[T]) PutBatch(ctx context.Context, values any) error {
 	}
 
 	_, err = s.repository.BatchPutItems(ctx, items)
-
 	if err != nil {
 		return fmt.Errorf("not able to put values into ddb store: %w", err)
 	}
@@ -254,7 +249,6 @@ func (s *ddbKvStore[T]) Delete(ctx context.Context, key any) error {
 	_, err = s.repository.DeleteItem(ctx, nil, &DdbDeleteItem{
 		Key: keyStr,
 	})
-
 	if err != nil {
 		return fmt.Errorf("can not delete item %s from ddb store: %w", keyStr, err)
 	}
@@ -282,7 +276,6 @@ func (s *ddbKvStore[T]) DeleteBatch(ctx context.Context, keys any) error {
 	}
 
 	_, err = s.repository.BatchDeleteItems(ctx, items)
-
 	if err != nil {
 		return fmt.Errorf("can not delete values from ddb store: %w", err)
 	}

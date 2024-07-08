@@ -46,7 +46,6 @@ func SnsMarshaller(msg *Message) (*string, error) {
 	}
 
 	bytes, err = json.Marshal(snsMessage)
-
 	if err != nil {
 		return nil, err
 	}

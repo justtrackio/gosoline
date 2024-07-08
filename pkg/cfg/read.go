@@ -19,7 +19,6 @@ func readConfigFromFile(cfg *config, filePath string, fileType string) error {
 
 	settings := make(map[string]interface{})
 	err = yaml.Unmarshal(bytes, &settings)
-
 	if err != nil {
 		return errors.Wrapf(err, "can not unmarshal config file %s", filePath)
 	}

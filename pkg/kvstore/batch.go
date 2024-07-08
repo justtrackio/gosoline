@@ -32,7 +32,6 @@ func getBatch(ctx context.Context, keys interface{}, result interface{}, getChun
 	}
 
 	keySlice, err = UniqKeys(keySlice)
-
 	if err != nil {
 		return nil, fmt.Errorf("can not deduplicate keys: %w", err)
 	}

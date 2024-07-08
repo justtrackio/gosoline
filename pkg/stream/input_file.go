@@ -62,7 +62,6 @@ func (i *fileInput) Run(ctx context.Context) error {
 
 		msg := Message{}
 		err = json.Unmarshal([]byte(rawMessage), &msg)
-
 		if err != nil {
 			i.logger.Error("could not unmarshal message: %w", err)
 			continue

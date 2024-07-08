@@ -96,7 +96,6 @@ func (s *chainKvStore[T]) Get(ctx context.Context, key any, value *T) (bool, err
 	for i, element := range s.chain {
 		var err error
 		exists, err = element.Get(ctx, key, value)
-
 		if err != nil {
 			// return error only if last element fails
 			if i == lastElementIndex {
@@ -143,7 +142,6 @@ func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([
 
 	cachedMissingMap := make(map[string]interface{})
 	todo, err = s.missingCache.GetBatch(ctx, todo, cachedMissingMap)
-
 	if err != nil {
 		s.logger.WithContext(ctx).Warn("failed to read from missing value cache: %s", err.Error())
 	}
@@ -163,7 +161,6 @@ func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([
 	for i, element := range s.chain {
 		var err error
 		refill[i], err = element.GetBatch(ctx, todo, values)
-
 		if err != nil {
 			// return error only if last element fails
 			if i == lastElementIndex {
@@ -207,7 +204,6 @@ func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([
 		}
 
 		err = s.chain[i].PutBatch(ctx, missingInElement)
-
 		if err != nil {
 			s.logger.WithContext(ctx).Warn("could not put batch to kvstore %T: %s", s.chain[i], err.Error())
 		}
@@ -222,7 +218,6 @@ func (s *chainKvStore[T]) GetBatch(ctx context.Context, keys any, values any) ([
 		}
 
 		err = s.missingCache.PutBatch(ctx, missingValues)
-
 		if err != nil {
 			s.logger.WithContext(ctx).Warn("could not put batch to empty value cache: %w", err.Error())
 		}

@@ -42,7 +42,6 @@ func ReadEcsMetadata() (EcsMetadata, error) {
 
 		metadata = make(EcsMetadata)
 		err = json.Unmarshal(data, &metadata)
-
 		if err != nil {
 			return nil, errors.Wrap(err, "can not unmarshal ecs metadata")
 		}

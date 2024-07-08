@@ -90,7 +90,6 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 
 	newTime := float64(s.clock.Now().Unix())
 	err = s.store.Put(ctx, ExchangeRateDateKey, newTime)
-
 	if err != nil {
 		return fmt.Errorf("error setting refresh date %w", err)
 	}
@@ -137,7 +136,6 @@ func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
 
 	exchangeRateResult := ExchangeResponse{}
 	err = xml.Unmarshal(response.Body, &exchangeRateResult)
-
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling exchange rates: %w", err)
 	}
@@ -236,7 +234,6 @@ func (s *updaterService) fetchExchangeRates(ctx context.Context) ([]Content, err
 
 	exchangeRateResult := HistoricalExchangeResponse{}
 	err = xml.Unmarshal(response.Body, &exchangeRateResult)
-
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling historical exchange rates: %w", err)
 	}

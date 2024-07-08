@@ -51,7 +51,6 @@ func (c *mysqlComponent) AssertRowCount(table string, expectedCount int) {
 
 	var actualCount int
 	err = c.client.Get(&actualCount, qry, args...)
-
 	if err != nil {
 		assert.FailNow(c.t, err.Error(), "can not count rows in table %s", table)
 	}
