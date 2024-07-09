@@ -28,6 +28,7 @@ type SubscriberTestCase interface {
 	GetName() string
 	GetModelId() mdl.ModelId
 	GetInput() interface{}
+	GetVersion() int
 }
 
 type subscriberTestCase struct {
@@ -35,6 +36,7 @@ type subscriberTestCase struct {
 	ModelId mdl.ModelId
 	Input   interface{}
 	Output  mdlsub.Model
+	Version int
 }
 
 func (s subscriberTestCase) GetName() string {
@@ -47,6 +49,10 @@ func (s subscriberTestCase) GetModelId() mdl.ModelId {
 
 func (s subscriberTestCase) GetInput() interface{} {
 	return s.Input
+}
+
+func (s subscriberTestCase) GetVersion() int {
+	return s.Version
 }
 
 func isTestCaseSubscriber(method reflect.Method) bool {
@@ -94,7 +100,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 		}))
 
 		runTestCaseApplication(t, suite, suiteOptions, environment, func(app *appUnderTest) {
-			attrs := mdlsub.CreateMessageAttributes(tc.GetModelId(), "create", 0)
+			attrs := mdlsub.CreateMessageAttributes(tc.GetModelId(), "create", tc.GetVersion())
 
 			sourceModel := mdlsub.UnmarshalSubscriberSourceModel(suite.Env().Config(), tc.GetName())
 			inputName := mdlsub.GetSubscriberFQN(tc.GetName(), sourceModel)
@@ -197,6 +203,7 @@ func DbTestCase(testCase DbSubscriberTestCase) (SubscriberTestCase, error) {
 			Name:    testCase.Name,
 			ModelId: modelId,
 			Input:   testCase.Input,
+			Version: testCase.Version,
 		},
 		Assert: testCase.Assert,
 	}, nil
@@ -205,6 +212,7 @@ func DbTestCase(testCase DbSubscriberTestCase) (SubscriberTestCase, error) {
 type DbSubscriberTestCase struct {
 	Name    string
 	ModelId string
+	Version int
 	Input   interface{}
 	Assert  DbSubscriberAssertion
 }
@@ -244,6 +252,7 @@ func DdbTestCase(testCase DdbSubscriberTestCase) (SubscriberTestCase, error) {
 			Name:    testCase.Name,
 			ModelId: modelIdSource,
 			Input:   testCase.Input,
+			Version: testCase.Version,
 		},
 		ModelIdTarget: modelIdTarget,
 		Assert:        testCase.Assert,
@@ -254,6 +263,7 @@ type DdbSubscriberTestCase struct {
 	Name          string
 	SourceModelId string
 	TargetModelId string
+	Version       int
 	Input         interface{}
 	Assert        DdbSubscriberAssertion
 }
@@ -315,6 +325,7 @@ func KvstoreTestCase(testCase KvstoreSubscriberTestCase) (SubscriberTestCase, er
 			Name:    testCase.Name,
 			ModelId: modelId,
 			Input:   testCase.Input,
+			Version: testCase.Version,
 		},
 		Assert: testCase.Assert,
 	}, nil
@@ -324,6 +335,7 @@ type KvstoreSubscriberTestCase struct {
 	Name    string
 	ModelId string
 	Input   interface{}
+	Version int
 	Assert  KvStoreSubscriberAssertion
 }
 
