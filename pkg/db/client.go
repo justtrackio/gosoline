@@ -58,13 +58,18 @@ type Client interface {
 	GetSingleScalarValue(ctx context.Context, query string, args ...interface{}) (int, error)
 	GetResult(ctx context.Context, query string, args ...interface{}) (*Result, error)
 	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	NamedExec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error)
+	BindNamed(query string, arg interface{}) (string, []interface{}, error)
 	Prepare(ctx context.Context, query string) (*sql.Stmt, error)
 	Preparex(ctx context.Context, query string) (*sqlx.Stmt, error)
+	PrepareNamed(ctx context.Context, query string) (*sqlx.NamedStmt, error)
 	Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
 	Queryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 	QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row
+	NamedQuery(ctx context.Context, query string, arg interface{}) (*sqlx.Rows, error)
 	Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	NamedSelect(ctx context.Context, dest interface{}, query string, arg interface{}) error
 	Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sql.Tx) error) error
 }
@@ -204,6 +209,12 @@ func (c *ClientSqlx) Exec(ctx context.Context, query string, args ...interface{}
 	return res.(sql.Result), err
 }
 
+func (c *ClientSqlx) NamedExec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	c.logger.Debug("> %s %q", query, args)
+
+	return c.db.NamedExecContext(ctx, query, args)
+}
+
 func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error) {
 	var tx *sql.Tx
 	var res sql.Result
@@ -254,6 +265,10 @@ func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (result
 	return
 }
 
+func (c *ClientSqlx) BindNamed(query string, arg interface{}) (string, []interface{}, error) {
+	return c.db.BindNamed(query, arg)
+}
+
 func (c *ClientSqlx) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
 	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
 		return c.db.PrepareContext(ctx, query)
@@ -274,6 +289,17 @@ func (c *ClientSqlx) Preparex(ctx context.Context, query string) (*sqlx.Stmt, er
 	}
 
 	return res.(*sqlx.Stmt), nil
+}
+
+func (c *ClientSqlx) PrepareNamed(ctx context.Context, query string) (*sqlx.NamedStmt, error) {
+	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return c.db.PrepareNamedContext(ctx, query)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*sqlx.NamedStmt), nil
 }
 
 func (c *ClientSqlx) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
@@ -302,6 +328,19 @@ func (c *ClientSqlx) QueryRow(ctx context.Context, query string, args ...interfa
 	return res.(*sql.Row)
 }
 
+func (c *ClientSqlx) NamedQuery(ctx context.Context, query string, arg interface{}) (*sqlx.Rows, error) {
+	c.logger.Debug("> %s %q", query, arg)
+
+	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return c.db.NamedQueryContext(ctx, query, arg)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(*sqlx.Rows), nil
+}
+
 func (c *ClientSqlx) Queryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	c.logger.Debug("> %s %q", query, args)
 
@@ -320,6 +359,22 @@ func (c *ClientSqlx) Select(ctx context.Context, dest interface{}, query string,
 
 	_, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
 		return nil, c.db.SelectContext(ctx, dest, query, args...)
+	})
+
+	return err
+}
+
+func (c *ClientSqlx) NamedSelect(ctx context.Context, dest interface{}, query string, arg interface{}) error {
+	c.logger.Debug("> %s %q", query, arg)
+
+	_, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		stmt, err := c.db.PrepareNamedContext(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		defer stmt.Close()
+
+		return nil, stmt.SelectContext(ctx, dest, arg)
 	})
 
 	return err
