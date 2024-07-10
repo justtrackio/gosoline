@@ -255,7 +255,7 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_StillOwned() {
 
 func (s *metadataRepositoryTestSuite) TestAcquireShard_PutFail() {
 	s.mockAcquireShardGetItem(false, "", 0, nil)
-	s.mockAcquireShardPutItem("", false, fmt.Errorf("fail"))
+	s.mockAcquireShardPutItem("", "", false, fmt.Errorf("fail"))
 
 	s.logger.EXPECT().Info("trying to use unused shard %s", s.shardId).Once()
 
@@ -266,7 +266,7 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_PutFail() {
 
 func (s *metadataRepositoryTestSuite) TestAcquireShard_PutConditionFail() {
 	s.mockAcquireShardGetItem(false, "", 0, nil)
-	s.mockAcquireShardPutItem("", true, nil)
+	s.mockAcquireShardPutItem("", "", true, nil)
 
 	s.logger.EXPECT().Info("trying to use unused shard %s", s.shardId).Once()
 	s.logger.EXPECT().Info("failed to acquire shard %s", s.shardId).Once()
@@ -278,46 +278,46 @@ func (s *metadataRepositoryTestSuite) TestAcquireShard_PutConditionFail() {
 
 func (s *metadataRepositoryTestSuite) TestAcquireShard_SuccessNotFound() {
 	s.mockAcquireShardGetItem(false, "", 0, nil)
-	s.mockAcquireShardPutItem("", false, nil)
+	s.mockAcquireShardPutItem("", "", false, nil)
 
 	s.logger.EXPECT().Info("trying to use unused shard %s", s.shardId).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
+	s.NoError(err)
 	s.NotNil(checkpoint)
 	s.Equal(kinesis.SequenceNumber(""), checkpoint.GetSequenceNumber())
-	s.NoError(err)
 
-	s.testCheckpoint(checkpoint, "", false)
+	s.testCheckpoint(checkpoint, "", "", false)
 }
 
 func (s *metadataRepositoryTestSuite) TestAcquireShard_SuccessNotInUse() {
 	s.mockAcquireShardGetItem(true, "", 0, nil)
-	s.mockAcquireShardPutItem("1234", false, nil)
+	s.mockAcquireShardPutItem("1234", "1234==", false, nil)
 
 	s.logger.EXPECT().Info("trying to take over shard %s from %s", s.shardId, kinesis.ClientId("nobody")).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
+	s.NoError(err)
 	s.NotNil(checkpoint)
 	s.Equal(kinesis.SequenceNumber("1234"), checkpoint.GetSequenceNumber())
-	s.NoError(err)
 
-	s.testCheckpoint(checkpoint, "1234", true)
+	s.testCheckpoint(checkpoint, "1234", "1234==", true)
 }
 
 func (s *metadataRepositoryTestSuite) TestAcquireShard_SuccessTakenOver() {
 	otherClientId := kinesis.ClientId(uuid.New().NewV4())
 
 	s.mockAcquireShardGetItem(true, otherClientId, time.Hour, nil)
-	s.mockAcquireShardPutItem("1234", false, nil)
+	s.mockAcquireShardPutItem("1234", "1234==", false, nil)
 
 	s.logger.EXPECT().Info("trying to take over shard %s from %s", s.shardId, otherClientId).Once()
 
 	checkpoint, err := s.metadataRepository.AcquireShard(s.ctx, s.shardId)
+	s.NoError(err)
 	s.NotNil(checkpoint)
 	s.Equal(kinesis.SequenceNumber("1234"), checkpoint.GetSequenceNumber())
-	s.NoError(err)
 
-	s.testCheckpoint(checkpoint, "1234", false)
+	s.testCheckpoint(checkpoint, "1234", "1234==", false)
 }
 
 func (s *metadataRepositoryTestSuite) mockAcquireShardGetItem(found bool, owningClientId kinesis.ClientId, age time.Duration, err error) {
@@ -341,16 +341,17 @@ func (s *metadataRepositoryTestSuite) mockAcquireShardGetItem(found bool, owning
 				UpdatedAt: s.clock.Now().Add(-age),
 				Ttl:       mdl.Box(s.clock.Now().Add(kinesis.ShardTimeout - age).Unix()),
 			},
-			OwningClientId: owningClientId,
-			SequenceNumber: "1234",
-			FinishedAt:     nil,
+			OwningClientId:    owningClientId,
+			SequenceNumber:    "1234",
+			LastShardIterator: "1234==",
+			FinishedAt:        nil,
 		}
 	}).Return(&ddb.GetItemResult{
 		IsFound: found,
 	}, err).Once()
 }
 
-func (s *metadataRepositoryTestSuite) mockAcquireShardPutItem(sequenceNumber kinesis.SequenceNumber, conditionalCheckFailed bool, err error) {
+func (s *metadataRepositoryTestSuite) mockAcquireShardPutItem(sequenceNumber kinesis.SequenceNumber, shardIterator kinesis.ShardIterator, conditionalCheckFailed bool, err error) {
 	qb := ddbMocks.NewPutItemBuilder(s.T())
 	qb.EXPECT().WithCondition(ddb.AttributeNotExists("owningClientId").Or(ddb.Lte("updatedAt", s.clock.Now().Add(-time.Minute)))).Return(qb).Once()
 
@@ -362,17 +363,18 @@ func (s *metadataRepositoryTestSuite) mockAcquireShardPutItem(sequenceNumber kin
 			UpdatedAt: s.clock.Now(),
 			Ttl:       mdl.Box(s.clock.Now().Add(kinesis.ShardTimeout).Unix()),
 		},
-		OwningClientId: s.clientId,
-		SequenceNumber: sequenceNumber,
-		FinishedAt:     nil,
+		OwningClientId:    s.clientId,
+		SequenceNumber:    sequenceNumber,
+		LastShardIterator: shardIterator,
+		FinishedAt:        nil,
 	}).Return(&ddb.PutItemResult{
 		ConditionalCheckFailed: conditionalCheckFailed,
 	}, err).Once()
 }
 
-func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoint, initialSequenceNumber kinesis.SequenceNumber, wasAlreadyReleased bool) {
+func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoint, initialSequenceNumber kinesis.SequenceNumber, lastShardIterator kinesis.ShardIterator, wasAlreadyReleased bool) {
 	s.Run("Persist_NotDirty", func() {
-		s.mockCheckpointPersist(nil, initialSequenceNumber, false, nil)
+		s.mockCheckpointPersist(nil, initialSequenceNumber, lastShardIterator, false, nil)
 
 		shouldRelease, err := checkpoint.Persist(s.ctx)
 		s.False(shouldRelease)
@@ -380,12 +382,12 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	})
 
 	s.Run("Advance_Success", func() {
-		err := checkpoint.Advance("2000")
+		err := checkpoint.Advance("2000", "2000==")
 		s.NoError(err)
 	})
 
 	s.Run("Persist_Error", func() {
-		s.mockCheckpointPersist(nil, "2000", false, fmt.Errorf("fail"))
+		s.mockCheckpointPersist(nil, "2000", "2000==", false, fmt.Errorf("fail"))
 
 		shouldRelease, err := checkpoint.Persist(s.ctx)
 		s.False(shouldRelease)
@@ -393,7 +395,7 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	})
 
 	s.Run("Persist_ConditionalCheckFailed", func() {
-		s.mockCheckpointPersist(nil, "2000", true, nil)
+		s.mockCheckpointPersist(nil, "2000", "2000==", true, nil)
 
 		shouldRelease, err := checkpoint.Persist(s.ctx)
 		s.False(shouldRelease)
@@ -401,7 +403,7 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	})
 
 	s.Run("Persist_Success", func() {
-		s.mockCheckpointPersist(nil, "2000", false, nil)
+		s.mockCheckpointPersist(nil, "2000", "2000==", false, nil)
 
 		shouldRelease, err := checkpoint.Persist(s.ctx)
 		s.False(shouldRelease)
@@ -409,7 +411,7 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	})
 
 	s.Run("Persist_NoLongerDirty", func() {
-		s.mockCheckpointPersist(nil, "2000", false, nil)
+		s.mockCheckpointPersist(nil, "2000", "2000==", false, nil)
 
 		shouldRelease, err := checkpoint.Persist(s.ctx)
 		s.False(shouldRelease)
@@ -425,7 +427,7 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	finishedAt := mdl.Box(s.clock.Now())
 
 	s.Run("PersistFinished_Error", func() {
-		s.mockCheckpointPersist(finishedAt, "2000", false, fmt.Errorf("fail"))
+		s.mockCheckpointPersist(finishedAt, "2000", "2000==", false, fmt.Errorf("fail"))
 
 		shouldRelease, err := checkpoint.Persist(s.ctx)
 		s.False(shouldRelease)
@@ -433,7 +435,7 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	})
 
 	s.Run("PersistFinished_ConditionalCheckFailed", func() {
-		s.mockCheckpointPersist(finishedAt, "2000", true, nil)
+		s.mockCheckpointPersist(finishedAt, "2000", "2000==", true, nil)
 
 		shouldRelease, err := checkpoint.Persist(s.ctx)
 		s.False(shouldRelease)
@@ -441,7 +443,7 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	})
 
 	s.Run("PersistFinished_Success", func() {
-		s.mockCheckpointPersist(finishedAt, "2000", false, nil)
+		s.mockCheckpointPersist(finishedAt, "2000", "2000==", false, nil)
 
 		shouldRelease, err := checkpoint.Persist(s.ctx)
 		s.True(shouldRelease)
@@ -449,7 +451,7 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	})
 
 	s.Run("Release_Error", func() {
-		s.mockCheckpointRelease("2000", false, fmt.Errorf("fail"))
+		s.mockCheckpointRelease("2000", "2000==", false, fmt.Errorf("fail"))
 
 		err := checkpoint.Release(s.ctx)
 		s.EqualError(err, "failed to release checkpoint: fail")
@@ -458,14 +460,14 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	// we can either fail to release it or release it, but not both
 	if wasAlreadyReleased {
 		s.Run("Release_AlreadyReleased", func() {
-			s.mockCheckpointRelease("2000", true, nil)
+			s.mockCheckpointRelease("2000", "2000==", true, nil)
 
 			err := checkpoint.Release(s.ctx)
 			s.Equal(err, kinesis.ErrCheckpointAlreadyReleased)
 		})
 	} else {
 		s.Run("Release_Success", func() {
-			s.mockCheckpointRelease("2000", false, nil)
+			s.mockCheckpointRelease("2000", "2000==", false, nil)
 
 			err := checkpoint.Release(s.ctx)
 			s.NoError(err)
@@ -473,7 +475,7 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	}
 
 	s.Run("Advance_AlreadyReleased", func() {
-		err := checkpoint.Advance("3000")
+		err := checkpoint.Advance("3000", "3000==")
 		s.EqualError(err, "can not advance already released checkpoint: "+conc.ErrAlreadyPoisoned.Error())
 	})
 
@@ -489,7 +491,7 @@ func (s *metadataRepositoryTestSuite) testCheckpoint(checkpoint kinesis.Checkpoi
 	})
 }
 
-func (s *metadataRepositoryTestSuite) mockCheckpointPersist(finishedAt *time.Time, sequenceNumber kinesis.SequenceNumber, conditionalCheckFailed bool, err error) {
+func (s *metadataRepositoryTestSuite) mockCheckpointPersist(finishedAt *time.Time, sequenceNumber kinesis.SequenceNumber, shardIterator kinesis.ShardIterator, conditionalCheckFailed bool, err error) {
 	// let the time run on to not always get the same numbers
 	s.clock.Advance(time.Second)
 
@@ -504,15 +506,16 @@ func (s *metadataRepositoryTestSuite) mockCheckpointPersist(finishedAt *time.Tim
 			UpdatedAt: s.clock.Now(),
 			Ttl:       mdl.Box(s.clock.Now().Add(kinesis.ShardTimeout).Unix()),
 		},
-		OwningClientId: s.clientId,
-		SequenceNumber: sequenceNumber,
-		FinishedAt:     finishedAt,
+		OwningClientId:    s.clientId,
+		SequenceNumber:    sequenceNumber,
+		LastShardIterator: shardIterator,
+		FinishedAt:        finishedAt,
 	}).Return(&ddb.PutItemResult{
 		ConditionalCheckFailed: conditionalCheckFailed,
 	}, err).Once()
 }
 
-func (s *metadataRepositoryTestSuite) mockCheckpointRelease(sequenceNumber kinesis.SequenceNumber, conditionalCheckFailed bool, err error) {
+func (s *metadataRepositoryTestSuite) mockCheckpointRelease(sequenceNumber kinesis.SequenceNumber, shardIterator kinesis.ShardIterator, conditionalCheckFailed bool, err error) {
 	// let the time run on to not always get the same numbers
 	s.clock.Advance(time.Second)
 
@@ -523,6 +526,7 @@ func (s *metadataRepositoryTestSuite) mockCheckpointRelease(sequenceNumber kines
 	qb.EXPECT().Set("updatedAt", s.clock.Now()).Return(qb).Once()
 	qb.EXPECT().Set("ttl", mdl.Box(s.clock.Now().Add(kinesis.ShardTimeout).Unix())).Return(qb).Once()
 	qb.EXPECT().Set("sequenceNumber", sequenceNumber).Return(qb).Once()
+	qb.EXPECT().Set("lastShardIterator", shardIterator).Return(qb).Once()
 	qb.EXPECT().WithCondition(ddb.Eq("owningClientId", s.clientId)).Return(qb).Once()
 
 	s.repo.EXPECT().UpdateItemBuilder().Return(qb).Once()

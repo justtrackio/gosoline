@@ -91,7 +91,8 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 	}()
 
 	sequenceNumber := s.getCheckpoint().GetSequenceNumber()
-	iterator, err := s.getShardIterator(ctx, sequenceNumber)
+	shardIterator := s.getCheckpoint().GetShardIterator()
+	iterator, err := s.getShardIterator(ctx, sequenceNumber, shardIterator)
 	if err != nil {
 		return fmt.Errorf("failed to get shard iterator: %w", err)
 	}
@@ -120,7 +121,7 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 			}
 		}()
 
-		return s.iterateRecords(ctx, millisecondsBehindChan, iterator, handler)
+		return s.iterateRecords(ctx, millisecondsBehindChan, iterator, sequenceNumber, handler)
 	})
 
 	// if we get a canceled error, drop it here. We used to do this at our caller, but this makes a test harder:
@@ -177,7 +178,32 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 	}
 }
 
-func (s *shardReader) getShardIterator(ctx context.Context, sequenceNumber SequenceNumber) (string, error) {
+func (s *shardReader) getShardIterator(ctx context.Context, sequenceNumber SequenceNumber, lastShardIterator ShardIterator) (ShardIterator, error) {
+	if lastShardIterator != "" {
+		// check if we can recycle the last shard iterator instead of starting from the configured starting point
+		resp, err := s.kinesisClient.GetRecords(ctx, &kinesis.GetRecordsInput{
+			ShardIterator: aws.String(string(lastShardIterator)),
+			Limit:         aws.Int32(1),
+		})
+		if err != nil {
+			var errExpiredIteratorException *types.ExpiredIteratorException
+			if errors.As(err, &errExpiredIteratorException) {
+				s.logger.WithContext(ctx).Info("can't continue from expired saved iterator, will start from configured default")
+			} else {
+				return "", fmt.Errorf("failed to validate shard iterator: %w", err)
+			}
+		} else {
+			// we can actually return a fresh shard iterator and continue from there (as we didn't skip any records)
+			if len(resp.Records) == 0 {
+				return ShardIterator(mdl.EmptyIfNil(resp.NextShardIterator)), nil
+			}
+
+			// return our saved shard iterator and hope it doesn't expire until we request it again (shard iterators
+			// expire after 5 minutes).
+			return lastShardIterator, nil
+		}
+	}
+
 	iteratorType := types.ShardIteratorTypeAfterSequenceNumber
 	if sequenceNumber == "" {
 		iteratorType = s.settings.InitialPosition.Type
@@ -201,7 +227,7 @@ func (s *shardReader) getShardIterator(ctx context.Context, sequenceNumber Seque
 		return "", fmt.Errorf("failed to get shard iterator: %w", err)
 	}
 
-	return mdl.EmptyIfNil(resp.ShardIterator), nil
+	return ShardIterator(mdl.EmptyIfNil(resp.ShardIterator)), nil
 }
 
 func (s *shardReader) runPersister(ctx context.Context, releaseCtx context.Context) error {
@@ -236,9 +262,16 @@ func (s *shardReader) runPersister(ctx context.Context, releaseCtx context.Conte
 	}
 }
 
-func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan chan float64, iterator string, handler func(record []byte) error) error {
+func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan chan float64, iterator ShardIterator, startingSequenceNumber SequenceNumber, handler func(record []byte) error) error {
 	timer := s.clock.NewTimer(0)
-	var lastSequenceNumber SequenceNumber
+	// we have to carry the old sequence number forward - otherwise we could have the following scenario:
+	// - our stream is empty for more than one day (if data expires after one day)
+	// - our service is redeployed, we have no longer a sequence number (if we wouldn't start with the last one)
+	// - later, our service is stopped for a few minutes, causing the shard iterator we store to expire
+	// - during these minutes, some data is written to the stream
+	// - we now start without a sequence number nor a valid iterator and start from the configured default - which
+	//   might be something else than TRIM_HORIZON (for example, in case of LATEST we would lose some data)
+	lastSequenceNumber := startingSequenceNumber
 
 	for {
 		if iterator == "" {
@@ -259,7 +292,9 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 			var errExpiredIteratorException *types.ExpiredIteratorException
 			if errors.As(err, &errExpiredIteratorException) {
 				// we were too slow reading from the shard, so get a new iterator and continue
-				iterator, err = s.getShardIterator(ctx, s.getCheckpoint().GetSequenceNumber())
+				sequenceNumber := s.getCheckpoint().GetSequenceNumber()
+				shardIterator := s.getCheckpoint().GetShardIterator()
+				iterator, err = s.getShardIterator(ctx, sequenceNumber, shardIterator)
 				if err != nil {
 					return fmt.Errorf("failed to get new shard iterator: %w", err)
 				}
@@ -284,7 +319,7 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 			processStart := s.clock.Now()
 			var processedSize int
 
-			if processedSize, err = s.processRecords(ctx, records, &lastSequenceNumber, handler); err != nil {
+			if processedSize, err = s.processRecords(ctx, records, &lastSequenceNumber, iterator, handler); err != nil {
 				return err
 			} else if processedSize == len(records) {
 				// only advance the iterator if we processed the whole batch - if we don't do it like this, we could get
@@ -322,10 +357,10 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 	}
 }
 
-func (s *shardReader) getRecords(ctx context.Context, iterator string) (records []types.Record, nextIterator string, millisecondsBehind int64, err error) {
+func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (records []types.Record, nextIterator ShardIterator, millisecondsBehind int64, err error) {
 	params := &kinesis.GetRecordsInput{
 		Limit:         aws.Int32(int32(s.settings.MaxBatchSize)),
-		ShardIterator: aws.String(iterator),
+		ShardIterator: aws.String(string(iterator)),
 	}
 
 	output, err := s.kinesisClient.GetRecords(ctx, params)
@@ -336,13 +371,21 @@ func (s *shardReader) getRecords(ctx context.Context, iterator string) (records 
 	s.writeMetric(metricNameReadCount, 1.0, metric.UnitCount)
 
 	records = output.Records
-	nextIterator = mdl.EmptyIfNil(output.NextShardIterator)
+	nextIterator = ShardIterator(mdl.EmptyIfNil(output.NextShardIterator))
 
 	return records, nextIterator, mdl.EmptyIfNil(output.MillisBehindLatest), nil
 }
 
-func (s *shardReader) processRecords(ctx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, handler func(record []byte) error) (int, error) {
+func (s *shardReader) processRecords(ctx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, nextIterator ShardIterator, handler func(record []byte) error) (int, error) {
 	processedSize := 0
+
+	// if our batch is empty, just write the next iterator to the checkpoint
+	if len(records) == 0 {
+		err := s.getCheckpoint().Advance(*lastSequenceNumber, nextIterator)
+		if err != nil {
+			return processedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
+		}
+	}
 
 	for _, record := range records {
 		s.delayConsume(ctx, record)
@@ -365,7 +408,10 @@ func (s *shardReader) processRecords(ctx context.Context, records []types.Record
 		}
 
 		*lastSequenceNumber = SequenceNumber(mdl.EmptyIfNil(record.SequenceNumber))
-		err := s.getCheckpoint().Advance(*lastSequenceNumber)
+		// if we process any record, we don't need to store a shard iterator (they are only valid for 5 minutes, so if we
+		// processed a record, the stream is not empty, and we should consume the next batch before all the records in the
+		// stream expire (which is at least a day away if we are keeping up with the stream)).
+		err := s.getCheckpoint().Advance(*lastSequenceNumber, "")
 		if err != nil {
 			return processedSize, fmt.Errorf("failed to advance checkpoint: %w", err)
 		}
