@@ -23,7 +23,11 @@ func (c nopCheckpoint) GetSequenceNumber() SequenceNumber {
 	return ""
 }
 
-func (c nopCheckpoint) Advance(_ SequenceNumber) error {
+func (c nopCheckpoint) GetShardIterator() ShardIterator {
+	return ""
+}
+
+func (c nopCheckpoint) Advance(_ SequenceNumber, _ ShardIterator) error {
 	return nil
 }
 
@@ -47,6 +51,7 @@ type checkpoint struct {
 	shardId             ShardId
 	owningClientId      ClientId
 	sequenceNumber      SequenceNumber
+	shardIterator       ShardIterator
 	finalSequenceNumber SequenceNumber
 	finishedAt          *time.Time
 }
@@ -55,13 +60,18 @@ func (c *checkpoint) GetSequenceNumber() SequenceNumber {
 	return c.sequenceNumber
 }
 
-func (c *checkpoint) Advance(sequenceNumber SequenceNumber) error {
+func (c *checkpoint) GetShardIterator() ShardIterator {
+	return c.shardIterator
+}
+
+func (c *checkpoint) Advance(sequenceNumber SequenceNumber, shardIterator ShardIterator) error {
 	if err := c.lck.TryLock(); err != nil {
 		return fmt.Errorf("can not advance already released checkpoint: %w", err)
 	}
 	defer c.lck.Unlock()
 
 	c.sequenceNumber = sequenceNumber
+	c.shardIterator = shardIterator
 
 	return nil
 }
@@ -91,9 +101,10 @@ func (c *checkpoint) Persist(ctx context.Context) (shouldRelease bool, err error
 			UpdatedAt: c.clock.Now(),
 			Ttl:       mdl.Box(c.clock.Now().Add(ShardTimeout).Unix()),
 		},
-		OwningClientId: c.owningClientId,
-		SequenceNumber: c.sequenceNumber,
-		FinishedAt:     c.finishedAt,
+		OwningClientId:    c.owningClientId,
+		SequenceNumber:    c.sequenceNumber,
+		LastShardIterator: c.shardIterator,
+		FinishedAt:        c.finishedAt,
 	}
 
 	if c.sequenceNumber != c.finalSequenceNumber && c.finalSequenceNumber != "" {
@@ -120,6 +131,7 @@ func (c *checkpoint) Release(ctx context.Context) error {
 			Set("updatedAt", c.clock.Now()).
 			Set("ttl", mdl.Box(c.clock.Now().Add(ShardTimeout).Unix())).
 			Set("sequenceNumber", c.sequenceNumber).
+			Set("lastShardIterator", c.shardIterator).
 			WithCondition(ddb.Eq("owningClientId", c.owningClientId))
 		if result, err := c.repo.UpdateItem(ctx, qb, &CheckpointRecord{}); err != nil {
 			return false, fmt.Errorf("failed to release checkpoint: %w", err)

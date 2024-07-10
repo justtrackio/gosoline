@@ -46,7 +46,7 @@ type MetadataRepository interface {
 //go:generate mockery --name Checkpoint
 type Checkpoint interface {
 	CheckpointWithoutRelease
-	// Release releases ownership over a shard. Do not use the Checkpoint afterwards.
+	// Release releases ownership over a shard. Do not use the Checkpoint afterward.
 	Release(ctx context.Context) error
 }
 
@@ -56,8 +56,9 @@ type Checkpoint interface {
 //go:generate mockery --name CheckpointWithoutRelease
 type CheckpointWithoutRelease interface {
 	GetSequenceNumber() SequenceNumber
+	GetShardIterator() ShardIterator
 	// Advance updates our Checkpoint to include all the sequence numbers up to (and including) the new sequence number.
-	Advance(sequenceNumber SequenceNumber) error
+	Advance(sequenceNumber SequenceNumber, shardIterator ShardIterator) error
 	// Done marks a shard as completely consumed, i.e., there are no further records left to consume.
 	Done(sequenceNumber SequenceNumber) error
 	// Persist writes the current Checkpoint to the database and renews our lock on the shard. Thus, you have to call
@@ -76,9 +77,10 @@ type BaseRecord struct {
 
 type FullRecord struct {
 	BaseRecord
-	OwningClientId ClientId       `json:"owningClientId,omitempty"`
-	SequenceNumber SequenceNumber `json:"sequenceNumber,omitempty"`
-	FinishedAt     *time.Time     `json:"finishedAt"`
+	OwningClientId    ClientId       `json:"owningClientId,omitempty"`
+	SequenceNumber    SequenceNumber `json:"sequenceNumber,omitempty"`
+	LastShardIterator ShardIterator  `json:"lastShardIterator,omitempty"`
+	FinishedAt        *time.Time     `json:"finishedAt"`
 }
 
 type ClientRecord struct {
@@ -87,9 +89,10 @@ type ClientRecord struct {
 
 type CheckpointRecord struct {
 	BaseRecord
-	OwningClientId ClientId       `json:"owningClientId,omitempty"`
-	SequenceNumber SequenceNumber `json:"sequenceNumber,omitempty"`
-	FinishedAt     *time.Time     `json:"finishedAt"`
+	OwningClientId    ClientId       `json:"owningClientId,omitempty"`
+	SequenceNumber    SequenceNumber `json:"sequenceNumber,omitempty"`
+	LastShardIterator ShardIterator  `json:"lastShardIterator,omitempty"`
+	FinishedAt        *time.Time     `json:"finishedAt"`
 }
 
 type metadataRepository struct {
@@ -261,9 +264,10 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 				UpdatedAt: m.clock.Now(),
 				Ttl:       mdl.Box(m.clock.Now().Add(ShardTimeout).Unix()),
 			},
-			OwningClientId: m.clientId,
-			SequenceNumber: "",
-			FinishedAt:     nil,
+			OwningClientId:    m.clientId,
+			SequenceNumber:    "",
+			LastShardIterator: "",
+			FinishedAt:        nil,
 		}
 	} else {
 		if record.OwningClientId != "" && record.UpdatedAt.After(timedOutBefore) {
@@ -313,6 +317,7 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 		shardId:             shardId,
 		owningClientId:      m.clientId,
 		sequenceNumber:      record.SequenceNumber,
+		shardIterator:       record.LastShardIterator,
 		finalSequenceNumber: finalSequenceNumber,
 		finishedAt:          record.FinishedAt,
 	}, nil

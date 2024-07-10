@@ -43,6 +43,7 @@ type (
 	ClientId       string
 	ShardId        string
 	SequenceNumber string
+	ShardIterator  string
 )
 
 type shardIdSlice []ShardId

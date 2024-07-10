@@ -22,17 +22,17 @@ func (_m *CheckpointWithoutRelease) EXPECT() *CheckpointWithoutRelease_Expecter 
 	return &CheckpointWithoutRelease_Expecter{mock: &_m.Mock}
 }
 
-// Advance provides a mock function with given fields: sequenceNumber
-func (_m *CheckpointWithoutRelease) Advance(sequenceNumber kinesis.SequenceNumber) error {
-	ret := _m.Called(sequenceNumber)
+// Advance provides a mock function with given fields: sequenceNumber, shardIterator
+func (_m *CheckpointWithoutRelease) Advance(sequenceNumber kinesis.SequenceNumber, shardIterator kinesis.ShardIterator) error {
+	ret := _m.Called(sequenceNumber, shardIterator)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Advance")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(kinesis.SequenceNumber) error); ok {
-		r0 = rf(sequenceNumber)
+	if rf, ok := ret.Get(0).(func(kinesis.SequenceNumber, kinesis.ShardIterator) error); ok {
+		r0 = rf(sequenceNumber, shardIterator)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -47,13 +47,14 @@ type CheckpointWithoutRelease_Advance_Call struct {
 
 // Advance is a helper method to define mock.On call
 //   - sequenceNumber kinesis.SequenceNumber
-func (_e *CheckpointWithoutRelease_Expecter) Advance(sequenceNumber interface{}) *CheckpointWithoutRelease_Advance_Call {
-	return &CheckpointWithoutRelease_Advance_Call{Call: _e.mock.On("Advance", sequenceNumber)}
+//   - shardIterator kinesis.ShardIterator
+func (_e *CheckpointWithoutRelease_Expecter) Advance(sequenceNumber interface{}, shardIterator interface{}) *CheckpointWithoutRelease_Advance_Call {
+	return &CheckpointWithoutRelease_Advance_Call{Call: _e.mock.On("Advance", sequenceNumber, shardIterator)}
 }
 
-func (_c *CheckpointWithoutRelease_Advance_Call) Run(run func(sequenceNumber kinesis.SequenceNumber)) *CheckpointWithoutRelease_Advance_Call {
+func (_c *CheckpointWithoutRelease_Advance_Call) Run(run func(sequenceNumber kinesis.SequenceNumber, shardIterator kinesis.ShardIterator)) *CheckpointWithoutRelease_Advance_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(kinesis.SequenceNumber))
+		run(args[0].(kinesis.SequenceNumber), args[1].(kinesis.ShardIterator))
 	})
 	return _c
 }
@@ -63,7 +64,7 @@ func (_c *CheckpointWithoutRelease_Advance_Call) Return(_a0 error) *CheckpointWi
 	return _c
 }
 
-func (_c *CheckpointWithoutRelease_Advance_Call) RunAndReturn(run func(kinesis.SequenceNumber) error) *CheckpointWithoutRelease_Advance_Call {
+func (_c *CheckpointWithoutRelease_Advance_Call) RunAndReturn(run func(kinesis.SequenceNumber, kinesis.ShardIterator) error) *CheckpointWithoutRelease_Advance_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -155,6 +156,51 @@ func (_c *CheckpointWithoutRelease_GetSequenceNumber_Call) Return(_a0 kinesis.Se
 }
 
 func (_c *CheckpointWithoutRelease_GetSequenceNumber_Call) RunAndReturn(run func() kinesis.SequenceNumber) *CheckpointWithoutRelease_GetSequenceNumber_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetShardIterator provides a mock function with given fields:
+func (_m *CheckpointWithoutRelease) GetShardIterator() kinesis.ShardIterator {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetShardIterator")
+	}
+
+	var r0 kinesis.ShardIterator
+	if rf, ok := ret.Get(0).(func() kinesis.ShardIterator); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(kinesis.ShardIterator)
+	}
+
+	return r0
+}
+
+// CheckpointWithoutRelease_GetShardIterator_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetShardIterator'
+type CheckpointWithoutRelease_GetShardIterator_Call struct {
+	*mock.Call
+}
+
+// GetShardIterator is a helper method to define mock.On call
+func (_e *CheckpointWithoutRelease_Expecter) GetShardIterator() *CheckpointWithoutRelease_GetShardIterator_Call {
+	return &CheckpointWithoutRelease_GetShardIterator_Call{Call: _e.mock.On("GetShardIterator")}
+}
+
+func (_c *CheckpointWithoutRelease_GetShardIterator_Call) Run(run func()) *CheckpointWithoutRelease_GetShardIterator_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *CheckpointWithoutRelease_GetShardIterator_Call) Return(_a0 kinesis.ShardIterator) *CheckpointWithoutRelease_GetShardIterator_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *CheckpointWithoutRelease_GetShardIterator_Call) RunAndReturn(run func() kinesis.ShardIterator) *CheckpointWithoutRelease_GetShardIterator_Call {
 	_c.Call.Return(run)
 	return _c
 }
