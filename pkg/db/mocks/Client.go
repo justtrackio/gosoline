@@ -26,6 +26,72 @@ func (_m *Client) EXPECT() *Client_Expecter {
 	return &Client_Expecter{mock: &_m.Mock}
 }
 
+// BindNamed provides a mock function with given fields: query, arg
+func (_m *Client) BindNamed(query string, arg interface{}) (string, []interface{}, error) {
+	ret := _m.Called(query, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BindNamed")
+	}
+
+	var r0 string
+	var r1 []interface{}
+	var r2 error
+	if rf, ok := ret.Get(0).(func(string, interface{}) (string, []interface{}, error)); ok {
+		return rf(query, arg)
+	}
+	if rf, ok := ret.Get(0).(func(string, interface{}) string); ok {
+		r0 = rf(query, arg)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, interface{}) []interface{}); ok {
+		r1 = rf(query, arg)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]interface{})
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(string, interface{}) error); ok {
+		r2 = rf(query, arg)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// Client_BindNamed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BindNamed'
+type Client_BindNamed_Call struct {
+	*mock.Call
+}
+
+// BindNamed is a helper method to define mock.On call
+//   - query string
+//   - arg interface{}
+func (_e *Client_Expecter) BindNamed(query interface{}, arg interface{}) *Client_BindNamed_Call {
+	return &Client_BindNamed_Call{Call: _e.mock.On("BindNamed", query, arg)}
+}
+
+func (_c *Client_BindNamed_Call) Run(run func(query string, arg interface{})) *Client_BindNamed_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_BindNamed_Call) Return(_a0 string, _a1 []interface{}, _a2 error) *Client_BindNamed_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *Client_BindNamed_Call) RunAndReturn(run func(string, interface{}) (string, []interface{}, error)) *Client_BindNamed_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Exec provides a mock function with given fields: ctx, query, args
 func (_m *Client) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	var _ca []interface{}
@@ -366,6 +432,185 @@ func (_c *Client_GetSingleScalarValue_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// NamedExec provides a mock function with given fields: ctx, query, args
+func (_m *Client) NamedExec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	var _ca []interface{}
+	_ca = append(_ca, ctx, query)
+	_ca = append(_ca, args...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NamedExec")
+	}
+
+	var r0 sql.Result
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...interface{}) (sql.Result, error)); ok {
+		return rf(ctx, query, args...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, ...interface{}) sql.Result); ok {
+		r0 = rf(ctx, query, args...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(sql.Result)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, ...interface{}) error); ok {
+		r1 = rf(ctx, query, args...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_NamedExec_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NamedExec'
+type Client_NamedExec_Call struct {
+	*mock.Call
+}
+
+// NamedExec is a helper method to define mock.On call
+//   - ctx context.Context
+//   - query string
+//   - args ...interface{}
+func (_e *Client_Expecter) NamedExec(ctx interface{}, query interface{}, args ...interface{}) *Client_NamedExec_Call {
+	return &Client_NamedExec_Call{Call: _e.mock.On("NamedExec",
+		append([]interface{}{ctx, query}, args...)...)}
+}
+
+func (_c *Client_NamedExec_Call) Run(run func(ctx context.Context, query string, args ...interface{})) *Client_NamedExec_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]interface{}, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(interface{})
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_NamedExec_Call) Return(_a0 sql.Result, _a1 error) *Client_NamedExec_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_NamedExec_Call) RunAndReturn(run func(context.Context, string, ...interface{}) (sql.Result, error)) *Client_NamedExec_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NamedQuery provides a mock function with given fields: ctx, query, arg
+func (_m *Client) NamedQuery(ctx context.Context, query string, arg interface{}) (*sqlx.Rows, error) {
+	ret := _m.Called(ctx, query, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NamedQuery")
+	}
+
+	var r0 *sqlx.Rows
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}) (*sqlx.Rows, error)); ok {
+		return rf(ctx, query, arg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, interface{}) *sqlx.Rows); ok {
+		r0 = rf(ctx, query, arg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sqlx.Rows)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, interface{}) error); ok {
+		r1 = rf(ctx, query, arg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_NamedQuery_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NamedQuery'
+type Client_NamedQuery_Call struct {
+	*mock.Call
+}
+
+// NamedQuery is a helper method to define mock.On call
+//   - ctx context.Context
+//   - query string
+//   - arg interface{}
+func (_e *Client_Expecter) NamedQuery(ctx interface{}, query interface{}, arg interface{}) *Client_NamedQuery_Call {
+	return &Client_NamedQuery_Call{Call: _e.mock.On("NamedQuery", ctx, query, arg)}
+}
+
+func (_c *Client_NamedQuery_Call) Run(run func(ctx context.Context, query string, arg interface{})) *Client_NamedQuery_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_NamedQuery_Call) Return(_a0 *sqlx.Rows, _a1 error) *Client_NamedQuery_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_NamedQuery_Call) RunAndReturn(run func(context.Context, string, interface{}) (*sqlx.Rows, error)) *Client_NamedQuery_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NamedSelect provides a mock function with given fields: ctx, dest, query, arg
+func (_m *Client) NamedSelect(ctx context.Context, dest interface{}, query string, arg interface{}) error {
+	ret := _m.Called(ctx, dest, query, arg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NamedSelect")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, interface{}, string, interface{}) error); ok {
+		r0 = rf(ctx, dest, query, arg)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Client_NamedSelect_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NamedSelect'
+type Client_NamedSelect_Call struct {
+	*mock.Call
+}
+
+// NamedSelect is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dest interface{}
+//   - query string
+//   - arg interface{}
+func (_e *Client_Expecter) NamedSelect(ctx interface{}, dest interface{}, query interface{}, arg interface{}) *Client_NamedSelect_Call {
+	return &Client_NamedSelect_Call{Call: _e.mock.On("NamedSelect", ctx, dest, query, arg)}
+}
+
+func (_c *Client_NamedSelect_Call) Run(run func(ctx context.Context, dest interface{}, query string, arg interface{})) *Client_NamedSelect_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(interface{}), args[2].(string), args[3].(interface{}))
+	})
+	return _c
+}
+
+func (_c *Client_NamedSelect_Call) Return(_a0 error) *Client_NamedSelect_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Client_NamedSelect_Call) RunAndReturn(run func(context.Context, interface{}, string, interface{}) error) *Client_NamedSelect_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Prepare provides a mock function with given fields: ctx, query
 func (_m *Client) Prepare(ctx context.Context, query string) (*sql.Stmt, error) {
 	ret := _m.Called(ctx, query)
@@ -421,6 +666,65 @@ func (_c *Client_Prepare_Call) Return(_a0 *sql.Stmt, _a1 error) *Client_Prepare_
 }
 
 func (_c *Client_Prepare_Call) RunAndReturn(run func(context.Context, string) (*sql.Stmt, error)) *Client_Prepare_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PrepareNamed provides a mock function with given fields: ctx, query
+func (_m *Client) PrepareNamed(ctx context.Context, query string) (*sqlx.NamedStmt, error) {
+	ret := _m.Called(ctx, query)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PrepareNamed")
+	}
+
+	var r0 *sqlx.NamedStmt
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*sqlx.NamedStmt, error)); ok {
+		return rf(ctx, query)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *sqlx.NamedStmt); ok {
+		r0 = rf(ctx, query)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sqlx.NamedStmt)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, query)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_PrepareNamed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PrepareNamed'
+type Client_PrepareNamed_Call struct {
+	*mock.Call
+}
+
+// PrepareNamed is a helper method to define mock.On call
+//   - ctx context.Context
+//   - query string
+func (_e *Client_Expecter) PrepareNamed(ctx interface{}, query interface{}) *Client_PrepareNamed_Call {
+	return &Client_PrepareNamed_Call{Call: _e.mock.On("PrepareNamed", ctx, query)}
+}
+
+func (_c *Client_PrepareNamed_Call) Run(run func(ctx context.Context, query string)) *Client_PrepareNamed_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Client_PrepareNamed_Call) Return(_a0 *sqlx.NamedStmt, _a1 error) *Client_PrepareNamed_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_PrepareNamed_Call) RunAndReturn(run func(context.Context, string) (*sqlx.NamedStmt, error)) *Client_PrepareNamed_Call {
 	_c.Call.Return(run)
 	return _c
 }
