@@ -28,6 +28,8 @@ func NewJSONType[T any](val T) JSONType[T] {
 	}
 }
 
+// AsJSONNull causes the JSONType to produce a "null" string whet the underlying value is nil instead
+// of the normal SQL Null.
 func (t *JSONType[T]) AsJSONNull() JSONType[T] {
 	t.asJsonNull = true
 

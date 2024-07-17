@@ -11,7 +11,12 @@ import (
 func TestJSONType(t *testing.T) {
 	t.Parallel()
 
-	v := struct{}{}
+	type T struct {
+		Foo string
+	}
+	v := T{
+		Foo: "bar",
+	}
 
 	jsonType := db.NewJSONType(v)
 
@@ -24,7 +29,7 @@ func TestJSONType(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, b, value)
-	parsed := &db.JSONType[struct{}]{}
+	parsed := &db.JSONType[T]{}
 	require.NoError(t, parsed.Scan(value))
 
 	require.Equal(t, jsonType.Get(), parsed.Get())
@@ -33,7 +38,12 @@ func TestJSONType(t *testing.T) {
 func TestJSONTypeAsJSONNull(t *testing.T) {
 	t.Parallel()
 
-	v := struct{}{}
+	type T struct {
+		Foo string
+	}
+	v := T{
+		Foo: "bar",
+	}
 
 	jsonType := db.NewJSONType(v)
 	jsonType = jsonType.AsJSONNull()
@@ -47,7 +57,7 @@ func TestJSONTypeAsJSONNull(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, b, value)
-	parsed := &db.JSONType[struct{}]{}
+	parsed := &db.JSONType[T]{}
 	require.NoError(t, parsed.Scan(value))
 
 	require.Equal(t, jsonType.Get(), parsed.Get())
@@ -56,7 +66,10 @@ func TestJSONTypeAsJSONNull(t *testing.T) {
 func TestJSONTypeNilAsJSONNull(t *testing.T) {
 	t.Parallel()
 
-	var v *struct{}
+	type T struct {
+		Foo string
+	}
+	var v *T
 
 	jsonType := db.NewJSONType(v)
 	jsonType = jsonType.AsJSONNull()
@@ -71,7 +84,7 @@ func TestJSONTypeNilAsJSONNull(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, b, value)
-	parsed := &db.JSONType[*struct{}]{}
+	parsed := &db.JSONType[*T]{}
 	require.NoError(t, parsed.Scan(value))
 
 	require.Equal(t, jsonType.Get(), parsed.Get())
@@ -80,7 +93,10 @@ func TestJSONTypeNilAsJSONNull(t *testing.T) {
 func TestJSONTypeNil(t *testing.T) {
 	t.Parallel()
 
-	var v *struct{}
+	type T struct {
+		Foo string
+	}
+	var v *T
 
 	jsonType := db.NewJSONType(v)
 
@@ -91,8 +107,42 @@ func TestJSONTypeNil(t *testing.T) {
 
 	require.Nil(t, value)
 
-	parsed := &db.JSONType[*struct{}]{}
+	parsed := &db.JSONType[*T]{}
 	require.NoError(t, parsed.Scan(value))
 
 	require.Equal(t, jsonType.Get(), parsed.Get())
+}
+
+func TestJSONTypeEmptyString(t *testing.T) {
+	t.Parallel()
+
+	var v string
+
+	jsonType := db.NewJSONType(v)
+
+	require.Equal(t, v, jsonType.Get())
+
+	value, err := jsonType.Value()
+	require.NoError(t, err)
+
+	require.Equal(t, "\"\"", string(value.([]byte)))
+
+	parsed := &db.JSONType[string]{}
+	require.NoError(t, parsed.Scan(value))
+
+	require.Equal(t, jsonType.Get(), parsed.Get())
+}
+
+func TestJSONTypeEmptyStringParse(t *testing.T) {
+	t.Parallel()
+
+	parsed := &db.JSONType[string]{}
+	require.Error(t, parsed.Scan([]byte("")))
+}
+
+func TestInvalidDriverType(t *testing.T) {
+	t.Parallel()
+
+	parsed := &db.JSONType[string]{}
+	require.Error(t, parsed.Scan(""), db.ErrJSONInvalidDriverType)
 }
