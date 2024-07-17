@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql/driver"
 	"errors"
+	"io"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
@@ -24,6 +25,8 @@ func NewExecutor(config cfg.Config, logger log.Logger, name string, backoffType 
 		CheckInvalidConnection,
 		CheckBadConnection,
 		CheckIoTimeout,
+		CheckIoUnexpectedEof,
+		CheckRegionUnavailable,
 	}, notifier...)
 
 	return executor
@@ -47,6 +50,29 @@ func CheckBadConnection(result interface{}, err error) exec.ErrorType {
 
 func CheckIoTimeout(result interface{}, err error) exec.ErrorType {
 	if strings.Contains(err.Error(), "i/o timeout") {
+		return exec.ErrorTypeRetryable
+	}
+
+	return exec.ErrorTypeUnknown
+}
+
+func CheckIoUnexpectedEof(result interface{}, err error) exec.ErrorType {
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		return exec.ErrorTypeRetryable
+	}
+
+	return exec.ErrorTypeUnknown
+}
+
+func CheckRegionUnavailable(result interface{}, err error) exec.ErrorType {
+	var ok bool
+	var mysqlErr *mysql.MySQLError
+
+	if ok = errors.As(err, &mysqlErr); !ok {
+		return exec.ErrorTypeUnknown
+	}
+
+	if mysqlErr.Number == 9005 {
 		return exec.ErrorTypeRetryable
 	}
 

@@ -212,7 +212,14 @@ func (c *ClientSqlx) Exec(ctx context.Context, query string, args ...interface{}
 func (c *ClientSqlx) NamedExec(ctx context.Context, query string, arg interface{}) (sql.Result, error) {
 	c.logger.Debug("> %s %q", query, arg)
 
-	return c.db.NamedExecContext(ctx, query, arg)
+	res, err := c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+		return c.db.NamedExecContext(ctx, query, arg)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return res.(sql.Result), err
 }
 
 func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error) {
