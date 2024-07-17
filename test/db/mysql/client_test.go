@@ -15,6 +15,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
+type ToDo struct {
+	Id        uint                 `db:"id"`
+	Name      string               `db:"name"`
+	Data      *db.JSONType[string] `db:"data"`
+	CreatedAd *time.Time           `db:"created_at"`
+}
+
 func TestClientTestSuite(t *testing.T) {
 	suite.Run(t, new(ClientTestSuite))
 }
@@ -81,6 +88,14 @@ func (s *ClientTestSuite) TestReadIOTimeout() {
 	}
 
 	s.Equal(1, rowsCount)
+}
+
+func (s *ClientTestSuite) TestRead() {
+	client, _ := s.getClients("default", func(err error, duration time.Duration) {})
+
+	todo := &ToDo{}
+	err := client.Get(context.Background(), todo, "SELECT * FROM todo")
+	s.FailIfError(err)
 }
 
 func (s *ClientTestSuite) getClients(name string, notifier exec.Notify) (db.Client, *toxiproxy.Proxy) {
