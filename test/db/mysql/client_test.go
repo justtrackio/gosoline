@@ -16,10 +16,10 @@ import (
 )
 
 type ToDo struct {
-	Id        uint             `db:"id"`
-	Name      string           `db:"name"`
-	Data      *db.JSON[string] `db:"data"`
-	CreatedAd *time.Time       `db:"created_at"`
+	Id        uint                         `db:"id"`
+	Name      string                       `db:"name"`
+	Data      db.JSON[string, db.Nullable] `db:"data"`
+	CreatedAd *time.Time                   `db:"created_at"`
 }
 
 func TestClientTestSuite(t *testing.T) {
