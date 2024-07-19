@@ -233,7 +233,7 @@ func (e *Environment) LoadFixtureBuilderFactories(factories ...fixtures.FixtureB
 		var err error
 		var fixtureBuilder fixtures.FixtureBuilder
 
-		if fixtureBuilder, err = factory(e.ctx); err != nil {
+		if fixtureBuilder, err = factory(e.ctx, e.config, e.logger); err != nil {
 			return fmt.Errorf("can not build fixture builder: %w", err)
 		}
 

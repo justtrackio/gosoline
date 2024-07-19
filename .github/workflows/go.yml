@@ -11,7 +11,7 @@ on:
 jobs:
   terraform-fmt:
     name: terraform fmt
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -21,12 +21,12 @@ jobs:
 
   go-fumpt:
     name: go fumpt v0.6.0
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v3
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
 
       - name: Setup gofumpt
         run: go install mvdan.cc/gofumpt@v0.6.0
@@ -42,12 +42,12 @@ jobs:
 
   mockery:
     name: mockery
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v3
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -73,12 +73,12 @@ jobs:
 
   build:
     name: go build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v3
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -91,12 +91,12 @@ jobs:
 
   go-vet:
     name: static code analysis (go vet)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v3
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -109,30 +109,30 @@ jobs:
 
   golangci-lint:
     name: static code analysis (golangci-lint)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v3
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
 
       - name: Static code analysis (golangci-lint)
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.54.2
-          args: --timeout 5m --print-issued-lines --print-linter-name --disable structcheck --disable unused
+          version: v1.59.1
+          args: --timeout 5m --print-issued-lines --print-linter-name --disable unused
 
   go-test:
     name: go test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v3
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -145,12 +145,12 @@ jobs:
 
   go-test-race:
     name: go test (race)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v3
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -163,12 +163,12 @@ jobs:
 
   go-test-integration:
     name: go test (integration)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v3
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -181,12 +181,12 @@ jobs:
 
   go-test-integration-race:
     name: go test (integration, race)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v3
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3

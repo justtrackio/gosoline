@@ -11,7 +11,7 @@ env:
 jobs:
   reindex:
     name: Reindex search
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Clone this repo
         uses: actions/checkout@v4

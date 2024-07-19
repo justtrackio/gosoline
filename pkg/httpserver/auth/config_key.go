@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	ByAnonymous     = "anonymous"
 	ByApiKey        = "apiKey"
 	HeaderApiKey    = "X-API-KEY"
 	configApiKeys   = "api_auth_keys"
