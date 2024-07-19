@@ -8,7 +8,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
-	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
@@ -33,7 +32,7 @@ func (s *ChangeHistoryTestSuite) SetupSuite() []suite.Option {
 		suite.WithDbRepoChangeHistory(),
 		suite.WithClockProviderAt("2024-01-01T00:00:00Z"),
 		suite.WithContainerExpireAfter(2 * time.Minute),
-		suite.WithFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(definitions.FixtureSets)),
+		suite.WithFixtureSetFactories(definitions.FixtureSetsFactory),
 	}
 }
 

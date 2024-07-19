@@ -19,7 +19,7 @@ type dynamodbPurger struct {
 	tableName string
 }
 
-func newDynamodbPurger(ctx context.Context, config cfg.Config, logger log.Logger, settings *ddb.Settings) (*dynamodbPurger, error) {
+func NewDynamodbPurger(ctx context.Context, config cfg.Config, logger log.Logger, settings *ddb.Settings) (*dynamodbPurger, error) {
 	var err error
 	var client gosoDynamodb.Client
 
@@ -37,7 +37,7 @@ func newDynamodbPurger(ctx context.Context, config cfg.Config, logger log.Logger
 	}, nil
 }
 
-func (p *dynamodbPurger) purgeDynamodb(ctx context.Context) error {
+func (p *dynamodbPurger) Purge(ctx context.Context) error {
 	p.logger.Info("purging table %s", p.tableName)
 	_, err := p.client.DeleteTable(ctx, &dynamodb.DeleteTableInput{TableName: aws.String(p.tableName)})
 	p.logger.Info("purging table %s done", p.tableName)

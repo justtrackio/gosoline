@@ -7,11 +7,24 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/guard"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 	"github.com/selm0/ladon"
 )
+
+func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewMysqlPlainFixtureWriter(ctx, config, logger, metadata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create mysql plain fixture writer: %w", err)
+	}
+
+	return []fixtures.FixtureSet{
+		fixtures.NewSimpleFixtureSet(namedFixtures, writer),
+	}, nil
+}
 
 type GuardTestSuite struct {
 	suite.Suite
@@ -23,17 +36,17 @@ func (s *GuardTestSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel("debug"),
 		suite.WithSharedEnvironment(),
 		suite.WithConfigFile("config.dist.yml"),
-		suite.WithFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
+		suite.WithFixtureSetFactories(fixtureSetsFactory),
 	}
 }
 
 func (s *GuardTestSuite) SetupTest() error {
-	ctx := s.Env().Context()
+	envContext := s.Env().Context()
 	config := s.Env().Config()
 	logger := s.Env().Logger()
 
 	var err error
-	s.guard, err = guard.NewGuard(ctx, config, logger)
+	s.guard, err = guard.NewGuard(envContext, config, logger)
 	if err != nil {
 		return fmt.Errorf("could not create guard: %w", err)
 	}

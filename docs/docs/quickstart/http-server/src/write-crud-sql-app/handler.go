@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver/crud"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"

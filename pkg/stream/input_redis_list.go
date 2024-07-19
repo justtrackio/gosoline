@@ -36,10 +36,10 @@ type redisListInput struct {
 	fullyQualifiedKey string
 }
 
-func NewRedisListInput(config cfg.Config, logger log.Logger, settings *RedisListInputSettings) (Input, error) {
+func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *RedisListInputSettings) (Input, error) {
 	settings.PadFromConfig(config)
 
-	client, err := redis.ProvideClient(config, logger, settings.ServerName)
+	client, err := redis.ProvideClient(ctx, config, logger, settings.ServerName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}

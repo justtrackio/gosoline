@@ -1,9 +1,10 @@
 package redis
 
 import (
+	"context"
 	"fmt"
-	"sync"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -22,28 +23,15 @@ type Settings struct {
 	BackoffSettings exec.BackoffSettings
 }
 
-var (
-	mutex   sync.Mutex
-	clients = map[string]Client{}
-)
+type redisCacheKey string
 
-func ProvideClient(config cfg.Config, logger log.Logger, name string) (Client, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
+func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
 	settings := ReadSettings(config, name)
 	cacheKey := fmt.Sprintf("%s:%s", settings.Address, name)
 
-	if client, ok := clients[cacheKey]; ok {
-		return client, nil
-	}
-
-	var err error
-	if clients[cacheKey], err = NewClient(config, logger, name); err != nil {
-		return nil, err
-	}
-
-	return clients[cacheKey], nil
+	return appctx.Provide(ctx, redisCacheKey(cacheKey), func() (Client, error) {
+		return NewClient(config, logger, name)
+	})
 }
 
 func ReadSettings(config cfg.Config, name string) *Settings {

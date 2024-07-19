@@ -9,15 +9,16 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdlsub"
 )
 
-type NamedFixture struct {
+type NamedFixture[T any] struct {
 	Name  string
-	Value interface{}
+	Value T
 }
 
-type NamedFixtureSet []*NamedFixture
+type NamedFixtures[T any] []*NamedFixture[T]
 
-func (l *NamedFixtureSet) All() []interface{} {
-	values := make([]interface{}, 0)
+// All specifically returns a []any instead of a []T, so the fixture loader code doesn't complain that it can't cast a []T to []any
+func (l *NamedFixtures[T]) All() []any {
+	values := make([]any, 0)
 
 	for _, named := range *l {
 		values = append(values, named.Value)
@@ -26,11 +27,11 @@ func (l *NamedFixtureSet) All() []interface{} {
 	return values
 }
 
-func (l *NamedFixtureSet) Len() int {
+func (l *NamedFixtures[T]) Len() int {
 	return len(*l)
 }
 
-func (l *NamedFixtureSet) CountIf(f func(elem interface{}) bool) int {
+func (l *NamedFixtures[T]) CountIf(f func(elem T) bool) int {
 	count := 0
 
 	for _, elem := range *l {
@@ -42,18 +43,20 @@ func (l *NamedFixtureSet) CountIf(f func(elem interface{}) bool) int {
 	return count
 }
 
-func (l *NamedFixtureSet) FindFirst(f func(elem interface{}) bool) (interface{}, bool) {
+func (l *NamedFixtures[T]) FindFirst(f func(elem T) bool) (T, bool) {
 	for _, elem := range *l {
 		if f(elem.Value) {
 			return elem.Value, true
 		}
 	}
 
-	return nil, false
+	t := new(T)
+
+	return *(t), false
 }
 
-func (l *NamedFixtureSet) FindAll(f func(elem interface{}) bool) []interface{} {
-	a := make([]interface{}, 0)
+func (l *NamedFixtures[T]) FindAll(f func(elem T) bool) []T {
+	a := make([]T, 0)
 	for _, elem := range *l {
 		if f(elem.Value) {
 			a = append(a, elem.Value)
@@ -63,8 +66,8 @@ func (l *NamedFixtureSet) FindAll(f func(elem interface{}) bool) []interface{} {
 	return a
 }
 
-func (l *NamedFixtureSet) GetValueByName(name string) interface{} {
-	fixture, ok := funk.FindFirstFunc(*l, func(item *NamedFixture) bool {
+func (l *NamedFixtures[T]) GetValueByName(name string) T {
+	fixture, ok := funk.FindFirstFunc(*l, func(item *NamedFixture[T]) bool {
 		return item.Name == name
 	})
 	if !ok {
@@ -74,12 +77,12 @@ func (l *NamedFixtureSet) GetValueByName(name string) interface{} {
 	return fixture.Value
 }
 
-func (l *NamedFixtureSet) GetValueById(id interface{}) interface{} {
+func (l *NamedFixtures[T]) GetValueById(id any) T {
 	if l.Len() == 0 {
 		panic(fmt.Errorf("can not find id = %v in empty fixture set", id))
 	}
 
-	fixture, ok := funk.FindFirstFunc(*l, func(item *NamedFixture) bool {
+	fixture, ok := funk.FindFirstFunc(*l, func(item *NamedFixture[T]) bool {
 		valueId, ok := GetValueId(item.Value)
 
 		return ok && id == valueId
@@ -92,7 +95,7 @@ func (l *NamedFixtureSet) GetValueById(id interface{}) interface{} {
 	return fixture.Value
 }
 
-func GetValueId(value interface{}) (interface{}, bool) {
+func GetValueId(value any) (any, bool) {
 	if kvValue, ok := value.(KvStoreFixture); ok {
 		return GetValueId(kvValue.Value)
 	}
@@ -124,7 +127,7 @@ func GetValueId(value interface{}) (interface{}, bool) {
 	return rf.Elem(), true
 }
 
-func GetNamedFixtures(container interface{}) []NamedFixtureSet {
+func GetNamedFixtures(container any) []NamedFixtures[any] {
 	v := reflect.ValueOf(container)
 	for v.Type().Kind() == reflect.Ptr {
 		v = v.Elem()
@@ -134,8 +137,8 @@ func GetNamedFixtures(container interface{}) []NamedFixtureSet {
 		panic(fmt.Errorf("expected a struct when getting named fixtureSets out of %T", container))
 	}
 
-	// extract the values of all fields which are a NamedFixtureSet
-	result := make([]NamedFixtureSet, 0, v.NumField())
+	// extract the values of all fields which are a NamedFixtures
+	result := make([]NamedFixtures[any], 0, v.NumField())
 
 	for i := 0; i < v.NumField(); i++ {
 		if !v.Field(i).CanInterface() {
@@ -144,7 +147,7 @@ func GetNamedFixtures(container interface{}) []NamedFixtureSet {
 
 		fieldVal := v.Field(i).Interface()
 
-		if val, ok := fieldVal.(NamedFixtureSet); ok {
+		if val, ok := fieldVal.(NamedFixtures[any]); ok {
 			result = append(result, val)
 		}
 	}

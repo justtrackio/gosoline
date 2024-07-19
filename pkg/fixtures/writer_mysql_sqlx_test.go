@@ -47,29 +47,27 @@ func (s *MysqlSqlxFixtureWriterTestSuite) TestWrite() {
 		IsActive bool   `db:"is_active"`
 	}
 
-	fixtureSet := &fixtures.FixtureSet{
-		Fixtures: []interface{}{
-			Fixture{
-				Id:       1,
-				Name:     "Mack",
-				IsActive: true,
-			},
-			Fixture{
-				Id:       2,
-				Name:     "Suzy",
-				IsActive: false,
-			},
+	fixtureSetFixtures := []interface{}{
+		Fixture{
+			Id:       1,
+			Name:     "Bob",
+			IsActive: true,
+		},
+		Fixture{
+			Id:       2,
+			Name:     "Alice",
+			IsActive: false,
 		},
 	}
 
 	s.mock.ExpectExec(`INSERT INTO table (id,name,is_active) VALUES (?,?,?)`).
-		WithArgs(1, "Mack", true).
+		WithArgs(1, "Bob", true).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	s.mock.ExpectExec(`INSERT INTO table (id,name,is_active) VALUES (?,?,?)`).
-		WithArgs(2, "Suzy", false).
+		WithArgs(2, "Alice", false).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err := s.writer.Write(context.Background(), fixtureSet)
+	err := s.writer.Write(context.Background(), fixtureSetFixtures)
 	s.NoError(err)
 
 	if err := s.mock.ExpectationsWereMet(); err != nil {

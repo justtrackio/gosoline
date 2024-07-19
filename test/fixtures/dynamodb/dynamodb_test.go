@@ -5,6 +5,7 @@ package dynamodb_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -43,7 +44,10 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 
 	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
 
-	err := loader.Load(envContext, s.dynamoDbDisabledPurgeFixtures())
+	fss, err := s.dynamoDbFixtureSet1()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	ddbClient := s.Env().DynamoDb("default").Client()
@@ -89,7 +93,10 @@ func (s *DynamoDbSuite) TestDynamoDbWithPurge() {
 
 	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
 
-	err := loader.Load(envContext, s.dynamoDbDisabledPurgeFixtures())
+	fss, err := s.dynamoDbFixtureSet1()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	ddbClient := s.Env().DynamoDb("default").Client()
@@ -109,7 +116,10 @@ func (s *DynamoDbSuite) TestDynamoDbWithPurge() {
 	s.Equal("Ash", gio.Item["Name"].(*types.AttributeValueMemberS).Value)
 	s.Equal("10", gio.Item["Age"].(*types.AttributeValueMemberN).Value)
 
-	err = loader.Load(envContext, s.dynamoDbEnabledPurgeFixtures())
+	fss, err = s.dynamodbFixtureSet2()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	gio, err = ddbClient.GetItem(context.Background(), &dynamodb.GetItemInput{
@@ -165,7 +175,10 @@ func (s *DynamoDbSuite) TestDynamoDbKvStore() {
 
 	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
 
-	err := loader.Load(envContext, dynamoDbKvStoreDisabledPurgeFixtures())
+	fss, err := s.dynamoDbKvStoreFixtureSet1()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	ddbClient := s.Env().DynamoDb("default").Client()
@@ -204,7 +217,10 @@ func (s *DynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 
 	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
 
-	err := loader.Load(envContext, dynamoDbKvStoreDisabledPurgeFixtures())
+	fss, err := s.dynamoDbKvStoreFixtureSet1()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	ddbClient := s.Env().DynamoDb("default").Client()
@@ -227,7 +243,10 @@ func (s *DynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 	}
 	s.Equal(expectedValue, gio.Item["value"].(*types.AttributeValueMemberS))
 
-	err = loader.Load(envContext, dynamoDbKvStoreEnabledPurgeFixtures())
+	fss, err = s.dynamoDbKvStoreFixtureSet2()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	gio, err = ddbClient.GetItem(context.Background(), &dynamodb.GetItemInput{
@@ -284,37 +303,6 @@ var kvStoreSettings = &mdl.ModelId{
 	Name:        "testModel",
 }
 
-func dynamoDbKvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Writer:  fixtures.DynamoDbKvStoreFixtureWriterFactory[Person](kvStoreSettings),
-			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
-					Key:   "Ash",
-					Value: Person{Name: "Ash", Age: 10},
-				},
-			},
-		},
-	}
-}
-
-func dynamoDbKvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Purge:   true,
-			Writer:  fixtures.DynamoDbKvStoreFixtureWriterFactory[Person](kvStoreSettings),
-			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
-					Key:   "Bash",
-					Value: Person{Name: "Bash", Age: 10},
-				},
-			},
-		},
-	}
-}
-
 var ddbSettings = &ddb.Settings{
 	ModelId: mdl.ModelId{
 		Project:     "gosoline",
@@ -337,29 +325,66 @@ var ddbSettings = &ddb.Settings{
 	},
 }
 
-func (s *DynamoDbSuite) dynamoDbDisabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Writer:  fixtures.DynamoDbFixtureWriterFactory(ddbSettings),
-			Fixtures: []interface{}{
-				&Person{Name: "Ash", Age: 10},
-			},
-		},
+func (s *DynamoDbSuite) dynamoDbFixtureSets(data fixtures.NamedFixtures[*Person], purge bool) ([]fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewDynamoDbFixtureWriter(s.Env().Context(), s.Env().Config(), s.Env().Logger(), ddbSettings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ddb fixture writer: %w", err)
 	}
+
+	return []fixtures.FixtureSet{fixtures.NewSimpleFixtureSet(data, writer, fixtures.WithPurge(purge))}, nil
 }
 
-func (s *DynamoDbSuite) dynamoDbEnabledPurgeFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Purge:   true,
-			Writer:  fixtures.DynamoDbFixtureWriterFactory(ddbSettings),
-			Fixtures: []interface{}{
-				&Person{Name: "Bash", Age: 10},
+func (s *DynamoDbSuite) dynamoDbFixtureSet1() ([]fixtures.FixtureSet, error) {
+	return s.dynamoDbFixtureSets(fixtures.NamedFixtures[*Person]{
+		&fixtures.NamedFixture[*Person]{
+			Name:  "ash",
+			Value: &Person{Name: "Ash", Age: 10},
+		},
+	}, false)
+}
+
+func (s *DynamoDbSuite) dynamodbFixtureSet2() ([]fixtures.FixtureSet, error) {
+	return s.dynamoDbFixtureSets(fixtures.NamedFixtures[*Person]{
+		&fixtures.NamedFixture[*Person]{
+			Name:  "bash",
+			Value: &Person{Name: "Bash", Age: 10},
+		},
+	}, true)
+}
+
+func (s *DynamoDbSuite) dynamoDbKvStoreFixtures(data fixtures.NamedFixtures[*fixtures.KvStoreFixture], purge bool) ([]fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewDynamoDbKvStoreFixtureWriter[Person](s.Env().Context(), s.Env().Config(), s.Env().Logger(), kvStoreSettings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ddb fixture writer: %w", err)
+	}
+
+	return []fixtures.FixtureSet{
+		fixtures.NewSimpleFixtureSet(data, writer, fixtures.WithPurge(purge)),
+	}, nil
+}
+
+func (s *DynamoDbSuite) dynamoDbKvStoreFixtureSet1() ([]fixtures.FixtureSet, error) {
+	return s.dynamoDbKvStoreFixtures(fixtures.NamedFixtures[*fixtures.KvStoreFixture]{
+		&fixtures.NamedFixture[*fixtures.KvStoreFixture]{
+			Name: "ash",
+			Value: &fixtures.KvStoreFixture{
+				Key:   "Ash",
+				Value: Person{Name: "Ash", Age: 10},
 			},
 		},
-	}
+	}, false)
+}
+
+func (s *DynamoDbSuite) dynamoDbKvStoreFixtureSet2() ([]fixtures.FixtureSet, error) {
+	return s.dynamoDbKvStoreFixtures(fixtures.NamedFixtures[*fixtures.KvStoreFixture]{
+		&fixtures.NamedFixture[*fixtures.KvStoreFixture]{
+			Name: "bash",
+			Value: &fixtures.KvStoreFixture{
+				Key:   "Bash",
+				Value: Person{Name: "Bash", Age: 10},
+			},
+		},
+	}, true)
 }
 
 func TestDynamoDbSuite(t *testing.T) {

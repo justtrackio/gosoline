@@ -228,20 +228,20 @@ func (e *Environment) StreamOutput(name string) *streamOutputComponent {
 	return e.Component(componentStreamOutput, name).(*streamOutputComponent)
 }
 
-func (e *Environment) LoadFixtureBuilderFactories(factories ...fixtures.FixtureBuilderFactory) error {
+func (e *Environment) LoadFixtureSets(factories ...fixtures.FixtureSetsFactory) error {
 	if len(factories) == 0 {
 		return nil
 	}
 
 	for _, factory := range factories {
 		var err error
-		var fixtureBuilder fixtures.FixtureBuilder
+		var fixtureSets []fixtures.FixtureSet
 
-		if fixtureBuilder, err = factory(e.ctx); err != nil {
-			return fmt.Errorf("can not build fixture builder: %w", err)
+		if fixtureSets, err = factory(e.ctx, e.config, e.logger); err != nil {
+			return fmt.Errorf("failed to create fixture set: %w", err)
 		}
 
-		if err = e.fixtureLoader.Load(e.ctx, fixtureBuilder.Fixtures()); err != nil {
+		if err := e.fixtureLoader.Load(e.ctx, fixtureSets); err != nil {
 			return err
 		}
 	}

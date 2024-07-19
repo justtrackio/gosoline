@@ -5,6 +5,7 @@ package kvstore_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/fixtures"
@@ -35,7 +36,10 @@ func (s *ConfigurableKvStoreTestSuite) TestConfigurableKvStore() {
 
 	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
 
-	err := loader.Load(envContext, buildFixtures())
+	fss, err := s.provideFixtures()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	store, err := kvstore.ProvideConfigurableKvStore[KvStoreModel](envContext, envConfig, envLogger, "test_store")
@@ -64,35 +68,65 @@ func (s *ConfigurableKvStoreTestSuite) TestConfigurableKvStore() {
 	}, res)
 }
 
-func buildFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory[KvStoreModel]("test_store"),
-			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
-					Key: "kvstore_entry_1",
-					Value: KvStoreModel{
-						Name: "foo",
-						Age:  12,
-					},
-				},
-			},
-		},
-		{
-			Enabled: true,
-			Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory[KvStoreModel]("another_test_store"),
-			Fixtures: []interface{}{
-				&fixtures.KvStoreFixture{
-					Key: "kvstore_entry_1",
-					Value: KvStoreModel{
-						Name: "bar",
-						Age:  34,
-					},
-				},
-			},
-		},
+func (s *ConfigurableKvStoreTestSuite) provideFixtureDataTestStore() (fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewConfigurableKvStoreFixtureWriter[KvStoreModel](s.Env().Context(), s.Env().Config(), s.Env().Logger(), "test_store")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kvstore fixture writer: %w", err)
 	}
+
+	fs := fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*fixtures.KvStoreFixture]{
+		&fixtures.NamedFixture[*fixtures.KvStoreFixture]{
+			Name: "kvstore_entry_1",
+			Value: &fixtures.KvStoreFixture{
+				Key: "kvstore_entry_1",
+				Value: KvStoreModel{
+					Name: "foo",
+					Age:  12,
+				},
+			},
+		},
+	}, writer)
+
+	return fs, nil
+}
+
+func (s *ConfigurableKvStoreTestSuite) provideFixtureDataAnotherTestStore() (fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewConfigurableKvStoreFixtureWriter[KvStoreModel](s.Env().Context(), s.Env().Config(), s.Env().Logger(), "another_test_store")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kvstore fixture writer: %w", err)
+	}
+
+	fs := fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*fixtures.KvStoreFixture]{
+		&fixtures.NamedFixture[*fixtures.KvStoreFixture]{
+			Name: "kvstore_entry_1",
+			Value: &fixtures.KvStoreFixture{
+				Key: "kvstore_entry_1",
+				Value: KvStoreModel{
+					Name: "bar",
+					Age:  34,
+				},
+			},
+		},
+	}, writer)
+
+	return fs, nil
+}
+
+func (s *ConfigurableKvStoreTestSuite) provideFixtures() ([]fixtures.FixtureSet, error) {
+	fs1, err := s.provideFixtureDataTestStore()
+	if err != nil {
+		return nil, err
+	}
+
+	fs2, err := s.provideFixtureDataAnotherTestStore()
+	if err != nil {
+		return nil, err
+	}
+
+	return []fixtures.FixtureSet{
+		fs1,
+		fs2,
+	}, nil
 }
 
 func TestConfigurableKvStoreTestSuite(t *testing.T) {

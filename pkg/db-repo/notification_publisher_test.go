@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	mdlMocks "github.com/justtrackio/gosoline/pkg/mdlsub/mocks"

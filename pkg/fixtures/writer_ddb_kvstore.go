@@ -24,39 +24,50 @@ type dynamoDbKvStoreFixtureWriter[T any] struct {
 	purger  *dynamodbPurger
 }
 
-func DynamoDbKvStoreFixtureWriterFactory[T any](modelId *mdl.ModelId) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
-		kvStoreSettings := &kvstore.Settings{
-			AppId: cfg.AppId{
-				Project:     modelId.Project,
-				Environment: modelId.Environment,
-				Family:      modelId.Family,
-				Group:       modelId.Group,
-				Application: modelId.Application,
-			},
-			Name: modelId.Name,
-		}
-
-		kvstoreModel := *modelId
-		kvstoreModel.Name = kvstore.DdbBaseName(kvStoreSettings)
-
-		ddbSettings := &ddb.Settings{
-			ModelId: kvstoreModel,
-		}
-
-		factory := func() (kvstore.KvStore[T], error) {
-			return kvstore.NewDdbKvStore[T](ctx, config, logger, kvStoreSettings)
-		}
-
+func DynamoDbKvStoreFixtureSetFactory[T any](modelId *mdl.ModelId, data NamedFixtures[T], options ...FixtureSetOption) FixtureSetFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error) {
 		var err error
-		var purger *dynamodbPurger
+		var writer FixtureWriter
 
-		if purger, err = newDynamodbPurger(ctx, config, logger, ddbSettings); err != nil {
-			return nil, fmt.Errorf("can not create dynamodb purger: %w", err)
+		if writer, err = NewDynamoDbKvStoreFixtureWriter[T](ctx, config, logger, modelId); err != nil {
+			return nil, fmt.Errorf("failed to create dynamodb kvstore fixture writer for %s: %w", modelId.String(), err)
 		}
 
-		return NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger, factory, purger), nil
+		return NewSimpleFixtureSet(data, writer, options...), nil
 	}
+}
+
+func NewDynamoDbKvStoreFixtureWriter[T any](ctx context.Context, config cfg.Config, logger log.Logger, modelId *mdl.ModelId) (FixtureWriter, error) {
+	kvStoreSettings := &kvstore.Settings{
+		AppId: cfg.AppId{
+			Project:     modelId.Project,
+			Environment: modelId.Environment,
+			Family:      modelId.Family,
+			Group:       modelId.Group,
+			Application: modelId.Application,
+		},
+		Name: modelId.Name,
+	}
+
+	kvstoreModel := *modelId
+	kvstoreModel.Name = kvstore.DdbBaseName(kvStoreSettings)
+
+	ddbSettings := &ddb.Settings{
+		ModelId: kvstoreModel,
+	}
+
+	factory := func() (kvstore.KvStore[T], error) {
+		return kvstore.NewDdbKvStore[T](ctx, config, logger, kvStoreSettings)
+	}
+
+	var err error
+	var purger *dynamodbPurger
+
+	if purger, err = NewDynamodbPurger(ctx, config, logger, ddbSettings); err != nil {
+		return nil, fmt.Errorf("can not create dynamodb purger: %w", err)
+	}
+
+	return NewDynamoDbKvStoreFixtureWriterWithInterfaces(logger, factory, purger), nil
 }
 
 func NewDynamoDbKvStoreFixtureWriterWithInterfaces[T any](logger log.Logger, factory ddbKvstoreFactory[T], purger *dynamodbPurger) FixtureWriter {
@@ -68,11 +79,11 @@ func NewDynamoDbKvStoreFixtureWriterWithInterfaces[T any](logger log.Logger, fac
 }
 
 func (d *dynamoDbKvStoreFixtureWriter[T]) Purge(ctx context.Context) error {
-	return d.purger.purgeDynamodb(ctx)
+	return d.purger.Purge(ctx)
 }
 
-func (d *dynamoDbKvStoreFixtureWriter[T]) Write(ctx context.Context, fs *FixtureSet) error {
-	if len(fs.Fixtures) == 0 {
+func (d *dynamoDbKvStoreFixtureWriter[T]) Write(ctx context.Context, fixtures []any) error {
+	if len(fixtures) == 0 {
 		return nil
 	}
 
@@ -83,7 +94,7 @@ func (d *dynamoDbKvStoreFixtureWriter[T]) Write(ctx context.Context, fs *Fixture
 
 	m := map[interface{}]interface{}{}
 
-	for _, item := range fs.Fixtures {
+	for _, item := range fixtures {
 		kvItem := item.(*KvStoreFixture)
 		m[kvItem.Key] = kvItem.Value
 	}
@@ -92,7 +103,7 @@ func (d *dynamoDbKvStoreFixtureWriter[T]) Write(ctx context.Context, fs *Fixture
 		return err
 	}
 
-	d.logger.Info("loaded %d dynamodb kvstore fixtures", len(fs.Fixtures))
+	d.logger.Info("loaded %d dynamodb kvstore fixtures", len(fixtures))
 
 	return nil
 }

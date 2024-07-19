@@ -108,14 +108,14 @@ func TestRequest_WithQueryObject(t *testing.T) {
 
 func TestRequest_GetUrl(t *testing.T) {
 	request := http.NewRequest(nil).
-		WithUrl("https://applike.info?test999=1").
+		WithUrl("https://justtrack.io?test999=1").
 		WithQueryParam("test", "test1", "test2").
 		WithQueryParam("test2", 1, 2.2, "test")
 
 	err := request.GetError()
 	assert.NoError(t, err)
 
-	expected := "https://applike.info?test=test1&test=test2&test2=1&test2=2.2&test2=test&test999=1"
+	expected := "https://justtrack.io?test=test1&test=test2&test2=1&test2=2.2&test2=test&test999=1"
 	assert.Equal(t, expected, request.GetUrl())
 }
 

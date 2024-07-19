@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 )
 
 type MyEntity struct {

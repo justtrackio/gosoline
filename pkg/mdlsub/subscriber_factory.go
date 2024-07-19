@@ -38,11 +38,11 @@ func SubscriberFactory(ctx context.Context, config cfg.Config, logger log.Logger
 	var outputs Outputs
 
 	if transformers, err = initTransformers(ctx, config, logger, settings.Subscribers, transformerFactories); err != nil {
-		return nil, fmt.Errorf("can not create subscribers: %w", err)
+		return nil, fmt.Errorf("failed to init transformers: %w", err)
 	}
 
 	if outputs, err = initOutputs(ctx, config, logger, settings.Subscribers, transformers); err != nil {
-		return nil, fmt.Errorf("can not create subscribers: %w", err)
+		return nil, fmt.Errorf("failed to init outputs: %w", err)
 	}
 
 	modules := make(map[string]kernel.ModuleFactory)

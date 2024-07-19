@@ -3,6 +3,7 @@
 package migration_goose
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -34,32 +35,40 @@ func (s *MysqlTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *MysqlTestSuite) TestPlainFixturesMysql() {
-	ctx := s.Env().Context()
+	envContext := s.Env().Context()
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := fixtures.NewFixtureLoader(ctx, envConfig, envLogger)
-	err := loader.Load(ctx, plainMysqlTestFixtures())
+	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+
+	fss, err := s.provideFixtureSets()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_plain_writer_test")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_plain_writer_test", "name", "testName3")
 }
 
-func plainMysqlTestFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-				TableName: "mysql_plain_writer_test",
-				Columns:   []string{"id", "name"},
-			}),
-			Fixtures: []interface{}{
-				fixtures.MysqlPlainFixtureValues{2, "testName2"},
-				fixtures.MysqlPlainFixtureValues{2, "testName3"},
-			},
-		},
+func (s *MysqlTestSuite) provideFixtureSets() ([]fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewMysqlPlainFixtureWriter(s.Env().Context(), s.Env().Config(), s.Env().Logger(), &fixtures.MysqlPlainMetaData{
+		TableName: "mysql_plain_writer_test",
+		Columns:   []string{"id", "name"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create mysql plain fixture writer: %w", err)
 	}
+
+	return []fixtures.FixtureSet{fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[fixtures.MysqlPlainFixtureValues]{
+		&fixtures.NamedFixture[fixtures.MysqlPlainFixtureValues]{
+			Name:  "testName2",
+			Value: fixtures.MysqlPlainFixtureValues{2, "testName2"},
+		},
+		&fixtures.NamedFixture[fixtures.MysqlPlainFixtureValues]{
+			Name:  "testName2",
+			Value: fixtures.MysqlPlainFixtureValues{2, "testName3"},
+		},
+	}, writer)}, nil
 }

@@ -21,24 +21,34 @@ type User struct {
 	IsActive bool   `db:"is_active"`
 }
 
-var fixtureSets = []*fixtures.FixtureSet{
-	{
-		Enabled: true,
-		Purge:   true,
-		Writer:  fixtures.MysqlSqlxFixtureWriterFactory(&fixtures.MysqlSqlxMetaData{TableName: "users"}),
-		Fixtures: []interface{}{
-			User{
+func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewMysqlSqlxFixtureWriter(ctx, config, logger, &fixtures.MysqlSqlxMetaData{TableName: "users"})
+	if err != nil {
+		return nil, fmt.Errorf("failed to provide writers: %w", err)
+	}
+
+	fs := fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[User]{
+		&fixtures.NamedFixture[User]{
+			Name: "bob",
+			Value: User{
 				Id:       1,
-				Name:     "Mack",
+				Name:     "Bob",
 				IsActive: true,
 			},
-			User{
+		},
+		&fixtures.NamedFixture[User]{
+			Name: "alice",
+			Value: User{
 				Id:       2,
-				Name:     "Suzy",
-				IsActive: false,
+				Name:     "Alice",
+				IsActive: true,
 			},
 		},
-	},
+	}, writer, fixtures.WithPurge(true))
+
+	return []fixtures.FixtureSet{
+		fs,
+	}, nil
 }
 
 func main() {
@@ -71,6 +81,6 @@ func main() {
 			}, nil
 		},
 		application.WithConfigFile("config.dist.yml", "yaml"),
-		application.WithFixtureBuilderFactory(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
+		application.WithFixtureSetFactory(fixtureSetsFactory),
 	)
 }

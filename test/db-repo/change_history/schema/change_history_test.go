@@ -112,21 +112,21 @@ func (s *ChangeHistoryTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_CreateTable() {
-	ctx := s.Env().Context()
+	envContext := s.Env().Context()
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	modelRepo, err := db_repo.New(ctx, envConfig, envLogger, db_repo.Settings{
+	modelRepo, err := db_repo.New(envContext, envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModel1Metadata,
 	})
 	s.NoError(err)
 
-	modelHistoryRepo, err := db_repo.New(ctx, envConfig, envLogger, db_repo.Settings{
+	modelHistoryRepo, err := db_repo.New(envContext, envConfig, envLogger, db_repo.Settings{
 		Metadata: TestHistoryModel1Metadata,
 	})
 	s.NoError(err)
 
-	historyManager, err := db_repo.NewChangeHistoryManager(ctx, envConfig, envLogger)
+	historyManager, err := db_repo.NewChangeHistoryManager(envContext, envConfig, envLogger)
 	s.NoError(err)
 
 	err = historyManager.RunMigration(&TestModel1{})
@@ -165,21 +165,21 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_CreateTable(
 }
 
 func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable() {
-	ctx := s.Env().Context()
+	envContext := s.Env().Context()
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	modelRepo, err := db_repo.New(ctx, envConfig, envLogger, db_repo.Settings{
+	modelRepo, err := db_repo.New(envContext, envConfig, envLogger, db_repo.Settings{
 		Metadata: TestModel2Metadata,
 	})
 	s.NoError(err)
 
-	modelHistoryRepo, err := db_repo.New(ctx, envConfig, envLogger, db_repo.Settings{
+	modelHistoryRepo, err := db_repo.New(envContext, envConfig, envLogger, db_repo.Settings{
 		Metadata: TestHistoryModel2Metadata,
 	})
 	s.NoError(err)
 
-	historyManager, err := db_repo.NewChangeHistoryManager(ctx, envConfig, envLogger)
+	historyManager, err := db_repo.NewChangeHistoryManager(envContext, envConfig, envLogger)
 	s.NoError(err)
 
 	// this migration adds one column and drops a different column
@@ -223,11 +223,11 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable(
 }
 
 func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_ValidateSchema() {
-	ctx := s.Env().Context()
+	envContext := s.Env().Context()
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	historyManager, err := db_repo.NewChangeHistoryManager(ctx, envConfig, envLogger)
+	historyManager, err := db_repo.NewChangeHistoryManager(envContext, envConfig, envLogger)
 	s.NoError(err)
 
 	err = historyManager.RunMigration(&TestModel3{})

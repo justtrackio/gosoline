@@ -5,6 +5,7 @@ package mysql_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -39,11 +40,14 @@ func (s *MysqlTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *MysqlTestSuite) TestOrmFixturesMysql() {
-	ctx := s.Env().Context()
+	envContext := s.Env().Context()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := s.buildFixtureLoader(ctx)
-	err := loader.Load(ctx, ormMysqlTestFixtures())
+	loader := s.buildFixtureLoader(envContext)
+	fss, err := s.provideMysqlOrmFixtureSets()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_test_models")
@@ -51,11 +55,14 @@ func (s *MysqlTestSuite) TestOrmFixturesMysql() {
 }
 
 func (s *MysqlTestSuite) TestPlainFixturesMysql() {
-	ctx := s.Env().Context()
+	envContext := s.Env().Context()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := s.buildFixtureLoader(ctx)
-	err := loader.Load(ctx, plainMysqlTestFixtures())
+	loader := s.buildFixtureLoader(envContext)
+	fss, err := s.provideMysqlPlainFixtureSets()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_plain_writer_test")
@@ -63,16 +70,20 @@ func (s *MysqlTestSuite) TestPlainFixturesMysql() {
 }
 
 func (s *MysqlTestSuite) TestPurgedOrmFixturesMysql() {
-	ctx := s.Env().Context()
+	envContext := s.Env().Context()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := s.buildFixtureLoader(ctx)
-	err := loader.Load(ctx, ormMysqlTestFixtures())
+	loader := s.buildFixtureLoader(envContext)
+	fss, err := s.provideMysqlOrmFixtureSets()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_test_models", "name", "testName")
 
-	err = loader.Load(ctx, ormMysqlTestFixturesWithPurge())
+	fss, err = s.provideMysqlOrmFixtureSetsWithPurge()
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_test_models")
@@ -80,18 +91,22 @@ func (s *MysqlTestSuite) TestPurgedOrmFixturesMysql() {
 }
 
 func (s *MysqlTestSuite) TestPurgedPlainFixturesMysql() {
-	ctx := s.Env().Context()
+	envContext := s.Env().Context()
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := fixtures.NewFixtureLoader(ctx, envConfig, envLogger)
-	err := loader.Load(ctx, plainMysqlTestFixtures())
+	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	fss, err := s.provideMysqlPlainFixtureSets()
+	s.NoError(err)
+
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_plain_writer_test", "name", "testName3")
 
-	err = loader.Load(context.Background(), plainMysqlTestFixturesWithPurge())
+	fss, err = s.provideMysqlPlainFixtureSetsWithPurge()
+	err = loader.Load(envContext, fss)
 	s.NoError(err)
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_plain_writer_test")
@@ -117,67 +132,85 @@ var MysqlTestModelMetadata = db_repo.Metadata{
 	},
 }
 
-func ormMysqlTestFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Purge:   false,
-			Writer:  fixtures.MysqlOrmFixtureWriterFactory(&MysqlTestModelMetadata),
-			Fixtures: []interface{}{
-				&MysqlTestModel{
-					Name: mdl.Box("testName"),
-				},
-			},
-		},
+func (s *MysqlTestSuite) provideMysqlOrmFixtures(data fixtures.NamedFixtures[*MysqlTestModel], purge bool) ([]fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewMysqlOrmFixtureWriter(s.Env().Context(), s.Env().Config(), s.Env().Logger(), &MysqlTestModelMetadata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create mysql plain fixture writer: %w", err)
 	}
+
+	fs := fixtures.NewSimpleFixtureSet(data, writer, fixtures.WithPurge(purge))
+
+	return []fixtures.FixtureSet{
+		fs,
+	}, nil
 }
 
-func ormMysqlTestFixturesWithPurge() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Purge:   true,
-			Writer:  fixtures.MysqlOrmFixtureWriterFactory(&MysqlTestModelMetadata),
-			Fixtures: []interface{}{
-				&MysqlTestModel{
-					Name: mdl.Box("purgedBefore"),
-				},
+func (s *MysqlTestSuite) provideMysqlOrmFixtureSets() ([]fixtures.FixtureSet, error) {
+	fs := fixtures.NamedFixtures[*MysqlTestModel]{
+		&fixtures.NamedFixture[*MysqlTestModel]{
+			Name: "test",
+			Value: &MysqlTestModel{
+				Name: mdl.Box("testName"),
 			},
 		},
 	}
+
+	return s.provideMysqlOrmFixtures(fs, false)
 }
 
-func plainMysqlTestFixtures() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-				TableName: "mysql_plain_writer_test",
-				Columns:   []string{"id", "name"},
-			}),
-			Fixtures: []interface{}{
-				fixtures.MysqlPlainFixtureValues{2, "testName2"},
-				fixtures.MysqlPlainFixtureValues{2, "testName3"},
+func (s *MysqlTestSuite) provideMysqlOrmFixtureSetsWithPurge() ([]fixtures.FixtureSet, error) {
+	fs := fixtures.NamedFixtures[*MysqlTestModel]{
+		&fixtures.NamedFixture[*MysqlTestModel]{
+			Name: "test2",
+			Value: &MysqlTestModel{
+				Name: mdl.Box("purgedBefore"),
 			},
 		},
 	}
+
+	return s.provideMysqlOrmFixtures(fs, true)
 }
 
-func plainMysqlTestFixturesWithPurge() []*fixtures.FixtureSet {
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Purge:   true,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
-				TableName: "mysql_plain_writer_test",
-				Columns:   []string{"id", "name"},
-			}),
-			Fixtures: []interface{}{
-				fixtures.MysqlPlainFixtureValues{1, "purgedBefore"},
-			},
+func (s *MysqlTestSuite) provideMysqlPlainFixtures(data fixtures.NamedFixtures[fixtures.MysqlPlainFixtureValues], purge bool) ([]fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewMysqlPlainFixtureWriter(s.Env().Context(), s.Env().Config(), s.Env().Logger(), &fixtures.MysqlPlainMetaData{
+		TableName: "mysql_plain_writer_test",
+		Columns:   []string{"id", "name"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create mysql plain fixture writer: %w", err)
+	}
+
+	fs := fixtures.NewSimpleFixtureSet(data, writer, fixtures.WithPurge(purge))
+
+	return []fixtures.FixtureSet{
+		fs,
+	}, nil
+}
+
+func (s *MysqlTestSuite) provideMysqlPlainFixtureSets() ([]fixtures.FixtureSet, error) {
+	data := fixtures.NamedFixtures[fixtures.MysqlPlainFixtureValues]{
+		&fixtures.NamedFixture[fixtures.MysqlPlainFixtureValues]{
+			Name:  "testName2",
+			Value: fixtures.MysqlPlainFixtureValues{2, "testName2"},
+		},
+		&fixtures.NamedFixture[fixtures.MysqlPlainFixtureValues]{
+			Name:  "testName3",
+			Value: fixtures.MysqlPlainFixtureValues{2, "testName3"},
 		},
 	}
+
+	return s.provideMysqlPlainFixtures(data, false)
+}
+
+func (s *MysqlTestSuite) provideMysqlPlainFixtureSetsWithPurge() ([]fixtures.FixtureSet, error) {
+	data := fixtures.NamedFixtures[fixtures.MysqlPlainFixtureValues]{
+		&fixtures.NamedFixture[fixtures.MysqlPlainFixtureValues]{
+			Name:  "testName4",
+			Value: fixtures.MysqlPlainFixtureValues{1, "purgedBefore"},
+		},
+	}
+
+	return s.provideMysqlPlainFixtures(data, true)
 }
 
 func TestMysqlTestSuite(t *testing.T) {

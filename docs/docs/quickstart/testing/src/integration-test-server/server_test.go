@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
@@ -37,7 +36,7 @@ func (s *HttpTestSuite) SetupSuite() []suite.Option {
 		suite.WithConfigFile("./config.dist.yml"),
 
 		// The fixture set you created in the last section.
-		suite.WithFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
+		suite.WithFixtureSetFactories(fixtureSetsFactory),
 
 		// suite.WithClockProvider(s.clock),
 		suite.WithClockProvider(s.clock),
