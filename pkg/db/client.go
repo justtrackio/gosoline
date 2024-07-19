@@ -58,7 +58,7 @@ type Client interface {
 	GetSingleScalarValue(ctx context.Context, query string, args ...interface{}) (int, error)
 	GetResult(ctx context.Context, query string, args ...interface{}) (*Result, error)
 	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-	NamedExec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	NamedExec(ctx context.Context, query string, arg interface{}) (sql.Result, error)
 	ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error)
 	BindNamed(query string, arg interface{}) (string, []interface{}, error)
 	Prepare(ctx context.Context, query string) (*sql.Stmt, error)
@@ -209,10 +209,10 @@ func (c *ClientSqlx) Exec(ctx context.Context, query string, args ...interface{}
 	return res.(sql.Result), err
 }
 
-func (c *ClientSqlx) NamedExec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	c.logger.Debug("> %s %q", query, args)
+func (c *ClientSqlx) NamedExec(ctx context.Context, query string, arg interface{}) (sql.Result, error) {
+	c.logger.Debug("> %s %q", query, arg)
 
-	return c.db.NamedExecContext(ctx, query, args)
+	return c.db.NamedExecContext(ctx, query, arg)
 }
 
 func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error) {
