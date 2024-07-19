@@ -133,13 +133,13 @@ type redisListOutputConfiguration struct {
 	BatchSize   int    `cfg:"batch_size" default:"100"`
 }
 
-func newRedisListOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
+func newRedisListOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	key := ConfigurableOutputKey(name)
 
 	configuration := redisListOutputConfiguration{}
 	config.UnmarshalKey(key, &configuration)
 
-	return NewRedisListOutput(config, logger, &RedisListOutputSettings{
+	return NewRedisListOutput(ctx, config, logger, &RedisListOutputSettings{
 		AppId: cfg.AppId{
 			Project:     configuration.Project,
 			Family:      configuration.Family,

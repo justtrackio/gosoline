@@ -7,42 +7,41 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type FixtureSet struct {
-	Enabled  bool
-	Purge    bool
-	Writer   FixtureWriterFactory
-	Fixtures []interface{}
-}
+type (
+	FixtureSetFactory  func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error)
+	FixtureSetsFactory func(ctx context.Context, config cfg.Config, logger log.Logger) ([]FixtureSet, error)
+)
 
-type FixtureBuilderFactory func(ctx context.Context) (FixtureBuilder, error)
-
-type FixtureBuilder interface {
-	Fixtures() []*FixtureSet
-}
-
+//go:generate mockery --name FixtureLoader
 type FixtureLoader interface {
-	Load(ctx context.Context, fixtureSets []*FixtureSet) error
+	Load(ctx context.Context, fixtureSets []FixtureSet) error
 }
 
+//go:generate mockery --name FixtureSet
+type FixtureSet interface {
+	Write(ctx context.Context) error
+}
+
+//go:generate mockery --name FixtureWriter
 type FixtureWriter interface {
 	Purge(ctx context.Context) error
-	Write(ctx context.Context, fixture *FixtureSet) error
+	Write(ctx context.Context, fixtures []any) error
 }
 
-type FixtureWriterFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error)
+func NewFixtureSetsFactory(factories ...FixtureSetFactory) FixtureSetsFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) ([]FixtureSet, error) {
+		var err error
+		var set FixtureSet
+		var sets []FixtureSet
 
-type simpleFixtureBuilder struct {
-	fixtureSets []*FixtureSet
-}
+		for _, factory := range factories {
+			if set, err = factory(ctx, config, logger); err != nil {
+				return nil, err
+			}
 
-func (s simpleFixtureBuilder) Fixtures() []*FixtureSet {
-	return s.fixtureSets
-}
+			sets = append(sets, set)
+		}
 
-func SimpleFixtureBuilderFactory(fixtureSets []*FixtureSet) FixtureBuilderFactory {
-	return func(ctx context.Context) (FixtureBuilder, error) {
-		return &simpleFixtureBuilder{
-			fixtureSets: fixtureSets,
-		}, nil
+		return sets, nil
 	}
 }

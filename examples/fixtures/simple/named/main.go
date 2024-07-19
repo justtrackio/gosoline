@@ -3,9 +3,14 @@
 package main
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
@@ -14,48 +19,36 @@ type DynamoDbExampleModel struct {
 	Value string `ddb:"global=hash"`
 }
 
-func main() {
-	// store named fixtures
-	namedFixtures := &namedFixtureBuilder{}
+var namedFixtures = fixtures.NamedFixtures[*DynamoDbExampleModel]{
+	{
+		Name:  "test",
+		Value: &DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
+	},
+}
 
+func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+	mysqlWriter, err := fixtures.NewMysqlOrmFixtureWriter(ctx, config, logger, &db_repo.Metadata{
+		ModelId: mdl.ModelId{
+			Name: "orm_named_fixture_example",
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create orm fixture writer: %w", err)
+	}
+
+	return []fixtures.FixtureSet{
+		fixtures.NewSimpleFixtureSet(namedFixtures, mysqlWriter),
+	}, nil
+}
+
+func main() {
 	app := application.Default(
-		application.WithFixtureBuilderFactory(fixtures.SimpleFixtureBuilderFactory(namedFixtures.Fixtures())),
+		application.WithFixtureSetFactory(fixtureSetsFactory),
 	)
 
 	app.Run()
 
 	// then you can access them later
-	fx := namedFixtures.GetNamed("test")
+	fx := namedFixtures.GetValueByName("test")
 	_ = fx.Value
-}
-
-type namedFixtureBuilder struct {
-	fixtures fixtures.NamedFixtureSet
-}
-
-func (b *namedFixtureBuilder) Fixtures() []*fixtures.FixtureSet {
-	b.fixtures = fixtures.NamedFixtureSet{
-		{
-			Name:  "test",
-			Value: &DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
-		},
-	}
-
-	return []*fixtures.FixtureSet{
-		{
-			Enabled: true,
-			Purge:   false,
-			Writer: fixtures.MysqlOrmFixtureWriterFactory(&db_repo.Metadata{
-				ModelId: mdl.ModelId{
-					Name: "orm_named_fixture_example",
-				},
-			}),
-			Fixtures: b.fixtures.All(),
-		},
-	}
-}
-
-// GetNamed Add properly typed getter
-func (b *namedFixtureBuilder) GetNamed(name string) *DynamoDbExampleModel {
-	return b.fixtures.GetValueByName(name).(*DynamoDbExampleModel)
 }

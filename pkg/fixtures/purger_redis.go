@@ -12,26 +12,26 @@ import (
 type redisPurger struct {
 	logger log.Logger
 	client redis.Client
-	name   *string
+	name   string
 }
 
-func newRedisPurger(config cfg.Config, logger log.Logger, name *string) (*redisPurger, error) {
-	client, err := redis.ProvideClient(config, logger, *name)
+func NewRedisPurger(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*redisPurger, error) {
+	client, err := redis.ProvideClient(ctx, config, logger, name)
 	if err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
 
 	return &redisPurger{
-		logger: logger,
+		logger: logger.WithChannel("redis-purger"),
 		name:   name,
 		client: client,
 	}, nil
 }
 
-func (p *redisPurger) purge(ctx context.Context) error {
-	p.logger.Info("flushing redis %s", *p.name)
+func (p *redisPurger) Purge(ctx context.Context) error {
+	p.logger.Info("flushing redis %s", p.name)
 	_, err := p.client.FlushDB(ctx)
-	p.logger.Info("flushing redis %s done", *p.name)
+	p.logger.Info("flushing redis %s done", p.name)
 
 	return err
 }

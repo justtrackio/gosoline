@@ -140,7 +140,7 @@ func (f mysqlFactory) configureContainer(settings interface{}) *containerConfig 
 		Tag:        s.Image.Tag,
 		Tmpfs:      s.Tmpfs,
 		Env:        env,
-		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE"},
+		Cmd:        []string{"--sql_mode=NO_ENGINE_SUBSTITUTION", "--log-bin-trust-function-creators=TRUE", "--max_connections=1000"},
 		PortBindings: portBindings{
 			"3306/tcp": s.Port,
 		},

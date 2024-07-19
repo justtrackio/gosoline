@@ -5,13 +5,16 @@ package s3_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
@@ -33,7 +36,7 @@ func (s *S3TestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *S3TestSuite) TestS3() {
-	err := s.Env().LoadFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(s3DisabledPurgeFixtures))
+	err := s.Env().LoadFixtureSets(purgeDisabledFixtureSetsFactory)
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
@@ -77,7 +80,7 @@ func (s *S3TestSuite) TestS3() {
 }
 
 func (s *S3TestSuite) TestS3WithPurge() {
-	err := s.Env().LoadFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(s3DisabledPurgeFixtures))
+	err := s.Env().LoadFixtureSets(purgeDisabledFixtureSetsFactory)
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
@@ -95,7 +98,7 @@ func (s *S3TestSuite) TestS3WithPurge() {
 	s.NoError(err)
 	s.Equal(28092, len(body))
 
-	err = s.Env().LoadFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(s3EnabledPurgeFixtures))
+	err = s.Env().LoadFixtureSets(purgeEnabledFixtureSetsFactory)
 	s.NoError(err)
 
 	input = &s3.GetObjectInput{
@@ -123,27 +126,28 @@ func (s *S3TestSuite) TestS3WithPurge() {
 	s.Nil(output)
 }
 
-var s3DisabledPurgeFixtures = []*fixtures.FixtureSet{
-	{
-		Enabled: true,
-		Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
-			ConfigName: configName,
-			BasePath:   basePath,
-		}),
-		Fixtures: nil,
-	},
+func purgeDisabledFixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewBlobFixtureWriter(ctx, config, logger, &fixtures.BlobFixturesSettings{
+		ConfigName: configName,
+		BasePath:   basePath,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create s3 fixture writer: %w", err)
+	}
+
+	return []fixtures.FixtureSet{fixtures.NewSimpleFixtureSet[*fixtures.BlobFixture](nil, writer)}, nil
 }
 
-var s3EnabledPurgeFixtures = []*fixtures.FixtureSet{
-	{
-		Enabled: true,
-		Purge:   true,
-		Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
-			ConfigName: configName,
-			BasePath:   basePathPurge,
-		}),
-		Fixtures: nil,
-	},
+func purgeEnabledFixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+	writer, err := fixtures.NewBlobFixtureWriter(ctx, config, logger, &fixtures.BlobFixturesSettings{
+		ConfigName: configName,
+		BasePath:   basePathPurge,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create s3 fixture writer: %w", err)
+	}
+
+	return []fixtures.FixtureSet{fixtures.NewSimpleFixtureSet[*fixtures.BlobFixture](nil, writer, fixtures.WithPurge(true))}, nil
 }
 
 func TestS3TestSuite(t *testing.T) {

@@ -118,7 +118,7 @@ type redisInputConfiguration struct {
 	WaitTime    time.Duration `cfg:"wait_time" default:"3s"`
 }
 
-func newRedisInputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
+func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
 	key := ConfigurableInputKey(name)
 
 	configuration := redisInputConfiguration{}
@@ -136,7 +136,7 @@ func newRedisInputFromConfig(_ context.Context, config cfg.Config, logger log.Lo
 		WaitTime:   configuration.WaitTime,
 	}
 
-	return NewRedisListInput(config, logger, settings)
+	return NewRedisListInput(ctx, config, logger, settings)
 }
 
 type SnsInputTargetConfiguration struct {

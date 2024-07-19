@@ -14,15 +14,26 @@ type configurableKvStoreFixtureWriter[T any] struct {
 	store  kvstore.KvStore[T]
 }
 
-func ConfigurableKvStoreFixtureWriterFactory[T any](name string) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
-		store, err := kvstore.ProvideConfigurableKvStore[T](ctx, config, logger, name)
-		if err != nil {
-			return nil, fmt.Errorf("can not provide configurable kvstore: %w", err)
+func ConfigurableKvStoreFixtureSetFactory[T any](name string, data NamedFixtures[T], options ...FixtureSetOption) FixtureSetFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error) {
+		var err error
+		var writer FixtureWriter
+
+		if writer, err = NewConfigurableKvStoreFixtureWriter[T](ctx, config, logger, name); err != nil {
+			return nil, fmt.Errorf("failed to create configurable kvstore fixture writer for %s: %w", name, err)
 		}
 
-		return NewConfigurableKvStoreFixtureWriterWithInterfaces[T](logger, store), nil
+		return NewSimpleFixtureSet(data, writer, options...), nil
 	}
+}
+
+func NewConfigurableKvStoreFixtureWriter[T any](ctx context.Context, config cfg.Config, logger log.Logger, name string) (FixtureWriter, error) {
+	store, err := kvstore.ProvideConfigurableKvStore[T](ctx, config, logger, name)
+	if err != nil {
+		return nil, fmt.Errorf("can not provide configurable kvstore: %w", err)
+	}
+
+	return NewConfigurableKvStoreFixtureWriterWithInterfaces[T](logger, store), nil
 }
 
 func NewConfigurableKvStoreFixtureWriterWithInterfaces[T any](logger log.Logger, store kvstore.KvStore[T]) FixtureWriter {
@@ -37,14 +48,14 @@ func (c *configurableKvStoreFixtureWriter[T]) Purge(_ context.Context) error {
 	return nil
 }
 
-func (c *configurableKvStoreFixtureWriter[T]) Write(ctx context.Context, fs *FixtureSet) error {
-	if len(fs.Fixtures) == 0 {
+func (c *configurableKvStoreFixtureWriter[T]) Write(ctx context.Context, fixtures []any) error {
+	if len(fixtures) == 0 {
 		return nil
 	}
 
 	m := map[interface{}]T{}
 
-	for _, item := range fs.Fixtures {
+	for _, item := range fixtures {
 		kvItem := item.(*KvStoreFixture)
 		m[kvItem.Key] = kvItem.Value.(T)
 	}
@@ -54,7 +65,7 @@ func (c *configurableKvStoreFixtureWriter[T]) Write(ctx context.Context, fs *Fix
 		return err
 	}
 
-	c.logger.Info("loaded %d configurable kvstore fixtures", len(fs.Fixtures))
+	c.logger.Info("loaded %d configurable kvstore fixtures", len(fixtures))
 
 	return nil
 }

@@ -23,20 +23,31 @@ type mysqlSqlxFixtureWriter struct {
 	purger   *mysqlPurger
 }
 
-func MysqlSqlxFixtureWriterFactory(metadata *MysqlSqlxMetaData) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
-		dbClient, err := db.ProvideClient(ctx, config, logger, "default")
-		if err != nil {
-			return nil, fmt.Errorf("can not create dbClient: %w", err)
+func MysqlSqlxFixtureSetFactory[T any](metadata *MysqlSqlxMetaData, data NamedFixtures[T], options ...FixtureSetOption) FixtureSetFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error) {
+		var err error
+		var writer FixtureWriter
+
+		if writer, err = NewMysqlSqlxFixtureWriter(ctx, config, logger, metadata); err != nil {
+			return nil, fmt.Errorf("failed to create mysql sqlx fixture writer for %s: %w", metadata.TableName, err)
 		}
 
-		purger, err := newMysqlPurger(ctx, config, logger, metadata.TableName)
-		if err != nil {
-			return nil, fmt.Errorf("can not create purger: %w", err)
-		}
-
-		return NewMysqlSqlxFixtureWriterWithInterfaces(logger, dbClient, metadata, purger), nil
+		return NewSimpleFixtureSet(data, writer, options...), nil
 	}
+}
+
+func NewMysqlSqlxFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, metadata *MysqlSqlxMetaData) (FixtureWriter, error) {
+	dbClient, err := db.ProvideClient(ctx, config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create dbClient: %w", err)
+	}
+
+	purger, err := NewMysqlPurger(ctx, config, logger, metadata.TableName)
+	if err != nil {
+		return nil, fmt.Errorf("can not create purger: %w", err)
+	}
+
+	return NewMysqlSqlxFixtureWriterWithInterfaces(logger, dbClient, metadata, purger), nil
 }
 
 func NewMysqlSqlxFixtureWriterWithInterfaces(logger log.Logger, client db.Client, metadata *MysqlSqlxMetaData, purger *mysqlPurger) FixtureWriter {
@@ -49,7 +60,7 @@ func NewMysqlSqlxFixtureWriterWithInterfaces(logger log.Logger, client db.Client
 }
 
 func (m *mysqlSqlxFixtureWriter) Purge(ctx context.Context) error {
-	err := m.purger.purgeMysql(ctx)
+	err := m.purger.Purge(ctx)
 	if err != nil {
 		m.logger.Error("error occurred during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
 
@@ -61,8 +72,8 @@ func (m *mysqlSqlxFixtureWriter) Purge(ctx context.Context) error {
 	return nil
 }
 
-func (m *mysqlSqlxFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
-	for _, item := range fs.Fixtures {
+func (m *mysqlSqlxFixtureWriter) Write(ctx context.Context, fixtures []any) error {
+	for _, item := range fixtures {
 		columns := refl.GetTags(item, "db")
 		placeholders := funk.Map(columns, func(column string) string {
 			return ":" + column
@@ -75,7 +86,7 @@ func (m *mysqlSqlxFixtureWriter) Write(ctx context.Context, fs *FixtureSet) erro
 		}
 	}
 
-	m.logger.Info("loaded %d sqlx mysql fixtures", len(fs.Fixtures))
+	m.logger.Info("loaded %d sqlx mysql fixtures", len(fixtures))
 
 	return nil
 }

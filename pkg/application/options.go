@@ -9,7 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	taskRunner "github.com/justtrackio/gosoline/pkg/conc/task_runner"
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
@@ -149,10 +149,10 @@ func WithHttpServerShares(app *App) {
 	})
 }
 
-func WithFixtureBuilderFactory(factory fixtures.FixtureBuilderFactory) Option {
+func WithFixtureSetFactory(factory fixtures.FixtureSetsFactory) Option {
 	return func(app *App) {
 		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(factory), kernelPkg.PositionBeginning)
+			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(factory), kernelPkg.PositionEnd)
 		})
 	}
 }
