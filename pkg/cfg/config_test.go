@@ -653,6 +653,37 @@ func (s *ConfigTestSuite) TestConfig_FromYml() {
 	s.Equal(expected, cm)
 }
 
+func (s *ConfigTestSuite) TestConfig_UnmarshalKey_Defaults() {
+	type configMap struct {
+		Foo          string    `cfg:"foo" default:"fooVal"`
+		Bar          int       `cfg:"bar" default:"123"`
+		Baz          bool      `cfg:"baz" default:"true"`
+		Baz2         bool      `cfg:"baz2" default:"false"`
+		StringSlice  []string  `cfg:"string_slice" default:"a,b,c"`
+		String       string    `cfg:"string_slice" default:"a,b,c"`
+		IntSlice     []int     `cfg:"int_slice" default:"-1,0,1"`
+		Int64Slice   []int64   `cfg:"int64_slice" default:"-9223372036854775808,0,9223372036854775807"`
+		Float32Slice []float32 `cfg:"float32_slice" default:"1.234,2.345,3.456"`
+		Float64Slice []float64 `cfg:"float64_slice" default:"1.234,2.345,3.456"`
+		BoolSlice    []bool    `cfg:"bool_slice" default:"true,false,true"`
+	}
+
+	cm := configMap{}
+	s.config.UnmarshalKey("key", &cm)
+
+	s.Equal("fooVal", cm.Foo)
+	s.Equal(123, cm.Bar)
+	s.Equal(true, cm.Baz)
+	s.Equal(false, cm.Baz2)
+	s.Equal([]string{"a", "b", "c"}, cm.StringSlice)
+	s.Equal("a,b,c", cm.String)
+	s.Equal([]int{-1, 0, 1}, cm.IntSlice)
+	s.Equal([]int64{-9223372036854775808, 0, 9223372036854775807}, cm.Int64Slice)
+	s.Equal([]float32{1.234, 2.345, 3.456}, cm.Float32Slice)
+	s.Equal([]float64{1.234, 2.345, 3.456}, cm.Float64Slice)
+	s.Equal([]bool{true, false, true}, cm.BoolSlice)
+}
+
 func TestConfigTestSuite(t *testing.T) {
 	suite.Run(t, new(ConfigTestSuite))
 }

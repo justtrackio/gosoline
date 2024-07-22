@@ -185,7 +185,6 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 		if targetField.Type.Kind() == reflect.Slice {
 			zeroValue = reflect.MakeSlice(targetField.Type, 0, 4).Interface()
 			values.Set(tag.Name, zeroValue)
-			continue
 		}
 
 		if targetField.Type.Kind() == reflect.Map {
