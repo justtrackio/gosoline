@@ -69,7 +69,7 @@ require (
 	github.com/segmentio/kafka-go v0.4.31
 	github.com/selm0/ladon v0.0.0-20231114080549-31144de4b38d
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
-	github.com/spf13/cast v1.4.1
+	github.com/spf13/cast v1.6.0
 	github.com/stretchr/testify v1.8.3
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	github.com/xitongsys/parquet-go v1.6.2
