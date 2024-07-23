@@ -91,7 +91,7 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 	settings.SetBackoff(backoffSettings)
 }
 
-func DefaultClientOptions(ctx context.Context, config cfg.Config, logger log.Logger, clientConfig ClientConfigAware) ([]func(options *awsCfg.LoadOptions) error, error) {
+func DefaultClientOptions(ctx context.Context, _ cfg.Config, logger log.Logger, clientConfig ClientConfigAware) ([]func(options *awsCfg.LoadOptions) error, error) {
 	settings := clientConfig.GetSettings()
 
 	options := []func(options *awsCfg.LoadOptions) error{
@@ -174,7 +174,7 @@ func (e *endpointResolver) ResolveEndpoint(service, region string, options ...in
 	}, nil
 }
 
-func EndpointResolver(url string) *endpointResolver {
+func EndpointResolver(url string) aws.EndpointResolverWithOptions {
 	return &endpointResolver{
 		url: url,
 	}

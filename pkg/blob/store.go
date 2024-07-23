@@ -66,6 +66,7 @@ type (
 type Settings struct {
 	cfg.AppId
 	Bucket     string `cfg:"bucket"`
+	Region     string `cfg:"region"`
 	ClientName string `cfg:"client_name" default:"default"`
 	Prefix     string `cfg:"prefix"`
 }
@@ -95,6 +96,7 @@ type s3Store struct {
 
 	bucket *string
 	prefix *string
+	region string
 }
 
 type NamingFactory func() string
@@ -148,6 +150,7 @@ func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, cl
 		client:   client,
 		bucket:   mdl.Box(settings.Bucket),
 		prefix:   mdl.Box(settings.Prefix),
+		region:   settings.Region,
 	}
 }
 
@@ -158,6 +161,9 @@ func (s *s3Store) BucketName() string {
 func (s *s3Store) CreateBucket(ctx context.Context) error {
 	_, err := s.client.CreateBucket(ctx, &s3.CreateBucketInput{
 		Bucket: s.bucket,
+		CreateBucketConfiguration: &types.CreateBucketConfiguration{
+			LocationConstraint: types.BucketLocationConstraint(s.region), // This is required when using region specific endpoints
+		},
 	})
 
 	if isBucketAlreadyExistsError(err) {
@@ -359,6 +365,11 @@ func getStoreSettings(config cfg.Config, name string) *Settings {
 
 	if settings.Bucket == "" {
 		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
+	}
+
+	if settings.Region == "" {
+		s3ClientConfig := gosoS3.GetClientConfig(config, settings.ClientName)
+		settings.Region = s3ClientConfig.Settings.Region
 	}
 
 	return settings
