@@ -3,10 +3,9 @@ package funk_test
 import (
 	"testing"
 
-	"golang.org/x/exp/slices"
-
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slices"
 )
 
 func TestCastSlice(t *testing.T) {
@@ -30,6 +29,37 @@ func TestContains(t *testing.T) {
 
 	out := funk.Contains(in, test{Foo: "bar"})
 	assert.True(t, out)
+}
+
+func TestContainsAll(t *testing.T) {
+	cases := map[string]struct {
+		left  []int
+		right []int
+		exp   bool
+	}{
+		"contains all equal": {
+			left:  []int{1, 2, 3},
+			right: []int{2, 1, 3},
+			exp:   true,
+		},
+		"contains all not equal": {
+			left:  []int{1, 2},
+			right: []int{2, 1, 3},
+			exp:   true,
+		},
+		"does not contain all": {
+			left:  []int{1, 2, 3},
+			right: []int{2, 3},
+			exp:   false,
+		},
+	}
+
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			out := funk.ContainsAll(c.left, c.right)
+			assert.Equal(t, c.exp, out)
+		})
+	}
 }
 
 func TestChunk(t *testing.T) {

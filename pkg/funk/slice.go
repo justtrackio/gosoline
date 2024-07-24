@@ -81,6 +81,16 @@ func Contains[T any](in []T, elem T) bool {
 	return ContainsFunc(in, equalTo)
 }
 
+func ContainsAll[T any](left []T, right []T) bool {
+	for _, elem := range left {
+		if !Contains(right, elem) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func ContainsFunc[S ~[]T, T any](sl S, pred func(T) bool) bool {
 	_, ok := FindFirstFunc(sl, pred)
 
