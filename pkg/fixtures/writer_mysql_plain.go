@@ -89,7 +89,7 @@ func (m *mysqlPlainFixtureWriter) Write(ctx context.Context, fs *FixtureSet) err
 	return nil
 }
 
-func (m *mysqlPlainFixtureWriter) buildSql(values MysqlPlainFixtureValues) (string, []interface{}, error) {
+func (m *mysqlPlainFixtureWriter) buildSql(values MysqlPlainFixtureValues) (sql string, args []interface{}, err error) {
 	insertBuilder := squirrel.Replace(m.metadata.TableName).
 		PlaceholderFormat(squirrel.Question).
 		Columns(m.metadata.Columns...).

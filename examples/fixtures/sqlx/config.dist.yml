@@ -1,0 +1,23 @@
+env: dev
+
+app_project: justtrack
+app_family: gosoline
+app_group: fixtures
+app_name: sqlx
+
+db:
+  default:
+    driver: mysql
+    parse_time: true
+    uri:
+      host: localhost
+      port: 3306
+      user: gosoline
+      password: gosoline
+      database: gosoline
+    migrations:
+      enabled: true
+      path: migrations
+
+fixtures:
+  enabled: true

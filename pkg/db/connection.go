@@ -31,6 +31,7 @@ type Settings struct {
 	MaxOpenConnections    int               `cfg:"max_open_connections" default:"0"` // 0 or negative number=unlimited, sql driver default=0
 	Migrations            MigrationSettings `cfg:"migrations"`
 	MultiStatements       bool              `cfg:"multi_statements" default:"true"`
+	Parameters            map[string]string `cfg:"parameters"`
 	ParseTime             bool              `cfg:"parse_time" default:"true"`
 	Retry                 SettingsRetry     `cfg:"retry"`
 	Timeouts              SettingsTimeout   `cfg:"timeouts"`
