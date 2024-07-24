@@ -40,7 +40,7 @@ You can easily define multiple fixtures to different destinations in one file an
 ## Quick Usage
 * During the creation of your Application make sure to pass the `WithFixtures` option and provide fixtures as an argument of type `[]*fixtures.FixtureSet`
 
-[embedmd]:# (../../examples/fixtures/main.go /func main/ /}/)
+[embedmd]:# (../../examples/fixtures/simple/main.go /func main/ /}/)
 ```go
 func main() {
 	app := application.Default(
@@ -63,7 +63,7 @@ blob:
 You can also generate a locally unique identifier for your fixtures via `fixtures.AutoNumbered`.
 
 ## Example with available fixture writers:
-[embedmd]:# (../../examples/fixtures/main.go /func main/ $)
+[embedmd]:# (../../examples/fixtures/simple/main.go /func main/ $)
 ```go
 func main() {
 	app := application.Default(
@@ -174,7 +174,7 @@ var fixtureSets = []*fixtures.FixtureSet{
 ## Named Fixtures
 In case you want to reuse your fixtures values for assertions or additional processing, you can load them by name when using `fixtures.NamedFixtureSets`:
 
-[embedmd]:# (../../examples/fixtures/named/main.go /func main/ $)
+[embedmd]:# (../../examples/fixtures/simple/named/main.go /func main/ $)
 ```go
 func main() {
 	// store named fixtures

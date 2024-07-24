@@ -3,6 +3,7 @@ package env
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -92,7 +93,7 @@ func (f *wiremockFactory) Component(_ cfg.Config, logger log.Logger, containers 
 
 func (f *wiremockFactory) importMocks(url string, mockFile string) error {
 	var err error
-	var jsonBytes []byte
+	var jsonBytes, body []byte
 	var absolutePath string
 	var resp *http.Response
 
@@ -110,11 +111,15 @@ func (f *wiremockFactory) importMocks(url string, mockFile string) error {
 		return fmt.Errorf("could not send stubs to wiremock: %w", err)
 	}
 
-	if resp.StatusCode > 399 {
-		return fmt.Errorf("could not import mocks")
+	if resp.StatusCode < 400 {
+		return nil
 	}
 
-	return nil
+	if body, err = io.ReadAll(resp.Body); err != nil {
+		return fmt.Errorf("could not read wiremock response body: %w", err)
+	}
+
+	return fmt.Errorf("could not import mocks: %s", body)
 }
 
 func (f *wiremockFactory) getUrl(binding containerBinding) string {

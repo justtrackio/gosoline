@@ -1,6 +1,7 @@
 package env
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -23,8 +24,18 @@ func (f *filesystem) ReadString(filename string) string {
 	if err != nil {
 		err = fmt.Errorf("can not read test data from file %s: %w", filename, err)
 		assert.FailNow(f.t, err.Error())
+
 		return ""
 	}
 
 	return string(bytes)
+}
+
+func (f *filesystem) ReadJson(filename string, target any) {
+	bytes := f.ReadString(filename)
+
+	if err := json.Unmarshal([]byte(bytes), target); err != nil {
+		err = fmt.Errorf("can not unmarshal json test data from file %s: %w", filename, err)
+		assert.FailNow(f.t, err.Error())
+	}
 }

@@ -1,0 +1,11 @@
+services:
+  mysql:
+    image: mysql:8.0.37
+    command: --sql_mode="NO_ENGINE_SUBSTITUTION" --log-bin-trust-function-creators=TRUE
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_DATABASE=gosoline
+      - MYSQL_USER=gosoline
+      - MYSQL_PASSWORD=gosoline
+      - MYSQL_ROOT_PASSWORD=gosoline
