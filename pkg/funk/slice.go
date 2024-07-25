@@ -81,9 +81,9 @@ func Contains[T any](in []T, elem T) bool {
 	return ContainsFunc(in, equalTo)
 }
 
-func ContainsAll[T any](left []T, right []T) bool {
-	for _, elem := range left {
-		if !Contains(right, elem) {
+func ContainsAll[T any](in []T, elements []T) bool {
+	for _, elem := range elements {
+		if !Contains(in, elem) {
 			return false
 		}
 	}

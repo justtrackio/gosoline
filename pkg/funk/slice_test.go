@@ -33,30 +33,30 @@ func TestContains(t *testing.T) {
 
 func TestContainsAll(t *testing.T) {
 	cases := map[string]struct {
-		left  []int
-		right []int
-		exp   bool
+		in       []int
+		elements []int
+		exp      bool
 	}{
 		"contains all equal": {
-			left:  []int{1, 2, 3},
-			right: []int{2, 1, 3},
-			exp:   true,
+			in:       []int{1, 2, 3},
+			elements: []int{2, 1, 3},
+			exp:      true,
 		},
 		"contains all not equal": {
-			left:  []int{1, 2},
-			right: []int{2, 1, 3},
-			exp:   true,
+			in:       []int{3, 1, 2},
+			elements: []int{1, 3},
+			exp:      true,
 		},
 		"does not contain all": {
-			left:  []int{1, 2, 3},
-			right: []int{2, 3},
-			exp:   false,
+			in:       []int{1, 2},
+			elements: []int{1, 2, 3},
+			exp:      false,
 		},
 	}
 
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
-			out := funk.ContainsAll(c.left, c.right)
+			out := funk.ContainsAll(c.in, c.elements)
 			assert.Equal(t, c.exp, out)
 		})
 	}

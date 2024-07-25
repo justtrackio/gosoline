@@ -3,7 +3,7 @@ package env
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -115,7 +115,7 @@ func (f *wiremockFactory) importMocks(url string, mockFile string) error {
 		return nil
 	}
 
-	if body, err = ioutil.ReadAll(resp.Body); err != nil {
+	if body, err = io.ReadAll(resp.Body); err != nil {
 		return fmt.Errorf("could not read wiremock response body: %w", err)
 	}
 
