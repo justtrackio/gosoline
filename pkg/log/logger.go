@@ -73,14 +73,6 @@ type GosoLogger interface {
 	Option(opt ...Option) error
 }
 
-type LoggerSettings struct {
-	Handlers map[string]HandlerSettings `cfg:"handlers"`
-}
-
-type HandlerSettings struct {
-	Type string `cfg:"type"`
-}
-
 type gosoLogger struct {
 	clock        clock.Clock
 	data         Data

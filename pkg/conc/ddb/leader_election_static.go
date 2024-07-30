@@ -7,10 +7,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type StaticLeaderElectionSettings struct {
-	Result bool `cfg:"result"`
-}
-
 type StaticLeaderElection struct {
 	result bool
 }

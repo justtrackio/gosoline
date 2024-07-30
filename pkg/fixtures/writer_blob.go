@@ -13,11 +13,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type BlobFixturesSettings struct {
-	BasePath   string
-	ConfigName string
-}
-
 type blobFixtureWriter struct {
 	logger      log.Logger
 	batchRunner blob.BatchRunner

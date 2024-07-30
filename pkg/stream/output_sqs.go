@@ -15,31 +15,6 @@ import (
 
 const SqsOutputBatchSize = 10
 
-type SqsOutputSettings struct {
-	cfg.AppId
-	ClientName        string
-	Fifo              sqs.FifoSettings
-	QueueId           string
-	RedrivePolicy     sqs.RedrivePolicy
-	VisibilityTimeout int
-}
-
-func (s SqsOutputSettings) GetAppId() cfg.AppId {
-	return s.AppId
-}
-
-func (s SqsOutputSettings) GetClientName() string {
-	return s.ClientName
-}
-
-func (s SqsOutputSettings) IsFifoEnabled() bool {
-	return s.Fifo.Enabled
-}
-
-func (s SqsOutputSettings) GetQueueId() string {
-	return s.QueueId
-}
-
 type sqsOutput struct {
 	logger   log.Logger
 	queue    sqs.Queue
@@ -169,7 +144,12 @@ func (o *sqsOutput) buildSqsMessage(ctx context.Context, msg WritableMessage) (*
 
 	if d, ok := attributes[sqs.AttributeSqsMessageDeduplicationId]; ok {
 		if messageDeduplicationId, err = cast.ToStringE(d); err != nil {
-			return nil, fmt.Errorf("the type of the %s attribute with value %v should be castable to string: %w", sqs.AttributeSqsMessageDeduplicationId, attributes[sqs.AttributeSqsMessageDeduplicationId], err)
+			return nil, fmt.Errorf(
+				"the type of the %s attribute with value %v should be castable to string: %w",
+				sqs.AttributeSqsMessageDeduplicationId,
+				attributes[sqs.AttributeSqsMessageDeduplicationId],
+				err,
+			)
 		}
 	}
 

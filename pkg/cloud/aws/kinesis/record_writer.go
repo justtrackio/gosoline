@@ -41,12 +41,6 @@ type RecordWriterMetadata struct {
 	StreamName     string `json:"stream_name"`
 }
 
-type RecordWriterSettings struct {
-	ClientName string
-	StreamName string
-	Backoff    exec.BackoffSettings
-}
-
 //go:generate mockery --name RecordWriter
 type RecordWriter interface {
 	PutRecord(ctx context.Context, record *Record) error

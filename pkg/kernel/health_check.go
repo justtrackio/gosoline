@@ -3,17 +3,11 @@ package kernel
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/funk"
 )
-
-type HealthCheckSettings struct {
-	Timeout      time.Duration `cfg:"timeout" default:"1m"`
-	WaitInterval time.Duration `cfg:"wait_interval" default:"3s"`
-}
 
 type ModuleHealthCheckResult struct {
 	StageIndex int

@@ -47,19 +47,6 @@ type BaseConsumerCallback interface {
 	GetModel(attributes map[string]string) interface{}
 }
 
-type ConsumerSettings struct {
-	Input       string                `cfg:"input" default:"consumer" validate:"required"`
-	RunnerCount int                   `cfg:"runner_count" default:"1" validate:"min=1"`
-	Encoding    EncodingType          `cfg:"encoding" default:"application/json"`
-	IdleTimeout time.Duration         `cfg:"idle_timeout" default:"10s"`
-	Retry       ConsumerRetrySettings `cfg:"retry"`
-}
-
-type ConsumerRetrySettings struct {
-	Enabled bool   `cfg:"enabled"`
-	Type    string `cfg:"type" default:"sqs"`
-}
-
 type consumerData struct {
 	msg   *Message
 	src   string

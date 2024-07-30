@@ -36,11 +36,6 @@ type TopicMetadata struct {
 	TopicName     string `json:"topic_name"`
 }
 
-type TopicSettings struct {
-	TopicName  string
-	ClientName string
-}
-
 type snsTopic struct {
 	logger   log.Logger
 	client   Client

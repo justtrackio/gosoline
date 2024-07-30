@@ -50,36 +50,6 @@ type container struct {
 	bindings map[string]containerBinding
 }
 
-type healthCheckSettings struct {
-	InitialInterval time.Duration `cfg:"initial_interval" default:"1s"`
-	MaxInterval     time.Duration `cfg:"max_interval" default:"3s"`
-	MaxElapsedTime  time.Duration `cfg:"max_elapsed_time" default:"1m"`
-}
-
-type authSettings struct {
-	Username      string `cfg:"username" default:""`
-	Password      string `cfg:"password" default:""`
-	Email         string `cfg:"email" default:""`
-	ServerAddress string `cfg:"server_address" default:""`
-}
-
-func (a authSettings) GetAuthConfig() docker.AuthConfiguration {
-	return docker.AuthConfiguration{
-		Username:      a.Username,
-		Password:      a.Password,
-		Email:         a.Email,
-		ServerAddress: a.ServerAddress,
-	}
-}
-
-type containerRunnerSettings struct {
-	Endpoint    string              `cfg:"endpoint"`
-	NamePrefix  string              `cfg:"name_prefix" default:"goso"`
-	HealthCheck healthCheckSettings `cfg:"health_check"`
-	ExpireAfter time.Duration       `cfg:"expire_after"`
-	Auth        authSettings        `cfg:"auth"`
-}
-
 type containerRunner struct {
 	logger            log.Logger
 	pool              *dockertest.Pool

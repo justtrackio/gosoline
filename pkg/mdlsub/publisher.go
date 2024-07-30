@@ -21,13 +21,6 @@ const (
 	TypeDelete                = "delete"
 )
 
-type PublisherSettings struct {
-	mdl.ModelId
-	Producer   string `cfg:"producer" validate:"required_without=OutputType"`
-	OutputType string `cfg:"output_type" validate:"required_without=Producer"`
-	Shared     bool   `cfg:"shared"`
-}
-
 //go:generate mockery --name Publisher
 type Publisher interface {
 	PublishBatch(ctx context.Context, typ string, version int, values []interface{}, customAttributes ...map[string]string) error

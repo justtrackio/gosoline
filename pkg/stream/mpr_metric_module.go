@@ -20,21 +20,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
-const (
-	metricNameStreamMprMessagesPerRunner = "StreamMprMessagesPerRunner"
-)
-
-type MessagesPerRunnerMetricWriterSettings struct {
-	Ecs                 MessagesPerRunnerEcsSettings
-	MaxIncreasePeriod   time.Duration
-	UpdatePeriod        time.Duration
-	CloudwatchNamespace string
-	MaxIncreasePercent  float64
-	MemberId            string
-	QueueNames          []string
-	TargetValue         float64
-}
-
 func MessagesPerRunnerMetricWriterFactory(_ context.Context, config cfg.Config, _ log.Logger) (map[string]kernel.ModuleFactory, error) {
 	if !messagesPerRunnerIsEnabled(config) {
 		return map[string]kernel.ModuleFactory{}, nil
@@ -131,7 +116,15 @@ func getCloudwatchNamespace(config cfg.Config, cwNamespacePattern string) string
 	return cwNamespacePattern
 }
 
-func NewMessagesPerRunnerMetricWriterWithInterfaces(logger log.Logger, leaderElection ddb.LeaderElection, cwClient gosoCloudwatch.Client, metricWriter metric.Writer, clock clock.Clock, ticker clock.Ticker, settings *MessagesPerRunnerMetricWriterSettings) (*MessagesPerRunnerMetricWriter, error) {
+func NewMessagesPerRunnerMetricWriterWithInterfaces(
+	logger log.Logger,
+	leaderElection ddb.LeaderElection,
+	cwClient gosoCloudwatch.Client,
+	metricWriter metric.Writer,
+	clock clock.Clock,
+	ticker clock.Ticker,
+	settings *MessagesPerRunnerMetricWriterSettings,
+) (*MessagesPerRunnerMetricWriter, error) {
 	writer := &MessagesPerRunnerMetricWriter{
 		logger:         logger,
 		leaderElection: leaderElection,

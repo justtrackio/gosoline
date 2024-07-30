@@ -25,11 +25,6 @@ import (
 
 type databaseLoader func(ctx context.Context) (io.ReadCloser, error)
 
-type MaxmindSettings struct {
-	Database     string `cfg:"database"`
-	S3ClientName string `cfg:"s3_client_name"`
-}
-
 type maxmindProvider struct {
 	lck         sync.RWMutex
 	clk         clock.Clock

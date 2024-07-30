@@ -26,11 +26,6 @@ type RunnableBatchConsumerCallback interface {
 	RunnableCallback
 }
 
-type BatchConsumerSettings struct {
-	IdleTimeout time.Duration `cfg:"idle_timeout" default:"10s"`
-	BatchSize   int           `cfg:"batch_size" default:"1"`
-}
-
 type BatchConsumer struct {
 	*baseConsumer
 	batch    []*consumerData

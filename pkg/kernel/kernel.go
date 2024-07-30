@@ -30,11 +30,6 @@ const (
 
 type ExitHandler func(code int)
 
-type Settings struct {
-	KillTimeout time.Duration       `cfg:"kill_timeout" default:"10s"`
-	HealthCheck HealthCheckSettings `cfg:"health_check"`
-}
-
 //go:generate mockery --name Kernel
 type Kernel interface {
 	HealthCheck() HealthCheckResult

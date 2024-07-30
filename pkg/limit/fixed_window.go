@@ -10,11 +10,6 @@ import (
 type Incrementer interface {
 	Increment(ctx context.Context, prefix string) (incr *int, ttl *time.Duration, err error)
 }
-type FixedWindowConfig struct {
-	Name   string
-	Cap    int
-	Window time.Duration
-}
 
 type fixedWindow struct {
 	*middlewareEmbeddable

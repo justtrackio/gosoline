@@ -14,10 +14,6 @@ func init() {
 
 const componentStreamOutput = "streamOutput"
 
-type streamOutputSettings struct {
-	ComponentBaseSettings
-}
-
 type streamOutputFactory struct{}
 
 func (f *streamOutputFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {

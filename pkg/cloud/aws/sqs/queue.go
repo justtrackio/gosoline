@@ -52,28 +52,10 @@ type Message struct {
 	Body                   *string
 }
 
-type FifoSettings struct {
-	Enabled                   bool `cfg:"enabled" default:"false"`
-	ContentBasedDeduplication bool `cfg:"content_based_deduplication" default:"false"`
-}
-
-type RedrivePolicy struct {
-	Enabled         bool `cfg:"enabled" default:"true"`
-	MaxReceiveCount int  `cfg:"max_receive_count" default:"3"`
-}
-
 type Properties struct {
 	Name string
 	Url  string
 	Arn  string
-}
-
-type Settings struct {
-	QueueName         string
-	VisibilityTimeout int
-	Fifo              FifoSettings
-	RedrivePolicy     RedrivePolicy
-	ClientName        string
 }
 
 type queue struct {

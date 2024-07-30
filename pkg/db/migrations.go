@@ -8,14 +8,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type MigrationSettings struct {
-	Application    string `cfg:"application" default:"{app_name}"`
-	Enabled        bool   `cfg:"enabled" default:"false"`
-	Path           string `cfg:"path"`
-	PrefixedTables bool   `cfg:"prefixed_tables" default:"false"`
-	Provider       string `cfg:"provider" default:"goose"`
-}
-
 type MigrationProvider func(logger log.Logger, settings *Settings, db *sql.DB) error
 
 func AddMigrationProvider(name string, provider MigrationProvider) {

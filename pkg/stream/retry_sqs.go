@@ -16,16 +16,6 @@ func init() {
 	retryHandlers["sqs"] = NewRetryHandlerSqs
 }
 
-type RetryHandlerSqsSettings struct {
-	cfg.AppId
-	RetryHandlerSettings
-	ClientName          string `cfg:"client_name" default:"default"`
-	MaxNumberOfMessages int32  `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
-	WaitTime            int32  `cfg:"wait_time" default:"10"`
-	RunnerCount         int    `cfg:"runner_count" default:"1"`
-	QueueId             string `cfg:"queue_id"`
-}
-
 type RetryHandlerSqs struct {
 	output   Output
 	settings *RetryHandlerSqsSettings

@@ -6,8 +6,6 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
-	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -33,30 +31,6 @@ type Client interface {
 	CompleteMultipartUpload(context.Context, *s3.CompleteMultipartUploadInput, ...func(*s3.Options)) (*s3.CompleteMultipartUploadOutput, error)
 	AbortMultipartUpload(context.Context, *s3.AbortMultipartUploadInput, ...func(*s3.Options)) (*s3.AbortMultipartUploadOutput, error)
 }
-
-type ClientSettings struct {
-	gosoAws.ClientSettings
-	UsePathStyle bool `cfg:"usePathStyle" default:"true"`
-}
-
-type ClientConfig struct {
-	Settings    ClientSettings
-	LoadOptions []func(options *awsCfg.LoadOptions) error
-}
-
-func (c ClientConfig) GetSettings() gosoAws.ClientSettings {
-	return c.Settings.ClientSettings
-}
-
-func (c ClientConfig) GetLoadOptions() []func(options *awsCfg.LoadOptions) error {
-	return c.LoadOptions
-}
-
-func (c ClientConfig) GetRetryOptions() []func(*retry.StandardOptions) {
-	return nil
-}
-
-type ClientOption func(cfg *ClientConfig)
 
 type clientAppCtxKey string
 

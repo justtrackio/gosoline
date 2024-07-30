@@ -34,13 +34,13 @@ type MessagesPerRunnerCwNamingSettings struct {
 type MessagesPerRunnerMetricSettings struct {
 	Enabled            bool                                      `cfg:"enabled"`
 	Ecs                MessagesPerRunnerEcsSettings              `cfg:"ecs"`
-	LeaderElection     string                                    `cfg:"leader_election" default:"streamMprMetrics"`
+	LeaderElection     string                                    `cfg:"leader_election"      default:"streamMprMetrics"`
 	MaxIncreasePercent float64                                   `cfg:"max_increase_percent" default:"200"`
-	MaxIncreasePeriod  time.Duration                             `cfg:"max_increase_period" default:"5m"`
+	MaxIncreasePeriod  time.Duration                             `cfg:"max_increase_period"  default:"5m"`
 	DynamoDb           MessagesPerRunnerDdbServiceNamingSettings `cfg:"dynamodb"`
 	Cloudwatch         MessagesPerRunnerCwServiceNamingSettings  `cfg:"cloudwatch"`
-	Period             time.Duration                             `cfg:"period" default:"1m"`
-	TargetValue        float64                                   `cfg:"target_value" default:"0"`
+	Period             time.Duration                             `cfg:"period"               default:"1m"`
+	TargetValue        float64                                   `cfg:"target_value"         default:"0"`
 }
 
 func readMessagesPerRunnerMetricSettings(config cfg.Config) *MessagesPerRunnerMetricSettings {
@@ -52,4 +52,19 @@ func readMessagesPerRunnerMetricSettings(config cfg.Config) *MessagesPerRunnerMe
 
 func messagesPerRunnerIsEnabled(config cfg.Config) bool {
 	return config.GetBool(configKey+".enabled", false)
+}
+
+const (
+	metricNameStreamMprMessagesPerRunner = "StreamMprMessagesPerRunner"
+)
+
+type MessagesPerRunnerMetricWriterSettings struct {
+	Ecs                 MessagesPerRunnerEcsSettings
+	MaxIncreasePeriod   time.Duration
+	UpdatePeriod        time.Duration
+	CloudwatchNamespace string
+	MaxIncreasePercent  float64
+	MemberId            string
+	QueueNames          []string
+	TargetValue         float64
 }

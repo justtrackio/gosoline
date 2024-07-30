@@ -16,12 +16,6 @@ func init() {
 
 const componentS3 = "s3"
 
-type s3Settings struct {
-	ComponentBaseSettings
-	ComponentContainerSettings
-	Port int `cfg:"port" default:"0"`
-}
-
 type s3Factory struct{}
 
 func (f *s3Factory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {

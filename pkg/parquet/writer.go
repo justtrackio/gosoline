@@ -18,14 +18,6 @@ import (
 	"github.com/xitongsys/parquet-go/writer"
 )
 
-type WriterSettings struct {
-	ClientName     string `cfg:"client_name" default:"default"`
-	ModelId        mdl.ModelId
-	NamingStrategy string
-	Recorder       FileRecorder
-	Tags           map[string]string
-}
-
 //go:generate mockery --name Writer
 type Writer interface {
 	Write(ctx context.Context, datetime time.Time, items interface{}) error

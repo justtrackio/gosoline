@@ -35,11 +35,6 @@ var (
 	ErrCrossUpdate = fmt.Errorf("cross updating wrong model from repo")
 )
 
-type Settings struct {
-	cfg.AppId
-	Metadata Metadata
-}
-
 //go:generate mockery --name RepositoryReadOnly
 type RepositoryReadOnly interface {
 	Read(ctx context.Context, id *uint, out ModelBased) error

@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"time"
-
-	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/exec"
 )
 
 // you failed to acquire a lock before the operation timed out
@@ -36,11 +33,4 @@ type DistributedLock interface {
 	// Release a lock. Might fail with ErrNotOwned if you are
 	// releasing a lock too late.
 	Release() error
-}
-
-type DistributedLockSettings struct {
-	cfg.AppId
-	Backoff         exec.BackoffSettings
-	DefaultLockTime time.Duration
-	Domain          string
 }

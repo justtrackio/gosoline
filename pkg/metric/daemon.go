@@ -14,31 +14,6 @@ import (
 
 const defaultTimeFormat = "2006-01-02T15:04Z07:00"
 
-type NamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}/{env}/{family}/{group}-{app}"`
-}
-
-type Cloudwatch struct {
-	Naming NamingSettings `cfg:"naming"`
-}
-
-type Settings struct {
-	cfg.AppId
-	Enabled    bool          `cfg:"enabled" default:"false"`
-	Interval   time.Duration `cfg:"interval" default:"60s"`
-	Cloudwatch Cloudwatch    `cfg:"cloudwatch"`
-	Writer     string        `cfg:"writer"`
-}
-
-func getMetricSettings(config cfg.Config) *Settings {
-	settings := &Settings{}
-	config.UnmarshalKey("metric", settings)
-
-	settings.PadFromConfig(config)
-
-	return settings
-}
-
 type BatchedMetricDatum struct {
 	Priority   int
 	Timestamp  time.Time

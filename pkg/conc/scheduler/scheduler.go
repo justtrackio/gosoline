@@ -53,12 +53,6 @@ type scheduler[T any] struct {
 	workQueue    chan job[T]
 }
 
-type Settings struct {
-	BatchTimeout time.Duration `cfg:"batch_timeout" default:"10ms"`
-	RunnerCount  int           `cfg:"runner_count" default:"25"`
-	MaxBatchSize int           `cfg:"max_batch_size" default:"25"`
-}
-
 func NewScheduler[T any](config cfg.Config, batchRunner BatchRunner[T], name string) Scheduler[T] {
 	var settings Settings
 	config.UnmarshalKey(fmt.Sprintf("scheduler.%s", name), &settings)

@@ -20,22 +20,6 @@ func init() {
 
 const componentMySql = "mysql"
 
-type mysqlCredentials struct {
-	DatabaseName string `cfg:"database_name" default:"gosoline"`
-	UserName     string `cfg:"user_name" default:"gosoline"`
-	UserPassword string `cfg:"user_password" default:"gosoline"`
-	RootPassword string `cfg:"root_password" default:"gosoline"`
-}
-
-type mysqlSettings struct {
-	ComponentBaseSettings
-	ComponentContainerSettings
-	ContainerBindingSettings
-	Credentials          mysqlCredentials `cfg:"credentials"`
-	ToxiproxyEnabled     bool             `cfg:"toxiproxy_enabled" default:"false"`
-	UseExternalContainer bool             `cfg:"use_external_container" default:"false"`
-}
-
 type mysqlFactory struct {
 	toxiproxyFactory toxiproxyFactory
 }
