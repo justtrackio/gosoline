@@ -75,6 +75,10 @@ func (l *NamedFixtureSet) GetValueByName(name string) interface{} {
 }
 
 func (l *NamedFixtureSet) GetValueById(id interface{}) interface{} {
+	if l.Len() == 0 {
+		panic(fmt.Errorf("can not find id = %v in empty fixture set", id))
+	}
+
 	fixture, ok := funk.FindFirstFunc(*l, func(item *NamedFixture) bool {
 		valueId, ok := GetValueId(item.Value)
 
@@ -82,7 +86,7 @@ func (l *NamedFixtureSet) GetValueById(id interface{}) interface{} {
 	})
 
 	if !ok {
-		panic(fmt.Errorf("failed to get value by id"))
+		panic(fmt.Errorf("failed to get value by id = %v, type = %T", id, (*l)[0].Value))
 	}
 
 	return fixture.Value
