@@ -11,7 +11,14 @@ import (
 //go:generate mockery --name JwtTokenHandler
 type JwtTokenHandler interface {
 	Sign(user SignUserInput) (*string, error)
+	SignClaims(claims Claims) (*string, error)
 	Valid(jwtToken string) (bool, *jwt.Token, error)
+}
+
+type Claims interface {
+	jwt.Claims
+	GetStandardClaims() jwt.StandardClaims
+	SetStandardClaims(standardClaims jwt.StandardClaims)
 }
 
 type jwtTokenHandler struct {
@@ -31,6 +38,14 @@ type JwtClaims struct {
 	jwt.StandardClaims
 }
 
+func (c *JwtClaims) GetStandardClaims() jwt.StandardClaims {
+	return c.StandardClaims
+}
+
+func (c *JwtClaims) SetStandardClaims(standardClaims jwt.StandardClaims) {
+	c.StandardClaims = standardClaims
+}
+
 func NewJwtTokenHandler(config cfg.Config, name string) JwtTokenHandler {
 	key := fmt.Sprintf("httpserver.%s.auth.jwt", name)
 	settings := &JwtTokenHandlerSettings{}
@@ -46,16 +61,20 @@ func NewJwtTokenHandlerWithInterfaces(settings JwtTokenHandlerSettings) JwtToken
 }
 
 func (h *jwtTokenHandler) Sign(user SignUserInput) (*string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &JwtClaims{
+	return h.SignClaims(&JwtClaims{
 		Name:  user.Name,
 		Email: user.Email,
 		Image: user.Image,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(h.settings.ExpireDuration).Unix(),
-			IssuedAt:  time.Now().Unix(),
-			Issuer:    h.settings.Issuer,
-		},
 	})
+}
+
+func (h *jwtTokenHandler) SignClaims(claims Claims) (*string, error) {
+	stdClaims := claims.GetStandardClaims()
+	stdClaims.ExpiresAt = time.Now().Add(h.settings.ExpireDuration).Unix()
+	stdClaims.IssuedAt = time.Now().Unix()
+	stdClaims.Issuer = h.settings.Issuer
+	claims.SetStandardClaims(stdClaims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	tokenString, err := token.SignedString([]byte(h.settings.SigningSecret))
 	if err != nil {
