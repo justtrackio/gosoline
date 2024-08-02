@@ -18,12 +18,6 @@ type jwtTokenHandler struct {
 	settings JwtTokenHandlerSettings
 }
 
-type JwtTokenHandlerSettings struct {
-	SigningSecret  string        `cfg:"signingSecret" validate:"min=8"`
-	Issuer         string        `cfg:"issuer" validate:"required"`
-	ExpireDuration time.Duration `cfg:"expireDuration" default:"15m" validate:"min=60000000000"`
-}
-
 type SignUserInput struct {
 	Name  string
 	Email string
