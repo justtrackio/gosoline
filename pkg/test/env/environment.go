@@ -173,6 +173,10 @@ func (e *Environment) Logs() LogRecords {
 	return e.logger.Records()
 }
 
+func (e *Environment) ResetLogs() {
+	e.logger.Reset()
+}
+
 func (e *Environment) Clock() clock.Clock {
 	return clock.Provider
 }
