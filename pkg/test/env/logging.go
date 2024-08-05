@@ -20,6 +20,7 @@ type (
 	RecordingLogger interface {
 		log.GosoLogger
 		Records() []LogRecord
+		Reset()
 	}
 
 	recordingLogger struct {
@@ -100,6 +101,13 @@ func (r recordingLogger) Records() []LogRecord {
 	copy(records, *r.records)
 
 	return records
+}
+
+func (r recordingLogger) Reset() {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	*r.records = []LogRecord{}
 }
 
 func (h handlerInMemoryWriter) Channels() []string {
