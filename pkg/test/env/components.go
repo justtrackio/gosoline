@@ -3,7 +3,6 @@ package env
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -37,49 +36,6 @@ type ComponentBaseSettingsAware interface {
 	GetType() string
 	SetName(name string)
 	SetType(typ string)
-}
-
-type ComponentBaseSettings struct {
-	Name string `cfg:"name" default:"default"`
-	Type string `cfg:"type" validate:"required"`
-}
-
-func (c *ComponentBaseSettings) GetName() string {
-	return c.Name
-}
-
-func (c *ComponentBaseSettings) GetType() string {
-	return c.Type
-}
-
-func (c *ComponentBaseSettings) SetName(name string) {
-	c.Name = name
-}
-
-func (c *ComponentBaseSettings) SetType(typ string) {
-	c.Type = typ
-}
-
-type ContainerImageSettings struct {
-	Repository string `cfg:"repository"`
-	Tag        string `cfg:"tag"`
-}
-
-type ContainerBindingSettings struct {
-	Host string `cfg:"host" default:"127.0.0.1"`
-	Port int    `cfg:"port" default:"0"`
-}
-
-type ComponentContainerSettings struct {
-	Image       ContainerImageSettings `cfg:"image"`
-	ExpireAfter time.Duration          `cfg:"expire_after" default:"60s"`
-	Tmpfs       []TmpfsSettings        `cfg:"tmpfs"`
-}
-
-type TmpfsSettings struct {
-	Path string `cfg:"path"`
-	Size string `cfg:"size"`
-	Mode string `cfg:"mode"`
 }
 
 type Component interface {

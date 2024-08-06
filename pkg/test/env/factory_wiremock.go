@@ -17,13 +17,6 @@ func init() {
 
 const componentWiremock = "wiremock"
 
-type wiremockSettings struct {
-	ComponentBaseSettings
-	ComponentContainerSettings
-	Mocks []string `cfg:"mocks"`
-	Port  int      `cfg:"port" default:"0"`
-}
-
 type wiremockFactory struct{}
 
 func (f *wiremockFactory) Detect(_ cfg.Config, _ *ComponentsConfigManager) error {

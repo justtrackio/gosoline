@@ -25,14 +25,6 @@ const (
 	operationWrite  = "Write"
 )
 
-type BatchRunnerSettings struct {
-	ClientName        string `cfg:"client_name" default:"default"`
-	CopyRunnerCount   int    `cfg:"copy_runner_count" default:"10"`
-	DeleteRunnerCount int    `cfg:"delete_runner_count" default:"10"`
-	ReaderRunnerCount int    `cfg:"reader_runner_count" default:"10"`
-	WriterRunnerCount int    `cfg:"writer_runner_count" default:"10"`
-}
-
 var br = struct {
 	sync.Mutex
 	instance BatchRunner

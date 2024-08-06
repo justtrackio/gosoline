@@ -17,13 +17,6 @@ type ProducerMetadata struct {
 	DaemonEnabled bool   `json:"daemon_enabled"`
 }
 
-type ProducerSettings struct {
-	Output      string                 `cfg:"output"`
-	Encoding    EncodingType           `cfg:"encoding"`
-	Compression CompressionType        `cfg:"compression" default:"none"`
-	Daemon      ProducerDaemonSettings `cfg:"daemon"`
-}
-
 //go:generate mockery --name Producer
 type Producer interface {
 	WriteOne(ctx context.Context, model interface{}, attributeSets ...map[string]string) error

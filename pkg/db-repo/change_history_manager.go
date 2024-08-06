@@ -15,10 +15,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type changeHistoryManagerSettings struct {
-	TableSuffix string `cfg:"table_suffix" default:"history"`
-}
-
 type ChangeHistoryManager struct {
 	orm      *gorm.DB
 	logger   log.Logger
@@ -260,8 +256,8 @@ func (c *ChangeHistoryManager) insertHistoryEntry(originalTable *tableMetadata, 
 	values := "d." + strings.Join(columnNames, ", d.") + ", @change_history_author_id"
 
 	return fmt.Sprintf(`
-		INSERT INTO %s (change_history_action,change_history_revision,change_history_action_at,%s) 
-			SELECT '%s', NULL, NOW(), %s 
+		INSERT INTO %s (change_history_action,change_history_revision,change_history_action_at,%s)
+			SELECT '%s', NULL, NOW(), %s
 			FROM %s AS d`,
 		historyTable.tableNameQuoted,
 		columns,
@@ -272,8 +268,8 @@ func (c *ChangeHistoryManager) insertHistoryEntry(originalTable *tableMetadata, 
 
 func (c *ChangeHistoryManager) incrementRevision(originalTable *tableMetadata, historyTable *tableMetadata) string {
 	return fmt.Sprintf(`
-		BEGIN 
-			SET NEW.change_history_revision = (SELECT IFNULL(MAX(d.change_history_revision), 0) + 1 FROM %s as d WHERE %s); 
+		BEGIN
+			SET NEW.change_history_revision = (SELECT IFNULL(MAX(d.change_history_revision), 0) + 1 FROM %s as d WHERE %s);
 		END`,
 		historyTable.tableNameQuoted,
 		c.primaryKeysMatchCondition(originalTable, "NEW"),

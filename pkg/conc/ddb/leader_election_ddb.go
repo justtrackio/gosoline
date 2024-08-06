@@ -3,7 +3,6 @@ package ddb
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -14,20 +13,9 @@ import (
 )
 
 type DdbLeaderElectionItem struct {
-	GroupId      string `json:"groupId" ddb:"key=hash"`
+	GroupId      string `json:"groupId"      ddb:"key=hash"`
 	MemberId     string `json:"memberId"`
 	LeadingUntil int64  `json:"leadingUntil" ddb:"ttl=enabled"`
-}
-
-type TableNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}-{env}-{family}-leader-elections"`
-}
-
-type DdbLeaderElectionSettings struct {
-	Naming        TableNamingSettings `cfg:"naming"`
-	ClientName    string              `cfg:"client_name" default:"default"`
-	GroupId       string              `cfg:"group_id" default:"{app_name}"`
-	LeaseDuration time.Duration       `cfg:"lease_duration" default:"1m"`
 }
 
 type DdbLeaderElection struct {

@@ -10,11 +10,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type FileSettings struct {
-	Filename string `cfg:"filename"`
-	Blocking bool   `cfg:"blocking"`
-}
-
 type fileInput struct {
 	logger   log.Logger
 	settings FileSettings

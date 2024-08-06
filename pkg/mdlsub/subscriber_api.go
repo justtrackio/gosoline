@@ -10,10 +10,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
-type SubscriberApiSettings struct {
-	Enabled bool `cfg:"enabled" default:"true"`
-}
-
 func CreateDefiner(callbacks map[string]stream.ConsumerCallbackFactory) httpserver.Definer {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (*httpserver.Definitions, error) {
 		d := &httpserver.Definitions{}

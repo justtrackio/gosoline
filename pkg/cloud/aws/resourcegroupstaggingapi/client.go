@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
-	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -18,29 +16,6 @@ import (
 type Client interface {
 	GetResources(context.Context, *resourcegroupstaggingapi.GetResourcesInput, ...func(*resourcegroupstaggingapi.Options)) (*resourcegroupstaggingapi.GetResourcesOutput, error)
 }
-
-type ClientSettings struct {
-	gosoAws.ClientSettings
-}
-
-type ClientConfig struct {
-	Settings    ClientSettings
-	LoadOptions []func(options *awsCfg.LoadOptions) error
-}
-
-func (c ClientConfig) GetSettings() gosoAws.ClientSettings {
-	return c.Settings.ClientSettings
-}
-
-func (c ClientConfig) GetLoadOptions() []func(options *awsCfg.LoadOptions) error {
-	return c.LoadOptions
-}
-
-func (c ClientConfig) GetRetryOptions() []func(*retry.StandardOptions) {
-	return nil
-}
-
-type ClientOption func(cfg *ClientConfig)
 
 type clientAppCtxKey string
 

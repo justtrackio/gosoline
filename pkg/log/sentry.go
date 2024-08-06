@@ -16,12 +16,6 @@ type SentryHub interface {
 	Flush(timeout time.Duration) bool
 }
 
-type SentryHubSettings struct {
-	Dsn         string
-	Environment string
-	AppName     string
-}
-
 func NewSentryHub(config cfg.Config) (SentryHub, error) {
 	settings := &SentryHubSettings{
 		Environment: config.GetString("env"),

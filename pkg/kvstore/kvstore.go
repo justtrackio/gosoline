@@ -2,7 +2,6 @@ package kvstore
 
 import (
 	"context"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
@@ -10,25 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 )
-
-type Settings struct {
-	cfg.AppId
-	DdbSettings    DdbSettings
-	Name           string
-	Ttl            time.Duration
-	BatchSize      int
-	MetricsEnabled bool
-	InMemorySettings
-}
-
-type InMemorySettings struct {
-	MaxSize        int64
-	Buckets        uint32
-	ItemsToPrune   uint32
-	DeleteBuffer   uint32
-	PromoteBuffer  uint32
-	GetsPerPromote int32
-}
 
 //go:generate mockery --name KvStore
 type KvStore[T any] interface {

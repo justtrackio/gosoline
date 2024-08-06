@@ -16,11 +16,6 @@ type AuditLogger interface {
 	ladon.AuditLogger
 }
 
-type auditSettings struct {
-	LogGrants     bool `cfg:"log_grants" default:"false"`
-	LogRejections bool `cfg:"log_rejections" default:"true"`
-}
-
 type auditLogger struct {
 	logger   log.Logger
 	settings auditSettings

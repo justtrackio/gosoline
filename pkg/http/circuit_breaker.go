@@ -3,20 +3,12 @@ package http
 import (
 	"context"
 	"sync/atomic"
-	"time"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
-
-type CircuitBreakerSettings struct {
-	Enabled          bool          `cfg:"enabled" default:"false"`
-	MaxFailures      int64         `cfg:"max_failures" default:"10"`
-	RetryDelay       time.Duration `cfg:"retry_delay" default:"1m"`
-	ExpectedStatuses []int         `cfg:"expected_statuses"`
-}
 
 type CircuitIsOpenError struct{}
 

@@ -12,14 +12,6 @@ func init() {
 	AddHandlerFactory("iowriter", handlerIoWriterFactory)
 }
 
-type HandlerIoWriterSettings struct {
-	Level           string   `cfg:"level" default:"info"`
-	Channels        []string `cfg:"channels"`
-	Formatter       string   `cfg:"formatter" default:"console"`
-	TimestampFormat string   `cfg:"timestamp_format" default:"15:04:05.000"`
-	Writer          string   `cfg:"writer" default:"stdout"`
-}
-
 func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
 	handlerConfigKey := getHandlerConfigKey(name)
 	settings := &HandlerIoWriterSettings{}

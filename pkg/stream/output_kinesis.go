@@ -18,24 +18,6 @@ const (
 	AttributeKinesisExplicitHashKey = "gosoline.kinesis.explicitHashKey"
 )
 
-type KinesisOutputSettings struct {
-	cfg.AppId
-	ClientName string
-	StreamName string
-}
-
-func (s KinesisOutputSettings) GetAppId() cfg.AppId {
-	return s.AppId
-}
-
-func (s KinesisOutputSettings) GetClientName() string {
-	return s.ClientName
-}
-
-func (s KinesisOutputSettings) GetStreamName() string {
-	return s.StreamName
-}
-
 type kinesisOutput struct {
 	recordWriter gosoKinesis.RecordWriter
 }

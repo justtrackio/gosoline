@@ -23,10 +23,6 @@ const (
 	FifoSuffix               = ".fifo"
 )
 
-type ServiceSettings struct {
-	AutoCreate bool
-}
-
 //go:generate mockery --name Service
 type Service interface {
 	CreateQueue(ctx context.Context, settings *Settings) (*Properties, error)

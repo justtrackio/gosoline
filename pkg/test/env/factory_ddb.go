@@ -18,13 +18,6 @@ func init() {
 
 const componentDdb = "ddb"
 
-type ddbSettings struct {
-	ComponentBaseSettings
-	ComponentContainerSettings
-	Port             int  `cfg:"port" default:"0"`
-	ToxiproxyEnabled bool `cfg:"toxiproxy_enabled" default:"false"`
-}
-
 type ddbFactory struct {
 	toxiproxyFactory toxiproxyFactory
 }

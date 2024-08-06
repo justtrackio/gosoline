@@ -63,14 +63,6 @@ type (
 	CopyBatch []*CopyObject
 )
 
-type Settings struct {
-	cfg.AppId
-	Bucket     string `cfg:"bucket"`
-	Region     string `cfg:"region"`
-	ClientName string `cfg:"client_name" default:"default"`
-	Prefix     string `cfg:"prefix"`
-}
-
 //go:generate mockery --name Store
 type Store interface {
 	BucketName() string
@@ -355,22 +347,4 @@ func isBucketAlreadyExistsError(err error) bool {
 	}
 
 	return false
-}
-
-func getStoreSettings(config cfg.Config, name string) *Settings {
-	settings := &Settings{}
-	key := fmt.Sprintf("blob.%s", name)
-	config.UnmarshalKey(key, settings)
-	settings.AppId.PadFromConfig(config)
-
-	if settings.Bucket == "" {
-		settings.Bucket = fmt.Sprintf("%s-%s-%s", settings.Project, settings.Environment, settings.Family)
-	}
-
-	if settings.Region == "" {
-		s3ClientConfig := gosoS3.GetClientConfig(config, settings.ClientName)
-		settings.Region = s3ClientConfig.Settings.Region
-	}
-
-	return settings
 }

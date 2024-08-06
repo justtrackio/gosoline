@@ -8,11 +8,6 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type AutoDetectSettings struct {
-	Enabled        bool     `cfg:"enabled" default:"true"`
-	SkipComponents []string `cfg:"skip_components"`
-}
-
 type ComponentsConfigManager struct {
 	lck    sync.Mutex
 	config cfg.GosoConf

@@ -18,15 +18,6 @@ type Tracer interface {
 	StartSubSpan(ctx context.Context, name string) (context.Context, Span)
 }
 
-type TracerSettings struct {
-	Provider                    string                `cfg:"provider" default:"xray" validate:"required"`
-	Enabled                     bool                  `cfg:"enabled" default:"false"`
-	AddressType                 string                `cfg:"addr_type" default:"local" validate:"required"`
-	AddressValue                string                `cfg:"add_value" default:""`
-	Sampling                    SamplingConfiguration `cfg:"sampling"`
-	StreamingMaxSubsegmentCount int                   `cfg:"streaming_max_subsegment_count" default:"20"`
-}
-
 var tracerContainer = struct {
 	sync.Mutex
 	instance Tracer

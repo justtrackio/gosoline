@@ -18,11 +18,6 @@ const (
 	FileOutputModeTruncate FileOutputMode = "truncate"
 )
 
-type FileOutputSettings struct {
-	Filename string         `cfg:"filename"`
-	Mode     FileOutputMode `cfg:"mode"     default:"append"`
-}
-
 type fileOutput struct {
 	logger   log.Logger
 	settings *FileOutputSettings

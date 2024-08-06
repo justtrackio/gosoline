@@ -18,13 +18,6 @@ const (
 	metricNameRedisListInputReads  = "StreamRedisListInputReads"
 )
 
-type RedisListInputSettings struct {
-	cfg.AppId
-	ServerName string
-	Key        string
-	WaitTime   time.Duration
-}
-
 type redisListInput struct {
 	logger   log.Logger
 	mw       metric.Writer

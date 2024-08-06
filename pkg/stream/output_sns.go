@@ -10,24 +10,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type SnsOutputSettings struct {
-	cfg.AppId
-	TopicId    string
-	ClientName string
-}
-
-func (s SnsOutputSettings) GetAppId() cfg.AppId {
-	return s.AppId
-}
-
-func (s SnsOutputSettings) GetClientName() string {
-	return s.ClientName
-}
-
-func (s SnsOutputSettings) GetTopicId() string {
-	return s.TopicId
-}
-
 type snsOutput struct {
 	logger log.Logger
 	topic  sns.Topic

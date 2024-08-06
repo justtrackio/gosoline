@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
-	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -19,29 +17,6 @@ type Client interface {
 	DescribeContainerInstances(ctx context.Context, params *ecs.DescribeContainerInstancesInput, optFns ...func(*ecs.Options)) (*ecs.DescribeContainerInstancesOutput, error)
 	DescribeTasks(ctx context.Context, params *ecs.DescribeTasksInput, optFns ...func(*ecs.Options)) (*ecs.DescribeTasksOutput, error)
 }
-
-type ClientSettings struct {
-	gosoAws.ClientSettings
-}
-
-type ClientConfig struct {
-	Settings    ClientSettings
-	LoadOptions []func(options *awsCfg.LoadOptions) error
-}
-
-func (c ClientConfig) GetSettings() gosoAws.ClientSettings {
-	return c.Settings.ClientSettings
-}
-
-func (c ClientConfig) GetLoadOptions() []func(options *awsCfg.LoadOptions) error {
-	return c.LoadOptions
-}
-
-func (c ClientConfig) GetRetryOptions() []func(*retry.StandardOptions) {
-	return nil
-}
-
-type ClientOption func(cfg *ClientConfig)
 
 type clientAppCtxKey string
 

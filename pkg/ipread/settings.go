@@ -8,7 +8,7 @@ import (
 )
 
 type RefreshSettings struct {
-	Enabled  bool          `cfg:"enabled" default:"false"`
+	Enabled  bool          `cfg:"enabled"  default:"false"`
 	Interval time.Duration `cfg:"interval" default:"24h"`
 }
 
@@ -35,4 +35,9 @@ func readAllSettings(config cfg.Config) map[string]*ReaderSettings {
 	}
 
 	return readerSettings
+}
+
+type MaxmindSettings struct {
+	Database     string `cfg:"database"`
+	S3ClientName string `cfg:"s3_client_name"`
 }

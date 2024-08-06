@@ -3,11 +3,9 @@ package kinesis
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
-	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -47,31 +45,6 @@ type Client interface {
 	UpdateShardCount(ctx context.Context, params *kinesis.UpdateShardCountInput, optFns ...func(*kinesis.Options)) (*kinesis.UpdateShardCountOutput, error)
 	UpdateStreamMode(ctx context.Context, params *kinesis.UpdateStreamModeInput, optFns ...func(*kinesis.Options)) (*kinesis.UpdateStreamModeOutput, error)
 }
-
-type ClientSettings struct {
-	gosoAws.ClientSettings
-	ReadProvisionedThroughputDelay time.Duration `cfg:"read_provisioned_throughput_exceeded_delay" default:"1s"`
-}
-
-type ClientConfig struct {
-	Settings     ClientSettings
-	LoadOptions  []func(options *awsCfg.LoadOptions) error
-	RetryOptions []func(*retry.StandardOptions)
-}
-
-func (c ClientConfig) GetSettings() gosoAws.ClientSettings {
-	return c.Settings.ClientSettings
-}
-
-func (c ClientConfig) GetLoadOptions() []func(options *awsCfg.LoadOptions) error {
-	return c.LoadOptions
-}
-
-func (c ClientConfig) GetRetryOptions() []func(*retry.StandardOptions) {
-	return c.RetryOptions
-}
-
-type ClientOption func(cfg *ClientConfig)
 
 type clientAppCtxKey string
 

@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	awsHttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/smithy-go/logging"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
@@ -37,8 +36,8 @@ type ClientHttpSettings struct {
 }
 
 type ClientSettings struct {
-	Region      string             `cfg:"region" default:"eu-central-1"`
-	Endpoint    string             `cfg:"endpoint" default:"http://localhost:4566"`
+	Region      string             `cfg:"region"      default:"eu-central-1"`
+	Endpoint    string             `cfg:"endpoint"    default:"http://localhost:4566"`
 	AssumeRole  string             `cfg:"assume_role"`
 	Credentials Credentials        `cfg:"credentials"`
 	HttpClient  ClientHttpSettings `cfg:"http_client"`
@@ -155,53 +154,6 @@ func WithEndpoint(url string) func(options *awsCfg.LoadOptions) error {
 		o.EndpointResolverWithOptions = EndpointResolver(url)
 
 		return nil
-	}
-}
-
-type endpointResolver struct {
-	url string
-}
-
-func (e *endpointResolver) ResolveEndpoint(service, region string, options ...interface{}) (aws.Endpoint, error) {
-	if e.url == "" {
-		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-	}
-
-	return aws.Endpoint{
-		PartitionID:   "aws",
-		URL:           e.url,
-		SigningRegion: region,
-	}, nil
-}
-
-func EndpointResolver(url string) aws.EndpointResolverWithOptions {
-	return &endpointResolver{
-		url: url,
-	}
-}
-
-type Logger struct {
-	base log.Logger
-}
-
-func NewLogger(base log.Logger) *Logger {
-	return &Logger{
-		base: base,
-	}
-}
-
-func (l Logger) Logf(classification logging.Classification, format string, v ...interface{}) {
-	switch classification {
-	case logging.Warn:
-		l.base.Warn(format, v...)
-	default:
-		l.base.Info(format, v...)
-	}
-}
-
-func (l Logger) WithContext(ctx context.Context) logging.Logger {
-	return &Logger{
-		base: l.base.WithContext(ctx),
 	}
 }
 

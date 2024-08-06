@@ -25,18 +25,6 @@ type BaseOutputConfigurationAware interface {
 	SetTracing(enabled bool)
 }
 
-type BaseOutputConfiguration struct {
-	Tracing BaseOutputConfigurationTracing `cfg:"tracing"`
-}
-
-func (b *BaseOutputConfiguration) SetTracing(enabled bool) {
-	b.Tracing.Enabled = enabled
-}
-
-type BaseOutputConfigurationTracing struct {
-	Enabled bool `cfg:"enabled" default:"true"`
-}
-
 func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
 	outputFactories := map[string]OutputFactory{
 		OutputTypeFile:     newFileOutputFromConfig,
@@ -97,7 +85,7 @@ func newInMemoryOutputFromConfig(_ context.Context, _ cfg.Config, _ log.Logger, 
 
 type KinesisOutputConfiguration struct {
 	BaseOutputConfiguration
-	Type        string `cfg:"type" default:"kinesis"`
+	Type        string `cfg:"type"        default:"kinesis"`
 	Project     string `cfg:"project"`
 	Family      string `cfg:"family"`
 	Group       string `cfg:"group"`
@@ -129,8 +117,8 @@ type redisListOutputConfiguration struct {
 	Group       string `cfg:"group"`
 	Application string `cfg:"application"`
 	ServerName  string `cfg:"server_name" default:"default" validate:"required,min=1"`
-	Key         string `cfg:"key" validate:"required,min=1"`
-	BatchSize   int    `cfg:"batch_size" default:"100"`
+	Key         string `cfg:"key"                           validate:"required,min=1"`
+	BatchSize   int    `cfg:"batch_size"  default:"100"`
 }
 
 func newRedisListOutputFromConfig(_ context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {
@@ -154,12 +142,12 @@ func newRedisListOutputFromConfig(_ context.Context, config cfg.Config, logger l
 
 type SnsOutputConfiguration struct {
 	BaseOutputConfiguration
-	Type        string `cfg:"type" default:"sns"`
+	Type        string `cfg:"type"        default:"sns"`
 	Project     string `cfg:"project"`
 	Family      string `cfg:"family"`
 	Group       string `cfg:"group"`
 	Application string `cfg:"application"`
-	TopicId     string `cfg:"topic_id" validate:"required"`
+	TopicId     string `cfg:"topic_id"                      validate:"required"`
 	ClientName  string `cfg:"client_name" default:"default"`
 }
 
@@ -182,16 +170,16 @@ func newSnsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 
 type SqsOutputConfiguration struct {
 	BaseOutputConfiguration
-	Type              string            `cfg:"type" default:"sqs"`
+	Type              string            `cfg:"type"               default:"sqs"`
 	Project           string            `cfg:"project"`
 	Family            string            `cfg:"family"`
 	Group             string            `cfg:"group"`
 	Application       string            `cfg:"application"`
-	QueueId           string            `cfg:"queue_id" validate:"required"`
-	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30" validate:"gt=0"`
+	QueueId           string            `cfg:"queue_id"                             validate:"required"`
+	VisibilityTimeout int               `cfg:"visibility_timeout" default:"30"      validate:"gt=0"`
 	RedrivePolicy     sqs.RedrivePolicy `cfg:"redrive_policy"`
 	Fifo              sqs.FifoSettings  `cfg:"fifo"`
-	ClientName        string            `cfg:"client_name" default:"default"`
+	ClientName        string            `cfg:"client_name"        default:"default"`
 }
 
 func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, error) {

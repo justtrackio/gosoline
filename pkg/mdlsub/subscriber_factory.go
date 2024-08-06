@@ -15,11 +15,6 @@ const (
 	ConfigKeyMdlSub = "mdlsub"
 )
 
-type Settings struct {
-	SubscriberApi SubscriberApiSettings          `cfg:"subscriber_api"`
-	Subscribers   map[string]*SubscriberSettings `cfg:"subscribers"`
-}
-
 func NewSubscriberFactory(transformerFactoryMap TransformerMapTypeVersionFactories) kernel.ModuleMultiFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
 		return SubscriberFactory(ctx, config, logger, transformerFactoryMap)

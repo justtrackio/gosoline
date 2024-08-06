@@ -14,11 +14,6 @@ func init() {
 
 const componentStreamInput = "streamInput"
 
-type streamInputSettings struct {
-	ComponentBaseSettings
-	InMemoryOverride bool `cfg:"in_memory_override" default:"true"`
-}
-
 type streamInputFactory struct{}
 
 func (f *streamInputFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {

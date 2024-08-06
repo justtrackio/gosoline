@@ -7,17 +7,9 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
-
-type Settings struct {
-	TableName struct {
-		Owner  string `cfg:"owner" default:"owners"`
-		Policy string `cfg:"policy" default:"policies"`
-		Share  string `cfg:"share" default:"shares"`
-	} `cfg:"table_name"`
-}
 
 type shareManagerAppctxKey string
 

@@ -11,17 +11,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/redis"
 )
 
-const (
-	metricNameRedisListOutputWrites = "StreamRedisListOutputWrites"
-)
-
-type RedisListOutputSettings struct {
-	cfg.AppId
-	ServerName string
-	Key        string
-	BatchSize  int
-}
-
 type redisListOutput struct {
 	logger            log.Logger
 	metricWriter      metric.Writer

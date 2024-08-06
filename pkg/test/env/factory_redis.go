@@ -15,12 +15,6 @@ func init() {
 
 const componentRedis = "redis"
 
-type redisSettings struct {
-	ComponentBaseSettings
-	ComponentContainerSettings
-	Port int `cfg:"port" default:"0"`
-}
-
 type redisFactory struct{}
 
 func (f *redisFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {

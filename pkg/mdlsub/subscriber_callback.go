@@ -7,7 +7,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
@@ -17,19 +16,6 @@ const (
 	MetricNameSuccess          = "ModelEventConsumeSuccess"
 	MetricNameFailure          = "ModelEventConsumeFailure"
 )
-
-type SubscriberSettings struct {
-	Input       string          `cfg:"input" default:"sns"`
-	Output      string          `cfg:"output"`
-	RunnerCount int             `cfg:"runner_count" default:"10" validate:"min=1"`
-	SourceModel SubscriberModel `cfg:"source"`
-	TargetModel SubscriberModel `cfg:"target"`
-}
-
-type SubscriberModel struct {
-	mdl.ModelId
-	Shared bool `cfg:"shared"`
-}
 
 type SubscriberCallback struct {
 	logger       log.Logger

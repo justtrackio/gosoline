@@ -19,12 +19,6 @@ func AddDefaultEncodeHandler(handler EncodeHandler) {
 	defaultEncodeHandlers = append(defaultEncodeHandlers, handler)
 }
 
-type MessageEncoderSettings struct {
-	Encoding       EncodingType
-	Compression    CompressionType
-	EncodeHandlers []EncodeHandler
-}
-
 //go:generate mockery --name MessageEncoder
 type MessageEncoder interface {
 	Encode(ctx context.Context, data interface{}, attributeSets ...map[string]string) (*Message, error)

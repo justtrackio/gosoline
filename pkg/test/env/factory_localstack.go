@@ -23,14 +23,6 @@ const (
 	localstackServiceSqs        = "sqs"
 )
 
-type localstackSettings struct {
-	ComponentBaseSettings
-	ComponentContainerSettings
-	Port     int      `cfg:"port" default:"0"`
-	Region   string   `cfg:"region" default:"eu-central-1"`
-	Services []string `cfg:"services"`
-}
-
 type localstackFactory struct{}
 
 func (f *localstackFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {

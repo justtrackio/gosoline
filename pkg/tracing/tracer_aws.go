@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/aws/aws-xray-sdk-go/strategy/ctxmissing"
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -18,14 +17,6 @@ const (
 	dnsSrv                        = "srv"
 	xrayDefaultMaxSubsegmentCount = 20
 )
-
-type XRaySettings struct {
-	Enabled                     bool
-	Address                     string
-	CtxMissingStrategy          ctxmissing.Strategy
-	SamplingStrategy            sampling.Strategy
-	StreamingMaxSubsegmentCount int
-}
 
 type awsTracer struct {
 	cfg.AppId
