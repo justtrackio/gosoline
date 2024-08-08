@@ -12,12 +12,12 @@ func init() {
 	FixtureSetBuilders["db"] = MysqlPlainFixtureSetBuilder
 }
 
-func MysqlPlainFixtureSetBuilder(ctx context.Context, config cfg.Config, logger log.Logger, settings FixtureSetBuilderSettings) ([]*FixtureSet, error) {
+func MysqlPlainFixtureSetBuilder(ctx context.Context, config cfg.Config, logger log.Logger, settings FixtureSetBuilderSettings) ([]FixtureSet, error) {
 	logger = logger.WithChannel("mysql-plain-fixture-set-builder")
 
 	fixturesByType := settings.Fixtures
 	fsDbName := settings.DbName
-	fss := make([]*FixtureSet, 0, len(fixturesByType))
+	fss := make([]FixtureSet, 0, len(fixturesByType))
 
 	if !settings.Enabled {
 		return fss, nil
@@ -62,12 +62,16 @@ func MysqlPlainFixtureSetBuilder(ctx context.Context, config cfg.Config, logger 
 			fsFixtures[i] = MysqlPlainFixtureValues(values)
 		}
 
-		fs := &FixtureSet{
-			Enabled:        true,
-			Purge:          true,
-			Writer:         MysqlPlainFixtureWriterFactory(metadata),
-			Fixtures:       fsFixtures,
-			FixtureSetName: fsDbName,
+		writer, err := NewMysqlPlainFixtureWriter(ctx, config, logger, metadata)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create new mysql plain fixture writer: %w", err)
+		}
+
+		fs := &SimpleFixtureSet{
+			Enabled:  true,
+			Purge:    true,
+			Writer:   writer,
+			Fixtures: fsFixtures,
 		}
 		fss = append(fss, fs)
 	}

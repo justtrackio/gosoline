@@ -19,41 +19,32 @@ type MysqlPlainMetaData struct {
 }
 
 type mysqlPlainFixtureWriter struct {
-	logger       log.Logger
-	client       db.Client
-	metadata     *MysqlPlainMetaData
-	purger       *mysqlPurger
-	stateService *mysqlStateService
+	logger   log.Logger
+	client   db.Client
+	metadata *MysqlPlainMetaData
+	purger   *mysqlPurger
 }
 
-func MysqlPlainFixtureWriterFactory(metadata *MysqlPlainMetaData) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
-		dbClient, err := db.ProvideClient(ctx, config, logger, "default")
-		if err != nil {
-			return nil, fmt.Errorf("can not create dbClient: %w", err)
-		}
-
-		purger, err := newMysqlPurger(ctx, config, logger, metadata.TableName)
-		if err != nil {
-			return nil, fmt.Errorf("can not create purger: %w", err)
-		}
-
-		state, err := provideMysqlStateService(ctx, config, logger)
-		if err != nil {
-			return nil, fmt.Errorf("can not create state serveice: %w", err)
-		}
-
-		return NewMysqlPlainFixtureWriterWithInterfaces(logger, dbClient, metadata, purger, state), nil
+func NewMysqlPlainFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, metadata *MysqlPlainMetaData) (FixtureWriter, error) {
+	dbClient, err := db.ProvideClient(ctx, config, logger, "default")
+	if err != nil {
+		return nil, fmt.Errorf("can not create dbClient: %w", err)
 	}
+
+	purger, err := newMysqlPurger(ctx, config, logger, metadata.TableName)
+	if err != nil {
+		return nil, fmt.Errorf("can not create purger: %w", err)
+	}
+
+	return NewMysqlPlainFixtureWriterWithInterfaces(logger, dbClient, metadata, purger), nil
 }
 
-func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client db.Client, metadata *MysqlPlainMetaData, purger *mysqlPurger, state *mysqlStateService) FixtureWriter {
+func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client db.Client, metadata *MysqlPlainMetaData, purger *mysqlPurger) FixtureWriter {
 	return &mysqlPlainFixtureWriter{
-		logger:       logger,
-		client:       client,
-		metadata:     metadata,
-		purger:       purger,
-		stateService: state,
+		logger:   logger,
+		client:   client,
+		metadata: metadata,
+		purger:   purger,
 	}
 }
 
@@ -120,12 +111,12 @@ func (m *mysqlPlainFixtureWriter) buildSql(fixtures []any) ([]string, [][]any, e
 	return stmts, argss, nil
 }
 
-func (m *mysqlPlainFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
-	if len(fs.Fixtures) == 0 {
+func (m *mysqlPlainFixtureWriter) Write(ctx context.Context, fixtures []any) error {
+	if len(fixtures) == 0 {
 		return nil
 	}
 
-	stmts, argss, err := m.buildSql(fs.Fixtures)
+	stmts, argss, err := m.buildSql(fixtures)
 	if err != nil {
 		return fmt.Errorf("failed to build sqlers for fixture loading: %w", err)
 	}
@@ -150,16 +141,7 @@ func (m *mysqlPlainFixtureWriter) Write(ctx context.Context, fs *FixtureSet) err
 		return fmt.Errorf("expected %d results, got %d", len(sqls), len(ress))
 	}
 
-	m.logger.Info("loaded %d %s plain mysql fixtures", len(fs.Fixtures), fs.FixtureSetName)
-
-	if len(fs.FixtureSetName) == 0 {
-		return nil
-	}
-
-	_, err = m.stateService.Persist(ctx, fs.FixtureSetName, m.metadata.TableName)
-	if err != nil {
-		return fmt.Errorf("failed to persist fixture state: %w", err)
-	}
+	m.logger.Info("loaded %d plain mysql fixtures", len(fixtures))
 
 	return nil
 }

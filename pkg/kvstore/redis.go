@@ -21,7 +21,7 @@ func RedisBasename(settings *Settings) string {
 	return fmt.Sprintf("kvstore-%s", settings.Name)
 }
 
-func NewRedisKvStore[T any](_ context.Context, config cfg.Config, logger log.Logger, settings *Settings) (KvStore[T], error) {
+func NewRedisKvStore[T any](ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (KvStore[T], error) {
 	if reflect.ValueOf(new(T)).Elem().Kind() == reflect.Pointer {
 		return nil, fmt.Errorf("the generic type T should not be a pointer type but is of type %T", *new(T))
 	}
@@ -29,7 +29,7 @@ func NewRedisKvStore[T any](_ context.Context, config cfg.Config, logger log.Log
 	settings.PadFromConfig(config)
 	redisName := RedisBasename(settings)
 
-	client, err := redis.ProvideClient(config, logger, redisName)
+	client, err := redis.ProvideClient(ctx, config, logger, redisName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}

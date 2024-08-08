@@ -19,7 +19,7 @@ func main() {
 	namedFixtures := &namedFixtureBuilder{}
 
 	app := application.Default(
-		application.WithFixtureBuilderFactory(fixtures.SimpleFixtureBuilderFactory(namedFixtures.Fixtures())),
+		application.WithFixtureSetFactory(fixtures.SimpleFixtureBuilderFactory(namedFixtures.Fixtures())),
 	)
 
 	app.Run()

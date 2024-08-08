@@ -68,7 +68,7 @@ func buildFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory[KvStoreModel]("test_store"),
+			Writer:  fixtures.NewConfigurableKvStoreFixtureWriter[KvStoreModel]("test_store"),
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key: "kvstore_entry_1",
@@ -81,7 +81,7 @@ func buildFixtures() []*fixtures.FixtureSet {
 		},
 		{
 			Enabled: true,
-			Writer:  fixtures.ConfigurableKvStoreFixtureWriterFactory[KvStoreModel]("another_test_store"),
+			Writer:  fixtures.NewConfigurableKvStoreFixtureWriter[KvStoreModel]("another_test_store"),
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key: "kvstore_entry_1",

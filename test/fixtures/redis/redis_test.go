@@ -163,7 +163,7 @@ func disabledPurgeFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpSet)),
+			Writer:  fixtures.NewRedisFixtureWriter(aws.String("default"), aws.String(fixtures.RedisOpSet)),
 			Fixtures: []interface{}{
 				&fixtures.RedisFixture{
 					Key:    "set_test",
@@ -174,7 +174,7 @@ func disabledPurgeFixtures() []*fixtures.FixtureSet {
 		},
 		{
 			Enabled: true,
-			Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpRpush)),
+			Writer:  fixtures.NewRedisFixtureWriter(aws.String("default"), aws.String(fixtures.RedisOpRpush)),
 			Fixtures: []interface{}{
 				&fixtures.RedisFixture{
 					Key: "rpush_test",
@@ -193,7 +193,7 @@ func enabledPurgeFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer:  fixtures.RedisFixtureWriterFactory(aws.String("default"), aws.String(fixtures.RedisOpSet)),
+			Writer:  fixtures.NewRedisFixtureWriter(aws.String("default"), aws.String(fixtures.RedisOpSet)),
 			Fixtures: []interface{}{
 				&fixtures.RedisFixture{
 					Key:    "set_test_purged",
@@ -214,7 +214,7 @@ func kvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer: fixtures.RedisKvStoreFixtureWriterFactory[Person](&mdl.ModelId{
+			Writer: fixtures.NewRedisKvStoreFixtureWriter[Person](&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",
@@ -240,7 +240,7 @@ func kvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer: fixtures.RedisKvStoreFixtureWriterFactory[Person](&mdl.ModelId{
+			Writer: fixtures.NewRedisKvStoreFixtureWriter[Person](&mdl.ModelId{
 				Project:     "gosoline",
 				Environment: "test",
 				Family:      "integration-test",

@@ -52,7 +52,7 @@ func plainMysqlTestFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   false,
-			Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+			Writer: fixtures.NewMysqlPlainFixtureWriter(&fixtures.MysqlPlainMetaData{
 				TableName: "mysql_plain_writer_test",
 				Columns:   []string{"id", "name"},
 			}),

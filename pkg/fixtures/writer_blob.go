@@ -26,32 +26,30 @@ type blobFixtureWriter struct {
 	basePath    string
 }
 
-func BlobFixtureWriterFactory(settings *BlobFixturesSettings) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
-		basePath, err := filepath.Abs(settings.BasePath)
-		if err != nil {
-			return nil, err
-		}
-
-		settings.BasePath = basePath
-
-		store, err := blob.NewStore(ctx, config, logger, settings.ConfigName)
-		if err != nil {
-			return nil, fmt.Errorf("can not create blob store: %w", err)
-		}
-
-		br, err := blob.NewBatchRunner(ctx, config, logger, settings.ConfigName)
-		if err != nil {
-			return nil, fmt.Errorf("can not create blob batch runner: %w", err)
-		}
-
-		purger, err := newBlobPurger(ctx, config, logger, settings)
-		if err != nil {
-			return nil, fmt.Errorf("can not create blob purger: %w", err)
-		}
-
-		return NewBlobFixtureWriterWithInterfaces(logger, br, purger, store, settings.BasePath), nil
+func NewBlobFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *BlobFixturesSettings) (FixtureWriter, error) {
+	basePath, err := filepath.Abs(settings.BasePath)
+	if err != nil {
+		return nil, err
 	}
+
+	settings.BasePath = basePath
+
+	store, err := blob.NewStore(ctx, config, logger, settings.ConfigName)
+	if err != nil {
+		return nil, fmt.Errorf("can not create blob store: %w", err)
+	}
+
+	br, err := blob.NewBatchRunner(ctx, config, logger, settings.ConfigName)
+	if err != nil {
+		return nil, fmt.Errorf("can not create blob batch runner: %w", err)
+	}
+
+	purger, err := newBlobPurger(ctx, config, logger, settings)
+	if err != nil {
+		return nil, fmt.Errorf("can not create blob purger: %w", err)
+	}
+
+	return NewBlobFixtureWriterWithInterfaces(logger, br, purger, store, settings.BasePath), nil
 }
 
 func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner blob.BatchRunner, purger *blobPurger, store blob.Store, basePath string) FixtureWriter {
@@ -68,7 +66,7 @@ func (s *blobFixtureWriter) Purge(ctx context.Context) error {
 	return s.purger.purge(ctx)
 }
 
-func (s *blobFixtureWriter) Write(ctx context.Context, _ *FixtureSet) error {
+func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 	if err := s.store.CreateBucket(ctx); err != nil {
 		return fmt.Errorf("can not create bucket: %w", err)
 	}

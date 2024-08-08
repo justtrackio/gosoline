@@ -116,7 +116,7 @@ func WithEnvSetup(setups ...func() error) Option {
 	}
 }
 
-func WithFixtureBuilderFactories(factories ...fixtures.FixtureSetFactory) Option {
+func WithFixtureSetFactories(factories ...fixtures.FixtureSetFactory) Option {
 	return func(s *suiteOptions) {
 		s.fixtureBuilderFactories = append(s.fixtureBuilderFactories, factories...)
 	}

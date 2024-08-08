@@ -18,7 +18,7 @@ var fixtureSets = []*fixtures.FixtureSet{
 	{
 		Enabled: true,
 		Purge:   false,
-		Writer: fixtures.MysqlPlainFixtureWriterFactory(&fixtures.MysqlPlainMetaData{
+		Writer: fixtures.NewMysqlPlainFixtureWriter(&fixtures.MysqlPlainMetaData{
 			TableName: "guard_policies",
 			Columns:   []string{"id", "policy"},
 		}),

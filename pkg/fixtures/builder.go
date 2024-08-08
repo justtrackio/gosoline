@@ -40,7 +40,7 @@ func NewFixtureSetBuilderSettings(dbName string, fixtures ModelBasedFixtures, en
 	}
 }
 
-type FixtureSetBuilder func(ctx context.Context, config cfg.Config, logger log.Logger, settings FixtureSetBuilderSettings) ([]*FixtureSet, error)
+type FixtureSetBuilder func(ctx context.Context, config cfg.Config, logger log.Logger, settings FixtureSetBuilderSettings) ([]FixtureSet, error)
 
 // FixtureSetBuilders stores converters for model fixtures to fixtureSets
 var FixtureSetBuilders = map[string]FixtureSetBuilder{}

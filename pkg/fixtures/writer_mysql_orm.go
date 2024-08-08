@@ -59,8 +59,8 @@ func (m *mysqlOrmFixtureWriter) Purge(ctx context.Context) error {
 	return nil
 }
 
-func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
-	for _, item := range fs.Fixtures {
+func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fixtures []any) error {
+	for _, item := range fixtures {
 		model := item.(db_repo.ModelBased)
 
 		err := m.repo.Update(ctx, model)
@@ -69,7 +69,7 @@ func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error
 		}
 	}
 
-	m.logger.Info("loaded %d mysql fixtures", len(fs.Fixtures))
+	m.logger.Info("loaded %d mysql fixtures", len(fixtures))
 
 	return nil
 }
