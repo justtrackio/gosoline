@@ -288,7 +288,7 @@ func dynamoDbKvStoreDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.DynamoDbKvStoreFixtureWriterFactory[Person](kvStoreSettings),
+			Writer:  fixtures.NewDynamoDbKvStoreFixtureWriter[Person](kvStoreSettings),
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key:   "Ash",
@@ -304,7 +304,7 @@ func dynamoDbKvStoreEnabledPurgeFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer:  fixtures.DynamoDbKvStoreFixtureWriterFactory[Person](kvStoreSettings),
+			Writer:  fixtures.NewDynamoDbKvStoreFixtureWriter[Person](kvStoreSettings),
 			Fixtures: []interface{}{
 				&fixtures.KvStoreFixture{
 					Key:   "Bash",
@@ -341,7 +341,7 @@ func (s *DynamoDbSuite) dynamoDbDisabledPurgeFixtures() []*fixtures.FixtureSet {
 	return []*fixtures.FixtureSet{
 		{
 			Enabled: true,
-			Writer:  fixtures.DynamoDbFixtureWriterFactory(ddbSettings),
+			Writer:  fixtures.NewDynamoDbFixtureWriter(ddbSettings),
 			Fixtures: []interface{}{
 				&Person{Name: "Ash", Age: 10},
 			},
@@ -354,7 +354,7 @@ func (s *DynamoDbSuite) dynamoDbEnabledPurgeFixtures() []*fixtures.FixtureSet {
 		{
 			Enabled: true,
 			Purge:   true,
-			Writer:  fixtures.DynamoDbFixtureWriterFactory(ddbSettings),
+			Writer:  fixtures.NewDynamoDbFixtureWriter(ddbSettings),
 			Fixtures: []interface{}{
 				&Person{Name: "Bash", Age: 10},
 			},

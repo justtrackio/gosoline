@@ -30,20 +30,23 @@ type Sqler interface {
 	ToSql() (string, []interface{}, error)
 }
 
-func SqlFmt(format string, a ...any) Sqler {
+func SqlFmt(format string, formatValues []any, args ...any) Sqler {
 	return sqlFmt{
-		format: format,
-		a:      a,
+		format:       format,
+		formatValues: formatValues,
+		args:         args,
 	}
 }
 
 type sqlFmt struct {
-	format string
-	a      []any
+	format       string
+	formatValues []any
+	args         []any
 }
 
 func (s sqlFmt) ToSql() (qry string, args []interface{}, err error) {
-	qry = fmt.Sprintf(s.format, s.a...)
+	qry = fmt.Sprintf(s.format, s.formatValues...)
+	args = s.args
 
 	return
 }
@@ -372,7 +375,12 @@ func (c *ClientSqlx) NamedSelect(ctx context.Context, dest interface{}, query st
 		if err != nil {
 			return nil, err
 		}
-		defer stmt.Close()
+		defer func() {
+			err = stmt.Close()
+			if err != nil {
+				c.logger.Error("can not close named statement: %w", err)
+			}
+		}()
 
 		return nil, stmt.SelectContext(ctx, dest, arg)
 	})

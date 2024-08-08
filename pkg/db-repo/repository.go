@@ -67,7 +67,7 @@ type repository struct {
 	metadata Metadata
 }
 
-func New(ctx context.Context, config cfg.Config, logger log.Logger, s Settings) (*repository, error) {
+func New(ctx context.Context, config cfg.Config, logger log.Logger, s Settings) (Repository, error) {
 	tracer, err := tracing.ProvideTracer(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
@@ -87,7 +87,7 @@ func New(ctx context.Context, config cfg.Config, logger log.Logger, s Settings) 
 	return NewWithInterfaces(logger, tracer, orm, clk, s.Metadata), nil
 }
 
-func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings *db.Settings, repoSettings Settings) (*repository, error) {
+func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings *db.Settings, repoSettings Settings) (Repository, error) {
 	tracer, err := tracing.ProvideTracer(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
@@ -108,7 +108,7 @@ func NewWithDbSettings(config cfg.Config, logger log.Logger, dbSettings *db.Sett
 	return NewWithInterfaces(logger, tracer, orm, clk, repoSettings.Metadata), nil
 }
 
-func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata) *repository {
+func NewWithInterfaces(logger log.Logger, tracer tracing.Tracer, orm *gorm.DB, clock clock.Clock, metadata Metadata) Repository {
 	return &repository{
 		logger:   logger,
 		tracer:   tracer,

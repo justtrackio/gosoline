@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	foreignKeyChecksStatement = "SET FOREIGN_KEY_CHECKS=%d;"
+	foreignKeyChecksStatement = "SET FOREIGN_KEY_CHECKS=?;"
 	truncateTableStatement    = "TRUNCATE TABLE %s;"
 )
 
@@ -30,30 +30,10 @@ func newMysqlPurger(ctx context.Context, config cfg.Config, logger log.Logger, t
 }
 
 func (p *mysqlPurger) purgeMysql(ctx context.Context) error {
-	//err := p.setForeignKeyChecks(0)
-	//if err != nil {
-	//	p.logger.Error("error disabling foreign key checks: %w", err)
-	//
-	//	return err
-	//}
-	//
-	//defer func() {
-	//	err := p.setForeignKeyChecks(1)
-	//	if err != nil {
-	//		p.logger.Error("error enabling foreign key checks: %w", err)
-	//	}
-	//}()
-	//
-	//_, err = p.client.Exec(ctx, fmt.Sprintf(truncateTableStatement, p.tableName))
-	//if err != nil {
-	//	p.logger.Error("error truncating table %s: %w", p.tableName, err)
-	//	return err
-	//}
-
 	_, err := p.client.ExecMultiInTx(ctx, []db.Sqler{
-		db.SqlFmt(foreignKeyChecksStatement, 0),
-		db.SqlFmt(truncateTableStatement, p.tableName),
-		db.SqlFmt(foreignKeyChecksStatement, 1),
+		db.SqlFmt(foreignKeyChecksStatement, nil, 0),
+		db.SqlFmt(truncateTableStatement, []any{p.tableName}),
+		db.SqlFmt(foreignKeyChecksStatement, nil, 1),
 	}...)
 	if err != nil {
 		p.logger.Error("error truncating table %s: %w", p.tableName, err)
@@ -61,11 +41,4 @@ func (p *mysqlPurger) purgeMysql(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (p *mysqlPurger) setForeignKeyChecks(enabled int) error {
-	ctx := context.Background()
-	_, err := p.client.Exec(ctx, fmt.Sprintf(foreignKeyChecksStatement, enabled))
-
-	return err
 }

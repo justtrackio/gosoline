@@ -148,7 +148,7 @@ func WithHttpServerShares(app *App) {
 	})
 }
 
-func WithFixtureBuilderFactory(factory fixtures.FixtureBuilderFactory) Option {
+func WithFixtureSetFactory(factory fixtures.FixtureSetFactory) Option {
 	return func(app *App) {
 		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(factory), kernelPkg.PositionBeginning)

@@ -41,20 +41,18 @@ type redisFixtureWriter struct {
 	purger    *redisPurger
 }
 
-func RedisFixtureWriterFactory(name *string, operation *string) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
-		client, err := redis.ProvideClient(config, logger, *name)
-		if err != nil {
-			return nil, fmt.Errorf("can not create redis client: %w", err)
-		}
-
-		purger, err := newRedisPurger(config, logger, name)
-		if err != nil {
-			return nil, fmt.Errorf("can not create redis purger: %w", err)
-		}
-
-		return NewRedisFixtureWriterWithInterfaces(logger, client, purger, operation), nil
+func NewRedisFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, name *string, operation *string) (FixtureWriter, error) {
+	client, err := redis.ProvideClient(ctx, config, logger, *name)
+	if err != nil {
+		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}
+
+	purger, err := newRedisPurger(ctx, config, logger, name)
+	if err != nil {
+		return nil, fmt.Errorf("can not create redis purger: %w", err)
+	}
+
+	return NewRedisFixtureWriterWithInterfaces(logger, client, purger, operation), nil
 }
 
 func NewRedisFixtureWriterWithInterfaces(logger log.Logger, client redis.Client, purger *redisPurger, operation *string) FixtureWriter {
@@ -70,8 +68,8 @@ func (d *redisFixtureWriter) Purge(ctx context.Context) error {
 	return d.purger.purge(ctx)
 }
 
-func (d *redisFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
-	for _, item := range fs.Fixtures {
+func (d *redisFixtureWriter) Write(ctx context.Context, fixtures []any) error {
+	for _, item := range fixtures {
 		redisFixture := item.(*RedisFixture)
 
 		handler, ok := redisHandlers[d.operation]
@@ -86,7 +84,7 @@ func (d *redisFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
 		}
 	}
 
-	d.logger.Info("loaded %d redis fixtures", len(fs.Fixtures))
+	d.logger.Info("loaded %d redis fixtures", len(fixtures))
 
 	return nil
 }

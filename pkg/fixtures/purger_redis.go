@@ -15,8 +15,8 @@ type redisPurger struct {
 	name   *string
 }
 
-func newRedisPurger(config cfg.Config, logger log.Logger, name *string) (*redisPurger, error) {
-	client, err := redis.ProvideClient(config, logger, *name)
+func newRedisPurger(ctx context.Context, config cfg.Config, logger log.Logger, name *string) (*redisPurger, error) {
+	client, err := redis.ProvideClient(ctx, config, logger, *name)
 	if err != nil {
 		return nil, fmt.Errorf("can not create redis client: %w", err)
 	}

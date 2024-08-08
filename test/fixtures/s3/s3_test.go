@@ -126,7 +126,7 @@ func (s *S3TestSuite) TestS3WithPurge() {
 var s3DisabledPurgeFixtures = []*fixtures.FixtureSet{
 	{
 		Enabled: true,
-		Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
+		Writer: fixtures.NewBlobFixtureWriter(&fixtures.BlobFixturesSettings{
 			ConfigName: configName,
 			BasePath:   basePath,
 		}),
@@ -138,7 +138,7 @@ var s3EnabledPurgeFixtures = []*fixtures.FixtureSet{
 	{
 		Enabled: true,
 		Purge:   true,
-		Writer: fixtures.BlobFixtureWriterFactory(&fixtures.BlobFixturesSettings{
+		Writer: fixtures.NewBlobFixtureWriter(&fixtures.BlobFixturesSettings{
 			ConfigName: configName,
 			BasePath:   basePathPurge,
 		}),

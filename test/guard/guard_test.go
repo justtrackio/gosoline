@@ -23,7 +23,7 @@ func (s *GuardTestSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel("debug"),
 		suite.WithSharedEnvironment(),
 		suite.WithConfigFile("config.dist.yml"),
-		suite.WithFixtureBuilderFactories(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
+		suite.WithFixtureSetFactories(fixtures.SimpleFixtureBuilderFactory(fixtureSets)),
 	}
 }
 
