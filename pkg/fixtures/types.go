@@ -7,24 +7,26 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type FixtureSet struct {
-	Enabled        bool
-	Purge          bool
-	Writer         FixtureWriterFactory
-	Fixtures       []interface{}
-	FixtureSetName string
+type FixtureSet interface {
+	Write(ctx context.Context) error
 }
 
-type FixtureBuilderFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureBuilder, error)
-
-//go:generate mockery --name FixtureBuilder
-type FixtureBuilder interface {
-	Fixtures() []*FixtureSet
+type CodeFixtureSet struct {
+	Enabled  bool
+	Purge    bool
+	Writer   FixtureWriter
+	Fixtures []interface{}
 }
+
+func (c CodeFixtureSet) Write(ctx context.Context) error {
+	panic("implement me")
+}
+
+type FixtureSetFactory func(ctx context.Context, config cfg.Config, logger log.Logger) ([]FixtureSet, error)
 
 //go:generate mockery --name FixtureLoader
 type FixtureLoader interface {
-	Load(ctx context.Context, fixtureSets []*FixtureSet) error
+	Load(ctx context.Context, fixtureSets []FixtureSet) error
 }
 
 //go:generate mockery --name FixtureWriter
@@ -32,8 +34,6 @@ type FixtureWriter interface {
 	Purge(ctx context.Context) error
 	Write(ctx context.Context, fixture *FixtureSet) error
 }
-
-type FixtureWriterFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error)
 
 type simpleFixtureBuilder struct {
 	fixtureSets []*FixtureSet
@@ -49,7 +49,7 @@ func SimpleFixtureBuilder(fixtureSets []*FixtureSet) (FixtureBuilder, error) {
 	}, nil
 }
 
-func SimpleFixtureBuilderFactory(fixtureSets []*FixtureSet) FixtureBuilderFactory {
+func SimpleFixtureBuilderFactory(fixtureSets []*FixtureSet) FixtureSetFactory {
 	return func(_ context.Context, _ cfg.Config, _ log.Logger) (FixtureBuilder, error) {
 		return SimpleFixtureBuilder(fixtureSets)
 	}

@@ -16,27 +16,25 @@ type mysqlOrmFixtureWriter struct {
 	purger   *mysqlPurger
 }
 
-func MysqlOrmFixtureWriterFactory(metadata *db_repo.Metadata) FixtureWriterFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureWriter, error) {
-		metadata.ModelId.PadFromConfig(config)
+func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, metadata *db_repo.Metadata) (FixtureWriter, error) {
+	metadata.ModelId.PadFromConfig(config)
 
-		settings := db_repo.Settings{
-			AppId:    cfg.GetAppIdFromConfig(config),
-			Metadata: *metadata,
-		}
-
-		repo, err := db_repo.New(ctx, config, logger, settings)
-		if err != nil {
-			return nil, fmt.Errorf("can not create repo: %w", err)
-		}
-
-		purger, err := newMysqlPurger(ctx, config, logger, metadata.TableName)
-		if err != nil {
-			return nil, fmt.Errorf("can not create purger: %w", err)
-		}
-
-		return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo, purger), nil
+	settings := db_repo.Settings{
+		AppId:    cfg.GetAppIdFromConfig(config),
+		Metadata: *metadata,
 	}
+
+	repo, err := db_repo.New(ctx, config, logger, settings)
+	if err != nil {
+		return nil, fmt.Errorf("can not create repo: %w", err)
+	}
+
+	purger, err := newMysqlPurger(ctx, config, logger, metadata.TableName)
+	if err != nil {
+		return nil, fmt.Errorf("can not create purger: %w", err)
+	}
+
+	return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo, purger), nil
 }
 
 func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *db_repo.Metadata, repo db_repo.Repository, purger *mysqlPurger) FixtureWriter {

@@ -224,7 +224,7 @@ func (e *Environment) StreamOutput(name string) *streamOutputComponent {
 	return e.Component(componentStreamOutput, name).(*streamOutputComponent)
 }
 
-func (e *Environment) LoadFixtureBuilderFactories(factories ...fixtures.FixtureBuilderFactory) error {
+func (e *Environment) LoadFixtureBuilderFactories(factories ...fixtures.FixtureSetFactory) error {
 	if len(factories) == 0 {
 		return nil
 	}

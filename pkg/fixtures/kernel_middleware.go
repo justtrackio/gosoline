@@ -10,23 +10,21 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-func KernelMiddlewareLoader(factory FixtureBuilderFactory) kernel.MiddlewareFactory {
+func KernelMiddlewareLoader(factory FixtureSetFactory) kernel.MiddlewareFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Middleware, error) {
 		loader := NewFixtureLoader(ctx, config, logger)
 
-		builder, err := factory(ctx, config, logger)
+		fixtureSets, err := factory(ctx, config, logger)
 		if err != nil {
 			return nil, fmt.Errorf("can not build fixture loader: %w", err)
 		}
 
 		return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
 			return func() {
-				fixtures := builder.Fixtures()
-
 				logger.Info("loading fixtures")
 				start := time.Now()
 
-				if err = loader.Load(ctx, fixtures); err != nil {
+				if err = loader.Load(ctx, fixtureSets); err != nil {
 					logger.Error("can not load fixtureSets: %w", err)
 					return
 				}
