@@ -19,6 +19,14 @@ func (c *wiremockComponent) CfgOptions() []cfg.Option {
 	return []cfg.Option{}
 }
 
+func (c *wiremockComponent) GetHost() string {
+	return c.binding.host
+}
+
+func (c *wiremockComponent) GetPort() string {
+	return c.binding.port
+}
+
 func (c *wiremockComponent) Address() string {
 	return fmt.Sprintf("http://%s:%s", c.binding.host, c.binding.port)
 }

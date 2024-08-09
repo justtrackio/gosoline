@@ -62,8 +62,13 @@ func (m *mysqlOrmFixtureWriter) Purge(ctx context.Context) error {
 }
 
 func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fs *FixtureSet) error {
+	var ok bool
+	var model db_repo.ModelBased
+
 	for _, item := range fs.Fixtures {
-		model := item.(db_repo.ModelBased)
+		if model, ok = item.(db_repo.ModelBased); !ok {
+			return fmt.Errorf("can not convert model %T to db_repo.ModelBased", item)
+		}
 
 		err := m.repo.Update(ctx, model)
 		if err != nil {

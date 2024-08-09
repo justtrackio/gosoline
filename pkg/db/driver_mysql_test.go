@@ -47,4 +47,8 @@ func (s *MysqlDriverTestSuite) TestDsn() {
 	s.settings.Timeouts.WriteTimeout = time.Millisecond * 50
 	dsn = driver.GetDSN(s.settings)
 	s.Equal("tcp(localhost:3306)/?collation=utf8mb4_general_ci&multiStatements=true&parseTime=true&charset=utf8mb4&readTimeout=50ms&writeTimeout=50ms", dsn)
+
+	s.settings.Parameters["param1"] = "value1"
+	dsn = driver.GetDSN(s.settings)
+	s.Equal("tcp(localhost:3306)/?collation=utf8mb4_general_ci&multiStatements=true&parseTime=true&charset=utf8mb4&param1=value1&readTimeout=50ms&writeTimeout=50ms", dsn)
 }

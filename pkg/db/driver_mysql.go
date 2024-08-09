@@ -32,14 +32,17 @@ func NewMysqlDriver(logger log.Logger) (Driver, error) {
 type mysqlDriver struct{}
 
 func (m *mysqlDriver) GetDSN(settings *Settings) string {
-	params := map[string]string{
-		"charset":      settings.Charset,
-		"readTimeout":  settings.Timeouts.ReadTimeout.String(),
-		"writeTimeout": settings.Timeouts.WriteTimeout.String(),
+	parameters := make(map[string]string)
+	for k, v := range settings.Parameters {
+		parameters[k] = v
 	}
 
+	parameters["charset"] = settings.Charset
+	parameters["readTimeout"] = settings.Timeouts.ReadTimeout.String()
+	parameters["writeTimeout"] = settings.Timeouts.WriteTimeout.String()
+
 	if settings.Timeouts.Timeout > 0 {
-		params["timeout"] = settings.Timeouts.Timeout.String()
+		parameters["timeout"] = settings.Timeouts.Timeout.String()
 	}
 
 	cfg := mysql.NewConfig()
@@ -50,7 +53,7 @@ func (m *mysqlDriver) GetDSN(settings *Settings) string {
 	cfg.DBName = settings.Uri.Database
 	cfg.MultiStatements = settings.MultiStatements
 	cfg.ParseTime = settings.ParseTime
-	cfg.Params = params
+	cfg.Params = parameters
 	cfg.Collation = settings.Collation
 
 	return cfg.FormatDSN()
