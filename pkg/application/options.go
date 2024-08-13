@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -55,6 +56,22 @@ func WithConfigEnvKeyReplacer(replacer *strings.Replacer) Option {
 			return nil
 		})
 	}
+}
+
+func WithConfigDebug(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithMiddlewareFactory(func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Middleware, error) {
+			return func(next kernelPkg.MiddlewareHandler) kernelPkg.MiddlewareHandler {
+				return func() {
+					if err := cfg.DebugConfig(config, logger); err != nil {
+						logger.Error("can not debug config: %w", err)
+					}
+
+					next()
+				}
+			}, nil
+		}, kernelPkg.PositionEnd)
+	})
 }
 
 func WithConfigErrorHandlers(handlers ...cfg.ErrorHandler) Option {

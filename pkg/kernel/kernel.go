@@ -47,7 +47,6 @@ type kernelOption func(k *kernel)
 
 type kernel struct {
 	ctx    context.Context
-	config cfg.Config
 	logger log.Logger
 
 	middlewares       []Middleware
@@ -67,7 +66,6 @@ func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kern
 	config.UnmarshalKey("kernel", settings)
 
 	k := &kernel{
-		config: config,
 		logger: logger.WithChannel("kernel"),
 
 		ctx:     ctx,
@@ -98,7 +96,6 @@ func (k *kernel) Run() {
 
 	k.logger.Info("starting kernel")
 	k.foregroundModules = k.stages.countForegroundModules()
-	k.debugConfig()
 
 	sig := make(chan os.Signal, 2)
 	signal.Notify(sig, unix.SIGTERM, unix.SIGINT)
@@ -199,14 +196,6 @@ func (k *kernel) exit() {
 		k.logger.Info("leaving kernel with exit code %d", k.exitCode)
 		k.exitHandler(k.exitCode)
 	})
-}
-
-func (k *kernel) debugConfig() {
-	debugErr := cfg.DebugConfig(k.config, k.logger)
-
-	if debugErr != nil {
-		k.logger.Error("can not debug config: %w", debugErr)
-	}
 }
 
 func (k *kernel) runStages() error {
