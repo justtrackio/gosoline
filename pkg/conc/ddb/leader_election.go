@@ -43,7 +43,7 @@ func NewLeaderElection(ctx context.Context, config cfg.Config, logger log.Logger
 }
 
 func GetLeaderElectionConfigKeyType(name string) string {
-	return fmt.Sprintf("conc.leader_election.%s.type", name)
+	return fmt.Sprintf("%s.type", GetLeaderElectionConfigKey(name))
 }
 
 func GetLeaderElectionConfigKey(name string) string {
