@@ -72,8 +72,13 @@ func (a *jwtAuthenticator) IsValid(ginCtx *gin.Context) (bool, error) {
 		return false, fmt.Errorf("invalid jwt token provided")
 	}
 
+	email, ok := token.Claims.(jwt.MapClaims)["email"].(string)
+	if !ok || email == "" {
+		return false, fmt.Errorf("jwt token is missing email field")
+	}
+
 	subject := &Subject{
-		Name:            token.Claims.(jwt.MapClaims)["email"].(string),
+		Name:            email,
 		Anonymous:       false,
 		AuthenticatedBy: ByJWT,
 	}
