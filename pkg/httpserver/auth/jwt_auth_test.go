@@ -47,6 +47,23 @@ func TestJwtAuth_Authenticate_IsValid(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestJwtAuth_Authenticate_ValidButMissingEmail(t *testing.T) {
+	tokenHandler, ginCtx := getBasicJwtAuthMocks("token")
+
+	a := auth.NewJWTAuthAuthenticatorWithInterfaces(tokenHandler)
+
+	tokenHandler.On("Valid", "token").Return(true, &jwt.Token{
+		Claims: jwt.MapClaims{
+			"something": "else",
+		},
+	}, nil)
+
+	isValid, err := a.IsValid(ginCtx)
+
+	assert.False(t, isValid)
+	assert.EqualError(t, err, "jwt token is missing email field")
+}
+
 func TestJwtAuth_Authenticate_IsValid_Error(t *testing.T) {
 	tokenHandler, ginCtx := getBasicJwtAuthMocks("token")
 
