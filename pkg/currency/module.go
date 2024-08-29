@@ -3,6 +3,7 @@ package currency
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -11,11 +12,15 @@ import (
 )
 
 type Module struct {
-	kernel.BackgroundModule
+	kernel.EssentialBackgroundModule
 	kernel.ServiceStage
-	updaterService UpdaterService
 	logger         log.Logger
+	updaterService UpdaterService
+	healthy        *atomic.Bool
 }
+
+// ensure interface compatibility
+var _ kernel.HealthCheckedModule = Module{}
 
 func NewCurrencyModule() kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -24,40 +29,44 @@ func NewCurrencyModule() kernel.ModuleFactory {
 			return nil, fmt.Errorf("can not create updater: %w", err)
 		}
 
-		module := &Module{
+		module := Module{
 			logger:         logger,
 			updaterService: updater,
+			healthy:        &atomic.Bool{},
 		}
 
 		return module, nil
 	}
 }
 
-func (module *Module) Run(ctx context.Context) error {
-	ticker := time.NewTicker(time.Duration(1) * time.Hour)
-	module.refresh(ctx)
-	module.importExchangeRates(ctx)
+func (module Module) IsHealthy(ctx context.Context) (bool, error) {
+	return module.healthy.Load(), nil
+}
+
+func (module Module) Run(ctx context.Context) error {
+	defer module.healthy.Store(false)
+
+	// load historical and current data, then the module is healthy
+	if err := module.updaterService.EnsureRecentExchangeRates(ctx); err != nil {
+		return fmt.Errorf("failed to fetch initial rates: %w", err)
+	}
+	if err := module.updaterService.EnsureHistoricalExchangeRates(ctx); err != nil {
+		return fmt.Errorf("failed to fetch initial historical rates: %w", err)
+	}
+
+	module.healthy.Store(true)
+
+	ticker := time.NewTicker(1 * time.Hour)
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 
 		case <-ticker.C:
-			module.refresh(ctx)
+			if err := module.updaterService.EnsureRecentExchangeRates(ctx); err != nil {
+				// we already have some data, let's try again in an hour
+				module.logger.Error("failed to refresh currency exchange rates: %w", err)
+			}
 		}
-	}
-}
-
-func (module *Module) refresh(ctx context.Context) {
-	err := module.updaterService.EnsureRecentExchangeRates(ctx)
-	if err != nil {
-		module.logger.Error("failed to refresh currency exchange rates: %w", err)
-	}
-}
-
-func (module *Module) importExchangeRates(ctx context.Context) {
-	err := module.updaterService.EnsureHistoricalExchangeRates(ctx)
-	if err != nil {
-		module.logger.Error("failed to import historical currency exchange rates: %w", err)
 	}
 }

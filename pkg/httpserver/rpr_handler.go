@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
@@ -14,7 +15,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
 	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 const PerRunnerMetricName = "HttpServerRequests"

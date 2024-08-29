@@ -20,8 +20,8 @@ type changeHistoryManagerSettings struct {
 }
 
 type ChangeHistoryManager struct {
-	orm      *gorm.DB
 	logger   log.Logger
+	orm      *gorm.DB
 	settings *changeHistoryManagerSettings
 	models   []ModelBased
 }
@@ -102,46 +102,25 @@ from (select TABLE_NAME, COLUMN_NAME, DATA_TYPE
               on original.COLUMN_NAME = history_entries.COLUMN_NAME
 where original.DATA_TYPE != coalesce(history_entries.DATA_TYPE, '');`
 
-	db := c.orm.Raw("select database();")
-	if db.Error != nil {
-		return fmt.Errorf("unable to fetch database name: %w", db.Error)
-	}
-
-	var dbName string
-	err := db.Row().Scan(&dbName)
+	rows, err := c.getTableMetaData(4, func(database string) string {
+		return fmt.Sprintf(qry, database, originalTable, database, historyTable)
+	})
 	if err != nil {
-		return fmt.Errorf("unable to scan database name: %w", db.Error)
-	}
-
-	parsed := fmt.Sprintf(qry, dbName, originalTable, dbName, historyTable)
-
-	db = c.orm.Raw(parsed)
-	if db.Error != nil {
-		return db.Error
+		return fmt.Errorf("cannot fetch table metadata: %w", err)
 	}
 
 	invalidColumnsErr := &multierror.Error{}
 
-	rows, err := db.Rows()
-	if err != nil {
-		return fmt.Errorf("unable to fetch rows: %w", err)
-	}
+	for _, row := range rows {
+		tableName := row[0]
+		columnName := row[1]
+		originalType := row[2]
+		historyType := row[3]
 
-	defer rows.Close()
-
-	for rows.Next() {
-		var tableName, columnName, originalType string
-		var historyType *string
-
-		err = rows.Scan(&tableName, &columnName, &originalType, &historyType)
-		if err != nil {
-			return fmt.Errorf("unable to scan result row: %w", err)
-		}
-
-		if historyType == nil {
+		if historyType == "" {
 			err = fmt.Errorf("missing column %s of type %s on history table %s", columnName, originalType, tableName)
 		} else {
-			err = fmt.Errorf("type mismatch for table %s and column %s: expected %s, got %s", tableName, columnName, originalType, mdl.EmptyIfNil(historyType))
+			err = fmt.Errorf("type mismatch for table %s and column %s: expected %s, got %s", tableName, columnName, originalType, historyType)
 		}
 
 		invalidColumnsErr = multierror.Append(invalidColumnsErr, err)
@@ -157,16 +136,24 @@ func (c *ChangeHistoryManager) executeMigration(originalTable, historyTable *tab
 		statements = append(statements, c.createHistoryTable(historyTable))
 		statements = append(statements, c.dropHistoryTriggers(originalTable, historyTable)...)
 		statements = append(statements, c.createHistoryTriggers(originalTable, historyTable)...)
+
 		c.logger.Info("creating change history setup")
+
 		return c.execute(statements)
 	}
 
-	updated, statement := c.updateHistoryTable(historyTable)
-	if updated {
-		statements = append(statements, statement)
+	tableUpdates, err := c.updateHistoryTable(originalTable, historyTable)
+	if err != nil {
+		return err
+	}
+
+	if len(tableUpdates) > 0 {
+		statements = append(statements, tableUpdates...)
 		statements = append(statements, c.dropHistoryTriggers(originalTable, historyTable)...)
 		statements = append(statements, c.createHistoryTriggers(originalTable, historyTable)...)
+
 		c.logger.Info("updating change history setup")
+
 		return c.execute(statements)
 	}
 
@@ -299,19 +286,93 @@ func (c *ChangeHistoryManager) rowUpdatedCondition(originalTable *tableMetadata)
 	return strings.Join(conditions, " OR ")
 }
 
-func (c *ChangeHistoryManager) updateHistoryTable(historyTable *tableMetadata) (bool, string) {
+func (c *ChangeHistoryManager) updateHistoryTable(originalTable, historyTable *tableMetadata) ([]string, error) {
+	statements := make([]string, 0)
+
+	// add new columns
 	for _, column := range historyTable.columns {
 		if column.exists {
 			continue
 		}
 
-		return true, fmt.Sprintf("ALTER TABLE %s ADD %s",
+		statements = append(statements, fmt.Sprintf("ALTER TABLE %s ADD %s",
 			historyTable.tableNameQuoted,
 			column.definition,
-		)
+		))
 	}
 
-	return false, ""
+	// remove untracked columns - without this, the triggers will not work
+	historyColumnNames := historyTable.columnNames()
+	dropColumns, err := c.buildDropColumns(originalTable.tableName, historyTable.tableName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch columns to be dropped: %w", err)
+	}
+
+	// keep columns to remove which are not part of the history table
+	dropColumns, _ = funk.Difference(dropColumns, historyColumnNames)
+
+	statements = append(statements, funk.Map(dropColumns, func(column string) string {
+		return fmt.Sprintf("ALTER TABLE %s DROP COLUMN `%s`", historyTable.tableNameQuoted, column)
+	})...)
+
+	return statements, nil
+}
+
+func (c *ChangeHistoryManager) buildDropColumns(originalTable, historyTable string) ([]string, error) {
+	qry := `
+select history_entries.COLUMN_NAME
+from (select COLUMN_NAME
+      from information_schema.columns
+      where table_schema = '%s' and TABLE_NAME = '%s') history_entries
+         left join (select COLUMN_NAME
+               from information_schema.columns
+               where table_schema = '%s' and TABLE_NAME = '%s') as original
+              on original.COLUMN_NAME = history_entries.COLUMN_NAME
+where original.COLUMN_NAME IS NULL`
+
+	results, err := c.getTableMetaData(1, func(database string) string {
+		return fmt.Sprintf(qry, database, historyTable, database, originalTable)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return funk.Map(results, func(i []string) string {
+		return i[0]
+	}), nil
+}
+
+func (c *ChangeHistoryManager) getTableMetaData(columnLength int, queryBuilder func(database string) string) ([][]string, error) {
+	dbName := c.orm.Dialect().CurrentDatabase()
+	query := queryBuilder(dbName)
+
+	db := c.orm.Raw(query)
+	if db.Error != nil {
+		return nil, fmt.Errorf("unable to query metadata: %w", db.Error)
+	}
+
+	rows, err := db.Rows()
+	if err != nil {
+		return nil, fmt.Errorf("cannot fetch rows: %w", err)
+	}
+
+	results := make([][]string, 0)
+	for rows.Next() {
+		result := make([]*string, columnLength)
+		dest := make([]any, columnLength)
+		for i := range result {
+			dest[i] = &result[i]
+		}
+
+		err = rows.Scan(dest...)
+		if err != nil {
+			return nil, fmt.Errorf("unable to scan result row: %w", err)
+		}
+
+		results = append(results, funk.Map(result, mdl.EmptyIfNil[string]))
+	}
+
+	return results, nil
 }
 
 func (c *ChangeHistoryManager) execute(statements []string) error {

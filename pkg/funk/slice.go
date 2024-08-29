@@ -3,10 +3,10 @@ package funk
 import (
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 // CastSlice casts a []any slice to the given type.

@@ -1,11 +1,11 @@
 package db_repo
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/jinzhu/gorm"
 	"github.com/justtrackio/gosoline/pkg/funk"
-	"golang.org/x/exp/slices"
 )
 
 type columnMetadata struct {
@@ -108,6 +108,10 @@ func (m *tableMetadata) columnNamesQuoted() []string {
 	return m.namesQuoted(m.columns)
 }
 
+func (m *tableMetadata) columnNames() []string {
+	return m.names(m.columns)
+}
+
 func (m *tableMetadata) primaryKeyNamesQuoted() []string {
 	return m.namesQuoted(m.primaryKeys)
 }
@@ -119,6 +123,12 @@ func (m *tableMetadata) columnDefinitions() []string {
 func (m *tableMetadata) namesQuoted(items []columnMetadata) []string {
 	return funk.Map(items, func(item columnMetadata) string {
 		return item.nameQuoted
+	})
+}
+
+func (m *tableMetadata) names(items []columnMetadata) []string {
+	return funk.Map(items, func(item columnMetadata) string {
+		return item.name
 	})
 }
 
