@@ -2,7 +2,6 @@ package s3
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -77,6 +76,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	}
 
 	client := s3.NewFromConfig(awsConfig, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(clientCfg.Settings.Endpoint)
 		o.UsePathStyle = clientCfg.Settings.UsePathStyle
 	})
 
@@ -96,15 +96,17 @@ func GetClientConfig(config cfg.Config, name string, optFns ...ClientOption) *Cl
 	return clientCfg
 }
 
-func ResolveEndpoint(config cfg.Config, name string, optFns ...ClientOption) (aws.Endpoint, error) {
+func ResolveEndpoint(config cfg.Config, name string, optFns ...ClientOption) (string, error) {
 	clientCfg := GetClientConfig(config, name, optFns...)
-	gosoResolver := gosoAws.EndpointResolver(clientCfg.Settings.Endpoint)
 
-	endpoint, err := gosoResolver.ResolveEndpoint("s3", clientCfg.Settings.Region)
-
-	if nf := (&aws.EndpointNotFoundError{}); !errors.As(err, &nf) {
-		return endpoint, err
+	if clientCfg.Settings.Endpoint != "" {
+		return clientCfg.Settings.Endpoint, nil
 	}
 
-	return s3.NewDefaultEndpointResolver().ResolveEndpoint(clientCfg.Settings.Region, s3.EndpointResolverOptions{})
+	endpoint, err := s3.NewDefaultEndpointResolver().ResolveEndpoint(clientCfg.Settings.Region, s3.EndpointResolverOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve s3 endpoint: %w", err)
+	}
+
+	return endpoint.URL, nil
 }

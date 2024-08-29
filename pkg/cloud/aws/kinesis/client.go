@@ -102,7 +102,9 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return nil, fmt.Errorf("can not initialize config: %w", err)
 	}
 
-	client := kinesis.NewFromConfig(awsConfig)
+	client := kinesis.NewFromConfig(awsConfig, func(options *kinesis.Options) {
+		options.BaseEndpoint = aws.String(clientCfg.Settings.Endpoint)
+	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "kinesis", name, clientCfg.Settings.ClientSettings)
 

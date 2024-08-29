@@ -90,7 +90,9 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return nil, fmt.Errorf("can not initialize config: %w", err)
 	}
 
-	client := servicediscovery.NewFromConfig(awsConfig)
+	client := servicediscovery.NewFromConfig(awsConfig, func(options *servicediscovery.Options) {
+		options.BaseEndpoint = aws.String(clientCfg.Settings.Endpoint)
+	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "servicediscovery", name, clientCfg.Settings.ClientSettings)
 

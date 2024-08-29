@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 const (
@@ -20,11 +19,10 @@ func GetDefaultStaticCredentials() credentials.StaticCredentialsProvider {
 	return credentials.NewStaticCredentialsProvider(DefaultAccessKeyID, DefaultSecretAccessKey, DefaultToken)
 }
 
-func GetDefaultAwsSdkConfig(endpoint string) (aws.Config, error) {
+func GetDefaultAwsSdkConfig() (aws.Config, error) {
 	cfgOptions := []func(options *config.LoadOptions) error{
 		config.WithRegion("eu-central-1"),
 		config.WithCredentialsProvider(GetDefaultStaticCredentials()),
-		config.WithEndpointResolverWithOptions(gosoAws.EndpointResolver(endpoint)),
 	}
 
 	var err error

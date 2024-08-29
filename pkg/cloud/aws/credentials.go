@@ -11,12 +11,33 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
+func GetCredentialsOption(ctx context.Context, settings ClientSettings) (func(options *awsCfg.LoadOptions) error, error) {
+	if settings.Profile != "" {
+		return awsCfg.WithSharedConfigProfile(settings.Profile), nil
+	}
+
+	var err error
+	var credentialsProvider aws.CredentialsProvider
+
+	if credentialsProvider, err = GetCredentialsProvider(ctx, settings); err != nil {
+		return nil, fmt.Errorf("can not get credentials provider: %w", err)
+	}
+
+	if credentialsProvider == nil {
+		return nil, nil
+	}
+
+	credentialsProvider = aws.NewCredentialsCache(credentialsProvider)
+
+	return awsCfg.WithCredentialsProvider(credentialsProvider), nil
+}
+
 func GetCredentialsProvider(ctx context.Context, settings ClientSettings) (aws.CredentialsProvider, error) {
 	if settings.Credentials.AccessKeyID != "" {
 		return credentials.NewStaticCredentialsProvider(settings.Credentials.AccessKeyID, settings.Credentials.SecretAccessKey, settings.Credentials.SessionToken), nil
 	}
 
-	if len(settings.AssumeRole) > 0 {
+	if settings.AssumeRole != "" {
 		return GetAssumeRoleCredentialsProvider(ctx, settings.AssumeRole)
 	}
 

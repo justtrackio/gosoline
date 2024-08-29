@@ -66,7 +66,9 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return nil, fmt.Errorf("can not initialize config: %w", err)
 	}
 
-	client := ssm.NewFromConfig(awsConfig)
+	client := ssm.NewFromConfig(awsConfig, func(options *ssm.Options) {
+		options.BaseEndpoint = aws.String(clientCfg.Settings.Endpoint)
+	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "ssm", name, clientCfg.Settings.ClientSettings)
 

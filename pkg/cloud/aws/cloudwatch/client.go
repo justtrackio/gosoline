@@ -66,7 +66,9 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return nil, fmt.Errorf("can not initialize config: %w", err)
 	}
 
-	client := cloudwatch.NewFromConfig(awsConfig)
+	client := cloudwatch.NewFromConfig(awsConfig, func(options *cloudwatch.Options) {
+		options.BaseEndpoint = aws.String(clientCfg.Settings.Endpoint)
+	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "cloudwatch", name, clientCfg.Settings.ClientSettings)
 

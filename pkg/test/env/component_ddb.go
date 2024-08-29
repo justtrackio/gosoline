@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -26,7 +25,7 @@ func (c *DdbComponent) CfgOptions() []cfg.Option {
 
 	return []cfg.Option{
 		cfg.WithConfigMap(map[string]interface{}{
-			"cloud.aws.credentials": map[string]interface{}{
+			"cloud.aws.defaults.credentials": map[string]interface{}{
 				"access_key_id":     DefaultAccessKeyID,
 				"secret_access_key": DefaultSecretAccessKey,
 				"session_token":     DefaultToken,
@@ -45,11 +44,15 @@ func (c *DdbComponent) Endpoint() string {
 }
 
 func (c *DdbComponent) Client() *dynamodb.Client {
-	return dynamodb.NewFromConfig(aws.Config{
-		EndpointResolverWithOptions: gosoAws.EndpointResolver(c.Endpoint()),
-		Region:                      "eu-central-1",
-		Credentials:                 GetDefaultStaticCredentials(),
-	})
+	return dynamodb.NewFromConfig(
+		aws.Config{
+			Region:      "eu-central-1",
+			Credentials: GetDefaultStaticCredentials(),
+		},
+		func(options *dynamodb.Options) {
+			options.BaseEndpoint = aws.String(c.Endpoint())
+		},
+	)
 }
 
 func (c *DdbComponent) Repository(settings *ddb.Settings) (ddb.Repository, error) {

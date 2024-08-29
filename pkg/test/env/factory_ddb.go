@@ -136,9 +136,11 @@ func (f *ddbFactory) client(container *container) (*dynamodb.Client, error) {
 	var err error
 	var cfg aws.Config
 
-	if cfg, err = GetDefaultAwsSdkConfig(address); err != nil {
+	if cfg, err = GetDefaultAwsSdkConfig(); err != nil {
 		return nil, fmt.Errorf("can't get default aws sdk config: %w", err)
 	}
 
-	return dynamodb.NewFromConfig(cfg), nil
+	return dynamodb.NewFromConfig(cfg, func(options *dynamodb.Options) {
+		options.BaseEndpoint = aws.String(address)
+	}), nil
 }

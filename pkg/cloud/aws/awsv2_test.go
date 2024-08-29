@@ -21,13 +21,16 @@ func TestExponentialBackoffDelayer(t *testing.T) {
 	last := time.Duration(0)
 
 	for ; i <= 100; i++ {
-		delay, _ := delayer.BackoffDelay(i, nil)
-		fmt.Printf("%02d: %s\n", i, delay)
+		delay, err := delayer.BackoffDelay(i, nil)
+		assert.NoError(t, err)
+
+		_, err = fmt.Printf("%02d: %s\n", i, delay)
+		assert.NoError(t, err)
 
 		assert.True(t, delay > 0)
 		assert.True(t, delay <= maxInerval)
 
-		if delay == maxInerval && delay == last {
+		if delay == maxInerval || delay == last {
 			break
 		}
 
@@ -42,14 +45,14 @@ func TestUnmarshalClientSettings(t *testing.T) {
 
 	err := config.Option(cfg.WithConfigMap(map[string]interface{}{
 		"cloud.aws": map[string]interface{}{
-			"credentials": map[string]interface{}{
-				"access_key_id":     "access key id",
-				"secret_access_key": "secret access key",
-				"session_token":     "session token",
-			},
 			"defaults": map[string]interface{}{
 				"http_client.timeout": "1s",
 				"assume_role":         "role",
+				"credentials": map[string]interface{}{
+					"access_key_id":     "access key id",
+					"secret_access_key": "secret access key",
+					"session_token":     "session token",
+				},
 			},
 			"cloudwatch.clients.metrics.http_client": map[string]interface{}{
 				"timeout": "2s",

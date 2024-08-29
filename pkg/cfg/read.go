@@ -1,10 +1,10 @@
 package cfg
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
-	"github.com/pkg/errors"
 )
 
 func readConfigFromFile(cfg *config, filePath string, fileType string) error {
@@ -14,13 +14,18 @@ func readConfigFromFile(cfg *config, filePath string, fileType string) error {
 
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {
-		return errors.Wrapf(err, "can not read config file %s", filePath)
+		wd, errWd := os.Getwd()
+		if errWd != nil {
+			wd = errWd.Error()
+		}
+
+		return fmt.Errorf("can not read config file %s in directory %s: %w", filePath, wd, err)
 	}
 
 	settings := make(map[string]interface{})
 	err = yaml.Unmarshal(bytes, &settings)
 	if err != nil {
-		return errors.Wrapf(err, "can not unmarshal config file %s", filePath)
+		return fmt.Errorf("can not unmarshal config file %s: %w", filePath, err)
 	}
 
 	return cfg.mergeMsi(".", settings)

@@ -13,7 +13,7 @@ func TestResolveDefaultEndpoint(t *testing.T) {
 
 	endpoint, err := s3.ResolveEndpoint(config, "default")
 	assert.NoError(t, err, "there should be no error resolving the endpoint")
-	assert.Equal(t, "http://localhost:4566", endpoint.URL)
+	assert.Equal(t, "http://localhost:4566", endpoint)
 }
 
 func TestResolveAwsEndpoint(t *testing.T) {
@@ -23,7 +23,7 @@ func TestResolveAwsEndpoint(t *testing.T) {
 
 	endpoint, err := s3.ResolveEndpoint(config, "default")
 	assert.NoError(t, err, "there should be no error resolving the endpoint")
-	assert.Equal(t, "https://s3.eu-central-1.amazonaws.com", endpoint.URL)
+	assert.Equal(t, "https://s3.eu-central-1.amazonaws.com", endpoint)
 }
 
 func createConfig(t *testing.T, settings map[string]interface{}) cfg.Config {
