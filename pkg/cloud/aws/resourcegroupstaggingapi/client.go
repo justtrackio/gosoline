@@ -65,7 +65,9 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return nil, fmt.Errorf("can not initialize config: %w", err)
 	}
 
-	client := resourcegroupstaggingapi.NewFromConfig(awsConfig)
+	client := resourcegroupstaggingapi.NewFromConfig(awsConfig, func(options *resourcegroupstaggingapi.Options) {
+		options.BaseEndpoint = aws.String(clientCfg.Settings.Endpoint)
+	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "resourcegroupstaggingapi", name, clientCfg.Settings.ClientSettings)
 

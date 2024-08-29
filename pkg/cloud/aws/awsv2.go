@@ -40,6 +40,7 @@ type ClientSettings struct {
 	Region      string             `cfg:"region" default:"eu-central-1"`
 	Endpoint    string             `cfg:"endpoint" default:"http://localhost:4566"`
 	AssumeRole  string             `cfg:"assume_role"`
+	Profile     string             `cfg:"profile"`
 	Credentials Credentials        `cfg:"credentials"`
 	HttpClient  ClientHttpSettings `cfg:"http_client"`
 	Backoff     exec.BackoffSettings
@@ -79,11 +80,12 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 	defaultClientKey := GetClientConfigKey(service, "default")
 
 	config.UnmarshalKey(clientsKey, settings, []cfg.UnmarshalDefaults{
-		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.credentials", "credentials"),
+		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.credentials", "credentials"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.region", "region"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.endpoint", "endpoint"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.http_client", "http_client"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.assume_role", "assume_role"),
+		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.profile", "profile"),
 		cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, "."),
 	}...)
 
@@ -96,7 +98,6 @@ func DefaultClientOptions(ctx context.Context, _ cfg.Config, logger log.Logger, 
 
 	options := []func(options *awsCfg.LoadOptions) error{
 		awsCfg.WithRegion(settings.Region),
-		awsCfg.WithEndpointResolverWithOptions(EndpointResolver(settings.Endpoint)),
 		awsCfg.WithLogger(NewLogger(logger)),
 		awsCfg.WithClientLogMode(aws.ClientLogMode(0)),
 		awsCfg.WithRetryer(func() aws.Retryer {
@@ -105,15 +106,14 @@ func DefaultClientOptions(ctx context.Context, _ cfg.Config, logger log.Logger, 
 	}
 
 	var err error
-	var credentialsProvider aws.CredentialsProvider
+	var credentialsOption func(options *awsCfg.LoadOptions) error
 
-	if credentialsProvider, err = GetCredentialsProvider(ctx, settings); err != nil {
-		return nil, fmt.Errorf("can not get credentials provider: %w", err)
+	if credentialsOption, err = GetCredentialsOption(ctx, settings); err != nil {
+		return nil, fmt.Errorf("can not get credentials option: %w", err)
 	}
 
-	if credentialsProvider != nil {
-		credentialsProvider = aws.NewCredentialsCache(credentialsProvider)
-		options = append(options, awsCfg.WithCredentialsProvider(credentialsProvider))
+	if credentialsOption != nil {
+		options = append(options, credentialsOption)
 	}
 
 	options = append(options, clientConfig.GetLoadOptions()...)
@@ -148,36 +148,6 @@ func DefaultClientConfig(ctx context.Context, config cfg.Config, logger log.Logg
 	}
 
 	return awsConfig, nil
-}
-
-func WithEndpoint(url string) func(options *awsCfg.LoadOptions) error {
-	return func(o *awsCfg.LoadOptions) error {
-		o.EndpointResolverWithOptions = EndpointResolver(url)
-
-		return nil
-	}
-}
-
-type endpointResolver struct {
-	url string
-}
-
-func (e *endpointResolver) ResolveEndpoint(service, region string, options ...interface{}) (aws.Endpoint, error) {
-	if e.url == "" {
-		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-	}
-
-	return aws.Endpoint{
-		PartitionID:   "aws",
-		URL:           e.url,
-		SigningRegion: region,
-	}, nil
-}
-
-func EndpointResolver(url string) aws.EndpointResolverWithOptions {
-	return &endpointResolver{
-		url: url,
-	}
 }
 
 type Logger struct {

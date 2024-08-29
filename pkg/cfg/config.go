@@ -61,21 +61,21 @@ type config struct {
 
 var (
 	DefaultEnvKeyReplacer = strings.NewReplacer(".", "_", "-", "_")
-	valFlagsRegexp        = regexp.MustCompile(`(!([\S]*)\s)?(.*)`)
+	valFlagsRegexp        = regexp.MustCompile(`(!(\S*)\s)?(.*)`)
 	templateRegexp        = regexp.MustCompile(`{([\w.\-]+)}`)
 	keyToEnvRegexp        = regexp.MustCompile(`\[(\d+)\]`)
 )
 
-func New() GosoConf {
-	return NewWithInterfaces(NewOsEnvProvider())
+func New(msis ...map[string]interface{}) GosoConf {
+	return NewWithInterfaces(NewOsEnvProvider(), msis...)
 }
 
-func NewWithInterfaces(envProvider EnvProvider) GosoConf {
+func NewWithInterfaces(envProvider EnvProvider, msis ...map[string]interface{}) GosoConf {
 	cfg := &config{
 		envProvider:   envProvider,
 		errorHandlers: []ErrorHandler{defaultErrorHandler},
 		sanitizers:    make([]Sanitizer, 0),
-		settings:      mapx.NewMapX(),
+		settings:      mapx.NewMapX(msis...),
 	}
 
 	return cfg
@@ -170,6 +170,7 @@ func (c *config) GetFloat64(key string, optionalDefault ...float64) float64 {
 	i, err := cast.ToFloat64E(data)
 	if err != nil {
 		c.err("can not cast value %v[%T] of key %s to float64: %w", data, data, key, err)
+
 		return 0.0
 	}
 
@@ -201,6 +202,7 @@ func (c *config) GetMsiSlice(key string, optionalDefault ...[]map[string]interfa
 
 		if msi, ok = element.(map[string]interface{}); !ok {
 			c.err("element of key %s should be a msi but instead is %T", key, element)
+
 			return nil
 		}
 
@@ -378,7 +380,7 @@ func (c *config) augmentString(str string) string {
 	groups := valFlagsRegexp.FindStringSubmatch(str)
 	flags := make([]string, 0)
 
-	if len(groups[2]) > 0 {
+	if groups[2] != "" {
 		flags = strings.Split(groups[2], ",")
 		flags = funk.Map(flags, strings.ToLower)
 		str = groups[3]
@@ -544,31 +546,7 @@ func (c *config) readEnvironmentFromStructKeys(prefix string, structKeys []mapx.
 	for _, structKey := range structKeys {
 		switch structKey.Kind {
 		case reflect.Slice:
-			if len(structKey.SubKeys) > 0 {
-				for i := 0; ; i++ {
-					sliceKeyIndexed := fmt.Sprintf("%s[%d]", structKey.Key, i)
-					sliceKeyPrefixed := fmt.Sprintf("%s.%s", prefix, sliceKeyIndexed)
-					sliceValues := c.readEnvironmentFromStructKeys(sliceKeyPrefixed, structKey.SubKeys)
-
-					if len(sliceValues.Msi()) == 0 {
-						break
-					}
-
-					environment.Set(sliceKeyIndexed, sliceValues)
-				}
-			} else {
-				for i := 0; ; i++ {
-					sliceKeyIndexed := fmt.Sprintf("%s[%d]", structKey.Key, i)
-					envKey := c.resolveEnvKey(prefix, sliceKeyIndexed)
-
-					if envValue, ok := c.envProvider.LookupEnv(envKey); ok {
-						augmentedString := c.augmentString(envValue)
-						environment.Set(sliceKeyIndexed, augmentedString)
-					} else {
-						break
-					}
-				}
-			}
+			c.readEnvironmentFromStructKeysSlice(prefix, structKey, environment)
 
 		default:
 			key := structKey.Key
@@ -582,6 +560,42 @@ func (c *config) readEnvironmentFromStructKeys(prefix string, structKeys []mapx.
 	}
 
 	return environment
+}
+
+func (c *config) readEnvironmentFromStructKeysSlice(prefix string, structKey mapx.StructKey, environment *mapx.MapX) {
+	if len(structKey.SubKeys) > 0 {
+		c.readEnvironmentFromStructKeysSlicePrefixed(prefix, structKey, environment)
+	} else {
+		c.readEnvironmentFromStructKeysSliceIndexed(prefix, structKey, environment)
+	}
+}
+
+func (c *config) readEnvironmentFromStructKeysSlicePrefixed(prefix string, structKey mapx.StructKey, environment *mapx.MapX) {
+	for i := 0; ; i++ {
+		sliceKeyIndexed := fmt.Sprintf("%s[%d]", structKey.Key, i)
+		sliceKeyPrefixed := fmt.Sprintf("%s.%s", prefix, sliceKeyIndexed)
+		sliceValues := c.readEnvironmentFromStructKeys(sliceKeyPrefixed, structKey.SubKeys)
+
+		if len(sliceValues.Msi()) == 0 {
+			break
+		}
+
+		environment.Set(sliceKeyIndexed, sliceValues)
+	}
+}
+
+func (c *config) readEnvironmentFromStructKeysSliceIndexed(prefix string, structKey mapx.StructKey, environment *mapx.MapX) {
+	for i := 0; ; i++ {
+		sliceKeyIndexed := fmt.Sprintf("%s[%d]", structKey.Key, i)
+		envKey := c.resolveEnvKey(prefix, sliceKeyIndexed)
+
+		if envValue, ok := c.envProvider.LookupEnv(envKey); ok {
+			augmentedString := c.augmentString(envValue)
+			environment.Set(sliceKeyIndexed, augmentedString)
+		} else {
+			break
+		}
+	}
 }
 
 func (c *config) readEnvironmentFromValues(prefix string, input *mapx.MapX) *mapx.MapX {
@@ -608,7 +622,7 @@ func (c *config) readEnvironmentFromValues(prefix string, input *mapx.MapX) *map
 }
 
 func (c *config) resolveEnvKey(prefix string, key string) string {
-	if len(prefix) > 0 {
+	if prefix != "" {
 		key = fmt.Sprintf("%s.%s", prefix, key)
 	}
 

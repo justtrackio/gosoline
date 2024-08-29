@@ -105,11 +105,15 @@ func (f *s3Factory) client(container *container) (*s3.Client, error) {
 	var err error
 	var cfg aws.Config
 
-	if cfg, err = GetDefaultAwsSdkConfig(address); err != nil {
+	if cfg, err = GetDefaultAwsSdkConfig(); err != nil {
 		return nil, fmt.Errorf("can't get default aws sdk config: %w", err)
 	}
 
-	return s3.NewFromConfig(cfg), nil
+	client := s3.NewFromConfig(cfg, func(options *s3.Options) {
+		options.BaseEndpoint = aws.String(address)
+	})
+
+	return client, nil
 }
 
 func (f *s3Factory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings interface{}) (Component, error) {

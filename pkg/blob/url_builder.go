@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 )
@@ -25,14 +24,14 @@ func NewUrlBuilder(config cfg.Config, name string) (UrlBuilder, error) {
 	clientConfig := s3.GetClientConfig(config, storeSettings.ClientName)
 
 	var err error
-	var endpoint aws.Endpoint
+	var endpoint string
 
 	if endpoint, err = s3.ResolveEndpoint(config, storeSettings.ClientName); err != nil {
 		return nil, fmt.Errorf("can not resolve s3 endpoint for client %s: %w", storeSettings.ClientName, err)
 	}
 
 	return &urlBuilder{
-		endpoint:     endpoint.URL,
+		endpoint:     endpoint,
 		usePathStyle: clientConfig.Settings.UsePathStyle,
 		bucket:       storeSettings.Bucket,
 	}, nil

@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type localstackComponent struct {
@@ -49,9 +48,13 @@ func (c *localstackComponent) Address() string {
 }
 
 func (c *localstackComponent) SnsClient() *sns.Client {
-	return sns.NewFromConfig(aws.Config{
-		EndpointResolverWithOptions: gosoAws.EndpointResolver(c.Address()),
-		Region:                      "eu-central-1",
-		Credentials:                 GetDefaultStaticCredentials(),
-	})
+	return sns.NewFromConfig(
+		aws.Config{
+			Region:      "eu-central-1",
+			Credentials: GetDefaultStaticCredentials(),
+		},
+		func(options *sns.Options) {
+			options.BaseEndpoint = aws.String(c.Address())
+		},
+	)
 }
