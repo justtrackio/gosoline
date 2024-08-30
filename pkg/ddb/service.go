@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"golang.org/x/exp/slices"
 )
 
 type TableDescription struct {

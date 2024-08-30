@@ -182,6 +182,7 @@ func (s *ChangeHistoryTestSuite) TestChangeHistoryMigration_Migrate_UpdateTable(
 	historyManager, err := db_repo.NewChangeHistoryManager(ctx, envConfig, envLogger)
 	s.NoError(err)
 
+	// this migration adds one column and drops a different column
 	err = historyManager.RunMigration(&TestModel2{})
 	s.NoError(err)
 

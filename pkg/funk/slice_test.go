@@ -1,11 +1,11 @@
 package funk_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slices"
 )
 
 func TestCastSlice(t *testing.T) {

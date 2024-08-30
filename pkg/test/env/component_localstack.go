@@ -2,12 +2,12 @@ package env
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
-	"golang.org/x/exp/slices"
 )
 
 type localstackComponent struct {

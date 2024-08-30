@@ -1,8 +1,6 @@
 package ddb
 
-import (
-	"golang.org/x/exp/slices"
-)
+import "slices"
 
 const (
 	tagKey    = "key"

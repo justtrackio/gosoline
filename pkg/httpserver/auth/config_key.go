@@ -3,8 +3,7 @@ package auth
 import (
 	"fmt"
 	"net/http"
-
-	"golang.org/x/exp/slices"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/cfg"

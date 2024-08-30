@@ -2,10 +2,10 @@ package env
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"golang.org/x/exp/slices"
 )
 
 type AutoDetectSettings struct {

@@ -2,6 +2,7 @@ package suite
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/application"
@@ -13,7 +14,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/spf13/cast"
-	"golang.org/x/exp/slices"
 )
 
 type suiteOptions struct {
