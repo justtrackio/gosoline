@@ -9,6 +9,23 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdlsub"
 )
 
+func NewNamedKvStoreFixture[T any](name any, value T) *NamedFixture[*KvStoreFixture] {
+	return &NamedFixture[*KvStoreFixture]{
+		Name: fmt.Sprint(name),
+		Value: &KvStoreFixture{
+			Key:   name,
+			Value: value,
+		},
+	}
+}
+
+func NewNamedFixture[T any](name string, value T) *NamedFixture[T] {
+	return &NamedFixture[T]{
+		Name:  name,
+		Value: value,
+	}
+}
+
 type NamedFixture[T any] struct {
 	Name  string
 	Value T

@@ -14,12 +14,12 @@ type configurableKvStoreFixtureWriter[T any] struct {
 	store  kvstore.KvStore[T]
 }
 
-func ConfigurableKvStoreFixtureSetFactory[T any, T2 any](name string, data NamedFixtures[T], options ...FixtureSetOption) FixtureSetFactory {
+func ConfigurableKvStoreFixtureSetFactory[T any](name string, data NamedFixtures[*KvStoreFixture], options ...FixtureSetOption) FixtureSetFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error) {
 		var err error
 		var writer FixtureWriter
 
-		if writer, err = NewConfigurableKvStoreFixtureWriter[T2](ctx, config, logger, name); err != nil {
+		if writer, err = NewConfigurableKvStoreFixtureWriter[T](ctx, config, logger, name); err != nil {
 			return nil, fmt.Errorf("failed to create configurable kvstore fixture writer for %s: %w", name, err)
 		}
 

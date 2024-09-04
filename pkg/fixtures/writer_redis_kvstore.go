@@ -16,12 +16,12 @@ type redisKvStoreFixtureWriter[T any] struct {
 	purger *redisPurger
 }
 
-func RedisKvStoreFixtureSetFactory[T any, T2 any](modelId *mdl.ModelId, data NamedFixtures[T], options ...FixtureSetOption) FixtureSetFactory {
+func RedisKvStoreFixtureSetFactory[T any](modelId *mdl.ModelId, data NamedFixtures[*KvStoreFixture], options ...FixtureSetOption) FixtureSetFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error) {
 		var err error
 		var writer FixtureWriter
 
-		if writer, err = NewRedisKvStoreFixtureWriter[T2](ctx, config, logger, modelId); err != nil {
+		if writer, err = NewRedisKvStoreFixtureWriter[T](ctx, config, logger, modelId); err != nil {
 			return nil, fmt.Errorf("failed to create redis kvstore fixture writer for %s: %w", modelId.String(), err)
 		}
 
