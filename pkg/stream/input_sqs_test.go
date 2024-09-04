@@ -16,7 +16,7 @@ import (
 
 func TestSqsInput_Run(t *testing.T) {
 	ctx := context.Background()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	var count int32
 	waitReadDone := make(chan struct{})
@@ -70,7 +70,7 @@ func TestSqsInput_Run(t *testing.T) {
 }
 
 func TestSqsInput_Run_Failure(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	count := 0
 	waitRunDone := make(chan struct{})

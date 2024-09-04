@@ -10,7 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
-	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -34,7 +34,7 @@ func (s *MysqlSqlxFixtureWriterTestSuite) SetupSuite() {
 	s.NoError(err)
 
 	xdb := sqlx.NewDb(sdb, "mysql")
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
 	client = db.NewClientWithInterfaces(logger, xdb, exec.NewDefaultExecutor())
 	s.writer = fixtures.NewMysqlSqlxFixtureWriterWithInterfaces(logger, client, &fixtures.MysqlSqlxMetaData{TableName: "table"}, nil)

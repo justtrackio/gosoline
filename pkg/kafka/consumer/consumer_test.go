@@ -46,7 +46,7 @@ func TestConsumer_Manager_Batch_Commit(t *testing.T) {
 			BatchSize:    100,
 			BatchTimeout: time.Second,
 		},
-		logMocks.NewLoggerMockedAll(),
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
 		manager,
 	)
 	assert.Nil(t, err)

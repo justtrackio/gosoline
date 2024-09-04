@@ -10,7 +10,7 @@ import (
 )
 
 func TestOutputChannel_Simple(t *testing.T) {
-	logger := logMocks.NewLoggerMock()
+	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 
 	msg := []stream.WritableMessage{
 		stream.NewMessage("hello"),
@@ -28,12 +28,10 @@ func TestOutputChannel_Simple(t *testing.T) {
 
 	_, ok = ch.Read()
 	assert.False(t, ok, "should not be able to read from empty channel")
-
-	logger.AssertExpectations(t)
 }
 
 func TestOutputChannel_WriteAfterClose(t *testing.T) {
-	logger := logMocks.NewLoggerMockedUntilLevel(log.PriorityWarn)
+	logger := logMocks.NewLoggerMock(logMocks.WithMockUntilLevel(log.PriorityWarn), logMocks.WithTestingT(t))
 
 	msg := []stream.WritableMessage{
 		stream.NewMessage("hello"),

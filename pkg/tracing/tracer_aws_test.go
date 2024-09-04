@@ -6,7 +6,7 @@ import (
 
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	"github.com/stretchr/testify/assert"
 )
@@ -59,7 +59,7 @@ func TestAwsTracer_StartSpanFromContextWithTrace(t *testing.T) {
 }
 
 func getTracer(t *testing.T) tracing.Tracer {
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tracer, err := tracing.NewAwsTracerWithInterfaces(logger, cfg.AppId{
 		Project:     "test_project",
 		Environment: "test_env",

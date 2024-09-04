@@ -9,12 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/httpserver/auth"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
 func getHeaderKeyMocks(idToken string) (log.Logger, *gin.Context) {
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll)
 
 	header := http.Header{}
 	header.Set("X-API-KEY", idToken)
@@ -32,7 +32,7 @@ func getHeaderKeyMocks(idToken string) (log.Logger, *gin.Context) {
 }
 
 func getQueryKeyMocks(idToken string) (log.Logger, *gin.Context) {
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll)
 
 	request := &http.Request{
 		URL: &url.URL{

@@ -87,7 +87,7 @@ func makeDdbProvider(test *tokenBearerTestCase) (auth.TokenBearerProvider, []has
 }
 
 func (test *tokenBearerTestCase) run(t *testing.T, providerProvider providerProvider) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	provider, hasExpectations := providerProvider(test)
 
 	headers := http.Header{}

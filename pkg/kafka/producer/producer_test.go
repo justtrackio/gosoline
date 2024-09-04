@@ -17,8 +17,8 @@ import (
 func Test_Write_WriteOne(t *testing.T) {
 	var (
 		ctx, cancel = context.WithCancel(context.Background())
-		logger      = logMocks.NewLoggerMockedAll()
-		writer      = &producerMocks.Writer{}
+		logger      = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
+		writer      = producerMocks.NewWriter(t)
 		conf        = &producer.Settings{
 			FQTopic: "fq-topic",
 		}
@@ -53,8 +53,6 @@ func Test_Write_WriteOne(t *testing.T) {
 			},
 		}
 	)
-	defer logger.AssertExpectations(t)
-	defer writer.AssertExpectations(t)
 
 	writer.On("WriteMessages", mock.Anything, mock.Anything).Return(
 		func(ctx context.Context, ms ...kafka.Message) error {

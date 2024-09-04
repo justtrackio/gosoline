@@ -22,7 +22,7 @@ type PublisherTestSuite struct {
 }
 
 func (s *PublisherTestSuite) SetupTest() {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	s.producer = new(streamMocks.Producer)
 
 	s.publisher = mdlsub.NewPublisherWithInterfaces(logger, s.producer, &mdlsub.PublisherSettings{

@@ -29,7 +29,7 @@ type TopicTestSuite struct {
 }
 
 func (s *TopicTestSuite) SetupTest() {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
 	s.ctx = context.Background()
 	s.client = gosoSnsMocks.NewClient(s.T())

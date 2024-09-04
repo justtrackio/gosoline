@@ -457,7 +457,7 @@ func nilFactory[T any](_ kvstore.ElementFactory[T], _ *kvstore.Settings) (kvstor
 }
 
 func buildTestableChainStore[T any](missingCacheEnabled bool) (kvstore.KvStore[T], *kvStoreMocks.KvStore[T], *kvStoreMocks.KvStore[T]) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll)
 
 	element0 := new(kvStoreMocks.KvStore[T])
 	element1 := new(kvStoreMocks.KvStore[T])

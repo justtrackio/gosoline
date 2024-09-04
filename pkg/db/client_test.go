@@ -129,7 +129,7 @@ func TestClient_Exec(t *testing.T) {
 
 func getMocks() (db.Client, goSqlMock.Sqlmock) {
 	dbMock, sqlMock, _ := goSqlMock.New()
-	loggerMock := logMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll)
 	sqlxDB := sqlx.NewDb(dbMock, "sqlmock")
 
 	client := db.NewClientWithInterfaces(loggerMock, sqlxDB, exec.NewDefaultExecutor())

@@ -14,7 +14,7 @@ import (
 type producerDaemonPartitionedAggregatorTestSuite struct {
 	suite.Suite
 	ctx         context.Context
-	logger      *logMocks.Logger
+	logger      logMocks.LoggerMock
 	rand        *mocks.PartitionerRand
 	aggregators []*mocks.ProducerDaemonAggregator
 	aggregator  stream.ProducerDaemonAggregator
@@ -22,8 +22,8 @@ type producerDaemonPartitionedAggregatorTestSuite struct {
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.logger = logMocks.NewLoggerMock()
-	s.rand = new(mocks.PartitionerRand)
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
+	s.rand = mocks.NewPartitionerRand(s.T())
 	s.aggregators = []*mocks.ProducerDaemonAggregator{
 		new(mocks.ProducerDaemonAggregator),
 		new(mocks.ProducerDaemonAggregator),
@@ -55,8 +55,6 @@ func (s *producerDaemonPartitionedAggregatorTestSuite) SetupTest() {
 }
 
 func (s *producerDaemonPartitionedAggregatorTestSuite) TearDownTest() {
-	s.logger.AssertExpectations(s.T())
-	s.rand.AssertExpectations(s.T())
 	for _, aggregator := range s.aggregators {
 		aggregator.AssertExpectations(s.T())
 	}

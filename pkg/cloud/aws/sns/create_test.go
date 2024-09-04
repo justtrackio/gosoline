@@ -22,7 +22,7 @@ func TestCreateTopic(t *testing.T) {
 		TopicArn: aws.String("arn"),
 	}, nil)
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	arn, err := gosoSns.CreateTopic(ctx, logger, client, "mcoins-test-analytics-topicker-topic")
 
@@ -37,7 +37,7 @@ func TestCreateTopicFailing(t *testing.T) {
 		Name: aws.String("mcoins-test-analytics-topicker-topic"),
 	}).Return(nil, errors.New(""))
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	arn, err := gosoSns.CreateTopic(ctx, logger, client, "mcoins-test-analytics-topicker-topic")
 

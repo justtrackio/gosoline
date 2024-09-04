@@ -13,7 +13,7 @@ import (
 )
 
 func Test_snsOutput_WriteOne(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	messages := []*stream.Message{
 		mkTestMessage(t, 1, make(map[string]string)),
@@ -45,7 +45,7 @@ func Test_snsOutput_WriteOne(t *testing.T) {
 }
 
 func Test_snsOutput_WriteBatch(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	topic := &mocks.Topic{}
 	topic.On("PublishBatch", context.Background(), mock.AnythingOfType("[]string"), mock.AnythingOfType("[]map[string]string")).Return(nil).Once()
 

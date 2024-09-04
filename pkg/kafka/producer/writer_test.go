@@ -31,7 +31,7 @@ var (
 
 func TestTransport(t *testing.T) {
 	writer, err := producer.NewWriter(
-		logMocks.NewLoggerMockedAll(), writerDialer, writerConf.Connection().Bootstrap,
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), writerDialer, writerConf.Connection().Bootstrap,
 		producer.WithAsyncWrites(),
 	)
 	assert.Nil(t, err)
@@ -52,7 +52,7 @@ func TestTransport(t *testing.T) {
 }
 
 func TestSaneDefaults(t *testing.T) {
-	writer, err := producer.NewWriter(logMocks.NewLoggerMockedAll(), writerDialer, writerConf.Connection().Bootstrap)
+	writer, err := producer.NewWriter(logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), writerDialer, writerConf.Connection().Bootstrap)
 	assert.Nil(t, err)
 
 	// Endpoint
@@ -73,7 +73,7 @@ func TestSaneDefaults(t *testing.T) {
 
 func TestSaneDefaultsFallback(t *testing.T) {
 	writer, err := producer.NewWriter(
-		logMocks.NewLoggerMockedAll(), writerDialer, writerConf.Connection().Bootstrap,
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), writerDialer, writerConf.Connection().Bootstrap,
 		producer.WithBatch(0, time.Microsecond),
 	)
 	assert.Nil(t, err)
@@ -89,7 +89,7 @@ func TestWithBatch(t *testing.T) {
 	)
 
 	writer, err := producer.NewWriter(
-		logMocks.NewLoggerMockedAll(), writerDialer, writerConf.Connection().Bootstrap,
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), writerDialer, writerConf.Connection().Bootstrap,
 		producer.WithBatch(batchSize, batchInterval),
 	)
 	assert.Nil(t, err)
@@ -101,7 +101,7 @@ func TestWithBatch(t *testing.T) {
 
 func TestWithAsyncWrites(t *testing.T) {
 	writer, err := producer.NewWriter(
-		logMocks.NewLoggerMockedAll(), writerDialer, writerConf.Connection().Bootstrap,
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), writerDialer, writerConf.Connection().Bootstrap,
 		producer.WithAsyncWrites(),
 	)
 

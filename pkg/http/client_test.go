@@ -68,7 +68,7 @@ func getClient(t *testing.T, retries int, timeout time.Duration) http.Client {
 	ctx := appctx.WithContainer(context.Background())
 	config := getConfig(t, retries, timeout)
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	client, err := http.ProvideHttpClient(ctx, config, logger, "default")
 	assert.NoError(t, err)

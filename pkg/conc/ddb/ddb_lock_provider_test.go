@@ -59,7 +59,7 @@ func (s *ddbLockProviderTestSuite) SetupSuite() {
 }
 
 func (s *ddbLockProviderTestSuite) SetupTest() {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	s.ctx = context.Background()
 	s.repo = new(ddbMocks.Repository)
 	s.clock = clock.NewFakeClock()

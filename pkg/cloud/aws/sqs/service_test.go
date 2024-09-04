@@ -16,7 +16,7 @@ import (
 
 func TestService_CreateQueue(t *testing.T) {
 	ctx := context.Background()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
 	client.EXPECT().GetQueueUrl(ctx, &awsSqs.GetQueueUrlInput{
@@ -92,7 +92,7 @@ func TestService_CreateQueue(t *testing.T) {
 
 func TestService_GetPropertiesByName(t *testing.T) {
 	ctx := context.Background()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
 	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
@@ -129,7 +129,7 @@ func TestService_GetPropertiesByName(t *testing.T) {
 
 func TestService_GetPropertiesByArn(t *testing.T) {
 	ctx := context.Background()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
 	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
@@ -157,7 +157,7 @@ func TestService_GetPropertiesByArn(t *testing.T) {
 
 func TestService_Purge(t *testing.T) {
 	ctx := context.Background()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
 	url := "https://sqs.eu-central-1.amazonaws.com/accountId/applike-test-gosoline-queue-id"

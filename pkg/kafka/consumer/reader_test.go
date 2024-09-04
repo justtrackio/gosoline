@@ -23,7 +23,7 @@ var (
 )
 
 func TestSaneDefaults(t *testing.T) {
-	reader, err := consumer.NewReader(logMocks.NewLoggerMockedAll(), readerDialer, readerSettings)
+	reader, err := consumer.NewReader(logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), readerDialer, readerSettings)
 	assert.Nil(t, err)
 
 	assert.Equal(t, reader.Config().MaxAttempts, 3)
@@ -40,7 +40,7 @@ func TestSaneDefaults(t *testing.T) {
 
 func TestFallsbackToSaneDefaults(t *testing.T) {
 	reader, err := consumer.NewReader(
-		logMocks.NewLoggerMockedAll(),
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
 		readerDialer,
 		readerSettings,
 		consumer.WithBatch(1e6),
@@ -57,7 +57,7 @@ func TestAppliesWithBatch(t *testing.T) {
 	)
 
 	reader, err := consumer.NewReader(
-		logMocks.NewLoggerMockedAll(),
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
 		readerDialer,
 		readerSettings,
 		consumer.WithBatch(batchMaxSize),

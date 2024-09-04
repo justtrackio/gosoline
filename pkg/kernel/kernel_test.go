@@ -69,7 +69,7 @@ func (s *KernelTestSuite) SetupTest() {
 
 func (s *KernelTestSuite) TestHangingModule() {
 	timeout(s.T(), time.Second*3, func(t *testing.T) {
-		logger := logMocks.NewLoggerMockedAll()
+		logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 		options := []kernel.Option{
 			s.mockExitHandler(kernel.ExitCodeErr),

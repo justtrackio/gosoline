@@ -38,7 +38,7 @@ type RepositoryTestSuite struct {
 }
 
 func (s *RepositoryTestSuite) SetupTest() {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	tracer := tracing.NewNoopTracer()
 
 	s.ctx = context.Background()

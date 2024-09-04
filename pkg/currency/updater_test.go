@@ -82,7 +82,7 @@ type updaterServiceTestSuite struct {
 	suite.Suite
 	ctx context.Context
 
-	logger *logMocks.Logger
+	logger logMocks.LoggerMock
 	store  *kvStoreMock.KvStore[float64]
 	client *httpMock.Client
 	clock  clock.FakeClock
@@ -97,18 +97,12 @@ func TestNewUpdaterService(t *testing.T) {
 func (s *updaterServiceTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
-	s.logger = logMocks.NewLoggerMockedAll()
-	s.store = new(kvStoreMock.KvStore[float64])
-	s.client = new(httpMock.Client)
+	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
+	s.store = kvStoreMock.NewKvStore[float64](s.T())
+	s.client = httpMock.NewClient(s.T())
 	s.clock = clock.NewFakeClockAt(time.Date(2021, 5, 27, 0, 0, 0, 0, time.UTC))
 
 	s.updater = currency.NewUpdaterWithInterfaces(s.logger, s.store, s.client, s.clock)
-}
-
-func (s *updaterServiceTestSuite) TearDownTest() {
-	s.logger.AssertExpectations(s.T())
-	s.store.AssertExpectations(s.T())
-	s.client.AssertExpectations(s.T())
 }
 
 func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRates() {

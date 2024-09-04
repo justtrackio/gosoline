@@ -40,7 +40,7 @@ type kinsumerTestSuite struct {
 	suite.Suite
 
 	ctx                context.Context
-	logger             *logMocks.Logger
+	logger             logMocks.LoggerMock
 	stream             gosoKinesis.Stream
 	kinesisClient      *mocks.Client
 	metadataRepository *mocks.MetadataRepository
@@ -61,8 +61,7 @@ func TestKinsumer(t *testing.T) {
 
 func (s *kinsumerTestSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.logger = logMocks.NewLoggerMock()
-	s.T().Cleanup(func() { s.logger.AssertExpectations(s.T()) })
+	s.logger = logMocks.NewLoggerMock(logMocks.WithTestingT(s.T()))
 	s.stream = "gosoline-test-unitTest-kinesisTest-testData"
 	s.kinesisClient = mocks.NewClient(s.T())
 	s.metadataRepository = mocks.NewMetadataRepository(s.T())

@@ -63,7 +63,7 @@ func TestService_sanitizeSettings(t *testing.T) {
 
 func TestService_CreateTable(t *testing.T) {
 	ctx := context.Background()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := dynamodbMocks.NewClient(t)
 
 	describeInput := &dynamodb.DescribeTableInput{

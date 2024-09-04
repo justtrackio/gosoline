@@ -33,7 +33,7 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tests := []struct {
 		name    string
 		defs    *grpcserver.Definitions
@@ -110,7 +110,7 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tests := []struct {
 		name    string
 		defs    *grpcserver.Definitions

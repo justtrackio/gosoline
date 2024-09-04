@@ -29,7 +29,7 @@ func TestNopRecorder(t *testing.T) {
 }
 
 func TestS3FileRecorder(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	s3Client := new(s3Mocks.Client)
 
 	r := parquet.NewS3FileRecorderWithInterfaces(logger, s3Client)

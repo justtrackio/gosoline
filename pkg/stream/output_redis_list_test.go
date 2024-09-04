@@ -14,18 +14,17 @@ import (
 )
 
 func TestRedisListOutput_WriteOne(t *testing.T) {
-	ctx, output, redisMock := setup(1)
+	ctx, output, redisMock := setup(1, t)
 	redisMock.On("RPush", ctx, "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Once()
 
 	record := stream.NewMessage("bla")
 	err := output.WriteOne(ctx, record)
 
 	assert.Nil(t, err, "there should be no error")
-	redisMock.AssertExpectations(t)
 }
 
 func TestRedisListOutput_Write(t *testing.T) {
-	ctx, output, redisMock := setup(2)
+	ctx, output, redisMock := setup(2, t)
 	redisMock.On("RPush", ctx, "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8"), mock.AnythingOfType("[]uint8")).Return(int64(2), nil).Once()
 
 	batch := []stream.WritableMessage{
@@ -35,11 +34,10 @@ func TestRedisListOutput_Write(t *testing.T) {
 	err := output.Write(ctx, batch)
 
 	assert.Nil(t, err, "there should be no error")
-	redisMock.AssertExpectations(t)
 }
 
 func TestRedisListOutput_Write_Chunked(t *testing.T) {
-	ctx, output, redisMock := setup(1)
+	ctx, output, redisMock := setup(1, t)
 	redisMock.On("RPush", ctx, "mcoins-test-fam-grp-app-my-list", mock.AnythingOfType("[]uint8")).Return(int64(1), nil).Times(2)
 
 	batch := []stream.WritableMessage{
@@ -49,15 +47,14 @@ func TestRedisListOutput_Write_Chunked(t *testing.T) {
 	err := output.Write(ctx, batch)
 
 	assert.Nil(t, err, "there should be no error")
-	redisMock.AssertExpectations(t)
 }
 
-func setup(batchSize int) (context.Context, stream.Output, *redisMocks.Client) {
+func setup(batchSize int, t *testing.T) (context.Context, stream.Output, *redisMocks.Client) {
 	ctx := context.Background()
-	loggerMock := logMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	mw := metricMocks.NewWriterMockedAll()
 
-	redisMock := new(redisMocks.Client)
+	redisMock := redisMocks.NewClient(t)
 	output := stream.NewRedisListOutputWithInterfaces(loggerMock, mw, redisMock, getSettings(batchSize))
 
 	return ctx, output, redisMock

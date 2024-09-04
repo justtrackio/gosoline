@@ -19,7 +19,7 @@ type serviceTestSuite struct {
 	suite.Suite
 	ctx context.Context
 
-	logger *logMocks.Logger
+	logger logMocks.LoggerMock
 	store  *kvStoreMock.KvStore[float64]
 	clock  clock.FakeClock
 
@@ -33,16 +33,11 @@ func TestService(t *testing.T) {
 func (s *serviceTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
-	s.logger = logMocks.NewLoggerMockedAll()
-	s.store = new(kvStoreMock.KvStore[float64])
+	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
+	s.store = kvStoreMock.NewKvStore[float64](s.T())
 	s.clock = clock.NewFakeClockAt(time.Date(2021, 1, 3, 4, 20, 33, 0, time.UTC))
 
 	s.service = currency.NewWithInterfaces(s.store, s.clock)
-}
-
-func (s *serviceTestSuite) TearDownTest() {
-	s.logger.AssertExpectations(s.T())
-	s.store.AssertExpectations(s.T())
 }
 
 func (s *serviceTestSuite) TestToEur_Calculation() {
