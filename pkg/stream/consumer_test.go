@@ -83,7 +83,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 	s.uuidGen = uuidMocks.NewUuid(s.T())
 	s.callback = mocks.NewRunnableConsumerCallback(s.T())
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	tracer := tracing.NewNoopTracer()
 	mw := metricMocks.NewWriterMockedAll()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})

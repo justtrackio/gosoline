@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/exec"
-	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sys/unix"
 )
@@ -33,7 +33,7 @@ func (s *ExecutorBackoffTestSuite) SetupTest() {
 			MaxElapsedTime:  maxElapsedTime,
 		}
 
-		logger := mocks.NewLoggerMockedAll()
+		logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
 		return exec.NewBackoffExecutor(logger, resource, settings, checkers)
 	}

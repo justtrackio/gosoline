@@ -18,7 +18,7 @@ func HealthCheckerMock() kernel.HealthCheckResult {
 func TestNewApiHealthCheck(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ginEngine := gin.New()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	httpserver.NewHealthCheckWithInterfaces(logger, ginEngine, HealthCheckerMock, &httpserver.HealthCheckSettings{
 		Path: "/health",

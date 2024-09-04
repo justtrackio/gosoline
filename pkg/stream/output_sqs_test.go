@@ -89,7 +89,7 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 	for test, data := range tests {
 		data := data
 		t.Run(test, func(t *testing.T) {
-			logger := logMocks.NewLoggerMockedAll()
+			logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 			queue := new(sqsMocks.Queue)
 			queue.On("Send", context.Background(), &data.expectedSqsMessage).Return(nil).Once()
@@ -252,7 +252,7 @@ func TestSqsOutput_Write(t *testing.T) {
 	for test, data := range tests {
 		data := data
 		t.Run(test, func(t *testing.T) {
-			logger := logMocks.NewLoggerMockedAll()
+			logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 			expectedSqsMessageChunks := funk.Chunk(data.expectedSqsMessage, stream.SqsOutputBatchSize)
 

@@ -9,14 +9,14 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver/auth"
 	authMocks "github.com/justtrackio/gosoline/pkg/httpserver/auth/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/oauth2/v2"
 )
 
 func getMocks(idToken string) (log.Logger, *authMocks.TokenInfoProvider, *gin.Context) {
-	logger := mocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll)
 	tokenProvider := new(authMocks.TokenInfoProvider)
 
 	ginCtx := getGinCtx(idToken)

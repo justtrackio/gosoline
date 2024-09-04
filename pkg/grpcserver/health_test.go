@@ -11,7 +11,7 @@ import (
 )
 
 func Test_healthServer_Check(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	defer cancelFunc()
 

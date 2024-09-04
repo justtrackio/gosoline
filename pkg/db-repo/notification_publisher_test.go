@@ -45,7 +45,15 @@ func Test_Publish_Notifier(t *testing.T) {
 		Environment: "test",
 	}
 
-	notifier := db_repo.NewPublisherNotifier(context.Background(), cfg.New(), &publisher, logMocks.NewLoggerMockedAll(), modelId, 1, transformer)
+	notifier := db_repo.NewPublisherNotifier(
+		context.Background(),
+		cfg.New(),
+		&publisher,
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
+		modelId,
+		1,
+		transformer,
+	)
 
 	err := notifier.Send(context.Background(), "CREATE", input)
 	assert.NoError(t, err)

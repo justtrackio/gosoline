@@ -124,7 +124,7 @@ func TestCreateHandler_Handle(t *testing.T) {
 		Name: mdl.Box("foobar"),
 	}
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Create", mock.AnythingOfType("context.backgroundCtx"), model).Run(func(args mock.Arguments) {
@@ -155,7 +155,7 @@ func TestCreateHandler_Handle_ValidationError(t *testing.T) {
 		Name: mdl.Box("foobar"),
 	}
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Create", mock.AnythingOfType("context.backgroundCtx"), model).Return(&validation.Error{
@@ -176,7 +176,7 @@ func TestCreateHandler_Handle_ValidationError(t *testing.T) {
 func TestReadHandler_Handle(t *testing.T) {
 	model := &Model{}
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	transformer := NewTransformer()
 	transformer.Repo.On("Read", mock.AnythingOfType("context.backgroundCtx"), mdl.Box(uint(1)), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
@@ -209,7 +209,7 @@ func TestUpdateHandler_Handle(t *testing.T) {
 		Name: mdl.Box("updated"),
 	}
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Update", mock.AnythingOfType("context.backgroundCtx"), updateModel).Return(nil)
@@ -245,7 +245,7 @@ func TestUpdateHandler_Handle_ValidationError(t *testing.T) {
 		Name: mdl.Box("updated"),
 	}
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	transformer := NewTransformer()
 
 	transformer.Repo.On("Update", mock.AnythingOfType("context.backgroundCtx"), updateModel).Return(&validation.Error{
@@ -283,7 +283,7 @@ func TestDeleteHandler_Handle(t *testing.T) {
 		Name: mdl.Box("foobar"),
 	}
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	transformer := NewTransformer()
 	transformer.Repo.On("Read", mock.AnythingOfType("context.backgroundCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
@@ -317,7 +317,7 @@ func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
 		Name: mdl.Box("foobar"),
 	}
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	transformer := NewTransformer()
 	transformer.Repo.On("Read", mock.AnythingOfType("context.backgroundCtx"), mock.AnythingOfType("*uint"), model).Run(func(args mock.Arguments) {
 		model := args.Get(2).(*Model)
@@ -341,7 +341,7 @@ func TestDeleteHandler_Handle_ValidationError(t *testing.T) {
 }
 
 func TestListHandler_Handle(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	transformer := NewTransformer()
 	handler := crud.NewListHandler(logger, transformer)
 

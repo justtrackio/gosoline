@@ -22,7 +22,7 @@ type RepositoryTransactionTestSuite struct {
 
 	ctx        context.Context
 	span       *tracingMocks.Span
-	logger     *logMocks.Logger
+	logger     logMocks.LoggerMock
 	client     *dynamodbMocks.Client
 	tracer     *tracingMocks.Tracer
 	repository ddb.TransactionRepository
@@ -34,7 +34,7 @@ func TestRepositoryTransactionTestSuite(t *testing.T) {
 
 func (s *RepositoryTransactionTestSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.logger = logMocks.NewLoggerMockedAll()
+	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	s.client = dynamodbMocks.NewClient(s.T())
 	s.tracer = tracingMocks.NewTracer(s.T())
 	s.span = tracingMocks.NewSpan(s.T())

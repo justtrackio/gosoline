@@ -11,7 +11,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/http"
 	httpMocks "github.com/justtrackio/gosoline/pkg/http/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
-	loggerMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 	"github.com/stretchr/testify/suite"
 )
@@ -21,7 +21,7 @@ type circuitBreakerTestSuite struct {
 	method string
 
 	ctx        context.Context
-	logger     *loggerMocks.Logger
+	logger     logMocks.LoggerMock
 	clock      clock.FakeClock
 	baseClient *httpMocks.Client
 
@@ -48,19 +48,14 @@ func TestCircuitBreakerClient(t *testing.T) {
 
 func (s *circuitBreakerTestSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.logger = loggerMocks.NewLoggerMockedUntilLevel(log.PriorityWarn)
+	s.logger = logMocks.NewLoggerMock(logMocks.WithMockUntilLevel(log.PriorityWarn), logMocks.WithTestingT(s.T()))
 	s.clock = clock.NewFakeClock()
-	s.baseClient = new(httpMocks.Client)
+	s.baseClient = httpMocks.NewClient(s.T())
 	s.client = http.NewCircuitBreakerClientWithInterfaces(s.baseClient, s.logger, s.clock, "test", http.CircuitBreakerSettings{
 		MaxFailures:      2,
 		RetryDelay:       time.Minute,
 		ExpectedStatuses: []int{netHttp.StatusOK},
 	})
-}
-
-func (s *circuitBreakerTestSuite) TearDownTest() {
-	s.logger.AssertExpectations(s.T())
-	s.baseClient.AssertExpectations(s.T())
 }
 
 func (s *circuitBreakerTestSuite) TestSuccess() {

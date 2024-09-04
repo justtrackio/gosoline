@@ -42,7 +42,7 @@ func (s *ProducerDaemonTestSuite) SetupTest() {
 }
 
 func (s *ProducerDaemonTestSuite) SetupDaemon(maxLogLevel int, batchSize int, aggregationSize int, interval time.Duration) {
-	logger := logMocks.NewLoggerMockedUntilLevel(maxLogLevel)
+	logger := logMocks.NewLoggerMock(logMocks.WithMockUntilLevel(maxLogLevel))
 	metric := metricMocks.NewWriterMockedAll()
 
 	s.output = new(streamMocks.Output)

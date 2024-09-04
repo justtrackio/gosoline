@@ -34,7 +34,7 @@ func (s *ClientWithMiniRedisTestSuite) SetupTest() {
 	}
 
 	s.settings = &redis.Settings{}
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	executor := exec.NewDefaultExecutor()
 
 	s.baseClient = baseRedis.NewClient(&baseRedis.Options{
@@ -689,7 +689,7 @@ type ClientWithMockTestSuite struct {
 
 func (s *ClientWithMockTestSuite) SetupTest() {
 	settings := &redis.Settings{}
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	executor := redis.NewBackoffExecutor(logger, settings.BackoffSettings, "test")
 
 	s.redisMock = redismock.NewMock()

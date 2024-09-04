@@ -13,7 +13,7 @@ import (
 )
 
 func Test_promWriter_WriteOne(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	tests := []struct {
 		name string
@@ -74,7 +74,7 @@ func Test_promWriter_WriteOne(t *testing.T) {
 }
 
 func Test_promWriter_Write(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	type fields struct {
 		unit  string
@@ -173,7 +173,7 @@ func Test_promWriter_Write(t *testing.T) {
 }
 
 func Test_promWriter_ExceedsLimit(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	registry := prometheus.NewRegistry()
 	w := metric.NewPromWriterWithInterfaces(logger, registry, "ns:test:exceedslimit", 1)

@@ -16,7 +16,7 @@ import (
 
 func TestResourcesManager_GetResources(t *testing.T) {
 	ctx := context.Background()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	client := gosoResMocks.NewClient(t)
 	client.EXPECT().GetResources(ctx, mock.AnythingOfType("*resourcegroupstaggingapi.GetResourcesInput"), mock.AnythingOfType("func(*resourcegroupstaggingapi.Options)")).Return(&resourcegroupstaggingapi.GetResourcesOutput{

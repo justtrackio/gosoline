@@ -12,7 +12,7 @@ import (
 
 func TestFileInput_Run(t *testing.T) {
 	configMock := new(configMocks.Config)
-	loggerMock := logMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	input := NewFileInput(configMock, loggerMock, FileSettings{
 		Filename: "testdata/file_input.json",

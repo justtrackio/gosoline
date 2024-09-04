@@ -7,7 +7,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/log/mocks"
+	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -33,7 +33,7 @@ func (s *MysqlDriverTestSuite) SetupTest() {
 	s.settings = &db.Settings{}
 	s.config.UnmarshalDefaults(s.settings)
 
-	s.logger = mocks.NewLoggerMockedAll()
+	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 }
 
 func (s *MysqlDriverTestSuite) TestDsn() {

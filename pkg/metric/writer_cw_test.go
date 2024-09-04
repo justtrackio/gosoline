@@ -33,7 +33,7 @@ func TestOutput_Write_OutOfRange(t *testing.T) {
 func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudwatchMocks.Client {
 	testClock := clock.NewFakeClockAt(now)
 
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll)
 	cwClient := new(cloudwatchMocks.Client)
 
 	cwClient.On("PutMetricData", context.Background(), &cloudwatch.PutMetricDataInput{

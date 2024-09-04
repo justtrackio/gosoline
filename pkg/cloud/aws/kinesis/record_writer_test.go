@@ -29,8 +29,7 @@ func TestRecordWriterPutRecords(t *testing.T) {
 		"stream_name":              "streamName",
 	})
 
-	logger := logMocks.NewLoggerMock()
-	t.Cleanup(func() { logger.AssertExpectations(t) })
+	logger := logMocks.NewLoggerMock(logMocks.WithTestingT(t))
 	logger.EXPECT().Warn("PutRecords failed %d of %d records with reason: %s: after %d attempts in %s", 1, 3, "1 ProvisionedThroughputExceededException errors", 1, time.Second)
 	logger.EXPECT().Warn("PutRecords successful after %d attempts in %s", 2, mock.AnythingOfType("time.Duration"))
 

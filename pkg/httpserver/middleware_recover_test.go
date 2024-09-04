@@ -16,7 +16,7 @@ import (
 func TestRecoveryWithSentryCaseNil(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	loggerMock := logMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	r := gin.New()
 	r.Use(httpserver.RecoveryWithSentry(loggerMock))
@@ -36,7 +36,7 @@ func TestRecoveryWithSentryCaseNil(t *testing.T) {
 func TestRecoveryWithSentryCaseError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	loggerMock := logMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	r := gin.New()
 	r.Use(httpserver.RecoveryWithSentry(loggerMock))
@@ -60,7 +60,7 @@ func TestRecoveryWithSentryCaseError(t *testing.T) {
 func TestRecoveryWithSentryCaseResponseBodyWriterAndConnectionErrors(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	loggerMock := logMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	r := gin.New()
 	r.Use(httpserver.RecoveryWithSentry(loggerMock))
@@ -84,7 +84,7 @@ func TestRecoveryWithSentryCaseResponseBodyWriterAndConnectionErrors(t *testing.
 func TestRecoveryWithSentryCaseResponseBodyWriterErrorButNotConnectionError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	loggerMock := logMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	r := gin.New()
 	r.Use(httpserver.RecoveryWithSentry(loggerMock))
@@ -108,7 +108,7 @@ func TestRecoveryWithSentryCaseResponseBodyWriterErrorButNotConnectionError(t *t
 func TestRecoveryWithSentryCaseString(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	loggerMock := logMocks.NewLoggerMockedAll()
+	loggerMock := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	r := gin.New()
 	r.Use(httpserver.RecoveryWithSentry(loggerMock))

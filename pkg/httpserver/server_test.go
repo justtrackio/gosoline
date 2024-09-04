@@ -31,7 +31,7 @@ func TestServerTestSuite(t *testing.T) {
 }
 
 func (s *ServerTestSuite) SetupTest() {
-	s.logger = logMocks.NewLoggerMockedAll()
+	s.logger = logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
 	gin.SetMode(gin.TestMode)
 	s.router = gin.New()

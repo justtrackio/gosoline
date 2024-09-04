@@ -56,7 +56,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	s.callback = new(mocks.RunnableBatchConsumerCallback)
 
 	uuidGen := uuid.New()
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	tracer := tracing.NewNoopTracer()
 	mw := metricMocks.NewWriterMockedAll()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})

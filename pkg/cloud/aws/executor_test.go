@@ -14,7 +14,7 @@ import (
 )
 
 func TestBackoffExecutor_Execute(t *testing.T) {
-	logger := logMocks.NewLoggerMockedAll()
+	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
 	executions := 0
 
