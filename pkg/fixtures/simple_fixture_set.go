@@ -3,6 +3,8 @@ package fixtures
 import (
 	"context"
 	"fmt"
+
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type simpleFixtureSet[T any] struct {
@@ -46,4 +48,17 @@ func (c *simpleFixtureSet[T]) Write(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *simpleFixtureSet[T]) String() string {
+	var model any = mdl.Empty[T]()
+
+	if c.Fixtures.Len() > 0 {
+		model = c.Fixtures[0].Value
+		if kvModel, ok := model.(*KvStoreFixture); ok {
+			model = kvModel.Value
+		}
+	}
+
+	return fmt.Sprintf("%T(len=%d, type=%T)", c, c.Fixtures.Len(), model)
 }
