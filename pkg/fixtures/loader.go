@@ -36,6 +36,8 @@ func (f *fixtureLoader) Load(ctx context.Context, fixtureSets []FixtureSet) erro
 	}
 
 	for _, fixtureSet := range fixtureSets {
+		f.logger.Info("loading fixtures for set %s", fixtureSet)
+
 		if err := fixtureSet.Write(ctx); err != nil {
 			return fmt.Errorf("failed to write fixtures: %w", err)
 		}
