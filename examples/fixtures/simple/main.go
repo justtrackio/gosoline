@@ -26,7 +26,7 @@ type OrmFixtureExample struct {
 	Name *string
 }
 
-var autoNumbered = fixtures.NewAutoNumberedFrom(2)
+var autoNumbered = fixtures.NewNumberSequenceFrom(2)
 
 func mysqlOrmFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 	mysqlMetadata := &db_repo.Metadata{
