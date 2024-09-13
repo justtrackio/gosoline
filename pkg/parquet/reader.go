@@ -322,7 +322,7 @@ func (r *s3Reader) listFiles(ctx context.Context, prefix string) ([]string, erro
 			files = append(files, *obj.Key)
 		}
 
-		if !out.IsTruncated {
+		if !mdl.EmptyIfNil(out.IsTruncated) {
 			break
 		}
 

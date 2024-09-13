@@ -19,7 +19,7 @@ func TestResourcesManager_GetResources(t *testing.T) {
 	logger := logMocks.NewLoggerMockedAll()
 
 	client := gosoResMocks.NewClient(t)
-	client.EXPECT().GetResources(ctx, mock.AnythingOfType("*resourcegroupstaggingapi.GetResourcesInput")).Return(&resourcegroupstaggingapi.GetResourcesOutput{
+	client.EXPECT().GetResources(ctx, mock.AnythingOfType("*resourcegroupstaggingapi.GetResourcesInput"), mock.AnythingOfType("func(*resourcegroupstaggingapi.Options)")).Return(&resourcegroupstaggingapi.GetResourcesOutput{
 		PaginationToken: nil,
 		ResourceTagMappingList: []types.ResourceTagMapping{{
 			ResourceARN: aws.String("arn:aws:sqs:region:accountId:justtrack-test-gosoline-queue-id"),
