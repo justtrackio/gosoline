@@ -15,6 +15,7 @@ import (
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type TableDescription struct {
@@ -63,7 +64,7 @@ func (s *Service) DescribeTable(ctx context.Context) (*TableDescription, error) 
 
 	description := &TableDescription{
 		Name:      s.metadataFactory.GetTableName(),
-		ItemCount: out.Table.ItemCount,
+		ItemCount: mdl.EmptyIfNil(out.Table.ItemCount),
 	}
 
 	return description, nil
@@ -174,6 +175,7 @@ func (s *Service) updateTtlSpecification(ctx context.Context, metadata *Metadata
 		var errResourceInUseException *types.ResourceInUseException
 		if errors.As(err, &errResourceInUseException) {
 			time.Sleep(time.Second)
+
 			continue
 		}
 

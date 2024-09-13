@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 type SsmParameters map[string]string
@@ -39,8 +40,8 @@ func NewSimpleSystemsManager(ctx context.Context, config cfg.Config, logger log.
 func (m simpleSystemsManager) GetParameters(ctx context.Context, path string) (SsmParameters, error) {
 	input := &ssm.GetParametersByPathInput{
 		Path:           aws.String(path),
-		Recursive:      true,
-		WithDecryption: true,
+		Recursive:      mdl.Box(true),
+		WithDecryption: mdl.Box(true),
 	}
 
 	out, err := m.client.GetParametersByPath(ctx, input)
@@ -50,7 +51,7 @@ func (m simpleSystemsManager) GetParameters(ctx context.Context, path string) (S
 
 	params := make(SsmParameters)
 	for _, p := range out.Parameters {
-		key := strings.Replace(*p.Name, path+"/", "", -1)
+		key := strings.ReplaceAll(*p.Name, path+"/", "")
 		params[key] = *p.Value
 	}
 
@@ -60,7 +61,7 @@ func (m simpleSystemsManager) GetParameters(ctx context.Context, path string) (S
 func (m simpleSystemsManager) GetParameter(ctx context.Context, path string) (string, error) {
 	input := &ssm.GetParameterInput{
 		Name:           aws.String(path),
-		WithDecryption: true,
+		WithDecryption: mdl.Box(true),
 	}
 
 	out, err := m.client.GetParameter(ctx, input)
