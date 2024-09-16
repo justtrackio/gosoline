@@ -58,7 +58,7 @@ func (t *otelInstrumentor) HttpClient(baseClient *http.Client) *http.Client {
 // GrpcUnaryServerInterceptor returns a grpc.UnaryServerInterceptor instead of the recommended stats.Handler because
 // we want to be compatible with the Xray instrumentor implementation.
 //
-//nolint:staticcheck
+//nolint:staticcheck // We want to be compatible with the Xray instrumentor implementation.
 func (t *otelInstrumentor) GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return otelgrpc.UnaryServerInterceptor(
 		otelgrpc.WithInterceptorFilter(
