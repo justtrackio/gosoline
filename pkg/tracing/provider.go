@@ -7,13 +7,30 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type Provider func(ctx context.Context, config cfg.Config, logger log.Logger) (Tracer, error)
+const (
+	ProviderXRay = "xray"
+	ProviderOtel = "otel"
+)
 
-func AddProvider(name string, provider Provider) {
-	providers[name] = provider
+type (
+	TracerProvider       func(ctx context.Context, config cfg.Config, logger log.Logger) (Tracer, error)
+	InstrumentorProvider func(ctx context.Context, config cfg.Config, logger log.Logger) (Instrumentor, error)
+)
+
+func AddTracerProvider(name string, provider TracerProvider) {
+	tracerProviders[name] = provider
 }
 
-var providers = map[string]Provider{
-	"xray": NewAwsTracer,
-	"otel": NewOtelTracer,
+func AddInstrumentorProvider(name string, provider TracerProvider) {
+	tracerProviders[name] = provider
+}
+
+var tracerProviders = map[string]TracerProvider{
+	ProviderXRay: NewAwsTracer,
+	ProviderOtel: NewOtelTracer,
+}
+
+var instrumentorProviders = map[string]InstrumentorProvider{
+	ProviderXRay: NewAwsInstrumentor,
+	ProviderOtel: NewOtelInstrumentor,
 }

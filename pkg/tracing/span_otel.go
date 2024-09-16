@@ -57,7 +57,6 @@ func (o *otelSpan) GetParentSpanContext() *trace.SpanContext {
 	parent := roSpan.Parent()
 
 	return &parent
-
 }
 
 func newOtelSpan(ctx context.Context, span trace.Span) (context.Context, *otelSpan) {

@@ -3,20 +3,15 @@ package tracing
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/filters"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -42,7 +37,6 @@ type SpanLimits struct {
 }
 
 type otelTracer struct {
-	cfg.AppId
 	tracer trace.Tracer
 }
 
@@ -86,12 +80,11 @@ func NewOtelTracer(ctx context.Context, config cfg.Config, logger log.Logger) (T
 		trace.WithSchemaURL(semconv.SchemaURL),
 	)
 
-	return NewOtelTracerWithInterfaces(appId, tracer), nil
+	return NewOtelTracerWithInterfaces(tracer), nil
 }
 
-func NewOtelTracerWithInterfaces(appId cfg.AppId, tracer trace.Tracer) *otelTracer {
+func NewOtelTracerWithInterfaces(tracer trace.Tracer) *otelTracer {
 	return &otelTracer{
-		AppId:  appId,
 		tracer: tracer,
 	}
 }
@@ -109,6 +102,7 @@ func (t *otelTracer) StartSpan(name string) (context.Context, Span) {
 func (t *otelTracer) StartSpanFromContext(ctx context.Context, name string) (context.Context, Span) {
 	if parentSpan := GetSpanFromContext(ctx); parentSpan != nil {
 		parentTrace := parentSpan.GetTrace()
+
 		return t.spanFromTrace(ctx, parentTrace, name)
 	}
 
@@ -119,50 +113,20 @@ func (t *otelTracer) StartSpanFromContext(ctx context.Context, name string) (con
 	return t.StartSubSpan(ctx, name)
 }
 
-func (t *otelTracer) HttpHandler(h http.Handler) http.Handler {
-	name := fmt.Sprintf("%v-%v-%v-%v", t.Project, t.Environment, t.Family, t.Application)
-	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		span := trace.SpanFromContext(r.Context())
-
-		ctx, _ = newOtelSpan(ctx, span)
-		r = r.WithContext(ctx)
-
-		h.ServeHTTP(w, r)
-	})
-
-	return otelhttp.NewHandler(handlerFunc, name)
-}
-
-func (t *otelTracer) HttpClient(baseClient *http.Client) *http.Client {
-	return &http.Client{
-		Transport:     otelhttp.NewTransport(baseClient.Transport),
-		CheckRedirect: baseClient.CheckRedirect,
-		Jar:           baseClient.Jar,
-		Timeout:       baseClient.Timeout,
-	}
-}
-
-// GrpcUnaryServerInterceptor we still need to use the UnaryServerInterceptor because to maintain
-// because the Xray is also uses the UnaryServerInterceptor.
-//
-//nolint:staticcheck
-func (t *otelTracer) GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor {
-	return otelgrpc.UnaryServerInterceptor(otelgrpc.WithInterceptorFilter(
-		filters.Not(
-			filters.HealthCheck(),
-		),
-	))
-}
-
 func (t *otelTracer) spanFromTrace(ctx context.Context, trc *Trace, name string) (context.Context, Span) {
 	var tFlags trace.TraceFlags
 	if trc.GetSampled() {
 		tFlags = trace.FlagsSampled
 	}
 
-	tID, _ := trace.TraceIDFromHex(trc.GetTraceId())
-	sID, _ := trace.SpanIDFromHex(trc.GetId())
+	tID, err := trace.TraceIDFromHex(trc.GetTraceId())
+	if err != nil {
+		tID = trace.TraceID{}
+	}
+	sID, err := trace.SpanIDFromHex(trc.GetId())
+	if err != nil {
+		sID = trace.SpanID{}
+	}
 
 	spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
 		TraceID:    tID,

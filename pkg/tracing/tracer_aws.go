@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 
 	"github.com/aws/aws-xray-sdk-go/strategy/ctxmissing"
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
@@ -12,7 +11,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -132,29 +130,6 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 	}
 
 	return ctx, transaction
-}
-
-func (t *awsTracer) HttpHandler(h http.Handler) http.Handler {
-	name := fmt.Sprintf("%s-%s-%s-%s-%s", t.Project, t.Environment, t.Family, t.Group, t.Application)
-	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		seg := xray.GetSegment(r.Context())
-
-		ctx, _ = newSpan(ctx, seg, t.AppId)
-		r = r.WithContext(ctx)
-
-		h.ServeHTTP(w, r)
-	})
-
-	return xray.Handler(xray.NewFixedSegmentNamer(name), handlerFunc)
-}
-
-func (t *awsTracer) HttpClient(baseClient *http.Client) *http.Client {
-	return xray.Client(baseClient)
-}
-
-func (t *awsTracer) GrpcUnaryServerInterceptor() grpc.UnaryServerInterceptor {
-	return xray.UnaryServerInterceptor()
 }
 
 func lookupAddr(appId cfg.AppId, settings *XrayTracerSettings) string {

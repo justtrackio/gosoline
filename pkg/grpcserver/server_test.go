@@ -9,6 +9,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
 	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/helloworld/v1"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/tracing"
+	tracingMocks "github.com/justtrackio/gosoline/pkg/tracing/mocks"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -74,7 +76,7 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			testCtx, cancelFunc := context.WithCancel(ctx)
 			defer cancelFunc()
-			g, err := grpcserver.NewWithInterfaces(testCtx, logger, tt.defs, &grpcserver.Settings{Stats: grpcserver.Stats{
+			g, err := grpcserver.NewWithInterfaces(testCtx, logger, getMockGrpcTracingInstrumentor(), tt.defs, &grpcserver.Settings{Stats: grpcserver.Stats{
 				Enabled:    true,
 				LogPayload: false,
 				LogData:    false,
@@ -111,6 +113,7 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 
 	ctx := context.Background()
 	logger := logMocks.NewLoggerMockedAll()
+
 	tests := []struct {
 		name    string
 		defs    *grpcserver.Definitions
@@ -140,7 +143,7 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			testCtx, cancelFunc := context.WithCancel(ctx)
 			defer cancelFunc()
-			g, err := grpcserver.NewWithInterfaces(testCtx, logger, tt.defs, &grpcserver.Settings{
+			g, err := grpcserver.NewWithInterfaces(testCtx, logger, getMockGrpcTracingInstrumentor(), tt.defs, &grpcserver.Settings{
 				Health: grpcserver.Health{
 					Enabled: true,
 				},
@@ -169,4 +172,15 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 			assert.Equal(t, tt.expMsg, resp.GetMessage())
 		})
 	}
+}
+
+func getMockGrpcTracingInstrumentor() tracing.Instrumentor {
+	tracingInstrumentor := new(tracingMocks.Instrumentor)
+	tracingInstrumentor.On("GrpcUnaryServerInterceptor").Return(func() grpc.UnaryServerInterceptor {
+		return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+			return handler(ctx, req)
+		}
+	})
+
+	return tracingInstrumentor
 }

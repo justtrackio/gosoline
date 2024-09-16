@@ -44,9 +44,9 @@ type (
 func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		var (
-			err         error
-			definitions *Definitions
-			tracer      tracing.Tracer
+			err                 error
+			definitions         *Definitions
+			tracingInstrumentor tracing.Instrumentor
 		)
 		settings := &Settings{}
 		config.UnmarshalKey(fmt.Sprintf("%s.%s", grpcServerConfigKey, name), settings)
@@ -65,13 +65,11 @@ func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) 
 				grpc.UnaryServerInterceptor(m(logger)))
 		}
 
-		if tracer, err = tracing.ProvideTracer(ctx, config, logger); err != nil {
+		if tracingInstrumentor, err = tracing.ProvideInstrumentor(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
 		}
 
-		interceptors = append(interceptors, tracer.GrpcUnaryServerInterceptor())
-
-		return NewWithInterfaces(ctx, logger, definitions, settings, interceptors...)
+		return NewWithInterfaces(ctx, logger, tracingInstrumentor, definitions, settings, interceptors...)
 	}
 }
 
@@ -79,6 +77,7 @@ func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) 
 func NewWithInterfaces(
 	ctx context.Context,
 	logger log.Logger,
+	tracingInstrumentor tracing.Instrumentor,
 	definitions *Definitions,
 	s *Settings,
 	interceptors ...grpc.UnaryServerInterceptor,
@@ -88,6 +87,8 @@ func NewWithInterfaces(
 		cancelFunc context.CancelFunc
 		serverCtx  = ctx
 	)
+
+	interceptors = append(interceptors, tracingInstrumentor.GrpcUnaryServerInterceptor())
 
 	options := []grpc.ServerOption{
 		grpc.UnaryInterceptor(

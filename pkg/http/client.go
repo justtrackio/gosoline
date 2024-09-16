@@ -219,7 +219,7 @@ func ProvideHttpClient(ctx context.Context, config cfg.Config, logger log.Logger
 
 func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
 	metricWriter := metric.NewWriter()
-	tracer, err := tracing.ProvideTracer(ctx, config, logger)
+	tracer, err := tracing.ProvideInstrumentor(ctx, config, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 	return client, nil
 }
 
-func newRestyClient(tracer tracing.Tracer, settings Settings) *resty.Client {
+func newRestyClient(tracer tracing.Instrumentor, settings Settings) *resty.Client {
 	baseHttpClient := &http.Client{}
 	if settings.EnableTracing {
 		baseHttpClient = tracer.HttpClient(baseHttpClient)
