@@ -35,7 +35,7 @@ func (t *otelInstrumentor) HttpHandler(h http.Handler) http.Handler {
 	name := fmt.Sprintf("%v-%v-%v-%v", t.Project, t.Environment, t.Family, t.Application)
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		span := trace.SpanFromContext(r.Context())
+		span := trace.SpanFromContext(ctx)
 
 		ctx, _ = newOtelSpan(ctx, span)
 		r = r.WithContext(ctx)

@@ -19,7 +19,7 @@ func TestDdbKvStore_Contains(t *testing.T) {
 	builder.On("WithHash", "foo").Return(builder).Once()
 
 	repo.On("GetItemBuilder").Return(builder)
-	repo.On("GetItem", mock.AnythingOfType("context.backgroundCtx"), builder, mock.AnythingOfType("*kvstore.DdbItem")).Return(&ddb.GetItemResult{
+	repo.On("GetItem", ctx, builder, mock.AnythingOfType("*kvstore.DdbItem")).Return(&ddb.GetItemResult{
 		IsFound: true,
 	}, nil).Once()
 
@@ -28,7 +28,7 @@ func TestDdbKvStore_Contains(t *testing.T) {
 	assert.True(t, exists)
 
 	builder.On("WithHash", "fuu").Return(builder).Once()
-	repo.On("GetItem", mock.AnythingOfType("context.backgroundCtx"), builder, mock.AnythingOfType("*kvstore.DdbItem")).Return(&ddb.GetItemResult{
+	repo.On("GetItem", ctx, builder, mock.AnythingOfType("*kvstore.DdbItem")).Return(&ddb.GetItemResult{
 		IsFound: false,
 	}, nil).Once()
 
@@ -52,7 +52,7 @@ func TestDdbKvStore_Get(t *testing.T) {
 	}
 
 	repo.On("GetItemBuilder").Return(builder)
-	repo.On("GetItem", mock.AnythingOfType("context.backgroundCtx"), builder, ddbItem).Run(func(args mock.Arguments) {
+	repo.On("GetItem", ctx, builder, ddbItem).Run(func(args mock.Arguments) {
 		ddbItem := args[2].(*kvstore.DdbItem)
 		ddbItem.Key = "foo"
 		ddbItem.Value = `{"id":"foo","body":"bar"}`
@@ -84,7 +84,7 @@ func TestDdbKvStore_GetBatch(t *testing.T) {
 	items := make([]kvstore.DdbItem, 0)
 
 	repo.On("BatchGetItemsBuilder").Return(builder)
-	repo.On("BatchGetItems", mock.AnythingOfType("context.backgroundCtx"), builder, &items).Run(func(args mock.Arguments) {
+	repo.On("BatchGetItems", ctx, builder, &items).Run(func(args mock.Arguments) {
 		item := kvstore.DdbItem{
 			Key:   "foo",
 			Value: `{"id":"foo","body":"bar"}`,
@@ -120,7 +120,7 @@ func TestDdbKvStore_GetBatch_ReturnedKeysInDifferentOrder(t *testing.T) {
 	repo.On("BatchGetItemsBuilder").Return(builder)
 
 	// the order of the entries is not always the same as the order of the keys
-	repo.On("BatchGetItems", mock.AnythingOfType("context.backgroundCtx"), builder, &items).Run(func(args mock.Arguments) {
+	repo.On("BatchGetItems", ctx, builder, &items).Run(func(args mock.Arguments) {
 		items := args[2].(*[]kvstore.DdbItem)
 		*items = append(*items, kvstore.DdbItem{
 			Key:   "fuu",
@@ -161,7 +161,7 @@ func TestDdbKvStore_GetBatch_WithDuplicateKeys(t *testing.T) {
 	items := make([]kvstore.DdbItem, 0)
 
 	repo.On("BatchGetItemsBuilder").Return(builder)
-	repo.On("BatchGetItems", mock.AnythingOfType("context.backgroundCtx"), builder, &items).Run(func(args mock.Arguments) {
+	repo.On("BatchGetItems", ctx, builder, &items).Run(func(args mock.Arguments) {
 		item := kvstore.DdbItem{
 			Key:   "foo",
 			Value: `{"id":"foo","body":"bar"}`,
@@ -192,7 +192,7 @@ func TestDdbKvStore_Put(t *testing.T) {
 		Key:   "foo",
 		Value: `{"id":"foo","body":"bar"}`,
 	}
-	repo.On("PutItem", mock.AnythingOfType("context.backgroundCtx"), nil, ddbItem).Return(nil, nil)
+	repo.On("PutItem", ctx, nil, ddbItem).Return(nil, nil)
 
 	item := Item{
 		Id:   "foo",
@@ -218,7 +218,7 @@ func TestDdbKvStore_PutBatch(t *testing.T) {
 			Value: `{"id":"fuu","body":"baz"}`,
 		},
 	}
-	repo.On("BatchPutItems", mock.AnythingOfType("context.backgroundCtx"), ddbItems).Return(nil, nil)
+	repo.On("BatchPutItems", ctx, ddbItems).Return(nil, nil)
 
 	items := map[string]Item{
 		"fuu": {
@@ -243,7 +243,7 @@ func TestDdbKvStore_Delete(t *testing.T) {
 	ddbItem := &kvstore.DdbDeleteItem{
 		Key: "foo",
 	}
-	repo.On("DeleteItem", mock.AnythingOfType("context.backgroundCtx"), nil, ddbItem).Return(nil, nil)
+	repo.On("DeleteItem", ctx, nil, ddbItem).Return(nil, nil)
 
 	err := store.Delete(ctx, "foo")
 
@@ -262,7 +262,7 @@ func TestDdbKvStore_DeleteBatch(t *testing.T) {
 			Key: "fuu",
 		},
 	}
-	repo.On("BatchDeleteItems", mock.AnythingOfType("context.backgroundCtx"), ddbItems).Return(nil, nil)
+	repo.On("BatchDeleteItems", ctx, ddbItems).Return(nil, nil)
 
 	items := []string{"foo", "fuu"}
 

@@ -25,17 +25,17 @@ type appCtxKey string
 
 func ProvideTracer(ctx context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
 	return appctx.Provide(ctx, appCtxKey("tracer"), func() (Tracer, error) {
-		return NewTracer(ctx, config, logger)
+		return newTracer(ctx, config, logger)
 	})
 }
 
 func ProvideInstrumentor(ctx context.Context, config cfg.Config, logger log.Logger) (Instrumentor, error) {
 	return appctx.Provide(ctx, appCtxKey("instrumentor"), func() (Instrumentor, error) {
-		return NewInstrumentor(ctx, config, logger)
+		return newInstrumentor(ctx, config, logger)
 	})
 }
 
-func NewTracer(ctx context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
+func newTracer(ctx context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
 	settings := &TracerSettings{}
 	config.UnmarshalKey("tracing", settings)
 
@@ -52,7 +52,7 @@ func NewTracer(ctx context.Context, config cfg.Config, logger log.Logger) (Trace
 	return provider(ctx, config, logger)
 }
 
-func NewInstrumentor(ctx context.Context, config cfg.Config, logger log.Logger) (Instrumentor, error) {
+func newInstrumentor(ctx context.Context, config cfg.Config, logger log.Logger) (Instrumentor, error) {
 	settings := &TracerSettings{}
 	config.UnmarshalKey("tracing", settings)
 

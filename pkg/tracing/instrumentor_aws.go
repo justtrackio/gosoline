@@ -32,7 +32,7 @@ func (t *awsInstrumentor) HttpHandler(h http.Handler) http.Handler {
 	name := fmt.Sprintf("%s-%s-%s-%s-%s", t.Project, t.Environment, t.Family, t.Group, t.Application)
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		seg := xray.GetSegment(r.Context())
+		seg := xray.GetSegment(ctx)
 
 		ctx, _ = newSpan(ctx, seg, t.AppId)
 		r = r.WithContext(ctx)
