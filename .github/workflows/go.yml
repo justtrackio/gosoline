@@ -23,10 +23,10 @@ jobs:
     name: go fumpt v0.7.0
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.22
+      - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
 
       - name: Setup gofumpt
         run: go install mvdan.cc/gofumpt@v0.7.0
@@ -44,10 +44,10 @@ jobs:
     name: mockery
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.22
+      - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -75,10 +75,10 @@ jobs:
     name: go build
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.22
+      - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -93,10 +93,10 @@ jobs:
     name: static code analysis (go vet)
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.22
+      - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -111,10 +111,10 @@ jobs:
     name: static code analysis (golangci-lint)
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.22
+      - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -122,18 +122,18 @@ jobs:
       - name: Static code analysis (golangci-lint)
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.59.1
+          version: v1.61.0
           only-new-issues: true
-          args: -v --timeout 5m --print-issued-lines --print-linter-name
+          args: -v --build-tags fixtures,integration --timeout 5m --print-issued-lines --print-linter-name
 
   go-test:
     name: go test
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.22
+      - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -148,10 +148,10 @@ jobs:
     name: go test (race)
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.22
+      - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -166,10 +166,10 @@ jobs:
     name: go test (integration)
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.22
+      - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -184,10 +184,10 @@ jobs:
     name: go test (integration, race)
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.22
+      - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3

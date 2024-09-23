@@ -39,7 +39,7 @@ func (s *ConfigurableKvStoreTestSuite) TestConfigurableKvStore() {
 	fss, err := s.provideFixtures()
 	s.NoError(err)
 
-	err = loader.Load(envContext, fss)
+	err = loader.Load(envContext, "default", fss)
 	s.NoError(err)
 
 	store, err := kvstore.ProvideConfigurableKvStore[KvStoreModel](envContext, envConfig, envLogger, "test_store")

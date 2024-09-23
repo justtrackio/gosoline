@@ -36,7 +36,7 @@ var repoFixtures = fixtures.NamedFixtures[*Item]{
 	},
 }
 
-func FixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+func FixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
 	writer, err := fixtures.NewMysqlOrmFixtureWriter(ctx, config, logger, &tableMetadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kvstore fixture writer: %w", err)

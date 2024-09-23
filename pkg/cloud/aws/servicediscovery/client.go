@@ -91,7 +91,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	}
 
 	client := servicediscovery.NewFromConfig(awsConfig, func(options *servicediscovery.Options) {
-		options.BaseEndpoint = aws.String(clientCfg.Settings.Endpoint)
+		options.BaseEndpoint = gosoAws.NilIfEmpty(clientCfg.Settings.Endpoint)
 	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "servicediscovery", name, clientCfg.Settings.ClientSettings)

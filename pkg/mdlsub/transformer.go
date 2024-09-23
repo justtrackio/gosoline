@@ -10,21 +10,21 @@ import (
 )
 
 type Model interface {
-	GetId() interface{}
+	GetId() any
 }
 
 type ModelDb struct {
 	Id *uint `gorm:"primary_key;"`
 }
 
-func (m ModelDb) GetId() interface{} {
+func (m ModelDb) GetId() any {
 	return *m.Id
 }
 
 //go:generate mockery --name ModelTransformer
 type ModelTransformer interface {
-	GetInput() interface{}
-	Transform(ctx context.Context, inp interface{}) (out Model, err error)
+	GetInput() any
+	Transform(ctx context.Context, inp any) (out Model, err error)
 }
 
 type (
@@ -70,6 +70,10 @@ type ModelSpecification struct {
 	CrudType string
 	Version  int
 	ModelId  string
+}
+
+func (m ModelSpecification) String() string {
+	return fmt.Sprintf("[%s]%s@v%d", m.CrudType, m.ModelId, m.Version)
 }
 
 func getModelSpecification(attributes map[string]string) (*ModelSpecification, error) {

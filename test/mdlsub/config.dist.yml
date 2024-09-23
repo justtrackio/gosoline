@@ -1,0 +1,32 @@
+env: test
+
+app_project: justtrack
+app_family: gosoline
+app_group: mdlsub
+app_name: subscriber
+
+cloud:
+  aws:
+    dynamodb:
+      clients: ~
+
+fixtures:
+  providers:
+    default:
+      dataset_name: testcase3
+      host: ~
+      path: path/to/fixture/data
+
+mdlsub:
+  subscribers:
+    testModel:
+      output: ddb
+      source: { group: management }
+
+test:
+  components:
+    wiremock:
+      wiremock:
+        expire_after: 10m
+        mocks:
+          - testdata/mocks/fixture_requests.json

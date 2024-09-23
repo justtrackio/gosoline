@@ -49,7 +49,7 @@ func (s *RedisTestSuite) TestRedis() {
 	fs2, err := s.provideFixturesOpRpush()
 	s.NoError(err)
 
-	err = loader.Load(ctx, []fixtures.FixtureSet{fs1, fs2})
+	err = loader.Load(ctx, "default", []fixtures.FixtureSet{fs1, fs2})
 	s.NoError(err)
 
 	// should have created the set_test item
@@ -88,7 +88,7 @@ func (s *RedisTestSuite) TestRedisWithPurge() {
 	fs2, err := s.provideFixturesOpRpush()
 	s.NoError(err)
 
-	err = loader.Load(ctx, []fixtures.FixtureSet{fs1, fs2})
+	err = loader.Load(ctx, "default", []fixtures.FixtureSet{fs1, fs2})
 	s.NoError(err)
 
 	// should have created the set_test item
@@ -104,7 +104,7 @@ func (s *RedisTestSuite) TestRedisWithPurge() {
 	fs, err := s.providePurgeFixtureSet()
 	s.NoError(err)
 
-	err = loader.Load(ctx, []fixtures.FixtureSet{fs})
+	err = loader.Load(ctx, "default", []fixtures.FixtureSet{fs})
 	s.NoError(err)
 
 	// the set_test item should have been purged
@@ -140,7 +140,7 @@ func (s *RedisTestSuite) TestRedisKvStore() {
 	fss, err := s.provideKvStoreFixtureSet()
 	s.NoError(err)
 
-	err = loader.Load(ctx, fss)
+	err = loader.Load(ctx, "default", fss)
 	s.NoError(err)
 
 	// should have created the item
@@ -166,7 +166,7 @@ func (s *RedisTestSuite) TestRedisKvStoreWithPurge() {
 	fss, err := s.provideKvStoreFixtureSet()
 	s.NoError(err)
 
-	err = loader.Load(ctx, fss)
+	err = loader.Load(ctx, "default", fss)
 	s.NoError(err)
 
 	// should have created the first item
@@ -177,7 +177,7 @@ func (s *RedisTestSuite) TestRedisKvStoreWithPurge() {
 	fss, err = s.provideKvStorePurgeFixtureSet()
 	s.NoError(err)
 
-	err = loader.Load(ctx, fss)
+	err = loader.Load(ctx, "default", fss)
 	s.NoError(err)
 
 	// the first item should have been purged
@@ -224,7 +224,7 @@ func (s *RedisTestSuite) provideFixturesOpRpush() (fixtures.FixtureSet, error) {
 			Name: "redis_rpush_test",
 			Value: &fixtures.RedisFixture{
 				Key: "rpush_test",
-				Value: []interface{}{
+				Value: []any{
 					"bar",
 					"baz",
 				},

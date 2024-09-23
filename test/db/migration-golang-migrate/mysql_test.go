@@ -45,7 +45,7 @@ func (s *MysqlTestSuite) TestPlainFixturesMysql() {
 	fss, err := s.provideFixtureSets()
 	s.NoError(err)
 
-	err = loader.Load(envContext, fss)
+	err = loader.Load(envContext, "default", fss)
 	s.NoError(err)
 
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_plain_writer_test")

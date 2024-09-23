@@ -94,7 +94,7 @@ func suiteFindTestCases(_ *testing.T, suite TestingSuite, options *suiteOptions)
 func suiteApplyOptions(suite TestingSuite, extraOptions []Option) *suiteOptions {
 	setupOptions := []Option{
 		WithClockProvider(clock.NewFakeClock()),
-		WithConfigMap(map[string]interface{}{
+		WithConfigMap(map[string]any{
 			"cloud.aws.default.ec2.metadata.available": false,
 		}),
 	}
@@ -113,7 +113,7 @@ func suiteApplyOptions(suite TestingSuite, extraOptions []Option) *suiteOptions 
 func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, testCases map[string]testCaseRunner) {
 	envOptions := []env.Option{
 		env.WithConfigEnvKeyReplacer(cfg.DefaultEnvKeyReplacer),
-		env.WithConfigMap(map[string]interface{}{
+		env.WithConfigMap(map[string]any{
 			"app_project": "justtrack",
 			"app_family":  "gosoline",
 			"app_group":   "test",
@@ -121,7 +121,7 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		}),
 	}
 	envOptions = append(envOptions, suiteOptions.envOptions...)
-	envOptions = append(envOptions, env.WithConfigMap(map[string]interface{}{
+	envOptions = append(envOptions, env.WithConfigMap(map[string]any{
 		"env":              "test",
 		"fixtures.enabled": true,
 	}))
@@ -150,7 +150,7 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 		assert.FailNow(t, "failed to load fixtures from factories", err.Error())
 	}
 
-	environment.Logger().Debug("loaded fixtures in %s", time.Since(start))
+	environment.Logger().WithChannel("fixtures").Debug("loaded fixtures in %s", time.Since(start))
 
 	for name, testCase := range testCases {
 		if setupTestAware, ok := suite.(TestingSuiteSetupTestAware); ok {

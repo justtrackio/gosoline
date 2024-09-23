@@ -47,7 +47,7 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	fss, err := s.dynamoDbFixtureSet1()
 	s.NoError(err)
 
-	err = loader.Load(envContext, fss)
+	err = loader.Load(envContext, "default", fss)
 	s.NoError(err)
 
 	ddbClient := s.Env().DynamoDb("default").Client()
@@ -96,7 +96,7 @@ func (s *DynamoDbSuite) TestDynamoDbWithPurge() {
 	fss, err := s.dynamoDbFixtureSet1()
 	s.NoError(err)
 
-	err = loader.Load(envContext, fss)
+	err = loader.Load(envContext, "default", fss)
 	s.NoError(err)
 
 	ddbClient := s.Env().DynamoDb("default").Client()
@@ -119,7 +119,7 @@ func (s *DynamoDbSuite) TestDynamoDbWithPurge() {
 	fss, err = s.dynamodbFixtureSet2()
 	s.NoError(err)
 
-	err = loader.Load(envContext, fss)
+	err = loader.Load(envContext, "default", fss)
 	s.NoError(err)
 
 	gio, err = ddbClient.GetItem(context.Background(), &dynamodb.GetItemInput{
@@ -178,7 +178,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStore() {
 	fss, err := s.dynamoDbKvStoreFixtureSet1()
 	s.NoError(err)
 
-	err = loader.Load(envContext, fss)
+	err = loader.Load(envContext, "default", fss)
 	s.NoError(err)
 
 	ddbClient := s.Env().DynamoDb("default").Client()
@@ -220,7 +220,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 	fss, err := s.dynamoDbKvStoreFixtureSet1()
 	s.NoError(err)
 
-	err = loader.Load(envContext, fss)
+	err = loader.Load(envContext, "default", fss)
 	s.NoError(err)
 
 	ddbClient := s.Env().DynamoDb("default").Client()
@@ -246,7 +246,7 @@ func (s *DynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 	fss, err = s.dynamoDbKvStoreFixtureSet2()
 	s.NoError(err)
 
-	err = loader.Load(envContext, fss)
+	err = loader.Load(envContext, "default", fss)
 	s.NoError(err)
 
 	gio, err = ddbClient.GetItem(context.Background(), &dynamodb.GetItemInput{

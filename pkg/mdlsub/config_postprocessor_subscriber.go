@@ -35,19 +35,10 @@ func SubscriberConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	var inputPostProcessor SubscriberInputConfigPostProcessor
 	var outputPostProcessor SubscriberOutputConfigPostProcessor
 
-	subscriberSettingsMap := make(map[string]*SubscriberSettings)
-	config.UnmarshalKey(ConfigKeyMdlSubSubscribers, &subscriberSettingsMap)
+	settings := unmarshalSettings(config)
 
-	for name, subscriberSettings := range subscriberSettingsMap {
+	for name, subscriberSettings := range settings.Subscribers {
 		subscriberKey := GetSubscriberConfigKey(name)
-
-		if subscriberSettings.SourceModel.Name == "" {
-			subscriberSettings.SourceModel.Name = name
-		}
-
-		if subscriberSettings.TargetModel.Name == "" {
-			subscriberSettings.TargetModel.Name = name
-		}
 
 		consumerSettings := &stream.ConsumerSettings{}
 		config.UnmarshalDefaults(consumerSettings)

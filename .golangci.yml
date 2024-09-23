@@ -31,6 +31,7 @@ linters:
     - misspell # Finds commonly misspelled English words in comments.
     - nestif # Reports deeply nested if statements.
     - nlreturn # Nlreturn checks for a new line before return and branch statements to increase code clarity.
+    - revive
     - staticcheck # It's a set of rules from staticcheck.
     - tenv # Tenv is analyzer that detects using os.Setenv instead of t.Setenv since Go1.17.
     - typecheck
@@ -75,6 +76,10 @@ linters-settings:
 
   nestif:
     min-complexity: 4
+
+  revive:
+    rules:
+      - name: use-any
 
 issues:
   exclude-rules:

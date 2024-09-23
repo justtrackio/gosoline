@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type localstackComponent struct {
@@ -18,14 +19,14 @@ type localstackComponent struct {
 
 func (c *localstackComponent) CfgOptions() []cfg.Option {
 	options := []cfg.Option{
-		cfg.WithConfigMap(map[string]interface{}{
-			"cloud.aws": map[string]interface{}{
-				"credentials": map[string]interface{}{
+		cfg.WithConfigMap(map[string]any{
+			"cloud.aws": map[string]any{
+				"credentials": map[string]any{
 					"access_key_id":     DefaultAccessKeyID,
 					"secret_access_key": DefaultSecretAccessKey,
 					"session_token":     DefaultToken,
 				},
-				"defaults": map[string]interface{}{
+				"defaults": map[string]any{
 					"region":   c.region,
 					"endpoint": c.Address(),
 				},
@@ -34,7 +35,7 @@ func (c *localstackComponent) CfgOptions() []cfg.Option {
 	}
 
 	if slices.Contains(c.services, localstackServiceS3) {
-		options = append(options, cfg.WithConfigMap(map[string]interface{}{
+		options = append(options, cfg.WithConfigMap(map[string]any{
 			"aws_s3_endpoint":   c.Address(),
 			"aws_s3_autoCreate": true,
 		}))
@@ -54,7 +55,7 @@ func (c *localstackComponent) SnsClient() *sns.Client {
 			Credentials: GetDefaultStaticCredentials(),
 		},
 		func(options *sns.Options) {
-			options.BaseEndpoint = aws.String(c.Address())
+			options.BaseEndpoint = gosoAws.NilIfEmpty(c.Address())
 		},
 	)
 }

@@ -35,7 +35,7 @@ var namedFixtures = fixtures.NamedFixtures[*fixtures.KvStoreFixture]{
 // snippet-end: fixtures
 
 // snippet-start: fixture sets factory
-func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
 	writer, err := fixtures.NewConfigurableKvStoreFixtureWriter[float64](ctx, config, logger, "currency")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kvstore fixture writer: %w", err)

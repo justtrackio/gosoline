@@ -11,6 +11,7 @@ import (
 type MigrationSettings struct {
 	Application    string `cfg:"application" default:"{app_name}"`
 	Enabled        bool   `cfg:"enabled" default:"false"`
+	Reset          bool   `cfg:"reset" default:"false"`
 	Path           string `cfg:"path"`
 	PrefixedTables bool   `cfg:"prefixed_tables" default:"false"`
 	Provider       string `cfg:"provider" default:"goose"`
@@ -32,11 +33,13 @@ func runMigrations(logger log.Logger, settings *Settings, db *sql.DB) error {
 
 	if !settings.Migrations.Enabled || settings.Migrations.Path == "" {
 		logger.Info("migrations not enabled")
+
 		return nil
 	}
 
 	if settings.Migrations.Path == "" {
 		logger.Info("migrations enabled but no path provided")
+
 		return nil
 	}
 
@@ -50,11 +53,40 @@ func runMigrations(logger log.Logger, settings *Settings, db *sql.DB) error {
 
 	start := time.Now()
 
+	if err = resetMigrations(logger, settings, db); err != nil {
+		return fmt.Errorf("could not reset migrations: %w", err)
+	}
+
 	if err = provider(logger, settings, db); err != nil {
 		return fmt.Errorf("running migration provider %s failed: %w", settings.Migrations.Provider, err)
 	}
 
 	logger.Info("migrated db in %s", time.Since(start))
+
+	return nil
+}
+
+func resetMigrations(logger log.Logger, settings *Settings, db *sql.DB) error {
+	if !settings.Migrations.Reset {
+		return nil
+	}
+
+	logger.Info("resetting database %s to rerun migrations", settings.Uri.Database)
+
+	sql := fmt.Sprintf("DROP DATABASE IF EXISTS %s", settings.Uri.Database)
+	if _, err := db.Exec(sql); err != nil {
+		return fmt.Errorf("can not drop database %s: %w", settings.Uri.Database, err)
+	}
+
+	sql = fmt.Sprintf("CREATE DATABASE %s", settings.Uri.Database)
+	if _, err := db.Exec(sql); err != nil {
+		return fmt.Errorf("can not create database %s: %w", settings.Uri.Database, err)
+	}
+
+	sql = fmt.Sprintf("USE %s", settings.Uri.Database)
+	if _, err := db.Exec(sql); err != nil {
+		return fmt.Errorf("can not use database %s: %w", settings.Uri.Database, err)
+	}
 
 	return nil
 }

@@ -159,7 +159,7 @@ func blobFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (
 	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*fixtures.BlobFixture]{}, blobWriter), nil
 }
 
-func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
 	mysqlOrmFs, err := mysqlOrmFixtureSet(ctx, config, logger)
 	if err != nil {
 		return nil, err
@@ -202,7 +202,7 @@ func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logge
 
 func main() {
 	app := application.Default(
-		application.WithFixtureSetFactory(fixtureSetsFactory),
+		application.WithFixtureSetFactory("default", fixtureSetsFactory),
 	)
 
 	app.Run()

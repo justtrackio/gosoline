@@ -99,7 +99,7 @@ func (e *Environment) init(options ...Option) error {
 	var logger RecordingLogger
 	var cfgPostProcessors map[string]int
 
-	defaults := make(map[string]interface{})
+	defaults := make(map[string]any)
 	if err = yaml.Unmarshal(configDefault, &defaults); err != nil {
 		return fmt.Errorf("can not read default configurion: %w", err)
 	}
@@ -237,11 +237,11 @@ func (e *Environment) LoadFixtureSets(factories ...fixtures.FixtureSetsFactory) 
 		var err error
 		var fixtureSets []fixtures.FixtureSet
 
-		if fixtureSets, err = factory(e.ctx, e.config, e.logger); err != nil {
+		if fixtureSets, err = factory(e.ctx, e.config, e.logger, "default"); err != nil {
 			return fmt.Errorf("failed to create fixture set: %w", err)
 		}
 
-		if err := e.fixtureLoader.Load(e.ctx, fixtureSets); err != nil {
+		if err := e.fixtureLoader.Load(e.ctx, "default", fixtureSets); err != nil {
 			return err
 		}
 	}

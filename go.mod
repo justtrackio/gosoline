@@ -55,6 +55,7 @@ require (
 	github.com/iancoleman/strcase v0.2.0
 	github.com/imdario/mergo v0.3.16
 	github.com/jackc/pgx/v4 v4.18.1
+	github.com/jarcoal/httpmock v1.3.1
 	github.com/jeremywohl/flatten v0.0.0-20190921043622-d936035e55cf
 	github.com/jinzhu/gorm v1.9.16
 	github.com/jinzhu/inflection v1.0.0
@@ -205,6 +206,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-go 1.22.1
-
-toolchain go1.22.3
+go 1.23.1

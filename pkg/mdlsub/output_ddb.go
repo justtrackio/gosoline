@@ -18,14 +18,12 @@ func init() {
 	outputFactories[OutputTypeDdb] = outputDdbFactory
 }
 
-func repoInit(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings) func(model interface{}) (ddb.Repository, error) {
-	return func(model interface{}) (ddb.Repository, error) {
+func repoInit(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings) func(model any) (ddb.Repository, error) {
+	return func(model any) (ddb.Repository, error) {
 		repo, err := ddb.NewRepository(ctx, config, logger, &ddb.Settings{
 			ModelId: settings.TargetModel.ModelId,
 			Main: ddb.MainSettings{
-				Model:              model,
-				ReadCapacityUnits:  5,
-				WriteCapacityUnits: 5,
+				Model: model,
 			},
 		})
 		if err != nil {
@@ -47,7 +45,7 @@ func outputDdbFactory(ctx context.Context, config cfg.Config, logger log.Logger,
 }
 
 type OutputDdb struct {
-	repo conc.Lazy[ddb.Repository, interface{}]
+	repo conc.Lazy[ddb.Repository, any]
 }
 
 func NewOutputDdb(ctx context.Context, config cfg.Config, logger log.Logger, settings *SubscriberSettings) *OutputDdb {
