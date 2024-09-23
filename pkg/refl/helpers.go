@@ -4,7 +4,7 @@ import (
 	"reflect"
 )
 
-func IsStructOrPointerToStruct(value interface{}) bool {
+func IsStructOrPointerToStruct(value any) bool {
 	t := reflect.TypeOf(value)
 
 	if t.Kind() == reflect.Struct {
@@ -14,7 +14,7 @@ func IsStructOrPointerToStruct(value interface{}) bool {
 	return IsPointerToStruct(value)
 }
 
-func IsPointerToMap(value interface{}) bool {
+func IsPointerToMap(value any) bool {
 	t := reflect.TypeOf(value)
 
 	if t == nil || t.Kind() != reflect.Ptr {
@@ -31,7 +31,7 @@ func IsPointerToMap(value interface{}) bool {
 	return t.Kind() == reflect.Map
 }
 
-func IsPointerToSlice(value interface{}) bool {
+func IsPointerToSlice(value any) bool {
 	t := reflect.TypeOf(value)
 
 	if t == nil || t.Kind() != reflect.Ptr {
@@ -48,7 +48,7 @@ func IsPointerToSlice(value interface{}) bool {
 	return t.Kind() == reflect.Slice
 }
 
-func IsPointerToStruct(value interface{}) bool {
+func IsPointerToStruct(value any) bool {
 	t := reflect.TypeOf(value)
 
 	if t == nil || t.Kind() != reflect.Ptr {
@@ -65,17 +65,17 @@ func IsPointerToStruct(value interface{}) bool {
 	return t.Kind() == reflect.Struct
 }
 
-func IsSlice(value interface{}) bool {
+func IsSlice(value any) bool {
 	t := reflect.TypeOf(value)
 
 	return t.Kind() == reflect.Slice
 }
 
-func ResolveBaseTypeAndValue(value interface{}) (reflect.Type, reflect.Value) {
+func ResolveBaseTypeAndValue(value any) (reflect.Type, reflect.Value) {
 	return ResolveValueTo(value, reflect.Invalid)
 }
 
-func ResolveBaseType(value interface{}) reflect.Type {
+func ResolveBaseType(value any) reflect.Type {
 	t := reflect.TypeOf(value)
 
 	if t == nil {
@@ -112,7 +112,7 @@ func ResolveBaseType(value interface{}) reflect.Type {
 	return ResolveBaseType(v.Index(0).Interface())
 }
 
-func ResolveValueTo(value interface{}, kind reflect.Kind) (reflect.Type, reflect.Value) {
+func ResolveValueTo(value any, kind reflect.Kind) (reflect.Type, reflect.Value) {
 	t := reflect.TypeOf(value)
 	v := reflect.ValueOf(value)
 
@@ -126,29 +126,29 @@ func ResolveValueTo(value interface{}, kind reflect.Kind) (reflect.Type, reflect
 
 	if t.Kind() == reflect.Interface {
 		v = v.Elem()
-
 		value = v.Interface()
+
 		return ResolveBaseTypeAndValue(value)
 	}
 
 	if t.Kind() == reflect.Ptr {
 		v = v.Elem()
-
 		value = v.Interface()
+
 		return ResolveBaseTypeAndValue(value)
 	}
 
 	if t.Kind() == reflect.Slice {
 		v = v.Index(0)
-
 		value = v.Interface()
+
 		return ResolveBaseTypeAndValue(value)
 	}
 
 	return t, v
 }
 
-func GetTypedValue(value interface{}) reflect.Value {
+func GetTypedValue(value any) reflect.Value {
 	t := reflect.TypeOf(value)
 
 	if t.Kind() == reflect.Ptr {
@@ -166,13 +166,13 @@ func GetTypedValue(value interface{}) reflect.Value {
 	return reflect.ValueOf(v)
 }
 
-func CreatePointerToSliceOfTypeAndSize(value interface{}, size int) interface{} {
+func CreatePointerToSliceOfTypeAndSize(value any, size int) any {
 	baseType := ResolveBaseType(value)
 
 	sliceType := reflect.SliceOf(baseType)
 	slice := reflect.MakeSlice(sliceType, size, size)
 
-	pt := reflect.PtrTo(slice.Type())
+	pt := reflect.PointerTo(slice.Type())
 	pv := reflect.New(pt.Elem())
 	pv.Elem().Set(slice)
 
@@ -181,7 +181,7 @@ func CreatePointerToSliceOfTypeAndSize(value interface{}, size int) interface{} 
 	return ptr
 }
 
-func CopyPointerSlice(ptrA interface{}, ptrB interface{}) {
+func CopyPointerSlice(ptrA any, ptrB any) {
 	pv := reflect.ValueOf(ptrB)
 
 	a := reflect.ValueOf(ptrA).Elem()
@@ -190,7 +190,7 @@ func CopyPointerSlice(ptrA interface{}, ptrB interface{}) {
 	a.Set(b)
 }
 
-func InitializeMapsAndSlices(value interface{}) {
+func InitializeMapsAndSlices(value any) {
 	pv := reflect.ValueOf(value)
 
 	if pv.Kind() == reflect.Ptr {
@@ -214,4 +214,11 @@ func InitializeMapsAndSlices(value interface{}) {
 			field.Set(sliceValue)
 		}
 	}
+}
+
+func ValueToPointerValue(val any) any {
+	vp := reflect.New(reflect.TypeOf(val))
+	vp.Elem().Set(reflect.ValueOf(val))
+
+	return vp.Interface()
 }

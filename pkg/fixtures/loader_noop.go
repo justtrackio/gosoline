@@ -1,5 +1,4 @@
 //go:build !fixtures
-// +build !fixtures
 
 package fixtures
 
@@ -11,16 +10,24 @@ import (
 )
 
 type noopFixtureLoader struct {
-	logger log.Logger
+	logger   log.Logger
+	settings *fixtureLoaderSettings
 }
 
 func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger) FixtureLoader {
+	settings := unmarshalFixtureLoaderSettings(config)
+
 	return &noopFixtureLoader{
-		logger: logger.WithChannel("fixture_loader"),
+		logger:   logger.WithChannel("fixture_loader"),
+		settings: settings,
 	}
 }
 
-func (n *noopFixtureLoader) Load(ctx context.Context, fixtureSets []FixtureSet) error {
+func (n *noopFixtureLoader) Load(ctx context.Context, group string, fixtureSets []FixtureSet) error {
+	if !n.settings.Enabled {
+		return nil
+	}
+
 	n.logger.Info("fixtureSets loading disabled, to enable it use the 'fixtures' build tag")
 
 	return nil

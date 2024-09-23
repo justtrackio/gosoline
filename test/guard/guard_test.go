@@ -15,7 +15,7 @@ import (
 	"github.com/selm0/ladon"
 )
 
-func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
 	writer, err := fixtures.NewMysqlPlainFixtureWriter(ctx, config, logger, metadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create mysql plain fixture writer: %w", err)

@@ -160,7 +160,7 @@ func NewLogger(base log.Logger) *Logger {
 	}
 }
 
-func (l Logger) Logf(classification logging.Classification, format string, v ...interface{}) {
+func (l Logger) Logf(classification logging.Classification, format string, v ...any) {
 	switch classification {
 	case logging.Warn:
 		l.base.Warn(format, v...)
@@ -177,4 +177,12 @@ func (l Logger) WithContext(ctx context.Context) logging.Logger {
 
 func GetClientConfigKey(service string, name string) string {
 	return fmt.Sprintf("cloud.aws.%s.clients.%s", service, name)
+}
+
+func NilIfEmpty[T comparable](val T) *T {
+	if *new(T) == val {
+		return nil
+	}
+
+	return &val
 }

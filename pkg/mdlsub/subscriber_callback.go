@@ -13,18 +13,9 @@ import (
 )
 
 const (
-	ConfigKeyMdlSubSubscribers = "mdlsub.subscribers"
-	MetricNameSuccess          = "ModelEventConsumeSuccess"
-	MetricNameFailure          = "ModelEventConsumeFailure"
+	MetricNameSuccess = "ModelEventConsumeSuccess"
+	MetricNameFailure = "ModelEventConsumeFailure"
 )
-
-type SubscriberSettings struct {
-	Input       string          `cfg:"input" default:"sns"`
-	Output      string          `cfg:"output"`
-	RunnerCount int             `cfg:"runner_count" default:"10" validate:"min=1"`
-	SourceModel SubscriberModel `cfg:"source"`
-	TargetModel SubscriberModel `cfg:"target"`
-}
 
 type SubscriberModel struct {
 	mdl.ModelId
@@ -32,29 +23,27 @@ type SubscriberModel struct {
 }
 
 type SubscriberCallback struct {
-	logger       log.Logger
-	metric       metric.Writer
-	transformers ModelTransformers
-	outputs      Outputs
+	logger log.Logger
+	metric metric.Writer
+	core   SubscriberCore
 }
 
-func NewSubscriberCallbackFactory(transformers ModelTransformers, outputs Outputs) stream.ConsumerCallbackFactory {
+func NewSubscriberCallbackFactory(core SubscriberCore) stream.ConsumerCallbackFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
-		defaultMetrics := getSubscriberCallbackDefaultMetrics(transformers)
+		defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
 		metricWriter := metric.NewWriter(defaultMetrics...)
 
 		callback := &SubscriberCallback{
-			logger:       logger,
-			metric:       metricWriter,
-			transformers: transformers,
-			outputs:      outputs,
+			logger: logger,
+			metric: metricWriter,
+			core:   core,
 		}
 
 		return callback, nil
 	}
 }
 
-func (s *SubscriberCallback) GetModel(attributes map[string]string) interface{} {
+func (s *SubscriberCallback) GetModel(attributes map[string]string) any {
 	var err error
 	var spec *ModelSpecification
 	var transformer ModelTransformer
@@ -63,14 +52,14 @@ func (s *SubscriberCallback) GetModel(attributes map[string]string) interface{} 
 		return nil
 	}
 
-	if transformer, err = s.getTransformer(spec); err != nil {
+	if transformer, err = s.core.GetTransformer(spec); err != nil {
 		return nil
 	}
 
 	return transformer.GetInput()
 }
 
-func (s *SubscriberCallback) Consume(ctx context.Context, input interface{}, attributes map[string]string) (bool, error) {
+func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes map[string]string) (bool, error) {
 	var err error
 	var model Model
 	var spec *ModelSpecification
@@ -81,15 +70,15 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input interface{}, att
 		return false, fmt.Errorf("can not read model specifications from the message attributes: %w", err)
 	}
 
-	if transformer, err = s.getTransformer(spec); err != nil {
-		return false, err
-	}
-
 	logger := s.logger.WithContext(ctx).WithFields(log.Fields{
 		"modelId": spec.ModelId,
 		"type":    spec.CrudType,
 		"version": spec.Version,
 	})
+
+	if transformer, err = s.core.GetTransformer(spec); err != nil {
+		return false, err
+	}
 
 	if model, err = transformer.Transform(ctx, input); err != nil {
 		if IsDelayOpError(err) {
@@ -103,10 +92,11 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input interface{}, att
 
 	if model == nil {
 		logger.Info("skipping %s op for subscription for modelId %s and version %d", spec.CrudType, spec.ModelId, spec.Version)
+
 		return true, nil
 	}
 
-	if output, err = s.getOutput(spec); err != nil {
+	if output, err = s.core.GetOutput(spec); err != nil {
 		return false, err
 	}
 
@@ -120,40 +110,6 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input interface{}, att
 	logger.Info("persisted %s op for subscription for modelId %s and version %d with id %v", spec.CrudType, spec.ModelId, spec.Version, model.GetId())
 
 	return true, nil
-}
-
-func (s *SubscriberCallback) getTransformer(spec *ModelSpecification) (ModelTransformer, error) {
-	var ok bool
-
-	if _, ok = s.transformers[spec.ModelId]; !ok {
-		return nil, fmt.Errorf("there is no transformer for modelId %s", spec.ModelId)
-	}
-
-	if _, ok = s.transformers[spec.ModelId][spec.Version]; !ok {
-		return nil, fmt.Errorf("there is no transformer for modelId %s and version %d", spec.ModelId, spec.Version)
-	}
-
-	return s.transformers[spec.ModelId][spec.Version], nil
-}
-
-func (s *SubscriberCallback) getOutput(spec *ModelSpecification) (Output, error) {
-	if _, ok := s.transformers[spec.ModelId]; !ok {
-		return nil, fmt.Errorf("there is no transformer for modelId %s", spec.ModelId)
-	}
-
-	if _, ok := s.transformers[spec.ModelId][spec.Version]; !ok {
-		return nil, fmt.Errorf("there is no transformer for modelId %s and version %d", spec.ModelId, spec.Version)
-	}
-
-	if _, ok := s.outputs[spec.ModelId]; !ok {
-		return nil, fmt.Errorf("there is no output for modelId %s", spec.ModelId)
-	}
-
-	if _, ok := s.outputs[spec.ModelId][spec.Version]; !ok {
-		return nil, fmt.Errorf("there is no output for modelId %s and version %d", spec.ModelId, spec.Version)
-	}
-
-	return s.outputs[spec.ModelId][spec.Version], nil
 }
 
 func (s *SubscriberCallback) writeMetric(err error, spec *ModelSpecification) {
@@ -175,10 +131,10 @@ func (s *SubscriberCallback) writeMetric(err error, spec *ModelSpecification) {
 	})
 }
 
-func getSubscriberCallbackDefaultMetrics(transformers ModelTransformers) []*metric.Datum {
+func getSubscriberCallbackDefaultMetrics(modelIds []string) []*metric.Datum {
 	defaults := make([]*metric.Datum, 0)
 
-	for modelId := range transformers {
+	for _, modelId := range modelIds {
 		success := &metric.Datum{
 			Priority:   metric.PriorityHigh,
 			MetricName: MetricNameSuccess,

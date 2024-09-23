@@ -26,7 +26,7 @@ var namedFixtures = fixtures.NamedFixtures[*DynamoDbExampleModel]{
 	},
 }
 
-func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
 	mysqlWriter, err := fixtures.NewMysqlOrmFixtureWriter(ctx, config, logger, &db_repo.Metadata{
 		ModelId: mdl.ModelId{
 			Name: "orm_named_fixture_example",
@@ -43,7 +43,7 @@ func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logge
 
 func main() {
 	app := application.Default(
-		application.WithFixtureSetFactory(fixtureSetsFactory),
+		application.WithFixtureSetFactory("default", fixtureSetsFactory),
 	)
 
 	app.Run()

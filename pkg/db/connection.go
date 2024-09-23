@@ -51,9 +51,14 @@ type SettingsTimeout struct {
 type connectionCtxKey string
 
 func ProvideConnection(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*sqlx.DB, error) {
-	return appctx.Provide(ctx, connectionCtxKey(name), func() (*sqlx.DB, error) {
-		return NewConnection(config, logger, name)
-	})
+	var err error
+	var settings *Settings
+
+	if settings, err = readSettings(config, name); err != nil {
+		return nil, err
+	}
+
+	return ProvideConnectionFromSettings(ctx, logger, settings)
 }
 
 func NewConnection(config cfg.Config, logger log.Logger, name string) (*sqlx.DB, error) {

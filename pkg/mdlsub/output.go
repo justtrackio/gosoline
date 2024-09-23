@@ -8,6 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+//go:generate mockery --name Output
 type Output interface {
 	Persist(ctx context.Context, model Model, op string) error
 }
@@ -18,6 +19,10 @@ type (
 )
 
 var outputFactories = map[string]OutputFactory{}
+
+func AddOutput(name string, factory OutputFactory) {
+	outputFactories[name] = factory
+}
 
 func initOutputs(ctx context.Context, config cfg.Config, logger log.Logger, subscriberSettings map[string]*SubscriberSettings, transformers ModelTransformers) (Outputs, error) {
 	var ok bool

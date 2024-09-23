@@ -21,7 +21,7 @@ type User struct {
 	IsActive bool   `db:"is_active"`
 }
 
-func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
 	writer, err := fixtures.NewMysqlSqlxFixtureWriter(ctx, config, logger, &fixtures.MysqlSqlxMetaData{TableName: "users"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to provide writers: %w", err)
@@ -57,7 +57,7 @@ func main() {
 			var err error
 			var client db.Client
 
-			if client, err = db.NewClient(config, logger, "default"); err != nil {
+			if client, err = db.NewClient(ctx, config, logger, "default"); err != nil {
 				return nil, err
 			}
 
@@ -81,6 +81,6 @@ func main() {
 			}, nil
 		},
 		application.WithConfigFile("config.dist.yml", "yaml"),
-		application.WithFixtureSetFactory(fixtureSetsFactory),
+		application.WithFixtureSetFactory("default", fixtureSetsFactory),
 	)
 }

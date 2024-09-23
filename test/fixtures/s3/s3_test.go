@@ -126,7 +126,7 @@ func (s *S3TestSuite) TestS3WithPurge() {
 	s.Nil(output)
 }
 
-func purgeDisabledFixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+func purgeDisabledFixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
 	writer, err := fixtures.NewBlobFixtureWriter(ctx, config, logger, &fixtures.BlobFixturesSettings{
 		ConfigName: configName,
 		BasePath:   basePath,
@@ -138,7 +138,7 @@ func purgeDisabledFixtureSetsFactory(ctx context.Context, config cfg.Config, log
 	return []fixtures.FixtureSet{fixtures.NewSimpleFixtureSet[*fixtures.BlobFixture](nil, writer)}, nil
 }
 
-func purgeEnabledFixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger) ([]fixtures.FixtureSet, error) {
+func purgeEnabledFixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
 	writer, err := fixtures.NewBlobFixtureWriter(ctx, config, logger, &fixtures.BlobFixturesSettings{
 		ConfigName: configName,
 		BasePath:   basePathPurge,

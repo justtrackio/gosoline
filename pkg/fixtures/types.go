@@ -9,12 +9,12 @@ import (
 
 type (
 	FixtureSetFactory  func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error)
-	FixtureSetsFactory func(ctx context.Context, config cfg.Config, logger log.Logger) ([]FixtureSet, error)
+	FixtureSetsFactory func(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]FixtureSet, error)
 )
 
 //go:generate mockery --name FixtureLoader
 type FixtureLoader interface {
-	Load(ctx context.Context, fixtureSets []FixtureSet) error
+	Load(ctx context.Context, group string, fixtureSets []FixtureSet) error
 }
 
 //go:generate mockery --name FixtureSet
@@ -29,7 +29,7 @@ type FixtureWriter interface {
 }
 
 func NewFixtureSetsFactory(factories ...FixtureSetFactory) FixtureSetsFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) ([]FixtureSet, error) {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]FixtureSet, error) {
 		var err error
 		var set FixtureSet
 		var sets []FixtureSet

@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -53,7 +54,7 @@ func (f *ddbFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &ddbSettings{}
 }
 
-func (f *ddbFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+func (f *ddbFactory) DescribeContainers(settings any) componentContainerDescriptions {
 	s := settings.(*ddbSettings)
 
 	descriptions := componentContainerDescriptions{
@@ -70,7 +71,7 @@ func (f *ddbFactory) DescribeContainers(settings interface{}) componentContainer
 	return descriptions
 }
 
-func (f *ddbFactory) configureContainer(settings interface{}) *containerConfig {
+func (f *ddbFactory) configureContainer(settings any) *containerConfig {
 	s := settings.(*ddbSettings)
 
 	return &containerConfig{
@@ -98,7 +99,7 @@ func (f *ddbFactory) healthCheck() ComponentHealthCheck {
 	}
 }
 
-func (f *ddbFactory) Component(config cfg.Config, logger log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
+func (f *ddbFactory) Component(config cfg.Config, logger log.Logger, containers map[string]*container, settings any) (Component, error) {
 	s := settings.(*ddbSettings)
 
 	var err error
@@ -141,6 +142,6 @@ func (f *ddbFactory) client(container *container) (*dynamodb.Client, error) {
 	}
 
 	return dynamodb.NewFromConfig(cfg, func(options *dynamodb.Options) {
-		options.BaseEndpoint = aws.String(address)
+		options.BaseEndpoint = gosoAws.NilIfEmpty(address)
 	}), nil
 }

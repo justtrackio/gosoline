@@ -14,12 +14,14 @@ fixtures:
 ```
 * Make sure to use a custom build tag named `fixtures`
 
-* Define your fixtures in code while using one of the built in `FixtureWriter`s and defining a slice of `[]fixtures.FixtureSet{}` or use `fixtures.FixtureSetFactory` or `fixtures.FixtureSetsFactory` depending on your use-case.
-For more details check the `/examples/gosoline-fixture-loading` Directory or read the short example below.
+* Define your fixtures in code while using one of the built in `FixtureWriter`s and defining a slice of
+`[]fixtures.FixtureSet{}` or use `fixtures.FixtureSetFactory` or `fixtures.FixtureSetsFactory` depending on your use-case.
+For more details check the `/examples/fixtures` Directory or read the short example below.
 
-* The `fixtures.FixtureSet` interface allows you to define any custom implementation for writing fixture sets to their destination and take control of purging prior writing too.
-You can however use the `fixures.simpleFixtureSet` via the `fixtures.NewSimpleFixtureSet` factory func to use a simple yet effective and prebuilt solution.
-This is the simpleFixtureSet struct definition:
+* The `fixtures.FixtureSet` interface allows you to define any custom implementation for writing fixture sets to their
+destination and take control of purging prior writing too. You can however use the `fixures.simpleFixtureSet` via the
+`fixtures.NewSimpleFixtureSet` factory func to use a simple yet effective and prebuilt solution. This is the simpleFixtureSet
+struct definition:
 ```
 type simpleFixtureSet[T any] struct {
 	Enabled  bool
@@ -28,7 +30,9 @@ type simpleFixtureSet[T any] struct {
 	Fixtures NamedFixtures[T]
 }
 ```
-You can easily define multiple fixtures for different destinations in one file, enable/disable them or even enable/disable purging for each `fixtures.FixtureSet` via the `fixtures.WithEnabled` and `fixtures.WithPurge` `fixtures.FixtureSetOption` for the `fixtures.NewSimpleFixtureSet` func.
+You can easily define multiple fixtures for different destinations in one file, enable/disable them or even enable/disable
+purging for each `fixtures.FixtureSet` via the `fixtures.WithEnabled` and `fixtures.WithPurge` `fixtures.FixtureSetOption`
+for the `fixtures.NewSimpleFixtureSet` func.
 
 * Currently there are 7 different FixtureWriter implementations for loading fixtures:
 <table>
@@ -80,13 +84,14 @@ You can easily define multiple fixtures for different destinations in one file, 
 </table>
 
 ## Quick Usage
-* During the creation of your Application make sure to pass the `WithFixtureSetsFactory` option and provide a fixture sets factory as an argument of type `fixtures.WithFixtureSetsFactory`
+* During the creation of your Application make sure to pass the `WithFixtureSetsFactory` option and provide the group name
+and a fixture sets factory as arguments of type `fixtures.WithFixtureSetsFactory`. The `default` group is enabled by default.
 
 [embedmd]:# (../../examples/fixtures/simple/main.go /func main/ /}/)
 ```go
 func main() {
 	app := application.Default(
-		application.WithFixtureSetFactory(fixtureSetsFactory),
+		application.WithFixtureSetFactory("default", fixtureSetsFactory),
 	)
 
 	app.Run()

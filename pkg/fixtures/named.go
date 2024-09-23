@@ -6,7 +6,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/mdl"
-	"github.com/justtrackio/gosoline/pkg/mdlsub"
 )
 
 func NewNamedKvStoreFixture[T any](name any, value T) *NamedFixture[*KvStoreFixture] {
@@ -94,6 +93,10 @@ func (l NamedFixtures[T]) GetValueByName(name string) T {
 	return fixture.Value
 }
 
+type anyTypedIdAware interface {
+	GetId() any
+}
+
 func (l NamedFixtures[T]) GetValueById(id any) T {
 	if l.Len() == 0 {
 		panic(fmt.Errorf("can not find id = %v in empty fixture set", id))
@@ -125,7 +128,7 @@ func GetValueId(value any) (any, bool) {
 		return mdl.EmptyIfNil(identifiable.GetId()), true
 	}
 
-	model, ok := value.(mdlsub.Model)
+	model, ok := value.(anyTypedIdAware)
 	if !ok {
 		return nil, false
 	}

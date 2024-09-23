@@ -76,7 +76,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	}
 
 	client := s3.NewFromConfig(awsConfig, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String(clientCfg.Settings.Endpoint)
+		o.BaseEndpoint = gosoAws.NilIfEmpty(clientCfg.Settings.Endpoint)
 		o.UsePathStyle = clientCfg.Settings.UsePathStyle
 	})
 

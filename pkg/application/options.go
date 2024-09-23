@@ -104,7 +104,7 @@ func WithConfigFileFlag(app *App) {
 	})
 }
 
-func WithConfigMap(configMap map[string]interface{}, mergeOptions ...cfg.MergeOption) Option {
+func WithConfigMap(configMap map[string]any, mergeOptions ...cfg.MergeOption) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithConfigMap(configMap, mergeOptions...))
@@ -126,7 +126,7 @@ func WithConfigSanitizers(sanitizers ...cfg.Sanitizer) Option {
 	}
 }
 
-func WithConfigSetting(key string, settings interface{}) Option {
+func WithConfigSetting(key string, settings any) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithConfigSetting(key, settings))
@@ -166,10 +166,10 @@ func WithHttpServerShares(app *App) {
 	})
 }
 
-func WithFixtureSetFactory(factory fixtures.FixtureSetsFactory) Option {
+func WithFixtureSetFactory(group string, factory fixtures.FixtureSetsFactory) Option {
 	return func(app *App) {
 		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(factory), kernelPkg.PositionEnd)
+			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(group, factory), kernelPkg.PositionEnd)
 		})
 	}
 }
@@ -188,7 +188,7 @@ func WithLoggerGroupTag(app *App) {
 			return errors.New("can not get application group from config to set it on logger")
 		}
 
-		return logger.Option(log.WithFields(map[string]interface{}{
+		return logger.Option(log.WithFields(map[string]any{
 			"group": config.GetString("app_group"),
 		}))
 	})
@@ -200,7 +200,7 @@ func WithLoggerApplicationTag(app *App) {
 			return errors.New("can not get application name from config to set it on logger")
 		}
 
-		return logger.Option(log.WithFields(map[string]interface{}{
+		return logger.Option(log.WithFields(map[string]any{
 			"application": config.GetString("app_name"),
 		}))
 	})
