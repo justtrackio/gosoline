@@ -9,17 +9,28 @@ import (
 )
 
 const (
+	BoolAnd       = "AND"
+	BoolOr        = "OR"
+	DirectionAsc  = "ASC"
+	DirectionDesc = "DESC"
 	OpEq          = "="
-	OpIs          = "is"
-	OpIsNot       = "is not"
+	OpGt          = ">"
+	OpGte         = ">="
+	OpIs          = "IS"
+	OpIsNot       = "IS NOT"
 	OpLike        = "~"
-	OPMemberOf    = "MEMBER OF"
+	OpLt          = "<"
+	OpLte         = "<="
+	OpMemberOf    = "MEMBER OF"
 	OpNeq         = "!="
-	OPNotMemberOf = "NOT MEMBER OF"
+	OpNotLike     = "!~"
+	OpNotMemberOf = "NOT MEMBER OF"
+	OpRawLike     = "LIKE"
+	OpRawNotLike  = "NOT LIKE"
 )
 
 type Order struct {
-	Direction string `json:"direction"`
+	Direction string `json:"direction" validate:"oneof=ASC DESC"`
 	Field     string `json:"field"`
 }
 
@@ -31,13 +42,13 @@ type Page struct {
 type Filter struct {
 	Groups  []Filter      `json:"groups"`
 	Matches []FilterMatch `json:"matches"`
-	Bool    string        `json:"bool"`
+	Bool    string        `json:"bool" validate:"oneof=AND OR"`
 }
 
 type FilterMatch struct {
-	Values    []interface{} `json:"values"`
-	Dimension string        `json:"dimension"`
-	Operator  string        `json:"operator"`
+	Values    []any  `json:"values"`
+	Dimension string `json:"dimension"`
+	Operator  string `json:"operator" validate:"oneof='=' '!=' 'IS' 'IS NOT' '~' '!~' 'LIKE' 'NOT LIKE' 'MEMBER OF' 'NOT MEMBER OF' '<' '>' '<=' '>='"`
 }
 
 type Input struct {
@@ -141,6 +152,10 @@ func (qb baseQueryBuilder) build(inp *Input, dbQb db.QueryBuilder) error {
 		}
 
 		columns := strings.Join(qb.mapping[o.Field].ColumnNames(), ", ")
+		if o.Direction != "" && !strings.EqualFold(o.Direction, DirectionAsc) && !strings.EqualFold(o.Direction, DirectionDesc) {
+			return fmt.Errorf("invalid order direction %q", o.Direction)
+		}
+
 		dbQb.OrderBy(columns, o.Direction)
 	}
 
@@ -206,9 +221,8 @@ func (qb baseQueryBuilder) getJoinsFromFilter(joins *[]string, filter Filter) er
 	return nil
 }
 
-func (qb baseQueryBuilder) buildFilter(filter Filter) (string, []interface{}, error) {
-	where := ""
-	args := make([]interface{}, 0)
+func (qb baseQueryBuilder) buildFilter(filter Filter) (where string, args []any, err error) {
+	args = make([]any, 0)
 
 	if len(filter.Matches) == 0 && len(filter.Groups) == 0 {
 		return where, args, nil
@@ -231,6 +245,10 @@ func (qb baseQueryBuilder) buildFilter(filter Filter) (string, []interface{}, er
 		args = append(args, groupArgs...)
 	}
 
+	if !strings.EqualFold(filter.Bool, BoolAnd) && !strings.EqualFold(filter.Bool, BoolOr) {
+		return "", nil, fmt.Errorf("invalid boolean: %s", filter.Bool)
+	}
+
 	operator := fmt.Sprintf(" %s ", filter.Bool)
 	where = strings.Join(matchesWhere, operator)
 	where = fmt.Sprintf("(%s)", where)
@@ -238,9 +256,9 @@ func (qb baseQueryBuilder) buildFilter(filter Filter) (string, []interface{}, er
 	return where, args, nil
 }
 
-func (qb baseQueryBuilder) buildFilterMatches(filterMatches []FilterMatch) ([]string, []interface{}, error) {
-	where := make([]string, 0, len(filterMatches))
-	args := make([]interface{}, 0)
+func (qb baseQueryBuilder) buildFilterMatches(filterMatches []FilterMatch) (where []string, args []any, err error) {
+	where = make([]string, 0, len(filterMatches))
+	args = make([]any, 0)
 
 	for _, m := range filterMatches {
 		if len(m.Dimension) == 0 {
@@ -259,41 +277,50 @@ func (qb baseQueryBuilder) buildFilterMatches(filterMatches []FilterMatch) ([]st
 	return where, args, nil
 }
 
-func (qb baseQueryBuilder) buildFilterValues(match FilterMatch) (string, []interface{}, error) {
+func (qb baseQueryBuilder) buildFilterValues(match FilterMatch) (where string, args []any, err error) {
 	if _, ok := qb.mapping[match.Dimension]; !ok {
-		return "", []interface{}{}, fmt.Errorf("no list mapping found for dimension %s", match.Dimension)
+		return "", []any{}, fmt.Errorf("no list mapping found for dimension %s", match.Dimension)
 	}
 
 	if len(match.Values) == 0 {
-		return "(1 = 2)", []interface{}{}, nil
+		return "(1 = 2)", []any{}, nil
 	}
 
 	stmts := make([]string, 0)
-	args := make([]interface{}, 0)
+	args = make([]any, 0)
 	mapping := qb.mapping[match.Dimension]
 
 	for _, column := range mapping.Columns() {
-		w, a := qb.buildFilterColumn(match, column)
+		w, a, err := qb.buildFilterColumn(match, column)
+		if err != nil {
+			return "", nil, fmt.Errorf("error building filter for column %s: %s", column.Name(), err)
+		}
 
 		stmts = append(stmts, w)
 		args = append(args, a...)
 	}
 
+	if !strings.EqualFold(mapping.Bool(), BoolAnd) && !strings.EqualFold(mapping.Bool(), BoolOr) {
+		return "", nil, fmt.Errorf("invalid boolean: %s", mapping.Bool())
+	}
+
 	b := fmt.Sprintf(" %s ", mapping.Bool())
-	where := fmt.Sprintf("(%s)", strings.Join(stmts, b))
+	where = fmt.Sprintf("(%s)", strings.Join(stmts, b))
 
 	return where, args, nil
 }
 
-func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column db_repo.FieldMappingColumn) (string, []interface{}) {
+func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column db_repo.FieldMappingColumn) (where string, args []any, err error) {
 	if (match.Operator == OpEq || match.Operator == OpNeq) && len(match.Values) > 1 {
-		return qb.buildSetFilterColumn(match, column)
+		where, args := qb.buildSetFilterColumn(match, column)
+
+		return where, args, nil
 	}
 
 	distinctNull := column.NullMode() == db_repo.NullModeDistinct
 
 	stmts := make([]string, 0, len(match.Values))
-	args := make([]interface{}, 0, len(match.Values))
+	args = make([]any, 0, len(match.Values))
 
 	for _, v := range match.Values {
 		switch true {
@@ -307,6 +334,18 @@ func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column db_repo.F
 			stmts = append(stmts, fmt.Sprintf("%s LIKE ?", column.Name()))
 			args = append(args, fmt.Sprintf("%%%v%%", v))
 
+		case match.Operator == OpNotLike:
+			stmts = append(stmts, fmt.Sprintf("%s NOT LIKE ?", column.Name()))
+			args = append(args, fmt.Sprintf("%%%v%%", v))
+
+		case strings.EqualFold(match.Operator, OpRawLike):
+			stmts = append(stmts, fmt.Sprintf("%s LIKE ?", column.Name()))
+			args = append(args, v)
+
+		case strings.EqualFold(match.Operator, OpRawNotLike):
+			stmts = append(stmts, fmt.Sprintf("%s NOT LIKE ?", column.Name()))
+			args = append(args, v)
+
 		case match.Operator == OpEq && distinctNull && v == nil:
 			stmts = append(stmts, fmt.Sprintf("%s IS NULL", column.Name()))
 
@@ -317,32 +356,47 @@ func (qb baseQueryBuilder) buildFilterColumn(match FilterMatch, column db_repo.F
 			stmts = append(stmts, fmt.Sprintf("%s != ? OR %s IS NULL", column.Name(), column.Name()))
 			args = append(args, v)
 
-		case match.Operator == OPMemberOf && v != nil:
+		case match.Operator == OpMemberOf && v != nil:
 			stmts = append(stmts, fmt.Sprintf("? MEMBER OF (%s)", column.Name()))
 			args = append(args, v)
 
-		case match.Operator == OPNotMemberOf && v != nil:
+		case match.Operator == OpNotMemberOf && v != nil:
 			stmts = append(stmts, fmt.Sprintf("NOT ? MEMBER OF (%s)", column.Name()))
 			args = append(args, v)
 
-		default:
+		case match.Operator == OpMemberOf && v == nil:
+			stmts = append(stmts, "(1 = 0)") // member of empty set
+
+		case match.Operator == OpNotMemberOf && v == nil:
+			stmts = append(stmts, "(1 = 1)") // not member of empty set
+
+		case match.Operator == OpEq ||
+			match.Operator == OpNeq ||
+			match.Operator == OpLt ||
+			match.Operator == OpGt ||
+			match.Operator == OpLte ||
+			match.Operator == OpGte ||
+			strings.EqualFold(match.Operator, OpIs) ||
+			strings.EqualFold(match.Operator, OpIsNot):
 			stmts = append(stmts, fmt.Sprintf("%s %s ?", column.Name(), match.Operator))
 			args = append(args, v)
+
+		default:
+			return "", nil, fmt.Errorf("invalid operator %q", match.Operator)
 		}
 	}
 
-	where := fmt.Sprintf("(%s)", strings.Join(stmts, " OR "))
+	where = fmt.Sprintf("(%s)", strings.Join(stmts, " OR "))
 
-	return where, args
+	return where, args, nil
 }
 
-func (qb baseQueryBuilder) buildSetFilterColumn(match FilterMatch, column db_repo.FieldMappingColumn) (string, []interface{}) {
+func (qb baseQueryBuilder) buildSetFilterColumn(match FilterMatch, column db_repo.FieldMappingColumn) (filter string, filteredValues []any) {
 	distinctNull := column.NullMode() == db_repo.NullModeDistinct
 	eq := match.Operator == OpEq
 
 	placeholders, filteredValues, hasNull := qb.buildSetPlaceholders(match, distinctNull)
 
-	var filter string
 	if distinctNull {
 		if hasNull {
 			if eq {
@@ -364,11 +418,11 @@ func (qb baseQueryBuilder) buildSetFilterColumn(match FilterMatch, column db_rep
 	return filter, filteredValues
 }
 
-func (qb baseQueryBuilder) buildSetPlaceholders(match FilterMatch, distinctNull bool) (string, []interface{}, bool) {
+func (qb baseQueryBuilder) buildSetPlaceholders(match FilterMatch, distinctNull bool) (placeholderString string, filteredValues []any, hasNull bool) {
 	placeholders := make([]string, 0, len(match.Values))
-	filteredValues := make([]interface{}, 0, len(match.Values))
+	filteredValues = make([]any, 0, len(match.Values))
 
-	hasNull := false
+	hasNull = false
 	for _, value := range match.Values {
 		if value == nil {
 			hasNull = true

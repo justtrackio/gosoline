@@ -38,7 +38,7 @@ func TestListQueryBuilder_Build_DimensionMissing(t *testing.T) {
 				{
 					Dimension: "bla",
 					Operator:  "=",
-					Values:    []interface{}{"blub"},
+					Values:    []any{"blub"},
 				},
 			},
 		},
@@ -68,9 +68,10 @@ func TestListQueryBuilder_Build(t *testing.T) {
 				{
 					Dimension: "bla",
 					Operator:  "=",
-					Values:    []interface{}{"blub"},
+					Values:    []any{"blub"},
 				},
 			},
+			Bool: sql.BoolAnd,
 		},
 		Order: []sql.Order{
 			{
@@ -123,9 +124,10 @@ func TestListQueryBuilder_BuildWithJoin(t *testing.T) {
 				{
 					Dimension: "bla",
 					Operator:  "=",
-					Values:    []interface{}{"blub"},
+					Values:    []any{"blub"},
 				},
 			},
+			Bool: sql.BoolAnd,
 		},
 		GroupBy: []string{"fieldB"},
 	}
@@ -166,17 +168,17 @@ func TestListQueryBuilder_Build_ComplexFilter(t *testing.T) {
 				{
 					Dimension: "bla",
 					Operator:  "=",
-					Values:    []interface{}{"blub", "blubber"},
+					Values:    []any{"blub", "blubber"},
 				},
 				{
 					Dimension: "fieldA",
 					Operator:  "!=",
-					Values:    []interface{}{1},
+					Values:    []any{1},
 				},
 				{
 					Dimension: "void",
 					Operator:  "is",
-					Values:    []interface{}{"null"},
+					Values:    []any{"null"},
 				},
 			},
 			Groups: []sql.Filter{
@@ -185,18 +187,18 @@ func TestListQueryBuilder_Build_ComplexFilter(t *testing.T) {
 						{
 							Dimension: "fieldB",
 							Operator:  "~",
-							Values:    []interface{}{"foo"},
+							Values:    []any{"foo"},
 						},
 						{
 							Dimension: "fieldB",
 							Operator:  "=",
-							Values:    []interface{}{"bar"},
+							Values:    []any{"bar"},
 						},
 					},
-					Bool: "or",
+					Bool: sql.BoolOr,
 				},
 			},
-			Bool: "and",
+			Bool: sql.BoolAnd,
 		},
 	}
 
@@ -208,7 +210,7 @@ func TestListQueryBuilder_Build_ComplexFilter(t *testing.T) {
 	expected := db_repo.NewQueryBuilder()
 	expected.Table("tablename")
 	expected.Where(
-		"(((foo IN (?,?))) and ((fieldA != ?)) and ((void IS null)) and (((fieldB LIKE ?)) or ((fieldB = ?))))",
+		"(((foo IN (?,?))) AND ((fieldA != ?)) AND ((void IS null)) AND (((fieldB LIKE ?)) OR ((fieldB = ?))))",
 		"blub",
 		"blubber",
 		1,
@@ -247,66 +249,66 @@ func TestListQueryBuilder_Build_NullFilter(t *testing.T) {
 				{
 					Dimension: "sql1",
 					Operator:  "=",
-					Values:    []interface{}{"value1", nil},
+					Values:    []any{"value1", nil},
 				},
 				{
 					Dimension: "go1",
 					Operator:  "=",
-					Values:    []interface{}{"value2", nil},
+					Values:    []any{"value2", nil},
 				},
 				{
 					Dimension: "sql2",
 					Operator:  "=",
-					Values:    []interface{}{nil},
+					Values:    []any{nil},
 				},
 				{
 					Dimension: "go2",
 					Operator:  "=",
-					Values:    []interface{}{nil},
+					Values:    []any{nil},
 				},
 				{
 					Dimension: "sql3",
 					Operator:  "!=",
-					Values:    []interface{}{"value3", nil},
+					Values:    []any{"value3", nil},
 				},
 				{
 					Dimension: "go3",
 					Operator:  "!=",
-					Values:    []interface{}{"value4", nil},
+					Values:    []any{"value4", nil},
 				},
 				{
 					Dimension: "sql4",
 					Operator:  "!=",
-					Values:    []interface{}{nil},
+					Values:    []any{nil},
 				},
 				{
 					Dimension: "go4",
 					Operator:  "!=",
-					Values:    []interface{}{nil},
+					Values:    []any{nil},
 				},
 				{
 					Dimension: "sql5",
 					Operator:  "=",
-					Values:    []interface{}{"value5", "value6"},
+					Values:    []any{"value5", "value6"},
 				},
 				{
 					Dimension: "go5",
 					Operator:  "=",
-					Values:    []interface{}{"value7", "value8"},
+					Values:    []any{"value7", "value8"},
 				},
 				{
 					Dimension: "sql6",
 					Operator:  "!=",
-					Values:    []interface{}{"value9", "value10"},
+					Values:    []any{"value9", "value10"},
 				},
 				{
 					Dimension: "go6",
 					Operator:  "!=",
-					Values:    []interface{}{"value11", "value12"},
+					Values:    []any{"value11", "value12"},
 				},
 			},
 			Groups: []sql.Filter{},
-			Bool:   "and",
+			Bool:   sql.BoolAnd,
 		},
 	}
 
@@ -318,7 +320,9 @@ func TestListQueryBuilder_Build_NullFilter(t *testing.T) {
 	expected := db_repo.NewQueryBuilder()
 	expected.Table("tablename")
 	expected.Where(
-		"(((sql1 IN (?,?))) and ((go1 IN (?,?) OR go1 IS NULL)) and ((sql2 = ?)) and ((go2 IS NULL)) and ((sql3 NOT IN (?,?))) and ((go3 NOT IN (?) AND go3 IS NOT NULL)) and ((sql4 != ?)) and ((go4 IS NOT NULL)) and ((sql5 IN (?,?))) and ((go5 IN (?,?))) and ((sql6 NOT IN (?,?))) and ((go6 NOT IN (?,?) OR go6 IS NULL)))",
+		"(((sql1 IN (?,?))) AND ((go1 IN (?,?) OR go1 IS NULL)) AND ((sql2 = ?)) AND ((go2 IS NULL)) AND ((sql3 NOT IN (?,?))) AND "+
+			"((go3 NOT IN (?) AND go3 IS NOT NULL)) AND ((sql4 != ?)) AND ((go4 IS NOT NULL)) AND ((sql5 IN (?,?))) AND ((go5 IN (?,?))) AND "+
+			"((sql6 NOT IN (?,?))) AND ((go6 NOT IN (?,?) OR go6 IS NULL)))",
 		"value1",
 		nil,
 		"value2",
@@ -340,4 +344,119 @@ func TestListQueryBuilder_Build_NullFilter(t *testing.T) {
 	expected.GroupBy("id")
 
 	assert.Equal(t, expected, qb)
+}
+
+func TestListQueryBuilder_BuildSqlInjectionBool(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "tablename",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":  db_repo.NewFieldMapping("id"),
+			"bla": db_repo.NewFieldMapping("foo"),
+		},
+	}
+
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Matches: []sql.FilterMatch{
+				{
+					Dimension: "bla",
+					Operator:  "=",
+					Values:    []any{"bla"},
+				},
+				{
+					Dimension: "bla",
+					Operator:  "=",
+					Values:    []any{"bla"},
+				},
+			},
+			Bool: "AND (SELECT password FROM admins where id = 42) = 'hunter2' AND",
+		},
+		Order:   []sql.Order{},
+		GroupBy: []string{},
+		Page:    nil,
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	qb, err := lqb.Build(inp)
+
+	assert.EqualError(t, err, "invalid boolean: AND (SELECT password FROM admins where id = 42) = 'hunter2' AND")
+	assert.Equal(t, db_repo.NewQueryBuilder(), qb)
+}
+
+func TestListQueryBuilder_BuildSqlInjectionNestedBool(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "tablename",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":  db_repo.NewFieldMapping("id"),
+			"bla": db_repo.NewFieldMapping("foo"),
+		},
+	}
+
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Groups: []sql.Filter{
+				{
+					Matches: []sql.FilterMatch{
+						{
+							Dimension: "bla",
+							Operator:  "=",
+							Values:    []any{"bla"},
+						},
+						{
+							Dimension: "bla",
+							Operator:  "=",
+							Values:    []any{"bla"},
+						},
+					},
+					Groups: []sql.Filter{},
+					Bool:   "AND (SELECT password FROM admins where id = 42) = 'hunter2' AND",
+				},
+			},
+			Bool: sql.BoolAnd,
+		},
+		Order:   []sql.Order{},
+		GroupBy: []string{},
+		Page:    nil,
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	qb, err := lqb.Build(inp)
+
+	assert.EqualError(t, err, "invalid boolean: AND (SELECT password FROM admins where id = 42) = 'hunter2' AND")
+	assert.Equal(t, db_repo.NewQueryBuilder(), qb)
+}
+
+func TestListQueryBuilder_BuildSqlInjectionOperator(t *testing.T) {
+	metadata := db_repo.Metadata{
+		TableName:  "tablename",
+		PrimaryKey: "id",
+		Mappings: db_repo.FieldMappings{
+			"id":  db_repo.NewFieldMapping("id"),
+			"bla": db_repo.NewFieldMapping("foo"),
+		},
+	}
+
+	inp := &sql.Input{
+		Filter: sql.Filter{
+			Matches: []sql.FilterMatch{
+				{
+					Dimension: "bla",
+					Operator:  "IN (SELECT username FROM admins WHERE id = 42) AND 1 =",
+					Values:    []any{1},
+				},
+			},
+			Bool: sql.BoolAnd,
+		},
+		Order:   []sql.Order{},
+		GroupBy: []string{},
+		Page:    nil,
+	}
+
+	lqb := sql.NewOrmQueryBuilder(metadata)
+	qb, err := lqb.Build(inp)
+
+	assert.EqualError(t, err, `error building filter for column foo: invalid operator "IN (SELECT username FROM admins WHERE id = 42) AND 1 ="`)
+	assert.Equal(t, db_repo.NewQueryBuilder(), qb)
 }
