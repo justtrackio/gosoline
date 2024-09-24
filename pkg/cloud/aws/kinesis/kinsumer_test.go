@@ -40,7 +40,7 @@ type kinsumerTestSuite struct {
 	suite.Suite
 
 	ctx                context.Context
-	logger             *logMocks.Logger
+	logger             *logMocks.LoggerMock
 	stream             gosoKinesis.Stream
 	kinesisClient      *mocks.Client
 	metadataRepository *mocks.MetadataRepository
