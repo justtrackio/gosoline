@@ -72,6 +72,12 @@ func NewConnection(config cfg.Config, logger log.Logger, name string) (*sqlx.DB,
 	return con, nil
 }
 
+func ProvideConnectionFromSettings(ctx context.Context, logger log.Logger, settings *Settings) (*sqlx.DB, error) {
+	return appctx.Provide(ctx, connectionCtxKey(fmt.Sprint(settings)), func() (*sqlx.DB, error) {
+		return NewConnectionFromSettings(logger, settings)
+	})
+}
+
 func NewConnectionFromSettings(logger log.Logger, settings *Settings) (*sqlx.DB, error) {
 	var err error
 	var connection *sqlx.DB
@@ -90,12 +96,12 @@ func NewConnectionFromSettings(logger log.Logger, settings *Settings) (*sqlx.DB,
 }
 
 func NewConnectionWithInterfaces(logger log.Logger, settings *Settings) (*sqlx.DB, error) {
-	driver, err := GetDriver(logger, settings.Driver)
+	drv, err := GetDriver(logger, settings.Driver)
 	if err != nil {
 		return nil, fmt.Errorf("could not get dsn provider for driver %s", settings.Driver)
 	}
 
-	dsn := driver.GetDSN(settings)
+	dsn := drv.GetDSN(settings)
 
 	genDriver, err := getGenericDriver(settings.Driver, dsn)
 	if err != nil {

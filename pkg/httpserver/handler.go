@@ -221,7 +221,7 @@ func CreateReaderHandler(handler HandlerWithoutInput) gin.HandlerFunc {
 // Example input struct from handler.GetInput():
 //
 //	type example struct{
-//	  A string `query:"a" binding:"required"`
+//	  A string `form:"a" binding:"required"`
 //	}
 func CreateQueryHandler(handler HandlerWithInput) gin.HandlerFunc {
 	return handleWithBindingInput(handler, binding.Query, defaultErrorHandler)
