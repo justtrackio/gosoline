@@ -64,7 +64,7 @@ jobs:
           changes=$(git status -s | grep -E '^[ ]?M|A') || true
           if [ "0" != $(echo -n $changes | wc -c) ]; then
             git status -s | grep -E '^[ ]?M|A'
-            echo "please check the file list above and (re-)create those mocks locally with the mockery version v2.43.2!"
+            echo "please check the file list above and (re-)create those mocks locally with the mockery version v2.46.0!"
             echo "here's the diff:"
             git diff HEAD~0
             echo "end of diff"
