@@ -134,10 +134,12 @@ func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name st
 	store := NewStoreWithInterfaces(logger, channels, s3Client, settings)
 
 	autoCreate := dx.ShouldAutoCreate(config)
-	if autoCreate {
-		if err = store.CreateBucket(ctx); err != nil {
-			return nil, fmt.Errorf("can not create bucket: %w", err)
-		}
+	if !autoCreate {
+		return store, nil
+	}
+
+	if err = store.CreateBucket(ctx); err != nil {
+		return nil, fmt.Errorf("can not create bucket: %w", err)
 	}
 
 	return store, nil
@@ -159,6 +161,10 @@ func (s *s3Store) BucketName() string {
 }
 
 func (s *s3Store) CreateBucket(ctx context.Context) error {
+	if _, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: s.bucket}); err == nil {
+		return nil
+	}
+
 	_, err := s.client.CreateBucket(ctx, &s3.CreateBucketInput{
 		Bucket: s.bucket,
 		CreateBucketConfiguration: &types.CreateBucketConfiguration{

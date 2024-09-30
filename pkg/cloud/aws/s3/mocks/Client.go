@@ -688,6 +688,80 @@ func (_c *Client_GetObject_Call) RunAndReturn(run func(context.Context, *s3.GetO
 	return _c
 }
 
+// HeadBucket provides a mock function with given fields: ctx, params, optFns
+func (_m *Client) HeadBucket(ctx context.Context, params *s3.HeadBucketInput, optFns ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
+	_va := make([]interface{}, len(optFns))
+	for _i := range optFns {
+		_va[_i] = optFns[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, params)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HeadBucket")
+	}
+
+	var r0 *s3.HeadBucketOutput
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *s3.HeadBucketInput, ...func(*s3.Options)) (*s3.HeadBucketOutput, error)); ok {
+		return rf(ctx, params, optFns...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *s3.HeadBucketInput, ...func(*s3.Options)) *s3.HeadBucketOutput); ok {
+		r0 = rf(ctx, params, optFns...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*s3.HeadBucketOutput)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *s3.HeadBucketInput, ...func(*s3.Options)) error); ok {
+		r1 = rf(ctx, params, optFns...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_HeadBucket_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HeadBucket'
+type Client_HeadBucket_Call struct {
+	*mock.Call
+}
+
+// HeadBucket is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *s3.HeadBucketInput
+//   - optFns ...func(*s3.Options)
+func (_e *Client_Expecter) HeadBucket(ctx interface{}, params interface{}, optFns ...interface{}) *Client_HeadBucket_Call {
+	return &Client_HeadBucket_Call{Call: _e.mock.On("HeadBucket",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_HeadBucket_Call) Run(run func(ctx context.Context, params *s3.HeadBucketInput, optFns ...func(*s3.Options))) *Client_HeadBucket_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*s3.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*s3.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*s3.HeadBucketInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_HeadBucket_Call) Return(_a0 *s3.HeadBucketOutput, _a1 error) *Client_HeadBucket_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_HeadBucket_Call) RunAndReturn(run func(context.Context, *s3.HeadBucketInput, ...func(*s3.Options)) (*s3.HeadBucketOutput, error)) *Client_HeadBucket_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HeadObject provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
 	_va := make([]interface{}, len(optFns))
