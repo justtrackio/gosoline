@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -141,6 +142,6 @@ func (f *ddbFactory) client(container *container) (*dynamodb.Client, error) {
 	}
 
 	return dynamodb.NewFromConfig(cfg, func(options *dynamodb.Options) {
-		options.BaseEndpoint = aws.String(address)
+		options.BaseEndpoint = gosoAws.NilIfEmpty(address)
 	}), nil
 }

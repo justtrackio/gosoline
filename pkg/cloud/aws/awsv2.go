@@ -136,6 +136,8 @@ func DefaultClientConfig(ctx context.Context, config cfg.Config, logger log.Logg
 		return awsConfig, fmt.Errorf("can not initialize config: %w", err)
 	}
 
+	awsConfig.BaseEndpoint = NilIfEmpty(settings.Endpoint)
+
 	awsConfig.APIOptions = append(awsConfig.APIOptions, func(stack *middleware.Stack) error {
 		return stack.Initialize.Add(AttemptLoggerInitMiddleware(logger, &settings.Backoff), middleware.After)
 	})
@@ -177,4 +179,12 @@ func (l Logger) WithContext(ctx context.Context) logging.Logger {
 
 func GetClientConfigKey(service string, name string) string {
 	return fmt.Sprintf("cloud.aws.%s.clients.%s", service, name)
+}
+
+func NilIfEmpty[T comparable](val T) *T {
+	if *new(T) == val {
+		return nil
+	}
+
+	return &val
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 )
 
 type localstackComponent struct {
@@ -54,7 +55,7 @@ func (c *localstackComponent) SnsClient() *sns.Client {
 			Credentials: GetDefaultStaticCredentials(),
 		},
 		func(options *sns.Options) {
-			options.BaseEndpoint = aws.String(c.Address())
+			options.BaseEndpoint = gosoAws.NilIfEmpty(c.Address())
 		},
 	)
 }

@@ -66,7 +66,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	}
 
 	client := rds.NewFromConfig(awsConfig, func(options *rds.Options) {
-		options.BaseEndpoint = aws.String(clientCfg.Settings.Endpoint)
+		options.BaseEndpoint = gosoAws.NilIfEmpty(clientCfg.Settings.Endpoint)
 	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "rds", name, clientCfg.Settings.ClientSettings)

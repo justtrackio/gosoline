@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -110,7 +111,7 @@ func (f *s3Factory) client(container *container) (*s3.Client, error) {
 	}
 
 	client := s3.NewFromConfig(cfg, func(options *s3.Options) {
-		options.BaseEndpoint = aws.String(address)
+		options.BaseEndpoint = gosoAws.NilIfEmpty(address)
 	})
 
 	return client, nil

@@ -72,7 +72,7 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	}
 
 	client := sns.NewFromConfig(awsConfig, func(options *sns.Options) {
-		options.BaseEndpoint = aws.String(clientCfg.Settings.Endpoint)
+		options.BaseEndpoint = gosoAws.NilIfEmpty(clientCfg.Settings.Endpoint)
 	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "sns", name, clientCfg.Settings.ClientSettings)

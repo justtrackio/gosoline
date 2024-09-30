@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -50,7 +51,7 @@ func (c *DdbComponent) Client() *dynamodb.Client {
 			Credentials: GetDefaultStaticCredentials(),
 		},
 		func(options *dynamodb.Options) {
-			options.BaseEndpoint = aws.String(c.Endpoint())
+			options.BaseEndpoint = gosoAws.NilIfEmpty(c.Endpoint())
 		},
 	)
 }
