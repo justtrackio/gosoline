@@ -136,6 +136,8 @@ func DefaultClientConfig(ctx context.Context, config cfg.Config, logger log.Logg
 		return awsConfig, fmt.Errorf("can not initialize config: %w", err)
 	}
 
+	awsConfig.BaseEndpoint = NilIfEmpty(settings.Endpoint)
+
 	awsConfig.APIOptions = append(awsConfig.APIOptions, func(stack *middleware.Stack) error {
 		return stack.Initialize.Add(AttemptLoggerInitMiddleware(logger, &settings.Backoff), middleware.After)
 	})

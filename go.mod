@@ -14,6 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.3
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.7.38
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.18
+	github.com/aws/aws-sdk-go-v2/service/athena v1.44.5
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.40.7
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.34.9
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.177.3
@@ -68,11 +69,12 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.19.2
 	github.com/prometheus/client_golang v1.19.0
+	github.com/segmentio/go-athena v0.1.0
 	github.com/segmentio/kafka-go v0.4.31
 	github.com/selm0/ladon v0.0.0-20231114080549-31144de4b38d
 	github.com/sha1sum/aws_signing_client v0.0.0-20170514202702-9088e4c7b34b
 	github.com/spf13/cast v1.6.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.9.0
 	github.com/vmihailenco/msgpack v4.0.4+incompatible
 	github.com/xitongsys/parquet-go v1.6.2
 	github.com/xitongsys/parquet-go-source v0.0.0-20231120172956-e0ff36b2d553
@@ -179,7 +181,7 @@ require (
 	github.com/segmentio/go-snakecase v1.2.0 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
