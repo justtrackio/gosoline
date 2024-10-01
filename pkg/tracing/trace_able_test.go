@@ -38,7 +38,7 @@ func TestTraceToString(t *testing.T) {
 
 func TestStringToTrace(t *testing.T) {
 	_, err := tracing.StringToTrace("Root=1-5759e988-bd862e3fe1be46a994272793")
-	assert.EqualErrorf(t, err, "the trace id [Root=1-5759e988-bd862e3fe1be46a994272793] should consist of at least 2 parts", "error does not match")
+	assert.EqualErrorf(t, err, "the trace id [Root=1-5759e988-bd862e3fe1be46a994272793] should consist of at least 2 parts and at most of 3 parts", "error does not match")
 
 	_, err = tracing.StringToTrace("Root=1-5759e988-bd862e3fe1be46a994272793;Parent")
 	assert.EqualErrorf(t, err, "the sampled part [Parent] of the trace id seems malformed", "error does not match")

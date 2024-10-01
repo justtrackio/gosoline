@@ -50,7 +50,7 @@ func StringToTrace(traceId string) (*Trace, error) {
 	parts := strings.Split(traceId, ";")
 
 	if len(parts) < 2 || len(parts) > 3 {
-		return nil, fmt.Errorf("the trace id [%s] should consist of at least 2 parts", traceId)
+		return nil, fmt.Errorf("the trace id [%s] should consist of at least 2 parts and at most of 3 parts", traceId)
 	}
 
 	root := strings.Split(parts[0], "=")

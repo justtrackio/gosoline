@@ -57,7 +57,7 @@ func (c *DdbComponent) Client() *dynamodb.Client {
 }
 
 func (c *DdbComponent) Repository(settings *ddb.Settings) (ddb.Repository, error) {
-	tracer := tracing.NewNoopTracer()
+	tracer := tracing.NewLocalTracer()
 	client := c.Client()
 	tableName := ddb.GetTableNameWithSettings(settings, c.namingSettings)
 	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(settings, tableName)
