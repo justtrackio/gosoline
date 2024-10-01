@@ -32,7 +32,7 @@ type BatchConsumerTestSuite struct {
 	kernelCancel context.CancelFunc
 	inputData    chan *stream.Message
 	inputDataOut <-chan *stream.Message
-	inputStop    func(args mock.Arguments)
+	inputStop    func()
 
 	input *mocks.AcknowledgeableInput
 
@@ -46,18 +46,18 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 
 	s.inputData = make(chan *stream.Message, 10)
 	s.inputDataOut = s.inputData
-	s.inputStop = func(args mock.Arguments) {
+	s.inputStop = func() {
 		s.once.Do(func() {
 			close(s.inputData)
 		})
 	}
 
-	s.input = new(mocks.AcknowledgeableInput)
-	s.callback = new(mocks.RunnableBatchConsumerCallback)
+	s.input = mocks.NewAcknowledgeableInput(s.T())
+	s.callback = mocks.NewRunnableBatchConsumerCallback(s.T())
 
 	uuidGen := uuid.New()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
-	tracer := tracing.NewNoopTracer()
+	tracer := tracing.NewLocalTracer()
 	mw := metricMocks.NewWriterMockedAll()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
 	retryInput := stream.NewNoopInput()
@@ -74,17 +74,31 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 		BatchSize:   5,
 	}
 
-	baseConsumer := stream.NewBaseConsumerWithInterfaces(uuidGen, logger, mw, tracer, s.input, me, retryInput, retryHandler, s.callback, settings, "test", cfg.AppId{})
+	baseConsumer := stream.NewBaseConsumerWithInterfaces(
+		uuidGen,
+		logger,
+		mw,
+		tracer,
+		s.input,
+		me,
+		retryInput,
+		retryHandler,
+		s.callback,
+		settings,
+		"test",
+		cfg.AppId{},
+	)
 	s.batchConsumer = stream.NewBatchConsumerWithInterfaces(baseConsumer, s.callback, ticker, batchSettings)
 }
 
 func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
-	s.input.On("Data").Return(s.inputDataOut)
-	s.input.On("Stop").Run(s.inputStop).Once()
+	s.input.EXPECT().Data().Return(s.inputDataOut)
+	s.input.EXPECT().Stop().Run(s.inputStop).Once()
 
 	s.input.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
+		EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(func(ctx context.Context) {
 			s.inputData <- stream.NewJsonMessage(`"foo"`)
 			s.inputData <- stream.NewJsonMessage(`"bar"`)
 			s.inputData <- stream.NewJsonMessage(`"foobar"`)
@@ -94,121 +108,128 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 	processed := 0
 	acks := []bool{true, false, true}
 	s.input.
-		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
-		Run(func(args mock.Arguments) {
-			msgs := args[1].([]*stream.Message)
+		EXPECT().
+		AckBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
+		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
 		}).
 		Return(nil).
 		Once()
 
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
-		Return(acks, nil)
+	s.callback.EXPECT().
+		Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
+		Return(acks, nil).
+		Once()
 
-	s.callback.On("GetModel", mock.AnythingOfType("map[string]string")).
+	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).
 		Return(func(_ map[string]string) interface{} {
 			return mdl.Box("")
-		})
+		}).
+		Times(3)
 
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Return(nil)
+	s.callback.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).
+		Return(nil).
+		Once()
 
 	err := s.batchConsumer.Run(s.kernelCtx)
 
 	s.NoError(err, "there should be no error during run")
 	s.Equal(3, processed)
-
-	s.input.AssertExpectations(s.T())
-	s.callback.AssertExpectations(s.T())
 }
 
 func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
-	s.input.On("Data").Return(s.inputDataOut)
-	s.input.On("Stop").Run(s.inputStop).Once()
+	s.input.EXPECT().Data().Return(s.inputDataOut)
+	s.input.EXPECT().Stop().Run(s.inputStop).Once()
 
 	s.input.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
+		EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(func(ctx context.Context) {
 			s.inputData <- stream.NewJsonMessage(`"foo"`)
 			s.inputData <- stream.NewJsonMessage(`"bar"`)
 			s.inputData <- stream.NewJsonMessage(`"foobar"`)
 			s.inputData <- stream.NewJsonMessage(`"barfoo"`)
 			s.inputData <- stream.NewJsonMessage(`"foobarfoo"`)
-		}).Return(nil)
+		}).Return(nil).
+		Once()
 
 	processed := 0
 	acks := []bool{true, false, true, false, true}
 	s.input.
-		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
-		Run(func(args mock.Arguments) {
-			msgs := args[1].([]*stream.Message)
+		EXPECT().
+		AckBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
+		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
 
 			s.kernelCancel()
 		}).
 		Return(nil)
 
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
-		Return(acks, nil)
+	s.callback.EXPECT().
+		Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
+		Return(acks, nil).
+		Once()
 
-	s.callback.On("GetModel", mock.AnythingOfType("map[string]string")).
+	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).
 		Return(func(_ map[string]string) interface{} {
 			return mdl.Box("")
-		})
+		}).
+		Times(5)
 
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Return(nil)
+	s.callback.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).
+		Return(nil).
+		Once()
 
 	err := s.batchConsumer.Run(s.kernelCtx)
 
 	s.NoError(err, "there should be no error during run")
 	s.Equal(5, processed)
-
-	s.input.AssertExpectations(s.T())
-	s.callback.AssertExpectations(s.T())
 }
 
 func (s *BatchConsumerTestSuite) TestRun_InputRunError() {
-	s.input.On("Data").Return(s.inputDataOut)
-	s.input.On("Stop").Run(s.inputStop).Once()
+	s.input.EXPECT().Data().Return(s.inputDataOut)
+	s.input.EXPECT().Stop().Run(s.inputStop).Once()
 
 	s.input.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Return(fmt.Errorf("read error"))
+		EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Return(fmt.Errorf("read error")).
+		Once()
 
 	s.callback.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
-			<-args[0].(context.Context).Done()
-		}).Return(nil)
+		EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(func(ctx context.Context) {
+			<-ctx.Done()
+		}).
+		Return(nil).
+		Once()
 
 	err := s.batchConsumer.Run(s.kernelCtx)
 
 	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumer input: read error")
-
-	s.input.AssertExpectations(s.T())
-	s.callback.AssertExpectations(s.T())
 }
 
 func (s *BatchConsumerTestSuite) TestRun_CallbackRunError() {
-	s.input.On("Data").Return(s.inputDataOut)
-	s.input.On("Stop").Run(s.inputStop).Once()
+	s.input.EXPECT().Data().Return(s.inputDataOut)
+	s.input.EXPECT().Stop().Run(s.inputStop).Once()
 
-	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
-			<-args[0].(context.Context).Done()
+	s.input.EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(func(ctx context.Context) {
+			<-ctx.Done()
 		}).
-		Return(nil)
+		Return(nil).
+		Once()
 
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Return(fmt.Errorf("consumerCallback run error"))
+	s.callback.EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Return(fmt.Errorf("consumerCallback run error")).
+		Once()
 
 	err := s.batchConsumer.Run(s.kernelCtx)
 
 	s.EqualError(err, "error while waiting for all routines to stop: panic during run of the consumerCallback: consumerCallback run error")
-
-	s.input.AssertExpectations(s.T())
-	s.callback.AssertExpectations(s.T())
 }
 
 func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
@@ -224,36 +245,43 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 
 	aggregate := stream.BuildAggregateMessage(string(aggregateBody))
 
-	s.input.On("Data").Return(s.inputDataOut)
-	s.input.On("Stop").Run(s.inputStop).Once()
+	s.input.EXPECT().Data().Return(s.inputDataOut)
+	s.input.EXPECT().Stop().Run(s.inputStop).Once()
 
 	s.input.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
+		EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(func(ctx context.Context) {
 			s.inputData <- aggregate
 			s.kernelCancel()
-		}).Return(nil).
+		}).
+		Return(nil).
 		Once()
 
 	processed := 0
 	acks := []bool{true, true}
 	s.input.
-		On("AckBatch", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
-		Run(func(args mock.Arguments) {
-			msgs := args[1].([]*stream.Message)
+		EXPECT().
+		AckBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
+		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
 		}).
 		Return(nil).
 		Once()
 
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Return(nil)
+	s.callback.EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Return(nil).
+		Once()
 
-	s.callback.On("Consume", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
-		Return(acks, nil)
+	s.callback.EXPECT().
+		Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]interface {}"), mock.AnythingOfType("[]map[string]string")).
+		Return(acks, nil).
+		Once()
 
 	s.callback.
-		On("GetModel", mock.AnythingOfType("map[string]string")).
+		EXPECT().
+		GetModel(mock.AnythingOfType("map[string]string")).
 		Return(mdl.Box("")).
 		Twice()
 
@@ -261,7 +289,4 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 
 	s.Nil(err, "there should be no error returned on consume")
 	s.Equal(processed, 2)
-
-	s.input.AssertExpectations(s.T())
-	s.callback.AssertExpectations(s.T())
 }

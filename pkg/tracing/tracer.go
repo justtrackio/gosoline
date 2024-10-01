@@ -55,7 +55,7 @@ func NewTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
 	config.UnmarshalKey("tracing", settings)
 
 	if !settings.Enabled {
-		return NewNoopTracer(), nil
+		return NewLocalTracer(), nil
 	}
 
 	if _, ok := providers[settings.Provider]; !ok {
