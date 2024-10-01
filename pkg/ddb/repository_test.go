@@ -39,7 +39,7 @@ type RepositoryTestSuite struct {
 
 func (s *RepositoryTestSuite) SetupTest() {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
-	tracer := tracing.NewNoopTracer()
+	tracer := tracing.NewLocalTracer()
 
 	s.ctx = context.Background()
 	s.client = dynamodbMocks.NewClient(s.T())

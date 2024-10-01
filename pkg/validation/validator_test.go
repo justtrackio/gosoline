@@ -61,7 +61,7 @@ func TestValidator_IsValidGroups(t *testing.T) {
 }
 
 func buildValidator() validation.Validator {
-	tracer := tracing.NewNoopTracer()
+	tracer := tracing.NewLocalTracer()
 	v := validation.NewValidatorWithInterfaces(tracer)
 
 	return v
