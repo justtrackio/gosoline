@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"sync"
 	"time"
@@ -19,23 +20,24 @@ type (
 
 	RecordingLogger interface {
 		log.GosoLogger
-		Records() []LogRecord
+		Records() LogRecords
 		Reset()
 	}
 
 	recordingLogger struct {
 		log.GosoLogger
 		mutex   *sync.RWMutex
-		records *LogRecords
+		records LogRecords
 	}
 
-	LogRecords []LogRecord
+	ChannelRecords []LogRecord
+	LogRecords     map[string]ChannelRecords
 
 	LogRecord struct {
 		Timestamp    time.Time
 		Level        int
 		Msg          string
-		Args         []interface{}
+		Args         []any
 		Err          error
 		Data         log.Data
 		FormattedMsg string
@@ -44,7 +46,7 @@ type (
 	handlerInMemoryWriter struct {
 		level   int
 		mutex   *sync.RWMutex
-		records *LogRecords
+		records LogRecords
 	}
 )
 
@@ -75,7 +77,7 @@ func NewRecordingConsoleLogger(options ...LoggerOption) (RecordingLogger, error)
 
 	recorder := recordingLogger{
 		GosoLogger: logger,
-		records:    &LogRecords{},
+		records:    make(LogRecords),
 		mutex:      &sync.RWMutex{},
 	}
 
@@ -93,21 +95,20 @@ func NewRecordingConsoleLogger(options ...LoggerOption) (RecordingLogger, error)
 	return recorder, nil
 }
 
-func (r recordingLogger) Records() []LogRecord {
+func (r recordingLogger) Records() LogRecords {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
-	records := make([]LogRecord, len(*r.records))
-	copy(records, *r.records)
-
-	return records
+	return maps.Clone(r.records)
 }
 
 func (r recordingLogger) Reset() {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
-	*r.records = []LogRecord{}
+	for channel := range r.records {
+		delete(r.records, channel)
+	}
 }
 
 func (h handlerInMemoryWriter) Channels() []string {
@@ -118,11 +119,16 @@ func (h handlerInMemoryWriter) Level() int {
 	return h.level
 }
 
-func (h handlerInMemoryWriter) Log(timestamp time.Time, level int, msg string, args []interface{}, err error, data log.Data) error {
+func (h handlerInMemoryWriter) Log(timestamp time.Time, level int, msg string, args []any, err error, data log.Data) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	*h.records = append(*h.records, LogRecord{
+	channelRecords, ok := h.records[data.Channel]
+	if !ok {
+		channelRecords = make([]LogRecord, 0, 256)
+	}
+
+	h.records[data.Channel] = append(channelRecords, LogRecord{
 		Timestamp:    timestamp,
 		Data:         data,
 		Level:        level,
@@ -131,9 +137,26 @@ func (h handlerInMemoryWriter) Log(timestamp time.Time, level int, msg string, a
 		Err:          err,
 		FormattedMsg: fmt.Sprintf(msg, args...),
 	})
+
 	return nil
 }
 
-func (logs LogRecords) Filter(condition func(LogRecord) bool) LogRecords {
+func (logs ChannelRecords) Filter(condition func(LogRecord) bool) ChannelRecords {
 	return funk.Filter(logs, condition)
+}
+
+func (logs LogRecords) Filter(condition func(LogRecord) bool) LogRecords {
+	filtered := make(LogRecords)
+	for channel, records := range logs {
+		filteredRecords := funk.Filter(records, condition)
+		if len(filteredRecords) > 0 {
+			filtered[channel] = filteredRecords
+		}
+	}
+
+	return filtered
+}
+
+func (logs LogRecords) Channel(channel string) ChannelRecords {
+	return logs[channel]
 }
