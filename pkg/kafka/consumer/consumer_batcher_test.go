@@ -187,6 +187,33 @@ func TestBatcher(t *testing.T) {
 				{Partition: 0, Offset: 0},
 			},
 		},
+		{
+			name: "batch contained duplicates",
+			args: args{
+				batchSize:    5,
+				batchTimeout: time.Hour,
+				ctx:          func() (context.Context, func()) { return context.Background(), func() {} },
+				input: func() chan kafka.Message {
+					c := make(chan kafka.Message, 7)
+					c <- kafka.Message{Partition: 0, Offset: 0}
+					c <- kafka.Message{Partition: 1, Offset: 1}
+					c <- kafka.Message{Partition: 2, Offset: 2}
+					c <- kafka.Message{Partition: 3, Offset: 3}
+					c <- kafka.Message{Partition: 2, Offset: 2} // duplicate
+					c <- kafka.Message{Partition: 4, Offset: 4}
+					c <- kafka.Message{Partition: 3, Offset: 3} // duplicate
+
+					return c
+				},
+			},
+			want: []kafka.Message{
+				{Partition: 0, Offset: 0},
+				{Partition: 1, Offset: 1},
+				{Partition: 2, Offset: 2},
+				{Partition: 3, Offset: 3},
+				{Partition: 4, Offset: 4},
+			},
+		},
 	}
 
 	for _, tt := range tests {
