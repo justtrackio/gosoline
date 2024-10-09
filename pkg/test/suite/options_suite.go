@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/ipread"
@@ -163,6 +164,21 @@ func WithSharedEnvironment() Option {
 	return func(s *suiteOptions) {
 		s.envIsShared = true
 	}
+}
+
+func WithStreamConsumerRetryDisabled(s *suiteOptions) {
+	s.addAppOption(application.WithConfigCallback(func(config cfg.GosoConf) error {
+		consumerNames := stream.GetAllConsumerNames(config)
+
+		for _, name := range consumerNames {
+			key := fmt.Sprintf("%s.enabled", stream.ConfigurableConsumerRetryKey(name))
+			if err := config.Option(cfg.WithConfigSetting(key, false)); err != nil {
+				return fmt.Errorf("can not set option %s: %w", key, err)
+			}
+		}
+
+		return nil
+	}))
 }
 
 func WithSubscribers(transformerFactoryMap mdlsub.TransformerMapTypeVersionFactories) Option {

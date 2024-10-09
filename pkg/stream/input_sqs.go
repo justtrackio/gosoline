@@ -53,6 +53,7 @@ type sqsInput struct {
 	unmarshaler UnmarshallerFunc
 
 	cfn     coffin.Coffin
+	cancel  context.CancelFunc
 	channel chan *Message
 	stopped int32
 	started int32
@@ -101,6 +102,7 @@ func NewSqsInputWithInterfaces(logger log.Logger, queue sqs.Queue, unmarshaller 
 		settings:    settings,
 		unmarshaler: unmarshaller,
 		cfn:         coffin.New(),
+		cancel:      func() {},
 		channel:     make(chan *Message),
 	}
 }
@@ -114,6 +116,8 @@ func (i *sqsInput) Run(ctx context.Context) error {
 	if alreadyStarted == 1 {
 		return fmt.Errorf("can not run an sqs input a second time")
 	}
+
+	ctx, i.cancel = context.WithCancel(ctx)
 
 	defer close(i.channel)
 	defer i.logger.Info("leaving sqs input")
@@ -168,6 +172,7 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 }
 
 func (i *sqsInput) Stop() {
+	i.cancel()
 	atomic.StoreInt32(&i.stopped, 1)
 }
 

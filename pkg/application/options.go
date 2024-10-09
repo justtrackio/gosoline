@@ -58,6 +58,14 @@ func WithConfigEnvKeyReplacer(replacer *strings.Replacer) Option {
 	}
 }
 
+func WithConfigCallback(call func(config cfg.GosoConf) error) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			return call(config)
+		})
+	}
+}
+
 func WithConfigDebug(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		return kernelPkg.WithMiddlewareFactory(func(ctx context.Context, config cfg.Config, logger log.Logger) (kernelPkg.Middleware, error) {
