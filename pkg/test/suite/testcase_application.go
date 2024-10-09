@@ -46,12 +46,15 @@ func buildTestCaseApplication(suite TestingSuite, method reflect.Method) (testCa
 }
 
 func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment, testcase func(aut *appUnderTest)) {
+	var appOptions []application.Option
+
 	for k, factory := range suiteOptions.appModules {
 		suiteOptions.appModules[k] = newEssentialModuleFactory(factory)
 	}
 
-	appOptions := append(suiteOptions.appOptions, []application.Option{
-		application.WithConfigMap(map[string]interface{}{
+	appOptions = append(appOptions, suiteOptions.appOptions...)
+	appOptions = append(appOptions, []application.Option{
+		application.WithConfigMap(map[string]any{
 			"env": "test",
 		}),
 		application.WithProducerDaemon,
