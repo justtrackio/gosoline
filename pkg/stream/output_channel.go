@@ -10,6 +10,7 @@ type OutputChannel interface {
 	Read() ([]WritableMessage, bool)
 	Write(msg []WritableMessage)
 	Close()
+	IsClosed() bool
 }
 
 type outputChannel struct {
@@ -58,4 +59,11 @@ func (c *outputChannel) Close() {
 	} else {
 		c.logger.Warn("duplicate close to output channel: channel is already closed")
 	}
+}
+
+func (c *outputChannel) IsClosed() bool {
+	c.lck.RLock()
+	defer c.lck.RUnlock()
+
+	return c.closed
 }
