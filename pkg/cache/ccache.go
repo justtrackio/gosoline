@@ -28,7 +28,7 @@ type Cache[T any] interface {
 	SetX(key string, value T, ttl time.Duration)
 
 	// Mutate atomically retrieves the item for key from the cache.
-	// If it exists and is not expired it if passed to mutate, else a nil pointer.
+	// If it exists and is not expired it is passed to mutate, else a nil pointer is passed.
 	// The mutated value returned by mutated is then stored in the cache
 	// if it isn't its type's zero value or the [WithNotFoundTtl] option is set on cache creation.
 	// Uses the cache's default ttl.
