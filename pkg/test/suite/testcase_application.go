@@ -54,6 +54,7 @@ func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suit
 		application.WithConfigMap(map[string]interface{}{
 			"env": "test",
 		}),
+		application.WithConfigDebug,
 		application.WithProducerDaemon,
 		application.WithKernelExitHandler(func(code int) {
 			assert.Equal(t, kernel.ExitCodeOk, code, "exit code should be %d", kernel.ExitCodeOk)

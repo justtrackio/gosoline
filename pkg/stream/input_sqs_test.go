@@ -25,11 +25,12 @@ func TestSqsInput_Run(t *testing.T) {
 	msg := &stream.Message{}
 
 	queue := new(sqsMocks.Queue)
-	queue.On("Receive", ctx, int32(1), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
+	queue.On("Receive", mock.AnythingOfType("*context.cancelCtx"), int32(1), int32(3)).Return(func(_ context.Context, mrc int32, wt int32) []types.Message {
 		newCount := atomic.AddInt32(&count, 1)
 
 		if newCount > mrc {
 			<-waitStopDone
+
 			return []types.Message{}
 		}
 
