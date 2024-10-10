@@ -10,12 +10,42 @@ import (
 
 //go:generate mockery --name Cache
 type Cache[T any] interface {
+	// Contains checks whether any not yet expired element with key exists in the cache.
 	Contains(key string) bool
+
+	// Expire updates the expiry of the item with key if it exists.
+	// Returns true if an item was expired.
 	Expire(key string) bool
+
+	// Get returns the item stored for key if it exists and is not expired.
+	// Returns the item and whether a non expired item was found.
 	Get(key string) (T, bool)
+
+	// Set sets the value for key with the cache's default ttl.
 	Set(key string, value T)
+
+	// SetX sets the value for key with the provided ttl.
 	SetX(key string, value T, ttl time.Duration)
+
+	// Mutate atomically retrieves the item for key from the cache.
+	// If it exists and is not expired it if passed to mutate, else a nil pointer.
+	// The mutated value returned by mutated is then stored in the cache
+	// if it isn't its type's zero value or the [WithNotFoundTtl] option is set on cache creation.
+	// Uses the cache's default ttl.
+	Mutate(key string, mutate func(value *T) T) T
+
+	// MutateX works the same as [Mutate], just uses the provided ttl instead of the cache's default.
+	MutateX(key string, mutate func(value *T) T, ttl time.Duration) T
+
+	// Provide retrieves the non expired item from the cache if it exists.
+	// If not, provider is called to retrieve a new value.
+	// If the provided value isn't its type's zero value or the [WithNotFoundTtl] option is
+	// set on cache creation the provided value is stored in the cache.
+	// Returns the retrieved or provided value.
 	Provide(key string, provider func() T) T
+
+	// ProvideWithError works the same as [Provide], but if provider returns an error the
+	// provided value is immediately returned and not stored in the cache.
 	ProvideWithError(key string, provider func() (T, error)) (T, error)
 }
 
@@ -102,6 +132,36 @@ func (c *cache[T]) Expire(key string) bool {
 	item.Extend(-time.Second)
 
 	return true
+}
+
+func (c *cache[T]) Mutate(key string, mutate func(*T) T) T {
+	return c.mutate(key, mutate, c.ttl)
+}
+
+func (c *cache[T]) MutateX(key string, mutate func(*T) T, ttl time.Duration) T {
+	return c.mutate(key, mutate, ttl)
+}
+
+func (c *cache[T]) mutate(key string, mutate func(*T) T, ttl time.Duration) T {
+	unlock := c.lock.Lock(key)
+	defer unlock()
+
+	var result *T
+	tmp, exists := c.Get(key)
+	if exists {
+		result = &tmp
+	}
+
+	mutated := mutate(result)
+
+	if !isZero(mutated) {
+		c.SetX(key, mutated, ttl)
+	} else if c.notFoundTtl > 0 {
+		// cache a typed nil-ptr. when we look up a value the next time, we will be able to cast it back to the correct type.
+		c.SetX(key, mutated, c.notFoundTtl)
+	}
+
+	return mutated
 }
 
 func (c *cache[T]) Provide(key string, provider func() T) T {
