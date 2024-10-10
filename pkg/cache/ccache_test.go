@@ -91,6 +91,30 @@ func TestCCache_Expire_Manually_DoesntResurrect(t *testing.T) {
 	})
 }
 
+func TestCCache_Mutate(t *testing.T) {
+	assert.NotPanics(t, func() {
+		c := cache.New[string](1, 0, time.Hour)
+
+		value := c.Mutate("key",
+			func(value *string) string {
+				assert.Nil(t, value)
+
+				return "foo"
+			})
+
+		assert.Equal(t, "foo", value)
+
+		value = c.Mutate("key",
+			func(value *string) string {
+				assert.NotNil(t, value)
+
+				return *value + "bar"
+			})
+
+		assert.Equal(t, "foobar", value)
+	})
+}
+
 func TestCCache_Provide(t *testing.T) {
 	assert.NotPanics(t, func() {
 		c := cache.New[string](1, 0, time.Hour)
