@@ -797,7 +797,7 @@ func TestRepository_DeleteHasManyNoRelation(t *testing.T) {
 
 func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Repository) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	tracer := tracing.NewNoopTracer()
+	tracer := tracing.NewLocalTracer()
 
 	db, clientMock, _ := goSqlMock.New()
 	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
@@ -821,7 +821,7 @@ func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Re
 
 func getTimedMocks(t *testing.T, time time.Time, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Repository) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
-	tracer := tracing.NewNoopTracer()
+	tracer := tracing.NewLocalTracer()
 
 	db, clientMock, _ := goSqlMock.New()
 

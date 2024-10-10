@@ -7,22 +7,24 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-func ContextTraceFieldsResolver(ctx context.Context) map[string]interface{} {
-	span := GetSpanFromContext(ctx)
+func ContextTraceFieldsResolver(ctx context.Context) map[string]any {
+	var trace *Trace
 
-	if span == nil {
-		return map[string]interface{}{}
+	if span := GetSpanFromContext(ctx); span != nil {
+		trace = span.GetTrace()
 	}
 
-	traceId := span.GetTrace().GetTraceId()
-
-	if traceId == "" {
-		return map[string]interface{}{}
+	if trace == nil {
+		trace = GetTraceFromContext(ctx)
 	}
 
-	return map[string]interface{}{
-		"trace_id": span.GetTrace().GetTraceId(),
+	if trace != nil {
+		return map[string]any{
+			"trace_id": trace.GetTraceId(),
+		}
 	}
+
+	return map[string]any{}
 }
 
 type LoggerErrorHandler struct{}
@@ -39,7 +41,7 @@ func (h *LoggerErrorHandler) Level() int {
 	return log.PriorityError
 }
 
-func (h *LoggerErrorHandler) Log(_ time.Time, _ int, _ string, _ []interface{}, err error, data log.Data) error {
+func (h *LoggerErrorHandler) Log(_ time.Time, _ int, _ string, _ []any, err error, data log.Data) error {
 	if err == nil {
 		return nil
 	}

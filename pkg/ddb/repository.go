@@ -107,7 +107,7 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
 	}
 
-	tracer := tracing.NewNoopTracer()
+	tracer := tracing.NewLocalTracer()
 
 	if !settings.DisableTracing {
 		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {

@@ -84,7 +84,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 	s.callback = mocks.NewRunnableConsumerCallback(s.T())
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
-	tracer := tracing.NewNoopTracer()
+	tracer := tracing.NewLocalTracer()
 	mw := metricMocks.NewWriterMockedAll()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
 

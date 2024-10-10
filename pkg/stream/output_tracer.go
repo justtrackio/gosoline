@@ -22,7 +22,7 @@ func NewOutputTracer(config cfg.Config, logger log.Logger, base Output, name str
 	config.UnmarshalKey(key, settings)
 
 	var err error
-	tracer := tracing.NewNoopTracer()
+	tracer := tracing.NewLocalTracer()
 
 	if settings.Tracing.Enabled {
 		if tracer, err = tracing.ProvideTracer(config, logger); err != nil {
