@@ -15,14 +15,15 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type changeHistoryManagerSettings struct {
-	TableSuffix string `cfg:"table_suffix" default:"history"`
+type ChangeHistoryManagerSettings struct {
+	TableSuffix      string `cfg:"table_suffix" default:"history"`
+	MigrationEnabled bool   `cfg:"migration_enabled" default:"false"`
 }
 
 type ChangeHistoryManager struct {
 	logger   log.Logger
 	orm      *gorm.DB
-	settings *changeHistoryManagerSettings
+	settings *ChangeHistoryManagerSettings
 	models   []ModelBased
 }
 
@@ -40,14 +41,18 @@ func NewChangeHistoryManager(ctx context.Context, config cfg.Config, logger log.
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
 
-	settings := &changeHistoryManagerSettings{}
+	settings := &ChangeHistoryManagerSettings{}
 	config.UnmarshalKey("change_history", settings)
 
+	return NewChangeHistoryManagerWithInterfaces(logger, orm, settings), nil
+}
+
+func NewChangeHistoryManagerWithInterfaces(logger log.Logger, orm *gorm.DB, settings *ChangeHistoryManagerSettings) *ChangeHistoryManager {
 	return &ChangeHistoryManager{
 		logger:   logger.WithChannel("change_history_manager"),
 		orm:      orm,
 		settings: settings,
-	}, nil
+	}
 }
 
 func (c *ChangeHistoryManager) addModels(models ...ModelBased) {
@@ -258,10 +263,7 @@ func (c *ChangeHistoryManager) insertHistoryEntry(originalTable *tableMetadata, 
 }
 
 func (c *ChangeHistoryManager) incrementRevision(originalTable *tableMetadata, historyTable *tableMetadata) string {
-	return fmt.Sprintf(`
-		BEGIN 
-			SET NEW.change_history_revision = (SELECT IFNULL(MAX(d.change_history_revision), 0) + 1 FROM %s as d WHERE %s); 
-		END`,
+	return fmt.Sprintf(`SET NEW.change_history_revision = (SELECT IFNULL(MAX(d.change_history_revision), 0) + 1 FROM %s as d WHERE %s);`,
 		historyTable.tableNameQuoted,
 		c.primaryKeysMatchCondition(originalTable, "NEW"),
 	)
@@ -376,6 +378,16 @@ func (c *ChangeHistoryManager) getTableMetaData(columnLength int, queryBuilder f
 }
 
 func (c *ChangeHistoryManager) execute(statements []string) error {
+	if !c.settings.MigrationEnabled {
+		for _, statement := range statements {
+			c.logger.Info("planned schema change: " + statement)
+		}
+
+		c.logger.Info("change history migration is disabled, please apply the changes manually")
+
+		return fmt.Errorf("missing schema migrations (disabled)")
+	}
+
 	for _, statement := range statements {
 		c.logger.Debug(statement)
 		_, err := c.orm.CommonDB().Exec(statement)
