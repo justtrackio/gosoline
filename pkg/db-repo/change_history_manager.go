@@ -15,14 +15,15 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-type changeHistoryManagerSettings struct {
-	TableSuffix string `cfg:"table_suffix" default:"history"`
+type ChangeHistoryManagerSettings struct {
+	TableSuffix      string `cfg:"table_suffix" default:"history"`
+	MigrationEnabled bool   `cfg:"migration_enabled" default:"false"`
 }
 
 type ChangeHistoryManager struct {
 	logger   log.Logger
 	orm      *gorm.DB
-	settings *changeHistoryManagerSettings
+	settings *ChangeHistoryManagerSettings
 	models   []ModelBased
 }
 
@@ -40,14 +41,18 @@ func NewChangeHistoryManager(ctx context.Context, config cfg.Config, logger log.
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
 
-	settings := &changeHistoryManagerSettings{}
+	settings := &ChangeHistoryManagerSettings{}
 	config.UnmarshalKey("change_history", settings)
 
+	return NewChangeHistoryManagerWithInterfaces(logger, orm, settings), nil
+}
+
+func NewChangeHistoryManagerWithInterfaces(logger log.Logger, orm *gorm.DB, settings *ChangeHistoryManagerSettings) *ChangeHistoryManager {
 	return &ChangeHistoryManager{
 		logger:   logger.WithChannel("change_history_manager"),
 		orm:      orm,
 		settings: settings,
-	}, nil
+	}
 }
 
 func (c *ChangeHistoryManager) addModels(models ...ModelBased) {
@@ -376,6 +381,16 @@ func (c *ChangeHistoryManager) getTableMetaData(columnLength int, queryBuilder f
 }
 
 func (c *ChangeHistoryManager) execute(statements []string) error {
+	if !c.settings.MigrationEnabled {
+		c.logger.Info("change history migration is disabled")
+
+		for _, statement := range statements {
+			c.logger.Info("planned schema change: " + statement)
+		}
+
+		return fmt.Errorf("change history migration disabled")
+	}
+
 	for _, statement := range statements {
 		c.logger.Debug(statement)
 		_, err := c.orm.CommonDB().Exec(statement)
