@@ -57,7 +57,20 @@ func New(ctx context.Context, _ cfg.Config, _ log.Logger) (kernel.Module, error)
 }
 
 func Provide(ctx context.Context) (TaskRunner, error) {
-	return appctx.Provide(ctx, taskRunnerKey(0), newTaskRunner)
+	runner, err := appctx.Provide(ctx, taskRunnerKey(0), newTaskRunner)
+	if err != nil {
+		return nil, fmt.Errorf("failed to provide task runner: %w", err)
+	}
+
+	runner.lck.Lock()
+	defer runner.lck.Unlock()
+
+	if runner.done {
+		runner.done = false
+		runner.pendingTasks = make(chan kernel.Module, 100)
+	}
+
+	return runner, nil
 }
 
 // RunTask gets the TaskRunner from the context and uses it to run the given task.
@@ -75,7 +88,7 @@ func RunTask(ctx context.Context, task kernel.Module) error {
 	return nil
 }
 
-func newTaskRunner() (TaskRunner, error) {
+func newTaskRunner() (*taskRunner, error) {
 	return &taskRunner{
 		pendingTasks: make(chan kernel.Module, 100),
 	}, nil
