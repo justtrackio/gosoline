@@ -20,10 +20,10 @@ import (
 
 type ServerTestSuite struct {
 	suite.Suite
-	logger log.Logger
-	router *gin.Engine
-	tracer tracing.Tracer
-	server *httpserver.HttpServer
+	logger              log.Logger
+	router              *gin.Engine
+	tracingInstrumentor tracing.Instrumentor
+	server              *httpserver.HttpServer
 }
 
 func TestServerTestSuite(t *testing.T) {
@@ -36,11 +36,11 @@ func (s *ServerTestSuite) SetupTest() {
 	gin.SetMode(gin.TestMode)
 	s.router = gin.New()
 
-	tracer := new(tracingMocks.Tracer)
-	tracer.On("HttpHandler", s.router).Return(s.router)
-	s.tracer = tracer
+	tracingInstrumentor := new(tracingMocks.Instrumentor)
+	tracingInstrumentor.On("HttpHandler", s.router).Return(s.router)
+	s.tracingInstrumentor = tracingInstrumentor
 
-	server, err := httpserver.NewWithInterfaces(s.logger, s.router, s.tracer, &httpserver.Settings{})
+	server, err := httpserver.NewWithInterfaces(s.logger, s.router, s.tracingInstrumentor, &httpserver.Settings{})
 	s.NoError(err)
 
 	s.server = server

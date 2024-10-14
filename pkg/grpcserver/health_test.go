@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
-	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	protobuf "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func Test_healthServer_Check(t *testing.T) {

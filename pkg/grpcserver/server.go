@@ -9,11 +9,12 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/tracing"
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/encoding/gzip"
+	protobuf "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (
@@ -43,8 +44,9 @@ type (
 func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		var (
-			err         error
-			definitions *Definitions
+			err                 error
+			definitions         *Definitions
+			tracingInstrumentor tracing.Instrumentor
 		)
 		settings := &Settings{}
 		config.UnmarshalKey(fmt.Sprintf("%s.%s", grpcServerConfigKey, name), settings)
@@ -57,29 +59,43 @@ func New(name string, definer ServiceDefiner, middlewares ...MiddlewareFactory) 
 			return nil, fmt.Errorf("could not define routes: %w", err)
 		}
 
-		return NewWithInterfaces(ctx, logger, definitions, settings, middlewares...)
+		interceptors := []grpc.UnaryServerInterceptor{}
+		for _, m := range middlewares {
+			interceptors = append(interceptors,
+				grpc.UnaryServerInterceptor(m(logger)))
+		}
+
+		if tracingInstrumentor, err = tracing.ProvideInstrumentor(ctx, config, logger); err != nil {
+			return nil, fmt.Errorf("can not create tracer: %w", err)
+		}
+
+		return NewWithInterfaces(ctx, logger, tracingInstrumentor, definitions, settings, interceptors...)
 	}
 }
 
 // NewWithInterfaces receives the interfaces required to create a Server.
-func NewWithInterfaces(ctx context.Context, logger log.Logger, definitions *Definitions, s *Settings, middlewares ...MiddlewareFactory) (*Server, error) {
+func NewWithInterfaces(
+	ctx context.Context,
+	logger log.Logger,
+	tracingInstrumentor tracing.Instrumentor,
+	definitions *Definitions,
+	s *Settings,
+	interceptors ...grpc.UnaryServerInterceptor,
+) (*Server, error) {
 	var (
 		hs         *healthServer
 		cancelFunc context.CancelFunc
 		serverCtx  = ctx
 	)
 
-	interceptors := []grpc.UnaryServerInterceptor{}
-	for _, m := range middlewares {
-		interceptors = append(interceptors,
-			grpc.UnaryServerInterceptor(m(logger)))
-	}
+	interceptors = append(interceptors, tracingInstrumentor.GrpcUnaryServerInterceptor())
 
 	options := []grpc.ServerOption{
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(interceptors...),
 		),
 	}
+
 	if s.Stats.Enabled {
 		options = append(options, grpc.StatsHandler(NewStatsHandler(logger, s)))
 	}
@@ -126,7 +142,9 @@ func (g *Server) Run(ctx context.Context) error {
 
 	err := g.server.Serve(g.listener)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		g.logger.Error("grpc_server closed unexpected: %w", err.Error())
+		g.logger.WithFields(log.Fields{
+			"error": err,
+		}).Error("grpc_server closed unexpected")
 
 		return err
 	}
