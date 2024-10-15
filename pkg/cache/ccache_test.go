@@ -25,6 +25,20 @@ func TestNewWithConfiguration(t *testing.T) {
 	})
 }
 
+func TestCCache_Set_Delete_Get(t *testing.T) {
+	assert.NotPanics(t, func() {
+		c := cache.New[string](1, 0, time.Hour)
+
+		c.Set("key", "value")
+		deleted := c.Delete("key")
+		value, ok := c.Get("key")
+
+		assert.True(t, deleted)
+		assert.False(t, ok)
+		assert.Equal(t, "", value)
+	})
+}
+
 func TestCCache_Set_Get(t *testing.T) {
 	assert.NotPanics(t, func() {
 		c := cache.New[string](1, 0, time.Hour)
