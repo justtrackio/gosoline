@@ -11,12 +11,17 @@ import (
 
 func KernelMiddlewareLoader(group string, factory FixtureSetsFactory) kernel.MiddlewareFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Middleware, error) {
-		var err error
-		var fixtureSets []FixtureSet
-
+		settings := unmarshalFixtureLoaderSettings(config)
 		logger = logger.WithChannel("fixtures").WithFields(map[string]any{
 			"group": group,
 		})
+
+		if !settings.Enabled {
+			return disabledMiddleware(logger)
+		}
+
+		var err error
+		var fixtureSets []FixtureSet
 
 		loader := NewFixtureLoader(ctx, config, logger)
 
@@ -36,4 +41,13 @@ func KernelMiddlewareLoader(group string, factory FixtureSetsFactory) kernel.Mid
 			}
 		}, nil
 	}
+}
+
+func disabledMiddleware(logger log.Logger) (kernel.Middleware, error) {
+	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
+		return func() {
+			logger.Info("fixture loader is not enabled")
+			next()
+		}
+	}, nil
 }
