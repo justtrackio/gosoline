@@ -23,3 +23,4 @@ db:
 change_history:
   table_suffix: history_entries
   change_author_column: change_author
+  migration_enabled: true
