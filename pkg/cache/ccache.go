@@ -47,6 +47,10 @@ type Cache[T any] interface {
 	// ProvideWithError works the same as [Provide], but if provider returns an error the
 	// provided value is immediately returned and not stored in the cache.
 	ProvideWithError(key string, provider func() (T, error)) (T, error)
+
+	// Delete deletes the item with key from the cache.
+	// Returns true if the item was present, false otherwise.
+	Delete(key string) bool
 }
 
 type cache[T any] struct {
@@ -85,6 +89,10 @@ func WithNotFoundTtl[T any](notFoundTtl time.Duration) func(cache *cache[T]) {
 	return func(cache *cache[T]) {
 		cache.notFoundTtl = notFoundTtl
 	}
+}
+
+func (c *cache[T]) Delete(key string) bool {
+	return c.base.Delete(key)
 }
 
 func (c *cache[T]) Set(key string, value T) {

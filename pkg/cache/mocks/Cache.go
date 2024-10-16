@@ -67,6 +67,52 @@ func (_c *Cache_Contains_Call[T]) RunAndReturn(run func(string) bool) *Cache_Con
 	return _c
 }
 
+// Delete provides a mock function with given fields: key
+func (_m *Cache[T]) Delete(key string) bool {
+	ret := _m.Called(key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(key)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// Cache_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
+type Cache_Delete_Call[T interface{}] struct {
+	*mock.Call
+}
+
+// Delete is a helper method to define mock.On call
+//   - key string
+func (_e *Cache_Expecter[T]) Delete(key interface{}) *Cache_Delete_Call[T] {
+	return &Cache_Delete_Call[T]{Call: _e.mock.On("Delete", key)}
+}
+
+func (_c *Cache_Delete_Call[T]) Run(run func(key string)) *Cache_Delete_Call[T] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *Cache_Delete_Call[T]) Return(_a0 bool) *Cache_Delete_Call[T] {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Cache_Delete_Call[T]) RunAndReturn(run func(string) bool) *Cache_Delete_Call[T] {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Expire provides a mock function with given fields: key
 func (_m *Cache[T]) Expire(key string) bool {
 	ret := _m.Called(key)
