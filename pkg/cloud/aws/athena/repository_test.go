@@ -59,13 +59,13 @@ func (s *AthenaRepositoryTestSuite) TestRunQueryQb() {
 
 	s.sqlMock.ExpectQuery(`SELECT id, name, created_at FROM testSchema WHERE (id = 1 AND name = 'foo')`).WillReturnRows(rows)
 
-	expectedResult := []*TestValue{
+	expectedResult := []TestValue{
 		{1, "foo", s.now},
 	}
 
 	qb := s.repository.QueryBuilder().Where(squirrel.And{squirrel.Eq{"id": 1}, squirrel.Eq{"name": "foo"}})
 
-	actualResult, err := s.repository.QueryQb(s.ctx, qb)
+	actualResult, err := s.repository.Query(s.ctx, qb)
 	s.NoError(err)
 	s.Equal(expectedResult, actualResult)
 }
@@ -77,12 +77,12 @@ func (s *AthenaRepositoryTestSuite) TestRunQuery() {
 
 	s.sqlMock.ExpectQuery("SELECT id, name, created_at FROM testSchema").WillReturnRows(rows)
 
-	expectedResult := []*TestValue{
+	expectedResult := []TestValue{
 		{1, "foo", s.now},
 		{2, "bar", s.now},
 	}
 
-	actualResult, err := s.repository.Query(s.ctx, "SELECT id, name, created_at FROM testSchema")
+	actualResult, err := s.repository.QuerySql(s.ctx, "SELECT id, name, created_at FROM testSchema")
 	s.NoError(err)
 	s.Equal(expectedResult, actualResult)
 }

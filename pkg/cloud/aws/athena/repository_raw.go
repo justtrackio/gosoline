@@ -17,9 +17,12 @@ type Settings struct {
 	TableName  string
 }
 
+// RepositoryRaw is a low level repository implementation to query Athena tables.
+//
 //go:generate mockery --name RepositoryRaw
 type RepositoryRaw interface {
-	QueryRows(ctx context.Context, query string) (*sqlx.Rows, error)
+	// QueryRows accepts a SQL statement and returns the result as *sqlx.Rows
+	QueryRows(ctx context.Context, sql string) (*sqlx.Rows, error)
 }
 
 type repositoryRaw struct {
@@ -56,12 +59,12 @@ func NewRepositoryRawWithInterfaces(db *sql.DB, settings *Settings) *repositoryR
 	}
 }
 
-func (r *repositoryRaw) QueryRows(ctx context.Context, query string) (*sqlx.Rows, error) {
+func (r *repositoryRaw) QueryRows(ctx context.Context, sql string) (*sqlx.Rows, error) {
 	var err error
 	var rows *sqlx.Rows
 
-	if rows, err = r.db.QueryxContext(ctx, query); err != nil {
-		return nil, fmt.Errorf("executing query %s threw an error: %w", query, err)
+	if rows, err = r.db.QueryxContext(ctx, sql); err != nil {
+		return nil, fmt.Errorf("executing query %s threw an error: %w", sql, err)
 	}
 
 	return rows, nil

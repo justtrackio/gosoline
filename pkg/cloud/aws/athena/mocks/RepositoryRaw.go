@@ -22,9 +22,9 @@ func (_m *RepositoryRaw) EXPECT() *RepositoryRaw_Expecter {
 	return &RepositoryRaw_Expecter{mock: &_m.Mock}
 }
 
-// QueryRows provides a mock function with given fields: ctx, query
-func (_m *RepositoryRaw) QueryRows(ctx context.Context, query string) (*sqlx.Rows, error) {
-	ret := _m.Called(ctx, query)
+// QueryRows provides a mock function with given fields: ctx, sql
+func (_m *RepositoryRaw) QueryRows(ctx context.Context, sql string) (*sqlx.Rows, error) {
+	ret := _m.Called(ctx, sql)
 
 	if len(ret) == 0 {
 		panic("no return value specified for QueryRows")
@@ -33,10 +33,10 @@ func (_m *RepositoryRaw) QueryRows(ctx context.Context, query string) (*sqlx.Row
 	var r0 *sqlx.Rows
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, string) (*sqlx.Rows, error)); ok {
-		return rf(ctx, query)
+		return rf(ctx, sql)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string) *sqlx.Rows); ok {
-		r0 = rf(ctx, query)
+		r0 = rf(ctx, sql)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*sqlx.Rows)
@@ -44,7 +44,7 @@ func (_m *RepositoryRaw) QueryRows(ctx context.Context, query string) (*sqlx.Row
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, query)
+		r1 = rf(ctx, sql)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -59,12 +59,12 @@ type RepositoryRaw_QueryRows_Call struct {
 
 // QueryRows is a helper method to define mock.On call
 //   - ctx context.Context
-//   - query string
-func (_e *RepositoryRaw_Expecter) QueryRows(ctx interface{}, query interface{}) *RepositoryRaw_QueryRows_Call {
-	return &RepositoryRaw_QueryRows_Call{Call: _e.mock.On("QueryRows", ctx, query)}
+//   - sql string
+func (_e *RepositoryRaw_Expecter) QueryRows(ctx interface{}, sql interface{}) *RepositoryRaw_QueryRows_Call {
+	return &RepositoryRaw_QueryRows_Call{Call: _e.mock.On("QueryRows", ctx, sql)}
 }
 
-func (_c *RepositoryRaw_QueryRows_Call) Run(run func(ctx context.Context, query string)) *RepositoryRaw_QueryRows_Call {
+func (_c *RepositoryRaw_QueryRows_Call) Run(run func(ctx context.Context, sql string)) *RepositoryRaw_QueryRows_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})

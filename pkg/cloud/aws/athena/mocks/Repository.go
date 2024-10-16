@@ -24,29 +24,29 @@ func (_m *Repository[T]) EXPECT() *Repository_Expecter[T] {
 	return &Repository_Expecter[T]{mock: &_m.Mock}
 }
 
-// Query provides a mock function with given fields: ctx, query
-func (_m *Repository[T]) Query(ctx context.Context, query string) ([]*T, error) {
-	ret := _m.Called(ctx, query)
+// Query provides a mock function with given fields: ctx, qb
+func (_m *Repository[T]) Query(ctx context.Context, qb squirrel.SelectBuilder) ([]T, error) {
+	ret := _m.Called(ctx, qb)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Query")
 	}
 
-	var r0 []*T
+	var r0 []T
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) ([]*T, error)); ok {
-		return rf(ctx, query)
+	if rf, ok := ret.Get(0).(func(context.Context, squirrel.SelectBuilder) ([]T, error)); ok {
+		return rf(ctx, qb)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) []*T); ok {
-		r0 = rf(ctx, query)
+	if rf, ok := ret.Get(0).(func(context.Context, squirrel.SelectBuilder) []T); ok {
+		r0 = rf(ctx, qb)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*T)
+			r0 = ret.Get(0).([]T)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, query)
+	if rf, ok := ret.Get(1).(func(context.Context, squirrel.SelectBuilder) error); ok {
+		r1 = rf(ctx, qb)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -61,24 +61,24 @@ type Repository_Query_Call[T interface{}] struct {
 
 // Query is a helper method to define mock.On call
 //   - ctx context.Context
-//   - query string
-func (_e *Repository_Expecter[T]) Query(ctx interface{}, query interface{}) *Repository_Query_Call[T] {
-	return &Repository_Query_Call[T]{Call: _e.mock.On("Query", ctx, query)}
+//   - qb squirrel.SelectBuilder
+func (_e *Repository_Expecter[T]) Query(ctx interface{}, qb interface{}) *Repository_Query_Call[T] {
+	return &Repository_Query_Call[T]{Call: _e.mock.On("Query", ctx, qb)}
 }
 
-func (_c *Repository_Query_Call[T]) Run(run func(ctx context.Context, query string)) *Repository_Query_Call[T] {
+func (_c *Repository_Query_Call[T]) Run(run func(ctx context.Context, qb squirrel.SelectBuilder)) *Repository_Query_Call[T] {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(squirrel.SelectBuilder))
 	})
 	return _c
 }
 
-func (_c *Repository_Query_Call[T]) Return(_a0 []*T, _a1 error) *Repository_Query_Call[T] {
+func (_c *Repository_Query_Call[T]) Return(_a0 []T, _a1 error) *Repository_Query_Call[T] {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Repository_Query_Call[T]) RunAndReturn(run func(context.Context, string) ([]*T, error)) *Repository_Query_Call[T] {
+func (_c *Repository_Query_Call[T]) RunAndReturn(run func(context.Context, squirrel.SelectBuilder) ([]T, error)) *Repository_Query_Call[T] {
 	_c.Call.Return(run)
 	return _c
 }
@@ -128,68 +128,9 @@ func (_c *Repository_QueryBuilder_Call[T]) RunAndReturn(run func() squirrel.Sele
 	return _c
 }
 
-// QueryQb provides a mock function with given fields: ctx, qb
-func (_m *Repository[T]) QueryQb(ctx context.Context, qb squirrel.SelectBuilder) ([]*T, error) {
-	ret := _m.Called(ctx, qb)
-
-	if len(ret) == 0 {
-		panic("no return value specified for QueryQb")
-	}
-
-	var r0 []*T
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, squirrel.SelectBuilder) ([]*T, error)); ok {
-		return rf(ctx, qb)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, squirrel.SelectBuilder) []*T); ok {
-		r0 = rf(ctx, qb)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*T)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, squirrel.SelectBuilder) error); ok {
-		r1 = rf(ctx, qb)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// Repository_QueryQb_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QueryQb'
-type Repository_QueryQb_Call[T interface{}] struct {
-	*mock.Call
-}
-
-// QueryQb is a helper method to define mock.On call
-//   - ctx context.Context
-//   - qb squirrel.SelectBuilder
-func (_e *Repository_Expecter[T]) QueryQb(ctx interface{}, qb interface{}) *Repository_QueryQb_Call[T] {
-	return &Repository_QueryQb_Call[T]{Call: _e.mock.On("QueryQb", ctx, qb)}
-}
-
-func (_c *Repository_QueryQb_Call[T]) Run(run func(ctx context.Context, qb squirrel.SelectBuilder)) *Repository_QueryQb_Call[T] {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(squirrel.SelectBuilder))
-	})
-	return _c
-}
-
-func (_c *Repository_QueryQb_Call[T]) Return(_a0 []*T, _a1 error) *Repository_QueryQb_Call[T] {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *Repository_QueryQb_Call[T]) RunAndReturn(run func(context.Context, squirrel.SelectBuilder) ([]*T, error)) *Repository_QueryQb_Call[T] {
-	_c.Call.Return(run)
-	return _c
-}
-
-// QueryRows provides a mock function with given fields: ctx, query
-func (_m *Repository[T]) QueryRows(ctx context.Context, query string) (*sqlx.Rows, error) {
-	ret := _m.Called(ctx, query)
+// QueryRows provides a mock function with given fields: ctx, sql
+func (_m *Repository[T]) QueryRows(ctx context.Context, sql string) (*sqlx.Rows, error) {
+	ret := _m.Called(ctx, sql)
 
 	if len(ret) == 0 {
 		panic("no return value specified for QueryRows")
@@ -198,10 +139,10 @@ func (_m *Repository[T]) QueryRows(ctx context.Context, query string) (*sqlx.Row
 	var r0 *sqlx.Rows
 	var r1 error
 	if rf, ok := ret.Get(0).(func(context.Context, string) (*sqlx.Rows, error)); ok {
-		return rf(ctx, query)
+		return rf(ctx, sql)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string) *sqlx.Rows); ok {
-		r0 = rf(ctx, query)
+		r0 = rf(ctx, sql)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*sqlx.Rows)
@@ -209,7 +150,7 @@ func (_m *Repository[T]) QueryRows(ctx context.Context, query string) (*sqlx.Row
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, query)
+		r1 = rf(ctx, sql)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -224,12 +165,12 @@ type Repository_QueryRows_Call[T interface{}] struct {
 
 // QueryRows is a helper method to define mock.On call
 //   - ctx context.Context
-//   - query string
-func (_e *Repository_Expecter[T]) QueryRows(ctx interface{}, query interface{}) *Repository_QueryRows_Call[T] {
-	return &Repository_QueryRows_Call[T]{Call: _e.mock.On("QueryRows", ctx, query)}
+//   - sql string
+func (_e *Repository_Expecter[T]) QueryRows(ctx interface{}, sql interface{}) *Repository_QueryRows_Call[T] {
+	return &Repository_QueryRows_Call[T]{Call: _e.mock.On("QueryRows", ctx, sql)}
 }
 
-func (_c *Repository_QueryRows_Call[T]) Run(run func(ctx context.Context, query string)) *Repository_QueryRows_Call[T] {
+func (_c *Repository_QueryRows_Call[T]) Run(run func(ctx context.Context, sql string)) *Repository_QueryRows_Call[T] {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
@@ -242,6 +183,65 @@ func (_c *Repository_QueryRows_Call[T]) Return(_a0 *sqlx.Rows, _a1 error) *Repos
 }
 
 func (_c *Repository_QueryRows_Call[T]) RunAndReturn(run func(context.Context, string) (*sqlx.Rows, error)) *Repository_QueryRows_Call[T] {
+	_c.Call.Return(run)
+	return _c
+}
+
+// QuerySql provides a mock function with given fields: ctx, query
+func (_m *Repository[T]) QuerySql(ctx context.Context, query string) ([]T, error) {
+	ret := _m.Called(ctx, query)
+
+	if len(ret) == 0 {
+		panic("no return value specified for QuerySql")
+	}
+
+	var r0 []T
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]T, error)); ok {
+		return rf(ctx, query)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []T); ok {
+		r0 = rf(ctx, query)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]T)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, query)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Repository_QuerySql_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'QuerySql'
+type Repository_QuerySql_Call[T interface{}] struct {
+	*mock.Call
+}
+
+// QuerySql is a helper method to define mock.On call
+//   - ctx context.Context
+//   - query string
+func (_e *Repository_Expecter[T]) QuerySql(ctx interface{}, query interface{}) *Repository_QuerySql_Call[T] {
+	return &Repository_QuerySql_Call[T]{Call: _e.mock.On("QuerySql", ctx, query)}
+}
+
+func (_c *Repository_QuerySql_Call[T]) Run(run func(ctx context.Context, query string)) *Repository_QuerySql_Call[T] {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Repository_QuerySql_Call[T]) Return(_a0 []T, _a1 error) *Repository_QuerySql_Call[T] {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Repository_QuerySql_Call[T]) RunAndReturn(run func(context.Context, string) ([]T, error)) *Repository_QuerySql_Call[T] {
 	_c.Call.Return(run)
 	return _c
 }
