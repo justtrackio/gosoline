@@ -24,6 +24,23 @@ func TestMessageWithTraceEncoder_Encode(t *testing.T) {
 	assert.Regexp(t, "Root=[^;]+;Parent=[^;]+;Sampled=[01]", attributes["traceId"])
 }
 
+func TestMessageWithTraceEncoder_Encode_TraceFromContext(t *testing.T) {
+	encoder := tracing.NewMessageWithTraceEncoder(tracing.TraceIdErrorReturnStrategy{})
+
+	trace := &tracing.Trace{
+		TraceId:  "goso:14406634-410c-42a6-9247-411167cad1e4",
+		Id:       "00000000-0000-0000-0000-000000000000",
+		ParentId: "00000000-0000-0000-0000-000000000000",
+		Sampled:  false,
+	}
+	ctx := tracing.ContextWithTrace(context.Background(), trace)
+	_, attributes, err := encoder.Encode(ctx, nil, map[string]string{})
+
+	assert.NoError(t, err)
+	assert.Contains(t, attributes, "traceId")
+	assert.Regexp(t, "Root=[^;]+;Parent=[^;]+;Sampled=[01]", attributes["traceId"])
+}
+
 func TestMessageWithTraceEncoder_Decode(t *testing.T) {
 	ctx := context.Background()
 	attributes := map[string]string{
@@ -52,11 +69,14 @@ func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
 		"traceId": "1-5e3d557d-d06c248cc50169bd71b44fec",
 	}
 
-	logger := new(mocks.Logger)
-	logger.On("WithFields", log.Fields{
+	logger := mocks.NewLogger(t)
+	logger.EXPECT().WithFields(log.Fields{
 		"stacktrace": "mocked trace",
 	}).Return(logger).Once()
-	logger.On("Warn", "trace id is invalid: %s", "the traceId attribute is invalid: the trace id [1-5e3d557d-d06c248cc50169bd71b44fec] should consist of at least 2 parts")
+	logger.EXPECT().Warn(
+		"trace id is invalid: %s",
+		"the traceId attribute is invalid: the trace id [1-5e3d557d-d06c248cc50169bd71b44fec] should consist of at least 2 parts and at most of 3 parts",
+	).Once()
 
 	strategy := tracing.NewTraceIdErrorWarningStrategyWithInterfaces(logger, log.GetMockedStackTrace)
 
@@ -68,6 +88,4 @@ func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, decodedAttributes, "traceId")
 	assert.Nil(t, trace)
-
-	logger.AssertExpectations(t)
 }

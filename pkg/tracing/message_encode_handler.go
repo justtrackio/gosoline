@@ -23,10 +23,12 @@ func (m MessageWithTraceEncoder) Encode(ctx context.Context, _ interface{}, attr
 	}
 
 	if trace == nil {
-		return ctx, attributes, nil
+		trace = GetTraceFromContext(ctx)
 	}
 
-	attributes["traceId"] = TraceToString(trace)
+	if trace != nil {
+		attributes["traceId"] = TraceToString(trace)
+	}
 
 	return ctx, attributes, nil
 }
