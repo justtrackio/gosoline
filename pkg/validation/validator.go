@@ -29,8 +29,8 @@ type validator struct {
 	rules  Group
 }
 
-func NewValidator(config cfg.Config, logger log.Logger) (*validator, error) {
-	tracer, err := tracing.ProvideTracer(config, logger)
+func NewValidator(ctx context.Context, config cfg.Config, logger log.Logger) (*validator, error) {
+	tracer, err := tracing.ProvideTracer(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
