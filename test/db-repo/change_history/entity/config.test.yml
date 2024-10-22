@@ -26,6 +26,7 @@ stream:
 
 change_history:
   table_suffix: histories
+  migration_enabled: true
 
 test:
   auto_detect:
