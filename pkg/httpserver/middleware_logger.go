@@ -31,12 +31,26 @@ func LoggingMiddleware(logger log.Logger, settings LoggingSettings) gin.HandlerF
 			}
 		}
 
-		ginCtx.Request = ginCtx.Request.WithContext(log.InitContext(ginCtx.Request.Context()))
+		ctx := log.InitContext(ginCtx.Request.Context())
+
+		if requestId := ginCtx.Request.Header.Get("X-Request-Id"); requestId != "" {
+			ctx = log.MutateGlobalContextFields(ctx, map[string]any{
+				"request_id": requestId,
+			})
+		}
+
+		if sessionId := ginCtx.Request.Header.Get("X-Session-Id"); sessionId != "" {
+			ctx = log.MutateGlobalContextFields(ctx, map[string]any{
+				"session_id": sessionId,
+			})
+		}
+
+		ginCtx.Request = ginCtx.Request.WithContext(ctx)
 
 		ginCtx.Next()
 
 		req := ginCtx.Request
-		ctx := req.Context()
+		ctx = req.Context()
 
 		path := req.URL.Path
 		pathRaw := getPathRaw(ginCtx)
@@ -84,10 +98,6 @@ func LoggingMiddleware(logger log.Logger, settings LoggingSettings) gin.HandlerF
 			}
 
 			fields["request_query_parameters"] = queryParameters
-		}
-
-		if requestId := req.Header.Get("X-Request-Id"); requestId != "" {
-			fields["request_id"] = requestId
 		}
 
 		ctxLogger := chLogger.WithContext(ctx).WithFields(fields)
