@@ -19,13 +19,20 @@ type SentryHub interface {
 type SentryHubSettings struct {
 	Dsn         string
 	Environment string
+	AppFamily   string
 	AppName     string
+	AppGroup    string
 }
 
 func NewSentryHub(config cfg.Config) (SentryHub, error) {
+	var appId cfg.AppId
+	appId.PadFromConfig(config)
+
 	settings := &SentryHubSettings{
-		Environment: config.GetString("env"),
-		AppName:     config.GetString("app_name"),
+		Environment: appId.Environment,
+		AppFamily:   appId.Family,
+		AppName:     appId.Application,
+		AppGroup:    appId.Group,
 	}
 
 	return NewSentryHubWithSettings(settings)
@@ -48,7 +55,9 @@ func NewSentryHubWithSettings(settings *SentryHubSettings) (SentryHub, error) {
 	hub := sentry.NewHub(client, scope)
 	hub.ConfigureScope(func(scope *sentry.Scope) {
 		scope.SetTags(map[string]string{
+			"family":      settings.AppFamily,
 			"application": settings.AppName,
+			"group":       settings.AppGroup,
 		})
 	})
 
