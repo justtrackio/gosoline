@@ -1,8 +1,12 @@
 package tracing
 
 import (
+	"context"
 	"fmt"
 	"strings"
+
+	"github.com/justtrackio/gosoline/pkg/funk"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
 //go:generate mockery --name TraceAble
@@ -40,61 +44,56 @@ func TraceToString(trace *Trace) string {
 		sampled = "1"
 	}
 
+	// we set "Parent" to our Id because this method is intended to forward a trace to a downstream service.
+	// thus, setting us as the parent automatically creates a chain of parent/child traces
 	parts := []string{"Root=", trace.TraceId, ";Parent=", trace.Id, ";Sampled=", sampled}
 
 	return strings.Join(parts, "")
 }
 
 func StringToTrace(traceId string) (*Trace, error) {
-	trace := &Trace{}
-	parts := strings.Split(traceId, ";")
+	var err error
 
-	if len(parts) < 2 || len(parts) > 3 {
-		return nil, fmt.Errorf("the trace id [%s] should consist of at least 2 parts and at most of 3 parts", traceId)
+	variables := funk.Reduce(strings.Split(traceId, ";"), func(acc map[string]string, element string, i int) map[string]string {
+		parts := strings.SplitN(element, "=", 2)
+		if len(parts) == 2 {
+			acc[parts[0]] = parts[1]
+		} else {
+			err = fmt.Errorf("a part [%s] of the trace id seems malformed", element)
+		}
+
+		return acc
+	}, map[string]string{})
+
+	trace := &Trace{
+		TraceId: variables["Root"],
+		// Self is set by the load balancer: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-request-tracing.html
+		Id:       variables["Self"],
+		ParentId: variables["Parent"],
+		Sampled:  variables["Sampled"] == "1",
 	}
 
-	root := strings.Split(parts[0], "=")
-	if len(root) != 2 {
-		return nil, fmt.Errorf("the root part [%s] of the trace id seems malformed", parts[0])
-	}
-	trace.TraceId = root[1]
-
-	if len(parts) == 2 {
-		err := parseSampled(parts[1], trace)
-		return trace, err
+	if trace.TraceId == "" {
+		return nil, fmt.Errorf("the trace id [%s] should contain a root part", traceId)
 	}
 
-	if err := parseParentId(parts[1], trace); err != nil {
-		return trace, err
-	}
-
-	if err := parseSampled(parts[2], trace); err != nil {
-		return trace, err
-	}
-
-	return trace, nil
+	return trace, err
 }
 
-func parseParentId(parentId string, trace *Trace) error {
-	parent := strings.Split(parentId, "=")
+func GetTraceIdFromContext(ctx context.Context) *string {
+	var trace *Trace
 
-	if len(parent) != 2 {
-		return fmt.Errorf("the parent part [%s] of the trace id seems malformed", parentId)
+	if span := GetSpanFromContext(ctx); span != nil {
+		trace = span.GetTrace()
 	}
 
-	trace.ParentId = parent[1]
-
-	return nil
-}
-
-func parseSampled(sampledStr string, trace *Trace) error {
-	sampled := strings.Split(sampledStr, "=")
-
-	if len(sampled) != 2 {
-		return fmt.Errorf("the sampled part [%s] of the trace id seems malformed", sampledStr)
+	if trace == nil {
+		trace = GetTraceFromContext(ctx)
 	}
 
-	trace.Sampled = sampled[1] == "1"
+	if trace == nil {
+		return nil
+	}
 
-	return nil
+	return mdl.Box(TraceToString(trace))
 }

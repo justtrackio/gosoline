@@ -13,11 +13,12 @@ import (
 )
 
 type Request struct {
-	errs         error
-	outputFile   *string
-	queryParams  url.Values
-	restyRequest *resty.Request
-	url          *url.URL
+	errs           error
+	outputFile     *string
+	queryParams    url.Values
+	restyRequest   *resty.Request
+	url            *url.URL
+	forwardTraceId bool
 }
 
 var r struct {
@@ -157,6 +158,13 @@ func (r *Request) WithMultipartFormData(params url.Values) *Request {
 
 func (r *Request) WithOutputFile(path string) *Request {
 	r.outputFile = &path
+
+	return r
+}
+
+// WithForwardTraceId allows you to configure whether you want to add the trace ID header to the downstream systems
+func (r *Request) WithForwardTraceId(forwardTraceId bool) *Request {
+	r.forwardTraceId = forwardTraceId
 
 	return r
 }

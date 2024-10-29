@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/aws/aws-xray-sdk-go/xray"
 	httpHeaders "github.com/go-http-utils/headers"
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/appctx"
@@ -17,6 +18,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
 const (
@@ -70,6 +72,7 @@ type client struct {
 	defaultHeaders headers
 	http           restyClient
 	metricWriter   metric.Writer
+	forwardTraceId bool
 }
 
 type Settings struct {
@@ -82,6 +85,7 @@ type Settings struct {
 	RetryWaitTime          time.Duration          `cfg:"retry_wait_time" default:"100ms"`
 	CircuitBreakerSettings CircuitBreakerSettings `cfg:"circuit_breaker"`
 	TransportSettings      TransportSettings      `cfg:"transport"`
+	TracingSettings        TracingSettings        `cfg:"tracing"`
 }
 
 type TransportSettings struct {
@@ -207,6 +211,10 @@ type DialerSettings struct {
 	FallbackDelay time.Duration `cfg:"fallback_delay" default:"0s"`
 }
 
+type TracingSettings struct {
+	ForwardTraceId bool `cfg:"forward_trace_id" default:"false"`
+}
+
 func ProvideHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
 	type httpClientName string
 
@@ -219,7 +227,7 @@ func newHttpClient(config cfg.Config, logger log.Logger, name string) Client {
 	metricWriter := metric.NewWriter()
 	settings := UnmarshalClientSettings(config, name)
 	restyClient := newRestyClient(settings)
-	client := NewHttpClientWithInterfaces(logger, clock.Provider, metricWriter, restyClient)
+	client := NewHttpClientWithInterfaces(logger, clock.Provider, metricWriter, restyClient, settings.TracingSettings.ForwardTraceId)
 
 	if settings.CircuitBreakerSettings.Enabled {
 		client = NewCircuitBreakerClientWithInterfaces(client, logger, clock.Provider, name, settings.CircuitBreakerSettings)
@@ -282,21 +290,29 @@ func newRestyClient(settings Settings) *resty.Client {
 	return httpClient
 }
 
-func NewHttpClientWithInterfaces(logger log.Logger, clock clock.Clock, metricWriter metric.Writer, httpClient restyClient) Client {
+func NewHttpClientWithInterfaces(
+	logger log.Logger,
+	clock clock.Clock,
+	metricWriter metric.Writer,
+	httpClient restyClient,
+	forwardTraceId bool,
+) Client {
 	return &client{
 		logger:         logger,
 		clock:          clock,
 		defaultHeaders: make(headers),
 		http:           httpClient,
 		metricWriter:   metricWriter,
+		forwardTraceId: forwardTraceId,
 	}
 }
 
 func (c *client) NewRequest() *Request {
 	return &Request{
-		queryParams:  netUrl.Values{},
-		restyRequest: c.http.NewRequest(),
-		url:          &netUrl.URL{},
+		queryParams:    netUrl.Values{},
+		restyRequest:   c.http.NewRequest(),
+		url:            &netUrl.URL{},
+		forwardTraceId: c.forwardTraceId,
 	}
 }
 
@@ -387,6 +403,12 @@ func (c *client) do(ctx context.Context, method string, request *Request) (*Resp
 	req.SetContext(ctx)
 	req.SetHeaders(c.defaultHeaders)
 
+	if request.forwardTraceId {
+		if traceId := tracing.GetTraceIdFromContext(ctx); traceId != nil {
+			req.SetHeader(xray.TraceIDHeaderKey, *traceId)
+		}
+	}
+
 	if request.outputFile != nil {
 		req.SetOutput(*request.outputFile)
 	}
@@ -457,32 +479,6 @@ func GetClientConfigKey(name string) string {
 }
 
 func UnmarshalClientSettings(config cfg.Config, name string) Settings {
-	// notify about wrong old settings being used
-	if config.IsSet("http_client_retry_count") {
-		panic("'http_client_retry_count' was removed, use 'http_client.default.retry_count' instead")
-	}
-	if config.IsSet("http_client_request_timeout") {
-		panic("'http_client_request_timeout' was removed, use 'http_client.default.request_timeout' instead")
-	}
-	if config.IsSet("http_client.follow_redirects") {
-		panic("'http_client.follow_redirects' was removed, use 'http_client.default.follow_redirects' instead")
-	}
-	if config.IsSet("http_client.request_timeout") {
-		panic("'http_client.request_timeout' was removed, use 'http_client.default.request_timeout' instead")
-	}
-	if config.IsSet("http_client.retry_count") {
-		panic("'http_client.retry_count' was removed, use 'http_client.default.retry_count' instead")
-	}
-	if config.IsSet("http_client.retry_max_wait_time") {
-		panic("'http_client.retry_max_wait_time' was removed, use 'http_client.default.retry_max_wait_time' instead")
-	}
-	if config.IsSet("http_client.retry_reset_readers") {
-		panic("'http_client.retry_reset_readers' was removed, use 'http_client.default.retry_reset_readers' instead")
-	}
-	if config.IsSet("http_client.retry_wait_time") {
-		panic("'http_client.retry_wait_time' was removed, use 'http_client.default.retry_wait_time' instead")
-	}
-
 	if name == "" {
 		name = "default"
 	}

@@ -75,7 +75,7 @@ func TestMessageWithTraceEncoder_Decode_Warning(t *testing.T) {
 	}).Return(logger).Once()
 	logger.EXPECT().Warn(
 		"trace id is invalid: %s",
-		"the traceId attribute is invalid: the trace id [1-5e3d557d-d06c248cc50169bd71b44fec] should consist of at least 2 parts and at most of 3 parts",
+		"the traceId attribute is invalid: the trace id [1-5e3d557d-d06c248cc50169bd71b44fec] should contain a root part",
 	).Once()
 
 	strategy := tracing.NewTraceIdErrorWarningStrategyWithInterfaces(logger, log.GetMockedStackTrace)
