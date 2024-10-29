@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
@@ -32,9 +33,14 @@ func (t localTracer) StartSpanFromContext(ctx context.Context, _ string) (contex
 
 func (t localTracer) HttpHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := t.ensureLocalTrace(r.Context())
-		r = r.WithContext(ctx)
+		ctx := r.Context()
+		if trace, err := StringToTrace(r.Header.Get(xray.TraceIDHeaderKey)); err == nil {
+			ctx = ContextWithTrace(ctx, trace)
+		} else {
+			ctx = t.ensureLocalTrace(ctx)
+		}
 
+		r = r.WithContext(ctx)
 		h.ServeHTTP(w, r)
 	})
 }
