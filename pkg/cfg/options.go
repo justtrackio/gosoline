@@ -20,6 +20,12 @@ func (c *configFiles) Set(value string) error {
 	return nil
 }
 
+func WithConfigBytes(bytes []byte, format string) Option {
+	return func(cfg *config) error {
+		return readConfigFromBytes(cfg, bytes, format)
+	}
+}
+
 func WithConfigFile(filePath string, fileType string) Option {
 	return func(cfg *config) error {
 		return readConfigFromFile(cfg, filePath, fileType)

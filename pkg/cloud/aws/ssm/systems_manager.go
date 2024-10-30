@@ -25,8 +25,8 @@ type simpleSystemsManager struct {
 	client Client
 }
 
-func NewSimpleSystemsManager(ctx context.Context, config cfg.Config, logger log.Logger) (*simpleSystemsManager, error) {
-	client, err := ProvideClient(ctx, config, logger, "default")
+func NewSimpleSystemsManager(ctx context.Context, config cfg.Config, logger log.Logger, clientName string) (*simpleSystemsManager, error) {
+	client, err := ProvideClient(ctx, config, logger, clientName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create ssm client: %w", err)
 	}
