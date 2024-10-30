@@ -532,6 +532,49 @@ func TestUniq(t *testing.T) {
 	}
 }
 
+func TestUniqFunc(t *testing.T) {
+	tests := map[string]struct {
+		In  []string
+		Out []string
+	}{
+		"nil": {
+			In:  nil,
+			Out: []string{},
+		},
+		"empty": {
+			In:  []string{},
+			Out: []string{},
+		},
+		"single": {
+			In:  []string{"a"},
+			Out: []string{"a"},
+		},
+		"repeated": {
+			In:  []string{"a", "a"},
+			Out: []string{"a"},
+		},
+		"pair": {
+			In:  []string{"a", "b"},
+			Out: []string{"a", "b"},
+		},
+		"repeatedPair": {
+			In:  []string{"a", "b", "a", "b"},
+			Out: []string{"a", "b"},
+		},
+	}
+
+	for name, data := range tests {
+		data := data
+		t.Run(name, func(t *testing.T) {
+			res := funk.UniqFunc(data.In, func(t string) string {
+				return t
+			})
+
+			assert.Equal(t, data.Out, res)
+		})
+	}
+}
+
 func TestUniqByType(t *testing.T) {
 	type A struct {
 		Value int

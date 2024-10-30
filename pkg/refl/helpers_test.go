@@ -246,3 +246,13 @@ func TestCopyPointerSlice(t *testing.T) {
 
 	assert.Equal(t, source, target)
 }
+
+func TestUnbox(t *testing.T) {
+	var val any
+
+	str := "foo"
+	val = &str
+	unboxed := refl.Unbox(val)
+
+	assert.Equal(t, "foo", unboxed)
+}

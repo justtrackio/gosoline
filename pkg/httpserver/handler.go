@@ -14,10 +14,8 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/exec"
-	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -39,117 +37,6 @@ type Request struct {
 	Method   string
 	Params   gin.Params
 	Url      *url.URL
-}
-
-// Don't create a response directly, use New*Response instead
-type Response struct {
-	Body        interface{}
-	ContentType *string // might be nil
-	Header      http.Header
-	StatusCode  int
-}
-
-type emptyRenderer struct{}
-
-func (e emptyRenderer) Render(http.ResponseWriter) error {
-	return nil
-}
-
-func (e emptyRenderer) WriteContentType(_ http.ResponseWriter) {
-}
-
-func NewResponse(body interface{}, contentType string, statusCode int, header http.Header) *Response {
-	return &Response{
-		Body:        body,
-		Header:      header,
-		ContentType: &contentType,
-		StatusCode:  statusCode,
-	}
-}
-
-func NewHtmlResponse(body interface{}) *Response {
-	return &Response{
-		StatusCode:  http.StatusOK,
-		ContentType: mdl.Box(ContentTypeHtml),
-		Body:        body,
-		Header:      make(http.Header),
-	}
-}
-
-func NewJsonResponse(body interface{}) *Response {
-	return &Response{
-		StatusCode:  http.StatusOK,
-		ContentType: mdl.Box(ContentTypeJson),
-		Body:        body,
-		Header:      make(http.Header),
-	}
-}
-
-func NewProtobufResponse(body ProtobufEncodable) (*Response, error) {
-	message, err := body.ToMessage()
-	if err != nil {
-		return nil, fmt.Errorf("failed to transform body to protobuf message: %w", err)
-	}
-
-	bytes, err := proto.Marshal(message)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode body as protobuf message: %w", err)
-	}
-
-	return &Response{
-		StatusCode:  http.StatusOK,
-		ContentType: mdl.Box(ContentTypeProtobuf),
-		Body:        bytes,
-		Header:      make(http.Header),
-	}, nil
-}
-
-func NewRedirectResponse(url string) *Response {
-	header := make(http.Header)
-	header.Set("Location", url)
-
-	return &Response{
-		StatusCode:  http.StatusFound,
-		ContentType: nil,
-		Body:        nil,
-		Header:      header,
-	}
-}
-
-func NewStatusResponse(statusCode int) *Response {
-	var body any
-	var contentType *string
-	// for responses with a client or server error, provide a small response body
-	// (unless overwritten later by our caller anyway) containing the error message.
-	// we must not do this for the 1xx, 2xx, or 3xx range of status codes as they
-	// would interpret the body in some way
-	if statusCode >= http.StatusBadRequest {
-		body = http.StatusText(statusCode)
-		contentType = mdl.Box(ContentTypeText)
-	}
-
-	return &Response{
-		StatusCode:  statusCode,
-		ContentType: contentType,
-		Body:        body,
-		Header:      make(http.Header),
-	}
-}
-
-func (r *Response) AddHeader(key string, value string) {
-	r.Header.Add(key, value)
-}
-
-func (r *Response) WithBody(body interface{}) *Response {
-	r.Body = body
-
-	return r
-}
-
-func (r *Response) WithContentType(contentType string) *Response {
-	r.ContentType = &contentType
-
-	return r
 }
 
 //go:generate mockery --name HandlerWithoutInput

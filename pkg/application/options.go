@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -13,11 +14,13 @@ import (
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
+	"github.com/justtrackio/gosoline/pkg/refl"
 	"github.com/justtrackio/gosoline/pkg/share"
 	"github.com/justtrackio/gosoline/pkg/stream"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -90,10 +93,77 @@ func WithConfigErrorHandlers(handlers ...cfg.ErrorHandler) Option {
 	}
 }
 
+func WithConfigBytes(bytes []byte, format string) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithConfigBytes(bytes, format))
+		})
+	}
+}
+
 func WithConfigFile(filePath string, fileType string) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithConfigFile(filePath, fileType))
+		})
+	}
+}
+
+func Flag(flag string, setting string, def any, usage string) func() (string, string, any, string) {
+	return func() (string, string, any, string) {
+		return flag, setting, def, usage
+	}
+}
+
+func WithConfigFlags(args []string, flags ...func() (string, string, any, string)) Option {
+	args = funk.Filter(args, func(s string) bool {
+		return strings.HasPrefix(s, "-")
+	})
+
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			settings := make(map[string]any)
+
+			fs := flag.NewFlagSet("fs", flag.ExitOnError)
+
+			for _, f := range flags {
+				name, key, def, usage := f()
+
+				switch d := def.(type) {
+				case bool:
+					settings[key] = &d
+					fs.BoolVar(&d, name, d, usage)
+				case float64:
+					settings[key] = &d
+					fs.Float64Var(&d, name, d, usage)
+				case int:
+					settings[key] = &d
+					fs.IntVar(&d, name, d, usage)
+				case int64:
+					settings[key] = &d
+					fs.Int64Var(&d, name, d, usage)
+				case string:
+					settings[key] = &d
+					fs.StringVar(&d, name, d, usage)
+				case time.Duration:
+					settings[key] = &d
+					fs.DurationVar(&d, name, d, usage)
+				}
+			}
+
+			if err := fs.Parse(args); err != nil {
+				return fmt.Errorf("error while parsing flags: %w", err)
+			}
+
+			for k, v := range settings {
+				val := refl.Unbox(v)
+
+				if err := config.Option(cfg.WithConfigSetting(k, val)); err != nil {
+					return fmt.Errorf("can not set config value from flag %q: %w", k, err)
+				}
+			}
+
+			return nil
 		})
 	}
 }

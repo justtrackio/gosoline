@@ -644,6 +644,45 @@ func TestMapStructIO_WriteStructNested(t *testing.T) {
 	assert.Equal(t, expected, source)
 }
 
+func TestMapStructIO_WriteStructMerge(t *testing.T) {
+	type nestedStruct struct {
+		I int     `cfg:"i"`
+		S string  `cfg:"s"`
+		F float32 `cfg:"f"`
+	}
+
+	type sourceStruct struct {
+		Nested nestedStruct `cfg:"nested"`
+	}
+
+	values := mapx.NewMapX(map[string]interface{}{
+		"nested": map[string]interface{}{
+			"s": "foo",
+			"f": 3.0,
+		},
+	})
+
+	expected := &sourceStruct{
+		Nested: nestedStruct{
+			I: 1,
+			S: "foo",
+			F: 3,
+		},
+	}
+
+	source := &sourceStruct{
+		Nested: nestedStruct{
+			I: 1,
+			F: 2,
+		},
+	}
+	ms := setupMapStructIO(t, source)
+	err := ms.Write(values)
+
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
+}
+
 func TestMapStructIO_WriteZero(t *testing.T) {
 	type sourceStruct struct {
 		MSI map[string]interface{} `cfg:"msi"`

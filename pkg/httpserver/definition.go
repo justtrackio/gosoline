@@ -77,6 +77,10 @@ func (d *Definitions) Handle(httpMethod, relativePath string, handlers ...gin.Ha
 	})
 }
 
+func (d *Definitions) PATCH(relativePath string, handlers ...gin.HandlerFunc) {
+	d.Handle(http.PatchRequest, relativePath, handlers...)
+}
+
 func (d *Definitions) POST(relativePath string, handlers ...gin.HandlerFunc) {
 	d.Handle(http.PostRequest, relativePath, handlers...)
 }

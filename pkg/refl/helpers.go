@@ -222,3 +222,16 @@ func ValueToPointerValue(val any) any {
 
 	return vp.Interface()
 }
+
+func Unbox(val any) any {
+	v := reflect.ValueOf(val)
+
+	if v.Kind() != reflect.Ptr {
+		return val
+	}
+
+	v = v.Elem()
+	value := v.Interface()
+
+	return value
+}

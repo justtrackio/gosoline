@@ -13,6 +13,7 @@ type Formatter func(timestamp string, level int, format string, args []interface
 
 var formatters = map[string]Formatter{
 	"console": FormatterConsole,
+	"simple":  FormatterSimple,
 	"json":    FormatterJson,
 }
 
@@ -35,6 +36,33 @@ func FormatterConsole(timestamp string, level int, format string, args []interfa
 		msg,
 		color.GreenString(contextString),
 		color.BlueString(fieldString),
+	)
+
+	output = strings.TrimSpace(output)
+	serialized := []byte(output)
+
+	return append(serialized, '\n'), nil
+}
+
+func FormatterSimple(timestamp string, level int, format string, args []interface{}, err error, data Data) ([]byte, error) {
+	fieldString := getFieldsAsString(data.Fields)
+	contextString := getFieldsAsString(data.ContextFields)
+
+	levelStr := fmt.Sprintf("%-7s", LevelName(level))
+	channel := fmt.Sprintf("%-7s", data.Channel)
+	msg := fmt.Sprintf(format, args...)
+
+	if err != nil {
+		msg = err.Error()
+	}
+
+	output := fmt.Sprintf("%s %s %s %-50s %s %s",
+		timestamp,
+		channel,
+		levelStr,
+		msg,
+		contextString,
+		fieldString,
 	)
 
 	output = strings.TrimSpace(output)

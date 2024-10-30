@@ -585,6 +585,7 @@ func (s *Struct) doWriteStruct(cfg string, targetValue reflect.Value, sourceValu
 	}
 
 	element := reflect.New(targetValue.Type())
+	element.Elem().Set(targetValue)
 	elementInterface := element.Interface()
 
 	if err := s.doWrite(elementInterface, elementValues); err != nil {
