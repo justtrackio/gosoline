@@ -315,6 +315,24 @@ func Uniq[S ~[]T, T comparable](sl S) S {
 	return res
 }
 
+func UniqFunc[S ~[]T, T any, K comparable](sl S, fn func(T) K) []T {
+	keys := make([]K, 0)
+	uniq := make([]T, 0)
+
+	for _, item := range sl {
+		key := fn(item)
+
+		if slices.Contains(keys, key) {
+			continue
+		}
+
+		keys = append(keys, key)
+		uniq = append(uniq, item)
+	}
+
+	return uniq
+}
+
 func UniqByType[S ~[]T, T any](sl S) S {
 	types := map[reflect.Type]bool{}
 

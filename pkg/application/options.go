@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -90,10 +91,67 @@ func WithConfigErrorHandlers(handlers ...cfg.ErrorHandler) Option {
 	}
 }
 
+func WithConfigBytes(bytes []byte, format string) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithConfigBytes(bytes, format))
+		})
+	}
+}
+
 func WithConfigFile(filePath string, fileType string) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
 			return config.Option(cfg.WithConfigFile(filePath, fileType))
+		})
+	}
+}
+
+func Flag(flag string, setting string, def any, usage string) func() (string, string, any, string) {
+	return func() (string, string, any, string) {
+		return flag, setting, def, usage
+	}
+}
+
+func WithConfigFlags(flags ...func() (string, string, any, string)) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			settings := make(map[string]any)
+
+			for _, f := range flags {
+				name, key, def, usage := f()
+
+				switch d := def.(type) {
+				case bool:
+					settings[key] = &d
+					flag.BoolVar(&d, name, d, usage)
+				case float64:
+					settings[key] = &d
+					flag.Float64Var(&d, name, d, usage)
+				case int:
+					settings[key] = &d
+					flag.IntVar(&d, name, d, usage)
+				case int64:
+					settings[key] = &d
+					flag.Int64Var(&d, name, d, usage)
+				case string:
+					settings[key] = &d
+					flag.StringVar(&d, name, d, usage)
+				case time.Duration:
+					settings[key] = &d
+					flag.DurationVar(&d, name, d, usage)
+				}
+			}
+
+			flag.Parse()
+
+			for k, v := range settings {
+				if err := config.Option(cfg.WithConfigSetting(k, v)); err != nil {
+					return fmt.Errorf("can not set config value from flag %q: %w", k, err)
+				}
+			}
+
+			return nil
 		})
 	}
 }
