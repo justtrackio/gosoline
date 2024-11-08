@@ -483,7 +483,7 @@ func (s *kinsumerTestSuite) mockShardTaskRatio(taskShardRatio float64) {
 	s.metricWriter.EXPECT().Write(metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: "ShardTaskRatio",
+			MetricName: "ShardTaskRatioMax",
 			Value:      taskShardRatio,
 			Unit:       metric.UnitCountMaximum,
 		},

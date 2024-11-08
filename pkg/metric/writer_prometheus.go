@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,9 +26,8 @@ const (
 )
 
 type (
-	registryAppCtxKey   string
-	promMetricFactory   func(*Datum) prometheus.Metric
-	promMetricPersister func(metric prometheus.Metric, data *Datum)
+	prometheusWriterCtxKey string
+	registryAppCtxKey      string
 )
 
 func ProvideRegistry(ctx context.Context, name string) (*prometheus.Registry, error) {
@@ -39,7 +40,7 @@ func ProvideRegistry(ctx context.Context, name string) (*prometheus.Registry, er
 	})
 }
 
-type promWriter struct {
+type prometheusWriter struct {
 	logger      log.Logger
 	promMetrics sync.Map
 	registry    *prometheus.Registry
@@ -48,7 +49,13 @@ type promWriter struct {
 	metrics     *int64
 }
 
-func NewPromWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*promWriter, error) {
+func ProvidePrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
+	return appctx.Provide(ctx, prometheusWriterCtxKey("default"), func() (Writer, error) {
+		return NewPrometheusWriter(ctx, config, logger)
+	})
+}
+
+func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	settings := &PromSettings{}
 	config.UnmarshalKey(promSettingsKey, settings)
 
@@ -60,11 +67,11 @@ func NewPromWriter(ctx context.Context, config cfg.Config, logger log.Logger) (*
 		return nil, err
 	}
 
-	return NewPromWriterWithInterfaces(logger, registry, namespace, settings.MetricLimit), nil
+	return NewPrometheusWriterWithInterfaces(logger, registry, namespace, settings.MetricLimit), nil
 }
 
-func NewPromWriterWithInterfaces(logger log.Logger, registry *prometheus.Registry, namespace string, metricLimit int64) *promWriter {
-	return &promWriter{
+func NewPrometheusWriterWithInterfaces(logger log.Logger, registry *prometheus.Registry, namespace string, metricLimit int64) Writer {
+	return &prometheusWriter{
 		logger:      logger.WithChannel("metrics"),
 		registry:    registry,
 		namespace:   namespace,
@@ -73,32 +80,45 @@ func NewPromWriterWithInterfaces(logger log.Logger, registry *prometheus.Registr
 	}
 }
 
-func (w *promWriter) GetPriority() int {
+func (w *prometheusWriter) GetPriority() int {
 	return PriorityLow
 }
 
-func (w *promWriter) Write(batch Data) {
+func (w *prometheusWriter) Write(batch Data) {
 	if len(batch) == 0 {
 		return
 	}
 
-	for i := range batch {
-		amendFromDefault(batch[i])
+	for _, datum := range batch {
+		amendFromDefault(datum)
 
-		if batch[i].Priority < w.GetPriority() {
+		if datum.Priority < w.GetPriority() {
 			continue
 		}
-		w.promMetricFromDatum(batch[i])
+
+		w.promMetricFromDatum(datum)
 	}
 
 	w.logger.Debug("written %d metric data sets to prometheus", len(batch))
 }
 
-func (w *promWriter) WriteOne(data *Datum) {
+func (w *prometheusWriter) WriteOne(data *Datum) {
 	w.Write(Data{data})
 }
 
-func (w *promWriter) promMetricFromDatum(data *Datum) {
+func (w *prometheusWriter) promMetricFromDatum(data *Datum) {
+	defer func() {
+		err := coffin.ResolveRecovery(recover())
+		if err != nil {
+			w.logger.Error("prom metric from datum for id %s: %w", data.Id(), err)
+		}
+	}()
+
+	if strings.Contains(data.MetricName, "-") {
+		w.logger.Warn("metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", data.MetricName)
+		data.MetricName = replacer.Replace(data.MetricName)
+	}
+
 	switch data.Unit {
 	case UnitCount:
 		fallthrough
@@ -117,105 +137,138 @@ func (w *promWriter) promMetricFromDatum(data *Datum) {
 	}
 }
 
-func (w *promWriter) promMetric(data *Datum, metricFactory promMetricFactory, metricPersister promMetricPersister) {
-	metric, ok := w.promMetrics.Load(data.Id())
-	if !ok {
-		var err error
-		metric, err = w.addMetric(metricFactory, data)
-		if err != nil {
-			return
-		}
-	}
-
-	promMetric := metric.(prometheus.Metric)
-	metricPersister(promMetric, data)
+func (w *prometheusWriter) buildHelp(data *Datum) string {
+	return fmt.Sprintf("unit: %s", data.Unit)
 }
 
-func (w *promWriter) promCounter(data *Datum) {
-	counterFactory := func(datum *Datum) prometheus.Metric {
-		return promauto.With(w.registry).NewCounter(prometheus.CounterOpts{
-			Namespace:   w.namespace,
-			Name:        data.MetricName,
-			Help:        w.buildHelp(data),
-			ConstLabels: prometheus.Labels(data.Dimensions),
-		})
-	}
-
-	counterPersister := func(metric prometheus.Metric, datum *Datum) {
-		counterMetric := metric.(prometheus.Counter)
-		counterMetric.Add(data.Value)
-	}
-
-	w.promMetric(data, counterFactory, counterPersister)
+func (w *prometheusWriter) createCounter(datum *Datum) *prometheus.CounterVec {
+	return promauto.With(w.registry).NewCounterVec(prometheus.CounterOpts{
+		Namespace: w.namespace,
+		Name:      datum.MetricName,
+		Help:      w.buildHelp(datum),
+	}, datum.DimensionKeys())
 }
 
-func (w *promWriter) promGauge(data *Datum) {
-	gaugeFactory := func(datum *Datum) prometheus.Metric {
-		return promauto.With(w.registry).NewGauge(prometheus.GaugeOpts{
-			Namespace:   w.namespace,
-			Name:        data.MetricName,
-			Help:        w.buildHelp(data),
-			ConstLabels: prometheus.Labels(data.Dimensions),
-		})
-	}
-
-	gaugePersister := func(metric prometheus.Metric, datum *Datum) {
-		gaugeMetric := metric.(prometheus.Gauge)
-		gaugeMetric.Set(data.Value)
-	}
-
-	w.promMetric(data, gaugeFactory, gaugePersister)
+func (w *prometheusWriter) createGauge(datum *Datum) *prometheus.GaugeVec {
+	return promauto.With(w.registry).NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: w.namespace,
+		Name:      datum.MetricName,
+		Help:      w.buildHelp(datum),
+	}, datum.DimensionKeys())
 }
 
-func (w *promWriter) promSummary(data *Datum) {
-	summaryFactory := func(datum *Datum) prometheus.Metric {
-		return promauto.With(w.registry).NewSummary(prometheus.SummaryOpts{
-			Namespace:   w.namespace,
-			Name:        data.MetricName,
-			Help:        w.buildHelp(data),
-			ConstLabels: prometheus.Labels(data.Dimensions),
-		})
-	}
-
-	summaryPersister := func(metric prometheus.Metric, datum *Datum) {
-		summaryMetric := metric.(prometheus.Summary)
-		summaryMetric.Observe(data.Value)
-	}
-
-	w.promMetric(data, summaryFactory, summaryPersister)
+func (w *prometheusWriter) createSummary(datum *Datum) *prometheus.SummaryVec {
+	return promauto.With(w.registry).NewSummaryVec(prometheus.SummaryOpts{
+		Namespace: w.namespace,
+		Name:      datum.MetricName,
+		Help:      w.buildHelp(datum),
+	}, datum.DimensionKeys())
 }
 
-func (w *promWriter) promHistogram(data *Datum) {
-	histogramFactory := func(datum *Datum) prometheus.Metric {
-		return promauto.With(w.registry).NewHistogram(prometheus.HistogramOpts{
-			Namespace:   w.namespace,
-			Name:        data.MetricName,
-			Help:        w.buildHelp(data),
-			ConstLabels: prometheus.Labels(data.Dimensions),
-		})
-	}
-
-	histogramPersister := func(metric prometheus.Metric, datum *Datum) {
-		histogramMetric := metric.(prometheus.Histogram)
-		histogramMetric.Observe(data.Value)
-	}
-
-	w.promMetric(data, histogramFactory, histogramPersister)
+func (w *prometheusWriter) createHistogram(datum *Datum) *prometheus.HistogramVec {
+	return promauto.With(w.registry).NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: w.namespace,
+		Name:      datum.MetricName,
+		Help:      w.buildHelp(datum),
+	}, datum.DimensionKeys())
 }
 
-func (w *promWriter) addMetric(metricFactory promMetricFactory, data *Datum) (prometheus.Metric, error) {
+func (w *prometheusWriter) addMetric(id string, metric any) error {
 	if atomic.LoadInt64(w.metrics) >= w.metricLimit {
 		w.logger.Error("fail to write metric due to exceeding limit")
-		return nil, errors.New("metric limit exceeded")
+
+		return errors.New("metric limit exceeded")
 	}
 
-	metric := metricFactory(data)
-	w.promMetrics.Store(data.Id(), metric)
+	w.promMetrics.Store(id, metric)
 	atomic.AddInt64(w.metrics, 1)
 
-	return metric, nil
+	return nil
 }
 
-func (w *promWriter) buildHelp(data *Datum) string {
-	return fmt.Sprintf("unit: %s", data.Unit)
+func (w *prometheusWriter) promCounter(datum *Datum) {
+	id := datum.Id()
+
+	metricI, ok := w.promMetrics.Load(id)
+	if !ok {
+		var err error
+		metric := w.createCounter(datum)
+
+		err = w.addMetric(id, metric)
+		if err != nil {
+			return // error is logged in w.addMetric already
+		}
+
+		metricI = metric
+	}
+
+	metric := metricI.(*prometheus.CounterVec)
+	metric.
+		With(prometheus.Labels(datum.Dimensions)).
+		Add(datum.Value)
+}
+
+func (w *prometheusWriter) promGauge(datum *Datum) {
+	id := datum.Id()
+	metricI, ok := w.promMetrics.Load(id)
+	if !ok {
+		var err error
+		metric := w.createGauge(datum)
+
+		err = w.addMetric(id, metric)
+		if err != nil {
+			return // error is logged in w.addMetric already
+		}
+
+		metricI = metric
+	}
+
+	metric := metricI.(*prometheus.GaugeVec)
+	metric.
+		With(prometheus.Labels(datum.Dimensions)).
+		Set(datum.Value)
+}
+
+func (w *prometheusWriter) promSummary(datum *Datum) {
+	id := datum.Id()
+
+	metricI, ok := w.promMetrics.Load(id)
+	if !ok {
+		var err error
+		metric := w.createSummary(datum)
+
+		err = w.addMetric(id, metric)
+		if err != nil {
+			return // error is logged in w.addMetric already
+		}
+
+		metricI = metric
+	}
+
+	metric := metricI.(*prometheus.SummaryVec)
+	metric.
+		With(prometheus.Labels(datum.Dimensions)).
+		Observe(datum.Value)
+}
+
+func (w *prometheusWriter) promHistogram(datum *Datum) {
+	id := datum.Id()
+
+	metricI, ok := w.promMetrics.Load(id)
+	if !ok {
+		var err error
+		metric := w.createHistogram(datum)
+
+		err = w.addMetric(id, metric)
+		if err != nil {
+			return // error is logged in w.addMetric already
+		}
+
+		metricI = metric
+	}
+
+	metric := metricI.(*prometheus.HistogramVec)
+	metric.
+		With(prometheus.Labels(datum.Dimensions)).
+		Observe(datum.Value)
 }

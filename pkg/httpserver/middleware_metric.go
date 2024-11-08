@@ -10,9 +10,11 @@ import (
 )
 
 const (
-	MetricHttpRequestCount        = "HttpRequestCount"
-	MetricHttpRequestResponseTime = "HttpRequestResponseTime"
-	MetricHttpStatus              = "HttpStatus"
+	perRoute                       = "PerRoute"
+	MetricHttpRequestCount         = "HttpRequestCount"
+	MetricHttpRequestCountPerRoute = "HttpRequestCountPerRoute"
+	MetricHttpRequestResponseTime  = "HttpRequestResponseTime"
+	MetricHttpStatus               = "HttpStatus"
 )
 
 func NewMetricMiddleware(name string) (middleware gin.HandlerFunc, setupHandler func(definitions []Definition)) {
@@ -71,25 +73,33 @@ func metricMiddleware(name string, ginCtx *gin.Context, writer metric.Writer) {
 			Unit:       metric.UnitCount,
 			Value:      1.0,
 		},
-	}, metric.Dimensions{
-		"Method":     method,
-		"Path":       path,
-		"ServerName": name,
-	}, metric.Dimensions{
-		"ServerName": name,
+	}, map[string]metric.Dimensions{
+		perRoute: {
+			"Method":     method,
+			"Path":       path,
+			"ServerName": name,
+		},
+		"": {
+			"ServerName": name,
+		},
 	}))
 }
 
 // createMetricsWithDimensions is creating a metric.Data set
 // which included each provided metric with each provided set of dimensions.
-func createMetricsWithDimensions(metrics metric.Data, dimensions ...metric.Dimensions) metric.Data {
+// The key of the dimensions map is appended to the metric name, so the name is unique across set of dimensions
+func createMetricsWithDimensions(metrics metric.Data, dimensionsByMetricSuffix map[string]metric.Dimensions) metric.Data {
 	return funk.Flatten(funk.Map(metrics, func(metricDatum *metric.Datum) metric.Data {
-		return funk.Map(dimensions, func(dimensions metric.Dimensions) *metric.Datum {
+		data := make(metric.Data, 0)
+		for metricNameExtension, dimensions := range dimensionsByMetricSuffix {
 			datum := *metricDatum
+			datum.MetricName += metricNameExtension
 			datum.Dimensions = dimensions
 
-			return &datum
-		})
+			data = append(data, &datum)
+		}
+
+		return data
 	}))
 }
 
@@ -97,7 +107,7 @@ func getMetricMiddlewareDefaults(name string, definitions ...Definition) metric.
 	return append(funk.Map(definitions, func(definition Definition) *metric.Datum {
 		return &metric.Datum{
 			Priority:   metric.PriorityHigh,
-			MetricName: MetricHttpRequestCount,
+			MetricName: MetricHttpRequestCountPerRoute,
 			Dimensions: metric.Dimensions{
 				"Method":     definition.httpMethod,
 				"Path":       definition.getAbsolutePath(),
