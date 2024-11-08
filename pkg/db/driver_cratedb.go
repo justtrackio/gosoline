@@ -15,7 +15,7 @@ const DriverNameCrateDb = "cratedb"
 
 func init() {
 	sql.Register(DriverNameCrateDb, stdlib.GetDefaultDriver())
-	connectionFactories[DriverNameCrateDb] = NewCrateDbDriver
+	AddDriverFactory(DriverNameCrateDb, NewCrateDbDriver)
 }
 
 type crateDbDriver struct{}

@@ -15,7 +15,7 @@ import (
 const DriverMysql = "mysql"
 
 func init() {
-	connectionFactories[DriverMysql] = NewMysqlDriver
+	AddDriverFactory(DriverMysql, NewMysqlDriver)
 }
 
 func NewMysqlDriver(logger log.Logger) (Driver, error) {
@@ -70,7 +70,7 @@ type mysqlLogger struct {
 	logger log.Logger
 }
 
-func (m mysqlLogger) Print(v ...interface{}) {
+func (m mysqlLogger) Print(v ...any) {
 	msg := fmt.Sprint(v...)
 	m.logger.Error(msg)
 }
