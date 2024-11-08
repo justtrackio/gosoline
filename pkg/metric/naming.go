@@ -1,15 +1,17 @@
 package metric
 
 import (
-	"fmt"
+	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
+var replacer = strings.NewReplacer("-", "_")
+
 type NamingFactory func(modelId cfg.AppId) string
 
 var promNSNamingStrategy = func(modelId cfg.AppId) string {
-	return fmt.Sprintf("%s:%s:%s:%s-%s", modelId.Project, modelId.Environment, modelId.Family, modelId.Group, modelId.Application)
+	return replacer.Replace(modelId.String())
 }
 
 func WithPromNSNamingStrategy(strategy NamingFactory) {

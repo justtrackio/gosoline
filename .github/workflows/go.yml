@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Execute terraform fmt -check -recursive .
         run: terraform fmt -check -recursive .
@@ -23,6 +23,9 @@ jobs:
     name: go fumpt v0.7.0
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
@@ -30,9 +33,6 @@ jobs:
 
       - name: Setup gofumpt
         run: go install mvdan.cc/gofumpt@v0.7.0
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
 
       - name: Execute gofumpt -l .
         run: gofumpt -l .
@@ -44,13 +44,13 @@ jobs:
     name: mockery
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
 
       - name: Install mockery
         run: go install github.com/vektra/mockery/v2@v2.46.0
@@ -75,13 +75,13 @@ jobs:
     name: go build
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
 
       - name: Get dependencies
         run: go get -v -t -d ./...
@@ -93,13 +93,13 @@ jobs:
     name: static code analysis (go vet)
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
 
       - name: Get dependencies
         run: go get -v -t -d ./...
@@ -111,32 +111,32 @@ jobs:
     name: static code analysis (golangci-lint)
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
 
       - name: Static code analysis (golangci-lint)
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.61.0
           only-new-issues: true
-          args: -v --build-tags fixtures,integration --timeout 5m --print-issued-lines --print-linter-name
+          args: -v --build-tags fixtures,integration --timeout 5m --print-issued-lines --print-linter-name --out-format=colored-line-number
 
   go-test:
     name: go test
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
 
       - name: Get dependencies
         run: go get -v -t -d ./...
@@ -148,13 +148,13 @@ jobs:
     name: go test (race)
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
 
       - name: Get dependencies
         run: go get -v -t -d ./...
@@ -166,13 +166,13 @@ jobs:
     name: go test (integration)
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
 
       - name: Get dependencies
         run: go get -v -t -d ./...
@@ -184,13 +184,13 @@ jobs:
     name: go test (integration, race)
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
 
       - name: Get dependencies
         run: go get -v -t -d ./...

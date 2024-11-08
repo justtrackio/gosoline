@@ -9,20 +9,34 @@ import (
 )
 
 const (
-	WriterTypeCw   = "cw"
-	WriterTypeES   = "es"
-	WriterTypeProm = "prom"
+	WriterTypeCloudwatch    = "cw"
+	WriterTypeElasticsearch = "es"
+	WriterTypePrometheus    = "prom"
 )
 
-func ProvideMetricWriterByType(ctx context.Context, config cfg.Config, logger log.Logger, typ string) (Writer, error) {
-	switch typ {
-	case WriterTypeCw:
-		return NewCwWriter(ctx, config, logger)
-	case WriterTypeES:
-		return NewEsWriter(config, logger)
-	case WriterTypeProm:
-		return NewPromWriter(ctx, config, logger)
+func NewMetricWriter(ctx context.Context, config cfg.Config, logger log.Logger, types []string) (Writer, error) {
+	writers := make([]Writer, 0, len(types))
+
+	for _, typ := range types {
+		var w Writer
+		var err error
+
+		switch typ {
+		case WriterTypeCloudwatch:
+			w, err = ProvideCloudwatchWriter(ctx, config, logger)
+		case WriterTypeElasticsearch:
+			w, err = ProvideElasticsearchWriter(ctx, config, logger)
+		case WriterTypePrometheus:
+			w, err = ProvidePrometheusWriter(ctx, config, logger)
+		default:
+			return nil, fmt.Errorf("unrecognized writer type: %s", typ)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("could not create %s metric writer: %w", typ, err)
+		}
+
+		writers = append(writers, w)
 	}
 
-	return nil, fmt.Errorf("metric writer type of %s not found", typ)
+	return NewMultiWriterWithInterfaces(writers), nil
 }

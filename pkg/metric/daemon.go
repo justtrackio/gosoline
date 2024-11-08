@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/kernel/common"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -36,7 +37,7 @@ type Daemon struct {
 	dataPointCount int
 }
 
-func NewDaemon(ctx context.Context, config cfg.Config, logger log.Logger) (*Daemon, error) {
+func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	var metricWriter Writer
 	var err error
 
@@ -46,17 +47,19 @@ func NewDaemon(ctx context.Context, config cfg.Config, logger log.Logger) (*Daem
 	channel.enabled = settings.Enabled
 	channel.logger = logger.WithChannel("metrics")
 
-	if settings.Enabled {
-		metricWriter, err = ProvideMetricWriterByType(ctx, config, logger, settings.Writer)
-		if err != nil {
-			return nil, fmt.Errorf("can not create metric writer of type %s: %w", settings.Writer, err)
-		}
+	if !settings.Enabled {
+		return NewMetricDaemonWithInterfaces(logger, channel, newNoopWriter(), settings)
+	}
+
+	metricWriter, err = NewMetricWriter(ctx, config, logger, settings.Writer)
+	if err != nil {
+		return nil, fmt.Errorf("can not create metric writer: %w", err)
 	}
 
 	return NewMetricDaemonWithInterfaces(logger, channel, metricWriter, settings)
 }
 
-func NewMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, writer Writer, settings *Settings) (*Daemon, error) {
+func NewMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, writer Writer, settings *Settings) (kernel.Module, error) {
 	return &Daemon{
 		logger:         logger.WithChannel("metrics"),
 		settings:       settings,

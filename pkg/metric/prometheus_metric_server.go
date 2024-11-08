@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -52,38 +53,38 @@ type metricsServer struct {
 	logger   log.Logger
 	server   *http.Server
 	listener net.Listener
-	channel  *metricChannel
-	writer   Writer
 	enabled  bool
 }
 
-func NewMetricServer(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-	metricSettings := getMetricSettings(config)
+func moduleEnabled(config cfg.Config, name string) bool {
+	writers := config.GetStringSlice("metric.writer", make([]string, 0))
 
+	return slices.Contains(writers, name)
+}
+
+func NewPrometheusMetricsServerModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+	if moduleEnabled(config, WriterTypePrometheus) {
+		return NewPrometheusMetricServer(ctx, config, logger)
+	}
+
+	return nil, nil
+}
+
+func NewPrometheusMetricServer(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	settings := &PromSettings{}
 	config.UnmarshalKey(promSettingsKey, settings)
-
-	channel := ProviderMetricChannel()
-	channel.enabled = metricSettings.Enabled
-	channel.logger = logger.WithChannel("metrics")
-	metricWriter, err := ProvideMetricWriterByType(ctx, config, logger, metricSettings.Writer)
-	if err != nil {
-		return nil, fmt.Errorf("can not create metric writer of type %s: %w", metricSettings.Writer, err)
-	}
 
 	registry, err := ProvideRegistry(ctx, "default")
 	if err != nil {
 		return nil, err
 	}
 
-	return NewMetricServerWithInterfaces(logger, registry, channel, metricWriter, settings)
+	return NewMetricServerWithInterfaces(logger, registry, settings)
 }
 
 func NewMetricServerWithInterfaces(
 	logger log.Logger,
 	registry *prometheus.Registry,
-	channel *metricChannel,
-	writer Writer,
 	s *PromSettings,
 ) (*metricsServer, error) {
 	handler := http.NewServeMux()
@@ -119,8 +120,6 @@ func NewMetricServerWithInterfaces(
 		logger:   logger,
 		server:   server,
 		listener: listener,
-		channel:  channel,
-		writer:   writer,
 		enabled:  s.Api.Enabled,
 	}, nil
 }
@@ -149,8 +148,6 @@ func (s *metricsServer) Run(ctx context.Context) error {
 
 			s.logger.Info("leaving metrics server")
 			return err
-		case data := <-s.channel.c:
-			s.write(data)
 		}
 	}
 }
@@ -176,8 +173,4 @@ func (s *metricsServer) GetPort() (*int, error) {
 	}
 
 	return &port, nil
-}
-
-func (s *metricsServer) write(data Data) {
-	s.writer.Write(data)
 }

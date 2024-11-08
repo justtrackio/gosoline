@@ -52,7 +52,7 @@ func buildMocksAndWrite(now time.Time, metricTimeStamp time.Time) *cloudwatchMoc
 		}},
 	}).Return(nil, nil)
 
-	mo := metric.NewCwWriterWithInterfaces(logger, testClock, cwClient, "my/test/namespace/grp/app")
+	mo := metric.NewCloudwatchWriterWithInterfaces(logger, testClock, cwClient, "my/test/namespace/grp/app")
 
 	data := metric.Data{
 		{
