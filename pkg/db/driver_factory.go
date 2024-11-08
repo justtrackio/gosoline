@@ -15,7 +15,11 @@ type Driver interface {
 	GetMigrationDriver(db *sql.DB, database string, migrationsTable string) (database.Driver, error)
 }
 
-var connectionFactories = map[string]DriverFactory{}
+var driverFactories = map[string]DriverFactory{}
+
+func AddDriverFactory(name string, factory DriverFactory) {
+	driverFactories[name] = factory
+}
 
 func GetDriver(logger log.Logger, driverName string) (Driver, error) {
 	var ok bool
@@ -23,7 +27,7 @@ func GetDriver(logger log.Logger, driverName string) (Driver, error) {
 	var factory DriverFactory
 	var driver Driver
 
-	if factory, ok = connectionFactories[driverName]; !ok {
+	if factory, ok = driverFactories[driverName]; !ok {
 		return nil, fmt.Errorf("no driver factory defined for %s", driverName)
 	}
 

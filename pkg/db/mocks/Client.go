@@ -1038,7 +1038,7 @@ func (_c *Client_Select_Call) RunAndReturn(run func(context.Context, interface{}
 }
 
 // WithTx provides a mock function with given fields: ctx, ops, do
-func (_m *Client) WithTx(ctx context.Context, ops *sql.TxOptions, do func(context.Context, *sql.Tx) error) error {
+func (_m *Client) WithTx(ctx context.Context, ops *sql.TxOptions, do func(context.Context, *sqlx.Tx) error) error {
 	ret := _m.Called(ctx, ops, do)
 
 	if len(ret) == 0 {
@@ -1046,7 +1046,7 @@ func (_m *Client) WithTx(ctx context.Context, ops *sql.TxOptions, do func(contex
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *sql.TxOptions, func(context.Context, *sql.Tx) error) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *sql.TxOptions, func(context.Context, *sqlx.Tx) error) error); ok {
 		r0 = rf(ctx, ops, do)
 	} else {
 		r0 = ret.Error(0)
@@ -1063,14 +1063,14 @@ type Client_WithTx_Call struct {
 // WithTx is a helper method to define mock.On call
 //   - ctx context.Context
 //   - ops *sql.TxOptions
-//   - do func(context.Context , *sql.Tx) error
+//   - do func(context.Context , *sqlx.Tx) error
 func (_e *Client_Expecter) WithTx(ctx interface{}, ops interface{}, do interface{}) *Client_WithTx_Call {
 	return &Client_WithTx_Call{Call: _e.mock.On("WithTx", ctx, ops, do)}
 }
 
-func (_c *Client_WithTx_Call) Run(run func(ctx context.Context, ops *sql.TxOptions, do func(context.Context, *sql.Tx) error)) *Client_WithTx_Call {
+func (_c *Client_WithTx_Call) Run(run func(ctx context.Context, ops *sql.TxOptions, do func(context.Context, *sqlx.Tx) error)) *Client_WithTx_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*sql.TxOptions), args[2].(func(context.Context, *sql.Tx) error))
+		run(args[0].(context.Context), args[1].(*sql.TxOptions), args[2].(func(context.Context, *sqlx.Tx) error))
 	})
 	return _c
 }
@@ -1080,7 +1080,7 @@ func (_c *Client_WithTx_Call) Return(_a0 error) *Client_WithTx_Call {
 	return _c
 }
 
-func (_c *Client_WithTx_Call) RunAndReturn(run func(context.Context, *sql.TxOptions, func(context.Context, *sql.Tx) error) error) *Client_WithTx_Call {
+func (_c *Client_WithTx_Call) RunAndReturn(run func(context.Context, *sql.TxOptions, func(context.Context, *sqlx.Tx) error) error) *Client_WithTx_Call {
 	_c.Call.Return(run)
 	return _c
 }

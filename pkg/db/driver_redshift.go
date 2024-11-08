@@ -16,7 +16,7 @@ const DriverNameRedshift = "redshift"
 
 func init() {
 	sql.Register(DriverNameRedshift, &pq.Driver{})
-	connectionFactories[DriverNameRedshift] = NewRedshiftDriver
+	AddDriverFactory(DriverNameRedshift, NewRedshiftDriver)
 }
 
 func NewRedshiftDriver(logger log.Logger) (Driver, error) {

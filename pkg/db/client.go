@@ -74,7 +74,7 @@ type Client interface {
 	Select(ctx context.Context, dest any, query string, args ...any) error
 	NamedSelect(ctx context.Context, dest any, query string, arg any) error
 	Get(ctx context.Context, dest any, query string, args ...any) error
-	WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sql.Tx) error) error
+	WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) error
 }
 
 type ClientSqlx struct {
@@ -226,7 +226,7 @@ func (c *ClientSqlx) NamedExec(ctx context.Context, query string, arg any) (sql.
 }
 
 func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error) {
-	var tx *sql.Tx
+	var tx *sqlx.Tx
 	var res sql.Result
 	var queries []string
 	var argss [][]any
@@ -405,21 +405,21 @@ func (c *ClientSqlx) Get(ctx context.Context, dest any, query string, args ...an
 	return err
 }
 
-func (c *ClientSqlx) BeginTx(ctx context.Context, ops *sql.TxOptions) (*sql.Tx, error) {
+func (c *ClientSqlx) BeginTx(ctx context.Context, ops *sql.TxOptions) (*sqlx.Tx, error) {
 	c.logger.Debug("start tx")
 
 	res, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
-		return c.db.BeginTx(ctx, ops)
+		return c.db.BeginTxx(ctx, ops)
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return res.(*sql.Tx), err
+	return res.(*sqlx.Tx), err
 }
 
-func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sql.Tx) error) (err error) {
-	var tx *sql.Tx
+func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) (err error) {
+	var tx *sqlx.Tx
 	tx, err = c.BeginTx(ctx, ops)
 	if err != nil {
 		return err
