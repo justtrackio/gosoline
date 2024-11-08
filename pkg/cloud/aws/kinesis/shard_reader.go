@@ -20,14 +20,22 @@ import (
 )
 
 const (
-	metricNameSleepDuration      = "SleepDuration"
-	metricNameFailedRecords      = "FailedRecords"
-	metricNameMillisecondsBehind = "MillisecondsBehind"
-	metricNameProcessDuration    = "ProcessDuration"
-	metricNameReadCount          = "ReadCount"
-	metricNameReadRecords        = "ReadRecords"
-	metricNameShardTaskRatio     = "ShardTaskRatio"
-	metricNameWaitDuration       = "WaitDuration"
+	metricNameSleepDuration              = "SleepDuration"
+	metricNameSleepDurationPerShard      = "SleepDurationPerShard"
+	metricNameFailedRecords              = "FailedRecords"
+	metricNameFailedRecordsPerShard      = "FailedRecordsPerShard"
+	metricNameMillisecondsBehind         = "MillisecondsBehind"
+	metricNameMillisecondsBehindPerShard = "MillisecondsBehindPerShard"
+	metricNameProcessDuration            = "ProcessDuration"
+	metricNameProcessDurationPerShard    = "ProcessDurationPerShard"
+	metricNameReadCount                  = "ReadCount"
+	metricNameReadCountPerShard          = "ReadCountPerShard"
+	metricNameReadRecords                = "ReadRecords"
+	metricNameReadRecordsPerShard        = "ReadRecordsPerShard"
+	metricNameShardTaskRatio             = "ShardTaskRatio"
+	metricNameShardTaskRatioMax          = "ShardTaskRatioMax"
+	metricNameWaitDuration               = "WaitDuration"
+	metricNameWaitDurationPerShard       = "WaitDurationPerShard"
 )
 
 //go:generate mockery --name ShardReader
@@ -329,8 +337,8 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 			}
 
 			processDuration := s.clock.Since(processStart)
-			s.writeMetric(metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage)
-			s.writeMetric(metricNameReadRecords, float64(processedSize), metric.UnitCount)
+			s.writeMetric(metricNameProcessDuration, metricNameProcessDurationPerShard, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage)
+			s.writeMetric(metricNameReadRecords, metricNameReadRecordsPerShard, float64(processedSize), metric.UnitCount)
 
 			s.logger.WithChannel("kinsumer-read").WithFields(log.Fields{
 				"count":       processedSize,
@@ -339,7 +347,7 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 
 			// if the results are older than our wait time, continue immediately
 			if time.Duration(millisecondsBehind) > (s.settings.WaitTime + s.settings.ConsumeDelay) {
-				s.writeMetric(metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage)
+				s.writeMetric(metricNameWaitDuration, metricNameWaitDurationPerShard, 0.0, metric.UnitMillisecondsAverage)
 				timer.Reset(0)
 				continue
 			}
@@ -351,7 +359,7 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 				waitTime = 0
 			}
 
-			s.writeMetric(metricNameWaitDuration, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage)
+			s.writeMetric(metricNameWaitDuration, metricNameWaitDurationPerShard, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage)
 			timer.Reset(waitTime)
 		}
 	}
@@ -368,7 +376,7 @@ func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (r
 		return nil, "", 0, fmt.Errorf("failed to get records from shard: %w", err)
 	}
 
-	s.writeMetric(metricNameReadCount, 1.0, metric.UnitCount)
+	s.writeMetric(metricNameReadCount, metricNameReadCountPerShard, 1.0, metric.UnitCount)
 
 	records = output.Records
 	nextIterator = ShardIterator(mdl.EmptyIfNil(output.NextShardIterator))
@@ -404,7 +412,7 @@ func (s *shardReader) processRecords(ctx context.Context, records []types.Record
 			// not make sense at this point. Instead, the handler needs to implement a retry logic if needed
 			s.logger.Error("failed to handle record %s: %w", record.SequenceNumber, err)
 
-			s.writeMetric(metricNameFailedRecords, 1, metric.UnitCount)
+			s.writeMetric(metricNameFailedRecords, metricNameFailedRecordsPerShard, 1, metric.UnitCount)
 		}
 
 		*lastSequenceNumber = SequenceNumber(mdl.EmptyIfNil(record.SequenceNumber))
@@ -450,7 +458,7 @@ func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {
 	select {
 	case <-ctx.Done():
 	case <-timer.Chan():
-		s.writeMetric(metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage)
+		s.writeMetric(metricNameSleepDuration, metricNameSleepDurationPerShard, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage)
 	}
 }
 
@@ -462,12 +470,12 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 	defer ticker.Stop()
 
 	currentMillisecondsBehind := 0.0
-	s.writeMetric(metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+	s.writeMetric(metricNameMillisecondsBehind, metricNameMillisecondsBehindPerShard, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 
 	for {
 		select {
 		case <-ticker.Chan():
-			s.writeMetric(metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+			s.writeMetric(metricNameMillisecondsBehind, metricNameMillisecondsBehindPerShard, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 		case newMillisecondsBehind, ok := <-millisecondsBehindChan:
 			if !ok {
 				// the producer stopped, so we also need to stop
@@ -475,12 +483,12 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 			}
 
 			currentMillisecondsBehind = newMillisecondsBehind
-			s.writeMetric(metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+			s.writeMetric(metricNameMillisecondsBehind, metricNameMillisecondsBehindPerShard, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 		}
 	}
 }
 
-func (s *shardReader) writeMetric(metricName string, value float64, unit metric.StandardUnit) {
+func (s *shardReader) writeMetric(metricName string, metricNamePerShard string, value float64, unit metric.StandardUnit) {
 	s.metricWriter.WriteOne(&metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: metricName,
@@ -497,7 +505,7 @@ func (s *shardReader) writeMetric(metricName string, value float64, unit metric.
 
 	s.metricWriter.WriteOne(&metric.Datum{
 		Priority:   metric.PriorityHigh,
-		MetricName: metricName,
+		MetricName: metricNamePerShard,
 		Dimensions: metric.Dimensions{
 			"StreamName": string(s.stream),
 			"ShardId":    string(s.shardId),

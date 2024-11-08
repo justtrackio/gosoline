@@ -21,7 +21,7 @@ type Settings struct {
 	Enabled    bool          `cfg:"enabled" default:"false"`
 	Interval   time.Duration `cfg:"interval" default:"60s"`
 	Cloudwatch Cloudwatch    `cfg:"cloudwatch"`
-	Writer     string        `cfg:"writer"`
+	Writer     []string      `cfg:"writer"`
 }
 
 func getMetricSettings(config cfg.Config) *Settings {

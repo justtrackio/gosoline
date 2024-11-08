@@ -285,7 +285,8 @@ func WithMetadataServer(app *App) {
 }
 
 func WithMetrics(app *App) {
-	WithModuleFactory("metric", metric.NewMetricModule)(app)
+	WithModuleFactory("metric-daemon", metric.NewDaemonModule)(app)
+	WithModuleFactory("prometheus-metrics-server", metric.NewPrometheusMetricsServerModule)(app)
 }
 
 func WithProducerDaemon(app *App) {

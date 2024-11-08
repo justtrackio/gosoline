@@ -17,7 +17,7 @@ func apiDefiner(context.Context, cfg.Config, log.Logger) (*httpserver.Definition
 
 	definitions.GET("/current-value", ctrl.Cur)
 	definitions.GET("/increase", ctrl.Incr)
-	definitions.GET("/decrease", ctrl.Decr)
+	definitions.GET("/1k", ctrl.OneK)
 
 	return definitions, nil
 }
