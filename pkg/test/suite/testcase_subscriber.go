@@ -133,7 +133,7 @@ func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRun
 					return
 				}
 
-				orm, err := db_repo.NewOrm(suite.Env().Context(), config, logger)
+				orm, err := db_repo.NewOrm(suite.Env().Context(), config, logger, "default")
 				if err != nil {
 					assert.FailNow(t, "can't initialize orm", "the test case for the subscription of %s can't be initialized", tc.GetName())
 				}

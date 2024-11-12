@@ -37,7 +37,7 @@ func ProvideChangeHistoryManager(ctx context.Context, config cfg.Config, logger 
 }
 
 func NewChangeHistoryManager(ctx context.Context, config cfg.Config, logger log.Logger) (*ChangeHistoryManager, error) {
-	orm, err := NewOrm(ctx, config, logger)
+	orm, err := NewOrm(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}

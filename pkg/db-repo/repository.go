@@ -37,7 +37,8 @@ var (
 
 type Settings struct {
 	cfg.AppId
-	Metadata Metadata
+	Metadata   Metadata
+	ClientName string
 }
 
 //go:generate mockery --name RepositoryReadOnly
@@ -67,14 +68,16 @@ type repository struct {
 	metadata Metadata
 }
 
-func New(ctx context.Context, config cfg.Config, logger log.Logger, s Settings) (*repository, error) {
-	tracer, err := tracing.ProvideTracer(ctx, config, logger)
-	if err != nil {
+func New(ctx context.Context, config cfg.Config, logger log.Logger, settings Settings) (*repository, error) {
+	var err error
+	var tracer tracing.Tracer
+	var orm *gorm.DB
+
+	if tracer, err = tracing.ProvideTracer(ctx, config, logger); err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
 
-	orm, err := NewOrm(ctx, config, logger)
-	if err != nil {
+	if orm, err = NewOrm(ctx, config, logger, settings.ClientName); err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
 
@@ -84,7 +87,7 @@ func New(ctx context.Context, config cfg.Config, logger log.Logger, s Settings) 
 		Register("gosoline:ignore_created_at_if_needed", ignoreCreatedAtIfNeeded)
 	clk := clock.Provider
 
-	return NewWithInterfaces(logger, tracer, orm, clk, s.Metadata), nil
+	return NewWithInterfaces(logger, tracer, orm, clk, settings.Metadata), nil
 }
 
 func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger, dbSettings *db.Settings, repoSettings Settings) (*repository, error) {
