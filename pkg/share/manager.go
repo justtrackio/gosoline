@@ -46,7 +46,7 @@ func ProvideShareManager(ctx context.Context, config cfg.Config, logger log.Logg
 }
 
 func NewShareManager(ctx context.Context, config cfg.Config, logger log.Logger) (*shareManager, error) {
-	orm, err := db_repo.NewOrm(ctx, config, logger)
+	orm, err := db_repo.NewOrm(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}

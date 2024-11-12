@@ -7,6 +7,7 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"github.com/jinzhu/gorm"
+	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/db"
@@ -23,14 +24,21 @@ type OrmSettings struct {
 	Application string              `cfg:"application" default:"{app_name}"`
 }
 
-func NewOrm(ctx context.Context, config cfg.Config, logger log.Logger) (*gorm.DB, error) {
-	connection, err := db.ProvideConnection(ctx, config, logger, "default")
-	if err != nil {
+func NewOrm(ctx context.Context, config cfg.Config, logger log.Logger, dbClientName string) (*gorm.DB, error) {
+	var err error
+	var connection *sqlx.DB
+
+	if dbClientName == "" {
+		dbClientName = "default"
+	}
+
+	if connection, err = db.ProvideConnection(ctx, config, logger, dbClientName); err != nil {
 		return nil, fmt.Errorf("can not create db connection : %w", err)
 	}
 
 	settings := OrmSettings{}
-	config.UnmarshalKey("db.default", &settings)
+	key := fmt.Sprintf("db.%s", dbClientName)
+	config.UnmarshalKey(key, &settings)
 
 	return NewOrmWithInterfaces(connection, settings)
 }
