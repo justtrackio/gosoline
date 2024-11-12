@@ -21,6 +21,7 @@ import (
 
 const (
 	ApiViewKey          = "X-Api-View"
+	ContentTypeText     = "text/plain; charset=utf-8"
 	ContentTypeHtml     = "text/html; charset=utf-8"
 	ContentTypeJson     = "application/json; charset=utf-8"
 	ContentTypeProtobuf = "application/x-protobuf"
@@ -114,10 +115,21 @@ func NewRedirectResponse(url string) *Response {
 }
 
 func NewStatusResponse(statusCode int) *Response {
+	var body any
+	var contentType *string
+	// for responses with a client or server error, provide a small response body
+	// (unless overwritten later by our caller anyway) containing the error message.
+	// we must not do this for the 1xx, 2xx, or 3xx range of status codes as they
+	// would interpret the body in some way
+	if statusCode >= http.StatusBadRequest {
+		body = http.StatusText(statusCode)
+		contentType = mdl.Box(ContentTypeText)
+	}
+
 	return &Response{
 		StatusCode:  statusCode,
-		ContentType: nil,
-		Body:        nil,
+		ContentType: contentType,
+		Body:        body,
 		Header:      make(http.Header),
 	}
 }
