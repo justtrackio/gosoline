@@ -380,7 +380,11 @@ func TestListQueryBuilder_BuildSqlInjectionBool(t *testing.T) {
 	lqb := sql.NewOrmQueryBuilder(metadata)
 	qb, err := lqb.Build(inp)
 
-	assert.EqualError(t, err, "invalid boolean: AND (SELECT password FROM admins where id = 42) = 'hunter2' AND")
+	assert.EqualError(
+		t,
+		err,
+		`can not build filter: invalid boolean: "AND (SELECT password FROM admins where id = 42) = 'hunter2' AND", should be either "AND" or "OR"`,
+	)
 	assert.Equal(t, db_repo.NewQueryBuilder(), qb)
 }
 
@@ -424,7 +428,11 @@ func TestListQueryBuilder_BuildSqlInjectionNestedBool(t *testing.T) {
 	lqb := sql.NewOrmQueryBuilder(metadata)
 	qb, err := lqb.Build(inp)
 
-	assert.EqualError(t, err, "invalid boolean: AND (SELECT password FROM admins where id = 42) = 'hunter2' AND")
+	assert.EqualError(
+		t,
+		err,
+		`can not build filter: invalid boolean: "AND (SELECT password FROM admins where id = 42) = 'hunter2' AND", should be either "AND" or "OR"`,
+	)
 	assert.Equal(t, db_repo.NewQueryBuilder(), qb)
 }
 
@@ -457,6 +465,10 @@ func TestListQueryBuilder_BuildSqlInjectionOperator(t *testing.T) {
 	lqb := sql.NewOrmQueryBuilder(metadata)
 	qb, err := lqb.Build(inp)
 
-	assert.EqualError(t, err, `error building filter for column foo: invalid operator "IN (SELECT username FROM admins WHERE id = 42) AND 1 ="`)
+	assert.EqualError(
+		t,
+		err,
+		`can not build filter: error building filter for column foo: invalid operator "IN (SELECT username FROM admins WHERE id = 42) AND 1 ="`,
+	)
 	assert.Equal(t, db_repo.NewQueryBuilder(), qb)
 }

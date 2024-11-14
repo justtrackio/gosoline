@@ -118,7 +118,7 @@ func (qb baseQueryBuilder) build(inp *Input, dbQb db.QueryBuilder) error {
 
 	query, args, err := qb.buildFilter(inp.Filter)
 	if err != nil {
-		return err
+		return fmt.Errorf("can not build filter: %w", err)
 	}
 
 	if qb.metadata.TableName == "" {
@@ -245,8 +245,8 @@ func (qb baseQueryBuilder) buildFilter(filter Filter) (where string, args []any,
 		args = append(args, groupArgs...)
 	}
 
-	if !strings.EqualFold(filter.Bool, BoolAnd) && !strings.EqualFold(filter.Bool, BoolOr) {
-		return "", nil, fmt.Errorf("invalid boolean: %s", filter.Bool)
+	if !strings.EqualFold(filter.Bool, BoolAnd) && !strings.EqualFold(filter.Bool, BoolOr) && len(matchesWhere) > 1 {
+		return "", nil, fmt.Errorf(`invalid boolean: %q, should be either "AND" or "OR"`, filter.Bool)
 	}
 
 	operator := fmt.Sprintf(" %s ", filter.Bool)
@@ -300,8 +300,8 @@ func (qb baseQueryBuilder) buildFilterValues(match FilterMatch) (where string, a
 		args = append(args, a...)
 	}
 
-	if !strings.EqualFold(mapping.Bool(), BoolAnd) && !strings.EqualFold(mapping.Bool(), BoolOr) {
-		return "", nil, fmt.Errorf("invalid boolean: %s", mapping.Bool())
+	if !strings.EqualFold(mapping.Bool(), BoolAnd) && !strings.EqualFold(mapping.Bool(), BoolOr) && len(stmts) > 1 {
+		return "", nil, fmt.Errorf(`invalid boolean: %q, should be either "AND" or "OR"`, mapping.Bool())
 	}
 
 	b := fmt.Sprintf(" %s ", mapping.Bool())
