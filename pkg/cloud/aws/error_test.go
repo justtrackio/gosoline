@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
-	cloudAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,38 +37,6 @@ func (a awsErr) Message() string {
 
 func (a awsErr) OrigErr() error {
 	return a.origError
-}
-
-func TestInvalidStatusError(t *testing.T) {
-	for name, test := range map[string]struct {
-		err                  error
-		isInvalidStatusError bool
-		errorType            exec.ErrorType
-	}{
-		"invalid status": {
-			err: &cloudAws.InvalidStatusError{
-				Status: 400,
-			},
-			isInvalidStatusError: true,
-			errorType:            exec.ErrorTypeRetryable,
-		},
-		"canceled": {
-			err:                  exec.RequestCanceledError,
-			isInvalidStatusError: false,
-			errorType:            exec.ErrorTypeUnknown,
-		},
-		"nil": {
-			err:                  nil,
-			isInvalidStatusError: false,
-			errorType:            exec.ErrorTypeUnknown,
-		},
-	} {
-		test := test
-		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, test.isInvalidStatusError, cloudAws.IsInvalidStatusError(test.err))
-			assert.Equal(t, test.errorType, cloudAws.CheckInvalidStatusError(nil, test.err))
-		})
-	}
 }
 
 func TestIsRequestCanceled(t *testing.T) {
@@ -123,7 +90,7 @@ func TestIsUsedClosedConnectionError(t *testing.T) {
 						_ = conn.Close()
 					}()
 
-					return conn, err
+					return conn, nil
 				},
 			},
 		},

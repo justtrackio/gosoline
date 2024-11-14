@@ -15,6 +15,9 @@ func DefaultClientRetryOptions(clientConfig ClientConfigAware) []func(*retry.Sta
 		RetryWithMaxAttempts(settings.Backoff.MaxAttempts),
 		RetryWithBackoff(NewBackoffDelayer(settings.Backoff.InitialInterval, settings.Backoff.MaxInterval)),
 		RetryWithRateLimiter(NewNopRateLimiter()),
+		RetryWithRetryables([]retry.IsErrorRetryable{
+			&RetryOnClosedNetworkConnection{},
+		}),
 	}
 
 	options = append(options, clientConfig.GetRetryOptions()...)
