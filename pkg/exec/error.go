@@ -3,6 +3,7 @@ package exec
 import (
 	"errors"
 	"io"
+	"net"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -35,7 +36,7 @@ func CheckUsedClosedConnectionError(_ interface{}, err error) ErrorType {
 }
 
 func IsUsedClosedConnectionError(err error) bool {
-	return strings.Contains(err.Error(), "use of closed network connection")
+	return strings.Contains(err.Error(), net.ErrClosed.Error())
 }
 
 func CheckConnectionError(_ interface{}, err error) ErrorType {
