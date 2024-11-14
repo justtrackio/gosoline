@@ -62,7 +62,8 @@ func (m *RefreshModule) IsHealthy(ctx context.Context) (bool, error) {
 
 func (m *RefreshModule) Run(ctx context.Context) (err error) {
 	defer func() {
-		m.healthy.Store(false)
+		// if automatic refresh is disabled, the module is still "healthy", as we don't need it
+		m.healthy.Store(!m.settings.Enabled)
 
 		if closeErr := m.provider.Close(); closeErr != nil {
 			err = multierror.Append(err, fmt.Errorf("can not close ipread provider: %w", closeErr))
