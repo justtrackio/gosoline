@@ -11,6 +11,4 @@ func AddProvider(name string, provider Provider) {
 	providers[name] = provider
 }
 
-var providers = map[string]Provider{
-	"xray": NewAwsTracer,
-}
+var providers = map[string]Provider{}

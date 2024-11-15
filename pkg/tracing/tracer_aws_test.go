@@ -67,7 +67,6 @@ func getTracer(t *testing.T) tracing.Tracer {
 		Group:       "test_group",
 		Application: "test_name",
 	}, &tracing.XRaySettings{
-		Enabled:          true,
 		SamplingStrategy: &TestSamplingStrategy{},
 	})
 

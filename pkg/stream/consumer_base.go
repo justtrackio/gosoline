@@ -87,7 +87,7 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 	settings := ReadConsumerSettings(config, name)
 	appId := cfg.GetAppIdFromConfig(config)
 
-	tracer, err := tracing.ProvideTracer(config, logger)
+	tracer, err := tracing.ProvideTracer(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
