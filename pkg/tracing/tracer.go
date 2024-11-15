@@ -3,9 +3,12 @@ package tracing
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
-	"sync"
+	"slices"
+	"strings"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -19,50 +22,35 @@ type Tracer interface {
 }
 
 type TracerSettings struct {
-	Provider                    string                `cfg:"provider" default:"xray" validate:"required"`
-	Enabled                     bool                  `cfg:"enabled" default:"false"`
+	Provider                    string                `cfg:"provider" default:"local" validate:"required"`
 	AddressType                 string                `cfg:"addr_type" default:"local" validate:"required"`
 	AddressValue                string                `cfg:"add_value" default:""`
 	Sampling                    SamplingConfiguration `cfg:"sampling"`
 	StreamingMaxSubsegmentCount int                   `cfg:"streaming_max_subsegment_count" default:"20"`
 }
 
-var tracerContainer = struct {
-	sync.Mutex
-	instance Tracer
-}{}
+type tracerKey struct{}
 
-func ProvideTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
-	tracerContainer.Lock()
-	defer tracerContainer.Unlock()
-
-	if tracerContainer.instance != nil {
-		return tracerContainer.instance, nil
-	}
-
-	instance, err := NewTracer(config, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	tracerContainer.instance = instance
-
-	return tracerContainer.instance, nil
+func ProvideTracer(ctx context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
+	return appctx.Provide(ctx, tracerKey{}, func() (Tracer, error) {
+		return newTracer(config, logger)
+	})
 }
 
-func NewTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
+func newTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
+	var provider Provider
+	var ok bool
+
 	settings := &TracerSettings{}
 	config.UnmarshalKey("tracing", settings)
 
-	if !settings.Enabled {
-		return NewLocalTracer(), nil
+	if provider, ok = providers[settings.Provider]; !ok {
+		return nil, fmt.Errorf(
+			"no tracing provider found for name %s, available providers: %s",
+			settings.Provider,
+			strings.Join(slices.Collect(maps.Keys(providers)), ", "),
+		)
 	}
-
-	if _, ok := providers[settings.Provider]; !ok {
-		return nil, fmt.Errorf("no tracing provider found for name %s", settings.Provider)
-	}
-
-	provider := providers[settings.Provider]
 
 	return provider(config, logger)
 }

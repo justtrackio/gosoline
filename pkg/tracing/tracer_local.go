@@ -6,8 +6,16 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
+
+func init() {
+	AddProvider("local", func(config cfg.Config, logger log.Logger) (Tracer, error) {
+		return NewLocalTracer(), nil
+	})
+}
 
 type localTracer struct {
 	traceIdSource uuid.Uuid

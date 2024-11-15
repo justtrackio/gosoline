@@ -5,10 +5,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/aws/aws-xray-sdk-go/xraylog"
-	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -20,16 +18,6 @@ func init() {
 	// SetLogger is not thread safe, so set it upon startup to our wrapper. Our wrapper is safe and falls back to the
 	// default if we don't have our logger initialized yet.
 	xray.SetLogger(globalXRayLogger)
-}
-
-func AWS(config cfg.Config, c *client.Client) {
-	enabled := config.GetBool("tracing_enabled")
-
-	if !enabled {
-		return
-	}
-
-	xray.AWS(c)
 }
 
 type xrayLogger struct {
