@@ -42,8 +42,7 @@ type stage struct {
 func newStage(ctx context.Context, config cfg.Config, logger log.Logger, index int) *stage {
 	cfn, ctx := coffin.WithContext(ctx)
 
-	settings := &Settings{}
-	config.UnmarshalKey("kernel", settings)
+	settings := readSettings(config)
 
 	return &stage{
 		cfn:                 cfn,
