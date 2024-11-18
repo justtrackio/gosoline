@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-xray-sdk-go/v2/xray"
 	httpHeaders "github.com/go-http-utils/headers"
 	"github.com/go-resty/resty/v2"
+
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -49,6 +50,7 @@ type Client interface {
 	SetCookies(cs []*http.Cookie)
 	SetCookie(c *http.Cookie)
 	SetRedirectValidator(allowRequest func(request *http.Request) bool)
+	SetLogger(l resty.Logger)
 	AddRetryCondition(f RetryConditionFunc)
 	NewRequest() *Request
 	NewJsonRequest() *Request
@@ -406,6 +408,10 @@ func (c *client) SetCookie(hc *http.Cookie) {
 
 func (c *client) SetCookies(cs []*http.Cookie) {
 	c.http.SetCookies(cs)
+}
+
+func (c *client) SetLogger(l resty.Logger) {
+	c.http.SetLogger(l)
 }
 
 func (c *client) SetTimeout(timeout time.Duration) {

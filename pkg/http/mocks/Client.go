@@ -10,6 +10,8 @@ import (
 
 	nethttp "net/http"
 
+	resty "github.com/go-resty/resty/v2"
+
 	time "time"
 )
 
@@ -558,6 +560,39 @@ func (_c *Client_SetCookies_Call) Return() *Client_SetCookies_Call {
 
 func (_c *Client_SetCookies_Call) RunAndReturn(run func([]*nethttp.Cookie)) *Client_SetCookies_Call {
 	_c.Run(run)
+	return _c
+}
+
+// SetLogger provides a mock function with given fields: l
+func (_m *Client) SetLogger(l resty.Logger) {
+	_m.Called(l)
+}
+
+// Client_SetLogger_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetLogger'
+type Client_SetLogger_Call struct {
+	*mock.Call
+}
+
+// SetLogger is a helper method to define mock.On call
+//   - l resty.Logger
+func (_e *Client_Expecter) SetLogger(l interface{}) *Client_SetLogger_Call {
+	return &Client_SetLogger_Call{Call: _e.mock.On("SetLogger", l)}
+}
+
+func (_c *Client_SetLogger_Call) Run(run func(l resty.Logger)) *Client_SetLogger_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(resty.Logger))
+	})
+	return _c
+}
+
+func (_c *Client_SetLogger_Call) Return() *Client_SetLogger_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Client_SetLogger_Call) RunAndReturn(run func(resty.Logger)) *Client_SetLogger_Call {
+	_c.Call.Return(run)
 	return _c
 }
 
