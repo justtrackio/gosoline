@@ -12,6 +12,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -74,7 +75,7 @@ type baseConsumer struct {
 
 	id               string
 	name             string
-	settings         *ConsumerSettings
+	settings         ConsumerSettings
 	consumerCallback any
 	processed        int32
 }
@@ -83,7 +84,7 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 	uuidGen := uuid.New()
 	logger = logger.WithChannel(fmt.Sprintf("consumer-%s", name))
 
-	settings := readConsumerSettings(config, name)
+	settings := ReadConsumerSettings(config, name)
 	appId := cfg.GetAppIdFromConfig(config)
 
 	tracer, err := tracing.ProvideTracer(config, logger)
@@ -124,7 +125,20 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
-	return NewBaseConsumerWithInterfaces(uuidGen, logger, metricWriter, tracer, input, encoder, retryInput, retryHandler, consumerCallback, settings, name, appId), nil
+	return NewBaseConsumerWithInterfaces(
+		uuidGen,
+		logger,
+		metricWriter,
+		tracer,
+		input,
+		encoder,
+		retryInput,
+		retryHandler,
+		consumerCallback,
+		settings,
+		name,
+		appId,
+	), nil
 }
 
 func NewBaseConsumerWithInterfaces(
@@ -137,7 +151,7 @@ func NewBaseConsumerWithInterfaces(
 	retryInput Input,
 	retryHandler RetryHandler,
 	consumerCallback any,
-	settings *ConsumerSettings,
+	settings ConsumerSettings,
 	name string,
 	appId cfg.AppId,
 ) *baseConsumer {
@@ -332,6 +346,9 @@ func (c *baseConsumer) retry(ctx context.Context, msg *Message) {
 
 	c.logger.WithContext(ctx).Warn("putting message with id %s into retry", retryId)
 	c.writeMetricRetryCount(metricNameConsumerRetryPutCount)
+
+	ctx, stop := exec.WithDelayedCancelContext(ctx, c.settings.Retry.GraceTime)
+	defer stop()
 
 	if err := c.retryHandler.Put(ctx, retryMsg); err != nil {
 		c.handleError(ctx, err, "can not put the message into the retry handler")

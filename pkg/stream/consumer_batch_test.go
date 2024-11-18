@@ -64,7 +64,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	retryHandler := stream.NewRetryHandlerNoopWithInterfaces()
 
 	ticker := time.NewTicker(time.Second)
-	settings := &stream.ConsumerSettings{
+	settings := stream.ConsumerSettings{
 		Input:       "test",
 		RunnerCount: 1,
 		IdleTimeout: time.Second,

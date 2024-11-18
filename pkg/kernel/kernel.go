@@ -62,8 +62,7 @@ type kernel struct {
 }
 
 func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kernel, error) {
-	settings := &Settings{}
-	config.UnmarshalKey("kernel", settings)
+	settings := readSettings(config)
 
 	k := &kernel{
 		logger: logger.WithChannel("kernel"),
@@ -275,7 +274,7 @@ func (k *kernel) waitStopped() {
 			err := fmt.Errorf("kernel was not able to shutdown in %v", k.killTimeout)
 			k.logger.Error("kernel shutdown seems to be blocking.. exiting...: %w", err)
 
-			// we don't need to iterate in order, but doing so is much nicer, so lets do it
+			// we don't need to iterate in order, but doing so is much nicer, so let's do it
 			for _, stageIndex := range k.stages.getIndices() {
 				s := k.stages[stageIndex]
 				for name, ms := range s.modules.modules {
@@ -310,4 +309,11 @@ func (k *kernel) waitAllStagesDone() conc.SignalOnce {
 	}()
 
 	return done
+}
+
+func readSettings(config cfg.Config) Settings {
+	settings := Settings{}
+	config.UnmarshalKey("kernel", &settings)
+
+	return settings
 }

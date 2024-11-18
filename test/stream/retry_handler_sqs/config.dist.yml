@@ -15,7 +15,7 @@ stream:
       type: sqs
       id: consumer
       target_queue_id: test
-      wait_time: 5
+      wait_time: 1
       visibility_timeout: 2
       runner_count: 1
       redrive_policy:

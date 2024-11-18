@@ -17,8 +17,9 @@ type ConsumerSettings struct {
 }
 
 type ConsumerRetrySettings struct {
-	Enabled bool   `cfg:"enabled"`
-	Type    string `cfg:"type" default:"sqs"`
+	Enabled   bool          `cfg:"enabled"`
+	Type      string        `cfg:"type" default:"sqs"`
+	GraceTime time.Duration `cfg:"grace_time" default:"10s"`
 }
 
 func GetAllConsumerNames(config cfg.Config) []string {
@@ -31,10 +32,18 @@ func ConfigurableConsumerKey(name string) string {
 	return fmt.Sprintf("stream.consumer.%s", name)
 }
 
-func readConsumerSettings(config cfg.Config, name string) *ConsumerSettings {
-	settings := &ConsumerSettings{}
+func ReadConsumerSettings(config cfg.Config, name string) ConsumerSettings {
+	settings := ConsumerSettings{}
 	key := ConfigurableConsumerKey(name)
-	config.UnmarshalKey(key, settings, cfg.UnmarshalWithDefaultForKey("encoding", defaultMessageBodyEncoding))
+	config.UnmarshalKey(
+		key,
+		&settings,
+		cfg.UnmarshalWithDefaultForKey("encoding", defaultMessageBodyEncoding),
+		// use the kernels kill timeout as the default time we allow after a cancel of the context for writing retry messages.
+		// if we are processing a message and get a SIGTERM at that moment, writing the message to the retry queue will
+		// fail without some time buffer for writing the message
+		cfg.UnmarshalWithDefaultsFromKey("kernel.kill_timeout", "retry.grace_time"),
+	)
 
 	return settings
 }

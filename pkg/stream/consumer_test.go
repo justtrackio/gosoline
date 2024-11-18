@@ -35,14 +35,14 @@ type ConsumerTestSuite struct {
 	inputData     chan *stream.Message
 	inputDataOut  <-chan *stream.Message
 	inputStopOnce sync.Once
-	inputStop     func(args mock.Arguments)
+	inputStop     func()
 
 	retryInput    *mocks.Input
 	retryHandler  *mocks.RetryHandler
 	retryData     chan *stream.Message
 	retryDataOut  <-chan *stream.Message
 	retryStopOnce sync.Once
-	retryStop     func(args mock.Arguments)
+	retryStop     func()
 
 	uuidGen  *uuidMocks.Uuid
 	callback *mocks.RunnableConsumerCallback
@@ -55,28 +55,28 @@ func (s *ConsumerTestSuite) SetupTest() {
 	s.inputData = make(chan *stream.Message, 10)
 	s.inputDataOut = s.inputData
 	s.inputStopOnce = sync.Once{}
-	s.inputStop = func(args mock.Arguments) {
+	s.inputStop = func() {
 		s.inputStopOnce.Do(func() {
 			close(s.inputData)
 		})
 	}
 
 	s.input = mocks.NewAcknowledgeableInput(s.T())
-	s.input.On("Data").Return(s.inputDataOut)
-	s.input.On("Stop").Run(s.inputStop).Once()
+	s.input.EXPECT().Data().Return(s.inputDataOut)
+	s.input.EXPECT().Stop().Run(s.inputStop).Once()
 
 	s.retryData = make(chan *stream.Message, 10)
 	s.retryDataOut = s.retryData
 	s.retryStopOnce = sync.Once{}
-	s.retryStop = func(args mock.Arguments) {
+	s.retryStop = func() {
 		s.retryStopOnce.Do(func() {
 			close(s.retryData)
 		})
 	}
 
 	s.retryInput = mocks.NewInput(s.T())
-	s.retryInput.On("Data").Return(s.retryDataOut)
-	s.retryInput.On("Stop").Run(s.retryStop).Once()
+	s.retryInput.EXPECT().Data().Return(s.retryDataOut)
+	s.retryInput.EXPECT().Stop().Run(s.retryStop).Once()
 
 	s.retryHandler = mocks.NewRetryHandler(s.T())
 
@@ -88,7 +88,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 	mw := metricMocks.NewWriterMockedAll()
 	me := stream.NewMessageEncoder(&stream.MessageEncoderSettings{})
 
-	settings := &stream.ConsumerSettings{
+	settings := stream.ConsumerSettings{
 		Input:       "test",
 		RunnerCount: 1,
 		IdleTimeout: time.Second,
@@ -97,13 +97,26 @@ func (s *ConsumerTestSuite) SetupTest() {
 		},
 	}
 
-	baseConsumer := stream.NewBaseConsumerWithInterfaces(s.uuidGen, logger, mw, tracer, s.input, me, s.retryInput, s.retryHandler, s.callback, settings, "test", cfg.AppId{})
+	baseConsumer := stream.NewBaseConsumerWithInterfaces(
+		s.uuidGen,
+		logger,
+		mw,
+		tracer,
+		s.input,
+		me,
+		s.retryInput,
+		s.retryHandler,
+		s.callback,
+		settings,
+		"test",
+		cfg.AppId{},
+	)
 	s.consumer = stream.NewConsumerWithInterfaces(baseConsumer, s.callback)
 }
 
 func (s *ConsumerTestSuite) TestGetModelNil() {
-	s.retryInput.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
-	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
+	s.retryInput.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.input.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Run(func(ctx context.Context) {
 		s.inputData <- stream.NewJsonMessage(`"foo"`, map[string]string{
 			"bla": "blub",
 		})
@@ -111,13 +124,14 @@ func (s *ConsumerTestSuite) TestGetModelNil() {
 	}).Return(nil)
 
 	s.input.
-		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
+		EXPECT().
+		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
 		Return(nil).
 		Once()
-	s.callback.On("GetModel", mock.AnythingOfType("map[string]string")).Return(func(_ map[string]string) interface{} {
+	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).Return(func(_ map[string]string) any {
 		return nil
 	})
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.callback.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
 	err := s.consumer.Run(s.kernelCtx)
 
@@ -125,8 +139,8 @@ func (s *ConsumerTestSuite) TestGetModelNil() {
 }
 
 func (s *ConsumerTestSuite) TestRun() {
-	s.retryInput.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
-	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
+	s.retryInput.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.input.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Run(func(ctx context.Context) {
 		s.inputData <- stream.NewJsonMessage(`"foo"`)
 		s.inputData <- stream.NewJsonMessage(`"bar"`)
 		s.inputData <- stream.NewJsonMessage(`"foobar"`)
@@ -136,23 +150,24 @@ func (s *ConsumerTestSuite) TestRun() {
 	consumed := make([]*string, 0)
 
 	s.input.
-		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
+		EXPECT().
+		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
 		Return(nil).
 		Times(3)
 
-	s.callback.On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{
+	s.callback.EXPECT().Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{
 		stream.AttributeEncoding: stream.EncodingJson.String(),
 	}).
-		Run(func(args mock.Arguments) {
-			consumed = append(consumed, args[1].(*string))
+		Run(func(ctx context.Context, model any, attributes map[string]string) {
+			consumed = append(consumed, model.(*string))
 		}).Return(true, nil)
 
-	s.callback.On("GetModel", mock.AnythingOfType("map[string]string")).
-		Return(func(_ map[string]string) interface{} {
+	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).
+		Return(func(_ map[string]string) any {
 			return mdl.Box("")
 		})
 
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.callback.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
 	err := s.consumer.Run(s.kernelCtx)
 
@@ -161,13 +176,14 @@ func (s *ConsumerTestSuite) TestRun() {
 }
 
 func (s *ConsumerTestSuite) TestRun_InputRunError() {
-	s.retryInput.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
-	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(fmt.Errorf("read error"))
+	s.retryInput.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.input.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Return(fmt.Errorf("read error"))
 
 	s.callback.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
-			<-args[0].(context.Context).Done()
+		EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(func(ctx context.Context) {
+			<-ctx.Done()
 		}).Return(nil)
 
 	err := s.consumer.Run(s.kernelCtx)
@@ -176,14 +192,14 @@ func (s *ConsumerTestSuite) TestRun_InputRunError() {
 }
 
 func (s *ConsumerTestSuite) TestRun_CallbackRunError() {
-	s.retryInput.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
-	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
-			<-args[0].(context.Context).Done()
+	s.retryInput.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.input.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(func(ctx context.Context) {
+			<-ctx.Done()
 		}).
 		Return(nil)
 
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).
+	s.callback.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).
 		Return(fmt.Errorf("consumerCallback run error"))
 
 	err := s.consumer.Run(context.Background())
@@ -195,26 +211,30 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 	consumed := make([]*string, 0)
 
 	s.callback.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
+		EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
 		Return(nil)
 
 	// 1 message should be acked.
 	s.input.
-		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
+		EXPECT().
+		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
 		Return(nil).
 		Once()
 	// 1 message should be nacked due to panic.
 	s.input.
-		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
+		EXPECT().
+		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
 		Return(nil).
 		Once()
 
 	s.callback.
-		On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{
+		EXPECT().
+		Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{
 			stream.AttributeEncoding: stream.EncodingJson.String(),
 		}).
-		Run(func(args mock.Arguments) {
-			ptr := args.Get(1).(*string)
+		Run(func(ctx context.Context, model any, attributes map[string]string) {
+			ptr := model.(*string)
 			consumed = append(consumed, ptr)
 
 			msg := *ptr
@@ -224,8 +244,9 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 		}).
 		Return(true, nil)
 	s.callback.
-		On("GetModel", mock.AnythingOfType("map[string]string")).
-		Return(func(_ map[string]string) interface{} {
+		EXPECT().
+		GetModel(mock.AnythingOfType("map[string]string")).
+		Return(func(_ map[string]string) any {
 			return mdl.Box("")
 		})
 
@@ -239,17 +260,21 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 	}
 
 	s.uuidGen.
-		On("NewV4").
+		EXPECT().
+		NewV4().
 		Return("75828fe1-4c7d-4a21-99e5-03d63876ed23")
 	s.retryInput.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
+		EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
 		Return(nil)
 	s.retryHandler.
-		On("Put", mock.AnythingOfType("*context.valueCtx"), retryMsg).
+		EXPECT().
+		Put(mock.AnythingOfType("*exec.stoppableContext"), retryMsg).
 		Return(nil)
 	s.input.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
-		Run(func(args mock.Arguments) {
+		EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
+		Run(func(ctx context.Context) {
 			s.inputData <- stream.NewJsonMessage(`"foo"`)
 			s.inputData <- stream.NewJsonMessage(`"bar"`)
 			s.kernelCancel()
@@ -263,7 +288,7 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 }
 
 func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
-	s.retryInput.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.retryInput.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
 	message1 := stream.NewJsonMessage(`"foo"`, map[string]string{
 		"attr1": "a",
@@ -277,13 +302,13 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 
 	aggregate := stream.BuildAggregateMessage(string(aggregateBody))
 
-	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
+	s.input.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Run(func(ctx context.Context) {
 		s.inputData <- aggregate
 		s.kernelCancel()
 	}).Return(nil)
 
 	consumed := make([]string, 0)
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.callback.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
 	expectedAttributes1 := map[string]string{
 		stream.AttributeEncoding: stream.EncodingJson.String(),
@@ -291,33 +316,34 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 	}
 
 	s.input.
-		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
+		EXPECT().
+		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
 		Return(nil).
 		Once()
-	s.callback.On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), expectedAttributes1).
-		Run(func(args mock.Arguments) {
-			ptr := args.Get(1).(*string)
+	s.callback.EXPECT().Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), expectedAttributes1).
+		Run(func(ctx context.Context, model any, attributes map[string]string) {
+			ptr := model.(*string)
 			consumed = append(consumed, *ptr)
 		}).
 		Return(true, nil)
 
 	expectedModelAttributes1 := map[string]string{"attr1": "a", "encoding": "application/json"}
-	s.callback.On("GetModel", expectedModelAttributes1).
+	s.callback.EXPECT().GetModel(expectedModelAttributes1).
 		Return(mdl.Box(""))
 
 	expectedAttributes2 := map[string]string{
 		stream.AttributeEncoding: stream.EncodingJson.String(),
 		"attr1":                  "b",
 	}
-	s.callback.On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), expectedAttributes2).
-		Run(func(args mock.Arguments) {
-			ptr := args.Get(1).(*string)
+	s.callback.EXPECT().Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), expectedAttributes2).
+		Run(func(ctx context.Context, model any, attributes map[string]string) {
+			ptr := model.(*string)
 			consumed = append(consumed, *ptr)
 		}).
 		Return(true, nil)
 
 	expectedModelAttributes2 := map[string]string{"attr1": "b", "encoding": "application/json"}
-	s.callback.On("GetModel", expectedModelAttributes2).
+	s.callback.EXPECT().GetModel(expectedModelAttributes2).
 		Return(mdl.Box(""))
 
 	err = s.consumer.Run(s.kernelCtx)
@@ -329,7 +355,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 
 func (s *ConsumerTestSuite) TestRunWithRetry() {
 	uuid := "243da976-c43f-4578-9307-596146e7dd9a"
-	s.uuidGen.On("NewV4").Return(uuid)
+	s.uuidGen.EXPECT().NewV4().Return(uuid)
 
 	originalMessage := stream.NewJsonMessage(`"foo"`)
 	retryMessage := stream.NewMessage(`"foo"`, map[string]string{
@@ -338,57 +364,63 @@ func (s *ConsumerTestSuite) TestRunWithRetry() {
 		stream.AttributeRetryId:  uuid,
 	})
 
-	s.input.On("Run", mock.AnythingOfType("*context.cancelCtx")).Run(func(args mock.Arguments) {
+	s.input.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Run(func(ctx context.Context) {
 		s.inputData <- originalMessage
 	}).Return(nil)
 
 	s.retryHandler.
-		On("Put", mock.AnythingOfType("*context.valueCtx"), retryMessage).
-		Run(func(args mock.Arguments) {
+		EXPECT().
+		Put(mock.AnythingOfType("*exec.stoppableContext"), retryMessage).
+		Run(func(ctx context.Context, msg *stream.Message) {
 			s.retryData <- stream.NewJsonMessage(`"foo from retry"`)
 		}).
 		Return(nil).
 		Once()
 	s.retryInput.
-		On("Run", mock.AnythingOfType("*context.cancelCtx")).
+		EXPECT().
+		Run(mock.AnythingOfType("*context.cancelCtx")).
 		Return(nil)
 
 	consumed := make([]string, 0)
 
 	// If a single sub-message in an aggregate fails then aggregate should be nacked.
 	s.input.
-		On("Ack", mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
+		EXPECT().
+		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
 		Return(nil).
 		Once()
 
 	s.callback.
-		On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{
+		EXPECT().
+		Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{
 			stream.AttributeEncoding: stream.EncodingJson.String(),
 		}).
-		Run(func(args mock.Arguments) {
-			consumed = append(consumed, *args[1].(*string))
+		Run(func(ctx context.Context, model any, attributes map[string]string) {
+			consumed = append(consumed, *model.(*string))
 		}).
 		Return(false, nil).
 		Once()
 	s.callback.
-		On("Consume", mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{
+		EXPECT().
+		Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), map[string]string{
 			stream.AttributeEncoding: stream.EncodingJson.String(),
 		}).
-		Run(func(args mock.Arguments) {
-			consumed = append(consumed, *args[1].(*string))
+		Run(func(ctx context.Context, model any, attributes map[string]string) {
+			consumed = append(consumed, *model.(*string))
 			s.kernelCancel()
 		}).
 		Return(true, nil).
 		Once()
 
 	s.callback.
-		On("GetModel", mock.AnythingOfType("map[string]string")).
-		Return(func(_ map[string]string) interface{} {
+		EXPECT().
+		GetModel(mock.AnythingOfType("map[string]string")).
+		Return(func(_ map[string]string) any {
 			return mdl.Box("")
 		}).
 		Twice()
 
-	s.callback.On("Run", mock.AnythingOfType("*context.cancelCtx")).Return(nil)
+	s.callback.EXPECT().Run(mock.AnythingOfType("*context.cancelCtx")).Return(nil)
 
 	err := s.consumer.Run(s.kernelCtx)
 
