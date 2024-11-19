@@ -72,5 +72,5 @@ type mysqlLogger struct {
 
 func (m mysqlLogger) Print(v ...any) {
 	msg := fmt.Sprint(v...)
-	m.logger.Error(msg)
+	m.logger.Warn(msg)
 }
