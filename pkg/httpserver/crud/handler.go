@@ -4,14 +4,26 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jinzhu/inflection"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-const DefaultApiView = "api"
+const (
+	SettingsConfigKey = "crud"
+	DefaultApiView    = "api"
+)
+
+// Settings structure for all CRUDL handler.
+type Settings struct {
+	// Applies to create, update and delete handlers.
+	// Write timeout is the maximum duration before canceling any write operation.
+	WriteTimeout time.Duration `cfg:"write_timeout" default:"10min" validate:"min=1000000000"`
+}
 
 //go:generate mockery --name Repository
 type Repository interface {
@@ -19,7 +31,7 @@ type Repository interface {
 	Read(ctx context.Context, id *uint, out db_repo.ModelBased) error
 	Update(ctx context.Context, value db_repo.ModelBased) error
 	Delete(ctx context.Context, value db_repo.ModelBased) error
-	Query(ctx context.Context, qb *db_repo.QueryBuilder, result interface{}) error
+	Query(ctx context.Context, qb *db_repo.QueryBuilder, result any) error
 	Count(ctx context.Context, qb *db_repo.QueryBuilder, model db_repo.ModelBased) (int, error)
 	GetMetadata() db_repo.Metadata
 }
@@ -28,13 +40,13 @@ type Repository interface {
 type BaseHandler interface {
 	GetRepository() Repository
 	GetModel() db_repo.ModelBased
-	TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (output interface{}, err error)
+	TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (output any, err error)
 }
 
 //go:generate mockery --name BaseCreateHandler
 type BaseCreateHandler interface {
-	GetCreateInput() interface{}
-	TransformCreate(ctx context.Context, input interface{}, model db_repo.ModelBased) (err error)
+	GetCreateInput() any
+	TransformCreate(ctx context.Context, input any, model db_repo.ModelBased) (err error)
 }
 
 //go:generate mockery --name CreateHandler
@@ -45,8 +57,8 @@ type CreateHandler interface {
 
 //go:generate mockery --name BaseUpdateHandler
 type BaseUpdateHandler interface {
-	GetUpdateInput() interface{}
-	TransformUpdate(ctx context.Context, input interface{}, model db_repo.ModelBased) (err error)
+	GetUpdateInput() any
+	TransformUpdate(ctx context.Context, input any, model db_repo.ModelBased) (err error)
 }
 
 //go:generate mockery --name UpdateHandler
@@ -57,7 +69,7 @@ type UpdateHandler interface {
 
 //go:generate mockery --name BaseListHandler
 type BaseListHandler interface {
-	List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out interface{}, err error)
+	List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out any, err error)
 }
 
 //go:generate mockery --name ListHandler
@@ -74,42 +86,42 @@ type Handler interface {
 	BaseListHandler
 }
 
-func AddCrudHandlers(logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler Handler) {
-	AddCreateHandler(logger, d, version, basePath, handler)
-	AddReadHandler(logger, d, version, basePath, handler)
-	AddUpdateHandler(logger, d, version, basePath, handler)
-	AddDeleteHandler(logger, d, version, basePath, handler)
-	AddListHandler(logger, d, version, basePath, handler)
+func AddCrudHandlers(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler Handler) {
+	AddCreateHandler(config, logger, d, version, basePath, handler)
+	AddReadHandler(config, logger, d, version, basePath, handler)
+	AddUpdateHandler(config, logger, d, version, basePath, handler)
+	AddDeleteHandler(config, logger, d, version, basePath, handler)
+	AddListHandler(config, logger, d, version, basePath, handler)
 }
 
-func AddCreateHandler(logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler CreateHandler) {
+func AddCreateHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler CreateHandler) {
 	path, _ := getHandlerPaths(version, basePath)
 
-	d.POST(path, NewCreateHandler(logger, handler))
+	d.POST(path, NewCreateHandler(config, logger, handler))
 }
 
-func AddReadHandler(logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler) {
+func AddReadHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler) {
 	_, idPath := getHandlerPaths(version, basePath)
 
-	d.GET(idPath, NewReadHandler(logger, handler))
+	d.GET(idPath, NewReadHandler(config, logger, handler))
 }
 
-func AddUpdateHandler(logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler UpdateHandler) {
+func AddUpdateHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler UpdateHandler) {
 	_, idPath := getHandlerPaths(version, basePath)
 
-	d.PUT(idPath, NewUpdateHandler(logger, handler))
+	d.PUT(idPath, NewUpdateHandler(config, logger, handler))
 }
 
-func AddDeleteHandler(logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler) {
+func AddDeleteHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler BaseHandler) {
 	_, idPath := getHandlerPaths(version, basePath)
 
-	d.DELETE(idPath, NewDeleteHandler(logger, handler))
+	d.DELETE(idPath, NewDeleteHandler(config, logger, handler))
 }
 
-func AddListHandler(logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler ListHandler) {
+func AddListHandler(config cfg.Config, logger log.Logger, d *httpserver.Definitions, version int, basePath string, handler ListHandler) {
 	plural := inflection.Plural(basePath)
 	path := fmt.Sprintf("/v%d/%s", version, plural)
-	d.POST(path, NewListHandler(logger, handler))
+	d.POST(path, NewListHandler(config, logger, handler))
 }
 
 func getHandlerPaths(version int, basePath string) (path string, idPath string) {

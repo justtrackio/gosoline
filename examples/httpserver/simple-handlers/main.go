@@ -37,7 +37,7 @@ func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*htt
 
 	group.GET("/authenticated", httpserver.CreateHandler(&AdminAuthenticatedHandler{}))
 
-	crud.AddCrudHandlers(logger, definitions, 0, "/myEntity", &MyEntityHandler{
+	crud.AddCrudHandlers(config, logger, definitions, 0, "/myEntity", &MyEntityHandler{
 		repo: &MyEntityRepository{},
 	})
 

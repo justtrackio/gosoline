@@ -2,12 +2,12 @@ package crud
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/validation"
 	"github.com/pkg/errors"
 )
 
@@ -16,7 +16,7 @@ type readHandler struct {
 	transformer BaseHandler
 }
 
-func NewReadHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFunc {
+func NewReadHandler(_ cfg.Config, logger log.Logger, transformer BaseHandler) gin.HandlerFunc {
 	rh := readHandler{
 		transformer: transformer,
 		logger:      logger,
@@ -26,31 +26,33 @@ func NewReadHandler(logger log.Logger, transformer BaseHandler) gin.HandlerFunc 
 }
 
 func (rh readHandler) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
+	logger := rh.logger.WithContext(ctx)
+
 	id, valid := httpserver.GetUintFromRequest(request, "id")
 
 	if !valid {
-		return nil, errors.New("no valid id provided")
+		return handleErrorOnRead(logger, &validation.Error{
+			Errors: []error{
+				errors.New("no valid id provided"),
+			},
+		})
 	}
+
+	logger = rh.logger.WithFields(log.Fields{
+		"entity_id": id,
+	})
 
 	repo := rh.transformer.GetRepository()
 	model := rh.transformer.GetModel()
 	err := repo.Read(ctx, id, model)
-
-	var notFound db_repo.RecordNotFoundError
-	if errors.As(err, &notFound) {
-		rh.logger.WithContext(ctx).Warn("failed to read model: %s", err)
-
-		return httpserver.NewStatusResponse(http.StatusNotFound), nil
-	}
-
 	if err != nil {
-		return nil, err
+		return handleErrorOnRead(logger, err)
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
 	out, err := rh.transformer.TransformOutput(ctx, model, apiView)
 	if err != nil {
-		return nil, err
+		return handleErrorOnRead(logger, err)
 	}
 
 	return httpserver.NewJsonResponse(out), nil

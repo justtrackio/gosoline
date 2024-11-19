@@ -3,11 +3,10 @@ package crud
 import (
 	"context"
 	"errors"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/justtrackio/gosoline/pkg/db"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/validation"
@@ -16,82 +15,77 @@ import (
 type updateHandler struct {
 	logger      log.Logger
 	transformer UpdateHandler
+	settings    Settings
 }
 
-func NewUpdateHandler(logger log.Logger, transformer UpdateHandler) gin.HandlerFunc {
+func NewUpdateHandler(config cfg.Config, logger log.Logger, transformer UpdateHandler) gin.HandlerFunc {
+	settings := Settings{}
+	config.UnmarshalKey(SettingsConfigKey, &settings)
+
 	uh := updateHandler{
 		transformer: transformer,
 		logger:      logger,
+		settings:    settings,
 	}
 
 	return httpserver.CreateJsonHandler(uh)
 }
 
-func (uh updateHandler) GetInput() interface{} {
+func (uh updateHandler) GetInput() any {
 	return uh.transformer.GetUpdateInput()
 }
 
-func (uh updateHandler) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
+func (uh updateHandler) Handle(reqCtx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
+	// replace context with a new one to prevent cancellations from client side
+	// include a new timeout to ensure that requests will be cancelled
+	ctx, cancel := exec.WithDelayedCancelContext(reqCtx, uh.settings.WriteTimeout)
+	defer cancel()
+
+	logger := uh.logger.WithContext(ctx)
+
 	id, valid := httpserver.GetUintFromRequest(request, "id")
 
 	if !valid {
-		return nil, errors.New("no valid id provided")
+		return handleErrorOnWrite(ctx, logger, &validation.Error{
+			Errors: []error{
+				errors.New("no valid id provided"),
+			},
+		})
 	}
+
+	logger = logger.WithFields(log.Fields{
+		"entity_id": id,
+	})
 
 	repo := uh.transformer.GetRepository()
 	model := uh.transformer.GetModel()
+
 	err := repo.Read(ctx, id, model)
-
-	var notFound db_repo.RecordNotFoundError
-	if errors.As(err, &notFound) {
-		uh.logger.WithContext(ctx).Warn("failed to update model: %s", err.Error())
-
-		return httpserver.NewStatusResponse(http.StatusNotFound), nil
-	}
-
 	if err != nil {
-		return nil, err
+		return handleErrorOnWrite(ctx, logger, err)
 	}
 
 	err = uh.transformer.TransformUpdate(ctx, request.Body, model)
-
-	if modelNotChanged(err) {
-		return httpserver.NewStatusResponse(http.StatusNotModified), nil
-	}
-
 	if err != nil {
-		return nil, err
+		return handleErrorOnWrite(ctx, logger, err)
 	}
 
 	err = repo.Update(ctx, model)
-
-	if db.IsDuplicateEntryError(err) {
-		return httpserver.NewStatusResponse(http.StatusConflict), nil
-	}
-
-	if errors.Is(err, &validation.Error{}) {
-		return httpserver.GetErrorHandler()(http.StatusBadRequest, err), nil
-	}
-
 	if err != nil {
-		return nil, err
+		return handleErrorOnWrite(ctx, logger, err)
 	}
 
 	reload := uh.transformer.GetModel()
 	err = repo.Read(ctx, model.GetId(), reload)
 	if err != nil {
-		return nil, err
+		return handleErrorOnWrite(ctx, logger, err)
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
 	out, err := uh.transformer.TransformOutput(ctx, reload, apiView)
 	if err != nil {
-		return nil, err
+		return handleErrorOnWrite(ctx, logger, err)
 	}
 
 	return httpserver.NewJsonResponse(out), nil
-}
-
-func modelNotChanged(err error) bool {
-	return errors.Is(err, ErrModelNotChanged)
 }
