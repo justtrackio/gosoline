@@ -5,9 +5,8 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/stream"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/segmentio/kafka-go"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_NewKafkaMessageAttrs(t *testing.T) {

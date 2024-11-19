@@ -7,18 +7,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/db"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
-type createHandler struct {
+type createHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]] struct {
 	logger      log.Logger
-	transformer CreateHandler
+	transformer CreateHandler[I, O, K, M]
 }
 
-func NewCreateHandler(logger log.Logger, transformer CreateHandler) gin.HandlerFunc {
-	ch := createHandler{
+func NewCreateHandler[I any, O any, K mdl.PossibleIdentifier, M dbRepo.ModelBased[K]](logger log.Logger, transformer CreateHandler[I, O, K, M]) gin.HandlerFunc {
+	ch := createHandler[I, O, K, M]{
 		transformer: transformer,
 		logger:      logger,
 	}
@@ -26,13 +28,14 @@ func NewCreateHandler(logger log.Logger, transformer CreateHandler) gin.HandlerF
 	return httpserver.CreateJsonHandler(ch)
 }
 
-func (ch createHandler) GetInput() interface{} {
-	return ch.transformer.GetCreateInput()
+func (ch createHandler[I, O, K, M]) GetInput() any {
+	var input I
+
+	return &input
 }
 
-func (ch createHandler) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
-	model := ch.transformer.GetModel()
-	err := ch.transformer.TransformCreate(ctx, request.Body, model)
+func (ch createHandler[I, O, K, M]) Handle(ctx context.Context, request *httpserver.Request) (*httpserver.Response, error) {
+	model, err := ch.transformer.TransformCreate(ctx, request.Body.(*I))
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +55,7 @@ func (ch createHandler) Handle(ctx context.Context, request *httpserver.Request)
 		return nil, err
 	}
 
-	reload := ch.transformer.GetModel()
-	err = repo.Read(ctx, model.GetId(), reload)
+	reload, err := repo.Read(ctx, *model.GetId())
 	if err != nil {
 		return nil, err
 	}

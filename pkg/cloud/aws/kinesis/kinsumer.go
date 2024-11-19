@@ -280,6 +280,7 @@ func (k *kinsumer) refreshShards(ctx context.Context, runtimeCtx *runtimeContext
 		for idx := range shardIds {
 			if shardIds[idx] != runtimeCtx.shardIds[idx] {
 				changed = true
+
 				break
 			}
 		}

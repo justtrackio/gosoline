@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/justtrackio/gosoline/pkg/funk"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
@@ -15,6 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/uuid"
@@ -178,6 +177,7 @@ func (w *recordWriter) putRecordsBatch(ctx context.Context, batch []*Record) err
 
 		if len(failedRecords) == 0 && attempt > 1 {
 			logger.Warn("PutRecords successful after %d attempts in %s", attempt, took)
+
 			break
 		}
 

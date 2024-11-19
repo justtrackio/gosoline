@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
@@ -12,7 +13,7 @@ import (
 type mysqlOrmFixtureWriter struct {
 	logger   log.Logger
 	metadata *db_repo.Metadata
-	repo     db_repo.Repository
+	repo     db_repo.ConfigurableRepository[uint, db_repo.ModelBased[uint]]
 	purger   *mysqlPurger
 }
 
@@ -37,7 +38,7 @@ func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log
 		Metadata: *metadata,
 	}
 
-	repo, err := db_repo.New(ctx, config, logger, settings)
+	repo, err := db_repo.New[uint, db_repo.ModelBased[uint]](ctx, config, logger, settings)
 	if err != nil {
 		return nil, fmt.Errorf("can not create repo: %w", err)
 	}
@@ -50,7 +51,12 @@ func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log
 	return NewMysqlFixtureWriterWithInterfaces(logger, metadata, repo, purger), nil
 }
 
-func NewMysqlFixtureWriterWithInterfaces(logger log.Logger, metadata *db_repo.Metadata, repo db_repo.Repository, purger *mysqlPurger) FixtureWriter {
+func NewMysqlFixtureWriterWithInterfaces(
+	logger log.Logger,
+	metadata *db_repo.Metadata,
+	repo db_repo.ConfigurableRepository[uint, db_repo.ModelBased[uint]],
+	purger *mysqlPurger,
+) FixtureWriter {
 	return &mysqlOrmFixtureWriter{
 		logger:   logger,
 		metadata: metadata,
@@ -74,12 +80,16 @@ func (m *mysqlOrmFixtureWriter) Purge(ctx context.Context) error {
 
 func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fixtures []any) error {
 	var ok bool
-	var model db_repo.ModelBased
+	var model db_repo.ModelBased[uint]
 
 	for _, item := range fixtures {
-		if model, ok = item.(db_repo.ModelBased); !ok {
-			return fmt.Errorf("can not convert model %T to db_repo.ModelBased", item)
+		if model, ok = item.(db_repo.ModelBased[uint]); !ok {
+			return fmt.Errorf("can not convert model %T to db_repo.ModelBased[uint]", item)
 		}
+
+		m.repo.SetModelSource(func() db_repo.ModelBased[uint] {
+			return createFromType(model)
+		})
 
 		err := m.repo.Update(ctx, model)
 		if err != nil {
@@ -90,4 +100,19 @@ func (m *mysqlOrmFixtureWriter) Write(ctx context.Context, fixtures []any) error
 	m.logger.Info("loaded %d mysql fixtures", len(fixtures))
 
 	return nil
+}
+
+func createFromType[T any](model T) T {
+	modelType := reflect.TypeOf(model)
+
+	switch modelType.Kind() {
+	case reflect.Pointer:
+		return reflect.New(modelType.Elem()).Interface().(T)
+
+	case reflect.Map:
+		return reflect.MakeMap(modelType).Interface().(T)
+
+	default:
+		return *reflect.New(modelType.Elem()).Interface().(*T)
+	}
 }

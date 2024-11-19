@@ -5,9 +5,12 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/justtrackio/gosoline/pkg/mdl"
 	"golang.org/x/exp/maps"
 )
+
+type Keyed interface {
+	GetKey() string
+}
 
 // CastSlice casts a []any slice to the given type.
 // The parameter sliceType is required to correctly infer the target type.
@@ -118,7 +121,7 @@ func Difference[S ~[]T, T comparable](left, right S) (inLeft, inRight []T) {
 	return inLeft, inRight
 }
 
-func DifferenceKeyed[S1 ~[]T1, S2 ~[]T2, T1, T2 mdl.Keyed](left S1, right S2) (inLeft S1, inRight S2) {
+func DifferenceKeyed[S1 ~[]T1, S2 ~[]T2, T1, T2 Keyed](left S1, right S2) (inLeft S1, inRight S2) {
 	inLeftS, inRightS := DifferenceMaps(KeyedToMap(left), KeyedToMap(right))
 
 	return maps.Values(inLeftS), maps.Values(inRightS)
@@ -201,11 +204,11 @@ func Intersect[S ~[]T, T comparable](sl1, sl2 S) []T {
 	return maps.Keys(result)
 }
 
-func IntersectKeyed[S ~[]T, T mdl.Keyed](s1, s2 S) S {
+func IntersectKeyed[S ~[]T, T Keyed](s1, s2 S) S {
 	return maps.Values(IntersectMaps(KeyedToMap(s1), KeyedToMap(s2)))
 }
 
-func KeyedToMap[S ~[]T, T mdl.Keyed](sl S) map[string]T {
+func KeyedToMap[S ~[]T, T Keyed](sl S) map[string]T {
 	out := make(map[string]T, len(sl))
 
 	for _, item := range sl {

@@ -14,7 +14,7 @@ import (
 
 type module struct {
 	logger     log.Logger
-	repository db_repo.Repository
+	repository db_repo.Repository[uint, *Item]
 	input      stream.Input
 }
 

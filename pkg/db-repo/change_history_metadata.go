@@ -36,6 +36,7 @@ func (m *tableMetadataBuilder) build() *tableMetadata {
 	metadata.tableNameQuoted = m.scope.Quote(m.tableName)
 	metadata.columns = m.buildColumns()
 	metadata.primaryKeys = m.buildPrimaryKeys()
+
 	return metadata
 }
 
@@ -46,6 +47,7 @@ func (m *tableMetadataBuilder) buildColumns() []columnMetadata {
 			columns = append(columns, m.buildColumn(field))
 		}
 	}
+
 	return columns
 }
 
@@ -56,6 +58,7 @@ func (m *tableMetadataBuilder) buildPrimaryKeys() []columnMetadata {
 			columns = append(columns, m.buildColumn(field))
 		}
 	}
+
 	return columns
 }
 
@@ -101,6 +104,7 @@ func newTableMetadata(scope *gorm.Scope, tableName string, fields []*gorm.Struct
 		scope:     scope,
 		fields:    fields,
 	}
+
 	return builder.build()
 }
 

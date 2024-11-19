@@ -4,13 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/justtrackio/gosoline/pkg/guard"
-	"github.com/selm0/ladon"
-	"github.com/stretchr/testify/require"
-
 	"github.com/justtrackio/gosoline/pkg/guard/mocks"
+	"github.com/selm0/ladon"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test LadonGuard::GetPolicies

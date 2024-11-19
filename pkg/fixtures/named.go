@@ -124,7 +124,7 @@ func GetValueId(value any) (any, bool) {
 		return GetValueId(kvValue.Value)
 	}
 
-	if identifiable, ok := value.(mdl.Identifiable); ok {
+	if identifiable, ok := value.(mdl.Identifiable[uint]); ok {
 		return mdl.EmptyIfNil(identifiable.GetId()), true
 	}
 

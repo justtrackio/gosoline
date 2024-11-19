@@ -24,7 +24,7 @@ type ChangeHistoryManager struct {
 	logger   log.Logger
 	orm      *gorm.DB
 	settings *ChangeHistoryManagerSettings
-	models   []ModelBased
+	models   []ModelBased[uint]
 }
 
 type changeHistoryManagerAppCtxKey int
@@ -55,7 +55,7 @@ func NewChangeHistoryManagerWithInterfaces(logger log.Logger, orm *gorm.DB, sett
 	}
 }
 
-func (c *ChangeHistoryManager) addModels(models ...ModelBased) {
+func (c *ChangeHistoryManager) addModels(models ...ModelBased[uint]) {
 	c.models = append(c.models, models...)
 }
 
@@ -80,7 +80,7 @@ func (c *ChangeHistoryManager) RunMigrations() error {
 	return cfn.Wait()
 }
 
-func (c *ChangeHistoryManager) RunMigration(model ModelBased) error {
+func (c *ChangeHistoryManager) RunMigration(model ModelBased[uint]) error {
 	originalTable := c.buildOriginalTableMetadata(model)
 	historyTable := c.buildHistoryTableMetadata(model, originalTable)
 
@@ -167,7 +167,7 @@ func (c *ChangeHistoryManager) executeMigration(originalTable, historyTable *tab
 	return nil
 }
 
-func (c *ChangeHistoryManager) buildOriginalTableMetadata(model ModelBased) *tableMetadata {
+func (c *ChangeHistoryManager) buildOriginalTableMetadata(model ModelBased[uint]) *tableMetadata {
 	scope := c.orm.NewScope(model)
 	fields := scope.GetModelStruct().StructFields
 	tableName := scope.TableName()
@@ -175,7 +175,7 @@ func (c *ChangeHistoryManager) buildOriginalTableMetadata(model ModelBased) *tab
 	return newTableMetadata(scope, tableName, fields)
 }
 
-func (c *ChangeHistoryManager) buildHistoryTableMetadata(model ModelBased, originalTable *tableMetadata) *tableMetadata {
+func (c *ChangeHistoryManager) buildHistoryTableMetadata(model ModelBased[uint], originalTable *tableMetadata) *tableMetadata {
 	historyScope := c.orm.NewScope(ChangeHistoryModel{})
 	tableName := fmt.Sprintf("%s_%s", originalTable.tableName, c.settings.TableSuffix)
 	modelFields := funk.Filter(c.orm.NewScope(model).GetModelStruct().StructFields, func(field *gorm.StructField) bool {
@@ -275,6 +275,7 @@ func (c *ChangeHistoryManager) primaryKeysMatchCondition(originalTable *tableMet
 		condition := fmt.Sprintf("d.%s = %s.%s", columnName, record, columnName)
 		conditions = append(conditions, condition)
 	}
+
 	return strings.Join(conditions, " AND ")
 }
 
@@ -285,6 +286,7 @@ func (c *ChangeHistoryManager) rowUpdatedCondition(originalTable *tableMetadata)
 		condition := fmt.Sprintf("NOT (OLD.%s <=> NEW.%s)", columnName, columnName)
 		conditions = append(conditions, condition)
 	}
+
 	return strings.Join(conditions, " OR ")
 }
 

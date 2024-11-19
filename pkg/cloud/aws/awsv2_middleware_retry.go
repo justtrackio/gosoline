@@ -5,13 +5,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/justtrackio/gosoline/pkg/exec"
-	"github.com/justtrackio/gosoline/pkg/uuid"
-
 	awsMiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	awsRetry "github.com/aws/aws-sdk-go-v2/aws/retry"
 	smithyMiddleware "github.com/aws/smithy-go/middleware"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 type (
