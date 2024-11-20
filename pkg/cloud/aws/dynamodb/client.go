@@ -35,6 +35,12 @@ type Client interface {
 
 type ClientSettings struct {
 	gosoAws.ClientSettings
+	// Allows you to disable the client's validation of response integrity using CRC32
+	// checksum. Enabled by default.
+	DisableValidateResponseChecksum bool `cfg:"disable_validate_response_checksum" default:"false"`
+	// Allows you to enable the client's support for compressed gzip responses.
+	// Disabled by default.
+	EnableAcceptEncodingGzip bool `cfg:"enable_accept_encoding_gzip" default:"false"`
 }
 
 type ClientConfig struct {
@@ -89,6 +95,8 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 
 	client := dynamodb.NewFromConfig(awsConfig, func(options *dynamodb.Options) {
 		options.BaseEndpoint = gosoAws.NilIfEmpty(clientCfg.Settings.Endpoint)
+		options.DisableValidateResponseChecksum = clientCfg.Settings.DisableValidateResponseChecksum
+		options.EnableAcceptEncodingGzip = clientCfg.Settings.EnableAcceptEncodingGzip
 	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "dynamodb", name, clientCfg.Settings.ClientSettings)
