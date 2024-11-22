@@ -3,10 +3,12 @@ package stream
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -35,7 +37,8 @@ type BatchConsumer struct {
 	*baseConsumer
 	batch    []*consumerData
 	callback BatchConsumerCallback
-	ticker   *time.Ticker
+	lck      sync.Mutex
+	ticker   clock.Ticker
 	settings *BatchConsumerSettings
 }
 
@@ -55,12 +58,12 @@ func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory)
 		key := ConfigurableConsumerKey(name)
 		config.UnmarshalKey(key, settings)
 
-		ticker := time.NewTicker(settings.IdleTimeout)
-
 		baseConsumer, err := NewBaseConsumer(ctx, config, logger, name, callback)
 		if err != nil {
 			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
 		}
+
+		ticker := baseConsumer.clock.NewTicker(settings.IdleTimeout)
 
 		batchConsumer := NewBatchConsumerWithInterfaces(baseConsumer, callback, ticker, settings)
 
@@ -68,7 +71,7 @@ func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory)
 	}
 }
 
-func NewBatchConsumerWithInterfaces(base *baseConsumer, callback BatchConsumerCallback, ticker *time.Ticker, settings *BatchConsumerSettings) *BatchConsumer {
+func NewBatchConsumerWithInterfaces(base *baseConsumer, callback BatchConsumerCallback, ticker clock.Ticker, settings *BatchConsumerSettings) *BatchConsumer {
 	consumer := &BatchConsumer{
 		baseConsumer: base,
 		callback:     callback,
@@ -91,6 +94,9 @@ func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 
 	for {
 		force := false
+		c.lck.Lock()
+		ticker := c.ticker
+		c.lck.Unlock()
 
 		select {
 		case <-ctx.Done():
@@ -101,17 +107,23 @@ func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 				return nil
 			}
 
+			c.lck.Lock()
 			if _, ok := cdata.msg.Attributes[AttributeAggregate]; ok {
 				c.processAggregateMessage(ctx, cdata)
 			} else {
 				c.processSingleMessage(ctx, cdata)
 			}
+			c.lck.Unlock()
 
-		case <-c.ticker.C:
+		case <-ticker.Chan():
 			force = true
 		}
 
-		if len(c.batch) >= c.settings.BatchSize || force {
+		c.lck.Lock()
+		batchLen := len(c.batch)
+		c.lck.Unlock()
+
+		if batchLen >= c.settings.BatchSize || force {
 			c.processBatch(ctx)
 		}
 	}
@@ -141,11 +153,13 @@ func (c *BatchConsumer) processSingleMessage(_ context.Context, cdata *consumerD
 }
 
 func (c *BatchConsumer) processBatch(ctx context.Context) {
+	c.lck.Lock()
 	batch := c.batch
 
 	c.batch = make([]*consumerData, 0, c.settings.BatchSize)
 	c.ticker.Stop()
-	c.ticker = time.NewTicker(c.settings.IdleTimeout)
+	c.ticker = c.clock.NewTicker(c.settings.IdleTimeout)
+	c.lck.Unlock()
 
 	c.consumeBatch(ctx, batch)
 }
