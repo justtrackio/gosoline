@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -26,7 +27,12 @@ func (c *ConsumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerDa
 		return
 	}
 
-	if err := ackInput.Ack(ctx, cdata.msg, ack); err != nil {
+	msg := &cdata.msg
+	if cdata.originalMessage != nil {
+		msg = &cdata.originalMessage.Message
+	}
+
+	if err := ackInput.Ack(ctx, msg, ack); err != nil {
 		c.logger.WithContext(ctx).Error("could not acknowledge the message: %w", err)
 	}
 }
@@ -35,17 +41,14 @@ func (c *ConsumerAcknowledge) AcknowledgeBatch(ctx context.Context, cdata []*con
 	var ok bool
 	var ackInput AcknowledgeableInput
 
-	var (
-		inputs    = make(map[string]AcknowledgeableInput)
-		inputMsgs = make(map[string][]*Message)
-		inputAcks = make(map[string][]bool)
-	)
+	inputs := make(map[string]AcknowledgeableInput)
+	inputMsgs := make(map[string][]*Message)
+	inputAcks := make(map[string][]bool)
+	seenMessageIds := funk.NewSet[string]()
 
 	for i := range cdata {
-		var (
-			data = cdata[i]
-			ack  = acks[i]
-		)
+		data := cdata[i]
+		ack := acks[i]
 
 		if ackInput, ok = data.input.(AcknowledgeableInput); !ok {
 			continue
@@ -57,8 +60,19 @@ func (c *ConsumerAcknowledge) AcknowledgeBatch(ctx context.Context, cdata []*con
 			inputAcks[data.src] = make([]bool, 0)
 		}
 
-		inputMsgs[data.src] = append(inputMsgs[data.src], data.msg)
-		inputAcks[data.src] = append(inputAcks[data.src], ack)
+		if data.originalMessage == nil {
+			inputMsgs[data.src] = append(inputMsgs[data.src], &data.msg)
+			inputAcks[data.src] = append(inputAcks[data.src], ack)
+		} else {
+			if seenMessageIds.Contains(data.originalMessage.id) {
+				continue
+			}
+
+			seenMessageIds.Set(data.originalMessage.id)
+			inputMsgs[data.src] = append(inputMsgs[data.src], &data.originalMessage.Message)
+			inputAcks[data.src] = append(inputAcks[data.src], ack)
+		}
+
 	}
 
 	for src, input := range inputs {
@@ -67,3 +81,5 @@ func (c *ConsumerAcknowledge) AcknowledgeBatch(ctx context.Context, cdata []*con
 		}
 	}
 }
+
+// TODO: tests

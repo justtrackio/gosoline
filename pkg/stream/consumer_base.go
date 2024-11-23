@@ -48,9 +48,19 @@ type BaseConsumerCallback interface {
 }
 
 type consumerData struct {
-	msg   *Message
+	msg Message
+	// if this is a de-aggregated message, this is the original message this
+	// message was contained in. multiple messages in one batch can have the
+	// same original message. if nil, the message was not de-aggregated.
+	originalMessage *originalMessage
+	// where did the message come from? our normal input or retry input?
 	src   string
 	input Input
+}
+
+type originalMessage struct {
+	Message
+	id string
 }
 
 type baseConsumer struct {
@@ -274,9 +284,10 @@ func (c *baseConsumer) ingestDataFromSource(input Input, src string) func(ctx co
 				}
 
 				c.data <- &consumerData{
-					msg:   msg,
-					src:   src,
-					input: input,
+					msg:             *msg,
+					originalMessage: nil,
+					src:             src,
+					input:           input,
 				}
 			}
 		}

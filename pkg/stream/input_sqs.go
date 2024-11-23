@@ -194,12 +194,8 @@ func (i *sqsInput) AckBatch(ctx context.Context, msgs []*Message, acks []bool) e
 	receiptHandles := make([]string, 0, len(msgs))
 	multiError := new(multierror.Error)
 
-	for i := range msgs {
-		var (
-			msg = msgs[i]
-			ack = acks[i]
-		)
-		if !ack {
+	for i, msg := range msgs {
+		if !acks[i] {
 			continue
 		}
 
