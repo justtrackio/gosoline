@@ -3,10 +3,13 @@ package stream
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -35,7 +38,8 @@ type BatchConsumer struct {
 	*baseConsumer
 	batch    []*consumerData
 	callback BatchConsumerCallback
-	ticker   *time.Ticker
+	lck      sync.Mutex
+	ticker   clock.Ticker
 	settings *BatchConsumerSettings
 }
 
@@ -55,12 +59,12 @@ func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory)
 		key := ConfigurableConsumerKey(name)
 		config.UnmarshalKey(key, settings)
 
-		ticker := time.NewTicker(settings.IdleTimeout)
-
 		baseConsumer, err := NewBaseConsumer(ctx, config, logger, name, callback)
 		if err != nil {
 			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
 		}
+
+		ticker := baseConsumer.clock.NewTicker(settings.IdleTimeout)
 
 		batchConsumer := NewBatchConsumerWithInterfaces(baseConsumer, callback, ticker, settings)
 
@@ -68,7 +72,7 @@ func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory)
 	}
 }
 
-func NewBatchConsumerWithInterfaces(base *baseConsumer, callback BatchConsumerCallback, ticker *time.Ticker, settings *BatchConsumerSettings) *BatchConsumer {
+func NewBatchConsumerWithInterfaces(base *baseConsumer, callback BatchConsumerCallback, ticker clock.Ticker, settings *BatchConsumerSettings) *BatchConsumer {
 	consumer := &BatchConsumer{
 		baseConsumer: base,
 		callback:     callback,
@@ -91,6 +95,9 @@ func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 
 	for {
 		force := false
+		c.lck.Lock()
+		ticker := c.ticker
+		c.lck.Unlock()
 
 		select {
 		case <-ctx.Done():
@@ -101,17 +108,23 @@ func (c *BatchConsumer) readFromInput(ctx context.Context) error {
 				return nil
 			}
 
+			c.lck.Lock()
 			if _, ok := cdata.msg.Attributes[AttributeAggregate]; ok {
 				c.processAggregateMessage(ctx, cdata)
 			} else {
 				c.processSingleMessage(ctx, cdata)
 			}
+			c.lck.Unlock()
 
-		case <-c.ticker.C:
+		case <-ticker.Chan():
 			force = true
 		}
 
-		if len(c.batch) >= c.settings.BatchSize || force {
+		c.lck.Lock()
+		batchLen := len(c.batch)
+		c.lck.Unlock()
+
+		if batchLen >= c.settings.BatchSize || force {
 			c.processBatch(ctx)
 		}
 	}
@@ -121,7 +134,7 @@ func (c *BatchConsumer) processAggregateMessage(ctx context.Context, cdata *cons
 	batch := make([]*Message, 0)
 	var err error
 
-	ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch)
+	ctx, _, err = c.encoder.Decode(ctx, &cdata.msg, &batch)
 	if err != nil {
 		c.logger.WithContext(ctx).Error("an error occurred during disaggregation of the message: %w", err)
 
@@ -130,7 +143,12 @@ func (c *BatchConsumer) processAggregateMessage(ctx context.Context, cdata *cons
 
 	for _, msg := range batch {
 		c.batch = append(c.batch, &consumerData{
-			msg:   msg,
+			msg: *msg,
+			originalMessage: &originalMessage{
+				Message: cdata.msg,
+				id:      c.uuidGen.NewV4(),
+			},
+			src:   cdata.src,
 			input: cdata.input,
 		})
 	}
@@ -141,11 +159,13 @@ func (c *BatchConsumer) processSingleMessage(_ context.Context, cdata *consumerD
 }
 
 func (c *BatchConsumer) processBatch(ctx context.Context) {
+	c.lck.Lock()
 	batch := c.batch
 
 	c.batch = make([]*consumerData, 0, c.settings.BatchSize)
 	c.ticker.Stop()
-	c.ticker = time.NewTicker(c.settings.IdleTimeout)
+	c.ticker = c.clock.NewTicker(c.settings.IdleTimeout)
+	c.lck.Unlock()
 
 	c.consumeBatch(ctx, batch)
 }
@@ -185,15 +205,23 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData)
 		logger.Error("number of acks does not match number of messages in batch: %d != %d", len(acks), len(batch))
 	}
 
+	delayedContext, stop := exec.WithDelayedCancelContext(batchCtx, time.Second*10)
+	defer stop()
+
 	ackMessages := make([]*consumerData, 0, len(batch))
 	for i, ack := range acks {
 		ackMessages = append(ackMessages, batch[i])
-		if !ack && !c.hasNativeRetry() {
-			c.retry(batchCtx, batch[i].msg)
+		if !ack && (!c.hasNativeRetry() || batch[i].originalMessage != nil) {
+			c.retry(delayedContext, &batch[i].msg)
+		}
+
+		// acknowledge the message as we will retry the de-aggregated message
+		if batch[i].originalMessage != nil {
+			acks[i] = true
 		}
 	}
 
-	c.AcknowledgeBatch(batchCtx, ackMessages, acks)
+	c.AcknowledgeBatch(delayedContext, ackMessages, acks)
 
 	duration := c.clock.Now().Sub(start)
 	atomic.AddInt32(&c.processed, int32(len(ackMessages)))
@@ -210,7 +238,7 @@ func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*consum
 	for _, cdata := range batch {
 		model := c.callback.GetModel(cdata.msg.Attributes)
 
-		msgCtx, attribute, err := c.encoder.Decode(batchCtx, cdata.msg, model)
+		msgCtx, attribute, err := c.encoder.Decode(batchCtx, &cdata.msg, model)
 		if err != nil {
 			c.logger.WithContext(msgCtx).Error("an error occurred during the batch decode message operation: %w", err)
 
@@ -227,3 +255,10 @@ func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*consum
 
 	return newBatch, models, attributes, spans
 }
+
+// TODO tests:
+// - batch consumer
+// - batch consumer with aggregate message
+// - batch consumer with multiple runners
+// - batch consumer with cancel while processing
+// - consumer with cancel while processing

@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -93,7 +95,7 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 	start := c.clock.Now()
 	batch := make([]*Message, 0)
 
-	if ctx, _, err = c.encoder.Decode(ctx, cdata.msg, &batch); err != nil {
+	if ctx, _, err = c.encoder.Decode(ctx, &cdata.msg, &batch); err != nil {
 		c.handleError(ctx, err, "an error occurred during disaggregation of the message")
 
 		return
@@ -113,7 +115,7 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData) {
 	start := c.clock.Now()
 
-	ack := c.process(ctx, cdata.msg, c.hasNativeRetry())
+	ack := c.process(ctx, &cdata.msg, c.hasNativeRetry())
 	c.Acknowledge(ctx, cdata, ack)
 
 	duration := c.clock.Now().Sub(start)
@@ -152,7 +154,11 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	}
 
 	if !ack && !hasNativeRetry {
-		c.retry(ctx, msg)
+		// if we got cancelled, we have to ensure we put the message back into the retry queue it belongs to:
+		delayedContext, stop := exec.WithDelayedCancelContext(ctx, time.Second*10)
+		defer stop()
+
+		c.retry(delayedContext, msg)
 	}
 
 	return ack

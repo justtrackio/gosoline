@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -63,7 +64,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	retryInput := stream.NewNoopInput()
 	retryHandler := stream.NewRetryHandlerNoopWithInterfaces()
 
-	ticker := time.NewTicker(time.Second)
+	ticker := clock.Provider.NewTicker(time.Second)
 	settings := &stream.ConsumerSettings{
 		Input:       "test",
 		RunnerCount: 1,
@@ -109,7 +110,7 @@ func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {
 	acks := []bool{true, false, true}
 	s.input.
 		EXPECT().
-		AckBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
+		AckBatch(mock.AnythingOfType("*exec.stoppableContext"), mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
 		}).
@@ -157,7 +158,7 @@ func (s *BatchConsumerTestSuite) TestRun_BatchSizeReached() {
 	acks := []bool{true, false, true, false, true}
 	s.input.
 		EXPECT().
-		AckBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
+		AckBatch(mock.AnythingOfType("*exec.stoppableContext"), mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
 
@@ -262,7 +263,7 @@ func (s *BatchConsumerTestSuite) TestRun_AggregateMessage() {
 	acks := []bool{true, true}
 	s.input.
 		EXPECT().
-		AckBatch(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("[]*stream.Message"), acks).
+		AckBatch(mock.AnythingOfType("*exec.stoppableContext"), mock.AnythingOfType("[]*stream.Message"), acks).
 		Run(func(ctx context.Context, msgs []*stream.Message, acks []bool) {
 			processed = len(msgs)
 		}).

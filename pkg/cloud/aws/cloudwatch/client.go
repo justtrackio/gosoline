@@ -22,6 +22,11 @@ type Client interface {
 
 type ClientSettings struct {
 	gosoAws.ClientSettings
+	// Whether to disable automatic request compression for supported operations.
+	DisableRequestCompression bool `cfg:"disable_request_compression" default:"false"`
+	// The minimum request body size, in bytes, at which compression should occur. The
+	// default value is 10 KiB. Values must fall within [0, 1MiB].
+	RequestMinCompressSizeBytes int64 `cfg:"request_min_compress_size_bytes" default:"0"`
 }
 
 type ClientConfig struct {
@@ -68,6 +73,8 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 
 	client := cloudwatch.NewFromConfig(awsConfig, func(options *cloudwatch.Options) {
 		options.BaseEndpoint = gosoAws.NilIfEmpty(clientCfg.Settings.Endpoint)
+		options.DisableRequestCompression = clientCfg.Settings.DisableRequestCompression
+		options.RequestMinCompressSizeBytes = clientCfg.Settings.RequestMinCompressSizeBytes
 	})
 
 	gosoAws.LogNewClientCreated(ctx, logger, "cloudwatch", name, clientCfg.Settings.ClientSettings)

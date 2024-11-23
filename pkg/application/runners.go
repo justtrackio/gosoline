@@ -78,6 +78,21 @@ func RunConsumers(consumers stream.ConsumerCallbackMap, options ...Option) {
 	Run(options...)
 }
 
+func RunBatchConsumer(callback stream.BatchConsumerCallbackFactory, options ...Option) {
+	RunBatchConsumers(stream.BatchConsumerCallbackMap{
+		"default": callback,
+	}, options...)
+}
+
+func RunBatchConsumers(consumers stream.BatchConsumerCallbackMap, options ...Option) {
+	factory := stream.NewBatchConsumerFactory(consumers)
+
+	options = append(options, WithModuleMultiFactory(factory))
+	options = append(options, WithExecBackoffInfinite)
+
+	Run(options...)
+}
+
 func RunMdlSubscriber(transformers mdlsub.TransformerMapTypeVersionFactories, options ...Option) {
 	subs := mdlsub.NewSubscriberFactory(transformers)
 
