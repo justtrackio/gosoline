@@ -10,7 +10,7 @@ import (
 )
 
 func Usage() {
-	handler := log.NewHandlerIoWriter(log.LevelDebug, []string{}, log.FormatterConsole, "15:04:05.000", os.Stdout)
+	handler := log.NewHandlerIoWriter(log.LevelDebug, log.Channels{}, log.FormatterConsole, "15:04:05.000", os.Stdout)
 	logger := log.NewLoggerWithInterfaces(clock.NewRealClock(), []log.Handler{handler})
 
 	if err := logger.Option(log.WithContextFieldsResolver(log.ContextFieldsResolver)); err != nil {
