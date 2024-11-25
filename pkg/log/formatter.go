@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 

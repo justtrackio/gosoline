@@ -10,7 +10,9 @@ log:
     handlers:
         main:
             type: iowriter
-            channels: []
+            channels:
+                - name: metrics
+                  level: error
             formatter: console
             level: info
             timestamp_format: 15:04:05.000
