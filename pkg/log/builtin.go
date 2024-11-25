@@ -13,5 +13,5 @@ func NewCliLogger() Logger {
 }
 
 func NewCliHandler() Handler {
-	return NewHandlerIoWriter(LevelInfo, []string{}, FormatterConsole, "15:04:05.000", os.Stdout)
+	return NewHandlerIoWriter(LevelInfo, Channels{}, FormatterConsole, "15:04:05.000", os.Stdout)
 }
