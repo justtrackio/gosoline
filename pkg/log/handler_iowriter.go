@@ -13,11 +13,15 @@ func init() {
 }
 
 type HandlerIoWriterSettings struct {
-	Level           string   `cfg:"level" default:"info"`
-	Channels        []string `cfg:"channels"`
-	Formatter       string   `cfg:"formatter" default:"console"`
-	TimestampFormat string   `cfg:"timestamp_format" default:"15:04:05.000"`
-	Writer          string   `cfg:"writer" default:"stdout"`
+	Level           string                    `cfg:"level" default:"info"`
+	Channels        map[string]ChannelSetting `cfg:"channels"`
+	Formatter       string                    `cfg:"formatter" default:"console"`
+	TimestampFormat string                    `cfg:"timestamp_format" default:"15:04:05.000"`
+	Writer          string                    `cfg:"writer" default:"stdout"`
+}
+
+type ChannelSetting struct {
+	Level string `cfg:"level"`
 }
 
 func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
@@ -43,18 +47,23 @@ func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
 		return nil, fmt.Errorf("io writer formatter of type %s not available", settings.Formatter)
 	}
 
-	return NewHandlerIoWriter(settings.Level, settings.Channels, formatter, settings.TimestampFormat, writer), nil
+	channels := make(Channels, len(settings.Channels))
+	for channel, level := range settings.Channels {
+		channels[channel] = LevelPriority(level.Level)
+	}
+
+	return NewHandlerIoWriter(settings.Level, channels, formatter, settings.TimestampFormat, writer), nil
 }
 
 type handlerIoWriter struct {
 	level           int
-	channels        []string
+	channels        Channels
 	formatter       Formatter
 	timestampFormat string
 	writer          io.Writer
 }
 
-func NewHandlerIoWriter(level string, channels []string, formatter Formatter, timestampFormat string, writer io.Writer) *handlerIoWriter {
+func NewHandlerIoWriter(level string, channels Channels, formatter Formatter, timestampFormat string, writer io.Writer) Handler {
 	return &handlerIoWriter{
 		level:           LevelPriority(level),
 		channels:        channels,
@@ -64,7 +73,7 @@ func NewHandlerIoWriter(level string, channels []string, formatter Formatter, ti
 	}
 }
 
-func (h *handlerIoWriter) Channels() []string {
+func (h *handlerIoWriter) Channels() Channels {
 	return h.channels
 }
 
