@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 
 	"github.com/aws/aws-xray-sdk-go/strategy/ctxmissing"
 	"github.com/aws/aws-xray-sdk-go/strategy/sampling"
@@ -15,13 +14,20 @@ import (
 )
 
 func init() {
-	AddProvider("xray", NewAwsTracer)
+	AddTracerProvider(ProviderXray, NewAwsTracer)
 }
 
 const (
 	dnsSrv                        = "srv"
 	xrayDefaultMaxSubsegmentCount = 20
 )
+
+type XrayTracerSettings struct {
+	AddressType                 string                `cfg:"addr_type" default:"local" validate:"required"`
+	AddressValue                string                `cfg:"add_value" default:""`
+	Sampling                    SamplingConfiguration `cfg:"sampling"`
+	StreamingMaxSubsegmentCount int                   `cfg:"streaming_max_subsegment_count" default:"20"`
+}
 
 type XRaySettings struct {
 	Address                     string
@@ -34,12 +40,12 @@ type awsTracer struct {
 	cfg.AppId
 }
 
-func NewAwsTracer(config cfg.Config, logger log.Logger) (Tracer, error) {
+func NewAwsTracer(_ context.Context, config cfg.Config, logger log.Logger) (Tracer, error) {
 	appId := cfg.AppId{}
 	appId.PadFromConfig(config)
 
-	settings := &TracerSettings{}
-	config.UnmarshalKey("tracing", settings)
+	settings := &XrayTracerSettings{}
+	config.UnmarshalKey("tracing.xray", settings)
 
 	addr := lookupAddr(appId, settings)
 	ctxMissingStrategy := NewContextMissingWarningLogStrategy(logger)
@@ -88,17 +94,14 @@ func NewAwsTracerWithInterfaces(logger log.Logger, appId cfg.AppId, settings *XR
 }
 
 func (t *awsTracer) StartSubSpan(ctx context.Context, name string) (context.Context, Span) {
-	var ctxWithSegment, ctxWithSpan context.Context
+	var ctxWithSegment context.Context
 	var segment *xray.Segment
-	var span Span
 
 	if ctxWithSegment, segment = xray.BeginSubsegment(ctx, name); segment == nil {
 		return ctx, disabledSpan()
 	}
 
-	ctxWithSpan, span = newSpan(ctxWithSegment, segment, t.AppId)
-
-	return ctxWithSpan, span
+	return newSpan(ctxWithSegment, segment, t.AppId)
 }
 
 func (t *awsTracer) StartSpan(name string) (context.Context, Span) {
@@ -131,22 +134,7 @@ func (t *awsTracer) StartSpanFromContext(ctx context.Context, name string) (cont
 	return ctx, transaction
 }
 
-func (t *awsTracer) HttpHandler(h http.Handler) http.Handler {
-	name := fmt.Sprintf("%s-%s-%s-%s-%s", t.Project, t.Environment, t.Family, t.Group, t.Application)
-	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		seg := xray.GetSegment(r.Context())
-
-		ctx, _ = newSpan(ctx, seg, t.AppId)
-		r = r.WithContext(ctx)
-
-		h.ServeHTTP(w, r)
-	})
-
-	return xray.Handler(xray.NewFixedSegmentNamer(name), handlerFunc)
-}
-
-func lookupAddr(appId cfg.AppId, settings *TracerSettings) string {
+func lookupAddr(appId cfg.AppId, settings *XrayTracerSettings) string {
 	addressValue := settings.AddressValue
 
 	switch settings.AddressType {

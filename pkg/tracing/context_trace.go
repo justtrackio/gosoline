@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"fmt"
 )
 
 type contextTraceKeyType int
@@ -22,4 +23,15 @@ func GetTraceFromContext(ctx context.Context) *Trace {
 	}
 
 	return nil
+}
+
+func contextWithLocalTraceId(ctx context.Context, uuidV4 string) context.Context {
+	localTraceId := &Trace{
+		TraceId:  fmt.Sprintf("goso:%s", uuidV4),
+		Id:       "00000000-0000-0000-0000-000000000000",
+		ParentId: "00000000-0000-0000-0000-000000000000",
+		Sampled:  false,
+	}
+
+	return ContextWithTrace(ctx, localTraceId)
 }

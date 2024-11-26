@@ -28,7 +28,6 @@ type statsHolder struct {
 	InHeaders                 *sync.Map
 	InPayloadWireLength       int
 	InPayload                 interface{}
-	InData                    []byte
 	OutCompression            string
 	OutRemoteAddr             string
 	OutLocalAddr              string
@@ -59,7 +58,6 @@ func (s *statsHolder) GetLoggerFields() log.Fields {
 		"in_payload_length":            s.InPayloadLength,
 		"in_payload_wire_length":       s.InPayloadWireLength,
 		"in_payload":                   s.InPayload,
-		"in_data":                      s.InData,
 		"out_compression":              s.OutCompression,
 		"out_remote_addr":              s.OutRemoteAddr,
 		"out_local_addr":               s.OutLocalAddr,

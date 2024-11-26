@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
-	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	"github.com/stretchr/testify/assert"
+	protobuf "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func TestDefinitions_Add(t *testing.T) {

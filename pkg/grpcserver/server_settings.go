@@ -24,8 +24,6 @@ type Stats struct {
 	LogLevel string `cfg:"log_level" default:"debug" validate:"oneof=debug info"`
 	// LogPayload defines whether to log the incoming and outgoing payloads of a gRPC method.
 	LogPayload bool `cfg:"log_payload" default:"false"`
-	// LogData defines whether to log the incoming and outgoing raw data of a gRPC method.
-	LogData bool `cfg:"log_data" default:"false"`
 	// Channel to log the statistics to.
 	Channel string `cfg:"channel" default:"grpc_stats"`
 }

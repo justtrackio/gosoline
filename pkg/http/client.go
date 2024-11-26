@@ -212,31 +212,40 @@ type DialerSettings struct {
 }
 
 type TracingSettings struct {
-	ForwardTraceId bool `cfg:"forward_trace_id" default:"false"`
+	ForwardTraceId  bool                    `cfg:"forward_trace_id" default:"false"`
+	Instrumentation InstrumentationSettings `cfg:"instrumentation"`
+}
+
+type InstrumentationSettings struct {
+	Enabled bool `cfg:"enabled" default:"false"`
 }
 
 func ProvideHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
 	type httpClientName string
 
 	return appctx.Provide(ctx, httpClientName(name), func() (Client, error) {
-		return newHttpClient(config, logger, name), nil
+		return newHttpClient(ctx, config, logger, name)
 	})
 }
 
-func newHttpClient(config cfg.Config, logger log.Logger, name string) Client {
+func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
 	metricWriter := metric.NewWriter()
+	tracer, err := tracing.ProvideInstrumentor(ctx, config, logger)
+	if err != nil {
+		return nil, err
+	}
 	settings := UnmarshalClientSettings(config, name)
-	restyClient := newRestyClient(settings)
+	restyClient := newRestyClient(tracer, settings)
 	client := NewHttpClientWithInterfaces(logger, clock.Provider, metricWriter, restyClient, settings.TracingSettings.ForwardTraceId)
 
 	if settings.CircuitBreakerSettings.Enabled {
 		client = NewCircuitBreakerClientWithInterfaces(client, logger, clock.Provider, name, settings.CircuitBreakerSettings)
 	}
 
-	return client
+	return client, nil
 }
 
-func newRestyClient(settings Settings) *resty.Client {
+func newRestyClient(tracer tracing.Instrumentor, settings Settings) *resty.Client {
 	var httpClient *resty.Client
 	if settings.DisableCookies {
 		httpClient = resty.NewWithClient(&http.Client{})
@@ -286,6 +295,10 @@ func newRestyClient(settings Settings) *resty.Client {
 	httpClient.SetRetryMaxWaitTime(settings.RetryMaxWaitTime)
 	httpClient.SetRetryResetReaders(settings.RetryResetReaders)
 	httpClient.SetTransport(transport)
+
+	if settings.TracingSettings.Instrumentation.Enabled {
+		httpClient.SetTransport(tracer.HttpClient(httpClient.GetClient()).Transport)
+	}
 
 	return httpClient
 }
