@@ -90,13 +90,13 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 		gin.SetMode(settings.Mode)
 
 		var err error
-		var tracer tracing.Tracer
+		var tracingInstrumentor tracing.Instrumentor
 		var definitions *Definitions
 		var compressionMiddlewares []gin.HandlerFunc
 		var healthChecker kernel.HealthChecker
 
-		if tracer, err = tracing.ProvideTracer(ctx, config, logger); err != nil {
-			return nil, fmt.Errorf("can not create tracer: %w", err)
+		if tracingInstrumentor, err = tracing.ProvideInstrumentor(ctx, config, logger); err != nil {
+			return nil, fmt.Errorf("can not create tracingInstrumentor: %w", err)
 		}
 
 		metricMiddleware, setupMetricMiddleware := NewMetricMiddleware(name)
@@ -128,11 +128,11 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 			return nil, fmt.Errorf("can not append metadata: %w", err)
 		}
 
-		return NewWithInterfaces(logger, router, tracer, settings)
+		return NewWithInterfaces(logger, router, tracingInstrumentor, settings)
 	}
 }
 
-func NewWithInterfaces(logger log.Logger, router *gin.Engine, tracer tracing.Tracer, s *Settings) (*HttpServer, error) {
+func NewWithInterfaces(logger log.Logger, router *gin.Engine, tracer tracing.Instrumentor, s *Settings) (*HttpServer, error) {
 	server := &http.Server{
 		Addr:         ":" + s.Port,
 		Handler:      tracer.HttpHandler(router),

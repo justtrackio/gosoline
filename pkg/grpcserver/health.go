@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"google.golang.org/grpc/codes"
+	protobuf "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 )
 

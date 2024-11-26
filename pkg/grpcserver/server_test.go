@@ -7,12 +7,15 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/grpcserver"
-	grpcServerProto "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	protobuf "github.com/justtrackio/gosoline/pkg/grpcserver/proto/helloworld/v1"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/tracing"
+	tracingMocks "github.com/justtrackio/gosoline/pkg/tracing/mocks"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	grpcServerProto "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/stats"
 )
 
 type greeter struct {
@@ -74,10 +77,9 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			testCtx, cancelFunc := context.WithCancel(ctx)
 			defer cancelFunc()
-			g, err := grpcserver.NewWithInterfaces(testCtx, logger, tt.defs, &grpcserver.Settings{Stats: grpcserver.Stats{
+			g, err := grpcserver.NewWithInterfaces(testCtx, logger, getMockGrpcTracingInstrumentor(), tt.defs, &grpcserver.Settings{Stats: grpcserver.Stats{
 				Enabled:    true,
 				LogPayload: false,
-				LogData:    false,
 				Channel:    "grpc_stats",
 			}})
 			assert.NoError(t, err)
@@ -86,7 +88,7 @@ func TestGRPCServer_Run_Handler(t *testing.T) {
 				_ = g.Run(ctx)
 			}()
 
-			conn, err := grpc.DialContext(ctx, g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn, err := grpc.NewClient(g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			assert.NoError(t, err)
 			defer func() {
 				_ = conn.Close()
@@ -140,7 +142,7 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			testCtx, cancelFunc := context.WithCancel(ctx)
 			defer cancelFunc()
-			g, err := grpcserver.NewWithInterfaces(testCtx, logger, tt.defs, &grpcserver.Settings{
+			g, err := grpcserver.NewWithInterfaces(testCtx, logger, getMockGrpcTracingInstrumentor(), tt.defs, &grpcserver.Settings{
 				Health: grpcserver.Health{
 					Enabled: true,
 				},
@@ -151,7 +153,7 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 				_ = g.Run(ctx)
 			}()
 
-			conn, err := grpc.DialContext(ctx, g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn, err := grpc.NewClient(g.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			assert.NoError(t, err)
 			defer func() {
 				_ = conn.Close()
@@ -169,4 +171,18 @@ func TestGRPCServer_Run_Handler_WithHealth(t *testing.T) {
 			assert.Equal(t, tt.expMsg, resp.GetMessage())
 		})
 	}
+}
+
+func getMockGrpcTracingInstrumentor() tracing.Instrumentor {
+	tracingInstrumentor := new(tracingMocks.Instrumentor)
+	tracingInstrumentor.On("GrpcUnaryServerInterceptor").Return(func() grpc.UnaryServerInterceptor {
+		return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+			return handler(ctx, req)
+		}
+	})
+	tracingInstrumentor.On("GrpcServerHandler").Return(func() stats.Handler {
+		return nil
+	})
+
+	return tracingInstrumentor
 }

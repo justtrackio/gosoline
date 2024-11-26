@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	grpcServerProto "github.com/justtrackio/gosoline/pkg/grpcserver/proto/health/v1"
 	grpcServerTestProto "github.com/justtrackio/gosoline/pkg/grpcserver/proto/helloworld/v1"
 	"github.com/justtrackio/gosoline/pkg/log"
+	grpcServerProto "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (

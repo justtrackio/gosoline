@@ -2,14 +2,13 @@ package tracing
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 func init() {
-	AddProvider("noop", func(config cfg.Config, logger log.Logger) (Tracer, error) {
+	AddTracerProvider(ProviderNoop, func(context.Context, cfg.Config, log.Logger) (Tracer, error) {
 		return NewNoopTracer(), nil
 	})
 }
@@ -30,8 +29,4 @@ func (t noopTracer) StartSpan(_ string) (context.Context, Span) {
 
 func (t noopTracer) StartSpanFromContext(ctx context.Context, _ string) (context.Context, Span) {
 	return ctx, disabledSpan()
-}
-
-func (t noopTracer) HttpHandler(h http.Handler) http.Handler {
-	return h
 }

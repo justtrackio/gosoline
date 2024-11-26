@@ -72,9 +72,6 @@ func (s *statsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 		if s.settings.Stats.LogPayload {
 			holder.InPayload = v.Payload
 		}
-		if s.settings.Stats.LogData {
-			holder.InData = v.Data
-		}
 
 	case *stats.OutHeader:
 		holder.OutCompression = v.Compression
@@ -91,9 +88,6 @@ func (s *statsHandler) HandleRPC(ctx context.Context, st stats.RPCStats) {
 	case *stats.OutPayload:
 		if s.settings.Stats.LogPayload {
 			holder.OutPayload = v.Payload
-		}
-		if s.settings.Stats.LogData {
-			holder.OutData = v.Data
 		}
 		holder.OutPayloadLength = v.Length
 		holder.OutPayloadWireLength = v.WireLength
