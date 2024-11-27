@@ -22,7 +22,7 @@ const (
 type Settings struct {
 	// Applies to create, update and delete handlers.
 	// Write timeout is the maximum duration before canceling any write operation.
-	WriteTimeout time.Duration `cfg:"write_timeout" default:"10min" validate:"min=1000000000"`
+	WriteTimeout time.Duration `cfg:"write_timeout" default:"10m" validate:"min=1000000000"`
 }
 
 //go:generate mockery --name Repository
