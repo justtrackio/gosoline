@@ -153,30 +153,16 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 	environment.Logger().WithChannel("fixtures").Debug("loaded fixtures in %s", time.Since(start))
 
 	for name, testCase := range testCases {
-		if setupTestAware, ok := suite.(TestingSuiteSetupTestAware); ok {
-			if err := setupTestAware.SetupTest(); err != nil {
-				assert.FailNow(t, "failed to setup the test", err.Error())
-			}
-		}
+		runTestCaseInSuite(suite, func() {
+			t.Run(name, func(t *testing.T) {
+				parentT := suite.T()
+				suite.SetT(t)
 
-		t.Run(name, func(t *testing.T) {
-			parentT := suite.T()
-			suite.SetT(t)
+				testCase(t, suite, suiteOptions, environment)
 
-			testCase(t, suite, suiteOptions, environment)
-
-			suite.SetT(parentT)
+				suite.SetT(parentT)
+			})
 		})
-
-		if tearDownTestAware, ok := suite.(TestingSuiteTearDownTestAware); ok {
-			if err := tearDownTestAware.TearDownTest(); err != nil {
-				assert.FailNow(t, "failed to tear down the test", err.Error())
-			}
-		}
-
-		stream.ResetInMemoryInputs()
-		stream.ResetInMemoryOutputs()
-		environment.ResetLogs()
 	}
 }
 
@@ -186,4 +172,24 @@ func runTestCaseWithIsolatedEnvironment(t *testing.T, suite TestingSuite, suiteO
 			name: testCase,
 		})
 	}
+}
+
+func runTestCaseInSuite(suite TestingSuite, testCase func()) {
+	if setupTestAware, ok := suite.(TestingSuiteSetupTestAware); ok {
+		if err := setupTestAware.SetupTest(); err != nil {
+			assert.FailNow(suite.T(), "failed to setup the test", err.Error())
+		}
+	}
+
+	testCase()
+
+	if tearDownTestAware, ok := suite.(TestingSuiteTearDownTestAware); ok {
+		if err := tearDownTestAware.TearDownTest(); err != nil {
+			assert.FailNow(suite.T(), "failed to tear down the test", err.Error())
+		}
+	}
+
+	stream.ResetInMemoryInputs()
+	stream.ResetInMemoryOutputs()
+	suite.Env().ResetLogs()
 }
