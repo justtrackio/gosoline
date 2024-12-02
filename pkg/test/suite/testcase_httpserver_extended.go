@@ -6,9 +6,11 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"testing"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/funk"
+	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 )
@@ -20,6 +22,14 @@ func init() {
 	}
 }
 
+// A HttpserverTestCase should be the return value from your test functions. The following signatures are supported:
+//
+// func (s* Suite) TestXXX() *HttpserverTestCase
+// func (s* Suite) TestXXX() []*HttpserverTestCase
+// func (s* Suite) TestXXX() ToHttpserverTestCaseList
+// func (s* Suite) TestXXX() map[string]*HttpserverTestCase
+// func (s* Suite) TestXXX() map[string][]*HttpserverTestCase
+// func (s* Suite) TestXXX() map[string]ToHttpserverTestCaseList
 type HttpserverTestCase struct {
 	Method  string
 	Url     string
@@ -56,6 +66,16 @@ type HttpserverTestCase struct {
 	AssertResultFile string
 }
 
+// A ToHttpserverTestCaseList can be converted into a list of test cases. You can use this interface instead of concrete
+// test case types when declaring test cases.
+type ToHttpserverTestCaseList interface {
+	ToTestCaseList() []*HttpserverTestCase
+}
+
+// A HttpserverTestCaseListProvider allows you to provide a function creating test cases instead of test cases directly.
+// This is useful as it runs after the app has been constructed, fixtures loaded, etc.
+type HttpserverTestCaseListProvider func() []*HttpserverTestCase
+
 type ProtobufEncodable interface {
 	ToMessage() (proto.Message, error)
 }
@@ -80,7 +100,21 @@ func ReadBodyFile(bodyFile string) any {
 	}
 }
 
-func (c HttpserverTestCase) request(client *resty.Client) (*resty.Response, error) {
+func (f HttpserverTestCaseListProvider) ToTestCaseList() []*HttpserverTestCase {
+	return f()
+}
+
+func (c *HttpserverTestCase) ToTestCaseList() []*HttpserverTestCase {
+	if c == nil {
+		return nil
+	}
+
+	return []*HttpserverTestCase{
+		c,
+	}
+}
+
+func (c *HttpserverTestCase) request(client *resty.Client) (*resty.Response, error) {
 	req := client.R()
 
 	if c.Headers != nil {
@@ -132,86 +166,197 @@ func isTestCaseHttpserverExtended(method reflect.Method) bool {
 	actualType0 := method.Func.Type().Out(0)
 	expectedType := reflect.TypeOf((*HttpserverTestCase)(nil))
 	expectedSliceType := reflect.TypeOf([]*HttpserverTestCase{})
+	expectedProviderType := reflect.TypeOf((*ToHttpserverTestCaseList)(nil)).Elem()
 
-	return actualType0 == expectedType || actualType0 == expectedSliceType
+	return actualType0 == expectedType ||
+		actualType0 == expectedSliceType ||
+		actualType0 == expectedProviderType ||
+		isTestCaseMapHttpserverExtended(method)
+}
+
+func isTestCaseMapHttpserverExtended(method reflect.Method) bool {
+	actualType0 := method.Func.Type().Out(0)
+	expectedMapType := reflect.TypeOf(map[string]*HttpserverTestCase{})
+	expectedMapSliceType := reflect.TypeOf(map[string][]*HttpserverTestCase{})
+	expectedProviderMapType := reflect.TypeOf(map[string]ToHttpserverTestCaseList{})
+
+	return actualType0 == expectedMapType ||
+		actualType0 == expectedMapSliceType ||
+		actualType0 == expectedProviderMapType
 }
 
 func buildTestCaseHttpserverExtended(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {
-	return runTestCaseHttpserver(suite, func(suite TestingSuite, app *appUnderTest, client *resty.Client) {
+	if isTestCaseMapHttpserverExtended(method) {
 		out := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})[0].Interface()
 
-		var err error
-		var bytes []byte
+		var providerMap map[string]ToHttpserverTestCaseList
+
+		switch testCases := out.(type) {
+		case map[string]*HttpserverTestCase:
+			providerMap = funk.MapValues(testCases, func(value *HttpserverTestCase) ToHttpserverTestCaseList {
+				return value
+			})
+		case map[string][]*HttpserverTestCase:
+			providerMap = funk.MapValues(testCases, func(value []*HttpserverTestCase) ToHttpserverTestCaseList {
+				return HttpserverTestCaseListProvider(func() []*HttpserverTestCase {
+					return value
+				})
+			})
+		case map[string]ToHttpserverTestCaseList:
+			providerMap = testCases
+		}
+
+		return runHttpServerExtendedTestsMap(suite, providerMap)
+	}
+
+	return runHttpServerExtendedTests(suite, func() []*HttpserverTestCase {
+		out := method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})[0].Interface()
+
 		var testCases []*HttpserverTestCase
 
-		if tc, ok := out.(*HttpserverTestCase); ok {
-			testCases = []*HttpserverTestCase{tc}
-		} else {
-			testCases = out.([]*HttpserverTestCase)
+		switch tc := out.(type) {
+		case *HttpserverTestCase:
+			testCases = tc.ToTestCaseList()
+		case ToHttpserverTestCaseList:
+			if tc != nil {
+				testCases = tc.ToTestCaseList()
+			}
+		case []*HttpserverTestCase:
+			testCases = tc
 		}
 
-		testCases = funk.Filter(testCases, func(elem *HttpserverTestCase) bool {
-			return elem != nil
-		})
-
-		responses := make([]*resty.Response, len(testCases))
-		remainingRedirects := 0
-
-		client.SetRedirectPolicy(
-			resty.RedirectPolicyFunc(func(request *http.Request, _ []*http.Request) error {
-				if remainingRedirects <= 0 {
-					return http.ErrUseLastResponse
-				}
-
-				remainingRedirects--
-
-				return nil
-			}),
-		)
-
-		for i, tc := range testCases {
-			remainingRedirects = tc.ExpectedRedirectsToFollow
-			responses[i], err = tc.request(client)
-
-			assert.NotNil(suite.T(), responses[i], "there should be a response returned")
-
-			if responses[i] != nil {
-				assert.Equal(suite.T(), tc.ExpectedStatusCode, responses[i].StatusCode(), "response status code should match")
-				assert.Equalf(suite.T(), 0, remainingRedirects, "expected %d redirects, but only %d redirects where performed", tc.ExpectedRedirectsToFollow, tc.ExpectedRedirectsToFollow-remainingRedirects)
-			}
-
-			if tc.ExpectedErr == nil {
-				assert.NoError(suite.T(), err)
-			} else {
-				assert.EqualError(suite.T(), err, tc.ExpectedErr.Error())
-			}
-		}
-
-		app.Stop()
-		app.WaitDone()
-
-		for i, tc := range testCases {
-			if tc.Assert != nil {
-				if err := tc.Assert(responses[i]); err != nil {
-					assert.FailNow(suite.T(), err.Error(), "there should be no error on assert")
-				}
-			}
-
-			if tc.AssertResultFile != "" {
-				if bytes, err = os.ReadFile(tc.AssertResultFile); err != nil {
-					assert.FailNow(suite.T(), err.Error(), "can not read result file %q", tc.AssertResultFile)
-				}
-
-				extension := path.Ext(tc.AssertResultFile)
-				actual := responses[i].Body()
-
-				switch extension {
-				case ".json":
-					assert.JSONEq(suite.T(), string(bytes), string(actual), "response doesn't match")
-				default:
-					assert.Equal(suite.T(), bytes, actual, "response doesn't match")
-				}
-			}
-		}
+		return testCases
 	})
+}
+
+func runHttpServerExtendedTestsMap(suite TestingSuite, testCases map[string]ToHttpserverTestCaseList) (testCaseRunner, error) {
+	testCaseRunners := make([]testCaseRunner, 0, len(testCases))
+
+	for name, testCasesProvider := range testCases {
+		name := name
+		testCasesProvider := testCasesProvider
+		runner, err := runHttpServerExtendedTests(suite, func() []*HttpserverTestCase {
+			if testCasesProvider == nil {
+				return nil
+			}
+
+			return testCasesProvider.ToTestCaseList()
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		testCaseRunners = append(testCaseRunners, func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
+			t.Run(name, func(t *testing.T) {
+				runner(t, suite, suiteOptions, environment)
+			})
+		})
+	}
+
+	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
+		if len(testCaseRunners) == 0 {
+			suite.T().SkipNow()
+		}
+
+		for _, testCaseRunner := range testCaseRunners {
+			testCaseRunner(t, suite, suiteOptions, environment)
+		}
+	}, nil
+}
+
+func runHttpServerExtendedTests(suite TestingSuite, getTestCases func() []*HttpserverTestCase) (testCaseRunner, error) {
+	return runTestCaseHttpserver(suite, func(suite TestingSuite, app *appUnderTest, client *resty.Client) {
+		runTestCaseInSuite(suite, func() {
+			testCases := funk.Filter(getTestCases(), func(elem *HttpserverTestCase) bool {
+				return elem != nil
+			})
+
+			if len(testCases) == 0 {
+				suite.T().SkipNow()
+			}
+
+			responses := runHttpServerExtendedRequests(suite, testCases, client)
+
+			app.Stop()
+			app.WaitDone()
+
+			verifyHttpServerExtendedResponses(suite, testCases, responses)
+		})
+	})
+}
+
+func runHttpServerExtendedRequests(suite TestingSuite, testCases []*HttpserverTestCase, client *resty.Client) []*resty.Response {
+	responses := make([]*resty.Response, len(testCases))
+
+	remainingRedirects := 0
+
+	client.SetRedirectPolicy(
+		resty.RedirectPolicyFunc(func(request *http.Request, _ []*http.Request) error {
+			if remainingRedirects <= 0 {
+				return http.ErrUseLastResponse
+			}
+
+			remainingRedirects--
+
+			return nil
+		}),
+	)
+
+	for i, tc := range testCases {
+		var err error
+
+		remainingRedirects = tc.ExpectedRedirectsToFollow
+		responses[i], err = tc.request(client)
+
+		assert.NotNil(suite.T(), responses[i], "there should be a response returned")
+
+		if responses[i] != nil {
+			assert.Equal(suite.T(), tc.ExpectedStatusCode, responses[i].StatusCode(), "response status code should match")
+			assert.Equalf(
+				suite.T(),
+				0,
+				remainingRedirects,
+				"expected %d redirects, but only %d redirects where performed",
+				tc.ExpectedRedirectsToFollow,
+				tc.ExpectedRedirectsToFollow-remainingRedirects,
+			)
+		}
+
+		if tc.ExpectedErr == nil {
+			assert.NoError(suite.T(), err)
+		} else {
+			assert.EqualError(suite.T(), err, tc.ExpectedErr.Error())
+		}
+	}
+
+	return responses
+}
+
+func verifyHttpServerExtendedResponses(suite TestingSuite, testCases []*HttpserverTestCase, responses []*resty.Response) {
+	for i, tc := range testCases {
+		if tc.Assert != nil {
+			if err := tc.Assert(responses[i]); err != nil {
+				assert.FailNow(suite.T(), err.Error(), "there should be no error on assert")
+			}
+		}
+
+		if tc.AssertResultFile != "" {
+			var bytes []byte
+			var err error
+
+			if bytes, err = os.ReadFile(tc.AssertResultFile); err != nil {
+				assert.FailNow(suite.T(), err.Error(), "can not read result file %q", tc.AssertResultFile)
+			}
+
+			extension := path.Ext(tc.AssertResultFile)
+			actual := responses[i].Body()
+
+			switch extension {
+			case ".json":
+				assert.JSONEq(suite.T(), string(bytes), string(actual), "response doesn't match")
+			default:
+				assert.Equal(suite.T(), bytes, actual, "response doesn't match")
+			}
+		}
+	}
 }

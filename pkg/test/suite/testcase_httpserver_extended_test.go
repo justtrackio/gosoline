@@ -48,7 +48,7 @@ func (p *TestInput) FromMessage(message proto.Message) error {
 func TestGatewayTestSuite(t *testing.T) {
 	var s GatewayTestSuite
 	suite.Run(t, &s)
-	assert.Equal(t, int32(6), s.totalTests)
+	assert.Equal(t, int32(16), s.totalTests)
 }
 
 func (s *GatewayTestSuite) SetupSuite() []suite.Option {
@@ -75,12 +75,62 @@ func (s *GatewayTestSuite) SetupApiDefinitions() httpserver.Definer {
 	}
 }
 
+func (s *GatewayTestSuite) TestCaseMap() map[string]*suite.HttpserverTestCase {
+	return map[string]*suite.HttpserverTestCase{
+		"AnotherSingleTest": s.createTestCase(),
+		"EmptyTest":         nil,
+	}
+}
+
+func (s *GatewayTestSuite) TestCasesMap() map[string][]*suite.HttpserverTestCase {
+	return map[string][]*suite.HttpserverTestCase{
+		"AnotherSingleTest": {
+			s.createTestCase(),
+		},
+		"AnotherMultipleTests": {
+			s.createTestCase(),
+			s.createProtobufTestCase(),
+			s.createFileTestCase(),
+		},
+		"EmptyTest": {},
+		"AnotherSkippedTest": {
+			nil,
+		},
+	}
+}
+
+func (s *GatewayTestSuite) TestCasesMapWithProvider() map[string]suite.ToHttpserverTestCaseList {
+	return map[string]suite.ToHttpserverTestCaseList{
+		"AnotherSingleTest": s.createTestCase(),
+		"AnotherMultipleTests": suite.HttpserverTestCaseListProvider(func() []*suite.HttpserverTestCase {
+			return []*suite.HttpserverTestCase{
+				s.createTestCase(),
+				s.createProtobufTestCase(),
+				s.createFileTestCase(),
+			}
+		}),
+		"Nil": nil,
+	}
+}
+
+func (s *GatewayTestSuite) TestCasesEmptyMap() map[string][]*suite.HttpserverTestCase {
+	return map[string][]*suite.HttpserverTestCase{}
+}
+
 func (s *GatewayTestSuite) TestSingleTest() *suite.HttpserverTestCase {
 	return s.createTestCase()
 }
 
 func (s *GatewayTestSuite) TestSkipped() *suite.HttpserverTestCase {
 	return nil
+}
+
+func (s *GatewayTestSuite) TestNilProvider() suite.ToHttpserverTestCaseList {
+	return nil
+}
+
+func (s *GatewayTestSuite) TestProvider() suite.ToHttpserverTestCaseList {
+	return s.createTestCase()
 }
 
 func (s *GatewayTestSuite) TestMultipleTests() []*suite.HttpserverTestCase {
