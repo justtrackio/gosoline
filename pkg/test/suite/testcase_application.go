@@ -2,6 +2,7 @@ package suite
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -20,22 +21,35 @@ func init() {
 	}
 }
 
-func isTestCaseApplication(method reflect.Method) bool {
+const expectedTestCaseApplicationSignature = "func (s TestingSuite) TestFunc(AppUnderTest)"
+
+func isTestCaseApplication(method reflect.Method) error {
 	if method.Func.Type().NumIn() != 2 {
-		return false
+		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseApplicationSignature, method.Func.Type().NumIn())
 	}
 
 	if method.Func.Type().NumOut() != 0 {
-		return false
+		return fmt.Errorf("expected %q, but function has %d return values", expectedTestCaseApplicationSignature, method.Func.Type().NumOut())
+	}
+
+	actualType0 := method.Func.Type().In(0)
+	expectedType0 := reflect.TypeOf((*TestingSuite)(nil)).Elem()
+
+	if !actualType0.Implements(expectedType0) {
+		return fmt.Errorf("expected %q, but first argument type/receiver type is %s", expectedTestCaseApplicationSignature, actualType0.String())
 	}
 
 	actualType1 := method.Func.Type().In(1)
-	expectedType := reflect.TypeOf((*AppUnderTest)(nil)).Elem()
+	expectedType1 := reflect.TypeOf((*AppUnderTest)(nil)).Elem()
 
-	return actualType1 == expectedType
+	if actualType1 != expectedType1 {
+		return fmt.Errorf("expected %q, but last argument type is %s", expectedTestCaseApplicationSignature, actualType1.String())
+	}
+
+	return nil
 }
 
-func buildTestCaseApplication(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {
+func buildTestCaseApplication(_ TestingSuite, method reflect.Method) (testCaseRunner, error) {
 	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
 		suite.SetT(t)
 
@@ -45,7 +59,7 @@ func buildTestCaseApplication(suite TestingSuite, method reflect.Method) (testCa
 	}, nil
 }
 
-func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment, testcase func(aut *appUnderTest)) {
+func runTestCaseApplication(t *testing.T, _ TestingSuite, suiteOptions *suiteOptions, environment *env.Environment, testcase func(aut *appUnderTest)) {
 	var appOptions []application.Option
 
 	for k, factory := range suiteOptions.appModules {

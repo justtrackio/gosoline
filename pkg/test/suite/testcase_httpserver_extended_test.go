@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
@@ -48,7 +49,7 @@ func (p *TestInput) FromMessage(message proto.Message) error {
 func TestGatewayTestSuite(t *testing.T) {
 	var s GatewayTestSuite
 	suite.Run(t, &s)
-	assert.Equal(t, int32(6), s.totalTests)
+	assert.Equal(t, int32(16), s.totalTests)
 }
 
 func (s *GatewayTestSuite) SetupSuite() []suite.Option {
@@ -71,8 +72,59 @@ func (s *GatewayTestSuite) SetupApiDefinitions() httpserver.Definer {
 			ginCtx.Data(http.StatusOK, contentType, body)
 		})
 
+		d.POST("/reverse", func(ginCtx *gin.Context) {
+			body, err := io.ReadAll(ginCtx.Request.Body)
+			s.NoError(err)
+
+			contentType := ginCtx.ContentType()
+
+			ginCtx.Data(http.StatusOK, contentType, funk.Reverse(body))
+		})
+
 		return d, nil
 	}
+}
+
+func (s *GatewayTestSuite) TestCaseMap() map[string]*suite.HttpserverTestCase {
+	return map[string]*suite.HttpserverTestCase{
+		"AnotherSingleTest": s.createTestCase(),
+		"EmptyTest":         nil,
+	}
+}
+
+func (s *GatewayTestSuite) TestCasesMap() map[string][]*suite.HttpserverTestCase {
+	return map[string][]*suite.HttpserverTestCase{
+		"AnotherSingleTest": {
+			s.createTestCase(),
+		},
+		"AnotherMultipleTests": {
+			s.createTestCase(),
+			s.createProtobufTestCase(),
+			s.createFileTestCase(),
+		},
+		"EmptyTest": {},
+		"AnotherSkippedTest": {
+			nil,
+		},
+	}
+}
+
+func (s *GatewayTestSuite) TestCasesMapWithProvider() map[string]suite.ToHttpserverTestCaseList {
+	return map[string]suite.ToHttpserverTestCaseList{
+		"AnotherSingleTest": s.createTestCase(),
+		"AnotherMultipleTests": suite.HttpserverTestCaseListProvider(func() []*suite.HttpserverTestCase {
+			return []*suite.HttpserverTestCase{
+				s.createTestCase(),
+				s.createProtobufTestCase(),
+				s.createFileTestCase(),
+			}
+		}),
+		"Nil": nil,
+	}
+}
+
+func (s *GatewayTestSuite) TestCasesEmptyMap() map[string][]*suite.HttpserverTestCase {
+	return map[string][]*suite.HttpserverTestCase{}
 }
 
 func (s *GatewayTestSuite) TestSingleTest() *suite.HttpserverTestCase {
@@ -81,6 +133,14 @@ func (s *GatewayTestSuite) TestSingleTest() *suite.HttpserverTestCase {
 
 func (s *GatewayTestSuite) TestSkipped() *suite.HttpserverTestCase {
 	return nil
+}
+
+func (s *GatewayTestSuite) TestNilProvider() suite.ToHttpserverTestCaseList {
+	return nil
+}
+
+func (s *GatewayTestSuite) TestProvider() suite.ToHttpserverTestCaseList {
+	return s.createTestCase()
 }
 
 func (s *GatewayTestSuite) TestMultipleTests() []*suite.HttpserverTestCase {

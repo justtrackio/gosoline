@@ -23,30 +23,50 @@ func init() {
 	}
 }
 
+const expectedTestCaseHttpserverSignature = "func (s TestingSuite) TestFunc(AppUnderTest, *resty.Client) error"
+
 type TestingSuiteApiDefinitionsAware interface {
 	SetupApiDefinitions() httpserver.Definer
 }
 
-func isTestCaseHttpserver(method reflect.Method) bool {
+func isTestCaseHttpserver(method reflect.Method) error {
 	if method.Func.Type().NumIn() != 3 {
-		return false
+		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseHttpserverSignature, method.Func.Type().NumIn())
 	}
 
 	if method.Func.Type().NumOut() != 1 {
-		return false
+		return fmt.Errorf("expected %q, but function has %d return values", expectedTestCaseHttpserverSignature, method.Func.Type().NumOut())
+	}
+
+	actualType0 := method.Func.Type().In(0)
+	expectedType0 := reflect.TypeOf((*TestingSuite)(nil)).Elem()
+
+	if !actualType0.Implements(expectedType0) {
+		return fmt.Errorf("expected %q, but first argument type/receiver type is %s", expectedTestCaseHttpserverSignature, actualType0.String())
 	}
 
 	actualType1 := method.Func.Type().In(1)
 	expectedType1 := reflect.TypeOf((*AppUnderTest)(nil)).Elem()
 
 	if actualType1 != expectedType1 {
-		return false
+		return fmt.Errorf("expected %q, but first argument type is %s", expectedTestCaseHttpserverSignature, actualType1.String())
 	}
 
 	actualType2 := method.Func.Type().In(2)
-	expectedType2 := reflect.TypeOf(&resty.Client{})
+	expectedType2 := reflect.TypeOf((*resty.Client)(nil))
 
-	return actualType2 == expectedType2
+	if actualType2 != expectedType2 {
+		return fmt.Errorf("expected %q, but last argument type is %s", expectedTestCaseHttpserverSignature, actualType2.String())
+	}
+
+	actualTypeResult := method.Func.Type().Out(0)
+	expectedTypeResult := reflect.TypeOf((*error)(nil)).Elem()
+
+	if actualTypeResult != expectedTypeResult {
+		return fmt.Errorf("expected %q, but return type is %s", expectedTestCaseHttpserverSignature, actualTypeResult.String())
+	}
+
+	return nil
 }
 
 func buildTestCaseHttpserver(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {
@@ -79,7 +99,7 @@ func runTestCaseHttpserver(suite TestingSuite, testCase func(suite TestingSuite,
 	}
 
 	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
-		// we first have to setup t, otherwise the test suite can't assert that there are no errors when setting up
+		// we first have to set up t, otherwise the test suite can't assert that there are no errors when setting up
 		// route definitions or test cases
 		suite.SetT(t)
 

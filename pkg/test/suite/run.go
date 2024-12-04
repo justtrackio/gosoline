@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/stream"
@@ -15,7 +16,7 @@ import (
 )
 
 type (
-	testCaseMatcher func(method reflect.Method) bool
+	testCaseMatcher func(method reflect.Method) error
 	testCaseBuilder func(suite TestingSuite, method reflect.Method) (testCaseRunner, error)
 	testCaseRunner  func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment)
 )
@@ -34,7 +35,7 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 	var testCases map[string]testCaseRunner
 	suiteOptions := suiteApplyOptions(suite, extraOptions)
 
-	if testCases, err = suiteFindTestCases(t, suite, suiteOptions); err != nil {
+	if testCases, err = suiteFindTestCases(suite, suiteOptions); err != nil {
 		assert.FailNow(t, err.Error())
 
 		return
@@ -53,7 +54,7 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 	}
 }
 
-func suiteFindTestCases(_ *testing.T, suite TestingSuite, options *suiteOptions) (map[string]testCaseRunner, error) {
+func suiteFindTestCases(suite TestingSuite, options *suiteOptions) (map[string]testCaseRunner, error) {
 	var err error
 	testCases := make(map[string]testCaseRunner)
 	methodFinder := reflect.TypeOf(suite)
@@ -65,22 +66,33 @@ func suiteFindTestCases(_ *testing.T, suite TestingSuite, options *suiteOptions)
 			continue
 		}
 
+		var matcherErr *multierror.Error
 		for typ, def := range testCaseDefinitions {
-			if !def.matcher(method) {
+			if err := def.matcher(method); err != nil {
+				matcherErr = multierror.Append(matcherErr, fmt.Errorf("matcher for test case type %s failed: %w", typ, err))
+
 				continue
 			}
+
+			matcherErr = nil
 
 			if options.shouldSkip(method.Name) {
 				testCases[method.Name] = func(t *testing.T, _ TestingSuite, _ *suiteOptions, _ *env.Environment) {
 					t.SkipNow()
 				}
 
-				continue
+				break
 			}
 
 			if testCases[method.Name], err = def.builder(suite, method); err != nil {
 				return nil, fmt.Errorf("can not build test case %s of type %s: %w", method.Name, typ, err)
 			}
+
+			break
+		}
+
+		if err := matcherErr.ErrorOrNil(); err != nil {
+			assert.Fail(suite.T(), fmt.Sprintf("test method %q has wrong signature: %s", method.Name, err.Error()))
 		}
 	}
 
@@ -153,30 +165,15 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 	environment.Logger().WithChannel("fixtures").Debug("loaded fixtures in %s", time.Since(start))
 
 	for name, testCase := range testCases {
-		if setupTestAware, ok := suite.(TestingSuiteSetupTestAware); ok {
-			if err := setupTestAware.SetupTest(); err != nil {
-				assert.FailNow(t, "failed to setup the test", err.Error())
-			}
-		}
+		runTestCaseInSuite(t, suite, func() {
+			t.Run(name, func(t *testing.T) {
+				parentT := suite.T()
+				suite.SetT(t)
+				defer suite.SetT(parentT)
 
-		t.Run(name, func(t *testing.T) {
-			parentT := suite.T()
-			suite.SetT(t)
-
-			testCase(t, suite, suiteOptions, environment)
-
-			suite.SetT(parentT)
+				testCase(t, suite, suiteOptions, environment)
+			})
 		})
-
-		if tearDownTestAware, ok := suite.(TestingSuiteTearDownTestAware); ok {
-			if err := tearDownTestAware.TearDownTest(); err != nil {
-				assert.FailNow(t, "failed to tear down the test", err.Error())
-			}
-		}
-
-		stream.ResetInMemoryInputs()
-		stream.ResetInMemoryOutputs()
-		environment.ResetLogs()
 	}
 }
 
@@ -186,4 +183,31 @@ func runTestCaseWithIsolatedEnvironment(t *testing.T, suite TestingSuite, suiteO
 			name: testCase,
 		})
 	}
+}
+
+func runTestCaseInSuite(t *testing.T, suite TestingSuite, testCase func()) {
+	parentT := suite.T()
+	suite.SetT(t)
+	defer suite.SetT(parentT)
+
+	if setupTestAware, ok := suite.(TestingSuiteSetupTestAware); ok {
+		if err := setupTestAware.SetupTest(); err != nil {
+			assert.FailNow(suite.T(), "failed to setup the test", err.Error())
+		}
+	}
+
+	// defer the cleanup so it also gets called when we skip the test
+	defer func() {
+		if tearDownTestAware, ok := suite.(TestingSuiteTearDownTestAware); ok {
+			if err := tearDownTestAware.TearDownTest(); err != nil {
+				assert.FailNow(suite.T(), "failed to tear down the test", err.Error())
+			}
+		}
+
+		stream.ResetInMemoryInputs()
+		stream.ResetInMemoryOutputs()
+		suite.Env().ResetLogs()
+	}()
+
+	testCase()
 }
