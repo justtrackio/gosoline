@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/go-resty/resty/v2"
@@ -21,6 +22,8 @@ func init() {
 		builder: buildTestCaseHttpserverExtended,
 	}
 }
+
+const expectedTestCaseHttpserverExtendedSignature = "func (s TestingSuite) TestFunc() T"
 
 // A HttpserverTestCase should be the return value from your test functions. The following signatures are supported:
 //
@@ -154,35 +157,58 @@ func (c *HttpserverTestCase) request(client *resty.Client) (*resty.Response, err
 	return req.Execute(c.Method, c.Url)
 }
 
-func isTestCaseHttpserverExtended(method reflect.Method) bool {
+func isTestCaseHttpserverExtended(method reflect.Method) error {
 	if method.Func.Type().NumIn() != 1 {
-		return false
+		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseHttpserverExtendedSignature, method.Func.Type().NumIn())
 	}
 
 	if method.Func.Type().NumOut() != 1 {
-		return false
+		return fmt.Errorf("expected %q, but function has %d return values", expectedTestCaseHttpserverExtendedSignature, method.Func.Type().NumOut())
 	}
 
-	actualType0 := method.Func.Type().Out(0)
+	actualType0 := method.Func.Type().In(0)
+	expectedType0 := reflect.TypeOf((*TestingSuite)(nil)).Elem()
+
+	if !actualType0.Implements(expectedType0) {
+		return fmt.Errorf("expected %q, but first argument type/receiver type is %s", expectedTestCaseHttpserverExtendedSignature, actualType0.String())
+	}
+
+	actualTypeResult := method.Func.Type().Out(0)
 	expectedType := reflect.TypeOf((*HttpserverTestCase)(nil))
 	expectedSliceType := reflect.TypeOf([]*HttpserverTestCase{})
 	expectedProviderType := reflect.TypeOf((*ToHttpserverTestCaseList)(nil)).Elem()
 
-	return actualType0 == expectedType ||
-		actualType0 == expectedSliceType ||
-		actualType0 == expectedProviderType ||
-		isTestCaseMapHttpserverExtended(method)
+	if actualTypeResult != expectedType &&
+		actualTypeResult != expectedSliceType &&
+		actualTypeResult != expectedProviderType &&
+		!isTestCaseMapHttpserverExtended(method) {
+		return fmt.Errorf(
+			"expected %q, but return type is %s. Allowed return types are:\n - %s",
+			expectedTestCaseHttpserverExtendedSignature,
+			actualTypeResult.String(),
+			strings.Join([]string{
+				"*HttpserverTestCase",
+				"[]*HttpserverTestCase",
+				"ToHttpserverTestCaseList",
+				"map[string]*HttpserverTestCase",
+				"map[string][]*HttpserverTestCase",
+				"map[string]ToHttpserverTestCaseList",
+			}, "\n - "),
+		)
+	}
+
+	return nil
 }
 
 func isTestCaseMapHttpserverExtended(method reflect.Method) bool {
-	actualType0 := method.Func.Type().Out(0)
+	actualTypeResult := method.Func.Type().Out(0)
 	expectedMapType := reflect.TypeOf(map[string]*HttpserverTestCase{})
 	expectedMapSliceType := reflect.TypeOf(map[string][]*HttpserverTestCase{})
 	expectedProviderMapType := reflect.TypeOf(map[string]ToHttpserverTestCaseList{})
 
-	return actualType0 == expectedMapType ||
-		actualType0 == expectedMapSliceType ||
-		actualType0 == expectedProviderMapType
+	return actualTypeResult == expectedMapType ||
+		actualTypeResult == expectedMapSliceType ||
+		actualTypeResult == expectedProviderMapType
 }
 
 func buildTestCaseHttpserverExtended(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {

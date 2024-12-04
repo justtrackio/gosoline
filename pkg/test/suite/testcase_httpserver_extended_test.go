@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
@@ -69,6 +70,15 @@ func (s *GatewayTestSuite) SetupApiDefinitions() httpserver.Definer {
 			contentType := ginCtx.ContentType()
 
 			ginCtx.Data(http.StatusOK, contentType, body)
+		})
+
+		d.POST("/reverse", func(ginCtx *gin.Context) {
+			body, err := io.ReadAll(ginCtx.Request.Body)
+			s.NoError(err)
+
+			contentType := ginCtx.ContentType()
+
+			ginCtx.Data(http.StatusOK, contentType, funk.Reverse(body))
 		})
 
 		return d, nil
