@@ -35,7 +35,7 @@ func isTestCaseApplication(method reflect.Method) bool {
 	return actualType1 == expectedType
 }
 
-func buildTestCaseApplication(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {
+func buildTestCaseApplication(_ TestingSuite, method reflect.Method) (testCaseRunner, error) {
 	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
 		suite.SetT(t)
 
@@ -45,7 +45,7 @@ func buildTestCaseApplication(suite TestingSuite, method reflect.Method) (testCa
 	}, nil
 }
 
-func runTestCaseApplication(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment, testcase func(aut *appUnderTest)) {
+func runTestCaseApplication(t *testing.T, _ TestingSuite, suiteOptions *suiteOptions, environment *env.Environment, testcase func(aut *appUnderTest)) {
 	var appOptions []application.Option
 
 	for k, factory := range suiteOptions.appModules {
