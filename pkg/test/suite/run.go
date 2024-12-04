@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/stream"
@@ -15,7 +16,7 @@ import (
 )
 
 type (
-	testCaseMatcher func(method reflect.Method) bool
+	testCaseMatcher func(method reflect.Method) error
 	testCaseBuilder func(suite TestingSuite, method reflect.Method) (testCaseRunner, error)
 	testCaseRunner  func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment)
 )
@@ -26,6 +27,28 @@ type testCaseDefinition struct {
 }
 
 var testCaseDefinitions = map[string]testCaseDefinition{}
+
+// Register a new test case definition for our test suite. A definition consists of a name, a matcher, and a builder.
+//   - The name of a test case definition is used when reporting errors in case something goes wrong. It has to be unique.
+//   - The matcher is called on every method of a test suite starting with "Test" and should check if the function has the
+//     correct argument and return types. If there is any mismatch between the expected and actual types, an error has to
+//     be reported. If a matcher from another test case definition matches the method, that definition will be used to execute
+//     the test, if no matcher successfully matches the test case, an error is reported.
+//   - The builder creates a runner for the test from the matched method. It might execute the method to get some kind of
+//     test case definition (http, consumer, and subscriber test cases work like this) which is later used to run the test.
+//     Or the execution of the method might be part of running the actual test (base and application test cases work like this).
+//
+// This function is not thread safe and should only be called from an init() method.
+func registerTestCaseDefinition(name string, matcher testCaseMatcher, builder testCaseBuilder) {
+	if _, ok := testCaseDefinitions[name]; ok {
+		panic(fmt.Sprintf("test case definition %q was already registered", name))
+	}
+
+	testCaseDefinitions[name] = testCaseDefinition{
+		matcher: matcher,
+		builder: builder,
+	}
+}
 
 func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 	suite.SetT(t)
@@ -65,22 +88,33 @@ func suiteFindTestCases(suite TestingSuite, options *suiteOptions) (map[string]t
 			continue
 		}
 
+		var matcherErr *multierror.Error
 		for typ, def := range testCaseDefinitions {
-			if !def.matcher(method) {
+			if err := def.matcher(method); err != nil {
+				matcherErr = multierror.Append(matcherErr, fmt.Errorf("matcher for test case type %s failed: %w", typ, err))
+
 				continue
 			}
+
+			matcherErr = nil
 
 			if options.shouldSkip(method.Name) {
 				testCases[method.Name] = func(t *testing.T, _ TestingSuite, _ *suiteOptions, _ *env.Environment) {
 					t.SkipNow()
 				}
 
-				continue
+				break
 			}
 
 			if testCases[method.Name], err = def.builder(suite, method); err != nil {
 				return nil, fmt.Errorf("can not build test case %s of type %s: %w", method.Name, typ, err)
 			}
+
+			break
+		}
+
+		if err := matcherErr.ErrorOrNil(); err != nil {
+			assert.Fail(suite.T(), fmt.Sprintf("test method %q has wrong signature: %s", method.Name, err.Error()))
 		}
 	}
 

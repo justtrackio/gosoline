@@ -1,7 +1,9 @@
 package suite
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/funk"
@@ -10,11 +12,10 @@ import (
 )
 
 func init() {
-	testCaseDefinitions["stream"] = testCaseDefinition{
-		matcher: isTestCaseStream,
-		builder: buildTestCaseStream,
-	}
+	registerTestCaseDefinition("stream", isTestCaseStream, buildTestCaseStream)
 }
+
+const expectedTestCaseStreamSignature = "func (s TestingSuite) TestFunc() T"
 
 type StreamTestCaseInput struct {
 	Attributes map[string]string
@@ -47,29 +48,52 @@ func (c *StreamTestCase) ToTestCase() *StreamTestCase {
 	return c
 }
 
-func isTestCaseStream(method reflect.Method) bool {
+func isTestCaseStream(method reflect.Method) error {
 	if method.Func.Type().NumIn() != 1 {
-		return false
+		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseStreamSignature, method.Func.Type().NumIn())
 	}
 
 	if method.Func.Type().NumOut() != 1 {
-		return false
+		return fmt.Errorf("expected %q, but function has %d return values", expectedTestCaseStreamSignature, method.Func.Type().NumOut())
 	}
 
-	actualType0 := method.Func.Type().Out(0)
+	actualType0 := method.Func.Type().In(0)
+	expectedType0 := reflect.TypeOf((*TestingSuite)(nil)).Elem()
+
+	if !actualType0.Implements(expectedType0) {
+		return fmt.Errorf("expected %q, but first argument type/receiver type is %s", expectedTestCaseStreamSignature, actualType0.String())
+	}
+
+	actualTypeResult := method.Func.Type().Out(0)
 	expectedType := reflect.TypeOf((*StreamTestCase)(nil))
 	expectedProviderType := reflect.TypeOf((*ToStreamTestCase)(nil)).Elem()
 
-	return actualType0 == expectedType || actualType0 == expectedProviderType || isTestCaseMapStream(method)
+	if actualTypeResult != expectedType &&
+		actualTypeResult != expectedProviderType &&
+		!isTestCaseMapStream(method) {
+		return fmt.Errorf(
+			"expected %q, but return type is %s. Allowed return types are:\n - %s",
+			expectedTestCaseStreamSignature,
+			actualTypeResult.String(),
+			strings.Join([]string{
+				"*StreamTestCase",
+				"ToStreamTestCase",
+				"map[string]*StreamTestCase",
+				"map[string]ToStreamTestCase",
+			}, "\n - "),
+		)
+	}
+
+	return nil
 }
 
 func isTestCaseMapStream(method reflect.Method) bool {
-	actualType0 := method.Func.Type().Out(0)
+	actualTypeResult := method.Func.Type().Out(0)
 	expectedMapType := reflect.TypeOf(map[string]*StreamTestCase{})
 	expectedProviderMapType := reflect.TypeOf(map[string]ToStreamTestCase{})
 
-	return actualType0 == expectedMapType ||
-		actualType0 == expectedProviderMapType
+	return actualTypeResult == expectedMapType ||
+		actualTypeResult == expectedProviderMapType
 }
 
 func buildTestCaseStream(suite TestingSuite, method reflect.Method) (testCaseRunner, error) {
