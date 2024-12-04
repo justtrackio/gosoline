@@ -266,12 +266,14 @@ func runHttpServerExtendedTestsMap(suite TestingSuite, testCases map[string]ToHt
 
 func runHttpServerExtendedTests(suite TestingSuite, getTestCases func() []*HttpserverTestCase) (testCaseRunner, error) {
 	return runTestCaseHttpserver(suite, func(suite TestingSuite, app *appUnderTest, client *resty.Client) {
-		runTestCaseInSuite(suite, func() {
+		runTestCaseInSuite(suite.T(), suite, func() {
 			testCases := funk.Filter(getTestCases(), func(elem *HttpserverTestCase) bool {
 				return elem != nil
 			})
 
 			if len(testCases) == 0 {
+				app.Stop()
+				app.WaitDone()
 				suite.T().SkipNow()
 			}
 

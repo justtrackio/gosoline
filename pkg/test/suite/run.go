@@ -34,7 +34,7 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 	var testCases map[string]testCaseRunner
 	suiteOptions := suiteApplyOptions(suite, extraOptions)
 
-	if testCases, err = suiteFindTestCases(t, suite, suiteOptions); err != nil {
+	if testCases, err = suiteFindTestCases(suite, suiteOptions); err != nil {
 		assert.FailNow(t, err.Error())
 
 		return
@@ -53,7 +53,7 @@ func Run(t *testing.T, suite TestingSuite, extraOptions ...Option) {
 	}
 }
 
-func suiteFindTestCases(_ *testing.T, suite TestingSuite, options *suiteOptions) (map[string]testCaseRunner, error) {
+func suiteFindTestCases(suite TestingSuite, options *suiteOptions) (map[string]testCaseRunner, error) {
 	var err error
 	testCases := make(map[string]testCaseRunner)
 	methodFinder := reflect.TypeOf(suite)
@@ -153,14 +153,13 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 	environment.Logger().WithChannel("fixtures").Debug("loaded fixtures in %s", time.Since(start))
 
 	for name, testCase := range testCases {
-		runTestCaseInSuite(suite, func() {
+		runTestCaseInSuite(t, suite, func() {
 			t.Run(name, func(t *testing.T) {
 				parentT := suite.T()
 				suite.SetT(t)
+				defer suite.SetT(parentT)
 
 				testCase(t, suite, suiteOptions, environment)
-
-				suite.SetT(parentT)
 			})
 		})
 	}
@@ -174,22 +173,29 @@ func runTestCaseWithIsolatedEnvironment(t *testing.T, suite TestingSuite, suiteO
 	}
 }
 
-func runTestCaseInSuite(suite TestingSuite, testCase func()) {
+func runTestCaseInSuite(t *testing.T, suite TestingSuite, testCase func()) {
+	parentT := suite.T()
+	suite.SetT(t)
+	defer suite.SetT(parentT)
+
 	if setupTestAware, ok := suite.(TestingSuiteSetupTestAware); ok {
 		if err := setupTestAware.SetupTest(); err != nil {
 			assert.FailNow(suite.T(), "failed to setup the test", err.Error())
 		}
 	}
 
-	testCase()
-
-	if tearDownTestAware, ok := suite.(TestingSuiteTearDownTestAware); ok {
-		if err := tearDownTestAware.TearDownTest(); err != nil {
-			assert.FailNow(suite.T(), "failed to tear down the test", err.Error())
+	// defer the cleanup so it also gets called when we skip the test
+	defer func() {
+		if tearDownTestAware, ok := suite.(TestingSuiteTearDownTestAware); ok {
+			if err := tearDownTestAware.TearDownTest(); err != nil {
+				assert.FailNow(suite.T(), "failed to tear down the test", err.Error())
+			}
 		}
-	}
 
-	stream.ResetInMemoryInputs()
-	stream.ResetInMemoryOutputs()
-	suite.Env().ResetLogs()
+		stream.ResetInMemoryInputs()
+		stream.ResetInMemoryOutputs()
+		suite.Env().ResetLogs()
+	}()
+
+	testCase()
 }
