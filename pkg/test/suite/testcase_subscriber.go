@@ -18,10 +18,7 @@ import (
 )
 
 func init() {
-	testCaseDefinitions["subscriber"] = testCaseDefinition{
-		matcher: isTestCaseSubscriber,
-		builder: buildTestCaseSubscriber,
-	}
+	registerTestCaseDefinition("subscriber", isTestCaseSubscriber, buildTestCaseSubscriber)
 }
 
 type SubscriberTestCase interface {
@@ -55,28 +52,39 @@ func (s subscriberTestCase) GetVersion() int {
 	return s.Version
 }
 
-func isTestCaseSubscriber(method reflect.Method) bool {
+const expectedTestCaseSubscriberSignature = "func (s TestingSuite) TestFunc() (SubscriberTestCase, error)"
+
+func isTestCaseSubscriber(method reflect.Method) error {
 	if method.Func.Type().NumIn() != 1 {
-		return false
+		return fmt.Errorf("expected %q, but function has %d arguments", expectedTestCaseSubscriberSignature, method.Func.Type().NumIn())
 	}
 
 	if method.Func.Type().NumOut() != 2 {
-		return false
+		return fmt.Errorf("expected %q, but function has %d return values", expectedTestCaseSubscriberSignature, method.Func.Type().NumOut())
 	}
 
-	var v SubscriberTestCase
-	subscriberTestCaseType := reflect.ValueOf(&v).Elem().Type()
-	arg0 := method.Func.Type().Out(0)
+	actualType0 := method.Func.Type().In(0)
+	expectedType0 := reflect.TypeOf((*TestingSuite)(nil)).Elem()
 
-	if !arg0.Implements(subscriberTestCaseType) {
-		return false
+	if !actualType0.Implements(expectedType0) {
+		return fmt.Errorf("expected %q, but first argument type/receiver type is %s", expectedTestCaseSubscriberSignature, actualType0.String())
 	}
 
-	var err error
-	errType := reflect.ValueOf(&err).Elem().Type()
-	arg1 := method.Func.Type().Out(1)
+	actualTypeResult0 := method.Func.Type().Out(0)
+	expectedTypeResult0 := reflect.TypeOf((*SubscriberTestCase)(nil)).Elem()
 
-	return arg1.Implements(errType)
+	if actualTypeResult0 != expectedTypeResult0 && !actualTypeResult0.Implements(expectedTypeResult0) {
+		return fmt.Errorf("expected %q, but first return type is %s", expectedTestCaseSubscriberSignature, actualTypeResult0.String())
+	}
+
+	actualTypeResult1 := method.Func.Type().Out(1)
+	expectedTypeResult1 := reflect.TypeOf((*error)(nil)).Elem()
+
+	if actualTypeResult1 != expectedTypeResult1 {
+		return fmt.Errorf("expected %q, but second return type is %s", expectedTestCaseSubscriberSignature, actualTypeResult1.String())
+	}
+
+	return nil
 }
 
 func buildTestCaseSubscriber(_ TestingSuite, method reflect.Method) (testCaseRunner, error) {
