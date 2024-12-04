@@ -89,6 +89,10 @@ func (r *repository[T]) QuerySql(ctx context.Context, query string) ([]T, error)
 		result = append(result, *value)
 	}
 
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("could not scan rows: %w", rows.Err())
+	}
+
 	return result, nil
 }
 
