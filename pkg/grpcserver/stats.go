@@ -34,7 +34,6 @@ type statsHolder struct {
 	OutPayloadLength          int
 	OutPayloadWireLength      int
 	OutPayload                interface{}
-	OutData                   []byte
 	OutHeaders                *sync.Map
 	Error                     error
 }
@@ -64,7 +63,6 @@ func (s *statsHolder) GetLoggerFields() log.Fields {
 		"out_payload_length":           s.OutPayloadLength,
 		"out_payload_wire_length":      s.OutPayloadWireLength,
 		"out_payload":                  s.OutPayload,
-		"out_data":                     s.OutData,
 		"error":                        s.Error,
 	}
 

@@ -438,7 +438,7 @@ func (k *kinsumer) writeShardTaskRatioMetric(shardTaskRatio float64) {
 	k.metricWriter.Write(metric.Data{
 		{
 			Priority:   metric.PriorityHigh,
-			MetricName: metricNameShardTaskRatio,
+			MetricName: metricNameShardTaskRatioMax,
 			Value:      shardTaskRatio,
 			Unit:       metric.UnitCountMaximum,
 		},

@@ -3,14 +3,13 @@ package metric
 import (
 	"context"
 	"fmt"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/hashicorp/go-multierror"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	gosoCloudwatch "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
@@ -31,70 +30,27 @@ const (
 )
 
 type (
-	StandardUnit = types.StandardUnit
-	Dimensions   map[string]string
+	cwWriterCtxKey string
+	Dimensions     map[string]string
+	StandardUnit   = types.StandardUnit
 )
 
-type Datum struct {
-	Priority   int          `json:"-"`
-	Timestamp  time.Time    `json:"timestamp"`
-	MetricName string       `json:"metricName"`
-	Dimensions Dimensions   `json:"dimensions"`
-	Value      float64      `json:"value"`
-	Unit       StandardUnit `json:"unit"`
-}
-
-func (d *Datum) Id() string {
-	return fmt.Sprintf("%s:%s", d.MetricName, d.DimensionKey())
-}
-
-func (d *Datum) DimensionKey() string {
-	dims := make([]string, 0)
-
-	for k, v := range d.Dimensions {
-		flat := fmt.Sprintf("%s:%s", k, v)
-		dims = append(dims, flat)
-	}
-
-	sort.Strings(dims)
-	dimKey := strings.Join(dims, "-")
-
-	return dimKey
-}
-
-func (d *Datum) IsValid() error {
-	if d.MetricName == "" {
-		return fmt.Errorf("missing metric name")
-	}
-
-	if d.Priority == 0 {
-		return fmt.Errorf("metric %s has no priority", d.MetricName)
-	}
-
-	if d.Unit == "" {
-		return fmt.Errorf("metric %s has no unit", d.MetricName)
-	}
-
-	return nil
-}
-
-type Data []*Datum
-
-type cwWriter struct {
+type cloudwatchWriter struct {
 	logger      log.Logger
 	clock       clock.Clock
 	client      gosoCloudwatch.Client
 	cwNamespace string
 }
 
-func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
-	testClock := clock.NewRealClock()
-	settings := getMetricSettings(config)
-	cwNamespace := GetCloudWatchNamespace(config)
+func ProvideCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
+	return appctx.Provide(ctx, cwWriterCtxKey("default"), func() (Writer, error) {
+		return NewCloudwatchWriter(ctx, config, logger)
+	})
+}
 
-	if !settings.Enabled {
-		return newNoopWriter(), nil
-	}
+func NewCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
+	testClock := clock.NewRealClock()
+	cwNamespace := GetCloudWatchNamespace(config)
 
 	client, err := gosoCloudwatch.ProvideClient(ctx, config, log.NewLogger(), "default", func(cfg *gosoCloudwatch.ClientConfig) {
 		cfg.Settings.Backoff.MaxAttempts = 0
@@ -105,11 +61,11 @@ func NewCwWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Wri
 		return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
 	}
 
-	return NewCwWriterWithInterfaces(logger, testClock, client, cwNamespace), nil
+	return NewCloudwatchWriterWithInterfaces(logger, testClock, client, cwNamespace), nil
 }
 
-func NewCwWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoCloudwatch.Client, cwNamespace string) *cwWriter {
-	return &cwWriter{
+func NewCloudwatchWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoCloudwatch.Client, cwNamespace string) *cloudwatchWriter {
+	return &cloudwatchWriter{
 		logger:      logger.WithChannel("metrics"),
 		clock:       clock,
 		client:      cw,
@@ -117,15 +73,15 @@ func NewCwWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoClou
 	}
 }
 
-func (w *cwWriter) GetPriority() int {
+func (w *cloudwatchWriter) GetPriority() int {
 	return PriorityHigh
 }
 
-func (w *cwWriter) WriteOne(data *Datum) {
+func (w *cloudwatchWriter) WriteOne(data *Datum) {
 	w.Write(Data{data})
 }
 
-func (w *cwWriter) Write(batch Data) {
+func (w *cloudwatchWriter) Write(batch Data) {
 	if len(batch) == 0 {
 		return
 	}
@@ -164,7 +120,7 @@ func (w *cwWriter) Write(batch Data) {
 	logger.Debug("written %d metric data sets to cloudwatch", len(metricData))
 }
 
-func (w *cwWriter) buildMetricData(batch Data) ([]types.MetricDatum, error) {
+func (w *cloudwatchWriter) buildMetricData(batch Data) ([]types.MetricDatum, error) {
 	start := w.clock.Now().Add(minusOneWeek)
 	end := w.clock.Now().Add(plusOneHour)
 	metricData := make([]types.MetricDatum, 0, len(batch))

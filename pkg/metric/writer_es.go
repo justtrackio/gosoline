@@ -2,8 +2,10 @@ package metric
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
@@ -16,14 +18,22 @@ type esMetricDatum struct {
 	Namespace string `json:"namespace"`
 }
 
-type esWriter struct {
+type elasticsearchWriter struct {
 	logger    log.Logger
 	clock     clock.Clock
 	client    *es.ClientV7
 	namespace string
 }
 
-func NewEsWriter(config cfg.Config, logger log.Logger) (*esWriter, error) {
+type esWriterCtxKey string
+
+func ProvideElasticsearchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
+	return appctx.Provide(ctx, esWriterCtxKey("default"), func() (Writer, error) {
+		return NewElasticsearchWriter(ctx, config, logger)
+	})
+}
+
+func NewElasticsearchWriter(_ context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	client, err := es.ProvideClient(config, logger, "metric")
 	if err != nil {
 		return nil, fmt.Errorf("can not create es client: %w", err)
@@ -34,11 +44,11 @@ func NewEsWriter(config cfg.Config, logger log.Logger) (*esWriter, error) {
 	appId := cfg.GetAppIdFromConfig(config)
 	namespace := fmt.Sprintf("%s/%s/%s/%s-%s", appId.Project, appId.Environment, appId.Family, appId.Group, appId.Application)
 
-	return NewEsWriterWithInterfaces(logger, client, testClock, namespace), nil
+	return NewElasticsearchWriterWithInterfaces(logger, client, testClock, namespace), nil
 }
 
-func NewEsWriterWithInterfaces(logger log.Logger, client *es.ClientV7, clock clock.Clock, namespace string) *esWriter {
-	return &esWriter{
+func NewElasticsearchWriterWithInterfaces(logger log.Logger, client *es.ClientV7, clock clock.Clock, namespace string) Writer {
+	return &elasticsearchWriter{
 		logger:    logger.WithChannel("metrics"),
 		clock:     clock,
 		client:    client,
@@ -46,11 +56,11 @@ func NewEsWriterWithInterfaces(logger log.Logger, client *es.ClientV7, clock clo
 	}
 }
 
-func (w esWriter) GetPriority() int {
+func (w elasticsearchWriter) GetPriority() int {
 	return PriorityLow
 }
 
-func (w esWriter) bulkWriteToES(buf bytes.Buffer) {
+func (w elasticsearchWriter) bulkWriteToES(buf bytes.Buffer) {
 	batchReader := bytes.NewReader(buf.Bytes())
 
 	res, err := w.client.Bulk(batchReader)
@@ -67,7 +77,7 @@ func (w esWriter) bulkWriteToES(buf bytes.Buffer) {
 	}
 }
 
-func (w esWriter) Write(batch Data) {
+func (w elasticsearchWriter) Write(batch Data) {
 	var buf bytes.Buffer
 
 	if len(batch) == 0 {
@@ -105,6 +115,6 @@ func (w esWriter) Write(batch Data) {
 	w.logger.Debug("written %d metric data sets to elasticsearch", len(batch))
 }
 
-func (w esWriter) WriteOne(data *Datum) {
+func (w elasticsearchWriter) WriteOne(data *Datum) {
 	w.Write(Data{data})
 }

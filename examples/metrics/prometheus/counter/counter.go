@@ -37,17 +37,17 @@ func (ctrl *counterController) Cur(c *gin.Context) {
 func (ctrl *counterController) Incr(c *gin.Context) {
 	ctrl.apiCallMetric("incr")
 	val := atomic.AddInt64(ctrl.c, 1)
-	ctrl.counterMetric(float64(val))
+	ctrl.counterMetric(float64(1))
 
 	c.JSON(http.StatusOK, &Response{
 		Val: val,
 	})
 }
 
-func (ctrl *counterController) Decr(c *gin.Context) {
-	ctrl.apiCallMetric("decr")
-	val := atomic.AddInt64(ctrl.c, -1)
-	ctrl.counterMetric(float64(val))
+func (ctrl *counterController) OneK(c *gin.Context) {
+	ctrl.apiCallMetric("1k")
+	val := atomic.AddInt64(ctrl.c, 1000)
+	ctrl.counterMetric(float64(1000))
 
 	c.JSON(http.StatusOK, &Response{
 		Val: val,

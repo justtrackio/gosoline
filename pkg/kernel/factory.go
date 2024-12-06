@@ -100,6 +100,10 @@ func (f *factory) buildModuleFactory(name string, factory ModuleFactory, opts ..
 		return fmt.Errorf("can not build module %s: %w", name, err)
 	}
 
+	if module == nil {
+		return nil
+	}
+
 	if err = f.addModuleToStage(name, module, opts); err != nil {
 		return fmt.Errorf("can not add module to stage: %w", err)
 	}

@@ -30,6 +30,7 @@ type metricChannel struct {
 	lck     sync.RWMutex
 	logger  log.Logger
 	c       chan Data
+	once    sync.Once
 	enabled bool
 	closed  bool
 }
@@ -43,7 +44,9 @@ func (c *metricChannel) write(batch Data) {
 	}
 
 	if c.closed {
-		c.logger.Warn("refusing to write %d metric datums to metric channel: channel is closed", len(batch))
+		c.once.Do(func() {
+			c.logger.Warn("refusing to write %d metric datums to metric channel: channel is closed", len(batch))
+		})
 		return
 	}
 
