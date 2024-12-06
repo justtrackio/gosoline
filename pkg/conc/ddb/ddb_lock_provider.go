@@ -93,26 +93,40 @@ func NewDdbLockProviderWithInterfaces(
 	}
 }
 
+func (m *ddbLockProvider) AcquireIfNotInUse(ctx context.Context, resource string) (conc.DistributedLock, error) {
+	resource = fmt.Sprintf("%s-%s", m.domain, resource)
+	token := m.uuidSource.NewV4()
+	expires := m.clock.Now().Add(m.defaultLockTime).Unix()
+
+	result, err := m.acquire(ctx, resource, token, expires)
+	if err != nil {
+		return nil, err
+	}
+
+	if result.ConditionalCheckFailed {
+		return nil, nil
+	}
+
+	m.logger.WithContext(ctx).WithFields(log.Fields{
+		"ddb_lock_token":    token,
+		"ddb_lock_resource": resource,
+	}).Debug("acquired lock")
+
+	lock := newDdbLock(m, ctx, resource, token, expires)
+	go lock.runWatcher()
+
+	return lock, nil
+}
+
 func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.DistributedLock, error) {
 	resource = fmt.Sprintf("%s-%s", m.domain, resource)
 	token := m.uuidSource.NewV4()
 
 	var lock *ddbLock
 	err := backoff.Retry(func() error {
-		now := m.clock.Now()
-		// ddb does return expired items if they have not yet been deleted
-		// to account for potential clock skew, we treat items that have been expired by at least a minute as deleted
-		ttlThreshold := now.Unix() - 60
-		expires := now.Add(m.defaultLockTime).Unix()
-		qb := m.repo.PutItemBuilder().
-			WithCondition(ddb.AttributeNotExists("resource").Or(ddb.Lt("ttl", ttlThreshold)))
+		expires := m.clock.Now().Add(m.defaultLockTime).Unix()
 
-		result, err := m.repo.PutItem(ctx, qb, &DdbLockItem{
-			Resource: resource,
-			Token:    token,
-			Ttl:      expires,
-		})
-
+		result, err := m.acquire(ctx, resource, token, expires)
 		if exec.IsRequestCanceled(err) {
 			return backoff.Permanent(err)
 		}
@@ -137,6 +151,21 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 	}, m.backOff)
 
 	return lock, err
+}
+
+func (m *ddbLockProvider) acquire(ctx context.Context, resource string, token string, expires int64) (*ddb.PutItemResult, error) {
+	now := m.clock.Now()
+	// ddb does return expired items if they have not yet been deleted
+	// to account for potential clock skew, we treat items that have been expired by at least a minute as deleted
+	ttlThreshold := now.Unix() - 60
+	qb := m.repo.PutItemBuilder().
+		WithCondition(ddb.AttributeNotExists("resource").Or(ddb.Lt("ttl", ttlThreshold)))
+
+	return m.repo.PutItem(ctx, qb, &DdbLockItem{
+		Resource: resource,
+		Token:    token,
+		Ttl:      expires,
+	})
 }
 
 func (m *ddbLockProvider) renew(ctx context.Context, lockTime time.Duration, resource string, token string) error {
