@@ -34,6 +34,10 @@ type ddbLockProviderTestSuite struct {
 	token    string
 }
 
+func TestDdbLockProvider(t *testing.T) {
+	suite.Run(t, new(ddbLockProviderTestSuite))
+}
+
 type testBackOff struct {
 	backOffs []time.Duration
 	index    int
@@ -61,10 +65,10 @@ func (s *ddbLockProviderTestSuite) SetupSuite() {
 func (s *ddbLockProviderTestSuite) SetupTest() {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	s.ctx = context.Background()
-	s.repo = new(ddbMocks.Repository)
+	s.repo = ddbMocks.NewRepository(s.T())
 	s.clock = clock.NewFakeClock()
-	s.uuidSource = new(uuidMocks.Uuid)
-	s.uuidSource.On("NewV4").Return(s.token).Once()
+	s.uuidSource = uuidMocks.NewUuid(s.T())
+	s.uuidSource.EXPECT().NewV4().Return(s.token).Once()
 	s.backOff = &testBackOff{
 		backOffs: []time.Duration{
 			time.Millisecond * 1,
@@ -81,34 +85,34 @@ func (s *ddbLockProviderTestSuite) SetupTest() {
 
 func (s *ddbLockProviderTestSuite) getAcquireQueryBuilder() *ddbMocks.PutItemBuilder {
 	threshold := s.clock.Now().Unix() - 60
-	qb := new(ddbMocks.PutItemBuilder)
-	qb.On("WithCondition", ddb.AttributeNotExists("resource").Or(ddb.Lt("ttl", threshold))).Return(qb)
+	qb := ddbMocks.NewPutItemBuilder(s.T())
+	qb.EXPECT().WithCondition(ddb.AttributeNotExists("resource").Or(ddb.Lt("ttl", threshold))).Return(qb)
 
-	s.repo.On("PutItemBuilder").Return(qb)
+	s.repo.EXPECT().PutItemBuilder().Return(qb)
 
 	return qb
 }
 
 func (s *ddbLockProviderTestSuite) getRenewQueryBuilder() *ddbMocks.UpdateItemBuilder {
-	qb := new(ddbMocks.UpdateItemBuilder)
-	qb.On("WithHash", s.resource).Return(qb)
-	qb.On("WithCondition", ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb)
+	qb := ddbMocks.NewUpdateItemBuilder(s.T())
+	qb.EXPECT().WithHash(s.resource).Return(qb).Once()
+	qb.EXPECT().WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
 
-	s.repo.On("UpdateItemBuilder").Return(qb).Once()
+	s.repo.EXPECT().UpdateItemBuilder().Return(qb).Once()
 
 	return qb
 }
 
 func (s *ddbLockProviderTestSuite) getReleaseQueryBuilder(result *ddb.DeleteItemResult, err error) *ddbMocks.DeleteItemBuilder {
-	qb := new(ddbMocks.DeleteItemBuilder)
-	qb.On("WithHash", s.resource).Return(qb).Once()
-	qb.On("WithCondition", ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
+	qb := ddbMocks.NewDeleteItemBuilder(s.T())
+	qb.EXPECT().WithHash(s.resource).Return(qb).Once()
+	qb.EXPECT().WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
 
-	s.repo.On("DeleteItemBuilder").Return(qb).Once()
-	s.repo.On("DeleteItem", mock.AnythingOfType("*exec.stoppableContext"), qb, &concDdb.DdbLockItem{
+	s.repo.EXPECT().DeleteItemBuilder().Return(qb).Once()
+	s.repo.EXPECT().DeleteItem(mock.AnythingOfType("*exec.stoppableContext"), qb, &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
-	}).Return(result, err)
+	}).Return(result, err).Once()
 
 	return qb
 }
@@ -122,27 +126,55 @@ func (s *ddbLockProviderTestSuite) testAcquireLock(initialLocked bool, initialFa
 
 	qb := s.getAcquireQueryBuilder()
 	if initialLocked {
-		s.repo.On("PutItem", s.ctx, qb, lockItem).
+		s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
 			Return(&ddb.PutItemResult{
 				ConditionalCheckFailed: true,
 			}, nil).
 			Once()
 	}
 	if initialFail {
-		s.repo.On("PutItem", s.ctx, qb, lockItem).
+		s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
 			Return(nil, errors.New("ddb fails")).
 			Once()
 	}
-	s.repo.On("PutItem", s.ctx, qb, lockItem).
+	s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
 		Return(&ddb.PutItemResult{}, nil).
 		Once()
 
 	l, err := s.provider.Acquire(s.ctx, s.resource[5:])
 	s.NotNil(l)
 	s.NoError(err)
-	qb.AssertExpectations(s.T())
 
 	return l
+}
+
+func (s *ddbLockProviderTestSuite) testAcquireLockIfNotInUse(isInUse bool, err error) (conc.DistributedLock, error) {
+	lockItem := &concDdb.DdbLockItem{
+		Resource: s.resource,
+		Token:    s.token,
+		Ttl:      s.clock.Now().Add(time.Minute).Unix(),
+	}
+
+	qb := s.getAcquireQueryBuilder()
+
+	switch {
+	case err != nil:
+		s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
+			Return(nil, err).
+			Once()
+	case isInUse:
+		s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
+			Return(&ddb.PutItemResult{
+				ConditionalCheckFailed: true,
+			}, nil).
+			Once()
+	default:
+		s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
+			Return(&ddb.PutItemResult{}, nil).
+			Once()
+	}
+
+	return s.provider.AcquireIfNotInUse(s.ctx, s.resource[5:])
 }
 
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireCanceled() {
@@ -153,7 +185,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireCanceled() {
 	}
 
 	qb := s.getAcquireQueryBuilder()
-	s.repo.On("PutItem", s.ctx, qb, lockItem).
+	s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
 		Return(nil, exec.RequestCanceledError).
 		Once()
 
@@ -171,10 +203,6 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireCanceled() {
 	err = l.Release()
 	s.Error(err)
 	s.Equal(conc.ErrNotOwned, err)
-
-	qb.AssertExpectations(s.T())
-	s.repo.AssertExpectations(s.T())
-	s.uuidSource.AssertExpectations(s.T())
 }
 
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireFails() {
@@ -187,71 +215,62 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireFails() {
 	qb := s.getAcquireQueryBuilder()
 	// call PutItem at least 3 times - we might call it more often (up to 4 times),
 	// but there is no way to encode that information with the mock library
-	s.repo.On("PutItem", s.ctx, qb, lockItem).Return(&ddb.PutItemResult{
+	s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).Return(&ddb.PutItemResult{
 		ConditionalCheckFailed: true,
 	}, nil).Twice()
-	s.repo.On("PutItem", s.ctx, qb, lockItem).Return(&ddb.PutItemResult{
+	s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).Return(&ddb.PutItemResult{
 		ConditionalCheckFailed: true,
-	}, nil)
+	}, nil).Once()
 
 	l, err := s.provider.Acquire(s.ctx, s.resource[5:])
 	s.Nil(l)
 	s.Error(err)
 	s.Equal(conc.ErrOwnedLock, err)
-
-	qb.AssertExpectations(s.T())
-	s.repo.AssertExpectations(s.T())
-	s.uuidSource.AssertExpectations(s.T())
 }
 
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireFailsThenSucceeds() {
 	_ = s.testAcquireLock(true, true)
-
-	s.repo.AssertExpectations(s.T())
-	s.uuidSource.AssertExpectations(s.T())
 }
 
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenReleaseTooLate() {
 	l := s.testAcquireLock(false, false)
-	qb := s.getReleaseQueryBuilder(&ddb.DeleteItemResult{
+	_ = s.getReleaseQueryBuilder(&ddb.DeleteItemResult{
 		ConditionalCheckFailed: true,
 	}, nil)
 
 	err := l.Release()
 	s.Error(err)
 	s.Equal(conc.ErrNotOwned, err)
-
-	qb.AssertExpectations(s.T())
-	s.repo.AssertExpectations(s.T())
-	s.uuidSource.AssertExpectations(s.T())
 }
 
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenReleaseError() {
 	l := s.testAcquireLock(false, true)
 	dbErr := errors.New("db error")
-	qb := s.getReleaseQueryBuilder(nil, dbErr)
+	_ = s.getReleaseQueryBuilder(nil, dbErr)
 
 	err := l.Release()
 	s.Error(err)
 	s.Equal(dbErr, err)
-
-	qb.AssertExpectations(s.T())
-	s.repo.AssertExpectations(s.T())
-	s.uuidSource.AssertExpectations(s.T())
 }
 
-func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRelease() {
+func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireOnRetryThenRelease() {
 	l := s.testAcquireLock(true, false)
-	qb := s.getReleaseQueryBuilder(&ddb.DeleteItemResult{
+	_ = s.getReleaseQueryBuilder(&ddb.DeleteItemResult{
 		ConditionalCheckFailed: false,
 	}, nil)
 
 	err := l.Release()
 	s.NoError(err)
+}
 
-	qb.AssertExpectations(s.T())
-	s.repo.AssertExpectations(s.T())
-	s.uuidSource.AssertExpectations(s.T())
+func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRelease() {
+	l := s.testAcquireLock(false, false)
+	_ = s.getReleaseQueryBuilder(&ddb.DeleteItemResult{
+		ConditionalCheckFailed: false,
+	}, nil)
+
+	err := l.Release()
+	s.NoError(err)
 }
 
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewCanceled() {
@@ -263,17 +282,13 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewCanceled(
 		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
 	}
 
-	s.repo.On("UpdateItem", s.ctx, qb, lockItem).
+	s.repo.EXPECT().UpdateItem(s.ctx, qb, lockItem).
 		Return(nil, exec.RequestCanceledError).
 		Once()
 
 	err := l.Renew(s.ctx, time.Hour)
 	s.Error(err)
 	s.True(exec.IsRequestCanceled(err))
-
-	qb.AssertExpectations(s.T())
-	s.repo.AssertExpectations(s.T())
-	s.uuidSource.AssertExpectations(s.T())
 }
 
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewFails() {
@@ -285,17 +300,13 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewFails() {
 		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
 	}
 
-	s.repo.On("UpdateItem", s.ctx, qb, lockItem).Return(&ddb.UpdateItemResult{
+	s.repo.EXPECT().UpdateItem(s.ctx, qb, lockItem).Return(&ddb.UpdateItemResult{
 		ConditionalCheckFailed: true,
 	}, nil).Once()
 
 	err := l.Renew(s.ctx, time.Hour)
 	s.Error(err)
 	s.Equal(conc.ErrNotOwned, err)
-
-	qb.AssertExpectations(s.T())
-	s.repo.AssertExpectations(s.T())
-	s.uuidSource.AssertExpectations(s.T())
 }
 
 func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewErrorsAndSucceeds() {
@@ -308,18 +319,50 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewErrorsAnd
 		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
 	}
 
-	s.repo.On("UpdateItem", s.ctx, qb1, lockItem).Return(nil, errors.New("db error")).Once()
-	s.repo.On("UpdateItem", s.ctx, qb2, lockItem).Return(&ddb.UpdateItemResult{}, nil).Once()
+	s.repo.EXPECT().UpdateItem(s.ctx, qb1, lockItem).Return(nil, errors.New("db error")).Once()
+	s.repo.EXPECT().UpdateItem(s.ctx, qb2, lockItem).Return(&ddb.UpdateItemResult{}, nil).Once()
 
 	err := l.Renew(s.ctx, time.Hour)
 	s.NoError(err)
-
-	qb1.AssertExpectations(s.T())
-	qb2.AssertExpectations(s.T())
-	s.repo.AssertExpectations(s.T())
-	s.uuidSource.AssertExpectations(s.T())
 }
 
-func TestDdbLockProvider(t *testing.T) {
-	suite.Run(t, new(ddbLockProviderTestSuite))
+func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireIfAlreadyInUse_AcquireThenRenewAndRelease() {
+	l, err := s.testAcquireLockIfNotInUse(false, nil)
+	s.NotNil(l)
+	s.NoError(err)
+
+	qb := s.getRenewQueryBuilder()
+	renewedLockItem := &concDdb.DdbLockItem{
+		Resource: s.resource,
+		Token:    s.token,
+		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
+	}
+
+	s.repo.EXPECT().UpdateItem(s.ctx, qb, renewedLockItem).Return(&ddb.UpdateItemResult{
+		ConditionalCheckFailed: false,
+	}, nil).Once()
+
+	_ = s.getReleaseQueryBuilder(&ddb.DeleteItemResult{
+		ConditionalCheckFailed: false,
+	}, nil)
+
+	err = l.Renew(s.ctx, time.Hour)
+	s.NoError(err)
+
+	err = l.Release()
+	s.NoError(err)
+}
+
+func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireIfAlreadyInUse_IsInUse() {
+	l, err := s.testAcquireLockIfNotInUse(true, nil)
+
+	s.Nil(l)
+	s.NoError(err)
+}
+
+func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireIfAlreadyInUse_Error() {
+	l, err := s.testAcquireLockIfNotInUse(false, errors.New("ddb fails"))
+
+	s.Nil(l)
+	s.EqualError(err, "ddb fails")
 }

@@ -21,6 +21,10 @@ type DdbLockTestSuite struct {
 	provider conc.DistributedLockProvider
 }
 
+func TestDdbLockManager(t *testing.T) {
+	suite.Run(t, new(DdbLockTestSuite))
+}
+
 func (s *DdbLockTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithClockProvider(clock.NewRealClock()),
@@ -134,6 +138,26 @@ func (s *DdbLockTestSuite) TestAcquireDifferentResources() {
 	s.NoError(err)
 }
 
-func TestDdbLockManager(t *testing.T) {
-	suite.Run(t, new(DdbLockTestSuite))
+func (s *DdbLockTestSuite) Test_AcquireIfNotInUse_AcquireAndRelease() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	l, err := s.provider.AcquireIfNotInUse(ctx, "acquireIfNotInUse")
+	s.NoError(err)
+
+	err = l.Release()
+	s.NoError(err)
+}
+
+func (s *DdbLockTestSuite) Test_AcquireIfNotInUse_AlreadyInUse() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	l1, err := s.provider.AcquireIfNotInUse(ctx, "acquireIfNotInUse")
+	s.NotNil(l1)
+	s.NoError(err)
+
+	l2, err := s.provider.AcquireIfNotInUse(ctx, "acquireIfNotInUse")
+	s.Nil(l2)
+	s.NoError(err)
 }
