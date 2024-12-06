@@ -8,6 +8,8 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/conc/ddb"
 	"github.com/justtrackio/gosoline/pkg/http"
 	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -19,6 +21,9 @@ const (
 	HistoricalExchangeRateUrl     = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml"
 	ExchangeRateDateKey           = "currency_exchange_last_refresh"
 	HistoricalExchangeRateDateKey = "currency_exchange_historical_last_refresh"
+
+	LockResourceRecentExchangeRates     = "recentExchangeRates"
+	LockResourceHistoricalExchangeRates = "lockHistoricalExchangeRates"
 )
 
 const YMDLayout = "2006-01-02"
@@ -30,10 +35,11 @@ type UpdaterService interface {
 }
 
 type updaterService struct {
-	logger log.Logger
-	http   http.Client
-	store  kvstore.KvStore[float64]
-	clock  clock.Clock
+	logger       log.Logger
+	http         http.Client
+	store        kvstore.KvStore[float64]
+	clock        clock.Clock
+	lockProvider conc.DistributedLockProvider
 }
 
 func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (UpdaterService, error) {
@@ -49,19 +55,48 @@ func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (Upda
 		return nil, fmt.Errorf("can not create http client: %w", err)
 	}
 
-	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider), nil
+	appId := cfg.GetAppIdFromConfig(config)
+
+	lockProvider, err := ddb.NewDdbLockProvider(ctx, config, logger, conc.DistributedLockSettings{
+		AppId:           appId,
+		DefaultLockTime: 10 * time.Minute,
+		Domain:          "currency-updater",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can not create lockProvider: %w", err)
+	}
+
+	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider, lockProvider), nil
 }
 
-func NewUpdaterWithInterfaces(logger log.Logger, store kvstore.KvStore[float64], httpClient http.Client, clock clock.Clock) UpdaterService {
+func NewUpdaterWithInterfaces(logger log.Logger, store kvstore.KvStore[float64], httpClient http.Client, clock clock.Clock, lockProvider conc.DistributedLockProvider) UpdaterService {
 	return &updaterService{
-		logger: logger,
-		store:  store,
-		http:   httpClient,
-		clock:  clock,
+		logger:       logger,
+		store:        store,
+		http:         httpClient,
+		clock:        clock,
+		lockProvider: lockProvider,
 	}
 }
 
 func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
+	logger := s.logger.WithContext(ctx)
+
+	lck, err := s.lockProvider.AcquireIfNotInUse(ctx, LockResourceRecentExchangeRates)
+	if err != nil {
+		return fmt.Errorf("failed to acquire lock for recent exchange rates: %w", err)
+	}
+	if lck == nil {
+		return nil
+	}
+
+	defer func() {
+		err := lck.Release()
+		if err != nil {
+			logger.Error("failed to unlock user: %w", err)
+		}
+	}()
+
 	if !s.needsRefresh(ctx) {
 		return nil
 	}
@@ -79,7 +114,7 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 			return fmt.Errorf("error setting exchange rate: %w", err)
 		}
 
-		s.logger.Info("currency: %s, rate: %f", rate.Currency, rate.Rate)
+		logger.Info("currency: %s, rate: %f", rate.Currency, rate.Rate)
 
 		historicalRateKey := historicalRateKey(now, rate.Currency)
 		err = s.store.Put(ctx, historicalRateKey, rate.Rate)
@@ -94,7 +129,8 @@ func (s *updaterService) EnsureRecentExchangeRates(ctx context.Context) error {
 		return fmt.Errorf("error setting refresh date %w", err)
 	}
 
-	s.logger.Info("new exchange rates are set")
+	logger.Info("new exchange rates are set")
+
 	return nil
 }
 
@@ -144,6 +180,23 @@ func (s *updaterService) getCurrencyRates(ctx context.Context) ([]Rate, error) {
 }
 
 func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) error {
+	logger := s.logger.WithContext(ctx)
+
+	lck, err := s.lockProvider.AcquireIfNotInUse(ctx, LockResourceHistoricalExchangeRates)
+	if err != nil {
+		return fmt.Errorf("failed to acquire lock for historical exchange rates: %w", err)
+	}
+	if lck == nil {
+		return nil
+	}
+
+	defer func() {
+		err := lck.Release()
+		if err != nil {
+			logger.Error("failed to unlock user: %w", err)
+		}
+	}()
+
 	if !s.historicalRatesNeedRefresh(ctx) {
 		return nil
 	}
