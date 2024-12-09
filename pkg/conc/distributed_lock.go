@@ -17,9 +17,12 @@ var ErrNotOwned = errors.New("the lock was not (no longer) owned by you")
 
 //go:generate mockery --name DistributedLockProvider
 type DistributedLockProvider interface {
-	// Acquire a lock for a duration (given e.g. in a constructor). Aborts the operation if the
-	// context is canceled before the lock can be acquired.
+	// Acquire a lock for a duration (given e.g. in a constructor).
+	// Keeps retrying until the lock is acquired or acquiring the lock fails.
+	// Aborts the operation if the context is canceled before the lock can be acquired.
 	Acquire(ctx context.Context, resource string) (DistributedLock, error)
+	// AcquireIfNotInUse only returns a lock if it's currently not in use. Otherwise, does not retry and returns nil.
+	AcquireIfNotInUse(ctx context.Context, resource string) (DistributedLock, error)
 }
 
 //go:generate mockery --name DistributedLock
