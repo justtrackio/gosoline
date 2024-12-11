@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -61,13 +62,19 @@ func main() {
 				return nil, err
 			}
 
-			return func(ctx context.Context) error {
+			return func(ctx context.Context) (err error) {
 				var rows *sqlx.Rows
 				user := &User{}
 
 				if rows, err = client.Queryx(ctx, "SELECT * FROM users"); err != nil {
 					return err
 				}
+
+				defer func() {
+					if closeErr := rows.Close(); closeErr != nil {
+						err = multierror.Append(err, fmt.Errorf("closing rows failed: %w", closeErr))
+					}
+				}()
 
 				for rows.Next() {
 					if err := rows.StructScan(&user); err != nil {
