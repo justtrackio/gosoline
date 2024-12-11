@@ -6,9 +6,17 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/conc"
+	"github.com/justtrackio/gosoline/pkg/conc/ddb"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
+)
+
+const (
+	lockResourceRecentExchangeRates     = "recentExchangeRates"
+	lockResourceHistoricalExchangeRates = "historicalExchangeRates"
 )
 
 type Module struct {
@@ -17,6 +25,7 @@ type Module struct {
 	logger         log.Logger
 	updaterService UpdaterService
 	healthy        *atomic.Bool
+	lockProvider   conc.DistributedLockProvider
 }
 
 // ensure interface compatibility
@@ -29,10 +38,22 @@ func NewCurrencyModule() kernel.ModuleFactory {
 			return nil, fmt.Errorf("can not create updater: %w", err)
 		}
 
+		appId := cfg.GetAppIdFromConfig(config)
+
+		lockProvider, err := ddb.NewDdbLockProvider(ctx, config, logger, conc.DistributedLockSettings{
+			AppId:           appId,
+			DefaultLockTime: 3 * time.Minute,
+			Domain:          "currency",
+		})
+		if err != nil {
+			return nil, fmt.Errorf("can not create lock provider: %w", err)
+		}
+
 		module := Module{
 			logger:         logger,
 			updaterService: updater,
 			healthy:        &atomic.Bool{},
+			lockProvider:   lockProvider,
 		}
 
 		return module, nil
@@ -47,11 +68,12 @@ func (module Module) Run(ctx context.Context) error {
 	defer module.healthy.Store(false)
 
 	// load historical and current data, then the module is healthy
-	if err := module.updaterService.EnsureRecentExchangeRates(ctx); err != nil {
-		return fmt.Errorf("failed to fetch initial rates: %w", err)
+	if err := module.updateExchangeRates(ctx, lockResourceRecentExchangeRates, module.updaterService.EnsureRecentExchangeRates); err != nil {
+		return fmt.Errorf("failed to fetch initial recent exchange rates: %w", err)
 	}
-	if err := module.updaterService.EnsureHistoricalExchangeRates(ctx); err != nil {
-		return fmt.Errorf("failed to fetch initial historical rates: %w", err)
+
+	if err := module.updateExchangeRates(ctx, lockResourceHistoricalExchangeRates, module.updaterService.EnsureHistoricalExchangeRates); err != nil {
+		return fmt.Errorf("failed to fetch initial historical exchange rates: %w", err)
 	}
 
 	module.healthy.Store(true)
@@ -63,10 +85,28 @@ func (module Module) Run(ctx context.Context) error {
 			return nil
 
 		case <-ticker.C:
-			if err := module.updaterService.EnsureRecentExchangeRates(ctx); err != nil {
-				// we already have some data, let's try again in an hour
-				module.logger.Error("failed to refresh currency exchange rates: %w", err)
+			if err := module.updateExchangeRates(ctx, lockResourceRecentExchangeRates, module.updaterService.EnsureRecentExchangeRates); err != nil {
+				module.logger.Error("failed to refresh recent exchange rates: %w", err)
 			}
 		}
 	}
+}
+
+func (module Module) updateExchangeRates(ctx context.Context, lockResource string, updateFunc func(context.Context) error) error {
+	lock, err := module.lockProvider.Acquire(ctx, lockResource)
+	if err != nil {
+		return fmt.Errorf("failed to acquire lock for resource %s: %w", lockResource, err)
+	}
+
+	errs := &multierror.Error{}
+
+	if err := updateFunc(ctx); err != nil {
+		errs = multierror.Append(errs, fmt.Errorf("failed to run update for %s: %w", lockResource, err))
+	}
+
+	if err := lock.Release(); err != nil {
+		errs = multierror.Append(errs, fmt.Errorf("failed to release lock for %s: %w", lockResource, err))
+	}
+
+	return errs.ErrorOrNil()
 }
