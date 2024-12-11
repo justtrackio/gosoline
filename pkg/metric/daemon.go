@@ -85,7 +85,7 @@ func (d *Daemon) GetStage() int {
 
 func (d *Daemon) Run(ctx context.Context) error {
 	if !d.settings.Enabled {
-		d.logger.Info("metrics not enabled..")
+		d.logger.Info("metrics not enabled")
 
 		return nil
 	}
