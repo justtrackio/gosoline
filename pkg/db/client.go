@@ -148,12 +148,19 @@ func (c *ClientSqlx) GetSingleScalarValue(ctx context.Context, query string, arg
 	return int(val.Int64), err
 }
 
-func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...any) (*Result, error) {
+func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...any) (result *Result, err error) {
+	var rows *sql.Rows
 	out := make(Result, 0, 32)
-	rows, err := c.Query(ctx, query, args...)
+	rows, err = c.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = multierror.Append(err, fmt.Errorf("closing rows failed: %w", closeErr))
+		}
+	}()
 
 	cols, err := rows.Columns()
 	if err != nil {
@@ -203,7 +210,11 @@ func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...any) (
 		out = append(out, m)
 	}
 
-	return &out, err
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("fetching rows failed: %w", err)
+	}
+
+	return &out, nil
 }
 
 func (c *ClientSqlx) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {

@@ -2,6 +2,7 @@ package db_repo
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -344,7 +345,7 @@ where original.COLUMN_NAME IS NULL`
 	}), nil
 }
 
-func (c *ChangeHistoryManager) getTableMetaData(columnLength int, queryBuilder func(database string) string) ([][]string, error) {
+func (c *ChangeHistoryManager) getTableMetaData(columnLength int, queryBuilder func(database string) string) (results [][]string, err error) {
 	dbName := c.orm.Dialect().CurrentDatabase()
 	query := queryBuilder(dbName)
 
@@ -353,12 +354,19 @@ func (c *ChangeHistoryManager) getTableMetaData(columnLength int, queryBuilder f
 		return nil, fmt.Errorf("unable to query metadata: %w", db.Error)
 	}
 
-	rows, err := db.Rows()
+	var rows *sql.Rows
+	rows, err = db.Rows()
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch rows: %w", err)
 	}
 
-	results := make([][]string, 0)
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = multierror.Append(err, fmt.Errorf("closing rows failed: %w", closeErr))
+		}
+	}()
+
+	results = make([][]string, 0)
 	for rows.Next() {
 		result := make([]*string, columnLength)
 		dest := make([]any, columnLength)
@@ -372,6 +380,10 @@ func (c *ChangeHistoryManager) getTableMetaData(columnLength int, queryBuilder f
 		}
 
 		results = append(results, funk.Map(result, mdl.EmptyIfNil[string]))
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("fetching rows failed: %w", err)
 	}
 
 	return results, nil
