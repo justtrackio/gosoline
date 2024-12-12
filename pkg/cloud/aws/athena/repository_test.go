@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/athena"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -36,7 +37,7 @@ func (s *AthenaRepositoryTestSuite) SetupSuite() {
 	settings := &athena.Settings{TableName: "testSchema"}
 
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	raw := athena.NewRepositoryRawWithInterfaces(db, settings)
+	raw := athena.NewRepositoryRawWithInterfaces(db, exec.NewDefaultExecutor(), settings)
 	s.NoError(err)
 
 	s.ctx = context.Background()
