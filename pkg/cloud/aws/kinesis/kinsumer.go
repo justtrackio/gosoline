@@ -189,7 +189,9 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 		shardIds:     nil,
 	}
 	// don't care whether we changed, will be true anyway as we had nothing running yet
-	if _, err := k.refreshShards(ctx, runtimeCtx); err != nil {
+	if _, err := k.refreshShards(ctx, runtimeCtx); exec.IsRequestCanceled(err) {
+		return nil
+	} else if err != nil {
 		return fmt.Errorf("failed to load first list of shard ids and register as client: %w", err)
 	}
 
