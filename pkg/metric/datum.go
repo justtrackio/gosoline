@@ -17,10 +17,10 @@ type Datum struct {
 }
 
 func (d *Datum) Id() string {
-	return fmt.Sprintf("%s:%v", d.MetricName, d.DimensionKeys())
+	return fmt.Sprintf("%s:%s", d.MetricName, d.DimensionKV())
 }
 
-func (d *Datum) DimensionKey() string {
+func (d *Datum) DimensionKV() string {
 	dims := make([]string, 0)
 
 	for k, v := range d.Dimensions {
@@ -32,20 +32,6 @@ func (d *Datum) DimensionKey() string {
 	dimKey := strings.Join(dims, "-")
 
 	return dimKey
-}
-
-func (d *Datum) DimensionKeys() []string {
-	dims := make([]string, 0)
-
-	for k := range d.Dimensions {
-		dims = append(dims, k)
-	}
-
-	sort.Slice(dims, func(i, j int) bool {
-		return dims[i] > dims[j]
-	})
-
-	return dims
 }
 
 func (d *Datum) IsValid() error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -106,34 +107,34 @@ func (w *prometheusWriter) WriteOne(data *Datum) {
 	w.Write(Data{data})
 }
 
-func (w *prometheusWriter) promMetricFromDatum(data *Datum) {
+func (w *prometheusWriter) promMetricFromDatum(datum *Datum) {
 	defer func() {
 		err := coffin.ResolveRecovery(recover())
 		if err != nil {
-			w.logger.Error("prom metric from datum for id %s: %w", data.Id(), err)
+			w.logger.Error("prom metric from datum for id %s: %w", w.DatumId(datum), err)
 		}
 	}()
 
-	if strings.Contains(data.MetricName, "-") {
-		w.logger.Warn("metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", data.MetricName)
-		data.MetricName = replacer.Replace(data.MetricName)
+	if strings.Contains(datum.MetricName, "-") {
+		w.logger.Warn("metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", datum.MetricName)
+		datum.MetricName = replacer.Replace(datum.MetricName)
 	}
 
-	switch data.Unit {
+	switch datum.Unit {
 	case UnitCount:
 		fallthrough
 	case UnitPromCounter:
-		w.promCounter(data)
+		w.promCounter(datum)
 	case UnitPromSummary:
 		fallthrough
 	case UnitMilliseconds:
 		fallthrough
 	case UnitSeconds:
-		w.promSummary(data)
+		w.promSummary(datum)
 	case UnitPromHistogram:
-		w.promHistogram(data)
+		w.promHistogram(datum)
 	default:
-		w.promGauge(data)
+		w.promGauge(datum)
 	}
 }
 
@@ -146,7 +147,7 @@ func (w *prometheusWriter) createCounter(datum *Datum) *prometheus.CounterVec {
 		Namespace: w.namespace,
 		Name:      datum.MetricName,
 		Help:      w.buildHelp(datum),
-	}, datum.DimensionKeys())
+	}, w.DatumDimensionKeys(datum))
 }
 
 func (w *prometheusWriter) createGauge(datum *Datum) *prometheus.GaugeVec {
@@ -154,7 +155,7 @@ func (w *prometheusWriter) createGauge(datum *Datum) *prometheus.GaugeVec {
 		Namespace: w.namespace,
 		Name:      datum.MetricName,
 		Help:      w.buildHelp(datum),
-	}, datum.DimensionKeys())
+	}, w.DatumDimensionKeys(datum))
 }
 
 func (w *prometheusWriter) createSummary(datum *Datum) *prometheus.SummaryVec {
@@ -162,7 +163,7 @@ func (w *prometheusWriter) createSummary(datum *Datum) *prometheus.SummaryVec {
 		Namespace: w.namespace,
 		Name:      datum.MetricName,
 		Help:      w.buildHelp(datum),
-	}, datum.DimensionKeys())
+	}, w.DatumDimensionKeys(datum))
 }
 
 func (w *prometheusWriter) createHistogram(datum *Datum) *prometheus.HistogramVec {
@@ -170,7 +171,7 @@ func (w *prometheusWriter) createHistogram(datum *Datum) *prometheus.HistogramVe
 		Namespace: w.namespace,
 		Name:      datum.MetricName,
 		Help:      w.buildHelp(datum),
-	}, datum.DimensionKeys())
+	}, w.DatumDimensionKeys(datum))
 }
 
 func (w *prometheusWriter) addMetric(id string, metric any) error {
@@ -187,7 +188,7 @@ func (w *prometheusWriter) addMetric(id string, metric any) error {
 }
 
 func (w *prometheusWriter) promCounter(datum *Datum) {
-	id := datum.Id()
+	id := w.DatumId(datum)
 
 	metricI, ok := w.promMetrics.Load(id)
 	if !ok {
@@ -209,7 +210,8 @@ func (w *prometheusWriter) promCounter(datum *Datum) {
 }
 
 func (w *prometheusWriter) promGauge(datum *Datum) {
-	id := datum.Id()
+	id := w.DatumId(datum)
+
 	metricI, ok := w.promMetrics.Load(id)
 	if !ok {
 		var err error
@@ -230,7 +232,7 @@ func (w *prometheusWriter) promGauge(datum *Datum) {
 }
 
 func (w *prometheusWriter) promSummary(datum *Datum) {
-	id := datum.Id()
+	id := w.DatumId(datum)
 
 	metricI, ok := w.promMetrics.Load(id)
 	if !ok {
@@ -252,7 +254,7 @@ func (w *prometheusWriter) promSummary(datum *Datum) {
 }
 
 func (w *prometheusWriter) promHistogram(datum *Datum) {
-	id := datum.Id()
+	id := w.DatumId(datum)
 
 	metricI, ok := w.promMetrics.Load(id)
 	if !ok {
@@ -271,4 +273,22 @@ func (w *prometheusWriter) promHistogram(datum *Datum) {
 	metric.
 		With(prometheus.Labels(datum.Dimensions)).
 		Observe(datum.Value)
+}
+
+func (w *prometheusWriter) DatumId(datum *Datum) string {
+	return fmt.Sprintf("%s:%v", datum.MetricName, w.DatumDimensionKeys(datum))
+}
+
+func (w *prometheusWriter) DatumDimensionKeys(datum *Datum) []string {
+	dims := make([]string, 0)
+
+	for k := range datum.Dimensions {
+		dims = append(dims, k)
+	}
+
+	sort.Slice(dims, func(i, j int) bool {
+		return dims[i] > dims[j]
+	})
+
+	return dims
 }

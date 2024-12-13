@@ -128,10 +128,10 @@ func (d *Daemon) appendBatch(data Data) {
 func (d *Daemon) append(datum *Datum) {
 	d.dataPointCount++
 
-	dimKey := datum.DimensionKey()
+	dimKV := datum.DimensionKV()
 	timeKey := datum.Timestamp.Format(defaultTimeFormat)
 
-	key := fmt.Sprintf("%s-%s-%s", datum.MetricName, dimKey, timeKey)
+	key := fmt.Sprintf("%s-%s-%s", datum.MetricName, dimKV, timeKey)
 
 	if _, ok := d.batch[key]; !ok {
 		amendFromDefault(datum)
