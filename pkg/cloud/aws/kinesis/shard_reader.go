@@ -76,7 +76,7 @@ func NewShardReaderWithInterfaces(stream Stream, shardId ShardId, logger log.Log
 }
 
 func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error) (finalErr error) {
-	if ok, err := s.acquireShard(ctx); errors.Is(err, ErrShardAlreadyFinished) {
+	if ok, err := s.acquireShard(ctx); errors.Is(err, ErrShardAlreadyFinished) || exec.IsRequestCanceled(err) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("failed to acquire shard: %w", err)

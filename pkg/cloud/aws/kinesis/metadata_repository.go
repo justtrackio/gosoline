@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/ddb"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
@@ -103,6 +104,7 @@ type metadataRepository struct {
 	appId             cfg.AppId
 	clientTimeout     time.Duration
 	checkpointTimeout time.Duration
+	releaseDelay      time.Duration
 	clock             clock.Clock
 	// an append-only map of finished shards. While we can never (besides restarting the app) remove something from this
 	// map, a finished shard will stay so forever, shard ids are not reused, and an AWS account is limited by default to
@@ -160,6 +162,7 @@ func NewMetadataRepositoryWithInterfaces(logger log.Logger, stream Stream, clien
 		appId:             appId,
 		clientTimeout:     clientTimeout,
 		checkpointTimeout: checkpointTimeout,
+		releaseDelay:      settings.ReleaseDelay,
 		clock:             clock,
 		finishedMap:       map[ShardId]bool{},
 		finishedLck:       sync.Mutex{},
@@ -293,15 +296,42 @@ func (m *metadataRepository) AcquireShard(ctx context.Context, shardId ShardId) 
 		record.Ttl = mdl.Box(m.clock.Now().Add(ShardTimeout).Unix())
 	}
 
+	// use a delayed context to work around context cancels during acquiring the shard.
+	// we will check for a cancel afterward manually
+	delayedCtx, stop := exec.WithDelayedCancelContext(ctx, m.releaseDelay)
+	defer stop()
+
 	putQb := m.repo.PutItemBuilder().
 		WithCondition(ddb.AttributeNotExists("owningClientId").Or(ddb.Lte("updatedAt", timedOutBefore)))
 
-	if putResult, err := m.repo.PutItem(ctx, putQb, record); err != nil {
+	if putResult, err := m.repo.PutItem(delayedCtx, putQb, record); err != nil {
 		return nil, fmt.Errorf("failed to write checkpoint record: %w", err)
 	} else if putResult.ConditionalCheckFailed {
 		m.logger.Info("failed to acquire shard %s", shardId)
 
 		return nil, nil
+	}
+
+	select {
+	case <-ctx.Done():
+		// we got canceled just after we acquired the shard. release it again and return an error:
+
+		record.OwningClientId = ""
+		record.UpdatedAt = m.clock.Now()
+		record.Ttl = mdl.Box(m.clock.Now().Add(ShardTimeout).Unix())
+
+		putQb := m.repo.PutItemBuilder().WithCondition(ddb.Eq("owningClientId", m.clientId))
+		if putResult, err := m.repo.PutItem(delayedCtx, putQb, record); err != nil {
+			return nil, fmt.Errorf("failed to release checkpoint record: %w", err)
+		} else if putResult.ConditionalCheckFailed {
+			m.logger.Info("failed to release shard %s", shardId)
+
+			return nil, nil
+		}
+
+		return nil, ctx.Err()
+	default:
+		break
 	}
 
 	finalSequenceNumber := record.SequenceNumber
