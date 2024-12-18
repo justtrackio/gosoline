@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/segmentio/go-athena"
 )
@@ -27,6 +29,7 @@ type RepositoryRaw interface {
 
 type repositoryRaw struct {
 	db       *sqlx.DB
+	executor exec.Executor
 	settings *Settings
 }
 
@@ -49,23 +52,46 @@ func NewRepositoryRaw(ctx context.Context, config cfg.Config, logger log.Logger,
 		return nil, fmt.Errorf("could not open Athena connection: %w", err)
 	}
 
-	return NewRepositoryRawWithInterfaces(db, settings), nil
+	res := &exec.ExecutableResource{Type: "cloud/aws/athena", Name: settings.TableName}
+	executor := exec.NewBackoffExecutor(logger, res, &clientCfg.Settings.Backoff, []exec.ErrorChecker{
+		CheckInternalAthenaError,
+	})
+
+	return NewRepositoryRawWithInterfaces(db, executor, settings), nil
 }
 
-func NewRepositoryRawWithInterfaces(db *sql.DB, settings *Settings) *repositoryRaw {
+func NewRepositoryRawWithInterfaces(db *sql.DB, executor exec.Executor, settings *Settings) *repositoryRaw {
 	return &repositoryRaw{
 		db:       sqlx.NewDb(db, "athena"),
+		executor: executor,
 		settings: settings,
 	}
 }
 
 func (r *repositoryRaw) QueryRows(ctx context.Context, sql string) (*sqlx.Rows, error) {
-	var err error
-	var rows *sqlx.Rows
-
-	if rows, err = r.db.QueryxContext(ctx, sql); err != nil {
+	rows, err := r.executor.Execute(ctx, func(ctx context.Context) (any, error) {
+		return r.db.QueryxContext(ctx, sql)
+	})
+	if err != nil {
 		return nil, fmt.Errorf("executing query %s threw an error: %w", sql, err)
 	}
 
-	return rows, nil
+	return rows.(*sqlx.Rows), nil
+}
+
+func CheckInternalAthenaError(_ any, err error) exec.ErrorType {
+	if IsInternalAthenaError(err) {
+		return exec.ErrorTypeRetryable
+	}
+
+	return exec.ErrorTypeUnknown
+}
+
+func IsInternalAthenaError(err error) bool {
+	errStr := err.Error()
+	if strings.Contains(errStr, "Amazon Athena experienced an internal error while executing this query. Please try submitting the query again") {
+		return true
+	}
+
+	return false
 }
