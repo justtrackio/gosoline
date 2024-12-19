@@ -14,8 +14,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
-const HttpStatusClientClosedRequest = 499
-
 var ErrModelNotChanged = fmt.Errorf("nothing has changed on model")
 
 // handleErrorOnWrite handles errors for read operations.
@@ -27,7 +25,7 @@ func handleErrorOnRead(logger log.Logger, err error) (*httpserver.Response, erro
 	if exec.IsRequestCanceled(err) {
 		logger.Info("read model(s) aborted: %s", err.Error())
 
-		return httpserver.NewStatusResponse(HttpStatusClientClosedRequest), nil
+		return httpserver.NewStatusResponse(httpserver.HttpStatusClientWentAway), nil
 	}
 
 	if db_repo.IsRecordNotFoundError(err) || db_repo.IsNoQueryResultsError(err) {
