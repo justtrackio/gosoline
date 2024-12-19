@@ -48,8 +48,12 @@ func CheckConnectionError(_ interface{}, err error) ErrorType {
 }
 
 func IsConnectionError(err error) bool {
-	if errors.Is(err, io.EOF) || errors.Is(err, unix.ECONNREFUSED) || errors.Is(err, unix.ECONNRESET) || errors.Is(err, unix.EPIPE) {
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, unix.ECONNREFUSED) || errors.Is(err, unix.ECONNRESET) || errors.Is(err, unix.EPIPE) {
 		return true
+	}
+
+	if err == nil {
+		return false
 	}
 
 	if strings.Contains(err.Error(), "read: connection reset") {
@@ -80,6 +84,10 @@ func CheckClientAwaitHeaderTimeoutError(_ interface{}, err error) ErrorType {
 }
 
 func IsClientAwaitHeadersTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+
 	return strings.Contains(err.Error(), "(Client.Timeout exceeded while awaiting headers)")
 }
 
@@ -92,5 +100,9 @@ func CheckTlsHandshakeTimeoutError(_ interface{}, err error) ErrorType {
 }
 
 func IsTlsHandshakeTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+
 	return strings.Contains(err.Error(), "net/http: TLS handshake timeout")
 }

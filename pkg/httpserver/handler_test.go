@@ -10,8 +10,10 @@ import (
 	"github.com/go-http-utils/headers"
 	"github.com/justtrackio/gosoline/pkg/encoding/base64"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
+	"github.com/justtrackio/gosoline/pkg/httpserver/mocks"
 	"github.com/justtrackio/gosoline/pkg/httpserver/testdata"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -107,6 +109,17 @@ func TestHtmlHandler(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.Code)
 	assert.Equal(t, httpserver.ContentTypeHtml, response.Header().Get("Content-Type"))
 	assert.Equal(t, `<html><body>foobar</body></html>`, response.Body.String())
+}
+
+func TestCreateHandler_RequestCanceled(t *testing.T) {
+	requestHandler := mocks.NewHandlerWithoutInput(t)
+	requestHandler.EXPECT().Handle(mock.AnythingOfType("context.backgroundCtx"), mock.AnythingOfType("*httpserver.Request")).Return(nil, context.Canceled)
+
+	handler := httpserver.CreateHandler(requestHandler)
+	response := httpserver.HttpTest("GET", "/action", "/action", `{"text":"foobar"}`, handler)
+
+	assert.Equal(t, 499, response.Code)
+	assert.Equal(t, `{"err":"context canceled"}`, response.Body.String())
 }
 
 func TestCreateIoHandler_InputFailure(t *testing.T) {

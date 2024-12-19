@@ -2,34 +2,34 @@ package httpserver
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/encoding/base64"
+	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+type logCall struct {
+	logger   log.Logger
+	settings LoggingSettings
+	fields   log.Fields
+}
+
 func LoggingMiddleware(logger log.Logger, settings LoggingSettings) gin.HandlerFunc {
-	chLogger := logger.WithChannel("http")
+	logger = logger.WithChannel("http")
 
+	return NewLoggingMiddlewareWithInterfaces(logger, settings, clock.Provider)
+}
+
+func NewLoggingMiddlewareWithInterfaces(logger log.Logger, settings LoggingSettings, clock clock.Clock) gin.HandlerFunc {
 	return func(ginCtx *gin.Context) {
-		start := time.Now()
-		var requestBody []byte
-
-		if settings.RequestBody {
-			buf, err := io.ReadAll(ginCtx.Request.Body)
-			if err != nil {
-				chLogger.Warn("can not read request body: %s", err.Error())
-			} else {
-				requestBody = buf
-				ginCtx.Request.Body = io.NopCloser(bytes.NewBuffer(buf))
-			}
-		}
+		start := clock.Now()
 
 		ctx := log.InitContext(ginCtx.Request.Context())
 
@@ -47,80 +47,112 @@ func LoggingMiddleware(logger log.Logger, settings LoggingSettings) gin.HandlerF
 
 		ginCtx.Request = ginCtx.Request.WithContext(ctx)
 
+		lp := newLogCall(logger, settings)
+		lp.prepare(ginCtx)
+
 		ginCtx.Next()
 
 		req := ginCtx.Request
 		ctx = req.Context()
 
-		path := req.URL.Path
-		pathRaw := getPathRaw(ginCtx)
+		requestTimeSeconds := clock.Since(start).Seconds()
 
-		referer := req.Referer()
-		userAgent := req.UserAgent()
-		status := ginCtx.Writer.Status()
+		lp.finalize(ginCtx, requestTimeSeconds)
+	}
+}
 
-		queryRaw := req.URL.RawQuery
+func newLogCall(logger log.Logger, settings LoggingSettings) *logCall {
+	return &logCall{
+		logger:   logger,
+		settings: settings,
+		fields:   log.Fields{},
+	}
+}
 
-		method := ginCtx.Request.Method
-		requestTimeNano := time.Since(start)
-		requestTimeSecond := float64(requestTimeNano) / float64(time.Second)
+func (lc *logCall) prepare(ginCtx *gin.Context) {
+	req := ginCtx.Request
 
-		fields := getRequestSizeFields(ginCtx)
-		fields["bytes"] = ginCtx.Writer.Size()
-		fields["client_ip"] = ginCtx.ClientIP()
-		fields["host"] = req.Host
-		fields["protocol"] = req.Proto
-		fields["request_method"] = method
-		fields["request_path"] = path
-		fields["request_path_raw"] = pathRaw
-		fields["request_query"] = queryRaw
-		fields["request_referer"] = referer
-		fields["request_user_agent"] = userAgent
-		fields["request_time"] = requestTimeSecond
-		fields["scheme"] = req.URL.Scheme
-		fields["status"] = status
+	requestSizeFields := getRequestSizeFields(ginCtx)
 
-		if settings.RequestBody && requestBody != nil {
-			if !settings.RequestBodyBase64 {
-				fields["request_body"] = string(requestBody)
-			} else {
-				fields["request_body"] = string(base64.Encode(requestBody))
-			}
+	lc.fields = funk.MergeMaps(lc.fields, requestSizeFields)
+
+	lc.fields["bytes"] = ginCtx.Writer.Size()
+	lc.fields["client_ip"] = ginCtx.ClientIP()
+	lc.fields["host"] = req.Host
+	lc.fields["protocol"] = req.Proto
+	lc.fields["request_method"] = req.Method
+	lc.fields["request_path"] = req.URL.Path
+	lc.fields["request_path_raw"] = getPathRaw(ginCtx)
+	lc.fields["request_query"] = req.URL.RawQuery
+	lc.fields["request_referer"] = req.Referer()
+	lc.fields["request_user_agent"] = req.UserAgent()
+	lc.fields["scheme"] = req.URL.Scheme
+
+	if !lc.settings.RequestBody {
+		return
+	}
+
+	buf, err := io.ReadAll(req.Body)
+	if err != nil {
+		lc.logger.WithContext(req.Context()).Warn("can not read request body: %s", err.Error())
+
+		return
+	}
+
+	// restore the body so another handler can read it
+	req.Body = io.NopCloser(bytes.NewBuffer(buf))
+
+	if lc.settings.RequestBodyBase64 {
+		lc.fields["request_body"] = string(base64.Encode(buf))
+	} else {
+		lc.fields["request_body"] = string(buf)
+	}
+}
+
+func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
+	status := ginCtx.Writer.Status()
+
+	// these fields can only be added after all previous handlers have finished
+	lc.fields["bytes"] = ginCtx.Writer.Size()
+	lc.fields["request_time"] = requestTimeSecond
+	lc.fields["status"] = status
+
+	// only log query parameters in full for successful requests to avoid logging them from bad crawlers
+	if status != http.StatusUnauthorized && status != http.StatusForbidden && status != http.StatusNotFound {
+		queryParameters := make(map[string]string)
+		query := ginCtx.Request.URL.Query()
+
+		for k := range query {
+			queryParameters[k] = query.Get(k)
 		}
 
-		// only log query parameters in full for successful requests to avoid logging them from bad crawlers
-		if status != http.StatusUnauthorized && status != http.StatusForbidden && status != http.StatusNotFound {
-			queryParameters := make(map[string]string)
-			query := req.URL.Query()
+		lc.fields["request_query_parameters"] = queryParameters
+	}
 
-			for k := range query {
-				queryParameters[k] = query.Get(k)
-			}
+	logger := lc.logger.
+		WithContext(ginCtx.Request.Context()).
+		WithFields(lc.fields)
 
-			fields["request_query_parameters"] = queryParameters
-		}
+	method, path, proto := lc.fields["request_method"], lc.fields["request_path"], lc.fields["protocol"]
 
-		ctxLogger := chLogger.WithContext(ctx).WithFields(fields)
+	if len(ginCtx.Errors) == 0 {
+		logger.Info("%s %s %s", method, path, proto)
 
-		if len(ginCtx.Errors) == 0 {
-			ctxLogger.Info("%s %s %s", method, path, req.Proto)
+		return
+	}
 
-			return
-		}
-
-		for _, e := range ginCtx.Errors {
-			switch e.Type {
-			case gin.ErrorTypeBind:
-				if errors.Is(e.Err, io.EOF) || errors.Is(e.Err, io.ErrUnexpectedEOF) {
-					ctxLogger.Warn("%s %s %s - network error - client has gone away - %v", method, path, req.Proto, e.Err)
-				} else {
-					ctxLogger.Warn("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)
-				}
-			case gin.ErrorTypeRender:
-				ctxLogger.Warn("%s %s %s - render error - %v", method, path, req.Proto, e.Err)
-			default:
-				ctxLogger.Error("%s %s %s: %w", method, path, req.Proto, e.Err)
-			}
+	for _, e := range ginCtx.Errors {
+		switch {
+		case exec.IsRequestCanceled(e):
+			logger.Info("%s %s %s - request canceled: %w", method, path, proto, e)
+		case exec.IsConnectionError(e):
+			logger.Info("%s %s %s - connection error: %w", method, path, proto, e)
+		case e.IsType(gin.ErrorTypeBind):
+			logger.Warn("%s %s %s - bind error: %w", method, path, proto, e.Err)
+		case e.IsType(gin.ErrorTypeRender):
+			logger.Warn("%s %s %s - render error: %w", method, path, proto, e.Err)
+		default:
+			logger.Error("%s %s %s: %w", method, path, proto, e.Err)
 		}
 	}
 }

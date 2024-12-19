@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/imdario/mergo"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
@@ -20,11 +21,12 @@ import (
 )
 
 const (
-	ApiViewKey          = "X-Api-View"
-	ContentTypeText     = "text/plain; charset=utf-8"
-	ContentTypeHtml     = "text/html; charset=utf-8"
-	ContentTypeJson     = "application/json; charset=utf-8"
-	ContentTypeProtobuf = "application/x-protobuf"
+	ApiViewKey               = "X-Api-View"
+	ContentTypeText          = "text/plain; charset=utf-8"
+	ContentTypeHtml          = "text/html; charset=utf-8"
+	ContentTypeJson          = "application/json; charset=utf-8"
+	ContentTypeProtobuf      = "application/x-protobuf"
+	HttpStatusClientWentAway = 499
 )
 
 var ErrAccessForbidden = errors.New("cant access resource")
@@ -471,6 +473,15 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input interface{},
 
 	if errors.Is(err, ErrAccessForbidden) {
 		handleForbidden(ginCtx, errHandler, http.StatusForbidden, gin.Error{
+			Err:  err,
+			Type: gin.ErrorTypePrivate,
+		})
+
+		return
+	}
+
+	if exec.IsRequestCanceled(err) {
+		handleError(ginCtx, errHandler, HttpStatusClientWentAway, gin.Error{
 			Err:  err,
 			Type: gin.ErrorTypePrivate,
 		})

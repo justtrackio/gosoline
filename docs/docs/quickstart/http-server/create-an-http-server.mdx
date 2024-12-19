@@ -127,7 +127,10 @@ Finally, you created a `Handle()` function that accepts a `context.Context` and 
 
 <CodeBlock language="go" title="handler.go" snippet="handle">{Handler}</CodeBlock>
 
-Here, you handle requests and responses in just a few lines of code. `handler.go` does most of the heavy lifting for your web service. However, you still need a main entry point to your service, where you'll make use of the logic in `handler.go`. This, you'll add in `main.go`.
+Here, you handle requests and responses in just a few lines of code. `handler.go` does most of the heavy lifting for your web service.
+Notice, that you can return an error to the httpserver package - there is built in error handling to respond with appropriate status and responses.
+
+However, you still need a main entry point to your service, where you'll make use of the logic in `handler.go`. This, you'll add in `main.go`.
 
 ## Implement main.go
 
