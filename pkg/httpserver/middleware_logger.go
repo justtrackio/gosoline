@@ -2,7 +2,6 @@ package httpserver
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/encoding/base64"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -109,14 +109,14 @@ func LoggingMiddleware(logger log.Logger, settings LoggingSettings) gin.HandlerF
 		}
 
 		for _, e := range ginCtx.Errors {
-			switch e.Type {
-			case gin.ErrorTypeBind:
-				if errors.Is(e.Err, io.EOF) || errors.Is(e.Err, io.ErrUnexpectedEOF) {
-					ctxLogger.Warn("%s %s %s - network error - client has gone away - %v", method, path, req.Proto, e.Err)
-				} else {
-					ctxLogger.Warn("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)
-				}
-			case gin.ErrorTypeRender:
+			switch {
+			case exec.IsRequestCanceled(e):
+				ctxLogger.Info("%s %s %s - request canceled - %w", method, path, req.Proto, e)
+			case exec.IsConnectionError(e):
+				ctxLogger.Info("%s %s %s - connection error - %w", method, path, req.Proto, e)
+			case e.IsType(gin.ErrorTypeBind):
+				ctxLogger.Warn("%s %s %s - bind error - %v", method, path, req.Proto, e.Err)
+			case e.IsType(gin.ErrorTypeRender):
 				ctxLogger.Warn("%s %s %s - render error - %v", method, path, req.Proto, e.Err)
 			default:
 				ctxLogger.Error("%s %s %s: %w", method, path, req.Proto, e.Err)
