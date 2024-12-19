@@ -35,15 +35,13 @@ func (r Repository) Create(ctx context.Context, value db_repo.ModelBased) error 
 	}
 
 	eventName := fmt.Sprintf("%s.%s", r.Repository.GetModelName(), db_repo.Create)
-	errs := r.dispatcher.Fire(ctx, eventName, value)
 
-	for _, err := range errs {
-		if err != nil {
-			r.logger.Error("error on %s for event %s: %w", db_repo.Create, eventName, err)
-		}
+	err = r.dispatcher.Fire(ctx, eventName, value)
+	if err != nil {
+		r.logger.WithContext(ctx).Error("error on %s for event %s: %w", db_repo.Create, eventName, err)
 	}
 
-	return nil
+	return err
 }
 
 func (r Repository) Update(ctx context.Context, value db_repo.ModelBased) error {
@@ -53,15 +51,13 @@ func (r Repository) Update(ctx context.Context, value db_repo.ModelBased) error 
 	}
 
 	eventName := fmt.Sprintf("%s.%s", r.Repository.GetModelName(), db_repo.Update)
-	errs := r.dispatcher.Fire(ctx, eventName, value)
 
-	for _, err := range errs {
-		if err != nil {
-			r.logger.Error("error on %s for event %s: %w", db_repo.Update, eventName, err)
-		}
+	err = r.dispatcher.Fire(ctx, eventName, value)
+	if err != nil {
+		r.logger.WithContext(ctx).Error("error on %s for event %s: %w", db_repo.Update, eventName, err)
 	}
 
-	return nil
+	return err
 }
 
 func (r Repository) Delete(ctx context.Context, value db_repo.ModelBased) error {
@@ -71,13 +67,11 @@ func (r Repository) Delete(ctx context.Context, value db_repo.ModelBased) error 
 	}
 
 	eventName := fmt.Sprintf("%s.%s", r.Repository.GetModelName(), db_repo.Delete)
-	errs := r.dispatcher.Fire(ctx, eventName, value)
 
-	for _, err := range errs {
-		if err != nil {
-			r.logger.Error("error on %s for event %s: %w", db_repo.Delete, eventName, err)
-		}
+	err = r.dispatcher.Fire(ctx, eventName, value)
+	if err != nil {
+		r.logger.Error("error on %s for event %s: %w", db_repo.Delete, eventName, err)
 	}
 
-	return nil
+	return err
 }
