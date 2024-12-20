@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -54,8 +55,13 @@ func (t TodoHandler) Handle(ctx context.Context, request *httpserver.Request) (*
 	// Set its CreatedAt to now
 	todo.CreatedAt = time.Now()
 
+	// The error gets transformed within the http server to an HTTP 500 response
+	if todo.Id <= 0 {
+		return nil, fmt.Errorf("invalid id")
+	}
+
 	// Log the request using the TodoHandler struct's logger
-	t.logger.Info("got todo with id %d", todo.Id)
+	t.logger.WithContext(ctx).Info("got todo with id %d", todo.Id)
 
 	// Return a Json response object with information from the Todo struct
 	return httpserver.NewJsonResponse(todo), nil
