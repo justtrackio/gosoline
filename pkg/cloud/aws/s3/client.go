@@ -36,6 +36,9 @@ type Client interface {
 
 type ClientSettings struct {
 	gosoAws.ClientSettings
+	// Allows you to enable the client to use path-style addressing, i.e.,
+	// https://s3.amazonaws.com/BUCKET/KEY . By default, the S3 client will use virtual
+	// hosted bucket addressing when possible( https://BUCKET.s3.amazonaws.com/KEY ).
 	UsePathStyle bool `cfg:"usePathStyle" default:"true"`
 }
 
