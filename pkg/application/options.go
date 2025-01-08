@@ -190,6 +190,14 @@ func WithKernelExitHandler(handler kernelPkg.ExitHandler) Option {
 	}
 }
 
+func WithKinsumerAutoscaleModule(kinsumerInputName string) Option {
+	return func(app *App) {
+		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+			return kernelPkg.WithModuleMultiFactory(stream.KinsumerAutoscaleModuleFactory(kinsumerInputName))
+		})
+	}
+}
+
 func WithLoggerGroupTag(app *App) {
 	app.addLoggerOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
 		if !config.IsSet("app_group") {
