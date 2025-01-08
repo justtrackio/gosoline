@@ -15,6 +15,7 @@ import (
 
 type DdbComponent struct {
 	baseComponent
+	config         cfg.Config
 	logger         log.Logger
 	ddbAddress     string
 	namingSettings *ddb.TableNamingSettings
@@ -59,6 +60,7 @@ func (c *DdbComponent) Client() *dynamodb.Client {
 func (c *DdbComponent) Repository(settings *ddb.Settings) (ddb.Repository, error) {
 	tracer := tracing.NewLocalTracer()
 	client := c.Client()
+	settings.ModelId.PadFromConfig(c.config)
 	tableName := ddb.GetTableNameWithSettings(settings, c.namingSettings)
 	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(settings, tableName)
 

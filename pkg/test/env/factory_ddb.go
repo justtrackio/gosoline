@@ -121,6 +121,7 @@ func (f *ddbFactory) Component(config cfg.Config, logger log.Logger, containers 
 		baseComponent: baseComponent{
 			name: s.Name,
 		},
+		config:         config,
 		logger:         logger,
 		ddbAddress:     ddbAddress,
 		namingSettings: namingSettings,
