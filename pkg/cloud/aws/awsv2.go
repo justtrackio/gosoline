@@ -78,6 +78,8 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 
 	clientsKey := GetClientConfigKey(service, name)
 	defaultClientKey := GetClientConfigKey(service, "default")
+	clientDefaultsKey := GetDefaultsKey(name)
+	defaultsKey := GetDefaultsKey("default")
 
 	config.UnmarshalKey(clientsKey, settings, []cfg.UnmarshalDefaults{
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.credentials", "credentials"),
@@ -86,10 +88,12 @@ func UnmarshalClientSettings(config cfg.Config, settings ClientSettingsAware, se
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.http_client", "http_client"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.assume_role", "assume_role"),
 		cfg.UnmarshalWithDefaultsFromKey("cloud.aws.defaults.profile", "profile"),
+		cfg.UnmarshalWithDefaultsFromKey(defaultsKey, "."),
 		cfg.UnmarshalWithDefaultsFromKey(defaultClientKey, "."),
+		cfg.UnmarshalWithDefaultsFromKey(clientDefaultsKey, "."),
 	}...)
 
-	backoffSettings := exec.ReadBackoffSettings(config, clientsKey, "cloud.aws.defaults")
+	backoffSettings := exec.ReadBackoffSettings(config, clientsKey, clientDefaultsKey, defaultClientKey, defaultsKey, "cloud.aws.defaults")
 	settings.SetBackoff(backoffSettings)
 }
 
@@ -179,6 +183,10 @@ func (l Logger) WithContext(ctx context.Context) logging.Logger {
 
 func GetClientConfigKey(service string, name string) string {
 	return fmt.Sprintf("cloud.aws.%s.clients.%s", service, name)
+}
+
+func GetDefaultsKey(name string) string {
+	return GetClientConfigKey("defaults", name)
 }
 
 func NilIfEmpty[T comparable](val T) *T {

@@ -15,12 +15,14 @@ func TestTableNameTestSuite(t *testing.T) {
 
 type TableNameTestSuite struct {
 	suite.Suite
-	config   cfg.GosoConf
-	settings *ddb.Settings
+	config      cfg.GosoConf
+	envProvider cfg.EnvProvider
+	settings    *ddb.Settings
 }
 
 func (s *TableNameTestSuite) SetupTest() {
-	s.config = cfg.New()
+	s.envProvider = cfg.NewMemoryEnvProvider()
+	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     "justtrack",
@@ -32,11 +34,21 @@ func (s *TableNameTestSuite) SetupTest() {
 		},
 		ClientName: "default",
 	}
+
+	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
 }
 
-func (s *TableNameTestSuite) setupConfig(settings map[string]interface{}) {
+func (s *TableNameTestSuite) setupConfig(settings map[string]any) {
 	err := s.config.Option(cfg.WithConfigMap(settings))
 	s.NoError(err, "there should be no error on setting up the config")
+}
+
+func (s *TableNameTestSuite) setupConfigEnv(settings map[string]string) {
+	for k, v := range settings {
+		err := s.envProvider.SetEnv(k, v)
+		s.NoError(err, "there should be no error on setting up the config")
+	}
 }
 
 func (s *TableNameTestSuite) TestDefault() {
@@ -45,7 +57,7 @@ func (s *TableNameTestSuite) TestDefault() {
 }
 
 func (s *TableNameTestSuite) TestDefaultWithPattern() {
-	s.setupConfig(map[string]interface{}{
+	s.setupConfig(map[string]any{
 		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app}-{modelId}",
 	})
 
@@ -55,7 +67,7 @@ func (s *TableNameTestSuite) TestDefaultWithPattern() {
 
 func (s *TableNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
-	s.setupConfig(map[string]interface{}{
+	s.setupConfig(map[string]any{
 		"cloud.aws.dynamodb.clients.specific.naming.pattern": "{app}-{modelId}",
 	})
 
@@ -70,4 +82,24 @@ func (s *TableNameTestSuite) TestPatternFromTableSettings() {
 
 	name := ddb.TableName(s.config, s.settings)
 	s.Equal("this-is-an-fqn-overwrite", name)
+}
+
+func (s *TableNameTestSuite) TestSpecificClientWithFallbackPattern() {
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"cloud.aws.dynamodb.clients.default.naming.pattern": "{app}-{modelId}",
+	})
+
+	name := ddb.TableName(s.config, s.settings)
+	s.Equal("producer-event", name)
+}
+
+func (s *TableNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
+	s.settings.ClientName = "specific"
+	s.setupConfigEnv(map[string]string{
+		"CLOUD_AWS_DYNAMODB_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app}-{modelId}",
+	})
+
+	name := ddb.TableName(s.config, s.settings)
+	s.Equal("producer-event", name)
 }

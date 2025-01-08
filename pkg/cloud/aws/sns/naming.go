@@ -42,8 +42,9 @@ func GetTopicName(config cfg.Config, topicSettings TopicNameSettingsAware) (stri
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sns", topicSettings.GetClientName()))
+	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("sns", "default"))
 	namingSettings := &TopicNamingSettings{}
-	config.UnmarshalKey(namingKey, namingSettings)
+	config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern"))
 
 	name := namingSettings.Pattern
 	appId := topicSettings.GetAppId()

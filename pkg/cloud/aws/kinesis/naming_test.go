@@ -14,12 +14,14 @@ func TestGetStreamNameTestSuite(t *testing.T) {
 
 type GetStreamNameTestSuite struct {
 	suite.Suite
-	config   cfg.GosoConf
-	settings *kinesis.Settings
+	config      cfg.GosoConf
+	envProvider cfg.EnvProvider
+	settings    *kinesis.Settings
 }
 
 func (s *GetStreamNameTestSuite) SetupTest() {
-	s.config = cfg.New()
+	s.envProvider = cfg.NewMemoryEnvProvider()
+	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = &kinesis.Settings{
 		AppId: cfg.AppId{
 			Project:     "justtrack",
@@ -31,11 +33,21 @@ func (s *GetStreamNameTestSuite) SetupTest() {
 		ClientName: "default",
 		StreamName: "event",
 	}
+
+	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
 }
 
-func (s *GetStreamNameTestSuite) setupConfig(settings map[string]interface{}) {
+func (s *GetStreamNameTestSuite) setupConfig(settings map[string]any) {
 	err := s.config.Option(cfg.WithConfigMap(settings))
 	s.NoError(err, "there should be no error on setting up the config")
+}
+
+func (s *GetStreamNameTestSuite) setupConfigEnv(settings map[string]string) {
+	for k, v := range settings {
+		err := s.envProvider.SetEnv(k, v)
+		s.NoError(err, "there should be no error on setting up the config")
+	}
 }
 
 func (s *GetStreamNameTestSuite) TestDefault() {
@@ -45,7 +57,7 @@ func (s *GetStreamNameTestSuite) TestDefault() {
 }
 
 func (s *GetStreamNameTestSuite) TestDefaultWithPattern() {
-	s.setupConfig(map[string]interface{}{
+	s.setupConfig(map[string]any{
 		"cloud.aws.kinesis.clients.default.naming.pattern": "{app}-{streamName}",
 	})
 
@@ -56,8 +68,30 @@ func (s *GetStreamNameTestSuite) TestDefaultWithPattern() {
 
 func (s *GetStreamNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
-	s.setupConfig(map[string]interface{}{
+	s.setupConfig(map[string]any{
 		"cloud.aws.kinesis.clients.specific.naming.pattern": "{app}-{streamName}",
+	})
+
+	name, err := kinesis.GetStreamName(s.config, s.settings)
+	s.NoError(err)
+	s.EqualValues("producer-event", name)
+}
+
+func (s *GetStreamNameTestSuite) TestSpecificClientWithFallbackPattern() {
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"cloud.aws.kinesis.clients.default.naming.pattern": "{app}-{streamName}",
+	})
+
+	name, err := kinesis.GetStreamName(s.config, s.settings)
+	s.NoError(err)
+	s.EqualValues("producer-event", name)
+}
+
+func (s *GetStreamNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
+	s.settings.ClientName = "specific"
+	s.setupConfigEnv(map[string]string{
+		"CLOUD_AWS_KINESIS_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app}-{streamName}",
 	})
 
 	name, err := kinesis.GetStreamName(s.config, s.settings)

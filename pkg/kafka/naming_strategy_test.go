@@ -33,7 +33,7 @@ func (s *KafkaNamingTestSuite) SetupTest() {
 	s.groupId = "c-group-1"
 }
 
-func (s *KafkaNamingTestSuite) setupConfig(settings map[string]interface{}) {
+func (s *KafkaNamingTestSuite) setupConfig(settings map[string]any) {
 	err := s.config.Option(cfg.WithConfigMap(settings))
 	s.NoError(err, "there should be no error on setting up the config")
 }
@@ -51,7 +51,7 @@ func (s *KafkaNamingTestSuite) TestLegacyGroupId() {
 }
 
 func (s *KafkaNamingTestSuite) TestTopicIdWithPattern() {
-	s.setupConfig(map[string]interface{}{
+	s.setupConfig(map[string]any{
 		"kafka.naming.topic_pattern": "{app}-{topicId}",
 	})
 
@@ -59,7 +59,7 @@ func (s *KafkaNamingTestSuite) TestTopicIdWithPattern() {
 }
 
 func (s *KafkaNamingTestSuite) TestGroupIdWithPattern() {
-	s.setupConfig(map[string]interface{}{
+	s.setupConfig(map[string]any{
 		"kafka.naming.group_pattern": "{app}-{groupId}",
 	})
 
