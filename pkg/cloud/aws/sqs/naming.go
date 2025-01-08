@@ -48,8 +48,9 @@ func GetQueueName(config cfg.Config, queueSettings QueueNameSettingsAware) (stri
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("sqs", queueSettings.GetClientName()))
+	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("sqs", "default"))
 	namingSettings := &QueueNamingSettings{}
-	config.UnmarshalKey(namingKey, namingSettings)
+	config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern"))
 
 	name := namingSettings.Pattern
 	appId := queueSettings.GetAppId()

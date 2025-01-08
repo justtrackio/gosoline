@@ -24,8 +24,9 @@ func GetTableNamingSettings(config cfg.Config, clientName string) *TableNamingSe
 	}
 
 	namingKey := fmt.Sprintf("%s.naming", aws.GetClientConfigKey("dynamodb", clientName))
+	defaultPatternKey := fmt.Sprintf("%s.naming.pattern", aws.GetClientConfigKey("dynamodb", "default"))
 	namingSettings := &TableNamingSettings{}
-	config.UnmarshalKey(namingKey, namingSettings)
+	config.UnmarshalKey(namingKey, namingSettings, cfg.UnmarshalWithDefaultsFromKey(defaultPatternKey, "pattern"))
 
 	return namingSettings
 }

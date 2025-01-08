@@ -96,6 +96,74 @@ cloud:
 ```
 These are the default values which are used if you don't provide any config by yourself.
 
+### Different Client Names
+You can specify different client names to customize specific fields for a
+particular client while inheriting the rest of the configuration. For example:
+
+```yaml
+cloud:
+  aws:
+    dynamodb:
+      clients:
+        someClientName:
+          naming:
+            pattern: "{env}-{group}-{modelId}"
+```
+
+The configuration for a specific client name (e.g., `someClientName`) is resolved by merging settings in the following order of precedence:
+
+1. **Client-specific settings for the given service** (e.g., `cloud.aws.dynamodb.clients.someClientName`)
+2. **Client-specific settings from the defaults** (e.g., `cloud.aws.defaults.clients.someClientName`)
+3. **Service-wide default settings for the given service** (e.g., `cloud.aws.dynamodb.clients.default`)
+4. **Global defaults for all clients** (e.g., `cloud.aws.defaults.clients.default`)
+5. **Global defaults for all AWS clients** (e.g., `cloud.aws.defaults`)
+
+For example, if you specify:
+
+```yaml
+cloud:
+  aws:
+    defaults:
+      region: "eu-west-1"
+      credentials:
+        access_key_id: "default-access-key"
+        secret_access_key: "default-secret"
+      clients:
+        default:
+          region: "eu-west-2"
+        clientWithoutEnvInName:
+          backoff:
+            type: infinite
+    dynamodb:
+      clients:
+        default:
+          region: "eu-central-1"
+          naming:
+            pattern: "{env}-{group}-{modelId}"
+        clientWithoutEnvInName:
+          naming:
+            pattern: "{group}-{modelId}"
+    sqs:
+      clients:
+        clientWithoutEnvInName:
+          naming:
+            pattern: "{group}-{queueId}"
+```
+
+Then, the dynamodb client `clientWithoutEnvInName` will use:
+
+- **`region`**: `eu-central-1` (from `cloud.aws.dynamodb.clients.default` since `region` is not explicitly set for `clientWithoutEnvInName`).
+- **`naming.pattern`**: `{group}-{modelId}` (from `cloud.aws.dynamodb.clients.clientWithoutEnvInName`).
+- **`credentials`**: `default-access-key` and `default-secret` (from `cloud.aws.defaults`).
+- **`backoff.type`**: `infinite` (from `cloud.aws.defaults.clientWithoutEnvInName`).
+
+The sqs client `clientWithoutEnvInName` will use:
+
+- **`region`**: `eu-west-2` (from `cloud.aws.defaults.clients.default` since `region` is not explicitly set for `clientWithoutEnvInName`).
+- **`naming.pattern`**: `{group}-{queueId}` (from `cloud.aws.sqs.clients.clientWithoutEnvInName`).
+- **`credentials`**: `default-access-key` and `default-secret` (from `cloud.aws.defaults`).
+- **`backoff.type`**: `infinite` (from `cloud.aws.defaults.clientWithoutEnvInName`).
+
 ### Full reference
 ```yaml
 cloud:
@@ -133,7 +201,6 @@ cloud:
         default:
           naming:
             pattern: "{env}-{group}-{modelId}"
-
     kinesis:
       clients:
         default:

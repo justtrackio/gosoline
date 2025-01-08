@@ -91,7 +91,14 @@ func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, 
 	return NewRecordWriterWithInterfaces(logger, metricWriter, clock.Provider, uuid.New(), client, settings), nil
 }
 
-func NewRecordWriterWithInterfaces(logger log.Logger, metricWriter metric.Writer, clock clock.Clock, uuidGen uuid.Uuid, client Client, settings *RecordWriterSettings) RecordWriter {
+func NewRecordWriterWithInterfaces(
+	logger log.Logger,
+	metricWriter metric.Writer,
+	clock clock.Clock,
+	uuidGen uuid.Uuid,
+	client Client,
+	settings *RecordWriterSettings,
+) RecordWriter {
 	return &recordWriter{
 		logger:       logger,
 		metricWriter: metricWriter,
@@ -181,7 +188,14 @@ func (w *recordWriter) putRecordsBatch(ctx context.Context, batch []*Record) err
 			break
 		}
 
-		logger.Warn("PutRecords failed %d of %d records with reason: %s: after %d attempts in %s", len(failedRecords), len(records), reason, attempt, took)
+		logger.Warn(
+			"PutRecords failed %d of %d records with reason: %s: after %d attempts in %s",
+			len(failedRecords),
+			len(records),
+			reason,
+			attempt,
+			took,
+		)
 		records = failedRecords
 
 		// sleep some time before retrying to give the stream some time to recover from a ProvisionedThroughputExceededException
@@ -193,7 +207,10 @@ func (w *recordWriter) putRecordsBatch(ctx context.Context, batch []*Record) err
 	return nil
 }
 
-func (w *recordWriter) putRecordsAndCollectFailed(ctx context.Context, records []types.PutRecordsRequestEntry) ([]types.PutRecordsRequestEntry, string, error) {
+func (w *recordWriter) putRecordsAndCollectFailed(
+	ctx context.Context,
+	records []types.PutRecordsRequestEntry,
+) ([]types.PutRecordsRequestEntry, string, error) {
 	putRecordsOutput, err := w.client.PutRecords(ctx, &kinesis.PutRecordsInput{
 		Records:    records,
 		StreamName: aws.String(w.settings.StreamName),

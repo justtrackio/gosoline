@@ -14,12 +14,14 @@ func TestGetSqsQueueNameTestSuite(t *testing.T) {
 
 type GetSqsQueueNameTestSuite struct {
 	suite.Suite
-	config   cfg.GosoConf
-	settings sqs.QueueNameSettings
+	config      cfg.GosoConf
+	envProvider cfg.EnvProvider
+	settings    sqs.QueueNameSettings
 }
 
 func (s *GetSqsQueueNameTestSuite) SetupTest() {
-	s.config = cfg.New()
+	s.envProvider = cfg.NewMemoryEnvProvider()
+	s.config = cfg.NewWithInterfaces(s.envProvider)
 	s.settings = sqs.QueueNameSettings{
 		AppId: cfg.AppId{
 			Project:     "justtrack",
@@ -31,11 +33,21 @@ func (s *GetSqsQueueNameTestSuite) SetupTest() {
 		ClientName: "default",
 		QueueId:    "event",
 	}
+
+	err := s.config.Option(cfg.WithEnvKeyReplacer(cfg.DefaultEnvKeyReplacer))
+	s.NoError(err)
 }
 
-func (s *GetSqsQueueNameTestSuite) setupConfig(settings map[string]interface{}) {
+func (s *GetSqsQueueNameTestSuite) setupConfig(settings map[string]any) {
 	err := s.config.Option(cfg.WithConfigMap(settings))
 	s.NoError(err, "there should be no error on setting up the config")
+}
+
+func (s *GetSqsQueueNameTestSuite) setupConfigEnv(settings map[string]string) {
+	for k, v := range settings {
+		err := s.envProvider.SetEnv(k, v)
+		s.NoError(err, "there should be no error on setting up the config")
+	}
 }
 
 func (s *GetSqsQueueNameTestSuite) TestDefault() {
@@ -53,7 +65,7 @@ func (s *GetSqsQueueNameTestSuite) TestDefaultFifo() {
 }
 
 func (s *GetSqsQueueNameTestSuite) TestDefaultWithPattern() {
-	s.setupConfig(map[string]interface{}{
+	s.setupConfig(map[string]any{
 		"cloud.aws.sqs.clients.default.naming.pattern": "{app}-{queueId}",
 	})
 
@@ -64,8 +76,30 @@ func (s *GetSqsQueueNameTestSuite) TestDefaultWithPattern() {
 
 func (s *GetSqsQueueNameTestSuite) TestSpecificClientWithPattern() {
 	s.settings.ClientName = "specific"
-	s.setupConfig(map[string]interface{}{
+	s.setupConfig(map[string]any{
 		"cloud.aws.sqs.clients.specific.naming.pattern": "{app}-{queueId}",
+	})
+
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("producer-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestSpecificClientWithFallbackPattern() {
+	s.settings.ClientName = "specific"
+	s.setupConfig(map[string]any{
+		"cloud.aws.sqs.clients.default.naming.pattern": "{app}-{queueId}",
+	})
+
+	name, err := sqs.GetQueueName(s.config, s.settings)
+	s.NoError(err)
+	s.Equal("producer-event", name)
+}
+
+func (s *GetSqsQueueNameTestSuite) TestSpecificClientWithFallbackPatternViaEnv() {
+	s.settings.ClientName = "specific"
+	s.setupConfigEnv(map[string]string{
+		"CLOUD_AWS_SQS_CLIENTS_DEFAULT_NAMING_PATTERN": "!nodecode {app}-{queueId}",
 	})
 
 	name, err := sqs.GetQueueName(s.config, s.settings)

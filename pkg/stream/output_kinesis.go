@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 	gosoKinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -51,7 +52,12 @@ func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger,
 		return nil, fmt.Errorf("can not get stream name: %w", err)
 	}
 
-	backoffSettings := exec.ReadBackoffSettings(config)
+	clientsKey := aws.GetClientConfigKey("kinesis", settings.ClientName)
+	defaultClientKey := aws.GetClientConfigKey("kinesis", "default")
+	clientDefaultsKey := aws.GetDefaultsKey(settings.ClientName)
+	defaultsKey := aws.GetDefaultsKey("default")
+
+	backoffSettings := exec.ReadBackoffSettings(config, clientsKey, clientDefaultsKey, defaultClientKey, defaultsKey, "cloud.aws.defaults")
 	backoffSettings.InitialInterval = time.Second
 
 	recordWriterSettings := &gosoKinesis.RecordWriterSettings{

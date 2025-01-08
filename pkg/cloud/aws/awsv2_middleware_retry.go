@@ -46,6 +46,7 @@ func increaseAttemptCount(ctx context.Context) (*attemptInfo, context.Context) {
 
 	if stats != nil {
 		stats.count++
+
 		return stats, ctx
 	}
 
@@ -60,7 +61,11 @@ func increaseAttemptCount(ctx context.Context) (*attemptInfo, context.Context) {
 }
 
 func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSettings) smithyMiddleware.InitializeMiddleware {
-	return smithyMiddleware.InitializeMiddlewareFunc("AttemptLoggerInit", func(ctx context.Context, input smithyMiddleware.InitializeInput, handler smithyMiddleware.InitializeHandler) (smithyMiddleware.InitializeOutput, smithyMiddleware.Metadata, error) {
+	return smithyMiddleware.InitializeMiddlewareFunc("AttemptLoggerInit", func(
+		ctx context.Context,
+		input smithyMiddleware.InitializeInput,
+		handler smithyMiddleware.InitializeHandler,
+	) (smithyMiddleware.InitializeOutput, smithyMiddleware.Metadata, error) {
 		var err error
 		var metadata smithyMiddleware.Metadata
 		var output smithyMiddleware.InitializeOutput
@@ -103,7 +108,7 @@ func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSetting
 		now := time.Now()
 		durationTook := now.Sub(attempt.start)
 
-		if backoff.MaxElapsedTime > 0 && deadline.Before(now) && ctx.Err() == context.DeadlineExceeded {
+		if backoff.MaxElapsedTime > 0 && deadline.Before(now) && errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return output, metadata, exec.NewErrMaxElapsedTimeExceeded(attempt.resource, attempt.count, durationTook, backoff.MaxElapsedTime, ctx.Err())
 		}
 
@@ -135,7 +140,11 @@ func AttemptLoggerInitMiddleware(logger log.Logger, backoff *exec.BackoffSetting
 }
 
 func AttemptLoggerRetryMiddleware(logger log.Logger) smithyMiddleware.FinalizeMiddleware {
-	return smithyMiddleware.FinalizeMiddlewareFunc("AttemptLoggerRetry", func(ctx context.Context, input smithyMiddleware.FinalizeInput, next smithyMiddleware.FinalizeHandler) (smithyMiddleware.FinalizeOutput, smithyMiddleware.Metadata, error) {
+	return smithyMiddleware.FinalizeMiddlewareFunc("AttemptLoggerRetry", func(
+		ctx context.Context,
+		input smithyMiddleware.FinalizeInput,
+		next smithyMiddleware.FinalizeHandler,
+	) (smithyMiddleware.FinalizeOutput, smithyMiddleware.Metadata, error) {
 		var attempt *attemptInfo
 		var metadata smithyMiddleware.Metadata
 		var output smithyMiddleware.FinalizeOutput
@@ -149,7 +158,14 @@ func AttemptLoggerRetryMiddleware(logger log.Logger) smithyMiddleware.FinalizeMi
 				WithFields(log.Fields{
 					"attempt_id": attempt.id,
 					"resource":   attempt.resource.String(),
-				}).Warn("attempt number %d to request resource %s failed after %s cause of error: %s", attempt.count-1, attempt.resource, duration, attempt.lastErr)
+				}).
+				Warn(
+					"attempt number %d to request resource %s failed after %s cause of error: %s",
+					attempt.count-1,
+					attempt.resource,
+					duration,
+					attempt.lastErr,
+				)
 		}
 
 		output, metadata, attempt.lastErr = next.HandleFinalize(ctx, input)

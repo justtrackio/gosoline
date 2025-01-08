@@ -29,6 +29,7 @@ func ReadBackoffSettings(config cfg.Config, paths ...string) BackoffSettings {
 
 		if !config.IsSet(keyType) {
 			typ = "custom"
+
 			continue
 		}
 
