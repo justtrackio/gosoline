@@ -64,7 +64,7 @@ func (s *ddbLockProviderTestSuite) SetupTest() {
 	s.repo = new(ddbMocks.Repository)
 	s.clock = clock.NewFakeClock()
 	s.uuidSource = new(uuidMocks.Uuid)
-	s.uuidSource.On("NewV4").Return(s.token).Once()
+	s.uuidSource.EXPECT().NewV4().Return(s.token).Once()
 	s.backOff = &testBackOff{
 		backOffs: []time.Duration{
 			time.Millisecond * 1,
@@ -82,30 +82,30 @@ func (s *ddbLockProviderTestSuite) SetupTest() {
 func (s *ddbLockProviderTestSuite) getAcquireQueryBuilder() *ddbMocks.PutItemBuilder {
 	threshold := s.clock.Now().Unix() - 60
 	qb := new(ddbMocks.PutItemBuilder)
-	qb.On("WithCondition", ddb.AttributeNotExists("resource").Or(ddb.Lt("ttl", threshold))).Return(qb)
+	qb.EXPECT().WithCondition(ddb.AttributeNotExists("resource").Or(ddb.Lt("ttl", threshold))).Return(qb)
 
-	s.repo.On("PutItemBuilder").Return(qb)
+	s.repo.EXPECT().PutItemBuilder().Return(qb)
 
 	return qb
 }
 
 func (s *ddbLockProviderTestSuite) getRenewQueryBuilder() *ddbMocks.UpdateItemBuilder {
 	qb := new(ddbMocks.UpdateItemBuilder)
-	qb.On("WithHash", s.resource).Return(qb)
-	qb.On("WithCondition", ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb)
+	qb.EXPECT().WithHash(s.resource).Return(qb)
+	qb.EXPECT().WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb)
 
-	s.repo.On("UpdateItemBuilder").Return(qb).Once()
+	s.repo.EXPECT().UpdateItemBuilder().Return(qb).Once()
 
 	return qb
 }
 
 func (s *ddbLockProviderTestSuite) getReleaseQueryBuilder(result *ddb.DeleteItemResult, err error) *ddbMocks.DeleteItemBuilder {
 	qb := new(ddbMocks.DeleteItemBuilder)
-	qb.On("WithHash", s.resource).Return(qb).Once()
-	qb.On("WithCondition", ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
+	qb.EXPECT().WithHash(s.resource).Return(qb).Once()
+	qb.EXPECT().WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", s.token))).Return(qb).Once()
 
-	s.repo.On("DeleteItemBuilder").Return(qb).Once()
-	s.repo.On("DeleteItem", mock.AnythingOfType("*exec.stoppableContext"), qb, &concDdb.DdbLockItem{
+	s.repo.EXPECT().DeleteItemBuilder().Return(qb).Once()
+	s.repo.EXPECT().DeleteItem(mock.AnythingOfType("*exec.manualCancelContext"), qb, &concDdb.DdbLockItem{
 		Resource: s.resource,
 		Token:    s.token,
 	}).Return(result, err)
@@ -122,18 +122,18 @@ func (s *ddbLockProviderTestSuite) testAcquireLock(initialLocked bool, initialFa
 
 	qb := s.getAcquireQueryBuilder()
 	if initialLocked {
-		s.repo.On("PutItem", s.ctx, qb, lockItem).
+		s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
 			Return(&ddb.PutItemResult{
 				ConditionalCheckFailed: true,
 			}, nil).
 			Once()
 	}
 	if initialFail {
-		s.repo.On("PutItem", s.ctx, qb, lockItem).
+		s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
 			Return(nil, errors.New("ddb fails")).
 			Once()
 	}
-	s.repo.On("PutItem", s.ctx, qb, lockItem).
+	s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
 		Return(&ddb.PutItemResult{}, nil).
 		Once()
 
@@ -153,7 +153,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireCanceled() {
 	}
 
 	qb := s.getAcquireQueryBuilder()
-	s.repo.On("PutItem", s.ctx, qb, lockItem).
+	s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).
 		Return(nil, exec.RequestCanceledError).
 		Once()
 
@@ -187,10 +187,10 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireFails() {
 	qb := s.getAcquireQueryBuilder()
 	// call PutItem at least 3 times - we might call it more often (up to 4 times),
 	// but there is no way to encode that information with the mock library
-	s.repo.On("PutItem", s.ctx, qb, lockItem).Return(&ddb.PutItemResult{
+	s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).Return(&ddb.PutItemResult{
 		ConditionalCheckFailed: true,
 	}, nil).Twice()
-	s.repo.On("PutItem", s.ctx, qb, lockItem).Return(&ddb.PutItemResult{
+	s.repo.EXPECT().PutItem(s.ctx, qb, lockItem).Return(&ddb.PutItemResult{
 		ConditionalCheckFailed: true,
 	}, nil)
 
@@ -263,7 +263,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewCanceled(
 		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
 	}
 
-	s.repo.On("UpdateItem", s.ctx, qb, lockItem).
+	s.repo.EXPECT().UpdateItem(s.ctx, qb, lockItem).
 		Return(nil, exec.RequestCanceledError).
 		Once()
 
@@ -285,7 +285,7 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewFails() {
 		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
 	}
 
-	s.repo.On("UpdateItem", s.ctx, qb, lockItem).Return(&ddb.UpdateItemResult{
+	s.repo.EXPECT().UpdateItem(s.ctx, qb, lockItem).Return(&ddb.UpdateItemResult{
 		ConditionalCheckFailed: true,
 	}, nil).Once()
 
@@ -308,8 +308,8 @@ func (s *ddbLockProviderTestSuite) TestDdbLockProvider_AcquireThenRenewErrorsAnd
 		Ttl:      s.clock.Now().Add(time.Hour).Unix(),
 	}
 
-	s.repo.On("UpdateItem", s.ctx, qb1, lockItem).Return(nil, errors.New("db error")).Once()
-	s.repo.On("UpdateItem", s.ctx, qb2, lockItem).Return(&ddb.UpdateItemResult{}, nil).Once()
+	s.repo.EXPECT().UpdateItem(s.ctx, qb1, lockItem).Return(nil, errors.New("db error")).Once()
+	s.repo.EXPECT().UpdateItem(s.ctx, qb2, lockItem).Return(&ddb.UpdateItemResult{}, nil).Once()
 
 	err := l.Renew(s.ctx, time.Hour)
 	s.NoError(err)

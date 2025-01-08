@@ -5,13 +5,22 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+//go:generate mockery --name LockManager
+type LockManager interface {
+	RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) error
+	ReleaseLock(ctx context.Context, resource string, token string) error
+}
+
 type ddbLock struct {
-	manager  *ddbLockProvider
+	manager  LockManager
+	clock    clock.Clock
+	logger   log.Logger
 	ctx      context.Context
 	resource string
 	token    string
@@ -19,9 +28,19 @@ type ddbLock struct {
 	released conc.SignalOnce
 }
 
-func newDdbLock(manager *ddbLockProvider, ctx context.Context, resource string, token string, expires int64) *ddbLock {
+func NewDdbLockFromInterfaces(
+	manager LockManager,
+	clock clock.Clock,
+	logger log.Logger,
+	ctx context.Context,
+	resource string,
+	token string,
+	expires int64,
+) *ddbLock {
 	return &ddbLock{
 		manager:  manager,
+		clock:    clock,
+		logger:   logger,
 		ctx:      ctx,
 		resource: resource,
 		token:    token,
@@ -35,10 +54,10 @@ func (l *ddbLock) Renew(ctx context.Context, lockTime time.Duration) error {
 		return conc.ErrNotOwned
 	}
 
-	err := l.manager.renew(ctx, lockTime, l.resource, l.token)
+	err := l.manager.RenewLock(ctx, lockTime, l.resource, l.token)
 
 	if err == nil {
-		atomic.SwapInt64(&l.expires, l.manager.clock.Now().Add(lockTime).Unix())
+		atomic.StoreInt64(&l.expires, l.clock.Now().Add(lockTime).Unix())
 	}
 
 	return err
@@ -52,18 +71,35 @@ func (l *ddbLock) Release() error {
 	// stop the debug thread if needed
 	l.released.Signal()
 
-	ctx, stop := exec.WithDelayedCancelContext(l.ctx, time.Second*3)
-	// stop the cancel context eventually to make sure we are not leaking
-	// a lot of go routines should our parent context get reused over and over
-	defer stop()
+	deadline := time.Unix(atomic.LoadInt64(&l.expires), 0)
+	remainingLockTime := deadline.Sub(l.clock.Now())
 
-	return l.manager.release(ctx, l.resource, l.token)
+	if remainingLockTime <= 0 {
+		return conc.ErrNotOwned
+	}
+
+	done := make(chan struct{})
+	defer close(done)
+
+	// we should always release the lock, even when our parent gets cancelled.
+	// if we don't manage to do this until it expires anyway, there is no further point in trying.
+	ctx, cancel := exec.WithManualCancelContext(l.ctx)
+	go func() {
+		select {
+		case <-done:
+			return
+		case <-l.clock.After(remainingLockTime):
+			cancel()
+		}
+	}()
+
+	return l.manager.ReleaseLock(ctx, l.resource, l.token)
 }
 
 func (l *ddbLock) runWatcher() {
 	for {
 		expires := atomic.LoadInt64(&l.expires)
-		now := l.manager.clock.Now()
+		now := l.clock.Now()
 
 		if expires < now.Unix() {
 			break
@@ -79,7 +115,7 @@ func (l *ddbLock) runWatcher() {
 		}
 	}
 
-	l.manager.logger.WithContext(l.ctx).WithFields(log.Fields{
+	l.logger.WithContext(l.ctx).WithFields(log.Fields{
 		"ddb_lock_token":    l.token,
 		"ddb_lock_resource": l.resource,
 	}).Warn("failed to release or renew the lock before the timeout")
