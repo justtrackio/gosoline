@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
@@ -14,7 +15,7 @@ func init() {
 
 const sharedName = "publisher"
 
-type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware
+type publisherOutputTypeHandler func(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, clientName string) stream.BaseOutputConfigurationAware
 
 var publisherOutputTypeHandlers = map[string]publisherOutputTypeHandler{
 	stream.OutputTypeInMemory: handlePublisherOutputTypeInMemory,
@@ -56,7 +57,8 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 			return false, fmt.Errorf("no publisherOutputTypeHandler found for publisher %s and output type %s", publisherSettings.Name, publisherSettings.OutputType)
 		}
 
-		outputSettings := outputTypeHandler(config, publisherSettings, producerSettings)
+		clientName := producerName
+		outputSettings := outputTypeHandler(config, publisherSettings, producerSettings, clientName)
 		producerKey := stream.ConfigurableProducerKey(producerName)
 		outputKey := stream.ConfigurableOutputKey(outputName)
 
@@ -64,6 +66,15 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 			cfg.WithConfigSetting(producerKey, producerSettings, cfg.SkipExisting),
 			cfg.WithConfigSetting(outputKey, outputSettings, cfg.SkipExisting),
 			cfg.WithConfigSetting(publisherKey, publisherSettings),
+		}
+
+		if producerSettings.Daemon.Enabled {
+			// if the producer daemon is enabled, default to infinite retries for it.
+			// otherwise, if you have an API or similar, we will only retry for a time
+			// fitting the request timeout, but the producer daemon runs in the background,
+			// so it isn't bound like this
+			awsClientKey := aws.GetDefaultsKey(clientName) + ".backoff.type"
+			configOptions = append(configOptions, cfg.WithConfigSetting(awsClientKey, "infinite", cfg.SkipExisting))
 		}
 
 		if err := config.Option(configOptions...); err != nil {
@@ -74,14 +85,14 @@ func PublisherConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	return true, nil
 }
 
-func handlePublisherOutputTypeInMemory(config cfg.Config, _ *PublisherSettings, _ *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeInMemory(config cfg.Config, _ *PublisherSettings, _ *stream.ProducerSettings, _ string) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.InMemoryOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 
 	return outputSettings
 }
 
-func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *PublisherSettings, producerSettings *stream.ProducerSettings, clientName string) stream.BaseOutputConfigurationAware {
 	producerSettings.Daemon.Enabled = true
 	producerSettings.Daemon.Interval = time.Second
 	// kinesis batches have a max size of 5mb. we're using 4.5mb to give it some headroom
@@ -98,13 +109,14 @@ func handlePublisherOutputTypeKinesis(config cfg.Config, publisherSettings *Publ
 	outputSettings.Family = publisherSettings.Family
 	outputSettings.Group = publisherSettings.Group
 	outputSettings.Application = publisherSettings.Application
+	outputSettings.ClientName = clientName
 	outputSettings.StreamName = publisherSettings.Name
 	outputSettings.Tracing.Enabled = false
 
 	return outputSettings
 }
 
-func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, clientName string) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.SnsOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 
@@ -113,6 +125,7 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 	outputSettings.Group = publisherSettings.Group
 	outputSettings.Application = publisherSettings.Application
 	outputSettings.TopicId = publisherSettings.Name
+	outputSettings.ClientName = clientName
 
 	if publisherSettings.Shared {
 		outputSettings.TopicId = sharedName
@@ -121,7 +134,7 @@ func handlePublisherOutputTypeSns(config cfg.Config, publisherSettings *Publishe
 	return outputSettings
 }
 
-func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings) stream.BaseOutputConfigurationAware {
+func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *PublisherSettings, _ *stream.ProducerSettings, clientName string) stream.BaseOutputConfigurationAware {
 	outputSettings := &stream.SqsOutputConfiguration{}
 	config.UnmarshalDefaults(outputSettings)
 
@@ -130,6 +143,7 @@ func handlePublisherOutputTypeSqs(config cfg.Config, publisherSettings *Publishe
 	outputSettings.Group = publisherSettings.Group
 	outputSettings.Application = publisherSettings.Application
 	outputSettings.QueueId = publisherSettings.Name
+	outputSettings.ClientName = clientName
 
 	if publisherSettings.Shared {
 		outputSettings.QueueId = sharedName
