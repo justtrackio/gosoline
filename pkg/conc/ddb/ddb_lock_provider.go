@@ -36,7 +36,12 @@ type ddbLockProvider struct {
 	domain          string
 }
 
-func NewDdbLockProvider(ctx context.Context, config cfg.Config, logger log.Logger, settings conc.DistributedLockSettings) (conc.DistributedLockProvider, error) {
+func NewDdbLockProvider(
+	ctx context.Context,
+	config cfg.Config,
+	logger log.Logger,
+	settings conc.DistributedLockSettings,
+) (conc.DistributedLockProvider, error) {
 	ddbSettings := &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     settings.AppId.Project,
@@ -130,7 +135,7 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 			"ddb_lock_resource": resource,
 		}).Debug("acquired lock")
 
-		lock = newDdbLock(m, ctx, resource, token, expires)
+		lock = NewDdbLockFromInterfaces(m, m.clock, m.logger, ctx, resource, token, expires)
 		go lock.runWatcher()
 
 		return nil
@@ -139,7 +144,7 @@ func (m *ddbLockProvider) Acquire(ctx context.Context, resource string) (conc.Di
 	return lock, err
 }
 
-func (m *ddbLockProvider) renew(ctx context.Context, lockTime time.Duration, resource string, token string) error {
+func (m *ddbLockProvider) RenewLock(ctx context.Context, lockTime time.Duration, resource string, token string) error {
 	return backoff.Retry(func() error {
 		qb := m.repo.UpdateItemBuilder().
 			WithHash(resource).
@@ -172,7 +177,7 @@ func (m *ddbLockProvider) renew(ctx context.Context, lockTime time.Duration, res
 	}, m.backOff)
 }
 
-func (m *ddbLockProvider) release(ctx context.Context, resource string, token string) error {
+func (m *ddbLockProvider) ReleaseLock(ctx context.Context, resource string, token string) error {
 	qb := m.repo.DeleteItemBuilder().
 		WithHash(resource).
 		WithCondition(ddb.AttributeExists("resource").And(ddb.Eq("token", token)))
