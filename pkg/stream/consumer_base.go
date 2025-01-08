@@ -261,8 +261,12 @@ func (c *baseConsumer) ingestData(ctx context.Context) error {
 	defer close(c.data)
 
 	cfn := coffin.New()
-	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput), "panic during shoveling data from input")
-	cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryInput, dataSourceRetry), "panic during shoveling data from retry")
+	cfn.Go(func() error {
+		cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput), "panic during shoveling data from input")
+		cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryInput, dataSourceRetry), "panic during shoveling data from retry")
+
+		return nil
+	})
 
 	return cfn.Wait()
 }
