@@ -14,13 +14,13 @@ type noopFixtureLoader struct {
 	settings *fixtureLoaderSettings
 }
 
-func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger) FixtureLoader {
+func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger, postProcessorFactories ...PostProcessorFactory) (FixtureLoader, error) {
 	settings := unmarshalFixtureLoaderSettings(config)
 
 	return &noopFixtureLoader{
 		logger:   logger.WithChannel("fixture_loader"),
 		settings: settings,
-	}
+	}, nil
 }
 
 func (n *noopFixtureLoader) Load(ctx context.Context, group string, fixtureSets []FixtureSet) error {

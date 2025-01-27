@@ -36,7 +36,7 @@ func (s *GuardTestSuite) SetupSuite() []suite.Option {
 		suite.WithLogLevel("debug"),
 		suite.WithSharedEnvironment(),
 		suite.WithConfigFile("config.dist.yml"),
-		suite.WithFixtureSetFactories(fixtureSetsFactory),
+		suite.WithFixtureSetFactory(fixtureSetsFactory),
 	}
 }
 

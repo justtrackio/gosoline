@@ -36,7 +36,7 @@ func (s *S3TestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *S3TestSuite) TestS3() {
-	err := s.Env().LoadFixtureSets(purgeDisabledFixtureSetsFactory)
+	err := s.Env().LoadFixtureSet(purgeDisabledFixtureSetsFactory)
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
@@ -80,7 +80,7 @@ func (s *S3TestSuite) TestS3() {
 }
 
 func (s *S3TestSuite) TestS3WithPurge() {
-	err := s.Env().LoadFixtureSets(purgeDisabledFixtureSetsFactory)
+	err := s.Env().LoadFixtureSet(purgeDisabledFixtureSetsFactory)
 	s.NoError(err)
 
 	s3Client := s.Env().S3("default").Client()
@@ -98,7 +98,7 @@ func (s *S3TestSuite) TestS3WithPurge() {
 	s.NoError(err)
 	s.Equal(28092, len(body))
 
-	err = s.Env().LoadFixtureSets(purgeEnabledFixtureSetsFactory)
+	err = s.Env().LoadFixtureSet(purgeEnabledFixtureSetsFactory)
 	s.NoError(err)
 
 	input = &s3.GetObjectInput{

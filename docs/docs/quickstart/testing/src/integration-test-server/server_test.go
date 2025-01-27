@@ -36,7 +36,7 @@ func (s *HttpTestSuite) SetupSuite() []suite.Option {
 		suite.WithConfigFile("./config.dist.yml"),
 
 		// The fixture set you created in the last section.
-		suite.WithFixtureSetFactories(fixtureSetsFactory),
+		suite.WithFixtureSetFactory(fixtureSetsFactory),
 
 		// suite.WithClockProvider(s.clock),
 		suite.WithClockProvider(s.clock),

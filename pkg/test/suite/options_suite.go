@@ -22,7 +22,8 @@ type suiteOptions struct {
 	envSetup    []func() error
 	envIsShared bool
 
-	fixtureSetFactories []fixtures.FixtureSetsFactory
+	fixtureSetFactories              []fixtures.FixtureSetsFactory
+	fixtureSetPostProcessorFactories []fixtures.PostProcessorFactory
 
 	appOptions   []application.Option
 	appModules   map[string]kernel.ModuleFactory
@@ -122,9 +123,17 @@ func WithEnvSetup(setups ...func() error) Option {
 	}
 }
 
-func WithFixtureSetFactories(factories ...fixtures.FixtureSetsFactory) Option {
+func WithFixtureSetFactory(factory fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) Option {
+	return func(s *suiteOptions) {
+		s.fixtureSetFactories = append(s.fixtureSetFactories, factory)
+		s.fixtureSetPostProcessorFactories = append(s.fixtureSetPostProcessorFactories, postProcessorFactories...)
+	}
+}
+
+func WithFixtureSetFactories(factories []fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) Option {
 	return func(s *suiteOptions) {
 		s.fixtureSetFactories = append(s.fixtureSetFactories, factories...)
+		s.fixtureSetPostProcessorFactories = append(s.fixtureSetPostProcessorFactories, postProcessorFactories...)
 	}
 }
 
