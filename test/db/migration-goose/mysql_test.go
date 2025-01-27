@@ -40,7 +40,8 @@ func (s *MysqlTestSuite) TestPlainFixturesMysql() {
 	envLogger := s.Env().Logger()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
 
 	fss, err := s.provideFixtureSets()
 	s.NoError(err)

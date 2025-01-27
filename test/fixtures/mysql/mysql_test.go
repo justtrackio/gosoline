@@ -43,7 +43,9 @@ func (s *MysqlTestSuite) TestOrmFixturesMysql() {
 	envContext := s.Env().Context()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := s.buildFixtureLoader(envContext)
+	loader, err := s.buildFixtureLoader(envContext)
+	s.NoError(err)
+
 	fss, err := s.provideMysqlOrmFixtureSets()
 	s.NoError(err)
 
@@ -58,7 +60,9 @@ func (s *MysqlTestSuite) TestPlainFixturesMysql() {
 	envContext := s.Env().Context()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := s.buildFixtureLoader(envContext)
+	loader, err := s.buildFixtureLoader(envContext)
+	s.NoError(err)
+
 	fss, err := s.provideMysqlPlainFixtureSets()
 	s.NoError(err)
 
@@ -73,7 +77,9 @@ func (s *MysqlTestSuite) TestPurgedOrmFixturesMysql() {
 	envContext := s.Env().Context()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := s.buildFixtureLoader(envContext)
+	loader, err := s.buildFixtureLoader(envContext)
+	s.NoError(err)
+
 	fss, err := s.provideMysqlOrmFixtureSets()
 	s.NoError(err)
 
@@ -98,7 +104,9 @@ func (s *MysqlTestSuite) TestPurgedPlainFixturesMysql() {
 	envLogger := s.Env().Logger()
 	envClient := s.Env().MySql("default").Client()
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
+
 	fss, err := s.provideMysqlPlainFixtureSets()
 	s.NoError(err)
 
@@ -117,7 +125,7 @@ func (s *MysqlTestSuite) TestPurgedPlainFixturesMysql() {
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_plain_writer_test", "name", "purgedBefore")
 }
 
-func (s *MysqlTestSuite) buildFixtureLoader(ctx context.Context) fixtures.FixtureLoader {
+func (s *MysqlTestSuite) buildFixtureLoader(ctx context.Context) (fixtures.FixtureLoader, error) {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 

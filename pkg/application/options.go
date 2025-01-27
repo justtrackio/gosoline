@@ -174,11 +174,21 @@ func WithHttpServerShares(app *App) {
 	})
 }
 
-func WithFixtureSetFactory(group string, factory fixtures.FixtureSetsFactory) Option {
+func WithFixtureSetFactory(group string, factory fixtures.FixtureSetsFactory, postprocessorFactories ...fixtures.PostProcessorFactory) Option {
 	return func(app *App) {
 		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(group, factory), kernelPkg.PositionEnd)
+			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(group, factory, postprocessorFactories...), kernelPkg.PositionEnd)
 		})
+	}
+}
+
+func WithFixtureSetFactories(factories map[string]fixtures.FixtureSetsFactory, postprocessorFactories ...fixtures.PostProcessorFactory) Option {
+	return func(app *App) {
+		for group, factory := range factories {
+			app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+				return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(group, factory, postprocessorFactories...), kernelPkg.PositionEnd)
+			})
+		}
 	}
 }
 

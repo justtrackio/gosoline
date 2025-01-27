@@ -180,7 +180,7 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 	}
 
 	start := time.Now()
-	if err = environment.LoadFixtureSets(suiteOptions.fixtureSetFactories...); err != nil {
+	if err = environment.LoadFixtureSets(suiteOptions.fixtureSetFactories, suiteOptions.fixtureSetPostProcessorFactories...); err != nil {
 		assert.FailNow(t, "failed to load fixtures from factories", err.Error())
 	}
 

@@ -41,7 +41,8 @@ func (s *RedisTestSuite) TestRedis() {
 	s.NoError(err)
 	s.Equal("OK", result)
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
 
 	fs1, err := s.provideRedisOpSetFixtureSet()
 	s.NoError(err)
@@ -80,7 +81,8 @@ func (s *RedisTestSuite) TestRedisWithPurge() {
 	s.NoError(err)
 	s.Equal("OK", result)
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
 
 	fs1, err := s.provideRedisOpSetFixtureSet()
 	s.NoError(err)
@@ -135,7 +137,8 @@ func (s *RedisTestSuite) TestRedisKvStore() {
 	s.NoError(err)
 	s.Equal("OK", result)
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
 
 	fss, err := s.provideKvStoreFixtureSet()
 	s.NoError(err)
@@ -161,7 +164,8 @@ func (s *RedisTestSuite) TestRedisKvStoreWithPurge() {
 	s.NoError(err)
 	s.Equal("OK", result)
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
 
 	fss, err := s.provideKvStoreFixtureSet()
 	s.NoError(err)

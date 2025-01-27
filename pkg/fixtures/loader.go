@@ -13,17 +13,28 @@ import (
 )
 
 type fixtureLoader struct {
-	logger   log.Logger
-	settings *fixtureLoaderSettings
+	logger         log.Logger
+	postProcessors []PostProcessor
+	settings       *fixtureLoaderSettings
 }
 
-func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger) FixtureLoader {
+func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger, postProcessorFactories ...PostProcessorFactory) (FixtureLoader, error) {
+	var err error
+
 	settings := unmarshalFixtureLoaderSettings(config)
+	postProcessors := make([]PostProcessor, len(postProcessorFactories))
+
+	for i, postProcessorFactory := range postProcessorFactories {
+		if postProcessors[i], err = postProcessorFactory(ctx, config, logger); err != nil {
+			return nil, fmt.Errorf("can not build fixture post processor #%d: %w", i, err)
+		}
+	}
 
 	return &fixtureLoader{
-		logger:   logger.WithChannel("fixtures"),
-		settings: settings,
-	}
+		logger:         logger.WithChannel("fixtures"),
+		postProcessors: postProcessors,
+		settings:       settings,
+	}, nil
 }
 
 func (f *fixtureLoader) Load(ctx context.Context, group string, fixtureSets []FixtureSet) error {
@@ -50,6 +61,12 @@ func (f *fixtureLoader) Load(ctx context.Context, group string, fixtureSets []Fi
 
 		if err := fixtureSet.Write(ctx); err != nil {
 			return fmt.Errorf("failed to write fixtures: %w", err)
+		}
+	}
+
+	for _, processor := range f.postProcessors {
+		if err := processor.Process(ctx); err != nil {
+			return fmt.Errorf("can not post process fixtures: %w", err)
 		}
 	}
 

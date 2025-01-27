@@ -42,7 +42,8 @@ func (s *DynamoDbSuite) TestDynamoDb() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
 
 	fss, err := s.dynamoDbFixtureSet1()
 	s.NoError(err)
@@ -91,7 +92,8 @@ func (s *DynamoDbSuite) TestDynamoDbWithPurge() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
 
 	fss, err := s.dynamoDbFixtureSet1()
 	s.NoError(err)
@@ -173,7 +175,8 @@ func (s *DynamoDbSuite) TestDynamoDbKvStore() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
 
 	fss, err := s.dynamoDbKvStoreFixtureSet1()
 	s.NoError(err)
@@ -215,7 +218,8 @@ func (s *DynamoDbSuite) TestDynamoDbKvStoreWithPurge() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
 
 	fss, err := s.dynamoDbKvStoreFixtureSet1()
 	s.NoError(err)

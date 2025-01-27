@@ -24,14 +24,13 @@ type Environment struct {
 	configOptions    []ConfigOption
 	loggerOptions    []LoggerOption
 
-	t             *testing.T
-	ctx           context.Context
-	config        cfg.GosoConf
-	logger        RecordingLogger
-	filesystem    *filesystem
-	fixtureLoader fixtures.FixtureLoader
-	runner        *containerRunner
-	components    *ComponentsContainer
+	t          *testing.T
+	ctx        context.Context
+	config     cfg.GosoConf
+	logger     RecordingLogger
+	filesystem *filesystem
+	runner     *containerRunner
+	components *ComponentsContainer
 }
 
 func NewEnvironment(t *testing.T, options ...Option) (*Environment, error) {
@@ -136,7 +135,6 @@ func (e *Environment) init(options ...Option) error {
 	e.logger = logger
 	e.config = config
 	e.filesystem = newFilesystem(e.t)
-	e.fixtureLoader = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger)
 
 	return nil
 }
@@ -228,22 +226,33 @@ func (e *Environment) StreamOutput(name string) *streamOutputComponent {
 	return e.Component(componentStreamOutput, name).(*streamOutputComponent)
 }
 
-func (e *Environment) LoadFixtureSets(factories ...fixtures.FixtureSetsFactory) error {
+func (e *Environment) LoadFixtureSet(factory fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
+	return e.LoadFixtureSets([]fixtures.FixtureSetsFactory{factory}, postProcessorFactories...)
+}
+
+func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
 	if len(factories) == 0 {
 		return nil
 	}
 
-	for _, factory := range factories {
-		var err error
-		var fixtureSets []fixtures.FixtureSet
+	var err error
+	var loader fixtures.FixtureLoader
+	var fixtureSets, allFixtureSets []fixtures.FixtureSet
 
+	for _, factory := range factories {
 		if fixtureSets, err = factory(e.ctx, e.config, e.logger, "default"); err != nil {
 			return fmt.Errorf("failed to create fixture set: %w", err)
 		}
 
-		if err := e.fixtureLoader.Load(e.ctx, "default", fixtureSets); err != nil {
-			return err
-		}
+		allFixtureSets = append(allFixtureSets, fixtureSets...)
+	}
+
+	if loader, err = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger, postProcessorFactories...); err != nil {
+		return fmt.Errorf("failed to create fixture loader: %w", err)
+	}
+
+	if err = loader.Load(e.ctx, "default", allFixtureSets); err != nil {
+		return fmt.Errorf("failed to load all fixture sets: %w", err)
 	}
 
 	return nil

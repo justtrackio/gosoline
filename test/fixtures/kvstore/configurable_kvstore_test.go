@@ -34,7 +34,8 @@ func (s *ConfigurableKvStoreTestSuite) TestConfigurableKvStore() {
 	envConfig := s.Env().Config()
 	envLogger := s.Env().Logger()
 
-	loader := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
+	s.NoError(err)
 
 	fss, err := s.provideFixtures()
 	s.NoError(err)

@@ -9,7 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-func KernelMiddlewareLoader(group string, factory FixtureSetsFactory) kernel.MiddlewareFactory {
+func KernelMiddlewareLoader(group string, factory FixtureSetsFactory, postProcessorFactories ...PostProcessorFactory) kernel.MiddlewareFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Middleware, error) {
 		settings := unmarshalFixtureLoaderSettings(config)
 		logger = logger.WithChannel("fixtures").WithFields(map[string]any{
@@ -21,9 +21,12 @@ func KernelMiddlewareLoader(group string, factory FixtureSetsFactory) kernel.Mid
 		}
 
 		var err error
+		var loader FixtureLoader
 		var fixtureSets []FixtureSet
 
-		loader := NewFixtureLoader(ctx, config, logger)
+		if loader, err = NewFixtureLoader(ctx, config, logger, postProcessorFactories...); err != nil {
+			return nil, fmt.Errorf("could not create fixture loader: %w", err)
+		}
 
 		if fixtureSets, err = factory(ctx, config, logger, group); err != nil {
 			return nil, fmt.Errorf("can not build fixture sets: %w", err)
