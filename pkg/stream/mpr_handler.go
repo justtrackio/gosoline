@@ -16,8 +16,10 @@ import (
 )
 
 const (
-	PrmHandlerName      = "stream_messages_per_runner"
-	PerRunnerMetricName = "StreamMessages"
+	PrmHandlerName              = "stream_messages_per_runner"
+	PerRunnerMetricName         = "StreamMessages"
+	MessagesAvailableMetricName = "StreamMessagesAvailable"
+	MessagesSentMetricName      = "StreamMessagesSent"
 )
 
 func init() {
@@ -26,6 +28,7 @@ func init() {
 
 type mprHandler struct {
 	calculator.PerRunnerMetricHandler
+	logger log.Logger
 
 	calculatorSettings *calculator.CalculatorSettings
 	handlerSettings    *calculator.PerRunnerMetricSettings
@@ -60,10 +63,11 @@ func MessagesPerRunnerHandlerFactory(ctx context.Context, config cfg.Config, log
 
 	baseHandler := calculator.NewPerRunnerMetricHandlerWithInterfaces(logger, clock.Provider, cwClient, calculatorSettings)
 
-	return NewMessagesPerRunnerHandlerWithInterfaces(clock.Provider, cwClient, baseHandler, calculatorSettings, settings, queueNames), nil
+	return NewMessagesPerRunnerHandlerWithInterfaces(logger, clock.Provider, cwClient, baseHandler, calculatorSettings, settings, queueNames), nil
 }
 
 func NewMessagesPerRunnerHandlerWithInterfaces(
+	logger log.Logger,
 	clock clock.Clock,
 	cwClient gosoCloudwatch.Client,
 	baseHandler calculator.PerRunnerMetricHandler,
@@ -72,6 +76,7 @@ func NewMessagesPerRunnerHandlerWithInterfaces(
 	queueNames []string,
 ) calculator.Handler {
 	return &mprHandler{
+		logger:                 logger,
 		PerRunnerMetricHandler: baseHandler,
 		calculatorSettings:     calculatorSettings,
 		handlerSettings:        handlerSettings,
@@ -81,35 +86,55 @@ func NewMessagesPerRunnerHandlerWithInterfaces(
 	}
 }
 
+func (h *mprHandler) createDatum(metricName string, value float64) *metric.Datum {
+	return &metric.Datum{
+		Priority:   metric.PriorityLow,
+		MetricName: metricName,
+		Value:      value,
+		Unit:       metric.UnitCount,
+	}
+}
+
 func (h *mprHandler) GetMetrics(ctx context.Context) (metric.Data, error) {
 	var err error
-	var messages float64
+	var messagesTotal, messagesSent, messagesAvailable float64
 	var rpr *metric.Datum
 
-	if messages, err = h.getMessagesMetric(ctx); err != nil {
+	if messagesSent, messagesAvailable, err = h.getMessagesMetric(ctx); err != nil {
 		return nil, fmt.Errorf("can not get number of messages: %w", err)
 	}
 
-	if rpr, err = h.CalculatePerRunnerMetrics(ctx, PerRunnerMetricName, messages, h.handlerSettings); err != nil {
-		return nil, fmt.Errorf("can not calculate httpserver per runner metrics: %w", err)
+	messagesTotal = messagesSent + messagesAvailable
+
+	ma := h.createDatum(MessagesAvailableMetricName, messagesAvailable)
+	ms := h.createDatum(MessagesSentMetricName, messagesSent)
+
+	if rpr, err = h.CalculatePerRunnerMetrics(ctx, PerRunnerMetricName, messagesTotal, h.handlerSettings); err != nil {
+		h.logger.Warn("can not calculate metrics per runner for handler: can not calculate httpserver per runner metrics: %s: %T", err.Error(), *h)
+
+		return metric.Data{
+			ma,
+			ms,
+		}, nil
 	}
 
-	return metric.Data{rpr}, nil
+	return metric.Data{
+		rpr,
+		ma,
+		ms,
+	}, nil
 }
 
-func (h *mprHandler) getMessagesMetric(ctx context.Context) (float64, error) {
-	var err error
-	var messagesSent, messagesVisible float64
-
+func (h *mprHandler) getMessagesMetric(ctx context.Context) (messagesSent float64, messagesVisible float64, err error) {
 	if messagesSent, err = h.getQueueMetrics(ctx, "NumberOfMessagesSent", types.StatisticSum); err != nil {
-		return 0, fmt.Errorf("can not get number of messages sent: %w", err)
+		return 0, 0, fmt.Errorf("can not get number of messages sent: %w", err)
 	}
 
 	if messagesVisible, err = h.getQueueMetrics(ctx, "ApproximateNumberOfMessagesVisible", types.StatisticMaximum); err != nil {
-		return 0, fmt.Errorf("can not get number of messages visible: %w", err)
+		return 0, 0, fmt.Errorf("can not get number of messages visible: %w", err)
 	}
 
-	return messagesSent + messagesVisible, nil
+	return messagesSent, messagesVisible, nil
 }
 
 func (h *mprHandler) getQueueMetrics(ctx context.Context, metric string, stat types.Statistic) (float64, error) {

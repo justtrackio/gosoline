@@ -16,6 +16,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
 	"github.com/justtrackio/gosoline/pkg/metric/calculator/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -60,7 +61,7 @@ func (s *MessagesPerRunnerTestSuite) SetupTest() {
 	}
 
 	queueNames := []string{"default"}
-	s.handler = stream.NewMessagesPerRunnerHandlerWithInterfaces(s.clock, s.cwClient, s.baseHandler, calculatorSettings, s.handlerSettings, queueNames)
+	s.handler = stream.NewMessagesPerRunnerHandlerWithInterfaces(s.logger, s.clock, s.cwClient, s.baseHandler, calculatorSettings, s.handlerSettings, queueNames)
 }
 
 func (s *MessagesPerRunnerTestSuite) TearDownTest() {
@@ -80,13 +81,34 @@ func (s *MessagesPerRunnerTestSuite) TestCalculatePerRunnerMetricsError() {
 	s.mockGetSqsMetrics("NumberOfMessagesSent", types.StatisticSum, 100, nil)
 	s.mockGetSqsMetrics("ApproximateNumberOfMessagesVisible", types.StatisticMaximum, 50, nil)
 	s.mockBaseHandler(150, nil, fmt.Errorf("base handler error"))
+	s.logger.EXPECT().Warn("can not calculate metrics per runner for handler: can not calculate httpserver per runner metrics: %s: %T", "base handler error", mock.Anything)
 
-	_, actualError := s.handler.GetMetrics(s.ctx)
-	s.EqualError(actualError, "can not calculate httpserver per runner metrics: base handler error")
+	expectedSmaDatum := &metric.Datum{
+		Priority:   metric.PriorityLow,
+		Timestamp:  time.Time{},
+		MetricName: "StreamMessagesAvailable",
+		Value:      50,
+		Unit:       metric.UnitCount,
+	}
+
+	expectedSmsDatum := &metric.Datum{
+		Priority:   metric.PriorityLow,
+		Timestamp:  time.Time{},
+		MetricName: "StreamMessagesSent",
+		Value:      100,
+		Unit:       metric.UnitCount,
+	}
+
+	data, err := s.handler.GetMetrics(s.ctx)
+	s.Nil(err, "err should be nil for mpr GetMetrics upon calculation error, as we still want to use the stream metrics")
+	s.Equal(metric.Data{
+		expectedSmaDatum,
+		expectedSmsDatum,
+	}, data)
 }
 
 func (s *MessagesPerRunnerTestSuite) TestSuccess() {
-	expectedDatum := &metric.Datum{
+	expectedPrsmDatum := &metric.Datum{
 		Priority:   metric.PriorityHigh,
 		Timestamp:  time.Time{},
 		MetricName: "PerRunnerStreamMessages",
@@ -94,13 +116,33 @@ func (s *MessagesPerRunnerTestSuite) TestSuccess() {
 		Unit:       metric.UnitCountAverage,
 	}
 
+	expectedSmaDatum := &metric.Datum{
+		Priority:   metric.PriorityLow,
+		Timestamp:  time.Time{},
+		MetricName: "StreamMessagesAvailable",
+		Value:      50,
+		Unit:       metric.UnitCount,
+	}
+
+	expectedSmsDatum := &metric.Datum{
+		Priority:   metric.PriorityLow,
+		Timestamp:  time.Time{},
+		MetricName: "StreamMessagesSent",
+		Value:      100,
+		Unit:       metric.UnitCount,
+	}
+
 	s.mockGetSqsMetrics("NumberOfMessagesSent", types.StatisticSum, 100, nil)
 	s.mockGetSqsMetrics("ApproximateNumberOfMessagesVisible", types.StatisticMaximum, 50, nil)
-	s.mockBaseHandler(150, expectedDatum, nil)
+	s.mockBaseHandler(150, expectedPrsmDatum, nil)
 
 	actualData, actualError := s.handler.GetMetrics(s.ctx)
 	s.NoError(actualError)
-	s.Equal(metric.Data{expectedDatum}, actualData)
+	s.Equal(metric.Data{
+		expectedPrsmDatum,
+		expectedSmaDatum,
+		expectedSmsDatum,
+	}, actualData)
 }
 
 func (s *MessagesPerRunnerTestSuite) mockGetSqsMetrics(metricName string, typ types.Statistic, value float64, err error) {
