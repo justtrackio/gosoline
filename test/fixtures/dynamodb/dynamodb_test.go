@@ -19,6 +19,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
+func TestDynamoDbSuite(t *testing.T) {
+	suite.Run(t, new(DynamoDbSuite))
+}
+
 type DynamoDbSuite struct {
 	suite.Suite
 }
@@ -389,8 +393,4 @@ func (s *DynamoDbSuite) dynamoDbKvStoreFixtureSet2() ([]fixtures.FixtureSet, err
 			},
 		},
 	}, true)
-}
-
-func TestDynamoDbSuite(t *testing.T) {
-	suite.Run(t, new(DynamoDbSuite))
 }

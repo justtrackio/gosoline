@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
+	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -228,6 +229,21 @@ func (e *Environment) StreamOutput(name string) *streamOutputComponent {
 
 func (e *Environment) LoadFixtureSet(factory fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
 	return e.LoadFixtureSets([]fixtures.FixtureSetsFactory{factory}, postProcessorFactories...)
+}
+
+func (e *Environment) LifeCyleCreate() error {
+	var err error
+	var manager *dx.LifeCycleManager
+
+	if manager, err = dx.NewLifeCycleManager(e.ctx, e.config, e.logger, clock.Provider); err != nil {
+		return fmt.Errorf("can not create lifecycle manager: %w", err)
+	}
+
+	if err = manager.Create(e.ctx); err != nil {
+		return fmt.Errorf("can not handle the create lifecycle: %w", err)
+	}
+
+	return nil
 }
 
 func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {

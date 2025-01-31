@@ -8,6 +8,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/test/env"
@@ -72,6 +73,7 @@ func runTestCaseApplication(t *testing.T, _ TestingSuite, suiteOptions *suiteOpt
 		application.WithKernelExitHandler(func(code int) {
 			assert.Equal(t, kernel.ExitCodeOk, code, "exit code should be %d", kernel.ExitCodeOk)
 		}),
+		application.WithMiddlewareFactory(dx.KernelLifeCycleManager, kernel.PositionBeginning),
 	}...)
 
 	for name, module := range suiteOptions.appModules {

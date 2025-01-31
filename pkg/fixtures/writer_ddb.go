@@ -32,8 +32,7 @@ func DynamoDbFixtureSetFactory[T any](settings *ddb.Settings, data NamedFixtures
 
 func NewDynamoDbFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *ddb.Settings, options ...DdbWriterOption) (FixtureWriter, error) {
 	ddbSettings := &ddb.Settings{
-		ModelId:    settings.ModelId,
-		AutoCreate: true,
+		ModelId: settings.ModelId,
 		Main: ddb.MainSettings{
 			Model:              settings.Main.Model,
 			ReadCapacityUnits:  1,

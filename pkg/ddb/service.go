@@ -90,10 +90,6 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 
 	settings := s.metadataFactory.GetSettings()
 
-	if !settings.AutoCreate {
-		return nil, fmt.Errorf("table does not exist and auto create is disabled")
-	}
-
 	mainKeySchema, err := s.getKeySchema(metadata.Main)
 	if err != nil {
 		return metadata, fmt.Errorf("can not create main key schema for table %s: %w", s.metadataFactory.GetTableName(), err)

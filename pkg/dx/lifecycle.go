@@ -13,43 +13,64 @@ import (
 
 type (
 	LifeCycleer interface {
-		GetId() string
 		Create(ctx context.Context) error
+		Register(ctx context.Context) (string, any, error)
 		Purge(ctx context.Context) error
 	}
+	LifeCycleerFactory    func(ctx context.Context, config cfg.Config, logger log.Logger) (LifeCycleer, error)
 	lifeCyclePurgerCtxKey struct{}
 )
 
-func AddLifeCycleer(ctx context.Context, logger log.Logger, lc LifeCycleer) error {
+func AddLifeCycleer(ctx context.Context, wr func() (string, LifeCycleerFactory)) error {
 	var err error
-	var manager *lifeCycleManager
+	var manager map[string]LifeCycleerFactory
 
-	if manager, err = provideLifeCycleManager(ctx, logger); err != nil {
+	if manager, err = provideLifeCycleers(ctx); err != nil {
 		return fmt.Errorf("could not add life cycle purger: %w", err)
 	}
 
-	manager.resources[lc.GetId()] = lc
+	id, fc := wr()
+	manager[id] = fc
 
 	return nil
 }
 
-func provideLifeCycleManager(ctx context.Context, logger log.Logger) (*lifeCycleManager, error) {
-	return appctx.Provide(ctx, lifeCyclePurgerCtxKey{}, func() (*lifeCycleManager, error) {
-		return &lifeCycleManager{
-			logger:    logger.WithChannel("lifecycle"),
-			clock:     clock.Provider,
-			resources: map[string]LifeCycleer{},
-		}, nil
+func provideLifeCycleers(ctx context.Context) (map[string]LifeCycleerFactory, error) {
+	return appctx.Provide(ctx, lifeCyclePurgerCtxKey{}, func() (map[string]LifeCycleerFactory, error) {
+		return make(map[string]LifeCycleerFactory), nil
 	})
 }
 
-type lifeCycleManager struct {
+type LifeCycleManager struct {
 	logger    log.Logger
 	clock     clock.Clock
 	resources map[string]LifeCycleer
 }
 
-func (m *lifeCycleManager) Create(ctx context.Context) error {
+func NewLifeCycleManager(ctx context.Context, config cfg.Config, logger log.Logger, clock clock.Clock) (*LifeCycleManager, error) {
+	var err error
+	var factories map[string]LifeCycleerFactory
+
+	manager := &LifeCycleManager{
+		logger:    logger,
+		clock:     clock,
+		resources: map[string]LifeCycleer{},
+	}
+
+	if factories, err = provideLifeCycleers(ctx); err != nil {
+		return nil, fmt.Errorf("could not get lifecyleers: %w", err)
+	}
+
+	for id, fac := range factories {
+		if manager.resources[id], err = fac(ctx, config, logger); err != nil {
+			return nil, fmt.Errorf("could not build lifecycleer with id %q: %w", id, err)
+		}
+	}
+
+	return manager, nil
+}
+
+func (m *LifeCycleManager) Create(ctx context.Context) error {
 	for id, res := range m.resources {
 		now := m.clock.Now()
 
@@ -64,7 +85,25 @@ func (m *lifeCycleManager) Create(ctx context.Context) error {
 	return nil
 }
 
-func (m *lifeCycleManager) Purge(ctx context.Context) error {
+func (m *LifeCycleManager) Register(ctx context.Context) error {
+	var err error
+	var key string
+	var data any
+
+	for id, res := range m.resources {
+		if key, data, err = res.Register(ctx); err != nil {
+			return fmt.Errorf("could not purge resource %q: %w", id, err)
+		}
+
+		if err = appctx.MetadataAppend(ctx, key, data); err != nil {
+			return fmt.Errorf("can not access the appctx metadata: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (m *LifeCycleManager) Purge(ctx context.Context) error {
 	for id, res := range m.resources {
 		now := m.clock.Now()
 
@@ -80,17 +119,27 @@ func (m *lifeCycleManager) Purge(ctx context.Context) error {
 }
 
 func KernelLifeCycleManager(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Middleware, error) {
-	var err error
-	var manager *lifeCycleManager
+	logger = logger.WithChannel("lifecycle-manager")
 
-	if manager, err = provideLifeCycleManager(ctx, logger); err != nil {
-		return nil, fmt.Errorf("could not add life cycle purger: %w", err)
-	}
+	var err error
+	var manager *LifeCycleManager
 
 	return func(next kernel.MiddlewareHandler) kernel.MiddlewareHandler {
 		return func() {
+			if manager, err = NewLifeCycleManager(ctx, config, logger, clock.Provider); err != nil {
+				logger.Error("could not build lifecycle manager: %w", err)
+
+				return
+			}
+
 			if err = manager.Create(ctx); err != nil {
 				logger.Error("can not handle the create lifecycle: %w", err)
+
+				return
+			}
+
+			if err = manager.Register(ctx); err != nil {
+				logger.Error("can not handle the register lifecycle: %w", err)
 
 				return
 			}

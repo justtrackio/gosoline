@@ -92,7 +92,7 @@ func NewConnectionFromSettings(ctx context.Context, logger log.Logger, settings 
 		return nil, fmt.Errorf("can not create connection: %w", err)
 	}
 
-	if err = dx.AddLifeCycleer(ctx, logger, NewLifecycleManager(logger, settings)); err != nil {
+	if err := dx.AddLifeCycleer(ctx, NewLifecycleManager(settings)); err != nil {
 		return nil, err
 	}
 

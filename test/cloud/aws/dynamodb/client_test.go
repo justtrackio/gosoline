@@ -19,6 +19,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func TestClientTestSuite(t *testing.T) {
+	suite.Run(t, new(ClientTestSuite))
+}
+
 type ClientTestSuite struct {
 	suite.Suite
 	clientDefault *awsDdb.Client
@@ -223,8 +227,4 @@ func (s *ClientTestSuite) TestRetryOnTransactionConflict() {
 
 	s.NoError(err)
 	logger.AssertExpectations(s.T())
-}
-
-func TestClientTestSuite(t *testing.T) {
-	suite.Run(t, new(ClientTestSuite))
 }

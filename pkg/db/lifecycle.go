@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -18,45 +20,55 @@ var tableExcludes = []string{
 	"goose_db_version",
 }
 
+func NewLifecycleManager(settings *Settings) func() (string, dx.LifeCycleerFactory) {
+	return func() (string, dx.LifeCycleerFactory) {
+		id := fmt.Sprintf("db/%s", settings.Uri.Database)
+
+		return id, func(ctx context.Context, config cfg.Config, logger log.Logger) (dx.LifeCycleer, error) {
+			var err error
+			var db *sqlx.DB
+
+			fkSettings := *settings
+			fkSettings.Parameters = map[string]string{
+				"FOREIGN_KEY_CHECKS": "0",
+			}
+			for k, v := range settings.Parameters {
+				fkSettings.Parameters[k] = v
+			}
+
+			if db, err = NewConnectionWithInterfaces(logger, &fkSettings); err != nil {
+				return nil, fmt.Errorf("could not connect to database: %w", err)
+			}
+
+			return &LifecycleManager{
+				logger:   logger,
+				db:       db,
+				settings: settings,
+			}, nil
+		}
+	}
+}
+
 type LifecycleManager struct {
 	logger   log.Logger
+	db       *sqlx.DB
 	settings *Settings
 }
 
-func NewLifecycleManager(logger log.Logger, settings *Settings) *LifecycleManager {
-	return &LifecycleManager{
-		logger:   logger,
-		settings: settings,
-	}
-}
-
-func (l *LifecycleManager) GetId() string {
-	return fmt.Sprintf("db/%s", l.settings.Uri.Database)
-}
-
-func (l *LifecycleManager) Create(ctx context.Context) error {
+func (m *LifecycleManager) Create(ctx context.Context) error {
 	return nil
 }
 
-func (l *LifecycleManager) Purge(ctx context.Context) error {
+func (l *LifecycleManager) Register(ctx context.Context) (string, any, error) {
+	return "", nil, nil
+}
+
+func (m *LifecycleManager) Purge(ctx context.Context) error {
 	var err error
-	var db *sqlx.DB
 	var table string
 	var tables []string
 
-	fkSettings := *l.settings
-	fkSettings.Parameters = map[string]string{
-		"FOREIGN_KEY_CHECKS": "0",
-	}
-	for k, v := range l.settings.Parameters {
-		fkSettings.Parameters[k] = v
-	}
-
-	if db, err = NewConnectionWithInterfaces(l.logger, &fkSettings); err != nil {
-		return fmt.Errorf("could not connect to database: %w", err)
-	}
-
-	rows, err := db.QueryContext(ctx, "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?;", l.settings.Uri.Database)
+	rows, err := m.db.QueryContext(ctx, "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?;", m.settings.Uri.Database)
 	if err != nil {
 		return fmt.Errorf("failed to check tables of database: %w", err)
 	}
@@ -90,7 +102,7 @@ func (l *LifecycleManager) Purge(ctx context.Context) error {
 				sqls = append(sqls, fmt.Sprintf("TRUNCATE TABLE %s;", table))
 			}
 
-			if _, err = db.ExecContext(ctx, strings.Join(sqls, " ")); err != nil {
+			if _, err = m.db.ExecContext(ctx, strings.Join(sqls, " ")); err != nil {
 				return fmt.Errorf("could not truncate tables: %w", err)
 			}
 
@@ -102,7 +114,7 @@ func (l *LifecycleManager) Purge(ctx context.Context) error {
 		return fmt.Errorf("error while truncating tables: %w", err)
 	}
 
-	if err = db.Close(); err != nil {
+	if err = m.db.Close(); err != nil {
 		return fmt.Errorf("could not close database: %w", err)
 	}
 

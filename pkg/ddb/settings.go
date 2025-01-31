@@ -12,7 +12,6 @@ const defaultMaxWaitSeconds = 60
 type Settings struct {
 	ModelId             mdl.ModelId
 	TableNamingSettings TableNamingSettings
-	AutoCreate          bool
 	DisableTracing      bool
 	ClientName          string
 	Main                MainSettings
