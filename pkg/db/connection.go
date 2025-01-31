@@ -10,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -61,7 +62,7 @@ func ProvideConnection(ctx context.Context, config cfg.Config, logger log.Logger
 	return ProvideConnectionFromSettings(ctx, logger, settings)
 }
 
-func NewConnection(config cfg.Config, logger log.Logger, name string) (*sqlx.DB, error) {
+func NewConnection(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*sqlx.DB, error) {
 	var err error
 	var con *sqlx.DB
 	var settings *Settings
@@ -70,7 +71,7 @@ func NewConnection(config cfg.Config, logger log.Logger, name string) (*sqlx.DB,
 		return nil, err
 	}
 
-	if con, err = NewConnectionFromSettings(logger, settings); err != nil {
+	if con, err = NewConnectionFromSettings(ctx, logger, settings); err != nil {
 		return nil, err
 	}
 
@@ -79,16 +80,20 @@ func NewConnection(config cfg.Config, logger log.Logger, name string) (*sqlx.DB,
 
 func ProvideConnectionFromSettings(ctx context.Context, logger log.Logger, settings *Settings) (*sqlx.DB, error) {
 	return appctx.Provide(ctx, connectionCtxKey(fmt.Sprint(settings)), func() (*sqlx.DB, error) {
-		return NewConnectionFromSettings(logger, settings)
+		return NewConnectionFromSettings(ctx, logger, settings)
 	})
 }
 
-func NewConnectionFromSettings(logger log.Logger, settings *Settings) (*sqlx.DB, error) {
+func NewConnectionFromSettings(ctx context.Context, logger log.Logger, settings *Settings) (*sqlx.DB, error) {
 	var err error
 	var connection *sqlx.DB
 
 	if connection, err = NewConnectionWithInterfaces(logger, settings); err != nil {
 		return nil, fmt.Errorf("can not create connection: %w", err)
+	}
+
+	if err = dx.AddLifeCycleer(ctx, logger, NewLifecycleManager(logger, settings)); err != nil {
+		return nil, err
 	}
 
 	if err = runMigrations(logger, settings, connection.DB); err != nil {

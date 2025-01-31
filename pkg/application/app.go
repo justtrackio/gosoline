@@ -7,6 +7,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -61,6 +62,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithProfiling,
 		WithTracing,
 		WithUTCClock(true),
+		WithMiddlewareFactory(dx.KernelLifeCycleManager, kernel.PositionBeginning),
 	}
 
 	options = append(defaults, options...)

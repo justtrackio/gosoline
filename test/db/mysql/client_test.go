@@ -102,11 +102,12 @@ func (s *ClientTestSuite) getClients(name string, notifier exec.Notify) (db.Clie
 	var err error
 	var connection *sqlx.DB
 
+	ctx := s.Env().Context()
 	config := s.Env().Config()
 	logger := s.Env().Logger()
 
 	proxy := s.Env().MySql(name).Toxiproxy()
-	connection, err = db.NewConnection(config, logger, name)
+	connection, err = db.NewConnection(ctx, config, logger, name)
 	s.FailIfError(err)
 
 	executor := db.NewExecutor(config, logger, name, "api", notifier)

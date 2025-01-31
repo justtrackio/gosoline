@@ -99,9 +99,13 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 		return nil, fmt.Errorf("could not create ddb service for table %s: %w", metadataFactory.GetTableName(), err)
 	}
 
-	if _, err = svc.CreateTable(ctx); err != nil {
-		return nil, fmt.Errorf("could not create ddb table %s: %w", metadataFactory.GetTableName(), err)
+	if err = dx.AddLifeCycleer(ctx, logger, NewLifecycleManager(svc)); err != nil {
+		return nil, fmt.Errorf("could not add lifecycle for table %s: %w", metadataFactory.GetTableName(), err)
 	}
+
+	//if _, err = svc.CreateTable(ctx); err != nil {
+	//	return nil, fmt.Errorf("could not create ddb table %s: %w", metadataFactory.GetTableName(), err)
+	//}
 
 	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, settings.ClientName, optFns...); err != nil {
 		return nil, fmt.Errorf("can not create dynamodb client: %w", err)
