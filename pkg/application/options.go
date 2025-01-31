@@ -30,7 +30,7 @@ type (
 	ConfigOption func(config cfg.GosoConf) error
 	LoggerOption func(config cfg.GosoConf, logger log.GosoLogger) error
 	KernelOption func(config cfg.GosoConf) kernelPkg.Option
-	SetupOption  func(config cfg.GosoConf, logger log.GosoLogger) error
+	SetupOption  func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error
 )
 
 func WithHttpHealthCheck(app *App) {
@@ -218,21 +218,33 @@ func WithHttpServerShares(app *App) {
 	})
 }
 
-func WithFixtureSetFactory(group string, factory fixtures.FixtureSetsFactory, postprocessorFactories ...fixtures.PostProcessorFactory) Option {
+func WithFixtureSetFactory(group string, factory fixtures.FixtureSetsFactory) Option {
 	return func(app *App) {
-		app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-			return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(group, factory, postprocessorFactories...), kernelPkg.PositionEnd)
+		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+			return fixtures.AddFixtureSetFactory(ctx, group, factory)
 		})
 	}
 }
 
-func WithFixtureSetFactories(factories map[string]fixtures.FixtureSetsFactory, postprocessorFactories ...fixtures.PostProcessorFactory) Option {
+func WithFixtureSetFactories(factories map[string]fixtures.FixtureSetsFactory) Option {
 	return func(app *App) {
-		for group, factory := range factories {
-			app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-				return kernelPkg.WithMiddlewareFactory(fixtures.KernelMiddlewareLoader(group, factory, postprocessorFactories...), kernelPkg.PositionEnd)
-			})
-		}
+		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+			for group, factory := range factories {
+				if err := fixtures.AddFixtureSetFactory(ctx, group, factory); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+	}
+}
+
+func WithFixtureSetPostProcessorFactories(factories ...fixtures.PostProcessorFactory) Option {
+	return func(app *App) {
+		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+			return fixtures.AddFixtureSetPostProcessorFactory(ctx, factories...)
+		})
 	}
 }
 
@@ -381,7 +393,7 @@ func WithTracing(app *App) {
 		return logger.Option(options...)
 	})
 
-	app.addSetupOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+	app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
 		strategy := tracing.NewTraceIdErrorWarningStrategy(logger)
 		stream.AddDefaultEncodeHandler(tracing.NewMessageWithTraceEncoder(strategy))
 
@@ -415,7 +427,7 @@ func WithModuleMultiFactory(factory kernelPkg.ModuleMultiFactory) Option {
 
 func WithUTCClock(useUTC bool) Option {
 	return func(app *App) {
-		app.addSetupOption(func(config cfg.GosoConf, logger log.GosoLogger) error {
+		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
 			clock.WithUseUTC(useUTC)
 
 			return nil

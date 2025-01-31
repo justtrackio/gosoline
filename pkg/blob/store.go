@@ -2,7 +2,6 @@ package blob
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -13,9 +12,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
@@ -76,7 +75,6 @@ type Store interface {
 	BucketName() string
 	Copy(batch CopyBatch)
 	CopyOne(obj *CopyObject) error
-	CreateBucket(ctx context.Context) error
 	Delete(batch Batch)
 	DeleteBucket(ctx context.Context) error
 	DeleteOne(obj *Object) error
@@ -131,18 +129,11 @@ func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name st
 		return nil, fmt.Errorf("can not create s3 client with name %s: %w", settings.ClientName, err)
 	}
 
-	store := NewStoreWithInterfaces(logger, channels, s3Client, settings)
-
-	autoCreate := dx.ShouldAutoCreate(config)
-	if !autoCreate {
-		return store, nil
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings)); err != nil {
+		return nil, fmt.Errorf("can not add life cycle manager: %w", err)
 	}
 
-	if err = store.CreateBucket(ctx); err != nil {
-		return nil, fmt.Errorf("can not create bucket: %w", err)
-	}
-
-	return store, nil
+	return NewStoreWithInterfaces(logger, channels, s3Client, settings), nil
 }
 
 func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, client gosoS3.Client, settings *Settings) Store {
@@ -158,33 +149,6 @@ func NewStoreWithInterfaces(logger log.Logger, channels *BatchRunnerChannels, cl
 
 func (s *s3Store) BucketName() string {
 	return *s.bucket
-}
-
-func (s *s3Store) CreateBucket(ctx context.Context) error {
-	if _, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: s.bucket}); err == nil {
-		return nil
-	}
-
-	_, err := s.client.CreateBucket(ctx, &s3.CreateBucketInput{
-		Bucket: s.bucket,
-		CreateBucketConfiguration: &types.CreateBucketConfiguration{
-			LocationConstraint: types.BucketLocationConstraint(s.region), // This is required when using region specific endpoints
-		},
-	})
-
-	if isBucketAlreadyExistsError(err) {
-		s.logger.Info("s3 bucket %s did already exist", *s.bucket)
-
-		return nil
-	}
-
-	if err != nil {
-		return fmt.Errorf("could not create s3 bucket %s: %w", *s.bucket, err)
-	}
-
-	s.logger.Info("created s3 bucket %s", *s.bucket)
-
-	return nil
 }
 
 func (s *s3Store) ReadOne(obj *Object) error {
@@ -350,17 +314,6 @@ func (o *CopyObject) getSource() string {
 	}
 
 	return fmt.Sprintf("%s%s", mdl.EmptyIfNil(o.SourceBucket), sourceKey)
-}
-
-func isBucketAlreadyExistsError(err error) bool {
-	var bucketAlreadyExists *types.BucketAlreadyExists
-	var bucketAlreadyOwnedByYou *types.BucketAlreadyOwnedByYou
-
-	if errors.As(err, &bucketAlreadyExists) || errors.As(err, &bucketAlreadyOwnedByYou) {
-		return true
-	}
-
-	return false
 }
 
 func getStoreSettings(config cfg.Config, name string) *Settings {

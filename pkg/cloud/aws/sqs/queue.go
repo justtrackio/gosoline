@@ -16,6 +16,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
@@ -96,31 +97,14 @@ func ProvideQueue(ctx context.Context, config cfg.Config, logger log.Logger, set
 func NewQueue(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...ClientOption) (Queue, error) {
 	var err error
 	var client Client
-	var srv Service
-	var props *Properties
+	var props *Properties = &Properties{}
 
 	if client, err = ProvideClient(ctx, config, logger, settings.ClientName, optFns...); err != nil {
 		return nil, fmt.Errorf("can not create sqs client %s: %w", settings.ClientName, err)
 	}
 
-	if srv, err = NewService(ctx, config, logger, settings.ClientName, optFns...); err != nil {
-		return nil, fmt.Errorf("can not create service: %w", err)
-	}
-
-	if props, err = srv.CreateQueue(ctx, settings); err != nil {
-		return nil, fmt.Errorf("could not create or get properties of queue %s: %w", settings.QueueName, err)
-	}
-
-	metadata := QueueMetadata{
-		AwsClientName: settings.ClientName,
-		QueueArn:      props.Arn,
-		QueueName:     settings.QueueName,
-		QueueNameFull: props.Name,
-		QueueUrl:      props.Url,
-	}
-
-	if err = appctx.MetadataAppend(ctx, MetadataKeyQueues, metadata); err != nil {
-		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings, props, optFns...)); err != nil {
+		return nil, fmt.Errorf("could not add lifecycle for sqs queue %s: %w", settings.QueueName, err)
 	}
 
 	return NewQueueWithInterfaces(logger, client, props), nil
@@ -189,10 +173,11 @@ func (q *queue) SendBatch(ctx context.Context, messages []*Message) error {
 		messageChunks := funk.Chunk(messages, chunkSize)
 
 		for _, msgChunk := range messageChunks {
-			if err = q.SendBatch(ctx, msgChunk); err != nil {
+			if err := q.SendBatch(ctx, msgChunk); err != nil {
 				return err
 			}
 		}
+
 		return nil
 	}
 

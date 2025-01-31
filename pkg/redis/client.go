@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
 const (
@@ -21,7 +22,7 @@ type ErrCmder interface {
 
 type Z struct {
 	Score  float64
-	Member interface{}
+	Member any
 }
 
 type ZAddArgs struct {
@@ -37,8 +38,8 @@ type ZAddArgs struct {
 
 type ZRangeArgs struct {
 	Key     string
-	Start   interface{}
-	Stop    interface{}
+	Start   any
+	Stop    any
 	ByScore bool
 	ByLex   bool
 	Rev     bool
@@ -63,19 +64,19 @@ type Client interface {
 	Expire(ctx context.Context, key string, ttl time.Duration) (bool, error)
 	FlushDB(ctx context.Context) (string, error)
 	Get(ctx context.Context, key string) (string, error)
-	GetDel(ctx context.Context, key string) (interface{}, error)
-	GetSet(ctx context.Context, key string, value interface{}) (interface{}, error)
-	MGet(ctx context.Context, keys ...string) ([]interface{}, error)
-	MSet(ctx context.Context, pairs ...interface{}) error
-	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
-	SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error)
+	GetDel(ctx context.Context, key string) (any, error)
+	GetSet(ctx context.Context, key string, value any) (any, error)
+	MGet(ctx context.Context, keys ...string) ([]any, error)
+	MSet(ctx context.Context, pairs ...any) error
+	Set(ctx context.Context, key string, value any, ttl time.Duration) error
+	SetNX(ctx context.Context, key string, value any, ttl time.Duration) (bool, error)
 
 	BLPop(ctx context.Context, timeout time.Duration, keys ...string) ([]string, error)
 	LPop(ctx context.Context, key string) (string, error)
 	LLen(ctx context.Context, key string) (int64, error)
-	LPush(ctx context.Context, key string, values ...interface{}) (int64, error)
-	LRem(ctx context.Context, key string, count int64, value interface{}) (int64, error)
-	RPush(ctx context.Context, key string, values ...interface{}) (int64, error)
+	LPush(ctx context.Context, key string, values ...any) (int64, error)
+	LRem(ctx context.Context, key string, count int64, value any) (int64, error)
+	RPush(ctx context.Context, key string, values ...any) (int64, error)
 	RPop(ctx context.Context, key string) (string, error)
 
 	HDel(ctx context.Context, key string, fields ...string) (int64, error)
@@ -83,22 +84,22 @@ type Client interface {
 	HGet(ctx context.Context, key string, field string) (string, error)
 	HGetAll(ctx context.Context, key string) (map[string]string, error)
 	HKeys(ctx context.Context, key string) ([]string, error)
-	HMGet(ctx context.Context, key string, fields ...string) ([]interface{}, error)
-	HMSet(ctx context.Context, key string, pairs map[string]interface{}) error
-	HSet(ctx context.Context, key string, field string, value interface{}) error
-	HSetNX(ctx context.Context, key string, field string, value interface{}) (bool, error)
+	HMGet(ctx context.Context, key string, fields ...string) ([]any, error)
+	HMSet(ctx context.Context, key string, pairs map[string]any) error
+	HSet(ctx context.Context, key string, field string, value any) error
+	HSetNX(ctx context.Context, key string, field string, value any) (bool, error)
 
-	SAdd(ctx context.Context, key string, values ...interface{}) (int64, error)
+	SAdd(ctx context.Context, key string, values ...any) (int64, error)
 	SCard(ctx context.Context, key string) (int64, error)
 	SDiff(ctx context.Context, keys ...string) ([]string, error)
 	SDiffStore(ctx context.Context, destination string, keys ...string) (int64, error)
 	SInter(ctx context.Context, keys ...string) ([]string, error)
 	SInterStore(ctx context.Context, destination string, keys ...string) (int64, error)
 	SMembers(ctx context.Context, key string) ([]string, error)
-	SIsMember(ctx context.Context, key string, value interface{}) (bool, error)
-	SMove(ctx context.Context, sourceKey string, destKey string, member interface{}) (bool, error)
+	SIsMember(ctx context.Context, key string, value any) (bool, error)
+	SMove(ctx context.Context, sourceKey string, destKey string, member any) (bool, error)
 	SPop(ctx context.Context, key string) (string, error)
-	SRem(ctx context.Context, key string, values ...interface{}) (int64, error)
+	SRem(ctx context.Context, key string, values ...any) (int64, error)
 	SRandMember(ctx context.Context, key string) (string, error)
 	SUnion(ctx context.Context, keys ...string) ([]string, error)
 	SUnionStore(ctx context.Context, destination string, keys ...string) (int64, error)
@@ -108,7 +109,7 @@ type Client interface {
 	Incr(ctx context.Context, key string) (int64, error)
 	IncrBy(ctx context.Context, key string, amount int64) (int64, error)
 
-	PFAdd(ctx context.Context, key string, els ...interface{}) (int64, error)
+	PFAdd(ctx context.Context, key string, els ...any) (int64, error)
 	PFCount(ctx context.Context, keys ...string) (int64, error)
 	PFMerge(ctx context.Context, dest string, keys ...string) (string, error)
 
@@ -140,7 +141,7 @@ type redisClient struct {
 	settings *Settings
 }
 
-func NewClient(config cfg.Config, logger log.Logger, name string) (Client, error) {
+func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
 	settings := ReadSettings(config, name)
 
 	logger = logger.WithFields(log.Fields{
@@ -157,6 +158,10 @@ func NewClient(config cfg.Config, logger log.Logger, name string) (Client, error
 	baseClient := baseRedis.NewClient(&baseRedis.Options{
 		Dialer: dialer,
 	})
+
+	if err := reslife.AddLifeCycleer(ctx, NewLifecycleManager(name)); err != nil {
+		return nil, fmt.Errorf("failed to add redis lifecycle manager: %w", err)
+	}
 
 	return NewClientWithInterfaces(logger, baseClient, executor, settings), nil
 }
@@ -200,7 +205,7 @@ func (c *redisClient) DBSize(ctx context.Context) (int64, error) {
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (c *redisClient) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
 	_, err := c.execute(ctx, func() ErrCmder {
 		return c.base.Set(ctx, key, value, expiration)
 	})
@@ -208,7 +213,7 @@ func (c *redisClient) Set(ctx context.Context, key string, value interface{}, ex
 	return err
 }
 
-func (c *redisClient) SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) (bool, error) {
+func (c *redisClient) SetNX(ctx context.Context, key string, value any, expiration time.Duration) (bool, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.SetNX(ctx, key, value, expiration)
 	})
@@ -218,7 +223,7 @@ func (c *redisClient) SetNX(ctx context.Context, key string, value interface{}, 
 	return val, err
 }
 
-func (c *redisClient) MSet(ctx context.Context, pairs ...interface{}) error {
+func (c *redisClient) MSet(ctx context.Context, pairs ...any) error {
 	_, err := c.execute(ctx, func() ErrCmder {
 		return c.base.MSet(ctx, pairs...)
 	})
@@ -226,7 +231,7 @@ func (c *redisClient) MSet(ctx context.Context, pairs ...interface{}) error {
 	return err
 }
 
-func (c *redisClient) HMSet(ctx context.Context, key string, pairs map[string]interface{}) error {
+func (c *redisClient) HMSet(ctx context.Context, key string, pairs map[string]any) error {
 	_, err := c.execute(ctx, func() ErrCmder {
 		return c.base.HMSet(ctx, key, pairs)
 	})
@@ -242,7 +247,7 @@ func (c *redisClient) Get(ctx context.Context, key string) (string, error) {
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
-func (c *redisClient) MGet(ctx context.Context, keys ...string) ([]interface{}, error) {
+func (c *redisClient) MGet(ctx context.Context, keys ...string) ([]any, error) {
 	cmd, err := c.execute(ctx, func() ErrCmder {
 		return c.base.MGet(ctx, keys...)
 	})
@@ -250,7 +255,7 @@ func (c *redisClient) MGet(ctx context.Context, keys ...string) ([]interface{}, 
 	return cmd.(*baseRedis.SliceCmd).Val(), err
 }
 
-func (c *redisClient) HMGet(ctx context.Context, key string, fields ...string) ([]interface{}, error) {
+func (c *redisClient) HMGet(ctx context.Context, key string, fields ...string) ([]any, error) {
 	cmd, err := c.execute(ctx, func() ErrCmder {
 		return c.base.HMGet(ctx, key, fields...)
 	})
@@ -290,7 +295,7 @@ func (c *redisClient) LLen(ctx context.Context, key string) (int64, error) {
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) LPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
+func (c *redisClient) LPush(ctx context.Context, key string, values ...any) (int64, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.LPush(ctx, key, values...)
 	})
@@ -300,7 +305,7 @@ func (c *redisClient) LPush(ctx context.Context, key string, values ...interface
 	return val, err
 }
 
-func (c *redisClient) LRem(ctx context.Context, key string, count int64, value interface{}) (int64, error) {
+func (c *redisClient) LRem(ctx context.Context, key string, count int64, value any) (int64, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.LRem(ctx, key, count, value)
 	})
@@ -310,7 +315,7 @@ func (c *redisClient) LRem(ctx context.Context, key string, count int64, value i
 	return val, err
 }
 
-func (c *redisClient) RPush(ctx context.Context, key string, values ...interface{}) (int64, error) {
+func (c *redisClient) RPush(ctx context.Context, key string, values ...any) (int64, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.RPush(ctx, key, values...)
 	})
@@ -352,7 +357,7 @@ func (c *redisClient) HGet(ctx context.Context, key, field string) (string, erro
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
-func (c *redisClient) HSet(ctx context.Context, key, field string, value interface{}) error {
+func (c *redisClient) HSet(ctx context.Context, key, field string, value any) error {
 	_, err := c.execute(ctx, func() ErrCmder {
 		return c.base.HSet(ctx, key, field, value)
 	})
@@ -376,7 +381,7 @@ func (c *redisClient) HGetAll(ctx context.Context, key string) (map[string]strin
 	return cmd.(*baseRedis.StringStringMapCmd).Val(), err
 }
 
-func (c *redisClient) HSetNX(ctx context.Context, key, field string, value interface{}) (bool, error) {
+func (c *redisClient) HSetNX(ctx context.Context, key, field string, value any) (bool, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.HSetNX(ctx, key, field, value)
 	})
@@ -386,7 +391,7 @@ func (c *redisClient) HSetNX(ctx context.Context, key, field string, value inter
 	return val, err
 }
 
-func (c *redisClient) SAdd(ctx context.Context, key string, values ...interface{}) (int64, error) {
+func (c *redisClient) SAdd(ctx context.Context, key string, values ...any) (int64, error) {
 	cmd, err := c.execute(ctx, func() ErrCmder {
 		return c.base.SAdd(ctx, key, values...)
 	})
@@ -444,7 +449,7 @@ func (c *redisClient) SMembers(ctx context.Context, key string) ([]string, error
 	return val, err
 }
 
-func (c *redisClient) SIsMember(ctx context.Context, key string, value interface{}) (bool, error) {
+func (c *redisClient) SIsMember(ctx context.Context, key string, value any) (bool, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.SIsMember(ctx, key, value)
 	})
@@ -454,7 +459,7 @@ func (c *redisClient) SIsMember(ctx context.Context, key string, value interface
 	return val, err
 }
 
-func (c *redisClient) SMove(ctx context.Context, sourceKey string, destKey string, member interface{}) (bool, error) {
+func (c *redisClient) SMove(ctx context.Context, sourceKey string, destKey string, member any) (bool, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.SMove(ctx, sourceKey, destKey, member)
 	})
@@ -474,7 +479,7 @@ func (c *redisClient) SPop(ctx context.Context, key string) (string, error) {
 	return val, err
 }
 
-func (c *redisClient) SRem(ctx context.Context, key string, values ...interface{}) (int64, error) {
+func (c *redisClient) SRem(ctx context.Context, key string, values ...any) (int64, error) {
 	res, err := c.execute(ctx, func() ErrCmder {
 		return c.base.SRem(ctx, key, values...)
 	})
@@ -550,7 +555,7 @@ func (c *redisClient) Expire(ctx context.Context, key string, ttl time.Duration)
 	return cmd.(*baseRedis.BoolCmd).Val(), err
 }
 
-func (c *redisClient) PFAdd(ctx context.Context, key string, els ...interface{}) (int64, error) {
+func (c *redisClient) PFAdd(ctx context.Context, key string, els ...any) (int64, error) {
 	cmd, err := c.execute(ctx, func() ErrCmder {
 		return c.base.PFAdd(ctx, key, els...)
 	})
@@ -616,9 +621,9 @@ func (c *redisClient) ZCard(ctx context.Context, key string) (int64, error) {
 	return cmd.(*baseRedis.IntCmd).Val(), err
 }
 
-func (c *redisClient) ZCount(ctx context.Context, key string, min string, max string) (int64, error) {
+func (c *redisClient) ZCount(ctx context.Context, key string, minVal string, maxVal string) (int64, error) {
 	cmd, err := c.execute(ctx, func() ErrCmder {
-		return c.base.ZCount(ctx, key, min, max)
+		return c.base.ZCount(ctx, key, minVal, maxVal)
 	})
 
 	return cmd.(*baseRedis.IntCmd).Val(), err
@@ -729,7 +734,7 @@ func (c *redisClient) IsAlive(ctx context.Context) bool {
 	return alive && err == nil
 }
 
-func (c *redisClient) GetDel(ctx context.Context, key string) (interface{}, error) {
+func (c *redisClient) GetDel(ctx context.Context, key string) (any, error) {
 	cmd, err := c.execute(ctx, func() ErrCmder {
 		return c.base.GetDel(ctx, key)
 	})
@@ -737,7 +742,7 @@ func (c *redisClient) GetDel(ctx context.Context, key string) (interface{}, erro
 	return cmd.(*baseRedis.StringCmd).Val(), err
 }
 
-func (c *redisClient) GetSet(ctx context.Context, key string, value interface{}) (interface{}, error) {
+func (c *redisClient) GetSet(ctx context.Context, key string, value any) (any, error) {
 	cmd, err := c.execute(ctx, func() ErrCmder {
 		return c.base.GetSet(ctx, key, value)
 	})
@@ -749,8 +754,8 @@ func (c *redisClient) Pipeline() Pipeliner {
 	return c.base.Pipeline()
 }
 
-func (c *redisClient) execute(ctx context.Context, wrappedCmd func() ErrCmder) (interface{}, error) {
-	return c.executor.Execute(ctx, func(ctx context.Context) (interface{}, error) {
+func (c *redisClient) execute(ctx context.Context, wrappedCmd func() ErrCmder) (any, error) {
+	return c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		cmder := wrappedCmd()
 
 		return cmder, cmder.Err()
@@ -777,6 +782,7 @@ func (c *redisClient) toGoRedisZs(zs []Z) []baseRedis.Z {
 
 func (c *redisClient) toGoRedisZAddArgs(args ZAddArgs) baseRedis.ZAddArgs {
 	zs := c.toGoRedisZs(args.Members)
+
 	return baseRedis.ZAddArgs{
 		NX:      args.NX,
 		XX:      args.XX,

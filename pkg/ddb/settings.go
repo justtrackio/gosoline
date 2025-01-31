@@ -12,7 +12,6 @@ const defaultMaxWaitSeconds = 60
 type Settings struct {
 	ModelId             mdl.ModelId
 	TableNamingSettings TableNamingSettings
-	AutoCreate          bool
 	DisableTracing      bool
 	ClientName          string
 	Main                MainSettings
@@ -21,7 +20,7 @@ type Settings struct {
 }
 
 type MainSettings struct {
-	Model              interface{}
+	Model              any
 	StreamView         types.StreamViewType
 	ReadCapacityUnits  int64
 	WriteCapacityUnits int64
@@ -29,12 +28,12 @@ type MainSettings struct {
 
 type LocalSettings struct {
 	Name  string
-	Model interface{}
+	Model any
 }
 
 type GlobalSettings struct {
 	Name               string
-	Model              interface{}
+	Model              any
 	ReadCapacityUnits  int64
 	WriteCapacityUnits int64
 }
@@ -42,7 +41,7 @@ type GlobalSettings struct {
 type SimpleSettings struct {
 	ModelId            mdl.ModelId
 	AutoCreate         bool
-	Model              interface{}
+	Model              any
 	StreamView         string
 	ReadCapacityUnits  int64
 	WriteCapacityUnits int64

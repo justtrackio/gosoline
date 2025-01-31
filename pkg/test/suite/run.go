@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -158,6 +157,11 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 	envOptions = append(envOptions, env.WithConfigMap(map[string]any{
 		"env":              "test",
 		"fixtures.enabled": true,
+		"resource_lifecycles": map[string]any{
+			"purge": map[string]any{
+				"enabled": true,
+			},
+		},
 	}))
 
 	environment, err := env.NewEnvironment(t, envOptions...)
@@ -178,13 +182,6 @@ func runTestCaseWithSharedEnvironment(t *testing.T, suite TestingSuite, suiteOpt
 			assert.FailNow(t, "failed to execute additional environment setup", err.Error())
 		}
 	}
-
-	start := time.Now()
-	if err = environment.LoadFixtureSets(suiteOptions.fixtureSetFactories, suiteOptions.fixtureSetPostProcessorFactories...); err != nil {
-		assert.FailNow(t, "failed to load fixtures from factories", err.Error())
-	}
-
-	environment.Logger().WithChannel("fixtures").Debug("loaded fixtures in %s", time.Since(start))
 
 	for name, testCase := range testCases {
 		runTestCaseInSuite(t, suite, func() {

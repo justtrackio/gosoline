@@ -29,7 +29,7 @@ func NewDataImporter(ctx context.Context, config cfg.Config, logger log.Logger, 
 	var err error
 	var settings *Settings
 
-	if settings, err = readSettings(config, name); err != nil {
+	if settings, err = ReadSettings(config, name); err != nil {
 		return nil, fmt.Errorf("failed to read settings: %w", err)
 	}
 

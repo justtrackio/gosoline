@@ -13,7 +13,8 @@ cloud:
 fixtures:
   providers:
     default:
-      dataset_name: testcase3
+      dataset:
+        id: 3
       host: ~
       path: path/to/fixture/data
 

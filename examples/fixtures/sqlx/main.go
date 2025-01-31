@@ -23,7 +23,7 @@ type User struct {
 }
 
 func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
-	writer, err := fixtures.NewMysqlSqlxFixtureWriter(ctx, config, logger, &fixtures.MysqlSqlxMetaData{TableName: "users"})
+	writer, err := db.NewMysqlSqlxFixtureWriter(ctx, config, logger, &db.MysqlSqlxMetaData{TableName: "users"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to provide writers: %w", err)
 	}
@@ -45,7 +45,7 @@ func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logge
 				IsActive: true,
 			},
 		},
-	}, writer, fixtures.WithPurge(true))
+	}, writer)
 
 	return []fixtures.FixtureSet{
 		fs,

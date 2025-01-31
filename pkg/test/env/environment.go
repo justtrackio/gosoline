@@ -13,6 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,6 +29,7 @@ type Environment struct {
 	ctx        context.Context
 	config     cfg.GosoConf
 	logger     RecordingLogger
+	resManager *reslife.LifeCycleManager
 	filesystem *filesystem
 	runner     *containerRunner
 	components *ComponentsContainer
@@ -136,6 +138,10 @@ func (e *Environment) init(options ...Option) error {
 	e.config = config
 	e.filesystem = newFilesystem(e.t)
 
+	if e.resManager, err = reslife.NewLifeCycleManager(e.ctx, e.config, e.logger); err != nil {
+		return fmt.Errorf("can not create lifecycle manager: %w", err)
+	}
+
 	return nil
 }
 
@@ -230,6 +236,18 @@ func (e *Environment) LoadFixtureSet(factory fixtures.FixtureSetsFactory, postPr
 	return e.LoadFixtureSets([]fixtures.FixtureSetsFactory{factory}, postProcessorFactories...)
 }
 
+func (e *Environment) LifeCyleCreate() error {
+	if err := e.resManager.Create(e.ctx); err != nil {
+		return fmt.Errorf("can not handle the create lifecycle: %w", err)
+	}
+
+	if err := e.resManager.Init(e.ctx); err != nil {
+		return fmt.Errorf("can not handle the init lifecycle: %w", err)
+	}
+
+	return nil
+}
+
 func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, postProcessorFactories ...fixtures.PostProcessorFactory) error {
 	if len(factories) == 0 {
 		return nil
@@ -237,21 +255,36 @@ func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, p
 
 	var err error
 	var loader fixtures.FixtureLoader
-	var fixtureSets, allFixtureSets []fixtures.FixtureSet
+	var fixtureSets []fixtures.FixtureSet
+
+	allFixtureSets := map[string][]fixtures.FixtureSet{
+		"default": {},
+	}
+	postProcessors := make([]fixtures.PostProcessor, len(postProcessorFactories))
 
 	for _, factory := range factories {
 		if fixtureSets, err = factory(e.ctx, e.config, e.logger, "default"); err != nil {
 			return fmt.Errorf("failed to create fixture set: %w", err)
 		}
 
-		allFixtureSets = append(allFixtureSets, fixtureSets...)
+		allFixtureSets["default"] = append(allFixtureSets["default"], fixtureSets...)
 	}
 
-	if loader, err = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger, postProcessorFactories...); err != nil {
+	for i, factory := range postProcessorFactories {
+		if postProcessors[i], err = factory(e.ctx, e.config, e.logger); err != nil {
+			return fmt.Errorf("failed to create post processor: %w", err)
+		}
+	}
+
+	if err := e.LifeCyleCreate(); err != nil {
+		return fmt.Errorf("can not handle the lifecycle: %w", err)
+	}
+
+	if loader, err = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger, allFixtureSets, postProcessors); err != nil {
 		return fmt.Errorf("failed to create fixture loader: %w", err)
 	}
 
-	if err = loader.Load(e.ctx, "default", allFixtureSets); err != nil {
+	if err = loader.Load(e.ctx); err != nil {
 		return fmt.Errorf("failed to load all fixture sets: %w", err)
 	}
 

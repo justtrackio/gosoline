@@ -5,7 +5,6 @@ package mocks
 import (
 	context "context"
 
-	fixtures "github.com/justtrackio/gosoline/pkg/fixtures"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -22,17 +21,17 @@ func (_m *FixtureLoader) EXPECT() *FixtureLoader_Expecter {
 	return &FixtureLoader_Expecter{mock: &_m.Mock}
 }
 
-// Load provides a mock function with given fields: ctx, group, fixtureSets
-func (_m *FixtureLoader) Load(ctx context.Context, group string, fixtureSets []fixtures.FixtureSet) error {
-	ret := _m.Called(ctx, group, fixtureSets)
+// Load provides a mock function with given fields: ctx
+func (_m *FixtureLoader) Load(ctx context.Context) error {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Load")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, []fixtures.FixtureSet) error); ok {
-		r0 = rf(ctx, group, fixtureSets)
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -47,15 +46,13 @@ type FixtureLoader_Load_Call struct {
 
 // Load is a helper method to define mock.On call
 //   - ctx context.Context
-//   - group string
-//   - fixtureSets []fixtures.FixtureSet
-func (_e *FixtureLoader_Expecter) Load(ctx interface{}, group interface{}, fixtureSets interface{}) *FixtureLoader_Load_Call {
-	return &FixtureLoader_Load_Call{Call: _e.mock.On("Load", ctx, group, fixtureSets)}
+func (_e *FixtureLoader_Expecter) Load(ctx interface{}) *FixtureLoader_Load_Call {
+	return &FixtureLoader_Load_Call{Call: _e.mock.On("Load", ctx)}
 }
 
-func (_c *FixtureLoader_Load_Call) Run(run func(ctx context.Context, group string, fixtureSets []fixtures.FixtureSet)) *FixtureLoader_Load_Call {
+func (_c *FixtureLoader_Load_Call) Run(run func(ctx context.Context)) *FixtureLoader_Load_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].([]fixtures.FixtureSet))
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -65,7 +62,7 @@ func (_c *FixtureLoader_Load_Call) Return(_a0 error) *FixtureLoader_Load_Call {
 	return _c
 }
 
-func (_c *FixtureLoader_Load_Call) RunAndReturn(run func(context.Context, string, []fixtures.FixtureSet) error) *FixtureLoader_Load_Call {
+func (_c *FixtureLoader_Load_Call) RunAndReturn(run func(context.Context) error) *FixtureLoader_Load_Call {
 	_c.Call.Return(run)
 	return _c
 }

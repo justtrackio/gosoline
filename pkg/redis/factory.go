@@ -30,15 +30,15 @@ func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 	cacheKey := fmt.Sprintf("%s:%s", settings.Address, name)
 
 	return appctx.Provide(ctx, redisCacheKey(cacheKey), func() (Client, error) {
-		return NewClient(config, logger, name)
+		return NewClient(ctx, config, logger, name)
 	})
 }
 
 func ReadSettings(config cfg.Config, name string) *Settings {
 	key := fmt.Sprintf("redis.%s", name)
 
-	// TODO: This is a hack to ensure default redis config is populated,
-	// 		 because cfg.UnmarshalWithDefaultsFromKey does only read from already set config but not from env vars
+	// This is a hack to ensure default redis config is populated,
+	// because cfg.UnmarshalWithDefaultsFromKey does only read from already set config but not from env vars
 	config.UnmarshalKey("redis.default", &Settings{})
 
 	settings := &Settings{}

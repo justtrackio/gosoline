@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/justtrackio/gosoline/pkg/test/env"
 )
@@ -36,6 +37,20 @@ func isTestCaseBase(method reflect.Method) error {
 func buildTestCaseBase(_ TestingSuite, method reflect.Method) (testCaseRunner, error) {
 	return func(t *testing.T, suite TestingSuite, suiteOptions *suiteOptions, environment *env.Environment) {
 		suite.SetT(t)
+		if err := environment.LifeCyleCreate(); err != nil {
+			t.Fatalf("failed to run the create lifecycle: %v", err)
+
+			return
+		}
+
+		start := time.Now()
+		if err := environment.LoadFixtureSets(suiteOptions.fixtureSetFactories, suiteOptions.fixtureSetPostProcessorFactories...); err != nil {
+			t.Fatalf("failed to load fixtures from factories: %v", err)
+
+			return
+		}
+		environment.Logger().WithChannel("fixtures").Debug("loaded fixtures in %s", time.Since(start))
+
 		method.Func.Call([]reflect.Value{reflect.ValueOf(suite)})
 	}, nil
 }

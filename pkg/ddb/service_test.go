@@ -234,7 +234,6 @@ func TestService_CreateTable(t *testing.T) {
 			Application: "ddb",
 			Name:        "myModel",
 		},
-		AutoCreate: true,
 		Main: ddb.MainSettings{
 			Model:              createModel{},
 			StreamView:         ddb.StreamViewTypeNewImage,

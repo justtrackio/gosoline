@@ -45,12 +45,7 @@ func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger,
 	settings.PadFromConfig(config)
 
 	var err error
-	var fullStreamName gosoKinesis.Stream
 	var recordWriter gosoKinesis.RecordWriter
-
-	if fullStreamName, err = gosoKinesis.GetStreamName(config, settings); err != nil {
-		return nil, fmt.Errorf("can not get stream name: %w", err)
-	}
 
 	clientsKey := aws.GetClientConfigKey("kinesis", settings.ClientName)
 	defaultClientKey := aws.GetClientConfigKey("kinesis", "default")
@@ -62,12 +57,12 @@ func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger,
 
 	recordWriterSettings := &gosoKinesis.RecordWriterSettings{
 		ClientName: settings.ClientName,
-		StreamName: string(fullStreamName),
+		StreamName: settings.GetStreamName(),
 		Backoff:    backoffSettings,
 	}
 
 	if recordWriter, err = gosoKinesis.NewRecordWriter(ctx, config, logger, recordWriterSettings); err != nil {
-		return nil, fmt.Errorf("can not create record writer for stream %s: %w", fullStreamName, err)
+		return nil, fmt.Errorf("can not create record writer for stream %s: %w", settings.GetStreamName(), err)
 	}
 
 	return NewKinesisOutputWithInterfaces(recordWriter), nil

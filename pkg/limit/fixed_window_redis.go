@@ -15,7 +15,7 @@ import (
 
 func provideRedisClient(ctx context.Context, config cfg.Config, logger log.Logger) (redis.Client, error) {
 	return appctx.Provide(ctx, limitPkgCtxKey("redis_client"), func() (redis.Client, error) {
-		return redis.NewClient(config, logger, "rate_limits")
+		return redis.NewClient(ctx, config, logger, "rate_limits")
 	})
 }
 

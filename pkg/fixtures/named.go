@@ -8,14 +8,12 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 )
 
-func NewNamedKvStoreFixture[T any](name any, value T) *NamedFixture[*KvStoreFixture] {
-	return &NamedFixture[*KvStoreFixture]{
-		Name: fmt.Sprint(name),
-		Value: &KvStoreFixture{
-			Key:   name,
-			Value: value,
-		},
-	}
+type anyTypedIdAware interface {
+	GetId() any
+}
+
+type anyTypedValueAware interface {
+	GetValue() any
 }
 
 func NewNamedFixture[T any](name string, value T) *NamedFixture[T] {
@@ -93,10 +91,6 @@ func (l NamedFixtures[T]) GetValueByName(name string) T {
 	return fixture.Value
 }
 
-type anyTypedIdAware interface {
-	GetId() any
-}
-
 func (l NamedFixtures[T]) GetValueById(id any) T {
 	if l.Len() == 0 {
 		panic(fmt.Errorf("can not find id = %v in empty fixture set", id))
@@ -116,12 +110,12 @@ func (l NamedFixtures[T]) GetValueById(id any) T {
 }
 
 func GetValueId(value any) (any, bool) {
-	if kvValue, ok := value.(KvStoreFixture); ok {
-		return GetValueId(kvValue.Value)
+	if kvValue, ok := value.(anyTypedValueAware); ok {
+		return GetValueId(kvValue.GetValue())
 	}
 
-	if kvValue, ok := value.(*KvStoreFixture); ok && kvValue != nil {
-		return GetValueId(kvValue.Value)
+	if kvValue, ok := value.(anyTypedValueAware); ok && kvValue != nil {
+		return GetValueId(kvValue.GetValue())
 	}
 
 	if identifiable, ok := value.(mdl.Identifiable); ok {

@@ -39,14 +39,8 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger) (d
 		return nil, fmt.Errorf("unable to create repository: %w", err)
 	}
 
-	manager, err := db_repo.NewChangeHistoryManager(ctx, config, logger)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create change history manager: %w", err)
-	}
-
-	err = manager.RunMigration(&Item{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to run history migration: %w", err)
+	if err := db_repo.MigrateChangeHistory(ctx, config, logger, &Item{}); err != nil {
+		return nil, fmt.Errorf("unable to migrate change history: %w", err)
 	}
 
 	return repository, nil

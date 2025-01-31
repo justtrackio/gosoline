@@ -2,9 +2,8 @@ package blob
 
 import (
 	"context"
+	"errors"
 	"fmt"
-
-	"github.com/justtrackio/gosoline/pkg/funk"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -12,26 +11,101 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type Service struct {
-	client gosoS3.Client
+	logger   log.Logger
+	client   *s3.Client
+	settings *Settings
 }
 
-func NewService(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*Service, error) {
-	if name == "" {
-		name = "default"
-	}
+func NewService(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings) (*Service, error) {
+	var err error
+	var client *s3.Client
 
-	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, name)
-	if err != nil {
-		return nil, fmt.Errorf("can not create s3 client with name %s: %w", name, err)
+	if client, err = gosoS3.ProvideClient(ctx, config, logger, settings.ClientName); err != nil {
+		return nil, fmt.Errorf("can not create s3 client with name %s: %w", settings.ClientName, err)
 	}
 
 	return &Service{
-		client: s3Client,
+		logger:   logger,
+		client:   client,
+		settings: settings,
 	}, nil
+}
+
+func (l *Service) CreateBucket(ctx context.Context) error {
+	if _, err := l.client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(l.settings.Bucket)}); err == nil {
+		return nil
+	}
+
+	_, err := l.client.CreateBucket(ctx, &s3.CreateBucketInput{
+		Bucket: aws.String(l.settings.Bucket),
+		CreateBucketConfiguration: &types.CreateBucketConfiguration{
+			LocationConstraint: types.BucketLocationConstraint(l.settings.Region), // This is required when using region specific endpoints
+		},
+	})
+
+	if isBucketAlreadyExistsError(err) {
+		l.logger.Info("s3 bucket %s did already exist", l.settings.Bucket)
+
+		return nil
+	}
+
+	if err != nil {
+		return fmt.Errorf("could not create s3 bucket %s: %w", l.settings.Bucket, err)
+	}
+
+	l.logger.Info("created s3 bucket %s", l.settings.Bucket)
+
+	return nil
+}
+
+func (l *Service) Purge(ctx context.Context) error {
+	var err error
+	var out *s3.ListObjectsOutput
+
+	input := &s3.ListObjectsInput{
+		Bucket: aws.String(l.settings.Bucket),
+		Prefix: aws.String(l.settings.Prefix),
+	}
+
+	for {
+		if out, err = l.client.ListObjects(ctx, input); err != nil {
+			return err
+		}
+
+		if len(out.Contents) == 0 {
+			return nil
+		}
+
+		objects := funk.Map(out.Contents, func(object types.Object) types.ObjectIdentifier {
+			return types.ObjectIdentifier{
+				Key: object.Key,
+			}
+		})
+
+		deleteInput := &s3.DeleteObjectsInput{
+			Bucket: aws.String(l.settings.Bucket),
+			Delete: &types.Delete{
+				Objects: objects,
+			},
+		}
+
+		if _, err = l.client.DeleteObjects(ctx, deleteInput); err != nil {
+			return fmt.Errorf("could not delete objects: %w", err)
+		}
+
+		if *out.IsTruncated == false {
+			break
+		}
+
+		input.Marker = out.NextMarker
+	}
+
+	return nil
 }
 
 func (s *Service) DeleteObjects(ctx context.Context, bucket string, objects []*types.Object) error {
@@ -101,4 +175,15 @@ func (s *Service) ListObjects(ctx context.Context, bucket string, prefix string)
 	}
 
 	return objects, nil
+}
+
+func isBucketAlreadyExistsError(err error) bool {
+	var bucketAlreadyExists *types.BucketAlreadyExists
+	var bucketAlreadyOwnedByYou *types.BucketAlreadyOwnedByYou
+
+	if errors.As(err, &bucketAlreadyExists) || errors.As(err, &bucketAlreadyOwnedByYou) {
+		return true
+	}
+
+	return false
 }

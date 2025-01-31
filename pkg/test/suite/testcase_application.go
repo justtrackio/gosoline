@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/justtrackio/gosoline/pkg/test/env"
 	"github.com/stretchr/testify/assert"
 )
@@ -72,7 +73,13 @@ func runTestCaseApplication(t *testing.T, _ TestingSuite, suiteOptions *suiteOpt
 		application.WithKernelExitHandler(func(code int) {
 			assert.Equal(t, kernel.ExitCodeOk, code, "exit code should be %d", kernel.ExitCodeOk)
 		}),
+		application.WithMiddlewareFactory(reslife.LifeCycleManagerMiddleware, kernel.PositionBeginning),
+		application.WithFixtureSetPostProcessorFactories(suiteOptions.fixtureSetPostProcessorFactories...),
 	}...)
+
+	for _, factory := range suiteOptions.fixtureSetFactories {
+		appOptions = append(appOptions, application.WithFixtureSetFactory("default", factory))
+	}
 
 	for name, module := range suiteOptions.appModules {
 		appOptions = append(appOptions, application.WithModuleFactory(name, module))

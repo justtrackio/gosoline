@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/hashicorp/go-multierror"
-	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
@@ -20,23 +19,9 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
-
-const (
-	MetadataKeyKinsumers = "cloud.aws.kinesis.kinsumers"
-)
-
-type KinsumerMetadata struct {
-	AwsClientName  string    `json:"aws_client_name"`
-	ClientId       ClientId  `json:"client_id"`
-	Name           string    `json:"name"`
-	OpenShardCount int       `json:"open_shard_count"`
-	StreamAppId    cfg.AppId `json:"stream_app_id"`
-	StreamArn      string    `json:"stream_arn"`
-	StreamName     string    `json:"stream_name"`
-	StreamNameFull Stream    `json:"stream_name_full"`
-}
 
 type (
 	Stream         string
@@ -46,7 +31,13 @@ type (
 	ShardIterator  string
 )
 
-type shardIdSlice []ShardId
+type (
+	shardIdSlice []ShardId
+	shardInfo    struct {
+		finished bool
+		parent   ShardId
+	}
+)
 
 type SettingsInitialPosition struct {
 	Type      types.ShardIteratorType `cfg:"type" default:"TRIM_HORIZON"`
@@ -100,7 +91,7 @@ type Kinsumer interface {
 type kinsumer struct {
 	logger             log.Logger
 	settings           Settings
-	stream             Stream
+	fullStreamName     Stream
 	kinesisClient      Client
 	metadataRepository MetadataRepository
 	metricWriter       metric.Writer
@@ -126,15 +117,6 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("can not get full stream name: %w", err)
 	}
 
-	kinsumerMetadata := KinsumerMetadata{
-		AwsClientName:  settings.ClientName,
-		ClientId:       clientId,
-		Name:           settings.Name,
-		StreamAppId:    settings.AppId,
-		StreamName:     settings.StreamName,
-		StreamNameFull: fullStreamName,
-	}
-
 	logger = logger.WithChannel("kinsumer-main").WithFields(log.Fields{
 		"stream_name":        fullStreamName,
 		"kinsumer_client_id": clientId,
@@ -150,19 +132,12 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("failed to create kinesis client: %w", err)
 	}
 
-	if description, err := CreateKinesisStream(ctx, config, logger, kinesisClient, string(fullStreamName)); err != nil {
-		return nil, fmt.Errorf("failed to create kinesis stream: %w", err)
-	} else {
-		kinsumerMetadata.OpenShardCount = description.OpenShardCount
-		kinsumerMetadata.StreamArn = description.StreamArn
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManagerKinsumer(settings, clientId)); err != nil {
+		return nil, fmt.Errorf("failed to add kinesis lifecycle manager: %w", err)
 	}
 
 	if metadataRepository, err = NewMetadataRepository(ctx, config, logger, fullStreamName, clientId, *settings); err != nil {
 		return nil, fmt.Errorf("failed to create metadata manager: %w", err)
-	}
-
-	if err = appctx.MetadataAppend(ctx, MetadataKeyKinsumers, kinsumerMetadata); err != nil {
-		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
 	shardReaderFactory := func(logger log.Logger, shardId ShardId) ShardReader {
@@ -172,11 +147,20 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	return NewKinsumerWithInterfaces(logger, *settings, fullStreamName, kinesisClient, metadataRepository, metricWriter, clock.Provider, shardReaderFactory), nil
 }
 
-func NewKinsumerWithInterfaces(logger log.Logger, settings Settings, stream Stream, kinesisClient Client, metadataRepository MetadataRepository, metricWriter metric.Writer, clock clock.Clock, shardReaderFactory func(logger log.Logger, shardId ShardId) ShardReader) Kinsumer {
+func NewKinsumerWithInterfaces(
+	logger log.Logger,
+	settings Settings,
+	fullStreamName Stream,
+	kinesisClient Client,
+	metadataRepository MetadataRepository,
+	metricWriter metric.Writer,
+	clock clock.Clock,
+	shardReaderFactory func(logger log.Logger, shardId ShardId) ShardReader,
+) Kinsumer {
 	return &kinsumer{
 		logger:             logger,
 		settings:           settings,
-		stream:             stream,
+		fullStreamName:     fullStreamName,
 		kinesisClient:      kinesisClient,
 		metadataRepository: metadataRepository,
 		metricWriter:       metricWriter,
@@ -219,6 +203,8 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 		defer logger.Info("leaving kinsumer")
 
 		consumersWaitGroup, stopConsumers := k.startConsumers(ctx, cfn, runtimeCtx, handler)
+
+		//nolint:gocritic // see comments below
 		defer func() {
 			// we need to wrap this in a function like this to ensure we call the LAST value of stopConsumers.
 			// would we only do 'defer stopConsumers()', we would call the FIRST value and thus not actually cancel the
@@ -280,6 +266,7 @@ func (k *kinsumer) refreshShards(ctx context.Context, runtimeCtx *runtimeContext
 		for idx := range shardIds {
 			if shardIds[idx] != runtimeCtx.shardIds[idx] {
 				changed = true
+
 				break
 			}
 		}
@@ -298,11 +285,6 @@ func (k *kinsumer) refreshShards(ctx context.Context, runtimeCtx *runtimeContext
 // listShardIds returns a slice of shard ids which are not yet finished and also don't have a parent shard which is not
 // yet finished (i.e., exactly those shards we need to consume next)
 func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
-	type shardInfo struct {
-		finished bool
-		parent   ShardId
-	}
-
 	shardMap := make(map[ShardId]shardInfo)
 	var nextToken *string
 
@@ -311,19 +293,19 @@ func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
 		if nextToken != nil {
 			inputParams.NextToken = nextToken
 		} else {
-			inputParams.StreamName = aws.String(string(k.stream))
+			inputParams.StreamName = aws.String(string(k.fullStreamName))
 		}
 
 		res, err := k.kinesisClient.ListShards(ctx, &inputParams)
 		if err != nil {
 			var errResourceInUseException *types.ResourceInUseException
 			if errors.As(err, &errResourceInUseException) {
-				return nil, NewStreamBusyError(k.stream)
+				return nil, NewStreamBusyError(k.fullStreamName)
 			}
 
 			var errResourceNotFoundException *types.ResourceNotFoundException
 			if errors.As(err, &errResourceNotFoundException) {
-				return nil, NewNoSuchStreamError(k.stream)
+				return nil, NewNoSuchStreamError(k.fullStreamName)
 			}
 
 			return nil, fmt.Errorf("failed to list shards of stream: %w", err)
@@ -349,6 +331,12 @@ func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
 		nextToken = res.NextToken
 	}
 
+	shardIds := k.getSortedShardIds(shardMap)
+
+	return shardIds, nil
+}
+
+func (k *kinsumer) getSortedShardIds(shardMap map[ShardId]shardInfo) []ShardId {
 	shardIds := make([]ShardId, 0)
 	for k, v := range shardMap {
 		if v.finished {
@@ -369,7 +357,7 @@ func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
 
 	sort.Sort(shardIdSlice(shardIds))
 
-	return shardIds, nil
+	return shardIds
 }
 
 func (k *kinsumer) startConsumers(ctx context.Context, cfn coffin.Coffin, runtimeCtx *runtimeContext, handler MessageHandler) (*sync.WaitGroup, context.CancelFunc) {
@@ -446,7 +434,7 @@ func (k *kinsumer) writeShardTaskRatioMetric(shardTaskRatio float64) {
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameShardTaskRatio,
 			Dimensions: metric.Dimensions{
-				"StreamName": string(k.stream),
+				"StreamName": string(k.fullStreamName),
 			},
 			Value: shardTaskRatio,
 			Unit:  metric.UnitCountAverage,

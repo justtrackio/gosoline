@@ -22,9 +22,9 @@ func (_m *Service) EXPECT() *Service_Expecter {
 	return &Service_Expecter{mock: &_m.Mock}
 }
 
-// CreateQueue provides a mock function with given fields: ctx, settings
-func (_m *Service) CreateQueue(ctx context.Context, settings *sqs.Settings) (*sqs.Properties, error) {
-	ret := _m.Called(ctx, settings)
+// CreateQueue provides a mock function with given fields: ctx
+func (_m *Service) CreateQueue(ctx context.Context) (*sqs.Properties, error) {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateQueue")
@@ -32,19 +32,19 @@ func (_m *Service) CreateQueue(ctx context.Context, settings *sqs.Settings) (*sq
 
 	var r0 *sqs.Properties
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *sqs.Settings) (*sqs.Properties, error)); ok {
-		return rf(ctx, settings)
+	if rf, ok := ret.Get(0).(func(context.Context) (*sqs.Properties, error)); ok {
+		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *sqs.Settings) *sqs.Properties); ok {
-		r0 = rf(ctx, settings)
+	if rf, ok := ret.Get(0).(func(context.Context) *sqs.Properties); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*sqs.Properties)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *sqs.Settings) error); ok {
-		r1 = rf(ctx, settings)
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -59,14 +59,13 @@ type Service_CreateQueue_Call struct {
 
 // CreateQueue is a helper method to define mock.On call
 //   - ctx context.Context
-//   - settings *sqs.Settings
-func (_e *Service_Expecter) CreateQueue(ctx interface{}, settings interface{}) *Service_CreateQueue_Call {
-	return &Service_CreateQueue_Call{Call: _e.mock.On("CreateQueue", ctx, settings)}
+func (_e *Service_Expecter) CreateQueue(ctx interface{}) *Service_CreateQueue_Call {
+	return &Service_CreateQueue_Call{Call: _e.mock.On("CreateQueue", ctx)}
 }
 
-func (_c *Service_CreateQueue_Call) Run(run func(ctx context.Context, settings *sqs.Settings)) *Service_CreateQueue_Call {
+func (_c *Service_CreateQueue_Call) Run(run func(ctx context.Context)) *Service_CreateQueue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*sqs.Settings))
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -76,7 +75,7 @@ func (_c *Service_CreateQueue_Call) Return(_a0 *sqs.Properties, _a1 error) *Serv
 	return _c
 }
 
-func (_c *Service_CreateQueue_Call) RunAndReturn(run func(context.Context, *sqs.Settings) (*sqs.Properties, error)) *Service_CreateQueue_Call {
+func (_c *Service_CreateQueue_Call) RunAndReturn(run func(context.Context) (*sqs.Properties, error)) *Service_CreateQueue_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -313,17 +312,17 @@ func (_c *Service_GetUrl_Call) RunAndReturn(run func(context.Context, string) (s
 	return _c
 }
 
-// Purge provides a mock function with given fields: ctx, url
-func (_m *Service) Purge(ctx context.Context, url string) error {
-	ret := _m.Called(ctx, url)
+// Purge provides a mock function with given fields: ctx
+func (_m *Service) Purge(ctx context.Context) error {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Purge")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, url)
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -338,14 +337,13 @@ type Service_Purge_Call struct {
 
 // Purge is a helper method to define mock.On call
 //   - ctx context.Context
-//   - url string
-func (_e *Service_Expecter) Purge(ctx interface{}, url interface{}) *Service_Purge_Call {
-	return &Service_Purge_Call{Call: _e.mock.On("Purge", ctx, url)}
+func (_e *Service_Expecter) Purge(ctx interface{}) *Service_Purge_Call {
+	return &Service_Purge_Call{Call: _e.mock.On("Purge", ctx)}
 }
 
-func (_c *Service_Purge_Call) Run(run func(ctx context.Context, url string)) *Service_Purge_Call {
+func (_c *Service_Purge_Call) Run(run func(ctx context.Context)) *Service_Purge_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -355,7 +353,7 @@ func (_c *Service_Purge_Call) Return(_a0 error) *Service_Purge_Call {
 	return _c
 }
 
-func (_c *Service_Purge_Call) RunAndReturn(run func(context.Context, string) error) *Service_Purge_Call {
+func (_c *Service_Purge_Call) RunAndReturn(run func(context.Context) error) *Service_Purge_Call {
 	_c.Call.Return(run)
 	return _c
 }

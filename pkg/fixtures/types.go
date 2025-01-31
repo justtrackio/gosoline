@@ -14,7 +14,7 @@ type (
 
 //go:generate mockery --name FixtureLoader
 type FixtureLoader interface {
-	Load(ctx context.Context, group string, fixtureSets []FixtureSet) error
+	Load(ctx context.Context) error
 }
 
 //go:generate mockery --name FixtureSet
@@ -24,7 +24,6 @@ type FixtureSet interface {
 
 //go:generate mockery --name FixtureWriter
 type FixtureWriter interface {
-	Purge(ctx context.Context) error
 	Write(ctx context.Context, fixtures []any) error
 }
 

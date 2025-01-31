@@ -23,6 +23,10 @@ const (
 
 const YMDLayout = "2006-01-02"
 
+type Settings struct {
+	StartDate time.Time `cfg:"start_date" default:"2015-01-01"`
+}
+
 //go:generate mockery --name UpdaterService
 type UpdaterService interface {
 	EnsureRecentExchangeRates(ctx context.Context) error
@@ -30,10 +34,11 @@ type UpdaterService interface {
 }
 
 type updaterService struct {
-	logger log.Logger
-	http   http.Client
-	store  kvstore.KvStore[float64]
-	clock  clock.Clock
+	logger   log.Logger
+	http     http.Client
+	store    kvstore.KvStore[float64]
+	clock    clock.Clock
+	settings *Settings
 }
 
 func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (UpdaterService, error) {
@@ -49,15 +54,19 @@ func NewUpdater(ctx context.Context, config cfg.Config, logger log.Logger) (Upda
 		return nil, fmt.Errorf("can not create http client: %w", err)
 	}
 
-	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider), nil
+	settings := &Settings{}
+	config.UnmarshalKey("currency_service", settings)
+
+	return NewUpdaterWithInterfaces(logger, store, httpClient, clock.Provider, settings), nil
 }
 
-func NewUpdaterWithInterfaces(logger log.Logger, store kvstore.KvStore[float64], httpClient http.Client, clock clock.Clock) UpdaterService {
+func NewUpdaterWithInterfaces(logger log.Logger, store kvstore.KvStore[float64], httpClient http.Client, clock clock.Clock, settings *Settings) UpdaterService {
 	return &updaterService{
-		logger: logger,
-		store:  store,
-		http:   httpClient,
-		clock:  clock,
+		logger:   logger,
+		store:    store,
+		http:     httpClient,
+		clock:    clock,
+		settings: settings,
 	}
 }
 
@@ -155,15 +164,13 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 		return nil
 	}
 
-	startDate := time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)
-
 	logger.Info("requesting historical exchange rates")
 	rates, err := s.fetchExchangeRates(ctx)
 	if err != nil {
 		return fmt.Errorf("error getting historical currency exchange rates: %w", err)
 	}
 
-	rates, err = filterOutOldExchangeRates(rates, startDate)
+	rates, err = filterOutOldExchangeRates(rates, s.settings.StartDate)
 	if err != nil {
 		return fmt.Errorf("error filtering out old rates: %w", err)
 	}
@@ -260,12 +267,14 @@ func filterOutOldExchangeRates(rates []Content, earliestDate time.Time) (ret []C
 		date, err := dayRates.GetTime()
 		if err != nil {
 			e = fmt.Errorf("filterOutOldExchangeRates error parsing time: %w", err)
+
 			return
 		}
 		if !date.Before(earliestDate) {
 			ret = append(ret, dayRates)
 		}
 	}
+
 	return
 }
 

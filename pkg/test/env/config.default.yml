@@ -3,10 +3,10 @@ test:
     images:
       ddb:
         repository: "amazon/dynamodb-local"
-        tag: "2.2.1"
+        tag: "2.5.4"
       localstack:
         repository: "localstack/localstack"
-        tag: "3.1"
+        tag: "4.1.0"
       mysql:
         repository: "mysql/mysql-server"
         tag: "8.0"

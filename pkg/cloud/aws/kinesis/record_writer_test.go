@@ -24,7 +24,7 @@ func TestRecordWriterPutRecords(t *testing.T) {
 	mw := metricMocks.NewWriterMockedAll()
 	testClock := clock.NewFakeClock(clock.WithNonBlockingSleep)
 
-	ctx := log.AppendContextFields(context.Background(), map[string]interface{}{
+	ctx := log.AppendContextFields(context.Background(), map[string]any{
 		"kinesis_write_request_id": "79db3180-99a9-4157-91c3-a591b9a8f01c",
 		"stream_name":              "streamName",
 	})
@@ -100,7 +100,7 @@ func TestRecordWriterPutRecords(t *testing.T) {
 			InitialInterval: time.Millisecond,
 			MaxInterval:     time.Millisecond,
 		},
-	})
+	}, "streamName")
 
 	batch := []*gosoKinesis.Record{
 		{

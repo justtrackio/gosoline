@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
 type App struct {
@@ -61,6 +62,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithProfiling,
 		WithTracing,
 		WithUTCClock(true),
+		WithMiddlewareFactory(reslife.LifeCycleManagerMiddleware, kernel.PositionBeginning),
 	}
 
 	options = append(defaults, options...)
@@ -116,7 +118,7 @@ func NewWithInterfaces(ctx context.Context, config cfg.GosoConf, logger log.Goso
 	// switch the default error handler to use our logger - this ensures any application name or other setting we already
 	// configured for our logger gets picked up by the default error handler. We can only configure this here after we
 	// set up our logger successfully (otherwise the logger might not write any messages at all).
-	withDefaultErrorHandler(func(msg string, args ...interface{}) {
+	withDefaultErrorHandler(func(msg string, args ...any) {
 		logger.Error(msg, args...)
 		os.Exit(1)
 	})
@@ -126,7 +128,7 @@ func NewWithInterfaces(ctx context.Context, config cfg.GosoConf, logger log.Goso
 	}
 
 	for _, opt := range app.setupOptions {
-		if err = opt(config, logger); err != nil {
+		if err = opt(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not apply setup options on application: %w", err)
 		}
 	}

@@ -14,6 +14,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -47,6 +48,7 @@ type kernelOption func(k *kernel)
 
 type kernel struct {
 	ctx    context.Context
+	clock  clock.Clock
 	logger log.Logger
 
 	middlewares       []Middleware
@@ -66,6 +68,7 @@ func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kern
 
 	k := &kernel{
 		logger: logger.WithChannel("kernel"),
+		clock:  clock.NewRealClock(),
 
 		ctx:     ctx,
 		running: make(chan struct{}),
@@ -93,6 +96,7 @@ func (k *kernel) init(middlewares []Middleware, stages map[int]*stage) {
 func (k *kernel) Run() {
 	defer k.exit()
 
+	startedAt := k.clock.Now()
 	k.logger.Info("starting kernel")
 	k.foregroundModules = k.stages.countForegroundModules()
 
@@ -118,7 +122,8 @@ func (k *kernel) Run() {
 			k.Stop(reason)
 		}
 
-		k.logger.Info("kernel up and running")
+		took := k.clock.Since(startedAt)
+		k.logger.Info("kernel up and running after %s", took)
 		close(k.running)
 
 		<-k.waitAllStagesDone().Channel()

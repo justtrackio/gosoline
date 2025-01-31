@@ -10,22 +10,19 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-multierror"
-	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
 const (
-	MetadataKeyTables = "cloud.aws.dynamodb.tables"
-
 	MetricNameAccessSuccess = "DdbAccessSuccess"
 	MetricNameAccessFailure = "DdbAccessFailure"
 	MetricNameAccessLatency = "DdbAccessLatency"
@@ -46,15 +43,15 @@ const (
 type Repository interface {
 	GetModelId() mdl.ModelId
 
-	BatchDeleteItems(ctx context.Context, value interface{}) (*OperationResult, error)
-	BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder, result interface{}) (*OperationResult, error)
-	BatchPutItems(ctx context.Context, items interface{}) (*OperationResult, error)
-	DeleteItem(ctx context.Context, db DeleteItemBuilder, item interface{}) (*DeleteItemResult, error)
-	GetItem(ctx context.Context, qb GetItemBuilder, result interface{}) (*GetItemResult, error)
-	PutItem(ctx context.Context, qb PutItemBuilder, item interface{}) (*PutItemResult, error)
-	Query(ctx context.Context, qb QueryBuilder, result interface{}) (*QueryResult, error)
-	Scan(ctx context.Context, sb ScanBuilder, result interface{}) (*ScanResult, error)
-	UpdateItem(ctx context.Context, ub UpdateItemBuilder, item interface{}) (*UpdateItemResult, error)
+	BatchDeleteItems(ctx context.Context, value any) (*OperationResult, error)
+	BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder, result any) (*OperationResult, error)
+	BatchPutItems(ctx context.Context, items any) (*OperationResult, error)
+	DeleteItem(ctx context.Context, db DeleteItemBuilder, item any) (*DeleteItemResult, error)
+	GetItem(ctx context.Context, qb GetItemBuilder, result any) (*GetItemResult, error)
+	PutItem(ctx context.Context, qb PutItemBuilder, item any) (*PutItemResult, error)
+	Query(ctx context.Context, qb QueryBuilder, result any) (*QueryResult, error)
+	Scan(ctx context.Context, sb ScanBuilder, result any) (*ScanResult, error)
+	UpdateItem(ctx context.Context, ub UpdateItemBuilder, item any) (*UpdateItemResult, error)
 
 	BatchGetItemsBuilder() BatchGetItemsBuilder
 	DeleteItemBuilder() DeleteItemBuilder
@@ -63,11 +60,6 @@ type Repository interface {
 	PutItemBuilder() PutItemBuilder
 	ScanBuilder() ScanBuilder
 	UpdateItemBuilder() UpdateItemBuilder
-}
-
-type TableMetadata struct {
-	AwsClientName string `json:"aws_client_name"`
-	TableName     string `json:"table_name"`
 }
 
 type repository struct {
@@ -87,20 +79,13 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 	}
 
 	settings.ModelId.PadFromConfig(config)
-	settings.AutoCreate = dx.ShouldAutoCreate(config)
-
 	metadataFactory := NewMetadataFactory(config, settings)
 
 	var err error
-	var svc *Service
 	var client gosoDynamodb.Client
 
-	if svc, err = NewService(ctx, config, logger, settings, optFns...); err != nil {
-		return nil, fmt.Errorf("could not create ddb service for table %s: %w", metadataFactory.GetTableName(), err)
-	}
-
-	if _, err = svc.CreateTable(ctx); err != nil {
-		return nil, fmt.Errorf("could not create ddb table %s: %w", metadataFactory.GetTableName(), err)
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings, optFns...)); err != nil {
+		return nil, fmt.Errorf("could not add lifecycle for table %s: %w", metadataFactory.GetTableName(), err)
 	}
 
 	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, settings.ClientName, optFns...); err != nil {
@@ -113,15 +98,6 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 		if tracer, err = tracing.ProvideTracer(ctx, config, logger); err != nil {
 			return nil, fmt.Errorf("can not create tracer: %w", err)
 		}
-	}
-
-	metadata := TableMetadata{
-		AwsClientName: settings.ClientName,
-		TableName:     metadataFactory.GetTableName(),
-	}
-
-	if err = appctx.MetadataAppend(ctx, MetadataKeyTables, metadata); err != nil {
-		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
 	return NewWithInterfaces(logger, tracer, client, metadataFactory)
@@ -152,7 +128,7 @@ func (r *repository) GetModelId() mdl.ModelId {
 	return r.settings.ModelId
 }
 
-func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder, items interface{}) (*OperationResult, error) {
+func (r *repository) BatchGetItems(ctx context.Context, qb BatchGetItemsBuilder, items any) (*OperationResult, error) {
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.BatchGetItems")
 	defer span.Finish()
 
@@ -239,11 +215,11 @@ func (r *repository) filterResponses(qb BatchGetItemsBuilder, responses []map[st
 	return filteredResponses, nil
 }
 
-func (r *repository) BatchPutItems(ctx context.Context, value interface{}) (*OperationResult, error) {
+func (r *repository) BatchPutItems(ctx context.Context, value any) (*OperationResult, error) {
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.BatchPutItems")
 	defer span.Finish()
 
-	return r.batchWriteItem(ctx, value, func(item interface{}) (types.WriteRequest, error) {
+	return r.batchWriteItem(ctx, value, func(item any) (types.WriteRequest, error) {
 		marshalledItem, err := MarshalMap(item)
 		if err != nil {
 			return types.WriteRequest{}, fmt.Errorf("could not marshal item for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
@@ -257,11 +233,11 @@ func (r *repository) BatchPutItems(ctx context.Context, value interface{}) (*Ope
 	})
 }
 
-func (r *repository) BatchDeleteItems(ctx context.Context, value interface{}) (*OperationResult, error) {
+func (r *repository) BatchDeleteItems(ctx context.Context, value any) (*OperationResult, error) {
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.BatchDeleteItems")
 	defer span.Finish()
 
-	return r.batchWriteItem(ctx, value, func(item interface{}) (types.WriteRequest, error) {
+	return r.batchWriteItem(ctx, value, func(item any) (types.WriteRequest, error) {
 		key, err := r.keyBuilder.fromItem(item)
 		if err != nil {
 			return types.WriteRequest{}, fmt.Errorf("could not create key for item for BatchDeleteItems operation on table %s: %w", r.metadata.TableName, err)
@@ -275,7 +251,7 @@ func (r *repository) BatchDeleteItems(ctx context.Context, value interface{}) (*
 	})
 }
 
-func (r *repository) batchWriteItem(ctx context.Context, value interface{}, reqBuilder func(interface{}) (types.WriteRequest, error)) (*OperationResult, error) {
+func (r *repository) batchWriteItem(ctx context.Context, value any, reqBuilder func(any) (types.WriteRequest, error)) (*OperationResult, error) {
 	items, err := refl.InterfaceToInterfaceSlice(value)
 	if err != nil {
 		return nil, fmt.Errorf("no slice of items provided for batchWriteItem operation on table %s: %w", r.metadata.TableName, err)
@@ -358,7 +334,7 @@ func totalItemCount(requests map[string][]types.WriteRequest) int {
 	return result
 }
 
-func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item interface{}) (*DeleteItemResult, error) {
+func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item any) (*DeleteItemResult, error) {
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.DeleteItem")
 	defer span.Finish()
 
@@ -411,7 +387,7 @@ func (r *repository) DeleteItem(ctx context.Context, db DeleteItemBuilder, item 
 	return result, nil
 }
 
-func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interface{}) (*GetItemResult, error) {
+func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item any) (*GetItemResult, error) {
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.GetItem")
 	defer span.Finish()
 
@@ -469,7 +445,7 @@ func (r *repository) GetItem(ctx context.Context, qb GetItemBuilder, item interf
 	return result, nil
 }
 
-func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interface{}) (*PutItemResult, error) {
+func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item any) (*PutItemResult, error) {
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.PutItem")
 	defer span.Finish()
 
@@ -528,7 +504,7 @@ func (r *repository) PutItem(ctx context.Context, qb PutItemBuilder, item interf
 	return result, nil
 }
 
-func (r *repository) Query(ctx context.Context, qb QueryBuilder, items interface{}) (*QueryResult, error) {
+func (r *repository) Query(ctx context.Context, qb QueryBuilder, items any) (*QueryResult, error) {
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.Query")
 	defer span.Finish()
 
@@ -593,7 +569,7 @@ func (r *repository) doQuery(ctx context.Context, op *QueryOperation) (*readResu
 	return resp, nil
 }
 
-func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item interface{}) (*UpdateItemResult, error) {
+func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item any) (*UpdateItemResult, error) {
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.UpdateItem")
 	defer span.Finish()
 
@@ -641,7 +617,7 @@ func (r *repository) UpdateItem(ctx context.Context, ub UpdateItemBuilder, item 
 	return result, nil
 }
 
-func (r *repository) Scan(ctx context.Context, sb ScanBuilder, items interface{}) (*ScanResult, error) {
+func (r *repository) Scan(ctx context.Context, sb ScanBuilder, items any) (*ScanResult, error) {
 	_, span := r.tracer.StartSubSpan(ctx, "ddb.Scan")
 	defer span.Finish()
 
@@ -736,7 +712,7 @@ func (r *repository) UpdateItemBuilder() UpdateItemBuilder {
 	return NewUpdateItemBuilder(r.metadata)
 }
 
-func (r *repository) readAll(items interface{}, read func() (*readResult, error)) error {
+func (r *repository) readAll(items any, read func() (*readResult, error)) error {
 	unmarshaller, err := NewUnmarshallerFromPtrSlice(items)
 	if err != nil {
 		return fmt.Errorf("can not initialize unmarshaller for operation on table %s: %w", r.metadata.TableName, err)
@@ -765,7 +741,7 @@ func (r *repository) readAll(items interface{}, read func() (*readResult, error)
 	return nil
 }
 
-func (r *repository) readCallback(ctx context.Context, items interface{}, callback ResultCallback, read func() (*readResult, error)) error {
+func (r *repository) readCallback(ctx context.Context, items any, callback ResultCallback, read func() (*readResult, error)) error {
 	unmarshaller, err := NewUnmarshallerFromStruct(items)
 	if err != nil {
 		return fmt.Errorf("can not initialize unmarshaller for operation on table %s: %w", r.metadata.TableName, err)

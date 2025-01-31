@@ -8,12 +8,16 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/application"
+	"github.com/justtrackio/gosoline/pkg/blob"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/kvstore"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/redis"
 )
 
 type DynamoDbExampleModel struct {
@@ -34,7 +38,7 @@ func mysqlOrmFixtureSet(ctx context.Context, config cfg.Config, logger log.Logge
 			Name: "orm_fixture_example",
 		},
 	}
-	mysqlOrmWriter, err := fixtures.NewMysqlOrmFixtureWriter(ctx, config, logger, mysqlMetadata)
+	mysqlOrmWriter, err := db_repo.NewMysqlOrmFixtureWriter(ctx, config, logger, mysqlMetadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize mysql orm writer: %w", err)
 	}
@@ -53,7 +57,7 @@ func mysqlOrmFixtureSet(ctx context.Context, config cfg.Config, logger log.Logge
 }
 
 func mysqlPlainFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
-	mysqlPlainWriter, err := fixtures.NewMysqlPlainFixtureWriter(ctx, config, logger, &fixtures.MysqlPlainMetaData{
+	mysqlPlainWriter, err := db.NewMysqlPlainFixtureWriter(ctx, config, logger, &db.MysqlPlainMetaData{
 		TableName: "plain_fixture_example",
 		Columns:   []string{"id", "name"},
 	})
@@ -61,20 +65,20 @@ func mysqlPlainFixtureSet(ctx context.Context, config cfg.Config, logger log.Log
 		return nil, fmt.Errorf("failed to initialize mysql plain writer: %w", err)
 	}
 
-	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[fixtures.MysqlPlainFixtureValues]{
+	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[db.MysqlPlainFixtureValues]{
 		{
 			Name:  "foo2",
-			Value: fixtures.MysqlPlainFixtureValues{1, "testName1"},
+			Value: db.MysqlPlainFixtureValues{1, "testName1"},
 		},
 		{
 			Name:  "foo3",
-			Value: fixtures.MysqlPlainFixtureValues{2, "testName2"},
+			Value: db.MysqlPlainFixtureValues{2, "testName2"},
 		},
 	}, mysqlPlainWriter), nil
 }
 
 func dynamodbKvstoreFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
-	dynamoDbKvStoreWriter, err := fixtures.NewDynamoDbKvStoreFixtureWriter[DynamoDbExampleModel](ctx, config, logger, &mdl.ModelId{
+	dynamoDbKvStoreWriter, err := kvstore.NewDynamoDbKvStoreFixtureWriter[DynamoDbExampleModel](ctx, config, logger, &mdl.ModelId{
 		Project:     "gosoline",
 		Environment: "dev",
 		Family:      "example",
@@ -85,10 +89,10 @@ func dynamodbKvstoreFixtureSet(ctx context.Context, config cfg.Config, logger lo
 		return nil, fmt.Errorf("failed to initialize dynamodb kvstore writer: %w", err)
 	}
 
-	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*fixtures.KvStoreFixture]{
+	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*kvstore.KvStoreFixture]{
 		{
 			Name: "kv_somekey",
-			Value: &fixtures.KvStoreFixture{
+			Value: &kvstore.KvStoreFixture{
 				Key:   "SomeKey",
 				Value: DynamoDbExampleModel{Name: "Some Name", Value: "Some Value"},
 			},
@@ -97,15 +101,15 @@ func dynamodbKvstoreFixtureSet(ctx context.Context, config cfg.Config, logger lo
 }
 
 func redisFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
-	redisWriter, err := fixtures.NewRedisFixtureWriter(ctx, config, logger, "default", fixtures.RedisOpSet)
+	redisWriter, err := redis.NewRedisFixtureWriter(ctx, config, logger, "default", redis.RedisOpSet)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize redis writer: %w", err)
 	}
 
-	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*fixtures.RedisFixture]{
+	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*redis.RedisFixture]{
 		{
 			Name: "redis_example",
-			Value: &fixtures.RedisFixture{
+			Value: &redis.RedisFixture{
 				Key:    "example-key",
 				Value:  "bar",
 				Expiry: 1 * time.Hour,
@@ -115,7 +119,7 @@ func redisFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) 
 }
 
 func dynamodbFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
-	dynamodbWriter, err := fixtures.NewDynamoDbFixtureWriter(ctx, config, logger, &ddb.Settings{
+	dynamodbWriter, err := ddb.NewDynamoDbFixtureWriter(ctx, config, logger, &ddb.Settings{
 		ModelId: mdl.ModelId{
 			Project:     "gosoline",
 			Environment: "dev",
@@ -148,7 +152,7 @@ func dynamodbFixtureSet(ctx context.Context, config cfg.Config, logger log.Logge
 }
 
 func blobFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
-	blobWriter, err := fixtures.NewBlobFixtureWriter(ctx, config, logger, &fixtures.BlobFixturesSettings{
+	blobWriter, err := blob.NewBlobFixtureWriter(ctx, config, logger, &blob.BlobFixturesSettings{
 		ConfigName: "test",
 		BasePath:   "../../test/test_data/s3_fixtures_test_data",
 	})
@@ -156,7 +160,7 @@ func blobFixtureSet(ctx context.Context, config cfg.Config, logger log.Logger) (
 		return nil, fmt.Errorf("failed to initialize blob writer: %w", err)
 	}
 
-	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*fixtures.BlobFixture]{}, blobWriter), nil
+	return fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[*blob.BlobFixture]{}, blobWriter), nil
 }
 
 func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {

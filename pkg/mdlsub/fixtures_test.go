@@ -49,9 +49,11 @@ func (s *FixtureSetTestSuite) SetupTest() {
 	}
 
 	settings := &mdlsub.FixtureSettings{
-		DatasetName: "my_test_set",
-		Host:        "http://localhost:8080",
-		Path:        "path/for/mdlsub",
+		Dataset: mdlsub.FixtureSettingsDataset{
+			Id: 1,
+		},
+		Host: "http://localhost:8080",
+		Path: "path/for/mdlsub",
 	}
 
 	client := resty.New()
@@ -78,7 +80,7 @@ func (s *FixtureSetTestSuite) TestSuccess() {
 	s.core.EXPECT().GetTransformer(s.spec).Return(TestTransformer{}, nil)
 	s.core.EXPECT().GetOutput(s.spec).Return(s.output, nil)
 
-	httpmock.RegisterResponder("GET", "http://localhost:8080/path/for/mdlsub?dataset_name=my_test_set&model_id=justtrack.gosoline.mdlsub.testModel&version=1",
+	httpmock.RegisterResponder("GET", "http://localhost:8080/path/for/mdlsub?dataset_id=1&model_id=justtrack.gosoline.mdlsub.testModel&version=1",
 		func(request *http.Request) (*http.Response, error) {
 			resp := httpmock.NewStringResponse(200, `{"data":[{"id":1},{"id":2}]}`)
 			resp.Header.Add("Content-Type", "application/json")

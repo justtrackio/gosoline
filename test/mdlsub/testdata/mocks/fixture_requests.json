@@ -3,7 +3,7 @@
     {
       "request": {
         "method": "GET",
-        "url": "/path/to/fixture/data?dataset_name=testcase3&model_id=justtrack.gosoline.management.testModel&version=0"
+        "url": "/path/to/fixture/data?dataset_id=3&model_id=justtrack.gosoline.management.testModel&version=0"
       },
       "response": {
         "status": 200,

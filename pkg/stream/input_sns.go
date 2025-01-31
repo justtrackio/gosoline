@@ -5,10 +5,9 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/cloud/aws/sns"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
 var _ AcknowledgeableInput = &snsInput{}
@@ -64,9 +63,10 @@ type snsInput struct {
 }
 
 func NewSnsInput(ctx context.Context, config cfg.Config, logger log.Logger, settings *SnsInputSettings, targets []SnsInputTarget) (*snsInput, error) {
-	autoSubscribe := dx.ShouldAutoCreate(config)
+	var err error
+	var input *sqsInput
 
-	sqsInput, err := NewSqsInput(ctx, config, logger, &SqsInputSettings{
+	sqsInputSettings := &SqsInputSettings{
 		AppId:               settings.AppId,
 		QueueId:             settings.QueueId,
 		MaxNumberOfMessages: settings.MaxNumberOfMessages,
@@ -76,38 +76,17 @@ func NewSnsInput(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		RedrivePolicy:       settings.RedrivePolicy,
 		ClientName:          settings.ClientName,
 		Unmarshaller:        UnmarshallerSns,
-	})
-	if err != nil {
+	}
+
+	if input, err = NewSqsInput(ctx, config, logger, sqsInputSettings); err != nil {
 		return nil, fmt.Errorf("can not create sqsInput: %w", err)
 	}
 
-	queueArn := sqsInput.GetQueueArn()
-
-	if autoSubscribe {
-		var topic sns.Topic
-		var topicName string
-
-		for _, target := range targets {
-			if topicName, err = sns.GetTopicName(config, target); err != nil {
-				return nil, fmt.Errorf("can not get sns topic name for target %s: %w", target.TopicId, err)
-			}
-
-			topicSettings := &sns.TopicSettings{
-				TopicName:  topicName,
-				ClientName: "default",
-			}
-
-			if topic, err = sns.NewTopic(ctx, config, logger, topicSettings); err != nil {
-				return nil, fmt.Errorf("can not create topic: %w", err)
-			}
-
-			if err = topic.SubscribeSqs(ctx, queueArn, target.Attributes); err != nil {
-				return nil, fmt.Errorf("can not subscribe to queue: %w", err)
-			}
-		}
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(sqsInputSettings, targets)); err != nil {
+		return nil, fmt.Errorf("can not add lifecycleer: %w", err)
 	}
 
-	return NewSnsInputWithInterfaces(sqsInput), nil
+	return NewSnsInputWithInterfaces(input), nil
 }
 
 func NewSnsInputWithInterfaces(sqsInput *sqsInput) *snsInput {

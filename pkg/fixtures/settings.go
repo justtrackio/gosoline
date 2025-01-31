@@ -13,3 +13,7 @@ func unmarshalFixtureLoaderSettings(config cfg.Config) *fixtureLoaderSettings {
 
 	return settings
 }
+
+func isFixtureLoadingEnabled(config cfg.Config) bool {
+	return config.GetBool("fixtures.enabled", false)
+}

@@ -1,34 +1,34 @@
-package fixtures
+package kvstore
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/kvstore"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
 type configurableKvStoreFixtureWriter[T any] struct {
 	logger log.Logger
-	store  kvstore.KvStore[T]
+	store  KvStore[T]
 }
 
-func ConfigurableKvStoreFixtureSetFactory[T any](name string, data NamedFixtures[*KvStoreFixture], options ...FixtureSetOption) FixtureSetFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error) {
+func ConfigurableKvStoreFixtureSetFactory[T any](name string, data fixtures.NamedFixtures[*KvStoreFixture], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 		var err error
-		var writer FixtureWriter
+		var writer fixtures.FixtureWriter
 
 		if writer, err = NewConfigurableKvStoreFixtureWriter[T](ctx, config, logger, name); err != nil {
 			return nil, fmt.Errorf("failed to create configurable kvstore fixture writer for %s: %w", name, err)
 		}
 
-		return NewSimpleFixtureSet(data, writer, options...), nil
+		return fixtures.NewSimpleFixtureSet(data, writer, options...), nil
 	}
 }
 
-func NewConfigurableKvStoreFixtureWriter[T any](ctx context.Context, config cfg.Config, logger log.Logger, name string) (FixtureWriter, error) {
-	store, err := kvstore.ProvideConfigurableKvStore[T](ctx, config, logger, name)
+func NewConfigurableKvStoreFixtureWriter[T any](ctx context.Context, config cfg.Config, logger log.Logger, name string) (fixtures.FixtureWriter, error) {
+	store, err := ProvideConfigurableKvStore[T](ctx, config, logger, name)
 	if err != nil {
 		return nil, fmt.Errorf("can not provide configurable kvstore: %w", err)
 	}
@@ -36,16 +36,11 @@ func NewConfigurableKvStoreFixtureWriter[T any](ctx context.Context, config cfg.
 	return NewConfigurableKvStoreFixtureWriterWithInterfaces[T](logger, store), nil
 }
 
-func NewConfigurableKvStoreFixtureWriterWithInterfaces[T any](logger log.Logger, store kvstore.KvStore[T]) FixtureWriter {
+func NewConfigurableKvStoreFixtureWriterWithInterfaces[T any](logger log.Logger, store KvStore[T]) fixtures.FixtureWriter {
 	return &configurableKvStoreFixtureWriter[T]{
 		logger: logger,
 		store:  store,
 	}
-}
-
-func (c *configurableKvStoreFixtureWriter[T]) Purge(_ context.Context) error {
-	c.logger.Info("purging configurable kvstore not supported")
-	return nil
 }
 
 func (c *configurableKvStoreFixtureWriter[T]) Write(ctx context.Context, fixtures []any) error {
@@ -53,7 +48,7 @@ func (c *configurableKvStoreFixtureWriter[T]) Write(ctx context.Context, fixture
 		return nil
 	}
 
-	m := map[interface{}]T{}
+	m := map[any]T{}
 
 	for _, item := range fixtures {
 		kvItem := item.(*KvStoreFixture)

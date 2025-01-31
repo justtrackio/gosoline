@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -13,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -89,10 +92,6 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 
 	settings := s.metadataFactory.GetSettings()
 
-	if !exists && !settings.AutoCreate {
-		return nil, fmt.Errorf("table does not exist and auto create is disabled")
-	}
-
 	mainKeySchema, err := s.getKeySchema(metadata.Main)
 	if err != nil {
 		return metadata, fmt.Errorf("can not create main key schema for table %s: %w", s.metadataFactory.GetTableName(), err)
@@ -143,7 +142,7 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 		return nil, fmt.Errorf("could not create table: %w", err)
 	}
 
-	if err = s.waitForTableGettingAvailable(ctx, s.metadataFactory.GetTableName()); err != nil {
+	if err := s.waitForTableGettingAvailable(ctx, s.metadataFactory.GetTableName()); err != nil {
 		return nil, err
 	}
 
@@ -152,6 +151,99 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 	err = s.updateTtlSpecification(ctx, metadata)
 
 	return metadata, err
+}
+
+func (s *Service) PurgeTable(ctx context.Context) error {
+	var err error
+	var metadata *Metadata
+
+	if metadata, err = s.metadataFactory.GetMetadata(); err != nil {
+		return fmt.Errorf("can not get metadata: %w", err)
+	}
+
+	cfn := coffin.New()
+	totalSegments := runtime.NumCPU()
+
+	cfn.GoWithContext(ctx, func(ctx context.Context) error {
+		for i := range totalSegments {
+			cfn.GoWithContext(ctx, func(ctx context.Context) error {
+				return s.doPurge(ctx, metadata, i, totalSegments)
+			})
+		}
+
+		return nil
+	})
+
+	if err = cfn.Wait(); err != nil {
+		return fmt.Errorf("could not purge table %s: %w", s.metadataFactory.GetTableName(), err)
+	}
+
+	return nil
+}
+
+func (s *Service) doPurge(ctx context.Context, metadata *Metadata, segment int, totalSegments int) error {
+	var err error
+	var out *dynamodb.ScanOutput
+
+	keyFields := metadata.Main.GetKeyFields()
+	tableName := aws.String(s.metadataFactory.GetTableName())
+	attributes := make([]string, len(keyFields))
+
+	input := &dynamodb.ScanInput{
+		Segment:                  aws.Int32(int32(segment)),
+		TotalSegments:            aws.Int32(int32(totalSegments)),
+		TableName:                tableName,
+		ExpressionAttributeNames: map[string]string{},
+	}
+
+	for i, keyField := range keyFields {
+		input.ExpressionAttributeNames[fmt.Sprintf("#%s", keyField)] = keyField
+		attributes[i] = fmt.Sprintf("#%s", keyField)
+	}
+
+	input.ProjectionExpression = aws.String(strings.Join(attributes, ","))
+
+	for {
+		if out, err = s.client.Scan(ctx, input); err != nil {
+			return fmt.Errorf("can not get dynamodb scan: %w", err)
+		}
+
+		items := make([]types.WriteRequest, 0)
+
+		for _, item := range out.Items {
+			keys := make(map[string]types.AttributeValue)
+
+			for _, key := range keyFields {
+				keys[key] = item[key]
+			}
+
+			items = append(items, types.WriteRequest{
+				DeleteRequest: &types.DeleteRequest{
+					Key: keys,
+				},
+			})
+		}
+
+		chunks := funk.Chunk(items, 25)
+
+		for _, chunk := range chunks {
+			batchInput := &dynamodb.BatchWriteItemInput{
+				RequestItems: map[string][]types.WriteRequest{
+					*tableName: chunk,
+				},
+			}
+
+			if _, err = s.client.BatchWriteItem(ctx, batchInput); err != nil {
+				return fmt.Errorf("can not batch delete items: %w", err)
+			}
+		}
+
+		if len(out.LastEvaluatedKey) == 0 {
+			break
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) updateTtlSpecification(ctx context.Context, metadata *Metadata) error {

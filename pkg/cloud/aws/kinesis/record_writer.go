@@ -9,19 +9,19 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 	"github.com/hashicorp/go-multierror"
-	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
 const (
-	kinesisBatchSizeMax           = 500
-	metadataKeyRecordWriters      = "cloud.aws.kinesis.record_writers"
+	kinesisBatchSizeMax = 500
+
 	metricNamePutRecords          = "PutRecords"
 	metricNamePutRecordsFailure   = "PutRecordsFailure"
 	metricNamePutRecordsBatchSize = "PutRecordsBatchSize"
@@ -33,17 +33,23 @@ type Record struct {
 	ExplicitHashKey *string
 }
 
-type RecordWriterMetadata struct {
-	AwsClientName  string `json:"aws_client_name"`
-	OpenShardCount int    `json:"open_shard_count"`
-	StreamArn      string `json:"stream_arn"`
-	StreamName     string `json:"stream_name"`
-}
-
 type RecordWriterSettings struct {
+	cfg.AppId
 	ClientName string
 	StreamName string
 	Backoff    exec.BackoffSettings
+}
+
+func (r RecordWriterSettings) GetAppId() cfg.AppId {
+	return r.AppId
+}
+
+func (r RecordWriterSettings) GetClientName() string {
+	return r.ClientName
+}
+
+func (r RecordWriterSettings) GetStreamName() string {
+	return r.StreamName
 }
 
 //go:generate mockery --name RecordWriter
@@ -53,42 +59,38 @@ type RecordWriter interface {
 }
 
 type recordWriter struct {
-	logger       log.Logger
-	metricWriter metric.Writer
-	clock        clock.Clock
-	uuidGen      uuid.Uuid
-	client       Client
-	settings     *RecordWriterSettings
+	logger         log.Logger
+	metricWriter   metric.Writer
+	clock          clock.Clock
+	uuidGen        uuid.Uuid
+	client         Client
+	settings       *RecordWriterSettings
+	fullStreamName string
 }
 
 func NewRecordWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *RecordWriterSettings) (RecordWriter, error) {
-	defaultMetrics := getRecordWriterDefaultMetrics(settings.StreamName)
-	metricWriter := metric.NewWriter(defaultMetrics...)
+	settings.PadFromConfig(config)
 
 	var err error
+	var fullStreamName Stream
 	var client *kinesis.Client
+
+	if fullStreamName, err = GetStreamName(config, settings); err != nil {
+		return nil, fmt.Errorf("can not get full stream name: %w", err)
+	}
+
+	defaultMetrics := getRecordWriterDefaultMetrics(string(fullStreamName))
+	metricWriter := metric.NewWriter(defaultMetrics...)
 
 	if client, err = ProvideClient(ctx, config, logger, settings.ClientName); err != nil {
 		return nil, fmt.Errorf("failed to provide kinesis client: %w", err)
 	}
 
-	metadata := RecordWriterMetadata{
-		AwsClientName: settings.ClientName,
-		StreamName:    settings.StreamName,
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManagerWriter(settings)); err != nil {
+		return nil, fmt.Errorf("failed to add kinesis lifecycle manager: %w", err)
 	}
 
-	if description, err := CreateKinesisStream(ctx, config, logger, client, settings.StreamName); err != nil {
-		return nil, fmt.Errorf("failed to create kinesis stream %s: %w", settings.StreamName, err)
-	} else {
-		metadata.OpenShardCount = description.OpenShardCount
-		metadata.StreamArn = description.StreamArn
-	}
-
-	if err = appctx.MetadataAppend(ctx, metadataKeyRecordWriters, metadata); err != nil {
-		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
-	}
-
-	return NewRecordWriterWithInterfaces(logger, metricWriter, clock.Provider, uuid.New(), client, settings), nil
+	return NewRecordWriterWithInterfaces(logger, metricWriter, clock.Provider, uuid.New(), client, settings, string(fullStreamName)), nil
 }
 
 func NewRecordWriterWithInterfaces(
@@ -98,14 +100,16 @@ func NewRecordWriterWithInterfaces(
 	uuidGen uuid.Uuid,
 	client Client,
 	settings *RecordWriterSettings,
+	fullStreamName string,
 ) RecordWriter {
 	return &recordWriter{
-		logger:       logger,
-		metricWriter: metricWriter,
-		clock:        clock,
-		uuidGen:      uuidGen,
-		client:       client,
-		settings:     settings,
+		logger:         logger,
+		metricWriter:   metricWriter,
+		clock:          clock,
+		uuidGen:        uuidGen,
+		client:         client,
+		settings:       settings,
+		fullStreamName: fullStreamName,
 	}
 }
 
@@ -119,7 +123,7 @@ func (w *recordWriter) PutRecords(ctx context.Context, records []*Record) error 
 	}
 
 	ctx = log.AppendContextFields(ctx, log.Fields{
-		"stream_name":              w.settings.StreamName,
+		"stream_name":              w.fullStreamName,
 		"kinesis_write_request_id": w.uuidGen.NewV4(),
 	})
 
@@ -133,7 +137,7 @@ func (w *recordWriter) PutRecords(ctx context.Context, records []*Record) error 
 	}
 
 	if errs != nil {
-		return fmt.Errorf("can not put records to stream %s: %w", w.settings.StreamName, errs)
+		return fmt.Errorf("can not put records to stream %s: %w", w.fullStreamName, errs)
 	}
 
 	return nil
@@ -213,7 +217,7 @@ func (w *recordWriter) putRecordsAndCollectFailed(
 ) ([]types.PutRecordsRequestEntry, string, error) {
 	putRecordsOutput, err := w.client.PutRecords(ctx, &kinesis.PutRecordsInput{
 		Records:    records,
-		StreamName: aws.String(w.settings.StreamName),
+		StreamName: aws.String(w.fullStreamName),
 	})
 	if err != nil {
 		return nil, "", fmt.Errorf("can not execute PutRecordsRequest: %w", err)
@@ -254,21 +258,21 @@ func (w *recordWriter) writeMetrics(records int, failed int) {
 		&metric.Datum{
 			MetricName: metricNamePutRecords,
 			Dimensions: map[string]string{
-				"StreamName": w.settings.StreamName,
+				"StreamName": w.fullStreamName,
 			},
 			Value: float64(records - failed),
 		},
 		&metric.Datum{
 			MetricName: metricNamePutRecordsFailure,
 			Dimensions: map[string]string{
-				"StreamName": w.settings.StreamName,
+				"StreamName": w.fullStreamName,
 			},
 			Value: float64(failed),
 		},
 		&metric.Datum{
 			MetricName: metricNamePutRecordsBatchSize,
 			Dimensions: map[string]string{
-				"StreamName": w.settings.StreamName,
+				"StreamName": w.fullStreamName,
 			},
 			Value: float64(records),
 		},
