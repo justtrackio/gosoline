@@ -39,6 +39,10 @@ type ConsumerMetadata struct {
 	RunnerCount  int    `json:"runner_count"`
 }
 
+type InitializeableCallback interface {
+	Init(ctx context.Context) error
+}
+
 //go:generate mockery --name RunnableCallback
 type RunnableCallback interface {
 	Run(ctx context.Context) error
@@ -175,6 +179,11 @@ func NewBaseConsumerWithInterfaces(
 
 func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx context.Context) error) error {
 	defer c.logger.Info("leaving consumer %s", c.name)
+
+	if err := c.initConsumerCallback(kernelCtx); err != nil {
+		return fmt.Errorf("can not init consumer callback: %w", err)
+	}
+
 	c.logger.Info("running consumer %s with input %s", c.name, c.settings.Input)
 
 	// create ctx whose done channel is closed on dying coffin
@@ -243,6 +252,17 @@ func (c *baseConsumer) logConsumeCounter(ctx context.Context) error {
 			}).Info("processed %v messages", processed)
 		}
 	}
+}
+
+func (c *baseConsumer) initConsumerCallback(ctx context.Context) error {
+	var ok bool
+	var initializeable InitializeableCallback
+
+	if initializeable, ok = c.consumerCallback.(InitializeableCallback); !ok {
+		return nil
+	}
+
+	return initializeable.Init(ctx)
 }
 
 func (c *baseConsumer) runConsumerCallback(ctx context.Context) error {

@@ -3,18 +3,19 @@
 package guard_test
 
 import (
+	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 )
 
-var metadata = &fixtures.MysqlPlainMetaData{
+var metadata = &db.MysqlPlainMetaData{
 	TableName: "guard_policies",
 	Columns:   []string{"id", "policy"},
 }
 
-var namedFixtures = fixtures.NamedFixtures[fixtures.MysqlPlainFixtureValues]{
+var namedFixtures = fixtures.NamedFixtures[db.MysqlPlainFixtureValues]{
 	{
 		Name: "fixture_1",
-		Value: fixtures.MysqlPlainFixtureValues{
+		Value: db.MysqlPlainFixtureValues{
 			"a97b104f-4d93-4c15-a97a-4e3173e75cde",
 			`{
 				"id": "a97b104f-4d93-4c15-a97a-4e3173e75cde",
@@ -29,7 +30,7 @@ var namedFixtures = fixtures.NamedFixtures[fixtures.MysqlPlainFixtureValues]{
 	},
 	{
 		Name: "fixture_2",
-		Value: fixtures.MysqlPlainFixtureValues{
+		Value: db.MysqlPlainFixtureValues{
 			"18a1de65-62eb-4af6-aab4-593d05ed30be",
 			`{
 				"id": "18a1de65-62eb-4af6-aab4-593d05ed30be",
@@ -44,7 +45,7 @@ var namedFixtures = fixtures.NamedFixtures[fixtures.MysqlPlainFixtureValues]{
 	},
 	{
 		Name: "fixture_3",
-		Value: fixtures.MysqlPlainFixtureValues{
+		Value: db.MysqlPlainFixtureValues{
 			"4ab80e96-22ea-469e-96d1-12b232bd4660",
 			`{
 				"id": "4ab80e96-22ea-469e-96d1-12b232bd4660",

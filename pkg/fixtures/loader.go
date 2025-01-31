@@ -14,53 +14,50 @@ import (
 
 type fixtureLoader struct {
 	logger         log.Logger
+	fixtureSets    map[string][]FixtureSet
 	postProcessors []PostProcessor
 	settings       *fixtureLoaderSettings
 }
 
-func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger, postProcessorFactories ...PostProcessorFactory) (FixtureLoader, error) {
-	var err error
-
+func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger, fixtureSets map[string][]FixtureSet, postProcessors []PostProcessor) (FixtureLoader, error) {
 	settings := unmarshalFixtureLoaderSettings(config)
-	postProcessors := make([]PostProcessor, len(postProcessorFactories))
-
-	for i, postProcessorFactory := range postProcessorFactories {
-		if postProcessors[i], err = postProcessorFactory(ctx, config, logger); err != nil {
-			return nil, fmt.Errorf("can not build fixture post processor #%d: %w", i, err)
-		}
-	}
 
 	return &fixtureLoader{
 		logger:         logger.WithChannel("fixtures"),
+		fixtureSets:    fixtureSets,
 		postProcessors: postProcessors,
 		settings:       settings,
 	}, nil
 }
 
-func (f *fixtureLoader) Load(ctx context.Context, group string, fixtureSets []FixtureSet) error {
+func (f *fixtureLoader) Load(ctx context.Context) error {
+	logger := f.logger.WithContext(ctx)
+
 	if !f.settings.Enabled {
-		f.logger.Info("fixture loader is not enabled")
+		logger.Info("fixture loader is not enabled")
 
 		return nil
 	}
 
-	f.logger.Info("loading fixtures")
+	logger.Info("loading fixtures")
 	start := time.Now()
 	defer func() {
-		f.logger.Info("done loading fixtures in %s", time.Since(start))
+		logger.Info("done loading fixtures in %s", time.Since(start))
 	}()
 
-	if !slices.Contains(f.settings.Groups, group) {
-		f.logger.Info("fixture group %s is not enabled", group)
+	for group, fixtureSets := range f.fixtureSets {
+		if !slices.Contains(f.settings.Groups, group) {
+			logger.Info("fixture group %s is not enabled", group)
 
-		return nil
-	}
+			continue
+		}
 
-	for _, fixtureSet := range fixtureSets {
-		f.logger.Info("loading fixtures for set %T", fixtureSet)
+		for _, fixtureSet := range fixtureSets {
+			logger.Info("loading fixtures for set %T", fixtureSet)
 
-		if err := fixtureSet.Write(ctx); err != nil {
-			return fmt.Errorf("failed to write fixtures: %w", err)
+			if err := fixtureSet.Write(ctx); err != nil {
+				return fmt.Errorf("failed to write fixtures: %w", err)
+			}
 		}
 	}
 

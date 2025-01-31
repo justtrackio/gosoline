@@ -1,4 +1,4 @@
-package fixtures
+package blob
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/justtrackio/gosoline/pkg/blob"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -23,26 +23,25 @@ type BlobFixturesSettings struct {
 
 type blobFixtureWriter struct {
 	logger      log.Logger
-	batchRunner blob.BatchRunner
-	purger      *blobPurger
-	store       blob.Store
+	batchRunner BatchRunner
+	store       Store
 	basePath    string
 }
 
-func BlobFixtureSetFactory[T any](settings *BlobFixturesSettings, data NamedFixtures[T], options ...FixtureSetOption) FixtureSetFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error) {
+func BlobFixtureSetFactory[T any](settings *BlobFixturesSettings, data fixtures.NamedFixtures[T], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 		var err error
-		var writer FixtureWriter
+		var writer fixtures.FixtureWriter
 
 		if writer, err = NewBlobFixtureWriter(ctx, config, logger, settings); err != nil {
 			return nil, fmt.Errorf("failed to create blob fixture writer: %w", err)
 		}
 
-		return NewSimpleFixtureSet(data, writer, options...), nil
+		return fixtures.NewSimpleFixtureSet(data, writer, options...), nil
 	}
 }
 
-func NewBlobFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *BlobFixturesSettings) (FixtureWriter, error) {
+func NewBlobFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, settings *BlobFixturesSettings) (fixtures.FixtureWriter, error) {
 	basePath, err := filepath.Abs(settings.BasePath)
 	if err != nil {
 		return nil, err
@@ -50,43 +49,29 @@ func NewBlobFixtureWriter(ctx context.Context, config cfg.Config, logger log.Log
 
 	settings.BasePath = basePath
 
-	store, err := blob.NewStore(ctx, config, logger, settings.ConfigName)
+	store, err := NewStore(ctx, config, logger, settings.ConfigName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create blob store: %w", err)
 	}
 
-	br, err := blob.NewBatchRunner(ctx, config, logger, settings.ConfigName)
+	br, err := NewBatchRunner(ctx, config, logger, settings.ConfigName)
 	if err != nil {
 		return nil, fmt.Errorf("can not create blob batch runner: %w", err)
 	}
 
-	purger, err := NewBlobPurger(ctx, config, logger, settings)
-	if err != nil {
-		return nil, fmt.Errorf("can not create blob purger: %w", err)
-	}
-
-	return NewBlobFixtureWriterWithInterfaces(logger, br, purger, store, settings.BasePath), nil
+	return NewBlobFixtureWriterWithInterfaces(logger, br, store, settings.BasePath), nil
 }
 
-func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner blob.BatchRunner, purger *blobPurger, store blob.Store, basePath string) FixtureWriter {
+func NewBlobFixtureWriterWithInterfaces(logger log.Logger, batchRunner BatchRunner, store Store, basePath string) fixtures.FixtureWriter {
 	return &blobFixtureWriter{
 		logger:      logger,
 		batchRunner: batchRunner,
-		purger:      purger,
 		store:       store,
 		basePath:    basePath,
 	}
 }
 
-func (s *blobFixtureWriter) Purge(ctx context.Context) error {
-	return s.purger.Purge(ctx)
-}
-
 func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
-	if err := s.store.CreateBucket(ctx); err != nil {
-		return fmt.Errorf("can not create bucket: %w", err)
-	}
-
 	var files []string
 	err := filepath.Walk(s.basePath, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
@@ -109,16 +94,16 @@ func (s *blobFixtureWriter) Write(ctx context.Context, _ []any) error {
 		return nil
 	}
 
-	var batch blob.Batch
+	var batch Batch
 	for _, file := range files {
 		body, err := os.ReadFile(file)
 		if err != nil {
 			return err
 		}
 
-		object := blob.Object{
+		object := Object{
 			Key:  aws.String(strings.Replace(file, s.basePath, "", 1)),
-			Body: blob.StreamBytes(body),
+			Body: StreamBytes(body),
 		}
 
 		batch = append(batch, &object)

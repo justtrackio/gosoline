@@ -27,6 +27,10 @@ func (r randomNumberTransformer) GetInput() interface{} {
 	return &RandomNumber{}
 }
 
+func (r randomNumberTransformer) GetModel() any {
+	return &RandomNumber{}
+}
+
 func (r randomNumberTransformer) Transform(_ context.Context, inp interface{}) (out mdlsub.Model, err error) {
 	number := inp.(*RandomNumber)
 

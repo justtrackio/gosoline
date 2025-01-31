@@ -1,5 +1,4 @@
 //go:build integration
-// +build integration
 
 package httpserver
 
@@ -58,6 +57,10 @@ type (
 	nestedHandler        struct{}
 	structHandler        struct{}
 )
+
+func TestValidationTestSuite(t *testing.T) {
+	suite.Run(t, &ValidationTestSuite{})
+}
 
 type ValidationTestSuite struct {
 	suite.Suite
@@ -309,7 +312,7 @@ func (s *ValidationTestSuite) TestValidateStructInput_Failure() *suite.Httpserve
 	}
 }
 
-func (h messageHandler) GetInput() interface{} {
+func (h messageHandler) GetInput() any {
 	return &ValidateMessageInput{}
 }
 
@@ -319,7 +322,7 @@ func (h messageHandler) Handle(_ context.Context, request *httpserver.Request) (
 	return httpserver.NewJsonResponse(*body), nil
 }
 
-func (h customMessageHandler) GetInput() interface{} {
+func (h customMessageHandler) GetInput() any {
 	return &ValidateCustomInput{}
 }
 
@@ -329,7 +332,7 @@ func (h customMessageHandler) Handle(_ context.Context, request *httpserver.Requ
 	return httpserver.NewJsonResponse(*body), nil
 }
 
-func (h aliasMessageHandler) GetInput() interface{} {
+func (h aliasMessageHandler) GetInput() any {
 	return &ValidateAliasInput{}
 }
 
@@ -339,7 +342,7 @@ func (h aliasMessageHandler) Handle(_ context.Context, request *httpserver.Reque
 	return httpserver.NewJsonResponse(*body), nil
 }
 
-func (h nestedHandler) GetInput() interface{} {
+func (h nestedHandler) GetInput() any {
 	return &ValidateNestedInput{}
 }
 
@@ -349,7 +352,7 @@ func (h nestedHandler) Handle(_ context.Context, request *httpserver.Request) (*
 	return httpserver.NewJsonResponse(*body), nil
 }
 
-func (h structHandler) GetInput() interface{} {
+func (h structHandler) GetInput() any {
 	return &ValidateStructInput{}
 }
 
@@ -409,11 +412,11 @@ func hasEventSumStructValidator(sl validator.StructLevel) {
 var customTypeFuncs = []httpserver.CustomTypeFunc{
 	{
 		Func:  convertMessageType,
-		Types: []interface{}{MessageType("")},
+		Types: []any{MessageType("")},
 	},
 }
 
-func convertMessageType(field reflect.Value) interface{} {
+func convertMessageType(field reflect.Value) any {
 	msgType := field.Interface().(MessageType)
 
 	return string(msgType)
@@ -424,8 +427,4 @@ var validateAliases = []httpserver.ValidateAlias{
 		Alias: "validMessage",
 		Tags:  "required,len=5",
 	},
-}
-
-func TestValidationTestSuite(t *testing.T) {
-	suite.Run(t, &ValidationTestSuite{})
 }

@@ -1,3 +1,5 @@
+//go:build fixtures
+
 package suite_test
 
 import (
@@ -68,6 +70,10 @@ func (s *SubscriberTestSuite) SetupSuite() []suite.Option {
 
 func (s *SubscriberTestSuite) GetInput() any {
 	return &TestInput{}
+}
+
+func (s *SubscriberTestSuite) GetModel() any {
+	return &TestModel{}
 }
 
 func (s *SubscriberTestSuite) Transform(_ context.Context, inp any) (out mdlsub.Model, err error) {

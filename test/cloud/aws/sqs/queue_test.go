@@ -12,6 +12,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
 
+func TestQueueTestSuite(t *testing.T) {
+	suite.Run(t, new(QueueTestSuite))
+}
+
 type QueueTestSuite struct {
 	suite.Suite
 	ctx   context.Context
@@ -49,8 +53,4 @@ func (s *QueueTestSuite) TestSuccess() {
 
 	s.Len(messages, 0)
 	s.NoError(err)
-}
-
-func TestQueueTestSuite(t *testing.T) {
-	suite.Run(t, new(QueueTestSuite))
 }

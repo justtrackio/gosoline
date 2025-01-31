@@ -50,6 +50,7 @@ func NewDataExporter(ctx context.Context, config cfg.Config, logger log.Logger) 
 		logger: logger.WithChannel("db-model-dumper"),
 		client: client,
 		ignoredModels: []string{
+			"fixture",
 			"goose_db_version",
 			"schema_migrations",
 		},

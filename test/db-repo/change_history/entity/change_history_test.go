@@ -26,12 +26,12 @@ func TestChangeHistoryTestSuite(t *testing.T) {
 
 func (s *ChangeHistoryTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
-		suite.WithLogLevel("info"),
+		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("config.test.yml"),
 		suite.WithModule("default", definitions.ModuleFactory),
 		suite.WithDbRepoChangeHistory(),
 		suite.WithClockProviderAt("2024-01-01T00:00:00Z"),
-		suite.WithContainerExpireAfter(2 * time.Minute),
+		suite.WithContainerExpireAfter(10 * time.Minute),
 		suite.WithFixtureSetFactory(definitions.FixtureSetsFactory),
 	}
 }
@@ -299,5 +299,6 @@ func (s *ChangeHistoryTestSuite) assertHistory(entityId uint, expected []definit
 		return *h
 	})
 
+	s.Len(items, len(expected))
 	s.Equal(expected, items)
 }

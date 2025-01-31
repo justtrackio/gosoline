@@ -1,4 +1,4 @@
-package fixtures
+package db
 
 import (
 	"context"
@@ -7,13 +7,11 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/db"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-const maxMysqlPreparedStatementArgs = 65536
-
-type MysqlPlainFixtureValues []interface{}
+type MysqlPlainFixtureValues []any
 
 type MysqlPlainMetaData struct {
 	TableName string
@@ -22,58 +20,38 @@ type MysqlPlainMetaData struct {
 
 type mysqlPlainFixtureWriter struct {
 	logger   log.Logger
-	client   db.Client
+	client   Client
 	metadata *MysqlPlainMetaData
-	purger   Purger
 }
 
-func MysqlPlainFixtureSetFactory[T any](metadata *MysqlPlainMetaData, data NamedFixtures[T], options ...FixtureSetOption) FixtureSetFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error) {
+func MysqlPlainFixtureSetFactory[T any](metadata *MysqlPlainMetaData, data fixtures.NamedFixtures[T], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 		var err error
-		var writer FixtureWriter
+		var writer fixtures.FixtureWriter
 
 		if writer, err = NewMysqlPlainFixtureWriter(ctx, config, logger, metadata); err != nil {
 			return nil, fmt.Errorf("failed to create mysql plain fixture writer for %s: %w", metadata.TableName, err)
 		}
 
-		return NewSimpleFixtureSet(data, writer, options...), nil
+		return fixtures.NewSimpleFixtureSet(data, writer, options...), nil
 	}
 }
 
-func NewMysqlPlainFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, metadata *MysqlPlainMetaData) (FixtureWriter, error) {
-	dbClient, err := db.ProvideClient(ctx, config, logger, "default")
+func NewMysqlPlainFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, metadata *MysqlPlainMetaData) (fixtures.FixtureWriter, error) {
+	dbClient, err := ProvideClient(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create dbClient: %w", err)
 	}
 
-	purger, err := NewMysqlPurger(ctx, config, logger, metadata.TableName)
-	if err != nil {
-		return nil, fmt.Errorf("can not create purger: %w", err)
-	}
-
-	return NewMysqlPlainFixtureWriterWithInterfaces(logger, dbClient, metadata, purger), nil
+	return NewMysqlPlainFixtureWriterWithInterfaces(logger, dbClient, metadata), nil
 }
 
-func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client db.Client, metadata *MysqlPlainMetaData, purger *mysqlPurger) FixtureWriter {
+func NewMysqlPlainFixtureWriterWithInterfaces(logger log.Logger, client Client, metadata *MysqlPlainMetaData) fixtures.FixtureWriter {
 	return &mysqlPlainFixtureWriter{
 		logger:   logger,
 		client:   client,
 		metadata: metadata,
-		purger:   purger,
 	}
-}
-
-func (m *mysqlPlainFixtureWriter) Purge(ctx context.Context) error {
-	err := m.purger.Purge(ctx)
-	if err != nil {
-		m.logger.Error("error occurred during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
-
-		return fmt.Errorf("failed to purge mysql table %s: %w", m.metadata.TableName, err)
-	}
-
-	m.logger.Info("purged table %s for plain mysql fixtureSets", m.metadata.TableName)
-
-	return nil
 }
 
 func (m *mysqlPlainFixtureWriter) buildSql(fixtures []any) (stmts []string, argss [][]any, err error) {
@@ -138,13 +116,13 @@ func (m *mysqlPlainFixtureWriter) Write(ctx context.Context, fixtures []any) err
 	}
 
 	var ress []sql.Result
-	var sqls []db.Sqler
+	var sqls []Sqler
 
-	sqls = append(sqls, db.SqlFmt(foreignKeyChecksStatement, nil, 0))
+	sqls = append(sqls, SqlFmt("SET FOREIGN_KEY_CHECKS = ?", nil, 0))
 	for i, stmt := range stmts {
-		sqls = append(sqls, db.SqlFmt(stmt, nil, argss[i]...))
+		sqls = append(sqls, SqlFmt(stmt, nil, argss[i]...))
 	}
-	sqls = append(sqls, db.SqlFmt(foreignKeyChecksStatement, nil, 1))
+	sqls = append(sqls, SqlFmt("SET FOREIGN_KEY_CHECKS = ?", nil, 1))
 
 	ress, err = m.client.ExecMultiInTx(ctx, sqls...)
 	if err != nil {

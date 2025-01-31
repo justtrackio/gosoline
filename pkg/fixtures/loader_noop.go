@@ -14,7 +14,7 @@ type noopFixtureLoader struct {
 	settings *fixtureLoaderSettings
 }
 
-func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger, postProcessorFactories ...PostProcessorFactory) (FixtureLoader, error) {
+func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger, fixtureSets map[string][]FixtureSet, postProcessors []PostProcessor) (FixtureLoader, error) {
 	settings := unmarshalFixtureLoaderSettings(config)
 
 	return &noopFixtureLoader{
@@ -23,7 +23,7 @@ func NewFixtureLoader(ctx context.Context, config cfg.Config, logger log.Logger,
 	}, nil
 }
 
-func (n *noopFixtureLoader) Load(ctx context.Context, group string, fixtureSets []FixtureSet) error {
+func (n *noopFixtureLoader) Load(ctx context.Context) error {
 	if !n.settings.Enabled {
 		return nil
 	}

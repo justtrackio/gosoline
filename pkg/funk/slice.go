@@ -76,8 +76,8 @@ func Chunk[S ~[]T, T any](sl S, size int) [][]T {
 	return result
 }
 
-func ChunkIntoFixedBucketCount[S ~[]T, T any](sl S, count int) [][]T {
-	size := int(math.Ceil(float64(len(sl)) / float64(count)))
+func ChunkIntoBuckets[S ~[]T, T any](sl S, numOfBuckets int) [][]T {
+	size := int(math.Ceil(float64(len(sl)) / float64(numOfBuckets)))
 
 	return Chunk(sl, size)
 }

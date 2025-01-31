@@ -1,4 +1,4 @@
-package fixtures
+package db
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/db"
+	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/refl"
@@ -18,58 +18,38 @@ type MysqlSqlxMetaData struct {
 
 type mysqlSqlxFixtureWriter struct {
 	logger   log.Logger
-	client   db.Client
+	client   Client
 	metadata *MysqlSqlxMetaData
-	purger   *mysqlPurger
 }
 
-func MysqlSqlxFixtureSetFactory[T any](metadata *MysqlSqlxMetaData, data NamedFixtures[T], options ...FixtureSetOption) FixtureSetFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (FixtureSet, error) {
+func MysqlSqlxFixtureSetFactory[T any](metadata *MysqlSqlxMetaData, data fixtures.NamedFixtures[T], options ...fixtures.FixtureSetOption) fixtures.FixtureSetFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (fixtures.FixtureSet, error) {
 		var err error
-		var writer FixtureWriter
+		var writer fixtures.FixtureWriter
 
 		if writer, err = NewMysqlSqlxFixtureWriter(ctx, config, logger, metadata); err != nil {
 			return nil, fmt.Errorf("failed to create mysql sqlx fixture writer for %s: %w", metadata.TableName, err)
 		}
 
-		return NewSimpleFixtureSet(data, writer, options...), nil
+		return fixtures.NewSimpleFixtureSet(data, writer, options...), nil
 	}
 }
 
-func NewMysqlSqlxFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, metadata *MysqlSqlxMetaData) (FixtureWriter, error) {
-	dbClient, err := db.ProvideClient(ctx, config, logger, "default")
+func NewMysqlSqlxFixtureWriter(ctx context.Context, config cfg.Config, logger log.Logger, metadata *MysqlSqlxMetaData) (fixtures.FixtureWriter, error) {
+	dbClient, err := ProvideClient(ctx, config, logger, "default")
 	if err != nil {
 		return nil, fmt.Errorf("can not create dbClient: %w", err)
 	}
 
-	purger, err := NewMysqlPurger(ctx, config, logger, metadata.TableName)
-	if err != nil {
-		return nil, fmt.Errorf("can not create purger: %w", err)
-	}
-
-	return NewMysqlSqlxFixtureWriterWithInterfaces(logger, dbClient, metadata, purger), nil
+	return NewMysqlSqlxFixtureWriterWithInterfaces(logger, dbClient, metadata), nil
 }
 
-func NewMysqlSqlxFixtureWriterWithInterfaces(logger log.Logger, client db.Client, metadata *MysqlSqlxMetaData, purger *mysqlPurger) FixtureWriter {
+func NewMysqlSqlxFixtureWriterWithInterfaces(logger log.Logger, client Client, metadata *MysqlSqlxMetaData) fixtures.FixtureWriter {
 	return &mysqlSqlxFixtureWriter{
 		logger:   logger,
 		client:   client,
 		metadata: metadata,
-		purger:   purger,
 	}
-}
-
-func (m *mysqlSqlxFixtureWriter) Purge(ctx context.Context) error {
-	err := m.purger.Purge(ctx)
-	if err != nil {
-		m.logger.Error("error occurred during purging of table %s in plain mysql fixture loader: %w", m.metadata.TableName, err)
-
-		return err
-	}
-
-	m.logger.Info("purged table %s for plain mysql fixtureSets", m.metadata.TableName)
-
-	return nil
 }
 
 func (m *mysqlSqlxFixtureWriter) Write(ctx context.Context, fixtures []any) error {

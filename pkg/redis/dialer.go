@@ -45,7 +45,7 @@ func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, 
 				address = strings.ReplaceAll(address, templ, val)
 			}
 
-			logger.Info("no address provided for redis %s: using %s", settings.Name, address)
+			logger.Debug("no address provided for redis %s: using %s", settings.Name, address)
 		}
 
 		_, srvs, err := net.LookupSRV("", "", address)
@@ -58,16 +58,17 @@ func dialerSrv(logger log.Logger, settings *Settings) func(ctx context.Context, 
 		}
 
 		address = fmt.Sprintf("%v:%v", srvs[0].Target, srvs[0].Port)
-		logger.Info("using address %s for redis %s", address, settings.Name)
+		logger.Debug("using address %s for redis %s", address, settings.Name)
 
 		var d net.Dialer
+
 		return d.DialContext(ctx, "tcp", address)
 	}
 }
 
 func dialerTcp(logger log.Logger, settings *Settings) func(ctx context.Context, network, addr string) (net.Conn, error) {
 	return func(_ context.Context, _ string, _ string) (net.Conn, error) {
-		logger.Info("using address %s for redis %s", settings.Address, settings.Name)
+		logger.Debug("using address %s for redis %s", settings.Address, settings.Name)
 
 		return net.Dial("tcp", settings.Address)
 	}

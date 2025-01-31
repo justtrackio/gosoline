@@ -3,12 +3,14 @@
 package migration_goose
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"testing"
 
-	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
+	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
+	"github.com/justtrackio/gosoline/pkg/log"
 	gosoAssert "github.com/justtrackio/gosoline/pkg/test/assert"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 )
@@ -22,12 +24,6 @@ type MysqlTestSuite struct {
 }
 
 func (s *MysqlTestSuite) SetupSuite() []suite.Option {
-	err := os.Setenv("AWS_ACCESS_KEY_ID", gosoAws.DefaultAccessKeyID)
-	s.NoError(err)
-
-	err = os.Setenv("AWS_SECRET_ACCESS_KEY", gosoAws.DefaultSecretAccessKey)
-	s.NoError(err)
-
 	return []suite.Option{
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("config.test.yml"),
@@ -35,41 +31,33 @@ func (s *MysqlTestSuite) SetupSuite() []suite.Option {
 }
 
 func (s *MysqlTestSuite) TestPlainFixturesMysql() {
-	envContext := s.Env().Context()
-	envConfig := s.Env().Config()
-	envLogger := s.Env().Logger()
+	err := s.Env().LoadFixtureSet(s.provideFixtureSets())
+	s.NoError(err)
+
 	envClient := s.Env().MySql("default").Client()
-
-	loader, err := fixtures.NewFixtureLoader(envContext, envConfig, envLogger)
-	s.NoError(err)
-
-	fss, err := s.provideFixtureSets()
-	s.NoError(err)
-
-	err = loader.Load(envContext, "default", fss)
-	s.NoError(err)
-
 	gosoAssert.SqlTableHasOneRowOnly(s.T(), envClient, "mysql_plain_writer_test")
 	gosoAssert.SqlColumnHasSpecificValue(s.T(), envClient, "mysql_plain_writer_test", "name", "testName3")
 }
 
-func (s *MysqlTestSuite) provideFixtureSets() ([]fixtures.FixtureSet, error) {
-	writer, err := fixtures.NewMysqlPlainFixtureWriter(s.Env().Context(), s.Env().Config(), s.Env().Logger(), &fixtures.MysqlPlainMetaData{
-		TableName: "mysql_plain_writer_test",
-		Columns:   []string{"id", "name"},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create mysql plain fixture writer: %w", err)
-	}
+func (s *MysqlTestSuite) provideFixtureSets() fixtures.FixtureSetsFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
+		writer, err := db.NewMysqlPlainFixtureWriter(s.Env().Context(), s.Env().Config(), s.Env().Logger(), &db.MysqlPlainMetaData{
+			TableName: "mysql_plain_writer_test",
+			Columns:   []string{"id", "name"},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create mysql plain fixture writer: %w", err)
+		}
 
-	return []fixtures.FixtureSet{fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[fixtures.MysqlPlainFixtureValues]{
-		&fixtures.NamedFixture[fixtures.MysqlPlainFixtureValues]{
-			Name:  "testName2",
-			Value: fixtures.MysqlPlainFixtureValues{2, "testName2"},
-		},
-		&fixtures.NamedFixture[fixtures.MysqlPlainFixtureValues]{
-			Name:  "testName2",
-			Value: fixtures.MysqlPlainFixtureValues{2, "testName3"},
-		},
-	}, writer)}, nil
+		return []fixtures.FixtureSet{fixtures.NewSimpleFixtureSet(fixtures.NamedFixtures[db.MysqlPlainFixtureValues]{
+			&fixtures.NamedFixture[db.MysqlPlainFixtureValues]{
+				Name:  "testName2",
+				Value: db.MysqlPlainFixtureValues{2, "testName2"},
+			},
+			&fixtures.NamedFixture[db.MysqlPlainFixtureValues]{
+				Name:  "testName2",
+				Value: db.MysqlPlainFixtureValues{2, "testName3"},
+			},
+		}, writer)}, nil
+	}
 }

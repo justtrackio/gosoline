@@ -16,9 +16,13 @@ import (
 )
 
 type FixtureSettings struct {
-	DatasetName string `cfg:"dataset_name"`
-	Host        string `cfg:"host"`
-	Path        string `cfg:"path"`
+	Dataset FixtureSettingsDataset `cfg:"dataset"`
+	Host    string                 `cfg:"host"`
+	Path    string                 `cfg:"path"`
+}
+
+type FixtureSettingsDataset struct {
+	Id int `cfg:"id"`
 }
 
 type fetchResult struct {
@@ -148,7 +152,7 @@ func (f FixtureSet) fetch(ctx context.Context) (*fetchResult, error) {
 	}
 
 	query := u.Query()
-	query.Add("dataset_name", f.settings.DatasetName)
+	query.Add("dataset_id", strconv.Itoa(f.settings.Dataset.Id))
 	query.Add("model_id", f.source.String())
 	query.Add("version", strconv.Itoa(version))
 	u.RawQuery = query.Encode()

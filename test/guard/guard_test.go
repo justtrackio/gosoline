@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/db"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/guard"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -16,7 +17,7 @@ import (
 )
 
 func fixtureSetsFactory(ctx context.Context, config cfg.Config, logger log.Logger, group string) ([]fixtures.FixtureSet, error) {
-	writer, err := fixtures.NewMysqlPlainFixtureWriter(ctx, config, logger, metadata)
+	writer, err := db.NewMysqlPlainFixtureWriter(ctx, config, logger, metadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create mysql plain fixture writer: %w", err)
 	}

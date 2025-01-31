@@ -147,52 +147,6 @@ func (_c *Store_CopyOne_Call) RunAndReturn(run func(*blob.CopyObject) error) *St
 	return _c
 }
 
-// CreateBucket provides a mock function with given fields: ctx
-func (_m *Store) CreateBucket(ctx context.Context) error {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CreateBucket")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// Store_CreateBucket_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateBucket'
-type Store_CreateBucket_Call struct {
-	*mock.Call
-}
-
-// CreateBucket is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *Store_Expecter) CreateBucket(ctx interface{}) *Store_CreateBucket_Call {
-	return &Store_CreateBucket_Call{Call: _e.mock.On("CreateBucket", ctx)}
-}
-
-func (_c *Store_CreateBucket_Call) Run(run func(ctx context.Context)) *Store_CreateBucket_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *Store_CreateBucket_Call) Return(_a0 error) *Store_CreateBucket_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *Store_CreateBucket_Call) RunAndReturn(run func(context.Context) error) *Store_CreateBucket_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Delete provides a mock function with given fields: batch
 func (_m *Store) Delete(batch blob.Batch) {
 	_m.Called(batch)

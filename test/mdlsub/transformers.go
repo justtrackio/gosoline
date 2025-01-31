@@ -34,6 +34,10 @@ func (t TestTransformer) GetInput() any {
 	return &TestInput{}
 }
 
+func (t TestTransformer) GetModel() any {
+	return &TestModel{}
+}
+
 func (t TestTransformer) Transform(ctx context.Context, inp any) (out mdlsub.Model, err error) {
 	mdl := inp.(*TestInput)
 

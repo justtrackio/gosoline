@@ -1,4 +1,4 @@
-package fixtures_test
+package db_test
 
 import (
 	"context"
@@ -37,7 +37,7 @@ func (s *MysqlSqlxFixtureWriterTestSuite) SetupSuite() {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 
 	client = db.NewClientWithInterfaces(logger, xdb, exec.NewDefaultExecutor())
-	s.writer = fixtures.NewMysqlSqlxFixtureWriterWithInterfaces(logger, client, &fixtures.MysqlSqlxMetaData{TableName: "table"}, nil)
+	s.writer = db.NewMysqlSqlxFixtureWriterWithInterfaces(logger, client, &db.MysqlSqlxMetaData{TableName: "table"})
 }
 
 func (s *MysqlSqlxFixtureWriterTestSuite) TestWrite() {
@@ -47,7 +47,7 @@ func (s *MysqlSqlxFixtureWriterTestSuite) TestWrite() {
 		IsActive bool   `db:"is_active"`
 	}
 
-	fixtureSetFixtures := []interface{}{
+	fixtureSetFixtures := []any{
 		Fixture{
 			Id:       1,
 			Name:     "Bob",

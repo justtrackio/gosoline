@@ -9,7 +9,6 @@ import (
 
 type simpleFixtureSet[T any] struct {
 	Enabled  bool
-	Purge    bool
 	Writer   FixtureWriter
 	Fixtures NamedFixtures[T]
 }
@@ -21,7 +20,6 @@ func NewSimpleFixtureSet[T any](fixtures NamedFixtures[T], writer FixtureWriter,
 		Fixtures: fixtures,
 		Writer:   writer,
 		Enabled:  settings.Enabled,
-		Purge:    settings.Purge,
 	}
 }
 
@@ -32,12 +30,6 @@ func (c *simpleFixtureSet[T]) Write(ctx context.Context) error {
 
 	if !c.Enabled {
 		return nil
-	}
-
-	if c.Purge {
-		if err := c.Writer.Purge(ctx); err != nil {
-			return fmt.Errorf("error during purging of fixture set: %w", err)
-		}
 	}
 
 	allFixtures := c.Fixtures.All()
@@ -55,8 +47,8 @@ func (c *simpleFixtureSet[T]) String() string {
 
 	if c.Fixtures.Len() > 0 {
 		model = c.Fixtures[0].Value
-		if kvModel, ok := model.(*KvStoreFixture); ok {
-			model = kvModel.Value
+		if kvModel, ok := model.(anyTypedValueAware); ok {
+			model = kvModel.GetValue()
 		}
 	}
 

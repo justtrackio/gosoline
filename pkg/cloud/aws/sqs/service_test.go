@@ -73,17 +73,15 @@ func TestService_CreateQueue(t *testing.T) {
 		},
 	}, nil)
 
-	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
-		AutoCreate: true,
-	})
-
-	props, err := srv.CreateQueue(ctx, &sqs.Settings{
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.Settings{
 		QueueName: "applike-test-gosoline-sqs-my-queue",
 		RedrivePolicy: sqs.RedrivePolicy{
 			Enabled:         true,
 			MaxReceiveCount: 3,
 		},
 	})
+
+	props, err := srv.CreateQueue(ctx)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "applike-test-gosoline-sqs-my-queue.url", props.Url)
@@ -95,9 +93,7 @@ func TestService_GetPropertiesByName(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
-	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
-		AutoCreate: true,
-	})
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.Settings{})
 
 	client.EXPECT().GetQueueUrl(ctx, mock.AnythingOfType("*sqs.GetQueueUrlInput")).Return(
 		&awsSqs.GetQueueUrlOutput{
@@ -132,9 +128,7 @@ func TestService_GetPropertiesByArn(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
-	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
-		AutoCreate: true,
-	})
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.Settings{})
 
 	client.EXPECT().GetQueueUrl(ctx, mock.AnythingOfType("*sqs.GetQueueUrlInput")).Return(
 		&awsSqs.GetQueueUrlOutput{
@@ -160,15 +154,26 @@ func TestService_Purge(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
-	url := "https://sqs.eu-central-1.amazonaws.com/accountId/applike-test-gosoline-queue-id"
+	urlInput := &awsSqs.GetQueueUrlInput{
+		QueueName: aws.String("applike-test-gosoline-queue-id"),
+	}
+	client.EXPECT().GetQueueUrl(ctx, urlInput).Return(
+		&awsSqs.GetQueueUrlOutput{
+			QueueUrl: aws.String("https://sqs.eu-central-1.amazonaws.com/accountId/applike-test-gosoline-queue-id"),
+		},
+		nil,
+	)
 
-	client.EXPECT().PurgeQueue(ctx, mock.AnythingOfType("*sqs.PurgeQueueInput")).Return(&awsSqs.PurgeQueueOutput{}, nil)
+	purgeInput := &awsSqs.PurgeQueueInput{
+		QueueUrl: aws.String("https://sqs.eu-central-1.amazonaws.com/accountId/applike-test-gosoline-queue-id"),
+	}
+	client.EXPECT().PurgeQueue(ctx, purgeInput).Return(&awsSqs.PurgeQueueOutput{}, nil)
 
-	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
-		AutoCreate: true,
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.Settings{
+		QueueName: "applike-test-gosoline-queue-id",
 	})
 
-	err := srv.Purge(ctx, url)
+	err := srv.Purge(ctx)
 
 	assert.NoError(t, err)
 }

@@ -102,7 +102,9 @@ func (s *updaterServiceTestSuite) SetupTest() {
 	s.client = httpMock.NewClient(s.T())
 	s.clock = clock.NewFakeClockAt(time.Date(2021, 5, 27, 0, 0, 0, 0, time.UTC))
 
-	s.updater = currency.NewUpdaterWithInterfaces(s.logger, s.store, s.client, s.clock)
+	s.updater = currency.NewUpdaterWithInterfaces(s.logger, s.store, s.client, s.clock, &currency.Settings{
+		StartDate: time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC),
+	})
 }
 
 func (s *updaterServiceTestSuite) TestEnsureRecentExchangeRates() {

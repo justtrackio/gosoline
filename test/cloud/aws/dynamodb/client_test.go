@@ -19,6 +19,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func TestClientTestSuite(t *testing.T) {
+	suite.Run(t, new(ClientTestSuite))
+}
+
 type ClientTestSuite struct {
 	suite.Suite
 	clientDefault *awsDdb.Client
@@ -197,34 +201,35 @@ func (s *ClientTestSuite) TestRetryOnTransactionConflict() {
 		options.APIOptions = append(options.APIOptions, func(stack *middleware.Stack) error {
 			i := 0
 
-			return stack.Deserialize.Add(middleware.DeserializeMiddlewareFunc("injectTransactionConflict", func(ctx context.Context, input middleware.DeserializeInput, next middleware.DeserializeHandler) (middleware.DeserializeOutput, middleware.Metadata, error) {
-				i++
+			return stack.Deserialize.Add(middleware.DeserializeMiddlewareFunc(
+				"injectTransactionConflict",
+				func(ctx context.Context, input middleware.DeserializeInput, next middleware.DeserializeHandler) (middleware.DeserializeOutput, middleware.Metadata, error) {
+					i++
 
-				out, meta, err := next.HandleDeserialize(ctx, input)
-				if err != nil {
-					return out, meta, err
-				}
-
-				if i == 1 {
-					err = &types.TransactionCanceledException{
-						Message: aws.String(""),
-						CancellationReasons: []types.CancellationReason{
-							{
-								Code: aws.String("TransactionConflict"),
-							},
-						},
+					out, meta, err := next.HandleDeserialize(ctx, input)
+					if err != nil {
+						return out, meta, err
 					}
-				}
 
-				return out, meta, err
-			}), middleware.Before)
+					if i == 1 {
+						err = &types.TransactionCanceledException{
+							Message: aws.String(""),
+							CancellationReasons: []types.CancellationReason{
+								{
+									Code: aws.String("TransactionConflict"),
+								},
+							},
+						}
+					}
+
+					return out, meta, err
+				},
+			),
+				middleware.Before,
+			)
 		})
 	})
 
 	s.NoError(err)
 	logger.AssertExpectations(s.T())
-}
-
-func TestClientTestSuite(t *testing.T) {
-	suite.Run(t, new(ClientTestSuite))
 }
