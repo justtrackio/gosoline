@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
 type LifecycleManager struct {
@@ -15,16 +15,16 @@ type LifecycleManager struct {
 	props    *Properties
 }
 
-func NewLifecycleManager(settings *Settings, props *Properties, optFns ...ClientOption) func() (string, dx.LifeCycleerFactory) {
-	return func() (string, dx.LifeCycleerFactory) {
+func NewLifecycleManager(settings *Settings, props *Properties, optFns ...ClientOption) func() (string, reslife.LifeCycleerFactory) {
+	return func() (string, reslife.LifeCycleerFactory) {
 		id := fmt.Sprintf("sqs/%s", settings.QueueName)
 
-		return id, func(ctx context.Context, config cfg.Config, logger log.Logger) (dx.LifeCycleer, error) {
+		return id, func(ctx context.Context, config cfg.Config, logger log.Logger) (reslife.LifeCycleer, error) {
 			var err error
 			var svc Service
 
 			if svc, err = NewService(ctx, config, logger, settings, optFns...); err != nil {
-				return nil, fmt.Errorf("could not create ddb service: %w", err)
+				return nil, fmt.Errorf("could not create ddb propertiesResolver: %w", err)
 			}
 
 			return &LifecycleManager{

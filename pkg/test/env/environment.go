@@ -10,10 +10,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/encoding/yaml"
 	"github.com/justtrackio/gosoline/pkg/fixtures"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,6 +29,7 @@ type Environment struct {
 	ctx        context.Context
 	config     cfg.GosoConf
 	logger     RecordingLogger
+	resManager *reslife.LifeCycleManager
 	filesystem *filesystem
 	runner     *containerRunner
 	components *ComponentsContainer
@@ -137,6 +138,10 @@ func (e *Environment) init(options ...Option) error {
 	e.config = config
 	e.filesystem = newFilesystem(e.t)
 
+	if e.resManager, err = reslife.ProvideLifeCycleManager(e.ctx, e.config, e.logger); err != nil {
+		return fmt.Errorf("can not create lifecycle manager: %w", err)
+	}
+
 	return nil
 }
 
@@ -232,14 +237,7 @@ func (e *Environment) LoadFixtureSet(factory fixtures.FixtureSetsFactory, postPr
 }
 
 func (e *Environment) LifeCyleCreate() error {
-	var err error
-	var manager *dx.LifeCycleManager
-
-	if manager, err = dx.NewLifeCycleManager(e.ctx, e.config, e.logger, clock.Provider); err != nil {
-		return fmt.Errorf("can not create lifecycle manager: %w", err)
-	}
-
-	if err = manager.Create(e.ctx); err != nil {
+	if err := e.resManager.Create(e.ctx); err != nil {
 		return fmt.Errorf("can not handle the create lifecycle: %w", err)
 	}
 
@@ -261,6 +259,10 @@ func (e *Environment) LoadFixtureSets(factories []fixtures.FixtureSetsFactory, p
 		}
 
 		allFixtureSets = append(allFixtureSets, fixtureSets...)
+	}
+
+	if err := e.resManager.Create(e.ctx); err != nil {
+		return fmt.Errorf("can not handle the create lifecycle: %w", err)
 	}
 
 	if loader, err = fixtures.NewFixtureLoader(e.ctx, e.config, e.logger, postProcessorFactories...); err != nil {

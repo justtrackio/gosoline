@@ -10,8 +10,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
 type Uri struct {
@@ -92,7 +92,7 @@ func NewConnectionFromSettings(ctx context.Context, logger log.Logger, settings 
 		return nil, fmt.Errorf("can not create connection: %w", err)
 	}
 
-	if err := dx.AddLifeCycleer(ctx, NewLifecycleManager(settings)); err != nil {
+	if err := reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings)); err != nil {
 		return nil, err
 	}
 

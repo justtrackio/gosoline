@@ -13,10 +13,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	cloudAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
@@ -103,7 +103,7 @@ func NewQueue(ctx context.Context, config cfg.Config, logger log.Logger, setting
 		return nil, fmt.Errorf("can not create sqs client %s: %w", settings.ClientName, err)
 	}
 
-	if err = dx.AddLifeCycleer(ctx, NewLifecycleManager(settings, props, optFns...)); err != nil {
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings, props, optFns...)); err != nil {
 		return nil, fmt.Errorf("could not add lifecycle for sqs queue %s: %w", settings.QueueName, err)
 	}
 

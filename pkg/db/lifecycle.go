@@ -10,9 +10,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/coffin"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
 var tableExcludes = []string{
@@ -20,11 +20,11 @@ var tableExcludes = []string{
 	"goose_db_version",
 }
 
-func NewLifecycleManager(settings *Settings) func() (string, dx.LifeCycleerFactory) {
-	return func() (string, dx.LifeCycleerFactory) {
+func NewLifecycleManager(settings *Settings) func() (string, reslife.LifeCycleerFactory) {
+	return func() (string, reslife.LifeCycleerFactory) {
 		id := fmt.Sprintf("db/%s", settings.Uri.Database)
 
-		return id, func(ctx context.Context, config cfg.Config, logger log.Logger) (dx.LifeCycleer, error) {
+		return id, func(ctx context.Context, config cfg.Config, logger log.Logger) (reslife.LifeCycleer, error) {
 			var err error
 			var db *sqlx.DB
 

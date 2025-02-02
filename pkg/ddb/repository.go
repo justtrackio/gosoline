@@ -15,11 +15,11 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
@@ -92,7 +92,7 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 	var err error
 	var client gosoDynamodb.Client
 
-	if err = dx.AddLifeCycleer(ctx, NewLifecycleManager(settings, optFns...)); err != nil {
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings, optFns...)); err != nil {
 		return nil, fmt.Errorf("could not add lifecycle for table %s: %w", metadataFactory.GetTableName(), err)
 	}
 

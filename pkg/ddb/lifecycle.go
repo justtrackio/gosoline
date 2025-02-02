@@ -6,19 +6,19 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
 type LifecycleManager struct {
 	service *Service
 }
 
-func NewLifecycleManager(settings *Settings, optFns ...gosoDynamodb.ClientOption) func() (string, dx.LifeCycleerFactory) {
-	return func() (string, dx.LifeCycleerFactory) {
+func NewLifecycleManager(settings *Settings, optFns ...gosoDynamodb.ClientOption) func() (string, reslife.LifeCycleerFactory) {
+	return func() (string, reslife.LifeCycleerFactory) {
 		id := fmt.Sprintf("ddb/%s", settings.ModelId.String())
 
-		return id, func(ctx context.Context, config cfg.Config, logger log.Logger) (dx.LifeCycleer, error) {
+		return id, func(ctx context.Context, config cfg.Config, logger log.Logger) (reslife.LifeCycleer, error) {
 			var err error
 			var svc *Service
 

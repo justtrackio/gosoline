@@ -2,11 +2,9 @@ package sqs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -26,15 +24,12 @@ const (
 type Service interface {
 	CreateQueue(ctx context.Context) (*Properties, error)
 	QueueExists(ctx context.Context, name string) (bool, error)
-	GetPropertiesByName(ctx context.Context, name string) (*Properties, error)
-	GetPropertiesByArn(ctx context.Context, arn string) (*Properties, error)
-	GetUrl(ctx context.Context, name string) (string, error)
-	GetArn(ctx context.Context, url string) (string, error)
 	Purge(ctx context.Context, url string) error
+	PropertiesResolver
 }
 
 type service struct {
-	lck      sync.Mutex
+	PropertiesResolver
 	logger   log.Logger
 	client   Client
 	settings *Settings
@@ -53,16 +48,14 @@ func NewService(ctx context.Context, config cfg.Config, logger log.Logger, setti
 
 func NewServiceWithInterfaces(logger log.Logger, client Client, settings *Settings) *service {
 	return &service{
-		logger:   logger,
-		client:   client,
-		settings: settings,
+		PropertiesResolver: NewPropertiesResolverWithInterfaces(client),
+		logger:             logger,
+		client:             client,
+		settings:           settings,
 	}
 }
 
 func (s *service) CreateQueue(ctx context.Context) (*Properties, error) {
-	s.lck.Lock()
-	defer s.lck.Unlock()
-
 	var err error
 	var exists bool
 
@@ -139,82 +132,6 @@ func (s *service) QueueExists(ctx context.Context, name string) (bool, error) {
 	}).Info("could not find queue")
 
 	return false, nil
-}
-
-func (s *service) GetPropertiesByArn(ctx context.Context, arn string) (*Properties, error) {
-	i := strings.LastIndex(arn, ":")
-	name := arn[i+1:]
-
-	var err error
-	var url string
-
-	if url, err = s.GetUrl(ctx, name); err != nil {
-		return nil, fmt.Errorf("can not get url: %w", err)
-	}
-
-	return &Properties{
-		Name: name,
-		Url:  url,
-		Arn:  arn,
-	}, nil
-}
-
-func (s *service) GetPropertiesByName(ctx context.Context, name string) (*Properties, error) {
-	url, err := s.GetUrl(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-
-	arn, err := s.GetArn(ctx, url)
-	if err != nil {
-		return nil, err
-	}
-
-	properties := &Properties{
-		Name: name,
-		Url:  url,
-		Arn:  arn,
-	}
-
-	return properties, nil
-}
-
-func (s *service) GetUrl(ctx context.Context, name string) (string, error) {
-	var err error
-	var out *sqs.GetQueueUrlOutput
-
-	input := &sqs.GetQueueUrlInput{
-		QueueName: aws.String(name),
-	}
-
-	if out, err = s.client.GetQueueUrl(ctx, input); err != nil {
-		var errQueueDoesNotExist *types.QueueDoesNotExist
-		if errors.As(err, &errQueueDoesNotExist) {
-			return "", nil
-		}
-
-		return "", fmt.Errorf("can not request queue url: %w", err)
-	}
-
-	return *out.QueueUrl, nil
-}
-
-func (s *service) GetArn(ctx context.Context, url string) (string, error) {
-	var err error
-	var out *sqs.GetQueueAttributesOutput
-
-	input := &sqs.GetQueueAttributesInput{
-		AttributeNames: []types.QueueAttributeName{"QueueArn"},
-		QueueUrl:       aws.String(url),
-	}
-
-	if out, err = s.client.GetQueueAttributes(ctx, input); err != nil {
-		return "", fmt.Errorf("can not get queue attributes: %w", err)
-	}
-
-	arn := out.Attributes["QueueArn"]
-
-	return arn, nil
 }
 
 func (s *service) Purge(ctx context.Context, url string) error {
