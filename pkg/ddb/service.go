@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -89,10 +90,6 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 
 	settings := s.metadataFactory.GetSettings()
 
-	if !exists && !settings.AutoCreate {
-		return nil, fmt.Errorf("table does not exist and auto create is disabled")
-	}
-
 	mainKeySchema, err := s.getKeySchema(metadata.Main)
 	if err != nil {
 		return metadata, fmt.Errorf("can not create main key schema for table %s: %w", s.metadataFactory.GetTableName(), err)
@@ -143,7 +140,7 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 		return nil, fmt.Errorf("could not create table: %w", err)
 	}
 
-	if err = s.waitForTableGettingAvailable(ctx, s.metadataFactory.GetTableName()); err != nil {
+	if err := s.waitForTableGettingAvailable(ctx, s.metadataFactory.GetTableName()); err != nil {
 		return nil, err
 	}
 
@@ -152,6 +149,59 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 	err = s.updateTtlSpecification(ctx, metadata)
 
 	return metadata, err
+}
+
+func (s *Service) PurgeTable(ctx context.Context) error {
+	var err error
+	var out *dynamodb.ScanOutput
+	var metadata *Metadata
+
+	if metadata, err = s.metadataFactory.GetMetadata(); err != nil {
+		return fmt.Errorf("can not get metadata: %w", err)
+	}
+
+	keyFields := metadata.Main.GetKeyFields()
+	tableName := aws.String(s.metadataFactory.GetTableName())
+	attributes := make([]string, len(keyFields))
+
+	input := &dynamodb.ScanInput{
+		TableName:                tableName,
+		ExpressionAttributeNames: map[string]string{},
+	}
+
+	for i, keyField := range keyFields {
+		input.ExpressionAttributeNames[fmt.Sprintf("#%s", keyField)] = keyField
+		attributes[i] = fmt.Sprintf("#%s", keyField)
+	}
+
+	input.ProjectionExpression = aws.String(strings.Join(attributes, ","))
+
+	for {
+		if out, err = s.client.Scan(ctx, input); err != nil {
+			return fmt.Errorf("can not get dynamodb scan: %w", err)
+		}
+
+		for _, item := range out.Items {
+			delInput := &dynamodb.DeleteItemInput{
+				TableName: tableName,
+				Key:       map[string]types.AttributeValue{},
+			}
+
+			for _, key := range keyFields {
+				delInput.Key[key] = item[key]
+			}
+
+			if _, err = s.client.DeleteItem(ctx, delInput); err != nil {
+				return fmt.Errorf("can not delete dynamodb item: %w", err)
+			}
+		}
+
+		if len(out.LastEvaluatedKey) == 0 {
+			break
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) updateTtlSpecification(ctx context.Context, metadata *Metadata) error {

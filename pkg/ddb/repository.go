@@ -15,11 +15,11 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/justtrackio/gosoline/pkg/dx"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/refl"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
@@ -87,20 +87,13 @@ func NewRepository(ctx context.Context, config cfg.Config, logger log.Logger, se
 	}
 
 	settings.ModelId.PadFromConfig(config)
-	settings.AutoCreate = dx.ShouldAutoCreate(config)
-
 	metadataFactory := NewMetadataFactory(config, settings)
 
 	var err error
-	var svc *Service
 	var client gosoDynamodb.Client
 
-	if svc, err = NewService(ctx, config, logger, settings, optFns...); err != nil {
-		return nil, fmt.Errorf("could not create ddb service for table %s: %w", metadataFactory.GetTableName(), err)
-	}
-
-	if _, err = svc.CreateTable(ctx); err != nil {
-		return nil, fmt.Errorf("could not create ddb table %s: %w", metadataFactory.GetTableName(), err)
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings, optFns...)); err != nil {
+		return nil, fmt.Errorf("could not add lifecycle for table %s: %w", metadataFactory.GetTableName(), err)
 	}
 
 	if client, err = gosoDynamodb.ProvideClient(ctx, config, logger, settings.ClientName, optFns...); err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
 type App struct {
@@ -61,6 +62,7 @@ func Default(options ...Option) kernel.Kernel {
 		WithProfiling,
 		WithTracing,
 		WithUTCClock(true),
+		WithMiddlewareFactory(reslife.KernelLifeCycleManager, kernel.PositionBeginning),
 	}
 
 	options = append(defaults, options...)

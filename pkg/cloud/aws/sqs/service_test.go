@@ -73,17 +73,15 @@ func TestService_CreateQueue(t *testing.T) {
 		},
 	}, nil)
 
-	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
-		AutoCreate: true,
-	})
-
-	props, err := srv.CreateQueue(ctx, &sqs.Settings{
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.Settings{
 		QueueName: "applike-test-gosoline-sqs-my-queue",
 		RedrivePolicy: sqs.RedrivePolicy{
 			Enabled:         true,
 			MaxReceiveCount: 3,
 		},
 	})
+
+	props, err := srv.CreateQueue(ctx)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "applike-test-gosoline-sqs-my-queue.url", props.Url)
@@ -95,9 +93,7 @@ func TestService_GetPropertiesByName(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
-	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
-		AutoCreate: true,
-	})
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.Settings{})
 
 	client.EXPECT().GetQueueUrl(ctx, mock.AnythingOfType("*sqs.GetQueueUrlInput")).Return(
 		&awsSqs.GetQueueUrlOutput{
@@ -132,9 +128,7 @@ func TestService_GetPropertiesByArn(t *testing.T) {
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	client := mocks.NewClient(t)
 
-	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
-		AutoCreate: true,
-	})
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.Settings{})
 
 	client.EXPECT().GetQueueUrl(ctx, mock.AnythingOfType("*sqs.GetQueueUrlInput")).Return(
 		&awsSqs.GetQueueUrlOutput{
@@ -164,9 +158,7 @@ func TestService_Purge(t *testing.T) {
 
 	client.EXPECT().PurgeQueue(ctx, mock.AnythingOfType("*sqs.PurgeQueueInput")).Return(&awsSqs.PurgeQueueOutput{}, nil)
 
-	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.ServiceSettings{
-		AutoCreate: true,
-	})
+	srv := sqs.NewServiceWithInterfaces(logger, client, &sqs.Settings{})
 
 	err := srv.Purge(ctx, url)
 
