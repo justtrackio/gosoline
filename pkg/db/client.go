@@ -218,7 +218,7 @@ func (c *ClientSqlx) GetResult(ctx context.Context, query string, args ...any) (
 }
 
 func (c *ClientSqlx) Exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	c.logger.Debug("> %s %q", query, args)
+	c.logger.WithContext(ctx).Debug("> %s %q", query, args)
 
 	res, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		return c.db.ExecContext(ctx, query, args...)
@@ -231,7 +231,7 @@ func (c *ClientSqlx) Exec(ctx context.Context, query string, args ...any) (sql.R
 }
 
 func (c *ClientSqlx) NamedExec(ctx context.Context, query string, arg any) (sql.Result, error) {
-	c.logger.Debug("> %s %q", query, arg)
+	c.logger.WithContext(ctx).Debug("> %s %q", query, arg)
 
 	return c.db.NamedExecContext(ctx, query, arg)
 }
@@ -324,7 +324,7 @@ func (c *ClientSqlx) PrepareNamed(ctx context.Context, query string) (*sqlx.Name
 }
 
 func (c *ClientSqlx) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	c.logger.Debug("> %s %q", query, args)
+	c.logger.WithContext(ctx).Debug("> %s %q", query, args)
 
 	res, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		return c.db.QueryContext(ctx, query, args...)
@@ -337,7 +337,7 @@ func (c *ClientSqlx) Query(ctx context.Context, query string, args ...any) (*sql
 }
 
 func (c *ClientSqlx) QueryRow(ctx context.Context, query string, args ...any) *sql.Row {
-	c.logger.Debug("> %s %q", query, args)
+	c.logger.WithContext(ctx).Debug("> %s %q", query, args)
 
 	res, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		return c.db.QueryRowContext(ctx, query, args...), nil
@@ -350,7 +350,7 @@ func (c *ClientSqlx) QueryRow(ctx context.Context, query string, args ...any) *s
 }
 
 func (c *ClientSqlx) NamedQuery(ctx context.Context, query string, arg any) (*sqlx.Rows, error) {
-	c.logger.Debug("> %s %q", query, arg)
+	c.logger.WithContext(ctx).Debug("> %s %q", query, arg)
 
 	res, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		return c.db.NamedQueryContext(ctx, query, arg)
@@ -363,7 +363,7 @@ func (c *ClientSqlx) NamedQuery(ctx context.Context, query string, arg any) (*sq
 }
 
 func (c *ClientSqlx) Queryx(ctx context.Context, query string, args ...any) (*sqlx.Rows, error) {
-	c.logger.Debug("> %s %q", query, args)
+	c.logger.WithContext(ctx).Debug("> %s %q", query, args)
 
 	res, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		return c.db.QueryxContext(ctx, query, args...)
@@ -376,7 +376,7 @@ func (c *ClientSqlx) Queryx(ctx context.Context, query string, args ...any) (*sq
 }
 
 func (c *ClientSqlx) Select(ctx context.Context, dest any, query string, args ...any) error {
-	c.logger.Debug("> %s %q", query, args)
+	c.logger.WithContext(ctx).Debug("> %s %q", query, args)
 
 	_, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		return nil, c.db.SelectContext(ctx, dest, query, args...)
@@ -386,7 +386,7 @@ func (c *ClientSqlx) Select(ctx context.Context, dest any, query string, args ..
 }
 
 func (c *ClientSqlx) NamedSelect(ctx context.Context, dest any, query string, arg any) error {
-	c.logger.Debug("> %s %q", query, arg)
+	c.logger.WithContext(ctx).Debug("> %s %q", query, arg)
 
 	_, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		stmt, err := c.db.PrepareNamedContext(ctx, query)
@@ -407,7 +407,7 @@ func (c *ClientSqlx) NamedSelect(ctx context.Context, dest any, query string, ar
 }
 
 func (c *ClientSqlx) Get(ctx context.Context, dest any, query string, args ...any) error {
-	c.logger.Debug("> %s %q", query, args)
+	c.logger.WithContext(ctx).Debug("> %s %q", query, args)
 
 	_, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		return nil, c.db.GetContext(ctx, dest, query, args...)
@@ -417,7 +417,7 @@ func (c *ClientSqlx) Get(ctx context.Context, dest any, query string, args ...an
 }
 
 func (c *ClientSqlx) BeginTx(ctx context.Context, ops *sql.TxOptions) (*sqlx.Tx, error) {
-	c.logger.Debug("start tx")
+	c.logger.WithContext(ctx).Debug("start tx")
 
 	res, err := c.executor.Execute(ctx, func(ctx context.Context) (any, error) {
 		return c.db.BeginTxx(ctx, ops)
