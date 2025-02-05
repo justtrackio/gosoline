@@ -39,7 +39,7 @@ func NewGuard(ctx context.Context, config cfg.Config, logger log.Logger) (*Ladon
 
 	auditLogger := NewAuditLogger(config, logger)
 
-	return NewGuardWithInterfaces(sqlManager, auditLogger), nil
+	return NewGuardWithInterfaces(NewCachedManagerWithInterfaces(sqlManager), auditLogger), nil
 }
 
 func NewGuardWithInterfaces(manager Manager, logger AuditLogger) *LadonGuard {

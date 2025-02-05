@@ -13,6 +13,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reqctx"
 )
 
 type logCall struct {
@@ -32,6 +33,7 @@ func NewLoggingMiddlewareWithInterfaces(logger log.Logger, settings LoggingSetti
 		start := clock.Now()
 
 		ctx := log.InitContext(ginCtx.Request.Context())
+		ctx = reqctx.New(ctx)
 
 		if requestId := ginCtx.Request.Header.Get("X-Request-Id"); requestId != "" {
 			ctx = log.MutateGlobalContextFields(ctx, map[string]any{
