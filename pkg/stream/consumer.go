@@ -8,6 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/reqctx"
 )
 
 type ConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (ConsumerCallback, error)
@@ -146,6 +147,7 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 	defer span.Finish()
 
 	ctx = log.InitContext(ctx)
+	ctx = reqctx.New(ctx)
 
 	if ack, err = c.callback.Consume(ctx, model, attributes); err != nil {
 		c.handleError(ctx, err, "an error occurred during the consume operation")
