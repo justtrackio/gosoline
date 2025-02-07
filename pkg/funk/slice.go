@@ -2,6 +2,7 @@ package funk
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"slices"
 
@@ -73,6 +74,12 @@ func Chunk[S ~[]T, T any](sl S, size int) [][]T {
 	}
 
 	return result
+}
+
+func ChunkIntoFixedBucketCount[S ~[]T, T any](sl S, count int) [][]T {
+	size := int(math.Ceil(float64(len(sl)) / float64(count)))
+
+	return Chunk(sl, size)
 }
 
 func Contains[T any](in []T, elem T) bool {
@@ -218,6 +225,7 @@ func KeyedToMap[S ~[]T, T mdl.Keyed](sl S) map[string]T {
 func Last[T any](sl []T) T {
 	if len(sl) == 0 {
 		var ret T
+
 		return ret
 	}
 
@@ -313,6 +321,24 @@ func Uniq[S ~[]T, T comparable](sl S) S {
 	}
 
 	return res
+}
+
+func UniqFunc[S ~[]T, T any, K comparable](sl S, fn func(T) K) []T {
+	keys := make(Set[K], len(sl))
+	uniq := make([]T, 0)
+
+	for _, item := range sl {
+		key := fn(item)
+
+		if keys.Contains(key) {
+			continue
+		}
+
+		keys.Set(key)
+		uniq = append(uniq, item)
+	}
+
+	return uniq
 }
 
 func UniqByType[S ~[]T, T any](sl S) S {

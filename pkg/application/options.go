@@ -2,11 +2,11 @@ package application
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/jessevdk/go-flags"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	taskRunner "github.com/justtrackio/gosoline/pkg/conc/task_runner"
@@ -16,6 +16,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	kernelPkg "github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
 	"github.com/justtrackio/gosoline/pkg/share"
@@ -90,6 +91,14 @@ func WithConfigErrorHandlers(handlers ...cfg.ErrorHandler) Option {
 	}
 }
 
+func WithConfigBytes(bytes []byte, format string) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			return config.Option(cfg.WithConfigBytes(bytes, format))
+		})
+	}
+}
+
 func WithConfigFile(filePath string, fileType string) Option {
 	return func(app *App) {
 		app.addConfigOption(func(config cfg.GosoConf) error {
@@ -98,17 +107,52 @@ func WithConfigFile(filePath string, fileType string) Option {
 	}
 }
 
+func WithConfigFlags(args []string, opts any) Option {
+	return func(app *App) {
+		app.addConfigOption(func(config cfg.GosoConf) error {
+			if _, err := flags.NewParser(opts, flags.IgnoreUnknown).ParseArgs(args); err != nil {
+				return fmt.Errorf("can not parse command line flags: %w", err)
+			}
+
+			st, err := mapx.NewStruct(opts, &mapx.StructSettings{
+				FieldTag:   "cfg",
+				DefaultTag: "default",
+			})
+			if err != nil {
+				return fmt.Errorf("can create mapx from flag struct: %w", err)
+			}
+
+			mpx, err := st.Read()
+			if err != nil {
+				return fmt.Errorf("can read flag struct with mapx: %w", err)
+			}
+
+			msi := mpx.Msi()
+			if err = config.Option(cfg.WithConfigMap(msi)); err != nil {
+				return fmt.Errorf("can not set config map: %w", err)
+			}
+
+			return nil
+		})
+	}
+}
+
 func WithConfigFileFlag(app *App) {
 	app.addConfigOption(func(config cfg.GosoConf) error {
-		flags := flag.NewFlagSet("cfg", flag.ContinueOnError)
-
-		configFile := flags.String("config", "", "path to a config file")
-		err := flags.Parse(os.Args[1:])
-		if err != nil {
-			return err
+		var opts struct {
+			Config []string `long:"config" short:"c"`
 		}
 
-		return config.Option(cfg.WithConfigFile(*configFile, "yml"))
+		if _, err := flags.NewParser(&opts, flags.IgnoreUnknown).ParseArgs(os.Args); err != nil {
+			return fmt.Errorf("can not parse command line flags: %w", err)
+		}
+
+		var options []cfg.Option
+		for _, configFile := range opts.Config {
+			options = append(options, cfg.WithConfigFile(configFile, "yml"))
+		}
+
+		return config.Option(options...)
 	})
 }
 

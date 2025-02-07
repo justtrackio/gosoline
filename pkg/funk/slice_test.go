@@ -271,12 +271,12 @@ func TestIntersect(t *testing.T) {
 }
 
 func TestMapEmptyInterface(t *testing.T) {
-	type test []interface{}
+	type test []any
 	tl := test{
 		"blah", "test",
 	}
 
-	tlf := funk.Map(tl, func(i interface{}) string {
+	tlf := funk.Map(tl, func(i any) string {
 		return i.(string)
 	})
 	assert.True(t, slices.Contains(tlf, "blah"))
@@ -526,6 +526,49 @@ func TestUniq(t *testing.T) {
 		data := data
 		t.Run(name, func(t *testing.T) {
 			res := funk.Uniq(data.In)
+
+			assert.Equal(t, data.Out, res)
+		})
+	}
+}
+
+func TestUniqFunc(t *testing.T) {
+	tests := map[string]struct {
+		In  []string
+		Out []string
+	}{
+		"nil": {
+			In:  nil,
+			Out: []string{},
+		},
+		"empty": {
+			In:  []string{},
+			Out: []string{},
+		},
+		"single": {
+			In:  []string{"a"},
+			Out: []string{"a"},
+		},
+		"repeated": {
+			In:  []string{"a", "a"},
+			Out: []string{"a"},
+		},
+		"pair": {
+			In:  []string{"a", "b"},
+			Out: []string{"a", "b"},
+		},
+		"repeatedPair": {
+			In:  []string{"a", "b", "a", "b"},
+			Out: []string{"a", "b"},
+		},
+	}
+
+	for name, data := range tests {
+		data := data
+		t.Run(name, func(t *testing.T) {
+			res := funk.UniqFunc(data.In, func(t string) string {
+				return t
+			})
 
 			assert.Equal(t, data.Out, res)
 		})

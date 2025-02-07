@@ -12,11 +12,11 @@ type testStruct struct{}
 
 func TestIsPointerToSlice(t *testing.T) {
 	var nilSlice []string
-	interfacedNilSlice := interface{}(nilSlice)
-	interfacedSlice := interface{}([]string{"abc"})
+	interfacedNilSlice := any(nilSlice)
+	interfacedSlice := any([]string{"abc"})
 
 	tests := map[string]struct {
-		Input    interface{}
+		Input    any
 		Expected bool
 	}{
 		"nil": {
@@ -52,7 +52,7 @@ func TestIsPointerToSlice(t *testing.T) {
 			Expected: true,
 		},
 		"ptr_slice_interfaces": {
-			Input:    &[]interface{}{"abc"},
+			Input:    &[]any{"abc"},
 			Expected: true,
 		},
 	}
@@ -68,10 +68,10 @@ func TestIsPointerToSlice(t *testing.T) {
 
 func TestIsPointerToStruct(t *testing.T) {
 	var nilStruct testStruct
-	interfacedStruct := interface{}(testStruct{})
+	interfacedStruct := any(testStruct{})
 
 	tests := map[string]struct {
-		Input    interface{}
+		Input    any
 		Expected bool
 	}{
 		"nil": {
@@ -115,11 +115,11 @@ func TestIsPointerToStruct(t *testing.T) {
 
 func TestFindBaseType(t *testing.T) {
 	var nilStruct testStruct
-	interfacedStruct := interface{}(testStruct{})
-	interfacedSlice := interface{}([]interface{}{"abc"})
+	interfacedStruct := any(testStruct{})
+	interfacedSlice := any([]any{"abc"})
 
 	tests := map[string]struct {
-		Input    interface{}
+		Input    any
 		Expected reflect.Kind
 	}{
 		"int": {
@@ -151,7 +151,7 @@ func TestFindBaseType(t *testing.T) {
 			Expected: reflect.String,
 		},
 		"ptr_slice_interfaces": {
-			Input:    &[]interface{}{"abc"},
+			Input:    &[]any{"abc"},
 			Expected: reflect.String,
 		},
 		"ptr_interfaced_slice_interfaces": {
@@ -173,11 +173,11 @@ func TestFindBaseType(t *testing.T) {
 }
 
 func TestGetTypedValue(t *testing.T) {
-	interfacedStruct := interface{}(testStruct{})
-	interfacedSlice := interface{}([]string{})
+	interfacedStruct := any(testStruct{})
+	interfacedSlice := any([]string{})
 
 	tests := map[string]struct {
-		Input    interface{}
+		Input    any
 		Expected reflect.Value
 	}{
 		"int": {
@@ -212,7 +212,7 @@ func TestGetTypedValue(t *testing.T) {
 }
 
 func TestCreatePointerToSliceOfTypeAndSize(t *testing.T) {
-	input := interface{}([]interface{}{""})
+	input := any([]any{""})
 	result := refl.CreatePointerToSliceOfTypeAndSize(&input, 10)
 
 	casted, castable := result.(*[]string)
@@ -245,4 +245,47 @@ func TestCopyPointerSlice(t *testing.T) {
 	refl.CopyPointerSlice(&target, &source)
 
 	assert.Equal(t, source, target)
+}
+
+func TestUnbox(t *testing.T) {
+	tests := map[string]struct {
+		boxed    any
+		expected any
+	}{
+		"nil": {
+			boxed:    nil,
+			expected: nil,
+		},
+		"string": {
+			boxed:    box("foo"),
+			expected: "foo",
+		},
+		"map": {
+			boxed:    box(map[string]string{"foo": "bar"}),
+			expected: map[string]string{"foo": "bar"},
+		},
+		"slice": {
+			boxed:    box([]string{"foo", "bar"}),
+			expected: []string{"foo", "bar"},
+		},
+		"struct": {
+			boxed:    box(testStruct{}),
+			expected: testStruct{},
+		},
+		"double boxed": {
+			boxed:    box(box(1)),
+			expected: 1,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			unboxed := refl.Unbox(tt.boxed)
+			assert.Equal(t, tt.expected, unboxed)
+		})
+	}
+}
+
+func box[T any](val T) *T {
+	return &val
 }

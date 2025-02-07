@@ -46,20 +46,20 @@ func TestMapStructIO_KeysBasic(t *testing.T) {
 // (env vars config values to ptr struct properties case)
 func TestMapStructIO_PointerTarget(t *testing.T) {
 	type sourceStruct struct {
-		B   *bool                   `cfg:"b"`
-		D   *time.Duration          `cfg:"d"`
-		MSI *map[string]interface{} `cfg:"msi"`
-		S   *string                 `cfg:"s"`
-		SlS *[]string               `cfg:"sl_s"`
-		T   *time.Time              `cfg:"t"`
+		B   *bool           `cfg:"b"`
+		D   *time.Duration  `cfg:"d"`
+		MSI *map[string]any `cfg:"msi"`
+		S   *string         `cfg:"s"`
+		SlS *[]string       `cfg:"sl_s"`
+		T   *time.Time      `cfg:"t"`
 	}
 
 	now := time.Now()
 
-	mx := mapx.NewMapX(map[string]interface{}{
+	mx := mapx.NewMapX(map[string]any{
 		"b": true,
 		"d": "1m",
-		"msi": map[string]interface{}{
+		"msi": map[string]any{
 			"foo": "bar",
 		},
 		"s":    "foo",
@@ -153,7 +153,7 @@ func TestMapStructIO_ReadZeroAndDefaultValuesMapSlice(t *testing.T) {
 	zero, defaults, err := ms.ReadZeroAndDefaultValues()
 	assert.NoError(t, err, "there should be no error during reading of zeros and defaults")
 
-	assert.Equal(t, []interface{}{}, zero.Get("slice").Data())
+	assert.Equal(t, []any{}, zero.Get("slice").Data())
 	assert.False(t, defaults.Has("slice"))
 	assert.Equal(t, map[int]float64{}, zero.Get("map").Data())
 	assert.False(t, defaults.Has("map"))
@@ -236,24 +236,24 @@ func TestMapStruct_ReadBasic(t *testing.T) {
 	fakeTime := clock.NewFakeClock().Now()
 
 	type sourceStruct struct {
-		B    bool                   `cfg:"b"`
-		D    time.Duration          `cfg:"d"`
-		I    int                    `cfg:"i"`
-		I8   int8                   `cfg:"i8"`
-		I16  int16                  `cfg:"i16"`
-		I32  int32                  `cfg:"i32"`
-		I64  int64                  `cfg:"i64"`
-		F32  float32                `cfg:"f32"`
-		F64  float64                `cfg:"f64"`
-		S    string                 `cfg:"s"`
-		T    time.Time              `cfg:"t"`
-		UI   uint                   `cfg:"ui"`
-		UI8  uint8                  `cfg:"ui8"`
-		UI16 uint16                 `cfg:"ui16"`
-		UI32 uint32                 `cfg:"ui32"`
-		UI64 uint64                 `cfg:"ui64"`
-		MSI  map[string]interface{} `cfg:"msi"`
-		MSS  map[string]string      `cfg:"mss"`
+		B    bool              `cfg:"b"`
+		D    time.Duration     `cfg:"d"`
+		I    int               `cfg:"i"`
+		I8   int8              `cfg:"i8"`
+		I16  int16             `cfg:"i16"`
+		I32  int32             `cfg:"i32"`
+		I64  int64             `cfg:"i64"`
+		F32  float32           `cfg:"f32"`
+		F64  float64           `cfg:"f64"`
+		S    string            `cfg:"s"`
+		T    time.Time         `cfg:"t"`
+		UI   uint              `cfg:"ui"`
+		UI8  uint8             `cfg:"ui8"`
+		UI16 uint16            `cfg:"ui16"`
+		UI32 uint32            `cfg:"ui32"`
+		UI64 uint64            `cfg:"ui64"`
+		MSI  map[string]any    `cfg:"msi"`
+		MSS  map[string]string `cfg:"mss"`
 	}
 
 	source := &sourceStruct{
@@ -273,7 +273,7 @@ func TestMapStruct_ReadBasic(t *testing.T) {
 		UI16: 3,
 		UI32: 4,
 		UI64: 5,
-		MSI: map[string]interface{}{
+		MSI: map[string]any{
 			"a": "a",
 			"1": 1,
 		},
@@ -283,7 +283,7 @@ func TestMapStruct_ReadBasic(t *testing.T) {
 		},
 	}
 
-	expectedValues := map[string]interface{}{
+	expectedValues := map[string]any{
 		"b":    true,
 		"d":    time.Second,
 		"i":    1,
@@ -300,11 +300,11 @@ func TestMapStruct_ReadBasic(t *testing.T) {
 		"ui16": uint16(3),
 		"ui32": uint32(4),
 		"ui64": uint64(5),
-		"msi": map[string]interface{}{
+		"msi": map[string]any{
 			"a": "a",
 			"1": 1,
 		},
-		"mss": map[string]interface{}{
+		"mss": map[string]any{
 			"b": "b",
 			"c": "c",
 		},
@@ -334,8 +334,8 @@ func TestMapStructIO_ReadNested(t *testing.T) {
 		},
 	}
 
-	expectedValues := map[string]interface{}{
-		"nested": map[string]interface{}{
+	expectedValues := map[string]any{
+		"nested": map[string]any{
 			"b": true,
 			"s": "string",
 		},
@@ -365,7 +365,7 @@ func TestMapStructIO_ReadAnonymous(t *testing.T) {
 		},
 	}
 
-	expectedValues := map[string]interface{}{
+	expectedValues := map[string]any{
 		"b": true,
 		"s": "string",
 	}
@@ -394,9 +394,9 @@ func TestMapStructIO_ReadMapStruct(t *testing.T) {
 		},
 	}
 
-	expectedValues := map[string]interface{}{
-		"m": map[string]interface{}{
-			"a": map[string]interface{}{
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"a": map[string]any{
 				"s": "string",
 			},
 		},
@@ -432,13 +432,13 @@ func TestMapStructIO_ReadSliceStruct(t *testing.T) {
 		},
 	}
 
-	expectedValues := map[string]interface{}{
-		"sl": []interface{}{
-			map[string]interface{}{
+	expectedValues := map[string]any{
+		"sl": []any{
+			map[string]any{
 				"b": false,
 				"s": "s1",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"b": true,
 				"s": "s2",
 			},
@@ -454,11 +454,11 @@ func TestMapStructIO_ReadSliceStruct(t *testing.T) {
 
 func TestNewMapStructIO_ReadSliceMap(t *testing.T) {
 	type sourceStruct struct {
-		SL []map[string]interface{} `cfg:"sl"`
+		SL []map[string]any `cfg:"sl"`
 	}
 
 	source := &sourceStruct{
-		SL: []map[string]interface{}{
+		SL: []map[string]any{
 			{
 				"b": true,
 				"i": 3,
@@ -470,13 +470,13 @@ func TestNewMapStructIO_ReadSliceMap(t *testing.T) {
 		},
 	}
 
-	expectedValues := map[string]interface{}{
-		"sl": []interface{}{
-			map[string]interface{}{
+	expectedValues := map[string]any{
+		"sl": []any{
+			map[string]any{
 				"b": true,
 				"i": 3,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"s": "string",
 				"f": 1.2,
 			},
@@ -499,8 +499,8 @@ func TestNewMapStructIO_ReadSliceBasic(t *testing.T) {
 		SL: []int{1, 2, 3},
 	}
 
-	expectedValues := map[string]interface{}{
-		"sl": []interface{}{1, 2, 3},
+	expectedValues := map[string]any{
+		"sl": []any{1, 2, 3},
 	}
 
 	ms := setupMapStructIO(t, source)
@@ -530,7 +530,7 @@ func TestMapStructIO_WriteBasic(t *testing.T) {
 		UI64 uint64        `cfg:"ui64" default:"5"`
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
+	values := mapx.NewMapX(map[string]any{
 		"b":    true,
 		"d":    "1s",
 		"i":    1,
@@ -587,7 +587,7 @@ func TestMapStructIO_WriteEmbedded(t *testing.T) {
 		EmbeddedStruct
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
+	values := mapx.NewMapX(map[string]any{
 		"b": "true",
 		"i": 1,
 		"s": "string",
@@ -620,10 +620,10 @@ func TestMapStructIO_WriteStructNested(t *testing.T) {
 		Nested nestedStruct `cfg:"nested"`
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
+	values := mapx.NewMapX(map[string]any{
 		"b": "true",
 		"i": 1,
-		"nested": map[string]interface{}{
+		"nested": map[string]any{
 			"s": "string",
 		},
 	})
@@ -644,9 +644,48 @@ func TestMapStructIO_WriteStructNested(t *testing.T) {
 	assert.Equal(t, expected, source)
 }
 
+func TestMapStructIO_WriteStructMerge(t *testing.T) {
+	type nestedStruct struct {
+		I int     `cfg:"i"`
+		S string  `cfg:"s"`
+		F float32 `cfg:"f"`
+	}
+
+	type sourceStruct struct {
+		Nested nestedStruct `cfg:"nested"`
+	}
+
+	values := mapx.NewMapX(map[string]any{
+		"nested": map[string]any{
+			"s": "foo",
+			"f": 3.0,
+		},
+	})
+
+	expected := &sourceStruct{
+		Nested: nestedStruct{
+			I: 1,
+			S: "foo",
+			F: 3,
+		},
+	}
+
+	source := &sourceStruct{
+		Nested: nestedStruct{
+			I: 1,
+			F: 2,
+		},
+	}
+	ms := setupMapStructIO(t, source)
+	err := ms.Write(values)
+
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
+}
+
 func TestMapStructIO_WriteZero(t *testing.T) {
 	type sourceStruct struct {
-		MSI map[string]interface{} `cfg:"msi"`
+		MSI map[string]any `cfg:"msi"`
 	}
 
 	source := &sourceStruct{}
@@ -658,7 +697,7 @@ func TestMapStructIO_WriteZero(t *testing.T) {
 	err = ms.Write(zero)
 
 	expected := &sourceStruct{
-		MSI: map[string]interface{}{},
+		MSI: map[string]any{},
 	}
 
 	assert.NoError(t, err, "there should be no error during write")
@@ -677,25 +716,25 @@ func TestMapStructIO_WriteSliceMap(t *testing.T) {
 		SS  []slice          `cfg:"ss"`
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
-		"mi": map[string]interface{}{
+	values := mapx.NewMapX(map[string]any{
+		"mi": map[string]any{
 			"a": 1,
 			"b": 2,
 		},
-		"ms1": map[string]interface{}{
-			"a": map[string]interface{}{
+		"ms1": map[string]any{
+			"a": map[string]any{
 				"i": 1,
 			},
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"i": 2,
 			},
 		},
-		"si": []interface{}{1, 2},
-		"ss": []interface{}{
-			map[string]interface{}{
+		"si": []any{1, 2},
+		"ss": []any{
+			map[string]any{
 				"i": 1,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"i": 2,
 			},
 		},
@@ -735,20 +774,20 @@ func TestMapStructIO_WriteSliceMap(t *testing.T) {
 
 func TestMapStruct_Write_Basic_To_Slice(t *testing.T) {
 	type sourceStruct struct {
-		S  []interface{} `cfg:"s"`
-		SB []bool        `cfg:"sb"`
-		SI []int         `cfg:"si"`
-		SS []string      `cfg:"ss"`
+		S  []any    `cfg:"s"`
+		SB []bool   `cfg:"sb"`
+		SI []int    `cfg:"si"`
+		SS []string `cfg:"ss"`
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
+	values := mapx.NewMapX(map[string]any{
 		"s":  "1,a",
 		"si": 1,
 		"ss": "1 ,2, a",
 	})
 
 	expected := &sourceStruct{
-		S:  []interface{}{"1", "a"},
+		S:  []any{"1", "a"},
 		SI: []int{1},
 		SS: []string{"1", "2", "a"},
 	}
@@ -767,7 +806,7 @@ func TestMapStruct_Write_Typed(t *testing.T) {
 		Value someString `cfg:"value"`
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
+	values := mapx.NewMapX(map[string]any{
 		"value": "string",
 	})
 
@@ -789,7 +828,7 @@ func TestMapStruct_Write_Typed_Slice(t *testing.T) {
 		Values []someString `cfg:"values"`
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
+	values := mapx.NewMapX(map[string]any{
 		"values": []string{"string", "other string"},
 	})
 
@@ -812,8 +851,8 @@ func TestMapStruct_Write_Typed_StringMap(t *testing.T) {
 		Values map[someKey]someString `cfg:"values"`
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
-		"values": map[string]interface{}{
+	values := mapx.NewMapX(map[string]any{
+		"values": map[string]any{
 			"1": "string",
 			"2": "other string",
 		},
@@ -841,8 +880,8 @@ func TestMapStruct_Write_Typed_IntMap(t *testing.T) {
 		Values map[someInt]someString `cfg:"values"`
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
-		"values": map[string]interface{}{
+	values := mapx.NewMapX(map[string]any{
+		"values": map[string]any{
 			"1": "string",
 			"2": "other string",
 		},
@@ -875,13 +914,13 @@ func TestMapStruct_Write_Typed_MapNestedInSlice(t *testing.T) {
 		Values map[someKey][]map[someString][]map[string][]someKey `cfg:"values"`
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
-		"values": map[string]interface{}{
-			"1": []interface{}{
-				map[string]interface{}{
-					"2": []interface{}{
-						map[string]interface{}{
-							"3": []interface{}{"string", "some string"},
+	values := mapx.NewMapX(map[string]any{
+		"values": map[string]any{
+			"1": []any{
+				map[string]any{
+					"2": []any{
+						map[string]any{
+							"3": []any{"string", "some string"},
 						},
 					},
 				},
@@ -918,12 +957,12 @@ func TestMapStruct_Write_Typed_MapNested(t *testing.T) {
 		Values map[someKey]map[someString][]map[string][]someKey `cfg:"values"`
 	}
 
-	values := mapx.NewMapX(map[string]interface{}{
-		"values": map[string]interface{}{
-			"1": map[string]interface{}{
-				"2": []interface{}{
-					map[string]interface{}{
-						"3": []interface{}{"string", "some string"},
+	values := mapx.NewMapX(map[string]any{
+		"values": map[string]any{
+			"1": map[string]any{
+				"2": []any{
+					map[string]any{
+						"3": []any{"string", "some string"},
 					},
 				},
 			},
@@ -966,7 +1005,7 @@ func TestMapStruct_Decode(t *testing.T) {
 	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
 		FieldTag: "cfg",
 		Decoders: []mapx.MapStructDecoder{
-			func(targetType reflect.Type, val interface{}) (interface{}, error) {
+			func(targetType reflect.Type, val any) (any, error) {
 				if raw, ok := val.(string); ok {
 					return strings.ToUpper(raw), nil
 				}
@@ -978,7 +1017,7 @@ func TestMapStruct_Decode(t *testing.T) {
 
 	assert.NoError(t, err, "there should be no error on creating the mapstruct")
 
-	err = ms.Write(mapx.NewMapX(map[string]interface{}{
+	err = ms.Write(mapx.NewMapX(map[string]any{
 		"a": "foo",
 		"b": "bar",
 	}))
@@ -992,7 +1031,7 @@ func TestMapStruct_Decode(t *testing.T) {
 	assert.Equal(t, expected, source)
 }
 
-func setupMapStructIO(t *testing.T, source interface{}) *mapx.Struct {
+func setupMapStructIO(t *testing.T, source any) *mapx.Struct {
 	ms, err := mapx.NewStruct(source, &mapx.StructSettings{
 		FieldTag:   "cfg",
 		DefaultTag: "default",
