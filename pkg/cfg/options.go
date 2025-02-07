@@ -20,6 +20,12 @@ func (c *configFiles) Set(value string) error {
 	return nil
 }
 
+func WithConfigBytes(bytes []byte, format string) Option {
+	return func(cfg *config) error {
+		return readConfigFromBytes(cfg, bytes, format)
+	}
+}
+
 func WithConfigFile(filePath string, fileType string) Option {
 	return func(cfg *config) error {
 		return readConfigFromFile(cfg, filePath, fileType)
@@ -48,13 +54,13 @@ func WithConfigFileFlag(flagName string) Option {
 	}
 }
 
-func WithConfigMap(settings map[string]interface{}, mergeOptions ...MergeOption) Option {
+func WithConfigMap(settings map[string]any, mergeOptions ...MergeOption) Option {
 	return func(cfg *config) error {
 		return cfg.merge(".", settings, mergeOptions...)
 	}
 }
 
-func WithConfigSetting(key string, settings interface{}, mergeOptions ...MergeOption) Option {
+func WithConfigSetting(key string, settings any, mergeOptions ...MergeOption) Option {
 	return func(cfg *config) error {
 		return cfg.merge(key, settings, mergeOptions...)
 	}

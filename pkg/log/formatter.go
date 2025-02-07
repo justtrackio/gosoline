@@ -9,14 +9,15 @@ import (
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 )
 
-type Formatter func(timestamp string, level int, format string, args []interface{}, err error, data Data) ([]byte, error)
+type Formatter func(timestamp string, level int, format string, args []any, err error, data Data) ([]byte, error)
 
 var formatters = map[string]Formatter{
 	"console": FormatterConsole,
+	"simple":  FormatterSimple,
 	"json":    FormatterJson,
 }
 
-func FormatterConsole(timestamp string, level int, format string, args []interface{}, err error, data Data) ([]byte, error) {
+func FormatterConsole(timestamp string, level int, format string, args []any, err error, data Data) ([]byte, error) {
 	fieldString := getFieldsAsString(data.Fields)
 	contextString := getFieldsAsString(data.ContextFields)
 
@@ -43,18 +44,45 @@ func FormatterConsole(timestamp string, level int, format string, args []interfa
 	return append(serialized, '\n'), nil
 }
 
-type formatterJsonStruct struct {
-	Error     string                 `json:"err,omitempty"`
-	Channel   string                 `json:"channel"`
-	Level     int                    `json:"level"`
-	LevelName string                 `json:"level_name"`
-	Timestamp string                 `json:"timestamp"`
-	Message   string                 `json:"message"`
-	Fields    map[string]interface{} `json:"fields"`
-	Context   map[string]interface{} `json:"context"`
+func FormatterSimple(timestamp string, level int, format string, args []any, err error, data Data) ([]byte, error) {
+	fieldString := getFieldsAsString(data.Fields)
+	contextString := getFieldsAsString(data.ContextFields)
+
+	levelStr := fmt.Sprintf("%-7s", LevelName(level))
+	channel := fmt.Sprintf("%-7s", data.Channel)
+	msg := fmt.Sprintf(format, args...)
+
+	if err != nil {
+		msg = err.Error()
+	}
+
+	output := fmt.Sprintf("%s %s %s %-50s %s %s",
+		timestamp,
+		channel,
+		levelStr,
+		msg,
+		contextString,
+		fieldString,
+	)
+
+	output = strings.TrimSpace(output)
+	serialized := []byte(output)
+
+	return append(serialized, '\n'), nil
 }
 
-func FormatterJson(timestamp string, level int, format string, args []interface{}, err error, data Data) ([]byte, error) {
+type formatterJsonStruct struct {
+	Error     string         `json:"err,omitempty"`
+	Channel   string         `json:"channel"`
+	Level     int            `json:"level"`
+	LevelName string         `json:"level_name"`
+	Timestamp string         `json:"timestamp"`
+	Message   string         `json:"message"`
+	Fields    map[string]any `json:"fields"`
+	Context   map[string]any `json:"context"`
+}
+
+func FormatterJson(timestamp string, level int, format string, args []any, err error, data Data) ([]byte, error) {
 	msg := fmt.Sprintf(format, args...)
 
 	jsn := &formatterJsonStruct{
@@ -79,7 +107,7 @@ func FormatterJson(timestamp string, level int, format string, args []interface{
 	return append(serialized, '\n'), nil
 }
 
-func getFieldsAsString(fields map[string]interface{}) string {
+func getFieldsAsString(fields map[string]any) string {
 	keys := make([]string, 0, len(fields))
 	fieldParts := make([]string, 0, len(fields))
 

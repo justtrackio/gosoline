@@ -40,13 +40,13 @@ type StructSettings struct {
 }
 
 type Struct struct {
-	target   interface{}
+	target   any
 	casters  []MapStructCaster
 	decoders []MapStructDecoder
 	settings *StructSettings
 }
 
-func NewStruct(source interface{}, settings *StructSettings) (*Struct, error) {
+func NewStruct(source any, settings *StructSettings) (*Struct, error) {
 	st := reflect.TypeOf(source)
 
 	if st.Kind() != reflect.Ptr {
@@ -67,7 +67,7 @@ func (s *Struct) Keys() []StructKey {
 	return s.doKeys("", sv)
 }
 
-func (s *Struct) doKeys(parent string, target interface{}) []StructKey {
+func (s *Struct) doKeys(parent string, target any) []StructKey {
 	st := reflect.TypeOf(target)
 	sv := reflect.ValueOf(target)
 
@@ -80,7 +80,7 @@ func (s *Struct) doKeys(parent string, target interface{}) []StructKey {
 		targetValue := sv.Field(i)
 
 		// skip unexported fields
-		if len(targetField.PkgPath) != 0 {
+		if targetField.PkgPath != "" {
 			continue
 		}
 
@@ -89,6 +89,7 @@ func (s *Struct) doKeys(parent string, target interface{}) []StructKey {
 			embeddedKeys := s.doKeys("", embeddedValue)
 
 			keys = append(keys, embeddedKeys...)
+
 			continue
 		}
 
@@ -128,29 +129,29 @@ func (s *Struct) doKeys(parent string, target interface{}) []StructKey {
 	return keys
 }
 
-func (s *Struct) ReadZeroAndDefaultValues() (*MapX, *MapX, error) {
+func (s *Struct) ReadZeroAndDefaultValues() (zeros *MapX, defaults *MapX, err error) {
 	sv := reflect.ValueOf(s.target).Elem().Interface()
 
 	return s.doReadZeroAndDefaultValues(sv)
 }
 
-func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, error) {
+//nolint:gocognit // trying to split it up made it even harder to read
+func (s *Struct) doReadZeroAndDefaultValues(target any) (zeros *MapX, defaults *MapX, err error) {
 	st := reflect.TypeOf(target)
 	sv := reflect.ValueOf(target)
 
-	var err error
 	var val string
 	var tag *StructTag
 	var ok bool
-	var zeroValue, defValue interface{}
-	values, defaults := NewMapX(), NewMapX()
+	var zeroValue, defValue any
+	zeros, defaults = NewMapX(), NewMapX()
 
 	for i := 0; i < st.NumField(); i++ {
 		targetField := st.Field(i)
 		targetValue := sv.Field(i)
 
 		// skip unexported fields
-		if len(targetField.PkgPath) != 0 {
+		if targetField.PkgPath != "" {
 			continue
 		}
 
@@ -160,7 +161,7 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 				return nil, nil, fmt.Errorf("can not read from embedded field %s", targetField.Name)
 			}
 
-			values.Merge(".", embeddedZeros.Msi())
+			zeros.Merge(".", embeddedZeros.Msi())
 			defaults.Merge(".", embeddedDefaults.Msi())
 
 			continue
@@ -176,7 +177,7 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 				return nil, nil, fmt.Errorf("can not read from nested field %s", targetField.Name)
 			}
 
-			values.Set(tag.Name, v.Msi())
+			zeros.Set(tag.Name, v.Msi())
 			defaults.Set(tag.Name, d.Msi())
 
 			continue
@@ -184,17 +185,18 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 
 		if targetField.Type.Kind() == reflect.Slice {
 			zeroValue = reflect.MakeSlice(targetField.Type, 0, 4).Interface()
-			values.Set(tag.Name, zeroValue)
+			zeros.Set(tag.Name, zeroValue)
 		}
 
 		if targetField.Type.Kind() == reflect.Map {
 			zeroValue = reflect.MakeMap(targetField.Type).Interface()
-			values.Set(tag.Name, zeroValue)
+			zeros.Set(tag.Name, zeroValue)
+
 			continue
 		}
 
 		zeroValue = reflect.Zero(targetField.Type).Interface()
-		values.Set(tag.Name, zeroValue)
+		zeros.Set(tag.Name, zeroValue)
 
 		if val, ok = targetField.Tag.Lookup(s.settings.DefaultTag); !ok {
 			continue
@@ -207,7 +209,7 @@ func (s *Struct) doReadZeroAndDefaultValues(target interface{}) (*MapX, *MapX, e
 		defaults.Set(tag.Name, defValue)
 	}
 
-	return values, defaults, nil
+	return zeros, defaults, nil
 }
 
 func (s *Struct) Read() (*MapX, error) {
@@ -220,9 +222,9 @@ func (s *Struct) Read() (*MapX, error) {
 	return mapValues, nil
 }
 
-func (s *Struct) doReadMap(path string, mapValues *MapX, mp interface{}) error {
-	if _, ok := mp.(map[string]interface{}); ok {
-		return s.doReadMsi(path, mapValues, mp.(map[string]interface{}))
+func (s *Struct) doReadMap(path string, mapValues *MapX, mp any) error {
+	if _, ok := mp.(map[string]any); ok {
+		return s.doReadMsi(path, mapValues, mp.(map[string]any))
 	}
 
 	if _, ok := mp.(map[string]string); ok {
@@ -252,7 +254,7 @@ func (s *Struct) doReadMap(path string, mapValues *MapX, mp interface{}) error {
 	return nil
 }
 
-func (s *Struct) doReadMsi(path string, mapValues *MapX, msi map[string]interface{}) error {
+func (s *Struct) doReadMsi(path string, mapValues *MapX, msi map[string]any) error {
 	for k, v := range msi {
 		elementPath := fmt.Sprintf("%s.%s", path, k)
 		mapValues.Set(elementPath, v)
@@ -271,7 +273,7 @@ func (s *Struct) doReadMss(path string, mapValues *MapX, mss map[string]string) 
 }
 
 func (s *Struct) doReadSlice(path string, mapValues *MapX, slice reflect.Value) error {
-	sl := make([]interface{}, 0, slice.Len())
+	sl := make([]any, 0, slice.Len())
 	mapValues.Set(path, sl)
 
 	for i := 0; i < slice.Len(); i++ {
@@ -282,11 +284,11 @@ func (s *Struct) doReadSlice(path string, mapValues *MapX, slice reflect.Value) 
 		if elementValue.Kind() == reflect.Map {
 			element = elementValue.Interface()
 
-			if _, ok := element.(map[string]interface{}); !ok {
+			if _, ok := element.(map[string]any); !ok {
 				return fmt.Errorf("MSI fields are allowed only for path %s", elementPath)
 			}
 
-			if err := s.doReadMsi(elementPath, mapValues, element.(map[string]interface{})); err != nil {
+			if err := s.doReadMsi(elementPath, mapValues, element.(map[string]any)); err != nil {
 				return err
 			}
 
@@ -307,7 +309,7 @@ func (s *Struct) doReadSlice(path string, mapValues *MapX, slice reflect.Value) 
 	return nil
 }
 
-func (s *Struct) doReadStruct(path string, mapValues *MapX, target interface{}) error {
+func (s *Struct) doReadStruct(path string, mapValues *MapX, target any) error {
 	targetType := reflect.TypeOf(target)
 	targetValue := reflect.ValueOf(target)
 
@@ -317,23 +319,21 @@ func (s *Struct) doReadStruct(path string, mapValues *MapX, target interface{}) 
 	}
 
 	var ok bool
-	var err error
 	var tag *StructTag
-	var fieldPath string
 
 	for i := 0; i < targetValue.NumField(); i++ {
 		fieldType := targetType.Field(i)
 		fieldValue := targetValue.Field(i)
 
 		// skip unexported fields
-		if len(fieldType.PkgPath) != 0 {
+		if fieldType.PkgPath != "" {
 			continue
 		}
 
 		if fieldType.Anonymous {
 			target = fieldValue.Interface()
 
-			if err = s.doReadStruct(path, mapValues, target); err != nil {
+			if err := s.doReadStruct(path, mapValues, target); err != nil {
 				return err
 			}
 
@@ -345,39 +345,47 @@ func (s *Struct) doReadStruct(path string, mapValues *MapX, target interface{}) 
 			continue
 		}
 
-		fieldPath = fmt.Sprintf("%s.%s", path, tag.Name)
-
-		if fieldValue.Kind() == reflect.Map {
-			target = fieldValue.Interface()
-
-			if err = s.doReadMap(fieldPath, mapValues, target); err != nil {
-				return err
-			}
-
-			continue
+		if err := s.doReadValue(path, mapValues, tag, fieldType, fieldValue); err != nil {
+			return err
 		}
-
-		if fieldValue.Kind() == reflect.Slice {
-			if err = s.doReadSlice(fieldPath, mapValues, fieldValue); err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		if fieldType.Type.Kind() == reflect.Struct && fieldValue.Type() != reflect.TypeOf(time.Time{}) {
-			target = fieldValue.Interface()
-
-			if err = s.doReadStruct(fieldPath, mapValues, target); err != nil {
-				return fmt.Errorf("can not read nested struct values from path %s: %w", fieldPath, err)
-			}
-
-			continue
-		}
-
-		value := fieldValue.Interface()
-		mapValues.Set(fieldPath, value)
 	}
+
+	return nil
+}
+
+func (s *Struct) doReadValue(path string, mapValues *MapX, tag *StructTag, fieldType reflect.StructField, fieldValue reflect.Value) error {
+	fieldPath := fmt.Sprintf("%s.%s", path, tag.Name)
+
+	if fieldValue.Kind() == reflect.Map {
+		target := fieldValue.Interface()
+
+		if err := s.doReadMap(fieldPath, mapValues, target); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if fieldValue.Kind() == reflect.Slice {
+		if err := s.doReadSlice(fieldPath, mapValues, fieldValue); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if fieldType.Type.Kind() == reflect.Struct && fieldValue.Type() != reflect.TypeOf(time.Time{}) {
+		target := fieldValue.Interface()
+
+		if err := s.doReadStruct(fieldPath, mapValues, target); err != nil {
+			return fmt.Errorf("can not read nested struct values from path %s: %w", fieldPath, err)
+		}
+
+		return nil
+	}
+
+	value := fieldValue.Interface()
+	mapValues.Set(fieldPath, value)
 
 	return nil
 }
@@ -386,16 +394,14 @@ func (s *Struct) Write(values *MapX) error {
 	return s.doWrite(s.target, values)
 }
 
-func (s *Struct) doWrite(target interface{}, sourceValues *MapX) error {
+func (s *Struct) doWrite(target any, sourceValues *MapX) error {
 	st := reflect.TypeOf(target)
 	sv := reflect.ValueOf(target)
 
 	st = st.Elem()
 	sv = sv.Elem()
 
-	var err error
 	var tag *StructTag
-	var sourceValue interface{}
 	var ok bool
 
 	for i := 0; i < st.NumField(); i++ {
@@ -403,7 +409,7 @@ func (s *Struct) doWrite(target interface{}, sourceValues *MapX) error {
 		targetValue := sv.Field(i)
 
 		// skip unexported fields
-		if len(targetField.PkgPath) != 0 {
+		if targetField.PkgPath != "" {
 			continue
 		}
 
@@ -416,7 +422,7 @@ func (s *Struct) doWrite(target interface{}, sourceValues *MapX) error {
 		}
 
 		if targetField.Anonymous {
-			if err = s.doWriteAnonymous(targetField.Name, targetValue, sourceValues); err != nil {
+			if err := s.doWriteAnonymous(targetField.Name, targetValue, sourceValues); err != nil {
 				return err
 			}
 
@@ -431,43 +437,51 @@ func (s *Struct) doWrite(target interface{}, sourceValues *MapX) error {
 			continue
 		}
 
-		sourceValue = sourceValues.Get(tag.Name).Data()
-
-		if targetValue.Type().Kind() == reflect.Ptr {
-			targetValue.Set(reflect.New(targetValue.Type().Elem()))
-			targetValue = targetValue.Elem()
+		if err := s.doWriteValue(tag, sourceValues, targetValue); err != nil {
+			return err
 		}
-
-		if targetValue.Kind() == reflect.Map {
-			if err = s.doWriteMap(tag, targetValue, sourceValues); err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		if targetValue.Kind() == reflect.Slice {
-			if err = s.doWriteSlice(tag, targetValue, sourceValues); err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		if targetValue.Kind() == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{}) {
-			if err = s.doWriteStruct(tag.Name, targetValue, sourceValues); err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		if sourceValue, err = s.decodeAndCastValue(tag, targetValue.Type(), sourceValue); err != nil {
-			return fmt.Errorf("can not decode and cast value for key %s: %w", tag.Name, err)
-		}
-
-		targetValue.Set(reflect.ValueOf(sourceValue))
 	}
+
+	return nil
+}
+
+func (s *Struct) doWriteValue(tag *StructTag, sourceValues *MapX, targetValue reflect.Value) (err error) {
+	sourceValue := sourceValues.Get(tag.Name).Data()
+
+	if targetValue.Type().Kind() == reflect.Ptr {
+		targetValue.Set(reflect.New(targetValue.Type().Elem()))
+		targetValue = targetValue.Elem()
+	}
+
+	if targetValue.Kind() == reflect.Map {
+		if err := s.doWriteMap(tag, targetValue, sourceValues); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if targetValue.Kind() == reflect.Slice {
+		if err := s.doWriteSlice(tag, targetValue, sourceValues); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if targetValue.Kind() == reflect.Struct && targetValue.Type() != reflect.TypeOf(time.Time{}) {
+		if err := s.doWriteStruct(tag.Name, targetValue, sourceValues); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if sourceValue, err = s.decodeAndCastValue(tag, targetValue.Type(), sourceValue); err != nil {
+		return fmt.Errorf("can not decode and cast value for key %s: %w", tag.Name, err)
+	}
+
+	targetValue.Set(reflect.ValueOf(sourceValue))
 
 	return nil
 }
@@ -490,7 +504,7 @@ func (s *Struct) doWriteMap(tag *StructTag, targetValue reflect.Value, sourceMap
 	var err error
 	var elementValue reflect.Value
 	var elementMap *MapX
-	var finalValue interface{}
+	var finalValue any
 	sourceData := sourceMap.Get(tag.Name).Data()
 
 	sourceValue := reflect.ValueOf(sourceData)
@@ -525,6 +539,7 @@ func (s *Struct) doWriteMap(tag *StructTag, targetValue reflect.Value, sourceMap
 			}
 
 			targetValue.SetMapIndex(key, elementValue.Elem())
+
 			continue
 		}
 
@@ -543,19 +558,19 @@ func (s *Struct) doWriteMap(tag *StructTag, targetValue reflect.Value, sourceMap
 
 func (s *Struct) doWriteSlice(tag *StructTag, targetValue reflect.Value, sourceValues *MapX) error {
 	var err error
-	var finalValue interface{}
-	var interfaceSlice []interface{}
+	var finalValue any
+	var interfaceSlice []any
 	targetSliceElementType := targetValue.Type().Elem()
 
 	sourceValue := sourceValues.Get(tag.Name).Data()
 
 	if interfaceSlice, err = s.trySlice(sourceValue); err != nil {
-		return fmt.Errorf("value for field %s has to be castable to []interface{} but is of type %T: %w", tag.Name, sourceValue, err)
+		return fmt.Errorf("value for field %s has to be castable to []any but is of type %T: %w", tag.Name, sourceValue, err)
 	}
 
 	for j := 0; j < len(interfaceSlice); j++ {
 		switch elementValue := interfaceSlice[j].(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			element := reflect.New(targetSliceElementType)
 			elementInterface := element.Interface()
 			elementMap := NewMapX(elementValue)
@@ -585,6 +600,7 @@ func (s *Struct) doWriteStruct(cfg string, targetValue reflect.Value, sourceValu
 	}
 
 	element := reflect.New(targetValue.Type())
+	element.Elem().Set(targetValue)
 	elementInterface := element.Interface()
 
 	if err := s.doWrite(elementInterface, elementValues); err != nil {
@@ -597,7 +613,7 @@ func (s *Struct) doWriteStruct(cfg string, targetValue reflect.Value, sourceValu
 	return nil
 }
 
-func (s *Struct) decodeAndCastValue(tag *StructTag, targetType reflect.Type, sourceValue interface{}) (interface{}, error) {
+func (s *Struct) decodeAndCastValue(tag *StructTag, targetType reflect.Type, sourceValue any) (any, error) {
 	var err error
 
 	if !tag.NoCast {
@@ -623,7 +639,7 @@ func (s *Struct) decodeAndCastValue(tag *StructTag, targetType reflect.Type, sou
 	return sourceValue, nil
 }
 
-func (s *Struct) cast(targetType reflect.Type, value interface{}) (interface{}, error) {
+func (s *Struct) cast(targetType reflect.Type, value any) (any, error) {
 	valueType := reflect.TypeOf(value)
 
 	if valueType.AssignableTo(targetType) {
@@ -637,40 +653,11 @@ func (s *Struct) cast(targetType reflect.Type, value interface{}) (interface{}, 
 	}
 
 	if valueType.Kind() == reflect.Slice && targetType.Kind() == reflect.Slice {
-		elemType := targetType.Elem()
-		reflectValue := reflect.ValueOf(value)
-		resultSlice := reflect.MakeSlice(targetType, reflectValue.Len(), reflectValue.Len())
-
-		for i := 0; i < reflectValue.Len(); i++ {
-			if iValue, err := s.cast(elemType, reflectValue.Index(i).Interface()); err != nil {
-				return nil, fmt.Errorf("could not cast element %d in slice: %w", i, err)
-			} else {
-				resultSlice.Index(i).Set(reflect.ValueOf(iValue))
-			}
-		}
-
-		return resultSlice.Interface(), nil
+		return s.castSlice(targetType, value)
 	}
 
 	if valueType.Kind() == reflect.Map && targetType.Kind() == reflect.Map {
-		keyType := targetType.Key()
-		elemType := targetType.Elem()
-		reflectValue := reflect.ValueOf(value)
-		resultMap := reflect.MakeMap(targetType)
-
-		for _, key := range reflectValue.MapKeys() {
-			if keyValue, err := s.cast(keyType, key.Interface()); err != nil {
-				return nil, fmt.Errorf("could not cast key %v in map: %w", key.Interface(), err)
-			} else {
-				if elemValue, err := s.cast(elemType, reflectValue.MapIndex(key).Interface()); err != nil {
-					return nil, fmt.Errorf("could not cast value at key %v in map: %w", key.Interface(), err)
-				} else {
-					resultMap.SetMapIndex(reflect.ValueOf(keyValue), reflect.ValueOf(elemValue))
-				}
-			}
-		}
-
-		return resultMap.Interface(), nil
+		return s.castMap(targetType, value)
 	}
 
 	for _, caster := range s.casters {
@@ -715,17 +702,57 @@ func (s *Struct) cast(targetType reflect.Type, value interface{}) (interface{}, 
 		return cast.ToUint32E(value)
 	case reflect.Uint64:
 		return cast.ToUint64E(value)
+	default:
+		return nil, fmt.Errorf("value %s is not castable to %s", value, targetType.Kind().String())
 	}
-
-	return nil, fmt.Errorf("value %s is not castable to %s", value, targetType.Kind().String())
 }
 
-func (s *Struct) trySlice(value interface{}) ([]interface{}, error) {
+func (s *Struct) castSlice(targetType reflect.Type, value any) (any, error) {
+	elemType := targetType.Elem()
+	reflectValue := reflect.ValueOf(value)
+	resultSlice := reflect.MakeSlice(targetType, reflectValue.Len(), reflectValue.Len())
+
+	for i := 0; i < reflectValue.Len(); i++ {
+		if iValue, err := s.cast(elemType, reflectValue.Index(i).Interface()); err != nil {
+			return nil, fmt.Errorf("could not cast element %d in slice: %w", i, err)
+		} else {
+			resultSlice.Index(i).Set(reflect.ValueOf(iValue))
+		}
+	}
+
+	return resultSlice.Interface(), nil
+}
+
+func (s *Struct) castMap(targetType reflect.Type, value any) (any, error) {
+	keyType := targetType.Key()
+	elemType := targetType.Elem()
+	reflectValue := reflect.ValueOf(value)
+	resultMap := reflect.MakeMap(targetType)
+
+	for _, key := range reflectValue.MapKeys() {
+		var err error
+		var keyValue, elemValue any
+
+		if keyValue, err = s.cast(keyType, key.Interface()); err != nil {
+			return nil, fmt.Errorf("could not cast key %v in map: %w", key.Interface(), err)
+		}
+
+		if elemValue, err = s.cast(elemType, reflectValue.MapIndex(key).Interface()); err != nil {
+			return nil, fmt.Errorf("could not cast value at key %v in map: %w", key.Interface(), err)
+		}
+
+		resultMap.SetMapIndex(reflect.ValueOf(keyValue), reflect.ValueOf(elemValue))
+	}
+
+	return resultMap.Interface(), nil
+}
+
+func (s *Struct) trySlice(value any) ([]any, error) {
 	var err error
 	var str string
-	var slice []interface{}
+	var slice []any
 
-	if slice, ok := value.([]interface{}); ok {
+	if slice, ok := value.([]any); ok {
 		return slice, nil
 	}
 

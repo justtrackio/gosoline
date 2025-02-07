@@ -75,6 +75,7 @@ type Client interface {
 	NamedSelect(ctx context.Context, dest any, query string, arg any) error
 	Get(ctx context.Context, dest any, query string, args ...any) error
 	WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) error
+	Close() error
 }
 
 type ClientSqlx struct {
@@ -459,4 +460,8 @@ func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx
 	}
 
 	return nil
+}
+
+func (c *ClientSqlx) Close() error {
+	return c.db.Close()
 }
