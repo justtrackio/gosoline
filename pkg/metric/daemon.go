@@ -13,7 +13,20 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-const defaultTimeFormat = "2006-01-02T15:04Z07:00"
+const (
+	defaultTimeFormat       = "2006-01-02T15:04Z07:00"
+	WriterTypeCloudwatch    = "cloudwatch"
+	WriterTypeElasticsearch = "elasticsearch"
+	WriterTypePrometheus    = "prometheus"
+)
+
+type WriterFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error)
+
+var writerFactories = map[string]WriterFactory{}
+
+func RegisterWriterFactory(name string, factory WriterFactory) {
+	writerFactories[name] = factory
+}
 
 type BatchedMetricDatum struct {
 	Priority   int
@@ -29,50 +42,74 @@ type Daemon struct {
 	logger   log.Logger
 	settings *Settings
 
-	channel *metricChannel
-	ticker  *time.Ticker
-	writer  Writer
+	channel                 *metricChannel
+	ticker                  *time.Ticker
+	aggregatedMetricWriters []Writer
+	rawMetricWriters        []Writer
 
 	batch          map[string]*BatchedMetricDatum
 	dataPointCount int
 }
 
-func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-	var metricWriter Writer
-	var err error
+func metricWriterAggrKey(typ string) string {
+	return fmt.Sprintf("metric.writer_settings.%s.aggregate", typ)
+}
 
+func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	settings := getMetricSettings(config)
 
-	channel := ProviderMetricChannel()
+	channel := providerMetricChannel()
 	channel.enabled = settings.Enabled
 	channel.logger = logger.WithChannel("metrics")
 
 	if !settings.Enabled {
-		return NewMetricDaemonWithInterfaces(logger, channel, newNoopWriter(), settings)
+		noWriters := make([]Writer, 0)
+
+		return NewMetricDaemonWithInterfaces(logger, channel, noWriters, noWriters, settings)
 	}
 
-	metricWriter, err = NewMetricWriter(ctx, config, logger, settings.Writer)
-	if err != nil {
-		return nil, fmt.Errorf("can not create metric writer: %w", err)
+	aggWriters := make([]Writer, 0)
+	rawWriters := make([]Writer, 0)
+
+	for _, typ := range settings.Writers {
+		metricWriterAggrCnfKey := metricWriterAggrKey(typ)
+		aggWriter := config.GetBool(metricWriterAggrCnfKey, false)
+
+		factory, ok := writerFactories[typ]
+		if !ok {
+			return nil, fmt.Errorf("unrecognized writer type: %s", typ)
+		}
+
+		w, err := factory(ctx, config, logger)
+		if err != nil {
+			return nil, fmt.Errorf("could not create %s metric writer: %w", typ, err)
+		}
+
+		if aggWriter {
+			aggWriters = append(aggWriters, w)
+		} else {
+			rawWriters = append(rawWriters, w)
+		}
 	}
 
-	return NewMetricDaemonWithInterfaces(logger, channel, metricWriter, settings)
+	return NewMetricDaemonWithInterfaces(logger, channel, aggWriters, rawWriters, settings)
 }
 
-func NewMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, writer Writer, settings *Settings) (kernel.Module, error) {
+func NewMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, aggWriters []Writer, rawWriters []Writer, settings *Settings) (kernel.Module, error) {
 	return &Daemon{
-		logger:         logger.WithChannel("metrics"),
-		settings:       settings,
-		channel:        channel,
-		ticker:         time.NewTicker(settings.Interval),
-		writer:         writer,
-		batch:          make(map[string]*BatchedMetricDatum),
-		dataPointCount: 0,
+		logger:                  logger.WithChannel("metrics"),
+		settings:                settings,
+		channel:                 channel,
+		ticker:                  time.NewTicker(settings.Interval),
+		aggregatedMetricWriters: aggWriters,
+		rawMetricWriters:        rawWriters,
+		batch:                   make(map[string]*BatchedMetricDatum),
+		dataPointCount:          0,
 	}, nil
 }
 
 func (d *Daemon) IsEssential() bool {
-	return false
+	return true
 }
 
 func (d *Daemon) IsBackground() bool {
@@ -103,6 +140,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 			return nil
 
 		case data := <-d.channel.c:
+			d.rawFanout(data)
 			d.appendBatch(data)
 
 		case <-d.ticker.C:
@@ -115,8 +153,16 @@ func (d *Daemon) emptyChannel() {
 	d.channel.close()
 
 	for data := range d.channel.c {
+		d.rawFanout(data)
 		d.appendBatch(data)
 	}
+}
+
+func (d *Daemon) rawFanout(data Data) {
+	for _, w := range d.rawMetricWriters {
+		w.Write(data)
+	}
+
 }
 
 func (d *Daemon) appendBatch(data Data) {
@@ -179,7 +225,9 @@ func (d *Daemon) publish() {
 
 	data := d.buildMetricData()
 
-	d.writer.Write(data)
+	for _, w := range d.aggregatedMetricWriters {
+		w.Write(data)
+	}
 
 	d.logger.Info("published %d data points in %d metrics", d.dataPointCount, size)
 	d.resetBatch()

@@ -3,6 +3,7 @@ package metric
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -15,6 +16,10 @@ import (
 	gosoCloudwatch "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
+
+func init() {
+	RegisterWriterFactory(WriterTypeCloudwatch, ProvideCloudwatchWriter)
+}
 
 const (
 	PriorityLow  = 1
@@ -48,6 +53,27 @@ func ProvideCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.
 	})
 }
 
+func GetCloudWatchNamespace(config cfg.Config) string {
+	settings := getMetricSettings(config)
+	namespace := settings.WriterSettings.Cloudwatch.Naming.Pattern
+	appId := settings.AppId
+
+	values := map[string]string{
+		"project": appId.Project,
+		"env":     appId.Environment,
+		"family":  appId.Family,
+		"group":   appId.Group,
+		"app":     appId.Application,
+	}
+
+	for key, val := range values {
+		templ := fmt.Sprintf("{%s}", key)
+		namespace = strings.ReplaceAll(namespace, templ, val)
+	}
+
+	return namespace
+}
+
 func NewCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	testClock := clock.NewRealClock()
 	cwNamespace := GetCloudWatchNamespace(config)
@@ -64,7 +90,7 @@ func NewCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logg
 	return NewCloudwatchWriterWithInterfaces(logger, testClock, client, cwNamespace), nil
 }
 
-func NewCloudwatchWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoCloudwatch.Client, cwNamespace string) *cloudwatchWriter {
+func NewCloudwatchWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoCloudwatch.Client, cwNamespace string) Writer {
 	return &cloudwatchWriter{
 		logger:      logger.WithChannel("metrics"),
 		clock:       clock,

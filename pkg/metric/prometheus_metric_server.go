@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"slices"
 	"strconv"
 	"time"
 
@@ -18,22 +17,8 @@ import (
 )
 
 const (
-	promSettingsKey = "prometheus"
+	prometheusDefaultRegistry = "default"
 )
-
-type PromSettings struct {
-	// MetricLimit is used to avoid having metrics for which the name is programmatically generated (or have large number
-	// of possible dimensions) which could lead in a memory leak.
-	MetricLimit int64              `cfg:"metric_limit" default:"10000"`
-	Api         PromServerSettings `cfg:"api"`
-}
-
-type PromServerSettings struct {
-	Enabled bool            `cfg:"enabled" default:"true"`
-	Port    int             `cfg:"port" default:"8092"`
-	Path    string          `cfg:"path" default:"/metrics"`
-	Timeout TimeoutSettings `cfg:"timeout"`
-}
 
 // TimeoutSettings configures IO timeouts.
 type TimeoutSettings struct {
@@ -47,56 +32,43 @@ type TimeoutSettings struct {
 }
 
 type metricsServer struct {
-	kernel.EssentialModule
+	kernel.EssentialBackgroundModule
 	kernel.ServiceStage
 
 	logger   log.Logger
 	server   *http.Server
 	listener net.Listener
-	enabled  bool
-}
-
-func moduleEnabled(config cfg.Config, name string) bool {
-	writers := config.GetStringSlice("metric.writer", make([]string, 0))
-
-	return slices.Contains(writers, name)
 }
 
 func NewPrometheusMetricsServerModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-	if moduleEnabled(config, WriterTypePrometheus) {
-		return NewPrometheusMetricServer(ctx, config, logger)
+	settings := getMetricSettings(config)
+	if settings.WriterSettings.Prometheus.Api.Enabled {
+		return NewPrometheusMetricServer(ctx, logger, settings.WriterSettings.Prometheus)
 	}
 
 	return nil, nil
 }
 
-func NewPrometheusMetricServer(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-	settings := &PromSettings{}
-	config.UnmarshalKey(promSettingsKey, settings)
-
-	registry, err := ProvideRegistry(ctx, "default")
+func NewPrometheusMetricServer(ctx context.Context, logger log.Logger, settings PrometheusSettings) (kernel.Module, error) {
+	registry, err := ProvideRegistry(ctx, prometheusDefaultRegistry)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewMetricServerWithInterfaces(logger, registry, settings)
+	return NewMetricServerWithInterfaces(logger, registry, &settings)
 }
 
-func NewMetricServerWithInterfaces(
-	logger log.Logger,
-	registry *prometheus.Registry,
-	s *PromSettings,
-) (*metricsServer, error) {
+func NewMetricServerWithInterfaces(logger log.Logger, registry *prometheus.Registry, settings *PrometheusSettings) (kernel.Module, error) {
 	handler := http.NewServeMux()
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", s.Api.Port),
-		ReadTimeout:  s.Api.Timeout.Read,
-		WriteTimeout: s.Api.Timeout.Write,
-		IdleTimeout:  s.Api.Timeout.Idle,
+		Addr:         fmt.Sprintf(":%d", settings.Api.Port),
+		ReadTimeout:  settings.Api.Timeout.Read,
+		WriteTimeout: settings.Api.Timeout.Write,
+		IdleTimeout:  settings.Api.Timeout.Idle,
 		Handler:      handler,
 	}
 
-	handler.Handle(s.Api.Path, promhttp.InstrumentMetricHandler(
+	handler.Handle(settings.Api.Path, promhttp.InstrumentMetricHandler(
 		registry, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 	))
 
@@ -120,18 +92,14 @@ func NewMetricServerWithInterfaces(
 		logger:   logger,
 		server:   server,
 		listener: listener,
-		enabled:  s.Api.Enabled,
 	}, nil
 }
 
 func (s *metricsServer) Run(ctx context.Context) error {
 	var err error
 	go func() {
-		if !s.enabled {
-			return
-		}
 		err = s.server.Serve(s.listener)
-		if err != http.ErrServerClosed {
+		if !errors.Is(http.ErrServerClosed, err) {
 			s.logger.Error("Server closed unexpected: %w", err)
 
 			return

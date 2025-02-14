@@ -23,4 +23,5 @@ prometheus:
 
 metric:
   enabled: true
-  writer: prom
+  writers:
+    - prometheus
