@@ -99,7 +99,7 @@ func (s *metricsServer) Run(ctx context.Context) error {
 	var err error
 	go func() {
 		err = s.server.Serve(s.listener)
-		if !errors.Is(http.ErrServerClosed, err) {
+		if !errors.Is(err, http.ErrServerClosed) {
 			s.logger.Error("Server closed unexpected: %w", err)
 
 			return

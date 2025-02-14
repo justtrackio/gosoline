@@ -162,7 +162,6 @@ func (d *Daemon) rawFanout(data Data) {
 	for _, w := range d.rawMetricWriters {
 		w.Write(data)
 	}
-
 }
 
 func (d *Daemon) appendBatch(data Data) {
