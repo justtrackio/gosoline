@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -13,7 +14,7 @@ type Handler interface {
 	Log(timestamp time.Time, level int, msg string, args []interface{}, err error, data Data) error
 }
 
-type HandlerFactory func(config cfg.Config, name string) (Handler, error)
+type HandlerFactory func(ctx context.Context, config cfg.Config, name string) (Handler, error)
 
 var handlerFactories = map[string]HandlerFactory{}
 
@@ -21,7 +22,7 @@ func AddHandlerFactory(typ string, factory HandlerFactory) {
 	handlerFactories[typ] = factory
 }
 
-func NewHandlersFromConfig(config cfg.Config) ([]Handler, error) {
+func NewHandlersFromConfig(ctx context.Context, config cfg.Config) ([]Handler, error) {
 	settings := &LoggerSettings{}
 	config.UnmarshalKey("log", settings)
 
@@ -36,7 +37,7 @@ func NewHandlersFromConfig(config cfg.Config) ([]Handler, error) {
 			return nil, fmt.Errorf("there is no logging handler of type %s", handlerSettings.Type)
 		}
 
-		if handlers[i], err = handlerFactory(config, name); err != nil {
+		if handlers[i], err = handlerFactory(ctx, config, name); err != nil {
 			return nil, fmt.Errorf("can not create logging handler of type %s on index %d: %w", handlerSettings.Type, i, err)
 		}
 

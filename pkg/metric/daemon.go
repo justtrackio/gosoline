@@ -58,7 +58,7 @@ func metricWriterAggrKey(typ string) string {
 func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	settings := getMetricSettings(config)
 
-	channel := providerMetricChannel()
+	channel := providerMetricChannel(ctx)
 	channel.enabled = settings.Enabled
 	channel.logger = logger.WithChannel("metrics")
 

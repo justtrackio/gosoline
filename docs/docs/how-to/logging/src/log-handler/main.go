@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -29,7 +30,7 @@ func (h *MyCustomHandler) Log(timestamp time.Time, level int, msg string, args [
 	return nil
 }
 
-func MyCustomHandlerFactory(config cfg.Config, name string) (log.Handler, error) {
+func MyCustomHandlerFactory(_ context.Context, config cfg.Config, name string) (log.Handler, error) {
 	settings := &MyCustomHandlerSettings{}
 	log.UnmarshalHandlerSettingsFromConfig(config, name, settings)
 

@@ -1,6 +1,7 @@
 package metric
 
 import (
+	"context"
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -11,13 +12,13 @@ func init() {
 	log.AddHandlerFactory("metric", LoggerHandlerFactory)
 }
 
-func LoggerHandlerFactory(_ cfg.Config, _ string) (log.Handler, error) {
-	return NewLoggerHandler(), nil
+func LoggerHandlerFactory(ctx context.Context, _ cfg.Config, _ string) (log.Handler, error) {
+	return NewLoggerHandler(ctx), nil
 }
 
-func NewLoggerHandler() *LoggerHandler {
+func NewLoggerHandler(ctx context.Context) *LoggerHandler {
 	defaults := getDefaultMetrics()
-	metricWriter := NewWriter(defaults...)
+	metricWriter := NewWriter(ctx, defaults...)
 
 	return &LoggerHandler{
 		writer: metricWriter,

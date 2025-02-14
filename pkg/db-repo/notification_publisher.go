@@ -16,10 +16,10 @@ type publisherNotifier struct {
 	transformer mdl.TransformerResolver
 }
 
-func NewPublisherNotifier(_ context.Context, config cfg.Config, publisher Publisher, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *publisherNotifier {
+func NewPublisherNotifier(ctx context.Context, config cfg.Config, publisher Publisher, logger log.Logger, modelId mdl.ModelId, version int, transformer mdl.TransformerResolver) *publisherNotifier {
 	modelId.PadFromConfig(config)
 
-	notifier := newNotifier(logger, modelId, version)
+	notifier := newNotifier(ctx, logger, modelId, version)
 
 	return &publisherNotifier{
 		notifier:    notifier,

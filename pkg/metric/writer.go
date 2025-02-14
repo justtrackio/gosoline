@@ -1,6 +1,8 @@
 package metric
 
 import (
+	"context"
+
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
@@ -16,8 +18,8 @@ type writer struct {
 	channel *metricChannel
 }
 
-func NewWriter(defaults ...*Datum) Writer {
-	channel := providerMetricChannel()
+func NewWriter(ctx context.Context, defaults ...*Datum) Writer {
+	channel := providerMetricChannel(ctx)
 
 	addMetricDefaults(defaults...)
 

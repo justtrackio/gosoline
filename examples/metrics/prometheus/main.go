@@ -10,10 +10,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-func apiDefiner(context.Context, cfg.Config, log.Logger) (*httpserver.Definitions, error) {
+func apiDefiner(ctx context.Context, config cfg.Config, logger log.Logger) (*httpserver.Definitions, error) {
 	definitions := &httpserver.Definitions{}
 
-	ctrl := controllers.NewMetricController()
+	ctrl := controllers.NewMetricController(ctx)
 
 	definitions.GET("/current-value", ctrl.Cur)
 	definitions.GET("/increase", ctrl.Incr)

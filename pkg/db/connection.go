@@ -61,7 +61,7 @@ func ProvideConnection(ctx context.Context, config cfg.Config, logger log.Logger
 	return ProvideConnectionFromSettings(ctx, logger, settings)
 }
 
-func NewConnection(config cfg.Config, logger log.Logger, name string) (*sqlx.DB, error) {
+func NewConnection(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*sqlx.DB, error) {
 	var err error
 	var con *sqlx.DB
 	var settings *Settings
@@ -70,7 +70,7 @@ func NewConnection(config cfg.Config, logger log.Logger, name string) (*sqlx.DB,
 		return nil, err
 	}
 
-	if con, err = NewConnectionFromSettings(logger, settings); err != nil {
+	if con, err = NewConnectionFromSettings(ctx, logger, settings); err != nil {
 		return nil, err
 	}
 
@@ -79,15 +79,15 @@ func NewConnection(config cfg.Config, logger log.Logger, name string) (*sqlx.DB,
 
 func ProvideConnectionFromSettings(ctx context.Context, logger log.Logger, settings *Settings) (*sqlx.DB, error) {
 	return appctx.Provide(ctx, connectionCtxKey(fmt.Sprint(settings)), func() (*sqlx.DB, error) {
-		return NewConnectionFromSettings(logger, settings)
+		return NewConnectionFromSettings(ctx, logger, settings)
 	})
 }
 
-func NewConnectionFromSettings(logger log.Logger, settings *Settings) (*sqlx.DB, error) {
+func NewConnectionFromSettings(ctx context.Context, logger log.Logger, settings *Settings) (*sqlx.DB, error) {
 	var err error
 	var connection *sqlx.DB
 
-	if connection, err = NewConnectionWithInterfaces(logger, settings); err != nil {
+	if connection, err = NewConnectionWithInterfaces(ctx, logger, settings); err != nil {
 		return nil, fmt.Errorf("can not create connection: %w", err)
 	}
 
@@ -95,12 +95,12 @@ func NewConnectionFromSettings(logger log.Logger, settings *Settings) (*sqlx.DB,
 		return nil, fmt.Errorf("can not run migrations: %w", err)
 	}
 
-	publishConnectionMetrics(connection)
+	publishConnectionMetrics(ctx, connection)
 
 	return connection, nil
 }
 
-func NewConnectionWithInterfaces(logger log.Logger, settings *Settings) (*sqlx.DB, error) {
+func NewConnectionWithInterfaces(ctx context.Context, logger log.Logger, settings *Settings) (*sqlx.DB, error) {
 	drv, err := GetDriver(logger, settings.Driver)
 	if err != nil {
 		return nil, fmt.Errorf("could not get dsn provider for driver %s", settings.Driver)
@@ -113,7 +113,7 @@ func NewConnectionWithInterfaces(logger log.Logger, settings *Settings) (*sqlx.D
 		return nil, fmt.Errorf("could not get driver from %s connection factory: %w", settings.Driver, err)
 	}
 
-	metricDriverId := newMetricDriver(genDriver)
+	metricDriverId := newMetricDriver(ctx, genDriver)
 
 	db, err := sqlx.Connect(metricDriverId, dsn)
 	if err != nil {

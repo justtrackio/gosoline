@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -20,7 +21,7 @@ type HandlerIoWriterSettings struct {
 	Writer          string   `cfg:"writer" default:"stdout"`
 }
 
-func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
+func handlerIoWriterFactory(_ context.Context, config cfg.Config, name string) (Handler, error) {
 	handlerConfigKey := getHandlerConfigKey(name)
 	settings := &HandlerIoWriterSettings{}
 	UnmarshalHandlerSettingsFromConfig(config, name, settings)

@@ -229,7 +229,7 @@ func ProvideHttpClient(ctx context.Context, config cfg.Config, logger log.Logger
 }
 
 func newHttpClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
-	metricWriter := metric.NewWriter()
+	metricWriter := metric.NewWriter(ctx)
 	tracer, err := tracing.ProvideInstrumentor(ctx, config, logger)
 	if err != nil {
 		return nil, err

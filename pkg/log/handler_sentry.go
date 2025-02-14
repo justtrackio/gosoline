@@ -1,6 +1,7 @@
 package log
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -12,7 +13,7 @@ func init() {
 	AddHandlerFactory("sentry", handlerSentryFactory)
 }
 
-func handlerSentryFactory(config cfg.Config, _ string) (Handler, error) {
+func handlerSentryFactory(_ context.Context, config cfg.Config, _ string) (Handler, error) {
 	return NewHandlerSentry(config)
 }
 

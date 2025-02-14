@@ -141,7 +141,7 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	})
 
 	shardReaderDefaults := getShardReaderDefaultMetrics(fullStreamName)
-	metricWriter := metric.NewWriter(shardReaderDefaults...)
+	metricWriter := metric.NewWriter(ctx, shardReaderDefaults...)
 
 	var kinesisClient *kinesis.Client
 	var metadataRepository MetadataRepository

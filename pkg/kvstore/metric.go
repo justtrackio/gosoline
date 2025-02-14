@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/refl"
 )
@@ -30,34 +29,16 @@ type MetricStore[T any] struct {
 	store        string
 }
 
-func NewMetricStoreWithInterfaces[T any](store KvStore[T], settings *Settings) KvStore[T] {
+func NewMetricStoreWithInterfaces[T any](store KvStore[T], metricStore *MetricStore[T], settings *Settings) KvStore[T] {
 	if !settings.MetricsEnabled {
 		return store
 	}
 
-	storeName := fmt.Sprintf("%T", store)
-	model := (&mdl.ModelId{
-		Project:     settings.Project,
-		Environment: settings.Environment,
-		Family:      settings.Family,
-		Group:       settings.Group,
-		Application: settings.Application,
-		Name:        settings.Name,
-	}).String()
-	defaults := getDefaultMetrics(model, storeName)
-
-	s := &MetricStore[T]{
-		KvStore:      store,
-		metricWriter: metric.NewWriter(defaults...),
-		model:        model,
-		store:        storeName,
-	}
-
 	if sizedStore, ok := store.(SizedStore[T]); ok {
-		go s.recordSize(sizedStore)
+		go metricStore.recordSize(sizedStore)
 	}
 
-	return s
+	return metricStore
 }
 
 func (s *MetricStore[T]) Contains(ctx context.Context, key any) (bool, error) {

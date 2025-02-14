@@ -305,7 +305,7 @@ func WithLoggerHandlersFromConfig(app *App) {
 		var err error
 		var handlers []log.Handler
 
-		if handlers, err = log.NewHandlersFromConfig(config); err != nil {
+		if handlers, err = log.NewHandlersFromConfig(ctx, config); err != nil {
 			return fmt.Errorf("can not create handlers from config: %w", err)
 		}
 

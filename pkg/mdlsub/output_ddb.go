@@ -30,7 +30,7 @@ func repoInit(ctx context.Context, config cfg.Config, logger log.Logger, setting
 			return nil, fmt.Errorf("can not create ddb repository: %w", err)
 		}
 
-		return ddb.NewMetricRepository(config, logger, repo), nil
+		return ddb.NewMetricRepository(ctx, config, logger, repo), nil
 	}
 }
 

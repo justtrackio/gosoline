@@ -99,7 +99,7 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 			return nil, fmt.Errorf("can not create tracingInstrumentor: %w", err)
 		}
 
-		metricMiddleware, setupMetricMiddleware := NewMetricMiddleware(name)
+		metricMiddleware, setupMetricMiddleware := NewMetricMiddleware(ctx, name)
 
 		if compressionMiddlewares, err = configureCompression(settings.Compression); err != nil {
 			return nil, fmt.Errorf("could not configure compression: %w", err)

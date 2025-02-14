@@ -93,7 +93,7 @@ func NewBaseConsumer(ctx context.Context, config cfg.Config, logger log.Logger, 
 	}
 
 	defaultMetrics := getConsumerDefaultMetrics(name)
-	metricWriter := metric.NewWriter(defaultMetrics...)
+	metricWriter := metric.NewWriter(ctx, defaultMetrics...)
 
 	var input, retryInput Input
 	var retryHandler RetryHandler

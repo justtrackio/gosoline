@@ -1,6 +1,7 @@
 package metric_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -122,7 +123,7 @@ func Test_promWriter_Write(t *testing.T) {
 		{
 			name: "multiple with default",
 			initFunc: func() {
-				metric.NewWriter(&metric.Datum{
+				metric.NewWriter(context.TODO(), &metric.Datum{
 					Priority:   metric.PriorityHigh,
 					MetricName: "counter",
 					Value:      0,

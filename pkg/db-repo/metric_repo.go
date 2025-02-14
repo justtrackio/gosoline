@@ -21,9 +21,9 @@ type metricRepository struct {
 	output metric.Writer
 }
 
-func NewMetricRepository(_ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
+func NewMetricRepository(ctx context.Context, _ cfg.Config, _ log.Logger, repo Repository) *metricRepository {
 	defaults := getDefaultRepositoryMetrics(repo.GetMetadata().ModelId)
-	output := metric.NewWriter(defaults...)
+	output := metric.NewWriter(ctx, defaults...)
 
 	return &metricRepository{
 		Repository: repo,

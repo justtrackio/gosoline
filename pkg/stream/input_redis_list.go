@@ -45,7 +45,7 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 	}
 
 	defaultMetrics := getRedisListInputDefaultMetrics(settings.AppId, settings.Key)
-	mw := metric.NewWriter(defaultMetrics...)
+	mw := metric.NewWriter(ctx, defaultMetrics...)
 
 	return NewRedisListInputWithInterfaces(logger, client, mw, settings), nil
 }

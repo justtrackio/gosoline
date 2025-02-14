@@ -33,9 +33,9 @@ type notifier struct {
 	version int
 }
 
-func newNotifier(logger log.Logger, modelId mdl.ModelId, version int) notifier {
+func newNotifier(ctx context.Context, logger log.Logger, modelId mdl.ModelId, version int) notifier {
 	defaults := getDefaultNotifierMetrics(modelId)
-	mtr := metric.NewWriter(defaults...)
+	mtr := metric.NewWriter(ctx, defaults...)
 
 	return notifier{
 		logger:  logger,

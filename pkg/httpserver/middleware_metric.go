@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -17,9 +18,9 @@ const (
 	MetricHttpStatus               = "HttpStatus"
 )
 
-func NewMetricMiddleware(name string) (middleware gin.HandlerFunc, setupHandler func(definitions []Definition)) {
+func NewMetricMiddleware(ctx context.Context, name string) (middleware gin.HandlerFunc, setupHandler func(definitions []Definition)) {
 	// writer without any defaults until we initialize some defaults and overwrite it
-	writer := metric.NewWriter()
+	writer := metric.NewWriter(ctx)
 
 	middleware = func(ginCtx *gin.Context) {
 		metricMiddleware(name, ginCtx, writer)
@@ -27,7 +28,7 @@ func NewMetricMiddleware(name string) (middleware gin.HandlerFunc, setupHandler 
 
 	setupHandler = func(definitions []Definition) {
 		defaults := getMetricMiddlewareDefaults(name, definitions...)
-		writer = metric.NewWriter(defaults...)
+		writer = metric.NewWriter(ctx, defaults...)
 	}
 
 	return middleware, setupHandler

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"net/http"
 	"sync/atomic"
 
@@ -18,8 +19,8 @@ type metricController struct {
 	c  *int64
 }
 
-func NewMetricController() *metricController {
-	mw := metric.NewWriter()
+func NewMetricController(ctx context.Context) *metricController {
+	mw := metric.NewWriter(ctx)
 
 	return &metricController{
 		mw: mw,

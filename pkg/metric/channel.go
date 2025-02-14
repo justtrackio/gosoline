@@ -1,29 +1,23 @@
 package metric
 
 import (
+	"context"
 	"sync"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-var metricChannelContainer = struct {
-	sync.Mutex
-	instance *metricChannel
-}{}
+type metricChanneCtxKey string
 
-func providerMetricChannel() *metricChannel {
-	metricChannelContainer.Lock()
-	defer metricChannelContainer.Unlock()
+func providerMetricChannel(ctx context.Context) *metricChannel {
+	ch, _ := appctx.Provide(ctx, metricChanneCtxKey("default"), func() (*metricChannel, error) {
+		return &metricChannel{
+			c: make(chan Data, 100),
+		}, nil
+	})
 
-	if metricChannelContainer.instance != nil {
-		return metricChannelContainer.instance
-	}
-
-	metricChannelContainer.instance = &metricChannel{
-		c: make(chan Data, 100),
-	}
-
-	return metricChannelContainer.instance
+	return ch
 }
 
 type metricChannel struct {

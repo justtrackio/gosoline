@@ -26,8 +26,8 @@ type statsHandler struct {
 	settings     *Settings
 }
 
-func NewStatsHandler(logger log.Logger, settings *Settings) *statsHandler {
-	writer := metric.NewWriter()
+func NewStatsHandler(ctx context.Context, logger log.Logger, settings *Settings) *statsHandler {
+	writer := metric.NewWriter(ctx)
 
 	return &statsHandler{
 		logger:       logger,

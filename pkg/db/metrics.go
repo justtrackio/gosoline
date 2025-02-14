@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"time"
@@ -20,8 +21,8 @@ type metricDriver struct {
 	metricWriter metric.Writer
 }
 
-func newMetricDriver(driver driver.Driver) string {
-	mw := metric.NewWriter()
+func newMetricDriver(ctx context.Context, driver driver.Driver) string {
+	mw := metric.NewWriter(ctx)
 
 	id := uuid.New().NewV4()
 	md := &metricDriver{
@@ -48,8 +49,8 @@ func (m *metricDriver) Open(dsn string) (driver.Conn, error) {
 	return m.Driver.Open(dsn)
 }
 
-func publishConnectionMetrics(conn *sqlx.DB) {
-	output := metric.NewWriter()
+func publishConnectionMetrics(ctx context.Context, conn *sqlx.DB) {
+	output := metric.NewWriter(ctx)
 
 	go func() {
 		for {

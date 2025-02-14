@@ -78,7 +78,7 @@ func NewCalculatorModule(handlers map[string]Handler, settings *CalculatorSettin
 			return nil, fmt.Errorf("can not create cloudwatch client: %w", err)
 		}
 
-		metricWriter := metric.NewWriter()
+		metricWriter := metric.NewWriter(ctx)
 		ticker := clock.NewRealTicker(settings.Period)
 		memberId := uuid.New().NewV4()
 

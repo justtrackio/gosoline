@@ -10,6 +10,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/refl"
 )
 
@@ -63,10 +64,30 @@ func NewDdbKvStore[T any](ctx context.Context, config cfg.Config, logger log.Log
 }
 
 func NewDdbKvStoreWithInterfaces[T any](repository ddb.Repository, settings *Settings) KvStore[T] {
-	return NewMetricStoreWithInterfaces[T](&ddbKvStore[T]{
+	storeName := fmt.Sprintf("%T", *new(T))
+	model := (&mdl.ModelId{
+		Project:     settings.Project,
+		Environment: settings.Environment,
+		Family:      settings.Family,
+		Group:       settings.Group,
+		Application: settings.Application,
+		Name:        settings.Name,
+	}).String()
+	defaults := getDefaultMetrics(model, storeName)
+
+	store := &ddbKvStore[T]{
 		repository: repository,
 		settings:   settings,
-	}, settings)
+	}
+
+	s := &MetricStore[T]{
+		KvStore:      store,
+		metricWriter: metric.NewWriter(ctx, defaults...),
+		model:        model,
+		store:        storeName,
+	}
+
+	return NewMetricStoreWithInterfaces[T](store, s, settings)
 }
 
 func (s *ddbKvStore[T]) Contains(ctx context.Context, key any) (bool, error) {
