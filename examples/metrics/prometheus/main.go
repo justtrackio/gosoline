@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/justtrackio/gosoline/examples/metrics/prometheus/counter"
+	"github.com/justtrackio/gosoline/examples/metrics/prometheus/controllers"
 	"github.com/justtrackio/gosoline/pkg/application"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
@@ -13,11 +13,12 @@ import (
 func apiDefiner(context.Context, cfg.Config, log.Logger) (*httpserver.Definitions, error) {
 	definitions := &httpserver.Definitions{}
 
-	ctrl := counter.NewCounterController()
+	ctrl := controllers.NewMetricController()
 
 	definitions.GET("/current-value", ctrl.Cur)
 	definitions.GET("/increase", ctrl.Incr)
 	definitions.GET("/1k", ctrl.OneK)
+	definitions.GET("/my-summary", ctrl.MySummary)
 
 	return definitions, nil
 }

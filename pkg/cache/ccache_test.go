@@ -77,6 +77,7 @@ func TestCCache_Expire(t *testing.T) {
 		c := cache.New[string](1, 0, 0)
 
 		c.Set("key", "value")
+		time.Sleep(1 * time.Nanosecond) // seems to be needed on fast machines for this test to succeed
 		assert.Equal(t, false, c.Contains("key"))
 	})
 }
