@@ -25,7 +25,7 @@ jobs:
       - name: Set up python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.6.15" 
+          python-version: "3.6.15"
       - name: Install pipenv
         run: pip install pipenv
       - name: Install dependencies
