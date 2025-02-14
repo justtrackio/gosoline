@@ -3,6 +3,7 @@ package metric
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -16,6 +17,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+func init() {
+	RegisterWriterFactory(WriterTypeCloudwatch, ProvideCloudwatchWriter)
+}
+
 const (
 	PriorityLow  = 1
 	PriorityHigh = 2
@@ -28,6 +33,15 @@ const (
 	minusOneWeek        = -1 * 7 * 24 * time.Hour
 	plusOneHour         = 1 * time.Hour
 )
+
+type CloudWatchSettings struct {
+	Naming    CloudwatchNamingSettings `cfg:"naming"`
+	Aggregate bool                     `cfg:"aggregate" default:"true"`
+}
+
+type CloudwatchNamingSettings struct {
+	Pattern string `cfg:"pattern,nodecode" default:"{project}/{env}/{family}/{group}-{app}"`
+}
 
 type (
 	cwWriterCtxKey string
@@ -64,7 +78,7 @@ func NewCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logg
 	return NewCloudwatchWriterWithInterfaces(logger, testClock, client, cwNamespace), nil
 }
 
-func NewCloudwatchWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoCloudwatch.Client, cwNamespace string) *cloudwatchWriter {
+func NewCloudwatchWriterWithInterfaces(logger log.Logger, clock clock.Clock, cw gosoCloudwatch.Client, cwNamespace string) Writer {
 	return &cloudwatchWriter{
 		logger:      logger.WithChannel("metrics"),
 		clock:       clock,
@@ -170,4 +184,27 @@ func (w *cloudwatchWriter) buildMetricData(batch Data) ([]types.MetricDatum, err
 	}
 
 	return metricData, nil
+}
+
+func GetCloudWatchNamespace(config cfg.Config) string {
+	appId := cfg.GetAppIdFromConfig(config)
+
+	values := map[string]string{
+		"project": appId.Project,
+		"env":     appId.Environment,
+		"family":  appId.Family,
+		"group":   appId.Group,
+		"app":     appId.Application,
+	}
+
+	cloudwatchSettings := &CloudWatchSettings{}
+	getMetricWriterSettings(config, WriterTypeCloudwatch, cloudwatchSettings)
+	namespace := cloudwatchSettings.Naming.Pattern
+
+	for key, val := range values {
+		templ := fmt.Sprintf("{%s}", key)
+		namespace = strings.ReplaceAll(namespace, templ, val)
+	}
+
+	return namespace
 }

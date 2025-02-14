@@ -13,14 +13,14 @@ httpserver:
       read: 5s
       write: 5s
       idle: 5s
-
-prometheus:
-  metric_limit: 5000
-  api:
-    enabled: true
-    port: 8092
-    path: /metrics
-
 metric:
   enabled: true
-  writer: prom
+  writers:
+    - prometheus
+  writer_settings:
+    prometheus:
+      metric_limit: 5000
+      api:
+        enabled: true
+        port: 8092
+        path: /metrics
