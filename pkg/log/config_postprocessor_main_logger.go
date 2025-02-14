@@ -7,10 +7,10 @@ import (
 )
 
 func init() {
-	cfg.AddPostProcessor(8, "gosoline.log.handler_main", MainLoggerConfigPostProcessor)
+	cfg.AddPostProcessor(8, "gosoline.log.handler_main", MainLogHandlerConfigPostProcessor)
 }
 
-func MainLoggerConfigPostProcessor(config cfg.GosoConf) (bool, error) {
+func MainLogHandlerConfigPostProcessor(config cfg.GosoConf) (bool, error) {
 	if config.IsSet("log.handlers.main.type") {
 		return false, nil
 	}
