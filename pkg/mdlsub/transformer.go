@@ -28,6 +28,16 @@ type ModelTransformer interface {
 	Transform(ctx context.Context, inp any) (out Model, err error)
 }
 
+type TypesProvider[I any, M any] struct{}
+
+func (t TypesProvider[I, M]) GetInput() any {
+	return new(I)
+}
+
+func (t TypesProvider[I, M]) GetModel() any {
+	return new(M)
+}
+
 type (
 	ModelTransformers                  map[string]VersionedModelTransformers
 	TransformerFactory                 func(ctx context.Context, config cfg.Config, logger log.Logger) (ModelTransformer, error)

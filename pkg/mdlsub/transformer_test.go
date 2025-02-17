@@ -14,14 +14,8 @@ type TestModel struct {
 	Id int `json:"id"`
 }
 
-type TestTransformer struct{}
-
-func (t TestTransformer) GetInput() any {
-	return &TestInput{}
-}
-
-func (t TestTransformer) GetModel() any {
-	return &TestModel{}
+type TestTransformer struct {
+	mdlsub.TypesProvider[TestInput, TestModel]
 }
 
 func (t TestTransformer) Transform(ctx context.Context, inp any) (out mdlsub.Model, err error) {
