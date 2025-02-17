@@ -22,19 +22,19 @@ type LifecycleManager interface {
 
 var _ LifecycleManager = (*lifecycleManager)(nil)
 
-func NewLifecycleManager(name string) reslife.LifeCycleerFactory {
+func NewLifecycleManager(settings *Settings) reslife.LifeCycleerFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (reslife.LifeCycleer, error) {
 		var err error
 		var client Client
 
-		if client, err = ProvideClient(ctx, config, logger, name); err != nil {
+		if client, err = NewClientWithSettings(logger, settings); err != nil {
 			return nil, fmt.Errorf("could not connect to database: %w", err)
 		}
 
 		return &lifecycleManager{
 			logger: logger,
 			client: client,
-			name:   name,
+			name:   settings.Name,
 		}, nil
 	}
 }

@@ -144,11 +144,19 @@ type redisClient struct {
 func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
 	settings := ReadSettings(config, name)
 
+	if err := reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings)); err != nil {
+		return nil, fmt.Errorf("failed to add redis lifecycle manager: %w", err)
+	}
+
+	return NewClientWithSettings(logger, settings)
+}
+
+func NewClientWithSettings(logger log.Logger, settings *Settings) (Client, error) {
 	logger = logger.WithFields(log.Fields{
-		"redis": name,
+		"redis": settings.Name,
 	})
 
-	executor := NewExecutor(logger, settings.BackoffSettings, name)
+	executor := NewExecutor(logger, settings.BackoffSettings, settings.Name)
 
 	if _, ok := dialers[settings.Dialer]; !ok {
 		return nil, fmt.Errorf("there is no redis dialer of type %s", settings.Dialer)
@@ -158,10 +166,6 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 	baseClient := baseRedis.NewClient(&baseRedis.Options{
 		Dialer: dialer,
 	})
-
-	if err := reslife.AddLifeCycleer(ctx, NewLifecycleManager(name)); err != nil {
-		return nil, fmt.Errorf("failed to add redis lifecycle manager: %w", err)
-	}
 
 	return NewClientWithInterfaces(logger, baseClient, executor, settings), nil
 }
