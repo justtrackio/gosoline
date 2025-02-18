@@ -56,6 +56,7 @@ func NewKinesisOutput(ctx context.Context, config cfg.Config, logger log.Logger,
 	backoffSettings.InitialInterval = time.Second
 
 	recordWriterSettings := &gosoKinesis.RecordWriterSettings{
+		AppId:      settings.AppId,
 		ClientName: settings.ClientName,
 		StreamName: settings.GetStreamName(),
 		Backoff:    backoffSettings,
