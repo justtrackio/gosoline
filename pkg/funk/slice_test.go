@@ -132,7 +132,6 @@ func TestChunk(t *testing.T) {
 		},
 	}
 	for name, data := range tests {
-		data := data
 		t.Run(name, func(t *testing.T) {
 			res := funk.Chunk(data.In.Sl, data.In.Size)
 			assert.Equalf(t, data.Out, res, "Test static failed: %s", data.Name)
@@ -181,7 +180,6 @@ func TestDifference(t *testing.T) {
 	}
 
 	for name, data := range tests {
-		data := data
 		t.Run(name, func(t *testing.T) {
 			l, r := funk.Difference(data.Input1, data.Input2)
 			assert.ElementsMatch(t, l, data.Out1)
@@ -262,7 +260,6 @@ func TestIntersect(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			res := funk.Intersect(test.Input1, test.Input2)
 			assert.ElementsMatch(t, res, test.Out)
@@ -312,7 +309,6 @@ func TestRepeatPrimitive(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			out := funk.Repeat(test.Element, test.Times)
 			assert.Equal(t, out, test.Out)
@@ -354,7 +350,6 @@ func TestRepeatStructPointer(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			out := funk.Repeat(test.Element, test.Times)
 			for idx, el := range out {
@@ -388,7 +383,6 @@ func TestTail(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			output := funk.Tail(test.input)
 
@@ -421,7 +415,6 @@ func TestReverse(t *testing.T) {
 	}
 
 	for name, data := range tests {
-		data := data
 		t.Run(name, func(t *testing.T) {
 			res := funk.Reverse(data.In)
 			assert.Equal(t, data.Out, res)
@@ -480,7 +473,6 @@ func TestPartition(t *testing.T) {
 	}
 
 	for name, data := range tests {
-		data := data
 		t.Run(name, func(t *testing.T) {
 			res := funk.Partition(data.In, func(t partitionable) int {
 				return t.time
@@ -523,7 +515,6 @@ func TestUniq(t *testing.T) {
 	}
 
 	for name, data := range tests {
-		data := data
 		t.Run(name, func(t *testing.T) {
 			res := funk.Uniq(data.In)
 
@@ -622,7 +613,6 @@ func TestUniqByType(t *testing.T) {
 	}
 
 	for name, data := range tests {
-		data := data
 		t.Run(name, func(t *testing.T) {
 			res := funk.UniqByType(data.In)
 
@@ -679,7 +669,6 @@ func TestPartitionByField(t *testing.T) {
 	}
 
 	for name, data := range tests {
-		data := data
 		t.Run(name, func(t *testing.T) {
 			keyer := func(el A) (string, int) {
 				return el.Type, el.Value
@@ -718,7 +707,6 @@ func TestAny(t *testing.T) {
 	}
 
 	for name, data := range tests {
-		data := data
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, data.Out, funk.Any(data.In, biggerThenZero))
 		})
@@ -753,7 +741,6 @@ func TestAll(t *testing.T) {
 	}
 
 	for name, data := range tests {
-		data := data
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, data.Out, funk.All(data.In, biggerThenZero))
 		})
@@ -788,7 +775,6 @@ func TestNone(t *testing.T) {
 	}
 
 	for name, data := range tests {
-		data := data
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, data.Out, funk.None(data.In, biggerThenZero))
 		})

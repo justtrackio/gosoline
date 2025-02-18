@@ -10,8 +10,8 @@ func (n noopWriter) GetPriority() int {
 	return 0
 }
 
-func (n noopWriter) Write(batch Data) {
+func (n noopWriter) Write(Data) {
 }
 
-func (n noopWriter) WriteOne(data *Datum) {
+func (n noopWriter) WriteOne(*Datum) {
 }

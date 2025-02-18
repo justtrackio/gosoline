@@ -124,8 +124,6 @@ func (r *containerRunner) PullContainerImages(skeletons []*componentSkeleton) er
 	cfn.Go(func() error {
 		for _, skeleton := range skeletons {
 			for _, description := range skeleton.containerDescriptions {
-				description := description
-
 				if description.containerConfig.UseExternalContainer {
 					continue
 				}
@@ -180,8 +178,6 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 
 	for i := range skeletons {
 		for name, description := range skeletons[i].containerDescriptions {
-			name := name
-			description := description
 			skeleton := skeletons[i]
 
 			cfn.Gof(func() error {
