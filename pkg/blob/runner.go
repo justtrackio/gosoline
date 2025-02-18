@@ -2,6 +2,7 @@ package blob
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -9,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoS3 "github.com/justtrackio/gosoline/pkg/cloud/aws/s3"
 	"github.com/justtrackio/gosoline/pkg/kernel"
@@ -181,7 +181,7 @@ func (r *batchRunner) executeWrite(ctx context.Context) {
 			}
 
 			if err := body.Close(); err != nil {
-				object.Error = multierror.Append(object.Error, err)
+				object.Error = errors.Join(object.Error, err)
 			}
 
 			r.writeMetric(operationWrite)

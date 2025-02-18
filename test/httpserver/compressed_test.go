@@ -60,8 +60,6 @@ func (s *CompressedTestSuite) TestCompressed() []*suite.HttpserverTestCase {
 	var result []*suite.HttpserverTestCase
 
 	for i, route := range []string{"/echo", "/uncompressed", "/this-path-uses-no-compression-to-echo"} {
-		i := i
-
 		result = append(result, &suite.HttpserverTestCase{
 			Method: netHttp.MethodPost,
 			Url:    route,

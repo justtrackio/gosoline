@@ -20,55 +20,71 @@ func providerMetricChannel() *metricChannel {
 	}
 
 	metricChannelContainer.instance = &metricChannel{
-		c: make(chan Data, 100),
+		hasData: make(chan struct{}, 1),
 	}
 
 	return metricChannelContainer.instance
 }
 
+// metricChannel is a similar implementation to a go channel, but with an unbounded
+// message buffer. we need an unbounded queue because we otherwise have to deal with
+// too many problems of services writing to the channel when it is already full
+// (writing metric while consuming metrics or writing metrics while the channel gets
+// closed). if a service writes too many metrics and blows through its memory allocation,
+// this is a much louder error, causes the service to restart, and the service to heal
+// automatically (to some degree at least)
 type metricChannel struct {
-	lck     sync.RWMutex
+	lck     sync.Mutex
 	logger  log.Logger
-	c       chan Data
-	once    sync.Once
+	hasData chan struct{}
+	data    Data
 	enabled bool
 	closed  bool
 }
 
-func (c *metricChannel) write(batch Data) {
-	c.lck.RLock()
-	defer c.lck.RUnlock()
+func (c *metricChannel) read() Data {
+	c.lck.Lock()
+	defer c.lck.Unlock()
 
-	if !c.enabled {
-		return
-	}
+	data := c.data
+	c.data = nil
 
-	if c.closed {
-		c.once.Do(func() {
-			c.logger.Warn("refusing to write %d metric datums to metric channel: channel is closed", len(batch))
-		})
-		return
-	}
+	// no need to clear hasData - the caller should have done this, but it is
+	// also not an error for this flag to be wrongly set
 
-	c.c <- batch
+	return data
 }
 
-// Lock the channel metadata, close the channel and unlock it again.
-// Why do we need a RW lock for the channel? Multiple possible choices:
-//   - Just read until we get nothing more - does not work if a producer
-//     writes more messages after we read "everything" to the channel. If
-//     the producer writes enough messages, it could actually get stuck
-//     because there is no consumer left and we only buffer 100 items
-//   - Just add an (atomic) boolean flag: If we check whether we closed the
-//     channel and then write to it, if not, we have a time-of-check to
-//     time-of-use race condition. Between our check and writing to the
-//     channel someone could have closed the channel.
-//   - Just use recover when you get a panic: Would work, but this is really
-//     not pretty.
+func (c *metricChannel) write(batch Data) {
+	c.lck.Lock()
+	defer c.lck.Unlock()
+
+	// we just return on closed channels because we can't avoid some services
+	// writing some metrics when they are shut down. if we are already closed
+	// at that point, we log pointless messages about the channel being closed
+	// already, although there isn't really anything we can do about it
+	// also: writing a warning here would be a terrible idea as this could
+	// trigger a metric to be written, calling this method again (but the lock
+	// is already taken)
+	if !c.enabled || c.closed {
+		return
+	}
+
+	c.data = append(c.data, batch...)
+
+	// we still need to be able to read from this like from a channel... so fake
+	// it with a dummy channel which can only hold a single value (we only need
+	// a flag whether there could be data in here - it is okay for hasData to
+	// return a value even though c.data has length 0)
+	select {
+	case c.hasData <- struct{}{}:
+	default:
+	}
+}
+
 func (c *metricChannel) close() {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
-	close(c.c)
 	c.closed = true
 }
