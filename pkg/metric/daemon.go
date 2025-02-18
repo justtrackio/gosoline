@@ -39,7 +39,6 @@ type BatchedMetricDatum struct {
 
 type Daemon struct {
 	kernel.EssentialBackgroundModule
-	sync.Mutex
 	logger   log.Logger
 	settings *Settings
 
@@ -50,6 +49,9 @@ type Daemon struct {
 
 	batch          map[string]*BatchedMetricDatum
 	dataPointCount int
+
+	warningThrottlesLck sync.Mutex
+	warningThrottles    map[string]bool
 }
 
 func metricWriterAggrKey(typ string) string {
@@ -106,6 +108,7 @@ func NewMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, ag
 		rawMetricWriters:        rawWriters,
 		batch:                   make(map[string]*BatchedMetricDatum),
 		dataPointCount:          0,
+		warningThrottles:        make(map[string]bool),
 	}, nil
 }
 
@@ -132,7 +135,8 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 			return nil
 
-		case data := <-d.channel.c:
+		case <-d.channel.hasData:
+			data := d.channel.read()
 			d.rawFanout(data)
 			d.appendBatch(data)
 
@@ -145,7 +149,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 func (d *Daemon) emptyChannel() {
 	d.channel.close()
 
-	for data := range d.channel.c {
+	if data := d.channel.read(); len(data) > 0 {
 		d.rawFanout(data)
 		d.appendBatch(data)
 	}
@@ -175,7 +179,9 @@ func (d *Daemon) append(datum *Datum) {
 		amendFromDefault(datum)
 
 		if err := datum.IsValid(); err != nil {
-			d.logger.Warn("invalid metric: %s", err.Error())
+			if d.throttleWarning(err.Error()) {
+				d.logger.Warn("invalid metric: %s", err.Error())
+			}
 
 			return
 		}
@@ -244,4 +250,28 @@ func (d *Daemon) buildMetricData() Data {
 	}
 
 	return data
+}
+
+// we don't want to log warnings every time they occur - it is enough to log them once they occur, at least for a minute
+func (d *Daemon) throttleWarning(warning string) bool {
+	d.warningThrottlesLck.Lock()
+	defer d.warningThrottlesLck.Unlock()
+
+	if d.warningThrottles[warning] {
+		return false
+	}
+
+	d.warningThrottles[warning] = true
+
+	// automatically unlock the warning after a minute
+	go func() {
+		time.Sleep(time.Minute)
+
+		d.warningThrottlesLck.Lock()
+		defer d.warningThrottlesLck.Unlock()
+
+		delete(d.warningThrottles, warning)
+	}()
+
+	return true
 }

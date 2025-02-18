@@ -134,8 +134,6 @@ func runStreamTestMap(testCases map[string]ToStreamTestCase) (testCaseRunner, er
 	testCaseRunners := make([]testCaseRunner, 0, len(testCases))
 
 	for name, testCasesProvider := range testCases {
-		name := name
-		testCasesProvider := testCasesProvider
 		runner := runStreamTest(func() *StreamTestCase {
 			if testCasesProvider == nil {
 				return nil

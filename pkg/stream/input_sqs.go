@@ -120,11 +120,15 @@ func (i *sqsInput) Run(ctx context.Context) error {
 
 	i.logger.Info("starting sqs input with %d runners", i.settings.RunnerCount)
 
-	for j := 0; j < i.settings.RunnerCount; j++ {
-		i.cfn.Gof(func() error {
-			return i.runLoop(ctx)
-		}, "panic in sqs input runner")
-	}
+	i.cfn.Go(func() error {
+		for j := 0; j < i.settings.RunnerCount; j++ {
+			i.cfn.Gof(func() error {
+				return i.runLoop(ctx)
+			}, "panic in sqs input runner")
+		}
+
+		return nil
+	})
 
 	<-i.cfn.Dying()
 	i.Stop()

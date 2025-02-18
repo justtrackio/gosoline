@@ -65,7 +65,6 @@ func (c *ChangeHistoryManager) RunMigrations() error {
 
 	cfn.Go(func() error {
 		for _, model := range funk.UniqByType(c.models) {
-			model := model
 			cfn.Go(func() error {
 				if err := c.RunMigration(model); err != nil {
 					return fmt.Errorf("can not run migration for model %T: %w", model, err)

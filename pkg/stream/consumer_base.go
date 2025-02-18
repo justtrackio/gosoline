@@ -307,7 +307,14 @@ func (c *baseConsumer) ingestDataFromSource(input Input, src string) func(ctx co
 				}
 
 				if retryId, ok := msg.Attributes[AttributeRetryId]; ok {
-					c.logger.Warn("retrying message with id %s", retryId)
+					// get the trace id from the message so our message can be found a lot easier in the logs
+					decoder := tracing.NewMessageWithTraceEncoder(tracing.TraceIdErrorReturnStrategy{})
+					newCtx, _, err := decoder.Decode(ctx, nil, funk.MergeMaps(msg.Attributes)) // copy the attributes as Decode modifies the map...
+					if err == nil {
+						ctx = newCtx
+					}
+
+					c.logger.WithContext(ctx).Warn("retrying message with id %s", retryId)
 					c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
 				}
 
