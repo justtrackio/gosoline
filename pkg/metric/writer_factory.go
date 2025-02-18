@@ -9,10 +9,18 @@ import (
 )
 
 const (
-	WriterTypeCloudwatch    = "cw"
-	WriterTypeElasticsearch = "es"
-	WriterTypePrometheus    = "prom"
+	writerTypeCloudwatch    = "cw"
+	writerTypeElasticsearch = "es"
+	writerTypePrometheus    = "prom"
 )
+
+type metricWriterFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error)
+
+var metricWriterFactories = map[string]metricWriterFactory{
+	writerTypeCloudwatch:    ProvideCloudwatchWriter,
+	writerTypeElasticsearch: ProvideElasticsearchWriter,
+	writerTypePrometheus:    ProvidePrometheusWriter,
+}
 
 func NewMetricWriter(ctx context.Context, config cfg.Config, logger log.Logger, types []string) (Writer, error) {
 	writers := make([]Writer, 0, len(types))
@@ -21,16 +29,12 @@ func NewMetricWriter(ctx context.Context, config cfg.Config, logger log.Logger, 
 		var w Writer
 		var err error
 
-		switch typ {
-		case WriterTypeCloudwatch:
-			w, err = ProvideCloudwatchWriter(ctx, config, logger)
-		case WriterTypeElasticsearch:
-			w, err = ProvideElasticsearchWriter(ctx, config, logger)
-		case WriterTypePrometheus:
-			w, err = ProvidePrometheusWriter(ctx, config, logger)
-		default:
+		factory, ok := metricWriterFactories[typ]
+		if !ok {
 			return nil, fmt.Errorf("unrecognized writer type: %s", typ)
 		}
+
+		w, err = factory(ctx, config, logger)
 		if err != nil {
 			return nil, fmt.Errorf("could not create %s metric writer: %w", typ, err)
 		}
@@ -39,4 +43,8 @@ func NewMetricWriter(ctx context.Context, config cfg.Config, logger log.Logger, 
 	}
 
 	return NewMultiWriterWithInterfaces(writers), nil
+}
+
+func RegisterMetricWriterFactory(name string, factory metricWriterFactory) {
+	metricWriterFactories[name] = factory
 }

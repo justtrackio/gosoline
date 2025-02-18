@@ -63,7 +63,7 @@ func moduleEnabled(config cfg.Config, name string) bool {
 }
 
 func NewPrometheusMetricsServerModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
-	if moduleEnabled(config, WriterTypePrometheus) {
+	if moduleEnabled(config, writerTypePrometheus) {
 		return NewPrometheusMetricServer(ctx, config, logger)
 	}
 

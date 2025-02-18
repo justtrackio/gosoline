@@ -25,7 +25,6 @@ type BatchedMetricDatum struct {
 }
 
 type Daemon struct {
-	sync.Mutex
 	logger   log.Logger
 	settings *Settings
 
@@ -35,6 +34,9 @@ type Daemon struct {
 
 	batch          map[string]*BatchedMetricDatum
 	dataPointCount int
+
+	warningThrottlesLck sync.Mutex
+	warningThrottles    map[string]bool
 }
 
 func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
@@ -43,7 +45,7 @@ func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 
 	settings := getMetricSettings(config)
 
-	channel := ProviderMetricChannel()
+	channel := providerMetricChannel()
 	channel.enabled = settings.Enabled
 	channel.logger = logger.WithChannel("metrics")
 
@@ -61,13 +63,14 @@ func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 
 func NewMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, writer Writer, settings *Settings) (kernel.Module, error) {
 	return &Daemon{
-		logger:         logger.WithChannel("metrics"),
-		settings:       settings,
-		channel:        channel,
-		ticker:         time.NewTicker(settings.Interval),
-		writer:         writer,
-		batch:          make(map[string]*BatchedMetricDatum),
-		dataPointCount: 0,
+		logger:           logger.WithChannel("metrics"),
+		settings:         settings,
+		channel:          channel,
+		ticker:           time.NewTicker(settings.Interval),
+		writer:           writer,
+		batch:            make(map[string]*BatchedMetricDatum),
+		dataPointCount:   0,
+		warningThrottles: make(map[string]bool),
 	}, nil
 }
 
@@ -102,8 +105,8 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 			return nil
 
-		case data := <-d.channel.c:
-			d.appendBatch(data)
+		case <-d.channel.hasData:
+			d.appendBatch(d.channel.read())
 
 		case <-d.ticker.C:
 			d.publish()
@@ -114,9 +117,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 func (d *Daemon) emptyChannel() {
 	d.channel.close()
 
-	for data := range d.channel.c {
-		d.appendBatch(data)
-	}
+	d.appendBatch(d.channel.read())
 }
 
 func (d *Daemon) appendBatch(data Data) {
@@ -137,7 +138,9 @@ func (d *Daemon) append(datum *Datum) {
 		amendFromDefault(datum)
 
 		if err := datum.IsValid(); err != nil {
-			d.logger.Warn("invalid metric: %s", err.Error())
+			if d.throttleWarning(err.Error()) {
+				d.logger.Warn("invalid metric: %s", err.Error())
+			}
 
 			return
 		}
@@ -204,4 +207,28 @@ func (d *Daemon) buildMetricData() Data {
 	}
 
 	return data
+}
+
+// we don't want to log warnings every time they occur - it is enough to log them once they occur, at least for a minute
+func (d *Daemon) throttleWarning(warning string) bool {
+	d.warningThrottlesLck.Lock()
+	defer d.warningThrottlesLck.Unlock()
+
+	if d.warningThrottles[warning] {
+		return false
+	}
+
+	d.warningThrottles[warning] = true
+
+	// automatically unlock the warning after a minute
+	go func() {
+		time.Sleep(time.Minute)
+
+		d.warningThrottlesLck.Lock()
+		defer d.warningThrottlesLck.Unlock()
+
+		delete(d.warningThrottles, warning)
+	}()
+
+	return true
 }
