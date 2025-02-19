@@ -3,9 +3,7 @@ run:
   timeout: 5m
   issues-exit-code: 1
   tests: true
-  build-tags:
-  skip-dirs:
-  skip-files:
+  build-tags: []
   modules-download-mode: readonly
 
 output:
@@ -38,9 +36,9 @@ linters:
     - unused # Checks Go code for unused constants, variables, functions and types.
     - whitespace # Whitespace is a linter that checks for unnecessary newlines at the start and end of functions, if, for, etc.
   enable-all: false
-  disable:
+  disable: []
   disable-all: true
-  presets:
+  presets: []
   fast: false
 
 linters-settings:
@@ -53,7 +51,7 @@ linters-settings:
     min-complexity: 20
 
   gocritic:
-    enabled-checks:
+    enabled-checks: []
     disabled-checks:
       - paramTypeCombine
       - importShadow
@@ -62,8 +60,8 @@ linters-settings:
       - style
       - experimental
       - opinionated
-    disabled-tags:
-    settings:
+    disabled-tags: []
+    settings: {}
 
   godox:
     keywords:
