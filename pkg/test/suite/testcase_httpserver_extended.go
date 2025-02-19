@@ -256,8 +256,6 @@ func runHttpServerExtendedTestsMap(suite TestingSuite, testCases map[string]ToHt
 	testCaseRunners := make([]testCaseRunner, 0, len(testCases))
 
 	for name, testCasesProvider := range testCases {
-		name := name
-		testCasesProvider := testCasesProvider
 		runner, err := runHttpServerExtendedTests(suite, func() []*HttpserverTestCase {
 			if testCasesProvider == nil {
 				return nil
