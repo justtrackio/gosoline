@@ -11,6 +11,7 @@ import (
 	gosoKinesis "github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/justtrackio/gosoline/pkg/conc"
 	"github.com/justtrackio/gosoline/pkg/conc/ddb"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -121,6 +122,11 @@ func NewKinsumerAutoscaleModuleWithInterfaces(
 func (k KinsumerAutoscaleModule) Run(ctx context.Context) error {
 	for {
 		if err := k.autoscaleKinsumer(ctx); err != nil {
+			// ignore errors on application shutdown
+			if exec.IsRequestCanceled(err) {
+				return nil
+			}
+
 			return fmt.Errorf("failed to autoscale kinsumer: %w", err)
 		}
 
@@ -152,6 +158,17 @@ func (k KinsumerAutoscaleModule) autoscaleKinsumer(ctx context.Context) error {
 		return nil
 	}
 
+	success := false
+	defer func() {
+		if success {
+			return
+		}
+
+		if err := k.leaderElection.Resign(ctx, k.memberId); err != nil {
+			logger.Warn("failed to resign leader: %s", err)
+		}
+	}()
+
 	currentTaskCount, err := k.orchestrator.GetCurrentTaskCount(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get current task count: %w", err)
@@ -163,6 +180,8 @@ func (k KinsumerAutoscaleModule) autoscaleKinsumer(ctx context.Context) error {
 	}
 
 	if currentTaskCount == shardCount {
+		success = true
+
 		return nil
 	}
 
@@ -170,6 +189,8 @@ func (k KinsumerAutoscaleModule) autoscaleKinsumer(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to update task count: %w", err)
 	}
+
+	success = true
 
 	logger.Info("scaled task count from %d to %d", currentTaskCount, shardCount)
 
