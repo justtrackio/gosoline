@@ -97,7 +97,9 @@ type kinsumer struct {
 	metricWriter       metric.Writer
 	clock              clock.Clock
 	shardReaderFactory func(logger log.Logger, shardId ShardId) ShardReader
+	stopLck            sync.Mutex
 	stop               func()
+	stopped            bool
 }
 
 type runtimeContext struct {
@@ -197,7 +199,7 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 
 	cfn, coffinCtx := coffin.WithContext(ctx)
 	cancelableCoffinCtx, cancel := context.WithCancel(coffinCtx)
-	k.stop = cancel
+	k.setStop(cancel)
 
 	cfn.GoWithContext(cancelableCoffinCtx, func(ctx context.Context) error {
 		discoverTicker := k.clock.NewTicker(k.settings.DiscoverFrequency)
@@ -445,11 +447,29 @@ func (k *kinsumer) writeShardTaskRatioMetric(shardTaskRatio float64) {
 }
 
 func (k *kinsumer) Stop() {
-	if k.stop != nil {
-		k.logger.Info("stopping kinsumer")
-		k.stop()
-	}
+	var stop func()
+	k.stopLck.Lock()
+	stop = k.stop
 	k.stop = nil
+	k.stopped = true
+	k.stopLck.Unlock()
+
+	k.logger.Info("stopping kinsumer")
+
+	if stop != nil {
+		stop()
+	}
+}
+
+func (k *kinsumer) setStop(stop func()) {
+	k.stopLck.Lock()
+	if k.stopped {
+		// call stop after unlocking the mutex again
+		defer stop()
+	} else {
+		k.stop = stop
+	}
+	k.stopLck.Unlock()
 }
 
 func (s shardIdSlice) Len() int {
