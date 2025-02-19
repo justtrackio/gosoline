@@ -1,4 +1,4 @@
-package counter
+package controllers
 
 import (
 	"net/http"
@@ -13,29 +13,29 @@ type Response struct {
 	Val int64 `json:"val"`
 }
 
-type counterController struct {
+type metricController struct {
 	mw metric.Writer
 	c  *int64
 }
 
-func NewCounterController() *counterController {
+func NewMetricController() *metricController {
 	mw := metric.NewWriter()
 
-	return &counterController{
+	return &metricController{
 		mw: mw,
 		c:  mdl.Box(int64(0)),
 	}
 }
 
-func (ctrl *counterController) Cur(c *gin.Context) {
-	ctrl.apiCallMetric("cur")
+func (ctrl *metricController) Cur(c *gin.Context) {
+	ctrl.apiCallCounterMetric("cur")
 	c.JSON(http.StatusOK, &Response{
 		Val: atomic.LoadInt64(ctrl.c),
 	})
 }
 
-func (ctrl *counterController) Incr(c *gin.Context) {
-	ctrl.apiCallMetric("incr")
+func (ctrl *metricController) Incr(c *gin.Context) {
+	ctrl.apiCallCounterMetric("incr")
 	val := atomic.AddInt64(ctrl.c, 1)
 	ctrl.counterMetric(float64(1))
 
@@ -44,8 +44,8 @@ func (ctrl *counterController) Incr(c *gin.Context) {
 	})
 }
 
-func (ctrl *counterController) OneK(c *gin.Context) {
-	ctrl.apiCallMetric("1k")
+func (ctrl *metricController) OneK(c *gin.Context) {
+	ctrl.apiCallCounterMetric("1k")
 	val := atomic.AddInt64(ctrl.c, 1000)
 	ctrl.counterMetric(float64(1000))
 
@@ -54,7 +54,16 @@ func (ctrl *counterController) OneK(c *gin.Context) {
 	})
 }
 
-func (ctrl *counterController) apiCallMetric(handler string) {
+func (ctrl *metricController) MySummary(c *gin.Context) {
+	ctrl.apiCallSummaryMetric(float64(atomic.LoadInt64(ctrl.c)) * 1.1)
+	val := atomic.AddInt64(ctrl.c, 1)
+
+	c.JSON(http.StatusOK, &Response{
+		Val: val,
+	})
+}
+
+func (ctrl *metricController) apiCallCounterMetric(handler string) {
 	ctrl.mw.WriteOne(&metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: "api_request",
@@ -66,7 +75,16 @@ func (ctrl *counterController) apiCallMetric(handler string) {
 	})
 }
 
-func (ctrl *counterController) counterMetric(val float64) {
+func (ctrl *metricController) apiCallSummaryMetric(val float64) {
+	ctrl.mw.WriteOne(&metric.Datum{
+		Priority:   metric.PriorityHigh,
+		MetricName: "my_summary",
+		Value:      val,
+		Unit:       metric.UnitPromSummary,
+	})
+}
+
+func (ctrl *metricController) counterMetric(val float64) {
 	ctrl.mw.WriteOne(&metric.Datum{
 		Priority:   metric.PriorityHigh,
 		MetricName: "important_counter",

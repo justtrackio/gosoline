@@ -11,7 +11,7 @@ var metricChannelContainer = struct {
 	instance *metricChannel
 }{}
 
-func ProviderMetricChannel() *metricChannel {
+func providerMetricChannel() *metricChannel {
 	metricChannelContainer.Lock()
 	defer metricChannelContainer.Unlock()
 
