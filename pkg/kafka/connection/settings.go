@@ -10,6 +10,7 @@ type Settings struct {
 	// Connection.
 	Bootstrap          []string `cfg:"bootstrap" validate:"required"`
 	InsecureSkipVerify bool     `cfg:"insecure_skip_verify"`
+	TlsEnabled         bool     `cfg:"tls_enabled" default:"true"`
 
 	// Credentials.
 	Username string `cfg:"username"`
