@@ -4,13 +4,12 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-
 	"github.com/justtrackio/gosoline/pkg/kafka"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 )
 
 type Settings struct {
-	ConnectionName string `cfg:"connection" validate:"required"`
+	ConnectionName string `cfg:"connection" default:"default"`
 	Topic          string `cfg:"topic" validate:"required"`
 	// FQTopic is the fully-qualified topic name (with prefixes).
 	FQTopic      string
@@ -26,6 +25,7 @@ func (s *Settings) Connection() *connection.Settings {
 
 func (s *Settings) WithConnection(conn *connection.Settings) *Settings {
 	s.connection = conn
+
 	return s
 }
 

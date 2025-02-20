@@ -5,12 +5,11 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kafka"
-
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 )
 
 type Settings struct {
-	ConnectionName string `cfg:"connection" validate:"required"`
+	ConnectionName string `cfg:"connection" default:"default"`
 	connection     *connection.Settings
 
 	Topic   string `cfg:"topic" validate:"required"`
@@ -21,6 +20,7 @@ type Settings struct {
 	FQGroupID    string
 	BatchSize    int           `cfg:"batch_size" default:"1"`
 	BatchTimeout time.Duration `cfg:"idle_timeout" default:"1s"`
+	StartOffset  string        `cfg:"start_offset" default:"last" validate:"oneof=first last"`
 }
 
 func (s *Settings) Connection() *connection.Settings {
@@ -29,6 +29,7 @@ func (s *Settings) Connection() *connection.Settings {
 
 func (s *Settings) WithConnection(conn *connection.Settings) *Settings {
 	s.connection = conn
+
 	return s
 }
 
