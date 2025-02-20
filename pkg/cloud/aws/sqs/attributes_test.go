@@ -48,7 +48,6 @@ func TestAttributeEncodeHandler_Encode(t *testing.T) {
 	}
 
 	for name, test := range testCases {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			h := sqs.NewAttributeEncodeHandler(test.attr, test.provider)
 			ctx, attributes, err := h.Encode(context.Background(), test.msg, make(map[string]interface{}))

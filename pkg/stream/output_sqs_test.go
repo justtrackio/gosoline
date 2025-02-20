@@ -87,7 +87,6 @@ func TestSqsOutput_WriteOne(t *testing.T) {
 	}
 
 	for test, data := range tests {
-		data := data
 		t.Run(test, func(t *testing.T) {
 			logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
@@ -250,7 +249,6 @@ func TestSqsOutput_Write(t *testing.T) {
 	}
 
 	for test, data := range tests {
-		data := data
 		t.Run(test, func(t *testing.T) {
 			logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 
