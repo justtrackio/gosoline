@@ -38,6 +38,11 @@ func NewReader(
 	settings *Settings,
 	opts ...ReaderOption,
 ) (*kafka.Reader, error) {
+	startOffset := kafka.FirstOffset
+	if settings.StartOffset == "last" {
+		startOffset = kafka.LastOffset
+	}
+
 	c := &kafka.ReaderConfig{
 		Brokers: settings.Connection().Bootstrap,
 		Dialer:  dialer,
@@ -59,6 +64,8 @@ func NewReader(
 		RetentionTime:  DefaultConsumerGroupRetentionTime,
 		MaxAttempts:    DefaultMaxRetryAttempts,
 		IsolationLevel: kafka.ReadCommitted,
+
+		StartOffset: startOffset,
 
 		Logger:      logging.NewKafkaLogger(logger).DebugLogger(),
 		ErrorLogger: logging.NewKafkaLogger(logger).ErrorLogger(),

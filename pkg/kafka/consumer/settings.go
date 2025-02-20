@@ -21,6 +21,7 @@ type Settings struct {
 	FQGroupID    string
 	BatchSize    int           `cfg:"batch_size" default:"1"`
 	BatchTimeout time.Duration `cfg:"idle_timeout" default:"1s"`
+	StartOffset  string        `cfg:"start_offset" default:"first" validate:"oneof=first last"`
 }
 
 func (s *Settings) Connection() *connection.Settings {
