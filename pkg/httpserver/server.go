@@ -36,9 +36,9 @@ type HandlerMetadata struct {
 // Settings structure for an API server.
 type Settings struct {
 	// Port the API listens to.
-	Port string `cfg:"port" default:"8080"`
+	Port string `cfg:"port"        default:"8080"`
 	// Mode is either debug, release, test.
-	Mode string `cfg:"mode" default:"release" validate:"oneof=release debug test"`
+	Mode string `cfg:"mode"        default:"release" validate:"oneof=release debug test"`
 	// Compression settings.
 	Compression CompressionSettings `cfg:"compression"`
 	// Timeout settings.
@@ -51,11 +51,11 @@ type Settings struct {
 type TimeoutSettings struct {
 	// You need to give at least 1s as timeout.
 	// Read timeout is the maximum duration for reading the entire request, including the body.
-	Read time.Duration `cfg:"read" default:"60s" validate:"min=1000000000"`
+	Read time.Duration `cfg:"read"  default:"60s" validate:"min=1000000000"`
 	// Write timeout is the maximum duration before timing out writes of the response.
 	Write time.Duration `cfg:"write" default:"60s" validate:"min=1000000000"`
 	// Idle timeout is the maximum amount of time to wait for the next request when keep-alives are enabled
-	Idle time.Duration `cfg:"idle" default:"60s" validate:"min=1000000000"`
+	Idle time.Duration `cfg:"idle"  default:"60s" validate:"min=1000000000"`
 }
 
 type LoggingSettings struct {
@@ -106,6 +106,7 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 		}
 
 		router := gin.New()
+		router.Use(ContextWithRequestMiddleware)
 		router.Use(metricMiddleware)
 		router.Use(LoggingMiddleware(logger, settings.Logging))
 		router.Use(compressionMiddlewares...)
