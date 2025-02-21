@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/justtrackio/gosoline/pkg/db"
-	"github.com/justtrackio/gosoline/pkg/db-repo"
+	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -49,7 +49,7 @@ func handleErrorOnRead(logger log.Logger, err error) (*httpserver.Response, erro
 //   - ErrModelNotChanged -> HTTP 304
 //   - db.IsDuplicateEntryError -> HTTP 409
 //   - validation.Error -> HTTP 400
-func handleErrorOnWrite(ctx context.Context, logger log.Logger, err error) (*httpserver.Response, error) {
+func HandleErrorOnWrite(ctx context.Context, logger log.Logger, err error) (*httpserver.Response, error) {
 	logger = logger.WithContext(ctx)
 
 	if exec.IsRequestCanceled(err) {

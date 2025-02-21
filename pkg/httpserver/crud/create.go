@@ -42,25 +42,25 @@ func (ch createHandler) Handle(reqCtx context.Context, request *httpserver.Reque
 	model := ch.transformer.GetModel()
 	err := ch.transformer.TransformCreate(ctx, request.Body, model)
 	if err != nil {
-		return handleErrorOnWrite(ctx, ch.logger, err)
+		return HandleErrorOnWrite(ctx, ch.logger, err)
 	}
 
 	repo := ch.transformer.GetRepository()
 	err = repo.Create(ctx, model)
 	if err != nil {
-		return handleErrorOnWrite(ctx, ch.logger, err)
+		return HandleErrorOnWrite(ctx, ch.logger, err)
 	}
 
 	reload := ch.transformer.GetModel()
 	err = repo.Read(ctx, model.GetId(), reload)
 	if err != nil {
-		return handleErrorOnWrite(ctx, ch.logger, err)
+		return HandleErrorOnWrite(ctx, ch.logger, err)
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
 	out, err := ch.transformer.TransformOutput(ctx, reload, apiView)
 	if err != nil {
-		return handleErrorOnWrite(ctx, ch.logger, err)
+		return HandleErrorOnWrite(ctx, ch.logger, err)
 	}
 
 	return httpserver.NewJsonResponse(out), nil
