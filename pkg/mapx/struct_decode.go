@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cast"
 )
 
-type MapStructDecoder func(targetType reflect.Type, val interface{}) (interface{}, error)
+type MapStructDecoder func(targetType reflect.Type, val any) (any, error)
 
-type MapStructCaster func(targetType reflect.Type, value interface{}) (interface{}, error)
+type MapStructCaster func(targetType reflect.Type, value any) (any, error)
 
-func MapStructDurationCaster(targetType reflect.Type, value interface{}) (interface{}, error) {
+func MapStructDurationCaster(targetType reflect.Type, value any) (any, error) {
 	if targetType != reflect.TypeOf(time.Duration(0)) {
 		return nil, nil
 	}
@@ -21,7 +21,7 @@ func MapStructDurationCaster(targetType reflect.Type, value interface{}) (interf
 	return cast.ToDurationE(value)
 }
 
-func MapStructTimeCaster(targetType reflect.Type, value interface{}) (interface{}, error) {
+func MapStructTimeCaster(targetType reflect.Type, value any) (any, error) {
 	if targetType != reflect.TypeOf(time.Time{}) {
 		return nil, nil
 	}
@@ -38,17 +38,17 @@ var mapStructSliceCasters = map[reflect.Kind]MapStructCaster{
 	reflect.String:  MapStructStringSliceCaster,
 }
 
-func MapStructStringSliceCaster(_ reflect.Type, value interface{}) (interface{}, error) {
+func MapStructStringSliceCaster(_ reflect.Type, value any) (any, error) {
 	return strings.Split(value.(string), ","), nil
 }
 
-func MapStructIntSliceCaster(_ reflect.Type, value interface{}) (interface{}, error) {
+func MapStructIntSliceCaster(_ reflect.Type, value any) (any, error) {
 	bits := strings.Split(value.(string), ",")
 
 	return cast.ToIntSliceE(bits)
 }
 
-func MapStructInt64SliceCaster(_ reflect.Type, value interface{}) (interface{}, error) {
+func MapStructInt64SliceCaster(_ reflect.Type, value any) (any, error) {
 	bits := strings.Split(value.(string), ",")
 	out := make([]int64, len(bits))
 	var err error
@@ -63,7 +63,7 @@ func MapStructInt64SliceCaster(_ reflect.Type, value interface{}) (interface{}, 
 	return out, nil
 }
 
-func MapStructFloat32SliceCaster(_ reflect.Type, value interface{}) (interface{}, error) {
+func MapStructFloat32SliceCaster(_ reflect.Type, value any) (any, error) {
 	bits := strings.Split(value.(string), ",")
 	out := make([]float32, len(bits))
 	var err error
@@ -78,7 +78,7 @@ func MapStructFloat32SliceCaster(_ reflect.Type, value interface{}) (interface{}
 	return out, nil
 }
 
-func MapStructFloat64SliceCaster(_ reflect.Type, value interface{}) (interface{}, error) {
+func MapStructFloat64SliceCaster(_ reflect.Type, value any) (any, error) {
 	bits := strings.Split(value.(string), ",")
 	out := make([]float64, len(bits))
 	var err error
@@ -93,14 +93,14 @@ func MapStructFloat64SliceCaster(_ reflect.Type, value interface{}) (interface{}
 	return out, nil
 }
 
-func MapStructBoolSliceCaster(_ reflect.Type, value interface{}) (interface{}, error) {
+func MapStructBoolSliceCaster(_ reflect.Type, value any) (any, error) {
 	bits := strings.Split(value.(string), ",")
 
 	return cast.ToBoolSliceE(bits)
 }
 
 // MapStructSliceCaster casts values to []T, based on casters in mapStructSliceCasters
-func MapStructSliceCaster(targetType reflect.Type, value interface{}) (interface{}, error) {
+func MapStructSliceCaster(targetType reflect.Type, value any) (any, error) {
 	if targetType.Kind() != reflect.Slice {
 		return nil, nil
 	}

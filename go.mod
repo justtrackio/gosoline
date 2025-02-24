@@ -224,4 +224,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-go 1.23.1
+go 1.23.3

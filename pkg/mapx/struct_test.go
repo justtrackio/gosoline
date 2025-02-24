@@ -42,7 +42,7 @@ func TestMapStructIO_KeysBasic(t *testing.T) {
 	assert.Len(t, keys, 5)
 }
 
-// This tesst assumes that we can pass non-pointers of the same type for writing pointers to a mapStruct
+// This test assumes that we can pass non-pointers of the same type for writing pointers to a mapStruct
 // (env vars config values to ptr struct properties case)
 func TestMapStructIO_PointerTarget(t *testing.T) {
 	type sourceStruct struct {
