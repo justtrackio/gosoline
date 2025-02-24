@@ -7,10 +7,10 @@ import (
 )
 
 type MapXNode struct {
-	value interface{}
+	value any
 }
 
-func msiToMsn(src map[string]interface{}) map[string]*MapXNode {
+func msiToMsn(src map[string]any) map[string]*MapXNode {
 	target := make(map[string]*MapXNode)
 
 	for k, v := range src {
@@ -20,13 +20,13 @@ func msiToMsn(src map[string]interface{}) map[string]*MapXNode {
 	return target
 }
 
-func interfaceToMapNode(val interface{}) *MapXNode {
+func interfaceToMapNode(val any) *MapXNode {
 	switch val := val.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		msn := msiToMsn(val)
 		return &MapXNode{value: msn}
 
-	case []map[string]interface{}:
+	case []map[string]any:
 		slice := make([]map[string]*MapXNode, len(val))
 
 		for i, elem := range val {
@@ -35,8 +35,8 @@ func interfaceToMapNode(val interface{}) *MapXNode {
 
 		return &MapXNode{value: slice}
 
-	case []interface{}:
-		slice := make([]interface{}, len(val))
+	case []any:
+		slice := make([]any, len(val))
 
 		for i, v := range val {
 			slice[i] = interfaceToMapNode(v).value
@@ -49,19 +49,19 @@ func interfaceToMapNode(val interface{}) *MapXNode {
 	}
 }
 
-func nodeMsnToMsi(msn map[string]*MapXNode) map[string]interface{} {
-	msi := make(map[string]interface{})
+func nodeMsnToMsi(msn map[string]*MapXNode) map[string]any {
+	msi := make(map[string]any)
 
 	for k, node := range msn {
 		switch val := node.value.(type) {
 		case map[string]*MapXNode:
-			subMsi := make(map[string]interface{})
+			subMsi := make(map[string]any)
 
 			for k, node := range val {
 				switch val := node.value.(type) {
 				case map[string]*MapXNode:
 					subMsi[k] = nodeMsnToMsi(val)
-				case []interface{}:
+				case []any:
 					subMsi[k] = nodeSliceToSlice(val)
 				default:
 					subMsi[k] = val
@@ -70,7 +70,7 @@ func nodeMsnToMsi(msn map[string]*MapXNode) map[string]interface{} {
 
 			msi[k] = subMsi
 
-		case []interface{}:
+		case []any:
 			msi[k] = nodeSliceToSlice(val)
 
 		default:
@@ -81,14 +81,14 @@ func nodeMsnToMsi(msn map[string]*MapXNode) map[string]interface{} {
 	return msi
 }
 
-func nodeSliceToSlice(val []interface{}) []interface{} {
-	slice := make([]interface{}, len(val))
+func nodeSliceToSlice(val []any) []any {
+	slice := make([]any, len(val))
 
 	for i, elem := range val {
 		switch val := elem.(type) {
 		case map[string]*MapXNode:
 			slice[i] = nodeMsnToMsi(val)
-		case []interface{}:
+		case []any:
 			slice[i] = nodeSliceToSlice(val)
 		default:
 			slice[i] = val
@@ -98,11 +98,11 @@ func nodeSliceToSlice(val []interface{}) []interface{} {
 	return slice
 }
 
-func (n *MapXNode) Data() interface{} {
+func (n *MapXNode) Data() any {
 	switch val := n.value.(type) {
 	case map[string]*MapXNode:
 		return nodeMsnToMsi(val)
-	case []interface{}:
+	case []any:
 		return nodeSliceToSlice(val)
 	default:
 		return val
@@ -124,7 +124,7 @@ func (n *MapXNode) Map() (*MapX, error) {
 	return nil, fmt.Errorf("value should be of type map[string]*MapXNode but instead is %T", n.value)
 }
 
-func (n *MapXNode) Msi() (map[string]interface{}, error) {
+func (n *MapXNode) Msi() (map[string]any, error) {
 	var ok bool
 	var msn map[string]*MapXNode
 
@@ -137,12 +137,12 @@ func (n *MapXNode) Msi() (map[string]interface{}, error) {
 	return msi, nil
 }
 
-func (n *MapXNode) Slice() ([]interface{}, error) {
+func (n *MapXNode) Slice() ([]any, error) {
 	var ok bool
-	var slice []interface{}
+	var slice []any
 
-	if slice, ok = n.value.([]interface{}); !ok {
-		return nil, fmt.Errorf("value should be of type []interface{} but instead is %T", n.value)
+	if slice, ok = n.value.([]any); !ok {
+		return nil, fmt.Errorf("value should be of type []any but instead is %T", n.value)
 	}
 
 	return nodeSliceToSlice(slice), nil
