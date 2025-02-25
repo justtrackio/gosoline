@@ -96,7 +96,6 @@ func TestIsRequestCanceled(t *testing.T) {
 			isCanceled: true,
 		},
 	} {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, test.isCanceled, exec.IsRequestCanceled(test.err), "Expected canceled = %v for error %v", test.isCanceled, test.err)
 		})

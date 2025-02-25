@@ -17,7 +17,7 @@ type writer struct {
 }
 
 func NewWriter(defaults ...*Datum) Writer {
-	channel := ProviderMetricChannel()
+	channel := providerMetricChannel()
 
 	addMetricDefaults(defaults...)
 

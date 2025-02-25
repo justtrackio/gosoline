@@ -49,7 +49,6 @@ func TestScheduler(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
-		i := i
 		wg.Add(1)
 		cfn.Go(func() error {
 			defer wg.Done()

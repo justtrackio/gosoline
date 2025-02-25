@@ -38,6 +38,22 @@ func AddRequestCancelCheck(check RequestCanceledCheck) {
 // IsRequestCanceled checks if the given error was (only) caused by a canceled context - if there is any other error contained in it, we
 // return false. Thus, if IsRequestCanceled returns true, you can (and should) ignore the error and stop processing instead.
 func IsRequestCanceled(err error) bool {
+	type multipleErrors interface {
+		Unwrap() []error
+	}
+
+	if multiErr, ok := err.(multipleErrors); ok {
+		// check if one of the errors is no request canceled
+		for _, err := range multiErr.Unwrap() {
+			if !IsRequestCanceled(err) {
+				return false
+			}
+		}
+
+		// all errors are a canceled request (if there are any)
+		return len(multiErr.Unwrap()) > 0
+	}
+
 	multiErr := &multierror.Error{}
 	if errors.As(err, &multiErr) {
 		// check if one of the errors is no request canceled

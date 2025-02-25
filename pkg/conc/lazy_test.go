@@ -61,7 +61,6 @@ func TestLazyConcurrently(t *testing.T) {
 	ch := make(chan struct{})
 	cfn := coffin.New()
 	for i := 0; i < 10; i++ {
-		i := i
 		cfn.Go(func() error {
 			<-ch
 			v, err := l.Get(i)
