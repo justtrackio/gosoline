@@ -42,7 +42,7 @@ func (dh deleteHandler) Handle(reqCtx context.Context, request *httpserver.Reque
 	id, valid := httpserver.GetUintFromRequest(request, "id")
 
 	if !valid {
-		return handleErrorOnWrite(ctx, logger, &validation.Error{
+		return HandleErrorOnWrite(ctx, logger, &validation.Error{
 			Errors: []error{
 				errors.New("no valid id provided"),
 			},
@@ -54,18 +54,18 @@ func (dh deleteHandler) Handle(reqCtx context.Context, request *httpserver.Reque
 
 	err := repo.Read(ctx, id, model)
 	if err != nil {
-		return handleErrorOnWrite(ctx, logger, err)
+		return HandleErrorOnWrite(ctx, logger, err)
 	}
 
 	err = repo.Delete(ctx, model)
 	if err != nil {
-		return handleErrorOnWrite(ctx, logger, err)
+		return HandleErrorOnWrite(ctx, logger, err)
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
 	out, err := dh.transformer.TransformOutput(ctx, model, apiView)
 	if err != nil {
-		return handleErrorOnWrite(ctx, logger, err)
+		return HandleErrorOnWrite(ctx, logger, err)
 	}
 
 	return httpserver.NewJsonResponse(out), nil
