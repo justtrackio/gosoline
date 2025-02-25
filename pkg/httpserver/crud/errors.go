@@ -16,12 +16,12 @@ import (
 
 var ErrModelNotChanged = fmt.Errorf("nothing has changed on model")
 
-// handleErrorOnWrite handles errors for read operations.
+// HandleErrorOnWrite handles errors for read operations.
 // Covers many default errors and responses like
 //   - context.Canceled, context.DeadlineExceed -> HTTP 499
 //   - db_repo.RecordNotFoundError | db_repo.NoQueryResultsError -> HTTP 404
 //   - validation.Error -> HTTP 400
-func handleErrorOnRead(logger log.Logger, err error) (*httpserver.Response, error) {
+func HandleErrorOnRead(logger log.Logger, err error) (*httpserver.Response, error) {
 	if exec.IsRequestCanceled(err) {
 		logger.Info("read model(s) aborted: %s", err.Error())
 
@@ -42,7 +42,7 @@ func handleErrorOnRead(logger log.Logger, err error) (*httpserver.Response, erro
 	return nil, err
 }
 
-// handleErrorOnWrite handles errors for write operations.
+// HandleErrorOnWrite handles errors for write operations.
 // Covers many default errors and responses like
 //   - context.Canceled, context.DeadlineExceed -> HTTP 500
 //   - db_repo.RecordNotFoundError | db_repo.NoQueryResultsError -> HTTP 404
