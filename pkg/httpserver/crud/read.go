@@ -31,7 +31,7 @@ func (rh readHandler) Handle(ctx context.Context, request *httpserver.Request) (
 	id, valid := httpserver.GetUintFromRequest(request, "id")
 
 	if !valid {
-		return handleErrorOnRead(logger, &validation.Error{
+		return HandleErrorOnRead(logger, &validation.Error{
 			Errors: []error{
 				errors.New("no valid id provided"),
 			},
@@ -46,13 +46,13 @@ func (rh readHandler) Handle(ctx context.Context, request *httpserver.Request) (
 	model := rh.transformer.GetModel()
 	err := repo.Read(ctx, id, model)
 	if err != nil {
-		return handleErrorOnRead(logger, err)
+		return HandleErrorOnRead(logger, err)
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
 	out, err := rh.transformer.TransformOutput(ctx, model, apiView)
 	if err != nil {
-		return handleErrorOnRead(logger, err)
+		return HandleErrorOnRead(logger, err)
 	}
 
 	return httpserver.NewJsonResponse(out), nil

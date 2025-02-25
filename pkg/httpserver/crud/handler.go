@@ -8,7 +8,7 @@ import (
 
 	"github.com/jinzhu/inflection"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	db_repo "github.com/justtrackio/gosoline/pkg/db-repo"
+	dbRepo "github.com/justtrackio/gosoline/pkg/db-repo"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -27,26 +27,26 @@ type Settings struct {
 
 //go:generate mockery --name Repository
 type Repository interface {
-	Create(ctx context.Context, value db_repo.ModelBased) error
-	Read(ctx context.Context, id *uint, out db_repo.ModelBased) error
-	Update(ctx context.Context, value db_repo.ModelBased) error
-	Delete(ctx context.Context, value db_repo.ModelBased) error
-	Query(ctx context.Context, qb *db_repo.QueryBuilder, result any) error
-	Count(ctx context.Context, qb *db_repo.QueryBuilder, model db_repo.ModelBased) (int, error)
-	GetMetadata() db_repo.Metadata
+	Create(ctx context.Context, value dbRepo.ModelBased) error
+	Read(ctx context.Context, id *uint, out dbRepo.ModelBased) error
+	Update(ctx context.Context, value dbRepo.ModelBased) error
+	Delete(ctx context.Context, value dbRepo.ModelBased) error
+	Query(ctx context.Context, qb *dbRepo.QueryBuilder, result any) error
+	Count(ctx context.Context, qb *dbRepo.QueryBuilder, model dbRepo.ModelBased) (int, error)
+	GetMetadata() dbRepo.Metadata
 }
 
 //go:generate mockery --name BaseHandler
 type BaseHandler interface {
 	GetRepository() Repository
-	GetModel() db_repo.ModelBased
-	TransformOutput(ctx context.Context, model db_repo.ModelBased, apiView string) (output any, err error)
+	GetModel() dbRepo.ModelBased
+	TransformOutput(ctx context.Context, model dbRepo.ModelBased, apiView string) (output any, err error)
 }
 
 //go:generate mockery --name BaseCreateHandler
 type BaseCreateHandler interface {
 	GetCreateInput() any
-	TransformCreate(ctx context.Context, input any, model db_repo.ModelBased) (err error)
+	TransformCreate(ctx context.Context, input any, model dbRepo.ModelBased) (err error)
 }
 
 //go:generate mockery --name CreateHandler
@@ -58,7 +58,7 @@ type CreateHandler interface {
 //go:generate mockery --name BaseUpdateHandler
 type BaseUpdateHandler interface {
 	GetUpdateInput() any
-	TransformUpdate(ctx context.Context, input any, model db_repo.ModelBased) (err error)
+	TransformUpdate(ctx context.Context, input any, model dbRepo.ModelBased) (err error)
 }
 
 //go:generate mockery --name UpdateHandler
@@ -69,7 +69,7 @@ type UpdateHandler interface {
 
 //go:generate mockery --name BaseListHandler
 type BaseListHandler interface {
-	List(ctx context.Context, qb *db_repo.QueryBuilder, apiView string) (out any, err error)
+	List(ctx context.Context, qb *dbRepo.QueryBuilder, apiView string) (out any, err error)
 }
 
 //go:generate mockery --name ListHandler
