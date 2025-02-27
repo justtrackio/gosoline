@@ -2,24 +2,20 @@
 
 ### Settings
 
-metrics endpoint settings
-```yml
-prometheus:
-  metric_limit: 5000
-  api:
-    enabled: true
-    port: 8092
-    path: /metrics
-```
-
-metrics writter settings
+metrics writer + endpoint settings
 ```yml
 metric:
-    enabled: true
-    interval: 60s
-    writer: prom
+  enabled: true
+  writers: 
+    - prometheus
+  writer_settings:
+    prometheus:
+      metric_limit: 5000
+      api:
+        enabled: true
+        port: 8092
+        path: /metrics
 ```
-
 
 ### Run instructions
 

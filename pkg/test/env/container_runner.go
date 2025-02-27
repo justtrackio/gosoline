@@ -154,11 +154,13 @@ func (r *containerRunner) PullContainerImage(description *componentContainerDesc
 		return nil
 	}
 
+	pullImageOptions := docker.PullImageOptions{
+		Repository: config.Repository,
+		Tag:        config.Tag,
+	}
+	authConfig := r.settings.Auth.GetAuthConfig()
 	err = r.pool.Client.PullImage(
-		docker.PullImageOptions{
-			Repository: config.Repository,
-			Tag:        config.Tag,
-		}, r.settings.Auth.GetAuthConfig())
+		pullImageOptions, authConfig)
 	if err != nil {
 		return err
 	}
@@ -274,6 +276,7 @@ func (r *containerRunner) runNewContainer(containerName string, skeleton *compon
 		}
 	}
 
+	authConfig := r.settings.Auth.GetAuthConfig()
 	runOptions := &dockertest.RunOptions{
 		Name:         containerName,
 		Repository:   config.Repository,
@@ -282,7 +285,7 @@ func (r *containerRunner) runNewContainer(containerName string, skeleton *compon
 		Cmd:          config.Cmd,
 		PortBindings: bindings,
 		ExposedPorts: config.ExposedPorts,
-		Auth:         r.settings.Auth.GetAuthConfig(),
+		Auth:         authConfig,
 	}
 
 	tmpfsConfig := r.getTmpfsConfig(config.Tmpfs)

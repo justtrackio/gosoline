@@ -13,6 +13,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
+func init() {
+	RegisterWriterFactory(WriterTypeElasticsearch, ProvideElasticsearchWriter)
+}
+
 type esMetricDatum struct {
 	*Datum
 	Namespace string `json:"namespace"`
