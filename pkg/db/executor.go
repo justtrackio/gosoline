@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
@@ -12,47 +13,34 @@ import (
 )
 
 func NewExecutor(config cfg.Config, logger log.Logger, name string, backoffType string, notifier ...exec.Notify) exec.Executor {
+	return NewExecutorWithChecker(config, logger, name, backoffType, []exec.ErrorChecker{}, notifier)
+}
+
+func NewExecutorWithChecker(config cfg.Config, logger log.Logger, name string, backoffType string, checker []exec.ErrorChecker, notifier []exec.Notify) exec.Executor {
 	res := &exec.ExecutableResource{
 		Type: "db-client",
 		Name: name,
 	}
 
 	executorSettings := exec.ReadBackoffSettings(config, backoffType)
-	executor := exec.NewBackoffExecutor(logger, res, &executorSettings, []exec.ErrorChecker{
-		exec.CheckConnectionError,
-		exec.CheckTimeoutError,
-		CheckInvalidConnection,
-		CheckBadConnection,
-		CheckIoTimeout,
-		CheckTiDbTransactionError,
-		CheckTiDbSchemaOutOfDate,
-	}, notifier...)
 
-	return executor
+	return exec.NewExecutor(
+		logger,
+		res,
+		&executorSettings,
+		append([]exec.ErrorChecker{
+			exec.CheckConnectionError,
+			exec.CheckTimeoutError,
+			CheckInvalidConnection,
+			CheckBadConnection,
+			CheckIoTimeout,
+		}, checker...),
+		notifier...,
+	)
 }
 
-func CheckTiDbWriteConflict(result any, err error) exec.ErrorType {
-	if strings.Contains(err.Error(), "Error 9007 (HY000): Write conflict") {
-		return exec.ErrorTypeRetryable
-	}
-
-	return exec.ErrorTypeUnknown
-}
-
-func CheckTiDbSchemaOutOfDate(result any, err error) exec.ErrorType {
-	if strings.Contains(err.Error(), "Error 8027 (HY000): Information schema is out of date") {
-		return exec.ErrorTypeRetryable
-	}
-
-	return exec.ErrorTypeUnknown
-}
-
-func CheckTiDbTransactionError(result any, err error) exec.ErrorType {
-	if strings.Contains(err.Error(), "Error 8022 (HY000): Error: KV error safe to retry Error") {
-		return exec.ErrorTypeRetryable
-	}
-
-	return exec.ErrorTypeUnknown
+func ExecutorBackoffType(name string) string {
+	return fmt.Sprintf("db.%s.retry", name)
 }
 
 func CheckInvalidConnection(result any, err error) exec.ErrorType {

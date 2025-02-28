@@ -57,36 +57,44 @@ type (
 )
 
 //go:generate mockery --name Client
-type Client interface {
-	GetSingleScalarValue(ctx context.Context, query string, args ...any) (int, error)
-	GetResult(ctx context.Context, query string, args ...any) (*Result, error)
-	Exec(ctx context.Context, query string, args ...any) (sql.Result, error)
-	NamedExec(ctx context.Context, query string, arg any) (sql.Result, error)
-	ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error)
-	BindNamed(query string, arg any) (string, []any, error)
-	Prepare(ctx context.Context, query string) (*sql.Stmt, error)
-	Preparex(ctx context.Context, query string) (*sqlx.Stmt, error)
-	PrepareNamed(ctx context.Context, query string) (*sqlx.NamedStmt, error)
-	Query(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-	Queryx(ctx context.Context, query string, args ...any) (*sqlx.Rows, error)
-	QueryRow(ctx context.Context, query string, args ...any) *sql.Row
-	NamedQuery(ctx context.Context, query string, arg any) (*sqlx.Rows, error)
-	Select(ctx context.Context, dest any, query string, args ...any) error
-	NamedSelect(ctx context.Context, dest any, query string, arg any) error
-	Get(ctx context.Context, dest any, query string, args ...any) error
-	WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) error
-	Close() error
-}
+type (
+	Client interface {
+		GetSingleScalarValue(ctx context.Context, query string, args ...any) (int, error)
+		GetResult(ctx context.Context, query string, args ...any) (*Result, error)
+		Exec(ctx context.Context, query string, args ...any) (sql.Result, error)
+		NamedExec(ctx context.Context, query string, arg any) (sql.Result, error)
+		ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error)
+		BindNamed(query string, arg any) (string, []any, error)
+		Prepare(ctx context.Context, query string) (*sql.Stmt, error)
+		Preparex(ctx context.Context, query string) (*sqlx.Stmt, error)
+		PrepareNamed(ctx context.Context, query string) (*sqlx.NamedStmt, error)
+		Query(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+		Queryx(ctx context.Context, query string, args ...any) (*sqlx.Rows, error)
+		QueryRow(ctx context.Context, query string, args ...any) *sql.Row
+		NamedQuery(ctx context.Context, query string, arg any) (*sqlx.Rows, error)
+		Select(ctx context.Context, dest any, query string, args ...any) error
+		NamedSelect(ctx context.Context, dest any, query string, arg any) error
+		Get(ctx context.Context, dest any, query string, args ...any) error
+		WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) error
+		Close() error
+	}
 
-type ClientSqlx struct {
-	logger   log.Logger
-	db       *sqlx.DB
-	executor exec.Executor
-}
+	ClientSqlx struct {
+		logger   log.Logger
+		db       *sqlx.DB
+		executor exec.Executor
+	}
 
-type clientCtxKey string
+	ClientOption func(*ClientSqlx)
 
-func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
+	clientCtxKey string
+)
+
+// ProvideClient provides a client from context..
+// Applies the options on creation of a new client if none is registered in the context yet for the name.
+// When requesting a client with the same name but different options the options will not be applied but
+// the already registered client will be returned.
+func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...ClientOption) (*ClientSqlx, error) {
 	var err error
 	var settings *Settings
 
@@ -94,12 +102,12 @@ func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 		return nil, err
 	}
 
-	return appctx.Provide(ctx, clientCtxKey(fmt.Sprint(settings)), func() (Client, error) {
-		return NewClientWithSettings(ctx, config, logger, name, settings)
+	return appctx.Provide(ctx, clientCtxKey(fmt.Sprint(settings)), func() (*ClientSqlx, error) {
+		return NewClientWithSettings(ctx, config, logger, name, settings, options...)
 	})
 }
 
-func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
+func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...ClientOption) (*ClientSqlx, error) {
 	var err error
 	var settings *Settings
 
@@ -107,27 +115,34 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return nil, err
 	}
 
-	return NewClientWithSettings(ctx, config, logger, name, settings)
+	return NewClientWithSettings(ctx, config, logger, name, settings, options...)
 }
 
-func NewClientWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, name string, settings *Settings) (Client, error) {
-	var err error
-	var connection *sqlx.DB
-	var executor exec.Executor = exec.NewDefaultExecutor()
+func NewClientWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, name string, settings *Settings, options ...ClientOption) (*ClientSqlx, error) {
+	var (
+		err        error
+		connection *sqlx.DB
+		executor   exec.Executor = exec.NewDefaultExecutor()
+	)
 
 	if connection, err = ProvideConnectionFromSettings(ctx, logger, settings); err != nil {
 		return nil, fmt.Errorf("can not connect to sql database: %w", err)
 	}
 
 	if settings.Retry.Enabled {
-		path := fmt.Sprintf("db.%s.retry", name)
-		executor = NewExecutor(config, logger, name, path)
+		executor = NewExecutor(config, logger, name, ExecutorBackoffType(name))
 	}
 
-	return NewClientWithInterfaces(logger, connection, executor), nil
+	client := NewClientWithInterfaces(logger, connection, executor)
+
+	for _, option := range options {
+		option(client)
+	}
+
+	return client, nil
 }
 
-func NewClientWithInterfaces(logger log.Logger, connection *sqlx.DB, executor exec.Executor) Client {
+func NewClientWithInterfaces(logger log.Logger, connection *sqlx.DB, executor exec.Executor) *ClientSqlx {
 	return &ClientSqlx{
 		logger:   logger,
 		db:       connection,
@@ -464,4 +479,10 @@ func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx
 
 func (c *ClientSqlx) Close() error {
 	return c.db.Close()
+}
+
+func ClientWithExecutor(executor exec.Executor) ClientOption {
+	return func(c *ClientSqlx) {
+		c.executor = executor
+	}
 }
