@@ -24,12 +24,38 @@ func NewExecutor(config cfg.Config, logger log.Logger, name string, backoffType 
 		CheckInvalidConnection,
 		CheckBadConnection,
 		CheckIoTimeout,
+		CheckTiDbTransactionError,
+		CheckTiDbSchemaOutOfDate,
 	}, notifier...)
 
 	return executor
 }
 
-func CheckInvalidConnection(result interface{}, err error) exec.ErrorType {
+func CheckTiDbWriteConflict(result any, err error) exec.ErrorType {
+	if strings.Contains(err.Error(), "Error 9007 (HY000): Write conflict") {
+		return exec.ErrorTypeRetryable
+	}
+
+	return exec.ErrorTypeUnknown
+}
+
+func CheckTiDbSchemaOutOfDate(result any, err error) exec.ErrorType {
+	if strings.Contains(err.Error(), "Error 8027 (HY000): Information schema is out of date") {
+		return exec.ErrorTypeRetryable
+	}
+
+	return exec.ErrorTypeUnknown
+}
+
+func CheckTiDbTransactionError(result any, err error) exec.ErrorType {
+	if strings.Contains(err.Error(), "Error 8022 (HY000): Error: KV error safe to retry Error") {
+		return exec.ErrorTypeRetryable
+	}
+
+	return exec.ErrorTypeUnknown
+}
+
+func CheckInvalidConnection(result any, err error) exec.ErrorType {
 	if errors.Is(err, mysql.ErrInvalidConn) {
 		return exec.ErrorTypeRetryable
 	}
@@ -37,7 +63,7 @@ func CheckInvalidConnection(result interface{}, err error) exec.ErrorType {
 	return exec.ErrorTypeUnknown
 }
 
-func CheckBadConnection(result interface{}, err error) exec.ErrorType {
+func CheckBadConnection(result any, err error) exec.ErrorType {
 	if errors.Is(err, driver.ErrBadConn) {
 		return exec.ErrorTypeRetryable
 	}
@@ -45,7 +71,7 @@ func CheckBadConnection(result interface{}, err error) exec.ErrorType {
 	return exec.ErrorTypeUnknown
 }
 
-func CheckIoTimeout(result interface{}, err error) exec.ErrorType {
+func CheckIoTimeout(result any, err error) exec.ErrorType {
 	if strings.Contains(err.Error(), "i/o timeout") {
 		return exec.ErrorTypeRetryable
 	}
