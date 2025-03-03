@@ -20,7 +20,7 @@ type Settings struct {
 
 //go:generate mockery --name Sender
 type Sender interface {
-	SendEmail(ctx context.Context, recipients []string, subject string, plaintextBody *string, htmlBody *string) error
+	SendEmail(ctx context.Context, recipients []string, subject string, plaintextBody string, htmlBody string) error
 }
 
 type sesSender struct {
@@ -49,7 +49,7 @@ func NewSenderWithInterfaces(logger log.Logger, client gosoSES.Client, fromAddre
 	}
 }
 
-func (s *sesSender) SendEmail(ctx context.Context, recipients []string, subject string, plaintextBody *string, htmlBody *string) error {
+func (s *sesSender) SendEmail(ctx context.Context, recipients []string, subject string, plaintextBody string, htmlBody string) error {
 	input := &sesv2.SendEmailInput{
 		FromEmailAddress: aws.String(s.fromAddress),
 		Destination: &types.Destination{
@@ -59,8 +59,8 @@ func (s *sesSender) SendEmail(ctx context.Context, recipients []string, subject 
 			Simple: &types.Message{
 				Subject: &types.Content{Data: aws.String(subject)},
 				Body: &types.Body{
-					Html: &types.Content{Data: htmlBody},
-					Text: &types.Content{Data: plaintextBody},
+					Html: &types.Content{Data: aws.String(htmlBody)},
+					Text: &types.Content{Data: aws.String(plaintextBody)},
 				},
 			},
 		},

@@ -50,6 +50,7 @@ func (s *SenderTestSuite) TestSendEmail_TextEmail() {
 	recipients := []string{"recipient@example.com"}
 	subject := "Test Subject"
 	body := "This is a plain text email."
+	htmlEmptyBody := ""
 
 	expectedEmailInput := &sesv2.SendEmailInput{
 		FromEmailAddress: aws.String("sender@example.com"),
@@ -61,7 +62,7 @@ func (s *SenderTestSuite) TestSendEmail_TextEmail() {
 				Subject: &types.Content{Data: aws.String(subject)},
 				Body: &types.Body{
 					Text: &types.Content{Data: aws.String(body)},
-					Html: &types.Content{Data: nil},
+					Html: &types.Content{Data: aws.String(htmlEmptyBody)},
 				},
 			},
 		},
@@ -69,13 +70,14 @@ func (s *SenderTestSuite) TestSendEmail_TextEmail() {
 
 	s.client.EXPECT().SendEmail(mock.Anything, expectedEmailInput).Return(&sesv2.SendEmailOutput{}, nil)
 
-	err := s.sender.SendEmail(s.ctx, recipients, subject, &body, nil)
+	err := s.sender.SendEmail(s.ctx, recipients, subject, body, htmlEmptyBody)
 	s.NoError(err)
 }
 
 func (s *SenderTestSuite) TestSendEmail_HtmlEmail() {
 	recipients := []string{"recipient@example.com"}
 	subject := "Test Subject"
+	emptyBody := ""
 	htmlBody := "<h1>This is an HTML email.</h1>"
 
 	expectedEmailInput := &sesv2.SendEmailInput{
@@ -87,7 +89,7 @@ func (s *SenderTestSuite) TestSendEmail_HtmlEmail() {
 			Simple: &types.Message{
 				Subject: &types.Content{Data: aws.String(subject)},
 				Body: &types.Body{
-					Text: &types.Content{Data: nil},
+					Text: &types.Content{Data: aws.String(emptyBody)},
 					Html: &types.Content{Data: aws.String(htmlBody)},
 				},
 			},
@@ -96,7 +98,7 @@ func (s *SenderTestSuite) TestSendEmail_HtmlEmail() {
 
 	s.client.EXPECT().SendEmail(mock.Anything, expectedEmailInput).Return(&sesv2.SendEmailOutput{}, nil)
 
-	err := s.sender.SendEmail(s.ctx, recipients, subject, nil, &htmlBody)
+	err := s.sender.SendEmail(s.ctx, recipients, subject, emptyBody, htmlBody)
 	s.NoError(err)
 }
 
@@ -124,7 +126,7 @@ func (s *SenderTestSuite) TestSendEmail_MultiFormatEmail() {
 
 	s.client.EXPECT().SendEmail(mock.Anything, expectedEmailInput).Return(&sesv2.SendEmailOutput{}, nil)
 
-	err := s.sender.SendEmail(s.ctx, recipients, subject, &body, &htmlBody)
+	err := s.sender.SendEmail(s.ctx, recipients, subject, body, htmlBody)
 	s.NoError(err)
 }
 
@@ -132,6 +134,7 @@ func (s *SenderTestSuite) TestSendEmail_ErrorFromSES() {
 	recipients := []string{"recipient@example.com"}
 	subject := "Test Error Handling"
 	body := "This email should trigger an error."
+	htmlEmptyBody := ""
 
 	expectedEmailInput := &sesv2.SendEmailInput{
 		FromEmailAddress: aws.String("sender@example.com"),
@@ -143,13 +146,13 @@ func (s *SenderTestSuite) TestSendEmail_ErrorFromSES() {
 				Subject: &types.Content{Data: aws.String(subject)},
 				Body: &types.Body{
 					Text: &types.Content{Data: aws.String(body)},
-					Html: &types.Content{Data: nil},
+					Html: &types.Content{Data: aws.String(htmlEmptyBody)},
 				},
 			},
 		},
 	}
 	s.client.EXPECT().SendEmail(mock.Anything, expectedEmailInput).Return(nil, errors.New("error"))
 
-	err := s.sender.SendEmail(s.ctx, recipients, subject, &body, nil)
+	err := s.sender.SendEmail(s.ctx, recipients, subject, body, htmlEmptyBody)
 	s.Error(err)
 }
