@@ -62,10 +62,7 @@ func NewPrometheusMetricsServerModule(ctx context.Context, config cfg.Config, lo
 
 	settings := getMetricSettings(config)
 
-	if !slices.Contains(settings.Writers, WriterTypePrometheus) {
-		return nil, nil
-	}
-	if !promSettings.Api.Enabled {
+	if !slices.Contains(settings.Writers, WriterTypePrometheus) || !promSettings.Api.Enabled {
 		return nil, nil
 	}
 

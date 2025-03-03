@@ -61,14 +61,13 @@ func metricWriterAggrKey(typ string) string {
 func NewDaemonModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	settings := getMetricSettings(config)
 
-	channel := providerMetricChannel()
-	channel.enabled = settings.Enabled
-	channel.logger = logger.WithChannel("metrics")
+	channel := providerMetricChannel(func(channel *metricChannel) {
+		channel.enabled = settings.Enabled
+		channel.logger = logger.WithChannel("metrics")
+	})
 
 	if !settings.Enabled {
-		noWriters := make([]Writer, 0)
-
-		return NewMetricDaemonWithInterfaces(logger, channel, noWriters, noWriters, settings)
+		return nil, nil
 	}
 
 	aggWriters := make([]Writer, 0)
@@ -117,18 +116,11 @@ func (d *Daemon) GetStage() int {
 }
 
 func (d *Daemon) Run(ctx context.Context) error {
-	if !d.settings.Enabled {
-		d.logger.Info("metrics not enabled")
-
-		return nil
-	}
-
 	d.resetBatch()
 
 	for {
 		select {
 		case <-ctx.Done():
-			d.settings.Enabled = false
 			d.ticker.Stop()
 			d.emptyChannel()
 			d.publish()

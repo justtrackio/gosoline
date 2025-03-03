@@ -11,17 +11,20 @@ var metricChannelContainer = struct {
 	instance *metricChannel
 }{}
 
-func providerMetricChannel() *metricChannel {
+func providerMetricChannel(configure func(channel *metricChannel)) *metricChannel {
 	metricChannelContainer.Lock()
 	defer metricChannelContainer.Unlock()
 
 	if metricChannelContainer.instance != nil {
+		configure(metricChannelContainer.instance)
+
 		return metricChannelContainer.instance
 	}
 
 	metricChannelContainer.instance = &metricChannel{
 		hasData: make(chan struct{}, 1),
 	}
+	configure(metricChannelContainer.instance)
 
 	return metricChannelContainer.instance
 }
