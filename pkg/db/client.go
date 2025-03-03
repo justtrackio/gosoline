@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -253,7 +254,6 @@ func (c *ClientSqlx) NamedExec(ctx context.Context, query string, arg any) (sql.
 }
 
 func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error) {
-	var tx *sqlx.Tx
 	var res sql.Result
 	var queries []string
 	var argss [][]any
@@ -271,32 +271,19 @@ func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (result
 		argss = append(argss, args)
 	}
 
-	if tx, err = c.BeginTx(ctx, &sql.TxOptions{}); err != nil {
-		return nil, fmt.Errorf("can not begin transaction: %w", err)
-	}
+	err = c.WithTx(ctx, &sql.TxOptions{}, func(ctx context.Context, tx *sqlx.Tx) error {
+		for i, qry := range queries {
+			if res, err = c.Exec(ctx, qry, argss[i]...); err != nil {
+				return fmt.Errorf("can not exec qry %s: %w", qry, err)
+			}
 
-	defer func() {
-		if err == nil {
-			return
+			results = append(results, res)
 		}
 
-		if errRollback := tx.Rollback(); errRollback != nil {
-			err = multierror.Append(err, fmt.Errorf("can not rollback tx: %w", errRollback)).ErrorOrNil()
-
-			return
-		}
-	}()
-
-	for i, qry := range queries {
-		if res, err = c.Exec(ctx, qry, argss[i]...); err != nil {
-			return nil, fmt.Errorf("can not exec qry %s: %w", qry, err)
-		}
-
-		results = append(results, res)
-	}
-
-	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("can not commit transaction: %w", err)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return
@@ -445,36 +432,45 @@ func (c *ClientSqlx) BeginTx(ctx context.Context, ops *sql.TxOptions) (*sqlx.Tx,
 	return res.(*sqlx.Tx), err
 }
 
-func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) (err error) {
-	var tx *sqlx.Tx
-	tx, err = c.BeginTx(ctx, ops)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
+func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) error {
+	_, err := c.executor.Execute(ctx, func(ctx context.Context) (res any, err error) {
+		var tx *sqlx.Tx
+		tx, err = c.db.BeginTxx(ctx, ops)
 		if err != nil {
-			errRollback := tx.Rollback()
-			if errRollback != nil {
-				err = multierror.Append(err, fmt.Errorf("can not rollback tx: %w", errRollback))
-
-				return
-			}
-			c.logger.WithContext(ctx).Debug("rollback successfully done")
+			return nil, err
 		}
-	}()
 
-	err = do(ctx, tx)
-	if err != nil {
-		return fmt.Errorf("can not execute do function: %w", err)
-	}
+		defer func() {
+			r := coffin.ResolveRecovery(recover())
+			if r != nil {
+				err = multierror.Append(err, fmt.Errorf("panic: %w", r))
+			}
 
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("can not commit tx: %w", err)
-	}
+			if err != nil {
+				errRollback := tx.Rollback()
+				if errRollback != nil {
+					err = multierror.Append(err, fmt.Errorf("can not rollback tx: %w", errRollback))
 
-	return nil
+					return
+				}
+				c.logger.WithContext(ctx).Debug("rollback successfully done")
+			}
+		}()
+
+		err = do(ctx, tx)
+		if err != nil {
+			return nil, fmt.Errorf("can not execute do function: %w", err)
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			return nil, fmt.Errorf("can not commit tx: %w", err)
+		}
+
+		return nil, nil
+	})
+
+	return err
 }
 
 func (c *ClientSqlx) Close() error {
