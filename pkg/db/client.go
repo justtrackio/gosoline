@@ -126,7 +126,7 @@ func NewClientWithSettings(ctx context.Context, config cfg.Config, logger log.Lo
 		executor   exec.Executor = exec.NewDefaultExecutor()
 	)
 
-	if connection, err = ProvideConnectionFromSettings(ctx, logger, settings); err != nil {
+	if connection, err = ProvideConnectionFromSettings(ctx, logger, name, settings); err != nil {
 		return nil, fmt.Errorf("can not connect to sql database: %w", err)
 	}
 

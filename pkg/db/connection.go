@@ -23,7 +23,7 @@ func ProvideConnection(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, err
 	}
 
-	return ProvideConnectionFromSettings(ctx, logger, settings)
+	return ProvideConnectionFromSettings(ctx, logger, name, settings)
 }
 
 func NewConnection(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*sqlx.DB, error) {
@@ -35,20 +35,20 @@ func NewConnection(ctx context.Context, config cfg.Config, logger log.Logger, na
 		return nil, err
 	}
 
-	if con, err = NewConnectionFromSettings(ctx, logger, settings); err != nil {
+	if con, err = NewConnectionFromSettings(ctx, logger, name, settings); err != nil {
 		return nil, err
 	}
 
 	return con, nil
 }
 
-func ProvideConnectionFromSettings(ctx context.Context, logger log.Logger, settings *Settings) (*sqlx.DB, error) {
+func ProvideConnectionFromSettings(ctx context.Context, logger log.Logger, name string, settings *Settings) (*sqlx.DB, error) {
 	return appctx.Provide(ctx, connectionCtxKey(fmt.Sprint(settings)), func() (*sqlx.DB, error) {
-		return NewConnectionFromSettings(ctx, logger, settings)
+		return NewConnectionFromSettings(ctx, logger, name, settings)
 	})
 }
 
-func NewConnectionFromSettings(ctx context.Context, logger log.Logger, settings *Settings) (*sqlx.DB, error) {
+func NewConnectionFromSettings(ctx context.Context, logger log.Logger, name string, settings *Settings) (*sqlx.DB, error) {
 	var err error
 	var connection *sqlx.DB
 
@@ -56,7 +56,7 @@ func NewConnectionFromSettings(ctx context.Context, logger log.Logger, settings 
 		return nil, fmt.Errorf("can not create connection: %w", err)
 	}
 
-	if err := reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings)); err != nil {
+	if err := reslife.AddLifeCycleer(ctx, NewLifecycleManager(name, settings)); err != nil {
 		return nil, err
 	}
 

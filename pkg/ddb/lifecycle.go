@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -66,10 +65,6 @@ func (l *lifecycleManager) Register(ctx context.Context) (key string, metadata a
 	metadata = TableMetadata{
 		AwsClientName: l.settings.ClientName,
 		TableName:     l.metadataFactory.GetTableName(),
-	}
-
-	if err = appctx.MetadataAppend(ctx, MetadataKeyTables, metadata); err != nil {
-		return key, metadata, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
 	return MetadataKeyTables, metadata, nil

@@ -9,6 +9,14 @@ import (
 	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
+const MetadataKey = "blob.stores"
+
+type Metadata struct {
+	AwsClientName string `json:"aws_client_name"`
+	Bucket        string `json:"bucket"`
+	Prefix        string `json:"prefix"`
+}
+
 type lifecycleManager struct {
 	service  *Service
 	settings *Settings
@@ -17,6 +25,7 @@ type lifecycleManager struct {
 type LifecycleManager interface {
 	reslife.LifeCycleer
 	reslife.Creator
+	reslife.Registerer
 	reslife.Purger
 }
 
@@ -44,6 +53,16 @@ func (l *lifecycleManager) GetId() string {
 
 func (l *lifecycleManager) Create(ctx context.Context) error {
 	return l.service.CreateBucket(ctx)
+}
+
+func (l *lifecycleManager) Register(ctx context.Context) (key string, metadata any, err error) {
+	metadata = Metadata{
+		AwsClientName: l.settings.ClientName,
+		Bucket:        l.settings.Bucket,
+		Prefix:        l.settings.Prefix,
+	}
+
+	return MetadataKey, metadata, nil
 }
 
 func (l *lifecycleManager) Purge(ctx context.Context) error {
