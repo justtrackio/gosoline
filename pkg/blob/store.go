@@ -122,7 +122,7 @@ func CreateKey() string {
 
 func NewStore(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Store, error) {
 	channels := ProvideBatchRunnerChannels(config)
-	settings := getStoreSettings(config, name)
+	settings := ReadStoreSettings(config, name)
 
 	s3Client, err := gosoS3.ProvideClient(ctx, config, logger, settings.ClientName)
 	if err != nil {
@@ -316,7 +316,7 @@ func (o *CopyObject) getSource() string {
 	return fmt.Sprintf("%s%s", mdl.EmptyIfNil(o.SourceBucket), sourceKey)
 }
 
-func getStoreSettings(config cfg.Config, name string) *Settings {
+func ReadStoreSettings(config cfg.Config, name string) *Settings {
 	settings := &Settings{}
 	key := fmt.Sprintf("blob.%s", name)
 	config.UnmarshalKey(key, settings)

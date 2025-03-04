@@ -21,8 +21,7 @@ import (
 )
 
 const (
-	MetadataKeyQueues = "cloud.aws.sqs.queues"
-	sqsBatchSize      = 10
+	sqsBatchSize = 10
 )
 
 //go:generate mockery --name Queue
@@ -36,14 +35,6 @@ type Queue interface {
 	Receive(ctx context.Context, maxNumberOfMessages int32, waitTime int32) ([]types.Message, error)
 	Send(ctx context.Context, msg *Message) error
 	SendBatch(ctx context.Context, messages []*Message) error
-}
-
-type QueueMetadata struct {
-	AwsClientName string `json:"aws_client_name"`
-	QueueArn      string `json:"queue_arn"`
-	QueueName     string `json:"queue_name"`
-	QueueNameFull string `json:"queue_name_full"`
-	QueueUrl      string `json:"queue_url"`
 }
 
 type Message struct {

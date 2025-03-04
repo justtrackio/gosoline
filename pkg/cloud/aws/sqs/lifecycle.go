@@ -9,6 +9,16 @@ import (
 	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
+const MetadataKeyQueues = "cloud.aws.sqs.queues"
+
+type QueueMetadata struct {
+	AwsClientName string `json:"aws_client_name"`
+	QueueArn      string `json:"queue_arn"`
+	QueueName     string `json:"queue_name"`
+	QueueNameFull string `json:"queue_name_full"`
+	QueueUrl      string `json:"queue_url"`
+}
+
 type lifecycleManager struct {
 	service  Service
 	settings *Settings

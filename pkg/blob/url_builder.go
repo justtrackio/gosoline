@@ -20,7 +20,7 @@ type urlBuilder struct {
 }
 
 func NewUrlBuilder(config cfg.Config, name string) (UrlBuilder, error) {
-	storeSettings := getStoreSettings(config, name)
+	storeSettings := ReadStoreSettings(config, name)
 	clientConfig := s3.GetClientConfig(config, storeSettings.ClientName)
 
 	var err error
