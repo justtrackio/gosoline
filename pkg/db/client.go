@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
@@ -57,36 +58,44 @@ type (
 )
 
 //go:generate mockery --name Client
-type Client interface {
-	GetSingleScalarValue(ctx context.Context, query string, args ...any) (int, error)
-	GetResult(ctx context.Context, query string, args ...any) (*Result, error)
-	Exec(ctx context.Context, query string, args ...any) (sql.Result, error)
-	NamedExec(ctx context.Context, query string, arg any) (sql.Result, error)
-	ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error)
-	BindNamed(query string, arg any) (string, []any, error)
-	Prepare(ctx context.Context, query string) (*sql.Stmt, error)
-	Preparex(ctx context.Context, query string) (*sqlx.Stmt, error)
-	PrepareNamed(ctx context.Context, query string) (*sqlx.NamedStmt, error)
-	Query(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-	Queryx(ctx context.Context, query string, args ...any) (*sqlx.Rows, error)
-	QueryRow(ctx context.Context, query string, args ...any) *sql.Row
-	NamedQuery(ctx context.Context, query string, arg any) (*sqlx.Rows, error)
-	Select(ctx context.Context, dest any, query string, args ...any) error
-	NamedSelect(ctx context.Context, dest any, query string, arg any) error
-	Get(ctx context.Context, dest any, query string, args ...any) error
-	WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) error
-	Close() error
-}
+type (
+	Client interface {
+		GetSingleScalarValue(ctx context.Context, query string, args ...any) (int, error)
+		GetResult(ctx context.Context, query string, args ...any) (*Result, error)
+		Exec(ctx context.Context, query string, args ...any) (sql.Result, error)
+		NamedExec(ctx context.Context, query string, arg any) (sql.Result, error)
+		ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error)
+		BindNamed(query string, arg any) (string, []any, error)
+		Prepare(ctx context.Context, query string) (*sql.Stmt, error)
+		Preparex(ctx context.Context, query string) (*sqlx.Stmt, error)
+		PrepareNamed(ctx context.Context, query string) (*sqlx.NamedStmt, error)
+		Query(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+		Queryx(ctx context.Context, query string, args ...any) (*sqlx.Rows, error)
+		QueryRow(ctx context.Context, query string, args ...any) *sql.Row
+		NamedQuery(ctx context.Context, query string, arg any) (*sqlx.Rows, error)
+		Select(ctx context.Context, dest any, query string, args ...any) error
+		NamedSelect(ctx context.Context, dest any, query string, arg any) error
+		Get(ctx context.Context, dest any, query string, args ...any) error
+		WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) error
+		Close() error
+	}
 
-type ClientSqlx struct {
-	logger   log.Logger
-	db       *sqlx.DB
-	executor exec.Executor
-}
+	ClientSqlx struct {
+		logger   log.Logger
+		db       *sqlx.DB
+		executor exec.Executor
+	}
 
-type clientCtxKey string
+	ClientOption func(*ClientSqlx)
 
-func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
+	clientCtxKey string
+)
+
+// ProvideClient provides a client from context..
+// Applies the options on creation of a new client if none is registered in the context yet for the name.
+// When requesting a client with the same name but different options the options will not be applied but
+// the already registered client will be returned.
+func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...ClientOption) (*ClientSqlx, error) {
 	var err error
 	var settings *Settings
 
@@ -94,12 +103,12 @@ func ProvideClient(ctx context.Context, config cfg.Config, logger log.Logger, na
 		return nil, err
 	}
 
-	return appctx.Provide(ctx, clientCtxKey(fmt.Sprint(settings)), func() (Client, error) {
-		return NewClientWithSettings(ctx, config, logger, name, settings)
+	return appctx.Provide(ctx, clientCtxKey(fmt.Sprint(settings)), func() (*ClientSqlx, error) {
+		return NewClientWithSettings(ctx, config, logger, name, settings, options...)
 	})
 }
 
-func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
+func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...ClientOption) (*ClientSqlx, error) {
 	var err error
 	var settings *Settings
 
@@ -107,27 +116,34 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return nil, err
 	}
 
-	return NewClientWithSettings(ctx, config, logger, name, settings)
+	return NewClientWithSettings(ctx, config, logger, name, settings, options...)
 }
 
-func NewClientWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, name string, settings *Settings) (Client, error) {
-	var err error
-	var connection *sqlx.DB
-	var executor exec.Executor = exec.NewDefaultExecutor()
+func NewClientWithSettings(ctx context.Context, config cfg.Config, logger log.Logger, name string, settings *Settings, options ...ClientOption) (*ClientSqlx, error) {
+	var (
+		err        error
+		connection *sqlx.DB
+		executor   exec.Executor = exec.NewDefaultExecutor()
+	)
 
 	if connection, err = ProvideConnectionFromSettings(ctx, logger, settings); err != nil {
 		return nil, fmt.Errorf("can not connect to sql database: %w", err)
 	}
 
 	if settings.Retry.Enabled {
-		path := fmt.Sprintf("db.%s.retry", name)
-		executor = NewExecutor(config, logger, name, path)
+		executor = NewExecutor(config, logger, name, ExecutorBackoffType(name))
 	}
 
-	return NewClientWithInterfaces(logger, connection, executor), nil
+	client := NewClientWithInterfaces(logger, connection, executor)
+
+	for _, option := range options {
+		option(client)
+	}
+
+	return client, nil
 }
 
-func NewClientWithInterfaces(logger log.Logger, connection *sqlx.DB, executor exec.Executor) Client {
+func NewClientWithInterfaces(logger log.Logger, connection *sqlx.DB, executor exec.Executor) *ClientSqlx {
 	return &ClientSqlx{
 		logger:   logger,
 		db:       connection,
@@ -238,7 +254,6 @@ func (c *ClientSqlx) NamedExec(ctx context.Context, query string, arg any) (sql.
 }
 
 func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (results []sql.Result, err error) {
-	var tx *sqlx.Tx
 	var res sql.Result
 	var queries []string
 	var argss [][]any
@@ -256,32 +271,19 @@ func (c *ClientSqlx) ExecMultiInTx(ctx context.Context, sqlers ...Sqler) (result
 		argss = append(argss, args)
 	}
 
-	if tx, err = c.BeginTx(ctx, &sql.TxOptions{}); err != nil {
-		return nil, fmt.Errorf("can not begin transaction: %w", err)
-	}
+	err = c.WithTx(ctx, &sql.TxOptions{}, func(ctx context.Context, tx *sqlx.Tx) error {
+		for i, qry := range queries {
+			if res, err = c.Exec(ctx, qry, argss[i]...); err != nil {
+				return fmt.Errorf("can not exec qry %s: %w", qry, err)
+			}
 
-	defer func() {
-		if err == nil {
-			return
+			results = append(results, res)
 		}
 
-		if errRollback := tx.Rollback(); errRollback != nil {
-			err = multierror.Append(err, fmt.Errorf("can not rollback tx: %w", errRollback)).ErrorOrNil()
-
-			return
-		}
-	}()
-
-	for i, qry := range queries {
-		if res, err = c.Exec(ctx, qry, argss[i]...); err != nil {
-			return nil, fmt.Errorf("can not exec qry %s: %w", qry, err)
-		}
-
-		results = append(results, res)
-	}
-
-	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("can not commit transaction: %w", err)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return
@@ -430,38 +432,53 @@ func (c *ClientSqlx) BeginTx(ctx context.Context, ops *sql.TxOptions) (*sqlx.Tx,
 	return res.(*sqlx.Tx), err
 }
 
-func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) (err error) {
-	var tx *sqlx.Tx
-	tx, err = c.BeginTx(ctx, ops)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
+func (c *ClientSqlx) WithTx(ctx context.Context, ops *sql.TxOptions, do func(ctx context.Context, tx *sqlx.Tx) error) error {
+	_, err := c.executor.Execute(ctx, func(ctx context.Context) (res any, err error) {
+		var tx *sqlx.Tx
+		tx, err = c.db.BeginTxx(ctx, ops)
 		if err != nil {
-			errRollback := tx.Rollback()
-			if errRollback != nil {
-				err = multierror.Append(err, fmt.Errorf("can not rollback tx: %w", errRollback))
-
-				return
-			}
-			c.logger.WithContext(ctx).Debug("rollback successfully done")
+			return nil, err
 		}
-	}()
 
-	err = do(ctx, tx)
-	if err != nil {
-		return fmt.Errorf("can not execute do function: %w", err)
-	}
+		defer func() {
+			r := coffin.ResolveRecovery(recover())
+			if r != nil {
+				err = multierror.Append(err, fmt.Errorf("panic: %w", r))
+			}
 
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("can not commit tx: %w", err)
-	}
+			if err != nil {
+				errRollback := tx.Rollback()
+				if errRollback != nil {
+					err = multierror.Append(err, fmt.Errorf("can not rollback tx: %w", errRollback))
 
-	return nil
+					return
+				}
+				c.logger.WithContext(ctx).Debug("rollback successfully done")
+			}
+		}()
+
+		err = do(ctx, tx)
+		if err != nil {
+			return nil, fmt.Errorf("can not execute do function: %w", err)
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			return nil, fmt.Errorf("can not commit tx: %w", err)
+		}
+
+		return nil, nil
+	})
+
+	return err
 }
 
 func (c *ClientSqlx) Close() error {
 	return c.db.Close()
+}
+
+func ClientWithExecutor(executor exec.Executor) ClientOption {
+	return func(c *ClientSqlx) {
+		c.executor = executor
+	}
 }
