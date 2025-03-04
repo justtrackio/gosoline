@@ -46,7 +46,7 @@ func (uh updateHandler) Handle(reqCtx context.Context, request *httpserver.Reque
 	id, valid := httpserver.GetUintFromRequest(request, "id")
 
 	if !valid {
-		return handleErrorOnWrite(ctx, logger, &validation.Error{
+		return HandleErrorOnWrite(ctx, logger, &validation.Error{
 			Errors: []error{
 				errors.New("no valid id provided"),
 			},
@@ -62,29 +62,29 @@ func (uh updateHandler) Handle(reqCtx context.Context, request *httpserver.Reque
 
 	err := repo.Read(ctx, id, model)
 	if err != nil {
-		return handleErrorOnWrite(ctx, logger, err)
+		return HandleErrorOnWrite(ctx, logger, err)
 	}
 
 	err = uh.transformer.TransformUpdate(ctx, request.Body, model)
 	if err != nil {
-		return handleErrorOnWrite(ctx, logger, err)
+		return HandleErrorOnWrite(ctx, logger, err)
 	}
 
 	err = repo.Update(ctx, model)
 	if err != nil {
-		return handleErrorOnWrite(ctx, logger, err)
+		return HandleErrorOnWrite(ctx, logger, err)
 	}
 
 	reload := uh.transformer.GetModel()
 	err = repo.Read(ctx, model.GetId(), reload)
 	if err != nil {
-		return handleErrorOnWrite(ctx, logger, err)
+		return HandleErrorOnWrite(ctx, logger, err)
 	}
 
 	apiView := GetApiViewFromHeader(request.Header)
 	out, err := uh.transformer.TransformOutput(ctx, reload, apiView)
 	if err != nil {
-		return handleErrorOnWrite(ctx, logger, err)
+		return HandleErrorOnWrite(ctx, logger, err)
 	}
 
 	return httpserver.NewJsonResponse(out), nil

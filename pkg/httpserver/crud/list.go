@@ -45,7 +45,7 @@ func (lh listHandler) Handle(ctx context.Context, request *httpserver.Request) (
 	lqb := sql.NewOrmQueryBuilder(metadata)
 	qb, err := lqb.Build(inp)
 	if err != nil {
-		return handleErrorOnRead(logger, &validation.Error{
+		return HandleErrorOnRead(logger, &validation.Error{
 			Errors: []error{err},
 		})
 	}
@@ -53,13 +53,13 @@ func (lh listHandler) Handle(ctx context.Context, request *httpserver.Request) (
 	apiView := GetApiViewFromHeader(request.Header)
 	results, err := lh.transformer.List(ctx, qb, apiView)
 	if err != nil {
-		return handleErrorOnRead(logger, err)
+		return HandleErrorOnRead(logger, err)
 	}
 
 	model := lh.transformer.GetModel()
 	total, err := repo.Count(ctx, qb, model)
 	if err != nil {
-		return handleErrorOnRead(logger, err)
+		return HandleErrorOnRead(logger, err)
 	}
 
 	out := Output{
