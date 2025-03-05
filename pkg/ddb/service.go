@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"slices"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -183,67 +182,20 @@ func (s *Service) PurgeTable(ctx context.Context) error {
 
 func (s *Service) doPurge(ctx context.Context, metadata *Metadata, segment int, totalSegments int) error {
 	var err error
-	var out *dynamodb.ScanOutput
 
-	keyFields := metadata.Main.GetKeyFields()
-	tableName := aws.String(s.metadataFactory.GetTableName())
-	attributes := make([]string, len(keyFields))
-
-	input := &dynamodb.ScanInput{
-		Segment:                  aws.Int32(int32(segment)),
-		TotalSegments:            aws.Int32(int32(totalSegments)),
-		TableName:                tableName,
-		ExpressionAttributeNames: map[string]string{},
+	_, err = s.client.DeleteTable(ctx, &dynamodb.DeleteTableInput{
+		TableName: aws.String(s.metadataFactory.GetTableName()),
+	})
+	if err != nil {
+		return fmt.Errorf("delete table %s: %w", s.metadataFactory.GetTableName(), err)
 	}
 
-	for i, keyField := range keyFields {
-		input.ExpressionAttributeNames[fmt.Sprintf("#%s", keyField)] = keyField
-		attributes[i] = fmt.Sprintf("#%s", keyField)
+	_, err = s.CreateTable(ctx)
+	if err != nil {
+		return fmt.Errorf("re-create table %s: %w", s.metadataFactory.GetTableName(), err)
 	}
 
-	input.ProjectionExpression = aws.String(strings.Join(attributes, ","))
-
-	for {
-		if out, err = s.client.Scan(ctx, input); err != nil {
-			return fmt.Errorf("can not get dynamodb scan: %w", err)
-		}
-
-		items := make([]types.WriteRequest, 0)
-
-		for _, item := range out.Items {
-			keys := make(map[string]types.AttributeValue)
-
-			for _, key := range keyFields {
-				keys[key] = item[key]
-			}
-
-			items = append(items, types.WriteRequest{
-				DeleteRequest: &types.DeleteRequest{
-					Key: keys,
-				},
-			})
-		}
-
-		chunks := funk.Chunk(items, 25)
-
-		for _, chunk := range chunks {
-			batchInput := &dynamodb.BatchWriteItemInput{
-				RequestItems: map[string][]types.WriteRequest{
-					*tableName: chunk,
-				},
-			}
-
-			if _, err = s.client.BatchWriteItem(ctx, batchInput); err != nil {
-				return fmt.Errorf("can not batch delete items: %w", err)
-			}
-		}
-
-		if len(out.LastEvaluatedKey) == 0 {
-			break
-		}
-	}
-
-	return nil
+	return err
 }
 
 func (s *Service) updateTtlSpecification(ctx context.Context, metadata *Metadata) error {
