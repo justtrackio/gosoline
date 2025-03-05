@@ -41,6 +41,13 @@ type ClientSettings struct {
 	// Allows you to enable the client's support for compressed gzip responses.
 	// Disabled by default.
 	EnableAcceptEncodingGzip bool `cfg:"enable_accept_encoding_gzip" default:"false"`
+	// Configures the way we purge a table (when loading fixtures)
+	//  - scan: Scan the table and perform batch deletes for every item. Slower, but does not modify infrastructure.
+	//  - drop_table: Delete the table and create a new one using the settings provided to the repository.
+	PurgeType string `cfg:"purge_type" default:"scan" validate:"oneof=scan drop_table"`
+	// When using PurgeType "scan", configure the number of parallel workers scanning and deleting items.
+	// Uses the number of CPU cores when set to 0.
+	PurgeParallelism int `cfg:"purge_parallelism" default:"0" validate:"min=0"`
 }
 
 type ClientConfig struct {
