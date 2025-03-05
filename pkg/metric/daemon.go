@@ -3,6 +3,8 @@ package metric
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -117,6 +119,11 @@ func (d *Daemon) GetStage() int {
 
 func (d *Daemon) Run(ctx context.Context) error {
 	d.resetBatch()
+
+	// initialize the default metrics upon daemon module Run for raw writers
+	metricDefaultsLock.Lock()
+	d.rawFanout(slices.Collect(maps.Values(metricDefaults)))
+	metricDefaultsLock.Unlock()
 
 	for {
 		select {
