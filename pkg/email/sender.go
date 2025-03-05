@@ -50,6 +50,19 @@ func NewSenderWithInterfaces(logger log.Logger, client gosoSES.Client, fromAddre
 }
 
 func (s *sesSender) SendEmail(ctx context.Context, recipients []string, subject string, plaintextBody string, htmlBody string) error {
+	body := &types.Body{}
+
+	if htmlBody != "" {
+		body.Html = &types.Content{Data: aws.String(htmlBody)}
+	}
+	if plaintextBody != "" {
+		body.Text = &types.Content{Data: aws.String(plaintextBody)}
+	}
+
+	if body.Html == nil && body.Text == nil {
+		return fmt.Errorf("email body cannot be empty")
+	}
+
 	input := &sesv2.SendEmailInput{
 		FromEmailAddress: aws.String(s.fromAddress),
 		Destination: &types.Destination{
@@ -58,10 +71,7 @@ func (s *sesSender) SendEmail(ctx context.Context, recipients []string, subject 
 		Content: &types.EmailContent{
 			Simple: &types.Message{
 				Subject: &types.Content{Data: aws.String(subject)},
-				Body: &types.Body{
-					Html: &types.Content{Data: aws.String(htmlBody)},
-					Text: &types.Content{Data: aws.String(plaintextBody)},
-				},
+				Body:    body,
 			},
 		},
 	}

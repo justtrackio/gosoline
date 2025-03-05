@@ -62,7 +62,6 @@ func (s *SenderTestSuite) TestSendEmail_TextEmail() {
 				Subject: &types.Content{Data: aws.String(subject)},
 				Body: &types.Body{
 					Text: &types.Content{Data: aws.String(body)},
-					Html: &types.Content{Data: aws.String(htmlEmptyBody)},
 				},
 			},
 		},
@@ -89,7 +88,6 @@ func (s *SenderTestSuite) TestSendEmail_HtmlEmail() {
 			Simple: &types.Message{
 				Subject: &types.Content{Data: aws.String(subject)},
 				Body: &types.Body{
-					Text: &types.Content{Data: aws.String(emptyBody)},
 					Html: &types.Content{Data: aws.String(htmlBody)},
 				},
 			},
@@ -130,6 +128,18 @@ func (s *SenderTestSuite) TestSendEmail_MultiFormatEmail() {
 	s.NoError(err)
 }
 
+func (s *SenderTestSuite) TestSendEmail_NoBodyProvided() {
+	recipients := []string{"recipient@example.com"}
+	subject := "Test Subject"
+	body := ""
+	htmlBody := ""
+
+	err := s.sender.SendEmail(s.ctx, recipients, subject, body, htmlBody)
+
+	s.Error(err)
+	s.EqualError(err, "email body cannot be empty")
+}
+
 func (s *SenderTestSuite) TestSendEmail_ErrorFromSES() {
 	recipients := []string{"recipient@example.com"}
 	subject := "Test Error Handling"
@@ -146,7 +156,6 @@ func (s *SenderTestSuite) TestSendEmail_ErrorFromSES() {
 				Subject: &types.Content{Data: aws.String(subject)},
 				Body: &types.Body{
 					Text: &types.Content{Data: aws.String(body)},
-					Html: &types.Content{Data: aws.String(htmlEmptyBody)},
 				},
 			},
 		},
