@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"runtime"
 	"slices"
 	"sort"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
-	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -154,34 +152,6 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 
 func (s *Service) PurgeTable(ctx context.Context) error {
 	var err error
-	var metadata *Metadata
-
-	if metadata, err = s.metadataFactory.GetMetadata(); err != nil {
-		return fmt.Errorf("can not get metadata: %w", err)
-	}
-
-	cfn := coffin.New()
-	totalSegments := runtime.NumCPU()
-
-	cfn.GoWithContext(ctx, func(ctx context.Context) error {
-		for i := range totalSegments {
-			cfn.GoWithContext(ctx, func(ctx context.Context) error {
-				return s.doPurge(ctx, metadata, i, totalSegments)
-			})
-		}
-
-		return nil
-	})
-
-	if err = cfn.Wait(); err != nil {
-		return fmt.Errorf("could not purge table %s: %w", s.metadataFactory.GetTableName(), err)
-	}
-
-	return nil
-}
-
-func (s *Service) doPurge(ctx context.Context, metadata *Metadata, segment int, totalSegments int) error {
-	var err error
 
 	_, err = s.client.DeleteTable(ctx, &dynamodb.DeleteTableInput{
 		TableName: aws.String(s.metadataFactory.GetTableName()),
@@ -195,7 +165,7 @@ func (s *Service) doPurge(ctx context.Context, metadata *Metadata, segment int, 
 		return fmt.Errorf("re-create table %s: %w", s.metadataFactory.GetTableName(), err)
 	}
 
-	return err
+	return nil
 }
 
 func (s *Service) updateTtlSpecification(ctx context.Context, metadata *Metadata) error {
