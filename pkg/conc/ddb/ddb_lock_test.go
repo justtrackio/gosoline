@@ -68,7 +68,7 @@ func (s *ddbLockTestSuite) TestReleaseLockTimeout() {
 	s.lockManager.EXPECT().
 		ReleaseLock(mock.AnythingOfType("*exec.manualCancelContext"), "resource", "token").
 		Run(func(ctx context.Context, resource string, token string) {
-			s.clock.BlockUntil(1)
+			s.clock.BlockUntilTimers(1)
 			s.clock.Advance(time.Minute)
 			<-ctx.Done()
 		}).

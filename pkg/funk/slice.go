@@ -104,6 +104,8 @@ func ContainsFunc[S ~[]T, T any](sl S, pred func(T) bool) bool {
 	return ok
 }
 
+// Difference left right returns the elements which only appear in the first or second list respectively.
+// Example: Difference([1,2,3], [2,3,4]) returns [1], [4]
 func Difference[S ~[]T, T comparable](left, right S) (inLeft, inRight []T) {
 	set1, set2 := SliceToSet(left), SliceToSet(right)
 
@@ -195,6 +197,7 @@ func Index[T any](sl []T, e T) int {
 	return -1
 }
 
+// Intersect returns the elements which are contained in both arguments.
 func Intersect[S ~[]T, T comparable](sl1, sl2 S) []T {
 	set2 := SliceToSet(sl2)
 	result := make(Set[T])

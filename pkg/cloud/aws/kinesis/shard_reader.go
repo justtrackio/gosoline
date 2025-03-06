@@ -178,10 +178,14 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 			return true, nil
 		}
 
+		timer := s.clock.NewTimer(s.settings.WaitTime)
+
 		select {
 		case <-ctx.Done():
+			timer.Stop()
+
 			return false, nil
-		case <-s.clock.After(s.settings.WaitTime):
+		case <-timer.Chan():
 		}
 	}
 }

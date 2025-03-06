@@ -2,7 +2,6 @@ package clock
 
 import (
 	"fmt"
-	"sync/atomic"
 	"time"
 )
 
@@ -23,10 +22,9 @@ type Ticker interface {
 }
 
 type realTicker struct {
-	ticker           *time.Ticker
-	output           chan time.Time
-	close            chan struct{}
-	runningIteration int32
+	ticker  *time.Ticker
+	output  chan time.Time
+	stopped chan struct{}
 }
 
 // NewRealTicker creates a new Ticker based on the current system time. Use Clock.NewTicker instead if you need to replace
@@ -37,11 +35,11 @@ func NewRealTicker(d time.Duration) Ticker {
 	}
 
 	t := &realTicker{
-		ticker: time.NewTicker(d),
-		close:  make(chan struct{}),
-		output: make(chan time.Time),
+		ticker:  time.NewTicker(d),
+		stopped: make(chan struct{}),
+		output:  make(chan time.Time),
 	}
-	go t.transformTicks()
+	go t.transformTicks(t.stopped)
 
 	return t
 }
@@ -56,7 +54,8 @@ func (t *realTicker) Reset(d time.Duration) {
 	}
 	t.stopTransformer()
 	t.ticker.Reset(d)
-	go t.transformTicks()
+	t.stopped = make(chan struct{})
+	go t.transformTicks(t.stopped)
 }
 
 func (t *realTicker) Stop() {
@@ -65,26 +64,16 @@ func (t *realTicker) Stop() {
 }
 
 func (t *realTicker) stopTransformer() {
-	// tell the transformer it should stop. We need to do this, so if we send something to the close
-	// channel, but the transformer doesn't see it, it will see it on the next loop iteration
-	atomic.AddInt32(&t.runningIteration, 1)
-
-	select {
-	case t.close <- struct{}{}:
-		// stopped the go routine transforming the timezone
-		break
-	default:
-		// there was no go routine running right now
+	if t.stopped != nil {
+		close(t.stopped)
 	}
+	t.stopped = nil
 }
 
-func (t *realTicker) transformTicks() {
-	// remember which iteration of the ticker we are. If this ever changes, we should've terminated, but missed it
-	iteration := atomic.LoadInt32(&t.runningIteration)
-
-	for iteration == atomic.LoadInt32(&t.runningIteration) {
+func (t *realTicker) transformTicks(stopped <-chan struct{}) {
+	for {
 		select {
-		case <-t.close:
+		case <-stopped:
 			return
 		case tick := <-t.ticker.C:
 			if shouldUseUTC() {
