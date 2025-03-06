@@ -6,6 +6,7 @@ import (
 	"time"
 
 	baseRedis "github.com/go-redis/redis/v8"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -141,6 +142,8 @@ type redisClient struct {
 	settings *Settings
 }
 
+type redisKey Settings
+
 func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Client, error) {
 	settings := ReadSettings(config, name)
 
@@ -148,10 +151,10 @@ func NewClient(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return nil, fmt.Errorf("failed to add redis lifecycle manager: %w", err)
 	}
 
-	return NewClientWithSettings(logger, settings)
+	return NewClientWithSettings(ctx, logger, settings)
 }
 
-func NewClientWithSettings(logger log.Logger, settings *Settings) (Client, error) {
+func NewClientWithSettings(ctx context.Context, logger log.Logger, settings *Settings) (Client, error) {
 	logger = logger.WithFields(log.Fields{
 		"redis": settings.Name,
 	})
@@ -162,10 +165,16 @@ func NewClientWithSettings(logger log.Logger, settings *Settings) (Client, error
 		return nil, fmt.Errorf("there is no redis dialer of type %s", settings.Dialer)
 	}
 
-	dialer := dialers[settings.Dialer](logger, settings)
-	baseClient := baseRedis.NewClient(&baseRedis.Options{
-		Dialer: dialer,
+	baseClient, err := appctx.Provide(ctx, redisKey(*settings), func() (*baseRedis.Client, error) {
+		baseClient := baseRedis.NewClient(&baseRedis.Options{
+			Dialer: dialers[settings.Dialer](logger, settings),
+		})
+
+		return baseClient, nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return NewClientWithInterfaces(logger, baseClient, executor, settings), nil
 }
