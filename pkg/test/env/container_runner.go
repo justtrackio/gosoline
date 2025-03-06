@@ -19,6 +19,7 @@ import (
 )
 
 type containerConfig struct {
+	Auth                 authSettings
 	Repository           string
 	Tmpfs                []TmpfsSettings
 	Tag                  string
@@ -70,6 +71,11 @@ func (a authSettings) GetAuthConfig() docker.AuthConfiguration {
 		Email:         a.Email,
 		ServerAddress: a.ServerAddress,
 	}
+}
+
+// IsEmpty returns true when username and password are empty as both are the minimum needed for authentication
+func (a authSettings) IsEmpty() bool {
+	return a.Username == "" && a.Password == ""
 }
 
 type containerRunnerSettings struct {
@@ -156,14 +162,24 @@ func (r *containerRunner) PullContainerImage(description *componentContainerDesc
 		Repository: config.Repository,
 		Tag:        config.Tag,
 	}
-	authConfig := r.settings.Auth.GetAuthConfig()
-	err = r.pool.Client.PullImage(
-		pullImageOptions, authConfig)
+
+	containerAuth := description.containerConfig.Auth
+	authConfig := r.getAuthConfig(containerAuth)
+
+	err = r.pool.Client.PullImage(pullImageOptions, authConfig)
 	if err != nil {
 		return fmt.Errorf("could not pull image %q: %w", imageName, err)
 	}
 
 	return nil
+}
+
+func (r *containerRunner) getAuthConfig(containerAuth authSettings) docker.AuthConfiguration {
+	if !containerAuth.IsEmpty() {
+		return containerAuth.GetAuthConfig()
+	}
+
+	return r.settings.Auth.GetAuthConfig()
 }
 
 func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
@@ -272,7 +288,9 @@ func (r *containerRunner) runNewContainer(containerName string, skeleton *compon
 		}
 	}
 
-	authConfig := r.settings.Auth.GetAuthConfig()
+	containerAuth := config.Auth
+	authConfig := r.getAuthConfig(containerAuth)
+
 	runOptions := &dockertest.RunOptions{
 		Name:         containerName,
 		Repository:   config.Repository,

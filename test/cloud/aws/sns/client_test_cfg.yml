@@ -8,4 +8,4 @@ app_name: app
 test:
   components:
     localstack:
-      localstack:
+      default:

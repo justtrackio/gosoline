@@ -27,7 +27,7 @@ mdlsub:
 test:
   components:
     wiremock:
-      wiremock:
+      default:
         expire_after: 10m
         mocks:
           - testdata/mocks/fixture_requests.json

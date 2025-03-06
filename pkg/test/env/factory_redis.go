@@ -64,6 +64,7 @@ func (f *redisFactory) configureContainer(settings interface{}) *containerConfig
 	s := settings.(*redisSettings)
 
 	return &containerConfig{
+		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
 		PortBindings: portBindings{

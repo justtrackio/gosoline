@@ -61,8 +61,9 @@ func (c *ComponentBaseSettings) SetType(typ string) {
 }
 
 type ContainerImageSettings struct {
-	Repository string `cfg:"repository"`
-	Tag        string `cfg:"tag"`
+	Auth       authSettings `cfg:"auth"`
+	Repository string       `cfg:"repository"`
+	Tag        string       `cfg:"tag"`
 }
 
 type ContainerBindingSettings struct {

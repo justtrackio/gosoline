@@ -48,6 +48,7 @@ func (f *wiremockFactory) configureContainer(settings interface{}) *containerCon
 	s := settings.(*wiremockSettings)
 
 	return &containerConfig{
+		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
 		PortBindings: portBindings{
