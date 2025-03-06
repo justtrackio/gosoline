@@ -3,6 +3,7 @@ package env
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -23,7 +24,10 @@ type s3Settings struct {
 	Port int `cfg:"port" default:"0"`
 }
 
-type s3Factory struct{}
+type s3Factory struct {
+	lck     sync.Mutex
+	clients map[string]*s3.Client
+}
 
 func (f *s3Factory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
 	if !config.IsSet("cloud.aws.s3") {
@@ -104,18 +108,27 @@ func (f *s3Factory) client(container *container) (*s3.Client, error) {
 	binding := container.bindings["9000/tcp"]
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
-	var err error
-	var cfg aws.Config
+	f.lck.Lock()
+	defer f.lck.Unlock()
 
-	if cfg, err = GetDefaultAwsSdkConfig(); err != nil {
-		return nil, fmt.Errorf("can't get default aws sdk config: %w", err)
+	if f.clients == nil {
+		f.clients = make(map[string]*s3.Client)
 	}
 
-	client := s3.NewFromConfig(cfg, func(options *s3.Options) {
-		options.BaseEndpoint = gosoAws.NilIfEmpty(address)
-	})
+	if _, ok := f.clients[address]; !ok {
+		var err error
+		var cfg aws.Config
 
-	return client, nil
+		if cfg, err = GetDefaultAwsSdkConfig(); err != nil {
+			return nil, fmt.Errorf("can't get default aws sdk config: %w", err)
+		}
+
+		f.clients[address] = s3.NewFromConfig(cfg, func(options *s3.Options) {
+			options.BaseEndpoint = gosoAws.NilIfEmpty(address)
+		})
+	}
+
+	return f.clients[address], nil
 }
 
 func (f *s3Factory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings any) (Component, error) {

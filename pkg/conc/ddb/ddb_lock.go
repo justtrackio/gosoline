@@ -85,10 +85,13 @@ func (l *ddbLock) Release() error {
 	// if we don't manage to do this until it expires anyway, there is no further point in trying.
 	ctx, cancel := exec.WithManualCancelContext(l.ctx)
 	go func() {
+		timer := l.clock.NewTimer(remainingLockTime)
+		defer timer.Stop()
+
 		select {
 		case <-done:
 			return
-		case <-l.clock.After(remainingLockTime):
+		case <-timer.Chan():
 			cancel()
 		}
 	}()
