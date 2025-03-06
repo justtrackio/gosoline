@@ -51,6 +51,10 @@ type Cache[T any] interface {
 	// Delete deletes the item with key from the cache.
 	// Returns true if the item was present, false otherwise.
 	Delete(key string) bool
+
+	// Stop stops the background worker. Operations performed on the cache after Stop
+	// is called are likely to panic
+	Stop()
 }
 
 type cache[T any] struct {
@@ -231,4 +235,8 @@ func isZero[T any](v T) bool {
 	// However, that requires comparable and slices and functions are not comparable, but they can be nil and we would
 	// like to check for that
 	return reflect.ValueOf(&v).Elem().IsZero()
+}
+
+func (c *cache[T]) Stop() {
+	c.base.Stop()
 }
