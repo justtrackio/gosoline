@@ -3,6 +3,7 @@ package env
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -21,7 +22,10 @@ type redisSettings struct {
 	Port int `cfg:"port" default:"0"`
 }
 
-type redisFactory struct{}
+type redisFactory struct {
+	lck     sync.Mutex
+	clients map[string]*redis.Client
+}
 
 func (f *redisFactory) Detect(config cfg.Config, manager *ComponentsConfigManager) error {
 	if !config.IsSet("redis") {
@@ -102,9 +106,18 @@ func (f *redisFactory) address(container *container) string {
 func (f *redisFactory) client(container *container) *redis.Client {
 	address := f.address(container)
 
-	client := redis.NewClient(&redis.Options{
-		Addr: address,
-	})
+	f.lck.Lock()
+	defer f.lck.Unlock()
 
-	return client
+	if f.clients == nil {
+		f.clients = make(map[string]*redis.Client)
+	}
+
+	if _, ok := f.clients[address]; !ok {
+		f.clients[address] = redis.NewClient(&redis.Options{
+			Addr: address,
+		})
+	}
+
+	return f.clients[address]
 }
