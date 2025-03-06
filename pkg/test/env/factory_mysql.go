@@ -83,7 +83,7 @@ func (f *mysqlFactory) GetSettingsSchema() ComponentBaseSettingsAware {
 	return &mysqlSettings{}
 }
 
-func (f *mysqlFactory) DescribeContainers(settings interface{}) componentContainerDescriptions {
+func (f *mysqlFactory) DescribeContainers(settings any) componentContainerDescriptions {
 	s := settings.(*mysqlSettings)
 
 	descriptions := componentContainerDescriptions{
@@ -101,7 +101,7 @@ func (f *mysqlFactory) DescribeContainers(settings interface{}) componentContain
 	return descriptions
 }
 
-func (f *mysqlFactory) configureContainer(settings interface{}) *containerConfig {
+func (f *mysqlFactory) configureContainer(settings any) *containerConfig {
 	s := settings.(*mysqlSettings)
 
 	if s.UseExternalContainer {
@@ -152,7 +152,7 @@ func (f *mysqlFactory) configureContainer(settings interface{}) *containerConfig
 	}
 }
 
-func (f *mysqlFactory) healthCheck(settings interface{}) ComponentHealthCheck {
+func (f *mysqlFactory) healthCheck(settings any) ComponentHealthCheck {
 	return func(container *container) error {
 		s := settings.(*mysqlSettings)
 		binding := container.bindings["3306/tcp"]
@@ -165,7 +165,7 @@ func (f *mysqlFactory) healthCheck(settings interface{}) ComponentHealthCheck {
 	}
 }
 
-func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings interface{}) (Component, error) {
+func (f *mysqlFactory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings any) (Component, error) {
 	s := settings.(*mysqlSettings)
 
 	var err error
@@ -284,7 +284,7 @@ func (f *mysqlFactory) setup(settings *mysqlSettings, binding containerBinding) 
 	return nil
 }
 
-func (f *mysqlFactory) dropDatabase(settings interface{}) ComponentShutdownCallback {
+func (f *mysqlFactory) dropDatabase(settings any) ComponentShutdownCallback {
 	return func(container *container) func() error {
 		return func() error {
 			s := settings.(*mysqlSettings)

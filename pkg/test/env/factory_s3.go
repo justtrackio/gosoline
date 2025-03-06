@@ -129,7 +129,6 @@ func (f *s3Factory) client(container *container) (*s3.Client, error) {
 	}
 
 	return f.clients[address], nil
-
 }
 
 func (f *s3Factory) Component(_ cfg.Config, _ log.Logger, containers map[string]*container, settings any) (Component, error) {
