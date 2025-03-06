@@ -136,6 +136,7 @@ func (f mysqlFactory) configureContainer(settings interface{}) *containerConfig 
 	}
 
 	return &containerConfig{
+		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
 		Tmpfs:      s.Tmpfs,

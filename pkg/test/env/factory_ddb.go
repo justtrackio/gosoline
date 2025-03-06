@@ -75,6 +75,7 @@ func (f *ddbFactory) configureContainer(settings any) *containerConfig {
 	s := settings.(*ddbSettings)
 
 	return &containerConfig{
+		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
 		PortBindings: portBindings{
