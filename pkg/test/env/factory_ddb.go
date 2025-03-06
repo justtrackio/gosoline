@@ -3,6 +3,7 @@ package env
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -27,6 +28,8 @@ type ddbSettings struct {
 }
 
 type ddbFactory struct {
+	lck              sync.Mutex
+	clients          map[string]*dynamodb.Client
 	toxiproxyFactory toxiproxyFactory
 }
 
@@ -136,14 +139,25 @@ func (f *ddbFactory) client(container *container) (*dynamodb.Client, error) {
 	binding := container.bindings["8000/tcp"]
 	address := fmt.Sprintf("http://%s:%s", binding.host, binding.port)
 
-	var err error
-	var cfg aws.Config
+	f.lck.Lock()
+	defer f.lck.Unlock()
 
-	if cfg, err = GetDefaultAwsSdkConfig(); err != nil {
-		return nil, fmt.Errorf("can't get default aws sdk config: %w", err)
+	if f.clients == nil {
+		f.clients = make(map[string]*dynamodb.Client)
 	}
 
-	return dynamodb.NewFromConfig(cfg, func(options *dynamodb.Options) {
-		options.BaseEndpoint = gosoAws.NilIfEmpty(address)
-	}), nil
+	if _, ok := f.clients[address]; !ok {
+		var err error
+		var cfg aws.Config
+
+		if cfg, err = GetDefaultAwsSdkConfig(); err != nil {
+			return nil, fmt.Errorf("can't get default aws sdk config: %w", err)
+		}
+
+		f.clients[address] = dynamodb.NewFromConfig(cfg, func(options *dynamodb.Options) {
+			options.BaseEndpoint = gosoAws.NilIfEmpty(address)
+		})
+	}
+
+	return f.clients[address], nil
 }
