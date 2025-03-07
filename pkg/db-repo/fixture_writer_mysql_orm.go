@@ -33,8 +33,9 @@ func NewMysqlOrmFixtureWriter(ctx context.Context, config cfg.Config, logger log
 	metadata.ModelId.PadFromConfig(config)
 
 	repoSettings := Settings{
-		AppId:    cfg.GetAppIdFromConfig(config),
-		Metadata: *metadata,
+		AppId:      cfg.GetAppIdFromConfig(config),
+		Metadata:   *metadata,
+		ClientName: "default",
 	}
 
 	var err error

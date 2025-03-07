@@ -10,12 +10,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	dynamodbMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb/mocks"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
+	"github.com/justtrackio/gosoline/pkg/reslife/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -267,8 +267,9 @@ func TestService_CreateTable(t *testing.T) {
 		},
 	}
 
+	purger := mocks.NewPurger(t)
 	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(settings, "applike-test-gosoline-ddb-myModel")
-	svc := ddb.NewServiceWithInterfaces(logger, client, gosoDynamodb.ClientSettings{}, metadataFactory)
+	svc := ddb.NewServiceWithInterfaces(logger, client, purger, metadataFactory)
 
 	_, err := svc.CreateTable(ctx)
 

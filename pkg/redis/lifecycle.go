@@ -9,14 +9,22 @@ import (
 	"github.com/justtrackio/gosoline/pkg/reslife"
 )
 
+const MetadataKey = "redis.connections"
+
+type Metadata struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
+}
+
 type lifecycleManager struct {
-	logger log.Logger
-	client Client
-	name   string
+	logger   log.Logger
+	purger   *LifeCyclePurger
+	settings *Settings
 }
 
 type LifecycleManager interface {
 	reslife.LifeCycleer
+	reslife.Registerer
 	reslife.Purger
 }
 
@@ -32,20 +40,29 @@ func NewLifecycleManager(settings *Settings) reslife.LifeCycleerFactory {
 		}
 
 		return &lifecycleManager{
-			logger: logger,
-			client: client,
-			name:   settings.Name,
+			logger:   logger,
+			purger:   NewLifeCyclePurgerWithInterfaces(client),
+			settings: settings,
 		}, nil
 	}
 }
 
 func (l lifecycleManager) GetId() string {
-	return fmt.Sprintf("redis/%s", l.name)
+	return fmt.Sprintf("redis/%s", l.settings.Name)
+}
+
+func (l *lifecycleManager) Register(ctx context.Context) (key string, metadata any, err error) {
+	metadata = Metadata{
+		Name:    l.settings.Name,
+		Address: l.settings.Address,
+	}
+
+	return MetadataKey, metadata, nil
 }
 
 func (l lifecycleManager) Purge(ctx context.Context) error {
-	if _, err := l.client.FlushDB(ctx); err != nil {
-		return fmt.Errorf("could not flush database: %w", err)
+	if err := l.purger.Purge(ctx); err != nil {
+		return fmt.Errorf("can not purge: %w", err)
 	}
 
 	return nil

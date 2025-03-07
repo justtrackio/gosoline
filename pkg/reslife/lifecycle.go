@@ -24,6 +24,7 @@ type (
 	Registerer interface {
 		Register(ctx context.Context) (string, any, error)
 	}
+	//go:generate mockery --name Purger
 	Purger interface {
 		Purge(ctx context.Context) error
 	}

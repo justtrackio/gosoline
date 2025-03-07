@@ -43,8 +43,8 @@ func NewOrm(ctx context.Context, config cfg.Config, logger log.Logger, dbClientN
 	return NewOrmWithInterfaces(connection, settings)
 }
 
-func NewOrmWithDbSettings(ctx context.Context, logger log.Logger, dbSettings *db.Settings, application string) (*gorm.DB, error) {
-	dbClient, err := db.ProvideConnectionFromSettings(ctx, logger, dbSettings)
+func NewOrmWithDbSettings(ctx context.Context, logger log.Logger, dbClientName string, dbSettings *db.Settings, application string) (*gorm.DB, error) {
+	dbClient, err := db.ProvideConnectionFromSettings(ctx, logger, dbClientName, dbSettings)
 	if err != nil {
 		return nil, fmt.Errorf("can not connect to sql database: %w", err)
 	}

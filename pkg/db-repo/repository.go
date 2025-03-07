@@ -44,7 +44,7 @@ type Settings struct {
 //go:generate mockery --name RepositoryReadOnly
 type RepositoryReadOnly interface {
 	Read(ctx context.Context, id *uint, out ModelBased) error
-	Query(ctx context.Context, qb *QueryBuilder, result interface{}) error
+	Query(ctx context.Context, qb *QueryBuilder, result any) error
 	Count(ctx context.Context, qb *QueryBuilder, model ModelBased) (int, error)
 
 	GetModelId() string
@@ -96,7 +96,7 @@ func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
 
-	orm, err := NewOrmWithDbSettings(ctx, logger, dbSettings, repoSettings.Application)
+	orm, err := NewOrmWithDbSettings(ctx, logger, repoSettings.ClientName, dbSettings, repoSettings.Application)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
@@ -144,6 +144,7 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 
 	if db.IsDuplicateEntryError(err) {
 		logger.Warn("could not create model of type %s due to duplicate entry error: %s", modelId, err.Error())
+
 		return &db.DuplicateEntryError{
 			Err: err,
 		}
@@ -151,12 +152,14 @@ func (r *repository) Create(ctx context.Context, value ModelBased) error {
 
 	if err != nil {
 		logger.Error("could not create model of type %v: %w", modelId, err)
+
 		return err
 	}
 
 	err = r.refreshAssociations(value, Create)
 	if err != nil {
 		logger.Error("could not update associations of model type %v: %w", modelId, err)
+
 		return err
 	}
 
@@ -201,6 +204,7 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 
 	if db.IsDuplicateEntryError(err) {
 		logger.Warn("could not update model of type %s with id %d due to duplicate entry error: %s", modelId, mdl.EmptyIfNil(value.GetId()), err.Error())
+
 		return &db.DuplicateEntryError{
 			Err: err,
 		}
@@ -208,12 +212,14 @@ func (r *repository) Update(ctx context.Context, value ModelBased) error {
 
 	if err != nil {
 		logger.Error("could not update model of type %s with id %d: %w", modelId, mdl.EmptyIfNil(value.GetId()), err)
+
 		return err
 	}
 
 	err = r.refreshAssociations(value, Update)
 	if err != nil {
 		logger.Error("could not update associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
+
 		return err
 	}
 
@@ -236,6 +242,7 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	err := r.refreshAssociations(value, Delete)
 	if err != nil {
 		logger.Error("could not delete associations of model type %s with id %d: %w", modelId, *value.GetId(), err)
+
 		return err
 	}
 
@@ -249,13 +256,13 @@ func (r *repository) Delete(ctx context.Context, value ModelBased) error {
 	return err
 }
 
-func (r *repository) isQueryableModel(model interface{}) bool {
+func (r *repository) isQueryableModel(model any) bool {
 	tableName := r.orm.NewScope(model).TableName()
 
 	return strings.EqualFold(tableName, r.GetMetadata().TableName) || tableName == ""
 }
 
-func (r *repository) checkResultModel(result interface{}) error {
+func (r *repository) checkResultModel(result any) error {
 	if refl.IsSlice(result) {
 		return fmt.Errorf("result slice has to be pointer to slice")
 	}
@@ -271,7 +278,7 @@ func (r *repository) checkResultModel(result interface{}) error {
 	return nil
 }
 
-func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interface{}) error {
+func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result any) error {
 	err := r.checkResultModel(result)
 	if err != nil {
 		return err
@@ -288,9 +295,7 @@ func (r *repository) Query(ctx context.Context, qb *QueryBuilder, result interfa
 
 	for i := range qb.where {
 		currentWhere := qb.where[i]
-		if reflect.TypeOf(currentWhere).Kind() == reflect.Ptr ||
-			reflect.TypeOf(currentWhere).Kind() == reflect.Struct {
-
+		if reflect.TypeOf(currentWhere).Kind() == reflect.Ptr || reflect.TypeOf(currentWhere).Kind() == reflect.Struct {
 			if !r.isQueryableModel(currentWhere) {
 				return ErrCrossQuery
 			}
@@ -351,9 +356,8 @@ func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBas
 	return result.Count, err
 }
 
-func (r *repository) refreshAssociations(model interface{}, op string) error {
+func (r *repository) refreshAssociations(model any, op string) error {
 	typeReflection := reflect.TypeOf(model).Elem()
-	valueReflection := reflect.ValueOf(model).Elem()
 
 	for i := 0; i < typeReflection.NumField(); i++ {
 		field := typeReflection.Field(i)
@@ -381,56 +385,18 @@ func (r *repository) refreshAssociations(model interface{}, op string) error {
 
 		var err error
 
-		values := valueReflection.Field(i)
 		scope := r.orm.NewScope(model)
 		scopeField, _ := scope.FieldByName(field.Name)
 
 		switch op {
-		case Create:
-			fallthrough
-
-		case Update:
-			switch scopeField.Relationship.Kind {
-			case "many_to_many":
-				err = r.orm.Model(model).Association(scopeField.Name).Replace(values.Interface()).Error
-
-			default:
-				assocIds := readIdsFromReflectValue(values)
-				parentId := valueReflection.FieldByName("Id").Elem().Interface()
-
-				tableName := scopeField.DBName
-				if tags["assoc_update"] != "" {
-					tableName = tags["assoc_update"]
-				}
-
-				qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", tableName, scopeField.Relationship.ForeignDBNames[0], parentId)
-
-				if len(assocIds) != 0 {
-					qry = qry + fmt.Sprintf(" AND %s NOT IN (%s)", "id", strings.Join(assocIds, ","))
-				}
-
-				err = r.orm.Exec(qry).Error
-			}
+		case Create, Update:
+			err = r.refreshAssociationsCreate(model, i, tags, scopeField)
 
 		case Delete:
-			switch scopeField.Relationship.Kind {
-			case "has_many":
-				id := valueReflection.FieldByName("Id").Elem().Interface()
-				tableName := scopeField.DBName
-
-				if tags["assoc_update"] != "" {
-					tableName = tags["assoc_update"]
-				}
-
-				qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", tableName, scopeField.Relationship.ForeignDBNames[0], id)
-				err = r.orm.Exec(qry).Error
-
-			default:
-				err = r.orm.Model(model).Association(field.Name).Clear().Error
-			}
+			err = r.refreshAssociationsDelete(model, field, tags, scopeField)
 
 		default:
-			err = fmt.Errorf("unkown operation")
+			err = fmt.Errorf("unknown operation")
 		}
 
 		if err != nil {
@@ -439,6 +405,57 @@ func (r *repository) refreshAssociations(model interface{}, op string) error {
 	}
 
 	return nil
+}
+
+func (r *repository) refreshAssociationsCreate(model any, fieldNum int, tags map[string]string, scopeField *gorm.Field) (err error) {
+	valueReflection := reflect.ValueOf(model).Elem()
+	values := valueReflection.Field(fieldNum)
+
+	switch scopeField.Relationship.Kind {
+	case "many_to_many":
+		err = r.orm.Model(model).Association(scopeField.Name).Replace(values.Interface()).Error
+
+	default:
+		assocIds := readIdsFromReflectValue(values)
+		parentId := valueReflection.FieldByName("Id").Elem().Interface()
+
+		tableName := scopeField.DBName
+		if tags["assoc_update"] != "" {
+			tableName = tags["assoc_update"]
+		}
+
+		qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", tableName, scopeField.Relationship.ForeignDBNames[0], parentId)
+
+		if len(assocIds) != 0 {
+			qry += fmt.Sprintf(" AND %s NOT IN (%s)", "id", strings.Join(assocIds, ","))
+		}
+
+		err = r.orm.Exec(qry).Error
+	}
+
+	return
+}
+
+func (r *repository) refreshAssociationsDelete(model any, field reflect.StructField, tags map[string]string, scopeField *gorm.Field) (err error) {
+	valueReflection := reflect.ValueOf(model).Elem()
+
+	switch scopeField.Relationship.Kind {
+	case "has_many":
+		id := valueReflection.FieldByName("Id").Elem().Interface()
+		tableName := scopeField.DBName
+
+		if tags["assoc_update"] != "" {
+			tableName = tags["assoc_update"]
+		}
+
+		qry := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", tableName, scopeField.Relationship.ForeignDBNames[0], id)
+		err = r.orm.Exec(qry).Error
+
+	default:
+		err = r.orm.Model(model).Association(field.Name).Clear().Error
+	}
+
+	return
 }
 
 func (r *repository) GetModelId() string {
@@ -482,7 +499,7 @@ func ignoreCreatedAtIfNeeded(scope *gorm.Scope) {
 	}
 }
 
-func getModel(value interface{}) (TimestampAware, bool) {
+func getModel(value any) (TimestampAware, bool) {
 	if value == nil {
 		return nil, false
 	}
