@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	dynamodbMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb/mocks"
 	"github.com/justtrackio/gosoline/pkg/ddb"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -267,7 +268,7 @@ func TestService_CreateTable(t *testing.T) {
 	}
 
 	metadataFactory := ddb.NewMetadataFactoryWithInterfaces(settings, "applike-test-gosoline-ddb-myModel")
-	svc := ddb.NewServiceWithInterfaces(logger, client, metadataFactory)
+	svc := ddb.NewServiceWithInterfaces(logger, client, gosoDynamodb.ClientSettings{}, metadataFactory)
 
 	_, err := svc.CreateTable(ctx)
 

@@ -68,6 +68,7 @@ func (f *s3Factory) configureContainer(settings any) *containerConfig {
 	s := settings.(*s3Settings)
 
 	return &containerConfig{
+		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
 		Cmd: []string{

@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	gosoAws "github.com/justtrackio/gosoline/pkg/cloud/aws"
 	gosoDynamodb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/funk"
@@ -29,11 +30,15 @@ type TableDescription struct {
 type Service struct {
 	logger          log.Logger
 	client          gosoDynamodb.Client
+	clientSettings  gosoDynamodb.ClientSettings
 	metadataFactory *MetadataFactory
 }
 
 func NewService(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...gosoDynamodb.ClientOption) (*Service, error) {
 	sanitizeSettings(settings)
+
+	clientSettings := gosoDynamodb.ClientSettings{}
+	gosoAws.UnmarshalClientSettings(config, &clientSettings, "dynamodb", settings.ClientName)
 
 	var err error
 	var client gosoDynamodb.Client
@@ -44,13 +49,14 @@ func NewService(ctx context.Context, config cfg.Config, logger log.Logger, setti
 
 	metadataFactory := NewMetadataFactory(config, settings)
 
-	return NewServiceWithInterfaces(logger, client, metadataFactory), nil
+	return NewServiceWithInterfaces(logger, client, clientSettings, metadataFactory), nil
 }
 
-func NewServiceWithInterfaces(logger log.Logger, client gosoDynamodb.Client, metadataFactory *MetadataFactory) *Service {
+func NewServiceWithInterfaces(logger log.Logger, client gosoDynamodb.Client, clientSettings gosoDynamodb.ClientSettings, metadataFactory *MetadataFactory) *Service {
 	return &Service{
 		logger:          logger,
 		client:          client,
+		clientSettings:  clientSettings,
 		metadataFactory: metadataFactory,
 	}
 }
@@ -154,6 +160,33 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 }
 
 func (s *Service) PurgeTable(ctx context.Context) error {
+	switch s.clientSettings.PurgeType {
+	case "scan":
+		return s.purgeScan(ctx)
+	case "drop_table":
+		return s.purgeDropTable(ctx)
+	default:
+		return fmt.Errorf("invalid purge type: %s", s.clientSettings.PurgeType)
+	}
+}
+
+func (s *Service) purgeDropTable(ctx context.Context) error {
+	_, err := s.client.DeleteTable(ctx, &dynamodb.DeleteTableInput{
+		TableName: aws.String(s.metadataFactory.GetTableName()),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete table %s: %w", s.metadataFactory.GetTableName(), err)
+	}
+
+	_, err = s.CreateTable(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to re-create table %s: %w", s.metadataFactory.GetTableName(), err)
+	}
+
+	return nil
+}
+
+func (s *Service) purgeScan(ctx context.Context) error {
 	var err error
 	var metadata *Metadata
 
@@ -162,7 +195,11 @@ func (s *Service) PurgeTable(ctx context.Context) error {
 	}
 
 	cfn := coffin.New()
-	totalSegments := runtime.NumCPU()
+
+	totalSegments := s.clientSettings.PurgeParallelism
+	if totalSegments == 0 {
+		totalSegments = runtime.NumCPU()
+	}
 
 	cfn.GoWithContext(ctx, func(ctx context.Context) error {
 		for i := range totalSegments {

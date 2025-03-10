@@ -28,7 +28,7 @@ func (s *FixturesTestSuite) SetupSuite() []suite.Option {
 		suite.WithModuleFactory(mdlsub.NewSubscriberFactory(transformers)),
 		suite.WithFixtureSetFactory(mdlsub.FixtureSetFactory(transformers)),
 		suite.WithEnvSetup(func() error {
-			wiremockAddress := s.Env().Wiremock("wiremock").Address()
+			wiremockAddress := s.Env().Wiremock("default").Address()
 			config := s.Env().Config()
 
 			return config.Option(cfg.WithConfigMap(map[string]any{

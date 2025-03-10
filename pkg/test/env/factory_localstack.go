@@ -93,6 +93,7 @@ func (f *localstackFactory) configureContainer(settings interface{}) *containerC
 	s := settings.(*localstackSettings)
 
 	return &containerConfig{
+		Auth:       s.Image.Auth,
 		Repository: s.Image.Repository,
 		Tag:        s.Image.Tag,
 		Env:        []string{},
