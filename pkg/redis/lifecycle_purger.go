@@ -12,13 +12,13 @@ type LifeCyclePurger struct {
 	client Client
 }
 
-func NewLifeCyclePurger(config cfg.Config, logger log.Logger, name string) (*LifeCyclePurger, error) {
+func NewLifeCyclePurger(ctx context.Context, config cfg.Config, logger log.Logger, name string) (*LifeCyclePurger, error) {
 	var err error
 	var client Client
 
 	settings := ReadSettings(config, name)
 
-	if client, err = NewClientWithSettings(logger, settings); err != nil {
+	if client, err = NewClientWithSettings(ctx, logger, settings); err != nil {
 		return nil, fmt.Errorf("can not connect to database: %w", err)
 	}
 
