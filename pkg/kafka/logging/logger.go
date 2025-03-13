@@ -12,14 +12,14 @@ type KafkaLogger struct {
 	log.Logger
 }
 
-func NewKafkaLogger(logger log.Logger) *KafkaLogger {
-	return &KafkaLogger{Logger: logger.WithChannel(KafkaLoggingChannel)}
+func NewKafkaLogger(logger log.Logger) KafkaLogger {
+	return KafkaLogger{Logger: logger.WithChannel(KafkaLoggingChannel)}
 }
 
-func (l *KafkaLogger) DebugLogger() LoggerWrapper {
-	return l.Debug
+func (logger KafkaLogger) DebugLogger() DebugLoggerWrapper {
+	return DebugLoggerWrapper{logger}
 }
 
-func (l *KafkaLogger) ErrorLogger() LoggerWrapper {
-	return l.Error
+func (logger KafkaLogger) ErrorLogger() ErrorLoggerWrapper {
+	return ErrorLoggerWrapper{logger}
 }

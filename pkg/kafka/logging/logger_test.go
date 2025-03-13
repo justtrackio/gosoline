@@ -9,18 +9,20 @@ import (
 
 func TestKafkaLogger(t *testing.T) {
 	var (
-		logger            = new(logMocks.Logger)
-		loggerWithChannel = new(logMocks.Logger)
+		logger            = logMocks.NewLogger(t)
+		loggerWithChannel = logMocks.NewLogger(t)
 	)
-	defer logger.AssertExpectations(t)
-	defer loggerWithChannel.AssertExpectations(t)
 
-	logger.On("WithChannel", "stream.kafka").Return(loggerWithChannel).Once()
+	logger.EXPECT().WithChannel("stream.kafka").Return(loggerWithChannel).Once()
 
-	loggerWithChannel.On("Debug", "debug message").Once()
-	loggerWithChannel.On("Error", "error message").Once()
+	loggerWithChannel.EXPECT().Debug("debug message").Once()
+	loggerWithChannel.EXPECT().Error("error message").Once()
+	loggerWithChannel.EXPECT().Info("not the leader").Once()
+	loggerWithChannel.EXPECT().Info("Not Leader For Partition: the client attempted to send messages to a replica that is not the leader for some partition, the client's metadata are likely out of date").Once()
 
 	kLogger := logging.NewKafkaLogger(logger)
 	kLogger.DebugLogger().Printf("debug message")
 	kLogger.ErrorLogger().Printf("error message")
+	kLogger.ErrorLogger().Printf("not the leader")
+	kLogger.ErrorLogger().Printf("Not Leader For Partition: the client attempted to send messages to a replica that is not the leader for some partition, the client's metadata are likely out of date")
 }
