@@ -11,16 +11,14 @@ import (
 	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/justtrackio/gosoline/pkg/validation"
 )
 
 var ErrModelNotChanged = fmt.Errorf("nothing has changed on model")
 
-// HandleErrorOnWrite handles errors for read operations.
+// HandleErrorOnRead handles errors for read operations.
 // Covers many default errors and responses like
 //   - context.Canceled, context.DeadlineExceed -> HTTP 499
 //   - dbRepo.RecordNotFoundError | dbRepo.NoQueryResultsError -> HTTP 404
-//   - validation.Error -> HTTP 400
 func HandleErrorOnRead(logger log.Logger, err error) (*httpserver.Response, error) {
 	if exec.IsRequestCanceled(err) {
 		logger.Info("read model(s) aborted: %s", err.Error())
@@ -34,10 +32,6 @@ func HandleErrorOnRead(logger log.Logger, err error) (*httpserver.Response, erro
 		return httpserver.NewStatusResponse(http.StatusNotFound), nil
 	}
 
-	if errors.Is(err, &validation.Error{}) {
-		return httpserver.GetErrorHandler()(http.StatusBadRequest, err), nil
-	}
-
 	// rely on the outside handling of access forbidden and HTTP 500
 	return nil, err
 }
@@ -48,7 +42,6 @@ func HandleErrorOnRead(logger log.Logger, err error) (*httpserver.Response, erro
 //   - dbRepo.RecordNotFoundError | dbRepo.NoQueryResultsError -> HTTP 404
 //   - ErrModelNotChanged -> HTTP 304
 //   - db.IsDuplicateEntryError -> HTTP 409
-//   - validation.Error -> HTTP 400
 func HandleErrorOnWrite(ctx context.Context, logger log.Logger, err error) (*httpserver.Response, error) {
 	logger = logger.WithContext(ctx)
 
@@ -72,10 +65,6 @@ func HandleErrorOnWrite(ctx context.Context, logger log.Logger, err error) (*htt
 
 	if db.IsDuplicateEntryError(err) {
 		return httpserver.NewStatusResponse(http.StatusConflict), nil
-	}
-
-	if errors.Is(err, &validation.Error{}) {
-		return httpserver.GetErrorHandler()(http.StatusBadRequest, err), nil
 	}
 
 	// rely on the outside handling of access forbidden and HTTP 500

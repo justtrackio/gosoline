@@ -27,6 +27,14 @@ func CastSlice[T any, I ~[]any](sl I) ([]T, error) {
 	return result, nil
 }
 
+func BoxSlice[T any](sl []T) []*T {
+	return Map(sl, mdl.Box)
+}
+
+func UnboxSlice[T any](sl []*T) []T {
+	return Map(sl, mdl.EmptyIfNil)
+}
+
 func Partition[S ~[]T, T any, E comparable, F func(T) E](sl S, keyer F) map[E][]T {
 	result := make(map[E][]T)
 
