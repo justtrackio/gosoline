@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/funk"
@@ -29,12 +30,14 @@ func (logger DebugLoggerWrapper) Printf(msg string, args ...any) {
 
 type ErrorLoggerWrapper KafkaLogger
 
-func (logger ErrorLoggerWrapper) Printf(msg string, args ...any) {
+func (logger ErrorLoggerWrapper) Printf(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+
 	if isNonCriticalError(msg) {
-		logger.Info(msg, args...)
+		logger.Info(format, args...)
 
 		return
 	}
 
-	logger.Error(msg, args...)
+	logger.Error(format, args...)
 }

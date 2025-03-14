@@ -1,6 +1,7 @@
 package logging_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
@@ -11,6 +12,7 @@ func TestKafkaLogger(t *testing.T) {
 	var (
 		logger            = logMocks.NewLogger(t)
 		loggerWithChannel = logMocks.NewLogger(t)
+		nonCriticalError  = errors.New("Not Leader For Partition")
 	)
 
 	logger.EXPECT().WithChannel("stream.kafka").Return(loggerWithChannel).Once()
@@ -18,11 +20,11 @@ func TestKafkaLogger(t *testing.T) {
 	loggerWithChannel.EXPECT().Debug("debug message").Once()
 	loggerWithChannel.EXPECT().Error("error message").Once()
 	loggerWithChannel.EXPECT().Info("not the leader").Once()
-	loggerWithChannel.EXPECT().Info("Not Leader For Partition: the client attempted to send messages to a replica that is not the leader for some partition, the client's metadata are likely out of date").Once()
+	loggerWithChannel.EXPECT().Info("error: %s", nonCriticalError).Once()
 
 	kLogger := logging.NewKafkaLogger(logger)
 	kLogger.DebugLogger().Printf("debug message")
 	kLogger.ErrorLogger().Printf("error message")
 	kLogger.ErrorLogger().Printf("not the leader")
-	kLogger.ErrorLogger().Printf("Not Leader For Partition: the client attempted to send messages to a replica that is not the leader for some partition, the client's metadata are likely out of date")
+	kLogger.ErrorLogger().Printf("error: %s", nonCriticalError)
 }
