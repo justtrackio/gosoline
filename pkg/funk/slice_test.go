@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/justtrackio/gosoline/pkg/funk"
+	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,6 +16,33 @@ func TestCastSlice(t *testing.T) {
 	target, err := funk.CastSlice[string](inputSlice)
 
 	assert.Equal(t, nil, err)
+	assert.Equal(t, expectedSlice, target)
+}
+
+func TestBoxSlice(t *testing.T) {
+	inputSlice := []string{"", ""}
+	expectedSlice := []*string{mdl.Box(""), mdl.Box("")}
+
+	target := funk.BoxSlice(inputSlice)
+
+	assert.Equal(t, expectedSlice, target)
+}
+
+func TestUnboxSlice(t *testing.T) {
+	inputSlice := []*string{mdl.Box(""), mdl.Box("")}
+	expectedSlice := []string{"", ""}
+
+	target := funk.UnboxSlice(inputSlice)
+
+	assert.Equal(t, expectedSlice, target)
+}
+
+func TestUnboxSlice_EmptyValue(t *testing.T) {
+	inputSlice := []*string{nil, nil}
+	expectedSlice := []string{"", ""}
+
+	target := funk.UnboxSlice(inputSlice)
+
 	assert.Equal(t, expectedSlice, target)
 }
 

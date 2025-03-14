@@ -14,6 +14,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/exec"
+	"github.com/justtrackio/gosoline/pkg/validation"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 )
@@ -369,6 +370,17 @@ func handle(ginCtx *gin.Context, handler HandlerWithoutInput, input any, errHand
 	if exec.IsRequestCanceled(err) {
 		handleError(ginCtx, errHandler, HttpStatusClientWentAway, gin.Error{
 			Err:  err,
+			Type: gin.ErrorTypePrivate,
+		})
+
+		return
+	}
+
+	validErr := &validation.Error{}
+	if errors.As(err, &validErr) {
+		handleError(ginCtx, errHandler, http.StatusBadRequest, gin.Error{
+			// only pass the validation error in case it is wrapped in something else
+			Err:  validErr,
 			Type: gin.ErrorTypePrivate,
 		})
 
