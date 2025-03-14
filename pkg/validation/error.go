@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -32,4 +33,14 @@ func (e *Error) As(target interface{}) bool {
 	}
 
 	return ok
+}
+
+func NewError(errs ...error) *Error {
+	return &Error{Errors: errs}
+}
+
+func IsValidationError(err error) bool {
+	validErr := &Error{}
+
+	return errors.As(err, &validErr)
 }
