@@ -20,6 +20,10 @@ func NilIfEmpty[T comparable](in T) *T {
 	return &in
 }
 
+func IsEmpty[T comparable](in T) bool {
+	return in == Empty[T]()
+}
+
 func IsNilOrEmpty[T comparable](in *T) bool {
 	return in == nil || *in == Empty[T]()
 }
@@ -42,6 +46,16 @@ func UnboxWith[T any](v *T, mkDef func() T) T {
 	}
 
 	return *v
+}
+
+func FirstNonEmpty[T comparable](values ...T) T {
+	for _, v := range values {
+		if !IsEmpty(v) {
+			return v
+		}
+	}
+
+	return Empty[T]()
 }
 
 func IsNil(m any) bool {
