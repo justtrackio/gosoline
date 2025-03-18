@@ -2,7 +2,6 @@ package env
 
 import (
 	"fmt"
-	"maps"
 	"os"
 	"sync"
 	"time"
@@ -99,7 +98,7 @@ func (r recordingLogger) Records() LogRecords {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
-	return maps.Clone(r.records)
+	return funk.MergeMaps(r.records)
 }
 
 func (r recordingLogger) Reset() {

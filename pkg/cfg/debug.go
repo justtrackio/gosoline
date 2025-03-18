@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/jeremywohl/flatten"
-	"golang.org/x/exp/maps"
+	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
 func DebugConfig(config Config, logger Logger) error {
@@ -18,7 +18,7 @@ func DebugConfig(config Config, logger Logger) error {
 	}
 
 	hashValues := make([]string, len(flattened))
-	keys := maps.Keys(flattened)
+	keys := funk.Keys(flattened)
 	sort.Strings(keys)
 
 	for i, key := range keys {

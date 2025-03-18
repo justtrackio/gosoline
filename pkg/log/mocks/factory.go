@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/objx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"golang.org/x/exp/maps"
 )
 
 type Mock interface {
@@ -234,7 +233,7 @@ func (l *loggerMock) printLogs() {
 
 	l.lck.Lock()
 	defer l.lck.Unlock()
-	testNames := maps.Keys(l.pendingLogs)
+	testNames := funk.Keys(l.pendingLogs)
 	slices.Sort(testNames)
 
 	for _, testName := range testNames {

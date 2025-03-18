@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
-	"golang.org/x/exp/maps"
+	"github.com/justtrackio/gosoline/pkg/funk"
 )
 
 type ConsumerSettings struct {
@@ -25,7 +25,7 @@ type ConsumerRetrySettings struct {
 func GetAllConsumerNames(config cfg.Config) []string {
 	consumerMap := config.GetStringMap("stream.consumer", map[string]any{})
 
-	return maps.Keys(consumerMap)
+	return funk.Keys(consumerMap)
 }
 
 func ConfigurableConsumerKey(name string) string {

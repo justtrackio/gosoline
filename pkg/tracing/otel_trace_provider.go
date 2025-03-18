@@ -3,12 +3,11 @@ package tracing
 import (
 	"context"
 	"fmt"
-	"maps"
-	"slices"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -53,7 +52,7 @@ func newOtelTraceProvider(ctx context.Context, config cfg.Config, logger log.Log
 		return nil, fmt.Errorf(
 			"no otel exporter found for name %s, available exporters: %s",
 			settings.Exporter,
-			strings.Join(slices.Collect(maps.Keys(otelTraceExporters)), ", "),
+			strings.Join(funk.Keys(otelTraceExporters), ", "),
 		)
 	}
 
