@@ -100,7 +100,7 @@ func DifferenceMaps[K comparable, V1, V2 any, M1 ~map[K]V1, M2 ~map[K]V2](left M
 	return inLeft, inRight
 }
 
-// Keys returns the keys from a map as a slice.
+// Keys returns the keys from a map as a slice. The order of the result will be undefined.
 func Keys[K comparable, V any, M ~map[K]V](m M) []K {
 	keys := make([]K, 0, len(m))
 
@@ -109,6 +109,17 @@ func Keys[K comparable, V any, M ~map[K]V](m M) []K {
 	}
 
 	return keys
+}
+
+// Values returns the values from a map as a slice. The order of the result will be undefined.
+func Values[K comparable, V any, M ~map[K]V](m M) []V {
+	values := make([]V, 0, len(m))
+
+	for _, v := range m {
+		values = append(values, v)
+	}
+
+	return values
 }
 
 // MapKeys applies a function to every key from a map. If the function maps two keys to the same new value,

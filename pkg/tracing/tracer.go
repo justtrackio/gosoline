@@ -3,12 +3,11 @@ package tracing
 import (
 	"context"
 	"fmt"
-	"maps"
-	"slices"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
@@ -51,7 +50,7 @@ func newTracer(ctx context.Context, config cfg.Config, logger log.Logger) (Trace
 		return nil, fmt.Errorf(
 			"no tracing provider found for name %s, available providers: %s",
 			settings.Provider,
-			strings.Join(slices.Collect(maps.Keys(tracerProviders)), ", "),
+			strings.Join(funk.Keys(tracerProviders), ", "),
 		)
 	}
 
@@ -67,7 +66,7 @@ func newInstrumentor(ctx context.Context, config cfg.Config, logger log.Logger) 
 		return nil, fmt.Errorf(
 			"no tracing providers found for name %s, available providers: %s",
 			settings.Provider,
-			strings.Join(slices.Collect(maps.Keys(instrumentorProviders)), ", "),
+			strings.Join(funk.Keys(instrumentorProviders), ", "),
 		)
 	}
 
