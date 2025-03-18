@@ -13,7 +13,6 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mapx"
 	"github.com/justtrackio/gosoline/pkg/refl"
 	"github.com/spf13/cast"
-	"golang.org/x/exp/maps"
 )
 
 const (
@@ -82,7 +81,7 @@ func NewWithInterfaces(envProvider EnvProvider, msis ...map[string]interface{}) 
 }
 
 func (c *config) AllKeys() []string {
-	return maps.Keys(c.settings.Msi())
+	return funk.Keys(c.settings.Msi())
 }
 
 func (c *config) AllSettings() map[string]interface{} {

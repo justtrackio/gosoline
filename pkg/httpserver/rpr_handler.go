@@ -11,10 +11,10 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	gosoCloudwatch "github.com/justtrackio/gosoline/pkg/cloud/aws/cloudwatch"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/metric/calculator"
-	"golang.org/x/exp/maps"
 )
 
 const PerRunnerMetricName = "HttpServerRequests"
@@ -149,7 +149,7 @@ func (h *rprHandler) getRequestsMetrics(ctx context.Context) (float64, error) {
 }
 
 func getHttpServerNames(config cfg.Config) []string {
-	names := maps.Keys(config.GetStringMap("httpserver"))
+	names := funk.Keys(config.GetStringMap("httpserver"))
 	names = slices.DeleteFunc(names, func(s string) bool {
 		return s == "health-check"
 	})

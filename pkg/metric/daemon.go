@@ -3,13 +3,12 @@ package metric
 import (
 	"context"
 	"fmt"
-	"maps"
-	"slices"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/kernel/common"
 	"github.com/justtrackio/gosoline/pkg/log"
@@ -122,7 +121,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 
 	// initialize the default metrics upon daemon module Run for raw writers
 	metricDefaultsLock.Lock()
-	d.rawFanout(slices.Collect(maps.Values(metricDefaults)))
+	d.rawFanout(funk.Values(metricDefaults))
 	metricDefaultsLock.Unlock()
 
 	for {

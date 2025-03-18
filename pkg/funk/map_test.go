@@ -5,7 +5,6 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/maps"
 )
 
 func TestMergeMapsNoArgs(t *testing.T) {
@@ -569,6 +568,40 @@ func TestKeysString(t *testing.T) {
 	assert.ElementsMatch(t, expected, keys, "Keys should contain all keys in the map regardless of order")
 }
 
+func TestValuesEmpty(t *testing.T) {
+	m := map[int]string{}
+	values := funk.Values(m)
+	assert.Empty(t, values, "An empty map should produce an empty values slice")
+}
+
+func TestValuesNil(t *testing.T) {
+	var m map[int]string
+	values := funk.Values(m)
+	assert.Empty(t, values, "A nil map should produce an empty values slice")
+}
+
+func TestValuesString(t *testing.T) {
+	m := map[int]string{
+		1: "one",
+		2: "two",
+		3: "three",
+	}
+	values := funk.Values(m)
+	expected := []string{"one", "two", "three"}
+	assert.ElementsMatch(t, expected, values, "Values should contain all values in the map regardless of order")
+}
+
+func TestValuesInt(t *testing.T) {
+	m := map[string]int{
+		"a": 1,
+		"b": 2,
+		"c": 3,
+	}
+	values := funk.Values(m)
+	expected := []int{1, 2, 3}
+	assert.ElementsMatch(t, expected, values, "Values should contain all values in the map regardless of order")
+}
+
 func TestMapKeysNil(t *testing.T) {
 	var m1 map[int]string
 
@@ -635,7 +668,7 @@ func TestMapKeysSameKey(t *testing.T) {
 	assert.Equal(t, map[string]string{
 		"key": m2["key"],
 	}, m2, "mapping over keys should produce the correct output map")
-	assert.Contains(t, maps.Values(m1), m2["key"], "the value in the new map should be something from the old map")
+	assert.Contains(t, funk.Values(m1), m2["key"], "the value in the new map should be something from the old map")
 }
 
 func TestMapValuesNil(t *testing.T) {

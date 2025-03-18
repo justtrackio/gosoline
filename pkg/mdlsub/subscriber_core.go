@@ -6,9 +6,9 @@ import (
 	"sort"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/funk"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/mdl"
-	"golang.org/x/exp/maps"
 )
 
 //go:generate mockery --name SubscriberCore
@@ -50,7 +50,7 @@ type subscriberCore struct {
 }
 
 func (c *subscriberCore) GetModelIds() []string {
-	return maps.Keys(c.transformers)
+	return funk.Keys(c.transformers)
 }
 
 func (c *subscriberCore) GetLatestModelIdVersion(modelId mdl.ModelId) (int, error) {
@@ -63,7 +63,7 @@ func (c *subscriberCore) GetLatestModelIdVersion(modelId mdl.ModelId) (int, erro
 		return 0, fmt.Errorf("failed to find model transformer for model id %s", str)
 	}
 
-	versions := maps.Keys(versioned)
+	versions := funk.Keys(versioned)
 
 	if len(versions) == 0 {
 		return 0, fmt.Errorf("there are no versions available for transformer model id %s", str)
