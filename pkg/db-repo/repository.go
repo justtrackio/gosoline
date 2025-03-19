@@ -357,30 +357,28 @@ func (r *repository) Count(ctx context.Context, qb *QueryBuilder, model ModelBas
 }
 
 func (r *repository) refreshAssociations(model any, op string) error {
-	typeReflection := reflect.TypeOf(model).Elem()
+	typeReflection := reflect.TypeOf(model)
+	if typeReflection.Kind() == reflect.Ptr {
+		typeReflection = typeReflection.Elem()
+	}
 
 	for i := 0; i < typeReflection.NumField(); i++ {
 		field := typeReflection.Field(i)
-		tag := field.Tag.Get("orm")
-
-		if tag == "" {
-			continue
-		}
-
-		tags := make(map[string]string)
-		for _, tag := range strings.Split(tag, ",") {
-			parts := strings.Split(tag, ":")
-
-			value := ""
-			if len(parts) == 2 {
-				value = parts[1]
-			}
-
-			tags[parts[0]] = value
-		}
+		tags := getOrmTags(field.Tag)
 
 		if _, ok := tags["assoc_update"]; !ok {
 			continue
+		}
+
+		if field.Type.Kind() == reflect.Slice {
+			fieldValue := reflect.Indirect(reflect.ValueOf(model)).FieldByName(field.Name)
+
+			for i := 0; i < fieldValue.Len(); i++ {
+				err := r.refreshAssociations(fieldValue.Index(i).Interface(), op)
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 		var err error
@@ -407,8 +405,33 @@ func (r *repository) refreshAssociations(model any, op string) error {
 	return nil
 }
 
+func getOrmTags(structTag reflect.StructTag) map[string]string {
+	tag := structTag.Get("orm")
+	tags := make(map[string]string)
+
+	if tag == "" {
+		return tags
+	}
+
+	for _, tag := range strings.Split(tag, ",") {
+		parts := strings.Split(tag, ":")
+
+		value := ""
+		if len(parts) == 2 {
+			value = parts[1]
+		}
+
+		tags[parts[0]] = value
+	}
+
+	return tags
+}
+
 func (r *repository) refreshAssociationsCreate(model any, fieldNum int, tags map[string]string, scopeField *gorm.Field) (err error) {
-	valueReflection := reflect.ValueOf(model).Elem()
+	valueReflection := reflect.ValueOf(model)
+	if valueReflection.Kind() == reflect.Ptr {
+		valueReflection = valueReflection.Elem()
+	}
 	values := valueReflection.Field(fieldNum)
 
 	switch scopeField.Relationship.Kind {
@@ -437,7 +460,10 @@ func (r *repository) refreshAssociationsCreate(model any, fieldNum int, tags map
 }
 
 func (r *repository) refreshAssociationsDelete(model any, field reflect.StructField, tags map[string]string, scopeField *gorm.Field) (err error) {
-	valueReflection := reflect.ValueOf(model).Elem()
+	valueReflection := reflect.ValueOf(model)
+	if valueReflection.Kind() == reflect.Ptr {
+		valueReflection = valueReflection.Elem()
+	}
 
 	switch scopeField.Relationship.Kind {
 	case "has_many":
