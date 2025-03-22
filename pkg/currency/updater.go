@@ -195,6 +195,8 @@ func (s *updaterService) EnsureHistoricalExchangeRates(ctx context.Context) erro
 		}
 	}
 
+	logger.Info("updating %d historical exchange rates", len(keyValues))
+
 	err = s.store.PutBatch(ctx, keyValues)
 	if err != nil {
 		return fmt.Errorf("error setting historical exchange rates: %w", err)
