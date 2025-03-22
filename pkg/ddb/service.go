@@ -90,10 +90,6 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 		return nil, fmt.Errorf("can not check if the table already exists: %w", err)
 	}
 
-	if exists {
-		return metadata, nil
-	}
-
 	settings := s.metadataFactory.GetSettings()
 
 	mainKeySchema, err := s.getKeySchema(metadata.Main)
@@ -112,6 +108,10 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 	}
 
 	attributeDefinitions := s.getAttributeDefinitions(metadata)
+
+	if exists {
+		return s.ensureIndices(ctx, metadata, attributeDefinitions, localIndices, globalIndices)
+	}
 
 	streamSpecification := &types.StreamSpecification{
 		StreamEnabled: aws.Bool(false),
@@ -155,6 +155,74 @@ func (s *Service) CreateTable(ctx context.Context) (*Metadata, error) {
 	err = s.updateTtlSpecification(ctx, metadata)
 
 	return metadata, err
+}
+
+func (s *Service) ensureIndices(
+	ctx context.Context,
+	metadata *Metadata,
+	attributeDefinitions []types.AttributeDefinition,
+	localIndices []types.LocalSecondaryIndex,
+	globalIndices []types.GlobalSecondaryIndex,
+) (*Metadata, error) {
+	for {
+		out, err := s.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
+			TableName: aws.String(metadata.TableName),
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("can not describe table: %w", err)
+		}
+
+		var globalSecondaryIndexUpdates []types.GlobalSecondaryIndexUpdate
+
+		for _, index := range localIndices {
+			if funk.Any(out.Table.LocalSecondaryIndexes, func(description types.LocalSecondaryIndexDescription) bool {
+				return mdl.EmptyIfNil(index.IndexName) == mdl.EmptyIfNil(description.IndexName)
+			}) {
+				continue
+			}
+
+			return nil, fmt.Errorf(
+				"missing local secondary index %q for table %q. Please re-create the table or remove the index",
+				mdl.EmptyIfNil(index.IndexName),
+				metadata.TableName,
+			)
+		}
+
+		for _, index := range globalIndices {
+			if funk.Any(out.Table.GlobalSecondaryIndexes, func(description types.GlobalSecondaryIndexDescription) bool {
+				return mdl.EmptyIfNil(index.IndexName) == mdl.EmptyIfNil(description.IndexName)
+			}) {
+				continue
+			}
+
+			globalSecondaryIndexUpdates = append(globalSecondaryIndexUpdates, types.GlobalSecondaryIndexUpdate{
+				Create: &types.CreateGlobalSecondaryIndexAction{
+					IndexName:             index.IndexName,
+					KeySchema:             index.KeySchema,
+					Projection:            index.Projection,
+					OnDemandThroughput:    index.OnDemandThroughput,
+					ProvisionedThroughput: index.ProvisionedThroughput,
+				},
+			})
+		}
+
+		if len(globalSecondaryIndexUpdates) == 0 {
+			return metadata, nil
+		}
+
+		// we can only create one index at once. if there is already an index creating, we will automatically retry this request
+		_, err = s.client.UpdateTable(ctx, &dynamodb.UpdateTableInput{
+			TableName:                   aws.String(metadata.TableName),
+			AttributeDefinitions:        attributeDefinitions,
+			GlobalSecondaryIndexUpdates: globalSecondaryIndexUpdates[:1], // we can only create one GSI at once
+		})
+		if err != nil {
+			return nil, fmt.Errorf("can not update table: %w", err)
+		}
+
+		s.logger.WithContext(ctx).Info("created %s GSI for ddb table %s", *globalSecondaryIndexUpdates[0].Create.IndexName, metadata.TableName)
+	}
 }
 
 func (s *Service) PurgeTable(ctx context.Context) error {
