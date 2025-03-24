@@ -392,6 +392,80 @@ func (_c *Client_GetQueueUrl_Call) RunAndReturn(run func(context.Context, *sqs.G
 	return _c
 }
 
+// ListQueues provides a mock function with given fields: ctx, params, optFns
+func (_m *Client) ListQueues(ctx context.Context, params *sqs.ListQueuesInput, optFns ...func(*sqs.Options)) (*sqs.ListQueuesOutput, error) {
+	_va := make([]interface{}, len(optFns))
+	for _i := range optFns {
+		_va[_i] = optFns[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, params)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListQueues")
+	}
+
+	var r0 *sqs.ListQueuesOutput
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *sqs.ListQueuesInput, ...func(*sqs.Options)) (*sqs.ListQueuesOutput, error)); ok {
+		return rf(ctx, params, optFns...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *sqs.ListQueuesInput, ...func(*sqs.Options)) *sqs.ListQueuesOutput); ok {
+		r0 = rf(ctx, params, optFns...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sqs.ListQueuesOutput)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *sqs.ListQueuesInput, ...func(*sqs.Options)) error); ok {
+		r1 = rf(ctx, params, optFns...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_ListQueues_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListQueues'
+type Client_ListQueues_Call struct {
+	*mock.Call
+}
+
+// ListQueues is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sqs.ListQueuesInput
+//   - optFns ...func(*sqs.Options)
+func (_e *Client_Expecter) ListQueues(ctx interface{}, params interface{}, optFns ...interface{}) *Client_ListQueues_Call {
+	return &Client_ListQueues_Call{Call: _e.mock.On("ListQueues",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_ListQueues_Call) Run(run func(ctx context.Context, params *sqs.ListQueuesInput, optFns ...func(*sqs.Options))) *Client_ListQueues_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sqs.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sqs.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sqs.ListQueuesInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ListQueues_Call) Return(_a0 *sqs.ListQueuesOutput, _a1 error) *Client_ListQueues_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ListQueues_Call) RunAndReturn(run func(context.Context, *sqs.ListQueuesInput, ...func(*sqs.Options)) (*sqs.ListQueuesOutput, error)) *Client_ListQueues_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PurgeQueue provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) PurgeQueue(ctx context.Context, params *sqs.PurgeQueueInput, optFns ...func(*sqs.Options)) (*sqs.PurgeQueueOutput, error) {
 	_va := make([]interface{}, len(optFns))
