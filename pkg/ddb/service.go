@@ -168,7 +168,6 @@ func (s *Service) ensureIndices(
 		out, err := s.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 			TableName: aws.String(metadata.TableName),
 		})
-
 		if err != nil {
 			return nil, fmt.Errorf("can not describe table: %w", err)
 		}

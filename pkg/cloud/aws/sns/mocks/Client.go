@@ -170,6 +170,80 @@ func (_c *Client_GetSubscriptionAttributes_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// GetTopicAttributes provides a mock function with given fields: ctx, params, optFns
+func (_m *Client) GetTopicAttributes(ctx context.Context, params *sns.GetTopicAttributesInput, optFns ...func(*sns.Options)) (*sns.GetTopicAttributesOutput, error) {
+	_va := make([]interface{}, len(optFns))
+	for _i := range optFns {
+		_va[_i] = optFns[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, params)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTopicAttributes")
+	}
+
+	var r0 *sns.GetTopicAttributesOutput
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *sns.GetTopicAttributesInput, ...func(*sns.Options)) (*sns.GetTopicAttributesOutput, error)); ok {
+		return rf(ctx, params, optFns...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *sns.GetTopicAttributesInput, ...func(*sns.Options)) *sns.GetTopicAttributesOutput); ok {
+		r0 = rf(ctx, params, optFns...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sns.GetTopicAttributesOutput)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *sns.GetTopicAttributesInput, ...func(*sns.Options)) error); ok {
+		r1 = rf(ctx, params, optFns...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_GetTopicAttributes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTopicAttributes'
+type Client_GetTopicAttributes_Call struct {
+	*mock.Call
+}
+
+// GetTopicAttributes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sns.GetTopicAttributesInput
+//   - optFns ...func(*sns.Options)
+func (_e *Client_Expecter) GetTopicAttributes(ctx interface{}, params interface{}, optFns ...interface{}) *Client_GetTopicAttributes_Call {
+	return &Client_GetTopicAttributes_Call{Call: _e.mock.On("GetTopicAttributes",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_GetTopicAttributes_Call) Run(run func(ctx context.Context, params *sns.GetTopicAttributesInput, optFns ...func(*sns.Options))) *Client_GetTopicAttributes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sns.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sns.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sns.GetTopicAttributesInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_GetTopicAttributes_Call) Return(_a0 *sns.GetTopicAttributesOutput, _a1 error) *Client_GetTopicAttributes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_GetTopicAttributes_Call) RunAndReturn(run func(context.Context, *sns.GetTopicAttributesInput, ...func(*sns.Options)) (*sns.GetTopicAttributesOutput, error)) *Client_GetTopicAttributes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListSubscriptionsByTopic provides a mock function with given fields: ctx, params, optFns
 func (_m *Client) ListSubscriptionsByTopic(ctx context.Context, params *sns.ListSubscriptionsByTopicInput, optFns ...func(*sns.Options)) (*sns.ListSubscriptionsByTopicOutput, error) {
 	_va := make([]interface{}, len(optFns))
@@ -240,6 +314,80 @@ func (_c *Client_ListSubscriptionsByTopic_Call) Return(_a0 *sns.ListSubscription
 }
 
 func (_c *Client_ListSubscriptionsByTopic_Call) RunAndReturn(run func(context.Context, *sns.ListSubscriptionsByTopicInput, ...func(*sns.Options)) (*sns.ListSubscriptionsByTopicOutput, error)) *Client_ListSubscriptionsByTopic_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListTopics provides a mock function with given fields: ctx, params, optFns
+func (_m *Client) ListTopics(ctx context.Context, params *sns.ListTopicsInput, optFns ...func(*sns.Options)) (*sns.ListTopicsOutput, error) {
+	_va := make([]interface{}, len(optFns))
+	for _i := range optFns {
+		_va[_i] = optFns[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, params)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListTopics")
+	}
+
+	var r0 *sns.ListTopicsOutput
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *sns.ListTopicsInput, ...func(*sns.Options)) (*sns.ListTopicsOutput, error)); ok {
+		return rf(ctx, params, optFns...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *sns.ListTopicsInput, ...func(*sns.Options)) *sns.ListTopicsOutput); ok {
+		r0 = rf(ctx, params, optFns...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*sns.ListTopicsOutput)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *sns.ListTopicsInput, ...func(*sns.Options)) error); ok {
+		r1 = rf(ctx, params, optFns...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Client_ListTopics_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListTopics'
+type Client_ListTopics_Call struct {
+	*mock.Call
+}
+
+// ListTopics is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *sns.ListTopicsInput
+//   - optFns ...func(*sns.Options)
+func (_e *Client_Expecter) ListTopics(ctx interface{}, params interface{}, optFns ...interface{}) *Client_ListTopics_Call {
+	return &Client_ListTopics_Call{Call: _e.mock.On("ListTopics",
+		append([]interface{}{ctx, params}, optFns...)...)}
+}
+
+func (_c *Client_ListTopics_Call) Run(run func(ctx context.Context, params *sns.ListTopicsInput, optFns ...func(*sns.Options))) *Client_ListTopics_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]func(*sns.Options), len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(func(*sns.Options))
+			}
+		}
+		run(args[0].(context.Context), args[1].(*sns.ListTopicsInput), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *Client_ListTopics_Call) Return(_a0 *sns.ListTopicsOutput, _a1 error) *Client_ListTopics_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Client_ListTopics_Call) RunAndReturn(run func(context.Context, *sns.ListTopicsInput, ...func(*sns.Options)) (*sns.ListTopicsOutput, error)) *Client_ListTopics_Call {
 	_c.Call.Return(run)
 	return _c
 }
