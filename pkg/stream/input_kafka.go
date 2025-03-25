@@ -42,7 +42,7 @@ func NewKafkaInputWithInterfaces(consumer *kafkaConsumer.Consumer) (*KafkaInput,
 //
 // Run should only be called once, not all inputs can be resumed.
 func (i *KafkaInput) Run(ctx context.Context) error {
-	i.pool.GoWithContext(ctx, i.consumer.Run)
+	i.pool.GoWithContext(ctx, i.consumer.Run, coffin.Named("kafkaInput/run"))
 
 	for {
 		select {

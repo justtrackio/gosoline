@@ -95,7 +95,7 @@ func newTaskRunner() (*taskRunner, error) {
 }
 
 func (s *taskRunner) Run(ctx context.Context) error {
-	cfn := coffin.New()
+	cfn := coffin.NewGraveyard(coffin.WithContext(ctx))
 	cfn.GoWithContext(ctx, func(ctx context.Context) error {
 		for {
 			select {
@@ -107,15 +107,15 @@ func (s *taskRunner) Run(ctx context.Context) error {
 				s.lck.Unlock()
 
 				for task := range s.pendingTasks {
-					cfn.GoWithContext(ctx, task.Run)
+					cfn.GoWithContext(ctx, task.Run, coffin.Named("taskRunner/submittedTask"))
 				}
 
 				return nil
 			case task := <-s.pendingTasks:
-				cfn.GoWithContext(ctx, task.Run)
+				cfn.GoWithContext(ctx, task.Run, coffin.Named("taskRunner/submittedTask"))
 			}
 		}
-	})
+	}, coffin.Named("taskRunner"))
 
 	return cfn.Wait()
 }
