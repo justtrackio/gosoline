@@ -2,6 +2,7 @@ package coffin
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/pkg/errors"
@@ -9,15 +10,6 @@ import (
 )
 
 type Coffin interface {
-	// Alive returns true if the coffin is not in a dying or dead state.
-	Alive() bool
-	// Context returns a context that is a copy of the provided parent context with
-	// a replaced Done channel that is closed when either the coffin is dying or the
-	// parent is cancelled.
-	//
-	// If parent is nil, it defaults to the parent provided via WithContext, or an
-	// empty background parent if the coffin wasn't created via WithContext.
-	Context(parent context.Context) context.Context
 	// Dead returns the channel that can be used to wait until
 	// all goroutines have finished running.
 	Dead() <-chan struct{}
@@ -41,14 +33,14 @@ type Coffin interface {
 	// Calling the Go method after all tracked goroutines return
 	// causes a runtime panic. For that reason, calling the Go
 	// method a second time out of a tracked goroutine is unsafe.
-	Go(f func() error)
+	Go(f func() error, labels map[string]string)
 	// Gof is like Go, but wraps the returned error with the given
 	// name and args
-	Gof(f func() error, name string, args ...interface{})
+	Gof(f func() error, labels map[string]string, name string, args ...interface{})
 	// GoWithContext is like Go, but passes the given context to f
-	GoWithContext(ctx context.Context, f func(ctx context.Context) error)
+	GoWithContext(ctx context.Context, f func(ctx context.Context) error, labels map[string]string)
 	// GoWithContextf is like Gof, but passes the given context to f
-	GoWithContextf(ctx context.Context, f func(ctx context.Context) error, msg string, args ...interface{})
+	GoWithContextf(ctx context.Context, f func(ctx context.Context) error, labels map[string]string, msg string, args ...interface{})
 	// Kill puts the coffin in a dying state for the given reason,
 	// closes the Dying channel, and sets Alive to false.
 	//
@@ -59,9 +51,6 @@ type Coffin interface {
 	// even if nil. It's a runtime error to call Kill with ErrDying
 	// if t is not in a dying state.
 	Kill(reason error)
-	// Killf calls the Kill method with an error built providing the received
-	// parameters to fmt.Errorf. The generated error is also returned.
-	Killf(f string, a ...interface{}) error
 	// Wait blocks until all goroutines have finished running, and
 	// then returns the reason for their death.
 	//
@@ -131,7 +120,7 @@ func (c *coffin) Err() (reason error) {
 	return c.tomb.Err()
 }
 
-func (c *coffin) Go(f func() error) {
+func (c *coffin) Go(f func() error, labels map[string]string) {
 	atomic.AddInt32(&c.started, 1)
 	c.tomb.Go(func() (err error) {
 		defer atomic.AddInt32(&c.terminated, 1)
@@ -140,14 +129,15 @@ func (c *coffin) Go(f func() error) {
 
 			if panicErr != nil {
 				err = panicErr
+				fmt.Printf("got error from coffin: %v\n", err)
 			}
 		}()
 
-		return f()
+		return RunWithLabels(f, labels)
 	})
 }
 
-func (c *coffin) Gof(f func() error, msg string, args ...interface{}) {
+func (c *coffin) Gof(f func() error, labels map[string]string, msg string, args ...interface{}) {
 	atomic.AddInt32(&c.started, 1)
 	c.tomb.Go(func() (err error) {
 		defer atomic.AddInt32(&c.terminated, 1)
@@ -156,10 +146,11 @@ func (c *coffin) Gof(f func() error, msg string, args ...interface{}) {
 
 			if panicErr != nil {
 				err = errors.Wrapf(panicErr, msg, args...)
+				fmt.Printf("got error from coffin: %v\n", err)
 			}
 		}()
 
-		err = f()
+		err = RunWithLabels(f, labels)
 		if err != nil {
 			err = errors.Wrapf(err, msg, args...)
 		}
@@ -167,16 +158,16 @@ func (c *coffin) Gof(f func() error, msg string, args ...interface{}) {
 	})
 }
 
-func (c *coffin) GoWithContext(ctx context.Context, f func(ctx context.Context) error) {
+func (c *coffin) GoWithContext(ctx context.Context, f func(ctx context.Context) error, labels map[string]string) {
 	c.Go(func() error {
 		return f(ctx)
-	})
+	}, labels)
 }
 
-func (c *coffin) GoWithContextf(ctx context.Context, f func(ctx context.Context) error, msg string, args ...interface{}) {
+func (c *coffin) GoWithContextf(ctx context.Context, f func(ctx context.Context) error, labels map[string]string, msg string, args ...interface{}) {
 	c.Gof(func() error {
 		return f(ctx)
-	}, msg, args...)
+	}, labels, msg, args...)
 }
 
 // Kill puts the coffin in a dying state for the given reason,

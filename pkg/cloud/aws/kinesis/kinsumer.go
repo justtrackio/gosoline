@@ -274,7 +274,7 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 				discoverTicker.Reset(k.settings.DiscoverFrequency)
 			}
 		}
-	})
+	}, coffin.Named("kinsumer-%s", k.stream))
 
 	defer handler.Done()
 
@@ -430,7 +430,7 @@ func (k *kinsumer) startConsumers(
 			}
 
 			return nil
-		})
+		}, coffin.Named("kinsumer/shardReader"))
 	}
 
 	if startedConsumers == 0 {
@@ -476,7 +476,7 @@ func (k *kinsumer) startConsumers(
 				k.writeShardTaskRatioMetric(shardTaskRatio)
 			}
 		}
-	})
+	}, coffin.Named("kinsumer/shardTaskRatioWriter"))
 
 	return wg, stopConsumers
 }

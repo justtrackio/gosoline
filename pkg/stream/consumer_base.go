@@ -194,20 +194,20 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 	manualCtx, c.cancel = context.WithCancel(manualCtx)
 
 	cfn.Go(func() error {
-		cfn.GoWithContextf(manualCtx, c.logConsumeCounter, "panic during counter log")
-		cfn.GoWithContextf(manualCtx, c.runConsumerCallback, "panic during run of the consumerCallback")
+		cfn.GoWithContextf(manualCtx, c.logConsumeCounter, coffin.Named("consumer/logConsumerCounter"), "panic during counter log")
+		cfn.GoWithContextf(manualCtx, c.runConsumerCallback, coffin.Named("consumer/runConsumerCallback"), "panic during run of the consumerCallback")
 		// run the input after the counters are running to make sure our coffin does not immediately
 		// die just because Run() immediately returns
-		cfn.GoWithContextf(dyingCtx, c.input.Run, "panic during run of the consumer input")
-		cfn.GoWithContextf(dyingCtx, c.retryInput.Run, "panic during run of the retry handler")
-		cfn.GoWithContextf(dyingCtx, c.ingestData, "panic during shoveling the data")
+		cfn.GoWithContextf(dyingCtx, c.input.Run, coffin.Named("consumer/inputRunner"), "panic during run of the consumer input")
+		cfn.GoWithContextf(dyingCtx, c.retryInput.Run, coffin.Named("consumer/retryInputRunner"), "panic during run of the retry handler")
+		cfn.GoWithContextf(dyingCtx, c.ingestData, coffin.Named("consumer/dataIngester"), "panic during shoveling the data")
 
 		c.wg.Add(c.settings.RunnerCount)
 		for i := 0; i < c.settings.RunnerCount; i++ {
-			cfn.GoWithContextf(manualCtx, inputRunner, "panic during consuming")
+			cfn.GoWithContextf(manualCtx, inputRunner, coffin.Named("consumer/inputRunner%03d", i), "panic during consuming")
 		}
 
-		cfn.Gof(c.stopConsuming, "panic during stopping the consuming")
+		cfn.Gof(c.stopConsuming, coffin.Named("consumer/stopConsuming"), "panic during stopping the consuming")
 
 		cfn.GoWithContext(manualCtx, func(manualCtx context.Context) error {
 			// wait for kernel or coffin cancel...
@@ -220,10 +220,10 @@ func (c *baseConsumer) run(kernelCtx context.Context, inputRunner func(ctx conte
 			c.stopIncomingData()
 
 			return nil
-		})
+		}, coffin.Named("consumer/stopIncomingData"))
 
 		return nil
-	})
+	}, coffin.Named("consumer/launcher"))
 
 	if err := cfn.Wait(); err != nil {
 		return fmt.Errorf("error while waiting for all routines to stop: %w", err)
@@ -279,11 +279,11 @@ func (c *baseConsumer) ingestData(ctx context.Context) error {
 
 	cfn := coffin.New()
 	cfn.Go(func() error {
-		cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput), "panic during shoveling data from input")
-		cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryInput, dataSourceRetry), "panic during shoveling data from retry")
+		cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.input, dataSourceInput), coffin.Named("consumerBase/ingestFromInput"), "panic during shoveling data from input")
+		cfn.GoWithContextf(ctx, c.ingestDataFromSource(c.retryInput, dataSourceRetry), coffin.Named("consumerBase/ingestFromRetryInput"), "panic during shoveling data from retry")
 
 		return nil
-	})
+	}, coffin.Named("consumerBase/launcher"))
 
 	return cfn.Wait()
 }

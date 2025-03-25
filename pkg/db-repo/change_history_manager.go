@@ -71,11 +71,11 @@ func (c *ChangeHistoryManager) RunMigrations() error {
 				}
 
 				return nil
-			})
+			}, coffin.Named("changeHistoryManager/migration-%s", model))
 		}
 
 		return nil
-	})
+	}, coffin.Named("changeHistoryManager/launcher"))
 
 	return cfn.Wait()
 }

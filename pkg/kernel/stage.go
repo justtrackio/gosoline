@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/pprof"
+	"strconv"
 	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
@@ -67,6 +69,8 @@ func (s *stage) run(k *kernel) error {
 		return fmt.Errorf("stage was already run: %w", err)
 	}
 
+	ctx := pprof.WithLabels(s.ctx, pprof.Labels("stage", strconv.Itoa(s.index)))
+
 	for name, ms := range s.modules.modules {
 		s.cfn.Gof(func(name string, ms *moduleState) func() error {
 			return func() error {
@@ -76,7 +80,7 @@ func (s *stage) run(k *kernel) error {
 				// new routine may be added after the last one exited)
 				<-s.running.Channel()
 
-				resultErr := k.runModule(s.ctx, name, ms)
+				resultErr := k.runModule(ctx, name, ms)
 
 				if resultErr != nil {
 					// pass the error (and stage) to the internal stop function, so we raise the correct error in the end
@@ -86,7 +90,10 @@ func (s *stage) run(k *kernel) error {
 
 				return resultErr
 			}
-		}(name, ms), "panic during running of module %s", name)
+		}(name, ms), map[string]string{
+			"stage":  strconv.Itoa(ms.config.stage),
+			"module": name,
+		}, "panic during running of module %s", name)
 	}
 
 	s.running.Signal()
