@@ -74,10 +74,6 @@ func newLogCall(logger log.Logger, settings LoggingSettings) *logCall {
 func (lc *logCall) prepare(ginCtx *gin.Context) {
 	req := ginCtx.Request
 
-	requestSizeFields := getRequestSizeFields(ginCtx)
-
-	lc.fields = funk.MergeMaps(lc.fields, requestSizeFields)
-
 	lc.fields["bytes"] = ginCtx.Writer.Size()
 	lc.fields["client_ip"] = ginCtx.ClientIP()
 	lc.fields["host"] = req.Host
@@ -115,6 +111,7 @@ func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
 	status := ginCtx.Writer.Status()
 
 	// these fields can only be added after all previous handlers have finished
+	lc.fields = funk.MergeMaps(lc.fields, getRequestSizeFields(ginCtx))
 	lc.fields["bytes"] = ginCtx.Writer.Size()
 	lc.fields["request_time"] = requestTimeSecond
 	lc.fields["status"] = status
