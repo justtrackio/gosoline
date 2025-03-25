@@ -61,7 +61,7 @@ func TestKeyLockHighTraffic(t *testing.T) {
 	var inCCS int32
 
 	for i := 0; i < 100; i++ {
-		grave.Spawn("testTask", func() error {
+		grave.Go("testTask", func() error {
 			for j := 0; j < 1000; j++ {
 				unlock := l.Lock("a")
 

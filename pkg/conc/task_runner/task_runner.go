@@ -95,7 +95,7 @@ func newTaskRunner() (*taskRunner, error) {
 }
 
 func (s *taskRunner) Run(ctx context.Context) error {
-	cfn := coffin.NewGraveyard(coffin.WithLabelsFromContext(ctx))
+	cfn := coffin.NewGraveyard(coffin.WithContext(ctx))
 	cfn.GoWithContext(ctx, func(ctx context.Context) error {
 		for {
 			select {
