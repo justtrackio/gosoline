@@ -51,8 +51,6 @@ func NewDataExporter(ctx context.Context, config cfg.Config, logger log.Logger) 
 		client: client,
 		ignoredModels: []string{
 			"fixture",
-			"goose_db_version",
-			"schema_migrations",
 		},
 	}, nil
 }
