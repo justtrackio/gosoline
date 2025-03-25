@@ -114,10 +114,10 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 		s.reportMillisecondsBehind(millisecondsBehindChan)
 
 		return nil
-	})
+	}, coffin.Named("kinsumer/reportMillisecondsBehind"))
 	cfn.GoWithContext(persisterCtx, func(ctx context.Context) error {
 		return s.runPersister(ctx, releaseCtx)
-	})
+	}, coffin.Named("kinsumer/persister"))
 	cfn.GoWithContext(cfnCtx, func(ctx context.Context) (readerErr error) {
 		// similar to the outer release function, this additionally cancels the persister (and has a different error to append to)
 		// and closes the channel to report how many milliseconds we lag behind
@@ -130,7 +130,7 @@ func (s *shardReader) Run(ctx context.Context, handler func(record []byte) error
 		}()
 
 		return s.iterateRecords(ctx, millisecondsBehindChan, iterator, sequenceNumber, handler)
-	})
+	}, coffin.Named("kinsumer/shardIterator"))
 
 	// if we get a canceled error, drop it here. We used to do this at our caller, but this makes a test harder:
 	// if the context of the coffin gets canceled, we propagate the canceled error from the context to the coffin.

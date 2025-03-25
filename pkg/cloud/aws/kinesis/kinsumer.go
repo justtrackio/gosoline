@@ -242,7 +242,7 @@ func (k *kinsumer) Run(ctx context.Context, handler MessageHandler) (finalErr er
 				discoverTicker.Reset(k.settings.DiscoverFrequency)
 			}
 		}
-	})
+	}, coffin.Named("kinsumer-%s", k.stream))
 
 	defer handler.Done()
 
@@ -393,7 +393,7 @@ func (k *kinsumer) startConsumers(ctx context.Context, cfn coffin.Coffin, runtim
 			}
 
 			return nil
-		})
+		}, coffin.Named("kinsumer/shardReader"))
 	}
 
 	// we want to have one consumer / shard (ideally), so we write a metric which is above 100 if there are not enough
@@ -418,7 +418,7 @@ func (k *kinsumer) startConsumers(ctx context.Context, cfn coffin.Coffin, runtim
 				k.writeShardTaskRatioMetric(shardTaskRatio)
 			}
 		}
-	})
+	}, coffin.Named("kinsumer/shardTaskRatioWriter"))
 
 	return wg, stopConsumers
 }

@@ -18,7 +18,7 @@ func TestCoffin_New(t *testing.T) {
 
 	cfn.Gof(func() error {
 		panic(myErr)
-	}, "got this error: %d", 42)
+	}, nil, "got this error: %d", 42)
 
 	err := cfn.Wait()
 	assert.Error(t, err)
@@ -67,14 +67,14 @@ func TestCoffin_WithContext(t *testing.T) {
 								return nil
 							}
 						}
-					})
+					}, nil)
 
 					err := nestedCfn.Wait()
 					if !errors.Is(err, context.Canceled) {
 						assert.NoError(t, err)
 					}
 					return err
-				})
+				}, nil)
 
 				<-c
 				cfn.Kill(errStop)
@@ -96,7 +96,7 @@ func TestCoffin_WithContext_Cancel(t *testing.T) {
 		<-cfn.Dying()
 
 		return nil
-	})
+	}, nil)
 
 	cancel()
 
@@ -115,7 +115,7 @@ func TestCoffin_Gof(t *testing.T) {
 		assert.Failf(t, "got unexpected string back", errString)
 
 		return err
-	}, "crashing function")
+	}, nil, "crashing function")
 
 	err := cfn.Wait()
 	assert.Error(t, err)
