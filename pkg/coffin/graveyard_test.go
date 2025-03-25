@@ -25,8 +25,8 @@ func (s *graveyardTestSuite) SetupTest() {
 	}))
 }
 
-func (s *graveyardTestSuite) TestSpawn() {
-	s.graveyard.Spawn("test", func() error {
+func (s *graveyardTestSuite) TestGo() {
+	s.graveyard.Go("test", func() error {
 		s.Equal(1, s.graveyard.Running())
 		s.Equal(1, s.graveyard.Started())
 		s.Equal(0, s.graveyard.Terminated())
@@ -43,8 +43,8 @@ func (s *graveyardTestSuite) TestSpawn() {
 	s.Equal(1, s.graveyard.Terminated())
 }
 
-func (s *graveyardTestSuite) TestSpawnWithError() {
-	s.graveyard.Spawn("test", func() error {
+func (s *graveyardTestSuite) TestGoWithError() {
+	s.graveyard.Go("test", func() error {
 		s.Equal(1, s.graveyard.Running())
 		s.Equal(1, s.graveyard.Started())
 		s.Equal(0, s.graveyard.Terminated())
@@ -61,8 +61,8 @@ func (s *graveyardTestSuite) TestSpawnWithError() {
 	s.Equal(1, s.graveyard.Terminated())
 }
 
-func (s *graveyardTestSuite) TestSpawnWithPanic() {
-	s.graveyard.Spawn("test", func() error {
+func (s *graveyardTestSuite) TestGoWithPanic() {
+	s.graveyard.Go("test", func() error {
 		s.Equal(1, s.graveyard.Running())
 		s.Equal(1, s.graveyard.Started())
 		s.Equal(0, s.graveyard.Terminated())
@@ -80,11 +80,11 @@ func (s *graveyardTestSuite) TestSpawnWithPanic() {
 	s.Equal(1, s.graveyard.Terminated())
 }
 
-func (s *graveyardTestSuite) TestSpawnWithContext() {
+func (s *graveyardTestSuite) TestGoWithContext() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.graveyard.SpawnWithContext("test", ctx, func(ctxArg context.Context) error {
+	s.graveyard.GoWithContext("test", func(ctxArg context.Context) error {
 		s.Equal(ctx, ctxArg)
 
 		s.Equal(1, s.graveyard.Running())
@@ -94,7 +94,7 @@ func (s *graveyardTestSuite) TestSpawnWithContext() {
 		s.NoError(err)
 
 		return nil
-	})
+	}, coffin.WithContext(ctx))
 
 	err := s.graveyard.Wait()
 	s.NoError(err)
@@ -103,9 +103,9 @@ func (s *graveyardTestSuite) TestSpawnWithContext() {
 	s.Equal(1, s.graveyard.Terminated())
 }
 
-func (s *graveyardTestSuite) TestConcurrentSpawn() {
+func (s *graveyardTestSuite) TestConcurrentGo() {
 	for i := 0; i < 100; i++ {
-		s.graveyard.Spawn(fmt.Sprintf("test-%02d", i), func() error {
+		s.graveyard.Go(fmt.Sprintf("test-%02d", i), func() error {
 			return nil
 		}, coffin.WithLabels(map[string]string{
 			"index": strconv.Itoa(i),
@@ -120,10 +120,10 @@ func (s *graveyardTestSuite) TestConcurrentSpawn() {
 }
 
 func (s *graveyardTestSuite) TestMultipleErrors() {
-	s.graveyard.Spawn("task1", func() error {
+	s.graveyard.Go("task1", func() error {
 		return fmt.Errorf("error 1")
 	})
-	s.graveyard.Spawn("task2", func() error {
+	s.graveyard.Go("task2", func() error {
 		return fmt.Errorf("error 2")
 	})
 
@@ -137,10 +137,10 @@ func (s *graveyardTestSuite) TestMultipleErrors() {
 }
 
 func (s *graveyardTestSuite) TestMixedSuccessFailure() {
-	s.graveyard.Spawn("success-task", func() error {
+	s.graveyard.Go("success-task", func() error {
 		return nil
 	})
-	s.graveyard.Spawn("failure-task", func() error {
+	s.graveyard.Go("failure-task", func() error {
 		return fmt.Errorf("task failed")
 	})
 
@@ -151,9 +151,9 @@ func (s *graveyardTestSuite) TestMixedSuccessFailure() {
 	s.Equal(2, s.graveyard.Terminated())
 }
 
-func (s *graveyardTestSuite) TestNestedSpawn() {
-	s.graveyard.Spawn("parent", func() error {
-		s.graveyard.Spawn("child", func() error {
+func (s *graveyardTestSuite) TestNestedGo() {
+	s.graveyard.Go("parent", func() error {
+		s.graveyard.Go("child", func() error {
 			return nil
 		})
 
@@ -169,7 +169,7 @@ func (s *graveyardTestSuite) TestNestedSpawn() {
 
 func (s *graveyardTestSuite) TestGraveyardReuse() {
 	for i := 1; i <= 100; i++ {
-		s.graveyard.Spawn("task", func() error {
+		s.graveyard.Go("task", func() error {
 
 			return nil
 		})
@@ -183,7 +183,7 @@ func (s *graveyardTestSuite) TestGraveyardReuse() {
 }
 
 func (s *graveyardTestSuite) TestMultipleWaitCalls() {
-	s.graveyard.Spawn("test", func() error {
+	s.graveyard.Go("test", func() error {
 		return nil
 	})
 
@@ -203,14 +203,14 @@ func (s *graveyardTestSuite) TestCallWaitWithoutSpawningTask() {
 	s.Equal(0, s.graveyard.Terminated())
 }
 
-func (s *graveyardTestSuite) TestSpawnWithCanceledContext() {
+func (s *graveyardTestSuite) TestGoWithCanceledContext() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	s.graveyard.SpawnWithContext("test", ctx, func(ctx context.Context) error {
+	s.graveyard.GoWithContext("test", func(ctx context.Context) error {
 		<-ctx.Done()
 		return ctx.Err()
-	})
+	}, coffin.WithContext(ctx))
 
 	err := s.graveyard.Wait()
 	s.EqualError(err, context.Canceled.Error())
@@ -220,7 +220,7 @@ func (s *graveyardTestSuite) TestSpawnWithCanceledContext() {
 }
 
 func (s *graveyardTestSuite) TestWrappedError() {
-	s.graveyard.Spawn("test", func() error {
+	s.graveyard.Go("test", func() error {
 		return fmt.Errorf("some error")
 	}, coffin.WithErrorWrapper("an error occurred = %v", true))
 

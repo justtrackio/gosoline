@@ -102,18 +102,18 @@ func (s scheduler[T]) ScheduleJob(key string, provider func() (T, error)) (T, er
 }
 
 func (s scheduler[T]) Run(ctx context.Context) error {
-	grave := coffin.NewGraveyard(coffin.WithLabelsFromContext(ctx), coffin.WithLabels(map[string]string{
+	grave := coffin.NewGraveyard(coffin.WithContext(ctx), coffin.WithLabels(map[string]string{
 		"scheduler": s.name,
 	}))
 	batchQueue := make(chan jobBatch[T], s.runnerCount)
 
-	grave.Spawn("batchCreator", func() error {
+	grave.Go("batchCreator", func() error {
 		return s.createBatches(ctx, batchQueue)
 	})
 
 	// execute batches of jobs in parallel
 	for i := 0; i < s.runnerCount; i++ {
-		grave.Spawn("batchExecutor", func() error {
+		grave.Go("batchExecutor", func() error {
 			return s.executeBatches(ctx, batchQueue)
 		}, map[string]string{
 			"instance": strconv.Itoa(i),

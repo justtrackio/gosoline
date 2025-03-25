@@ -6,6 +6,7 @@ import (
 	"runtime/pprof"
 )
 
+// TODO: remove
 func RunWithLabels[R any](f func() R, labels map[string]string) R {
 	labelArgs := make([]string, 0, len(labels)*2)
 	for k, v := range labels {
@@ -22,6 +23,7 @@ func RunWithLabels[R any](f func() R, labels map[string]string) R {
 	return result
 }
 
+// TODO: remove
 func Named(name string, args ...any) map[string]string {
 	return map[string]string{
 		"name": fmt.Sprintf(name, args...),
