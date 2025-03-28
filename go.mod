@@ -36,6 +36,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/elastic/go-elasticsearch/v7 v7.2.1-0.20190714143206-f1e755531ff4
 	github.com/elliotchance/redismock/v8 v8.11.0
+	github.com/emersion/go-smtp v0.21.3
 	github.com/fatih/color v1.13.0
 	github.com/getsentry/sentry-go v0.13.0
 	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
@@ -137,6 +138,7 @@ require (
 	github.com/docker/docker v27.2.0+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
+	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
