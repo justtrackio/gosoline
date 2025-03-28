@@ -8,6 +8,8 @@ import (
 	"net/http"
 	netUrl "net/url"
 	"runtime"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/aws/aws-xray-sdk-go/xray"
@@ -164,7 +166,13 @@ type TransportSettings struct {
 	// If zero, a default (currently 4KB) is used.
 	ReadBufferSize int `cfg:"read_buffer_size" default:"0"`
 
+	// DialerSettings govern how we establish a TCP connection
+	// to the remote host after resolving its IP.
 	DialerSettings DialerSettings `cfg:"dialer"`
+
+	// ResolverSettings govern how we resolve the IP of the
+	// remote host.
+	ResolverSettings ResolverSettings `cfg:"resolver"`
 }
 
 type DialerSettings struct {
@@ -178,10 +186,10 @@ type DialerSettings struct {
 	KeepAlive time.Duration `cfg:"keep_alive" default:"30s"`
 
 	// Timeout is the maximum amount of time a dial will wait for
-	// a connect to complete. If Deadline is also set, it may fail
+	// a connection to complete. If Deadline is also set, it may fail
 	// earlier.
 	//
-	// The default is no timeout.
+	// The default is a 30 seconds timeout.
 	//
 	// When using TCP and dialing a host name with multiple IP
 	// addresses, the timeout may be divided between them.
@@ -191,17 +199,8 @@ type DialerSettings struct {
 	// often around 3 minutes.
 	Timeout time.Duration `cfg:"timeout" default:"30s"`
 
-	// DualStack previously enabled RFC 6555 Fast Fallback
-	// support, also known as "Happy Eyeballs", in which IPv4 is
-	// tried soon if IPv6 appears to be misconfigured and
-	// hanging.
-	//
-	// Deprecated: Fast Fallback is enabled by default. To
-	// disable, set FallbackDelay to a negative value.
-	DualStack bool `cfg:"dual_stack" default:"true"`
-
 	// FallbackDelay specifies the length of time to wait before
-	// spawning a RFC 6555 Fast Fallback connection. That is, this
+	// spawning an RFC 6555 Fast Fallback connection. That is, this
 	// is the amount of time to wait for IPv6 to succeed before
 	// assuming that IPv6 is misconfigured and falling back to
 	// IPv4.
@@ -209,6 +208,40 @@ type DialerSettings struct {
 	// If zero, a default delay of 300ms is used.
 	// A negative value disables Fast Fallback support.
 	FallbackDelay time.Duration `cfg:"fallback_delay" default:"0s"`
+}
+
+type ResolverSettings struct {
+	// KeepAlive specifies the interval between keep-alive
+	// probes for an active network connection.
+	// If zero, keep-alive probes are sent with a default value
+	// (currently 15 seconds), if supported by the protocol and operating
+	// system. Network protocols or operating systems that do
+	// not support keep-alives ignore this field.
+	// If negative, keep-alive probes are disabled.
+	KeepAlive time.Duration `cfg:"keep_alive" default:"30s"`
+
+	// Timeout is the maximum amount of time a dial will wait for
+	// a connection to complete. If Deadline is also set, it may fail
+	// earlier.
+	//
+	// The default is a 30 seconds timeout.
+	//
+	// When using TCP and dialing a host name with multiple IP
+	// addresses, the timeout may be divided between them.
+	//
+	// With or without a timeout, the operating system may impose
+	// its own earlier timeout. For instance, TCP timeouts are
+	// often around 3 minutes.
+	Timeout time.Duration `cfg:"timeout" default:"30s"`
+
+	// DnsServers allow you to specify a set of DNS servers to use
+	// instead of using the system defaults. Setting this allows
+	// you to avoid resolving internal hostnames (for example, when
+	// running inside a cloud environment).
+	//
+	// Syntax can be either an IP address (8.8.8.8) or an IP address
+	// followed by a port number (8.8.8.8:53).
+	DnsServers []string `cfg:"dns_servers"`
 }
 
 type TracingSettings struct {
@@ -256,8 +289,8 @@ func newRestyClient(tracer tracing.Instrumentor, settings Settings) *resty.Clien
 	dialer := &net.Dialer{
 		Timeout:       settings.TransportSettings.DialerSettings.Timeout,
 		KeepAlive:     settings.TransportSettings.DialerSettings.KeepAlive,
-		DualStack:     settings.TransportSettings.DialerSettings.DualStack,
 		FallbackDelay: settings.TransportSettings.DialerSettings.FallbackDelay,
+		Resolver:      settings.TransportSettings.ResolverSettings.GetResolver(),
 	}
 
 	if settings.TransportSettings.MaxIdleConnsPerHost == 0 {
@@ -301,6 +334,33 @@ func newRestyClient(tracer tracing.Instrumentor, settings Settings) *resty.Clien
 	}
 
 	return httpClient
+}
+
+func (s ResolverSettings) GetResolver() *net.Resolver {
+	resolverDialer := &net.Dialer{
+		Timeout:   s.Timeout,
+		KeepAlive: s.KeepAlive,
+	}
+
+	var nextDnsServer int64
+
+	return &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			if len(s.DnsServers) == 0 {
+				return resolverDialer.DialContext(ctx, "udp", address)
+			}
+
+			i := atomic.AddInt64(&nextDnsServer, 1)
+			dnsServer := s.DnsServers[int(i)%len(s.DnsServers)]
+			// add the port number if needed
+			if !strings.ContainsRune(dnsServer, ':') {
+				dnsServer = fmt.Sprintf("%s:53", dnsServer)
+			}
+
+			return resolverDialer.DialContext(ctx, "udp", dnsServer)
+		},
+	}
 }
 
 func NewHttpClientWithInterfaces(
