@@ -5,6 +5,7 @@ package mocks
 import (
 	context "context"
 
+	email "github.com/justtrackio/gosoline/pkg/email"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -21,17 +22,17 @@ func (_m *Sender) EXPECT() *Sender_Expecter {
 	return &Sender_Expecter{mock: &_m.Mock}
 }
 
-// SendEmail provides a mock function with given fields: ctx, recipients, subject, plaintextBody, htmlBody
-func (_m *Sender) SendEmail(ctx context.Context, recipients []string, subject string, plaintextBody string, htmlBody string) error {
-	ret := _m.Called(ctx, recipients, subject, plaintextBody, htmlBody)
+// SendEmail provides a mock function with given fields: ctx, _a1
+func (_m *Sender) SendEmail(ctx context.Context, _a1 email.Email) error {
+	ret := _m.Called(ctx, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SendEmail")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []string, string, string, string) error); ok {
-		r0 = rf(ctx, recipients, subject, plaintextBody, htmlBody)
+	if rf, ok := ret.Get(0).(func(context.Context, email.Email) error); ok {
+		r0 = rf(ctx, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -46,17 +47,14 @@ type Sender_SendEmail_Call struct {
 
 // SendEmail is a helper method to define mock.On call
 //   - ctx context.Context
-//   - recipients []string
-//   - subject string
-//   - plaintextBody string
-//   - htmlBody string
-func (_e *Sender_Expecter) SendEmail(ctx interface{}, recipients interface{}, subject interface{}, plaintextBody interface{}, htmlBody interface{}) *Sender_SendEmail_Call {
-	return &Sender_SendEmail_Call{Call: _e.mock.On("SendEmail", ctx, recipients, subject, plaintextBody, htmlBody)}
+//   - _a1 email.Email
+func (_e *Sender_Expecter) SendEmail(ctx interface{}, _a1 interface{}) *Sender_SendEmail_Call {
+	return &Sender_SendEmail_Call{Call: _e.mock.On("SendEmail", ctx, _a1)}
 }
 
-func (_c *Sender_SendEmail_Call) Run(run func(ctx context.Context, recipients []string, subject string, plaintextBody string, htmlBody string)) *Sender_SendEmail_Call {
+func (_c *Sender_SendEmail_Call) Run(run func(ctx context.Context, _a1 email.Email)) *Sender_SendEmail_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]string), args[2].(string), args[3].(string), args[4].(string))
+		run(args[0].(context.Context), args[1].(email.Email))
 	})
 	return _c
 }
@@ -66,7 +64,7 @@ func (_c *Sender_SendEmail_Call) Return(_a0 error) *Sender_SendEmail_Call {
 	return _c
 }
 
-func (_c *Sender_SendEmail_Call) RunAndReturn(run func(context.Context, []string, string, string, string) error) *Sender_SendEmail_Call {
+func (_c *Sender_SendEmail_Call) RunAndReturn(run func(context.Context, email.Email) error) *Sender_SendEmail_Call {
 	_c.Call.Return(run)
 	return _c
 }
