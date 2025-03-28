@@ -94,7 +94,13 @@ var HasManyMetadata = db_repo.Metadata{
 
 type Ones struct {
 	db_repo.Model
-	HasManyId *uint
+	DeepNestedManies []*DeepNestedOnes `gorm:"association_autoupdate:true;association_autocreate:true;association_save_reference:true;" orm:"assoc_update"`
+	HasManyId        *uint
+}
+
+type DeepNestedOnes struct {
+	db_repo.Model
+	OnesId *uint
 }
 
 var metadatas = map[string]db_repo.Metadata{
@@ -114,6 +120,7 @@ var (
 	id1  = mdl.Box(uint(1))
 	id42 = mdl.Box(uint(42))
 	id24 = mdl.Box(uint(24))
+	id44 = mdl.Box(uint(44))
 )
 
 func TestRepository_Create(t *testing.T) {
@@ -336,8 +343,13 @@ func TestRepository_CreateHasMany(t *testing.T) {
 	dbc.ExpectBegin()
 	dbc.ExpectExec("INSERT INTO `has_manies` \\(`updated_at`,`created_at`\\) VALUES \\(\\?,\\?\\)").WithArgs(&now, &now).WillReturnResult(result)
 	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), 0).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `deep_nested_ones` \\(`updated_at`,`created_at`,`ones_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), 0).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `deep_nested_ones` \\(`updated_at`,`created_at`,`ones_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), 0).WillReturnResult(result)
 	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), 0).WillReturnResult(result)
 	dbc.ExpectCommit()
+
+	dbc.ExpectExec("DELETE FROM deep_nested_manies WHERE ones_id = 0 AND id NOT IN \\(0,0\\)").WillReturnResult(delResult)
+	dbc.ExpectExec("DELETE FROM deep_nested_manies WHERE ones_id = 0").WillReturnResult(delResult)
 	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 0 AND id NOT IN \\(0,0\\)").WillReturnResult(delResult)
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
@@ -347,7 +359,12 @@ func TestRepository_CreateHasMany(t *testing.T) {
 	model := HasMany{
 		Model: db_repo.Model{},
 		Manies: []*Ones{
-			{},
+			{
+				DeepNestedManies: []*DeepNestedOnes{
+					{},
+					{},
+				},
+			},
 			{},
 		},
 	}
@@ -536,11 +553,15 @@ func TestRepository_UpdateHasMany(t *testing.T) {
 	delResult := goSqlMock.NewResult(0, 0)
 	dbc.ExpectBegin()
 	dbc.ExpectExec("UPDATE `has_manies` SET `updated_at` = \\? WHERE `has_manies`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1).WillReturnResult(result)
-	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
+	dbc.ExpectExec("UPDATE `ones` SET `updated_at` = \\?, `has_many_id` = \\? WHERE `ones`\\.`id` = \\?").WithArgs(goSqlMock.AnyArg(), id1, id42).WillReturnResult(result)
+	dbc.ExpectExec("INSERT INTO `deep_nested_ones` \\(`updated_at`,`created_at`,`ones_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id42).WillReturnResult(result)
 	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
 	dbc.ExpectExec("INSERT INTO `ones` \\(`updated_at`,`created_at`,`has_many_id`\\) VALUES \\(\\?,\\?,\\?\\)").WithArgs(goSqlMock.AnyArg(), goSqlMock.AnyArg(), *id1).WillReturnResult(result)
 	dbc.ExpectCommit()
-	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1 AND id NOT IN \\(0,0,0\\)").WillReturnResult(delResult)
+	dbc.ExpectExec("DELETE FROM deep_nested_manies WHERE ones_id = 42 AND id NOT IN \\(0\\)").WillReturnResult(delResult)
+	dbc.ExpectExec("DELETE FROM deep_nested_manies WHERE ones_id = 0").WillReturnResult(delResult)
+	dbc.ExpectExec("DELETE FROM deep_nested_manies WHERE ones_id = 0").WillReturnResult(delResult)
+	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1 AND id NOT IN \\(42,0,0\\)").WillReturnResult(delResult)
 
 	rows := goSqlMock.NewRows([]string{"id", "updated_at", "created_at"}).AddRow(id1, &now, &now)
 	dbc.ExpectQuery("SELECT \\* FROM `has_manies` WHERE `has_manies`\\.`id` = \\? AND \\(\\(`has_manies`\\.`id` = 1\\)\\) ORDER BY `has_manies`\\.`id` ASC LIMIT 1").WithArgs(id1).WillReturnRows(rows)
@@ -551,7 +572,14 @@ func TestRepository_UpdateHasMany(t *testing.T) {
 			Id: id1,
 		},
 		Manies: []*Ones{
-			{},
+			{
+				Model: db_repo.Model{
+					Id: id42,
+				},
+				DeepNestedManies: []*DeepNestedOnes{
+					{},
+				},
+			},
 			{},
 			{},
 		},
@@ -736,6 +764,8 @@ func TestRepository_DeleteHasMany(t *testing.T) {
 	childResult := goSqlMock.NewResult(0, 0)
 	parentResult := goSqlMock.NewResult(0, 1)
 
+	dbc.ExpectExec("DELETE FROM deep_nested_manies WHERE ones_id = 42").WillReturnResult(childResult)
+	dbc.ExpectExec("DELETE FROM deep_nested_manies WHERE ones_id = 24").WillReturnResult(childResult)
 	dbc.ExpectExec("DELETE FROM manies WHERE has_many_id = 1").WillReturnResult(childResult)
 	dbc.ExpectBegin()
 	dbc.ExpectExec("DELETE FROM `has_manies`  WHERE `has_manies`\\.`id` = ?").WithArgs(id1).WillReturnResult(parentResult)
@@ -749,6 +779,13 @@ func TestRepository_DeleteHasMany(t *testing.T) {
 			{
 				Model: db_repo.Model{
 					Id: id42,
+				},
+				DeepNestedManies: []*DeepNestedOnes{
+					{
+						Model: db_repo.Model{
+							Id: id44,
+						},
+					},
 				},
 			},
 			{
@@ -799,7 +836,9 @@ func getMocks(t *testing.T, whichMetadata string) (goSqlMock.Sqlmock, db_repo.Re
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tracer := tracing.NewLocalTracer()
 
-	db, clientMock, _ := goSqlMock.New()
+	db, clientMock, err := goSqlMock.New()
+	assert.NoError(t, err)
+
 	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
 		Driver: "mysql",
 	})
@@ -823,7 +862,8 @@ func getTimedMocks(t *testing.T, time time.Time, whichMetadata string) (goSqlMoc
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t))
 	tracer := tracing.NewLocalTracer()
 
-	db, clientMock, _ := goSqlMock.New()
+	db, clientMock, err := goSqlMock.New()
+	assert.NoError(t, err)
 
 	orm, err := db_repo.NewOrmWithInterfaces(db, db_repo.OrmSettings{
 		Driver: "mysql",
