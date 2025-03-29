@@ -193,6 +193,7 @@ func (l *gosoLogger) shouldLog(current string, level int, h Handler) bool {
 			return (levelPriorities[channel.Level] <= level) && !channel.Disabled
 		}
 	}
+
 	return h.Level() <= level
 }
 
