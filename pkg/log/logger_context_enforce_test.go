@@ -5,9 +5,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
-	"github.com/stretchr/testify/suite"
 )
 
 type ContextEnforcingLoggerTestSuite struct {
@@ -23,7 +24,7 @@ func (s *ContextEnforcingLoggerTestSuite) SetupTest() {
 	s.clock = clock.NewFakeClock()
 	s.output = &bytes.Buffer{}
 	s.base = log.NewLoggerWithInterfaces(s.clock, []log.Handler{
-		log.NewHandlerIoWriter(log.LevelInfo, []string{}, log.FormatterConsole, "15:04:05.000", s.output),
+		log.NewHandlerIoWriter(log.LevelInfo, []log.Channel{}, log.FormatterConsole, "15:04:05.000", s.output),
 	})
 
 	s.logger = log.NewContextEnforcingLoggerWithInterfaces(s.base, log.GetMockedStackTrace, s.base)
@@ -45,8 +46,8 @@ func (s *ContextEnforcingLoggerTestSuite) TestInfoWithoutContext() {
 }
 
 func (s *ContextEnforcingLoggerTestSuite) TestInfoWithoutContextWithChannel() {
-	s.logger.WithChannel("channel").Info("this is a info message")
-	s.Equal("00:00:00.000 context_missing warn    you should add the context to your logger: mocked trace\n00:00:00.000 channel info    this is a info message\n", s.output.String())
+	s.logger.WithChannel("Channel").Info("this is a info message")
+	s.Equal("00:00:00.000 context_missing warn    you should add the context to your logger: mocked trace\n00:00:00.000 Channel info    this is a info message\n", s.output.String())
 }
 
 func (s *ContextEnforcingLoggerTestSuite) TestInfoWithoutContextWithFields() {
