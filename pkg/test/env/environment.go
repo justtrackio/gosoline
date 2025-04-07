@@ -212,6 +212,10 @@ func (e *Environment) DynamoDb(name string) *DdbComponent {
 	return e.Component(componentDdb, name).(*DdbComponent)
 }
 
+func (e *Environment) Mailpit(name string) *mailpitComponent {
+	return e.Component(componentMailpit, name).(*mailpitComponent)
+}
+
 func (e *Environment) Localstack(name string) *localstackComponent {
 	return e.Component(ComponentLocalstack, name).(*localstackComponent)
 }
