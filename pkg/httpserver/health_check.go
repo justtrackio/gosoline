@@ -18,16 +18,18 @@ func init() {
 }
 
 type HealthCheckSettings struct {
-	Port int    `cfg:"port" default:"8090"`
-	Path string `cfg:"path" default:"/health"`
+	Port    int             `cfg:"port" default:"8090"`
+	Path    string          `cfg:"path" default:"/health"`
+	Timeout TimeoutSettings `cfg:"timeout"`
 }
 
-type ApiHealthCheck struct {
+type HttpServerHealthCheck struct {
 	kernel.BackgroundModule
-	kernel.ServiceStage
+	kernel.EssentialStage
 
-	logger log.Logger
-	server *http.Server
+	logger   log.Logger
+	server   *http.Server
+	settings *HealthCheckSettings
 }
 
 func NewHealthCheck() kernel.ModuleFactory {
@@ -47,7 +49,7 @@ func NewHealthCheck() kernel.ModuleFactory {
 	}
 }
 
-func NewHealthCheckWithInterfaces(logger log.Logger, router *gin.Engine, healthChecker kernel.HealthChecker, settings *HealthCheckSettings) *ApiHealthCheck {
+func NewHealthCheckWithInterfaces(logger log.Logger, router *gin.Engine, healthChecker kernel.HealthChecker, settings *HealthCheckSettings) *HttpServerHealthCheck {
 	logger = logger.WithChannel("httpserver-health-check")
 
 	router.Use(LoggingMiddleware(logger, LoggingSettings{}))
@@ -58,31 +60,39 @@ func NewHealthCheckWithInterfaces(logger log.Logger, router *gin.Engine, healthC
 		Handler: router,
 	}
 
-	return &ApiHealthCheck{
-		logger: logger,
-		server: server,
+	return &HttpServerHealthCheck{
+		logger:   logger,
+		server:   server,
+		settings: settings,
 	}
 }
 
-func (a *ApiHealthCheck) Run(ctx context.Context) error {
+func (a *HttpServerHealthCheck) Run(ctx context.Context) error {
 	go a.waitForStop(ctx)
 
 	err := a.server.ListenAndServe()
 
 	if !errors.Is(err, http.ErrServerClosed) {
-		a.logger.Error("api health check closed unexpected: %w", err)
+		a.logger.Error("server check closed unexpected: %w", err)
 
 		return err
 	}
 
+	a.logger.Info("leaving httpserver health check")
+
 	return nil
 }
 
-func (a *ApiHealthCheck) waitForStop(ctx context.Context) {
+func (s *HttpServerHealthCheck) waitForStop(ctx context.Context) {
 	<-ctx.Done()
 
-	if err := a.server.Close(); err != nil {
-		a.logger.Error("server health check close: %w", err)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.settings.Timeout.Shutdown)
+	defer cancel()
+
+	s.logger.Info("trying to gracefully shutdown httpserver health check")
+
+	if err := s.server.Shutdown(shutdownCtx); err != nil {
+		s.logger.Error("server shutdown: %w", err)
 	}
 }
 

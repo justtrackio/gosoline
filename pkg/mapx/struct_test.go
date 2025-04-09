@@ -409,6 +409,34 @@ func TestMapStructIO_ReadMapStruct(t *testing.T) {
 	assert.Equal(t, expectedValues, msi.Msi())
 }
 
+func TestMapStructIO_ReadMapRecursive(t *testing.T) {
+	type sourceStruct struct {
+		M map[string]map[string]string `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: map[string]map[string]string{
+			"foo": {
+				"bar": "string",
+			},
+		},
+	}
+
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"foo": map[string]any{
+				"bar": "string",
+			},
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
 func TestMapStructIO_ReadSliceStruct(t *testing.T) {
 	type SourceStructSlice struct {
 		B bool   `cfg:"b"`
@@ -950,6 +978,35 @@ func TestMapStruct_Write_Typed_MapNestedInSlice(t *testing.T) {
 	assert.Equal(t, expected, source)
 }
 
+func TestMapStruct_Write_MapNested(t *testing.T) {
+	type someStruct struct {
+		Values map[string]map[string]string `cfg:"values"`
+	}
+
+	values := mapx.NewMapX(map[string]any{
+		"values": map[string]any{
+			"1": map[string]any{
+				"2": "3",
+			},
+		},
+	})
+
+	expected := &someStruct{
+		Values: map[string]map[string]string{
+			"1": {
+				"2": "3",
+			},
+		},
+	}
+
+	source := &someStruct{}
+	ms := setupMapStructIO(t, source)
+
+	err := ms.Write(values)
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
+}
+
 func TestMapStruct_Write_Typed_MapNested(t *testing.T) {
 	type someString string
 	type someKey string
@@ -984,15 +1041,9 @@ func TestMapStruct_Write_Typed_MapNested(t *testing.T) {
 	source := &someStruct{}
 	ms := setupMapStructIO(t, source)
 
-	// Right now this doesn't work because in a map there needs to be either a struct or a slice, having a map in a map
-	// causes a map to be treated as a struct, which fails.
-	// We have this test to be notified if this changes.
-	assert.Panics(t, func() {
-		err := ms.Write(values)
-
-		assert.NoError(t, err, "there should be no error during write")
-		assert.Equal(t, expected, source)
-	})
+	err := ms.Write(values)
+	assert.NoError(t, err, "there should be no error during write")
+	assert.Equal(t, expected, source)
 }
 
 func TestMapStruct_Decode(t *testing.T) {
