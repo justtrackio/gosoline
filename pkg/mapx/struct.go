@@ -231,24 +231,38 @@ func (s *Struct) doReadMap(path string, mapValues *MapX, mp any) error {
 		return s.doReadMss(path, mapValues, mp.(map[string]string))
 	}
 
+	mapValue := reflect.ValueOf(mp)
 	valueType := reflect.TypeOf(mp).Elem()
 
-	if valueType.Kind() != reflect.Struct {
+	switch valueType.Kind() {
+	case reflect.Map:
+		for _, key := range mapValue.MapKeys() {
+			if key.Kind() != reflect.String {
+				return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+			}
+
+			element := mapValue.MapIndex(key).Interface()
+			elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+			if err := s.doReadMap(elementPath, mapValues, element); err != nil {
+				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+			}
+		}
+	case reflect.Struct:
+		for _, key := range mapValue.MapKeys() {
+			if key.Kind() != reflect.String {
+				return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+			}
+
+			element := mapValue.MapIndex(key).Interface()
+			elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+			if err := s.doReadStruct(elementPath, mapValues, element); err != nil {
+				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
+			}
+		}
+	default:
 		return fmt.Errorf("MSI fields or a map of structs are allowed only for path %s", path)
-	}
-
-	mapValue := reflect.ValueOf(mp)
-	for _, key := range mapValue.MapKeys() {
-		if key.Kind() != reflect.String {
-			return fmt.Errorf("only string values are allowed as map keys for path %s", path)
-		}
-
-		element := mapValue.MapIndex(key).Interface()
-		elementPath := fmt.Sprintf("%s.%s", path, key.String())
-
-		if err := s.doReadStruct(elementPath, mapValues, element); err != nil {
-			return fmt.Errorf("can not read path value %s: %w", elementPath, err)
-		}
 	}
 
 	return nil
@@ -526,7 +540,7 @@ func (s *Struct) doWriteMap(tag *StructTag, targetValue reflect.Value, sourceMap
 		selector := fmt.Sprintf("%s.%v", tag.Name, key.Interface())
 		elementData := sourceMap.Get(selector)
 
-		if elementData.IsMap() {
+		if elementData.IsMap() && targetValue.Type().Elem().Kind() == reflect.Struct {
 			elementValue = reflect.New(targetValue.Type().Elem())
 			elementInterface := elementValue.Interface()
 
