@@ -7,6 +7,9 @@ test:
       localstack:
         repository: "localstack/localstack"
         tag: "4.1.0"
+      mailpit:
+        repository: "axllent/mailpit"
+        tag: "v1.23.2"
       mysql:
         repository: "mysql/mysql-server"
         tag: "8.0"

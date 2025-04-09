@@ -33,7 +33,11 @@ func (s *senderSmtpTestSuite) SetupTest() {
 	s.uuid = uuidMocks.NewUuid(s.T())
 	s.from = "test@gosoline.com"
 
-	s.sender = email.NewSmtpSenderWithInterfaces(s.client, s.uuid, s.from)
+	clientFactory := func() (email.SmtpClient, error) {
+		return s.client, nil
+	}
+
+	s.sender = email.NewSmtpSenderWithInterfaces(clientFactory, s.uuid, s.from)
 }
 
 func (s *senderSmtpTestSuite) TestSendEmail_Html() {

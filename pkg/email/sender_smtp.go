@@ -33,10 +33,12 @@ type SenderSmtpSettings struct {
 	Server string `cfg:"server"`
 }
 
+type clientFactory func() (SmtpClient, error)
+
 type smtpSender struct {
-	client      SmtpClient
-	uuid        uuid.Uuid
-	fromAddress string
+	uuid          uuid.Uuid
+	fromAddress   string
+	clientFactory clientFactory
 }
 
 func NewSmtpSender(config cfg.Config, name string) (Sender, error) {
@@ -45,28 +47,36 @@ func NewSmtpSender(config cfg.Config, name string) (Sender, error) {
 	smtpSettings := &SenderSmtpSettings{}
 	config.UnmarshalKey(key, smtpSettings)
 
-	client, err := smtp.Dial(smtpSettings.Server)
-	if err != nil {
-		return nil, fmt.Errorf("cannot dial smtp server: %w", err)
-	}
-
 	emailSettings := &emailSettings{}
 	config.UnmarshalKey(key, emailSettings)
 
-	uuid := uuid.New()
+	clientFactory := func() (SmtpClient, error) {
+		return smtp.Dial(smtpSettings.Server)
+	}
 
-	return NewSmtpSenderWithInterfaces(client, uuid, emailSettings.FromAddress), nil
+	// dial in the boot once to make sure the server exists and has an open port
+	if _, err := clientFactory(); err != nil {
+		return nil, fmt.Errorf("failed to connect to SMTP server: %v", err)
+	}
+
+	return NewSmtpSenderWithInterfaces(clientFactory, uuid.New(), emailSettings.FromAddress), nil
 }
 
-func NewSmtpSenderWithInterfaces(client SmtpClient, uuid uuid.Uuid, fromAddress string) Sender {
+func NewSmtpSenderWithInterfaces(clientFactory clientFactory, uuid uuid.Uuid, fromAddress string) Sender {
 	return &smtpSender{
-		client:      client,
-		uuid:        uuid,
-		fromAddress: fromAddress,
+		clientFactory: clientFactory,
+		uuid:          uuid,
+		fromAddress:   fromAddress,
 	}
 }
 
 func (s *smtpSender) SendEmail(_ context.Context, email Email) error {
+	// We create a client every time since the connection times out after a few minutes
+	client, err := s.clientFactory()
+	if err != nil {
+		return fmt.Errorf("cannot dial smtp server: %w", err)
+	}
+
 	if email.HtmlBody == nil && email.TextBody == nil {
 		return fmt.Errorf("email body cannot be empty")
 	}
@@ -76,7 +86,7 @@ func (s *smtpSender) SendEmail(_ context.Context, email Email) error {
 		return fmt.Errorf("could not compile email body: %w", err)
 	}
 
-	return s.client.SendMail(s.fromAddress, email.Recipients, body)
+	return client.SendMail(s.fromAddress, email.Recipients, body)
 }
 
 func (s *smtpSender) compileBody(subject string, text, html *string) (io.Reader, error) {
