@@ -9,12 +9,14 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
 	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/tracing"
@@ -56,6 +58,10 @@ type TimeoutSettings struct {
 	Write time.Duration `cfg:"write" default:"60s" validate:"min=1000000000"`
 	// Idle timeout is the maximum amount of time to wait for the next request when keep-alives are enabled
 	Idle time.Duration `cfg:"idle" default:"60s" validate:"min=1000000000"`
+	// Drain timeout is the maximum amount of time to wait after receiving the kernel stop signal and actually shutting down the server
+	Drain time.Duration `cfg:"drain" default:"0" validate:"min=0"`
+	// Shutdown timeout is the maximum amount of time to wait for serving active requests before stopping the server
+	Shutdown time.Duration `cfg:"shutdown" default:"60s" validate:"min=1000000000"`
 }
 
 type LoggingSettings struct {
@@ -70,6 +76,8 @@ type HttpServer struct {
 	logger   log.Logger
 	server   *http.Server
 	listener net.Listener
+	settings *Settings
+	healthy  atomic.Bool
 }
 
 func New(name string, definer Definer) kernel.ModuleFactory {
@@ -132,13 +140,13 @@ func NewWithSettings(name string, definer Definer, settings *Settings) kernel.Mo
 	}
 }
 
-func NewWithInterfaces(logger log.Logger, router *gin.Engine, tracer tracing.Instrumentor, s *Settings) (*HttpServer, error) {
+func NewWithInterfaces(logger log.Logger, router *gin.Engine, tracer tracing.Instrumentor, settings *Settings) (*HttpServer, error) {
 	server := &http.Server{
-		Addr:         ":" + s.Port,
+		Addr:         ":" + settings.Port,
 		Handler:      tracer.HttpHandler(router),
-		ReadTimeout:  s.Timeout.Read,
-		WriteTimeout: s.Timeout.Write,
-		IdleTimeout:  s.Timeout.Idle,
+		ReadTimeout:  settings.Timeout.Read,
+		WriteTimeout: settings.Timeout.Write,
+		IdleTimeout:  settings.Timeout.Idle,
 	}
 
 	var err error
@@ -155,51 +163,69 @@ func NewWithInterfaces(logger log.Logger, router *gin.Engine, tracer tracing.Ins
 		return nil, err
 	}
 
-	logger.Info("serving api requests on address %s", listener.Addr().String())
+	logger.Info("serving httpserver requests on address %s", listener.Addr().String())
 
 	apiServer := &HttpServer{
 		logger:   logger,
 		server:   server,
 		listener: listener,
+		settings: settings,
 	}
 
 	return apiServer, nil
 }
 
-func (a *HttpServer) Run(ctx context.Context) error {
-	go a.waitForStop(ctx)
+func (s *HttpServer) IsHealthy(ctx context.Context) (bool, error) {
+	return s.healthy.Load(), nil
+}
 
-	err := a.server.Serve(a.listener)
+func (s *HttpServer) Run(ctx context.Context) error {
+	go s.waitForStop(ctx)
+
+	err := s.server.Serve(s.listener)
 
 	if !errors.Is(err, http.ErrServerClosed) {
-		a.logger.Error("Server closed unexpected: %w", err)
+		s.logger.Error("server closed unexpected: %w", err)
 
 		return err
 	}
 
+	s.logger.Info("leaving httpserver")
+
 	return nil
 }
 
-func (a *HttpServer) waitForStop(ctx context.Context) {
+func (s *HttpServer) waitForStop(ctx context.Context) {
+	s.healthy.Store(true)
 	<-ctx.Done()
-	err := a.server.Close()
-	if err != nil {
-		a.logger.Error("Server Close: %w", err)
-	}
+	s.healthy.Store(false)
 
-	a.logger.Info("leaving api")
+	s.logger.Info("waiting %s until shutting down the server", s.settings.Timeout.Drain)
+
+	t := clock.NewRealTimer(s.settings.Timeout.Drain)
+	defer t.Stop()
+	<-t.Chan()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), s.settings.Timeout.Shutdown)
+	defer cancel()
+
+	s.logger.Info("trying to gracefully shutdown httpserver")
+
+	if err := s.server.Shutdown(shutdownCtx); err != nil {
+		s.logger.Error("server shutdown: %w", err)
+	}
 }
 
-func (a *HttpServer) GetPort() (*int, error) {
-	if a == nil {
-		return nil, errors.New("apiServer is nil, module is not yet booted")
+func (s *HttpServer) GetPort() (*int, error) {
+	if s == nil {
+		return nil, errors.New("httpserver is nil, module is not yet running")
 	}
 
-	if a.listener == nil {
-		return nil, errors.New("could not get port. module is not yet booted")
+	if s.listener == nil {
+		return nil, errors.New("could not get port. module is not yet running")
 	}
 
-	address := a.listener.Addr().String()
+	address := s.listener.Addr().String()
 	_, portStr, err := net.SplitHostPort(address)
 	if err != nil {
 		return nil, fmt.Errorf("could not get port from address %s: %w", address, err)

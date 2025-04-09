@@ -9,7 +9,7 @@ import (
 )
 
 func TestSettingsDefaults(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		name     string
 		config   map[string]any
 		expected *reslife.Settings

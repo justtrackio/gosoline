@@ -63,6 +63,10 @@ func (s *GatewayTestSuite) SetupApiDefinitions() httpserver.Definer {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (*httpserver.Definitions, error) {
 		d := &httpserver.Definitions{}
 
+		d.GET("/noop", func(ginCtx *gin.Context) {
+			ginCtx.String(http.StatusOK, "{}")
+		})
+
 		d.POST("/echo", func(ginCtx *gin.Context) {
 			body, err := io.ReadAll(ginCtx.Request.Body)
 			s.NoError(err)
@@ -162,7 +166,7 @@ func (s *GatewayTestSuite) TestMultipleTestsWithNil() []*suite.HttpserverTestCas
 func (s *GatewayTestSuite) createTestCase() *suite.HttpserverTestCase {
 	return &suite.HttpserverTestCase{
 		Method:             http.MethodGet,
-		Url:                "/health",
+		Url:                "/noop",
 		Headers:            map[string]string{},
 		Body:               struct{}{},
 		ExpectedStatusCode: http.StatusOK,
