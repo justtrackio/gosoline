@@ -41,7 +41,7 @@ func (m *metricDriver) Open(dsn string) (driver.Conn, error) {
 		Dimensions: map[string]string{
 			"Type": "new",
 		},
-		Unit:  metric.UnitCount,
+		Unit:  metric.UnitCountAverage,
 		Value: 1.0,
 	})
 
