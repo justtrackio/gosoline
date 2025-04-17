@@ -23,7 +23,7 @@ func TestReadConsumerSettings_Empty(t *testing.T) {
 		IdleTimeout:          time.Second * 10,
 		ConsumeGraceTime:     time.Second * 10,
 		AcknowledgeGraceTime: time.Second * 10,
-		Retry: stream.ConsumerRetrySettings{
+		Retry: stream.RetrySettings{
 			Enabled:   false,
 			Type:      "sqs",
 			GraceTime: time.Second * 10,
@@ -52,7 +52,7 @@ func TestReadConsumerSettings_ReadKernelKillTimeout(t *testing.T) {
 		IdleTimeout:          time.Second * 10,
 		ConsumeGraceTime:     time.Second * 10,
 		AcknowledgeGraceTime: time.Second * 10,
-		Retry: stream.ConsumerRetrySettings{
+		Retry: stream.RetrySettings{
 			Enabled:   false,
 			Type:      "sqs",
 			GraceTime: time.Second * 5,
@@ -102,7 +102,7 @@ func TestReadConsumerSettings_SpecifyAll(t *testing.T) {
 		IdleTimeout:          time.Second * 5,
 		ConsumeGraceTime:     time.Second * 3,
 		AcknowledgeGraceTime: time.Second * 2,
-		Retry: stream.ConsumerRetrySettings{
+		Retry: stream.RetrySettings{
 			Enabled:   true,
 			Type:      "kinesis",
 			GraceTime: time.Second * 3,

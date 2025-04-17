@@ -136,21 +136,21 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 	defaultMetrics := getProducerDaemonDefaultMetrics(name)
 	metricWriter := metric.NewWriter(defaultMetrics...)
 
-	output, outputCapabilities, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
+	confOutput, err := ProvideConfigurableOutput(ctx, config, logger, settings.Output)
 	if err != nil {
 		return nil, fmt.Errorf("can not create output for producer daemon %s: %w", name, err)
 	}
 
-	if outputCapabilities.ProvidesCompression {
+	if confOutput.OutputCapabilities.ProvidesCompression {
 		settings.Compression = CompressionNone
 	}
 
-	if outputCapabilities.MaxBatchSize != nil && (outputCapabilities.IgnoreProducerDaemonBatchSettings || *outputCapabilities.MaxBatchSize < settings.Daemon.BatchSize) {
-		settings.Daemon.BatchSize = *outputCapabilities.MaxBatchSize
+	if confOutput.OutputCapabilities.MaxBatchSize != nil && (confOutput.OutputCapabilities.IgnoreProducerDaemonBatchSettings || *confOutput.OutputCapabilities.MaxBatchSize < settings.Daemon.BatchSize) {
+		settings.Daemon.BatchSize = *confOutput.OutputCapabilities.MaxBatchSize
 	}
 
-	if outputCapabilities.MaxMessageSize != nil && (outputCapabilities.IgnoreProducerDaemonBatchSettings || *outputCapabilities.MaxMessageSize < settings.Daemon.BatchMaxSize) {
-		settings.Daemon.BatchMaxSize = *outputCapabilities.MaxMessageSize
+	if confOutput.OutputCapabilities.MaxMessageSize != nil && (confOutput.OutputCapabilities.IgnoreProducerDaemonBatchSettings || *confOutput.OutputCapabilities.MaxMessageSize < settings.Daemon.BatchMaxSize) {
+		settings.Daemon.BatchMaxSize = *confOutput.OutputCapabilities.MaxMessageSize
 	}
 
 	aggregator, err := NewProducerDaemonAggregator(settings.Daemon, settings.Compression)
@@ -158,7 +158,7 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create aggregator for producer daemon %s: %w", name, err)
 	}
 
-	if outputCapabilities.IsPartitionedOutput && settings.Daemon.PartitionBucketCount > 1 {
+	if confOutput.OutputCapabilities.IsPartitionedOutput && settings.Daemon.PartitionBucketCount > 1 {
 		if aggregator, err = NewProducerDaemonPartitionedAggregator(logger, settings.Daemon, settings.Compression); err != nil {
 			return nil, fmt.Errorf("can not create partitioned aggregator for producer daemon %s: %w", name, err)
 		}
@@ -166,7 +166,7 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 
 	batcher := NewProducerDaemonBatcher(settings.Daemon)
 
-	if !outputCapabilities.SupportsAggregation {
+	if !confOutput.OutputCapabilities.SupportsAggregation {
 		aggregator = NewProducerDaemonNoopAggregator()
 		batcher = NewProducerDaemonBatcherWithoutJsonEncoding(settings.Daemon)
 	}
@@ -176,11 +176,11 @@ func NewProducerDaemon(ctx context.Context, config cfg.Config, logger log.Logger
 		metricWriter,
 		aggregator,
 		batcher,
-		output,
+		confOutput.Output,
 		clock.Provider,
 		name,
 		settings.Daemon,
-		outputCapabilities.SupportsAggregation,
+		confOutput.OutputCapabilities.SupportsAggregation,
 	), nil
 }
 

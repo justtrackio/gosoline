@@ -39,9 +39,9 @@ type outputModule struct {
 
 func newOutputModule(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 	var err error
-	var output stream.Output
+	var confOutput stream.ConfigurableOutput
 
-	if output, _, err = stream.NewConfigurableOutput(ctx, config, logger, "exampleRecord"); err != nil {
+	if confOutput, err = stream.ProvideConfigurableOutput(ctx, config, logger, "exampleRecord"); err != nil {
 		return nil, fmt.Errorf("can not create output exampleRecord: %w", err)
 	}
 
@@ -55,7 +55,7 @@ func newOutputModule(ctx context.Context, config cfg.Config, logger log.Logger) 
 	module := &outputModule{
 		logger:  logger,
 		uuidGen: uuid.New(),
-		output:  output,
+		output:  confOutput.Output,
 		modelId: modelId,
 	}
 

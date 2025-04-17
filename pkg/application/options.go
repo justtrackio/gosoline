@@ -388,6 +388,12 @@ func WithProducerDaemon(app *App) {
 	})
 }
 
+func WithProducerRetryDaemon(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithModuleMultiFactory(stream.ProducerRetryDaemonFactory)
+	})
+}
+
 func WithProfiling(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		return kernelPkg.WithModuleMultiFactory(httpserver.ProfilingModuleFactory)

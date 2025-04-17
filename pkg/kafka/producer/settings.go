@@ -19,13 +19,15 @@ const (
 
 type Settings struct {
 	cfg.ResourceIdentifier
-	Connection     string
-	TopicId        string
-	Compression    KafkaCompressionCodec
-	MaxBatchBytes  int32
-	MaxBatchSize   int
-	LingerTimeout  time.Duration
-	RequestTimeout time.Duration
+	Connection             string
+	TopicId                string
+	Compression            KafkaCompressionCodec
+	MaxBatchBytes          int32
+	MaxBatchSize           int
+	LingerTimeout          time.Duration
+	RequestTimeout         time.Duration
+	RequestTimeoutOverhead *time.Duration
+	RetryTimes             *int
 }
 
 func (s Settings) GetKafkaCompressor() kgo.CompressionCodec {

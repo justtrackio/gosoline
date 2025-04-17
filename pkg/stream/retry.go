@@ -24,25 +24,41 @@ type RetryHandlerSettings struct {
 	MaxAttempts int           `cfg:"max_attempts" default:"3"`
 }
 
-type RetryHandlerFactory func(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, RetryHandler, error)
+type RetrySettings struct {
+	Enabled   bool          `cfg:"enabled"`
+	Type      string        `cfg:"type" default:"sqs"`
+	GraceTime time.Duration `cfg:"grace_time" default:"10s"`
+}
+
+type RetryMetadata struct {
+	name           string
+	retryConfigKey string
+	retrySettings  *RetrySettings
+}
+
+type RetryHandlerFactory func(ctx context.Context, config cfg.Config, logger log.Logger, md RetryMetadata) (Input, RetryHandler, error)
 
 var retryHandlers = map[string]RetryHandlerFactory{}
 
-func NewRetryHandler(ctx context.Context, config cfg.Config, logger log.Logger, consumerSettings *ConsumerRetrySettings, name string) (Input, RetryHandler, error) {
+func NewRetryHandler(ctx context.Context, config cfg.Config, logger log.Logger, md RetryMetadata) (Input, RetryHandler, error) {
 	var ok bool
 	var factory RetryHandlerFactory
 
-	if !consumerSettings.Enabled {
-		return NewRetryHandlerNoop(ctx, config, logger, name)
+	if !md.retrySettings.Enabled {
+		return NewRetryHandlerNoop(ctx, config, logger, md)
 	}
 
-	if factory, ok = retryHandlers[consumerSettings.Type]; !ok {
-		return nil, nil, fmt.Errorf("there is no retry handler of type %s available", consumerSettings.Type)
+	if factory, ok = retryHandlers[md.retrySettings.Type]; !ok {
+		return nil, nil, fmt.Errorf("there is no retry handler of type %s available", md.retrySettings.Type)
 	}
 
-	return factory(ctx, config, logger, name)
+	return factory(ctx, config, logger, md)
 }
 
 func ConfigurableConsumerRetryKey(name string) string {
 	return fmt.Sprintf("%s.retry", ConfigurableConsumerKey(name))
+}
+
+func ConfigurableProducerRetryKey(name string) string {
+	return fmt.Sprintf("%s.retry", ConfigurableProducerKey(name))
 }

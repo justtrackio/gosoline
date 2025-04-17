@@ -59,18 +59,18 @@ func NewConfigurableMultiOutput(ctx context.Context, config cfg.Config, logger l
 	for outputName := range outputs {
 		name := fmt.Sprintf("%s.types.%s", base, outputName)
 
-		componentOutput, componentCapabilities, err := NewConfigurableOutput(ctx, config, logger, name)
+		confOutput, err := ProvideConfigurableOutput(ctx, config, logger, name)
 		if err != nil {
 			return nil, nil, fmt.Errorf("can not create multi output %s: %w", base, err)
 		}
 
-		if !componentCapabilities.IsPartitionedOutput {
+		if !confOutput.OutputCapabilities.IsPartitionedOutput {
 			atLeastOneWithoutPartitioningSupport = true
 		}
 
-		updateMultiOutputCapabilities(outputCapabilities, componentCapabilities, atLeastOneWithoutPartitioningSupport)
+		updateMultiOutputCapabilities(outputCapabilities, confOutput.OutputCapabilities, atLeastOneWithoutPartitioningSupport)
 
-		multiOutput.outputs = append(multiOutput.outputs, componentOutput)
+		multiOutput.outputs = append(multiOutput.outputs, confOutput.Output)
 	}
 
 	return multiOutput, outputCapabilities, nil

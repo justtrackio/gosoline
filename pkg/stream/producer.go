@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/appctx"
@@ -23,6 +24,7 @@ type ProducerSettings struct {
 	Encoding    EncodingType           `cfg:"encoding"`
 	Compression CompressionType        `cfg:"compression" default:"none"`
 	Daemon      ProducerDaemonSettings `cfg:"daemon"`
+	Retry       RetrySettings          `cfg:"retry"`
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name Producer
@@ -32,8 +34,11 @@ type Producer interface {
 }
 
 type producer struct {
-	encoder MessageEncoder
-	output  Output
+	logger       log.Logger
+	encoder      MessageEncoder
+	output       Output
+	retryDaemon  ProducerRetryDaemon
+	retryEnabled bool
 }
 
 func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name string, options ...ProducerOption) (*producer, error) {
@@ -88,13 +93,40 @@ func NewProducer(ctx context.Context, config cfg.Config, logger log.Logger, name
 		return nil, fmt.Errorf("can not access the appctx metadata: %w", err)
 	}
 
-	return NewProducerWithInterfaces(encoder, output), nil
+	retryDaemon, err := ProvideProducerRetryDaemon(ctx, config, logger, settings.Output, RetryMetadata{
+		name:           name,
+		retryConfigKey: ConfigurableProducerRetryKey(name),
+		retrySettings:  &settings.Retry,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("can not create producer retry daemon: %w", err)
+	}
+
+	p := NewProducerWithInterfaces(
+		logger,
+		encoder,
+		output,
+		retryDaemon,
+		settings.Retry.Enabled,
+	)
+
+	return p, nil
 }
 
-func NewProducerWithInterfaces(encoder MessageEncoder, output Output) *producer {
+func NewProducerWithInterfaces(
+	logger log.Logger,
+	encoder MessageEncoder,
+	output Output,
+	daemon ProducerRetryDaemon,
+	enabled bool,
+) *producer {
 	return &producer{
-		encoder: encoder,
-		output:  output,
+		logger:       logger,
+		encoder:      encoder,
+		output:       output,
+		retryDaemon:  daemon,
+		retryEnabled: enabled,
 	}
 }
 
@@ -111,16 +143,16 @@ func getOutput(ctx context.Context, config cfg.Config, logger log.Logger, name s
 		return output, nil
 	}
 
-	output, outputCapabilities, err := NewConfigurableOutput(ctx, config, logger, settings.Output)
+	confOutput, err := ProvideConfigurableOutput(ctx, config, logger, settings.Output)
 	if err != nil {
 		return nil, fmt.Errorf("can not create output %s: %w", settings.Output, err)
 	}
 
-	if outputCapabilities.ProvidesCompression {
+	if confOutput.OutputCapabilities.ProvidesCompression {
 		settings.Compression = CompressionNone
 	}
 
-	return output, nil
+	return confOutput.Output, nil
 }
 
 func (p *producer) WriteOne(ctx context.Context, model any, attributeSets ...map[string]string) error {
@@ -130,8 +162,17 @@ func (p *producer) WriteOne(ctx context.Context, model any, attributeSets ...map
 	}
 
 	err = p.output.WriteOne(ctx, msg)
+	if shouldRetry(err, p.retryEnabled) {
+		retryErr := p.retryDaemon.RetryOne(ctx, msg)
+		if retryErr == nil {
+			return nil
+		}
+
+		return fmt.Errorf("can not write message to output: %w", errors.Join(err, retryErr))
+	}
+
 	if err != nil {
-		return fmt.Errorf("can not write msg to output: %w", err)
+		return fmt.Errorf("can not write message to output: %w", err)
 	}
 
 	return nil
@@ -154,6 +195,15 @@ func (p *producer) Write(ctx context.Context, models any, attributeSets ...map[s
 	}
 
 	err = p.output.Write(ctx, messages)
+	if shouldRetry(err, p.retryEnabled) {
+		retryErr := p.retryDaemon.RetryMany(ctx, messages)
+		if retryErr == nil {
+			return nil
+		}
+
+		return fmt.Errorf("can not write messages to output: %w", errors.Join(err, retryErr))
+	}
+
 	if err != nil {
 		return fmt.Errorf("can not write messages to output: %w", err)
 	}
@@ -203,4 +253,8 @@ func readAllProducerDaemonSettings(config cfg.Config) (map[string]*ProducerSetti
 	}
 
 	return producerSettings, nil
+}
+
+func shouldRetry(err error, enabled bool) bool {
+	return err != nil && enabled
 }

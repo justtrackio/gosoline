@@ -163,7 +163,11 @@ func NewBaseConsumer(
 	if retryingInput, ok := input.(RetryingInput); ok {
 		settings.Retry.Enabled = true
 		retryInput, retryHandler = retryingInput.GetRetryHandler()
-	} else if retryInput, retryHandler, err = NewRetryHandler(ctx, config, logger, &settings.Retry, name); err != nil {
+	} else if retryInput, retryHandler, err = NewRetryHandler(ctx, config, logger, RetryMetadata{
+		name:           name,
+		retryConfigKey: ConfigurableConsumerRetryKey(name),
+		retrySettings:  &settings.Retry,
+	}); err != nil {
 		return nil, fmt.Errorf("can not create retry handler: %w", err)
 	}
 

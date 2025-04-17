@@ -39,23 +39,22 @@ type RetryHandlerSqs struct {
 	settings *RetryHandlerSqsSettings
 }
 
-func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, RetryHandler, error) {
-	var err error
-	var input AcknowledgeableInput
-	var output Output
+func NewRetryHandlerSqs(ctx context.Context, config cfg.Config, logger log.Logger, md RetryMetadata) (Input, RetryHandler, error) {
+	var (
+		err      error
+		input    AcknowledgeableInput
+		output   Output
+		settings = &RetryHandlerSqsSettings{}
+	)
 
-	key := ConfigurableConsumerRetryKey(name)
-	settings := &RetryHandlerSqsSettings{}
-	if err := config.UnmarshalKey(key, settings); err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal retry handler sqs settings for %s: %w", name, err)
-	}
+	config.UnmarshalKey(md.retryConfigKey, settings)
 
 	if err := settings.PadFromConfig(config); err != nil {
-		return nil, nil, fmt.Errorf("failed to pad resource identifier for retry handler sqs %s: %w", name, err)
+		return nil, nil, fmt.Errorf("failed to pad resource identifier for retry handler sqs %s: %w", md.name, err)
 	}
 
 	if settings.QueueId == "" {
-		settings.QueueId = fmt.Sprintf("consumer-retry-%s", name)
+		settings.QueueId = fmt.Sprintf("consumer-retry-%s", md.name)
 	}
 
 	identity := settings.ToIdentity()

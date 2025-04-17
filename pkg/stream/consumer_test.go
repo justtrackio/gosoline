@@ -98,7 +98,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 		Input:       "test",
 		RunnerCount: 1,
 		IdleTimeout: time.Second,
-		Retry: stream.ConsumerRetrySettings{
+		Retry: stream.RetrySettings{
 			Enabled: true,
 		},
 		Healthcheck: health.HealthCheckSettings{

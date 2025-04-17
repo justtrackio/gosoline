@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	kafkaProducer "github.com/justtrackio/gosoline/pkg/kafka/producer"
@@ -58,7 +59,23 @@ type BaseOutputConfigurationTracing struct {
 	Enabled bool `cfg:"enabled" default:"true"`
 }
 
-func NewConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
+type ConfigurableOutput struct {
+	Output             Output
+	OutputCapabilities *OutputCapabilities
+}
+
+func ProvideConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (ConfigurableOutput, error) {
+	return appctx.Provide(ctx, outputKey(name), func() (ConfigurableOutput, error) {
+		output, capabilities, err := newConfigurableOutput(ctx, config, logger, name)
+
+		return ConfigurableOutput{
+			Output:             output,
+			OutputCapabilities: capabilities,
+		}, err
+	})
+}
+
+func newConfigurableOutput(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Output, *OutputCapabilities, error) {
 	key := fmt.Sprintf("%s.type", ConfigurableOutputKey(name))
 	typ, err := config.GetString(key)
 	if err != nil {
@@ -345,4 +362,8 @@ func newSqsOutputFromConfig(ctx context.Context, config cfg.Config, logger log.L
 
 func ConfigurableOutputKey(name string) string {
 	return fmt.Sprintf("stream.output.%s", name)
+}
+
+func outputKey(name string) string {
+	return fmt.Sprintf("output-%s", name)
 }

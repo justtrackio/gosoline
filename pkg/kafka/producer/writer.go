@@ -35,6 +35,21 @@ func NewWriter(ctx context.Context, config cfg.Config, logger log.Logger, settin
 		kgo.WithLogger(logging.NewKafkaLogger(ctx, logger)),
 	}
 
+	if settings.RetryTimes != nil {
+		opts = append(
+			opts,
+			kgo.RecordRetries(*settings.RetryTimes),
+			kgo.UnknownTopicRetries(*settings.RetryTimes),
+		)
+	}
+
+	if settings.RequestTimeoutOverhead != nil {
+		opts = append(
+			opts,
+			kgo.RequestTimeoutOverhead(*settings.RequestTimeoutOverhead),
+		)
+	}
+
 	connOpts, err := connection.BuildConnectionOptions(config, settings.Connection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build connection options: %w", err)
