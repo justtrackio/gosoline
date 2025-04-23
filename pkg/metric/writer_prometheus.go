@@ -140,7 +140,7 @@ func (w *prometheusWriter) writeMetricFromDatum(datum *Datum) {
 	}()
 
 	if strings.Contains(datum.MetricName, "-") {
-		w.logger.Warn("metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", datum.MetricName)
+		w.logger.Error("metric name %s is invalid, as it contains a - characters, gracefully replacing with an _ character", datum.MetricName)
 		datum.MetricName = replacer.Replace(datum.MetricName)
 	}
 

@@ -51,8 +51,8 @@ type Daemon struct {
 	batch          map[string]*BatchedMetricDatum
 	dataPointCount int
 
-	warningThrottlesLck sync.Mutex
-	warningThrottles    map[string]bool
+	errorThrottlesLck sync.Mutex
+	errorThrottles    map[string]bool
 }
 
 func metricWriterAggrKey(typ string) string {
@@ -108,7 +108,7 @@ func NewMetricDaemonWithInterfaces(logger log.Logger, channel *metricChannel, ag
 		rawMetricWriters:        rawWriters,
 		batch:                   make(map[string]*BatchedMetricDatum),
 		dataPointCount:          0,
-		warningThrottles:        make(map[string]bool),
+		errorThrottles:          make(map[string]bool),
 	}, nil
 }
 
@@ -177,8 +177,8 @@ func (d *Daemon) append(datum *Datum) {
 		amendFromDefault(datum)
 
 		if err := datum.IsValid(); err != nil {
-			if d.throttleWarning(err.Error()) {
-				d.logger.Warn("invalid metric: %s", err.Error())
+			if d.throttleError(err.Error()) {
+				d.logger.Error("invalid metric: %s", err.Error())
 			}
 
 			return
@@ -250,25 +250,25 @@ func (d *Daemon) buildMetricData() Data {
 	return data
 }
 
-// we don't want to log warnings every time they occur - it is enough to log them once they occur, at least for a minute
-func (d *Daemon) throttleWarning(warning string) bool {
-	d.warningThrottlesLck.Lock()
-	defer d.warningThrottlesLck.Unlock()
+// we don't want to log errors every time they occur - it is enough to log them once they occur, at least for a minute
+func (d *Daemon) throttleError(err string) bool {
+	d.errorThrottlesLck.Lock()
+	defer d.errorThrottlesLck.Unlock()
 
-	if d.warningThrottles[warning] {
+	if d.errorThrottles[err] {
 		return false
 	}
 
-	d.warningThrottles[warning] = true
+	d.errorThrottles[err] = true
 
-	// automatically unlock the warning after a minute
+	// automatically unlock the err after a minute
 	go func() {
 		time.Sleep(time.Minute)
 
-		d.warningThrottlesLck.Lock()
-		defer d.warningThrottlesLck.Unlock()
+		d.errorThrottlesLck.Lock()
+		defer d.errorThrottlesLck.Unlock()
 
-		delete(d.warningThrottles, warning)
+		delete(d.errorThrottles, err)
 	}()
 
 	return true
