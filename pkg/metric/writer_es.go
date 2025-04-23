@@ -17,6 +17,8 @@ func init() {
 	RegisterWriterFactory(WriterTypeElasticsearch, ProvideElasticsearchWriter)
 }
 
+var _ Writer = &elasticsearchWriter{}
+
 type esMetricDatum struct {
 	*Datum
 	Namespace string `json:"namespace"`

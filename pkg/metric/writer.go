@@ -4,17 +4,31 @@ import (
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
 
-//go:generate mockery --name Writer
-type Writer interface {
-	GetPriority() int
-	Write(batch Data)
-	WriteOne(data *Datum)
-}
+const (
+	PriorityLow  = 1
+	PriorityHigh = 2
 
-type writer struct {
-	clock   clock.Clock
-	channel *metricChannel
-}
+	KindTotal   = "total"
+	KindDefault = ""
+
+	DimensionDefault = "{{default}}"
+)
+
+//go:generate mockery --name Writer
+type (
+	Writer interface {
+		GetPriority() int
+		Write(batch Data)
+		WriteOne(data *Datum)
+	}
+
+	writer struct {
+		clock   clock.Clock
+		channel *metricChannel
+	}
+
+	Kind string
+)
 
 func NewWriter(defaults ...*Datum) Writer {
 	channel := providerMetricChannel(func(*metricChannel) {})

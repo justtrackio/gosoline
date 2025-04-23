@@ -14,6 +14,7 @@ type Datum struct {
 	Dimensions Dimensions   `json:"dimensions"`
 	Value      float64      `json:"value"`
 	Unit       StandardUnit `json:"unit"`
+	Kind       Kind         `json:"-"`
 }
 
 func (d *Datum) Id() string {
