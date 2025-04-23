@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -20,6 +21,8 @@ import (
 func init() {
 	RegisterWriterFactory(WriterTypePrometheus, ProvidePrometheusWriter)
 }
+
+var _ Writer = &prometheusWriter{}
 
 const (
 	errFailedToRegisterMetricMsg                  = "register metric %s: %w"
@@ -54,12 +57,18 @@ type prometheusWriter struct {
 	metrics     *int64
 }
 
+// ProvidePrometheusWriter provides a prometheus writer. If one is registered under the default key in
+// the appctx, this is returned, else creates a new one and registers it.
+// For more information on the prometheus writer itself see [NewPrometheusWriter].
 func ProvidePrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	return appctx.Provide(ctx, prometheusWriterCtxKey("default"), func() (Writer, error) {
 		return NewPrometheusWriter(ctx, config, logger)
 	})
 }
 
+// NewPrometheusWriter creates a new prometheus metric writer.
+// The prometheus writer writes metrics provided to it to the go prometheus client library.
+// Metrics with Kind "total" are dropped before writing them.
 func NewPrometheusWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	promSettings := &PrometheusSettings{}
 	getMetricWriterSettings(config, WriterTypePrometheus, promSettings)
@@ -89,15 +98,26 @@ func (w *prometheusWriter) GetPriority() int {
 	return PriorityLow
 }
 
+// shouldFilterMetric drops all metrics which are not passing the configured priority threshold.
+// For cloudwatch (since it does not support summing up over all dimensions for a metric) we are
+// writing total metrics. A total metric is a single timeseries within a metric that has dimensions
+// for other timeseries, such that we can visualize / use the total of everything that we are measuring
+// with that metric. This is not needed on prometheus, as we can just create the total through summing
+// up all our dimensions.
+func (w *prometheusWriter) shouldFilterMetric(datum *Datum) bool {
+	return datum.Priority < w.GetPriority() || datum.Kind == KindTotal
+}
+
 func (w *prometheusWriter) Write(batch Data) {
 	if len(batch) == 0 {
 		return
 	}
 
 	for _, datum := range batch {
+		datum = mdl.Box(preprocessPrometheusMetric(datum))
 		amendFromDefault(datum)
 
-		if datum.Priority < w.GetPriority() {
+		if w.shouldFilterMetric(datum) {
 			continue
 		}
 
@@ -285,4 +305,17 @@ func (w *prometheusWriter) DatumDimensionKeys(datum *Datum) []string {
 	})
 
 	return dims
+}
+
+func preprocessPrometheusMetric(datum *Datum) Datum {
+	d := *datum
+	d.Dimensions = maps.Clone(datum.Dimensions)
+
+	for dimension, value := range d.Dimensions {
+		if value == DimensionDefault {
+			d.Dimensions[dimension] = ""
+		}
+	}
+
+	return d
 }

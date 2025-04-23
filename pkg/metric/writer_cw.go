@@ -21,10 +21,9 @@ func init() {
 	RegisterWriterFactory(WriterTypeCloudwatch, ProvideCloudwatchWriter)
 }
 
-const (
-	PriorityLow  = 1
-	PriorityHigh = 2
+var _ Writer = &cloudwatchWriter{}
 
+const (
 	UnitCount        = types.StandardUnitCount
 	UnitSeconds      = types.StandardUnitSeconds
 	UnitMilliseconds = types.StandardUnitMilliseconds
@@ -34,27 +33,27 @@ const (
 	plusOneHour         = 1 * time.Hour
 )
 
-type CloudWatchSettings struct {
-	Naming    CloudwatchNamingSettings `cfg:"naming"`
-	Aggregate bool                     `cfg:"aggregate" default:"true"`
-}
-
-type CloudwatchNamingSettings struct {
-	Pattern string `cfg:"pattern,nodecode" default:"{project}/{env}/{family}/{group}-{app}"`
-}
-
 type (
+	CloudWatchSettings struct {
+		Naming    CloudwatchNamingSettings `cfg:"naming"`
+		Aggregate bool                     `cfg:"aggregate" default:"true"`
+	}
+
+	CloudwatchNamingSettings struct {
+		Pattern string `cfg:"pattern,nodecode" default:"{project}/{env}/{family}/{group}-{app}"`
+	}
+
 	cwWriterCtxKey string
 	Dimensions     map[string]string
 	StandardUnit   = types.StandardUnit
-)
 
-type cloudwatchWriter struct {
-	logger      log.Logger
-	clock       clock.Clock
-	client      gosoCloudwatch.Client
-	cwNamespace string
-}
+	cloudwatchWriter struct {
+		logger      log.Logger
+		clock       clock.Clock
+		client      gosoCloudwatch.Client
+		cwNamespace string
+	}
+)
 
 func ProvideCloudwatchWriter(ctx context.Context, config cfg.Config, logger log.Logger) (Writer, error) {
 	return appctx.Provide(ctx, cwWriterCtxKey("default"), func() (Writer, error) {
@@ -144,25 +143,30 @@ func (w *cloudwatchWriter) buildMetricData(batch Data) ([]types.MetricDatum, err
 			continue
 		}
 
-		if data.Timestamp.IsZero() {
-			data.Timestamp = w.clock.Now()
+		timestamp := aws.Time(w.clock.Now())
+		if !data.Timestamp.IsZero() {
+			timestamp = aws.Time(data.Timestamp)
 		}
 
-		if data.Timestamp.Before(start) || data.Timestamp.After(end) {
+		if timestamp.Before(start) || timestamp.After(end) {
 			continue
 		}
 
 		dimensions := make([]types.Dimension, 0)
 
 		var err error
-		for n, v := range data.Dimensions {
-			if n == "" || v == "" {
-				err = multierror.Append(err, fmt.Errorf("invalid dimension '%s' = '%s' for metric %s, this will later be rejected", n, v, data.MetricName))
+		for name, value := range data.Dimensions {
+			if value == DimensionDefault {
+				continue
+			}
+
+			if name == "" || value == "" {
+				err = multierror.Append(err, fmt.Errorf("invalid dimension '%s' = '%s' for metric %s, this will later be rejected", name, value, data.MetricName))
 			}
 
 			dimensions = append(dimensions, types.Dimension{
-				Name:  aws.String(n),
-				Value: aws.String(v),
+				Name:  aws.String(name),
+				Value: aws.String(value),
 			})
 		}
 
@@ -175,7 +179,7 @@ func (w *cloudwatchWriter) buildMetricData(batch Data) ([]types.MetricDatum, err
 		datum := types.MetricDatum{
 			MetricName: aws.String(data.MetricName),
 			Dimensions: dimensions,
-			Timestamp:  aws.Time(data.Timestamp),
+			Timestamp:  timestamp,
 			Value:      aws.Float64(data.Value),
 			Unit:       data.Unit,
 		}
