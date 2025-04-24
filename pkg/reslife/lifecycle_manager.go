@@ -282,7 +282,7 @@ func (m *LifeCycleManager) shouldSkip(id string, visited funk.Set[string], exclu
 		return true
 	}
 
-	visited.Set(id)
+	visited.Add(id)
 
 	for _, exclude := range excludes {
 		if exclude.MatchString(id) {

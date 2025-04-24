@@ -211,7 +211,7 @@ func Intersect[S ~[]T, T comparable](sl1, sl2 S) []T {
 
 	for _, item := range sl1 {
 		if set2.Contains(item) {
-			result.Set(item)
+			result.Add(item)
 		}
 	}
 
@@ -276,7 +276,7 @@ func SliceToSet[S ~[]T, T comparable](sl S) Set[T] {
 	result := make(Set[T], len(sl))
 
 	for _, item := range sl {
-		result.Set(item)
+		result.Add(item)
 	}
 
 	return result
@@ -326,7 +326,7 @@ func Uniq[S ~[]T, T comparable](sl S) S {
 			continue
 		}
 
-		set.Set(e)
+		set.Add(e)
 		res = append(res, e)
 	}
 
@@ -344,7 +344,7 @@ func UniqFunc[S ~[]T, T any, K comparable](sl S, fn func(T) K) []T {
 			continue
 		}
 
-		keys.Set(key)
+		keys.Add(key)
 		uniq = append(uniq, item)
 	}
 
