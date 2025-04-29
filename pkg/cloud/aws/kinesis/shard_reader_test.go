@@ -33,6 +33,7 @@ type shardReaderTestSuite struct {
 	kinesisClient      *mocks.Client
 	settings           gosoKinesis.Settings
 	clock              clock.FakeClock
+	healthCheckTimer   clock.HealthCheckTimer
 	shardReader        gosoKinesis.ShardReader
 	consumedRecords    [][]byte
 	consumeRecordError error
@@ -60,12 +61,23 @@ func (s *shardReaderTestSuite) SetupTest() {
 		ReleaseDelay:     time.Second * 30,
 	}
 	s.clock = clock.NewFakeClock()
+	s.healthCheckTimer = clock.NewHealthCheckTimerWithInterfaces(s.clock, time.Minute)
 	s.consumedRecords = nil
 	s.consumeRecordError = nil
 }
 
 func (s *shardReaderTestSuite) setupReader() {
-	s.shardReader = gosoKinesis.NewShardReaderWithInterfaces(s.stream, s.shardId, s.logger, s.metricWriter, s.metadataRepository, s.kinesisClient, s.settings, s.clock)
+	s.shardReader = gosoKinesis.NewShardReaderWithInterfaces(
+		s.stream,
+		s.shardId,
+		s.logger,
+		s.metricWriter,
+		s.metadataRepository,
+		s.kinesisClient,
+		s.settings,
+		s.clock,
+		s.healthCheckTimer,
+	)
 }
 
 func (s *shardReaderTestSuite) TestAcquireShardFails() {

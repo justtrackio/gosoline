@@ -165,6 +165,51 @@ func (_c *AcknowledgeableInput_Data_Call) RunAndReturn(run func() <-chan *stream
 	return _c
 }
 
+// IsHealthy provides a mock function with no fields
+func (_m *AcknowledgeableInput) IsHealthy() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsHealthy")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// AcknowledgeableInput_IsHealthy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsHealthy'
+type AcknowledgeableInput_IsHealthy_Call struct {
+	*mock.Call
+}
+
+// IsHealthy is a helper method to define mock.On call
+func (_e *AcknowledgeableInput_Expecter) IsHealthy() *AcknowledgeableInput_IsHealthy_Call {
+	return &AcknowledgeableInput_IsHealthy_Call{Call: _e.mock.On("IsHealthy")}
+}
+
+func (_c *AcknowledgeableInput_IsHealthy_Call) Run(run func()) *AcknowledgeableInput_IsHealthy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *AcknowledgeableInput_IsHealthy_Call) Return(_a0 bool) *AcknowledgeableInput_IsHealthy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *AcknowledgeableInput_IsHealthy_Call) RunAndReturn(run func() bool) *AcknowledgeableInput_IsHealthy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *AcknowledgeableInput) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
