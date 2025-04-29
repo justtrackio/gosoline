@@ -88,17 +88,17 @@ func ProvideQueue(ctx context.Context, config cfg.Config, logger log.Logger, set
 func NewQueue(ctx context.Context, config cfg.Config, logger log.Logger, settings *Settings, optFns ...ClientOption) (Queue, error) {
 	var err error
 	var client Client
-	var props *Properties = &Properties{}
+	var props Properties
 
 	if client, err = ProvideClient(ctx, config, logger, settings.ClientName, optFns...); err != nil {
 		return nil, fmt.Errorf("can not create sqs client %s: %w", settings.ClientName, err)
 	}
 
-	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings, props, optFns...)); err != nil {
+	if err = reslife.AddLifeCycleer(ctx, NewLifecycleManager(settings, &props, optFns...)); err != nil {
 		return nil, fmt.Errorf("could not add lifecycle for sqs queue %s: %w", settings.QueueName, err)
 	}
 
-	return NewQueueWithInterfaces(logger, client, props), nil
+	return NewQueueWithInterfaces(logger, client, &props), nil
 }
 
 func NewQueueWithInterfaces(logger log.Logger, client Client, props *Properties) Queue {

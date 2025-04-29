@@ -88,6 +88,10 @@ func (i *InMemoryInput) Stop() {
 	}
 }
 
+func (i *InMemoryInput) IsHealthy() bool {
+	return true
+}
+
 func (i *InMemoryInput) Data() <-chan *Message {
 	return i.channel
 }

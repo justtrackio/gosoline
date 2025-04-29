@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
 
 const (
@@ -109,13 +110,14 @@ func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger lo
 }
 
 type redisInputConfiguration struct {
-	Project     string        `cfg:"project"`
-	Family      string        `cfg:"family"`
-	Group       string        `cfg:"group"`
-	Application string        `cfg:"application"`
-	ServerName  string        `cfg:"server_name" default:"default" validate:"min=1"`
-	Key         string        `cfg:"key" validate:"required,min=1"`
-	WaitTime    time.Duration `cfg:"wait_time" default:"3s"`
+	Project     string                     `cfg:"project"`
+	Family      string                     `cfg:"family"`
+	Group       string                     `cfg:"group"`
+	Application string                     `cfg:"application"`
+	ServerName  string                     `cfg:"server_name" default:"default" validate:"min=1"`
+	Key         string                     `cfg:"key" validate:"required,min=1"`
+	WaitTime    time.Duration              `cfg:"wait_time" default:"3s"`
+	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
 func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
@@ -131,9 +133,10 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
-		ServerName: configuration.ServerName,
-		Key:        configuration.Key,
-		WaitTime:   configuration.WaitTime,
+		ServerName:         configuration.ServerName,
+		Key:                configuration.Key,
+		WaitTime:           configuration.WaitTime,
+		HealthcheckTimeout: configuration.Healthcheck.Timeout,
 	}
 
 	return NewRedisListInput(ctx, config, logger, settings)
@@ -161,6 +164,7 @@ type SnsInputConfiguration struct {
 	RunnerCount         int                           `cfg:"runner_count" default:"1" validate:"min=1"`
 	RedrivePolicy       sqs.RedrivePolicy             `cfg:"redrive_policy"`
 	ClientName          string                        `cfg:"client_name" default:"default"`
+	Healthcheck         health.HealthCheckSettings    `cfg:"healthcheck"`
 }
 
 func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []SnsInputTarget) {
@@ -182,6 +186,7 @@ func readSnsInputSettings(config cfg.Config, name string) (*SnsInputSettings, []
 		RunnerCount:         configuration.RunnerCount,
 		RedrivePolicy:       configuration.RedrivePolicy,
 		ClientName:          configuration.ClientName,
+		Healthcheck:         configuration.Healthcheck,
 	}
 
 	settings.PadFromConfig(config)
@@ -219,18 +224,19 @@ func newSnsInputFromConfig(ctx context.Context, config cfg.Config, logger log.Lo
 }
 
 type sqsInputConfiguration struct {
-	Family              string            `cfg:"target_family"`
-	Group               string            `cfg:"target_group"`
-	Application         string            `cfg:"target_application"`
-	QueueId             string            `cfg:"target_queue_id" validate:"min=1"`
-	MaxNumberOfMessages int32             `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
-	WaitTime            int32             `cfg:"wait_time" default:"3" validate:"min=1"`
-	VisibilityTimeout   int               `cfg:"visibility_timeout" default:"30" validate:"min=1"`
-	RunnerCount         int               `cfg:"runner_count" default:"1" validate:"min=1"`
-	Fifo                sqs.FifoSettings  `cfg:"fifo"`
-	RedrivePolicy       sqs.RedrivePolicy `cfg:"redrive_policy"`
-	ClientName          string            `cfg:"client_name" default:"default"`
-	Unmarshaller        string            `cfg:"unmarshaller" default:"msg"`
+	Family              string                     `cfg:"target_family"`
+	Group               string                     `cfg:"target_group"`
+	Application         string                     `cfg:"target_application"`
+	QueueId             string                     `cfg:"target_queue_id" validate:"min=1"`
+	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int32                      `cfg:"wait_time" default:"3" validate:"min=1"`
+	VisibilityTimeout   int                        `cfg:"visibility_timeout" default:"30" validate:"min=1"`
+	RunnerCount         int                        `cfg:"runner_count" default:"1" validate:"min=1"`
+	Fifo                sqs.FifoSettings           `cfg:"fifo"`
+	RedrivePolicy       sqs.RedrivePolicy          `cfg:"redrive_policy"`
+	ClientName          string                     `cfg:"client_name" default:"default"`
+	Healthcheck         health.HealthCheckSettings `cfg:"healthcheck"`
+	Unmarshaller        string                     `cfg:"unmarshaller" default:"msg"`
 }
 
 func readSqsInputSettings(config cfg.Config, name string) *SqsInputSettings {
@@ -253,6 +259,7 @@ func readSqsInputSettings(config cfg.Config, name string) *SqsInputSettings {
 		Fifo:                configuration.Fifo,
 		RedrivePolicy:       configuration.RedrivePolicy,
 		ClientName:          configuration.ClientName,
+		Healthcheck:         configuration.Healthcheck,
 		Unmarshaller:        configuration.Unmarshaller,
 	}
 

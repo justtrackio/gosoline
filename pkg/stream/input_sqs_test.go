@@ -4,9 +4,11 @@ import (
 	"context"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	sqsMocks "github.com/justtrackio/gosoline/pkg/cloud/aws/sqs/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
@@ -42,7 +44,9 @@ func TestSqsInput_Run(t *testing.T) {
 		}
 	}, nil)
 
-	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, &stream.SqsInputSettings{
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+
+	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, healthCheckTimer, &stream.SqsInputSettings{
 		MaxNumberOfMessages: 1,
 		WaitTime:            3,
 		RunnerCount:         3,
@@ -91,7 +95,9 @@ func TestSqsInput_Run_Failure(t *testing.T) {
 		return []types.Message{}
 	}, nil)
 
-	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, &stream.SqsInputSettings{
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+
+	input := stream.NewSqsInputWithInterfaces(logger, queue, stream.MessageUnmarshaller, healthCheckTimer, &stream.SqsInputSettings{
 		WaitTime:    3,
 		RunnerCount: 3,
 	})

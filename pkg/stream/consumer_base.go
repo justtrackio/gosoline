@@ -423,6 +423,10 @@ func (c *baseConsumer) handleError(ctx context.Context, err error, msg string) {
 	})
 }
 
+func (c *baseConsumer) isHealthy() bool {
+	return c.input.IsHealthy() && (c.retryInput == nil || c.retryInput.IsHealthy())
+}
+
 func (c *baseConsumer) writeMetricDurationAndProcessedCount(duration time.Duration, processedCount int) {
 	c.metricWriter.Write(metric.Data{
 		&metric.Datum{

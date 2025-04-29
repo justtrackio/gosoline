@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/metric"
@@ -20,16 +21,18 @@ const (
 
 type RedisListInputSettings struct {
 	cfg.AppId
-	ServerName string
-	Key        string
-	WaitTime   time.Duration
+	ServerName         string
+	Key                string
+	WaitTime           time.Duration
+	HealthcheckTimeout time.Duration
 }
 
 type redisListInput struct {
-	logger   log.Logger
-	mw       metric.Writer
-	client   redis.Client
-	settings *RedisListInputSettings
+	logger           log.Logger
+	mw               metric.Writer
+	client           redis.Client
+	settings         *RedisListInputSettings
+	healthCheckTimer clock.HealthCheckTimer
 
 	channel           chan *Message
 	stopped           bool
@@ -47,16 +50,28 @@ func NewRedisListInput(ctx context.Context, config cfg.Config, logger log.Logger
 	defaultMetrics := getRedisListInputDefaultMetrics(settings.AppId, settings.Key)
 	mw := metric.NewWriter(defaultMetrics...)
 
-	return NewRedisListInputWithInterfaces(logger, client, mw, settings), nil
+	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.HealthcheckTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
+	}
+
+	return NewRedisListInputWithInterfaces(logger, client, mw, settings, healthCheckTimer), nil
 }
 
-func NewRedisListInputWithInterfaces(logger log.Logger, client redis.Client, mw metric.Writer, settings *RedisListInputSettings) Input {
+func NewRedisListInputWithInterfaces(
+	logger log.Logger,
+	client redis.Client,
+	mw metric.Writer,
+	settings *RedisListInputSettings,
+	healthCheckTimer clock.HealthCheckTimer,
+) Input {
 	fullyQualifiedKey := redis.GetFullyQualifiedKey(settings.AppId, settings.Key)
 
 	return &redisListInput{
 		logger:            logger,
 		client:            client,
 		settings:          settings,
+		healthCheckTimer:  healthCheckTimer,
 		mw:                mw,
 		channel:           make(chan *Message),
 		fullyQualifiedKey: fullyQualifiedKey,
@@ -80,6 +95,8 @@ func (i *redisListInput) Run(ctx context.Context) error {
 		if i.stopped {
 			return nil
 		}
+
+		i.healthCheckTimer.MarkHealthy()
 
 		rawMessage, err := i.client.BLPop(ctx, i.settings.WaitTime, i.fullyQualifiedKey)
 
@@ -107,6 +124,10 @@ func (i *redisListInput) Run(ctx context.Context) error {
 
 func (i *redisListInput) Stop() {
 	i.stopped = true
+}
+
+func (i *redisListInput) IsHealthy() bool {
+	return i.healthCheckTimer.IsHealthy()
 }
 
 func (i *redisListInput) runMetricLoop(ctx context.Context) {

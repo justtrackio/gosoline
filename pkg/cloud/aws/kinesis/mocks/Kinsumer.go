@@ -22,6 +22,51 @@ func (_m *Kinsumer) EXPECT() *Kinsumer_Expecter {
 	return &Kinsumer_Expecter{mock: &_m.Mock}
 }
 
+// IsHealthy provides a mock function with no fields
+func (_m *Kinsumer) IsHealthy() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsHealthy")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// Kinsumer_IsHealthy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsHealthy'
+type Kinsumer_IsHealthy_Call struct {
+	*mock.Call
+}
+
+// IsHealthy is a helper method to define mock.On call
+func (_e *Kinsumer_Expecter) IsHealthy() *Kinsumer_IsHealthy_Call {
+	return &Kinsumer_IsHealthy_Call{Call: _e.mock.On("IsHealthy")}
+}
+
+func (_c *Kinsumer_IsHealthy_Call) Run(run func()) *Kinsumer_IsHealthy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Kinsumer_IsHealthy_Call) Return(_a0 bool) *Kinsumer_IsHealthy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Kinsumer_IsHealthy_Call) RunAndReturn(run func() bool) *Kinsumer_IsHealthy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx, handler
 func (_m *Kinsumer) Run(ctx context.Context, handler kinesis.MessageHandler) error {
 	ret := _m.Called(ctx, handler)

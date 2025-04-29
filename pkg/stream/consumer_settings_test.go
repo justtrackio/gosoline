@@ -6,6 +6,7 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,6 +22,9 @@ func TestReadConsumerSettings_Empty(t *testing.T) {
 			Enabled:   false,
 			Type:      "sqs",
 			GraceTime: time.Second * 10,
+		},
+		Healthcheck: health.HealthCheckSettings{
+			Timeout: 5 * time.Minute,
 		},
 	}, settings)
 }
@@ -42,6 +46,9 @@ func TestReadConsumerSettings_ReadKernelKillTimeout(t *testing.T) {
 			Type:      "sqs",
 			GraceTime: time.Second * 5,
 		},
+		Healthcheck: health.HealthCheckSettings{
+			Timeout: 5 * time.Minute,
+		},
 	}, settings)
 }
 
@@ -58,6 +65,9 @@ func TestReadConsumerSettings_SpecifyAll(t *testing.T) {
 						"enabled":    true,
 						"type":       "kinesis",
 						"grace_time": "3s",
+					},
+					"healthcheck": map[string]any{
+						"timeout": "3m",
 					},
 				},
 			},
@@ -76,6 +86,9 @@ func TestReadConsumerSettings_SpecifyAll(t *testing.T) {
 			Enabled:   true,
 			Type:      "kinesis",
 			GraceTime: time.Second * 3,
+		},
+		Healthcheck: health.HealthCheckSettings{
+			Timeout: 3 * time.Minute,
 		},
 	}, settings)
 }

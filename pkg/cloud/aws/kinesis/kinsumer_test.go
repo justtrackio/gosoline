@@ -46,6 +46,7 @@ type kinsumerTestSuite struct {
 	metadataRepository *mocks.MetadataRepository
 	metricWriter       *metricMocks.Writer
 	clock              clock.FakeClock
+	healthCheckTimer   clock.HealthCheckTimer
 	handler            *mocks.MessageHandler
 	kinsumer           gosoKinesis.Kinsumer
 
@@ -67,6 +68,7 @@ func (s *kinsumerTestSuite) SetupTest() {
 	s.metadataRepository = mocks.NewMetadataRepository(s.T())
 	s.metricWriter = metricMocks.NewWriter(s.T())
 	s.clock = clock.NewFakeClock()
+	s.healthCheckTimer = clock.NewHealthCheckTimerWithInterfaces(s.clock, time.Minute)
 	s.handler = mocks.NewMessageHandler(s.T())
 	s.shardReadersLck = &sync.Mutex{}
 	s.shardReaders = map[gosoKinesis.ShardId][]*mocks.ShardReader{}
@@ -86,37 +88,47 @@ func (s *kinsumerTestSuite) SetupTest() {
 		KeepShardOrder:    true,
 	}
 
-	s.kinsumer = gosoKinesis.NewKinsumerWithInterfaces(s.logger, settings, s.stream, s.kinesisClient, s.metadataRepository, s.metricWriter, s.clock, func(logger log.Logger, shardId gosoKinesis.ShardId) gosoKinesis.ShardReader {
-		s.shardReadersLck.Lock()
-		defer s.shardReadersLck.Unlock()
-
-		s.Contains(s.expectedShardReaders, shardId)
-
-		shardReader := mocks.NewShardReader(s.T())
-		s.shardReaders[shardId] = append(s.shardReaders[shardId], shardReader)
-		mockedReader := s.expectedShardReaders[shardId][len(s.shardReaders[shardId])-1]
-		shardReader.EXPECT().Run(mock.Anything, mock.Anything).Run(func(ctx context.Context, handler func([]byte) error) {
-			for _, msg := range mockedReader.messages {
-				<-s.clock.NewTimer(msg.delay).Chan()
-				err := handler(msg.data)
-				s.NoError(err)
-			}
-
-			if mockedReader.waitForCancel {
-				<-ctx.Done()
-			}
-
+	s.kinsumer = gosoKinesis.NewKinsumerWithInterfaces(
+		s.logger,
+		settings,
+		s.stream,
+		s.kinesisClient,
+		s.metadataRepository,
+		s.metricWriter,
+		s.clock,
+		s.healthCheckTimer,
+		func(logger log.Logger, shardId gosoKinesis.ShardId) gosoKinesis.ShardReader {
 			s.shardReadersLck.Lock()
 			defer s.shardReadersLck.Unlock()
 
-			s.remainingForCancel--
-			if s.remainingForCancel == 0 {
-				s.kinsumer.Stop()
-			}
-		}).Return(mockedReader.err).Once()
+			s.Contains(s.expectedShardReaders, shardId)
 
-		return shardReader
-	})
+			shardReader := mocks.NewShardReader(s.T())
+			s.shardReaders[shardId] = append(s.shardReaders[shardId], shardReader)
+			mockedReader := s.expectedShardReaders[shardId][len(s.shardReaders[shardId])-1]
+			shardReader.EXPECT().Run(mock.Anything, mock.Anything).Run(func(ctx context.Context, handler func([]byte) error) {
+				for _, msg := range mockedReader.messages {
+					<-s.clock.NewTimer(msg.delay).Chan()
+					err := handler(msg.data)
+					s.NoError(err)
+				}
+
+				if mockedReader.waitForCancel {
+					<-ctx.Done()
+				}
+
+				s.shardReadersLck.Lock()
+				defer s.shardReadersLck.Unlock()
+
+				s.remainingForCancel--
+				if s.remainingForCancel == 0 {
+					s.kinsumer.Stop()
+				}
+			}).Return(mockedReader.err).Once()
+
+			return shardReader
+		},
+	)
 
 	s.logger.EXPECT().Info("removing client registration").Once()
 }

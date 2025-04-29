@@ -8,19 +8,21 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/reslife"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
 
 var _ AcknowledgeableInput = &snsInput{}
 
 type SnsInputSettings struct {
 	cfg.AppId
-	QueueId             string            `cfg:"queue_id"`
-	MaxNumberOfMessages int32             `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
-	WaitTime            int32             `cfg:"wait_time"`
-	RedrivePolicy       sqs.RedrivePolicy `cfg:"redrive_policy"`
-	VisibilityTimeout   int               `cfg:"visibility_timeout"`
-	RunnerCount         int               `cfg:"runner_count"`
-	ClientName          string            `cfg:"client_name"`
+	QueueId             string                     `cfg:"queue_id"`
+	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int32                      `cfg:"wait_time"`
+	RedrivePolicy       sqs.RedrivePolicy          `cfg:"redrive_policy"`
+	VisibilityTimeout   int                        `cfg:"visibility_timeout"`
+	RunnerCount         int                        `cfg:"runner_count"`
+	ClientName          string                     `cfg:"client_name"`
+	Healthcheck         health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
 func (s SnsInputSettings) GetAppId() cfg.AppId {
@@ -75,6 +77,7 @@ func NewSnsInput(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		RunnerCount:         settings.RunnerCount,
 		RedrivePolicy:       settings.RedrivePolicy,
 		ClientName:          settings.ClientName,
+		Healthcheck:         settings.Healthcheck,
 		Unmarshaller:        UnmarshallerSns,
 	}
 
