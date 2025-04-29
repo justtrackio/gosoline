@@ -31,7 +31,8 @@ type Settings struct {
 }
 
 type taskRunner struct {
-	kernel.BackgroundModule
+	kernel.EssentialBackgroundModule
+	kernel.EssentialStage
 	lck          sync.Mutex
 	done         bool
 	pendingTasks chan kernel.Module
