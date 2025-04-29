@@ -79,6 +79,7 @@ func (s *shardReaderTestSuite) TestAcquireShardFails() {
 
 func (s *shardReaderTestSuite) TestAcquireShardNotSuccessful() {
 	s.setupReader()
+	s.mockMetricCall("AcquireShardDelaySeconds", 0.0, metric.UnitSecondsMaximum)
 
 	// use a canceled context so we don't retry
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -737,14 +738,27 @@ func (s *shardReaderTestSuite) consumeRecord(record []byte) error {
 	return s.consumeRecordError
 }
 
-func (s *shardReaderTestSuite) mockMetricCall(metricName string, value float64, unit metric.StandardUnit) *metricMocks.Writer_WriteOne_Call {
-	return s.metricWriter.EXPECT().WriteOne(&metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: metricName,
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
+func (s *shardReaderTestSuite) mockMetricCall(metricName string, value float64, unit metric.StandardUnit) *metricMocks.Writer_Write_Call {
+	return s.metricWriter.EXPECT().Write(metric.Data{
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricName,
+			Dimensions: metric.Dimensions{
+				"StreamName": string(s.stream),
+			},
+			Value: value,
+			Unit:  unit,
+			Kind:  metric.KindTotal,
 		},
-		Value: value,
-		Unit:  unit,
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricName,
+			Dimensions: metric.Dimensions{
+				"StreamName": string(s.stream),
+				"ShardId":    string(s.shardId),
+			},
+			Value: value,
+			Unit:  unit,
+		},
 	})
 }

@@ -20,22 +20,16 @@ import (
 )
 
 const (
-	metricNameSleepDuration              = "SleepDuration"
-	metricNameSleepDurationPerShard      = "SleepDurationPerShard"
-	metricNameFailedRecords              = "FailedRecords"
-	metricNameFailedRecordsPerShard      = "FailedRecordsPerShard"
-	metricNameMillisecondsBehind         = "MillisecondsBehind"
-	metricNameMillisecondsBehindPerShard = "MillisecondsBehindPerShard"
-	metricNameProcessDuration            = "ProcessDuration"
-	metricNameProcessDurationPerShard    = "ProcessDurationPerShard"
-	metricNameReadCount                  = "ReadCount"
-	metricNameReadCountPerShard          = "ReadCountPerShard"
-	metricNameReadRecords                = "ReadRecords"
-	metricNameReadRecordsPerShard        = "ReadRecordsPerShard"
-	metricNameShardTaskRatio             = "ShardTaskRatio"
-	metricNameShardTaskRatioMax          = "ShardTaskRatioMax"
-	metricNameWaitDuration               = "WaitDuration"
-	metricNameWaitDurationPerShard       = "WaitDurationPerShard"
+	metricNameAcquireShardDelaySeconds = "AcquireShardDelaySeconds"
+	metricNameSleepDuration            = "SleepDuration"
+	metricNameFailedRecords            = "FailedRecords"
+	metricNameMillisecondsBehind       = "MillisecondsBehind"
+	metricNameProcessDuration          = "ProcessDuration"
+	metricNameReadCount                = "ReadCount"
+	metricNameReadRecords              = "ReadRecords"
+	metricNameShardTaskRatio           = "ShardTaskRatio"
+	metricNameShardTaskRatioMax        = "ShardTaskRatioMax"
+	metricNameWaitDuration             = "WaitDuration"
 )
 
 //go:generate mockery --name ShardReader
@@ -57,7 +51,16 @@ type shardReader struct {
 	clock              clock.Clock
 }
 
-func NewShardReaderWithInterfaces(stream Stream, shardId ShardId, logger log.Logger, metricWriter metric.Writer, metadataRepository MetadataRepository, kinesisClient Client, settings Settings, clock clock.Clock) ShardReader {
+func NewShardReaderWithInterfaces(
+	stream Stream,
+	shardId ShardId,
+	logger log.Logger,
+	metricWriter metric.Writer,
+	metadataRepository MetadataRepository,
+	kinesisClient Client,
+	settings Settings,
+	clock clock.Clock,
+) ShardReader {
 	r := &shardReader{
 		stream:             stream,
 		shardId:            shardId,
@@ -163,6 +166,8 @@ func (s *shardReader) releaseCheckpoint(ctx context.Context) error {
 }
 
 func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
+	start := s.clock.Now()
+
 	for {
 		checkpoint, err := s.metadataRepository.AcquireShard(ctx, s.shardId)
 		if err != nil {
@@ -177,6 +182,9 @@ func (s *shardReader) acquireShard(ctx context.Context) (bool, error) {
 		if checkpoint != nil {
 			return true, nil
 		}
+
+		tookSoFar := s.clock.Since(start)
+		s.writeMetric(metricNameAcquireShardDelaySeconds, tookSoFar.Seconds(), metric.UnitSecondsMaximum)
 
 		timer := s.clock.NewTimer(s.settings.WaitTime)
 
@@ -274,7 +282,13 @@ func (s *shardReader) runPersister(ctx context.Context, releaseCtx context.Conte
 	}
 }
 
-func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan chan float64, iterator ShardIterator, startingSequenceNumber SequenceNumber, handler func(record []byte) error) error {
+func (s *shardReader) iterateRecords(
+	ctx context.Context,
+	millisecondsBehindChan chan float64,
+	iterator ShardIterator,
+	startingSequenceNumber SequenceNumber,
+	handler func(record []byte) error,
+) error {
 	timer := s.clock.NewTimer(0)
 	// we have to carry the old sequence number forward - otherwise we could have the following scenario:
 	// - our stream is empty for more than one day (if data expires after one day)
@@ -341,8 +355,8 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 			}
 
 			processDuration := s.clock.Since(processStart)
-			s.writeMetric(metricNameProcessDuration, metricNameProcessDurationPerShard, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage)
-			s.writeMetric(metricNameReadRecords, metricNameReadRecordsPerShard, float64(processedSize), metric.UnitCount)
+			s.writeMetric(metricNameProcessDuration, float64(processDuration.Milliseconds()), metric.UnitMillisecondsAverage)
+			s.writeMetric(metricNameReadRecords, float64(processedSize), metric.UnitCount)
 
 			s.logger.WithChannel("kinsumer-read").WithFields(log.Fields{
 				"count":       processedSize,
@@ -351,7 +365,7 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 
 			// if the results are older than our wait time, continue immediately
 			if time.Duration(millisecondsBehind) > (s.settings.WaitTime + s.settings.ConsumeDelay) {
-				s.writeMetric(metricNameWaitDuration, metricNameWaitDurationPerShard, 0.0, metric.UnitMillisecondsAverage)
+				s.writeMetric(metricNameWaitDuration, 0.0, metric.UnitMillisecondsAverage)
 				timer.Reset(0)
 				continue
 			}
@@ -363,13 +377,18 @@ func (s *shardReader) iterateRecords(ctx context.Context, millisecondsBehindChan
 				waitTime = 0
 			}
 
-			s.writeMetric(metricNameWaitDuration, metricNameWaitDurationPerShard, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage)
+			s.writeMetric(metricNameWaitDuration, float64(waitTime.Milliseconds()), metric.UnitMillisecondsAverage)
 			timer.Reset(waitTime)
 		}
 	}
 }
 
-func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (records []types.Record, nextIterator ShardIterator, millisecondsBehind int64, err error) {
+func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (
+	records []types.Record,
+	nextIterator ShardIterator,
+	millisecondsBehind int64,
+	err error,
+) {
 	params := &kinesis.GetRecordsInput{
 		Limit:         aws.Int32(int32(s.settings.MaxBatchSize)),
 		ShardIterator: aws.String(string(iterator)),
@@ -380,7 +399,7 @@ func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (r
 		return nil, "", 0, fmt.Errorf("failed to get records from shard: %w", err)
 	}
 
-	s.writeMetric(metricNameReadCount, metricNameReadCountPerShard, 1.0, metric.UnitCount)
+	s.writeMetric(metricNameReadCount, 1.0, metric.UnitCount)
 
 	records = output.Records
 	nextIterator = ShardIterator(mdl.EmptyIfNil(output.NextShardIterator))
@@ -388,7 +407,13 @@ func (s *shardReader) getRecords(ctx context.Context, iterator ShardIterator) (r
 	return records, nextIterator, mdl.EmptyIfNil(output.MillisBehindLatest), nil
 }
 
-func (s *shardReader) processRecords(ctx context.Context, records []types.Record, lastSequenceNumber *SequenceNumber, nextIterator ShardIterator, handler func(record []byte) error) (int, error) {
+func (s *shardReader) processRecords(
+	ctx context.Context,
+	records []types.Record,
+	lastSequenceNumber *SequenceNumber,
+	nextIterator ShardIterator,
+	handler func(record []byte) error,
+) (int, error) {
 	processedSize := 0
 
 	// if our batch is empty, just write the next iterator to the checkpoint
@@ -416,7 +441,7 @@ func (s *shardReader) processRecords(ctx context.Context, records []types.Record
 			// not make sense at this point. Instead, the handler needs to implement a retry logic if needed
 			s.logger.Error("failed to handle record %s: %w", record.SequenceNumber, err)
 
-			s.writeMetric(metricNameFailedRecords, metricNameFailedRecordsPerShard, 1, metric.UnitCount)
+			s.writeMetric(metricNameFailedRecords, 1, metric.UnitCount)
 		}
 
 		*lastSequenceNumber = SequenceNumber(mdl.EmptyIfNil(record.SequenceNumber))
@@ -462,7 +487,7 @@ func (s *shardReader) delayConsume(ctx context.Context, record types.Record) {
 	select {
 	case <-ctx.Done():
 	case <-timer.Chan():
-		s.writeMetric(metricNameSleepDuration, metricNameSleepDurationPerShard, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage)
+		s.writeMetric(metricNameSleepDuration, float64(durationToSleep.Milliseconds()), metric.UnitMillisecondsAverage)
 	}
 }
 
@@ -474,12 +499,12 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 	defer ticker.Stop()
 
 	currentMillisecondsBehind := 0.0
-	s.writeMetric(metricNameMillisecondsBehind, metricNameMillisecondsBehindPerShard, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+	s.writeMetric(metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 
 	for {
 		select {
 		case <-ticker.Chan():
-			s.writeMetric(metricNameMillisecondsBehind, metricNameMillisecondsBehindPerShard, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+			s.writeMetric(metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 		case newMillisecondsBehind, ok := <-millisecondsBehindChan:
 			if !ok {
 				// the producer stopped, so we also need to stop
@@ -487,35 +512,33 @@ func (s *shardReader) reportMillisecondsBehind(millisecondsBehindChan chan float
 			}
 
 			currentMillisecondsBehind = newMillisecondsBehind
-			s.writeMetric(metricNameMillisecondsBehind, metricNameMillisecondsBehindPerShard, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
+			s.writeMetric(metricNameMillisecondsBehind, currentMillisecondsBehind, metric.UnitMillisecondsMaximum)
 		}
 	}
 }
 
-func (s *shardReader) writeMetric(metricName string, metricNamePerShard string, value float64, unit metric.StandardUnit) {
-	s.metricWriter.WriteOne(&metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: metricName,
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
+func (s *shardReader) writeMetric(metricName string, value float64, unit metric.StandardUnit) {
+	s.metricWriter.Write(metric.Data{
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricName,
+			Dimensions: metric.Dimensions{
+				"StreamName": string(s.stream),
+			},
+			Value: value,
+			Unit:  unit,
+			Kind:  metric.KindTotal,
 		},
-		Value: value,
-		Unit:  unit,
-	})
-
-	if !s.settings.ShardLevelMetrics {
-		return
-	}
-
-	s.metricWriter.WriteOne(&metric.Datum{
-		Priority:   metric.PriorityHigh,
-		MetricName: metricNamePerShard,
-		Dimensions: metric.Dimensions{
-			"StreamName": string(s.stream),
-			"ShardId":    string(s.shardId),
+		{
+			Priority:   metric.PriorityHigh,
+			MetricName: metricName,
+			Dimensions: metric.Dimensions{
+				"StreamName": string(s.stream),
+				"ShardId":    string(s.shardId),
+			},
+			Value: value,
+			Unit:  unit,
 		},
-		Value: value,
-		Unit:  unit,
 	})
 }
 
@@ -532,6 +555,7 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindTotal,
 		},
 		{
 			Priority:   metric.PriorityHigh,
@@ -541,6 +565,7 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindTotal,
 		},
 		{
 			Priority:   metric.PriorityHigh,
@@ -550,6 +575,7 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
+			Kind:  metric.KindTotal,
 		},
 	}
 }
