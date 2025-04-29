@@ -8,8 +8,8 @@ const (
 	PriorityLow  = 1
 	PriorityHigh = 2
 
-	KindTotal   = "total"
-	KindDefault = ""
+	KindTotal   Kind = "total"
+	KindDefault Kind = ""
 
 	DimensionDefault = "{{default}}"
 )
