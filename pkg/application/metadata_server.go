@@ -25,8 +25,8 @@ type MetadataServerSettings struct {
 }
 
 type MetadataServer struct {
-	kernel.BackgroundModule
-	kernel.ServiceStage
+	kernel.EssentialBackgroundModule
+	kernel.EssentialStage
 
 	config   cfg.Config
 	logger   log.Logger

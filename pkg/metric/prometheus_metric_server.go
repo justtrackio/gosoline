@@ -49,7 +49,7 @@ type PrometheusServerSettings struct {
 
 type metricsServer struct {
 	kernel.EssentialBackgroundModule
-	kernel.ServiceStage
+	kernel.EssentialStage
 
 	logger   log.Logger
 	server   *http.Server
