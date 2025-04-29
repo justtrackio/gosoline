@@ -350,13 +350,13 @@ func (k *kinsumer) getSortedShardIds(shardMap map[ShardId]shardInfo) []ShardId {
 		// if a shard has a parent which no longer exists, we need to treat it like a shard without a parent (for all
 		// purposes, that is true already), otherwise we can't process most shards once they have had a parent somewhere
 		// in the past (but we already forgot everything about said parent)
-		if _, ok := shardMap[v.parent]; !ok {
-			v.parent = ""
-		}
+		// if _, ok := shardMap[v.parent]; !ok {
+		// 	v.parent = ""
+		// }
 
-		if v.parent == "" || shardMap[v.parent].finished {
-			shardIds = append(shardIds, k)
-		}
+		// if v.parent == "" || shardMap[v.parent].finished || k.consumeOutOfOrder {
+		shardIds = append(shardIds, k)
+		// }
 	}
 
 	sort.Sort(shardIdSlice(shardIds))
