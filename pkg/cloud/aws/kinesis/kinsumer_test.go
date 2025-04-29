@@ -83,6 +83,7 @@ func (s *kinsumerTestSuite) SetupTest() {
 		StreamName:        "testData",
 		DiscoverFrequency: time.Second * 15,
 		ReleaseDelay:      time.Second * 5,
+		KeepShardOrder:    true,
 	}
 
 	s.kinsumer = gosoKinesis.NewKinsumerWithInterfaces(s.logger, settings, s.stream, s.kinesisClient, s.metadataRepository, s.metricWriter, s.clock, func(logger log.Logger, shardId gosoKinesis.ShardId) gosoKinesis.ShardReader {

@@ -66,8 +66,8 @@ type Settings struct {
 	DiscoverFrequency time.Duration `cfg:"discover_frequency" default:"1m" validate:"min=1000000000"`
 	// How long we extend the deadline of a context when releasing a shard or when deregistering a client. Min = 1s
 	ReleaseDelay time.Duration `cfg:"release_delay" default:"5s" validate:"min=1000000000"`
-	// Should we write how many milliseconds behind each shard is or only the whole stream?
-	ShardLevelMetrics bool `cfg:"shard_level_metrics" default:"false"`
+	// Should we ensure messages from child shards are only consumed after their parent shards have been fully consumed?
+	KeepShardOrder bool `cfg:"keep_shard_order" default:"true"`
 }
 
 func (s Settings) GetAppId() cfg.AppId {
@@ -143,10 +143,28 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 	}
 
 	shardReaderFactory := func(logger log.Logger, shardId ShardId) ShardReader {
-		return NewShardReaderWithInterfaces(fullStreamName, shardId, logger, metricWriter, metadataRepository, kinesisClient, *settings, clock.Provider)
+		return NewShardReaderWithInterfaces(
+			fullStreamName,
+			shardId,
+			logger,
+			metricWriter,
+			metadataRepository,
+			kinesisClient,
+			*settings,
+			clock.Provider,
+		)
 	}
 
-	return NewKinsumerWithInterfaces(logger, *settings, fullStreamName, kinesisClient, metadataRepository, metricWriter, clock.Provider, shardReaderFactory), nil
+	return NewKinsumerWithInterfaces(
+		logger,
+		*settings,
+		fullStreamName,
+		kinesisClient,
+		metadataRepository,
+		metricWriter,
+		clock.Provider,
+		shardReaderFactory,
+	), nil
 }
 
 func NewKinsumerWithInterfaces(
@@ -342,20 +360,20 @@ func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
 
 func (k *kinsumer) getSortedShardIds(shardMap map[ShardId]shardInfo) []ShardId {
 	shardIds := make([]ShardId, 0)
-	for k, v := range shardMap {
-		if v.finished {
+	for shardId, shardInfo := range shardMap {
+		if shardInfo.finished {
 			continue
 		}
 
 		// if a shard has a parent which no longer exists, we need to treat it like a shard without a parent (for all
 		// purposes, that is true already), otherwise we can't process most shards once they have had a parent somewhere
 		// in the past (but we already forgot everything about said parent)
-		if _, ok := shardMap[v.parent]; !ok {
-			v.parent = ""
+		if _, ok := shardMap[shardInfo.parent]; !ok {
+			shardInfo.parent = ""
 		}
 
-		if v.parent == "" || shardMap[v.parent].finished {
-			shardIds = append(shardIds, k)
+		if shardInfo.parent == "" || shardMap[shardInfo.parent].finished || !k.settings.KeepShardOrder {
+			shardIds = append(shardIds, shardId)
 		}
 	}
 
@@ -364,7 +382,12 @@ func (k *kinsumer) getSortedShardIds(shardMap map[ShardId]shardInfo) []ShardId {
 	return shardIds
 }
 
-func (k *kinsumer) startConsumers(ctx context.Context, cfn coffin.Coffin, runtimeCtx *runtimeContext, handler MessageHandler) (*sync.WaitGroup, context.CancelFunc) {
+func (k *kinsumer) startConsumers(
+	ctx context.Context,
+	cfn coffin.Coffin,
+	runtimeCtx *runtimeContext,
+	handler MessageHandler,
+) (*sync.WaitGroup, context.CancelFunc) {
 	consumerCtx, stopConsumers := context.WithCancel(ctx)
 
 	wg := &sync.WaitGroup{}
