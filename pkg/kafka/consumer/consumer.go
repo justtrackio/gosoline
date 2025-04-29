@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
 	"github.com/justtrackio/gosoline/pkg/kafka/logging"
@@ -21,9 +22,10 @@ type Consumer struct {
 	logger   log.Logger
 	settings *Settings
 
-	pool    coffin.Coffin
-	backlog chan kafka.Message
-	manager OffsetManager
+	pool             coffin.Coffin
+	backlog          chan kafka.Message
+	manager          OffsetManager
+	healthCheckTimer clock.HealthCheckTimer
 }
 
 func NewConsumer(
@@ -43,12 +45,17 @@ func NewConsumer(
 		return nil, fmt.Errorf("kafka: failed to get reader: %w", err)
 	}
 
-	manager := NewOffsetManager(logger, reader, settings.BatchSize, settings.BatchTimeout)
+	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.Healthcheck.Timeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
+	}
 
-	return NewConsumerWithInterfaces(settings, logger, manager)
+	manager := NewOffsetManager(logger, reader, settings.BatchSize, settings.BatchTimeout, healthCheckTimer)
+
+	return NewConsumerWithInterfaces(settings, logger, manager, healthCheckTimer)
 }
 
-func NewConsumerWithInterfaces(settings *Settings, logger log.Logger, manager OffsetManager) (*Consumer, error) {
+func NewConsumerWithInterfaces(settings *Settings, logger log.Logger, manager OffsetManager, healthCheckTimer clock.HealthCheckTimer) (*Consumer, error) {
 	logger = logger.WithFields(
 		log.Fields{
 			"kafka_topic":          settings.FQTopic,
@@ -59,11 +66,12 @@ func NewConsumerWithInterfaces(settings *Settings, logger log.Logger, manager Of
 	)
 
 	return &Consumer{
-		settings: settings,
-		logger:   logging.NewKafkaLogger(logger),
-		pool:     coffin.New(),
-		backlog:  make(chan kafka.Message, settings.BatchSize),
-		manager:  manager,
+		settings:         settings,
+		logger:           logging.NewKafkaLogger(logger),
+		pool:             coffin.New(),
+		backlog:          make(chan kafka.Message, settings.BatchSize),
+		manager:          manager,
+		healthCheckTimer: healthCheckTimer,
 	}, nil
 }
 
@@ -73,6 +81,10 @@ func (c *Consumer) Run(ctx context.Context) error {
 
 	c.pool.GoWithContext(ctx, c.run)
 	return c.pool.Wait()
+}
+
+func (c *Consumer) IsHealthy() bool {
+	return c.healthCheckTimer.IsHealthy()
 }
 
 func (c *Consumer) Data() chan kafka.Message {

@@ -7,9 +7,11 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
 
 var (
@@ -19,15 +21,16 @@ var (
 
 type SqsInputSettings struct {
 	cfg.AppId
-	QueueId             string            `cfg:"queue_id"`
-	MaxNumberOfMessages int32             `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
-	WaitTime            int32             `cfg:"wait_time"`
-	VisibilityTimeout   int               `cfg:"visibility_timeout"`
-	RunnerCount         int               `cfg:"runner_count"`
-	Fifo                sqs.FifoSettings  `cfg:"fifo"`
-	RedrivePolicy       sqs.RedrivePolicy `cfg:"redrive_policy"`
-	ClientName          string            `cfg:"client_name"`
-	Unmarshaller        string            `cfg:"unmarshaller" default:"msg"`
+	QueueId             string                     `cfg:"queue_id"`
+	MaxNumberOfMessages int32                      `cfg:"max_number_of_messages" default:"10" validate:"min=1,max=10"`
+	WaitTime            int32                      `cfg:"wait_time"`
+	VisibilityTimeout   int                        `cfg:"visibility_timeout"`
+	RunnerCount         int                        `cfg:"runner_count"`
+	Fifo                sqs.FifoSettings           `cfg:"fifo"`
+	RedrivePolicy       sqs.RedrivePolicy          `cfg:"redrive_policy"`
+	ClientName          string                     `cfg:"client_name"`
+	Unmarshaller        string                     `cfg:"unmarshaller" default:"msg"`
+	Healthcheck         health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
 func (s SqsInputSettings) GetAppId() cfg.AppId {
@@ -47,10 +50,11 @@ func (s SqsInputSettings) IsFifoEnabled() bool {
 }
 
 type sqsInput struct {
-	logger      log.Logger
-	queue       sqs.Queue
-	settings    *SqsInputSettings
-	unmarshaler UnmarshallerFunc
+	logger           log.Logger
+	queue            sqs.Queue
+	settings         *SqsInputSettings
+	unmarshaler      UnmarshallerFunc
+	healthCheckTimer clock.HealthCheckTimer
 
 	cfn     coffin.Coffin
 	channel chan *Message
@@ -87,21 +91,33 @@ func NewSqsInput(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("unknown unmarshaller %s", settings.Unmarshaller)
 	}
 
-	return NewSqsInputWithInterfaces(logger, queue, unmarshaller, settings), nil
+	healthCheckTimer, err := clock.NewHealthCheckTimer(settings.Healthcheck.Timeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
+	}
+
+	return NewSqsInputWithInterfaces(logger, queue, unmarshaller, healthCheckTimer, settings), nil
 }
 
-func NewSqsInputWithInterfaces(logger log.Logger, queue sqs.Queue, unmarshaller UnmarshallerFunc, settings *SqsInputSettings) *sqsInput {
+func NewSqsInputWithInterfaces(
+	logger log.Logger,
+	queue sqs.Queue,
+	unmarshaller UnmarshallerFunc,
+	healthCheckTimer clock.HealthCheckTimer,
+	settings *SqsInputSettings,
+) *sqsInput {
 	if settings.RunnerCount <= 0 {
 		settings.RunnerCount = 1
 	}
 
 	return &sqsInput{
-		logger:      logger,
-		queue:       queue,
-		settings:    settings,
-		unmarshaler: unmarshaller,
-		cfn:         coffin.New(),
-		channel:     make(chan *Message),
+		logger:           logger,
+		queue:            queue,
+		settings:         settings,
+		unmarshaler:      unmarshaller,
+		healthCheckTimer: healthCheckTimer,
+		cfn:              coffin.New(),
+		channel:          make(chan *Message),
 	}
 }
 
@@ -144,6 +160,9 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 			return nil
 		}
 
+		// we are about to request some messages, so mark us as making progress (so far)
+		i.healthCheckTimer.MarkHealthy()
+
 		sqsMessages, err := i.queue.Receive(ctx, i.settings.MaxNumberOfMessages, i.settings.WaitTime)
 		if err != nil {
 			i.logger.Error("could not get messages from sqs: %w", err)
@@ -167,12 +186,20 @@ func (i *sqsInput) runLoop(ctx context.Context) error {
 			msg.Attributes[AttributeSqsReceiptHandle] = *sqsMessage.ReceiptHandle
 
 			i.channel <- msg
+
+			// after every message we pushed to the channel, mark us as healthy as we made some progress
+			// (even though the other side might be slow)
+			i.healthCheckTimer.MarkHealthy()
 		}
 	}
 }
 
 func (i *sqsInput) Stop() {
 	atomic.StoreInt32(&i.stopped, 1)
+}
+
+func (i *sqsInput) IsHealthy() bool {
+	return i.healthCheckTimer.IsHealthy()
 }
 
 func (i *sqsInput) Ack(ctx context.Context, msg *Message, ack bool) error {

@@ -31,3 +31,7 @@ func (i *noopInput) Stop() {
 		close(i.ch)
 	})
 }
+
+func (i *noopInput) IsHealthy() bool {
+	return true
+}

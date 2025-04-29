@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
@@ -41,6 +42,8 @@ func TestConsumer_Manager_Batch_Commit(t *testing.T) {
 	manager.On("Commit", mock.Anything, kafka.Message{Offset: 2, Partition: 2}).Return(errors.New("reader: failed"))
 	defer manager.AssertExpectations(t)
 
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+
 	con, err := consumer.NewConsumerWithInterfaces(
 		&consumer.Settings{
 			BatchSize:    100,
@@ -48,6 +51,7 @@ func TestConsumer_Manager_Batch_Commit(t *testing.T) {
 		},
 		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
 		manager,
+		healthCheckTimer,
 	)
 	assert.Nil(t, err)
 

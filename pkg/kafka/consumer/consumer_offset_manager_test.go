@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/coffin"
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer/mocks"
@@ -42,7 +43,15 @@ func TestOffsetManager_NotCommitting(t *testing.T) {
 	reader.On("Close").Times(1).Return(nil)
 	defer reader.AssertExpectations(t)
 
-	manager := consumer.NewOffsetManager(logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), reader, 2, time.Second)
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+
+	manager := consumer.NewOffsetManager(
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
+		reader,
+		2,
+		time.Second,
+		healthCheckTimer,
+	)
 	pool.GoWithContext(ctx, manager.Start)
 
 	// 1st call to batch() should return a non-empty batch.
@@ -91,7 +100,15 @@ func TestOffsetManager_PartialCommit(t *testing.T) {
 	reader.On("Close").Times(1).Return(nil)
 	defer reader.AssertExpectations(t)
 
-	manager := consumer.NewOffsetManager(logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), reader, 2, time.Second)
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+
+	manager := consumer.NewOffsetManager(
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
+		reader,
+		2,
+		time.Second,
+		healthCheckTimer,
+	)
 	pool.GoWithContext(ctx, manager.Start)
 
 	// 1st call to batch() should return a non-empty batch.
@@ -146,7 +163,15 @@ func TestOffsetManager_DoubleCommit(t *testing.T) {
 	reader.On("Close").Times(1).Return(nil)
 	defer reader.AssertExpectations(t)
 
-	manager := consumer.NewOffsetManager(logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), reader, 2, time.Second)
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+
+	manager := consumer.NewOffsetManager(
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
+		reader,
+		2,
+		time.Second,
+		healthCheckTimer,
+	)
 	pool.GoWithContext(ctx, manager.Start)
 
 	// 1st call to batch() should return a non-empty batch.
@@ -208,7 +233,15 @@ func TestOffsetManager_FullCommit(t *testing.T) {
 	reader.On("Close").Times(1).Return(nil)
 	defer reader.AssertExpectations(t)
 
-	manager := consumer.NewOffsetManager(logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), reader, 2, time.Second)
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+
+	manager := consumer.NewOffsetManager(
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
+		reader,
+		2,
+		time.Second,
+		healthCheckTimer,
+	)
 	pool.GoWithContext(ctx, manager.Start)
 
 	// 1st call to batch() should return a non-empty batch.
@@ -265,7 +298,15 @@ func TestOffsetManager_FetchMessageErrors(t *testing.T) {
 	reader.On("Close").Times(1).Return(nil)
 	defer reader.AssertExpectations(t)
 
-	manager := consumer.NewOffsetManager(logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), reader, 2, time.Second)
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+
+	manager := consumer.NewOffsetManager(
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
+		reader,
+		2,
+		time.Second,
+		healthCheckTimer,
+	)
 	assert.ErrorIs(t, manager.Start(ctx), readerErr)
 }
 
@@ -290,7 +331,15 @@ func TestOffsetManager_FlushErrors(t *testing.T) {
 	reader.On("Close").Times(1).Return(readerErr)
 	defer reader.AssertExpectations(t)
 
-	manager := consumer.NewOffsetManager(logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)), reader, 2, time.Second)
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+
+	manager := consumer.NewOffsetManager(
+		logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(t)),
+		reader,
+		2,
+		time.Second,
+		healthCheckTimer,
+	)
 	assert.ErrorIs(t, manager.Start(ctx), readerErr)
 }
 

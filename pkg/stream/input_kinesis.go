@@ -34,6 +34,10 @@ func (i *kinesisInput) Stop() {
 	i.client.Stop()
 }
 
+func (i *kinesisInput) IsHealthy() bool {
+	return i.client.IsHealthy()
+}
+
 func (i *kinesisInput) Data() <-chan *Message {
 	return i.channel
 }

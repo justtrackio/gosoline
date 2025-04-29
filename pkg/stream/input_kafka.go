@@ -65,6 +65,10 @@ func (i *KafkaInput) Stop() {
 	i.pool.Kill(errors.New("asked to stop"))
 }
 
+func (i *KafkaInput) IsHealthy() bool {
+	return i.consumer.IsHealthy()
+}
+
 // Data returns a channel containing the messages produced by this input.
 func (i *KafkaInput) Data() <-chan *Message {
 	return i.data
