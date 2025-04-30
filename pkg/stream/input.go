@@ -1,6 +1,8 @@
 package stream
 
-import "context"
+import (
+	"context"
+)
 
 // An Input provides you with a steady stream of messages until you Stop it.
 //
@@ -18,6 +20,12 @@ type Input interface {
 	Stop()
 	// Data returns a channel containing the messages produced by this input.
 	Data() <-chan *Message
+	// IsHealthy checks if the input is still able to produce data. An Input is healthy if it produces zero or more
+	// messages repeatedly. Producing zero messages would for example happen if the input requested data from an
+	// external queue, but the queue was empty. An Input is unhealthy if it is no longer able to produce any messages.
+	//
+	// If an input exhausts its source (file, finished stream, fixed list, ...), it is still considered as healthy.
+	IsHealthy() bool
 }
 
 // An AcknowledgeableInput is an Input with the additional ability to mark messages as successfully consumed. For example,

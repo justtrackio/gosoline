@@ -6,14 +6,16 @@ import (
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/funk"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
 
 type ConsumerSettings struct {
-	Input       string                `cfg:"input" default:"consumer" validate:"required"`
-	RunnerCount int                   `cfg:"runner_count" default:"1" validate:"min=1"`
-	Encoding    EncodingType          `cfg:"encoding" default:"application/json"`
-	IdleTimeout time.Duration         `cfg:"idle_timeout" default:"10s"`
-	Retry       ConsumerRetrySettings `cfg:"retry"`
+	Input       string                     `cfg:"input" default:"consumer" validate:"required"`
+	RunnerCount int                        `cfg:"runner_count" default:"1" validate:"min=1"`
+	Encoding    EncodingType               `cfg:"encoding" default:"application/json"`
+	IdleTimeout time.Duration              `cfg:"idle_timeout" default:"10s"`
+	Retry       ConsumerRetrySettings      `cfg:"retry"`
+	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
 type ConsumerRetrySettings struct {

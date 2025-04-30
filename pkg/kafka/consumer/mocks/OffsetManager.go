@@ -176,6 +176,51 @@ func (_c *OffsetManager_Flush_Call) RunAndReturn(run func() error) *OffsetManage
 	return _c
 }
 
+// IsHealthy provides a mock function with no fields
+func (_m *OffsetManager) IsHealthy() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsHealthy")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// OffsetManager_IsHealthy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsHealthy'
+type OffsetManager_IsHealthy_Call struct {
+	*mock.Call
+}
+
+// IsHealthy is a helper method to define mock.On call
+func (_e *OffsetManager_Expecter) IsHealthy() *OffsetManager_IsHealthy_Call {
+	return &OffsetManager_IsHealthy_Call{Call: _e.mock.On("IsHealthy")}
+}
+
+func (_c *OffsetManager_IsHealthy_Call) Run(run func()) *OffsetManager_IsHealthy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *OffsetManager_IsHealthy_Call) Return(_a0 bool) *OffsetManager_IsHealthy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *OffsetManager_IsHealthy_Call) RunAndReturn(run func() bool) *OffsetManager_IsHealthy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Start provides a mock function with given fields: ctx
 func (_m *OffsetManager) Start(ctx context.Context) error {
 	ret := _m.Called(ctx)

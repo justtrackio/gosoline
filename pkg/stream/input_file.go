@@ -39,7 +39,7 @@ func (i *fileInput) Data() <-chan *Message {
 	return i.channel
 }
 
-func (i *fileInput) Run(ctx context.Context) error {
+func (i *fileInput) Run(_ context.Context) error {
 	defer func() {
 		if !i.settings.Blocking {
 			close(i.channel)
@@ -75,4 +75,8 @@ func (i *fileInput) Run(ctx context.Context) error {
 
 func (i *fileInput) Stop() {
 	i.stopped = true
+}
+
+func (i *fileInput) IsHealthy() bool {
+	return true
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/kinesis"
 	"github.com/justtrackio/gosoline/pkg/cloud/aws/sqs"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
 
 const (
@@ -109,13 +110,14 @@ func newKinesisInputFromConfig(ctx context.Context, config cfg.Config, logger lo
 }
 
 type redisInputConfiguration struct {
-	Project     string        `cfg:"project"`
-	Family      string        `cfg:"family"`
-	Group       string        `cfg:"group"`
-	Application string        `cfg:"application"`
-	ServerName  string        `cfg:"server_name" default:"default" validate:"min=1"`
-	Key         string        `cfg:"key" validate:"required,min=1"`
-	WaitTime    time.Duration `cfg:"wait_time" default:"3s"`
+	Project     string                     `cfg:"project"`
+	Family      string                     `cfg:"family"`
+	Group       string                     `cfg:"group"`
+	Application string                     `cfg:"application"`
+	ServerName  string                     `cfg:"server_name" default:"default" validate:"min=1"`
+	Key         string                     `cfg:"key" validate:"required,min=1"`
+	WaitTime    time.Duration              `cfg:"wait_time" default:"3s"`
+	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
 func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.Logger, name string) (Input, error) {
@@ -131,9 +133,10 @@ func newRedisInputFromConfig(ctx context.Context, config cfg.Config, logger log.
 			Group:       configuration.Group,
 			Application: configuration.Application,
 		},
-		ServerName: configuration.ServerName,
-		Key:        configuration.Key,
-		WaitTime:   configuration.WaitTime,
+		ServerName:         configuration.ServerName,
+		Key:                configuration.Key,
+		WaitTime:           configuration.WaitTime,
+		HealthcheckTimeout: configuration.Healthcheck.Timeout,
 	}
 
 	return NewRedisListInput(ctx, config, logger, settings)
