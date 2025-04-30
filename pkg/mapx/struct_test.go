@@ -409,6 +409,30 @@ func TestMapStructIO_ReadMapStruct(t *testing.T) {
 	assert.Equal(t, expectedValues, msi.Msi())
 }
 
+func TestMapStructIO_ReadMapSlice(t *testing.T) {
+	type sourceStruct struct {
+		M map[string][]string `cfg:"m"`
+	}
+
+	source := &sourceStruct{
+		M: map[string][]string{
+			"key": {"foo", "bar"},
+		},
+	}
+
+	expectedValues := map[string]any{
+		"m": map[string]any{
+			"key": []any{"foo", "bar"},
+		},
+	}
+
+	ms := setupMapStructIO(t, source)
+	msi, err := ms.Read()
+
+	assert.NoError(t, err, "there should be no error during reading")
+	assert.Equal(t, expectedValues, msi.Msi())
+}
+
 func TestMapStructIO_ReadMapRecursive(t *testing.T) {
 	type sourceStruct struct {
 		M map[string]map[string]string `cfg:"m"`

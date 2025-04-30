@@ -34,25 +34,29 @@ type DataExporter interface {
 
 type exporterCtxKey int
 
-func ProvideDataExporter(ctx context.Context, config cfg.Config, logger log.Logger) (DataExporter, error) {
+func ProvideDataExporter(ctx context.Context, config cfg.Config, logger log.Logger, clientName string) (DataExporter, error) {
 	return appctx.Provide(ctx, exporterCtxKey(1), func() (DataExporter, error) {
-		return NewDataExporter(ctx, config, logger)
+		return NewDataExporter(ctx, config, logger, clientName)
 	})
 }
 
-func NewDataExporter(ctx context.Context, config cfg.Config, logger log.Logger) (DataExporter, error) {
-	client, err := NewClient(ctx, config, logger, "default")
+func NewDataExporter(ctx context.Context, config cfg.Config, logger log.Logger, clientName string) (DataExporter, error) {
+	client, err := NewClient(ctx, config, logger, clientName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to provide db client: %w", err)
 	}
 
+	return NewDataExporterWithInterfaces(logger, client), nil
+}
+
+func NewDataExporterWithInterfaces(logger log.Logger, client Client) DataExporter {
 	return &dataExporter{
 		logger: logger.WithChannel("db-model-dumper"),
 		client: client,
 		ignoredModels: []string{
 			"fixture",
 		},
-	}, nil
+	}
 }
 
 type dataExporter struct {
