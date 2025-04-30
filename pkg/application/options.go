@@ -33,8 +33,14 @@ type (
 	SetupOption  func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error
 )
 
-func WithHttpHealthCheck(app *App) {
-	WithModuleFactory("http-health-check", httpserver.NewHealthCheck())(app)
+func WithAppCtxValue[T any](provider func(ctx context.Context, config cfg.Config, logger log.Logger) (T, error)) Option {
+	return func(app *App) {
+		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+			_, err := provider(ctx, config, logger)
+
+			return err
+		})
+	}
 }
 
 func WithConfigEnvKeyPrefix(prefix string) Option {
@@ -184,6 +190,10 @@ func WithConfigSetting(key string, settings any) Option {
 			return config.Option(cfg.WithConfigSetting(key, settings))
 		})
 	}
+}
+
+func WithHttpHealthCheck(app *App) {
+	WithModuleFactory("http-health-check", httpserver.NewHealthCheck())(app)
 }
 
 func WithMetricsCalculatorModule(app *App) {
@@ -369,15 +379,15 @@ func WithProducerDaemon(app *App) {
 	})
 }
 
-func WithTaskRunner(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-		return kernelPkg.WithModuleMultiFactory(taskRunner.Factory)
-	})
-}
-
 func WithProfiling(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		return kernelPkg.WithModuleMultiFactory(httpserver.ProfilingModuleFactory)
+	})
+}
+
+func WithTaskRunner(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithModuleMultiFactory(taskRunner.Factory)
 	})
 }
 
