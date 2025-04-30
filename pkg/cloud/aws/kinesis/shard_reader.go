@@ -578,30 +578,33 @@ func getShardReaderDefaultMetrics(stream Stream) metric.Data {
 			MetricName: metricNameReadCount,
 			Dimensions: map[string]string{
 				"StreamName": string(stream),
+				"ShardId":    metric.DimensionDefault,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
-			Kind:  metric.KindTotal,
+			Kind:  metric.KindDefault,
 		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameReadRecords,
 			Dimensions: map[string]string{
 				"StreamName": string(stream),
+				"ShardId":    metric.DimensionDefault,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
-			Kind:  metric.KindTotal,
+			Kind:  metric.KindDefault,
 		},
 		{
 			Priority:   metric.PriorityHigh,
 			MetricName: metricNameFailedRecords,
 			Dimensions: map[string]string{
 				"StreamName": string(stream),
+				"ShardId":    metric.DimensionDefault,
 			},
 			Unit:  metric.UnitCount,
 			Value: 0.0,
-			Kind:  metric.KindTotal,
+			Kind:  metric.KindDefault,
 		},
 	}
 }
