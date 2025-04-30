@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jessevdk/go-flags"
+	"github.com/justtrackio/gosoline/pkg/appctx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	taskRunner "github.com/justtrackio/gosoline/pkg/conc/task_runner"
@@ -33,8 +34,17 @@ type (
 	SetupOption  func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error
 )
 
-func WithHttpHealthCheck(app *App) {
-	WithModuleFactory("http-health-check", httpserver.NewHealthCheck())(app)
+func WithAppCtxValue[T any](valueFactory appctx.ContextValueFactory[T]) Option {
+	return func(app *App) {
+		app.addSetupOption(func(ctx context.Context, config cfg.GosoConf, logger log.GosoLogger) error {
+			key, provider := valueFactory()
+			_, err := appctx.Provide(ctx, key, func() (T, error) {
+				return provider(ctx, config, logger)
+			})
+
+			return err
+		})
+	}
 }
 
 func WithConfigEnvKeyPrefix(prefix string) Option {
@@ -176,6 +186,10 @@ func WithConfigSetting(key string, settings any) Option {
 			return config.Option(cfg.WithConfigSetting(key, settings))
 		})
 	}
+}
+
+func WithHttpHealthCheck(app *App) {
+	WithModuleFactory("http-health-check", httpserver.NewHealthCheck())(app)
 }
 
 func WithMetricsCalculatorModule(app *App) {
@@ -371,15 +385,15 @@ func WithProducerDaemon(app *App) {
 	})
 }
 
-func WithTaskRunner(app *App) {
-	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
-		return kernelPkg.WithModuleMultiFactory(taskRunner.Factory)
-	})
-}
-
 func WithProfiling(app *App) {
 	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
 		return kernelPkg.WithModuleMultiFactory(httpserver.ProfilingModuleFactory)
+	})
+}
+
+func WithTaskRunner(app *App) {
+	app.addKernelOption(func(config cfg.GosoConf) kernelPkg.Option {
+		return kernelPkg.WithModuleMultiFactory(taskRunner.Factory)
 	})
 }
 

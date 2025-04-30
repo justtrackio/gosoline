@@ -241,12 +241,13 @@ func (s *Struct) ReadNonZero() (*MapX, error) {
 }
 
 func (s *Struct) doReadMap(path string, mapValues *MapX, mp any) error {
-	if _, ok := mp.(map[string]any); ok {
-		return s.doReadMsi(path, mapValues, mp.(map[string]any))
-	}
-
-	if _, ok := mp.(map[string]string); ok {
-		return s.doReadMss(path, mapValues, mp.(map[string]string))
+	switch val := mp.(type) {
+	case map[string]any:
+		return s.doReadMsi(path, mapValues, val)
+	case map[string][]string:
+		return s.doReadMsSlice(path, mapValues, val)
+	case map[string]string:
+		return s.doReadMss(path, mapValues, val)
 	}
 
 	mapValue := reflect.ValueOf(mp)
@@ -265,6 +266,17 @@ func (s *Struct) doReadMap(path string, mapValues *MapX, mp any) error {
 			if err := s.doReadMap(elementPath, mapValues, element); err != nil {
 				return fmt.Errorf("can not read path value %s: %w", elementPath, err)
 			}
+		}
+	case reflect.Slice:
+		for _, key := range mapValue.MapKeys() {
+			if key.Kind() != reflect.String {
+				return fmt.Errorf("only string values are allowed as map keys for path %s", path)
+			}
+
+			element := mapValue.MapIndex(key).Interface()
+			elementPath := fmt.Sprintf("%s.%s", path, key.String())
+
+			mapValues.Set(elementPath, element)
 		}
 	case reflect.Struct:
 		for _, key := range mapValue.MapKeys() {
@@ -297,6 +309,15 @@ func (s *Struct) doReadMsi(path string, mapValues *MapX, msi map[string]any) err
 
 func (s *Struct) doReadMss(path string, mapValues *MapX, mss map[string]string) error {
 	for k, v := range mss {
+		elementPath := fmt.Sprintf("%s.%s", path, k)
+		mapValues.Set(elementPath, v)
+	}
+
+	return nil
+}
+
+func (s *Struct) doReadMsSlice(path string, mapValues *MapX, msi map[string][]string) error {
+	for k, v := range msi {
 		elementPath := fmt.Sprintf("%s.%s", path, k)
 		mapValues.Set(elementPath, v)
 	}

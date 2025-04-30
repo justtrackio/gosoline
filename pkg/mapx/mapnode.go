@@ -143,6 +143,10 @@ func (n *MapXNode) Slice() ([]any, error) {
 	var ok bool
 	var slice []any
 
+	if n.value == nil {
+		return []any{}, nil
+	}
+
 	if slice, ok = n.value.([]any); !ok {
 		return nil, fmt.Errorf("value should be of type []any but instead is %T", n.value)
 	}

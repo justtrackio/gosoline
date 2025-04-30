@@ -77,3 +77,11 @@ func (t *JSON[T, NullBehaviour]) Scan(src any) error {
 		return ErrJSONInvalidType
 	}
 }
+
+func (t *JSON[T, NullBehaviour]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.val)
+}
+
+func (t *JSON[T, NullBehaviour]) UnmarshalJSON(bytes []byte) error {
+	return json.Unmarshal(bytes, &t.val)
+}
