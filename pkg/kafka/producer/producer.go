@@ -63,7 +63,7 @@ func (p *Producer) Run(ctx context.Context) error {
 	p.Logger.Info("starting producer")
 	defer p.Logger.Info("shutdown producer")
 
-	p.pool.GoWithContext(ctx, p.flushOnExit)
+	p.pool.GoWithContext(ctx, p.flushOnExit, coffin.Named("kafka/flushOnExit"))
 
 	return p.pool.Wait()
 }
