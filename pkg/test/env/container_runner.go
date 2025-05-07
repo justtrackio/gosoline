@@ -1,6 +1,7 @@
 package env
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -12,6 +13,7 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/coffin"
+	"github.com/justtrackio/gosoline/pkg/exec"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 	"github.com/ory/dockertest/v3"
@@ -90,13 +92,14 @@ type containerRunner struct {
 	logger            log.Logger
 	pool              *dockertest.Pool
 	id                string
+	pullExecutor      exec.Executor
 	resources         map[string]*dockertest.Resource
 	resourcesLck      sync.Mutex
 	settings          *containerRunnerSettings
 	shutdownCallbacks map[string]func() error
 }
 
-func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner, error) {
+func newContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner, error) {
 	id := uuid.New().NewV4()
 	logger = logger.WithChannel("container-runner")
 
@@ -108,20 +111,37 @@ func NewContainerRunner(config cfg.Config, logger log.Logger) (*containerRunner,
 		return nil, fmt.Errorf("can not create docker pool: %w", err)
 	}
 
-	// do this here, if we let the call to `pool.Retry` do this, we trigger a data race (not bad in this case, but annoying
-	// for the race detector)
+	// do this here, if we let the call to `pool.Retry` do this, we trigger a data race
+	// (not bad in this case, but annoying for the race detector)
 	if pool.MaxWait == 0 {
 		pool.MaxWait = time.Minute
 	}
+
+	checkTooManyRequests := func(result any, err error) exec.ErrorType {
+		if err != nil && strings.Contains(err.Error(), "toomanyrequests") {
+			return exec.ErrorTypeRetryable
+		}
+
+		return exec.ErrorTypeUnknown
+	}
+
+	pullSettings := exec.ReadBackoffSettings(config, "test.images")
+	// ensure we wait at least 10 seconds, if we are sending too many requests, waiting a shorter time is most likely futile
+	pullSettings.InitialInterval = max(pullSettings.InitialInterval, time.Second*10)
+	pullExecutor := exec.NewBackoffExecutor(logger, &exec.ExecutableResource{
+		Type: "image",
+		Name: "pull",
+	}, &pullSettings, []exec.ErrorChecker{checkTooManyRequests})
 
 	return &containerRunner{
 		logger:            logger,
 		pool:              pool,
 		id:                id,
-		resources:         make(map[string]*dockertest.Resource),
+		pullExecutor:      pullExecutor,
+		resources:         map[string]*dockertest.Resource{},
 		resourcesLck:      sync.Mutex{},
 		settings:          settings,
-		shutdownCallbacks: make(map[string]func() error, 0),
+		shutdownCallbacks: map[string]func() error{},
 	}, nil
 }
 
@@ -166,12 +186,16 @@ func (r *containerRunner) PullContainerImage(description *componentContainerDesc
 	containerAuth := description.containerConfig.Auth
 	authConfig := r.getAuthConfig(containerAuth)
 
-	err = r.pool.Client.PullImage(pullImageOptions, authConfig)
-	if err != nil {
-		return fmt.Errorf("could not pull image %q: %w", imageName, err)
-	}
+	_, err = r.pullExecutor.Execute(context.Background(), func(ctx context.Context) (any, error) {
+		err := r.pool.Client.PullImage(pullImageOptions, authConfig)
+		if err != nil {
+			return nil, fmt.Errorf("could not pull image %q: %w", imageName, err)
+		}
 
-	return nil
+		return nil, nil
+	})
+
+	return err
 }
 
 func (r *containerRunner) getAuthConfig(containerAuth authSettings) docker.AuthConfiguration {
@@ -203,7 +227,13 @@ func (r *containerRunner) RunContainers(skeletons []*componentSkeleton) error {
 				var container *container
 
 				if container, err = r.RunContainer(skeleton, name, description); err != nil {
-					return fmt.Errorf("can not run container %s (%s:%s): %w", skeleton.id(), description.containerConfig.Repository, description.containerConfig.Tag, err)
+					return fmt.Errorf(
+						"can not run container %s (%s:%s): %w",
+						skeleton.id(),
+						description.containerConfig.Repository,
+						description.containerConfig.Tag,
+						err,
+					)
 				}
 
 				lck.Lock()
@@ -240,7 +270,12 @@ func (r *containerRunner) RunContainer(skeleton *componentSkeleton, name string,
 
 	if err = r.waitUntilHealthy(container, description.healthCheck); err != nil {
 		if description.containerConfig.UseExternalContainer {
-			return nil, fmt.Errorf("healthcheck failed on container for component %s. The container is configured to use an external container, is that container running? %w", skeleton.id(), err)
+			return nil, fmt.Errorf(
+				"healthcheck failed on container for component %s. "+
+					"The container is configured to use an external container, is that container running? %w",
+				skeleton.id(),
+				err,
+			)
 		}
 
 		return nil, fmt.Errorf("healthcheck failed on container for component %s: %w", skeleton.id(), err)
@@ -275,7 +310,12 @@ func (r *containerRunner) createExternalContainer(containerName, skeletonTyp str
 	}, nil
 }
 
-func (r *containerRunner) runNewContainer(containerName string, skeleton *componentSkeleton, name string, config *containerConfig) (*container, error) {
+func (r *containerRunner) runNewContainer(
+	containerName string,
+	skeleton *componentSkeleton,
+	name string,
+	config *containerConfig,
+) (*container, error) {
 	r.logger.Debug("run container %s %s:%s %s", skeleton.typ, config.Repository, config.Tag, containerName)
 
 	bindings := make(map[docker.Port][]docker.PortBinding)
@@ -314,7 +354,14 @@ func (r *containerRunner) runNewContainer(containerName string, skeleton *compon
 	return container, nil
 }
 
-func (r *containerRunner) runContainer(options *dockertest.RunOptions, resourceId string, expireAfter time.Duration, bindings portBindings, typ string, tmpfs map[string]string) (*container, error) {
+func (r *containerRunner) runContainer(
+	options *dockertest.RunOptions,
+	resourceId string,
+	expireAfter time.Duration,
+	bindings portBindings,
+	typ string,
+	tmpfs map[string]string,
+) (*container, error) {
 	var resourceContainer *container
 
 	resource, err := r.pool.RunWithOptions(options, func(hc *docker.HostConfig) {
