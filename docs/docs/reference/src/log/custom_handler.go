@@ -9,7 +9,7 @@ import (
 )
 
 type MyCustomHandlerSettings struct {
-	Channel string `cfg:"channel"`
+	Channel log.Channel `cfg:"channel"`
 }
 
 func MyCustomHandlerFactory(config cfg.Config, name string) (log.Handler, error) {
@@ -22,11 +22,11 @@ func MyCustomHandlerFactory(config cfg.Config, name string) (log.Handler, error)
 }
 
 type MyCustomHandler struct {
-	channel string
+	channel log.Channel
 }
 
-func (h *MyCustomHandler) Channels() []string {
-	return []string{h.channel}
+func (h *MyCustomHandler) Channels() []log.Channel {
+	return []log.Channel{h.channel}
 }
 
 func (h *MyCustomHandler) Level() int {

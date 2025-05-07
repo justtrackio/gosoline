@@ -16,7 +16,7 @@ func main() {
 		// the min log level to write (trace, debug, info, warn, error)
 		log.LevelDebug,
 		// a list of channels to filter for, if empty nothing is filtered. []string{"http"} would write logs from http channel only
-		[]string{},
+		[]log.Channel{},
 		// how to format the message. this will format in a console friendly way. log.FormatterJson would format log message as json
 		log.FormatterConsole,
 		// how to format the log time. uses the structure of the `time` package
