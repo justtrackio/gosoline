@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
 )
@@ -178,13 +177,7 @@ func (l *gosoLogger) log(level int, msg string, args []interface{}, loggedErr er
 	timestamp := l.clock.Now()
 
 	for _, handler := range l.handlers {
-		if handler.Level() > level {
-			continue
-		}
-
-		handlerChannels := handler.Channels()
-
-		if !l.shouldLogToChannels(l.data.Channel, handlerChannels) {
+		if !l.shouldLog(l.data.Channel, level, handler) {
 			continue
 		}
 
@@ -194,32 +187,14 @@ func (l *gosoLogger) log(level int, msg string, args []interface{}, loggedErr er
 	}
 }
 
-func (l *gosoLogger) shouldLogToChannels(current string, channels []string) bool {
-	if len(channels) == 0 {
-		return true
-	}
-
-	for _, channel := range channels {
-		if channel == "*" {
-			return true
-		}
-
-		if channel == current {
-			return true
-		}
-
-		if !strings.HasPrefix(channel, "!") {
-			continue
-		}
-
-		channel = strings.TrimPrefix(channel, "!")
-
-		if channel == current {
-			return false
+func (l *gosoLogger) shouldLog(current string, level int, h Handler) bool {
+	for _, channel := range h.Channels() {
+		if current == channel.Name {
+			return (levelPriorities[channel.Level] <= level) && !channel.Disabled
 		}
 	}
 
-	return false
+	return h.Level() <= level
 }
 
 func (l *gosoLogger) err(err error) {
