@@ -457,7 +457,8 @@ func (_c *Repository_Update_Call) RunAndReturn(run func(context.Context, db_repo
 func NewRepository(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Repository {
+},
+) *Repository {
 	mock := &Repository{}
 	mock.Mock.Test(t)
 

@@ -132,7 +132,8 @@ func (_c *SqlResult_RowsAffected_Call) RunAndReturn(run func() (int64, error)) *
 func NewSqlResult(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *SqlResult {
+},
+) *SqlResult {
 	mock := &SqlResult{}
 	mock.Mock.Test(t)
 

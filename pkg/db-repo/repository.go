@@ -96,7 +96,7 @@ func NewWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger
 		return nil, fmt.Errorf("can not create tracer: %w", err)
 	}
 
-	orm, err := NewOrmWithDbSettings(ctx, logger, repoSettings.ClientName, dbSettings, repoSettings.Application)
+	orm, err := NewOrmWithDbSettings(ctx, config, logger, repoSettings.ClientName, dbSettings, repoSettings.Application)
 	if err != nil {
 		return nil, fmt.Errorf("can not create orm: %w", err)
 	}
