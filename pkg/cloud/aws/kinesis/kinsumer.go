@@ -20,6 +20,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	"github.com/justtrackio/gosoline/pkg/reslife"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 	"github.com/justtrackio/gosoline/pkg/uuid"
 )
 
@@ -66,8 +67,10 @@ type Settings struct {
 	DiscoverFrequency time.Duration `cfg:"discover_frequency" default:"1m" validate:"min=1000000000"`
 	// How long we extend the deadline of a context when releasing a shard or when deregistering a client. Min = 1s
 	ReleaseDelay time.Duration `cfg:"release_delay" default:"5s" validate:"min=1000000000"`
-	// Should we write how many milliseconds behind each shard is or only the whole stream?
-	ShardLevelMetrics bool `cfg:"shard_level_metrics" default:"false"`
+	// Should we ensure messages from child shards are only consumed after their parent shards have been fully consumed?
+	KeepShardOrder bool `cfg:"keep_shard_order" default:"true"`
+	// Healthcheck configures when we turn unhealthy and are killed
+	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
 func (s Settings) GetAppId() cfg.AppId {
@@ -86,6 +89,7 @@ func (s Settings) GetStreamName() string {
 type Kinsumer interface {
 	Run(ctx context.Context, handler MessageHandler) error
 	Stop()
+	IsHealthy() bool
 }
 
 type kinsumer struct {
@@ -96,6 +100,7 @@ type kinsumer struct {
 	metadataRepository MetadataRepository
 	metricWriter       metric.Writer
 	clock              clock.Clock
+	healthCheckTimer   clock.HealthCheckTimer
 	shardReaderFactory func(logger log.Logger, shardId ShardId) ShardReader
 	stopLck            sync.Mutex
 	stop               func()
@@ -142,11 +147,33 @@ func NewKinsumer(ctx context.Context, config cfg.Config, logger log.Logger, sett
 		return nil, fmt.Errorf("failed to create metadata manager: %w", err)
 	}
 
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.Provider, settings.Healthcheck.Timeout)
+
 	shardReaderFactory := func(logger log.Logger, shardId ShardId) ShardReader {
-		return NewShardReaderWithInterfaces(fullStreamName, shardId, logger, metricWriter, metadataRepository, kinesisClient, *settings, clock.Provider)
+		return NewShardReaderWithInterfaces(
+			fullStreamName,
+			shardId,
+			logger,
+			metricWriter,
+			metadataRepository,
+			kinesisClient,
+			*settings,
+			clock.Provider,
+			healthCheckTimer,
+		)
 	}
 
-	return NewKinsumerWithInterfaces(logger, *settings, fullStreamName, kinesisClient, metadataRepository, metricWriter, clock.Provider, shardReaderFactory), nil
+	return NewKinsumerWithInterfaces(
+		logger,
+		*settings,
+		fullStreamName,
+		kinesisClient,
+		metadataRepository,
+		metricWriter,
+		clock.Provider,
+		healthCheckTimer,
+		shardReaderFactory,
+	), nil
 }
 
 func NewKinsumerWithInterfaces(
@@ -157,6 +184,7 @@ func NewKinsumerWithInterfaces(
 	metadataRepository MetadataRepository,
 	metricWriter metric.Writer,
 	clock clock.Clock,
+	healthCheckTimer clock.HealthCheckTimer,
 	shardReaderFactory func(logger log.Logger, shardId ShardId) ShardReader,
 ) Kinsumer {
 	return &kinsumer{
@@ -167,6 +195,7 @@ func NewKinsumerWithInterfaces(
 		metadataRepository: metadataRepository,
 		metricWriter:       metricWriter,
 		clock:              clock,
+		healthCheckTimer:   healthCheckTimer,
 		shardReaderFactory: shardReaderFactory,
 	}
 }
@@ -342,20 +371,20 @@ func (k *kinsumer) listShardIds(ctx context.Context) ([]ShardId, error) {
 
 func (k *kinsumer) getSortedShardIds(shardMap map[ShardId]shardInfo) []ShardId {
 	shardIds := make([]ShardId, 0)
-	for k, v := range shardMap {
-		if v.finished {
+	for shardId, shardInfo := range shardMap {
+		if shardInfo.finished {
 			continue
 		}
 
 		// if a shard has a parent which no longer exists, we need to treat it like a shard without a parent (for all
 		// purposes, that is true already), otherwise we can't process most shards once they have had a parent somewhere
 		// in the past (but we already forgot everything about said parent)
-		if _, ok := shardMap[v.parent]; !ok {
-			v.parent = ""
+		if _, ok := shardMap[shardInfo.parent]; !ok {
+			shardInfo.parent = ""
 		}
 
-		if v.parent == "" || shardMap[v.parent].finished {
-			shardIds = append(shardIds, k)
+		if shardInfo.parent == "" || shardMap[shardInfo.parent].finished || !k.settings.KeepShardOrder {
+			shardIds = append(shardIds, shardId)
 		}
 	}
 
@@ -364,7 +393,12 @@ func (k *kinsumer) getSortedShardIds(shardMap map[ShardId]shardInfo) []ShardId {
 	return shardIds
 }
 
-func (k *kinsumer) startConsumers(ctx context.Context, cfn coffin.Coffin, runtimeCtx *runtimeContext, handler MessageHandler) (*sync.WaitGroup, context.CancelFunc) {
+func (k *kinsumer) startConsumers(
+	ctx context.Context,
+	cfn coffin.Coffin,
+	runtimeCtx *runtimeContext,
+	handler MessageHandler,
+) (*sync.WaitGroup, context.CancelFunc) {
 	consumerCtx, stopConsumers := context.WithCancel(ctx)
 
 	wg := &sync.WaitGroup{}
@@ -393,6 +427,26 @@ func (k *kinsumer) startConsumers(ctx context.Context, cfn coffin.Coffin, runtim
 			}
 
 			return nil
+		})
+	}
+
+	if startedConsumers == 0 {
+		// while we have no running consumers, we must not get unhealthy, otherwise we get killed unnecessarily
+		wg.Add(1)
+		// use the wait time as a good indication of how often we are expected to set us to healthy again
+		ticker := k.clock.NewTicker(k.settings.WaitTime)
+
+		cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-ticker.Chan():
+					k.healthCheckTimer.MarkHealthy()
+				}
+			}
 		})
 	}
 
@@ -470,6 +524,10 @@ func (k *kinsumer) setStop(stop func()) {
 		k.stop = stop
 	}
 	k.stopLck.Unlock()
+}
+
+func (k *kinsumer) IsHealthy() bool {
+	return k.healthCheckTimer.IsHealthy()
 }
 
 func (s shardIdSlice) Len() int {

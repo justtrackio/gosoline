@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/reqctx"
@@ -27,10 +28,17 @@ type RunnableConsumerCallback interface {
 
 type Consumer struct {
 	*baseConsumer
-	callback ConsumerCallback
+	callback         ConsumerCallback
+	healthCheckTimer clock.HealthCheckTimer
 }
 
-func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+var _ kernel.FullModule = &Consumer{}
+
+func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(
+	ctx context.Context,
+	config cfg.Config,
+	logger log.Logger,
+) (kernel.Module, error) {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		loggerCallback := logger.WithChannel("consumerCallback")
 		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
@@ -49,14 +57,17 @@ func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(ctx 
 			return nil, fmt.Errorf("can not initiate base consumer: %w", err)
 		}
 
-		return NewConsumerWithInterfaces(baseConsumer, callback), nil
+		healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(baseConsumer.clock, baseConsumer.settings.Healthcheck.Timeout)
+
+		return NewConsumerWithInterfaces(baseConsumer, callback, healthCheckTimer), nil
 	}
 }
 
-func NewConsumerWithInterfaces(base *baseConsumer, callback ConsumerCallback) *Consumer {
+func NewConsumerWithInterfaces(base *baseConsumer, callback ConsumerCallback, healthCheckTimer clock.HealthCheckTimer) *Consumer {
 	consumer := &Consumer{
-		baseConsumer: base,
-		callback:     callback,
+		baseConsumer:     base,
+		callback:         callback,
+		healthCheckTimer: healthCheckTimer,
 	}
 
 	return consumer
@@ -66,9 +77,18 @@ func (c *Consumer) Run(kernelCtx context.Context) error {
 	return c.baseConsumer.run(kernelCtx, c.readData)
 }
 
+func (c *Consumer) IsHealthy(_ context.Context) (bool, error) {
+	return c.baseConsumer.isHealthy() && c.healthCheckTimer.IsHealthy(), nil
+}
+
 func (c *Consumer) readData(ctx context.Context) error {
 	defer c.logger.Debug("read from input is ending")
 	defer c.wg.Done()
+
+	// timer to mark us as healthy should we not get any messages to process
+	// (thus, the only way to get unhealthy would be if the consumer callback
+	// takes too long to process a single message)
+	timer := c.clock.NewTimer(c.settings.Healthcheck.Timeout / 2)
 
 	for {
 		select {
@@ -80,11 +100,18 @@ func (c *Consumer) readData(ctx context.Context) error {
 				return nil
 			}
 
+			// we got a message and are thus healthy
+			c.healthCheckTimer.MarkHealthy()
+
 			if _, ok := cdata.msg.Attributes[AttributeAggregate]; ok {
 				c.processAggregateMessage(ctx, cdata)
 			} else {
 				c.processSingleMessage(ctx, cdata)
 			}
+
+		case <-timer.Chan():
+			// we didn't get a message for quite some time, but we stay healthy
+			c.healthCheckTimer.MarkHealthy()
 		}
 	}
 }
@@ -123,6 +150,8 @@ func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData
 }
 
 func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry bool) bool {
+	// once we processed a message, we made progress and are thus healthy
+	defer c.healthCheckTimer.MarkHealthy()
 	defer c.recover(ctx, msg)
 
 	var err error

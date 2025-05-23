@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/justtrackio/gosoline/pkg/cfg"
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/encoding/json"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
 	"github.com/justtrackio/gosoline/pkg/mdl"
@@ -97,6 +98,8 @@ func (s *ConsumerTestSuite) SetupTest() {
 		},
 	}
 
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+
 	baseConsumer := stream.NewBaseConsumerWithInterfaces(
 		s.uuidGen,
 		logger,
@@ -111,7 +114,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 		"test",
 		cfg.AppId{},
 	)
-	s.consumer = stream.NewConsumerWithInterfaces(baseConsumer, s.callback)
+	s.consumer = stream.NewConsumerWithInterfaces(baseConsumer, s.callback, healthCheckTimer)
 }
 
 func (s *ConsumerTestSuite) TestGetModelNil() {
