@@ -31,6 +31,7 @@ func NewExecutorWithChecker(config cfg.Config, logger log.Logger, name string, b
 		append([]exec.ErrorChecker{
 			exec.CheckConnectionError,
 			exec.CheckTimeoutError,
+			CheckDeadlock,
 			CheckInvalidConnection,
 			CheckBadConnection,
 			CheckIoTimeout,
@@ -41,6 +42,15 @@ func NewExecutorWithChecker(config cfg.Config, logger log.Logger, name string, b
 
 func ExecutorBackoffType(name string) string {
 	return fmt.Sprintf("db.%s.retry", name)
+}
+
+func CheckDeadlock(result any, err error) exec.ErrorType {
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1213 {
+		return exec.ErrorTypeRetryable
+	}
+
+	return exec.ErrorTypeUnknown
 }
 
 func CheckInvalidConnection(result any, err error) exec.ErrorType {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"github.com/jinzhu/gorm"
-	"github.com/jmoiron/sqlx"
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/db"
@@ -26,13 +25,13 @@ type OrmSettings struct {
 
 func NewOrm(ctx context.Context, config cfg.Config, logger log.Logger, dbClientName string) (*gorm.DB, error) {
 	var err error
-	var connection *sqlx.DB
 
 	if dbClientName == "" {
 		dbClientName = "default"
 	}
 
-	if connection, err = db.ProvideConnection(ctx, config, logger, dbClientName); err != nil {
+	client, err := NewOrmClient(ctx, config, logger, dbClientName)
+	if err != nil {
 		return nil, fmt.Errorf("can not create db connection : %w", err)
 	}
 
@@ -40,11 +39,11 @@ func NewOrm(ctx context.Context, config cfg.Config, logger log.Logger, dbClientN
 	key := fmt.Sprintf("db.%s", dbClientName)
 	config.UnmarshalKey(key, &settings)
 
-	return NewOrmWithInterfaces(connection, settings)
+	return NewOrmWithInterfaces(client, settings)
 }
 
-func NewOrmWithDbSettings(ctx context.Context, logger log.Logger, dbClientName string, dbSettings *db.Settings, application string) (*gorm.DB, error) {
-	dbClient, err := db.ProvideConnectionFromSettings(ctx, logger, dbClientName, dbSettings)
+func NewOrmWithDbSettings(ctx context.Context, config cfg.Config, logger log.Logger, dbClientName string, dbSettings *db.Settings, application string) (*gorm.DB, error) {
+	dbClient, err := NewOrmClientWithSettings(ctx, config, logger, dbClientName, dbSettings)
 	if err != nil {
 		return nil, fmt.Errorf("can not connect to sql database: %w", err)
 	}
