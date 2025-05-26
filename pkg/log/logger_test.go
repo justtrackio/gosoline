@@ -14,7 +14,11 @@ import (
 
 func TestLoggerIoWriter(t *testing.T) {
 	buf := &bytes.Buffer{}
-	handler := log.NewHandlerIoWriter(log.LevelInfo, []string{"main"}, log.FormatterJson, time.RFC3339, buf)
+	handler := log.NewHandlerIoWriter(log.LevelInfo, log.Channels{
+		"main":          log.PriorityInfo,
+		"error_channel": log.PriorityError,
+		"forbidden":     log.PriorityNone,
+	}, log.FormatterJson, time.RFC3339, buf)
 	cl := clock.NewFakeClock()
 
 	logger := log.NewLoggerWithInterfaces(cl, []log.Handler{handler})
@@ -24,7 +28,9 @@ func TestLoggerIoWriter(t *testing.T) {
 	cl.Advance(time.Minute)
 	logger.Info("bar")
 	logger.Debug("some debug")
-	logger.WithChannel("other channel").Info("something in another channel")
+	logger.WithChannel("forbidden").Info("something in forbidden channel")
+	logger.WithChannel("error_channel").Warn("not logged")
+	logger.WithChannel("error_channel").Error("error logged")
 
 	cl.Advance(time.Minute)
 	logger.Info("foobaz")
@@ -34,12 +40,13 @@ func TestLoggerIoWriter(t *testing.T) {
 	logger.Error("something went wrong: %w", err)
 
 	lines := getLogLines(buf)
-	assert.Len(t, lines, 4)
+	assert.Len(t, lines, 5)
 
 	assert.JSONEq(t, `{"channel":"main","context":{},"fields":{},"level":2,"level_name":"info","message":"foo","timestamp":"1984-04-04T00:00:00Z"}`, lines[0])
 	assert.JSONEq(t, `{"channel":"main","context":{},"fields":{},"level":2,"level_name":"info","message":"bar","timestamp":"1984-04-04T00:01:00Z"}`, lines[1])
-	assert.JSONEq(t, `{"channel":"main","context":{},"fields":{},"level":2,"level_name":"info","message":"foobaz","timestamp":"1984-04-04T00:02:00Z"}`, lines[2])
-	assert.JSONEq(t, `{"channel":"main","context":{},"err":"something went wrong: random error","fields":{},"level":4,"level_name":"error","message":"something went wrong: random error","timestamp":"1984-04-04T00:03:00Z"}`, lines[3])
+	assert.JSONEq(t, `{"channel":"error_channel","context":{},"err":"error logged","fields":{},"level":4,"level_name":"error","message":"error logged","timestamp":"1984-04-04T00:01:00Z"}`, lines[2])
+	assert.JSONEq(t, `{"channel":"main","context":{},"fields":{},"level":2,"level_name":"info","message":"foobaz","timestamp":"1984-04-04T00:02:00Z"}`, lines[3])
+	assert.JSONEq(t, `{"channel":"main","context":{},"err":"something went wrong: random error","fields":{},"level":4,"level_name":"error","message":"something went wrong: random error","timestamp":"1984-04-04T00:03:00Z"}`, lines[4])
 }
 
 func getLogLines(buf *bytes.Buffer) []string {
