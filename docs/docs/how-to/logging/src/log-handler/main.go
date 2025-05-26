@@ -16,13 +16,9 @@ type MyCustomHandler struct {
 	channel string
 }
 
-func (h *MyCustomHandler) Channels() []log.Channel {
-	return []log.Channel{
-		{
-			Name:     h.channel,
-			Level:    "debug",
-			Disabled: false,
-		},
+func (h *MyCustomHandler) Channels() log.Channels {
+	return log.Channels{
+		h.channel: log.PriorityDebug,
 	}
 }
 

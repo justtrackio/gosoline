@@ -5,10 +5,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/suite"
-
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/stretchr/testify/suite"
 )
 
 type ContextEnforcingLoggerTestSuite struct {
@@ -24,7 +23,7 @@ func (s *ContextEnforcingLoggerTestSuite) SetupTest() {
 	s.clock = clock.NewFakeClock()
 	s.output = &bytes.Buffer{}
 	s.base = log.NewLoggerWithInterfaces(s.clock, []log.Handler{
-		log.NewHandlerIoWriter(log.LevelInfo, []log.Channel{}, log.FormatterConsole, "15:04:05.000", s.output),
+		log.NewHandlerIoWriter(log.LevelInfo, log.Channels{}, log.FormatterConsole, "15:04:05.000", s.output),
 	})
 
 	s.logger = log.NewContextEnforcingLoggerWithInterfaces(s.base, log.GetMockedStackTrace, s.base)

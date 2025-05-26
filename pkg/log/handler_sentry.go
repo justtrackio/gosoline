@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
-
 	"github.com/justtrackio/gosoline/pkg/cfg"
 )
 
@@ -40,8 +39,8 @@ func (h *HandlerSentry) WithContext(name string, context map[string]interface{})
 	})
 }
 
-func (h *HandlerSentry) Channels() []Channel {
-	return []Channel{}
+func (h *HandlerSentry) Channels() Channels {
+	return Channels{}
 }
 
 func (h *HandlerSentry) Level() int {

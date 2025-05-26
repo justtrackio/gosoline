@@ -8,7 +8,7 @@ import (
 )
 
 type Handler interface {
-	Channels() []Channel
+	Channels() Channels
 	Level() int
 	Log(timestamp time.Time, level int, msg string, args []interface{}, err error, data Data) error
 }

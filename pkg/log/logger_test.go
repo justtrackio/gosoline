@@ -7,18 +7,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLoggerIoWriter(t *testing.T) {
 	buf := &bytes.Buffer{}
-	handler := log.NewHandlerIoWriter(log.LevelInfo, []log.Channel{
-		{"main", "info", false},
-		{"error_channel", "error", false},
-		{"forbidden", "", true},
+	handler := log.NewHandlerIoWriter(log.LevelInfo, log.Channels{
+		"main":          log.PriorityInfo,
+		"error_channel": log.PriorityError,
+		"forbidden":     log.PriorityNone,
 	}, log.FormatterJson, time.RFC3339, buf)
 	cl := clock.NewFakeClock()
 

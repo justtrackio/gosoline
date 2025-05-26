@@ -14,12 +14,16 @@ const (
 	LevelInfo  = "info"
 	LevelWarn  = "warn"
 	LevelError = "error"
+	LevelNone  = "none"
 
 	PriorityTrace = 0
 	PriorityDebug = 1
 	PriorityInfo  = 2
 	PriorityWarn  = 3
 	PriorityError = 4
+	// PriorityNone is used to indicate that no logging should be done.
+	// Value is set to the maximum int value to ensure that it is always greater than any other priority.
+	PriorityNone = int(^uint(0) >> 1)
 )
 
 var levelNames = map[int]string{
@@ -28,6 +32,7 @@ var levelNames = map[int]string{
 	PriorityInfo:  LevelInfo,
 	PriorityWarn:  LevelWarn,
 	PriorityError: LevelError,
+	PriorityNone:  LevelNone,
 }
 
 var levelPriorities = map[string]int{
@@ -36,6 +41,7 @@ var levelPriorities = map[string]int{
 	LevelInfo:  PriorityInfo,
 	LevelWarn:  PriorityWarn,
 	LevelError: PriorityError,
+	LevelNone:  PriorityNone,
 }
 
 func LevelName(level int) string {
@@ -188,10 +194,8 @@ func (l *gosoLogger) log(level int, msg string, args []interface{}, loggedErr er
 }
 
 func (l *gosoLogger) shouldLog(current string, level int, h Handler) bool {
-	for _, channel := range h.Channels() {
-		if current == channel.Name {
-			return (levelPriorities[channel.Level] <= level) && !channel.Disabled
-		}
+	if channelLevel, ok := h.Channels()[current]; ok {
+		return channelLevel <= level
 	}
 
 	return h.Level() <= level

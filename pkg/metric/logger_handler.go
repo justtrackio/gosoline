@@ -28,8 +28,8 @@ type LoggerHandler struct {
 	writer Writer
 }
 
-func (h LoggerHandler) Channels() []log.Channel {
-	return []log.Channel{}
+func (h LoggerHandler) Channels() log.Channels {
+	return log.Channels{}
 }
 
 func (h LoggerHandler) Level() int {

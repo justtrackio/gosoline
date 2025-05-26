@@ -11,7 +11,9 @@ log:
         main:
             type: iowriter
             channels:
-                - name: metrics
+                metrics:
+                  level: error
+                formatter:
                   level: error
             formatter: console
             level: info
