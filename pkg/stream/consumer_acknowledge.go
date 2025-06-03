@@ -26,6 +26,15 @@ func (c *ConsumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerDa
 		return
 	}
 
+	var messageId string
+	messageId, ok = cdata.msg.Attributes[AttributeSqsMessageId]
+	if ok {
+		c.logger.WithFields(log.Fields{
+			"sqs_message_id": messageId,
+			"ack":            ack,
+		}).Debug("acknowledging sqs message")
+	}
+
 	if err := ackInput.Ack(ctx, cdata.msg, ack); err != nil {
 		c.logger.WithContext(ctx).Error("could not acknowledge the message: %w", err)
 	}

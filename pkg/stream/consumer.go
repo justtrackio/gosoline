@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kernel"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/justtrackio/gosoline/pkg/reqctx"
+	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
 type ConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (ConsumerCallback, error)
@@ -90,6 +91,9 @@ func (c *Consumer) readData(ctx context.Context) error {
 }
 
 func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerData) {
+	ctx, span := c.startTracingContext(ctx)
+	defer span.Finish()
+
 	var err error
 	start := c.clock.Now()
 	batch := make([]*Message, 0)
@@ -112,6 +116,9 @@ func (c *Consumer) processAggregateMessage(ctx context.Context, cdata *consumerD
 }
 
 func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData) {
+	ctx, span := c.startTracingContext(ctx)
+	defer span.Finish()
+
 	start := c.clock.Now()
 
 	ack := c.process(ctx, cdata.msg, c.hasNativeRetry())
@@ -120,6 +127,15 @@ func (c *Consumer) processSingleMessage(ctx context.Context, cdata *consumerData
 	duration := c.clock.Now().Sub(start)
 	atomic.AddInt32(&c.processed, 1)
 	c.writeMetricDurationAndProcessedCount(duration, 1)
+}
+
+func (c *Consumer) startTracingContext(ctx context.Context) (context.Context, tracing.Span) {
+	ctx, span := c.tracer.StartSpanFromContext(ctx, c.id)
+
+	ctx = log.InitContext(ctx)
+	ctx = reqctx.New(ctx)
+
+	return ctx, span
 }
 
 func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry bool) bool {
@@ -143,11 +159,14 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 		return false
 	}
 
-	ctx, span := c.tracer.StartSpanFromContext(ctx, c.id)
-	defer span.Finish()
-
-	ctx = log.InitContext(ctx)
-	ctx = reqctx.New(ctx)
+	var messageId string
+	var ok bool
+	messageId, ok = msg.Attributes[AttributeSqsMessageId]
+	if ok {
+		c.logger.WithFields(log.Fields{
+			"sqs_message_id": messageId,
+		}).Debug("processing sqs message")
+	}
 
 	if ack, err = c.callback.Consume(ctx, model, attributes); err != nil {
 		c.handleError(ctx, err, "an error occurred during the consume operation")
