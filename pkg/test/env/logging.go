@@ -70,7 +70,7 @@ func NewRecordingConsoleLogger(options ...LoggerOption) (RecordingLogger, error)
 	}
 
 	cl := clock.NewRealClock()
-	handler := log.NewHandlerIoWriter(settings.Level, []string{}, log.FormatterConsole, "15:04:05.000", os.Stdout)
+	handler := log.NewHandlerIoWriter(settings.Level, log.Channels{}, log.FormatterConsole, "15:04:05.000", os.Stdout)
 
 	logger := log.NewLoggerWithInterfaces(cl, []log.Handler{handler})
 
@@ -110,8 +110,8 @@ func (r recordingLogger) Reset() {
 	}
 }
 
-func (h handlerInMemoryWriter) Channels() []string {
-	return []string{}
+func (h handlerInMemoryWriter) Channels() log.Channels {
+	return log.Channels{}
 }
 
 func (h handlerInMemoryWriter) Level() int {
