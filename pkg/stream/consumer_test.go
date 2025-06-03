@@ -125,7 +125,7 @@ func (s *ConsumerTestSuite) TestGetModelNil() {
 
 	s.input.
 		EXPECT().
-		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
+		Ack(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*stream.Message"), false).
 		Return(nil).
 		Once()
 	s.callback.EXPECT().GetModel(mock.AnythingOfType("map[string]string")).Return(func(_ map[string]string) any {
@@ -151,7 +151,7 @@ func (s *ConsumerTestSuite) TestRun() {
 
 	s.input.
 		EXPECT().
-		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
+		Ack(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*stream.Message"), true).
 		Return(nil).
 		Times(3)
 
@@ -218,13 +218,13 @@ func (s *ConsumerTestSuite) TestRun_CallbackRunPanic() {
 	// 1 message should be acked.
 	s.input.
 		EXPECT().
-		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
+		Ack(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*stream.Message"), true).
 		Return(nil).
 		Once()
 	// 1 message should be nacked due to panic.
 	s.input.
 		EXPECT().
-		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
+		Ack(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*stream.Message"), false).
 		Return(nil).
 		Once()
 
@@ -317,7 +317,7 @@ func (s *ConsumerTestSuite) TestRun_AggregateMessage() {
 
 	s.input.
 		EXPECT().
-		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), true).
+		Ack(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*stream.Message"), true).
 		Return(nil).
 		Once()
 	s.callback.EXPECT().Consume(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*string"), expectedAttributes1).
@@ -386,7 +386,7 @@ func (s *ConsumerTestSuite) TestRunWithRetry() {
 	// If a single sub-message in an aggregate fails then aggregate should be nacked.
 	s.input.
 		EXPECT().
-		Ack(mock.AnythingOfType("*context.cancelCtx"), mock.AnythingOfType("*stream.Message"), false).
+		Ack(mock.AnythingOfType("*context.valueCtx"), mock.AnythingOfType("*stream.Message"), false).
 		Return(nil).
 		Once()
 
