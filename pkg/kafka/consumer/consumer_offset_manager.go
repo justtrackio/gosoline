@@ -3,8 +3,10 @@ package consumer
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/justtrackio/gosoline/pkg/clock"
 	"github.com/justtrackio/gosoline/pkg/log"
 	"github.com/segmentio/kafka-go"
 )
@@ -17,6 +19,7 @@ type OffsetManager interface {
 	Batch(ctx context.Context) []kafka.Message
 	Commit(ctx context.Context, msgs ...kafka.Message) error
 	Flush() error
+	IsHealthy() bool
 }
 
 type offsetManager struct {
@@ -27,9 +30,11 @@ type offsetManager struct {
 	batcher              Batcher
 	uncomitted           map[Offset]int64
 	uncomittedEmptyEvent chan bool
+	healthCheckTimer     clock.HealthCheckTimer
+	fetching             atomic.Bool
 }
 
-func NewOffsetManager(logger log.Logger, reader Reader, batchSize int, batchTimeout time.Duration) *offsetManager {
+func NewOffsetManager(logger log.Logger, reader Reader, batchSize int, batchTimeout time.Duration, healthCheckTimer clock.HealthCheckTimer) *offsetManager {
 	events := make(chan bool, 1)
 	events <- true
 
@@ -43,6 +48,7 @@ func NewOffsetManager(logger log.Logger, reader Reader, batchSize int, batchTime
 		batcher:              NewBatcher(incoming, batchSize, batchTimeout),
 		uncomitted:           map[Offset]int64{},
 		uncomittedEmptyEvent: events,
+		healthCheckTimer:     healthCheckTimer,
 	}
 }
 
@@ -52,7 +58,12 @@ func (m *offsetManager) Start(ctx context.Context) error {
 	for {
 		m.logger.Debug("fetching a message")
 
+		// mark us as healthy and record how long we are fetching a message.
+		// while fetching a message, we assume we are healthy as this code is outside our control
+		m.healthCheckTimer.MarkHealthy()
+		m.fetching.Store(true)
 		msg, err := m.reader.FetchMessage(ctx)
+		m.fetching.Store(false)
 		if err != nil {
 			return err
 		}
@@ -137,4 +148,8 @@ func (m *offsetManager) Flush() error {
 	}
 
 	return nil
+}
+
+func (m *offsetManager) IsHealthy() bool {
+	return m.healthCheckTimer.IsHealthy() || m.fetching.Load()
 }

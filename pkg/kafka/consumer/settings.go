@@ -6,6 +6,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/cfg"
 	"github.com/justtrackio/gosoline/pkg/kafka"
 	"github.com/justtrackio/gosoline/pkg/kafka/connection"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 )
 
 type Settings struct {
@@ -21,6 +22,8 @@ type Settings struct {
 	BatchSize    int           `cfg:"batch_size" default:"1"`
 	BatchTimeout time.Duration `cfg:"idle_timeout" default:"1s"`
 	StartOffset  string        `cfg:"start_offset" default:"last" validate:"oneof=first last"`
+
+	Healthcheck health.HealthCheckSettings `cfg:"healthcheck"`
 }
 
 func (s *Settings) Connection() *connection.Settings {
