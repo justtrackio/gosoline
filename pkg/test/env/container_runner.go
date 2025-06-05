@@ -186,6 +186,15 @@ func (r *containerRunner) PullContainerImage(description *componentContainerDesc
 	containerAuth := description.containerConfig.Auth
 	authConfig := r.getAuthConfig(containerAuth)
 
+	r.logger.Info(
+		"using auth email = %q, password = %q, identity token = %q, username = %q, server address = %q",
+		authConfig.Email,
+		strings.Repeat("*", len(authConfig.Password)),
+		strings.Repeat("*", len(authConfig.IdentityToken)),
+		authConfig.Username,
+		authConfig.ServerAddress,
+	)
+
 	_, err = r.pullExecutor.Execute(context.Background(), func(ctx context.Context) (any, error) {
 		err := r.pool.Client.PullImage(pullImageOptions, authConfig)
 		if err != nil {
@@ -330,6 +339,15 @@ func (r *containerRunner) runNewContainer(
 
 	containerAuth := config.Auth
 	authConfig := r.getAuthConfig(containerAuth)
+
+	r.logger.Info(
+		"using auth email = %q, password = %q, identity token = %q, username = %q, server address = %q",
+		authConfig.Email,
+		strings.Repeat("*", len(authConfig.Password)),
+		strings.Repeat("*", len(authConfig.IdentityToken)),
+		authConfig.Username,
+		authConfig.ServerAddress,
+	)
 
 	runOptions := &dockertest.RunOptions{
 		Name:         containerName,
