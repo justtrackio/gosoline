@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -95,6 +96,12 @@ func (k *kernel) init(middlewares []Middleware, stages map[int]*stage) {
 // which means that there will be no return out of this call.
 func (k *kernel) Run() {
 	defer k.exit()
+	defer func() {
+		if err := coffin.ResolveRecovery(recover()); err != nil {
+			k.logger.WithContext(k.ctx).Error("failed to run kernel: %w", err)
+			k.exitCode = ExitCodeErr
+		}
+	}()
 
 	startedAt := k.clock.Now()
 	k.logger.Info("starting kernel")
@@ -181,7 +188,7 @@ func (k *kernel) Running() <-chan struct{} {
 }
 
 func (k *kernel) HealthCheck() HealthCheckResult {
-	var result HealthCheckResult
+	result := make(HealthCheckResult, 0, len(k.stages))
 
 	for _, stageIndex := range k.stages.getIndices() {
 		stageResult := k.stages[stageIndex].healthcheck()
@@ -192,7 +199,30 @@ func (k *kernel) HealthCheck() HealthCheckResult {
 		return cmp.Compare(a.StageIndex, b.StageIndex)
 	})
 
+	if !result.IsHealthy() && k.isRunning() {
+		k.reportFailedHealthcheck(result)
+	}
+
 	return result
+}
+
+func (k *kernel) isRunning() bool {
+	select {
+	case <-k.running:
+		return true
+	default:
+		return false
+	}
+}
+
+func (k *kernel) reportFailedHealthcheck(result HealthCheckResult) {
+	unhealthy := result.GetUnhealthyNames()
+
+	buf := make([]byte, 1<<20)
+	written := runtime.Stack(buf, true)
+	buf = buf[:written]
+
+	k.logger.WithContext(k.ctx).Error("healthcheck failed, unhealthy modules: %s\n%s", unhealthy, string(buf))
 }
 
 func (k *kernel) exit() {

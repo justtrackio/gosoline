@@ -462,7 +462,7 @@ func (s *shardReader) processRecords(
 			// log the error and mark the record as done, returning an error would tear down the whole
 			// kinsumer and retrying the record (what tearing everything down would also cause) does
 			// not make sense at this point. Instead, the handler needs to implement a retry logic if needed
-			s.logger.Error("failed to handle record %s: %w", record.SequenceNumber, err)
+			s.logger.Error("failed to handle record %s: %w", mdl.EmptyIfNil(record.SequenceNumber), err)
 
 			s.writeMetric(metricNameFailedRecords, 1, metric.UnitCount)
 		}
