@@ -98,7 +98,7 @@ func (s *stage) healthcheck() HealthCheckResult {
 	var ok bool
 	var err error
 	var healthAware HealthCheckedModule
-	var result HealthCheckResult
+	result := make(HealthCheckResult, 0, len(s.modules.modules))
 
 	for name, ms := range s.modules.modules {
 		if healthAware, ok = ms.module.(HealthCheckedModule); !ok {
@@ -152,7 +152,13 @@ func (s *stage) waitUntilHealthy() error {
 
 		for _, unhealthy := range result.GetUnhealthy() {
 			timeLeft := s.healthCheckSettings.Timeout - s.clk.Since(waitStart)
-			s.logger.Info("waiting %s for module %s in stage %d to get healthy: time left %s", s.healthCheckSettings.WaitInterval, unhealthy.Name, s.index, timeLeft)
+			s.logger.Info(
+				"waiting %s for module %s in stage %d to get healthy: time left %s",
+				s.healthCheckSettings.WaitInterval,
+				unhealthy.Name,
+				s.index,
+				timeLeft,
+			)
 		}
 
 		sleepTicker.Reset(s.healthCheckSettings.WaitInterval)
@@ -161,7 +167,12 @@ func (s *stage) waitUntilHealthy() error {
 		case <-timeoutTimer.Chan():
 			unhealthyModules := result.GetUnhealthyNames()
 
-			return fmt.Errorf("stage %d was not able to get healthy in %s due to: %s", s.index, s.healthCheckSettings.Timeout, strings.Join(unhealthyModules, ", "))
+			return fmt.Errorf(
+				"stage %d was not able to get healthy in %s due to: %s",
+				s.index,
+				s.healthCheckSettings.Timeout,
+				strings.Join(unhealthyModules, ", "),
+			)
 		case <-s.ctx.Done():
 			return nil
 		case <-sleepTicker.Chan():

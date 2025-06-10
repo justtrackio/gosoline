@@ -373,7 +373,7 @@ func (s *shardReaderTestSuite) TestExpiredIteratorExceptionThenDelayedBadData() 
 	s.logger.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(s.logger)
 	s.logger.EXPECT().Info("processed batch of %d records in %s", 1, mock.AnythingOfType("time.Duration")).Once()
 	s.logger.EXPECT().Info("processed batch of %d records in %s", 0, mock.AnythingOfType("time.Duration")).Once()
-	s.logger.EXPECT().Error("failed to handle record %s: %w", aws.String("seq 1"), fmt.Errorf("parse error"))
+	s.logger.EXPECT().Error("failed to handle record %s: %w", "seq 1", fmt.Errorf("parse error"))
 
 	s.kinesisClient.EXPECT().GetShardIterator(s.ctx, &kinesis.GetShardIteratorInput{
 		ShardId:                aws.String(string(s.shardId)),

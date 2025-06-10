@@ -59,7 +59,7 @@ type Settings struct {
 	InitialPosition SettingsInitialPosition `cfg:"initial_position"`
 	// How many records the shard reader should fetch in a single call
 	MaxBatchSize int `cfg:"max_batch_size" default:"10000" validate:"gt=0,lte=10000"`
-	// Time between reads from empty shards. This defines how fast the kinsumer begins its work. Min = 1ms
+	// Time between reads from empty or fully caught up shards. This defines how fast the kinsumer begins its work. Min = 1ms
 	WaitTime time.Duration `cfg:"wait_time" default:"1s" validate:"min=1000000"`
 	// Time between writing checkpoints to ddb. This defines how much work you might lose. Min = 100ms
 	PersistFrequency time.Duration `cfg:"persist_frequency" default:"5s" validate:"min=100000000"`
