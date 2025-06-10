@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	MetricNameRateLimitRelease  = "rate-limit-release"
-	MetricNameRateLimitTake     = "rate-limit-take"
-	MetricNameRateLimitThrottle = "rate-limit-throttle"
-	MetricNameRateLimitError    = "rate-limit-error"
+	MetricNameRateLimitRelease  = "rate_limit_release"
+	MetricNameRateLimitTake     = "rate_limit_take"
+	MetricNameRateLimitThrottle = "rate_limit_throttle"
+	MetricNameRateLimitError    = "rate_limit_error"
 )
 
 type metricMiddleware struct {
