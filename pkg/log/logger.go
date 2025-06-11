@@ -3,6 +3,7 @@ package log
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/justtrackio/gosoline/pkg/clock"
@@ -23,7 +24,7 @@ const (
 	PriorityError = 4
 	// PriorityNone is used to indicate that no logging should be done.
 	// Value is set to the maximum int value to ensure that it is always greater than any other priority.
-	PriorityNone = int(^uint(0) >> 1)
+	PriorityNone = math.MaxInt
 )
 
 var levelNames = map[int]string{
