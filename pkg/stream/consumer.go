@@ -89,10 +89,11 @@ func (c *Consumer) readData(ctx context.Context) error {
 	defer c.logger.Debug("read from input is ending")
 	defer c.wg.Done()
 
-	// timer to mark us as healthy should we not get any messages to process
+	// ticker to mark us as healthy should we not get any messages to process
 	// (thus, the only way to get unhealthy would be if the consumer callback
 	// takes too long to process a single message)
-	timer := c.clock.NewTimer(c.settings.Healthcheck.Timeout / 2)
+	ticker := c.clock.NewTicker(c.settings.Healthcheck.Timeout / 2)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -113,7 +114,7 @@ func (c *Consumer) readData(ctx context.Context) error {
 				c.processSingleMessage(ctx, cdata)
 			}
 
-		case <-timer.Chan():
+		case <-ticker.Chan():
 			// we didn't get a message for quite some time, but we stay healthy
 			c.healthCheckTimer.MarkHealthy()
 		}
