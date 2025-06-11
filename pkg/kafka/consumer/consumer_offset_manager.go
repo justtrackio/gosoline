@@ -58,11 +58,13 @@ func (m *offsetManager) Start(ctx context.Context) error {
 	for {
 		m.logger.Debug("fetching a message")
 
-		// mark us as healthy and record how long we are fetching a message.
-		// while fetching a message, we assume we are healthy as this code is outside our control
-		m.healthCheckTimer.MarkHealthy()
+		// record we are fetching a message - while we are fetching, we can't get unhealthy
+		// (as this code is outside our control to add code to mark us as healthy)
 		m.fetching.Store(true)
 		msg, err := m.reader.FetchMessage(ctx)
+		// mark us as healthy as soon as we got a message to ensure we stay healthy while we process the message
+		// (unless we take too long to send the message to the m.incoming channel)
+		m.healthCheckTimer.MarkHealthy()
 		m.fetching.Store(false)
 		if err != nil {
 			return err
