@@ -15,6 +15,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
 	"github.com/justtrackio/gosoline/pkg/stream"
+	"github.com/justtrackio/gosoline/pkg/stream/health"
 	"github.com/justtrackio/gosoline/pkg/stream/mocks"
 	"github.com/justtrackio/gosoline/pkg/tracing"
 	uuidMocks "github.com/justtrackio/gosoline/pkg/uuid/mocks"
@@ -96,9 +97,12 @@ func (s *ConsumerTestSuite) SetupTest() {
 		Retry: stream.ConsumerRetrySettings{
 			Enabled: true,
 		},
+		Healthcheck: health.HealthCheckSettings{
+			Timeout: time.Minute,
+		},
 	}
 
-	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), time.Minute)
+	healthCheckTimer := clock.NewHealthCheckTimerWithInterfaces(clock.NewFakeClock(), settings.Healthcheck.Timeout)
 
 	baseConsumer := stream.NewBaseConsumerWithInterfaces(
 		s.uuidGen,

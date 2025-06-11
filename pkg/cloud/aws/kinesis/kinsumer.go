@@ -436,11 +436,12 @@ func (k *kinsumer) startConsumers(
 	if startedConsumers == 0 {
 		// while we have no running consumers, we must not get unhealthy, otherwise we get killed unnecessarily
 		wg.Add(1)
-		// use the wait time as a good indication of how often we are expected to set us to healthy again
-		ticker := k.clock.NewTicker(k.settings.WaitTime)
+		// ensure we issue a tick before we get unhealthy
+		ticker := k.clock.NewTicker(k.settings.Healthcheck.Timeout / 2)
 
 		cfn.GoWithContext(consumerCtx, func(ctx context.Context) error {
 			defer wg.Done()
+			defer ticker.Stop()
 
 			for {
 				select {
