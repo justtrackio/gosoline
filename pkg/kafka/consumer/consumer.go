@@ -78,6 +78,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 	defer c.logger.Info("shutdown consumer")
 
 	c.pool.GoWithContext(ctx, c.run)
+
 	return c.pool.Wait()
 }
 
@@ -96,13 +97,17 @@ func (c *Consumer) Commit(ctx context.Context, msgs ...kafka.Message) error {
 func (c *Consumer) run(ctx context.Context) error {
 	c.pool.GoWithContext(ctx, c.manager.Start)
 
+	defer close(c.backlog)
+
 	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		for _, msg := range c.manager.Batch(ctx) {
-			select {
-			case c.backlog <- msg:
-			case <-ctx.Done():
-				return ctx.Err()
-			}
+			c.backlog <- msg
 		}
 	}
 }

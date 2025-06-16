@@ -38,7 +38,11 @@ func (b *batcher) Get(ctx context.Context) []kafka.Message {
 OUT:
 	for len(batch) < b.batchSize {
 		select {
-		case m := <-b.input:
+		case m, ok := <-b.input:
+			if !ok {
+				break OUT
+			}
+
 			batch = append(batch, m)
 
 		case <-ticker.C:

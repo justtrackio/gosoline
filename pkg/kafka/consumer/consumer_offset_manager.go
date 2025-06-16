@@ -79,6 +79,8 @@ func (m *offsetManager) Start(ctx context.Context) error {
 		select {
 		case m.incoming <- msg:
 		case <-ctx.Done():
+			close(m.incoming)
+
 			return ctx.Err()
 		}
 	}
@@ -146,6 +148,7 @@ func (m *offsetManager) Flush() error {
 
 	if err := m.reader.Close(); err != nil {
 		m.logger.WithFields(log.Fields{"Error": err}).Error("failed to flush messages")
+
 		return err
 	}
 
