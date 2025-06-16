@@ -44,18 +44,13 @@ func NewKafkaInputWithInterfaces(consumer *kafkaConsumer.Consumer) (*KafkaInput,
 func (i *KafkaInput) Run(ctx context.Context) error {
 	i.pool.GoWithContext(ctx, i.consumer.Run)
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
+	defer close(i.data)
 
-		case <-i.pool.Dead():
-			return i.pool.Err()
-
-		case msg := <-i.consumer.Data():
-			i.data <- KafkaToGosoMessage(msg)
-		}
+	for msg := range i.consumer.Data() {
+		i.data <- KafkaToGosoMessage(msg)
 	}
+
+	return ctx.Err()
 }
 
 // Stop causes Run to return as fast as possible. Calling Stop is preferable to canceling the context passed to Run
