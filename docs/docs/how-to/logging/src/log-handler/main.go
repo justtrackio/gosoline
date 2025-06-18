@@ -16,8 +16,10 @@ type MyCustomHandler struct {
 	channel string
 }
 
-func (h *MyCustomHandler) Channels() []string {
-	return []string{h.channel}
+func (h *MyCustomHandler) Channels() log.Channels {
+	return log.Channels{
+		h.channel: log.PriorityDebug,
+	}
 }
 
 func (h *MyCustomHandler) Level() int {

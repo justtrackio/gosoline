@@ -14,11 +14,13 @@ func init() {
 
 type HandlerIoWriterSettings struct {
 	Level           string   `cfg:"level" default:"info"`
-	Channels        []string `cfg:"channels"`
+	Channels        Channels `cfg:"channels"`
 	Formatter       string   `cfg:"formatter" default:"console"`
 	TimestampFormat string   `cfg:"timestamp_format" default:"15:04:05.000"`
 	Writer          string   `cfg:"writer" default:"stdout"`
 }
+
+type Channels map[string]int
 
 func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
 	handlerConfigKey := getHandlerConfigKey(name)
@@ -48,13 +50,13 @@ func handlerIoWriterFactory(config cfg.Config, name string) (Handler, error) {
 
 type handlerIoWriter struct {
 	level           int
-	channels        []string
+	channels        Channels
 	formatter       Formatter
 	timestampFormat string
 	writer          io.Writer
 }
 
-func NewHandlerIoWriter(level string, channels []string, formatter Formatter, timestampFormat string, writer io.Writer) *handlerIoWriter {
+func NewHandlerIoWriter(level string, channels Channels, formatter Formatter, timestampFormat string, writer io.Writer) Handler {
 	return &handlerIoWriter{
 		level:           LevelPriority(level),
 		channels:        channels,
@@ -64,7 +66,7 @@ func NewHandlerIoWriter(level string, channels []string, formatter Formatter, ti
 	}
 }
 
-func (h *handlerIoWriter) Channels() []string {
+func (h *handlerIoWriter) Channels() Channels {
 	return h.channels
 }
 

@@ -39,8 +39,8 @@ func (h *HandlerSentry) WithContext(name string, context map[string]interface{})
 	})
 }
 
-func (h *HandlerSentry) Channels() []string {
-	return []string{}
+func (h *HandlerSentry) Channels() Channels {
+	return Channels{}
 }
 
 func (h *HandlerSentry) Level() int {
