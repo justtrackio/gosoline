@@ -63,14 +63,42 @@ func RunHttpServers(servers map[string]httpserver.Definer, options ...Option) {
 	Run(options...)
 }
 
-func RunConsumer(callback stream.ConsumerCallbackFactory, options ...Option) {
-	RunConsumers(stream.ConsumerCallbackMap{
+// RunConsumer runs the provided consumer as an application. You can pass additional options to customize the way it is executed.
+func RunConsumer[M any](callback stream.ConsumerCallbackFactory[M], options ...Option) {
+	RunConsumers[M](stream.ConsumerCallbackMap[M]{
 		"default": callback,
 	}, options...)
 }
 
-func RunConsumers(consumers stream.ConsumerCallbackMap, options ...Option) {
+// RunUntypedConsumer runs the provided untyped consumer as an application. You can pass additional options to customize the way it is executed.
+//
+// Prefer using RunConsumer if possible as it provided additional type safety (especially, if you are only expecting a single type as input anyway).
+func RunUntypedConsumer(callback stream.UntypedConsumerCallbackFactory, options ...Option) {
+	RunUntypedConsumers(stream.UntypedConsumerCallbackMap{
+		"default": callback,
+	}, options...)
+}
+
+// RunConsumers runs the provided consumers as an application. You can pass additional options to customize the way it is executed.
+//
+// RunConsumers requires all consumers to accept the same input model. Thus, it is intended to be used if you have multiple source
+// queues you are reading from.
+func RunConsumers[M any](consumers stream.ConsumerCallbackMap[M], options ...Option) {
 	factory := stream.NewConsumerFactory(consumers)
+
+	options = append(options, WithModuleMultiFactory(factory))
+	options = append(options, WithExecBackoffInfinite)
+
+	Run(options...)
+}
+
+// RunUntypedConsumers runs the provided untyped consumers as an application. You can pass additional options to customize the way it is executed.
+//
+// Prefer using RunConsumers if all consumers share the same input type or use stream.EraseConsumerCallbackFactoryTypes to convert typed consumers
+// to untyped consumers. If you are running distinct consumers in the same application, it might be a good idea to split the application into multiple
+// applications if possible.
+func RunUntypedConsumers(consumers stream.UntypedConsumerCallbackMap, options ...Option) {
+	factory := stream.NewUntypedConsumerFactory(consumers)
 
 	options = append(options, WithModuleMultiFactory(factory))
 	options = append(options, WithExecBackoffInfinite)

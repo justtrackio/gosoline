@@ -13,39 +13,35 @@ import (
 	"github.com/justtrackio/gosoline/pkg/tracing"
 )
 
-type ConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (ConsumerCallback, error)
+type UntypedConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger log.Logger) (UntypedConsumerCallback, error)
 
-//go:generate mockery --name ConsumerCallback
-type ConsumerCallback interface {
+//go:generate mockery --name UntypedConsumerCallback
+type UntypedConsumerCallback interface {
 	BaseConsumerCallback
-	Consume(ctx context.Context, model interface{}, attributes map[string]string) (bool, error)
+	Consume(ctx context.Context, model any, attributes map[string]string) (bool, error)
 }
 
-//go:generate mockery --name RunnableConsumerCallback
-type RunnableConsumerCallback interface {
-	ConsumerCallback
+//go:generate mockery --name RunnableUntypedConsumerCallback
+type RunnableUntypedConsumerCallback interface {
+	UntypedConsumerCallback
 	RunnableCallback
 }
 
 type Consumer struct {
 	*baseConsumer
-	callback         ConsumerCallback
+	callback         UntypedConsumerCallback
 	healthCheckTimer clock.HealthCheckTimer
 }
 
 var _ kernel.FullModule = &Consumer{}
 
-func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(
-	ctx context.Context,
-	config cfg.Config,
-	logger log.Logger,
-) (kernel.Module, error) {
+func NewUntypedConsumer(name string, callbackFactory UntypedConsumerCallbackFactory) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		loggerCallback := logger.WithChannel("consumerCallback")
 		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
 
 		var err error
-		var callback ConsumerCallback
+		var callback UntypedConsumerCallback
 		var baseConsumer *baseConsumer
 
 		if callback, err = callbackFactory(ctx, config, contextEnforcingLogger); err != nil {
@@ -63,11 +59,11 @@ func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(
 			return nil, fmt.Errorf("failed to create healthcheck timer: %w", err)
 		}
 
-		return NewConsumerWithInterfaces(baseConsumer, callback, healthCheckTimer), nil
+		return NewUntypedConsumerWithInterfaces(baseConsumer, callback, healthCheckTimer), nil
 	}
 }
 
-func NewConsumerWithInterfaces(base *baseConsumer, callback ConsumerCallback, healthCheckTimer clock.HealthCheckTimer) *Consumer {
+func NewUntypedConsumerWithInterfaces(base *baseConsumer, callback UntypedConsumerCallback, healthCheckTimer clock.HealthCheckTimer) *Consumer {
 	consumer := &Consumer{
 		baseConsumer:     base,
 		callback:         callback,
@@ -176,7 +172,7 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 
 	var err error
 	var ack bool
-	var model interface{}
+	var model any
 	var attributes map[string]string
 
 	if model = c.callback.GetModel(msg.Attributes); model == nil {

@@ -19,7 +19,7 @@ type Consumer struct {
 	producer stream.Producer
 }
 
-func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
+func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback[Todo], error) {
 	var err error
 	var producer stream.Producer
 
@@ -34,12 +34,7 @@ func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (str
 	return consumer, nil
 }
 
-func (c Consumer) GetModel(attributes map[string]string) interface{} {
-	return &Todo{}
-}
-
-func (c Consumer) Consume(ctx context.Context, model interface{}, attributes map[string]string) (bool, error) {
-	todo := model.(*Todo)
+func (c Consumer) Consume(ctx context.Context, todo Todo, attributes map[string]string) (bool, error) {
 	todo.Status = "pending"
 
 	if err := c.producer.WriteOne(ctx, todo); err != nil {
