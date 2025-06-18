@@ -8,7 +8,7 @@ import (
 
 var Transformers = mdlsub.TransformerMapTypeVersionFactories{
 	"gosoline.example.mdlsub-publisher.random-number": {
-		0: mdlsub.NewGenericTransformer(&randomNumberTransformer{}),
+		0: mdlsub.NewGenericTransformer[RandomNumber, RandomNumber](randomNumberTransformer{}),
 	},
 }
 
@@ -17,22 +17,12 @@ type RandomNumber struct {
 	Number int    `json:"number"`
 }
 
-func (n RandomNumber) GetId() interface{} {
+func (n RandomNumber) GetId() any {
 	return n.Id
 }
 
 type randomNumberTransformer struct{}
 
-func (r randomNumberTransformer) GetInput() interface{} {
-	return &RandomNumber{}
-}
-
-func (r randomNumberTransformer) GetModel() any {
-	return &RandomNumber{}
-}
-
-func (r randomNumberTransformer) Transform(_ context.Context, inp interface{}) (out mdlsub.Model, err error) {
-	number := inp.(*RandomNumber)
-
-	return number, nil
+func (r randomNumberTransformer) Transform(_ context.Context, number RandomNumber) (out *RandomNumber, err error) {
+	return &number, nil
 }

@@ -143,13 +143,13 @@ func (lc *logCall) finalize(ginCtx *gin.Context, requestTimeSecond float64) {
 	for _, e := range ginCtx.Errors {
 		switch {
 		case exec.IsRequestCanceled(e):
-			logger.Info("%s %s %s - request canceled: %w", method, path, proto, e)
+			logger.Info("%s %s %s - request canceled: %s", method, path, proto, e.Error())
 		case exec.IsConnectionError(e):
-			logger.Info("%s %s %s - connection error: %w", method, path, proto, e)
+			logger.Info("%s %s %s - connection error: %s", method, path, proto, e.Error())
 		case e.IsType(gin.ErrorTypeBind):
-			logger.Warn("%s %s %s - bind error: %w", method, path, proto, e.Err)
+			logger.Warn("%s %s %s - bind error: %s", method, path, proto, e.Err.Error())
 		case e.IsType(gin.ErrorTypeRender):
-			logger.Warn("%s %s %s - render error: %w", method, path, proto, e.Err)
+			logger.Warn("%s %s %s - render error: %s", method, path, proto, e.Err.Error())
 		default:
 			logger.Error("%s %s %s: %w", method, path, proto, e.Err)
 		}

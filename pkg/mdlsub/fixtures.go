@@ -100,7 +100,7 @@ func (f FixtureSet) Write(ctx context.Context) error {
 		return fmt.Errorf("failed to get transformer: %w", err)
 	}
 
-	input := transformer.GetInput()
+	input := transformer.getInput()
 	slice := refl.CreatePointerToSliceOfTypeAndSize(input, 0)
 
 	if err = json.Unmarshal(res.data.Data, slice); err != nil {
@@ -118,7 +118,7 @@ func (f FixtureSet) Write(ctx context.Context) error {
 	for _, item := range items {
 		mdl := refl.ValueToPointerValue(item)
 
-		if model, err = transformer.Transform(ctx, mdl); err != nil {
+		if model, err = transformer.transform(ctx, mdl); err != nil {
 			return fmt.Errorf("failed to transform model %s: %w", f.source.String(), err)
 		}
 
