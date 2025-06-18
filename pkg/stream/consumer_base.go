@@ -255,14 +255,11 @@ func (c *baseConsumer) logConsumeCounter(ctx context.Context) error {
 }
 
 func (c *baseConsumer) initConsumerCallback(ctx context.Context) error {
-	var ok bool
-	var initializeable InitializeableCallback
-
-	if initializeable, ok = c.consumerCallback.(InitializeableCallback); !ok {
-		return nil
+	if initializeable, ok := c.consumerCallback.(InitializeableCallback); ok {
+		return initializeable.Init(ctx)
 	}
 
-	return initializeable.Init(ctx)
+	return nil
 }
 
 func (c *baseConsumer) runConsumerCallback(ctx context.Context) error {
@@ -296,35 +293,27 @@ func (c *baseConsumer) ingestDataFromSource(input Input, src string) func(ctx co
 		defer c.logger.Debug("ingestDataFromSource %s is ending", src)
 		defer c.stopIncomingData()
 
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-
-			case msg, ok := <-input.Data():
-				if !ok {
-					return nil
+		for msg := range input.Data() {
+			if retryId, ok := msg.Attributes[AttributeRetryId]; ok {
+				// get the trace id from the message so our message can be found a lot easier in the logs
+				decoder := tracing.NewMessageWithTraceEncoder(tracing.TraceIdErrorReturnStrategy{})
+				newCtx, _, err := decoder.Decode(ctx, nil, funk.MergeMaps(msg.Attributes)) // copy the attributes as Decode modifies the map...
+				if err != nil {
+					newCtx = ctx
 				}
 
-				if retryId, ok := msg.Attributes[AttributeRetryId]; ok {
-					// get the trace id from the message so our message can be found a lot easier in the logs
-					decoder := tracing.NewMessageWithTraceEncoder(tracing.TraceIdErrorReturnStrategy{})
-					newCtx, _, err := decoder.Decode(ctx, nil, funk.MergeMaps(msg.Attributes)) // copy the attributes as Decode modifies the map...
-					if err == nil {
-						ctx = newCtx
-					}
+				c.logger.WithContext(newCtx).Warn("retrying message with id %s", retryId)
+				c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
+			}
 
-					c.logger.WithContext(ctx).Warn("retrying message with id %s", retryId)
-					c.writeMetricRetryCount(metricNameConsumerRetryGetCount)
-				}
-
-				c.data <- &consumerData{
-					msg:   msg,
-					src:   src,
-					input: input,
-				}
+			c.data <- &consumerData{
+				msg:   msg,
+				src:   src,
+				input: input,
 			}
 		}
+
+		return nil
 	}
 }
 

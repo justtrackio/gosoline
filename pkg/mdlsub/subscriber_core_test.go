@@ -56,9 +56,9 @@ func (s *SubscriberCoreTestSuite) TestGetLatestModelIdMissingVersions() {
 
 var transformers = mdlsub.ModelTransformers{
 	"justtrack.gosoline.mdlsub.testModel": mdlsub.VersionedModelTransformers{
-		0: &TestTransformer{},
-		1: &TestTransformer{},
-		2: &TestTransformer{},
+		0: mdlsub.EraseTransformerTypes[TestInput, TestModel](TestTransformer{}),
+		1: mdlsub.EraseTransformerTypes[TestInput, TestModel](TestTransformer{}),
+		2: mdlsub.EraseTransformerTypes[TestInput, TestModel](TestTransformer{}),
 	},
 }
 
