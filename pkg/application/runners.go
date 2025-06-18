@@ -69,6 +69,12 @@ func RunConsumer(callback stream.ConsumerCallbackFactory, options ...Option) {
 	}, options...)
 }
 
+func RunTypedConsumer[M any](callback stream.TypedConsumerCallbackFactory[M], options ...Option) {
+	RunConsumers(stream.ConsumerCallbackMap{
+		"default": stream.EraseConsumerCallbackFactoryTypes(callback),
+	}, options...)
+}
+
 func RunConsumers(consumers stream.ConsumerCallbackMap, options ...Option) {
 	factory := stream.NewConsumerFactory(consumers)
 

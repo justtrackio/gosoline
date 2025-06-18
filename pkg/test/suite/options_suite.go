@@ -117,6 +117,10 @@ func WithConsumer(callback stream.ConsumerCallbackFactory) Option {
 	return WithModule("consumer-default", stream.NewConsumer("default", callback))
 }
 
+func WithTypedConsumer[M any](callback stream.TypedConsumerCallbackFactory[M]) Option {
+	return WithModule("consumer-default", stream.NewTypedConsumer("default", callback))
+}
+
 func WithEnvSetup(setups ...func() error) Option {
 	return func(s *suiteOptions) {
 		s.envSetup = append(s.envSetup, setups...)

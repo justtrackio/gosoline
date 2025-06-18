@@ -17,7 +17,7 @@ type BatchConsumerCallbackFactory func(ctx context.Context, config cfg.Config, l
 //go:generate mockery --name=BatchConsumerCallback
 type BatchConsumerCallback interface {
 	BaseConsumerCallback
-	Consume(ctx context.Context, models []interface{}, attributes []map[string]string) ([]bool, error)
+	Consume(ctx context.Context, models []any, attributes []map[string]string) ([]bool, error)
 }
 
 //go:generate mockery --name=RunnableBatchConsumerCallback
@@ -39,7 +39,7 @@ type BatchConsumer struct {
 	settings *BatchConsumerSettings
 }
 
-func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory) func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
+func NewBatchConsumer(name string, callbackFactory BatchConsumerCallbackFactory) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		loggerCallback := logger.WithChannel("consumerCallback")
 		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
@@ -201,11 +201,14 @@ func (c *BatchConsumer) consumeBatch(ctx context.Context, batch []*consumerData)
 	c.writeMetricDurationAndProcessedCount(duration, len(batch))
 }
 
-func (c *BatchConsumer) decodeMessages(batchCtx context.Context, batch []*consumerData) ([]*consumerData, []interface{}, []map[string]string, []tracing.Span) {
-	models := make([]interface{}, 0, len(batch))
-	attributes := make([]map[string]string, 0, len(batch))
-	spans := make([]tracing.Span, 0, len(batch))
-	newBatch := make([]*consumerData, 0, len(batch))
+func (c *BatchConsumer) decodeMessages(
+	batchCtx context.Context,
+	batch []*consumerData,
+) (newBatch []*consumerData, models []any, attributes []map[string]string, spans []tracing.Span) {
+	models = make([]any, 0, len(batch))
+	attributes = make([]map[string]string, 0, len(batch))
+	spans = make([]tracing.Span, 0, len(batch))
+	newBatch = make([]*consumerData, 0, len(batch))
 
 	for _, cdata := range batch {
 		model := c.callback.GetModel(cdata.msg.Attributes)

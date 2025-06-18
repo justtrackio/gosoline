@@ -20,7 +20,7 @@ func (s *ConsumerTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("../stream-consumer/config.dist.yml"),
-		suite.WithModule("consumerModule", stream.NewConsumer("uintConsumer", consumer.NewConsumer())),
+		suite.WithModule("consumerModule", stream.NewTypedConsumer("uintConsumer", consumer.NewConsumer())),
 	}
 }
 

@@ -6,5 +6,5 @@ import (
 )
 
 func main() {
-	application.RunConsumer(consumer.NewConsumer())
+	application.RunTypedConsumer(consumer.NewConsumer())
 }

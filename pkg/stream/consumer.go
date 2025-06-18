@@ -18,7 +18,7 @@ type ConsumerCallbackFactory func(ctx context.Context, config cfg.Config, logger
 //go:generate mockery --name ConsumerCallback
 type ConsumerCallback interface {
 	BaseConsumerCallback
-	Consume(ctx context.Context, model interface{}, attributes map[string]string) (bool, error)
+	Consume(ctx context.Context, model any, attributes map[string]string) (bool, error)
 }
 
 //go:generate mockery --name RunnableConsumerCallback
@@ -35,11 +35,7 @@ type Consumer struct {
 
 var _ kernel.FullModule = &Consumer{}
 
-func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) func(
-	ctx context.Context,
-	config cfg.Config,
-	logger log.Logger,
-) (kernel.Module, error) {
+func NewConsumer(name string, callbackFactory ConsumerCallbackFactory) kernel.ModuleFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
 		loggerCallback := logger.WithChannel("consumerCallback")
 		contextEnforcingLogger := log.NewContextEnforcingLogger(loggerCallback)
@@ -176,7 +172,7 @@ func (c *Consumer) process(ctx context.Context, msg *Message, hasNativeRetry boo
 
 	var err error
 	var ack bool
-	var model interface{}
+	var model any
 	var attributes map[string]string
 
 	if model = c.callback.GetModel(msg.Attributes); model == nil {
