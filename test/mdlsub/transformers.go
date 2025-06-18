@@ -10,7 +10,7 @@ import (
 
 var transformers = mdlsub.TransformerMapTypeVersionFactories{
 	"justtrack.gosoline.management.testModel": {
-		0: mdlsub.NewGenericTransformer(TestTransformer{}),
+		0: mdlsub.NewGenericTransformer[TestInput, TestModel](TestTransformer{}),
 	},
 }
 
@@ -28,12 +28,11 @@ func (m TestModel) GetId() any {
 	return m.Id
 }
 
-type TestTransformer struct {
-	mdlsub.TypesProvider[TestInput, TestModel]
-}
+type TestTransformer struct{}
 
-func (t TestTransformer) Transform(ctx context.Context, inp any) (out mdlsub.Model, err error) {
-	mdl := inp.(*TestInput)
-
-	return TestModel{mdl.Id, mdl.Name}, nil
+func (t TestTransformer) Transform(ctx context.Context, inp TestInput) (out *TestModel, err error) {
+	return &TestModel{
+		Id:   inp.Id,
+		Name: inp.Name,
+	}, nil
 }

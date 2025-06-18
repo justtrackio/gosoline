@@ -22,7 +22,7 @@ func outputDdbFactory(ctx context.Context, config cfg.Config, logger log.Logger,
 	outputs := make(map[int]Output)
 
 	for version, transformer := range transformers {
-		if outputs[version], err = NewOutputDdb(ctx, config, logger, transformer.GetModel(), settings); err != nil {
+		if outputs[version], err = NewOutputDdb(ctx, config, logger, transformer.getModel(), settings); err != nil {
 			return nil, fmt.Errorf("can not create ddb output: %w", err)
 		}
 	}

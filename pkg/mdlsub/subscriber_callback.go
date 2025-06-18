@@ -56,11 +56,10 @@ func (s *SubscriberCallback) GetModel(attributes map[string]string) any {
 		return nil
 	}
 
-	return transformer.GetInput()
+	return transformer.getInput()
 }
 
-func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes map[string]string) (bool, error) {
-	var err error
+func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes map[string]string) (ack bool, err error) {
 	var model Model
 	var spec *ModelSpecification
 	var transformer ModelTransformer
@@ -69,6 +68,10 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 	if spec, err = getModelSpecification(attributes); err != nil {
 		return false, fmt.Errorf("can not read model specifications from the message attributes: %w", err)
 	}
+
+	defer func() {
+		s.writeMetric(err, spec)
+	}()
 
 	logger := s.logger.WithContext(ctx).WithFields(log.Fields{
 		"modelId": spec.ModelId,
@@ -80,7 +83,7 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 		return false, err
 	}
 
-	if model, err = transformer.Transform(ctx, input); err != nil {
+	if model, err = transformer.transform(ctx, input); err != nil {
 		if IsDelayOpError(err) {
 			logger.Info("delaying %s op for subscription for modelId %s and version %d: %s", spec.CrudType, spec.ModelId, spec.Version, err.Error())
 
@@ -101,8 +104,6 @@ func (s *SubscriberCallback) Consume(ctx context.Context, input any, attributes 
 	}
 
 	err = output.Persist(ctx, model, spec.CrudType)
-	s.writeMetric(err, spec)
-
 	if err != nil {
 		return false, fmt.Errorf("can not persist subscription of model %s and version %d: %w", spec.ModelId, spec.Version, err)
 	}

@@ -77,7 +77,7 @@ func (s *FixtureSetTestSuite) TestSuccess() {
 	s.output.EXPECT().Persist(ctx, TestModel{Id: 2}, "create").Return(nil)
 
 	s.core.EXPECT().GetLatestModelIdVersion(s.source.ModelId).Return(1, nil)
-	s.core.EXPECT().GetTransformer(s.spec).Return(TestTransformer{}, nil)
+	s.core.EXPECT().GetTransformer(s.spec).Return(mdlsub.EraseTransformerTypes(TestTransformer{}), nil)
 	s.core.EXPECT().GetOutput(s.spec).Return(s.output, nil)
 
 	httpmock.RegisterResponder("GET", "http://localhost:8080/path/for/mdlsub?dataset_id=1&model_id=justtrack.gosoline.mdlsub.testModel&version=1",
