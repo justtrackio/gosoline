@@ -36,7 +36,7 @@ func SubscriberFactory(ctx context.Context, config cfg.Config, logger log.Logger
 		}
 
 		callbackFactory := NewSubscriberCallbackFactory(core)
-		modules[subscriberFQN] = stream.NewConsumer(subscriberFQN, callbackFactory)
+		modules[subscriberFQN] = stream.NewUntypedConsumer(subscriberFQN, callbackFactory)
 	}
 
 	return modules, nil

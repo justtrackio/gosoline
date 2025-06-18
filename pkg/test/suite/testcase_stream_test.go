@@ -55,7 +55,7 @@ func (s *ConsumerTestSuite) SetupSuite() []suite.Option {
 				},
 			},
 		}),
-		suite.WithConsumer(func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
+		suite.WithConsumer(func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback[TestMessage], error) {
 			publisher, err := mdlsub.NewPublisher(ctx, config, logger, "echo")
 			if err != nil {
 				return nil, err
@@ -69,13 +69,7 @@ func (s *ConsumerTestSuite) SetupSuite() []suite.Option {
 	}
 }
 
-func (s *ConsumerTestSuite) GetModel(_ map[string]string) any {
-	return &TestMessage{}
-}
-
-func (s *ConsumerTestSuite) Consume(ctx context.Context, model any, _ map[string]string) (bool, error) {
-	msg := model.(*TestMessage)
-
+func (s *ConsumerTestSuite) Consume(ctx context.Context, msg TestMessage, _ map[string]string) (bool, error) {
 	s.seenMessageIds = append(s.seenMessageIds, msg.Id)
 
 	if msg.ShouldOutput {

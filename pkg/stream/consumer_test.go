@@ -47,7 +47,7 @@ type ConsumerTestSuite struct {
 	retryStop     func()
 
 	uuidGen  *uuidMocks.Uuid
-	callback *mocks.RunnableConsumerCallback
+	callback *mocks.RunnableUntypedConsumerCallback
 	consumer *stream.Consumer
 }
 
@@ -83,7 +83,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 	s.retryHandler = mocks.NewRetryHandler(s.T())
 
 	s.uuidGen = uuidMocks.NewUuid(s.T())
-	s.callback = mocks.NewRunnableConsumerCallback(s.T())
+	s.callback = mocks.NewRunnableUntypedConsumerCallback(s.T())
 
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
 	tracer := tracing.NewLocalTracer()
@@ -118,7 +118,7 @@ func (s *ConsumerTestSuite) SetupTest() {
 		"test",
 		cfg.AppId{},
 	)
-	s.consumer = stream.NewConsumerWithInterfaces(baseConsumer, s.callback, healthCheckTimer)
+	s.consumer = stream.NewUntypedConsumerWithInterfaces(baseConsumer, s.callback, healthCheckTimer)
 }
 
 func (s *ConsumerTestSuite) TestGetModelNil() {

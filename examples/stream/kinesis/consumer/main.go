@@ -18,12 +18,7 @@ type consumerCallback struct {
 	logger log.Logger
 }
 
-func (c consumerCallback) GetModel(_ map[string]string) interface{} {
-	return &map[string]string{}
-}
-
-func (c consumerCallback) Consume(ctx context.Context, model interface{}, attributes map[string]string) (bool, error) {
-	input := model.(*map[string]string)
+func (c consumerCallback) Consume(ctx context.Context, input map[string]string, attributes map[string]string) (bool, error) {
 	str, err := json.MarshalIndent(input, "", "    ")
 	if err != nil {
 		return false, err
@@ -34,8 +29,8 @@ func (c consumerCallback) Consume(ctx context.Context, model interface{}, attrib
 	return true, nil
 }
 
-func newConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
-	return &consumerCallback{
+func newConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback[map[string]string], error) {
+	return consumerCallback{
 		logger: logger,
 	}, nil
 }

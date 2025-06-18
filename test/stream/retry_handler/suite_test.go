@@ -28,7 +28,7 @@ func (s *RetryHandlerTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("config.dist.yml"),
-		suite.WithConsumer(func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
+		suite.WithConsumer(func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback[DataModel], error) {
 			return s.callback, nil
 		}),
 	}
