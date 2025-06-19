@@ -11,7 +11,7 @@ import (
 
 type Callback struct {
 	aut                suite.AppUnderTest
-	receivedModels     []*DataModel
+	receivedModels     []DataModel
 	receivedAttributes []map[string]string
 	retryCount         int
 	stopAt             int
@@ -22,11 +22,7 @@ func NewCallback() *Callback {
 	return &Callback{}
 }
 
-func (c *Callback) GetModel(map[string]string) interface{} {
-	return &DataModel{}
-}
-
-func (c *Callback) Consume(_ context.Context, m interface{}, attributes map[string]string) (bool, error) {
+func (c *Callback) Consume(_ context.Context, model DataModel, attributes map[string]string) (bool, error) {
 	c.lck.Lock()
 	defer c.lck.Unlock()
 
@@ -36,7 +32,6 @@ func (c *Callback) Consume(_ context.Context, m interface{}, attributes map[stri
 	delete(attributes, "sqsMessageId")
 	delete(attributes, "sqsReceiptHandle")
 
-	model := m.(*DataModel)
 	c.receivedModels = append(c.receivedModels, model)
 	c.receivedAttributes = append(c.receivedAttributes, attributes)
 

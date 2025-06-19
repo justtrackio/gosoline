@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	application.RunTypedConsumer(newConsumer)
+	application.RunConsumer(newConsumer)
 }
 
 type consumerCallback struct {
@@ -29,7 +29,7 @@ func (c consumerCallback) Consume(ctx context.Context, input map[string]string, 
 	return true, nil
 }
 
-func newConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (stream.TypedConsumerCallback[map[string]string], error) {
+func newConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback[map[string]string], error) {
 	return consumerCallback{
 		logger: logger,
 	}, nil

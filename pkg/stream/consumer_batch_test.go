@@ -36,7 +36,7 @@ type BatchConsumerTestSuite struct {
 
 	input *mocks.AcknowledgeableInput
 
-	callback      *mocks.RunnableBatchConsumerCallback
+	callback      *mocks.RunnableUntypedBatchConsumerCallback
 	batchConsumer *stream.BatchConsumer
 }
 
@@ -53,7 +53,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 	}
 
 	s.input = mocks.NewAcknowledgeableInput(s.T())
-	s.callback = mocks.NewRunnableBatchConsumerCallback(s.T())
+	s.callback = mocks.NewRunnableUntypedBatchConsumerCallback(s.T())
 
 	uuidGen := uuid.New()
 	logger := logMocks.NewLoggerMock(logMocks.WithMockAll, logMocks.WithTestingT(s.T()))
@@ -88,7 +88,7 @@ func (s *BatchConsumerTestSuite) SetupTest() {
 		"test",
 		cfg.AppId{},
 	)
-	s.batchConsumer = stream.NewBatchConsumerWithInterfaces(baseConsumer, s.callback, ticker, batchSettings)
+	s.batchConsumer = stream.NewUntypedBatchConsumerWithInterfaces(baseConsumer, s.callback, ticker, batchSettings)
 }
 
 func (s *BatchConsumerTestSuite) TestRun_ProcessOnStop() {

@@ -63,13 +63,13 @@ func RunHttpServers(servers map[string]httpserver.Definer, options ...Option) {
 	Run(options...)
 }
 
-func RunConsumer(callback stream.ConsumerCallbackFactory, options ...Option) {
+func RunUntypedConsumer(callback stream.UntypedConsumerCallbackFactory, options ...Option) {
 	RunConsumers(stream.ConsumerCallbackMap{
 		"default": callback,
 	}, options...)
 }
 
-func RunTypedConsumer[M any](callback stream.TypedConsumerCallbackFactory[M], options ...Option) {
+func RunConsumer[M any](callback stream.ConsumerCallbackFactory[M], options ...Option) {
 	RunConsumers(stream.ConsumerCallbackMap{
 		"default": stream.EraseConsumerCallbackFactoryTypes(callback),
 	}, options...)

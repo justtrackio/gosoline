@@ -36,7 +36,7 @@ func (s *RetryHandlerSqsTestSuite) SetupSuite() []suite.Option {
 	return []suite.Option{
 		suite.WithLogLevel("debug"),
 		suite.WithConfigFile("config.dist.yml"),
-		suite.WithConsumer(func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
+		suite.WithConsumer(func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback[DataModel], error) {
 			sqsOutput, err := stream.NewSqsOutput(ctx, config, logger, &stream.SqsOutputSettings{
 				QueueId:           "test",
 				ClientName:        "default",
@@ -63,10 +63,10 @@ func (s *RetryHandlerSqsTestSuite) TestRetryBatch(aut suite.AppUnderTest) {
 	aut.WaitDone()
 
 	s.Len(s.callback.receivedModels, 4, "the model should have been received 4 times")
-	s.Equal(s.callback.receivedModels[0], &DataModel{Id: 1}, "the first receive should have the correct body")
-	s.Equal(s.callback.receivedModels[1], &DataModel{Id: 2}, "the second receive should have the correct body")
-	s.Equal(s.callback.receivedModels[2], &DataModel{Id: 1}, "the first retry receive should have the correct body")
-	s.Equal(s.callback.receivedModels[3], &DataModel{Id: 2}, "the second retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[0], DataModel{Id: 1}, "the first receive should have the correct body")
+	s.Equal(s.callback.receivedModels[1], DataModel{Id: 2}, "the second receive should have the correct body")
+	s.Equal(s.callback.receivedModels[2], DataModel{Id: 1}, "the first retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[3], DataModel{Id: 2}, "the second retry receive should have the correct body")
 
 	s.Equal(s.callback.receivedAttributes[0], map[string]string{
 		stream.AttributeEncoding: stream.EncodingJson.String(),
@@ -97,10 +97,10 @@ func (s *RetryHandlerSqsTestSuite) TestRetryBatchOfCompressedMessages(aut suite.
 	aut.WaitDone()
 
 	s.Len(s.callback.receivedModels, 4, "the model should have been received 4 times")
-	s.Equal(s.callback.receivedModels[0], &DataModel{Id: 1}, "the first receive should have the correct body")
-	s.Equal(s.callback.receivedModels[1], &DataModel{Id: 2}, "the second receive should have the correct body")
-	s.Equal(s.callback.receivedModels[2], &DataModel{Id: 1}, "the first retry receive should have the correct body")
-	s.Equal(s.callback.receivedModels[3], &DataModel{Id: 2}, "the second retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[0], DataModel{Id: 1}, "the first receive should have the correct body")
+	s.Equal(s.callback.receivedModels[1], DataModel{Id: 2}, "the second receive should have the correct body")
+	s.Equal(s.callback.receivedModels[2], DataModel{Id: 1}, "the first retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[3], DataModel{Id: 2}, "the second retry receive should have the correct body")
 
 	s.Equal(s.callback.receivedAttributes[0], map[string]string{
 		stream.AttributeEncoding:    stream.EncodingJson.String(),
@@ -135,10 +135,10 @@ func (s *RetryHandlerSqsTestSuite) TestRetryBatchCompressed(aut suite.AppUnderTe
 	aut.WaitDone()
 
 	s.Len(s.callback.receivedModels, 4, "the model should have been received 4 times")
-	s.Equal(s.callback.receivedModels[0], &DataModel{Id: 1}, "the first receive should have the correct body")
-	s.Equal(s.callback.receivedModels[1], &DataModel{Id: 2}, "the second receive should have the correct body")
-	s.Equal(s.callback.receivedModels[2], &DataModel{Id: 1}, "the first retry receive should have the correct body")
-	s.Equal(s.callback.receivedModels[3], &DataModel{Id: 2}, "the second retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[0], DataModel{Id: 1}, "the first receive should have the correct body")
+	s.Equal(s.callback.receivedModels[1], DataModel{Id: 2}, "the second receive should have the correct body")
+	s.Equal(s.callback.receivedModels[2], DataModel{Id: 1}, "the first retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[3], DataModel{Id: 2}, "the second retry receive should have the correct body")
 
 	s.Equal(s.callback.receivedAttributes[0], map[string]string{
 		stream.AttributeEncoding: stream.EncodingJson.String(),
@@ -169,10 +169,10 @@ func (s *RetryHandlerSqsTestSuite) TestRetryBatchWithProtobuf(aut suite.AppUnder
 	aut.WaitDone()
 
 	s.Len(s.callback.receivedModels, 4, "the model should have been received 4 times")
-	s.Equal(s.callback.receivedModels[0], &DataModel{Id: 1}, "the first receive should have the correct body")
-	s.Equal(s.callback.receivedModels[1], &DataModel{Id: 2}, "the second receive should have the correct body")
-	s.Equal(s.callback.receivedModels[2], &DataModel{Id: 1}, "the first retry receive should have the correct body")
-	s.Equal(s.callback.receivedModels[3], &DataModel{Id: 2}, "the second retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[0], DataModel{Id: 1}, "the first receive should have the correct body")
+	s.Equal(s.callback.receivedModels[1], DataModel{Id: 2}, "the second receive should have the correct body")
+	s.Equal(s.callback.receivedModels[2], DataModel{Id: 1}, "the first retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[3], DataModel{Id: 2}, "the second retry receive should have the correct body")
 
 	s.Equal(s.callback.receivedAttributes[0], map[string]string{
 		stream.AttributeEncoding: stream.EncodingProtobuf.String(),
@@ -203,10 +203,10 @@ func (s *RetryHandlerSqsTestSuite) TestRetryBatchWithProtobufAndCompression(aut 
 	aut.WaitDone()
 
 	s.Len(s.callback.receivedModels, 4, "the model should have been received 4 times")
-	s.Equal(s.callback.receivedModels[0], &DataModel{Id: 1}, "the first receive should have the correct body")
-	s.Equal(s.callback.receivedModels[1], &DataModel{Id: 2}, "the second receive should have the correct body")
-	s.Equal(s.callback.receivedModels[2], &DataModel{Id: 1}, "the first retry receive should have the correct body")
-	s.Equal(s.callback.receivedModels[3], &DataModel{Id: 2}, "the second retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[0], DataModel{Id: 1}, "the first receive should have the correct body")
+	s.Equal(s.callback.receivedModels[1], DataModel{Id: 2}, "the second receive should have the correct body")
+	s.Equal(s.callback.receivedModels[2], DataModel{Id: 1}, "the first retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[3], DataModel{Id: 2}, "the second retry receive should have the correct body")
 
 	s.Equal(s.callback.receivedAttributes[0], map[string]string{
 		stream.AttributeEncoding: stream.EncodingProtobuf.String(),
@@ -237,8 +237,8 @@ func (s *RetryHandlerSqsTestSuite) TestRetrySingleMessage(aut suite.AppUnderTest
 	aut.WaitDone()
 
 	s.Len(s.callback.receivedModels, 2, "the model should have been received 2 times")
-	s.Equal(s.callback.receivedModels[0], &DataModel{Id: 1}, "the first receive should have the correct body")
-	s.Equal(s.callback.receivedModels[1], &DataModel{Id: 1}, "the first retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[0], DataModel{Id: 1}, "the first receive should have the correct body")
+	s.Equal(s.callback.receivedModels[1], DataModel{Id: 1}, "the first retry receive should have the correct body")
 
 	s.Equal(s.callback.receivedAttributes[0], map[string]string{
 		stream.AttributeEncoding: stream.EncodingJson.String(),
@@ -257,8 +257,8 @@ func (s *RetryHandlerSqsTestSuite) TestRetrySingleCompressedMessage(aut suite.Ap
 	aut.WaitDone()
 
 	s.Len(s.callback.receivedModels, 2, "the model should have been received 2 times")
-	s.Equal(s.callback.receivedModels[0], &DataModel{Id: 1}, "the first receive should have the correct body")
-	s.Equal(s.callback.receivedModels[1], &DataModel{Id: 1}, "the first retry receive should have the correct body")
+	s.Equal(s.callback.receivedModels[0], DataModel{Id: 1}, "the first receive should have the correct body")
+	s.Equal(s.callback.receivedModels[1], DataModel{Id: 1}, "the first retry receive should have the correct body")
 
 	s.Equal(s.callback.receivedAttributes[0], map[string]string{
 		stream.AttributeEncoding:    stream.EncodingJson.String(),

@@ -10,8 +10,8 @@ import (
 	"github.com/justtrackio/gosoline/pkg/stream"
 )
 
-func NewConsumer() stream.TypedConsumerCallbackFactory[uint] {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.TypedConsumerCallback[uint], error) {
+func NewConsumer() stream.ConsumerCallbackFactory[uint] {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback[uint], error) {
 		publisher, err := mdlsub.NewPublisher(ctx, config, logger, "outputEvent")
 		if err != nil {
 			return nil, fmt.Errorf("can not create publisher: %w", err)

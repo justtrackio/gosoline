@@ -9,7 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type ConsumerCallbackMap map[string]ConsumerCallbackFactory
+type ConsumerCallbackMap map[string]UntypedConsumerCallbackFactory
 
 func NewConsumerFactory(callbacks ConsumerCallbackMap) kernel.ModuleMultiFactory {
 	return func(ctx context.Context, config cfg.Config, logger log.Logger) (map[string]kernel.ModuleFactory, error) {
@@ -22,7 +22,7 @@ func ConsumerFactory(callbacks ConsumerCallbackMap) (map[string]kernel.ModuleFac
 
 	for name, callback := range callbacks {
 		moduleName := fmt.Sprintf("consumer-%s", name)
-		consumer := NewConsumer(name, callback)
+		consumer := NewUntypedConsumer(name, callback)
 
 		modules[moduleName] = consumer
 	}

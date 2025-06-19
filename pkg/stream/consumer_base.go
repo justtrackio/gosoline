@@ -61,7 +61,7 @@ type consumerData struct {
 type baseConsumer struct {
 	kernel.EssentialModule
 	kernel.ApplicationStage
-	ConsumerAcknowledge
+	consumerAcknowledge
 
 	clock        clock.Clock
 	uuidGen      uuid.Uuid
@@ -167,7 +167,7 @@ func NewBaseConsumerWithInterfaces(
 		logger:              logger,
 		metricWriter:        metricWriter,
 		tracer:              tracer,
-		ConsumerAcknowledge: NewConsumerAcknowledgeWithInterfaces(logger, input),
+		consumerAcknowledge: newConsumerAcknowledgeWithInterfaces(logger, input),
 		encoder:             encoder,
 		retryInput:          retryInput,
 		retryHandler:        retryHandler,

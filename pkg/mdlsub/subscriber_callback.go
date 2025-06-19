@@ -28,8 +28,8 @@ type SubscriberCallback struct {
 	core   SubscriberCore
 }
 
-func NewSubscriberCallbackFactory(core SubscriberCore) stream.ConsumerCallbackFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
+func NewSubscriberCallbackFactory(core SubscriberCore) stream.UntypedConsumerCallbackFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (stream.UntypedConsumerCallback, error) {
 		defaultMetrics := getSubscriberCallbackDefaultMetrics(core.GetModelIds())
 		metricWriter := metric.NewWriter(defaultMetrics...)
 

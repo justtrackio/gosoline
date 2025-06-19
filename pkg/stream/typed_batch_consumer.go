@@ -9,30 +9,36 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name TypedBatchConsumerCallback
-type TypedBatchConsumerCallback[M any] interface {
+//go:generate mockery --name BatchConsumerCallback
+type BatchConsumerCallback[M any] interface {
 	Consume(ctx context.Context, models []M, attributes []map[string]string) ([]bool, error)
 }
 
-type TypedBatchConsumerCallbackFactory[M any] func(ctx context.Context, config cfg.Config, logger log.Logger) (TypedBatchConsumerCallback[M], error)
+//go:generate mockery --name RunnableBatchConsumerCallback
+type RunnableBatchConsumerCallback[M any] interface {
+	BatchConsumerCallback[M]
+	RunnableCallback
+}
+
+type BatchConsumerCallbackFactory[M any] func(ctx context.Context, config cfg.Config, logger log.Logger) (BatchConsumerCallback[M], error)
 
 type untypedBatchConsumerCallback[M any] struct {
-	consumerCallback TypedBatchConsumerCallback[M]
+	consumerCallback BatchConsumerCallback[M]
 }
 
 var (
-	_ InitializeableCallback        = untypedBatchConsumerCallback[any]{}
-	_ RunnableBatchConsumerCallback = untypedBatchConsumerCallback[any]{}
+	_ InitializeableCallback               = untypedBatchConsumerCallback[any]{}
+	_ RunnableUntypedBatchConsumerCallback = untypedBatchConsumerCallback[any]{}
 )
 
-func NewTypedBatchConsumer[M any](name string, callbackFactory TypedBatchConsumerCallbackFactory[M]) kernel.ModuleFactory {
+func NewTypedBatchConsumer[M any](name string, callbackFactory BatchConsumerCallbackFactory[M]) kernel.ModuleFactory {
 	return func(ctx context.Context, conf cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return NewBatchConsumer(name, EraseBatchConsumerCallbackFactoryTypes(callbackFactory))(ctx, conf, logger)
+		return NewUntypedBatchConsumer(name, EraseBatchConsumerCallbackFactoryTypes(callbackFactory))(ctx, conf, logger)
 	}
 }
 
-func EraseBatchConsumerCallbackFactoryTypes[M any](callbackFactory TypedBatchConsumerCallbackFactory[M]) BatchConsumerCallbackFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (BatchConsumerCallback, error) {
+func EraseBatchConsumerCallbackFactoryTypes[M any](callbackFactory BatchConsumerCallbackFactory[M]) UntypedBatchConsumerCallbackFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (UntypedBatchConsumerCallback, error) {
 		callback, err := callbackFactory(ctx, config, logger)
 		if err != nil {
 			return nil, err
@@ -42,7 +48,7 @@ func EraseBatchConsumerCallbackFactoryTypes[M any](callbackFactory TypedBatchCon
 	}
 }
 
-func EraseBatchConsumerCallbackTypes[M any](consumerCallback TypedBatchConsumerCallback[M]) BatchConsumerCallback {
+func EraseBatchConsumerCallbackTypes[M any](consumerCallback BatchConsumerCallback[M]) UntypedBatchConsumerCallback {
 	return untypedBatchConsumerCallback[M]{
 		consumerCallback: consumerCallback,
 	}

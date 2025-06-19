@@ -14,7 +14,7 @@ type DataModel struct {
 
 type Callback struct {
 	aut                suite.AppUnderTest
-	receivedModels     []*DataModel
+	receivedModels     []DataModel
 	receivedAttributes []map[string]string
 }
 
@@ -26,8 +26,8 @@ func (c *Callback) GetModel(attributes map[string]string) interface{} {
 	return &DataModel{}
 }
 
-func (c *Callback) Consume(ctx context.Context, model interface{}, attributes map[string]string) (bool, error) {
-	c.receivedModels = append(c.receivedModels, model.(*DataModel))
+func (c *Callback) Consume(ctx context.Context, model DataModel, attributes map[string]string) (bool, error) {
+	c.receivedModels = append(c.receivedModels, model)
 	c.receivedAttributes = append(c.receivedAttributes, attributes)
 
 	if len(c.receivedModels) < 3 {

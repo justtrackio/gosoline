@@ -113,12 +113,12 @@ func WithContainerExpireAfter(expireAfter time.Duration) Option {
 	}
 }
 
-func WithConsumer(callback stream.ConsumerCallbackFactory) Option {
-	return WithModule("consumer-default", stream.NewConsumer("default", callback))
+func WithUntypedConsumer(callback stream.UntypedConsumerCallbackFactory) Option {
+	return WithModule("consumer-default", stream.NewUntypedConsumer("default", callback))
 }
 
-func WithTypedConsumer[M any](callback stream.TypedConsumerCallbackFactory[M]) Option {
-	return WithModule("consumer-default", stream.NewTypedConsumer("default", callback))
+func WithConsumer[M any](callback stream.ConsumerCallbackFactory[M]) Option {
+	return WithModule("consumer-default", stream.NewConsumer("default", callback))
 }
 
 func WithEnvSetup(setups ...func() error) Option {

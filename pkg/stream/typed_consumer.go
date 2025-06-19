@@ -8,30 +8,36 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-//go:generate mockery --name TypedConsumerCallback
-type TypedConsumerCallback[M any] interface {
+//go:generate mockery --name ConsumerCallback
+type ConsumerCallback[M any] interface {
 	Consume(ctx context.Context, model M, attributes map[string]string) (bool, error)
 }
 
-type TypedConsumerCallbackFactory[M any] func(ctx context.Context, config cfg.Config, logger log.Logger) (TypedConsumerCallback[M], error)
+//go:generate mockery --name RunnableConsumerCallback
+type RunnableConsumerCallback[M any] interface {
+	ConsumerCallback[M]
+	RunnableCallback
+}
+
+type ConsumerCallbackFactory[M any] func(ctx context.Context, config cfg.Config, logger log.Logger) (ConsumerCallback[M], error)
 
 type untypedConsumerCallback[M any] struct {
-	consumerCallback TypedConsumerCallback[M]
+	consumerCallback ConsumerCallback[M]
 }
 
 var (
-	_ InitializeableCallback   = untypedConsumerCallback[any]{}
-	_ RunnableConsumerCallback = untypedConsumerCallback[any]{}
+	_ InitializeableCallback          = untypedConsumerCallback[any]{}
+	_ RunnableUntypedConsumerCallback = untypedConsumerCallback[any]{}
 )
 
-func NewTypedConsumer[M any](name string, callbackFactory TypedConsumerCallbackFactory[M]) kernel.ModuleFactory {
+func NewConsumer[M any](name string, callbackFactory ConsumerCallbackFactory[M]) kernel.ModuleFactory {
 	return func(ctx context.Context, conf cfg.Config, logger log.Logger) (kernel.Module, error) {
-		return NewConsumer(name, EraseConsumerCallbackFactoryTypes(callbackFactory))(ctx, conf, logger)
+		return NewUntypedConsumer(name, EraseConsumerCallbackFactoryTypes(callbackFactory))(ctx, conf, logger)
 	}
 }
 
-func EraseConsumerCallbackFactoryTypes[M any](callbackFactory TypedConsumerCallbackFactory[M]) ConsumerCallbackFactory {
-	return func(ctx context.Context, config cfg.Config, logger log.Logger) (ConsumerCallback, error) {
+func EraseConsumerCallbackFactoryTypes[M any](callbackFactory ConsumerCallbackFactory[M]) UntypedConsumerCallbackFactory {
+	return func(ctx context.Context, config cfg.Config, logger log.Logger) (UntypedConsumerCallback, error) {
 		callback, err := callbackFactory(ctx, config, logger)
 		if err != nil {
 			return nil, err
@@ -41,7 +47,7 @@ func EraseConsumerCallbackFactoryTypes[M any](callbackFactory TypedConsumerCallb
 	}
 }
 
-func EraseConsumerCallbackTypes[M any](consumerCallback TypedConsumerCallback[M]) ConsumerCallback {
+func EraseConsumerCallbackTypes[M any](consumerCallback ConsumerCallback[M]) UntypedConsumerCallback {
 	return untypedConsumerCallback[M]{
 		consumerCallback: consumerCallback,
 	}
