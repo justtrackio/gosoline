@@ -27,7 +27,7 @@ func (m ModelDb) GetId() any {
 //go:generate mockery --name ModelTransformer
 type ModelTransformer interface {
 	getInput() any
-	getModel() any
+	GetModel() any
 	transform(ctx context.Context, inp any) (out Model, err error)
 }
 
@@ -48,7 +48,7 @@ func (u untypedTransformer[I, M]) getInput() any {
 	return new(I)
 }
 
-func (u untypedTransformer[I, M]) getModel() any {
+func (u untypedTransformer[I, M]) GetModel() any {
 	return new(M)
 }
 
