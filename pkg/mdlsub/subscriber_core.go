@@ -84,7 +84,7 @@ func (c *subscriberCore) Transform(ctx context.Context, spec *ModelSpecification
 		return nil, fmt.Errorf("failed to get transformer: %w", err)
 	}
 
-	if model, err = transformer.Transform(ctx, input); err != nil {
+	if model, err = transformer.transform(ctx, input); err != nil {
 		return nil, fmt.Errorf("failed to transform %s: %w", spec, err)
 	}
 

@@ -17,19 +17,13 @@ type Consumer struct {
 	logger log.Logger
 }
 
-func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback, error) {
+func NewConsumer(ctx context.Context, config cfg.Config, logger log.Logger) (stream.ConsumerCallback[Input], error) {
 	return &Consumer{
 		logger: logger,
 	}, nil
 }
 
-func (c Consumer) GetModel(attributes map[string]string) interface{} {
-	return &Input{}
-}
-
-func (c Consumer) Consume(ctx context.Context, model interface{}, attributes map[string]string) (bool, error) {
-	input := model.(*Input)
-
+func (c Consumer) Consume(ctx context.Context, input Input, attributes map[string]string) (bool, error) {
 	c.logger.WithContext(ctx).Info("got input with id %q and body %q", input.Id, input.Body)
 
 	return true, nil

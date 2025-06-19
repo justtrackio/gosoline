@@ -6,19 +6,19 @@ import (
 	"github.com/justtrackio/gosoline/pkg/log"
 )
 
-type ConsumerAcknowledge struct {
+type consumerAcknowledge struct {
 	logger log.Logger
 	input  Input
 }
 
-func NewConsumerAcknowledgeWithInterfaces(logger log.Logger, input Input) ConsumerAcknowledge {
-	return ConsumerAcknowledge{
+func newConsumerAcknowledgeWithInterfaces(logger log.Logger, input Input) consumerAcknowledge {
+	return consumerAcknowledge{
 		logger: logger,
 		input:  input,
 	}
 }
 
-func (c *ConsumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerData, ack bool) {
+func (c *consumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerData, ack bool) {
 	var ok bool
 	var ackInput AcknowledgeableInput
 
@@ -40,7 +40,7 @@ func (c *ConsumerAcknowledge) Acknowledge(ctx context.Context, cdata *consumerDa
 	}
 }
 
-func (c *ConsumerAcknowledge) AcknowledgeBatch(ctx context.Context, cdata []*consumerData, acks []bool) {
+func (c *consumerAcknowledge) AcknowledgeBatch(ctx context.Context, cdata []*consumerData, acks []bool) {
 	var ok bool
 	var ackInput AcknowledgeableInput
 

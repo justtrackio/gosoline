@@ -2,8 +2,6 @@ package mdlsub_test
 
 import (
 	"context"
-
-	"github.com/justtrackio/gosoline/pkg/mdlsub"
 )
 
 type TestInput struct {
@@ -14,14 +12,12 @@ type TestModel struct {
 	Id int `json:"id"`
 }
 
-type TestTransformer struct {
-	mdlsub.TypesProvider[TestInput, TestModel]
-}
+type TestTransformer struct{}
 
-func (t TestTransformer) Transform(ctx context.Context, inp any) (out mdlsub.Model, err error) {
-	mdl := inp.(*TestInput)
-
-	return TestModel{mdl.Id}, nil
+func (t TestTransformer) Transform(ctx context.Context, inp TestInput) (out *TestModel, err error) {
+	return &TestModel{
+		Id: inp.Id,
+	}, nil
 }
 
 func (m TestModel) GetId() any {

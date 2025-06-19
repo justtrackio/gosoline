@@ -57,7 +57,7 @@ func (s *loggingMiddlewareTestSuite) TestRequestCanceledError() {
 
 	s.Require().Error(err)
 
-	s.logger.EXPECT().Info("%s %s %s - request canceled: %w", "GET", "path", "HTTP/1.1", mock.AnythingOfType("*gin.Error"))
+	s.logger.EXPECT().Info("%s %s %s - request canceled: %s", "GET", "path", "HTTP/1.1", context.Canceled.Error())
 
 	s.handler(ginCtx)
 }
@@ -69,7 +69,7 @@ func (s *loggingMiddlewareTestSuite) TestEOFError() {
 
 	s.Require().Error(err)
 
-	s.logger.EXPECT().Info("%s %s %s - connection error: %w", "GET", "path", "HTTP/1.1", mock.AnythingOfType("*gin.Error"))
+	s.logger.EXPECT().Info("%s %s %s - connection error: %s", "GET", "path", "HTTP/1.1", io.EOF.Error())
 
 	s.handler(ginCtx)
 }
@@ -84,7 +84,7 @@ func (s *loggingMiddlewareTestSuite) TestBindError() {
 
 	s.Require().Error(err)
 
-	s.logger.EXPECT().Warn("%s %s %s - bind error: %w", "GET", "path", "HTTP/1.1", mock.AnythingOfType("*errors.errorString"))
+	s.logger.EXPECT().Warn("%s %s %s - bind error: %s", "GET", "path", "HTTP/1.1", "failed to read body")
 
 	s.handler(ginCtx)
 }
@@ -99,7 +99,7 @@ func (s *loggingMiddlewareTestSuite) TestRenderError() {
 
 	s.Require().Error(err)
 
-	s.logger.EXPECT().Warn("%s %s %s - render error: %w", "GET", "path", "HTTP/1.1", mock.AnythingOfType("*errors.errorString"))
+	s.logger.EXPECT().Warn("%s %s %s - render error: %s", "GET", "path", "HTTP/1.1", "failed to write body")
 
 	s.handler(ginCtx)
 }

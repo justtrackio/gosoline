@@ -60,7 +60,7 @@ func (s *SubscriberTestSuite) SetupSuite() []suite.Option {
 		suite.WithSubscribers(map[string]mdlsub.TransformerMapVersionFactories{
 			"justtrack.gosoline.test.testModel": {
 				0: func(ctx context.Context, config cfg.Config, logger log.Logger) (mdlsub.ModelTransformer, error) {
-					return s, nil
+					return mdlsub.EraseTransformerTypes[TestInput, TestModel](s), nil
 				},
 			},
 		}),
@@ -68,17 +68,7 @@ func (s *SubscriberTestSuite) SetupSuite() []suite.Option {
 	}
 }
 
-func (s *SubscriberTestSuite) GetInput() any {
-	return &TestInput{}
-}
-
-func (s *SubscriberTestSuite) GetModel() any {
-	return &TestModel{}
-}
-
-func (s *SubscriberTestSuite) Transform(_ context.Context, inp any) (out mdlsub.Model, err error) {
-	input := inp.(*TestInput)
-
+func (s *SubscriberTestSuite) Transform(_ context.Context, input TestInput) (out *TestModel, err error) {
 	return &TestModel{
 		Id:   1,
 		Text: input.Text,
