@@ -16,6 +16,7 @@ import (
 	kernelMocks "github.com/justtrackio/gosoline/pkg/kernel/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -160,7 +161,7 @@ func timeout(t *testing.T, d time.Duration, f func(t *testing.T)) {
 
 func (s *KernelTestSuite) TestRunSuccess() {
 	s.module.On("GetStage").Return(kernel.StageApplication)
-	s.module.On("Run", mock.Anything).Return(nil)
+	s.module.On("Run", matcher.Context).Return(nil)
 
 	s.NotPanics(func() {
 		k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
@@ -175,14 +176,14 @@ func (s *KernelTestSuite) TestRunSuccess() {
 		k.Run()
 	})
 
-	s.module.AssertCalled(s.T(), "Run", mock.Anything)
+	s.module.AssertCalled(s.T(), "Run", matcher.Context)
 }
 
 func (s *KernelTestSuite) TestRunFailure() {
 	s.logger.On("Error", "error during the execution of stage %d: %w", kernel.StageApplication, mock.Anything)
 
 	s.module.On("GetStage").Return(kernel.StageApplication)
-	s.module.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+	s.module.On("Run", matcher.Context).Run(func(args mock.Arguments) {
 		panic("panic")
 	})
 
@@ -199,7 +200,7 @@ func (s *KernelTestSuite) TestRunFailure() {
 		k.Run()
 	})
 
-	s.module.AssertCalled(s.T(), "Run", mock.Anything)
+	s.module.AssertCalled(s.T(), "Run", matcher.Context)
 }
 
 func (s *KernelTestSuite) TestStop() {
@@ -209,7 +210,7 @@ func (s *KernelTestSuite) TestStop() {
 	s.module.On("IsEssential").Return(false)
 	s.module.On("IsBackground").Return(false)
 	s.module.On("GetStage").Return(kernel.StageApplication)
-	s.module.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+	s.module.On("Run", matcher.Context).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
 
 		k.Stop("test done")
@@ -227,20 +228,20 @@ func (s *KernelTestSuite) TestStop() {
 
 	k.Run()
 
-	s.module.AssertCalled(s.T(), "Run", mock.Anything)
+	s.module.AssertCalled(s.T(), "Run", matcher.Context)
 }
 
 func (s *KernelTestSuite) TestRunningType() {
 	mf := new(kernelMocks.Module)
 	// type = foreground & stage = application are the defaults for a module
-	mf.On("Run", mock.Anything).Run(func(args mock.Arguments) {}).Return(nil)
+	mf.On("Run", matcher.Context).Run(func(args mock.Arguments) {}).Return(nil)
 
 	mb := new(kernelMocks.FullModule)
 	mb.On("IsHealthy", mock.AnythingOfType("*context.cancelCtx")).Return(true, nil)
 	mb.On("IsEssential").Return(false)
 	mb.On("IsBackground").Return(true)
 	mb.On("GetStage").Return(kernel.StageApplication)
-	mb.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+	mb.On("Run", matcher.Context).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
 
 		<-ctx.Done()
@@ -285,7 +286,7 @@ func (s *KernelTestSuite) TestMultipleStages() {
 		m.On("IsEssential").Return(true)
 		m.On("IsBackground").Return(false)
 		m.On("GetStage").Return(thisStage)
-		m.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+		m.On("Run", matcher.Context).Run(func(args mock.Arguments) {
 			ctx := args.Get(0).(context.Context)
 
 			stageStatus[thisStage] = 1
@@ -339,7 +340,7 @@ func (s *KernelTestSuite) TestForcedExit() {
 	app.On("IsEssential").Return(false)
 	app.On("IsBackground").Return(true)
 	app.On("GetStage").Return(kernel.StageApplication)
-	app.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+	app.On("Run", matcher.Context).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
 
 		<-ctx.Done()
@@ -347,7 +348,7 @@ func (s *KernelTestSuite) TestForcedExit() {
 	}).Return(nil)
 
 	m := new(kernelMocks.Module)
-	m.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+	m.On("Run", matcher.Context).Run(func(args mock.Arguments) {
 		<-mayStop.Channel()
 		s.True(appStopped.Signaled())
 	}).Return(nil)
@@ -392,7 +393,7 @@ func (s *KernelTestSuite) TestStageStopped() {
 	app.On("IsEssential").Return(false)
 	app.On("IsBackground").Return(false)
 	app.On("GetStage").Return(kernel.StageApplication)
-	app.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+	app.On("Run", matcher.Context).Run(func(args mock.Arguments) {
 		ctx := args.Get(0).(context.Context)
 
 		ticker := time.NewTicker(time.Millisecond * 300)
@@ -413,7 +414,7 @@ func (s *KernelTestSuite) TestStageStopped() {
 	m.On("IsEssential").Return(false)
 	m.On("IsBackground").Return(true)
 	m.On("GetStage").Return(777)
-	m.On("Run", mock.Anything).Return(nil)
+	m.On("Run", matcher.Context).Return(nil)
 
 	k, err := kernel.BuildKernel(s.ctx, s.config, s.logger, []kernel.Option{
 		kernel.WithModuleFactory("m", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {

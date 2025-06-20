@@ -10,9 +10,9 @@ import (
 )
 
 func TestSamplingLogger_Info(t *testing.T) {
-	mock := new(mocks.Logger)
-	mock.On("Info", "this should be logged").Once()
-	mock.On("Info", "log msg", "a", 4).Twice()
+	mock := mocks.NewLogger(t)
+	mock.EXPECT().Info("this should be logged").Once()
+	mock.EXPECT().Info("log msg", "a", 4).Twice()
 
 	testClock := clock.NewFakeClock()
 	logger := log.NewSamplingLoggerWithInterfaces(mock, testClock, time.Minute)
@@ -26,6 +26,4 @@ func TestSamplingLogger_Info(t *testing.T) {
 
 	testClock.Advance(time.Hour)
 	logger.Info("log msg", "a", 4)
-
-	mock.AssertExpectations(t)
 }

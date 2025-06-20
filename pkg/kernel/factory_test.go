@@ -14,6 +14,7 @@ import (
 	kernelMocks "github.com/justtrackio/gosoline/pkg/kernel/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -60,7 +61,7 @@ func (s *FactoryTestSuite) TestNoForegroundModules() {
 	module.On("IsEssential").Return(false)
 	module.On("IsBackground").Return(true)
 	module.On("GetStage").Return(kernel.StageApplication)
-	module.On("Run", mock.Anything).Return(nil)
+	module.On("Run", matcher.Context).Return(nil)
 
 	_, err := kernel.BuildFactory(s.ctx, s.config, s.logger, []kernel.Option{
 		kernel.WithModuleFactory("background", func(ctx context.Context, config cfg.Config, logger log.Logger) (kernel.Module, error) {
