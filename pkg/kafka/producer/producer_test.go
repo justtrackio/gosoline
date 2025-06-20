@@ -8,6 +8,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kafka/producer"
 	producerMocks "github.com/justtrackio/gosoline/pkg/kafka/producer/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/protocol"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +55,7 @@ func Test_Write_WriteOne(t *testing.T) {
 		}
 	)
 
-	writer.On("WriteMessages", mock.Anything, mock.Anything).Return(
+	writer.On("WriteMessages", matcher.Context, mock.Anything).Return(
 		func(ctx context.Context, ms ...kafka.Message) error {
 			dead, _ := ctx.Deadline()
 			assert.Less(t, dead, time.Now().Add(time.Minute))
@@ -76,7 +77,7 @@ func Test_Write_WriteOne(t *testing.T) {
 		},
 	).Times(1)
 
-	writer.On("WriteMessages", mock.Anything, mock.Anything).Return(
+	writer.On("WriteMessages", matcher.Context, mock.Anything).Return(
 		func(ctx context.Context, ms ...kafka.Message) error {
 			var (
 				i       = 0

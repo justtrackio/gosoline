@@ -12,6 +12,7 @@ import (
 	kernelMocks "github.com/justtrackio/gosoline/pkg/kernel/mocks"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -58,7 +59,7 @@ func (s *MiddleWareTestSuite) TestMiddleware() {
 
 	s.module.On("IsHealthy", mock.AnythingOfType("*context.cancelCtx")).Return(true, nil)
 	s.module.On("GetStage").Return(kernel.StageApplication)
-	s.module.On("Run", mock.Anything).Run(func(args mock.Arguments) {
+	s.module.On("Run", matcher.Context).Run(func(args mock.Arguments) {
 		callstack = append(callstack, "module")
 	}).Return(nil)
 
