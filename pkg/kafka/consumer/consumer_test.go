@@ -9,6 +9,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer"
 	"github.com/justtrackio/gosoline/pkg/kafka/consumer/mocks"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -23,8 +24,8 @@ func TestConsumer_Manager_Batch_Commit(t *testing.T) {
 		manager        = &mocks.OffsetManager{}
 	)
 
-	manager.On("Start", mock.Anything).Return(func(ctx context.Context) { <-ctx.Done() })
-	manager.On("Batch", mock.Anything).Return(
+	manager.On("Start", matcher.Context).Return(func(ctx context.Context) { <-ctx.Done() })
+	manager.On("Batch", matcher.Context).Return(
 		func(ctx context.Context) []kafka.Message {
 			defer func() {
 				time.Sleep(time.Millisecond)

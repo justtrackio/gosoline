@@ -17,6 +17,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/httpserver"
 	"github.com/justtrackio/gosoline/pkg/log"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -36,7 +37,7 @@ func TestLoggingMiddlewareTestSuite(t *testing.T) {
 
 func (s *loggingMiddlewareTestSuite) SetupTest() {
 	s.logger = logMocks.NewLogger(s.T())
-	s.logger.EXPECT().WithContext(mock.Anything).Return(s.logger)
+	s.logger.EXPECT().WithContext(matcher.Context).Return(s.logger)
 	s.logger.EXPECT().WithFields(mock.Anything).Return(s.logger)
 
 	s.handler = httpserver.NewLoggingMiddlewareWithInterfaces(s.logger, httpserver.LoggingSettings{}, clock.Provider)
@@ -136,7 +137,7 @@ func TestLogFields(t *testing.T) {
 	clock.EXPECT().Since(now).Return(250 * time.Millisecond).Once()
 
 	logger := logMocks.NewLogger(t)
-	logger.EXPECT().WithContext(mock.Anything).Return(logger)
+	logger.EXPECT().WithContext(matcher.Context).Return(logger)
 
 	expected := log.Fields{
 		"bytes":            2,
@@ -173,7 +174,7 @@ func TestLogEncodedRequestBody(t *testing.T) {
 	ginCtx.Request.Body = io.NopCloser(strings.NewReader("{}"))
 
 	logger := logMocks.NewLogger(t)
-	logger.EXPECT().WithContext(mock.Anything).Return(logger)
+	logger.EXPECT().WithContext(matcher.Context).Return(logger)
 
 	logger.EXPECT().WithFields(mock.Anything).Run(func(fields log.Fields) {
 		requestBody, ok := fields["request_body"]
