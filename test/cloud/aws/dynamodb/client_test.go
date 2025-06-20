@@ -15,6 +15,7 @@ import (
 	gosoDdb "github.com/justtrackio/gosoline/pkg/cloud/aws/dynamodb"
 	"github.com/justtrackio/gosoline/pkg/exec"
 	logMocks "github.com/justtrackio/gosoline/pkg/log/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/justtrackio/gosoline/pkg/test/suite"
 	"github.com/stretchr/testify/mock"
 )
@@ -103,12 +104,12 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 		Name: "PutItem",
 	}
 
-	loggerMock := new(logMocks.Logger)
-	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
-	loggerMock.On("WithFields", mock.AnythingOfType("log.Fields")).Return(loggerMock)
-	loggerMock.On("Warn", "attempt number %d to request resource %s failed after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
-	loggerMock.On("Warn", "sent request to resource %s successful after %d attempts in %s", resource, 3, mock.AnythingOfType("time.Duration")).Once()
-	loggerMock.On("Info", "created new %s client %s", "dynamodb", "http_timeout").Once()
+	loggerMock := logMocks.NewLogger(s.T())
+	loggerMock.EXPECT().WithContext(matcher.Context).Return(loggerMock)
+	loggerMock.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(loggerMock)
+	loggerMock.EXPECT().Warn("attempt number %d to request resource %s failed after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*http.ResponseError")).Twice()
+	loggerMock.EXPECT().Warn("sent request to resource %s successful after %d attempts in %s", resource, 3, mock.AnythingOfType("time.Duration")).Once()
+	loggerMock.EXPECT().Info("created new %s client %s", "dynamodb", "http_timeout").Once()
 
 	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "http_timeout")
 	s.NoError(err)
@@ -137,7 +138,6 @@ func (s *ClientTestSuite) TestHttpTimeout() {
 	})
 
 	s.NoError(err)
-	loggerMock.AssertExpectations(s.T())
 }
 
 func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
@@ -152,10 +152,10 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 	}()
 
 	ctx := context.Background()
-	loggerMock := new(logMocks.Logger)
-	loggerMock.On("WithContext", mock.Anything).Return(loggerMock)
-	loggerMock.On("WithFields", mock.AnythingOfType("log.Fields")).Return(loggerMock)
-	loggerMock.On("Info", "created new %s client %s", "dynamodb", "max_elapsed_time_exceeded").Once()
+	loggerMock := logMocks.NewLogger(s.T())
+	loggerMock.EXPECT().WithContext(matcher.Context).Return(loggerMock)
+	loggerMock.EXPECT().WithFields(mock.AnythingOfType("log.Fields")).Return(loggerMock)
+	loggerMock.EXPECT().Info("created new %s client %s", "dynamodb", "max_elapsed_time_exceeded").Once()
 
 	client, err := gosoDdb.NewClient(ctx, s.Env().Config(), loggerMock, "max_elapsed_time_exceeded")
 	s.NoError(err)
@@ -170,7 +170,6 @@ func (s *ClientTestSuite) TestMaxElapsedTimeExceeded() {
 	})
 
 	s.True(exec.IsErrMaxElapsedTimeExceeded(err))
-	loggerMock.AssertExpectations(s.T())
 }
 
 func (s *ClientTestSuite) TestRetryOnTransactionConflict() {
@@ -181,7 +180,7 @@ func (s *ClientTestSuite) TestRetryOnTransactionConflict() {
 	}
 
 	logger := new(logMocks.Logger)
-	logger.On("WithContext", mock.Anything).Return(logger)
+	logger.On("WithContext", matcher.Context).Return(logger)
 	logger.On("WithFields", mock.AnythingOfType("log.Fields")).Return(logger)
 	logger.On("Warn", "attempt number %d to request resource %s failed after %s cause of error: %s", mock.AnythingOfType("int"), resource, mock.AnythingOfType("time.Duration"), mock.AnythingOfType("*types.TransactionCanceledException")).Once()
 	logger.On("Warn", "sent request to resource %s successful after %d attempts in %s", resource, 2, mock.AnythingOfType("time.Duration")).Once()

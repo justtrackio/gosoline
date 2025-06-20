@@ -21,6 +21,7 @@ import (
 	"github.com/justtrackio/gosoline/pkg/mdl"
 	"github.com/justtrackio/gosoline/pkg/metric"
 	metricMocks "github.com/justtrackio/gosoline/pkg/metric/mocks"
+	"github.com/justtrackio/gosoline/pkg/test/matcher"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -106,7 +107,7 @@ func (s *kinsumerTestSuite) SetupTest() {
 			shardReader := mocks.NewShardReader(s.T())
 			s.shardReaders[shardId] = append(s.shardReaders[shardId], shardReader)
 			mockedReader := s.expectedShardReaders[shardId][len(s.shardReaders[shardId])-1]
-			shardReader.EXPECT().Run(mock.Anything, mock.Anything).Run(func(ctx context.Context, handler func([]byte) error) {
+			shardReader.EXPECT().Run(matcher.Context, mock.Anything).Run(func(ctx context.Context, handler func([]byte) error) {
 				for _, msg := range mockedReader.messages {
 					<-s.clock.NewTimer(msg.delay).Chan()
 					err := handler(msg.data)
