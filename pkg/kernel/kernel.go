@@ -55,6 +55,7 @@ type kernel struct {
 	middlewares       []Middleware
 	stages            stages
 	running           chan struct{}
+	stopping          chan struct{}
 	stopOnce          sync.Once
 	foregroundModules int32
 
@@ -71,8 +72,9 @@ func newKernel(ctx context.Context, config cfg.Config, logger log.Logger) (*kern
 		logger: logger.WithChannel("kernel"),
 		clock:  clock.NewRealClock(),
 
-		ctx:     ctx,
-		running: make(chan struct{}),
+		ctx:      ctx,
+		running:  make(chan struct{}),
+		stopping: make(chan struct{}),
 
 		killTimeout: settings.KillTimeout,
 		exitCode:    ExitCodeErr,
@@ -163,6 +165,8 @@ func (k *kernel) Stop(reason string) {
 
 func (k *kernel) stop(reason string, moduleStage int, moduleErr error) {
 	k.stopOnce.Do(func() {
+		close(k.stopping)
+
 		go func() {
 			k.logger.Info("stopping kernel due to: %s", reason)
 			indices := k.stages.getIndices()
@@ -199,7 +203,7 @@ func (k *kernel) HealthCheck() HealthCheckResult {
 		return cmp.Compare(a.StageIndex, b.StageIndex)
 	})
 
-	if !result.IsHealthy() && k.isRunning() {
+	if !result.IsHealthy() && k.isRunning() && !k.isStopping() {
 		k.reportFailedHealthcheck(result)
 	}
 
@@ -209,6 +213,15 @@ func (k *kernel) HealthCheck() HealthCheckResult {
 func (k *kernel) isRunning() bool {
 	select {
 	case <-k.running:
+		return true
+	default:
+		return false
+	}
+}
+
+func (k *kernel) isStopping() bool {
+	select {
+	case <-k.stopping:
 		return true
 	default:
 		return false
